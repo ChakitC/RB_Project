@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 520af892e455a314a96c74d00ce80cde
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: -100
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.graphdesigner/Runtime/Wrappers/SceneSharedVariables.cs
+  uploadId: 825220

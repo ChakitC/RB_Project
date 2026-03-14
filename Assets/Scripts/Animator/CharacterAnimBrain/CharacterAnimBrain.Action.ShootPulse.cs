@@ -1,0 +1,48 @@
+using UnityEngine;
+using System;
+using Animancer;
+using Animancer.FSM;
+using UnityEngine;
+public sealed partial class CharacterAnimBrain
+{private sealed class Action_ShootPulse : ActionState
+{
+    private readonly CharacterAnimBrain owner;
+    private AnimancerState state;
+    private float lastPlayTime;
+
+    public Action_ShootPulse(CharacterAnimBrain owner) => this.owner = owner;
+
+    public override bool CanEnterState
+    {
+        get
+        {
+            if (owner.shootPulse == null) return false;
+
+            // ถ้ากดค้างและไม่มี holdLoop -> กันการรีสตาร์ตถี่เกิน (auto fire rate สูง ๆ)
+            if (owner.IsHoldingFire && owner.shootHoldLoop == null)
+            {
+                if (Time.time - lastPlayTime < owner.holdPulseMinInterval)
+                    return false;
+            }
+
+            return true;
+        }
+    }
+
+    public override void OnEnterState()
+    {
+        lastPlayTime = Time.time;
+
+        owner.ActLayer.StartFade(1f, owner.actionFadeIn);
+
+        state = owner.ActLayer.Play(owner.shootPulse);
+
+        owner.onShootEndCache ??= () => owner.actionSM.TrySetState(owner.empty);
+        state.Events(owner).OnEnd = owner.onShootEndCache;
+    }
+
+    public override void OnExitState()
+    {
+        // ไม่ต้อง fade out ที่นี่ เพราะตอนกลับ empty จะ fade out ให้
+    }
+}}

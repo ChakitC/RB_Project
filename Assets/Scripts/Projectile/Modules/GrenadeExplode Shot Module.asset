@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0768e450f9a84341b38acb6f6dc8c1e, type: 3}
+  m_Name: GrenadeExplode Shot Module
+  m_EditorClassIdentifier: 
+  explodeOnDamageableHit: 1
+  explodeOnWallHit: 0
+  fuseTime: 5
+  explodeOnExpire: 1
+  radius: 3.5
+  explosionBaseDamage: -1
+  damageFalloff:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: -1
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: -1
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  includeHitTarget: 1
+  ignoreOwner: 1
+  damageMask:
+    serializedVersion: 2
+    m_Bits: 64
+  queryTriggers: 2
+  allowCrit: 1
+  applyKnockback: 0
+  knockbackForce: 6
+  explosionVfxPrefab: {fileID: 2712718414624439014, guid: 0ca930d1e5232d14d8c0b97cc1b911c3, type: 3}
+  vfxScale: 1

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 9c6834c10d404ac4b95be745f4411f96
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 12385, guid: 0000000000000000e000000000000000, type: 0}
+  disableValidation: 0
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Editor/Styles/TaskStyles.uss
+  uploadId: 825220

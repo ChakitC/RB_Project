@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 95b471c63ff5dd94788aab33d0223900
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Prefabs/FireballProjectile.prefab
+  uploadId: 825220

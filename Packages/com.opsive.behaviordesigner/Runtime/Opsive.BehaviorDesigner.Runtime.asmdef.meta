@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: f9fbcd65fc33f6847b0f124cf7e891b6
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Runtime/Opsive.BehaviorDesigner.Runtime.asmdef
+  uploadId: 825220

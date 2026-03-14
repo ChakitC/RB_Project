@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: cf429f91de4ca4f4faf697153e3e11e6
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Subtrees/RuntimeBehavior_Idle.asset
+  uploadId: 825220

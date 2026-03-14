@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 0b02b4aaf7aa44843b836f6e31da7d39
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.graphdesigner/Runtime/Wrappers/GameObjectSharedVariables.cs
+  uploadId: 825220

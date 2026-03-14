@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 36264f19e5a586d4a988ffeb608ac423
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Scenes/PropertyBinding.unity
+  uploadId: 825220

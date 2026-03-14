@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 62a229d2b640c5548ae866d2205e462a
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Scenes/Events.unity
+  uploadId: 825220

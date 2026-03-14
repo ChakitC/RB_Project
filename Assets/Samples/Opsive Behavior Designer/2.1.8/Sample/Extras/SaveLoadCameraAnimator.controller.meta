@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: e4e5f4a962046d548b942504d6d3edc4
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 9100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Extras/SaveLoadCameraAnimator.controller
+  uploadId: 825220

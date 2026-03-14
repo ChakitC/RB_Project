@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 114bee2a0bd90b248b94dd426a34c397, type: 3}
+  m_Name: HavyMeleeComboSO
+  m_EditorClassIdentifier: 
+  steps:
+  - clip:
+      _FadeDuration: 0.18666667
+      _Speed: 1
+      _Events:
+        _NormalizedTimes:
+        - 1
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: -6861254466692449891, guid: e1aa0debf8623274a833444a55f93ff2, type: 3}
+      _NormalizedStartTime: NaN
+    duration: 0
+    hitWindowN: {x: 0, y: 1}
+    chainWindowN: {x: 0, y: 0.85}
+    dropBufferOnWindowExpire: 0
+  defaultHitStartN: 0.28
+  defaultHitEndN: 0.45
+  defaultChainStartN: 0.148
+  defaultChainEndN: 0.608
+  references:
+    version: 2
+    RefIds: []

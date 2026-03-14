@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: a7ed1f768656737479b410bb60a4e213
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Animations/2D/Toggle/Shoot.anim
+  uploadId: 825220

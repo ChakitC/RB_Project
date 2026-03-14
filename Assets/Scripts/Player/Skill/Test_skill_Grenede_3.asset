@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
+  m_Name: Test_skill_Grenede_3
+  m_EditorClassIdentifier: 
+  skillId: 
+  displayName: 
+  description: 
+  icon: {fileID: 0}
+  tags: 26
+  maxLevel: 20
+  baseDamage: 100
+  baseManaCost: 10
+  baseCastTime: 0.5
+  baseCooldown: 10
+  AreaofEffec: 1
+  projectileSpeed: 5
+  baseRadius: 20
+  baseProjectilesCount: 1
+  baseCritChance: 5
+  skillPrefab: {fileID: 1661335766552818198, guid: a2689cdd55e31c948aec00496448e0ef, type: 3}
+  BallVfxPrefab: {fileID: 3357777935856840699, guid: 6a15fa33111c6b543a85348a05037e9c, type: 3}
+  SkillVfxhit: {fileID: 8295974722891363362, guid: 25477c0d7d0187d4e8cb92a3bc1860ba, type: 3}
+  projectileHitVfxScale: 5
+  castAnimation: {fileID: 0}
+  perLevelData: []

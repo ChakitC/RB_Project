@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 32cf9cff9b8470d4b9a63967203f336a
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Prefabs/SaveLoadAtlasEnemy.prefab
+  uploadId: 825220

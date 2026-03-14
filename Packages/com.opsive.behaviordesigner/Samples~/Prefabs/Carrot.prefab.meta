@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: a72a8d81f6dfc604c80bd123a3d8573f
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Prefabs/Carrot.prefab
+  uploadId: 825220

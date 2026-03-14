@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: d163034a08496d7409b7654e27225ee3
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Prefabs/ArrowProjectile.prefab
+  uploadId: 825220

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c21890341aac5fc40a04666a0ea7118d
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Materials/Scene/Grass.mat
+  uploadId: 825220

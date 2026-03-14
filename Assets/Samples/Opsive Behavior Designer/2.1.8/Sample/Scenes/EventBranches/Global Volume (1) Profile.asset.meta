@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: e44209ffc48864c4380c0cceda220bce
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Scenes/EventBranches/Global
+    Volume (1) Profile.asset
+  uploadId: 825220

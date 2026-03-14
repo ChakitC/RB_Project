@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c3aa2ae196c4d9b41bbcf53929c19768
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Animations/ChairPullback.anim
+  uploadId: 825220

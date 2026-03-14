@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: dde37f7a217b13043b14346bd3fd4abb
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 13400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Extras/Frictionless.physicMaterial
+  uploadId: 825220

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 04c17f6dc48fe5e40983a475c5bc75fe
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Materials/Scene/RuntimeBehavior.mat
+  uploadId: 825220

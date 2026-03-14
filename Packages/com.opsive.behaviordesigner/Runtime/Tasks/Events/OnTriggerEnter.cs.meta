@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: fedf6996bd7cfba4395c582ba40e2b47
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Runtime/Tasks/Events/OnTriggerEnter.cs
+  uploadId: 825220

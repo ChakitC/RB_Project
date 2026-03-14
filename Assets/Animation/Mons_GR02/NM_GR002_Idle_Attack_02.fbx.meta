@@ -1,0 +1,359 @@
+fileFormatVersion: 2
+guid: e1aa0debf8623274a833444a55f93ff2
+ModelImporter:
+  serializedVersion: 22200
+  internalIDToNameTable: []
+  externalObjects: {}
+  materials:
+    materialImportMode: 2
+    materialName: 0
+    materialSearch: 1
+    materialLocation: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 1
+    removeConstantScaleCurves: 0
+    motionNodeName: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    importAnimatedCustomProperties: 0
+    importConstraints: 0
+    animationCompression: 3
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths:
+    - root
+    extraUserProperties: []
+    clipAnimations:
+    - serializedVersion: 16
+      name: NM_GR002_Idle_Attack_02
+      takeName: NM_GR002_Idle_Attack_02
+      internalID: -6861254466692449891
+      firstFrame: 0
+      lastFrame: 27
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 0
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask:
+      - path: 
+        weight: 1
+      - path: Model_NM_GR002_Body
+        weight: 1
+      - path: Model_NM_GR002_Emotion
+        weight: 1
+      - path: Model_NM_GR002_Face
+        weight: 1
+      - path: Model_NM_GR002_Hair
+        weight: 1
+      - path: root
+        weight: 0
+      - path: root/c_traj
+        weight: 1
+      - path: root/c_traj/root.x
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.l/c_kilt_01_02.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.l/c_kilt_01_02.l/c_kilt_01_03.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.r/c_kilt_01_02.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.r/c_kilt_01_02.r/c_kilt_01_03.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.l/c_kilt_02_02.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.l/c_kilt_02_02.l/c_kilt_02_03.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.r/c_kilt_02_02.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.r/c_kilt_02_02.r/c_kilt_02_03.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_03_01.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_03_01.l/c_kilt_03_02.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_03_01.l/c_kilt_03_02.l/c_kilt_03_03.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_03_01.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_03_01.r/c_kilt_03_02.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_03_01.r/c_kilt_03_02.r/c_kilt_03_03.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.l/c_kilt_04_02.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.l/c_kilt_04_02.l/c_kilt_04_03.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.r/c_kilt_04_02.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.r/c_kilt_04_02.r/c_kilt_04_03.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.l/c_kilt_05_02.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.l/c_kilt_05_02.l/c_kilt_05_03.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.r/c_kilt_05_02.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.r/c_kilt_05_02.r/c_kilt_05_03.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_06_01.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_06_01.l/c_kilt_06_02.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_06_01.l/c_kilt_06_02.l/c_kilt_06_03.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_06_01.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_06_01.r/c_kilt_06_02.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_06_01.r/c_kilt_06_02.r/c_kilt_06_03.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/arm_twist.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/forearm_twist.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/index1_base.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/index1_base.l/index1.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/index1_base.l/index1.l/index2.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/index1_base.l/index1.l/index2.l/index3.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/middle1_base.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/middle1_base.l/middle1.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/middle1_base.l/middle1.l/middle2.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/middle1_base.l/middle1.l/middle2.l/middle3.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/pinky1_base.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/pinky1_base.l/pinky1.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/pinky1_base.l/pinky1.l/pinky2.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/pinky1_base.l/pinky1.l/pinky2.l/pinky3.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/ring1_base.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/ring1_base.l/ring1.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/ring1_base.l/ring1.l/ring2.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/ring1_base.l/ring1.l/ring2.l/ring3.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/thumb1.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/thumb1.l/thumb2.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/thumb1.l/thumb2.l/thumb3.l
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/arm_twist.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/forearm_twist.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/index1_base.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/index1_base.r/index1.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/index1_base.r/index1.r/index2.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/index1_base.r/index1.r/index2.r/index3.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/middle1_base.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/middle1_base.r/middle1.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/middle1_base.r/middle1.r/middle2.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/middle1_base.r/middle1.r/middle2.r/middle3.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/pinky1_base.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/pinky1_base.r/pinky1.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/pinky1_base.r/pinky1.r/pinky2.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/pinky1_base.r/pinky1.r/pinky2.r/pinky3.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/ring1_base.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/ring1_base.r/ring1.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/ring1_base.r/ring1.r/ring2.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/ring1_base.r/ring1.r/ring2.r/ring3.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/thumb1.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/thumb1.r/thumb2.r
+        weight: 1
+      - path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/thumb1.r/thumb2.r/thumb3.r
+        weight: 1
+      - path: root/c_traj/root.x/thigh_stretch.l
+        weight: 1
+      - path: root/c_traj/root.x/thigh_stretch.l/leg_stretch.l
+        weight: 1
+      - path: root/c_traj/root.x/thigh_stretch.l/leg_stretch.l/foot.l
+        weight: 1
+      - path: root/c_traj/root.x/thigh_stretch.l/leg_stretch.l/foot.l/toes_01.l
+        weight: 1
+      - path: root/c_traj/root.x/thigh_stretch.l/leg_stretch.l/leg_twist.l
+        weight: 1
+      - path: root/c_traj/root.x/thigh_stretch.l/thigh_twist.l
+        weight: 1
+      - path: root/c_traj/root.x/thigh_stretch.r
+        weight: 1
+      - path: root/c_traj/root.x/thigh_stretch.r/leg_stretch.r
+        weight: 1
+      - path: root/c_traj/root.x/thigh_stretch.r/leg_stretch.r/foot.r
+        weight: 1
+      - path: root/c_traj/root.x/thigh_stretch.r/leg_stretch.r/foot.r/toes_01.r
+        weight: 1
+      - path: root/c_traj/root.x/thigh_stretch.r/leg_stretch.r/leg_twist.r
+        weight: 1
+      - path: root/c_traj/root.x/thigh_stretch.r/thigh_twist.r
+        weight: 1
+      maskType: 0
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 27.82
+    isReadable: 0
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    useSRGBMaterialColor: 1
+    sortHierarchyByName: 1
+    importPhysicalCameras: 1
+    importVisibility: 1
+    importBlendShapes: 1
+    importCameras: 1
+    importLights: 1
+    nodeNameCollisionStrategy: 1
+    fileIdsGeneration: 2
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    keepQuads: 0
+    weldVertices: 1
+    bakeAxisConversion: 0
+    preserveHierarchy: 0
+    skinWeightsMode: 0
+    maxBonesPerVertex: 4
+    minBoneWeight: 0.001
+    optimizeBones: 1
+    meshOptimizationFlags: -1
+    indexFormat: 0
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVMarginMethod: 1
+    secondaryUVMinLightmapResolution: 40
+    secondaryUVMinObjectScale: 1
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+    strictVertexDataChecks: 0
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+    normalCalculationMode: 4
+    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
+    blendShapeNormalImportMode: 1
+    normalSmoothingSource: 0
+  referencedClips: []
+  importAnimation: 1
+  humanDescription:
+    serializedVersion: 3
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    globalScale: 1
+    rootMotionBoneName: root
+    hasTranslationDoF: 0
+    hasExtraRoot: 0
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  autoGenerateAvatarMappingIfUnspecified: 1
+  animationType: 2
+  humanoidOversampling: 1
+  avatarSetup: 1
+  addHumanoidExtraRootOnlyWhenUsingAvatar: 1
+  importBlendShapeDeformPercent: 1
+  remapMaterialsIfMaterialImportModeIsNone: 0
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

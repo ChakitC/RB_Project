@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: acfe874544935e64f80eeb34681141c1
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Runtime/Tasks/Actions/UnityObjects/SetGameObject.cs
+  uploadId: 825220

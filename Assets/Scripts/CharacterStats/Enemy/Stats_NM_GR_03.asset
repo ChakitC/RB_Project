@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee0d6ef073118da4dbabdd47dabdedc7, type: 3}
+  m_Name: Stats_NM_GR_03
+  m_EditorClassIdentifier: 
+  characterId: NM_GRS_01
+  characterName: SerpentPersonnel_Male
+  icon: {fileID: 0}
+  CharacterPrefab: {fileID: 4651303126784831026, guid: a649f9e44b30d794d8890f73f0ad0d3e, type: 3}
+  CharacterPrefabBasement: {fileID: 4651303126784831026, guid: a649f9e44b30d794d8890f73f0ad0d3e, type: 3}
+  characterAvatar: {fileID: 9000000, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}
+  controller: {fileID: 9100000, guid: 5bff3db2195f8944e8403ede2c0ccb2c, type: 2}
+  maxHP: 500
+  maxStamina: 80
+  Damage: 10
+  critMultiplier: 5
+  armor: 1
+  critRate: 1
+  Enagy: 100
+  speed: 4.5
+  speedDown: 1
+  DamageScaling: 0
+  ArmorScaling: 0
+  MAXHPScaling: 0
+  StaminaScaling: 0
+  CritrateScaling: 0
+  CritDamageScaling: 0
+  EnagyScaling: 0
+  SpeedScaling: 0

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: ed31136b0b444774383eeb42853e9a51
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 209616
+  packageName: Ragdoll Animator
+  packageVersion: 1.2.5
+  assetPath: Assets/FImpossible Creations/Plugins - Animating/Ragdoll Animator/Core/RagdollDummy_PostAttach.cs
+  uploadId: 656256

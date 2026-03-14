@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 5a16612340ee28f4698a65050f1d8dea
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 23800000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Scenes/PersistentScenes/NavMesh-Plane.asset
+  uploadId: 825220

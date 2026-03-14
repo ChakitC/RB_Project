@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4eeda43b528416d4e8d8f8353d25da93, type: 3}
+  m_Name: Mons_GR01_Weapone
+  m_EditorClassIdentifier: 
+  itemId: WP_GR_01
+  displayName: WP_GR_01
+  description: 
+  itemType: 1
+  stackable: 1
+  maxStack: 1
+  pickupPrefab: {fileID: 0}
+  WeaponType: 3
+  firingModes: 0
+  damage: 50
+  fireRate: 1
+  magazine: 10
+  maxMagazine: 10
+  critRate: 10
+  critMultiplier: 1
+  stability: 0
+  BulletSpeed: 30
+  autoloader: 1
+  magazineReload: 1
+  reloadTime: 5
+  reloadPerBullet: 0
+  startInsertDelay: 0
+  perBulletInsertTime: 0
+  endInsertDelay: 0
+  shootInterruptsReload: 0
+  baseSwaySpeed: 0
+  baseMaxSwayAngle: 0
+  baseReturnSpeed: 0
+  burstCount: 3
+  burstInterval: 0.08

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 010ecf5ed96ef3c429cae09e8d834a68
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Prefabs/Explosion.prefab
+  uploadId: 825220

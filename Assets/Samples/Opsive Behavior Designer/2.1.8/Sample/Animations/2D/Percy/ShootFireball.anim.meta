@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 1758a40196917a24da5ee1db8905544f
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Animations/2D/Percy/ShootFireball.anim
+  uploadId: 825220

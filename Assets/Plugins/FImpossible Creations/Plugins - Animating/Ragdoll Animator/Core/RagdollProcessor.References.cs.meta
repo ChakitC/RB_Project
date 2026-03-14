@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 7eb28153852d64548b175d665a09c984
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 209616
+  packageName: Ragdoll Animator
+  packageVersion: 1.2.5
+  assetPath: Assets/FImpossible Creations/Plugins - Animating/Ragdoll Animator/Core/RagdollProcessor.References.cs
+  uploadId: 656256

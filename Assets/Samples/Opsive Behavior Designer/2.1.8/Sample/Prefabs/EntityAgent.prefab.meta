@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 892b9197ccf2ddf4eade4fd8fdd6a834
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Prefabs/EntityAgent.prefab
+  uploadId: 825220

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 3c918f22c68422e418e0702e1ae0ff95
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Animations/2D/Angie/Hurt.anim
+  uploadId: 825220

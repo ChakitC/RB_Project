@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 8e6289de15e5ee441a6e4bd9110eeae1
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Animations/2D/Angie/Idle.anim
+  uploadId: 825220

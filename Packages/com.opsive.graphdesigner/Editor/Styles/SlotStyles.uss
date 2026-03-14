@@ -1,0 +1,116 @@
+DoubleVerticalSlot
+{
+    position: absolute;
+    left: 0;
+    top: 22px;
+    right: 0;
+    bottom: 0;
+    flex-direction: row;
+}
+
+.horizontal-slot
+{
+    position: absolute;
+    align-items: center;
+    align-self: center;
+    width: 42px;
+    height: 14px;
+}
+
+.vertical-slot
+{
+    position: absolute;
+    align-items: center;
+    align-self: center;
+    width: 14px;
+    height: 34px;
+}
+
+#horizontal-output-slot
+{
+    bottom: 2px;
+    margin-bottom:-3px;
+    padding-top:4px
+}
+
+#horizontal-input-slot
+{
+    padding-top: 2px;
+    margin-top: -1px;
+}
+
+#horizontal-slot-container
+{
+    width: 34px;
+    height: 8px;
+    align-items: center;
+}
+
+#vertical-output-slot
+{
+    right: 0px;
+    margin-right:-2px;
+    padding-right:3px;
+}
+
+#vertical-input-slot
+{
+    left: 0px;
+    padding-left: 3px;
+    margin-left: -2px;
+}
+
+#vertical-slot-container
+{
+    width: 8px;
+    height: 18px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.horizontal-input-slot-container
+{
+    border-width: 0px 1px 1px 1px;
+    border-radius: 0px 0px 4px 4px;
+}
+
+.horizontal-output-slot-container
+{
+    border-width: 1px 1px 0px 1px;
+    border-radius: 4px 4px 0px 0px;
+}
+
+.vertical-input-slot-container
+{
+    border-width: 1px 1px 1px 0px;
+    border-radius: 0px 4px 4px 0px;
+}
+
+.vertical-output-slot-container
+{
+    border-width: 1px 0px 1px 1px;
+    border-radius: 4px 0px 0px 4px;
+}
+
+.valid-slot
+{
+    border-color: rgba(25, 25, 25, 1);
+    background-color: rgba(108, 108, 108, 0.8);
+} 
+
+.invalid-slot
+{
+    border-color: rgba(25, 25, 25, 1);
+    background-color: rgba(108, 108, 108, 0.3);
+}
+
+.slot-container-highlight
+{
+    background-color: rgba(138, 138, 138, 0.95);
+}
+
+#collapsed-icon
+{
+    position: absolute;
+    top: 6px;
+}

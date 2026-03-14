@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 95d53a2ef9ecd354080790ff78f73d1a
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Scenes/Subtrees/SubtreesProfile.asset
+  uploadId: 825220

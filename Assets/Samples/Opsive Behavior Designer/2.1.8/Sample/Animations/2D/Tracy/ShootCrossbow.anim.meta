@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 996a3b6ed0cd55d46927371d640bd887
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Animations/2D/Tracy/ShootCrossbow.anim
+  uploadId: 825220

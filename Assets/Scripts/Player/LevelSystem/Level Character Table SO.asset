@@ -1,0 +1,214 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 498ef0d4ac355574b956f645c07f6f0e, type: 3}
+  m_Name: Level Character Table SO
+  m_EditorClassIdentifier: 
+  maxLevel: 30
+  levels:
+  - xpToNext: 50
+    lockXp: 0
+  - xpToNext: 111
+    lockXp: 0
+  - xpToNext: 172
+    lockXp: 0
+  - xpToNext: 233
+    lockXp: 0
+  - xpToNext: 294
+    lockXp: 0
+  - xpToNext: 356
+    lockXp: 0
+  - xpToNext: 417
+    lockXp: 0
+  - xpToNext: 478
+    lockXp: 0
+  - xpToNext: 539
+    lockXp: 0
+  - xpToNext: 600
+    lockXp: 0
+  - xpToNext: 300
+    lockXp: 0
+  - xpToNext: 467
+    lockXp: 0
+  - xpToNext: 633
+    lockXp: 0
+  - xpToNext: 800
+    lockXp: 0
+  - xpToNext: 967
+    lockXp: 0
+  - xpToNext: 1133
+    lockXp: 0
+  - xpToNext: 1300
+    lockXp: 0
+  - xpToNext: 1467
+    lockXp: 0
+  - xpToNext: 1633
+    lockXp: 0
+  - xpToNext: 1800
+    lockXp: 0
+  - xpToNext: 1200
+    lockXp: 0
+  - xpToNext: 1675
+    lockXp: 0
+  - xpToNext: 2150
+    lockXp: 0
+  - xpToNext: 2625
+    lockXp: 0
+  - xpToNext: 3100
+    lockXp: 0
+  - xpToNext: 3575
+    lockXp: 0
+  - xpToNext: 4050
+    lockXp: 0
+  - xpToNext: 4525
+    lockXp: 0
+  - xpToNext: 5000
+    lockXp: 0
+  - xpToNext: 0
+    lockXp: 0
+  ranges:
+  - name: Early (1-10)
+    startLevel: 1
+    endLevel: 10
+    mode: 0
+    minXpToNext: 50
+    maxXpToNext: 600
+    curve01:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 1
+        outSlope: 1
+        tangentMode: 34
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 1
+        outSlope: 1
+        tangentMode: 34
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    quadratic:
+      a: 0
+      b: 0
+      c: 0
+  - name: Mid (11-20)
+    startLevel: 11
+    endLevel: 20
+    mode: 0
+    minXpToNext: 300
+    maxXpToNext: 1800
+    curve01:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 1
+        outSlope: 1
+        tangentMode: 34
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 1
+        outSlope: 1
+        tangentMode: 34
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    quadratic:
+      a: 0
+      b: 0
+      c: 0
+  - name: Late (21-30)
+    startLevel: 21
+    endLevel: 30
+    mode: 0
+    minXpToNext: 1200
+    maxXpToNext: 5000
+    curve01:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 1
+        outSlope: 1
+        tangentMode: 34
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 1
+        outSlope: 1
+        tangentMode: 34
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    quadratic:
+      a: 0
+      b: 0
+      c: 0
+  fallback:
+    name: Fallback
+    startLevel: 1
+    endLevel: 9999
+    mode: 1
+    minXpToNext: 100
+    maxXpToNext: 5000
+    curve01:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 1
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 1
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    quadratic:
+      a: 80
+      b: 12
+      c: 0.9

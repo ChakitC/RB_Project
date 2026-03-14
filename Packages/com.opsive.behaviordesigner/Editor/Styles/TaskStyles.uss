@@ -1,0 +1,29 @@
+TaskView
+{
+    overflow: hidden;
+}
+
+#conditional-abort-icon
+{
+    top: 2px;
+    padding-left: 3px;
+    position: absolute;
+}
+
+#event-execution-status
+{
+    bottom: 1px;
+    right: -1px;
+    align-self: flex-end;
+    position: absolute;
+    height: 20px;
+}
+
+#execution-status
+{
+    top: 2px;
+    right: 2px;
+    align-self: flex-end;
+    position: absolute;
+    height: 24px;
+}

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 0699f13658fdf6740b3b6e04706b728c
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Prefabs/EventsSceneAgent.prefab
+  uploadId: 825220

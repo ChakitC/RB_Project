@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: d5511cc8b2a73f54b872a290ed0e0585
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Scripts/SceneManagers/SaveLoadSceneManager.cs
+  uploadId: 825220

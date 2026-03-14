@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 7789c2bf5d50d6940b12584906d5c874
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Prefabs/PersistedScenesAgent.prefab
+  uploadId: 825220

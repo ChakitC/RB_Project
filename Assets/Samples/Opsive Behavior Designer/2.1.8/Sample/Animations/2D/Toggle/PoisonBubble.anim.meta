@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 6c554f61323557c4d8eb0af4038a4271
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Animations/2D/Toggle/PoisonBubble.anim
+  uploadId: 825220

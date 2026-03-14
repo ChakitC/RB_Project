@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: cb584d5a7660f154eb4dd1a562755a08
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Prefabs/SeedProjectile.prefab
+  uploadId: 825220

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 3a532b7c3b453e246a0ad3867a01fad2
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.7
+  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Credits.txt
+  uploadId: 825220

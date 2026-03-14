@@ -1,0 +1,113 @@
+using UnityEngine;
+using UnityEngine.AI;
+using Opsive.BehaviorDesigner.Runtime.Tasks;
+using Opsive.BehaviorDesigner.Runtime.Tasks.Actions;
+using Opsive.GraphDesigner.Runtime.Variables;
+
+public class AiRotateToTarget : Action
+{
+    [Header("Target")]
+    public SharedVariable<GameObject> target;
+
+    [Tooltip("ถ้าใส่ จะหมุน transform นี้แทนตัว root หลัก เช่น model/pivot")]
+    public SharedVariable<Transform> rotateRoot;
+
+    [Header("Rotate Settings")]
+    [Tooltip("ความเร็วในการหมุน (deg/sec)")]
+    public float rotateSpeed = 720f;
+
+    [Tooltip("เมื่อมุมที่เหลือน้อยกว่าค่านี้ จะถือว่าหันถึงแล้ว")]
+    public float successAngle = 3f;
+
+    [Tooltip("ปกติ NPC ยิงกันในระนาบพื้น เลยควรไม่สนแกน Y")]
+    public bool ignoreYAxis = true;
+
+    [Header("NavMeshAgent")]
+    [Tooltip("หยุดเดินระหว่างเล็ง")]
+    public bool stopAgentWhileAiming = true;
+
+    [Tooltip("ปิด auto rotation ของ NavMeshAgent ระหว่าง task ทำงาน")]
+    public bool disableAgentAutoRotation = true;
+
+    private NavMeshAgent _agent;
+    private Transform _self;
+    private Transform _rotateTransform;
+
+    private bool _cachedUpdateRotation;
+    private bool _cachedIsStopped;
+
+    public override void OnAwake()
+    {
+        _self = transform;
+        _agent = gameObject.GetComponent<NavMeshAgent>();
+    }
+
+    public override void OnStart()
+    {
+        _rotateTransform = rotateRoot.Value != null ? rotateRoot.Value : _self;
+
+        if (_agent != null)
+        {
+            _cachedUpdateRotation = _agent.updateRotation;
+            _cachedIsStopped = _agent.isStopped;
+
+            if (disableAgentAutoRotation)
+                _agent.updateRotation = false;
+
+            if (stopAgentWhileAiming)
+                _agent.isStopped = true;
+        }
+    }
+
+    public override TaskStatus OnUpdate()
+    {
+        if (target.Value == null)
+            return TaskStatus.Failure;
+
+        Vector3 from = _rotateTransform.position;
+        Vector3 to = target.Value.gameObject.transform.position;
+
+        if (ignoreYAxis)
+            to.y = from.y;
+
+        Vector3 dir = to - from;
+
+        if (dir.sqrMagnitude <= 0.0001f)
+            return TaskStatus.Success;
+
+        Quaternion desiredRotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
+
+        _rotateTransform.rotation = Quaternion.RotateTowards(
+            _rotateTransform.rotation,
+            desiredRotation,
+            rotateSpeed * Time.deltaTime
+        );
+
+        float angle = Quaternion.Angle(_rotateTransform.rotation, desiredRotation);
+
+        return angle <= successAngle ? TaskStatus.Success : TaskStatus.Running;
+    }
+
+    public override void OnEnd()
+    {
+        if (_agent != null)
+        {
+            if (disableAgentAutoRotation)
+                _agent.updateRotation = _cachedUpdateRotation;
+
+            if (stopAgentWhileAiming)
+                _agent.isStopped = _cachedIsStopped;
+        }
+    }
+
+    public override void Reset()
+    {
+        target = null;
+        rotateRoot = null;
+        rotateSpeed = 720f;
+        successAngle = 3f;
+        ignoreYAxis = true;
+        stopAgentWhileAiming = true;
+        disableAgentAutoRotation = true;
+    }
+}

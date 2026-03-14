@@ -7,6 +7,8 @@ public class AllyContext : CharacteContext
 {
     [Header("NavMeshAgent")]
     
+    public AITargetSensor AITargetSensor;
+    
     public NavMeshAgent  agent;
 
     public AgentMoveDriver AgentMoveDriver;

@@ -1,43 +1,53 @@
 using UnityEngine;
 using Opsive.BehaviorDesigner.Runtime.Tasks;
 using Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals;
+using Opsive.GraphDesigner.Runtime;
 using Opsive.GraphDesigner.Runtime.Variables;
-using Unity.Behavior;
 
 [Opsive.Shared.Utility.Category("Ally/Enemy")]
-[NodeDescription("Success ถ้า AllyEnemySensor เจอศัตรู และอัปเดต currentEnemy ให้ BT")]
+[NodeDescription("Success ถ้า AITargetSensor เจอศัตรูตัวปัจจุบัน และอัปเดต currentEnemy ให้ BT")]
 public class HasEnemyFromSensor : Conditional
 {
     public SharedVariable<GameObject> currentEnemy;
     public SharedVariable<bool> InCombat;
+    
+    public SharedVariable<AllyContext> context;
 
-    private AllyEnemySensor _sensor;
+    private AITargetSensor sensor;
 
     public override void OnStart()
     {
-        if (_sensor == null)
-            _sensor = GetComponent<AllyEnemySensor>();
+        var ctx = context.Value;
+        sensor = ctx.AITargetSensor;
     }
 
     public override TaskStatus OnUpdate()
     {
-        if (_sensor == null)
+        if (sensor == null)
+        {
+            if (currentEnemy != null) currentEnemy.Value = null;
+            if (InCombat != null) InCombat.Value = false;
             return TaskStatus.Failure;
+        }
 
-        var target = _sensor.currentTarget;
+        Transform target = sensor.CurrentTarget;
 
         if (target != null)
         {
-            currentEnemy.Value = target.gameObject;
-            InCombat.Value = true;
+            if (currentEnemy != null) currentEnemy.Value = target.gameObject;
+            if (InCombat != null) InCombat.Value = true;
             return TaskStatus.Success;
         }
-        else
-        {
-            InCombat.Value = false;
-        }
-        
-        currentEnemy.Value = null;
+
+        if (currentEnemy != null) currentEnemy.Value = null;
+        if (InCombat != null) InCombat.Value = false;
         return TaskStatus.Failure;
+    }
+
+    public override void Reset()
+    {
+        sensor = null;
+        currentEnemy = null;
+        InCombat = false;
     }
 }

@@ -132,7 +132,6 @@ public sealed class CharacterAnimDriver : MonoBehaviour
     void OnMeleeStarted(CharacterAnimBrain.MeleeType MeleeType)
     {
         if (brain != null) brain.PressMelee(MeleeType);
-        hub.WeaponSM.TryChange(WeaponStateId.Melee);
     }
 
     void OnMeleeEnded()

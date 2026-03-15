@@ -39,11 +39,7 @@ public class PlayerMovementCC : MonoBehaviour
         if (_characteContext != null)
             _characteContext.AnimBrain = _brain;
         
-        _brain = GetComponent<CharacterAnimBrain>();
-        
-        if (_characteContext != null)
-            _characteContext.AnimBrain = _brain;
-
+    
     }
 
     void Start()

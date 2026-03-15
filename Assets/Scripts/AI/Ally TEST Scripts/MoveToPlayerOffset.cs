@@ -9,7 +9,6 @@ using Opsive.GraphDesigner.Runtime.Variables;
 [NodeDescription("ใช้ NavMeshAgent วิ่งไปยืนตำแหน่งรอบ ๆ Player ตาม Offset")]
 public class MoveToPlayerOffsetNavMesh : Action
 {
-    [SerializeField] private StateHub stateHub;
     
     [Tooltip("ตัวแปร Player ที่แชร์ใน Behavior Tree")]
     public SharedVariable<GameObject> player;
@@ -79,7 +78,6 @@ public class MoveToPlayerOffsetNavMesh : Action
                 return TaskStatus.Success;
             }
         }
-
         // ยังเดินอยู่ → Running
         return TaskStatus.Running;
     }

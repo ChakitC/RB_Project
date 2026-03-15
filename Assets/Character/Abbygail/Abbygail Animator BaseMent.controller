@@ -56,7 +56,7 @@ AnimatorController:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Milano Animator Basement
+  m_Name: Abbygail Animator BaseMent
   serializedVersion: 5
   m_AnimatorParameters:
   - m_Name: IsPicked
@@ -85,7 +85,7 @@ AnimatorState:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Sniper_Formation_Idle_remap
+  m_Name: Idle
   m_Speed: 1
   m_CycleOffset: 0
   m_Transitions:
@@ -99,7 +99,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -8853062798856045536, guid: cbc14a58df1a3a74eaa1058d09a71c3a, type: 3}
+  m_Motion: {fileID: -7229058316050286114, guid: 25089fa0a1608d3478b4195f7c9f0861, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -112,7 +112,7 @@ AnimatorState:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Milano_Original_Formation_Pickup_remap
+  m_Name: Pickup
   m_Speed: 1
   m_CycleOffset: 0
   m_Transitions:
@@ -126,7 +126,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 2098114265036632977, guid: b4a40cfa374e275439b6d1f9eb0dfef1, type: 3}
+  m_Motion: {fileID: -8334158366582042998, guid: 61da14baece9fb341a909f384f60ed98, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 

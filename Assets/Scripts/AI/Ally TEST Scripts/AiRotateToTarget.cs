@@ -16,9 +16,6 @@ public class AiRotateToTarget : Action
     [Tooltip("ความเร็วในการหมุน (deg/sec)")]
     public float rotateSpeed = 720f;
 
-    [Tooltip("เมื่อมุมที่เหลือน้อยกว่าค่านี้ จะถือว่าหันถึงแล้ว")]
-    public float successAngle = 3f;
-
     [Tooltip("ปกติ NPC ยิงกันในระนาบพื้น เลยควรไม่สนแกน Y")]
     public bool ignoreYAxis = true;
 
@@ -28,6 +25,10 @@ public class AiRotateToTarget : Action
 
     [Tooltip("ปิด auto rotation ของ NavMeshAgent ระหว่าง task ทำงาน")]
     public bool disableAgentAutoRotation = true;
+
+    [Header("When No Target")]
+    [Tooltip("ถ้าไม่มี target ให้ return Failure, ถ้าปิดจะ return Success")]
+    public bool failWhenTargetLost = true;
 
     private NavMeshAgent _agent;
     private Transform _self;
@@ -44,7 +45,10 @@ public class AiRotateToTarget : Action
 
     public override void OnStart()
     {
-        _rotateTransform = rotateRoot.Value != null ? rotateRoot.Value : _self;
+        _rotateTransform =
+            (rotateRoot != null && rotateRoot.Value != null)
+            ? rotateRoot.Value
+            : _self;
 
         if (_agent != null)
         {
@@ -61,31 +65,33 @@ public class AiRotateToTarget : Action
 
     public override TaskStatus OnUpdate()
     {
-        if (target.Value == null)
-            return TaskStatus.Failure;
+        if (target == null || target.Value == null)
+            return failWhenTargetLost ? TaskStatus.Failure : TaskStatus.Success;
+
+        if (_rotateTransform == null)
+            _rotateTransform = _self;
 
         Vector3 from = _rotateTransform.position;
-        Vector3 to = target.Value.gameObject.transform.position;
+        Vector3 to = target.Value.transform.position;
 
         if (ignoreYAxis)
             to.y = from.y;
 
         Vector3 dir = to - from;
 
-        if (dir.sqrMagnitude <= 0.0001f)
-            return TaskStatus.Success;
+        if (dir.sqrMagnitude > 0.0001f)
+        {
+            Quaternion desiredRotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
 
-        Quaternion desiredRotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
+            _rotateTransform.rotation = Quaternion.RotateTowards(
+                _rotateTransform.rotation,
+                desiredRotation,
+                rotateSpeed * Time.deltaTime
+            );
+        }
 
-        _rotateTransform.rotation = Quaternion.RotateTowards(
-            _rotateTransform.rotation,
-            desiredRotation,
-            rotateSpeed * Time.deltaTime
-        );
-
-        float angle = Quaternion.Angle(_rotateTransform.rotation, desiredRotation);
-
-        return angle <= successAngle ? TaskStatus.Success : TaskStatus.Running;
+        // มี target อยู่ = หมุนต่อไปเรื่อย ๆ และค้าง Running
+        return TaskStatus.Running;
     }
 
     public override void OnEnd()
@@ -105,9 +111,9 @@ public class AiRotateToTarget : Action
         target = null;
         rotateRoot = null;
         rotateSpeed = 720f;
-        successAngle = 3f;
         ignoreYAxis = true;
         stopAgentWhileAiming = true;
         disableAgentAutoRotation = true;
+        failWhenTargetLost = true;
     }
 }

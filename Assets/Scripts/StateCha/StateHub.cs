@@ -225,8 +225,8 @@ public sealed class StateHub : MonoBehaviour
     
     public void RequestOnMelee()
     {
-        WeaponSM.TryChange(WeaponStateId.Melee);
         if (MoveSM.CurrentId == MoveStateId.Dash) return;
+        WeaponSM.TryChange(WeaponStateId.Melee);
         
         ctx.WeaponSystem.SetFiring(false);
         ctx.stateHub.SetFireHeld(false);

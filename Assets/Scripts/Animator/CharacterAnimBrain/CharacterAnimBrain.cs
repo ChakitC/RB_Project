@@ -226,14 +226,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             _pendingPulse = true;
             return;
         }
-        
-        if (IsHoldingFire && shootHoldLoop != null)
-        {
-            if (actionSM.CurrentState != shootHold)
-                actionSM.TrySetState(shootHold);
-
-            return;
-        }
 
         actionSM.TryResetState(shootOnce);
     }
@@ -247,8 +239,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             _pendingAction = PendingAction.Hold;
             return;
         }
-        _pendingAction = PendingAction.Hold;
-        actionSM.TrySetState(shootHold);
     }
 
     public void FireUp()
@@ -257,9 +247,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         if (!TryInitialize())
             return;
-        
+
         _pendingAction = PendingAction.Empty;
-        
         actionSM.TrySetState(empty);
     }
 
@@ -282,7 +271,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         if (!TryInitialize())
             return;
-
+        
+        StopReloadAction();
         locomotionSM.TrySetState(dashState);
     }
 
@@ -316,6 +306,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     {
         
         if (!TryInitialize()) return;
+
+        StopReloadAction();
 
         locomotionSM.TrySetState(deadState);
     }
@@ -356,5 +348,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             reloadState.CancelNow();
             actionSM.TrySetState(empty);
         }
+    }
+    private void HandleShootPulseEnd()
+    {
+        if (IsHoldingFire && shootHoldLoop != null)
+            actionSM.TrySetState(shootHold);
+        else
+            actionSM.TrySetState(empty);
     }
 }

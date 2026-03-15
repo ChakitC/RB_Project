@@ -34,10 +34,9 @@ public sealed partial class CharacterAnimBrain
         lastPlayTime = Time.time;
 
         owner.ActLayer.StartFade(1f, owner.actionFadeIn);
-
         state = owner.ActLayer.Play(owner.shootPulse);
 
-        owner.onShootEndCache ??= () => owner.actionSM.TrySetState(owner.empty);
+        owner.onShootEndCache ??= owner.HandleShootPulseEnd;
         state.Events(owner).OnEnd = owner.onShootEndCache;
     }
 

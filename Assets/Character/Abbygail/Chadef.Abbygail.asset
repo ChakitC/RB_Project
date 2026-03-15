@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterId: ID.Abbygail
   characterName: Abbygail
-  icon: {fileID: 0}
-  CharacterPrefab: {fileID: 0}
-  CharacterPrefabBasement: {fileID: 0}
-  characterAvatar: {fileID: 0}
-  controller: {fileID: 0}
-  maxHP: 100
+  icon: {fileID: 21300000, guid: 862ea79153b03744a8e079af72bbe3fb, type: 3}
+  CharacterPrefab: {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+  CharacterPrefabBasement: {fileID: 850771095375289685, guid: 2b42015445faf5b4e81cc24f1ae8f1a8, type: 3}
+  characterAvatar: {fileID: 9000000, guid: 8131203fb0a8e424ca3b9e144ecc0bca, type: 3}
+  controller: {fileID: 9100000, guid: 003a064ee1d2b7641bb4de8c370f49ba, type: 2}
+  maxHP: 1000
   maxStamina: 80
   Damage: 10
   critMultiplier: 5

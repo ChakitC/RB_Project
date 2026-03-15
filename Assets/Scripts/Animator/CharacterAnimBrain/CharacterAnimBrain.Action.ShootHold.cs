@@ -18,25 +18,35 @@ public sealed partial class CharacterAnimBrain
 
         // public override bool CanEnterState => owner.IsHoldingFire;
      
-
+        public override bool CanEnterState
+            => owner.IsHoldingFire && owner.shootHoldLoop != null;
+        
         public override void OnEnterState()
         {
             owner.ActLayer.StartFade(1f, owner.actionFadeIn);
 
             if (owner.shootHoldLoop != null)
                 state = owner.ActLayer.Play(owner.shootHoldLoop);
+          
             else
                 state = null;
+            
+           
         }
 
         public override void Update()
         {
-          
+            if (!owner.IsHoldingFire)
+            {
+                owner.actionSM.TrySetState(owner.empty);
+            
+            }
             
         }
 
         public override void OnExitState()
         {
+            
             owner.ActLayer.StartFade(0f, owner.actionFadeOut);
         }
     }

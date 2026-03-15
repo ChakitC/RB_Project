@@ -9,11 +9,8 @@ public class DownCoditional : Conditional
 {
 
     public SharedVariable<AllyContext> CTX;
-    
-    public override void OnStart()
-    {
-       
-    }
+
+    [SerializeField] private string _CurrentState; 
 
     public override TaskStatus OnUpdate()
     {
@@ -23,10 +20,13 @@ public class DownCoditional : Conditional
             return TaskStatus.Failure;
 
         var life = ctx.stateHub.LifeSM.CurrentId;
+        
+        _CurrentState = life.ToString();
 
         if (life == LifeStateId.Down)
         {
             return TaskStatus.Failure;
+            
         }
         else
         {

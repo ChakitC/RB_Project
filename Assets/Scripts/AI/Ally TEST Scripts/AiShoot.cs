@@ -17,20 +17,27 @@ public class AiShoot : Action
 
     public SharedVariable<bool> returnSuccessWhenTargetLost = true;
 
-    private bool isFiring;
+    private enum ShootPhase
+    {
+        Firing,
+        Waiting
+    }
+
+    private ShootPhase phase;
     private float stateEndTime;
 
     public override void OnStart()
     {
-        isFiring = true;
+        var ctx = (CTX != null) ? CTX.Value : null;
+
+        phase = ShootPhase.Firing;
 
         float fireTime = (fireDuration != null) ? fireDuration.Value : 3f;
         stateEndTime = Time.time + Mathf.Max(0.01f, fireTime);
 
-        var ctx = (CTX != null) ? CTX.Value : null;
         if (ctx != null && ctx.stateHub != null)
         {
-            // กันเคสหลงเหลือ hold fire จาก state ก่อนหน้า
+            // กันเคสจาก state เก่าค้างอยู่
             ctx.stateHub.RequestCanceledFire();
         }
     }
@@ -45,9 +52,7 @@ public class AiShoot : Action
         if (ctx.stateHub == null)
             return TaskStatus.Failure;
 
-        GameObject currentTarget = null;
-        if (target != null)
-            currentTarget = target.Value;
+        GameObject currentTarget = (target != null) ? target.Value : null;
 
         // ไม่มีเป้าหมาย
         if (currentTarget == null)
@@ -57,7 +62,7 @@ public class AiShoot : Action
             return successWhenLost ? TaskStatus.Success : TaskStatus.Failure;
         }
 
-        // กระสุนหมด / กำลังรีโหลด -> หยุดยิงก่อน
+        // กระสุนหมด / รีโหลดอยู่
         var weaponState = ctx.stateHub.WeaponSM.CurrentId;
         if (weaponState == WeaponStateId.NoBullet || weaponState == WeaponStateId.Reloading)
         {
@@ -66,22 +71,31 @@ public class AiShoot : Action
             return TaskStatus.Running;
         }
 
-        // สลับ phase ยิง <-> รอ
-        if (Time.time >= stateEndTime)
+        // ---------- Phase: Firing ----------
+        if (phase == ShootPhase.Firing)
         {
-            isFiring = !isFiring;
+            StartFire(ctx);
 
-            float duration = isFiring
-                ? ((fireDuration != null) ? fireDuration.Value : 3f)
-                : ((waitDuration != null) ? waitDuration.Value : 5f);
+            if (Time.time >= stateEndTime)
+            {
+                StopFire(ctx);
 
-            stateEndTime = Time.time + Mathf.Max(0.01f, duration);
+                phase = ShootPhase.Waiting;
+                float waitTime = (waitDuration != null) ? waitDuration.Value : 5f;
+                stateEndTime = Time.time + Mathf.Max(0.01f, waitTime);
+            }
+
+            return TaskStatus.Running;
         }
 
-        if (isFiring)
-            StartFire(ctx);
-        else
-            StopFire(ctx);
+        // ---------- Phase: Waiting ----------
+        StopFire(ctx);
+
+        if (Time.time >= stateEndTime)
+        {
+            // รอครบแล้ว จบ task สำเร็จ
+            return TaskStatus.Success;
+        }
 
         return TaskStatus.Running;
     }

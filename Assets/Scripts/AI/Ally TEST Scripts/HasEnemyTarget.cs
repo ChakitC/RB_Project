@@ -11,14 +11,16 @@ public class HasEnemyFromSensor : Conditional
     public SharedVariable<GameObject> currentEnemy;
     public SharedVariable<bool> InCombat;
     
-    public SharedVariable<AllyContext> context;
+   
 
     private AITargetSensor sensor;
 
     public override void OnStart()
     {
-        var ctx = context.Value;
-        sensor = ctx.AITargetSensor;
+        if (sensor == null)
+        {
+            sensor = gameObject.GetComponent<AITargetSensor>();
+        }
     }
 
     public override TaskStatus OnUpdate()

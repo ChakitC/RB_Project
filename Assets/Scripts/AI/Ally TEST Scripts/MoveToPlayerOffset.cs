@@ -19,13 +19,14 @@ public class MoveToPlayerOffsetNavMesh : Action
     [Tooltip("ระยะที่ถือว่าเข้าใกล้พอแล้ว (เอาไว้ใช้แทน followMin)")]
     public SharedVariable<float> stopDistance;
 
-    [SerializeField]  private NavMeshAgent _agent;
+  
+    private NavMeshAgent _agent;
 
     public override void OnStart()
     {
         if (_agent == null)
         {
-            _agent = GetComponent<NavMeshAgent>();
+            _agent = gameObject.GetComponent<NavMeshAgent>();
         }
 
         if (_agent != null && stopDistance != null)

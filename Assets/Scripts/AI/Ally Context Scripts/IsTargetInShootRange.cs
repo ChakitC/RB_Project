@@ -3,14 +3,13 @@ using Opsive.BehaviorDesigner.Runtime.Tasks;
 using Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals;
 using Opsive.GraphDesigner.Runtime;
 using Opsive.GraphDesigner.Runtime.Variables;
+using VHierarchy.Libs;
 
 [Opsive.Shared.Utility.Category("Ally/Enemy")]
 [NodeDescription("Success ถ้ามีเป้าสด มี Line of Sight และเป้าอยู่ในระยะยิง")]
 public class IsTargetInShootRange : Conditional
 {
     [Header("Refs")]
-    [Tooltip("Shared AllyContext ที่ใช้ดึง AITargetSensor ของตัว AI นี้")]
-    public SharedVariable<AllyContext> context;
 
     [Tooltip("Sensor ที่ใช้ตรวจจับเป้าหมาย จะถูกดึงมาจาก context ตอน OnStart")]
     private AITargetSensor sensor;
@@ -32,16 +31,16 @@ public class IsTargetInShootRange : Conditional
     [Tooltip("จะเขียนระยะห่างปัจจุบันจาก sensor ไปยังเป้าหมายลงตัวแปรนี้")]
     public SharedVariable<float> currentDistance;
 
+
+   
+
     public override void OnStart()
     {
-        if (context == null || context.Value == null)
+        if (sensor == null)
         {
-            sensor = null;
-            return;
+            sensor = GetComponent<AITargetSensor>();
         }
-
-        var ctx = context.Value;
-        sensor = ctx.AITargetSensor;
+        
     }
 
     public override TaskStatus OnUpdate()
@@ -94,7 +93,6 @@ public class IsTargetInShootRange : Conditional
 
     public override void Reset()
     {
-        context = null;
         sensor = null;
         shootRange = 8f;
         requireLiveTarget = true;

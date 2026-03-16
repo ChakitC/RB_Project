@@ -7,14 +7,17 @@ using Unity.Behavior;
 
 public class DownCoditional : Conditional
 {
+    private CharacteContext ctx;
 
-    public SharedVariable<AllyContext> CTX;
+    [SerializeField] private string _CurrentState;
 
-    [SerializeField] private string _CurrentState; 
+    public override void OnStart()
+    {
+        ctx = gameObject.GetComponent<CharacteContext>();
+    }
 
     public override TaskStatus OnUpdate()
     {
-        var ctx = CTX.Value;
 
         if (ctx == null || ctx.stateHub == null || ctx.stateHub.LifeSM == null)
             return TaskStatus.Failure;

@@ -5,7 +5,7 @@ using Opsive.GraphDesigner.Runtime.Variables;
 
 public class AiShoot : Action
 {
-    public SharedVariable<AllyContext> CTX;
+    private CharacteContext CTX;
     public SharedVariable<GameObject> target;
 
     [Header("Shoot Cycle")]
@@ -28,28 +28,32 @@ public class AiShoot : Action
 
     public override void OnStart()
     {
-        var ctx = (CTX != null) ? CTX.Value : null;
+        if (CTX == null)
+        {
+            CTX = gameObject.GetComponent<CharacteContext>();
+        }
+        
 
         phase = ShootPhase.Firing;
 
         float fireTime = (fireDuration != null) ? fireDuration.Value : 3f;
         stateEndTime = Time.time + Mathf.Max(0.01f, fireTime);
 
-        if (ctx != null && ctx.stateHub != null)
+        if (CTX != null && CTX.stateHub != null)
         {
             // กันเคสจาก state เก่าค้างอยู่
-            ctx.stateHub.RequestCanceledFire();
+            CTX.stateHub.RequestCanceledFire();
         }
     }
 
     public override TaskStatus OnUpdate()
     {
-        if (CTX == null || CTX.Value == null)
+        if (CTX == null)
             return TaskStatus.Failure;
 
-        var ctx = CTX.Value;
+        
 
-        if (ctx.stateHub == null)
+        if (CTX.stateHub == null)
             return TaskStatus.Failure;
 
         GameObject currentTarget = (target != null) ? target.Value : null;
@@ -57,28 +61,28 @@ public class AiShoot : Action
         // ไม่มีเป้าหมาย
         if (currentTarget == null)
         {
-            StopFire(ctx);
+            StopFire(CTX);
             bool successWhenLost = returnSuccessWhenTargetLost != null && returnSuccessWhenTargetLost.Value;
             return successWhenLost ? TaskStatus.Success : TaskStatus.Failure;
         }
 
         // กระสุนหมด / รีโหลดอยู่
-        var weaponState = ctx.stateHub.WeaponSM.CurrentId;
+        var weaponState = CTX.stateHub.WeaponSM.CurrentId;
         if (weaponState == WeaponStateId.NoBullet || weaponState == WeaponStateId.Reloading)
         {
-            StopFire(ctx);
-            ctx.stateHub.RequestReload();
+            StopFire(CTX);
+            CTX.stateHub.RequestReload();
             return TaskStatus.Running;
         }
 
         // ---------- Phase: Firing ----------
         if (phase == ShootPhase.Firing)
         {
-            StartFire(ctx);
+            StartFire(CTX);
 
             if (Time.time >= stateEndTime)
             {
-                StopFire(ctx);
+                StopFire(CTX);
 
                 phase = ShootPhase.Waiting;
                 float waitTime = (waitDuration != null) ? waitDuration.Value : 5f;
@@ -89,7 +93,7 @@ public class AiShoot : Action
         }
 
         // ---------- Phase: Waiting ----------
-        StopFire(ctx);
+        StopFire(CTX);
 
         if (Time.time >= stateEndTime)
         {
@@ -102,17 +106,17 @@ public class AiShoot : Action
 
     public override void OnEnd()
     {
-        var ctx = (CTX != null) ? CTX.Value : null;
-        if (ctx != null && ctx.stateHub != null)
-            StopFire(ctx);
+        
+        if (CTX != null && CTX.stateHub != null)
+            StopFire(CTX);
     }
 
-    private void StartFire(AllyContext ctx)
+    private void StartFire(CharacteContext ctx)
     {
         ctx.stateHub.RequestOnFire();
     }
 
-    private void StopFire(AllyContext ctx)
+    private void StopFire(CharacteContext ctx)
     {
         ctx.stateHub.RequestCanceledFire();
     }

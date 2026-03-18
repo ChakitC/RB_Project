@@ -9,19 +9,19 @@ using Opsive.GraphDesigner.Runtime.Variables;
 [NodeDescription("เดินสุ่มรอบ ๆ Player ด้วย NavMeshAgent ถ้า Player หนีไกลเกิน followMax จะหยุดและ Fail")]
 public class RandomMoveAroundPlayerNavMesh : Action
 {
-    [Tooltip("ตัวแปร Player ที่แชร์ใน Behavior Tree")]
-    public SharedVariable<GameObject> player;
+    [Tooltip("ตัวแปร Taget ที่แชร์ใน Behavior Tree")]
+    public SharedVariable<GameObject> Taget;
 
-    [Tooltip("รัศมีสุ่มรอบตัว Player")]
+    [Tooltip("รัศมีสุ่มรอบตัว Taget")]
     public SharedVariable<float> wanderRadius;
 
-    [Tooltip("ระยะที่ถ้า Ally ห่างจาก Player มากกว่านี้ จะหยุด Random แล้ว Fail")]
+    [Tooltip("ระยะที่ถ้า Agent ห่างจาก Taget มากกว่านี้ จะหยุด Random แล้ว Fail")]
     public SharedVariable<float> followMax;
 
     [Tooltip("ระยะหยุดของ Agent")]
     public SharedVariable<float> stopDistance;
 
-    [Tooltip("เวลาที่ Ally จะหยุดรอเมื่อถึงจุด ก่อนจะสุ่มเดินรอบต่อไป (วินาที)")]
+    [Tooltip("เวลาที่ Agent จะหยุดรอเมื่อถึงจุด ก่อนจะสุ่มเดินรอบต่อไป (วินาที)")]
     public SharedVariable<float> waitTime;
 
     private NavMeshAgent _agent;
@@ -52,10 +52,12 @@ public class RandomMoveAroundPlayerNavMesh : Action
 
     private void PickNewDestination()
     {
-        if (player == null || player.Value == null || _agent == null)
-            return;
-
-        Transform playerTransform = player.Value.transform;
+        if (Taget == null || Taget.Value == null || _agent == null)
+        {
+            
+        }
+        
+        Transform playerTransform = Taget.Value.transform;
         Vector3 playerPos = playerTransform.position;
 
         // สุ่มจุดในวงกลมรอบ Player บนระนาบ XZ
@@ -67,10 +69,12 @@ public class RandomMoveAroundPlayerNavMesh : Action
         if (NavMesh.SamplePosition(candidate, out hit, 2f, NavMesh.AllAreas))
         {
             _currentTarget = hit.position;
+            Debug.Log("Successfully found NavMesh position for the target.");
         }
         else
         {
             _currentTarget = candidate;
+            Debug.LogWarning("Failed to find suitable NavMesh position, using candidate position instead.");
         }
 
         _currentTarget.y = _agent.transform.position.y;
@@ -81,14 +85,15 @@ public class RandomMoveAroundPlayerNavMesh : Action
 
     public override TaskStatus OnUpdate()
     {
-        if (_agent == null || player == null || player.Value == null)
+        if (_agent == null || Taget == null || Taget.Value == null)
         {
             return TaskStatus.Failure;
+            
         }
 
         // 1) เช็คว่าตอนนี้ Player ไกลเกิน followMax หรือยัง
         Vector3 myPos = transform.position;
-        Vector3 playerPos = player.Value.transform.position;
+        Vector3 playerPos = Taget.Value.transform.position;
         myPos.y = 0f;
         playerPos.y = 0f;
 
@@ -96,8 +101,9 @@ public class RandomMoveAroundPlayerNavMesh : Action
 
         if (distToPlayer > followMax.Value)
         {
-            // ไกลเกิน → หยุด Random แล้ว Fail
+            
             _agent.isStopped = true;
+            Debug.LogWarning("Player is too far. Stopping and returning Failure.");
             return TaskStatus.Failure;
         }
 

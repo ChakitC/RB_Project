@@ -49,12 +49,14 @@ public class IsTargetInShootRange : Conditional
         {
             ClearOutputs();
             return TaskStatus.Failure;
+            
         }
 
         if (requireLiveTarget.Value)
         {
             if (!sensor.HasLiveTarget || sensor.CurrentTarget == null)
             {
+               
                 ClearOutputs();
                 return TaskStatus.Failure;
             }
@@ -63,6 +65,7 @@ public class IsTargetInShootRange : Conditional
         {
             if (!sensor.HasAnyTarget)
             {
+               
                 ClearOutputs();
                 return TaskStatus.Failure;
             }
@@ -70,6 +73,7 @@ public class IsTargetInShootRange : Conditional
 
         if (requireLineOfSight.Value && !sensor.HasLineOfSight)
         {
+            
             ClearOutputs();
             return TaskStatus.Failure;
         }

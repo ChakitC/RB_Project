@@ -10,10 +10,10 @@ using Opsive.GraphDesigner.Runtime.Variables;
 public class MoveToPlayerOffsetNavMesh : Action
 {
     
-    [Tooltip("ตัวแปร Player ที่แชร์ใน Behavior Tree")]
-    public SharedVariable<GameObject> player;
+    [Tooltip("ตัวแปร Taget ที่แชร์ใน Behavior Tree")]
+    public SharedVariable<GameObject> Taget;
 
-    [Tooltip("Offset จากตำแหน่ง Player ใน local space เช่น (0,0,-2) = ยืนด้านหลัง")]
+    [Tooltip("Offset จากตำแหน่ง Taget ใน local space เช่น (0,0,-2) = ยืนด้านหลัง")]
     public SharedVariable<Vector3> offsetFromPlayer;
 
     [Tooltip("ระยะที่ถือว่าเข้าใกล้พอแล้ว (เอาไว้ใช้แทน followMin)")]
@@ -46,17 +46,17 @@ public class MoveToPlayerOffsetNavMesh : Action
         }
         
         
-        // ไม่มี Player ให้ตาม → หยุดแล้ว Fail
-        if (player == null || player.Value == null)
+        // ไม่มี Taget ให้ตาม → หยุดแล้ว Fail
+        if (Taget == null || Taget.Value == null)
         {
             _agent.isStopped = true;
             return TaskStatus.Failure;
         }
 
-        // ตำแหน่งเป้าหมาย = ตำแหน่ง Player + offset (หมุนตาม orientation ของ Player)
-        Transform playerTransform = player.Value.transform;
+        // ตำแหน่งเป้าหมาย = ตำแหน่ง Taget + offset (หมุนตาม orientation ของ Player)
+        Transform playerTransform = Taget.Value.transform;
 
-        // แปลง offset จาก local → world (ให้ (0,0,-2) หมายถึง "ด้านหลัง" player จริง ๆ)
+        // แปลง offset จาก local → world (ให้ (0,0,-2) หมายถึง "ด้านหลัง" Taget จริง ๆ)
         Vector3 worldOffset = playerTransform.TransformDirection(offsetFromPlayer.Value);
 
         Vector3 targetPos = playerTransform.position + worldOffset;
@@ -79,7 +79,7 @@ public class MoveToPlayerOffsetNavMesh : Action
                 return TaskStatus.Success;
             }
         }
-        // ยังเดินอยู่ → Running
+        
         return TaskStatus.Running;
     }
 

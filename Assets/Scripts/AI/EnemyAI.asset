@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0ab170e3869205449b993a35614c2084, type: 3}
-  m_Name: AllyAI
+  m_Name: EnemyAI
   m_EditorClassIdentifier: 
   m_Data:
     m_TaskData:

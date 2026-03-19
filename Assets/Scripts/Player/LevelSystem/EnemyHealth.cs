@@ -18,7 +18,7 @@ public class EnemyHealth : HealthSystem, IDamageableWithSource
         if (attacker != null) _lastAttacker = attacker;
         
         
-        base.TakeDamage(finalDamage);        
+        ApplyDamage(finalDamage, attacker);        
        
     }
 

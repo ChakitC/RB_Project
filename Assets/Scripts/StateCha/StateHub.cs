@@ -1,18 +1,16 @@
-
-using UnityEngine;
 using System;
+using UnityEngine;
 
 public sealed class StateHub : MonoBehaviour
 {
     [Header("Refs")]
     [SerializeField] private CharacteContext ctx;
 
-    public StateMachine<MoveStateId,   CharacteContext> MoveSM   { get; private set; }
+    public StateMachine<MoveStateId, CharacteContext> MoveSM { get; private set; }
     public StateMachine<WeaponStateId, CharacteContext> WeaponSM { get; private set; }
-    public StateMachine<LifeStateId,   CharacteContext> LifeSM   { get; private set; }
-    public StateMachine<UIStateId,     CharacteContext> UISM     { get; private set; }
+    public StateMachine<LifeStateId, CharacteContext> LifeSM { get; private set; }
+    public StateMachine<UIStateId, CharacteContext> UISM { get; private set; }
 
-    // ---------------- DEBUG ----------------
     [Header("Debug")]
     [SerializeField] private bool debugInInspector = true;
     [SerializeField] private bool logTransitions = true;
@@ -26,81 +24,105 @@ public sealed class StateHub : MonoBehaviour
     [TextArea(2, 8)]
     [SerializeField] private string dbgSnapshot;
 
-    // ขนาด GUI 
     [SerializeField] private Vector2 screenPos = new Vector2(10, 10);
+
+    [Header("Status Effect Locks")]
+    [SerializeField] private ControlBlockFlags statusEffectControlBlocks = ControlBlockFlags.None;
+    [SerializeField] private bool statusEffectStunned;
+
+    public float MoveSpeed01 { get; private set; }
+    public bool FireHeld { get; private set; }
+    public Vector3 DashDirWorld { get; private set; } = Vector3.forward;
+
+    public event Action<CharacterAnimBrain.MeleeType> Melee;
+    public event Action<float> ReloadStarted;
+    public event Action<float, Vector3> DashStarted;
+    public event Action StunStarted;
+    public event Action Died;
+    public event Action<bool> FireHeldChanged;
+    public event Action ShotFired;
+
+    public bool IsAlive => LifeSM.CurrentId == LifeStateId.Alive;
+    public bool Isdown => LifeSM.CurrentId == LifeStateId.Down;
+
+    bool IsMoveBlockedByStatusEffects =>
+        statusEffectStunned || (statusEffectControlBlocks & ControlBlockFlags.Move) != 0;
+
+    bool IsShootBlockedByStatusEffects =>
+        statusEffectStunned || (statusEffectControlBlocks & ControlBlockFlags.Shoot) != 0;
+
+    bool IsSkillBlockedByStatusEffects =>
+        statusEffectStunned || (statusEffectControlBlocks & ControlBlockFlags.Skill) != 0;
 
     void Awake()
     {
-        if (!ctx) ctx = GetComponent<CharacteContext>();
+        if (!ctx)
+            ctx = GetComponent<CharacteContext>();
 
-        MoveSM   = new StateMachine<MoveStateId,   CharacteContext>(ctx);
+        MoveSM = new StateMachine<MoveStateId, CharacteContext>(ctx);
         WeaponSM = new StateMachine<WeaponStateId, CharacteContext>(ctx);
-        LifeSM   = new StateMachine<LifeStateId,   CharacteContext>(ctx);
-        UISM     = new StateMachine<UIStateId,     CharacteContext>(ctx);
+        LifeSM = new StateMachine<LifeStateId, CharacteContext>(ctx);
+        UISM = new StateMachine<UIStateId, CharacteContext>(ctx);
 
-        // Register
         MoveSM
-            .Add(MoveStateId.Stand,    new Move_Stand())
-            .Add(MoveStateId.Dash,     new Move_Dash())
-            .Add(MoveStateId.Moveing,  new Move_Moving())
-            .Add(MoveStateId.Stunned,  new Move_Stunned());
+            .Add(MoveStateId.Stand, new Move_Stand())
+            .Add(MoveStateId.Dash, new Move_Dash())
+            .Add(MoveStateId.Moveing, new Move_Moving())
+            .Add(MoveStateId.Stunned, new Move_Stunned());
 
         WeaponSM
-            .Add(WeaponStateId.Melee,   new Weapon_Melee())
-            .Add(WeaponStateId.Ready,     new Weapon_Ready())
-            .Add(WeaponStateId.Firing,    new Weapon_Firing())
+            .Add(WeaponStateId.Melee, new Weapon_Melee())
+            .Add(WeaponStateId.Ready, new Weapon_Ready())
+            .Add(WeaponStateId.Firing, new Weapon_Firing())
             .Add(WeaponStateId.Reloading, new Weapon_Reloading())
-            .Add(WeaponStateId.NoBullet,  new Weapon_NoBullet());
+            .Add(WeaponStateId.NoBullet, new Weapon_NoBullet());
 
         LifeSM
             .Add(LifeStateId.Alive, new Life_Alive())
             .Add(LifeStateId.Down, new Life_Down())
-            .Add(LifeStateId.Dead,  new Life_Dead());
+            .Add(LifeStateId.Dead, new Life_Dead());
 
         UISM
-            .Add(UIStateId.Normal,    new UI_Normal())
+            .Add(UIStateId.Normal, new UI_Normal())
             .Add(UIStateId.Inventory, new UI_Inventory())
-            .Add(UIStateId.Pause,     new UI_Pause());
+            .Add(UIStateId.Pause, new UI_Pause());
 
-        // Initial
         LifeSM.SetInitial(LifeStateId.Alive);
         MoveSM.SetInitial(MoveStateId.Stand);
         WeaponSM.SetInitial(WeaponStateId.Ready);
         UISM.SetInitial(UIStateId.Normal);
 
-        
-        
-        MoveSM.OnChanged += (from, to) =>
+        MoveSM.OnChanged += (_, to) =>
         {
-            // if (to == MoveStateId.Dash) DashStarted?.Invoke(ctx.DashSystem.dashDuration);
-            if (to == MoveStateId.Stunned) StunStarted?.Invoke();
+            if (to == MoveStateId.Stunned)
+                StunStarted?.Invoke();
         };
 
-        WeaponSM.OnChanged += (from, to) =>
+        WeaponSM.OnChanged += (_, to) =>
         {
             if (to == WeaponStateId.Reloading)
                 ReloadStarted?.Invoke(ctx.StatsHub.ReloadTime);
         };
 
-        LifeSM.OnChanged += (from, to) =>
+        LifeSM.OnChanged += (_, to) =>
         {
-            if (to == LifeStateId.Dead) Died?.Invoke();
+            if (to == LifeStateId.Dead)
+                Died?.Invoke();
         };
-        
-        // DEBUG: Hook transition logs
+
         if (logTransitions)
         {
-            MoveSM.OnChanged   += (from, to) => LogChange("MoveSM",   from, to);
+            MoveSM.OnChanged += (from, to) => LogChange("MoveSM", from, to);
             WeaponSM.OnChanged += (from, to) => LogChange("WeaponSM", from, to);
-            LifeSM.OnChanged   += (from, to) => LogChange("LifeSM",   from, to);
-            UISM.OnChanged     += (from, to) => LogChange("UISM",     from, to);
+            LifeSM.OnChanged += (from, to) => LogChange("LifeSM", from, to);
+            UISM.OnChanged += (from, to) => LogChange("UISM", from, to);
         }
-
-        // (ตัวอย่าง cross-domain rule เดิมของคุณก็อยู่ตรงนี้ต่อได้)
     }
 
     void Update()
     {
+        SyncStatusDrivenMoveState();
+
         float dt = Time.deltaTime;
 
         LifeSM.Tick(dt);
@@ -110,10 +132,10 @@ public sealed class StateHub : MonoBehaviour
 
         UpdateStand();
 
-        if (debugInInspector) UpdateDebugSnapshot();
+        if (debugInInspector)
+            UpdateDebugSnapshot();
     }
-    
-    // ------------ Debug helpers ------------
+
     void LogChange<TId>(string smName, TId from, TId to)
     {
         Debug.Log($"[{nameof(StateHub)}] {smName}: {from} -> {to}", this);
@@ -121,9 +143,9 @@ public sealed class StateHub : MonoBehaviour
 
     void UpdateDebugSnapshot()
     {
-        dbgLife   = LifeSM.CurrentId.ToString();
-        dbgUI     = UISM.CurrentId.ToString();
-        dbgMove   = MoveSM.CurrentId.ToString();
+        dbgLife = LifeSM.CurrentId.ToString();
+        dbgUI = UISM.CurrentId.ToString();
+        dbgMove = MoveSM.CurrentId.ToString();
         dbgWeapon = WeaponSM.CurrentId.ToString();
 
         dbgSnapshot =
@@ -135,48 +157,49 @@ public sealed class StateHub : MonoBehaviour
 
     void OnGUI()
     {
-        if (!showOnScreen) return;
+        if (!showOnScreen)
+            return;
+
         GUI.Label(new Rect(screenPos.x, screenPos.y, 400, 120), dbgSnapshot);
     }
 
-    // ------------ Optional: query methods ------------
-    public bool IsAlive => LifeSM.CurrentId == LifeStateId.Alive ;
-    public bool Isdown => LifeSM.CurrentId == LifeStateId.Down;
-
     public bool CanShoot() =>
-        
         IsAlive &&
         !Isdown &&
+        !IsShootBlockedByStatusEffects &&
         MoveSM.CurrentId != MoveStateId.Dash &&
         UISM.CurrentId != UIStateId.Inventory &&
         UISM.CurrentId != UIStateId.Pause &&
         WeaponSM.CurrentId != WeaponStateId.Reloading &&
         WeaponSM.CurrentId != WeaponStateId.Melee &&
         WeaponSM.CurrentId != WeaponStateId.NoBullet;
-    
 
-    public bool CanMove() =>    
-        
+    public bool CanMove() =>
         (IsAlive || Isdown) &&
+        !IsMoveBlockedByStatusEffects &&
         UISM.CurrentId != UIStateId.Inventory &&
         UISM.CurrentId != UIStateId.Pause &&
         WeaponSM.CurrentId != WeaponStateId.Melee &&
         MoveSM.CurrentId != MoveStateId.Dash &&
         MoveSM.CurrentId != MoveStateId.Stunned;
-    
-    
-    // ============= Stand Chance ===================
 
+    public bool CanUseSkill() =>
+        IsAlive &&
+        !Isdown &&
+        !IsSkillBlockedByStatusEffects &&
+        UISM.CurrentId != UIStateId.Inventory &&
+        UISM.CurrentId != UIStateId.Pause &&
+        MoveSM.CurrentId != MoveStateId.Dash &&
+        WeaponSM.CurrentId != WeaponStateId.Melee;
 
     void UpdateStand()
     {
         var ws = ctx.WeaponSystem;
-        if (ws == null) return;
+        if (ws == null)
+            return;
 
         if (WeaponSM.CurrentId == WeaponStateId.Melee)
-        {
             return;
-        }
 
         if (ws.IsReloading)
         {
@@ -184,13 +207,13 @@ public sealed class StateHub : MonoBehaviour
             return;
         }
 
-        if (ws.magazine <= 0) 
+        if (ws.magazine <= 0)
         {
             WeaponSM.TryChange(WeaponStateId.NoBullet);
             return;
         }
 
-        if (ws.isFiring) 
+        if (ws.isFiring)
         {
             WeaponSM.TryChange(WeaponStateId.Firing);
             return;
@@ -198,8 +221,53 @@ public sealed class StateHub : MonoBehaviour
 
         WeaponSM.TryChange(WeaponStateId.Ready);
     }
-    
-    // =================== Input Request ======================
+
+    void SyncStatusDrivenMoveState()
+    {
+        if (MoveSM == null)
+            return;
+
+        if (statusEffectStunned)
+        {
+            if (MoveSM.CurrentId != MoveStateId.Stunned)
+                MoveSM.TryChange(MoveStateId.Stunned);
+
+            return;
+        }
+
+        if (MoveSM.CurrentId != MoveStateId.Stunned)
+            return;
+
+        MoveSM.TryChange(GetMoveStateAfterStatusStun());
+    }
+
+    MoveStateId GetMoveStateAfterStatusStun()
+    {
+        if (ctx != null && ctx.DashSystem != null && ctx.DashSystem.IsDashing)
+            return MoveStateId.Dash;
+
+        if (ctx is AllyContext ally && ally.AgentMoveDriver != null && ally.AgentMoveDriver.agentismoving)
+            return MoveStateId.Moveing;
+
+        if (ctx is EnemyContext enemy && enemy.AgentMoveDriver != null && enemy.AgentMoveDriver.agentismoving)
+            return MoveStateId.Moveing;
+
+        if (ctx != null && ctx.cc != null && MoveCheck.IsMoveIntent(ctx))
+            return MoveStateId.Moveing;
+
+        return MoveStateId.Stand;
+    }
+
+    public void SetStatusEffectControlState(ControlBlockFlags controlBlocks, bool stunned)
+    {
+        bool changed = statusEffectControlBlocks != controlBlocks || statusEffectStunned != stunned;
+
+        statusEffectControlBlocks = controlBlocks;
+        statusEffectStunned = stunned;
+
+        if (changed)
+            SyncStatusDrivenMoveState();
+    }
 
     public void RequestReload()
     {
@@ -208,8 +276,8 @@ public sealed class StateHub : MonoBehaviour
 
     public void RequestOnFire()
     {
-        if(WeaponSM.CurrentId == WeaponStateId.Melee) return;
-        if(MoveSM.CurrentId == MoveStateId.Dash) return;
+        if (WeaponSM.CurrentId == WeaponStateId.Melee) return;
+        if (MoveSM.CurrentId == MoveStateId.Dash) return;
         if (!ctx.stateHub.CanShoot()) return;
         ctx.WeaponSystem.SetFiring(true);
         ctx.stateHub.SetFireHeld(true);
@@ -217,74 +285,36 @@ public sealed class StateHub : MonoBehaviour
 
     public void RequestCanceledFire()
     {
-        if(WeaponSM.CurrentId == WeaponStateId.Melee) return;
-        if(MoveSM.CurrentId == MoveStateId.Dash) return;
+        if (WeaponSM.CurrentId == WeaponStateId.Melee) return;
+        if (MoveSM.CurrentId == MoveStateId.Dash) return;
         ctx.WeaponSystem.SetFiring(false);
         ctx.stateHub.SetFireHeld(false);
     }
-    
+
     public void RequestOnMelee()
     {
         if (MoveSM.CurrentId == MoveStateId.Dash) return;
+        if (statusEffectStunned) return;
+
         WeaponSM.TryChange(WeaponStateId.Melee);
-        
+
         ctx.WeaponSystem.SetFiring(false);
         ctx.stateHub.SetFireHeld(false);
-
         ctx.stateHub.ReportMeleeStarted(CharacterAnimBrain.MeleeType.Heavy);
     }
-    
 
     public void RequestOnDash()
     {
         if (!ctx.stateHub.CanMove()) return;
-        
+
         ctx.WeaponSystem.SetFiring(false);
         ctx.stateHub.SetFireHeld(false);
 
         if (WeaponSM.CurrentId == WeaponStateId.Reloading)
-        {
             ctx.WeaponSystem.CancelReload();
-        }
-        
-        ctx.DashSystem.TryDash();
-        
-    }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    // ================== Animation Signals ==================
-    public float MoveSpeed01 { get; private set; }   // 0..1 (poll)
-    public bool  FireHeld    { get; private set; }   // input-level (edge)
-    
-    public Vector3 DashDirWorld { get; private set; } = Vector3.forward;
 
-    public event Action <CharacterAnimBrain.MeleeType>Melee;
-    public event Action <float> ReloadStarted;
-    public event Action<float, Vector3> DashStarted;
-    public event Action StunStarted;
-    public event Action Died;
-    public event Action <bool> FireHeldChanged;       // down/up
-    public event Action ShotFired;                   // ยิงสำเร็จจริง 1 นัด
+        ctx.DashSystem.TryDash();
+    }
 
     public void SetMoveSpeed01(float v01)
     {
@@ -293,16 +323,18 @@ public sealed class StateHub : MonoBehaviour
 
     public void SetFireHeld(bool held)
     {
-        if (FireHeld == held) return;
+        if (FireHeld == held)
+            return;
+
         FireHeld = held;
         FireHeldChanged?.Invoke(held);
     }
-    
+
     public void ReportShotFired()
     {
         ShotFired?.Invoke();
     }
-    
+
     public void ReportDashStarted(float duration, Vector3 dashDirWorld)
     {
         if (dashDirWorld.sqrMagnitude > 0.0001f)
@@ -315,5 +347,4 @@ public sealed class StateHub : MonoBehaviour
     {
         Melee?.Invoke(meleeType);
     }
-    
 }

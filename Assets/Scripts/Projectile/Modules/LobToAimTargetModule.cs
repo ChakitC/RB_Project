@@ -27,7 +27,7 @@ public class LobToAimTargetModule : ProjectileModule
     public bool forceLeft = false;
 
     [Header("On Arrive")]
-    [Tooltip("ถึงเป้าแล้วขอ despawn (เพื่อให้ GrenadeExplodeModule ระเบิดใน OnExpire)")]
+    [Tooltip("ถึงเป้าแล้วขอ expire แบบชัดเจน (เพื่อให้ GrenadeExplodeModule ระเบิดใน OnExpire)")]
     public bool requestDespawnOnArrive = true;
 
     class State : IProjectileModuleState
@@ -139,7 +139,7 @@ public class LobToAimTargetModule : ProjectileModule
             p.SetDirection(planar.normalized);
 
         if (u >= 1f && requestDespawnOnArrive)
-            p.RequestDespawn();
+            p.RequestExpire();
     }
     
     void RebuildControl(Projectile Projectile, ProjectileContext ctx, State s)

@@ -38,10 +38,12 @@ public class Projectile : MonoBehaviour
     bool _overridePosThisFrame;
     Vector3 _overridePos;
 
-    // === Single source of truth for "will despawn this hit" (compat with modules) ===
+    // === Pending despawn state ===
     bool _requestedDespawnThisHit;
-    public bool RequestedDespawn => _requestedDespawnThisHit;
+    bool _requestedExpire;
+    public bool RequestedDespawn => _requestedDespawnThisHit || _requestedExpire;
     public void RequestDespawn() => _requestedDespawnThisHit = true;
+    public void RequestExpire() => _requestedExpire = true;
     public void PreventDespawnThisHit() => _requestedDespawnThisHit = false;
 
     // modules
@@ -94,16 +96,20 @@ public class Projectile : MonoBehaviour
         _rb.interpolation = RigidbodyInterpolation.Interpolate;
     }
 
-    public void Init(ProjectileConfig cfg, ProjectileContext ctx)
+    public void Init(ProjectileConfig cfg, ProjectileContext ctx, bool preserveSkillSource = false)
     {
-        SourceSkillDef = null;
-        SourceSkillStats = null;
-        
+        if (!preserveSkillSource)
+        {
+            SourceSkillDef = null;
+            SourceSkillStats = null;
+        }
+
         config = cfg;
         _ctx = ctx;
 
         _ignoredRootIds.Clear();
         _requestedDespawnThisHit = false;
+        _requestedExpire = false;
         _areaExploded = false;
 
         _ctx.dir = (_ctx.dir.sqrMagnitude > 0.0001f) ? _ctx.dir.normalized : transform.forward;
@@ -172,7 +178,7 @@ public class Projectile : MonoBehaviour
             projectilePrefab = prefabProjectileForChildren != null ? prefabProjectileForChildren : this
         };
 
-        Init(cfg != null ? cfg : config, ctx);
+        Init(cfg != null ? cfg : config, ctx, preserveSkillSource: true);
     }
 
     void SetupIgnoreCollisionFromOwner()
@@ -234,8 +240,8 @@ public class Projectile : MonoBehaviour
 
         if (_age >= lifeTime)
         {
-            _requestedDespawnThisHit = true;
-            Despawn();
+            _requestedExpire = true;
+            Despawn(expired: true);
             return;
         }
 
@@ -243,6 +249,12 @@ public class Projectile : MonoBehaviour
         {
             for (int i = 0; i < config.modules.Count; i++)
                 config.modules[i]?.Tick(this, _ctx, _states[i], dt);
+        }
+
+        if (_requestedExpire)
+        {
+            Despawn(expired: true);
+            return;
         }
 
         if (_requestedDespawnThisHit)
@@ -291,22 +303,25 @@ public class Projectile : MonoBehaviour
         if (willExplodeAoE)
         {
             _areaExploded = true;
+            RequestDespawn();
 
             ApplyAreaDamage();
             SpawnHitVfx(transform.position, -_ctx.dir);
-            
-            _requestedDespawnThisHit = true;
 
             var hitInfo = new ProjectileHitInfo(transform.position, -_ctx.dir, other);
             NotifyHit(hitInfo, target);
 
-            if (_requestedDespawnThisHit)
+            if (_requestedExpire)
+                Despawn(expired: true);
+            else if (_requestedDespawnThisHit)
                 Despawn();
 
             return;
         }
 
         // ===== Single / Wall =====
+        var hit = new ProjectileHitInfo(transform.position, -_ctx.dir, other);
+
         if (target != null)
         {
             float finalDamage = CalcFinalDamage(target);
@@ -320,21 +335,26 @@ public class Projectile : MonoBehaviour
                 d2.TakeDamage(finalDamage, attackerGO);
             else
                 target.TakeDamage(finalDamage);
-            
+
+            NotifyDamageApplied(hit, target);
+            NotifyOwnerCombatTriggers(target);
         }
         else if (hitWall)
         {
             SpawnHitVfx(transform.position, -transform.forward);
         }
 
-        _requestedDespawnThisHit =
-            (target != null && despawnOnHitDamageable) ||
-            (target == null && hitWall && despawnOnHitWall);
+        if ((target != null && despawnOnHitDamageable) ||
+            (target == null && hitWall && despawnOnHitWall))
+        {
+            RequestDespawn();
+        }
 
-        var hit = new ProjectileHitInfo(transform.position, -_ctx.dir, other);
         NotifyHit(hit, target);
 
-        if (_requestedDespawnThisHit)
+        if (_requestedExpire)
+            Despawn(expired: true);
+        else if (_requestedDespawnThisHit)
             Despawn();
         
         
@@ -385,6 +405,17 @@ public class Projectile : MonoBehaviour
                 d2.TakeDamage(finalDamage, attackerGO);
             else
                 dmg.TakeDamage(finalDamage);
+
+            Vector3 hitPoint = h.ClosestPoint(transform.position);
+            Vector3 hitNormal = (hitPoint - transform.position);
+            if (hitNormal.sqrMagnitude <= 0.0001f)
+                hitNormal = -_ctx.dir;
+            else
+                hitNormal.Normalize();
+
+            var hit = new ProjectileHitInfo(hitPoint, hitNormal, h);
+            NotifyDamageApplied(hit, dmg);
+            NotifyOwnerCombatTriggers(dmg);
         }
     }
 
@@ -396,9 +427,17 @@ public class Projectile : MonoBehaviour
             config.modules[i]?.OnHit(this, _ctx, _states[i], hit, target);
     }
 
-    void Despawn()
+    public void NotifyDamageApplied(in ProjectileHitInfo hit, IDamageable target)
     {
-        if (config != null && _states != null)
+        if (config == null || _states == null || target == null) return;
+
+        for (int i = 0; i < config.modules.Count; i++)
+            config.modules[i]?.OnDamageApplied(this, _ctx, _states[i], hit, target);
+    }
+
+    void Despawn(bool expired = false)
+    {
+        if (expired && config != null && _states != null)
         {
             for (int i = 0; i < config.modules.Count; i++)
                 config.modules[i]?.OnExpire(this, _ctx, _states[i]);
@@ -454,6 +493,23 @@ public class Projectile : MonoBehaviour
 #endif
     }
 
+    void NotifyOwnerCombatTriggers(IDamageable target)
+    {
+        if (target == null || _ctx.owner == null)
+            return;
+
+        var ownerStatusController = _ctx.owner.GetComponent<StatusEffectController>();
+        if (ownerStatusController == null)
+            return;
+
+        Component targetComponent = target as Component;
+        GameObject targetObject = targetComponent != null ? targetComponent.gameObject : null;
+        ownerStatusController.NotifyTrigger(EffectTriggerType.OnHit, targetObject);
+
+        if (!target.IsAlive)
+            ownerStatusController.NotifyTrigger(EffectTriggerType.OnKill, targetObject);
+    }
+
     public Projectile SpawnChild(ProjectileConfig childCfg, Vector3 pos, Vector3 dir, float dmgMul, float spdMul)
     {
         var prefab = _ctx.projectilePrefab != null ? _ctx.projectilePrefab : this;
@@ -479,7 +535,14 @@ public class Projectile : MonoBehaviour
         p.areaDamageMask = areaDamageMask;
         p.areaQuery = areaQuery;
 
-        p.Init(childCfg != null ? childCfg : p.config, childCtx);
+        bool preserveSkillSource = SourceSkillDef != null || SourceSkillStats != null;
+        if (preserveSkillSource)
+        {
+            p.SourceSkillDef = SourceSkillDef;
+            p.SourceSkillStats = SourceSkillStats;
+        }
+
+        p.Init(childCfg != null ? childCfg : p.config, childCtx, preserveSkillSource);
         return p;
     }
 

@@ -7,6 +7,7 @@ public class WeaponSystem : MonoBehaviour
     [Header("Refs")]
     public CharacteContext ctx;
     [SerializeField] private StatsHub statsHub;
+    [SerializeField] private StatusEffectController statusEffectController;
 
     public ProjectileConfig projectileConfig;
     public GameObject projectilePrefab;
@@ -90,6 +91,7 @@ public class WeaponSystem : MonoBehaviour
     {
         if (!ctx) ctx = GetComponent<CharacteContext>();
         if (!statsHub) statsHub = GetComponent<StatsHub>();
+        if (!statusEffectController) statusEffectController = GetComponent<StatusEffectController>();
         
         if (!currentWeapon && ctx) currentWeapon = ctx.currentWeapon;
 
@@ -334,6 +336,7 @@ public class WeaponSystem : MonoBehaviour
         });
         
         ctx.stateHub.ReportShotFired();
+        statusEffectController?.NotifyTrigger(EffectTriggerType.OnShotFired, gameObject);
         
         if (magazine <= 0 && autoloader)
         {
@@ -418,6 +421,7 @@ public class WeaponSystem : MonoBehaviour
        
         isReloading = false;
         reloadRoutine = null;
+        statusEffectController?.NotifyTrigger(EffectTriggerType.OnReload, gameObject);
     }
 
     IEnumerator ReloadFullMagRoutine()
@@ -428,6 +432,7 @@ public class WeaponSystem : MonoBehaviour
         ctx.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
         isReloading = false;
         reloadRoutine = null;
+        statusEffectController?.NotifyTrigger(EffectTriggerType.OnReload, gameObject);
     }
 
     IEnumerator FireBurst()

@@ -42,7 +42,6 @@ MonoBehaviour:
         - {fileID: 2216855701626034192, guid: 4928a12a67c6e254ea0ce3e6b3046b60, type: 3}
         - {fileID: 919132149155446097, guid: 8c07bddf482d93c428b8a708190e780b, type: 3}
         - {fileID: 919132149155446097, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
-        - {fileID: 1810244535466419119, guid: b07ee821af6ad75499da139780801d3c, type: 3}
         - {fileID: 919132149155446097, guid: d5e40c1ab3a70c34e9bcd15fd6dff70b, type: 3}
         - {fileID: 6565795838908271222, guid: 33c0e4aa99816184c8173146dd7f8928, type: 3}
         - {fileID: 919132149155446097, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}
@@ -55,6 +54,7 @@ MonoBehaviour:
         - {fileID: 919132149155446097, guid: ebbb9e3bce17a7f48b5b9187c1d53904, type: 3}
         - {fileID: 919132149155446097, guid: f1b02d07d22cb8546b4a706ee6df48e0, type: 3}
         - {fileID: 4651303126784831026, guid: a649f9e44b30d794d8890f73f0ad0d3e, type: 3}
+        - {fileID: 1810244535466419119, guid: b07ee821af6ad75499da139780801d3c, type: 3}
     - rid: 8789001712040411215
       type: {class: SerializableEventSequenceDrawerSettings, ns: Animancer.Editor, asm: Kybernetik.Animancer.Editor}
       data:

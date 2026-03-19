@@ -88,7 +88,12 @@ public class PlayerMovementCC : MonoBehaviour
     void Move()
     {
         
-        if(!stateHub.CanMove()) {return;}
+        if(!stateHub.CanMove())
+        {
+            _move01 = 0f;
+            stateHub.SetMoveSpeed01(0f);
+            return;
+        }
         
         if (_brain != null && _brain.RootMotionActive)
         {

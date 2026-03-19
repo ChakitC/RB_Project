@@ -10,6 +10,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
     [Header("References")]
     public CharacteContext CTX;
     [SerializeField] private StatsHub statsHub;
+    [SerializeField] private StatusEffectController statusEffectController;
     
     [Header("Runtime")]
     [SerializeField] private float reviveTime = 2.0f;
@@ -58,6 +59,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
     {
         if (!CTX) CTX = GetComponent<CharacteContext>();
         if (!statsHub) statsHub = GetComponent<StatsHub>();
+        if (!statusEffectController) statusEffectController = GetComponent<StatusEffectController>();
         downTimeDefault = DownTime;
         if (!CTX)
         {
@@ -213,6 +215,11 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
 
     public void TakeDamage(float damage)
     {
+        ApplyDamage(damage, null);
+    }
+
+    protected void ApplyDamage(float damage, GameObject attacker)
+    {
         Debug.Log($"{name} TakeDamage({damage}) hpBefore={currentHealth}");
 
         if (invincible) return;
@@ -224,6 +231,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
             return;
 
         currentHealth = Mathf.Max(0f, currentHealth - Mathf.Max(0f, damage));
+        statusEffectController?.NotifyTrigger(EffectTriggerType.OnTakeDamage, attacker);
 
         CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
 

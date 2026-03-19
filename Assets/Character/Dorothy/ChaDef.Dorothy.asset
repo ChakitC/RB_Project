@@ -19,6 +19,7 @@ MonoBehaviour:
   CharacterPrefabBasement: {fileID: 4539090856356806067, guid: 9c66bd03fd3006e4188d86be6e62decc, type: 3}
   characterAvatar: {fileID: 9000000, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
   controller: {fileID: 9100000, guid: d905530534ed612438412882780459c3, type: 2}
+  animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
   maxHP: 100
   maxStamina: 80
   Damage: 10

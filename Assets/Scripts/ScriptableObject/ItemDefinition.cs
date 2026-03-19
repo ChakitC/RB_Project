@@ -29,3 +29,4 @@ public class ItemDefinition : ScriptableObject
     public int maxStack = 99;
     public GameObject pickupPrefab;
 }
+

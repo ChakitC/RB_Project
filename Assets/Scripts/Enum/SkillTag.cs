@@ -28,6 +28,18 @@ public enum StatType
     CastTime,
     Cooldown,
     CritChance,
+    Armor,
+    MoveSpeed,
+    CritRate,
+    CritMultiplier,
+    MaxHP,
+    MaxStamina,
+    MaxEnergy,
+    ReloadTime,
+    FireInterval,
+    Stability,
+    BulletSpeed,
+    MaxMagazine,
 }
 
 // โมดิฟายค่า Stat แบบ generic

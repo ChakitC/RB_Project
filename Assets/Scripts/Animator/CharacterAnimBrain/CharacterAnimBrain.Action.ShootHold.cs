@@ -2,7 +2,6 @@ using UnityEngine;
 using System;
 using Animancer;
 using Animancer.FSM;
-using UnityEngine;
 public sealed partial class CharacterAnimBrain
 {
     // ===================== Action: Shoot Hold (button held) =====================
@@ -19,14 +18,14 @@ public sealed partial class CharacterAnimBrain
         // public override bool CanEnterState => owner.IsHoldingFire;
      
         public override bool CanEnterState
-            => owner.IsHoldingFire && owner.shootHoldLoop != null;
+            => owner.IsHoldingFire && owner.ShootHoldLoopClip != null;
         
         public override void OnEnterState()
         {
-            owner.ActLayer.StartFade(1f, owner.actionFadeIn);
+            owner.ActLayer.StartFade(1f, owner.ActionFadeIn);
 
-            if (owner.shootHoldLoop != null)
-                state = owner.ActLayer.Play(owner.shootHoldLoop);
+            if (owner.ShootHoldLoopClip != null)
+                state = owner.ActLayer.Play(owner.ShootHoldLoopClip);
           
             else
                 state = null;
@@ -47,7 +46,7 @@ public sealed partial class CharacterAnimBrain
         public override void OnExitState()
         {
             
-            owner.ActLayer.StartFade(0f, owner.actionFadeOut);
+            owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
         }
     }
 

@@ -8,6 +8,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 {
     private bool _initialized;
     private Animator _boundAnimator;
+    private CharacterAnimProfileSO _boundAnimProfile;
 
     private enum PendingAction { None, Empty, Hold, Reload, Melee }
     private PendingAction _pendingAction;
@@ -17,58 +18,21 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     [SerializeField] private AnimancerComponent animancer;
     [SerializeField] private CharacteContext ctx;
 
-    [Header("Layers")]
+    [Header("Layer Indices")]
     [SerializeField] private int locomotionLayerIndex = 0;
     [SerializeField] private int actionLayerIndex = 1;
-    [SerializeField] private AvatarMask upperBodyMask;
-    [SerializeField] private float actionFadeIn = 0.06f;
-    [SerializeField] private float actionFadeOut = 0.08f;
-
-    [Header("Locomotion (Layer 0)")]
-    [SerializeField] private MixerTransition2D locomotionMixer; // Idle(0) / Walk(1)
-    [SerializeField] private float locomotionParamLerp = 14f;
-    [SerializeField] private bool snapTo8Directions = true;
     public Vector2 MoveDirLocal { get; set; }
-
-    [Header("Dash (Layer 0)")]
-    [SerializeField] private ClipTransition dashF;
-    [SerializeField] private ClipTransition dashB;
-    [SerializeField] private ClipTransition dashL;
-    [SerializeField] private ClipTransition dashR;
     private Vector2 _dashDirLocal;
     private float _dashDuration = 0.12f;
     private Locomotion_Dash dashState;
     private Action onDashEndCache;
 
-    [Header("Dead (Layer 0)")]
-    [SerializeField] private ClipTransition Dead;
     private Locomotion_Dead deadState;
     private Action onDeadEndCache;
 
-    [Header("Shoot (Layer 1)")]
-    [SerializeField] private ClipTransition shootPulse;
-    [SerializeField] private ClipTransition shootHoldLoop; // optional
-    [SerializeField] private float holdPulseMinInterval = 0.08f;
-
-    [Header("Reload (Layer 1)")]
-    [SerializeField] private ClipTransition reload;
     private float _reloadDuration = 0f;
-    private Action onReloadEndCache;
 
-    [Header("Melee Combo (Layer 0)")]
-    [SerializeField] private MeleeComboSO meleeComboSO;
-    [SerializeField] private bool meleeCanInterruptReload = true;
     public enum MeleeType { Light, Heavy }
-    [SerializeField] private MeleeComboSO lightCombo;
-    [SerializeField] private MeleeComboSO heavyCombo;
-
-    [Header("Downed (Layer 0)")]
-    [SerializeField] private MixerTransition2D crawlMixer;
-    [SerializeField] private float crawlParamLerp = 10f;
-    [SerializeField, Range(0f, 1f)] private float crawlSpeedMultiplier01 = 0.35f;
-
-    [Header("Skill (Layer 0)")]
-    [SerializeField] private ClipTransition skillClip;
     
     public bool IsDowned { get; private set; }
     private LocomotionState_Crawl crawlState;
@@ -114,21 +78,74 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private AnimancerLayer LocoLayer => animancer.Layers[locomotionLayerIndex];
     private AnimancerLayer ActLayer => animancer.Layers[actionLayerIndex];
 
+    private CharacterAnimProfileSO AnimProfile => _boundAnimProfile;
+
+    private AvatarMask UpperBodyMask => AnimProfile.upperBodyMask;
+    private float ActionFadeIn => AnimProfile.actionFadeIn;
+    private float ActionFadeOut => AnimProfile.actionFadeOut;
+    private MixerTransition2D LocomotionMixer => AnimProfile.locomotionMixer;
+    private float LocomotionParamLerp => AnimProfile.locomotionParamLerp;
+    private bool SnapTo8Directions => AnimProfile.snapTo8Directions;
+    private ClipTransition DashForward => AnimProfile.dashF;
+    private ClipTransition DashBackward => AnimProfile.dashB;
+    private ClipTransition DashLeft => AnimProfile.dashL;
+    private ClipTransition DashRight => AnimProfile.dashR;
+    private ClipTransition DeadClip => AnimProfile.dead;
+    private ClipTransition ShootPulseClip => AnimProfile.shootPulse;
+    private ClipTransition ShootHoldLoopClip => AnimProfile.shootHoldLoop;
+    private float HoldPulseMinInterval => AnimProfile.holdPulseMinInterval;
+    private ClipTransition ReloadClip => AnimProfile.reload;
+    private MeleeComboSO DefaultMeleeCombo => AnimProfile.meleeCombo;
+    private MeleeComboSO LightCombo => AnimProfile.lightCombo;
+    private MeleeComboSO HeavyCombo => AnimProfile.heavyCombo;
+    private MixerTransition2D CrawlMixer => AnimProfile.crawlMixer;
+    private float CrawlParamLerp => AnimProfile.crawlParamLerp;
+    private float CrawlSpeedMultiplier01 => AnimProfile.crawlSpeedMultiplier01;
+    private ClipTransition SkillClip => AnimProfile.skillClip;
+
+    private bool TryGetAnimProfile(out CharacterAnimProfileSO animProfile)
+    {
+        animProfile = null;
+
+        if (!ctx) ctx = GetComponent<CharacteContext>();
+        if (ctx == null || ctx.baseStats == null)
+            return false;
+
+        animProfile = ctx.baseStats.animProfile;
+        return animProfile != null;
+    }
+
+    private string GetInitializationError()
+    {
+        if (!animancer) return "AnimancerComponent missing.";
+        if (animancer.Animator == null) return "Animancer.Animator missing.";
+        if (!ctx) ctx = GetComponent<CharacteContext>();
+        if (ctx == null) return "CharacteContext missing.";
+        if (ctx.baseStats == null) return "CharacteContext.baseStats missing.";
+        if (ctx.baseStats.animProfile == null)
+            return $"CharacterStats '{ctx.baseStats.name}' is missing animProfile.";
+
+        return "Unknown initialization error.";
+    }
+
     private bool TryInitialize()
     {
         if (!animancer) animancer = GetComponent<AnimancerComponent>();
         if (!animancer || animancer.Animator == null)
             return false;
 
-        // ถ้า Animator เปลี่ยน (เช่น rebuild model) ต้อง init ใหม่
-        if (_initialized && animancer.Animator == _boundAnimator)
+        if (!TryGetAnimProfile(out var animProfile))
+            return false;
+
+        // ถ้า Animator หรือ profile เปลี่ยน (เช่น rebuild model / switch character) ต้อง init ใหม่
+        if (_initialized && animancer.Animator == _boundAnimator && animProfile == _boundAnimProfile)
             return true;
 
         _boundAnimator = animancer.Animator;
+        _boundAnimProfile = animProfile;
 
         // Setup action layer
-        if (upperBodyMask != null)
-            ActLayer.Mask = upperBodyMask;
+        ActLayer.Mask = UpperBodyMask;
 
         ActLayer.SetLayerWeightOnPlay = false;
         ActLayer.Weight = 0f;
@@ -205,7 +222,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         {
             if (!_initWarned)
             {
-                Debug.LogWarning("[CharacterAnimBrain] Initialization failed.", this);
+                Debug.LogWarning($"[CharacterAnimBrain] Initialization failed: {GetInitializationError()}", this);
                 _initWarned = true;
             }
             return;
@@ -284,7 +301,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PressMelee(MeleeType type)
     {
-        var selected = (type == MeleeType.Light) ? lightCombo : heavyCombo;
+        var selected = (type == MeleeType.Light) ? LightCombo : HeavyCombo;
         if (selected == null) return;
 
         if (!TryInitialize()) return;
@@ -351,7 +368,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     }
     private void HandleShootPulseEnd()
     {
-        if (IsHoldingFire && shootHoldLoop != null)
+        if (IsHoldingFire && ShootHoldLoopClip != null)
             actionSM.TrySetState(shootHold);
         else
             actionSM.TrySetState(empty);

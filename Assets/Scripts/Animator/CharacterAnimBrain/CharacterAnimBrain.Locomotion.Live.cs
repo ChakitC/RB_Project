@@ -2,7 +2,6 @@ using UnityEngine;
 using System;
 using Animancer;
 using Animancer.FSM;
-using UnityEngine;
 public sealed partial class CharacterAnimBrain
 {
     // ===================== Locomotion (Idle/Walk) =====================
@@ -17,7 +16,7 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnEnterState()
         {
-            mixerState = owner.LocoLayer.Play(owner.locomotionMixer) as Vector2MixerState;
+            mixerState = owner.LocoLayer.Play(owner.LocomotionMixer) as Vector2MixerState;
             current = Vector2.zero;
         }
 
@@ -28,12 +27,12 @@ public sealed partial class CharacterAnimBrain
             // magnitude = speed, direction = MoveDirLocal
             Vector2 dir = owner.MoveDirLocal;
 
-            if (owner.snapTo8Directions)
+            if (owner.SnapTo8Directions)
                 dir = Snap8(dir);
 
             Vector2 target = dir * Mathf.Clamp01(owner.MoveSpeed01); // 0..1
 
-            float t = 1f - Mathf.Exp(-owner.locomotionParamLerp * Time.deltaTime);
+            float t = 1f - Mathf.Exp(-owner.LocomotionParamLerp * Time.deltaTime);
             current = Vector2.Lerp(current, target, t);
 
             mixerState.ParameterX = current.x;

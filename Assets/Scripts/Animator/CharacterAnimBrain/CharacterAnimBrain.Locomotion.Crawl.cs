@@ -2,7 +2,6 @@ using UnityEngine;
 using System;
 using Animancer;
 using Animancer.FSM;
-using UnityEngine;
 public sealed partial class CharacterAnimBrain
 {
     // ===================== Locomotion : Downed  =====================
@@ -15,11 +14,11 @@ public sealed partial class CharacterAnimBrain
 
         public LocomotionState_Crawl(CharacterAnimBrain owner) => this.owner = owner;
 
-        public override bool CanEnterState => owner.crawlMixer != null;
+        public override bool CanEnterState => owner.CrawlMixer != null;
 
         public override void OnEnterState()
         {
-            mixerState = owner.LocoLayer.Play(owner.crawlMixer) as Vector2MixerState;
+            mixerState = owner.LocoLayer.Play(owner.CrawlMixer) as Vector2MixerState;
             current = Vector2.zero;
         }
 
@@ -29,13 +28,13 @@ public sealed partial class CharacterAnimBrain
 
             Vector2 dir = owner.MoveDirLocal;
 
-            if (owner.snapTo8Directions)
+            if (owner.SnapTo8Directions)
                 dir = Snap8(dir);
 
-            float speed01 = Mathf.Clamp01(owner.MoveSpeed01 * owner.crawlSpeedMultiplier01);
+            float speed01 = Mathf.Clamp01(owner.MoveSpeed01 * owner.CrawlSpeedMultiplier01);
             Vector2 target = dir * speed01;
 
-            float t = 1f - Mathf.Exp(-owner.crawlParamLerp * Time.deltaTime);
+            float t = 1f - Mathf.Exp(-owner.CrawlParamLerp * Time.deltaTime);
             current = Vector2.Lerp(current, target, t);
 
             mixerState.ParameterX = current.x;

@@ -2,7 +2,6 @@ using UnityEngine;
 using System;
 using Animancer;
 using Animancer.FSM;
-using UnityEngine;
 public sealed partial class CharacterAnimBrain
 {
     // ===================== Locomotion: Melee Combo (Layer 0) =====================
@@ -45,7 +44,7 @@ public sealed partial class CharacterAnimBrain
                 //     return false;
 
                 // backward-compatible: ถ้ายังไม่ได้ SetCombo ให้ใช้ของเดิมใน owner
-                var c = comboLocked != null ? comboLocked : owner.meleeComboSO;
+                var c = comboLocked != null ? comboLocked : owner.DefaultMeleeCombo;
 
                 if (c == null) return false;
                 if (!c.IsValid(out _)) return false;
@@ -58,7 +57,7 @@ public sealed partial class CharacterAnimBrain
 
         public void QueueNextPress()
         {
-            var c = comboLocked != null ? comboLocked : owner.meleeComboSO;
+            var c = comboLocked != null ? comboLocked : owner.DefaultMeleeCombo;
             if (c == null) return;
 
             int last = c.Steps.Count - 1;
@@ -93,7 +92,7 @@ public sealed partial class CharacterAnimBrain
             
             // lock combo at enter (ไม่สลับกลางคอมโบ)
             if (comboLocked == null)
-                comboLocked = owner.meleeComboSO;
+                comboLocked = owner.DefaultMeleeCombo;
 
             _prevApplyRootMotion = owner.animancer.Animator.applyRootMotion;
             owner.animancer.Animator.applyRootMotion = true;
@@ -132,7 +131,7 @@ public sealed partial class CharacterAnimBrain
         step = newStep;
         windowExpired = false;
 
-        var c = comboLocked != null ? comboLocked : owner.meleeComboSO;
+        var c = comboLocked != null ? comboLocked : owner.DefaultMeleeCombo;
         if (c == null) { EndComboSafe(); return; }
 
         var steps = c.Steps;
@@ -233,7 +232,7 @@ public sealed partial class CharacterAnimBrain
             if (owner.locomotionSM.CurrentState != owner.meleeCombo)
                 return;
 
-            var cc = comboLocked != null ? comboLocked : owner.meleeComboSO;
+            var cc = comboLocked != null ? comboLocked : owner.DefaultMeleeCombo;
             int last2 = cc.Steps.Count - 1;
             bool canRepeat = CanRepeatLastStep(last2);
 
@@ -251,7 +250,7 @@ public sealed partial class CharacterAnimBrain
         private void Advance()
         {
             
-            var c = comboLocked != null ? comboLocked : owner.meleeComboSO;
+            var c = comboLocked != null ? comboLocked : owner.DefaultMeleeCombo;
             if (c == null) return;
 
             int last = c.Steps.Count - 1;

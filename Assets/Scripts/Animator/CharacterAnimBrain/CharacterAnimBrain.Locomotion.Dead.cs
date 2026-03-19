@@ -2,7 +2,6 @@ using UnityEngine;
 using System;
 using Animancer;
 using Animancer.FSM;
-using UnityEngine;
 public sealed partial class CharacterAnimBrain
 {
     // ===================== Locomotion: Dead ================================
@@ -13,7 +12,7 @@ public sealed partial class CharacterAnimBrain
 
         public Locomotion_Dead(CharacterAnimBrain owner) => this.owner = owner;
 
-        public override bool CanEnterState => owner.Dead != null;
+        public override bool CanEnterState => owner.DeadClip != null;
         
         public override bool CanExitState => false;
 
@@ -24,10 +23,10 @@ public sealed partial class CharacterAnimBrain
             owner._pendingPulse = false;
 
             owner.actionSM.TrySetState(owner.empty);
-            owner.ActLayer.StartFade(0f, owner.actionFadeOut);
+            owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
 
             
-            state = owner.LocoLayer.Play(owner.Dead);
+            state = owner.LocoLayer.Play(owner.DeadClip);
 
             
             owner.onDeadEndCache ??= () =>

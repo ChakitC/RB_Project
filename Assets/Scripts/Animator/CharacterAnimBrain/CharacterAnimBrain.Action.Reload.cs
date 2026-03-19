@@ -2,7 +2,6 @@ using UnityEngine;
 using System;
 using Animancer;
 using Animancer.FSM;
-using UnityEngine;
 public sealed partial class CharacterAnimBrain
 {
     // ===================== Action: Reload  =====================
@@ -14,7 +13,7 @@ public sealed partial class CharacterAnimBrain
 
         public Action_Reload(CharacterAnimBrain owner) => this.owner = owner;
 
-        public override bool CanEnterState => owner.reload != null;
+        public override bool CanEnterState => owner.ReloadClip != null;
         public override bool CanExitState => !_lockExit;
 
         public void CancelNow()
@@ -27,16 +26,16 @@ public sealed partial class CharacterAnimBrain
                 state = null;
             }
 
-            owner.ActLayer.StartFade(0f, owner.actionFadeOut);
+            owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
         }
 
         public override void OnEnterState()
         {
             _lockExit = true;
 
-            owner.ActLayer.StartFade(1f, owner.actionFadeIn);
+            owner.ActLayer.StartFade(1f, owner.ActionFadeIn);
 
-            state = owner.ActLayer.Play(owner.reload);
+            state = owner.ActLayer.Play(owner.ReloadClip);
 
             float len = Mathf.Max(0.01f, state.Length);
             float dur = Mathf.Max(0.01f, owner._reloadDuration);

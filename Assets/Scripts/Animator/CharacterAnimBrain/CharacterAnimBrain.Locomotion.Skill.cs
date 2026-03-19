@@ -21,7 +21,7 @@ public sealed partial class CharacterAnimBrain
         {
             get
             {
-                if (owner.skillClip == null) return false;
+                if (owner.SkillClip == null) return false;
                 if (owner.IsDowned) return false;
                 if (owner.locomotionSM.CurrentState == owner.deadState) return false;
                 return true;
@@ -30,7 +30,7 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnEnterState()
         {
-            if (owner.skillClip == null)
+            if (owner.SkillClip == null)
             {
                 owner.locomotionSM.TrySetState(owner.locomotion);
                 return;
@@ -41,9 +41,9 @@ public sealed partial class CharacterAnimBrain
             owner.RootMotionActive = true;
 
             owner.actionSM.TrySetState(owner.empty);
-            owner.ActLayer.StartFade(0f, owner.actionFadeOut);
+            owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
 
-            state = owner.LocoLayer.Play(owner.skillClip);
+            state = owner.LocoLayer.Play(owner.SkillClip);
             state.Events(this).OnEnd = _onEndCache;
         }
 

@@ -2,7 +2,6 @@ using UnityEngine;
 using System;
 using Animancer;
 using Animancer.FSM;
-using UnityEngine;
 public sealed partial class CharacterAnimBrain
 {
     // ===================== Locomotion: Dash  ===============================
@@ -15,7 +14,10 @@ public sealed partial class CharacterAnimBrain
         public Locomotion_Dash(CharacterAnimBrain owner) => this.owner = owner;
 
         public override bool CanEnterState =>
-            owner.dashF != null && owner.dashB != null && owner.dashL != null && owner.dashR != null;
+            owner.DashForward != null &&
+            owner.DashBackward != null &&
+            owner.DashLeft != null &&
+            owner.DashRight != null;
 
         public override void OnEnterState()
         {
@@ -38,10 +40,10 @@ public sealed partial class CharacterAnimBrain
         private static ClipTransition Pick(CharacterAnimBrain o, Vector2 dir4)
         {
             // dir4 จะเป็น (0,1)(0,-1)(1,0)(-1,0)
-            if (dir4.y > 0.5f)  return o.dashF;
-            if (dir4.y < -0.5f) return o.dashB;
-            if (dir4.x > 0.5f)  return o.dashR;
-            return o.dashL;
+            if (dir4.y > 0.5f)  return o.DashForward;
+            if (dir4.y < -0.5f) return o.DashBackward;
+            if (dir4.x > 0.5f)  return o.DashRight;
+            return o.DashLeft;
         }
 
         private static Vector2 Snap4(Vector2 v)

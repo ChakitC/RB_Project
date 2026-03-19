@@ -2,7 +2,6 @@ using UnityEngine;
 using System;
 using Animancer;
 using Animancer.FSM;
-using UnityEngine;
 public sealed partial class CharacterAnimBrain
 {private sealed class Action_ShootPulse : ActionState
 {
@@ -16,12 +15,12 @@ public sealed partial class CharacterAnimBrain
     {
         get
         {
-            if (owner.shootPulse == null) return false;
+            if (owner.ShootPulseClip == null) return false;
 
             // ถ้ากดค้างและไม่มี holdLoop -> กันการรีสตาร์ตถี่เกิน (auto fire rate สูง ๆ)
-            if (owner.IsHoldingFire && owner.shootHoldLoop == null)
+            if (owner.IsHoldingFire && owner.ShootHoldLoopClip == null)
             {
-                if (Time.time - lastPlayTime < owner.holdPulseMinInterval)
+                if (Time.time - lastPlayTime < owner.HoldPulseMinInterval)
                     return false;
             }
 
@@ -33,8 +32,8 @@ public sealed partial class CharacterAnimBrain
     {
         lastPlayTime = Time.time;
 
-        owner.ActLayer.StartFade(1f, owner.actionFadeIn);
-        state = owner.ActLayer.Play(owner.shootPulse);
+        owner.ActLayer.StartFade(1f, owner.ActionFadeIn);
+        state = owner.ActLayer.Play(owner.ShootPulseClip);
 
         owner.onShootEndCache ??= owner.HandleShootPulseEnd;
         state.Events(owner).OnEnd = owner.onShootEndCache;

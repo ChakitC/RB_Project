@@ -11,6 +11,7 @@ public class CharacterStats : ScriptableObject
     public GameObject CharacterPrefabBasement;
     public Avatar characterAvatar;
     public RuntimeAnimatorController controller;
+    public CharacterAnimProfileSO animProfile;
     
     
     [Header("Base Stats")]

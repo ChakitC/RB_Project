@@ -21,6 +21,7 @@ public class EnemyContext : CharacteContext
 
     private void Start()
     {
-        Agent.speed = baseStats.speed;
+        if (Agent != null)
+            Agent.speed = GetMoveSpeedForCurrentLifeState();
     }
 }

@@ -10,6 +10,16 @@ public sealed class StatusEffectController : MonoBehaviour
     [SerializeField] private StatsHub statsHub;
     [SerializeField] private StateHub stateHub;
 
+    [Header("Debug")]
+    [SerializeField] private bool debugInInspector = true;
+    [SerializeField] private int dbgActiveEffectCount;
+    [TextArea(2, 8)]
+    [SerializeField] private string dbgBuffs;
+    [TextArea(2, 8)]
+    [SerializeField] private string dbgDebuffs;
+    [TextArea(2, 8)]
+    [SerializeField] private string dbgNeutralEffects;
+
     readonly List<StatusEffectInstance> _activeEffects = new();
 
     public IReadOnlyList<StatusEffectInstance> ActiveEffects => _activeEffects;
@@ -27,6 +37,7 @@ public sealed class StatusEffectController : MonoBehaviour
     {
         statsHub?.MarkDirty();
         SyncControlState();
+        RefreshDebugSnapshot();
     }
 
     void OnDisable()
@@ -34,11 +45,15 @@ public sealed class StatusEffectController : MonoBehaviour
         statsHub?.MarkDirty();
         if (stateHub != null)
             stateHub.SetStatusEffectControlState(ControlBlockFlags.None, false);
+        RefreshDebugSnapshot();
     }
 
     void Update()
     {
         Tick(Time.deltaTime);
+
+        if (debugInInspector)
+            RefreshDebugSnapshot();
     }
 
     public StatusEffectInstance ApplyEffect(StatusEffectDef definition, GameObject source = null, int initialStacks = 1)
@@ -303,6 +318,7 @@ public sealed class StatusEffectController : MonoBehaviour
     {
         statsHub?.MarkDirty();
         SyncControlState();
+        RefreshDebugSnapshot();
         EffectsChanged?.Invoke();
     }
 
@@ -326,5 +342,54 @@ public sealed class StatusEffectController : MonoBehaviour
         }
 
         stateHub.SetStatusEffectControlState(controlBlocks, stunned);
+    }
+
+    void RefreshDebugSnapshot()
+    {
+        if (!debugInInspector)
+            return;
+
+        dbgActiveEffectCount = _activeEffects.Count;
+        dbgBuffs = BuildDebugList(StatusEffectCategory.Buff);
+        dbgDebuffs = BuildDebugList(StatusEffectCategory.Debuff);
+        dbgNeutralEffects = BuildDebugList(StatusEffectCategory.Neutral);
+    }
+
+    string BuildDebugList(StatusEffectCategory category)
+    {
+        if (_activeEffects.Count == 0)
+            return "<none>";
+
+        List<string> lines = null;
+
+        for (int i = 0; i < _activeEffects.Count; i++)
+        {
+            var instance = _activeEffects[i];
+            var definition = instance?.Definition;
+            if (definition == null || definition.category != category)
+                continue;
+
+            lines ??= new List<string>();
+            lines.Add(FormatDebugLine(instance));
+        }
+
+        if (lines == null || lines.Count == 0)
+            return "<none>";
+
+        return string.Join("\n", lines);
+    }
+
+    string FormatDebugLine(StatusEffectInstance instance)
+    {
+        var definition = instance.Definition;
+        string label = !string.IsNullOrWhiteSpace(definition.effectId)
+            ? definition.effectId
+            : definition.name;
+
+        string durationText = definition.IsPermanent
+            ? "perm"
+            : $"{Mathf.Max(0f, instance.TimeLeft):0.0}s";
+
+        return $"{label} x{instance.CurrentStacks} ({durationText})";
     }
 }

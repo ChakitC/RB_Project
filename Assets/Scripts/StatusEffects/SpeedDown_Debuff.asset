@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 307f91727c2d9a74f8d31613be231f4a, type: 3}
   m_Name: SpeedDown_Debuff
   m_EditorClassIdentifier: 
-  effectId: SpeedUP
+  effectId: SpeedDown
   icon: {fileID: 0}
   duration: 10
   maxStacks: 1
@@ -21,10 +21,9 @@ MonoBehaviour:
   tickDamage: 0
   controlBlocks: 0
   pushStunnedState: 0
-  tags:
-  - 
+  tags: []
   modifiers:
   - statType: 8
     operation: 2
-    value: 2
+    value: -0.5
   triggerRules: []

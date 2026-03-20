@@ -7,6 +7,7 @@ public sealed class StatusEffectDef : ScriptableObject
     [Header("Identity")]
     public string effectId;
     public Sprite icon;
+    public StatusEffectCategory category = StatusEffectCategory.Neutral;
 
     [Header("Lifetime")]
     [Min(0f)] public float duration = 5f;

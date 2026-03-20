@@ -52,6 +52,21 @@ public abstract class CharacteContext : MonoBehaviour
     
     public float SpeedDown => baseStats.speedDown;
 
+    public float GetMoveSpeedForCurrentLifeState()
+    {
+        if (StatsHub == null)
+            StatsHub = GetComponent<StatsHub>();
+        if (stateHub == null)
+            stateHub = GetComponent<StateHub>();
+
+        float moveSpeed = StatsHub ? StatsHub.GetMoveSpeed() : baseSpeed;
+
+        if (stateHub != null && stateHub.Isdown)
+            return Mathf.Max(0f, SpeedDown);
+
+        return moveSpeed;
+    }
+
     
     
 }

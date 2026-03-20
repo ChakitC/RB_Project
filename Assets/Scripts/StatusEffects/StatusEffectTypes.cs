@@ -1,5 +1,12 @@
 using System;
 
+public enum StatusEffectCategory
+{
+    Neutral,
+    Buff,
+    Debuff
+}
+
 public enum ModifierOp
 {
     Flat,

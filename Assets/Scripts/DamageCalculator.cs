@@ -2,6 +2,8 @@ using UnityEngine;
 
 public static class DamageCalculator
 {
+    const float MIN_SAFE_ARMOR = -99f;
+
     public static float CalculateFinalDamage(
         WeaponType gunType,
         float distance,
@@ -10,97 +12,115 @@ public static class DamageCalculator
         float criticalDamageMultiplier,
         float targetArmor)
     {
-        
-        distance = Mathf.Max(0f, distance);
-        baseDamage = Mathf.Max(0f, baseDamage);
+        distance = SanitizeNonNegative(distance);
+        baseDamage = SanitizeNonNegative(baseDamage);
 
-        // --- ค่าเริ่มต้น ---
-        float finalDamage = baseDamage;
-        bool isCritical = false;
+        float finalDamage = ApplyRangeFalloff(gunType, distance, baseDamage);
 
-        // --- ตั้งค่าการดรอปดาเมจตามอาวุธ ---
-        // เป็น ScriptableObject ในอนาคต
-        
-        float dropPerMeter;   // ดรอปต่อเมตร (หน่วยดาเมจ/เมตร)
-        float maxRange;       // ระยะที่ยังไม่ดรอป
+        float critChance01 = NormalizeCritChance01(criticalRate);
+        if (critChance01 > 0f && Random.value < critChance01)
+            finalDamage *= NormalizeCritMultiplier(criticalDamageMultiplier);
 
+        finalDamage *= GetArmorFactor(targetArmor);
+
+        if (!float.IsFinite(finalDamage))
+            return 0f;
+
+        return Mathf.Max(0f, finalDamage);
+    }
+
+    public static float NormalizeCritChance01(float criticalRate)
+    {
+        if (!float.IsFinite(criticalRate) || criticalRate <= 0f)
+            return 0f;
+
+        // Keep supporting legacy 0..1 inputs while making "1" mean 1%.
+        if (criticalRate >= 1f)
+            return Mathf.Clamp01(criticalRate * 0.01f);
+
+        return Mathf.Clamp01(criticalRate);
+    }
+
+    public static float NormalizeCritMultiplier(float criticalDamageMultiplier)
+    {
+        if (!float.IsFinite(criticalDamageMultiplier) || criticalDamageMultiplier <= 0f)
+            return 1f;
+
+        // Accept legacy bonus-style values such as 0.1 => 1.1x crit damage.
+        if (criticalDamageMultiplier < 1f)
+            return 1f + criticalDamageMultiplier;
+
+        return criticalDamageMultiplier;
+    }
+
+    static float ApplyRangeFalloff(WeaponType gunType, float distance, float baseDamage)
+    {
+        GetRangeFalloff(gunType, baseDamage, out float dropPerMeter, out float maxRange);
+
+        if (distance <= maxRange || dropPerMeter <= 0f || float.IsInfinity(maxRange))
+            return baseDamage;
+
+        float distanceOver = distance - maxRange;
+        float reduction = distanceOver * dropPerMeter;
+        return Mathf.Max(0f, baseDamage - reduction);
+    }
+
+    static void GetRangeFalloff(WeaponType gunType, float baseDamage, out float dropPerMeter, out float maxRange)
+    {
         switch (gunType)
         {
             case WeaponType.Sniper:
-                dropPerMeter = 0.0f;   
-                maxRange     = 120f;
-                Debug.Log("case.DMG.Sniper");
+                dropPerMeter = 0f;
+                maxRange = 120f;
                 break;
 
             case WeaponType.Shotgun:
-                dropPerMeter = baseDamage * 0.02f; 
-                maxRange     = 12f;
-                Debug.Log("case.DMG.Shotgun");
+                dropPerMeter = baseDamage * 0.02f;
+                maxRange = 12f;
                 break;
 
             case WeaponType.Pistol:
                 dropPerMeter = baseDamage * 0.005f;
-                maxRange     = 25f;
-                Debug.Log("case.DMG.Pistol");
+                maxRange = 25f;
                 break;
 
             case WeaponType.Rifle:
                 dropPerMeter = baseDamage * 0.003f;
-                maxRange     = 40f;
-                Debug.Log("case.DMG.Rifle");
+                maxRange = 40f;
                 break;
 
             case WeaponType.Smg:
                 dropPerMeter = baseDamage * 0.08f;
-                maxRange     = 3.0f;
-                Debug.Log("case.DMG.Smg");
+                maxRange = 3f;
                 break;
 
             case WeaponType.Melee:
                 dropPerMeter = 0f;
-                maxRange     = Mathf.Infinity; // ไม่สนระยะ
-                Debug.Log("case.DMG.Melee");
+                maxRange = Mathf.Infinity;
                 break;
 
             default:
                 Debug.LogWarning($"Unknown gun type: {gunType}. Using default falloff.");
                 dropPerMeter = baseDamage * 0.004f;
-                maxRange     = 30f;
+                maxRange = 30f;
                 break;
         }
+    }
 
-        // --- ระยะทางเกินระยะมีผล → หักดาเมจแบบลิเนียร์ (คงบวกได้) ---
-        if (distance > maxRange && dropPerMeter > 0f && !float.IsInfinity(maxRange))
-        {
-            float distanceOver = distance - maxRange;
-            float reduction    = distanceOver * dropPerMeter;
-            finalDamage = Mathf.Max(0f, finalDamage - reduction);
-        }
+    static float GetArmorFactor(float targetArmor)
+    {
+        if (!float.IsFinite(targetArmor))
+            return 1f;
 
-        // --- คริติคอล ---
-        
-        float critChance01 = (criticalRate > 1f) ? criticalRate * 0.01f : criticalRate;
-        critChance01 = Mathf.Clamp01(critChance01);
+        float safeArmor = Mathf.Max(MIN_SAFE_ARMOR, targetArmor);
+        return 100f / (100f + safeArmor);
+    }
 
-        if (Random.value < critChance01)
-        {
-            finalDamage *= Mathf.Max(1f, criticalDamageMultiplier); // กันค่าผิด
-            isCritical = true;
-            Debug.Log("isCritical"!);
-        }
+    static float SanitizeNonNegative(float value)
+    {
+        if (!float.IsFinite(value))
+            return 0f;
 
-        // --- เกราะ (ลดแบบสัดส่วน) ---
-        // สูตรพื้นฐาน: DamageAfterArmor = Damage * (100 / (100 + Armor))
-        // ถ้า Armor ติดลบ = จุดอ่อน → ดาเมจเพิ่มขึ้นเอง
-        float armorFactor = 100f / (100f + targetArmor);
-        finalDamage *= armorFactor;
-
-        // --- เคลียร์ค่าไม่ให้ติดลบ/NaN ---
-        if (!float.IsFinite(finalDamage)) finalDamage = 0f;
-        finalDamage = Mathf.Max(0f, finalDamage);
-
-        Debug.Log("Distance" +distance);
-        
-        return finalDamage;
+        return Mathf.Max(0f, value);
     }
 }

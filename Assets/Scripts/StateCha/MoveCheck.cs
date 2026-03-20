@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI;
 
 public static class MoveCheck
 {
@@ -8,20 +9,21 @@ public static class MoveCheck
     public static bool IsMovingActual(CharacteContext ctx, float eps = 0.05f)
     {
         if (ctx == null || ctx.cc == null) return false;
-        var v = ctx.cc.velocity; v.y = 0f;
+
+        var v = ctx.cc.velocity;
+        v.y = 0f;
         return v.sqrMagnitude > eps * eps;
     }
-    public static bool IsMovingNav(AllyContext ctx, float eps = 0.05f)
-    {
-        if (ctx == null || ctx.agent == null) return false;
 
-        // ความเร็วจริง (agent.velocity) หรือ desiredVelocity ก็ได้
-        Vector3 v = ctx.agent.velocity;
+    public static bool IsMovingNav(NavMeshAgent agent, float eps = 0.05f)
+    {
+        if (agent == null) return false;
+
+        Vector3 v = agent.velocity;
         v.y = 0f;
 
-        // กันเคสกำลังคำนวณ path / หยุดเพราะถึงปลายทาง
-        if (ctx.agent.pathPending) return false;
-        if (ctx.agent.remainingDistance <= ctx.agent.stoppingDistance && !ctx.agent.hasPath)
+        if (agent.pathPending) return false;
+        if (agent.remainingDistance <= agent.stoppingDistance && !agent.hasPath)
             return false;
 
         return v.sqrMagnitude > eps * eps;

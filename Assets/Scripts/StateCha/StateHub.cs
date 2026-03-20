@@ -246,13 +246,7 @@ public sealed class StateHub : MonoBehaviour
         if (ctx != null && ctx.DashSystem != null && ctx.DashSystem.IsDashing)
             return MoveStateId.Dash;
 
-        if (ctx is AllyContext ally && ally.AgentMoveDriver != null && ally.AgentMoveDriver.agentismoving)
-            return MoveStateId.Moveing;
-
-        if (ctx is EnemyContext enemy && enemy.AgentMoveDriver != null && enemy.AgentMoveDriver.agentismoving)
-            return MoveStateId.Moveing;
-
-        if (ctx != null && ctx.cc != null && MoveCheck.IsMoveIntent(ctx))
+        if (ctx != null && ctx.ShouldBeInMoveState())
             return MoveStateId.Moveing;
 
         return MoveStateId.Stand;

@@ -24,4 +24,9 @@ public class EnemyContext : CharacteContext
         if (Agent != null)
             Agent.speed = GetMoveSpeedForCurrentLifeState();
     }
+
+    public override bool ShouldBeInMoveState()
+    {
+        return AgentMoveDriver != null && AgentMoveDriver.agentismoving;
+    }
 }

@@ -12,6 +12,9 @@ public class AllyContext : CharacteContext
     public NavMeshAgent  agent;
 
     public AgentMoveDriver AgentMoveDriver;
-    
-    
+
+    public override bool ShouldBeInMoveState()
+    {
+        return AgentMoveDriver != null && AgentMoveDriver.agentismoving;
+    }
 }

@@ -1,6 +1,5 @@
-using System;
-using UnityEngine;
 using System.Collections;
+using UnityEngine;
 
 public class WeaponSystem : MonoBehaviour
 {
@@ -8,6 +7,7 @@ public class WeaponSystem : MonoBehaviour
     public CharacteContext ctx;
     [SerializeField] private StatsHub statsHub;
     [SerializeField] private StatusEffectController statusEffectController;
+    [SerializeField] private CombatEventBus combatEventBus;
 
     public ProjectileConfig projectileConfig;
     public GameObject projectilePrefab;
@@ -18,21 +18,20 @@ public class WeaponSystem : MonoBehaviour
     [Header("WeaponStats (debug/inspector)")]
     public Transform firePoint;
     public WeaponType gunType;
-    public float damage = 0f;          // <- จะอัปเดตจาก hub (ค่า final)
-    public float fireRate = 0f;        // <- “เวลาระหว่างนัด” (ตามของเดิม)
-    public int magazine = 0;           // runtime state
-    public int maxMagazine = 0;        // <- final (อัปเดตจาก hub ถ้ามีบัฟ)
-    public float reloadTime = 0f;      // มาจาก config (คงที่เป็นหลัก)
-    public float critRate = 0f;        // <- final
-    public float critMultiplier = 0f;  // <- final
+    public float damage = 0f;
+    public float fireRate = 0f;
+    public int magazine = 0;
+    public int maxMagazine = 0;
+    public float reloadTime = 0f;
+    public float critRate = 0f;
+    public float critMultiplier = 0f;
     public bool magazineRelode = false;
-    public float stability = 0f;       // <- final
+    public float stability = 0f;
     public bool autoloader;
-    public float bulletSpeed = 20f;    // <- final ถ้าคุณอยากให้บัฟได้
+    public float bulletSpeed = 20f;
 
     public bool isAiming = false;
-    
-    // ========== Public property =================
+
     public bool IsReloading => isReloading;
     public bool IsFiringHeld => _isFiringHeld;
     public bool CanFire => !isReloading && magazine > 0 && Time.time >= nextFireTime;
@@ -40,11 +39,8 @@ public class WeaponSystem : MonoBehaviour
     public int MagazineSize => MaxMagazine;
     public bool IsMagazineEmpty => magazine <= 0;
 
-   // ===============================================
-   
-    private bool _isFiringHeld;
-    
-    // Sway
+    bool _isFiringHeld;
+
     float baseSwaySpeed = 0f;
     float baseMaxSwayAngle = 0f;
     float baseReturnSpeed = 0f;
@@ -55,44 +51,39 @@ public class WeaponSystem : MonoBehaviour
     float swayTimer = 0f;
     Quaternion firePointOriginalRot;
 
-    // Reload
     bool reloadPerBullet = true;
-    float startInsertDelay = 0;
-    float perBulletInsertTime = 0;
-    float endInsertDelay = 0;
+    float startInsertDelay = 0f;
+    float perBulletInsertTime = 0f;
+    float endInsertDelay = 0f;
     bool shootInterruptsReload = true;
     Coroutine reloadRoutine;
-    
 
     [Header("Burst Settings")]
     public int burstCount = 0;
-    public float burstInterval = 0f; 
-    
+    public float burstInterval = 0f;
+
     Coroutine burstCo;
-    
-    //FSM
-    
+
     public bool IsBursting => isBursting;
     public bool IsFiringActivity =>
         (firingMode == FiringMode.Auto && isFiring) ||
         (firingMode == FiringMode.Burst && isBursting);
-    
+
     public bool isFiring;
 
     float nextFireTime;
-    private bool isReloading;
-    
+    bool isReloading;
     bool isBursting;
 
     FiringMode firingMode = FiringMode.Auto;
-    
 
     void Awake()
     {
         if (!ctx) ctx = GetComponent<CharacteContext>();
         if (!statsHub) statsHub = GetComponent<StatsHub>();
         if (!statusEffectController) statusEffectController = GetComponent<StatusEffectController>();
-        
+        if (!combatEventBus) combatEventBus = GetComponent<CombatEventBus>();
+
         if (!currentWeapon && ctx) currentWeapon = ctx.currentWeapon;
 
         if (!firePoint) firePoint = transform.Find("FirePoint");
@@ -102,20 +93,20 @@ public class WeaponSystem : MonoBehaviour
 
     void Start()
     {
-     
         Equip(currentWeapon);
-        
+
         ctx.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
-        
-        if (projectilePrefab == null) { projectilePrefab = ctx.currentWeapon.BulletPrefab; }
+
+        if (projectilePrefab == null && ctx != null && ctx.currentWeapon != null)
+            projectilePrefab = ctx.currentWeapon.BulletPrefab;
     }
 
     public void Equip(GunConfig weapon)
     {
         currentWeapon = weapon;
-        if (!currentWeapon) return;
+        if (!currentWeapon)
+            return;
 
-        // ค่าคงที่/พฤติกรรมจากปืน
         gunType = currentWeapon.WeaponType;
         firingMode = currentWeapon.firingModes;
 
@@ -136,10 +127,8 @@ public class WeaponSystem : MonoBehaviour
         burstCount = currentWeapon.burstCount;
         burstInterval = currentWeapon.burstInterval;
 
-        // runtime state
         magazine = currentWeapon.magazine;
 
-        // ดึงค่า final ครั้งแรก (เผื่อ UI / sway)
         RefreshDerivedStats();
         magazine = Mathf.Clamp(magazine, 0, MaxMagazine);
     }
@@ -154,8 +143,6 @@ public class WeaponSystem : MonoBehaviour
         reloadRoutine = null;
     }
 
-    // ---------- Final stats getters ----------
-    
     int MaxMagazine =>
         statsHub ? statsHub.GetMaxMagazine(currentWeapon) :
         (currentWeapon ? currentWeapon.maxMagazine : 0);
@@ -183,7 +170,7 @@ public class WeaponSystem : MonoBehaviour
     float FinalBulletSpeed =>
         statsHub ? statsHub.GetBulletSpeed(currentWeapon) :
         (currentWeapon ? currentWeapon.BulletSpeed : 0f);
-    
+
     public float GetReloadAnimDuration()
     {
         if (reloadPerBullet)
@@ -194,13 +181,12 @@ public class WeaponSystem : MonoBehaviour
 
         return reloadTime;
     }
-    
 
     void RefreshDerivedStats()
     {
-        if (!currentWeapon) return;
+        if (!currentWeapon)
+            return;
 
-        // อัปเดตไว้ให้ดูใน inspector + ใช้จริง
         damage = FinalDamage;
         fireRate = FireInterval;
         critRate = FinalCritRate;
@@ -209,7 +195,6 @@ public class WeaponSystem : MonoBehaviour
         bulletSpeed = FinalBulletSpeed;
         maxMagazine = MaxMagazine;
 
-        // sway ควรผูกกับ stability (ถ้า stability โดนบัฟ/ดีบัฟได้)
         float k = 0.1f;
         float stabilityFactor = 1f / (1f + stability * k);
 
@@ -219,10 +204,9 @@ public class WeaponSystem : MonoBehaviour
     }
 
     public void SetFiring(bool value)
-    {   
-        _isFiringHeld =  value;
-        
-        // การหยุดยิง ต้องทำได้เสมอ
+    {
+        _isFiringHeld = value;
+
         if (!value)
         {
             isFiring = false;
@@ -233,7 +217,8 @@ public class WeaponSystem : MonoBehaviour
             return;
         }
 
-        if (!ctx.stateHub.CanShoot()) return;
+        if (!ctx.stateHub.CanShoot())
+            return;
 
         if (isReloading && shootInterruptsReload)
         {
@@ -245,8 +230,8 @@ public class WeaponSystem : MonoBehaviour
         switch (firingMode)
         {
             case FiringMode.Burst:
-                if (isReloading) return;
-                if (isBursting) return;
+                if (isReloading || isBursting)
+                    return;
 
                 isBursting = true;
                 isFiring = true;
@@ -266,87 +251,99 @@ public class WeaponSystem : MonoBehaviour
 
     void Update()
     {
-        // ถ้ามีบัฟ/ดีบัฟเปลี่ยนระหว่างเล่น ให้รีเฟรชค่าทุกเฟรม (ชัวร์สุด)
-        // ถ้าจะ optimize ทีหลัง ค่อยเปลี่ยนเป็น "dirty flag" จาก hub
-        
         RefreshDerivedStats();
 
-        if (firingMode == FiringMode.Auto && isFiring)
+        if (firingMode == FiringMode.Auto && isFiring && Time.time >= nextFireTime)
+            TryShoot();
+
+        if (!firePoint)
+            return;
+
+        if (isFiring && (firingMode == FiringMode.Auto || firingMode == FiringMode.Burst))
         {
-            if (Time.time >= nextFireTime)
-                TryShoot();
+            swayTimer += Time.deltaTime * swaySpeed;
+            float angle = Mathf.Sin(swayTimer) * maxSwayAngle;
+            firePoint.localRotation = firePointOriginalRot * Quaternion.Euler(0f, angle, 0f);
+            return;
         }
 
-        if (firePoint)
-        {
-            if (isFiring && (firingMode == FiringMode.Auto || firingMode == FiringMode.Burst))
-            {
-                swayTimer += Time.deltaTime * swaySpeed;
-                float angle = Mathf.Sin(swayTimer) * maxSwayAngle;
-                firePoint.localRotation = firePointOriginalRot * Quaternion.Euler(0f, angle, 0f);
-            }
-            else
-            {
-                swayTimer = Mathf.MoveTowards(swayTimer, 0f, Time.deltaTime * swaySpeed);
-                firePoint.localRotation = Quaternion.Lerp(
-                    firePoint.localRotation,
-                    firePointOriginalRot,
-                    Time.deltaTime * returnSpeed
-                );
-            }
-        }
+        swayTimer = Mathf.MoveTowards(swayTimer, 0f, Time.deltaTime * swaySpeed);
+        firePoint.localRotation = Quaternion.Lerp(
+            firePoint.localRotation,
+            firePointOriginalRot,
+            Time.deltaTime * returnSpeed);
     }
 
     public void TryShoot()
     {
-        
-        RefreshDerivedStats(); // กันกรณีเรียกจาก Semi/Burst เฟรมเดียวกัน
+        RefreshDerivedStats();
 
-        if (isReloading) return;
-        if (Time.time < nextFireTime) return;
+        if (isReloading || Time.time < nextFireTime)
+            return;
 
         if (magazine <= 0)
         {
-            if (autoloader) TryReload();
+            if (autoloader)
+                TryReload();
             return;
         }
 
-        if (!projectilePrefab || !firePoint) return;
+        if (!projectilePrefab || !firePoint)
+            return;
 
         nextFireTime = Time.time + fireRate;
 
         magazine--;
         ctx.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
 
+        string weaponSourceId = GetWeaponSourceId();
+        string attackId = combatEventBus != null ? combatEventBus.CreateAttackId(weaponSourceId) : null;
+        PassiveEventContext shotContext = combatEventBus != null
+            ? combatEventBus.CreateExternalContext(
+                PassiveEventType.ShotFired,
+                gameObject,
+                null,
+                weaponSourceId,
+                attackId,
+                damage)
+            : default;
+
         var go = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
-        var p = go.GetComponent<Projectile>();
+        var projectile = go.GetComponent<Projectile>();
+        var prefabComp = projectilePrefab.GetComponent<Projectile>();
 
-        p.gunType = gunType;
-        p.critRate = critRate;
-        p.critMult = critMultiplier;
+        projectile.gunType = gunType;
+        projectile.critRate = critRate;
+        projectile.critMult = critMultiplier;
 
-        Projectile prefabComp = projectilePrefab.GetComponent<Projectile>();
-
-        p.Init(projectileConfig, new ProjectileContext
+        projectile.Init(projectileConfig, new ProjectileContext
         {
             owner = transform.root,
             dir = firePoint.forward,
             stats = new ProjectileStats { damage = damage, speed = bulletSpeed },
+            sourceId = weaponSourceId,
+            attackId = attackId,
+            chainId = shotContext.ChainId,
+            depth = shotContext.Depth,
+            origin = combatEventBus != null ? shotContext.Origin : PassiveEventOrigin.External,
+            originPassiveId = shotContext.OriginPassiveId,
+            originRuleId = shotContext.OriginRuleId,
             projectilePrefab = prefabComp
         });
-        
+
         ctx.stateHub.ReportShotFired();
+        if (combatEventBus != null)
+            combatEventBus.Publish(shotContext);
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnShotFired, gameObject);
-        
+
         if (magazine <= 0 && autoloader)
-        {
             TryReload();
-        }
-        
     }
+
     public void CancelReload()
     {
-        if (!isReloading) return;
+        if (!isReloading)
+            return;
 
         if (reloadRoutine != null)
         {
@@ -355,8 +352,6 @@ public class WeaponSystem : MonoBehaviour
         }
 
         isReloading = false;
-
-        // กันสถานะค้าง
         isBursting = false;
 
         if (burstCo != null)
@@ -365,6 +360,7 @@ public class WeaponSystem : MonoBehaviour
             burstCo = null;
         }
     }
+
     public void TryReload()
     {
         RefreshDerivedStats();
@@ -372,18 +368,18 @@ public class WeaponSystem : MonoBehaviour
         isFiring = false;
         isBursting = false;
 
-        if (isReloading || magazine >= MaxMagazine) return;
+        if (isReloading || magazine >= MaxMagazine)
+            return;
 
-        if (reloadRoutine != null) StopCoroutine(reloadRoutine);
+        if (reloadRoutine != null)
+            StopCoroutine(reloadRoutine);
 
         if (reloadPerBullet)
         {
-          
             reloadRoutine = StartCoroutine(ReloadPerBulletRoutine());
         }
         else if (magazineRelode)
         {
-           
             reloadRoutine = StartCoroutine(ReloadFullMagRoutine());
         }
         else
@@ -394,7 +390,6 @@ public class WeaponSystem : MonoBehaviour
 
     IEnumerator ReloadPerBulletRoutine()
     {
-       
         isReloading = true;
 
         if (startInsertDelay > 0f)
@@ -407,8 +402,7 @@ public class WeaponSystem : MonoBehaviour
 
             magazine++;
             ctx.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
-          
-            
+
             if (perBulletInsertTime > 0f)
                 yield return new WaitForSeconds(perBulletInsertTime);
             else
@@ -417,11 +411,11 @@ public class WeaponSystem : MonoBehaviour
 
         if (endInsertDelay > 0f)
             yield return new WaitForSeconds(endInsertDelay);
-        
-       
+
         isReloading = false;
         reloadRoutine = null;
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnReload, gameObject);
+        PublishReloadEvent();
     }
 
     IEnumerator ReloadFullMagRoutine()
@@ -433,13 +427,13 @@ public class WeaponSystem : MonoBehaviour
         isReloading = false;
         reloadRoutine = null;
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnReload, gameObject);
+        PublishReloadEvent();
     }
 
     IEnumerator FireBurst()
     {
-        if (isReloading) yield break;
-
-        // isBursting ถูกตั้ง true แล้วจาก SetFiring()
+        if (isReloading)
+            yield break;
 
         int shots = burstCount;
 
@@ -464,4 +458,26 @@ public class WeaponSystem : MonoBehaviour
     }
 
     public void OnAim(bool value) => isAiming = value;
+
+    void PublishReloadEvent()
+    {
+        if (combatEventBus == null)
+            return;
+
+        var reloadContext = combatEventBus.CreateExternalContext(
+            PassiveEventType.Reload,
+            gameObject,
+            null,
+            GetWeaponSourceId(),
+            null,
+            magazine);
+
+        combatEventBus.Publish(reloadContext);
+    }
+
+    string GetWeaponSourceId()
+    {
+        string weaponName = currentWeapon ? currentWeapon.name : "weapon";
+        return $"weapon:{weaponName}";
+    }
 }

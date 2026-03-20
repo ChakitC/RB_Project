@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "Character Stats")]
@@ -36,6 +37,9 @@ public class CharacterStats : ScriptableObject
     public float CritDamageScaling;
     public float EnagyScaling;
     public float SpeedScaling;
+
+    [Header("Passives")]
+    public List<PassiveDefinition> passives = new();
     
     
 }

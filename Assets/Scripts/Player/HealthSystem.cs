@@ -4,73 +4,65 @@ using UnityEngine;
 using UnityEngine.UI;
 
 [DefaultExecutionOrder(-110)]
-public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractable, IHoldInteractable
+public class HealthSystem : MonoBehaviour, IDamageable, IDamageableWithContext, IHasArmor, IInteractable, IHoldInteractable
 {
-    
     [Header("References")]
     public CharacteContext CTX;
     [SerializeField] private StatsHub statsHub;
     [SerializeField] private StatusEffectController statusEffectController;
-    
+    [SerializeField] private CombatEventBus combatEventBus;
+
     [Header("Runtime")]
     [SerializeField] private float reviveTime = 2.0f;
-    
-    
 
     [Header("Runtime")]
     public float maximumHealth;
     public float currentHealth;
     public float DownTime = 15f;
-    private Coroutine downRoutine;
-    private float downTimeDefault;
-    
-    [SerializeField] private float cachedArmor; // ไว้โชว์/แคช แต่ค่าใช้งานจริงจะอ่านจาก hub
-    private bool invincible;
-    
-    private Coroutine dieRoutine;
+    Coroutine downRoutine;
+    float downTimeDefault;
+
+    [SerializeField] private float cachedArmor;
+    bool invincible;
+
+    Coroutine dieRoutine;
     float IHasArmor.Armor => GetFinalArmor();
 
     [Header("Health Bar")]
     public GameObject healthBarPrefab;
-    private Slider healthBarSlider;
+    Slider healthBarSlider;
     public float healthBarHight = 2f;
 
     [Header("Hub Sync")]
-    [Tooltip("ถ้า MaxHP/Armor เปลี่ยนระหว่างเล่น (เช่น บัฟ/ดีบัฟ) ให้ซิงก์ตาม Hub")]
     [SerializeField] private bool autoRefreshFromHub = true;
-
-    [Tooltip("ถ้า MaxHP เปลี่ยน ให้คง %HP เดิม เช่น 50/100 -> 75/150")]
     [SerializeField] private bool keepHealthPercentWhenMaxChanges = true;
-
     [SerializeField] private float refreshIntervalSeconds = 0.2f;
-    private float refreshTimer;
+    float refreshTimer;
 
     public event Action CharacterDead;
     public event Action CharacterDown;
     public event Action CharacterRevive;
-     public event Action ReturnbaseUI;
-    
-    
-     public bool IsAlive => currentHealth > 0f;
-     public bool IsDown => currentHealth <= 0f && DownTime > 0f;
-     public bool IsDead => currentHealth <= 0f && DownTime <= 0f;
-    
+    public event Action ReturnbaseUI;
+
+    public bool IsAlive => currentHealth > 0f;
+    public bool IsDown => currentHealth <= 0f && DownTime > 0f;
+    public bool IsDead => currentHealth <= 0f && DownTime <= 0f;
+
     void Start()
     {
         if (!CTX) CTX = GetComponent<CharacteContext>();
         if (!statsHub) statsHub = GetComponent<StatsHub>();
         if (!statusEffectController) statusEffectController = GetComponent<StatusEffectController>();
+        if (!combatEventBus) combatEventBus = GetComponent<CombatEventBus>();
+
         downTimeDefault = DownTime;
         if (!CTX)
         {
-            Debug.LogError("HealthSystem: ไม่มี CharactorConText บน GameObject นี้เลย");
+            Debug.LogError("HealthSystem: missing CharacteContext", this);
             return;
         }
 
-        // init จาก hub
         InitializeFromHub(resetCurrentToMax: true);
-
-        Debug.Log($"HealthSystem Init: HP={currentHealth}/{maximumHealth}, Armor={GetFinalArmor()}");
         CreateHealthBarIfNeeded();
         ApplyHealthBarValues();
         CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
@@ -78,8 +70,8 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
 
     void Update()
     {
-        
-        if (!autoRefreshFromHub || !statsHub) return;
+        if (!autoRefreshFromHub || !statsHub)
+            return;
 
         refreshTimer += Time.deltaTime;
         if (refreshTimer >= refreshIntervalSeconds)
@@ -88,61 +80,49 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
             RefreshFromHub();
         }
     }
-    
-    /// <summary>
-    /// ///// InterfaceImprement ////////////////////
-    /// </summary>
-    
+
     public int Priority => 100;
     public float HoldDuration => reviveTime;
     public string GetPrompt(Interactor i) => CanInteract(i) ? "Hold [F] to Revive" : "Can't revive";
+
     public bool CanInteract(Interactor i)
     {
-        if (i == null) return false;
-        if (CTX == null) return false;
-        if (CTX.stateHub == null) return false;
-        if (CTX.stateHub.LifeSM == null) return false;
+        if (i == null || CTX == null || CTX.stateHub == null || CTX.stateHub.LifeSM == null)
+            return false;
 
-        // เป้าหมายต้อง Down ก่อน
         if (CTX.stateHub.LifeSM.CurrentId != LifeStateId.Down)
             return false;
 
-        // ห้ามชุบตัวเอง
-        if (i.OwnerContext == CTX)
-            return false;
-
-        return true;
+        return i.OwnerContext != CTX;
     }
+
     public void Interact(Interactor i)
     {
-        Debug.Log($"Interactor '{i.name}' interacted with '{name}'");
         Revive();
     }
-    public void BeginHold(Interactor i) { /* เปิด UI/progress ได้ */           Debug.Log("BeginHold");                }
-    public void CancelHold(Interactor i) { /* ปิด UI/progress ได้ */             Debug.Log("CancelHold");                  }
-    public void CompleteHold(Interactor i) { /* จะให้เล่นเสียง/FX ก็ใส่ตรงนี้ */        Debug.Log("CompleteHold");                          }
-    
-    
-    /////////////////////////////////////////////////////////
-    
+
+    public void BeginHold(Interactor i) { }
+    public void CancelHold(Interactor i) { }
+    public void CompleteHold(Interactor i) { }
 
     void CreateHealthBarIfNeeded()
     {
-        if (!healthBarPrefab) return;
+        if (!healthBarPrefab)
+            return;
 
         var healthBarInstance = Instantiate(
             healthBarPrefab,
             transform.position + Vector3.up * healthBarHight,
             Quaternion.identity,
-            transform
-        );
+            transform);
 
         healthBarSlider = healthBarInstance.GetComponentInChildren<Slider>();
     }
 
     void ApplyHealthBarValues()
     {
-        if (!healthBarSlider) return;
+        if (!healthBarSlider)
+            return;
 
         healthBarSlider.maxValue = maximumHealth;
         healthBarSlider.value = currentHealth;
@@ -150,7 +130,6 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
 
     void InitializeFromHub(bool resetCurrentToMax)
     {
-        // อ่านค่าจาก Hub ก่อน ถ้าไม่มี Hub ให้ fallback
         float newMaximumHealth = statsHub ? statsHub.GetMaximumHealth() : CTX.basemaxHealth;
         float newArmor = statsHub ? statsHub.GetArmor() : CTX.basearmor;
 
@@ -158,13 +137,9 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
         cachedArmor = Mathf.Max(0f, newArmor);
 
         if (resetCurrentToMax)
-        {
             currentHealth = maximumHealth;
-        }
         else
-        {
             currentHealth = Mathf.Clamp(currentHealth, 0f, maximumHealth);
-        }
     }
 
     void RefreshFromHub()
@@ -172,21 +147,18 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
         float oldMaximumHealth = maximumHealth;
         float oldArmor = cachedArmor;
 
-        float newMaximumHealth = statsHub.GetMaximumHealth();
-        float newArmor = statsHub.GetArmor();
-
-        newMaximumHealth = Mathf.Max(1f, newMaximumHealth);
-        newArmor = Mathf.Max(0f, newArmor);
+        float newMaximumHealth = Mathf.Max(1f, statsHub.GetMaximumHealth());
+        float newArmor = Mathf.Max(0f, statsHub.GetArmor());
 
         bool maximumHealthChanged = !Mathf.Approximately(oldMaximumHealth, newMaximumHealth);
         bool armorChanged = !Mathf.Approximately(oldArmor, newArmor);
 
-        if (!maximumHealthChanged && !armorChanged) return;
+        if (!maximumHealthChanged && !armorChanged)
+            return;
 
-        // MaxHP เปลี่ยน: เลือกว่าจะคง % เดิมไหม
         if (maximumHealthChanged)
         {
-            float healthPercent = (oldMaximumHealth > 0f) ? (currentHealth / oldMaximumHealth) : 1f;
+            float healthPercent = oldMaximumHealth > 0f ? currentHealth / oldMaximumHealth : 1f;
             maximumHealth = newMaximumHealth;
 
             if (keepHealthPercentWhenMaxChanges)
@@ -196,9 +168,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
         }
 
         if (armorChanged)
-        {
             cachedArmor = newArmor;
-        }
 
         ApplyHealthBarValues();
         CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
@@ -206,53 +176,148 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
 
     float GetFinalArmor()
     {
-        // ค่าใช้งานจริงอ่านจาก Hub (ถ้ามี) เพื่อให้บัฟ/ดีบัฟสะท้อนทันที
-        if (statsHub) return Mathf.Max(0f, statsHub.GetArmor());
+        if (statsHub)
+            return Mathf.Max(0f, statsHub.GetArmor());
+
         return Mathf.Max(0f, cachedArmor);
     }
 
     public void SetInvincible(bool value) => invincible = value;
 
-    public void TakeDamage(float damage)
+    public virtual void TakeDamage(float damage)
     {
-        ApplyDamage(damage, null);
+        ApplyDamageInternal(Mathf.Max(0f, damage), null, false, default);
+    }
+
+    public virtual void TakeDamage(in DamageContext damageContext)
+    {
+        ApplyDamageInternal(Mathf.Max(0f, damageContext.Damage), damageContext.Attacker, true, damageContext);
     }
 
     protected void ApplyDamage(float damage, GameObject attacker)
     {
-        Debug.Log($"{name} TakeDamage({damage}) hpBefore={currentHealth}");
+        ApplyDamageInternal(Mathf.Max(0f, damage), attacker, false, default);
+    }
 
-        if (invincible) return;
-        if (CTX == null || CTX.stateHub == null || CTX.stateHub.LifeSM == null) return;
+    protected void ApplyDamage(in DamageContext damageContext)
+    {
+        ApplyDamageInternal(Mathf.Max(0f, damageContext.Damage), damageContext.Attacker, true, damageContext);
+    }
 
-        // กันไม่ให้โดนซ้ำตอน Down/Dead
+    void ApplyDamageInternal(float damage, GameObject attacker, bool hasContext, in DamageContext damageContext)
+    {
+        if (damage <= 0f)
+            return;
+
+        if (CTX == null || CTX.stateHub == null || CTX.stateHub.LifeSM == null)
+            return;
+
         if (CTX.stateHub.LifeSM.CurrentId == LifeStateId.Down ||
             CTX.stateHub.LifeSM.CurrentId == LifeStateId.Dead)
             return;
 
-        currentHealth = Mathf.Max(0f, currentHealth - Mathf.Max(0f, damage));
+        if (invincible)
+        {
+            var preventedContext = PublishDamageEvent(PassiveEventType.DamagePrevented, damage, attacker, hasContext, damageContext);
+            CTX.DashSystem?.TryRegisterPerfectDodge(in preventedContext);
+            return;
+        }
+
+        float healthBefore = currentHealth;
+        currentHealth = Mathf.Max(0f, currentHealth - damage);
+        float appliedDamage = Mathf.Max(0f, healthBefore - currentHealth);
+
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnTakeDamage, attacker);
+        PublishDamageEvent(PassiveEventType.TakeDamage, appliedDamage, attacker, hasContext, damageContext);
 
         CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
-
         if (healthBarSlider != null)
             healthBarSlider.value = currentHealth;
 
-        Debug.Log($"{name} hpAfter={currentHealth}");
-
         if (currentHealth <= 0f)
-        {
-            Debug.Log($"{name} HP <= 0 -> Down()");
             Down();
+    }
+
+    PassiveEventContext PublishDamageEvent(
+        PassiveEventType eventType,
+        float value,
+        GameObject attacker,
+        bool hasContext,
+        in DamageContext damageContext)
+    {
+        if (combatEventBus == null || eventType == PassiveEventType.None)
+            return default;
+
+        GameObject actorObject = gameObject;
+
+        if (hasContext)
+        {
+            if (damageContext.ChainId != 0)
+            {
+                var parent = new PassiveEventContext(
+                    PassiveEventType.None,
+                    actorObject,
+                    attacker,
+                    actorObject,
+                    damageContext.SourceId,
+                    damageContext.AttackId,
+                    value,
+                    Time.timeAsDouble,
+                    damageContext.ChainId,
+                    damageContext.Depth,
+                    damageContext.Origin,
+                    damageContext.OriginPassiveId,
+                    damageContext.OriginRuleId);
+
+                var child = combatEventBus.CreateChildContext(
+                    parent,
+                    eventType,
+                    attacker,
+                    actorObject,
+                    damageContext.SourceId,
+                    damageContext.AttackId,
+                    value,
+                    damageContext.Origin,
+                    damageContext.OriginPassiveId,
+                    damageContext.OriginRuleId);
+
+                combatEventBus.Publish(child);
+                return child;
+            }
+
+            var external = combatEventBus.CreateExternalContext(
+                eventType,
+                attacker,
+                actorObject,
+                damageContext.SourceId,
+                damageContext.AttackId,
+                value,
+                damageContext.Origin,
+                damageContext.OriginPassiveId,
+                damageContext.OriginRuleId);
+
+            combatEventBus.Publish(external);
+            return external;
         }
+
+        string fallbackSourceId = attacker != null ? $"attacker:{attacker.name}" : "damage";
+        var context = combatEventBus.CreateExternalContext(
+            eventType,
+            attacker,
+            actorObject,
+            fallbackSourceId,
+            null,
+            value,
+            PassiveEventOrigin.External);
+
+        combatEventBus.Publish(context);
+        return context;
     }
 
     public void Revive()
     {
-        
-        Debug.Log($"Revive called on '{name}'");
-        
-        if (!CTX.stateHub.Isdown) return;
+        if (!CTX.stateHub.Isdown)
+            return;
 
         if (downRoutine != null)
         {
@@ -269,7 +334,8 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
         DownTime = downTimeDefault;
         currentHealth = Mathf.Clamp(maximumHealth * 0.25f, 1f, maximumHealth);
 
-        if (CTX.cc) CTX.cc.enabled = true;
+        if (CTX.cc)
+            CTX.cc.enabled = true;
 
         ApplyHealthBarValues();
         CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
@@ -277,6 +343,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
         CTX.stateHub.LifeSM.TryChange(LifeStateId.Alive);
         CharacterRevive?.Invoke();
     }
+
     void Down()
     {
         DownTime = downTimeDefault;
@@ -284,19 +351,22 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
         CTX.stateHub.LifeSM.TryChange(LifeStateId.Down);
         CharacterDown?.Invoke();
 
-        if (downRoutine != null) StopCoroutine(downRoutine);
+        if (downRoutine != null)
+            StopCoroutine(downRoutine);
+
         downRoutine = StartCoroutine(DownCoroutine());
-        Debug.Log($"{name} has been Down!");
     }
 
     public virtual void Die()
     {
-        if (dieRoutine != null) return;
+        if (dieRoutine != null)
+            return;
 
         CTX.stateHub.LifeSM.TryChange(LifeStateId.Dead);
         CharacterDead?.Invoke();
 
-        if (CTX.cc) CTX.cc.enabled = false;
+        if (CTX.cc)
+            CTX.cc.enabled = false;
 
         dieRoutine = StartCoroutine(DieCoroutine());
     }
@@ -307,17 +377,15 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor , IInteractabl
         ReturnbaseUI?.Invoke();
         Destroy(gameObject);
     }
-    
+
     IEnumerator DownCoroutine()
     {
         while (DownTime > 0f)
         {
             DownTime = Mathf.Max(0f, DownTime - Time.deltaTime);
-            yield return null; 
+            yield return null;
         }
+
         Die();
     }
-
-
-
 }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 [DefaultExecutionOrder(-110)]
@@ -52,6 +53,9 @@ public class StatsHub : MonoBehaviour
     bool _isDirty = true;
     GunConfig _cachedWeapon;
 
+    readonly List<IStatModifierProvider> _modifierProviders = new();
+    readonly List<RuntimeStatModifier> _modifierBuffer = new();
+
     float _cachedDamage;
     float _cachedArmor;
     float _cachedMoveSpeed;
@@ -72,10 +76,12 @@ public class StatsHub : MonoBehaviour
         if (!ctx) TryGetComponent(out ctx);
         if (!weapon) TryGetComponent(out weapon);
         if (!statusEffectController) TryGetComponent(out statusEffectController);
+        RebuildModifierProviders();
     }
 
     void OnEnable()
     {
+        RebuildModifierProviders();
         _nextDebugRefreshTime = -1f;
         MarkDirty();
     }
@@ -107,6 +113,21 @@ public class StatsHub : MonoBehaviour
     public void MarkDirty()
     {
         _isDirty = true;
+    }
+
+    public void RebuildModifierProviders()
+    {
+        _modifierProviders.Clear();
+
+        var behaviours = GetComponents<MonoBehaviour>();
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            if (behaviours[i] == null || behaviours[i] == this)
+                continue;
+
+            if (behaviours[i] is IStatModifierProvider provider)
+                _modifierProviders.Add(provider);
+        }
     }
 
     void RefreshDebug(GunConfig w)
@@ -200,39 +221,39 @@ public class StatsHub : MonoBehaviour
         float addPercent = 0f;
         float multiply = 1f;
 
-        if (statusEffectController != null && statusEffectController.isActiveAndEnabled)
+        if (_modifierProviders.Count == 0)
+            RebuildModifierProviders();
+
+        _modifierBuffer.Clear();
+
+        for (int i = 0; i < _modifierProviders.Count; i++)
         {
-            var activeEffects = statusEffectController.ActiveEffects;
-            for (int i = 0; i < activeEffects.Count; i++)
+            var provider = _modifierProviders[i];
+            if (provider == null)
+                continue;
+
+            provider.AppendStatModifiers(_modifierBuffer);
+        }
+
+        for (int i = 0; i < _modifierBuffer.Count; i++)
+        {
+            var modifier = _modifierBuffer[i];
+            if (modifier.StatType != statType)
+                continue;
+
+            switch (modifier.Operation)
             {
-                var instance = activeEffects[i];
-                var definition = instance?.Definition;
-                if (definition == null || instance.CurrentStacks <= 0 || definition.modifiers == null)
-                    continue;
+                case ModifierOp.Flat:
+                    flat += modifier.Value;
+                    break;
 
-                for (int j = 0; j < definition.modifiers.Count; j++)
-                {
-                    var modifier = definition.modifiers[j];
-                    if (modifier == null || modifier.statType != statType)
-                        continue;
+                case ModifierOp.AddPercent:
+                    addPercent += modifier.Value;
+                    break;
 
-                    float scaledValue = modifier.value * instance.CurrentStacks;
-
-                    switch (modifier.operation)
-                    {
-                        case ModifierOp.Flat:
-                            flat += scaledValue;
-                            break;
-
-                        case ModifierOp.AddPercent:
-                            addPercent += scaledValue;
-                            break;
-
-                        case ModifierOp.Multiply:
-                            multiply *= Mathf.Max(0f, 1f + scaledValue);
-                            break;
-                    }
-                }
+                case ModifierOp.Multiply:
+                    multiply *= Mathf.Max(0f, 1f + modifier.Value);
+                    break;
             }
         }
 

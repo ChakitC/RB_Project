@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8d1e08d93db328428ab5893f0dc770a, type: 3}
+  m_Name: Test Passive Shot ++ MaxHp
+  m_EditorClassIdentifier: 
+  passiveId: 
+  description: 
+  rules:
+  - ruleId: rule
+    trigger: 1
+    originFilter: 2
+    requiredCount: 1
+    countWindowSeconds: 0
+    cooldownSeconds: 0
+    counterConsumeMode: 0
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    actions:
+    - actionId: action
+      actionType: 1
+      targetSelector: 0
+      sourceIdOverride: 
+      modifiers:
+      - statType: 11
+        operation: 0
+        value: 10
+      grantedStacks: 1
+      maxStacks: 100
+      durationSeconds: 10
+      stackPolicy: 1
+      statusEffect: {fileID: 0}
+      statusInitialStacks: 1
+      emittedEventType: 1
+      emittedValue: 1

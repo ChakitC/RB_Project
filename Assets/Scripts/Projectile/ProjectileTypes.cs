@@ -24,9 +24,14 @@ public struct ProjectileStats
 public struct ProjectileContext
 {
     public Transform owner;
-    public Vector3 dir;                  // normalized
+    public Vector3 dir;
     public ProjectileStats stats;
-
-    // ใช้สำหรับแตกย่อย spawn ลูก
-    public Projectile  projectilePrefab;
+    public string sourceId;
+    public string attackId;
+    public ulong chainId;
+    public int depth;
+    public PassiveEventOrigin origin;
+    public string originPassiveId;
+    public string originRuleId;
+    public Projectile projectilePrefab;
 }

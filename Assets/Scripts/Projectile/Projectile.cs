@@ -175,6 +175,9 @@ public class Projectile : MonoBehaviour
                 damage = (skillStats != null) ? skillStats.damage : 0f,
                 speed  = (def != null) ? def.projectileSpeed : 20f
             },
+            sourceId = def != null ? $"skill:{def.name}" : "skill",
+            chainId = CombatEventBus.NextChainId(),
+            origin = PassiveEventOrigin.External,
             projectilePrefab = prefabProjectileForChildren != null ? prefabProjectileForChildren : this
         };
 
@@ -331,13 +334,10 @@ public class Projectile : MonoBehaviour
 
             var attackerGO = _ctx.owner != null ? _ctx.owner.gameObject : null;
 
-            if (target is IDamageableWithSource d2)
-                d2.TakeDamage(finalDamage, attackerGO);
-            else
-                target.TakeDamage(finalDamage);
+            ApplyDamageToTarget(target, finalDamage, attackerGO);
 
             NotifyDamageApplied(hit, target);
-            NotifyOwnerCombatTriggers(target);
+            NotifyOwnerCombatTriggers(target, finalDamage);
         }
         else if (hitWall)
         {
@@ -401,10 +401,7 @@ public class Projectile : MonoBehaviour
 
             var attackerGO = _ctx.owner != null ? _ctx.owner.gameObject : null;
 
-            if (dmg is IDamageableWithSource d2)
-                d2.TakeDamage(finalDamage, attackerGO);
-            else
-                dmg.TakeDamage(finalDamage);
+            ApplyDamageToTarget(dmg, finalDamage, attackerGO);
 
             Vector3 hitPoint = h.ClosestPoint(transform.position);
             Vector3 hitNormal = (hitPoint - transform.position);
@@ -415,7 +412,7 @@ public class Projectile : MonoBehaviour
 
             var hit = new ProjectileHitInfo(hitPoint, hitNormal, h);
             NotifyDamageApplied(hit, dmg);
-            NotifyOwnerCombatTriggers(dmg);
+            NotifyOwnerCombatTriggers(dmg, finalDamage);
         }
     }
 
@@ -493,21 +490,33 @@ public class Projectile : MonoBehaviour
 #endif
     }
 
-    void NotifyOwnerCombatTriggers(IDamageable target)
+    void NotifyOwnerCombatTriggers(IDamageable target, float finalDamage)
     {
         if (target == null || _ctx.owner == null)
             return;
 
         var ownerStatusController = _ctx.owner.GetComponent<StatusEffectController>();
-        if (ownerStatusController == null)
-            return;
-
         Component targetComponent = target as Component;
         GameObject targetObject = targetComponent != null ? targetComponent.gameObject : null;
-        ownerStatusController.NotifyTrigger(EffectTriggerType.OnHit, targetObject);
+        ownerStatusController?.NotifyTrigger(EffectTriggerType.OnHit, targetObject);
+
+        var ownerEventBus = _ctx.owner.GetComponent<CombatEventBus>();
+        if (ownerEventBus != null)
+        {
+            var hitContext = CreateOwnerEventContext(ownerEventBus, PassiveEventType.Hit, targetObject, finalDamage);
+            ownerEventBus.Publish(hitContext);
+        }
 
         if (!target.IsAlive)
-            ownerStatusController.NotifyTrigger(EffectTriggerType.OnKill, targetObject);
+        {
+            ownerStatusController?.NotifyTrigger(EffectTriggerType.OnKill, targetObject);
+
+            if (ownerEventBus != null)
+            {
+                var killContext = CreateOwnerEventContext(ownerEventBus, PassiveEventType.Kill, targetObject, finalDamage);
+                ownerEventBus.Publish(killContext);
+            }
+        }
     }
 
     public Projectile SpawnChild(ProjectileConfig childCfg, Vector3 pos, Vector3 dir, float dmgMul, float spdMul)
@@ -557,5 +566,72 @@ public class Projectile : MonoBehaviour
     public void IgnoreTarget(IDamageable target)
     {
         if (target is Component c) IgnoreRoot(c.transform.root);
+    }
+
+    void ApplyDamageToTarget(IDamageable target, float finalDamage, GameObject attackerGO)
+    {
+        var damageContext = new DamageContext(
+            finalDamage,
+            attackerGO,
+            _ctx.sourceId,
+            _ctx.attackId,
+            _ctx.chainId == 0 ? CombatEventBus.NextChainId() : _ctx.chainId,
+            _ctx.depth + 1,
+            _ctx.origin,
+            _ctx.originPassiveId,
+            _ctx.originRuleId);
+
+        if (target is IDamageableWithContext damageableWithContext)
+            damageableWithContext.TakeDamage(in damageContext);
+        else if (target is IDamageableWithSource damageableWithSource)
+            damageableWithSource.TakeDamage(finalDamage, attackerGO);
+        else
+            target.TakeDamage(finalDamage);
+    }
+
+    PassiveEventContext CreateOwnerEventContext(CombatEventBus ownerEventBus, PassiveEventType type, GameObject targetObject, float value)
+    {
+        GameObject sourceObject = _ctx.owner != null ? _ctx.owner.gameObject : gameObject;
+
+        if (_ctx.chainId != 0)
+        {
+            var parent = new PassiveEventContext(
+                PassiveEventType.None,
+                sourceObject,
+                sourceObject,
+                targetObject,
+                _ctx.sourceId,
+                _ctx.attackId,
+                value,
+                Time.timeAsDouble,
+                _ctx.chainId,
+                _ctx.depth,
+                _ctx.origin,
+                _ctx.originPassiveId,
+                _ctx.originRuleId);
+
+            return ownerEventBus.CreateChildContext(
+                parent,
+                type,
+                sourceObject,
+                targetObject,
+                _ctx.sourceId,
+                _ctx.attackId,
+                value,
+                _ctx.origin,
+                _ctx.originPassiveId,
+                _ctx.originRuleId);
+        }
+
+        return ownerEventBus.CreateExternalContext(
+            type,
+            sourceObject,
+            targetObject,
+            _ctx.sourceId,
+            _ctx.attackId,
+            value,
+            _ctx.origin,
+            _ctx.originPassiveId,
+            _ctx.originRuleId);
     }
 }

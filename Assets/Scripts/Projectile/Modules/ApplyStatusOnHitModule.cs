@@ -39,7 +39,16 @@ public sealed class ApplyStatusOnHitModule : ProjectileModule
             if (application.chance < 1f && UnityEngine.Random.value > application.chance)
                 continue;
 
-            controller.ApplyEffect(application.effect, source, application.initialStacks);
+            controller.ApplyEffect(
+                application.effect,
+                source,
+                application.initialStacks,
+                ctx.sourceId,
+                ctx.chainId,
+                ctx.depth + 1,
+                ctx.origin,
+                ctx.originPassiveId,
+                ctx.originRuleId);
         }
     }
 }

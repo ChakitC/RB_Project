@@ -10,6 +10,7 @@ public abstract class CharacteContext : MonoBehaviour
     [Header("Core")] 
     public StateHub stateHub;
     public StatsHub StatsHub;
+    public CombatEventBus CombatEventBus;
     public Rigidbody rb;
     public CharacterController cc;
     
@@ -30,6 +31,7 @@ public abstract class CharacteContext : MonoBehaviour
     public HealthSystem HealthSystem;
     public StaminaSystem StaminaSystem;
     public DashSystem DashSystem;
+    public PassiveController PassiveController;
     public SkillUserSystem EnegySystem;
     public Interactor Interactor;
     
@@ -65,6 +67,11 @@ public abstract class CharacteContext : MonoBehaviour
             return Mathf.Max(0f, SpeedDown);
 
         return moveSpeed;
+    }
+
+    public virtual bool ShouldBeInMoveState()
+    {
+        return cc != null && MoveCheck.IsMoveIntent(this);
     }
 
     

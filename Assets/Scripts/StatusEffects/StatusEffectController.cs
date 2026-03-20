@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [DefaultExecutionOrder(-115)]
-public sealed class StatusEffectController : MonoBehaviour
+public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvider
 {
     [Header("Refs")]
     [SerializeField] private CharacteContext ctx;
@@ -58,6 +58,31 @@ public sealed class StatusEffectController : MonoBehaviour
 
     public StatusEffectInstance ApplyEffect(StatusEffectDef definition, GameObject source = null, int initialStacks = 1)
     {
+        string sourceId = definition != null && !string.IsNullOrWhiteSpace(definition.effectId)
+            ? definition.effectId
+            : null;
+
+        return ApplyEffect(
+            definition,
+            source,
+            initialStacks,
+            sourceId,
+            0,
+            0,
+            PassiveEventOrigin.External);
+    }
+
+    public StatusEffectInstance ApplyEffect(
+        StatusEffectDef definition,
+        GameObject source,
+        int initialStacks,
+        string sourceId,
+        ulong chainId,
+        int depth,
+        PassiveEventOrigin origin,
+        string originPassiveId = null,
+        string originRuleId = null)
+    {
         if (definition == null)
             return null;
 
@@ -66,7 +91,7 @@ public sealed class StatusEffectController : MonoBehaviour
 
         if (definition.stackMode == StackMode.IndependentInstances)
         {
-            var instance = CreateInstance(definition, source, clampedStacks, now);
+            var instance = CreateInstance(definition, source, clampedStacks, now, sourceId, chainId, depth, origin, originPassiveId, originRuleId);
             _activeEffects.Add(instance);
             NotifyEffectsChanged();
             return instance;
@@ -75,13 +100,14 @@ public sealed class StatusEffectController : MonoBehaviour
         var existing = FindActiveEffect(definition);
         if (existing == null)
         {
-            existing = CreateInstance(definition, source, clampedStacks, now);
+            existing = CreateInstance(definition, source, clampedStacks, now, sourceId, chainId, depth, origin, originPassiveId, originRuleId);
             _activeEffects.Add(existing);
             NotifyEffectsChanged();
             return existing;
         }
 
         existing.UpdateSource(source);
+        existing.UpdateContext(sourceId, chainId, depth, origin, originPassiveId, originRuleId);
 
         switch (definition.stackMode)
         {
@@ -274,20 +300,53 @@ public sealed class StatusEffectController : MonoBehaviour
         if (targetDamageable == null || !targetDamageable.IsAlive)
             return;
 
-        if (targetDamageable is IDamageableWithSource withSource && instance.Source != null)
+        var damageContext = new DamageContext(
+            damage,
+            instance.Source,
+            instance.SourceId,
+            definition.effectId,
+            instance.ChainId == 0 ? CombatEventBus.NextChainId() : instance.ChainId,
+            instance.Depth + 1,
+            PassiveEventOrigin.StatusEffect,
+            instance.OriginPassiveId,
+            instance.OriginRuleId);
+
+        if (targetDamageable is IDamageableWithContext withContext)
+            withContext.TakeDamage(in damageContext);
+        else if (targetDamageable is IDamageableWithSource withSource && instance.Source != null)
             withSource.TakeDamage(damage, instance.Source);
         else
             targetDamageable.TakeDamage(damage);
     }
 
-    StatusEffectInstance CreateInstance(StatusEffectDef definition, GameObject source, int initialStacks, float now)
+    StatusEffectInstance CreateInstance(
+        StatusEffectDef definition,
+        GameObject source,
+        int initialStacks,
+        float now,
+        string sourceId,
+        ulong chainId,
+        int depth,
+        PassiveEventOrigin origin,
+        string originPassiveId,
+        string originRuleId)
     {
         int startingStacks = definition.stackMode == StackMode.RefreshDuration ||
                              definition.stackMode == StackMode.StrongestOnly
             ? Mathf.Clamp(initialStacks <= 0 ? 1 : initialStacks, 0, definition.ClampedMaxStacks)
             : Mathf.Clamp(initialStacks, 0, definition.ClampedMaxStacks);
 
-        return new StatusEffectInstance(definition, source, startingStacks, now);
+        return new StatusEffectInstance(
+            definition,
+            source,
+            startingStacks,
+            now,
+            sourceId,
+            chainId,
+            depth,
+            origin,
+            originPassiveId,
+            originRuleId);
     }
 
     int ResolveRuleMaxStacks(StatusEffectDef definition, StatusEffectTriggerRule rule)
@@ -320,6 +379,37 @@ public sealed class StatusEffectController : MonoBehaviour
         SyncControlState();
         RefreshDebugSnapshot();
         EffectsChanged?.Invoke();
+    }
+
+    public void AppendStatModifiers(List<RuntimeStatModifier> buffer)
+    {
+        if (buffer == null || _activeEffects.Count == 0)
+            return;
+
+        for (int i = 0; i < _activeEffects.Count; i++)
+        {
+            var instance = _activeEffects[i];
+            var definition = instance?.Definition;
+            if (definition == null || instance.CurrentStacks <= 0 || definition.modifiers == null)
+                continue;
+
+            string sourceId = !string.IsNullOrWhiteSpace(instance.SourceId)
+                ? instance.SourceId
+                : definition.effectId;
+
+            for (int j = 0; j < definition.modifiers.Count; j++)
+            {
+                var modifier = definition.modifiers[j];
+                if (modifier == null)
+                    continue;
+
+                buffer.Add(new RuntimeStatModifier(
+                    modifier.statType,
+                    modifier.operation,
+                    modifier.value * instance.CurrentStacks,
+                    sourceId));
+            }
+        }
     }
 
     void SyncControlState()

@@ -5,10 +5,26 @@ public sealed class StatusEffectInstance
 {
     readonly int[] _triggerCounters;
 
-    public StatusEffectInstance(StatusEffectDef definition, GameObject source, int initialStacks, float now)
+    public StatusEffectInstance(
+        StatusEffectDef definition,
+        GameObject source,
+        int initialStacks,
+        float now,
+        string sourceId,
+        ulong chainId,
+        int depth,
+        PassiveEventOrigin origin,
+        string originPassiveId,
+        string originRuleId)
     {
         Definition = definition;
         Source = source;
+        SourceId = sourceId;
+        ChainId = chainId;
+        Depth = Mathf.Max(0, depth);
+        Origin = origin;
+        OriginPassiveId = originPassiveId;
+        OriginRuleId = originRuleId;
         CurrentStacks = Mathf.Max(0, initialStacks);
         TimeLeft = definition != null && !definition.IsPermanent ? definition.duration : float.PositiveInfinity;
         NextTickTime = definition != null && definition.tickInterval > 0f
@@ -22,6 +38,12 @@ public sealed class StatusEffectInstance
 
     public StatusEffectDef Definition { get; }
     public GameObject Source { get; private set; }
+    public string SourceId { get; private set; }
+    public ulong ChainId { get; private set; }
+    public int Depth { get; private set; }
+    public PassiveEventOrigin Origin { get; private set; }
+    public string OriginPassiveId { get; private set; }
+    public string OriginRuleId { get; private set; }
     public int CurrentStacks { get; private set; }
     public float TimeLeft { get; private set; }
     public float NextTickTime { get; private set; }
@@ -31,6 +53,30 @@ public sealed class StatusEffectInstance
     {
         if (source != null)
             Source = source;
+    }
+
+    public void UpdateContext(
+        string sourceId,
+        ulong chainId,
+        int depth,
+        PassiveEventOrigin origin,
+        string originPassiveId,
+        string originRuleId)
+    {
+        if (!string.IsNullOrWhiteSpace(sourceId))
+            SourceId = sourceId;
+
+        if (chainId != 0)
+            ChainId = chainId;
+
+        Depth = Mathf.Max(0, depth);
+        Origin = origin;
+
+        if (!string.IsNullOrWhiteSpace(originPassiveId))
+            OriginPassiveId = originPassiveId;
+
+        if (!string.IsNullOrWhiteSpace(originRuleId))
+            OriginRuleId = originRuleId;
     }
 
     public void RefreshDuration()

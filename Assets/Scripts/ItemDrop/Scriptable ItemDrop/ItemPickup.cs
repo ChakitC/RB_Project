@@ -4,20 +4,33 @@ public class ItemPickup : MonoBehaviour
 {
     public ItemDefinition item;
     public int amount = 1;
+    [SerializeField] private WeaponInstanceData weaponInstance;
 
-    private void OnTriggerEnter(Collider other)
+    public WeaponInstanceData WeaponInstance => weaponInstance;
+
+    public void SetWeaponInstance(WeaponInstanceData instance)
+    {
+        weaponInstance = instance != null ? instance.DeepClone() : null;
+        if (weaponInstance != null)
+            amount = 1;
+    }
+
+    void OnTriggerEnter(Collider other)
     {
         var inventory = other.GetComponent<PlayerInventory>();
-        if (inventory == null) return;
+        if (inventory == null)
+            return;
 
-        if (inventory.AddItem(item, amount))
+        bool pickedUp = weaponInstance != null
+            ? inventory.AddWeaponInstance(weaponInstance)
+            : inventory.AddItem(item, amount);
+
+        if (pickedUp)
         {
-            // เก็บสำเร็จ → ลบ object ทิ้ง
             Destroy(gameObject);
         }
         else
         {
-            // กระเป๋าเต็ม
             Debug.Log("Cannot pick up item, inventory full.");
         }
     }

@@ -30,6 +30,12 @@ public class InventoryEditor : Editor
             {
                 text = $"Slot {i}: (empty)";
             }
+            else if (slot.HasWeaponInstance && slot.weaponInstance != null)
+            {
+                string name = slot.item != null ? slot.item.displayName : slot.weaponInstance.baseWeaponId;
+                string rarity = slot.weaponInstance.rarity.ToString();
+                text = $"Slot {i}: {name} [{rarity}] id={slot.weaponInstance.instanceId}";
+            }
             else
             {
                 string name = slot.item != null ? slot.item.displayName : "(null item)";

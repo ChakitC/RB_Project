@@ -6,21 +6,20 @@ public class InventorySlotData
 {
     public string itemId;
     public int amount;
-    
+    public WeaponInstanceData weaponInstance;
 }
 
 [Serializable]
 public class PlayerInventoryData
 {
     public int gold;
-    public List<InventorySlotData> slots = new List<InventorySlotData>();
-    
+    public List<InventorySlotData> slots = new();
 }
 
 [Serializable]
 public class PlayerWeaponData
 {
-    public float damage;
+    public string equippedWeaponInstanceId;
 }
 
 [Serializable]
@@ -28,8 +27,6 @@ public class PartyData
 {
     public List<string> partyIds = new();
 }
-
-
 
 #region CharacterProgressData
 
@@ -55,4 +52,3 @@ public class CharacterProgressSaveFile
 }
 
 #endregion
-

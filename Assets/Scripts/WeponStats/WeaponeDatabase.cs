@@ -19,39 +19,39 @@ public class WeaponDatabase : ScriptableObject
     {
         _lookup = new Dictionary<string, GunConfig>();
 
-        foreach (var w in weapons)
+        foreach (var weapon in weapons)
         {
-            if (!w) continue;
+            if (!weapon)
+                continue;
 
-            // ใช้ itemId จาก ItemDefinition
-            var id = w.itemId;
-
+            string id = ResolveWeaponId(weapon);
             if (string.IsNullOrWhiteSpace(id))
             {
-                Debug.LogWarning($"[WeaponDatabase] Missing itemId: {w.name}", this);
+                Debug.LogWarning($"[WeaponDatabase] Missing weapon id: {weapon.name}", this);
                 continue;
             }
 
             if (_lookup.ContainsKey(id))
             {
-                Debug.LogWarning($"[WeaponDatabase] Duplicate itemId: {id} ({w.name})", this);
+                Debug.LogWarning($"[WeaponDatabase] Duplicate weapon id: {id} ({weapon.name})", this);
                 continue;
             }
 
-            // กันพลาด: ถ้าเผลอใส่ itemType ไม่ใช่ Weapon
-            if (w.itemType != ItemType.Weapon)
-            {
-                Debug.LogWarning($"[WeaponDatabase] itemType is not Weapon: {id} ({w.itemType})", this);
-            }
+            if (weapon.itemType != ItemType.Weapon)
+                Debug.LogWarning($"[WeaponDatabase] itemType is not Weapon: {id} ({weapon.itemType})", this);
 
-            _lookup.Add(id, w);
+            _lookup.Add(id, weapon);
         }
     }
 
     public GunConfig GetById(string id)
     {
-        if (string.IsNullOrWhiteSpace(id)) return null;
-        if (_lookup == null) BuildLookup();
+        if (string.IsNullOrWhiteSpace(id))
+            return null;
+
+        if (_lookup == null)
+            BuildLookup();
+
         _lookup.TryGetValue(id, out var def);
         return def;
     }
@@ -59,16 +59,35 @@ public class WeaponDatabase : ScriptableObject
     public bool TryGetById(string id, out GunConfig def)
     {
         def = null;
-        if (string.IsNullOrWhiteSpace(id)) return false;
-        if (_lookup == null) BuildLookup();
+
+        if (string.IsNullOrWhiteSpace(id))
+            return false;
+
+        if (_lookup == null)
+            BuildLookup();
+
         return _lookup.TryGetValue(id, out def);
     }
 
-    // optional: เอาไว้เช็คว่ามี id นี้ไหม
     public bool Contains(string id)
     {
-        if (string.IsNullOrWhiteSpace(id)) return false;
-        if (_lookup == null) BuildLookup();
+        if (string.IsNullOrWhiteSpace(id))
+            return false;
+
+        if (_lookup == null)
+            BuildLookup();
+
         return _lookup.ContainsKey(id);
+    }
+
+    static string ResolveWeaponId(GunConfig weapon)
+    {
+        if (!weapon)
+            return null;
+
+        if (!string.IsNullOrWhiteSpace(weapon.itemId))
+            return weapon.itemId;
+
+        return weapon.name;
     }
 }

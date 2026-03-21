@@ -6,24 +6,25 @@ public class EnemyDropper : MonoBehaviour
 
     public void DropItem()
     {
-        // STEP 1: roll ว่าดรอปมั้ย
         if (!DropLogic.RollDrop(profile.dropChance))
             return;
 
-        // STEP 2: roll rarity
         ItemRarity rarity = DropLogic.RollRarity(profile.rarityTable);
-
-        // STEP 3: เลือก pool จาก rarity
         DropTable pool = DropLogic.GetPoolFromProfile(profile, rarity);
-
-        // STEP 4: สุ่มไอเทมจริง
         GameObject itemPrefab = DropLogic.RollItemFromPool(pool);
 
-        if (itemPrefab != null)
-            Instantiate(itemPrefab, transform.position, Quaternion.identity);
-        else
+        if (itemPrefab == null)
         {
             Debug.Log("No item Prefab found");
+            return;
         }
+
+        if (ItemDropManager.Instance != null)
+        {
+            ItemDropManager.Instance.DropPickup(itemPrefab, transform.position, WeaponRarityUtility.FromItemRarity(rarity));
+            return;
+        }
+
+        Instantiate(itemPrefab, transform.position, Quaternion.identity);
     }
 }

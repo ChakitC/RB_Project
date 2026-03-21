@@ -310,6 +310,7 @@ public class Projectile : MonoBehaviour
 
             ApplyAreaDamage();
             SpawnHitVfx(transform.position, -_ctx.dir);
+            PlayHitCue(transform.position);
 
             var hitInfo = new ProjectileHitInfo(transform.position, -_ctx.dir, other);
             NotifyHit(hitInfo, target);
@@ -331,6 +332,7 @@ public class Projectile : MonoBehaviour
             
             SpawnDamageNumber(transform.position, finalDamage);
             SpawnHitVfx(transform.position, -transform.forward);
+            PlayHitCue(transform.position);
 
             var attackerGO = _ctx.owner != null ? _ctx.owner.gameObject : null;
 
@@ -342,6 +344,7 @@ public class Projectile : MonoBehaviour
         else if (hitWall)
         {
             SpawnHitVfx(transform.position, -transform.forward);
+            PlayHitCue(transform.position);
         }
 
         if ((target != null && despawnOnHitDamageable) ||
@@ -464,6 +467,14 @@ public class Projectile : MonoBehaviour
         var vfx = Instantiate(ballVfxPrefab, transform.position, Quaternion.identity, transform);
         if (vfxScale != 1f)
             vfx.transform.localScale *= vfxScale;
+    }
+
+    void PlayHitCue(Vector3 hitPosition)
+    {
+        if (_ctx.hitCue == null)
+            return;
+
+        AudioService.Instance.PlayAtPosition(_ctx.hitCue, hitPosition);
     }
 
     float DistanceFromSpawn() => Vector3.Distance(_spawnPos, transform.position);

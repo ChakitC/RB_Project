@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c7a6c787fa236a740b3dc1e228e0b8d1, type: 3}
-  m_Name: Basement AudioCue
+  m_Name: Smg_Roma_Hit Cue
   m_EditorClassIdentifier: 
-  cueId: Basement.Song
-  category: 2
-  loop: 1
-  spatialBlend: 0
-  followTarget: 0
+  cueId: sfx_Hit.RomaGun
+  category: 0
+  loop: 0
+  spatialBlend: 1
+  followTarget: 1
   stereoPan: 0
   priority: 128
   minDistance: 1
-  maxDistance: 25
+  maxDistance: 150
   dopplerLevel: 1
   rolloffMode: 0
   baseVolume: 1
@@ -29,10 +29,18 @@ MonoBehaviour:
   randomPitchMultiplier: {x: 1, y: 1}
   avoidImmediateRepeats: 1
   variations:
-  - clip: {fileID: 8300000, guid: 0000bd7920b449248bb0414e52a10475, type: 3}
+  - clip: {fileID: 8300000, guid: f2665658a8483164f9363bfefa638785, type: 3}
     weight: 0
-    volumeMultiplier: 0.5
+    volumeMultiplier: 0
+    pitchMultiplier: 0
+  - clip: {fileID: 8300000, guid: 72bdb2c7e19c56144928cede650620a5, type: 3}
+    weight: 0
+    volumeMultiplier: 0
+    pitchMultiplier: 0
+  - clip: {fileID: 8300000, guid: 15f892de16c6c4543a23c07c65cafc6a, type: 3}
+    weight: 0
+    volumeMultiplier: 0
     pitchMultiplier: 0
   cooldown: 0
   maxInstances: 0
-  stopOldestInstanceWhenLimitReached: 1
+  stopOldestInstanceWhenLimitReached: 0

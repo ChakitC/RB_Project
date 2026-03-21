@@ -15,6 +15,7 @@ public class PlayerMovementCC : MonoBehaviour
     [SerializeField, Range(0.1f, 1f)] float aimSpeedMult = 0.8f;
     [SerializeField, Range(0.1f, 1f)] float fireSpeedMult = 0.65f;
     [SerializeField, Range(0.1f, 1f)] float backwardSpeedMult = 0.6f;
+    [SerializeField, Range(0.1f, 1f)] float strafeSpeedMult = 0.75f;
     [SerializeField] float speedLerp = 12f;
 
     [SerializeField] LayerMask groundMask = ~0;
@@ -111,12 +112,25 @@ public class PlayerMovementCC : MonoBehaviour
 
         float baseMoveSpeed = GetBaseMoveSpeedFromHubOrFallback();
         float targetSpeed = baseMoveSpeed;
+        float directionalSpeedMult = 1f;
 
         if (moveLocal3.z < 0f)
         {
             float backwardAmount = Mathf.Clamp01(-moveLocal3.z);
-            targetSpeed *= Mathf.Lerp(1f, backwardSpeedMult, backwardAmount);
+            directionalSpeedMult = Mathf.Min(
+                directionalSpeedMult,
+                Mathf.Lerp(1f, backwardSpeedMult, backwardAmount));
         }
+
+        float strafeAmount = Mathf.Clamp01(Mathf.Abs(moveLocal3.x));
+        if (strafeAmount > 0f)
+        {
+            directionalSpeedMult = Mathf.Min(
+                directionalSpeedMult,
+                Mathf.Lerp(1f, strafeSpeedMult, strafeAmount));
+        }
+
+        targetSpeed *= directionalSpeedMult;
 
         if (_characteContext.WeaponSystem != null)
         {

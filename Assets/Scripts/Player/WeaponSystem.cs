@@ -573,6 +573,7 @@ public class WeaponSystem : MonoBehaviour
                 damage = projectileDamage,
                 speed = projectileSpeed
             },
+            hitCue = currentWeapon != null ? currentWeapon.hitCue : null,
             sourceId = weaponSourceId,
             attackId = attackId,
             chainId = shotContext.ChainId,

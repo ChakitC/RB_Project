@@ -22,6 +22,7 @@ MonoBehaviour:
   BulletPrefab: {fileID: 1661335766552818198, guid: c75d1af27a531f544894b89177b365a2, type: 3}
   WeaponPrefab: {fileID: 8248849999540993267, guid: 80bcab744c838fc4eb5e48346757b847, type: 3}
   fireCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
+  hitCue: {fileID: 11400000, guid: f553b85156097ad4091b995baff05cb9, type: 2}
   emptyCue: {fileID: 11400000, guid: 86252ae28322830499f1116974f2ea2a, type: 2}
   reloadCue: {fileID: 11400000, guid: b26324c5bf932c64e97ceb5e5c0423b2, type: 2}
   equipCue: {fileID: 11400000, guid: cef935508e94a2a47a1fee44288b94b9, type: 2}
@@ -37,7 +38,7 @@ MonoBehaviour:
   BulletSpeed: 30
   autoloader: 1
   magazineReload: 1
-  reloadTime: 5
+  reloadTime: 1.6
   reloadPerBullet: 0
   startInsertDelay: 0
   perBulletInsertTime: 0

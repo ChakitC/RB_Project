@@ -26,6 +26,7 @@ public struct ProjectileContext
     public Transform owner;
     public Vector3 dir;
     public ProjectileStats stats;
+    public AudioCue hitCue;
     public string sourceId;
     public string attackId;
     public ulong chainId;

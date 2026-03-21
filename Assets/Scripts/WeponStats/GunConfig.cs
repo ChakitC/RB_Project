@@ -13,6 +13,7 @@ public class GunConfig : ItemDefinition
 
     [Header("Audio")]
     public AudioCue fireCue;
+    public AudioCue hitCue;
     public AudioCue emptyCue;
     public AudioCue reloadCue;
     public AudioCue equipCue;

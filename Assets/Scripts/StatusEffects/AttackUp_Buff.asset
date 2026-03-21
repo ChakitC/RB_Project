@@ -10,22 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 307f91727c2d9a74f8d31613be231f4a, type: 3}
-  m_Name: SpeedUP_Buff
+  m_Name: AttackUp_Buff
   m_EditorClassIdentifier: 
-  effectId: SpeedUP
+  effectId: AttackUp
   icon: {fileID: 0}
   category: 1
   duration: 10
   maxStacks: 1
-  stackMode: 3
+  stackMode: 0
   tickInterval: 0
   tickDamage: 0
   controlBlocks: 0
   pushStunnedState: 0
-  tags:
-  - 
+  tags: []
   modifiers:
-  - statType: 8
-    operation: 2
-    value: 1.2
+  - statType: 0
+    operation: 1
+    value: 10
   triggerRules: []

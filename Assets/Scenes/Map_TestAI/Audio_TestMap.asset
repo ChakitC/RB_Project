@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c7a6c787fa236a740b3dc1e228e0b8d1, type: 3}
-  m_Name: Basement AudioCue
+  m_Name: Audio_TestMap
   m_EditorClassIdentifier: 
-  cueId: Basement.Song
+  cueId: TestMap.Audio
   category: 2
   loop: 1
   spatialBlend: 0
@@ -29,10 +29,10 @@ MonoBehaviour:
   randomPitchMultiplier: {x: 1, y: 1}
   avoidImmediateRepeats: 1
   variations:
-  - clip: {fileID: 8300000, guid: 0000bd7920b449248bb0414e52a10475, type: 3}
+  - clip: {fileID: 8300000, guid: 664728c0b72d51a40b921b642e40effb, type: 3}
     weight: 0
-    volumeMultiplier: 0.5
+    volumeMultiplier: 0
     pitchMultiplier: 0
   cooldown: 0
   maxInstances: 0
-  stopOldestInstanceWhenLimitReached: 1
+  stopOldestInstanceWhenLimitReached: 0

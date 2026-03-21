@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8d1e08d93db328428ab5893f0dc770a, type: 3}
+  m_Name: Passive.Roma_DamageTree.01
+  m_EditorClassIdentifier: 
+  passiveId: Passive.Roma_MoveTree.01
+  description: 
+  rules:
+  - ruleId: rule
+    trigger: 8
+    originFilter: 0
+    requiredCount: 1
+    countWindowSeconds: 0
+    cooldownSeconds: 0
+    counterConsumeMode: 0
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    actions:
+    - actionId: action
+      actionType: 1
+      targetSelector: 0
+      sourceIdOverride: 
+      modifiers: []
+      grantedStacks: 1
+      maxStacks: 1
+      durationSeconds: 10
+      stackPolicy: 0
+      statusEffect: {fileID: 11400000, guid: 367b42281fd00e0419b2b3e45da9b175, type: 2}
+      statusInitialStacks: 1
+      emittedEventType: 0
+      emittedValue: 0

@@ -71,6 +71,15 @@ public class PlayerSkillManager : MonoBehaviour
             return;
 
         skill.Cast(skillUser);
+
+        if (skill.def != null && skill.def.castCue != null)
+        {
+            Transform castOrigin = skillUser != null && skillUser.CastOrigin != null
+                ? skillUser.CastOrigin
+                : transform;
+
+            AudioService.Instance.PlayAttached(skill.def.castCue, castOrigin, Vector3.zero);
+        }
     }
 
     public void ClearSlot(int index)

@@ -43,6 +43,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IDamageableWithContext, 
     public event Action CharacterDown;
     public event Action CharacterRevive;
     public event Action ReturnbaseUI;
+    public event Action<float, GameObject> DamageTaken;
 
     public bool IsAlive => currentHealth > 0f;
     public bool IsDown => currentHealth <= 0f && DownTime > 0f;
@@ -229,6 +230,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IDamageableWithContext, 
 
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnTakeDamage, attacker);
         PublishDamageEvent(PassiveEventType.TakeDamage, appliedDamage, attacker, hasContext, damageContext);
+        DamageTaken?.Invoke(appliedDamage, attacker);
 
         CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
         if (healthBarSlider != null)

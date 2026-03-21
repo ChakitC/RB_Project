@@ -39,6 +39,7 @@ public class SkillGemDefinition : ScriptableObject
     public GameObject skillPrefab;      // projectile / AoE / effect อะไรก็ว่าไป
     public GameObject BallVfxPrefab;
     public GameObject SkillVfxhit;
+    public AudioCue castCue;
         
     public float projectileHitVfxScale = 1f;
     public AnimationClip castAnimation; // ถ้ามีอนิเมชันเฉพาะ

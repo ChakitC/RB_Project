@@ -648,6 +648,70 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 4109948319061178781, guid: 57704d835399e0942917b9a6b70702a3, type: 3}
   m_PrefabInstance: {fileID: 369970430}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1100377744
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1100377745}
+  - component: {fileID: 1100377746}
+  m_Layer: 0
+  m_Name: AudioSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1100377745
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1100377744}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1620596806}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1100377746
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1100377744}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a47605d3821d3bf42bf05605d19c77b8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  initialPoolSize: 12
+  maxPoolSize: 48
+  pooledSourcePrefix: AudioSource
+  masterVolume: 1
+  categoryOutputs:
+  - category: 0
+    volume: 1
+    mixerGroup: {fileID: 24300002, guid: cabf2e2a576a63a4ba3cf48a64fb599e, type: 2}
+  - category: 1
+    volume: 1
+    mixerGroup: {fileID: 24300002, guid: 3dd29b3cc8aad47499ccb3d2ff673261, type: 2}
+  - category: 2
+    volume: 1
+    mixerGroup: {fileID: 24300002, guid: da2b0740a83b06345b2997c39e75028c, type: 2}
+  - category: 3
+    volume: 1
+    mixerGroup: {fileID: 24300002, guid: f3c84f78d8e0b70408ebb877423afe33, type: 2}
+  - category: 4
+    volume: 1
+    mixerGroup: {fileID: 24300002, guid: cf30abf86df845d4fa5223d459f76b41, type: 2}
 --- !u!1 &1108652636 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 4019868761661231002, guid: 57704d835399e0942917b9a6b70702a3, type: 3}
@@ -1208,6 +1272,12 @@ MonoBehaviour:
   playerInventory: {fileID: 0}
   itemDatabase: {fileID: 11400000, guid: 75de2aa1ba9d794408c0f15d3732ddcf, type: 2}
   _mapSelect: 
+  sceneAudio:
+  - sceneName: Basement
+    musicCue: {fileID: 11400000, guid: 0f5caee6f74a08a4bbf7b231d941fc8e, type: 2}
+    ambienceCue: {fileID: 0}
+    stopPreviousMusic: 1
+    stopPreviousAmbience: 1
 --- !u!4 &1620596806
 Transform:
   m_ObjectHideFlags: 0
@@ -1223,6 +1293,7 @@ Transform:
   m_Children:
   - {fileID: 1010958460}
   - {fileID: 882547027}
+  - {fileID: 1100377745}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1620596807
@@ -1269,6 +1340,9 @@ MonoBehaviour:
   UiCharacterDead: {fileID: 1010958456}
   key: 27
   ctx: {fileID: 0}
+  menuToggleCue: {fileID: 0}
+  backToBaseCue: {fileID: 0}
+  deathScreenCue: {fileID: 0}
 --- !u!114 &1620596810
 MonoBehaviour:
   m_ObjectHideFlags: 0

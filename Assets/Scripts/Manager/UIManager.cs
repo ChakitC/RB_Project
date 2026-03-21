@@ -11,6 +11,8 @@ public class UIManager : MonoBehaviour
     
     private CharacteContext ctx;
     public GameObject Inventory;
+    [Header("Audio")]
+    [SerializeField] private AudioCue inventoryToggleCue;
    
     
     [Header("Texts")] 
@@ -78,6 +80,8 @@ public class UIManager : MonoBehaviour
             return;
         }
         Inventory.SetActive(!Inventory.activeSelf);
+        if (inventoryToggleCue != null)
+            AudioService.Instance.Play(inventoryToggleCue);
     }
     
     

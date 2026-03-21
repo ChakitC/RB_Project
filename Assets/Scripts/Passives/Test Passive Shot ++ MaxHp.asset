@@ -17,7 +17,7 @@ MonoBehaviour:
   rules:
   - ruleId: rule
     trigger: 1
-    originFilter: 2
+    originFilter: 3
     requiredCount: 1
     countWindowSeconds: 0
     cooldownSeconds: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
     oncePerTargetPerChain: 1
     actions:
     - actionId: action
-      actionType: 1
+      actionType: 0
       targetSelector: 0
       sourceIdOverride: 
       modifiers:
@@ -37,8 +37,8 @@ MonoBehaviour:
       grantedStacks: 1
       maxStacks: 100
       durationSeconds: 10
-      stackPolicy: 1
-      statusEffect: {fileID: 0}
-      statusInitialStacks: 1
+      stackPolicy: 2
+      statusEffect: {fileID: 11400000, guid: 2aa450eaf970ef7499f587bee7a8936a, type: 2}
+      statusInitialStacks: 10
       emittedEventType: 1
       emittedValue: 1

@@ -1,13 +1,26 @@
+using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class SceneLoaderSystem : MonoBehaviour
 {
+    [Serializable]
+    private sealed class SceneAudioEntry
+    {
+        public string sceneName;
+        public AudioCue musicCue;
+        public AudioCue ambienceCue;
+        public bool stopPreviousMusic = true;
+        public bool stopPreviousAmbience = true;
+    }
+
     public static SceneLoaderSystem Instance { get; private set; }
     public PlayerInventory playerInventory;
     public ItemDatabase itemDatabase;
     [SerializeField] private string _mapSelect;
+    [SerializeField] private List<SceneAudioEntry> sceneAudio = new();
     
     
     
@@ -44,7 +57,9 @@ public class SceneLoaderSystem : MonoBehaviour
         if (playerInventory == null)
         {
             Debug.Log("No player inventory found");
-        }        
+        }
+
+        ApplySceneAudio(scene.name);
     }
 
     public void LoadGame()
@@ -64,5 +79,32 @@ public class SceneLoaderSystem : MonoBehaviour
         SaveManager.Instance.Save();
         SceneManager.LoadScene("Basement");
         
+    }
+
+    void ApplySceneAudio(string sceneName)
+    {
+        if (sceneAudio == null || sceneAudio.Count == 0)
+            return;
+
+        for (int i = 0; i < sceneAudio.Count; i++)
+        {
+            var entry = sceneAudio[i];
+            if (entry == null || !string.Equals(entry.sceneName, sceneName, StringComparison.Ordinal))
+                continue;
+
+            if (entry.stopPreviousMusic)
+                AudioService.Instance.StopCategory(AudioCategory.Music);
+
+            if (entry.stopPreviousAmbience)
+                AudioService.Instance.StopCategory(AudioCategory.Ambience);
+
+            if (entry.musicCue != null)
+                AudioService.Instance.Play(entry.musicCue);
+
+            if (entry.ambienceCue != null)
+                AudioService.Instance.Play(entry.ambienceCue);
+
+            return;
+        }
     }
 }

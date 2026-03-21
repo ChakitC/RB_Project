@@ -10,6 +10,12 @@ public class GunConfig : ItemDefinition
     private bool IsBurst => firingModes == FiringMode.Burst;
     public GameObject BulletPrefab; 
     public GameObject WeaponPrefab;
+
+    [Header("Audio")]
+    public AudioCue fireCue;
+    public AudioCue emptyCue;
+    public AudioCue reloadCue;
+    public AudioCue equipCue;
     
     [Header("Base Stats")]
         

@@ -12,4 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e269e883fa8996f47a99268caf765e47, type: 3}
   m_Name: WeaponAffixDatabase
   m_EditorClassIdentifier: 
-  affixes: []
+  affixes:
+  - {fileID: 0}

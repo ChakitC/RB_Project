@@ -62,6 +62,7 @@ public class WeaponSystem : MonoBehaviour
     float endInsertDelay = 0f;
     bool shootInterruptsReload = true;
     Coroutine reloadRoutine;
+    AudioHandle reloadAudioHandle;
 
     [Header("Burst Settings")]
     public int burstCount = 0;
@@ -110,6 +111,7 @@ public class WeaponSystem : MonoBehaviour
 
     public void Equip(GunConfig weapon, WeaponInstanceData instance)
     {
+        var previousWeapon = currentWeapon;
         currentWeapon = weapon;
         currentWeaponInstance = instance;
 
@@ -145,6 +147,9 @@ public class WeaponSystem : MonoBehaviour
 
         affixRuntimeController?.NotifyWeaponEquipped();
         statsHub?.MarkDirty();
+
+        if (currentWeapon != null && currentWeapon != previousWeapon)
+            PlayWeaponCue(currentWeapon.equipCue, true);
     }
 
     void OnDisable()
@@ -155,6 +160,7 @@ public class WeaponSystem : MonoBehaviour
         isReloading = false;
         _isFiringHeld = false;
         reloadRoutine = null;
+        StopReloadCue();
         SyncWeaponInstanceState();
     }
 
@@ -305,6 +311,8 @@ public class WeaponSystem : MonoBehaviour
         {
             if (autoloader)
                 TryReload();
+            else
+                PlayWeaponCue(currentWeapon != null ? currentWeapon.emptyCue : null, false);
             return;
         }
 
@@ -329,6 +337,8 @@ public class WeaponSystem : MonoBehaviour
             weaponSourceId,
             attackId,
             shotContext);
+
+        PlayWeaponCue(currentWeapon != null ? currentWeapon.fireCue : null, false);
 
         ctx.stateHub.ReportShotFired();
         if (combatEventBus != null)
@@ -383,6 +393,7 @@ public class WeaponSystem : MonoBehaviour
 
         isReloading = false;
         isBursting = false;
+        StopReloadCue();
 
         if (burstCo != null)
         {
@@ -407,10 +418,12 @@ public class WeaponSystem : MonoBehaviour
         if (reloadPerBullet)
         {
             reloadRoutine = StartCoroutine(ReloadPerBulletRoutine());
+            PlayReloadCue();
         }
         else if (magazineRelode)
         {
             reloadRoutine = StartCoroutine(ReloadFullMagRoutine());
+            PlayReloadCue();
         }
         else
         {
@@ -445,6 +458,7 @@ public class WeaponSystem : MonoBehaviour
 
         isReloading = false;
         reloadRoutine = null;
+        StopReloadCue();
         SyncWeaponInstanceState();
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnReload, gameObject);
         affixRuntimeController?.HandleReloadCompleted();
@@ -460,6 +474,7 @@ public class WeaponSystem : MonoBehaviour
         ctx.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
         isReloading = false;
         reloadRoutine = null;
+        StopReloadCue();
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnReload, gameObject);
         affixRuntimeController?.HandleReloadCompleted();
         PublishReloadEvent();
@@ -599,5 +614,38 @@ public class WeaponSystem : MonoBehaviour
 
         string weaponName = currentWeapon ? currentWeapon.name : "weapon";
         return $"weapon:{weaponName}";
+    }
+
+    void PlayWeaponCue(AudioCue cue, bool followOwner)
+    {
+        if (cue == null)
+            return;
+
+        if (followOwner)
+        {
+            Transform followTarget = firePoint ? firePoint : transform;
+            AudioService.Instance.PlayAttached(cue, followTarget, Vector3.zero);
+            return;
+        }
+
+        Vector3 position = firePoint ? firePoint.position : transform.position;
+        AudioService.Instance.PlayAtPosition(cue, position);
+    }
+
+    void PlayReloadCue()
+    {
+        StopReloadCue();
+
+        if (currentWeapon == null || currentWeapon.reloadCue == null)
+            return;
+
+        Transform followTarget = firePoint ? firePoint : transform;
+        reloadAudioHandle = AudioService.Instance.PlayAttached(currentWeapon.reloadCue, followTarget, Vector3.zero);
+    }
+
+    void StopReloadCue()
+    {
+        reloadAudioHandle.Stop();
+        reloadAudioHandle = default;
     }
 }

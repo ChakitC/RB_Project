@@ -8544,6 +8544,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   bct: {fileID: 1699829291}
+  inventoryCue: {fileID: 0}
+  associatesCue: {fileID: 0}
+  upgradeCue: {fileID: 0}
+  shopCue: {fileID: 0}
 --- !u!114 &1699829295
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10171,8 +10175,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   slotCount: 5
+  slots: []
   itemDatabase: {fileID: 11400000, guid: 75de2aa1ba9d794408c0f15d3732ddcf, type: 2}
+  weaponDatabase: {fileID: 0}
+  ctx: {fileID: 0}
+  weaponSystem: {fileID: 0}
   gold: 0
+  equippedWeaponInstanceId: 
 --- !u!4 &1912400194
 Transform:
   m_ObjectHideFlags: 0
@@ -13428,6 +13437,7 @@ GameObject:
   - component: {fileID: 2117609048590518867}
   - component: {fileID: 4940108759002856320}
   - component: {fileID: 7178770963737433606}
+  - component: {fileID: 7178770963737433607}
   m_Layer: 0
   m_Name: MainCamera
   m_TagString: MainCamera
@@ -15782,6 +15792,14 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   CustomBlends: {fileID: 0}
+--- !u!81 &7178770963737433607
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3696316181651324433}
+  m_Enabled: 1
 --- !u!1 &7183117987596279775
 GameObject:
   m_ObjectHideFlags: 0

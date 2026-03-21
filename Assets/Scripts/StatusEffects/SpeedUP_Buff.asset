@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   effectId: SpeedUP
   icon: {fileID: 0}
+  category: 1
   duration: 10
   maxStacks: 1
   stackMode: 3

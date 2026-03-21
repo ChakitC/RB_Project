@@ -8,6 +8,8 @@ public class UIButtonHoverOutline : MonoBehaviour,
     [SerializeField] public BasementContext bct;
     [SerializeField] private GameObject outline;
     [SerializeField] public string MapName;
+    [SerializeField] private AudioCue hoverCue;
+    [SerializeField] private AudioCue selectCue;
     
     public TextMeshProUGUI TextMeshMapname;
     
@@ -29,6 +31,9 @@ public class UIButtonHoverOutline : MonoBehaviour,
 
         if (outline != null)
             outline.SetActive(true);
+
+        if (hoverCue != null)
+            AudioService.Instance.Play(hoverCue);
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -54,6 +59,9 @@ public class UIButtonHoverOutline : MonoBehaviour,
         
         SetSelected(true);
         _currentSelected = this;
+
+        if (selectCue != null)
+            AudioService.Instance.Play(selectCue);
     }
 
     private void SetSelected(bool selected)

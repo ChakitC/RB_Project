@@ -40,6 +40,15 @@ public class CharacterStats : ScriptableObject
 
     [Header("Passives")]
     public List<PassiveDefinition> passives = new();
+
+    [Header("Audio")]
+    public AudioCue dashCue;
+    public AudioCue meleeLightCue;
+    public AudioCue meleeHeavyCue;
+    public AudioCue damagedCue;
+    public AudioCue downCue;
+    public AudioCue deathCue;
+    public AudioCue reviveCue;
     
     
 }

@@ -59,6 +59,9 @@ public sealed class StateHub : MonoBehaviour
         if (!ctx)
             ctx = GetComponent<CharacteContext>();
 
+        if (GetComponent<CharacterAudioEmitter>() == null)
+            gameObject.AddComponent<CharacterAudioEmitter>();
+
         MoveSM = new StateMachine<MoveStateId, CharacteContext>(ctx);
         WeaponSM = new StateMachine<WeaponStateId, CharacteContext>(ctx);
         LifeSM = new StateMachine<LifeStateId, CharacteContext>(ctx);

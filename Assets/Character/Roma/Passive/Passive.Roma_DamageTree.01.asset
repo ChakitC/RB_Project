@@ -16,7 +16,7 @@ MonoBehaviour:
   description: 
   rules:
   - ruleId: rule
-    trigger: 8
+    trigger: 9
     originFilter: 0
     requiredCount: 1
     countWindowSeconds: 0
@@ -34,8 +34,8 @@ MonoBehaviour:
       grantedStacks: 1
       maxStacks: 1
       durationSeconds: 10
-      stackPolicy: 0
-      statusEffect: {fileID: 11400000, guid: 367b42281fd00e0419b2b3e45da9b175, type: 2}
+      stackPolicy: 1
+      statusEffect: {fileID: 11400000, guid: 0cc77d9beb17ec9419e50d42a5a9c3fb, type: 2}
       statusInitialStacks: 1
       emittedEventType: 0
       emittedValue: 0

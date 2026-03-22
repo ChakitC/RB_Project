@@ -15,6 +15,7 @@ MonoBehaviour:
   itemId: Gun01
   displayName: SMG_ROMA
   description: RomaGun
+  icon: {fileID: 21300000, guid: ff34cdb17c26e29478ae864a4056ad8c, type: 3}
   itemType: 1
   stackable: 0
   maxStack: 1

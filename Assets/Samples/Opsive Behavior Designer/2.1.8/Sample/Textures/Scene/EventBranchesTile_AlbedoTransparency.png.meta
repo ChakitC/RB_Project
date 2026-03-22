@@ -129,6 +129,6 @@ AssetOrigin:
   serializedVersion: 1
   productId: 298743
   packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
-  packageVersion: 2.1.7
-  assetPath: Packages/com.opsive.behaviordesigner/Samples~/Textures/Scene/EventBranchesTile_AlbedoTransparency.png
-  uploadId: 825220
+  packageVersion: 2.1.12
+  assetPath: Assets/Samples/Opsive Behavior Designer/2.1.8/Sample/Textures/Scene/EventBranchesTile_AlbedoTransparency.png
+  uploadId: 883884

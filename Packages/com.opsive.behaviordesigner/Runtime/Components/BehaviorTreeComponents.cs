@@ -18,16 +18,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
     [System.Serializable]
     public struct TaskComponent : IBufferElementData
     {
-        [Tooltip("The current execution status of the task.")]
-        //public TaskStatus Status;
-        [SerializeField] private TaskStatus m_Status;
-        public TaskStatus Status { get => m_Status; 
-            set { 
-                m_Status = value;
-                CanReevaluate = value != TaskStatus.Inactive;
-                //UnityEngine.Debug.Log(string.Format("{0} status: {1}", Index, value));
-            } 
-        }
         [Tooltip("The index of the task within the behavior tree.")]
         public ushort Index;
         [Tooltip("The index of the parent task within the behavior tree.")]
@@ -44,6 +34,20 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
         //public ushort BranchIndex { get { return m_BranchIndex; } set { UnityEngine.Debug.Log(Index + " branch: " + value); m_BranchIndex = value; } }
         [Tooltip("The component type responsible for indicating that the task is active.")]
         public ComponentType FlagComponentType;
+        [Tooltip("Is the task disabled?")]
+        [MarshalAs(UnmanagedType.U1)]
+        public bool Disabled;
+        [Tooltip("The current execution status of the task.")]
+        //public TaskStatus Status;
+        [SerializeField] private TaskStatus m_Status;
+        public TaskStatus Status {
+            get => m_Status;
+            set {
+                m_Status = value;
+                CanReevaluate = value != TaskStatus.Inactive;
+                //UnityEngine.Debug.Log(string.Format("{0} status: {1}", Index, value));
+            }
+        }
         [Tooltip("Can the task be reevaluated with conditional aborts?")]
         [MarshalAs(UnmanagedType.U1)]
         public bool CanReevaluate;
@@ -52,9 +56,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
         public bool Reevaluate;
         //public bool m_Reevaluate;
         //public bool Reevaluate { get { return m_Reevaluate; } set { UnityEngine.Debug.Log(Index + " reevaluate: " + value + " " + GetHashCode());  m_Reevaluate = value; } }
-        [Tooltip("Is the task disabled?")]
-        [MarshalAs(UnmanagedType.U1)]
-        public bool Disabled;
     }
 
     /// <summary>
@@ -84,7 +85,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
         public EvaluationType EvaluationType;
         [Tooltip("The maximum number of tasks that can run if the evaluation type is set to EvaluationType.Count.")]
         public ushort MaxEvaluationCount;
-        [Tooltip("Based on the EvaluationType, a mask of the tasks that have been evaluated or the number of tasks that have executed. For EvaluationType.Count, EvaluatedTasks[0] is used as the counter.")]
+        [Tooltip("A bitmask of the tasks that have been evaluated. For EvaluationType.Count, the last element stores the execution count.")]
         public FixedList32Bytes<ulong> EvaluatedTasks;
     }
 
@@ -97,7 +98,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
         public EvaluationType EvaluationType;
         [Tooltip("The maximum number of tasks that can run if the evaluation type is set to EvaluationType.Count.")]
         public ushort MaxEvaluationCount;
-        [Tooltip("Based on the EvaluationType, a mask of the tasks that have been evaluated or the number of tasks that have executed. For EvaluationType.Count, EvaluatedTasks[0] is used as the counter.")]
+        [Tooltip("A bitmask of the tasks that have been evaluated. For EvaluationType.Count, the last element stores the execution count.")]
         public FixedList64Bytes<ulong> EvaluatedTasks;
     }
 
@@ -110,7 +111,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
         public EvaluationType EvaluationType;
         [Tooltip("The maximum number of tasks that can run if the evaluation type is set to EvaluationType.Count.")]
         public ushort MaxEvaluationCount;
-        [Tooltip("Based on the EvaluationType, a mask of the tasks that have been evaluated or the number of tasks that have executed. For EvaluationType.Count, EvaluatedTasks[0] is used as the counter.")]
+        [Tooltip("A bitmask of the tasks that have been evaluated. For EvaluationType.Count, the last element stores the execution count.")]
         public FixedList128Bytes<ulong> EvaluatedTasks;
     }
 
@@ -123,7 +124,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
         public EvaluationType EvaluationType;
         [Tooltip("The maximum number of tasks that can run if the evaluation type is set to EvaluationType.Count.")]
         public ushort MaxEvaluationCount;
-        [Tooltip("Based on the EvaluationType, a mask of the tasks that have been evaluated or the number of tasks that have executed. For EvaluationType.Count, EvaluatedTasks[0] is used as the counter.")]
+        [Tooltip("A bitmask of the tasks that have been evaluated. For EvaluationType.Count, the last element stores the execution count.")]
         public FixedList512Bytes<ulong> EvaluatedTasks;
     }
 
@@ -136,7 +137,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
         public EvaluationType EvaluationType;
         [Tooltip("The maximum number of tasks that can run if the evaluation type is set to EvaluationType.Count.")]
         public ushort MaxEvaluationCount;
-        [Tooltip("Based on the EvaluationType, a mask of the tasks that have been evaluated or the number of tasks that have executed. For EvaluationType.Count, EvaluatedTasks[0] is used as the counter.")]
+        [Tooltip("A bitmask of the tasks that have been evaluated. For EvaluationType.Count, the last element stores the execution count.")]
         public FixedList4096Bytes<ulong> EvaluatedTasks;
     }
 
@@ -176,6 +177,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
         //public InterruptType InterruptType { get { return m_InterruptType; } set { m_InterruptType = value; Debug.Log("Interrupt Type " + value); } }
         [Tooltip("The index of the task that caused an interruption. A value of 0 indicates no interruption.")]
         public ushort InterruptIndex;
+        [Tooltip("Specifies if the branch can execute tasks. Set to false when all tasks in the branch have executed this tick.")]
+        public bool CanExecute;
+        //public bool m_CanExecute;
+        //public bool CanExecute { get { return m_CanExecute; } set { m_CanExecute = value; Debug.Log("Can Execute " + value); } }
     }
 
     /// <summary>

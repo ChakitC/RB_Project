@@ -8,7 +8,7 @@ public class CameraF : MonoBehaviour
     private Vector3 velocity = Vector3.zero;
     void Start()
     {
-        PlayerControllerTest player;
+        
     }
 
    

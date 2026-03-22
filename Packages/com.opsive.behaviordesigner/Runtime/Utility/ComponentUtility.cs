@@ -30,58 +30,43 @@ namespace Opsive.BehaviorDesigner.Runtime.Utility
         /// <param name="maxEvaluationCount">The maximum number of evaluations allowed.</param>
         public static void AddEvaluationComponent(World world, Entity entity, int taskCount, EvaluationType evaluationType, int maxEvaluationCount)
         {
+            // Both EvaluationType.EntireTree and EvaluationType.Count use a bitmask to track evaluated tasks.
+            // For Count mode, an additional element is reserved at the end to store the execution count.
+            var bitmaskElementCount = taskCount / ulongBitSize + 1;
+            var countModeExtraElement = evaluationType == EvaluationType.Count ? 1 : 0;
+            
             if (taskCount < 192) {
                 world.EntityManager.AddComponent<EvaluationComponent32>(entity);
                 var evaluatedTasks = new FixedList32Bytes<ulong>();
-                if (evaluationType == EvaluationType.EntireTree) {
-                    for (int i = 0; i <= taskCount / ulongBitSize; ++i) {
-                        evaluatedTasks.Add(0);
-                    }
-                } else {
+                for (int i = 0; i < bitmaskElementCount + countModeExtraElement; ++i) {
                     evaluatedTasks.Add(0);
                 }
                 world.EntityManager.AddComponentData(entity, new EvaluationComponent32() { EvaluationType = evaluationType, MaxEvaluationCount = (ushort)UnityEngine.Mathf.Max(1, maxEvaluationCount), EvaluatedTasks = evaluatedTasks });
             } else if (taskCount < 448) {
                 world.EntityManager.AddComponent<EvaluationComponent64>(entity);
                 var evaluatedTasks = new FixedList64Bytes<ulong>();
-                if (evaluationType == EvaluationType.EntireTree) {
-                    for (int i = 0; i <= taskCount / ulongBitSize; ++i) {
-                        evaluatedTasks.Add(0);
-                    }
-                } else {
+                for (int i = 0; i < bitmaskElementCount + countModeExtraElement; ++i) {
                     evaluatedTasks.Add(0);
                 }
                 world.EntityManager.AddComponentData(entity, new EvaluationComponent64() { EvaluationType = evaluationType, MaxEvaluationCount = (ushort)UnityEngine.Mathf.Max(1, maxEvaluationCount), EvaluatedTasks = evaluatedTasks });
             } else if (taskCount < 960) {
                 world.EntityManager.AddComponent<EvaluationComponent128>(entity);
                 var evaluatedTasks = new FixedList128Bytes<ulong>();
-                if (evaluationType == EvaluationType.EntireTree) {
-                    for (int i = 0; i <= taskCount / ulongBitSize; ++i) {
-                        evaluatedTasks.Add(0);
-                    }
-                } else {
+                for (int i = 0; i < bitmaskElementCount + countModeExtraElement; ++i) {
                     evaluatedTasks.Add(0);
                 }
                 world.EntityManager.AddComponentData(entity, new EvaluationComponent128() { EvaluationType = evaluationType, MaxEvaluationCount = (ushort)UnityEngine.Mathf.Max(1, maxEvaluationCount), EvaluatedTasks = evaluatedTasks });
             } else if (taskCount < 4032) {
                 world.EntityManager.AddComponent<EvaluationComponent512>(entity);
                 var evaluatedTasks = new FixedList512Bytes<ulong>();
-                if (evaluationType == EvaluationType.EntireTree) {
-                    for (int i = 0; i <= taskCount / ulongBitSize; ++i) {
-                        evaluatedTasks.Add(0);
-                    }
-                } else {
+                for (int i = 0; i < bitmaskElementCount + countModeExtraElement; ++i) {
                     evaluatedTasks.Add(0);
                 }
                 world.EntityManager.AddComponentData(entity, new EvaluationComponent512() { EvaluationType = evaluationType, MaxEvaluationCount = (ushort)UnityEngine.Mathf.Max(1, maxEvaluationCount), EvaluatedTasks = evaluatedTasks });
             } else if (taskCount < 32704) {
                 world.EntityManager.AddComponent<EvaluationComponent4096>(entity);
                 var evaluatedTasks = new FixedList4096Bytes<ulong>();
-                if (evaluationType == EvaluationType.EntireTree) {
-                    for (int i = 0; i <= taskCount / ulongBitSize; ++i) {
-                        evaluatedTasks.Add(0);
-                    }
-                } else {
+                for (int i = 0; i < bitmaskElementCount + countModeExtraElement; ++i) {
                     evaluatedTasks.Add(0);
                 }
                 world.EntityManager.AddComponentData(entity, new EvaluationComponent4096() { EvaluationType = evaluationType, MaxEvaluationCount = (ushort)UnityEngine.Mathf.Max(1, maxEvaluationCount), EvaluatedTasks = evaluatedTasks });

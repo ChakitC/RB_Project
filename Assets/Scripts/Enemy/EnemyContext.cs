@@ -13,7 +13,6 @@ public class EnemyContext : CharacteContext
     
     [Header("Drop Item")]
     public EnemyDropper  dropper;
-    public Enemy EnemyInfomation;
     
     [Header("Animator")]
     public Animator animator;

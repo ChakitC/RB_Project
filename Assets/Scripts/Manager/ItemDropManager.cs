@@ -26,46 +26,93 @@ public class ItemDropManager : MonoBehaviour
             return;
         }
 
-        if (item.pickupPrefab == null)
+        if (amount <= 0)
         {
-            Debug.LogWarning($"DropItem: {item.displayName} has no pickupPrefab");
+            Debug.LogWarning($"DropItem: invalid amount {amount} for {item.displayName}");
             return;
         }
 
-        var go = Instantiate(item.pickupPrefab, position, Quaternion.identity);
-        ConfigurePickup(go, item, amount, WeaponRarity.Common);
+        if (!TryGetPickupTemplate(item.pickupPrefab, nameof(DropItem), out _))
+            return;
+
+        if (item is GunConfig)
+        {
+            for (int i = 0; i < amount; i++)
+                SpawnPickup(item.pickupPrefab, item, 1, position, WeaponRarity.Common);
+
+            return;
+        }
+
+        SpawnPickup(item.pickupPrefab, item, amount, position, WeaponRarity.Common);
     }
 
     public void DropPickup(GameObject pickupPrefab, Vector3 position, WeaponRarity rarity)
     {
-        if (pickupPrefab == null)
+        if (!TryGetPickupTemplate(pickupPrefab, nameof(DropPickup), out var template))
+            return;
+
+        if (template.item == null)
         {
-            Debug.LogWarning("DropPickup: pickupPrefab is null");
+            Debug.LogWarning("DropPickup: pickupPrefab has no item assigned.");
             return;
         }
 
-        var go = Instantiate(pickupPrefab, position, Quaternion.identity);
-        var pickup = go.GetComponent<ItemPickup>();
-        if (pickup == null)
+        if (template.item is GunConfig)
         {
-            Debug.LogWarning("pickupPrefab has no ItemPickup component.");
+            int weaponDropCount = template.amount > 0 ? template.amount : 1;
+            if (template.amount <= 0)
+                Debug.LogWarning($"DropPickup: invalid weapon amount {template.amount} on {pickupPrefab.name}, defaulting to 1.");
+
+            for (int i = 0; i < weaponDropCount; i++)
+                SpawnPickup(pickupPrefab, template.item, 1, position, rarity);
+
             return;
         }
 
-        ConfigurePickup(go, pickup.item, pickup.amount, rarity);
+        if (template.amount <= 0)
+        {
+            Debug.LogWarning($"DropPickup: invalid amount {template.amount} on {pickupPrefab.name}");
+            return;
+        }
+
+        SpawnPickup(pickupPrefab, template.item, template.amount, position, rarity);
     }
 
-    void ConfigurePickup(GameObject pickupObject, ItemDefinition item, int amount, WeaponRarity rarity)
+    bool TryGetPickupTemplate(GameObject pickupPrefab, string caller, out ItemPickup template)
     {
-        if (pickupObject == null)
-            return;
+        template = null;
 
-        var pickup = pickupObject.GetComponent<ItemPickup>();
-        if (pickup == null)
+        if (pickupPrefab == null)
         {
-            Debug.LogWarning("pickupPrefab has no ItemPickup component.");
-            return;
+            Debug.LogWarning($"{caller}: pickupPrefab is null");
+            return false;
         }
+
+        template = pickupPrefab.GetComponent<ItemPickup>();
+        if (template == null)
+        {
+            Debug.LogWarning($"{caller}: pickupPrefab has no ItemPickup component.");
+            return false;
+        }
+
+        return true;
+    }
+
+    void SpawnPickup(GameObject pickupPrefab, ItemDefinition item, int amount, Vector3 position, WeaponRarity rarity)
+    {
+        var pickupObject = Instantiate(pickupPrefab, position, Quaternion.identity);
+        var pickup = pickupObject.GetComponent<ItemPickup>();
+
+        if (!ConfigurePickup(pickup, item, amount, rarity))
+            Destroy(pickupObject);
+    }
+
+    bool ConfigurePickup(ItemPickup pickup, ItemDefinition item, int amount, WeaponRarity rarity)
+    {
+        if (pickup == null || item == null || amount <= 0)
+            return false;
+
+        pickup.SetWeaponInstance(null);
 
         pickup.item = item;
         pickup.amount = amount;
@@ -75,5 +122,7 @@ public class ItemDropManager : MonoBehaviour
             var weaponInstance = WeaponInstanceFactory.CreateInstance(gun, rarity, weaponAffixDatabase);
             pickup.SetWeaponInstance(weaponInstance);
         }
+
+        return true;
     }
 }

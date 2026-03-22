@@ -24,6 +24,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         private EntityQuery m_EvaluateCleanupQuery;
         private ComponentTypeHandle<EnabledFlag> m_EnabledComponentHandle;
         private ComponentTypeHandle<EvaluateFlag> m_EvaluateComponentHandle;
+        private BufferTypeHandle<BranchComponent> m_BranchComponentHandle;
 
         /// <summary>
         /// Creates the required objects for use within the job system.
@@ -34,10 +35,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         {
             m_EvaluateCleanupQuery = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<EvaluateFlag>()
+                .WithAllRW<BranchComponent>()
                 .WithOptions(EntityQueryOptions.IgnoreComponentEnabledState)
                 .Build(ref state);
             m_EnabledComponentHandle = state.GetComponentTypeHandle<EnabledFlag>();
             m_EvaluateComponentHandle = state.GetComponentTypeHandle<EvaluateFlag>();
+            m_BranchComponentHandle = state.GetBufferTypeHandle<BranchComponent>();
         }
 
         /// <summary>
@@ -52,10 +55,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             // Reset the evaluation status.
             m_EnabledComponentHandle.Update(ref state);
             m_EvaluateComponentHandle.Update(ref state);
+            m_BranchComponentHandle.Update(ref state);
             var evaluationCleanupJob = new EvaluationCleanupJob()
             {
                 EnabledComponentHandle = m_EnabledComponentHandle,
                 EvaluateComponentHandle = m_EvaluateComponentHandle,
+                BranchComponentHandle = m_BranchComponentHandle,
             };
             state.Dependency = evaluationCleanupJob.ScheduleParallel(m_EvaluateCleanupQuery, state.Dependency);
         }
@@ -70,6 +75,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             public ComponentTypeHandle<EnabledFlag> EnabledComponentHandle;
             [UnityEngine.Tooltip("A reference to the Evaluate Component Handle.")]
             public ComponentTypeHandle<EvaluateFlag> EvaluateComponentHandle;
+            [UnityEngine.Tooltip("A reference to the Branch Component Handle.")]
+            public BufferTypeHandle<BranchComponent> BranchComponentHandle;
 
             /// <summary>
             /// Resets the EvaluationComponent component value.
@@ -81,10 +88,20 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             [BurstCompile]
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
+                var branchAccessor = chunk.GetBufferAccessor(ref BranchComponentHandle);
                 for (int i = 0; i < chunk.Count; i++) {
                     // If the chunk is enabled then it should be evaluated.
                     if (chunk.IsComponentEnabled<EnabledFlag>(ref EnabledComponentHandle, i)) {
                         chunk.SetComponentEnabled<EvaluateFlag>(ref EvaluateComponentHandle, i, true);
+                    }
+
+                    // Reset CanExecute for all branches so they can execute in the next tick.
+                    var branchComponents = branchAccessor[i];
+                    for (int j = 0; j < branchComponents.Length; j++) {
+                        var branchComponent = branchComponents[j];
+                        branchComponent.CanExecute = true;
+                        branchComponent.LastActiveIndex = ushort.MaxValue;
+                        branchComponents[j] = branchComponent;
                     }
                 }
             }

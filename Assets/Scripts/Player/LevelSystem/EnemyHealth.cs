@@ -52,6 +52,8 @@ public class EnemyHealth : HealthSystem, IDamageableWithSource
 
         if (EnemyContextCTX != null)
             EnemyContextCTX.Collider.enabled = false;
+        
+        EnemyContextCTX.dropper.DropItem();
 
         base.Die();
     }

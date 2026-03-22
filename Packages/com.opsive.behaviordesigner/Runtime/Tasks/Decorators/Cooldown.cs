@@ -175,8 +175,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
                     var cooldownComponent = cooldownComponents[i];
                     var taskComponent = taskComponents[cooldownComponent.Index];
                     var branchComponent = branchComponents[taskComponent.BranchIndex];
-                    TaskComponent childTaskComponent;
+                    if (!branchComponent.CanExecute) {
+                        continue;
+                    }
 
+                    TaskComponent childTaskComponent;
                     if (taskComponent.Status == TaskStatus.Queued) {
                         taskComponent.Status = TaskStatus.Running;
                         taskComponents[taskComponent.Index] = taskComponent;

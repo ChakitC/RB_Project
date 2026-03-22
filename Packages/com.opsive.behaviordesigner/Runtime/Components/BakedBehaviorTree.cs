@@ -65,6 +65,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
             behaviorTreeSystemGroup.AddSystemToUpdateList(state.World.GetOrCreateSystem<EvaluationCleanupSystem>());
             behaviorTreeSystemGroup.AddSystemToUpdateList(state.World.GetOrCreateSystem<InterruptedCleanupSystem>());
 
+            var canReevaluate = false;
             var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
             foreach (var (bakedBehaviorTree, entity) in SystemAPI.Query<BakedBehaviorTree>().WithEntityAccess()) {
                 AddSystems(state.World, reevaluateTaskSystemGroup, bakedBehaviorTree.ReevaluateTaskSystems);
@@ -81,6 +82,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
 
                 if (state.World.EntityManager.HasBuffer<ReevaluateTaskComponent>(entity)) {
                     var reevaluateComponents = state.World.EntityManager.GetBuffer<ReevaluateTaskComponent>(entity);
+                    canReevaluate = true;
                     for (int i = 0; i < reevaluateComponents.Length; ++i) {
                         var reevaluateComponent = reevaluateComponents[i];
                         reevaluateComponent.ReevaluateFlagComponentType = ComponentType.FromTypeIndex(TypeManager.GetTypeIndexFromStableTypeHash(bakedBehaviorTree.ReevaluateFlagStableTypeHashes[i]));
@@ -91,6 +93,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
                 // All of the systems have been added. Start the behavior tree.
                 BehaviorTree.StartBranch(state.World, entity, (ushort)bakedBehaviorTree.StartEventConnectedIndex, bakedBehaviorTree.StartEvaluation);
                 ecb.RemoveComponent<BakedBehaviorTree>(entity);
+            }
+            if (canReevaluate) {
+                reevaluateTaskSystemGroup.AddSystemToUpdateList(state.World.GetOrCreateSystem<ReevaluateSystem>());
             }
             ecb.Playback(state.EntityManager);
             ecb.Dispose();

@@ -161,6 +161,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
                 for (int i = 0; i < repeaterComponents.Length; ++i) {
                     var repeaterComponent = repeaterComponents[i];
                     var taskComponent = taskComponents[repeaterComponent.Index];
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute) {
+                        continue;
+                    }
 
                     if (taskComponent.Status == TaskStatus.Queued) {
                         taskComponent.Status = TaskStatus.Running;
@@ -170,7 +174,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
                         var repeaterBuffer = repeaterComponents;
                         repeaterBuffer[i] = repeaterComponent;
 
-                        var branchComponent = branchComponents[taskComponent.BranchIndex];
                         branchComponent.NextIndex = (ushort)(taskComponent.Index + 1);
                         branchComponents[taskComponent.BranchIndex] = branchComponent;
 
@@ -189,6 +192,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
                         continue;
                     }
 
+                    branchComponent = branchComponents[childTaskComponent.BranchIndex];
                     if ((repeaterComponent.RepeatCount == -1 || repeaterComponent.CurrentCount <= repeaterComponent.RepeatCount) &&
                         (childTaskComponent.Status == TaskStatus.Success || (!repeaterComponent.EndOnFailure && childTaskComponent.Status == TaskStatus.Failure))) {
                         // Restart the child if the branch should repeat again.
@@ -199,7 +203,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
                         var repeaterBuffer = repeaterComponents;
                         repeaterBuffer[i] = repeaterComponent;
 
-                        var branchComponent = branchComponents[childTaskComponent.BranchIndex];
                         branchComponent.NextIndex = childTaskComponent.Index;
                         branchComponents[childTaskComponent.BranchIndex] = branchComponent;
                     } else {
@@ -207,7 +210,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
                         taskComponent.Status = childTaskComponent.Status == TaskStatus.Inactive ? TaskStatus.Success : childTaskComponent.Status;
                         taskComponents[taskComponent.Index] = taskComponent;
 
-                        var branchComponent = branchComponents[childTaskComponent.BranchIndex];
                         branchComponent.NextIndex = taskComponent.ParentIndex;
                         branchComponents[childTaskComponent.BranchIndex] = branchComponent;
                     }

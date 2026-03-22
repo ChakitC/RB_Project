@@ -78,10 +78,6 @@ GameObject:
   - component: {fileID: 9072523521587842180}
   - component: {fileID: 4358677403141846059}
   - component: {fileID: -5721701501610040133}
-  - component: {fileID: 7873299205646674561}
-  - component: {fileID: 8040593447694414393}
-  - component: {fileID: 2458197117314693591}
-  - component: {fileID: 1237139074007056462}
   - component: {fileID: 6545127892607564730}
   - component: {fileID: 3083277886511934061}
   - component: {fileID: 2075258610026899133}
@@ -95,6 +91,8 @@ GameObject:
   - component: {fileID: 2115705383022822444}
   - component: {fileID: 6959280806721539224}
   - component: {fileID: 2530378002022042090}
+  - component: {fileID: 3415565528960947510}
+  - component: {fileID: 1684288506866008098}
   m_Layer: 10
   m_Name: Ally
   m_TagString: Ally
@@ -606,16 +604,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6331ebc7880b22343bdcbea10ca06150, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _ctx: {fileID: 0}
+  prefabweapone: {fileID: 0}
   IsSlot: 0
   modelRoot: {fileID: 3370914879605166807}
   animancer: {fileID: 2115705383022822444}
   rightHandName: Hand_R
   leftHandName: Hand_L
   animator: {fileID: 8117628729420697856}
+  useRightHand: 1
+  useLeftHand: 0
   rightLocalPos: {x: 0, y: 0, z: 0}
   rightLocalRotEuler: {x: 0, y: 0, z: 0}
+  rightLocalScale: {x: 1, y: 1, z: 1}
   leftLocalPos: {x: 0, y: 0, z: 0}
   leftLocalRotEuler: {x: 0, y: 0, z: 0}
+  leftLocalScale: {x: 1, y: 1, z: 1}
 --- !u!114 &4358677403141846059
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -630,24 +634,29 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseStats: {fileID: 11400000, guid: 1d9593e3e1011294bb9e8380578cae0b, type: 2}
   currentWeapon: {fileID: 11400000, guid: bb67bf88d3f3a1f429b7e329d23582ca, type: 2}
-  CharacterLoad: {fileID: 0}
   stateHub: {fileID: 6220504416829843911}
   StatsHub: {fileID: 6627478436231136315}
+  CombatEventBus: {fileID: 0}
   rb: {fileID: 4350538248076557126}
   cc: {fileID: 8852702040775598704}
-  UIManager: {fileID: 0}
   WeaponSystem: {fileID: 6545127892607564730}
+  AnimBrain: {fileID: 6959280806721539224}
+  AnimDriver: {fileID: 5253043693578173858}
+  CharacterLoad: {fileID: 0}
+  Visual: {fileID: 0}
+  UIManager: {fileID: 0}
   levelSystem: {fileID: 2530378002022042090}
   HealthSystem: {fileID: 3083277886511934061}
   StaminaSystem: {fileID: 2075258610026899133}
   DashSystem: {fileID: 1265096000482281794}
+  PassiveController: {fileID: 0}
   EnegySystem: {fileID: 7588643314132077050}
-  AnimBrain: {fileID: 6959280806721539224}
-  AnimDriver: {fileID: 5253043693578173858}
+  Interactor: {fileID: 0}
   moveInput: {x: 0, y: 0}
   lookInput: {x: 0, y: 0}
-  animator: {fileID: 8117628729420697856}
-  animationController: {fileID: 0}
+  AITargetSensor: {fileID: 0}
+  agent: {fileID: 0}
+  AgentMoveDriver: {fileID: 0}
 --- !u!114 &-5721701501610040133
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -705,95 +714,6 @@ MonoBehaviour:
     m_Version: 3.4
   m_SharedVariableGroupsData: []
   m_UniqueID: 1322969064
---- !u!114 &7873299205646674561
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8623998836521745381}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe38c095de295e2479e78cea55b7d664, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  CTX: {fileID: 4358677403141846059}
-  detectionRadius: 10
-  enemyLayer:
-    serializedVersion: 2
-    m_Bits: 512
-  obstacleLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  checkInterval: 0.2
-  actionRange: 2.5
-  currentTarget: {fileID: 0}
-  drawAlways: 0
-  drawLineToTarget: 1
-  eyeHeight: 1
-  repeatInterval: 0.7
---- !u!114 &8040593447694414393
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8623998836521745381}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1af2b720ccc6ccb45bf75439929a29ad, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Damage: 10
-  detectionRadius: 3
-  enemyLayer:
-    serializedVersion: 2
-    m_Bits: 512
-  obstacleLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  vfx: {fileID: 8295974722891363362, guid: 25477c0d7d0187d4e8cb92a3bc1860ba, type: 3}
-  countdownTime: 5
-  Meleecontrol: 0
-  currentTarget: {fileID: 0}
---- !u!114 &2458197117314693591
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8623998836521745381}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4827b22f4c0b8544ebe3419143a712f2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  firePoint: {fileID: 2138009005646833687}
-  bulletPrefab: {fileID: 1661335766552818198, guid: e506ede49d049b5409fd357bc5e561c7, type: 3}
-  CTX: {fileID: 4358677403141846059}
-  maxRange: 30
-  obstacleMask:
-    serializedVersion: 2
-    m_Bits: 0
-  spreadAngle: 1.5
-  rotateSpeed: 15
---- !u!114 &1237139074007056462
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8623998836521745381}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 61de2f6596a785a4d9f6cd8c55ac01a6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  CTX: {fileID: 4358677403141846059}
-  Weapon: {fileID: 6545127892607564730}
-  target: {fileID: 0}
-  shooter: {fileID: 2458197117314693591}
-  AllyEnemySensor: {fileID: 7873299205646674561}
 --- !u!114 &6545127892607564730
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -808,9 +728,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ctx: {fileID: 4358677403141846059}
   statsHub: {fileID: 6627478436231136315}
+  statusEffectController: {fileID: 0}
+  combatEventBus: {fileID: 0}
+  affixRuntimeController: {fileID: 0}
   projectileConfig: {fileID: 11400000, guid: e9d20aa54f2461f43a373bbebcb4f211, type: 2}
   projectilePrefab: {fileID: 1661335766552818198, guid: c75d1af27a531f544894b89177b365a2, type: 3}
   currentWeapon: {fileID: 0}
+  currentWeaponInstance:
+    instanceId: 
+    baseWeaponId: 
+    rarity: 0
+    mainAffix:
+      affixId: 
+      hasPrimaryValue: 0
+      primaryValue: 0
+      hasSecondaryValue: 0
+      secondaryValue: 0
+    subAffixes: []
+    shotCounter: 0
+    currentMagazine: -1
   firePoint: {fileID: 2138009005646833687}
   gunType: 0
   damage: 0
@@ -842,6 +778,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   CTX: {fileID: 4358677403141846059}
   statsHub: {fileID: 6627478436231136315}
+  statusEffectController: {fileID: 0}
+  combatEventBus: {fileID: 0}
+  reviveTime: 2
   maximumHealth: 0
   currentHealth: 0
   DownTime: 15
@@ -897,6 +836,7 @@ MonoBehaviour:
   dashIFrameExclude:
     serializedVersion: 2
     m_Bits: 0
+  combatEventBus: {fileID: 0}
 --- !u!114 &7588643314132077050
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -915,6 +855,9 @@ MonoBehaviour:
   aimTransform: {fileID: 2138009005646833687}
   maximumEnergy: 0
   currentEnergy: 0
+  autoRefreshFromHub: 1
+  keepEnergyPercentWhenMaxChanges: 1
+  refreshIntervalSeconds: 0.2
 --- !u!114 &3181679608468721120
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -950,6 +893,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ctx: {fileID: 4358677403141846059}
   weapon: {fileID: 6545127892607564730}
+  statusEffectController: {fileID: 0}
   debugInInspector: 1
   useUnscaledTime: 0
   debugRefreshInterval: 0
@@ -963,17 +907,24 @@ MonoBehaviour:
   dbgWeaponCritRatePercent: 0
   dbgWeaponCritMult: 0
   dbgWeaponFireInterval: 0
+  dbgWeaponReloadTime: 0
   dbgWeaponStability: 0
   dbgWeaponBulletSpeed: 0
   dbgWeaponMaxMagazine: 0
   dbgFinalDamage: 0
+  dbgFinalArmor: 0
+  dbgFinalMoveSpeed: 0
   dbgFinalCritRatePercent: 0
   dbgFinalCritRate01: 0
   dbgFinalCritMult: 0
   dbgFinalFireInterval: 0
+  dbgFinalReloadTime: 0
   dbgFinalStability: 0
   dbgFinalBulletSpeed: 0
   dbgFinalMaxMagazine: 0
+  dbgFinalMaxHP: 0
+  dbgFinalMaxStamina: 0
+  dbgFinalMaxEnergy: 0
 --- !u!114 &6220504416829843911
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -996,6 +947,8 @@ MonoBehaviour:
   dbgWeapon: 
   dbgSnapshot: 
   screenPos: {x: 10, y: 10}
+  statusEffectControlBlocks: 0
+  statusEffectStunned: 0
 --- !u!95 &8117628729420697856
 Animator:
   serializedVersion: 7
@@ -1067,144 +1020,6 @@ MonoBehaviour:
   ctx: {fileID: 4358677403141846059}
   locomotionLayerIndex: 0
   actionLayerIndex: 1
-  upperBodyMask: {fileID: 31900000, guid: 3ff359338d40c5f40a861f9c3afbd210, type: 2}
-  actionFadeIn: 0.06
-  actionFadeOut: 0.08
-  locomotionMixer:
-    _FadeDuration: 0.28533334
-    _Speed: 1
-    _Events:
-      _NormalizedTimes:
-      - 0.26
-      _Callbacks: []
-      _Names: []
-    _Animations:
-    - {fileID: 2306440414956234931, guid: 4149494971ec64a4eb67fd54fb53c994, type: 3}
-    - {fileID: -8600902563685069423, guid: 633fbd8eb5bbf5f44a639a1e5107761e, type: 3}
-    - {fileID: 3630704421837926502, guid: f802650346e12374780da059cd43d325, type: 3}
-    - {fileID: 4506590830449897675, guid: 3d62fd3d33a5f894fbb72ce5a71bbc78, type: 3}
-    - {fileID: 583729431000011259, guid: 0404bea5c3932cc438487112ccc8bb28, type: 3}
-    _Speeds: []
-    _SynchronizeChildren: 
-    _Thresholds:
-    - {x: 0, y: 0}
-    - {x: 0, y: 1}
-    - {x: 0, y: -1}
-    - {x: 1, y: 0}
-    - {x: -1, y: 0}
-    _DefaultParameter: {x: 0, y: 0}
-    _Type: 1
-    _ParameterNameX: {fileID: 0}
-    _ParameterNameY: {fileID: 0}
-  locomotionParamLerp: 14
-  snapTo8Directions: 1
-  dashF:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: -4318181112641634211, guid: 6d4cacf853de87b4c968c8571e243b6d, type: 3}
-    _NormalizedStartTime: NaN
-  dashB:
-    _FadeDuration: 0.024
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 5497984355698264363, guid: 89321007994bd7949b41972c701a8a4b, type: 3}
-    _NormalizedStartTime: NaN
-  dashL:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 2995302168209469170, guid: db37db8629092ce4795aacb0debf12e1, type: 3}
-    _NormalizedStartTime: NaN
-  dashR:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 3365210341760494689, guid: b7596e261e5917740abf55d162815c11, type: 3}
-    _NormalizedStartTime: NaN
-  Dead:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 8354638251797088515, guid: 252d4fb362435ff49bb2fa0b3f592932, type: 3}
-    _NormalizedStartTime: NaN
-  shootPulse:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
-    _NormalizedStartTime: NaN
-  shootHoldLoop:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
-    _NormalizedStartTime: NaN
-  holdPulseMinInterval: 0.08
-  reload:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 8696769760049100611, guid: c3112324236f1cb4295770ec4e8c8276, type: 3}
-    _NormalizedStartTime: NaN
-  meleeComboSO: {fileID: 11400000, guid: aad74cd29d1adde448ce0f8716aed4b2, type: 2}
-  meleeCanInterruptReload: 1
-  lightCombo: {fileID: 11400000, guid: d16447a5b5fa9274b8bf020390af7750, type: 2}
-  heavyCombo: {fileID: 11400000, guid: aad74cd29d1adde448ce0f8716aed4b2, type: 2}
-  crawlMixer:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Animations:
-    - {fileID: -5108874112516170377, guid: aae20cb189c84434b8af6bddd860dde6, type: 3}
-    - {fileID: 8706233961271216418, guid: e30bdc35299abd04a9b2b476c44d278b, type: 3}
-    - {fileID: -4703732091659865656, guid: db4ef795ecb96db49b9f0f37216be8ef, type: 3}
-    - {fileID: 8706233961271216418, guid: e30bdc35299abd04a9b2b476c44d278b, type: 3}
-    - {fileID: 8706233961271216418, guid: e30bdc35299abd04a9b2b476c44d278b, type: 3}
-    _Speeds: []
-    _SynchronizeChildren: 
-    _Thresholds:
-    - {x: 0, y: 0}
-    - {x: 0, y: 1}
-    - {x: 0, y: -1}
-    - {x: 1, y: 0}
-    - {x: -1, y: 0}
-    _DefaultParameter: {x: 0, y: 0}
-    _Type: 0
-    _ParameterNameX: {fileID: 0}
-    _ParameterNameY: {fileID: 0}
-  crawlParamLerp: 14
-  crawlSpeedMultiplier01: 1
-  references:
-    version: 2
-    RefIds: []
 --- !u!114 &2530378002022042090
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1223,3 +1038,60 @@ MonoBehaviour:
   ChracterID: 
   level: 1
   currentXp: 0
+--- !u!114 &3415565528960947510
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8623998836521745381}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae4ca29cab41a39459db1dbf4104e969, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weaponSystem: {fileID: 0}
+  statsHub: {fileID: 0}
+  statusEffectController: {fileID: 0}
+  affixDatabase: {fileID: 0}
+--- !u!114 &1684288506866008098
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8623998836521745381}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f602813068067ed41ba42ac99c46680f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sensorOrigin: {fileID: 0}
+  forwardReference: {fileID: 0}
+  radius: 15
+  scanInterval: 0.1
+  targetLayers:
+    serializedVersion: 2
+    m_Bits: 65535
+  obstacleLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  triggerInteraction: 1
+  maxHits: 64
+  requiredTag: 
+  useFieldOfView: 0
+  fieldOfView: 180
+  requireLineOfSight: 1
+  useTeamFilter: 0
+  ownerTeamId: 0
+  requireAliveIfAvailable: 1
+  gracePeriod: 1.25
+  keepLastSeenTarget: 1
+  originHeightOffset: 0.5
+  fallbackTargetHeightOffset: 0.6
+  currentTarget: {fileID: 0}
+  lastSeenTarget: {fileID: 0}
+  lastSeenPosition: {x: 0, y: 0, z: 0}
+  hasLineOfSight: 0
+  targetDistance: 0
+  lastSeenTime: -Infinity

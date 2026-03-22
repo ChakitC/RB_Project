@@ -13,4 +13,6 @@ MonoBehaviour:
   m_Name: WeaponAffixDatabase
   m_EditorClassIdentifier: 
   affixes:
-  - {fileID: 0}
+  - {fileID: 11400000, guid: 5d875f4a76e020f42a0623179e3d0681, type: 2}
+  - {fileID: 11400000, guid: dd9f3f90e44ec7a4fa1f177f767c713b, type: 2}
+  - {fileID: 11400000, guid: 07c50cd8a6777dc479c63565ce82f3a1, type: 2}

@@ -26,7 +26,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         /// <returns>The execution status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
-            // Debug.Log(m_Text.Value);
+            Debug.Log(m_Text.Value);
             return TaskStatus.Success;
         }
     }

@@ -24,13 +24,13 @@ namespace Opsive.BehaviorDesigner.Runtime
         public SharedVariable.SharingScope VariableScope { get => SharedVariable.SharingScope.Graph; }
         public BehaviorTreeData Data { get => m_Data; }
         public UnityEngine.Object Parent { get => this; }
-        public ILogicNode[] LogicNodes { get => m_Data.LogicNodes; set => m_Data.LogicNodes = value as ITreeLogicNode[]; }
-        public ITreeLogicNode[] TreeLogicNodes { get => m_Data.LogicNodes; set => m_Data.LogicNodes = value; }
-        public IEventNode[] EventNodes { get => m_Data.EventNodes; set => m_Data.EventNodes = value; }
-        public SharedVariable[] SharedVariables { get => m_Data.SharedVariables; set => m_Data.SharedVariables = value; }
+        public ILogicNode[] LogicNodes { get => m_Data?.LogicNodes; set => m_Data.LogicNodes = value as ITreeLogicNode[]; }
+        public ITreeLogicNode[] TreeLogicNodes { get => m_Data?.LogicNodes; set => m_Data.LogicNodes = value; }
+        public IEventNode[] EventNodes { get => m_Data?.EventNodes; set => m_Data.EventNodes = value; }
+        public SharedVariable[] SharedVariables { get => m_Data?.SharedVariables; set => m_Data.SharedVariables = value; }
         public SharedVariableGroup[] SharedVariableGroups {
 #if UNITY_EDITOR
-            get => Data.SharedVariableGroups;
+            get => Data?.SharedVariableGroups;
             set => Data.SharedVariableGroups = value;
 #else
             get => null;

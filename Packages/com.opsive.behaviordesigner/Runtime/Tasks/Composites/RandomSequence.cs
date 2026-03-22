@@ -179,8 +179,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                     var taskComponent = taskComponents[randomSequenceComponent.Index];
                     var branchComponent = branchComponents[taskComponent.BranchIndex];
 
-                    // Do not continue if there will be an interrupt.
-                    if (branchComponent.InterruptType != InterruptType.None) {
+                    // Do not continue if there will be an interrupt or the branch cannot execute.
+                    if (branchComponent.InterruptType != InterruptType.None || !branchComponent.CanExecute) {
                         continue;
                     }
 

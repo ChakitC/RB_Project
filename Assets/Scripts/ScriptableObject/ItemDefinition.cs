@@ -20,8 +20,8 @@ public class ItemDefinition : ScriptableObject
     [TextArea]
     public string description;
 
-    // [Header("Visual")]
-    // public Sprite icon;
+    [Header("Visual")]
+    public Sprite icon;
 
     [Header("Rule")]
     public ItemType itemType;

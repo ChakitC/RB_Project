@@ -20,6 +20,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
     /// the actual reevaluation or interruption.
     /// </summary>
     [UpdateInGroup(typeof(BeforeTraversalSystemGroup), OrderFirst = true)]
+    [DisableAutoCreation]
     public partial struct ReevaluateSystem : ISystem
     {
         private EntityQuery m_Query;

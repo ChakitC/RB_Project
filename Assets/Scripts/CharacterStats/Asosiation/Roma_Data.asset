@@ -37,3 +37,13 @@ MonoBehaviour:
   CritDamageScaling: 0.05
   EnagyScaling: 5
   SpeedScaling: 0.05
+  passives:
+  - {fileID: 11400000, guid: f02181add813cb94aab543932b41b313, type: 2}
+  - {fileID: 11400000, guid: acc28f07430313947af911dd4949829d, type: 2}
+  dashCue: {fileID: 0}
+  meleeLightCue: {fileID: 0}
+  meleeHeavyCue: {fileID: 0}
+  damagedCue: {fileID: 0}
+  downCue: {fileID: 0}
+  deathCue: {fileID: 0}
+  reviveCue: {fileID: 0}

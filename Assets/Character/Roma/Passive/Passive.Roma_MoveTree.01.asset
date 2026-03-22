@@ -34,7 +34,7 @@ MonoBehaviour:
       grantedStacks: 1
       maxStacks: 1
       durationSeconds: 10
-      stackPolicy: 0
+      stackPolicy: 1
       statusEffect: {fileID: 11400000, guid: 367b42281fd00e0419b2b3e45da9b175, type: 2}
       statusInitialStacks: 1
       emittedEventType: 0

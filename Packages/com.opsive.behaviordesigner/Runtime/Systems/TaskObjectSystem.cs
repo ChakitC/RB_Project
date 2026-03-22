@@ -62,9 +62,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                 }
 
                 for (int i = 0; i < taskObjectComponents.Length; ++i) {
-                    var taskComponent = taskComponents[taskObjectComponents[i].Index];
+                    var taskObjectComponent = taskObjectComponents[i];
+                    var taskComponent = taskComponents[taskObjectComponent.Index];
                     if (taskComponent.Status == TaskStatus.Success || taskComponent.Status == TaskStatus.Failure) {
-                        var task = behaviorTree.GetTask(taskObjectComponents[i].Index) as Task;
+                        var task = behaviorTree.GetTask(taskObjectComponent.Index) as Task;
                         if (task.Status != taskComponent.Status) {
                             task.OnEnd();
                             task.Status = taskComponent.Status;
@@ -83,12 +84,18 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                 }
 
                 for (int i = 0; i < taskObjectComponents.Length; ++i) {
-                    var taskComponent = taskComponents[taskObjectComponents[i].Index];
-                    var task = behaviorTree.GetTask(taskObjectComponents[i].Index) as Task;
+                    var taskObjectComponent = taskObjectComponents[i];
+                    var taskComponent = taskComponents[taskObjectComponent.Index];
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute || branchComponent.ActiveIndex != taskComponent.Index) {
+                        continue;
+                    }
+                    
+                    var task = behaviorTree.GetTask(taskObjectComponent.Index) as Task;
                     if (taskComponent.Status == TaskStatus.Queued) {
                         task.Status = taskComponent.Status = TaskStatus.Running;
-                        var buffer = taskComponents;
-                        buffer[taskComponent.Index] = taskComponent;
+                        var taskComponentBuffer = taskComponents;
+                        taskComponentBuffer[taskComponent.Index] = taskComponent;
 
                         task.OnStart();
                     }
@@ -100,14 +107,14 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                     // Update the status if has changed.
                     if (status != taskComponent.Status) {
                         task.Status = taskComponent.Status = status;
-                        var buffer = taskComponents;
-                        buffer[taskComponent.Index] = taskComponent;
+                        var taskComponentBuffer = taskComponents;
+                        taskComponentBuffer[taskComponent.Index] = taskComponent;
 
                         // End the task if it is done running.
                         if (status != TaskStatus.Running) {
                             task.OnEnd();
 
-                            var branchComponent = branchComponents[taskComponent.BranchIndex];
+                            branchComponent = branchComponents[taskComponent.BranchIndex];
                             branchComponent.NextIndex = taskComponent.ParentIndex;
                             var branchComponentBuffer = branchComponents;
                             branchComponentBuffer[taskComponent.BranchIndex] = branchComponent;
@@ -118,7 +125,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                         if (status == TaskStatus.Running) {
                             // Parent object tasks do not have a direct way to set the next child. Use the ITaskObjectParentNode to switch the child task.
                             if (taskObjectParentNode.NextChildIndex != ushort.MaxValue && taskComponents[taskObjectParentNode.NextChildIndex].Status != TaskStatus.Running) {
-                                var branchComponent = branchComponents[taskComponent.BranchIndex];
+                                branchComponent = branchComponents[taskComponent.BranchIndex];
                                 branchComponent.NextIndex = taskObjectParentNode.NextChildIndex;
                                 var branchComponentBuffer = branchComponents;
                                 branchComponentBuffer[taskComponent.BranchIndex] = branchComponent;
@@ -133,17 +140,23 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                             var taskComponentBuffer = taskComponents;
                             var childCount = TraversalUtility.GetChildCount(taskComponent.Index, ref taskComponentBuffer);
                             var branchComponentBuffer = branchComponents;
+                            var hasInterruptComponents = SystemAPI.HasComponent<InterruptFlag>(entity);
+                            var interruptedFlagEnabled = SystemAPI.IsComponentEnabled<InterruptedFlag>(entity);
                             for (ushort j = (ushort)(taskComponent.Index + 1); j < taskComponent.Index + 1 + childCount; ++j) {
-                                var childTaskComponent = taskComponents[j];
+                                var childTaskComponent = taskComponentBuffer[j];
                                 if (childTaskComponent.Status == TaskStatus.Running || childTaskComponent.Status == TaskStatus.Queued) {
                                     childTaskComponent.Status = status;
                                     taskComponentBuffer[j] = childTaskComponent;
 
-                                    var branchComponent = branchComponents[childTaskComponent.BranchIndex];
-                                    if (!SystemAPI.HasComponent<InterruptFlag>(entity)) {
+                                    branchComponent = branchComponentBuffer[childTaskComponent.BranchIndex];
+                                    if (!hasInterruptComponents) {
                                         ComponentUtility.AddInterruptComponents(behaviorTree.World.EntityManager, entity);
+                                        hasInterruptComponents = true;
                                     }
-                                    SystemAPI.SetComponentEnabled<InterruptedFlag>(entity, true);
+                                    if (!interruptedFlagEnabled) {
+                                        SystemAPI.SetComponentEnabled<InterruptedFlag>(entity, true);
+                                        interruptedFlagEnabled = true;
+                                    }
                                     if (branchComponent.ActiveIndex == childTaskComponent.Index) {
                                         branchComponent.NextIndex = ushort.MaxValue;
                                         branchComponentBuffer[childTaskComponent.BranchIndex] = branchComponent;

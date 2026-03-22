@@ -39,7 +39,7 @@ public class InventoryEditor : Editor
             else
             {
                 string name = slot.item != null ? slot.item.displayName : "(null item)";
-                text = $"Slot {i}: {name} x{slot.amount}";
+                text = $"Slot {i}: {name} x{slot.quantity}";
             }
 
             EditorGUILayout.LabelField(text);

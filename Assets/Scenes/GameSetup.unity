@@ -119,6 +119,51 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &297734857
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 297734858}
+  - component: {fileID: 297734859}
+  m_Layer: 0
+  m_Name: DropManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &297734858
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 297734857}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1620596806}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &297734859
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 297734857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a298b54dffa80f14b9a6eab42ee539f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weaponAffixDatabase: {fileID: 11400000, guid: d951cbf91c99476428d7c7928e413832, type: 2}
 --- !u!1 &368537843
 GameObject:
   m_ObjectHideFlags: 0
@@ -698,19 +743,19 @@ MonoBehaviour:
   masterVolume: 1
   categoryOutputs:
   - category: 0
-    volume: 1
-    mixerGroup: {fileID: 24300002, guid: cabf2e2a576a63a4ba3cf48a64fb599e, type: 2}
+    volume: 0.22
+    mixerGroup: {fileID: 24300002, guid: da2b0740a83b06345b2997c39e75028c, type: 2}
   - category: 1
-    volume: 1
+    volume: 0.223
     mixerGroup: {fileID: 24300002, guid: 3dd29b3cc8aad47499ccb3d2ff673261, type: 2}
   - category: 2
-    volume: 1
+    volume: 0.231
     mixerGroup: {fileID: 24300002, guid: da2b0740a83b06345b2997c39e75028c, type: 2}
   - category: 3
-    volume: 1
+    volume: 0.234
     mixerGroup: {fileID: 24300002, guid: f3c84f78d8e0b70408ebb877423afe33, type: 2}
   - category: 4
-    volume: 1
+    volume: 0.253
     mixerGroup: {fileID: 24300002, guid: cf30abf86df845d4fa5223d459f76b41, type: 2}
 --- !u!1 &1108652636 stripped
 GameObject:
@@ -1278,6 +1323,11 @@ MonoBehaviour:
     ambienceCue: {fileID: 0}
     stopPreviousMusic: 1
     stopPreviousAmbience: 1
+  - sceneName: Map_TestAI
+    musicCue: {fileID: 11400000, guid: 9edaae99c500e754eaf7cd354c31e427, type: 2}
+    ambienceCue: {fileID: 0}
+    stopPreviousMusic: 1
+    stopPreviousAmbience: 1
 --- !u!4 &1620596806
 Transform:
   m_ObjectHideFlags: 0
@@ -1294,6 +1344,7 @@ Transform:
   - {fileID: 1010958460}
   - {fileID: 882547027}
   - {fileID: 1100377745}
+  - {fileID: 297734858}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1620596807

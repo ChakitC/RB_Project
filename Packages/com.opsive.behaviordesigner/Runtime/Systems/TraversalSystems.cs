@@ -35,7 +35,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         private void OnCreate(ref SystemState state)
         {
             m_JobScheduled = false;
-            m_Query = SystemAPI.QueryBuilder().WithAllRW<TaskComponent>().WithAllRW<BranchComponent>().WithAbsent<BakedBehaviorTree>().Build();
+            m_Query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent, TaskComponent>().WithAbsent<BakedBehaviorTree>().Build();
         }
 
         /// <summary>
@@ -202,11 +202,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         {
             Active = Evaluate = true;
             m_JobScheduled = false;
-            m_Query32 = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAll<TaskComponent>().WithAll<EvaluationComponent32>().WithAll<EvaluateFlag>().WithAbsent<BakedBehaviorTree>().Build();
-            m_Query64 = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAll<TaskComponent>().WithAll<EvaluationComponent64>().WithAll<EvaluateFlag>().WithAbsent<BakedBehaviorTree>().Build();
-            m_Query128 = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAll<TaskComponent>().WithAll<EvaluationComponent128>().WithAll<EvaluateFlag>().WithAbsent<BakedBehaviorTree>().Build();
-            m_Query512 = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAll<TaskComponent>().WithAll<EvaluationComponent512>().WithAll<EvaluateFlag>().WithAbsent<BakedBehaviorTree>().Build();
-            m_Query4096 = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAll<TaskComponent>().WithAll<EvaluationComponent4096>().WithAll<EvaluateFlag>().WithAbsent<BakedBehaviorTree>().Build();
+            m_Query32 = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAll<TaskComponent, EvaluationComponent32, EvaluateFlag>().WithAbsent<BakedBehaviorTree>().Build();
+            m_Query64 = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAll<TaskComponent, EvaluationComponent64, EvaluateFlag>().WithAbsent<BakedBehaviorTree>().Build();
+            m_Query128 = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAll<TaskComponent, EvaluationComponent128, EvaluateFlag>().WithAbsent<BakedBehaviorTree>().Build();
+            m_Query512 = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAll<TaskComponent, EvaluationComponent512, EvaluateFlag>().WithAbsent<BakedBehaviorTree>().Build();
+            m_Query4096 = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAll<TaskComponent, EvaluationComponent4096, EvaluateFlag>().WithAbsent<BakedBehaviorTree>().Build();
         }
 
         /// <summary>
@@ -230,35 +230,34 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                 m_Results[i] = false;
             }
 
-            m_Dependency = state.Dependency;
-            
-            var job32 = new DetermineEvaluationJob32()
+            // Chain jobs sequentially since they all write to the shared Results array.
+            m_Dependency = new DetermineEvaluationJob32()
             {
                 EntityCommandBuffer = m_EntityCommandBuffer32.AsParallelWriter(),
                 Results = m_Results
-            }.ScheduleParallel(m_Query32, m_Dependency);
-            var job64 = new DetermineEvaluationJob64()
+            }.ScheduleParallel(m_Query32, state.Dependency);
+            m_Dependency = new DetermineEvaluationJob64()
             {
                 EntityCommandBuffer = m_EntityCommandBuffer64.AsParallelWriter(),
                 Results = m_Results
             }.ScheduleParallel(m_Query64, m_Dependency);
-            var job128 = new DetermineEvaluationJob128()
+            m_Dependency = new DetermineEvaluationJob128()
             {
                 EntityCommandBuffer = m_EntityCommandBuffer128.AsParallelWriter(),
                 Results = m_Results
             }.ScheduleParallel(m_Query128, m_Dependency);
-            var job512 = new DetermineEvaluationJob512()
+            m_Dependency = new DetermineEvaluationJob512()
             {
                 EntityCommandBuffer = m_EntityCommandBuffer512.AsParallelWriter(),
                 Results = m_Results
             }.ScheduleParallel(m_Query512, m_Dependency);
-            var job4096 = new DetermineEvaluationJob4096()
+            m_Dependency = new DetermineEvaluationJob4096()
             {
                 EntityCommandBuffer = m_EntityCommandBuffer4096.AsParallelWriter(),
                 Results = m_Results
             }.ScheduleParallel(m_Query4096, m_Dependency);
 
-            m_Dependency = state.Dependency = JobHandle.CombineDependencies(JobHandle.CombineDependencies(job32, job64, job128), job512, job4096);
+            state.Dependency = m_Dependency;
         }
 
         /// <summary>
@@ -505,7 +504,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             var evaluatedMask = new FixedList4096Bytes<ulong>();
             for (int i = 0; i < branchComponents.Length; ++i) {
                 var branchComponent = branchComponents[i];
-                if (branchComponent.ActiveIndex == ushort.MaxValue) {
+                if (branchComponent.ActiveIndex == ushort.MaxValue || !branchComponent.CanExecute) {
                     continue;
                 }
                 active = true;
@@ -522,35 +521,38 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                 if ((!isParentTask && taskComponent.Status != TaskStatus.Running && taskComponent.ParentIndex != ushort.MaxValue) ||
                     (isParentTask && (taskComponent.Status == TaskStatus.Queued || taskComponent.Status == TaskStatus.Running))) {
 
-                    if (evaluationType == EvaluationType.EntireTree) {
-                        // Compute active task bit positions.
-                        var bitIndex = branchComponent.ActiveIndex + 1;
-                        var arrayIndex = bitIndex / ComponentUtility.ulongBitSize;
-                        var bitInUlong = bitIndex % ComponentUtility.ulongBitSize;
-                        while (evaluatedMask.Length <= arrayIndex) evaluatedMask.Add(0UL);
-                        evaluatedMask[arrayIndex] |= (1UL << bitInUlong);
+                    // Compute active task bit positions.
+                    var bitIndex = branchComponent.ActiveIndex + 1;
+                    var arrayIndex = bitIndex / ComponentUtility.ulongBitSize;
+                    var bitInUlong = bitIndex % ComponentUtility.ulongBitSize;
+                    while (evaluatedMask.Length <= arrayIndex) evaluatedMask.Add(0UL);
+                    evaluatedMask[arrayIndex] |= (1UL << bitInUlong);
 
-                        // Prevent evaluating the same task again within the same tick.
-                        if (branchComponent.ActiveIndex == branchComponent.LastActiveIndex) {
-                            continue;
-                        }
-
-                        // Decision to evaluate:
-                        // - For parent tasks: always eveluate. The parent task should never be the last executing task.
-                        // - For non-parent tasks: evaluate if this task hasn't been evaluated yet.
-                        var shouldEvaluate = isParentTask;
-                        if (!shouldEvaluate) {
-                            shouldEvaluate = (evaluatedTasks[arrayIndex] & (1UL << bitInUlong)) == 0;
-                        }
-
-                        if (shouldEvaluate) {
-                            evaluate = true;
-                            branchComponent.LastActiveIndex = branchComponent.ActiveIndex;
-                            branchComponents.ElementAt(i) = branchComponent;
-                        }
-                    } else {
-                        evaluate = true;
+                    // Prevent evaluating the same task again within the same tick.
+                    if (branchComponent.ActiveIndex == branchComponent.LastActiveIndex) {
+                        branchComponent.CanExecute = false;
+                        branchComponents.ElementAt(i) = branchComponent;
+                        continue;
                     }
+
+                    // Check if the task has already been evaluated this tick.
+                    var alreadyEvaluated = (evaluatedTasks[arrayIndex] & (1UL << bitInUlong)) != 0;
+
+                    // Decision to evaluate:
+                    // - For parent tasks: always evaluate. The parent task should never be the last executing task.
+                    // - For non-parent tasks: evaluate if this task hasn't been evaluated yet.
+                    if (isParentTask || !alreadyEvaluated) {
+                        evaluate = true;
+                        branchComponent.LastActiveIndex = branchComponent.ActiveIndex;
+                    } else {
+                        branchComponent.CanExecute = false;
+                    }
+                    branchComponents.ElementAt(i) = branchComponent;
+
+                    evaluatedTasks[arrayIndex] |= evaluatedMask[arrayIndex];
+                } else {
+                    branchComponent.CanExecute = false;
+                    branchComponents.ElementAt(i) = branchComponent;
                 }
             }
 
@@ -560,32 +562,54 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
 
                 if (evaluate) {
                     if (evaluationType == EvaluationType.Count) {
-                        // Use EvaluatedTasks[0] as the counter.
-                        evaluatedTasks[0]++;
-                        if (evaluatedTasks[0] >= maxEvaluationCount) {
-                            evaluatedTasks[0] = 0;
+                        // Use the last element of EvaluatedTasks as the counter.
+                        evaluatedTasks[evaluatedTasks.Length - 1]++;
+                        if (evaluatedTasks[evaluatedTasks.Length - 1] >= maxEvaluationCount) {
+                            // Reset the counter and bitmask elements.
+                            for (int i = 0; i < evaluatedTasks.Length; ++i) {
+                                evaluatedTasks[i] = 0;
+                            }
                             entityCommandBuffer.SetComponentEnabled<EvaluateFlag>(entityIndex, entity, false);
+                            // Set the bitmask for current active tasks to prevent one extra task from being executed on subsequent frames.
+                            SetActiveBranchBits(ref branchComponents, ref evaluatedTasks);
                         } else {
                             results[2] = true; // Evaluate result.
                         }
                     } else {
-                        results[2] = true; // Evaluate result.
-
-                        // OR the mask into the EvaluatedTasks list to indicate that the tasks have been evaluated.
-                        for (int j = 0; j < evaluatedMask.Length; ++j) {
-                            evaluatedTasks[j] |= evaluatedMask[j];
-                        }
+                        results[2] = true; // Evaluate result - continue the loop.
                     }
                 } else {
                     entityCommandBuffer.SetComponentEnabled<EvaluateFlag>(entityIndex, entity, false);
-                    if (evaluationType == EvaluationType.EntireTree) {
-                        // The system is going to stop evaluating this entity. It will be resumed immediately the next update. Because the DetermineEvaluationJob is run after the tasks
-                        // update the EvaluatedTasks value should be set to the next active task. If this value is set to 0 then one extra task will always be executed with subsequent frames.
-                        for (int j = 0; j < evaluatedMask.Length; ++j) {
-                            evaluatedTasks[j] = evaluatedMask[j];
-                        }
+                    // Reset the evaluated tasks bitmask.
+                    for (int i = 0; i < evaluatedTasks.Length; ++i) {
+                        evaluatedTasks[i] = 0;
                     }
+                    // The system is going to stop evaluating this entity. It will be resumed immediately the next update. Because the DetermineEvaluationJob is run after the tasks
+                    // update the EvaluatedTasks value should be set to the next active task. If this value is set to 0 then one extra task will always be executed with subsequent frames.
+                    SetActiveBranchBits(ref branchComponents, ref evaluatedTasks);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Sets the bitmask bits for all active branches. This prevents one extra task from being executed on subsequent frames.
+        /// </summary>
+        /// <param name="branchComponents">An array of branch components.</param>
+        /// <param name="evaluatedTasks">The evaluated tasks list to update.</param>
+        [BurstCompile]
+        private static void SetActiveBranchBits<TFixedList>(ref DynamicBuffer<BranchComponent> branchComponents, ref TFixedList evaluatedTasks) where TFixedList : struct, INativeList<ulong>
+        {
+            for (int i = 0; i < branchComponents.Length; ++i) {
+                var branchComponent = branchComponents[i];
+                if (branchComponent.ActiveIndex == ushort.MaxValue) {
+                    continue;
+                }
+
+                // Compute active task bit positions.
+                var bitIndex = branchComponent.ActiveIndex + 1;
+                var arrayIndex = bitIndex / ComponentUtility.ulongBitSize;
+                var bitInUlong = bitIndex % ComponentUtility.ulongBitSize;
+                evaluatedTasks[arrayIndex] |= (1UL << bitInUlong);
             }
         }
     }

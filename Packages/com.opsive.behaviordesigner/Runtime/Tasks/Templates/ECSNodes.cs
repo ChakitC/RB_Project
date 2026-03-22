@@ -105,7 +105,7 @@ public partial struct {name}TaskSystem : ISystem
     [BurstCompile]
     private void OnUpdate(ref SystemState state)
     {{
-        var query = SystemAPI.QueryBuilder().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
+        var query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
         state.Dependency = new {name}Job().ScheduleParallel(query, state.Dependency);
     }}
 
@@ -118,14 +118,19 @@ public partial struct {name}TaskSystem : ISystem
         /// <summary>
         /// Executes the {name} logic.
         /// </summary>
+        /// <param name=""branchComponents"">An array of BranchComponents.</param>
         /// <param name=""taskComponents"">An array of TaskComponents.</param>
         /// <param name=""{variableName}Components"">An array of {name}Components.</param>
         [BurstCompile]
-        public void Execute(ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<{name}Component> {variableName}Components)
+        public void Execute(ref DynamicBuffer<BranchComponent> branchComponents, ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<{name}Component> {variableName}Components)
         {{
             for (int i = 0; i < {variableName}Components.Length; ++i) {{
                 var {variableName}Component = {variableName}Components[i];
                 var taskComponent = taskComponents[{variableName}Component.Index];
+                var branchComponent = branchComponents[taskComponent.BranchIndex];
+                if (!branchComponent.CanExecute) {{
+                    continue;
+                }}
 
                 if (taskComponent.Status == TaskStatus.Queued) {{
                     taskComponent.Status = TaskStatus.Success;
@@ -238,6 +243,9 @@ public partial struct {name}TaskSystem : ISystem
                 var {variableName}Component = {variableName}Components[i];
                 var taskComponent = taskComponents[{variableName}Component.Index];
                 var branchComponent = branchComponents[taskComponent.BranchIndex];
+                if (!branchComponent.CanExecute) {{
+                    continue;
+                }}
 
                 if (taskComponent.Status == TaskStatus.Queued) {{
                     taskComponent.Status = TaskStatus.Success;
@@ -336,7 +344,7 @@ public partial struct {name}TaskSystem : ISystem
     [BurstCompile]
     private void OnUpdate(ref SystemState state)
     {{
-        var query = SystemAPI.QueryBuilder().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
+        var query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
         state.Dependency = new {name}Job().ScheduleParallel(query, state.Dependency);
     }}
 
@@ -349,14 +357,19 @@ public partial struct {name}TaskSystem : ISystem
         /// <summary>
         /// Executes the {name} logic.
         /// </summary>
+        /// <param name=""branchComponents"">An array of BranchComponents.</param>
         /// <param name=""taskComponents"">An array of TaskComponents.</param>
         /// <param name=""{variableName}Components"">An array of {name}Components.</param>
         [BurstCompile]
-        public void Execute(ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<{name}Component> {variableName}Components)
+        public void Execute(ref DynamicBuffer<BranchComponent> branchComponents, ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<{name}Component> {variableName}Components)
         {{
             for (int i = 0; i < {variableName}Components.Length; ++i) {{
                 var {variableName}Component = {variableName}Components[i];
                 var taskComponent = taskComponents[{variableName}Component.Index];
+                var branchComponent = branchComponents[taskComponent.BranchIndex];
+                if (!branchComponent.CanExecute) {{
+                    continue;
+                }}
 
                 if (taskComponent.Status == TaskStatus.Queued || taskComponent.Status == TaskStatus.Running) {{ // Conditional aborts can set the status to Running.
                     taskComponent.Status = TaskStatus.Success;
@@ -385,11 +398,16 @@ public partial struct {name}ReevaluateTaskSystem : ISystem
     [BurstCompile]
     private void OnUpdate(ref SystemState state)
     {{
-        foreach (var (taskComponents, {variableName}Components) in
-            SystemAPI.Query<DynamicBuffer<TaskComponent>, DynamicBuffer<{name}Component>>().WithAll<{name}ReevaluateFlag, EvaluateFlag>()) {{
+        foreach (var (branchComponents, taskComponents, {variableName}Components) in
+            SystemAPI.Query<DynamicBuffer<BranchComponent>, DynamicBuffer<TaskComponent>, DynamicBuffer<{name}Component>>().WithAll<{name}ReevaluateFlag, EvaluateFlag>()) {{
             for (int i = 0; i < {variableName}Components.Length; ++i) {{
                 var {variableName}Component = {variableName}Components[i];
                 var taskComponent = taskComponents[{variableName}Component.Index];
+                var branchComponent = branchComponents[taskComponent.BranchIndex];
+                if (!branchComponent.CanExecute) {{
+                    continue;
+                }}
+
                 if (!taskComponent.Reevaluate) {{
                     continue;
                 }}
@@ -482,7 +500,7 @@ public partial struct {name}TaskSystem : ISystem
     [BurstCompile]
     private void OnUpdate(ref SystemState state)
     {{
-        var query = SystemAPI.QueryBuilder().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
+        var query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
         state.Dependency = new {name}Job().ScheduleParallel(query, state.Dependency);
     }}
 
@@ -495,14 +513,19 @@ public partial struct {name}TaskSystem : ISystem
         /// <summary>
         /// Executes the {name} logic.
         /// </summary>
+        /// <param name=""branchComponents"">An array of BranchComponents.</param>
         /// <param name=""taskComponents"">An array of TaskComponents.</param>
         /// <param name=""{variableName}Components"">An array of {name}Components.</param>
         [BurstCompile]
-        public void Execute(ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<{name}Component> {variableName}Components)
+        public void Execute(ref DynamicBuffer<BranchComponent> branchComponents, ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<{name}Component> {variableName}Components)
         {{
             for (int i = 0; i < {variableName}Components.Length; ++i) {{
                 var {variableName}Component = {variableName}Components[i];
                 var taskComponent = taskComponents[{variableName}Component.Index];
+                var branchComponent = branchComponents[taskComponent.BranchIndex];
+                if (!branchComponent.CanExecute) {{
+                    continue;
+                }}
 
                 if (taskComponent.Status == TaskStatus.Queued) {{
                     taskComponent.Status = TaskStatus.Success;

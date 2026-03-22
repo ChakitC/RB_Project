@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 888e5ecfd2f882346ad4879020c18283
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 298743
+  packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
+  packageVersion: 2.1.12
+  assetPath: Packages/com.opsive.behaviordesigner/Runtime/Tasks/Actions/Conversions/ConvertBoolToString.cs
+  uploadId: 883884

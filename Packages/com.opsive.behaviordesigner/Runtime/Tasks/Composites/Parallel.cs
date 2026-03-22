@@ -13,7 +13,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     using Unity.Collections;
     using Unity.Entities;
     using Unity.Jobs;
-    using Unity.Mathematics;
     using UnityEngine;
 
     /// <summary>
@@ -78,7 +77,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     public partial struct ParallelTaskSystem : ISystem
     {
         private EntityQuery m_Query;
-        private EntityCommandBuffer m_EntityCommandBuffer;
         private JobHandle m_Dependency;
 
         /// <summary>
@@ -98,29 +96,13 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
         private void OnUpdate(ref SystemState state)
         {
             m_Dependency.Complete();
-            if (m_EntityCommandBuffer.IsCreated) {
-                m_EntityCommandBuffer.Playback(state.EntityManager);
-                m_EntityCommandBuffer.Dispose();
-            }
 
-            m_EntityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
             state.Dependency = new ParallelJob()
             {
-                EntityCommandBuffer = m_EntityCommandBuffer.AsParallelWriter()
+                EntityCommandBuffer = ecb.AsParallelWriter()
             }.ScheduleParallel(m_Query, state.Dependency);
             m_Dependency = state.Dependency;
-        }
-
-        /// <summary>
-        /// The system has been destroyed.
-        /// </summary>
-        /// <param name="state">The current state of the system.</param>
-        public void OnDestroy(ref SystemState state)
-        {
-            if (m_EntityCommandBuffer.IsCreated) {
-                m_EntityCommandBuffer.Playback(state.EntityManager);
-                m_EntityCommandBuffer.Dispose();
-            }
         }
 
         /// <summary>
@@ -148,8 +130,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                     var taskComponent = taskComponents[parallelComponent.Index];
                     var branchComponent = branchComponents[taskComponent.BranchIndex];
 
-                    // Do not continue if there will be an interrupt.
-                    if (branchComponent.InterruptType != InterruptType.None) {
+                    // Do not continue if there will be an interrupt or the branch cannot execute.
+                    if (branchComponent.InterruptType != InterruptType.None || !branchComponent.CanExecute) {
                         continue;
                     }
 

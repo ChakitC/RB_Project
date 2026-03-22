@@ -8,7 +8,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
     public int slotCount = 0;
 
     [Header("Runtime")]
-    public List<InventorySlot> slots = new();
+    public List<InventorySlotData> slots = new();
 
     [Header("Refs")]
     public ItemDatabase itemDatabase;
@@ -17,21 +17,44 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
     [SerializeField] private WeaponSystem weaponSystem;
 
     [Header("Currency")]
-    [SerializeField] private int gold = 0;
+    [SerializeField] private int gold;
     public int Gold => gold;
 
     [Header("Weapon Instance")]
     [SerializeField] private string equippedWeaponInstanceId;
 
+    InventorySystem inventorySystem;
+
     public int LoadOrder => 0;
     public string EquippedWeaponInstanceId => equippedWeaponInstanceId;
+    public InventorySystem InventorySystem => inventorySystem;
+    public IReadOnlyList<InventorySlotData> Slots => inventorySystem != null ? inventorySystem.Slots : slots;
+    public Func<int, InventorySlotData, bool> PlacementValidator
+    {
+        get
+        {
+            InitializeInventorySystem();
+            return inventorySystem.PlacementValidator;
+        }
+        set
+        {
+            InitializeInventorySystem();
+            inventorySystem.PlacementValidator = value;
+        }
+    }
 
     public event Action<int> OnGoldChanged;
+    public event Action<string> OnEquippedWeaponChanged;
 
     void Awake()
     {
-        if (!ctx) TryGetComponent(out ctx);
-        if (!weaponSystem) TryGetComponent(out weaponSystem);
+        if (!ctx)
+            TryGetComponent(out ctx);
+
+        if (!weaponSystem)
+            TryGetComponent(out weaponSystem);
+
+        InitializeInventorySystem();
         EnsureSlotCount();
     }
 
@@ -78,6 +101,8 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     public bool AddItem(ItemDefinition item, int amount = 1)
     {
+        InitializeInventorySystem();
+
         if (item == null || amount <= 0)
             return false;
 
@@ -103,79 +128,44 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             return allAdded;
         }
 
-        if (item.stackable)
-        {
-            for (int i = 0; i < slots.Count; i++)
-            {
-                var slot = slots[i];
-                if (slot == null || slot.HasWeaponInstance)
-                    continue;
+        bool added = inventorySystem.AddItem(item, amount);
+        if (!added)
+            Debug.Log("Inventory full!");
 
-                if (slot.item == item && slot.amount < item.maxStack)
-                {
-                    int canAdd = item.maxStack - slot.amount;
-                    int toAdd = Mathf.Min(canAdd, amount);
-
-                    slot.amount += toAdd;
-                    amount -= toAdd;
-
-                    if (amount <= 0)
-                        return true;
-                }
-            }
-        }
-
-        while (amount > 0)
-        {
-            int emptyIndex = FindEmptySlotIndex();
-            if (emptyIndex == -1)
-            {
-                Debug.Log("Inventory full!");
-                return false;
-            }
-
-            var emptySlot = slots[emptyIndex];
-
-            if (item.stackable)
-            {
-                int toAdd = Mathf.Min(item.maxStack, amount);
-                emptySlot.SetItem(item, toAdd);
-                amount -= toAdd;
-            }
-            else
-            {
-                emptySlot.SetItem(item, 1);
-                amount -= 1;
-            }
-        }
-
-        return true;
+        return added;
     }
 
     public bool AddWeaponInstance(WeaponInstanceData weaponInstance)
     {
+        InitializeInventorySystem();
+
         if (weaponInstance == null)
             return false;
 
-        int emptyIndex = FindEmptySlotIndex();
-        if (emptyIndex == -1)
+        var instanceCopy = weaponInstance.DeepClone();
+        var weaponDef = ResolveWeaponDefinition(instanceCopy.baseWeaponId);
+        if (weaponDef == null)
+        {
+            Debug.LogWarning($"[PlayerInventory] Could not resolve weapon definition: {instanceCopy.baseWeaponId}");
+            return false;
+        }
+
+        if (!inventorySystem.AddWeaponInstance(weaponDef, instanceCopy))
         {
             Debug.Log("Inventory full!");
             return false;
         }
 
-        var instanceCopy = weaponInstance.DeepClone();
-        var weaponDef = ResolveWeaponDefinition(instanceCopy.baseWeaponId);
-        slots[emptyIndex].SetWeaponInstance(weaponDef, instanceCopy);
-
         if (string.IsNullOrWhiteSpace(equippedWeaponInstanceId))
-            equippedWeaponInstanceId = instanceCopy.instanceId;
+            SetEquippedWeaponInstanceId(instanceCopy.instanceId);
 
         return true;
     }
 
     public bool RemoveWeaponInstance(string instanceId)
     {
+        InitializeInventorySystem();
+
         if (string.IsNullOrWhiteSpace(instanceId))
             return false;
 
@@ -189,10 +179,11 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
                 continue;
 
             slot.Clear();
+            inventorySystem.NotifySlotChanged(i);
 
             if (string.Equals(equippedWeaponInstanceId, instanceId, StringComparison.Ordinal))
             {
-                equippedWeaponInstanceId = null;
+                SetEquippedWeaponInstanceId(null);
                 TryAssignFirstWeaponInstance();
                 ApplyEquippedWeaponIfPossible();
             }
@@ -211,12 +202,14 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (GetWeaponInstance(instanceId) == null)
             return false;
 
-        equippedWeaponInstanceId = instanceId;
+        SetEquippedWeaponInstanceId(instanceId);
         return ApplyEquippedWeaponIfPossible();
     }
 
     public WeaponInstanceData GetWeaponInstance(string instanceId)
     {
+        InitializeInventorySystem();
+
         if (string.IsNullOrWhiteSpace(instanceId))
             return null;
 
@@ -235,55 +228,54 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     public bool HasItem(ItemDefinition item, int amount = 1)
     {
-        if (item == null || amount <= 0)
-            return false;
-
-        int total = 0;
-
-        for (int i = 0; i < slots.Count; i++)
-        {
-            var slot = slots[i];
-            if (slot == null || slot.HasWeaponInstance || slot.item != item)
-                continue;
-
-            total += slot.amount;
-            if (total >= amount)
-                return true;
-        }
-
-        return false;
+        InitializeInventorySystem();
+        return inventorySystem.HasItem(item, amount);
     }
 
     public bool RemoveItem(ItemDefinition item, int amount = 1)
     {
-        if (!HasItem(item, amount))
-            return false;
+        InitializeInventorySystem();
+        return inventorySystem.RemoveItem(item, amount);
+    }
 
-        for (int i = 0; i < slots.Count; i++)
-        {
-            var slot = slots[i];
-            if (slot == null || slot.HasWeaponInstance || slot.item != item)
-                continue;
+    public bool MoveOrSwap(int fromIndex, int toIndex)
+    {
+        InitializeInventorySystem();
+        return inventorySystem.MoveOrSwap(fromIndex, toIndex);
+    }
 
-            int toRemove = Mathf.Min(slot.amount, amount);
-            slot.amount -= toRemove;
-            amount -= toRemove;
+    public bool TryMerge(int fromIndex, int toIndex)
+    {
+        InitializeInventorySystem();
+        return inventorySystem.TryMerge(fromIndex, toIndex);
+    }
 
-            if (slot.amount <= 0)
-                slot.Clear();
+    public bool SplitStack(int fromIndex, int toIndex, int amount)
+    {
+        InitializeInventorySystem();
+        return inventorySystem.SplitStack(fromIndex, toIndex, amount);
+    }
 
-            if (amount <= 0)
-                return true;
-        }
+    public bool CanPlaceItem(int slotIndex, ItemDefinition item)
+    {
+        InitializeInventorySystem();
+        return inventorySystem.CanPlaceItem(slotIndex, item);
+    }
 
-        return true;
+    public bool CanPlaceItem(int slotIndex, InventorySlotData slotData)
+    {
+        InitializeInventorySystem();
+        return inventorySystem.CanPlaceItem(slotIndex, slotData);
     }
 
     public PlayerInventoryData ToData()
     {
+        InitializeInventorySystem();
+
         var data = new PlayerInventoryData
         {
-            gold = gold
+            gold = gold,
+            maxSlotCount = slotCount
         };
 
         for (int i = 0; i < slots.Count; i++)
@@ -291,24 +283,25 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             var slot = slots[i];
             if (slot == null || slot.IsEmpty)
             {
-                data.slots.Add(new InventorySlotData());
+                data.slots.Add(new InventorySlotSaveData());
                 continue;
             }
 
             if (slot.HasWeaponInstance && slot.weaponInstance != null)
             {
-                data.slots.Add(new InventorySlotData
+                data.slots.Add(new InventorySlotSaveData
                 {
+                    itemId = slot.item != null ? slot.item.itemId : slot.weaponInstance.baseWeaponId,
                     amount = 1,
                     weaponInstance = slot.weaponInstance.DeepClone()
                 });
                 continue;
             }
 
-            data.slots.Add(new InventorySlotData
+            data.slots.Add(new InventorySlotSaveData
             {
                 itemId = slot.item != null ? slot.item.itemId : null,
-                amount = slot.amount
+                amount = slot.quantity
             });
         }
 
@@ -317,6 +310,8 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     public void FromData(PlayerInventoryData data)
     {
+        InitializeInventorySystem();
+
         if (data == null)
         {
             Debug.LogWarning("PlayerInventory.FromData: data is null");
@@ -325,11 +320,17 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         gold = Mathf.Max(0, data.gold);
         OnGoldChanged?.Invoke(gold);
+        
+        if (data.maxSlotCount > 0)
+            slotCount = data.maxSlotCount;
 
-        slots.Clear();
         EnsureSlotCount();
 
-        int count = Mathf.Min(slots.Count, data.slots.Count);
+        for (int i = 0; i < slots.Count; i++)
+            slots[i].Clear();
+
+        int incomingCount = data.slots != null ? data.slots.Count : 0;
+        int count = Mathf.Min(slots.Count, incomingCount);
 
         for (int i = 0; i < count; i++)
         {
@@ -347,7 +348,11 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
                 var instance = slotData.weaponInstance.DeepClone();
                 var weaponDef = ResolveWeaponDefinition(instance.baseWeaponId);
                 if (weaponDef == null)
+                {
                     Debug.LogWarning($"Weapon with id {instance.baseWeaponId} not found in database");
+                    slot.Clear();
+                    continue;
+                }
 
                 slot.SetWeaponInstance(weaponDef, instance);
                 continue;
@@ -369,6 +374,8 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
             slot.SetItem(itemDef, slotData.amount);
         }
+
+        inventorySystem.NotifyInventoryReset();
     }
 
     public void OnSave(GameSaveData data)
@@ -379,11 +386,14 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         data.inventory = ToData();
         if (data.weapon == null)
             data.weapon = new PlayerWeaponData();
+
         data.weapon.equippedWeaponInstanceId = equippedWeaponInstanceId;
     }
 
     public void OnLoad(GameSaveData data)
     {
+        InitializeInventorySystem();
+
         if (data == null)
         {
             Debug.Log("[PlayerInventory] No save data");
@@ -398,31 +408,26 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         else
             EnsureSlotCount();
 
-        equippedWeaponInstanceId = data.weapon != null ? data.weapon.equippedWeaponInstanceId : equippedWeaponInstanceId;
+        SetEquippedWeaponInstanceId(data.weapon != null ? data.weapon.equippedWeaponInstanceId : equippedWeaponInstanceId);
 
         ForceRefreshGoldUI();
         EnsureDefaultWeaponInstance();
         ApplyEquippedWeaponIfPossible();
     }
 
-    void EnsureSlotCount()
+    void InitializeInventorySystem()
     {
         if (slots == null)
-            slots = new List<InventorySlot>();
+            slots = new List<InventorySlotData>();
 
-        while (slots.Count < slotCount)
-            slots.Add(new InventorySlot());
+        inventorySystem ??= new InventorySystem(slots, slotCount);
+        inventorySystem.EnsureSlotCount(slotCount);
     }
 
-    int FindEmptySlotIndex()
+    void EnsureSlotCount()
     {
-        for (int i = 0; i < slots.Count; i++)
-        {
-            if (slots[i] == null || slots[i].IsEmpty)
-                return i;
-        }
-
-        return -1;
+        InitializeInventorySystem();
+        inventorySystem.EnsureSlotCount(slotCount);
     }
 
     void EnsureDefaultWeaponInstance()
@@ -440,7 +445,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (!AddWeaponInstance(defaultInstance))
             return;
 
-        equippedWeaponInstanceId = defaultInstance.instanceId;
+        SetEquippedWeaponInstanceId(defaultInstance.instanceId);
     }
 
     bool TryAssignFirstWeaponInstance()
@@ -451,7 +456,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             if (slot == null || !slot.HasWeaponInstance || slot.weaponInstance == null)
                 continue;
 
-            equippedWeaponInstanceId = slot.weaponInstance.instanceId;
+            SetEquippedWeaponInstanceId(slot.weaponInstance.instanceId);
             return true;
         }
 
@@ -511,5 +516,15 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
 
         return null;
+    }
+
+    bool SetEquippedWeaponInstanceId(string instanceId)
+    {
+        if (string.Equals(equippedWeaponInstanceId, instanceId, StringComparison.Ordinal))
+            return false;
+
+        equippedWeaponInstanceId = instanceId;
+        OnEquippedWeaponChanged?.Invoke(equippedWeaponInstanceId);
+        return true;
     }
 }

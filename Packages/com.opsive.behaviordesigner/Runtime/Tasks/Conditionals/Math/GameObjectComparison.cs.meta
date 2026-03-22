@@ -13,6 +13,6 @@ AssetOrigin:
   serializedVersion: 1
   productId: 298743
   packageName: Behavior Designer Pro - DOTS Powered Behavior Trees
-  packageVersion: 2.1.7
+  packageVersion: 2.1.12
   assetPath: Packages/com.opsive.behaviordesigner/Runtime/Tasks/Conditionals/Math/GameObjectComparison.cs
-  uploadId: 825220
+  uploadId: 883884

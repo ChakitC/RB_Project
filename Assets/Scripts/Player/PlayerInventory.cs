@@ -202,8 +202,13 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (GetWeaponInstance(instanceId) == null)
             return false;
 
-        SetEquippedWeaponInstanceId(instanceId);
-        return ApplyEquippedWeaponIfPossible();
+        bool changed = SetEquippedWeaponInstanceId(instanceId);
+        bool equipped = ApplyEquippedWeaponIfPossible();
+
+        if (equipped && changed && SaveManager.Instance != null)
+            SaveManager.Instance.Save();
+
+        return equipped;
     }
 
     public WeaponInstanceData GetWeaponInstance(string instanceId)

@@ -4,6 +4,8 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "Game/Weapons/Weapon Affix Database", fileName = "WeaponAffixDatabase")]
 public class WeaponAffixDatabase : ScriptableObject
 {
+    static readonly List<WeaponAffixDatabase> LoadedDatabases = new();
+
     [SerializeField] private List<WeaponAffixDefinition> affixes = new();
 
     readonly Dictionary<string, WeaponAffixDefinition> _lookup = new();
@@ -13,6 +15,14 @@ public class WeaponAffixDatabase : ScriptableObject
     void OnEnable()
     {
         BuildLookup();
+
+        if (!LoadedDatabases.Contains(this))
+            LoadedDatabases.Add(this);
+    }
+
+    void OnDisable()
+    {
+        LoadedDatabases.Remove(this);
     }
 
 #if UNITY_EDITOR
@@ -57,6 +67,27 @@ public class WeaponAffixDatabase : ScriptableObject
         return affix;
     }
 
+    public static WeaponAffixDefinition GetLoadedAffixById(string affixId)
+    {
+        if (string.IsNullOrWhiteSpace(affixId))
+            return null;
+
+        RefreshLoadedDatabaseCache();
+
+        for (int i = 0; i < LoadedDatabases.Count; i++)
+        {
+            var database = LoadedDatabases[i];
+            if (database == null)
+                continue;
+
+            var affix = database.GetById(affixId);
+            if (affix != null)
+                return affix;
+        }
+
+        return null;
+    }
+
     public void GetCandidates(List<WeaponAffixDefinition> buffer, WeaponAffixSlot slot, WeaponType weaponType, ISet<string> excludedIds = null)
     {
         if (buffer == null)
@@ -77,6 +108,22 @@ public class WeaponAffixDatabase : ScriptableObject
                 continue;
 
             buffer.Add(affix);
+        }
+    }
+
+    static void RefreshLoadedDatabaseCache()
+    {
+        LoadedDatabases.RemoveAll(database => database == null);
+
+        if (LoadedDatabases.Count > 0)
+            return;
+
+        var discoveredDatabases = Resources.FindObjectsOfTypeAll<WeaponAffixDatabase>();
+        for (int i = 0; i < discoveredDatabases.Length; i++)
+        {
+            var database = discoveredDatabases[i];
+            if (database != null && !LoadedDatabases.Contains(database))
+                LoadedDatabases.Add(database);
         }
     }
 }

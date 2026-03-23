@@ -228,6 +228,24 @@ public class SaveManager : MonoBehaviour
 
         return (data.level, data.xp);
     }
+
+    public CharacterProgressData LoadCharacterProgressData(string characterId)
+    {
+        var data = SaveSystem.LoadCharacterProgress(currentSlot, characterId);
+        return data != null ? data.DeepClone() : new CharacterProgressData();
+    }
+
+    public void SaveCharacterProgressData(string characterId, CharacterProgressData progress)
+    {
+        if (string.IsNullOrWhiteSpace(characterId))
+            return;
+
+        var data = progress != null ? progress.DeepClone() : new CharacterProgressData();
+        if (data.unlockedPassiveNodeIds == null)
+            data.unlockedPassiveNodeIds = new List<string>();
+
+        SaveSystem.SaveCharacterProgress(currentSlot, characterId, data);
+    }
     
 
     // Debug

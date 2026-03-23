@@ -2,6 +2,8 @@ using UnityEngine;
 
 public class PlayerContext : CharacteContext
 {
+    [Header("Modules")]
+    public PlayerUIContext playerUIContext;
     
     [Header("Modules")]
     public PlayerMovementCC movement;

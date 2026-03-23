@@ -257,7 +257,7 @@ MonoBehaviour:
   iconImage: {fileID: 8529273403610069239}
   amountText: {fileID: 8429552999724495576}
   hoverHighlight: {fileID: 2725469252399604966}
-  hoverDetailDelay: 1
+  hoverDetailDelay: 0.5
 --- !u!1 &7453057852598485624
 GameObject:
   m_ObjectHideFlags: 0

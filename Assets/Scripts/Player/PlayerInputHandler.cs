@@ -65,4 +65,23 @@ public class PlayerInputHandler : MonoBehaviour
         if (!c.performed) return;
         ctx.stateHub.RequestReload();
     }
+
+    public void OpenInventory(InputAction.CallbackContext c)
+    {
+        
+        if (!c.performed) return;
+        bool isOpen = ctx.playerUIContext.inventoryUI.activeSelf;
+        ctx.playerUIContext.inventoryUI.SetActive(!isOpen);
+
+     
+    
+    }
+
+    public void OpenPassiveTree(InputAction.CallbackContext c)
+    {
+        
+        if (!c.performed) return;
+        bool isOpen = ctx.playerUIContext.passiveTree.activeSelf;
+        ctx.playerUIContext.passiveTree.SetActive(!isOpen);
+    }
 }

@@ -37,6 +37,20 @@ public class CharacterProgressData
     public int level = 1;
     public int xp = 0;
     public int skillPoints = 0;
+    public bool passiveProgressInitialized = false;
+    public List<string> unlockedPassiveNodeIds = new();
+
+    public CharacterProgressData DeepClone()
+    {
+        return new CharacterProgressData
+        {
+            level = level,
+            xp = xp,
+            skillPoints = skillPoints,
+            passiveProgressInitialized = passiveProgressInitialized,
+            unlockedPassiveNodeIds = unlockedPassiveNodeIds != null ? new List<string>(unlockedPassiveNodeIds) : new List<string>()
+        };
+    }
 }
 
 [Serializable]

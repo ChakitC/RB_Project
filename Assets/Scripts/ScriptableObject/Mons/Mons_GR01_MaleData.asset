@@ -19,6 +19,7 @@ MonoBehaviour:
   CharacterPrefabBasement: {fileID: 0}
   characterAvatar: {fileID: 0}
   controller: {fileID: 0}
+  animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
   maxHP: 1000
   maxStamina: 80
   Damage: 10
@@ -36,3 +37,11 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
+  passives: []
+  dashCue: {fileID: 0}
+  meleeLightCue: {fileID: 0}
+  meleeHeavyCue: {fileID: 0}
+  damagedCue: {fileID: 0}
+  downCue: {fileID: 0}
+  deathCue: {fileID: 0}
+  reviveCue: {fileID: 0}

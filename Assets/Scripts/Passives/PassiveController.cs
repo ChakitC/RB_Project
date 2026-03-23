@@ -12,6 +12,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
     [SerializeField] private StatusEffectController statusEffectController;
 
     [Header("Loadout")]
+    [SerializeField] private List<PassiveDefinition> runtimePassives = new();
     [SerializeField] private List<PassiveDefinition> extraPassives = new();
 
     [Header("Safety")]
@@ -78,6 +79,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         _customPassives.Clear();
 
         AddPassivesFromList(ctx != null && ctx.baseStats != null ? ctx.baseStats.passives : null);
+        AddPassivesFromList(runtimePassives);
         AddPassivesFromList(extraPassives);
 
         for (int i = 0; i < _customPassives.Count; i++)
@@ -92,6 +94,26 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
         statsHub?.RebuildModifierProviders();
         statsHub?.MarkDirty();
+    }
+
+    public void SetRuntimePassives(IReadOnlyList<PassiveDefinition> passives)
+    {
+        runtimePassives.Clear();
+
+        if (passives != null)
+        {
+            for (int i = 0; i < passives.Count; i++)
+            {
+                var passive = passives[i];
+                if (passive == null)
+                    continue;
+
+                runtimePassives.Add(passive);
+            }
+        }
+
+        if (isActiveAndEnabled)
+            RefreshPassiveLoadout();
     }
 
     public void AppendStatModifiers(List<RuntimeStatModifier> buffer)

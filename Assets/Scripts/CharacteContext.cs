@@ -32,6 +32,7 @@ public abstract class CharacteContext : MonoBehaviour
     public StaminaSystem StaminaSystem;
     public DashSystem DashSystem;
     public PassiveController PassiveController;
+    public PlayerPassiveProgress PassiveProgress;
     public SkillUserSystem EnegySystem;
     public Interactor Interactor;
     

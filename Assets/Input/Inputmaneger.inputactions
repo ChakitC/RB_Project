@@ -25,15 +25,6 @@
                     "initialStateCheck": true
                 },
                 {
-                    "name": "JoyStickLook",
-                    "type": "Value",
-                    "id": "52449cda-3e22-4f35-b4a6-3401f1092fbd",
-                    "expectedControlType": "Vector2",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": true
-                },
-                {
                     "name": "AimOn",
                     "type": "Button",
                     "id": "e2bb2aba-e952-48b5-b8d4-57df914f755b",
@@ -91,6 +82,24 @@
                     "name": "CallHalper",
                     "type": "Button",
                     "id": "190aad8e-d88a-4002-85f5-07f9c632b5df",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "OpenInventory",
+                    "type": "Button",
+                    "id": "d68c2544-7593-433a-8d78-40d2dad5a3af",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "OpenPassiveTree",
+                    "type": "Button",
+                    "id": "4fcaeec2-0b0d-4fcc-9e49-456bbea159e9",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -166,23 +175,23 @@
                 },
                 {
                     "name": "",
+                    "id": "c5e8ebee-a7d6-4c69-9ae8-9ca73451ebf7",
+                    "path": "<Keyboard>/k",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "OpenPassiveTree",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
                     "id": "dfb28fcf-2a2b-464e-9948-5d6650b940cb",
                     "path": "<Mouse>/position",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "MouseLook",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "ff9476ce-9dc1-4938-90b4-f60a57fa9a82",
-                    "path": "<Gamepad>/rightStick",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "JoyStickLook",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -262,27 +271,10 @@
                     "action": "CallHalper",
                     "isComposite": false,
                     "isPartOfComposite": false
-                }
-            ]
-        },
-        {
-            "name": "UI",
-            "id": "ea003468-82c1-4ef6-bb15-fb54e80c90c1",
-            "actions": [
-                {
-                    "name": "OpenInventory",
-                    "type": "Button",
-                    "id": "f8c219fc-4661-46f8-aa51-f6436b87d7be",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                }
-            ],
-            "bindings": [
+                },
                 {
                     "name": "",
-                    "id": "836f7f8b-640b-40ad-a823-cf373be7830e",
+                    "id": "686665bb-6315-4bb5-a3f7-e0837c661967",
                     "path": "<Keyboard>/i",
                     "interactions": "",
                     "processors": "",
@@ -292,6 +284,12 @@
                     "isPartOfComposite": false
                 }
             ]
+        },
+        {
+            "name": "UI",
+            "id": "ea003468-82c1-4ef6-bb15-fb54e80c90c1",
+            "actions": [],
+            "bindings": []
         }
     ],
     "controlSchemes": []

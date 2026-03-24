@@ -14,6 +14,13 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     [Min(0f)] public float locomotionParamLerp = 14f;
     public bool snapTo8Directions = true;
 
+
+    [Header("StatusEffec (Layer 0)")] 
+    public ClipTransition miniStune;
+    public ClipTransition stune;
+    public ClipTransition root;
+    public ClipTransition freez;
+
     [Header("Dash (Layer 0)")]
     public ClipTransition dashF;
     public ClipTransition dashB;

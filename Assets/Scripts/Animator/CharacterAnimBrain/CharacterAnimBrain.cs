@@ -64,6 +64,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private readonly StateMachine<LocomotionState> locomotionSM = new();
     private readonly StateMachine<ActionState> actionSM = new();
 
+    private Locomotion_StatusEffect statusEffect;
     private Locomotion_Skill skill;
     private Action_Reload reloadState;
     private LocomotionState_Live locomotion;
@@ -149,7 +150,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         ActLayer.SetLayerWeightOnPlay = false;
         ActLayer.Weight = 0f;
-        
+
+        statusEffect = new Locomotion_StatusEffect(this);
         locomotion = new LocomotionState_Live(this);
         empty = new Action_Empty(this);
         shootOnce = new Action_ShootPulse(this);

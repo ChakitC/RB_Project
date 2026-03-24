@@ -17,6 +17,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     [Header("Core")]
     [SerializeField] private AnimancerComponent animancer;
     [SerializeField] private CharacteContext ctx;
+    [SerializeField] private StatusEffectController statusEffectController;
 
     [Header("Layer Indices")]
     [SerializeField] private int locomotionLayerIndex = 0;
@@ -33,9 +34,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private float _reloadDuration = 0f;
 
     public enum MeleeType { Light, Heavy }
+    private enum StatusLocomotionKind { None, Root, MiniStune, Stune, Freez }
     
     public bool IsDowned { get; private set; }
     private LocomotionState_Crawl crawlState;
+    private Locomotion_StatusEffect statusEffectState;
+    private StatusLocomotionKind _currentStatusLocomotionKind;
 
     // pending (กรณีเรียก SetDowned ก่อน init)
     private bool _pendingDownedSet;
@@ -64,7 +68,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private readonly StateMachine<LocomotionState> locomotionSM = new();
     private readonly StateMachine<ActionState> actionSM = new();
 
-    private Locomotion_StatusEffect statusEffect;
     private Locomotion_Skill skill;
     private Action_Reload reloadState;
     private LocomotionState_Live locomotion;
@@ -103,6 +106,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private float CrawlParamLerp => AnimProfile.crawlParamLerp;
     private float CrawlSpeedMultiplier01 => AnimProfile.crawlSpeedMultiplier01;
     private ClipTransition SkillClip => AnimProfile.skillClip;
+    private ClipTransition MiniStuneClip => AnimProfile.miniStune;
+    private ClipTransition StuneClip => AnimProfile.stune;
+    private ClipTransition RootClip => AnimProfile.root;
+    private ClipTransition FreezClip => AnimProfile.freez;
 
     private bool TryGetAnimProfile(out CharacterAnimProfileSO animProfile)
     {
@@ -135,6 +142,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!animancer || animancer.Animator == null)
             return false;
 
+        if (!statusEffectController)
+            statusEffectController = GetComponent<StatusEffectController>();
+
         if (!TryGetAnimProfile(out var animProfile))
             return false;
 
@@ -151,7 +161,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         ActLayer.SetLayerWeightOnPlay = false;
         ActLayer.Weight = 0f;
 
-        statusEffect = new Locomotion_StatusEffect(this);
         locomotion = new LocomotionState_Live(this);
         empty = new Action_Empty(this);
         shootOnce = new Action_ShootPulse(this);
@@ -162,6 +171,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         meleeCombo = new Locomotion_MeleeCombo(this);
         crawlState = new LocomotionState_Crawl(this);
         skill = new Locomotion_Skill(this);
+        statusEffectState = new Locomotion_StatusEffect(this);
 
         locomotionSM.ForceSetState(locomotion);
         actionSM.ForceSetState(empty);
@@ -232,6 +242,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         _initWarned = false;
 
+        RefreshStatusLocomotion();
         locomotionSM.CurrentState?.Update();
         actionSM.CurrentState?.Update();
     }
@@ -374,5 +385,206 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             actionSM.TrySetState(shootHold);
         else
             actionSM.TrySetState(empty);
+    }
+
+    private void RefreshStatusLocomotion()
+    {
+        if (!_initialized)
+            return;
+
+        if (locomotionSM.CurrentState == deadState)
+            return;
+
+        StatusLocomotionKind desired = ResolveStatusLocomotionKind();
+
+        if (desired == StatusLocomotionKind.None)
+        {
+            if (locomotionSM.CurrentState == statusEffectState)
+            {
+                _currentStatusLocomotionKind = StatusLocomotionKind.None;
+                locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
+            }
+
+            return;
+        }
+
+        bool hardOverride = IsHardStatusLocomotion(desired);
+        bool canTakeOver = hardOverride ||
+                           locomotionSM.CurrentState == locomotion ||
+                           locomotionSM.CurrentState == crawlState ||
+                           locomotionSM.CurrentState == statusEffectState;
+
+        if (!canTakeOver)
+            return;
+
+        statusEffectState.SetKind(desired);
+
+        if (locomotionSM.CurrentState == statusEffectState)
+        {
+            if (_currentStatusLocomotionKind != desired)
+            {
+                _currentStatusLocomotionKind = desired;
+                locomotionSM.TryResetState(statusEffectState);
+            }
+
+            return;
+        }
+
+        _currentStatusLocomotionKind = desired;
+        locomotionSM.TrySetState(statusEffectState);
+    }
+
+    private StatusLocomotionKind ResolveStatusLocomotionKind()
+    {
+        if (!statusEffectController)
+            statusEffectController = GetComponent<StatusEffectController>();
+
+        var activeEffects = statusEffectController?.ActiveEffects;
+        if (activeEffects == null || activeEffects.Count == 0)
+            return StatusLocomotionKind.None;
+
+        StatusLocomotionKind best = StatusLocomotionKind.None;
+        int bestPriority = 0;
+
+        for (int i = 0; i < activeEffects.Count; i++)
+        {
+            var instance = activeEffects[i];
+            var definition = instance?.Definition;
+            if (definition == null || instance.CurrentStacks <= 0)
+                continue;
+
+            StatusLocomotionKind candidate = ResolveStatusLocomotionKind(definition);
+            if (candidate == StatusLocomotionKind.None || GetStatusLocomotionClip(candidate) == null)
+                continue;
+
+            int priority = GetStatusLocomotionPriority(candidate);
+            if (priority <= bestPriority)
+                continue;
+
+            best = candidate;
+            bestPriority = priority;
+        }
+
+        return best;
+    }
+
+    private StatusLocomotionKind ResolveStatusLocomotionKind(StatusEffectDef definition)
+    {
+        if (definition == null)
+            return StatusLocomotionKind.None;
+
+        if (HasStatusMarker(definition, "miniStune", "miniStun", "mini_stun", "mini-stun"))
+            return StatusLocomotionKind.MiniStune;
+
+        if (HasStatusMarker(definition, "freez", "freeze", "frozen"))
+            return StatusLocomotionKind.Freez;
+
+        if (HasStatusMarker(definition, "stune", "stun"))
+            return StatusLocomotionKind.Stune;
+
+        if (HasStatusMarker(definition, "root", "rooted"))
+            return StatusLocomotionKind.Root;
+
+        if (definition.pushStunnedState)
+            return StatusLocomotionKind.Stune;
+
+        if ((definition.controlBlocks & ControlBlockFlags.Move) != 0)
+            return StatusLocomotionKind.Root;
+
+        return StatusLocomotionKind.None;
+    }
+
+    private static bool HasStatusMarker(StatusEffectDef definition, params string[] tokens)
+    {
+        if (definition == null)
+            return false;
+
+        if (ContainsStatusToken(definition.effectId, tokens))
+            return true;
+
+        if (ContainsStatusToken(definition.name, tokens))
+            return true;
+
+        if (definition.tags == null)
+            return false;
+
+        for (int i = 0; i < definition.tags.Count; i++)
+        {
+            if (ContainsStatusToken(definition.tags[i], tokens))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool ContainsStatusToken(string value, params string[] tokens)
+    {
+        if (string.IsNullOrWhiteSpace(value) || tokens == null || tokens.Length == 0)
+            return false;
+
+        string normalizedValue = NormalizeStatusToken(value);
+        if (string.IsNullOrEmpty(normalizedValue))
+            return false;
+
+        for (int i = 0; i < tokens.Length; i++)
+        {
+            string token = NormalizeStatusToken(tokens[i]);
+            if (string.IsNullOrEmpty(token))
+                continue;
+
+            if (normalizedValue.IndexOf(token, StringComparison.Ordinal) >= 0)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static string NormalizeStatusToken(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        return value.Trim()
+            .ToLowerInvariant()
+            .Replace(" ", string.Empty)
+            .Replace("_", string.Empty)
+            .Replace("-", string.Empty)
+            .Replace(":", string.Empty);
+    }
+
+    private int GetStatusLocomotionPriority(StatusLocomotionKind kind)
+    {
+        return kind switch
+        {
+            StatusLocomotionKind.Freez => 40,
+            StatusLocomotionKind.Stune => 30,
+            StatusLocomotionKind.MiniStune => 20,
+            StatusLocomotionKind.Root => 10,
+            _ => 0,
+        };
+    }
+
+    private bool IsHardStatusLocomotion(StatusLocomotionKind kind)
+    {
+        return kind == StatusLocomotionKind.MiniStune ||
+               kind == StatusLocomotionKind.Stune ||
+               kind == StatusLocomotionKind.Freez;
+    }
+
+    private bool ShouldInterruptActionLayer(StatusLocomotionKind kind)
+    {
+        return IsHardStatusLocomotion(kind);
+    }
+
+    private ClipTransition GetStatusLocomotionClip(StatusLocomotionKind kind)
+    {
+        return kind switch
+        {
+            StatusLocomotionKind.MiniStune => MiniStuneClip,
+            StatusLocomotionKind.Stune => StuneClip,
+            StatusLocomotionKind.Root => RootClip,
+            StatusLocomotionKind.Freez => FreezClip,
+            _ => null,
+        };
     }
 }

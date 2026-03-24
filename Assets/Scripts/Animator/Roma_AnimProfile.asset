@@ -23,7 +23,7 @@ MonoBehaviour:
       _Callbacks: []
       _Names: []
     _Animations:
-    - {fileID: -3837599998409610354, guid: 59cebbf060938d64ea2a8bd93f6f9cc4, type: 3}
+    - {fileID: 5487989288048153974, guid: 0fe0a7dc98bb2fa4a9ff7d5be7eb0ab6, type: 3}
     - {fileID: 2718465186313594679, guid: 58a826f5004c5a54893b807d6696dc4e, type: 3}
     - {fileID: 3630704421837926502, guid: f802650346e12374780da059cd43d325, type: 3}
     - {fileID: 583729431000011259, guid: 0404bea5c3932cc438487112ccc8bb28, type: 3}
@@ -42,6 +42,43 @@ MonoBehaviour:
     _ParameterNameY: {fileID: 0}
   locomotionParamLerp: 14
   snapTo8Directions: 1
+  miniStune:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 4416735731402809383, guid: 1dc3e7f8dbc8a284bb8820b6b4bc209e, type: 3}
+    _NormalizedStartTime: NaN
+  stune:
+    _FadeDuration: 0.26666668
+    _Speed: 1
+    _Events:
+      _NormalizedTimes:
+      - 0.62
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -6872203247307310684, guid: c36420492fe95f642b8d87ab669217a5, type: 3}
+    _NormalizedStartTime: NaN
+  root:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: NaN
+  freez:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -6872203247307310684, guid: c36420492fe95f642b8d87ab669217a5, type: 3}
+    _NormalizedStartTime: NaN
   dashF:
     _FadeDuration: 0.25
     _Speed: 1

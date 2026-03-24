@@ -19,9 +19,9 @@ public class CharacterStats : ScriptableObject
     public float maxHP = 100;
     public float maxStamina = 80;
     public float Damage = 10;
-    public float critMultiplier = 5;
+    public float critMultiplier = 1;
     public float armor = 1;
-    public float critRate = 1;
+    public float critRate = 0;
     public float Enagy = 100;
     public float speed = 4.5f;
     

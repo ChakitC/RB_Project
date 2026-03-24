@@ -27,7 +27,7 @@ public class GunConfig : ItemDefinition
     public int magazine = 0;
     public int maxMagazine = 0;
     public float critRate = 0f;            
-    public float critMultiplier = 0f;
+    public float critMultiplier = 1f;
     public float stability = 0f;
     public float BulletSpeed = 30f;
     

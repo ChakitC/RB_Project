@@ -48,7 +48,7 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
         if(!CTX) CTX = GetComponentInChildren<CharacteContext>();
         baseDamage = CTX.StatsHub.GetSkillBaseDamage();
         critRate = CTX.StatsHub.GetCritRatePercent(CTX.currentWeapon);
-        critMult = CTX.StatsHub.GetCritRatePercent(CTX.currentWeapon);
+        critMult = CTX.StatsHub.GetCritMultiplier(CTX.currentWeapon);
     }
 
     private void OnDestroy()

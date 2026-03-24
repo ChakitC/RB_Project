@@ -6,8 +6,8 @@ public struct CombatParams
 {
     public WeaponType weaponType;
     public float baseDamage;
-    public float critRate;              // 0..1 หรือ 0..100 (รองรับใน Calculator อยู่แล้ว)
-    public float critMultiplier;        // เช่น 1.5 = +50%
+    public float critRate;              // 0..100 (%)
+    public float critMultiplier;        // xN เช่น 1.5 = 150%
 }
 
 public interface IArmorProvider { float Armor { get; } } // เป้าไม่มีเกราะก็ไม่ต้องใส่คอมโพเนนต์นี้

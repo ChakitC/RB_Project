@@ -34,11 +34,7 @@ public static class DamageCalculator
         if (!float.IsFinite(criticalRate) || criticalRate <= 0f)
             return 0f;
 
-        // Keep supporting legacy 0..1 inputs while making "1" mean 1%.
-        if (criticalRate >= 1f)
-            return Mathf.Clamp01(criticalRate * 0.01f);
-
-        return Mathf.Clamp01(criticalRate);
+        return Mathf.Clamp(criticalRate, 0f, 100f) * 0.01f;
     }
 
     public static float NormalizeCritMultiplier(float criticalDamageMultiplier)
@@ -46,11 +42,7 @@ public static class DamageCalculator
         if (!float.IsFinite(criticalDamageMultiplier) || criticalDamageMultiplier <= 0f)
             return 1f;
 
-        // Accept legacy bonus-style values such as 0.1 => 1.1x crit damage.
-        if (criticalDamageMultiplier < 1f)
-            return 1f + criticalDamageMultiplier;
-
-        return criticalDamageMultiplier;
+        return Mathf.Max(1f, criticalDamageMultiplier);
     }
 
     static float ApplyRangeFalloff(WeaponType gunType, float distance, float baseDamage)

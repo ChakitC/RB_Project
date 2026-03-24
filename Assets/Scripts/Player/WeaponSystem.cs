@@ -29,7 +29,7 @@ public class WeaponSystem : MonoBehaviour
     public int maxMagazine = 0;
     public float reloadTime = 0f;
     public float critRate = 0f;
-    public float critMultiplier = 0f;
+    public float critMultiplier = 1f;
     public bool magazineRelode = false;
     public float stability = 0f;
     public bool autoloader;
@@ -182,7 +182,8 @@ public class WeaponSystem : MonoBehaviour
 
     float FinalCritMult =>
         statsHub ? statsHub.GetCritMultiplier(currentWeapon) :
-        (currentWeapon ? currentWeapon.critMultiplier : 0f) + (ctx ? ctx.basecritMultiplier : 0f);
+        (currentWeapon ? Mathf.Max(1f, currentWeapon.critMultiplier) : 1f) +
+        (ctx ? Mathf.Max(1f, ctx.basecritMultiplier) - 1f : 0f);
 
     float FinalStability =>
         statsHub ? statsHub.GetStability(currentWeapon) :

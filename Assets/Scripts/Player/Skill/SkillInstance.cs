@@ -94,7 +94,7 @@ public class SkillInstance
 
         // อย่า override ทับ support — ให้เพิ่ม "โบนัสจากผู้ร่าย" เข้าไป
         // ผู้ร่ายมี CritMultiplier เป็น "ตัวคูณเต็ม" เช่น 2.3 -> โบนัส = +0.3
-        stats.critMultiplier += (hub.CritMultiplier - 2f);
+        stats.critMultiplier += (hub.CritMultiplier - 1f);
 
         // ถ้าจะให้ดาเมจสกิลได้โบนัสจากตัวละคร (แล้วแต่ดีไซน์):
         // stats.damage += hub.GetSkillBaseDamage();

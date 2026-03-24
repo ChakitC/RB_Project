@@ -17,8 +17,8 @@ public class Projectile : MonoBehaviour
 
     [Header("Damage (Unified via DamageCalculator)")]
     public WeaponType gunType;
-    public float critRate = 0f;          // ✅ ส่งได้ทั้ง 0..1 หรือ 0..100 (Calculator รองรับ)
-    public float critMult = 2f;
+    public float critRate = 0f;          // 0..100 (%)
+    public float critMult = 1f;          // xN
 
     [Header("Area Damage (Skill-style)")]
     public bool useAreaDamage = false;
@@ -147,7 +147,7 @@ public class Projectile : MonoBehaviour
         useAreaDamage = (def != null && def.AreaofEffec) && (skillStats != null && skillStats.areaRadius > 0f);
         areaRadius    = (skillStats != null) ? skillStats.areaRadius : 0f;
 
-        // Crit จาก stats (0..100 ส่งเข้า DamageCalculator ได้เลย)
+        // Crit จาก stats (0..100 / xN)
         critRate = (skillStats != null) ? skillStats.critChance : 0f;
         critMult = (skillStats != null) ? skillStats.critMultiplier : 2f;
 

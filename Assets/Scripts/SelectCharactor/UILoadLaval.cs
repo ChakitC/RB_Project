@@ -190,8 +190,8 @@ public class UILoadLaval : MonoBehaviour
         
       
 
-        // ถ้า Critrate เป็น 0-1 ให้แสดง %
-        CritrateText.text = (Critrate * 100f).ToString("0.#") + "%";
+        // Critrate เก็บเป็นเปอร์เซ็นต์ 0..100 อยู่แล้ว
+        CritrateText.text = Critrate.ToString("0.#") + "%";
 
         // CritDamage เป็น multiplier 
         

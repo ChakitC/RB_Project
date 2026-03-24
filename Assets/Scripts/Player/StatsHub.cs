@@ -4,7 +4,7 @@ using UnityEngine;
 [DefaultExecutionOrder(-110)]
 public class StatsHub : MonoBehaviour
 {
-    const float BASE_CRIT_MULT = 2f;
+    const float BASE_CRIT_MULT = 1f;
 
     [Header("Refs")]
     [SerializeField] private CharacteContext ctx;

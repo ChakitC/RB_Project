@@ -27,7 +27,7 @@ MonoBehaviour:
   magazine: 0
   maxMagazine: 0
   critRate: 0
-  critMultiplier: 0
+  critMultiplier: 1
   stability: 0
   BulletSpeed: 30
   autoloader: 0

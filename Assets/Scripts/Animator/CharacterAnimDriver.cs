@@ -32,10 +32,6 @@ public sealed class CharacterAnimDriver : MonoBehaviour
         
         hub.ReloadStarted += OnReloadStarted;
         hub.DashStarted   += OnDashStarted;
-        hub.Melee += OnMeleeStarted;
-        
-        
-        brain.MeleeComboEnded += OnMeleeEnded;
 
         _HealthSystem.CharacterDead += OnCharacterDead;
         _HealthSystem.CharacterDown += OnCharacterDown;
@@ -52,12 +48,9 @@ public sealed class CharacterAnimDriver : MonoBehaviour
         {
             hub.ShotFired -= OnShotFired;
             hub.FireHeldChanged -= OnFireHeldChanged;
-            hub.Melee            -= OnMeleeStarted;
             hub.ReloadStarted -= OnReloadStarted;
             hub.DashStarted   -= OnDashStarted;
-            
-            brain.MeleeComboEnded -= OnMeleeEnded;
-            
+
             _HealthSystem.CharacterDead -= OnCharacterDead;
             _HealthSystem.CharacterDown -= OnCharacterDown;
             CTX.HealthSystem.CharacterRevive -= OnCharacterRevive;
@@ -129,17 +122,6 @@ public sealed class CharacterAnimDriver : MonoBehaviour
         brain.PlayDash(duration, dashDirLocal);
     }
 
-    void OnMeleeStarted(CharacterAnimBrain.MeleeType MeleeType)
-    {
-        if (brain != null) brain.PressMelee(MeleeType);
-    }
-
-    void OnMeleeEnded()
-    {
-        hub.WeaponSM.TryChange(WeaponStateId.Ready);
-    }
-    
-    //
     // void OnStunStarted()
     // {
     //     if (brain != null) brain.PlayStun();

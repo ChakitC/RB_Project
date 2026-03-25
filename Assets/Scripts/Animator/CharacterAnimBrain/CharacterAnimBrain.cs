@@ -315,6 +315,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     public void PressMelee(MeleeType type)
     {
         var selected = (type == MeleeType.Light) ? LightCombo : HeavyCombo;
+        if (selected == null)
+            selected = DefaultMeleeCombo;
         if (selected == null) return;
 
         if (!TryInitialize()) return;
@@ -366,6 +368,16 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         
         locomotionSM.TrySetState(skill);
     }
+
+    public void CancelMeleeNow()
+    {
+        if (!TryInitialize())
+            return;
+        if (locomotionSM.CurrentState != meleeCombo)
+            return;
+
+        locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
+    }
     
     // ===================== Helpers =====================
     
@@ -409,6 +421,15 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         }
 
         bool hardOverride = IsHardStatusLocomotion(desired);
+        if (hardOverride && locomotionSM.CurrentState == meleeCombo)
+        {
+            var meleeController = ctx != null ? ctx.MeleeController : null;
+            if (!meleeController && ctx != null)
+                meleeController = ctx.GetComponent<MeleeController>();
+
+            meleeController?.InterruptMelee();
+        }
+
         bool canTakeOver = hardOverride ||
                            locomotionSM.CurrentState == locomotion ||
                            locomotionSM.CurrentState == crawlState ||

@@ -18,6 +18,7 @@ public abstract class CharacteContext : MonoBehaviour
     public WeaponSystem WeaponSystem;
     public CharacterAnimBrain AnimBrain;
     public CharacterAnimDriver AnimDriver;
+    public MeleeController MeleeController;
     
     [Header("Visual")] 
     public CharacterContextPartyLoader CharacterLoad;

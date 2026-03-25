@@ -195,6 +195,15 @@ public sealed class StateHub : MonoBehaviour
         MoveSM.CurrentId != MoveStateId.Dash &&
         WeaponSM.CurrentId != WeaponStateId.Melee;
 
+    public bool CanStartMelee() =>
+        IsAlive &&
+        !Isdown &&
+        !statusEffectStunned &&
+        UISM.CurrentId != UIStateId.Inventory &&
+        UISM.CurrentId != UIStateId.Pause &&
+        MoveSM.CurrentId != MoveStateId.Dash &&
+        MoveSM.CurrentId != MoveStateId.Stunned;
+
     void UpdateStand()
     {
         var ws = ctx.WeaponSystem;
@@ -262,6 +271,15 @@ public sealed class StateHub : MonoBehaviour
         statusEffectControlBlocks = controlBlocks;
         statusEffectStunned = stunned;
 
+        if (changed && stunned && ctx != null)
+        {
+            var meleeController = ctx.MeleeController;
+            if (!meleeController)
+                meleeController = ctx.GetComponent<MeleeController>();
+
+            meleeController?.InterruptMelee();
+        }
+
         if (changed)
             SyncStatusDrivenMoveState();
     }
@@ -288,16 +306,22 @@ public sealed class StateHub : MonoBehaviour
         ctx.stateHub.SetFireHeld(false);
     }
 
-    public void RequestOnMelee()
+    public bool RequestOnMelee(CharacterAnimBrain.MeleeType meleeType = CharacterAnimBrain.MeleeType.Heavy)
     {
-        if (MoveSM.CurrentId == MoveStateId.Dash) return;
-        if (statusEffectStunned) return;
+        if (!CanStartMelee())
+            return false;
 
-        WeaponSM.TryChange(WeaponStateId.Melee);
+        if (ctx == null)
+            return false;
 
-        ctx.WeaponSystem.SetFiring(false);
-        ctx.stateHub.SetFireHeld(false);
-        ctx.stateHub.ReportMeleeStarted(CharacterAnimBrain.MeleeType.Heavy);
+        var meleeController = ctx.MeleeController;
+        if (!meleeController)
+            meleeController = ctx.GetComponent<MeleeController>();
+        if (!meleeController)
+            meleeController = ctx.gameObject.AddComponent<MeleeController>();
+
+        ctx.MeleeController = meleeController;
+        return meleeController != null && meleeController.TryStartMelee(meleeType);
     }
 
     public void RequestOnDash()

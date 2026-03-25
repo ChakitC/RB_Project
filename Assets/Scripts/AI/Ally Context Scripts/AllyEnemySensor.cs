@@ -167,7 +167,7 @@ public class AllyEnemySensor : MonoBehaviour
    
         RotateToTarget();
         
-        CTX.stateHub.ReportMeleeStarted(CharacterAnimBrain.MeleeType.Heavy);
+        CTX.stateHub.RequestOnMelee(CharacterAnimBrain.MeleeType.Heavy);
         Debug.Log("Heavy Attack", this);
       
     }
@@ -184,7 +184,7 @@ public class AllyEnemySensor : MonoBehaviour
         if (Time.time < _nextTime) return;
         _nextTime = Time.time + repeatInterval;
         
-        CTX.stateHub.ReportMeleeStarted(CharacterAnimBrain.MeleeType.Light);
+        CTX.stateHub.RequestOnMelee(CharacterAnimBrain.MeleeType.Light);
         Debug.Log("Light Attack", this);
     }
    
@@ -196,7 +196,7 @@ public class AllyEnemySensor : MonoBehaviour
         
         // ทำครั้งเดียวตอน "ออก" ระยะ
         RotateToTarget();
-        CTX.stateHub.ReportMeleeStarted(CharacterAnimBrain.MeleeType.Heavy);
+        CTX.stateHub.RequestOnMelee(CharacterAnimBrain.MeleeType.Heavy);
         Debug.Log("Heavy Attack", this);
         
     }

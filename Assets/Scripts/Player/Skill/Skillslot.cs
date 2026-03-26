@@ -8,6 +8,7 @@ public class SkillSlot
     
     [Header("Active Gems")]
     public SkillGemDefinition skillAsset;
+    [Min(1)] public int skillLevel = 1;
     
     [Header("Support Gems")]
     public SupportGemDefinition[] supportAssets; 

@@ -59,6 +59,8 @@ public class SkillInstance
             critMultiplier  = 2f                  // base ของสกิล
         };
 
+        def.ApplyLevelData(stats, def.ClampLevel(level));
+
         // 1) Apply supports
         foreach (var s in supports)
         {
@@ -145,6 +147,8 @@ public class SkillInstance
 
         for (int i = 0; i < stats.projectileCount; i++)
         {
+            // Skill identity is fixed when the cast starts, but origin/aim are sampled here at
+            // release time so the projectile follows the live cast socket and facing.
             Vector3 dir = user.AimDirection;
 
             if (dir.sqrMagnitude < 0.0001f)

@@ -18,6 +18,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     [SerializeField] private AnimancerComponent animancer;
     [SerializeField] private CharacteContext ctx;
     [SerializeField] private StatusEffectController statusEffectController;
+    [SerializeField] private bool deactivateOwnerOnSkillExit;
 
     [Header("Layer Indices")]
     [SerializeField] private int locomotionLayerIndex = 0;
@@ -55,10 +56,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private Action onMeleeHitStartCache;
     private Action onMeleeHitEndCache;
     private Action onMeleeEndCache;
-
-    // private WeaponSystem WS => ctx != null ? ctx.WeaponSystem : null;
-    // private DashSystem DS => ctx != null ? ctx.DashSystem : null;
-    // private bool IsReloading => WS != null && WS.IsReloading;
+    private Action onSkillCastMomentCache;
+    
 
     // ----- Runtime inputs -----
     public float MoveSpeed01 { get; set; } // 0..1
@@ -78,6 +77,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     // cache delegates ลด alloc
     private Action onShootEndCache;
+    private int _activeSkillRequestId;
+    private float _activeSkillCastPointNormalized = 0.35f;
+    private bool _activeSkillReleaseRequested;
+    private bool _activeSkillReleased;
 
     private AnimancerLayer LocoLayer => animancer.Layers[locomotionLayerIndex];
     private AnimancerLayer ActLayer => animancer.Layers[actionLayerIndex];
@@ -110,6 +113,17 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private ClipTransition StuneClip => AnimProfile.stune;
     private ClipTransition RootClip => AnimProfile.root;
     private ClipTransition FreezClip => AnimProfile.freez;
+    private bool HasValidSkillClip => SkillClip != null && SkillClip.IsValid;
+    internal float ActiveSkillCastPointNormalized => _activeSkillCastPointNormalized;
+    internal bool HasPendingSkillReleaseRequest => _activeSkillReleaseRequested;
+    public bool IsSkillActive =>
+        _activeSkillReleaseRequested ||
+        _activeSkillRequestId != 0 ||
+        (_initialized && locomotionSM.CurrentState == skill);
+   
+
+    public event Action<int> SkillCastMomentReached;
+    public event Action<int> SkillCastInterrupted;
 
     private bool TryGetAnimProfile(out CharacterAnimProfileSO animProfile)
     {
@@ -147,6 +161,13 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         if (!TryGetAnimProfile(out var animProfile))
             return false;
+
+        if (_initialized &&
+            (animancer.Animator != _boundAnimator || animProfile != _boundAnimProfile) &&
+            (_activeSkillRequestId != 0 || _activeSkillReleaseRequested))
+        {
+            InterruptActiveSkillRequest();
+        }
 
         // ถ้า Animator หรือ profile เปลี่ยน (เช่น rebuild model / switch character) ต้อง init ใหม่
         if (_initialized && animancer.Animator == _boundAnimator && animProfile == _boundAnimProfile)
@@ -363,10 +384,49 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PlaySkill()
     {
+        if (!TryInitialize() || !HasValidSkillClip)
+            return;
+
+        ClearActiveSkillRequest();
+        locomotionSM.TryResetState(skill);
+    }
+
+    public bool TryPlaySkill(int requestId, float castPointNormalized)
+    {
+        if (requestId <= 0)
+            return false;
+
+        if (!TryInitialize() || !HasValidSkillClip)
+            return false;
+
+        ArmSkillRequest(requestId, castPointNormalized);
+
+        try
+        {
+            if (locomotionSM.TryResetState(skill))
+                return true;
+        }
+        catch (ArgumentException ex)
+        {
+            Debug.LogWarning($"[CharacterAnimBrain] Invalid skill clip. Falling back to immediate cast. {ex.Message}", this);
+        }
+
+        ClearActiveSkillRequest();
+        return false;
+    }
+
+    public void CancelSkillCastRequest(int requestId)
+    {
+        if (requestId <= 0 || requestId != _activeSkillRequestId)
+            return;
+
+        ClearActiveSkillRequest();
+
         if (!TryInitialize())
             return;
-        
-        locomotionSM.TrySetState(skill);
+
+        if (locomotionSM.CurrentState == skill)
+            locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
     }
 
     public void CancelMeleeNow()
@@ -607,5 +667,62 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             StatusLocomotionKind.Freez => FreezClip,
             _ => null,
         };
+    }
+
+    internal void NotifySkillCastMoment()
+    {
+        if (!_activeSkillReleaseRequested || _activeSkillReleased)
+            return;
+
+        _activeSkillReleased = true;
+        SkillCastMomentReached?.Invoke(_activeSkillRequestId);
+    }
+
+    internal void NotifySkillStateExited()
+    {
+        int requestId = _activeSkillRequestId;
+        bool interrupted = _activeSkillReleaseRequested && !_activeSkillReleased;
+
+        ClearActiveSkillRequest();
+
+        if (interrupted && requestId > 0)
+            SkillCastInterrupted?.Invoke(requestId);
+    }
+
+    private void ArmSkillRequest(int requestId, float castPointNormalized)
+    {
+        _activeSkillRequestId = requestId;
+        _activeSkillCastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
+        _activeSkillReleaseRequested = true;
+        _activeSkillReleased = false;
+    }
+
+    private void ClearActiveSkillRequest()
+    {
+        _activeSkillRequestId = 0;
+        _activeSkillCastPointNormalized = 0.35f;
+        _activeSkillReleaseRequested = false;
+        _activeSkillReleased = false;
+    }
+
+    private void InterruptActiveSkillRequest()
+    {
+        int requestId = _activeSkillRequestId;
+        bool shouldNotify = _activeSkillReleaseRequested && !_activeSkillReleased && requestId > 0;
+
+        ClearActiveSkillRequest();
+
+        if (shouldNotify)
+            SkillCastInterrupted?.Invoke(requestId);
+    }
+
+    private void OnDisable()
+    {
+        InterruptActiveSkillRequest();
+    }
+
+    private void OnDestroy()
+    {
+        InterruptActiveSkillRequest();
     }
 }

@@ -19,4 +19,4 @@ MonoBehaviour:
   sideOffset: 0
   randomLeftRight: 0
   forceLeft: 0
-  requestDespawnOnArrive: 0
+  requestDespawnOnArrive: 1

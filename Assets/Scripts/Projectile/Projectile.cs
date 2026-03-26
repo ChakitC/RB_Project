@@ -329,17 +329,9 @@ public class Projectile : MonoBehaviour
         if (target != null)
         {
             float finalDamage = CalcFinalDamage(target);
-            
-            SpawnDamageNumber(transform.position, finalDamage);
             SpawnHitVfx(transform.position, -transform.forward);
             PlayHitCue(transform.position);
-
-            var attackerGO = _ctx.owner != null ? _ctx.owner.gameObject : null;
-
-            ApplyDamageToTarget(target, finalDamage, attackerGO);
-
-            NotifyDamageApplied(hit, target);
-            NotifyOwnerCombatTriggers(target, finalDamage);
+            ApplyResolvedDamage(target, finalDamage, hit, showDamageNumber: true);
         }
         else if (hitWall)
         {
@@ -402,10 +394,6 @@ public class Projectile : MonoBehaviour
 
             float finalDamage = CalcFinalDamage(dmg);
 
-            var attackerGO = _ctx.owner != null ? _ctx.owner.gameObject : null;
-
-            ApplyDamageToTarget(dmg, finalDamage, attackerGO);
-
             Vector3 hitPoint = h.ClosestPoint(transform.position);
             Vector3 hitNormal = (hitPoint - transform.position);
             if (hitNormal.sqrMagnitude <= 0.0001f)
@@ -414,8 +402,7 @@ public class Projectile : MonoBehaviour
                 hitNormal.Normalize();
 
             var hit = new ProjectileHitInfo(hitPoint, hitNormal, h);
-            NotifyDamageApplied(hit, dmg);
-            NotifyOwnerCombatTriggers(dmg, finalDamage);
+            ApplyResolvedDamage(dmg, finalDamage, hit);
         }
     }
 
@@ -501,9 +488,9 @@ public class Projectile : MonoBehaviour
 #endif
     }
 
-    void NotifyOwnerCombatTriggers(IDamageable target, float finalDamage)
+    void NotifyOwnerCombatTriggers(IDamageable target, float finalDamage, bool wasAliveBeforeDamage)
     {
-        if (target == null || _ctx.owner == null)
+        if (target == null || _ctx.owner == null || !wasAliveBeforeDamage)
             return;
 
         var ownerStatusController = _ctx.owner.GetComponent<StatusEffectController>();
@@ -598,6 +585,24 @@ public class Projectile : MonoBehaviour
             damageableWithSource.TakeDamage(finalDamage, attackerGO);
         else
             target.TakeDamage(finalDamage);
+    }
+
+    public void ApplyResolvedDamage(IDamageable target, float finalDamage, in ProjectileHitInfo hit, bool showDamageNumber = false)
+    {
+        if (target == null || finalDamage <= 0f)
+            return;
+
+        bool wasAliveBeforeDamage = target.IsAlive;
+        if (!wasAliveBeforeDamage)
+            return;
+
+        if (showDamageNumber)
+            SpawnDamageNumber(hit.point, finalDamage);
+
+        var attackerGO = _ctx.owner != null ? _ctx.owner.gameObject : null;
+        ApplyDamageToTarget(target, finalDamage, attackerGO);
+        NotifyDamageApplied(hit, target);
+        NotifyOwnerCombatTriggers(target, finalDamage, wasAliveBeforeDamage);
     }
 
     PassiveEventContext CreateOwnerEventContext(CombatEventBus ownerEventBus, PassiveEventType type, GameObject targetObject, float value)

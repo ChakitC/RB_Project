@@ -1,0 +1,84 @@
+{
+    "entries": [
+        {
+            "characterId": "ID.Roma",
+            "progress": {
+                "level": 30,
+                "xp": 0,
+                "skillPoints": 29,
+                "passiveProgressInitialized": true,
+                "unlockedPassiveNodeIds": []
+            }
+        },
+        {
+            "characterId": "ID.Dorothy",
+            "progress": {
+                "level": 30,
+                "xp": 0,
+                "skillPoints": 29,
+                "passiveProgressInitialized": true,
+                "unlockedPassiveNodeIds": []
+            }
+        },
+        {
+            "characterId": "ID.Noemi",
+            "progress": {
+                "level": 27,
+                "xp": 925,
+                "skillPoints": 0,
+                "passiveProgressInitialized": false,
+                "unlockedPassiveNodeIds": []
+            }
+        },
+        {
+            "characterId": "ID.Feno",
+            "progress": {
+                "level": 22,
+                "xp": 1099,
+                "skillPoints": 21,
+                "passiveProgressInitialized": true,
+                "unlockedPassiveNodeIds": []
+            }
+        },
+        {
+            "characterId": "ID.Roger",
+            "progress": {
+                "level": 30,
+                "xp": 0,
+                "skillPoints": 0,
+                "passiveProgressInitialized": false,
+                "unlockedPassiveNodeIds": []
+            }
+        },
+        {
+            "characterId": "ID.Aires",
+            "progress": {
+                "level": 30,
+                "xp": 0,
+                "skillPoints": 0,
+                "passiveProgressInitialized": false,
+                "unlockedPassiveNodeIds": []
+            }
+        },
+        {
+            "characterId": "ID.Milano",
+            "progress": {
+                "level": 30,
+                "xp": 0,
+                "skillPoints": 0,
+                "passiveProgressInitialized": false,
+                "unlockedPassiveNodeIds": []
+            }
+        },
+        {
+            "characterId": "ID.Abbygail",
+            "progress": {
+                "level": 6,
+                "xp": 140,
+                "skillPoints": 9,
+                "passiveProgressInitialized": true,
+                "unlockedPassiveNodeIds": []
+            }
+        }
+    ]
+}

@@ -22,7 +22,7 @@ public class SaveManager : MonoBehaviour
 
     private void Awake()
     {
-        Debug.Log("persistentDataPath = " + Application.persistentDataPath);
+        Debug.Log("saveDataPath = " + SaveSystem.CurrentDirectory);
 
         // Singleton
         if (Instance != null && Instance != this)
@@ -254,7 +254,7 @@ public class SaveManager : MonoBehaviour
         
         if (Input.GetKeyDown(saveKey)) Save();
         if (Input.GetKeyDown(loadKey)) Load();
-        // Debug.Log($"Save path: {Application.persistentDataPath}");
+        // Debug.Log($"Save path: {SaveSystem.CurrentDirectory}");
         
     }
 }

@@ -1,0 +1,455 @@
+{
+    "inventory": {
+        "maxSlotCount": 20,
+        "gold": 1000057,
+        "slots": [
+            {
+                "itemId": "Gun01",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "70443bf97d0141dd8f367dcc5fed7697",
+                    "baseWeaponId": "Gun01",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 1568,
+                    "currentMagazine": 23
+                }
+            },
+            {
+                "itemId": "Gun01",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "5770a9022ab042e0b9c1c5f36556b6c3",
+                    "baseWeaponId": "Gun01",
+                    "rarity": 2,
+                    "mainAffix": {
+                        "affixId": "Stabiity.1",
+                        "hasPrimaryValue": true,
+                        "primaryValue": 32.78095245361328,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [
+                        {
+                            "affixId": "Damge.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 40.935813903808597,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        },
+                        {
+                            "affixId": "Crit.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 0.7678786516189575,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        }
+                    ],
+                    "shotCounter": 4995,
+                    "currentMagazine": 29
+                }
+            },
+            {
+                "itemId": "Gun01",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "71b5a1e709eb40b9aded4f0c66259808",
+                    "baseWeaponId": "Gun01",
+                    "rarity": 2,
+                    "mainAffix": {
+                        "affixId": "Stabiity.1",
+                        "hasPrimaryValue": true,
+                        "primaryValue": 23.660144805908204,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [
+                        {
+                            "affixId": "Damge.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 31.261396408081056,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        },
+                        {
+                            "affixId": "Crit.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 0.20078825950622559,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        }
+                    ],
+                    "shotCounter": 0,
+                    "currentMagazine": 30
+                }
+            },
+            {
+                "itemId": "Gun01",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "f149a73315da48a18c27d6b4542aeb5d",
+                    "baseWeaponId": "Gun01",
+                    "rarity": 1,
+                    "mainAffix": {
+                        "affixId": "Stabiity.1",
+                        "hasPrimaryValue": true,
+                        "primaryValue": 3.3401846885681154,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [
+                        {
+                            "affixId": "Crit.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 0.38765841722488406,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        }
+                    ],
+                    "shotCounter": 0,
+                    "currentMagazine": 30
+                }
+            },
+            {
+                "itemId": "Gun01",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "ba081c770b4a452081ceb58cc1177ca3",
+                    "baseWeaponId": "Gun01",
+                    "rarity": 2,
+                    "mainAffix": {
+                        "affixId": "Stabiity.1",
+                        "hasPrimaryValue": true,
+                        "primaryValue": 19.09374237060547,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [
+                        {
+                            "affixId": "Crit.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 0.2916375994682312,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        },
+                        {
+                            "affixId": "Damge.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 28.667566299438478,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        }
+                    ],
+                    "shotCounter": 0,
+                    "currentMagazine": 30
+                }
+            },
+            {
+                "itemId": "Gun01",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "a929143a95a3474590d55a204e1055d0",
+                    "baseWeaponId": "Gun01",
+                    "rarity": 1,
+                    "mainAffix": {
+                        "affixId": "Stabiity.1",
+                        "hasPrimaryValue": true,
+                        "primaryValue": 20.199356079101564,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [
+                        {
+                            "affixId": "Damge.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 20.790550231933595,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        }
+                    ],
+                    "shotCounter": 0,
+                    "currentMagazine": 30
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
+                }
+            }
+        ]
+    },
+    "weapon": {
+        "equippedWeaponInstanceId": "5770a9022ab042e0b9c1c5f36556b6c3"
+    },
+    "party": {
+        "partyIds": []
+    }
+}

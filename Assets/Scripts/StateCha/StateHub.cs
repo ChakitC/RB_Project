@@ -54,6 +54,22 @@ public sealed class StateHub : MonoBehaviour
     bool IsSkillBlockedByStatusEffects =>
         statusEffectStunned || (statusEffectControlBlocks & ControlBlockFlags.Skill) != 0;
 
+    bool IsSkillAnimating()
+    {
+        if (ctx == null)
+            return false;
+
+        var animBrain = ctx.AnimBrain;
+        if (!animBrain)
+        {
+            animBrain = ctx.GetComponent<CharacterAnimBrain>();
+            if (ctx.AnimBrain == null)
+                ctx.AnimBrain = animBrain;
+        }
+
+        return animBrain != null && animBrain.IsSkillActive;
+    }
+
     void Awake()
     {
         if (!ctx)
@@ -99,19 +115,27 @@ public sealed class StateHub : MonoBehaviour
         {
             if (to == MoveStateId.Stunned)
                 StunStarted?.Invoke();
+
+            CancelHeldFireIfShootBlocked();
         };
 
         WeaponSM.OnChanged += (_, to) =>
         {
+            CancelHeldFireIfShootBlocked();
+
             if (to == WeaponStateId.Reloading)
-                ReloadStarted?.Invoke(ctx.StatsHub.ReloadTime);
+                ReloadStarted?.Invoke(GetReloadAnimationDuration());
         };
 
         LifeSM.OnChanged += (_, to) =>
         {
+            CancelHeldFireIfShootBlocked();
+
             if (to == LifeStateId.Dead)
                 Died?.Invoke();
         };
+
+        UISM.OnChanged += (_, _) => CancelHeldFireIfShootBlocked();
 
         if (logTransitions)
         {
@@ -144,6 +168,44 @@ public sealed class StateHub : MonoBehaviour
         Debug.Log($"[{nameof(StateHub)}] {smName}: {from} -> {to}", this);
     }
 
+    float GetReloadAnimationDuration()
+    {
+        if (ctx == null)
+            return 0f;
+
+        var weaponSystem = ResolveWeaponSystem();
+
+        if (weaponSystem != null)
+            return weaponSystem.GetReloadAnimDuration();
+
+        return ctx.StatsHub != null ? ctx.StatsHub.ReloadTime : 0f;
+    }
+
+    WeaponSystem ResolveWeaponSystem()
+    {
+        if (ctx == null)
+            return null;
+
+        var weaponSystem = ctx.WeaponSystem;
+        if (!weaponSystem)
+        {
+            weaponSystem = ctx.GetComponent<WeaponSystem>();
+            if (ctx.WeaponSystem == null)
+                ctx.WeaponSystem = weaponSystem;
+        }
+
+        return weaponSystem;
+    }
+
+    void CancelHeldFireIfShootBlocked()
+    {
+        if (ctx == null || CanShoot())
+            return;
+
+        ResolveWeaponSystem()?.SetFiring(false);
+        SetFireHeld(false);
+    }
+
     void UpdateDebugSnapshot()
     {
         dbgLife = LifeSM.CurrentId.ToString();
@@ -170,6 +232,7 @@ public sealed class StateHub : MonoBehaviour
         IsAlive &&
         !Isdown &&
         !IsShootBlockedByStatusEffects &&
+        !IsSkillAnimating() &&
         MoveSM.CurrentId != MoveStateId.Dash &&
         UISM.CurrentId != UIStateId.Inventory &&
         UISM.CurrentId != UIStateId.Pause &&
@@ -281,11 +344,17 @@ public sealed class StateHub : MonoBehaviour
         }
 
         if (changed)
+        {
             SyncStatusDrivenMoveState();
+            CancelHeldFireIfShootBlocked();
+        }
     }
 
     public void RequestReload()
     {
+        if (IsSkillAnimating())
+            return;
+
         ctx.WeaponSystem.TryReload();
     }
 

@@ -1,6 +1,6 @@
-using UnityEngine;
-using Animancer;
 using System;
+using Animancer;
+using UnityEngine;
 
 public sealed partial class CharacterAnimBrain
 {
@@ -21,7 +21,7 @@ public sealed partial class CharacterAnimBrain
         {
             get
             {
-                if (owner.SkillClip == null) return false;
+                if (!owner.HasValidSkillClip) return false;
                 if (owner.IsDowned) return false;
                 if (owner.locomotionSM.CurrentState == owner.deadState) return false;
                 return true;
@@ -30,7 +30,7 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnEnterState()
         {
-            if (owner.SkillClip == null)
+            if (!owner.HasValidSkillClip)
             {
                 owner.locomotionSM.TrySetState(owner.locomotion);
                 return;
@@ -44,20 +44,35 @@ public sealed partial class CharacterAnimBrain
             owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
 
             state = owner.LocoLayer.Play(owner.SkillClip);
-            state.Events(this).OnEnd = _onEndCache;
+
+            var events = state.Events(this);
+            events.Clear();
+
+            if (owner.HasPendingSkillReleaseRequest)
+            {
+                owner.onSkillCastMomentCache ??= owner.NotifySkillCastMoment;
+                events.Add(owner.ActiveSkillCastPointNormalized, owner.onSkillCastMomentCache);
+            }
+
+            events.OnEnd = _onEndCache;
         }
 
         public override void OnExitState()
         {
             if (state != null)
-                state.Events(this).OnEnd = null;
+            {
+                var events = state.Events(this);
+                events.Clear();
+                events.OnEnd = null;
+                state = null;
+            }
 
             owner.animancer.Animator.applyRootMotion = _prevApplyRootMotion;
             owner.RootMotionActive = false;
-            
 
             owner.actionSM.TrySetState(owner.empty);
-            owner.gameObject.SetActive(false);
+            owner.NotifySkillStateExited();
+            
         }
 
         private void OnSkillEnd()

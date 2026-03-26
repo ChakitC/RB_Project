@@ -32,13 +32,6 @@ MonoBehaviour:
   SkillVfxhit: {fileID: 8295974722891363362, guid: 25477c0d7d0187d4e8cb92a3bc1860ba, type: 3}
   castCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
   projectileHitVfxScale: 2
-  castAnimation: {fileID: 0}
-  perLevelData:
-  - requiredLevel: 0
-    damage: 0
-    manaCost: 0
-    castTime: 0
-    cooldown: 0
-    radius: 0
-    projectiles: 0
-    critChance: 0
+  castAnimation: {fileID: -8374479895102863559, guid: 875bf0d7944892c47a1c8eb164dc64c2, type: 3}
+  castPointNormalized: 0.5
+  perLevelData: []

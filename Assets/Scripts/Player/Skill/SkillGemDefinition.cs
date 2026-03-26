@@ -40,9 +40,11 @@ public class SkillGemDefinition : ScriptableObject
     public GameObject BallVfxPrefab;
     public GameObject SkillVfxhit;
     public AudioCue castCue;
-        
+
     public float projectileHitVfxScale = 1f;
-    public AnimationClip castAnimation; // ถ้ามีอนิเมชันเฉพาะ
+  
+    [Range(0f, 1f)]
+    public float castPointNormalized = 0.35f; // ตำแหน่งปล่อยสกิลใน shared skill clip แบบ normalized time
 
     // --------- Optional: ถ้าอยากทำเลเวลสกิลแบบละเอียด ---------
 
@@ -57,18 +59,86 @@ public class SkillGemDefinition : ScriptableObject
         public float radius;
         public int projectiles;
         public float critChance;
+
+        public bool HasAnyOverride()
+        {
+            return !Mathf.Approximately(damage, 0f) ||
+                   !Mathf.Approximately(manaCost, 0f) ||
+                   !Mathf.Approximately(castTime, 0f) ||
+                   !Mathf.Approximately(cooldown, 0f) ||
+                   !Mathf.Approximately(radius, 0f) ||
+                   projectiles != 0 ||
+                   !Mathf.Approximately(critChance, 0f);
+        }
     }
 
     [Tooltip("ถ้าใส่รายการนี้ จะใช้ค่านี้แทน base เมื่อคำนวณตามเลเวล")]
     public List<LevelData> perLevelData = new();
+
+    public int ClampLevel(int level)
+    {
+        return Mathf.Clamp(level, 1, Mathf.Max(1, maxLevel));
+    }
 
     public LevelData GetLevelData(int level)
     {
         if (perLevelData == null || perLevelData.Count == 0)
             return null;
 
-        // clamp level
-        int index = Mathf.Clamp(level - 1, 0, perLevelData.Count - 1);
+        int clampedLevel = ClampLevel(level);
+        LevelData bestMatch = null;
+        int bestRequiredLevel = int.MinValue;
+
+        for (int i = 0; i < perLevelData.Count; i++)
+        {
+            var entry = perLevelData[i];
+            if (entry == null)
+                continue;
+
+            if (!entry.HasAnyOverride())
+                continue;
+
+            int requiredLevel = Mathf.Max(1, entry.requiredLevel);
+            if (requiredLevel > clampedLevel)
+                continue;
+
+            if (bestMatch != null && requiredLevel <= bestRequiredLevel)
+                continue;
+
+            bestMatch = entry;
+            bestRequiredLevel = requiredLevel;
+        }
+
+        if (bestMatch != null)
+            return bestMatch;
+
+        int index = Mathf.Clamp(clampedLevel - 1, 0, perLevelData.Count - 1);
         return perLevelData[index];
+    }
+
+    public void ApplyLevelData(FinalSkillStats stats, int level)
+    {
+        if (stats == null)
+            return;
+
+        var levelData = GetLevelData(level);
+        if (levelData == null)
+            return;
+
+        stats.damage = levelData.damage;
+        stats.manaCost = levelData.manaCost;
+        stats.castTime = levelData.castTime;
+        stats.cooldown = levelData.cooldown;
+        stats.areaRadius = levelData.radius;
+        stats.projectileCount = levelData.projectiles;
+        stats.critChance = levelData.critChance;
+    }
+
+    public float GetCastPointNormalized()
+    {
+        if (!float.IsFinite(castPointNormalized))
+            return 0.35f;
+
+        return Mathf.Clamp(castPointNormalized, 0f, 0.999f);
     }
 }

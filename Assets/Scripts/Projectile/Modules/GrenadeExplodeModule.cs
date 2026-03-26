@@ -194,7 +194,14 @@ public class GrenadeExplodeModule : ProjectileModule
             armor
         );
 
-        dmgable.TakeDamage(final);
+        Vector3 hitNormal = closest - center;
+        if (hitNormal.sqrMagnitude <= 0.0001f)
+            hitNormal = Vector3.up;
+        else
+            hitNormal.Normalize();
+
+        var hit = new ProjectileHitInfo(closest, hitNormal, c);
+        p.ApplyResolvedDamage(dmgable, final, hit, showDamageNumber: true);
 
         if (applyKnockback)
         {

@@ -77,6 +77,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     // cache delegates ลด alloc
     private Action onShootEndCache;
+    private SkillGemDefinition _activeSkillDefinition;
     private int _activeSkillRequestId;
     private float _activeSkillCastPointNormalized = 0.35f;
     private bool _activeSkillReleaseRequested;
@@ -108,12 +109,13 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private MixerTransition2D CrawlMixer => AnimProfile.crawlMixer;
     private float CrawlParamLerp => AnimProfile.crawlParamLerp;
     private float CrawlSpeedMultiplier01 => AnimProfile.crawlSpeedMultiplier01;
-    private ClipTransition SkillClip => AnimProfile.skillClip;
+    private ClipTransition LegacySkillClip => AnimProfile.skillClip;
+    private ClipTransition SkillClip => ResolveSkillClip(_activeSkillDefinition);
     private ClipTransition MiniStuneClip => AnimProfile.miniStune;
     private ClipTransition StuneClip => AnimProfile.stune;
     private ClipTransition RootClip => AnimProfile.root;
     private ClipTransition FreezClip => AnimProfile.freez;
-    private bool HasValidSkillClip => SkillClip != null && SkillClip.IsValid;
+    private bool HasActiveSkillClip => HasValidSkillClip(_activeSkillDefinition);
     internal float ActiveSkillCastPointNormalized => _activeSkillCastPointNormalized;
     internal bool HasPendingSkillReleaseRequest => _activeSkillReleaseRequested;
     public bool IsSkillActive =>
@@ -385,22 +387,33 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PlaySkill()
     {
-        if (!TryInitialize() || !HasValidSkillClip)
+        PlaySkill(null);
+    }
+
+    public void PlaySkill(SkillGemDefinition skillDef)
+    {
+        if (!TryInitialize() || !HasValidSkillClip(skillDef))
             return;
 
         ClearActiveSkillRequest();
+        _activeSkillDefinition = skillDef;
         locomotionSM.TryResetState(skill);
     }
 
     public bool TryPlaySkill(int requestId, float castPointNormalized)
     {
+        return TryPlaySkill(requestId, null, castPointNormalized);
+    }
+
+    public bool TryPlaySkill(int requestId, SkillGemDefinition skillDef, float castPointNormalized)
+    {
         if (requestId <= 0)
             return false;
 
-        if (!TryInitialize() || !HasValidSkillClip)
+        if (!TryInitialize() || !HasValidSkillClip(skillDef))
             return false;
 
-        ArmSkillRequest(requestId, castPointNormalized);
+        ArmSkillRequest(requestId, skillDef, castPointNormalized);
 
         try
         {
@@ -670,6 +683,20 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         };
     }
 
+    private ClipTransition ResolveSkillClip(SkillGemDefinition skillDef)
+    {
+        if (skillDef != null)
+            return skillDef.skillClip;
+
+        return LegacySkillClip;
+    }
+
+    private bool HasValidSkillClip(SkillGemDefinition skillDef)
+    {
+        var clip = ResolveSkillClip(skillDef);
+        return clip != null && clip.IsValid;
+    }
+
     internal void NotifySkillCastMoment()
     {
         if (!_activeSkillReleaseRequested || _activeSkillReleased)
@@ -682,7 +709,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     internal void NotifySkillStateExited(bool completedNormally)
     {
         int requestId = _activeSkillRequestId;
+        SkillGemDefinition activeSkillDefinition = _activeSkillDefinition;
         bool interrupted = _activeSkillReleaseRequested && !_activeSkillReleased;
+        bool shouldDeactivateOwner =
+            deactivateOwnerOnSkillExit &&
+            activeSkillDefinition == null &&
+            gameObject.activeSelf;
 
         ClearActiveSkillRequest();
 
@@ -690,7 +722,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         {
             SkillCompleted?.Invoke();
 
-            if (deactivateOwnerOnSkillExit && gameObject.activeSelf)
+            if (shouldDeactivateOwner)
                 gameObject.SetActive(false);
         }
 
@@ -698,8 +730,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             SkillCastInterrupted?.Invoke(requestId);
     }
 
-    private void ArmSkillRequest(int requestId, float castPointNormalized)
+    private void ArmSkillRequest(int requestId, SkillGemDefinition skillDef, float castPointNormalized)
     {
+        _activeSkillDefinition = skillDef;
         _activeSkillRequestId = requestId;
         _activeSkillCastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
         _activeSkillReleaseRequested = true;
@@ -708,6 +741,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void ClearActiveSkillRequest()
     {
+        _activeSkillDefinition = null;
         _activeSkillRequestId = 0;
         _activeSkillCastPointNormalized = 0.35f;
         _activeSkillReleaseRequested = false;

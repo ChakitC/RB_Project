@@ -28,6 +28,7 @@ public class GrenadeExplodeModule : ProjectileModule
 
     [Tooltip("ไม่ทำดาเมจ owner (คนยิง)")]
     public bool ignoreOwner = true;
+    public bool suppressDirectHitDamage = true;
 
     public LayerMask damageMask = ~0;
     public QueryTriggerInteraction queryTriggers = QueryTriggerInteraction.Collide;
@@ -51,6 +52,10 @@ public class GrenadeExplodeModule : ProjectileModule
     }
 
     public override IProjectileModuleState CreateState() => new State();
+
+    public override bool SuppressBuiltinAreaDamage(Projectile p, ProjectileContext ctx, IProjectileModuleState state) => true;
+    public override bool SuppressBuiltinDamageableHit(Projectile p, ProjectileContext ctx, IProjectileModuleState state, IDamageable target)
+        => suppressDirectHitDamage && explodeOnDamageableHit && target != null;
 
     public override void OnSpawn(Projectile p, ProjectileContext ctx, IProjectileModuleState st)
     {

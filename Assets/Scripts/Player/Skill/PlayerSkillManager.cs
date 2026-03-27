@@ -162,7 +162,7 @@ public class PlayerSkillManager : MonoBehaviour
         // Skill identity is fixed here, but origin/aim are sampled later by SkillInstance.Cast so
         // the projectile uses the live cast socket and facing at the release frame.
         bool usingAnimationDriver = animBrain != null &&
-                                    animBrain.TryPlaySkill(context.requestId, context.castPointNormalized);
+                                    animBrain.TryPlaySkill(context.requestId, context.skillDef, context.castPointNormalized);
 
         if (usingAnimationDriver)
             return true;

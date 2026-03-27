@@ -298,7 +298,10 @@ public class Projectile : MonoBehaviour
         bool hitWall = other.CompareTag("Wall");
 
         
-        bool willExplodeAoE = (useAreaDamage && areaRadius > 0f && !_areaExploded);
+        bool willExplodeAoE = useAreaDamage &&
+                              areaRadius > 0f &&
+                              !_areaExploded &&
+                              !HasModuleSuppressingBuiltinAreaDamage();
 
         if (target == null && !hitWall && !willExplodeAoE) return;
 
@@ -323,15 +326,24 @@ public class Projectile : MonoBehaviour
             return;
         }
 
+        bool suppressDamageableImpact = target != null && HasModuleSuppressingBuiltinDamageableHit(target);
+
         // ===== Single / Wall =====
         var hit = new ProjectileHitInfo(transform.position, -_ctx.dir, other);
 
         if (target != null)
         {
-            float finalDamage = CalcFinalDamage(target);
-            SpawnHitVfx(transform.position, -transform.forward);
-            PlayHitCue(transform.position);
-            ApplyResolvedDamage(target, finalDamage, hit, showDamageNumber: true);
+            if (suppressDamageableImpact)
+            {
+                PlayHitCue(transform.position);
+            }
+            else
+            {
+                float finalDamage = CalcFinalDamage(target);
+                SpawnHitVfx(transform.position, -transform.forward);
+                PlayHitCue(transform.position);
+                ApplyResolvedDamage(target, finalDamage, hit, showDamageNumber: true);
+            }
         }
         else if (hitWall)
         {
@@ -353,6 +365,36 @@ public class Projectile : MonoBehaviour
             Despawn();
         
         
+    }
+
+    bool HasModuleSuppressingBuiltinAreaDamage()
+    {
+        if (config == null || config.modules == null || _states == null)
+            return false;
+
+        for (int i = 0; i < config.modules.Count; i++)
+        {
+            var module = config.modules[i];
+            if (module != null && module.SuppressBuiltinAreaDamage(this, _ctx, _states[i]))
+                return true;
+        }
+
+        return false;
+    }
+
+    bool HasModuleSuppressingBuiltinDamageableHit(IDamageable target)
+    {
+        if (target == null || config == null || config.modules == null || _states == null)
+            return false;
+
+        for (int i = 0; i < config.modules.Count; i++)
+        {
+            var module = config.modules[i];
+            if (module != null && module.SuppressBuiltinDamageableHit(this, _ctx, _states[i], target))
+                return true;
+        }
+
+        return false;
     }
 
     float CalcFinalDamage(IDamageable target)

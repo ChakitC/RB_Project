@@ -8,6 +8,7 @@ public sealed partial class CharacterAnimBrain
     {
         private readonly CharacterAnimBrain owner;
         private AnimancerState state;
+        private AnimancerEvent.Sequence runtimeEvents;
         private bool _prevApplyRootMotion;
         private bool _completedNormally;
         private readonly Action _onEndCache;
@@ -22,7 +23,7 @@ public sealed partial class CharacterAnimBrain
         {
             get
             {
-                if (!owner.HasValidSkillClip) return false;
+                if (!owner.HasActiveSkillClip) return false;
                 if (owner.IsDowned) return false;
                 if (owner.locomotionSM.CurrentState == owner.deadState) return false;
                 return true;
@@ -32,8 +33,9 @@ public sealed partial class CharacterAnimBrain
         public override void OnEnterState()
         {
             _completedNormally = false;
+            var skillClip = owner.SkillClip;
 
-            if (!owner.HasValidSkillClip)
+            if (skillClip == null || !skillClip.IsValid)
             {
                 owner.locomotionSM.TrySetState(owner.locomotion);
                 return;
@@ -46,27 +48,33 @@ public sealed partial class CharacterAnimBrain
             owner.actionSM.TrySetState(owner.empty);
             owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
 
-            state = owner.LocoLayer.Play(owner.SkillClip);
-
-            var events = state.Events(this);
-            events.Clear();
+            state = owner.LocoLayer.Play(skillClip);
+            runtimeEvents = new AnimancerEvent.Sequence(skillClip.Events);
 
             if (owner.HasPendingSkillReleaseRequest)
             {
                 owner.onSkillCastMomentCache ??= owner.NotifySkillCastMoment;
-                events.Add(owner.ActiveSkillCastPointNormalized, owner.onSkillCastMomentCache);
+                runtimeEvents.Add(owner.ActiveSkillCastPointNormalized, owner.onSkillCastMomentCache);
             }
 
-            events.OnEnd = _onEndCache;
+            var transitionOnEnd = runtimeEvents.OnEnd;
+            runtimeEvents.OnEnd = transitionOnEnd == null
+                ? _onEndCache
+                : () =>
+                {
+                    transitionOnEnd();
+                    _onEndCache();
+                };
+
+            state.SharedEvents = runtimeEvents;
         }
 
         public override void OnExitState()
         {
             if (state != null)
             {
-                var events = state.Events(this);
-                events.Clear();
-                events.OnEnd = null;
+                state.SharedEvents = null;
+                runtimeEvents = null;
                 state = null;
             }
 

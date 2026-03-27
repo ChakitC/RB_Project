@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Unity.VisualScripting;
+using Animancer;
 using UnityEngine;
 
 [CreateAssetMenu(
@@ -43,6 +43,10 @@ public class SkillGemDefinition : ScriptableObject
     public GameObject BallVfxPrefab;
     public GameObject SkillVfxhit;
     public AudioCue castCue;
+
+    [Header("Animation / Animancer")]
+    [Tooltip("Per-skill Animancer transition. Set the clip plus Fade, Speed, Start Time, and optional transition events here.")]
+    public ClipTransition skillClip;
 
     public float projectileHitVfxScale = 1f;
   

@@ -17,7 +17,8 @@ function Get-NormalizedPath {
 
 $projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
 $csprojPath = Join-Path $projectRoot "Assembly-CSharp.csproj"
-$buildRoot = Join-Path $projectRoot "Temp\CodexBuild\Assembly-CSharp"
+$artifactRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot "..\BuildArtifacts"))
+$buildRoot = Join-Path $artifactRoot "Assembly-CSharp"
 
 $baseIntermediatePath = Get-NormalizedPath (Join-Path $buildRoot "base")
 $intermediatePath = Get-NormalizedPath (Join-Path $buildRoot "obj")

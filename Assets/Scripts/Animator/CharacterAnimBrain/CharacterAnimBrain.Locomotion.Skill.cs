@@ -9,6 +9,7 @@ public sealed partial class CharacterAnimBrain
         private readonly CharacterAnimBrain owner;
         private AnimancerState state;
         private bool _prevApplyRootMotion;
+        private bool _completedNormally;
         private readonly Action _onEndCache;
 
         public Locomotion_Skill(CharacterAnimBrain owner)
@@ -30,6 +31,8 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnEnterState()
         {
+            _completedNormally = false;
+
             if (!owner.HasValidSkillClip)
             {
                 owner.locomotionSM.TrySetState(owner.locomotion);
@@ -71,13 +74,15 @@ public sealed partial class CharacterAnimBrain
             owner.RootMotionActive = false;
 
             owner.actionSM.TrySetState(owner.empty);
-            owner.NotifySkillStateExited();
+            owner.NotifySkillStateExited(_completedNormally);
             
         }
 
         private void OnSkillEnd()
         {
             if (owner.locomotionSM.CurrentState != this) return;
+
+            _completedNormally = true;
 
             if (owner.IsDowned)
                 owner.locomotionSM.TrySetState(owner.crawlState);

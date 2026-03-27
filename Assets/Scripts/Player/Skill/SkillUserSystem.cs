@@ -26,6 +26,8 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
     public Transform CastOrigin => castOrigin ? castOrigin : transform;
     public Transform AimTransform => aimTransform ? aimTransform : transform;
     public float currentEnagy => currentEnergy;
+    public float CurrentEnergy => currentEnergy;
+    public float MaximumEnergy => maximumEnergy;
     public StatsHub StatsHub => statsHub;
 
     public float BaseDamage => statsHub ? statsHub.GetSkillBaseDamage()
@@ -105,6 +107,29 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
 
         currentEnergy = Mathf.Max(0f, currentEnergy - amount);
         NotifyEnergyChanged();
+    }
+
+    public bool CanRestoreEnergy(float amount)
+    {
+        if (!float.IsFinite(amount) || amount <= 0f)
+            return false;
+
+        RefreshMaximumEnergy(resetCurrentToMax: false);
+        return currentEnergy < maximumEnergy;
+    }
+
+    public bool RestoreEnergy(float amount)
+    {
+        if (!CanRestoreEnergy(amount))
+            return false;
+
+        float previous = currentEnergy;
+        currentEnergy = Mathf.Clamp(currentEnergy + amount, 0f, maximumEnergy);
+        if (currentEnergy <= previous)
+            return false;
+
+        NotifyEnergyChanged();
+        return true;
     }
 
     void NotifyEnergyChanged()

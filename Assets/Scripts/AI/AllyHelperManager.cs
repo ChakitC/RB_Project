@@ -7,6 +7,8 @@ public class AllyHelperManager : MonoBehaviour
    [SerializeField] private PlayerContext playerContext;
    [SerializeField] private AllyContext allyContext;
    [SerializeField] private GameObject allyHelper;
+   private CharacterAnimBrain allyAnimBrain;
+   private bool hideHelperOnSkillComplete;
    
 
        
@@ -25,15 +27,27 @@ public class AllyHelperManager : MonoBehaviour
         }
 
         allyContext = allyHelper.GetComponent<AllyContext>();
+        allyAnimBrain = allyContext != null ? allyContext.AnimBrain : null;
+
+        if (allyAnimBrain == null)
+            allyAnimBrain = allyHelper.GetComponent<CharacterAnimBrain>();
+
+        if (allyContext != null && allyContext.AnimBrain == null)
+            allyContext.AnimBrain = allyAnimBrain;
+
+        if (allyAnimBrain != null)
+            allyAnimBrain.SkillCompleted += OnAllySkillCompleted;
+
         allyHelper.SetActive(false);
     }
 
-    
-    void Update()
+    private void OnDestroy()
     {
-        
+        if (allyAnimBrain != null)
+            allyAnimBrain.SkillCompleted -= OnAllySkillCompleted;
     }
 
+    
     public void SummonAllyHelper()
     {
         if (playerContext == null || allyHelper == null)
@@ -79,16 +93,36 @@ public class AllyHelperManager : MonoBehaviour
         }
 
         // เปิดใช้งาน
+        if (allyAnimBrain == null)
+        {
+            Debug.LogWarning("Summon failed : CharacterAnimBrain is null", this);
+            return;
+        }
+
         if (!allyHelper.activeSelf)
             allyHelper.SetActive(true);
 
-        allyContext.AnimBrain.PlaySkill();
+        hideHelperOnSkillComplete = true;
+        allyAnimBrain.PlaySkill();
+
+        if (!allyAnimBrain.IsSkillActive)
+            hideHelperOnSkillComplete = false;
         
     }
 
     public void AllyHelperOut()
     {
-        if (!allyHelper.activeSelf)
+        hideHelperOnSkillComplete = false;
+
+        if (allyHelper != null && allyHelper.activeSelf)
             allyHelper.SetActive(false);
+    }
+
+    private void OnAllySkillCompleted()
+    {
+        if (!hideHelperOnSkillComplete)
+            return;
+
+        AllyHelperOut();
     }
 }

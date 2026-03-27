@@ -185,6 +185,35 @@ public class HealthSystem : MonoBehaviour, IDamageable, IDamageableWithContext, 
 
     public void SetInvincible(bool value) => invincible = value;
 
+    public bool CanHeal(float amount)
+    {
+        if (!float.IsFinite(amount) || amount <= 0f)
+            return false;
+
+        if (CTX == null || CTX.stateHub == null || CTX.stateHub.LifeSM == null)
+            return false;
+
+        if (CTX.stateHub.LifeSM.CurrentId != LifeStateId.Alive)
+            return false;
+
+        return currentHealth < maximumHealth;
+    }
+
+    public bool Heal(float amount)
+    {
+        if (!CanHeal(amount))
+            return false;
+
+        float previous = currentHealth;
+        currentHealth = Mathf.Clamp(currentHealth + amount, 0f, maximumHealth);
+        if (currentHealth <= previous)
+            return false;
+
+        ApplyHealthBarValues();
+        CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
+        return true;
+    }
+
     public virtual void TakeDamage(float damage)
     {
         ApplyDamageInternal(Mathf.Max(0f, damage), null, false, default);

@@ -124,6 +124,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public event Action<int> SkillCastMomentReached;
     public event Action<int> SkillCastInterrupted;
+    public event Action SkillCompleted;
 
     private bool TryGetAnimProfile(out CharacterAnimProfileSO animProfile)
     {
@@ -678,12 +679,20 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         SkillCastMomentReached?.Invoke(_activeSkillRequestId);
     }
 
-    internal void NotifySkillStateExited()
+    internal void NotifySkillStateExited(bool completedNormally)
     {
         int requestId = _activeSkillRequestId;
         bool interrupted = _activeSkillReleaseRequested && !_activeSkillReleased;
 
         ClearActiveSkillRequest();
+
+        if (completedNormally)
+        {
+            SkillCompleted?.Invoke();
+
+            if (deactivateOwnerOnSkillExit && gameObject.activeSelf)
+                gameObject.SetActive(false);
+        }
 
         if (interrupted && requestId > 0)
             SkillCastInterrupted?.Invoke(requestId);

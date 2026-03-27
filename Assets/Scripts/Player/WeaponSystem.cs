@@ -432,6 +432,39 @@ public class WeaponSystem : MonoBehaviour
         }
     }
 
+    public bool CanRestoreMagazine(int amount, bool fillToMax = false)
+    {
+        RefreshDerivedStats();
+
+        if (!currentWeapon || MaxMagazine <= 0)
+            return false;
+
+        if (fillToMax)
+            return magazine < MaxMagazine;
+
+        return amount > 0 && magazine < MaxMagazine;
+    }
+
+    public bool RestoreMagazine(int amount, bool fillToMax = false)
+    {
+        if (!CanRestoreMagazine(amount, fillToMax))
+            return false;
+
+        if (isReloading)
+            CancelReload();
+
+        int previous = magazine;
+        int amountToRestore = fillToMax ? MaxMagazine - magazine : Mathf.Max(0, amount);
+        magazine = Mathf.Clamp(magazine + amountToRestore, 0, MaxMagazine);
+
+        if (magazine <= previous)
+            return false;
+
+        SyncWeaponInstanceState();
+        ctx.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
+        return true;
+    }
+
     IEnumerator ReloadPerBulletRoutine()
     {
         isReloading = true;

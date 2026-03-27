@@ -35,6 +35,9 @@ public class SkillGemDefinition : ScriptableObject
     public int baseProjectilesCount = 1;
     public float baseCritChance = 5f; // เปอร์เซ็นต์ก็ได้ เช่น 5 = 5%
 
+    [Header("Execution")]
+    public SkillPayloadDef payload;
+
     [Header("Visual / Prefab")]
     public GameObject skillPrefab;      // projectile / AoE / effect อะไรก็ว่าไป
     public GameObject BallVfxPrefab;

@@ -1,60 +1,91 @@
-using System;
-using SingularityGroup.HotReload;
-using UnityEngine;
 using TMPro;
+using UnityEngine;
 using UnityEngine.InputSystem;
-using Object = System.Object;
 
 public class UIManager : MonoBehaviour
 {
-    [Header("Refs")] [SerializeField] 
-    
-    private CharacteContext ctx;
+    [Header("Refs")]
+    [SerializeField] private CharacteContext ctx;
+    [SerializeField] private StatusEffectController statusEffectController;
+
     public GameObject Inventory;
+
     [Header("Audio")]
     [SerializeField] private AudioCue inventoryToggleCue;
-   
-    
-    [Header("Texts")] 
+
+    [Header("Texts")]
     public TextMeshProUGUI ammoText;
     public TextMeshProUGUI staminaText;
     public TextMeshProUGUI EnegyText;
     public TextMeshProUGUI HPText;
-    
-    
+
+    [Header("Status Effects")]
+    [SerializeField] private StatusEffectGridUI buffGridUI;
+    [SerializeField] private StatusEffectGridUI debuffGridUI;
+
     void Awake()
     {
-        if (!ctx) ctx = FindAnyObjectByType<CharacteContext>();
+        ResolveReferences();
+        BindStatusEffectUI();
+
         if (!ammoText) Debug.LogWarning("[UI] ammoText not assigned");
         if (!staminaText) Debug.LogWarning("[UI] staminaText not assigned");
     }
 
     void Start()
     {
-        
+        ResolveReferences();
 
         if (ctx && ctx.StaminaSystem != null)
         {
+            ctx.StaminaSystem.OnStaminaChanged -= UpdateStamina;
             ctx.StaminaSystem.OnStaminaChanged += UpdateStamina;
-
             UpdateStamina(ctx.StaminaSystem.Current, ctx.StaminaSystem.Max);
         }
 
+        BindStatusEffectUI();
+    }
 
+    void OnDestroy()
+    {
+        if (ctx && ctx.StaminaSystem != null)
+            ctx.StaminaSystem.OnStaminaChanged -= UpdateStamina;
+    }
+
+    void ResolveReferences()
+    {
+        if (!ctx) ctx = FindAnyObjectByType<CharacteContext>();
+
+        if (!statusEffectController && ctx)
+            statusEffectController = ctx.GetComponent<StatusEffectController>();
+    }
+
+    void BindStatusEffectUI()
+    {
+        if (buffGridUI)
+        {
+            buffGridUI.SetCategory(StatusEffectCategory.Buff);
+            buffGridUI.Bind(statusEffectController);
+        }
+
+        if (debuffGridUI)
+        {
+            debuffGridUI.SetCategory(StatusEffectCategory.Debuff);
+            debuffGridUI.Bind(statusEffectController);
+        }
     }
 
     public void UpdateAmmoText(int currentAmmo, int maxAmmo)
     {
         if (!ammoText) return;
         ammoText.text = $"{currentAmmo}/{maxAmmo}";
-        ammoText.color = (currentAmmo == 0) ? Color.red : Color.white;
+        ammoText.color = currentAmmo == 0 ? Color.red : Color.white;
     }
 
     public void UpdateStamina(float currentStamina, float maxStamina)
     {
         if (!staminaText) return;
         staminaText.text = $"{currentStamina:0}/{maxStamina:0}";
-
     }
 
     public void UpdateEnegyText(float currentEnegyText, float maxEnegyText)
@@ -79,12 +110,9 @@ public class UIManager : MonoBehaviour
             Debug.LogWarning("[UI] Inventory not assigned");
             return;
         }
+
         Inventory.SetActive(!Inventory.activeSelf);
         if (inventoryToggleCue != null)
             AudioService.Instance.Play(inventoryToggleCue);
     }
-    
-    
-    
-}   
-    
+}

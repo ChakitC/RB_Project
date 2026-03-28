@@ -10,19 +10,19 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 29.299
+      value: -1.9376526
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -1.1455201
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 3.619
+      value: 4.0634003
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.20001015
+      value: 0.99999696
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
       propertyPath: m_LocalRotation.x
@@ -30,7 +30,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.97979385
+      value: -0.00247942
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
       propertyPath: m_LocalRotation.z
@@ -42,7 +42,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: -203.075
+      value: -0.284
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -131,12 +131,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   CurrentBackFaceOutlineMethod: 0
   BackfaceOutlineColor: {r: 0, g: 0, b: 0, a: 0}
-  BackFaceOutlineWidth: 4.58
+  BackFaceOutlineWidth: 3.11
   BackFaceOutlineFadeStartEnd: {x: 50, y: 50}
   ScaleWidthAsScreenSpaceOutline: 1
   CenterPositionOffset: {x: 0, y: 0, z: 0}
   _overrideMode: 0
-  _mainLightColorOverride: 1
+  _mainLightColorOverride: 0
   _mainLightColorOverrideValue: {r: 0, g: 0, b: 0, a: 0}
   _mainLightStrengthOverrideValue: 0
   _overrideLightAngle: {x: 0, y: 0, z: 0}

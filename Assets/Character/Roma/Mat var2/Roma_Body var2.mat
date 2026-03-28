@@ -25,9 +25,10 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _RECEIVE_SHADOWS_OFF
   - _RIMLIGHTING_ON
   - _SPECULAR_LIGHTING_ON
-  - _STYLE_CELSHADING
+  - _STYLE_STYLIZEPBR
   m_InvalidKeywords:
   - _ENABLESSSRAMP
   - _FLATTENADDITIONALLIGHTING
@@ -205,8 +206,8 @@ Material:
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OffsetShadowDistance: 15
-    - _OutlineWidth: 4.8
-    - _OverrideLightColorIntensityToggle: 1
+    - _OutlineWidth: 3.11
+    - _OverrideLightColorIntensityToggle: 0
     - _OverrideLightDirToggle: 0
     - _OverrideZTest: 0
     - _PBRInfluenceDirectLighting: 0
@@ -218,7 +219,7 @@ Material:
     - _RampOcclusionStrength: 0
     - _ReceiveASPShadow: 0
     - _ReceiveOffsetedDepthMap: 0
-    - _ReceiveShadows: 1
+    - _ReceiveShadows: 0
     - _RimLightAlign: 0.172
     - _RimLightOn: 1
     - _RimLightOverShadow: 1
@@ -243,7 +244,7 @@ Material:
     - _WorkflowSpace: 1
     - _ZTest: 4
     - _ZWrite: 1
-    - _style: 1
+    - _style: 0
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
@@ -251,8 +252,8 @@ Material:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FaceFrontDirection: {r: 0.12055539, g: 0, b: -0.9927068, a: 0}
-    - _FaceRightDirection: {r: -0.9927068, g: 0, b: -0.12055539, a: 0}
+    - _FaceFrontDirection: {r: 0.034816913, g: 0, b: -0.99939394, a: 0}
+    - _FaceRightDirection: {r: -0.99939394, g: 0, b: -0.034816913, a: 0}
     - _FaceUVCtrl: {r: 0, g: 1, b: 0, a: 0}
     - _FakeLightColor: {r: 0, g: 0, b: 0, a: 0}
     - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}

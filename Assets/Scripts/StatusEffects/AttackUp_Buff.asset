@@ -15,7 +15,7 @@ MonoBehaviour:
   effectId: AttackUp
   icon: {fileID: 0}
   category: 1
-  duration: 10
+  duration: 20
   maxStacks: 1
   stackMode: 0
   tickInterval: 0

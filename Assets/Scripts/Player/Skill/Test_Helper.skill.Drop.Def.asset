@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c44d6e64e3da49d5b28dbd7970f4d6b8, type: 3}
   m_Name: Test_Helper.skill.Drop.Def
   m_EditorClassIdentifier: 
-  helperId: Helper.Testasdasdasd
+  helperId: zzzzzzzz
   displayName: Helper.Test
   description: Helper.Test
-  triggerEvent: 9
+  triggerEvent: 7
   originFilter: 3
   procChance: 1
   internalCooldownSeconds: 1
@@ -23,7 +23,7 @@ MonoBehaviour:
   requireAttackId: 0
   oncePerAttackId: 0
   requireOwnerAlive: 1
-  executionSkill: {fileID: 11400000, guid: 2c0a137f622f7914d9c826d8d75120e0, type: 2}
+  executionSkill: {fileID: 11400000, guid: f3a1b004254c92c4ca9da93bdbe9db86, type: 2}
   executionSkillLevel: 1
   hideHelperOnSkillComplete: 1
   blockWhileHelperBusy: 1

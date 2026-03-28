@@ -202,8 +202,8 @@ Material:
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OffsetShadowDistance: 15
-    - _OutlineWidth: 4.8
-    - _OverrideLightColorIntensityToggle: 1
+    - _OutlineWidth: 3.11
+    - _OverrideLightColorIntensityToggle: 0
     - _OverrideLightDirToggle: 0
     - _OverrideZTest: 0
     - _PBRInfluenceDirectLighting: 0
@@ -248,8 +248,8 @@ Material:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FaceFrontDirection: {r: 0.12055539, g: 0, b: -0.9927068, a: 0}
-    - _FaceRightDirection: {r: -0.9927068, g: 0, b: -0.12055539, a: 0}
+    - _FaceFrontDirection: {r: 0.034816913, g: 0, b: -0.99939394, a: 0}
+    - _FaceRightDirection: {r: -0.99939394, g: 0, b: -0.034816913, a: 0}
     - _FaceUVCtrl: {r: 0, g: 1, b: 0, a: 0}
     - _FakeLightColor: {r: 0, g: 0, b: 0, a: 0}
     - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}

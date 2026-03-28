@@ -24,6 +24,7 @@ public class AllyHelperManager : MonoBehaviour
 
     CharacterAnimBrain allyAnimBrain;
     ISkillUser allySkillUser;
+    ASPHelperDitherFader allyHelperFader;
     PendingHelperSkill pendingHelperSkill;
     bool hideHelperOnSkillComplete;
     int nextHelperSkillRequestId = 1;
@@ -48,6 +49,9 @@ public class AllyHelperManager : MonoBehaviour
             Debug.LogWarning("AllyHelper is null", this);
             return;
         }
+
+        CacheHelperReferences();
+        allyHelperFader?.SetHiddenImmediate();
 
         if (allyHelper.activeSelf)
             allyHelper.SetActive(false);
@@ -82,10 +86,11 @@ public class AllyHelperManager : MonoBehaviour
             {
                 hideHelperOnSkillComplete = false;
                 if (activatedNow)
-                    allyHelper.SetActive(false);
+                    HideHelperImmediate();
                 return false;
             }
 
+            allyHelperFader?.BeginAnimationLifecycle(hideOnSkillComplete);
             return true;
         }
 
@@ -106,13 +111,16 @@ public class AllyHelperManager : MonoBehaviour
             skillDef.GetCastPointNormalized());
 
         if (started)
+        {
+            allyHelperFader?.BeginAnimationLifecycle(hideOnSkillComplete);
             return true;
+        }
 
         CancelPendingHelperSkill();
         hideHelperOnSkillComplete = false;
 
         if (activatedNow)
-            allyHelper.SetActive(false);
+            HideHelperImmediate();
 
         return false;
     }
@@ -122,7 +130,12 @@ public class AllyHelperManager : MonoBehaviour
         CancelPendingHelperSkill();
         hideHelperOnSkillComplete = false;
 
-        if (allyHelper != null && allyHelper.activeSelf)
+        if (allyHelper == null || !allyHelper.activeSelf)
+            return;
+
+        if (allyHelperFader != null)
+            allyHelperFader.FadeOutThenDeactivate();
+        else
             allyHelper.SetActive(false);
     }
 
@@ -145,6 +158,10 @@ public class AllyHelperManager : MonoBehaviour
         allySkillUser = allyHelper.GetComponent<ISkillUser>();
         if (allySkillUser == null && allyContext != null && allyContext.EnegySystem != null)
             allySkillUser = allyContext.EnegySystem;
+
+        allyHelperFader = allyHelper.GetComponent<ASPHelperDitherFader>();
+        if (allyHelperFader == null)
+            allyHelperFader = allyHelper.GetComponentInChildren<ASPHelperDitherFader>(true);
     }
 
     void SubscribeToAnimBrain(CharacterAnimBrain nextAnimBrain)
@@ -199,9 +216,18 @@ public class AllyHelperManager : MonoBehaviour
         {
             allyHelper.SetActive(true);
             activatedNow = true;
+            allyHelperFader?.SetHiddenImmediate();
         }
 
         return true;
+    }
+
+    void HideHelperImmediate()
+    {
+        allyHelperFader?.SetHiddenImmediate();
+
+        if (allyHelper != null && allyHelper.activeSelf)
+            allyHelper.SetActive(false);
     }
 
     Vector3 ResolveSummonPosition(Vector3 playerPos)
@@ -308,6 +334,11 @@ public class AllyHelperManager : MonoBehaviour
         if (!hideHelperOnSkillComplete)
             return;
 
-        AllyHelperOut();
+        hideHelperOnSkillComplete = false;
+
+        if (allyHelperFader != null && allyHelper != null && allyHelper.activeSelf)
+            allyHelperFader.FinalizeAfterAnimation();
+        else
+            AllyHelperOut();
     }
 }

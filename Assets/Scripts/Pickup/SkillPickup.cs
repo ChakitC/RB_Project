@@ -20,9 +20,14 @@ public class SkillPickup : MonoBehaviour
     PickupContext _context;
     bool _initialized;
     float _spawnTime;
+    Collider _pickupCollider;
 
     void Awake()
     {
+        _pickupCollider = GetComponent<Collider>();
+        if (_pickupCollider != null && !_pickupCollider.isTrigger)
+            _pickupCollider.isTrigger = true;
+
         _spawnTime = Time.time;
         if (lifetimeSeconds > 0f)
             Destroy(gameObject, lifetimeSeconds);
@@ -67,19 +72,17 @@ public class SkillPickup : MonoBehaviour
         if (other == null)
             return null;
 
-        Transform root = other.attachedRigidbody != null
-            ? other.attachedRigidbody.transform.root
-            : other.transform.root;
+        Transform hitTransform = other.attachedRigidbody != null
+            ? other.attachedRigidbody.transform
+            : other.transform;
 
-        return root != null ? root.gameObject : other.gameObject;
+        Transform collectorTransform = ResolveCollectorTransform(hitTransform);
+        return collectorTransform != null ? collectorTransform.gameObject : other.gameObject;
     }
 
     bool CanCollectorUsePickup(GameObject targetObject)
     {
-        bool isOwner = _initialized &&
-                       _context.SourceRoot != null &&
-                       targetObject != null &&
-                       targetObject.transform.root == _context.SourceRoot;
+        bool isOwner = IsOwnerCollector(targetObject);
 
         switch (collectorRule)
         {
@@ -99,5 +102,33 @@ public class SkillPickup : MonoBehaviour
             default:
                 return true;
         }
+    }
+
+    Transform ResolveCollectorTransform(Transform hitTransform)
+    {
+        if (hitTransform == null)
+            return null;
+
+        for (Transform current = hitTransform; current != null; current = current.parent)
+        {
+            if (current.CompareTag("Player"))
+                return current;
+
+            if (current.GetComponent<StatusEffectController>() != null)
+                return current;
+        }
+
+        return hitTransform.root != null ? hitTransform.root : hitTransform;
+    }
+
+    bool IsOwnerCollector(GameObject targetObject)
+    {
+        if (!_initialized || targetObject == null)
+            return false;
+
+        if (_context.SourceObject != null)
+            return targetObject == _context.SourceObject;
+
+        return _context.SourceRoot != null && targetObject.transform.root == _context.SourceRoot;
     }
 }

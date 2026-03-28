@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 902f7fe66e9382d4d91381b1eed145e8, type: 3}
   m_Name: Spawn Pickup Skill Payload
   m_EditorClassIdentifier: 
-  pickupPrefab: {fileID: 0}
-  spawnCount: 1
-  useSkillProjectileCount: 0
-  forwardOffset: 0.5
-  spreadWidth: 0.75
-  verticalOffset: 0
+  pickupPrefab: {fileID: 3294297038163849742, guid: f6fe5eaf8e2031344aceb135977c0cc0, type: 3}
+  spawnCount: 2
+  useSkillProjectileCount: 1
+  forwardOffset: 0
+  spreadWidth: 0
+  verticalOffset: 0.1

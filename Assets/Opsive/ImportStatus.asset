@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: ImportStatus
   m_EditorClassIdentifier: 
   m_CharacterProjectSettingsShown: 0
-  m_BehaviorWindowShown: 0
+  m_BehaviorWindowShown: 1

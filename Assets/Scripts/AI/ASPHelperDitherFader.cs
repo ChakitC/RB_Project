@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using ASP;
 using Animancer;
@@ -34,13 +35,13 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
         InitializeReferences();
         ApplyDitheringSize();
     }
-
+    
     void OnDisable()
     {
         StopFadeRoutine();
         StopMonitorRoutine(true);
     }
-
+    
     public void SetHiddenImmediate()
     {
         InitializeReferences();

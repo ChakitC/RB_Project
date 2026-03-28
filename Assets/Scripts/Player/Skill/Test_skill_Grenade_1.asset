@@ -27,11 +27,23 @@ MonoBehaviour:
   baseRadius: 0
   baseProjectilesCount: 1
   baseCritChance: 5
+  payload: {fileID: 0}
   skillPrefab: {fileID: 1661335766552818198, guid: a2689cdd55e31c948aec00496448e0ef, type: 3}
   BallVfxPrefab: {fileID: 3239568679811347795, guid: a454aaceaff2e07419aa061a002c28a8, type: 3}
   SkillVfxhit: {fileID: 8295974722891363362, guid: 25477c0d7d0187d4e8cb92a3bc1860ba, type: 3}
   castCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
+  skillClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -8374479895102863559, guid: 875bf0d7944892c47a1c8eb164dc64c2, type: 3}
+    _NormalizedStartTime: NaN
   projectileHitVfxScale: 2
-  castAnimation: {fileID: -8374479895102863559, guid: 875bf0d7944892c47a1c8eb164dc64c2, type: 3}
   castPointNormalized: 0.5
   perLevelData: []
+  references:
+    version: 2
+    RefIds: []

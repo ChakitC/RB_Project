@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 [DefaultExecutionOrder(-110)]
-public class HealthSystem : MonoBehaviour, IDamageable, IDamageableWithContext, IHasArmor, IInteractable, IHoldInteractable
+public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable, IHoldInteractable
 {
     [Header("References")]
     public CharacteContext CTX;
@@ -212,11 +212,6 @@ public class HealthSystem : MonoBehaviour, IDamageable, IDamageableWithContext, 
         ApplyHealthBarValues();
         CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
         return true;
-    }
-
-    public virtual void TakeDamage(float damage)
-    {
-        ApplyDamageInternal(Mathf.Max(0f, damage), null, false, default);
     }
 
     public virtual void TakeDamage(in DamageContext damageContext)

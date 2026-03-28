@@ -2,7 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
 
-public class EnemyHealth : HealthSystem, IDamageableWithSource
+public class EnemyHealth : HealthSystem
 {
     [Min(0)] public int xpReward = 25;
 
@@ -11,17 +11,6 @@ public class EnemyHealth : HealthSystem, IDamageableWithSource
 
     GameObject _lastAttacker;
     bool _xpGranted;
-
-    public void TakeDamage(float finalDamage, GameObject attacker)
-    {
-        if (!IsAlive)
-            return;
-
-        if (attacker != null)
-            _lastAttacker = attacker;
-
-        ApplyDamage(finalDamage, attacker);
-    }
 
     public override void TakeDamage(in DamageContext damageContext)
     {

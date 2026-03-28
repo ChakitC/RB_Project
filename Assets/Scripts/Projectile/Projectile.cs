@@ -41,6 +41,7 @@ public class Projectile : MonoBehaviour
     // === Pending despawn state ===
     bool _requestedDespawnThisHit;
     bool _requestedExpire;
+    bool _isDespawning;
     public bool RequestedDespawn => _requestedDespawnThisHit || _requestedExpire;
     public void RequestDespawn() => _requestedDespawnThisHit = true;
     public void RequestExpire() => _requestedExpire = true;
@@ -110,6 +111,7 @@ public class Projectile : MonoBehaviour
         _ignoredRootIds.Clear();
         _requestedDespawnThisHit = false;
         _requestedExpire = false;
+        _isDespawning = false;
         _areaExploded = false;
 
         _ctx.dir = (_ctx.dir.sqrMagnitude > 0.0001f) ? _ctx.dir.normalized : transform.forward;
@@ -120,7 +122,7 @@ public class Projectile : MonoBehaviour
         _age = 0f;
         _spawnPos = transform.position;
 
-        SetupIgnoreCollisionFromOwner();
+        SetupIgnoreCollisionFromCollisionRoot();
         SetupModules();
         SpawnBallVfx();
     }
@@ -158,17 +160,35 @@ public class Projectile : MonoBehaviour
         if (dir.sqrMagnitude < 0.0001f) dir = transform.forward;
         dir.Normalize();
 
-        // owner root เพื่อ ignore collision owner
-        Transform ownerRoot = null;
+        // Separate the actor used for source/events from the broader root used for collision ignore.
+        Transform sourceActor = null;
+        Transform collisionIgnoreRoot = null;
+        CombatEventBus ownerCombatEventBus = null;
+        StatusEffectController ownerStatusController = null;
+
         if (user != null)
         {
-            if (user.CastOrigin != null) ownerRoot = user.CastOrigin.root;
-            else if (user is Component uc) ownerRoot = uc.transform.root;
+            if (user is Component uc)
+            {
+                sourceActor = uc.transform;
+                collisionIgnoreRoot = uc.transform.root;
+                ownerCombatEventBus = uc.GetComponent<CombatEventBus>();
+                ownerStatusController = uc.GetComponent<StatusEffectController>();
+            }
+
+            if (collisionIgnoreRoot == null && user.CastOrigin != null)
+                collisionIgnoreRoot = user.CastOrigin.root;
+
+            if (sourceActor == null && user.CastOrigin != null)
+                sourceActor = user.CastOrigin;
         }
 
         var ctx = new ProjectileContext
         {
-            owner = ownerRoot,
+            sourceActor = sourceActor,
+            collisionIgnoreRoot = collisionIgnoreRoot,
+            combatEventBus = ownerCombatEventBus,
+            statusEffectController = ownerStatusController,
             dir   = dir,
             stats = new ProjectileStats
             {
@@ -184,13 +204,13 @@ public class Projectile : MonoBehaviour
         Init(cfg != null ? cfg : config, ctx, preserveSkillSource: true);
     }
 
-    void SetupIgnoreCollisionFromOwner()
+    void SetupIgnoreCollisionFromCollisionRoot()
     {
         RestoreIgnoredCollisions();
 
-        if (_ctx.owner == null) return;
+        if (_ctx.collisionIgnoreRoot == null) return;
 
-        _shooterRoot = _ctx.owner.root;
+        _shooterRoot = _ctx.collisionIgnoreRoot.root;
         if (_shooterRoot == null) return;
 
         foreach (var c in _shooterRoot.GetComponentsInChildren<Collider>())
@@ -225,6 +245,9 @@ public class Projectile : MonoBehaviour
 
     void Update()
     {
+        if (_isDespawning)
+            return;
+
         Vector3 face = _ctx.dir;
         face.y = 0f;
         if (face.sqrMagnitude > 0.0001f)
@@ -233,6 +256,9 @@ public class Projectile : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (_isDespawning)
+            return;
+
         _overrideVelThisFrame = false;
         _overridePosThisFrame = false;
 
@@ -279,12 +305,13 @@ public class Projectile : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
+        if (_isDespawning || _requestedExpire || _requestedDespawnThisHit)
+            return;
         
         if (_ignoredRootIds.Contains(other.transform.root.GetInstanceID()))
             return;
 
         if (_shooterRoot && other.transform.root == _shooterRoot) return;
-        if (_ctx.owner != null && other.transform.IsChildOf(_ctx.owner)) return;
 
         var target = other.GetComponentInParent<IDamageable>();
         
@@ -426,7 +453,6 @@ public class Projectile : MonoBehaviour
 
             if (_ignoredRootIds.Contains(rootId)) continue;
             if (_shooterRoot && root == _shooterRoot) continue;
-            if (_ctx.owner != null && h.transform.IsChildOf(_ctx.owner)) continue;
 
             var dmg = h.GetComponentInParent<IDamageable>();
             if (dmg == null) continue;
@@ -466,6 +492,20 @@ public class Projectile : MonoBehaviour
 
     void Despawn(bool expired = false)
     {
+        if (_isDespawning)
+            return;
+
+        _isDespawning = true;
+
+        if (_col != null)
+            _col.enabled = false;
+
+        if (_rb != null)
+        {
+            _rb.detectCollisions = false;
+            SetRbVelocity(Vector3.zero);
+        }
+
         if (expired && config != null && _states != null)
         {
             for (int i = 0; i < config.modules.Count; i++)
@@ -532,15 +572,15 @@ public class Projectile : MonoBehaviour
 
     void NotifyOwnerCombatTriggers(IDamageable target, float finalDamage, bool wasAliveBeforeDamage)
     {
-        if (target == null || _ctx.owner == null || !wasAliveBeforeDamage)
+        if (target == null || !wasAliveBeforeDamage)
             return;
 
-        var ownerStatusController = _ctx.owner.GetComponent<StatusEffectController>();
+        var ownerStatusController = ResolveOwnerStatusEffectController();
         Component targetComponent = target as Component;
         GameObject targetObject = targetComponent != null ? targetComponent.gameObject : null;
         ownerStatusController?.NotifyTrigger(EffectTriggerType.OnHit, targetObject);
 
-        var ownerEventBus = _ctx.owner.GetComponent<CombatEventBus>();
+        var ownerEventBus = ResolveOwnerCombatEventBus();
         if (ownerEventBus != null)
         {
             var hitContext = CreateOwnerEventContext(ownerEventBus, PassiveEventType.Hit, targetObject, finalDamage);
@@ -621,12 +661,7 @@ public class Projectile : MonoBehaviour
             _ctx.originPassiveId,
             _ctx.originRuleId);
 
-        if (target is IDamageableWithContext damageableWithContext)
-            damageableWithContext.TakeDamage(in damageContext);
-        else if (target is IDamageableWithSource damageableWithSource)
-            damageableWithSource.TakeDamage(finalDamage, attackerGO);
-        else
-            target.TakeDamage(finalDamage);
+        target.TakeDamage(in damageContext);
     }
 
     public void ApplyResolvedDamage(IDamageable target, float finalDamage, in ProjectileHitInfo hit, bool showDamageNumber = false)
@@ -641,7 +676,7 @@ public class Projectile : MonoBehaviour
         if (showDamageNumber)
             SpawnDamageNumber(hit.point, finalDamage);
 
-        var attackerGO = _ctx.owner != null ? _ctx.owner.gameObject : null;
+        var attackerGO = ResolveSourceObject();
         ApplyDamageToTarget(target, finalDamage, attackerGO);
         NotifyDamageApplied(hit, target);
         NotifyOwnerCombatTriggers(target, finalDamage, wasAliveBeforeDamage);
@@ -649,7 +684,7 @@ public class Projectile : MonoBehaviour
 
     PassiveEventContext CreateOwnerEventContext(CombatEventBus ownerEventBus, PassiveEventType type, GameObject targetObject, float value)
     {
-        GameObject sourceObject = _ctx.owner != null ? _ctx.owner.gameObject : gameObject;
+        GameObject sourceObject = ResolveSourceObject();
 
         if (_ctx.chainId != 0)
         {
@@ -691,5 +726,26 @@ public class Projectile : MonoBehaviour
             _ctx.origin,
             _ctx.originPassiveId,
             _ctx.originRuleId);
+    }
+
+    GameObject ResolveSourceObject()
+    {
+        return _ctx.sourceActor != null ? _ctx.sourceActor.gameObject : gameObject;
+    }
+
+    CombatEventBus ResolveOwnerCombatEventBus()
+    {
+        if (_ctx.combatEventBus != null)
+            return _ctx.combatEventBus;
+
+        return _ctx.sourceActor != null ? _ctx.sourceActor.GetComponent<CombatEventBus>() : null;
+    }
+
+    StatusEffectController ResolveOwnerStatusEffectController()
+    {
+        if (_ctx.statusEffectController != null)
+            return _ctx.statusEffectController;
+
+        return _ctx.sourceActor != null ? _ctx.sourceActor.GetComponent<StatusEffectController>() : null;
     }
 }

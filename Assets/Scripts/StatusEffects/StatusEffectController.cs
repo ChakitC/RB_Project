@@ -311,12 +311,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             instance.OriginPassiveId,
             instance.OriginRuleId);
 
-        if (targetDamageable is IDamageableWithContext withContext)
-            withContext.TakeDamage(in damageContext);
-        else if (targetDamageable is IDamageableWithSource withSource && instance.Source != null)
-            withSource.TakeDamage(damage, instance.Source);
-        else
-            targetDamageable.TakeDamage(damage);
+        targetDamageable.TakeDamage(in damageContext);
     }
 
     StatusEffectInstance CreateInstance(

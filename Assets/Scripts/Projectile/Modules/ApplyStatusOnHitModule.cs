@@ -28,7 +28,7 @@ public sealed class ApplyStatusOnHitModule : ProjectileModule
         if (controller == null)
             return;
 
-        GameObject source = ctx.owner != null ? ctx.owner.gameObject : p.gameObject;
+        GameObject source = ctx.sourceActor != null ? ctx.sourceActor.gameObject : p.gameObject;
 
         for (int i = 0; i < applications.Count; i++)
         {

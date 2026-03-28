@@ -235,12 +235,7 @@ public sealed class MeleeController : MonoBehaviour
             0,
             PassiveEventOrigin.External);
 
-        if (target is IDamageableWithContext withContext)
-            withContext.TakeDamage(in damageContext);
-        else if (target is IDamageableWithSource withSource)
-            withSource.TakeDamage(finalDamage, attacker);
-        else
-            target.TakeDamage(finalDamage);
+        target.TakeDamage(in damageContext);
     }
 
     void NotifyOwnerCombatTriggers(IDamageable target, float finalDamage)

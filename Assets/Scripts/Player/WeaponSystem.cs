@@ -600,7 +600,10 @@ public class WeaponSystem : MonoBehaviour
 
         projectile.Init(config, new ProjectileContext
         {
-            owner = transform.root,
+            sourceActor = transform,
+            collisionIgnoreRoot = transform.root,
+            combatEventBus = combatEventBus,
+            statusEffectController = statusEffectController,
             dir = firePoint.forward,
             stats = new ProjectileStats
             {

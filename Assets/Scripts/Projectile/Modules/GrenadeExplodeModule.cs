@@ -160,7 +160,7 @@ public class GrenadeExplodeModule : ProjectileModule
 
     var damaged = new HashSet<int>();
 
-    int ownerId = (ignoreOwner && ctx.owner != null) ? ctx.owner.root.GetInstanceID() : 0;
+    int ownerId = (ignoreOwner && ctx.collisionIgnoreRoot != null) ? ctx.collisionIgnoreRoot.root.GetInstanceID() : 0;
     int hitTargetId = (hitCol != null) ? hitCol.transform.root.GetInstanceID() : 0;
 
     foreach (var c in cols)

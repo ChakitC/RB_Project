@@ -93,7 +93,10 @@ public class Bullet : MonoBehaviour
             
             
             Debug.Log("Weapon =" + gunType);
-            damageable.TakeDamage(finalDamage);
+            damageable.TakeDamage(
+                finalDamage,
+                shooterRoot != null ? shooterRoot.gameObject : null,
+                sourceId: $"bullet:{gunType}");
             Destroy(gameObject);
         }
         else if (other.CompareTag("Wall"))

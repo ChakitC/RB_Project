@@ -23,7 +23,10 @@ public struct ProjectileStats
 
 public struct ProjectileContext
 {
-    public Transform owner;
+    public Transform sourceActor;
+    public Transform collisionIgnoreRoot;
+    public CombatEventBus combatEventBus;
+    public StatusEffectController statusEffectController;
     public Vector3 dir;
     public ProjectileStats stats;
     public AudioCue hitCue;

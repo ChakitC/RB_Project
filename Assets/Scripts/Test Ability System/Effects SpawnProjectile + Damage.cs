@@ -42,7 +42,12 @@ public class DamageByCalculatorEffectDef : EffectDef
             );
 
             if (hitGO.TryGetComponent<IDamageable>(out var d) && d.IsAlive)
-                d.TakeDamage(final);
+            {
+                d.TakeDamage(
+                    final,
+                    ctx.Caster ? ctx.Caster.gameObject : null,
+                    sourceId: ctx.Ability != null ? $"ability:{ctx.Ability.name}" : "ability");
+            }
         }
     }
 }

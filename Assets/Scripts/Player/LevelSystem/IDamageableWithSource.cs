@@ -1,11 +1,3 @@
-using UnityEngine;
-
-public interface IDamageableWithSource : IDamageable
-{
-    void TakeDamage(float finalDamage, GameObject attacker);
-}
-
-public interface IDamageableWithContext : IDamageable
-{
-    void TakeDamage(in DamageContext damageContext);
-}
+// Legacy path retained only because the generated Assembly-CSharp.csproj
+// still includes this file explicitly during local verification builds.
+// Damage interfaces now live in Interface/Idamageable.cs and use DamageContext.

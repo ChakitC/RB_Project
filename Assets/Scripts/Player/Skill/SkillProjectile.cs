@@ -124,9 +124,12 @@ public class SkillProjectile : MonoBehaviour
 
     void ApplyDamage(IDamageable damageable)
     {
+        GameObject attacker = caster is Component casterComponent ? casterComponent.gameObject : null;
+        const string sourceId = "skill:legacy_projectile";
+
         if (stats == null)
         {
-            damageable.TakeDamage(0);
+            damageable.TakeDamage(0f, attacker, sourceId);
             return;
         }
 
@@ -147,7 +150,7 @@ public class SkillProjectile : MonoBehaviour
             damage *= Mathf.Max(1f, stats.critMultiplier);
         }
 
-        damageable.TakeDamage(damage);
+        damageable.TakeDamage(damage, attacker, sourceId);
     }
 
     void DoAreaDamage()

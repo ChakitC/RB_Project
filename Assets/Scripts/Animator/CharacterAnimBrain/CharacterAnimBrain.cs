@@ -685,7 +685,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private ClipTransition ResolveSkillClip(SkillGemDefinition skillDef)
     {
-        if (skillDef != null)
+        if (skillDef != null && skillDef.skillClip != null && skillDef.skillClip.IsValid)
             return skillDef.skillClip;
 
         return LegacySkillClip;

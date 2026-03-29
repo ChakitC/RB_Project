@@ -161,13 +161,13 @@ Material:
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
     - _Cull: 2
-    - _Cutoff: 0.461
+    - _Cutoff: 1
     - _DebugGI: 0
     - _DepthRimLightOn: 0
     - _DepthRimLightStrength: 0.1
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
-    - _DitherTexelSize: 1
+    - _DitherTexelSize: 20
     - _Dithering: 0
     - _DstBlend: 0
     - _DstBlendAlpha: 0

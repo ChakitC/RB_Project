@@ -12,26 +12,47 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
   m_Name: Test_skill_Grenade_2
   m_EditorClassIdentifier: 
-  skillId: 02
-  displayName: Electric Ganada
-  description: Electric  boom !!
   icon: {fileID: 0}
+  displayName: Electric Ganada
+  skillId: 02
   tags: 10
-  maxLevel: 20
+  description: Electric  boom !!
   baseDamage: 10
   baseManaCost: 10
   baseCastTime: 0.5
   baseCooldown: 0
-  AreaofEffec: 1
-  projectileSpeed: 30
-  baseRadius: 0
-  baseProjectilesCount: 3
   baseCritChance: 5
+  baseProjectilesCount: 3
+  projectileSpeed: 30
+  AreaofEffec: 1
+  baseRadius: 0
+  maxLevel: 20
+  payload: {fileID: 0}
   skillPrefab: {fileID: 1661335766552818198, guid: a2689cdd55e31c948aec00496448e0ef, type: 3}
   BallVfxPrefab: {fileID: 8926415343284817078, guid: 530eb190399095046ab59b0eded72e1a, type: 3}
   SkillVfxhit: {fileID: 1141330259687333427, guid: 6718dc24203da53468af9ada8fef7d6d, type: 3}
-  castCue: {fileID: 0}
   projectileHitVfxScale: 2
-  castAnimation: {fileID: -8374479895102863559, guid: 875bf0d7944892c47a1c8eb164dc64c2, type: 3}
-  castPointNormalized: 0
-  perLevelData: []
+  castCue: {fileID: 0}
+  skillClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -8374479895102863559, guid: 875bf0d7944892c47a1c8eb164dc64c2, type: 3}
+    _NormalizedStartTime: NaN
+  castPointNormalized: 0.5
+  perLevelData:
+  - requiredLevel: 1
+    damage: 0
+    manaCost: 0
+    castTime: 0
+    cooldown: 0
+    radius: 0
+    projectiles: 0
+    critChance: 0
+  previewLevel: 1
+  references:
+    version: 2
+    RefIds: []

@@ -167,7 +167,7 @@ Material:
     - _DepthRimLightStrength: 0.1
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
-    - _DitherTexelSize: 1
+    - _DitherTexelSize: 20
     - _Dithering: 0
     - _DstBlend: 0
     - _DstBlendAlpha: 0

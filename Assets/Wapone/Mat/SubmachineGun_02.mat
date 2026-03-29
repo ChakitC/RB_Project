@@ -25,6 +25,7 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _ALPHATEST_ON
   - _SPECULAR_LIGHTING_ON
   - _STYLE_CELSHADING
   m_InvalidKeywords:
@@ -149,7 +150,7 @@ Material:
     m_Floats:
     - _AddPrecomputedVelocity: 0
     - _AdvanceGroup: 0
-    - _AlphaClip: 0
+    - _AlphaClip: 1
     - _AlphaToMask: 0
     - _BakeGISource: 0
     - _Blend: 0
@@ -197,11 +198,11 @@ Material:
     - _IsUsingRampOcclusionTexture: 0
     - _MatCapReflectionStrength: 1
     - _MatCapRollStabilize: 1
-    - _MaterialID: 5
+    - _MaterialID: 1
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OffsetShadowDistance: 15
-    - _OutlineWidth: 5.5
+    - _OutlineWidth: 10.3
     - _OverrideLightColorIntensityToggle: 0
     - _OverrideLightDirToggle: 0
     - _OverrideZTest: 0
@@ -220,7 +221,7 @@ Material:
     - _RimLightOverShadow: 1
     - _RimLightSmoothness: 0.2
     - _RimLightStrength: 0.35
-    - _ScaleAsScreenSpaceOutline: 1
+    - _ScaleAsScreenSpaceOutline: 0
     - _ShadowColorMode: 0
     - _Smoothness: 0
     - _SmoothnessTextureChannel: 0
@@ -243,7 +244,7 @@ Material:
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: 1.2364087, g: 0.3047439, b: 1.5677509, a: 0}
+    - _CharacterCenterWS: {r: 0, g: 0, b: 0, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}

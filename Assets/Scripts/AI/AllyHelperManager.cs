@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using Opsive.BehaviorDesigner.Runtime;
 
 [DefaultExecutionOrder(100)]
 public class AllyHelperManager : MonoBehaviour
@@ -21,13 +22,18 @@ public class AllyHelperManager : MonoBehaviour
     [SerializeField] private float minSummonRadius = 1.2f;
     [SerializeField] private float navMeshSampleDistance = 2f;
     [SerializeField] private bool facePlayerForward = true;
-
+    
+    LayerMask layerMaskDefall;
     CharacterAnimBrain allyAnimBrain;
     ISkillUser allySkillUser;
     ASPHelperDitherFader allyHelperFader;
+    NavMeshAgent allyAgent;
+    BehaviorTree allyBehaviorTree;
     PendingHelperSkill pendingHelperSkill;
     bool hideHelperOnSkillComplete;
     int nextHelperSkillRequestId = 1;
+    
+    
 
     public bool IsHelperActive => allyHelper != null && allyHelper.activeSelf;
     public bool IsHelperBusy =>
@@ -59,7 +65,15 @@ public class AllyHelperManager : MonoBehaviour
 
     void OnDestroy()
     {
+        RestoreHelperSkillAutonomy();
+        RestoreCollisionMask();
         SubscribeToAnimBrain(null);
+    }
+
+    void OnDisable()
+    {
+        RestoreHelperSkillAutonomy();
+        RestoreCollisionMask();
     }
 
     public void SummonAllyHelper()
@@ -105,6 +119,8 @@ public class AllyHelperManager : MonoBehaviour
         if (logHelperExecution)
             Debug.Log($"[AllyHelperManager] Starting helper skill '{skillDef.name}' with request {requestId}.", this);
 
+        ApplyTemporaryHelperSkillAutonomy();
+        ApplyTemporaryNoCollision();
         bool started = allyAnimBrain.TryPlaySkill(
             requestId,
             skillDef,
@@ -116,6 +132,8 @@ public class AllyHelperManager : MonoBehaviour
             return true;
         }
 
+        RestoreHelperSkillAutonomy();
+        RestoreCollisionMask();
         CancelPendingHelperSkill();
         hideHelperOnSkillComplete = false;
 
@@ -127,6 +145,8 @@ public class AllyHelperManager : MonoBehaviour
 
     public void AllyHelperOut()
     {
+        RestoreHelperSkillAutonomy();
+        RestoreCollisionMask();
         CancelPendingHelperSkill();
         hideHelperOnSkillComplete = false;
 
@@ -145,6 +165,17 @@ public class AllyHelperManager : MonoBehaviour
             return;
 
         allyContext = allyHelper.GetComponent<AllyContext>();
+        allyBehaviorTree = allyHelper.GetComponent<BehaviorTree>();
+
+        if (allyContext != null && allyContext.AITargetSensor == null)
+            allyContext.AITargetSensor = allyHelper.GetComponent<AITargetSensor>();
+
+        allyAgent = allyContext != null ? allyContext.agent : null;
+        if (allyAgent == null)
+            allyAgent = allyHelper.GetComponent<NavMeshAgent>();
+
+        if (allyContext != null && allyContext.agent == null)
+            allyContext.agent = allyAgent;
 
         CharacterAnimBrain nextAnimBrain = allyContext != null ? allyContext.AnimBrain : null;
         if (nextAnimBrain == null)
@@ -210,6 +241,8 @@ public class AllyHelperManager : MonoBehaviour
         Vector3 finalSpawnPos = ResolveSummonPosition(playerPos);
 
         allyHelper.transform.position = finalSpawnPos;
+        
+     
         ApplySummonRotation(finalSpawnPos, playerPos);
 
         if (!allyHelper.activeSelf)
@@ -224,6 +257,8 @@ public class AllyHelperManager : MonoBehaviour
 
     void HideHelperImmediate()
     {
+        RestoreHelperSkillAutonomy();
+        RestoreCollisionMask();
         allyHelperFader?.SetHiddenImmediate();
 
         if (allyHelper != null && allyHelper.activeSelf)
@@ -285,6 +320,8 @@ public class AllyHelperManager : MonoBehaviour
             return;
         }
 
+        ApplyHelperSkillFacing(helperSkill.skillDef);
+
         if (logHelperExecution)
             Debug.Log($"[AllyHelperManager] Executing helper skill '{helperSkill.skillDef.name}'.", this);
 
@@ -321,6 +358,8 @@ public class AllyHelperManager : MonoBehaviour
                 this);
         }
 
+        RestoreHelperSkillAutonomy();
+        RestoreCollisionMask();
         CancelPendingHelperSkill();
 
         if (hideHelperOnSkillComplete)
@@ -329,6 +368,8 @@ public class AllyHelperManager : MonoBehaviour
 
     void OnAllySkillCompleted()
     {
+        RestoreHelperSkillAutonomy();
+        RestoreCollisionMask();
         CancelPendingHelperSkill();
 
         if (!hideHelperOnSkillComplete)
@@ -340,5 +381,147 @@ public class AllyHelperManager : MonoBehaviour
             allyHelperFader.FinalizeAfterAnimation();
         else
             AllyHelperOut();
+    }
+
+    bool _helperAutonomyCaptured;
+    bool _defaultHelperBehaviorTreeEnabled;
+    bool _defaultHelperAgentIsStopped;
+    bool _defaultHelperAgentUpdatePosition;
+    bool _defaultHelperAgentUpdateRotation;
+
+    void ApplyTemporaryHelperSkillAutonomy()
+    {
+        if (_helperAutonomyCaptured || allyHelper == null)
+            return;
+
+        CacheHelperReferences();
+
+        bool capturedAny = false;
+
+        if (allyBehaviorTree != null)
+        {
+            _defaultHelperBehaviorTreeEnabled = allyBehaviorTree.enabled;
+            allyBehaviorTree.enabled = false;
+            capturedAny = true;
+        }
+
+        if (allyAgent != null && allyAgent.enabled)
+        {
+            _defaultHelperAgentIsStopped = allyAgent.isStopped;
+            _defaultHelperAgentUpdatePosition = allyAgent.updatePosition;
+            _defaultHelperAgentUpdateRotation = allyAgent.updateRotation;
+
+            allyAgent.isStopped = true;
+            allyAgent.updatePosition = false;
+            allyAgent.updateRotation = false;
+
+            if (allyAgent.isOnNavMesh)
+                allyAgent.nextPosition = allyHelper.transform.position;
+
+            capturedAny = true;
+        }
+
+        _helperAutonomyCaptured = capturedAny;
+    }
+
+    void RestoreHelperSkillAutonomy()
+    {
+        if (!_helperAutonomyCaptured)
+            return;
+
+        if (allyBehaviorTree != null)
+            allyBehaviorTree.enabled = _defaultHelperBehaviorTreeEnabled;
+
+        if (allyAgent != null && allyAgent.enabled)
+        {
+            Vector3 helperPosition = allyHelper != null ? allyHelper.transform.position : allyAgent.transform.position;
+            if (allyAgent.isOnNavMesh)
+                allyAgent.nextPosition = helperPosition;
+
+            allyAgent.updatePosition = _defaultHelperAgentUpdatePosition;
+            allyAgent.updateRotation = _defaultHelperAgentUpdateRotation;
+            allyAgent.isStopped = _defaultHelperAgentIsStopped;
+        }
+
+        _helperAutonomyCaptured = false;
+    }
+
+    void ApplyHelperSkillFacing(SkillGemDefinition skillDef)
+    {
+        if (skillDef == null ||
+            skillDef.helperFacingMode != SkillGemDefinition.HelperFacingMode.FaceDetectedTargetOnCast ||
+            allyHelper == null)
+        {
+            return;
+        }
+
+        if (!TryResolveHelperSkillAimPoint(out Vector3 aimPoint))
+            return;
+
+        Transform facingOrigin = allySkillUser != null && allySkillUser.CastOrigin != null
+            ? allySkillUser.CastOrigin
+            : allyHelper.transform;
+
+        Vector3 lookDir = aimPoint - facingOrigin.position;
+        lookDir.y = 0f;
+
+        if (lookDir.sqrMagnitude <= 0.001f)
+            return;
+
+        allyHelper.transform.rotation = Quaternion.LookRotation(lookDir.normalized, Vector3.up);
+
+        if (allyAgent != null && allyAgent.enabled && allyAgent.isOnNavMesh)
+            allyAgent.nextPosition = allyHelper.transform.position;
+    }
+
+    bool TryResolveHelperSkillAimPoint(out Vector3 aimPoint)
+    {
+        CacheHelperReferences();
+
+        if (allyContext != null && allyContext.AITargetSensor != null)
+        {
+            allyContext.AITargetSensor.ForceScan();
+
+            Transform currentTarget = allyContext.AITargetSensor.CurrentTarget;
+            if (currentTarget != null)
+            {
+                aimPoint = currentTarget.position;
+                return true;
+            }
+
+            if (allyContext.AITargetSensor.HasAnyTarget)
+            {
+                aimPoint = allyContext.AITargetSensor.LastSeenPosition;
+                return true;
+            }
+        }
+
+        aimPoint = Vector3.zero;
+        return false;
+    }
+
+    private bool _excludeCaptured;
+    private LayerMask _defaultExcludeLayers;
+
+    void ApplyTemporaryNoCollision()
+    {
+        if (allyContext == null || allyContext.rb == null) return;
+
+        if (!_excludeCaptured)
+        {
+            _defaultExcludeLayers = allyContext.rb.excludeLayers;
+            _excludeCaptured = true;
+        }
+
+        allyContext.rb.excludeLayers = Physics.AllLayers;
+    }
+
+    void RestoreCollisionMask()
+    {
+        if (allyContext == null || allyContext.rb == null) return;
+        if (!_excludeCaptured) return;
+
+        allyContext.rb.excludeLayers = _defaultExcludeLayers;
+        _excludeCaptured = false;
     }
 }

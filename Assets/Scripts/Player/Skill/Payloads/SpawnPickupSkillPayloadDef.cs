@@ -1,14 +1,46 @@
+using Sirenix.OdinInspector;
 using UnityEngine;
 
+[HideMonoScript]
 [CreateAssetMenu(fileName = "Spawn Pickup Skill Payload", menuName = "Game/Skill Payload/Spawn Pickup")]
 public class SpawnPickupSkillPayloadDef : SkillPayloadDef
 {
-    [SerializeField] private GameObject pickupPrefab;
-    [SerializeField, Min(1)] private int spawnCount = 1;
-    [SerializeField] private bool useSkillProjectileCount = false;
-    [SerializeField, Min(0f)] private float forwardOffset = 0.5f;
-    [SerializeField, Min(0f)] private float spreadWidth = 0.75f;
-    [SerializeField] private float verticalOffset = 0f;
+    private bool UsesFixedSpawnCount => !useSkillProjectileCount;
+
+    [PropertyOrder(-10)]
+    [InfoBox("Spawns pickup prefabs in front of the caster. You can use a fixed count or read the count from the skill's projectile stat.")]
+    [SerializeField, BoxGroup("Setup"), AssetsOnly, Required, PreviewField(70, ObjectFieldAlignment.Left)]
+    [ValidateInput(nameof(HasValidPickupPrefab), "Pickup prefab must contain a SkillPickup component.")]
+    [LabelText("Pickup Prefab")]
+    private GameObject pickupPrefab;
+
+    [SerializeField, BoxGroup("Spawn Count"), ToggleLeft]
+    [LabelText("Use Skill Projectile Count")]
+    private bool useSkillProjectileCount = false;
+
+    [SerializeField, BoxGroup("Spawn Count"), ShowIf(nameof(UsesFixedSpawnCount)), Min(1)]
+    [LabelText("Spawn Count")]
+    private int spawnCount = 1;
+
+    [ShowInInspector, ReadOnly, BoxGroup("Spawn Count"), LabelText("Count Source")]
+    private string CountSourceLabel => useSkillProjectileCount
+        ? "Skill Stats -> Projectile Count"
+        : "Fixed Spawn Count";
+
+    [SerializeField, BoxGroup("Placement"), HorizontalGroup("Placement/Row"), Min(0f)]
+    [LabelText("Forward"), SuffixLabel("m")]
+    private float forwardOffset = 0.5f;
+
+    [SerializeField, BoxGroup("Placement"), HorizontalGroup("Placement/Row"), Min(0f)]
+    [LabelText("Spread"), SuffixLabel("m")]
+    private float spreadWidth = 0.75f;
+
+    [SerializeField, BoxGroup("Placement"), HorizontalGroup("Placement/Row")]
+    [LabelText("Height"), SuffixLabel("m")]
+    private float verticalOffset = 0f;
+
+    [ShowInInspector, ReadOnly, BoxGroup("Placement"), LabelText("Placement Preview")]
+    private string PlacementPreviewLabel => $"{forwardOffset:0.##}m forward, {spreadWidth:0.##}m spread, {verticalOffset:0.##}m height";
 
     public override void Execute(SkillCastContext context)
     {
@@ -58,5 +90,10 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
                 context.SkillDef,
                 context.SkillStats));
         }
+    }
+
+    private bool HasValidPickupPrefab(GameObject prefab)
+    {
+        return prefab == null || prefab.GetComponent<SkillPickup>() != null;
     }
 }

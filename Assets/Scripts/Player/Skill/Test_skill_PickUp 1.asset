@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
+  m_Name: Test_skill_PickUp 1
+  m_EditorClassIdentifier: 
+  skillId: 04
+  displayName: PickUp
+  description: DropThis
+  icon: {fileID: 0}
+  tags: 4
+  maxLevel: 20
+  baseDamage: 20
+  baseManaCost: 10
+  baseCastTime: 0.5
+  baseCooldown: 0
+  AreaofEffec: 1
+  projectileSpeed: 20
+  baseRadius: 0
+  baseProjectilesCount: 1
+  baseCritChance: 5
+  payload: {fileID: 11400000, guid: c0c01d12464c13c4bbe963df1bd863d6, type: 2}
+  skillPrefab: {fileID: 0}
+  BallVfxPrefab: {fileID: 0}
+  SkillVfxhit: {fileID: 0}
+  castCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
+  skillClip:
+    _FadeDuration: 0
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -4024483227394934224, guid: d9452ce0df1ec044ea7c44b5f7c1e8e2, type: 3}
+    _NormalizedStartTime: NaN
+  projectileHitVfxScale: 2
+  castPointNormalized: 0.6064421
+  perLevelData: []
+  references:
+    version: 2
+    RefIds: []

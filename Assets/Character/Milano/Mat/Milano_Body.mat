@@ -25,6 +25,7 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _ALPHATEST_ON
   - _RECEIVE_ASP_SHADOW
   - _RECEIVE_OFFSETED_SHADOW_ON
   - _RIMLIGHTING_ON
@@ -164,7 +165,7 @@ Material:
     m_Floats:
     - _AddPrecomputedVelocity: 0
     - _AdvanceGroup: 0
-    - _AlphaClip: 0
+    - _AlphaClip: 1
     - _AlphaToMask: 0
     - _BakeGISource: 0
     - _Blend: 0

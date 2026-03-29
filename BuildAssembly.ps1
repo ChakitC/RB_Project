@@ -1,3 +1,7 @@
+param(
+    [string] $ArtifactRoot
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
@@ -7,5 +11,11 @@ if (-not (Test-Path $scriptPath)) {
     throw "Build script not found: $scriptPath"
 }
 
-& $scriptPath
+if ([string]::IsNullOrWhiteSpace($ArtifactRoot)) {
+    & $scriptPath
+}
+else {
+    & $scriptPath -ArtifactRoot $ArtifactRoot
+}
+
 exit $LASTEXITCODE

@@ -25,6 +25,7 @@ Material:
   m_Parent: {fileID: 2100000, guid: 5d54b020904b0284ba3c1de868c2641b, type: 2}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _ALPHATEST_ON
   - _DEPTH_RIMLIGHTING_ON
   - _RECEIVE_ASP_SHADOW
   - _RECEIVE_OFFSETED_SHADOW_ON

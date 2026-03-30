@@ -1,6 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum CharacterWeaponHandMode
+{
+    RightHand = 0,
+    LeftHand = 1,
+    BothHands = 2,
+    None = 3
+}
+
 [CreateAssetMenu(menuName = "Character Stats")]
 public class CharacterStats : ScriptableObject
 {
@@ -13,6 +21,9 @@ public class CharacterStats : ScriptableObject
     public Avatar characterAvatar;
     public RuntimeAnimatorController controller;
     public CharacterAnimProfileSO animProfile;
+
+    [Header("Weapon Visual")]
+    public CharacterWeaponHandMode weaponHandMode = CharacterWeaponHandMode.RightHand;
     
     
     [Header("Base Stats")]

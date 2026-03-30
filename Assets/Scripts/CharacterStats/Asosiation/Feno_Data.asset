@@ -20,6 +20,7 @@ MonoBehaviour:
   characterAvatar: {fileID: 9000000, guid: 593976350e751b340bc9e474264dda15, type: 3}
   controller: {fileID: 9100000, guid: 0ac7642607b38b64da8fcff818c6002b, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
+  weaponHandMode: 2
   maxHP: 100000
   maxStamina: 50
   Damage: 10
@@ -37,3 +38,11 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
+  passives: []
+  dashCue: {fileID: 0}
+  meleeLightCue: {fileID: 0}
+  meleeHeavyCue: {fileID: 0}
+  damagedCue: {fileID: 0}
+  downCue: {fileID: 0}
+  deathCue: {fileID: 0}
+  reviveCue: {fileID: 0}

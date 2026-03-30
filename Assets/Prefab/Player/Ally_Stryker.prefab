@@ -66,6 +66,7 @@ GameObject:
   - component: {fileID: 5566096177820386735}
   - component: {fileID: 2041502052556847473}
   - component: {fileID: -1151245454712737114}
+  - component: {fileID: 185747745357136939}
   m_Layer: 10
   m_Name: Ally_Stryker
   m_TagString: Ally
@@ -122,11 +123,10 @@ MonoBehaviour:
       m_Version: 3.4
     - m_ObjectType: Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals.StackedConditional
       m_ValueHashes: 
-      m_LongValueHashes: 30b77c28f48d1b2966cb3cf98c4bd96480f6501333363a66622a4da7e5588b5847627e5c3afba34a3534e9f95bc7406a3cf64eabeda46eef8b50852ed5b0a08f54ff881c50a02bb539e02ddc68db96cee4a06bb554569d8946fff10c773614c9
-      m_ValuePositions: 000000000200000004000000060000000a00000019000000190000001c0000001c0000001d0000002100000021000000
-      m_Values: 0200010003000100000044656164436f6e646974696f6e616c435458030000000000000000
-      m_UnityObjects:
-      - {fileID: 3059205003566966071}
+      m_LongValueHashes: 30b77c28f48d1b2966cb3cf98c4bd96480f6501333363a66622a4da7e5588b5847627e5c3afba34ae4a06bb554569d8946fff10c773614c9
+      m_ValuePositions: 000000000200000004000000060000000a0000001900000019000000
+      m_Values: 0200010003000100000044656164436f6e646974696f6e616c00000000
+      m_UnityObjects: []
       m_Version: 3.4
     - m_ObjectType: Opsive.BehaviorDesigner.Runtime.Tasks.Composites.Sequence
       m_ValueHashes: 
@@ -137,11 +137,10 @@ MonoBehaviour:
       m_Version: 3.4
     - m_ObjectType: Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals.StackedConditional
       m_ValueHashes: 
-      m_LongValueHashes: 30b77c28f48d1b2966cb3cf98c4bd96480f6501333363a66622a4da7e5588b5847627e5c3afba34a3534e9f95bc7406a3cf64eabeda46eef8b50852ed5b0a08f54ff881c50a02bb539e02ddc68db96cee4a06bb554569d8946fff10c773614c9
-      m_ValuePositions: 000000000200000004000000060000000a00000018000000180000001b0000001b0000001c0000002000000020000000
-      m_Values: 04000300050001000000446f776e436f646974696f6e616c435458030000000000000000
-      m_UnityObjects:
-      - {fileID: 3059205003566966071}
+      m_LongValueHashes: 30b77c28f48d1b2966cb3cf98c4bd96480f6501333363a66622a4da7e5588b5847627e5c3afba34ac257e6bb18cc1202e4a06bb554569d8946fff10c773614c9
+      m_ValuePositions: 000000000200000004000000060000000a000000180000001800000018000000
+      m_Values: 04000300050001000000446f776e436f646974696f6e616c00000000
+      m_UnityObjects: []
       m_Version: 3.4
     - m_ObjectType: Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals.StackedConditional
       m_ValueHashes: 
@@ -173,9 +172,9 @@ MonoBehaviour:
       m_Version: 3.4
     - m_ObjectType: Opsive.BehaviorDesigner.Runtime.Tasks.Actions.StackedAction
       m_ValueHashes: 
-      m_LongValueHashes: 30b77c28f48d1b2966cb3cf98c4bd96480f6501333363a66622a4da7e5588b5847627e5c3afba34a401f3ce7a22a39694d76d7bdef93bc04fad01c38d7877264690b853c0b3285cc67acc2347290ac2dfaf2abc66320844dbfcd4c3df4b7fd1c086b87b8cca3337cb3e33512b39e0c958af8203f4fb7fd1c7cdd87309ada0aa741795967528cce22f6df92e26a980042a548f06508c7f553744c3565e98cce224207bc17e883db4c57417ceba3037019e0e7b76e9b17be79bb8e078bc306d3c2627410e918037019bffa01f070450fa73edafa166b3db53b897c319353297b5bae388b7b528ce6d40bef9614d03db53be4a06bb554569d8946fff10c773614c9
-      m_ValuePositions: 000000000200000004000000060000000a000000270000002700000033000000330000003400000038000000380000003800000038000000390000003d0000003d0000004700000047000000480000004c0000004c0000004c0000004c0000004d00000051000000510000005100000051000000520000005600000056000000
-      m_Values: 090008000a000100000052616e646f6d4d6f766541726f756e64506c617965724e61764d65736863757272656e74456e656d7903ffffffff0000002041666f6c6c6f77204d6178030000a040009a99993e000000803f00000000
+      m_LongValueHashes: 30b77c28f48d1b2966cb3cf98c4bd96480f6501333363a66622a4da7e5588b5847627e5c3afba34a8e351f419f2a3969faf2abc66320844dbfcd4c3df4b7fd1c086b87b8cca3337cb3e33512b39e0c958af8203f4fb7fd1c7cdd87309ada0aa741795967528cce22f6df92e26a980042a548f06508c7f553744c3565e98cce224207bc17e883db4c57417ceba3037019e0e7b76e9b17be79bb8e078bc306d3c2627410e918037019bffa01f070450fa73edafa166b3db53b897c319353297b5bae388b7b528ce6d40bef9614d03db53be4a06bb554569d8946fff10c773614c9
+      m_ValuePositions: 000000000200000004000000060000000a0000002700000027000000270000002700000027000000280000002c0000002c0000003600000036000000370000003b0000003b0000003b0000003b0000003c00000040000000400000004000000040000000410000004500000045000000
+      m_Values: 090008000a000100000052616e646f6d4d6f766541726f756e64506c617965724e61764d6573680000002041666f6c6c6f77204d6178030000a040009a99993e000000803f00000000
       m_UnityObjects: []
       m_Version: 3.4
     - m_ObjectType: MeleeAttack
@@ -264,11 +263,10 @@ MonoBehaviour:
       m_Version: 3.4
     - m_ObjectType: Opsive.BehaviorDesigner.Runtime.Tasks.Actions.StackedAction
       m_ValueHashes: 
-      m_LongValueHashes: 30b77c28f48d1b2966cb3cf98c4bd96480f6501333363a66622a4da7e5588b5847627e5c3afba34a8db3b72a55b14cc0401f3ce7a22a39694d76d7bdef93bc04fad01c38d7877264690b853c0b3285cc67acc2347290ac2daa33e99ce636bb26af1e4e70eeae4f3918b885f5d6ba8159e3656bf8932537c76855eda3cdafcf854207bc17e883db4c57417ceba3037019e0e7b76e9b17be79bb8e078bc306d3c2627410e918037019d133bf8e484042f2e4a06bb554569d8946fff10c773614c9
-      m_ValuePositions: 000000000200000004000000060000000a0000002300000027000000270000002d0000002d0000002e00000032000000320000003200000032000000330000003f0000003f0000003f0000003f00000040000000440000004800000048000000
-      m_Values: 16001400ffff010000004d6f7665546f506c617965724f66667365744e61764d65736800000000706c6179657203ffffffff000000000000000000000000c0000000c03fffffffff00000000
-      m_UnityObjects:
-      - {fileID: 4366097613187803013}
+      m_LongValueHashes: 30b77c28f48d1b2966cb3cf98c4bd96480f6501333363a66622a4da7e5588b5847627e5c3afba34a8e351f419f2a3969aa33e99ce636bb26af1e4e70eeae4f3918b885f5d6ba8159e3656bf8932537c76855eda3cdafcf854207bc17e883db4c57417ceba3037019e0e7b76e9b17be79bb8e078bc306d3c2627410e918037019e4a06bb554569d8946fff10c773614c9
+      m_ValuePositions: 000000000200000004000000060000000a00000023000000230000002300000023000000230000002400000030000000300000003000000030000000310000003500000035000000
+      m_Values: 16001400ffff010000004d6f7665546f506c617965724f66667365744e61764d657368000000000000000000000000c0000000c03f00000000
+      m_UnityObjects: []
       m_Version: 3.4
     - m_ObjectType: Opsive.BehaviorDesigner.Runtime.Tasks.Composites.Sequence
       m_ValueHashes: 
@@ -286,9 +284,9 @@ MonoBehaviour:
       m_Version: 3.4
     - m_ObjectType: Opsive.BehaviorDesigner.Runtime.Tasks.Actions.StackedAction
       m_ValueHashes: 
-      m_LongValueHashes: 30b77c28f48d1b2966cb3cf98c4bd96480f6501333363a66622a4da7e5588b5847627e5c3afba34a401f3ce7a22a39694d76d7bdef93bc04fad01c38d7877264690b853c0b3285cc67acc2347290ac2dfaf2abc66320844dbfcd4c3df4b7fd1c086b87b8cca3337cb3e33512b39e0c958af8203f4fb7fd1c7cdd87309ada0aa741795967528cce22f6df92e26a980042a548f06508c7f553744c3565e98cce224207bc17e883db4c57417ceba3037019e0e7b76e9b17be79bb8e078bc306d3c2627410e918037019bffa01f070450fa73edafa166b3db53b897c319353297b5bae388b7b528ce6d40bef9614d03db53be4a06bb554569d8946fff10c773614c9
-      m_ValuePositions: 000000000200000004000000060000000a00000027000000270000002d0000002d0000002e0000003200000032000000320000003200000033000000370000003700000041000000410000004200000046000000460000004600000046000000470000004b0000004b0000004b0000004b0000004c0000005000000050000000
-      m_Values: 19001700ffff0100000052616e646f6d4d6f766541726f756e64506c617965724e61764d657368706c6179657203ffffffff000000a040666f6c6c6f77204d6178030000a040009a99993e000000a04000000000
+      m_LongValueHashes: 30b77c28f48d1b2966cb3cf98c4bd96480f6501333363a66622a4da7e5588b5847627e5c3afba34a8e351f419f2a3969faf2abc66320844dbfcd4c3df4b7fd1c086b87b8cca3337cb3e33512b39e0c958af8203f4fb7fd1c7cdd87309ada0aa741795967528cce22f6df92e26a980042a548f06508c7f553744c3565e98cce224207bc17e883db4c57417ceba3037019e0e7b76e9b17be79bb8e078bc306d3c2627410e918037019bffa01f070450fa73edafa166b3db53b897c319353297b5bae388b7b528ce6d40bef9614d03db53be4a06bb554569d8946fff10c773614c9
+      m_ValuePositions: 000000000200000004000000060000000a0000002700000027000000270000002700000027000000280000002c0000002c0000003600000036000000370000003b0000003b0000003b0000003b0000003c00000040000000400000004000000040000000410000004500000045000000
+      m_Values: 19001700ffff0100000052616e646f6d4d6f766541726f756e64506c617965724e61764d657368000000a040666f6c6c6f77204d6178030000a040009a99993e000000a04000000000
       m_UnityObjects: []
       m_Version: 3.4
     m_EventTaskData:
@@ -302,7 +300,7 @@ MonoBehaviour:
     m_SharedVariableData: []
     m_DisabledEventNodesData: []
     m_DisabledLogicNodesData: []
-    m_UniqueID: 788893295
+    m_UniqueID: 613726629
     m_LogicNodePropertiesData:
     - m_ObjectType: Opsive.GraphDesigner.Runtime.LogicNodeProperties
       m_ValueHashes: 
@@ -334,9 +332,9 @@ MonoBehaviour:
       m_Version: 3.4
     - m_ObjectType: Opsive.GraphDesigner.Runtime.LogicNodeProperties
       m_ValueHashes: 
-      m_LongValueHashes: bc124df8ef5e104cf36ca30dee0de9958dd19827f48d1b29bd8814239a1bb7642f6406e2580d1e294f869cc9196b0c27aea3bc2e18d5b803a034c7c2b541f0151334e791316875a4fe655bffd9d57423959e999742f937293057c618807b0f23b8e2ec63056c1538557e981535906112a98ff48b9e8a66b37f542abda0a249c23a7f01b1f88d1a7b
-      m_ValuePositions: 00000000240000002c0000003000000030000000300000004000000041000000450000004500000053000000570000005a0000005d0000005d0000005f00000061000000
-      m_Values: 33636637636163342d326632612d346464342d386334622d356663303739373639383536464b0f43c17f534400005343000000000000000000000000000000000001000000446f776e436f646974696f6e616c000000004354584354580300050000
+      m_LongValueHashes: bc124df8ef5e104cf36ca30dee0de9958dd19827f48d1b29bd8814239a1bb7642f6406e2580d1e294f869cc9196b0c27aea3bc2e18d5b803a034c7c2b541f015557e981535906112a98ff48b9e8a66b37f542abda0a249c23a7f01b1f88d1a7b
+      m_ValuePositions: 00000000240000002c000000300000003000000030000000400000004100000045000000450000004700000049000000
+      m_Values: 33636637636163342d326632612d346464342d386334622d356663303739373639383536464b0f43c17f5344000053430000000000000000000000000000000000000000000300050000
       m_UnityObjects: []
       m_Version: 3.4
     - m_ObjectType: Opsive.GraphDesigner.Runtime.LogicNodeProperties
@@ -596,8 +594,6 @@ MonoBehaviour:
   rightHandName: hand.r
   leftHandName: hand.l
   animator: {fileID: 5879616477380449198}
-  useRightHand: 1
-  useLeftHand: 1
   rightLocalPos: {x: 0, y: 0.28, z: -0.03}
   rightLocalRotEuler: {x: 180, y: 0, z: -90}
   rightLocalScale: {x: 1.5, y: 1.5, z: 1.5}
@@ -618,23 +614,29 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseStats: {fileID: 0}
   currentWeapon: {fileID: 11400000, guid: bb67bf88d3f3a1f429b7e329d23582ca, type: 2}
-  CharacterLoad: {fileID: 5566096177820386735}
   stateHub: {fileID: 4366097613187803013}
   StatsHub: {fileID: 4606287451783796443}
+  CombatEventBus: {fileID: 0}
   rb: {fileID: 755043487724053691}
   cc: {fileID: 7154190368743996575}
-  UIManager: {fileID: 0}
   WeaponSystem: {fileID: 4530865085812152144}
+  AnimBrain: {fileID: 157782724691437569}
+  AnimDriver: {fileID: 6534367799908526459}
+  MeleeController: {fileID: 0}
+  CharacterLoad: {fileID: 5566096177820386735}
+  Visual: {fileID: 0}
+  UIManager: {fileID: 0}
   levelSystem: {fileID: 8915781942675252590}
   HealthSystem: {fileID: 7042901345306513729}
   StaminaSystem: {fileID: 6028947047003825495}
   DashSystem: {fileID: 590396695219637620}
+  PassiveController: {fileID: 0}
+  PassiveProgress: {fileID: 0}
   EnegySystem: {fileID: 358875934921752855}
   Interactor: {fileID: 2041502052556847473}
-  AnimBrain: {fileID: 157782724691437569}
-  AnimDriver: {fileID: 6534367799908526459}
   moveInput: {x: 0, y: 0}
   lookInput: {x: 0, y: 0}
+  AITargetSensor: {fileID: 0}
   agent: {fileID: 1585247101988985248}
   AgentMoveDriver: {fileID: 7080374968933812972}
 --- !u!114 &7939605676962145250
@@ -744,9 +746,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   CTX: {fileID: 3059205003566966071}
   target: {fileID: 0}
-  shooter: {fileID: 0}
   AllyEnemySensor: {fileID: 2965845574154066329}
   MeleeOnly: 0
+  rotateSpeed: 15
 --- !u!114 &4530865085812152144
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -761,9 +763,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ctx: {fileID: 3059205003566966071}
   statsHub: {fileID: 4606287451783796443}
+  statusEffectController: {fileID: 0}
+  combatEventBus: {fileID: 0}
+  affixRuntimeController: {fileID: 0}
   projectileConfig: {fileID: 11400000, guid: e9d20aa54f2461f43a373bbebcb4f211, type: 2}
   projectilePrefab: {fileID: 1661335766552818198, guid: c75d1af27a531f544894b89177b365a2, type: 3}
   currentWeapon: {fileID: 0}
+  currentWeaponInstance:
+    instanceId: 
+    baseWeaponId: 
+    rarity: 0
+    mainAffix:
+      affixId: 
+      hasPrimaryValue: 0
+      primaryValue: 0
+      hasSecondaryValue: 0
+      secondaryValue: 0
+    subAffixes: []
+    shotCounter: 0
+    currentMagazine: -1
   firePoint: {fileID: 2738079404565473560}
   gunType: 0
   damage: 0
@@ -795,6 +813,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   CTX: {fileID: 3059205003566966071}
   statsHub: {fileID: 4606287451783796443}
+  statusEffectController: {fileID: 0}
+  combatEventBus: {fileID: 0}
   reviveTime: 2
   maximumHealth: 0
   currentHealth: 0
@@ -851,6 +871,7 @@ MonoBehaviour:
   dashIFrameExclude:
     serializedVersion: 2
     m_Bits: 0
+  combatEventBus: {fileID: 0}
 --- !u!114 &358875934921752855
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -869,6 +890,9 @@ MonoBehaviour:
   aimTransform: {fileID: 2738079404565473560}
   maximumEnergy: 0
   currentEnergy: 0
+  autoRefreshFromHub: 1
+  keepEnergyPercentWhenMaxChanges: 1
+  refreshIntervalSeconds: 0.2
 --- !u!114 &8057619239807942818
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -904,6 +928,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ctx: {fileID: 3059205003566966071}
   weapon: {fileID: 4530865085812152144}
+  statusEffectController: {fileID: 0}
   debugInInspector: 1
   useUnscaledTime: 0
   debugRefreshInterval: 0
@@ -917,17 +942,24 @@ MonoBehaviour:
   dbgWeaponCritRatePercent: 0
   dbgWeaponCritMult: 0
   dbgWeaponFireInterval: 0
+  dbgWeaponReloadTime: 0
   dbgWeaponStability: 0
   dbgWeaponBulletSpeed: 0
   dbgWeaponMaxMagazine: 0
   dbgFinalDamage: 0
+  dbgFinalArmor: 0
+  dbgFinalMoveSpeed: 0
   dbgFinalCritRatePercent: 0
   dbgFinalCritRate01: 0
   dbgFinalCritMult: 0
   dbgFinalFireInterval: 0
+  dbgFinalReloadTime: 0
   dbgFinalStability: 0
   dbgFinalBulletSpeed: 0
   dbgFinalMaxMagazine: 0
+  dbgFinalMaxHP: 0
+  dbgFinalMaxStamina: 0
+  dbgFinalMaxEnergy: 0
 --- !u!114 &4366097613187803013
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -950,6 +982,8 @@ MonoBehaviour:
   dbgWeapon: 
   dbgSnapshot: 
   screenPos: {x: 10, y: 10}
+  statusEffectControlBlocks: 0
+  statusEffectStunned: 0
 --- !u!95 &5879616477380449198
 Animator:
   serializedVersion: 7
@@ -1019,146 +1053,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animancer: {fileID: 3171095447713766991}
   ctx: {fileID: 3059205003566966071}
+  statusEffectController: {fileID: 0}
+  deactivateOwnerOnSkillExit: 0
   locomotionLayerIndex: 0
   actionLayerIndex: 1
-  upperBodyMask: {fileID: 31900000, guid: 3ff359338d40c5f40a861f9c3afbd210, type: 2}
-  actionFadeIn: 0.06
-  actionFadeOut: 0.08
-  locomotionMixer:
-    _FadeDuration: 0.28533334
-    _Speed: 1
-    _Events:
-      _NormalizedTimes:
-      - 0.26
-      _Callbacks: []
-      _Names: []
-    _Animations:
-    - {fileID: 2306440414956234931, guid: 4149494971ec64a4eb67fd54fb53c994, type: 3}
-    - {fileID: 2718465186313594679, guid: 58a826f5004c5a54893b807d6696dc4e, type: 3}
-    - {fileID: 3630704421837926502, guid: f802650346e12374780da059cd43d325, type: 3}
-    - {fileID: 4506590830449897675, guid: 3d62fd3d33a5f894fbb72ce5a71bbc78, type: 3}
-    - {fileID: 583729431000011259, guid: 0404bea5c3932cc438487112ccc8bb28, type: 3}
-    _Speeds: []
-    _SynchronizeChildren: 
-    _Thresholds:
-    - {x: 0, y: 0}
-    - {x: 0, y: 1}
-    - {x: 0, y: -1}
-    - {x: 1, y: 0}
-    - {x: -1, y: 0}
-    _DefaultParameter: {x: 0, y: 0}
-    _Type: 1
-    _ParameterNameX: {fileID: 0}
-    _ParameterNameY: {fileID: 0}
-  locomotionParamLerp: 14
-  snapTo8Directions: 1
-  dashF:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: -4318181112641634211, guid: 6d4cacf853de87b4c968c8571e243b6d, type: 3}
-    _NormalizedStartTime: NaN
-  dashB:
-    _FadeDuration: 0.024
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 5497984355698264363, guid: 89321007994bd7949b41972c701a8a4b, type: 3}
-    _NormalizedStartTime: NaN
-  dashL:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 2995302168209469170, guid: db37db8629092ce4795aacb0debf12e1, type: 3}
-    _NormalizedStartTime: NaN
-  dashR:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 3365210341760494689, guid: b7596e261e5917740abf55d162815c11, type: 3}
-    _NormalizedStartTime: NaN
-  Dead:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 8354638251797088515, guid: 252d4fb362435ff49bb2fa0b3f592932, type: 3}
-    _NormalizedStartTime: NaN
-  shootPulse:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
-    _NormalizedStartTime: NaN
-  shootHoldLoop:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
-    _NormalizedStartTime: NaN
-  holdPulseMinInterval: 0.08
-  reload:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 8696769760049100611, guid: c3112324236f1cb4295770ec4e8c8276, type: 3}
-    _NormalizedStartTime: NaN
-  meleeComboSO: {fileID: 11400000, guid: aad74cd29d1adde448ce0f8716aed4b2, type: 2}
-  meleeCanInterruptReload: 1
-  lightCombo: {fileID: 11400000, guid: d16447a5b5fa9274b8bf020390af7750, type: 2}
-  heavyCombo: {fileID: 11400000, guid: aad74cd29d1adde448ce0f8716aed4b2, type: 2}
-  crawlMixer:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Animations:
-    - {fileID: -5108874112516170377, guid: aae20cb189c84434b8af6bddd860dde6, type: 3}
-    - {fileID: 8706233961271216418, guid: e30bdc35299abd04a9b2b476c44d278b, type: 3}
-    - {fileID: -4703732091659865656, guid: db4ef795ecb96db49b9f0f37216be8ef, type: 3}
-    - {fileID: 8706233961271216418, guid: e30bdc35299abd04a9b2b476c44d278b, type: 3}
-    - {fileID: 8706233961271216418, guid: e30bdc35299abd04a9b2b476c44d278b, type: 3}
-    _Speeds: []
-    _SynchronizeChildren: 
-    _Thresholds:
-    - {x: 0, y: 0}
-    - {x: 0, y: 1}
-    - {x: 0, y: -1}
-    - {x: 1, y: 0}
-    - {x: -1, y: 0}
-    _DefaultParameter: {x: 0, y: 0}
-    _Type: 0
-    _ParameterNameX: {fileID: 0}
-    _ParameterNameY: {fileID: 0}
-  crawlParamLerp: 14
-  crawlSpeedMultiplier01: 1
-  references:
-    version: 2
-    RefIds: []
 --- !u!114 &8915781942675252590
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1252,6 +1150,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targets: []
+--- !u!114 &185747745357136939
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2275044329717223576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae4ca29cab41a39459db1dbf4104e969, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weaponSystem: {fileID: 0}
+  statsHub: {fileID: 0}
+  statusEffectController: {fileID: 0}
+  affixDatabase: {fileID: 0}
 --- !u!1 &8179874337814917204
 GameObject:
   m_ObjectHideFlags: 0

@@ -15,9 +15,9 @@ MonoBehaviour:
   helperId: Helper.Testasdasdasd
   displayName: Helper.Test
   description: Helper.Test
-  triggerEvent: 9
+  triggerEvent: 2
   originFilter: 3
-  procChance: 1
+  procChance: 0.136
   internalCooldownSeconds: 1
   requireTarget: 0
   requireAttackId: 0

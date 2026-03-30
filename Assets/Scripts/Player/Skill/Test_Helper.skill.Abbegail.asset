@@ -17,7 +17,7 @@ MonoBehaviour:
   description: Helper.Test
   triggerEvent: 2
   originFilter: 3
-  procChance: 0.02
+  procChance: 0.249
   internalCooldownSeconds: 1
   requireTarget: 0
   requireAttackId: 0

@@ -19,9 +19,6 @@ public class PlayerVisual : MonoBehaviour, IGameSaveAble, ISaveOrder
     [SerializeField] private string leftHandName = "hand.l";
     public Animator animator;
 
-    [SerializeField] private bool useRightHand = true;
-    [SerializeField] private bool useLeftHand = false;
-
     [Header("Optional Offsets")]
     [SerializeField] private Vector3 rightLocalPos;
     [SerializeField] private Vector3 rightLocalRotEuler;
@@ -85,28 +82,7 @@ public class PlayerVisual : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (!modelRoot)
             return false;
 
-        EnsureReferences();
-
-        if (IsSlot)
-        {
-            if (!_partyLoader || !_partyLoader.CurrentContext)
-            {
-                if (!silent)
-                    Debug.LogWarning("[PlayerVisual] Slot mode but missing CharacterContextPartyLoader/CurrentContext", this);
-                return false;
-            }
-
-            prefab = _partyLoader.CurrentContext.CharacterPrefab;
-            if (!prefab && !silent)
-                Debug.LogWarning("[PlayerVisual] Slot CurrentContext has no CharacterPrefab", this);
-
-            return prefab;
-        }
-
-        if (_ctx == null)
-            return false;
-
-        var stats = _ctx.baseStats;
+        var stats = GetCurrentCharacterStats();
         if (!stats)
         {
             if (!silent)
@@ -144,11 +120,12 @@ public class PlayerVisual : MonoBehaviour, IGameSaveAble, ISaveOrder
         BuildModelFromWeaponDef();
 
         animator = GetComponent<Animator>();
-        if (!animator || _ctx == null || _ctx.baseStats == null)
+        var stats = GetCurrentCharacterStats();
+        if (!animator || !stats)
             return;
 
-        animator.runtimeAnimatorController = _ctx.baseStats.controller;
-        animator.avatar = _ctx.baseStats.characterAvatar;
+        animator.runtimeAnimatorController = stats.controller;
+        animator.avatar = stats.characterAvatar;
 
         animator.enabled = false;
         animator.enabled = true;
@@ -160,6 +137,10 @@ public class PlayerVisual : MonoBehaviour, IGameSaveAble, ISaveOrder
     {
         if (!animator || _ctx == null || _ctx.currentWeapon == null)
             return;
+
+        var stats = GetCurrentCharacterStats();
+        bool useRightHand = ShouldUseRightHand(stats);
+        bool useLeftHand = ShouldUseLeftHand(stats);
 
         var weaponPrefab = _ctx.currentWeapon.WeaponPrefab;
         prefabweapone = weaponPrefab;
@@ -220,6 +201,39 @@ public class PlayerVisual : MonoBehaviour, IGameSaveAble, ISaveOrder
             if (_leftObj) Destroy(_leftObj);
             _leftObj = null;
         }
+    }
+
+    private CharacterStats GetCurrentCharacterStats()
+    {
+        EnsureReferences();
+
+        if (IsSlot)
+        {
+            if (_partyLoader && _partyLoader.CurrentContext)
+                return _partyLoader.CurrentContext;
+
+            return null;
+        }
+
+        return _ctx ? _ctx.baseStats : null;
+    }
+
+    private static bool ShouldUseRightHand(CharacterStats stats)
+    {
+        if (!stats)
+            return true;
+
+        return stats.weaponHandMode == CharacterWeaponHandMode.RightHand
+            || stats.weaponHandMode == CharacterWeaponHandMode.BothHands;
+    }
+
+    private static bool ShouldUseLeftHand(CharacterStats stats)
+    {
+        if (!stats)
+            return false;
+
+        return stats.weaponHandMode == CharacterWeaponHandMode.LeftHand
+            || stats.weaponHandMode == CharacterWeaponHandMode.BothHands;
     }
 
     private Transform GetHandTransform(Animator anim, bool right)

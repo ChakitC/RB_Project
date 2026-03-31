@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee0d6ef073118da4dbabdd47dabdedc7, type: 3}
   m_Name: Roma_Data
   m_EditorClassIdentifier: 
+  icon: {fileID: 21300000, guid: 00175ad6f08e47c43b0271b5facc92cb, type: 3}
   characterId: ID.Roma
   characterName: Roma
-  icon: {fileID: 21300000, guid: 00175ad6f08e47c43b0271b5facc92cb, type: 3}
   CharacterPrefab: {fileID: 1810244535466419119, guid: b07ee821af6ad75499da139780801d3c, type: 3}
   CharacterPrefabBasement: {fileID: 2216855701626034192, guid: 4928a12a67c6e254ea0ce3e6b3046b60, type: 3}
   characterAvatar: {fileID: 9000000, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
@@ -24,8 +24,8 @@ MonoBehaviour:
   maxHP: 100000
   maxStamina: 50
   Damage: 50
-  critMultiplier: 1.2
   armor: 1
+  critMultiplier: 1.2
   critRate: 10
   Enagy: 100
   speed: 4.5

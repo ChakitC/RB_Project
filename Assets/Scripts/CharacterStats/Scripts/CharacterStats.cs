@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 public enum CharacterWeaponHandMode
@@ -9,57 +10,192 @@ public enum CharacterWeaponHandMode
     None = 3
 }
 
+[HideMonoScript]
 [CreateAssetMenu(menuName = "Character Stats")]
 public class CharacterStats : ScriptableObject
 {
-    [Header("Character Detail")]
-    public string characterId;
-    public string characterName;
+    private int PassiveCount => passives?.Count ?? 0;
+    private string DisplayName => string.IsNullOrWhiteSpace(characterName) ? name : characterName;
+
+    [PropertyOrder(-200)]
+    [ShowInInspector, ReadOnly, FoldoutGroup("Overview", Expanded = true), LabelText("Character")]
+    private string OverviewCharacter => string.IsNullOrWhiteSpace(characterId)
+        ? DisplayName
+        : $"{DisplayName} ({characterId})";
+
+    [PropertyOrder(-199)]
+    [ShowInInspector, ReadOnly, FoldoutGroup("Overview", Expanded = true), LabelText("Base Stats")]
+    private string OverviewBaseStats => $"HP {maxHP:0.##} | DMG {Damage:0.##} | ARM {armor:0.##} | SPD {speed:0.##}";
+
+    [PropertyOrder(-198)]
+    [ShowInInspector, ReadOnly, FoldoutGroup("Overview", Expanded = true), LabelText("Growth / Lv")]
+    private string OverviewScaling => $"HP +{MAXHPScaling:0.##} | DMG +{DamageScaling:0.##} | SPD +{SpeedScaling:0.##}";
+
+    [PropertyOrder(-197)]
+    [ShowInInspector, FoldoutGroup("Overview", Expanded = true), LabelText("Preview Level"), MinValue(1)]
+    private int overviewPreviewLevel = 1;
+
+    [PropertyOrder(-196)]
+    [ShowInInspector, ReadOnly, FoldoutGroup("Overview", Expanded = true), LabelText("Preview Result")]
+    private string OverviewPreviewStatsPrimary =>
+        $"Lv {overviewPreviewLevel:0} | HP {GetPreviewStat(maxHP, MAXHPScaling):0.##} | DMG {GetPreviewStat(Damage, DamageScaling):0.##} | ARM {GetPreviewStat(armor, ArmorScaling):0.##} | SPD {GetPreviewStat(speed, SpeedScaling):0.##}";
+
+    [PropertyOrder(-195)]
+    [ShowInInspector, ReadOnly, FoldoutGroup("Overview", Expanded = true), LabelText("Preview Combat")]
+    private string OverviewPreviewStatsSecondary =>
+        $"STA {GetPreviewStat(maxStamina, StaminaScaling):0.##} | ENG {GetPreviewStat(Enagy, EnagyScaling):0.##} | CR {GetPreviewStat(critRate, CritrateScaling):0.##} | CD {GetPreviewCritDamage():0.##}";
+
+    [PropertyOrder(-194)]
+    [ShowInInspector, ReadOnly, FoldoutGroup("Overview", Expanded = true), LabelText("Passive Count")]
+    private int OverviewPassiveCount => PassiveCount;
+
+    private int PreviewLevelOffset => Mathf.Max(0, overviewPreviewLevel - 1);
+
+    private float GetPreviewStat(float baseValue, float scalingPerLevel)
+    {
+        return baseValue + scalingPerLevel * PreviewLevelOffset;
+    }
+
+    private float GetPreviewCritDamage()
+    {
+        return Mathf.Max(1f, critMultiplier + CritDamageScaling * PreviewLevelOffset);
+    }
+
+    [PropertyOrder(-160)]
+    [FoldoutGroup("Character Detail", Expanded = true), HideLabel, PreviewField(80, ObjectFieldAlignment.Left), AssetsOnly]
     public Sprite icon;
+
+    [PropertyOrder(-159)]
+    [FoldoutGroup("Character Detail", Expanded = true), LabelText("Character ID")]
+    public string characterId;
+
+    [PropertyOrder(-158)]
+    [FoldoutGroup("Character Detail", Expanded = true), LabelText("Character Name")]
+    public string characterName;
+
+    [PropertyOrder(-157)]
+    [FoldoutGroup("Character Detail", Expanded = true), LabelText("Character Prefab"), AssetsOnly]
     public GameObject CharacterPrefab;
+
+    [PropertyOrder(-156)]
+    [FoldoutGroup("Character Detail", Expanded = true), LabelText("Basement Prefab"), AssetsOnly]
     public GameObject CharacterPrefabBasement;
+
+    [PropertyOrder(-155)]
+    [FoldoutGroup("Character Detail", Expanded = true), LabelText("Avatar"), AssetsOnly]
     public Avatar characterAvatar;
+
+    [PropertyOrder(-154)]
+    [FoldoutGroup("Character Detail", Expanded = true), LabelText("Animator Controller"), AssetsOnly]
     public RuntimeAnimatorController controller;
+
+    [PropertyOrder(-153)]
+    [FoldoutGroup("Character Detail", Expanded = true), LabelText("Anim Profile"), AssetsOnly]
     public CharacterAnimProfileSO animProfile;
 
-    [Header("Weapon Visual")]
+    [PropertyOrder(-140)]
+    [FoldoutGroup("Weapon Visual", Expanded = true), LabelText("Weapon Hand Mode")]
     public CharacterWeaponHandMode weaponHandMode = CharacterWeaponHandMode.RightHand;
     
     
-    [Header("Base Stats")]
+    [PropertyOrder(-120)]
+    [FoldoutGroup("Base Stats", Expanded = true), HorizontalGroup("Base Stats/Row 01"), LabelText("Max HP")]
     public float maxHP = 100;
+
+    [PropertyOrder(-119)]
+    [FoldoutGroup("Base Stats", Expanded = true), HorizontalGroup("Base Stats/Row 01"), LabelText("Max Stamina")]
     public float maxStamina = 80;
+
+    [PropertyOrder(-118)]
+    [FoldoutGroup("Base Stats", Expanded = true), HorizontalGroup("Base Stats/Row 02"), LabelText("Damage")]
     public float Damage = 10;
-    public float critMultiplier = 1;
+
+    [PropertyOrder(-117)]
+    [FoldoutGroup("Base Stats", Expanded = true), HorizontalGroup("Base Stats/Row 02"), LabelText("Armor")]
     public float armor = 1;
+
+    [PropertyOrder(-116)]
+    [FoldoutGroup("Base Stats", Expanded = true), HorizontalGroup("Base Stats/Row 03"), LabelText("Crit Damage")]
+    public float critMultiplier = 1;
+
+    [PropertyOrder(-115)]
+    [FoldoutGroup("Base Stats", Expanded = true), HorizontalGroup("Base Stats/Row 03"), LabelText("Crit Rate")]
     public float critRate = 0;
+
+    [PropertyOrder(-114)]
+    [FoldoutGroup("Base Stats", Expanded = true), HorizontalGroup("Base Stats/Row 04"), LabelText("Energy")]
     public float Enagy = 100;
+
+    [PropertyOrder(-113)]
+    [FoldoutGroup("Base Stats", Expanded = true), HorizontalGroup("Base Stats/Row 04"), LabelText("Move Speed")]
     public float speed = 4.5f;
     
-    [Header("Base Stats Down")]
+    [PropertyOrder(-100)]
+    [FoldoutGroup("Base Stats Down", Expanded = false), LabelText("Down Move Speed")]
     public float speedDown = 1;
     
-    [Header("Level Scaling")] 
+    [PropertyOrder(-80)]
+    [FoldoutGroup("Level Scaling", Expanded = false), HorizontalGroup("Level Scaling/Row 01"), LabelText("Damage"), SuffixLabel("/ Lv")]
     public float DamageScaling;
+
+    [PropertyOrder(-79)]
+    [FoldoutGroup("Level Scaling", Expanded = false), HorizontalGroup("Level Scaling/Row 01"), LabelText("Armor"), SuffixLabel("/ Lv")]
     public float ArmorScaling;
+
+    [PropertyOrder(-78)]
+    [FoldoutGroup("Level Scaling", Expanded = false), HorizontalGroup("Level Scaling/Row 02"), LabelText("Max HP"), SuffixLabel("/ Lv")]
     public float MAXHPScaling;
+
+    [PropertyOrder(-77)]
+    [FoldoutGroup("Level Scaling", Expanded = false), HorizontalGroup("Level Scaling/Row 02"), LabelText("Stamina"), SuffixLabel("/ Lv")]
     public float StaminaScaling;
+
+    [PropertyOrder(-76)]
+    [FoldoutGroup("Level Scaling", Expanded = false), HorizontalGroup("Level Scaling/Row 03"), LabelText("Crit Rate"), SuffixLabel("/ Lv")]
     public float CritrateScaling;
+
+    [PropertyOrder(-75)]
+    [FoldoutGroup("Level Scaling", Expanded = false), HorizontalGroup("Level Scaling/Row 03"), LabelText("Crit Damage"), SuffixLabel("/ Lv")]
     public float CritDamageScaling;
+
+    [PropertyOrder(-74)]
+    [FoldoutGroup("Level Scaling", Expanded = false), HorizontalGroup("Level Scaling/Row 04"), LabelText("Energy"), SuffixLabel("/ Lv")]
     public float EnagyScaling;
+
+    [PropertyOrder(-73)]
+    [FoldoutGroup("Level Scaling", Expanded = false), HorizontalGroup("Level Scaling/Row 04"), LabelText("Move Speed"), SuffixLabel("/ Lv")]
     public float SpeedScaling;
 
-    [Header("Passives")]
+    [PropertyOrder(-40)]
+    [FoldoutGroup("Passives", Expanded = false), LabelText("Passive List"), AssetsOnly]
+    [ListDrawerSettings(ShowFoldout = true, DefaultExpandedState = true, DraggableItems = true, ShowPaging = false, NumberOfItemsPerPage = 0)]
     public List<PassiveDefinition> passives = new();
 
-    [Header("Audio")]
+    [PropertyOrder(-20)]
+    [FoldoutGroup("Audio", Expanded = false), LabelText("Dash Cue"), AssetsOnly]
     public AudioCue dashCue;
+
+    [PropertyOrder(-19)]
+    [FoldoutGroup("Audio", Expanded = false), LabelText("Melee Light Cue"), AssetsOnly]
     public AudioCue meleeLightCue;
+
+    [PropertyOrder(-18)]
+    [FoldoutGroup("Audio", Expanded = false), LabelText("Melee Heavy Cue"), AssetsOnly]
     public AudioCue meleeHeavyCue;
+
+    [PropertyOrder(-17)]
+    [FoldoutGroup("Audio", Expanded = false), LabelText("Damaged Cue"), AssetsOnly]
     public AudioCue damagedCue;
+
+    [PropertyOrder(-16)]
+    [FoldoutGroup("Audio", Expanded = false), LabelText("Down Cue"), AssetsOnly]
     public AudioCue downCue;
+
+    [PropertyOrder(-15)]
+    [FoldoutGroup("Audio", Expanded = false), LabelText("Death Cue"), AssetsOnly]
     public AudioCue deathCue;
+
+    [PropertyOrder(-14)]
+    [FoldoutGroup("Audio", Expanded = false), LabelText("Revive Cue"), AssetsOnly]
     public AudioCue reviveCue;
-    
-    
 }

@@ -12,19 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee0d6ef073118da4dbabdd47dabdedc7, type: 3}
   m_Name: ChaDef.Noemi
   m_EditorClassIdentifier: 
+  icon: {fileID: 21300000, guid: 844d8a734333e144a84157a3d6ac1210, type: 3}
   characterId: ID.Noemi
   characterName: Noemi
-  icon: {fileID: 21300000, guid: 844d8a734333e144a84157a3d6ac1210, type: 3}
   CharacterPrefab: {fileID: 6880289854966530945, guid: 27694573f02cf864493d4799a6c90543, type: 3}
   CharacterPrefabBasement: {fileID: 6291370195802206555, guid: 3162f4cb2c5fa00429c826e50c2dfc06, type: 3}
   characterAvatar: {fileID: 9000000, guid: c3ad3ffbeca2c8d469e319eff2954ddf, type: 3}
   controller: {fileID: 9100000, guid: 48e6511e44d5d4348855e0d5067a844b, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
+  weaponHandMode: 2
   maxHP: 100
   maxStamina: 80
   Damage: 10
-  critMultiplier: 5
   armor: 1
+  critMultiplier: 5
   critRate: 1
   Enagy: 100
   speed: 4.5
@@ -37,3 +38,11 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
+  passives: []
+  dashCue: {fileID: 0}
+  meleeLightCue: {fileID: 0}
+  meleeHeavyCue: {fileID: 0}
+  damagedCue: {fileID: 0}
+  downCue: {fileID: 0}
+  deathCue: {fileID: 0}
+  reviveCue: {fileID: 0}

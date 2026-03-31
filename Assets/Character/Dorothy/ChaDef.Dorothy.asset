@@ -12,19 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee0d6ef073118da4dbabdd47dabdedc7, type: 3}
   m_Name: ChaDef.Dorothy
   m_EditorClassIdentifier: 
+  icon: {fileID: 21300000, guid: 868539df8763f1a4fa688ce222e60154, type: 3}
   characterId: ID.Dorothy
   characterName: Dorothy
-  icon: {fileID: 21300000, guid: 868539df8763f1a4fa688ce222e60154, type: 3}
   CharacterPrefab: {fileID: 2730962025402883017, guid: 53ae910d38386ed4d860521b07a5e2a0, type: 3}
   CharacterPrefabBasement: {fileID: 4539090856356806067, guid: 9c66bd03fd3006e4188d86be6e62decc, type: 3}
   characterAvatar: {fileID: 9000000, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
   controller: {fileID: 9100000, guid: d905530534ed612438412882780459c3, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
+  weaponHandMode: 0
   maxHP: 100
   maxStamina: 80
   Damage: 10
-  critMultiplier: 5
   armor: 1
+  critMultiplier: 5
   critRate: 1
   Enagy: 100
   speed: 4.5
@@ -37,3 +38,11 @@ MonoBehaviour:
   CritDamageScaling: 0.01
   EnagyScaling: 1
   SpeedScaling: 0.01
+  passives: []
+  dashCue: {fileID: 0}
+  meleeLightCue: {fileID: 0}
+  meleeHeavyCue: {fileID: 0}
+  damagedCue: {fileID: 0}
+  downCue: {fileID: 0}
+  deathCue: {fileID: 0}
+  reviveCue: {fileID: 0}

@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c44d6e64e3da49d5b28dbd7970f4d6b8, type: 3}
+  m_Name: Test_Helper.skill.ChainAttackRoma01
+  m_EditorClassIdentifier: 
+  helperId: zzzzzzzz
+  displayName: Helper.Test.ChainAttack
+  description: Helper.Test
+  triggerEvent: 7
+  originFilter: 3
+  procChance: 1
+  internalCooldownSeconds: 1
+  requireTarget: 0
+  requireAttackId: 0
+  oncePerAttackId: 0
+  requireOwnerAlive: 1
+  executionSkill: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
+  chainAttackSequence: {fileID: 11400000, guid: 7d1e9498de43bfb4eb845a7f4dba9693, type: 2}
+  executionSkillLevel: 1
+  hideHelperOnSkillComplete: 1
+  blockWhileHelperBusy: 1
+  debugLogging: 1

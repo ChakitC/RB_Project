@@ -117,7 +117,25 @@ public class SkillInstance
         if (!CanCast(user, out var stats))
             return;
 
-        user.SpendEnagy(stats.manaCost);
+        ExecuteCast(user, stats, spendEnergy: true);
+    }
+
+    public bool TryCastIgnoringResourceCosts(ISkillUser user)
+    {
+        if (def == null || user == null)
+            return false;
+
+        var stats = GetFinalStats(user);
+        return ExecuteCast(user, stats, spendEnergy: false);
+    }
+
+    bool ExecuteCast(ISkillUser user, FinalSkillStats stats, bool spendEnergy)
+    {
+        if (def == null || user == null || stats == null)
+            return false;
+
+        if (spendEnergy)
+            user.SpendEnagy(stats.manaCost);
 
         foreach (var support in supports)
         {
@@ -128,13 +146,9 @@ public class SkillInstance
         }
 
         var castContext = new SkillCastContext(user, def, stats);
-        if (TryExecutePayload(castContext) || TryCastLegacyProjectile(castContext))
-        {
-            _lastCastTime = Time.time;
-            return;
-        }
-
+        bool executed = TryExecutePayload(castContext) || TryCastLegacyProjectile(castContext);
         _lastCastTime = Time.time;
+        return executed;
     }
 
     bool TryExecutePayload(SkillCastContext castContext)

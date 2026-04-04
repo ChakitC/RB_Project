@@ -1039,6 +1039,10 @@ PrefabInstance:
       propertyPath: affixRuntimeController
       value: 
       objectReference: {fileID: 1710955499}
+    - target: {fileID: 7774203086717623685, guid: 3a25f04e2b2c9e647afb7408604b0f8e, type: 3}
+      propertyPath: chainAttackPoint
+      value: 
+      objectReference: {fileID: 1710955516}
     - target: {fileID: 8626626701485490822, guid: 3a25f04e2b2c9e647afb7408604b0f8e, type: 3}
       propertyPath: m_LocalPosition.x
       value: 23.75
@@ -3119,7 +3123,11 @@ PrefabInstance:
     - target: {fileID: 441160178599625826, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
       propertyPath: 'helperDefinitions.Array.data[0]'
       value: 
-      objectReference: {fileID: 11400000, guid: ad6da32b25db43148aa75f021e358549, type: 2}
+      objectReference: {fileID: 11400000, guid: 61266ad809f609e40ae69b87f64da449, type: 2}
+    - target: {fileID: 852322908043447458, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
+      propertyPath: radius
+      value: 4
+      objectReference: {fileID: 0}
     - target: {fileID: 1096013986817886047, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
       propertyPath: m_Enabled
       value: 1
@@ -3127,6 +3135,10 @@ PrefabInstance:
     - target: {fileID: 1551870629633456059, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
       propertyPath: m_SizeDelta.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1930289400172877872, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3655338539399967481, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
       propertyPath: m_Name
@@ -3138,7 +3150,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4094684875628318449, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 5.02
+      value: 9.36
       objectReference: {fileID: 0}
     - target: {fileID: 4094684875628318449, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
       propertyPath: m_LocalPosition.y
@@ -3146,7 +3158,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4094684875628318449, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -7.41
+      value: -16.73
       objectReference: {fileID: 0}
     - target: {fileID: 4094684875628318449, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
       propertyPath: m_LocalRotation.w
@@ -3192,9 +3204,17 @@ PrefabInstance:
       propertyPath: fallbackId
       value: ID.Abbygail
       objectReference: {fileID: 0}
+    - target: {fileID: 5335070992398057148, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5468776065345785061, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
       propertyPath: m_Enabled
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5697629425159397874, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
+      propertyPath: radius
+      value: 5.12
       objectReference: {fileID: 0}
     - target: {fileID: 6317389759329240613, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
       propertyPath: m_Enabled

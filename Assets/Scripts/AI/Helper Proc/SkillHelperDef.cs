@@ -21,6 +21,7 @@ public class SkillHelperDef : ScriptableObject
 
     [Header("Execution")]
     public SkillGemDefinition executionSkill;
+    public HelperChainAttackSequenceDef chainAttackSequence;
     [Min(1)] public int executionSkillLevel = 1;
     public bool hideHelperOnSkillComplete = true;
     public bool blockWhileHelperBusy = true;
@@ -30,4 +31,5 @@ public class SkillHelperDef : ScriptableObject
 
     public string RuntimeId => string.IsNullOrWhiteSpace(helperId) ? name : helperId;
     public int ClampedSkillLevel => Mathf.Max(1, executionSkillLevel);
+    public bool HasExecutionConfigured => executionSkill != null;
 }

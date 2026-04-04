@@ -54,6 +54,8 @@ MonoBehaviour:
         - {fileID: 919132149155446097, guid: ebbb9e3bce17a7f48b5b9187c1d53904, type: 3}
         - {fileID: 4651303126784831026, guid: a649f9e44b30d794d8890f73f0ad0d3e, type: 3}
         - {fileID: 1810244535466419119, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+        - {fileID: 3576317278221455802, guid: 165514123e3ed324c94f10ee3d314cde, type: 3}
+        - {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
     - rid: 8789001712040411215
       type: {class: SerializableEventSequenceDrawerSettings, ns: Animancer.Editor, asm: Kybernetik.Animancer.Editor}
       data:

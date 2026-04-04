@@ -68,6 +68,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private readonly StateMachine<ActionState> actionSM = new();
 
     private Locomotion_Skill skill;
+    private Locomotion_Utility utility;
     private Action_Reload reloadState;
     private LocomotionState_Live locomotion;
     private Locomotion_MeleeCombo meleeCombo;
@@ -77,11 +78,16 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     // cache delegates ลด alloc
     private Action onShootEndCache;
+    private Action onUtilityCastMomentCache;
     private SkillGemDefinition _activeSkillDefinition;
     private int _activeSkillRequestId;
     private float _activeSkillCastPointNormalized = 0.35f;
     private bool _activeSkillReleaseRequested;
     private bool _activeSkillReleased;
+    private int _activeUtilityRequestId;
+    private float _activeUtilityCastPointNormalized = 0.35f;
+    private bool _activeUtilityReleaseRequested;
+    private bool _activeUtilityReleased;
 
     private AnimancerLayer LocoLayer => animancer.Layers[locomotionLayerIndex];
     private AnimancerLayer ActLayer => animancer.Layers[actionLayerIndex];
@@ -109,6 +115,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private MixerTransition2D CrawlMixer => AnimProfile.crawlMixer;
     private float CrawlParamLerp => AnimProfile.crawlParamLerp;
     private float CrawlSpeedMultiplier01 => AnimProfile.crawlSpeedMultiplier01;
+    private ClipTransition UtilityWarpInClip => AnimProfile.utilityWarpInClip;
+    private float UtilityWarpInCastPointNormalized => AnimProfile.utilityWarpInCastPointNormalized;
     private ClipTransition LegacySkillClip => AnimProfile.skillClip;
     private ClipTransition SkillClip => ResolveSkillClip(_activeSkillDefinition);
     private ClipTransition MiniStuneClip => AnimProfile.miniStune;
@@ -116,12 +124,21 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private ClipTransition RootClip => AnimProfile.root;
     private ClipTransition FreezClip => AnimProfile.freez;
     private bool HasActiveSkillClip => HasValidSkillClip(_activeSkillDefinition);
+    private bool HasActiveUtilityWarpInClip => HasValidUtilityWarpInClip();
     internal float ActiveSkillCastPointNormalized => _activeSkillCastPointNormalized;
     internal bool HasPendingSkillReleaseRequest => _activeSkillReleaseRequested;
+    internal float ActiveUtilityCastPointNormalized => _activeUtilityCastPointNormalized;
+    internal bool HasPendingUtilityReleaseRequest => _activeUtilityReleaseRequested;
     public bool IsSkillActive =>
         _activeSkillReleaseRequested ||
         _activeSkillRequestId != 0 ||
-        (_initialized && locomotionSM.CurrentState == skill);
+        _activeUtilityReleaseRequested ||
+        _activeUtilityRequestId != 0 ||
+        (_initialized && (locomotionSM.CurrentState == skill || locomotionSM.CurrentState == utility));
+    public bool IsUtilityActive =>
+        _activeUtilityReleaseRequested ||
+        _activeUtilityRequestId != 0 ||
+        (_initialized && locomotionSM.CurrentState == utility);
    
 
     public event Action<int> SkillCastMomentReached;
@@ -167,9 +184,11 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         if (_initialized &&
             (animancer.Animator != _boundAnimator || animProfile != _boundAnimProfile) &&
-            (_activeSkillRequestId != 0 || _activeSkillReleaseRequested))
+            ((_activeSkillRequestId != 0 || _activeSkillReleaseRequested) ||
+             (_activeUtilityRequestId != 0 || _activeUtilityReleaseRequested)))
         {
             InterruptActiveSkillRequest();
+            InterruptActiveUtilityRequest();
         }
 
         // ถ้า Animator หรือ profile เปลี่ยน (เช่น rebuild model / switch character) ต้อง init ใหม่
@@ -195,6 +214,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         meleeCombo = new Locomotion_MeleeCombo(this);
         crawlState = new LocomotionState_Crawl(this);
         skill = new Locomotion_Skill(this);
+        utility = new Locomotion_Utility(this);
         statusEffectState = new Locomotion_StatusEffect(this);
 
         locomotionSM.ForceSetState(locomotion);
@@ -429,6 +449,30 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         return false;
     }
 
+    public bool TryPlayUtilityWarpIn(int requestId)
+    {
+        if (requestId <= 0)
+            return false;
+
+        if (!TryInitialize() || !HasValidUtilityWarpInClip())
+            return false;
+
+        ArmUtilityRequest(requestId, UtilityWarpInCastPointNormalized);
+
+        try
+        {
+            if (locomotionSM.TryResetState(utility))
+                return true;
+        }
+        catch (ArgumentException ex)
+        {
+            Debug.LogWarning($"[CharacterAnimBrain] Invalid utility warp-in clip. Falling back to immediate cast. {ex.Message}", this);
+        }
+
+        ClearActiveUtilityRequest();
+        return false;
+    }
+
     public void CancelSkillCastRequest(int requestId)
     {
         if (requestId <= 0 || requestId != _activeSkillRequestId)
@@ -440,6 +484,20 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             return;
 
         if (locomotionSM.CurrentState == skill)
+            locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
+    }
+
+    public void CancelUtilityCastRequest(int requestId)
+    {
+        if (requestId <= 0 || requestId != _activeUtilityRequestId)
+            return;
+
+        ClearActiveUtilityRequest();
+
+        if (!TryInitialize())
+            return;
+
+        if (locomotionSM.CurrentState == utility)
             locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
     }
 
@@ -691,6 +749,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         return LegacySkillClip;
     }
 
+    private bool HasValidUtilityWarpInClip()
+    {
+        var clip = UtilityWarpInClip;
+        return clip != null && clip.IsValid;
+    }
+
     private bool HasValidSkillClip(SkillGemDefinition skillDef)
     {
         var clip = ResolveSkillClip(skillDef);
@@ -704,6 +768,15 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         _activeSkillReleased = true;
         SkillCastMomentReached?.Invoke(_activeSkillRequestId);
+    }
+
+    internal void NotifyUtilityCastMoment()
+    {
+        if (!_activeUtilityReleaseRequested || _activeUtilityReleased)
+            return;
+
+        _activeUtilityReleased = true;
+        SkillCastMomentReached?.Invoke(_activeUtilityRequestId);
     }
 
     internal void NotifySkillStateExited(bool completedNormally)
@@ -730,6 +803,21 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             SkillCastInterrupted?.Invoke(requestId);
     }
 
+    internal void NotifyUtilityStateExited(bool completedNormally)
+    {
+        int requestId = _activeUtilityRequestId;
+        // Utility interruptions after release still need to unwind dependent sequences.
+        bool interrupted = !completedNormally && _activeUtilityReleaseRequested && requestId > 0;
+
+        ClearActiveUtilityRequest();
+
+        if (completedNormally)
+            SkillCompleted?.Invoke();
+
+        if (interrupted)
+            SkillCastInterrupted?.Invoke(requestId);
+    }
+
     private void ArmSkillRequest(int requestId, SkillGemDefinition skillDef, float castPointNormalized)
     {
         _activeSkillDefinition = skillDef;
@@ -739,6 +827,14 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         _activeSkillReleased = false;
     }
 
+    private void ArmUtilityRequest(int requestId, float castPointNormalized)
+    {
+        _activeUtilityRequestId = requestId;
+        _activeUtilityCastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
+        _activeUtilityReleaseRequested = true;
+        _activeUtilityReleased = false;
+    }
+
     private void ClearActiveSkillRequest()
     {
         _activeSkillDefinition = null;
@@ -746,6 +842,14 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         _activeSkillCastPointNormalized = 0.35f;
         _activeSkillReleaseRequested = false;
         _activeSkillReleased = false;
+    }
+
+    private void ClearActiveUtilityRequest()
+    {
+        _activeUtilityRequestId = 0;
+        _activeUtilityCastPointNormalized = 0.35f;
+        _activeUtilityReleaseRequested = false;
+        _activeUtilityReleased = false;
     }
 
     private void InterruptActiveSkillRequest()
@@ -759,13 +863,26 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             SkillCastInterrupted?.Invoke(requestId);
     }
 
+    private void InterruptActiveUtilityRequest()
+    {
+        int requestId = _activeUtilityRequestId;
+        bool shouldNotify = _activeUtilityReleaseRequested && requestId > 0;
+
+        ClearActiveUtilityRequest();
+
+        if (shouldNotify)
+            SkillCastInterrupted?.Invoke(requestId);
+    }
+
     private void OnDisable()
     {
         InterruptActiveSkillRequest();
+        InterruptActiveUtilityRequest();
     }
 
     private void OnDestroy()
     {
         InterruptActiveSkillRequest();
+        InterruptActiveUtilityRequest();
     }
 }

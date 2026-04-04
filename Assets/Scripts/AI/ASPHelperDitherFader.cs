@@ -125,6 +125,9 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
             yield break;
         }
 
+        float elapsed = 0f;
+        float minVisibleDuration = GetMinimumVisibleDuration(watchedState.Length);
+
         while (token == lifecycleToken && gameObject.activeInHierarchy)
         {
             AnimancerState currentState = TryGetCurrentState();
@@ -133,6 +136,14 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
 
             if (!currentState.IsPlaying)
                 break;
+
+            elapsed += useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
+
+            if (elapsed + FadeTriggerEpsilon < minVisibleDuration)
+            {
+                yield return null;
+                continue;
+            }
 
             float remainingDuration = currentState.RemainingDuration;
             if (float.IsFinite(remainingDuration) &&
@@ -147,6 +158,16 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
 
         if (token == lifecycleToken)
             monitorRoutine = null;
+    }
+
+    float GetMinimumVisibleDuration(float clipLength)
+    {
+        float visibleDuration = Mathf.Max(0.05f, fadeInDuration);
+
+        if (!float.IsFinite(clipLength) || clipLength <= 0f)
+            return visibleDuration;
+
+        return Mathf.Min(visibleDuration, clipLength * 0.5f);
     }
 
     void StartFade(float targetDithering, float duration, bool deactivateAfterFade)

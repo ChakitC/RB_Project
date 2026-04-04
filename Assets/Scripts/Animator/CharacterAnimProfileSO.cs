@@ -49,6 +49,10 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     [Min(0f)] public float crawlParamLerp = 10f;
     [Range(0f, 1f)] public float crawlSpeedMultiplier01 = 0.35f;
 
+    [Header("Utility (Layer 0)")]
+    public ClipTransition utilityWarpInClip;
+    [Range(0f, 1f)] public float utilityWarpInCastPointNormalized = 0.35f;
+
     [Header("Skill (Layer 0, Legacy Fallback)")]
     public ClipTransition skillClip;
 }

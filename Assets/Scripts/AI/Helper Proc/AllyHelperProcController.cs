@@ -47,10 +47,7 @@ public sealed class AllyHelperProcController : MonoBehaviour
         if (!CanStartHelper(helperDef))
             return false;
 
-        bool started = allyHelperManager.TrySummonAllyHelper(
-            helperDef.executionSkill,
-            helperDef.ClampedSkillLevel,
-            helperDef.hideHelperOnSkillComplete);
+        bool started = TryStartHelperExecution(helperDef);
 
         if (started)
             StampCooldown(helperDef);
@@ -92,10 +89,7 @@ public sealed class AllyHelperProcController : MonoBehaviour
             if (!RollProc(helperDef))
                 continue;
 
-            bool started = allyHelperManager.TrySummonAllyHelper(
-                helperDef.executionSkill,
-                helperDef.ClampedSkillLevel,
-                helperDef.hideHelperOnSkillComplete);
+            bool started = TryStartHelperExecution(helperDef);
 
             if (!started)
             {
@@ -158,7 +152,7 @@ public sealed class AllyHelperProcController : MonoBehaviour
 
     bool CanStartHelper(SkillHelperDef helperDef)
     {
-        if (helperDef == null || helperDef.executionSkill == null)
+        if (helperDef == null || !helperDef.HasExecutionConfigured)
             return false;
 
         if (helperDef.requireOwnerAlive &&
@@ -172,7 +166,33 @@ public sealed class AllyHelperProcController : MonoBehaviour
         if (helperDef.blockWhileHelperBusy && allyHelperManager.IsHelperBusy)
             return false;
 
+        if (helperDef.chainAttackSequence != null &&
+            !allyHelperManager.HasChainAttackTarget(helperDef.chainAttackSequence))
+        {
+            return false;
+        }
+
         return true;
+    }
+
+    bool TryStartHelperExecution(SkillHelperDef helperDef)
+    {
+        if (helperDef == null || allyHelperManager == null)
+            return false;
+
+        if (helperDef.chainAttackSequence != null)
+        {
+            return allyHelperManager.TryStartChainAttackHelper(
+                helperDef.chainAttackSequence,
+                helperDef.executionSkill,
+                helperDef.ClampedSkillLevel,
+                helperDef.hideHelperOnSkillComplete);
+        }
+
+        return allyHelperManager.TrySummonAllyHelper(
+            helperDef.executionSkill,
+            helperDef.ClampedSkillLevel,
+            helperDef.hideHelperOnSkillComplete);
     }
 
     bool RollProc(SkillHelperDef helperDef)

@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2944bd127184dc6843ffdface62c1d7, type: 3}
+  m_Name: HelperChainAttackSequence
+  m_EditorClassIdentifier: 
+  chainAttackSkill: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
+  useRequestedSkillLevelForChainAttack: 1
+  chainAttackSkillLevel: 1
+  aimSearchRadius: 3
+  targetLayers:
+    serializedVersion: 2
+    m_Bits: 65535
+  targetTriggerInteraction: 1
+  requireAimLineOfSight: 0
+  aimObstacleLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  hideHelperAtWarpCastMoment: 1
+  useAnchorRotationAsBase: 1
+  requireNavMeshAtAnchor: 1
+  navMeshSampleDistance: 0.75
+  anchorPositionOffset: {x: 0, y: 0, z: 0}
+  probeOrientation: 1
+  allowFallbackToBaseRotation: 1
+  orientationAngles:
+  - 0
+  - 45
+  - -45
+  - 90
+  - -90
+  clearanceCenterOffset: {x: 0, y: 1, z: 0.45}
+  clearanceHalfExtents: {x: 0.35, y: 0.9, z: 0.75}
+  obstacleLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  obstacleTriggerInteraction: 1
+  debugLogging: 0

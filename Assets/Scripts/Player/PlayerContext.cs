@@ -8,6 +8,8 @@ public class PlayerContext : CharacteContext
     [Header("Modules")]
     public PlayerMovementCC movement;
     public AllyHelperManager  allyHelper;
+    public FieldAllyManager fieldAllyManager;
+    public ChainAttackCoordinator chainAttackCoordinator;
     
     [Header("Inventory")]
     public PlayerInventory inventory;

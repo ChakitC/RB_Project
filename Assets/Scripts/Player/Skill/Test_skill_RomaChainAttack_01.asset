@@ -30,12 +30,12 @@ MonoBehaviour:
   payload: {fileID: 0}
   skillPrefab: {fileID: 1661335766552818198, guid: a2689cdd55e31c948aec00496448e0ef, type: 3}
   helperFacingMode: 0
-  BallVfxPrefab: {fileID: 8926415343284817078, guid: 530eb190399095046ab59b0eded72e1a, type: 3}
-  SkillVfxhit: {fileID: 0}
+  BallVfxPrefab: {fileID: 3239568679811347795, guid: a454aaceaff2e07419aa061a002c28a8, type: 3}
+  SkillVfxhit: {fileID: 8295974722891363362, guid: 25477c0d7d0187d4e8cb92a3bc1860ba, type: 3}
   projectileHitVfxScale: 1
   castCue: {fileID: 0}
   skillClip:
-    _FadeDuration: 0.25
+    _FadeDuration: 0
     _Speed: 1
     _Events:
       _NormalizedTimes: []

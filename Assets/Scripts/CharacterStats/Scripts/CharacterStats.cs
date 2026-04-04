@@ -96,6 +96,10 @@ public class CharacterStats : ScriptableObject
     [PropertyOrder(-140)]
     [FoldoutGroup("Weapon Visual", Expanded = true), LabelText("Weapon Hand Mode")]
     public CharacterWeaponHandMode weaponHandMode = CharacterWeaponHandMode.RightHand;
+
+    [PropertyOrder(-139)]
+    [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Default Chain Skill"), AssetsOnly]
+    public SkillGemDefinition chainAttackSkill;
     
     
     [PropertyOrder(-120)]

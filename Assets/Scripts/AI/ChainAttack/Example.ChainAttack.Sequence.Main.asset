@@ -1,0 +1,108 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1f2db0e0d1644c0a62f7c8174f59401, type: 3}
+  m_Name: Example.ChainAttack.Sequence.Main
+  m_EditorClassIdentifier: 
+  sequenceId: example.ally01.ally02.helper
+  description: Ally 01 and Ally 02 utility-warp in, hold position through the helper
+    follow-up, then utility-return to origin.
+  targetSource: 1
+  aimSearchRadius: 3
+  targetLayers:
+    serializedVersion: 2
+    m_Bits: 65535
+  targetTriggerInteraction: 1
+  requireAimLineOfSight: 0
+  aimObstacleLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  cancelIfLockedTargetDies: 1
+  stopWhenAnyStepFails: 1
+  defaultStepIntervalSeconds: 0.1
+  maxSequenceDurationSeconds: 12
+  steps:
+  - stepId: ally01_attack
+    actorRole: 1
+    delayBefore: 0
+    delayAfter: 0.1
+    skillSource: 1
+    skillDef: {fileID: 0}
+    skillLevel: 1
+    ignoreResourceCosts: 1
+    faceLockedTargetOnStart: 1
+    faceLockedTargetOnCast: 1
+    skipIfActorUnavailable: 0
+    skipIfTargetMissing: 0
+    requireActorAlive: 1
+    enterMode: 2
+    teleportProfile: {fileID: 11400000, guid: 67b40f9eb19a474fb266e3e7e25852fb, type: 2}
+    allowFallbackToInstantTeleportIfUtilityUnavailable: 1
+    exitMode: 4
+    moveMode: 0
+    useTargetAnchorRotation: 1
+    warpOffset: {x: 0, y: 0, z: 0}
+    warpYawOffset: 0
+    requireNavMeshAtWarpPoint: 1
+    warpNavMeshSampleDistance: 1
+    helperChainAttackSequence: {fileID: 0}
+    helperHideOnComplete: 1
+  - stepId: ally02_attack
+    actorRole: 2
+    delayBefore: 0
+    delayAfter: 0.1
+    skillSource: 1
+    skillDef: {fileID: 0}
+    skillLevel: 1
+    ignoreResourceCosts: 1
+    faceLockedTargetOnStart: 1
+    faceLockedTargetOnCast: 1
+    skipIfActorUnavailable: 0
+    skipIfTargetMissing: 0
+    requireActorAlive: 1
+    enterMode: 2
+    teleportProfile: {fileID: 11400000, guid: 9dc5c2d62a8744b7b07b383486e5579d, type: 2}
+    allowFallbackToInstantTeleportIfUtilityUnavailable: 1
+    exitMode: 4
+    moveMode: 0
+    useTargetAnchorRotation: 1
+    warpOffset: {x: 0, y: 0, z: 0}
+    warpYawOffset: 0
+    requireNavMeshAtWarpPoint: 1
+    warpNavMeshSampleDistance: 1
+    helperChainAttackSequence: {fileID: 0}
+    helperHideOnComplete: 1
+  - stepId: helper_chain_attack
+    actorRole: 3
+    delayBefore: 0
+    delayAfter: 0
+    skillSource: 0
+    skillDef: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
+    skillLevel: 1
+    ignoreResourceCosts: 1
+    faceLockedTargetOnStart: 0
+    faceLockedTargetOnCast: 1
+    skipIfActorUnavailable: 0
+    skipIfTargetMissing: 0
+    requireActorAlive: 1
+    enterMode: 0
+    teleportProfile: {fileID: 0}
+    allowFallbackToInstantTeleportIfUtilityUnavailable: 1
+    exitMode: 0
+    moveMode: 0
+    useTargetAnchorRotation: 1
+    warpOffset: {x: 0, y: 0, z: 0}
+    warpYawOffset: 0
+    requireNavMeshAtWarpPoint: 1
+    warpNavMeshSampleDistance: 1
+    helperChainAttackSequence: {fileID: 11400000, guid: 7d1e9498de43bfb4eb845a7f4dba9693, type: 2}
+    helperHideOnComplete: 1
+  debugLogging: 1

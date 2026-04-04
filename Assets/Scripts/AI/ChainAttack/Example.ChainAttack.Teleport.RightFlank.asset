@@ -9,33 +9,19 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e2944bd127184dc6843ffdface62c1d7, type: 3}
-  m_Name: HelperChainAttackSequence
+  m_Script: {fileID: 11500000, guid: 16c7d9cbe31b44caa984ea2789dcb6a0, type: 3}
+  m_Name: Example.ChainAttack.Teleport.RightFlank
   m_EditorClassIdentifier: 
-  aimSearchRadius: 3
-  targetLayers:
-    serializedVersion: 2
-    m_Bits: 512
-  targetTriggerInteraction: 1
-  requireAimLineOfSight: 0
-  aimObstacleLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  hideHelperAtWarpCastMoment: 1
   useAnchorRotationAsBase: 1
   requireNavMeshAtAnchor: 1
-  navMeshSampleDistance: 0.75
-  anchorPositionOffset: {x: 0, y: 0, z: 0}
+  navMeshSampleDistance: 1.2
+  anchorPositionOffset: {x: 0, y: 0, z: -1.35}
   probeOrientation: 1
   allowFallbackToBaseRotation: 1
   orientationAngles:
-  - 0
-  - 45
-  - -45
-  - 90
-  - -90
+  - 60
   clearanceCenterOffset: {x: 0, y: 1, z: 0.45}
-  clearanceHalfExtents: {x: 0.35, y: 0.9, z: 0.75}
+  clearanceHalfExtents: {x: 0.35, y: 0.9, z: 0.8}
   obstacleLayers:
     serializedVersion: 2
     m_Bits: 0

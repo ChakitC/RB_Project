@@ -61,10 +61,10 @@ public class AllyHelperManager : MonoBehaviour
     int nextHelperSkillRequestId = 1;
     readonly Collider[] _chainTargetBuffer = new Collider[MaxChainTargetColliders];
     readonly HashSet<int> _chainTargetIds = new();
-    readonly List<Vector3> _chainCandidatePositions = new();
-    readonly List<Quaternion> _chainCandidateRotations = new();
 
     public bool IsHelperActive => allyHelper != null && allyHelper.activeSelf;
+    public GameObject HelperObject => allyHelper;
+    public bool LastExecutionSucceeded { get; private set; } = true;
     public bool IsHelperBusy =>
         pendingHelperSkill != null ||
         pendingChainAttackSequence != null ||
@@ -116,6 +116,7 @@ public class AllyHelperManager : MonoBehaviour
         CancelPendingHelperSkill();
         CancelPendingChainAttackSequence();
         hideHelperOnSkillComplete = false;
+        LastExecutionSucceeded = false;
     }
 
     void Update()
@@ -136,6 +137,7 @@ public class AllyHelperManager : MonoBehaviour
         if (!TryPrepareHelperForSummon(out bool activatedNow))
             return false;
 
+        LastExecutionSucceeded = false;
         hideHelperOnSkillComplete = hideOnSkillComplete;
         CancelPendingHelperSkill();
         CancelPendingChainAttackSequence();
@@ -209,9 +211,64 @@ public class AllyHelperManager : MonoBehaviour
             return false;
         }
 
+        return TryStartChainAttackHelperInternal(
+            sequenceDef,
+            chainAttackSkillDef,
+            targetObject,
+            targetTransform,
+            anchorTransform,
+            requestedSkillLevel,
+            hideOnSkillComplete);
+    }
+
+    public bool TryStartChainAttackHelperToTarget(
+        HelperChainAttackSequenceDef sequenceDef,
+        SkillGemDefinition chainAttackSkillDef,
+        Transform explicitTargetTransform,
+        int requestedSkillLevel = 1,
+        bool hideOnSkillComplete = true)
+    {
+        if (!ChainAttackTargetingUtility.TryResolveExplicitTarget(
+                explicitTargetTransform,
+                playerContext,
+                allyHelper,
+                out GameObject targetObject,
+                out Transform targetTransform,
+                out Transform anchorTransform))
+        {
+            Log(sequenceDef, "Chain attack start failed: explicit target is invalid.");
+            return false;
+        }
+
+        return TryStartChainAttackHelperInternal(
+            sequenceDef,
+            chainAttackSkillDef,
+            targetObject,
+            targetTransform,
+            anchorTransform,
+            requestedSkillLevel,
+            hideOnSkillComplete);
+    }
+
+    bool TryStartChainAttackHelperInternal(
+        HelperChainAttackSequenceDef sequenceDef,
+        SkillGemDefinition chainAttackSkillDef,
+        GameObject targetObject,
+        Transform targetTransform,
+        Transform anchorTransform,
+        int requestedSkillLevel,
+        bool hideOnSkillComplete)
+    {
+        if (sequenceDef == null || chainAttackSkillDef == null || targetObject == null || targetTransform == null || anchorTransform == null)
+        {
+            Log(sequenceDef, "Chain attack start failed: target data is incomplete.");
+            return false;
+        }
+
         if (!TryPrepareHelperForSummon(out bool activatedNow))
             return false;
 
+        LastExecutionSucceeded = false;
         hideHelperOnSkillComplete = hideOnSkillComplete;
         CancelPendingHelperSkill();
         CancelPendingChainAttackSequence();
@@ -419,7 +476,8 @@ public class AllyHelperManager : MonoBehaviour
         if (helperSkill.skillDef == null)
             return;
 
-        ExecuteHelperSkill(helperSkill.skillDef, helperSkill.skillLevel, applyFacing: true);
+        if (!ExecuteHelperSkill(helperSkill.skillDef, helperSkill.skillLevel, applyFacing: true))
+            LastExecutionSucceeded = false;
     }
 
     void CancelPendingHelperSkill()
@@ -466,6 +524,7 @@ public class AllyHelperManager : MonoBehaviour
         RestoreHelperSkillAutonomy();
         RestoreCollisionMask();
         CancelPendingHelperSkill();
+        LastExecutionSucceeded = false;
 
         if (hideHelperOnSkillComplete)
             AllyHelperOut();
@@ -479,6 +538,7 @@ public class AllyHelperManager : MonoBehaviour
         RestoreHelperSkillAutonomy();
         RestoreCollisionMask();
         CancelPendingHelperSkill();
+        LastExecutionSucceeded = true;
 
         if (!hideHelperOnSkillComplete)
             return;
@@ -533,10 +593,15 @@ public class AllyHelperManager : MonoBehaviour
             if (pendingChainAttackSequence.phase != ChainAttackPhase.WaitingForChainCastMoment)
                 return true;
 
-            ExecuteHelperSkill(
-                pendingChainAttackSequence.chainAttackSkillDef,
-                pendingChainAttackSequence.chainAttackSkillLevel,
-                applyFacing: false);
+            if (!ExecuteHelperSkill(
+                    pendingChainAttackSequence.chainAttackSkillDef,
+                    pendingChainAttackSequence.chainAttackSkillLevel,
+                    applyFacing: false))
+            {
+                Log(pendingChainAttackSequence.sequenceDef, "Chain attack cancelled: follow-up skill payload failed.");
+                CancelActiveChainAttackSequence(interrupted: false);
+                return true;
+            }
 
             pendingChainAttackSequence.phase = ChainAttackPhase.WaitingForChainComplete;
             return true;
@@ -590,6 +655,7 @@ public class AllyHelperManager : MonoBehaviour
             RestoreHelperSkillAutonomy();
             RestoreCollisionMask();
             CancelPendingChainAttackSequence();
+            LastExecutionSucceeded = true;
 
             if (!hideHelperOnSkillComplete)
                 return true;
@@ -612,6 +678,7 @@ public class AllyHelperManager : MonoBehaviour
         RestoreHelperSkillAutonomy();
         RestoreCollisionMask();
         CancelPendingChainAttackSequence();
+        LastExecutionSucceeded = false;
 
         if (!hideHelperOnSkillComplete)
             return;
@@ -983,137 +1050,17 @@ public class AllyHelperManager : MonoBehaviour
         out Vector3 teleportPosition,
         out Quaternion teleportRotation)
     {
-        teleportPosition = Vector3.zero;
-        teleportRotation = Quaternion.identity;
+        Quaternion fallbackBaseRotation =
+            playerContext != null ? playerContext.transform.rotation :
+            allyHelper != null ? allyHelper.transform.rotation :
+            Quaternion.identity;
 
-        if (sequenceDef == null || anchorTransform == null)
-            return false;
-
-        Quaternion baseRotation = sequenceDef.useAnchorRotationAsBase
-            ? anchorTransform.rotation
-            : playerContext != null ? playerContext.transform.rotation : allyHelper.transform.rotation;
-
-        float[] angles = sequenceDef.GetOrientationAngles();
-        bool shouldResolveCandidates =
-            sequenceDef.probeOrientation &&
-            angles != null &&
-            angles.Length > 0;
-
-        if (!shouldResolveCandidates)
-        {
-            return TryResolveChainAttackPoseCandidate(
-                sequenceDef,
-                anchorTransform,
-                baseRotation,
-                0f,
-                requireClearance: sequenceDef.HasClearanceProbe,
-                out teleportPosition,
-                out teleportRotation);
-        }
-
-        _chainCandidatePositions.Clear();
-        _chainCandidateRotations.Clear();
-
-        for (int i = 0; i < angles.Length; i++)
-        {
-            if (!TryResolveChainAttackPoseCandidate(
-                    sequenceDef,
-                    anchorTransform,
-                    baseRotation,
-                    angles[i],
-                    requireClearance: sequenceDef.HasClearanceProbe,
-                    out Vector3 candidatePosition,
-                    out Quaternion candidateRotation))
-            {
-                continue;
-            }
-
-            _chainCandidatePositions.Add(candidatePosition);
-            _chainCandidateRotations.Add(candidateRotation);
-        }
-
-        if (_chainCandidatePositions.Count > 0)
-        {
-            int selectedIndex = Random.Range(0, _chainCandidatePositions.Count);
-            teleportPosition = _chainCandidatePositions[selectedIndex];
-            teleportRotation = _chainCandidateRotations[selectedIndex];
-            _chainCandidatePositions.Clear();
-            _chainCandidateRotations.Clear();
-            return true;
-        }
-
-        _chainCandidatePositions.Clear();
-        _chainCandidateRotations.Clear();
-
-        if (!sequenceDef.allowFallbackToBaseRotation)
-            return false;
-
-        return TryResolveChainAttackPoseCandidate(
+        return ChainAttackTeleportUtility.TryResolveTeleportPose(
             sequenceDef,
             anchorTransform,
-            baseRotation,
-            0f,
-            requireClearance: false,
+            fallbackBaseRotation,
             out teleportPosition,
             out teleportRotation);
-    }
-
-    bool TryResolveChainAttackPoseCandidate(
-        HelperChainAttackSequenceDef sequenceDef,
-        Transform anchorTransform,
-        Quaternion baseRotation,
-        float yawAngle,
-        bool requireClearance,
-        out Vector3 teleportPosition,
-        out Quaternion teleportRotation)
-    {
-        teleportPosition = Vector3.zero;
-        teleportRotation = baseRotation;
-
-        if (sequenceDef == null || anchorTransform == null)
-            return false;
-
-        Quaternion yawRotation = Quaternion.AngleAxis(yawAngle, Vector3.up);
-        teleportRotation = yawRotation * baseRotation;
-
-        Vector3 localOffset = yawRotation * sequenceDef.anchorPositionOffset;
-        teleportPosition = anchorTransform.TransformPoint(localOffset);
-
-        if (sequenceDef.requireNavMeshAtAnchor)
-        {
-            if (!NavMesh.SamplePosition(
-                    teleportPosition,
-                    out NavMeshHit navHit,
-                    Mathf.Max(0.05f, sequenceDef.navMeshSampleDistance),
-                    NavMesh.AllAreas))
-            {
-                return false;
-            }
-
-            teleportPosition = navHit.position;
-        }
-
-        if (requireClearance && !IsChainAttackPoseClear(sequenceDef, teleportPosition, teleportRotation))
-            return false;
-
-        return true;
-    }
-
-    bool IsChainAttackPoseClear(
-        HelperChainAttackSequenceDef sequenceDef,
-        Vector3 teleportPosition,
-        Quaternion rotation)
-    {
-        if (sequenceDef == null || !sequenceDef.HasClearanceProbe)
-            return true;
-
-        Vector3 center = teleportPosition + rotation * sequenceDef.clearanceCenterOffset;
-        return !Physics.CheckBox(
-            center,
-            sequenceDef.clearanceHalfExtents,
-            rotation,
-            sequenceDef.obstacleLayers,
-            sequenceDef.obstacleTriggerInteraction);
     }
 
     void TeleportHelperTo(Vector3 worldPosition, Quaternion worldRotation)

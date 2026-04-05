@@ -92,6 +92,31 @@ public sealed class FieldAllyManager : MonoBehaviour
         return false;
     }
 
+    public string DescribeOwnedSequenceWork(object owner)
+    {
+        if (owner == null)
+            return "owner=null";
+
+        HashSet<FieldAllyMember> processed = new();
+        List<string> descriptions = new();
+
+        foreach (FieldAllyMember member in _membersByRole.Values)
+        {
+            if (member == null || !processed.Add(member))
+                continue;
+
+            if (member.TryDescribeOwnedSequenceWork(owner, out string description) &&
+                !string.IsNullOrWhiteSpace(description))
+            {
+                descriptions.Add(description);
+            }
+        }
+
+        return descriptions.Count > 0
+            ? string.Join("; ", descriptions)
+            : "none";
+    }
+
     void RebuildRegistry()
     {
         _membersByRole.Clear();

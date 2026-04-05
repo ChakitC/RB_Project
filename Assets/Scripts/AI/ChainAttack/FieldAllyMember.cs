@@ -13,10 +13,12 @@ public sealed class FieldAllyMember : MonoBehaviour
         None = 0,
         WaitingForEnterCastMoment = 1,
         WaitingForEnterComplete = 2,
-        WaitingForAttackCastMoment = 3,
-        WaitingForAttackComplete = 4,
-        WaitingForExitCastMoment = 5,
-        WaitingForExitComplete = 6,
+        WaitingForAttackStart = 3,
+        WaitingForAttackCastMoment = 4,
+        WaitingForAttackComplete = 5,
+        WaitingForExitStart = 6,
+        WaitingForExitCastMoment = 7,
+        WaitingForExitComplete = 8,
     }
 
     sealed class PendingSequenceExecution
@@ -24,6 +26,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         public object owner;
         public ChainAttackStepDef step;
         public Transform lockedTarget;
+        public ISkillUser attackSkillUser;
         public SkillGemDefinition attackSkillDef;
         public int attackSkillLevel;
         public bool ignoreResourceCosts;
@@ -33,6 +36,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         public int attackRequestId;
         public int exitRequestId;
         public SequenceExecutionPhase phase;
+        public float phaseStartedAt;
         public Vector3 recordedOriginPosition;
         public Quaternion recordedOriginRotation;
     }
@@ -67,12 +71,19 @@ public sealed class FieldAllyMember : MonoBehaviour
     [SerializeField] private bool overrideRuntimeChainSkillLevel = true;
     [FoldoutGroup("Chain Attack/Runtime Prototype"), ShowIf("@useRuntimeChainSkillOverride && overrideRuntimeChainSkillLevel"), LabelText("Runtime Skill Level"), MinValue(1)]
     [SerializeField] private int runtimeChainSkillLevel = 1;
+    [FoldoutGroup("Chain Attack/Debug"), LabelText("Use Direct Skill User For Chain Cast")]
+    [SerializeField] private bool useDirectSkillUserForChainCastDebug;
+    [FoldoutGroup("Chain Attack/Debug"), ShowIf(nameof(useDirectSkillUserForChainCastDebug)), LabelText("Direct Skill User Source")]
+    [SerializeField] private MonoBehaviour directSkillUserSource;
+    [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Utility Recovery Timeout"), MinValue(0.1f)]
+    [SerializeField] private float utilityRecoveryTimeoutSeconds = 1.25f;
     [SerializeField] private bool logSequenceExecution;
 
     PendingSequenceExecution _pendingExecution;
     DeferredSequenceCleanup _deferredCleanup;
     object _reservationOwner;
     int _nextRequestId = 1;
+    ISkillUser _directSkillUser;
     SkillGemDefinition _lastResolvedAttackSkill;
     int _lastResolvedAttackLevel = 1;
     MonoBehaviour[] _capturedDisabledComponents = Array.Empty<MonoBehaviour>();
@@ -121,9 +132,22 @@ public sealed class FieldAllyMember : MonoBehaviour
     [ShowInInspector, ReadOnly, FoldoutGroup("Chain Attack/Runtime Prototype"), PropertyOrder(13), LabelText("Last Resolved Attack Level")]
     int InspectorLastResolvedAttackLevel => Mathf.Max(1, _lastResolvedAttackLevel);
 
+    [ShowInInspector, ReadOnly, FoldoutGroup("Chain Attack/Debug"), PropertyOrder(20), LabelText("Chain Cast Path")]
+    string InspectorChainCastPath => useDirectSkillUserForChainCastDebug
+        ? "Direct ISkillUser"
+        : "ChainSkillUserProxy";
+
+    [ShowInInspector, ReadOnly, FoldoutGroup("Chain Attack/Debug"), PropertyOrder(21), LabelText("Resolved Direct Skill User")]
+    string InspectorResolvedDirectSkillUser => DescribeSkillUser(ResolveDirectSkillUser());
+
     void Awake()
     {
         CacheReferences();
+    }
+
+    void Update()
+    {
+        ProcessDeferredExecutionPhase();
     }
 
     void OnEnable()
@@ -168,7 +192,7 @@ public sealed class FieldAllyMember : MonoBehaviour
 
         CacheReferences();
 
-        if (animBrain == null || skillUserProxy == null || _reservationOwner == null)
+        if (animBrain == null || _reservationOwner == null)
             return false;
 
         if (step.requireActorAlive && !IsAlive)
@@ -320,6 +344,33 @@ public sealed class FieldAllyMember : MonoBehaviour
         return _reservationOwner != null && ReferenceEquals(_reservationOwner, owner);
     }
 
+    public bool TryDescribeOwnedSequenceWork(object owner, out string description)
+    {
+        description = null;
+
+        if (!OwnsSequenceWork(owner))
+            return false;
+
+        List<string> states = new();
+
+        if (_pendingExecution != null && ReferenceEquals(_pendingExecution.owner, owner))
+        {
+            string stepId = _pendingExecution.step != null
+                ? _pendingExecution.step.RuntimeId
+                : "unknown-step";
+            states.Add($"pending phase={_pendingExecution.phase} step={stepId}");
+        }
+
+        if (_deferredCleanup != null && ReferenceEquals(_deferredCleanup.owner, owner))
+            states.Add($"deferred exit={_deferredCleanup.exitMode}");
+
+        if (_reservationOwner != null && ReferenceEquals(_reservationOwner, owner))
+            states.Add("reserved");
+
+        description = $"{actorRole}:{name} [{string.Join(", ", states)}]";
+        return true;
+    }
+
     void CacheReferences()
     {
         if (actorContext == null)
@@ -348,6 +399,15 @@ public sealed class FieldAllyMember : MonoBehaviour
 
         if (skillUserProxy == null)
             skillUserProxy = gameObject.AddComponent<ChainSkillUserProxy>();
+
+        if (directSkillUserSource is not ISkillUser)
+            directSkillUserSource = null;
+
+        if (_directSkillUser == null ||
+            (directSkillUserSource is ISkillUser explicitSource && !ReferenceEquals(_directSkillUser, explicitSource)))
+        {
+            _directSkillUser = null;
+        }
 
         if (actorFader == null)
         {
@@ -447,7 +507,7 @@ public sealed class FieldAllyMember : MonoBehaviour
             return false;
 
         execution.enterRequestId = NextRequestId();
-        execution.phase = SequenceExecutionPhase.WaitingForEnterCastMoment;
+        SetExecutionPhase(execution, SequenceExecutionPhase.WaitingForEnterCastMoment);
 
         bool started = animBrain.TryPlayUtilityWarpIn(execution.enterRequestId);
         if (started)
@@ -484,19 +544,20 @@ public sealed class FieldAllyMember : MonoBehaviour
             return false;
         }
 
-        skillUserProxy.ClearAimOverrides();
+        if (!TryResolveAttackSkillUser(execution, out ISkillUser attackSkillUser))
+        {
+            CleanupActiveExecution(success: false);
+            return false;
+        }
 
-        if (ChainAttackTargetingUtility.TryResolveTargetAnchor(execution.lockedTarget, out Transform aimAnchor))
-            skillUserProxy.SetAimTargetOverride(aimAnchor);
-        else if (execution.lockedTarget != null)
-            skillUserProxy.SetAimTargetOverride(execution.lockedTarget);
+        execution.attackSkillUser = attackSkillUser;
 
         if (execution.step.faceLockedTargetOnStart)
             FaceTarget(execution.lockedTarget);
 
         execution.attackPayloadReleased = false;
         execution.attackRequestId = NextRequestId();
-        execution.phase = SequenceExecutionPhase.WaitingForAttackCastMoment;
+        SetExecutionPhase(execution, SequenceExecutionPhase.WaitingForAttackCastMoment);
 
         bool started = animBrain.TryPlaySkill(
             execution.attackRequestId,
@@ -505,7 +566,9 @@ public sealed class FieldAllyMember : MonoBehaviour
 
         if (started)
         {
-            Log($"Started attack for step '{execution.step.RuntimeId}' with skill '{execution.attackSkillDef.name}' (request {execution.attackRequestId}).");
+            Log(
+                $"Started attack for step '{execution.step.RuntimeId}' with skill '{execution.attackSkillDef.name}' " +
+                $"(request {execution.attackRequestId}, castUser={DescribeSkillUser(execution.attackSkillUser)}).");
             return true;
         }
 
@@ -660,7 +723,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (_pendingExecution.step.faceLockedTargetOnStart)
             FaceTarget(_pendingExecution.lockedTarget);
 
-        _pendingExecution.phase = SequenceExecutionPhase.WaitingForEnterComplete;
+        SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForEnterComplete);
         Log($"Teleported '{name}' into chain attack pose for step '{_pendingExecution.step.RuntimeId}'.");
     }
 
@@ -678,15 +741,27 @@ public sealed class FieldAllyMember : MonoBehaviour
             level = Mathf.Max(1, _pendingExecution.attackSkillLevel),
         };
 
+        ISkillUser attackSkillUser = _pendingExecution.attackSkillUser;
+        if (attackSkillUser == null && !TryResolveAttackSkillUser(_pendingExecution, out attackSkillUser))
+        {
+            Log($"Skill '{_pendingExecution.attackSkillDef.name}' failed because no cast user could be resolved.");
+            CleanupActiveExecution(success: false);
+            return;
+        }
+
+        _pendingExecution.attackSkillUser = attackSkillUser;
+
         bool executed = _pendingExecution.ignoreResourceCosts
-            ? runtimeSkill.TryCastIgnoringResourceCosts(skillUserProxy)
-            : ExecutePaidCast(runtimeSkill);
+            ? runtimeSkill.TryCastIgnoringResourceCosts(attackSkillUser)
+            : ExecutePaidCast(runtimeSkill, attackSkillUser);
 
         _pendingExecution.attackPayloadReleased = executed;
 
         if (!executed)
         {
-            Log($"Skill '{_pendingExecution.attackSkillDef.name}' failed at cast moment.");
+            Log(
+                $"Skill '{_pendingExecution.attackSkillDef.name}' failed at cast moment " +
+                $"with castUser={DescribeSkillUser(attackSkillUser)}.");
             if (animBrain != null)
             {
                 animBrain.CancelSkillCastRequest(requestId);
@@ -697,7 +772,7 @@ public sealed class FieldAllyMember : MonoBehaviour
             return;
         }
 
-        _pendingExecution.phase = SequenceExecutionPhase.WaitingForAttackComplete;
+        SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForAttackComplete);
     }
 
     void HandleExitCastMoment(int requestId)
@@ -706,7 +781,7 @@ public sealed class FieldAllyMember : MonoBehaviour
             return;
 
         TeleportActorTo(_pendingExecution.recordedOriginPosition, _pendingExecution.recordedOriginRotation);
-        _pendingExecution.phase = SequenceExecutionPhase.WaitingForExitComplete;
+        SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForExitComplete);
         Log($"Returned '{name}' to its recorded origin for step '{_pendingExecution.step.RuntimeId}'.");
     }
 
@@ -734,7 +809,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         switch (_pendingExecution.phase)
         {
             case SequenceExecutionPhase.WaitingForEnterComplete:
-                TryStartAttack(_pendingExecution);
+                QueueAttackStart("utility animation completed");
                 return;
 
             case SequenceExecutionPhase.WaitingForAttackComplete:
@@ -777,14 +852,7 @@ public sealed class FieldAllyMember : MonoBehaviour
                 return;
 
             case ChainActorExitMode.ReturnToRecordedOriginViaUtility:
-                if (!TryStartReturnUtility(
-                        _pendingExecution.owner,
-                        _pendingExecution.recordedOriginPosition,
-                        _pendingExecution.recordedOriginRotation,
-                        releaseReservationOnComplete: false))
-                {
-                    CleanupActiveExecution(success: false);
-                }
+                QueueImmediateReturnUtilityStart();
                 return;
 
             case ChainActorExitMode.FadeOutAndDeactivate:
@@ -805,6 +873,120 @@ public sealed class FieldAllyMember : MonoBehaviour
             returnPosition = execution.recordedOriginPosition,
             returnRotation = execution.recordedOriginRotation,
         };
+    }
+
+    void ProcessDeferredExecutionPhase()
+    {
+        if (_pendingExecution == null || animBrain == null)
+            return;
+
+        switch (_pendingExecution.phase)
+        {
+            case SequenceExecutionPhase.WaitingForEnterCastMoment:
+                if (HasPhaseTimedOut(_pendingExecution, utilityRecoveryTimeoutSeconds))
+                {
+                    Log($"Utility warp-in cast moment timed out for step '{_pendingExecution.step.RuntimeId}'. Forcing teleport recovery.");
+                    HandleEnterCastMoment(_pendingExecution.enterRequestId);
+                }
+                return;
+
+            case SequenceExecutionPhase.WaitingForEnterComplete:
+                if (!animBrain.IsUtilityActive)
+                {
+                    QueueAttackStart("utility animation state exited without completion callback");
+                    return;
+                }
+
+                if (HasPhaseTimedOut(_pendingExecution, utilityRecoveryTimeoutSeconds))
+                {
+                    Log($"Utility warp-in completion timed out for step '{_pendingExecution.step.RuntimeId}'. Forcing attack handoff.");
+                    animBrain.CancelUtilityCastRequest(_pendingExecution.enterRequestId);
+                    QueueAttackStart("utility completion timeout recovery");
+                }
+                return;
+
+            case SequenceExecutionPhase.WaitingForAttackStart:
+                TryStartAttack(_pendingExecution);
+                return;
+
+            case SequenceExecutionPhase.WaitingForAttackCastMoment:
+                if (!animBrain.IsSkillActive)
+                {
+                    Log($"Attack cast moment for step '{_pendingExecution.step.RuntimeId}' was missed. Forcing cast recovery.");
+                    HandleAttackCastMoment(_pendingExecution.attackRequestId);
+                    return;
+                }
+
+                if (HasPhaseTimedOut(_pendingExecution, utilityRecoveryTimeoutSeconds))
+                {
+                    Log($"Attack cast moment timed out for step '{_pendingExecution.step.RuntimeId}'. Forcing skill payload release.");
+                    HandleAttackCastMoment(_pendingExecution.attackRequestId);
+                }
+                return;
+
+            case SequenceExecutionPhase.WaitingForAttackComplete:
+                if (!animBrain.IsSkillActive)
+                {
+                    Log($"Attack for step '{_pendingExecution.step.RuntimeId}' finished via animation state exit recovery.");
+                    HandleAttackCompleted();
+                }
+                return;
+
+            case SequenceExecutionPhase.WaitingForExitStart:
+                if (!TryStartReturnUtility(
+                        _pendingExecution.owner,
+                        _pendingExecution.recordedOriginPosition,
+                        _pendingExecution.recordedOriginRotation,
+                        releaseReservationOnComplete: false))
+                {
+                    CleanupActiveExecution(success: false);
+                }
+                return;
+
+            case SequenceExecutionPhase.WaitingForExitCastMoment:
+                if (HasPhaseTimedOut(_pendingExecution, utilityRecoveryTimeoutSeconds))
+                {
+                    Log($"Return utility cast moment timed out for '{name}'. Forcing return teleport recovery.");
+                    HandleExitCastMoment(_pendingExecution.exitRequestId);
+                }
+                return;
+
+            case SequenceExecutionPhase.WaitingForExitComplete:
+                if (!animBrain.IsUtilityActive)
+                {
+                    Log($"Return utility for '{name}' finished via animation state exit recovery.");
+                    CleanupActiveExecution(success: true);
+                    return;
+                }
+
+                if (HasPhaseTimedOut(_pendingExecution, utilityRecoveryTimeoutSeconds))
+                {
+                    Log($"Return utility completion timed out for '{name}'. Forcing return cleanup.");
+                    animBrain.CancelUtilityCastRequest(_pendingExecution.exitRequestId);
+                    CleanupActiveExecution(success: true);
+                }
+                return;
+        }
+    }
+
+    void QueueAttackStart(string reason)
+    {
+        if (_pendingExecution == null)
+            return;
+
+        _pendingExecution.enterRequestId = 0;
+        SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForAttackStart);
+        Log($"Queued attack start for step '{_pendingExecution.step.RuntimeId}' after {reason}.");
+    }
+
+    void QueueImmediateReturnUtilityStart()
+    {
+        if (_pendingExecution == null)
+            return;
+
+        _pendingExecution.attackRequestId = 0;
+        SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForExitStart);
+        Log($"Queued return utility for step '{_pendingExecution.step.RuntimeId}'.");
     }
 
     bool TryStartReturnUtility(
@@ -832,7 +1014,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         _pendingExecution.recordedOriginRotation = returnRotation;
         _pendingExecution.releaseReservationOnComplete = releaseReservationOnComplete;
         _pendingExecution.exitRequestId = NextRequestId();
-        _pendingExecution.phase = SequenceExecutionPhase.WaitingForExitCastMoment;
+        SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForExitCastMoment);
 
         bool started = animBrain.TryPlayUtilityWarpIn(_pendingExecution.exitRequestId);
         if (started)
@@ -870,15 +1052,49 @@ public sealed class FieldAllyMember : MonoBehaviour
             gameObject.SetActive(false);
     }
 
-    bool ExecutePaidCast(SkillInstance runtimeSkill)
+    bool ExecutePaidCast(SkillInstance runtimeSkill, ISkillUser skillUser)
     {
-        if (runtimeSkill == null || skillUserProxy == null)
+        if (runtimeSkill == null || skillUser == null)
             return false;
 
-        if (!runtimeSkill.CanCast(skillUserProxy))
+        if (!runtimeSkill.CanCast(skillUser))
             return false;
 
-        runtimeSkill.Cast(skillUserProxy);
+        runtimeSkill.Cast(skillUser);
+        return true;
+    }
+
+    bool TryResolveAttackSkillUser(PendingSequenceExecution execution, out ISkillUser attackSkillUser)
+    {
+        attackSkillUser = null;
+
+        if (useDirectSkillUserForChainCastDebug)
+        {
+            skillUserProxy?.ClearAimOverrides();
+            attackSkillUser = ResolveDirectSkillUser();
+            if (attackSkillUser == null)
+            {
+                Log($"Direct chain cast debug path is enabled but no direct ISkillUser was found on '{name}'.");
+                return false;
+            }
+
+            return true;
+        }
+
+        if (skillUserProxy == null)
+            return false;
+
+        skillUserProxy.ClearAimOverrides();
+
+        if (execution != null)
+        {
+            if (ChainAttackTargetingUtility.TryResolveTargetAnchor(execution.lockedTarget, out Transform aimAnchor))
+                skillUserProxy.SetAimTargetOverride(aimAnchor);
+            else if (execution.lockedTarget != null)
+                skillUserProxy.SetAimTargetOverride(execution.lockedTarget);
+        }
+
+        attackSkillUser = skillUserProxy;
         return true;
     }
 
@@ -902,12 +1118,78 @@ public sealed class FieldAllyMember : MonoBehaviour
             ReleaseReservation(ownerToRelease);
     }
 
+    void SetExecutionPhase(PendingSequenceExecution execution, SequenceExecutionPhase phase)
+    {
+        if (execution == null)
+            return;
+
+        execution.phase = phase;
+        execution.phaseStartedAt = Time.time;
+    }
+
+    bool HasPhaseTimedOut(PendingSequenceExecution execution, float timeoutSeconds)
+    {
+        if (execution == null)
+            return false;
+
+        float timeout = Mathf.Max(0.1f, timeoutSeconds);
+        return execution.phaseStartedAt > 0f && Time.time - execution.phaseStartedAt >= timeout;
+    }
+
     int ResolveActorDefaultSkillLevel(ChainAttackStepDef step)
     {
         if (useRuntimeChainSkillOverride && runtimeChainSkill != null && overrideRuntimeChainSkillLevel)
             return Mathf.Max(1, runtimeChainSkillLevel);
 
         return step != null ? step.ClampedSkillLevel : 1;
+    }
+
+    ISkillUser ResolveDirectSkillUser()
+    {
+        if (directSkillUserSource is ISkillUser typedSource)
+        {
+            _directSkillUser = typedSource;
+            return _directSkillUser;
+        }
+
+        if (_directSkillUser != null)
+            return _directSkillUser;
+
+        if (actorContext == null)
+            actorContext = GetComponent<CharacteContext>();
+
+        if (actorContext != null && actorContext.EnegySystem != null)
+        {
+            _directSkillUser = actorContext.EnegySystem;
+            return _directSkillUser;
+        }
+
+        MonoBehaviour[] behaviours = GetComponents<MonoBehaviour>();
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            MonoBehaviour behaviour = behaviours[i];
+            if (behaviour == null || behaviour == this || behaviour == skillUserProxy)
+                continue;
+
+            if (behaviour is ISkillUser skillUser)
+            {
+                _directSkillUser = skillUser;
+                return _directSkillUser;
+            }
+        }
+
+        return null;
+    }
+
+    string DescribeSkillUser(ISkillUser skillUser)
+    {
+        if (skillUser == null)
+            return "null";
+
+        if (skillUser is Component component)
+            return $"{component.GetType().Name}:{component.name}";
+
+        return skillUser.GetType().Name;
     }
 
     bool ApplyTemporaryComponentDisables()

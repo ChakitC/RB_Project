@@ -15,11 +15,11 @@ MonoBehaviour:
   sequenceId: example.ally01.ally02.helper
   description: Ally 01 and Ally 02 utility-warp in, hold position through the helper
     follow-up, then utility-return to origin.
-  targetSource: 1
-  aimSearchRadius: 3
+  targetSource: 2
+  aimSearchRadius: 5
   targetLayers:
     serializedVersion: 2
-    m_Bits: 65535
+    m_Bits: 512
   targetTriggerInteraction: 1
   requireAimLineOfSight: 0
   aimObstacleLayers:
@@ -30,6 +30,31 @@ MonoBehaviour:
   defaultStepIntervalSeconds: 0.1
   maxSequenceDurationSeconds: 12
   steps:
+  - stepId: helper_chain_attack
+    actorRole: 3
+    delayBefore: 0
+    delayAfter: 0
+    skillSource: 0
+    skillDef: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
+    skillLevel: 1
+    ignoreResourceCosts: 1
+    faceLockedTargetOnStart: 0
+    faceLockedTargetOnCast: 1
+    skipIfActorUnavailable: 1
+    skipIfTargetMissing: 1
+    requireActorAlive: 1
+    enterMode: 0
+    teleportProfile: {fileID: 0}
+    allowFallbackToInstantTeleportIfUtilityUnavailable: 1
+    exitMode: 0
+    moveMode: 1
+    useTargetAnchorRotation: 1
+    warpOffset: {x: 0, y: 0, z: 0}
+    warpYawOffset: 0
+    requireNavMeshAtWarpPoint: 1
+    warpNavMeshSampleDistance: 1
+    helperChainAttackSequence: {fileID: 11400000, guid: 7d1e9498de43bfb4eb845a7f4dba9693, type: 2}
+    helperHideOnComplete: 1
   - stepId: ally01_attack
     actorRole: 1
     delayBefore: 0
@@ -38,20 +63,20 @@ MonoBehaviour:
     skillDef: {fileID: 0}
     skillLevel: 1
     ignoreResourceCosts: 1
-    faceLockedTargetOnStart: 1
-    faceLockedTargetOnCast: 1
-    skipIfActorUnavailable: 0
-    skipIfTargetMissing: 0
+    faceLockedTargetOnStart: 0
+    faceLockedTargetOnCast: 0
+    skipIfActorUnavailable: 1
+    skipIfTargetMissing: 1
     requireActorAlive: 1
     enterMode: 2
     teleportProfile: {fileID: 11400000, guid: 67b40f9eb19a474fb266e3e7e25852fb, type: 2}
     allowFallbackToInstantTeleportIfUtilityUnavailable: 1
-    exitMode: 4
-    moveMode: 0
+    exitMode: 1
+    moveMode: 1
     useTargetAnchorRotation: 1
     warpOffset: {x: 0, y: 0, z: 0}
     warpYawOffset: 0
-    requireNavMeshAtWarpPoint: 1
+    requireNavMeshAtWarpPoint: 0
     warpNavMeshSampleDistance: 1
     helperChainAttackSequence: {fileID: 0}
     helperHideOnComplete: 1
@@ -65,13 +90,13 @@ MonoBehaviour:
     ignoreResourceCosts: 1
     faceLockedTargetOnStart: 1
     faceLockedTargetOnCast: 1
-    skipIfActorUnavailable: 0
-    skipIfTargetMissing: 0
+    skipIfActorUnavailable: 1
+    skipIfTargetMissing: 1
     requireActorAlive: 1
     enterMode: 2
     teleportProfile: {fileID: 11400000, guid: 9dc5c2d62a8744b7b07b383486e5579d, type: 2}
     allowFallbackToInstantTeleportIfUtilityUnavailable: 1
-    exitMode: 4
+    exitMode: 1
     moveMode: 0
     useTargetAnchorRotation: 1
     warpOffset: {x: 0, y: 0, z: 0}
@@ -79,30 +104,5 @@ MonoBehaviour:
     requireNavMeshAtWarpPoint: 1
     warpNavMeshSampleDistance: 1
     helperChainAttackSequence: {fileID: 0}
-    helperHideOnComplete: 1
-  - stepId: helper_chain_attack
-    actorRole: 3
-    delayBefore: 0
-    delayAfter: 0
-    skillSource: 0
-    skillDef: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
-    skillLevel: 1
-    ignoreResourceCosts: 1
-    faceLockedTargetOnStart: 0
-    faceLockedTargetOnCast: 1
-    skipIfActorUnavailable: 0
-    skipIfTargetMissing: 0
-    requireActorAlive: 1
-    enterMode: 0
-    teleportProfile: {fileID: 0}
-    allowFallbackToInstantTeleportIfUtilityUnavailable: 1
-    exitMode: 0
-    moveMode: 0
-    useTargetAnchorRotation: 1
-    warpOffset: {x: 0, y: 0, z: 0}
-    warpYawOffset: 0
-    requireNavMeshAtWarpPoint: 1
-    warpNavMeshSampleDistance: 1
-    helperChainAttackSequence: {fileID: 11400000, guid: 7d1e9498de43bfb4eb845a7f4dba9693, type: 2}
     helperHideOnComplete: 1
   debugLogging: 1

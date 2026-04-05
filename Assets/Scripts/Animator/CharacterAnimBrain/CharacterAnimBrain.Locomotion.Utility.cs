@@ -49,6 +49,7 @@ public sealed partial class CharacterAnimBrain
             owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
 
             state = owner.LocoLayer.Play(utilityClip);
+            state.NormalizedTime = 0f;
             runtimeEvents = new AnimancerEvent.Sequence(utilityClip.Events);
 
             if (owner.HasPendingUtilityReleaseRequest)

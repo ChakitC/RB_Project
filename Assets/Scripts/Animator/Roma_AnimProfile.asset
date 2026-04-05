@@ -192,7 +192,7 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 2548037273130504702, guid: 4f569030b89d30644aafd5e41f7017fb, type: 3}
     _NormalizedStartTime: NaN
-  utilityWarpInCastPointNormalized: 1
+  utilityWarpInCastPointNormalized: 0.95
   skillClip:
     _FadeDuration: 0.25
     _Speed: 1

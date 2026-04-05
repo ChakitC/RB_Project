@@ -783,11 +783,22 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     {
         int requestId = _activeSkillRequestId;
         SkillGemDefinition activeSkillDefinition = _activeSkillDefinition;
-        bool interrupted = _activeSkillReleaseRequested && !_activeSkillReleased;
+        bool shouldReleaseOnComplete =
+            completedNormally &&
+            _activeSkillReleaseRequested &&
+            !_activeSkillReleased &&
+            requestId > 0;
+        bool interrupted = !completedNormally && _activeSkillReleaseRequested && requestId > 0;
         bool shouldDeactivateOwner =
             deactivateOwnerOnSkillExit &&
             activeSkillDefinition == null &&
             gameObject.activeSelf;
+
+        if (shouldReleaseOnComplete)
+        {
+            _activeSkillReleased = true;
+            SkillCastMomentReached?.Invoke(requestId);
+        }
 
         ClearActiveSkillRequest();
 
@@ -806,8 +817,19 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     internal void NotifyUtilityStateExited(bool completedNormally)
     {
         int requestId = _activeUtilityRequestId;
+        bool shouldReleaseOnComplete =
+            completedNormally &&
+            _activeUtilityReleaseRequested &&
+            !_activeUtilityReleased &&
+            requestId > 0;
         // Utility interruptions after release still need to unwind dependent sequences.
         bool interrupted = !completedNormally && _activeUtilityReleaseRequested && requestId > 0;
+
+        if (shouldReleaseOnComplete)
+        {
+            _activeUtilityReleased = true;
+            SkillCastMomentReached?.Invoke(requestId);
+        }
 
         ClearActiveUtilityRequest();
 

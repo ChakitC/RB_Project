@@ -115,6 +115,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private MixerTransition2D CrawlMixer => AnimProfile.crawlMixer;
     private float CrawlParamLerp => AnimProfile.crawlParamLerp;
     private float CrawlSpeedMultiplier01 => AnimProfile.crawlSpeedMultiplier01;
+    private ClipTransition UtilityWarpOutClip => AnimProfile.utilityWarpOutClip;
+    private float UtilityWarpOutCastPointNormalized => AnimProfile.utilityWarpOutCastPointNormalized;
     private ClipTransition UtilityWarpInClip => AnimProfile.utilityWarpInClip;
     private float UtilityWarpInCastPointNormalized => AnimProfile.utilityWarpInCastPointNormalized;
     private ClipTransition LegacySkillClip => AnimProfile.skillClip;
@@ -124,7 +126,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private ClipTransition RootClip => AnimProfile.root;
     private ClipTransition FreezClip => AnimProfile.freez;
     private bool HasActiveSkillClip => HasValidSkillClip(_activeSkillDefinition);
-    private bool HasActiveUtilityWarpInClip => HasValidUtilityWarpInClip();
+    private bool HasActiveUtilityWarpOutClip => HasValidUtilityWarpOutClip();
     internal float ActiveSkillCastPointNormalized => _activeSkillCastPointNormalized;
     internal bool HasPendingSkillReleaseRequest => _activeSkillReleaseRequested;
     internal float ActiveUtilityCastPointNormalized => _activeUtilityCastPointNormalized;
@@ -483,7 +485,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         return false;
     }
 
-    public bool TryPlayUtilityWarpIn(int requestId)
+    public bool TryPlayUtilityWarpOut(int requestId)
     {
         if (IsChainPlaybackActive)
             return false;
@@ -491,10 +493,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (requestId <= 0)
             return false;
 
-        if (!TryInitialize() || !HasValidUtilityWarpInClip())
+        if (!TryInitialize() || !HasValidUtilityWarpOutClip())
             return false;
 
-        ArmUtilityRequest(requestId, UtilityWarpInCastPointNormalized);
+        ArmUtilityRequest(requestId, UtilityWarpOutCastPointNormalized);
 
         try
         {
@@ -503,7 +505,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         }
         catch (ArgumentException ex)
         {
-            Debug.LogWarning($"[CharacterAnimBrain] Invalid utility warp-in clip. Falling back to immediate cast. {ex.Message}", this);
+            Debug.LogWarning($"[CharacterAnimBrain] Invalid utility warp-out clip. Falling back to immediate cast. {ex.Message}", this);
         }
 
         ClearActiveUtilityRequest();
@@ -801,9 +803,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         return LegacySkillClip;
     }
 
-    private bool HasValidUtilityWarpInClip()
+    private bool HasValidUtilityWarpOutClip()
     {
-        var clip = UtilityWarpInClip;
+        var clip = UtilityWarpOutClip;
         return clip != null && clip.IsValid;
     }
 

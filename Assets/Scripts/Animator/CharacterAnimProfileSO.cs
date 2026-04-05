@@ -1,5 +1,6 @@
 using Animancer;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [CreateAssetMenu(menuName = "Game/Characters/Animation Profile", fileName = "CharacterAnimProfile")]
 public sealed class CharacterAnimProfileSO : ScriptableObject
@@ -49,7 +50,13 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     [Min(0f)] public float crawlParamLerp = 10f;
     [Range(0f, 1f)] public float crawlSpeedMultiplier01 = 0.35f;
 
-    [Header("Utility (Layer 0)")]
+    [Header("Utility Warp Out (Layer 0)")]
+    [FormerlySerializedAs("utilityWarpInClip")]
+    public ClipTransition utilityWarpOutClip;
+    [FormerlySerializedAs("utilityWarpInCastPointNormalized")]
+    [Range(0f, 1f)] public float utilityWarpOutCastPointNormalized = 0.35f;
+
+    [Header("Utility Warp In (Layer 0)")]
     public ClipTransition utilityWarpInClip;
     [Range(0f, 1f)] public float utilityWarpInCastPointNormalized = 0.35f;
 

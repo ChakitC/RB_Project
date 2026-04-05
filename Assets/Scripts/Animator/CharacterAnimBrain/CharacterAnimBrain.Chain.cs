@@ -8,7 +8,8 @@ public sealed partial class CharacterAnimBrain
     {
         None = 0,
         Skill = 1,
-        Utility = 2,
+        UtilityWarpOut = 2,
+        UtilityWarpIn = 3,
     }
 
     private Locomotion_Chain chain;
@@ -31,7 +32,9 @@ public sealed partial class CharacterAnimBrain
         (_initialized && locomotionSM.CurrentState == chain);
 
     public bool IsChainUtilityPlaybackActive =>
-        (_activeChainKind == ChainPlaybackKind.Utility) && IsChainPlaybackActive;
+        (_activeChainKind == ChainPlaybackKind.UtilityWarpOut ||
+         _activeChainKind == ChainPlaybackKind.UtilityWarpIn) &&
+        IsChainPlaybackActive;
 
     public event Action<int> ChainCastMomentReached;
     public event Action<int> ChainPlaybackInterrupted;
@@ -49,11 +52,20 @@ public sealed partial class CharacterAnimBrain
             castPointNormalized);
     }
 
+    public bool TryPlayChainUtilityWarpOut(int requestId)
+    {
+        return TryStartChainPlayback(
+            requestId,
+            ChainPlaybackKind.UtilityWarpOut,
+            null,
+            UtilityWarpOutCastPointNormalized);
+    }
+
     public bool TryPlayChainUtilityWarpIn(int requestId)
     {
         return TryStartChainPlayback(
             requestId,
-            ChainPlaybackKind.Utility,
+            ChainPlaybackKind.UtilityWarpIn,
             null,
             UtilityWarpInCastPointNormalized);
     }
@@ -216,7 +228,8 @@ public sealed partial class CharacterAnimBrain
         return _activeChainKind switch
         {
             ChainPlaybackKind.Skill => ResolveSkillClip(_activeChainSkillDefinition),
-            ChainPlaybackKind.Utility => UtilityWarpInClip,
+            ChainPlaybackKind.UtilityWarpOut => UtilityWarpOutClip,
+            ChainPlaybackKind.UtilityWarpIn => UtilityWarpInClip,
             _ => null,
         };
     }

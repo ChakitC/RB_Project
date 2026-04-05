@@ -289,14 +289,14 @@ public class AllyHelperManager : MonoBehaviour
         if (logHelperExecution || sequenceDef.debugLogging)
         {
             Debug.Log(
-                $"[AllyHelperManager] Starting chain attack helper on target '{targetObject.name}' using utility warp-in.",
+                $"[AllyHelperManager] Starting chain attack helper on target '{targetObject.name}' using utility warp-out.",
                 this);
         }
 
         ApplyTemporaryHelperSkillAutonomy();
         ApplyTemporaryNoCollision();
 
-        bool started = allyAnimBrain.TryPlayUtilityWarpIn(
+        bool started = allyAnimBrain.TryPlayUtilityWarpOut(
             pendingChainAttackSequence.warpRequestId);
 
         if (started)

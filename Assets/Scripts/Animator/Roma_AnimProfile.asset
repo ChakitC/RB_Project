@@ -183,7 +183,7 @@ MonoBehaviour:
     _ParameterNameY: {fileID: 0}
   crawlParamLerp: 10
   crawlSpeedMultiplier01: 0.35
-  utilityWarpInClip:
+  utilityWarpOutClip:
     _FadeDuration: 0
     _Speed: 1
     _Events:
@@ -191,6 +191,16 @@ MonoBehaviour:
       _Callbacks: []
       _Names: []
     _Clip: {fileID: 2548037273130504702, guid: 4f569030b89d30644aafd5e41f7017fb, type: 3}
+    _NormalizedStartTime: NaN
+  utilityWarpOutCastPointNormalized: 0.95
+  utilityWarpInClip:
+    _FadeDuration: 0
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -8821902106451663880, guid: e791be750e102ee4883a2b8987f3c7aa, type: 3}
     _NormalizedStartTime: NaN
   utilityWarpInCastPointNormalized: 0.95
   skillClip:

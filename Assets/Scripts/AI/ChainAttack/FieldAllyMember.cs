@@ -95,6 +95,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     bool _defaultAgentIsStopped;
     bool _defaultAgentUpdatePosition;
     bool _defaultAgentUpdateRotation;
+    bool _visualHiddenForChainTransition;
 
     public ChainActorRole ActorRole => actorRole;
     public bool IsReserved => _reservationOwner != null;
@@ -164,6 +165,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         CleanupActiveExecution(success: false);
         SubscribeToAnimBrain(null);
         _reservationOwner = null;
+        _visualHiddenForChainTransition = false;
     }
 
     public bool TryReserve(object owner)
@@ -323,6 +325,21 @@ public sealed class FieldAllyMember : MonoBehaviour
 
             case ChainActorExitMode.FadeOutAndDeactivateOnSequenceEnd:
                 ExecuteFadeOutCleanup(cleanup.owner);
+                return;
+
+            case ChainActorExitMode.ReturnToRecordedOriginThenWarpInOnSequenceEnd:
+                if (TryStartReturnWarpInAtRecordedOrigin(
+                        cleanup.owner,
+                        cleanup.returnPosition,
+                        cleanup.returnRotation,
+                        releaseReservationOnComplete: true))
+                {
+                    return;
+                }
+
+                LastExecutionSucceeded = false;
+                ReleaseReservation(cleanup.owner);
+                RestoreTemporaryAutonomy();
                 return;
 
             default:
@@ -515,10 +532,11 @@ public sealed class FieldAllyMember : MonoBehaviour
         execution.enterRequestId = NextRequestId();
         SetExecutionPhase(execution, SequenceExecutionPhase.WaitingForEnterCastMoment);
 
-        bool started = animBrain.TryPlayChainUtilityWarpIn(execution.enterRequestId);
+        bool started = animBrain.TryPlayChainUtilityWarpOut(execution.enterRequestId);
         if (started)
         {
-            Log($"Started utility warp-in for step '{execution.step.RuntimeId}' (request {execution.enterRequestId}).");
+            StartChainVisualLifecycle(hideOnAnimationComplete: true);
+            Log($"Started utility warp-out for step '{execution.step.RuntimeId}' (request {execution.enterRequestId}).");
             return true;
         }
 
@@ -528,7 +546,7 @@ public sealed class FieldAllyMember : MonoBehaviour
             return false;
         }
 
-        Log($"Utility warp-in is unavailable for '{execution.step.RuntimeId}'. Falling back to instant teleport.");
+        Log($"Utility warp-out is unavailable for '{execution.step.RuntimeId}'. Falling back to instant teleport.");
 
         if (!TryApplyEntryMovement(execution))
         {
@@ -572,6 +590,7 @@ public sealed class FieldAllyMember : MonoBehaviour
 
         if (started)
         {
+            StartChainVisualLifecycle(ShouldAutoHideNearAttackEnd(execution.step.exitMode));
             Log(
                 $"Started attack for step '{execution.step.RuntimeId}' with skill '{execution.attackSkillDef.name}' " +
                 $"(request {execution.attackRequestId}, castUser={DescribeSkillUser(execution.attackSkillUser)}).");
@@ -606,6 +625,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (!TryResolveEntryTeleportPose(execution.step, execution.lockedTarget, out Vector3 teleportPosition, out Quaternion teleportRotation))
             return false;
 
+        HideVisualForTeleport();
         TeleportActorTo(teleportPosition, teleportRotation);
         return true;
     }
@@ -786,7 +806,9 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (_pendingExecution == null || _pendingExecution.phase != SequenceExecutionPhase.WaitingForExitCastMoment)
             return;
 
+        HideVisualForTeleport();
         TeleportActorTo(_pendingExecution.recordedOriginPosition, _pendingExecution.recordedOriginRotation);
+        RevealVisualAfterTeleportIfNeeded();
         SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForExitComplete);
         Log($"Returned '{name}' to its recorded origin for step '{_pendingExecution.step.RuntimeId}'.");
     }
@@ -853,13 +875,20 @@ public sealed class FieldAllyMember : MonoBehaviour
                 return;
 
             case ChainActorExitMode.ReturnToRecordedOrigin:
+                HideVisualForTeleport();
                 TeleportActorTo(_pendingExecution.recordedOriginPosition, _pendingExecution.recordedOriginRotation);
+                RevealVisualAfterTeleportIfNeeded();
                 CleanupActiveExecution(success: true);
+                return;
+
+            case ChainActorExitMode.ReturnToRecordedOriginThenWarpIn:
+                QueueImmediateReturnUtilityStart();
                 return;
 
             case ChainActorExitMode.ReturnToRecordedOriginOnSequenceEnd:
             case ChainActorExitMode.ReturnToRecordedOriginViaUtilityOnSequenceEnd:
             case ChainActorExitMode.FadeOutAndDeactivateOnSequenceEnd:
+            case ChainActorExitMode.ReturnToRecordedOriginThenWarpInOnSequenceEnd:
                 QueueDeferredCleanup(_pendingExecution);
                 CleanupActiveExecution(success: true);
                 return;
@@ -898,7 +927,7 @@ public sealed class FieldAllyMember : MonoBehaviour
             case SequenceExecutionPhase.WaitingForEnterCastMoment:
                 if (HasPhaseTimedOut(_pendingExecution, utilityRecoveryTimeoutSeconds))
                 {
-                    Log($"Utility warp-in cast moment timed out for step '{_pendingExecution.step.RuntimeId}'. Forcing teleport recovery.");
+                    Log($"Utility warp-out cast moment timed out for step '{_pendingExecution.step.RuntimeId}'. Forcing teleport recovery.");
                     HandleEnterCastMoment(_pendingExecution.enterRequestId);
                 }
                 return;
@@ -912,7 +941,7 @@ public sealed class FieldAllyMember : MonoBehaviour
 
                 if (HasPhaseTimedOut(_pendingExecution, utilityRecoveryTimeoutSeconds))
                 {
-                    Log($"Utility warp-in completion timed out for step '{_pendingExecution.step.RuntimeId}'. Forcing attack handoff.");
+                    Log($"Utility warp-out completion timed out for step '{_pendingExecution.step.RuntimeId}'. Forcing attack handoff.");
                     animBrain.CancelChainPlaybackRequest(_pendingExecution.enterRequestId);
                     QueueAttackStart("utility completion timeout recovery");
                 }
@@ -946,11 +975,20 @@ public sealed class FieldAllyMember : MonoBehaviour
                 return;
 
             case SequenceExecutionPhase.WaitingForExitStart:
-                if (!TryStartReturnUtility(
+                bool startedExit = _pendingExecution.step != null &&
+                                   _pendingExecution.step.exitMode == ChainActorExitMode.ReturnToRecordedOriginThenWarpIn
+                    ? TryStartReturnWarpInAtRecordedOrigin(
                         _pendingExecution.owner,
                         _pendingExecution.recordedOriginPosition,
                         _pendingExecution.recordedOriginRotation,
-                        releaseReservationOnComplete: false))
+                        releaseReservationOnComplete: false)
+                    : TryStartReturnUtility(
+                        _pendingExecution.owner,
+                        _pendingExecution.recordedOriginPosition,
+                        _pendingExecution.recordedOriginRotation,
+                        releaseReservationOnComplete: false);
+
+                if (!startedExit)
                 {
                     CleanupActiveExecution(success: false);
                 }
@@ -1029,15 +1067,64 @@ public sealed class FieldAllyMember : MonoBehaviour
         _pendingExecution.exitRequestId = NextRequestId();
         SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForExitCastMoment);
 
-        bool started = animBrain.TryPlayChainUtilityWarpIn(_pendingExecution.exitRequestId);
+        bool started = animBrain.TryPlayChainUtilityWarpOut(_pendingExecution.exitRequestId);
         if (started)
         {
+            StartChainVisualLifecycle(hideOnAnimationComplete: true);
             Log($"Started return utility for '{name}' (request {_pendingExecution.exitRequestId}).");
             return true;
         }
 
+        HideVisualForTeleport();
         TeleportActorTo(returnPosition, returnRotation);
+        RevealVisualAfterTeleportIfNeeded();
         CleanupActiveExecution(success: true);
+        return true;
+    }
+
+    bool TryStartReturnWarpInAtRecordedOrigin(
+        object owner,
+        Vector3 returnPosition,
+        Quaternion returnRotation,
+        bool releaseReservationOnComplete)
+    {
+        if (animBrain == null)
+            return false;
+
+        if (_pendingExecution == null)
+        {
+            _pendingExecution = new PendingSequenceExecution
+            {
+                owner = owner,
+                step = new ChainAttackStepDef { stepId = "deferred_return_warp_in" },
+                recordedOriginPosition = returnPosition,
+                recordedOriginRotation = returnRotation,
+            };
+        }
+
+        _pendingExecution.owner = owner;
+        _pendingExecution.recordedOriginPosition = returnPosition;
+        _pendingExecution.recordedOriginRotation = returnRotation;
+        _pendingExecution.releaseReservationOnComplete = releaseReservationOnComplete;
+        _pendingExecution.attackRequestId = 0;
+        _pendingExecution.exitRequestId = NextRequestId();
+
+        HideVisualForTeleport();
+        TeleportActorTo(returnPosition, returnRotation);
+
+        bool started = animBrain.TryPlayChainUtilityWarpIn(_pendingExecution.exitRequestId);
+        if (!started)
+        {
+            _pendingExecution.exitRequestId = 0;
+            RevealVisualAfterTeleportIfNeeded();
+            Log($"Return warp-in could not start for '{name}'. Falling back to immediate reveal at the recorded origin.");
+            CleanupActiveExecution(success: true);
+            return true;
+        }
+
+        SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForExitComplete);
+        StartChainVisualLifecycle(hideOnAnimationComplete: false);
+        Log($"Started return warp-in for '{name}' (request {_pendingExecution.exitRequestId}).");
         return true;
     }
 
@@ -1046,7 +1133,9 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (cleanup == null)
             return;
 
+        HideVisualForTeleport();
         TeleportActorTo(cleanup.returnPosition, cleanup.returnRotation);
+        RevealVisualAfterTeleportIfNeeded();
         ReleaseReservation(cleanup.owner);
         RestoreTemporaryAutonomy();
     }
@@ -1128,11 +1217,71 @@ public sealed class FieldAllyMember : MonoBehaviour
         skillUserProxy?.ClearAimOverrides();
         aimTargetDriver?.ClearOverride();
 
+        if (!success)
+            RecoverVisibleStateAfterInterruptedExecution();
+
         if (_deferredCleanup == null)
             RestoreTemporaryAutonomy();
 
         if (ownerToRelease != null)
             ReleaseReservation(ownerToRelease);
+    }
+
+    void StartChainVisualLifecycle(bool hideOnAnimationComplete)
+    {
+        if (actorFader == null || !gameObject.activeInHierarchy)
+            return;
+
+        actorFader.BeginAnimationLifecycle(hideOnAnimationComplete);
+        _visualHiddenForChainTransition = false;
+    }
+
+    void HideVisualForTeleport()
+    {
+        if (actorFader == null || !gameObject.activeInHierarchy)
+            return;
+
+        actorFader.SetHiddenImmediate();
+        _visualHiddenForChainTransition = true;
+    }
+
+    void RevealVisualAfterTeleportIfNeeded()
+    {
+        if (!_visualHiddenForChainTransition)
+            return;
+
+        _visualHiddenForChainTransition = false;
+
+        if (actorFader == null || !gameObject.activeInHierarchy)
+            return;
+
+        actorFader.BeginAnimationLifecycle(hideOnAnimationComplete: false);
+    }
+
+    void RecoverVisibleStateAfterInterruptedExecution()
+    {
+        _visualHiddenForChainTransition = false;
+
+        if (actorFader == null || !gameObject.activeInHierarchy)
+            return;
+
+        actorFader.BeginAnimationLifecycle(hideOnAnimationComplete: false);
+    }
+
+    static bool ShouldAutoHideNearAttackEnd(ChainActorExitMode exitMode)
+    {
+        switch (exitMode)
+        {
+            case ChainActorExitMode.ReturnToRecordedOrigin:
+            case ChainActorExitMode.ReturnToRecordedOriginViaUtility:
+            case ChainActorExitMode.ReturnToRecordedOriginThenWarpIn:
+            case ChainActorExitMode.ReturnToRecordedOriginThenWarpInOnSequenceEnd:
+            case ChainActorExitMode.FadeOutAndDeactivate:
+                return true;
+
+            default:
+                return false;
+        }
     }
 
     void SetExecutionPhase(PendingSequenceExecution execution, SequenceExecutionPhase phase)
@@ -1356,6 +1505,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (!TryResolveLegacyWarpPose(step, lockedTarget, out Vector3 finalPosition, out Quaternion finalRotation))
             return false;
 
+        HideVisualForTeleport();
         TeleportActorTo(finalPosition, finalRotation);
         return true;
     }

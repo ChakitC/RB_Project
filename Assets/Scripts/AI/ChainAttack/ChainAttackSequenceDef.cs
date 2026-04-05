@@ -39,6 +39,8 @@ public enum ChainActorExitMode
     ReturnToRecordedOriginViaUtilityOnSequenceEnd = 4,
     FadeOutAndDeactivate = 5,
     FadeOutAndDeactivateOnSequenceEnd = 6,
+    ReturnToRecordedOriginThenWarpIn = 7,
+    ReturnToRecordedOriginThenWarpInOnSequenceEnd = 8,
 }
 
 public enum ChainStepSkillSource
@@ -98,7 +100,8 @@ public sealed class ChainAttackStepDef
     public bool UsesDeferredExit =>
         exitMode == ChainActorExitMode.ReturnToRecordedOriginOnSequenceEnd ||
         exitMode == ChainActorExitMode.ReturnToRecordedOriginViaUtilityOnSequenceEnd ||
-        exitMode == ChainActorExitMode.FadeOutAndDeactivateOnSequenceEnd;
+        exitMode == ChainActorExitMode.FadeOutAndDeactivateOnSequenceEnd ||
+        exitMode == ChainActorExitMode.ReturnToRecordedOriginThenWarpInOnSequenceEnd;
 }
 
 [CreateAssetMenu(fileName = "ChainAttackSequence", menuName = "Game/Chain Attack/Sequence")]

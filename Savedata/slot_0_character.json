@@ -73,8 +73,8 @@
         {
             "characterId": "ID.Abbygail",
             "progress": {
-                "level": 12,
-                "xp": 450,
+                "level": 15,
+                "xp": 550,
                 "skillPoints": 9,
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": []

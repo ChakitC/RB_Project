@@ -23,7 +23,7 @@ public sealed partial class CharacterAnimBrain
         {
             get
             {
-                if (!owner.HasActiveUtilityWarpInClip) return false;
+                if (!owner.HasActiveUtilityWarpOutClip) return false;
                 if (owner.IsDowned) return false;
                 if (owner.locomotionSM.CurrentState == owner.deadState) return false;
                 return true;
@@ -33,7 +33,7 @@ public sealed partial class CharacterAnimBrain
         public override void OnEnterState()
         {
             _completedNormally = false;
-            var utilityClip = owner.UtilityWarpInClip;
+            var utilityClip = owner.UtilityWarpOutClip;
 
             if (utilityClip == null || !utilityClip.IsValid)
             {

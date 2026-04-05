@@ -56,6 +56,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     [SerializeField] private NavMeshAgent agent;
     [SerializeField] private CharacterAnimBrain animBrain;
     [SerializeField] private ChainSkillUserProxy skillUserProxy;
+    [SerializeField] private AIAimTargetDriver aimTargetDriver;
     [SerializeField] private ASPHelperDitherFader actorFader;
     [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Disable Components During Sequence")]
     [SerializeField] private MonoBehaviour[] componentsToDisableDuringSequence;
@@ -207,6 +208,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         LastExecutionSucceeded = false;
         ApplyTemporaryAutonomy();
         skillUserProxy.ClearAimOverrides();
+        aimTargetDriver?.ClearOverride();
 
         if (!TryResolveAttackSkill(step, out SkillGemDefinition resolvedSkillDef, out int resolvedSkillLevel))
         {
@@ -229,6 +231,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         };
 
         _pendingExecution = execution;
+        ApplyChainAimTargetOverride(execution.lockedTarget);
 
         if (step.enterMode == ChainActorEnterMode.UtilityWarpInToTarget)
             return TryStartEnterUtility(execution);
@@ -400,6 +403,12 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (skillUserProxy == null)
             skillUserProxy = gameObject.AddComponent<ChainSkillUserProxy>();
 
+        if (aimTargetDriver == null)
+            aimTargetDriver = GetComponent<AIAimTargetDriver>();
+
+        if (aimTargetDriver == null && Application.isPlaying)
+            aimTargetDriver = gameObject.AddComponent<AIAimTargetDriver>();
+
         if (directSkillUserSource is not ISkillUser)
             directSkillUserSource = null;
 
@@ -419,23 +428,20 @@ public sealed class FieldAllyMember : MonoBehaviour
 
     void SubscribeToAnimBrain(CharacterAnimBrain nextAnimBrain)
     {
-        if (animBrain == nextAnimBrain)
-            return;
-
         if (animBrain != null)
         {
-            animBrain.SkillCastMomentReached -= OnSkillCastMomentReached;
-            animBrain.SkillCastInterrupted -= OnSkillCastInterrupted;
-            animBrain.SkillCompleted -= OnSkillCompleted;
+            animBrain.ChainCastMomentReached -= OnChainCastMomentReached;
+            animBrain.ChainPlaybackInterrupted -= OnChainPlaybackInterrupted;
+            animBrain.ChainPlaybackCompleted -= OnChainPlaybackCompleted;
         }
 
         animBrain = nextAnimBrain;
 
         if (animBrain != null)
         {
-            animBrain.SkillCastMomentReached += OnSkillCastMomentReached;
-            animBrain.SkillCastInterrupted += OnSkillCastInterrupted;
-            animBrain.SkillCompleted += OnSkillCompleted;
+            animBrain.ChainCastMomentReached += OnChainCastMomentReached;
+            animBrain.ChainPlaybackInterrupted += OnChainPlaybackInterrupted;
+            animBrain.ChainPlaybackCompleted += OnChainPlaybackCompleted;
         }
     }
 
@@ -509,7 +515,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         execution.enterRequestId = NextRequestId();
         SetExecutionPhase(execution, SequenceExecutionPhase.WaitingForEnterCastMoment);
 
-        bool started = animBrain.TryPlayUtilityWarpIn(execution.enterRequestId);
+        bool started = animBrain.TryPlayChainUtilityWarpIn(execution.enterRequestId);
         if (started)
         {
             Log($"Started utility warp-in for step '{execution.step.RuntimeId}' (request {execution.enterRequestId}).");
@@ -559,7 +565,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         execution.attackRequestId = NextRequestId();
         SetExecutionPhase(execution, SequenceExecutionPhase.WaitingForAttackCastMoment);
 
-        bool started = animBrain.TryPlaySkill(
+        bool started = animBrain.TryPlayChainSkill(
             execution.attackRequestId,
             execution.attackSkillDef,
             execution.attackSkillDef.GetCastPointNormalized());
@@ -681,7 +687,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         return ChainAttackTargetingUtility.IsTargetAlive(execution.lockedTarget);
     }
 
-    void OnSkillCastMomentReached(int requestId)
+    void OnChainCastMomentReached(int requestId)
     {
         if (_pendingExecution == null)
             return;
@@ -712,7 +718,7 @@ public sealed class FieldAllyMember : MonoBehaviour
             Log($"Step '{_pendingExecution.step.RuntimeId}' failed to resolve a warp-in pose.");
             if (animBrain != null)
             {
-                animBrain.CancelUtilityCastRequest(requestId);
+                animBrain.CancelChainPlaybackRequest(requestId);
                 return;
             }
 
@@ -764,7 +770,7 @@ public sealed class FieldAllyMember : MonoBehaviour
                 $"with castUser={DescribeSkillUser(attackSkillUser)}.");
             if (animBrain != null)
             {
-                animBrain.CancelSkillCastRequest(requestId);
+                animBrain.CancelChainPlaybackRequest(requestId);
                 return;
             }
 
@@ -785,7 +791,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         Log($"Returned '{name}' to its recorded origin for step '{_pendingExecution.step.RuntimeId}'.");
     }
 
-    void OnSkillCastInterrupted(int requestId)
+    void OnChainPlaybackInterrupted(int requestId)
     {
         if (_pendingExecution == null)
             return;
@@ -801,10 +807,17 @@ public sealed class FieldAllyMember : MonoBehaviour
         CleanupActiveExecution(success: false);
     }
 
-    void OnSkillCompleted()
+    void OnChainPlaybackCompleted(int requestId)
     {
         if (_pendingExecution == null)
             return;
+
+        if (requestId != _pendingExecution.enterRequestId &&
+            requestId != _pendingExecution.attackRequestId &&
+            requestId != _pendingExecution.exitRequestId)
+        {
+            return;
+        }
 
         switch (_pendingExecution.phase)
         {
@@ -900,7 +913,7 @@ public sealed class FieldAllyMember : MonoBehaviour
                 if (HasPhaseTimedOut(_pendingExecution, utilityRecoveryTimeoutSeconds))
                 {
                     Log($"Utility warp-in completion timed out for step '{_pendingExecution.step.RuntimeId}'. Forcing attack handoff.");
-                    animBrain.CancelUtilityCastRequest(_pendingExecution.enterRequestId);
+                    animBrain.CancelChainPlaybackRequest(_pendingExecution.enterRequestId);
                     QueueAttackStart("utility completion timeout recovery");
                 }
                 return;
@@ -962,7 +975,7 @@ public sealed class FieldAllyMember : MonoBehaviour
                 if (HasPhaseTimedOut(_pendingExecution, utilityRecoveryTimeoutSeconds))
                 {
                     Log($"Return utility completion timed out for '{name}'. Forcing return cleanup.");
-                    animBrain.CancelUtilityCastRequest(_pendingExecution.exitRequestId);
+                    animBrain.CancelChainPlaybackRequest(_pendingExecution.exitRequestId);
                     CleanupActiveExecution(success: true);
                 }
                 return;
@@ -1016,7 +1029,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         _pendingExecution.exitRequestId = NextRequestId();
         SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForExitCastMoment);
 
-        bool started = animBrain.TryPlayUtilityWarpIn(_pendingExecution.exitRequestId);
+        bool started = animBrain.TryPlayChainUtilityWarpIn(_pendingExecution.exitRequestId);
         if (started)
         {
             Log($"Started return utility for '{name}' (request {_pendingExecution.exitRequestId}).");
@@ -1068,6 +1081,9 @@ public sealed class FieldAllyMember : MonoBehaviour
     {
         attackSkillUser = null;
 
+        if (execution != null)
+            ApplyChainAimTargetOverride(execution.lockedTarget);
+
         if (useDirectSkillUserForChainCastDebug)
         {
             skillUserProxy?.ClearAimOverrides();
@@ -1110,6 +1126,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         _pendingExecution = null;
         LastExecutionSucceeded = success;
         skillUserProxy?.ClearAimOverrides();
+        aimTargetDriver?.ClearOverride();
 
         if (_deferredCleanup == null)
             RestoreTemporaryAutonomy();
@@ -1179,6 +1196,17 @@ public sealed class FieldAllyMember : MonoBehaviour
         }
 
         return null;
+    }
+
+    void ApplyChainAimTargetOverride(Transform lockedTarget)
+    {
+        if (aimTargetDriver == null)
+            return;
+
+        if (lockedTarget != null)
+            aimTargetDriver.SetOverrideTarget(lockedTarget, preferChainAttackPoint: true);
+        else
+            aimTargetDriver.ClearOverride();
     }
 
     string DescribeSkillUser(ISkillUser skillUser)

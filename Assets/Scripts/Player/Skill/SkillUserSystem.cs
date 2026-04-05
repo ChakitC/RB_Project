@@ -11,6 +11,7 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
     [SerializeField] private StatsHub statsHub;
     [SerializeField] private Transform castOrigin;
     [SerializeField] private Transform aimTransform;
+    Transform runtimeAimTransformOverride;
 
     [Header("Energy (Runtime)")]
     [SerializeField] private float maximumEnergy;
@@ -24,7 +25,7 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
     float refreshTimer;
 
     public Transform CastOrigin => castOrigin ? castOrigin : transform;
-    public Transform AimTransform => aimTransform ? aimTransform : transform;
+    public Transform AimTransform => runtimeAimTransformOverride ? runtimeAimTransformOverride : aimTransform ? aimTransform : transform;
     public float currentEnagy => currentEnergy;
     public float CurrentEnergy => currentEnergy;
     public float MaximumEnergy => maximumEnergy;
@@ -135,6 +136,17 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
     void NotifyEnergyChanged()
     {
         characteContext?.UIManager?.UpdateEnegyText(currentEnergy, maximumEnergy);
+    }
+
+    public void SetRuntimeAimTransformOverride(Transform overrideTransform)
+    {
+        runtimeAimTransformOverride = overrideTransform;
+    }
+
+    public void ClearRuntimeAimTransformOverride(Transform overrideTransform = null)
+    {
+        if (overrideTransform == null || runtimeAimTransformOverride == overrideTransform)
+            runtimeAimTransformOverride = null;
     }
 
     public Vector3 AimDirection

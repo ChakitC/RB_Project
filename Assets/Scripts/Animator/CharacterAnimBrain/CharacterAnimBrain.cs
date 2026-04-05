@@ -134,10 +134,13 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         _activeSkillRequestId != 0 ||
         _activeUtilityReleaseRequested ||
         _activeUtilityRequestId != 0 ||
+        _activeChainReleaseRequested ||
+        _activeChainRequestId != 0 ||
         (_initialized && (locomotionSM.CurrentState == skill || locomotionSM.CurrentState == utility));
     public bool IsUtilityActive =>
         _activeUtilityReleaseRequested ||
         _activeUtilityRequestId != 0 ||
+        IsChainUtilityPlaybackActive ||
         (_initialized && locomotionSM.CurrentState == utility);
    
 
@@ -215,6 +218,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         crawlState = new LocomotionState_Crawl(this);
         skill = new Locomotion_Skill(this);
         utility = new Locomotion_Utility(this);
+        chain = new Locomotion_Chain(this);
         statusEffectState = new Locomotion_StatusEffect(this);
 
         locomotionSM.ForceSetState(locomotion);
@@ -295,6 +299,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void NotifyShotFired()
     {
+        if (IsChainPlaybackActive)
+            return;
+
         if (!TryInitialize())
         {
             _pendingPulse = true;
@@ -306,6 +313,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void FireDown()
     {
+        if (IsChainPlaybackActive)
+            return;
+
         IsHoldingFire = true;
 
         if (!TryInitialize())
@@ -317,6 +327,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void FireUp()
     {
+        if (IsChainPlaybackActive)
+            return;
+
         IsHoldingFire = false;
 
         if (!TryInitialize())
@@ -328,6 +341,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PlayReload(float reloadDuration)
     {
+        if (IsChainPlaybackActive)
+            return;
+
         _reloadDuration = Mathf.Max(0.01f, reloadDuration);
 
         _pendingAction = PendingAction.Reload;
@@ -340,6 +356,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PlayDash(float dashDuration, Vector2 dashDirLocal)
     {
+        if (IsChainPlaybackActive)
+            return;
+
         _dashDuration = Mathf.Max(0.01f, dashDuration);
         _dashDirLocal = dashDirLocal;
 
@@ -352,12 +371,18 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void EndDashNow()
     {
+        if (IsChainPlaybackActive)
+            return;
+
         if (!TryInitialize()) return;
         locomotionSM.TrySetState(locomotion);
     }
 
     public void PressMelee(MeleeType type)
     {
+        if (IsChainPlaybackActive)
+            return;
+
         var selected = (type == MeleeType.Light) ? LightCombo : HeavyCombo;
         if (selected == null)
             selected = DefaultMeleeCombo;
@@ -380,6 +405,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PlayDead()
     {
+        AbortActiveChainPlaybackForExternalState();
         
         if (!TryInitialize()) return;
 
@@ -390,6 +416,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void SetDowned(bool downed)
     {
+        AbortActiveChainPlaybackForExternalState();
+
         if (!TryInitialize())
         {
             _pendingDownedSet = true;
@@ -412,6 +440,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PlaySkill(SkillGemDefinition skillDef)
     {
+        if (IsChainPlaybackActive)
+            return;
+
         if (!TryInitialize() || !HasValidSkillClip(skillDef))
             return;
 
@@ -427,6 +458,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public bool TryPlaySkill(int requestId, SkillGemDefinition skillDef, float castPointNormalized)
     {
+        if (IsChainPlaybackActive)
+            return false;
+
         if (requestId <= 0)
             return false;
 
@@ -451,6 +485,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public bool TryPlayUtilityWarpIn(int requestId)
     {
+        if (IsChainPlaybackActive)
+            return false;
+
         if (requestId <= 0)
             return false;
 
@@ -475,6 +512,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void CancelSkillCastRequest(int requestId)
     {
+        if (IsChainPlaybackActive)
+            return;
+
         if (requestId <= 0 || requestId != _activeSkillRequestId)
             return;
 
@@ -489,6 +529,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void CancelUtilityCastRequest(int requestId)
     {
+        if (IsChainPlaybackActive)
+            return;
+
         if (requestId <= 0 || requestId != _activeUtilityRequestId)
             return;
 
@@ -503,6 +546,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void CancelMeleeNow()
     {
+        if (IsChainPlaybackActive)
+            return;
+
         if (!TryInitialize())
             return;
         if (locomotionSM.CurrentState != meleeCombo)
@@ -515,6 +561,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     
     public void StopReloadAction()
     {
+        if (IsChainPlaybackActive)
+            return;
+
         if (!TryInitialize()) return;
 
         if (actionSM.CurrentState == reloadState)
@@ -533,6 +582,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void RefreshStatusLocomotion()
     {
+        if (IsChainPlaybackActive)
+            return;
+
         if (!_initialized)
             return;
 
@@ -900,11 +952,13 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     {
         InterruptActiveSkillRequest();
         InterruptActiveUtilityRequest();
+        InterruptActiveChainRequest();
     }
 
     private void OnDestroy()
     {
         InterruptActiveSkillRequest();
         InterruptActiveUtilityRequest();
+        InterruptActiveChainRequest();
     }
 }

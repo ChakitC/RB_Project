@@ -15,7 +15,7 @@ MonoBehaviour:
   sequenceId: example.ally01.ally02.helper
   description: Ally 01 and Ally 02 utility-warp in, hold position through the helper
     follow-up, then utility-return to origin.
-  targetSource: 2
+  targetSource: 1
   aimSearchRadius: 5
   targetLayers:
     serializedVersion: 2
@@ -47,7 +47,7 @@ MonoBehaviour:
     teleportProfile: {fileID: 0}
     allowFallbackToInstantTeleportIfUtilityUnavailable: 1
     exitMode: 0
-    moveMode: 1
+    moveMode: 0
     useTargetAnchorRotation: 1
     warpOffset: {x: 0, y: 0, z: 0}
     warpYawOffset: 0
@@ -88,21 +88,21 @@ MonoBehaviour:
     skillDef: {fileID: 0}
     skillLevel: 1
     ignoreResourceCosts: 1
-    faceLockedTargetOnStart: 1
-    faceLockedTargetOnCast: 1
+    faceLockedTargetOnStart: 0
+    faceLockedTargetOnCast: 0
     skipIfActorUnavailable: 1
     skipIfTargetMissing: 1
     requireActorAlive: 1
-    enterMode: 2
-    teleportProfile: {fileID: 11400000, guid: 9dc5c2d62a8744b7b07b383486e5579d, type: 2}
+    enterMode: 0
+    teleportProfile: {fileID: 11400000, guid: 67b40f9eb19a474fb266e3e7e25852fb, type: 2}
     allowFallbackToInstantTeleportIfUtilityUnavailable: 1
     exitMode: 1
-    moveMode: 0
+    moveMode: 1
     useTargetAnchorRotation: 1
     warpOffset: {x: 0, y: 0, z: 0}
     warpYawOffset: 0
-    requireNavMeshAtWarpPoint: 1
+    requireNavMeshAtWarpPoint: 0
     warpNavMeshSampleDistance: 1
     helperChainAttackSequence: {fileID: 0}
-    helperHideOnComplete: 1
-  debugLogging: 1
+    helperHideOnComplete: 0
+  debugLogging: 0

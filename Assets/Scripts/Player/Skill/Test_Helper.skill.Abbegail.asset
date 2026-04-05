@@ -24,7 +24,8 @@ MonoBehaviour:
   oncePerAttackId: 0
   requireOwnerAlive: 1
   executionSkill: {fileID: 11400000, guid: f287e25a11731234cb79759727212eb8, type: 2}
+  chainAttackSequence: {fileID: 0}
   executionSkillLevel: 1
   hideHelperOnSkillComplete: 1
   blockWhileHelperBusy: 1
-  debugLogging: 1
+  debugLogging: 0

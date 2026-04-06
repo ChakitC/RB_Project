@@ -25,6 +25,7 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _ALPHATEST_ON
   - _SPECULAR_LIGHTING_ON
   - _STYLE_CELSHADING
   - _USE_BAKED_NORAML
@@ -150,7 +151,7 @@ Material:
     m_Floats:
     - _AddPrecomputedVelocity: 0
     - _AdvanceGroup: 0
-    - _AlphaClip: 0
+    - _AlphaClip: 1
     - _AlphaToMask: 0
     - _BakeGISource: 0
     - _Blend: 0

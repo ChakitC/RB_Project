@@ -1,5 +1,6 @@
 using System;
 using Animancer;
+using UnityEngine;
 
 public sealed partial class CharacterAnimBrain
 {
@@ -9,6 +10,7 @@ public sealed partial class CharacterAnimBrain
         private AnimancerState state;
         private bool _prevApplyRootMotion;
         private bool _completedNormally;
+        private float _watchdogDeadline;
         private readonly Action _onEndCache;
 
         public Locomotion_Chain(CharacterAnimBrain owner)
@@ -53,6 +55,7 @@ public sealed partial class CharacterAnimBrain
             state = owner.LocoLayer.Play(chainClip);
             state.NormalizedTime = 0f;
             state.Events(owner).OnEnd = _onEndCache;
+            _watchdogDeadline = Time.time + ResolveWatchdogDuration(state) + owner.ChainPlaybackWatchdogGraceSeconds;
         }
 
         public override void Update()
@@ -61,10 +64,15 @@ public sealed partial class CharacterAnimBrain
                 return;
 
             owner.PollActiveChainPlayback(state);
+
+            if (Time.time >= _watchdogDeadline)
+                ForceExitFromWatchdog();
         }
 
         public override void OnExitState()
         {
+            _watchdogDeadline = float.PositiveInfinity;
+
             if (state != null)
             {
                 state.Events(owner).OnEnd = null;
@@ -85,6 +93,43 @@ public sealed partial class CharacterAnimBrain
 
             _completedNormally = true;
             owner.CompleteActiveChainPlayback();
+        }
+
+        private float ResolveWatchdogDuration(AnimancerState playingState)
+        {
+            if (playingState == null)
+                return 0.01f;
+
+            float speed = Mathf.Abs(playingState.Speed);
+            if (speed < 0.0001f)
+                speed = 1f;
+
+            return Mathf.Max(0.01f, playingState.Length / speed);
+        }
+
+        private void ForceExitFromWatchdog()
+        {
+            if (owner.locomotionSM.CurrentState != this)
+                return;
+
+            _watchdogDeadline = float.PositiveInfinity;
+
+            bool castReleased = owner._activeChainReleased;
+            int requestId = owner.ActiveChainRequestId;
+
+            Debug.LogWarning(
+                $"[CharacterAnimBrain] Chain playback watchdog forced {(castReleased ? "completion" : "interruption")} " +
+                $"for request {requestId} on '{owner.name}'.",
+                owner);
+
+            if (castReleased)
+            {
+                _completedNormally = true;
+                owner.CompleteActiveChainPlayback();
+                return;
+            }
+
+            owner.CancelChainPlaybackRequest(requestId);
         }
     }
 }

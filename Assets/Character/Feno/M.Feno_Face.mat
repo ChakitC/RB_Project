@@ -25,6 +25,7 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _ALPHATEST_ON
   - _RECEIVE_ASP_SHADOW
   - _RECEIVE_OFFSETED_SHADOW_ON
   - _SPECULAR_LIGHTING_ON
@@ -152,7 +153,7 @@ Material:
     m_Floats:
     - _AddPrecomputedVelocity: 0
     - _AdvanceGroup: 0
-    - _AlphaClip: 0
+    - _AlphaClip: 1
     - _AlphaToMask: 0
     - _BakeGISource: 0
     - _Blend: 0
@@ -246,12 +247,12 @@ Material:
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: 11.433056, g: -0.099899866, b: 3.095966, a: 0}
+    - _CharacterCenterWS: {r: 0, g: 0.0009999946, b: 0, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FaceFrontDirection: {r: 0.029860664, g: 0, b: -0.99955416, a: 0}
-    - _FaceRightDirection: {r: -0.99955416, g: 0, b: -0.029860664, a: 0}
+    - _FaceFrontDirection: {r: 0, g: 0, b: 1, a: 0}
+    - _FaceRightDirection: {r: 1, g: 0, b: 0, a: 0}
     - _FaceUVCtrl: {r: 0, g: 1, b: 0, a: 0}
     - _FakeLightColor: {r: 0, g: 0, b: 0, a: 0}
     - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}

@@ -20,6 +20,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     [SerializeField] private StatusEffectController statusEffectController;
     [SerializeField] private bool deactivateOwnerOnSkillExit;
 
+    [Header("Chain")]
+    [SerializeField, Min(0.05f)] private float chainPlaybackWatchdogGraceSeconds = 0.15f;
+
     [Header("Layer Indices")]
     [SerializeField] private int locomotionLayerIndex = 0;
     [SerializeField] private int actionLayerIndex = 1;
@@ -97,6 +100,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private AvatarMask UpperBodyMask => AnimProfile.upperBodyMask;
     private float ActionFadeIn => AnimProfile.actionFadeIn;
     private float ActionFadeOut => AnimProfile.actionFadeOut;
+    internal float ChainPlaybackWatchdogGraceSeconds => Mathf.Max(0.05f, chainPlaybackWatchdogGraceSeconds);
     private MixerTransition2D LocomotionMixer => AnimProfile.locomotionMixer;
     private float LocomotionParamLerp => AnimProfile.locomotionParamLerp;
     private bool SnapTo8Directions => AnimProfile.snapTo8Directions;

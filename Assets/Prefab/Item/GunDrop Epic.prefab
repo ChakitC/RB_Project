@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 6736801774981407169}
   - component: {fileID: 1537927356146409066}
   - component: {fileID: 852742752837797718}
+  - component: {fileID: 878757715466585704}
   m_Layer: 0
   m_Name: GunDrop Epic
   m_TagString: Untagged
@@ -73,6 +74,38 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   item: {fileID: 11400000, guid: 499f11e7a7237d746896c22e012bf3ad, type: 2}
   amount: 1
+  weaponInstance:
+    instanceId: 
+    baseWeaponId: 
+    rarity: 0
+    mainAffix:
+      affixId: 
+      hasPrimaryValue: 0
+      primaryValue: 0
+      hasSecondaryValue: 0
+      secondaryValue: 0
+    subAffixes: []
+    shotCounter: 0
+    currentMagazine: -1
+--- !u!114 &878757715466585704
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3709054158771440009}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86d8962fb0d84a5cbec4efb0bb713fd2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  visualRoot: {fileID: 403140138787413875}
+  bobAmplitude: 0.08
+  bobFrequency: 0.9
+  rotationSpeed: 35
+  wobbleAngle: 5
+  wobbleFrequency: 0.65
+  randomizePhase: 1
 --- !u!1001 &267161744169787052
 PrefabInstance:
   m_ObjectHideFlags: 0

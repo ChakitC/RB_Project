@@ -1,7 +1,7 @@
 {
     "inventory": {
         "maxSlotCount": 20,
-        "gold": 1000068,
+        "gold": 1000081,
         "slots": [
             {
                 "itemId": "Gun01",
@@ -52,8 +52,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 10910,
-                    "currentMagazine": 29
+                    "shotCounter": 13588,
+                    "currentMagazine": 15
                 }
             },
             {
@@ -179,41 +179,71 @@
                 }
             },
             {
-                "itemId": "",
-                "amount": 0,
+                "itemId": "Gun01",
+                "amount": 1,
                 "weaponInstance": {
-                    "instanceId": "",
-                    "baseWeaponId": "",
-                    "rarity": 0,
+                    "instanceId": "2835db0483bc4438af17b17366c6d528",
+                    "baseWeaponId": "Gun01",
+                    "rarity": 2,
                     "mainAffix": {
-                        "affixId": "",
-                        "hasPrimaryValue": false,
-                        "primaryValue": 0.0,
+                        "affixId": "Stabiity.1",
+                        "hasPrimaryValue": true,
+                        "primaryValue": 20.050439834594728,
                         "hasSecondaryValue": false,
                         "secondaryValue": 0.0
                     },
-                    "subAffixes": [],
+                    "subAffixes": [
+                        {
+                            "affixId": "Crit.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 0.5507062077522278,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        },
+                        {
+                            "affixId": "Damge.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 2.701425552368164,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        }
+                    ],
                     "shotCounter": 0,
-                    "currentMagazine": -1
+                    "currentMagazine": 30
                 }
             },
             {
-                "itemId": "",
-                "amount": 0,
+                "itemId": "Gun01",
+                "amount": 1,
                 "weaponInstance": {
-                    "instanceId": "",
-                    "baseWeaponId": "",
-                    "rarity": 0,
+                    "instanceId": "73ca12c51f1742d59d60b1b342d88ea6",
+                    "baseWeaponId": "Gun01",
+                    "rarity": 2,
                     "mainAffix": {
-                        "affixId": "",
-                        "hasPrimaryValue": false,
-                        "primaryValue": 0.0,
+                        "affixId": "Stabiity.1",
+                        "hasPrimaryValue": true,
+                        "primaryValue": 40.4663200378418,
                         "hasSecondaryValue": false,
                         "secondaryValue": 0.0
                     },
-                    "subAffixes": [],
+                    "subAffixes": [
+                        {
+                            "affixId": "Damge.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 4.802370071411133,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        },
+                        {
+                            "affixId": "Crit.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 0.5359703898429871,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        }
+                    ],
                     "shotCounter": 0,
-                    "currentMagazine": -1
+                    "currentMagazine": 30
                 }
             },
             {

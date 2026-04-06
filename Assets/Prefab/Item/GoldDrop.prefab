@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 2012388711845882183}
   - component: {fileID: 3558791748602019262}
   - component: {fileID: 403160441815748588}
+  - component: {fileID: 5587069528957645707}
   m_Layer: 0
   m_Name: GoldDrop
   m_TagString: Untagged
@@ -48,6 +49,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   item: {fileID: 11400000, guid: 2835846abd2c7a94eadc3f9065613e14, type: 2}
   amount: 1
+  weaponInstance:
+    instanceId: 
+    baseWeaponId: 
+    rarity: 0
+    mainAffix:
+      affixId: 
+      hasPrimaryValue: 0
+      primaryValue: 0
+      hasSecondaryValue: 0
+      secondaryValue: 0
+    subAffixes: []
+    shotCounter: 0
+    currentMagazine: -1
 --- !u!135 &403160441815748588
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -69,6 +83,25 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.92
   m_Center: {x: 0, y: 1.35, z: 0}
+--- !u!114 &5587069528957645707
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3238729659427303790}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86d8962fb0d84a5cbec4efb0bb713fd2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  visualRoot: {fileID: 6583807813140535996}
+  bobAmplitude: 0.08
+  bobFrequency: 0.9
+  rotationSpeed: 35
+  wobbleAngle: 5
+  wobbleFrequency: 0.65
+  randomizePhase: 1
 --- !u!1001 &1013301548296358202
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -99,7 +132,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3626364099849298485, guid: 5257b59440d826843b5dab0bef375318, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.568
+      value: 0.059
       objectReference: {fileID: 0}
     - target: {fileID: 3626364099849298485, guid: 5257b59440d826843b5dab0bef375318, type: 3}
       propertyPath: m_LocalPosition.z

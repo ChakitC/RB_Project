@@ -1,7 +1,7 @@
 {
     "inventory": {
         "maxSlotCount": 20,
-        "gold": 1000081,
+        "gold": 1000082,
         "slots": [
             {
                 "itemId": "Gun01",
@@ -52,8 +52,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 13588,
-                    "currentMagazine": 15
+                    "shotCounter": 14632,
+                    "currentMagazine": 28
                 }
             },
             {

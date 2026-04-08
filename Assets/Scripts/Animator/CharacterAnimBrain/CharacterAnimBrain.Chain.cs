@@ -16,8 +16,11 @@ public sealed partial class CharacterAnimBrain
     private SkillGemDefinition _activeChainSkillDefinition;
     private int _activeChainRequestId;
     private float _activeChainCastPointNormalized = 0.35f;
+    private float _activeChainAdvancePointNormalized = 1f;
     private bool _activeChainReleaseRequested;
     private bool _activeChainReleased;
+    private bool _activeChainAdvanceRequested;
+    private bool _activeChainAdvanceReleased;
     private ChainPlaybackKind _activeChainKind;
     private bool _chainStateCanExit = true;
 
@@ -37,10 +40,16 @@ public sealed partial class CharacterAnimBrain
         IsChainPlaybackActive;
 
     public event Action<int> ChainCastMomentReached;
+    public event Action<int> ChainAdvanceMomentReached;
     public event Action<int> ChainPlaybackInterrupted;
     public event Action<int> ChainPlaybackCompleted;
 
-    public bool TryPlayChainSkill(int requestId, SkillGemDefinition skillDef, float castPointNormalized)
+    public bool TryPlayChainSkill(
+        int requestId,
+        SkillGemDefinition skillDef,
+        float castPointNormalized,
+        bool requestAdvanceMoment,
+        float advancePointNormalized)
     {
         if (skillDef == null)
             return false;
@@ -49,7 +58,9 @@ public sealed partial class CharacterAnimBrain
             requestId,
             ChainPlaybackKind.Skill,
             skillDef,
-            castPointNormalized);
+            castPointNormalized,
+            requestAdvanceMoment,
+            advancePointNormalized);
     }
 
     public bool TryPlayChainUtilityWarpOut(int requestId)
@@ -58,7 +69,9 @@ public sealed partial class CharacterAnimBrain
             requestId,
             ChainPlaybackKind.UtilityWarpOut,
             null,
-            UtilityWarpOutCastPointNormalized);
+            UtilityWarpOutCastPointNormalized,
+            requestAdvanceMoment: false,
+            advancePointNormalized: 1f);
     }
 
     public bool TryPlayChainUtilityWarpIn(int requestId)
@@ -67,7 +80,9 @@ public sealed partial class CharacterAnimBrain
             requestId,
             ChainPlaybackKind.UtilityWarpIn,
             null,
-            UtilityWarpInCastPointNormalized);
+            UtilityWarpInCastPointNormalized,
+            requestAdvanceMoment: false,
+            advancePointNormalized: 1f);
     }
 
     public void CancelChainPlaybackRequest(int requestId)
@@ -91,19 +106,31 @@ public sealed partial class CharacterAnimBrain
 
     internal void PollActiveChainPlayback(AnimancerState state)
     {
-        if (state == null ||
-            !_activeChainReleaseRequested ||
-            _activeChainReleased ||
-            _activeChainRequestId <= 0)
+        if (state == null || _activeChainRequestId <= 0)
         {
             return;
         }
 
-        if (state.NormalizedTime < _activeChainCastPointNormalized)
-            return;
+        if (_activeChainReleaseRequested &&
+            !_activeChainReleased &&
+            state.NormalizedTime >= _activeChainCastPointNormalized)
+        {
+            int requestId = _activeChainRequestId;
+            _activeChainReleased = true;
+            ChainCastMomentReached?.Invoke(requestId);
 
-        _activeChainReleased = true;
-        ChainCastMomentReached?.Invoke(_activeChainRequestId);
+            if (requestId != _activeChainRequestId)
+                return;
+        }
+
+        if (_activeChainAdvanceRequested &&
+            !_activeChainAdvanceReleased &&
+            state.NormalizedTime >= _activeChainAdvancePointNormalized)
+        {
+            int requestId = _activeChainRequestId;
+            _activeChainAdvanceReleased = true;
+            ChainAdvanceMomentReached?.Invoke(requestId);
+        }
     }
 
     internal void NotifyChainPlaybackStateExited(bool completedNormally)
@@ -123,6 +150,18 @@ public sealed partial class CharacterAnimBrain
         {
             _activeChainReleased = true;
             ChainCastMomentReached?.Invoke(requestId);
+        }
+
+        bool shouldAdvanceOnComplete =
+            completedNormally &&
+            _activeChainAdvanceRequested &&
+            !_activeChainAdvanceReleased &&
+            requestId > 0;
+
+        if (shouldAdvanceOnComplete)
+        {
+            _activeChainAdvanceReleased = true;
+            ChainAdvanceMomentReached?.Invoke(requestId);
         }
 
         ClearActiveChainRequest();
@@ -159,7 +198,9 @@ public sealed partial class CharacterAnimBrain
         int requestId,
         ChainPlaybackKind kind,
         SkillGemDefinition skillDef,
-        float castPointNormalized)
+        float castPointNormalized,
+        bool requestAdvanceMoment,
+        float advancePointNormalized)
     {
         if (requestId <= 0 || IsChainPlaybackActive)
             return false;
@@ -170,7 +211,13 @@ public sealed partial class CharacterAnimBrain
         InterruptActiveSkillRequest();
         InterruptActiveUtilityRequest();
 
-        ArmChainRequest(requestId, kind, skillDef, castPointNormalized);
+        ArmChainRequest(
+            requestId,
+            kind,
+            skillDef,
+            castPointNormalized,
+            requestAdvanceMoment,
+            advancePointNormalized);
 
         try
         {
@@ -190,14 +237,21 @@ public sealed partial class CharacterAnimBrain
         int requestId,
         ChainPlaybackKind kind,
         SkillGemDefinition skillDef,
-        float castPointNormalized)
+        float castPointNormalized,
+        bool requestAdvanceMoment,
+        float advancePointNormalized)
     {
         _activeChainKind = kind;
         _activeChainSkillDefinition = skillDef;
         _activeChainRequestId = requestId;
         _activeChainCastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
+        _activeChainAdvanceRequested = requestAdvanceMoment;
+        _activeChainAdvancePointNormalized = requestAdvanceMoment
+            ? Mathf.Clamp(Mathf.Max(_activeChainCastPointNormalized, advancePointNormalized), 0f, 0.999f)
+            : 1f;
         _activeChainReleaseRequested = true;
         _activeChainReleased = false;
+        _activeChainAdvanceReleased = false;
         _chainStateCanExit = false;
     }
 
@@ -207,15 +261,20 @@ public sealed partial class CharacterAnimBrain
         _activeChainSkillDefinition = null;
         _activeChainRequestId = 0;
         _activeChainCastPointNormalized = 0.35f;
+        _activeChainAdvancePointNormalized = 1f;
         _activeChainReleaseRequested = false;
         _activeChainReleased = false;
+        _activeChainAdvanceRequested = false;
+        _activeChainAdvanceReleased = false;
         _chainStateCanExit = true;
     }
 
     private void InterruptActiveChainRequest()
     {
         int requestId = _activeChainRequestId;
-        bool shouldNotify = _activeChainReleaseRequested && requestId > 0;
+        bool shouldNotify =
+            (_activeChainReleaseRequested || _activeChainAdvanceRequested) &&
+            requestId > 0;
 
         ClearActiveChainRequest();
 

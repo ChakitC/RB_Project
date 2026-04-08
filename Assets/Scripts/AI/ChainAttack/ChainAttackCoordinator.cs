@@ -12,6 +12,8 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         public Transform targetTransform;
         public Transform targetAnchor;
         public float startedAt;
+        public int pendingTrackedStepCompletions;
+        public bool hadLateStepFailure;
     }
 
     [SerializeField] private PlayerContext playerContext;
@@ -93,6 +95,12 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
 
         for (int i = 0; i < runtime.sequenceDef.steps.Length; i++)
         {
+            if (runtime.hadLateStepFailure && runtime.sequenceDef.stopWhenAnyStepFails)
+            {
+                completedSuccessfully = false;
+                break;
+            }
+
             ChainAttackStepDef step = runtime.sequenceDef.steps[i];
             if (step == null)
                 continue;
@@ -106,10 +114,22 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             if (step.delayBefore > 0f)
                 yield return new WaitForSeconds(step.delayBefore);
 
+            if (runtime.hadLateStepFailure && runtime.sequenceDef.stopWhenAnyStepFails)
+            {
+                completedSuccessfully = false;
+                break;
+            }
+
             bool stepSucceeded = false;
             yield return RunStep(runtime, step, result => stepSucceeded = result);
 
             if (!stepSucceeded && runtime.sequenceDef.stopWhenAnyStepFails)
+            {
+                completedSuccessfully = false;
+                break;
+            }
+
+            if (runtime.hadLateStepFailure && runtime.sequenceDef.stopWhenAnyStepFails)
             {
                 completedSuccessfully = false;
                 break;
@@ -123,18 +143,26 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
                 yield return new WaitForSeconds(interval);
         }
 
+        if (fieldAllyManager != null)
+        {
+            fieldAllyManager.FinalizeSequenceReservations(runtime, interrupted: !completedSuccessfully);
+            while (fieldAllyManager.HasOwnedSequenceWork(runtime) || runtime.pendingTrackedStepCompletions > 0)
+                yield return null;
+        }
+        else
+        {
+            while (runtime.pendingTrackedStepCompletions > 0)
+                yield return null;
+        }
+
+        if (runtime.hadLateStepFailure)
+            completedSuccessfully = false;
+
         Log(
             runtime.sequenceDef,
             completedSuccessfully
                 ? $"Sequence '{runtime.sequenceDef.RuntimeId}' completed."
                 : $"Sequence '{runtime.sequenceDef.RuntimeId}' ended early.");
-
-        if (fieldAllyManager != null)
-        {
-            fieldAllyManager.FinalizeSequenceReservations(runtime, interrupted: !completedSuccessfully);
-            while (fieldAllyManager.HasOwnedSequenceWork(runtime))
-                yield return null;
-        }
 
         _activeRoutine = null;
         _activeRuntime = null;
@@ -186,14 +214,85 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             yield break;
         }
 
-        while (member.HasActiveSequenceExecution)
-            yield return null;
+        int executionId = member.ActiveSequenceExecutionId;
+        if (executionId <= 0)
+        {
+            member.ReleaseReservation(runtime);
+            Log(runtime.sequenceDef, $"Step '{step.RuntimeId}' started without a valid execution id on actor '{member.name}'.");
+            onFinished(false);
+            yield break;
+        }
 
-        bool success = member.LastExecutionSucceeded;
-        if (!member.HasDeferredSequenceCleanup)
+        while (true)
+        {
+            if (member.TryGetCompletedSequenceExecutionResult(executionId, out bool success, out bool hasDeferredCleanup))
+            {
+                if (!hasDeferredCleanup)
+                    member.ReleaseReservation(runtime);
+
+                onFinished(success);
+                yield break;
+            }
+
+            if (member.IsSequenceExecutionReadyToContinue(executionId))
+            {
+                TrackStepCompletion(runtime, member, executionId, step);
+                onFinished(true);
+                yield break;
+            }
+
+            yield return null;
+        }
+    }
+
+    void TrackStepCompletion(
+        ActiveChainRuntime runtime,
+        FieldAllyMember member,
+        int executionId,
+        ChainAttackStepDef step)
+    {
+        if (runtime == null || member == null || executionId <= 0)
+            return;
+
+        runtime.pendingTrackedStepCompletions++;
+        StartCoroutine(WaitForTrackedStepCompletion(runtime, member, executionId, step));
+    }
+
+    IEnumerator WaitForTrackedStepCompletion(
+        ActiveChainRuntime runtime,
+        FieldAllyMember member,
+        int executionId,
+        ChainAttackStepDef step)
+    {
+        bool success = false;
+        bool hasDeferredCleanup = false;
+
+        while (member != null &&
+               !member.TryGetCompletedSequenceExecutionResult(executionId, out success, out hasDeferredCleanup))
+        {
+            yield return null;
+        }
+
+        if (runtime != null && runtime.pendingTrackedStepCompletions > 0)
+            runtime.pendingTrackedStepCompletions--;
+
+        if (runtime == null)
+            yield break;
+
+        if (member == null)
+        {
+            runtime.hadLateStepFailure = true;
+            yield break;
+        }
+
+        if (!hasDeferredCleanup)
             member.ReleaseReservation(runtime);
 
-        onFinished(success);
+        if (!success)
+        {
+            runtime.hadLateStepFailure = true;
+            Log(runtime.sequenceDef, $"Step '{step.RuntimeId}' failed after releasing its early continue signal.");
+        }
     }
 
     IEnumerator RunHelperStep(ActiveChainRuntime runtime, ChainAttackStepDef step, Action<bool> onFinished)

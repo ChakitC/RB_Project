@@ -23,6 +23,7 @@ public sealed class FieldAllyMember : MonoBehaviour
 
     sealed class PendingSequenceExecution
     {
+        public int executionId;
         public object owner;
         public ChainAttackStepDef step;
         public Transform lockedTarget;
@@ -31,6 +32,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         public int attackSkillLevel;
         public bool ignoreResourceCosts;
         public bool attackPayloadReleased;
+        public bool continueReleased;
         public bool releaseReservationOnComplete;
         public int enterRequestId;
         public int attackRequestId;
@@ -84,6 +86,10 @@ public sealed class FieldAllyMember : MonoBehaviour
     DeferredSequenceCleanup _deferredCleanup;
     object _reservationOwner;
     int _nextRequestId = 1;
+    int _nextExecutionId = 1;
+    int _lastCompletedExecutionId;
+    bool _lastCompletedExecutionSucceeded;
+    bool _lastCompletedExecutionHadDeferredCleanup;
     ISkillUser _directSkillUser;
     SkillGemDefinition _lastResolvedAttackSkill;
     int _lastResolvedAttackLevel = 1;
@@ -101,6 +107,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     public bool IsReserved => _reservationOwner != null;
     public bool HasActiveSequenceExecution => _pendingExecution != null;
     public bool HasDeferredSequenceCleanup => _deferredCleanup != null;
+    public int ActiveSequenceExecutionId => _pendingExecution != null ? _pendingExecution.executionId : 0;
     public bool LastExecutionSucceeded { get; private set; }
     public SkillGemDefinition DefaultChainSkill =>
         defaultChainSkill != null
@@ -188,6 +195,31 @@ public sealed class FieldAllyMember : MonoBehaviour
         _reservationOwner = null;
     }
 
+    public bool IsSequenceExecutionReadyToContinue(int executionId)
+    {
+        if (executionId <= 0)
+            return false;
+
+        if (_pendingExecution != null && _pendingExecution.executionId == executionId)
+            return _pendingExecution.continueReleased;
+
+        return _lastCompletedExecutionId == executionId;
+    }
+
+    public bool TryGetCompletedSequenceExecutionResult(int executionId, out bool success, out bool hasDeferredCleanup)
+    {
+        if (executionId > 0 && _lastCompletedExecutionId == executionId)
+        {
+            success = _lastCompletedExecutionSucceeded;
+            hasDeferredCleanup = _lastCompletedExecutionHadDeferredCleanup;
+            return true;
+        }
+
+        success = false;
+        hasDeferredCleanup = false;
+        return false;
+    }
+
     public bool TryStartSequenceStep(ChainAttackStepDef step, Transform lockedTarget)
     {
         if (step == null)
@@ -221,6 +253,7 @@ public sealed class FieldAllyMember : MonoBehaviour
 
         PendingSequenceExecution execution = new()
         {
+            executionId = NextExecutionId(),
             owner = _reservationOwner,
             step = step,
             lockedTarget = lockedTarget,
@@ -448,6 +481,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (animBrain != null)
         {
             animBrain.ChainCastMomentReached -= OnChainCastMomentReached;
+            animBrain.ChainAdvanceMomentReached -= OnChainAdvanceMomentReached;
             animBrain.ChainPlaybackInterrupted -= OnChainPlaybackInterrupted;
             animBrain.ChainPlaybackCompleted -= OnChainPlaybackCompleted;
         }
@@ -457,6 +491,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (animBrain != null)
         {
             animBrain.ChainCastMomentReached += OnChainCastMomentReached;
+            animBrain.ChainAdvanceMomentReached += OnChainAdvanceMomentReached;
             animBrain.ChainPlaybackInterrupted += OnChainPlaybackInterrupted;
             animBrain.ChainPlaybackCompleted += OnChainPlaybackCompleted;
         }
@@ -586,7 +621,9 @@ public sealed class FieldAllyMember : MonoBehaviour
         bool started = animBrain.TryPlayChainSkill(
             execution.attackRequestId,
             execution.attackSkillDef,
-            execution.attackSkillDef.GetCastPointNormalized());
+            execution.attackSkillDef.GetCastPointNormalized(),
+            ShouldRequestAttackAdvanceMoment(execution),
+            ResolveAttackContinueNormalizedTime(execution));
 
         if (started)
         {
@@ -707,6 +744,61 @@ public sealed class FieldAllyMember : MonoBehaviour
         return ChainAttackTargetingUtility.IsTargetAlive(execution.lockedTarget);
     }
 
+    static bool ShouldRequestAttackAdvanceMoment(PendingSequenceExecution execution)
+    {
+        return ResolveAttackContinueMode(execution) == ChainStepContinueMode.OnAttackNormalizedTime;
+    }
+
+    static ChainStepContinueMode ResolveAttackContinueMode(PendingSequenceExecution execution)
+    {
+        if (execution == null)
+            return ChainStepContinueMode.OnStepComplete;
+
+        if (execution.step != null && execution.step.UsesStepContinueOverride)
+            return execution.step.continueMode;
+
+        return execution.attackSkillDef != null
+            ? execution.attackSkillDef.GetChainContinueMode()
+            : ChainStepContinueMode.OnStepComplete;
+    }
+
+    static float ResolveConfiguredContinueNormalizedTime(PendingSequenceExecution execution)
+    {
+        if (execution == null)
+            return 1f;
+
+        if (execution.step != null && execution.step.UsesStepContinueOverride)
+            return execution.step.ClampedContinueNormalizedTime;
+
+        return execution.attackSkillDef != null
+            ? execution.attackSkillDef.GetChainContinueNormalizedTime()
+            : 1f;
+    }
+
+    static float ResolveAttackContinueNormalizedTime(PendingSequenceExecution execution)
+    {
+        return ResolveAttackContinueMode(execution) switch
+        {
+            ChainStepContinueMode.OnAttackCastMoment => execution?.attackSkillDef != null
+                ? execution.attackSkillDef.GetCastPointNormalized()
+                : ResolveConfiguredContinueNormalizedTime(execution),
+            ChainStepContinueMode.OnAttackNormalizedTime => ResolveConfiguredContinueNormalizedTime(execution),
+            _ => 1f,
+        };
+    }
+
+    void ReleaseContinueSignalIfNeeded(PendingSequenceExecution execution, string reason)
+    {
+        if (execution == null || execution.continueReleased)
+            return;
+
+        if (ResolveAttackContinueMode(execution) == ChainStepContinueMode.OnStepComplete)
+            return;
+
+        execution.continueReleased = true;
+        Log($"Released chain continue signal for step '{execution.step.RuntimeId}' at {reason}.");
+    }
+
     void OnChainCastMomentReached(int requestId)
     {
         if (_pendingExecution == null)
@@ -726,6 +818,19 @@ public sealed class FieldAllyMember : MonoBehaviour
 
         if (requestId == _pendingExecution.exitRequestId)
             HandleExitCastMoment(requestId);
+    }
+
+    void OnChainAdvanceMomentReached(int requestId)
+    {
+        if (_pendingExecution == null ||
+            requestId != _pendingExecution.attackRequestId ||
+            _pendingExecution.phase != SequenceExecutionPhase.WaitingForAttackComplete ||
+            !_pendingExecution.attackPayloadReleased)
+        {
+            return;
+        }
+
+        ReleaseContinueSignalIfNeeded(_pendingExecution, "attack normalized time");
     }
 
     void HandleEnterCastMoment(int requestId)
@@ -799,6 +904,9 @@ public sealed class FieldAllyMember : MonoBehaviour
         }
 
         SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForAttackComplete);
+
+        if (ResolveAttackContinueMode(_pendingExecution) == ChainStepContinueMode.OnAttackCastMoment)
+            ReleaseContinueSignalIfNeeded(_pendingExecution, "attack cast moment");
     }
 
     void HandleExitCastMoment(int requestId)
@@ -1209,8 +1317,20 @@ public sealed class FieldAllyMember : MonoBehaviour
             _pendingExecution != null &&
             _pendingExecution.releaseReservationOnComplete &&
             _pendingExecution.owner != null;
+        bool hasDeferredCleanup =
+            _pendingExecution != null &&
+            _deferredCleanup != null &&
+            _pendingExecution.owner != null &&
+            ReferenceEquals(_deferredCleanup.owner, _pendingExecution.owner);
 
         object ownerToRelease = shouldReleaseReservation ? _pendingExecution.owner : null;
+
+        if (_pendingExecution != null)
+        {
+            _lastCompletedExecutionId = _pendingExecution.executionId;
+            _lastCompletedExecutionSucceeded = success;
+            _lastCompletedExecutionHadDeferredCleanup = hasDeferredCleanup;
+        }
 
         _pendingExecution = null;
         LastExecutionSucceeded = success;
@@ -1561,6 +1681,14 @@ public sealed class FieldAllyMember : MonoBehaviour
             _nextRequestId = 1;
 
         return _nextRequestId++;
+    }
+
+    int NextExecutionId()
+    {
+        if (_nextExecutionId == int.MaxValue)
+            _nextExecutionId = 1;
+
+        return _nextExecutionId++;
     }
 
     void Log(string message)

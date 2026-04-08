@@ -207,6 +207,14 @@ public class SkillGemDefinition : ScriptableObject
     [FoldoutGroup("Presentation", Expanded = true), LabelText("Cast Point"), Range(0f, 1f), SuffixLabel("normalized")]
     public float castPointNormalized = DefaultCastPointNormalized;
 
+    [PropertyOrder(-34)]
+    [FoldoutGroup("Presentation", Expanded = true), LabelText("Chain Continue")]
+    public ChainStepContinueMode chainContinueMode = ChainStepContinueMode.OnStepComplete;
+
+    [PropertyOrder(-33)]
+    [FoldoutGroup("Presentation", Expanded = true), LabelText("Chain Continue Time"), Range(0f, 1f), SuffixLabel("normalized")]
+    public float chainContinueNormalizedTime = 1f;
+
     [Serializable]
     public class LevelData
     {
@@ -767,5 +775,18 @@ public class SkillGemDefinition : ScriptableObject
             return DefaultCastPointNormalized;
 
         return Mathf.Clamp(castPointNormalized, 0f, 0.999f);
+    }
+
+    public ChainStepContinueMode GetChainContinueMode()
+    {
+        return chainContinueMode;
+    }
+
+    public float GetChainContinueNormalizedTime()
+    {
+        if (!float.IsFinite(chainContinueNormalizedTime))
+            return 1f;
+
+        return Mathf.Clamp(chainContinueNormalizedTime, 0f, 0.999f);
     }
 }

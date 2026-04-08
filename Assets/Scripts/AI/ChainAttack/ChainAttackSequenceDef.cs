@@ -49,6 +49,19 @@ public enum ChainStepSkillSource
     ActorDefault = 1,
 }
 
+public enum ChainStepContinueMode
+{
+    OnStepComplete = 0,
+    OnAttackCastMoment = 1,
+    OnAttackNormalizedTime = 2,
+}
+
+public enum ChainStepContinueTimingSource
+{
+    SkillDefinition = 0,
+    StepOverride = 1,
+}
+
 [Serializable]
 public sealed class ChainAttackStepDef
 {
@@ -59,6 +72,9 @@ public sealed class ChainAttackStepDef
     [Header("Timing")]
     [Min(0f)] public float delayBefore;
     [Min(0f)] public float delayAfter;
+    public ChainStepContinueTimingSource continueTimingSource = ChainStepContinueTimingSource.SkillDefinition;
+    public ChainStepContinueMode continueMode = ChainStepContinueMode.OnStepComplete;
+    [Range(0f, 1f)] public float continueNormalizedTime = 1f;
 
     [Header("Execution")]
     public ChainStepSkillSource skillSource = ChainStepSkillSource.ExplicitOverride;
@@ -95,8 +111,13 @@ public sealed class ChainAttackStepDef
 
     public string RuntimeId => string.IsNullOrWhiteSpace(stepId) ? actorRole.ToString() : stepId;
     public int ClampedSkillLevel => Mathf.Max(1, skillLevel);
+    public float ClampedContinueNormalizedTime => Mathf.Clamp01(continueNormalizedTime);
     public bool HasSkillConfigured => skillSource == ChainStepSkillSource.ActorDefault || skillDef != null;
     public bool UsesActorDefaultSkill => skillSource == ChainStepSkillSource.ActorDefault;
+    public bool UsesStepContinueOverride => continueTimingSource == ChainStepContinueTimingSource.StepOverride;
+    public bool UsesEarlyContinueSignal =>
+        UsesStepContinueOverride &&
+        continueMode != ChainStepContinueMode.OnStepComplete;
     public bool UsesDeferredExit =>
         exitMode == ChainActorExitMode.ReturnToRecordedOriginOnSequenceEnd ||
         exitMode == ChainActorExitMode.ReturnToRecordedOriginViaUtilityOnSequenceEnd ||

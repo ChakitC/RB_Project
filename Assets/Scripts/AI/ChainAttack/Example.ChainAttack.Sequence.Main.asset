@@ -34,6 +34,9 @@ MonoBehaviour:
     actorRole: 3
     delayBefore: 0
     delayAfter: 0
+    continueTimingSource: 0
+    continueMode: 0
+    continueNormalizedTime: 1
     skillSource: 0
     skillDef: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
     skillLevel: 1
@@ -59,6 +62,9 @@ MonoBehaviour:
     actorRole: 1
     delayBefore: 0
     delayAfter: 0.1
+    continueTimingSource: 0
+    continueMode: 0
+    continueNormalizedTime: 1
     skillSource: 1
     skillDef: {fileID: 0}
     skillLevel: 1
@@ -84,6 +90,9 @@ MonoBehaviour:
     actorRole: 2
     delayBefore: 0
     delayAfter: 0.1
+    continueTimingSource: 0
+    continueMode: 0
+    continueNormalizedTime: 1
     skillSource: 1
     skillDef: {fileID: 0}
     skillLevel: 1

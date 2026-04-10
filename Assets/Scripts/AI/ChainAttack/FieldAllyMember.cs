@@ -122,7 +122,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     public bool IsBusy =>
         _pendingExecution != null ||
         _deferredCleanup != null ||
-        (animBrain != null && animBrain.IsSkillActive);
+        (animBrain != null && animBrain.IsExclusiveLocomotionActive);
     public bool IsAlive =>
         actorContext != null &&
         actorContext.stateHub != null &&
@@ -1060,7 +1060,7 @@ public sealed class FieldAllyMember : MonoBehaviour
                 return;
 
             case SequenceExecutionPhase.WaitingForAttackCastMoment:
-                if (!animBrain.IsSkillActive)
+                if (!animBrain.IsChainPlaybackActive)
                 {
                     Log($"Attack cast moment for step '{_pendingExecution.step.RuntimeId}' was missed. Forcing cast recovery.");
                     HandleAttackCastMoment(_pendingExecution.attackRequestId);
@@ -1075,7 +1075,7 @@ public sealed class FieldAllyMember : MonoBehaviour
                 return;
 
             case SequenceExecutionPhase.WaitingForAttackComplete:
-                if (!animBrain.IsSkillActive)
+                if (!animBrain.IsChainPlaybackActive)
                 {
                     Log($"Attack for step '{_pendingExecution.step.RuntimeId}' finished via animation state exit recovery.");
                     HandleAttackCompleted();

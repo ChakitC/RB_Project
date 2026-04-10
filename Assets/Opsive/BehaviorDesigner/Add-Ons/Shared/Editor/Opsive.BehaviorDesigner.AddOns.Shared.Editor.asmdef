@@ -1,0 +1,21 @@
+{
+    "name": "Opsive.BehaviorDesigner.AddOns.Shared.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:fef43017e7e78a047a68cc5d7a7b1679",
+        "GUID:f9fbcd65fc33f6847b0f124cf7e891b6",
+        "GUID:bbb15c76beca87041af309d0035105a2",
+        "GUID:d8e89a79cd8df884b8d5b3356783eb74"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

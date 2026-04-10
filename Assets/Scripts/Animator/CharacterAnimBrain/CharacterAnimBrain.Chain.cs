@@ -117,6 +117,7 @@ public sealed partial class CharacterAnimBrain
         {
             int requestId = _activeChainRequestId;
             _activeChainReleased = true;
+            EmitPlaybackSignal(ResolveActiveChainPlaybackKind(), PlaybackPhase.CastMoment, requestId);
             ChainCastMomentReached?.Invoke(requestId);
 
             if (requestId != _activeChainRequestId)
@@ -129,6 +130,7 @@ public sealed partial class CharacterAnimBrain
         {
             int requestId = _activeChainRequestId;
             _activeChainAdvanceReleased = true;
+            EmitPlaybackSignal(ResolveActiveChainPlaybackKind(), PlaybackPhase.AdvanceMoment, requestId);
             ChainAdvanceMomentReached?.Invoke(requestId);
         }
     }
@@ -136,6 +138,7 @@ public sealed partial class CharacterAnimBrain
     internal void NotifyChainPlaybackStateExited(bool completedNormally)
     {
         int requestId = _activeChainRequestId;
+        PlaybackKind playbackKind = ResolveActiveChainPlaybackKind();
         bool shouldReleaseOnComplete =
             completedNormally &&
             _activeChainReleaseRequested &&
@@ -149,6 +152,7 @@ public sealed partial class CharacterAnimBrain
         if (shouldReleaseOnComplete)
         {
             _activeChainReleased = true;
+            EmitPlaybackSignal(playbackKind, PlaybackPhase.CastMoment, requestId);
             ChainCastMomentReached?.Invoke(requestId);
         }
 
@@ -161,16 +165,23 @@ public sealed partial class CharacterAnimBrain
         if (shouldAdvanceOnComplete)
         {
             _activeChainAdvanceReleased = true;
+            EmitPlaybackSignal(playbackKind, PlaybackPhase.AdvanceMoment, requestId);
             ChainAdvanceMomentReached?.Invoke(requestId);
         }
 
         ClearActiveChainRequest();
 
         if (completedNormally && requestId > 0)
+        {
+            EmitPlaybackSignal(playbackKind, PlaybackPhase.Completed, requestId);
             ChainPlaybackCompleted?.Invoke(requestId);
+        }
 
         if (interrupted)
+        {
+            EmitPlaybackSignal(playbackKind, PlaybackPhase.Interrupted, requestId);
             ChainPlaybackInterrupted?.Invoke(requestId);
+        }
     }
 
     internal void CompleteActiveChainPlayback()
@@ -272,6 +283,7 @@ public sealed partial class CharacterAnimBrain
     private void InterruptActiveChainRequest()
     {
         int requestId = _activeChainRequestId;
+        PlaybackKind playbackKind = ResolveActiveChainPlaybackKind();
         bool shouldNotify =
             (_activeChainReleaseRequested || _activeChainAdvanceRequested) &&
             requestId > 0;
@@ -279,7 +291,10 @@ public sealed partial class CharacterAnimBrain
         ClearActiveChainRequest();
 
         if (shouldNotify)
+        {
+            EmitPlaybackSignal(playbackKind, PlaybackPhase.Interrupted, requestId);
             ChainPlaybackInterrupted?.Invoke(requestId);
+        }
     }
 
     private ClipTransition ResolveChainClip()

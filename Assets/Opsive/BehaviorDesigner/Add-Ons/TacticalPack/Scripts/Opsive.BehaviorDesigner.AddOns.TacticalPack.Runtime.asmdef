@@ -1,0 +1,23 @@
+{
+    "name": "Opsive.BehaviorDesigner.AddOns.TacticalPack.Runtime",
+    "rootNamespace": "",
+    "references": [
+        "GUID:fef43017e7e78a047a68cc5d7a7b1679",
+        "GUID:f9fbcd65fc33f6847b0f124cf7e891b6",
+        "GUID:e9319bc8ab9315745bdf80aeffa01d6d",
+        "GUID:d8e89a79cd8df884b8d5b3356783eb74",
+        "GUID:e0cd26848372d4e5c891c569017e11f1",
+        "GUID:734d92eba21c94caba915361bd5ac177",
+        "GUID:97a55b351d7460f4f87d2ad07066bf4e",
+        "GUID:cf0567158f87e3c4c9be32bb870ec7b9"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

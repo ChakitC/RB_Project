@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: bf25894eba14baf4bae7b893076c432a
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 322900
+  packageName: Tactical Pack for Behavior Designer Pro
+  packageVersion: 2.0.5
+  assetPath: Assets/Opsive/BehaviorDesigner/Add-Ons/Shared/Runtime/NavMeshAgentPathfinder.cs
+  uploadId: 815896

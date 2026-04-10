@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 9c51f3897de47744398755b01921a048
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 322900
+  packageName: Tactical Pack for Behavior Designer Pro
+  packageVersion: 2.0.5
+  assetPath: Assets/Opsive/BehaviorDesigner/Add-Ons/Shared/Runtime/FormationsBase.cs
+  uploadId: 815896

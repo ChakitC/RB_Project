@@ -41,11 +41,10 @@ public sealed partial class CharacterAnimBrain
                 return;
             }
 
-            _prevApplyRootMotion = owner.animancer.Animator.applyRootMotion;
-            owner.animancer.Animator.applyRootMotion = true; // ถ้ามีหลาย skill ควรใช้ flag/config
-            owner.RootMotionActive = true;
-
-            owner.ClearActionLayerForExclusiveLocomotion();
+            _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
+                usesRootMotion: true,
+                preserveFireHoldIntent: true);
+            owner.EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.Started, owner._activeSkillRequestId);
 
             state = owner.LocoLayer.Play(skillClip);
             state.NormalizedTime = 0f;
@@ -78,13 +77,8 @@ public sealed partial class CharacterAnimBrain
                 state = null;
             }
 
-            owner.animancer.Animator.applyRootMotion = _prevApplyRootMotion;
-            owner.RootMotionActive = false;
-
-            owner.ClearActionLayerForExclusiveLocomotion();
-            owner.TryResumeHoldAction();
+            owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
             owner.NotifySkillStateExited(_completedNormally);
-            
         }
 
         internal bool TryGetNormalizedTime(out float normalizedTime)

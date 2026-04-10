@@ -2,10 +2,12 @@ using UnityEngine;
 using System;
 using Animancer;
 using Animancer.FSM;
+
 public sealed partial class CharacterAnimBrain
 {
     // ===================== Locomotion: Dead ================================
-    private sealed class  Locomotion_Dead : LocomotionState
+
+    private sealed class Locomotion_Dead : LocomotionState
     {
         private readonly CharacterAnimBrain owner;
         private AnimancerState state;
@@ -13,22 +15,18 @@ public sealed partial class CharacterAnimBrain
         public Locomotion_Dead(CharacterAnimBrain owner) => this.owner = owner;
 
         public override bool CanEnterState => owner.DeadClip != null;
-        
+
         public override bool CanExitState => false;
 
         public override void OnEnterState()
         {
-            owner.IsHoldingFire = false;
-            owner._pendingAction = PendingAction.Empty;
-            owner._pendingPulse = false;
+            owner.EnterExclusiveLocomotion(
+                usesRootMotion: false,
+                preserveFireHoldIntent: false);
+            owner.EmitPlaybackSignal(PlaybackKind.Dead, PlaybackPhase.Started, 0);
 
-            owner.actionSM.TrySetState(owner.empty);
-            owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
-
-            
             state = owner.LocoLayer.Play(owner.DeadClip);
 
-            
             owner.onDeadEndCache ??= () =>
             {
                 if (state == null) return;

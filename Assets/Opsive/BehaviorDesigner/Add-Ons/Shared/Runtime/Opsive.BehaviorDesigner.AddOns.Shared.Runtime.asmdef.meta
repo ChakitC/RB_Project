@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: fef43017e7e78a047a68cc5d7a7b1679
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 322900
+  packageName: Tactical Pack for Behavior Designer Pro
+  packageVersion: 2.0.5
+  assetPath: Assets/Opsive/BehaviorDesigner/Add-Ons/Shared/Runtime/Opsive.BehaviorDesigner.AddOns.Shared.Runtime.asmdef
+  uploadId: 815896

@@ -76,7 +76,7 @@ public class AllyHelperManager : MonoBehaviour
     public bool IsHelperBusy =>
         pendingHelperSkill != null ||
         pendingChainAttackSequence != null ||
-        (allyAnimBrain != null && allyAnimBrain.IsSkillActive);
+        (allyAnimBrain != null && allyAnimBrain.IsExclusiveLocomotionActive);
 
     public bool IsChainAttackExecutionReadyToContinue(int executionId)
     {
@@ -178,7 +178,7 @@ public class AllyHelperManager : MonoBehaviour
         {
             allyAnimBrain.PlaySkill();
 
-            if (!allyAnimBrain.IsSkillActive)
+            if (!allyAnimBrain.IsSkillPlaybackActive)
             {
                 hideHelperOnSkillComplete = false;
                 if (activatedNow)
@@ -421,18 +421,14 @@ public class AllyHelperManager : MonoBehaviour
 
         if (allyAnimBrain != null)
         {
-            allyAnimBrain.SkillCastMomentReached -= OnAllySkillCastMomentReached;
-            allyAnimBrain.SkillCastInterrupted -= OnAllySkillCastInterrupted;
-            allyAnimBrain.SkillCompleted -= OnAllySkillCompleted;
+            allyAnimBrain.PlaybackEvent -= OnAllyPlaybackEvent;
         }
 
         allyAnimBrain = nextAnimBrain;
 
         if (allyAnimBrain != null)
         {
-            allyAnimBrain.SkillCastMomentReached += OnAllySkillCastMomentReached;
-            allyAnimBrain.SkillCastInterrupted += OnAllySkillCastInterrupted;
-            allyAnimBrain.SkillCompleted += OnAllySkillCompleted;
+            allyAnimBrain.PlaybackEvent += OnAllyPlaybackEvent;
         }
     }
 
@@ -597,6 +593,33 @@ public class AllyHelperManager : MonoBehaviour
             return;
 
         ReleasePendingChainAttackContinueSignal($"helper skill normalized time {normalizedTime:0.###}");
+    }
+
+    void OnAllyPlaybackEvent(CharacterAnimBrain.PlaybackSignal signal)
+    {
+        switch (signal.Kind)
+        {
+            case CharacterAnimBrain.PlaybackKind.Skill:
+            case CharacterAnimBrain.PlaybackKind.UtilityWarpOut:
+                break;
+            default:
+                return;
+        }
+
+        switch (signal.Phase)
+        {
+            case CharacterAnimBrain.PlaybackPhase.CastMoment:
+                OnAllySkillCastMomentReached(signal.RequestId);
+                break;
+
+            case CharacterAnimBrain.PlaybackPhase.Interrupted:
+                OnAllySkillCastInterrupted(signal.RequestId);
+                break;
+
+            case CharacterAnimBrain.PlaybackPhase.Completed:
+                OnAllySkillCompleted();
+                break;
+        }
     }
 
     void OnAllySkillCastMomentReached(int requestId)

@@ -31,6 +31,7 @@ public sealed class StateHub : MonoBehaviour
     [SerializeField] private bool statusEffectStunned;
 
     public float MoveSpeed01 { get; private set; }
+    public bool DesiredFireHeld { get; private set; }
     public bool FireHeld { get; private set; }
     public Vector3 DashDirWorld { get; private set; } = Vector3.forward;
 
@@ -67,7 +68,7 @@ public sealed class StateHub : MonoBehaviour
                 ctx.AnimBrain = animBrain;
         }
 
-        return animBrain != null && animBrain.IsSkillActive;
+        return animBrain != null && animBrain.IsShootBlockingPlaybackActive;
     }
 
     void Awake()
@@ -360,6 +361,8 @@ public sealed class StateHub : MonoBehaviour
 
     public void RequestOnFire()
     {
+        SetDesiredFireHeld(true);
+
         if (WeaponSM.CurrentId == WeaponStateId.Melee) return;
         if (MoveSM.CurrentId == MoveStateId.Dash) return;
         if (!ctx.stateHub.CanShoot()) return;
@@ -369,8 +372,7 @@ public sealed class StateHub : MonoBehaviour
 
     public void RequestCanceledFire()
     {
-        if (WeaponSM.CurrentId == WeaponStateId.Melee) return;
-        if (MoveSM.CurrentId == MoveStateId.Dash) return;
+        SetDesiredFireHeld(false);
         ctx.WeaponSystem.SetFiring(false);
         ctx.stateHub.SetFireHeld(false);
     }
@@ -409,6 +411,11 @@ public sealed class StateHub : MonoBehaviour
     public void SetMoveSpeed01(float v01)
     {
         MoveSpeed01 = v01;
+    }
+
+    public void SetDesiredFireHeld(bool held)
+    {
+        DesiredFireHeld = held;
     }
 
     public void SetFireHeld(bool held)

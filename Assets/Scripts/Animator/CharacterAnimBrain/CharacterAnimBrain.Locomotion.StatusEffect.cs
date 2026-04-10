@@ -31,15 +31,16 @@ public sealed partial class CharacterAnimBrain
 
             if (owner.ShouldInterruptActionLayer(kind))
             {
-                owner.IsHoldingFire = false;
-                owner._pendingAction = PendingAction.Empty;
-                owner._pendingPulse = false;
-                owner.actionSM.TrySetState(owner.empty);
-                owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
+                owner.EnterExclusiveLocomotion(
+                    usesRootMotion: false,
+                    preserveFireHoldIntent: false);
+                owner.EmitPlaybackSignal(PlaybackKind.StatusEffect, PlaybackPhase.Started, 0);
             }
-
-            owner.animancer.Animator.applyRootMotion = false;
-            owner.RootMotionActive = false;
+            else
+            {
+                owner.animancer.Animator.applyRootMotion = false;
+                owner.RootMotionActive = false;
+            }
 
             owner.LocoLayer.Play(clip);
         }

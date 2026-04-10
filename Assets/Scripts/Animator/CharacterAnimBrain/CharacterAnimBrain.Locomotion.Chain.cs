@@ -45,11 +45,10 @@ public sealed partial class CharacterAnimBrain
                 return;
             }
 
-            _prevApplyRootMotion = owner.animancer.Animator.applyRootMotion;
-            owner.animancer.Animator.applyRootMotion = true;
-            owner.RootMotionActive = true;
-
-            owner.ClearActionLayerForExclusiveLocomotion();
+            _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
+                usesRootMotion: true,
+                preserveFireHoldIntent: true);
+            owner.EmitPlaybackSignal(owner.ResolveActiveChainPlaybackKind(), PlaybackPhase.Started, owner.ActiveChainRequestId);
 
             state = owner.LocoLayer.Play(chainClip);
             state.NormalizedTime = 0f;
@@ -78,11 +77,7 @@ public sealed partial class CharacterAnimBrain
                 state = null;
             }
 
-            owner.animancer.Animator.applyRootMotion = _prevApplyRootMotion;
-            owner.RootMotionActive = false;
-
-            owner.ClearActionLayerForExclusiveLocomotion();
-            owner.TryResumeHoldAction();
+            owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
             owner.NotifyChainPlaybackStateExited(_completedNormally);
         }
 

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 961e40b21ac618f4b92b15be948ecfab
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 322900
+  packageName: Tactical Pack for Behavior Designer Pro
+  packageVersion: 2.0.5
+  assetPath: Assets/Opsive/BehaviorDesigner/Add-Ons/TacticalPack/Scripts/Tasks/Flank.cs
+  uploadId: 815896

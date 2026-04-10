@@ -34,7 +34,7 @@
             "characterId": "ID.Feno",
             "progress": {
                 "level": 25,
-                "xp": 649,
+                "xp": 1649,
                 "skillPoints": 21,
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": []
@@ -73,8 +73,8 @@
         {
             "characterId": "ID.Abbygail",
             "progress": {
-                "level": 15,
-                "xp": 550,
+                "level": 16,
+                "xp": 583,
                 "skillPoints": 9,
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": []

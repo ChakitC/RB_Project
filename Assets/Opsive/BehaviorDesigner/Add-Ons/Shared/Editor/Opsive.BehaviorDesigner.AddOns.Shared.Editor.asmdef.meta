@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e1cb22ac94bbe414eb3601a98a22cf7d
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 322900
+  packageName: Tactical Pack for Behavior Designer Pro
+  packageVersion: 2.0.5
+  assetPath: Assets/Opsive/BehaviorDesigner/Add-Ons/Shared/Editor/Opsive.BehaviorDesigner.AddOns.Shared.Editor.asmdef
+  uploadId: 815896

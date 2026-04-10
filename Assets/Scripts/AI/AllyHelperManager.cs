@@ -27,6 +27,7 @@ public class AllyHelperManager : MonoBehaviour
 
     sealed class PendingChainAttackSequence
     {
+        public int executionId;
         public HelperChainAttackSequenceDef sequenceDef;
         public SkillGemDefinition chainAttackSkillDef;
         public GameObject targetObject;
@@ -34,6 +35,9 @@ public class AllyHelperManager : MonoBehaviour
         public Transform anchorTransform;
         public int requestedSkillLevel;
         public int chainAttackSkillLevel;
+        public ChainStepContinueMode continueMode;
+        public float continueNormalizedTime;
+        public bool continueReleased;
         public int warpRequestId;
         public int chainAttackRequestId;
         public ChainAttackPhase phase;
@@ -59,16 +63,43 @@ public class AllyHelperManager : MonoBehaviour
     PendingChainAttackSequence pendingChainAttackSequence;
     bool hideHelperOnSkillComplete;
     int nextHelperSkillRequestId = 1;
+    int nextHelperExecutionId = 1;
+    int lastCompletedChainAttackExecutionId;
+    bool lastCompletedChainAttackExecutionSucceeded;
     readonly Collider[] _chainTargetBuffer = new Collider[MaxChainTargetColliders];
     readonly HashSet<int> _chainTargetIds = new();
 
     public bool IsHelperActive => allyHelper != null && allyHelper.activeSelf;
     public GameObject HelperObject => allyHelper;
     public bool LastExecutionSucceeded { get; private set; } = true;
+    public int ActiveChainAttackExecutionId => pendingChainAttackSequence != null ? pendingChainAttackSequence.executionId : 0;
     public bool IsHelperBusy =>
         pendingHelperSkill != null ||
         pendingChainAttackSequence != null ||
         (allyAnimBrain != null && allyAnimBrain.IsSkillActive);
+
+    public bool IsChainAttackExecutionReadyToContinue(int executionId)
+    {
+        if (executionId <= 0)
+            return false;
+
+        if (pendingChainAttackSequence != null && pendingChainAttackSequence.executionId == executionId)
+            return pendingChainAttackSequence.continueReleased;
+
+        return lastCompletedChainAttackExecutionId == executionId;
+    }
+
+    public bool TryGetCompletedChainAttackExecutionResult(int executionId, out bool success)
+    {
+        if (executionId > 0 && lastCompletedChainAttackExecutionId == executionId)
+        {
+            success = lastCompletedChainAttackExecutionSucceeded;
+            return true;
+        }
+
+        success = false;
+        return false;
+    }
 
     public bool HasChainAttackTarget(HelperChainAttackSequenceDef sequenceDef)
     {
@@ -114,7 +145,7 @@ public class AllyHelperManager : MonoBehaviour
         RestoreHelperSkillAutonomy();
         RestoreCollisionMask();
         CancelPendingHelperSkill();
-        CancelPendingChainAttackSequence();
+        CompletePendingChainAttackSequence(false);
         hideHelperOnSkillComplete = false;
         LastExecutionSucceeded = false;
     }
@@ -122,6 +153,7 @@ public class AllyHelperManager : MonoBehaviour
     void Update()
     {
         TryStartQueuedChainAttack();
+        TryReleasePendingChainAttackContinueSignal();
     }
 
     public void SummonAllyHelper()
@@ -140,7 +172,7 @@ public class AllyHelperManager : MonoBehaviour
         LastExecutionSucceeded = false;
         hideHelperOnSkillComplete = hideOnSkillComplete;
         CancelPendingHelperSkill();
-        CancelPendingChainAttackSequence();
+        CompletePendingChainAttackSequence(false);
 
         if (skillDef == null)
         {
@@ -197,7 +229,9 @@ public class AllyHelperManager : MonoBehaviour
         HelperChainAttackSequenceDef sequenceDef,
         SkillGemDefinition chainAttackSkillDef,
         int requestedSkillLevel = 1,
-        bool hideOnSkillComplete = true)
+        bool hideOnSkillComplete = true,
+        ChainStepContinueMode continueMode = ChainStepContinueMode.OnStepComplete,
+        float continueNormalizedTime = 1f)
     {
         if (sequenceDef == null || chainAttackSkillDef == null)
         {
@@ -218,7 +252,9 @@ public class AllyHelperManager : MonoBehaviour
             targetTransform,
             anchorTransform,
             requestedSkillLevel,
-            hideOnSkillComplete);
+            hideOnSkillComplete,
+            continueMode,
+            continueNormalizedTime);
     }
 
     public bool TryStartChainAttackHelperToTarget(
@@ -226,7 +262,9 @@ public class AllyHelperManager : MonoBehaviour
         SkillGemDefinition chainAttackSkillDef,
         Transform explicitTargetTransform,
         int requestedSkillLevel = 1,
-        bool hideOnSkillComplete = true)
+        bool hideOnSkillComplete = true,
+        ChainStepContinueMode continueMode = ChainStepContinueMode.OnStepComplete,
+        float continueNormalizedTime = 1f)
     {
         if (!ChainAttackTargetingUtility.TryResolveExplicitTarget(
                 explicitTargetTransform,
@@ -247,7 +285,9 @@ public class AllyHelperManager : MonoBehaviour
             targetTransform,
             anchorTransform,
             requestedSkillLevel,
-            hideOnSkillComplete);
+            hideOnSkillComplete,
+            continueMode,
+            continueNormalizedTime);
     }
 
     bool TryStartChainAttackHelperInternal(
@@ -257,7 +297,9 @@ public class AllyHelperManager : MonoBehaviour
         Transform targetTransform,
         Transform anchorTransform,
         int requestedSkillLevel,
-        bool hideOnSkillComplete)
+        bool hideOnSkillComplete,
+        ChainStepContinueMode continueMode,
+        float continueNormalizedTime)
     {
         if (sequenceDef == null || chainAttackSkillDef == null || targetObject == null || targetTransform == null || anchorTransform == null)
         {
@@ -271,10 +313,11 @@ public class AllyHelperManager : MonoBehaviour
         LastExecutionSucceeded = false;
         hideHelperOnSkillComplete = hideOnSkillComplete;
         CancelPendingHelperSkill();
-        CancelPendingChainAttackSequence();
+        CompletePendingChainAttackSequence(false);
 
         pendingChainAttackSequence = new PendingChainAttackSequence
         {
+            executionId = NextHelperExecutionId(),
             sequenceDef = sequenceDef,
             chainAttackSkillDef = chainAttackSkillDef,
             targetObject = targetObject,
@@ -282,6 +325,8 @@ public class AllyHelperManager : MonoBehaviour
             anchorTransform = anchorTransform,
             requestedSkillLevel = Mathf.Max(1, requestedSkillLevel),
             chainAttackSkillLevel = Mathf.Max(1, requestedSkillLevel),
+            continueMode = continueMode,
+            continueNormalizedTime = Mathf.Clamp(continueNormalizedTime, 0f, 0.999f),
             warpRequestId = NextHelperSkillRequestId(),
             phase = ChainAttackPhase.WaitingForWarpCastMoment,
         };
@@ -307,7 +352,7 @@ public class AllyHelperManager : MonoBehaviour
 
         RestoreHelperSkillAutonomy();
         RestoreCollisionMask();
-        CancelPendingChainAttackSequence();
+        CompletePendingChainAttackSequence(false);
         hideHelperOnSkillComplete = false;
 
         if (activatedNow)
@@ -321,7 +366,7 @@ public class AllyHelperManager : MonoBehaviour
         RestoreHelperSkillAutonomy();
         RestoreCollisionMask();
         CancelPendingHelperSkill();
-        CancelPendingChainAttackSequence();
+        CompletePendingChainAttackSequence(false);
         hideHelperOnSkillComplete = false;
 
         if (allyHelper == null || !allyHelper.activeSelf)
@@ -490,12 +535,68 @@ public class AllyHelperManager : MonoBehaviour
         pendingChainAttackSequence = null;
     }
 
+    void CompletePendingChainAttackSequence(bool success)
+    {
+        if (pendingChainAttackSequence != null)
+        {
+            lastCompletedChainAttackExecutionId = pendingChainAttackSequence.executionId;
+            lastCompletedChainAttackExecutionSucceeded = success;
+        }
+
+        pendingChainAttackSequence = null;
+    }
+
     int NextHelperSkillRequestId()
     {
         if (nextHelperSkillRequestId == int.MaxValue)
             nextHelperSkillRequestId = 1;
 
         return nextHelperSkillRequestId++;
+    }
+
+    int NextHelperExecutionId()
+    {
+        if (nextHelperExecutionId == int.MaxValue)
+            nextHelperExecutionId = 1;
+
+        return nextHelperExecutionId++;
+    }
+
+    void ReleasePendingChainAttackContinueSignal(string reason)
+    {
+        if (pendingChainAttackSequence == null || pendingChainAttackSequence.continueReleased)
+            return;
+
+        if (pendingChainAttackSequence.continueMode == ChainStepContinueMode.OnStepComplete)
+            return;
+
+        pendingChainAttackSequence.continueReleased = true;
+        Log(
+            pendingChainAttackSequence.sequenceDef,
+            $"Released helper chain continue signal for execution {pendingChainAttackSequence.executionId} at {reason}.");
+    }
+
+    void TryReleasePendingChainAttackContinueSignal()
+    {
+        if (pendingChainAttackSequence == null ||
+            pendingChainAttackSequence.phase != ChainAttackPhase.WaitingForChainComplete ||
+            pendingChainAttackSequence.continueMode != ChainStepContinueMode.OnAttackNormalizedTime ||
+            allyAnimBrain == null)
+        {
+            return;
+        }
+
+        if (!allyAnimBrain.TryGetActiveSkillNormalizedTime(
+                pendingChainAttackSequence.chainAttackRequestId,
+                out float normalizedTime))
+        {
+            return;
+        }
+
+        if (normalizedTime < pendingChainAttackSequence.continueNormalizedTime)
+            return;
+
+        ReleasePendingChainAttackContinueSignal($"helper skill normalized time {normalizedTime:0.###}");
     }
 
     void OnAllySkillCastMomentReached(int requestId)
@@ -604,6 +705,10 @@ public class AllyHelperManager : MonoBehaviour
             }
 
             pendingChainAttackSequence.phase = ChainAttackPhase.WaitingForChainComplete;
+
+            if (pendingChainAttackSequence.continueMode == ChainStepContinueMode.OnAttackCastMoment)
+                ReleasePendingChainAttackContinueSignal("helper skill cast moment");
+
             return true;
         }
 
@@ -652,9 +757,15 @@ public class AllyHelperManager : MonoBehaviour
 
         if (pendingChainAttackSequence.phase == ChainAttackPhase.WaitingForChainComplete)
         {
+            if (!pendingChainAttackSequence.continueReleased &&
+                pendingChainAttackSequence.continueMode != ChainStepContinueMode.OnStepComplete)
+            {
+                ReleasePendingChainAttackContinueSignal("helper skill completed");
+            }
+
             RestoreHelperSkillAutonomy();
             RestoreCollisionMask();
-            CancelPendingChainAttackSequence();
+            CompletePendingChainAttackSequence(true);
             LastExecutionSucceeded = true;
 
             if (!hideHelperOnSkillComplete)
@@ -677,7 +788,7 @@ public class AllyHelperManager : MonoBehaviour
     {
         RestoreHelperSkillAutonomy();
         RestoreCollisionMask();
-        CancelPendingChainAttackSequence();
+        CompletePendingChainAttackSequence(false);
         LastExecutionSucceeded = false;
 
         if (!hideHelperOnSkillComplete)

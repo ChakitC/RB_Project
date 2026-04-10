@@ -154,6 +154,23 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     public event Action<int> SkillCastInterrupted;
     public event Action SkillCompleted;
 
+    internal bool TryGetActiveSkillNormalizedTime(int requestId, out float normalizedTime)
+    {
+        normalizedTime = 0f;
+
+        if (requestId <= 0 ||
+            requestId != _activeSkillRequestId ||
+            !_activeSkillReleaseRequested ||
+            !_initialized ||
+            locomotionSM.CurrentState != skill ||
+            skill == null)
+        {
+            return false;
+        }
+
+        return skill.TryGetNormalizedTime(out normalizedTime);
+    }
+
     private bool TryGetAnimProfile(out CharacterAnimProfileSO animProfile)
     {
         animProfile = null;
@@ -329,6 +346,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             _pendingAction = PendingAction.Hold;
             return;
         }
+
+        TryResumeHoldAction();
     }
 
     public void FireUp()
@@ -578,6 +597,33 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             actionSM.TrySetState(empty);
         }
     }
+
+    private void ClearActionLayerForExclusiveLocomotion()
+    {
+        _pendingAction = PendingAction.Empty;
+        _pendingPulse = false;
+
+        if (!_initialized)
+            return;
+
+        if (actionSM.CurrentState == reloadState)
+            reloadState.CancelNow();
+
+        actionSM.ForceSetState(empty);
+    }
+
+    private void TryResumeHoldAction()
+    {
+        if (!_initialized)
+            return;
+
+        if (!IsHoldingFire || ShootHoldLoopClip == null)
+            return;
+
+        if (actionSM.CurrentState == empty)
+            actionSM.TrySetState(shootHold);
+    }
+
     private void HandleShootPulseEnd()
     {
         if (IsHoldingFire && ShootHoldLoopClip != null)

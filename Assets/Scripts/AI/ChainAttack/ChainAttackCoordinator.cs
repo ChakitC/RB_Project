@@ -143,20 +143,18 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
                 yield return new WaitForSeconds(interval);
         }
 
-        if (fieldAllyManager != null)
-        {
-            fieldAllyManager.FinalizeSequenceReservations(runtime, interrupted: !completedSuccessfully);
-            while (fieldAllyManager.HasOwnedSequenceWork(runtime) || runtime.pendingTrackedStepCompletions > 0)
-                yield return null;
-        }
-        else
-        {
-            while (runtime.pendingTrackedStepCompletions > 0)
-                yield return null;
-        }
+        while (runtime.pendingTrackedStepCompletions > 0)
+            yield return null;
 
         if (runtime.hadLateStepFailure)
             completedSuccessfully = false;
+
+        if (fieldAllyManager != null)
+        {
+            fieldAllyManager.FinalizeSequenceReservations(runtime, interrupted: !completedSuccessfully);
+            while (fieldAllyManager.HasOwnedSequenceWork(runtime))
+                yield return null;
+        }
 
         Log(
             runtime.sequenceDef,
@@ -311,13 +309,29 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             yield break;
         }
 
+        while (runtime.pendingTrackedStepCompletions > 0 &&
+               allyHelperManager.ActiveChainAttackExecutionId > 0)
+        {
+            if (!IsRuntimeStillValid(runtime))
+            {
+                onFinished(false);
+                yield break;
+            }
+
+            yield return null;
+        }
+
+        ChainStepContinueMode helperContinueMode = ResolveHelperContinueMode(step);
+        float helperContinueNormalizedTime = ResolveHelperContinueNormalizedTime(step, helperContinueMode);
         bool started = step.helperChainAttackSequence != null
             ? allyHelperManager.TryStartChainAttackHelperToTarget(
                 step.helperChainAttackSequence,
                 step.skillDef,
                 runtime.targetTransform,
                 step.ClampedSkillLevel,
-                step.helperHideOnComplete)
+                step.helperHideOnComplete,
+                helperContinueMode,
+                helperContinueNormalizedTime)
             : allyHelperManager.TrySummonAllyHelper(
                 step.skillDef,
                 step.ClampedSkillLevel,
@@ -330,10 +344,123 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             yield break;
         }
 
-        while (allyHelperManager.IsHelperBusy)
-            yield return null;
+        if (step.helperChainAttackSequence == null || helperContinueMode == ChainStepContinueMode.OnStepComplete)
+        {
+            while (allyHelperManager.IsHelperBusy)
+                yield return null;
 
-        onFinished(allyHelperManager.LastExecutionSucceeded);
+            onFinished(allyHelperManager.LastExecutionSucceeded);
+            yield break;
+        }
+
+        int executionId = allyHelperManager.ActiveChainAttackExecutionId;
+        if (executionId <= 0)
+        {
+            while (allyHelperManager.IsHelperBusy)
+                yield return null;
+
+            onFinished(allyHelperManager.LastExecutionSucceeded);
+            yield break;
+        }
+
+        while (true)
+        {
+            if (allyHelperManager.TryGetCompletedChainAttackExecutionResult(executionId, out bool success))
+            {
+                onFinished(success);
+                yield break;
+            }
+
+            if (allyHelperManager.IsChainAttackExecutionReadyToContinue(executionId))
+            {
+                TrackHelperStepCompletion(runtime, allyHelperManager, executionId, step);
+                onFinished(true);
+                yield break;
+            }
+
+            yield return null;
+        }
+    }
+
+    void TrackHelperStepCompletion(
+        ActiveChainRuntime runtime,
+        AllyHelperManager helperManager,
+        int executionId,
+        ChainAttackStepDef step)
+    {
+        if (runtime == null || helperManager == null || executionId <= 0)
+            return;
+
+        runtime.pendingTrackedStepCompletions++;
+        StartCoroutine(WaitForTrackedHelperStepCompletion(runtime, helperManager, executionId, step));
+    }
+
+    IEnumerator WaitForTrackedHelperStepCompletion(
+        ActiveChainRuntime runtime,
+        AllyHelperManager helperManager,
+        int executionId,
+        ChainAttackStepDef step)
+    {
+        bool success = false;
+
+        while (helperManager != null &&
+               !helperManager.TryGetCompletedChainAttackExecutionResult(executionId, out success))
+        {
+            yield return null;
+        }
+
+        if (runtime != null && runtime.pendingTrackedStepCompletions > 0)
+            runtime.pendingTrackedStepCompletions--;
+
+        if (runtime == null)
+            yield break;
+
+        if (helperManager == null)
+        {
+            runtime.hadLateStepFailure = true;
+            yield break;
+        }
+
+        if (!success)
+        {
+            runtime.hadLateStepFailure = true;
+            Log(runtime.sequenceDef, $"Helper step '{step.RuntimeId}' failed after releasing its early continue signal.");
+        }
+    }
+
+    static ChainStepContinueMode ResolveHelperContinueMode(ChainAttackStepDef step)
+    {
+        if (step == null)
+            return ChainStepContinueMode.OnStepComplete;
+
+        if (step.UsesStepContinueOverride)
+            return step.continueMode;
+
+        return step.skillDef != null
+            ? step.skillDef.GetChainContinueMode()
+            : ChainStepContinueMode.OnStepComplete;
+    }
+
+    static float ResolveHelperContinueNormalizedTime(ChainAttackStepDef step, ChainStepContinueMode continueMode)
+    {
+        if (continueMode == ChainStepContinueMode.OnAttackCastMoment)
+        {
+            return step?.skillDef != null
+                ? step.skillDef.GetCastPointNormalized()
+                : step != null ? step.ClampedContinueNormalizedTime : 1f;
+        }
+
+        if (continueMode == ChainStepContinueMode.OnAttackNormalizedTime)
+        {
+            if (step != null && step.UsesStepContinueOverride)
+                return step.ClampedContinueNormalizedTime;
+
+            return step?.skillDef != null
+                ? step.skillDef.GetChainContinueNormalizedTime()
+                : 1f;
+        }
+
+        return 1f;
     }
 
     bool IsRuntimeStillValid(ActiveChainRuntime runtime)

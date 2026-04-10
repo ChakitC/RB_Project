@@ -45,7 +45,7 @@ MonoBehaviour:
     _NormalizedStartTime: NaN
   castPointNormalized: 0.3645901
   chainContinueMode: 2
-  chainContinueNormalizedTime: 0.669025
+  chainContinueNormalizedTime: 0.138
   perLevelData: []
   previewLevel: 1
   references:

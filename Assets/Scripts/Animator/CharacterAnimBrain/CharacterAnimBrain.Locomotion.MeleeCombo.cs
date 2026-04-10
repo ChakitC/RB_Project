@@ -32,6 +32,14 @@ public sealed partial class CharacterAnimBrain
         private bool _hasChain;
         private float _cs, _ce;
         private MeleeComboSO.Step _cfg;
+
+        internal AnimancerState DebugState => state;
+        internal int DebugBufferedPresses => bufferedPresses;
+        internal bool DebugChainWindowOpen => _chainOpen;
+        internal bool DebugPressedInWindow => _pressedInWindow;
+        internal bool DebugWindowExpired => windowExpired;
+        internal float DebugChainWindowStart => _cs;
+        internal float DebugChainWindowEnd => _ce;
         
 
         public Locomotion_MeleeCombo(CharacterAnimBrain owner) => this.owner = owner;

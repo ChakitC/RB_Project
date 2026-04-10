@@ -33,8 +33,8 @@
         {
             "characterId": "ID.Feno",
             "progress": {
-                "level": 24,
-                "xp": 2274,
+                "level": 25,
+                "xp": 649,
                 "skillPoints": 21,
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": []

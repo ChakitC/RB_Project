@@ -22,6 +22,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: Roma_Face
+    second: {fileID: 2100000, guid: e3373ece00a882b4e900fca1309cf6fd, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: Roma_Props
     second: {fileID: 2100000, guid: 65c80585116c90540a9381adac13ae34, type: 2}
   materials:

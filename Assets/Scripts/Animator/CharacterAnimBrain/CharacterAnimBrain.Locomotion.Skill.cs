@@ -45,8 +45,7 @@ public sealed partial class CharacterAnimBrain
             owner.animancer.Animator.applyRootMotion = true; // ถ้ามีหลาย skill ควรใช้ flag/config
             owner.RootMotionActive = true;
 
-            owner.actionSM.TrySetState(owner.empty);
-            owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
+            owner.ClearActionLayerForExclusiveLocomotion();
 
             state = owner.LocoLayer.Play(skillClip);
             state.NormalizedTime = 0f;
@@ -82,9 +81,22 @@ public sealed partial class CharacterAnimBrain
             owner.animancer.Animator.applyRootMotion = _prevApplyRootMotion;
             owner.RootMotionActive = false;
 
-            owner.actionSM.TrySetState(owner.empty);
+            owner.ClearActionLayerForExclusiveLocomotion();
+            owner.TryResumeHoldAction();
             owner.NotifySkillStateExited(_completedNormally);
             
+        }
+
+        internal bool TryGetNormalizedTime(out float normalizedTime)
+        {
+            if (state != null)
+            {
+                normalizedTime = state.NormalizedTime;
+                return true;
+            }
+
+            normalizedTime = 0f;
+            return false;
         }
 
         private void OnSkillEnd()

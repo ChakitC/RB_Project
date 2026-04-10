@@ -44,6 +44,8 @@ MonoBehaviour:
     _Clip: {fileID: -5924742034376740567, guid: 02ffae2fd2bd8ff41af2e8787ff4aabc, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.3531141
+  chainContinueMode: 1
+  chainContinueNormalizedTime: 0.3531141
   perLevelData: []
   previewLevel: 1
   references:

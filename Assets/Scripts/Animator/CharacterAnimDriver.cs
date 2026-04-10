@@ -135,7 +135,25 @@ public sealed class CharacterAnimDriver : MonoBehaviour
     {
         if (brain == null) return;
 
-        if (shouldHold && !_animHold) { brain.FireDown(); _animHold = true; }
-        else if (!shouldHold && _animHold) { brain.FireUp(); _animHold = false; }
+        if (shouldHold)
+        {
+            if (!_animHold)
+            {
+                brain.FireDown();
+                _animHold = true;
+            }
+
+            return;
+        }
+
+        // Preserve hold intent while exclusive skill/utility/chain locomotion temporarily blocks shooting.
+        if (_animHold && _inputHold && brain.IsSkillActive)
+            return;
+
+        if (_animHold)
+        {
+            brain.FireUp();
+            _animHold = false;
+        }
     }
 }

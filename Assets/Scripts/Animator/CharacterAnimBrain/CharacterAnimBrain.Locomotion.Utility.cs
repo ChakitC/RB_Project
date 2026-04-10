@@ -45,8 +45,7 @@ public sealed partial class CharacterAnimBrain
             owner.animancer.Animator.applyRootMotion = true;
             owner.RootMotionActive = true;
 
-            owner.actionSM.TrySetState(owner.empty);
-            owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
+            owner.ClearActionLayerForExclusiveLocomotion();
 
             state = owner.LocoLayer.Play(utilityClip);
             state.NormalizedTime = 0f;
@@ -82,7 +81,8 @@ public sealed partial class CharacterAnimBrain
             owner.animancer.Animator.applyRootMotion = _prevApplyRootMotion;
             owner.RootMotionActive = false;
 
-            owner.actionSM.TrySetState(owner.empty);
+            owner.ClearActionLayerForExclusiveLocomotion();
+            owner.TryResumeHoldAction();
             owner.NotifyUtilityStateExited(_completedNormally);
         }
 

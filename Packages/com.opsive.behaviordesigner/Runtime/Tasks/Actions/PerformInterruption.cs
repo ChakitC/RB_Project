@@ -8,6 +8,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Utility;
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using Opsive.GraphDesigner.Runtime;
     using Unity.Entities;
     using Unity.Burst;
@@ -16,17 +17,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
 
     [NodeIcon("7c0aba0d8377aac48966d8e3f817a2a8", "90105f40f82a30e45b08d150c1928950")]
     [Opsive.Shared.Utility.Description("Performs the actual interruption. This will immediately stop the specified tasks from running and will return success or failure depending on the value of interrupt success.")]
-    public class PerformInterruption : ECSActionTask<PerformInterruptionTaskSystem, PerformInterruptionComponent>
+    public class PerformInterruption : ECSActionTask<PerformInterruptionTaskSystem, PerformInterruptionComponent, PerformInterruptionFlag>
     {
         [Tooltip("The task that should be interrupted.")]
         [SerializeField] ILogicNode[] m_InterruptTasks;
         [Tooltip("Should the interrupted task return success?")]
         [SerializeField] bool m_InterruptSuccess;
-
-        /// <summary>
-        /// The type of tag that should be enabled when the task is running.
-        /// </summary>
-        public override ComponentType Flag { get => typeof(PerformInterruptionFlag); }
 
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
@@ -73,11 +69,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         /// </summary>
         /// <param name="world">The world that the entity exists in.</param>
         /// <param name="entity">The entity that the IBufferElementData should be assigned to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
         /// <param name="gameObject">The GameObject that the entity is attached to.</param>
         /// <returns>The index of the element within the buffer.</returns>
-        public override int AddBufferElement(World world, Entity entity, GameObject gameObject)
+        public override int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, GameObject gameObject)
         {
-            var index = base.AddBufferElement(world, entity, gameObject);
+            var index = base.AddBufferElement(world, entity, registry, gameObject);
             ComponentUtility.AddInterruptComponents(world.EntityManager, entity);
             return index;
         }
@@ -95,7 +92,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         [Tooltip("Should the interrupted tasks return success?")]
         [SerializeField] public bool InterruptSuccess;
     }
-    
+
     /// <summary>
     /// A DOTS flag indicating when a PerformInterruption node is active.
     /// </summary>

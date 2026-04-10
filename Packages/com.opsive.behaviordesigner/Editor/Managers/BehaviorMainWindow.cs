@@ -5,6 +5,7 @@
 /// ---------------------------------------------
 namespace Opsive.BehaviorDesigner.Editor.Managers
 {
+    using Opsive.BehaviorDesigner.Editor;
     using Opsive.Shared.Editor.Managers;
     using UnityEditor;
     using UnityEngine;
@@ -23,6 +24,17 @@ namespace Opsive.BehaviorDesigner.Editor.Managers
         protected override string LatestVersionKey => "Opsive.BehaviorDesigner.Editor.LatestVersion";
         protected override string LastUpdateCheckKey => "Opsive.BehaviorDesigner.Editor.LastUpdateCheck";
         protected override string ManagerNamespace => "Opsive.BehaviorDesigner.Editor";
+
+        /// <summary>
+        /// The MainManagerWindow has been enabled.
+        /// </summary>
+        protected override void OnEnable()
+        {
+            base.OnEnable();
+#if GRAPH_DESIGNER
+            BehaviorDesignerEulaGate.Attach(this);
+#endif
+        }
 
         /// <summary>
         /// Initializes the Main Manager.

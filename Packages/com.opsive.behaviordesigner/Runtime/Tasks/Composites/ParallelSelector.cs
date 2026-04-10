@@ -1,4 +1,4 @@
-﻿#if GRAPH_DESIGNER
+#if GRAPH_DESIGNER
 /// ---------------------------------------------
 /// Behavior Designer
 /// Copyright (c) Opsive. All Rights Reserved.
@@ -8,12 +8,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Utility;
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using Opsive.GraphDesigner.Runtime;
     using Unity.Burst;
-    using Unity.Collections;
     using Unity.Entities;
-    using Unity.Jobs;
-    using Unity.Mathematics;
     using UnityEngine;
 
     /// <summary>
@@ -24,13 +22,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                      "The parallel task will run all of its children tasks simultaneously versus running each task one at a time. " +
                      "If one tasks returns success the parallel selector task will end all of the child tasks and return success. " +
                      "If every child task returns failure then the parallel selector task will return failure.")]
-    public class ParallelSelector : ECSCompositeTask<ParallelSelectorTaskSystem, ParallelSelectorComponent>, IParentNode, IParallelNode
+    public class ParallelSelector : ECSCompositeTask<ParallelSelectorTaskSystem, ParallelSelectorComponent, ParallelSelectorFlag>, IParentNode, IParallelNode
     {
-        /// <summary>
-        /// The type of tag that should be enabled when the task is running.
-        /// </summary>
-        public override ComponentType Flag { get => typeof(ParallelSelectorFlag); }
-
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
         /// </summary>
@@ -47,11 +40,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
         /// </summary>
         /// <param name="world">The world that the entity exists in.</param>
         /// <param name="entity">The entity that the IBufferElementData should be assigned to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
         /// <param name="gameObject">The GameObject that the entity is attached to.</param>
         /// <returns>The index of the element within the buffer.</returns>
-        public override int AddBufferElement(World world, Entity entity, GameObject gameObject)
+        public override int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, GameObject gameObject)
         {
-            var index = base.AddBufferElement(world, entity, gameObject);
+            var index = base.AddBufferElement(world, entity, registry, gameObject);
             ComponentUtility.AddInterruptComponents(world.EntityManager, entity);
             return index;
         }
@@ -80,7 +74,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     public partial struct ParallelSelectorTaskSystem : ISystem
     {
         private EntityQuery m_Query;
-        private JobHandle m_Dependency;
 
         /// <summary>
         /// Builds the query.
@@ -98,14 +91,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
         [BurstCompile]
         private void OnUpdate(ref SystemState state)
         {
-            m_Dependency.Complete();
-
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
             state.Dependency = new ParallelSelectorJob()
             {
                 EntityCommandBuffer = ecb.AsParallelWriter()
             }.ScheduleParallel(m_Query, state.Dependency);
-            m_Dependency = state.Dependency;
         }
 
         /// <summary>
@@ -131,6 +121,13 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                 for (int i = 0; i < parallelSelectorComponents.Length; ++i) {
                     var parallelSelectorComponent = parallelSelectorComponents[i];
                     var taskComponent = taskComponents[parallelSelectorComponent.Index];
+                    var taskStatus = taskComponent.Status;
+
+                    // Skip inactive tasks before any branch lookups.
+                    if (taskStatus != TaskStatus.Queued && taskStatus != TaskStatus.Running) {
+                        continue;
+                    }
+
                     var branchComponent = branchComponents[taskComponent.BranchIndex];
 
                     // Do not continue if there will be an interrupt or the branch cannot execute.
@@ -140,24 +137,26 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
 
                     ushort childIndex;
                     TaskComponent childTaskComponent;
-                    if (taskComponent.Status == TaskStatus.Queued) {
+                    if (taskStatus == TaskStatus.Queued) {
                         taskComponent.Status = TaskStatus.Running;
                         taskComponents[taskComponent.Index] = taskComponent;
 
                         childIndex = (ushort)(parallelSelectorComponent.Index + 1);
                         while (childIndex != ushort.MaxValue) {
                             childTaskComponent = taskComponents[childIndex];
-                            childTaskComponent.Status = TaskStatus.Queued;
-                            taskComponents[childIndex] = childTaskComponent;
+                            if (childTaskComponent.Status != TaskStatus.Queued) {
+                                childTaskComponent.Status = TaskStatus.Queued;
+                                taskComponents[childIndex] = childTaskComponent;
+                            }
 
                             var childBranchComponent = branchComponents[childTaskComponent.BranchIndex];
-                            childBranchComponent.NextIndex = childTaskComponent.Index;
-                            branchComponents[childTaskComponent.BranchIndex] = childBranchComponent;
+                            if (childBranchComponent.NextIndex != childTaskComponent.Index) {
+                                childBranchComponent.NextIndex = childTaskComponent.Index;
+                                branchComponents[childTaskComponent.BranchIndex] = childBranchComponent;
+                            }
 
-                            childIndex = taskComponents[childIndex].SiblingIndex;
+                            childIndex = childTaskComponent.SiblingIndex;
                         }
-                    } else if (taskComponent.Status != TaskStatus.Running) {
-                        continue;
                     }
 
                     var childSuccess = false;
@@ -169,7 +168,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                             childrenRunning = true;
                         } else if (childTaskComponent.Status == TaskStatus.Failure) {
                             var childBranchComponent = branchComponents[childTaskComponent.BranchIndex];
-                            if (childBranchComponent.ActiveIndex != ushort.MaxValue) {
+                            if (childBranchComponent.ActiveIndex != ushort.MaxValue && childBranchComponent.NextIndex != ushort.MaxValue) {
                                 childBranchComponent.NextIndex = ushort.MaxValue;
                                 branchComponents[childTaskComponent.BranchIndex] = childBranchComponent;
                             }
@@ -177,16 +176,21 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                             childSuccess = true;
 
                             var childBranchComponent = branchComponents[childTaskComponent.BranchIndex];
-                            childBranchComponent.NextIndex = ushort.MaxValue;
-                            branchComponents[childTaskComponent.BranchIndex] = childBranchComponent;
+                            if (childBranchComponent.NextIndex != ushort.MaxValue) {
+                                childBranchComponent.NextIndex = ushort.MaxValue;
+                                branchComponents[childTaskComponent.BranchIndex] = childBranchComponent;
+                            }
                             break;
                         }
-                        childIndex = taskComponents[childIndex].SiblingIndex;
+                        childIndex = childTaskComponent.SiblingIndex;
                     }
 
                     // If a single child succeeds then all tasks should be stopped.
                     if (childSuccess) {
-                        var maxChildIndex = taskComponent.Index + TraversalUtility.GetChildCount(taskComponent.Index, ref taskComponents);
+                        var maxChildIndex = taskComponent.ChildUpperIndex > taskComponent.Index
+                            ? taskComponent.ChildUpperIndex
+                            : (ushort)(taskComponent.Index);
+                        var interruptedFlagSet = false;
                         for (ushort j = (ushort)(taskComponent.Index + 1); j <= maxChildIndex; ++j) {
                             childTaskComponent = taskComponents[j];
                             if (childTaskComponent.Status == TaskStatus.Running || childTaskComponent.Status == TaskStatus.Queued) {
@@ -194,10 +198,15 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                                 taskComponents[j] = childTaskComponent;
 
                                 branchComponent = branchComponents[childTaskComponent.BranchIndex];
-                                EntityCommandBuffer.SetComponentEnabled<InterruptedFlag>(entityIndex, entity, true);
+                                if (!interruptedFlagSet) {
+                                    EntityCommandBuffer.SetComponentEnabled<InterruptedFlag>(entityIndex, entity, true);
+                                    interruptedFlagSet = true;
+                                }
                                 if (branchComponent.ActiveIndex == childTaskComponent.Index) {
-                                    branchComponent.NextIndex = ushort.MaxValue;
-                                    branchComponents[childTaskComponent.BranchIndex] = branchComponent;
+                                    if (branchComponent.NextIndex != ushort.MaxValue) {
+                                        branchComponent.NextIndex = ushort.MaxValue;
+                                        branchComponents[childTaskComponent.BranchIndex] = branchComponent;
+                                    }
                                 }
                             }
                         }
@@ -209,8 +218,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                     taskComponent.Status = TaskStatus.Success;
                     taskComponents[taskComponent.Index] = taskComponent;
 
-                    branchComponent.NextIndex = taskComponent.ParentIndex;
-                    branchComponents[taskComponent.BranchIndex] = branchComponent;
+                    if (branchComponent.NextIndex != taskComponent.ParentIndex) {
+                        branchComponent.NextIndex = taskComponent.ParentIndex;
+                        branchComponents[taskComponent.BranchIndex] = branchComponent;
+                    }
                 }
             }
         }

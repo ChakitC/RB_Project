@@ -6,12 +6,12 @@
 /// ---------------------------------------------
 namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.UnityObjects
 {
-    using Opsive.GraphDesigner.Runtime;
     using Opsive.GraphDesigner.Runtime.Variables;
     using UnityEngine;
 
-    [Opsive.Shared.Utility.Description("Enables or disables the specified MonoBehaviour.")]
+    [Opsive.Shared.Utility.Description("This task is obsolete. Use Variables.SetGameObject instead.")]
     [Shared.Utility.Category("Unity")]
+    [System.Obsolete("This task is obsolete. Use GameObject.SetEnabled instead.")]
     public class SetEnabled : Action
     {
         [Tooltip("Should the MonoBehaviour be enabled?")]

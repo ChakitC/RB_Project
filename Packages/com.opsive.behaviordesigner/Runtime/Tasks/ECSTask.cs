@@ -6,6 +6,7 @@
 /// ---------------------------------------------
 namespace Opsive.BehaviorDesigner.Runtime.Tasks
 {
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using Opsive.GraphDesigner.Runtime;
     using Unity.Entities;
     using UnityEngine;
@@ -13,7 +14,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
     /// <summary>
     /// Base class for a boilerplate ECS task.
     /// </summary>
-    public abstract class ECSTask<TSystem, TBufferElement> : ITreeLogicNode, IAuthoringTask where TBufferElement : unmanaged, IBufferElementData
+    public abstract class ECSTask<TSystem, TBufferElement, TComponentFlag> : ITreeLogicNode, IAuthoringTask where TBufferElement : unmanaged, IBufferElementData
     {
         [Tooltip("The index of the node.")]
         [SerializeField] ushort m_Index;
@@ -21,11 +22,13 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         [SerializeField] ushort m_ParentIndex;
         [Tooltip("The sibling index of the node. ushort.MaxValue indicates no sibling.")]
         [SerializeField] ushort m_SiblingIndex;
+        [Tooltip("Specifies if the node is enabled.")]
+        [SerializeField] protected bool m_Enabled = true;
 
         /// <summary>
         /// The type of flag that should be enabled when the task is running.
         /// </summary>
-        public abstract ComponentType Flag { get; }
+        public ComponentType Flag => typeof(TComponentFlag);
         /// <summary>
         /// The system type that the component uses.
         /// </summary>
@@ -48,6 +51,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
             get => m_SiblingIndex;
             set => m_SiblingIndex = value;
         }
+        public bool Enabled { get => m_Enabled; set => m_Enabled = value; }
 
         public ushort RuntimeIndex { get; set; }
 
@@ -57,13 +61,15 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         public virtual void Reset() { }
 
         /// <summary>
-        /// Adds the IBufferElementData to the entity.
+        /// Adds the IBufferElementData to the entity and registers any SharedVariable fields.
+        /// Override this method to register SharedVariable fields before calling base.
         /// </summary>
         /// <param name="world">The world that the entity exists in.</param>
         /// <param name="entity">The entity that the IBufferElementData should be assigned to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
         /// <param name="gameObject">The GameObject that the entity is attached to.</param>
         /// <returns>The index of the element within the buffer.</returns>
-        public virtual int AddBufferElement(World world, Entity entity, GameObject gameObject)
+        public virtual int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, GameObject gameObject)
         {
             DynamicBuffer<TBufferElement> buffer;
             if (world.EntityManager.HasBuffer<TBufferElement>(entity)) {
@@ -100,33 +106,33 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
     /// <summary>
     /// Base class for an ECS action task.
     /// </summary>
-    public abstract class ECSActionTask<TSystem, TComponent> : ECSTask<TSystem, TComponent>, IAction where TComponent : unmanaged, IBufferElementData { }
+    public abstract class ECSActionTask<TSystem, TBufferElement, TComponentFlag> : ECSTask<TSystem, TBufferElement, TComponentFlag>, IAction where TBufferElement : unmanaged, IBufferElementData { }
 
     /// <summary>
     /// Base class for an ECS composite task.
     /// </summary>
-    public abstract class ECSCompositeTask<TSystem, TComponent> : ECSTask<TSystem, TComponent>, IComposite, IParentNode where TComponent : unmanaged, IBufferElementData
+    public abstract class ECSCompositeTask<TSystem, TBufferElement, TComponentFlag> : ECSTask<TSystem, TBufferElement, TComponentFlag>, IComposite, IParentNode where TBufferElement : unmanaged, IBufferElementData
     {
         /// <summary>
         /// The maximum number of children the node can have.
         /// </summary>
-        public virtual int MaxChildCount { get => ushort.MaxValue; }
+        public virtual ushort MaxChildCount { get => ushort.MaxValue; }
     }
 
     /// <summary>
     /// Base class for an ECS conditional task.
     /// </summary>
-    public abstract class ECSConditionalTask<TSystem, TComponent> : ECSTask<TSystem, TComponent>, IConditional where TComponent : unmanaged, IBufferElementData { }
+    public abstract class ECSConditionalTask<TSystem, TBufferElement, TComponentFlag> : ECSTask<TSystem, TBufferElement, TComponentFlag>, IConditional where TBufferElement : unmanaged, IBufferElementData { }
 
     /// <summary>
     /// Base class for an ECS decorator task.
     /// </summary>
-    public abstract class ECSDecoratorTask<TSystem, TComponent> : ECSTask<TSystem, TComponent>, IDecorator, IParentNode where TComponent : unmanaged, IBufferElementData
+    public abstract class ECSDecoratorTask<TSystem, TBufferElement, TComponentFlag> : ECSTask<TSystem, TBufferElement, TComponentFlag>, IDecorator, IParentNode where TBufferElement : unmanaged, IBufferElementData
     {
         /// <summary>
         /// The maximum number of children the node can have.
         /// </summary>
-        public int MaxChildCount { get => 1; }
+        public ushort MaxChildCount { get => 1; }
     }
 }
 #endif

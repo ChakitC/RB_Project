@@ -4,7 +4,7 @@
 /// Copyright (c) Opsive. All Rights Reserved.
 /// https://www.opsive.com
 /// ---------------------------------------------
-namespace Opsive.BehaviorDesigner.Runtime
+namespace Opsive.BehaviorDesigner.Runtime.Templates
 {
     using Opsive.BehaviorDesigner.Runtime.Tasks;
     using Opsive.GraphDesigner.Runtime;
@@ -15,7 +15,7 @@ namespace Opsive.BehaviorDesigner.Runtime
     /// Template for creating a custom action node.
     /// </summary>
     [Category("GameObjects")]
-    [DisplayName("Action")]
+    [DisplayName("Action Node")]
     [Description("Create a new action node.")]
     public class GameObjectActionNode : INodeTemplate
     {
@@ -53,7 +53,7 @@ public class {name} : ActionNode
     /// Template for creating a custom action task.
     /// </summary>
     [Category("GameObjects")]
-    [DisplayName("Stacked Action")]
+    [DisplayName("Action")]
     [Description("Create a new stacked action node.")]
     public class GameObjectAction : INodeTemplate
     {
@@ -91,7 +91,7 @@ public class {name} : Action
     /// Template for creating a custom composite node.
     /// </summary>
     [Category("GameObjects")]
-    [DisplayName("Composite")]
+    [DisplayName("Composite Node")]
     [Description("Create a new composite node.")]
     public class GameObjectCompositeNode : IParentNodeTemplate
     {
@@ -129,7 +129,7 @@ public class {name} : CompositeNode
     /// Template for creating a custom conditional node.
     /// </summary>
     [Category("GameObjects")]
-    [DisplayName("Conditional")]
+    [DisplayName("Conditional Node")]
     [Description("Create a new conditional node.")]
     public class GameObjectConditionalNode : INodeTemplate
     {
@@ -167,7 +167,7 @@ public class {name} : ConditionalNode
     /// Template for creating a custom conditional task.
     /// </summary>
     [Category("GameObjects")]
-    [DisplayName("Stacked Conditional")]
+    [DisplayName("Conditional")]
     [Description("Create a new stacked conditional node.")]
     public class GameObjectConditional : INodeTemplate
     {
@@ -205,7 +205,7 @@ public class {name} : Conditional
     /// Template for creating a custom decorator node.
     /// </summary>
     [Category("GameObjects")]
-    [DisplayName("Decorator")]
+    [DisplayName("Decorator Node")]
     [Description("Create a new decorator node.")]
     public class GameObjectDecoratorNode : IParentNodeTemplate
     {

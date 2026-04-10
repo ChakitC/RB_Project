@@ -93,6 +93,18 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             [BurstCompile]
             public void Execute(Entity entity, [EntityIndexInQuery] int entityIndex, ref DynamicBuffer<BranchComponent> branchComponents, ref DynamicBuffer<TaskComponent> taskComponents)
             {
+                // Track active flag types to avoid branch-wide scans when toggling system tags.
+                var trackedTypeIndices = new FixedList4096Bytes<int>();
+                var trackedTypeCounts = new FixedList4096Bytes<ushort>();
+                for (int i = 0; i < branchComponents.Length; ++i) {
+                    var branchComponent = branchComponents[i];
+                    if (branchComponent.ActiveIndex == ushort.MaxValue || branchComponent.ActiveFlagComponentType.TypeIndex == TypeIndex.Null) {
+                        continue;
+                    }
+
+                    IncrementTrackedTypeCount(branchComponent.ActiveFlagComponentType.TypeIndex, ref trackedTypeIndices, ref trackedTypeCounts);
+                }
+
                 for (int i = 0; i < branchComponents.Length; ++i) {
                     var branchComponent = branchComponents[i];
                     if (branchComponent.ActiveIndex != ushort.MaxValue && branchComponent.ActiveIndex == branchComponent.NextIndex) {
@@ -103,7 +115,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                     }
                     if (branchComponent.ActiveIndex != branchComponent.NextIndex) {
                         // Do not switch into a disabled task.
-                        if (branchComponent.NextIndex != ushort.MaxValue && taskComponents[branchComponent.NextIndex].Disabled) {
+                        if (branchComponent.NextIndex != ushort.MaxValue && !taskComponents[branchComponent.NextIndex].Enabled) {
                             var taskComponent = taskComponents[branchComponent.NextIndex];
                             taskComponent.Status = TaskStatus.Inactive;
                             var taskComponentBuffer = taskComponents;
@@ -133,26 +145,15 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                             // Change the component tag if the task type is different.
                             var componentType = branchComponent.ActiveIndex != ushort.MaxValue ? taskComponents[branchComponent.ActiveIndex].FlagComponentType : new ComponentType();
                             if (componentType != branchComponent.ActiveFlagComponentType) {
-                                if (branchComponent.ActiveFlagComponentType.TypeIndex != TypeIndex.Null) {
-                                    var deactivateTag = true;
-                                    for (int j = 0; j < branchComponents.Length; ++j) {
-                                        // The tag should be deactivated if no other tasks have the same tag type.
-                                        if (i != j && branchComponents[j].ActiveIndex != ushort.MaxValue &&
-                                            branchComponent.ActiveFlagComponentType == branchComponents[j].ActiveFlagComponentType) {
-                                            deactivateTag = false;
-                                            break;
-                                        }
-                                    }
-
+                                if (branchComponent.ActiveFlagComponentType.TypeIndex != TypeIndex.Null &&
+                                    DecrementTrackedTypeCount(branchComponent.ActiveFlagComponentType.TypeIndex, ref trackedTypeIndices, ref trackedTypeCounts) == 0) {
                                     // The task of that type is no longer active - disable the system to prevent it from running.
-                                    if (deactivateTag) {
-                                        EntityCommandBuffer.SetComponentEnabled(entityIndex, entity, branchComponent.ActiveFlagComponentType, false);
-                                    }
+                                    EntityCommandBuffer.SetComponentEnabled(entityIndex, entity, branchComponent.ActiveFlagComponentType, false);
                                 }
                                 // A new system type should start.
-                                if (branchComponent.ActiveIndex != ushort.MaxValue) {
-                                    var taskComponent = taskComponents[branchComponent.ActiveIndex];
-                                    EntityCommandBuffer.SetComponentEnabled(entityIndex, entity, taskComponent.FlagComponentType, true);
+                                if (componentType.TypeIndex != TypeIndex.Null &&
+                                    IncrementTrackedTypeCount(componentType.TypeIndex, ref trackedTypeIndices, ref trackedTypeCounts) == 0) {
+                                    EntityCommandBuffer.SetComponentEnabled(entityIndex, entity, componentType, true);
                                 }
                                 branchComponent.ActiveFlagComponentType = componentType;
                             }
@@ -161,6 +162,71 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                         branchComponentBuffer[i] = branchComponent;
                     }
                 }
+            }
+
+            /// <summary>
+            /// Increments the active count for a component type.
+            /// </summary>
+            /// <param name="typeIndex">The type index to increment.</param>
+            /// <param name="trackedTypeIndices">The tracked type indices.</param>
+            /// <param name="trackedTypeCounts">The tracked type counts.</param>
+            /// <returns>The previous count for the type.</returns>
+            [BurstCompile]
+            private static ushort IncrementTrackedTypeCount(int typeIndex, ref FixedList4096Bytes<int> trackedTypeIndices, ref FixedList4096Bytes<ushort> trackedTypeCounts)
+            {
+                var trackedTypeIndex = FindTrackedTypeIndex(typeIndex, ref trackedTypeIndices);
+                if (trackedTypeIndex == -1) {
+                    trackedTypeIndices.Add(typeIndex);
+                    trackedTypeCounts.Add(1);
+                    return 0;
+                }
+
+                var previousCount = trackedTypeCounts[trackedTypeIndex];
+                trackedTypeCounts[trackedTypeIndex] = (ushort)(previousCount + 1);
+                return previousCount;
+            }
+
+            /// <summary>
+            /// Returns the index of the type within the tracked type list.
+            /// </summary>
+            /// <param name="typeIndex">The type index to search for.</param>
+            /// <param name="trackedTypeIndices">The tracked type indices.</param>
+            /// <returns>The index of the type within the tracked list. Returns -1 if not found.</returns>
+            [BurstCompile]
+            private static int FindTrackedTypeIndex(int typeIndex, ref FixedList4096Bytes<int> trackedTypeIndices)
+            {
+                for (int i = 0; i < trackedTypeIndices.Length; ++i) {
+                    if (trackedTypeIndices[i] == typeIndex) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
+            /// <summary>
+            /// Decrements the active count for a component type.
+            /// </summary>
+            /// <param name="typeIndex">The type index to decrement.</param>
+            /// <param name="trackedTypeIndices">The tracked type indices.</param>
+            /// <param name="trackedTypeCounts">The tracked type counts.</param>
+            /// <returns>The new count for the type.</returns>
+            [BurstCompile]
+            private static ushort DecrementTrackedTypeCount(int typeIndex, ref FixedList4096Bytes<int> trackedTypeIndices, ref FixedList4096Bytes<ushort> trackedTypeCounts)
+            {
+                var trackedTypeIndex = FindTrackedTypeIndex(typeIndex, ref trackedTypeIndices);
+                if (trackedTypeIndex == -1) {
+                    return 0;
+                }
+
+                var count = trackedTypeCounts[trackedTypeIndex];
+                if (count <= 1) {
+                    trackedTypeCounts[trackedTypeIndex] = 0;
+                    return 0;
+                }
+
+                count--;
+                trackedTypeCounts[trackedTypeIndex] = count;
+                return count;
             }
         }
     }
@@ -186,11 +252,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         private EntityQuery m_Query128;
         private EntityQuery m_Query512;
         private EntityQuery m_Query4096;
-        private EntityCommandBuffer m_EntityCommandBuffer32;
-        private EntityCommandBuffer m_EntityCommandBuffer64;
-        private EntityCommandBuffer m_EntityCommandBuffer128;
-        private EntityCommandBuffer m_EntityCommandBuffer512;
-        private EntityCommandBuffer m_EntityCommandBuffer4096;
+        private EntityCommandBuffer m_EntityCommandBuffer;
 
         private NativeArray<bool> m_Results;
 
@@ -219,41 +281,41 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             Active = Evaluate = true;
             m_JobScheduled = true;
 
-            m_EntityCommandBuffer32 = new EntityCommandBuffer(Allocator.TempJob);
-            m_EntityCommandBuffer64 = new EntityCommandBuffer(Allocator.TempJob);
-            m_EntityCommandBuffer128 = new EntityCommandBuffer(Allocator.TempJob);
-            m_EntityCommandBuffer512 = new EntityCommandBuffer(Allocator.TempJob);
-            m_EntityCommandBuffer4096 = new EntityCommandBuffer(Allocator.TempJob);
-
-            m_Results = new NativeArray<bool>(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-            for (int i = 0; i < m_Results.Length; ++i) {
-                m_Results[i] = false;
+            if (m_Query32.IsEmptyIgnoreFilter && m_Query64.IsEmptyIgnoreFilter && m_Query128.IsEmptyIgnoreFilter && m_Query512.IsEmptyIgnoreFilter && m_Query4096.IsEmptyIgnoreFilter) {
+                Active = Evaluate = false;
+                m_JobScheduled = false;
+                return;
             }
+
+            m_EntityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+
+            m_Results = new NativeArray<bool>(3, Allocator.TempJob, NativeArrayOptions.ClearMemory);
+            var entityCommandBufferParallelWriter = m_EntityCommandBuffer.AsParallelWriter();
 
             // Chain jobs sequentially since they all write to the shared Results array.
             m_Dependency = new DetermineEvaluationJob32()
             {
-                EntityCommandBuffer = m_EntityCommandBuffer32.AsParallelWriter(),
+                EntityCommandBuffer = entityCommandBufferParallelWriter,
                 Results = m_Results
             }.ScheduleParallel(m_Query32, state.Dependency);
             m_Dependency = new DetermineEvaluationJob64()
             {
-                EntityCommandBuffer = m_EntityCommandBuffer64.AsParallelWriter(),
+                EntityCommandBuffer = entityCommandBufferParallelWriter,
                 Results = m_Results
             }.ScheduleParallel(m_Query64, m_Dependency);
             m_Dependency = new DetermineEvaluationJob128()
             {
-                EntityCommandBuffer = m_EntityCommandBuffer128.AsParallelWriter(),
+                EntityCommandBuffer = entityCommandBufferParallelWriter,
                 Results = m_Results
             }.ScheduleParallel(m_Query128, m_Dependency);
             m_Dependency = new DetermineEvaluationJob512()
             {
-                EntityCommandBuffer = m_EntityCommandBuffer512.AsParallelWriter(),
+                EntityCommandBuffer = entityCommandBufferParallelWriter,
                 Results = m_Results
             }.ScheduleParallel(m_Query512, m_Dependency);
             m_Dependency = new DetermineEvaluationJob4096()
             {
-                EntityCommandBuffer = m_EntityCommandBuffer4096.AsParallelWriter(),
+                EntityCommandBuffer = entityCommandBufferParallelWriter,
                 Results = m_Results
             }.ScheduleParallel(m_Query4096, m_Dependency);
 
@@ -272,16 +334,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             }
 
             m_Dependency.Complete();
-            m_EntityCommandBuffer32.Playback(entityManager);
-            m_EntityCommandBuffer32.Dispose();
-            m_EntityCommandBuffer64.Playback(entityManager);
-            m_EntityCommandBuffer64.Dispose();
-            m_EntityCommandBuffer128.Playback(entityManager);
-            m_EntityCommandBuffer128.Dispose();
-            m_EntityCommandBuffer512.Playback(entityManager);
-            m_EntityCommandBuffer512.Dispose();
-            m_EntityCommandBuffer4096.Playback(entityManager);
-            m_EntityCommandBuffer4096.Dispose();
+            if (m_EntityCommandBuffer.IsCreated) {
+                m_EntityCommandBuffer.Playback(entityManager);
+                m_EntityCommandBuffer.Dispose();
+                m_EntityCommandBuffer = default;
+            }
 
             if (m_Results.IsCreated) {
                 if (m_Results[0]) {
@@ -292,6 +349,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                     Active = Evaluate = false;
                 }
                 m_Results.Dispose();
+                m_Results = default;
             }
             m_JobScheduled = false;
         }
@@ -302,11 +360,15 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <param name="state">The current state of the system.</param>
         private void OnDestroy(ref SystemState state)
         {
-            if (m_Dependency.IsCompleted) {
+            if (!m_JobScheduled) {
                 return;
             }
 
-            m_Results.Dispose();
+            // During world teardown these containers may already be released by ECS internals.
+            m_Dependency.Complete();
+            m_EntityCommandBuffer = default;
+            m_Results = default;
+            m_JobScheduled = false;
         }
 
         /// <summary>
@@ -393,7 +455,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             }
         }
 
-
         /// <summary>
         /// Job which determine if the system should stay active. If any behavior tree should stay active then the entire system must remain active.
         /// </summary>
@@ -458,29 +519,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
     public struct EvaluationUtility
     {
         /// <summary>
-        /// Is the task at the specified index a parent task.
-        /// </summary>
-        /// <param name="taskComponents">An array of task components.</param>
-        /// <param name="index">The index to check if it is a parent.</param>
-        /// <returns>True if the task at the specified index is a parent task.</returns>
-        [BurstCompile]
-        public static bool IsParentTask(ref DynamicBuffer<TaskComponent> taskComponents, int index)
-        {
-            // The last task cannot be a parent.
-            if (index == taskComponents.Length - 1) {
-                return false;
-            }
-
-            // The next child will have a parent of the current task.
-            if (taskComponents[index + 1].ParentIndex == index) {
-                return true;
-            }
-
-            // The parent index is different - the current task is not a parent.
-            return false;
-        }
-
-        /// <summary>
         /// Core evaluation logic that works with any FixedList type for EvaluatedTasks.
         /// </summary>
         /// <typeparam name="TFixedList">The type of FixedList for EvaluatedTasks.</typeparam>
@@ -516,43 +554,45 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
 
                 var taskComponent = taskComponents[branchComponent.ActiveIndex];
                 var isParentTask = EvaluationUtility.IsParentTask(ref taskComponents, branchComponent.ActiveIndex);
+                var branchComponentBuffer = branchComponents;
                 // The branch can evaluate if the active task is an outer node (action or conditional) and is not running OR
                 // the task is an inner node (composite or decorator), is running, and is not a parallel task. Parent tasks cannot run without an active child.
                 if ((!isParentTask && taskComponent.Status != TaskStatus.Running && taskComponent.ParentIndex != ushort.MaxValue) ||
                     (isParentTask && (taskComponent.Status == TaskStatus.Queued || taskComponent.Status == TaskStatus.Running))) {
+
+                    // Prevent evaluating the same task again within the same tick.
+                    if (branchComponent.ActiveIndex == branchComponent.LastActiveIndex) {
+                        branchComponent.CanExecute = false;
+                        branchComponentBuffer[i] = branchComponent;
+                        continue;
+                    }
 
                     // Compute active task bit positions.
                     var bitIndex = branchComponent.ActiveIndex + 1;
                     var arrayIndex = bitIndex / ComponentUtility.ulongBitSize;
                     var bitInUlong = bitIndex % ComponentUtility.ulongBitSize;
                     while (evaluatedMask.Length <= arrayIndex) evaluatedMask.Add(0UL);
-                    evaluatedMask[arrayIndex] |= (1UL << bitInUlong);
-
-                    // Prevent evaluating the same task again within the same tick.
-                    if (branchComponent.ActiveIndex == branchComponent.LastActiveIndex) {
-                        branchComponent.CanExecute = false;
-                        branchComponents.ElementAt(i) = branchComponent;
-                        continue;
+                    if (!isParentTask || branchComponent.LastActiveIndex < branchComponent.ActiveIndex) {
+                        evaluatedMask[arrayIndex] |= (1UL << bitInUlong);
                     }
 
                     // Check if the task has already been evaluated this tick.
                     var alreadyEvaluated = (evaluatedTasks[arrayIndex] & (1UL << bitInUlong)) != 0;
 
                     // Decision to evaluate:
-                    // - For parent tasks: always evaluate. The parent task should never be the last executing task.
+                    // - For parent tasks: Evaluate as long as the branch is making progress.
                     // - For non-parent tasks: evaluate if this task hasn't been evaluated yet.
-                    if (isParentTask || !alreadyEvaluated) {
+                    if ((isParentTask && branchComponent.ActiveIndex < branchComponent.LastActiveIndex) || !alreadyEvaluated) {
                         evaluate = true;
                         branchComponent.LastActiveIndex = branchComponent.ActiveIndex;
                     } else {
                         branchComponent.CanExecute = false;
                     }
-                    branchComponents.ElementAt(i) = branchComponent;
-
+                    branchComponentBuffer[i] = branchComponent;
                     evaluatedTasks[arrayIndex] |= evaluatedMask[arrayIndex];
                 } else {
                     branchComponent.CanExecute = false;
-                    branchComponents.ElementAt(i) = branchComponent;
+                    branchComponentBuffer[i] = branchComponent;
                 }
             }
 
@@ -589,6 +629,29 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                     SetActiveBranchBits(ref branchComponents, ref evaluatedTasks);
                 }
             }
+        }
+
+        /// <summary>
+        /// Is the task at the specified index a parent task.
+        /// </summary>
+        /// <param name="taskComponents">An array of task components.</param>
+        /// <param name="index">The index to check if it is a parent.</param>
+        /// <returns>True if the task at the specified index is a parent task.</returns>
+        [BurstCompile]
+        public static bool IsParentTask(ref DynamicBuffer<TaskComponent> taskComponents, int index)
+        {
+            // The last task cannot be a parent.
+            if (index == taskComponents.Length - 1) {
+                return false;
+            }
+
+            // The next child will have a parent of the current task. 
+            if (taskComponents[index + 1].ParentIndex == index) {
+                return true;
+            }
+
+            // The parent index is different - the current task is not a parent.
+            return false;
         }
 
         /// <summary>

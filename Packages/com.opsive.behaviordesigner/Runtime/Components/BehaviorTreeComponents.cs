@@ -28,15 +28,17 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
         public ushort SiblingIndex;
         //public ushort m_SiblingIndex;
         //public ushort SiblingIndex { get { return m_SiblingIndex; } set { UnityEngine.Debug.Log(Index + " sibling: " + value); m_SiblingIndex = value; } }
+        [Tooltip("The maximum runtime index contained within this task's descendants. Equals Index when the task has no children.")]
+        public ushort ChildUpperIndex;
         [Tooltip("The index of the branch the task executes within.")]
         public ushort BranchIndex;
         //public ushort m_BranchIndex;
         //public ushort BranchIndex { get { return m_BranchIndex; } set { UnityEngine.Debug.Log(Index + " branch: " + value); m_BranchIndex = value; } }
         [Tooltip("The component type responsible for indicating that the task is active.")]
         public ComponentType FlagComponentType;
-        [Tooltip("Is the task disabled?")]
+        [Tooltip("Is the task enabled?")]
         [MarshalAs(UnmanagedType.U1)]
-        public bool Disabled;
+        public bool Enabled;
         [Tooltip("The current execution status of the task.")]
         //public TaskStatus Status;
         [SerializeField] private TaskStatus m_Status;

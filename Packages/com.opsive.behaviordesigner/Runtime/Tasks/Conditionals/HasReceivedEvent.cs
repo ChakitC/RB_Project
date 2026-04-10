@@ -71,7 +71,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals
                 Debug.LogError("Error: Unable to receive event. The event name is empty.");
                 return;
             }
-             
+
             if (m_StoredValue1 == null || !m_StoredValue1.IsShared) {
                 if (m_GlobalEvent.Value) {
                     EventHandler.RegisterEvent(m_EventName.Value, ReceivedEvent);

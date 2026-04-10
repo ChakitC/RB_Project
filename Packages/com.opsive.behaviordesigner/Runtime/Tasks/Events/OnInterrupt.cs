@@ -18,10 +18,15 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Events
     [Opsive.Shared.Utility.Description("EventNode that is invoked when an interrupt occurs.")]
     public class OnInterrupt : IEventNode, IEventNodeEntityReceiver
     {
+        [Tooltip("Specifies if the node is enabled.")]
+        [SerializeField] protected bool m_Enabled = true;
         [Tooltip("The index of the ITreeLogicNode that the IEventNode is connected to. ushort.MaxValue indicates no connection.")]
         [SerializeField] protected ushort m_ConnectedIndex;
         [Tooltip("The node that caused the interruption.")]
         [SerializeField] ILogicNode m_InterruptionSource;
+
+        public ushort Index { get; set; }
+        public bool Enabled { get => m_Enabled; set => m_Enabled = value; }
         public ushort ConnectedIndex { get => m_ConnectedIndex; set => m_ConnectedIndex = value; }
 
         /// <summary>

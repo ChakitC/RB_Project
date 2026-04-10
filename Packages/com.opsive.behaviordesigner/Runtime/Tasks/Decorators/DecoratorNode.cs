@@ -28,7 +28,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
         public ushort SiblingIndex { get => m_SiblingIndex; set => m_SiblingIndex = value; }
         public ushort RuntimeIndex { get; set; }
 
-        public int MaxChildCount { get => 1; }
+        public ushort MaxChildCount { get => 1; }
         public ushort NextChildIndex { get => (ushort)(RuntimeIndex + 1); }
     }
 }

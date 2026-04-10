@@ -17,6 +17,7 @@ namespace Opsive.BehaviorDesigner.Editor.Managers
     [InitializeOnLoad]
     public class Startup
     {
+        private const string c_GraphDesignerSymbol = "GRAPH_DESIGNER";
         private const string c_ImportStatusPath = "Assets/Opsive/ImportStatus.asset";
 
         /// <summary>
@@ -36,6 +37,7 @@ namespace Opsive.BehaviorDesigner.Editor.Managers
                 return;
             }
 
+#if GRAPH_DESIGNER
             EditorApplication.update -= EditorStartup;
             AssetDatabase.Refresh();
             ImportStatus importStatus = null;
@@ -60,12 +62,23 @@ namespace Opsive.BehaviorDesigner.Editor.Managers
                 AssetDatabase.Refresh();
             }
 
-            if (!importStatus.BehaviorWindowShown) {
+            var startupWindowShown = importStatus.ContainsStartupWindowShownPackage(AssetInfo.PackageName);
+            if (startupWindowShown && !importStatus.BehaviorWindowShown) {
+                importStatus.BehaviorWindowShown = true;
+            } else if (!startupWindowShown && importStatus.BehaviorWindowShown) {
+                startupWindowShown = true;
+                importStatus.AddStartupWindowShownPackage(AssetInfo.PackageName);
+            }
+
+            if (!startupWindowShown) {
                 var window = BehaviorMainWindow.ShowWindow();
                 window.Open(typeof(WelcomeScreenManager));
                 importStatus.BehaviorWindowShown = true;
-                EditorUtility.SetDirty(importStatus);
+                importStatus.AddStartupWindowShownPackage(AssetInfo.PackageName);
             }
+#else
+            WelcomeScreenManager.AddSymbol(c_GraphDesignerSymbol);
+#endif
         }
     }
 }

@@ -19,7 +19,7 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
     [ControlType(typeof(StackedTask))]
     public class StackedTaskNodeViewControl : TaskNodeViewControl
     {
-        private const float c_ActiveIconRotationSpeed = 30;
+        private const float c_ActiveIconRotationSpeed = 5;
 
         /// <summary>
         /// Displays information about the nested task within the Stacked Task.
@@ -101,7 +101,7 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
                 var task = m_StackedTask.Tasks[i];
                 // The task no longer exists. Replace it.
                 if (task == null) {
-                    tasks[i] = new UnknownTask();
+                    tasks[i] = new UnknownTask(string.Empty);
                     m_StackedTask.Tasks = tasks;
                 }
                 m_TaskViews[i] = new TaskView(i, m_StackedTask.Tasks[i]);

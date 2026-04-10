@@ -15,13 +15,17 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Events
     [NodeIcon("9041375773f69454792084ab67820b7e", "b1382ad24c668174c9a6e0bd00f229e3")]
     public abstract class EventNode : IEventNode, IEventNodeGameObjectReceiver
     {
+        [Tooltip("Specifies if the node is enabled.")]
+        [SerializeField] protected bool m_Enabled = true;
         [Tooltip("The index of the ITreeLogicNode that the IEventNode is connected to. ushort.MaxValue indicates no connection.")]
         [SerializeField] protected ushort m_ConnectedIndex;
 
+        public ushort Index { get; set; }
+        public bool Enabled { get => m_Enabled; set => m_Enabled = value; }
         public ushort ConnectedIndex { get => m_ConnectedIndex; set => m_ConnectedIndex = value; }
 
         protected BehaviorTree m_BehaviorTree;
-            
+
         /// <summary>
         /// Initializes the node to the specified graph.
         /// </summary>

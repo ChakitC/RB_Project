@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 179e13ed8b57574418ef925107aa76ef
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 368344
+  packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
+  packageVersion: 3.0.1
+  assetPath: Packages/com.opsive.graphdesigner/Runtime/Variables/ECS/Opsive.GraphDesigner.Runtime.Variables.ECS.asmdef
+  uploadId: 894106

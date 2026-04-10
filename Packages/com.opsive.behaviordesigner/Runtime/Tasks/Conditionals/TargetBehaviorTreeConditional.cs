@@ -19,7 +19,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals
         [Tooltip("The index of the tree if there are multiple behavior trees on the same GameObject.")]
         [SerializeField] protected SharedVariable<int> m_TreeIndex;
 
-        protected BehaviorTree m_ResolvedBehaviorTree;
+        protected Runtime.BehaviorTree m_ResolvedBehaviorTree;
 
         /// <summary>
         /// Initializes the task.
@@ -40,7 +40,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals
             if (m_TargetGameObject.Value == null) {
                 m_ResolvedBehaviorTree = m_BehaviorTree;
             } else {
-                var behaviorTrees = m_TargetGameObject.Value.GetComponents<BehaviorTree>();
+                var behaviorTrees = m_TargetGameObject.Value.GetComponents<Runtime.BehaviorTree>();
                 if (behaviorTrees.Length == 1) {
                     m_ResolvedBehaviorTree = behaviorTrees[0];
                 } else if (behaviorTrees.Length > 1) {

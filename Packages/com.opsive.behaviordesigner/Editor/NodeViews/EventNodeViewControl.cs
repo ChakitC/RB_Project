@@ -1,4 +1,4 @@
-﻿#if GRAPH_DESIGNER
+#if GRAPH_DESIGNER
 /// ---------------------------------------------
 /// Behavior Designer
 /// Copyright (c) Opsive. All Rights Reserved.
@@ -52,7 +52,7 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
 
             m_Node = node as IEventNode;
             m_GraphWindow = graphWindow;
-            m_BehaviorTree = m_GraphWindow.Graph as BehaviorTree;
+            m_BehaviorTree = (m_GraphWindow.AttachedToGraph != null ? m_GraphWindow.AttachedToGraph.Graph : m_GraphWindow.Graph) as BehaviorTree;
             m_EventNode = parent.GetFirstAncestorOfType<EventNode>();
 
             // AddNodeView can be called multiple times. Ensure there is only one execution status image.
@@ -62,7 +62,7 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
             }
             m_ExecutionStatusIcon = new Image();
             m_ExecutionStatusIcon.name = "event-execution-status";
-            parent.parent.Add(m_ExecutionStatusIcon); // The execution status icon should be placed behind every node element.
+            m_EventNode.NodeContainer.Add(m_ExecutionStatusIcon); // The execution status icon should be placed behind every node element.
             m_ExecutionStatusIcon.SendToBack();
 
             m_SuccessIcon = Shared.Editor.Utility.EditorUtility.LoadAsset<Texture>(EditorGUIUtility.isProSkin ? c_DarkSuccessIconGUID : c_LightSuccessIconGUID);
@@ -71,6 +71,7 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
             m_ExecutionStatusIcon.RegisterCallback<AttachToPanelEvent>(c =>
             {
                 GraphEventHandler.RegisterEvent(GraphEventType.WindowUpdate, UpdateNode);
+                UpdateNode();
             });
             m_ExecutionStatusIcon.RegisterCallback<DetachFromPanelEvent>(c =>
             {
@@ -87,9 +88,18 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
                 return;
             }
 
-            var connectedNode = m_GraphWindow.Graph.LogicNodes[m_Node.ConnectedIndex];
+            ILogicNode connectedNode = null;
+            if (m_GraphWindow.AttachedToGraph != null) {
+                var attachedToNodeIndex = m_EventNode.GetAttachedToGraphNodeIndex();
+                if (attachedToNodeIndex != ushort.MaxValue) {
+                    connectedNode = m_GraphWindow.AttachedToGraph.Graph.LogicNodes[attachedToNodeIndex];
+                }
+            } else {
+                connectedNode = m_GraphWindow.Graph.LogicNodes[m_Node.ConnectedIndex];
+            }
+
             // The tree may not be initialized.
-            if (connectedNode.RuntimeIndex == ushort.MaxValue) {
+            if (connectedNode == null || connectedNode.RuntimeIndex == ushort.MaxValue) {
                 return;
             }
             var taskComponents = m_BehaviorTree.World.EntityManager.GetBuffer<TaskComponent>(m_BehaviorTree.Entity);
@@ -107,10 +117,9 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
             }
 
             if (taskComponent.Status == TaskStatus.Running || taskComponent.Status == TaskStatus.Queued) {
-                m_EventNode.SetColorState(ColorState.Active, 0);
+                m_EventNode.SetColorState(ColorState.Active);
             } else {
-                var nodeIndex = m_GraphWindow.GraphEditor.GetNodeIndex(m_Node);
-                m_EventNode.SetColorState(m_GraphWindow.Graph.IsNodeEnabled(false, nodeIndex) ? ColorState.Default : ColorState.Disabled, 0.5f);
+                m_EventNode.SetColorState(m_GraphWindow.Graph.IsNodeEnabled(false, m_Node.Index) ? ColorState.Default : ColorState.Disabled);
             }
         }
     }

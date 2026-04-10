@@ -1,4 +1,4 @@
-﻿#if GRAPH_DESIGNER
+#if GRAPH_DESIGNER
 /// ---------------------------------------------
 /// Behavior Designer
 /// Copyright (c) Opsive. All Rights Reserved.
@@ -7,6 +7,7 @@
 namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using Opsive.GraphDesigner.Runtime;
     using Opsive.Shared.Utility;
     using System;
@@ -19,7 +20,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     /// </summary>
     [NodeIcon("b5459f67bc5033e49ad7a763cdb885bb", "480c79a18119d2a488b5d984211463f1")]
     [Opsive.Shared.Utility.Description("Waits the specified duration after the child has completed before returning the child's status of success or failure.")]
-    public class Cooldown : ECSDecoratorTask<CooldownTaskSystem, CooldownComponent>, IParentNode
+    public class Cooldown : ECSDecoratorTask<CooldownTaskSystem, CooldownComponent, CooldownFlag>, IParentNode
     {
         [Tooltip("The duration of the cooldown.")]
         [SerializeField] float m_Duration;
@@ -27,8 +28,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
         public float Duration { get => m_Duration; set => m_Duration = value; }
 
         private ushort m_ComponentIndex;
-
-        public override ComponentType Flag { get => typeof(CooldownFlag); }
 
         /// <summary>
         /// Resets the task to its default values.
@@ -54,11 +53,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
         /// </summary>
         /// <param name="world">The world that the entity exists in.</param>
         /// <param name="entity">The entity that the IBufferElementData should be assigned to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
         /// <param name="gameObject">The GameObject that the entity is attached to.</param>
         /// <returns>The index of the element within the buffer.</returns>
-        public override int AddBufferElement(World world, Entity entity, GameObject gameObject)
+        public override int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, GameObject gameObject)
         {
-            m_ComponentIndex = (ushort)base.AddBufferElement(world, entity, gameObject);
+            m_ComponentIndex = (ushort)base.AddBufferElement(world, entity, registry, gameObject);
             return m_ComponentIndex;
         }
 
@@ -110,6 +110,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
             clone.Index = Index;
             clone.ParentIndex = ParentIndex;
             clone.SiblingIndex = SiblingIndex;
+            clone.Enabled = Enabled;
             clone.Duration = Duration;
             return clone;
         }

@@ -8,6 +8,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
 {
     using Opsive.BehaviorDesigner.Runtime.Groups;
     using Opsive.BehaviorDesigner.Runtime.Systems;
+    using Opsive.BehaviorDesigner.Runtime.Utility;
     using Unity.Entities;
     using UnityEngine;
 
@@ -18,6 +19,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
     {
         [Tooltip("The index of the connected start task.")]
         public int StartEventConnectedIndex;
+        [Tooltip("Should the behavior tree be started after it has been initialized?")]
+        public bool StartWhenEnabled;
         [Tooltip("Should the behavior tree be started after it has been baked?")]
         public bool StartEvaluation;
         [Tooltip("The indicies of the reevaluate task systems.")]
@@ -33,6 +36,31 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
     }
 
     /// <summary>
+    /// Baked editor-only metadata used to link a baked entity back to its authoring BehaviorTree for runtime debugging. 
+    /// Populated by BehaviorTreeBaker only in editor builds and stripped from entity scenes before they are packaged into a player build by StripEditorBehaviorTreeReferenceSystem.
+    /// </summary>
+    public class BakedEditorReference : IComponentData
+    {
+        [Tooltip("The GlobalObjectId string for the authoring BehaviorTree component.")]
+        public string AuthoringBehaviorTreeGlobalObjectId;
+        [Tooltip("The design-time graph unique ID.")]
+        public int DesignGraphUniqueID;
+        [Tooltip("Maps design-time logic node index to runtime task index.")]
+        public ushort[] LogicNodeRuntimeIndices;
+    }
+
+    /// <summary>
+    /// Stores the start data for a baked behavior tree that should be started manually.
+    /// </summary>
+    public struct DeferredBakedBehaviorTreeStart : IComponentData
+    {
+        [Tooltip("The index of the connected start task.")]
+        public ushort StartEventConnectedIndex;
+        [Tooltip("Should the behavior tree start evaluation after the branch has started?")]
+        public bool StartEvaluation;
+    }
+
+    /// <summary>
     /// The behavior tree has been baked. Start the tree using the baked data.
     /// </summary>
     public partial struct StartBakedBehaviorTreeSystem : ISystem
@@ -44,7 +72,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
         private void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<BakedBehaviorTree>();
-            state.Enabled = false;
         }
 
         /// <summary>
@@ -53,8 +80,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
         /// <param name="state">The current SystemState.</param>
         private void OnUpdate(ref SystemState state)
         {
-            state.Enabled = false;
-
             // The components are baked, but systems are not baked. Create the required systems within the current world.
             var reevaluateTaskSystemGroup = state.World.GetOrCreateSystemManaged<ReevaluateTaskSystemGroup>();
             var interruptTaskSystemGroup = state.World.GetOrCreateSystemManaged<InterruptTaskSystemGroup>();
@@ -67,6 +92,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
 
             var canReevaluate = false;
             var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
+#if UNITY_EDITOR
+            // Collected during the foreach and applied after ecb.Playback() because ECB.AddComponentObject only supports EntityQuery, not individual Entity.
+            var editorGraphReferences = new System.Collections.Generic.List<(Entity entity, EditorBehaviorTreeGraphReference reference)>();
+#endif
             foreach (var (bakedBehaviorTree, entity) in SystemAPI.Query<BakedBehaviorTree>().WithEntityAccess()) {
                 AddSystems(state.World, reevaluateTaskSystemGroup, bakedBehaviorTree.ReevaluateTaskSystems);
                 AddSystems(state.World, interruptTaskSystemGroup, bakedBehaviorTree.InterruptTaskSystems);
@@ -79,6 +108,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
                     taskComponent.FlagComponentType = ComponentType.FromTypeIndex(TypeManager.GetTypeIndexFromStableTypeHash(bakedBehaviorTree.TagStableTypeHashes[i]));
                     taskComponents[i] = taskComponent;
                 }
+                TraversalUtility.PopulateChildUpperIndices(ref taskComponents);
 
                 if (state.World.EntityManager.HasBuffer<ReevaluateTaskComponent>(entity)) {
                     var reevaluateComponents = state.World.EntityManager.GetBuffer<ReevaluateTaskComponent>(entity);
@@ -90,15 +120,49 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
                     }
                 }
 
-                // All of the systems have been added. Start the behavior tree.
-                BehaviorTree.StartBranch(state.World, entity, (ushort)bakedBehaviorTree.StartEventConnectedIndex, bakedBehaviorTree.StartEvaluation);
+                // All of the systems have been added. Start the behavior tree or defer the start.
+                if (bakedBehaviorTree.StartWhenEnabled) {
+                    BehaviorTree.StartBranch(state.World, entity, (ushort)bakedBehaviorTree.StartEventConnectedIndex, bakedBehaviorTree.StartEvaluation);
+                } else {
+                    ecb.AddComponent(entity, new DeferredBakedBehaviorTreeStart
+                    {
+                        StartEventConnectedIndex = (ushort)bakedBehaviorTree.StartEventConnectedIndex,
+                        StartEvaluation = bakedBehaviorTree.StartEvaluation
+                    });
+                }
+#if UNITY_EDITOR
+                // BakedEditorReference is stripped from player build entity scenes by StripEditorBehaviorTreeReferenceSystem before serialization, so it only ever reaches
+                // this system during editor play mode.
+                if (state.EntityManager.HasComponent<BakedEditorReference>(entity)) {
+                    var editorRef = state.EntityManager.GetComponentObject<BakedEditorReference>(entity);
+                    if (!string.IsNullOrEmpty(editorRef.AuthoringBehaviorTreeGlobalObjectId)) {
+                        editorGraphReferences.Add((entity, new EditorBehaviorTreeGraphReference
+                        {
+                            AuthoringBehaviorTreeGlobalObjectId = editorRef.AuthoringBehaviorTreeGlobalObjectId,
+                            DesignGraphUniqueID = editorRef.DesignGraphUniqueID,
+                            LogicNodeRuntimeIndices = editorRef.LogicNodeRuntimeIndices,
+                        }));
+                    }
+                    ecb.RemoveComponent<BakedEditorReference>(entity);
+                }
+#endif
                 ecb.RemoveComponent<BakedBehaviorTree>(entity);
             }
             if (canReevaluate) {
-                reevaluateTaskSystemGroup.AddSystemToUpdateList(state.World.GetOrCreateSystem<ReevaluateSystem>());
+                state.World.GetOrCreateSystemManaged<BeforeTraversalSystemGroup>().AddSystemToUpdateList(state.World.GetOrCreateSystem(typeof(ReevaluateSystem)));
             }
+
+            reevaluateTaskSystemGroup.SortSystems();
+            interruptTaskSystemGroup.SortSystems();
+            traversalTaskSystemGroup.SortSystems();
+
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
+#if UNITY_EDITOR
+            foreach (var (entity, reference) in editorGraphReferences) {
+                state.EntityManager.AddComponentObject(entity, reference);
+            }
+#endif
         }
 
         /// <summary>
@@ -116,5 +180,23 @@ namespace Opsive.BehaviorDesigner.Runtime.Components
             }
         }
     }
+
+#if UNITY_EDITOR
+    /// <summary>
+    /// Strips BakedEditorReference from all entities during the entity scene optimization pass, which runs
+    /// after baking but before the .entities file is serialized to disk for player builds. This ensures the
+    /// type hash for BakedEditorReference never appears in a standalone build's entity scene, while the
+    /// component remains available during editor play mode for StartBakedBehaviorTreeSystem to consume.
+    /// </summary>
+    [WorldSystemFilter(WorldSystemFilterFlags.EntitySceneOptimizations)]
+    public partial class StripEditorBehaviorTreeReferenceSystem : SystemBase
+    {
+        protected override void OnUpdate()
+        {
+            var query = GetEntityQuery(ComponentType.ReadOnly<BakedEditorReference>());
+            EntityManager.RemoveComponent<BakedEditorReference>(query);
+        }
+    }
+#endif
 }
 #endif

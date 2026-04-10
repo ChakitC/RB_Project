@@ -8,8 +8,9 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
 {
     using Opsive.BehaviorDesigner.Runtime;
     using Opsive.BehaviorDesigner.Runtime.Components;
-    using Opsive.BehaviorDesigner.Runtime.Tasks.Actions;
+    using Opsive.BehaviorDesigner.Runtime.Tasks.Actions.Time;
     using Opsive.GraphDesigner.Editor;
+    using Opsive.GraphDesigner.Editor.Elements;
     using Opsive.GraphDesigner.Editor.Events;
     using Opsive.GraphDesigner.Runtime;
     using Opsive.Shared.Editor.UIElements.Controls;
@@ -25,6 +26,7 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
     {
         private BehaviorTree m_BehaviorTree;
         private ILogicNode m_Node;
+        private EditorNode m_EditorNode;
         private ushort m_WaitComponentIndex = ushort.MaxValue;
         private ProgressBar m_ProgressBar;
 
@@ -42,8 +44,9 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
                 return;
             }
 
-            m_BehaviorTree = graphWindow.Graph as BehaviorTree;
+            m_BehaviorTree = (graphWindow.AttachedToGraph != null ? graphWindow.AttachedToGraph.Graph : graphWindow.Graph) as BehaviorTree;
             m_Node = node as ILogicNode;
+            m_EditorNode = parent.GetFirstAncestorOfType<EditorNode>();
 
             parent.RegisterCallback<AttachToPanelEvent>(c =>
             {
@@ -63,16 +66,26 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
         /// </summary>
         private void UpdateWaitProgress()
         {
-            if (m_BehaviorTree == null || m_BehaviorTree.Entity == Entity.Null || m_Node.RuntimeIndex == ushort.MaxValue) {
+            if (m_BehaviorTree == null || m_BehaviorTree.Entity == Entity.Null) {
                 m_ProgressBar.style.display = DisplayStyle.None;
                 return;
+            }
+
+            var nodeIndex = m_EditorNode.GetAttachedToGraphNodeIndex();
+            if (nodeIndex == ushort.MaxValue) {
+                nodeIndex = m_Node.RuntimeIndex;
+
+                if (nodeIndex == ushort.MaxValue) {
+                    m_ProgressBar.style.display = DisplayStyle.None;
+                    return;
+                }
             }
 
             var waitComponents = m_BehaviorTree.World.EntityManager.GetBuffer<WaitComponent>(m_BehaviorTree.Entity);
             if (m_WaitComponentIndex == ushort.MaxValue) {
                 // Find the corresponding index of the WaitComponent.
                 for (int i = 0; i < waitComponents.Length; ++i) {
-                    if (waitComponents[i].Index == m_Node.RuntimeIndex) {
+                    if (waitComponents[i].Index == nodeIndex) {
                         m_WaitComponentIndex = (ushort)i;
                         break;
                     }
@@ -91,13 +104,13 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
 
             var taskComponents = m_BehaviorTree.World.EntityManager.GetBuffer<TaskComponent>(m_BehaviorTree.Entity);
             var elapsed = -1f;
-            if (taskComponents[m_Node.RuntimeIndex].Status == Runtime.Tasks.TaskStatus.Running) {
+            if (taskComponents[nodeIndex].Status == Runtime.Tasks.TaskStatus.Running) {
                 elapsed = Mathf.Clamp(Time.time - (float)waitComponent.StartTime, 0, (float)waitComponent.WaitDuration);
                 m_ProgressBar.value = elapsed;
-            } else if (taskComponents[m_Node.RuntimeIndex].Status == Runtime.Tasks.TaskStatus.Success) {
+            } else if (taskComponents[nodeIndex].Status == Runtime.Tasks.TaskStatus.Success) {
                 elapsed = (float)waitComponent.WaitDuration;
                 m_ProgressBar.value = elapsed;
-            } else if (taskComponents[m_Node.RuntimeIndex].Status == Runtime.Tasks.TaskStatus.Inactive) {
+            } else if (taskComponents[nodeIndex].Status == Runtime.Tasks.TaskStatus.Inactive) {
                 m_ProgressBar.value = 0;
             }
 

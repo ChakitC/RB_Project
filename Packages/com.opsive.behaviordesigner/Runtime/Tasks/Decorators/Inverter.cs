@@ -1,4 +1,4 @@
-﻿#if GRAPH_DESIGNER
+#if GRAPH_DESIGNER
 /// ---------------------------------------------
 /// Behavior Designer
 /// Copyright (c) Opsive. All Rights Reserved.
@@ -18,10 +18,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     [NodeIcon("53fe4de81c20e924095bdb5f3447acdc", "8d991ea2b725c214c85580d5647c578c")]
     [Opsive.Shared.Utility.Description("The inverter task will invert the return value of the child task after it has finished executing. " +
                      "If the child returns success, the inverter task will return failure. If the child returns failure, the inverter task will return success.")]
-    public class Inverter : ECSDecoratorTask<InverterTaskSystem, InverterComponent>, IParentNode
+    public class Inverter : ECSDecoratorTask<InverterTaskSystem, InverterComponent, InverterFlag>, IParentNode
     {
-        public override ComponentType Flag { get => typeof(InverterFlag); }
-
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
         /// </summary>
@@ -55,6 +53,17 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     [DisableAutoCreation]
     public partial struct InverterTaskSystem : ISystem
     {
+        private EntityQuery m_Query;
+
+        /// <summary>
+        /// Builds the query.
+        /// </summary>
+        /// <param name="state">The current state of the system.</param>
+        private void OnCreate(ref SystemState state)
+        {
+            m_Query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<InverterComponent>().WithAll<InverterFlag, EvaluateFlag>().Build();
+        }
+
         /// <summary>
         /// Creates the job.
         /// </summary>
@@ -62,8 +71,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
         [BurstCompile]
         private void OnUpdate(ref SystemState state)
         {
-            var query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<InverterComponent>().WithAll<InverterFlag, EvaluateFlag>().Build();
-            state.Dependency = new InverterJob().ScheduleParallel(query, state.Dependency);
+            state.Dependency = new InverterJob().ScheduleParallel(m_Query, state.Dependency);
         }
 
         /// <summary>
@@ -84,40 +92,53 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
                 for (int i = 0; i < inverterComponents.Length; ++i) {
                     var inverterComponent = inverterComponents[i];
                     var taskComponent = taskComponents[inverterComponent.Index];
-                    var branchComponent = branchComponents[taskComponent.BranchIndex];
-                    if (!branchComponent.CanExecute) {
+                    var taskStatus = taskComponent.Status;
+                    if (taskStatus != TaskStatus.Queued && taskStatus != TaskStatus.Running) {
                         continue;
                     }
 
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute || branchComponent.InterruptType != InterruptType.None) {
+                        continue;
+                    }
+
+                    var childIndex = (ushort)(taskComponent.Index + 1);
                     TaskComponent childTaskComponent;
-                    if (taskComponent.Status == TaskStatus.Queued) {
+                    if (taskStatus == TaskStatus.Queued) {
                         taskComponent.Status = TaskStatus.Running;
                         taskComponents[taskComponent.Index] = taskComponent;
 
-                        childTaskComponent = taskComponents[taskComponent.Index + 1];
-                        childTaskComponent.Status = TaskStatus.Queued;
-                        taskComponents[taskComponent.Index + 1] = childTaskComponent;
+                        childTaskComponent = taskComponents[childIndex];
+                        if (childTaskComponent.Status != TaskStatus.Queued) {
+                            childTaskComponent.Status = TaskStatus.Queued;
+                            taskComponents[childIndex] = childTaskComponent;
+                        }
 
-                        branchComponent.NextIndex = (ushort)(taskComponent.Index + 1);
-                        branchComponents[taskComponent.BranchIndex] = branchComponent;
-                        continue;
-                    } else if (taskComponent.Status != TaskStatus.Running) {
+                        if (branchComponent.NextIndex != childIndex) {
+                            branchComponent.NextIndex = childIndex;
+                            branchComponents[taskComponent.BranchIndex] = branchComponent;
+                        }
                         continue;
                     }
 
                     // The inverter task is currently active. Check the first child.
-                    childTaskComponent = taskComponents[taskComponent.Index + 1];
+                    childTaskComponent = taskComponents[childIndex];
                     if (childTaskComponent.Status == TaskStatus.Queued || childTaskComponent.Status == TaskStatus.Running) {
                         // The child should keep running.
                         continue;
                     }
 
                     // The child has completed. Invert the status.
-                    taskComponent.Status = childTaskComponent.Status == TaskStatus.Success ? TaskStatus.Failure : TaskStatus.Success;
-                    taskComponents[taskComponent.Index] = taskComponent;
+                    var status = childTaskComponent.Status == TaskStatus.Success ? TaskStatus.Failure : TaskStatus.Success;
+                    if (taskComponent.Status != status) {
+                        taskComponent.Status = status;
+                        taskComponents[taskComponent.Index] = taskComponent;
+                    }
 
-                    branchComponent.NextIndex = taskComponent.ParentIndex;
-                    branchComponents[taskComponent.BranchIndex] = branchComponent;
+                    if (branchComponent.NextIndex != taskComponent.ParentIndex) {
+                        branchComponent.NextIndex = taskComponent.ParentIndex;
+                        branchComponents[taskComponent.BranchIndex] = branchComponent;
+                    }
                 }
             }
         }

@@ -37,7 +37,7 @@ EventNode
 .tree-node-container
 {
     padding-top: 8px;
-    padding-bottom: 8px;
+    padding-bottom: 12px;
 }
 
 #title-container
@@ -45,33 +45,40 @@ EventNode
     flex-grow: 1;
 	justify-content: center;
     align-items: center;
+    align-self: stretch;
 }
 
 .graph-logic-title-container
 {
-    border-bottom-color: rgba(26, 26, 26, 1);
-    border-bottom-width: 1px;
-    margin-top: 2px;
-    padding-bottom: 2px;
-    background-color: rgba(0, 0, 0, 0.2);
+    border-color: rgba(0, 0, 0, 0.1);
+    border-width: 1px 1px 1px 1px;
+    background-color: rgba(0, 0, 0, 0.3);
+}
+
+.graph-structural-logic-title-container
+{
+    padding: 8px 10px 8px 10px;
+}
+
+.graph-logic-container-accent
+{
+    height: 5px;
 }
 
 .graph-event-title-container
 {
-    margin-top: 4px;
+    padding: 4px 0px 4px 0px;
+    border-color: rgba(255, 255, 255, 0.3);
+    border-width: 1px 1px 1px 1px;
 }
 
 #title-label
 {
     font-size: 14px;
+    -unity-font-style: bold;
     padding-left: 2px;
     padding-right: 2px;
     overflow: hidden;
-}
-
-#node-contents
-{
-    padding: 3px 3px 2px 3px;
 }
 
 #icon
@@ -81,10 +88,16 @@ EventNode
     margin-bottom: 4px;
 }
 
-#small-icon
+#small-tree-icon
 {
     width: 30px;
     height: 30px;
+}
+
+#small-graph-icon
+{
+    width: 16px;
+    height: 16px;
 }
 
 CommentElement

@@ -28,7 +28,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         /// Performs any runtime operations to evaluate the array of subtrees that should be returned.
         /// </summary>
         /// <param name="graphComponent">The component that the node is attached to.</param>
-        public override void EvaluateSubtrees(IGraphComponent graphComponent)
+        public override void EvaluateSubgraphs(IGraphComponent graphComponent)
         {
             if (m_Index.Value < 0 || m_Index.Value >= m_Subtrees.Length) {
                 return;

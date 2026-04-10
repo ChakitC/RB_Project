@@ -48,6 +48,13 @@
     flex-shrink: 0;
 }
 
+#panel-label
+{
+    flex-grow: 1;
+    margin-right: -53px;
+    -unity-text-align: middle-center;
+}
+
 .selected-dark-tab-button
 {
 	background-color: rgb(36, 36, 36);
@@ -60,6 +67,7 @@
 
 .right-justified-content
 {
+	flex-direction: row;
     justify-content: flex-end;
 }
 

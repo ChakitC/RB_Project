@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 7f47d66261c043eda8b8041c52e960f8
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 368344
+  packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
+  packageVersion: 3.0.1
+  assetPath: Packages/com.opsive.behaviordesigner/Runtime/Tasks/Actions/Animator/WaitForAnimation.cs
+  uploadId: 894106

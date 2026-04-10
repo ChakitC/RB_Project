@@ -1,4 +1,4 @@
-﻿#if GRAPH_DESIGNER
+#if GRAPH_DESIGNER
 /// ---------------------------------------------
 /// Behavior Designer
 /// Copyright (c) Opsive. All Rights Reserved.
@@ -7,6 +7,7 @@
 namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using Opsive.GraphDesigner.Runtime;
     using Opsive.Shared.Utility;
     using Unity.Entities;
@@ -20,7 +21,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     [NodeIcon("4c3d0559a9ebc604e88b16e9a3fdfa05", "de3acf0e386a26246b8bc999b1ef8e32")]
     [Opsive.Shared.Utility.Description("The selector task is similar to an \"or\" operation. It will return success as soon as one of its child tasks return success. " +
                      "If a child task returns failure then it will sequentially run the next task. If no child task returns success then it will return failure.")]
-    public class Selector : ECSCompositeTask<SelectorTaskSystem, SelectorComponent>, IParentNode, IConditionalAbortParent, IInterruptResponder, ISavableTask, ICloneable
+    public class Selector : ECSCompositeTask<SelectorTaskSystem, SelectorComponent, SelectorFlag>, IParentNode, IConditionalAbortParent, IInterruptResponder, ISavableTask, ICloneable
     {
         [Tooltip("Specifies how the child conditional tasks should be reevaluated.")]
         [SerializeField] ConditionalAbortType m_AbortType;
@@ -29,11 +30,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
 
         public ConditionalAbortType AbortType { get => m_AbortType; set => m_AbortType = value; }
         public Type InterruptSystemType { get => typeof(SelectorInterruptSystem); }
-
-        /// <summary>
-        /// The type of tag that should be enabled when the task is running.
-        /// </summary>
-        public override ComponentType Flag { get => typeof(SelectorFlag); }
 
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
@@ -51,11 +47,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
         /// </summary>
         /// <param name="world">The world that the entity exists in.</param>
         /// <param name="entity">The entity that the IBufferElementData should be assigned to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
         /// <param name="gameObject">The GameObject that the entity is attached to.</param>
         /// <returns>The index of the element within the buffer.</returns>
-        public override int AddBufferElement(World world, Entity entity, GameObject gameObject)
+        public override int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, GameObject gameObject)
         {
-            m_ComponentIndex = (ushort)base.AddBufferElement(world, entity, gameObject);
+            m_ComponentIndex = (ushort)base.AddBufferElement(world, entity, registry, gameObject);
             return m_ComponentIndex;
         }
 
@@ -106,6 +103,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
             clone.Index = Index;
             clone.ParentIndex = ParentIndex;
             clone.SiblingIndex = SiblingIndex;
+            clone.Enabled = Enabled;
             clone.AbortType = AbortType;
             return clone;
         }
@@ -162,14 +160,20 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                 for (int i = 0; i < selectorComponents.Length; ++i) {
                     var selectorComponent = selectorComponents[i];
                     var taskComponent = taskComponents[selectorComponent.Index];
-                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    var taskStatus = taskComponent.Status;
 
+                    // Skip inactive tasks before any branch lookups.
+                    if (taskStatus != TaskStatus.Queued && taskStatus != TaskStatus.Running) {
+                        continue;
+                    }
+
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
                     // Do not continue if there will be an interrupt or the branch cannot execute.
                     if (branchComponent.InterruptType != InterruptType.None || !branchComponent.CanExecute) {
                         continue;
                     }
 
-                    if (taskComponent.Status == TaskStatus.Queued) {
+                    if (taskStatus == TaskStatus.Queued) {
                         taskComponent.Status = TaskStatus.Running;
                         taskComponents[taskComponent.Index] = taskComponent;
 
@@ -181,10 +185,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
 
                         // Start the child.
                         var nextChildTaskComponent = taskComponents[branchComponent.NextIndex];
-                        nextChildTaskComponent.Status = TaskStatus.Queued;
-                        taskComponents[branchComponent.NextIndex] = nextChildTaskComponent;
-                    } else if (taskComponent.Status != TaskStatus.Running) {
-                        continue;
+                        if (nextChildTaskComponent.Status != TaskStatus.Queued) {
+                            nextChildTaskComponent.Status = TaskStatus.Queued;
+                            taskComponents[branchComponent.NextIndex] = nextChildTaskComponent;
+                        }
                     }
 
                     // The selector task is currently active. Check the first child.
@@ -206,8 +210,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                         // The previous task is no longer running. 
                         var siblingTaskComponent = taskComponents[childTaskComponent.SiblingIndex];
 
-                        siblingTaskComponent.Status = TaskStatus.Queued;
-                        taskComponents[childTaskComponent.SiblingIndex] = siblingTaskComponent;
+                        if (siblingTaskComponent.Status != TaskStatus.Queued) {
+                            siblingTaskComponent.Status = TaskStatus.Queued;
+                            taskComponents[childTaskComponent.SiblingIndex] = siblingTaskComponent;
+                        }
                         // The current index is now the sibling index.
                         selectorComponent.ActiveChildIndex = childTaskComponent.SiblingIndex;
 
@@ -238,13 +244,16 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                 for (int i = 0; i < selectorComponents.Length; ++i) {
                     var selectorComponent = selectorComponents[i];
                     // The active child will have a non-running status if it has been interrupted.
+                    if (selectorComponent.ActiveChildIndex == ushort.MaxValue || selectorComponent.ActiveChildIndex >= taskComponents.Length) {
+                        continue;
+                    }
                     if (taskComponents[selectorComponent.ActiveChildIndex].Status != TaskStatus.Running) {
                         var childIndex = (ushort)(selectorComponent.Index + 1);
                         // Find the currently active task.
-                        while (childIndex != ushort.MaxValue && taskComponents[childIndex].Status != TaskStatus.Running) {
+                        while (childIndex != ushort.MaxValue && childIndex < taskComponents.Length && taskComponents[childIndex].Status != TaskStatus.Running) {
                             childIndex = taskComponents[childIndex].SiblingIndex;
                         }
-                        if (childIndex != ushort.MaxValue) {
+                        if (childIndex != ushort.MaxValue && childIndex < taskComponents.Length) {
                             selectorComponent.ActiveChildIndex = childIndex;
                         }
                         var selectorBuffer = selectorComponents;

@@ -35,6 +35,18 @@ namespace Opsive.BehaviorDesigner.Runtime.Utility
                 return true;
             }
 
+            var parentTaskComponent = taskComponents[parentIndex];
+            // Fast path: ChildUpperIndex stores the last descendant index for range checks.
+            if (parentTaskComponent.ChildUpperIndex > parentTaskComponent.Index) {
+                return index > parentTaskComponent.Index && index <= parentTaskComponent.ChildUpperIndex;
+            }
+            // ChildUpperIndex may still be uninitialized on deserialized trees. Fall back to parent walking.
+            if (parentTaskComponent.ChildUpperIndex == parentTaskComponent.Index) {
+                if (parentTaskComponent.Index + 1 >= taskComponents.Length || taskComponents[parentTaskComponent.Index + 1].ParentIndex != parentTaskComponent.Index) {
+                    return false;
+                }
+            }
+
             // Return true as soon as there is a parent.
             while (index != ushort.MaxValue) {
                 if (index == parentIndex) {
@@ -60,6 +72,16 @@ namespace Opsive.BehaviorDesigner.Runtime.Utility
             }
 
             var taskComponent = taskComponents[index];
+            // Fast path: ChildUpperIndex represents the inclusive descendant upper bound.
+            if (taskComponent.ChildUpperIndex > taskComponent.Index) {
+                return taskComponent.ChildUpperIndex - taskComponent.Index;
+            }
+            // ChildUpperIndex can be equal to Index before initialization. Fall back to parent walking.
+            if (taskComponent.ChildUpperIndex == taskComponent.Index) {
+                if (taskComponent.Index + 1 >= taskComponents.Length || taskComponents[taskComponent.Index + 1].ParentIndex != taskComponent.Index) {
+                    return 0;
+                }
+            }
             if (taskComponent.SiblingIndex != ushort.MaxValue) {
                 return taskComponent.SiblingIndex - taskComponent.Index - 1;
             }
@@ -84,6 +106,21 @@ namespace Opsive.BehaviorDesigner.Runtime.Utility
             }
 
             return lastChildTaskComponent.Index - taskComponent.Index + GetChildCount(lastChildTaskComponent.Index, ref taskComponents);
+        }
+
+        /// <summary>
+        /// Populates each task's child upper bound index.
+        /// </summary>
+        /// <param name="taskComponents">The task buffer that should be updated.</param>
+        [BurstCompile]
+        public static void PopulateChildUpperIndices(ref DynamicBuffer<TaskComponent> taskComponents)
+        {
+            for (int i = 0; i < taskComponents.Length; ++i) {
+                var taskComponent = taskComponents[i];
+                var childCount = GetChildCount(taskComponent.Index, ref taskComponents);
+                taskComponent.ChildUpperIndex = (ushort)(taskComponent.Index + childCount);
+                taskComponents[i] = taskComponent;
+            }
         }
 
         /// <summary>

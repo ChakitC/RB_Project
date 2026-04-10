@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: b97e49f1841e4e58b39341ff477985a3
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 368344
+  packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
+  packageVersion: 3.0.1
+  assetPath: Packages/com.opsive.behaviordesigner/Runtime/Tasks/Actions/Physics/OverlapShape.cs
+  uploadId: 894106

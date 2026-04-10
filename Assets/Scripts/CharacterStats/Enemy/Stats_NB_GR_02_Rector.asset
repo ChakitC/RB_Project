@@ -12,22 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee0d6ef073118da4dbabdd47dabdedc7, type: 3}
   m_Name: Stats_NB_GR_02_Rector
   m_EditorClassIdentifier: 
+  icon: {fileID: 0}
   characterId: NB_GR_02
   characterName: SerpentPersonnel_Male
-  icon: {fileID: 0}
   CharacterPrefab: {fileID: 2455486968630159720, guid: 6d10d8f609388e14fa46a8a7f1fc1202, type: 3}
   CharacterPrefabBasement: {fileID: 2455486968630159720, guid: 6d10d8f609388e14fa46a8a7f1fc1202, type: 3}
   characterAvatar: {fileID: 9000000, guid: 923ac931b03d81b4aae7d5a66ec1d199, type: 3}
   controller: {fileID: 9100000, guid: eeaacc3b3d4f906488e731bd1082adb8, type: 2}
   animProfile: {fileID: 11400000, guid: 041856afdf417ac4e99bbff0ee27d157, type: 2}
+  weaponHandMode: 0
+  chainAttackSkill: {fileID: 0}
   maxHP: 100000
   maxStamina: 80
   Damage: 10
-  critMultiplier: 5
   armor: 1
+  critMultiplier: 5
   critRate: 1
   Enagy: 100
-  speed: 9
+  speed: 5
   speedDown: 1
   DamageScaling: 0
   ArmorScaling: 0

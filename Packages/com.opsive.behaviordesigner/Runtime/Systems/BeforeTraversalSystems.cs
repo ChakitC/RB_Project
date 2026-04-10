@@ -20,6 +20,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
     /// the actual reevaluation or interruption.
     /// </summary>
     [UpdateInGroup(typeof(BeforeTraversalSystemGroup), OrderFirst = true)]
+    [UpdateBefore(typeof(ReevaluateTaskSystemGroup))]
     [DisableAutoCreation]
     public partial struct ReevaluateSystem : ISystem
     {
@@ -35,61 +36,37 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         }
 
         /// <summary>
-        /// Creates the ReevaluateJob.
+        /// Marks tasks that should be reevaluated with conditional aborts.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
         private void OnUpdate(ref SystemState state)
         {
-            var ecb = new EntityCommandBuffer(Allocator.TempJob);
-            state.Dependency = new ReevaluateJob()
-            {
-                EntityCommandBuffer = ecb.AsParallelWriter(),
-            }.ScheduleParallel(m_Query, state.Dependency);
+            if (m_Query.IsEmptyIgnoreFilter) {
+                return;
+            }
 
-            // The job must run immediately for the next systems.
-            state.Dependency.Complete();
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
-        }
+            foreach (var (branchComponents, taskComponents, reevaluateTaskComponents, entity) in
+                SystemAPI.Query<DynamicBuffer<BranchComponent>, DynamicBuffer<TaskComponent>, DynamicBuffer<ReevaluateTaskComponent>>().WithAbsent<BakedBehaviorTree>().WithEntityAccess()) {
 
-        /// <summary>
-        /// Job which checks for any tasks that should be reevaluated with conditional aborts. This job only flags the tasks, it does not do
-        /// the actual reevaluation or interruption.
-        /// </summary>
-        [BurstCompile]
-        private partial struct ReevaluateJob : IJobEntity
-        {
-            [Tooltip("CommandBuffer which sets the component data.")]
-            public EntityCommandBuffer.ParallelWriter EntityCommandBuffer;
+                var branchComponentsBuffer = branchComponents;
+                var taskComponentsBuffer = taskComponents;
+                var reevaluateTaskComponentsBuffer = reevaluateTaskComponents;
 
-            /// <summary>
-            /// Executes the job.
-            /// </summary>
-            /// <param name="entity">The entity that is being acted upon.</param>
-            /// <param name="entityIndex">The index of the entity.</param>
-            /// <param name="branchComponents">An array of branch components.</param>
-            /// <param name="taskComponents">An array of task components.</param>
-            /// <param name="reevaluateTaskComponents">An array of reevaluate task components.</param>
-            [BurstCompile]
-            public void Execute(Entity entity, [EntityIndexInQuery] int entityIndex, in DynamicBuffer<BranchComponent> branchComponents, ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<ReevaluateTaskComponent> reevaluateTaskComponents)
-            {
-                for (int i = 0; i < reevaluateTaskComponents.Length; ++i) {
-                    var reevaluateTaskComponent = reevaluateTaskComponents[i];
-                    // The task may not be able to reevaluate.
-                    var taskComponent = taskComponents[reevaluateTaskComponent.Index];
-                    if (!taskComponent.CanReevaluate || taskComponent.Disabled) {
+                for (int i = 0; i < reevaluateTaskComponentsBuffer.Length; ++i) {
+                    var reevaluateTaskComponent = reevaluateTaskComponentsBuffer[i];
+                    var taskComponent = taskComponentsBuffer[reevaluateTaskComponent.Index];
+                    if (!taskComponent.CanReevaluate || !taskComponent.Enabled) {
                         continue;
                     }
 
-                    // The branch may not be active.
-                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    var branchComponent = branchComponentsBuffer[taskComponent.BranchIndex];
                     if (branchComponent.ActiveIndex == ushort.MaxValue) {
                         if (taskComponent.Reevaluate) {
                             taskComponent.Reevaluate = false;
-                            taskComponents[reevaluateTaskComponent.Index] = taskComponent;
+                            taskComponentsBuffer[reevaluateTaskComponent.Index] = taskComponent;
 
                             reevaluateTaskComponent.ReevaluateStatus = ReevaluateStatus.Inactive;
-                            reevaluateTaskComponents[i] = reevaluateTaskComponent;
+                            reevaluateTaskComponentsBuffer[i] = reevaluateTaskComponent;
                         }
                         continue;
                     }
@@ -97,58 +74,64 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                     var reevaluate = false;
                     if (reevaluateTaskComponent.AbortType == ConditionalAbortType.Self || reevaluateTaskComponent.AbortType == ConditionalAbortType.Both) {
                         if (branchComponent.ActiveIndex > taskComponent.Index && branchComponent.ActiveIndex <= reevaluateTaskComponent.SelfPriorityUpperIndex) {
-                            // Reevaluate.
                             reevaluate = true;
                             if (reevaluateTaskComponent.ReevaluateStatus == ReevaluateStatus.Inactive) {
                                 reevaluateTaskComponent.ReevaluateStatus = ReevaluateStatus.Active;
-                                EntityCommandBuffer.SetComponentEnabled(entityIndex, entity, reevaluateTaskComponent.ReevaluateFlagComponentType, true);
+                                state.EntityManager.SetComponentEnabled(entity, reevaluateTaskComponent.ReevaluateFlagComponentType, true);
                             }
                         }
-                    } 
+                    }
                     if (!reevaluate && (reevaluateTaskComponent.AbortType == ConditionalAbortType.LowerPriority || reevaluateTaskComponent.AbortType == ConditionalAbortType.Both)) {
                         if (branchComponent.ActiveIndex > reevaluateTaskComponent.LowerPriorityLowerIndex && branchComponent.ActiveIndex <= reevaluateTaskComponent.LowerPriorityUpperIndex) {
-                            // Reevaluate.
                             reevaluate = true;
                             if (reevaluateTaskComponent.ReevaluateStatus == ReevaluateStatus.Inactive) {
                                 reevaluateTaskComponent.ReevaluateStatus = ReevaluateStatus.Active;
-                                EntityCommandBuffer.SetComponentEnabled(entityIndex, entity, reevaluateTaskComponent.ReevaluateFlagComponentType, true);
+                                state.EntityManager.SetComponentEnabled(entity, reevaluateTaskComponent.ReevaluateFlagComponentType, true);
                             }
                         }
                     }
 
-                    // The task should no longer reevaluate.
                     if (!reevaluate && (taskComponent.Reevaluate || reevaluateTaskComponent.ReevaluateStatus == ReevaluateStatus.Dirty)) {
-                        // The system needs to be kept active if there are other tasks with the same reevaluate tag.
-                        var keepSystemActive = false;
-                        for (int j = 0; j < reevaluateTaskComponents.Length; ++j) {
-                            if (i == j) {
-                                continue;
-                            }
-
-                            if ((reevaluateTaskComponents[j].ReevaluateStatus == ReevaluateStatus.Active || reevaluateTaskComponents[j].ReevaluateStatus == ReevaluateStatus.Dirty) &&
-                                reevaluateTaskComponent.ReevaluateFlagComponentType == reevaluateTaskComponents[j].ReevaluateFlagComponentType) {
-                                keepSystemActive = true;
-                                break;
-                            }
+                        if (!HasOtherTrackedReevaluators(i, reevaluateTaskComponent.ReevaluateFlagComponentType, ref reevaluateTaskComponentsBuffer)) {
+                            state.EntityManager.SetComponentEnabled(entity, reevaluateTaskComponent.ReevaluateFlagComponentType, false);
                         }
-
-                        if (!keepSystemActive) {
-                            EntityCommandBuffer.SetComponentEnabled(entityIndex, entity, reevaluateTaskComponent.ReevaluateFlagComponentType, false);
-                        }
-                        // The task should always disable itself.
                         taskComponent.Reevaluate = false;
                         reevaluateTaskComponent.ReevaluateStatus = ReevaluateStatus.Inactive;
-                    } else {
-                        // Store the current status of the task. This status will be compared after the task is reevaluated within DetermineInterruptSystem.
+                    } else if (reevaluate && !taskComponent.Reevaluate) {
+                        // Store the status on reevaluation transition. This is compared after reevaluate systems execute.
                         reevaluateTaskComponent.OriginalStatus = taskComponent.Status;
                     }
 
-                    reevaluateTaskComponents[i] = reevaluateTaskComponent;
+                    reevaluateTaskComponentsBuffer[i] = reevaluateTaskComponent;
 
                     taskComponent.Reevaluate = reevaluate;
-                    taskComponents[reevaluateTaskComponent.Index] = taskComponent;
+                    taskComponentsBuffer[reevaluateTaskComponent.Index] = taskComponent;
                 }
             }
+        }
+
+        /// <summary>
+        /// Returns true if another tracked task with the same reevaluation flag is active/dirty.
+        /// </summary>
+        /// <param name="index">The reevaluate task index being processed.</param>
+        /// <param name="reevaluateFlag">The reevaluate flag component type.</param>
+        /// <param name="reevaluateTaskComponents">All reevaluate task components.</param>
+        /// <returns>True if another matching reevaluator is active or dirty.</returns>
+        private bool HasOtherTrackedReevaluators(int index, ComponentType reevaluateFlag, ref DynamicBuffer<ReevaluateTaskComponent> reevaluateTaskComponents)
+        {
+            for (int i = 0; i < reevaluateTaskComponents.Length; ++i) {
+                if (i == index) {
+                    continue;
+                }
+
+                var reevaluateTaskComponent = reevaluateTaskComponents[i];
+                if ((reevaluateTaskComponent.ReevaluateStatus == ReevaluateStatus.Active || reevaluateTaskComponent.ReevaluateStatus == ReevaluateStatus.Dirty) &&
+                    reevaluateTaskComponent.ReevaluateFlagComponentType == reevaluateFlag) {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 
@@ -271,7 +254,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             {
                 EntityCommandBuffer = ecb.AsParallelWriter(),
             }.ScheduleParallel(m_Query, state.Dependency);
-            
+
             // The job must run immediately for the next systems.
             state.Dependency.Complete();
             ecb.Playback(state.EntityManager);

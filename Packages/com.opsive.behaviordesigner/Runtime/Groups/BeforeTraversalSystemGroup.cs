@@ -21,6 +21,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Groups
     /// Grouping for the task systems that should reevaluate.
     /// </summary>
     [UpdateInGroup(typeof(BeforeTraversalSystemGroup))]
+    [UpdateAfter(typeof(ReevaluateSystem))]
     public partial class ReevaluateTaskSystemGroup : ComponentSystemGroup
     {
     }
@@ -29,6 +30,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Groups
     /// Grouping for the systems that run before the tree execution.
     /// </summary>
     [UpdateInGroup(typeof(BehaviorTreeSystemGroup))]
+    [UpdateAfter(typeof(BeforeTraversalSystemGroup))]
     public partial class InterruptSystemGroup : ComponentSystemGroup
     {
     }

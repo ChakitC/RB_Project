@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 6309ac5e6d164ea2b04d259590887a3c
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 368344
+  packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
+  packageVersion: 3.0.1
+  assetPath: Packages/com.opsive.behaviordesigner/Runtime/Tasks/Actions/GameObject/FindGameObjectByName.cs
+  uploadId: 894106

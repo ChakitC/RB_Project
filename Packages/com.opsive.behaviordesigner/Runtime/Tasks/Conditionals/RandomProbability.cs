@@ -1,4 +1,4 @@
-﻿#if GRAPH_DESIGNER
+#if GRAPH_DESIGNER
 /// ---------------------------------------------
 /// Behavior Designer
 /// Copyright (c) Opsive. All Rights Reserved.
@@ -19,7 +19,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals
     /// </summary>
     [NodeIcon("69bf50f8923f54c4c8bb8e258883a411", "6c5770241610a4c4aae4ac3af0ac8bf8")]
     [Opsive.Shared.Utility.Description("The random probability task will return success when the random probability is below the succeed probability. It will otherwise return failure.")]
-    public class RandomProbability : ECSConditionalTask<RandomProbabilityTaskSystem, RandomProbabilityComponent>, IReevaluateResponder, ICloneable
+    public class RandomProbability : ECSConditionalTask<RandomProbabilityTaskSystem, RandomProbabilityComponent, RandomProbabilityFlag>, IReevaluateResponder, ICloneable
     {
         [Tooltip("The probability of the task returning success.")]
         [SerializeField] [Range(0, 1)] float m_SuccessProbability;
@@ -29,7 +29,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals
         public float SuccessProbability { get => m_SuccessProbability; set => m_SuccessProbability = value; }
         public uint Seed { get => m_Seed; set => m_Seed = value; }
 
-        public override ComponentType Flag { get => typeof(RandomProbabilityFlag); }
         public ComponentType ReevaluateFlag { get => typeof(RandomProbabilityReevaluateFlag); }
         public System.Type ReevaluateSystemType { get => typeof(RandomProbabilityReevaluateTaskSystem); }
 
@@ -65,6 +64,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals
             clone.Index = Index;
             clone.ParentIndex = ParentIndex;
             clone.SiblingIndex = SiblingIndex;
+            clone.Enabled = Enabled;
             clone.SuccessProbability = SuccessProbability;
             return clone;
         }
@@ -147,7 +147,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals
             }
         }
     }
-
 
     /// <summary>
     /// A DOTS tag indicating when an RandomProbability node needs to be reevaluated.

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 9d4fd3dff00444f2863364c31f0db5aa
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 368344
+  packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
+  packageVersion: 3.0.1
+  assetPath: Packages/com.opsive.behaviordesigner/Runtime/Tasks/Actions/Physics2D/ApplyForce2D.cs
+  uploadId: 894106

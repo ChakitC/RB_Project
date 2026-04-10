@@ -44,6 +44,8 @@ namespace Opsive.BehaviorDesigner.Runtime
         private ushort[] m_DisabledEventNodes;
         private Dictionary<VariableAssignment, SharedVariable> m_VariableByNameMap;
         private int m_RuntimeUniqueID;
+        [System.NonSerialized] private ResizableArray<InjectedGraphReference> m_InjectedGraphReferences;
+        [System.NonSerialized] private HashSet<IEventNode> m_InjectedSubtreeEventNodes;
 
         public ITreeLogicNode[] LogicNodes
         {
@@ -82,11 +84,12 @@ namespace Opsive.BehaviorDesigner.Runtime
             }
         }
         public SharedVariable[] SharedVariables { get => m_SharedVariables; set => m_SharedVariables = value; }
-        public int UniqueID { get => m_RuntimeUniqueID != 0 ? m_RuntimeUniqueID : m_UniqueID; }
+        public int UniqueID { get => m_UniqueID; }
+        public int RuntimeUniqueID { get => m_RuntimeUniqueID; internal set => m_RuntimeUniqueID = value; }
         public ushort[] DisabledLogicNodes { get => m_DisabledLogicNodes; set => m_DisabledLogicNodes = value; }
         public ushort[] DisabledEventNodes { get => m_DisabledEventNodes; set => m_DisabledEventNodes = value; }
         internal Dictionary<VariableAssignment, SharedVariable> VariableByNameMap { get => m_VariableByNameMap; set => m_VariableByNameMap = value; }
-        internal int RuntimeUniqueID { set => m_RuntimeUniqueID =  value; }
+        internal ResizableArray<InjectedGraphReference> InjectedGraphReferences { get => m_InjectedGraphReferences; }
 
 #if UNITY_EDITOR
         [Tooltip("The serialized logic node properties data.")]
@@ -109,11 +112,11 @@ namespace Opsive.BehaviorDesigner.Runtime
         public SharedVariableGroup[] SharedVariableGroups { get => m_SharedVariableGroups; set => m_SharedVariableGroups = value;  }
 #endif
 
-        private ResizableArray<SubtreeNodesReference> m_SubtreeNodesReference;
+        private ResizableArray<InjectedSubtreeReference> m_InjectedSubtreeReference;
         private ResizableArray<VariableField> m_VariableFields;
         [System.NonSerialized] private bool m_Deserializing;
 
-        internal ResizableArray<SubtreeNodesReference> SubtreeNodesReferences { get => m_SubtreeNodesReference; set => m_SubtreeNodesReference = value; }
+        internal ResizableArray<InjectedSubtreeReference> InjectedSubtreeReferences { get => m_InjectedSubtreeReference; set => m_InjectedSubtreeReference = value; }
 
         /// <summary>
         /// Default constructor.
@@ -170,6 +173,7 @@ namespace Opsive.BehaviorDesigner.Runtime
             } else {
                 Array.Resize(ref m_EventTasks, m_EventTasks.Length + 1);
             }
+            eventNode.Index = (ushort)(m_EventTasks.Length - 1);
             m_EventTasks[m_EventTasks.Length - 1] = eventNode;
         }
 
@@ -208,8 +212,10 @@ namespace Opsive.BehaviorDesigner.Runtime
             m_TaskData = Serialization.Serialize<ITreeLogicNode>(m_Tasks, ValidateSerializedObject);
             m_EventTaskData = Serialization.Serialize<IEventNode>(m_EventTasks, ValidateSerializedObject);
             SerializeSharedVariables();
-            m_DisabledEventNodesData = Serialization.Serialize<ushort>(m_DisabledEventNodes);
-            m_DisabledLogicNodesData = Serialization.Serialize<ushort>(m_DisabledLogicNodes);
+
+            // Disabled array removed in version 3.0.
+            m_DisabledLogicNodesData = null;
+            m_DisabledEventNodesData = null;
             m_UniqueID = Guid.NewGuid().GetHashCode();
 
 #if UNITY_EDITOR
@@ -358,7 +364,7 @@ namespace Opsive.BehaviorDesigner.Runtime
         public bool Deserialize(IGraphComponent graphComponent, IGraph graph, bool force, bool forceSharedVariables, bool injectSubtrees, bool canDeepCopyVariables = true, SharedVariableOverride[] sharedVariableOverrides = null)
         {
             // No need to deserialize if the data is already deserialized.
-            if (!force && ((m_Tasks != null && m_TaskData != null && m_Tasks.Length == m_TaskData.Length) || (m_EventTasks != null && m_EventTaskData != null && m_EventTasks.Length == m_EventTaskData.Length))) {
+            if (!force && ((m_Tasks != null && m_TaskData != null) || (m_EventTasks != null && m_EventTaskData != null))) {
                 // SharedVariables may still need to be deserialized separately.
                 DeserializeSharedVariables(graph, false, canDeepCopyVariables, sharedVariableOverrides);
 
@@ -368,7 +374,15 @@ namespace Opsive.BehaviorDesigner.Runtime
                 return true;
             }
 
-            return DeserializeInternal(graphComponent, graph, force, forceSharedVariables, injectSubtrees, canDeepCopyVariables, sharedVariableOverrides);
+            var deserialized = DeserializeInternal(graphComponent, graph, force, forceSharedVariables, injectSubtrees, canDeepCopyVariables, sharedVariableOverrides);
+#if UNITY_EDITOR
+            if (deserialized) {
+                UpdateInjectedGraphReferences();
+            } else {
+                m_InjectedGraphReferences = null;
+            }
+#endif
+            return deserialized;
         }
 
         /// <summary>
@@ -384,7 +398,7 @@ namespace Opsive.BehaviorDesigner.Runtime
         /// <returns>True if the tree was deserialized.</returns>
         private bool DeserializeInternal(IGraphComponent graphComponent, IGraph graph, bool force, bool forceSharedVariables, bool injectSubtrees, bool canDeepCopyVariables, SharedVariableOverride[] sharedVariableOverrides = null)
         {
-            // Prevent the tree from being deserialized recusrively.
+            // Prevent the tree from being deserialized recursively.
             if (m_Deserializing) {
                 Debug.LogError($"Error: Unable to deserialize {graph}. This can be caused by recursive subtree references.");
                 return false;
@@ -463,8 +477,8 @@ namespace Opsive.BehaviorDesigner.Runtime
             }
 
             ResizableArray<TaskAssignment> taskReferences = null;
-            if (m_SubtreeNodesReference != null) {
-                m_SubtreeNodesReference.Clear();
+            if (m_InjectedSubtreeReference != null) {
+                m_InjectedSubtreeReference.Clear();
             }
             if (m_TaskData != null && m_TaskData.Length > 0) {
                 m_Tasks = new ITreeLogicNode[m_TaskData.Length];
@@ -490,23 +504,55 @@ namespace Opsive.BehaviorDesigner.Runtime
 
                     // Account for tasks where the object no longer exists.
                     if (m_Tasks[i] == null) {
+                        // Check if the type has moved using the MovedFrom attribute.
+                        var taskType = TypeUtility.GetType(m_TaskData[i].ObjectType);
+                        if (taskType != null) {
+                            // The type was found (possibly via MovedFrom), try to deserialize again.
+                            try {
+                                m_TaskData[i].ObjectType = taskType.FullName;
+                                var task = m_TaskData[i].DeserializeFields(MemberVisibility.Public, ValidateDeserializedTypeObject, (object fieldInfoObj, object taskObj, object value) =>
+                                {
+                                    var validatedValue = ValidateDeserializedObject(fieldInfoObj, taskObj, value, ref m_VariableByNameMap, ref taskReferences, sharedVariableOverrides);
+                                    if (validatedValue != null && validatedValue is SharedVariable sharedVariable && sharedVariable.Scope == SharedVariable.SharingScope.Graph) {
+                                        if (m_VariableFields == null) { m_VariableFields = new ResizableArray<VariableField>(); }
+                                        m_VariableFields.Add(new VariableField() { Field = fieldInfoObj as FieldInfo, Task = taskObj, Name = sharedVariable.Name });
+                                    }
+                                    return validatedValue;
+                                }) as ILogicNode;
+                                if (task is ITreeLogicNode treeLogicNode) {
+                                    m_Tasks[i] = treeLogicNode;
+                                } else if (task is ILogicNode) {
+                                    Debug.LogError($"Error: The task {m_TaskData[i].ObjectType} at index {i} must implement ITreeLogicNode.");
+                                }
+                            } catch (Exception e) {
+                                Debug.LogError($"Error: Unable to load task {m_TaskData[i].ObjectType} at index {i} after MovedFrom resolution due to exception:\n{e}");
+                            }
+                        }
+
+                        // If still null, create an unknown task.
+                        if (m_Tasks[i] == null) {
 #if UNITY_EDITOR
-                        if (m_LogicNodeProperties[i].Data.IsParent) {
-                            m_Tasks[i] = new UnknownParentTaskNode(m_TaskData[i].ObjectType);
-                        } else {
-                            m_Tasks[i] = new UnknownTaskNode(m_TaskData[i].ObjectType);
-                        }
-                        m_Tasks[i].Index = (ushort)i;
-                        m_Tasks[i].ParentIndex = m_LogicNodeProperties[i].Data.ParentIndex;
-                        m_Tasks[i].SiblingIndex = m_LogicNodeProperties[i].Data.SiblingIndex;
+                            if (m_LogicNodeProperties[i].Data.IsParent) {
+                                m_Tasks[i] = new UnknownParentTaskNode(m_TaskData[i].ObjectType);
+                            } else {
+                                m_Tasks[i] = new UnknownTaskNode(m_TaskData[i].ObjectType);
+                            }
+
+                            m_Tasks[i].Index = (ushort)i;
+                            m_Tasks[i].ParentIndex = m_LogicNodeProperties[i].Data.ParentIndex;
+                            m_Tasks[i].SiblingIndex = m_LogicNodeProperties[i].Data.SiblingIndex;
 #else
-                        if (i + 1 < m_Tasks.Length && m_Tasks[i + 1] != null && m_Tasks[i + 1].ParentIndex == i) {
-                            m_Tasks[i] = new UnknownParentTaskNode(m_TaskData[i].ObjectType);
-                        } else {
-                            m_Tasks[i] = new UnknownTaskNode(m_TaskData[i].ObjectType);
-                        }
-                        m_Tasks[i].Index = (ushort)i;
+                            if (i + 1 < m_Tasks.Length && m_Tasks[i + 1] != null && m_Tasks[i + 1].ParentIndex == i) {
+                                m_Tasks[i] = new UnknownParentTaskNode(m_TaskData[i].ObjectType);
+                            } else {
+                                m_Tasks[i] = new UnknownTaskNode(m_TaskData[i].ObjectType);
+                            }
+                            m_Tasks[i].Index = (ushort)i;
+                            m_Tasks[i].ParentIndex = ushort.MaxValue;
+                            m_Tasks[i].SiblingIndex = ushort.MaxValue;
 #endif
+                            Debug.LogError($"Error: Unable to deserialize task of type {m_TaskData[i].ObjectType}. Use the [MovedFrom] attribute for refactoring.");
+                        }
                     }
 
                     // The RuntimeIndex is assigned later when the tree is initialized.
@@ -518,6 +564,16 @@ namespace Opsive.BehaviorDesigner.Runtime
                     if (m_Tasks[i].SiblingIndex != ushort.MaxValue && m_Tasks[i].SiblingIndex >= m_TaskData.Length) { m_Tasks[i].SiblingIndex = ushort.MaxValue; }
 #endif
 
+                    // Migrate from the deprecated disabled array to the Enabled property.
+                    if (m_DisabledLogicNodes != null && m_DisabledLogicNodes.Length > 0) {
+                        for (int j = 0; j < m_DisabledLogicNodes.Length; ++j) {
+                            if (m_DisabledLogicNodes[j] == i) {
+                                m_Tasks[i].Enabled = false;
+                                break;
+                            }
+                        }
+                    }
+
                     if (injectSubtrees) {
                         // If the previous task is a parent the current task has to be a child otherwise the tree is in an error state. The error will also occur
                         // if there is only one task and that task is a parent task.
@@ -528,9 +584,9 @@ namespace Opsive.BehaviorDesigner.Runtime
                         }
 
                         // Subtrees will be evaluated after all tasks are assigned.
-                        if (m_Tasks[i] is ISubtreeReference subtreeReference) {
+                        if (m_Tasks[i] is ISubtreeReferenceNode subtreeReference) {
                             // Subtrees can be nested.
-                            subtreeReference.EvaluateSubtrees(graphComponent);
+                            subtreeReference.EvaluateSubgraphs(graphComponent);
                             var subtrees = subtreeReference.Subtrees;
                             if (subtrees != null) {
                                 // The parent must be able to accept the number of subtrees that there are.
@@ -598,67 +654,103 @@ namespace Opsive.BehaviorDesigner.Runtime
 
                                 // Do not add the subtree if it causes an error.
                                 if (!errorState) {
-                                    if (m_SubtreeNodesReference == null) { m_SubtreeNodesReference = new ResizableArray<SubtreeNodesReference>(); }
-                                    m_SubtreeNodesReference.Add(new SubtreeNodesReference()
+                                    if (m_InjectedSubtreeReference == null) { m_InjectedSubtreeReference = new ResizableArray<InjectedSubtreeReference>(); }
+                                    m_InjectedSubtreeReference.Add(new InjectedSubtreeReference()
                                     {
-                                        SubtreeReference = subtreeReference,
+                                        GraphReference = subtreeReference,
                                         NodeIndex = (ushort)i,
                                         Subtrees = subtrees,
-                                        Nodes = deserializedNodes
+                                        Nodes = deserializedNodes,
+#if UNITY_EDITOR
+                                        GraphReferenceNodeProperties = m_LogicNodeProperties[i],
+#endif
                                     });
                                 }
                             }
                         }
                     }
                 }
+
+                // Migrate from the deprecated disabled array to the Enabled property.
+                m_DisabledLogicNodes = null;
             } else {
                 m_Tasks = null;
             }
 
-            // Subtrees should be injected into the tree.
-            InjectSubtrees();
-
-            // Add the event tasks after the subtrees have been injected to ensure the connected index is correct.
+            // Add the event tasks before the subtrees are injected. Connected indices will be adjusted after injection.
+            var baseEventTaskCount = 0;
             if (m_EventTaskData != null && m_EventTaskData.Length > 0) {
                 m_EventTasks = new IEventNode[m_EventTaskData.Length];
                 for (int i = 0; i < m_EventTaskData.Length; ++i) {
-                    m_EventTasks[i] = m_EventTaskData[i].DeserializeFields(MemberVisibility.Public, ValidateDeserializedTypeObject, (object fieldInfoObj, object task, object value) =>
-                    {
-                        var validatedValue = ValidateDeserializedObject(fieldInfoObj, task, value, ref m_VariableByNameMap, ref taskReferences, sharedVariableOverrides);
-                        if (validatedValue != null && validatedValue is SharedVariable sharedVariable && sharedVariable.Scope == SharedVariable.SharingScope.Graph) {
-                            if (m_VariableFields == null) { m_VariableFields = new ResizableArray<VariableField>(); }
-                            m_VariableFields.Add(new VariableField() { Field = fieldInfoObj as FieldInfo, Task = task, Name = sharedVariable.Name });
-                        }
-                        return validatedValue;
-                    }) as IEventNode;
-
-                    if (m_SubtreeNodesReference != null) {
-                        // A subtree may have injected nodes before the originally connected index. Modify the index to match the injection.
-                        var offset = 0;
-                        for (int j = 0; j < m_SubtreeNodesReference.Count; ++j) {
-                            if (m_SubtreeNodesReference[j].NodeIndex >= m_EventTasks[i].ConnectedIndex) {
-                                break;
+                    try {
+                        var eventTaskObj = m_EventTaskData[i].DeserializeFields(MemberVisibility.Public, ValidateDeserializedTypeObject, (object fieldInfoObj, object task, object value) =>
+                        {
+                            var validatedValue = ValidateDeserializedObject(fieldInfoObj, task, value, ref m_VariableByNameMap, ref taskReferences, sharedVariableOverrides);
+                            if (validatedValue != null && validatedValue is SharedVariable sharedVariable && sharedVariable.Scope == SharedVariable.SharingScope.Graph) {
+                                if (m_VariableFields == null) { m_VariableFields = new ResizableArray<VariableField>(); }
+                                m_VariableFields.Add(new VariableField() { Field = fieldInfoObj as FieldInfo, Task = task, Name = sharedVariable.Name });
                             }
-                            offset += m_SubtreeNodesReference[j].NodeCount - 1;
+                            return validatedValue;
+                        });
+
+                        if (eventTaskObj is IEventNode eventNode) {
+                            m_EventTasks[i] = eventNode;
+                        } else if (eventTaskObj != null) {
+                            Debug.LogError($"Error: The event task {m_EventTaskData[i].ObjectType} at index {i} must implement IEventNode.");
                         }
-                        if (offset > 0) {
-                            m_EventTasks[i].ConnectedIndex += (ushort)offset;
-                        }
+                    } catch (Exception e) {
+                        Debug.LogError($"Error: Unable to load event task {m_EventTaskData[i].ObjectType} at index {i} due to exception:\n{e}");
                     }
 
                     if (m_EventTasks[i] == null) {
-                        m_EventTasks[i] = new UnknownEventTask();
+                        m_EventTasks[i] = new UnknownEventTask(m_EventTaskData[i].ObjectType);
+
+                        Debug.LogError($"Error: Unable to deserialize event of type {m_EventTaskData[i].ObjectType}.");
+                    }
+                    m_EventTasks[i].Index = (ushort)i;
+
+                    // Migrate from the deprecated disabled array to the Enabled property.
+                    if (m_DisabledEventNodes != null && m_DisabledEventNodes.Length > 0) {
+                        for (int j = 0; j < m_DisabledEventNodes.Length; ++j) {
+                            if (m_DisabledEventNodes[j] == i) {
+                                m_EventTasks[i].Enabled = false;
+                                break;
+                            }
+                        }
                     }
                 }
+
+                // Migrate from the deprecated disabled array to the Enabled property.
+                m_DisabledEventNodes = null;
             } else {
                 m_EventTasks = null;
+            }
+            baseEventTaskCount = m_EventTasks != null ? m_EventTasks.Length : 0;
+
+            // Subtrees should be injected into the tree.
+            InjectSubtrees();
+
+            // Modify the ConnectedIndex to match the injection for the base event tasks.
+            if (m_EventTasks != null && m_InjectedSubtreeReference != null && baseEventTaskCount > 0) {
+                for (int i = 0; i < baseEventTaskCount; ++i) {
+                    // A subtree may have injected nodes before the originally connected index. Modify the index to match the injection.
+                    var offset = 0;
+                    for (int j = 0; j < m_InjectedSubtreeReference.Count; ++j) {
+                        if (m_InjectedSubtreeReference[j].NodeIndex >= m_EventTasks[i].ConnectedIndex) {
+                            break;
+                        }
+                        offset += m_InjectedSubtreeReference[j].NodeCount > 0 ? m_InjectedSubtreeReference[j].NodeCount - 1 : 0;
+                    }
+                    if (offset > 0) {
+                        m_EventTasks[i].ConnectedIndex += (ushort)offset;
+                    }
+                }
             }
 
             // After the tree has been deserialized the task references need to be assigned.
             AssignTaskReferences(m_Tasks, taskReferences);
 
             m_Deserializing = false;
-
             return !errorState;
         }
 
@@ -758,8 +850,7 @@ namespace Opsive.BehaviorDesigner.Runtime
                             Debug.LogError($"Error: The dynamic variables with name {sharedVariable.Name} have different types. Dynamic variables with the same name must have the same type.");
                             return sharedVariable;
                         }
-                        var val = GetOverrideVariable(sharedVariableOverrides, mappedSharedVariable, false);
-                        return val;
+                        return GetOverrideVariable(sharedVariableOverrides, mappedSharedVariable, false);
                     } else if (Application.isPlaying && sharedVariable.Scope == SharedVariable.SharingScope.Dynamic) {
                         // New dynamic variables should have the default value.
                         var sharedVariableValueType = sharedVariable.GetType().GetGenericArguments()[0];
@@ -808,11 +899,16 @@ namespace Opsive.BehaviorDesigner.Runtime
                     }
 
                     if (m_SharedVariables[i] == null) {
-                        var unknownSharedVariableData = m_SharedVariableData[i];
-                        unknownSharedVariableData.ObjectType = typeof(UnknownSharedVariable).FullName;
-                        m_SharedVariables[i] = unknownSharedVariableData.DeserializeFields(MemberVisibility.Public) as SharedVariable;
+                        var originalTypeName = m_SharedVariableData[i].ObjectType;
+                        m_SharedVariableData[i].ObjectType = typeof(UnknownSharedVariable).FullName;
+                        m_SharedVariables[i] = m_SharedVariableData[i].DeserializeFields(MemberVisibility.Public) as SharedVariable;
+                        m_SharedVariableData[i].ObjectType = originalTypeName;
+                        // Store the original type name in the unknown variable.
+                        if (m_SharedVariables[i] is UnknownSharedVariable unknownVar) {
+                            unknownVar.UnknownType = originalTypeName;
+                        }
 
-                        Debug.LogError($"Error: Unable to deserialize SharedVariable {m_SharedVariables[i].Name} of type {m_SharedVariableData[i].ObjectType}.");
+                        Debug.LogError($"Error: Unable to deserialize SharedVariable {m_SharedVariables[i].Name} of type {originalTypeName}.");
                     }
 
                     // The override variable can set a value specific for the subtree.
@@ -891,8 +987,20 @@ namespace Opsive.BehaviorDesigner.Runtime
         /// <returns>A reference to the map between the VariableAssignment and SharedVariable.</returns>
         public static Dictionary<VariableAssignment, SharedVariable> PopulateSharedVariablesMapping(IGraph graph, bool canDeepCopy)
         {
+            return PopulateSharedVariablesMapping(graph, graph.SharedVariables, canDeepCopy);
+        }
+
+        /// <summary>
+        /// Populates the SharedVariable Mapping at runtime.
+        /// </summary>
+        /// <param name="graph">The graph that is being deserialized.</param>
+        /// <param name="graphSharedVariables">The SharedVariables that should be used for graph scope variables.</param>
+        /// <param name="canDeepCopy">Can the SharedVariables be deep copied?</param>
+        /// <returns>A reference to the map between the VariableAssignment and SharedVariable.</returns>
+        private static Dictionary<VariableAssignment, SharedVariable> PopulateSharedVariablesMapping(IGraph graph, SharedVariable[] graphSharedVariables, bool canDeepCopy)
+        {
             var variableByNameMap = new Dictionary<VariableAssignment, SharedVariable>();
-            PopulateSharedVariablesMapping(graph, graph.SharedVariables, SharedVariable.SharingScope.Graph, canDeepCopy, ref variableByNameMap);
+            PopulateSharedVariablesMapping(graph, graphSharedVariables, SharedVariable.SharingScope.Graph, canDeepCopy, ref variableByNameMap);
 
             if (graph.Parent is GameObject parentGameObject) {
                 var gameObjectSharedVariablesContainer = parentGameObject.GetComponent<GameObjectSharedVariables>();
@@ -943,6 +1051,627 @@ namespace Opsive.BehaviorDesigner.Runtime
                 }
                 var val = new VariableAssignment(sharedVariables[i].Name, scope);
                 variableByNameMap.Add(val, deepCopy ? CopyUtility.DeepCopy(sharedVariables[i]) as SharedVariable : sharedVariables[i]);
+            }
+        }
+
+        /// <summary>
+        /// Injects the subtree into the task list.
+        /// </summary>
+        private void InjectSubtrees()
+        {
+            if (m_InjectedSubtreeReference == null || m_InjectedSubtreeReference.Count == 0) {
+                return;
+            }
+
+            // The behavior tree must generate a new ID when subtrees are injected.
+            m_RuntimeUniqueID = Guid.NewGuid().GetHashCode();
+
+            var taskCount = 0;
+            var subtreeReferenceCount = 0;
+            var subtreeAssignments = new ResizableArray<SubtreeAssignment>();
+            var eventAssignments = new ResizableArray<SubtreeAssignment>();
+            var lastParentIndex = m_Tasks[m_InjectedSubtreeReference[0].NodeIndex].ParentIndex;
+            var parentIndexOffset = 0;
+            for (int i = 0; i < m_InjectedSubtreeReference.Count; ++i) {
+                var subtreeReference = m_Tasks[m_InjectedSubtreeReference[i].NodeIndex] as ISubtreeReferenceNode;
+                var subtrees = subtreeReference.Subtrees;
+                if (subtrees != null) {
+                    var indexOffset = (ushort)0; // The index offset is relative to each individual ISubtreeReferenceNode task.
+
+                    // The parent index will change based on the number of tasks that have been added.
+                    var parentIndex = m_Tasks[m_InjectedSubtreeReference[i].NodeIndex].ParentIndex;
+                    if (parentIndex != ushort.MaxValue && (parentIndex > lastParentIndex || (i > 0 && lastParentIndex == ushort.MaxValue))) {
+                        parentIndexOffset = (ushort)(taskCount - subtreeReferenceCount);
+                        lastParentIndex = parentIndex;
+                    } else if (parentIndex < lastParentIndex) {
+                        parentIndexOffset = 0;
+                        lastParentIndex = parentIndex;
+                    }
+
+                    // Calculate the parent index offset based on previously injected subtrees
+                    for (int j = 0; j < subtrees.Length; ++j) {
+                        if (subtrees[j] == null || subtrees[j].LogicNodes == null || subtrees[j].EventNodes == null) {
+                            continue;
+                        }
+
+                        var eventNodes = subtrees[j].EventNodes;
+                        if (eventNodes == null) {
+                            continue;
+                        }
+
+                        for (int k = 0; k < eventNodes.Length; ++k) {
+                            var eventNode = eventNodes[k];
+                            if (eventNode == null) {
+                                continue;
+                            }
+
+                            if (eventNode.ConnectedIndex == ushort.MaxValue || !subtrees[j].IsNodeEnabled(false, k)) {
+                                continue;
+                            }
+
+                            var sourceIndex = eventNode.ConnectedIndex;
+                            var subtreeNodes = m_InjectedSubtreeReference[i].TreeNodes[j];
+                            if (subtreeNodes == null || sourceIndex >= subtreeNodes.Length) {
+                                continue;
+                            }
+
+                            var firstNode = subtreeNodes[sourceIndex];
+                            var subtreeNodeCount = GetChildCount(firstNode, subtreeNodes) + 1; // firstNode should be included in addition to the children.
+
+                            if (eventNode.GetType() == typeof(Start)) {
+                                taskCount += subtreeNodeCount;
+                                subtreeAssignments.Add(new SubtreeAssignment()
+                                {
+                                    EventNodeType = eventNode.GetType(),
+                                    EventNodeIndex = (ushort)k,
+                                    SourceIndex = sourceIndex,
+                                    ReferenceIndex = i,
+                                    NodeIndex = m_InjectedSubtreeReference[i].NodeIndex,
+                                    SubtreeIndex = j,
+                                    Subtree = subtrees[j],
+                                    NodeCount = (ushort)subtreeNodeCount,
+                                    IndexOffset = indexOffset,
+                                    ParentIndex = (ushort)(parentIndex + parentIndexOffset),
+                                    SiblingIndex = m_Tasks[m_InjectedSubtreeReference[i].NodeIndex].SiblingIndex,
+#if UNITY_EDITOR
+                                    NodePropertiesPosition = m_LogicNodeProperties[m_InjectedSubtreeReference[i].NodeIndex].Position,
+                                    Collapsed = m_LogicNodeProperties[m_InjectedSubtreeReference[i].NodeIndex].Collapsed
+#endif
+                                });
+                                indexOffset += (ushort)subtreeNodeCount;
+                            } else {
+                                eventAssignments.Add(new SubtreeAssignment()
+                                {
+                                    EventNodeType = eventNode.GetType(),
+                                    EventNodeIndex = (ushort)k,
+                                    SourceIndex = sourceIndex,
+                                    ReferenceIndex = i,
+                                    NodeIndex = m_InjectedSubtreeReference[i].NodeIndex,
+                                    SubtreeIndex = j,
+                                    Subtree = subtrees[j],
+                                    NodeCount = (ushort)subtreeNodeCount,
+                                    ParentIndex = ushort.MaxValue,
+                                    SiblingIndex = ushort.MaxValue
+                                });
+                            }
+                        }
+                    }
+
+                    // Update the parent index offset for the next subtree reference
+                    if (indexOffset > 0) { // Subtree References may not contain any valid subtrees.
+                        subtreeReferenceCount++;
+                    }
+                    var subtreeNodesReferenceOrig = m_InjectedSubtreeReference[i];
+                    subtreeNodesReferenceOrig.NodeCount = indexOffset;
+                    m_InjectedSubtreeReference[i] = subtreeNodesReferenceOrig;
+                }
+            }
+
+            if (taskCount > 0) {
+                var targetCount = m_Tasks.Length + taskCount - subtreeReferenceCount;
+                var originalTaskCount = m_Tasks.Length;
+                if (m_Tasks.Length != targetCount) {
+                    Array.Resize(ref m_Tasks, targetCount);
+#if UNITY_EDITOR
+                    Array.Resize(ref m_LogicNodeProperties, targetCount);
+#endif
+                }
+
+                // Make space for all of the subtree tasks.
+                var addedTasks = 0;
+                for (int i = 0; i < subtreeAssignments.Count; ++i) {
+                    var subtreeIndex = (ushort)(subtreeAssignments[i].NodeIndex + addedTasks);
+                    var subtreeTaskCount = subtreeAssignments[i].NodeCount - (subtreeAssignments[i].IndexOffset == 0 ? 1 : 0);
+                    if (subtreeTaskCount > 0) { // subtreeTaskCount will be zero if a single task replaces the reference task.
+                        for (int j = originalTaskCount - 1 + addedTasks; j > subtreeIndex; --j) {
+                            var node = m_Tasks[j];
+                            node.Index += (ushort)subtreeTaskCount;
+                            if (node.ParentIndex > subtreeIndex && node.ParentIndex != ushort.MaxValue) {
+                                node.ParentIndex += (ushort)subtreeTaskCount;
+                            }
+                            if (node.SiblingIndex > subtreeIndex && node.SiblingIndex != ushort.MaxValue) {
+                                node.SiblingIndex += (ushort)subtreeTaskCount;
+                            }
+                            m_Tasks[j + subtreeTaskCount] = node;
+                            m_Tasks[j] = null;
+#if UNITY_EDITOR
+                            m_LogicNodeProperties[j + subtreeTaskCount] = m_LogicNodeProperties[j];
+#endif
+                        }
+
+                        // The parents need to adjust their sibling index offsets for the newly added nodes. This should only be done with an index offset of 0
+                        // as grouped subtrees have the same parents.
+                        if (subtreeAssignments[i].IndexOffset == 0) {
+                            var parentIndex = m_Tasks[subtreeIndex].ParentIndex;
+                            while (parentIndex != ushort.MaxValue) {
+                                var parentNode = m_Tasks[parentIndex];
+                                if (parentNode.SiblingIndex != ushort.MaxValue) {
+                                    parentNode.SiblingIndex += (ushort)subtreeTaskCount;
+                                    m_Tasks[parentIndex] = parentNode;
+                                }
+                                parentIndex = parentNode.ParentIndex;
+                            }
+                        }
+
+                        subtreeAssignments[i] = new SubtreeAssignment {
+                            EventNodeType = subtreeAssignments[i].EventNodeType,
+                            EventNodeIndex = subtreeAssignments[i].EventNodeIndex,
+                            SourceIndex = subtreeAssignments[i].SourceIndex,
+                            ReferenceIndex = subtreeAssignments[i].ReferenceIndex,
+                            NodeIndex = subtreeAssignments[i].NodeIndex,
+                            SubtreeIndex = subtreeAssignments[i].SubtreeIndex,
+                            Subtree = subtreeAssignments[i].Subtree,
+                            NodeCount = subtreeAssignments[i].NodeCount,
+                            IndexOffset = subtreeAssignments[i].IndexOffset,
+                            ParentIndex = subtreeAssignments[i].ParentIndex,
+                            SiblingIndex = subtreeAssignments[i].SiblingIndex,
+#if UNITY_EDITOR
+                            NodePropertiesPosition = subtreeAssignments[i].NodePropertiesPosition,
+                            Collapsed = subtreeAssignments[i].Collapsed,
+#endif
+                        };
+                    }
+                    // Tasks were added to the tree. Update the tree to the correct indicies.
+                    var subtreeAssignment = subtreeAssignments[i];
+                    subtreeAssignment.IndexOffset = (ushort)(addedTasks + (subtreeAssignments[i].IndexOffset == 0 ? 0 : 1));
+                    subtreeAssignments[i] = subtreeAssignment;
+
+                    addedTasks += subtreeTaskCount;
+                }
+
+                // Populate the tasks with the subtree.
+                for (int i = 0; i < subtreeAssignments.Count; ++i) {
+                    var subtreeIndex = (ushort)(subtreeAssignments[i].NodeIndex + subtreeAssignments[i].IndexOffset);
+                    var subtreeParentIndex = subtreeAssignments[i].ParentIndex;
+                    var rootSiblingIndex = ushort.MaxValue;
+                    if (i + 1 < subtreeAssignments.Count && subtreeAssignments[i + 1].ReferenceIndex == subtreeAssignments[i].ReferenceIndex) {
+                        // Point to the first node of the next subtree.
+                        rootSiblingIndex = (ushort)(subtreeAssignments[i + 1].NodeIndex + subtreeAssignments[i + 1].IndexOffset);
+                    } else {
+                        // Use the original SiblingIndex from the reference task.
+                        rootSiblingIndex = subtreeAssignments[i].SiblingIndex != ushort.MaxValue ? (ushort)(subtreeIndex + subtreeAssignments[i].NodeCount) : ushort.MaxValue;
+                    }
+
+                    var subtreeReference = m_InjectedSubtreeReference[subtreeAssignments[i].ReferenceIndex];
+                    var subtreeNodes = subtreeReference.TreeNodes[subtreeAssignments[i].SubtreeIndex];
+                    if (subtreeNodes == null || subtreeAssignments[i].SourceIndex >= subtreeNodes.Length) {
+                        continue;
+                    }
+
+                    InjectSubtreeLogicNodes(subtreeAssignments[i], subtreeNodes, subtreeReference.Subtrees[subtreeAssignments[i].SubtreeIndex].Pooled, subtreeIndex, subtreeParentIndex,
+                        rootSiblingIndex, subtreeReference.GraphReference.Enabled, true, false);
+                }
+            }
+
+            InjectSubtreeEventNodes(eventAssignments);
+        }
+
+        /// <summary>
+        /// Injects subtree logic nodes into the task list.
+        /// </summary>
+        /// <param name="assignment">The subtree assignment.</param>
+        /// <param name="subtreeNodes">The subtree nodes to inject.</param>
+        /// <param name="pooled">Is the subtree pooled?</param>
+        /// <param name="branchStartIndex">The index to start inserting nodes at.</param>
+        /// <param name="rootParentIndex">The parent index for the root node.</param>
+        /// <param name="rootSiblingIndex">The sibling index for the root node.</param>
+        /// <param name="subtreeReferenceEnabled">Is the subtree reference enabled?</param>
+        /// <param name="applyPositionOffset">Should node properties be offset to match the reference?</param>
+        /// <param name="buildNodeMap">Should a node map be built for event node remapping?</param>
+        /// <returns>A map of original nodes to copied nodes (can be null).</returns>
+        private Dictionary<object, object> InjectSubtreeLogicNodes(SubtreeAssignment assignment, ITreeLogicNode[] subtreeNodes, bool pooled, ushort branchStartIndex,
+            ushort rootParentIndex, ushort rootSiblingIndex, bool subtreeReferenceEnabled, bool applyPositionOffset, bool buildNodeMap)
+        {
+            if (subtreeNodes == null || assignment.SourceIndex >= subtreeNodes.Length) {
+                return null;
+            }
+
+            var indexOffset = (int)branchStartIndex - assignment.SourceIndex;
+            Dictionary<object, object> nodeMap = null;
+            if (!pooled && buildNodeMap) {
+                nodeMap = new Dictionary<object, object>();
+            }
+#if UNITY_EDITOR
+            var positionOffset = Vector2.zero;
+#endif
+            for (int j = 0; j < assignment.NodeCount; ++j) {
+                var node = subtreeNodes[assignment.SourceIndex + j];
+                // The node needs to be copied if it isn't pooled to prevent the same node from being used in multiple trees.
+                if (!pooled) {
+                    node = CopySubtreeLogicNode(node, nodeMap);
+                }
+
+                node.Index = (ushort)(branchStartIndex + j);
+                node.RuntimeIndex = ushort.MaxValue;
+                if (j == 0) {
+                    node.ParentIndex = rootParentIndex;
+                    node.SiblingIndex = rootSiblingIndex;
+                } else {
+                    // Adjust the subsequent subtree tasks by the location of the insertion.
+                    if (node.ParentIndex != ushort.MaxValue) {
+                        node.ParentIndex = (ushort)(node.ParentIndex + indexOffset);
+                    }
+                    if (node.SiblingIndex != ushort.MaxValue) {
+                        node.SiblingIndex = (ushort)(node.SiblingIndex + indexOffset);
+                    }
+                }
+
+                // If the parent reference task is disabled then all subtree nodes should be disabled.
+                if (!subtreeReferenceEnabled) {
+                    node.Enabled = false;
+                }
+
+                m_Tasks[branchStartIndex + j] = node;
+#if UNITY_EDITOR
+                if (m_LogicNodeProperties != null && assignment.Subtree.LogicNodeProperties != null && assignment.SourceIndex + j < assignment.Subtree.LogicNodeProperties.Length) {
+                    var nodeProperties = CopyUtility.DeepCopy(assignment.Subtree.LogicNodeProperties[assignment.SourceIndex + j]) as LogicNodeProperties;
+                    nodeProperties.GuidString = Guid.NewGuid().ToString();
+                    if (applyPositionOffset) {
+                        if (j == 0) {
+                            // Keep the tasks in the same relative position as the subtree reference.
+                            positionOffset = assignment.NodePropertiesPosition - assignment.Subtree.LogicNodeProperties[assignment.SourceIndex + j].Position;
+                        } else {
+                            // Apply a small offset for stacked subtrees so they are not directly overlapping.
+                            positionOffset += new Vector2(2, 2);
+                        }
+                        nodeProperties.Position += positionOffset;
+                        nodeProperties.Collapsed = assignment.Collapsed;
+                    }
+                    m_LogicNodeProperties[branchStartIndex + j] = nodeProperties;
+                }
+#endif
+            }
+
+            return nodeMap;
+        }
+
+        /// <summary>
+        /// Copies the subtree logic node while updating variable fields and any node maps.
+        /// </summary>
+        /// <param name="node">The node to copy.</param>
+        /// <param name="nodeMap">The node map to update (can be null).</param>
+        /// <returns>The copied node.</returns>
+        private ITreeLogicNode CopySubtreeLogicNode(ITreeLogicNode node, Dictionary<object, object> nodeMap)
+        {
+            var copiedNode = CopyUtility.DeepCopy(node) as ITreeLogicNode;
+            if ((m_VariableFields != null && m_VariableFields.Count > 0) || nodeMap != null) {
+                // Replace the old node reference with the updated reference.
+                var localMap = new Dictionary<object, object>();
+                localMap.Add(node, copiedNode);
+                if (node is IContainerNode containerNode) {
+                    if (containerNode.Nodes != null) {
+                        var copiedContainerNode = copiedNode as IContainerNode;
+                        for (int k = 0; k < containerNode.Nodes.Length; ++k) {
+                            localMap.Add(containerNode.Nodes[k], copiedContainerNode.Nodes[k]);
+                        }
+                    }
+                }
+
+                if (nodeMap != null) {
+                    foreach (var pair in localMap) {
+                        nodeMap.Add(pair.Key, pair.Value);
+                    }
+                }
+
+                if (m_VariableFields != null && m_VariableFields.Count > 0) {
+                    for (int k = 0; k < m_VariableFields.Count; ++k) {
+                        if (localMap.TryGetValue(m_VariableFields[k].Task, out var copiedTask)) {
+                            var variableField = m_VariableFields[k];
+                            variableField.Task = copiedTask;
+                            m_VariableFields[k] = variableField;
+                        }
+                    }
+                }
+            }
+            copiedNode.Enabled = node.Enabled;
+            return copiedNode;
+        }
+
+        /// <summary>
+        /// Injects subtree event nodes and their connected logic nodes at the end of the task list.
+        /// </summary>
+        /// <param name="eventAssignments">The event node assignments to inject.</param>
+        private void InjectSubtreeEventNodes(ResizableArray<SubtreeAssignment> eventAssignments)
+        {
+            if (eventAssignments == null || eventAssignments.Count == 0) {
+                return;
+            }
+
+            var injectAssignments = new ResizableArray<SubtreeAssignment>();
+            var singleInstanceEventTypes = new HashSet<Type>();
+            if (m_EventTasks != null && m_EventTasks.Length > 0) {
+                for (int i = 0; i < m_EventTasks.Length; ++i) {
+                    var eventTask = m_EventTasks[i];
+                    if (eventTask == null) {
+                        continue;
+                    }
+                    var eventType = eventTask.GetType();
+                    if (AllowsMultipleEventNodeTypes(eventType)) {
+                        continue;
+                    }
+                    singleInstanceEventTypes.Add(eventType);
+                }
+            }
+            for (int i = 0; i < eventAssignments.Count; ++i) {
+                var assignment = eventAssignments[i];
+                var eventType = assignment.EventNodeType;
+                if (eventType == null) {
+                    continue;
+                }
+                if (!AllowsMultipleEventNodeTypes(eventType)) {
+                    if (singleInstanceEventTypes.Contains(eventType)) {
+                        continue;
+                    }
+                    singleInstanceEventTypes.Add(eventType);
+                }
+                injectAssignments.Add(assignment);
+            }
+            if (injectAssignments.Count == 0) {
+                return;
+            }
+
+            if (m_Tasks == null) {
+                m_Tasks = new ITreeLogicNode[0];
+            }
+
+            var originalTaskCount = m_Tasks.Length;
+            var addedTaskCount = 0;
+            for (int i = 0; i < injectAssignments.Count; ++i) {
+                addedTaskCount += injectAssignments[i].NodeCount;
+            }
+
+            if (addedTaskCount > 0) {
+                Array.Resize(ref m_Tasks, originalTaskCount + addedTaskCount);
+#if UNITY_EDITOR
+                Array.Resize(ref m_LogicNodeProperties, originalTaskCount + addedTaskCount);
+#endif
+            }
+
+            var addedTasks = 0;
+            for (int i = 0; i < injectAssignments.Count; ++i) {
+                var assignment = injectAssignments[i];
+                var subtreeReference = m_InjectedSubtreeReference[assignment.ReferenceIndex];
+                var subtree = assignment.Subtree;
+                var subtreeNodes = subtreeReference.TreeNodes[assignment.SubtreeIndex];
+                if (subtreeNodes == null || assignment.SourceIndex >= subtreeNodes.Length) {
+                    continue;
+                }
+
+                var pooled = subtreeReference.Subtrees[assignment.SubtreeIndex].Pooled;
+                var subtreeReferenceEnabled = subtreeReference.GraphReference.Enabled;
+                var branchStartIndex = (ushort)(originalTaskCount + addedTasks);
+                var nodeMap = InjectSubtreeLogicNodes(assignment, subtreeNodes, pooled, branchStartIndex, ushort.MaxValue,
+                                                        ushort.MaxValue, subtreeReferenceEnabled, false, true);
+
+                var eventNodes = subtree.EventNodes;
+                if (eventNodes == null || assignment.EventNodeIndex >= eventNodes.Length) {
+                    addedTasks += assignment.NodeCount;
+                    continue;
+                }
+
+                var eventNode = eventNodes[assignment.EventNodeIndex];
+                if (eventNode == null) {
+                    addedTasks += assignment.NodeCount;
+                    continue;
+                }
+
+                var injectedEventNode = eventNode;
+                if (!pooled) {
+                    injectedEventNode = CopyUtility.DeepCopy(eventNode) as IEventNode;
+                    if (m_VariableFields != null && m_VariableFields.Count > 0) {
+                        for (int k = 0; k < m_VariableFields.Count; ++k) {
+                            if (ReferenceEquals(m_VariableFields[k].Task, eventNode)) {
+                                var variableField = m_VariableFields[k];
+                                variableField.Task = injectedEventNode;
+                                m_VariableFields[k] = variableField;
+                            }
+                        }
+                    }
+                    RemapEventNodeReferences(injectedEventNode, nodeMap);
+                }
+
+                injectedEventNode.ConnectedIndex = branchStartIndex;
+                if (!subtreeReferenceEnabled) {
+                    injectedEventNode.Enabled = false;
+                }
+
+                var eventIndex = (ushort)(m_EventTasks != null ? m_EventTasks.Length : 0);
+                if (m_EventTasks == null) {
+                    m_EventTasks = new IEventNode[1];
+                } else {
+                    Array.Resize(ref m_EventTasks, m_EventTasks.Length + 1);
+                }
+                m_EventTasks[eventIndex] = injectedEventNode;
+                injectedEventNode.Index = eventIndex;
+                if (m_InjectedSubtreeEventNodes == null) {
+                    m_InjectedSubtreeEventNodes = new HashSet<IEventNode>();
+                }
+                m_InjectedSubtreeEventNodes.Add(injectedEventNode);
+#if UNITY_EDITOR
+                if (m_EventNodeProperties != null) {
+                    Array.Resize(ref m_EventNodeProperties, m_EventTasks.Length);
+                    if (subtree.EventNodeProperties != null && assignment.EventNodeIndex < subtree.EventNodeProperties.Length) {
+                        var nodeProperties = CopyUtility.DeepCopy(subtree.EventNodeProperties[assignment.EventNodeIndex]) as NodeProperties;
+                        nodeProperties.GuidString = Guid.NewGuid().ToString();
+                        m_EventNodeProperties[eventIndex] = nodeProperties;
+                    }
+                }
+#endif
+
+                addedTasks += assignment.NodeCount;
+            }
+        }
+
+        /// <summary>
+        /// Returns true if the event node type allows multiple nodes of that type.
+        /// </summary>
+        /// <param name="eventNodeType">The event node type.</param>
+        /// <returns>True if the type allows multiple nodes.</returns>
+        private bool AllowsMultipleEventNodeTypes(Type eventNodeType)
+        {
+            return eventNodeType != null && Attribute.IsDefined(eventNodeType, typeof(AllowMultipleTypes), true);
+        }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// Updates the cached set of injected graph references.
+        /// </summary>
+        private void UpdateInjectedGraphReferences()
+        {
+            if (m_InjectedSubtreeReference == null || m_InjectedSubtreeReference.Count == 0) {
+                m_InjectedGraphReferences = null;
+                return;
+            }
+
+            if (m_InjectedGraphReferences == null) {
+                m_InjectedGraphReferences = new ResizableArray<InjectedGraphReference>(m_InjectedSubtreeReference.Count);
+            } else {
+                m_InjectedGraphReferences.Clear();
+            }
+            PopulateInjectedSubtreeReferences(ref m_InjectedGraphReferences);
+        }
+
+        /// <summary>
+        /// Retrieves all of the injected subtree references and stores the result in m_InjectedSubtreeReferences.
+        /// </summary>
+        /// <param name="injectedGraphReferences">A reference to the array that the injected graph references should be added to.</param>
+        private void PopulateInjectedSubtreeReferences(ref ResizableArray<InjectedGraphReference> injectedGraphReferences)
+        {
+            if (m_InjectedSubtreeReference == null || injectedGraphReferences == null) {
+                return;
+            }
+
+            var nodeCount = 0;
+            for (int i = 0; i < m_InjectedSubtreeReference.Count; ++i) {
+                var injectedSubtreeReference = m_InjectedSubtreeReference[i];
+                // Emit a single top-level reference entry per SubtreeReference node. Multiple selected subtrees
+                // are represented by Nodes[subgraphIndex] instead of additional reference nodes.
+                var injectedReferenceRuntimeNodeIndex = (ushort)(injectedSubtreeReference.NodeIndex + nodeCount);
+                LogicNodeProperties graphReferenceNodeProperties = null;
+                if (m_LogicNodeProperties != null && injectedReferenceRuntimeNodeIndex < m_LogicNodeProperties.Length) {
+                    graphReferenceNodeProperties = m_LogicNodeProperties[injectedReferenceRuntimeNodeIndex];
+                }
+                IGraph injectedReferenceGraph = null;
+                if (injectedSubtreeReference.Graphs != null) {
+                    for (int j = 0; j < injectedSubtreeReference.Graphs.Length; ++j) {
+                        if (injectedSubtreeReference.Graphs[j] != null) {
+                            injectedReferenceGraph = injectedSubtreeReference.Graphs[j];
+                            break;
+                        }
+                    }
+                }
+                var injectedReference = new InjectedGraphReference() {
+                    Graph = injectedReferenceGraph,
+                    NodeIndex = injectedSubtreeReference.NodeIndex,
+                    RuntimeNodeIndex = injectedReferenceRuntimeNodeIndex,
+                    NodeCount = injectedSubtreeReference.NodeCount,
+                    GraphReference = injectedSubtreeReference.GraphReference,
+                    Nodes = injectedSubtreeReference.Nodes,
+                    GraphReferenceNodeProperties = graphReferenceNodeProperties
+                };
+                injectedGraphReferences.Add(injectedReference);
+
+                // Track how far into the injected runtime span each selected subtree starts.
+                var subtreeRuntimeOffset = (ushort)0;
+                var nodeDelta = injectedSubtreeReference.NodeCount > 0 ? injectedSubtreeReference.NodeCount - 1 : 0; // The SubtreeRefrence node itself doesn't count.
+                if (injectedSubtreeReference.Graphs == null || injectedSubtreeReference.Nodes == null) {
+                    nodeCount += nodeDelta; 
+                    continue;
+                }
+                for (int j = 0; j < injectedSubtreeReference.Graphs.Length; ++j) {
+                    var graph = injectedSubtreeReference.Graphs[j];
+                    ushort subtreeNodeCount = 0;
+                    if (j < injectedSubtreeReference.Nodes.Length && injectedSubtreeReference.Nodes[j] != null) {
+                        subtreeNodeCount = (ushort)injectedSubtreeReference.Nodes[j].Length;
+                    }
+                    if (graph != null && graph.InjectedGraphReferences != null) {
+                        for (int k = 0; k < graph.InjectedGraphReferences.Length; ++k) {
+                            var graphInjectedGraphReferences = graph.InjectedGraphReferences[k];
+                            // Nested references already have a runtime-relative index within the selected subtree.
+                            var nestedReferenceRuntimeNodeIndex = graphInjectedGraphReferences.RuntimeNodeIndex != ushort.MaxValue ? graphInjectedGraphReferences.RuntimeNodeIndex : graphInjectedGraphReferences.NodeIndex;
+                            if (graph.LogicNodeProperties == null || nestedReferenceRuntimeNodeIndex >= graph.LogicNodeProperties.Length) {
+                                continue;
+                            }
+                            var subgraphReferenceNodeProperties = graph.LogicNodeProperties[nestedReferenceRuntimeNodeIndex];
+
+                            var subgraphInjectedReference = new InjectedGraphReference() {
+                                Graph = graphInjectedGraphReferences.Graph,
+                                NodeIndex = graphInjectedGraphReferences.NodeIndex,
+                                // Compose runtime index in the root graph:
+                                // root reference start + selected subtree start + nested reference offset.
+                                RuntimeNodeIndex = (ushort)(injectedReferenceRuntimeNodeIndex + subtreeRuntimeOffset + nestedReferenceRuntimeNodeIndex),
+                                NodeCount = graphInjectedGraphReferences.NodeCount,
+                                GraphReference = graphInjectedGraphReferences.GraphReference,
+                                Nodes = graphInjectedGraphReferences.Nodes,
+                                GraphReferenceNodeProperties = subgraphReferenceNodeProperties
+                            };
+                            injectedGraphReferences.Add(subgraphInjectedReference);
+                        }
+                    }
+
+                    subtreeRuntimeOffset += subtreeNodeCount;
+                }
+                nodeCount += nodeDelta; // The SubtreeRefrence node itself doesn't count.
+            }
+        }
+#endif
+
+        /// <summary>
+        /// Remaps any ILogicNode references on the event node to the copied nodes.
+        /// </summary>
+        /// <param name="eventNode">The event node to update.</param>
+        /// <param name="nodeMap">A map of original nodes to copied nodes.</param>
+        private void RemapEventNodeReferences(IEventNode eventNode, Dictionary<object, object> nodeMap)
+        {
+            if (eventNode == null || nodeMap == null || nodeMap.Count == 0) {
+                return;
+            }
+
+            var fields = eventNode.GetType().GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            for (int i = 0; i < fields.Length; ++i) {
+                var field = fields[i];
+                var fieldType = field.FieldType;
+                if (typeof(ILogicNode).IsAssignableFrom(fieldType)) {
+                    var value = field.GetValue(eventNode);
+                    if (value != null && nodeMap.TryGetValue(value, out var mapped)) {
+                        field.SetValue(eventNode, mapped);
+                    }
+                } else if (typeof(IList).IsAssignableFrom(fieldType)) {
+                    var elementType = Serializer.GetElementType(fieldType);
+                    if (!typeof(ILogicNode).IsAssignableFrom(elementType)) {
+                        continue;
+                    }
+                    var listValue = field.GetValue(eventNode) as IList;
+                    if (listValue == null) {
+                        continue;
+                    }
+                    for (int j = 0; j < listValue.Count; ++j) {
+                        var listItem = listValue[j];
+                        if (listItem != null && nodeMap.TryGetValue(listItem, out var mapped)) {
+                            listValue[j] = mapped;
+                        }
+                    }
+                }
             }
         }
 
@@ -1002,263 +1731,6 @@ namespace Opsive.BehaviorDesigner.Runtime
                 }
                 if (value != null) {
                     taskReference.Field.SetValue(taskReference.Target, value);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Injects the subtree into the task list.
-        /// </summary>
-        private void InjectSubtrees()
-        {
-            if (m_SubtreeNodesReference == null || m_SubtreeNodesReference.Count == 0) {
-                return;
-            }
-
-            // The behavior tree must generate a new ID when subtrees are injected.
-            m_RuntimeUniqueID = Guid.NewGuid().GetHashCode();
-
-            var taskCount = 0;
-            var subtreeReferenceCount = 0;
-            var subtreeAssignments = new ResizableArray<SubtreeAssignment>();
-            var lastParentIndex = m_Tasks[m_SubtreeNodesReference[0].NodeIndex].ParentIndex;
-            var parentIndexOffset = 0;
-            for (int i = 0; i < m_SubtreeNodesReference.Count; ++i) {
-                var subtreeReference = m_Tasks[m_SubtreeNodesReference[i].NodeIndex] as ISubtreeReference;
-                var subtrees = subtreeReference.Subtrees;
-                if (subtrees != null) {
-                    var indexOffset = (ushort)0; // The index offset is relative to each individual ISubtreeReference task.
-
-                    // The parent index will change based on the number of tasks that have been added.
-                    var parentIndex = m_Tasks[m_SubtreeNodesReference[i].NodeIndex].ParentIndex;
-                    if (parentIndex != ushort.MaxValue && (parentIndex > lastParentIndex || (i > 0 && lastParentIndex == ushort.MaxValue))) {
-                        parentIndexOffset = (ushort)(taskCount - subtreeReferenceCount);
-                        lastParentIndex = parentIndex;
-                    } else if (parentIndex < lastParentIndex) {
-                        parentIndexOffset = 0;
-                        lastParentIndex = parentIndex;
-                    }
-
-                    // Calculate the parent index offset based on previously injected subtrees
-                    for (int j = 0; j < subtrees.Length; ++j) {
-                        if (subtrees[j] == null || subtrees[j].LogicNodes == null || subtrees[j].EventNodes == null) {
-                            continue;
-                        }
-
-                        // The subtree should start from the start node.
-                        var startNode = subtrees[j].GetEventNode(typeof(Start)); // Returns (IEventNode, index).
-                        if (startNode.Item1 == null || startNode.Item1.ConnectedIndex == ushort.MaxValue || !subtrees[j].IsNodeEnabled(false, startNode.Item2)) {
-                            continue;
-                        }
-
-                        var firstNode = m_SubtreeNodesReference[i].Nodes[j][startNode.Item1.ConnectedIndex];
-                        var subtreeNodeCount = GetChildCount(firstNode, m_SubtreeNodesReference[i].Nodes[j]) + 1; // firstNode should be included in addition to the children.
-                        taskCount += subtreeNodeCount;
-                        subtreeAssignments.Add(new SubtreeAssignment()
-                        {
-                            ReferenceIndex = i,
-                            NodeIndex = m_SubtreeNodesReference[i].NodeIndex,
-                            SubtreeIndex = j,
-                            Subtree = subtrees[j],
-                            NodeCount = (ushort)subtreeNodeCount,
-                            IndexOffset = indexOffset,
-                            ParentIndex = (ushort)(parentIndex + parentIndexOffset),
-                            SiblingIndex = m_Tasks[m_SubtreeNodesReference[i].NodeIndex].SiblingIndex,
-#if UNITY_EDITOR
-                            NodePropertiesPosition = m_LogicNodeProperties[m_SubtreeNodesReference[i].NodeIndex].Position,
-                            Collapsed = m_LogicNodeProperties[m_SubtreeNodesReference[i].NodeIndex].Collapsed
-#endif
-                        });
-                        indexOffset += (ushort)subtreeNodeCount;
-                    }
-
-                    // Update the parent index offset for the next subtree reference
-                    if (indexOffset > 0) { // Subtree References may not contain any valid subtrees.
-                        subtreeReferenceCount++;
-                    }
-                    var subtreeNodesReferenceOrig = m_SubtreeNodesReference[i];
-                    subtreeNodesReferenceOrig.NodeCount = indexOffset;
-                    m_SubtreeNodesReference[i] = subtreeNodesReferenceOrig;
-                }
-            }
-
-            if (taskCount == 0) {
-                return;
-            }
-
-            var targetCount = m_Tasks.Length + taskCount - subtreeReferenceCount;
-            var originalTaskCount = m_Tasks.Length;
-            if (m_Tasks.Length != targetCount) {
-                Array.Resize(ref m_Tasks, targetCount);
-#if UNITY_EDITOR
-                Array.Resize(ref m_LogicNodeProperties, targetCount);
-#endif
-            }
-
-            // Make space for all of the subtree tasks.
-            var addedTasks = 0;
-            for (int i = 0; i < subtreeAssignments.Count; ++i) {
-                var subtreeIndex = (ushort)(subtreeAssignments[i].NodeIndex + addedTasks);
-                var subtreeTaskCount = subtreeAssignments[i].NodeCount - (subtreeAssignments[i].IndexOffset == 0 ? 1 : 0);
-                if (subtreeTaskCount > 0) { // subtreeTaskCount will be zero if a single task replaces the reference task.
-                    for (int j = originalTaskCount - 1 + addedTasks; j > subtreeIndex; --j) {
-                        var node = m_Tasks[j];
-                        node.Index += (ushort)subtreeTaskCount;
-                        if (node.ParentIndex > subtreeIndex && node.ParentIndex != ushort.MaxValue) {
-                            node.ParentIndex += (ushort)subtreeTaskCount;
-                        }
-                        if (node.SiblingIndex > subtreeIndex && node.SiblingIndex != ushort.MaxValue) {
-                            node.SiblingIndex += (ushort)subtreeTaskCount;
-                        }
-                        m_Tasks[j + subtreeTaskCount] = node;
-                        m_Tasks[j] = null;
-#if UNITY_EDITOR
-                        m_LogicNodeProperties[j + subtreeTaskCount] = m_LogicNodeProperties[j];
-#endif
-                    }
-
-                    // The parents need to adjust their sibling index offsets for the newly added nodes. This should only be done with an index offset of 0
-                    // as grouped subtrees have the same parents.
-                    if (subtreeAssignments[i].IndexOffset == 0) {
-                        var parentIndex = m_Tasks[subtreeIndex].ParentIndex;
-                        while (parentIndex != ushort.MaxValue) {
-                            var parentNode = m_Tasks[parentIndex];
-                            if (parentNode.SiblingIndex != ushort.MaxValue) {
-                                parentNode.SiblingIndex += (ushort)subtreeTaskCount;
-                                m_Tasks[parentIndex] = parentNode;
-                            }
-                            parentIndex = parentNode.ParentIndex;
-                        }
-                    }
-
-                    // Any disabled nodes after the insertion needs to shift.
-                    var lastDisabledNodeIndex = 0;
-                    if (m_DisabledLogicNodes != null) {
-                        for (int j = 0; j < m_DisabledLogicNodes.Length; ++j) {
-                            if (m_DisabledLogicNodes[j] > subtreeIndex) {
-                                m_DisabledLogicNodes[j] += (ushort)subtreeTaskCount;
-                            } else { // Remember the last index that was greater than the subtree index so any disabled subtree nodes can be inserted.
-                                lastDisabledNodeIndex = j + 1;
-                            }
-                        }
-                    }
-
-                    // If the parent reference task is disabled then all subtree nodes should be disabled.
-                    var subtreeDisabledLogicNodes = subtreeAssignments[i].Subtree.DisabledLogicNodes;
-                    if (!IsNodeEnabled(true, m_SubtreeNodesReference[subtreeAssignments[i].ReferenceIndex].NodeIndex)) {
-                        subtreeDisabledLogicNodes = new ushort[subtreeAssignments[i].NodeCount];
-                        for (ushort j = 0; j < subtreeDisabledLogicNodes.Length; ++j) {
-                            subtreeDisabledLogicNodes[j] = j;
-                        }
-                    }
-
-                    // The subtree may have disabled tasks.
-                    if (subtreeDisabledLogicNodes != null && subtreeDisabledLogicNodes.Length > 0) {
-                        var subtreeDisabledLength = subtreeDisabledLogicNodes.Length;
-                        // Ensure all of the disabled logic nodes have been transferred.
-                        for (int j = subtreeDisabledLength - 1; j >= 0; --j) {
-                            if (subtreeDisabledLogicNodes[j] > subtreeTaskCount) {
-                                subtreeDisabledLength--;
-                            }
-                        }
-
-                        if (subtreeDisabledLength > 0) {
-                            if (m_DisabledLogicNodes == null) {
-                                m_DisabledLogicNodes = new ushort[subtreeDisabledLength];
-                            } else {
-                                Array.Resize(ref m_DisabledLogicNodes, m_DisabledLogicNodes.Length + subtreeDisabledLength);
-                            }
-                            var originalLength = m_DisabledLogicNodes.Length - subtreeDisabledLength;
-                            for (int j = lastDisabledNodeIndex; j < originalLength; ++j) {
-                                m_DisabledLogicNodes[j + subtreeDisabledLength] = m_DisabledLogicNodes[j];
-                            }
-                            for (int j = 0; j < subtreeDisabledLength; ++j) {
-                                if (subtreeDisabledLogicNodes[j] > subtreeTaskCount) {
-                                    continue;
-                                }
-                                m_DisabledLogicNodes[lastDisabledNodeIndex + j] = (ushort)(subtreeIndex + subtreeDisabledLogicNodes[j]);
-                            }
-                        }
-                    }
-                }
-                // Tasks were added to the tree. Update the tree to the correct indicies.
-                var subtreeAssignment = subtreeAssignments[i];
-                subtreeAssignment.IndexOffset = (ushort)(addedTasks + (subtreeAssignments[i].IndexOffset == 0 ? 0 : 1));
-                subtreeAssignments[i] = subtreeAssignment;
-
-                addedTasks += subtreeTaskCount;
-            }
-
-            // Populate the tasks with the subtree.
-            for (int i = 0; i < subtreeAssignments.Count; ++i) {
-                var subtreeIndex = (ushort)(subtreeAssignments[i].NodeIndex + subtreeAssignments[i].IndexOffset);
-                var subtreeParentIndex = subtreeAssignments[i].ParentIndex;
-#if UNITY_EDITOR
-                var positionOffset = Vector2.zero;
-#endif
-                for (int j = 0; j < subtreeAssignments[i].NodeCount; ++j) {
-                    var node = m_SubtreeNodesReference[subtreeAssignments[i].ReferenceIndex].Nodes[subtreeAssignments[i].SubtreeIndex][j];
-                    // The node needs to be copied if it isn't pooled to prevent the same node from being used in multiple trees.
-                    if (!m_SubtreeNodesReference[subtreeAssignments[i].ReferenceIndex].Subtrees[subtreeAssignments[i].SubtreeIndex].Pooled) {
-                        var copiedNode = CopyUtility.DeepCopy(node) as ITreeLogicNode;
-                        if (m_VariableFields != null && m_VariableFields.Count > 0) {
-                            // Replace the old node reference with the updated reference.
-                            var nodeMap = new Dictionary<object, object>();
-                            nodeMap.Add(node, copiedNode);
-                            if (node is IContainerNode containerNode) {
-                                if (containerNode.Nodes != null) {
-                                    var copiedContainerNode = copiedNode as IContainerNode;
-                                    for (int k = 0; k < containerNode.Nodes.Length; ++k) {
-                                        nodeMap.Add(containerNode.Nodes[k], copiedContainerNode.Nodes[k]);
-                                    }
-                                }
-                            }
-                            for (int k = 0; k < m_VariableFields.Count; ++k) {
-                                if (nodeMap.TryGetValue(m_VariableFields[k].Task, out var copiedTask)) {
-                                    var variableField = m_VariableFields[k];
-                                    variableField.Task = copiedTask;
-                                    m_VariableFields[k] = variableField;
-                                }
-                            }
-                        }
-                        node = copiedNode;
-                    }
-                    node.Index = (ushort)(subtreeIndex + j);
-                    node.RuntimeIndex = ushort.MaxValue;
-                    if (j == 0) {
-                        node.ParentIndex = subtreeParentIndex;
-                        subtreeParentIndex = node.Index; // The subsequent subtree tasks should use the first subtree task as the parent reference.
-                        // If there's a next subtree from the same reference task, point to its first node. Otherwise, use the original SiblingIndex.
-                        if (i + 1 < subtreeAssignments.Count && subtreeAssignments[i + 1].ReferenceIndex == subtreeAssignments[i].ReferenceIndex) {
-                            // Point to the first node of the next subtree.
-                            var nextSubtreeIndex = (ushort)(subtreeAssignments[i + 1].NodeIndex + subtreeAssignments[i + 1].IndexOffset);
-                            node.SiblingIndex = nextSubtreeIndex;
-                        } else {
-                            // Use the original SiblingIndex from the reference task.
-                            node.SiblingIndex = subtreeAssignments[i].SiblingIndex != ushort.MaxValue ? (ushort)(subtreeIndex + subtreeAssignments[i].NodeCount) : ushort.MaxValue;
-                        }
-                    } else {
-                        // Adjust the subsequent subtree tasks by the location of the insertion.
-                        node.ParentIndex += subtreeParentIndex;
-                        if (node.SiblingIndex != ushort.MaxValue) {
-                            node.SiblingIndex += subtreeIndex;
-                        }
-                    }
-                    m_Tasks[subtreeIndex + j] = node;
-#if UNITY_EDITOR
-                    var nodeProperties = CopyUtility.DeepCopy(subtreeAssignments[i].Subtree.LogicNodeProperties[j]) as LogicNodeProperties;
-                    nodeProperties.GuidString = Guid.NewGuid().ToString();
-                    if (j == 0) {
-                        // Keep the tasks in the same relative position as the subtree reference.
-                        positionOffset = subtreeAssignments[i].NodePropertiesPosition - subtreeAssignments[i].Subtree.LogicNodeProperties[j].Position;
-                    } else {
-                        // Apply a small offset for stacked subtrees so they are not directly overlapping.
-                        positionOffset += new Vector2(2, 2);
-                    }
-                    nodeProperties.Position += positionOffset;
-                    nodeProperties.Collapsed = subtreeAssignments[i].Collapsed;
-                    m_LogicNodeProperties[subtreeIndex + j] = nodeProperties;
-#endif
                 }
             }
         }
@@ -1331,7 +1803,7 @@ namespace Opsive.BehaviorDesigner.Runtime
         }
 
         /// <summary>
-        /// Reevaluates the SubtreeReferences by calling the EvaluateSubtrees method.
+        /// Reevaluates the ISubtreeReferenceNodes by calling the EvaluateSubgraphs method.
         /// </summary>
         /// <param name="graphComponent">The component that the graph is being deserialized from.</param>
         /// <param name="graph">The graph that is being reevaluated.</param>
@@ -1345,7 +1817,7 @@ namespace Opsive.BehaviorDesigner.Runtime
             }
 
             // Subtree references must exist.
-            if (m_SubtreeNodesReference == null || m_SubtreeNodesReference.Count == 0) {
+            if (m_InjectedSubtreeReference == null || m_InjectedSubtreeReference.Count == 0) {
                 return false;
             }
 
@@ -1353,19 +1825,21 @@ namespace Opsive.BehaviorDesigner.Runtime
                 onBeforeReevaluationSwap();
             }
 
+            RemoveInjectedSubtreeEventNodes();
+            var baseEventTaskCount = m_EventTasks != null ? m_EventTasks.Length : 0;
+
             // Find the new reevaluated nodes.
-            for (int i = m_SubtreeNodesReference.Count - 1; i >= 0; --i) {
-                var subtreeNodesReference = m_SubtreeNodesReference[i];
-                var subtreeReference = m_SubtreeNodesReference[i].SubtreeReference;
-                subtreeReference.EvaluateSubtrees(graphComponent);
+            for (int i = m_InjectedSubtreeReference.Count - 1; i >= 0; --i) {
+                var subtreeNodesReference = m_InjectedSubtreeReference[i];
+                var subtreeReference = m_InjectedSubtreeReference[i].GraphReference as ISubtreeReferenceNode;
+                subtreeReference.EvaluateSubgraphs(graphComponent);
                 var reevaluatedSubtrees = subtreeReference.Subtrees;
-                ITreeLogicNode[][] reevaluatedNodes;
                 if (reevaluatedSubtrees == null) {
                     continue;
                 }
 
                 // The parent must be able to accept the number of subtrees that there are.
-                var parentIndex = m_Tasks[m_SubtreeNodesReference[i].NodeIndex].ParentIndex;
+                var parentIndex = m_Tasks[m_InjectedSubtreeReference[i].NodeIndex].ParentIndex;
                 IParentNode parentNode = null;
                 if (parentIndex != ushort.MaxValue) {
                     parentNode = m_Tasks[parentIndex] as IParentNode;
@@ -1376,7 +1850,7 @@ namespace Opsive.BehaviorDesigner.Runtime
                     continue;
                 }
 
-                reevaluatedNodes = new ITreeLogicNode[reevaluatedSubtrees.Length][];
+                var reevaluatedNodes = new ITreeLogicNode[reevaluatedSubtrees.Length][];
                 var errorState = false;
                 for (int j = 0; j < reevaluatedSubtrees.Length; ++j) {
                     if (reevaluatedSubtrees[j] == null) {
@@ -1396,21 +1870,21 @@ namespace Opsive.BehaviorDesigner.Runtime
                 // The subtree index will be offsetted from the original index value if there are multiple subtree references.
                 var nodeOffset = 0;
                 for (int j = i - 1; j >= 0; --j) {
-                    nodeOffset += m_SubtreeNodesReference[j].NodeCount - 1;
+                    nodeOffset += m_InjectedSubtreeReference[j].NodeCount > 0 ? m_InjectedSubtreeReference[j].NodeCount - 1 : 0;
                 }
 
                 // All of the reevaluated nodes have been determined. Remove the old subtree nodes.
-                var nodeCount = m_SubtreeNodesReference[i].NodeCount;
+                var nodeCount = m_InjectedSubtreeReference[i].NodeCount;
 
                 // Replace the first node with the subtree reference, and remove the rest of the added nodes.
-                m_Tasks[m_SubtreeNodesReference[i].NodeIndex + nodeOffset] = m_SubtreeNodesReference[i].SubtreeReference as ITreeLogicNode;
-                for (int j = m_SubtreeNodesReference[i].NodeIndex + nodeOffset + 1; j < m_Tasks.Length - nodeCount + 1; ++j) {
+                m_Tasks[m_InjectedSubtreeReference[i].NodeIndex + nodeOffset] = m_InjectedSubtreeReference[i].GraphReference as ITreeLogicNode;
+                for (int j = m_InjectedSubtreeReference[i].NodeIndex + nodeOffset + 1; j < m_Tasks.Length - nodeCount + 1; ++j) {
                     m_Tasks[j] = m_Tasks[j + nodeCount - 1];
                     m_Tasks[j].Index = (ushort)j;
-                    if (m_Tasks[j].ParentIndex != ushort.MaxValue && m_Tasks[j].ParentIndex > m_SubtreeNodesReference[i].NodeIndex + nodeOffset) {
+                    if (m_Tasks[j].ParentIndex != ushort.MaxValue && m_Tasks[j].ParentIndex > m_InjectedSubtreeReference[i].NodeIndex + nodeOffset) {
                         m_Tasks[j].ParentIndex -= (ushort)(nodeCount - 1);
                     }
-                    if (m_Tasks[j].SiblingIndex != ushort.MaxValue && m_Tasks[j].SiblingIndex > m_SubtreeNodesReference[i].NodeIndex + nodeOffset) {
+                    if (m_Tasks[j].SiblingIndex != ushort.MaxValue && m_Tasks[j].SiblingIndex > m_InjectedSubtreeReference[i].NodeIndex + nodeOffset) {
                         m_Tasks[j].SiblingIndex -= (ushort)(nodeCount - 1);
                     }
 
@@ -1420,7 +1894,7 @@ namespace Opsive.BehaviorDesigner.Runtime
                 }
 
                 // Restore the original sibling index value for parent nodes.
-                parentIndex = m_Tasks[m_SubtreeNodesReference[i].NodeIndex + nodeOffset].ParentIndex;
+                parentIndex = m_Tasks[m_InjectedSubtreeReference[i].NodeIndex + nodeOffset].ParentIndex;
                 while (parentIndex != ushort.MaxValue) {
                     var parentTask = m_Tasks[parentIndex];
                     if (parentTask.SiblingIndex != ushort.MaxValue) {
@@ -1433,7 +1907,7 @@ namespace Opsive.BehaviorDesigner.Runtime
                 // Restore the original ConnectedIndex value.
                 if (m_EventTasks != null) {
                     for (int j = 0; j < m_EventTasks.Length; ++j) {
-                        if (m_EventTasks[j].ConnectedIndex > m_SubtreeNodesReference[i].NodeIndex) {
+                        if (m_EventTasks[j].ConnectedIndex > m_InjectedSubtreeReference[i].NodeIndex) {
                             m_EventTasks[j].ConnectedIndex -= (ushort)(nodeCount - 1);
                         }
                     }
@@ -1445,41 +1919,21 @@ namespace Opsive.BehaviorDesigner.Runtime
 
                 // Replace the old nodes with the new nodes.
                 subtreeNodesReference.Nodes = reevaluatedNodes;
-                m_SubtreeNodesReference[i] = subtreeNodesReference;
-
-                // The disabled nodes also need to be removed.
-                var subtrees = m_SubtreeNodesReference[i].Subtrees;
-                var disabledNodesCount = 0;
-                for (int j = 0; j < subtrees.Length; ++j) {
-                    if (subtrees[j].DisabledLogicNodes == null || subtrees[j].DisabledLogicNodes.Length == 0) {
-                        continue;
-                    }
-                    disabledNodesCount += subtrees[j].DisabledLogicNodes.Length;
-                }
-                if (disabledNodesCount > 0) {
-                    if (m_DisabledLogicNodes.Length > disabledNodesCount) { // The local tree may not have any disabled nodes.
-                        for (int j = 0; j < m_DisabledLogicNodes.Length - disabledNodesCount; ++j) {
-                            if (m_DisabledLogicNodes[j] >= m_SubtreeNodesReference[i].NodeIndex + nodeOffset + 1) {
-                                m_DisabledLogicNodes[j] = (ushort)(m_DisabledLogicNodes[j + disabledNodesCount] - nodeCount + 1);
-                            }
-                        }
-                    }
-                    Array.Resize(ref m_DisabledLogicNodes, m_DisabledLogicNodes.Length - disabledNodesCount);
-                }
+                m_InjectedSubtreeReference[i] = subtreeNodesReference;
             }
 
             // The tasks array has been restored to the original set of nodes with the ISubtreeReference. Inject the new nodes.
             InjectSubtrees();
 
-            // Modify the ConnectedIndex to match the injection.
-            if (m_EventTasks != null && m_SubtreeNodesReference != null) {
-                for (int i = 0; i < m_EventTasks.Length; ++i) {
+            // Modify the ConnectedIndex to match the injection for the base event tasks.
+            if (m_EventTasks != null && m_InjectedSubtreeReference != null && baseEventTaskCount > 0) {
+                for (int i = 0; i < baseEventTaskCount; ++i) {
                     var offset = 0;
-                    for (int j = 0; j < m_SubtreeNodesReference.Count; ++j) {
-                        if (m_SubtreeNodesReference[j].NodeIndex >= m_EventTasks[i].ConnectedIndex) {
+                    for (int j = 0; j < m_InjectedSubtreeReference.Count; ++j) {
+                        if (m_InjectedSubtreeReference[j].NodeIndex >= m_EventTasks[i].ConnectedIndex) {
                             break;
                         }
-                        offset += m_SubtreeNodesReference[j].NodeCount - 1;
+                        offset += m_InjectedSubtreeReference[j].NodeCount > 0 ? m_InjectedSubtreeReference[j].NodeCount - 1 : 0;
                     }
                     if (offset != 0) {
                         m_EventTasks[i].ConnectedIndex += (ushort)offset;
@@ -1487,7 +1941,85 @@ namespace Opsive.BehaviorDesigner.Runtime
                 }
             }
 
+#if UNITY_EDITOR
+            UpdateInjectedGraphReferences();
+#endif
+
             return true;
+        }
+
+        /// <summary>
+        /// Removes any injected subtree event nodes and their appended logic nodes.
+        /// </summary>
+        private void RemoveInjectedSubtreeEventNodes()
+        {
+            if (m_EventTasks == null || m_EventTasks.Length == 0 || m_InjectedSubtreeEventNodes == null || m_InjectedSubtreeEventNodes.Count == 0) {
+                return;
+            }
+
+            var originalEventTasks = m_EventTasks;
+#if UNITY_EDITOR
+            var originalEventNodeProperties = m_EventNodeProperties;
+#endif
+            var totalBranchCount = 0;
+            var injectedEventTaskCount = 0;
+            for (int i = 0; i < originalEventTasks.Length; ++i) {
+                var eventTask = originalEventTasks[i];
+                if (eventTask == null || !m_InjectedSubtreeEventNodes.Contains(eventTask)) {
+                    continue;
+                }
+
+                injectedEventTaskCount++;
+                if (eventTask.ConnectedIndex == ushort.MaxValue || eventTask.ConnectedIndex >= m_Tasks.Length) {
+                    continue;
+                }
+                totalBranchCount += GetChildCount(m_Tasks[eventTask.ConnectedIndex], m_Tasks) + 1;
+            }
+
+            if (injectedEventTaskCount == 0) {
+                m_InjectedSubtreeEventNodes.Clear();
+                return;
+            }
+
+            if (totalBranchCount > 0 && totalBranchCount <= m_Tasks.Length) {
+                Array.Resize(ref m_Tasks, m_Tasks.Length - totalBranchCount);
+#if UNITY_EDITOR
+                Array.Resize(ref m_LogicNodeProperties, m_LogicNodeProperties.Length - totalBranchCount);
+#endif
+            }
+
+            var retainedEventTaskCount = originalEventTasks.Length - injectedEventTaskCount;
+            var retainedEventTasks = new IEventNode[retainedEventTaskCount];
+            var retainedIndex = 0;
+            for (int i = 0; i < originalEventTasks.Length; ++i) {
+                var eventTask = originalEventTasks[i];
+                if (eventTask != null && m_InjectedSubtreeEventNodes.Contains(eventTask)) {
+                    continue;
+                }
+
+                if (eventTask != null) {
+                    eventTask.Index = (ushort)retainedIndex;
+                }
+                retainedEventTasks[retainedIndex] = eventTask;
+                retainedIndex++;
+            }
+            m_EventTasks = retainedEventTasks;
+#if UNITY_EDITOR
+            if (originalEventNodeProperties != null) {
+                var retainedEventNodeProperties = new NodeProperties[retainedEventTaskCount];
+                retainedIndex = 0;
+                for (int i = 0; i < originalEventTasks.Length && i < originalEventNodeProperties.Length; ++i) {
+                    var eventTask = originalEventTasks[i];
+                    if (eventTask != null && m_InjectedSubtreeEventNodes.Contains(eventTask)) {
+                        continue;
+                    }
+                    retainedEventNodeProperties[retainedIndex] = originalEventNodeProperties[i];
+                    retainedIndex++;
+                }
+                m_EventNodeProperties = retainedEventNodeProperties;
+            }
+#endif
+            m_InjectedSubtreeEventNodes.Clear();
         }
 
         /// <summary>
@@ -1572,7 +2104,9 @@ namespace Opsive.BehaviorDesigner.Runtime
             }
 
             if (dirty) {
-                m_VariableByNameMap = PopulateSharedVariablesMapping(graph, true);
+                // The graph may be a BehaviorTree pointing to local variables while this data belongs to a subtree.
+                // Rebuild graph-scope mappings from this data's variables to preserve the cloned binding instance.
+                m_VariableByNameMap = PopulateSharedVariablesMapping(graph, m_SharedVariables, true);
             }
         }
 
@@ -1586,7 +2120,8 @@ namespace Opsive.BehaviorDesigner.Runtime
         {
             EventNodes = other.EventNodes;
             LogicNodes = other.LogicNodes;
-            SubtreeNodesReferences = other.SubtreeNodesReferences;
+            InjectedSubtreeReferences = other.InjectedSubtreeReferences;
+            m_InjectedSubtreeEventNodes = other.m_InjectedSubtreeEventNodes;
             m_SharedVariables = other.SharedVariables;
             m_SharedVariableData = other.m_SharedVariableData;
             m_VariableByNameMap = PopulateSharedVariablesMapping(graph, false);
@@ -1614,6 +2149,7 @@ namespace Opsive.BehaviorDesigner.Runtime
             m_SharedVariableGroups = other.SharedVariableGroups;
             m_SharedVariableGroupsData = other.m_SharedVariableGroupsData;
             m_GroupProperties = other.GroupProperties;
+            m_InjectedGraphReferences = other.m_InjectedGraphReferences;
 #endif
         }
 
@@ -1658,16 +2194,18 @@ namespace Opsive.BehaviorDesigner.Runtime
                 return true;
             }
 
-            var disabledNodes = logicNode ? m_DisabledLogicNodes : m_DisabledEventNodes;
-            if (disabledNodes == null) {
-                return true;
-            }
-            for (int i = 0; i < disabledNodes.Length; ++i) {
-                if (disabledNodes[i] == index) {
-                    return false;
+            // Check the Enabled property on the node directly.
+            if (logicNode) {
+                if (m_Tasks == null || index >= m_Tasks.Length) {
+                    return true;
                 }
+                return m_Tasks[index].Enabled;
+            } else {
+                if (m_EventTasks == null || index >= m_EventTasks.Length) {
+                    return true;
+                }
+                return m_EventTasks[index].Enabled;
             }
-            return true;
         }
     }
 }

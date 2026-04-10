@@ -21,10 +21,14 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     [NodeIcon("63d6a403c13816a49b58d1de830ca51e", "3d3c18273075b3f40b6c921943f33964")]
     [Opsive.Shared.Utility.Description("Evaluates the specified conditional task. If the conditional task returns success then the child task is run and the child status is returned. If the conditional task does not " +
                      "return success then the child task is not run and a failure status is immediately returned.")]
-    public class ConditionalEvaluator : DecoratorNode
+    public class ConditionalEvaluator : DecoratorNode, IParallelNode
     {
         [Tooltip("The target conditional task that should be evaluated.")]
         [SerializeField] [InspectNode] protected Conditional m_Task;
+        [Tooltip("Should the ConditionalEvaluator continue to reevaluate the conditional task while the nested branch is active?")]
+        [SerializeField] protected bool m_Reevaluate = true;
+
+        private TaskStatus m_ConditionalStatus;
 
         /// <summary>
         /// Resets the task values back to their default.
@@ -41,12 +45,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
         /// <param name="runtimeIndex">The runtime index of the node.</param>
         internal override void Initialize(BehaviorTree behaviorTree, ushort runtimeIndex)
         {
-            if (m_Task != null) {
-                m_Task.Initialize(behaviorTree, runtimeIndex);
-
-                if (behaviorTree.World != null) {
-                    ComponentUtility.AddInterruptComponents(behaviorTree.World.EntityManager, behaviorTree.Entity);
-                }
+            m_Task?.Initialize(behaviorTree, runtimeIndex);
+            if (behaviorTree.World != null) {
+                ComponentUtility.AddInterruptComponents(behaviorTree.World.EntityManager, behaviorTree.Entity);
             }
 
             base.Initialize(behaviorTree, runtimeIndex);
@@ -79,6 +80,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
         public override void OnStart()
         {
             m_Task?.OnStart();
+            m_ConditionalStatus = TaskStatus.Inactive;
         }
 
         /// <summary>
@@ -90,8 +92,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
             if (m_Task == null) {
                 return TaskStatus.Failure;
             }
-            var status = m_Task.OnUpdate();
-            if (status == TaskStatus.Failure) {
+            if (m_ConditionalStatus == TaskStatus.Inactive || m_Reevaluate) {
+                m_ConditionalStatus = m_Task.OnUpdate();
+            }
+            if (m_ConditionalStatus == TaskStatus.Failure) {
                 return TaskStatus.Failure;
             }
 

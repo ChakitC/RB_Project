@@ -40,7 +40,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
             }
 
             if (string.IsNullOrEmpty(m_EventName.Value)) {
-                Debug.LogError("Error: Unable to send event. The event name is empty.");
+                UnityEngine.Debug.LogError("Error: Unable to send event. The event name is empty.");
                 return TaskStatus.Failure;
             }
 

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: dead9573c041496fa5c319e857426314
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 368344
+  packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
+  packageVersion: 3.0.1
+  assetPath: Packages/com.opsive.behaviordesigner/Runtime/Tasks/Actions/Math/NegateFloat.cs
+  uploadId: 894106

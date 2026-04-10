@@ -6,7 +6,6 @@
 /// ---------------------------------------------
 namespace Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals
 {
-    using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.GraphDesigner.Runtime;
 
     /// <summary>

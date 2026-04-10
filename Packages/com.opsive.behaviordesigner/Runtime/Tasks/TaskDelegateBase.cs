@@ -17,10 +17,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
     /// The TaskDelegateBase task is an abstract class used for any action classes that use reflection to execute the action.
     /// </summary>
     [HideInFilterWindow]
-    public abstract class TaskDelegateBase : Task, IAction
+    public abstract class TaskDelegateBase : Actions.TargetGameObjectAction
     {
-        [Tooltip("The object that the delegate belongs to. Can be null for static variables.")]
-        [SerializeField] [HideInInspector] protected SharedVariable m_Target;
         [Tooltip("The type of delegate that should be created.")]
         [SerializeField] [HideInInspector] protected string m_ReflectedType;
         [Tooltip("The type of parameters that the delegate uses.")]
@@ -28,7 +26,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         [Tooltip("The name of the method that should be called by the delegate.")]
         [SerializeField] [HideInInspector] protected string m_MethodName;
 
-        public SharedVariable Target => m_Target;
+        public GameObject Target => gameObject;
         public string ReflectedType => m_ReflectedType;
         public string[] ParameterTypes => m_ParameterTypes;
         public string MethodName => m_MethodName;
@@ -73,8 +71,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
             base.OnAwake();
 
             CreateDelegate();
-            if (m_Target != null) {
-                m_Target.OnValueChange += CreateDelegate;
+            if (m_TargetGameObject != null) {
+                m_TargetGameObject.OnValueChange += CreateDelegate;
             }
         }
 
@@ -89,24 +87,16 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The target value.</returns>
         protected object GetTargetValue()
         {
-            // The target will be null if no SharedVariable value has been assigned.
-            var target = m_Target.GetValue();
-            if (target == null) {
-                var targetType = m_ReflectedType.Replace("UnityEngine.", string.Empty);
-                if (string.Equals(targetType, "GameObject")) {
-                    return m_GameObject;
-                }
-                var value = m_GameObject.GetComponent(targetType);
-                if (value == null) {
-                    var splitType = m_ReflectedType.Split(".");
-                    value = m_GameObject.GetComponent(splitType[splitType.Length - 1]);
-                    if (value == null) {
-                        Debug.LogError($"Error: Unable to find the component {m_ReflectedType} on the {m_GameObject.name} GameObject.");
-                    }
-                }
-                return value;
+            var targetType = m_ReflectedType.Replace("UnityEngine.", string.Empty);
+            if (string.Equals(targetType, "GameObject")) {
+                return gameObject;
             }
-            return target;
+            var value = gameObject.GetComponent(targetType);
+            if (value == null) {
+                var splitType = m_ReflectedType.Split(".");
+                value = gameObject.GetComponent(splitType[splitType.Length - 1]);
+            }
+            return value;
         }
 
         /// <summary>
@@ -159,6 +149,18 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         }
 
         /// <summary>
+        /// Callback when the behavior tree is destroyed.
+        /// </summary>
+        public override void OnDestroy()
+        {
+            base.OnDestroy();
+
+            if (m_TargetGameObject != null) {
+                m_TargetGameObject.OnValueChange -= CreateDelegate;
+            }
+        }
+
+        /// <summary>
         /// Returns a friendly name for the task.
         /// </summary>
         /// <returns>A friendly name for the task.</returns>
@@ -199,6 +201,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Delegate();
             return TaskStatus.Success;
         }
@@ -238,6 +245,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Result.Value = m_Delegate();
             if (m_ConditionalTask) {
                 return Convert.ToBoolean(m_Result.Value) ? TaskStatus.Success : TaskStatus.Failure;
@@ -280,6 +292,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Delegate(m_Parameter1.Value);
             return TaskStatus.Success;
         }
@@ -321,6 +338,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Result.Value = m_Delegate(m_Parameter1.Value);
             if (m_ConditionalTask) {
                 return Convert.ToBoolean(m_Result.Value) ? TaskStatus.Success : TaskStatus.Failure;
@@ -365,6 +387,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Delegate(m_Parameter1.Value, m_Parameter2.Value);
             return TaskStatus.Success;
         }
@@ -408,6 +435,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Result.Value = m_Delegate(m_Parameter1.Value, m_Parameter2.Value);
             if (m_ConditionalTask) {
                 return Convert.ToBoolean(m_Result.Value) ? TaskStatus.Success : TaskStatus.Failure;
@@ -454,6 +486,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value);
             return TaskStatus.Success;
         }
@@ -499,6 +536,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Result.Value = m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value);
             if (m_ConditionalTask) {
                 return Convert.ToBoolean(m_Result.Value) ? TaskStatus.Success : TaskStatus.Failure;
@@ -547,6 +589,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value);
             return TaskStatus.Success;
         }
@@ -594,6 +641,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Result.Value = m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value);
             if (m_ConditionalTask) {
                 return Convert.ToBoolean(m_Result.Value) ? TaskStatus.Success : TaskStatus.Failure;
@@ -644,6 +696,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value, m_Parameter5.Value);
             return TaskStatus.Success;
         }
@@ -693,6 +750,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Result.Value = m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value, m_Parameter5.Value);
             if (m_ConditionalTask) {
                 return Convert.ToBoolean(m_Result.Value) ? TaskStatus.Success : TaskStatus.Failure;
@@ -745,6 +807,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value, m_Parameter5.Value, m_Parameter6.Value);
             return TaskStatus.Success;
         }
@@ -796,6 +863,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Result.Value = m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value, m_Parameter5.Value, m_Parameter6.Value);
             if (m_ConditionalTask) {
                 return Convert.ToBoolean(m_Result.Value) ? TaskStatus.Success : TaskStatus.Failure;
@@ -850,6 +922,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value, m_Parameter5.Value, m_Parameter6.Value, m_Parameter7.Value);
             return TaskStatus.Success;
         }
@@ -903,6 +980,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Result.Value = m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value, m_Parameter5.Value, m_Parameter6.Value, m_Parameter7.Value);
             if (m_ConditionalTask) {
                 return Convert.ToBoolean(m_Result.Value) ? TaskStatus.Success : TaskStatus.Failure;
@@ -959,6 +1041,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value, m_Parameter5.Value, m_Parameter6.Value, m_Parameter7.Value, m_Parameter8.Value);
             return TaskStatus.Success;
         }
@@ -1014,6 +1101,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Result.Value = m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value, m_Parameter5.Value, m_Parameter6.Value, m_Parameter7.Value, m_Parameter8.Value);
             if (m_ConditionalTask) {
                 return Convert.ToBoolean(m_Result.Value) ? TaskStatus.Success : TaskStatus.Failure;
@@ -1072,6 +1164,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value, m_Parameter5.Value, m_Parameter6.Value, m_Parameter7.Value, m_Parameter8.Value, m_Parameter9.Value);
             return TaskStatus.Success;
         }
@@ -1129,6 +1226,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Result.Value = m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value, m_Parameter5.Value, m_Parameter6.Value, m_Parameter7.Value, m_Parameter8.Value, m_Parameter9.Value);
             if (m_ConditionalTask) {
                 return Convert.ToBoolean(m_Result.Value) ? TaskStatus.Success : TaskStatus.Failure;
@@ -1189,6 +1291,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value, m_Parameter5.Value, m_Parameter6.Value, m_Parameter7.Value, m_Parameter8.Value, m_Parameter9.Value, m_Parameter10.Value);
             return TaskStatus.Success;
         }
@@ -1248,6 +1355,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
+            if (!m_Delegate.Method.IsStatic && m_Delegate.Target == null) {
+                UnityEngine.Debug.LogWarning($"Warning: {m_ReflectedType}.{m_MethodName} cannot be called on {gameObject} because the component doesn't exist.");
+                return TaskStatus.Failure;
+            }
+
             m_Result.Value = m_Delegate(m_Parameter1.Value, m_Parameter2.Value, m_Parameter3.Value, m_Parameter4.Value, m_Parameter5.Value, m_Parameter6.Value, m_Parameter7.Value, m_Parameter8.Value, m_Parameter9.Value, m_Parameter10.Value);
             if (m_ConditionalTask) {
                 return Convert.ToBoolean(m_Result.Value) ? TaskStatus.Success : TaskStatus.Failure;

@@ -4,14 +4,16 @@
 /// Copyright (c) Opsive. All Rights Reserved.
 /// https://www.opsive.com
 /// ---------------------------------------------
-namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
+namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.BehaviorTree
 {
     using Opsive.GraphDesigner.Runtime;
     using System.Collections;
     using UnityEngine;
+    using UnityEngine.Scripting.APIUpdating;
 
     [NodeIcon("e0a8f1df788b6274a9a24003859dfa7e")]
     [Opsive.Shared.Utility.Description("Restarts the specified behavior tree.")]
+    [MovedFrom(false, "Opsive.BehaviorDesigner.Runtime.Tasks.Actions", "Opsive.BehaviorDesigner.Runtime", "RestartBehaviorTree")]
     public class RestartBehaviorTree : TargetBehaviorTreeAction
     {
         private TaskStatus m_Status;
@@ -53,7 +55,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
 
             m_Status = m_ResolvedBehaviorTree.RestartBehavior() ? TaskStatus.Success : TaskStatus.Failure;
         }
-
 
     }
 }

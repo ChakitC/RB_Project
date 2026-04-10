@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using SingularityGroup.HotReload;
 using UnityEngine;
-using Log = Opsive.BehaviorDesigner.Runtime.Tasks.Actions.Log;
 
 public class AllyEnemySensor : MonoBehaviour
 {

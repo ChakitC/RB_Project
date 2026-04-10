@@ -15,7 +15,6 @@ namespace Opsive.BehaviorDesigner.Editor.Managers
     [OrderedEditorItem("Welcome", 0)]
     public class WelcomeScreenManager : Opsive.Shared.Editor.Managers.WelcomeScreenManager
     {
-        private const string c_GraphDesignerSymbol = "GRAPH_DESIGNER";
         private const string c_EditorTextureGUID = "d52eae9187aad5b41aff6dd60e49247a";
         private const string c_RepositoryTextureGUID = "020153b61b65cf34f82ccc9b186cb700";
 
@@ -60,7 +59,7 @@ namespace Opsive.BehaviorDesigner.Editor.Managers
         /// <returns>The URL for the asset page.</returns>
         protected override string GetAssetURL()
         {
-            return "https://assetstore.unity.com/packages/slug/298743";
+            return "https://assetstore.unity.com/packages/slug/368344";
         }
 
         /// <summary>
@@ -95,7 +94,6 @@ namespace Opsive.BehaviorDesigner.Editor.Managers
         private void CheckForEntities()
         {
 #if !GRAPH_DESIGNER && UNITY_ENTITIES
-            AddSymbol(c_GraphDesignerSymbol);
             EditorApplication.update -= CheckForEntities;
 
             if (m_EntityHelpBoxContainer != null) {
@@ -114,7 +112,7 @@ namespace Opsive.BehaviorDesigner.Editor.Managers
         /// Adds the specified symbol to the compiler definitions.
         /// </summary>
         /// <param name="symbol">The symbol to add.</param>
-        private static void AddSymbol(string symbol)
+        public static void AddSymbol(string symbol)
         {
             // Set on all available build targets.
             var buildTargets = System.Enum.GetValues(typeof(BuildTarget)) as BuildTarget[];
@@ -171,11 +169,9 @@ namespace Opsive.BehaviorDesigner.Editor.Managers
             // Forum and Discord.
             AddImageRow(parent, c_ForumTextureGUID, "https://opsive.com/forum/",
                                 c_DiscordTextureGUID, "https://discord.gg/QX6VFgc");
-            // Review and Showcase.
+            // Review and Professional Services.
             AddImageRow(parent, c_ReviewTextureGUID, GetAssetURL(),
-                                c_ShowcaseTextureGUID, "https://opsive.com/showcase/");
-            // Professional Services.
-            AddImageRow(parent, c_ProfessionalServicesTextureGUID, "https://opsive.com", string.Empty, string.Empty);
+                                c_ProfessionalServicesTextureGUID, "https://opsive.com/professional-services");
         }
     }
 }

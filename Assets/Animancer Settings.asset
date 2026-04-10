@@ -46,8 +46,6 @@ MonoBehaviour:
         - {fileID: 6565795838908271222, guid: 33c0e4aa99816184c8173146dd7f8928, type: 3}
         - {fileID: 919132149155446097, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}
         - {fileID: 854635819815561330, guid: 867c5369952ca5b45bf8d4bd3e842478, type: 3}
-        - {fileID: 919132149155446097, guid: 2a70ce08b3f97f14eaf33ac903b74472, type: 3}
-        - {fileID: 8627461969505475974, guid: d4faf3da47d2d0d439c7d6cfc7a43b8b, type: 3}
         - {fileID: 1814232550910063596, guid: 743fe040701db414c92adf9644f7f1c9, type: 3}
         - {fileID: 919132149155446097, guid: c9dddaaeca0cf57468c99832c0edb18e, type: 3}
         - {fileID: 919132149155446097, guid: 483c16c76ac2554408d7dfbca0deeb49, type: 3}
@@ -55,6 +53,7 @@ MonoBehaviour:
         - {fileID: 4651303126784831026, guid: a649f9e44b30d794d8890f73f0ad0d3e, type: 3}
         - {fileID: 3576317278221455802, guid: 165514123e3ed324c94f10ee3d314cde, type: 3}
         - {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+        - {fileID: 2455486968630159720, guid: 6d10d8f609388e14fa46a8a7f1fc1202, type: 3}
         - {fileID: 1810244535466419119, guid: b07ee821af6ad75499da139780801d3c, type: 3}
     - rid: 8789001712040411215
       type: {class: SerializableEventSequenceDrawerSettings, ns: Animancer.Editor, asm: Kybernetik.Animancer.Editor}

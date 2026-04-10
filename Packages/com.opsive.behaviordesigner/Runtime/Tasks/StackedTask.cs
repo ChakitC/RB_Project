@@ -1,4 +1,4 @@
-﻿#if GRAPH_DESIGNER
+#if GRAPH_DESIGNER
 /// ---------------------------------------------
 /// Behavior Designer
 /// Copyright (c) Opsive. All Rights Reserved.
@@ -49,9 +49,19 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         [Tooltip("Specifies if the tasks should be traversed with an AND (Sequence) or an OR (Selector).")]
         [SerializeField] protected ComparisonType m_ComparisonType;
 
+        /// <summary>
+        /// Bit flags for tracking task state.
+        /// </summary>
+        [Flags]
+        private enum TaskFlag : byte
+        {
+            None = 0,
+            Started = 0x01,   // The task has started.
+            Ended = 0x04      // The task has ended.
+        }
+
         private ushort m_ActiveIndex;
-        private bool[] m_TaskStarted;
-        private bool[] m_TaskEnded;
+        private TaskFlag[] m_TaskFlags;
 
         public ushort ActiveIndex { get => m_ActiveIndex; }
         public object[] Nodes { get => m_Tasks; }
@@ -64,6 +74,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         public void Add(object obj)
         {
             Task task;
+            var resetTask = true;
             if (obj is System.Reflection.MethodInfo) {
                 // A delegate action needs to be created.
                 var methodInfo = obj as System.Reflection.MethodInfo;
@@ -128,9 +139,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
                 task = Activator.CreateInstance((Type)obj) as Task;
             } else { // Task.
                 task = obj as Task;
+                resetTask = false;
             }
 
-            task.Reset();
+            if (resetTask) {
+                task.Reset();
+            }
 
             if (m_Tasks == null) {
                 m_Tasks = new Task[] { task };
@@ -179,11 +193,19 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         internal override void Initialize(BehaviorTree behaviorTree, ushort runtimeIndex)
         {
             if (m_Tasks != null) {
-                m_TaskStarted = new bool[m_Tasks.Length];
-                m_TaskEnded = new bool[m_Tasks.Length];
+                m_TaskFlags = new TaskFlag[m_Tasks.Length];
+                string[] containedNodeTypes = null;
                 for (int i = 0; i < m_Tasks.Length; ++i) {
                     if (m_Tasks[i] == null) {
-                        m_Tasks[i] = new UnknownTask();
+#if UNITY_EDITOR
+                        if (containedNodeTypes == null) {
+                            containedNodeTypes = GetContainedNodeTypes(behaviorTree);
+                        }
+#endif
+
+                        var unknownTask = new UnknownTask(containedNodeTypes[i]);
+                        m_Tasks[i] = unknownTask;
+                        Debug.LogError($"Error: Unable to deserialize task of type {unknownTask.UnknownType}.");
                     }
                     if (m_Tasks[i] is TaskDelegateBase taskDelegate) {
                         taskDelegate.Initialize(behaviorTree, runtimeIndex, this is IConditional);
@@ -196,6 +218,26 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
             base.Initialize(behaviorTree, runtimeIndex);
         }
 
+#if UNITY_EDITOR
+        /// <summary>
+        /// Returns the stored contained node types for the StackedTask.
+        /// </summary>
+        /// <param name="behaviorTree">The behavior tree that owns the task.</param>
+        private string[] GetContainedNodeTypes(BehaviorTree behaviorTree)
+        {
+            if (behaviorTree == null) {
+                return null;
+            }
+
+            var nodeProperties = behaviorTree.LogicNodeProperties;
+            if (nodeProperties == null || m_Index >= nodeProperties.Length) {
+                return null;
+            }
+
+            return nodeProperties[m_Index].Data.ContainedNodeTypes;
+        }
+#endif
+
         /// <summary>
         /// Called when the task is started.
         /// </summary>
@@ -206,12 +248,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
             }
 
             for (int i = 0; i < m_Tasks.Length; ++i) {
-                if (m_Tasks[i] == null) {
-                    continue;
-                }
-
-                m_TaskStarted[i] = false;
-                m_TaskEnded[i] = false;
+                m_TaskFlags[i] = TaskFlag.None;
             }
         }
 
@@ -226,10 +263,16 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
             }
 
             while (m_ActiveIndex < m_Tasks.Length) {
+                // Skip disabled tasks.
+                if (!m_Tasks[m_ActiveIndex].Enabled) {
+                    m_ActiveIndex++;
+                    continue;
+                }
+
                 // Call start when the local task is started, not when the StackedTask starts.
-                if (!m_TaskStarted[m_ActiveIndex]) {
+                if (((byte)m_TaskFlags[m_ActiveIndex] & (byte)TaskFlag.Started) == 0) {
                     m_Tasks[m_ActiveIndex].OnStart();
-                    m_TaskStarted[m_ActiveIndex] = true;
+                    m_TaskFlags[m_ActiveIndex] |= TaskFlag.Started;
                 }
 
                 var executionStatus = m_Tasks[m_ActiveIndex].OnUpdate();
@@ -243,9 +286,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
                     return TaskStatus.Success;
                 }
 
-                if (!m_TaskEnded[m_ActiveIndex]) {
+                if (((byte)m_TaskFlags[m_ActiveIndex] & (byte)TaskFlag.Ended) == 0) {
                     m_Tasks[m_ActiveIndex].OnEnd();
-                    m_TaskEnded[m_ActiveIndex] = true;
+                    m_TaskFlags[m_ActiveIndex] |= TaskFlag.Ended;
                 }
                 m_ActiveIndex++;
             }
@@ -258,7 +301,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// </summary>
         public override void OnEnd()
         {
-            if (m_TaskEnded == null) {
+            if (m_TaskFlags == null) {
                 return;
             }
 
@@ -266,14 +309,51 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
                 if (m_Tasks[i] == null) {
                     continue;
                 }
-                if (!m_TaskEnded[i]) {
+                if (((byte)m_TaskFlags[i] & (byte)TaskFlag.Ended) == 0 && m_Tasks[i].Enabled) {
                     m_Tasks[i].OnEnd();
                 }
 
-                m_TaskStarted[i] = false;
-                m_TaskEnded[i] = false;
+                m_TaskFlags[i] = TaskFlag.None;
             }
             m_ActiveIndex = 0;
+        }
+
+        /// <summary>
+        /// The task has been paused.
+        /// </summary>
+        /// <param name="world">The DOTS world.</param>
+        /// <param name="entity">The DOTS entity.</param>
+        public override void Pause(World world, Entity entity)
+        {
+            if (m_Tasks == null) {
+                return;
+            }
+
+            for (int i = 0; i < m_Tasks.Length; ++i) {
+                if (m_Tasks[i] == null) {
+                    continue;
+                }
+                m_Tasks[i].Pause(world, entity);
+            }
+        }
+
+        /// <summary>
+        /// The task has been resumed.
+        /// </summary>
+        /// <param name="world">The DOTS world.</param>
+        /// <param name="entity">The DOTS entity.</param>
+        public override void Resume(World world, Entity entity)
+        {
+            if (m_Tasks == null) {
+                return;
+            }
+
+            for (int i = 0; i < m_Tasks.Length; ++i) {
+                if (m_Tasks[i] == null) {
+                    continue;
+                }
+                m_Tasks[i].Resume(world, entity);
+            }
         }
 
         /// <summary>

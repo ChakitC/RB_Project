@@ -40,7 +40,7 @@ MonoBehaviour:
     _Type: 0
     _ParameterNameX: {fileID: 0}
     _ParameterNameY: {fileID: 0}
-  locomotionParamLerp: 14
+  locomotionParamLerp: 29.3
   snapTo8Directions: 1
   miniStune:
     _FadeDuration: 0.25
@@ -172,6 +172,26 @@ MonoBehaviour:
     _ParameterNameY: {fileID: 0}
   crawlParamLerp: 10
   crawlSpeedMultiplier01: 0.35
+  utilityWarpOutClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: NaN
+  utilityWarpOutCastPointNormalized: 0.35
+  utilityWarpInClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: NaN
+  utilityWarpInCastPointNormalized: 0.35
   skillClip:
     _FadeDuration: 0.25
     _Speed: 1

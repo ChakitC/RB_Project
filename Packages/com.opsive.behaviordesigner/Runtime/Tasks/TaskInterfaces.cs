@@ -6,7 +6,9 @@
 /// ---------------------------------------------
 namespace Opsive.BehaviorDesigner.Runtime.Tasks
 {
+    using Opsive.GraphDesigner.Runtime;
     using Opsive.GraphDesigner.Runtime.Variables;
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using Opsive.Shared.Utility;
     using System.Collections.Generic;
     using Unity.Entities;
@@ -53,7 +55,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
     /// <summary>
     /// Interface which specifies that the object is a task.
     /// </summary>
-    public interface IAuthoringTask
+    public interface IAuthoringTask : IAuthoringNode
     {
         /// <summary>
         /// The type of flag that should be enabled when the task is running.
@@ -66,13 +68,14 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         public System.Type SystemType { get; }
 
         /// <summary>
-        /// Adds the IBufferElementData to the entity.
+        /// Adds the IBufferElementData to the entity and registers any SharedVariable fields.
         /// </summary>
         /// <param name="world">The world that the entity exists in.</param>
         /// <param name="entity">The entity that the IBufferElementData should be assigned to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
         /// <param name="gameObject">The GameObject that the entity is attached to.</param>
         /// <returns>The index of the element within the buffer.</returns>
-        public int AddBufferElement(World world, Entity entity, UnityEngine.GameObject gameObject);
+        public int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, UnityEngine.GameObject gameObject);
 
         /// <summary>
         /// Clears the IBufferElementData from the entity.
@@ -177,8 +180,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// <param name="entity">The DOTS entity.</param>
         /// <param name="variableByNameMap">A reference to the map between the VariableAssignment and SharedVariable.</param>
         /// <param name="taskReferences">A reference to the list of task references that need to be resolved later.</param>
-        public void Load(object saveData, World world, Entity entity, Dictionary<VariableAssignment, SharedVariable> variableByNameMap,
-                                    ref ResizableArray<TaskAssignment> taskReferences) { Load(saveData, world, entity); }
+        public void Load(object saveData, World world, Entity entity, Dictionary<VariableAssignment, SharedVariable> variableByNameMap, ref ResizableArray<TaskAssignment> taskReferences)
+        { 
+            Load(saveData, world, entity);
+        }
     }
 
     /// <summary>

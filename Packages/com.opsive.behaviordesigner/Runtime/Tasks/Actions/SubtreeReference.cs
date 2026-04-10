@@ -15,7 +15,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
     /// </summary>
     [NodeIcon("e0a8f1df788b6274a9a24003859dfa7e")]
     [Opsive.Shared.Utility.Description("Loads the specified subtrees in at runtime.")]
-    public class SubtreeReference : ActionNode, ISubtreeReference
+    public class SubtreeReference : ActionNode, ISubtreeReferenceNode
     {
         [Tooltip("The subtrees that should be loaded.")]
         [SubtreeListAttribute]
@@ -24,6 +24,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         [SharedVariableOverridesListAttribute]
         [SerializeField] protected SharedVariableOverride[] m_Variables;
 
+        public IGraph[] Graphs { get => m_Subtrees; }
         public virtual Subtree[] Subtrees { get { return m_Subtrees; } }
 
         /// <summary>
@@ -35,6 +36,13 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         /// Performs any runtime operations to evaluate the array of subtrees that should be returned.
         /// </summary>
         /// <param name="graphComponent">The component that the node is attached to.</param>
+        public virtual void EvaluateSubgraphs(IGraphComponent graphComponent) { }
+
+        /// <summary>
+        /// Performs any runtime operations to evaluate the array of subtrees that should be returned.
+        /// </summary>
+        /// <param name="graphComponent">The component that the node is attached to.</param>
+        [System.Obsolete("SubtreeReference.EvaluateSubtrees has been deprecated. Use SubtreeReference.EvaluateSubgraphs instead.")]
         public virtual void EvaluateSubtrees(IGraphComponent graphComponent) { }
 
         /// <summary>

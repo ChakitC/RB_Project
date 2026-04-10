@@ -1,4 +1,4 @@
-﻿#if GRAPH_DESIGNER
+#if GRAPH_DESIGNER
 /// ---------------------------------------------
 /// Behavior Designer
 /// Copyright (c) Opsive. All Rights Reserved.
@@ -17,10 +17,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     /// </summary>
     [NodeIcon("667a475ceee05824188a36b24ec8d392", "7d32c9b05505df24a94069606f3b823d")]
     [Opsive.Shared.Utility.Description("The return failure task will always return failure except when the child task is running.")]
-    public class ReturnFailure : ECSDecoratorTask<ReturnFailureTaskSystem, ReturnFailureComponent>, IParentNode
+    public class ReturnFailure : ECSDecoratorTask<ReturnFailureTaskSystem, ReturnFailureComponent, ReturnFailureFlag>, IParentNode
     {
-        public override ComponentType Flag { get => typeof(ReturnFailureFlag); }
-
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
         /// </summary>
@@ -54,6 +52,17 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     [DisableAutoCreation]
     public partial struct ReturnFailureTaskSystem : ISystem
     {
+        private EntityQuery m_Query;
+
+        /// <summary>
+        /// Builds the query.
+        /// </summary>
+        /// <param name="state">The current state of the system.</param>
+        private void OnCreate(ref SystemState state)
+        {
+            m_Query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<ReturnFailureComponent>().WithAll<ReturnFailureFlag, EvaluateFlag>().Build();
+        }
+
         /// <summary>
         /// Creates the job.
         /// </summary>
@@ -61,8 +70,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
         [BurstCompile]
         private void OnUpdate(ref SystemState state)
         {
-            var query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<ReturnFailureComponent>().WithAll<ReturnFailureFlag, EvaluateFlag>().Build();
-            state.Dependency = new ReturnFailureJob().ScheduleParallel(query, state.Dependency);
+            state.Dependency = new ReturnFailureJob().ScheduleParallel(m_Query, state.Dependency);
         }
 
         /// <summary>
@@ -83,29 +91,37 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
                 for (int i = 0; i < returnFailureComponents.Length; ++i) {
                     var returnFailureComponent = returnFailureComponents[i];
                     var taskComponent = taskComponents[returnFailureComponent.Index];
-                    var branchComponent = branchComponents[taskComponent.BranchIndex];
-                    if (!branchComponent.CanExecute) {
+                    var taskStatus = taskComponent.Status;
+                    if (taskStatus != TaskStatus.Queued && taskStatus != TaskStatus.Running) {
                         continue;
                     }
 
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute || branchComponent.InterruptType != InterruptType.None) {
+                        continue;
+                    }
+
+                    var childIndex = (ushort)(taskComponent.Index + 1);
                     TaskComponent childTaskComponent;
-                    if (taskComponent.Status == TaskStatus.Queued) {
+                    if (taskStatus == TaskStatus.Queued) {
                         taskComponent.Status = TaskStatus.Running;
                         taskComponents[taskComponent.Index] = taskComponent;
 
-                        childTaskComponent = taskComponents[taskComponent.Index + 1];
-                        childTaskComponent.Status = TaskStatus.Queued;
-                        taskComponents[taskComponent.Index + 1] = childTaskComponent;
+                        childTaskComponent = taskComponents[childIndex];
+                        if (childTaskComponent.Status != TaskStatus.Queued) {
+                            childTaskComponent.Status = TaskStatus.Queued;
+                            taskComponents[childIndex] = childTaskComponent;
+                        }
 
-                        branchComponent.NextIndex = (ushort)(taskComponent.Index + 1);
-                        branchComponents[taskComponent.BranchIndex] = branchComponent;
-                        continue;
-                    } else if (taskComponent.Status != TaskStatus.Running) {
+                        if (branchComponent.NextIndex != childIndex) {
+                            branchComponent.NextIndex = childIndex;
+                            branchComponents[taskComponent.BranchIndex] = branchComponent;
+                        }
                         continue;
                     }
 
                     // The return failure task is currently active. Check the first child.
-                    childTaskComponent = taskComponents[taskComponent.Index + 1];
+                    childTaskComponent = taskComponents[childIndex];
                     if (childTaskComponent.Status == TaskStatus.Queued || childTaskComponent.Status == TaskStatus.Running) {
                         // The child should keep running.
                         continue;
@@ -115,8 +131,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
                     taskComponent.Status = TaskStatus.Failure;
                     taskComponents[taskComponent.Index] = taskComponent;
 
-                    branchComponent.NextIndex = taskComponent.ParentIndex;
-                    branchComponents[taskComponent.BranchIndex] = branchComponent;
+                    if (branchComponent.NextIndex != taskComponent.ParentIndex) {
+                        branchComponent.NextIndex = taskComponent.ParentIndex;
+                        branchComponents[taskComponent.BranchIndex] = branchComponent;
+                    }
                 }
             }
         }

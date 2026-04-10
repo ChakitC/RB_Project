@@ -1,4 +1,4 @@
-﻿#if GRAPH_DESIGNER
+#if GRAPH_DESIGNER
 /// ---------------------------------------------
 /// Behavior Designer
 /// Copyright (c) Opsive. All Rights Reserved.
@@ -15,12 +15,18 @@ namespace Opsive.BehaviorDesigner.Runtime
     using Opsive.BehaviorDesigner.Runtime.Utility;
     using Opsive.GraphDesigner.Runtime;
     using Opsive.GraphDesigner.Runtime.Variables;
-    using Unity.Entities;
-    using UnityEngine;
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
+    using Opsive.Shared.Utility;
     using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.Reflection;
+    using Unity.Entities;
+    using UnityEngine;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
+    using static Opsive.BehaviorDesigner.Runtime.BehaviorTreeData;
 
     /// <summary>
     /// Container for managing behavior tree logic.
@@ -50,18 +56,28 @@ namespace Opsive.BehaviorDesigner.Runtime
         private World m_World;
         private Entity m_Entity;
         private Dictionary<int, int> m_NodeIndexByRuntimeIndex = new Dictionary<int, int>();
+        private Task[] m_TaskByRuntimeIndex;
+        private ITaskObjectParentNode[] m_TaskObjectParentByRuntimeIndex;
+        private IConditionalReevaluation[] m_ConditionalReevaluationByRuntimeIndex;
+        private ECSVariableRegistry m_ECSVariableRegistry;
+
         private static Dictionary<Entity, BehaviorTree> s_BehaviorTreeByEntity = new Dictionary<Entity, BehaviorTree>();
         private static EventNodeComparer s_EventNodeComparer = new EventNodeComparer();
+#if UNITY_EDITOR
+        private static Dictionary<Type, bool> s_AuthoringTaskSharedVariableFieldLookup = new Dictionary<Type, bool>();
+#endif
         private bool m_SubtreeOverride;
+
+        public static int GraphCount { get => s_BehaviorTreeByEntity.Count; }
 
         public string Name { get => m_GraphName; set => m_GraphName = value; }
         public int Index { get => m_Index; set => m_Index = value; }
         public int UniqueID { get => m_Data.UniqueID; }
-        public UnityEngine.Object Parent { get { 
+        public UnityEngine.Object Parent { get {
                 if (this == null) { return null; }
                 return Application.isPlaying && m_GameObject != null ? m_GameObject : gameObject;
             } }
-        private BehaviorTreeData Data { get => !Application.isPlaying && m_Subtree != null ? m_Subtree.Data : m_Data; }
+        private BehaviorTreeData Data { get => (m_Subtree != null && (!Application.isPlaying || !m_SubtreeOverride)) ? m_Subtree.Data : m_Data; }
         public bool StartWhenEnabled { get => m_StartWhenEnabled; set => m_StartWhenEnabled = value; }
         public bool PauseWhenDisabled { get => m_PauseWhenDisabled; set => m_PauseWhenDisabled = value; }
         public UpdateMode UpdateMode { get => m_UpdateMode; set => m_UpdateMode = value; }
@@ -112,7 +128,6 @@ namespace Opsive.BehaviorDesigner.Runtime
         public SharedVariable.SharingScope VariableScope { get => SharedVariable.SharingScope.Graph; }
         public World World { get => m_World; set { m_World = value; } }
         public Entity Entity { get => m_Entity; set { m_Entity = value; } }
-        public bool Baked { get; set; }
         public static int BehaviorTreeCount { get => s_BehaviorTreeByEntity.Count; }
 
         public LogicNodeProperties[] LogicNodeProperties {
@@ -141,6 +156,17 @@ namespace Opsive.BehaviorDesigner.Runtime
             get => null;
             set { }
 #endif
+        }
+        public InjectedGraphReference[] InjectedGraphReferences {
+            get {
+                if (m_Data.InjectedGraphReferences == null) {
+                    return null;
+                }
+                return m_Data.InjectedGraphReferences.Array;
+            }
+        }
+        internal ResizableArray<InjectedSubtreeReference> InjectedSubtreeReferences {
+            get => m_Data.InjectedSubtreeReferences;
         }
         public TaskStatus Status { get
             {
@@ -247,7 +273,7 @@ namespace Opsive.BehaviorDesigner.Runtime
                 if (Application.isPlaying) {
                     m_Data.EventNodes = null;
                     m_Data.LogicNodes = null;
-                    m_Data.SubtreeNodesReferences = null;
+                    m_Data.InjectedSubtreeReferences = null;
                     m_Data.DisabledLogicNodes = null;
                     m_Data.DisabledEventNodes = null;
 #if UNITY_EDITOR
@@ -297,6 +323,16 @@ namespace Opsive.BehaviorDesigner.Runtime
         }
 
         /// <summary>
+        /// Deserializes the shared variables.
+        /// </summary>
+        /// <param name="force">Should the variables be force deserialized?</param>
+        /// <returns>True if the variables were deserialized.</returns>
+        public bool DeserializeSharedVariables(bool force = false)
+        {
+            return m_Data.DeserializeSharedVariables(this, force, Application.isPlaying);
+        }
+
+        /// <summary>
         /// Adds the specified node.
         /// </summary>
         /// <param name="node">The node that should be added.</param>
@@ -332,6 +368,19 @@ namespace Opsive.BehaviorDesigner.Runtime
         public bool RemoveNode(IEventNode eventNode)
         {
             return Data.RemoveNode(eventNode);
+        }
+
+        /// <summary>
+        /// Retrieves the UniqueID of the graph.
+        /// </summary>
+        /// <param name="forceDesignID">Should the non-runtime ID be retrieved?</param>
+        /// <returns>The UniqueID of the graph.</returns>
+        public int GetUniqueID(bool forceDesignID = false)
+        {
+            if (forceDesignID) {
+                return m_Data.UniqueID;
+            }
+            return m_Data.RuntimeUniqueID != 0 ? m_Data.RuntimeUniqueID : m_Data.UniqueID;
         }
 
         /// <summary>
@@ -426,6 +475,16 @@ namespace Opsive.BehaviorDesigner.Runtime
                     }
                     return true;
                 }
+
+                // An active tree may have completed. Start the requested branch again if it is no longer running.
+                if (!IsRunning(entity)) {
+                    var started = StartBranch(world, entity, startBranchType);
+                    if (started && OnBehaviorTreeStarted != null) {
+                        OnBehaviorTreeStarted();
+                    }
+                    return started;
+                }
+
                 // The tree cannot be started multiple times.
                 return false;
             }
@@ -435,10 +494,11 @@ namespace Opsive.BehaviorDesigner.Runtime
                 return false;
             }
 
-            if (OnBehaviorTreeStarted != null) {
+            var branchStarted = StartBranch(startBranchType);
+            if (branchStarted && OnBehaviorTreeStarted != null) {
                 OnBehaviorTreeStarted();
             }
-            return StartBranch(startBranchType);
+            return branchStarted;
         }
 
         /// <summary>
@@ -507,9 +567,20 @@ namespace Opsive.BehaviorDesigner.Runtime
                 m_Data.DisabledEventNodes = disabledEventNodes;
             }
 
+            m_ECSVariableRegistry?.Dispose();
+
+            var registry = new ECSVariableRegistry();
             for (int i = 0; i < eventNodes.Length; ++i) {
-                InitializeBranch(world, entity, eventNodes[i]);
+                InitializeBranch(world, entity, registry, eventNodes[i]);
             }
+            if (registry.Count == 0) {
+                registry.Dispose();
+                m_ECSVariableRegistry = null;
+                return true;
+            }
+
+            registry.Bake(world, entity);
+            m_ECSVariableRegistry = registry;
             return true;
         }
 
@@ -518,8 +589,9 @@ namespace Opsive.BehaviorDesigner.Runtime
         /// </summary>
         /// <param name="world">The world that the entity exists in.</param>
         /// <param name="entity">The entity that the branch should be added to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
         /// <param name="eventTask">The task that should be setup.</param>
-        private void InitializeBranch(World world, Entity entity, IEventNode eventTask)
+        private void InitializeBranch(World world, Entity entity, ECSVariableRegistry registry, IEventNode eventTask)
         {
             if (Data.LogicNodes == null) {
                 return;
@@ -596,27 +668,35 @@ namespace Opsive.BehaviorDesigner.Runtime
                 var node = m_Data.LogicNodes[i];
                 node.RuntimeIndex = (ushort)(node.Index - taskOffset);
                 m_Data.LogicNodes[i] = node;
+                EnsureRuntimeTaskCacheCapacity(node.RuntimeIndex);
                 if (!m_NodeIndexByRuntimeIndex.ContainsKey(node.RuntimeIndex)) { // The index will already exist if multiple entities use the same MonoBehaviour.
                     m_NodeIndexByRuntimeIndex.Add(node.RuntimeIndex, node.Index);
                 }
 
                 if (m_Data.LogicNodes[i] is IAuthoringTask authoringTask) {
-                    authoringTask.AddBufferElement(world, entity, gameObject);
+                    m_TaskByRuntimeIndex[node.RuntimeIndex] = null;
+                    m_TaskObjectParentByRuntimeIndex[node.RuntimeIndex] = null;
+                    m_ConditionalReevaluationByRuntimeIndex[node.RuntimeIndex] = null;
+                    authoringTask.AddBufferElement(world, entity, registry, gameObject);
                     taskComponents = world.EntityManager.GetBuffer<TaskComponent>(entity);
                     taskComponents.Add(new TaskComponent {
                         Status = TaskStatus.Inactive,
                         Index = node.RuntimeIndex,
                         ParentIndex = AdjustByIndexOffset(m_Data.LogicNodes[i].ParentIndex, taskOffset),
                         SiblingIndex = AdjustByIndexOffset(m_Data.LogicNodes[i].SiblingIndex, taskOffset),
+                        ChildUpperIndex = node.RuntimeIndex,
                         BranchIndex = branchIndex,
                         FlagComponentType = authoringTask.Flag,
-                        Disabled = !IsNodeEnabled(true, m_Data.LogicNodes[i].ParentIndex) || !IsNodeEnabled(true, i),
+                        Enabled = IsNodeEnabled(true, m_Data.LogicNodes[i].ParentIndex) && IsNodeEnabled(true, i),
                     });
 
                     world.EntityManager.AddComponent(entity, authoringTask.Flag);
                     world.EntityManager.SetComponentEnabled(entity, authoringTask.Flag, false);
                     traversalTaskSystemGroup.AddSystemToUpdateList(world.GetOrCreateSystem(authoringTask.SystemType));
                 } else if (m_Data.LogicNodes[i] is Task taskObject) {
+                    m_TaskByRuntimeIndex[node.RuntimeIndex] = taskObject;
+                    m_TaskObjectParentByRuntimeIndex[node.RuntimeIndex] = (taskObject is IParentNode) ? taskObject as ITaskObjectParentNode : null;
+                    m_ConditionalReevaluationByRuntimeIndex[node.RuntimeIndex] = taskObject as IConditionalReevaluation;
                     taskObject.AddBufferElement(world, entity, GetHashCode(), node.RuntimeIndex);
                     taskComponents = world.EntityManager.GetBuffer<TaskComponent>(entity);
                     taskComponents.Add(new TaskComponent {
@@ -624,9 +704,10 @@ namespace Opsive.BehaviorDesigner.Runtime
                         Index = node.RuntimeIndex,
                         ParentIndex = AdjustByIndexOffset(m_Data.LogicNodes[i].ParentIndex, taskOffset),
                         SiblingIndex = AdjustByIndexOffset(m_Data.LogicNodes[i].SiblingIndex, taskOffset),
+                        ChildUpperIndex = node.RuntimeIndex,
                         BranchIndex = branchIndex,
                         FlagComponentType = typeof(TaskObjectFlag),
-                        Disabled = !IsNodeEnabled(true, m_Data.LogicNodes[i].ParentIndex) || !IsNodeEnabled(true, i),
+                        Enabled = IsNodeEnabled(true, m_Data.LogicNodes[i].ParentIndex) && IsNodeEnabled(true, i),
                     });
                     world.EntityManager.AddComponent(entity, typeof(TaskObjectFlag));
                     world.EntityManager.SetComponentEnabled(entity, typeof(TaskObjectFlag), false);
@@ -726,8 +807,12 @@ namespace Opsive.BehaviorDesigner.Runtime
                 }
             }
 
+            // Populates each task's child upper bound for O(1) parent/child range checks.
+            taskComponents = world.EntityManager.GetBuffer<TaskComponent>(entity);
+            TraversalUtility.PopulateChildUpperIndices(ref taskComponents);
+
             if (canReevaluate) {
-                reevaluateTaskSystemGroup.AddSystemToUpdateList(world.GetOrCreateSystem(typeof(ReevaluateSystem)));
+                world.GetOrCreateSystemManaged<BeforeTraversalSystemGroup>().AddSystemToUpdateList(world.GetOrCreateSystem(typeof(ReevaluateSystem)));
             }
 
             // The event task may perform its own logic.
@@ -738,8 +823,80 @@ namespace Opsive.BehaviorDesigner.Runtime
                 gameObjectReceiver.Initialize(this);
             }
 
+            reevaluateTaskSystemGroup.SortSystems();
+            interruptTaskSystemGroup.SortSystems();
             traversalTaskSystemGroup.SortSystems();
         }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// Registers ECS SharedVariables for all authoring tasks within the specified branch by replaying their AddBufferElement calls on a scratch entity.
+        /// </summary>
+        /// <param name="world">The world that owns the scratch entity.</param>
+        /// <param name="entity">The scratch entity used to replay AddBufferElement.</param>
+        /// <param name="registry">The variable registry that should receive the registrations.</param>
+        /// <param name="eventTask">The event task that starts the branch.</param>
+        private void RegisterBranchSharedVariables(World world, Entity entity, ECSVariableRegistry registry, IEventNode eventTask)
+        {
+            var logicNodes = Data.LogicNodes;
+            if (logicNodes == null) {
+                return;
+            }
+
+            if (eventTask == null || eventTask.ConnectedIndex >= logicNodes.Length) {
+                return;
+            }
+
+            for (int i = eventTask.ConnectedIndex; i < logicNodes.Length; ++i) {
+                if (i > eventTask.ConnectedIndex && logicNodes[i].ParentIndex == ushort.MaxValue) {
+                    break;
+                }
+
+                if (logicNodes[i] is IAuthoringTask authoringTask && AuthoringTaskHasSharedVariableFields(authoringTask)) {
+                    authoringTask.AddBufferElement(world, entity, registry, gameObject);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creates an ECS variable registry for the tree without initializing the runtime entity state.
+        /// </summary>
+        /// <param name="world">The world used to create the scratch entity for AddBufferElement.</param>
+        /// <returns>The populated registry, or null if the tree has no ECS SharedVariables.</returns>
+        internal ECSVariableRegistry CreateECSVariableSyncRegistry(World world)
+        {
+            if (world == null || !world.IsCreated || !Deserialize(false)) {
+                return null;
+            }
+
+            var eventNodes = Data.EventNodes;
+            if (eventNodes == null || Data.LogicNodes == null) {
+                return null;
+            }
+
+            eventNodes = (IEventNode[])eventNodes.Clone();
+            Array.Sort(eventNodes, s_EventNodeComparer);
+
+            var scratchEntity = world.EntityManager.CreateEntity();
+            try {
+                var registry = new ECSVariableRegistry();
+                for (int i = 0; i < eventNodes.Length; ++i) {
+                    RegisterBranchSharedVariables(world, scratchEntity, registry, eventNodes[i]);
+                }
+
+                if (registry.Count == 0) {
+                    registry.Dispose();
+                    return null;
+                }
+
+                return registry;
+            } finally {
+                if (world.EntityManager.Exists(scratchEntity)) {
+                    world.EntityManager.DestroyEntity(scratchEntity);
+                }
+            }
+        }
+#endif
 
         /// <summary>
         /// Adjusts the index by the specified offset.
@@ -860,7 +1017,7 @@ namespace Opsive.BehaviorDesigner.Runtime
 
             var startTask = taskComponents[connectedIndex];
             // The branch can't be started twice or if it is disabled.
-            if (startTask.Status == TaskStatus.Queued || startTask.Status == TaskStatus.Running || startTask.Disabled) {
+            if (startTask.Status == TaskStatus.Queued || startTask.Status == TaskStatus.Running || !startTask.Enabled) {
                 return false;
             }
 
@@ -898,6 +1055,131 @@ namespace Opsive.BehaviorDesigner.Runtime
         }
 
         /// <summary>
+        /// Returns true if the behavior tree can currently synchronize ECS-backed SharedVariables for the specified entity.
+        /// </summary>
+        /// <param name="world">The world containing the behavior tree entity.</param>
+        /// <param name="entity">The entity containing the behavior tree.</param>
+        /// <returns>True if the entity currently has ECS-backed SharedVariables that can be synchronized.</returns>
+        internal bool HasECSVariableSync(World world, Entity entity)
+        {
+            return m_ECSVariableRegistry != null && world != null && world.IsCreated && entity != Entity.Null && m_World == world &&
+                        m_Entity == entity && s_BehaviorTreeByEntity.TryGetValue(entity, out var behaviorTree) && behaviorTree == this;
+        }
+
+        /// <summary>
+        /// Syncs the managed SharedVariable values into the ECS shared variable buffer for the specified entity.
+        /// </summary>
+        /// <param name="world">The world containing the behavior tree entity.</param>
+        /// <param name="entity">The entity containing the behavior tree.</param>
+        internal void SyncManagedVariablesToECS(World world, Entity entity)
+        {
+            if (!HasECSVariableSync(world, entity)) {
+                return;
+            }
+
+            m_ECSVariableRegistry.SyncToECS(world, entity);
+        }
+
+        /// <summary>
+        /// Syncs the ECS shared variable buffer back into the managed SharedVariable instances for the specified entity.
+        /// </summary>
+        /// <param name="world">The world containing the behavior tree entity.</param>
+        /// <param name="entity">The entity containing the behavior tree.</param>
+        internal void SyncECSVariablesToManaged(World world, Entity entity)
+        {
+            if (!HasECSVariableSync(world, entity)) {
+                return;
+            }
+
+            m_ECSVariableRegistry.SyncToManaged(world, entity);
+        }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// Resolves the authoring BehaviorTree from a GlobalObjectId string.
+        /// </summary>
+        /// <param name="authoringBehaviorTreeGlobalObjectId">The GlobalObjectId string for the authoring BehaviorTree.</param>
+        /// <param name="designGraphUniqueID">The design-time graph ID.</param>
+        /// <returns>The resolved BehaviorTree, or null if it could not be found.</returns>
+        internal static BehaviorTree ResolveBehaviorTreeFromGlobalObjectId(string authoringBehaviorTreeGlobalObjectId, int designGraphUniqueID)
+        {
+            if (!GlobalObjectId.TryParse(authoringBehaviorTreeGlobalObjectId, out var globalObjectId)) {
+                return null;
+            }
+
+            return ResolveBehaviorTreeFromObject(GlobalObjectId.GlobalObjectIdentifierToObjectSlow(globalObjectId), designGraphUniqueID);
+        }
+
+        /// <summary>
+        /// Resolves a BehaviorTree from a Unity object reference.
+        /// </summary>
+        /// <param name="obj">The Unity object to resolve from.</param>
+        /// <param name="designGraphUniqueID">The design-time graph ID.</param>
+        /// <returns>The resolved BehaviorTree, or null if it could not be found.</returns>
+        private static BehaviorTree ResolveBehaviorTreeFromObject(UnityEngine.Object obj, int designGraphUniqueID)
+        {
+            if (obj == null) {
+                return null;
+            }
+
+            if (obj is BehaviorTree behaviorTree) {
+                return designGraphUniqueID == 0 || behaviorTree.UniqueID == designGraphUniqueID ? behaviorTree : null;
+            }
+
+            GameObject gameObject = null;
+            if (obj is Component component) {
+                gameObject = component.gameObject;
+            } else if (obj is GameObject resolvedGameObject) {
+                gameObject = resolvedGameObject;
+            }
+
+            if (gameObject == null) {
+                return null;
+            }
+
+            var behaviorTrees = gameObject.GetComponents<BehaviorTree>();
+            for (int i = 0; i < behaviorTrees.Length; ++i) {
+                if (designGraphUniqueID == 0 || behaviorTrees[i].UniqueID == designGraphUniqueID) {
+                    return behaviorTrees[i];
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Returns true if the authoring task declares any SharedVariable fields that may participate in ECS synchronization.
+        /// </summary>
+        /// <param name="authoringTask">The authoring task to inspect.</param>
+        /// <returns>True if the task declares any SharedVariable fields.</returns>
+        private static bool AuthoringTaskHasSharedVariableFields(IAuthoringTask authoringTask)
+        {
+            if (authoringTask == null) {
+                return false;
+            }
+
+            var type = authoringTask.GetType();
+            if (s_AuthoringTaskSharedVariableFieldLookup.TryGetValue(type, out var hasSharedVariables)) {
+                return hasSharedVariables;
+            }
+
+            var currentType = type;
+            while (currentType != null && currentType != typeof(object)) {
+                var fields = currentType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                for (int i = 0; i < fields.Length; ++i) {
+                    if (typeof(SharedVariable).IsAssignableFrom(fields[i].FieldType)) {
+                        s_AuthoringTaskSharedVariableFieldLookup.Add(type, true);
+                        return true;
+                    }
+                }
+                currentType = currentType.BaseType;
+            }
+
+            s_AuthoringTaskSharedVariableFieldLookup.Add(type, false);
+            return false;
+        }
+#endif
+
+        /// <summary>
         /// Returns the behavior tree component specified by the entity.
         /// </summary>
         /// <param name="entity">The entity that should be retrieved.</param>
@@ -926,6 +1208,48 @@ namespace Opsive.BehaviorDesigner.Runtime
                 return m_Data.LogicNodes[m_NodeIndexByRuntimeIndex[index]];
             }
             return m_Data.LogicNodes[index];
+        }
+
+        /// <summary>
+        /// Returns the cached task object at the specified runtime index.
+        /// </summary>
+        /// <param name="index">The runtime index of the task.</param>
+        /// <returns>The cached task object. Can be null.</returns>
+        public Task GetTaskObject(int index)
+        {
+            if (m_TaskByRuntimeIndex == null || index < 0 || index >= m_TaskByRuntimeIndex.Length) {
+                return null;
+            }
+
+            return m_TaskByRuntimeIndex[index];
+        }
+
+        /// <summary>
+        /// Returns the cached task object parent interface at the specified runtime index.
+        /// </summary>
+        /// <param name="index">The runtime index of the task.</param>
+        /// <returns>The cached parent interface. Can be null.</returns>
+        public ITaskObjectParentNode GetTaskObjectParent(int index)
+        {
+            if (m_TaskObjectParentByRuntimeIndex == null || index < 0 || index >= m_TaskObjectParentByRuntimeIndex.Length) {
+                return null;
+            }
+
+            return m_TaskObjectParentByRuntimeIndex[index];
+        }
+
+        /// <summary>
+        /// Returns the cached conditional reevaluation interface at the specified runtime index.
+        /// </summary>
+        /// <param name="index">The runtime index of the task.</param>
+        /// <returns>The cached conditional reevaluation interface. Can be null.</returns>
+        public IConditionalReevaluation GetConditionalReevaluationTaskObject(int index)
+        {
+            if (m_ConditionalReevaluationByRuntimeIndex == null || index < 0 || index >= m_ConditionalReevaluationByRuntimeIndex.Length) {
+                return null;
+            }
+
+            return m_ConditionalReevaluationByRuntimeIndex[index];
         }
 
         /// <summary>
@@ -1060,7 +1384,7 @@ namespace Opsive.BehaviorDesigner.Runtime
         }
 
         /// <summary>
-        /// Reevaluates the SubtreeReferences by calling the EvaluateSubtrees method.
+        /// Reevaluates the SubtreeReferences by calling the EvaluateSubgraphs method.
         /// </summary>
         public void ReevaluateSubtreeReferences()
         {
@@ -1069,7 +1393,6 @@ namespace Opsive.BehaviorDesigner.Runtime
             }
 
             // Restart the tree.
-            InitializeTree();
             if (enabled && m_GameObject.activeSelf) {
                 StartBehavior();
             }
@@ -1279,6 +1602,38 @@ namespace Opsive.BehaviorDesigner.Runtime
             }
 
             m_NodeIndexByRuntimeIndex.Clear();
+            m_TaskByRuntimeIndex = null;
+            m_TaskObjectParentByRuntimeIndex = null;
+            m_ConditionalReevaluationByRuntimeIndex = null;
+            m_ECSVariableRegistry?.Dispose();
+            m_ECSVariableRegistry = null;
+        }
+
+        /// <summary>
+        /// Ensures the runtime caches can index the specified runtime task index.
+        /// </summary>
+        /// <param name="requiredIndex">The required runtime index.</param>
+        private void EnsureRuntimeTaskCacheCapacity(int requiredIndex)
+        {
+            if (requiredIndex < 0) {
+                return;
+            }
+
+            var requiredLength = requiredIndex + 1;
+            if (m_TaskByRuntimeIndex == null) {
+                m_TaskByRuntimeIndex = new Task[requiredLength];
+                m_TaskObjectParentByRuntimeIndex = new ITaskObjectParentNode[requiredLength];
+                m_ConditionalReevaluationByRuntimeIndex = new IConditionalReevaluation[requiredLength];
+                return;
+            }
+
+            if (requiredLength <= m_TaskByRuntimeIndex.Length) {
+                return;
+            }
+
+            Array.Resize(ref m_TaskByRuntimeIndex, requiredLength);
+            Array.Resize(ref m_TaskObjectParentByRuntimeIndex, requiredLength);
+            Array.Resize(ref m_ConditionalReevaluationByRuntimeIndex, requiredLength);
         }
 
         /// <summary>
@@ -1300,7 +1655,7 @@ namespace Opsive.BehaviorDesigner.Runtime
         public SharedVariable GetVariable(PropertyName name, SharedVariable.SharingScope scope)
         {
             Deserialize();
-
+            SyncECSVariablesToManaged(m_World, m_Entity);
             return m_Data.GetVariable(this, name, scope);
         }
 
@@ -1323,7 +1678,7 @@ namespace Opsive.BehaviorDesigner.Runtime
         public SharedVariable<T> GetVariable<T>(PropertyName name, SharedVariable.SharingScope scope)
         {
             Deserialize();
-
+            SyncECSVariablesToManaged(m_World, m_Entity);
             return m_Data.GetVariable<T>(this, name, scope);
         }
 
@@ -1345,13 +1700,16 @@ namespace Opsive.BehaviorDesigner.Runtime
         /// <typeparam name="T">The type of SharedVarible.</typeparam>
         /// <param name="name">The name of the SharedVariable.</param>
         /// <param name="value">The value of the SharedVariable.</param>
-        /// <param name="scope">The scope of the SharedVariable that should be set.</typeparam>
+        /// <param name="scope">The scope of the SharedVariable that should be set.</param>
         /// <returns>True if the value was set.</returns>
         public bool SetVariableValue<T>(PropertyName name, T value, SharedVariable.SharingScope scope)
         {
             Deserialize();
-
-            return m_Data.SetVariableValue<T>(this, name, value, scope);
+            var success = m_Data.SetVariableValue<T>(this, name, value, scope);
+            if (success) {
+                SyncManagedVariablesToECS(m_World, m_Entity);
+            }
+            return success;
         }
 
         /// <summary>
@@ -1511,7 +1869,7 @@ namespace Opsive.BehaviorDesigner.Runtime
                 }
             }
         }
-        
+
         /// <summary>
         /// The TaskCoroutine has ended.
         /// </summary>
@@ -1684,6 +2042,8 @@ namespace Opsive.BehaviorDesigner.Runtime
         private void OnDestroy()
         {
             if (m_Entity == Entity.Null) {
+                m_ECSVariableRegistry?.Dispose();
+                m_ECSVariableRegistry = null;
                 return;
             }
 
@@ -1691,6 +2051,8 @@ namespace Opsive.BehaviorDesigner.Runtime
                 OnBehaviorTreeDestroyed();
             }
             StopBehavior(m_World, m_Entity, false);
+            m_ECSVariableRegistry?.Dispose();
+            m_ECSVariableRegistry = null;
             m_GameObject = null;
         }
 
@@ -1753,6 +2115,33 @@ namespace Opsive.BehaviorDesigner.Runtime
         }
 
         /// <summary>
+        /// Returns true if the behavior tree is running.
+        /// </summary>
+        /// <returns>True if the behavior tree is running.</returns>
+        public bool IsRunning()
+        {
+            return IsRunning(m_Entity);
+        }
+
+        /// <summary>
+        /// Returns true if the behavior tree is running.
+        /// </summary>
+        /// <param name="entity">The entity that contains the behavior tree.</param>
+        /// <returns>True if the behavior tree is running.</returns>
+        public bool IsRunning(Entity entity)
+        {
+            if (!IsActive(entity)) {
+                return false;
+            }
+
+            if (!s_BehaviorTreeByEntity.TryGetValue(entity, out var behaviorTree) || behaviorTree == null) {
+                return false;
+            }
+
+            return behaviorTree.Status == TaskStatus.Running;
+        }
+
+        /// <summary>
         /// Returns true if the behavior tree is paused.
         /// </summary>
         /// <returns>True if the behavior tree is paused.</returns>
@@ -1784,9 +2173,8 @@ namespace Opsive.BehaviorDesigner.Runtime
             m_Data = new BehaviorTreeData();
             m_Data.EventNodes = other.EventNodes;
             m_Data.LogicNodes = other.LogicNodes as ITreeLogicNode[];
+            m_Data.InjectedSubtreeReferences = (other as BehaviorTree).InjectedSubtreeReferences;
             m_Data.SharedVariables = other.SharedVariables;
-            m_Data.DisabledLogicNodes = other.DisabledLogicNodes;
-            m_Data.DisabledEventNodes = other.DisabledEventNodes;
 
 #if UNITY_EDITOR
             m_Data.EventNodeProperties = other.EventNodeProperties;
@@ -1826,28 +2214,69 @@ namespace Opsive.BehaviorDesigner.Runtime
         private static void Reinitialize()
         {
             s_BehaviorTreeByEntity = new Dictionary<Entity, BehaviorTree>();
+#if UNITY_EDITOR
+            s_AuthoringTaskSharedVariableFieldLookup = new Dictionary<Type, bool>();
+#endif
         }
 
         /// <summary>
         /// Enables the baked behavior tree system.
         /// </summary>
         /// <param name="world">The world that the system has been added to.</param>
+        [Obsolete("EnableBakedBehaviorTreeSystem is deprecated and no longer required because baked startup runs automatically. For deferred baked trees call StartBakedBehaviorTree(world, entity).", false)]
         public static void EnableBakedBehaviorTreeSystem(World world)
         {
             if (world == null) {
                 return;
             }
 
-            EnableBakedBehaviorTreeSystem(world.Unmanaged);
+            world.Unmanaged.GetExistingSystemState<StartBakedBehaviorTreeSystem>().Enabled = true;
         }
 
         /// <summary>
         /// Enables the baked behavior tree system.
         /// </summary>
         /// <param name="world">The unmanged world that the system has been added to.</param>
+        [Obsolete("EnableBakedBehaviorTreeSystem is deprecated and no longer required because baked startup runs automatically. For deferred baked trees call StartBakedBehaviorTree(world, entity).", false)]
         public static void EnableBakedBehaviorTreeSystem(WorldUnmanaged world)
         {
             world.GetExistingSystemState<StartBakedBehaviorTreeSystem>().Enabled = true;
+        }
+
+        /// <summary>
+        /// Starts a baked behavior tree that was deferred because StartWhenEnabled is false.
+        /// </summary>
+        /// <param name="world">The world that contains the entity.</param>
+        /// <param name="entity">The entity that should be started.</param>
+        /// <returns>True if the baked behavior tree was started.</returns>
+        public static bool StartBakedBehaviorTree(World world, Entity entity)
+        {
+            if (world == null || entity == Entity.Null || !world.EntityManager.Exists(entity)) {
+                return false;
+            }
+
+            return StartBakedBehaviorTree(world.Unmanaged, entity);
+        }
+
+        /// <summary>
+        /// Starts a baked behavior tree that was deferred because StartWhenEnabled is false.
+        /// </summary>
+        /// <param name="world">The unmanaged world that contains the entity.</param>
+        /// <param name="entity">The entity that should be started.</param>
+        /// <returns>True if the baked behavior tree was started.</returns>
+        public static bool StartBakedBehaviorTree(WorldUnmanaged world, Entity entity)
+        {
+            if (entity == Entity.Null || !world.EntityManager.Exists(entity) || !world.EntityManager.HasComponent<DeferredBakedBehaviorTreeStart>(entity)) {
+                return false;
+            }
+
+            var deferredStart = world.EntityManager.GetComponentData<DeferredBakedBehaviorTreeStart>(entity);
+            if (!StartBranch(world.EntityManager.World, entity, deferredStart.StartEventConnectedIndex, deferredStart.StartEvaluation)) {
+                return false;
+            }
+
+            world.EntityManager.RemoveComponent<DeferredBakedBehaviorTreeStart>(entity);
+            return true;
         }
 
         /// <summary>
@@ -1863,7 +2292,7 @@ namespace Opsive.BehaviorDesigner.Runtime
             /// <param name="behaviorTree">The authoring behavior tree.</param>
             public override void Bake(BehaviorTree behaviorTree)
             {
-                if (!behaviorTree.StartWhenEnabled || !behaviorTree.enabled) {
+                if (!behaviorTree.enabled) {
                     return;
                 }
 
@@ -1874,6 +2303,16 @@ namespace Opsive.BehaviorDesigner.Runtime
                         if (!behaviorTree.InitializeTree(worlds[i], entity)) {
                             continue;
                         }
+#if UNITY_EDITOR
+                        ushort[] logicNodeRuntimeIndices = null;
+                        var logicNodes = behaviorTree.TreeLogicNodes;
+                        if (logicNodes != null && logicNodes.Length > 0) {
+                            logicNodeRuntimeIndices = new ushort[logicNodes.Length];
+                            for (int j = 0; j < logicNodes.Length; ++j) {
+                                logicNodeRuntimeIndices[j] = logicNodes[j].RuntimeIndex;
+                            }
+                        }
+#endif
 
                         var connectedIndex = GetStartTaskConnectedIndex(behaviorTree);
                         if (connectedIndex == -1 || connectedIndex == ushort.MaxValue) {
@@ -1897,6 +2336,7 @@ namespace Opsive.BehaviorDesigner.Runtime
                         AddComponentObject<BakedBehaviorTree>(entity, new BakedBehaviorTree
                         {
                             StartEventConnectedIndex = connectedIndex,
+                            StartWhenEnabled = behaviorTree.StartWhenEnabled,
                             StartEvaluation = behaviorTree.UpdateMode == UpdateMode.EveryFrame,
                             ReevaluateTaskSystems = GetTaskSystems<ReevaluateTaskSystemGroup>(worlds[i]),
                             InterruptTaskSystems = GetTaskSystems<InterruptTaskSystemGroup>(worlds[i]),
@@ -1904,7 +2344,15 @@ namespace Opsive.BehaviorDesigner.Runtime
                             TagStableTypeHashes = tagStableTypeHash,
                             ReevaluateFlagStableTypeHashes = ReevaluateFlagStableTypeHash,
                         });
-                        behaviorTree.Baked = true;
+#if UNITY_EDITOR
+                        // Stored in a separate component so StripEditorBehaviorTreeReferenceSystem can remove it during the EntitySceneOptimizations pass, keeping it out of the build.
+                        AddComponentObject<BakedEditorReference>(entity, new BakedEditorReference
+                        {
+                            AuthoringBehaviorTreeGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(behaviorTree).ToString(),
+                            DesignGraphUniqueID = behaviorTree.UniqueID,
+                            LogicNodeRuntimeIndices = logicNodeRuntimeIndices,
+                        });
+#endif
                     }
                 }
             }

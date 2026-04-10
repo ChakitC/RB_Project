@@ -203,7 +203,7 @@
 	align-self: center;
 	margin-top: 5px;
 	margin-bottom: 5px;
-	
+
 	min-width: 125px;
 	min-height: 25px;
 }

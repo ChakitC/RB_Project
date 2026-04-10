@@ -28,7 +28,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         /// </summary>
         public override void OnAwake()
         {
-            m_TargetGameObject.OnValueChange += InitializeTarget;
+            if (m_TargetGameObject != null) {
+                m_TargetGameObject.OnValueChange += InitializeTarget;
+            }
 
             InitializeTarget();
         }
@@ -38,8 +40,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         /// </summary>
         protected virtual void InitializeTarget()
         {
-            m_ResolvedGameObject = (m_TargetGameObject.Value == null || m_TargetGameObject.Value.Equals(null)) ? m_GameObject : m_TargetGameObject.Value;
-            m_ResolvedTransform = m_ResolvedGameObject.transform;
+            m_ResolvedGameObject = (m_TargetGameObject == null || m_TargetGameObject.Value == null || m_TargetGameObject.Value.Equals(null)) ? m_GameObject : m_TargetGameObject.Value;
+            m_ResolvedTransform = m_ResolvedGameObject != null ? m_ResolvedGameObject.transform : null;
         }
 
         /// <summary>
@@ -47,7 +49,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         /// </summary>
         public override void OnDestroy()
         {
-            m_TargetGameObject.OnValueChange -= InitializeTarget;
+            if (m_TargetGameObject != null) {
+                m_TargetGameObject.OnValueChange -= InitializeTarget;
+            }
         }
     }
 }

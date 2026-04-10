@@ -4,7 +4,7 @@
 /// Copyright (c) Opsive. All Rights Reserved.
 /// https://www.opsive.com
 /// ---------------------------------------------
-namespace Opsive.BehaviorDesigner.Runtime
+namespace Opsive.BehaviorDesigner.Runtime.Templates
 {
     using Opsive.BehaviorDesigner.Runtime.Tasks;
     using Opsive.GraphDesigner.Runtime;
@@ -25,7 +25,7 @@ namespace Opsive.BehaviorDesigner.Runtime
         {
             if (string.IsNullOrEmpty(name))
                 return name;
-            
+
             return char.ToLowerInvariant(name[0]) + name.Substring(1);
         }
     }
@@ -51,7 +51,6 @@ namespace Opsive.BehaviorDesigner.Runtime
             var variableName = ECSNodeUtility.ToCamelCase(name);
             return $@"using Opsive.BehaviorDesigner.Runtime.Components;
 using Opsive.BehaviorDesigner.Runtime.Tasks;
-using Opsive.GraphDesigner.Runtime;
 using Unity.Entities;
 using Unity.Burst;
 using UnityEngine;
@@ -59,13 +58,8 @@ using UnityEngine;
 /// <summary>
 /// A custom ECS action node.
 /// </summary>
-public class {name} : ECSActionTask<{name}TaskSystem, {name}Component>
+public class {name} : ECSActionTask<{name}TaskSystem, {name}Component, {name}Flag>
 {{
-    /// <summary>
-    /// The type of flag that should be enabled when the task is running.
-    /// </summary>
-    public override ComponentType Flag {{ get => typeof({name}Flag); }}
-
     /// <summary>
     /// Returns a new {name}Component for use by the system.
     /// </summary>
@@ -164,7 +158,6 @@ public partial struct {name}TaskSystem : ISystem
             var variableName = ECSNodeUtility.ToCamelCase(name);
             return $@"using Opsive.BehaviorDesigner.Runtime.Components;
 using Opsive.BehaviorDesigner.Runtime.Tasks;
-using Opsive.GraphDesigner.Runtime;
 using Unity.Entities;
 using Unity.Burst;
 using UnityEngine;
@@ -172,13 +165,8 @@ using UnityEngine;
 /// <summary>
 /// A custom ECS composite node.
 /// </summary>
-public class {name} : ECSCompositeTask<{name}TaskSystem, {name}Component>
+public class {name} : ECSCompositeTask<{name}TaskSystem, {name}Component, {name}Flag>
 {{
-    /// <summary>
-    /// The type of tag that should be enabled when the task is running.
-    /// </summary>
-    public override ComponentType Flag {{ get => typeof({name}Flag); }}
-
     /// <summary>
     /// Returns a new {name}Component for use by the system.
     /// </summary>
@@ -282,7 +270,6 @@ public partial struct {name}TaskSystem : ISystem
             var variableName = ECSNodeUtility.ToCamelCase(name);
             return $@"using Opsive.BehaviorDesigner.Runtime.Components;
 using Opsive.BehaviorDesigner.Runtime.Tasks;
-using Opsive.GraphDesigner.Runtime;
 using Unity.Burst;
 using Unity.Entities;
 using UnityEngine;
@@ -290,12 +277,8 @@ using UnityEngine;
 /// <summary>
 /// A custom ECS conditional node.
 /// </summary>
-public class {name} : ECSConditionalTask<{name}TaskSystem, {name}Component>, IReevaluateResponder
+public class {name} : ECSConditionalTask<{name}TaskSystem, {name}Component, {name}Flag>, IReevaluateResponder
 {{
-    /// <summary>
-    /// The type of flag that should be enabled when the task is running.
-    /// </summary>
-    public override ComponentType Flag {{ get => typeof({name}Flag); }}
     /// <summary>
     /// The type of flag that should be enabled when the task is being reevaluated.
     /// </summary>
@@ -446,7 +429,6 @@ public partial struct {name}ReevaluateTaskSystem : ISystem
             var variableName = ECSNodeUtility.ToCamelCase(name);
             return $@"using Opsive.BehaviorDesigner.Runtime.Components;
 using Opsive.BehaviorDesigner.Runtime.Tasks;
-using Opsive.GraphDesigner.Runtime;
 using Unity.Entities;
 using Unity.Burst;
 using UnityEngine;
@@ -454,13 +436,8 @@ using UnityEngine;
 /// <summary>
 /// A custom ECS decorator node.
 /// </summary>
-public class {name} : ECSDecoratorTask<{name}TaskSystem, {name}Component>
+public class {name} : ECSDecoratorTask<{name}TaskSystem, {name}Component, {name}Flag>
 {{
-    /// <summary>
-    /// The type of flag that should be enabled when the task is running.
-    /// </summary>
-    public override ComponentType Flag {{ get => typeof({name}Flag); }}
-
     /// <summary>
     /// Returns a new {name}Component for use by the system.
     /// </summary>

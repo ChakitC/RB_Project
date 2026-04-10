@@ -1,4 +1,4 @@
-﻿#if GRAPH_DESIGNER
+#if GRAPH_DESIGNER
 /// ---------------------------------------------
 /// Behavior Designer
 /// Copyright (c) Opsive. All Rights Reserved.
@@ -9,6 +9,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Utility;
     using Opsive.GraphDesigner.Runtime;
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using Opsive.Shared.Utility;
     using Unity.Collections;
     using Unity.Entities;
@@ -23,11 +24,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     [Opsive.Shared.Utility.Description("The utility selector task evaluates the child tasks using Utility Theory AI. The child task can return the utility value " +
                      "at that particular time. The task with the highest utility value will be selected and the existing running task will be aborted. The utility selector " +
                      "task reevaluates its children every tick.")]
-    public class UtilitySelector : ECSCompositeTask<UtilitySelectorTaskSystem, UtilitySelectorComponent>, IParentNode, ISavableTask, ICloneable
+    public class UtilitySelector : ECSCompositeTask<UtilitySelectorTaskSystem, UtilitySelectorComponent, UtilitySelectorFlag>, IParentNode, ISavableTask, ICloneable
     {
         private ushort m_ComponentIndex;
-
-        public override ComponentType Flag { get => typeof(UtilitySelectorFlag); }
 
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
@@ -46,11 +45,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
         /// </summary>
         /// <param name="world">The world that the entity exists in.</param>
         /// <param name="entity">The entity that the IBufferElementData should be assigned to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
         /// <param name="gameObject">The GameObject that the entity is attached to.</param>
         /// <returns>The index of the element within the buffer.</returns>
-        public override int AddBufferElement(World world, Entity entity, GameObject gameObject)
+        public override int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, GameObject gameObject)
         {
-            m_ComponentIndex = (ushort)base.AddBufferElement(world, entity, gameObject);
+            m_ComponentIndex = (ushort)base.AddBufferElement(world, entity, registry, gameObject);
             ComponentUtility.AddInterruptComponents(world.EntityManager, entity);
             return m_ComponentIndex;
         }
@@ -102,8 +102,29 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
             clone.Index = Index;
             clone.ParentIndex = ParentIndex;
             clone.SiblingIndex = SiblingIndex;
+            clone.Enabled = Enabled;
             return clone;
         }
+    }
+
+    /// <summary>
+    /// Immutable blob entry mapping a task index to its UtilityValueComponent index.
+    /// </summary>
+    public struct UtilityItemBlobEntry
+    {
+        [Tooltip("The index of the task.")]
+        public ushort TaskIndex;
+        [Tooltip("The index of the UtilityValueComponent.")]
+        public ushort UtilityValueIndex;
+    }
+
+    /// <summary>
+    /// Blob asset storing the utility item entries (task index and utility value index per child). Mutable state (CanExecute) is stored in the component mask.
+    /// </summary>
+    public struct UtilityItemsBlob
+    {
+        [Tooltip("The utility item entries.")]
+        public BlobArray<UtilityItemBlobEntry> Items;
     }
 
     /// <summary>
@@ -115,21 +136,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
         public ushort Index;
         [Tooltip("The index of the child that is currently active.")]
         public ushort ActiveChildIndex;
-        [Tooltip("The index of the UtilityValueComponent that corresponds to each child.")]
-        public NativeArray<UtilityItem> UtilityItems;
-
-        /// <summary>
-        /// A mapping between the UnityValueComponent and the task.
-        /// </summary>
-        public struct UtilityItem
-        {
-            [Tooltip("The index of the task.")]
-            public ushort TaskIndex;
-            [Tooltip("The index of the UtilityValueComponent.")]
-            public ushort UtilityValueIndex;
-            [Tooltip("Can the task continue to exectute?")]
-            public bool CanExecute;
-        }
+        [Tooltip("The blob containing task-to-utility-value mapping per child.")]
+        public BlobAssetReference<UtilityItemsBlob> UtilityItems;
+        [Tooltip("Bit mask of which children can execute (bit i = child i). Max 64 children.")]
+        public ulong CanExecuteMask;
     }
 
     /// <summary>
@@ -181,41 +191,41 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                     var taskComponentsBuffer = taskComponents;
                     var branchComponentBuffer = branchComponents;
                     if (taskComponent.Status == TaskStatus.Queued) {
-                        // Initialize the UtilityItem array.
-                        if (utilitySelectorComponent.UtilityItems.Length == 0) {
+                        // Initialize the utility items blob and can-execute mask when first run.
+                        ushort childIndex;
+                        if (!utilitySelectorComponent.UtilityItems.IsCreated) {
                             var childCount = TraversalUtility.GetImmediateChildCount(ref taskComponent, ref taskComponentsBuffer);
-                            var utilityItems = new NativeArray<UtilitySelectorComponent.UtilityItem>(childCount, Allocator.Persistent);
-                            // Match the UtilitySelectorComponent with the child index.
-                            var childIndex = (ushort)(taskComponent.Index + 1);
+                            var builder = new BlobBuilder(Allocator.Temp);
+                            ref var root = ref builder.ConstructRoot<UtilityItemsBlob>();
+                            var itemsArray = builder.Allocate(ref root.Items, childCount);
+                            childIndex = (ushort)(taskComponent.Index + 1);
                             for (ushort j = 0; j < childCount; ++j) {
-                                utilityItems[j] = new UtilitySelectorComponent.UtilityItem() { TaskIndex = childIndex, UtilityValueIndex = ushort.MaxValue, CanExecute = !taskComponents[childIndex].Disabled };
-
+                                itemsArray[j] = new UtilityItemBlobEntry() { TaskIndex = childIndex, UtilityValueIndex = ushort.MaxValue };
                                 for (ushort k = 0; k < utilityValueComponents.Length; ++k) {
-                                    var utilityValueComponent = utilityValueComponents[k];
-                                    if (utilityValueComponent.Index == childIndex) {
-                                        var utilityItem = utilityItems[j];
-                                        utilityItem.UtilityValueIndex = k;
-                                        utilityItems[j] = utilityItem;
+                                    if (utilityValueComponents[k].Index == childIndex) {
+                                        itemsArray[j].UtilityValueIndex = k;
                                         break;
                                     }
                                 }
                                 childIndex = taskComponents[childIndex].SiblingIndex;
                             }
-
-                            utilitySelectorComponent.UtilityItems = utilityItems;
-                        } else {
-                            // Reset the execution status.
-                            var childIndex = (ushort)(taskComponent.Index + 1);
-                            for (int j = 0; j < utilitySelectorComponent.UtilityItems.Length; ++j) {
-                                var utilityItem = utilitySelectorComponent.UtilityItems[j];
-                                utilityItem.CanExecute = !taskComponents[childIndex].Disabled;
-                                utilitySelectorComponent.UtilityItems[j] = utilityItem;
-
-                                childIndex = taskComponents[childIndex].SiblingIndex;
-                            }
+                            utilitySelectorComponent.UtilityItems = builder.CreateBlobAssetReference<UtilityItemsBlob>(Allocator.Persistent);
+                            builder.Dispose();
                         }
 
-                        utilitySelectorComponent.ActiveChildIndex = GetHighestUtility(utilitySelectorComponent.UtilityItems, ref utilityValueComponentBuffer);
+                        // Do not include child nodes that are disabled.
+                        ref var items = ref utilitySelectorComponent.UtilityItems.Value.Items;
+                        childIndex = (ushort)(taskComponent.Index + 1);
+                        ulong mask = 0;
+                        for (int j = 0; j < items.Length; ++j) {
+                            if (taskComponents[childIndex].Enabled) {
+                                mask |= 1UL << j;
+                            }
+                            childIndex = taskComponents[childIndex].SiblingIndex;
+                        }
+                        utilitySelectorComponent.CanExecuteMask = mask;
+
+                        utilitySelectorComponent.ActiveChildIndex = GetHighestUtility(utilitySelectorComponent.UtilityItems, utilitySelectorComponent.CanExecuteMask, ref utilityValueComponentBuffer);
                         utilitySelectorComponentsBuffer[i] = utilitySelectorComponent;
 
                         if (utilitySelectorComponent.ActiveChildIndex == ushort.MaxValue) {
@@ -223,7 +233,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                             branchComponent.NextIndex = taskComponent.ParentIndex;
                         } else {
                             taskComponent.Status = TaskStatus.Running;
-                            branchComponent.NextIndex = utilitySelectorComponent.UtilityItems[utilitySelectorComponent.ActiveChildIndex].TaskIndex;
+                            items = ref utilitySelectorComponent.UtilityItems.Value.Items;
+                            branchComponent.NextIndex = items[utilitySelectorComponent.ActiveChildIndex].TaskIndex;
 
                             // Start the child.
                             var nextChildTaskComponent = taskComponents[branchComponent.NextIndex];
@@ -238,7 +249,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                         continue;
                     }
 
-                    var childTaskComponent = taskComponents[utilitySelectorComponent.UtilityItems[utilitySelectorComponent.ActiveChildIndex].TaskIndex];
+                    ref var itemsRef = ref utilitySelectorComponent.UtilityItems.Value.Items;
+                    var childTaskComponent = taskComponents[itemsRef[utilitySelectorComponent.ActiveChildIndex].TaskIndex];
                     if (childTaskComponent.Status == TaskStatus.Success) {
                         // The child has returned success. Stop the selector.
                         taskComponent.Status = childTaskComponent.Status;
@@ -247,28 +259,25 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                         branchComponentBuffer[taskComponent.BranchIndex] = branchComponent;
                         continue;
                     } else if (childTaskComponent.Status == TaskStatus.Failure) {
-                        var utilityItem = utilitySelectorComponent.UtilityItems[utilitySelectorComponent.ActiveChildIndex];
-                        utilityItem.CanExecute = false;
-                        utilitySelectorComponent.UtilityItems[utilitySelectorComponent.ActiveChildIndex] = utilityItem;
-
+                        utilitySelectorComponent.CanExecuteMask &= ~(1UL << utilitySelectorComponent.ActiveChildIndex);
                         utilitySelectorComponentsBuffer[i] = utilitySelectorComponent;
                     }
 
                     // The active task returned failure or is currently running. Determine if the active task needs to change.
-                    var highestIndex = GetHighestUtility(utilitySelectorComponent.UtilityItems, ref utilityValueComponentBuffer);
+                    var highestIndex = GetHighestUtility(utilitySelectorComponent.UtilityItems, utilitySelectorComponent.CanExecuteMask, ref utilityValueComponentBuffer);
                     if (highestIndex == utilitySelectorComponent.ActiveChildIndex) {
                         // No changes are necessary.
                         continue;
                     }
 
-                    var activeTaskIndex = utilitySelectorComponent.UtilityItems[utilitySelectorComponent.ActiveChildIndex].TaskIndex;
+                    var activeTaskIndex = itemsRef[utilitySelectorComponent.ActiveChildIndex].TaskIndex;
                     utilitySelectorComponent.ActiveChildIndex = highestIndex;
                     utilitySelectorComponentsBuffer[i] = utilitySelectorComponent;
 
                     // A new branch has been selected. Trigger an interrupt on the currently active branch.
                     if (taskComponents[activeTaskIndex].Status == TaskStatus.Running){
                         branchComponent.InterruptType = InterruptType.Branch;
-                        branchComponent.InterruptIndex = utilitySelectorComponent.UtilityItems[highestIndex].TaskIndex;
+                        branchComponent.InterruptIndex = itemsRef[highestIndex].TaskIndex;
                         state.EntityManager.SetComponentEnabled<InterruptFlag>(entity, true);
                         branchComponentBuffer[taskComponent.BranchIndex] = branchComponent;
                         continue;
@@ -282,7 +291,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                         branchComponent.NextIndex = taskComponent.ParentIndex;
                     } else {
                         // Run the task with the next highest utility value.
-                        var nextTaskIndex = utilitySelectorComponent.UtilityItems[utilitySelectorComponent.ActiveChildIndex].TaskIndex;
+                        var nextTaskIndex = itemsRef[utilitySelectorComponent.ActiveChildIndex].TaskIndex;
                         var nextTaskComponent = taskComponents[nextTaskIndex];
                         nextTaskComponent.Status = TaskStatus.Queued;
                         taskComponentsBuffer[nextTaskIndex] = nextTaskComponent;
@@ -303,7 +312,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
                         var taskComponent = taskComponents[utilitySelectorComponent.Index];
 
                         // If there are no values then the selector should return failure.
-                        if (taskComponent.Status == TaskStatus.Queued && utilitySelectorComponent.UtilityItems.Length == 0) {
+                        if (taskComponent.Status == TaskStatus.Queued && !utilitySelectorComponent.UtilityItems.IsCreated) {
                             taskComponent.Status = TaskStatus.Failure;
                             var taskComponentsBuffer = taskComponents;
                             taskComponentsBuffer[utilitySelectorComponent.Index] = taskComponent;
@@ -319,22 +328,24 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
         }
 
         /// <summary>
-        /// Retruns the task index with the highest utility value.
+        /// Returns the task index with the highest utility value.
         /// </summary>
-        /// <param name="utilityItems">The components with utility values.</param>
+        /// <param name="utilityItems">The blob containing utility item data.</param>
+        /// <param name="canExecuteMask">Bit mask of which children can execute.</param>
         /// <param name="utilityValueComponents">The utility values of the tasks.</param>
-        /// <returns>The task with the highest utility value.</returns>
+        /// <returns>The index with the highest utility value, or ushort.MaxValue if none.</returns>
         [BurstCompile]
-        private ushort GetHighestUtility(NativeArray<UtilitySelectorComponent.UtilityItem> utilityItems, ref DynamicBuffer<UtilityValueComponent> utilityValueComponents)
+        private ushort GetHighestUtility(BlobAssetReference<UtilityItemsBlob> utilityItems, ulong canExecuteMask, ref DynamicBuffer<UtilityValueComponent> utilityValueComponents)
         {
             var utilityIndex = ushort.MaxValue;
             var highestUtility = float.MinValue;
-            for (ushort i = 0; i < utilityItems.Length; ++i) {
-                if (utilityItems[i].UtilityValueIndex == ushort.MaxValue || !utilityItems[i].CanExecute) {
+            ref var items = ref utilityItems.Value.Items;
+            for (ushort i = 0; i < items.Length; ++i) {
+                if ((canExecuteMask & (1UL << i)) == 0 || items[i].UtilityValueIndex == ushort.MaxValue) {
                     continue;
                 }
 
-                var utilityValue = utilityValueComponents[utilityItems[i].UtilityValueIndex].Value;
+                var utilityValue = utilityValueComponents[items[i].UtilityValueIndex].Value;
                 if (utilityValue > highestUtility) {
                     highestUtility = utilityValue;
                     utilityIndex = i;
@@ -345,14 +356,17 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
         }
 
         /// <summary>
-        /// The task has been destroyed.
+        /// Disposes blob assets when the system is destroyed.
         /// </summary>
         /// <param name="state">The current state of the system.</param>
         private void OnDestroy(ref SystemState state)
         {
             foreach (var utilitySelectorComponents in SystemAPI.Query<DynamicBuffer<UtilitySelectorComponent>>()) {
                 for (int i = 0; i < utilitySelectorComponents.Length; ++i) {
-                    utilitySelectorComponents[i].UtilityItems.Dispose();
+                    var utilitySelectorComponent = utilitySelectorComponents[i];
+                    if (utilitySelectorComponent.UtilityItems.IsCreated) {
+                        utilitySelectorComponent.UtilityItems.Dispose();
+                    }
                 }
             }
         }

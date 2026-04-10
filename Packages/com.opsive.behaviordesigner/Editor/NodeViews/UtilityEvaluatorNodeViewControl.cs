@@ -6,12 +6,13 @@
 /// ---------------------------------------------
 namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
 {
-    using Opsive.GraphDesigner.Editor;
-    using Opsive.GraphDesigner.Editor.Events;
-    using Opsive.GraphDesigner.Runtime;
     using Opsive.BehaviorDesigner.Runtime;
     using Opsive.BehaviorDesigner.Runtime.Systems;
     using Opsive.BehaviorDesigner.Runtime.Tasks.Decorators;
+    using Opsive.GraphDesigner.Editor;
+    using Opsive.GraphDesigner.Editor.Elements;
+    using Opsive.GraphDesigner.Editor.Events;
+    using Opsive.GraphDesigner.Runtime;
     using Opsive.Shared.Editor.UIElements.Controls;
     using Unity.Entities;
     using UnityEngine;
@@ -25,6 +26,7 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
     {
         private BehaviorTree m_BehaviorTree;
         private ILogicNode m_Node;
+        private EditorNode m_EditorNode;
         private ushort m_UtilityEvaluatorComponentIndex = ushort.MaxValue;
 
         private Label m_UtilityValueLabel;
@@ -43,8 +45,9 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
                 return;
             }
 
-            m_BehaviorTree = graphWindow.Graph as BehaviorTree;
+            m_BehaviorTree = (graphWindow.AttachedToGraph != null ? graphWindow.AttachedToGraph.Graph : graphWindow.Graph) as BehaviorTree;
             m_Node = node as ILogicNode;
+            m_EditorNode = parent.GetFirstAncestorOfType<EditorNode>();
 
             parent.RegisterCallback<AttachToPanelEvent>(c =>
             {
@@ -65,15 +68,23 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
         /// </summary>
         private void UpdateUtilityValue()
         {
-            if (m_BehaviorTree == null || m_BehaviorTree.Entity == Entity.Null || m_Node.RuntimeIndex == ushort.MaxValue) {
+            if (m_BehaviorTree == null || m_BehaviorTree.Entity == Entity.Null) {
                 return;
             }
 
             var taskObjectComponents = m_BehaviorTree.World.EntityManager.GetBuffer<TaskObjectComponent>(m_BehaviorTree.Entity);
             if (m_UtilityEvaluatorComponentIndex == ushort.MaxValue) {
+                var nodeIndex = m_EditorNode.GetAttachedToGraphNodeIndex();
+                if (nodeIndex == ushort.MaxValue) {
+                    nodeIndex = m_Node.RuntimeIndex;
+
+                    if (nodeIndex == ushort.MaxValue) {
+                        return;
+                    }
+                }
                 // Find the corresponding index of the TaskObject.
                 for (int i = 0; i < taskObjectComponents.Length; ++i) {
-                    if (taskObjectComponents[i].Index == m_Node.RuntimeIndex) {
+                    if (taskObjectComponents[i].Index == nodeIndex) {
                         m_UtilityEvaluatorComponentIndex = (ushort)i;
                         break;
                     }

@@ -7,7 +7,6 @@
 namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
-    using Opsive.GraphDesigner.Runtime;
     using Unity.Entities;
     using Unity.Burst;
     using UnityEngine;
@@ -17,17 +16,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
     /// A node representation of the return status task.
     /// </summary>
     [Opsive.Shared.Utility.Description("The return status task will immediately return sucess or failure.")]
-    public class ReturnStatus : ECSActionTask<ReturnStatusTaskSystem, ReturnStatusComponent>, ICloneable
+    public class ReturnStatus : ECSActionTask<ReturnStatusTaskSystem, ReturnStatusComponent, ReturnStatusFlag>, ICloneable
     {
         [Tooltip("Should a success status be returned? If false then failure will be returned.")]
         [SerializeField] bool m_Success;
 
         public bool Success { get => m_Success; set => m_Success = value; }
-
-        /// <summary>
-        /// The type of tag that should be enabled when the task is running.
-        /// </summary>
-        public override ComponentType Flag { get => typeof(ReturnStatusFlag); }
 
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
@@ -51,6 +45,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
             clone.Index = Index;
             clone.ParentIndex = ParentIndex;
             clone.SiblingIndex = SiblingIndex;
+            clone.Enabled = Enabled;
             clone.Success = Success;
             return clone;
         }

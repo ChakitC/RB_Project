@@ -9,6 +9,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.GraphDesigner.Runtime;
     using Opsive.GraphDesigner.Runtime.Variables;
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using Opsive.Shared.Utility;
     using Unity.Burst;
     using Unity.Entities;
@@ -20,7 +21,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     [NodeIcon("ceb6f3e7f67cde640b28b2a15ec13ffe", "bb415ca6de87c3d49ab9a94fe8a6fca8")]
     [Opsive.Shared.Utility.Description(@"The repeater task will repeat execution of its child task until the child task has been run a specified number of times. " +
                       "It has the option of continuing to execute the child task even if the child task returns a failure.")]
-    public class Repeater : ECSDecoratorTask<RepeaterTaskSystem, RepeaterComponent>, IParentNode, ISavableTask
+    public class Repeater : ECSDecoratorTask<RepeaterTaskSystem, RepeaterComponent, RepeaterFlag>, IParentNode, ISavableTask
     {
         [Tooltip("Should the task be repeated forever?")]
         [SerializeField] bool m_RepeatForever;
@@ -34,8 +35,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
         public bool RepeatForever { get => m_RepeatForever; set => m_RepeatForever = value; }
         public ushort RepeatCount { get => m_RepeatCount; set => m_RepeatCount = value; }
         public bool EndOnFailure { get => m_EndOnFailure; set => m_EndOnFailure = value; }
-
-        public override ComponentType Flag { get => typeof(RepeaterFlag); }
 
         /// <summary>
         /// Resets the task to its default values.
@@ -60,11 +59,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
         /// </summary>
         /// <param name="world">The world that the entity exists in.</param>
         /// <param name="entity">The entity that the IBufferElementData should be assigned to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
         /// <param name="gameObject">The GameObject that the entity is attached to.</param>
         /// <returns>The index of the element within the buffer.</returns>
-        public override int AddBufferElement(World world, Entity entity, GameObject gameObject)
+        public override int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, GameObject gameObject)
         {
-            m_ComponentIndex = (ushort)base.AddBufferElement(world, entity, gameObject);
+            m_ComponentIndex = (ushort)base.AddBufferElement(world, entity, registry, gameObject);
             return m_ComponentIndex;
         }
 
@@ -132,6 +132,17 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     [DisableAutoCreation]
     public partial struct RepeaterTaskSystem : ISystem
     {
+        private EntityQuery m_Query;
+
+        /// <summary>
+        /// Builds the query.
+        /// </summary>
+        /// <param name="state">The current state of the system.</param>
+        private void OnCreate(ref SystemState state)
+        {
+            m_Query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<RepeaterComponent>().WithAll<RepeaterFlag, EvaluateFlag>().Build();
+        }
+
         /// <summary>
         /// Creates the job.
         /// </summary>
@@ -139,8 +150,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
         [BurstCompile]
         private void OnUpdate(ref SystemState state)
         {
-            var query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<RepeaterComponent>().WithAll<RepeaterFlag, EvaluateFlag>().Build();
-            state.Dependency = new RepeaterJob().ScheduleParallel(query, state.Dependency);
+            state.Dependency = new RepeaterJob().ScheduleParallel(m_Query, state.Dependency);
         }
 
         /// <summary>
@@ -161,32 +171,43 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
                 for (int i = 0; i < repeaterComponents.Length; ++i) {
                     var repeaterComponent = repeaterComponents[i];
                     var taskComponent = taskComponents[repeaterComponent.Index];
-                    var branchComponent = branchComponents[taskComponent.BranchIndex];
-                    if (!branchComponent.CanExecute) {
+                    var taskStatus = taskComponent.Status;
+                    if (taskStatus != TaskStatus.Queued && taskStatus != TaskStatus.Running) {
                         continue;
                     }
 
-                    if (taskComponent.Status == TaskStatus.Queued) {
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute || branchComponent.InterruptType != InterruptType.None) {
+                        continue;
+                    }
+
+                    var childIndex = (ushort)(taskComponent.Index + 1);
+                    if (taskStatus == TaskStatus.Queued) {
                         taskComponent.Status = TaskStatus.Running;
                         taskComponents[taskComponent.Index] = taskComponent;
 
-                        repeaterComponent.CurrentCount = 1;
-                        var repeaterBuffer = repeaterComponents;
-                        repeaterBuffer[i] = repeaterComponent;
+                        if (repeaterComponent.CurrentCount != 1) {
+                            repeaterComponent.CurrentCount = 1;
+                            var repeaterBuffer = repeaterComponents;
+                            repeaterBuffer[i] = repeaterComponent;
+                        }
 
-                        branchComponent.NextIndex = (ushort)(taskComponent.Index + 1);
-                        branchComponents[taskComponent.BranchIndex] = branchComponent;
+                        if (branchComponent.NextIndex != childIndex) {
+                            branchComponent.NextIndex = childIndex;
+                            branchComponents[taskComponent.BranchIndex] = branchComponent;
+                        }
 
                         // Start the child.
-                        var nextChildTaskComponent = taskComponents[branchComponent.NextIndex];
-                        nextChildTaskComponent.Status = TaskStatus.Queued;
-                        taskComponents[branchComponent.NextIndex] = nextChildTaskComponent;
-                    } else if (taskComponent.Status != TaskStatus.Running) {
+                        var nextChildTaskComponent = taskComponents[childIndex];
+                        if (nextChildTaskComponent.Status != TaskStatus.Queued) {
+                            nextChildTaskComponent.Status = TaskStatus.Queued;
+                            taskComponents[childIndex] = nextChildTaskComponent;
+                        }
                         continue;
                     }
 
                     // The repeater task is currently active. Check the first child.
-                    var childTaskComponent = taskComponents[taskComponent.Index + 1];
+                    var childTaskComponent = taskComponents[childIndex];
                     if (childTaskComponent.Status == TaskStatus.Queued || childTaskComponent.Status == TaskStatus.Running) {
                         // The child should keep running.
                         continue;
@@ -196,22 +217,31 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
                     if ((repeaterComponent.RepeatCount == -1 || repeaterComponent.CurrentCount <= repeaterComponent.RepeatCount) &&
                         (childTaskComponent.Status == TaskStatus.Success || (!repeaterComponent.EndOnFailure && childTaskComponent.Status == TaskStatus.Failure))) {
                         // Restart the child if the branch should repeat again.
-                        childTaskComponent.Status = TaskStatus.Queued;
-                        taskComponents[childTaskComponent.Index] = childTaskComponent;
+                        if (childTaskComponent.Status != TaskStatus.Queued) {
+                            childTaskComponent.Status = TaskStatus.Queued;
+                            taskComponents[childTaskComponent.Index] = childTaskComponent;
+                        }
 
                         repeaterComponent.CurrentCount++;
                         var repeaterBuffer = repeaterComponents;
                         repeaterBuffer[i] = repeaterComponent;
 
-                        branchComponent.NextIndex = childTaskComponent.Index;
-                        branchComponents[childTaskComponent.BranchIndex] = branchComponent;
+                        if (branchComponent.NextIndex != childTaskComponent.Index) {
+                            branchComponent.NextIndex = childTaskComponent.Index;
+                            branchComponents[childTaskComponent.BranchIndex] = branchComponent;
+                        }
                     } else {
                         // End with the child status if there should not be any more repeats. An inactive status will be returned if the child is disabled.
-                        taskComponent.Status = childTaskComponent.Status == TaskStatus.Inactive ? TaskStatus.Success : childTaskComponent.Status;
-                        taskComponents[taskComponent.Index] = taskComponent;
+                        var status = childTaskComponent.Status == TaskStatus.Inactive ? TaskStatus.Success : childTaskComponent.Status;
+                        if (taskComponent.Status != status) {
+                            taskComponent.Status = status;
+                            taskComponents[taskComponent.Index] = taskComponent;
+                        }
 
-                        branchComponent.NextIndex = taskComponent.ParentIndex;
-                        branchComponents[childTaskComponent.BranchIndex] = branchComponent;
+                        if (branchComponent.NextIndex != taskComponent.ParentIndex) {
+                            branchComponent.NextIndex = taskComponent.ParentIndex;
+                            branchComponents[childTaskComponent.BranchIndex] = branchComponent;
+                        }
                     }
                 }
             }

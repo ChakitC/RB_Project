@@ -9,7 +9,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Utility
     using Opsive.BehaviorDesigner.Runtime;
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Tasks;
-    using Opsive.GraphDesigner.Runtime;
     using Opsive.GraphDesigner.Runtime.Variables;
     using Opsive.Shared.Utility;
     using System;

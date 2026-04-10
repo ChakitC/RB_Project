@@ -28,7 +28,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
         public ushort SiblingIndex { get => m_SiblingIndex; set => m_SiblingIndex = value; }
         public ushort RuntimeIndex { get; set; }
 
-        public virtual int MaxChildCount { get => int.MaxValue; }
+        public virtual ushort MaxChildCount { get => ushort.MaxValue; }
         public virtual ushort NextChildIndex { get => (ushort)(RuntimeIndex + 1); }
     }
 }

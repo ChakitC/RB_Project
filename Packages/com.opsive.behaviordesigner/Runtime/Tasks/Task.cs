@@ -17,8 +17,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
     /// <summary>
     /// The base class for a GameObject task.
     /// </summary>
-    public abstract class Task : ISavableTask
+    public abstract class Task : IPausableTask, ISavableTask
     {
+        [Tooltip("Specifies if the node is enabled.")]
+        [SerializeField] [HideInInspector] protected bool m_Enabled = true;
+        public bool Enabled { get => m_Enabled; set => m_Enabled = value;  }
+
         protected GameObject m_GameObject;
         protected Transform m_Transform;
         protected BehaviorTree m_BehaviorTree;
@@ -26,8 +30,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
 
         protected virtual GameObject gameObject { get => m_GameObject; }
         protected virtual Transform transform { get => m_Transform; }
-
         private TaskStatus m_Status;
+
         internal TaskStatus Status { get => m_Status; set => m_Status = value; }
 
         /// <summary>
@@ -333,6 +337,20 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         /// </summary>
         /// <param name="index">The index of the sub-task. This is used for the task set allowing each contained task to have their own save type.</param>
         public virtual MemberVisibility GetSaveReflectionType(int index) { return MemberVisibility.Public; }
+
+        /// <summary>
+        /// The task has been paused.
+        /// </summary>
+        /// <param name="world">The DOTS world.</param>
+        /// <param name="entity">The DOTS entity.</param>
+        public virtual void Pause(World world, Entity entity) { }
+
+        /// <summary>
+        /// The task has been resumed.
+        /// </summary>
+        /// <param name="world">The DOTS world.</param>
+        /// <param name="entity">The DOTS entity.</param>
+        public virtual void Resume(World world, Entity entity) { }
 
         /// <summary>
         /// Returns the current task state.

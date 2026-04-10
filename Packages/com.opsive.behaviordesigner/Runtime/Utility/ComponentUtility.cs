@@ -34,7 +34,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Utility
             // For Count mode, an additional element is reserved at the end to store the execution count.
             var bitmaskElementCount = taskCount / ulongBitSize + 1;
             var countModeExtraElement = evaluationType == EvaluationType.Count ? 1 : 0;
-            
+
             if (taskCount < 192) {
                 world.EntityManager.AddComponent<EvaluationComponent32>(entity);
                 var evaluatedTasks = new FixedList32Bytes<ulong>();

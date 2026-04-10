@@ -4,26 +4,23 @@
 /// Copyright (c) Opsive. All Rights Reserved.
 /// https://www.opsive.com
 /// ---------------------------------------------
-namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
+namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.Utility
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.GraphDesigner.Runtime;
     using Unity.Entities;
     using Unity.Burst;
     using UnityEngine;
+    using UnityEngine.Scripting.APIUpdating;
 
     /// <summary>
     /// A node representation of the idle task.
     /// </summary>
     [NodeIcon("fc4d1b83384913b4abfbd8455db6df5b", "79a6985a753bb244fb5b32dc0f26addb")]
     [Opsive.Shared.Utility.Description("Returns a TaskStatus of running. The task will only stop when interrupted or a conditional abort is triggered.")]
-    public class Idle : ECSActionTask<IdleTaskSystem, IdleComponent>
+    [MovedFrom(false, "Opsive.BehaviorDesigner.Runtime.Tasks.Actions", "Opsive.BehaviorDesigner.Runtime", "Idle")]
+    public class Idle : ECSActionTask<IdleTaskSystem, IdleComponent, IdleFlag>
     {
-        /// <summary>
-        /// The type of tag that should be enabled when the task is running.
-        /// </summary>
-        public override ComponentType Flag { get => typeof(IdleFlag); }
-
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
         /// </summary>

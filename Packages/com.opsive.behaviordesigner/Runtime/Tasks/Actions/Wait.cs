@@ -4,21 +4,24 @@
 /// Copyright (c) Opsive. All Rights Reserved.
 /// https://www.opsive.com
 /// ---------------------------------------------
-namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
+namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.Time
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Utility;
     using Opsive.GraphDesigner.Runtime;
     using Opsive.GraphDesigner.Runtime.Variables;
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using Opsive.Shared.Utility;
     using Unity.Entities;
     using Unity.Burst;
     using UnityEngine;
+    using UnityEngine.Scripting.APIUpdating;
     using System;
 
     [NodeIcon("b4b59e888607422409f1efa599af34ae", "e1cb9cb566a90fb4489bf31465b99747")]
     [Opsive.Shared.Utility.Description("Wait a specified amount of time. The task will return running until the task is done waiting. It will return success after the wait time has elapsed.")]
-    public class Wait : ECSActionTask<WaitTaskSystem, WaitComponent>, ICloneable, IPausableTask, ISavableTask
+    [MovedFrom(false, "Opsive.BehaviorDesigner.Runtime.Tasks.Actions", "Opsive.BehaviorDesigner.Runtime", "Wait")]
+    public class Wait : ECSActionTask<WaitTaskSystem, WaitComponent, WaitFlag>, ICloneable, IPausableTask, ISavableTask
     {
         [Tooltip("The amount of time to wait (in seconds).")]
         [SerializeField] float m_Duration;
@@ -42,11 +45,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         public override void Reset() { m_Duration = m_RandomDurationRange.Min = m_RandomDurationRange.Max = 1; m_RandomDuration = false; m_Seed = 0; }
 
         /// <summary>
-        /// The type of tag that should be enabled when the task is running.
-        /// </summary>
-        public override ComponentType Flag { get => typeof(WaitFlag); }
-
-        /// <summary>
         /// Returns a new TBufferElement for use by the system.
         /// </summary>
         /// <returns>A new TBufferElement for use by the system.</returns>
@@ -66,11 +64,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         /// </summary>
         /// <param name="world">The world that the entity exists in.</param>
         /// <param name="entity">The entity that the IBufferElementData should be assigned to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
         /// <param name="gameObject">The GameObject that the entity is attached to.</param>
         /// <returns>The index of the element within the buffer.</returns>
-        public override int AddBufferElement(World world, Entity entity, GameObject gameObject)
+        public override int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, GameObject gameObject)
         {
-            m_ComponentIndex = (ushort)base.AddBufferElement(world, entity, gameObject);
+            m_ComponentIndex = (ushort)base.AddBufferElement(world, entity, registry, gameObject);
             return m_ComponentIndex;
         }
 
@@ -89,7 +88,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         {
             var waitComponents = world.EntityManager.GetBuffer<WaitComponent>(entity);
             var waitComponent = waitComponents[m_ComponentIndex];
-            waitComponent.PauseTime = Time.time;
+            waitComponent.PauseTime = UnityEngine.Time.time;
             var waitComponentBuffer = waitComponents;
             waitComponentBuffer[m_ComponentIndex] = waitComponent;
         }
@@ -103,7 +102,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         {
             var waitComponents = world.EntityManager.GetBuffer<WaitComponent>(entity);
             var waitComponent = waitComponents[m_ComponentIndex];
-            waitComponent.StartTime += (Time.time - waitComponent.PauseTime);
+            waitComponent.StartTime += (UnityEngine.Time.time - waitComponent.PauseTime);
             waitComponent.PauseTime = 0;
             var waitComponentBuffer = waitComponents;
             waitComponentBuffer[m_ComponentIndex] = waitComponent;
@@ -121,7 +120,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
             var waitComponent = waitComponents[m_ComponentIndex];
 
             // Save the unique data.
-            return new object[] { waitComponent.WaitDuration, Time.time - waitComponent.StartTime };
+            return new object[] { waitComponent.WaitDuration, waitComponent.StartTime >= 0 ? (double)(UnityEngine.Time.time - waitComponent.StartTime) : 0.0 };
         }
 
         /// <summary>
@@ -138,7 +137,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
             // saveData is the wait duration and the elapsed amount of time.
             var data = (object[])saveData;
             waitComponent.WaitDuration = (double)data[0];
-            waitComponent.StartTime = Time.time - (double)data[1];
+            var elapsedTime = (double)data[1];
+            if (elapsedTime > 0) {
+                waitComponent.StartTime = UnityEngine.Time.time - elapsedTime;
+            } else {
+                waitComponent.StartTime = -1;
+            }
             waitComponents[m_ComponentIndex] = waitComponent;
         }
 
@@ -152,6 +156,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
             clone.Index = Index;
             clone.ParentIndex = ParentIndex;
             clone.SiblingIndex = SiblingIndex;
+            clone.Enabled = Enabled;
             clone.Duration = Duration;
             clone.RandomDuration = RandomDuration;
             clone.Seed = Seed;
@@ -258,7 +263,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
 
     [NodeIcon("b4b59e888607422409f1efa599af34ae", "e1cb9cb566a90fb4489bf31465b99747")]
     [Opsive.Shared.Utility.Description("Wait a specified amount of time. The task will return running until the task is done waiting. It will return success after the wait time has elapsed. Uses the GameObject workflow.")]
-    public class SharedWait : Action
+    [MovedFrom(false, "Opsive.BehaviorDesigner.Runtime.Tasks.Actions", "Opsive.BehaviorDesigner.Runtime", "SharedWait")]
+    public class SharedWait : Actions.Action
     {
         [Tooltip("The amount of time to wait (in seconds).")]
         [SerializeField] SharedVariable<float> m_Duration = 1;
@@ -301,7 +307,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
             } else {
                 m_WaitDuration = m_Duration.Value;
             }
-            m_StartTime = Time.time;
+            m_StartTime = UnityEngine.Time.time;
         }
 
         /// <summary>
@@ -310,7 +316,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         /// <returns>The status of the task.</returns>
         public override TaskStatus OnUpdate()
         {
-            return m_StartTime + m_WaitDuration <= Time.time ? TaskStatus.Success : TaskStatus.Running;
+            return m_StartTime + m_WaitDuration <= UnityEngine.Time.time ? TaskStatus.Success : TaskStatus.Running;
         }
 
         /// <summary>
@@ -322,7 +328,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         public override object Save(World world, Entity entity)
         {
             // Save the unique data.
-            return new object[] { m_WaitDuration, Time.time - m_StartTime };
+            return new object[] { m_WaitDuration, UnityEngine.Time.time - m_StartTime };
         }
 
         /// <summary>
@@ -336,7 +342,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
             // saveData is the wait duration and the elapsed amount of time.
             var data = (object[])saveData;
             m_WaitDuration = (float)data[0];
-            m_StartTime = Time.time - (float)data[1];
+            m_StartTime = UnityEngine.Time.time - (float)data[1];
         }
 
         /// <summary>
@@ -347,7 +353,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
             base.OnBehaviorTreeStarted();
 
             if (m_PauseTime != -1) {
-                m_StartTime += (Time.time - m_PauseTime);
+                m_StartTime += (UnityEngine.Time.time - m_PauseTime);
                 m_PauseTime = -1;
             }
         }
@@ -361,7 +367,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
             base.OnBehaviorTreeStopped(paused);
 
             if (paused) {
-                m_PauseTime = Time.time;
+                m_PauseTime = UnityEngine.Time.time;
             }
         }
 

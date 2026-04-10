@@ -6,12 +6,13 @@
 /// ---------------------------------------------
 namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.UnityObjects
 {
-    using Opsive.GraphDesigner.Runtime;
     using Opsive.GraphDesigner.Runtime.Variables;
+    using System;
     using UnityEngine;
 
-    [Opsive.Shared.Utility.Description("Set the GameObject value.")]
+    [Opsive.Shared.Utility.Description("This task is obsolete. Use Variables.SetGameObject instead.")]
     [Shared.Utility.Category("Unity")]
+    [Obsolete("This task is obsolete. Use Variables.SetGameObject instead.")]
     public class SetGameObject : TargetGameObjectAction
     {
         [Tooltip("The variable that should be set.")]

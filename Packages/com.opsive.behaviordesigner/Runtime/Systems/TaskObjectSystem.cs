@@ -11,6 +11,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
     using Opsive.BehaviorDesigner.Runtime.Tasks;
     using Opsive.BehaviorDesigner.Runtime.Utility;
     using Opsive.GraphDesigner.Runtime;
+    using Unity.Collections;
     using Unity.Entities;
     using UnityEngine;
 
@@ -40,18 +41,77 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
     public struct TaskObjectFlag : IComponentData, IEnableableComponent { }
 
     /// <summary>
+    /// Utility methods for synchronizing ECS-backed SharedVariables around managed task execution.
+    /// </summary>
+    internal static class TaskObjectSharedVariableSyncUtility
+    {
+        /// <summary>
+        /// Syncs ECS-backed SharedVariables to the managed variables once for the specified entity.
+        /// </summary>
+        /// <param name="world">The world containing the entity.</param>
+        /// <param name="entity">The entity being updated.</param>
+        /// <param name="behaviorTree">The behavior tree associated with the entity.</param>
+        /// <param name="syncedEntities">The entities that have already been synchronized this pass.</param>
+        /// <param name="touchedEntities">The entities that need their managed values flushed back to ECS.</param>
+        public static void SyncToManagedIfNeeded(World world, Entity entity, BehaviorTree behaviorTree, NativeParallelHashSet<Entity> syncedEntities, NativeList<Entity> touchedEntities)
+        {
+            if (behaviorTree == null || !behaviorTree.HasECSVariableSync(world, entity) || !syncedEntities.Add(entity)) {
+                return;
+            }
+
+            behaviorTree.SyncECSVariablesToManaged(world, entity);
+            touchedEntities.Add(entity);
+        }
+
+        /// <summary>
+        /// Flushes the managed SharedVariable values for the touched entities back into ECS.
+        /// </summary>
+        /// <param name="world">The world containing the entities.</param>
+        /// <param name="touchedEntities">The entities whose managed SharedVariables should be synced back into ECS.</param>
+        public static void SyncTouchedEntitiesToECS(World world, NativeList<Entity> touchedEntities)
+        {
+            for (int i = 0; i < touchedEntities.Length; ++i) {
+                var entity = touchedEntities[i];
+                var behaviorTree = BehaviorTree.GetBehaviorTree(entity);
+                if (behaviorTree == null) {
+                    continue;
+                }
+
+                behaviorTree.SyncManagedVariablesToECS(world, entity);
+            }
+        }
+    }
+
+    /// <summary>
     /// Runs the TaskObject logic.
     /// </summary>
     [DisableAutoCreation]
     [UpdateInGroup(typeof(TraversalTaskSystemGroup), OrderLast = true)]
     public partial struct TaskObjectSystem : ISystem
     {
+        private EntityQuery m_InterruptedTaskQuery;
+        private EntityQuery m_TaskObjectQuery;
+
+        /// <summary>
+        /// Creates the queries used by the system.
+        /// </summary>
+        /// <param name="state">The current system state.</param>
+        private void OnCreate(ref SystemState state)
+        {
+            m_InterruptedTaskQuery = SystemAPI.QueryBuilder().WithAll<InterruptedFlag, TaskObjectComponent, TaskComponent>().Build();
+            m_TaskObjectQuery = SystemAPI.QueryBuilder().WithAll<TaskObjectFlag, EvaluateFlag, TaskObjectComponent, TaskComponent, BranchComponent>().Build();
+        }
+
         /// <summary>
         /// Updates the logic.
         /// </summary>
         /// <param name="state">The current state of the system.</param>
         private void OnUpdate(ref SystemState state)
         {
+            var entityCapacity = Mathf.Max(1, m_InterruptedTaskQuery.CalculateEntityCount() + m_TaskObjectQuery.CalculateEntityCount());
+            using var syncedEntities = new NativeParallelHashSet<Entity>(entityCapacity, Allocator.Temp);
+            using var touchedEntities = new NativeList<Entity>(entityCapacity, Allocator.Temp);
+
             // When the task is interrupted there is no callback which prevents Task.OnEnd from being called. Track the status within the referenced task object and if the status is different then
             // the task was aborted and OnEnd needs to be called.
             foreach (var (taskObjectComponents, taskComponents, entity) in
@@ -61,11 +121,16 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                     continue;
                 }
 
+                TaskObjectSharedVariableSyncUtility.SyncToManagedIfNeeded(state.World, entity, behaviorTree, syncedEntities, touchedEntities);
+
                 for (int i = 0; i < taskObjectComponents.Length; ++i) {
                     var taskObjectComponent = taskObjectComponents[i];
                     var taskComponent = taskComponents[taskObjectComponent.Index];
-                    if (taskComponent.Status == TaskStatus.Success || taskComponent.Status == TaskStatus.Failure) {
-                        var task = behaviorTree.GetTask(taskObjectComponent.Index) as Task;
+                    if (taskComponent.Status != TaskStatus.Queued && taskComponent.Status != TaskStatus.Running) {
+                        var task = behaviorTree.GetTaskObject(taskObjectComponent.Index);
+                        if (task == null) {
+                            continue;
+                        }
                         if (task.Status != taskComponent.Status) {
                             task.OnEnd();
                             task.Status = taskComponent.Status;
@@ -82,6 +147,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                 if (behaviorTree == null) {
                     continue;
                 }
+                TaskObjectSharedVariableSyncUtility.SyncToManagedIfNeeded(state.World, entity, behaviorTree, syncedEntities, touchedEntities);
+                var hasInterruptComponents = SystemAPI.HasComponent<InterruptFlag>(entity);
+                var interruptedFlagEnabled = hasInterruptComponents && SystemAPI.IsComponentEnabled<InterruptedFlag>(entity);
+                var taskComponentBuffer = taskComponents;
+                var branchComponentBuffer = branchComponents;
 
                 for (int i = 0; i < taskObjectComponents.Length; ++i) {
                     var taskObjectComponent = taskObjectComponents[i];
@@ -90,11 +160,13 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                     if (!branchComponent.CanExecute || branchComponent.ActiveIndex != taskComponent.Index) {
                         continue;
                     }
-                    
-                    var task = behaviorTree.GetTask(taskObjectComponent.Index) as Task;
+
+                    var task = behaviorTree.GetTaskObject(taskObjectComponent.Index);
+                    if (task == null) {
+                        continue;
+                    }
                     if (taskComponent.Status == TaskStatus.Queued) {
                         task.Status = taskComponent.Status = TaskStatus.Running;
-                        var taskComponentBuffer = taskComponents;
                         taskComponentBuffer[taskComponent.Index] = taskComponent;
 
                         task.OnStart();
@@ -102,47 +174,49 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                     if (taskComponent.Status != TaskStatus.Running) {
                         continue;
                     }
-                    
+
                     var status = task.OnUpdate();
                     // Update the status if has changed.
                     if (status != taskComponent.Status) {
                         task.Status = taskComponent.Status = status;
-                        var taskComponentBuffer = taskComponents;
                         taskComponentBuffer[taskComponent.Index] = taskComponent;
 
                         // End the task if it is done running.
                         if (status != TaskStatus.Running) {
                             task.OnEnd();
 
-                            branchComponent = branchComponents[taskComponent.BranchIndex];
+                            branchComponent = branchComponentBuffer[taskComponent.BranchIndex];
                             branchComponent.NextIndex = taskComponent.ParentIndex;
-                            var branchComponentBuffer = branchComponents;
                             branchComponentBuffer[taskComponent.BranchIndex] = branchComponent;
                         }
                     }
 
-                    if (task is IParentNode && (task is ITaskObjectParentNode taskObjectParentNode)) {
+                    var taskObjectParentNode = behaviorTree.GetTaskObjectParent(taskObjectComponent.Index);
+                    if (taskObjectParentNode != null) {
                         if (status == TaskStatus.Running) {
                             // Parent object tasks do not have a direct way to set the next child. Use the ITaskObjectParentNode to switch the child task.
-                            if (taskObjectParentNode.NextChildIndex != ushort.MaxValue && taskComponents[taskObjectParentNode.NextChildIndex].Status != TaskStatus.Running) {
-                                branchComponent = branchComponents[taskComponent.BranchIndex];
-                                branchComponent.NextIndex = taskObjectParentNode.NextChildIndex;
-                                var branchComponentBuffer = branchComponents;
-                                branchComponentBuffer[taskComponent.BranchIndex] = branchComponent;
+                            var nextChildIndex = taskObjectParentNode.NextChildIndex;
+                            if (nextChildIndex != ushort.MaxValue && nextChildIndex < taskComponents.Length) {
+                                var nextTaskComponent = taskComponents[nextChildIndex];
+                                if (nextTaskComponent.Status != TaskStatus.Running) {
+                                    branchComponent = branchComponentBuffer[nextTaskComponent.BranchIndex];
+                                    if (branchComponent.NextIndex != nextChildIndex) {
+                                        branchComponent.NextIndex = nextChildIndex;
+                                        branchComponentBuffer[nextTaskComponent.BranchIndex] = branchComponent;
+                                    }
 
-                                var nextTaskComponent = taskComponents[taskObjectParentNode.NextChildIndex];
-                                nextTaskComponent.Status = TaskStatus.Queued;
-                                var taskComponentBuffer = taskComponents;
-                                taskComponentBuffer[taskObjectParentNode.NextChildIndex] = nextTaskComponent;
+                                    if (nextTaskComponent.Status != TaskStatus.Queued) {
+                                        nextTaskComponent.Status = TaskStatus.Queued;
+                                        taskComponentBuffer[nextChildIndex] = nextTaskComponent;
+                                    }
+                                }
                             }
                         } else if (status == TaskStatus.Success || status == TaskStatus.Failure) {
                             // An interrupt should occur if the parent returns a success or failure status before the children.
-                            var taskComponentBuffer = taskComponents;
                             var childCount = TraversalUtility.GetChildCount(taskComponent.Index, ref taskComponentBuffer);
-                            var branchComponentBuffer = branchComponents;
-                            var hasInterruptComponents = SystemAPI.HasComponent<InterruptFlag>(entity);
-                            var interruptedFlagEnabled = SystemAPI.IsComponentEnabled<InterruptedFlag>(entity);
-                            for (ushort j = (ushort)(taskComponent.Index + 1); j < taskComponent.Index + 1 + childCount; ++j) {
+                            var startIndex = taskComponent.Index + 1;
+                            var endIndex = Mathf.Min(startIndex + childCount, taskComponentBuffer.Length);
+                            for (int j = startIndex; j < endIndex; ++j) {
                                 var childTaskComponent = taskComponentBuffer[j];
                                 if (childTaskComponent.Status == TaskStatus.Running || childTaskComponent.Status == TaskStatus.Queued) {
                                     childTaskComponent.Status = status;
@@ -163,10 +237,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                                     }
                                 }
                             }
-                    }
+                        }
                     }
                 }
             }
+
+            TaskObjectSharedVariableSyncUtility.SyncTouchedEntitiesToECS(state.World, touchedEntities);
         }
     }
 
@@ -183,26 +259,45 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
     [DisableAutoCreation]
     public partial struct TaskObjectReevaluateSystem : ISystem
     {
+        private EntityQuery m_ReevaluateTaskQuery;
+
+        /// <summary>
+        /// Creates the queries used by the system.
+        /// </summary>
+        /// <param name="state">The current system state.</param>
+        private void OnCreate(ref SystemState state)
+        {
+            m_ReevaluateTaskQuery = SystemAPI.QueryBuilder().WithAll<TaskObjectReevaluateFlag, EvaluateFlag, TaskObjectComponent, TaskComponent>().Build();
+        }
+
         /// <summary>
         /// Updates the reevaluation logic.
         /// </summary>
         /// <param name="state">The current state of the system.</param>
         private void OnUpdate(ref SystemState state)
         {
+            var entityCapacity = Mathf.Max(1, m_ReevaluateTaskQuery.CalculateEntityCount());
+            using var syncedEntities = new NativeParallelHashSet<Entity>(entityCapacity, Allocator.Temp);
+            using var touchedEntities = new NativeList<Entity>(entityCapacity, Allocator.Temp);
+
             foreach (var (taskComponents, taskObjectComponents, entity) in
                 SystemAPI.Query<DynamicBuffer<TaskComponent>, DynamicBuffer<TaskObjectComponent>>().WithAll<TaskObjectReevaluateFlag, EvaluateFlag>().WithEntityAccess()) {
+                var behaviorTree = BehaviorTree.GetBehaviorTree(entity);
+                if (behaviorTree == null) {
+                    continue;
+                }
+                TaskObjectSharedVariableSyncUtility.SyncToManagedIfNeeded(state.World, entity, behaviorTree, syncedEntities, touchedEntities);
                 for (int i = 0; i < taskObjectComponents.Length; ++i) {
                     var taskObjectComponent = taskObjectComponents[i];
                     var taskComponent = taskComponents[taskObjectComponent.Index];
                     if (!taskComponent.Reevaluate) {
                         continue;
                     }
-                    var behaviorTree = BehaviorTree.GetBehaviorTree(entity);
-                    if (behaviorTree == null) {
+
+                    var task = behaviorTree.GetConditionalReevaluationTaskObject(taskObjectComponent.Index);
+                    if (task == null) {
                         continue;
                     }
-
-                    var task = behaviorTree.GetTask(taskObjectComponent.Index) as IConditionalReevaluation;
                     var status = task.OnReevaluateUpdate();
                     if (status != taskComponent.Status) {
                         taskComponent.Status = status;
@@ -211,6 +306,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                     }
                 }
             }
+
+            TaskObjectSharedVariableSyncUtility.SyncTouchedEntitiesToECS(state.World, touchedEntities);
         }
     }
 }

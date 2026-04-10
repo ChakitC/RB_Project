@@ -3,6 +3,7 @@
     "rootNamespace": "Opsive.BehaviorDesigner.Runtime",
     "references": [
         "GUID:e9319bc8ab9315745bdf80aeffa01d6d",
+        "GUID:179e13ed8b57574418ef925107aa76ef",
         "GUID:d8e89a79cd8df884b8d5b3356783eb74",
         "GUID:734d92eba21c94caba915361bd5ac177",
         "GUID:2665a8d13d1b3f18800f46e256720795",

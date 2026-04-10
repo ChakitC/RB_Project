@@ -2,10 +2,16 @@ DoubleVerticalSlot
 {
     position: absolute;
     left: 0;
-    top: 22px;
+    top: 0;
     right: 0;
     bottom: 0;
     flex-direction: row;
+}
+
+.double-vertical-slot-title
+{
+    left: -1.5px;
+    right: -1px;
 }
 
 .horizontal-slot
@@ -28,9 +34,8 @@ DoubleVerticalSlot
 
 #horizontal-output-slot
 {
-    bottom: 2px;
-    margin-bottom:-3px;
-    padding-top:4px
+    bottom: 0px;
+    padding-top:4.5px
 }
 
 #horizontal-input-slot
@@ -49,15 +54,13 @@ DoubleVerticalSlot
 #vertical-output-slot
 {
     right: 0px;
-    margin-right:-2px;
-    padding-right:3px;
+    margin-right:-3.5px;
 }
 
 #vertical-input-slot
 {
     left: 0px;
-    padding-left: 3px;
-    margin-left: -2px;
+    margin-left: -3px;
 }
 
 #vertical-slot-container

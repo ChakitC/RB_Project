@@ -6,11 +6,9 @@
 /// ---------------------------------------------
 namespace Opsive.BehaviorDesigner.Runtime
 {
-    using Opsive.BehaviorDesigner.Runtime.Tasks;
     using Opsive.GraphDesigner.Runtime;
     using Opsive.GraphDesigner.Runtime.Variables;
-    using Opsive.Shared.Utility;
-    using System.Collections.Generic;
+    using System;
     using System.Reflection;
     using UnityEngine;
 
@@ -21,12 +19,20 @@ namespace Opsive.BehaviorDesigner.Runtime
     {
         /// <summary>
         /// Data structure which contains the properties for a subtree that will be injected.
+        /// When EventNodeType is typeof(Start), this describes the logic block that replaces the subtree reference.
+        /// Otherwise it describes an event node to append to the parent tree's event list.
         /// </summary>
         private struct SubtreeAssignment
         {
+            [Tooltip("The type of event node. typeof(Start) = logic block assignment; otherwise = event node to append.")]
+            public Type EventNodeType;
+            [Tooltip("The index of the EventNode within the subtree.")]
+            public ushort EventNodeIndex;
+            [Tooltip("The index of the starting logic node within the subtree.")]
+            public ushort SourceIndex;
             [Tooltip("The index of the SubtreeNodesReference element.")]
             public int ReferenceIndex;
-            [Tooltip("The index of the ISubtreeReference task.")]
+            [Tooltip("The index of the ISubtreeReferenceNode task.")]
             public ushort NodeIndex;
             [Tooltip("The index of the Subtree.")]
             public int SubtreeIndex;
@@ -34,16 +40,16 @@ namespace Opsive.BehaviorDesigner.Runtime
             public Subtree Subtree;
             [Tooltip("The offset of the index. This will change as subtrees are added.")]
             public ushort IndexOffset;
-            [Tooltip("The original parent index of the ISubtreeReference task.")]
+            [Tooltip("The original parent index of the ISubtreeReferenceNode task.")]
             public ushort ParentIndex;
-            [Tooltip("The original sibling index of the ISubtreeReference task.")]
+            [Tooltip("The original sibling index of the ISubtreeReferenceNode task.")]
             public ushort SiblingIndex;
-            [Tooltip("The number of nodes that are a child of the ISubtreeReference.")]
+            [Tooltip("The number of nodes that are a child of the ISubtreeReferenceNode.")]
             public ushort NodeCount;
 #if UNITY_EDITOR
-            [Tooltip("The position of the ISubtreeReference task.")]
+            [Tooltip("The position of the ISubtreeReferenceNode task.")]
             public Vector2 NodePropertiesPosition;
-            [Tooltip("Is the ISubtreeReference task collapsed?")]
+            [Tooltip("Is the ISubtreeReferenceNode task collapsed?")]
             public bool Collapsed;
 #endif
         }
@@ -51,18 +57,58 @@ namespace Opsive.BehaviorDesigner.Runtime
         /// <summary>
         /// Contains a reference to the subtree index and nodes.
         /// </summary>
-        internal struct SubtreeNodesReference
+        internal struct InjectedSubtreeReference
         {
             [Tooltip("The ISubtreeReference.")]
-            public ISubtreeReference SubtreeReference;
+            public IGraphReferenceNode GraphReference { get; set; }
             [Tooltip("The index of the ISubtreeReference.")]
-            public ushort NodeIndex;
+            public ushort NodeIndex { get; set; }
             [Tooltip("The total number of nodes contained within the ISubtreeReference.")]
-            public ushort NodeCount;
+            public ushort NodeCount { get; set; }
             [Tooltip("A reference to the subtrees that are loaded.")]
-            public Subtree[] Subtrees;
+            public Subtree[] Subtrees { get; set; }
+
+#if UNITY_EDITOR
+            [Tooltip("The NodeProperties for the graph reference node.")]
+            public LogicNodeProperties GraphReferenceNodeProperties { get; set; }
+#endif
             [Tooltip("The deserialized nodes.")]
-            public ITreeLogicNode[][] Nodes;
+            public ITreeLogicNode[][] m_Nodes;
+
+            public IGraph[] Graphs {
+                get => Subtrees;
+                set {
+                    if (value == null) {
+                        Subtrees = null;
+                        return;
+                    }
+
+                    Subtrees = new Subtree[value.Length];
+                    for (int i = 0; i < Subtrees.Length; ++i) {
+                        Subtrees[i] = (Subtree)value[i];
+                    }
+                }
+            }
+            public ITreeLogicNode[][] TreeNodes { get => m_Nodes; set => m_Nodes = value; }
+            public ILogicNode[][] Nodes {
+                get => m_Nodes;
+                set {
+                    if (value == null) {
+                        m_Nodes = null;
+                        return;
+                    }
+                    m_Nodes = new ITreeLogicNode[value.Length][];
+                    for (int i = 0; i < m_Nodes.Length; ++i) {
+                        if (value[i] == null) {
+                            continue;
+                        }
+                        m_Nodes[i] = new ITreeLogicNode[value[i].Length];
+                        for (int j = 0; j < m_Nodes[i].Length; ++j) {
+                            m_Nodes[i][j] = (ITreeLogicNode)value[i][j];
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>

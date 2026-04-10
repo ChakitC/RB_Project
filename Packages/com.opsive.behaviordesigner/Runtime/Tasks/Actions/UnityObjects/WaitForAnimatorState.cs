@@ -6,12 +6,13 @@
 /// ---------------------------------------------
 namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.UnityObjects
 {
-    using Opsive.GraphDesigner.Runtime;
     using Opsive.GraphDesigner.Runtime.Variables;
     using UnityEngine;
+    using UnityEngine.Scripting.APIUpdating;
 
     [Opsive.Shared.Utility.Description("Returns success as soon as the current Animator state ends.")]
     [Shared.Utility.Category("Unity")]
+    [MovedFrom(false, "Opsive.BehaviorDesigner.Runtime.Tasks.Actions.UnityObjects", "Opsive.BehaviorDesigner.Runtime", "Idle")]
     public class WaitForAnimatorState : TargetGameObjectAction
     {
         [Tooltip("The layer to wait for the state on.")]

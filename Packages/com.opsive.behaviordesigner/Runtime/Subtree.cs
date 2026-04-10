@@ -8,6 +8,7 @@ namespace Opsive.BehaviorDesigner.Runtime
 {
     using Opsive.GraphDesigner.Runtime;
     using Opsive.GraphDesigner.Runtime.Variables;
+    using Opsive.Shared.Utility;
     using System;
     using UnityEngine;
 
@@ -60,8 +61,7 @@ namespace Opsive.BehaviorDesigner.Runtime
             set { }
 #endif
         }
-        public GroupProperties[] GroupProperties
-        {
+        public GroupProperties[] GroupProperties {
 #if UNITY_EDITOR
             get => m_Data.GroupProperties;
             set => m_Data.GroupProperties = value;
@@ -70,7 +70,14 @@ namespace Opsive.BehaviorDesigner.Runtime
             set { }
 #endif
         }
-
+        public InjectedGraphReference[] InjectedGraphReferences {
+            get {
+                if (m_Data.InjectedGraphReferences == null) {
+                    return null;
+                }
+                return m_Data.InjectedGraphReferences.Array;
+            }
+        }
         public int UniqueID { get => m_Data.UniqueID; }
         public bool Pooled { get; set; }
 
@@ -174,6 +181,19 @@ namespace Opsive.BehaviorDesigner.Runtime
         public bool RemoveNode(IEventNode eventNode)
         {
             return m_Data.RemoveNode(eventNode);
+        }
+
+        /// <summary>
+        /// Retrieves the UniqueID of the graph.
+        /// </summary>
+        /// <param name="forceDesignID">Should the non-runtime ID be retrieved?</param>
+        /// <returns>The UniqueID of the graph.</returns>
+        public int GetUniqueID(bool forceDesignID = false)
+        {
+            if (forceDesignID) {
+                return m_Data.UniqueID;
+            }
+            return m_Data.RuntimeUniqueID != 0 ? m_Data.RuntimeUniqueID : m_Data.UniqueID;
         }
 
         /// <summary>

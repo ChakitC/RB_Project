@@ -16,9 +16,15 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
     /// Represents a task node that can no longer be found.
     /// </summary>
     [HideInFilterWindow]
-    public class UnknownTaskNode : ActionNode
+    public class UnknownTaskNode : ActionNode, IUnknownObject
     {
-        private string m_UnknownType;
+        [Tooltip("The original type name that could not be found.")]
+        [SerializeField] [HideInInspector] private string m_UnknownType;
+
+        /// <summary>
+        /// Gets the original type name that could not be found.
+        /// </summary>
+        public string UnknownType => m_UnknownType;
 
         /// <summary>
         /// Default constructor.
@@ -49,8 +55,30 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
     /// Represents a task that can no longer be found.
     /// </summary>
     [HideInFilterWindow]
-    public class UnknownTask : Action
+    public class UnknownTask : Action, IUnknownObject
     {
+        [Tooltip("The original type name that could not be found.")]
+        [SerializeField] [HideInInspector] private string m_UnknownType;
+
+        /// <summary>
+        /// Gets the original type name that could not be found.
+        /// </summary>
+        public string UnknownType => m_UnknownType;
+
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
+        public UnknownTask() { }
+
+        /// <summary>
+        /// UnknownTask constructor.
+        /// </summary>
+        /// <param name="unknownType">The type that cannot be found.</param>
+        public UnknownTask(string unknownType)
+        {
+            m_UnknownType = unknownType;
+        }
+
         /// <summary>
         /// Called once when the behavior tree is initialized.
         /// </summary>
@@ -58,7 +86,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
         {
             base.OnAwake();
 
-            Debug.LogWarning($"Warning: Unable to find the original task. An unknown task has been replaced with it.");
+            var typeMessage = string.IsNullOrEmpty(m_UnknownType) ? "the original task" : $"the task of type {m_UnknownType}";
+            Debug.LogWarning($"Warning: Unable to find {typeMessage}. An unknown task has been replaced with it.");
         }
     }
 
@@ -66,9 +95,15 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
     /// Represents a parent task node that can no longer be found.
     /// </summary>
     [HideInFilterWindow]
-    public class UnknownParentTaskNode : CompositeNode
+    public class UnknownParentTaskNode : CompositeNode, IUnknownObject
     {
-        private string m_UnknownType;
+        [Tooltip("The original type name that could not be found.")]
+        [SerializeField] [HideInInspector] private string m_UnknownType;
+
+        /// <summary>
+        /// Gets the original type name that could not be found.
+        /// </summary>
+        public string UnknownType => m_UnknownType;
 
         /// <summary>
         /// Default constructor.
@@ -99,9 +134,31 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks
     /// Represents an event node that can no longer be found.
     /// </summary>
     [HideInFilterWindow]
-    public class UnknownEventTask : IEventNode
+    public class UnknownEventTask : IEventNode, IUnknownObject
     {
+        [Tooltip("Specifies if the node is enabled.")]
+        [SerializeField] [HideInInspector] protected bool m_Enabled = true;
+        [Tooltip("The original type name that could not be found.")]
+        [SerializeField] [HideInInspector] private string m_UnknownType;
+
+        public ushort Index { get; set; }
         public ushort ConnectedIndex { get => ushort.MaxValue; set { } }
+        public bool Enabled { get => m_Enabled; set => m_Enabled = value; }
+        public string UnknownType => m_UnknownType;
+
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
+        public UnknownEventTask() { }
+
+        /// <summary>
+        /// UnknownEventTask constructor.
+        /// </summary>
+        /// <param name="unknownType">The type that cannot be found.</param>
+        public UnknownEventTask(string unknownType)
+        {
+            m_UnknownType = unknownType;
+        }
     }
 }
 #endif

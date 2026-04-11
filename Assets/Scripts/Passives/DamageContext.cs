@@ -11,7 +11,8 @@ public readonly struct DamageContext
         int depth,
         PassiveEventOrigin origin,
         string originPassiveId = null,
-        string originRuleId = null)
+        string originRuleId = null,
+        KnockbackData knockback = default)
     {
         Damage = damage;
         Attacker = attacker;
@@ -22,6 +23,7 @@ public readonly struct DamageContext
         Origin = origin;
         OriginPassiveId = originPassiveId;
         OriginRuleId = originRuleId;
+        Knockback = knockback;
     }
 
     public float Damage { get; }
@@ -33,4 +35,6 @@ public readonly struct DamageContext
     public PassiveEventOrigin Origin { get; }
     public string OriginPassiveId { get; }
     public string OriginRuleId { get; }
+    public KnockbackData Knockback { get; }
+    public bool HasKnockback => Knockback.IsValid;
 }

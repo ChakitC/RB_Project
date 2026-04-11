@@ -38,7 +38,12 @@ public class GrenadeExplodeModule : ProjectileModule
 
     [Header("Knockback (optional)")]
     public bool applyKnockback = false;
+    [Tooltip("Legacy scalar from the old rigidbody impulse path. If knockbackDistance <= 0, this is converted to distance.")]
     public float knockbackForce = 6f;
+    [Min(0f)] public float knockbackDistance = 0f;
+    [Min(0f)] public float knockbackDuration = 0.12f;
+    public ImpactReactionKind knockbackReaction = ImpactReactionKind.MiniStun;
+    public bool knockbackInterruptsActions = true;
 
     [Header("VFX (optional)")]
     public GameObject explosionVfxPrefab;
@@ -205,20 +210,30 @@ public class GrenadeExplodeModule : ProjectileModule
         else
             hitNormal.Normalize();
 
-        var hit = new ProjectileHitInfo(closest, hitNormal, c);
-        p.ApplyResolvedDamage(dmgable, final, hit, showDamageNumber: true);
+        Vector3 knockbackDirection = c.transform.position - center;
+        if (knockbackDirection.sqrMagnitude <= 0.0001f)
+            knockbackDirection = hitNormal;
 
-        if (applyKnockback)
+        float resolvedKnockbackDistance = knockbackDistance > 0f
+            ? knockbackDistance
+            : Mathf.Max(0f, knockbackForce * 0.2f);
+
+        KnockbackData knockback = default(KnockbackData);
+        if (applyKnockback &&
+            resolvedKnockbackDistance > 0f &&
+            knockbackDuration > 0f)
         {
-            var rb = c.GetComponentInParent<Rigidbody>();
-            if (rb != null)
-            {
-                Vector3 dir = (c.transform.position - center);
-                dir = Vector3.ProjectOnPlane(dir, Vector3.up).normalized;
-                rb.AddForce(dir * knockbackForce, ForceMode.Impulse);
-            }
+            knockback = new KnockbackData(
+                knockbackDirection,
+                resolvedKnockbackDistance,
+                knockbackDuration,
+                closest,
+                knockbackReaction,
+                knockbackInterruptsActions);
         }
+
+        var hit = new ProjectileHitInfo(closest, hitNormal, c);
+        p.ApplyResolvedDamage(dmgable, final, hit, knockback, showDamageNumber: true);
     }
 }
-
 }

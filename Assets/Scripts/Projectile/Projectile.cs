@@ -470,7 +470,7 @@ public class Projectile : MonoBehaviour
                 hitNormal.Normalize();
 
             var hit = new ProjectileHitInfo(hitPoint, hitNormal, h);
-            ApplyResolvedDamage(dmg, finalDamage, hit);
+            ApplyResolvedDamage(dmg, finalDamage, hit, BuildConfiguredKnockback(hit, useRadialDirection: true));
         }
     }
 
@@ -648,7 +648,43 @@ public class Projectile : MonoBehaviour
         if (target is Component c) IgnoreRoot(c.transform.root);
     }
 
-    void ApplyDamageToTarget(IDamageable target, float finalDamage, GameObject attackerGO)
+    KnockbackData BuildConfiguredKnockback(in ProjectileHitInfo hit, bool useRadialDirection)
+    {
+        if (config == null ||
+            !config.applyKnockbackOnHit ||
+            config.knockbackDistance <= 0f ||
+            config.knockbackDuration <= 0f)
+        {
+            return default(KnockbackData);
+        }
+
+        Vector3 direction;
+        if (useRadialDirection)
+        {
+            direction = hit.point - transform.position;
+        }
+        else if (_ctx.sourceActor != null)
+        {
+            direction = hit.point - _ctx.sourceActor.position;
+        }
+        else
+        {
+            direction = _ctx.dir;
+        }
+
+        if (direction.sqrMagnitude <= 0.0001f)
+            direction = _ctx.dir.sqrMagnitude > 0.0001f ? _ctx.dir : transform.forward;
+
+        return new KnockbackData(
+            direction,
+            config.knockbackDistance,
+            config.knockbackDuration,
+            hit.point,
+            config.knockbackReaction,
+            config.knockbackInterruptsActions);
+    }
+
+    void ApplyDamageToTarget(IDamageable target, float finalDamage, GameObject attackerGO, KnockbackData knockback)
     {
         var damageContext = new DamageContext(
             finalDamage,
@@ -659,12 +695,28 @@ public class Projectile : MonoBehaviour
             _ctx.depth + 1,
             _ctx.origin,
             _ctx.originPassiveId,
-            _ctx.originRuleId);
+            _ctx.originRuleId,
+            knockback);
 
         target.TakeDamage(in damageContext);
     }
 
     public void ApplyResolvedDamage(IDamageable target, float finalDamage, in ProjectileHitInfo hit, bool showDamageNumber = false)
+    {
+        ApplyResolvedDamage(
+            target,
+            finalDamage,
+            hit,
+            BuildConfiguredKnockback(hit, useRadialDirection: false),
+            showDamageNumber);
+    }
+
+    public void ApplyResolvedDamage(
+        IDamageable target,
+        float finalDamage,
+        in ProjectileHitInfo hit,
+        KnockbackData knockback,
+        bool showDamageNumber = false)
     {
         if (target == null || finalDamage <= 0f)
             return;
@@ -677,7 +729,7 @@ public class Projectile : MonoBehaviour
             SpawnDamageNumber(hit.point, finalDamage);
 
         var attackerGO = ResolveSourceObject();
-        ApplyDamageToTarget(target, finalDamage, attackerGO);
+        ApplyDamageToTarget(target, finalDamage, attackerGO, knockback);
         NotifyDamageApplied(hit, target);
         NotifyOwnerCombatTriggers(target, finalDamage, wasAliveBeforeDamage);
     }

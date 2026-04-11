@@ -28,6 +28,7 @@ public class DashSystem : MonoBehaviour
 
     Coroutine _dashRoutine;
     Coroutine _invincibleRoutine;
+    Coroutine _cooldownRoutine;
 
     public bool IsDashing => isDashing;
     public bool IsPerfectDodgeWindowActive => isDashing && Time.time <= _perfectDodgeWindowUntil;
@@ -51,9 +52,28 @@ public class DashSystem : MonoBehaviour
 
     void OnDisable()
     {
+        if (_dashRoutine != null)
+        {
+            StopCoroutine(_dashRoutine);
+            _dashRoutine = null;
+        }
+
+        if (_invincibleRoutine != null)
+        {
+            StopCoroutine(_invincibleRoutine);
+            _invincibleRoutine = null;
+        }
+
+        ClearCooldown();
         ResetPerfectDodgeWindow();
+
         if (ctx != null && ctx.rb != null)
             EndDashIframe();
+
+        if (ctx != null && ctx.HealthSystem != null)
+            ctx.HealthSystem.SetInvincible(false);
+
+        isDashing = false;
     }
 
     public void StartDashIframe()
@@ -84,6 +104,8 @@ public class DashSystem : MonoBehaviour
 
     public void CancelDash(bool keepCooldown = true)
     {
+        bool wasActiveDash = isDashing || _dashRoutine != null;
+
         if (_dashRoutine != null)
         {
             StopCoroutine(_dashRoutine);
@@ -104,8 +126,15 @@ public class DashSystem : MonoBehaviour
 
         isDashing = false;
 
-        if (!keepCooldown)
-            onCooldown = false;
+        if (keepCooldown)
+        {
+            if (wasActiveDash)
+                BeginCooldown();
+        }
+        else
+        {
+            ClearCooldown();
+        }
     }
 
     public bool TryDash()
@@ -198,7 +227,6 @@ public class DashSystem : MonoBehaviour
     IEnumerator DashRoutine(Vector3 dir, float dist)
     {
         isDashing = true;
-        onCooldown = true;
 
         float speed = dist <= 0f ? 0f : dist / dashDuration;
         _invincibleRoutine = StartCoroutine(InvincibleTimer(dashInvincibleTime));
@@ -214,10 +242,9 @@ public class DashSystem : MonoBehaviour
         EndDashIframe();
         ResetPerfectDodgeWindow();
         isDashing = false;
+        _dashRoutine = null;
+        BeginCooldown();
         PublishDashEvent(PassiveEventType.DashEnded, dashCooldown);
-
-        yield return new WaitForSeconds(dashCooldown);
-        onCooldown = false;
     }
 
     IEnumerator InvincibleTimer(float time)
@@ -225,6 +252,40 @@ public class DashSystem : MonoBehaviour
         ctx.HealthSystem.SetInvincible(true);
         yield return new WaitForSeconds(time);
         ctx.HealthSystem.SetInvincible(false);
+        _invincibleRoutine = null;
+    }
+
+    void BeginCooldown()
+    {
+        if (dashCooldown <= 0f)
+        {
+            ClearCooldown();
+            return;
+        }
+
+        if (_cooldownRoutine != null)
+            StopCoroutine(_cooldownRoutine);
+
+        onCooldown = true;
+        _cooldownRoutine = StartCoroutine(CooldownRoutine(dashCooldown));
+    }
+
+    IEnumerator CooldownRoutine(float duration)
+    {
+        yield return new WaitForSeconds(duration);
+        _cooldownRoutine = null;
+        onCooldown = false;
+    }
+
+    void ClearCooldown()
+    {
+        if (_cooldownRoutine != null)
+        {
+            StopCoroutine(_cooldownRoutine);
+            _cooldownRoutine = null;
+        }
+
+        onCooldown = false;
     }
 
     void PublishDashEvent(PassiveEventType eventType, float value)

@@ -68,6 +68,16 @@ public sealed class Move_Dash : IState<CharacteContext>
     }
 }
 
+public sealed class Move_Knockback : IState<CharacteContext>
+{
+    public void Enter(CharacteContext ctx) { }
+    public void Exit(CharacteContext ctx) { }
+
+    public void Tick(CharacteContext ctx, float dt)
+    {
+    }
+}
+
 public sealed class Move_Stunned : IState<CharacteContext>
 {
     public void Enter(CharacteContext ctx) { }

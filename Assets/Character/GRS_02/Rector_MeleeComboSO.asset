@@ -25,9 +25,14 @@ MonoBehaviour:
       _Clip: {fileID: 7218412512397633768, guid: 5035feff0922f894bb9fdcfe0bbe8b54, type: 3}
       _NormalizedStartTime: 0
     duration: 0
-    hitWindowN: {x: 0, y: 0}
+    hitWindowN: {x: 0.6, y: 0.8}
     chainWindowN: {x: 0, y: 0}
     dropBufferOnWindowExpire: 0
+    applyKnockback: 1
+    knockbackDistance: 5
+    knockbackDuration: 0.5
+    knockbackReaction: 0
+    knockbackInterruptsActions: 1
   defaultHitStartN: 0.25
   defaultHitEndN: 0.45
   defaultChainStartN: 0.35

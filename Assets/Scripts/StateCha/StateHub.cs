@@ -88,6 +88,7 @@ public sealed class StateHub : MonoBehaviour
             .Add(MoveStateId.Stand, new Move_Stand())
             .Add(MoveStateId.Dash, new Move_Dash())
             .Add(MoveStateId.Moveing, new Move_Moving())
+            .Add(MoveStateId.Knockback, new Move_Knockback())
             .Add(MoveStateId.Stunned, new Move_Stunned());
 
         WeaponSM
@@ -235,6 +236,7 @@ public sealed class StateHub : MonoBehaviour
         !IsShootBlockedByStatusEffects &&
         !IsSkillAnimating() &&
         MoveSM.CurrentId != MoveStateId.Dash &&
+        MoveSM.CurrentId != MoveStateId.Knockback &&
         UISM.CurrentId != UIStateId.Inventory &&
         UISM.CurrentId != UIStateId.Pause &&
         WeaponSM.CurrentId != WeaponStateId.Reloading &&
@@ -248,6 +250,7 @@ public sealed class StateHub : MonoBehaviour
         UISM.CurrentId != UIStateId.Pause &&
         WeaponSM.CurrentId != WeaponStateId.Melee &&
         MoveSM.CurrentId != MoveStateId.Dash &&
+        MoveSM.CurrentId != MoveStateId.Knockback &&
         MoveSM.CurrentId != MoveStateId.Stunned;
 
     public bool CanUseSkill() =>
@@ -257,6 +260,7 @@ public sealed class StateHub : MonoBehaviour
         UISM.CurrentId != UIStateId.Inventory &&
         UISM.CurrentId != UIStateId.Pause &&
         MoveSM.CurrentId != MoveStateId.Dash &&
+        MoveSM.CurrentId != MoveStateId.Knockback &&
         WeaponSM.CurrentId != WeaponStateId.Melee;
 
     public bool CanStartMelee() =>
@@ -266,6 +270,7 @@ public sealed class StateHub : MonoBehaviour
         UISM.CurrentId != UIStateId.Inventory &&
         UISM.CurrentId != UIStateId.Pause &&
         MoveSM.CurrentId != MoveStateId.Dash &&
+        MoveSM.CurrentId != MoveStateId.Knockback &&
         MoveSM.CurrentId != MoveStateId.Stunned;
 
     void UpdateStand()

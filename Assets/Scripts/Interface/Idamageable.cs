@@ -25,7 +25,8 @@ public static class DamageableExtensions
         int depth = 0,
         PassiveEventOrigin origin = PassiveEventOrigin.External,
         string originPassiveId = null,
-        string originRuleId = null)
+        string originRuleId = null,
+        KnockbackData knockback = default)
     {
         if (damageable == null)
             return;
@@ -45,7 +46,8 @@ public static class DamageableExtensions
             depth,
             origin,
             originPassiveId,
-            originRuleId);
+            originRuleId,
+            knockback);
 
         damageable.TakeDamage(in damageContext);
     }

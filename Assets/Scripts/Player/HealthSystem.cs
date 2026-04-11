@@ -252,6 +252,9 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         currentHealth = Mathf.Max(0f, currentHealth - damage);
         float appliedDamage = Mathf.Max(0f, healthBefore - currentHealth);
 
+        if (currentHealth > 0f && hasContext && damageContext.HasKnockback)
+            ResolveKnockbackMotor()?.ApplyKnockback(damageContext.Knockback);
+
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnTakeDamage, attacker);
         PublishDamageEvent(PassiveEventType.TakeDamage, appliedDamage, attacker, hasContext, damageContext);
         DamageTaken?.Invoke(appliedDamage, attacker);
@@ -262,6 +265,17 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
 
         if (currentHealth <= 0f)
             Down();
+    }
+
+    CharacterKnockbackMotor ResolveKnockbackMotor()
+    {
+        if (CTX == null)
+            return null;
+
+        if (CTX.KnockbackMotor == null)
+            CTX.KnockbackMotor = GetComponent<CharacterKnockbackMotor>();
+
+        return CTX.KnockbackMotor;
     }
 
     PassiveEventContext PublishDamageEvent(

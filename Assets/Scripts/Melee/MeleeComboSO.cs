@@ -24,6 +24,13 @@ public sealed class MeleeComboSO : ScriptableObject
 
         [Tooltip("ถ้า true จะ clear buffered presses เมื่อพลาด chain window (กันกดรัวค้างแล้วหลุดยังไปต่อ)")]
         public bool dropBufferOnWindowExpire;
+
+        [Header("Impact")]
+        public bool applyKnockback;
+        [Min(0f)] public float knockbackDistance;
+        [Min(0f)] public float knockbackDuration;
+        public ImpactReactionKind knockbackReaction;
+        public bool knockbackInterruptsActions;
     }
 
     [Header("Combo Steps")]
@@ -68,6 +75,8 @@ public sealed class MeleeComboSO : ScriptableObject
             // clamp & order
             s.hitWindowN = Clamp01Ordered(s.hitWindowN);
             s.chainWindowN = Clamp01Ordered(s.chainWindowN);
+            s.knockbackDistance = Mathf.Max(0f, s.knockbackDistance);
+            s.knockbackDuration = Mathf.Max(0f, s.knockbackDuration);
 
             // if last step, allow chainWindow to be zeroed by user; otherwise keep as is
             steps[i] = s;

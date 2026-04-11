@@ -8556,8 +8556,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 33324f34cfcf7274dbafdc4f0b8b10ea, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  CTX: {fileID: 5309914599162300278}
-  brain: {fileID: 8951235299742127024}
   hitboxR: {fileID: 5215740992830216094}
   hitboxL: {fileID: 39611587465427991}
   targetMask:
@@ -8586,6 +8584,7 @@ MonoBehaviour:
   dashIFrameExclude:
     serializedVersion: 2
     m_Bits: 0
+  combatEventBus: {fileID: 0}
 --- !u!114 &7774203086717623685
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8599,6 +8598,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   aimPoint: {fileID: 8626626701485490822}
+  chainAttackPoint: {fileID: 0}
   teamId: 1
   isAlive: 1
 --- !u!114 &7074686392687354562
@@ -8685,17 +8685,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7884993833117241112, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
   m_PrefabInstance: {fileID: 1935086976049352094}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &8951235299742127024 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7414018238347550254, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
-  m_PrefabInstance: {fileID: 1935086976049352094}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3935820780964556009}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d8522e4f64e2c6e4fbd68aaed9cd8089, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1001 &6852674029313048247
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -151,7 +151,7 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 0}
     _NormalizedStartTime: NaN
-  meleeCombo: {fileID: 0}
+  meleeCombo: {fileID: 11400000, guid: 1857e836be2e4d44db88dd8a7c85fb3f, type: 2}
   meleeCanInterruptReload: 1
   lightCombo: {fileID: 0}
   heavyCombo: {fileID: 0}

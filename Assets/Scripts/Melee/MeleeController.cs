@@ -15,6 +15,7 @@ public sealed class MeleeController : MonoBehaviour
     [SerializeField] private MeleeHitboxTrigger hitboxTrigger;
 
     readonly HashSet<int> _hitTargetIds = new();
+    IDamageable _selfDamageable;
 
     bool _attackWindowActive;
     string _activeSourceId;
@@ -130,13 +131,13 @@ public sealed class MeleeController : MonoBehaviour
     {
         if (!_attackWindowActive || other == null)
             return;
-        if (ctx != null && other.transform.root == transform.root)
-            return;
         if (hitboxTrigger != null && !hitboxTrigger.IsTargetAllowed(other))
             return;
 
         var target = other.GetComponentInParent<IDamageable>();
         if (target == null || !target.IsAlive)
+            return;
+        if (IsSelfTarget(target))
             return;
 
         int targetKey = GetTargetKey(target);
@@ -147,7 +148,7 @@ public sealed class MeleeController : MonoBehaviour
         if (finalDamage <= 0f)
             return;
 
-        ApplyDamageToTarget(target, finalDamage);
+        ApplyDamageToTarget(target, finalDamage, BuildKnockback(other));
         NotifyOwnerCombatTriggers(target, finalDamage);
         SpawnDamageNumber(other, finalDamage);
     }
@@ -170,7 +171,16 @@ public sealed class MeleeController : MonoBehaviour
             hitboxTrigger = GetComponentInChildren<MeleeHitboxTrigger>(true);
 
         if (ctx != null)
+        {
             ctx.MeleeController = this;
+            if (ctx.HealthSystem != null)
+                _selfDamageable = ctx.HealthSystem;
+        }
+
+        if (_selfDamageable == null)
+            _selfDamageable = GetComponent<IDamageable>();
+        if (_selfDamageable == null)
+            _selfDamageable = GetComponentInParent<IDamageable>();
     }
 
     bool HasValidCombo(CharacterAnimBrain.MeleeType meleeType)
@@ -223,7 +233,7 @@ public sealed class MeleeController : MonoBehaviour
             armor);
     }
 
-    void ApplyDamageToTarget(IDamageable target, float finalDamage)
+    void ApplyDamageToTarget(IDamageable target, float finalDamage, KnockbackData knockback)
     {
         var attacker = ctx != null ? ctx.gameObject : gameObject;
         var damageContext = new DamageContext(
@@ -233,9 +243,34 @@ public sealed class MeleeController : MonoBehaviour
             _activeAttackId,
             _activeChainId == 0 ? CombatEventBus.NextChainId() : _activeChainId,
             0,
-            PassiveEventOrigin.External);
+            PassiveEventOrigin.External,
+            knockback: knockback);
 
         target.TakeDamage(in damageContext);
+    }
+
+    KnockbackData BuildKnockback(Collider other)
+    {
+        var activeStep = brain != null ? brain.CurrentMeleeStep : default(MeleeComboSO.Step);
+        if (!activeStep.applyKnockback ||
+            activeStep.knockbackDistance <= 0f ||
+            activeStep.knockbackDuration <= 0f)
+        {
+            return default(KnockbackData);
+        }
+
+        Vector3 hitPoint = other != null ? other.ClosestPoint(transform.position) : transform.position;
+        Vector3 direction = hitPoint - transform.position;
+        if (direction.sqrMagnitude <= 0.0001f)
+            direction = transform.forward;
+
+        return new KnockbackData(
+            direction,
+            activeStep.knockbackDistance,
+            activeStep.knockbackDuration,
+            hitPoint,
+            activeStep.knockbackReaction,
+            activeStep.knockbackInterruptsActions);
     }
 
     void NotifyOwnerCombatTriggers(IDamageable target, float finalDamage)
@@ -330,9 +365,26 @@ public sealed class MeleeController : MonoBehaviour
     int GetTargetKey(IDamageable target)
     {
         if (target is Component component)
-            return component.transform.root.GetInstanceID();
+            return component.GetInstanceID();
 
         return target.GetHashCode();
+    }
+
+    bool IsSelfTarget(IDamageable target)
+    {
+        if (target == null)
+            return false;
+
+        return ReferenceEquals(target, ResolveSelfDamageable());
+    }
+
+    IDamageable ResolveSelfDamageable()
+    {
+        if (_selfDamageable != null)
+            return _selfDamageable;
+
+        ResolveRefs();
+        return _selfDamageable;
     }
 
     string GetMeleeSourceId()

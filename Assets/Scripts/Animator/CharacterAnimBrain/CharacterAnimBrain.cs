@@ -632,6 +632,26 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
     }
+
+    public void InterruptActivePlaybackForExternalControlLoss()
+    {
+        AbortActiveChainPlaybackForExternalState();
+        InterruptActiveSkillRequest();
+        InterruptActiveUtilityRequest();
+
+        if (!TryInitialize())
+            return;
+
+        StopReloadAction();
+
+        if (locomotionSM.CurrentState == skill ||
+            locomotionSM.CurrentState == utility ||
+            locomotionSM.CurrentState == meleeCombo ||
+            locomotionSM.CurrentState == dashState)
+        {
+            locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
+        }
+    }
     
     // ===================== Helpers =====================
     

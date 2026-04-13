@@ -30,6 +30,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private Vector2 _dashDirLocal;
     private float _dashDuration = 0.12f;
     private Locomotion_Dash dashState;
+    private Locomotion_Knockback knockbackState;
     private Action onDashEndCache;
 
     private Locomotion_Dead deadState;
@@ -168,6 +169,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private ClipTransition StuneClip => AnimProfile.stune;
     private ClipTransition RootClip => AnimProfile.root;
     private ClipTransition FreezClip => AnimProfile.freez;
+    private ClipTransition KnockbackClip => AnimProfile.knockback;
     private bool HasActiveSkillClip => HasValidSkillClip(_activeSkillDefinition);
     private bool HasActiveUtilityWarpOutClip => HasValidUtilityWarpOutClip();
     internal float ActiveSkillCastPointNormalized => _activeSkillCastPointNormalized;
@@ -194,6 +196,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
          locomotionSM.CurrentState == utility ||
          locomotionSM.CurrentState == chain ||
          locomotionSM.CurrentState == meleeCombo ||
+         locomotionSM.CurrentState == knockbackState ||
          locomotionSM.CurrentState == deadState ||
          locomotionSM.CurrentState == statusEffectState);
     public PlaybackKind CurrentPlaybackKind => ResolveCurrentPlaybackKind();
@@ -285,6 +288,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         shootHold = new Action_ShootHold(this);
         reloadState = new Action_Reload(this);
         dashState = new Locomotion_Dash(this);
+        knockbackState = new Locomotion_Knockback(this);
         deadState = new Locomotion_Dead(this);
         meleeCombo = new Locomotion_MeleeCombo(this);
         crawlState = new LocomotionState_Crawl(this);
@@ -452,6 +456,44 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         if (!TryInitialize()) return;
         locomotionSM.TrySetState(locomotion);
+    }
+
+    public bool PlayKnockback(KnockbackData knockback)
+    {
+        if (IsChainPlaybackActive)
+            return false;
+
+        if (!knockback.IsValid)
+            return false;
+
+        if (!TryInitialize() || KnockbackClip == null || !KnockbackClip.IsValid)
+            return false;
+
+        if (IsDowned || locomotionSM.CurrentState == deadState)
+            return false;
+
+        knockbackState.SetKnockback(knockback);
+
+        try
+        {
+            return locomotionSM.TryResetState(knockbackState);
+        }
+        catch (ArgumentException ex)
+        {
+            Debug.LogWarning($"[CharacterAnimBrain] Invalid knockback clip. {ex.Message}", this);
+            return false;
+        }
+    }
+
+    public void StopKnockbackPlayback()
+    {
+        if (!TryInitialize())
+            return;
+
+        if (locomotionSM.CurrentState != knockbackState)
+            return;
+
+        locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
     }
 
     public void PressMelee(MeleeType type)
@@ -776,6 +818,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             return;
 
         if (locomotionSM.CurrentState == deadState)
+            return;
+
+        if (locomotionSM.CurrentState == knockbackState)
             return;
 
         StatusLocomotionKind desired = ResolveStatusLocomotionKind();

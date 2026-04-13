@@ -9,6 +9,7 @@ public sealed partial class CharacterAnimBrain
     {
         private readonly CharacterAnimBrain owner;
         private AnimancerState state;
+        private AnimancerEvent.Sequence runtimeEvents;
         private MeleeComboSO comboLocked;
         private bool _prevApplyRootMotion;
         private int step;
@@ -96,6 +97,13 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnExitState()
         {
+            if (state != null)
+            {
+                state.SharedEvents = null;
+                runtimeEvents = null;
+                state = null;
+            }
+
             owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
             owner.MeleeHitEnd?.Invoke();
         }
@@ -143,24 +151,34 @@ public sealed partial class CharacterAnimBrain
                 state.Speed = 1f;
             }
 
-            var events = state.Events(owner);
-            events.Clear();
+            int currentStepIndex = step;
+            string clipName = cfg.clip.Clip != null ? cfg.clip.Clip.name : "<none>";
 
             owner.onMeleeHitStartCache = () =>
             {
-                Debug.Log($"[Invoke] MeleeHitStart step={step} frame={Time.frameCount}");
+                Debug.Log($"[Invoke] MeleeHitStart step={currentStepIndex} frame={Time.frameCount}");
                 owner.MeleeHitStart?.Invoke();
             };
 
             owner.onMeleeHitEndCache = () => owner.MeleeHitEnd?.Invoke();
 
-            float hitStart = Mathf.Clamp01(cfg.hitWindowN.x);
-            float hitEnd = Mathf.Clamp01(cfg.hitWindowN.y);
-            if (hitEnd < hitStart)
-                (hitStart, hitEnd) = (hitEnd, hitStart);
+            runtimeEvents = new AnimancerEvent.Sequence(cfg.clip.Events);
 
-            events.Add(hitStart, owner.onMeleeHitStartCache);
-            events.Add(hitEnd, owner.onMeleeHitEndCache);
+            int hitStartCount = runtimeEvents.SetCallbacks(MeleeComboSO.HitStartEventName, owner.onMeleeHitStartCache);
+            int hitEndCount = runtimeEvents.SetCallbacks(MeleeComboSO.HitEndEventName, owner.onMeleeHitEndCache);
+
+            if (hitStartCount == 0 || hitEndCount == 0)
+            {
+                Debug.LogWarning(
+                    $"[MeleeCombo] Step {currentStepIndex} clip '{clipName}' is missing HitStart/HitEnd events.",
+                    owner);
+            }
+            else if (hitStartCount != hitEndCount)
+            {
+                Debug.LogWarning(
+                    $"[MeleeCombo] Step {currentStepIndex} clip '{clipName}' has unbalanced HitStart/HitEnd events ({hitStartCount}/{hitEndCount}).",
+                    owner);
+            }
 
             int last = steps.Count - 1;
             float chainStart = Mathf.Clamp01(cfg.chainWindowN.x);
@@ -178,7 +196,7 @@ public sealed partial class CharacterAnimBrain
 
             if (_hasChain)
             {
-                events.Add(_cs, () =>
+                runtimeEvents.Add(_cs, () =>
                 {
                     _chainOpen = true;
                     _pressedInWindow = false;
@@ -190,7 +208,7 @@ public sealed partial class CharacterAnimBrain
                     }
                 });
 
-                events.Add(_ce, () =>
+                runtimeEvents.Add(_ce, () =>
                 {
                     _chainOpen = false;
                     windowExpired = true;
@@ -224,7 +242,16 @@ public sealed partial class CharacterAnimBrain
                 EndComboSafe();
             };
 
-            events.OnEnd = owner.onMeleeEndCache;
+            var transitionOnEnd = runtimeEvents.OnEnd;
+            runtimeEvents.OnEnd = transitionOnEnd == null
+                ? owner.onMeleeEndCache
+                : () =>
+                {
+                    transitionOnEnd();
+                    owner.onMeleeEndCache();
+                };
+
+            state.SharedEvents = runtimeEvents;
         }
 
         private void Advance()

@@ -270,7 +270,8 @@ public sealed class MeleeController : MonoBehaviour
             activeStep.knockbackDuration,
             hitPoint,
             activeStep.knockbackReaction,
-            activeStep.knockbackInterruptsActions);
+            activeStep.knockbackInterruptsActions,
+            activeStep.knockbackProgressCurve);
     }
 
     void NotifyOwnerCombatTriggers(IDamageable target, float finalDamage)

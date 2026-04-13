@@ -14,6 +14,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     [SerializeField] private NavMeshAgent navMeshAgent;
     [SerializeField] private CapsuleCollider capsuleCollider;
     [SerializeField] private CharacterAnimBrain animBrain;
+    [SerializeField] private FieldAllyMember fieldAllyMember;
     [SerializeField] private BehaviorTree behaviorTree;
 
     [Header("Collision")]
@@ -23,8 +24,10 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     [SerializeField, Min(0f)] private float replaceDistanceThreshold = 0.05f;
     [SerializeField, Min(0.05f)] private float navMeshResyncDistance = 1f;
 
-    private Vector3 _remainingDisplacement;
-    private float _timeRemaining;
+    private Vector3 _targetDisplacement;
+    private Vector3 _appliedDisplacement;
+    private float _elapsedTime;
+    private float _curveProgress;
     private KnockbackData _activeKnockback;
     private bool _agentOverrideActive;
     private bool _resumeAgentStopped;
@@ -36,9 +39,12 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     private bool _behaviorTreeSuspended;
     private bool _restoreAgentToDefaultAutonomy;
 
+    Vector3 RemainingDisplacement => _targetDisplacement - _appliedDisplacement;
+
     public bool IsActive =>
-        _timeRemaining > 0f &&
-        _remainingDisplacement.sqrMagnitude > 0.0001f;
+        _activeKnockback.IsValid &&
+        _elapsedTime < _activeKnockback.Duration &&
+        RemainingDisplacement.sqrMagnitude > 0.0001f;
 
     public KnockbackData ActiveKnockback => _activeKnockback;
 
@@ -93,8 +99,10 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
     public void StopKnockback(bool preserveMoveState = true)
     {
-        _remainingDisplacement = Vector3.zero;
-        _timeRemaining = 0f;
+        _targetDisplacement = Vector3.zero;
+        _appliedDisplacement = Vector3.zero;
+        _elapsedTime = 0f;
+        _curveProgress = 0f;
         _activeKnockback = default(KnockbackData);
 
         RestoreAgentOverride(preserveMoveState);
@@ -102,6 +110,8 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
         if (preserveMoveState)
             RestoreMoveState();
+
+        animBrain?.StopKnockbackPlayback();
     }
 
     void ResolveRefs()
@@ -120,6 +130,8 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
             TryGetComponent(out capsuleCollider);
         if (!animBrain)
             TryGetComponent(out animBrain);
+        if (!fieldAllyMember)
+            TryGetComponent(out fieldAllyMember);
         if (!behaviorTree)
             TryGetComponent(out behaviorTree);
 
@@ -143,6 +155,9 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         if (!knockback.IsValid)
             return false;
 
+        if (IsBlockedByChainExecution())
+            return false;
+
         if (healthSystem != null && !healthSystem.IsAlive)
             return false;
 
@@ -150,6 +165,18 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
             return true;
 
         return stateHub.LifeSM.CurrentId == LifeStateId.Alive;
+    }
+
+    bool IsBlockedByChainExecution()
+    {
+        if (fieldAllyMember != null &&
+            (fieldAllyMember.HasActiveSequenceExecution ||
+             fieldAllyMember.HasDeferredSequenceCleanup))
+        {
+            return true;
+        }
+
+        return animBrain != null && animBrain.IsChainPlaybackActive;
     }
 
     bool ShouldReplace(KnockbackData next)
@@ -160,7 +187,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         if (GetReactionPriority(next.Reaction) > GetReactionPriority(_activeKnockback.Reaction))
             return true;
 
-        return next.Distance >= _remainingDisplacement.magnitude + replaceDistanceThreshold;
+        return next.Distance >= RemainingDisplacement.magnitude + replaceDistanceThreshold;
     }
 
     static int GetReactionPriority(ImpactReactionKind reaction)
@@ -177,13 +204,31 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     void BeginKnockback(KnockbackData knockback)
     {
         _activeKnockback = knockback;
-        _remainingDisplacement = knockback.Direction * knockback.Distance;
-        _timeRemaining = knockback.Duration;
+        _targetDisplacement = knockback.Direction * knockback.Distance;
+        _appliedDisplacement = Vector3.zero;
+        _elapsedTime = 0f;
+        _curveProgress = 0f;
 
         EnableAgentOverride();
+        FaceTowardKnockbackPoint(knockback);
+        animBrain?.PlayKnockback(knockback);
 
         if (stateHub != null && stateHub.MoveSM != null)
             stateHub.MoveSM.TryChange(MoveStateId.Knockback);
+    }
+
+    void FaceTowardKnockbackPoint(KnockbackData knockback)
+    {
+        Vector3 lookDirection = knockback.HitPoint - transform.position;
+        lookDirection = Vector3.ProjectOnPlane(lookDirection, Vector3.up);
+
+        if (lookDirection.sqrMagnitude <= 0.0001f)
+            lookDirection = Vector3.ProjectOnPlane(-knockback.Direction, Vector3.up);
+
+        if (lookDirection.sqrMagnitude <= 0.0001f)
+            return;
+
+        transform.rotation = Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
     }
 
     void Tick(float dt)
@@ -191,25 +236,31 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         if (!IsActive || dt <= 0f)
             return;
 
-        float stepTime = Mathf.Min(dt, _timeRemaining);
+        float duration = Mathf.Max(0.0001f, _activeKnockback.Duration);
+        float stepTime = Mathf.Min(dt, duration - _elapsedTime);
         if (stepTime <= 0f)
         {
             StopKnockback();
             return;
         }
 
-        Vector3 desiredDelta = _remainingDisplacement * (stepTime / Mathf.Max(_timeRemaining, 0.0001f));
+        _elapsedTime = Mathf.Min(duration, _elapsedTime + stepTime);
+
+        float normalizedTime = Mathf.Clamp01(_elapsedTime / duration);
+        _curveProgress = Mathf.Max(_curveProgress, _activeKnockback.EvaluateProgress(normalizedTime));
+
+        Vector3 desiredDisplacement = _targetDisplacement * _curveProgress;
+        Vector3 desiredDelta = desiredDisplacement - _appliedDisplacement;
         Vector3 appliedDelta = ApplyDelta(desiredDelta);
 
-        _remainingDisplacement -= appliedDelta;
-        _timeRemaining = Mathf.Max(0f, _timeRemaining - stepTime);
+        _appliedDisplacement += appliedDelta;
 
         bool blockedByObstacle =
             desiredDelta.sqrMagnitude > 0.0001f &&
             appliedDelta.sqrMagnitude + 0.000001f < desiredDelta.sqrMagnitude * 0.25f;
 
-        if (_timeRemaining <= 0f ||
-            _remainingDisplacement.sqrMagnitude <= 0.0001f ||
+        if (_elapsedTime >= duration ||
+            RemainingDisplacement.sqrMagnitude <= 0.0001f ||
             blockedByObstacle)
         {
             StopKnockback();

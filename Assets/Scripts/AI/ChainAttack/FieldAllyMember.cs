@@ -54,6 +54,10 @@ public sealed class FieldAllyMember : MonoBehaviour
     [SerializeField] private ChainActorRole actorRole = ChainActorRole.PartySlot1;
     [SerializeField] private FieldAllyManager manager;
     [SerializeField] private CharacteContext actorContext;
+    [SerializeField] private HealthSystem actorHealthSystem;
+    [SerializeField] private AITargetInfo actorTargetInfo;
+    [SerializeField] private Rigidbody actorRigidbody;
+    [SerializeField] private CharacterController actorCharacterController;
     [SerializeField] private BehaviorTree behaviorTree;
     [SerializeField] private NavMeshAgent agent;
     [SerializeField] private CharacterAnimBrain animBrain;
@@ -64,6 +68,12 @@ public sealed class FieldAllyMember : MonoBehaviour
     [SerializeField] private MonoBehaviour[] componentsToDisableDuringSequence;
     [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Auto Disable Player Input/Move")]
     [SerializeField] private bool autoDisablePlayerInputAndMovement = true;
+    [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Make Ally Invincible During Sequence")]
+    [SerializeField] private bool makeAllyInvincibleDuringSequence = true;
+    [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Make Ally Untargetable During Sequence")]
+    [SerializeField] private bool makeAllyUntargetableDuringSequence = true;
+    [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Ignore Collision During Sequence")]
+    [SerializeField] private bool ignoreCollisionDuringSequence = true;
     [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Default Chain Skill"), AssetsOnly]
     [SerializeField] private SkillGemDefinition defaultChainSkill;
     [FoldoutGroup("Chain Attack/Runtime Prototype"), LabelText("Use Runtime Skill Override")]
@@ -101,13 +111,20 @@ public sealed class FieldAllyMember : MonoBehaviour
     bool _defaultAgentIsStopped;
     bool _defaultAgentUpdatePosition;
     bool _defaultAgentUpdateRotation;
+    bool _actorProtectionApplied;
+    bool _collisionMaskCaptured;
     bool _visualHiddenForChainTransition;
+    int _actorInvincibilityToken;
+    int _actorUntargetableToken;
+    LayerMask _defaultRigidbodyExcludeLayers;
+    LayerMask _defaultCharacterControllerExcludeLayers;
 
     public ChainActorRole ActorRole => actorRole;
     public bool IsReserved => _reservationOwner != null;
     public bool HasActiveSequenceExecution => _pendingExecution != null;
     public bool HasDeferredSequenceCleanup => _deferredCleanup != null;
     public int ActiveSequenceExecutionId => _pendingExecution != null ? _pendingExecution.executionId : 0;
+    public bool IsInKnockback => IsActorInKnockback();
     public bool LastExecutionSucceeded { get; private set; }
     public SkillGemDefinition DefaultChainSkill =>
         defaultChainSkill != null
@@ -232,6 +249,12 @@ public sealed class FieldAllyMember : MonoBehaviour
 
         if (step.requireActorAlive && !IsAlive)
             return false;
+
+        if (IsActorInKnockback())
+        {
+            Log($"Step '{step.RuntimeId}' cannot start because actor '{name}' is in knockback.");
+            return false;
+        }
 
         if (IsBusy)
             return false;
@@ -426,8 +449,7 @@ public sealed class FieldAllyMember : MonoBehaviour
 
     void CacheReferences()
     {
-        if (actorContext == null)
-            actorContext = GetComponent<CharacteContext>();
+        RefreshCollisionReferences();
 
         if (manager == null)
             manager = FindFirstObjectByType<FieldAllyManager>();
@@ -474,6 +496,67 @@ public sealed class FieldAllyMember : MonoBehaviour
             if (actorFader == null)
                 actorFader = GetComponentInChildren<ASPHelperDitherFader>(true);
         }
+    }
+
+    void RefreshCollisionReferences()
+    {
+        if (actorContext == null)
+            actorContext = GetComponent<CharacteContext>();
+
+        if (actorContext != null && actorContext.HealthSystem != null)
+            actorHealthSystem = actorContext.HealthSystem;
+        else if (actorHealthSystem == null)
+            actorHealthSystem = GetComponent<HealthSystem>();
+
+        if (actorContext != null && actorContext.HealthSystem == null)
+            actorContext.HealthSystem = actorHealthSystem;
+
+        if (actorTargetInfo == null)
+        {
+            actorTargetInfo = GetComponent<AITargetInfo>();
+            if (actorTargetInfo == null)
+                actorTargetInfo = GetComponentInChildren<AITargetInfo>(true);
+        }
+
+        if (actorContext != null && actorContext.rb != null)
+            actorRigidbody = actorContext.rb;
+        else if (actorRigidbody == null)
+            actorRigidbody = GetComponent<Rigidbody>();
+
+        if (actorContext != null && actorContext.rb == null)
+            actorContext.rb = actorRigidbody;
+
+        if (actorContext != null && actorContext.cc != null)
+            actorCharacterController = actorContext.cc;
+        else if (actorCharacterController == null)
+            actorCharacterController = GetComponent<CharacterController>();
+
+        if (actorContext != null && actorContext.cc == null)
+            actorContext.cc = actorCharacterController;
+
+        if (actorContext != null && actorContext.KnockbackMotor == null)
+            actorContext.KnockbackMotor = GetComponent<CharacterKnockbackMotor>();
+    }
+
+    bool IsActorInKnockback()
+    {
+        CharacterKnockbackMotor knockbackMotor = null;
+        if (actorContext != null)
+            knockbackMotor = actorContext.KnockbackMotor;
+
+        if (knockbackMotor == null)
+            knockbackMotor = GetComponent<CharacterKnockbackMotor>();
+
+        if (actorContext != null && actorContext.KnockbackMotor == null)
+            actorContext.KnockbackMotor = knockbackMotor;
+
+        if (knockbackMotor != null && knockbackMotor.IsActive)
+            return true;
+
+        return actorContext != null &&
+               actorContext.stateHub != null &&
+               actorContext.stateHub.MoveSM != null &&
+               actorContext.stateHub.MoveSM.CurrentId == MoveStateId.Knockback;
     }
 
     void SubscribeToAnimBrain(CharacterAnimBrain nextAnimBrain)
@@ -530,6 +613,12 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (ApplyTemporaryComponentDisables())
             capturedAny = true;
 
+        if (ApplyTemporaryActorProtection())
+            capturedAny = true;
+
+        if (ApplyTemporaryNoCollision())
+            capturedAny = true;
+
         if (ApplyPlayerChainLock())
             capturedAny = true;
 
@@ -555,8 +644,95 @@ public sealed class FieldAllyMember : MonoBehaviour
         }
 
         RestoreTemporaryComponentDisables();
+        RestoreTemporaryActorProtection();
+        RestoreTemporaryNoCollision();
         RestorePlayerChainLock();
         _autonomyCaptured = false;
+    }
+
+    bool ApplyTemporaryActorProtection()
+    {
+        if (actorRole == ChainActorRole.Player || _actorProtectionApplied)
+            return false;
+
+        if (!makeAllyInvincibleDuringSequence && !makeAllyUntargetableDuringSequence)
+            return false;
+
+        RefreshCollisionReferences();
+
+        bool applied = false;
+
+        if (makeAllyInvincibleDuringSequence && actorHealthSystem != null)
+        {
+            _actorInvincibilityToken = actorHealthSystem.AcquireInvincibilityToken();
+            applied = true;
+        }
+
+        if (makeAllyUntargetableDuringSequence && actorTargetInfo != null)
+        {
+            _actorUntargetableToken = actorTargetInfo.AcquireUntargetableToken();
+            applied = true;
+        }
+
+        _actorProtectionApplied = applied;
+        return applied;
+    }
+
+    void RestoreTemporaryActorProtection()
+    {
+        if (_actorUntargetableToken != 0 && actorTargetInfo != null)
+            actorTargetInfo.ReleaseUntargetableToken(_actorUntargetableToken);
+
+        if (_actorInvincibilityToken != 0 && actorHealthSystem != null)
+            actorHealthSystem.ReleaseInvincibilityToken(_actorInvincibilityToken);
+
+        _actorUntargetableToken = 0;
+        _actorInvincibilityToken = 0;
+        _actorProtectionApplied = false;
+    }
+
+    bool ApplyTemporaryNoCollision()
+    {
+        if (!ignoreCollisionDuringSequence)
+            return false;
+
+        RefreshCollisionReferences();
+
+        if (actorRigidbody == null && actorCharacterController == null)
+            return false;
+
+        if (!_collisionMaskCaptured)
+        {
+            _defaultRigidbodyExcludeLayers = actorRigidbody != null
+                ? actorRigidbody.excludeLayers
+                : 0;
+            _defaultCharacterControllerExcludeLayers = actorCharacterController != null
+                ? actorCharacterController.excludeLayers
+                : 0;
+            _collisionMaskCaptured = true;
+        }
+
+        if (actorRigidbody != null)
+            actorRigidbody.excludeLayers = Physics.AllLayers;
+
+        if (actorCharacterController != null)
+            actorCharacterController.excludeLayers = Physics.AllLayers;
+
+        return true;
+    }
+
+    void RestoreTemporaryNoCollision()
+    {
+        if (!_collisionMaskCaptured)
+            return;
+
+        if (actorRigidbody != null)
+            actorRigidbody.excludeLayers = _defaultRigidbodyExcludeLayers;
+
+        if (actorCharacterController != null)
+            actorCharacterController.excludeLayers = _defaultCharacterControllerExcludeLayers;
+
+        _collisionMaskCaptured = false;
     }
 
     bool TryStartEnterUtility(PendingSequenceExecution execution)

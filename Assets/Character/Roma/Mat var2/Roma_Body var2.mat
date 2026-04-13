@@ -26,9 +26,10 @@ Material:
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
   - _ALPHATEST_ON
+  - _RECEIVE_OFFSETED_SHADOW_ON
   - _RIMLIGHTING_ON
   - _SPECULAR_LIGHTING_ON
-  - _STYLE_STYLIZEPBR
+  - _STYLE_CELSHADING
   m_InvalidKeywords:
   - _ENABLESSSRAMP
   - _FLATTENADDITIONALLIGHTING
@@ -159,11 +160,11 @@ Material:
     - _BakeGISource: 0
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
-    - _BumpScale: 1
+    - _BumpScale: 0.504
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
     - _Cull: 2
-    - _Cutoff: 0.5
+    - _Cutoff: 0.413
     - _DebugGI: 0
     - _DepthRimLightOn: 0
     - _DepthRimLightStrength: 0.1
@@ -206,7 +207,7 @@ Material:
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OffsetShadowDistance: 15
-    - _OutlineWidth: 2.35
+    - _OutlineWidth: 3.05
     - _OverrideLightColorIntensityToggle: 0
     - _OverrideLightDirToggle: 0
     - _OverrideZTest: 0
@@ -218,7 +219,7 @@ Material:
     - _QueueOffset: 0
     - _RampOcclusionStrength: 0
     - _ReceiveASPShadow: 0
-    - _ReceiveOffsetedDepthMap: 0
+    - _ReceiveOffsetedDepthMap: 1
     - _ReceiveShadows: 1
     - _RimLightAlign: 0.172
     - _RimLightOn: 1
@@ -229,9 +230,9 @@ Material:
     - _ShadowColorMode: 1
     - _Smoothness: 0
     - _SmoothnessTextureChannel: 0
-    - _SpecularFalloff: 0.393
+    - _SpecularFalloff: 0.5
     - _SpecularHighlights: 1
-    - _SpecularSize: 0.165
+    - _SpecularSize: 0.25
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
     - _Stencil: 0
@@ -244,7 +245,7 @@ Material:
     - _WorkflowSpace: 1
     - _ZTest: 4
     - _ZWrite: 1
-    - _style: 0
+    - _style: 1
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}

@@ -17,6 +17,7 @@ public readonly struct KnockbackData
         Vector3 hitPoint,
         ImpactReactionKind reaction = ImpactReactionKind.None,
         bool interruptActions = true,
+        AnimationCurve progressCurve = null,
         bool flattenToGround = true)
     {
         if (flattenToGround)
@@ -28,6 +29,7 @@ public readonly struct KnockbackData
         HitPoint = hitPoint;
         Reaction = reaction;
         InterruptActions = interruptActions;
+        ProgressCurve = progressCurve;
         FlattenToGround = flattenToGround;
     }
 
@@ -37,12 +39,30 @@ public readonly struct KnockbackData
     public Vector3 HitPoint { get; }
     public ImpactReactionKind Reaction { get; }
     public bool InterruptActions { get; }
+    public AnimationCurve ProgressCurve { get; }
     public bool FlattenToGround { get; }
 
     public bool IsValid =>
         Direction.sqrMagnitude > 0.0001f &&
         Distance > 0.001f &&
         Duration > 0.001f;
+
+    public float EvaluateProgress(float normalizedTime)
+    {
+        normalizedTime = Mathf.Clamp01(normalizedTime);
+
+        if (ProgressCurve == null || ProgressCurve.length == 0)
+            return normalizedTime;
+
+        float startValue = ProgressCurve.Evaluate(0f);
+        float endValue = ProgressCurve.Evaluate(1f);
+        float range = endValue - startValue;
+        if (Mathf.Abs(range) <= 0.0001f)
+            return normalizedTime;
+
+        float curveValue = ProgressCurve.Evaluate(normalizedTime);
+        return Mathf.Clamp01((curveValue - startValue) / range);
+    }
 
     public static KnockbackData FromOrigin(
         Vector3 origin,
@@ -51,6 +71,7 @@ public readonly struct KnockbackData
         float duration,
         ImpactReactionKind reaction = ImpactReactionKind.None,
         bool interruptActions = true,
+        AnimationCurve progressCurve = null,
         bool flattenToGround = true)
     {
         return new KnockbackData(
@@ -60,6 +81,7 @@ public readonly struct KnockbackData
             targetPoint,
             reaction,
             interruptActions,
+            progressCurve,
             flattenToGround);
     }
 }

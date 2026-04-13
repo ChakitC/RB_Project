@@ -22,6 +22,9 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     public ClipTransition root;
     public ClipTransition freez;
 
+    [Header("Knockback (Layer 0)")]
+    public ClipTransition knockback;
+
     [Header("Dash (Layer 0)")]
     public ClipTransition dashF;
     public ClipTransition dashB;

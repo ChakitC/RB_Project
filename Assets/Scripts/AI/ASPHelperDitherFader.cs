@@ -30,6 +30,8 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
     bool isHidden = true;
     bool alphaClipWarningIssued;
 
+    public event Action Deactivated;
+
     void Awake()
     {
         InitializeReferences();
@@ -40,6 +42,9 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
     {
         StopFadeRoutine();
         StopMonitorRoutine(true);
+
+        if (!gameObject.activeSelf || !gameObject.activeInHierarchy)
+            Deactivated?.Invoke();
     }
     
     public void SetHiddenImmediate()

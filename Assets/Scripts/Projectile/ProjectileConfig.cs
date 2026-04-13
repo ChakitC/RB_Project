@@ -11,6 +11,8 @@ public class ProjectileConfig : ScriptableObject
     public bool applyKnockbackOnHit = false;
     [Min(0f)] public float knockbackDistance = 1.25f;
     [Min(0f)] public float knockbackDuration = 0.12f;
+    [Tooltip("Normalized knockback travel over time. X = time, Y = travel progress. Leave null for linear.")]
+    public AnimationCurve knockbackProgressCurve;
     public ImpactReactionKind knockbackReaction = ImpactReactionKind.MiniStun;
     public bool knockbackInterruptsActions = true;
 

@@ -19,10 +19,20 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
     [SerializeField] private PlayerContext playerContext;
     [SerializeField] private FieldAllyManager fieldAllyManager;
     [SerializeField] private AllyHelperManager allyHelperManager;
+    [Header("Player Protection")]
+    [SerializeField] private bool protectPlayerDuringSequence = true;
+    [SerializeField] private bool makePlayerInvincibleDuringSequence = true;
+    [SerializeField] private bool makePlayerUntargetableDuringSequence = true;
+    [SerializeField] private bool ignorePlayerCollisionDuringSequence = true;
+    [SerializeField] private LayerMask playerProtectionExcludeLayers;
     [SerializeField] private bool logCoordinator;
 
     Coroutine _activeRoutine;
     ActiveChainRuntime _activeRuntime;
+    int _playerInvincibilityToken;
+    int _playerUntargetableToken;
+    int _playerCollisionIgnoreToken;
+    bool _playerProtectionApplied;
 
     public bool IsSequenceActive => _activeRoutine != null;
     public Transform LockedTarget => _activeRuntime != null ? _activeRuntime.targetTransform : null;
@@ -40,6 +50,16 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
 
         if (playerContext != null && playerContext.chainAttackCoordinator == null)
             playerContext.chainAttackCoordinator = this;
+    }
+
+    void OnDisable()
+    {
+        RestorePlayerProtection();
+    }
+
+    void OnDestroy()
+    {
+        RestorePlayerProtection();
     }
 
     public bool TryStartSequence(ChainAttackSequenceDef sequenceDef)
@@ -84,6 +104,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             startedAt = Time.time,
         };
 
+        ApplyPlayerProtection();
         _activeRoutine = StartCoroutine(RunSequence(_activeRuntime));
         Log(sequenceDef, $"Started sequence '{sequenceDef.RuntimeId}' on target '{targetObject.name}'.");
         return true;
@@ -162,6 +183,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
                 ? $"Sequence '{runtime.sequenceDef.RuntimeId}' completed."
                 : $"Sequence '{runtime.sequenceDef.RuntimeId}' ended early.");
 
+        RestorePlayerProtection();
         _activeRoutine = null;
         _activeRuntime = null;
     }
@@ -495,5 +517,68 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             return;
 
         Debug.Log($"[ChainAttackCoordinator] {message}", this);
+    }
+
+    void ApplyPlayerProtection()
+    {
+        if (_playerProtectionApplied || !protectPlayerDuringSequence || playerContext == null)
+            return;
+
+        if (makePlayerInvincibleDuringSequence && playerContext.HealthSystem != null)
+            _playerInvincibilityToken = playerContext.HealthSystem.AcquireInvincibilityToken();
+
+        if (makePlayerUntargetableDuringSequence)
+        {
+            AITargetInfo targetInfo = ResolvePlayerTargetInfo();
+            if (targetInfo != null)
+                _playerUntargetableToken = targetInfo.AcquireUntargetableToken();
+        }
+
+        if (ignorePlayerCollisionDuringSequence && playerContext.DashSystem != null)
+            _playerCollisionIgnoreToken = playerContext.DashSystem.AcquireExternalCollisionIgnoreToken(
+                ResolvePlayerProtectionExcludeLayers());
+
+        _playerProtectionApplied = true;
+    }
+
+    void RestorePlayerProtection()
+    {
+        if (!_playerProtectionApplied)
+            return;
+
+        if (_playerCollisionIgnoreToken != 0 && playerContext != null && playerContext.DashSystem != null)
+            playerContext.DashSystem.ReleaseExternalCollisionIgnoreToken(_playerCollisionIgnoreToken);
+
+        AITargetInfo targetInfo = ResolvePlayerTargetInfo();
+        if (_playerUntargetableToken != 0 && targetInfo != null)
+            targetInfo.ReleaseUntargetableToken(_playerUntargetableToken);
+
+        if (_playerInvincibilityToken != 0 && playerContext != null && playerContext.HealthSystem != null)
+            playerContext.HealthSystem.ReleaseInvincibilityToken(_playerInvincibilityToken);
+
+        _playerCollisionIgnoreToken = 0;
+        _playerUntargetableToken = 0;
+        _playerInvincibilityToken = 0;
+        _playerProtectionApplied = false;
+    }
+
+    AITargetInfo ResolvePlayerTargetInfo()
+    {
+        if (playerContext == null)
+            return null;
+
+        AITargetInfo targetInfo = playerContext.GetComponent<AITargetInfo>();
+        if (targetInfo != null)
+            return targetInfo;
+
+        return playerContext.GetComponentInChildren<AITargetInfo>(true);
+    }
+
+    LayerMask ResolvePlayerProtectionExcludeLayers()
+    {
+        if (playerProtectionExcludeLayers.value != 0)
+            return playerProtectionExcludeLayers;
+
+        return LayerMask.GetMask("Enemy", "EnemyBullet", "Ally");
     }
 }

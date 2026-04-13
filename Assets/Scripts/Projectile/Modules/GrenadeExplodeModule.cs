@@ -42,6 +42,8 @@ public class GrenadeExplodeModule : ProjectileModule
     public float knockbackForce = 6f;
     [Min(0f)] public float knockbackDistance = 0f;
     [Min(0f)] public float knockbackDuration = 0.12f;
+    [Tooltip("Normalized knockback travel over time. X = time, Y = travel progress. Leave null for linear.")]
+    public AnimationCurve knockbackProgressCurve;
     public ImpactReactionKind knockbackReaction = ImpactReactionKind.MiniStun;
     public bool knockbackInterruptsActions = true;
 
@@ -229,7 +231,8 @@ public class GrenadeExplodeModule : ProjectileModule
                 knockbackDuration,
                 closest,
                 knockbackReaction,
-                knockbackInterruptsActions);
+                knockbackInterruptsActions,
+                knockbackProgressCurve);
         }
 
         var hit = new ProjectileHitInfo(closest, hitNormal, c);

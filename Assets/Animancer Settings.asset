@@ -53,8 +53,14 @@ MonoBehaviour:
         - {fileID: 4651303126784831026, guid: a649f9e44b30d794d8890f73f0ad0d3e, type: 3}
         - {fileID: 3576317278221455802, guid: 165514123e3ed324c94f10ee3d314cde, type: 3}
         - {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
-        - {fileID: 2455486968630159720, guid: 6d10d8f609388e14fa46a8a7f1fc1202, type: 3}
+        - {fileID: 919132149155446097, guid: 379ab45fcbed4b24aafeaba89a306a17, type: 3}
+        - {fileID: 919132149155446097, guid: 2a23b6233d00c504491492204c559b5f, type: 3}
+        - {fileID: 919132149155446097, guid: 9d075004451ed734792f095847b44f96, type: 3}
+        - {fileID: 919132149155446097, guid: 1b7d6975aa559e24ea930841ce4c557d, type: 3}
+        - {fileID: 919132149155446097, guid: 923ac931b03d81b4aae7d5a66ec1d199, type: 3}
         - {fileID: 1810244535466419119, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+        - {fileID: 919132149155446097, guid: 8726aa19f1b54694e84b1c05689de1e5, type: 3}
+        - {fileID: 2455486968630159720, guid: 6d10d8f609388e14fa46a8a7f1fc1202, type: 3}
     - rid: 8789001712040411215
       type: {class: SerializableEventSequenceDrawerSettings, ns: Animancer.Editor, asm: Kybernetik.Animancer.Editor}
       data:

@@ -307,6 +307,9 @@ public class Projectile : MonoBehaviour
     {
         if (_isDespawning || _requestedExpire || _requestedDespawnThisHit)
             return;
+
+        if (MeleeHitboxTrigger.IsCombatOnlyHitbox(other))
+            return;
         
         if (_ignoredRootIds.Contains(other.transform.root.GetInstanceID()))
             return;
@@ -447,6 +450,7 @@ public class Projectile : MonoBehaviour
         foreach (var h in hits)
         {
             if (!h) continue;
+            if (MeleeHitboxTrigger.IsCombatOnlyHitbox(h)) continue;
 
             var root = h.transform.root;
             int rootId = root.GetInstanceID();
@@ -681,7 +685,8 @@ public class Projectile : MonoBehaviour
             config.knockbackDuration,
             hit.point,
             config.knockbackReaction,
-            config.knockbackInterruptsActions);
+            config.knockbackInterruptsActions,
+            config.knockbackProgressCurve);
     }
 
     void ApplyDamageToTarget(IDamageable target, float finalDamage, GameObject attackerGO, KnockbackData knockback)

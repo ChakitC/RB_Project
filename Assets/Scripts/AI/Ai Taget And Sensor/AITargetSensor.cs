@@ -229,6 +229,9 @@ public class AITargetSensor : MonoBehaviour
             if (requireAliveIfAvailable && !targetable.IsAlive)
                 return false;
 
+            if (!targetable.IsTargetable)
+                return false;
+
             if (useTeamFilter && targetable.TeamId == ownerTeamId)
                 return false;
         }

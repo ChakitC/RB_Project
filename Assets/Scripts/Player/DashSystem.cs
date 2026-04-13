@@ -18,6 +18,8 @@ public class DashSystem : MonoBehaviour
 
     LayerMask _origCCExclude;
     LayerMask _origRBExclude;
+    bool _collisionExcludeCaptured;
+    bool _dashIframeActive;
 
     CharacteContext ctx;
     Vector3 lastMoveDir = Vector3.forward;
@@ -29,6 +31,8 @@ public class DashSystem : MonoBehaviour
     Coroutine _dashRoutine;
     Coroutine _invincibleRoutine;
     Coroutine _cooldownRoutine;
+    readonly Dictionary<int, int> _externalCollisionIgnoreMasks = new();
+    int _nextExternalCollisionIgnoreToken = 1;
 
     public bool IsDashing => isDashing;
     public bool IsPerfectDodgeWindowActive => isDashing && Time.time <= _perfectDodgeWindowUntil;
@@ -44,10 +48,6 @@ public class DashSystem : MonoBehaviour
     {
         if (ctx == null || ctx.rb == null)
             return;
-
-        _origRBExclude = ctx.rb.excludeLayers;
-        if (ctx.cc != null)
-            _origCCExclude = ctx.cc.excludeLayers;
     }
 
     void OnDisable()
@@ -67,8 +67,7 @@ public class DashSystem : MonoBehaviour
         ClearCooldown();
         ResetPerfectDodgeWindow();
 
-        if (ctx != null && ctx.rb != null)
-            EndDashIframe();
+        ClearCollisionIgnoreRequests();
 
         if (ctx != null && ctx.HealthSystem != null)
             ctx.HealthSystem.SetInvincible(false);
@@ -78,28 +77,40 @@ public class DashSystem : MonoBehaviour
 
     public void StartDashIframe()
     {
-        if (ctx == null || ctx.rb == null)
+        if (ctx == null || ctx.rb == null || _dashIframeActive)
             return;
 
-        if (ctx.cc != null)
-        {
-            _origCCExclude = ctx.cc.excludeLayers;
-            ctx.cc.excludeLayers = _origCCExclude | dashIFrameExclude;
-        }
-
-        _origRBExclude = ctx.rb.excludeLayers;
-        ctx.rb.excludeLayers = _origRBExclude | dashIFrameExclude;
+        _dashIframeActive = true;
+        RefreshCollisionIgnoreState();
     }
 
     public void EndDashIframe()
     {
-        if (ctx == null || ctx.rb == null)
+        if (ctx == null || ctx.rb == null || !_dashIframeActive)
             return;
 
-        ctx.rb.excludeLayers = _origRBExclude;
+        _dashIframeActive = false;
+        RefreshCollisionIgnoreState();
+    }
 
-        if (ctx.cc != null)
-            ctx.cc.excludeLayers = _origCCExclude;
+    public int AcquireExternalCollisionIgnoreToken(LayerMask excludeMask)
+    {
+        if (ctx == null || ctx.rb == null || excludeMask.value == 0)
+            return 0;
+
+        int token = _nextExternalCollisionIgnoreToken++;
+        _externalCollisionIgnoreMasks[token] = excludeMask.value;
+        RefreshCollisionIgnoreState();
+        return token;
+    }
+
+    public void ReleaseExternalCollisionIgnoreToken(int token)
+    {
+        if (token <= 0)
+            return;
+
+        if (_externalCollisionIgnoreMasks.Remove(token))
+            RefreshCollisionIgnoreState();
     }
 
     public void CancelDash(bool keepCooldown = true)
@@ -275,6 +286,66 @@ public class DashSystem : MonoBehaviour
         yield return new WaitForSeconds(duration);
         _cooldownRoutine = null;
         onCooldown = false;
+    }
+
+    void RefreshCollisionIgnoreState()
+    {
+        if (ctx == null || ctx.rb == null)
+            return;
+
+        int activeMaskBits = ResolveActiveCollisionIgnoreMaskBits();
+        if (activeMaskBits == 0)
+        {
+            RestoreCapturedCollisionIgnoreState();
+            return;
+        }
+
+        CaptureCollisionIgnoreState();
+
+        ctx.rb.excludeLayers = _origRBExclude | (LayerMask)activeMaskBits;
+        if (ctx.cc != null)
+            ctx.cc.excludeLayers = _origCCExclude | (LayerMask)activeMaskBits;
+    }
+
+    void CaptureCollisionIgnoreState()
+    {
+        if (_collisionExcludeCaptured || ctx == null || ctx.rb == null)
+            return;
+
+        _origRBExclude = ctx.rb.excludeLayers;
+        if (ctx.cc != null)
+            _origCCExclude = ctx.cc.excludeLayers;
+
+        _collisionExcludeCaptured = true;
+    }
+
+    void RestoreCapturedCollisionIgnoreState()
+    {
+        if (!_collisionExcludeCaptured || ctx == null || ctx.rb == null)
+            return;
+
+        ctx.rb.excludeLayers = _origRBExclude;
+        if (ctx.cc != null)
+            ctx.cc.excludeLayers = _origCCExclude;
+
+        _collisionExcludeCaptured = false;
+    }
+
+    int ResolveActiveCollisionIgnoreMaskBits()
+    {
+        int bits = _dashIframeActive ? dashIFrameExclude.value : 0;
+
+        foreach (var pair in _externalCollisionIgnoreMasks)
+            bits |= pair.Value;
+
+        return bits;
+    }
+
+    void ClearCollisionIgnoreRequests()
+    {
+        _dashIframeActive = false;
+        _externalCollisionIgnoreMasks.Clear();
+        RestoreCapturedCollisionIgnoreState();
     }
 
     void ClearCooldown()

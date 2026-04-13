@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -24,6 +25,8 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
 
     [SerializeField] private float cachedArmor;
     bool invincible;
+    readonly HashSet<int> _invincibilityTokens = new();
+    int _nextInvincibilityToken = 1;
 
     Coroutine dieRoutine;
     float IHasArmor.Armor => GetFinalArmor();
@@ -48,6 +51,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
     public bool IsAlive => currentHealth > 0f;
     public bool IsDown => currentHealth <= 0f && DownTime > 0f;
     public bool IsDead => currentHealth <= 0f && DownTime <= 0f;
+    public bool IsInvincible => invincible || _invincibilityTokens.Count > 0;
 
     void Start()
     {
@@ -185,6 +189,21 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
 
     public void SetInvincible(bool value) => invincible = value;
 
+    public int AcquireInvincibilityToken()
+    {
+        int token = _nextInvincibilityToken++;
+        _invincibilityTokens.Add(token);
+        return token;
+    }
+
+    public void ReleaseInvincibilityToken(int token)
+    {
+        if (token <= 0)
+            return;
+
+        _invincibilityTokens.Remove(token);
+    }
+
     public bool CanHeal(float amount)
     {
         if (!float.IsFinite(amount) || amount <= 0f)
@@ -241,7 +260,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
             CTX.stateHub.LifeSM.CurrentId == LifeStateId.Dead)
             return;
 
-        if (invincible)
+        if (IsInvincible)
         {
             var preventedContext = PublishDamageEvent(PassiveEventType.DamagePrevented, damage, attacker, hasContext, damageContext);
             CTX.DashSystem?.TryRegisterPerfectDodge(in preventedContext);

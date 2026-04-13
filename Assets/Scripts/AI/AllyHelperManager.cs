@@ -57,7 +57,10 @@ public class AllyHelperManager : MonoBehaviour
     CharacterAnimBrain allyAnimBrain;
     ISkillUser allySkillUser;
     ASPHelperDitherFader allyHelperFader;
+    HealthSystem allyHealthSystem;
+    AITargetInfo allyTargetInfo;
     NavMeshAgent allyAgent;
+    CharacterController allyCharacterController;
     BehaviorTree allyBehaviorTree;
     PendingHelperSkill pendingHelperSkill;
     PendingChainAttackSequence pendingChainAttackSequence;
@@ -68,6 +71,9 @@ public class AllyHelperManager : MonoBehaviour
     bool lastCompletedChainAttackExecutionSucceeded;
     readonly Collider[] _chainTargetBuffer = new Collider[MaxChainTargetColliders];
     readonly HashSet<int> _chainTargetIds = new();
+    bool _helperProtectionApplied;
+    int _helperInvincibilityToken;
+    int _helperUntargetableToken;
 
     public bool IsHelperActive => allyHelper != null && allyHelper.activeSelf;
     public GameObject HelperObject => allyHelper;
@@ -136,22 +142,25 @@ public class AllyHelperManager : MonoBehaviour
     void OnDestroy()
     {
         RestoreHelperSkillAutonomy();
-        RestoreCollisionMask();
+        RestoreHelperProtection();
+        SubscribeToHelperFader(null);
         SubscribeToAnimBrain(null);
     }
 
     void OnDisable()
     {
         RestoreHelperSkillAutonomy();
-        RestoreCollisionMask();
+        RestoreHelperProtection();
         CancelPendingHelperSkill();
         CompletePendingChainAttackSequence(false);
         hideHelperOnSkillComplete = false;
         LastExecutionSucceeded = false;
+        SubscribeToHelperFader(null);
     }
 
     void Update()
     {
+        TryRestoreProtectionIfHelperInactive();
         TryStartQueuedChainAttack();
         TryReleasePendingChainAttackContinueSignal();
     }
@@ -202,7 +211,6 @@ public class AllyHelperManager : MonoBehaviour
             Debug.Log($"[AllyHelperManager] Starting helper skill '{skillDef.name}' with request {requestId}.", this);
 
         ApplyTemporaryHelperSkillAutonomy();
-        ApplyTemporaryNoCollision();
         bool started = allyAnimBrain.TryPlaySkill(
             requestId,
             skillDef,
@@ -215,7 +223,6 @@ public class AllyHelperManager : MonoBehaviour
         }
 
         RestoreHelperSkillAutonomy();
-        RestoreCollisionMask();
         CancelPendingHelperSkill();
         hideHelperOnSkillComplete = false;
 
@@ -339,7 +346,6 @@ public class AllyHelperManager : MonoBehaviour
         }
 
         ApplyTemporaryHelperSkillAutonomy();
-        ApplyTemporaryNoCollision();
 
         bool started = allyAnimBrain.TryPlayUtilityWarpOut(
             pendingChainAttackSequence.warpRequestId);
@@ -351,7 +357,6 @@ public class AllyHelperManager : MonoBehaviour
         }
 
         RestoreHelperSkillAutonomy();
-        RestoreCollisionMask();
         CompletePendingChainAttackSequence(false);
         hideHelperOnSkillComplete = false;
 
@@ -364,18 +369,23 @@ public class AllyHelperManager : MonoBehaviour
     public void AllyHelperOut()
     {
         RestoreHelperSkillAutonomy();
-        RestoreCollisionMask();
         CancelPendingHelperSkill();
         CompletePendingChainAttackSequence(false);
         hideHelperOnSkillComplete = false;
 
         if (allyHelper == null || !allyHelper.activeSelf)
+        {
+            RestoreHelperProtection();
             return;
+        }
 
         if (allyHelperFader != null)
             allyHelperFader.FadeOutThenDeactivate();
         else
+        {
             allyHelper.SetActive(false);
+            RestoreHelperProtection();
+        }
     }
 
     void CacheHelperReferences()
@@ -409,9 +419,29 @@ public class AllyHelperManager : MonoBehaviour
         if (allySkillUser == null && allyContext != null && allyContext.EnegySystem != null)
             allySkillUser = allyContext.EnegySystem;
 
-        allyHelperFader = allyHelper.GetComponent<ASPHelperDitherFader>();
-        if (allyHelperFader == null)
-            allyHelperFader = allyHelper.GetComponentInChildren<ASPHelperDitherFader>(true);
+        allyHealthSystem = allyContext != null ? allyContext.HealthSystem : null;
+        if (allyHealthSystem == null)
+            allyHealthSystem = allyHelper.GetComponent<HealthSystem>();
+
+        if (allyContext != null && allyContext.HealthSystem == null)
+            allyContext.HealthSystem = allyHealthSystem;
+
+        allyCharacterController = allyContext != null ? allyContext.cc : null;
+        if (allyCharacterController == null)
+            allyCharacterController = allyHelper.GetComponent<CharacterController>();
+
+        if (allyContext != null && allyContext.cc == null)
+            allyContext.cc = allyCharacterController;
+
+        allyTargetInfo = allyHelper.GetComponent<AITargetInfo>();
+        if (allyTargetInfo == null)
+            allyTargetInfo = allyHelper.GetComponentInChildren<AITargetInfo>(true);
+
+        ASPHelperDitherFader nextHelperFader = allyHelper.GetComponent<ASPHelperDitherFader>();
+        if (nextHelperFader == null)
+            nextHelperFader = allyHelper.GetComponentInChildren<ASPHelperDitherFader>(true);
+
+        SubscribeToHelperFader(nextHelperFader);
     }
 
     void SubscribeToAnimBrain(CharacterAnimBrain nextAnimBrain)
@@ -430,6 +460,20 @@ public class AllyHelperManager : MonoBehaviour
         {
             allyAnimBrain.PlaybackEvent += OnAllyPlaybackEvent;
         }
+    }
+
+    void SubscribeToHelperFader(ASPHelperDitherFader nextHelperFader)
+    {
+        if (allyHelperFader == nextHelperFader)
+            return;
+
+        if (allyHelperFader != null)
+            allyHelperFader.Deactivated -= OnHelperFaderDeactivated;
+
+        allyHelperFader = nextHelperFader;
+
+        if (allyHelperFader != null)
+            allyHelperFader.Deactivated += OnHelperFaderDeactivated;
     }
 
     bool TryPrepareHelperForSummon(out bool activatedNow)
@@ -467,17 +511,20 @@ public class AllyHelperManager : MonoBehaviour
             allyHelperFader?.SetHiddenImmediate();
         }
 
+        ApplyHelperProtection();
+
         return true;
     }
 
     void HideHelperImmediate()
     {
         RestoreHelperSkillAutonomy();
-        RestoreCollisionMask();
         allyHelperFader?.SetHiddenImmediate();
 
         if (allyHelper != null && allyHelper.activeSelf)
             allyHelper.SetActive(false);
+
+        RestoreHelperProtection();
     }
 
     Vector3 ResolveSummonPosition(Vector3 playerPos)
@@ -646,7 +693,6 @@ public class AllyHelperManager : MonoBehaviour
         }
 
         RestoreHelperSkillAutonomy();
-        RestoreCollisionMask();
         CancelPendingHelperSkill();
         LastExecutionSucceeded = false;
 
@@ -660,7 +706,6 @@ public class AllyHelperManager : MonoBehaviour
             return;
 
         RestoreHelperSkillAutonomy();
-        RestoreCollisionMask();
         CancelPendingHelperSkill();
         LastExecutionSucceeded = true;
 
@@ -787,7 +832,6 @@ public class AllyHelperManager : MonoBehaviour
             }
 
             RestoreHelperSkillAutonomy();
-            RestoreCollisionMask();
             CompletePendingChainAttackSequence(true);
             LastExecutionSucceeded = true;
 
@@ -810,7 +854,6 @@ public class AllyHelperManager : MonoBehaviour
     void CancelActiveChainAttackSequence(bool interrupted)
     {
         RestoreHelperSkillAutonomy();
-        RestoreCollisionMask();
         CompletePendingChainAttackSequence(false);
         LastExecutionSucceeded = false;
 
@@ -1244,28 +1287,95 @@ public class AllyHelperManager : MonoBehaviour
         Debug.Log($"[AllyHelperManager] {message}", this);
     }
 
+    void OnHelperFaderDeactivated()
+    {
+        if (allyHelper != null && allyHelper.activeSelf)
+            return;
+
+        RestoreHelperProtection();
+    }
+
+    void TryRestoreProtectionIfHelperInactive()
+    {
+        if (_helperProtectionApplied && (allyHelper == null || !allyHelper.activeSelf))
+            RestoreHelperProtection();
+    }
+
+    void ApplyHelperProtection()
+    {
+        if (_helperProtectionApplied || allyHelper == null)
+            return;
+
+        CacheHelperReferences();
+
+        if (allyHealthSystem != null)
+            _helperInvincibilityToken = allyHealthSystem.AcquireInvincibilityToken();
+
+        if (allyTargetInfo != null)
+            _helperUntargetableToken = allyTargetInfo.AcquireUntargetableToken();
+
+        ApplyTemporaryNoCollision();
+        _helperProtectionApplied = true;
+    }
+
+    void RestoreHelperProtection()
+    {
+        if (_helperUntargetableToken != 0 && allyTargetInfo != null)
+            allyTargetInfo.ReleaseUntargetableToken(_helperUntargetableToken);
+
+        if (_helperInvincibilityToken != 0 && allyHealthSystem != null)
+            allyHealthSystem.ReleaseInvincibilityToken(_helperInvincibilityToken);
+
+        _helperUntargetableToken = 0;
+        _helperInvincibilityToken = 0;
+        _helperProtectionApplied = false;
+
+        RestoreCollisionMask();
+    }
+
     private bool _excludeCaptured;
     private LayerMask _defaultExcludeLayers;
+    private LayerMask _defaultCharacterControllerExcludeLayers;
 
     void ApplyTemporaryNoCollision()
     {
-        if (allyContext == null || allyContext.rb == null) return;
+        if (allyContext == null || allyContext.rb == null)
+            return;
 
         if (!_excludeCaptured)
         {
             _defaultExcludeLayers = allyContext.rb.excludeLayers;
+            _defaultCharacterControllerExcludeLayers = allyCharacterController != null
+                ? allyCharacterController.excludeLayers
+                : allyContext.cc != null
+                    ? allyContext.cc.excludeLayers
+                    : 0;
             _excludeCaptured = true;
         }
 
         allyContext.rb.excludeLayers = Physics.AllLayers;
+
+        if (allyCharacterController != null)
+            allyCharacterController.excludeLayers = Physics.AllLayers;
+        else if (allyContext.cc != null)
+            allyContext.cc.excludeLayers = Physics.AllLayers;
     }
 
     void RestoreCollisionMask()
     {
-        if (allyContext == null || allyContext.rb == null) return;
-        if (!_excludeCaptured) return;
+        if (allyContext == null || allyContext.rb == null)
+            return;
+
+        if (!_excludeCaptured)
+            return;
 
         allyContext.rb.excludeLayers = _defaultExcludeLayers;
+
+        if (allyCharacterController != null)
+            allyCharacterController.excludeLayers = _defaultCharacterControllerExcludeLayers;
+        else if (allyContext.cc != null)
+            allyContext.cc.excludeLayers = _defaultCharacterControllerExcludeLayers;
+
         _excludeCaptured = false;
     }
 }

@@ -52,8 +52,6 @@ public sealed partial class CharacterAnimBrain
         public readonly bool WindowExpired;
         public readonly float ChainWindowStart;
         public readonly float ChainWindowEnd;
-        public readonly float HitWindowStart;
-        public readonly float HitWindowEnd;
         public readonly float NormalizedTime;
 
         public DebugMeleeSnapshot(
@@ -67,8 +65,6 @@ public sealed partial class CharacterAnimBrain
             bool windowExpired,
             float chainWindowStart,
             float chainWindowEnd,
-            float hitWindowStart,
-            float hitWindowEnd,
             float normalizedTime)
         {
             IsActive = isActive;
@@ -81,8 +77,6 @@ public sealed partial class CharacterAnimBrain
             WindowExpired = windowExpired;
             ChainWindowStart = chainWindowStart;
             ChainWindowEnd = chainWindowEnd;
-            HitWindowStart = hitWindowStart;
-            HitWindowEnd = hitWindowEnd;
             NormalizedTime = normalizedTime;
         }
     }
@@ -161,7 +155,6 @@ public sealed partial class CharacterAnimBrain
         return
             $"Combo={melee.ComboName}, Step={melee.StepIndex}, Clip={melee.ClipName}, " +
             $"StateN={melee.NormalizedTime:0.00}, Buffer={melee.BufferedPresses}, " +
-            $"Hit=[{melee.HitWindowStart:0.00}-{melee.HitWindowEnd:0.00}], " +
             $"Chain=[{melee.ChainWindowStart:0.00}-{melee.ChainWindowEnd:0.00}], " +
             $"Open={melee.ChainWindowOpen}, PressedInWindow={melee.PressedInWindow}, Expired={melee.WindowExpired}";
     }
@@ -209,8 +202,6 @@ public sealed partial class CharacterAnimBrain
             meleeCombo != null && meleeCombo.DebugWindowExpired,
             meleeCombo != null ? meleeCombo.DebugChainWindowStart : 0f,
             meleeCombo != null ? meleeCombo.DebugChainWindowEnd : 0f,
-            currentStep.hitWindowN.x,
-            currentStep.hitWindowN.y,
             meleeCombo != null && meleeCombo.DebugState != null ? meleeCombo.DebugState.NormalizedTime : 0f);
     }
 

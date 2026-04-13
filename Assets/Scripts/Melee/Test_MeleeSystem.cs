@@ -51,6 +51,20 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
         return ((1 << other.gameObject.layer) & targetMask.value) != 0;
     }
 
+    public bool IsHitboxCollider(Collider other)
+    {
+        return other && (other == hitboxR || other == hitboxL);
+    }
+
+    public static bool IsCombatOnlyHitbox(Collider other)
+    {
+        if (!other || !other.isTrigger)
+            return false;
+
+        var trigger = other.GetComponentInParent<MeleeHitboxTrigger>();
+        return trigger != null && trigger.IsHitboxCollider(other);
+    }
+
     private void OnTriggerEnter(Collider other) => NotifyContact(other);
     private void OnTriggerStay(Collider other)  => NotifyContact(other);
 

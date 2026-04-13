@@ -387,9 +387,7 @@ public sealed class CharacterAnimBrainDebug : MonoBehaviour
 
         if (melee.IsActive)
         {
-            summaryBuilder.Append("Melee Windows: Hit=[")
-                .Append(melee.HitWindowStart.ToString("0.00")).Append('-').Append(melee.HitWindowEnd.ToString("0.00"))
-                .Append("] | Chain=[")
+            summaryBuilder.Append("Melee Windows: Chain=[")
                 .Append(melee.ChainWindowStart.ToString("0.00")).Append('-').Append(melee.ChainWindowEnd.ToString("0.00"))
                 .Append("] | Open=").Append(melee.ChainWindowOpen)
                 .Append(" | Pressed=").Append(melee.PressedInWindow)
@@ -425,6 +423,7 @@ public sealed class CharacterAnimBrainDebug : MonoBehaviour
         AddProfileIssue(profileBuilder, profile.stune == null || !profile.stune.IsValid, "Stun clip missing or invalid.");
         AddProfileIssue(profileBuilder, profile.root == null || !profile.root.IsValid, "Root clip missing or invalid.");
         AddProfileIssue(profileBuilder, profile.freez == null || !profile.freez.IsValid, "Freeze clip missing or invalid.");
+        AddProfileIssue(profileBuilder, profile.knockback == null || !profile.knockback.IsValid, "Knockback clip missing or invalid.");
         AddProfileIssue(profileBuilder, profile.utilityWarpOutClip == null || !profile.utilityWarpOutClip.IsValid, "Utility warp-out clip missing or invalid.");
         AddProfileIssue(profileBuilder, profile.utilityWarpInClip == null || !profile.utilityWarpInClip.IsValid, "Utility warp-in clip missing or invalid.");
 
@@ -480,6 +479,8 @@ public sealed class CharacterAnimBrainDebug : MonoBehaviour
             buffer.Add("skill active");
         if (stateHub.MoveSM != null && stateHub.MoveSM.CurrentId == MoveStateId.Dash)
             buffer.Add("move=dash");
+        if (stateHub.MoveSM != null && stateHub.MoveSM.CurrentId == MoveStateId.Knockback)
+            buffer.Add("move=knockback");
         if (stateHub.UISM != null && stateHub.UISM.CurrentId == UIStateId.Inventory)
             buffer.Add("ui=inventory");
         if (stateHub.UISM != null && stateHub.UISM.CurrentId == UIStateId.Pause)
@@ -515,6 +516,8 @@ public sealed class CharacterAnimBrainDebug : MonoBehaviour
             buffer.Add("weapon=melee");
         if (stateHub.MoveSM != null && stateHub.MoveSM.CurrentId == MoveStateId.Dash)
             buffer.Add("move=dash");
+        if (stateHub.MoveSM != null && stateHub.MoveSM.CurrentId == MoveStateId.Knockback)
+            buffer.Add("move=knockback");
         if (stateHub.MoveSM != null && stateHub.MoveSM.CurrentId == MoveStateId.Stunned)
             buffer.Add("move=stunned");
 
@@ -542,6 +545,8 @@ public sealed class CharacterAnimBrainDebug : MonoBehaviour
             buffer.Add("ui=pause");
         if (stateHub.MoveSM != null && stateHub.MoveSM.CurrentId == MoveStateId.Dash)
             buffer.Add("move=dash");
+        if (stateHub.MoveSM != null && stateHub.MoveSM.CurrentId == MoveStateId.Knockback)
+            buffer.Add("move=knockback");
         if (stateHub.WeaponSM != null && stateHub.WeaponSM.CurrentId == WeaponStateId.Melee)
             buffer.Add("weapon=melee");
 
@@ -569,6 +574,8 @@ public sealed class CharacterAnimBrainDebug : MonoBehaviour
             buffer.Add("ui=pause");
         if (stateHub.MoveSM != null && stateHub.MoveSM.CurrentId == MoveStateId.Dash)
             buffer.Add("move=dash");
+        if (stateHub.MoveSM != null && stateHub.MoveSM.CurrentId == MoveStateId.Knockback)
+            buffer.Add("move=knockback");
         if (stateHub.MoveSM != null && stateHub.MoveSM.CurrentId == MoveStateId.Stunned)
             buffer.Add("move=stunned");
         if (!HasAnyValidMeleeCombo())

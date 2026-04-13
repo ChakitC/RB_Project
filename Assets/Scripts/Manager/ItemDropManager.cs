@@ -1,11 +1,20 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class ItemDropManager : MonoBehaviour
 {
     public static ItemDropManager Instance { get; private set; }
 
+    [Header("Pickup Shell By Rarity")]
+    [FormerlySerializedAs("defaultPickupPrefab")]
+    [SerializeField] private GameObject commonPickupPrefab;
+    [SerializeField] private GameObject rarePickupPrefab;
+    [SerializeField] private GameObject epicPickupPrefab;
+
     [Header("Weapon Instance")]
     [SerializeField] private WeaponAffixDatabase weaponAffixDatabase;
+
+    GameObject runtimePickupTemplate;
 
     void Awake()
     {
@@ -20,6 +29,11 @@ public class ItemDropManager : MonoBehaviour
 
     public void DropItem(ItemDefinition item, int amount, Vector3 position)
     {
+        DropItem(item, amount, position, WeaponRarity.Common);
+    }
+
+    public void DropItem(ItemDefinition item, int amount, Vector3 position, WeaponRarity rarity)
+    {
         if (item == null)
         {
             Debug.LogWarning("DropItem: item is null");
@@ -32,18 +46,19 @@ public class ItemDropManager : MonoBehaviour
             return;
         }
 
-        if (!TryGetPickupTemplate(item.pickupPrefab, nameof(DropItem), out _))
+        GameObject pickupPrefab = ResolvePickupPrefab(item, rarity, nameof(DropItem));
+        if (pickupPrefab == null)
             return;
 
         if (item is GunConfig)
         {
             for (int i = 0; i < amount; i++)
-                SpawnPickup(item.pickupPrefab, item, 1, position, WeaponRarity.Common);
+                SpawnPickup(pickupPrefab, item, 1, position, rarity);
 
             return;
         }
 
-        SpawnPickup(item.pickupPrefab, item, amount, position, WeaponRarity.Common);
+        SpawnPickup(pickupPrefab, item, amount, position, rarity);
     }
 
     public void DropPickup(GameObject pickupPrefab, Vector3 position, WeaponRarity rarity)
@@ -98,13 +113,74 @@ public class ItemDropManager : MonoBehaviour
         return true;
     }
 
+    GameObject ResolvePickupPrefab(ItemDefinition item, WeaponRarity rarity, string caller)
+    {
+        if (item == null)
+            return null;
+
+        GameObject pickupPrefab = item.pickupPrefab != null
+            ? item.pickupPrefab
+            : ResolveDefaultPickupPrefab(rarity);
+
+        if (!TryGetPickupTemplate(pickupPrefab, caller, out _))
+            return null;
+
+        return pickupPrefab;
+    }
+
+    GameObject ResolveDefaultPickupPrefab(WeaponRarity rarity)
+    {
+        GameObject pickupPrefab = rarity switch
+        {
+            WeaponRarity.Epic => epicPickupPrefab != null ? epicPickupPrefab : (rarePickupPrefab != null ? rarePickupPrefab : commonPickupPrefab),
+            WeaponRarity.Rare => rarePickupPrefab != null ? rarePickupPrefab : commonPickupPrefab,
+            _ => commonPickupPrefab
+        };
+
+        return pickupPrefab != null ? pickupPrefab : GetOrCreateRuntimePickupTemplate();
+    }
+
+    GameObject GetOrCreateRuntimePickupTemplate()
+    {
+        if (runtimePickupTemplate != null)
+            return runtimePickupTemplate;
+
+        runtimePickupTemplate = new GameObject("RuntimeItemPickupTemplate");
+        runtimePickupTemplate.hideFlags = HideFlags.HideAndDontSave;
+        runtimePickupTemplate.SetActive(false);
+
+        var collider = runtimePickupTemplate.AddComponent<SphereCollider>();
+        collider.isTrigger = true;
+        collider.radius = 1f;
+
+        var rigidbody = runtimePickupTemplate.AddComponent<Rigidbody>();
+        rigidbody.isKinematic = true;
+        rigidbody.useGravity = false;
+        rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+
+        var visualRoot = new GameObject("VisualRoot");
+        visualRoot.transform.SetParent(runtimePickupTemplate.transform, false);
+
+        runtimePickupTemplate.AddComponent<ItemPickup>();
+        runtimePickupTemplate.AddComponent<ItemPickupVisualPresenter>();
+        runtimePickupTemplate.AddComponent<PickupVisualMotion>();
+
+        return runtimePickupTemplate;
+    }
+
     void SpawnPickup(GameObject pickupPrefab, ItemDefinition item, int amount, Vector3 position, WeaponRarity rarity)
     {
         var pickupObject = Instantiate(pickupPrefab, position, Quaternion.identity);
         var pickup = pickupObject.GetComponent<ItemPickup>();
 
         if (!ConfigurePickup(pickup, item, amount, rarity))
+        {
             Destroy(pickupObject);
+            return;
+        }
+
+        if (!pickupObject.activeSelf)
+            pickupObject.SetActive(true);
     }
 
     bool ConfigurePickup(ItemPickup pickup, ItemDefinition item, int amount, WeaponRarity rarity)
@@ -112,16 +188,12 @@ public class ItemDropManager : MonoBehaviour
         if (pickup == null || item == null || amount <= 0)
             return false;
 
-        pickup.SetWeaponInstance(null);
-
-        pickup.item = item;
-        pickup.amount = amount;
+        WeaponInstanceData weaponInstance = null;
 
         if (item is GunConfig gun)
-        {
-            var weaponInstance = WeaponInstanceFactory.CreateInstance(gun, rarity, weaponAffixDatabase);
-            pickup.SetWeaponInstance(weaponInstance);
-        }
+            weaponInstance = WeaponInstanceFactory.CreateInstance(gun, rarity, weaponAffixDatabase);
+
+        pickup.Initialize(item, amount, weaponInstance);
 
         return true;
     }

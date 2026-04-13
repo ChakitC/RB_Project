@@ -201,7 +201,7 @@ Material:
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OffsetShadowDistance: 15
-    - _OutlineWidth: 0.1
+    - _OutlineWidth: 0
     - _OverrideLightColorIntensityToggle: 0
     - _OverrideLightDirToggle: 0
     - _OverrideZTest: 0
@@ -243,7 +243,7 @@ Material:
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: 26.579325, g: 0.73098594, b: -8.635351, a: 0}
+    - _CharacterCenterWS: {r: 0, g: 0.186, b: 0, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
@@ -254,8 +254,8 @@ Material:
     - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}
     - _HairLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _HairUVCtrl: {r: 0, g: 0, b: 1, a: 0}
-    - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
-    - _OutlineDistancFade: {r: -25, g: 50, b: 0, a: 0}
+    - _OutlineColor: {r: 0, g: 0, b: 0, a: 0}
+    - _OutlineDistancFade: {r: 50, g: 50, b: 0, a: 0}
     - _OverrideGIColor: {r: 0, g: 0, b: 0, a: 1}
     - _ReceivedShadowColor: {r: 0.8, g: 0.8, b: 0.8, a: 1}
     - _RimLightColor: {r: 1, g: 1, b: 1, a: 1}

@@ -163,6 +163,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a298b54dffa80f14b9a6eab42ee539f1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  commonPickupPrefab: {fileID: 1890165030144149259, guid: 13185ed7fb629844aa3e88ac36f06df7, type: 3}
+  rarePickupPrefab: {fileID: 2790711977759852646, guid: 3e01af9a7a01b8349b6fbf898e2f757d, type: 3}
+  epicPickupPrefab: {fileID: 3412904867508883357, guid: 7c04a362ba3e35642b6e54aebfe564fb, type: 3}
   weaponAffixDatabase: {fileID: 11400000, guid: d951cbf91c99476428d7c7928e413832, type: 2}
 --- !u!1 &368537843
 GameObject:

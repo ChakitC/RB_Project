@@ -13,5 +13,8 @@ MonoBehaviour:
   m_Name: Test.Drop Table Comon
   m_EditorClassIdentifier: 
   entries:
-  - itemPrefab: {fileID: 3238729659427303790, guid: e125f4ff8fe6ebe4b80f97380dc5510f, type: 3}
+  - contentType: 0
+    item: {fileID: 11400000, guid: 2835846abd2c7a94eadc3f9065613e14, type: 2}
+    gunTable: {fileID: 0}
+    amount: 1
     weight: 1

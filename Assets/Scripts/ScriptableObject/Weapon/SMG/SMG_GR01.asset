@@ -15,11 +15,15 @@ MonoBehaviour:
   itemId: SMG_GR01
   displayName: SMG_GR01
   description: "SMG \u0E02\u0E2D\u0E07 GR\n"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 72e7306472887494c9e7dc530e9d5fcf, type: 3}
+  pickupVisualPrefab: {fileID: 3491401369918143333, guid: ac96f38a10dcca647b07513064f22f1b, type: 3}
+  pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
+  pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
+  pickupVisualScale: {x: 2.5, y: 2.5, z: 2.5}
   itemType: 1
   stackable: 0
   maxStack: 1
-  pickupPrefab: {fileID: 3709054158771440009, guid: 1a9e6c9ce148282419ade179f9adc827, type: 3}
+  pickupPrefab: {fileID: 0}
   BulletPrefab: {fileID: 1401322386234506, guid: 2e7cf060ea43be14986bea7326d77e1c, type: 3}
   WeaponPrefab: {fileID: 3491401369918143333, guid: ac96f38a10dcca647b07513064f22f1b, type: 3}
   fireCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}

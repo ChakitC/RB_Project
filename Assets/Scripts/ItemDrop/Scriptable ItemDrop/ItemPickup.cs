@@ -5,8 +5,31 @@ public class ItemPickup : MonoBehaviour
     public ItemDefinition item;
     public int amount = 1;
     [SerializeField] private WeaponInstanceData weaponInstance;
+    [SerializeField] private ItemPickupVisualPresenter visualPresenter;
 
     public WeaponInstanceData WeaponInstance => weaponInstance;
+
+    void Reset()
+    {
+        if (visualPresenter == null)
+            TryGetComponent(out visualPresenter);
+    }
+
+    void Awake()
+    {
+        if (visualPresenter == null)
+            TryGetComponent(out visualPresenter);
+
+        RefreshVisual();
+    }
+
+    public void Initialize(ItemDefinition itemDefinition, int pickupAmount, WeaponInstanceData instance = null)
+    {
+        item = itemDefinition;
+        amount = Mathf.Max(1, pickupAmount);
+        SetWeaponInstance(instance);
+        RefreshVisual();
+    }
 
     public void SetWeaponInstance(WeaponInstanceData instance)
     {
@@ -33,5 +56,13 @@ public class ItemPickup : MonoBehaviour
         {
             Debug.Log("Cannot pick up item, inventory full.");
         }
+    }
+
+    void RefreshVisual()
+    {
+        if (visualPresenter == null)
+            return;
+
+        visualPresenter.Present(item);
     }
 }

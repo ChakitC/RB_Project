@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e7be07086842a54aa7cfb6ea9b06bb8, type: 3}
   m_Name: Test.Enemy Drop Profile
   m_EditorClassIdentifier: 
-  dropChance: 0.5
+  dropChance: 1
   rarityTable: {fileID: 11400000, guid: f53121a9a1e95b644828f84e2c8a2ce7, type: 2}
   commonPool: {fileID: 11400000, guid: 1af82bfc0aece9f49aa1221f46a14c85, type: 2}
   rarePool: {fileID: 11400000, guid: fe80b3c558d76e74c8002d687e52a712, type: 2}

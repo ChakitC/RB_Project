@@ -77,4 +77,12 @@ public class GunConfig : ItemDefinition
 
     [ShowIf(nameof(IsBurst))] [Min(0f)]
     public float burstInterval = 0.08f;
+
+    public override GameObject ResolvePickupVisualPrefab()
+    {
+        if (pickupVisualPrefab != null)
+            return pickupVisualPrefab;
+
+        return WeaponPrefab;
+    }
 }

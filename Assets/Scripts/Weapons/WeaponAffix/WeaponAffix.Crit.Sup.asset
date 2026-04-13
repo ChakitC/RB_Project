@@ -18,7 +18,7 @@ MonoBehaviour:
   slot: 2
   behaviorType: 1
   weight: 1
-  allowedWeaponTypes: 04000000
+  allowedWeaponTypes: 0400000001000000020000000000000003000000040000000500000006000000
   minRollValue: 0
   maxRollValue: 1
   statType: 9

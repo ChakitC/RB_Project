@@ -10,43 +10,47 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4eeda43b528416d4e8d8f8353d25da93, type: 3}
-  m_Name: Rifle_Aries
+  m_Name: SMG_RB01
   m_EditorClassIdentifier: 
-  itemId: AiresGUN
-  displayName: AiresGUN
-  description: AiresGUN
-  icon: {fileID: 0}
+  itemId: SMG_RB01
+  displayName: RomaGun
+  description: RomaGun
+  icon: {fileID: 21300000, guid: ff34cdb17c26e29478ae864a4056ad8c, type: 3}
+  pickupVisualPrefab: {fileID: 8248849999540993267, guid: 80bcab744c838fc4eb5e48346757b847, type: 3}
+  pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
+  pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
+  pickupVisualScale: {x: 1, y: 1, z: 1}
   itemType: 1
   stackable: 0
   maxStack: 1
   pickupPrefab: {fileID: 3709054158771440009, guid: 1a9e6c9ce148282419ade179f9adc827, type: 3}
-  BulletPrefab: {fileID: 1661335766552818198, guid: c75d1af27a531f544894b89177b365a2, type: 3}
-  WeaponPrefab: {fileID: 6124780253990639866, guid: 8858a72d851712d4e95c8334aff953f0, type: 3}
+  BulletPrefab: {fileID: 7234640618046847812, guid: de907b0f2086f5a49b659333a92a81d8, type: 3}
+  WeaponPrefab: {fileID: 8248849999540993267, guid: 80bcab744c838fc4eb5e48346757b847, type: 3}
   fireCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
   hitCue: {fileID: 11400000, guid: f553b85156097ad4091b995baff05cb9, type: 2}
   emptyCue: {fileID: 11400000, guid: 86252ae28322830499f1116974f2ea2a, type: 2}
   reloadCue: {fileID: 11400000, guid: b26324c5bf932c64e97ceb5e5c0423b2, type: 2}
-  equipCue: {fileID: 11400000, guid: 86252ae28322830499f1116974f2ea2a, type: 2}
-  WeaponType: 3
+  equipCue: {fileID: 11400000, guid: cef935508e94a2a47a1fee44288b94b9, type: 2}
+  WeaponType: 4
   firingModes: 0
   damage: 10
   fireRate: 0.1
   magazine: 30
   maxMagazine: 30
-  critRate: 100
-  critMultiplier: 1.2
+  critRate: 10
+  critMultiplier: 1.1
   stability: 0
   BulletSpeed: 30
-  autoloader: 0
+  autoloader: 1
   magazineReload: 1
-  reloadTime: 1
+  reloadTime: 1.6
   reloadPerBullet: 0
   startInsertDelay: 0
   perBulletInsertTime: 0
   endInsertDelay: 0
   shootInterruptsReload: 0
-  baseSwaySpeed: 20
-  baseMaxSwayAngle: 5
+  baseSwaySpeed: 15
+  baseMaxSwayAngle: 15
   baseReturnSpeed: 1
-  burstCount: 0
-  burstInterval: 0
+  burstCount: 3
+  burstInterval: 0.1

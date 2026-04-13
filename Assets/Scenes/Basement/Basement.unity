@@ -10310,7 +10310,7 @@ MonoBehaviour:
   slotCount: 5
   slots: []
   itemDatabase: {fileID: 11400000, guid: 75de2aa1ba9d794408c0f15d3732ddcf, type: 2}
-  weaponDatabase: {fileID: 0}
+  weaponDatabase: {fileID: 11400000, guid: 20f7356349b6343448b194bf2e9ed2c8, type: 2}
   ctx: {fileID: 0}
   weaponSystem: {fileID: 0}
   gold: 0

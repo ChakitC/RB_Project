@@ -34,9 +34,8 @@ Material:
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2000
-  stringTagMap:
-    RenderType: Opaque
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
   disabledShaderPasses:
   - MOTIONVECTORS
   m_LockedProperties: 
@@ -199,7 +198,7 @@ Material:
     - _IsUsingRampOcclusionTexture: 0
     - _MatCapReflectionStrength: 1
     - _MatCapRollStabilize: 1
-    - _MaterialID: 5
+    - _MaterialID: 1
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OffsetShadowDistance: 15
@@ -245,14 +244,14 @@ Material:
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: 12.769528, g: 0.000099897385, b: 3.0500288, a: 0}
+    - _CharacterCenterWS: {r: 2.368324, g: 0.529, b: -4.190362, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FaceFrontDirection: {r: 0.029860664, g: 0, b: -0.99955416, a: 0}
-    - _FaceRightDirection: {r: -0.99955416, g: 0, b: -0.029860664, a: 0}
+    - _FaceFrontDirection: {r: 0, g: 0, b: 1, a: 0}
+    - _FaceRightDirection: {r: 1, g: 0, b: 0, a: 0}
     - _FaceUVCtrl: {r: 0, g: 1, b: 0, a: 0}
-    - _FakeLightColor: {r: 1, g: 1, b: 1, a: 0}
+    - _FakeLightColor: {r: 0, g: 0, b: 0, a: 0}
     - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}
     - _HairLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _HairUVCtrl: {r: 0, g: 0, b: 1, a: 0}

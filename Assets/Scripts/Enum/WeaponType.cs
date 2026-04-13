@@ -5,6 +5,7 @@ public enum WeaponType
     Pistol,
     Rifle,
     Smg,
+    Hmg,
     Melee
 }
 

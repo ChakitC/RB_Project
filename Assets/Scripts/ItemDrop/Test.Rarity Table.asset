@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   entries:
   - rarity: 2
-    weight: 0.1
+    weight: 1
   - rarity: 1
     weight: 0.15
   - rarity: 0

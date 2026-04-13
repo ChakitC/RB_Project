@@ -15,7 +15,12 @@ MonoBehaviour:
   itemId: goldItemId
   displayName: Gold
   description: Gold
+  icon: {fileID: 0}
+  pickupVisualPrefab: {fileID: 3084511716524425949, guid: 89179953ab4a23c4a878a417a5afb74d, type: 3}
+  pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
+  pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
+  pickupVisualScale: {x: 1, y: 1, z: 1}
   itemType: 3
   stackable: 1
   maxStack: 99999
-  pickupPrefab: {fileID: 3238729659427303790, guid: e125f4ff8fe6ebe4b80f97380dc5510f, type: 3}
+  pickupPrefab: {fileID: 0}

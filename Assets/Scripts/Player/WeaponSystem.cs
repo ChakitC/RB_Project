@@ -115,6 +115,9 @@ public class WeaponSystem : MonoBehaviour
         currentWeapon = weapon;
         currentWeaponInstance = instance;
 
+        if (ctx != null)
+            ctx.currentWeapon = currentWeapon;
+
         if (!currentWeapon)
             return;
 
@@ -147,9 +150,32 @@ public class WeaponSystem : MonoBehaviour
 
         affixRuntimeController?.NotifyWeaponEquipped();
         statsHub?.MarkDirty();
+        RefreshWeaponVisual();
 
         if (currentWeapon != null && currentWeapon != previousWeapon)
             PlayWeaponCue(currentWeapon.equipCue, true);
+    }
+
+    void RefreshWeaponVisual()
+    {
+        PlayerVisual visual = null;
+
+        if (ctx != null)
+        {
+            visual = ctx.Visual;
+            if (!visual)
+            {
+                visual = GetComponent<PlayerVisual>();
+                if (visual != null)
+                    ctx.Visual = visual;
+            }
+        }
+        else
+        {
+            visual = GetComponent<PlayerVisual>();
+        }
+
+        visual?.BuildModelFromWeaponDef();
     }
 
     void OnDisable()

@@ -12,19 +12,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee0d6ef073118da4dbabdd47dabdedc7, type: 3}
   m_Name: Mons_GR01_MaleData
   m_EditorClassIdentifier: 
+  icon: {fileID: 0}
   characterId: GR_NM01
   characterName: GRNM01
-  icon: {fileID: 0}
   CharacterPrefab: {fileID: 6565795838908271222, guid: 33c0e4aa99816184c8173146dd7f8928, type: 3}
   CharacterPrefabBasement: {fileID: 0}
-  characterAvatar: {fileID: 0}
-  controller: {fileID: 0}
+  characterAvatar: {fileID: 9000000, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}
+  controller: {fileID: 9100000, guid: 5bff3db2195f8944e8403ede2c0ccb2c, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
+  weaponHandMode: 0
+  chainAttackSkill: {fileID: 0}
   maxHP: 1000
   maxStamina: 80
   Damage: 10
-  critMultiplier: 5
   armor: 1
+  critMultiplier: 5
   critRate: 1
   Enagy: 100
   speed: 7

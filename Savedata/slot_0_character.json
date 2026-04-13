@@ -33,8 +33,8 @@
         {
             "characterId": "ID.Feno",
             "progress": {
-                "level": 26,
-                "xp": 2549,
+                "level": 27,
+                "xp": 974,
                 "skillPoints": 21,
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": []
@@ -77,6 +77,16 @@
                 "xp": 225,
                 "skillPoints": 9,
                 "passiveProgressInitialized": true,
+                "unlockedPassiveNodeIds": []
+            }
+        },
+        {
+            "characterId": "GR_NM01",
+            "progress": {
+                "level": 17,
+                "xp": 100,
+                "skillPoints": 0,
+                "passiveProgressInitialized": false,
                 "unlockedPassiveNodeIds": []
             }
         }

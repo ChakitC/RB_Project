@@ -48,6 +48,10 @@ MonoBehaviour:
   actorRole: 3
   manager: {fileID: 8290480118281266524}
   actorContext: {fileID: 3399986300839439775}
+  actorHealthSystem: {fileID: 0}
+  actorTargetInfo: {fileID: 0}
+  actorRigidbody: {fileID: 0}
+  actorCharacterController: {fileID: 0}
   behaviorTree: {fileID: 3657691083242158146}
   agent: {fileID: 1199288939690266888}
   animBrain: {fileID: 534760354381783209}
@@ -56,6 +60,9 @@ MonoBehaviour:
   actorFader: {fileID: 509266328691558363}
   componentsToDisableDuringSequence: []
   autoDisablePlayerInputAndMovement: 1
+  makeAllyInvincibleDuringSequence: 1
+  makeAllyUntargetableDuringSequence: 1
+  ignoreCollisionDuringSequence: 1
   defaultChainSkill: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
   useRuntimeChainSkillOverride: 0
   runtimeChainSkill: {fileID: 0}
@@ -465,6 +472,13 @@ MonoBehaviour:
   playerContext: {fileID: 8969286749348563509}
   fieldAllyManager: {fileID: 8290480118281266524}
   allyHelperManager: {fileID: 8327149583125327930}
+  protectPlayerDuringSequence: 1
+  makePlayerInvincibleDuringSequence: 1
+  makePlayerUntargetableDuringSequence: 1
+  ignorePlayerCollisionDuringSequence: 1
+  playerProtectionExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
   logCoordinator: 0
 --- !u!114 &3859804349889866096
 MonoBehaviour:
@@ -481,6 +495,10 @@ MonoBehaviour:
   actorRole: 4
   manager: {fileID: 8290480118281266524}
   actorContext: {fileID: 8969286749348563509}
+  actorHealthSystem: {fileID: 0}
+  actorTargetInfo: {fileID: 0}
+  actorRigidbody: {fileID: 0}
+  actorCharacterController: {fileID: 0}
   behaviorTree: {fileID: 0}
   agent: {fileID: 0}
   animBrain: {fileID: 8296780318636670730}
@@ -489,6 +507,9 @@ MonoBehaviour:
   actorFader: {fileID: 3470989358056052639}
   componentsToDisableDuringSequence: []
   autoDisablePlayerInputAndMovement: 1
+  makeAllyInvincibleDuringSequence: 1
+  makeAllyUntargetableDuringSequence: 1
+  ignoreCollisionDuringSequence: 1
   defaultChainSkill: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
   useRuntimeChainSkillOverride: 0
   runtimeChainSkill: {fileID: 0}
@@ -1431,6 +1452,7 @@ PrefabInstance:
     m_RemovedComponents:
     - {fileID: 2965845574154066329, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
     - {fileID: 6341241524907980381, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
+    - {fileID: 8057619239807942818, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 8786689911729570394, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
@@ -1504,6 +1526,7 @@ MonoBehaviour:
   chainAttackPoint: {fileID: 0}
   teamId: 0
   isAlive: 1
+  isTargetable: 1
 --- !u!114 &5697629425159397874
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11047,6 +11070,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6373579646711228739}
+    - targetCorrespondingSourceObject: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4097312716049130485}
+    - targetCorrespondingSourceObject: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 473783571429039025}
   m_SourcePrefab: {fileID: 100100000, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
 --- !u!95 &289345308417342858 stripped
 Animator:
@@ -11574,6 +11603,7 @@ MonoBehaviour:
   chainAttackPoint: {fileID: 0}
   teamId: 0
   isAlive: 1
+  isTargetable: 1
 --- !u!114 &7502400237253720153
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11627,6 +11657,10 @@ MonoBehaviour:
   actorRole: 1
   manager: {fileID: 8290480118281266524}
   actorContext: {fileID: 9218609711431764755}
+  actorHealthSystem: {fileID: 0}
+  actorTargetInfo: {fileID: 0}
+  actorRigidbody: {fileID: 0}
+  actorCharacterController: {fileID: 0}
   behaviorTree: {fileID: 4979017419188889128}
   agent: {fileID: 4639978486867097476}
   animBrain: {fileID: 6317389759329240613}
@@ -11635,7 +11669,10 @@ MonoBehaviour:
   actorFader: {fileID: 2757086890486563205}
   componentsToDisableDuringSequence: []
   autoDisablePlayerInputAndMovement: 1
-  defaultChainSkill: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
+  makeAllyInvincibleDuringSequence: 1
+  makeAllyUntargetableDuringSequence: 1
+  ignoreCollisionDuringSequence: 1
+  defaultChainSkill: {fileID: 11400000, guid: 67674e00df0c63a47ae012332803a083, type: 2}
   useRuntimeChainSkillOverride: 0
   runtimeChainSkill: {fileID: 0}
   overrideRuntimeChainSkillLevel: 1
@@ -11678,6 +11715,63 @@ MonoBehaviour:
   aimTargetName: Aim Target
   followLastSeenPosition: 1
   fallbackForwardDistance: 6
+--- !u!114 &4097312716049130485
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5335070992398057148}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1620072595d4cd4ebc8adbcf88ac07b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  brain: {fileID: 0}
+  ctx: {fileID: 0}
+  stateHub: {fileID: 0}
+  statusEffectController: {fileID: 0}
+  animator: {fileID: 0}
+  debugInInspector: 1
+  logTimelineToConsole: 0
+  showOnScreen: 0
+  timelineCapacity: 24
+  snapshotRefreshInterval: 0
+  screenPos: {x: 10, y: 140}
+  screenSize: {x: 720, y: 480}
+  dbgSummary: 
+  dbgProfileValidation: 
+  dbgGateReasons: 
+  dbgTimeline: 
+  dbgTimelineCount: 0
+--- !u!114 &473783571429039025
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5335070992398057148}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2046d2837bba30640a4143f89aa69be6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  stateHub: {fileID: 0}
+  healthSystem: {fileID: 0}
+  characterController: {fileID: 0}
+  navMeshAgent: {fileID: 0}
+  capsuleCollider: {fileID: 0}
+  animBrain: {fileID: 0}
+  fieldAllyMember: {fileID: 0}
+  behaviorTree: {fileID: 0}
+  collisionMask:
+    serializedVersion: 2
+    m_Bits: 65535
+  queryTriggers: 1
+  collisionPadding: 0.02
+  replaceDistanceThreshold: 0.05
+  navMeshResyncDistance: 1
 --- !u!114 &5468776065345785061 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 2197634391767229121, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
@@ -12094,6 +12188,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 2311559804654788738, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3470989358056052639}
+    - targetCorrespondingSourceObject: {fileID: 2311559804654788738, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4565134706204263277}
     - targetCorrespondingSourceObject: {fileID: 7945940771394472720, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
       insertIndex: -1
       addedObject: {fileID: 441160178599625826}
@@ -12120,9 +12217,14 @@ MonoBehaviour:
   allyHelperManager: {fileID: 8327149583125327930}
   helperDefinitions:
   - {fileID: 11400000, guid: 61266ad809f609e40ae69b87f64da449, type: 2}
-  - {fileID: 11400000, guid: ee9a73ae9a17aa24a8d64b929173f63d, type: 2}
+  - {fileID: 11400000, guid: ad6da32b25db43148aa75f021e358549, type: 2}
   attackIdLockTtlSeconds: 10
   logProcController: 0
+--- !u!143 &905334040667963870 stripped
+CharacterController:
+  m_CorrespondingSourceObject: {fileID: 7373962052237540882, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+  m_PrefabInstance: {fileID: 7693828120943624140}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1156190175231913931 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8849128236706156551, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
@@ -12170,6 +12272,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0ad50f81b1d25c441943c37a89ba23f6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &3771494033988070827 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6814788732560626279, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+  m_PrefabInstance: {fileID: 7693828120943624140}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5391293143163625294}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c4358dd7647a7f4986e6520603a0a7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!114 &5250627814986815836 stripped
@@ -12228,6 +12341,34 @@ MonoBehaviour:
   ditheringSize: 6
   useUnscaledTime: 0
   warnIfAlphaClipDisabled: 1
+--- !u!114 &4565134706204263277
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5391293143163625294}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2046d2837bba30640a4143f89aa69be6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 8969286749348563509}
+  stateHub: {fileID: 1468786386659537481}
+  healthSystem: {fileID: 3771494033988070827}
+  characterController: {fileID: 905334040667963870}
+  navMeshAgent: {fileID: 0}
+  capsuleCollider: {fileID: 0}
+  animBrain: {fileID: 8296780318636670730}
+  fieldAllyMember: {fileID: 0}
+  behaviorTree: {fileID: 0}
+  collisionMask:
+    serializedVersion: 2
+    m_Bits: 65535
+  queryTriggers: 1
+  collisionPadding: 0.02
+  replaceDistanceThreshold: 0.05
+  navMeshResyncDistance: 1
 --- !u!114 &5979998095850365912 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 4051215997299661844, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
@@ -21740,6 +21881,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
       insertIndex: -1
       addedObject: {fileID: 950408972752178807}
+    - targetCorrespondingSourceObject: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4598402679797649883}
+    - targetCorrespondingSourceObject: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2898689303477062709}
   m_SourcePrefab: {fileID: 100100000, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
 --- !u!4 &812088851720005978 stripped
 Transform:
@@ -22300,6 +22447,7 @@ MonoBehaviour:
   chainAttackPoint: {fileID: 0}
   teamId: 0
   isAlive: 1
+  isTargetable: 1
 --- !u!114 &1631076737824305463
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -22353,6 +22501,10 @@ MonoBehaviour:
   actorRole: 2
   manager: {fileID: 8290480118281266524}
   actorContext: {fileID: 6395661053744762423}
+  actorHealthSystem: {fileID: 0}
+  actorTargetInfo: {fileID: 0}
+  actorRigidbody: {fileID: 0}
+  actorCharacterController: {fileID: 0}
   behaviorTree: {fileID: 9109789593114018486}
   agent: {fileID: 7442872104270197408}
   animBrain: {fileID: 8107895383878271745}
@@ -22361,6 +22513,9 @@ MonoBehaviour:
   actorFader: {fileID: 5974485187128520276}
   componentsToDisableDuringSequence: []
   autoDisablePlayerInputAndMovement: 1
+  makeAllyInvincibleDuringSequence: 1
+  makeAllyUntargetableDuringSequence: 1
+  ignoreCollisionDuringSequence: 1
   defaultChainSkill: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
   useRuntimeChainSkillOverride: 0
   runtimeChainSkill: {fileID: 0}
@@ -22404,6 +22559,63 @@ MonoBehaviour:
   aimTargetName: Aim Target
   followLastSeenPosition: 1
   fallbackForwardDistance: 6
+--- !u!114 &4598402679797649883
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7865287890509167512}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1620072595d4cd4ebc8adbcf88ac07b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  brain: {fileID: 0}
+  ctx: {fileID: 0}
+  stateHub: {fileID: 0}
+  statusEffectController: {fileID: 0}
+  animator: {fileID: 0}
+  debugInInspector: 1
+  logTimelineToConsole: 0
+  showOnScreen: 0
+  timelineCapacity: 24
+  snapshotRefreshInterval: 0
+  screenPos: {x: 10, y: 140}
+  screenSize: {x: 720, y: 480}
+  dbgSummary: 
+  dbgProfileValidation: 
+  dbgGateReasons: 
+  dbgTimeline: 
+  dbgTimelineCount: 0
+--- !u!114 &2898689303477062709
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7865287890509167512}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2046d2837bba30640a4143f89aa69be6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  stateHub: {fileID: 0}
+  healthSystem: {fileID: 0}
+  characterController: {fileID: 0}
+  navMeshAgent: {fileID: 0}
+  capsuleCollider: {fileID: 0}
+  animBrain: {fileID: 0}
+  fieldAllyMember: {fileID: 0}
+  behaviorTree: {fileID: 0}
+  collisionMask:
+    serializedVersion: 2
+    m_Bits: 65535
+  queryTriggers: 1
+  collisionPadding: 0.02
+  replaceDistanceThreshold: 0.05
+  navMeshResyncDistance: 1
 --- !u!114 &8107895383878271745 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 157782724691437569, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}

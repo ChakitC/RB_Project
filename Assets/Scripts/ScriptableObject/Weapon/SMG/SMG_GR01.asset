@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4eeda43b528416d4e8d8f8353d25da93, type: 3}
+  m_Name: SMG_GR01
+  m_EditorClassIdentifier: 
+  itemId: SMG_GR01
+  displayName: SMG_GR01
+  description: "SMG \u0E02\u0E2D\u0E07 GR\n"
+  icon: {fileID: 0}
+  itemType: 1
+  stackable: 0
+  maxStack: 1
+  pickupPrefab: {fileID: 3709054158771440009, guid: 1a9e6c9ce148282419ade179f9adc827, type: 3}
+  BulletPrefab: {fileID: 1401322386234506, guid: f377f4e60f0329a4aa5f0b772729a66a, type: 3}
+  WeaponPrefab: {fileID: 6124780253990639866, guid: 8858a72d851712d4e95c8334aff953f0, type: 3}
+  fireCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
+  hitCue: {fileID: 11400000, guid: f553b85156097ad4091b995baff05cb9, type: 2}
+  emptyCue: {fileID: 11400000, guid: 86252ae28322830499f1116974f2ea2a, type: 2}
+  reloadCue: {fileID: 11400000, guid: b26324c5bf932c64e97ceb5e5c0423b2, type: 2}
+  equipCue: {fileID: 11400000, guid: 86252ae28322830499f1116974f2ea2a, type: 2}
+  WeaponType: 3
+  firingModes: 0
+  damage: 10
+  fireRate: 0.1
+  magazine: 30
+  maxMagazine: 30
+  critRate: 100
+  critMultiplier: 1.2
+  stability: 0
+  BulletSpeed: 30
+  autoloader: 0
+  magazineReload: 1
+  reloadTime: 1
+  reloadPerBullet: 0
+  startInsertDelay: 0
+  perBulletInsertTime: 0
+  endInsertDelay: 0
+  shootInterruptsReload: 0
+  baseSwaySpeed: 20
+  baseMaxSwayAngle: 5
+  baseReturnSpeed: 1
+  burstCount: 0
+  burstInterval: 0

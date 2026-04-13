@@ -59,7 +59,7 @@ public class Bullet : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        if (MeleeHitboxTrigger.IsCombatOnlyHitbox(other))
+        if (MeleeController.IsCombatOnlyHitbox(other))
             return;
         // กันโดนตัวเอง
         if (shooterRoot && other.transform.root == shooterRoot) return;

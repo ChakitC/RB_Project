@@ -100,6 +100,15 @@ public sealed class MeleeController : MonoBehaviour
             stateHub.WeaponSM.TryChange(WeaponStateId.Ready);
     }
 
+    public static bool IsCombatOnlyHitbox(Collider other)
+    {
+        if (!other || !other.isTrigger)
+            return false;
+
+        var controller = other.GetComponentInParent<MeleeController>();
+        return controller != null && controller.OwnsHitboxCollider(other);
+    }
+
     void OnHitStart()
     {
         _attackWindowActive = true;
@@ -130,8 +139,6 @@ public sealed class MeleeController : MonoBehaviour
     void OnHitboxContact(Collider other)
     {
         if (!_attackWindowActive || other == null)
-            return;
-        if (hitboxTrigger != null && !hitboxTrigger.IsTargetAllowed(other))
             return;
 
         var target = other.GetComponentInParent<IDamageable>();
@@ -181,6 +188,15 @@ public sealed class MeleeController : MonoBehaviour
             _selfDamageable = GetComponent<IDamageable>();
         if (_selfDamageable == null)
             _selfDamageable = GetComponentInParent<IDamageable>();
+    }
+
+    bool OwnsHitboxCollider(Collider other)
+    {
+        if (!other)
+            return false;
+
+        ResolveRefs();
+        return hitboxTrigger != null && hitboxTrigger.IsHitboxCollider(other);
     }
 
     bool HasValidCombo(CharacterAnimBrain.MeleeType meleeType)

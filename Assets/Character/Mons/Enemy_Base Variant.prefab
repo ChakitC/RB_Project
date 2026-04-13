@@ -1,12 +1,44 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7034762023626258324
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8787272036004878735}
+  m_Layer: 9
+  m_Name: Model
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8787272036004878735
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7034762023626258324}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 9104444536470985047}
+  m_Father: {fileID: 3371990820490964090}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &3318247178357737883
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 3371990820490964090}
+    m_TransformParent: {fileID: 8787272036004878735}
     m_Modifications:
     - target: {fileID: 5788730996579750092, guid: 33c0e4aa99816184c8173146dd7f8928, type: 3}
       propertyPath: m_LocalPosition.x
@@ -26,15 +58,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5788730996579750092, guid: 33c0e4aa99816184c8173146dd7f8928, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 5788730996579750092, guid: 33c0e4aa99816184c8173146dd7f8928, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 5788730996579750092, guid: 33c0e4aa99816184c8173146dd7f8928, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 5788730996579750092, guid: 33c0e4aa99816184c8173146dd7f8928, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -852,7 +884,7 @@ PrefabInstance:
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 2238534820369317479, guid: b564562d7f55a5641a5fc807e52bbccc, type: 3}
       insertIndex: 0
-      addedObject: {fileID: 9104444536470985047}
+      addedObject: {fileID: 8787272036004878735}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 961756613642193742, guid: b564562d7f55a5641a5fc807e52bbccc, type: 3}
       insertIndex: -1
@@ -1049,8 +1081,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   aimPoint: {fileID: 0}
+  chainAttackPoint: {fileID: 0}
   teamId: 0
   isAlive: 1
+  isTargetable: 1
 --- !u!114 &7739727450382058642
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1113,6 +1147,7 @@ MonoBehaviour:
   statsHub: {fileID: 3220408457924561511}
   combatEventBus: {fileID: 4204164635873382866}
   statusEffectController: {fileID: 3819844547994870847}
+  runtimePassives: []
   extraPassives: []
   maxEventDepth: 8
   chainStateTtlSeconds: 10

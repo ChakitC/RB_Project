@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-8423271255558467588
+--- !u!114 &-5980908246012882808
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
@@ -20,7 +20,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: MAT_GRS02_Hair
+  m_Name: M_SMG_03
   m_Shader: {fileID: 4800000, guid: 55a54603fab88d940a3374f8ae9f78e8, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -42,7 +42,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: a7fc95a913def6641a48e090d4ae19b9, type: 3}
+        m_Texture: {fileID: 2800000, guid: d33bdfa8086bdcd408892269e250ce5d, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpMap:
@@ -197,11 +197,11 @@ Material:
     - _IsUsingRampOcclusionTexture: 0
     - _MatCapReflectionStrength: 1
     - _MatCapRollStabilize: 1
-    - _MaterialID: 3
+    - _MaterialID: 1
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OffsetShadowDistance: 15
-    - _OutlineWidth: 4.2
+    - _OutlineWidth: 0.1
     - _OverrideLightColorIntensityToggle: 0
     - _OverrideLightDirToggle: 0
     - _OverrideZTest: 0
@@ -220,7 +220,7 @@ Material:
     - _RimLightOverShadow: 1
     - _RimLightSmoothness: 0.2
     - _RimLightStrength: 0.35
-    - _ScaleAsScreenSpaceOutline: 1
+    - _ScaleAsScreenSpaceOutline: 0
     - _ShadowColorMode: 0
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
@@ -243,19 +243,19 @@ Material:
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: 4.867324, g: 0.000099658966, b: 2.9098196, a: 0}
+    - _CharacterCenterWS: {r: 26.579325, g: 0.73098594, b: -8.635351, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FaceFrontDirection: {r: 0.029860664, g: 0, b: -0.99955416, a: 0}
-    - _FaceRightDirection: {r: -0.99955416, g: 0, b: -0.029860664, a: 0}
+    - _FaceFrontDirection: {r: 0, g: 0, b: 1, a: 0}
+    - _FaceRightDirection: {r: 1, g: 0, b: 0, a: 0}
     - _FaceUVCtrl: {r: 0, g: 1, b: 0, a: 0}
     - _FakeLightColor: {r: 0, g: 0, b: 0, a: 0}
     - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}
     - _HairLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _HairUVCtrl: {r: 0, g: 0, b: 1, a: 0}
-    - _OutlineColor: {r: 0, g: 0, b: 0, a: 0}
-    - _OutlineDistancFade: {r: 50, g: 50, b: 0, a: 0}
+    - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _OutlineDistancFade: {r: -25, g: 50, b: 0, a: 0}
     - _OverrideGIColor: {r: 0, g: 0, b: 0, a: 1}
     - _ReceivedShadowColor: {r: 0.8, g: 0.8, b: 0.8, a: 1}
     - _RimLightColor: {r: 1, g: 1, b: 1, a: 1}

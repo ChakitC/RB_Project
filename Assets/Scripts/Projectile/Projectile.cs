@@ -308,7 +308,7 @@ public class Projectile : MonoBehaviour
         if (_isDespawning || _requestedExpire || _requestedDespawnThisHit)
             return;
 
-        if (MeleeHitboxTrigger.IsCombatOnlyHitbox(other))
+        if (MeleeController.IsCombatOnlyHitbox(other))
             return;
         
         if (_ignoredRootIds.Contains(other.transform.root.GetInstanceID()))
@@ -450,7 +450,7 @@ public class Projectile : MonoBehaviour
         foreach (var h in hits)
         {
             if (!h) continue;
-            if (MeleeHitboxTrigger.IsCombatOnlyHitbox(h)) continue;
+            if (MeleeController.IsCombatOnlyHitbox(h)) continue;
 
             var root = h.transform.root;
             int rootId = root.GetInstanceID();

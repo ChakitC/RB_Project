@@ -5,6 +5,8 @@ public sealed class SkillCastContext
     public ISkillUser User { get; }
     public SkillGemDefinition SkillDef { get; }
     public FinalSkillStats SkillStats { get; }
+    public CharacterAnimBrain AnimBrain { get; }
+    public int RequestId { get; }
     public Transform CastOrigin { get; }
     public Transform AimTransform { get; }
     public Vector3 AimDirection { get; }
@@ -13,11 +15,18 @@ public sealed class SkillCastContext
 
     public Vector3 CastPosition => CastOrigin != null ? CastOrigin.position : Vector3.zero;
 
-    public SkillCastContext(ISkillUser user, SkillGemDefinition skillDef, FinalSkillStats skillStats)
+    public SkillCastContext(
+        ISkillUser user,
+        SkillGemDefinition skillDef,
+        FinalSkillStats skillStats,
+        CharacterAnimBrain animBrain = null,
+        int requestId = 0)
     {
         User = user;
         SkillDef = skillDef;
         SkillStats = skillStats;
+        AnimBrain = animBrain;
+        RequestId = requestId;
         CastOrigin = user != null ? user.CastOrigin : null;
         AimTransform = user != null ? user.AimTransform : null;
         AimDirection = ResolveAimDirection(user);

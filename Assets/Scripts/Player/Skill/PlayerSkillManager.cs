@@ -22,6 +22,8 @@ public class PlayerSkillManager : MonoBehaviour
         public bool released;
         public bool cancelled;
         public float castPointNormalized;
+        public bool requiresTimelineEvents;
+        public readonly List<string> timelineEventNames = new List<string>();
     }
 
     private CharacteContext ctx;
@@ -154,7 +156,13 @@ public class PlayerSkillManager : MonoBehaviour
             requestId = NextCastRequestId(),
             started = true,
             castPointNormalized = skill.def != null ? skill.def.GetCastPointNormalized() : 0.35f,
+            requiresTimelineEvents = skill.def != null &&
+                                     skill.def.payload != null &&
+                                     skill.def.payload.RequiresSkillTimelineEvents,
         };
+
+        context.timelineEventNames.Clear();
+        skill.def?.payload?.CollectTimelineEventNames(context.timelineEventNames);
 
         pendingCast = context;
         StopWeaponActivityForSkillCast();
@@ -162,10 +170,23 @@ public class PlayerSkillManager : MonoBehaviour
         // Skill identity is fixed here, but origin/aim are sampled later by SkillInstance.Cast so
         // the projectile uses the live cast socket and facing at the release frame.
         bool usingAnimationDriver = animBrain != null &&
-                                    animBrain.TryPlaySkill(context.requestId, context.skillDef, context.castPointNormalized);
+                                    animBrain.TryPlaySkill(
+                                        context.requestId,
+                                        context.skillDef,
+                                        context.castPointNormalized,
+                                        context.timelineEventNames);
 
         if (usingAnimationDriver)
             return true;
+
+        if (context.requiresTimelineEvents)
+        {
+            Debug.LogWarning(
+                $"Skill '{context.skillDef?.name ?? "<unknown>"}' requires Animancer timeline events, but no skill animation playback was available.",
+                this);
+            CancelPendingCast(PendingCastCancelReason.InvalidState, stopAnimation: false);
+            return false;
+        }
 
         return ReleasePendingCast(context.requestId);
     }
@@ -260,7 +281,7 @@ public class PlayerSkillManager : MonoBehaviour
         context.released = true;
 
         StampSharedCooldown(context.runtimeSkill, castStats);
-        context.runtimeSkill.Cast(skillUser);
+        context.runtimeSkill.Cast(skillUser, animBrain, context.requestId);
         PlayCastCue(context.runtimeSkill);
 
         pendingCast = null;

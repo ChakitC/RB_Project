@@ -56,6 +56,8 @@ public sealed partial class CharacterAnimBrain
                 runtimeEvents.Add(owner.ActiveSkillCastPointNormalized, owner.onSkillCastMomentCache);
             }
 
+            owner.BindActiveSkillTimelineEvents(runtimeEvents);
+
             var transitionOnEnd = runtimeEvents.OnEnd;
             runtimeEvents.OnEnd = transitionOnEnd == null
                 ? _onEndCache

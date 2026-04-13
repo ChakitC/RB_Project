@@ -44,6 +44,8 @@ public class EnemyHealth : HealthSystem
         
         EnemyContextCTX.dropper.DropItem();
 
+        CTX.stateHub.LifeSM.TryChange(LifeStateId.Dead);
+        
         base.Die();
     }
 

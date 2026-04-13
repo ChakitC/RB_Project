@@ -112,24 +112,29 @@ public class SkillInstance
 
     public bool CanCast(ISkillUser user) => CanCast(user, out _);
 
-    public void Cast(ISkillUser user)
+    public void Cast(ISkillUser user, CharacterAnimBrain animBrain = null, int requestId = 0)
     {
         if (!CanCast(user, out var stats))
             return;
 
-        ExecuteCast(user, stats, spendEnergy: true);
+        ExecuteCast(user, stats, spendEnergy: true, animBrain, requestId);
     }
 
-    public bool TryCastIgnoringResourceCosts(ISkillUser user)
+    public bool TryCastIgnoringResourceCosts(ISkillUser user, CharacterAnimBrain animBrain = null, int requestId = 0)
     {
         if (def == null || user == null)
             return false;
 
         var stats = GetFinalStats(user);
-        return ExecuteCast(user, stats, spendEnergy: false);
+        return ExecuteCast(user, stats, spendEnergy: false, animBrain, requestId);
     }
 
-    bool ExecuteCast(ISkillUser user, FinalSkillStats stats, bool spendEnergy)
+    bool ExecuteCast(
+        ISkillUser user,
+        FinalSkillStats stats,
+        bool spendEnergy,
+        CharacterAnimBrain animBrain = null,
+        int requestId = 0)
     {
         if (def == null || user == null || stats == null)
             return false;
@@ -145,7 +150,7 @@ public class SkillInstance
             support.OnCast(this, stats);
         }
 
-        var castContext = new SkillCastContext(user, def, stats);
+        var castContext = new SkillCastContext(user, def, stats, animBrain, requestId);
         bool executed = TryExecutePayload(castContext) || TryCastLegacyProjectile(castContext);
         _lastCastTime = Time.time;
         return executed;

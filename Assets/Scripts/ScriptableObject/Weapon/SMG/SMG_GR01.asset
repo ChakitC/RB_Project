@@ -20,8 +20,8 @@ MonoBehaviour:
   stackable: 0
   maxStack: 1
   pickupPrefab: {fileID: 3709054158771440009, guid: 1a9e6c9ce148282419ade179f9adc827, type: 3}
-  BulletPrefab: {fileID: 1401322386234506, guid: f377f4e60f0329a4aa5f0b772729a66a, type: 3}
-  WeaponPrefab: {fileID: 6124780253990639866, guid: 8858a72d851712d4e95c8334aff953f0, type: 3}
+  BulletPrefab: {fileID: 1401322386234506, guid: 2e7cf060ea43be14986bea7326d77e1c, type: 3}
+  WeaponPrefab: {fileID: 3491401369918143333, guid: ac96f38a10dcca647b07513064f22f1b, type: 3}
   fireCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
   hitCue: {fileID: 11400000, guid: f553b85156097ad4091b995baff05cb9, type: 2}
   emptyCue: {fileID: 11400000, guid: 86252ae28322830499f1116974f2ea2a, type: 2}

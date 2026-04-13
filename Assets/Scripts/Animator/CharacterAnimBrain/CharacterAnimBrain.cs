@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Animancer;
 using Animancer.FSM;
 using UnityEngine;
@@ -127,6 +128,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private float _activeSkillCastPointNormalized = 0.35f;
     private bool _activeSkillReleaseRequested;
     private bool _activeSkillReleased;
+    private readonly List<string> _activeSkillTimelineEventNames = new List<string>();
     private int _activeUtilityRequestId;
     private float _activeUtilityCastPointNormalized = 0.35f;
     private bool _activeUtilityReleaseRequested;
@@ -204,6 +206,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     public event Action<PlaybackSignal> PlaybackEvent;
     public event Action<int> SkillCastMomentReached;
     public event Action<int> SkillCastInterrupted;
+    public event Action<int, string> SkillTimelineEventRaised;
     public event Action SkillCompleted;
 
     internal bool TryGetActiveSkillNormalizedTime(int requestId, out float normalizedTime)
@@ -571,10 +574,19 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public bool TryPlaySkill(int requestId, float castPointNormalized)
     {
-        return TryPlaySkill(requestId, null, castPointNormalized);
+        return TryPlaySkill(requestId, null, castPointNormalized, null);
     }
 
     public bool TryPlaySkill(int requestId, SkillGemDefinition skillDef, float castPointNormalized)
+    {
+        return TryPlaySkill(requestId, skillDef, castPointNormalized, null);
+    }
+
+    public bool TryPlaySkill(
+        int requestId,
+        SkillGemDefinition skillDef,
+        float castPointNormalized,
+        IReadOnlyList<string> timelineEventNames)
     {
         if (IsChainPlaybackActive)
             return false;
@@ -585,7 +597,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!TryInitialize() || !HasValidSkillClip(skillDef))
             return false;
 
-        ArmSkillRequest(requestId, skillDef, castPointNormalized);
+        ArmSkillRequest(requestId, skillDef, castPointNormalized, timelineEventNames);
 
         try
         {
@@ -1180,13 +1192,54 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         }
     }
 
-    private void ArmSkillRequest(int requestId, SkillGemDefinition skillDef, float castPointNormalized)
+    internal void BindActiveSkillTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
+    {
+        if (runtimeEvents == null || _activeSkillTimelineEventNames.Count == 0)
+            return;
+
+        ClipTransition clip = ResolveSkillClip(_activeSkillDefinition);
+        string clipName = clip != null && clip.Clip != null ? clip.Clip.name : "<none>";
+
+        for (int i = 0; i < _activeSkillTimelineEventNames.Count; i++)
+        {
+            string eventName = _activeSkillTimelineEventNames[i];
+            if (string.IsNullOrWhiteSpace(eventName))
+                continue;
+
+            string capturedEventName = eventName;
+            int count = runtimeEvents.SetCallbacks(
+                capturedEventName,
+                () => RaiseSkillTimelineEvent(capturedEventName));
+
+            if (count == 0)
+            {
+                Debug.LogWarning(
+                    $"[CharacterAnimBrain] Skill clip '{clipName}' is missing timeline event '{capturedEventName}'.",
+                    this);
+            }
+        }
+    }
+
+    private void RaiseSkillTimelineEvent(string eventName)
+    {
+        if (!_activeSkillReleaseRequested || _activeSkillRequestId <= 0 || string.IsNullOrWhiteSpace(eventName))
+            return;
+
+        SkillTimelineEventRaised?.Invoke(_activeSkillRequestId, eventName);
+    }
+
+    private void ArmSkillRequest(
+        int requestId,
+        SkillGemDefinition skillDef,
+        float castPointNormalized,
+        IReadOnlyList<string> timelineEventNames)
     {
         _activeSkillDefinition = skillDef;
         _activeSkillRequestId = requestId;
         _activeSkillCastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
         _activeSkillReleaseRequested = true;
         _activeSkillReleased = false;
+        SetActiveSkillTimelineEventNames(timelineEventNames);
     }
 
     private void ArmUtilityRequest(int requestId, float castPointNormalized)
@@ -1204,6 +1257,28 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         _activeSkillCastPointNormalized = 0.35f;
         _activeSkillReleaseRequested = false;
         _activeSkillReleased = false;
+        _activeSkillTimelineEventNames.Clear();
+    }
+
+    private void SetActiveSkillTimelineEventNames(IReadOnlyList<string> timelineEventNames)
+    {
+        _activeSkillTimelineEventNames.Clear();
+
+        if (timelineEventNames == null || timelineEventNames.Count == 0)
+            return;
+
+        for (int i = 0; i < timelineEventNames.Count; i++)
+        {
+            string eventName = timelineEventNames[i];
+            if (string.IsNullOrWhiteSpace(eventName))
+                continue;
+
+            string trimmed = eventName.Trim();
+            if (_activeSkillTimelineEventNames.Contains(trimmed))
+                continue;
+
+            _activeSkillTimelineEventNames.Add(trimmed);
+        }
     }
 
     private void ClearActiveUtilityRequest()

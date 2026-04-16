@@ -1,10 +1,18 @@
 using System;
 using System.Collections.Generic;
+using Animancer;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [CreateAssetMenu(fileName = "Prefab Hitbox Skill Payload", menuName = "Game/Skill Payload/Prefab Hitbox")]
 public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
 {
+    public enum TimelineBindingMode
+    {
+        Explicit = 0,
+        Sequential = 1,
+    }
+
     public enum HitboxAnchorMode
     {
         CastOrigin = 0,
@@ -21,7 +29,13 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
     [Serializable]
     public sealed class HitboxStep
     {
-        [SerializeField] private string eventKey = "Hit01";
+        [SerializeField] private TimelineBindingMode timelineBindingMode = TimelineBindingMode.Sequential;
+        [FormerlySerializedAs("activateEvent")]
+        [SerializeField] private StringAsset activateEventOverride;
+        [FormerlySerializedAs("deactivateEvent")]
+        [SerializeField] private StringAsset deactivateEventOverride;
+        [FormerlySerializedAs("eventKey")]
+        [SerializeField, HideInInspector] private string legacyEventKey = "Hit01";
         [SerializeField] private string[] groupKeys = Array.Empty<string>();
         [SerializeField] private float damageMultiplier = 1f;
         [SerializeField] private HitPolicy hitPolicy = HitPolicy.OncePerStep;
@@ -33,7 +47,36 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         [SerializeField] private ImpactReactionKind knockbackReaction = ImpactReactionKind.MiniStun;
         [SerializeField] private bool knockbackInterruptsActions = true;
 
-        public string EventKey => eventKey != null ? eventKey.Trim() : string.Empty;
+        public TimelineBindingMode BindingMode => timelineBindingMode;
+        public bool UsesSequentialBinding => timelineBindingMode == TimelineBindingMode.Sequential;
+        public bool UsesExplicitBinding => !UsesSequentialBinding;
+        public StringAsset ActivateEventAsset => activateEventOverride;
+        public StringAsset DeactivateEventAsset => deactivateEventOverride;
+        public StringReference ActivateEventName => UsesExplicitBinding
+            ? ResolveExplicitEventName(activateEventOverride, legacyEventKey, isOn: true)
+            : null;
+        public StringReference DeactivateEventName => UsesExplicitBinding
+            ? ResolveExplicitEventName(deactivateEventOverride, legacyEventKey, isOn: false)
+            : null;
+        public string StepLabel
+        {
+            get
+            {
+                if (UsesSequentialBinding)
+                    return "Sequential";
+
+                if (activateEventOverride != null)
+                    return activateEventOverride.name;
+
+                if (deactivateEventOverride != null)
+                    return deactivateEventOverride.name;
+
+                return string.IsNullOrWhiteSpace(legacyEventKey)
+                    ? "<missing>"
+                    : legacyEventKey.Trim();
+            }
+        }
+
         public IReadOnlyList<string> GroupKeys => groupKeys ?? Array.Empty<string>();
         public float DamageMultiplier => damageMultiplier;
         public HitPolicy HitPolicy => hitPolicy;
@@ -55,6 +98,10 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
     [SerializeField] private Vector3 localEulerOffset;
     [SerializeField, Min(0.1f)] private float maxSequenceLifetime = 4f;
 
+    [Header("Timeline")]
+    [SerializeField] private StringAsset sequentialActivateEvent;
+    [SerializeField] private StringAsset sequentialDeactivateEvent;
+
     [Header("Targeting")]
     [SerializeField] private LayerMask targetMask = ~0;
     [SerializeField] private QueryTriggerInteraction queryTriggers = QueryTriggerInteraction.Collide;
@@ -73,24 +120,38 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
     public Vector3 LocalEulerOffset => localEulerOffset;
     public float MaxSequenceLifetime => Mathf.Max(0.1f, maxSequenceLifetime);
     public bool ShowDamageNumbers => showDamageNumbers;
+    public StringReference SequentialActivateEventName => sequentialActivateEvent;
+    public StringReference SequentialDeactivateEventName => sequentialDeactivateEvent;
+    public bool HasSequentialTimelineEvents =>
+        IsValidTimelineEvent(SequentialActivateEventName) &&
+        IsValidTimelineEvent(SequentialDeactivateEventName);
 
-    public override void CollectTimelineEventNames(List<string> eventNames)
+    public override void CollectTimelineEventNames(List<StringReference> eventNames)
     {
         if (eventNames == null || steps == null)
             return;
 
+        bool requiresSequentialEvents = false;
         for (int i = 0; i < steps.Count; i++)
         {
             HitboxStep step = steps[i];
             if (step == null)
                 continue;
 
-            string eventKey = step.EventKey;
-            if (!IsValidEventKey(eventKey))
+            if (step.UsesSequentialBinding)
+            {
+                requiresSequentialEvents = true;
                 continue;
+            }
 
-            AddUnique(eventNames, BuildTimelineEventName(eventKey, isOn: true));
-            AddUnique(eventNames, BuildTimelineEventName(eventKey, isOn: false));
+            AddUnique(eventNames, step.ActivateEventName);
+            AddUnique(eventNames, step.DeactivateEventName);
+        }
+
+        if (requiresSequentialEvents)
+        {
+            AddUnique(eventNames, SequentialActivateEventName);
+            AddUnique(eventNames, SequentialDeactivateEventName);
         }
     }
 
@@ -173,61 +234,34 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         }
     }
 
-    internal static string BuildTimelineEventName(string eventKey, bool isOn)
+    internal static bool IsValidTimelineEvent(StringReference eventName)
     {
-        string safeKey = eventKey != null ? eventKey.Trim() : string.Empty;
-        return string.IsNullOrEmpty(safeKey)
-            ? string.Empty
-            : $"{safeKey}_{(isOn ? "On" : "Off")}";
+        return eventName != null && !string.IsNullOrWhiteSpace(eventName.String);
     }
 
-    internal static bool TrySplitTimelineEventName(string eventName, out string eventKey, out bool isOn)
+    internal static string DescribeTimelineEvent(StringReference eventName)
     {
-        eventKey = string.Empty;
-        isOn = false;
-
-        if (string.IsNullOrWhiteSpace(eventName))
-            return false;
-
-        string trimmed = eventName.Trim();
-        if (trimmed.EndsWith("_On", StringComparison.OrdinalIgnoreCase))
-        {
-            eventKey = trimmed.Substring(0, trimmed.Length - 3);
-            isOn = true;
-            return !string.IsNullOrWhiteSpace(eventKey);
-        }
-
-        if (trimmed.EndsWith("_Off", StringComparison.OrdinalIgnoreCase))
-        {
-            eventKey = trimmed.Substring(0, trimmed.Length - 4);
-            isOn = false;
-            return !string.IsNullOrWhiteSpace(eventKey);
-        }
-
-        return false;
+        return eventName != null ? eventName.String : "<none>";
     }
 
-    internal static bool IsValidEventKey(string eventKey)
+    static StringReference ResolveExplicitEventName(StringAsset asset, string legacyEventKey, bool isOn)
     {
-        if (string.IsNullOrWhiteSpace(eventKey))
-            return false;
+        if (asset != null)
+            return asset;
 
-        string trimmed = eventKey.Trim();
-        if (trimmed.IndexOf(' ') >= 0)
-            return false;
+        if (string.IsNullOrWhiteSpace(legacyEventKey))
+            return null;
 
-        if (trimmed.EndsWith("_On", StringComparison.OrdinalIgnoreCase) ||
-            trimmed.EndsWith("_Off", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
+        string trimmed = legacyEventKey.Trim();
+        if (trimmed.Length == 0)
+            return null;
 
-        return true;
+        return StringReference.Get($"{trimmed}_{(isOn ? "On" : "Off")}");
     }
 
-    static void AddUnique(List<string> eventNames, string eventName)
+    static void AddUnique(List<StringReference> eventNames, StringReference eventName)
     {
-        if (eventNames == null || string.IsNullOrWhiteSpace(eventName))
+        if (eventNames == null || !IsValidTimelineEvent(eventName))
             return;
 
         if (!eventNames.Contains(eventName))

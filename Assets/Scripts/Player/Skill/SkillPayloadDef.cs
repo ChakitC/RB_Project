@@ -1,11 +1,12 @@
 using System.Collections.Generic;
+using Animancer;
 using UnityEngine;
 
 public abstract class SkillPayloadDef : ScriptableObject
 {
     public virtual bool RequiresSkillTimelineEvents => false;
 
-    public virtual void CollectTimelineEventNames(List<string> eventNames)
+    public virtual void CollectTimelineEventNames(List<StringReference> eventNames)
     {
     }
 

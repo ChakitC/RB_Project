@@ -217,8 +217,10 @@ public class StatsHub : MonoBehaviour
 
     float ApplyStatusModifiers(StatType statType, float baseValue)
     {
+        // Authoring contract: AddPercent uses whole percentages (10 => +10%),
+        // Multiply uses direct factors (1.2 => x1.2).
         float flat = 0f;
-        float addPercent = 0f;
+        float addPercent01 = 0f;
         float multiply = 1f;
 
         if (_modifierProviders.Count == 0)
@@ -248,16 +250,16 @@ public class StatsHub : MonoBehaviour
                     break;
 
                 case ModifierOp.AddPercent:
-                    addPercent += modifier.Value;
+                    addPercent01 += modifier.Value * 0.01f;
                     break;
 
                 case ModifierOp.Multiply:
-                    multiply *= Mathf.Max(0f, 1f + modifier.Value);
+                    multiply *= Mathf.Max(0f, modifier.Value);
                     break;
             }
         }
 
-        return (baseValue + flat) * (1f + addPercent) * multiply;
+        return (baseValue + flat) * (1f + addPercent01) * multiply;
     }
 
     float GetCharacterDamageBase()

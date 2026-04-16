@@ -34,7 +34,7 @@
             "characterId": "ID.Feno",
             "progress": {
                 "level": 29,
-                "xp": 399,
+                "xp": 3399,
                 "skillPoints": 21,
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": []
@@ -73,8 +73,8 @@
         {
             "characterId": "ID.Abbygail",
             "progress": {
-                "level": 24,
-                "xp": 225,
+                "level": 25,
+                "xp": 600,
                 "skillPoints": 9,
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": []
@@ -83,8 +83,18 @@
         {
             "characterId": "GR_NM01",
             "progress": {
-                "level": 23,
-                "xp": 1025,
+                "level": 25,
+                "xp": 250,
+                "skillPoints": 0,
+                "passiveProgressInitialized": false,
+                "unlockedPassiveNodeIds": []
+            }
+        },
+        {
+            "characterId": "NB_GR_02",
+            "progress": {
+                "level": 12,
+                "xp": 100,
                 "skillPoints": 0,
                 "passiveProgressInitialized": false,
                 "unlockedPassiveNodeIds": []

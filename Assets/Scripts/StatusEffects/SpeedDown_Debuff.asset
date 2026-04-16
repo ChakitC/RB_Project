@@ -26,5 +26,5 @@ MonoBehaviour:
   modifiers:
   - statType: 8
     operation: 2
-    value: -0.5
+    value: 0.5
   triggerRules: []

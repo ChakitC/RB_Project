@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Animancer;
 using UnityEngine;
 
 public class PlayerSkillManager : MonoBehaviour
@@ -23,7 +24,7 @@ public class PlayerSkillManager : MonoBehaviour
         public bool cancelled;
         public float castPointNormalized;
         public bool requiresTimelineEvents;
-        public readonly List<string> timelineEventNames = new List<string>();
+        public readonly List<StringReference> timelineEventNames = new List<StringReference>();
     }
 
     private CharacteContext ctx;
@@ -128,6 +129,14 @@ public class PlayerSkillManager : MonoBehaviour
             if (Input.GetKeyDown(slot.hotkey))
                 TryBeginCast(slot);
         }
+    }
+    
+    public bool TryCastSlot(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= slots.Length)
+            return false;
+
+        return TryBeginCast(slots[slotIndex]);
     }
 
     private bool TryBeginCast(SkillSlot slot)

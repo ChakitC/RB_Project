@@ -128,7 +128,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private float _activeSkillCastPointNormalized = 0.35f;
     private bool _activeSkillReleaseRequested;
     private bool _activeSkillReleased;
-    private readonly List<string> _activeSkillTimelineEventNames = new List<string>();
+    private readonly List<StringReference> _activeSkillTimelineEventNames = new List<StringReference>();
     private int _activeUtilityRequestId;
     private float _activeUtilityCastPointNormalized = 0.35f;
     private bool _activeUtilityReleaseRequested;
@@ -206,7 +206,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     public event Action<PlaybackSignal> PlaybackEvent;
     public event Action<int> SkillCastMomentReached;
     public event Action<int> SkillCastInterrupted;
-    public event Action<int, string> SkillTimelineEventRaised;
+    public event Action<int, StringReference> SkillTimelineEventRaised;
     public event Action SkillCompleted;
 
     internal bool TryGetActiveSkillNormalizedTime(int requestId, out float normalizedTime)
@@ -586,7 +586,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         int requestId,
         SkillGemDefinition skillDef,
         float castPointNormalized,
-        IReadOnlyList<string> timelineEventNames)
+        IReadOnlyList<StringReference> timelineEventNames)
     {
         if (IsChainPlaybackActive)
             return false;
@@ -1202,11 +1202,11 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         for (int i = 0; i < _activeSkillTimelineEventNames.Count; i++)
         {
-            string eventName = _activeSkillTimelineEventNames[i];
-            if (string.IsNullOrWhiteSpace(eventName))
+            StringReference eventName = _activeSkillTimelineEventNames[i];
+            if (eventName == null || string.IsNullOrWhiteSpace(eventName.String))
                 continue;
 
-            string capturedEventName = eventName;
+            StringReference capturedEventName = eventName;
             int count = runtimeEvents.SetCallbacks(
                 capturedEventName,
                 () => RaiseSkillTimelineEvent(capturedEventName));
@@ -1220,10 +1220,15 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         }
     }
 
-    private void RaiseSkillTimelineEvent(string eventName)
+    private void RaiseSkillTimelineEvent(StringReference eventName)
     {
-        if (!_activeSkillReleaseRequested || _activeSkillRequestId <= 0 || string.IsNullOrWhiteSpace(eventName))
+        if (!_activeSkillReleaseRequested ||
+            _activeSkillRequestId <= 0 ||
+            eventName == null ||
+            string.IsNullOrWhiteSpace(eventName.String))
+        {
             return;
+        }
 
         SkillTimelineEventRaised?.Invoke(_activeSkillRequestId, eventName);
     }
@@ -1232,7 +1237,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         int requestId,
         SkillGemDefinition skillDef,
         float castPointNormalized,
-        IReadOnlyList<string> timelineEventNames)
+        IReadOnlyList<StringReference> timelineEventNames)
     {
         _activeSkillDefinition = skillDef;
         _activeSkillRequestId = requestId;
@@ -1260,7 +1265,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         _activeSkillTimelineEventNames.Clear();
     }
 
-    private void SetActiveSkillTimelineEventNames(IReadOnlyList<string> timelineEventNames)
+    private void SetActiveSkillTimelineEventNames(IReadOnlyList<StringReference> timelineEventNames)
     {
         _activeSkillTimelineEventNames.Clear();
 
@@ -1269,15 +1274,14 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         for (int i = 0; i < timelineEventNames.Count; i++)
         {
-            string eventName = timelineEventNames[i];
-            if (string.IsNullOrWhiteSpace(eventName))
+            StringReference eventName = timelineEventNames[i];
+            if (eventName == null || string.IsNullOrWhiteSpace(eventName.String))
                 continue;
 
-            string trimmed = eventName.Trim();
-            if (_activeSkillTimelineEventNames.Contains(trimmed))
+            if (_activeSkillTimelineEventNames.Contains(eventName))
                 continue;
 
-            _activeSkillTimelineEventNames.Add(trimmed);
+            _activeSkillTimelineEventNames.Add(eventName);
         }
     }
 

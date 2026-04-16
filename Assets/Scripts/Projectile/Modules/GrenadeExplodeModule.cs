@@ -148,11 +148,14 @@ public class GrenadeExplodeModule : ProjectileModule
     // falloff: ใช้ของโมดูล (ไม่ดึงจาก def)
     var usedFalloff = damageFalloff;
 
-    // VFX: ถ้าเป็นสกิล -> ใช้ def.SkillVfxhit เท่านั้น
-    GameObject usedVfxPrefab = fromSkill ? def.SkillVfxhit : explosionVfxPrefab;
+    // Prefer the skill override when present, otherwise fall back to the projectile/module explosion VFX.
+    GameObject usedVfxPrefab = fromSkill && def != null && def.SkillVfxhit != null
+        ? def.SkillVfxhit
+        : (p.hitVfxPrefab != null ? p.hitVfxPrefab : explosionVfxPrefab);
 
-    // scale: ถ้าเป็นสกิล -> ใช้ def.projectileHitVfxScale
-    float usedVfxScale = fromSkill ? def.projectileHitVfxScale : vfxScale;
+    float usedVfxScale = fromSkill && def != null && def.SkillVfxhit != null
+        ? def.projectileHitVfxScale
+        : (p.vfxScale > 0f ? p.vfxScale : vfxScale);
 
     // ---- VFX ----
     if (usedVfxPrefab != null)
@@ -168,7 +171,8 @@ public class GrenadeExplodeModule : ProjectileModule
     var damaged = new HashSet<int>();
 
     int ownerId = (ignoreOwner && ctx.collisionIgnoreRoot != null) ? ctx.collisionIgnoreRoot.root.GetInstanceID() : 0;
-    int hitTargetId = (hitCol != null) ? hitCol.transform.root.GetInstanceID() : 0;
+    IDamageable hitTarget = hitCol != null ? hitCol.GetComponentInParent<IDamageable>() : null;
+    int hitTargetId = Projectile.GetDamageableIdentityKey(hitTarget);
 
     foreach (var c in cols)
     {
@@ -176,18 +180,24 @@ public class GrenadeExplodeModule : ProjectileModule
 
         int rid = c.transform.root.GetInstanceID();
         if (ownerId != 0 && rid == ownerId) continue;
-        if (!includeHitTarget && hitTargetId != 0 && rid == hitTargetId) continue;
-        if (damaged.Contains(rid)) continue;
 
         var dmgable = c.GetComponentInParent<IDamageable>();
         if (dmgable == null) continue;
 
-        damaged.Add(rid);
+        int targetId = Projectile.GetDamageableIdentityKey(dmgable);
+        if (targetId == 0)
+            targetId = c.GetInstanceID();
+
+        if (!includeHitTarget && hitTargetId != 0 && targetId == hitTargetId) continue;
+        if (damaged.Contains(targetId)) continue;
+
+        damaged.Add(targetId);
 
         Vector3 closest = c.ClosestPoint(center);
         float dist = Vector3.Distance(center, closest);
-        float x = Mathf.Clamp01(dist / Mathf.Max(0.01f, usedRadius)); // 0..1
-        float factor = Mathf.Clamp01(usedFalloff.Evaluate(x));
+        // The curve is authored as 0=edge, 1=center, so invert normalized distance before sampling.
+        float normalizedDistance = Mathf.Clamp01(dist / Mathf.Max(0.01f, usedRadius));
+        float factor = Mathf.Clamp01(usedFalloff.Evaluate(1f - normalizedDistance));
         float scaled = baseDmg * factor;
 
         float armor = 0f;

@@ -58,7 +58,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 0}
+    _Clip: {fileID: 6500254727769745521, guid: b0250f33440b0c44988fecb4560b83a8, type: 3}
     _NormalizedStartTime: NaN
   root:
     _FadeDuration: 0.25
@@ -67,7 +67,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 0}
+    _Clip: {fileID: 6500254727769745521, guid: b0250f33440b0c44988fecb4560b83a8, type: 3}
     _NormalizedStartTime: NaN
   freez:
     _FadeDuration: 0.25
@@ -76,7 +76,16 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 0}
+    _Clip: {fileID: 6500254727769745521, guid: b0250f33440b0c44988fecb4560b83a8, type: 3}
+    _NormalizedStartTime: NaN
+  knockback:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -6239092401349363682, guid: 8170b71f25268e744babfc58e66c5b51, type: 3}
     _NormalizedStartTime: NaN
   dashF:
     _FadeDuration: 0.25
@@ -121,7 +130,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 0}
+    _Clip: {fileID: -176012841909164219, guid: f0e9f51f0a4e9ef4aaee2cf294e80f1c, type: 3}
     _NormalizedStartTime: NaN
   shootPulse:
     _FadeDuration: 0.25

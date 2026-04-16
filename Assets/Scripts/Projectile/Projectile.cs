@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using System.Collections.Generic;
 using VHierarchy.Libs;
@@ -461,7 +462,10 @@ public class Projectile : MonoBehaviour
             var dmg = h.GetComponentInParent<IDamageable>();
             if (dmg == null) continue;
 
-            int key = (dmg is Component c) ? c.transform.root.GetInstanceID() : dmg.GetHashCode();
+            int key = GetDamageableIdentityKey(dmg);
+            if (key == 0)
+                key = h.GetInstanceID();
+
             if (!seen.Add(key)) continue;
 
             float finalDamage = CalcFinalDamage(dmg);
@@ -640,6 +644,16 @@ public class Projectile : MonoBehaviour
     }
 
     readonly HashSet<int> _ignoredRootIds = new HashSet<int>();
+
+    // Deduplicate AoE hits per resolved damageable instead of transform.root so grouped actors
+    // under a shared squad root can still each receive the explosion once.
+    public static int GetDamageableIdentityKey(IDamageable damageable)
+    {
+        if (damageable is Component component)
+            return component.GetInstanceID();
+
+        return damageable != null ? RuntimeHelpers.GetHashCode(damageable) : 0;
+    }
 
     public void IgnoreRoot(Transform root)
     {

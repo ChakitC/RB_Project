@@ -14,16 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   helperId: zzzzzzzz
   displayName: Helper.Test
-  description: Helper.Test
+  description: DropCarrot
   triggerEvent: 2
   originFilter: 3
-  procChance: 0.258
+  procChance: 0.25
   internalCooldownSeconds: 1
   requireTarget: 0
   requireAttackId: 0
   oncePerAttackId: 0
   requireOwnerAlive: 1
   executionSkill: {fileID: 11400000, guid: f3a1b004254c92c4ca9da93bdbe9db86, type: 2}
+  chainAttackSequence: {fileID: 0}
   executionSkillLevel: 1
   hideHelperOnSkillComplete: 1
   blockWhileHelperBusy: 1

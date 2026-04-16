@@ -22,7 +22,7 @@ MonoBehaviour:
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
   weaponHandMode: 2
   chainAttackSkill: {fileID: 0}
-  maxHP: 1500
+  maxHP: 10000
   maxStamina: 50
   Damage: 10
   armor: 1

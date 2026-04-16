@@ -14,6 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseSpeed: 90
   lifeTime: 3
+  applyKnockbackOnHit: 0
+  knockbackDistance: 1.25
+  knockbackDuration: 0.12
+  knockbackProgressCurve:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  knockbackReaction: 2
+  knockbackInterruptsActions: 1
   modules:
   - {fileID: 11400000, guid: 2f7ee171867ef29468dcb65168496633, type: 2}
   - {fileID: 11400000, guid: f4d195ae2d8b99a4587914e344cd0804, type: 2}

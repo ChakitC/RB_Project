@@ -19,6 +19,8 @@ MonoBehaviour:
   localPositionOffset: {x: 0, y: 0, z: 0}
   localEulerOffset: {x: 0, y: 0, z: 0}
   maxSequenceLifetime: 4
+  sequentialActivateEvent: {fileID: 11400000, guid: 85bb0c93bfa4490c9607cf5deac42c5b, type: 2}
+  sequentialDeactivateEvent: {fileID: 11400000, guid: 4c642c18b11e431c910ac176caf49adc, type: 2}
   targetMask:
     serializedVersion: 2
     m_Bits: 65535

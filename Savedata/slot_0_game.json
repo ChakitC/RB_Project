@@ -1,7 +1,7 @@
 {
     "inventory": {
         "maxSlotCount": 20,
-        "gold": 1000976,
+        "gold": 1001090,
         "slots": [
             {
                 "itemId": "SMG_RB01",
@@ -18,8 +18,8 @@
                         "secondaryValue": 0.0
                     },
                     "subAffixes": [],
-                    "shotCounter": 134,
-                    "currentMagazine": 1
+                    "shotCounter": 462,
+                    "currentMagazine": 23
                 }
             },
             {
@@ -52,8 +52,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 1442,
-                    "currentMagazine": 17
+                    "shotCounter": 2776,
+                    "currentMagazine": 1
                 }
             },
             {
@@ -86,8 +86,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 112,
-                    "currentMagazine": 2
+                    "shotCounter": 145,
+                    "currentMagazine": 1
                 }
             },
             {
@@ -120,8 +120,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 521,
-                    "currentMagazine": 0
+                    "shotCounter": 595,
+                    "currentMagazine": 19
                 }
             },
             {
@@ -154,7 +154,7 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 869,
+                    "shotCounter": 3152,
                     "currentMagazine": 0
                 }
             },
@@ -387,22 +387,37 @@
                 }
             },
             {
-                "itemId": "",
-                "amount": 0,
+                "itemId": "SMG_RB01",
+                "amount": 1,
                 "weaponInstance": {
-                    "instanceId": "",
-                    "baseWeaponId": "",
-                    "rarity": 0,
+                    "instanceId": "ba967d7fca944cdeb451412b7c61a49b",
+                    "baseWeaponId": "SMG_RB01",
+                    "rarity": 2,
                     "mainAffix": {
-                        "affixId": "",
-                        "hasPrimaryValue": false,
-                        "primaryValue": 0.0,
+                        "affixId": "Stabiity.1",
+                        "hasPrimaryValue": true,
+                        "primaryValue": 1.28096342086792,
                         "hasSecondaryValue": false,
                         "secondaryValue": 0.0
                     },
-                    "subAffixes": [],
+                    "subAffixes": [
+                        {
+                            "affixId": "Crit.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 0.9181767702102661,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        },
+                        {
+                            "affixId": "Damge.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 18.78186798095703,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        }
+                    ],
                     "shotCounter": 0,
-                    "currentMagazine": -1
+                    "currentMagazine": 30
                 }
             },
             {

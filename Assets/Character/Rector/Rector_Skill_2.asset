@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
+  m_Name: Rector_Skill_2
+  m_EditorClassIdentifier: 
+  icon: {fileID: 0}
+  displayName: Rector_Skill_2
+  skillId: Rector_Skill_2
+  tags: 20
+  description: Rector_Buff
+  baseDamage: 10
+  baseManaCost: 0
+  baseCastTime: 0.5
+  baseCooldown: 0
+  baseCritChance: 5
+  baseProjectilesCount: 1
+  projectileSpeed: 5
+  AreaofEffec: 0
+  baseRadius: 0
+  maxLevel: 20
+  payload: {fileID: 11400000, guid: 0b4c6845569e0cf4692ac948295a8fda, type: 2}
+  skillPrefab: {fileID: 0}
+  helperFacingMode: 0
+  BallVfxPrefab: {fileID: 0}
+  SkillVfxhit: {fileID: 0}
+  projectileHitVfxScale: 1
+  castCue: {fileID: 0}
+  skillClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes:
+      - 0.37586266
+      - NaN
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 2136544592977676055, guid: 4bcf35f2995f0bc449b24d6bf4362be3, type: 3}
+    _NormalizedStartTime: NaN
+  castPointNormalized: 0.3758627
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  perLevelData: []
+  previewLevel: 1
+  references:
+    version: 2
+    RefIds: []

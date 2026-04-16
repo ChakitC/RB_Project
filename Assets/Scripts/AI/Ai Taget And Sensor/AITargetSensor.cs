@@ -46,8 +46,8 @@ public class AITargetSensor : MonoBehaviour
     private Collider[] overlapBuffer;
     private float nextScanTime;
 
-    public Transform CurrentTarget => currentTarget;
-    public Transform LastSeenTarget => lastSeenTarget;
+    public Transform CurrentTarget => IsTrackedTargetStillValid(currentTarget) ? currentTarget : null;
+    public Transform LastSeenTarget => IsTrackedTargetStillValid(lastSeenTarget) ? lastSeenTarget : null;
     public Vector3 LastSeenPosition => lastSeenPosition;
     public bool HasLineOfSight => hasLineOfSight;
     public float GracePeriod => gracePeriod;
@@ -55,8 +55,8 @@ public class AITargetSensor : MonoBehaviour
     public float LastSeenTime => lastSeenTime;
     public float TimeSinceLastSeen => Time.time - lastSeenTime;
 
-    public bool HasLiveTarget => currentTarget != null;
-    public bool HasAnyTarget => currentTarget != null || IsWithinGracePeriod();
+    public bool HasLiveTarget => CurrentTarget != null;
+    public bool HasAnyTarget => HasLiveTarget || IsWithinGracePeriod();
 
     public event Action<Transform, Transform> OnTargetChanged;
 
@@ -71,6 +71,9 @@ public class AITargetSensor : MonoBehaviour
 
     private void Update()
     {
+        if (RefreshTrackedTargetValidity())
+            nextScanTime = Time.time;
+
         if (Time.time < nextScanTime) return;
         nextScanTime = Time.time + Mathf.Max(0.01f, scanInterval);
 
@@ -79,6 +82,7 @@ public class AITargetSensor : MonoBehaviour
 
     public void ForceScan()
     {
+        RefreshTrackedTargetValidity();
         Scan();
         nextScanTime = Time.time + Mathf.Max(0.01f, scanInterval);
     }
@@ -226,17 +230,108 @@ public class AITargetSensor : MonoBehaviour
 
         if (targetable != null)
         {
-            if (requireAliveIfAvailable && !targetable.IsAlive)
-                return false;
-
-            if (!targetable.IsTargetable)
-                return false;
-
-            if (useTeamFilter && targetable.TeamId == ownerTeamId)
+            if (!IsTargetAllowedByTargetable(targetable))
                 return false;
         }
 
+        if (!IsTargetAllowedByLifeState(targetRoot))
+            return false;
+
         return true;
+    }
+
+    private bool RefreshTrackedTargetValidity()
+    {
+        bool invalidated = false;
+
+        if (currentTarget != null && !IsTrackedTargetStillValid(currentTarget))
+        {
+            SetCurrentTarget(null);
+            hasLineOfSight = false;
+            targetDistance = 0f;
+            invalidated = true;
+        }
+
+        if (lastSeenTarget != null && !IsTrackedTargetStillValid(lastSeenTarget))
+        {
+            lastSeenTarget = null;
+            lastSeenPosition = Vector3.zero;
+            lastSeenTime = float.NegativeInfinity;
+            hasLineOfSight = false;
+            targetDistance = 0f;
+            invalidated = true;
+        }
+
+        return invalidated;
+    }
+
+    private bool IsTrackedTargetStillValid(Transform target)
+    {
+        if (!TryResolveTrackedTarget(target, out Transform targetRoot, out IAITargetable targetable))
+            return false;
+
+        if (targetRoot == transform || targetRoot.root == transform.root)
+            return false;
+
+        if (targetable != null && !IsTargetAllowedByTargetable(targetable))
+            return false;
+
+        return IsTargetAllowedByLifeState(targetRoot);
+    }
+
+    private bool TryResolveTrackedTarget(Transform target, out Transform targetRoot, out IAITargetable targetable)
+    {
+        targetRoot = null;
+        targetable = null;
+
+        if (target == null)
+            return false;
+
+        targetable = FindTargetable(target);
+        if (targetable is Component component)
+        {
+            targetRoot = component.transform;
+            return true;
+        }
+
+        Rigidbody targetRigidbody = target.GetComponentInParent<Rigidbody>();
+        if (targetRigidbody != null)
+        {
+            targetRoot = targetRigidbody.transform;
+            return true;
+        }
+
+        targetRoot = target.root != null ? target.root : target;
+        return targetRoot != null;
+    }
+
+    private bool IsTargetAllowedByTargetable(IAITargetable targetable)
+    {
+        if (targetable == null)
+            return true;
+
+        if (requireAliveIfAvailable && !targetable.IsAlive)
+            return false;
+
+        if (!targetable.IsTargetable)
+            return false;
+
+        if (useTeamFilter && targetable.TeamId == ownerTeamId)
+            return false;
+
+        return true;
+    }
+
+    private bool IsTargetAllowedByLifeState(Transform targetRoot)
+    {
+        if (targetRoot == null)
+            return false;
+
+        CharacteContext targetContext = targetRoot.GetComponentInParent<CharacteContext>();
+        if (targetContext == null || targetContext.stateHub == null)
+            return true;
+
+        return targetContext.stateHub.IsAlive && !targetContext.stateHub.Isdown;
     }
 
     private IAITargetable FindTargetable(Transform start)
@@ -300,6 +395,9 @@ public class AITargetSensor : MonoBehaviour
 
     private bool IsWithinGracePeriod()
     {
+        if (lastSeenTarget != null && !IsTrackedTargetStillValid(lastSeenTarget))
+            return false;
+
         return Time.time - lastSeenTime <= gracePeriod;
     }
 
@@ -311,10 +409,11 @@ public class AITargetSensor : MonoBehaviour
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(origin, radius);
 
-        if (currentTarget != null)
+        Transform trackedTarget = CurrentTarget;
+        if (trackedTarget != null)
         {
             Gizmos.color = Color.red;
-            Gizmos.DrawLine(origin, currentTarget.position);
+            Gizmos.DrawLine(origin, trackedTarget.position);
         }
         else if (IsWithinGracePeriod())
         {

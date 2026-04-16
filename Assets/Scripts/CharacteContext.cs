@@ -37,7 +37,7 @@ public abstract class CharacteContext : MonoBehaviour
     public PlayerPassiveProgress PassiveProgress;
     public SkillUserSystem EnegySystem;
     public Interactor Interactor;
-    
+    public PlayerSkillManager SkillManager;
 
    
     

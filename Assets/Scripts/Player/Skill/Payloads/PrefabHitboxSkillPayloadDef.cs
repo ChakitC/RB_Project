@@ -26,6 +26,37 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         OncePerStep = 1,
     }
 
+    public enum ImpactSpawnPolicy
+    {
+        Disabled = 0,
+        FirstHitPerStep = 1,
+        EveryHit = 2,
+    }
+
+    [Serializable]
+    public sealed class StepStartVfxSettings
+    {
+        [SerializeField] private GameObject prefab;
+        [SerializeField, Min(0.01f)] private float scale = 1f;
+
+        public GameObject Prefab => prefab;
+        public float Scale => Mathf.Max(0.01f, scale);
+        public bool IsEnabled => prefab != null;
+    }
+
+    [Serializable]
+    public sealed class ImpactVfxSettings
+    {
+        [SerializeField] private GameObject prefab;
+        [SerializeField, Min(0.01f)] private float scale = 1f;
+        [SerializeField] private ImpactSpawnPolicy spawnPolicy = ImpactSpawnPolicy.FirstHitPerStep;
+
+        public GameObject Prefab => prefab;
+        public float Scale => Mathf.Max(0.01f, scale);
+        public ImpactSpawnPolicy SpawnPolicy => prefab == null ? ImpactSpawnPolicy.Disabled : spawnPolicy;
+        public bool IsEnabled => prefab != null && SpawnPolicy != ImpactSpawnPolicy.Disabled;
+    }
+
     [Serializable]
     public sealed class HitboxStep
     {
@@ -46,6 +77,9 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         [SerializeField] private AnimationCurve knockbackProgressCurve;
         [SerializeField] private ImpactReactionKind knockbackReaction = ImpactReactionKind.MiniStun;
         [SerializeField] private bool knockbackInterruptsActions = true;
+        [Header("VFX")]
+        [SerializeField] private StepStartVfxSettings stepStartVfx = new StepStartVfxSettings();
+        [SerializeField] private ImpactVfxSettings impactVfx = new ImpactVfxSettings();
 
         public TimelineBindingMode BindingMode => timelineBindingMode;
         public bool UsesSequentialBinding => timelineBindingMode == TimelineBindingMode.Sequential;
@@ -87,10 +121,14 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         public AnimationCurve KnockbackProgressCurve => knockbackProgressCurve;
         public ImpactReactionKind KnockbackReaction => knockbackReaction;
         public bool KnockbackInterruptsActions => knockbackInterruptsActions;
+        public StepStartVfxSettings StepStartVfx => stepStartVfx ?? (stepStartVfx = new StepStartVfxSettings());
+        public ImpactVfxSettings ImpactVfx => impactVfx ?? (impactVfx = new ImpactVfxSettings());
     }
 
     [Header("Runtime")]
-    [SerializeField] private SkillHitboxSequenceRuntime sequencePrefab;
+    [SerializeField] private SkillHitBoxData hitBoxData;
+    [FormerlySerializedAs("sequencePrefab")]
+    [SerializeField, HideInInspector] private SkillHitboxSequenceRuntime legacySequencePrefab;
     [SerializeField] private HitboxAnchorMode anchorMode = HitboxAnchorMode.CastOrigin;
     [SerializeField] private string anchorChildPath;
     [SerializeField] private bool followAnchor = true;
@@ -122,6 +160,7 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
     public bool ShowDamageNumbers => showDamageNumbers;
     public StringReference SequentialActivateEventName => sequentialActivateEvent;
     public StringReference SequentialDeactivateEventName => sequentialDeactivateEvent;
+    public SkillHitBoxData HitBoxData => hitBoxData;
     public bool HasSequentialTimelineEvents =>
         IsValidTimelineEvent(SequentialActivateEventName) &&
         IsValidTimelineEvent(SequentialDeactivateEventName);
@@ -160,9 +199,15 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         if (context == null)
             return;
 
-        if (sequencePrefab == null)
+        if (hitBoxData == null)
         {
-            Debug.LogError($"Skill payload '{name}' has no hitbox sequence prefab assigned.", this);
+            string legacyHint = legacySequencePrefab != null
+                ? " A legacy hitbox prefab reference is still present on this asset."
+                : string.Empty;
+
+            Debug.LogError(
+                $"Skill payload '{name}' requires a SkillHitBoxData asset. Migrate the old prefab layout before using this payload.{legacyHint}",
+                this);
             return;
         }
 
@@ -174,19 +219,41 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
             return;
         }
 
-        ResolveSpawnPose(context, out _, out Vector3 spawnPosition, out Quaternion spawnRotation);
-
-        SkillHitboxSequenceRuntime runtime = UnityEngine.Object.Instantiate(
-            sequencePrefab,
-            spawnPosition,
-            spawnRotation);
-
-        if (runtime == null)
+        if (!TryValidateRuntimeConfiguration(out string validationError))
         {
-            Debug.LogError($"Failed to instantiate skill hitbox runtime from '{sequencePrefab.name}'.", this);
+            Debug.LogError(validationError, this);
             return;
         }
 
+        ResolveSpawnPose(context, out _, out Vector3 spawnPosition, out Quaternion spawnRotation);
+
+        GameObject runtimeObject = new GameObject($"{name}_HitboxRuntime");
+        runtimeObject.layer = context.CasterObject != null ? context.CasterObject.layer : 0;
+        if (context.CasterRoot != null)
+            runtimeObject.transform.SetParent(context.CasterRoot, false);
+        runtimeObject.transform.SetPositionAndRotation(spawnPosition, spawnRotation);
+
+        SkillHitboxSequenceRuntime runtime = runtimeObject.AddComponent<SkillHitboxSequenceRuntime>();
+
+        if (runtime == null)
+        {
+            Debug.LogError($"Failed to create a runtime hitbox host for skill payload '{name}'.", this);
+            return;
+        }
+
+        if (!SkillHitboxRuntimeBuilder.TryBuild(
+                runtime.transform,
+                hitBoxData,
+                runtimeObject.layer,
+                out SkillHitboxGroup[] runtimeGroups,
+                out string buildError))
+        {
+            Debug.LogError(buildError, this);
+            UnityEngine.Object.Destroy(runtimeObject);
+            return;
+        }
+
+        runtime.AssignGroups(runtimeGroups);
         runtime.Initialize(context, this);
     }
 
@@ -266,5 +333,71 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
 
         if (!eventNames.Contains(eventName))
             eventNames.Add(eventName);
+    }
+
+    bool TryValidateRuntimeConfiguration(out string errorMessage)
+    {
+        errorMessage = null;
+
+        if (hitBoxData == null)
+        {
+            errorMessage = $"Skill payload '{name}' is missing SkillHitBoxData.";
+            return false;
+        }
+
+        List<string> issues = new List<string>();
+        hitBoxData.CollectValidationIssues(issues);
+
+        HashSet<string> availableGroupKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        IReadOnlyList<SkillHitBoxData.HitBoxGroupData> dataGroups = hitBoxData.Groups;
+        for (int i = 0; i < dataGroups.Count; i++)
+        {
+            SkillHitBoxData.HitBoxGroupData group = dataGroups[i];
+            if (group == null)
+                continue;
+
+            string groupKey = group.GroupKey;
+            if (!string.IsNullOrWhiteSpace(groupKey))
+                availableGroupKeys.Add(groupKey);
+        }
+
+        if (steps == null || steps.Count == 0)
+            issues.Add($"Skill payload '{name}' has no hitbox steps configured.");
+
+        for (int stepIndex = 0; stepIndex < steps.Count; stepIndex++)
+        {
+            HitboxStep step = steps[stepIndex];
+            if (step == null)
+            {
+                issues.Add($"Skill payload '{name}' has a null hitbox step at index {stepIndex}.");
+                continue;
+            }
+
+            IReadOnlyList<string> groupKeys = step.GroupKeys;
+            if (groupKeys == null || groupKeys.Count == 0)
+            {
+                issues.Add($"Skill payload '{name}' step '{step.StepLabel}' has no group keys.");
+                continue;
+            }
+
+            for (int groupIndex = 0; groupIndex < groupKeys.Count; groupIndex++)
+            {
+                string groupKey = groupKeys[groupIndex];
+                if (string.IsNullOrWhiteSpace(groupKey))
+                {
+                    issues.Add($"Skill payload '{name}' step '{step.StepLabel}' has an empty group key.");
+                    continue;
+                }
+
+                if (!availableGroupKeys.Contains(groupKey.Trim()))
+                    issues.Add($"Skill payload '{name}' step '{step.StepLabel}' references missing group '{groupKey}'.");
+            }
+        }
+
+        if (issues.Count == 0)
+            return true;
+
+        errorMessage = $"Skill payload '{name}' failed hitbox validation:\n- {string.Join("\n- ", issues)}";
+        return false;
     }
 }

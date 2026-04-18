@@ -187,7 +187,8 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         if (GetReactionPriority(next.Reaction) > GetReactionPriority(_activeKnockback.Reaction))
             return true;
 
-        return next.Distance >= RemainingDisplacement.magnitude + replaceDistanceThreshold;
+        float remainingDistance = RemainingDisplacement.magnitude;
+        return next.Distance + replaceDistanceThreshold >= remainingDistance;
     }
 
     static int GetReactionPriority(ImpactReactionKind reaction)

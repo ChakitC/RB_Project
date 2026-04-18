@@ -21,6 +21,21 @@ public sealed class SkillHitboxGroup : MonoBehaviour
 
     public IReadOnlyList<Collider> Colliders => colliders ?? Array.Empty<Collider>();
 
+    public void Configure(string configuredGroupKey, IList<Collider> configuredColliders)
+    {
+        groupKey = configuredGroupKey;
+
+        if (configuredColliders == null || configuredColliders.Count == 0)
+        {
+            colliders = Array.Empty<Collider>();
+            return;
+        }
+
+        colliders = new Collider[configuredColliders.Count];
+        for (int i = 0; i < configuredColliders.Count; i++)
+            colliders[i] = configuredColliders[i];
+    }
+
     void Reset()
     {
         CacheColliders();

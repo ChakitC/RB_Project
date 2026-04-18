@@ -18,6 +18,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         public readonly HashSet<int> HitTargetIds = new HashSet<int>();
         public bool UsesSequentialBinding;
         public bool IsActive;
+        public bool HasSpawnedImpactThisActivation;
     }
 
     [Header("Authoring")]
@@ -116,6 +117,11 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     void OnTriggerStay(Collider other)
     {
         ProcessContact(other);
+    }
+
+    public void AssignGroups(SkillHitboxGroup[] assignedGroups)
+    {
+        groups = assignedGroups ?? Array.Empty<SkillHitboxGroup>();
     }
 
     public void Initialize(SkillCastContext context, PrefabHitboxSkillPayloadDef payload)
@@ -450,10 +456,13 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         if (step == null)
             return;
 
-        if (!step.IsActive)
+        bool wasInactive = !step.IsActive;
+        if (wasInactive)
         {
             step.IsActive = true;
+            step.HasSpawnedImpactThisActivation = false;
             _activeSteps.Add(step);
+            TrySpawnStepStartVfx(step);
         }
 
         if (step.Definition.ClearHitCacheOnEnter)
@@ -479,6 +488,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             return;
 
         step.IsActive = false;
+        step.HasSpawnedImpactThisActivation = false;
         _activeSteps.Remove(step);
 
         for (int i = 0; i < step.Groups.Count; i++)
@@ -551,7 +561,69 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             KnockbackData knockback = BuildKnockback(step, hitPoint);
             bool applied = ApplyResolvedDamage(target, finalDamage, hitPoint, knockback);
             if (!applied)
+            {
                 UnregisterHit(step, targetKey);
+                continue;
+            }
+
+            TrySpawnImpactVfx(step, hitPoint);
+        }
+    }
+
+    void TrySpawnStepStartVfx(StepRuntimeState step)
+    {
+        if (step == null || step.Definition == null || VfxSpawner.Instance == null)
+            return;
+
+        PrefabHitboxSkillPayloadDef.StepStartVfxSettings settings = step.Definition.StepStartVfx;
+        if (settings == null || !settings.IsEnabled)
+            return;
+
+        VfxSpawner.Instance.SpawnVfx(
+            settings.Prefab,
+            transform.position,
+            ResolveSequenceForward(),
+            scale: settings.Scale);
+    }
+
+    void TrySpawnImpactVfx(StepRuntimeState step, Vector3 hitPoint)
+    {
+        if (step == null || step.Definition == null || VfxSpawner.Instance == null)
+            return;
+
+        PrefabHitboxSkillPayloadDef.ImpactVfxSettings settings = step.Definition.ImpactVfx;
+        if (settings == null || !settings.IsEnabled || !CanSpawnImpactForStep(step, settings.SpawnPolicy))
+            return;
+
+        VfxSpawner.Instance.SpawnVfx(
+            settings.Prefab,
+            hitPoint,
+            ResolveImpactNormal(hitPoint),
+            1f,
+            settings.Scale);
+
+        if (settings.SpawnPolicy == PrefabHitboxSkillPayloadDef.ImpactSpawnPolicy.FirstHitPerStep)
+            step.HasSpawnedImpactThisActivation = true;
+    }
+
+    bool CanSpawnImpactForStep(
+        StepRuntimeState step,
+        PrefabHitboxSkillPayloadDef.ImpactSpawnPolicy spawnPolicy)
+    {
+        if (step == null)
+            return false;
+
+        switch (spawnPolicy)
+        {
+            case PrefabHitboxSkillPayloadDef.ImpactSpawnPolicy.EveryHit:
+                return true;
+
+            case PrefabHitboxSkillPayloadDef.ImpactSpawnPolicy.FirstHitPerStep:
+                return !step.HasSpawnedImpactThisActivation;
+
+            case PrefabHitboxSkillPayloadDef.ImpactSpawnPolicy.Disabled:
+            default:
+                return false;
         }
     }
 
@@ -725,7 +797,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     int GetTargetKey(IDamageable target)
     {
         if (target is Component component && component.transform != null)
-            return component.transform.root.GetInstanceID();
+            return component.GetInstanceID();
 
         return target.GetHashCode();
     }
@@ -737,6 +809,27 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             return point;
 
         return other.bounds.center;
+    }
+
+    Vector3 ResolveSequenceForward()
+    {
+        if (_context != null && _context.AimDirection.sqrMagnitude > 0.0001f)
+            return _context.AimDirection;
+
+        if (transform.forward.sqrMagnitude > 0.0001f)
+            return transform.forward;
+
+        return Vector3.forward;
+    }
+
+    Vector3 ResolveImpactNormal(Vector3 hitPoint)
+    {
+        Vector3 origin = _context != null ? _context.CastPosition : transform.position;
+        Vector3 normal = hitPoint - origin;
+        if (normal.sqrMagnitude > 0.0001f)
+            return normal.normalized;
+
+        return ResolveSequenceForward();
     }
 
     void ShutdownAndDestroy()
@@ -774,7 +867,184 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         {
             StepRuntimeState step = _steps[i];
             step.IsActive = false;
+            step.HasSpawnedImpactThisActivation = false;
             step.HitTargetIds.Clear();
+        }
+    }
+}
+
+static class SkillHitboxRuntimeBuilder
+{
+    public static bool TryBuild(
+        Transform root,
+        SkillHitBoxData hitBoxData,
+        int layer,
+        out SkillHitboxGroup[] builtGroups,
+        out string errorMessage)
+    {
+        builtGroups = Array.Empty<SkillHitboxGroup>();
+        errorMessage = null;
+
+        if (root == null)
+        {
+            errorMessage = "Runtime root is missing.";
+            return false;
+        }
+
+        if (hitBoxData == null)
+        {
+            errorMessage = "SkillHitBoxData is missing.";
+            return false;
+        }
+
+        IReadOnlyList<SkillHitBoxData.HitBoxGroupData> sourceGroups = hitBoxData.Groups;
+        if (sourceGroups == null || sourceGroups.Count == 0)
+        {
+            errorMessage = $"SkillHitBoxData '{hitBoxData.name}' has no hitbox groups.";
+            return false;
+        }
+
+        List<SkillHitboxGroup> createdGroups = new List<SkillHitboxGroup>(sourceGroups.Count);
+        List<GameObject> createdObjects = new List<GameObject>();
+
+        try
+        {
+            for (int i = 0; i < sourceGroups.Count; i++)
+            {
+                SkillHitBoxData.HitBoxGroupData sourceGroup = sourceGroups[i];
+                if (sourceGroup == null)
+                {
+                    errorMessage = $"SkillHitBoxData '{hitBoxData.name}' has a null group at index {i}.";
+                    Cleanup(createdObjects);
+                    return false;
+                }
+
+                string groupKey = sourceGroup.GroupKey;
+                if (string.IsNullOrWhiteSpace(groupKey))
+                {
+                    errorMessage = $"SkillHitBoxData '{hitBoxData.name}' has a group with an empty key.";
+                    Cleanup(createdObjects);
+                    return false;
+                }
+
+                List<SkillHitBoxData.HitBoxShapeData> sourceShapes = sourceGroup.Shapes;
+                if (sourceShapes == null || sourceShapes.Count == 0)
+                {
+                    errorMessage = $"SkillHitBoxData '{hitBoxData.name}' group '{groupKey}' has no shapes.";
+                    Cleanup(createdObjects);
+                    return false;
+                }
+
+                GameObject groupObject = new GameObject(groupKey);
+                createdObjects.Add(groupObject);
+                groupObject.layer = layer;
+                groupObject.transform.SetParent(root, false);
+
+                SkillHitboxGroup runtimeGroup = groupObject.AddComponent<SkillHitboxGroup>();
+                List<Collider> groupColliders = new List<Collider>(sourceShapes.Count);
+
+                for (int shapeIndex = 0; shapeIndex < sourceShapes.Count; shapeIndex++)
+                {
+                    SkillHitBoxData.HitBoxShapeData sourceShape = sourceShapes[shapeIndex];
+                    if (sourceShape == null)
+                    {
+                        errorMessage = $"SkillHitBoxData '{hitBoxData.name}' group '{groupKey}' has a null shape.";
+                        Cleanup(createdObjects);
+                        return false;
+                    }
+
+                    GameObject shapeObject = new GameObject(sourceShape.ShapeName);
+                    createdObjects.Add(shapeObject);
+                    shapeObject.layer = layer;
+                    shapeObject.transform.SetParent(groupObject.transform, false);
+                    shapeObject.transform.localPosition = sourceShape.LocalPosition;
+                    shapeObject.transform.localRotation = Quaternion.Euler(sourceShape.LocalEulerAngles);
+                    shapeObject.transform.localScale = sourceShape.LocalScale;
+
+                    if (!TryAddCollider(shapeObject, sourceShape, out Collider runtimeCollider, out errorMessage))
+                    {
+                        Cleanup(createdObjects);
+                        return false;
+                    }
+
+                    runtimeCollider.isTrigger = true;
+                    runtimeCollider.enabled = false;
+                    groupColliders.Add(runtimeCollider);
+                }
+
+                runtimeGroup.Configure(groupKey, groupColliders);
+                createdGroups.Add(runtimeGroup);
+            }
+
+            builtGroups = createdGroups.ToArray();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Cleanup(createdObjects);
+            errorMessage = $"Failed to build hitbox runtime from '{hitBoxData.name}': {ex.Message}";
+            return false;
+        }
+    }
+
+    static bool TryAddCollider(
+        GameObject shapeObject,
+        SkillHitBoxData.HitBoxShapeData sourceShape,
+        out Collider runtimeCollider,
+        out string errorMessage)
+    {
+        runtimeCollider = null;
+        errorMessage = null;
+
+        if (shapeObject == null || sourceShape == null)
+        {
+            errorMessage = "Cannot build a hitbox shape from null input.";
+            return false;
+        }
+
+        switch (sourceShape.Type)
+        {
+            case SkillHitBoxData.HitBoxType.Box:
+                BoxCollider box = shapeObject.AddComponent<BoxCollider>();
+                box.center = sourceShape.Center;
+                box.size = sourceShape.Size;
+                runtimeCollider = box;
+                return true;
+
+            case SkillHitBoxData.HitBoxType.Capsule:
+                CapsuleCollider capsule = shapeObject.AddComponent<CapsuleCollider>();
+                capsule.center = sourceShape.Center;
+                capsule.radius = sourceShape.Radius;
+                capsule.height = sourceShape.Height;
+                capsule.direction = sourceShape.Direction;
+                runtimeCollider = capsule;
+                return true;
+
+            case SkillHitBoxData.HitBoxType.Sphere:
+                SphereCollider sphere = shapeObject.AddComponent<SphereCollider>();
+                sphere.center = sourceShape.Center;
+                sphere.radius = sourceShape.Radius;
+                runtimeCollider = sphere;
+                return true;
+
+            default:
+                errorMessage = $"Unsupported hitbox shape type '{sourceShape.Type}'.";
+                return false;
+        }
+    }
+
+    static void Cleanup(List<GameObject> createdObjects)
+    {
+        if (createdObjects == null)
+            return;
+
+        for (int i = createdObjects.Count - 1; i >= 0; i--)
+        {
+            GameObject createdObject = createdObjects[i];
+            if (createdObject == null)
+                continue;
+
+            UnityEngine.Object.Destroy(createdObject);
         }
     }
 }

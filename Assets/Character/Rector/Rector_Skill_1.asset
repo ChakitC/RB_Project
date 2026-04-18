@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: Rector_Skill_1
   m_EditorClassIdentifier: 
   icon: {fileID: 0}
-  displayName: Rector_Skill_2
-  skillId: Rector_Skill_2
+  displayName: Rector_Skill_1
+  skillId: Rector_Skill_1
   tags: 20
   description: Rector_Buff
-  baseDamage: 10
+  baseDamage: 100
   baseManaCost: 0
   baseCastTime: 0.5
   baseCooldown: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   AreaofEffec: 0
   baseRadius: 0
   maxLevel: 20
-  payload: {fileID: 11400000, guid: 0b4c6845569e0cf4692ac948295a8fda, type: 2}
+  payload: {fileID: 11400000, guid: 083b4ff2fbb2b9347b456eed4a0c1d2d, type: 2}
   skillPrefab: {fileID: 0}
   helperFacingMode: 0
   BallVfxPrefab: {fileID: 0}
@@ -35,17 +35,28 @@ MonoBehaviour:
   projectileHitVfxScale: 1
   castCue: {fileID: 0}
   skillClip:
-    _FadeDuration: 0.25
+    _FadeDuration: 0.13000001
     _Speed: 1
     _Events:
       _NormalizedTimes:
-      - 0.37586266
+      - 0.11291548
+      - 0.1746059
+      - 0.36628684
+      - 0.44670472
+      - 0.69016147
+      - 0.7408357
       - NaN
       _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 2136544592977676055, guid: 4bcf35f2995f0bc449b24d6bf4362be3, type: 3}
+      _Names:
+      - {fileID: 11400000, guid: 85bb0c93bfa4490c9607cf5deac42c5b, type: 2}
+      - {fileID: 11400000, guid: 4c642c18b11e431c910ac176caf49adc, type: 2}
+      - {fileID: 11400000, guid: b49bf586c8824d5ca7263d7bf03a321b, type: 2}
+      - {fileID: 11400000, guid: f9b552b926ab4dd0b06f8a3681994d81, type: 2}
+      - {fileID: 11400000, guid: 1602a944a558480da9fa995bbe746054, type: 2}
+      - {fileID: 11400000, guid: ae85475bbb17425695fac7c606c6afe4, type: 2}
+    _Clip: {fileID: 4459832563456208079, guid: 8726aa19f1b54694e84b1c05689de1e5, type: 3}
     _NormalizedStartTime: NaN
-  castPointNormalized: 0.3758627
+  castPointNormalized: 0.01
   chainContinueMode: 0
   chainContinueNormalizedTime: 1
   perLevelData: []

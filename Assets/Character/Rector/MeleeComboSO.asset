@@ -9,14 +9,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a157da86151400f4aa1b37725b08b0bb, type: 3}
-  m_Name: New Melee Combo Config
+  m_Script: {fileID: 11500000, guid: 114bee2a0bd90b248b94dd426a34c397, type: 3}
+  m_Name: MeleeComboSO
   m_EditorClassIdentifier: 
-  maxCombo: 3
-  comboResetTime: 1
-  hitRadius: 1.6
-  damage: 10
-  hittableLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  defaultHitOrigin: {fileID: 0}
+  steps: []
+  defaultChainStartN: 0.35
+  defaultChainEndN: 0.8
+  references:
+    version: 2
+    RefIds: []

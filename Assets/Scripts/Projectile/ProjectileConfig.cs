@@ -18,4 +18,14 @@ public class ProjectileConfig : ScriptableObject
 
     // เรียงลำดับมีผล (เช่น Pierce ก่อน Split ถ้า Split ทำตอนนัดสุดท้าย)
     public List<ProjectileModule> modules = new();
+
+    public KnockbackSettings ToKnockbackSettings()
+    {
+        return new KnockbackSettings(
+            knockbackDistance,
+            knockbackDuration,
+            knockbackProgressCurve,
+            knockbackReaction,
+            knockbackInterruptsActions);
+    }
 }

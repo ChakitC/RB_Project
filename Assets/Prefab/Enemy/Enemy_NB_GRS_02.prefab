@@ -45,6 +45,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: m_Data.m_SharedVariableData.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: m_Data.m_TaskData.Array.data[25].m_Version
       value: 3.4
       objectReference: {fileID: 0}
@@ -125,6 +129,14 @@ PrefabInstance:
       value: Opsive.BehaviorDesigner.Runtime.Tasks.Actions.StackedAction
       objectReference: {fileID: 0}
     - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: m_Data.m_SharedVariableData.Array.data[0].m_Version
+      value: 3.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: m_Data.m_SharedVariableData.Array.data[1].m_Version
+      value: 3.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: m_Data.m_TaskData.Array.data[7].m_Values.Array.size
       value: 82
       objectReference: {fileID: 0}
@@ -195,6 +207,16 @@ PrefabInstance:
     - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: m_Data.m_TaskData.Array.data[25].m_Values.Array.size
       value: 84
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: m_Data.m_SharedVariableData.Array.data[0].m_ObjectType
+      value: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Boolean,
+        mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: m_Data.m_SharedVariableData.Array.data[1].m_ObjectType
+      value: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
+        UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
       objectReference: {fileID: 0}
     - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: 'm_Data.m_TaskData.Array.data[2].m_Values.Array.data[4]'
@@ -2313,6 +2335,14 @@ PrefabInstance:
       value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: m_Data.m_SharedVariableData.Array.data[0].m_Values.Array.size
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: m_Data.m_SharedVariableData.Array.data[1].m_Values.Array.size
+      value: 17
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: m_Data.m_TaskData.Array.data[10].m_LongValueHashes.Array.size
       value: 5
       objectReference: {fileID: 0}
@@ -2759,6 +2789,82 @@ PrefabInstance:
     - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: 'm_Data.m_TaskData.Array.data[9].m_LongValueHashes.Array.data[3]'
       value: 848615227276734043
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_Values.Array.data[0]'
+      value: 73
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_Values.Array.data[1]'
+      value: 110
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_Values.Array.data[2]'
+      value: 67
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_Values.Array.data[3]'
+      value: 111
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_Values.Array.data[4]'
+      value: 109
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_Values.Array.data[5]'
+      value: 98
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_Values.Array.data[6]'
+      value: 97
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_Values.Array.data[7]'
+      value: 114
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_Values.Array.data[8]'
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[0]'
+      value: 67
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[1]'
+      value: 117
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[2]'
+      value: 114
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[3]'
+      value: 114
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[4]'
+      value: 101
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[5]'
+      value: 110
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[6]'
+      value: 116
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[7]'
+      value: 84
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[8]'
+      value: 97
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[9]'
+      value: 103
       objectReference: {fileID: 0}
     - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: 'm_Data.m_TaskData.Array.data[10].m_LongValueHashes.Array.data[3]'
@@ -3397,6 +3503,34 @@ PrefabInstance:
       value: -3957478287605629114
       objectReference: {fileID: 0}
     - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[10]'
+      value: 101
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[11]'
+      value: 116
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[12]'
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[13]'
+      value: 255
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[14]'
+      value: 255
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[15]'
+      value: 255
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_Values.Array.data[16]'
+      value: 255
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: 'm_Data.m_TaskData.Array.data[13].m_LongValueHashes.Array.data[10]'
       value: -8233101486118323276
       objectReference: {fileID: 0}
@@ -3867,6 +4001,14 @@ PrefabInstance:
     - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: 'm_Data.m_LogicNodePropertiesData.Array.data[9].m_Values.Array.data[9]'
       value: 98
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: m_Data.m_SharedVariableData.Array.data[0].m_ValuePositions.Array.size
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: m_Data.m_SharedVariableData.Array.data[1].m_ValuePositions.Array.size
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: 'm_Data.m_EventNodePropertiesData.Array.data[0].m_Values.Array.data[44]'
@@ -5095,6 +5237,14 @@ PrefabInstance:
     - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: 'm_Data.m_LogicNodePropertiesData.Array.data[9].m_Values.Array.data[87]'
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: m_Data.m_SharedVariableData.Array.data[0].m_LongValueHashes.Array.size
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: m_Data.m_SharedVariableData.Array.data[1].m_LongValueHashes.Array.size
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: 'm_Data.m_LogicNodePropertiesData.Array.data[10].m_Values.Array.data[10]'
@@ -7769,6 +7919,62 @@ PrefabInstance:
       value: 255
       objectReference: {fileID: 0}
     - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_ValuePositions.Array.data[1]'
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_ValuePositions.Array.data[2]'
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_ValuePositions.Array.data[3]'
+      value: 9
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_ValuePositions.Array.data[1]'
+      value: 12
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_ValuePositions.Array.data[2]'
+      value: 12
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_ValuePositions.Array.data[3]'
+      value: 13
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_LongValueHashes.Array.data[0]'
+      value: 2962116551004323853
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_LongValueHashes.Array.data[1]'
+      value: 5320327273874761402
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_LongValueHashes.Array.data[2]'
+      value: -8563765895643031895
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[0].m_LongValueHashes.Array.data[3]'
+      value: -408107302639729080
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_LongValueHashes.Array.data[0]'
+      value: 2962116551004323853
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_LongValueHashes.Array.data[1]'
+      value: 5320327273874761402
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_LongValueHashes.Array.data[2]'
+      value: -8563765895643031895
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: 'm_Data.m_SharedVariableData.Array.data[1].m_LongValueHashes.Array.data[3]'
+      value: 3253260240476711
+      objectReference: {fileID: 0}
+    - target: {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: m_Data.m_LogicNodePropertiesData.Array.data[8].m_ValuePositions.Array.size
       value: 12
       objectReference: {fileID: 0}
@@ -8601,6 +8807,7 @@ MonoBehaviour:
   chainAttackPoint: {fileID: 0}
   teamId: 1
   isAlive: 1
+  isTargetable: 1
 --- !u!114 &7074686392687354562
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -89,6 +89,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private bool _pendingDownedValue;
 
     public bool RootMotionActive { get; private set; }
+    public MeleeType CurrentMeleeType { get; private set; } = MeleeType.Light;
     public MeleeComboSO.Step CurrentMeleeStep { get; internal set; }
     public int CurrentMeleeStepIndex { get; internal set; }
     public event Action MeleeHitStart;
@@ -503,6 +504,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     {
         if (IsChainPlaybackActive)
             return;
+
+        CurrentMeleeType = type;
 
         var selected = (type == MeleeType.Light) ? LightCombo : HeavyCombo;
         if (selected == null)

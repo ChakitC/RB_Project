@@ -35,6 +35,16 @@ public sealed class MeleeComboSO : ScriptableObject
         public AnimationCurve knockbackProgressCurve;
         public ImpactReactionKind knockbackReaction;
         public bool knockbackInterruptsActions;
+
+        public KnockbackSettings ToKnockbackSettings()
+        {
+            return new KnockbackSettings(
+                knockbackDistance,
+                knockbackDuration,
+                knockbackProgressCurve,
+                knockbackReaction,
+                knockbackInterruptsActions);
+        }
     }
 
     [Header("Combo Steps")]

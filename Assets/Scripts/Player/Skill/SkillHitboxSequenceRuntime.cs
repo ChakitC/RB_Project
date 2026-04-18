@@ -675,21 +675,19 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
     KnockbackData BuildKnockback(StepRuntimeState step, Vector3 hitPoint)
     {
-        if (step == null || !step.Definition.OverrideKnockback)
-            return default;
-
-        if (step.Definition.KnockbackDistance <= 0f || step.Definition.KnockbackDuration <= 0f)
+        if (step == null || step.Definition == null || !step.Definition.OverrideKnockback)
             return default;
 
         Vector3 origin = _context != null ? _context.CastPosition : transform.position;
-        return KnockbackData.FromOrigin(
+        KnockbackSettings settings = step.Definition.ToKnockbackSettings();
+        KnockbackBuildContext context = new KnockbackBuildContext(
             origin,
             hitPoint,
-            step.Definition.KnockbackDistance,
-            step.Definition.KnockbackDuration,
-            step.Definition.KnockbackReaction,
-            step.Definition.KnockbackInterruptsActions,
-            step.Definition.KnockbackProgressCurve);
+            ResolveSequenceForward());
+
+        return KnockbackFactory.TryBuild(in settings, in context, out KnockbackData knockback)
+            ? knockback
+            : default;
     }
 
     bool ApplyResolvedDamage(IDamageable target, float finalDamage, Vector3 hitPoint, KnockbackData knockback)

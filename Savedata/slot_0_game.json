@@ -154,8 +154,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 3435,
-                    "currentMagazine": 21
+                    "shotCounter": 3591,
+                    "currentMagazine": 0
                 }
             },
             {
@@ -461,7 +461,7 @@
         ]
     },
     "weapon": {
-        "equippedWeaponInstanceId": "5393a3d1497d43d29b64f34d09f4e75b"
+        "equippedWeaponInstanceId": "ba967d7fca944cdeb451412b7c61a49b"
     },
     "party": {
         "partyIds": []

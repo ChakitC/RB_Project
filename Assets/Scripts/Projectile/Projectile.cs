@@ -668,39 +668,53 @@ public class Projectile : MonoBehaviour
 
     KnockbackData BuildConfiguredKnockback(in ProjectileHitInfo hit, bool useRadialDirection)
     {
-        if (config == null ||
-            !config.applyKnockbackOnHit ||
-            config.knockbackDistance <= 0f ||
-            config.knockbackDuration <= 0f)
-        {
+        if (config == null || !config.applyKnockbackOnHit)
             return default(KnockbackData);
-        }
 
-        Vector3 direction;
+        KnockbackSettings settings = config.ToKnockbackSettings();
+        KnockbackBuildContext context = BuildConfiguredKnockbackContext(hit, useRadialDirection);
+
+        return KnockbackFactory.TryBuild(in settings, in context, out KnockbackData knockback)
+            ? knockback
+            : default;
+    }
+
+    KnockbackBuildContext BuildConfiguredKnockbackContext(in ProjectileHitInfo hit, bool useRadialDirection)
+    {
+        Vector3 fallbackDirection = ResolveConfiguredKnockbackFallbackDirection();
+
         if (useRadialDirection)
         {
-            direction = hit.point - transform.position;
-        }
-        else if (_ctx.sourceActor != null)
-        {
-            direction = hit.point - _ctx.sourceActor.position;
-        }
-        else
-        {
-            direction = _ctx.dir;
+            return new KnockbackBuildContext(
+                transform.position,
+                hit.point,
+                fallbackDirection);
         }
 
-        if (direction.sqrMagnitude <= 0.0001f)
-            direction = _ctx.dir.sqrMagnitude > 0.0001f ? _ctx.dir : transform.forward;
+        if (_ctx.sourceActor != null)
+        {
+            return new KnockbackBuildContext(
+                _ctx.sourceActor.position,
+                hit.point,
+                fallbackDirection);
+        }
 
-        return new KnockbackData(
-            direction,
-            config.knockbackDistance,
-            config.knockbackDuration,
+        return new KnockbackBuildContext(
             hit.point,
-            config.knockbackReaction,
-            config.knockbackInterruptsActions,
-            config.knockbackProgressCurve);
+            hit.point,
+            fallbackDirection,
+            explicitDirection: _ctx.dir);
+    }
+
+    Vector3 ResolveConfiguredKnockbackFallbackDirection()
+    {
+        if (_ctx.dir.sqrMagnitude > 0.0001f)
+            return _ctx.dir;
+
+        if (transform.forward.sqrMagnitude > 0.0001f)
+            return transform.forward;
+
+        return Vector3.forward;
     }
 
     void ApplyDamageToTarget(IDamageable target, float finalDamage, GameObject attackerGO, KnockbackData knockback)

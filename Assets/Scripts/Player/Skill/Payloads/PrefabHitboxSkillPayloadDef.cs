@@ -123,6 +123,16 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         public bool KnockbackInterruptsActions => knockbackInterruptsActions;
         public StepStartVfxSettings StepStartVfx => stepStartVfx ?? (stepStartVfx = new StepStartVfxSettings());
         public ImpactVfxSettings ImpactVfx => impactVfx ?? (impactVfx = new ImpactVfxSettings());
+
+        public KnockbackSettings ToKnockbackSettings()
+        {
+            return new KnockbackSettings(
+                knockbackDistance,
+                knockbackDuration,
+                knockbackProgressCurve,
+                knockbackReaction,
+                knockbackInterruptsActions);
+        }
     }
 
     [Header("Runtime")]

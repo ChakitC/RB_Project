@@ -578,6 +578,8 @@ public sealed class CharacterAnimBrainDebug : MonoBehaviour
             buffer.Add("move=knockback");
         if (stateHub.MoveSM != null && stateHub.MoveSM.CurrentId == MoveStateId.Stunned)
             buffer.Add("move=stunned");
+        if (brain != null && brain.IsSkillPlaybackActive)
+            buffer.Add("skill=active");
         if (!HasAnyValidMeleeCombo())
             buffer.Add("no valid melee combo");
 

@@ -27,6 +27,27 @@ public class PlayerSkillManager : MonoBehaviour
         public readonly List<StringReference> timelineEventNames = new List<StringReference>();
     }
 
+    public enum SkillCastStartKind
+    {
+        Rejected,
+        ImmediateSuccess,
+        WaitingForAnimation,
+    }
+
+    public readonly struct SkillCastStartResult
+    {
+        public readonly SkillCastStartKind Kind;
+        public readonly int RequestId;
+
+        public bool Started => Kind != SkillCastStartKind.Rejected;
+
+        public SkillCastStartResult(SkillCastStartKind kind, int requestId)
+        {
+            Kind = kind;
+            RequestId = requestId;
+        }
+    }
+
     private CharacteContext ctx;
     private CharacterAnimBrain animBrain;
     private WeaponSystem weaponSystem;
@@ -133,29 +154,34 @@ public class PlayerSkillManager : MonoBehaviour
     
     public bool TryCastSlot(int slotIndex)
     {
-        if (slotIndex < 0 || slotIndex >= slots.Length)
-            return false;
+        return TryStartCastSlot(slotIndex).Started;
+    }
+
+    public SkillCastStartResult TryStartCastSlot(int slotIndex)
+    {
+        if (slots == null || slotIndex < 0 || slotIndex >= slots.Length)
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         return TryBeginCast(slots[slotIndex]);
     }
 
-    private bool TryBeginCast(SkillSlot slot)
+    private SkillCastStartResult TryBeginCast(SkillSlot slot)
     {
         if (slot == null || pendingCast != null)
-            return false;
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         var skill = slot.runtimeSkill;
         if (skill == null)
-            return false;
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         if (IsSkillUseBlocked())
-            return false;
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         if (!skill.CanCast(skillUser, out var castStats))
-            return false;
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         if (!IsSharedCooldownReady(skill, castStats))
-            return false;
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         var context = new PendingCastContext
         {
@@ -186,7 +212,7 @@ public class PlayerSkillManager : MonoBehaviour
                                         context.timelineEventNames);
 
         if (usingAnimationDriver)
-            return true;
+            return new SkillCastStartResult(SkillCastStartKind.WaitingForAnimation, context.requestId);
 
         if (context.requiresTimelineEvents)
         {
@@ -194,10 +220,12 @@ public class PlayerSkillManager : MonoBehaviour
                 $"Skill '{context.skillDef?.name ?? "<unknown>"}' requires Animancer timeline events, but no skill animation playback was available.",
                 this);
             CancelPendingCast(PendingCastCancelReason.InvalidState, stopAnimation: false);
-            return false;
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
         }
 
-        return ReleasePendingCast(context.requestId);
+        return ReleasePendingCast(context.requestId)
+            ? new SkillCastStartResult(SkillCastStartKind.ImmediateSuccess, context.requestId)
+            : new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
     }
 
     public void ClearSlot(int index)

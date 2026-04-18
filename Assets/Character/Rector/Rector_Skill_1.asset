@@ -20,7 +20,7 @@ MonoBehaviour:
   baseDamage: 100
   baseManaCost: 0
   baseCastTime: 0.5
-  baseCooldown: 0
+  baseCooldown: 10
   baseCritChance: 5
   baseProjectilesCount: 1
   projectileSpeed: 5

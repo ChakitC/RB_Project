@@ -51,6 +51,16 @@ public class GrenadeExplodeModule : ProjectileModule
     public GameObject explosionVfxPrefab;
     public float vfxScale = 1f;
 
+    public KnockbackSettings BuildResolvedKnockbackSettings(float resolvedKnockbackDistance)
+    {
+        return new KnockbackSettings(
+            resolvedKnockbackDistance,
+            knockbackDuration,
+            knockbackProgressCurve,
+            knockbackReaction,
+            knockbackInterruptsActions);
+    }
+
     class State : IProjectileModuleState
     {
         public float t;
@@ -222,27 +232,22 @@ public class GrenadeExplodeModule : ProjectileModule
         else
             hitNormal.Normalize();
 
-        Vector3 knockbackDirection = c.transform.position - center;
-        if (knockbackDirection.sqrMagnitude <= 0.0001f)
-            knockbackDirection = hitNormal;
-
         float resolvedKnockbackDistance = knockbackDistance > 0f
             ? knockbackDistance
             : Mathf.Max(0f, knockbackForce * 0.2f);
 
         KnockbackData knockback = default(KnockbackData);
-        if (applyKnockback &&
-            resolvedKnockbackDistance > 0f &&
-            knockbackDuration > 0f)
+        if (applyKnockback)
         {
-            knockback = new KnockbackData(
-                knockbackDirection,
-                resolvedKnockbackDistance,
-                knockbackDuration,
+            KnockbackSettings settings = BuildResolvedKnockbackSettings(resolvedKnockbackDistance);
+            KnockbackBuildContext knockbackContext = new KnockbackBuildContext(
+                center,
                 closest,
-                knockbackReaction,
-                knockbackInterruptsActions,
-                knockbackProgressCurve);
+                hitNormal,
+                explicitDirection: c.transform.position - center);
+
+            if (KnockbackFactory.TryBuild(in settings, in knockbackContext, out KnockbackData builtKnockback))
+                knockback = builtKnockback;
         }
 
         var hit = new ProjectileHitInfo(closest, hitNormal, c);

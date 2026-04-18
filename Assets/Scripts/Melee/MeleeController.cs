@@ -65,6 +65,8 @@ public sealed class MeleeController : MonoBehaviour
             return false;
         if (!stateHub.CanStartMelee())
             return false;
+        if (brain.IsSkillPlaybackActive)
+            return false;
         if (!HasValidCombo(meleeType))
             return false;
 
@@ -120,7 +122,8 @@ public sealed class MeleeController : MonoBehaviour
             : null;
         _activeChainId = combatEventBus != null ? CombatEventBus.NextChainId() : 0;
 
-        hitboxTrigger?.Activate();
+        var meleeType = brain != null ? brain.CurrentMeleeType : CharacterAnimBrain.MeleeType.Light;
+        hitboxTrigger?.Activate(meleeType);
     }
 
     void OnHitEnd()
@@ -268,26 +271,19 @@ public sealed class MeleeController : MonoBehaviour
     KnockbackData BuildKnockback(Collider other)
     {
         var activeStep = brain != null ? brain.CurrentMeleeStep : default(MeleeComboSO.Step);
-        if (!activeStep.applyKnockback ||
-            activeStep.knockbackDistance <= 0f ||
-            activeStep.knockbackDuration <= 0f)
-        {
+        if (!activeStep.applyKnockback)
             return default(KnockbackData);
-        }
 
         Vector3 hitPoint = other != null ? other.ClosestPoint(transform.position) : transform.position;
-        Vector3 direction = hitPoint - transform.position;
-        if (direction.sqrMagnitude <= 0.0001f)
-            direction = transform.forward;
-
-        return new KnockbackData(
-            direction,
-            activeStep.knockbackDistance,
-            activeStep.knockbackDuration,
+        KnockbackSettings settings = activeStep.ToKnockbackSettings();
+        KnockbackBuildContext context = new KnockbackBuildContext(
+            transform.position,
             hitPoint,
-            activeStep.knockbackReaction,
-            activeStep.knockbackInterruptsActions,
-            activeStep.knockbackProgressCurve);
+            transform.forward);
+
+        return KnockbackFactory.TryBuild(in settings, in context, out KnockbackData knockback)
+            ? knockback
+            : default;
     }
 
     void NotifyOwnerCombatTriggers(IDamageable target, float finalDamage)

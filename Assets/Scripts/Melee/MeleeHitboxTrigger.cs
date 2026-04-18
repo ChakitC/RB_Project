@@ -1,12 +1,96 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public sealed class MeleeHitboxTrigger : MonoBehaviour
 {
+    [Serializable]
+    private sealed class HitboxGroup
+    {
+        [SerializeField] private List<Collider> colliders = new();
+
+        public IReadOnlyList<Collider> Colliders => colliders;
+
+        public void AddIfMissing(Collider collider)
+        {
+            if (!collider)
+                return;
+
+            if (colliders == null)
+                colliders = new List<Collider>();
+
+            if (!colliders.Contains(collider))
+                colliders.Add(collider);
+        }
+
+        public bool Contains(Collider collider)
+        {
+            if (!collider || colliders == null)
+                return false;
+
+            for (int i = 0; i < colliders.Count; i++)
+            {
+                if (colliders[i] == collider)
+                    return true;
+            }
+
+            return false;
+        }
+
+        public void SetEnabled(bool enabled)
+        {
+            if (colliders == null)
+                return;
+
+            for (int i = 0; i < colliders.Count; i++)
+            {
+                Collider collider = colliders[i];
+                if (!collider)
+                    continue;
+
+                collider.isTrigger = true;
+                collider.enabled = enabled;
+            }
+        }
+
+        public bool HasEnabledCollider()
+        {
+            if (colliders == null)
+                return false;
+
+            for (int i = 0; i < colliders.Count; i++)
+            {
+                Collider collider = colliders[i];
+                if (collider && collider.enabled)
+                    return true;
+            }
+
+            return false;
+        }
+
+        public bool IsEmpty()
+        {
+            if (colliders == null)
+                return true;
+
+            for (int i = 0; i < colliders.Count; i++)
+            {
+                if (colliders[i])
+                    return false;
+            }
+
+            return true;
+        }
+    }
+
     [Header("Hitboxes")]
-    [SerializeField] private Collider hitboxR;
-    [SerializeField] private Collider hitboxL;
+    [SerializeField] private HitboxGroup lightHitboxes = new();
+    [SerializeField] private HitboxGroup heavyHitboxes = new();
+    [FormerlySerializedAs("hitboxR")]
+    [SerializeField, HideInInspector] private Collider legacyHitboxR;
+    [FormerlySerializedAs("hitboxL")]
+    [SerializeField, HideInInspector] private Collider legacyHitboxL;
 
     [Header("Filter")]
     [SerializeField] private LayerMask targetMask = ~0;
@@ -15,32 +99,42 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
 
     readonly Collider[] _overlapBuffer = new Collider[32];
     readonly HashSet<int> _sweepColliderIds = new();
+    private CharacterAnimBrain.MeleeType _activeMeleeType = CharacterAnimBrain.MeleeType.Light;
 
     private void Awake()
     {
-        if (!hitboxR) Debug.LogError("hitboxR not found", this);
-        if (!hitboxL) Debug.LogWarning("hitboxL not assigned/found (will only use hitboxR)", this);
+        EnsureHitboxGroups();
+        MigrateLegacyHitboxesIfNeeded();
+        LogMissingAssignments();
+        SetAllHitboxes(false);
+    }
 
-        if (hitboxR) hitboxR.isTrigger = true;
-        if (hitboxL) hitboxL.isTrigger = true;
-
-        SetHitboxes(false);
+    private void OnValidate()
+    {
+        EnsureHitboxGroups();
+        MigrateLegacyHitboxesIfNeeded();
     }
 
     private void OnDisable()
     {
-        SetHitboxes(false);
+        SetAllHitboxes(false);
+    }
+
+    public void Activate(CharacterAnimBrain.MeleeType meleeType)
+    {
+        _activeMeleeType = meleeType;
+        SetHitboxesForActiveType(true);
+        NotifyExistingContacts();
     }
 
     public void Activate()
     {
-        SetHitboxes(true);
-        NotifyExistingContacts();
+        Activate(CharacterAnimBrain.MeleeType.Light);
     }
 
     public void Deactivate()
     {
-        SetHitboxes(false);
+        SetAllHitboxes(false);
     }
 
     public bool IsTargetAllowed(Collider other)
@@ -53,7 +147,8 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
 
     public bool IsHitboxCollider(Collider other)
     {
-        return other && (other == hitboxR || other == hitboxL);
+        EnsureHitboxGroups();
+        return other && (lightHitboxes.Contains(other) || heavyHitboxes.Contains(other));
     }
 
     private void OnTriggerEnter(Collider other) => NotifyContact(other);
@@ -69,20 +164,41 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
         ContactDetected?.Invoke(other);
     }
 
-    private void SetHitboxes(bool on)
+    private void SetAllHitboxes(bool on)
     {
-        if (hitboxR) hitboxR.enabled = on;
-        if (hitboxL) hitboxL.enabled = on;
+        EnsureHitboxGroups();
+        lightHitboxes.SetEnabled(on);
+        heavyHitboxes.SetEnabled(on);
+    }
+
+    private void SetHitboxesForActiveType(bool on)
+    {
+        SetAllHitboxes(false);
+
+        if (on)
+            GetActiveHitboxGroup().SetEnabled(true);
     }
 
     private void NotifyExistingContacts()
     {
         _sweepColliderIds.Clear();
+        SampleExistingContacts(GetActiveHitboxGroup());
+    }
 
-        SampleExistingContacts(hitboxR);
+    private void SampleExistingContacts(HitboxGroup hitboxGroup)
+    {
+        IReadOnlyList<Collider> hitboxes = hitboxGroup.Colliders;
+        if (hitboxes == null)
+            return;
 
-        if (hitboxL && hitboxL != hitboxR)
-            SampleExistingContacts(hitboxL);
+        for (int i = 0; i < hitboxes.Count; i++)
+        {
+            Collider hitbox = hitboxes[i];
+            if (!hitbox || !hitbox.enabled)
+                continue;
+
+            SampleExistingContacts(hitbox);
+        }
     }
 
     private void SampleExistingContacts(Collider hitbox)
@@ -204,6 +320,62 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
 
     private bool AreHitboxesEnabled()
     {
-        return (hitboxR && hitboxR.enabled) || (hitboxL && hitboxL.enabled);
+        return GetActiveHitboxGroup().HasEnabledCollider();
+    }
+
+    private HitboxGroup GetActiveHitboxGroup()
+    {
+        EnsureHitboxGroups();
+        return _activeMeleeType == CharacterAnimBrain.MeleeType.Heavy
+            ? heavyHitboxes
+            : lightHitboxes;
+    }
+
+    private void MigrateLegacyHitboxesIfNeeded()
+    {
+        EnsureHitboxGroups();
+
+        if (!legacyHitboxR && !legacyHitboxL)
+            return;
+
+        if (!lightHitboxes.IsEmpty() || !heavyHitboxes.IsEmpty())
+            return;
+
+        lightHitboxes.AddIfMissing(legacyHitboxR);
+        lightHitboxes.AddIfMissing(legacyHitboxL);
+        heavyHitboxes.AddIfMissing(legacyHitboxR);
+        heavyHitboxes.AddIfMissing(legacyHitboxL);
+
+        legacyHitboxR = null;
+        legacyHitboxL = null;
+    }
+
+    private void LogMissingAssignments()
+    {
+        EnsureHitboxGroups();
+
+        bool lightMissing = lightHitboxes.IsEmpty();
+        bool heavyMissing = heavyHitboxes.IsEmpty();
+
+        if (lightMissing && heavyMissing)
+        {
+            Debug.LogError("No melee hitboxes assigned for Light or Heavy attacks.", this);
+            return;
+        }
+
+        if (lightMissing)
+            Debug.LogWarning("Light hitboxes are not assigned.", this);
+
+        if (heavyMissing)
+            Debug.LogWarning("Heavy hitboxes are not assigned.", this);
+    }
+
+    private void EnsureHitboxGroups()
+    {
+        if (lightHitboxes == null)
+            lightHitboxes = new HitboxGroup();
+
+        if (heavyHitboxes == null)
+            heavyHitboxes = new HitboxGroup();
     }
 }

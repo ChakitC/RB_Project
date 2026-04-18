@@ -55,10 +55,10 @@ public sealed class StateHub : MonoBehaviour
     bool IsSkillBlockedByStatusEffects =>
         statusEffectStunned || (statusEffectControlBlocks & ControlBlockFlags.Skill) != 0;
 
-    bool IsSkillAnimating()
+    CharacterAnimBrain ResolveAnimBrain()
     {
         if (ctx == null)
-            return false;
+            return null;
 
         var animBrain = ctx.AnimBrain;
         if (!animBrain)
@@ -68,7 +68,19 @@ public sealed class StateHub : MonoBehaviour
                 ctx.AnimBrain = animBrain;
         }
 
+        return animBrain;
+    }
+
+    bool IsSkillAnimating()
+    {
+        CharacterAnimBrain animBrain = ResolveAnimBrain();
         return animBrain != null && animBrain.IsShootBlockingPlaybackActive;
+    }
+
+    bool IsSkillPlaybackActive()
+    {
+        CharacterAnimBrain animBrain = ResolveAnimBrain();
+        return animBrain != null && animBrain.IsSkillPlaybackActive;
     }
 
     void Awake()
@@ -267,6 +279,7 @@ public sealed class StateHub : MonoBehaviour
         IsAlive &&
         !Isdown &&
         !statusEffectStunned &&
+        !IsSkillPlaybackActive() &&
         UISM.CurrentId != UIStateId.Inventory &&
         UISM.CurrentId != UIStateId.Pause &&
         MoveSM.CurrentId != MoveStateId.Dash &&

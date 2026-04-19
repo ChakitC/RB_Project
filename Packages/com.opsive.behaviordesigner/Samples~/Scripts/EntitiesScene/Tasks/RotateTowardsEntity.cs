@@ -7,7 +7,8 @@ namespace Opsive.BehaviorDesigner.Samples
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Tasks;
-    using Opsive.GraphDesigner.Runtime;
+    using Opsive.GraphDesigner.Runtime.Variables;
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using Unity.Burst;
     using Unity.Entities;
     using Unity.Mathematics;
@@ -16,15 +17,28 @@ namespace Opsive.BehaviorDesigner.Samples
 
     [Opsive.Shared.Utility.Description("Uses DOTS to rotate around the center. This task will always return a status of running.")]
     [Shared.Utility.Category("Behavior Designer Samples/DOTS")]
-    public class RotateTowardsEntity : ECSActionTask<RotateTowardsEntityTaskSystem, RotateTowardsEntityComponent>
+    public class RotateTowardsEntity : ECSActionTask<RotateTowardsEntityTaskSystem, RotateTowardsEntityComponent, RotateTowardsEntityFlag>
     {
         [Tooltip("The angular speed of the agent.")]
         [SerializeField] float m_AngularSpeed;
+        [Tooltip("The entity that should be targeted.")]
+        [SerializeField] [RequireShared] SharedVariable<Entity> m_TargetEntity;
+
+        private ECSSharedVariableIndex<Entity> m_TargetEntityIndex;
 
         /// <summary>
-        /// The type of flag that should be enabled when the task is running.
+        /// Registers the target SharedVariable and adds the buffer element to the entity.
         /// </summary>
-        public override ComponentType Flag { get => typeof(RotateTowardsEntityFlag); }
+        /// <param name="world">The world that the entity exists in.</param>
+        /// <param name="entity">The entity that the IBufferElementData should be assigned to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
+        /// <param name="gameObject">The GameObject that the entity is attached to.</param>
+        /// <returns>The index of the element within the buffer.</returns>
+        public override int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, GameObject gameObject)
+        {
+            m_TargetEntityIndex = new ECSSharedVariableIndex<Entity>(registry.Register(m_TargetEntity));
+            return base.AddBufferElement(world, entity, registry, gameObject);
+        }
 
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
@@ -36,13 +50,17 @@ namespace Opsive.BehaviorDesigner.Samples
             {
                 Index = RuntimeIndex,
                 AngularSpeed = m_AngularSpeed,
+                TargetEntityVariableIndex = m_TargetEntityIndex.Index,
             };
         }
 
         /// <summary>
         /// Resets the task to its default values.
         /// </summary>
-        public override void Reset() { m_AngularSpeed = 2; }
+        public override void Reset()
+        {
+            m_AngularSpeed = 2;
+        }
     }
 
     /// <summary>
@@ -54,6 +72,8 @@ namespace Opsive.BehaviorDesigner.Samples
         public ushort Index;
         [Tooltip("The angular speed of the agent.")]
         public float AngularSpeed;
+        [Tooltip("Buffer index into SharedVariableElement for the target entity.")]
+        public int TargetEntityVariableIndex;
     }
 
     /// <summary>
@@ -75,11 +95,17 @@ namespace Opsive.BehaviorDesigner.Samples
         private void OnUpdate(ref SystemState state)
         {
             var deltaTime = SystemAPI.Time.DeltaTime;
-            foreach (var (localTransform, taskComponents, rotateTorwardsTargetComponents) in
-                SystemAPI.Query<RefRW<LocalTransform>, DynamicBuffer<TaskComponent>, DynamicBuffer<RotateTowardsEntityComponent>>().WithAll<RotateTowardsEntityFlag, EvaluateFlag>()) {
+            var localTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
+            foreach (var (branchComponents, localTransform, taskComponents, rotateTorwardsTargetComponents, sharedVariables) in
+                SystemAPI.Query<DynamicBuffer<BranchComponent>, RefRW<LocalTransform>, DynamicBuffer<TaskComponent>, DynamicBuffer<RotateTowardsEntityComponent>, DynamicBuffer<SharedVariableElement>>().WithAll<RotateTowardsEntityFlag, EvaluateFlag>()) {
                 for (int i = 0; i < rotateTorwardsTargetComponents.Length; ++i) {
                     var rotateTowardsEntityComponent = rotateTorwardsTargetComponents[i];
                     var taskComponent = taskComponents[rotateTowardsEntityComponent.Index];
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute) {
+                        continue;
+                    }
+
                     if (taskComponent.Status == TaskStatus.Queued) {
                         taskComponent.Status = TaskStatus.Running;
 
@@ -91,11 +117,11 @@ namespace Opsive.BehaviorDesigner.Samples
                         continue;
                     }
 
-                    // Find the target. There will only be one entity with the TargetEntityTag.
-                    foreach (var (targetTransform, targetEntity) in SystemAPI.Query<RefRO<LocalTransform>>().WithAll<TargetEntityTag>().WithEntityAccess()) {
-                        var target = quaternion.EulerXYZ(0, -GetAngle(targetTransform.ValueRO.Position), 0);
+                    var targetEntity = sharedVariables.Get<Entity>(rotateTowardsEntityComponent.TargetEntityVariableIndex);
+                    if (targetEntity != Entity.Null && localTransformLookup.HasComponent(targetEntity)) {
+                        var targetTransform = localTransformLookup[targetEntity];
+                        var target = quaternion.EulerXYZ(0, -GetAngle(targetTransform.Position), 0);
                         localTransform.ValueRW.Rotation = RotateTowards(localTransform.ValueRO.Rotation, target, rotateTowardsEntityComponent.AngularSpeed * deltaTime);
-                        break;
                     }
                 }
             }

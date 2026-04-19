@@ -128,9 +128,6 @@ namespace Opsive.BehaviorDesigner.Samples
             // LocalRotationSystem needs to be added manually.
             var systemGroup = World.DefaultGameObjectInjectionWorld.GetOrCreateSystemManaged<SimulationSystemGroup>();
             systemGroup.AddSystemToUpdateList(World.DefaultGameObjectInjectionWorld.GetOrCreateSystem<LocalRotationSystem>());
-
-            // The behavior trees have been baked. Enable the system which starts the behavior trees.
-            BehaviorTree.EnableBakedBehaviorTreeSystem(World.DefaultGameObjectInjectionWorld);
         }
     }
 }

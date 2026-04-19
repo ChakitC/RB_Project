@@ -162,6 +162,33 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     [DisableAutoCreation]
     public partial struct PrioritySelectorTaskSystem : ISystem
     {
+        private EntityQuery m_WithValuesQuery;
+        private EntityQuery m_WithoutValuesQuery;
+
+        /// <summary>
+        /// Builds the queries.
+        /// </summary>
+        /// <param name="state">The current state of the system.</param>
+        private void OnCreate(ref SystemState state)
+        {
+            m_WithValuesQuery = SystemAPI.QueryBuilder()
+                .WithAllRW<BranchComponent>()
+                .WithAllRW<TaskComponent>()
+                .WithAllRW<PrioritySelectorComponent>()
+                .WithAllRW<PriorityValueComponent>()
+                .WithAll<PrioritySelectorFlag, EvaluateFlag>()
+                .Build();
+
+            // Special case where there is no PriorityValueComponent buffer.
+            m_WithoutValuesQuery = SystemAPI.QueryBuilder()
+                .WithAllRW<PrioritySelectorComponent>()
+                .WithAllRW<TaskComponent>()
+                .WithAllRW<BranchComponent>()
+                .WithAll<PrioritySelectorFlag, EvaluateFlag>()
+                .WithNone<PriorityValueComponent>()
+                .Build();
+        }
+
         /// <summary>
         /// Creates the jobs.
         /// </summary>
@@ -169,24 +196,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
         [BurstCompile]
         private void OnUpdate(ref SystemState state)
         {
-            var withValuesQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<BranchComponent>()
-                .WithAllRW<TaskComponent>()
-                .WithAllRW<PrioritySelectorComponent>()
-                .WithAllRW<PriorityValueComponent>()
-                .WithAll<PrioritySelectorFlag, EvaluateFlag>()
-                .Build();
-            state.Dependency = new PrioritySelectorWithValuesJob().ScheduleParallel(withValuesQuery, state.Dependency);
-
-            // Special case where there is no PriorityValueComponent buffer.
-            var withoutValuesQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PrioritySelectorComponent>()
-                .WithAllRW<TaskComponent>()
-                .WithAllRW<BranchComponent>()
-                .WithAll<PrioritySelectorFlag, EvaluateFlag>()
-                .WithNone<PriorityValueComponent>()
-                .Build();
-            state.Dependency = new PrioritySelectorWithoutValuesJob().ScheduleParallel(withoutValuesQuery, state.Dependency);
+            state.Dependency = new PrioritySelectorWithValuesJob().ScheduleParallel(m_WithValuesQuery, state.Dependency);
+            state.Dependency = new PrioritySelectorWithoutValuesJob().ScheduleParallel(m_WithoutValuesQuery, state.Dependency);
         }
 
         /// <summary>

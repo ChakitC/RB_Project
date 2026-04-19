@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: ae41d685af312cd47938e1f1ce281339
+guid: 0846a329b065f654cb38c63aef31afd7
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
@@ -13,6 +13,6 @@ AssetOrigin:
   serializedVersion: 1
   productId: 368344
   packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
-  packageVersion: 3.0.1
+  packageVersion: 3.0.2
   assetPath: Packages/com.opsive.behaviordesigner/Runtime/Tasks/Actions/Math/RandomInt.cs
-  uploadId: 894106
+  uploadId: 902072

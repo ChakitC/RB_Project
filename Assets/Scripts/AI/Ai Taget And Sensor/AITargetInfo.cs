@@ -6,17 +6,32 @@ public class AITargetInfo : MonoBehaviour, IAITargetable
     [SerializeField] private Transform aimPoint;
     [SerializeField] private Transform chainAttackPoint;
     [SerializeField] private int teamId = 0;
+    [SerializeField, HideInInspector] private AITargetRole targetRole = AITargetRole.Auto;
+    [SerializeField] private AITargetIdentity targetIdentity = AITargetIdentity.Auto;
+    [SerializeField] private bool overrideCombatRole = false;
+    [SerializeField] private CharacterCombatRole combatRoleOverride = CharacterCombatRole.Generic;
+    [SerializeField] private float baseTargetPriority = 0f;
+    [SerializeField, Min(0f)] private float threatMultiplier = 1f;
     [SerializeField] private bool isAlive = true;
     [SerializeField] private bool isTargetable = true;
 
-    readonly HashSet<int> _untargetableTokens = new();
+    readonly HashSet<int> _untargetableTokens = new HashSet<int>();
     int _nextUntargetableToken = 1;
+
+    PlayerContext _playerContext;
+    AllyContext _allyContext;
+    EnemyContext _enemyContext;
+    CharacteContext _characterContext;
 
     public Transform AimPoint => aimPoint != null ? aimPoint : transform;
     public Transform ChainAttackPoint => chainAttackPoint != null ? chainAttackPoint : AimPoint;
     public bool IsAlive => isAlive;
     public bool IsTargetable => isTargetable && _untargetableTokens.Count == 0;
     public int TeamId => teamId;
+    public AITargetIdentity TargetIdentity => ResolveIdentity();
+    public CharacterCombatRole CombatRole => ResolveCombatRole();
+    public float BaseTargetPriority => baseTargetPriority;
+    public float ThreatMultiplier => Mathf.Max(0f, threatMultiplier);
 
     public void SetAlive(bool value) => isAlive = value;
     public void SetTargetable(bool value) => isTargetable = value;
@@ -34,5 +49,63 @@ public class AITargetInfo : MonoBehaviour, IAITargetable
             return;
 
         _untargetableTokens.Remove(token);
+    }
+
+    AITargetIdentity ResolveIdentity()
+    {
+        if (targetIdentity != AITargetIdentity.Auto)
+            return targetIdentity;
+
+        if (targetRole == AITargetRole.Player)
+            return AITargetIdentity.Player;
+
+        if (targetRole == AITargetRole.Companion)
+            return AITargetIdentity.Companion;
+
+        if (_playerContext == null)
+            _playerContext = GetComponentInParent<PlayerContext>();
+
+        if (_playerContext != null)
+            return AITargetIdentity.Player;
+
+        if (_allyContext == null)
+            _allyContext = GetComponentInParent<AllyContext>();
+
+        if (_allyContext != null)
+            return AITargetIdentity.Companion;
+
+        if (_enemyContext == null)
+            _enemyContext = GetComponentInParent<EnemyContext>();
+
+        if (_enemyContext != null)
+            return AITargetIdentity.Enemy;
+
+        return AITargetIdentity.Generic;
+    }
+
+    CharacterCombatRole ResolveCombatRole()
+    {
+        if (overrideCombatRole)
+            return combatRoleOverride;
+
+        switch (targetRole)
+        {
+            case AITargetRole.Tank:
+                return CharacterCombatRole.Tank;
+            case AITargetRole.Healer:
+                return CharacterCombatRole.Healer;
+            case AITargetRole.Support:
+                return CharacterCombatRole.Support;
+            case AITargetRole.Sniper:
+                return CharacterCombatRole.Sniper;
+        }
+
+        if (_characterContext == null)
+            _characterContext = GetComponentInParent<CharacteContext>();
+
+        if (_characterContext != null && _characterContext.baseStats != null)
+            return _characterContext.baseStats.combatRole;
+
+        return CharacterCombatRole.Generic;
     }
 }

@@ -96,7 +96,7 @@ public class SkillInstance
     public bool CanCast(ISkillUser user, out FinalSkillStats stats)
     {
         stats = null;
-        if (def == null || user == null)
+        if (def == null || def.payload == null || user == null)
             return false;
 
         stats = GetFinalStats(user);
@@ -136,7 +136,7 @@ public class SkillInstance
         CharacterAnimBrain animBrain = null,
         int requestId = 0)
     {
-        if (def == null || user == null || stats == null)
+        if (def == null || def.payload == null || user == null || stats == null)
             return false;
 
         if (spendEnergy)
@@ -151,71 +151,18 @@ public class SkillInstance
         }
 
         var castContext = new SkillCastContext(user, def, stats, animBrain, requestId);
-        bool executed = TryExecutePayload(castContext) || TryCastLegacyProjectile(castContext);
-        _lastCastTime = Time.time;
+        bool executed = TryExecutePayload(castContext);
+        if (executed)
+            _lastCastTime = Time.time;
         return executed;
     }
 
     bool TryExecutePayload(SkillCastContext castContext)
     {
-        if (def == null || def.payload == null)
+        if (castContext == null || castContext.Execution == null)
             return false;
 
-        def.payload.Execute(castContext);
+        castContext.Execution.Execute(castContext);
         return true;
-    }
-
-    bool TryCastLegacyProjectile(SkillCastContext castContext)
-    {
-        if (def == null || def.skillPrefab == null || castContext == null || castContext.CastOrigin == null)
-            return false;
-
-        var prefabProj = def.skillPrefab.GetComponent<Projectile>();
-        if (prefabProj == null)
-        {
-            Debug.LogError($"Skill '{def.name}' is missing a payload and its prefab has no Projectile component.");
-            return false;
-        }
-
-        int projectileCount = castContext.SkillStats != null
-            ? Mathf.Max(1, castContext.SkillStats.projectileCount)
-            : 1;
-
-        for (int i = 0; i < projectileCount; i++)
-        {
-            Vector3 dir = ComputeLegacyProjectileDirection(castContext, i, projectileCount);
-            var projGO = Object.Instantiate(
-                def.skillPrefab,
-                castContext.CastOrigin.position,
-                Quaternion.LookRotation(dir, Vector3.up));
-
-            var proj = projGO.GetComponent<Projectile>();
-            if (proj == null)
-                continue;
-
-            proj.InitFromSkillDef(
-                proj.config,
-                castContext.User,
-                def,
-                castContext.SkillStats,
-                dir,
-                prefabProj);
-        }
-
-        return true;
-    }
-
-    static Vector3 ComputeLegacyProjectileDirection(SkillCastContext castContext, int projectileIndex, int projectileCount)
-    {
-        Vector3 dir = castContext != null ? castContext.AimDirection : Vector3.forward;
-        if (projectileCount > 1)
-        {
-            float spread = 10f;
-            float t = (float)projectileIndex / (projectileCount - 1) - 0.5f;
-            float angle = t * spread;
-            dir = Quaternion.AngleAxis(angle, Vector3.up) * dir;
-        }
-
-        return dir.normalized;
     }
 }

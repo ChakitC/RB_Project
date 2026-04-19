@@ -72,7 +72,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.GameObjectTasks
 #else
                 var components = UnityEngine.Object.FindObjectsOfType(componentType, true);
 #endif
-
                 foundArray = new GameObject[components.Length];
                 for (int i = 0; i < components.Length; ++i) {
                     var component = components[i] as Component;

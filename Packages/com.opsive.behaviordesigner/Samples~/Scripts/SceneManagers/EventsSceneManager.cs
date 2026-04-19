@@ -37,7 +37,7 @@ namespace Opsive.BehaviorDesigner.Samples.SceneManagers
                 var position = m_SpawnCenter.transform.position + new Vector3(Random.Range(-m_SpawnSize.x, m_SpawnSize.x), 0, Random.Range(-m_SpawnSize.y, m_SpawnSize.y));
                 var agent = Object.Instantiate(m_AgentPrefab, position, m_SpawnCenter.transform.rotation);
                 agent.name = m_AgentPrefab.name + (i + 1);
-                
+
                 // Set the scene variables.
                 var behaviorTree = agent.GetComponent<BehaviorTree>();
                 var destinationVariable = behaviorTree.GetVariable<GameObject>("Destination");

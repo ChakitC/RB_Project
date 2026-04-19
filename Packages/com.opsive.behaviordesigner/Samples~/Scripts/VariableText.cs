@@ -21,8 +21,6 @@ namespace Opsive.BehaviorDesigner.Samples
         [SerializeField] protected BehaviorTree m_BehaviorTree;
         [Tooltip("The name of the variable.")]
         [SerializeField] protected string m_VariableName;
-        [Tooltip("Should the variable register for health change events?")]
-        [SerializeField] protected bool m_HealthChangeRegistration;
 
         private Text m_Text;
         private SharedVariable m_Variable;

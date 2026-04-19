@@ -53,6 +53,17 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.Utility
     [DisableAutoCreation]
     public partial struct IdleTaskSystem : ISystem
     {
+        private EntityQuery m_Query;
+
+        /// <summary>
+        /// Builds the query.
+        /// </summary>
+        /// <param name="state">The current state of the system.</param>
+        private void OnCreate(ref SystemState state)
+        {
+            m_Query = SystemAPI.QueryBuilder().WithAllRW<TaskComponent>().WithAll<IdleComponent, IdleFlag, EvaluateFlag>().Build();
+        }
+
         /// <summary>
         /// Creates the job.
         /// </summary>
@@ -60,8 +71,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.Utility
         [BurstCompile]
         private void OnUpdate(ref SystemState state)
         {
-            var query = SystemAPI.QueryBuilder().WithAllRW<TaskComponent>().WithAll<IdleComponent, IdleFlag, EvaluateFlag>().Build();
-            state.Dependency = new IdleJob().ScheduleParallel(query, state.Dependency);
+            state.Dependency = new IdleJob().ScheduleParallel(m_Query, state.Dependency);
         }
 
         /// <summary>

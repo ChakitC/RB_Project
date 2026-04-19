@@ -458,8 +458,8 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         if (step.UsesStepContinueOverride)
             return step.continueMode;
 
-        return step.skillDef != null
-            ? step.skillDef.GetChainContinueMode()
+        return step.skillDef != null && step.skillDef.payload != null
+            ? step.skillDef.payload.GetChainContinueMode()
             : ChainStepContinueMode.OnStepComplete;
     }
 
@@ -477,8 +477,8 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             if (step != null && step.UsesStepContinueOverride)
                 return step.ClampedContinueNormalizedTime;
 
-            return step?.skillDef != null
-                ? step.skillDef.GetChainContinueNormalizedTime()
+            return step?.skillDef != null && step.skillDef.payload != null
+                ? step.skillDef.payload.GetChainContinueNormalizedTime()
                 : 1f;
         }
 

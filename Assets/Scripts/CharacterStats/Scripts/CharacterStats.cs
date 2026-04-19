@@ -10,6 +10,16 @@ public enum CharacterWeaponHandMode
     None = 3
 }
 
+public enum CharacterCombatRole
+{
+    Generic = 0,
+    Tank = 1,
+    Healer = 2,
+    Support = 3,
+    Sniper = 4,
+    Assault = 5
+}
+
 [HideMonoScript]
 [CreateAssetMenu(menuName = "Character Stats")]
 public class CharacterStats : ScriptableObject
@@ -98,6 +108,10 @@ public class CharacterStats : ScriptableObject
     public CharacterWeaponHandMode weaponHandMode = CharacterWeaponHandMode.RightHand;
 
     [PropertyOrder(-139)]
+    [FoldoutGroup("Combat Role", Expanded = true), LabelText("Combat Role")]
+    public CharacterCombatRole combatRole = CharacterCombatRole.Generic;
+
+    [PropertyOrder(-138)]
     [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Default Chain Skill"), AssetsOnly]
     public SkillGemDefinition chainAttackSkill;
     

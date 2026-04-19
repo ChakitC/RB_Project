@@ -42,12 +42,12 @@ namespace Opsive.BehaviorDesigner.Samples
             }
 
             var targetRotation = Quaternion.LookRotation(direction.normalized);
-            
+
             if (m_OnlyY.Value) {
                 var currentRotation = m_Transform.eulerAngles;
                 var targetY = targetRotation.eulerAngles.y;
                 var deltaAngle = Mathf.DeltaAngle(currentRotation.y, targetY);
-                
+
                 if (Mathf.Abs(deltaAngle) < m_MaxLookAtRotationDelta.Value) {
                     return TaskStatus.Success;
                 }

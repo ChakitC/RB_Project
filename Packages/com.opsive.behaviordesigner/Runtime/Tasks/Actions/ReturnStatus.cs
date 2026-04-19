@@ -75,6 +75,17 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
     [DisableAutoCreation]
     public partial struct ReturnStatusTaskSystem : ISystem
     {
+        private EntityQuery m_Query;
+
+        /// <summary>
+        /// Builds the query.
+        /// </summary>
+        /// <param name="state">The current state of the system.</param>
+        private void OnCreate(ref SystemState state)
+        {
+            m_Query = SystemAPI.QueryBuilder().WithAllRW<TaskComponent>().WithAllRW<ReturnStatusComponent>().WithAll<ReturnStatusFlag, EvaluateFlag>().Build();
+        }
+
         /// <summary>
         /// Creates the job.
         /// </summary>
@@ -82,8 +93,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
         [BurstCompile]
         private void OnUpdate(ref SystemState state)
         {
-            var query = SystemAPI.QueryBuilder().WithAllRW<TaskComponent>().WithAllRW<ReturnStatusComponent>().WithAll<ReturnStatusFlag, EvaluateFlag>().Build();
-            state.Dependency = new ReturnStatusJob().ScheduleParallel(query, state.Dependency);
+            state.Dependency = new ReturnStatusJob().ScheduleParallel(m_Query, state.Dependency);
         }
 
         /// <summary>

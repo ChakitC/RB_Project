@@ -4,6 +4,7 @@ using System.Text;
 using Animancer;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using UnityEngine.Serialization;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -19,12 +20,6 @@ public class SkillGemDefinition : ScriptableObject
     private const float WarningCastPointMin = 0.05f;
     private const float WarningCastPointMax = 0.95f;
 
-    public enum HelperFacingMode
-    {
-        KeepCurrentFacing = 0,
-        FaceDetectedTargetOnCast = 1,
-    }
-
     private enum SkillConfigStatus
     {
         Valid,
@@ -34,20 +29,19 @@ public class SkillGemDefinition : ScriptableObject
 
     private ProjectileSkillPayloadDef ProjectilePayload => payload as ProjectileSkillPayloadDef;
     private bool HasProjectilePayload => ProjectilePayload != null;
-    private bool HasLegacyProjectilePrefab => skillPrefab != null;
-    private bool CanLegacyPrefabAffectRuntime => payload == null || HasProjectilePayload;
-    private bool LegacyPrefabHasProjectileComponent =>
-        skillPrefab != null && skillPrefab.GetComponent<Projectile>() != null;
-    private bool HasProjectileExecutionIntent => HasProjectilePayload || (payload == null && HasLegacyProjectilePrefab);
+    private bool HasProjectileExecutionIntent => HasProjectilePayload;
     private bool HasAnyRadiusConfigured => baseRadius > 0f || HasRadiusOverride();
-    private bool HasProjectilePresentationAssets => BallVfxPrefab != null || SkillVfxhit != null;
+    private bool HasProjectilePresentationAssets => ProjectilePayload != null && ProjectilePayload.HasProjectilePresentationAssets;
     private bool HasAnimationPresentationAssets => castCue != null || skillClip != null;
     private bool HasAnyPresentationAssets => HasProjectilePresentationAssets || HasAnimationPresentationAssets;
-    private bool UsesLegacyProjectilePath => payload == null && LegacyPrefabHasProjectileComponent;
-    private bool UsesProjectilePayloadFallback =>
-        HasProjectilePayload &&
-        !ProjectilePayload.HasExplicitProjectilePrefab &&
-        LegacyPrefabHasProjectileComponent;
+    private bool HasLegacyRootExecutionData =>
+        legacySkillPrefab != null ||
+        legacyProjectileTrailVfxPrefab != null ||
+        legacyProjectileHitVfxPrefab != null ||
+        !Mathf.Approximately(legacyProjectileHitVfxScale, 1f) ||
+        legacyHelperFacingMode != SkillHelperFacingMode.KeepCurrentFacing ||
+        legacyChainContinueMode != ChainStepContinueMode.OnStepComplete ||
+        !Mathf.Approximately(legacyChainContinueNormalizedTime, 1f);
     private bool HasBlockingError => GetConfigStatus() == SkillConfigStatus.Error;
     private bool HasWarning => !HasBlockingError && !string.IsNullOrEmpty(WarningSummary);
     private bool HasInfo => !string.IsNullOrEmpty(InfoSummary);
@@ -155,10 +149,8 @@ public class SkillGemDefinition : ScriptableObject
         : "None";
 
     [PropertyOrder(-59)]
-    [ShowInInspector, ReadOnly, FoldoutGroup("Execution", Expanded = true), LabelText("Fallback Source")]
-    private string FallbackExecutionSourceLabel => CanLegacyPrefabAffectRuntime && HasLegacyProjectilePrefab
-        ? "Legacy / Migration Prefab"
-        : "None";
+    [ShowInInspector, ReadOnly, FoldoutGroup("Execution", Expanded = true), LabelText("Legacy Fallback")]
+    private string FallbackExecutionSourceLabel => "Disabled";
 
     [PropertyOrder(-58)]
     [ShowInInspector, ReadOnly, FoldoutGroup("Execution", Expanded = true), LabelText("Resolved Runtime Mode")]
@@ -173,26 +165,20 @@ public class SkillGemDefinition : ScriptableObject
     public SkillPayloadDef payload;
 
     [PropertyOrder(-55)]
-    [FoldoutGroup("Execution", Expanded = true), AssetsOnly, PreviewField(70, ObjectFieldAlignment.Left), LabelText("Legacy / Migration Prefab")]
-    [ValidateInput(nameof(IsLegacyPrefabContextuallyValid), "When this field can affect runtime, it must contain a Projectile component.")]
-    public GameObject skillPrefab;
+    [SerializeField, HideInInspector, FormerlySerializedAs("skillPrefab")]
+    private GameObject legacySkillPrefab;
 
-    [PropertyOrder(-54)]
-    [FoldoutGroup("Execution", Expanded = true), LabelText("Helper Facing")]
-    [Tooltip("Used by AllyHelperManager only. Keep Current Facing for helper skills that should preserve their summon/animation direction. Face Detected Target On Cast rotates the helper toward its current detected target right before the skill releases.")]
-    public HelperFacingMode helperFacingMode = HelperFacingMode.KeepCurrentFacing;
+    [SerializeField, HideInInspector, FormerlySerializedAs("helperFacingMode")]
+    private SkillHelperFacingMode legacyHelperFacingMode = SkillHelperFacingMode.KeepCurrentFacing;
 
-    [PropertyOrder(-40)]
-    [FoldoutGroup("Presentation", Expanded = true), AssetsOnly, PreviewField(70, ObjectFieldAlignment.Left), LabelText("Projectile Trail VFX")]
-    public GameObject BallVfxPrefab;
+    [SerializeField, HideInInspector, FormerlySerializedAs("BallVfxPrefab")]
+    private GameObject legacyProjectileTrailVfxPrefab;
 
-    [PropertyOrder(-39)]
-    [FoldoutGroup("Presentation", Expanded = true), AssetsOnly, PreviewField(70, ObjectFieldAlignment.Left), LabelText("Projectile Hit VFX")]
-    public GameObject SkillVfxhit;
+    [SerializeField, HideInInspector, FormerlySerializedAs("SkillVfxhit")]
+    private GameObject legacyProjectileHitVfxPrefab;
 
-    [PropertyOrder(-38)]
-    [FoldoutGroup("Presentation", Expanded = true), LabelText("Hit VFX Scale"), MinValue(0.01f)]
-    public float projectileHitVfxScale = 1f;
+    [SerializeField, HideInInspector, FormerlySerializedAs("projectileHitVfxScale")]
+    private float legacyProjectileHitVfxScale = 1f;
 
     [PropertyOrder(-37)]
     [FoldoutGroup("Presentation", Expanded = true), AssetsOnly, LabelText("Cast Cue")]
@@ -207,13 +193,11 @@ public class SkillGemDefinition : ScriptableObject
     [FoldoutGroup("Presentation", Expanded = true), LabelText("Cast Point"), Range(0f, 1f), SuffixLabel("normalized")]
     public float castPointNormalized = DefaultCastPointNormalized;
 
-    [PropertyOrder(-34)]
-    [FoldoutGroup("Presentation", Expanded = true), LabelText("Chain Continue")]
-    public ChainStepContinueMode chainContinueMode = ChainStepContinueMode.OnStepComplete;
+    [SerializeField, HideInInspector, FormerlySerializedAs("chainContinueMode")]
+    private ChainStepContinueMode legacyChainContinueMode = ChainStepContinueMode.OnStepComplete;
 
-    [PropertyOrder(-33)]
-    [FoldoutGroup("Presentation", Expanded = true), LabelText("Chain Continue Time"), Range(0f, 1f), SuffixLabel("normalized")]
-    public float chainContinueNormalizedTime = 1f;
+    [SerializeField, HideInInspector, FormerlySerializedAs("chainContinueNormalizedTime")]
+    private float legacyChainContinueNormalizedTime = 1f;
 
     [Serializable]
     public class LevelData
@@ -296,7 +280,7 @@ public class SkillGemDefinition : ScriptableObject
     [PropertyOrder(200)]
     [ShowInInspector, ReadOnly, FoldoutGroup("Tools", Expanded = true), LabelText("Migration")]
     private string ToolingSummary =>
-        "Use these helpers to sort level rows, normalize cast timing, and move projectile prefab ownership into ProjectileSkillPayloadDef without removing runtime fallback yet.";
+        "Use these helpers to sort level rows and normalize cast timing. Execution-specific data now lives on the payload asset.";
 
     [PropertyOrder(201)]
     [FoldoutGroup("Tools", Expanded = true), Button("Sort Level Rows")]
@@ -338,53 +322,10 @@ public class SkillGemDefinition : ScriptableObject
         MarkDirty(this);
     }
 
-    [PropertyOrder(204)]
-    [FoldoutGroup("Tools", Expanded = true), Button("Move Legacy Prefab To Projectile Payload"), ShowIf(nameof(CanMigrateLegacyPrefabToPayload))]
-    private void MoveLegacyPrefabToProjectilePayload()
-    {
-        if (ProjectilePayload == null || skillPrefab == null)
-            return;
-
-        Projectile projectile = skillPrefab.GetComponent<Projectile>();
-        if (projectile == null)
-            return;
-
-        ProjectilePayload.AssignMigratedProjectilePrefab(projectile);
-        MarkDirty(this);
-        MarkDirty(ProjectilePayload);
-    }
-
-    [PropertyOrder(205)]
-    [FoldoutGroup("Tools", Expanded = true), Button("Clear Legacy Prefab After Migration"), ShowIf(nameof(CanClearLegacyPrefabAfterMigration))]
-    private void ClearLegacyPrefabAfterMigration()
-    {
-        skillPrefab = null;
-        MarkDirty(this);
-    }
-
     private bool HasSkillId()
     {
         return !string.IsNullOrWhiteSpace(skillId);
     }
-
-    private bool IsLegacyPrefabContextuallyValid()
-    {
-        if (skillPrefab == null || !CanLegacyPrefabAffectRuntime)
-            return true;
-
-        return LegacyPrefabHasProjectileComponent;
-    }
-
-    private bool CanMigrateLegacyPrefabToPayload =>
-        HasProjectilePayload &&
-        HasLegacyProjectilePrefab &&
-        LegacyPrefabHasProjectileComponent &&
-        !ProjectilePayload.HasExplicitProjectilePrefab;
-
-    private bool CanClearLegacyPrefabAfterMigration =>
-        HasProjectilePayload &&
-        ProjectilePayload.HasExplicitProjectilePrefab &&
-        HasLegacyProjectilePrefab;
 
     private bool HasEmptyOverrideRows => EmptyOverrideRowCount > 0;
     private int LevelRowCount => perLevelData != null ? perLevelData.Count : 0;
@@ -450,14 +391,11 @@ public class SkillGemDefinition : ScriptableObject
             if (!HasSkillId())
                 issues.Add("Skill ID is required.");
 
-            if (payload == null && skillPrefab == null)
-                issues.Add("No execution path is configured. Assign a payload or a legacy projectile prefab.");
+            if (payload == null)
+                issues.Add("Execution payload is required.");
 
-            if (payload == null && skillPrefab != null && !LegacyPrefabHasProjectileComponent)
-                issues.Add("Legacy / migration prefab is configured, but it has no Projectile component for the legacy path.");
-
-            if (HasProjectilePayload && !ProjectilePayload.HasResolvableProjectilePrefab(this))
-                issues.Add("Projectile payload has no projectile prefab. Assign one on the payload or keep a valid legacy migration prefab until migrated.");
+            if (HasProjectilePayload && !ProjectilePayload.HasResolvableProjectilePrefab())
+                issues.Add("Projectile payload has no projectile prefab configured.");
 
             return string.Join("\n", issues);
         }
@@ -475,7 +413,7 @@ public class SkillGemDefinition : ScriptableObject
             if (skillClip != null && (castPointNormalized < WarningCastPointMin || castPointNormalized > WarningCastPointMax))
                 warnings.Add("Cast Point is technically valid, but sits in an extreme range that is easy to mistime in animation-driven skills.");
 
-            if (HasProjectileExecutionIntent && SkillVfxhit == null && !Mathf.Approximately(projectileHitVfxScale, 1f))
+            if (ProjectilePayload != null && ProjectilePayload.HasHitVfxScaleWithoutHitVfx)
                 warnings.Add("Hit VFX Scale is set, but there is no projectile hit VFX assigned.");
 
             if (DuplicateLevelRowCount > 0)
@@ -491,16 +429,11 @@ public class SkillGemDefinition : ScriptableObject
         {
             var notes = new List<string>();
 
-            if (UsesProjectilePayloadFallback)
-                notes.Add("Projectile payload is currently resolving through the legacy prefab fallback. Move ownership into the payload when ready.");
-            else if (UsesLegacyProjectilePath)
-                notes.Add("This skill is still using the legacy projectile path because no payload is assigned.");
-
             if (EmptyOverrideRowCount > 0)
                 notes.Add($"{EmptyOverrideRowCount} per-level rows have no override values and only serve as base-stat fallback markers.");
 
-            if (CanClearLegacyPrefabAfterMigration && !UsesProjectilePayloadFallback)
-                notes.Add("Projectile payload already owns its prefab. The legacy prefab can be cleared after you confirm no migration fallback is needed.");
+            if (HasLegacyRootExecutionData)
+                notes.Add("This asset still contains deprecated execution data on the root. Runtime ignores it; migrate the data into the payload asset manually.");
 
             return string.Join("\n", notes);
         }
@@ -521,31 +454,21 @@ public class SkillGemDefinition : ScriptableObject
         string aoeLabel = AreaofEffec && HasAnyRadiusConfigured ? "AoE" : "Single Target";
         string execLabel = GetResolvedRuntimeModeLabel();
         string presentationLabel = GetPresentationStatusLabel();
-        string legacyLabel = GetLegacyUsageLabel();
 
-        return $"{projectileLabel} / {aoeLabel} / Max Lv {Mathf.Max(1, maxLevel)} / Exec: {execLabel} / Presentation: {presentationLabel} / Legacy: {legacyLabel}";
+        return $"{projectileLabel} / {aoeLabel} / Max Lv {Mathf.Max(1, maxLevel)} / Exec: {execLabel} / Presentation: {presentationLabel}";
     }
 
     private string GetResolvedRuntimeModeLabel()
     {
         if (payload == null)
-        {
-            if (!HasLegacyProjectilePrefab)
-                return "Invalid";
-
-            return LegacyPrefabHasProjectileComponent
-                ? "Legacy Projectile"
-                : "Invalid (Legacy Prefab Missing Projectile)";
-        }
+            return "Invalid";
 
         if (HasProjectilePayload)
         {
             if (ProjectilePayload.HasExplicitProjectilePrefab)
-                return "Payload -> Projectile (Explicit)";
+                return "Payload -> Projectile";
 
-            return LegacyPrefabHasProjectileComponent
-                ? "Payload -> Projectile (Legacy Fallback)"
-                : "Payload -> Projectile (Invalid)";
+            return "Payload -> Projectile (Invalid)";
         }
 
         return $"Payload -> {FormatPayloadTypeName(payload)}";
@@ -561,14 +484,10 @@ public class SkillGemDefinition : ScriptableObject
             if (ProjectilePayload.HasExplicitProjectilePrefab)
                 return "Payload owns projectile prefab";
 
-            return LegacyPrefabHasProjectileComponent
-                ? "Payload is waiting for migration; legacy prefab is still supplying the projectile"
-                : "Projectile owner missing";
+            return "Projectile owner missing";
         }
 
-        return LegacyPrefabHasProjectileComponent
-            ? "Legacy prefab still owns projectile source"
-            : "Projectile owner missing";
+        return "Projectile owner missing";
     }
 
     private string GetPresentationStatusLabel()
@@ -580,20 +499,6 @@ public class SkillGemDefinition : ScriptableObject
             return "Configured";
 
         return "Partial";
-    }
-
-    private string GetLegacyUsageLabel()
-    {
-        if (UsesProjectilePayloadFallback)
-            return "Fallback";
-
-        if (UsesLegacyProjectilePath)
-            return "Primary";
-
-        if (HasLegacyProjectilePrefab)
-            return "Dormant";
-
-        return "None";
     }
 
     private bool HasRadiusOverride()
@@ -779,14 +684,15 @@ public class SkillGemDefinition : ScriptableObject
 
     public ChainStepContinueMode GetChainContinueMode()
     {
-        return chainContinueMode;
+        return payload != null
+            ? payload.GetChainContinueMode()
+            : ChainStepContinueMode.OnStepComplete;
     }
 
     public float GetChainContinueNormalizedTime()
     {
-        if (!float.IsFinite(chainContinueNormalizedTime))
-            return 1f;
-
-        return Mathf.Clamp(chainContinueNormalizedTime, 0f, 0.999f);
+        return payload != null
+            ? payload.GetChainContinueNormalizedTime()
+            : 1f;
     }
 }

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 8b06896fc8375294fad0f73552fb856d
+guid: 831e8b55811df1749b0416880fc74492
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
@@ -13,6 +13,6 @@ AssetOrigin:
   serializedVersion: 1
   productId: 368344
   packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
-  packageVersion: 3.0.1
+  packageVersion: 3.0.2
   assetPath: Packages/com.opsive.behaviordesigner/Runtime/Tasks/ISubtreeReferenceNode.cs
-  uploadId: 894106
+  uploadId: 902072

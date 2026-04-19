@@ -44,7 +44,7 @@ namespace Opsive.BehaviorDesigner.Samples
                 explosion.SetActive(false);
             }, (GameObject explosion) => // Destroy.
             {
-                Destroy(explosion);
+                DestroyImmediate(explosion);
             });
         }
 

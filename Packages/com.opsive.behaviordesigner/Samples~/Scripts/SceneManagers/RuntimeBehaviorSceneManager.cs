@@ -170,7 +170,7 @@ namespace Opsive.BehaviorDesigner.Samples
             // The SubtreeReferenceSelector will use the SubtreeIndex in order to determine which subtree should be chosen.
             SetVariableValue(m_AgentBehaviorTree, "SubtreeIndex", 1);
             SetVariableValue(m_OpponentBehaviorTree, "SubtreeIndex", 1);
-                        
+
             // Swap out the subtrees.
             m_AgentBehaviorTree.ReevaluateSubtreeReferences();
             m_OpponentBehaviorTree.ReevaluateSubtreeReferences();

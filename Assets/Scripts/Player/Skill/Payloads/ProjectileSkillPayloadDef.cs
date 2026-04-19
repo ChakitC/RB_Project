@@ -16,20 +16,18 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
     [ShowInInspector, ReadOnly, BoxGroup("Payload Summary"), LabelText("Ownership")]
     private string OwnershipSummary => projectilePrefab != null
         ? "Projectile prefab is owned here."
-        : "Projectile prefab owner is still unresolved here. Runtime will use SkillGemDefinition.skillPrefab as a migration fallback if available.";
+        : "Projectile prefab is missing on this payload.";
 
     [PropertyOrder(-28)]
     [ShowInInspector, ReadOnly, BoxGroup("Payload Summary"), LabelText("Config Status")]
-    private string ConfigStatusLabel => projectilePrefab != null ? "Valid" : "Migration Warning";
+    private string ConfigStatusLabel => projectilePrefab != null ? "Valid" : "Error";
 
     [PropertyOrder(-27)]
-    [ShowInInspector, ReadOnly, BoxGroup("Payload Summary"), LabelText("Fallback Behavior")]
-    private string FallbackBehaviorLabel => projectilePrefab != null
-        ? "No fallback required."
-        : "Falls back to SkillGemDefinition.skillPrefab when it has a Projectile component.";
+    [ShowInInspector, ReadOnly, BoxGroup("Payload Summary"), LabelText("Legacy Fallback")]
+    private string FallbackBehaviorLabel => "Disabled";
 
     [PropertyOrder(-20)]
-    [InfoBox("Projectile prefab ownership should live on this payload. Leaving it empty keeps the legacy SkillGemDefinition prefab fallback active for migration only.", InfoMessageType.Info)]
+    [InfoBox("Projectile execution is self-contained. Assign the projectile prefab here; root-level fallback is no longer used.", InfoMessageType.Info)]
     [SerializeField, BoxGroup("Execution"), AssetsOnly, PreviewField(70, ObjectFieldAlignment.Left)]
     [LabelText("Projectile Prefab (Owner)")]
     private Projectile projectilePrefab;
@@ -46,32 +44,39 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
     [PropertyOrder(-17)]
     [ShowInInspector, ReadOnly, BoxGroup("Execution"), LabelText("Resolution Rule")]
     private string ResolutionRuleLabel =>
-        "Explicit payload prefab -> legacy SkillGemDefinition prefab fallback -> invalid";
+        "Explicit payload prefab only";
+
+    [PropertyOrder(-16)]
+    [SerializeField, BoxGroup("Presentation"), AssetsOnly, PreviewField(70, ObjectFieldAlignment.Left)]
+    [LabelText("Projectile Trail VFX")]
+    private GameObject projectileTrailVfxPrefab;
+
+    [PropertyOrder(-15)]
+    [SerializeField, BoxGroup("Presentation"), AssetsOnly, PreviewField(70, ObjectFieldAlignment.Left)]
+    [LabelText("Projectile Hit VFX")]
+    private GameObject projectileHitVfxPrefab;
+
+    [PropertyOrder(-14)]
+    [SerializeField, BoxGroup("Presentation"), MinValue(0.01f)]
+    [LabelText("Hit VFX Scale")]
+    private float projectileHitVfxScale = 1f;
 
     public bool HasExplicitProjectilePrefab => projectilePrefab != null;
+    public override bool HasExecutionPresentationAssets => projectileTrailVfxPrefab != null || projectileHitVfxPrefab != null;
+    public bool HasProjectilePresentationAssets => HasExecutionPresentationAssets;
+    public bool HasHitVfxScaleWithoutHitVfx => projectileHitVfxPrefab == null && !Mathf.Approximately(projectileHitVfxScale, 1f);
+    public GameObject ProjectileTrailVfxPrefab => projectileTrailVfxPrefab;
+    public GameObject ProjectileHitVfxPrefab => projectileHitVfxPrefab;
+    public float ProjectileHitVfxScale => Mathf.Max(0.01f, projectileHitVfxScale);
 
-    public bool HasResolvableProjectilePrefab(SkillGemDefinition skillDef)
+    public bool HasResolvableProjectilePrefab()
     {
-        return GetResolvedProjectilePrefab(skillDef) != null;
+        return projectilePrefab != null;
     }
 
-    public bool UsesLegacyFallback(SkillGemDefinition skillDef)
+    public Projectile GetResolvedProjectilePrefab()
     {
-        return projectilePrefab == null &&
-               skillDef != null &&
-               skillDef.skillPrefab != null &&
-               skillDef.skillPrefab.GetComponent<Projectile>() != null;
-    }
-
-    public Projectile GetResolvedProjectilePrefab(SkillGemDefinition skillDef)
-    {
-        if (projectilePrefab != null)
-            return projectilePrefab;
-
-        if (skillDef != null && skillDef.skillPrefab != null)
-            return skillDef.skillPrefab.GetComponent<Projectile>();
-
-        return null;
+        return projectilePrefab;
     }
 
     public void AssignMigratedProjectilePrefab(Projectile prefab)
@@ -88,11 +93,11 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
         if (context == null || context.User == null || context.CastOrigin == null)
             return;
 
-        Projectile prefab = GetResolvedProjectilePrefab(context.SkillDef);
+        Projectile prefab = GetResolvedProjectilePrefab();
         if (prefab == null)
         {
             Debug.LogError(
-                $"Skill '{context.SkillDef?.name ?? name}' has no projectile prefab configured on its payload, and no legacy projectile fallback is available.",
+                $"Skill '{context.SkillDef?.name ?? name}' has no projectile prefab configured on its payload.",
                 this);
             return;
         }
@@ -116,10 +121,11 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
                 continue;
             }
 
-            projectileInstance.InitFromSkillDef(
+            projectileInstance.InitFromSkillExecution(
                 projectileConfigOverride != null ? projectileConfigOverride : projectileInstance.config,
                 context.User,
                 context.SkillDef,
+                this,
                 context.SkillStats,
                 dir,
                 prefab);

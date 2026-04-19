@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c14e08b308ccf04e840b98ddd6b4a28, type: 3}
+  m_Name: Rector_Skill_3 Projectile Payload
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  projectilePrefab: {fileID: 6520590583272355747, guid: 2e1d9e93839881b4da274627cbf77e4c, type: 3}
+  projectileConfigOverride: {fileID: 0}
+  spreadAngle: 10
+  projectileTrailVfxPrefab: {fileID: 0}
+  projectileHitVfxPrefab: {fileID: 0}
+  projectileHitVfxScale: 1

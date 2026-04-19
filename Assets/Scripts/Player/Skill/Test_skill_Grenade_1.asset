@@ -27,11 +27,7 @@ MonoBehaviour:
   AreaofEffec: 1
   baseRadius: 0
   maxLevel: 20
-  payload: {fileID: 0}
-  skillPrefab: {fileID: 1661335766552818198, guid: a2689cdd55e31c948aec00496448e0ef, type: 3}
-  BallVfxPrefab: {fileID: 3239568679811347795, guid: a454aaceaff2e07419aa061a002c28a8, type: 3}
-  SkillVfxhit: {fileID: 8295974722891363362, guid: 25477c0d7d0187d4e8cb92a3bc1860ba, type: 3}
-  projectileHitVfxScale: 2
+  payload: {fileID: 11400000, guid: a74514c786114adb832923126b6b5ddc, type: 2}
   castCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
   skillClip:
     _FadeDuration: 0.25

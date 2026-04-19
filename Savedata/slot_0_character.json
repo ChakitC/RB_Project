@@ -84,7 +84,7 @@
             "characterId": "GR_NM01",
             "progress": {
                 "level": 25,
-                "xp": 250,
+                "xp": 1250,
                 "skillPoints": 0,
                 "passiveProgressInitialized": false,
                 "unlockedPassiveNodeIds": []

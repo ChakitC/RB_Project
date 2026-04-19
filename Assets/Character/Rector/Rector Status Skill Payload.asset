@@ -12,6 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7db3ed7615674e54a9eb8c2965ae7b35, type: 3}
   m_Name: Rector Status Skill Payload
   m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
   applications:
   - effect: {fileID: 11400000, guid: 0cc77d9beb17ec9419e50d42a5a9c3fb, type: 2}
     stacks: 1

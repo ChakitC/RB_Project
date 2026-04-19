@@ -17,11 +17,6 @@ namespace Opsive.BehaviorDesigner.Samples
     public struct AgentTag : IComponentData { }
 
     /// <summary>
-    /// Specifies the entity that should be targeted.
-    /// </summary>
-    public struct TargetEntityTag : IComponentData { }
-
-    /// <summary>
     /// Marks the object for destruction.
     /// </summary>
     public struct DestroyEntityTag : IComponentData { }

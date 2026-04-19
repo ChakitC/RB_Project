@@ -35,7 +35,7 @@ namespace Opsive.BehaviorDesigner.Samples
         public void Pickup()
         {
             m_CraftLocation.Pickup(m_Resources[m_Index]);
-            m_Index++;
+            m_Index = (m_Index + 1) % m_Resources.Length;
         }
     }
 }

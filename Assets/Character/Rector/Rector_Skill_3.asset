@@ -27,12 +27,7 @@ MonoBehaviour:
   AreaofEffec: 0
   baseRadius: 0
   maxLevel: 20
-  payload: {fileID: 0}
-  skillPrefab: {fileID: 1311559214229084, guid: 2e1d9e93839881b4da274627cbf77e4c, type: 3}
-  helperFacingMode: 0
-  BallVfxPrefab: {fileID: 0}
-  SkillVfxhit: {fileID: 0}
-  projectileHitVfxScale: 1
+  payload: {fileID: 11400000, guid: a24687dba31b4ab09a9146e1ef5148f8, type: 2}
   castCue: {fileID: 0}
   skillClip:
     _FadeDuration: 0.25
@@ -46,8 +41,6 @@ MonoBehaviour:
     _Clip: {fileID: 7218412512397633768, guid: 5035feff0922f894bb9fdcfe0bbe8b54, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.4594248
-  chainContinueMode: 0
-  chainContinueNormalizedTime: 1
   perLevelData: []
   previewLevel: 1
   references:

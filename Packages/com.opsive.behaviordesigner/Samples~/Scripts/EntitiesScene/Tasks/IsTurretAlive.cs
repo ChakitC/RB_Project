@@ -7,7 +7,6 @@ namespace Opsive.BehaviorDesigner.Samples
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Tasks;
-    using Opsive.GraphDesigner.Runtime;
     using Unity.Burst;
     using Unity.Entities;
     using Unity.Transforms;
@@ -15,9 +14,8 @@ namespace Opsive.BehaviorDesigner.Samples
 
     [Opsive.Shared.Utility.Description("Uses DOTS to determine if the turret is still alive.")]
     [Shared.Utility.Category("Behavior Designer Samples/DOTS")]
-    public class IsTurretAlive : ECSConditionalTask<IsTurretAliveTaskSystem, IsTurretAliveComponent>, IReevaluateResponder
+    public class IsTurretAlive : ECSConditionalTask<IsTurretAliveTaskSystem, IsTurretAliveComponent, IsTurretAliveFlag>, IReevaluateResponder
     {
-        public override ComponentType Flag { get => typeof(IsTurretAliveFlag); }
         public ComponentType ReevaluateFlag { get => typeof(IsTurretAliveReevaluateFlag); }
         public System.Type ReevaluateSystemType { get => typeof(IsTurretAliveReevaluateTaskSystem); }
 
@@ -68,11 +66,16 @@ namespace Opsive.BehaviorDesigner.Samples
                 break;
             }
 
-            foreach (var (taskComponents, isTurretAliveComponents) in
-                SystemAPI.Query<DynamicBuffer<TaskComponent>, DynamicBuffer<IsTurretAliveComponent>>().WithAll<IsTurretAliveFlag, EvaluateFlag>()) {
+            foreach (var (branchComponents, taskComponents, isTurretAliveComponents) in
+                SystemAPI.Query<DynamicBuffer<BranchComponent>, DynamicBuffer<TaskComponent>, DynamicBuffer<IsTurretAliveComponent>>().WithAll<IsTurretAliveFlag, EvaluateFlag>()) {
                 for (int i = 0; i < isTurretAliveComponents.Length; ++i) {
                     var isTurretAliveComponent = isTurretAliveComponents[i];
                     var taskComponent = taskComponents[isTurretAliveComponent.Index];
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute) {
+                        continue;
+                    }
+
                     if (taskComponent.Status != TaskStatus.Queued) {
                         continue;
                     }
@@ -85,7 +88,6 @@ namespace Opsive.BehaviorDesigner.Samples
             }
         }
     }
-
 
     /// <summary>
     /// A DOTS tag indicating when an IsTurretAlive node needs to be reevaluated.
@@ -114,11 +116,16 @@ namespace Opsive.BehaviorDesigner.Samples
                 break;
             }
 
-            foreach (var (taskComponents, isTurretAliveComponents) in
-                SystemAPI.Query<DynamicBuffer<TaskComponent>, DynamicBuffer<IsTurretAliveComponent>>().WithAll<IsTurretAliveReevaluateFlag, EvaluateFlag>()) {
+            foreach (var (branchComponents, taskComponents, isTurretAliveComponents) in
+                SystemAPI.Query<DynamicBuffer<BranchComponent>, DynamicBuffer<TaskComponent>, DynamicBuffer<IsTurretAliveComponent>>().WithAll<IsTurretAliveReevaluateFlag, EvaluateFlag>()) {
                 for (int i = 0; i < isTurretAliveComponents.Length; ++i) {
                     var isTurretAliveComponent = isTurretAliveComponents[i];
                     var taskComponent = taskComponents[isTurretAliveComponent.Index];
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute) {
+                        continue;
+                    }
+
                     if (!taskComponent.Reevaluate) {
                         continue;
                     }

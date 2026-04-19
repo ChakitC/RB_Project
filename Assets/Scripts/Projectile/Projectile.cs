@@ -32,6 +32,7 @@ public class Projectile : MonoBehaviour
     public bool despawnOnHitWall = true;
 
     public SkillGemDefinition SourceSkillDef { get; private set; }
+    public ProjectileSkillPayloadDef SourceSkillExecution { get; private set; }
     public FinalSkillStats SourceSkillStats { get; private set; }
     
     bool _overrideVelThisFrame;
@@ -103,6 +104,7 @@ public class Projectile : MonoBehaviour
         if (!preserveSkillSource)
         {
             SourceSkillDef = null;
+            SourceSkillExecution = null;
             SourceSkillStats = null;
         }
 
@@ -128,10 +130,11 @@ public class Projectile : MonoBehaviour
         SpawnBallVfx();
     }
     
-    public void InitFromSkillDef(
+    public void InitFromSkillExecution(
         ProjectileConfig cfg,
         ISkillUser user,
         SkillGemDefinition def,
+        ProjectileSkillPayloadDef execution,
         FinalSkillStats skillStats,
         Vector3 dir,
         Projectile prefabProjectileForChildren = null
@@ -139,12 +142,13 @@ public class Projectile : MonoBehaviour
     {
         // mark source
         SourceSkillDef = def;
+        SourceSkillExecution = execution;
         SourceSkillStats = skillStats;
 
-        // VFX จาก def เท่านั้น
-        hitVfxPrefab  = def != null ? def.SkillVfxhit : null;
-        ballVfxPrefab = def != null ? def.BallVfxPrefab : null;
-        vfxScale      = def != null ? def.projectileHitVfxScale : 1f;
+        // VFX are owned by the projectile execution payload.
+        hitVfxPrefab  = execution != null ? execution.ProjectileHitVfxPrefab : null;
+        ballVfxPrefab = execution != null ? execution.ProjectileTrailVfxPrefab : null;
+        vfxScale      = execution != null ? execution.ProjectileHitVfxScale : 1f;
 
         // AoE จาก def + stats
         useAreaDamage = (def != null && def.AreaofEffec) && (skillStats != null && skillStats.areaRadius > 0f);
@@ -636,6 +640,7 @@ public class Projectile : MonoBehaviour
         if (preserveSkillSource)
         {
             p.SourceSkillDef = SourceSkillDef;
+            p.SourceSkillExecution = SourceSkillExecution;
             p.SourceSkillStats = SourceSkillStats;
         }
 

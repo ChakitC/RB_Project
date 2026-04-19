@@ -7,7 +7,6 @@ namespace Opsive.BehaviorDesigner.Samples
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Tasks;
-    using Opsive.GraphDesigner.Runtime;
     using Unity.Burst;
     using Unity.Entities;
     using Unity.Collections;
@@ -17,15 +16,10 @@ namespace Opsive.BehaviorDesigner.Samples
 
     [Opsive.Shared.Utility.Description("Uses DOTS to rotate around the center. This task will always return a status of running.")]
     [Shared.Utility.Category("Behavior Designer Samples/DOTS")]
-    public class Swarm : ECSActionTask<SwarmTaskSystem, SwarmComponent>
+    public class Swarm : ECSActionTask<SwarmTaskSystem, SwarmComponent, SwarmFlag>
     {
         [Tooltip("The angular speed of the agent.")]
         [SerializeField] float m_AngularSpeed;
-
-        /// <summary>
-        /// The type of flag that should be enabled when the task is running.
-        /// </summary>
-        public override ComponentType Flag { get => typeof(SwarmFlag); }
 
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
@@ -78,7 +72,7 @@ namespace Opsive.BehaviorDesigner.Samples
         private void OnCreate(ref SystemState state)
         {
             m_SwarmQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAllRW<TaskComponent>().WithAllRW<LocalTransform>()
+                .WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<LocalTransform>()
                 .WithAll<SwarmComponent, SwarmFlag, EvaluateFlag>()
                 .Build(ref state);
         }
@@ -109,15 +103,21 @@ namespace Opsive.BehaviorDesigner.Samples
             /// <summary>
             /// Updates the logic.
             /// </summary>
+            /// <param name="branchComponents">An array of BranchComponents.</param>
             /// <param name="taskComponents">An array of TaskComponents.</param>
             /// <param name="swarmComponents">An array of SwarmComponents.</param>
             /// <param name="transform">The entity's transform.</param>
             [BurstCompile]
-            public void Execute(ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<SwarmComponent> swarmComponents, ref LocalTransform transform)
+            public void Execute(ref DynamicBuffer<BranchComponent> branchComponents, ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<SwarmComponent> swarmComponents, ref LocalTransform transform)
             {
                 for (int i = 0; i < swarmComponents.Length; ++i) {
                     var swarmComponent = swarmComponents[i];
                     var taskComponent = taskComponents[swarmComponent.Index];
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute) {
+                        continue;
+                    }
+
                     if (taskComponent.Status == TaskStatus.Queued) {
                         taskComponent.Status = TaskStatus.Running;
 

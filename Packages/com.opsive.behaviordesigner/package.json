@@ -1,6 +1,6 @@
 {
   "name": "com.opsive.behaviordesigner",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "displayName": "Opsive Behavior Designer",
   "description": "A behavior tree implementation based on DOTS.",
   "documentationUrl": "https://opsive.com/support/documentation/behavior-designer-pro/",

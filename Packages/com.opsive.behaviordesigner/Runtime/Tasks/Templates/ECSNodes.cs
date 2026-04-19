@@ -92,6 +92,17 @@ public struct {name}Flag : IComponentData, IEnableableComponent {{ }}
 [DisableAutoCreation]
 public partial struct {name}TaskSystem : ISystem
 {{
+    private EntityQuery m_Query;
+
+    /// <summary>
+    /// Builds the query.
+    /// </summary>
+    /// <param name=""state"">The current state of the system.</param>
+    private void OnCreate(ref SystemState state)
+    {{
+        m_Query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
+    }}
+
     /// <summary>
     /// Creates the job.
     /// </summary>
@@ -99,8 +110,7 @@ public partial struct {name}TaskSystem : ISystem
     [BurstCompile]
     private void OnUpdate(ref SystemState state)
     {{
-        var query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
-        state.Dependency = new {name}Job().ScheduleParallel(query, state.Dependency);
+        state.Dependency = new {name}Job().ScheduleParallel(m_Query, state.Dependency);
     }}
 
     /// <summary>
@@ -201,6 +211,17 @@ public struct {name}Flag : IComponentData, IEnableableComponent {{ }}
 [DisableAutoCreation]
 public partial struct {name}TaskSystem : ISystem
 {{
+    private EntityQuery m_Query;
+
+    /// <summary>
+    /// Builds the query.
+    /// </summary>
+    /// <param name=""state"">The current state of the system.</param>
+    private void OnCreate(ref SystemState state)
+    {{
+        m_Query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
+    }}
+
     /// <summary>
     /// Creates the job.
     /// </summary>
@@ -208,8 +229,7 @@ public partial struct {name}TaskSystem : ISystem
     [BurstCompile]
     private void OnUpdate(ref SystemState state)
     {{
-        var query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
-        state.Dependency = new {name}Job().ScheduleParallel(query, state.Dependency);
+        state.Dependency = new {name}Job().ScheduleParallel(m_Query, state.Dependency);
     }}
 
     /// <summary>
@@ -320,6 +340,17 @@ public struct {name}Flag : IComponentData, IEnableableComponent {{ }}
 [DisableAutoCreation]
 public partial struct {name}TaskSystem : ISystem
 {{
+    private EntityQuery m_Query;
+
+    /// <summary>
+    /// Builds the query.
+    /// </summary>
+    /// <param name=""state"">The current state of the system.</param>
+    private void OnCreate(ref SystemState state)
+    {{
+        m_Query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
+    }}
+
     /// <summary>
     /// Creates the job.
     /// </summary>
@@ -327,8 +358,7 @@ public partial struct {name}TaskSystem : ISystem
     [BurstCompile]
     private void OnUpdate(ref SystemState state)
     {{
-        var query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
-        state.Dependency = new {name}Job().ScheduleParallel(query, state.Dependency);
+        state.Dependency = new {name}Job().ScheduleParallel(m_Query, state.Dependency);
     }}
 
     /// <summary>
@@ -470,6 +500,17 @@ public struct {name}Flag : IComponentData, IEnableableComponent {{ }}
 [DisableAutoCreation]
 public partial struct {name}TaskSystem : ISystem
 {{
+    private EntityQuery m_Query;
+
+    /// <summary>
+    /// Builds the query.
+    /// </summary>
+    /// <param name=""state"">The current state of the system.</param>
+    private void OnCreate(ref SystemState state)
+    {{
+        m_Query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
+    }}
+
     /// <summary>
     /// Creates the job.
     /// </summary>
@@ -477,8 +518,7 @@ public partial struct {name}TaskSystem : ISystem
     [BurstCompile]
     private void OnUpdate(ref SystemState state)
     {{
-        var query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<{name}Component>().WithAll<{name}Flag, EvaluateFlag>().Build();
-        state.Dependency = new {name}Job().ScheduleParallel(query, state.Dependency);
+        state.Dependency = new {name}Job().ScheduleParallel(m_Query, state.Dependency);
     }}
 
     /// <summary>

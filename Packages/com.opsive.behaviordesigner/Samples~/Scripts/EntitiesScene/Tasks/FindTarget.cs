@@ -6,23 +6,37 @@
 namespace Opsive.BehaviorDesigner.Samples
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
-    using Opsive.BehaviorDesigner.Runtime.Groups;
     using Opsive.BehaviorDesigner.Runtime.Tasks;
-    using Opsive.GraphDesigner.Runtime;
+    using Opsive.GraphDesigner.Runtime.Variables;
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using System;
     using Unity.Burst;
+    using Unity.Collections;
     using Unity.Entities;
-    using Unity.Transforms;
     using UnityEngine;
 
     [Opsive.Shared.Utility.Description("Uses DOTS to determine if the entity has a target.")]
     [Shared.Utility.Category("Behavior Designer Samples/DOTS")]
-    public class FindTarget : ECSActionTask<FindTargetTaskSystem, FindTargetComponent>
+    public class FindTarget : ECSActionTask<FindTargetTaskSystem, FindTargetComponent, FindTargetFlag>
     {
+        [Tooltip("The entity that should be targeted.")]
+        [SerializeField] [RequireShared] SharedVariable<Entity> m_TargetEntity;
+
+        private ECSSharedVariableIndex<Entity> m_TargetEntityIndex;
+
         /// <summary>
-        /// The type of flag that should be enabled when the task is running.
+        /// Registers the target SharedVariable and adds the buffer element to the entity.
         /// </summary>
-        public override ComponentType Flag { get => typeof(FindTargetFlag); }
+        /// <param name="world">The world that the entity exists in.</param>
+        /// <param name="entity">The entity that the IBufferElementData should be assigned to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
+        /// <param name="gameObject">The GameObject that the entity is attached to.</param>
+        /// <returns>The index of the element within the buffer.</returns>
+        public override int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, GameObject gameObject)
+        {
+            m_TargetEntityIndex = new ECSSharedVariableIndex<Entity>(registry.Register(m_TargetEntity));
+            return base.AddBufferElement(world, entity, registry, gameObject);
+        }
 
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
@@ -33,6 +47,7 @@ namespace Opsive.BehaviorDesigner.Samples
             return new FindTargetComponent()
             {
                 Index = RuntimeIndex,
+                TargetEntityVariableIndex = m_TargetEntityIndex.Index,
             };
         }
     }
@@ -44,6 +59,8 @@ namespace Opsive.BehaviorDesigner.Samples
     {
         [Tooltip("The index of the node.")]
         public ushort Index;
+        [Tooltip("Buffer index into SharedVariableElement for the target entity.")]
+        public int TargetEntityVariableIndex;
     }
 
     /// <summary>
@@ -75,19 +92,24 @@ namespace Opsive.BehaviorDesigner.Samples
         [BurstCompile]
         private void OnUpdate(ref SystemState state)
         {
-            var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
-            foreach (var (transform, taskComponents, findTargetComponents) in
-                SystemAPI.Query<RefRW<LocalTransform>, DynamicBuffer<TaskComponent>, DynamicBuffer<FindTargetComponent>>().WithAll<FindTargetFlag, EvaluateFlag>()) {
+            foreach (var (branchComponents, taskComponents, findTargetComponents, sharedVariables) in
+                SystemAPI.Query<DynamicBuffer<BranchComponent>, DynamicBuffer<TaskComponent>, DynamicBuffer<FindTargetComponent>, DynamicBuffer<SharedVariableElement>>().WithAll<FindTargetFlag, EvaluateFlag>()) {
                 for (int i = 0; i < findTargetComponents.Length; ++i) {
                     var fndTargetComponent = findTargetComponents[i];
                     var taskComponent = taskComponents[fndTargetComponent.Index];
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute) {
+                        continue;
+                    }
+
                     if (taskComponent.Status != TaskStatus.Queued) {
                         continue;
                     }
 
                     var index = -1;
                     var count = 0;
-                    var entities = state.EntityManager.GetAllEntities(Unity.Collections.Allocator.Temp);
+                    var targetEntity = Entity.Null;
+                    var entities = state.EntityManager.GetAllEntities(Allocator.Temp);
                     var foundAgent = false;
                     if (entities.Length > 0) {
                         do {
@@ -96,10 +118,11 @@ namespace Opsive.BehaviorDesigner.Samples
                         } while (count < entities.Length * 2 && !(foundAgent = state.EntityManager.HasComponent<AgentTag>(entities[index])));
                     }
 
-                    // A new target has been found. Add the TargetEntityTag.
+                    // Store the found target in the shared variable buffer.
                     if (foundAgent) {
-                        ecb.AddComponent<TargetEntityTag>(entities[index]);
+                        targetEntity = entities[index];
                     }
+                    sharedVariables.Set(fndTargetComponent.TargetEntityVariableIndex, targetEntity);
                     entities.Dispose();
 
                     // The task is complete, return to the parent.
@@ -108,9 +131,6 @@ namespace Opsive.BehaviorDesigner.Samples
                     taskComponentBuffer[fndTargetComponent.Index] = taskComponent;
                 }
             }
-
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
         }
     }
 }

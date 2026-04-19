@@ -131,6 +131,17 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     [DisableAutoCreation]
     public partial struct SelectorTaskSystem : ISystem
     {
+        private EntityQuery m_Query;
+
+        /// <summary>
+        /// Builds the query.
+        /// </summary>
+        /// <param name="state">The current state of the system.</param>
+        private void OnCreate(ref SystemState state)
+        {
+            m_Query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<SelectorComponent>().WithAll<SelectorFlag, EvaluateFlag>().Build();
+        }
+
         /// <summary>
         /// Creates the job.
         /// </summary>
@@ -138,8 +149,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
         [BurstCompile]
         private void OnUpdate(ref SystemState state)
         {
-            var query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<SelectorComponent>().WithAll<SelectorFlag, EvaluateFlag>().Build();
-            state.Dependency = new SelectorJob().ScheduleParallel(query, state.Dependency);
+            state.Dependency = new SelectorJob().ScheduleParallel(m_Query, state.Dependency);
         }
 
         /// <summary>

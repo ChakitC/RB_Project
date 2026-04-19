@@ -872,9 +872,12 @@ public class AllyHelperManager : MonoBehaviour
 
     bool _helperAutonomyCaptured;
     bool _defaultHelperBehaviorTreeEnabled;
+    bool _defaultHelperAgentEnabled;
     bool _defaultHelperAgentIsStopped;
     bool _defaultHelperAgentUpdatePosition;
     bool _defaultHelperAgentUpdateRotation;
+    bool _defaultHelperAgentHadPath;
+    Vector3 _defaultHelperAgentDestination;
 
     void ApplyTemporaryHelperSkillAutonomy()
     {
@@ -894,9 +897,14 @@ public class AllyHelperManager : MonoBehaviour
 
         if (allyAgent != null && allyAgent.enabled)
         {
+            _defaultHelperAgentEnabled = true;
             _defaultHelperAgentIsStopped = allyAgent.isStopped;
             _defaultHelperAgentUpdatePosition = allyAgent.updatePosition;
             _defaultHelperAgentUpdateRotation = allyAgent.updateRotation;
+            _defaultHelperAgentHadPath = allyAgent.hasPath || allyAgent.pathPending;
+            _defaultHelperAgentDestination = allyAgent.isOnNavMesh
+                ? allyAgent.destination
+                : allyHelper.transform.position;
 
             allyAgent.isStopped = true;
             allyAgent.updatePosition = false;
@@ -905,7 +913,14 @@ public class AllyHelperManager : MonoBehaviour
             if (allyAgent.isOnNavMesh)
                 allyAgent.nextPosition = allyHelper.transform.position;
 
+            allyAgent.enabled = false;
             capturedAny = true;
+        }
+        else
+        {
+            _defaultHelperAgentEnabled = false;
+            _defaultHelperAgentHadPath = false;
+            _defaultHelperAgentDestination = allyHelper != null ? allyHelper.transform.position : transform.position;
         }
 
         _helperAutonomyCaptured = capturedAny;
@@ -919,24 +934,38 @@ public class AllyHelperManager : MonoBehaviour
         if (allyBehaviorTree != null)
             allyBehaviorTree.enabled = _defaultHelperBehaviorTreeEnabled;
 
-        if (allyAgent != null && allyAgent.enabled)
+        if (allyAgent != null && _defaultHelperAgentEnabled)
         {
-            Vector3 helperPosition = allyHelper != null ? allyHelper.transform.position : allyAgent.transform.position;
-            if (allyAgent.isOnNavMesh)
-                allyAgent.nextPosition = helperPosition;
+            if (!allyAgent.enabled)
+                allyAgent.enabled = true;
+
+            SyncHelperAgentToTransform();
 
             allyAgent.updatePosition = _defaultHelperAgentUpdatePosition;
             allyAgent.updateRotation = _defaultHelperAgentUpdateRotation;
             allyAgent.isStopped = _defaultHelperAgentIsStopped;
+
+            if (!_defaultHelperAgentIsStopped &&
+                _defaultHelperAgentHadPath &&
+                allyAgent.isOnNavMesh &&
+                !allyAgent.pathPending &&
+                !allyAgent.hasPath)
+            {
+                allyAgent.SetDestination(_defaultHelperAgentDestination);
+            }
         }
 
+        _defaultHelperAgentEnabled = false;
+        _defaultHelperAgentHadPath = false;
+        _defaultHelperAgentDestination = allyHelper != null ? allyHelper.transform.position : transform.position;
         _helperAutonomyCaptured = false;
     }
 
     void ApplyHelperSkillFacing(SkillGemDefinition skillDef)
     {
         if (skillDef == null ||
-            skillDef.helperFacingMode != SkillGemDefinition.HelperFacingMode.FaceDetectedTargetOnCast ||
+            skillDef.payload == null ||
+            skillDef.payload.HelperFacingMode != SkillHelperFacingMode.FaceDetectedTargetOnCast ||
             allyHelper == null)
         {
             return;
@@ -1260,6 +1289,32 @@ public class AllyHelperManager : MonoBehaviour
         {
             allyAgent.Warp(navHit.position);
             allyHelper.transform.position = navHit.position;
+            allyAgent.nextPosition = navHit.position;
+        }
+    }
+
+    void SyncHelperAgentToTransform()
+    {
+        if (allyAgent == null || !allyAgent.enabled)
+            return;
+
+        Vector3 syncPosition = allyHelper != null ? allyHelper.transform.position : allyAgent.transform.position;
+
+        if (allyAgent.isOnNavMesh)
+        {
+            allyAgent.Warp(syncPosition);
+            allyAgent.nextPosition = syncPosition;
+            return;
+        }
+
+        if (NavMesh.SamplePosition(syncPosition, out NavMeshHit navHit, navMeshSampleDistance, NavMesh.AllAreas))
+        {
+            syncPosition = navHit.position;
+
+            if (allyHelper != null)
+                allyHelper.transform.position = navHit.position;
+
+            allyAgent.Warp(navHit.position);
             allyAgent.nextPosition = navHit.position;
         }
     }

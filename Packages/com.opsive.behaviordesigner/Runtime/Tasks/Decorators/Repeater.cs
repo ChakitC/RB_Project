@@ -14,32 +14,45 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     using Unity.Burst;
     using Unity.Entities;
     using UnityEngine;
+    using UnityEngine.Scripting.APIUpdating;
 
     /// <summary>
     /// A node representation of the repeater task.
     /// </summary>
     [NodeIcon("ceb6f3e7f67cde640b28b2a15ec13ffe", "bb415ca6de87c3d49ab9a94fe8a6fca8")]
     [Opsive.Shared.Utility.Description(@"The repeater task will repeat execution of its child task until the child task has been run a specified number of times. " +
-                      "It has the option of continuing to execute the child task even if the child task returns a failure.")]
+                       "It has the option of continuing to execute the child task even if the child task returns a failure.")]
+    [MovedFrom(false, "Opsive.BehaviorDesigner.Runtime.Tasks.Decorators", "Opsive.BehaviorDesigner.Runtime", "SharedRepeater")]
     public class Repeater : ECSDecoratorTask<RepeaterTaskSystem, RepeaterComponent, RepeaterFlag>, IParentNode, ISavableTask
     {
         [Tooltip("Should the task be repeated forever?")]
-        [SerializeField] bool m_RepeatForever;
+        [FormerlySerializedType(typeof(bool))]
+        [SerializeField] SharedVariable<bool> m_RepeatForever = true;
         [Tooltip("The number of times the task should repeat.")]
-        [SerializeField] ushort m_RepeatCount;
+        [FormerlySerializedType(typeof(ushort))]
+        [SerializeField] SharedVariable<int> m_RepeatCount = 0;
         [Tooltip("Should the repeater end if the child task fails?")]
-        [SerializeField] bool m_EndOnFailure;
+        [FormerlySerializedType(typeof(bool))]
+        [SerializeField] SharedVariable<bool> m_EndOnFailure = false;
 
         private ushort m_ComponentIndex;
+        private ECSSharedVariableIndex<bool> m_RepeatForeverVariableIndex;
+        private ECSSharedVariableIndex<int> m_RepeatCountVariableIndex;
+        private ECSSharedVariableIndex<bool> m_EndOnFailureVariableIndex;
 
-        public bool RepeatForever { get => m_RepeatForever; set => m_RepeatForever = value; }
-        public ushort RepeatCount { get => m_RepeatCount; set => m_RepeatCount = value; }
-        public bool EndOnFailure { get => m_EndOnFailure; set => m_EndOnFailure = value; }
+        public SharedVariable<bool> RepeatForever { get => m_RepeatForever; set => m_RepeatForever = value; }
+        public SharedVariable<int> RepeatCount { get => m_RepeatCount; set => m_RepeatCount = value; }
+        public SharedVariable<bool> EndOnFailure { get => m_EndOnFailure; set => m_EndOnFailure = value; }
 
         /// <summary>
         /// Resets the task to its default values.
         /// </summary>
-        public override void Reset() { m_RepeatForever = true; }
+        public override void Reset()
+        {
+            m_RepeatForever = true;
+            m_RepeatCount = 0;
+            m_EndOnFailure = false;
+        }
 
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
@@ -49,8 +62,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
         {
             return new RepeaterComponent() {
                 Index = RuntimeIndex,
-                RepeatCount = m_RepeatForever ? -1 : m_RepeatCount,
-                EndOnFailure = m_EndOnFailure,
+                RepeatForeverVariableIndex = m_RepeatForeverVariableIndex.Index,
+                RepeatCountVariableIndex = m_RepeatCountVariableIndex.Index,
+                EndOnFailureVariableIndex = m_EndOnFailureVariableIndex.Index,
             };
         }
 
@@ -64,6 +78,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
         /// <returns>The index of the element within the buffer.</returns>
         public override int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, GameObject gameObject)
         {
+            m_RepeatForeverVariableIndex = new ECSSharedVariableIndex<bool>(registry.Register(m_RepeatForever));
+            m_RepeatCountVariableIndex = new ECSSharedVariableIndex<int>(registry.Register(m_RepeatCount));
+            m_EndOnFailureVariableIndex = new ECSSharedVariableIndex<bool>(registry.Register(m_EndOnFailure));
             m_ComponentIndex = (ushort)base.AddBufferElement(world, entity, registry, gameObject);
             return m_ComponentIndex;
         }
@@ -113,12 +130,14 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     {
         [Tooltip("The index of the node.")]
         public ushort Index;
-        [Tooltip("The number of times the child task can repeat.")]
-        public int RepeatCount;
+        [Tooltip("Buffer index into SharedVariableElement for the repeat-forever flag.")]
+        public int RepeatForeverVariableIndex;
+        [Tooltip("Buffer index into SharedVariableElement for the repeat count.")]
+        public int RepeatCountVariableIndex;
         [Tooltip("The number of times the child task has been repeated.")]
         public uint CurrentCount;
-        [Tooltip("Should the task end when the child returns failure?")]
-        public bool EndOnFailure;
+        [Tooltip("Buffer index into SharedVariableElement for the end-on-failure flag.")]
+        public int EndOnFailureVariableIndex;
     }
 
     /// <summary>
@@ -140,7 +159,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
         /// <param name="state">The current state of the system.</param>
         private void OnCreate(ref SystemState state)
         {
-            m_Query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<RepeaterComponent>().WithAll<RepeaterFlag, EvaluateFlag>().Build();
+            m_Query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<RepeaterComponent>().WithAll<RepeaterFlag, EvaluateFlag, SharedVariableElement>().Build();
         }
 
         /// <summary>
@@ -165,11 +184,16 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
             /// <param name="branchComponents">An array of BranchComponents.</param>
             /// <param name="taskComponents">An array of TaskComponents.</param>
             /// <param name="repeaterComponents">An array of RepeaterComponents.</param>
+            /// <param name="sharedVariables">The shared variable buffer for this entity.</param>
             [BurstCompile]
-            public void Execute(ref DynamicBuffer<BranchComponent> branchComponents, ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<RepeaterComponent> repeaterComponents)
+            public void Execute(ref DynamicBuffer<BranchComponent> branchComponents, ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<RepeaterComponent> repeaterComponents,
+                DynamicBuffer<SharedVariableElement> sharedVariables)
             {
                 for (int i = 0; i < repeaterComponents.Length; ++i) {
                     var repeaterComponent = repeaterComponents[i];
+                    var repeatForever = sharedVariables.Get<bool>(repeaterComponent.RepeatForeverVariableIndex);
+                    var repeatCount = sharedVariables.Get<int>(repeaterComponent.RepeatCountVariableIndex);
+                    var endOnFailure = sharedVariables.Get<bool>(repeaterComponent.EndOnFailureVariableIndex);
                     var taskComponent = taskComponents[repeaterComponent.Index];
                     var taskStatus = taskComponent.Status;
                     if (taskStatus != TaskStatus.Queued && taskStatus != TaskStatus.Running) {
@@ -214,8 +238,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
                     }
 
                     branchComponent = branchComponents[childTaskComponent.BranchIndex];
-                    if ((repeaterComponent.RepeatCount == -1 || repeaterComponent.CurrentCount <= repeaterComponent.RepeatCount) &&
-                        (childTaskComponent.Status == TaskStatus.Success || (!repeaterComponent.EndOnFailure && childTaskComponent.Status == TaskStatus.Failure))) {
+                    if ((repeatForever || repeaterComponent.CurrentCount <= repeatCount) &&
+                        (childTaskComponent.Status == TaskStatus.Success || (!endOnFailure && childTaskComponent.Status == TaskStatus.Failure))) {
                         // Restart the child if the branch should repeat again.
                         if (childTaskComponent.Status != TaskStatus.Queued) {
                             childTaskComponent.Status = TaskStatus.Queued;
@@ -245,89 +269,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
                     }
                 }
             }
-        }
-    }
-    /// <summary>
-    /// A node representation of the repeater task.
-    /// </summary>
-    [NodeIcon("ceb6f3e7f67cde640b28b2a15ec13ffe", "bb415ca6de87c3d49ab9a94fe8a6fca8")]
-    [Opsive.Shared.Utility.Description(@"The repeater task will repeat execution of its child task until the child task has been run a specified number of times. " +
-                      "It has the option of continuing to execute the child task even if the child task returns a failure. Uses the GameObject workflow.")]
-    public class SharedRepeater : DecoratorNode
-    {
-        [Tooltip("Should the task be repeated forever?")]
-        [SerializeField] SharedVariable<bool> m_RepeatForever = true;
-        [Tooltip("The number of times the task should repeat.")]
-        [SerializeField] SharedVariable<int> m_RepeatCount;
-        [Tooltip("Should the repeater end if the child task fails?")]
-        [SerializeField] SharedVariable<bool> m_EndOnFailure;
-
-        public SharedVariable<bool> RepeatForever { get => m_RepeatForever; set => m_RepeatForever = value; }
-        public SharedVariable<int> RepeatCount { get => m_RepeatCount; set => m_RepeatCount = value; }
-        public SharedVariable<bool> EndOnFailure { get => m_EndOnFailure; set => m_EndOnFailure = value; }
-
-        private uint m_CurrentCount;
-
-        /// <summary>
-        /// Callback when the task is started.
-        /// </summary>
-        public override void OnStart()
-        {
-            base.OnStart();
-            m_CurrentCount = 0;
-        }
-
-        /// <summary>
-        /// Executes the task logic.
-        /// </summary>
-        /// <returns>The status of the task.</returns>
-        public override TaskStatus OnUpdate()
-        {
-            var taskComponents = m_BehaviorTree.World.EntityManager.GetBuffer<TaskComponent>(m_BehaviorTree.Entity);
-            if (taskComponents[Index + 1].Status == TaskStatus.Running || taskComponents[Index + 1].Status == TaskStatus.Queued) {
-                return TaskStatus.Running;
-            }
-
-            if (taskComponents[Index + 1].Status == TaskStatus.Failure && m_EndOnFailure.Value) {
-                return TaskStatus.Failure;
-            }
-
-            // The child isn't running. Repeat
-            if (m_RepeatForever.Value || m_CurrentCount <= m_RepeatCount.Value) {
-                m_CurrentCount++;
-                return TaskStatus.Running;
-            }
-
-            return taskComponents[Index + 1].Status;
-        }
-
-        /// <summary>
-        /// Specifies the type of reflection that should be used to save the task.
-        /// </summary>
-        /// <param name="index">The index of the sub-task. This is used for the task set allowing each contained task to have their own save type.</param>
-        public override MemberVisibility GetSaveReflectionType(int index) { return MemberVisibility.None; }
-
-        /// <summary>
-        /// Returns the current task state.
-        /// </summary>
-        /// <param name="world">The DOTS world.</param>
-        /// <param name="entity">The DOTS entity.</param>
-        /// <returns>The current task state.</returns>
-        public override object Save(World world, Entity entity)
-        {
-            // Save the current count.
-            return m_CurrentCount;
-        }
-
-        /// <summary>
-        /// Loads the previous task state.
-        /// </summary>
-        /// <param name="saveData">The previous task state.</param>
-        /// <param name="world">The DOTS world.</param>
-        /// <param name="entity">The DOTS entity.</param>
-        public override void Load(object saveData, World world, Entity entity)
-        {
-            m_CurrentCount = (uint)saveData;
         }
     }
 }

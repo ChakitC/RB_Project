@@ -171,6 +171,17 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     [DisableAutoCreation]
     public partial struct RandomSequenceTaskSystem : ISystem
     {
+        private EntityQuery m_Query;
+
+        /// <summary>
+        /// Builds the query.
+        /// </summary>
+        /// <param name="state">The current state of the system.</param>
+        private void OnCreate(ref SystemState state)
+        {
+            m_Query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<RandomSequenceComponent>().WithAll<RandomSequenceFlag, EvaluateFlag>().Build();
+        }
+
         /// <summary>
         /// Creates the job.
         /// </summary>
@@ -178,8 +189,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
         [BurstCompile]
         private void OnUpdate(ref SystemState state)
         {
-            var query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<RandomSequenceComponent>().WithAll<RandomSequenceFlag, EvaluateFlag>().Build();
-            state.Dependency = new RandomSequenceJob().ScheduleParallel(query, state.Dependency);
+            state.Dependency = new RandomSequenceJob().ScheduleParallel(m_Query, state.Dependency);
         }
 
         /// <summary>

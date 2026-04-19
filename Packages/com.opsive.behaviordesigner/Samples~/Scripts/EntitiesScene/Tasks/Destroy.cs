@@ -7,7 +7,6 @@ namespace Opsive.BehaviorDesigner.Samples
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Tasks;
-    using Opsive.GraphDesigner.Runtime;
     using Unity.Burst;
     using Unity.Entities;
     using Unity.Collections;
@@ -16,13 +15,8 @@ namespace Opsive.BehaviorDesigner.Samples
 
     [Opsive.Shared.Utility.Description("Destroys the Entity.")]
     [Shared.Utility.Category("Behavior Designer Samples/DOTS")]
-    public class Destroy : ECSActionTask<DestroyTaskSystem, DestroyComponent>
+    public class Destroy : ECSActionTask<DestroyTaskSystem, DestroyComponent, DestroyFlag>
     {
-        /// <summary>
-        /// The type of flag that should be enabled when the task is running.
-        /// </summary>
-        public override ComponentType Flag { get => typeof(DestroyFlag); }
-
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
         /// </summary>
@@ -79,11 +73,16 @@ namespace Opsive.BehaviorDesigner.Samples
         private void OnUpdate(ref SystemState state)
         {
             var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
-            foreach (var (destroyComponents, taskComponents, entity) in
-                SystemAPI.Query<DynamicBuffer<DestroyComponent>, DynamicBuffer<TaskComponent>>().WithAll<DestroyFlag, EvaluateFlag>().WithEntityAccess()) {
+            foreach (var (branchComponents, destroyComponents, taskComponents, entity) in
+                SystemAPI.Query<DynamicBuffer<BranchComponent>, DynamicBuffer<DestroyComponent>, DynamicBuffer<TaskComponent>>().WithAll<DestroyFlag, EvaluateFlag>().WithEntityAccess()) {
                 for (int i = 0; i < destroyComponents.Length; ++i) {
                     var destroyComponent = destroyComponents[i];
                     var taskComponent = taskComponents[destroyComponent.Index];
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute) {
+                        continue;
+                    }
+
                     if (taskComponent.Status != TaskStatus.Queued) {
                         continue;
                     }

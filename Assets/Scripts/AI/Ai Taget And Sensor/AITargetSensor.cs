@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
@@ -7,6 +8,10 @@ public class AITargetSensor : MonoBehaviour
     [Header("Refs")]
     [SerializeField] private Transform sensorOrigin;
     [SerializeField] private Transform forwardReference;
+
+    [Header("Behavior Profile")]
+    [Tooltip("Optional targeting policy asset. When assigned, the local policy fields below are used only as fallback.")]
+    [SerializeField] private AITargetingProfileDef targetingProfile;
 
     [Header("Scan")]
     [SerializeField] private float radius = 15f;
@@ -31,6 +36,35 @@ public class AITargetSensor : MonoBehaviour
     [SerializeField] private float gracePeriod = 1.25f;
     [SerializeField] private bool keepLastSeenTarget = true;
 
+    [Header("Scoring")]
+    [SerializeField, Min(0f)] private float distanceScoreWeight = 12f;
+    [SerializeField] private float playerPriorityBonus = 16f;
+    [SerializeField] private float companionPriorityBonus = 0f;
+    [SerializeField] private float tankPriorityBonus = 6f;
+    [SerializeField] private float healerPriorityBonus = 9f;
+    [SerializeField] private float supportPriorityBonus = 6f;
+    [SerializeField] private float sniperPriorityBonus = 7f;
+    [SerializeField] private float assaultPriorityBonus = 0f;
+    [SerializeField, Min(0f)] private float currentTargetStickiness = 5f;
+    [SerializeField, Min(0f)] private float lineOfSightPenalty = 6f;
+
+    [Header("Retarget")]
+    [SerializeField] private Vector2 retargetIntervalRange = new Vector2(0.75f, 1.1f);
+    [SerializeField, Min(0f)] private float minTargetLockDuration = 0.9f;
+    [SerializeField, Min(0f)] private float switchScoreThreshold = 2.5f;
+    [SerializeField, Range(0f, 1f)] private float switchScoreThresholdRatio = 0.2f;
+    [SerializeField, Min(0f)] private float lostTargetHoldDuration = 0.35f;
+
+    [Header("Threat")]
+    [SerializeField] private bool useThreatMemory = true;
+    [SerializeField, Min(0f)] private float damageThreatMultiplier = 1f;
+    [SerializeField, Min(0f)] private float threatScoreWeight = 1f;
+    [SerializeField, Min(0f)] private float threatDecayPerSecond = 8f;
+    [SerializeField, Min(0f)] private float maxThreatPerTarget = 100f;
+
+    [Header("Taunt")]
+    [SerializeField, Min(0f)] private float tauntScoreBonus = 1000f;
+
     [Header("Offsets")]
     [SerializeField] private float originHeightOffset = 0.5f;
     [SerializeField] private float fallbackTargetHeightOffset = 0.6f;
@@ -42,15 +76,26 @@ public class AITargetSensor : MonoBehaviour
     [SerializeField] private bool hasLineOfSight;
     [SerializeField] private float targetDistance;
     [SerializeField] private float lastSeenTime = float.NegativeInfinity;
+    [SerializeField] private float currentTargetScore = float.NegativeInfinity;
+    [SerializeField] private float visibleBestScore = float.NegativeInfinity;
+    [SerializeField] private float currentTargetAcquiredTime = float.NegativeInfinity;
+    [SerializeField] private float nextRetargetEvaluationTime;
 
-    private Collider[] overlapBuffer;
-    private float nextScanTime;
+    readonly Dictionary<int, ThreatEntry> threatEntries = new Dictionary<int, ThreatEntry>();
+    readonly HashSet<int> candidateInstanceIds = new HashSet<int>();
 
-    public Transform CurrentTarget => IsTrackedTargetStillValid(currentTarget) ? currentTarget : null;
+    Collider[] overlapBuffer;
+    HealthSystem healthSystem;
+    Transform tauntTarget;
+    float tauntUntilTime = float.NegativeInfinity;
+    float nextScanTime;
+
+    public AITargetingProfileDef TargetingProfile => targetingProfile;
+    public Transform CurrentTarget => IsCurrentTargetRetained() ? currentTarget : null;
     public Transform LastSeenTarget => IsTrackedTargetStillValid(lastSeenTarget) ? lastSeenTarget : null;
     public Vector3 LastSeenPosition => lastSeenPosition;
     public bool HasLineOfSight => hasLineOfSight;
-    public float GracePeriod => gracePeriod;
+    public float GracePeriod => GetGracePeriodValue();
     public float TargetDistance => targetDistance;
     public float LastSeenTime => lastSeenTime;
     public float TimeSinceLastSeen => Time.time - lastSeenTime;
@@ -60,108 +105,218 @@ public class AITargetSensor : MonoBehaviour
 
     public event Action<Transform, Transform> OnTargetChanged;
 
-    private void Awake()
+    void Awake()
     {
-        if (sensorOrigin == null) sensorOrigin = transform;
-        if (forwardReference == null) forwardReference = transform;
+        if (sensorOrigin == null)
+            sensorOrigin = transform;
+
+        if (forwardReference == null)
+            forwardReference = transform;
 
         maxHits = Mathf.Max(1, maxHits);
         overlapBuffer = new Collider[maxHits];
+        healthSystem = GetComponent<HealthSystem>();
+        ScheduleNextRetargetEvaluation();
     }
 
-    private void Update()
+    void OnEnable()
+    {
+        if (healthSystem == null)
+            healthSystem = GetComponent<HealthSystem>();
+
+        if (healthSystem != null)
+            healthSystem.DamageTaken += OnDamageTaken;
+    }
+
+    void OnDisable()
+    {
+        if (healthSystem != null)
+            healthSystem.DamageTaken -= OnDamageTaken;
+    }
+
+    void Update()
     {
         if (RefreshTrackedTargetValidity())
             nextScanTime = Time.time;
 
-        if (Time.time < nextScanTime) return;
-        nextScanTime = Time.time + Mathf.Max(0.01f, scanInterval);
+        if (Time.time < nextScanTime)
+            return;
 
-        Scan();
+        nextScanTime = Time.time + Mathf.Max(0.01f, scanInterval);
+        Scan(false);
     }
 
     public void ForceScan()
     {
         RefreshTrackedTargetValidity();
-        Scan();
+        Scan(true);
         nextScanTime = Time.time + Mathf.Max(0.01f, scanInterval);
     }
 
     public void ClearTargetMemory()
     {
         SetCurrentTarget(null);
-        if (!keepLastSeenTarget)
+        if (!ShouldKeepLastSeenTarget())
             lastSeenTarget = null;
 
         lastSeenPosition = Vector3.zero;
         hasLineOfSight = false;
         targetDistance = 0f;
         lastSeenTime = float.NegativeInfinity;
+        currentTargetScore = float.NegativeInfinity;
+        visibleBestScore = float.NegativeInfinity;
+        currentTargetAcquiredTime = float.NegativeInfinity;
+        tauntTarget = null;
+        tauntUntilTime = float.NegativeInfinity;
+        ScheduleNextRetargetEvaluation();
     }
 
-    private void Scan()
+    public void ClearThreatMemory()
+    {
+        threatEntries.Clear();
+    }
+
+    public void SetTargetingProfile(AITargetingProfileDef profile, bool forceImmediateScan = true)
+    {
+        targetingProfile = profile;
+        if (!forceImmediateScan)
+            return;
+
+        nextScanTime = Time.time;
+        ScheduleNextRetargetEvaluation();
+    }
+
+    public void RegisterThreat(GameObject source, float amount)
+    {
+        if (source == null || amount <= 0f)
+            return;
+
+        RegisterThreat(source.transform, amount);
+    }
+
+    public void RegisterThreat(Transform source, float amount)
+    {
+        if (source == null || amount <= 0f)
+            return;
+
+        if (!TryResolveTrackedTarget(source, out Transform targetRoot, out IAITargetable targetable))
+            return;
+
+        RegisterThreatInternal(targetRoot, targetable, amount);
+    }
+
+    public bool ApplyTaunt(Transform target, float duration)
+    {
+        if (target == null || duration <= 0f)
+            return false;
+
+        if (!TryResolveTrackedTarget(target, out Transform targetRoot, out IAITargetable targetable))
+            return false;
+
+        if (!IsTrackedTargetStillValid(targetRoot))
+            return false;
+
+        tauntTarget = targetRoot;
+        tauntUntilTime = Time.time + duration;
+        RegisterThreatInternal(targetRoot, targetable, GetMaxThreatPerTargetValue());
+        ForceScan();
+        return true;
+    }
+
+    void Scan(bool ignoreRetargetTimers)
     {
         Vector3 origin = GetOriginPosition();
-
         int count = Physics.OverlapSphereNonAlloc(
             origin,
             radius,
             overlapBuffer,
             targetLayers,
-            triggerInteraction
-        );
+            triggerInteraction);
 
-        Transform bestTarget = null;
-        Vector3 bestPoint = Vector3.zero;
-        float bestDistSqr = float.PositiveInfinity;
-        bool bestLOS = false;
+        candidateInstanceIds.Clear();
+        UpdateTauntState();
+
+        Candidate bestVisible = default(Candidate);
+        Candidate currentVisible = default(Candidate);
+        bool hasBestVisible = false;
+        bool hasCurrentVisible = false;
 
         for (int i = 0; i < count; i++)
         {
             Collider hit = overlapBuffer[i];
-            if (hit == null) continue;
+            if (hit == null)
+                continue;
 
             if (!TryResolveTarget(hit, out Transform targetRoot, out IAITargetable targetable))
                 continue;
 
-            if (!IsValidTarget(hit, targetRoot, targetable))
+            if (targetRoot == null || !candidateInstanceIds.Add(targetRoot.GetInstanceID()))
                 continue;
 
-            Vector3 targetPoint = GetTargetPoint(hit, targetRoot, targetable);
-            Vector3 toTarget = targetPoint - origin;
-            float distSqr = toTarget.sqrMagnitude;
-
-            if (useFieldOfView && fieldOfView < 360f && !IsInsideFOVXZ(toTarget))
+            if (!TryBuildCandidate(hit, targetRoot, targetable, origin, out Candidate candidate))
                 continue;
 
-            bool los = !requireLineOfSight || CheckLineOfSight(origin, targetPoint);
-            if (requireLineOfSight && !los)
-                continue;
-
-            if (distSqr < bestDistSqr)
+            if (currentTarget != null && candidate.TargetRoot == currentTarget)
             {
-                bestDistSqr = distSqr;
-                bestTarget = targetRoot;
-                bestPoint = targetPoint;
-                bestLOS = los;
+                currentVisible = candidate;
+                hasCurrentVisible = true;
+            }
+
+            if (!hasBestVisible || candidate.Score > bestVisible.Score)
+            {
+                bestVisible = candidate;
+                hasBestVisible = true;
             }
         }
 
-        if (bestTarget != null)
-        {
-            SetCurrentTarget(bestTarget);
+        visibleBestScore = hasBestVisible ? bestVisible.Score : float.NegativeInfinity;
 
-            lastSeenTarget = bestTarget;
-            lastSeenPosition = bestPoint;
-            hasLineOfSight = bestLOS;
-            targetDistance = Mathf.Sqrt(bestDistSqr);
-            lastSeenTime = Time.time;
+        if (hasBestVisible)
+        {
+            if (currentTarget == null)
+            {
+                ApplyVisibleTarget(bestVisible);
+                return;
+            }
+
+            if (currentTarget == bestVisible.TargetRoot)
+            {
+                ApplyVisibleTarget(bestVisible);
+                if (ignoreRetargetTimers || Time.time >= nextRetargetEvaluationTime)
+                    ScheduleNextRetargetEvaluation();
+
+                return;
+            }
+
+            if (hasCurrentVisible)
+            {
+                ApplyVisibleTarget(currentVisible);
+                if (ShouldSwitchVisibleTarget(currentVisible, bestVisible, ignoreRetargetTimers))
+                    ApplyVisibleTarget(bestVisible);
+
+                return;
+            }
+
+            hasLineOfSight = false;
+            currentTargetScore = float.NegativeInfinity;
+            targetDistance = Vector3.Distance(origin, lastSeenPosition);
+
+            if (ShouldSwitchFromLostTarget(ignoreRetargetTimers))
+                ApplyVisibleTarget(bestVisible);
+
             return;
         }
 
-        // หาไม่เจอเป้าสด
-        SetCurrentTarget(null);
         hasLineOfSight = false;
+        currentTargetScore = float.NegativeInfinity;
+
+        if (IsCurrentTargetRetained())
+        {
+            targetDistance = Vector3.Distance(origin, lastSeenPosition);
+            return;
+        }
+
+        SetCurrentTarget(null);
 
         if (IsWithinGracePeriod())
         {
@@ -169,37 +324,243 @@ public class AITargetSensor : MonoBehaviour
         }
         else
         {
-            if (!keepLastSeenTarget)
+            if (!ShouldKeepLastSeenTarget())
                 lastSeenTarget = null;
 
             targetDistance = 0f;
         }
     }
 
-    private void SetCurrentTarget(Transform newTarget)
+    void ApplyVisibleTarget(Candidate candidate)
     {
-        if (currentTarget == newTarget) return;
+        SetCurrentTarget(candidate.TargetRoot);
+        lastSeenTarget = candidate.TargetRoot;
+        lastSeenPosition = candidate.TargetPoint;
+        hasLineOfSight = candidate.HasLineOfSight;
+        targetDistance = candidate.Distance;
+        lastSeenTime = Time.time;
+        currentTargetScore = candidate.Score;
+    }
+
+    bool TryBuildCandidate(
+        Collider hit,
+        Transform targetRoot,
+        IAITargetable targetable,
+        Vector3 origin,
+        out Candidate candidate)
+    {
+        candidate = default(Candidate);
+
+        if (!IsValidTarget(hit, targetRoot, targetable))
+            return false;
+
+        Vector3 targetPoint = GetTargetPoint(hit, targetRoot, targetable);
+        Vector3 toTarget = targetPoint - origin;
+        float distance = toTarget.magnitude;
+
+        if (useFieldOfView && fieldOfView < 360f && !IsInsideFOVXZ(toTarget))
+            return false;
+
+        bool lineOfSight = !requireLineOfSight || CheckLineOfSight(origin, targetPoint);
+        if (requireLineOfSight && !lineOfSight)
+            return false;
+
+        candidate = new Candidate
+        {
+            TargetRoot = targetRoot,
+            TargetPoint = targetPoint,
+            Distance = distance,
+            HasLineOfSight = lineOfSight,
+            Score = EvaluateCandidateScore(targetRoot, targetable, distance, lineOfSight)
+        };
+        return true;
+    }
+
+    float EvaluateCandidateScore(
+        Transform targetRoot,
+        IAITargetable targetable,
+        float distance,
+        bool lineOfSight)
+    {
+        float score = 0f;
+
+        if (targetable != null)
+            score += targetable.BaseTargetPriority;
+
+        score += GetIdentityPriorityBonus(targetable);
+        score += GetCombatRolePriorityBonus(targetable);
+        score += GetDistanceScore(distance);
+        score += GetThreatScore(targetRoot);
+
+        if (currentTarget != null && currentTarget == targetRoot)
+            score += GetCurrentTargetStickinessValue();
+
+        if (!lineOfSight)
+            score -= GetLineOfSightPenaltyValue();
+
+        if (IsTauntedTarget(targetRoot))
+            score += GetTauntScoreBonusValue();
+
+        return score;
+    }
+
+    float GetIdentityPriorityBonus(IAITargetable targetable)
+    {
+        if (targetable == null)
+            return 0f;
+
+        if (targetingProfile != null)
+            return targetingProfile.GetIdentityPriorityBonus(targetable.TargetIdentity);
+
+        switch (targetable.TargetIdentity)
+        {
+            case AITargetIdentity.Player:
+                return playerPriorityBonus;
+            case AITargetIdentity.Companion:
+                return companionPriorityBonus;
+            default:
+                return 0f;
+        }
+    }
+
+    float GetCombatRolePriorityBonus(IAITargetable targetable)
+    {
+        if (targetable == null)
+            return 0f;
+
+        if (targetingProfile != null)
+            return targetingProfile.GetCombatRolePriorityBonus(targetable.CombatRole);
+
+        switch (targetable.CombatRole)
+        {
+            case CharacterCombatRole.Tank:
+                return tankPriorityBonus;
+            case CharacterCombatRole.Healer:
+                return healerPriorityBonus;
+            case CharacterCombatRole.Support:
+                return supportPriorityBonus;
+            case CharacterCombatRole.Sniper:
+                return sniperPriorityBonus;
+            case CharacterCombatRole.Assault:
+                return assaultPriorityBonus;
+            default:
+                return 0f;
+        }
+    }
+
+    float GetDistanceScore(float distance)
+    {
+        if (radius <= 0.01f)
+            return 0f;
+
+        float normalized = 1f - Mathf.Clamp01(distance / radius);
+        return normalized * GetDistanceScoreWeightValue();
+    }
+
+    float GetThreatScore(Transform targetRoot)
+    {
+        if (!UseThreatMemoryEnabled() || targetRoot == null)
+            return 0f;
+
+        int instanceId = targetRoot.GetInstanceID();
+        if (!threatEntries.TryGetValue(instanceId, out ThreatEntry entry))
+            return 0f;
+
+        UpdateThreatEntry(entry);
+        if (entry.Threat <= 0.001f)
+        {
+            threatEntries.Remove(instanceId);
+            return 0f;
+        }
+
+        return entry.Threat * GetThreatScoreWeightValue();
+    }
+
+    bool ShouldSwitchVisibleTarget(Candidate currentVisible, Candidate bestVisible, bool ignoreRetargetTimers)
+    {
+        if (!DoesCandidateBeatCurrent(currentVisible.Score, bestVisible.Score))
+        {
+            if (Time.time >= nextRetargetEvaluationTime)
+                ScheduleNextRetargetEvaluation();
+
+            return false;
+        }
+
+        if (ignoreRetargetTimers)
+            return true;
+
+        if (Time.time - currentTargetAcquiredTime < GetMinTargetLockDurationValue())
+            return false;
+
+        if (Time.time < nextRetargetEvaluationTime)
+            return false;
+
+        ScheduleNextRetargetEvaluation();
+        return true;
+    }
+
+    bool ShouldSwitchFromLostTarget(bool ignoreRetargetTimers)
+    {
+        if (ignoreRetargetTimers)
+            return true;
+
+        if (Time.time - lastSeenTime < GetLostTargetHoldDurationValue())
+            return false;
+
+        ScheduleNextRetargetEvaluation();
+        return true;
+    }
+
+    bool DoesCandidateBeatCurrent(float currentScoreValue, float challengerScore)
+    {
+        float ratioThreshold = Mathf.Abs(currentScoreValue) * GetSwitchScoreThresholdRatioValue();
+        float threshold = Mathf.Max(GetSwitchScoreThresholdValue(), ratioThreshold);
+        return challengerScore > currentScoreValue + threshold;
+    }
+
+    void ScheduleNextRetargetEvaluation()
+    {
+        Vector2 intervalRange = GetRetargetIntervalRangeValue();
+        float minInterval = Mathf.Max(0.05f, intervalRange.x);
+        float maxInterval = Mathf.Max(minInterval, intervalRange.y);
+        nextRetargetEvaluationTime = Time.time + UnityEngine.Random.Range(minInterval, maxInterval);
+    }
+
+    void SetCurrentTarget(Transform newTarget)
+    {
+        if (currentTarget == newTarget)
+            return;
 
         Transform old = currentTarget;
         currentTarget = newTarget;
+
+        if (newTarget != null)
+        {
+            currentTargetAcquiredTime = Time.time;
+            ScheduleNextRetargetEvaluation();
+        }
+        else
+        {
+            currentTargetAcquiredTime = float.NegativeInfinity;
+            nextRetargetEvaluationTime = Time.time;
+        }
+
         OnTargetChanged?.Invoke(old, newTarget);
     }
 
-    private bool TryResolveTarget(Collider hit, out Transform targetRoot, out IAITargetable targetable)
+    bool TryResolveTarget(Collider hit, out Transform targetRoot, out IAITargetable targetable)
     {
         targetRoot = null;
         targetable = null;
 
-        if (hit == null) return false;
+        if (hit == null)
+            return false;
 
         targetable = FindTargetable(hit.transform);
-        if (targetable != null)
+        if (targetable is Component targetComponent)
         {
-            if (targetable is Component c)
-            {
-                targetRoot = c.transform;
-                return true;
-            }
+            targetRoot = targetComponent.transform;
+            return true;
         }
 
         if (hit.attachedRigidbody != null)
@@ -212,11 +573,11 @@ public class AITargetSensor : MonoBehaviour
         return targetRoot != null;
     }
 
-    private bool IsValidTarget(Collider hit, Transform targetRoot, IAITargetable targetable)
+    bool IsValidTarget(Collider hit, Transform targetRoot, IAITargetable targetable)
     {
-        if (targetRoot == null) return false;
+        if (targetRoot == null)
+            return false;
 
-        // กัน self
         if (targetRoot == transform || targetRoot.root == transform.root)
             return false;
 
@@ -228,27 +589,23 @@ public class AITargetSensor : MonoBehaviour
                 return false;
         }
 
-        if (targetable != null)
-        {
-            if (!IsTargetAllowedByTargetable(targetable))
-                return false;
-        }
-
-        if (!IsTargetAllowedByLifeState(targetRoot))
+        if (targetable != null && !IsTargetAllowedByTargetable(targetable))
             return false;
 
-        return true;
+        return IsTargetAllowedByLifeState(targetRoot);
     }
 
-    private bool RefreshTrackedTargetValidity()
+    bool RefreshTrackedTargetValidity()
     {
         bool invalidated = false;
+        UpdateTauntState();
 
         if (currentTarget != null && !IsTrackedTargetStillValid(currentTarget))
         {
             SetCurrentTarget(null);
             hasLineOfSight = false;
             targetDistance = 0f;
+            currentTargetScore = float.NegativeInfinity;
             invalidated = true;
         }
 
@@ -259,13 +616,15 @@ public class AITargetSensor : MonoBehaviour
             lastSeenTime = float.NegativeInfinity;
             hasLineOfSight = false;
             targetDistance = 0f;
+            currentTargetScore = float.NegativeInfinity;
             invalidated = true;
         }
 
+        PruneThreatEntries();
         return invalidated;
     }
 
-    private bool IsTrackedTargetStillValid(Transform target)
+    bool IsTrackedTargetStillValid(Transform target)
     {
         if (!TryResolveTrackedTarget(target, out Transform targetRoot, out IAITargetable targetable))
             return false;
@@ -279,7 +638,7 @@ public class AITargetSensor : MonoBehaviour
         return IsTargetAllowedByLifeState(targetRoot);
     }
 
-    private bool TryResolveTrackedTarget(Transform target, out Transform targetRoot, out IAITargetable targetable)
+    bool TryResolveTrackedTarget(Transform target, out Transform targetRoot, out IAITargetable targetable)
     {
         targetRoot = null;
         targetable = null;
@@ -288,9 +647,9 @@ public class AITargetSensor : MonoBehaviour
             return false;
 
         targetable = FindTargetable(target);
-        if (targetable is Component component)
+        if (targetable is Component targetComponent)
         {
-            targetRoot = component.transform;
+            targetRoot = targetComponent.transform;
             return true;
         }
 
@@ -305,7 +664,7 @@ public class AITargetSensor : MonoBehaviour
         return targetRoot != null;
     }
 
-    private bool IsTargetAllowedByTargetable(IAITargetable targetable)
+    bool IsTargetAllowedByTargetable(IAITargetable targetable)
     {
         if (targetable == null)
             return true;
@@ -322,7 +681,7 @@ public class AITargetSensor : MonoBehaviour
         return true;
     }
 
-    private bool IsTargetAllowedByLifeState(Transform targetRoot)
+    bool IsTargetAllowedByLifeState(Transform targetRoot)
     {
         if (targetRoot == null)
             return false;
@@ -334,21 +693,22 @@ public class AITargetSensor : MonoBehaviour
         return targetContext.stateHub.IsAlive && !targetContext.stateHub.Isdown;
     }
 
-    private IAITargetable FindTargetable(Transform start)
+    IAITargetable FindTargetable(Transform start)
     {
-        if (start == null) return null;
+        if (start == null)
+            return null;
 
         MonoBehaviour[] all = start.GetComponentsInParent<MonoBehaviour>(true);
         for (int i = 0; i < all.Length; i++)
         {
-            if (all[i] is IAITargetable t)
-                return t;
+            if (all[i] is IAITargetable targetable)
+                return targetable;
         }
 
         return null;
     }
 
-    private Vector3 GetTargetPoint(Collider hit, Transform targetRoot, IAITargetable targetable)
+    Vector3 GetTargetPoint(Collider hit, Transform targetRoot, IAITargetable targetable)
     {
         if (targetable != null && targetable.AimPoint != null)
             return targetable.AimPoint.position;
@@ -359,16 +719,15 @@ public class AITargetSensor : MonoBehaviour
         return targetRoot.position + Vector3.up * fallbackTargetHeightOffset;
     }
 
-    private Vector3 GetOriginPosition()
+    Vector3 GetOriginPosition()
     {
         Transform origin = sensorOrigin != null ? sensorOrigin : transform;
         return origin.position + Vector3.up * originHeightOffset;
     }
 
-    private bool IsInsideFOVXZ(Vector3 toTarget)
+    bool IsInsideFOVXZ(Vector3 toTarget)
     {
         Vector3 forward = forwardReference != null ? forwardReference.forward : transform.forward;
-
         Vector3 flatForward = Vector3.ProjectOnPlane(forward, Vector3.up);
         Vector3 flatToTarget = Vector3.ProjectOnPlane(toTarget, Vector3.up);
 
@@ -378,31 +737,240 @@ public class AITargetSensor : MonoBehaviour
         return Vector3.Angle(flatForward, flatToTarget) <= fieldOfView * 0.5f;
     }
 
-    private bool CheckLineOfSight(Vector3 origin, Vector3 targetPoint)
+    bool CheckLineOfSight(Vector3 origin, Vector3 targetPoint)
     {
-        Vector3 dir = targetPoint - origin;
-        float dist = dir.magnitude;
-        if (dist <= 0.001f) return true;
+        Vector3 direction = targetPoint - origin;
+        float distance = direction.magnitude;
+        if (distance <= 0.001f)
+            return true;
 
         return !Physics.Raycast(
             origin,
-            dir / dist,
-            dist,
+            direction / distance,
+            distance,
             obstacleLayers,
-            triggerInteraction
-        );
+            triggerInteraction);
     }
 
-    private bool IsWithinGracePeriod()
+    bool IsWithinGracePeriod()
     {
         if (lastSeenTarget != null && !IsTrackedTargetStillValid(lastSeenTarget))
             return false;
 
-        return Time.time - lastSeenTime <= gracePeriod;
+        return Time.time - lastSeenTime <= GetGracePeriodValue();
+    }
+
+    bool IsCurrentTargetRetained()
+    {
+        if (currentTarget == null)
+            return false;
+
+        if (!IsTrackedTargetStillValid(currentTarget))
+            return false;
+
+        if (hasLineOfSight)
+            return true;
+
+        return Time.time - lastSeenTime <= GetGracePeriodValue();
+    }
+
+    void OnDamageTaken(float amount, GameObject attacker)
+    {
+        if (attacker == null || amount <= 0f)
+            return;
+
+        RegisterThreat(attacker, amount * GetDamageThreatMultiplierValue());
+    }
+
+    void RegisterThreatInternal(Transform targetRoot, IAITargetable targetable, float amount)
+    {
+        if (!UseThreatMemoryEnabled() || targetRoot == null || amount <= 0f)
+            return;
+
+        int instanceId = targetRoot.GetInstanceID();
+        if (!threatEntries.TryGetValue(instanceId, out ThreatEntry entry))
+        {
+            entry = new ThreatEntry();
+            entry.Target = targetRoot;
+            entry.Threat = 0f;
+            entry.LastUpdateTime = Time.time;
+            threatEntries.Add(instanceId, entry);
+        }
+
+        UpdateThreatEntry(entry);
+
+        float multiplier = targetable != null ? Mathf.Max(0f, targetable.ThreatMultiplier) : 1f;
+        entry.Target = targetRoot;
+        entry.Threat = Mathf.Clamp(entry.Threat + amount * multiplier, 0f, GetMaxThreatPerTargetValue());
+        entry.LastUpdateTime = Time.time;
+    }
+
+    void UpdateThreatEntry(ThreatEntry entry)
+    {
+        if (entry == null)
+            return;
+
+        float elapsed = Mathf.Max(0f, Time.time - entry.LastUpdateTime);
+        if (elapsed <= 0f)
+            return;
+
+        entry.Threat = Mathf.Max(0f, entry.Threat - GetThreatDecayPerSecondValue() * elapsed);
+        entry.LastUpdateTime = Time.time;
+    }
+
+    bool ShouldKeepLastSeenTarget()
+    {
+        return targetingProfile != null ? targetingProfile.KeepLastSeenTarget : keepLastSeenTarget;
+    }
+
+    float GetGracePeriodValue()
+    {
+        return targetingProfile != null ? targetingProfile.GracePeriod : Mathf.Max(0f, gracePeriod);
+    }
+
+    float GetDistanceScoreWeightValue()
+    {
+        return targetingProfile != null ? targetingProfile.DistanceScoreWeight : Mathf.Max(0f, distanceScoreWeight);
+    }
+
+    float GetCurrentTargetStickinessValue()
+    {
+        return targetingProfile != null ? targetingProfile.CurrentTargetStickiness : Mathf.Max(0f, currentTargetStickiness);
+    }
+
+    float GetLineOfSightPenaltyValue()
+    {
+        return targetingProfile != null ? targetingProfile.LineOfSightPenalty : Mathf.Max(0f, lineOfSightPenalty);
+    }
+
+    Vector2 GetRetargetIntervalRangeValue()
+    {
+        return targetingProfile != null ? targetingProfile.RetargetIntervalRange : retargetIntervalRange;
+    }
+
+    float GetMinTargetLockDurationValue()
+    {
+        return targetingProfile != null ? targetingProfile.MinTargetLockDuration : Mathf.Max(0f, minTargetLockDuration);
+    }
+
+    float GetSwitchScoreThresholdValue()
+    {
+        return targetingProfile != null ? targetingProfile.SwitchScoreThreshold : Mathf.Max(0f, switchScoreThreshold);
+    }
+
+    float GetSwitchScoreThresholdRatioValue()
+    {
+        return targetingProfile != null ? targetingProfile.SwitchScoreThresholdRatio : Mathf.Clamp01(switchScoreThresholdRatio);
+    }
+
+    float GetLostTargetHoldDurationValue()
+    {
+        return targetingProfile != null ? targetingProfile.LostTargetHoldDuration : Mathf.Max(0f, lostTargetHoldDuration);
+    }
+
+    bool UseThreatMemoryEnabled()
+    {
+        return targetingProfile != null ? targetingProfile.UseThreatMemory : useThreatMemory;
+    }
+
+    float GetDamageThreatMultiplierValue()
+    {
+        return targetingProfile != null ? targetingProfile.DamageThreatMultiplier : Mathf.Max(0f, damageThreatMultiplier);
+    }
+
+    float GetThreatScoreWeightValue()
+    {
+        return targetingProfile != null ? targetingProfile.ThreatScoreWeight : Mathf.Max(0f, threatScoreWeight);
+    }
+
+    float GetThreatDecayPerSecondValue()
+    {
+        return targetingProfile != null ? targetingProfile.ThreatDecayPerSecond : Mathf.Max(0f, threatDecayPerSecond);
+    }
+
+    float GetMaxThreatPerTargetValue()
+    {
+        return targetingProfile != null ? targetingProfile.MaxThreatPerTarget : Mathf.Max(0f, maxThreatPerTarget);
+    }
+
+    float GetTauntScoreBonusValue()
+    {
+        return targetingProfile != null ? targetingProfile.TauntScoreBonus : Mathf.Max(0f, tauntScoreBonus);
+    }
+
+    void PruneThreatEntries()
+    {
+        if (threatEntries.Count == 0)
+            return;
+
+        List<int> removeKeys = null;
+        foreach (KeyValuePair<int, ThreatEntry> pair in threatEntries)
+        {
+            ThreatEntry entry = pair.Value;
+            if (entry == null)
+            {
+                if (removeKeys == null)
+                    removeKeys = new List<int>();
+
+                removeKeys.Add(pair.Key);
+                continue;
+            }
+
+            UpdateThreatEntry(entry);
+            if (entry.Target == null || entry.Threat <= 0.001f || !IsTrackedTargetStillValid(entry.Target))
+            {
+                if (removeKeys == null)
+                    removeKeys = new List<int>();
+
+                removeKeys.Add(pair.Key);
+            }
+        }
+
+        if (removeKeys == null)
+            return;
+
+        for (int i = 0; i < removeKeys.Count; i++)
+            threatEntries.Remove(removeKeys[i]);
+    }
+
+    bool IsTauntedTarget(Transform target)
+    {
+        return tauntTarget != null &&
+               Time.time <= tauntUntilTime &&
+               target != null &&
+               tauntTarget == target;
+    }
+
+    void UpdateTauntState()
+    {
+        if (tauntTarget == null)
+            return;
+
+        if (Time.time <= tauntUntilTime && IsTrackedTargetStillValid(tauntTarget))
+            return;
+
+        tauntTarget = null;
+        tauntUntilTime = float.NegativeInfinity;
+    }
+
+    struct Candidate
+    {
+        public Transform TargetRoot;
+        public Vector3 TargetPoint;
+        public float Distance;
+        public bool HasLineOfSight;
+        public float Score;
+    }
+
+    sealed class ThreatEntry
+    {
+        public Transform Target;
+        public float Threat;
+        public float LastUpdateTime;
     }
 
 #if UNITY_EDITOR
-    private void OnDrawGizmosSelected()
+    void OnDrawGizmosSelected()
     {
         Vector3 origin = (sensorOrigin != null ? sensorOrigin.position : transform.position) + Vector3.up * originHeightOffset;
 

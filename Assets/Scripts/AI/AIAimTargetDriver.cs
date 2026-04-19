@@ -168,8 +168,10 @@ public sealed class AIAimTargetDriver : MonoBehaviour
 
         if (sensor != null)
         {
-            if (sensor.CurrentTarget != null &&
-                TryResolveTargetPoint(sensor.CurrentTarget, preferChainAttackPoint: false, out position))
+            Transform currentTarget = sensor.CurrentTarget;
+            if (currentTarget != null &&
+                sensor.HasLineOfSight &&
+                TryResolveTargetPoint(currentTarget, preferChainAttackPoint: false, out position))
             {
                 return true;
             }
@@ -177,6 +179,12 @@ public sealed class AIAimTargetDriver : MonoBehaviour
             if (followLastSeenPosition && sensor.HasAnyTarget)
             {
                 position = sensor.LastSeenPosition;
+                return true;
+            }
+
+            if (currentTarget != null &&
+                TryResolveTargetPoint(currentTarget, preferChainAttackPoint: false, out position))
+            {
                 return true;
             }
         }

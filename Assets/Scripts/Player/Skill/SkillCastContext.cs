@@ -4,6 +4,7 @@ public sealed class SkillCastContext
 {
     public ISkillUser User { get; }
     public SkillGemDefinition SkillDef { get; }
+    public SkillPayloadDef Execution { get; }
     public FinalSkillStats SkillStats { get; }
     public CharacterAnimBrain AnimBrain { get; }
     public int RequestId { get; }
@@ -24,6 +25,7 @@ public sealed class SkillCastContext
     {
         User = user;
         SkillDef = skillDef;
+        Execution = skillDef != null ? skillDef.payload : null;
         SkillStats = skillStats;
         AnimBrain = animBrain;
         RequestId = requestId;

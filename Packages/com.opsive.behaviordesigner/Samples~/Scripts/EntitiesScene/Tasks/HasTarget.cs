@@ -7,19 +7,37 @@ namespace Opsive.BehaviorDesigner.Samples
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Tasks;
-    using Opsive.GraphDesigner.Runtime;
+    using Opsive.GraphDesigner.Runtime.Variables;
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using Unity.Burst;
     using Unity.Entities;
-    using Unity.Transforms;
     using UnityEngine;
 
     [Opsive.Shared.Utility.Description("Uses DOTS to determine if the entity has a target.")]
     [Shared.Utility.Category("Behavior Designer Samples/DOTS")]
-    public class HasTarget : ECSConditionalTask<HasTargetTaskSystem, HasTargetComponent>, IReevaluateResponder
+    public class HasTarget : ECSConditionalTask<HasTargetTaskSystem, HasTargetComponent, HasTargetFlag>, IReevaluateResponder
     {
-        public override ComponentType Flag { get => typeof(HasTargetFlag); }
+        [Tooltip("The entity that should be targeted.")]
+        [SerializeField] [RequireShared] SharedVariable<Entity> m_TargetEntity;
+
+        private ECSSharedVariableIndex<Entity> m_TargetEntityIndex;
+
         public ComponentType ReevaluateFlag { get => typeof(HasTargetReevaluateFlag); }
         public System.Type ReevaluateSystemType { get => typeof(HasTargetReevaluateTaskSystem); }
+
+        /// <summary>
+        /// Registers the target SharedVariable and adds the buffer element to the entity.
+        /// </summary>
+        /// <param name="world">The world that the entity exists in.</param>
+        /// <param name="entity">The entity that the IBufferElementData should be assigned to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
+        /// <param name="gameObject">The GameObject that the entity is attached to.</param>
+        /// <returns>The index of the element within the buffer.</returns>
+        public override int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, GameObject gameObject)
+        {
+            m_TargetEntityIndex = new ECSSharedVariableIndex<Entity>(registry.Register(m_TargetEntity));
+            return base.AddBufferElement(world, entity, registry, gameObject);
+        }
 
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
@@ -30,6 +48,7 @@ namespace Opsive.BehaviorDesigner.Samples
             return new HasTargetComponent()
             {
                 Index = RuntimeIndex,
+                TargetEntityVariableIndex = m_TargetEntityIndex.Index,
             };
         }
     }
@@ -41,6 +60,8 @@ namespace Opsive.BehaviorDesigner.Samples
     {
         [Tooltip("The index of the node.")]
         public ushort Index;
+        [Tooltip("Buffer index into SharedVariableElement for the target entity.")]
+        public int TargetEntityVariableIndex;
     }
 
     /// <summary>
@@ -61,21 +82,22 @@ namespace Opsive.BehaviorDesigner.Samples
         [BurstCompile]
         private void OnUpdate(ref SystemState state)
         {
-            foreach (var (taskComponents, hasTargetComponents) in
-                SystemAPI.Query<DynamicBuffer<TaskComponent>, DynamicBuffer<HasTargetComponent>>().WithAll<HasTargetFlag, EvaluateFlag>()) {
+            foreach (var (branchComponents, taskComponents, hasTargetComponents, sharedVariables) in
+                SystemAPI.Query<DynamicBuffer<BranchComponent>, DynamicBuffer<TaskComponent>, DynamicBuffer<HasTargetComponent>, DynamicBuffer<SharedVariableElement>>().WithAll<HasTargetFlag, EvaluateFlag>()) {
                 for (int i = 0; i < hasTargetComponents.Length; ++i) {
                     var hasTargetComponent = hasTargetComponents[i];
                     var taskComponent = taskComponents[hasTargetComponent.Index];
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute) {
+                        continue;
+                    }
+
                     if (taskComponent.Status != TaskStatus.Queued) {
                         continue;
                     }
 
-                    // Find the target. There will only be one entity with the TargetEntityTag.
-                    var hasTarget = false;
-                    foreach (var localTransform in SystemAPI.Query<RefRO<LocalTransform>>().WithAll<TargetEntityTag>()) {
-                        hasTarget = true;
-                        break;
-                    }
+                    var targetEntity = sharedVariables.Get<Entity>(hasTargetComponent.TargetEntityVariableIndex);
+                    var hasTarget = targetEntity != Entity.Null && state.EntityManager.Exists(targetEntity);
 
                     taskComponent.Status = hasTarget ? TaskStatus.Success : TaskStatus.Failure;
 
@@ -85,7 +107,6 @@ namespace Opsive.BehaviorDesigner.Samples
             }
         }
     }
-
 
     /// <summary>
     /// A DOTS tag indicating when an HasTarget node needs to be reevaluated.
@@ -107,21 +128,22 @@ namespace Opsive.BehaviorDesigner.Samples
         [BurstCompile]
         private void OnUpdate(ref SystemState state)
         {
-            foreach (var (taskComponents, hasTargetComponents) in
-                SystemAPI.Query<DynamicBuffer<TaskComponent>, DynamicBuffer<HasTargetComponent>>().WithAll<HasTargetReevaluateFlag, EvaluateFlag>()) {
+            foreach (var (branchComponents, taskComponents, hasTargetComponents, sharedVariables) in
+                SystemAPI.Query<DynamicBuffer<BranchComponent>, DynamicBuffer<TaskComponent>, DynamicBuffer<HasTargetComponent>, DynamicBuffer<SharedVariableElement>>().WithAll<HasTargetReevaluateFlag, EvaluateFlag>()) {
                 for (int i = 0; i < hasTargetComponents.Length; ++i) {
                     var hasTargetComponent = hasTargetComponents[i];
                     var taskComponent = taskComponents[hasTargetComponent.Index];
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute) {
+                        continue;
+                    }
+
                     if (!taskComponent.Reevaluate) {
                         continue;
                     }
 
-                    // Find the target. There will only be one entity with the TargetEntityTag.
-                    var hasTarget = false;
-                    foreach (var localTransform in SystemAPI.Query<RefRO<LocalTransform>>().WithAll<TargetEntityTag>()) {
-                        hasTarget = true;
-                        break;
-                    }
+                    var targetEntity = sharedVariables.Get<Entity>(hasTargetComponent.TargetEntityVariableIndex);
+                    var hasTarget = targetEntity != Entity.Null && state.EntityManager.Exists(targetEntity);
 
                     var status = hasTarget ? TaskStatus.Success : TaskStatus.Failure;
                     if (status != taskComponent.Status) {

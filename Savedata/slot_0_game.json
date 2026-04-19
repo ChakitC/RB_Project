@@ -1,7 +1,7 @@
 {
     "inventory": {
         "maxSlotCount": 20,
-        "gold": 1001091,
+        "gold": 1001092,
         "slots": [
             {
                 "itemId": "SMG_RB01",
@@ -154,8 +154,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 3591,
-                    "currentMagazine": 0
+                    "shotCounter": 3968,
+                    "currentMagazine": 29
                 }
             },
             {
@@ -416,8 +416,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 0,
-                    "currentMagazine": 30
+                    "shotCounter": 418,
+                    "currentMagazine": 23
                 }
             },
             {
@@ -464,6 +464,11 @@
         "equippedWeaponInstanceId": "ba967d7fca944cdeb451412b7c61a49b"
     },
     "party": {
-        "partyIds": []
+        "partyIds": [
+            "ID.Roma",
+            "ID.Feno",
+            "ID.Aires",
+            "ID.Abbygail"
+        ]
     }
 }

@@ -770,6 +770,11 @@ namespace Opsive.BehaviorDesigner.Runtime
             } else if (typeof(ILogicNode).IsAssignableFrom(type) && (field == null || field.GetCustomAttribute<InspectNodeAttribute>() == null)) {
                 return typeof(ushort);
             }
+
+            var formerlySerializedType = field?.GetCustomAttribute<FormerlySerializedTypeAttribute>(false);
+            if (formerlySerializedType != null) {
+                return formerlySerializedType.Type;
+            }
             return type;
         }
 
@@ -844,6 +849,10 @@ namespace Opsive.BehaviorDesigner.Runtime
                 taskReferences.Add(new TaskAssignment() { Field = fieldInfo, Target = target, Value = value });
             } else if (typeof(SharedVariable).IsAssignableFrom(type)) {
                 var sharedVariable = value as SharedVariable;
+                if (sharedVariable == null) {
+                    sharedVariable = CreateLegacySharedVariable(type, value);
+                }
+
                 if (variableByNameMap != null && sharedVariable != null && !string.IsNullOrEmpty(sharedVariable.Name)) {
                     if (variableByNameMap.TryGetValue(new VariableAssignment(sharedVariable.Name, sharedVariable.Scope), out var mappedSharedVariable)) {
                         if (Application.isPlaying && sharedVariable.Scope == SharedVariable.SharingScope.Dynamic && sharedVariable.GetType() != mappedSharedVariable.GetType()) {
@@ -865,9 +874,50 @@ namespace Opsive.BehaviorDesigner.Runtime
                         return sharedVariable;
                     }
                 }
+
+                if (sharedVariable != null) {
+                    return sharedVariable;
+                }
             }
 
             return value;
+        }
+
+        /// <summary>
+        /// Creates a SharedVariable from a legacy non-shared serialized value.
+        /// </summary>
+        /// <param name="sharedVariableType">The current SharedVariable field type.</param>
+        /// <param name="value">The legacy serialized value.</param>
+        /// <returns>The wrapped SharedVariable, or null if the value could not be converted.</returns>
+        private static SharedVariable CreateLegacySharedVariable(Type sharedVariableType, object value)
+        {
+            if (sharedVariableType == null || sharedVariableType.IsAbstract || value == null) {
+                return null;
+            }
+
+            try {
+                var sharedVariable = Activator.CreateInstance(sharedVariableType) as SharedVariable;
+                if (sharedVariable == null) {
+                    return null;
+                }
+
+                var valueType = sharedVariable.ElementType;
+                if (!valueType.IsInstanceOfType(value)) {
+                    if (valueType.IsEnum) {
+                        value = value is string enumName ? Enum.Parse(valueType, enumName) : Enum.ToObject(valueType, value);
+                    } else if (valueType == typeof(string)) {
+                        value = value.ToString();
+                    } else {
+                        value = Convert.ChangeType(value, valueType);
+                    }
+                }
+
+                sharedVariable.Scope = SharedVariable.SharingScope.Self;
+                sharedVariable.SetValue(value);
+                return sharedVariable;
+            } catch {
+                return null;
+            }
         }
 
         /// <summary>

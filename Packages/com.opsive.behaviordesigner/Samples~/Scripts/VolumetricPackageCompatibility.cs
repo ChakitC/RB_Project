@@ -52,7 +52,13 @@ namespace Opsive.BehaviorDesigner.Samples
             profileProperty.SetValue(volume, m_VolumetricProfile);
 
             // All of the behavior tree agents with flashlights were spawned within Awake.
-            var volumetricLightObjects = Object.FindObjectsByType<VolumetricFlashlightIdentifier>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+#if UNITY_6000_4_OR_NEWER
+            var volumetricLightObjects = UnityEngine.Object.FindObjectsByType<VolumetricFlashlightIdentifier>(FindObjectsInactive.Include);
+#elif UNITY_6000_0_OR_NEWER
+            var volumetricLightObjects = UnityEngine.Object.FindObjectsByType<VolumetricFlashlightIdentifier>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+#else
+            var volumetricLightObjects = Object.FindObjectsOfType<VolumetricFlashlightIdentifier>(true);
+#endif
             for (int i = 0; i < volumetricLightObjects.Length; ++i) {
                 SetupVolumetricLight(volumetricLightObjects[i].gameObject, additionalLightType);
             }

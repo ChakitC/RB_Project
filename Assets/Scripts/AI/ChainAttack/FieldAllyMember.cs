@@ -108,9 +108,11 @@ public sealed class FieldAllyMember : MonoBehaviour
 
     bool _autonomyCaptured;
     bool _defaultBehaviorTreeEnabled;
+    bool _defaultAgentEnabled;
     bool _defaultAgentIsStopped;
     bool _defaultAgentUpdatePosition;
     bool _defaultAgentUpdateRotation;
+    bool _defaultAgentHadPath;
     bool _actorProtectionApplied;
     bool _collisionMaskCaptured;
     bool _visualHiddenForChainTransition;
@@ -118,6 +120,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     int _actorUntargetableToken;
     LayerMask _defaultRigidbodyExcludeLayers;
     LayerMask _defaultCharacterControllerExcludeLayers;
+    Vector3 _defaultAgentDestination;
 
     public ChainActorRole ActorRole => actorRole;
     public bool IsReserved => _reservationOwner != null;
@@ -596,9 +599,12 @@ public sealed class FieldAllyMember : MonoBehaviour
 
         if (agent != null && agent.enabled)
         {
+            _defaultAgentEnabled = true;
             _defaultAgentIsStopped = agent.isStopped;
             _defaultAgentUpdatePosition = agent.updatePosition;
             _defaultAgentUpdateRotation = agent.updateRotation;
+            _defaultAgentHadPath = agent.hasPath || agent.pathPending;
+            _defaultAgentDestination = agent.isOnNavMesh ? agent.destination : transform.position;
 
             agent.isStopped = true;
             agent.updatePosition = false;
@@ -607,7 +613,14 @@ public sealed class FieldAllyMember : MonoBehaviour
             if (agent.isOnNavMesh)
                 agent.nextPosition = transform.position;
 
+            agent.enabled = false;
             capturedAny = true;
+        }
+        else
+        {
+            _defaultAgentEnabled = false;
+            _defaultAgentHadPath = false;
+            _defaultAgentDestination = transform.position;
         }
 
         if (ApplyTemporaryComponentDisables())
@@ -633,15 +646,30 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (behaviorTree != null)
             behaviorTree.enabled = _defaultBehaviorTreeEnabled;
 
-        if (agent != null && agent.enabled)
+        if (agent != null && _defaultAgentEnabled)
         {
-            if (agent.isOnNavMesh)
-                agent.nextPosition = transform.position;
+            if (!agent.enabled)
+                agent.enabled = true;
+
+            SyncAgentToTransform();
 
             agent.updatePosition = _defaultAgentUpdatePosition;
             agent.updateRotation = _defaultAgentUpdateRotation;
             agent.isStopped = _defaultAgentIsStopped;
+
+            if (!_defaultAgentIsStopped &&
+                _defaultAgentHadPath &&
+                agent.isOnNavMesh &&
+                !agent.pathPending &&
+                !agent.hasPath)
+            {
+                agent.SetDestination(_defaultAgentDestination);
+            }
         }
+
+        _defaultAgentEnabled = false;
+        _defaultAgentHadPath = false;
+        _defaultAgentDestination = transform.position;
 
         RestoreTemporaryComponentDisables();
         RestoreTemporaryActorProtection();
@@ -933,8 +961,8 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (execution.step != null && execution.step.UsesStepContinueOverride)
             return execution.step.continueMode;
 
-        return execution.attackSkillDef != null
-            ? execution.attackSkillDef.GetChainContinueMode()
+        return execution.attackSkillDef != null && execution.attackSkillDef.payload != null
+            ? execution.attackSkillDef.payload.GetChainContinueMode()
             : ChainStepContinueMode.OnStepComplete;
     }
 
@@ -946,8 +974,8 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (execution.step != null && execution.step.UsesStepContinueOverride)
             return execution.step.ClampedContinueNormalizedTime;
 
-        return execution.attackSkillDef != null
-            ? execution.attackSkillDef.GetChainContinueNormalizedTime()
+        return execution.attackSkillDef != null && execution.attackSkillDef.payload != null
+            ? execution.attackSkillDef.payload.GetChainContinueNormalizedTime()
             : 1f;
     }
 
@@ -1823,6 +1851,29 @@ public sealed class FieldAllyMember : MonoBehaviour
         {
             agent.Warp(navHit.position);
             transform.position = navHit.position;
+            agent.nextPosition = navHit.position;
+        }
+    }
+
+    void SyncAgentToTransform()
+    {
+        if (agent == null || !agent.enabled)
+            return;
+
+        Vector3 syncPosition = transform.position;
+
+        if (agent.isOnNavMesh)
+        {
+            agent.Warp(syncPosition);
+            agent.nextPosition = syncPosition;
+            return;
+        }
+
+        if (NavMesh.SamplePosition(syncPosition, out NavMeshHit navHit, 1f, NavMesh.AllAreas))
+        {
+            syncPosition = navHit.position;
+            transform.position = navHit.position;
+            agent.Warp(navHit.position);
             agent.nextPosition = navHit.position;
         }
     }

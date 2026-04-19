@@ -144,6 +144,7 @@ public class GrenadeExplodeModule : ProjectileModule
 {
     // ---- from skill? ----
     var def = p.SourceSkillDef;
+    var execution = p.SourceSkillExecution;
     var sStats = p.SourceSkillStats;
     bool fromSkill = (def != null);
 
@@ -159,12 +160,12 @@ public class GrenadeExplodeModule : ProjectileModule
     var usedFalloff = damageFalloff;
 
     // Prefer the skill override when present, otherwise fall back to the projectile/module explosion VFX.
-    GameObject usedVfxPrefab = fromSkill && def != null && def.SkillVfxhit != null
-        ? def.SkillVfxhit
+    GameObject usedVfxPrefab = fromSkill && execution != null && execution.ProjectileHitVfxPrefab != null
+        ? execution.ProjectileHitVfxPrefab
         : (p.hitVfxPrefab != null ? p.hitVfxPrefab : explosionVfxPrefab);
 
-    float usedVfxScale = fromSkill && def != null && def.SkillVfxhit != null
-        ? def.projectileHitVfxScale
+    float usedVfxScale = fromSkill && execution != null && execution.ProjectileHitVfxPrefab != null
+        ? execution.ProjectileHitVfxScale
         : (p.vfxScale > 0f ? p.vfxScale : vfxScale);
 
     // ---- VFX ----

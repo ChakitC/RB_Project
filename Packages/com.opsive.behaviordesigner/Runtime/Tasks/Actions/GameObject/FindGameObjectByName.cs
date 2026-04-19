@@ -112,7 +112,6 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.GameObjectTasks
 #else
             var allObjects = UnityEngine.Object.FindObjectsOfType<GameObject>(includeInactive);
 #endif
-
             foreach (var obj in allObjects) {
                 if (obj.name == name) {
                     return obj;

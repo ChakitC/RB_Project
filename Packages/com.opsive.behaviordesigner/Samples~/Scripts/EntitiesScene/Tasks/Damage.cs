@@ -7,22 +7,16 @@ namespace Opsive.BehaviorDesigner.Samples
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Tasks;
-    using Opsive.GraphDesigner.Runtime;
     using Unity.Entities;
     using UnityEngine;
     using System;
 
     [Tooltip("Damages any entity that has the HealthComponent.")]
     [Shared.Utility.Category("Behavior Designer Samples/DOTS")]
-    public class Damage : ECSActionTask<DamageTaskSystem, DamageComponent>
+    public class Damage : ECSActionTask<DamageTaskSystem, DamageComponent, DamageFlag>
     {
         [Tooltip("The amount of damage to apply.")]
         [SerializeField] float m_DamageAmount;
-
-        /// <summary>
-        /// The type of flag that should be enabled when the task is running.
-        /// </summary>
-        public override ComponentType Flag { get => typeof(DamageFlag); }
 
         /// <summary>
         /// Resets the task to its default values.
@@ -73,11 +67,16 @@ namespace Opsive.BehaviorDesigner.Samples
         protected override void OnUpdate()
         {
             var ecb = new EntityCommandBuffer(WorldUpdateAllocator);
-            foreach (var (taskComponents, damageComponents) in
-                SystemAPI.Query<DynamicBuffer<TaskComponent>, DynamicBuffer<DamageComponent>>().WithAll<DamageFlag, EvaluateFlag>()) {
+            foreach (var (branchComponents, taskComponents, damageComponents) in
+                SystemAPI.Query<DynamicBuffer<BranchComponent>, DynamicBuffer<TaskComponent>, DynamicBuffer<DamageComponent>>().WithAll<DamageFlag, EvaluateFlag>()) {
                 for (int i = 0; i < damageComponents.Length; ++i) {
                     var damageComponent = damageComponents[i];
                     var taskComponent = taskComponents[damageComponent.Index];
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute) {
+                        continue;
+                    }
+
                     if (taskComponent.Status != TaskStatus.Queued) {
                         continue;
                     }

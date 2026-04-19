@@ -15037,7 +15037,6 @@ MonoBehaviour:
   m_Label: 'Opponent Health: '
   m_BehaviorTree: {fileID: 1805829446}
   m_VariableName: Health
-  m_HealthChangeRegistration: 0
 --- !u!114 &288448988
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15325,7 +15324,6 @@ MonoBehaviour:
   m_Label: 'Agent Health: '
   m_BehaviorTree: {fileID: 1330547950}
   m_VariableName: Health
-  m_HealthChangeRegistration: 0
 --- !u!114 &456545915
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20340,7 +20338,6 @@ PrefabInstance:
       value: 'This scene uses a common behavior tree design pattern. This scene demonstrates
         using an alternating Selector/Sequence structure making it easy to add or
         remove behavior without needing to restructure the behavior tree.
-
 
         The
         behavior tree agents also use a Subtree reference assigned on the BehaviorTree

@@ -7,20 +7,33 @@ namespace Opsive.BehaviorDesigner.Samples
 {
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Tasks;
-    using Opsive.GraphDesigner.Runtime;
+    using Opsive.GraphDesigner.Runtime.Variables;
+    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using Unity.Entities;
-    using Unity.Transforms;
     using UnityEngine;
-    using System;
 
     [Tooltip("Fires any entity that has the HealthComponent.")]
     [Shared.Utility.Category("Behavior Designer Samples/DOTS")]
-    public class Fire : ECSActionTask<FireTaskSystem, FireComponent>
+    public class Fire : ECSActionTask<FireTaskSystem, FireComponent, FireFlag>
     {
+        [Tooltip("The entity that should be targeted.")]
+        [SerializeField] [RequireShared] SharedVariable<Entity> m_TargetEntity;
+
+        private ECSSharedVariableIndex<Entity> m_TargetEntityIndex;
+
         /// <summary>
-        /// The type of flag that should be enabled when the task is running.
+        /// Registers the target SharedVariable and adds the buffer element to the entity.
         /// </summary>
-        public override ComponentType Flag { get => typeof(FireFlag); }
+        /// <param name="world">The world that the entity exists in.</param>
+        /// <param name="entity">The entity that the IBufferElementData should be assigned to.</param>
+        /// <param name="registry">The ECS variable registry for registering SharedVariable fields.</param>
+        /// <param name="gameObject">The GameObject that the entity is attached to.</param>
+        /// <returns>The index of the element within the buffer.</returns>
+        public override int AddBufferElement(World world, Entity entity, ECSVariableRegistry registry, GameObject gameObject)
+        {
+            m_TargetEntityIndex = new ECSSharedVariableIndex<Entity>(registry.Register(m_TargetEntity));
+            return base.AddBufferElement(world, entity, registry, gameObject);
+        }
 
         /// <summary>
         /// Returns a new TBufferElement for use by the system.
@@ -31,6 +44,7 @@ namespace Opsive.BehaviorDesigner.Samples
             return new FireComponent()
             {
                 Index = RuntimeIndex,
+                TargetEntityVariableIndex = m_TargetEntityIndex.Index,
             };
         }
     }
@@ -42,6 +56,8 @@ namespace Opsive.BehaviorDesigner.Samples
     {
         [Tooltip("The index of the node.")]
         public ushort Index;
+        [Tooltip("Buffer index into SharedVariableElement for the target entity.")]
+        public int TargetEntityVariableIndex;
     }
 
     /// <summary>
@@ -62,19 +78,23 @@ namespace Opsive.BehaviorDesigner.Samples
         private void OnUpdate(ref SystemState state)
         {
             var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
-            foreach (var (taskComponents, fireComponents, entity) in
-                SystemAPI.Query<DynamicBuffer<TaskComponent>, DynamicBuffer<FireComponent>>().WithAll<FireFlag, EvaluateFlag>().WithEntityAccess()) {
+            foreach (var (branchComponents, taskComponents, fireComponents, sharedVariables) in
+                SystemAPI.Query<DynamicBuffer<BranchComponent>, DynamicBuffer<TaskComponent>, DynamicBuffer<FireComponent>, DynamicBuffer<SharedVariableElement>>().WithAll<FireFlag, EvaluateFlag>()) {
                 for (int i = 0; i < fireComponents.Length; ++i) {
                     var fireComponent = fireComponents[i];
                     var taskComponent = taskComponents[fireComponent.Index];
+                    var branchComponent = branchComponents[taskComponent.BranchIndex];
+                    if (!branchComponent.CanExecute) {
+                        continue;
+                    }
+
                     if (taskComponent.Status != TaskStatus.Queued) {
                         continue;
                     }
 
-                    // Find the target. There will only be one entity with the TargetEntityTag.
-                    foreach (var (target, localTransform, targetEntity) in SystemAPI.Query<RefRO<TargetEntityTag>, RefRO<LocalTransform>>().WithEntityAccess()) {
+                    var targetEntity = sharedVariables.Get<Entity>(fireComponent.TargetEntityVariableIndex);
+                    if (targetEntity != Entity.Null && state.EntityManager.Exists(targetEntity)) {
                         ecb.AddComponent<DestroyEntityTag>(targetEntity);
-                        break;
                     }
 
                     // The task will always return immediately.
@@ -83,7 +103,7 @@ namespace Opsive.BehaviorDesigner.Samples
                     taskComponentBuffer[fireComponent.Index] = taskComponent;
 
                     // The turret has fired - apply a recoil.
-                    foreach (var (target, turretEntity) in SystemAPI.Query<RefRO<TurretRecoil>>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).WithEntityAccess()) {
+                    foreach (var (_, turretEntity) in SystemAPI.Query<RefRO<TurretRecoil>>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).WithEntityAccess()) {
                         ecb.SetComponentEnabled<TurretRecoil>(turretEntity, true);
                         break;
                     }

@@ -104,7 +104,8 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             startedAt = Time.time,
         };
 
-        ApplyPlayerProtection();
+        if (ShouldProtectPlayer(runtime: _activeRuntime))
+            ApplyPlayerProtection();
         _activeRoutine = StartCoroutine(RunSequence(_activeRuntime));
         Log(sequenceDef, $"Started sequence '{sequenceDef.RuntimeId}' on target '{targetObject.name}'.");
         return true;
@@ -539,6 +540,21 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
                 ResolvePlayerProtectionExcludeLayers());
 
         _playerProtectionApplied = true;
+    }
+
+    bool ShouldProtectPlayer(ActiveChainRuntime runtime)
+    {
+        if (runtime == null || runtime.sequenceDef == null || runtime.sequenceDef.steps == null)
+            return false;
+
+        for (int i = 0; i < runtime.sequenceDef.steps.Length; i++)
+        {
+            ChainAttackStepDef step = runtime.sequenceDef.steps[i];
+            if (step != null && step.actorRole == ChainActorRole.Player)
+                return true;
+        }
+
+        return false;
     }
 
     void RestorePlayerProtection()

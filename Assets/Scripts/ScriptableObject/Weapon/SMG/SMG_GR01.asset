@@ -34,13 +34,13 @@ MonoBehaviour:
   WeaponType: 3
   firingModes: 0
   damage: 10
-  fireRate: 0.1
+  fireRate: 0.2
   magazine: 30
   maxMagazine: 30
   critRate: 100
   critMultiplier: 1.2
   stability: 0
-  BulletSpeed: 30
+  BulletSpeed: 10
   autoloader: 0
   magazineReload: 1
   reloadTime: 1

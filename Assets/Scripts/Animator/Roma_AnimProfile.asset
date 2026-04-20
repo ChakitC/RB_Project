@@ -42,6 +42,16 @@ MonoBehaviour:
     _ParameterNameY: {fileID: 0}
   locomotionParamLerp: 14
   snapTo8Directions: 1
+  locomotionDirectionalClips:
+    idle: {fileID: 5487989288048153974, guid: 0fe0a7dc98bb2fa4a9ff7d5be7eb0ab6, type: 3}
+    forward: {fileID: 2718465186313594679, guid: 58a826f5004c5a54893b807d6696dc4e, type: 3}
+    backward: {fileID: 3630704421837926502, guid: f802650346e12374780da059cd43d325, type: 3}
+    left: {fileID: 583729431000011259, guid: 0404bea5c3932cc438487112ccc8bb28, type: 3}
+    right: {fileID: 4506590830449897675, guid: 3d62fd3d33a5f894fbb72ce5a71bbc78, type: 3}
+    forwardLeft: {fileID: -7521650866325861691, guid: 2f7eebb131feaaa4bbf82ad500e7b5f7, type: 3}
+    forwardRight: {fileID: 3417370728480570267, guid: 36884d3b49f8382478ae7bcd52068933, type: 3}
+    backwardLeft: {fileID: -596120106417223001, guid: 954ede865601d5d47836d4fa3bf822e8, type: 3}
+    backwardRight: {fileID: -8557995361944161523, guid: b1110dabcc4788949b033d3cd4190a53, type: 3}
   miniStune:
     _FadeDuration: 0.25
     _Speed: 1

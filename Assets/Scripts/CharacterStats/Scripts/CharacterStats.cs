@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using UnityEngine.Playables;
+using UnityEngine.Timeline;
 
 public enum CharacterWeaponHandMode
 {
@@ -19,6 +21,8 @@ public enum CharacterCombatRole
     Sniper = 4,
     Assault = 5
 }
+
+
 
 [HideMonoScript]
 [CreateAssetMenu(menuName = "Character Stats")]

@@ -15,20 +15,32 @@ MonoBehaviour:
   itemId: WP_GR_01
   displayName: WP_GR_01
   description: 
+  icon: {fileID: 0}
+  pickupVisualPrefab: {fileID: 0}
+  pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
+  pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
+  pickupVisualScale: {x: 1, y: 1, z: 1}
   itemType: 1
   stackable: 1
   maxStack: 1
   pickupPrefab: {fileID: 0}
+  BulletPrefab: {fileID: 0}
+  WeaponPrefab: {fileID: 0}
+  fireCue: {fileID: 0}
+  hitCue: {fileID: 0}
+  emptyCue: {fileID: 0}
+  reloadCue: {fileID: 0}
+  equipCue: {fileID: 0}
   WeaponType: 3
   firingModes: 0
   damage: 50
-  fireRate: 1
+  fireRate: 2
   magazine: 10
   maxMagazine: 10
   critRate: 10
   critMultiplier: 1
   stability: 0
-  BulletSpeed: 30
+  BulletSpeed: 10
   autoloader: 1
   magazineReload: 1
   reloadTime: 5

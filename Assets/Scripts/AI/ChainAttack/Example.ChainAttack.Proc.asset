@@ -16,9 +16,9 @@ MonoBehaviour:
   displayName: Example Chain Attack On Hit
   description: Triggers the example ally01 -> ally02 -> helper chain when a hit event
     with a target is published.
-  triggerEvent: 8
+  triggerEvent: 2
   originFilter: 0
-  procChance: 1
+  procChance: 0.5
   internalCooldownSeconds: 1
   requireTarget: 0
   requireAttackId: 0

@@ -1525,6 +1525,12 @@ MonoBehaviour:
   aimPoint: {fileID: 8983485895905118962}
   chainAttackPoint: {fileID: 0}
   teamId: 0
+  targetRole: 0
+  targetIdentity: 0
+  overrideCombatRole: 0
+  combatRoleOverride: 0
+  baseTargetPriority: 0
+  threatMultiplier: 1
   isAlive: 1
   isTargetable: 1
 --- !u!114 &5697629425159397874
@@ -1541,6 +1547,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sensorOrigin: {fileID: 8983485895905118962}
   forwardReference: {fileID: 8983485895905118962}
+  targetingProfile: {fileID: 0}
   radius: 5.12
   scanInterval: 0.1
   targetLayers:
@@ -1560,6 +1567,27 @@ MonoBehaviour:
   requireAliveIfAvailable: 1
   gracePeriod: 1.25
   keepLastSeenTarget: 1
+  distanceScoreWeight: 12
+  playerPriorityBonus: 16
+  companionPriorityBonus: 0
+  tankPriorityBonus: 6
+  healerPriorityBonus: 9
+  supportPriorityBonus: 6
+  sniperPriorityBonus: 7
+  assaultPriorityBonus: 0
+  currentTargetStickiness: 5
+  lineOfSightPenalty: 6
+  retargetIntervalRange: {x: 0.75, y: 1.1}
+  minTargetLockDuration: 0.9
+  switchScoreThreshold: 2.5
+  switchScoreThresholdRatio: 0.2
+  lostTargetHoldDuration: 0.35
+  useThreatMemory: 1
+  damageThreatMultiplier: 1
+  threatScoreWeight: 1
+  threatDecayPerSecond: 8
+  maxThreatPerTarget: 100
+  tauntScoreBonus: 1000
   originHeightOffset: 0.5
   fallbackTargetHeightOffset: 0.6
   currentTarget: {fileID: 0}
@@ -1568,6 +1596,10 @@ MonoBehaviour:
   hasLineOfSight: 0
   targetDistance: 0
   lastSeenTime: -Infinity
+  currentTargetScore: -Infinity
+  visibleBestScore: -Infinity
+  currentTargetAcquiredTime: -Infinity
+  nextRetargetEvaluationTime: 0
 --- !u!114 &509266328691558363
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11560,6 +11592,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sensorOrigin: {fileID: 3200926722191649918}
   forwardReference: {fileID: 3200926722191649918}
+  targetingProfile: {fileID: 0}
   radius: 4
   scanInterval: 0.1
   targetLayers:
@@ -11579,6 +11612,27 @@ MonoBehaviour:
   requireAliveIfAvailable: 1
   gracePeriod: 1.25
   keepLastSeenTarget: 1
+  distanceScoreWeight: 12
+  playerPriorityBonus: 16
+  companionPriorityBonus: 0
+  tankPriorityBonus: 6
+  healerPriorityBonus: 9
+  supportPriorityBonus: 6
+  sniperPriorityBonus: 7
+  assaultPriorityBonus: 0
+  currentTargetStickiness: 5
+  lineOfSightPenalty: 6
+  retargetIntervalRange: {x: 0.75, y: 1.1}
+  minTargetLockDuration: 0.9
+  switchScoreThreshold: 2.5
+  switchScoreThresholdRatio: 0.2
+  lostTargetHoldDuration: 0.35
+  useThreatMemory: 1
+  damageThreatMultiplier: 1
+  threatScoreWeight: 1
+  threatDecayPerSecond: 8
+  maxThreatPerTarget: 100
+  tauntScoreBonus: 1000
   originHeightOffset: 0.5
   fallbackTargetHeightOffset: 0.6
   currentTarget: {fileID: 0}
@@ -11587,6 +11641,10 @@ MonoBehaviour:
   hasLineOfSight: 0
   targetDistance: 0
   lastSeenTime: -Infinity
+  currentTargetScore: -Infinity
+  visibleBestScore: -Infinity
+  currentTargetAcquiredTime: -Infinity
+  nextRetargetEvaluationTime: 0
 --- !u!114 &7100031397196889639
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11602,6 +11660,12 @@ MonoBehaviour:
   aimPoint: {fileID: 3200926722191649918}
   chainAttackPoint: {fileID: 0}
   teamId: 0
+  targetRole: 0
+  targetIdentity: 0
+  overrideCombatRole: 0
+  combatRoleOverride: 0
+  baseTargetPriority: 0
+  threatMultiplier: 1
   isAlive: 1
   isTargetable: 1
 --- !u!114 &7502400237253720153
@@ -11982,6 +12046,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
+    - target: {fileID: 3675228139914604767, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+      propertyPath: targetRole
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 3675228139914604767, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+      propertyPath: targetIdentity
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 3749669808023046127, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -12021,6 +12093,14 @@ PrefabInstance:
     - target: {fileID: 3749669808023046127, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3796367912747793021, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+      propertyPath: dashInvincibleTime
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 3796367912747793021, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+      propertyPath: dashIFrameExclude.m_Bits
+      value: 36863
       objectReference: {fileID: 0}
     - target: {fileID: 4443219407110611579, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
       propertyPath: m_ActionEvents.Array.size
@@ -12218,6 +12298,7 @@ MonoBehaviour:
   helperDefinitions:
   - {fileID: 11400000, guid: 61266ad809f609e40ae69b87f64da449, type: 2}
   - {fileID: 11400000, guid: ad6da32b25db43148aa75f021e358549, type: 2}
+  - {fileID: 11400000, guid: ee9a73ae9a17aa24a8d64b929173f63d, type: 2}
   attackIdLockTtlSeconds: 10
   logProcController: 0
 --- !u!143 &905334040667963870 stripped
@@ -22404,6 +22485,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sensorOrigin: {fileID: 812088851720005978}
   forwardReference: {fileID: 812088851720005978}
+  targetingProfile: {fileID: 0}
   radius: 4
   scanInterval: 0.1
   targetLayers:
@@ -22423,6 +22505,27 @@ MonoBehaviour:
   requireAliveIfAvailable: 1
   gracePeriod: 1.25
   keepLastSeenTarget: 1
+  distanceScoreWeight: 12
+  playerPriorityBonus: 16
+  companionPriorityBonus: 0
+  tankPriorityBonus: 6
+  healerPriorityBonus: 9
+  supportPriorityBonus: 6
+  sniperPriorityBonus: 7
+  assaultPriorityBonus: 0
+  currentTargetStickiness: 5
+  lineOfSightPenalty: 6
+  retargetIntervalRange: {x: 0.75, y: 1.1}
+  minTargetLockDuration: 0.9
+  switchScoreThreshold: 2.5
+  switchScoreThresholdRatio: 0.2
+  lostTargetHoldDuration: 0.35
+  useThreatMemory: 1
+  damageThreatMultiplier: 1
+  threatScoreWeight: 1
+  threatDecayPerSecond: 8
+  maxThreatPerTarget: 100
+  tauntScoreBonus: 1000
   originHeightOffset: 0.5
   fallbackTargetHeightOffset: 0.6
   currentTarget: {fileID: 0}
@@ -22431,6 +22534,10 @@ MonoBehaviour:
   hasLineOfSight: 0
   targetDistance: 0
   lastSeenTime: -Infinity
+  currentTargetScore: -Infinity
+  visibleBestScore: -Infinity
+  currentTargetAcquiredTime: -Infinity
+  nextRetargetEvaluationTime: 0
 --- !u!114 &6320338251548683093
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -22446,6 +22553,12 @@ MonoBehaviour:
   aimPoint: {fileID: 812088851720005978}
   chainAttackPoint: {fileID: 0}
   teamId: 0
+  targetRole: 0
+  targetIdentity: 0
+  overrideCombatRole: 0
+  combatRoleOverride: 0
+  baseTargetPriority: 0
+  threatMultiplier: 1
   isAlive: 1
   isTargetable: 1
 --- !u!114 &1631076737824305463

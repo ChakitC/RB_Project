@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -18,10 +19,14 @@ public class AITargetInfo : MonoBehaviour, IAITargetable
     readonly HashSet<int> _untargetableTokens = new HashSet<int>();
     int _nextUntargetableToken = 1;
 
+    public static event Action<AITargetInfo> GlobalTargetStateChanged;
+
     PlayerContext _playerContext;
     AllyContext _allyContext;
     EnemyContext _enemyContext;
     CharacteContext _characterContext;
+    
+    
 
     public Transform AimPoint => aimPoint != null ? aimPoint : transform;
     public Transform ChainAttackPoint => chainAttackPoint != null ? chainAttackPoint : AimPoint;
@@ -33,13 +38,29 @@ public class AITargetInfo : MonoBehaviour, IAITargetable
     public float BaseTargetPriority => baseTargetPriority;
     public float ThreatMultiplier => Mathf.Max(0f, threatMultiplier);
 
-    public void SetAlive(bool value) => isAlive = value;
-    public void SetTargetable(bool value) => isTargetable = value;
+    public void SetAlive(bool value)
+    {
+        if (isAlive == value)
+            return;
+
+        isAlive = value;
+        NotifyTargetStateChanged();
+    }
+
+    public void SetTargetable(bool value)
+    {
+        if (isTargetable == value)
+            return;
+
+        isTargetable = value;
+        NotifyTargetStateChanged();
+    }
 
     public int AcquireUntargetableToken()
     {
         int token = _nextUntargetableToken++;
         _untargetableTokens.Add(token);
+        NotifyTargetStateChanged();
         return token;
     }
 
@@ -48,7 +69,13 @@ public class AITargetInfo : MonoBehaviour, IAITargetable
         if (token <= 0)
             return;
 
-        _untargetableTokens.Remove(token);
+        if (_untargetableTokens.Remove(token))
+            NotifyTargetStateChanged();
+    }
+
+    void NotifyTargetStateChanged()
+    {
+        GlobalTargetStateChanged?.Invoke(this);
     }
 
     AITargetIdentity ResolveIdentity()

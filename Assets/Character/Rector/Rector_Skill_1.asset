@@ -16,7 +16,9 @@ MonoBehaviour:
   displayName: Rector_Skill_1
   skillId: Rector_Skill_1
   tags: 20
-  description: Rector_Buff
+  description: 'Rector_Chach
+
+'
   baseDamage: 100
   baseManaCost: 0
   baseCastTime: 0.5

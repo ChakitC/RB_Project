@@ -144,7 +144,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private float ActionFadeIn => AnimProfile.actionFadeIn;
     private float ActionFadeOut => AnimProfile.actionFadeOut;
     internal float ChainPlaybackWatchdogGraceSeconds => Mathf.Max(0.05f, chainPlaybackWatchdogGraceSeconds);
-    private MixerTransition2D LocomotionMixer => AnimProfile.locomotionMixer;
+    private MixerTransition2D LocomotionMixer => AnimProfile != null ? AnimProfile.ResolveLocomotionMixer() : null;
     private float LocomotionParamLerp => AnimProfile.locomotionParamLerp;
     private bool SnapTo8Directions => AnimProfile.snapTo8Directions;
     private ClipTransition DashForward => AnimProfile.dashF;

@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 54389691980371824}
   - component: {fileID: 135226236729945768}
   - component: {fileID: 1899834591210319280}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Projectile Rector_skill_3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -211,7 +211,7 @@ GameObject:
   - component: {fileID: 4633775967986472}
   - component: {fileID: 198490760753503236}
   - component: {fileID: 199503551170185864}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Debris
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5056,7 +5056,7 @@ GameObject:
   - component: {fileID: 5070490622418998080}
   - component: {fileID: 35758466700322096}
   - component: {fileID: 7424249541873194477}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Projectile
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9958,7 +9958,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1623447280255695610}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Visuals
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9995,6 +9995,14 @@ PrefabInstance:
     - target: {fileID: 1889697189104820, guid: 918bed4b1a6905d4aaa25af94c2caa31, type: 3}
       propertyPath: m_Name
       value: Flash 24 green explosion
+      objectReference: {fileID: 0}
+    - target: {fileID: 1889697189104820, guid: 918bed4b1a6905d4aaa25af94c2caa31, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1950521939505834, guid: 918bed4b1a6905d4aaa25af94c2caa31, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 4698549346941420, guid: 918bed4b1a6905d4aaa25af94c2caa31, type: 3}
       propertyPath: m_RootOrder
@@ -10070,9 +10078,37 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1623447280255695610}
     m_Modifications:
+    - target: {fileID: 1220973013758942, guid: b0035d79b41032446a5de0e41abe9823, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1313525304295306, guid: b0035d79b41032446a5de0e41abe9823, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 1327231448029640, guid: b0035d79b41032446a5de0e41abe9823, type: 3}
       propertyPath: m_Name
       value: Hit 24 green explosion
+      objectReference: {fileID: 0}
+    - target: {fileID: 1327231448029640, guid: b0035d79b41032446a5de0e41abe9823, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1380216303653550, guid: b0035d79b41032446a5de0e41abe9823, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1745914777134660, guid: b0035d79b41032446a5de0e41abe9823, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1777845933778596, guid: b0035d79b41032446a5de0e41abe9823, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1909092190198838, guid: b0035d79b41032446a5de0e41abe9823, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 4264581375487322, guid: b0035d79b41032446a5de0e41abe9823, type: 3}
       propertyPath: m_RootOrder

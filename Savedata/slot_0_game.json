@@ -1,7 +1,7 @@
 {
     "inventory": {
         "maxSlotCount": 20,
-        "gold": 1001092,
+        "gold": 1001229,
         "slots": [
             {
                 "itemId": "SMG_RB01",
@@ -18,8 +18,8 @@
                         "secondaryValue": 0.0
                     },
                     "subAffixes": [],
-                    "shotCounter": 462,
-                    "currentMagazine": 23
+                    "shotCounter": 760,
+                    "currentMagazine": 29
                 }
             },
             {
@@ -52,8 +52,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 2804,
-                    "currentMagazine": 3
+                    "shotCounter": 4230,
+                    "currentMagazine": 7
                 }
             },
             {
@@ -120,8 +120,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 595,
-                    "currentMagazine": 19
+                    "shotCounter": 788,
+                    "currentMagazine": 5
                 }
             },
             {
@@ -154,8 +154,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 3968,
-                    "currentMagazine": 29
+                    "shotCounter": 3996,
+                    "currentMagazine": 19
                 }
             },
             {
@@ -416,7 +416,7 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 418,
+                    "shotCounter": 1406,
                     "currentMagazine": 23
                 }
             },
@@ -461,14 +461,9 @@
         ]
     },
     "weapon": {
-        "equippedWeaponInstanceId": "ba967d7fca944cdeb451412b7c61a49b"
+        "equippedWeaponInstanceId": "944166ad62284a008725d33753827409"
     },
     "party": {
-        "partyIds": [
-            "ID.Roma",
-            "ID.Feno",
-            "ID.Aires",
-            "ID.Abbygail"
-        ]
+        "partyIds": []
     }
 }

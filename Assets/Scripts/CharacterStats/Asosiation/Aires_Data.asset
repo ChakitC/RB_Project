@@ -21,8 +21,9 @@ MonoBehaviour:
   controller: {fileID: 9100000, guid: fc3e6424aee06f4498f1cedcc3b293ac, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
   weaponHandMode: 2
+  combatRole: 0
   chainAttackSkill: {fileID: 0}
-  maxHP: 10000
+  maxHP: 100000
   maxStamina: 50
   Damage: 10
   armor: 1
@@ -33,7 +34,7 @@ MonoBehaviour:
   speedDown: 1
   DamageScaling: 1
   ArmorScaling: 0
-  MAXHPScaling: 5
+  MAXHPScaling: 100
   StaminaScaling: 0
   CritrateScaling: 0.1
   CritDamageScaling: 0

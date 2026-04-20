@@ -339,7 +339,10 @@ public sealed class CharacterAnimBrainDebug : MonoBehaviour
             .Append(" | applyRootMotion=").Append(animator != null && animator.applyRootMotion)
             .AppendLine();
 
-        summaryBuilder.Append("Profile: ").Append(GetObjectName(brain.DebugProfile)).AppendLine();
+        summaryBuilder.Append("Profile: ").Append(GetObjectName(brain.DebugProfile));
+        if (brain.DebugProfile != null)
+            summaryBuilder.Append(" | LocomotionConfig=").Append(brain.DebugProfile.GetLocomotionConfigurationLabel());
+        summaryBuilder.AppendLine();
 
         summaryBuilder.Append("Input: MoveDirLocal=").Append(FormatVector2(brain.MoveDirLocal))
             .Append(" | MoveSpeed01=").Append(brain.MoveSpeed01.ToString("0.00"))
@@ -410,7 +413,9 @@ public sealed class CharacterAnimBrainDebug : MonoBehaviour
         }
 
         AddProfileIssue(profileBuilder, profile.upperBodyMask == null, "Upper body mask missing.");
-        AddProfileIssue(profileBuilder, profile.locomotionMixer == null || !profile.locomotionMixer.IsValid, "Locomotion mixer missing or invalid.");
+        AddProfileIssue(profileBuilder, !profile.HasValidResolvedLocomotionMixer, "Locomotion mixer missing or invalid.");
+        if (profile.TryGetLocomotionConfigurationIssue(out string locomotionIssue))
+            profileBuilder.AppendLine(locomotionIssue);
         AddProfileIssue(profileBuilder, profile.crawlMixer == null || !profile.crawlMixer.IsValid, "Crawl mixer missing or invalid.");
         AddProfileIssue(profileBuilder, profile.dead == null || !profile.dead.IsValid, "Dead clip missing or invalid.");
         AddProfileIssue(profileBuilder, profile.shootPulse == null || !profile.shootPulse.IsValid, "Shoot pulse clip missing or invalid.");

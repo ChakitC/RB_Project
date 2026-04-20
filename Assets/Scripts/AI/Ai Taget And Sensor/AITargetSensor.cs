@@ -121,6 +121,8 @@ public class AITargetSensor : MonoBehaviour
 
     void OnEnable()
     {
+        AITargetInfo.GlobalTargetStateChanged += HandleGlobalTargetStateChanged;
+
         if (healthSystem == null)
             healthSystem = GetComponent<HealthSystem>();
 
@@ -130,6 +132,8 @@ public class AITargetSensor : MonoBehaviour
 
     void OnDisable()
     {
+        AITargetInfo.GlobalTargetStateChanged -= HandleGlobalTargetStateChanged;
+
         if (healthSystem != null)
             healthSystem.DamageTaken -= OnDamageTaken;
     }
@@ -184,6 +188,22 @@ public class AITargetSensor : MonoBehaviour
 
         nextScanTime = Time.time;
         ScheduleNextRetargetEvaluation();
+    }
+
+    void HandleGlobalTargetStateChanged(AITargetInfo targetInfo)
+    {
+        if (targetInfo == null || !ReferencesTrackedTarget(targetInfo.transform))
+            return;
+
+        ForceScan();
+    }
+
+    bool ReferencesTrackedTarget(Transform changedTarget)
+    {
+        if (changedTarget == null)
+            return false;
+
+        return currentTarget == changedTarget || lastSeenTarget == changedTarget;
     }
 
     public void RegisterThreat(GameObject source, float amount)

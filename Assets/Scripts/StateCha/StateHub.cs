@@ -29,6 +29,8 @@ public sealed class StateHub : MonoBehaviour
     [Header("Status Effect Locks")]
     [SerializeField] private ControlBlockFlags statusEffectControlBlocks = ControlBlockFlags.None;
     [SerializeField] private bool statusEffectStunned;
+    [SerializeField] private ControlBlockFlags externalControlBlocks = ControlBlockFlags.None;
+    [SerializeField] private bool externalStunned;
 
     public float MoveSpeed01 { get; private set; }
     public bool DesiredFireHeld { get; private set; }
@@ -46,14 +48,18 @@ public sealed class StateHub : MonoBehaviour
     public bool IsAlive => LifeSM.CurrentId == LifeStateId.Alive;
     public bool Isdown => LifeSM.CurrentId == LifeStateId.Down;
 
+    ControlBlockFlags ActiveControlBlocks => statusEffectControlBlocks | externalControlBlocks;
+
+    bool HasStunOverride => statusEffectStunned || externalStunned;
+
     bool IsMoveBlockedByStatusEffects =>
-        statusEffectStunned || (statusEffectControlBlocks & ControlBlockFlags.Move) != 0;
+        HasStunOverride || (ActiveControlBlocks & ControlBlockFlags.Move) != 0;
 
     bool IsShootBlockedByStatusEffects =>
-        statusEffectStunned || (statusEffectControlBlocks & ControlBlockFlags.Shoot) != 0;
+        HasStunOverride || (ActiveControlBlocks & ControlBlockFlags.Shoot) != 0;
 
     bool IsSkillBlockedByStatusEffects =>
-        statusEffectStunned || (statusEffectControlBlocks & ControlBlockFlags.Skill) != 0;
+        HasStunOverride || (ActiveControlBlocks & ControlBlockFlags.Skill) != 0;
 
     CharacterAnimBrain ResolveAnimBrain()
     {
@@ -321,7 +327,10 @@ public sealed class StateHub : MonoBehaviour
         if (MoveSM == null)
             return;
 
-        if (statusEffectStunned)
+        if (MoveSM.CurrentId == MoveStateId.Knockback)
+            return;
+
+        if (HasStunOverride)
         {
             if (MoveSM.CurrentId != MoveStateId.Stunned)
                 MoveSM.TryChange(MoveStateId.Stunned);
@@ -352,6 +361,29 @@ public sealed class StateHub : MonoBehaviour
 
         statusEffectControlBlocks = controlBlocks;
         statusEffectStunned = stunned;
+
+        if (changed && stunned && ctx != null)
+        {
+            var meleeController = ctx.MeleeController;
+            if (!meleeController)
+                meleeController = ctx.GetComponent<MeleeController>();
+
+            meleeController?.InterruptMelee();
+        }
+
+        if (changed)
+        {
+            SyncStatusDrivenMoveState();
+            CancelHeldFireIfShootBlocked();
+        }
+    }
+
+    public void SetExternalControlState(ControlBlockFlags controlBlocks, bool stunned)
+    {
+        bool changed = externalControlBlocks != controlBlocks || externalStunned != stunned;
+
+        externalControlBlocks = controlBlocks;
+        externalStunned = stunned;
 
         if (changed && stunned && ctx != null)
         {

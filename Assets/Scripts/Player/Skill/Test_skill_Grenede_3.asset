@@ -12,22 +12,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
   m_Name: Test_skill_Grenede_3
   m_EditorClassIdentifier: 
-  skillId: 
-  displayName: 
-  description: 
   icon: {fileID: 0}
+  displayName: Skill_03
+  skillId: test_Skill_03
   tags: 26
-  maxLevel: 20
+  description: 
   baseDamage: 100
   baseManaCost: 10
   baseCastTime: 0.5
   baseCooldown: 10
-  AreaofEffec: 1
-  projectileSpeed: 5
-  baseRadius: 20
-  baseProjectilesCount: 1
   baseCritChance: 5
+  baseProjectilesCount: 1
+  projectileSpeed: 5
+  AreaofEffec: 1
+  baseRadius: 20
+  maxLevel: 20
   payload: {fileID: 11400000, guid: 9832e8aca4504ea39a00269956eb0b25, type: 2}
+  legacySkillPrefab: {fileID: 0}
+  legacyHelperFacingMode: 0
+  legacyProjectileTrailVfxPrefab: {fileID: 0}
+  legacyProjectileHitVfxPrefab: {fileID: 0}
+  legacyProjectileHitVfxScale: 1
   castCue: {fileID: 0}
   skillClip:
     _FadeDuration: 0.25
@@ -39,4 +44,10 @@ MonoBehaviour:
     _Clip: {fileID: -8374479895102863559, guid: 875bf0d7944892c47a1c8eb164dc64c2, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.75
+  legacyChainContinueMode: 0
+  legacyChainContinueNormalizedTime: 1
   perLevelData: []
+  previewLevel: 1
+  references:
+    version: 2
+    RefIds: []

@@ -678,7 +678,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         if (step == null || step.Definition == null || !step.Definition.OverrideKnockback)
             return default;
 
-        Vector3 origin = _context != null ? _context.CastPosition : transform.position;
+        Vector3 origin = ResolveCurrentImpactOrigin();
         KnockbackSettings settings = step.Definition.ToKnockbackSettings();
         KnockbackBuildContext context = new KnockbackBuildContext(
             origin,
@@ -822,12 +822,24 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
     Vector3 ResolveImpactNormal(Vector3 hitPoint)
     {
-        Vector3 origin = _context != null ? _context.CastPosition : transform.position;
+        Vector3 origin = ResolveCurrentImpactOrigin();
         Vector3 normal = hitPoint - origin;
         if (normal.sqrMagnitude > 0.0001f)
             return normal.normalized;
 
         return ResolveSequenceForward();
+    }
+
+    Vector3 ResolveCurrentImpactOrigin()
+    {
+        Vector3 origin = transform.position;
+        if (float.IsNaN(origin.x) || float.IsNaN(origin.y) || float.IsNaN(origin.z) ||
+            float.IsInfinity(origin.x) || float.IsInfinity(origin.y) || float.IsInfinity(origin.z))
+        {
+            return _context != null ? _context.CastPosition : Vector3.zero;
+        }
+
+        return origin;
     }
 
     void ShutdownAndDestroy()

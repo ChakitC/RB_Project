@@ -18,7 +18,7 @@ PrefabInstance:
       objectReference: {fileID: 11400000, guid: 6efa75999c21ad64a9a7c53c8fb76a32, type: 2}
     - target: {fileID: 3371990820490964090, guid: 8b577a087196c564fb1ffcf85946372f, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -13.329058
+      value: -11.055517
       objectReference: {fileID: 0}
     - target: {fileID: 3371990820490964090, guid: 8b577a087196c564fb1ffcf85946372f, type: 3}
       propertyPath: m_LocalPosition.y
@@ -26,7 +26,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3371990820490964090, guid: 8b577a087196c564fb1ffcf85946372f, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 8.953264
+      value: 4.9749203
       objectReference: {fileID: 0}
     - target: {fileID: 3371990820490964090, guid: 8b577a087196c564fb1ffcf85946372f, type: 3}
       propertyPath: m_LocalRotation.w
@@ -79,6 +79,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 4360523260162464083, guid: 8b577a087196c564fb1ffcf85946372f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1100652418559495828}
+    - targetCorrespondingSourceObject: {fileID: 4360523260162464083, guid: 8b577a087196c564fb1ffcf85946372f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6759423992435277807}
   m_SourcePrefab: {fileID: 100100000, guid: 8b577a087196c564fb1ffcf85946372f, type: 3}
 --- !u!4 &2946593003498775809 stripped
 Transform:
@@ -138,6 +141,42 @@ MonoBehaviour:
   leftLocalPos: {x: 0, y: 0, z: 0}
   leftLocalRotEuler: {x: 0, y: 0, z: 0}
   leftLocalScale: {x: 1, y: 1, z: 1}
+  firePointName: FirePoint
+  firePointBoneName: c_traj
+  firePointLocalPos: {x: 0, y: 1, z: 1.2}
+  firePointLocalRotEuler: {x: -90, y: 0, z: 0}
+  firePointLocalScale: {x: 1, y: 1, z: 1}
+--- !u!114 &6759423992435277807
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7896357335083689437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2046d2837bba30640a4143f89aa69be6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  stateHub: {fileID: 0}
+  healthSystem: {fileID: 0}
+  characterController: {fileID: 0}
+  navMeshAgent: {fileID: 0}
+  capsuleCollider: {fileID: 0}
+  animBrain: {fileID: 0}
+  fieldAllyMember: {fileID: 0}
+  behaviorTree: {fileID: 0}
+  collisionMask:
+    serializedVersion: 2
+    m_Bits: 4096
+  queryTriggers: 1
+  collisionPadding: 0.02
+  replaceDistanceThreshold: 0.05
+  navMeshResyncDistance: 1
+  rootRecoveryDuration: 0.1
+  miniStunRecoveryDuration: 0.1
+  stunRecoveryDuration: 0.1
 --- !u!95 &8363618592402099901 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 2668177349471875635, guid: 8b577a087196c564fb1ffcf85946372f, type: 3}

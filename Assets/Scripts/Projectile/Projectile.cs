@@ -364,7 +364,8 @@ public class Projectile : MonoBehaviour
         bool suppressDamageableImpact = target != null && HasModuleSuppressingBuiltinDamageableHit(target);
 
         // ===== Single / Wall =====
-        var hit = new ProjectileHitInfo(transform.position, -_ctx.dir, other);
+        Vector3 hitPoint = ResolveImpactPoint(other);
+        var hit = new ProjectileHitInfo(hitPoint, -_ctx.dir, other);
 
         if (target != null)
         {
@@ -696,19 +697,32 @@ public class Projectile : MonoBehaviour
                 fallbackDirection);
         }
 
-        if (_ctx.sourceActor != null)
-        {
-            return new KnockbackBuildContext(
-                _ctx.sourceActor.position,
-                hit.point,
-                fallbackDirection);
-        }
-
         return new KnockbackBuildContext(
             hit.point,
             hit.point,
             fallbackDirection,
-            explicitDirection: _ctx.dir);
+            explicitDirection: ResolveConfiguredImpactDirection(hit, fallbackDirection));
+    }
+
+    Vector3 ResolveConfiguredImpactDirection(in ProjectileHitInfo hit, Vector3 fallbackDirection)
+    {
+        Vector3 impactDirection = -hit.normal;
+        if (impactDirection.sqrMagnitude > 0.0001f)
+            return impactDirection;
+
+        if (_ctx.dir.sqrMagnitude > 0.0001f)
+            return _ctx.dir;
+
+        return fallbackDirection;
+    }
+
+    Vector3 ResolveImpactPoint(Collider other)
+    {
+        if (other == null)
+            return transform.position;
+
+        Vector3 point = other.ClosestPoint(transform.position);
+        return point == Vector3.zero ? transform.position : point;
     }
 
     Vector3 ResolveConfiguredKnockbackFallbackDirection()

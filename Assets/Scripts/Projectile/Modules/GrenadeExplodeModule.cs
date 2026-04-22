@@ -61,6 +61,47 @@ public class GrenadeExplodeModule : ProjectileModule
             knockbackInterruptsActions);
     }
 
+    static Vector3 ResolveExplosionKnockbackDirection(Collider collider, IDamageable damageable, Vector3 center, Vector3 closest, Vector3 fallbackDirection)
+    {
+        if (TryGetGroundedDirection(closest - center, out Vector3 direction))
+            return direction;
+
+        if (collider != null && TryGetGroundedDirection(collider.bounds.center - center, out direction))
+            return direction;
+
+        if (damageable is Component damageableComponent &&
+            TryGetGroundedDirection(damageableComponent.transform.position - center, out direction))
+        {
+            return direction;
+        }
+
+        return fallbackDirection;
+    }
+
+    static bool TryGetGroundedDirection(Vector3 candidate, out Vector3 direction)
+    {
+        direction = candidate;
+
+        if (!IsFinite(direction))
+        {
+            direction = Vector3.zero;
+            return false;
+        }
+
+        direction = Vector3.ProjectOnPlane(direction, Vector3.up);
+        return direction.sqrMagnitude > 0.0001f;
+    }
+
+    static bool IsFinite(Vector3 value)
+    {
+        return IsFinite(value.x) && IsFinite(value.y) && IsFinite(value.z);
+    }
+
+    static bool IsFinite(float value)
+    {
+        return !float.IsNaN(value) && !float.IsInfinity(value);
+    }
+
     class State : IProjectileModuleState
     {
         public float t;
@@ -241,11 +282,12 @@ public class GrenadeExplodeModule : ProjectileModule
         if (applyKnockback)
         {
             KnockbackSettings settings = BuildResolvedKnockbackSettings(resolvedKnockbackDistance);
+            Vector3 knockbackDirection = ResolveExplosionKnockbackDirection(c, dmgable, center, closest, hitNormal);
             KnockbackBuildContext knockbackContext = new KnockbackBuildContext(
                 center,
                 closest,
                 hitNormal,
-                explicitDirection: c.transform.position - center);
+                explicitDirection: knockbackDirection);
 
             if (KnockbackFactory.TryBuild(in settings, in knockbackContext, out KnockbackData builtKnockback))
                 knockback = builtKnockback;

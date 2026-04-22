@@ -28,7 +28,17 @@ public class PlayerVisual : MonoBehaviour, IGameSaveAble, ISaveOrder
     [SerializeField] private Vector3 leftLocalRotEuler;
     [SerializeField] private Vector3 leftLocalScale = Vector3.one;
 
+    [Header("Fire Point")]
+    [SerializeField] private string firePointName = "FirePoint";
+    [SerializeField] private string firePointBoneName = "c_traj";
+    [SerializeField] private Vector3 firePointLocalPos;
+    [SerializeField] private Vector3 firePointLocalRotEuler;
+    [SerializeField] private Vector3 firePointLocalScale = Vector3.one;
+
     private CharacterContextPartyLoader _partyLoader;
+    private WeaponSystem _weaponSystem;
+    private Transform _defaultFirePointParent;
+    private bool _loggedMissingFirePointBone;
 
     private GameObject _currentModel;
     private GameObject _rightObj;
@@ -66,6 +76,9 @@ public class PlayerVisual : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         if (_partyLoader == null)
             _partyLoader = GetComponent<CharacterContextPartyLoader>();
+
+        if (_weaponSystem == null)
+            _weaponSystem = GetComponent<WeaponSystem>();
     }
 
     void TryBuildCurrentModel(bool silent)
@@ -99,6 +112,8 @@ public class PlayerVisual : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     private void BuildModel(GameObject prefab)
     {
+        DetachFirePointFromCurrentModel();
+
         for (int i = modelRoot.childCount - 1; i >= 0; i--)
             Destroy(modelRoot.GetChild(i).gameObject);
 
@@ -117,6 +132,7 @@ public class PlayerVisual : MonoBehaviour, IGameSaveAble, ISaveOrder
             return;
         }
 
+        AttachFirePointToModelBone();
         BuildModelFromWeaponDef();
 
         animator = GetComponent<Animator>();
@@ -201,6 +217,67 @@ public class PlayerVisual : MonoBehaviour, IGameSaveAble, ISaveOrder
             if (_leftObj) Destroy(_leftObj);
             _leftObj = null;
         }
+    }
+
+    private void AttachFirePointToModelBone()
+    {
+        if (!_currentModel || string.IsNullOrWhiteSpace(firePointBoneName))
+            return;
+
+        var firePoint = GetFirePoint();
+        if (!firePoint)
+            return;
+
+        var targetBone = FindChildByName(_currentModel.transform, firePointBoneName);
+        if (!targetBone)
+        {
+            if (!_loggedMissingFirePointBone)
+            {
+                Debug.LogWarning($"[PlayerVisual] Fire point bone '{firePointBoneName}' not found in '{_currentModel.name}'.", this);
+                _loggedMissingFirePointBone = true;
+            }
+
+            return;
+        }
+
+        _loggedMissingFirePointBone = false;
+
+        firePoint.SetParent(targetBone, false);
+        firePoint.localPosition = firePointLocalPos;
+        firePoint.localRotation = Quaternion.Euler(firePointLocalRotEuler);
+        firePoint.localScale = firePointLocalScale;
+
+        _weaponSystem?.RefreshFirePointReference();
+    }
+
+    private void DetachFirePointFromCurrentModel()
+    {
+        var firePoint = GetFirePoint();
+        if (!firePoint || !_defaultFirePointParent || !modelRoot || !firePoint.IsChildOf(modelRoot))
+            return;
+
+        firePoint.SetParent(_defaultFirePointParent, true);
+        _weaponSystem?.RefreshFirePointReference();
+    }
+
+    private Transform GetFirePoint()
+    {
+        EnsureReferences();
+
+        Transform firePoint = _weaponSystem ? _weaponSystem.firePoint : null;
+        if (!firePoint)
+            firePoint = FindChildByName(transform, firePointName);
+
+        if (!firePoint)
+            return null;
+
+        if (_defaultFirePointParent == null)
+            _defaultFirePointParent = firePoint.parent ? firePoint.parent : transform;
+
+        if (_weaponSystem && !_weaponSystem.firePoint)
+            _weaponSystem.firePoint = firePoint;
+
+        return firePoint;
     }
 
     private CharacterStats GetCurrentCharacterStats()

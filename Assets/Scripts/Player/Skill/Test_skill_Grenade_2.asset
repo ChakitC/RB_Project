@@ -24,10 +24,15 @@ MonoBehaviour:
   baseCritChance: 5
   baseProjectilesCount: 3
   projectileSpeed: 30
-  AreaofEffec: 1
+  AreaofEffec: 0
   baseRadius: 0
   maxLevel: 20
   payload: {fileID: 11400000, guid: 791246f70c504b16a3252d3964955f74, type: 2}
+  legacySkillPrefab: {fileID: 0}
+  legacyHelperFacingMode: 0
+  legacyProjectileTrailVfxPrefab: {fileID: 0}
+  legacyProjectileHitVfxPrefab: {fileID: 0}
+  legacyProjectileHitVfxScale: 1
   castCue: {fileID: 0}
   skillClip:
     _FadeDuration: 0.25
@@ -39,6 +44,8 @@ MonoBehaviour:
     _Clip: {fileID: -8374479895102863559, guid: 875bf0d7944892c47a1c8eb164dc64c2, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.5
+  legacyChainContinueMode: 0
+  legacyChainContinueNormalizedTime: 1
   perLevelData:
   - requiredLevel: 1
     damage: 0

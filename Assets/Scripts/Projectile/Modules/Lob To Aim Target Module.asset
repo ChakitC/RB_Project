@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   aimTargetName: Aim Target
   lockTargetOnSpawn: 1
-  flightTime: 1.85
+  flightTime: 0.5
   maxHeight: 7.91
   sideOffset: 0
   randomLeftRight: 0

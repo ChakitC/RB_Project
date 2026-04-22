@@ -175,6 +175,15 @@ MonoBehaviour:
   meleeCanInterruptReload: 1
   lightCombo: {fileID: 11400000, guid: d16447a5b5fa9274b8bf020390af7750, type: 2}
   heavyCombo: {fileID: 11400000, guid: aad74cd29d1adde448ce0f8716aed4b2, type: 2}
+  crawling:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 4853811506057843666, guid: 8800c18f377c3044f9bd08d310b91205, type: 3}
+    _NormalizedStartTime: NaN
   crawlMixer:
     _FadeDuration: 0.25
     _Speed: 1
@@ -201,7 +210,7 @@ MonoBehaviour:
     _ParameterNameX: {fileID: 0}
     _ParameterNameY: {fileID: 0}
   crawlParamLerp: 10
-  crawlSpeedMultiplier01: 0.35
+  crawlSpeedMultiplier01: 1
   utilityWarpOutClip:
     _FadeDuration: 0
     _Speed: 1

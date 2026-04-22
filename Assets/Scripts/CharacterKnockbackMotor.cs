@@ -24,11 +24,18 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     [SerializeField, Min(0f)] private float replaceDistanceThreshold = 0.05f;
     [SerializeField, Min(0.05f)] private float navMeshResyncDistance = 1f;
 
+    [Header("Reaction")]
+    [SerializeField, Min(0f)] private float rootRecoveryDuration = 0.1f;
+    [SerializeField, Min(0f)] private float miniStunRecoveryDuration = 0.1f;
+    [SerializeField, Min(0f)] private float stunRecoveryDuration = 0.1f;
+
     private Vector3 _targetDisplacement;
     private Vector3 _appliedDisplacement;
     private float _elapsedTime;
     private float _curveProgress;
     private KnockbackData _activeKnockback;
+    private ImpactReactionKind _activeReaction;
+    private float _reactionTimeRemaining;
     private bool _agentOverrideActive;
     private bool _resumeAgentStopped;
     private bool _resumeAgentUpdatePosition;
@@ -38,6 +45,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     private bool _behaviorTreeWasEnabled;
     private bool _behaviorTreeSuspended;
     private bool _restoreAgentToDefaultAutonomy;
+    private bool _clearReactionOnKnockbackEnd;
 
     Vector3 RemainingDisplacement => _targetDisplacement - _appliedDisplacement;
 
@@ -59,8 +67,8 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
         if (healthSystem != null)
         {
-            healthSystem.CharacterDown += OnCharacterDisabled;
-            healthSystem.CharacterDead += OnCharacterDisabled;
+            healthSystem.CharacterDown += OnCharacterDown;
+            healthSystem.CharacterDead += OnCharacterDead;
         }
     }
 
@@ -68,16 +76,17 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     {
         if (healthSystem != null)
         {
-            healthSystem.CharacterDown -= OnCharacterDisabled;
-            healthSystem.CharacterDead -= OnCharacterDisabled;
+            healthSystem.CharacterDown -= OnCharacterDown;
+            healthSystem.CharacterDead -= OnCharacterDead;
         }
 
-        StopKnockback(preserveMoveState: false);
+        StopKnockback(preserveMoveState: false, clearReactionState: true);
     }
 
     void LateUpdate()
     {
         Tick(Time.deltaTime);
+        TickReaction(Time.deltaTime);
     }
 
     public bool ApplyKnockback(KnockbackData knockback)
@@ -94,10 +103,11 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
             InterruptGameplayActions();
 
         BeginKnockback(knockback);
+        BeginReaction(knockback);
         return true;
     }
 
-    public void StopKnockback(bool preserveMoveState = true)
+    public void StopKnockback(bool preserveMoveState = true, bool clearReactionState = false)
     {
         _targetDisplacement = Vector3.zero;
         _appliedDisplacement = Vector3.zero;
@@ -112,6 +122,9 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
             RestoreMoveState();
 
         animBrain?.StopKnockbackPlayback();
+
+        if (clearReactionState || _clearReactionOnKnockbackEnd)
+            ClearReactionState();
     }
 
     void ResolveRefs()
@@ -200,6 +213,87 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
             ImpactReactionKind.Root => 10,
             _ => 0,
         };
+    }
+
+    void BeginReaction(KnockbackData knockback)
+    {
+        float totalReactionDuration = knockback.Duration + GetReactionRecoveryDuration(knockback.Reaction);
+        if (knockback.Reaction == ImpactReactionKind.None || totalReactionDuration <= 0f)
+            return;
+
+        if (!ShouldReplaceReaction(knockback.Reaction, totalReactionDuration))
+            return;
+
+        _activeReaction = knockback.Reaction;
+        _reactionTimeRemaining = totalReactionDuration;
+        _clearReactionOnKnockbackEnd = false;
+        ApplyReactionState();
+    }
+
+    bool ShouldReplaceReaction(ImpactReactionKind nextReaction, float nextDuration)
+    {
+        if (_activeReaction == ImpactReactionKind.None || _reactionTimeRemaining <= 0f)
+            return true;
+
+        int nextPriority = GetReactionPriority(nextReaction);
+        int activePriority = GetReactionPriority(_activeReaction);
+        if (nextPriority > activePriority)
+            return true;
+        if (nextPriority < activePriority)
+            return false;
+
+        return nextDuration + 0.001f >= _reactionTimeRemaining;
+    }
+
+    float GetReactionRecoveryDuration(ImpactReactionKind reaction)
+    {
+        return reaction switch
+        {
+            ImpactReactionKind.Root => rootRecoveryDuration,
+            ImpactReactionKind.MiniStun => miniStunRecoveryDuration,
+            ImpactReactionKind.Stun => stunRecoveryDuration,
+            _ => 0f,
+        };
+    }
+
+    static ControlBlockFlags GetReactionControlBlocks(ImpactReactionKind reaction)
+    {
+        return reaction switch
+        {
+            ImpactReactionKind.Root => ControlBlockFlags.Move,
+            ImpactReactionKind.MiniStun => ControlBlockFlags.Move | ControlBlockFlags.Shoot | ControlBlockFlags.Skill,
+            ImpactReactionKind.Stun => ControlBlockFlags.Move | ControlBlockFlags.Shoot | ControlBlockFlags.Skill,
+            _ => ControlBlockFlags.None,
+        };
+    }
+
+    void ApplyReactionState()
+    {
+        ControlBlockFlags blocks = GetReactionControlBlocks(_activeReaction);
+        bool stunned = _activeReaction == ImpactReactionKind.Stun;
+        stateHub?.SetExternalControlState(blocks, stunned);
+        animBrain?.SetExternalStatusLocomotion(_activeReaction);
+    }
+
+    void TickReaction(float dt)
+    {
+        if (_reactionTimeRemaining <= 0f || dt <= 0f)
+            return;
+
+        _reactionTimeRemaining = Mathf.Max(0f, _reactionTimeRemaining - dt);
+        if (_reactionTimeRemaining > 0f)
+            return;
+
+        ClearReactionState();
+    }
+
+    void ClearReactionState()
+    {
+        _activeReaction = ImpactReactionKind.None;
+        _reactionTimeRemaining = 0f;
+        _clearReactionOnKnockbackEnd = false;
+        stateHub?.SetExternalControlState(ControlBlockFlags.None, false);
+        animBrain?.SetExternalStatusLocomotion(ImpactReactionKind.None);
     }
 
     void BeginKnockback(KnockbackData knockback)
@@ -524,8 +618,15 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         stateHub.MoveSM.TryChange(nextState);
     }
 
-    void OnCharacterDisabled()
+    void OnCharacterDown()
     {
-        StopKnockback(preserveMoveState: false);
+        _clearReactionOnKnockbackEnd = true;
+        if (!IsActive)
+            ClearReactionState();
+    }
+
+    void OnCharacterDead()
+    {
+        StopKnockback(preserveMoveState: false, clearReactionState: true);
     }
 }

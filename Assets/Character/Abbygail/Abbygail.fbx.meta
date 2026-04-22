@@ -27,6 +27,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: Material
+    second: {fileID: 2100000, guid: 6f4c375e6f18481438e3697fc2d3d7d0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: Popr
     second: {fileID: 2100000, guid: 1ba3cae1f44ff794fa49a78c48fb74a6, type: 2}
   materials:

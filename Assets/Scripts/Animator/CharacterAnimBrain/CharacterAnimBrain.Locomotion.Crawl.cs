@@ -9,17 +9,46 @@ public sealed partial class CharacterAnimBrain
     private sealed class LocomotionState_Crawl : LocomotionState
     {
         private readonly CharacterAnimBrain owner;
+        private readonly Action onIntroEndCache;
+        private AnimancerState introState;
         private Vector2MixerState mixerState;
         private Vector2 current;
 
-        public LocomotionState_Crawl(CharacterAnimBrain owner) => this.owner = owner;
+        public LocomotionState_Crawl(CharacterAnimBrain owner)
+        {
+            this.owner = owner;
+            onIntroEndCache = OnIntroEnd;
+        }
 
         public override bool CanEnterState => owner.CrawlMixer != null;
 
         public override void OnEnterState()
         {
-            mixerState = owner.LocoLayer.Play(owner.CrawlMixer) as Vector2MixerState;
             current = Vector2.zero;
+
+            if (owner.ConsumePendingCrawlIntro() &&
+                owner.CrawlingClip != null &&
+                owner.CrawlingClip.IsValid)
+            {
+                introState = owner.LocoLayer.Play(owner.CrawlingClip);
+                introState.NormalizedTime = 0f;
+                introState.Events(owner).OnEnd = onIntroEndCache;
+                mixerState = null;
+                return;
+            }
+
+            StartCrawlMixer();
+        }
+
+        public override void OnExitState()
+        {
+            if (introState != null)
+            {
+                introState.Events(owner).OnEnd = null;
+                introState = null;
+            }
+
+            mixerState = null;
         }
 
         public override void Update()
@@ -37,6 +66,32 @@ public sealed partial class CharacterAnimBrain
             float t = 1f - Mathf.Exp(-owner.CrawlParamLerp * Time.deltaTime);
             current = Vector2.Lerp(current, target, t);
 
+            mixerState.ParameterX = current.x;
+            mixerState.ParameterY = current.y;
+        }
+
+        private void OnIntroEnd()
+        {
+            if (owner.locomotionSM.CurrentState != this)
+                return;
+
+            if (introState != null)
+            {
+                introState.Events(owner).OnEnd = null;
+                introState = null;
+            }
+
+            StartCrawlMixer();
+        }
+
+        private void StartCrawlMixer()
+        {
+            mixerState = owner.LocoLayer.Play(owner.CrawlMixer) as Vector2MixerState;
+
+            if (mixerState == null)
+                return;
+
+            current = Vector2.zero;
             mixerState.ParameterX = current.x;
             mixerState.ParameterY = current.y;
         }

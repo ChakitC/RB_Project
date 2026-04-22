@@ -210,7 +210,8 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     public MeleeComboSO lightCombo;
     public MeleeComboSO heavyCombo;
 
-    [Header("Downed (Layer 0)")]
+    [Header("Downed (Layer 0)")] 
+    public ClipTransition crawling;
     public MixerTransition2D crawlMixer;
     [Min(0f)] public float crawlParamLerp = 10f;
     [Range(0f, 1f)] public float crawlSpeedMultiplier01 = 0.35f;

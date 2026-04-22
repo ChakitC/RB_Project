@@ -4,6 +4,8 @@ using UnityEngine;
 [RequireComponent(typeof(WeaponAffixRuntimeController))]
 public class WeaponSystem : MonoBehaviour
 {
+    const string DefaultFirePointName = "FirePoint";
+
     [Header("Refs")]
     public CharacteContext ctx;
     [SerializeField] private StatsHub statsHub;
@@ -93,9 +95,43 @@ public class WeaponSystem : MonoBehaviour
 
         if (!currentWeapon && ctx) currentWeapon = ctx.currentWeapon;
 
-        if (!firePoint) firePoint = transform.Find("FirePoint");
-        if (firePoint) firePointOriginalRot = firePoint.localRotation;
-        else Debug.LogError("WeaponSystem: firePoint is missing.");
+        RefreshFirePointReference(logIfMissing: true);
+    }
+
+    public bool RefreshFirePointReference(bool logIfMissing = false)
+    {
+        if (!firePoint)
+            firePoint = FindChildByName(transform, DefaultFirePointName);
+
+        if (firePoint)
+        {
+            firePointOriginalRot = firePoint.localRotation;
+            swayTimer = 0f;
+            return true;
+        }
+
+        if (logIfMissing)
+            Debug.LogError("WeaponSystem: firePoint is missing.", this);
+
+        return false;
+    }
+
+    private static Transform FindChildByName(Transform root, string targetName)
+    {
+        if (!root)
+            return null;
+
+        if (root.name == targetName)
+            return root;
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            var found = FindChildByName(root.GetChild(i), targetName);
+            if (found)
+                return found;
+        }
+
+        return null;
     }
 
     void Start()

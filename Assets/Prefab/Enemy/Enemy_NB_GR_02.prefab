@@ -45897,6 +45897,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 8394264979196465508}
     - target: {fileID: 6010709475350203112, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: Collider
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 6010709475350203112, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: animator
       value: 
       objectReference: {fileID: 6241417704300955140}
@@ -45924,6 +45928,10 @@ PrefabInstance:
       propertyPath: CombatEventBus
       value: 
       objectReference: {fileID: 7867762331760351639}
+    - target: {fileID: 6010709475350203112, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      propertyPath: KnockbackMotor
+      value: 
+      objectReference: {fileID: 6178422174124601970}
     - target: {fileID: 6010709475350203112, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       propertyPath: AgentMoveDriver
       value: 
@@ -46119,6 +46127,7 @@ PrefabInstance:
     - {fileID: 2727911006417467174, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
     - {fileID: 3868424608782465999, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
     - {fileID: 3352953283112623722, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+    - {fileID: 3458543414082194440, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
     m_RemovedGameObjects:
     - {fileID: 8172128055150069051, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
     m_AddedGameObjects:
@@ -46165,6 +46174,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 3189700272797917559, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6178422174124601970}
+    - targetCorrespondingSourceObject: {fileID: 3189700272797917559, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3787933871041522094}
   m_SourcePrefab: {fileID: 100100000, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
 --- !u!114 &362309595554345326 stripped
 MonoBehaviour:
@@ -46193,6 +46205,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4197498317335000730, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
   m_PrefabInstance: {fileID: 2072327782181371358}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &2980291552020072411 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3863662158446787077, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
+  m_PrefabInstance: {fileID: 2072327782181371358}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3496610103329676457}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3747d6a8184ba1649bf031e12fe3f30e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &3496610103329676457 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3189700272797917559, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}
@@ -46925,15 +46948,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2046d2837bba30640a4143f89aa69be6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ctx: {fileID: 0}
-  stateHub: {fileID: 0}
-  healthSystem: {fileID: 0}
-  characterController: {fileID: 0}
-  navMeshAgent: {fileID: 0}
+  ctx: {fileID: 5739898509965211446}
+  stateHub: {fileID: 5340434792721091467}
+  healthSystem: {fileID: 2980291552020072411}
+  characterController: {fileID: 3787933871041522094}
+  navMeshAgent: {fileID: 8394264979196465508}
   capsuleCollider: {fileID: 0}
-  animBrain: {fileID: 0}
+  animBrain: {fileID: 8800457452512273392}
   fieldAllyMember: {fileID: 0}
-  behaviorTree: {fileID: 0}
+  behaviorTree: {fileID: 6769712490371983522}
   collisionMask:
     serializedVersion: 2
     m_Bits: 65535
@@ -46941,6 +46964,34 @@ MonoBehaviour:
   collisionPadding: 0.02
   replaceDistanceThreshold: 0.05
   navMeshResyncDistance: 1
+  rootRecoveryDuration: 0.08
+  miniStunRecoveryDuration: 0.18
+  stunRecoveryDuration: 0.3
+--- !u!143 &3787933871041522094
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3496610103329676457}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 4.87
+  m_Radius: 1.29
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 2.1, z: 0}
 --- !u!114 &4159417194188640703 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 2700845610639289441, guid: 0e8b8708203b9a5489d848bd79891672, type: 3}

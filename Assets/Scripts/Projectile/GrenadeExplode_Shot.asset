@@ -14,35 +14,44 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseSpeed: 30
   lifeTime: 3
-  applyKnockbackOnHit: 1
-  knockbackDistance: 3
-  knockbackDuration: 0.5
+  applyKnockbackOnHit: 0
+  knockbackDistance: 9.38
+  knockbackDuration: 2
   knockbackProgressCurve:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 2
-      outSlope: 2
+      time: 0.0005340576
+      value: -0.00091552734
+      inSlope: 7.458764
+      outSlope: 7.458764
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
-      outWeight: 0
+      outWeight: 0.22856542
+    - serializedVersion: 3
+      time: 0.20084745
+      value: 0.8388471
+      inSlope: 0.6747398
+      outSlope: 0.6747398
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.24357566
+      outWeight: 0.025278268
     - serializedVersion: 3
       time: 1
       value: 1
-      inSlope: 0
-      outSlope: 0
+      inSlope: 0.018371778
+      outSlope: 0.018371778
       tangentMode: 0
       weightedMode: 0
-      inWeight: 0
+      inWeight: 0.06023669
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  knockbackReaction: 2
+  knockbackReaction: 0
   knockbackInterruptsActions: 0
   modules:
-  - {fileID: 11400000, guid: 068619fb740793c4dbe3e8a59a74d60d, type: 2}
   - {fileID: 11400000, guid: f4d195ae2d8b99a4587914e344cd0804, type: 2}
+  - {fileID: 11400000, guid: 068619fb740793c4dbe3e8a59a74d60d, type: 2}

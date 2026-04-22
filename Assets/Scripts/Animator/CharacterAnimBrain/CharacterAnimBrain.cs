@@ -83,10 +83,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private LocomotionState_Crawl crawlState;
     private Locomotion_StatusEffect statusEffectState;
     private StatusLocomotionKind _currentStatusLocomotionKind;
+    private StatusLocomotionKind _externalStatusLocomotionKind;
 
     // pending (กรณีเรียก SetDowned ก่อน init)
     private bool _pendingDownedSet;
     private bool _pendingDownedValue;
+    private bool _pendingCrawlIntro;
 
     public bool RootMotionActive { get; private set; }
     public MeleeType CurrentMeleeType { get; private set; } = MeleeType.Light;
@@ -159,6 +161,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private MeleeComboSO DefaultMeleeCombo => AnimProfile.meleeCombo;
     private MeleeComboSO LightCombo => AnimProfile.lightCombo;
     private MeleeComboSO HeavyCombo => AnimProfile.heavyCombo;
+    private ClipTransition CrawlingClip => AnimProfile.crawling;
     private MixerTransition2D CrawlMixer => AnimProfile.crawlMixer;
     private float CrawlParamLerp => AnimProfile.crawlParamLerp;
     private float CrawlSpeedMultiplier01 => AnimProfile.crawlSpeedMultiplier01;
@@ -553,8 +556,29 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (IsDowned == downed) return;
 
         IsDowned = downed;
-        
+        _pendingCrawlIntro = downed;
+
+        if (locomotionSM.CurrentState == knockbackState)
+            return;
+
         locomotionSM.ForceSetState(IsDowned ? crawlState : locomotion);
+    }
+
+    private bool ConsumePendingCrawlIntro()
+    {
+        bool shouldPlayIntro = _pendingCrawlIntro;
+        _pendingCrawlIntro = false;
+        return shouldPlayIntro;
+    }
+
+    public void SetExternalStatusLocomotion(ImpactReactionKind reaction)
+    {
+        StatusLocomotionKind desired = MapReactionToStatusLocomotion(reaction);
+        if (_externalStatusLocomotionKind == desired)
+            return;
+
+        _externalStatusLocomotionKind = desired;
+        RefreshStatusLocomotion();
     }
 
     public void PlaySkill()
@@ -892,29 +916,37 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             statusEffectController = GetComponent<StatusEffectController>();
 
         var activeEffects = statusEffectController?.ActiveEffects;
-        if (activeEffects == null || activeEffects.Count == 0)
-            return StatusLocomotionKind.None;
-
         StatusLocomotionKind best = StatusLocomotionKind.None;
         int bestPriority = 0;
 
-        for (int i = 0; i < activeEffects.Count; i++)
+        if (activeEffects != null)
         {
-            var instance = activeEffects[i];
-            var definition = instance?.Definition;
-            if (definition == null || instance.CurrentStacks <= 0)
-                continue;
+            for (int i = 0; i < activeEffects.Count; i++)
+            {
+                var instance = activeEffects[i];
+                var definition = instance?.Definition;
+                if (definition == null || instance.CurrentStacks <= 0)
+                    continue;
 
-            StatusLocomotionKind candidate = ResolveStatusLocomotionKind(definition);
-            if (candidate == StatusLocomotionKind.None || GetStatusLocomotionClip(candidate) == null)
-                continue;
+                StatusLocomotionKind candidate = ResolveStatusLocomotionKind(definition);
+                if (candidate == StatusLocomotionKind.None || GetStatusLocomotionClip(candidate) == null)
+                    continue;
 
-            int priority = GetStatusLocomotionPriority(candidate);
-            if (priority <= bestPriority)
-                continue;
+                int priority = GetStatusLocomotionPriority(candidate);
+                if (priority <= bestPriority)
+                    continue;
 
-            best = candidate;
-            bestPriority = priority;
+                best = candidate;
+                bestPriority = priority;
+            }
+        }
+
+        if (_externalStatusLocomotionKind != StatusLocomotionKind.None &&
+            GetStatusLocomotionClip(_externalStatusLocomotionKind) != null)
+        {
+            int priority = GetStatusLocomotionPriority(_externalStatusLocomotionKind);
+            if (priority > bestPriority)
+                return _externalStatusLocomotionKind;
         }
 
         return best;
@@ -1013,6 +1045,17 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             StatusLocomotionKind.MiniStune => 20,
             StatusLocomotionKind.Root => 10,
             _ => 0,
+        };
+    }
+
+    private static StatusLocomotionKind MapReactionToStatusLocomotion(ImpactReactionKind reaction)
+    {
+        return reaction switch
+        {
+            ImpactReactionKind.Root => StatusLocomotionKind.Root,
+            ImpactReactionKind.MiniStun => StatusLocomotionKind.MiniStune,
+            ImpactReactionKind.Stun => StatusLocomotionKind.Stune,
+            _ => StatusLocomotionKind.None,
         };
     }
 

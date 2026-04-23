@@ -17,6 +17,8 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI ammoText;
     public TextMeshProUGUI staminaText;
     public TextMeshProUGUI EnegyText;
+    public TextMeshProUGUI CommandPointText;
+    public TextMeshProUGUI PartyCommandText;
     public TextMeshProUGUI HPText;
 
     [Header("Status Effects")]
@@ -41,6 +43,14 @@ public class UIManager : MonoBehaviour
             ctx.StaminaSystem.OnStaminaChanged -= UpdateStamina;
             ctx.StaminaSystem.OnStaminaChanged += UpdateStamina;
             UpdateStamina(ctx.StaminaSystem.Current, ctx.StaminaSystem.Max);
+        }
+
+        if (ctx is PlayerContext playerContext && playerContext.partyCommand != null)
+        {
+            UpdateCommandPointText(
+                playerContext.partyCommand.CurrentCommandPoints,
+                playerContext.partyCommand.MaximumCommandPoints);
+            UpdatePartyCommandText(playerContext.partyCommand.GetSelectedPartyCommandUiLabel());
         }
 
         BindStatusEffectUI();
@@ -92,6 +102,20 @@ public class UIManager : MonoBehaviour
     {
         if (!EnegyText) return;
         EnegyText.text = $"{currentEnegyText:0}/{maxEnegyText:0}";
+    }
+
+    public void UpdateCommandPointText(float currentCommandPointText, float maxCommandPointText)
+    {
+        if (!CommandPointText) return;
+        CommandPointText.text = $"{currentCommandPointText:0.##}/{maxCommandPointText:0.##}";
+    }
+
+    public void UpdatePartyCommandText(string partyCommandLabel)
+    {
+        if (!PartyCommandText) return;
+        PartyCommandText.text = string.IsNullOrWhiteSpace(partyCommandLabel)
+            ? "Party Command: none"
+            : partyCommandLabel;
     }
 
     public void UpdateHPText(float currentHPText, float maxHPText)

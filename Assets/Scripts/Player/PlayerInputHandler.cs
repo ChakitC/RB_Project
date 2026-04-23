@@ -56,8 +56,52 @@ public class PlayerInputHandler : MonoBehaviour
 
     public void OnAllyHelperCall(InputAction.CallbackContext c)
     {
-        if (c.performed) ctx.allyHelper.SummonAllyHelper();
+        if (!c.performed)
+            return;
 
+        if (ctx != null && ctx.partyCommand != null && ctx.partyCommand.HasPartyCommands)
+        {
+            ctx.partyCommand.TryExecuteSelectedPartyCommand();
+            return;
+        }
+
+        ctx.allyHelper.SummonAllyHelper();
+    }
+
+    public void OnPartyCommandNext(InputAction.CallbackContext c)
+    {
+        if (c.performed && ctx.partyCommand != null)
+            ctx.partyCommand.SelectNextPartyCommand();
+    }
+
+    public void OnPartyCommandPrevious(InputAction.CallbackContext c)
+    {
+        if (c.performed && ctx.partyCommand != null)
+            ctx.partyCommand.SelectPreviousPartyCommand();
+    }
+
+    public void OnPartyCommandSlot1(InputAction.CallbackContext c)
+    {
+        if (c.performed && ctx.partyCommand != null)
+            ctx.partyCommand.TrySelectPartyCommandSlot(0);
+    }
+
+    public void OnPartyCommandSlot2(InputAction.CallbackContext c)
+    {
+        if (c.performed && ctx.partyCommand != null)
+            ctx.partyCommand.TrySelectPartyCommandSlot(1);
+    }
+
+    public void OnPartyCommandSlot3(InputAction.CallbackContext c)
+    {
+        if (c.performed && ctx.partyCommand != null)
+            ctx.partyCommand.TrySelectPartyCommandSlot(2);
+    }
+
+    public void OnPartyCommandSlot4(InputAction.CallbackContext c)
+    {
+        if (c.performed && ctx.partyCommand != null)
+            ctx.partyCommand.TrySelectPartyCommandSlot(3);
     }
 
     public void OnReload(InputAction.CallbackContext c)

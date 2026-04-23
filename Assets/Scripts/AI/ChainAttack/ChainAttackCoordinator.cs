@@ -67,6 +67,11 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         return TryStartSequence(sequenceDef, (Transform)null);
     }
 
+    public bool CanStartSequence(ChainAttackSequenceDef sequenceDef)
+    {
+        return CanStartSequence(sequenceDef, (Transform)null);
+    }
+
     public bool TryStartSequence(ChainAttackSequenceDef sequenceDef, GameObject explicitTargetObject)
     {
         return TryStartSequence(sequenceDef, explicitTargetObject != null ? explicitTargetObject.transform : null);
@@ -75,6 +80,16 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
     public bool TryStartSequence(ChainAttackSequenceDef sequenceDef, PassiveEventContext context)
     {
         return TryStartSequence(sequenceDef, context.Target != null ? context.Target.transform : null);
+    }
+
+    public bool CanStartSequence(ChainAttackSequenceDef sequenceDef, GameObject explicitTargetObject)
+    {
+        return CanStartSequence(sequenceDef, explicitTargetObject != null ? explicitTargetObject.transform : null);
+    }
+
+    public bool CanStartSequence(ChainAttackSequenceDef sequenceDef, PassiveEventContext context)
+    {
+        return CanStartSequence(sequenceDef, context.Target != null ? context.Target.transform : null);
     }
 
     public bool TryStartSequence(ChainAttackSequenceDef sequenceDef, Transform explicitTargetTransform)
@@ -109,6 +124,30 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         _activeRoutine = StartCoroutine(RunSequence(_activeRuntime));
         Log(sequenceDef, $"Started sequence '{sequenceDef.RuntimeId}' on target '{targetObject.name}'.");
         return true;
+    }
+
+    public bool CanStartSequence(ChainAttackSequenceDef sequenceDef, Transform explicitTargetTransform)
+    {
+        if (playerContext == null)
+            playerContext = GetComponent<PlayerContext>();
+
+        if (allyHelperManager == null && playerContext != null)
+            allyHelperManager = playerContext.allyHelper;
+
+        if (_activeRoutine != null || sequenceDef == null || !sequenceDef.HasAnySteps)
+            return false;
+
+        if (playerContext == null)
+            return false;
+
+        return ChainAttackTargetingUtility.TryResolveLockedTarget(
+            playerContext,
+            sequenceDef,
+            explicitTargetTransform,
+            allyHelperManager != null ? allyHelperManager.HelperObject : null,
+            out _,
+            out _,
+            out _);
     }
 
     IEnumerator RunSequence(ActiveChainRuntime runtime)

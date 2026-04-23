@@ -116,6 +116,21 @@ public class AllyHelperManager : MonoBehaviour
             out _);
     }
 
+    public bool CanStartManualCommand(bool requireNotBusy = true)
+    {
+        if (requireNotBusy && IsHelperBusy)
+            return false;
+
+        if (playerContext == null)
+            playerContext = GetComponent<PlayerContext>();
+
+        if (playerContext == null || allyHelper == null)
+            return false;
+
+        CacheHelperReferences();
+        return allyAnimBrain != null;
+    }
+
     void Awake()
     {
         if (playerContext == null)

@@ -453,7 +453,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             return;
         
         StopReloadAction();
-        locomotionSM.TrySetState(dashState);
+        if (locomotionSM.CurrentState == dashState)
+            locomotionSM.TryResetState(dashState);
+        else
+            locomotionSM.TrySetState(dashState);
     }
 
     public void EndDashNow()
@@ -462,6 +465,14 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             return;
 
         if (!TryInitialize()) return;
+        locomotionSM.TrySetState(locomotion);
+    }
+
+    private void HandleDashEnd()
+    {
+        if (!_initialized || locomotionSM.CurrentState != dashState)
+            return;
+
         locomotionSM.TrySetState(locomotion);
     }
 

@@ -643,6 +643,8 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (!_autonomyCaptured)
             return;
 
+        bool restoreAgentToDefaultAutonomy = _defaultBehaviorTreeEnabled;
+
         if (behaviorTree != null)
             behaviorTree.enabled = _defaultBehaviorTreeEnabled;
 
@@ -653,11 +655,11 @@ public sealed class FieldAllyMember : MonoBehaviour
 
             SyncAgentToTransform();
 
-            agent.updatePosition = _defaultAgentUpdatePosition;
-            agent.updateRotation = _defaultAgentUpdateRotation;
-            agent.isStopped = _defaultAgentIsStopped;
+            agent.updatePosition = restoreAgentToDefaultAutonomy ? true : _defaultAgentUpdatePosition;
+            agent.updateRotation = restoreAgentToDefaultAutonomy ? true : _defaultAgentUpdateRotation;
+            agent.isStopped = restoreAgentToDefaultAutonomy ? false : _defaultAgentIsStopped;
 
-            if (!_defaultAgentIsStopped &&
+            if ((!restoreAgentToDefaultAutonomy && !_defaultAgentIsStopped || restoreAgentToDefaultAutonomy) &&
                 _defaultAgentHadPath &&
                 agent.isOnNavMesh &&
                 !agent.pathPending &&

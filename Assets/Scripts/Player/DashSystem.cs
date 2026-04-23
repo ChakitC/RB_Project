@@ -7,7 +7,7 @@ public class DashSystem : MonoBehaviour
     [Header("Dash")]
     public float dashDistance = 5f;
     public float dashDuration = 0.15f;
-    public float dashCooldown = 0.5f;
+    [HideInInspector] public float dashCooldown = 0f;
     public float dashInvincibleTime = 0.15f;
     public float dashCost = 10f;
     public LayerMask obstacleMask = ~0;
@@ -24,13 +24,11 @@ public class DashSystem : MonoBehaviour
     CharacteContext ctx;
     Vector3 lastMoveDir = Vector3.forward;
     bool isDashing;
-    bool onCooldown;
     float _perfectDodgeWindowUntil;
     readonly HashSet<string> _consumedPerfectDodgeAttackIds = new();
 
     Coroutine _dashRoutine;
     Coroutine _invincibleRoutine;
-    Coroutine _cooldownRoutine;
     readonly Dictionary<int, int> _externalCollisionIgnoreMasks = new();
     int _nextExternalCollisionIgnoreToken = 1;
 
@@ -64,7 +62,6 @@ public class DashSystem : MonoBehaviour
             _invincibleRoutine = null;
         }
 
-        ClearCooldown();
         ResetPerfectDodgeWindow();
 
         ClearCollisionIgnoreRequests();
@@ -115,8 +112,6 @@ public class DashSystem : MonoBehaviour
 
     public void CancelDash(bool keepCooldown = true)
     {
-        bool wasActiveDash = isDashing || _dashRoutine != null;
-
         if (_dashRoutine != null)
         {
             StopCoroutine(_dashRoutine);
@@ -137,20 +132,11 @@ public class DashSystem : MonoBehaviour
 
         isDashing = false;
 
-        if (keepCooldown)
-        {
-            if (wasActiveDash)
-                BeginCooldown();
-        }
-        else
-        {
-            ClearCooldown();
-        }
     }
 
     public bool TryDash()
     {
-        if (ctx == null || isDashing || onCooldown || ctx.stateHub.Isdown)
+        if (ctx == null || isDashing || ctx.stateHub.Isdown)
             return false;
 
         if (!ctx.StaminaSystem.Spend(dashCost))
@@ -179,6 +165,8 @@ public class DashSystem : MonoBehaviour
             dashDir = transform.forward;
         dashDir.Normalize();
 
+        Vector3 dashDirLocalBeforeTurn = transform.InverseTransformDirection(dashDir);
+
         if (inputDirWorld.sqrMagnitude > 0.001f)
             lastMoveDir = dashDir;
 
@@ -196,6 +184,8 @@ public class DashSystem : MonoBehaviour
         if (maxDist <= 0.01f)
             return false;
 
+        if (!ShouldUseBackwardDashAnimation(dashDirLocalBeforeTurn))
+            FaceDashDirection(dashDir);
         StartDashIframe();
         _consumedPerfectDodgeAttackIds.Clear();
         _perfectDodgeWindowUntil = Time.time + dashInvincibleTime;
@@ -254,8 +244,7 @@ public class DashSystem : MonoBehaviour
         ResetPerfectDodgeWindow();
         isDashing = false;
         _dashRoutine = null;
-        BeginCooldown();
-        PublishDashEvent(PassiveEventType.DashEnded, dashCooldown);
+        PublishDashEvent(PassiveEventType.DashEnded, 0f);
     }
 
     IEnumerator InvincibleTimer(float time)
@@ -264,28 +253,6 @@ public class DashSystem : MonoBehaviour
         yield return new WaitForSeconds(time);
         ctx.HealthSystem.SetInvincible(false);
         _invincibleRoutine = null;
-    }
-
-    void BeginCooldown()
-    {
-        if (dashCooldown <= 0f)
-        {
-            ClearCooldown();
-            return;
-        }
-
-        if (_cooldownRoutine != null)
-            StopCoroutine(_cooldownRoutine);
-
-        onCooldown = true;
-        _cooldownRoutine = StartCoroutine(CooldownRoutine(dashCooldown));
-    }
-
-    IEnumerator CooldownRoutine(float duration)
-    {
-        yield return new WaitForSeconds(duration);
-        _cooldownRoutine = null;
-        onCooldown = false;
     }
 
     void RefreshCollisionIgnoreState()
@@ -348,15 +315,22 @@ public class DashSystem : MonoBehaviour
         RestoreCapturedCollisionIgnoreState();
     }
 
-    void ClearCooldown()
+    void FaceDashDirection(Vector3 dashDir)
     {
-        if (_cooldownRoutine != null)
-        {
-            StopCoroutine(_cooldownRoutine);
-            _cooldownRoutine = null;
-        }
+        dashDir.y = 0f;
+        if (dashDir.sqrMagnitude <= 0.0001f)
+            return;
 
-        onCooldown = false;
+        transform.rotation = Quaternion.LookRotation(dashDir.normalized, Vector3.up);
+    }
+
+    bool ShouldUseBackwardDashAnimation(Vector3 dashDirLocal)
+    {
+        Vector2 localPlanar = new Vector2(dashDirLocal.x, dashDirLocal.z);
+        if (localPlanar.sqrMagnitude <= 0.0001f)
+            return false;
+
+        return localPlanar.y < 0f && Mathf.Abs(localPlanar.y) >= Mathf.Abs(localPlanar.x);
     }
 
     void PublishDashEvent(PassiveEventType eventType, float value)

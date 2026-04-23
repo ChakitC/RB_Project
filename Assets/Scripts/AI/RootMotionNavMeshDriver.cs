@@ -11,6 +11,10 @@ public class RootMotionNavMeshDriver : MonoBehaviour
     [SerializeField] private Animator animator;
 
     private bool _prevRM;
+    private bool _cachedAgentIsStopped;
+    private bool _cachedAgentUpdatePosition;
+    private bool _cachedAgentUpdateRotation;
+    private bool _hasCachedAgentState;
 
     void Awake()
     {
@@ -18,8 +22,9 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         if (!agent) agent = GetComponent<NavMeshAgent>();
         if (!animator) animator = GetComponent<Animator>();
 
-        // ปกติให้ agent ขยับ (in-place)
-        animator.applyRootMotion = false;
+        if (animator)
+            animator.applyRootMotion = false;
+
         _prevRM = brain && brain.RootMotionActive;
     }
 
@@ -27,7 +32,6 @@ public class RootMotionNavMeshDriver : MonoBehaviour
     {
         bool rm = brain && brain.RootMotionActive;
 
-        // ทำเฉพาะตอน "เปลี่ยนโหมด" (ไม่ต้อง set ซ้ำทุกเฟรม)
         if (rm != _prevRM)
         {
             if (rm) EnterRootMotion();
@@ -35,61 +39,67 @@ public class RootMotionNavMeshDriver : MonoBehaviour
             _prevRM = rm;
         }
 
-        // สำคัญ: ระหว่าง RM ต้อง sync nextPosition กัน agent ดึงวาป
         if (rm && agent && agent.enabled)
             agent.nextPosition = transform.position;
     }
 
     private void EnterRootMotion()
     {
-        if (!agent) return;
+        if (animator)
+            animator.applyRootMotion = true;
+
+        if (!agent || !agent.enabled)
+        {
+            _hasCachedAgentState = false;
+            return;
+        }
+
+        _cachedAgentIsStopped = agent.isStopped;
+        _cachedAgentUpdatePosition = agent.updatePosition;
+        _cachedAgentUpdateRotation = agent.updateRotation;
+        _hasCachedAgentState = true;
 
         agent.isStopped = true;
         agent.updatePosition = false;
         agent.updateRotation = false;
-
-        // sync ทันที กัน snap เฟรมแรก
         agent.nextPosition = transform.position;
-
-        animator.applyRootMotion = true;
     }
 
     private void ExitRootMotion()
     {
-        if (!agent) return;
+        if (animator)
+            animator.applyRootMotion = false;
 
-        animator.applyRootMotion = false;
+        if (agent && agent.enabled)
+            agent.nextPosition = transform.position;
 
-        // sync ก่อนเปิด updatePosition กลับ
-        agent.nextPosition = transform.position;
+        if (_hasCachedAgentState && agent && agent.enabled)
+        {
+            agent.updatePosition = _cachedAgentUpdatePosition;
+            agent.updateRotation = _cachedAgentUpdateRotation;
+            agent.isStopped = _cachedAgentIsStopped;
+        }
 
-        agent.updatePosition = true;
-        agent.updateRotation = true;
-        agent.isStopped = false;
-
-        // ไม่แนะนำให้ Warp ทุกครั้ง—ใช้เฉพาะกรณีหลุดไกลจริง ๆ (ค่อยเปิด)
-        // ResyncAgent(0.5f);
+        _hasCachedAgentState = false;
     }
 
     void OnAnimatorMove()
     {
         if (!brain || !brain.RootMotionActive) return;
-        if (!agent || !agent.enabled) return;
+        if (!animator) return;
 
         Vector3 delta = animator.deltaPosition;
         if (zeroY) delta.y = 0f;
 
-        // ✅ ขยับตัวละครจริง ๆ ด้วย root motion
         transform.position += delta;
 
-        // ✅ กันวาป / sync agent ให้ตาม transform
-        agent.nextPosition = transform.position;
+        if (agent && agent.enabled)
+            agent.nextPosition = transform.position;
 
         if (applyRootRotation)
             transform.rotation *= animator.deltaRotation;
     }
 
-    // เรียกเฉพาะจำเป็นจริง ๆ
     public void ResyncAgent(float warpIfDistanceGreaterThan = 0.5f)
     {
         if (!agent || !agent.enabled) return;

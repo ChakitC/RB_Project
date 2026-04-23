@@ -116,10 +116,11 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         _activeKnockback = default(KnockbackData);
 
         RestoreAgentOverride(preserveMoveState);
-        RestoreBehaviorTreeOverride(preserveMoveState);
 
         if (preserveMoveState)
             RestoreMoveState();
+
+        RestoreBehaviorTreeOverride(preserveMoveState);
 
         animBrain?.StopKnockbackPlayback();
 
@@ -529,6 +530,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
             return;
 
         Vector3 restorePosition = transform.position;
+        bool sampledRestorePosition = false;
 
         if (navMeshAgent.isOnNavMesh)
         {
@@ -536,6 +538,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         }
         else if (TrySampleNavMeshPosition(restorePosition, out Vector3 sampledPosition))
         {
+            sampledRestorePosition = true;
             restorePosition = sampledPosition;
             transform.position = sampledPosition;
             navMeshAgent.Warp(sampledPosition);
@@ -548,13 +551,20 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         navMeshAgent.updateRotation = restoreDefaults ? true : _resumeAgentUpdateRotation;
         navMeshAgent.isStopped = restoreDefaults ? false : _resumeAgentStopped;
 
+        bool behaviorTreeOwnsNavigation =
+            _behaviorTreeSuspended ||
+            (behaviorTree != null && behaviorTree.enabled);
+
         if (!restoreDefaults &&
+            !sampledRestorePosition &&
+            !behaviorTreeOwnsNavigation &&
             _resumeAgentHadPath &&
             !_resumeAgentStopped &&
             navMeshAgent.isOnNavMesh &&
             !navMeshAgent.pathPending &&
             !navMeshAgent.hasPath)
         {
+            // Let the active AI controller reacquire a route instead of reviving a stale cached destination.
             navMeshAgent.SetDestination(_resumeAgentDestination);
         }
 

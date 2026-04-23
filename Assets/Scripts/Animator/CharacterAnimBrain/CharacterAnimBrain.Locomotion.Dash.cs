@@ -1,11 +1,10 @@
-using UnityEngine;
 using System;
 using Animancer;
 using Animancer.FSM;
+using UnityEngine;
+
 public sealed partial class CharacterAnimBrain
 {
-    // ===================== Locomotion: Dash  ===============================
-    
     private sealed class Locomotion_Dash : LocomotionState
     {
         private readonly CharacterAnimBrain owner;
@@ -13,49 +12,63 @@ public sealed partial class CharacterAnimBrain
 
         public Locomotion_Dash(CharacterAnimBrain owner) => this.owner = owner;
 
-        public override bool CanEnterState =>
-            owner.DashForward != null &&
-            owner.DashBackward != null &&
-            owner.DashLeft != null &&
-            owner.DashRight != null;
+        public override bool CanEnterState => owner.DashForward != null && owner.DashForward.IsValid;
 
         public override void OnEnterState()
         {
-            // ล็อคทิศ dash เป็น 4 ทิศ
-            Vector2 dir = Snap4(owner._dashDirLocal);
-
-            ClipTransition clip = Pick(owner, dir);
-
-            state = owner.LocoLayer.Play(clip);
-
-            // ปรับ speed ให้จบพอดีกับเวลา dash ของเกม
-            float len = Mathf.Max(0.01f, state.Length);
+            ClipTransition clip = PickClip();
             float dur = Mathf.Max(0.01f, owner._dashDuration);
+            float fadeDuration = ResolveFadeDuration(clip, dur);
+
+            state = owner.LocoLayer.Play(clip, fadeDuration);
+            state.Time = 0f;
+
+            float len = Mathf.Max(0.01f, state.Length);
             state.Speed = len / dur;
 
-            owner.onDashEndCache ??= () => owner.locomotionSM.TrySetState(owner.locomotion);
+            owner.onDashEndCache ??= owner.HandleDashEnd;
             state.Events(owner).OnEnd = owner.onDashEndCache;
         }
 
-        private static ClipTransition Pick(CharacterAnimBrain o, Vector2 dir4)
+        public override void OnExitState()
         {
-            // dir4 จะเป็น (0,1)(0,-1)(1,0)(-1,0)
-            if (dir4.y > 0.5f)  return o.DashForward;
-            if (dir4.y < -0.5f) return o.DashBackward;
-            if (dir4.x > 0.5f)  return o.DashRight;
-            return o.DashLeft;
+            if (state != null)
+            {
+                state.Events(owner).OnEnd = null;
+                state = null;
+            }
         }
 
-        private static Vector2 Snap4(Vector2 v)
+        private ClipTransition PickClip()
         {
-            if (v.sqrMagnitude < 0.0001f) return Vector2.up; // ไม่มีทิศ -> ให้พุ่งหน้าเป็นค่าเริ่มต้น
+            if (ShouldUseBackwardClip(owner._dashDirLocal) &&
+                owner.DashBackward != null &&
+                owner.DashBackward.IsValid)
+            {
+                return owner.DashBackward;
+            }
 
-            // เลือกแกนที่เด่นกว่า: X หรือ Y
-            if (Mathf.Abs(v.x) > Mathf.Abs(v.y))
-                return (v.x >= 0f) ? Vector2.right : Vector2.left;
-            else
-                return (v.y >= 0f) ? Vector2.up : Vector2.down;
+            return owner.DashForward;
+        }
+
+        private static float ResolveFadeDuration(ClipTransition clip, float dashDuration)
+        {
+            if (clip == null)
+                return 0f;
+
+            float fadeDuration = clip.FadeDuration;
+            if (float.IsNaN(fadeDuration) || fadeDuration < 0f)
+                fadeDuration = 0f;
+
+            return Mathf.Min(fadeDuration, dashDuration * 0.25f);
+        }
+
+        private static bool ShouldUseBackwardClip(Vector2 dashDirLocal)
+        {
+            if (dashDirLocal.sqrMagnitude <= 0.0001f)
+                return false;
+
+            return dashDirLocal.y < 0f && Mathf.Abs(dashDirLocal.y) >= Mathf.Abs(dashDirLocal.x);
         }
     }
-
 }

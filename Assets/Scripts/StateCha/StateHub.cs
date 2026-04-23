@@ -403,7 +403,7 @@ public sealed class StateHub : MonoBehaviour
 
     public void RequestReload()
     {
-        if (IsSkillAnimating())
+        if (!IsAlive || Isdown || IsSkillAnimating())
             return;
 
         ctx.WeaponSystem.TryReload();

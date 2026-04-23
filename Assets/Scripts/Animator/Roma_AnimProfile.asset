@@ -99,7 +99,7 @@ MonoBehaviour:
     _Clip: {fileID: -1394427322518207577, guid: f657920fa56763f40a1898ba624cc555, type: 3}
     _NormalizedStartTime: NaN
   dashF:
-    _FadeDuration: 0.25
+    _FadeDuration: 0.017
     _Speed: 1
     _Events:
       _NormalizedTimes: []

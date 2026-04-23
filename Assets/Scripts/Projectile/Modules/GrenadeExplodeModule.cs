@@ -154,7 +154,7 @@ public class GrenadeExplodeModule : ProjectileModule
         if (target != null)
         {
             if (!explodeOnDamageableHit) return;
-            Explode(p, ctx, hit.point, hit.collider, st);
+            Explode(p, ctx, hit.ResolvePoint(p.transform.position), hit.collider, st);
             p.RequestDespawn();
             s.exploded = true;
             return;
@@ -163,7 +163,7 @@ public class GrenadeExplodeModule : ProjectileModule
         // target == null -> wall (Projectile ของคุณส่ง OnHit มาเฉพาะ damageable/wall อยู่แล้ว)
         if (hit.collider != null && hit.collider.CompareTag("Wall") && explodeOnWallHit)
         {
-            Explode(p, ctx, hit.point, hit.collider, st);
+            Explode(p, ctx, hit.ResolvePoint(p.transform.position), hit.collider, st);
             p.RequestDespawn();
             s.exploded = true;
         }

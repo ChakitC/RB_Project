@@ -407,6 +407,12 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
     {
         DownTime = downTimeDefault;
 
+        var weaponSystem = CTX != null ? CTX.WeaponSystem : null;
+        if (!weaponSystem && CTX)
+            weaponSystem = CTX.GetComponent<WeaponSystem>();
+        if (weaponSystem != null && weaponSystem.IsReloading)
+            weaponSystem.CancelReload();
+
         CTX.stateHub.LifeSM.TryChange(LifeStateId.Down);
         CharacterDown?.Invoke();
 

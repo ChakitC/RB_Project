@@ -11104,9 +11104,6 @@ PrefabInstance:
       addedObject: {fileID: 6373579646711228739}
     - targetCorrespondingSourceObject: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4097312716049130485}
-    - targetCorrespondingSourceObject: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 473783571429039025}
   m_SourcePrefab: {fileID: 100100000, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
 --- !u!95 &289345308417342858 stripped
@@ -11779,35 +11776,6 @@ MonoBehaviour:
   aimTargetName: Aim Target
   followLastSeenPosition: 1
   fallbackForwardDistance: 6
---- !u!114 &4097312716049130485
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5335070992398057148}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a1620072595d4cd4ebc8adbcf88ac07b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  brain: {fileID: 0}
-  ctx: {fileID: 0}
-  stateHub: {fileID: 0}
-  statusEffectController: {fileID: 0}
-  animator: {fileID: 0}
-  debugInInspector: 1
-  logTimelineToConsole: 0
-  showOnScreen: 0
-  timelineCapacity: 24
-  snapshotRefreshInterval: 0
-  screenPos: {x: 10, y: 140}
-  screenSize: {x: 720, y: 480}
-  dbgSummary: 
-  dbgProfileValidation: 
-  dbgGateReasons: 
-  dbgTimeline: 
-  dbgTimelineCount: 0
 --- !u!114 &473783571429039025
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -21964,9 +21932,6 @@ PrefabInstance:
       addedObject: {fileID: 950408972752178807}
     - targetCorrespondingSourceObject: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4598402679797649883}
-    - targetCorrespondingSourceObject: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 2898689303477062709}
   m_SourcePrefab: {fileID: 100100000, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
 --- !u!4 &812088851720005978 stripped
@@ -22672,35 +22637,6 @@ MonoBehaviour:
   aimTargetName: Aim Target
   followLastSeenPosition: 1
   fallbackForwardDistance: 6
---- !u!114 &4598402679797649883
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7865287890509167512}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a1620072595d4cd4ebc8adbcf88ac07b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  brain: {fileID: 0}
-  ctx: {fileID: 0}
-  stateHub: {fileID: 0}
-  statusEffectController: {fileID: 0}
-  animator: {fileID: 0}
-  debugInInspector: 1
-  logTimelineToConsole: 0
-  showOnScreen: 0
-  timelineCapacity: 24
-  snapshotRefreshInterval: 0
-  screenPos: {x: 10, y: 140}
-  screenSize: {x: 720, y: 480}
-  dbgSummary: 
-  dbgProfileValidation: 
-  dbgGateReasons: 
-  dbgTimeline: 
-  dbgTimelineCount: 0
 --- !u!114 &2898689303477062709
 MonoBehaviour:
   m_ObjectHideFlags: 0

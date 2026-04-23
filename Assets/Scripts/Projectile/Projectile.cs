@@ -364,8 +364,7 @@ public class Projectile : MonoBehaviour
         bool suppressDamageableImpact = target != null && HasModuleSuppressingBuiltinDamageableHit(target);
 
         // ===== Single / Wall =====
-        Vector3 hitPoint = ResolveImpactPoint(other);
-        var hit = new ProjectileHitInfo(hitPoint, -_ctx.dir, other);
+        var hit = BuildImpactHitInfo(other);
 
         if (target != null)
         {
@@ -688,18 +687,19 @@ public class Projectile : MonoBehaviour
     KnockbackBuildContext BuildConfiguredKnockbackContext(in ProjectileHitInfo hit, bool useRadialDirection)
     {
         Vector3 fallbackDirection = ResolveConfiguredKnockbackFallbackDirection();
+        Vector3 impactPoint = hit.ResolvePoint(transform.position);
 
         if (useRadialDirection)
         {
             return new KnockbackBuildContext(
                 transform.position,
-                hit.point,
+                impactPoint,
                 fallbackDirection);
         }
 
         return new KnockbackBuildContext(
-            hit.point,
-            hit.point,
+            impactPoint,
+            impactPoint,
             fallbackDirection,
             explicitDirection: ResolveConfiguredImpactDirection(hit, fallbackDirection));
     }
@@ -716,13 +716,25 @@ public class Projectile : MonoBehaviour
         return fallbackDirection;
     }
 
-    Vector3 ResolveImpactPoint(Collider other)
+    ProjectileHitInfo BuildImpactHitInfo(Collider other)
     {
-        if (other == null)
-            return transform.position;
+        Vector3 impactNormal = -_ctx.dir;
+        if (TryResolveImpactPoint(other, out Vector3 point))
+            return new ProjectileHitInfo(point, impactNormal, other);
 
-        Vector3 point = other.ClosestPoint(transform.position);
-        return point == Vector3.zero ? transform.position : point;
+        return ProjectileHitInfo.WithoutPoint(impactNormal, other);
+    }
+
+    bool TryResolveImpactPoint(Collider other, out Vector3 point)
+    {
+        if (other != null)
+        {
+            point = other.ClosestPoint(transform.position);
+            return true;
+        }
+
+        point = default;
+        return false;
     }
 
     Vector3 ResolveConfiguredKnockbackFallbackDirection()
@@ -778,7 +790,7 @@ public class Projectile : MonoBehaviour
             return;
 
         if (showDamageNumber)
-            SpawnDamageNumber(hit.point, finalDamage);
+            SpawnDamageNumber(hit.ResolvePoint(transform.position), finalDamage);
 
         var attackerGO = ResolveSourceObject();
         ApplyDamageToTarget(target, finalDamage, attackerGO, knockback);

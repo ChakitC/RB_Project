@@ -2983,6 +2983,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Enemy_NB_GR_02
       objectReference: {fileID: 0}
+    - target: {fileID: 6178422174124601970, guid: df86be792e78eac43a023b9adbd003f1, type: 3}
+      propertyPath: collisionMask.m_Bits
+      value: 4096
+      objectReference: {fileID: 0}
     - target: {fileID: 8191840181784851142, guid: df86be792e78eac43a023b9adbd003f1, type: 3}
       propertyPath: m_LocalPosition.x
       value: 22.19061

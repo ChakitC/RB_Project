@@ -37,7 +37,7 @@ public class SplitOnHitModule : ProjectileModule
         float start = -spreadAngleDeg * 0.5f;
         float step = (n == 1) ? 0f : spreadAngleDeg / (n - 1);
         
-        Vector3 spawnPos = hit.point + baseDir * 0.1f;
+        Vector3 spawnPos = hit.ResolvePoint(p.transform.position) + baseDir * 0.1f;
 
         for (int i = 0; i < n; i++)
         {

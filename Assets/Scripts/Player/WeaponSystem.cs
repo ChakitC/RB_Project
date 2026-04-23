@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(WeaponAffixRuntimeController))]
@@ -47,6 +48,7 @@ public class WeaponSystem : MonoBehaviour
     public bool IsMagazineEmpty => magazine <= 0;
 
     bool _isFiringHeld;
+    readonly Dictionary<GameObject, Projectile> _projectilePrefabCache = new();
 
     float baseSwaySpeed = 0f;
     float baseMaxSwayAngle = 0f;
@@ -178,6 +180,7 @@ public class WeaponSystem : MonoBehaviour
         burstInterval = currentWeapon.burstInterval;
 
         projectilePrefab = currentWeapon.BulletPrefab;
+        TryResolveProjectilePrefab(projectilePrefab, out _);
 
         magazine = ResolveStartingMagazine();
         RefreshDerivedStats();
@@ -465,9 +468,27 @@ public class WeaponSystem : MonoBehaviour
         }
     }
 
+    bool IsReloadBlockedByLifeState()
+    {
+        var stateHub = ctx != null ? ctx.stateHub : null;
+        return stateHub != null && (!stateHub.IsAlive || stateHub.Isdown);
+    }
+
+    void AbortReloadRoutine()
+    {
+        isReloading = false;
+        reloadRoutine = null;
+        isBursting = false;
+        StopReloadCue();
+        SyncWeaponInstanceState();
+    }
+
     public void TryReload()
     {
         RefreshDerivedStats();
+
+        if (IsReloadBlockedByLifeState())
+            return;
 
         isFiring = false;
         isBursting = false;
@@ -531,11 +552,29 @@ public class WeaponSystem : MonoBehaviour
     {
         isReloading = true;
 
+        if (IsReloadBlockedByLifeState())
+        {
+            AbortReloadRoutine();
+            yield break;
+        }
+
         if (startInsertDelay > 0f)
             yield return new WaitForSeconds(startInsertDelay);
 
+        if (IsReloadBlockedByLifeState())
+        {
+            AbortReloadRoutine();
+            yield break;
+        }
+
         while (magazine < MaxMagazine)
         {
+            if (IsReloadBlockedByLifeState())
+            {
+                AbortReloadRoutine();
+                yield break;
+            }
+
             if (shootInterruptsReload && (isFiring || isBursting))
                 break;
 
@@ -552,6 +591,12 @@ public class WeaponSystem : MonoBehaviour
         if (endInsertDelay > 0f)
             yield return new WaitForSeconds(endInsertDelay);
 
+        if (IsReloadBlockedByLifeState())
+        {
+            AbortReloadRoutine();
+            yield break;
+        }
+
         isReloading = false;
         reloadRoutine = null;
         StopReloadCue();
@@ -565,6 +610,13 @@ public class WeaponSystem : MonoBehaviour
     {
         isReloading = true;
         yield return new WaitForSeconds(reloadTime);
+
+        if (IsReloadBlockedByLifeState())
+        {
+            AbortReloadRoutine();
+            yield break;
+        }
+
         magazine = MaxMagazine;
         SyncWeaponInstanceState();
         ctx.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
@@ -644,17 +696,10 @@ public class WeaponSystem : MonoBehaviour
         string attackId,
         PassiveEventContext shotContext)
     {
-        var go = Instantiate(projectileToSpawn, firePoint.position, firePoint.rotation);
-        var projectile = go.GetComponent<Projectile>();
-        var prefabComp = projectileToSpawn.GetComponent<Projectile>();
-
-        if (projectile == null || prefabComp == null)
-        {
-            Debug.LogWarning("Projectile prefab is missing Projectile component.", projectileToSpawn);
-            if (go != null)
-                Destroy(go);
+        if (!TryResolveProjectilePrefab(projectileToSpawn, out var prefabComp))
             return;
-        }
+
+        var projectile = Instantiate(prefabComp, firePoint.position, firePoint.rotation);
 
         projectile.gunType = gunType;
         projectile.critRate = critRate;
@@ -682,6 +727,25 @@ public class WeaponSystem : MonoBehaviour
             originRuleId = shotContext.OriginRuleId,
             projectilePrefab = prefabComp
         });
+    }
+
+    bool TryResolveProjectilePrefab(GameObject prefab, out Projectile projectileComponent)
+    {
+        projectileComponent = null;
+
+        if (!prefab)
+            return false;
+
+        if (_projectilePrefabCache.TryGetValue(prefab, out projectileComponent))
+            return projectileComponent != null;
+
+        projectileComponent = prefab.GetComponent<Projectile>();
+        _projectilePrefabCache[prefab] = projectileComponent;
+
+        if (projectileComponent == null)
+            Debug.LogWarning("Projectile prefab is missing Projectile component.", prefab);
+
+        return projectileComponent != null;
     }
 
     int ResolveStartingMagazine()

@@ -24,11 +24,11 @@ public class TryCastSkillFromSlot : ActionNode
         var result = CTX.SkillManager.TryStartCastSlot(SlotIndex);
         switch (result.Kind)
         {
-            case PlayerSkillManager.SkillCastStartKind.ImmediateSuccess:
+            case SkillCastStartKind.ImmediateSuccess:
                 currentStatus = TaskStatus.Success;
                 break;
 
-            case PlayerSkillManager.SkillCastStartKind.WaitingForAnimation:
+            case SkillCastStartKind.WaitingForAnimation:
                 if (animBrain == null || result.RequestId <= 0)
                     break;
 
@@ -62,7 +62,7 @@ public class TryCastSkillFromSlot : ActionNode
             return false;
 
         if (CTX.SkillManager == null)
-            CTX.SkillManager = gameObject.GetComponent<PlayerSkillManager>();
+            CTX.SkillManager = gameObject.GetComponent<CharacterSkillManager>();
 
         var resolvedAnimBrain = CTX.AnimBrain != null
             ? CTX.AnimBrain

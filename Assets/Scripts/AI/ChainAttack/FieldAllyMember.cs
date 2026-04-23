@@ -121,6 +121,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     LayerMask _defaultRigidbodyExcludeLayers;
     LayerMask _defaultCharacterControllerExcludeLayers;
     Vector3 _defaultAgentDestination;
+    SkillCastOrchestrator _skillCastOrchestrator;
 
     public ChainActorRole ActorRole => actorRole;
     public bool IsReserved => _reservationOwner != null;
@@ -172,6 +173,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     void Awake()
     {
         CacheReferences();
+        _skillCastOrchestrator ??= new SkillCastOrchestrator(this);
     }
 
     void Update()
@@ -499,6 +501,8 @@ public sealed class FieldAllyMember : MonoBehaviour
             if (actorFader == null)
                 actorFader = GetComponentInChildren<ASPHelperDitherFader>(true);
         }
+
+        _skillCastOrchestrator ??= new SkillCastOrchestrator(this);
     }
 
     void RefreshCollisionReferences()
@@ -1088,9 +1092,16 @@ public sealed class FieldAllyMember : MonoBehaviour
 
         _pendingExecution.attackSkillUser = attackSkillUser;
 
-        bool executed = _pendingExecution.ignoreResourceCosts
-            ? runtimeSkill.TryCastIgnoringResourceCosts(attackSkillUser)
-            : ExecutePaidCast(runtimeSkill, attackSkillUser);
+        _skillCastOrchestrator ??= new SkillCastOrchestrator(this);
+        SkillCastStartResult castResult = _skillCastOrchestrator.TryStartCast(new SkillCastRequest(
+            runtimeSkill,
+            attackSkillUser,
+            animationDriver: animBrain,
+            requestedId: requestId,
+            ignoreResourceCosts: _pendingExecution.ignoreResourceCosts,
+            useAnimationDriver: false,
+            debugSource: $"chain:{_pendingExecution.step.RuntimeId}"));
+        bool executed = castResult.Started;
 
         _pendingExecution.attackPayloadReleased = executed;
 
@@ -1466,18 +1477,6 @@ public sealed class FieldAllyMember : MonoBehaviour
             actorFader.FadeOutThenDeactivate();
         else
             gameObject.SetActive(false);
-    }
-
-    bool ExecutePaidCast(SkillInstance runtimeSkill, ISkillUser skillUser)
-    {
-        if (runtimeSkill == null || skillUser == null)
-            return false;
-
-        if (!runtimeSkill.CanCast(skillUser))
-            return false;
-
-        runtimeSkill.Cast(skillUser);
-        return true;
     }
 
     bool TryResolveAttackSkillUser(PendingSequenceExecution execution, out ISkillUser attackSkillUser)

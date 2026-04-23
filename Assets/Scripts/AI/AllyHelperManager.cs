@@ -62,6 +62,8 @@ public class AllyHelperManager : MonoBehaviour
     NavMeshAgent allyAgent;
     CharacterController allyCharacterController;
     BehaviorTree allyBehaviorTree;
+    SkillCastOrchestrator helperSkillCastOrchestrator;
+    Component helperSkillCastOwner;
     PendingHelperSkill pendingHelperSkill;
     PendingChainAttackSequence pendingChainAttackSequence;
     bool hideHelperOnSkillComplete;
@@ -457,6 +459,7 @@ public class AllyHelperManager : MonoBehaviour
             nextHelperFader = allyHelper.GetComponentInChildren<ASPHelperDitherFader>(true);
 
         SubscribeToHelperFader(nextHelperFader);
+        EnsureHelperSkillCastOrchestrator();
     }
 
     void SubscribeToAnimBrain(CharacterAnimBrain nextAnimBrain)
@@ -579,7 +582,7 @@ public class AllyHelperManager : MonoBehaviour
         if (helperSkill.skillDef == null)
             return;
 
-        if (!ExecuteHelperSkill(helperSkill.skillDef, helperSkill.skillLevel, applyFacing: true))
+        if (!ExecuteHelperSkill(helperSkill.skillDef, helperSkill.skillLevel, applyFacing: true, requestId))
             LastExecutionSucceeded = false;
     }
 
@@ -780,7 +783,8 @@ public class AllyHelperManager : MonoBehaviour
             if (!ExecuteHelperSkill(
                     pendingChainAttackSequence.chainAttackSkillDef,
                     pendingChainAttackSequence.chainAttackSkillLevel,
-                    applyFacing: false))
+                    applyFacing: false,
+                    requestId))
             {
                 Log(pendingChainAttackSequence.sequenceDef, "Chain attack cancelled: follow-up skill payload failed.");
                 CancelActiveChainAttackSequence(interrupted: false);
@@ -1005,7 +1009,7 @@ public class AllyHelperManager : MonoBehaviour
             allyAgent.nextPosition = allyHelper.transform.position;
     }
 
-    bool ExecuteHelperSkill(SkillGemDefinition skillDef, int skillLevel, bool applyFacing)
+    bool ExecuteHelperSkill(SkillGemDefinition skillDef, int skillLevel, bool applyFacing, int requestId = 0)
     {
         if (skillDef == null)
             return false;
@@ -1013,6 +1017,13 @@ public class AllyHelperManager : MonoBehaviour
         if (allySkillUser == null)
         {
             Debug.LogWarning($"Helper skill '{skillDef.name}' requires an ISkillUser on the helper actor.", this);
+            return false;
+        }
+
+        EnsureHelperSkillCastOrchestrator();
+        if (helperSkillCastOrchestrator == null)
+        {
+            Debug.LogWarning($"Helper skill '{skillDef.name}' could not resolve a skill cast orchestrator.", this);
             return false;
         }
 
@@ -1028,11 +1039,41 @@ public class AllyHelperManager : MonoBehaviour
         if (logHelperExecution)
             Debug.Log($"[AllyHelperManager] Executing helper skill '{skillDef.name}'.", this);
 
-        if (runtimeSkill.TryCastIgnoringResourceCosts(allySkillUser))
+        SkillCastStartResult result = helperSkillCastOrchestrator.TryStartCast(new SkillCastRequest(
+            runtimeSkill,
+            allySkillUser,
+            animationDriver: allyAnimBrain,
+            requestedId: requestId,
+            ignoreResourceCosts: true,
+            useAnimationDriver: false,
+            debugSource: $"helper:{skillDef.name}"));
+
+        if (result.Started)
             return true;
 
         Debug.LogWarning($"Helper skill '{skillDef.name}' could not execute. Check helper payload or legacy projectile setup.", this);
         return false;
+    }
+
+    void EnsureHelperSkillCastOrchestrator()
+    {
+        Component nextOwner = allyAnimBrain != null
+            ? allyAnimBrain
+            : allyContext != null
+                ? allyContext
+                : allyHelper != null
+                    ? allyHelper.transform
+                    : null;
+
+        if (nextOwner == null)
+            return;
+
+        if (helperSkillCastOrchestrator != null && ReferenceEquals(helperSkillCastOwner, nextOwner))
+            return;
+
+        helperSkillCastOrchestrator?.CancelPendingCast();
+        helperSkillCastOwner = nextOwner;
+        helperSkillCastOrchestrator = new SkillCastOrchestrator(nextOwner);
     }
 
     void TryStartQueuedChainAttack()

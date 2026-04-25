@@ -8,6 +8,7 @@ public sealed partial class CharacterAnimBrain
     {
         private readonly CharacterAnimBrain owner;
         private AnimancerState state;
+        private AnimancerEvent.Sequence runtimeEvents;
         private bool _prevApplyRootMotion;
         private bool _completedNormally;
         private float _watchdogDeadline;
@@ -52,7 +53,19 @@ public sealed partial class CharacterAnimBrain
 
             state = owner.LocoLayer.Play(chainClip);
             state.NormalizedTime = 0f;
-            state.Events(owner).OnEnd = _onEndCache;
+            runtimeEvents = new AnimancerEvent.Sequence(chainClip.Events);
+            owner.BindActiveChainTimelineEvents(runtimeEvents);
+
+            var transitionOnEnd = runtimeEvents.OnEnd;
+            runtimeEvents.OnEnd = transitionOnEnd == null
+                ? _onEndCache
+                : () =>
+                {
+                    transitionOnEnd();
+                    _onEndCache();
+                };
+
+            state.SharedEvents = runtimeEvents;
             _watchdogDeadline = Time.time + ResolveWatchdogDuration(state) + owner.ChainPlaybackWatchdogGraceSeconds;
         }
 
@@ -73,12 +86,25 @@ public sealed partial class CharacterAnimBrain
 
             if (state != null)
             {
-                state.Events(owner).OnEnd = null;
+                state.SharedEvents = null;
+                runtimeEvents = null;
                 state = null;
             }
 
             owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
             owner.NotifyChainPlaybackStateExited(_completedNormally);
+        }
+
+        internal bool TryGetNormalizedTime(out float normalizedTime)
+        {
+            if (state != null)
+            {
+                normalizedTime = state.NormalizedTime;
+                return true;
+            }
+
+            normalizedTime = 0f;
+            return false;
         }
 
         private void OnChainEnd()

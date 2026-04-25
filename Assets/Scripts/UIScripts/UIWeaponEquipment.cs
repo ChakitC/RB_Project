@@ -43,10 +43,10 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
 
     void Start()
     {
-        if (inventorySource != null)
-            BindSource(inventorySource);
-        else
-            RefreshAll();
+        if (inventorySource == null)
+            inventorySource = ResolveInventorySource();
+
+        BindSource(inventorySource);
     }
 
     void OnDestroy()
@@ -56,13 +56,6 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
 
     public void BindSource(PlayerInventory inventory)
     {
-        if (ReferenceEquals(inventorySource, inventory))
-        {
-            inventorySystem = inventorySource != null ? inventorySource.InventorySystem : null;
-            RefreshAll();
-            return;
-        }
-
         UnbindCurrentSource();
 
         inventorySource = inventory;
@@ -78,6 +71,22 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
             inventorySource.OnEquippedWeaponChanged += HandleEquippedWeaponChanged;
 
         RefreshAll();
+    }
+
+    PlayerInventory ResolveInventorySource()
+    {
+        var fromParent = GetComponentInParent<PlayerInventory>(true);
+        if (fromParent != null)
+            return fromParent;
+
+        if (transform.root != null)
+        {
+            var fromRoot = transform.root.GetComponentInChildren<PlayerInventory>(true);
+            if (fromRoot != null)
+                return fromRoot;
+        }
+
+        return FindFirstObjectByType<PlayerInventory>(FindObjectsInactive.Include);
     }
 
     public void RefreshAll()

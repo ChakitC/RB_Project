@@ -79,6 +79,20 @@ public class AllyHelperManager : MonoBehaviour
 
     public bool IsHelperActive => allyHelper != null && allyHelper.activeSelf;
     public GameObject HelperObject => allyHelper;
+    public CharacterSkillManager HelperSkillManager
+    {
+        get
+        {
+            CacheHelperReferences();
+            if (allyContext == null)
+                return null;
+
+            if (allyContext.SkillManager == null && allyHelper != null)
+                allyContext.SkillManager = allyHelper.GetComponent<CharacterSkillManager>();
+
+            return allyContext.SkillManager;
+        }
+    }
     public bool LastExecutionSucceeded { get; private set; } = true;
     public int ActiveChainAttackExecutionId => pendingChainAttackSequence != null ? pendingChainAttackSequence.executionId : 0;
     public bool IsHelperBusy =>
@@ -131,6 +145,71 @@ public class AllyHelperManager : MonoBehaviour
 
         CacheHelperReferences();
         return allyAnimBrain != null;
+    }
+
+    public bool HasConfiguredCommandSlot(int slotIndex = 0)
+    {
+        CharacterSkillManager skillManager = HelperSkillManager;
+        return skillManager != null &&
+               (skillManager.HasConfiguredPlayerCommandSkill || skillManager.HasConfiguredCommandSlot(slotIndex));
+    }
+
+    public bool TryExecuteCommandSlot(int slotIndex = 0, bool hideOnSkillComplete = true)
+    {
+        if (!TryPrepareHelperForSummon(out bool activatedNow))
+            return false;
+
+        CharacterSkillManager skillManager = HelperSkillManager;
+        bool hasManualSkill = skillManager != null &&
+                              (skillManager.HasConfiguredPlayerCommandSkill ||
+                               skillManager.HasConfiguredCommandSlot(slotIndex));
+        if (!hasManualSkill)
+        {
+            if (activatedNow)
+                HideHelperImmediate();
+
+            return false;
+        }
+
+        LastExecutionSucceeded = false;
+        hideHelperOnSkillComplete = hideOnSkillComplete;
+        CancelPendingHelperSkill();
+        CompletePendingChainAttackSequence(false);
+
+        ApplyTemporaryHelperSkillAutonomy();
+        allyHelperFader?.BeginAnimationLifecycle(hideOnSkillComplete);
+
+        SkillCastStartResult result = skillManager.HasConfiguredPlayerCommandSkill
+            ? skillManager.TryStartPlayerCommandSkill()
+            : skillManager.TryStartCastSlot(slotIndex);
+        if (!result.Started)
+        {
+            RestoreHelperSkillAutonomy();
+            hideHelperOnSkillComplete = false;
+
+            if (activatedNow)
+                HideHelperImmediate();
+
+            return false;
+        }
+
+        if (result.Kind == SkillCastStartKind.ImmediateSuccess)
+        {
+            RestoreHelperSkillAutonomy();
+            LastExecutionSucceeded = true;
+
+            if (hideHelperOnSkillComplete)
+            {
+                hideHelperOnSkillComplete = false;
+
+                if (allyHelperFader != null && allyHelper != null && allyHelper.activeSelf)
+                    allyHelperFader.FinalizeAfterAnimation();
+                else
+                    AllyHelperOut();
+            }
+        }
+
+        return true;
     }
 
     void Awake()

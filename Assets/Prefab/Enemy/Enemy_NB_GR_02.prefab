@@ -46444,7 +46444,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 649c4086cda40ee42a47706ec8e38688, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  slots:
+  autonomousSlots:
   - hotkey: 282
     skillAsset: {fileID: 11400000, guid: c080a6d79d3cab54f8bd7663ce09fc33, type: 2}
     skillLevel: 1
@@ -46472,6 +46472,27 @@ MonoBehaviour:
       level: 1
       supports: []
     maxSupportSlots: 3
+  playerCommandSkill:
+    skillAsset: {fileID: 0}
+    skillLevel: 1
+    supportAssets: []
+    runtimeSkill:
+      def: {fileID: 0}
+      level: 1
+      supports: []
+    maxSupportSlots: 3
+  chainAttackSkill:
+    skillAsset: {fileID: 0}
+    skillLevel: 1
+    supportAssets: []
+    runtimeSkill:
+      def: {fileID: 0}
+      level: 1
+      supports: []
+    maxSupportSlots: 3
+  helperProcLoadout: []
+  legacyHelperProcSlots: []
+  passiveSlots: []
 --- !u!114 &5248180208403712050
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -46959,7 +46980,7 @@ MonoBehaviour:
   behaviorTree: {fileID: 6769712490371983522}
   collisionMask:
     serializedVersion: 2
-    m_Bits: 65535
+    m_Bits: 4096
   queryTriggers: 1
   collisionPadding: 0.02
   replaceDistanceThreshold: 0.05

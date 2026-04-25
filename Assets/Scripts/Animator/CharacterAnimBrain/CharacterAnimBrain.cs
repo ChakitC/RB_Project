@@ -217,17 +217,27 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     {
         normalizedTime = 0f;
 
-        if (requestId <= 0 ||
-            requestId != _activeSkillRequestId ||
-            !_activeSkillReleaseRequested ||
-            !_initialized ||
-            locomotionSM.CurrentState != skill ||
-            skill == null)
-        {
+        if (requestId <= 0 || !_initialized)
             return false;
+
+        if (requestId == _activeSkillRequestId &&
+            _activeSkillReleaseRequested &&
+            locomotionSM.CurrentState == skill &&
+            skill != null)
+        {
+            return skill.TryGetNormalizedTime(out normalizedTime);
         }
 
-        return skill.TryGetNormalizedTime(out normalizedTime);
+        if (requestId == _activeChainRequestId &&
+            _activeChainKind == ChainPlaybackKind.Skill &&
+            _activeChainReleaseRequested &&
+            locomotionSM.CurrentState == chain &&
+            chain != null)
+        {
+            return chain.TryGetNormalizedTime(out normalizedTime);
+        }
+
+        return false;
     }
 
     private bool TryGetAnimProfile(out CharacterAnimProfileSO animProfile)
@@ -1251,22 +1261,46 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     internal void BindActiveSkillTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
     {
-        if (runtimeEvents == null || _activeSkillTimelineEventNames.Count == 0)
+        BindTimelineEventCallbacks(
+            runtimeEvents,
+            _activeSkillTimelineEventNames,
+            ResolveSkillClip(_activeSkillDefinition),
+            RaiseSkillTimelineEvent);
+    }
+
+    internal void BindActiveChainTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
+    {
+        if (_activeChainKind != ChainPlaybackKind.Skill)
             return;
 
-        ClipTransition clip = ResolveSkillClip(_activeSkillDefinition);
+        BindTimelineEventCallbacks(
+            runtimeEvents,
+            _activeChainTimelineEventNames,
+            ResolveSkillClip(_activeChainSkillDefinition),
+            RaiseChainSkillTimelineEvent);
+    }
+
+    private void BindTimelineEventCallbacks(
+        AnimancerEvent.Sequence runtimeEvents,
+        IReadOnlyList<StringReference> eventNames,
+        ClipTransition clip,
+        Action<StringReference> raiseTimelineEvent)
+    {
+        if (runtimeEvents == null || eventNames == null || eventNames.Count == 0 || raiseTimelineEvent == null)
+            return;
+
         string clipName = clip != null && clip.Clip != null ? clip.Clip.name : "<none>";
 
-        for (int i = 0; i < _activeSkillTimelineEventNames.Count; i++)
+        for (int i = 0; i < eventNames.Count; i++)
         {
-            StringReference eventName = _activeSkillTimelineEventNames[i];
+            StringReference eventName = eventNames[i];
             if (eventName == null || string.IsNullOrWhiteSpace(eventName.String))
                 continue;
 
             StringReference capturedEventName = eventName;
             int count = runtimeEvents.SetCallbacks(
                 capturedEventName,
-                () => RaiseSkillTimelineEvent(capturedEventName));
+                () => raiseTimelineEvent(capturedEventName));
 
             if (count == 0)
             {
@@ -1288,6 +1322,20 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         }
 
         SkillTimelineEventRaised?.Invoke(_activeSkillRequestId, eventName);
+    }
+
+    private void RaiseChainSkillTimelineEvent(StringReference eventName)
+    {
+        if (_activeChainKind != ChainPlaybackKind.Skill ||
+            !_activeChainReleaseRequested ||
+            _activeChainRequestId <= 0 ||
+            eventName == null ||
+            string.IsNullOrWhiteSpace(eventName.String))
+        {
+            return;
+        }
+
+        SkillTimelineEventRaised?.Invoke(_activeChainRequestId, eventName);
     }
 
     private void ArmSkillRequest(

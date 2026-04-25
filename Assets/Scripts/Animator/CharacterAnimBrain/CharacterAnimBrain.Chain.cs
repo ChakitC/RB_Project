@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Animancer;
 using UnityEngine;
 
@@ -23,6 +24,7 @@ public sealed partial class CharacterAnimBrain
     private bool _activeChainAdvanceReleased;
     private ChainPlaybackKind _activeChainKind;
     private bool _chainStateCanExit = true;
+    private readonly List<StringReference> _activeChainTimelineEventNames = new List<StringReference>();
 
     private ClipTransition ActiveChainClip => ResolveChainClip();
     private bool HasActiveChainClip => HasValidChainClip();
@@ -181,6 +183,9 @@ public sealed partial class CharacterAnimBrain
         {
             EmitPlaybackSignal(playbackKind, PlaybackPhase.Interrupted, requestId);
             ChainPlaybackInterrupted?.Invoke(requestId);
+
+            if (playbackKind == PlaybackKind.ChainSkill)
+                SkillCastInterrupted?.Invoke(requestId);
         }
     }
 
@@ -264,6 +269,7 @@ public sealed partial class CharacterAnimBrain
         _activeChainReleased = false;
         _activeChainAdvanceReleased = false;
         _chainStateCanExit = false;
+        SetActiveChainTimelineEventNames(kind == ChainPlaybackKind.Skill ? skillDef : null);
     }
 
     private void ClearActiveChainRequest()
@@ -278,6 +284,7 @@ public sealed partial class CharacterAnimBrain
         _activeChainAdvanceRequested = false;
         _activeChainAdvanceReleased = false;
         _chainStateCanExit = true;
+        _activeChainTimelineEventNames.Clear();
     }
 
     private void InterruptActiveChainRequest()
@@ -294,6 +301,9 @@ public sealed partial class CharacterAnimBrain
         {
             EmitPlaybackSignal(playbackKind, PlaybackPhase.Interrupted, requestId);
             ChainPlaybackInterrupted?.Invoke(requestId);
+
+            if (playbackKind == PlaybackKind.ChainSkill)
+                SkillCastInterrupted?.Invoke(requestId);
         }
     }
 
@@ -312,5 +322,15 @@ public sealed partial class CharacterAnimBrain
     {
         ClipTransition clip = ResolveChainClip();
         return clip != null && clip.IsValid;
+    }
+
+    private void SetActiveChainTimelineEventNames(SkillGemDefinition skillDef)
+    {
+        _activeChainTimelineEventNames.Clear();
+
+        if (skillDef == null || skillDef.payload == null)
+            return;
+
+        skillDef.payload.CollectTimelineEventNames(_activeChainTimelineEventNames);
     }
 }

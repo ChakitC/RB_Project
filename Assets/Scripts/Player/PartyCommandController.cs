@@ -331,6 +331,10 @@ public sealed class PartyCommandController : MonoBehaviour
                                                          command.helperSkill,
                                                          command.ClampedHelperSkillLevel,
                                                          command.helperHideOnComplete),
+            PartyCommandExecutionKind.HelperCommandSlot => helperManager != null &&
+                                                           helperManager.TryExecuteCommandSlot(
+                                                               command.ClampedHelperCommandSlotIndex,
+                                                               command.helperHideOnComplete),
             PartyCommandExecutionKind.HelperChainAttack => helperManager != null &&
                                                            helperManager.TryStartChainAttackHelper(
                                                                command.helperChainAttackSequence,
@@ -339,6 +343,7 @@ public sealed class PartyCommandController : MonoBehaviour
                                                                command.helperHideOnComplete,
                                                                command.helperChainContinueMode,
                                                                command.ClampedHelperChainContinueNormalizedTime),
+            PartyCommandExecutionKind.AllyCommandSlot => TryExecuteAllyCommandSlot(command),
             PartyCommandExecutionKind.AllySequence => coordinator != null &&
                                                       coordinator.TryStartSequence(command.allySequence),
             _ => false,
@@ -417,8 +422,14 @@ public sealed class PartyCommandController : MonoBehaviour
             case PartyCommandExecutionKind.HelperSkill:
                 return TryGetHelperPartyCommandBlockReason(null, out reason);
 
+            case PartyCommandExecutionKind.HelperCommandSlot:
+                return TryGetHelperCommandSlotBlockReason(command.ClampedHelperCommandSlotIndex, out reason);
+
             case PartyCommandExecutionKind.HelperChainAttack:
                 return TryGetHelperPartyCommandBlockReason(command.helperChainAttackSequence, out reason);
+
+            case PartyCommandExecutionKind.AllyCommandSlot:
+                return TryGetAllyCommandSlotBlockReason(command.allyCommandActorRole, command.ClampedAllyCommandSlotIndex, out reason);
 
             case PartyCommandExecutionKind.AllySequence:
                 return TryGetAllySequencePartyCommandBlockReason(command.allySequence, out reason);
@@ -463,6 +474,53 @@ public sealed class PartyCommandController : MonoBehaviour
         return false;
     }
 
+    bool TryGetHelperCommandSlotBlockReason(
+        int slotIndex,
+        out PartyCommandBlockReason reason)
+    {
+        reason = PartyCommandBlockReason.None;
+
+        AllyHelperManager helperManager = playerContext != null ? playerContext.allyHelper : null;
+        if (helperManager == null)
+        {
+            reason = PartyCommandBlockReason.HelperUnavailable;
+            return true;
+        }
+
+        if (helperManager.IsHelperBusy)
+        {
+            reason = PartyCommandBlockReason.HelperBusy;
+            return true;
+        }
+
+        if (!helperManager.CanStartManualCommand(requireNotBusy: false))
+        {
+            reason = PartyCommandBlockReason.HelperUnavailable;
+            return true;
+        }
+
+        CharacterSkillManager helperSkillManager = helperManager.HelperSkillManager;
+        bool hasHelperManualSkill = helperSkillManager != null &&
+                                    (helperSkillManager.HasConfiguredPlayerCommandSkill ||
+                                     helperSkillManager.HasConfiguredCommandSlot(slotIndex));
+        if (!hasHelperManualSkill)
+        {
+            reason = PartyCommandBlockReason.SkillUnavailable;
+            return true;
+        }
+
+        bool canStartHelperManualSkill = helperSkillManager.HasConfiguredPlayerCommandSkill
+            ? helperSkillManager.CanStartPlayerCommandSkill()
+            : helperSkillManager.CanStartCastSlot(slotIndex);
+        if (!canStartHelperManualSkill)
+        {
+            reason = PartyCommandBlockReason.SkillBlocked;
+            return true;
+        }
+
+        return false;
+    }
+
     bool TryGetAllySequencePartyCommandBlockReason(
         ChainAttackSequenceDef sequenceDef,
         out PartyCommandBlockReason reason)
@@ -489,6 +547,78 @@ public sealed class PartyCommandController : MonoBehaviour
         }
 
         return false;
+    }
+
+    bool TryGetAllyCommandSlotBlockReason(
+        ChainActorRole actorRole,
+        int slotIndex,
+        out PartyCommandBlockReason reason)
+    {
+        reason = PartyCommandBlockReason.None;
+
+        if (!TryResolveAllyCommandTarget(actorRole, out FieldAllyMember member, out CharacterSkillManager skillManager))
+        {
+            reason = PartyCommandBlockReason.AllyUnavailable;
+            return true;
+        }
+
+        if (member.IsBusy)
+        {
+            reason = PartyCommandBlockReason.AllyBusy;
+            return true;
+        }
+
+        bool hasManualSkill = skillManager.HasConfiguredPlayerCommandSkill ||
+                              skillManager.HasConfiguredCommandSlot(slotIndex);
+        if (!hasManualSkill)
+        {
+            reason = PartyCommandBlockReason.SkillUnavailable;
+            return true;
+        }
+
+        bool canStartManualSkill = skillManager.HasConfiguredPlayerCommandSkill
+            ? skillManager.CanStartPlayerCommandSkill()
+            : skillManager.CanStartCastSlot(slotIndex);
+        if (!canStartManualSkill)
+        {
+            reason = PartyCommandBlockReason.SkillBlocked;
+            return true;
+        }
+
+        return false;
+    }
+
+    bool TryExecuteAllyCommandSlot(PartyCommandDefinition command)
+    {
+        if (command == null)
+            return false;
+
+        if (!TryResolveAllyCommandTarget(command.allyCommandActorRole, out _, out CharacterSkillManager skillManager))
+            return false;
+
+        SkillCastStartResult result = skillManager.HasConfiguredPlayerCommandSkill
+            ? skillManager.TryStartPlayerCommandSkill()
+            : skillManager.TryStartCastSlot(command.ClampedAllyCommandSlotIndex);
+        return result.Started;
+    }
+
+    bool TryResolveAllyCommandTarget(
+        ChainActorRole actorRole,
+        out FieldAllyMember member,
+        out CharacterSkillManager skillManager)
+    {
+        member = null;
+        skillManager = null;
+
+        FieldAllyManager fieldAllyManager = playerContext != null ? playerContext.fieldAllyManager : null;
+        if (fieldAllyManager == null || actorRole == ChainActorRole.None)
+            return false;
+
+        if (!fieldAllyManager.TryGetMember(actorRole, out member) || member == null)
+            return false;
+
+        skillManager = member.SkillManager;
+        return skillManager != null;
     }
 
     bool IsPartyCommandOwnerAvailable()
@@ -553,6 +683,10 @@ public sealed class PartyCommandController : MonoBehaviour
             PartyCommandBlockReason.OwnerUnavailable => "Owner Down",
             PartyCommandBlockReason.HelperUnavailable => "Helper Offline",
             PartyCommandBlockReason.HelperBusy => "Helper Busy",
+            PartyCommandBlockReason.AllyUnavailable => "Ally Offline",
+            PartyCommandBlockReason.AllyBusy => "Ally Busy",
+            PartyCommandBlockReason.SkillUnavailable => "No Skill",
+            PartyCommandBlockReason.SkillBlocked => "Skill Blocked",
             PartyCommandBlockReason.SequenceUnavailable => "Ally Offline",
             PartyCommandBlockReason.SequenceBusy => "Chain Busy",
             PartyCommandBlockReason.MissingTarget => "No Target",
@@ -597,6 +731,8 @@ public enum PartyCommandExecutionKind
     HelperSkill = 1,
     HelperChainAttack = 2,
     AllySequence = 3,
+    HelperCommandSlot = 4,
+    AllyCommandSlot = 5,
 }
 
 public enum PartyCommandBlockReason
@@ -611,6 +747,10 @@ public enum PartyCommandBlockReason
     SequenceUnavailable = 7,
     SequenceBusy = 8,
     MissingTarget = 9,
+    AllyUnavailable = 10,
+    AllyBusy = 11,
+    SkillUnavailable = 12,
+    SkillBlocked = 13,
 }
 
 [Serializable]
@@ -632,15 +772,20 @@ public sealed class PartyCommandDefinition
     public SkillGemDefinition helperSkill;
     [Min(1)] public int helperSkillLevel = 1;
     public bool helperHideOnComplete = true;
+    [Min(0)] public int helperCommandSlotIndex;
     public HelperChainAttackSequenceDef helperChainAttackSequence;
     public ChainStepContinueMode helperChainContinueMode = ChainStepContinueMode.OnStepComplete;
     [Range(0f, 1f)] public float helperChainContinueNormalizedTime = 1f;
+    public ChainActorRole allyCommandActorRole = ChainActorRole.PartySlot1;
+    [Min(0)] public int allyCommandSlotIndex;
     public ChainAttackSequenceDef allySequence;
 
     public float ClampedCommandPointCost => Mathf.Max(0f, commandPointCost);
     public float ClampedCooldownSeconds => Mathf.Max(0f, cooldownSeconds);
     public int ClampedHelperSkillLevel => Mathf.Max(1, helperSkillLevel);
+    public int ClampedHelperCommandSlotIndex => Mathf.Max(0, helperCommandSlotIndex);
     public float ClampedHelperChainContinueNormalizedTime => Mathf.Clamp(helperChainContinueNormalizedTime, 0f, 0.999f);
+    public int ClampedAllyCommandSlotIndex => Mathf.Max(0, allyCommandSlotIndex);
 
     public bool HasExecutionConfigured
     {
@@ -651,8 +796,14 @@ public sealed class PartyCommandDefinition
                 case PartyCommandExecutionKind.HelperSkill:
                     return helperSkill != null;
 
+                case PartyCommandExecutionKind.HelperCommandSlot:
+                    return helperCommandSlotIndex >= 0;
+
                 case PartyCommandExecutionKind.HelperChainAttack:
                     return helperSkill != null && helperChainAttackSequence != null;
+
+                case PartyCommandExecutionKind.AllyCommandSlot:
+                    return allyCommandActorRole != ChainActorRole.None && allyCommandSlotIndex >= 0;
 
                 case PartyCommandExecutionKind.AllySequence:
                     return allySequence != null && allySequence.HasAnySteps;
@@ -675,6 +826,12 @@ public sealed class PartyCommandDefinition
                 case PartyCommandExecutionKind.HelperSkill:
                 case PartyCommandExecutionKind.HelperChainAttack:
                     return ResolveSkillName(helperSkill, "Helper Command");
+
+                case PartyCommandExecutionKind.HelperCommandSlot:
+                    return $"Helper Command {ClampedHelperCommandSlotIndex + 1}";
+
+                case PartyCommandExecutionKind.AllyCommandSlot:
+                    return $"{allyCommandActorRole} Command {ClampedAllyCommandSlotIndex + 1}";
 
                 case PartyCommandExecutionKind.AllySequence:
                     return allySequence != null

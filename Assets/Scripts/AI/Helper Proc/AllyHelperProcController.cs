@@ -13,6 +13,8 @@ public sealed class AllyHelperProcController : MonoBehaviour
 
     readonly Dictionary<SkillHelperDef, float> _nextReadyTimeByDef = new();
     readonly Dictionary<string, float> _attackIdLocks = new();
+    readonly List<SkillHelperDef> _resolvedHelperDefinitions = new();
+    readonly HashSet<SkillHelperDef> _resolvedHelperDefinitionSet = new();
 
     bool _subscribed;
 
@@ -77,12 +79,13 @@ public sealed class AllyHelperProcController : MonoBehaviour
     {
         CleanupExpiredAttackIdLocks();
 
-        if (helperDefinitions == null || helperDefinitions.Length == 0)
+        BuildRuntimeHelperDefinitions();
+        if (_resolvedHelperDefinitions.Count == 0)
             return;
 
-        for (int i = 0; i < helperDefinitions.Length; i++)
+        for (int i = 0; i < _resolvedHelperDefinitions.Count; i++)
         {
-            SkillHelperDef helperDef = helperDefinitions[i];
+            SkillHelperDef helperDef = _resolvedHelperDefinitions[i];
             if (!CanProc(helperDef, context))
                 continue;
 
@@ -101,6 +104,39 @@ public sealed class AllyHelperProcController : MonoBehaviour
             StampAttackIdLock(helperDef, context.AttackId);
             Log(helperDef, $"Proc succeeded for '{helperDef.RuntimeId}' from event '{context.Type}'.");
         }
+    }
+
+    void BuildRuntimeHelperDefinitions()
+    {
+        _resolvedHelperDefinitions.Clear();
+        _resolvedHelperDefinitionSet.Clear();
+
+        playerContext?.ResolveReferences();
+        if (allyHelperManager == null && playerContext != null)
+            allyHelperManager = playerContext.allyHelper;
+
+        AddUniqueDefinitions(helperDefinitions);
+        AddUniqueDefinitions(allyHelperManager != null ? allyHelperManager.HelperSkillManager : null);
+    }
+
+    void AddUniqueDefinitions(SkillHelperDef[] definitions)
+    {
+        if (definitions == null)
+            return;
+
+        for (int i = 0; i < definitions.Length; i++)
+        {
+            SkillHelperDef definition = definitions[i];
+            if (definition == null || !_resolvedHelperDefinitionSet.Add(definition))
+                continue;
+
+            _resolvedHelperDefinitions.Add(definition);
+        }
+    }
+
+    void AddUniqueDefinitions(CharacterSkillManager skillManager)
+    {
+        skillManager?.AppendConfiguredHelperChainDefinitions(_resolvedHelperDefinitions, _resolvedHelperDefinitionSet);
     }
 
     bool CanProc(SkillHelperDef helperDef, PassiveEventContext context)

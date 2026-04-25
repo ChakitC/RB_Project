@@ -2756,12 +2756,16 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 431588361190471669, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
+    - target: {fileID: 459160221069190529, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
       propertyPath: m_SizeDelta.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 1551870629633456059, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
+    - target: {fileID: 1597465633649010127, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
       propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2301022147040333409, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
+      propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3655338539399967481, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
@@ -2807,46 +2811,6 @@ PrefabInstance:
     - target: {fileID: 4094684875628318449, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5114919992609262382, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
-      propertyPath: firePointLocalPos.y
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 5114919992609262382, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
-      propertyPath: firePointLocalPos.z
-      value: 1.2
-      objectReference: {fileID: 0}
-    - target: {fileID: 5114919992609262382, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
-      propertyPath: firePointLocalRotEuler.x
-      value: -90
-      objectReference: {fileID: 0}
-    - target: {fileID: 5468776065345785061, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
-      propertyPath: firePointLocalPos.y
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 5468776065345785061, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
-      propertyPath: firePointLocalPos.z
-      value: 1.2
-      objectReference: {fileID: 0}
-    - target: {fileID: 5468776065345785061, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
-      propertyPath: firePointLocalRotEuler.x
-      value: -90
-      objectReference: {fileID: 0}
-    - target: {fileID: 6803425461017019825, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
-      propertyPath: dashInvincibleTime
-      value: 0.4
-      objectReference: {fileID: 0}
-    - target: {fileID: 7839106397768944065, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
-      propertyPath: firePointLocalPos.y
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7839106397768944065, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
-      propertyPath: firePointLocalPos.z
-      value: 1.2
-      objectReference: {fileID: 0}
-    - target: {fileID: 7839106397768944065, guid: 5747710c05478be4dabe51764a5ea098, type: 3}
-      propertyPath: firePointLocalRotEuler.x
-      value: -90
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2982,10 +2946,6 @@ PrefabInstance:
     - target: {fileID: 3496610103329676457, guid: df86be792e78eac43a023b9adbd003f1, type: 3}
       propertyPath: m_Name
       value: Enemy_NB_GR_02
-      objectReference: {fileID: 0}
-    - target: {fileID: 6178422174124601970, guid: df86be792e78eac43a023b9adbd003f1, type: 3}
-      propertyPath: collisionMask.m_Bits
-      value: 4096
       objectReference: {fileID: 0}
     - target: {fileID: 8191840181784851142, guid: df86be792e78eac43a023b9adbd003f1, type: 3}
       propertyPath: m_LocalPosition.x

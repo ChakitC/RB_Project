@@ -2,36 +2,69 @@ using System;
 using System.Collections.Generic;
 using Animancer;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class CharacterSkillManager : MonoBehaviour
 {
+    static readonly SkillSlot[] EmptyAutonomousSlots = Array.Empty<SkillSlot>();
+    static readonly HelperProcSlot[] EmptyHelperProcSlots = Array.Empty<HelperProcSlot>();
+    static readonly CharacterChainSlot[] EmptyLegacyHelperProcSlots = Array.Empty<CharacterChainSlot>();
+    static readonly PassiveSkillSlot[] EmptyPassiveSlots = Array.Empty<PassiveSkillSlot>();
+
     private CharacteContext ctx;
     private CharacterAnimBrain animBrain;
     private WeaponSystem weaponSystem;
     private SkillSlot pendingSlot;
     private SkillCastOrchestrator castOrchestrator;
 
+    [Header("Autonomous Loadout")]
     public ISkillUser skillUser;
-    public SkillSlot[] slots;
+    [FormerlySerializedAs("slots")]
+    [SerializeField] private SkillSlot[] autonomousSlots;
+
+    [Header("Player Command")]
+    [SerializeField] private CharacterSkillEntry playerCommandSkill;
+
+    [Header("Chain Attack")]
+    [SerializeField] private CharacterSkillEntry chainAttackSkill;
+
+    [Header("Helper Proc Loadout")]
+    [SerializeField] private HelperProcSlot[] helperProcLoadout = EmptyHelperProcSlots;
+
+    [FormerlySerializedAs("helperProcSlots")]
+    [FormerlySerializedAs("reactiveProcSlots")]
+    [FormerlySerializedAs("chainSlots")]
+    [SerializeField, HideInInspector] private CharacterChainSlot[] legacyHelperProcSlots = EmptyLegacyHelperProcSlots;
+
+    [Header("Passive Loadout")]
+    [FormerlySerializedAs("passiveSlots")]
+    [SerializeField] private PassiveSkillSlot[] passiveSlots = EmptyPassiveSlots;
+
+    public IReadOnlyList<SkillSlot> AutonomousSlots => autonomousSlots ?? EmptyAutonomousSlots;
+    public IReadOnlyList<SkillSlot> CommandSlots => AutonomousSlots;
+    public CharacterSkillEntry PlayerCommandSkill => playerCommandSkill;
+    public CharacterSkillEntry ChainAttackSkill => chainAttackSkill;
+    public IReadOnlyList<HelperProcSlot> HelperProcSlots => helperProcLoadout ?? EmptyHelperProcSlots;
+    public IReadOnlyList<PassiveSkillSlot> PassiveSlots => passiveSlots ?? EmptyPassiveSlots;
+    public bool HasConfiguredPlayerCommandSkill => IsSkillEntryConfigured(playerCommandSkill);
+    public bool HasConfiguredChainAttackSkill => IsSkillEntryConfigured(chainAttackSkill);
+    public bool HasConfiguredPassiveSlots => CountConfiguredPassiveSlots() > 0;
 
     private void Awake()
     {
+        MigrateLegacyHelperProcSlotsIfNeeded();
         CacheReferences();
         castOrchestrator = new SkillCastOrchestrator(this);
 
         if (skillUser == null)
             Debug.LogError("CharacterSkillManager requires an ISkillUser component.");
 
-        if (slots == null)
-            return;
+        RebuildAllRuntimeSkills();
+    }
 
-        foreach (SkillSlot slot in slots)
-        {
-            if (slot == null)
-                continue;
-
-            slot.runtimeSkill = BuildRuntimeSkill(slot, slot.skillAsset, slot.skillLevel);
-        }
+    private void OnValidate()
+    {
+        MigrateLegacyHelperProcSlotsIfNeeded();
     }
 
     private void OnEnable()
@@ -70,10 +103,10 @@ public class CharacterSkillManager : MonoBehaviour
             return;
 
         pendingSlot = null;
-        if (slots == null)
+        if (autonomousSlots == null)
             return;
 
-        foreach (SkillSlot slot in slots)
+        foreach (SkillSlot slot in autonomousSlots)
         {
             if (slot == null)
                 continue;
@@ -90,46 +123,146 @@ public class CharacterSkillManager : MonoBehaviour
 
     public SkillCastStartResult TryStartCastSlot(int slotIndex)
     {
-        if (slots == null || slotIndex < 0 || slotIndex >= slots.Length)
+        CacheReferences();
+
+        if (!TryGetCommandSlot(slotIndex, out SkillSlot slot))
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
-        return TryBeginCast(slots[slotIndex]);
+        return TryBeginCast(slot);
+    }
+
+    public bool HasConfiguredCommandSlot(int slotIndex)
+    {
+        return TryGetCommandSlot(slotIndex, out SkillSlot slot) &&
+               slot != null &&
+               slot.skillAsset != null;
+    }
+
+    public bool CanStartCastSlot(int slotIndex)
+    {
+        CacheReferences();
+
+        if (!TryGetCommandSlot(slotIndex, out SkillSlot slot))
+            return false;
+
+        EnsureCommandRuntimeSkill(slot);
+        return slot != null &&
+               slot.runtimeSkill != null &&
+               skillUser != null &&
+               !IsSkillUseBlocked() &&
+               slot.runtimeSkill.CanCast(skillUser);
+    }
+
+    public bool CanStartPlayerCommandSkill()
+    {
+        CacheReferences();
+        EnsureRuntimeSkill(playerCommandSkill);
+        return playerCommandSkill != null &&
+               playerCommandSkill.runtimeSkill != null &&
+               skillUser != null &&
+               !IsSkillUseBlocked() &&
+               playerCommandSkill.runtimeSkill.CanCast(skillUser);
+    }
+
+    public SkillCastStartResult TryStartPlayerCommandSkill()
+    {
+        CacheReferences();
+        return TryBeginEntryCast(playerCommandSkill, "player-command");
+    }
+
+    public bool TryGetChainAttackRuntimeSkill(out SkillInstance runtimeSkill)
+    {
+        CacheReferences();
+        EnsureRuntimeSkill(chainAttackSkill);
+
+        runtimeSkill = chainAttackSkill != null ? chainAttackSkill.runtimeSkill : null;
+        return runtimeSkill != null && runtimeSkill.def != null;
+    }
+
+    public bool TryGetChainAttackSkillDefinition(out SkillGemDefinition skillDef, out int skillLevel, out SkillInstance runtimeSkill)
+    {
+        skillDef = null;
+        skillLevel = 1;
+
+        if (!TryGetChainAttackRuntimeSkill(out runtimeSkill))
+            return false;
+
+        skillDef = runtimeSkill.def;
+        skillLevel = Mathf.Max(1, runtimeSkill.level);
+        return true;
+    }
+
+    public void AppendConfiguredHelperChainDefinitions(List<SkillHelperDef> buffer, HashSet<SkillHelperDef> dedupe = null)
+    {
+        MigrateLegacyHelperProcSlotsIfNeeded();
+
+        if (buffer == null || helperProcLoadout == null)
+            return;
+
+        for (int i = 0; i < helperProcLoadout.Length; i++)
+        {
+            HelperProcSlot slot = helperProcLoadout[i];
+            SkillHelperDef definition = slot?.ResolveHelperProc();
+            if (definition == null)
+                continue;
+
+            if (dedupe != null && !dedupe.Add(definition))
+                continue;
+
+            buffer.Add(definition);
+        }
+    }
+
+    public void AppendConfiguredPassiveDefinitions(List<PassiveDefinition> buffer)
+    {
+        if (buffer == null || passiveSlots == null)
+            return;
+
+        for (int i = 0; i < passiveSlots.Length; i++)
+        {
+            PassiveDefinition definition = passiveSlots[i]?.passiveAsset;
+            if (definition != null)
+                buffer.Add(definition);
+        }
     }
 
     public void ClearSlot(int index)
     {
-        if (slots == null || index < 0 || index >= slots.Length)
+        if (!TryGetCommandSlot(index, out SkillSlot slot))
             return;
 
-        if (ReferenceEquals(pendingSlot, slots[index]))
+        if (ReferenceEquals(pendingSlot, slot))
         {
             pendingSlot = null;
             castOrchestrator?.CancelPendingCast();
         }
 
-        slots[index].skillAsset = null;
-        slots[index].supportAssets = null;
-        slots[index].runtimeSkill = null;
+        slot.skillAsset = null;
+        slot.supportAssets = null;
+        slot.runtimeSkill = null;
     }
 
     public void AssignSkillToSlot(int index, SkillGemDefinition asset, int level = 1)
     {
-        if (slots == null || index < 0 || index >= slots.Length)
+        if (!TryGetCommandSlot(index, out SkillSlot slot))
             return;
 
-        if (ReferenceEquals(pendingSlot, slots[index]))
+        if (ReferenceEquals(pendingSlot, slot))
         {
             pendingSlot = null;
             castOrchestrator?.CancelPendingCast();
         }
 
-        slots[index].skillAsset = asset;
-        slots[index].skillLevel = level;
-        slots[index].runtimeSkill = BuildRuntimeSkill(slots[index], asset, level);
+        slot.skillAsset = asset;
+        slot.skillLevel = level;
+        slot.runtimeSkill = BuildRuntimeSkill(slot, asset, level);
     }
 
     private SkillCastStartResult TryBeginCast(SkillSlot slot)
     {
+        CacheReferences();
+        EnsureCommandRuntimeSkill(slot);
+
         if (slot == null || slot.runtimeSkill == null || skillUser == null)
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
@@ -152,6 +285,27 @@ public class CharacterSkillManager : MonoBehaviour
         return result;
     }
 
+    private SkillCastStartResult TryBeginEntryCast(CharacterSkillEntry entry, string debugSource)
+    {
+        CacheReferences();
+        EnsureRuntimeSkill(entry);
+
+        if (entry == null || entry.runtimeSkill == null || skillUser == null)
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+
+        castOrchestrator ??= new SkillCastOrchestrator(this);
+        SkillInstance runtimeSkill = entry.runtimeSkill;
+        return castOrchestrator.TryStartCast(new SkillCastRequest(
+            runtimeSkill,
+            skillUser,
+            animationDriver: animBrain,
+            canProceed: () => IsSkillEntryCastStillValid(entry, runtimeSkill),
+            onStarted: StopWeaponActivityForSkillCast,
+            useAnimationDriver: true,
+            allowImmediateFallback: true,
+            debugSource: debugSource));
+    }
+
     private SkillInstance BuildRuntimeSkill(SkillSlot slot, SkillGemDefinition asset, int level)
     {
         if (slot == null || asset == null)
@@ -160,16 +314,35 @@ public class CharacterSkillManager : MonoBehaviour
         int resolvedSkillLevel = asset.ClampLevel(level);
         slot.skillLevel = resolvedSkillLevel;
 
+        return CreateRuntimeSkill(asset, slot.supportAssets, resolvedSkillLevel);
+    }
+
+    private SkillInstance BuildRuntimeSkill(CharacterSkillEntry entry, SkillGemDefinition asset, int level)
+    {
+        if (entry == null || asset == null)
+            return null;
+
+        int resolvedSkillLevel = asset.ClampLevel(level);
+        entry.skillLevel = resolvedSkillLevel;
+
+        return CreateRuntimeSkill(asset, entry.supportAssets, resolvedSkillLevel);
+    }
+
+    private static SkillInstance CreateRuntimeSkill(
+        SkillGemDefinition asset,
+        SupportGemDefinition[] supportAssets,
+        int resolvedSkillLevel)
+    {
         var instance = new SkillInstance
         {
             def = asset,
             level = resolvedSkillLevel,
         };
 
-        if (slot.supportAssets == null)
+        if (supportAssets == null)
             return instance;
 
-        foreach (SupportGemDefinition supportAsset in slot.supportAssets)
+        foreach (SupportGemDefinition supportAsset in supportAssets)
         {
             if (supportAsset == null)
                 continue;
@@ -182,6 +355,75 @@ public class CharacterSkillManager : MonoBehaviour
         }
 
         return instance;
+    }
+
+    private bool TryGetCommandSlot(int slotIndex, out SkillSlot slot)
+    {
+        slot = null;
+
+        if (autonomousSlots == null || slotIndex < 0 || slotIndex >= autonomousSlots.Length)
+            return false;
+
+        slot = autonomousSlots[slotIndex];
+        return slot != null;
+    }
+
+    private void RebuildAllRuntimeSkills()
+    {
+        RebuildAllAutonomousRuntimeSkills();
+        EnsureRuntimeSkill(playerCommandSkill);
+        EnsureRuntimeSkill(chainAttackSkill);
+    }
+
+    private void RebuildAllAutonomousRuntimeSkills()
+    {
+        if (autonomousSlots == null)
+            return;
+
+        for (int i = 0; i < autonomousSlots.Length; i++)
+            EnsureCommandRuntimeSkill(autonomousSlots[i]);
+    }
+
+    private void EnsureCommandRuntimeSkill(SkillSlot slot)
+    {
+        if (slot == null)
+            return;
+
+        if (slot.skillAsset == null)
+        {
+            slot.runtimeSkill = null;
+            return;
+        }
+
+        if (slot.runtimeSkill != null &&
+            slot.runtimeSkill.def == slot.skillAsset &&
+            slot.runtimeSkill.level == slot.skillLevel)
+        {
+            return;
+        }
+
+        slot.runtimeSkill = BuildRuntimeSkill(slot, slot.skillAsset, slot.skillLevel);
+    }
+
+    private void EnsureRuntimeSkill(CharacterSkillEntry entry)
+    {
+        if (entry == null)
+            return;
+
+        if (entry.skillAsset == null)
+        {
+            entry.runtimeSkill = null;
+            return;
+        }
+
+        if (entry.runtimeSkill != null &&
+            entry.runtimeSkill.def == entry.skillAsset &&
+            entry.runtimeSkill.level == entry.skillLevel)
+        {
+            return;
+        }
+
+        entry.runtimeSkill = BuildRuntimeSkill(entry, entry.skillAsset, entry.skillLevel);
     }
 
     private void CacheReferences()
@@ -200,6 +442,9 @@ public class CharacterSkillManager : MonoBehaviour
         if (ctx.HealthSystem == null)
             ctx.HealthSystem = GetComponent<HealthSystem>();
 
+        if (ctx.SkillManager == null)
+            ctx.SkillManager = this;
+
         if (ctx.AnimBrain == null)
             ctx.AnimBrain = animBrain;
 
@@ -207,6 +452,46 @@ public class CharacterSkillManager : MonoBehaviour
             ctx.WeaponSystem = weaponSystem;
         else if (weaponSystem == null)
             weaponSystem = ctx.WeaponSystem;
+    }
+
+    private int CountConfiguredPassiveSlots()
+    {
+        if (passiveSlots == null)
+            return 0;
+
+        int count = 0;
+        for (int i = 0; i < passiveSlots.Length; i++)
+        {
+            if (passiveSlots[i] != null && passiveSlots[i].passiveAsset != null)
+                count++;
+        }
+
+        return count;
+    }
+
+    private void MigrateLegacyHelperProcSlotsIfNeeded()
+    {
+        if (helperProcLoadout != null && helperProcLoadout.Length > 0)
+            return;
+
+        if (legacyHelperProcSlots == null || legacyHelperProcSlots.Length == 0)
+            return;
+
+        List<HelperProcSlot> migrated = null;
+        for (int i = 0; i < legacyHelperProcSlots.Length; i++)
+        {
+            HelperProcSlot migratedSlot = legacyHelperProcSlots[i]?.ToHelperProcSlot();
+            if (migratedSlot == null || !migratedSlot.IsConfigured)
+                continue;
+
+            migrated ??= new List<HelperProcSlot>();
+            migrated.Add(migratedSlot);
+        }
+
+        if (migrated == null || migrated.Count == 0)
+            return;
+
+        helperProcLoadout = migrated.ToArray();
     }
 
     private bool IsSlotCastStillValid(SkillSlot slot, SkillInstance runtimeSkill)
@@ -221,6 +506,25 @@ public class CharacterSkillManager : MonoBehaviour
             return false;
 
         return !IsSkillUseBlocked();
+    }
+
+    private bool IsSkillEntryCastStillValid(CharacterSkillEntry entry, SkillInstance runtimeSkill)
+    {
+        if (entry == null || runtimeSkill == null || runtimeSkill.def == null)
+            return false;
+
+        if (entry.runtimeSkill != runtimeSkill)
+            return false;
+
+        if (entry.skillAsset != runtimeSkill.def)
+            return false;
+
+        return !IsSkillUseBlocked();
+    }
+
+    private static bool IsSkillEntryConfigured(CharacterSkillEntry entry)
+    {
+        return entry != null && entry.skillAsset != null;
     }
 
     private bool IsSkillUseBlocked()

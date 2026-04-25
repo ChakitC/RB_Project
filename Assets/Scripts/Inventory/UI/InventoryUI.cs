@@ -142,8 +142,10 @@ public class InventoryUI : InventorySlotOwnerBase
 
     void Start()
     {
-        if (inventorySource != null)
-            BindSource(inventorySource);
+        if (inventorySource == null)
+            inventorySource = ResolveInventorySource();
+
+        BindSource(inventorySource);
     }
 
     void OnDestroy()
@@ -155,6 +157,22 @@ public class InventoryUI : InventorySlotOwnerBase
     {
         inventorySource = inventory;
         Bind(inventory != null ? inventory.InventorySystem : null);
+    }
+
+    PlayerInventory ResolveInventorySource()
+    {
+        var fromParent = GetComponentInParent<PlayerInventory>(true);
+        if (fromParent != null)
+            return fromParent;
+
+        if (transform.root != null)
+        {
+            var fromRoot = transform.root.GetComponentInChildren<PlayerInventory>(true);
+            if (fromRoot != null)
+                return fromRoot;
+        }
+
+        return FindFirstObjectByType<PlayerInventory>(FindObjectsInactive.Include);
     }
 
     public void Bind(InventorySystem system)

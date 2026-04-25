@@ -15,6 +15,8 @@ public sealed class ChainAttackProcController : MonoBehaviour
 
     readonly Dictionary<SkillChainDef, float> _nextReadyTimeByDef = new();
     readonly Dictionary<string, float> _attackIdLocks = new();
+    readonly List<SkillChainDef> _resolvedSkillChainDefinitions = new();
+    readonly HashSet<SkillChainDef> _resolvedSkillChainSet = new();
 
     bool _subscribed;
 
@@ -81,12 +83,13 @@ public sealed class ChainAttackProcController : MonoBehaviour
     {
         CleanupExpiredAttackIdLocks();
 
-        if (skillChainDefinitions == null || skillChainDefinitions.Length == 0)
+        BuildRuntimeChainDefinitions();
+        if (_resolvedSkillChainDefinitions.Count == 0)
             return;
 
-        for (int i = 0; i < skillChainDefinitions.Length; i++)
+        for (int i = 0; i < _resolvedSkillChainDefinitions.Count; i++)
         {
-            SkillChainDef chainDef = skillChainDefinitions[i];
+            SkillChainDef chainDef = _resolvedSkillChainDefinitions[i];
             if (!CanProc(chainDef, context))
                 continue;
 
@@ -106,6 +109,29 @@ public sealed class ChainAttackProcController : MonoBehaviour
         }
     }
 
+    void BuildRuntimeChainDefinitions()
+    {
+        _resolvedSkillChainDefinitions.Clear();
+        _resolvedSkillChainSet.Clear();
+
+        playerContext?.ResolveReferences();
+        AddUniqueDefinitions(skillChainDefinitions);
+    }
+
+    void AddUniqueDefinitions(SkillChainDef[] definitions)
+    {
+        if (definitions == null)
+            return;
+
+        for (int i = 0; i < definitions.Length; i++)
+        {
+            SkillChainDef definition = definitions[i];
+            if (definition == null || !_resolvedSkillChainSet.Add(definition))
+                continue;
+
+            _resolvedSkillChainDefinitions.Add(definition);
+        }
+    }
     bool CanProc(SkillChainDef chainDef, PassiveEventContext context)
     {
         if (chainDef == null || chainAttackCoordinator == null)

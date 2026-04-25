@@ -23,13 +23,42 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
     [SerializeField] private float refreshIntervalSeconds = 0.2f;
 
     float refreshTimer;
+    bool initialized;
 
     public Transform CastOrigin => castOrigin ? castOrigin : transform;
     public Transform AimTransform => runtimeAimTransformOverride ? runtimeAimTransformOverride : aimTransform ? aimTransform : transform;
-    public float currentEnagy => currentEnergy;
-    public float CurrentEnergy => currentEnergy;
-    public float MaximumEnergy => maximumEnergy;
-    public StatsHub StatsHub => statsHub;
+    public float currentEnagy
+    {
+        get
+        {
+            EnsureInitialized();
+            return currentEnergy;
+        }
+    }
+    public float CurrentEnergy
+    {
+        get
+        {
+            EnsureInitialized();
+            return currentEnergy;
+        }
+    }
+    public float MaximumEnergy
+    {
+        get
+        {
+            EnsureInitialized();
+            return maximumEnergy;
+        }
+    }
+    public StatsHub StatsHub
+    {
+        get
+        {
+            EnsureInitialized();
+            return statsHub;
+        }
+    }
 
     public float BaseDamage => statsHub ? statsHub.GetSkillBaseDamage()
         : (characteContext ? characteContext.baseDamage : 0f);
@@ -39,18 +68,13 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
 
     void Start()
     {
-        if (!characteContext) characteContext = GetComponent<CharacteContext>();
-        if (!statsHub) statsHub = GetComponent<StatsHub>();
-        if (!statsHub) statsHub = GetComponentInParent<StatsHub>();
-
-        maximumEnergy = GetMaximumEnergyFromHubOrFallback();
-        currentEnergy = maximumEnergy;
-
-        NotifyEnergyChanged();
+        EnsureInitialized();
     }
 
     void Update()
     {
+        EnsureInitialized();
+
         if (!autoRefreshFromHub || statsHub == null)
             return;
 
@@ -101,6 +125,8 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
 
     public void SpendEnagy(float amount)
     {
+        EnsureInitialized();
+
         if (!float.IsFinite(amount) || amount <= 0f)
             return;
 
@@ -112,6 +138,8 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
 
     public bool CanRestoreEnergy(float amount)
     {
+        EnsureInitialized();
+
         if (!float.IsFinite(amount) || amount <= 0f)
             return false;
 
@@ -121,6 +149,8 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
 
     public bool RestoreEnergy(float amount)
     {
+        EnsureInitialized();
+
         if (!CanRestoreEnergy(amount))
             return false;
 
@@ -136,6 +166,22 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
     void NotifyEnergyChanged()
     {
         characteContext?.UIManager?.UpdateEnegyText(currentEnergy, maximumEnergy);
+    }
+
+    void EnsureInitialized()
+    {
+        if (initialized)
+            return;
+
+        if (!characteContext) characteContext = GetComponent<CharacteContext>();
+        if (!statsHub) statsHub = GetComponent<StatsHub>();
+        if (!statsHub) statsHub = GetComponentInParent<StatsHub>();
+
+        maximumEnergy = GetMaximumEnergyFromHubOrFallback();
+        currentEnergy = maximumEnergy;
+        initialized = true;
+
+        NotifyEnergyChanged();
     }
 
     public void SetRuntimeAimTransformOverride(Transform overrideTransform)

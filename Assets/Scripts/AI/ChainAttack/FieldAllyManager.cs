@@ -10,6 +10,8 @@ public sealed class FieldAllyManager : MonoBehaviour
 
     readonly Dictionary<ChainActorRole, FieldAllyMember> _membersByRole = new();
 
+    public IEnumerable<FieldAllyMember> RegisteredMembers => _membersByRole.Values;
+
     void Awake()
     {
         if (playerContext == null)

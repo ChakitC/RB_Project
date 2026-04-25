@@ -60,11 +60,18 @@ public class UIManager : MonoBehaviour
     {
         if (ctx && ctx.StaminaSystem != null)
             ctx.StaminaSystem.OnStaminaChanged -= UpdateStamina;
+
+        if (ctx && ctx.UIManager == this)
+            ctx.UIManager = null;
     }
 
     void ResolveReferences()
     {
+        if (!ctx) ctx = FindAnyObjectByType<PlayerContext>();
         if (!ctx) ctx = FindAnyObjectByType<CharacteContext>();
+
+        if (ctx && ctx.UIManager != this)
+            ctx.UIManager = this;
 
         if (!statusEffectController && ctx)
             statusEffectController = ctx.GetComponent<StatusEffectController>();

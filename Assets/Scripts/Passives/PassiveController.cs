@@ -78,7 +78,9 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         _triggeredPassives.Clear();
         _customPassives.Clear();
 
-        AddPassivesFromList(ctx != null && ctx.baseStats != null ? ctx.baseStats.passives : null);
+        if (!TryAddPassivesFromSkillManager())
+            AddPassivesFromList(ctx != null && ctx.baseStats != null ? ctx.baseStats.passives : null);
+
         AddPassivesFromList(runtimePassives);
         AddPassivesFromList(extraPassives);
 
@@ -94,6 +96,21 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
         statsHub?.RebuildModifierProviders();
         statsHub?.MarkDirty();
+    }
+
+    bool TryAddPassivesFromSkillManager()
+    {
+        CharacterSkillManager skillManager = ctx != null ? ctx.SkillManager : null;
+        if (skillManager == null || !skillManager.HasConfiguredPassiveSlots)
+            return false;
+
+        List<PassiveDefinition> equippedPassives = new();
+        skillManager.AppendConfiguredPassiveDefinitions(equippedPassives);
+        if (equippedPassives.Count == 0)
+            return false;
+
+        AddPassivesFromList(equippedPassives);
+        return true;
     }
 
     public void SetRuntimePassives(IReadOnlyList<PassiveDefinition> passives)

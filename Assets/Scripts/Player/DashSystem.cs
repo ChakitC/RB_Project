@@ -4,6 +4,9 @@ using UnityEngine;
 
 public class DashSystem : MonoBehaviour
 {
+    [Header("Ref")]
+    [SerializeField] private Transform actorRoot;
+
     [Header("Dash")]
     public float dashDistance = 5f;
     public float dashDuration = 0.15f;
@@ -34,12 +37,37 @@ public class DashSystem : MonoBehaviour
 
     public bool IsDashing => isDashing;
     public bool IsPerfectDodgeWindowActive => isDashing && Time.time <= _perfectDodgeWindowUntil;
+    Transform ActorRoot => actorRoot ? actorRoot : transform;
 
     void Awake()
     {
-        ctx = GetComponent<CharacteContext>();
+        ResolveReferences();
+    }
+
+    void ResolveReferences()
+    {
+        if (!actorRoot)
+        {
+            CharacteContext parentContext = GetComponentInParent<CharacteContext>();
+            actorRoot = parentContext ? parentContext.transform : transform;
+        }
+
+        ctx = actorRoot.GetComponent<CharacteContext>();
+        if (ctx == null)
+            ctx = GetComponentInParent<CharacteContext>();
+
         if (!combatEventBus)
-            combatEventBus = GetComponent<CombatEventBus>();
+            combatEventBus = actorRoot.GetComponent<CombatEventBus>();
+        if (!combatEventBus)
+            combatEventBus = GetComponentInParent<CombatEventBus>();
+
+        if (ctx != null)
+        {
+            if (ctx.DashSystem == null)
+                ctx.DashSystem = this;
+
+            lastMoveDir = ActorRoot.forward;
+        }
     }
 
     void Start()
@@ -136,7 +164,7 @@ public class DashSystem : MonoBehaviour
 
     public bool TryDash()
     {
-        if (ctx == null || isDashing || ctx.stateHub.Isdown)
+        if (ctx == null || ctx.stateHub == null || ctx.cc == null || ctx.StaminaSystem == null || isDashing || ctx.stateHub.Isdown)
             return false;
 
         if (!ctx.StaminaSystem.Spend(dashCost))
@@ -147,25 +175,26 @@ public class DashSystem : MonoBehaviour
 
         Vector2 input = ctx.moveInput;
         Transform cam = Camera.main ? Camera.main.transform : null;
+        Transform root = ActorRoot;
 
-        Vector3 camFwd = cam ? cam.forward : transform.forward;
-        Vector3 camRight = cam ? cam.right : transform.right;
+        Vector3 camFwd = cam ? cam.forward : root.forward;
+        Vector3 camRight = cam ? cam.right : root.right;
         camFwd.y = 0f;
         camRight.y = 0f;
 
         if (camFwd.sqrMagnitude > 0.0001f) camFwd.Normalize();
-        else camFwd = transform.forward;
+        else camFwd = root.forward;
 
         if (camRight.sqrMagnitude > 0.0001f) camRight.Normalize();
-        else camRight = transform.right;
+        else camRight = root.right;
 
         Vector3 inputDirWorld = camRight * input.x + camFwd * input.y;
         Vector3 dashDir = inputDirWorld.sqrMagnitude > 0.001f ? inputDirWorld : lastMoveDir;
         if (dashDir.sqrMagnitude < 0.001f)
-            dashDir = transform.forward;
+            dashDir = root.forward;
         dashDir.Normalize();
 
-        Vector3 dashDirLocalBeforeTurn = transform.InverseTransformDirection(dashDir);
+        Vector3 dashDirLocalBeforeTurn = root.InverseTransformDirection(dashDir);
 
         if (inputDirWorld.sqrMagnitude > 0.001f)
             lastMoveDir = dashDir;
@@ -173,9 +202,10 @@ public class DashSystem : MonoBehaviour
         float radius = ctx.cc.radius;
         float height = ctx.cc.height;
 
-        Vector3 center = transform.position + Vector3.up * (height * 0.5f);
-        Vector3 p1 = center + Vector3.up * (height * 0.5f - radius);
-        Vector3 p2 = center - Vector3.up * (height * 0.5f - radius);
+        Vector3 center = ctx.cc.transform.TransformPoint(ctx.cc.center);
+        float capsuleHalfLine = Mathf.Max(0f, height * 0.5f - radius);
+        Vector3 p1 = center + Vector3.up * capsuleHalfLine;
+        Vector3 p2 = center - Vector3.up * capsuleHalfLine;
 
         float maxDist = dashDistance;
         if (Physics.CapsuleCast(p1, p2, radius, dashDir, out var hit, dashDistance, obstacleMask, QueryTriggerInteraction.Ignore))
@@ -213,7 +243,7 @@ public class DashSystem : MonoBehaviour
             preventedContext,
             PassiveEventType.PerfectDodge,
             preventedContext.Source,
-            gameObject,
+            ResolveActorGameObject(),
             preventedContext.SourceId,
             preventedContext.AttackId,
             preventedContext.Value,
@@ -249,9 +279,11 @@ public class DashSystem : MonoBehaviour
 
     IEnumerator InvincibleTimer(float time)
     {
-        ctx.HealthSystem.SetInvincible(true);
+        if (ctx != null && ctx.HealthSystem != null)
+            ctx.HealthSystem.SetInvincible(true);
         yield return new WaitForSeconds(time);
-        ctx.HealthSystem.SetInvincible(false);
+        if (ctx != null && ctx.HealthSystem != null)
+            ctx.HealthSystem.SetInvincible(false);
         _invincibleRoutine = null;
     }
 
@@ -321,7 +353,7 @@ public class DashSystem : MonoBehaviour
         if (dashDir.sqrMagnitude <= 0.0001f)
             return;
 
-        transform.rotation = Quaternion.LookRotation(dashDir.normalized, Vector3.up);
+        ActorRoot.rotation = Quaternion.LookRotation(dashDir.normalized, Vector3.up);
     }
 
     bool ShouldUseBackwardDashAnimation(Vector3 dashDirLocal)
@@ -340,13 +372,22 @@ public class DashSystem : MonoBehaviour
 
         var dashContext = combatEventBus.CreateExternalContext(
             eventType,
-            gameObject,
+            ResolveActorGameObject(),
             null,
             "dash",
             null,
             value);
 
         combatEventBus.Publish(dashContext);
+    }
+
+    GameObject ResolveActorGameObject()
+    {
+        if (ctx != null)
+            return ctx.gameObject;
+
+        Transform root = ActorRoot;
+        return root ? root.gameObject : gameObject;
     }
 
     void ResetPerfectDodgeWindow()

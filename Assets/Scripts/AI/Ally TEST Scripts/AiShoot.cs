@@ -30,7 +30,7 @@ public class AiShoot : Action
     {
         if (CTX == null)
         {
-            CTX = gameObject.GetComponent<CharacteContext>();
+            CTX = gameObject.GetComponentInParent<CharacteContext>();
         }
         
 

@@ -11,7 +11,7 @@ public class StartMelee : ActionNode
     public override void OnStart()
     {
         if (_stateHub == null)
-            _stateHub = gameObject.GetComponent<StateHub>();
+            _stateHub = gameObject.GetComponentInParent<StateHub>();
 
         if (_stateHub == null)
             return;

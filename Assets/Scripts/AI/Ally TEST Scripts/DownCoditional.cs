@@ -44,7 +44,7 @@ public class DownCoditional : Conditional
     private bool TryGetLifeState(out LifeStateId life)
     {
         if (ctx == null)
-            ctx = gameObject.GetComponent<CharacteContext>();
+            ctx = gameObject.GetComponentInParent<CharacteContext>();
 
         if (ctx == null || ctx.stateHub == null || ctx.stateHub.LifeSM == null)
         {
@@ -88,7 +88,7 @@ public class DownCoditional : Conditional
     private bool TryGetStateHub(out StateHub stateHub)
     {
         if (ctx == null)
-            ctx = gameObject.GetComponent<CharacteContext>();
+            ctx = gameObject.GetComponentInParent<CharacteContext>();
 
         stateHub = ctx != null ? ctx.stateHub : null;
         return stateHub != null && stateHub.LifeSM != null;

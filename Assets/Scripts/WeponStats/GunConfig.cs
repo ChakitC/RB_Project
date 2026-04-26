@@ -30,6 +30,9 @@ public class GunConfig : ItemDefinition
     public float critMultiplier = 1f;
     public float stability = 0f;
     public float BulletSpeed = 30f;
+
+    [Header("Stagger")]
+    [Min(0f)] public float staggerPower = 10f;
     
     
     [Header("ReloadSetting")]

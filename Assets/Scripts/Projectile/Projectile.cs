@@ -192,13 +192,15 @@ public class Projectile : MonoBehaviour
         {
             sourceActor = sourceActor,
             collisionIgnoreRoot = collisionIgnoreRoot,
+            aimTarget = user != null ? user.AimTransform : null,
             combatEventBus = ownerCombatEventBus,
             statusEffectController = ownerStatusController,
             dir   = dir,
             stats = new ProjectileStats
             {
                 damage = (skillStats != null) ? skillStats.damage : 0f,
-                speed  = (def != null) ? def.projectileSpeed : 20f
+                speed  = (def != null) ? def.projectileSpeed : 20f,
+                staggerPower = (skillStats != null) ? skillStats.staggerPower : 0f
             },
             sourceId = def != null ? $"skill:{def.name}" : "skill",
             chainId = CombatEventBus.NextChainId(),
@@ -321,7 +323,7 @@ public class Projectile : MonoBehaviour
 
         if (_shooterRoot && other.transform.root == _shooterRoot) return;
 
-        var target = other.GetComponentInParent<IDamageable>();
+        var target = DamageableResolver.ResolveFrom(other);
         
         
         // Debug.Log($"[Projectile] Hit: {other.name} root={other.transform.root.name}");
@@ -463,7 +465,7 @@ public class Projectile : MonoBehaviour
             if (_ignoredRootIds.Contains(rootId)) continue;
             if (_shooterRoot && root == _shooterRoot) continue;
 
-            var dmg = h.GetComponentInParent<IDamageable>();
+            var dmg = DamageableResolver.ResolveFrom(h);
             if (dmg == null) continue;
 
             int key = GetDamageableIdentityKey(dmg);
@@ -620,6 +622,7 @@ public class Projectile : MonoBehaviour
         var childCtx = _ctx;
         childCtx.dir = dir.normalized;
         childCtx.stats.damage *= dmgMul;
+        childCtx.stats.staggerPower *= dmgMul;
         childCtx.stats.speed *= spdMul;
 
         // copy unified params
@@ -760,9 +763,18 @@ public class Projectile : MonoBehaviour
             _ctx.origin,
             _ctx.originPassiveId,
             _ctx.originRuleId,
-            knockback);
+            knockback,
+            BuildStaggerPayload());
 
         target.TakeDamage(in damageContext);
+    }
+
+    StaggerPayload BuildStaggerPayload()
+    {
+        if (config != null)
+            return config.ToStaggerPayload(_ctx.stats.staggerPower, _ctx.sourceId);
+
+        return new StaggerPayload(_ctx.stats.staggerPower, 1f, _ctx.sourceId);
     }
 
     public void ApplyResolvedDamage(IDamageable target, float finalDamage, in ProjectileHitInfo hit, bool showDamageNumber = false)

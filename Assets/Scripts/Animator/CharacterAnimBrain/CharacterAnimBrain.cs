@@ -84,6 +84,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private Locomotion_StatusEffect statusEffectState;
     private StatusLocomotionKind _currentStatusLocomotionKind;
     private StatusLocomotionKind _externalStatusLocomotionKind;
+    private StatusLocomotionKind _staggerStatusLocomotionKind;
 
     // pending (กรณีเรียก SetDowned ก่อน init)
     private bool _pendingDownedSet;
@@ -602,6 +603,16 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         RefreshStatusLocomotion();
     }
 
+    public void SetStaggerStatusLocomotion(ImpactReactionKind reaction)
+    {
+        StatusLocomotionKind desired = MapReactionToStatusLocomotion(reaction);
+        if (_staggerStatusLocomotionKind == desired)
+            return;
+
+        _staggerStatusLocomotionKind = desired;
+        RefreshStatusLocomotion();
+    }
+
     public void PlaySkill()
     {
         PlaySkill(null);
@@ -967,7 +978,18 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         {
             int priority = GetStatusLocomotionPriority(_externalStatusLocomotionKind);
             if (priority > bestPriority)
-                return _externalStatusLocomotionKind;
+            {
+                best = _externalStatusLocomotionKind;
+                bestPriority = priority;
+            }
+        }
+
+        if (_staggerStatusLocomotionKind != StatusLocomotionKind.None &&
+            GetStatusLocomotionClip(_staggerStatusLocomotionKind) != null)
+        {
+            int priority = GetStatusLocomotionPriority(_staggerStatusLocomotionKind);
+            if (priority > bestPriority)
+                return _staggerStatusLocomotionKind;
         }
 
         return best;

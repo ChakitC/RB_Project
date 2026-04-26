@@ -15,6 +15,7 @@ public abstract class CharacteContext : MonoBehaviour
     public CharacterController cc;
     
     [Header("Common Modules")]
+    public AITargetInfo TargetInfo;
     public WeaponSystem WeaponSystem;
     public CharacterAnimBrain AnimBrain;
     public CharacterAnimDriver AnimDriver;
@@ -22,7 +23,7 @@ public abstract class CharacteContext : MonoBehaviour
     
     [Header("Visual")] 
     public CharacterContextPartyLoader CharacterLoad;
-    public PlayerVisual Visual;
+    public CharacterVisualController Visual;
     public UIManager UIManager;
     
     

@@ -36,6 +36,11 @@ public class RandomMoveAroundPlayerNavMesh : Action
         if (_agent == null)
         {
             _agent = GetComponent<NavMeshAgent>();
+            
+            if (_agent == null)
+            {
+                _agent = gameObject.GetComponentInParent<NavMeshAgent>();
+            }
         }
 
         if (_agent != null && stopDistance != null)

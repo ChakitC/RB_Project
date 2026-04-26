@@ -472,8 +472,8 @@ MonoBehaviour:
     radius: 3
     pushOffset: 1
   updateDelay: 0.0125
-  enablePooling: 0
-  poolSize: 50
+  enablePooling: 1
+  poolSize: 100
   disableOnSceneLoad: 1
   editorLastFont: Gold3D
   position: {x: 0, y: 0, z: 0}

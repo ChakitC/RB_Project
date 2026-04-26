@@ -26,7 +26,7 @@ public class MoveToPlayerOffsetNavMesh : Action
     {
         if (_agent == null)
         {
-            _agent = gameObject.GetComponent<NavMeshAgent>();
+            _agent = gameObject.GetComponentInParent<NavMeshAgent>();
         }
 
         if (_agent != null && stopDistance != null)
@@ -85,16 +85,15 @@ public class MoveToPlayerOffsetNavMesh : Action
 
     public override void OnEnd()
     {
-        // จบ task แล้วหยุด agent ให้เรียบร้อย
         if (_agent != null)
         {
-            // _agent.isStopped = true;
+            _agent.isStopped = true;
         }
     }
 
     public override void Reset()
     {
-        // ค่า default เวลา create node ใหม่ในกราฟ (จะปรับหรือปล่อยว่างก็ได้)
+       
         offsetFromPlayer = Vector3.zero;
         stopDistance = 1.5f;
     }

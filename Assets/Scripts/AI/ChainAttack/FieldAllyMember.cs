@@ -9,6 +9,7 @@ public sealed class FieldAllyMember : MonoBehaviour
 {
     [SerializeField] private ChainActorRole actorRole = ChainActorRole.PartySlot1;
     [SerializeField] private FieldAllyManager manager;
+    [SerializeField] private Transform actorRoot;
     [SerializeField] private CharacteContext actorContext;
     [SerializeField] private HealthSystem actorHealthSystem;
     [SerializeField] private AITargetInfo actorTargetInfo;
@@ -101,8 +102,20 @@ public sealed class FieldAllyMember : MonoBehaviour
     {
         get
         {
+            if (actorContext == null && actorRoot != null)
+                actorContext = actorRoot.GetComponent<CharacteContext>();
+
             if (actorContext == null)
                 actorContext = GetComponent<CharacteContext>();
+
+            if (actorContext == null)
+                actorContext = GetComponentInParent<CharacteContext>();
+
+            if (actorContext == null)
+                actorContext = GetComponentInChildren<CharacteContext>(true);
+
+            if (actorRoot == null && actorContext != null)
+                actorRoot = actorContext.transform;
 
             return actorContext;
         }
@@ -116,7 +129,10 @@ public sealed class FieldAllyMember : MonoBehaviour
                 return null;
 
             if (context.SkillManager == null)
-                context.SkillManager = GetComponent<CharacterSkillManager>();
+                context.SkillManager = context.GetComponent<CharacterSkillManager>();
+
+            if (context.SkillManager == null)
+                context.SkillManager = context.GetComponentInChildren<CharacterSkillManager>(true);
 
             return context.SkillManager;
         }
@@ -248,10 +264,10 @@ public sealed class FieldAllyMember : MonoBehaviour
         return _sequenceRunner.TryGetCompletedSequenceExecutionResult(executionId, out success, out hasDeferredCleanup);
     }
 
-    public bool TryStartSequenceStep(ChainAttackStepDef step, Transform lockedTarget)
+    public bool TryStartSequenceStep(ChainAttackStepDef step, Transform lockedTarget, Transform lockedTargetAnchor = null)
     {
         EnsureModules();
-        return _sequenceRunner.TryStartSequenceStep(step, lockedTarget);
+        return _sequenceRunner.TryStartSequenceStep(step, lockedTarget, lockedTargetAnchor);
     }
 
     public void SetRuntimeChainSkillOverride(SkillGemDefinition skill, int level = 1, bool overrideSkillLevel = true)
@@ -299,23 +315,27 @@ public sealed class FieldAllyMember : MonoBehaviour
     internal void CacheReferences()
     {
         EnsureModules();
+        CharacteContext context = ActorContext;
+        if (actorRoot == null && context != null)
+            actorRoot = context.transform;
+
         RefreshCollisionReferences();
 
         if (manager == null)
             manager = FindFirstObjectByType<FieldAllyManager>();
 
-        if (behaviorTree == null)
-            behaviorTree = GetComponent<BehaviorTree>();
+        if (behaviorTree == null && context != null)
+            behaviorTree = context.GetComponentInChildren<BehaviorTree>(true);
 
-        if (agent == null)
-            agent = GetComponent<NavMeshAgent>();
+        if (agent == null && context != null)
+            agent = context.GetComponent<NavMeshAgent>();
 
-        CharacterAnimBrain nextAnimBrain = actorContext != null ? actorContext.AnimBrain : null;
-        if (nextAnimBrain == null)
-            nextAnimBrain = GetComponent<CharacterAnimBrain>();
+        CharacterAnimBrain nextAnimBrain = context != null ? context.AnimBrain : null;
+        if (nextAnimBrain == null && context != null)
+            nextAnimBrain = context.GetComponentInChildren<CharacterAnimBrain>(true);
 
-        if (actorContext != null && actorContext.AnimBrain == null)
-            actorContext.AnimBrain = nextAnimBrain;
+        if (context != null && context.AnimBrain == null)
+            context.AnimBrain = nextAnimBrain;
 
         SubscribeToAnimBrain(nextAnimBrain);
 
@@ -336,9 +356,8 @@ public sealed class FieldAllyMember : MonoBehaviour
 
         if (actorFader == null)
         {
-            actorFader = GetComponent<ASPHelperDitherFader>();
-            if (actorFader == null)
-                actorFader = GetComponentInChildren<ASPHelperDitherFader>(true);
+            if (context != null)
+                actorFader = context.GetComponentInChildren<ASPHelperDitherFader>(true);
         }
 
         _skillCastBridge.InvalidateDirectSkillUserCache();
@@ -348,27 +367,36 @@ public sealed class FieldAllyMember : MonoBehaviour
     internal void RefreshCollisionReferences()
     {
         if (actorContext == null)
-            actorContext = GetComponent<CharacteContext>();
+            actorContext = ActorContext;
 
         if (actorContext != null && actorContext.HealthSystem != null)
             actorHealthSystem = actorContext.HealthSystem;
         else if (actorHealthSystem == null)
-            actorHealthSystem = GetComponent<HealthSystem>();
+        {
+            if (actorContext != null)
+            {
+                actorHealthSystem = actorContext.GetComponent<HealthSystem>();
+                if (actorHealthSystem == null)
+                    actorHealthSystem = actorContext.GetComponentInChildren<HealthSystem>(true);
+            }
+        }
 
         if (actorContext != null && actorContext.HealthSystem == null)
             actorContext.HealthSystem = actorHealthSystem;
 
         if (actorTargetInfo == null)
         {
-            actorTargetInfo = GetComponent<AITargetInfo>();
-            if (actorTargetInfo == null)
-                actorTargetInfo = GetComponentInChildren<AITargetInfo>(true);
+            if (actorContext != null)
+                actorTargetInfo = actorContext.GetComponentInChildren<AITargetInfo>(true);
         }
 
         if (actorContext != null && actorContext.rb != null)
             actorRigidbody = actorContext.rb;
         else if (actorRigidbody == null)
-            actorRigidbody = GetComponent<Rigidbody>();
+        {
+            if (actorContext != null)
+                actorRigidbody = actorContext.GetComponent<Rigidbody>();
+        }
 
         if (actorContext != null && actorContext.rb == null)
             actorContext.rb = actorRigidbody;
@@ -376,26 +404,22 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (actorContext != null && actorContext.cc != null)
             actorCharacterController = actorContext.cc;
         else if (actorCharacterController == null)
-            actorCharacterController = GetComponent<CharacterController>();
+        {
+            if (actorContext != null)
+                actorCharacterController = actorContext.GetComponent<CharacterController>();
+        }
 
         if (actorContext != null && actorContext.cc == null)
             actorContext.cc = actorCharacterController;
 
         if (actorContext != null && actorContext.KnockbackMotor == null)
-            actorContext.KnockbackMotor = GetComponent<CharacterKnockbackMotor>();
+            actorContext.KnockbackMotor = ResolveKnockbackMotor(actorContext);
     }
 
     internal bool IsActorInKnockback()
     {
-        CharacterKnockbackMotor knockbackMotor = null;
-        if (actorContext != null)
-            knockbackMotor = actorContext.KnockbackMotor;
-
-        if (knockbackMotor == null)
-            knockbackMotor = GetComponent<CharacterKnockbackMotor>();
-
-        if (actorContext != null && actorContext.KnockbackMotor == null)
-            actorContext.KnockbackMotor = knockbackMotor;
+        CharacteContext context = ActorContext;
+        CharacterKnockbackMotor knockbackMotor = ResolveKnockbackMotor(context);
 
         if (knockbackMotor != null && knockbackMotor.IsActive)
             return true;
@@ -404,6 +428,22 @@ public sealed class FieldAllyMember : MonoBehaviour
                actorContext.stateHub != null &&
                actorContext.stateHub.MoveSM != null &&
                actorContext.stateHub.MoveSM.CurrentId == MoveStateId.Knockback;
+    }
+
+    static CharacterKnockbackMotor ResolveKnockbackMotor(CharacteContext context)
+    {
+        if (context == null)
+            return null;
+
+        if (context.KnockbackMotor != null)
+            return context.KnockbackMotor;
+
+        CharacterKnockbackMotor knockbackMotor = context.GetComponent<CharacterKnockbackMotor>();
+        if (knockbackMotor == null)
+            knockbackMotor = context.GetComponentInChildren<CharacterKnockbackMotor>(true);
+
+        context.KnockbackMotor = knockbackMotor;
+        return knockbackMotor;
     }
 
     void SubscribeToAnimBrain(CharacterAnimBrain nextAnimBrain)
@@ -457,12 +497,12 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (!logSequenceExecution)
             return;
 
-        Debug.Log($"[FieldAllyMember:{name}] {message}", this);
+        Debug.Log($"[FieldAllyMember:{ActorName}/{actorRole}:{name}] {message}", this);
     }
 
-    internal Transform TransformRef => transform;
-    internal GameObject GameObjectRef => gameObject;
-    internal string ActorName => name;
+    internal Transform TransformRef => ResolveActorTransform();
+    internal GameObject GameObjectRef => TransformRef != null ? TransformRef.gameObject : gameObject;
+    internal string ActorName => TransformRef != null ? TransformRef.name : name;
     internal ChainActorRole ActorRoleValue => actorRole;
     internal BehaviorTree BehaviorTreeRef => behaviorTree;
     internal NavMeshAgent AgentRef => agent;
@@ -495,4 +535,16 @@ public sealed class FieldAllyMember : MonoBehaviour
         return SkillManager != null && SkillManager.TryGetChainAttackRuntimeSkill(out runtimeSkill);
     }
     internal bool IsAliveActor => IsAlive;
+
+    Transform ResolveActorTransform()
+    {
+        if (actorRoot != null)
+            return actorRoot;
+
+        CharacteContext context = ActorContext;
+        if (context != null)
+            return context.transform;
+
+        return transform;
+    }
 }

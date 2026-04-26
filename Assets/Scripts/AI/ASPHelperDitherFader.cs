@@ -3,6 +3,7 @@ using System.Collections;
 using ASP;
 using Animancer;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public sealed class ASPHelperDitherFader : MonoBehaviour
 {
@@ -12,6 +13,7 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
 
     [Header("References")]
     [SerializeField] private ASPCharacterPanel characterPanel;
+    [SerializeField] private Transform characterPanelSearchRoot;
     [SerializeField] private AnimancerComponent animancer;
 
     [Header("Fade")]
@@ -29,6 +31,10 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
     float currentDithering = HiddenDithering;
     bool isHidden = true;
     bool alphaClipWarningIssued;
+    Renderer[] shadowRenderers;
+    ShadowCastingMode[] originalShadowCastingModes;
+    bool shadowCastingModesCached;
+    bool shadowsDisabledForHidden;
 
     public event Action Deactivated;
 
@@ -179,6 +185,9 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
     {
         StopFadeRoutine();
 
+        if (targetDithering < HiddenDithering - FadeTriggerEpsilon)
+            ApplyShadowCastingHidden(false);
+
         if (!gameObject.activeInHierarchy || duration <= 0f)
         {
             ApplyDithering(targetDithering);
@@ -222,6 +231,45 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
         currentDithering = Mathf.Clamp01(value);
         characterPanel.SetDitheringValueToAllMaterials(currentDithering);
         isHidden = currentDithering >= HiddenDithering - FadeTriggerEpsilon;
+        ApplyShadowCastingHidden(currentDithering >= HiddenDithering);
+    }
+
+    void ApplyShadowCastingHidden(bool hidden)
+    {
+        CacheShadowCastingModes();
+
+        if (shadowRenderers == null || originalShadowCastingModes == null)
+            return;
+
+        if (shadowsDisabledForHidden == hidden)
+            return;
+
+        for (int i = 0; i < shadowRenderers.Length; i++)
+        {
+            Renderer renderer = shadowRenderers[i];
+            if (renderer == null)
+                continue;
+
+            renderer.shadowCastingMode = hidden ? ShadowCastingMode.Off : originalShadowCastingModes[i];
+        }
+
+        shadowsDisabledForHidden = hidden;
+    }
+
+    void CacheShadowCastingModes()
+    {
+        if (shadowCastingModesCached)
+            return;
+
+        shadowRenderers = GetComponentsInChildren<Renderer>(true);
+        originalShadowCastingModes = new ShadowCastingMode[shadowRenderers.Length];
+
+        for (int i = 0; i < shadowRenderers.Length; i++)
+            originalShadowCastingModes[i] = shadowRenderers[i] != null
+                ? shadowRenderers[i].shadowCastingMode
+                : ShadowCastingMode.Off;
+
+        shadowCastingModesCached = true;
     }
 
     void ApplyDitheringSize()
@@ -253,11 +301,14 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
 
     void InitializeReferences()
     {
+        if (characterPanel == null && characterPanelSearchRoot != null)
+            characterPanel = characterPanelSearchRoot.GetComponentInChildren<ASPCharacterPanel>(true);
+
         if (characterPanel == null)
-            characterPanel = GetComponent<ASPCharacterPanel>() ?? GetComponentInChildren<ASPCharacterPanel>(true);
+            characterPanel = GetComponent<ASPCharacterPanel>() ?? GetComponentInParent<ASPCharacterPanel>(true);
 
         if (animancer == null)
-            animancer = GetComponent<AnimancerComponent>() ?? GetComponentInChildren<AnimancerComponent>(true);
+            animancer = GetComponent<AnimancerComponent>() ?? GetComponentInParent<AnimancerComponent>(true);
     }
 
     void StopFadeRoutine()

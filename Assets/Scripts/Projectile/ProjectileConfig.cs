@@ -16,6 +16,12 @@ public class ProjectileConfig : ScriptableObject
     public ImpactReactionKind knockbackReaction = ImpactReactionKind.MiniStun;
     public bool knockbackInterruptsActions = true;
 
+    [Header("Stagger")]
+    public bool overrideStaggerPower = false;
+    [Min(0f)] public float staggerPower = 0f;
+    [Min(0f)] public float staggerPowerMultiplier = 1f;
+    [Min(0f)] public float bonusStaggerPower = 0f;
+
     // เรียงลำดับมีผล (เช่น Pierce ก่อน Split ถ้า Split ทำตอนนัดสุดท้าย)
     public List<ProjectileModule> modules = new();
 
@@ -27,5 +33,12 @@ public class ProjectileConfig : ScriptableObject
             knockbackProgressCurve,
             knockbackReaction,
             knockbackInterruptsActions);
+    }
+
+    public StaggerPayload ToStaggerPayload(float baseStaggerPower, string sourceId)
+    {
+        float basePower = overrideStaggerPower ? staggerPower : baseStaggerPower;
+        float resolvedPower = basePower * Mathf.Max(0f, staggerPowerMultiplier) + Mathf.Max(0f, bonusStaggerPower);
+        return new StaggerPayload(resolvedPower, 1f, sourceId);
     }
 }

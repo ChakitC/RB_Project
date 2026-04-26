@@ -104,7 +104,7 @@ public class SkillProjectile : MonoBehaviour
         }
         else
         {
-            var damageable = other.GetComponentInParent<IDamageable>();
+            var damageable = DamageableResolver.ResolveFrom(other);
             if (damageable != null)
             {
                 ApplyDamage(damageable);
@@ -150,7 +150,11 @@ public class SkillProjectile : MonoBehaviour
             damage *= Mathf.Max(1f, stats.critMultiplier);
         }
 
-        damageable.TakeDamage(damage, attacker, sourceId);
+        damageable.TakeDamage(
+            damage,
+            attacker,
+            sourceId,
+            stagger: new StaggerPayload(stats.staggerPower, 1f, sourceId));
     }
 
     void DoAreaDamage()
@@ -162,7 +166,7 @@ public class SkillProjectile : MonoBehaviour
         {
             if (casterRoot && h.transform.root == casterRoot) continue;
 
-            var dmg = h.GetComponentInParent<IDamageable>();
+            var dmg = DamageableResolver.ResolveFrom(h);
             if (dmg == null) continue;
 
             ApplyDamage(dmg);

@@ -9,6 +9,9 @@ public sealed class StatusEffectDef : ScriptableObject
     public Sprite icon;
     public StatusEffectCategory category = StatusEffectCategory.Neutral;
 
+    [Header("Visual")]
+    public StatusEffectVfxProfile vfxProfile;
+
     [Header("Lifetime")]
     [Min(0f)] public float duration = 5f;
     [Min(0)] public int maxStacks = 1;

@@ -126,6 +126,9 @@ public class SupportGemDefinition : ScriptableObject
             case StatType.CritChance:
                 ApplyToValue(ref stats.critChance, mod);
                 break;
+            case StatType.StaggerPower:
+                ApplyToValue(ref stats.staggerPower, mod);
+                break;
         }
     }
 

@@ -40,6 +40,7 @@ public enum StatType
     Stability,
     BulletSpeed,
     MaxMagazine,
+    StaggerPower,
 }
 
 // โมดิฟายค่า Stat แบบ generic

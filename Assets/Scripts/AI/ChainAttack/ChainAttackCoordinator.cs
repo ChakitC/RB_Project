@@ -265,7 +265,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             yield break;
         }
 
-        bool started = member.TryStartSequenceStep(step, runtime.targetTransform);
+        bool started = member.TryStartSequenceStep(step, runtime.targetTransform, runtime.targetAnchor);
         if (!started)
         {
             member.ReleaseReservation(runtime);
@@ -389,7 +389,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             ? allyHelperManager.TryStartChainAttackHelperToTarget(
                 step.helperChainAttackSequence,
                 step.skillDef,
-                runtime.targetTransform,
+                runtime.targetAnchor != null ? runtime.targetAnchor : runtime.targetTransform,
                 step.ClampedSkillLevel,
                 step.helperHideOnComplete,
                 helperContinueMode,

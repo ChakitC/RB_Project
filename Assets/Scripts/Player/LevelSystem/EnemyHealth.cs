@@ -8,6 +8,7 @@ public class EnemyHealth : HealthSystem
 
     [SerializeField] NavMeshAgent agent;
     [SerializeField] private EnemyContext EnemyContextCTX;
+    [SerializeField] private StaggerMeter staggerMeter;
 
     GameObject _lastAttacker;
     bool _xpGranted;
@@ -20,7 +21,16 @@ public class EnemyHealth : HealthSystem
         if (damageContext.Attacker != null)
             _lastAttacker = damageContext.Attacker;
 
-        ApplyDamage(in damageContext);
+        StaggerMeter meter = ResolveStaggerMeter();
+        DamageContext resolvedContext = damageContext;
+
+        if (meter != null && meter.IsStaggered && damageContext.Damage > 0f)
+            resolvedContext = damageContext.WithDamage(damageContext.Damage * meter.DamageTakenMultiplier);
+
+        ApplyDamage(in resolvedContext);
+
+        if (meter != null && IsAlive && damageContext.HasStagger)
+            meter.ApplyStagger(damageContext.Stagger, damageContext.Attacker);
     }
 
     public override void Die()
@@ -31,22 +41,39 @@ public class EnemyHealth : HealthSystem
         _xpGranted = true;
         GiveXpTo(_lastAttacker);
 
+        base.Die();
+
         if (agent)
         {
-            agent.isStopped = true;
-            agent.ResetPath();
+            if (agent.isActiveAndEnabled && agent.isOnNavMesh)
+            {
+                agent.isStopped = true;
+                agent.ResetPath();
+            }
+
             agent.updateRotation = false;
             agent.updatePosition = false;
         }
 
         if (EnemyContextCTX != null)
-            EnemyContextCTX.Collider.enabled = false;
-        
-        EnemyContextCTX.dropper.DropItem();
+        {
+            if (EnemyContextCTX.Collider != null)
+                EnemyContextCTX.Collider.enabled = false;
 
-        CTX.stateHub.LifeSM.TryChange(LifeStateId.Dead);
-        
-        base.Die();
+            if (EnemyContextCTX.dropper != null)
+                EnemyContextCTX.dropper.DropItem();
+        }
+    }
+
+    protected override GameObject GetDestroyTarget()
+    {
+        if (EnemyContextCTX != null)
+            return EnemyContextCTX.gameObject;
+
+        if (CTX != null)
+            return CTX.gameObject;
+
+        return base.GetDestroyTarget();
     }
 
     void GiveXpTo(GameObject attacker)
@@ -57,5 +84,15 @@ public class EnemyHealth : HealthSystem
         var level = attacker.GetComponentInParent<LevelSystem>();
         if (level != null)
             XpManager.Instance.GrantXp(level, xpReward);
+    }
+
+    StaggerMeter ResolveStaggerMeter()
+    {
+        if (staggerMeter == null)
+            staggerMeter = GetComponent<StaggerMeter>();
+        if (staggerMeter == null)
+            staggerMeter = gameObject.AddComponent<StaggerMeter>();
+
+        return staggerMeter;
     }
 }

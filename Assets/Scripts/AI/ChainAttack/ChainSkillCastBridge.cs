@@ -48,6 +48,18 @@ internal sealed class ChainSkillCastBridge
             owner.AimTargetDriverRef.ClearOverride();
     }
 
+    public void ApplyChainAimTargetOverride(PendingSequenceExecution execution)
+    {
+        if (owner.AimTargetDriverRef == null)
+            return;
+
+        Transform aimTarget = ResolveAimTarget(execution);
+        if (aimTarget != null)
+            owner.AimTargetDriverRef.SetOverrideTarget(aimTarget, preferChainAttackPoint: false);
+        else
+            owner.AimTargetDriverRef.ClearOverride();
+    }
+
     public bool TryResolveAttackSkill(
         ChainAttackStepDef step,
         out SkillInstance runtimeSkill,
@@ -87,7 +99,7 @@ internal sealed class ChainSkillCastBridge
         attackSkillUser = null;
 
         if (execution != null)
-            ApplyChainAimTargetOverride(execution.lockedTarget);
+            ApplyChainAimTargetOverride(execution);
 
         if (owner.UseDirectSkillUserForChainCastDebug)
         {
@@ -109,10 +121,9 @@ internal sealed class ChainSkillCastBridge
 
         if (execution != null)
         {
-            if (ChainAttackTargetingUtility.TryResolveTargetAnchor(execution.lockedTarget, out Transform aimAnchor))
-                owner.SkillUserProxyRef.SetAimTargetOverride(aimAnchor);
-            else if (execution.lockedTarget != null)
-                owner.SkillUserProxyRef.SetAimTargetOverride(execution.lockedTarget);
+            Transform aimTarget = ResolveAimTarget(execution);
+            if (aimTarget != null)
+                owner.SkillUserProxyRef.SetAimTargetOverride(aimTarget);
         }
 
         attackSkillUser = owner.SkillUserProxyRef;
@@ -217,6 +228,20 @@ internal sealed class ChainSkillCastBridge
             def = skillDef,
             level = Mathf.Max(1, skillLevel),
         };
+    }
+
+    static Transform ResolveAimTarget(PendingSequenceExecution execution)
+    {
+        if (execution == null)
+            return null;
+
+        if (execution.lockedTargetAnchor != null)
+            return execution.lockedTargetAnchor;
+
+        if (ChainAttackTargetingUtility.TryResolveTargetAnchor(execution.lockedTarget, out Transform aimAnchor))
+            return aimAnchor;
+
+        return execution.lockedTarget;
     }
 
     ISkillUser ResolveDirectSkillUser()

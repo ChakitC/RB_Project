@@ -535,7 +535,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         if (_casterRoot != null && otherRoot == _casterRoot)
             return;
 
-        IDamageable target = other.GetComponentInParent<IDamageable>();
+        IDamageable target = DamageableResolver.ResolveFrom(other);
         if (target == null || !target.IsAlive)
             return;
 
@@ -559,7 +559,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             }
 
             KnockbackData knockback = BuildKnockback(step, hitPoint);
-            bool applied = ApplyResolvedDamage(target, finalDamage, hitPoint, knockback);
+            bool applied = ApplyResolvedDamage(step, target, finalDamage, hitPoint, knockback);
             if (!applied)
             {
                 UnregisterHit(step, targetKey);
@@ -690,7 +690,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             : default;
     }
 
-    bool ApplyResolvedDamage(IDamageable target, float finalDamage, Vector3 hitPoint, KnockbackData knockback)
+    bool ApplyResolvedDamage(StepRuntimeState step, IDamageable target, float finalDamage, Vector3 hitPoint, KnockbackData knockback)
     {
         if (target == null || finalDamage <= 0f || !target.IsAlive)
             return false;
@@ -708,11 +708,23 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             _chainId == 0 ? CombatEventBus.NextChainId() : _chainId,
             1,
             PassiveEventOrigin.External,
-            knockback: knockback);
+            knockback: knockback,
+            stagger: BuildStaggerPayload(step));
 
         target.TakeDamage(in damageContext);
         NotifyOwnerCombatTriggers(target, finalDamage, wasAliveBeforeDamage);
         return true;
+    }
+
+    StaggerPayload BuildStaggerPayload(StepRuntimeState step)
+    {
+        float staggerPower = 0f;
+        if (step != null && step.Definition != null && _context != null && _context.SkillStats != null)
+        {
+            staggerPower = _context.SkillStats.staggerPower * Mathf.Max(0f, step.Definition.DamageMultiplier);
+        }
+
+        return new StaggerPayload(staggerPower, 1f, _sourceId);
     }
 
     void NotifyOwnerCombatTriggers(IDamageable target, float finalDamage, bool wasAliveBeforeDamage)

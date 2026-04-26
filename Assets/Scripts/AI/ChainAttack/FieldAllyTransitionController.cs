@@ -80,19 +80,20 @@ internal sealed class FieldAllyTransitionController
             return TryTeleportToEntryPose(execution);
 
         if (step.moveMode == ChainActorMoveMode.WarpToLockedTargetAnchor)
-            return TryWarpToLockedTargetAnchor(step, execution.lockedTarget);
+            return TryWarpToLockedTargetAnchor(step, ResolveExecutionTargetAnchor(execution));
 
         return true;
     }
 
     public bool TryTeleportToEntryPose(PendingSequenceExecution execution)
     {
-        if (execution == null || execution.step == null || execution.lockedTarget == null)
+        Transform targetAnchor = ResolveExecutionTargetAnchor(execution);
+        if (execution == null || execution.step == null || targetAnchor == null)
             return false;
 
         if (!TryResolveEntryTeleportPose(
                 execution.step,
-                execution.lockedTarget,
+                targetAnchor,
                 out Vector3 teleportPosition,
                 out Quaternion teleportRotation))
         {
@@ -126,7 +127,9 @@ internal sealed class FieldAllyTransitionController
                 anchorTransform,
                 owner.TransformRef.rotation,
                 out teleportPosition,
-                out teleportRotation);
+                out teleportRotation,
+                step.requireNavMeshAtWarpPoint,
+                step.warpNavMeshSampleDistance);
         }
 
         return TryResolveLegacyWarpPose(step, lockedTarget, out teleportPosition, out teleportRotation);
@@ -175,10 +178,14 @@ internal sealed class FieldAllyTransitionController
         if (execution == null || execution.step == null)
             return false;
 
-        if (execution.lockedTarget == null)
+        Transform targetTransform = execution.lockedTarget != null
+            ? execution.lockedTarget
+            : execution.lockedTargetAnchor;
+
+        if (targetTransform == null)
             return !execution.step.skipIfTargetMissing;
 
-        return ChainAttackTargetingUtility.IsTargetAlive(execution.lockedTarget);
+        return ChainAttackTargetingUtility.IsTargetAlive(targetTransform);
     }
 
     public bool TryWarpToLockedTargetAnchor(ChainAttackStepDef step, Transform lockedTarget)
@@ -193,7 +200,7 @@ internal sealed class FieldAllyTransitionController
 
     public void TeleportActorTo(Vector3 worldPosition, Quaternion worldRotation)
     {
-        owner.TransformRef.SetPositionAndRotation(worldPosition, worldRotation);
+        ApplyActorPose(worldPosition, worldRotation);
 
         if (owner.AgentRef == null || !owner.AgentRef.enabled)
             return;
@@ -207,7 +214,7 @@ internal sealed class FieldAllyTransitionController
         if (NavMesh.SamplePosition(worldPosition, out NavMeshHit navHit, 1f, NavMesh.AllAreas))
         {
             owner.AgentRef.Warp(navHit.position);
-            owner.TransformRef.position = navHit.position;
+            ApplyActorPose(navHit.position, worldRotation);
             owner.AgentRef.nextPosition = navHit.position;
         }
     }
@@ -229,10 +236,39 @@ internal sealed class FieldAllyTransitionController
         if (NavMesh.SamplePosition(syncPosition, out NavMeshHit navHit, 1f, NavMesh.AllAreas))
         {
             syncPosition = navHit.position;
-            owner.TransformRef.position = navHit.position;
+            ApplyActorPose(navHit.position, owner.TransformRef.rotation);
             owner.AgentRef.Warp(navHit.position);
             owner.AgentRef.nextPosition = navHit.position;
         }
+    }
+
+    void ApplyActorPose(Vector3 worldPosition, Quaternion worldRotation)
+    {
+        Transform actorTransform = owner.TransformRef;
+        if (actorTransform == null)
+            return;
+
+        owner.RefreshCollisionReferences();
+
+        CharacterController characterController = owner.ActorCharacterControllerRef;
+        bool restoreCharacterController = characterController != null && characterController.enabled;
+        if (restoreCharacterController)
+            characterController.enabled = false;
+
+        Rigidbody rigidbody = owner.ActorRigidbodyRef;
+        if (rigidbody != null)
+        {
+            rigidbody.linearVelocity = Vector3.zero;
+            rigidbody.angularVelocity = Vector3.zero;
+            rigidbody.position = worldPosition;
+            rigidbody.rotation = worldRotation;
+        }
+
+        actorTransform.SetPositionAndRotation(worldPosition, worldRotation);
+        Physics.SyncTransforms();
+
+        if (restoreCharacterController && characterController != null)
+            characterController.enabled = true;
     }
 
     public void FaceTarget(Transform lockedTarget)
@@ -253,10 +289,29 @@ internal sealed class FieldAllyTransitionController
         if (lookDirection.sqrMagnitude <= 0.001f)
             return;
 
-        owner.TransformRef.rotation = Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
+        ApplyActorPose(owner.TransformRef.position, Quaternion.LookRotation(lookDirection.normalized, Vector3.up));
 
         if (owner.AgentRef != null && owner.AgentRef.enabled && owner.AgentRef.isOnNavMesh)
             owner.AgentRef.nextPosition = owner.TransformRef.position;
+    }
+
+    public void FaceTarget(PendingSequenceExecution execution)
+    {
+        FaceTarget(ResolveExecutionTargetAnchor(execution));
+    }
+
+    static Transform ResolveExecutionTargetAnchor(PendingSequenceExecution execution)
+    {
+        if (execution == null)
+            return null;
+
+        if (execution.lockedTargetAnchor != null)
+            return execution.lockedTargetAnchor;
+
+        if (ChainAttackTargetingUtility.TryResolveTargetAnchor(execution.lockedTarget, out Transform anchorTransform))
+            return anchorTransform;
+
+        return execution.lockedTarget;
     }
 
     public static bool ShouldAutoHideNearAttackEnd(ChainActorExitMode exitMode)

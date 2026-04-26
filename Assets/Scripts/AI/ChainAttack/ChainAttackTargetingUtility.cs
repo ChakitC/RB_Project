@@ -19,16 +19,15 @@ public static class ChainAttackTargetingUtility
             return false;
 
         if (sequenceDef.targetSource != ChainTargetSource.AimTargetOnly &&
-            explicitTargetTransform != null &&
-            TryResolveExplicitTarget(
+            explicitTargetTransform != null)
+        {
+            return TryResolveExplicitTarget(
                 explicitTargetTransform,
                 playerContext,
                 helperObject,
                 out targetObject,
                 out targetTransform,
-                out anchorTransform))
-        {
-            return true;
+                out anchorTransform);
         }
 
         if (sequenceDef.targetSource == ChainTargetSource.ExplicitTargetOnly)
@@ -97,8 +96,26 @@ public static class ChainAttackTargetingUtility
             return true;
         }
 
-        anchorTransform = ResolveTargetRoot(targetTransform);
-        return anchorTransform != null;
+        Transform rootTransform = ResolveTargetRoot(targetTransform);
+        if (rootTransform == null)
+            return false;
+
+        AITargetInfo childTargetInfo = rootTransform.GetComponentInChildren<AITargetInfo>(true);
+        if (childTargetInfo != null && childTargetInfo.ChainAttackPoint != null)
+        {
+            anchorTransform = childTargetInfo.ChainAttackPoint;
+            return true;
+        }
+
+        IAITargetable childTargetable = FindInterfaceInChildren<IAITargetable>(rootTransform);
+        if (childTargetable != null && childTargetable.AimPoint != null)
+        {
+            anchorTransform = childTargetable.AimPoint;
+            return true;
+        }
+
+        anchorTransform = rootTransform;
+        return true;
     }
 
     public static bool IsTargetAlive(Transform targetTransform)
@@ -282,6 +299,21 @@ public static class ChainAttackTargetingUtility
             return null;
 
         MonoBehaviour[] behaviours = start.GetComponentsInParent<MonoBehaviour>(true);
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            if (behaviours[i] is T match)
+                return match;
+        }
+
+        return null;
+    }
+
+    static T FindInterfaceInChildren<T>(Transform start) where T : class
+    {
+        if (start == null)
+            return null;
+
+        MonoBehaviour[] behaviours = start.GetComponentsInChildren<MonoBehaviour>(true);
         for (int i = 0; i < behaviours.Length; i++)
         {
             if (behaviours[i] is T match)

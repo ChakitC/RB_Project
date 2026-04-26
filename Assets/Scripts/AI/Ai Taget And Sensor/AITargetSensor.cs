@@ -576,6 +576,9 @@ public class AITargetSensor : MonoBehaviour
         if (hit == null)
             return false;
 
+        if (TryResolveCharacterTarget(hit.transform, out targetRoot, out targetable))
+            return true;
+
         targetable = FindTargetable(hit.transform);
         if (targetable is Component targetComponent)
         {
@@ -585,7 +588,11 @@ public class AITargetSensor : MonoBehaviour
 
         if (hit.attachedRigidbody != null)
         {
-            targetRoot = hit.attachedRigidbody.transform;
+            Transform rigidbodyRoot = hit.attachedRigidbody.transform;
+            if (TryResolveCharacterTarget(rigidbodyRoot, out targetRoot, out targetable))
+                return true;
+
+            targetRoot = rigidbodyRoot;
             return true;
         }
 
@@ -666,6 +673,9 @@ public class AITargetSensor : MonoBehaviour
         if (target == null)
             return false;
 
+        if (TryResolveCharacterTarget(target, out targetRoot, out targetable))
+            return true;
+
         targetable = FindTargetable(target);
         if (targetable is Component targetComponent)
         {
@@ -676,12 +686,58 @@ public class AITargetSensor : MonoBehaviour
         Rigidbody targetRigidbody = target.GetComponentInParent<Rigidbody>();
         if (targetRigidbody != null)
         {
-            targetRoot = targetRigidbody.transform;
+            Transform rigidbodyRoot = targetRigidbody.transform;
+            if (TryResolveCharacterTarget(rigidbodyRoot, out targetRoot, out targetable))
+                return true;
+
+            targetRoot = rigidbodyRoot;
             return true;
         }
 
         targetRoot = target.root != null ? target.root : target;
         return targetRoot != null;
+    }
+
+    bool TryResolveCharacterTarget(Transform start, out Transform targetRoot, out IAITargetable targetable)
+    {
+        targetRoot = null;
+        targetable = null;
+
+        if (start == null)
+            return false;
+
+        CharacteContext targetContext = start.GetComponentInParent<CharacteContext>();
+        if (targetContext == null)
+            return false;
+
+        if (targetContext.transform == transform || targetContext.transform.root == transform.root)
+            return false;
+
+        AITargetInfo targetInfo = GetCachedTargetInfo(targetContext);
+        if (targetInfo != null)
+        {
+            targetRoot = targetInfo.transform;
+            targetable = targetInfo;
+            return true;
+        }
+
+        targetRoot = targetContext.transform;
+        return true;
+    }
+
+    AITargetInfo GetCachedTargetInfo(CharacteContext targetContext)
+    {
+        if (targetContext == null)
+            return null;
+
+        if (targetContext.TargetInfo != null)
+            return targetContext.TargetInfo;
+
+        targetContext.TargetInfo = targetContext.GetComponent<AITargetInfo>();
+        if (targetContext.TargetInfo == null)
+            targetContext.TargetInfo = targetContext.GetComponentInChildren<AITargetInfo>(true);
+
+        return targetContext.TargetInfo;
     }
 
     bool IsTargetAllowedByTargetable(IAITargetable targetable)

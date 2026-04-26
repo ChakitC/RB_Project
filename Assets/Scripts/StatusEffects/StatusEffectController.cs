@@ -10,6 +10,11 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
     [SerializeField] private StatsHub statsHub;
     [SerializeField] private StateHub stateHub;
 
+    [Header("Visual")]
+    [SerializeField] private bool autoCreateVfxPresenter = true;
+    [SerializeField] private Transform vfxPresenterHost;
+    [SerializeField] private string vfxPresenterHostName = "CharacterVisual_System";
+
     [Header("Debug")]
     [SerializeField] private bool debugInInspector = true;
     [SerializeField] private int dbgActiveEffectCount;
@@ -25,12 +30,88 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
     public IReadOnlyList<StatusEffectInstance> ActiveEffects => _activeEffects;
 
     public event Action EffectsChanged;
+    public event Action<StatusEffectEvent> EffectLifecycleChanged;
 
     void Awake()
     {
         if (!ctx) TryGetComponent(out ctx);
         if (!statsHub) TryGetComponent(out statsHub);
         if (!stateHub) TryGetComponent(out stateHub);
+
+        if (autoCreateVfxPresenter)
+            EnsureVfxPresenter();
+    }
+
+    void EnsureVfxPresenter()
+    {
+        if (TryGetComponent<StatusEffectVfxPresenter>(out var localPresenter))
+        {
+            localPresenter.Bind(this);
+            return;
+        }
+
+        Transform host = ResolveVfxPresenterHost();
+
+        if (host != transform && host.TryGetComponent(out StatusEffectVfxPresenter hostPresenter))
+        {
+            hostPresenter.Bind(this);
+            return;
+        }
+
+        if (host == transform)
+        {
+            StatusEffectVfxPresenter childPresenter = GetComponentInChildren<StatusEffectVfxPresenter>(true);
+            if (childPresenter)
+            {
+                childPresenter.Bind(this);
+                return;
+            }
+        }
+
+        var presenter = host.gameObject.AddComponent<StatusEffectVfxPresenter>();
+        presenter.Bind(this);
+    }
+
+    Transform ResolveVfxPresenterHost()
+    {
+        if (vfxPresenterHost)
+            return vfxPresenterHost;
+
+        Transform ownerRoot = ctx ? ctx.transform : null;
+        if (!ownerRoot)
+        {
+            var ownerContext = GetComponentInParent<CharacteContext>();
+            if (ownerContext)
+                ownerRoot = ownerContext.transform;
+        }
+
+        Transform namedHost = FindChildByName(ownerRoot, vfxPresenterHostName);
+        if (namedHost)
+            return namedHost;
+
+        namedHost = FindChildByName(transform.parent, vfxPresenterHostName);
+        if (namedHost)
+            return namedHost;
+
+        return transform;
+    }
+
+    static Transform FindChildByName(Transform root, string targetName)
+    {
+        if (!root || string.IsNullOrWhiteSpace(targetName))
+            return null;
+
+        if (root.name == targetName)
+            return root;
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform found = FindChildByName(root.GetChild(i), targetName);
+            if (found)
+                return found;
+        }
+
+        return null;
     }
 
     void OnEnable()
@@ -93,7 +174,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         {
             var instance = CreateInstance(definition, source, clampedStacks, now, sourceId, chainId, depth, origin, originPassiveId, originRuleId);
             _activeEffects.Add(instance);
-            NotifyEffectsChanged();
+            NotifyEffectsChanged(StatusEffectEventType.AppliedNew, instance, 0, instance.CurrentStacks);
             return instance;
         }
 
@@ -102,12 +183,13 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         {
             existing = CreateInstance(definition, source, clampedStacks, now, sourceId, chainId, depth, origin, originPassiveId, originRuleId);
             _activeEffects.Add(existing);
-            NotifyEffectsChanged();
+            NotifyEffectsChanged(StatusEffectEventType.AppliedNew, existing, 0, existing.CurrentStacks);
             return existing;
         }
 
         existing.UpdateSource(source);
         existing.UpdateContext(sourceId, chainId, depth, origin, originPassiveId, originRuleId);
+        int oldStacks = existing.CurrentStacks;
 
         switch (definition.stackMode)
         {
@@ -125,7 +207,11 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
                 break;
         }
 
-        NotifyEffectsChanged();
+        StatusEffectEventType eventType = existing.CurrentStacks != oldStacks
+            ? StatusEffectEventType.StackChanged
+            : StatusEffectEventType.Refreshed;
+
+        NotifyEffectsChanged(eventType, existing, oldStacks, existing.CurrentStacks);
         return existing;
     }
 
@@ -134,18 +220,19 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         if (definition == null)
             return;
 
-        bool removed = false;
+        List<StatusEffectEvent> lifecycleEvents = null;
         for (int i = _activeEffects.Count - 1; i >= 0; i--)
         {
             if (!MatchesDefinition(_activeEffects[i], definition))
                 continue;
 
+            var removedInstance = _activeEffects[i];
+            AddStatusEffectEvent(ref lifecycleEvents, StatusEffectEventType.Removed, removedInstance, removedInstance.CurrentStacks, 0);
             _activeEffects.RemoveAt(i);
-            removed = true;
         }
 
-        if (removed)
-            NotifyEffectsChanged();
+        if (lifecycleEvents != null)
+            NotifyEffectsChanged(lifecycleEvents);
     }
 
     public void RemoveEffect(string effectId)
@@ -153,19 +240,20 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         if (string.IsNullOrWhiteSpace(effectId))
             return;
 
-        bool removed = false;
+        List<StatusEffectEvent> lifecycleEvents = null;
         for (int i = _activeEffects.Count - 1; i >= 0; i--)
         {
             var definition = _activeEffects[i]?.Definition;
             if (definition == null || !string.Equals(definition.effectId, effectId, StringComparison.Ordinal))
                 continue;
 
+            var removedInstance = _activeEffects[i];
+            AddStatusEffectEvent(ref lifecycleEvents, StatusEffectEventType.Removed, removedInstance, removedInstance.CurrentStacks, 0);
             _activeEffects.RemoveAt(i);
-            removed = true;
         }
 
-        if (removed)
-            NotifyEffectsChanged();
+        if (lifecycleEvents != null)
+            NotifyEffectsChanged(lifecycleEvents);
     }
 
     public void NotifyTrigger(EffectTriggerType triggerType, GameObject source = null)
@@ -174,6 +262,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             return;
 
         bool changed = false;
+        List<StatusEffectEvent> lifecycleEvents = null;
 
         for (int i = 0; i < _activeEffects.Count; i++)
         {
@@ -193,12 +282,16 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
                 while (counter >= requiredCount)
                 {
+                    int oldStacks = instance.CurrentStacks;
+                    bool ruleChanged = false;
+
                     if (definition.stackMode == StackMode.AddStackAndRefresh)
                     {
                         int maxStacks = ResolveRuleMaxStacks(definition, rule);
                         instance.AddStacks(rule.grantedStacks, maxStacks);
                         instance.RefreshDuration();
                         instance.UpdateSource(source);
+                        ruleChanged = true;
                         changed = true;
                     }
                     else if (definition.stackMode == StackMode.RefreshDuration ||
@@ -206,7 +299,17 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
                     {
                         instance.RefreshDuration();
                         instance.UpdateSource(source);
+                        ruleChanged = true;
                         changed = true;
+                    }
+
+                    if (ruleChanged)
+                    {
+                        StatusEffectEventType eventType = instance.CurrentStacks != oldStacks
+                            ? StatusEffectEventType.StackChanged
+                            : StatusEffectEventType.Refreshed;
+
+                        AddStatusEffectEvent(ref lifecycleEvents, eventType, instance, oldStacks, instance.CurrentStacks);
                     }
 
                     counter = rule.resetCounterAfterGrant
@@ -222,7 +325,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         }
 
         if (changed)
-            NotifyEffectsChanged();
+            NotifyEffectsChanged(lifecycleEvents);
     }
 
     public bool HasEffect(StatusEffectDef definition)
@@ -250,6 +353,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             return;
 
         bool changed = false;
+        List<StatusEffectEvent> lifecycleEvents = null;
         float now = Time.time;
 
         for (int i = _activeEffects.Count - 1; i >= 0; i--)
@@ -274,12 +378,13 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             if (!instance.IsExpired())
                 continue;
 
+            AddStatusEffectEvent(ref lifecycleEvents, StatusEffectEventType.Removed, instance, instance.CurrentStacks, 0);
             _activeEffects.RemoveAt(i);
             changed = true;
         }
 
         if (changed)
-            NotifyEffectsChanged();
+            NotifyEffectsChanged(lifecycleEvents);
     }
 
     void ApplyTick(StatusEffectInstance instance)
@@ -312,6 +417,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             instance.OriginRuleId);
 
         targetDamageable.TakeDamage(in damageContext);
+        PublishStatusEffectEvent(StatusEffectEventType.Ticked, instance, stacks, stacks);
     }
 
     StatusEffectInstance CreateInstance(
@@ -370,10 +476,76 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
     void NotifyEffectsChanged()
     {
+        NotifyEffectsChangedCore();
+        EffectsChanged?.Invoke();
+    }
+
+    void NotifyEffectsChanged(StatusEffectEventType eventType, StatusEffectInstance instance, int oldStacks, int newStacks)
+    {
+        NotifyEffectsChangedCore();
+        PublishStatusEffectEvent(eventType, instance, oldStacks, newStacks);
+        EffectsChanged?.Invoke();
+    }
+
+    void NotifyEffectsChanged(List<StatusEffectEvent> lifecycleEvents)
+    {
+        NotifyEffectsChangedCore();
+        PublishStatusEffectEvents(lifecycleEvents);
+        EffectsChanged?.Invoke();
+    }
+
+    void NotifyEffectsChangedCore()
+    {
         statsHub?.MarkDirty();
         SyncControlState();
         RefreshDebugSnapshot();
-        EffectsChanged?.Invoke();
+    }
+
+    void AddStatusEffectEvent(
+        ref List<StatusEffectEvent> buffer,
+        StatusEffectEventType eventType,
+        StatusEffectInstance instance,
+        int oldStacks,
+        int newStacks)
+    {
+        if (instance == null || instance.Definition == null)
+            return;
+
+        buffer ??= new List<StatusEffectEvent>();
+        buffer.Add(CreateStatusEffectEvent(eventType, instance, oldStacks, newStacks));
+    }
+
+    StatusEffectEvent CreateStatusEffectEvent(
+        StatusEffectEventType eventType,
+        StatusEffectInstance instance,
+        int oldStacks,
+        int newStacks)
+    {
+        return new StatusEffectEvent(
+            this,
+            eventType,
+            instance,
+            instance?.Definition,
+            instance?.Source,
+            oldStacks,
+            newStacks);
+    }
+
+    void PublishStatusEffectEvent(StatusEffectEventType eventType, StatusEffectInstance instance, int oldStacks, int newStacks)
+    {
+        if (instance == null || instance.Definition == null)
+            return;
+
+        EffectLifecycleChanged?.Invoke(CreateStatusEffectEvent(eventType, instance, oldStacks, newStacks));
+    }
+
+    void PublishStatusEffectEvents(List<StatusEffectEvent> lifecycleEvents)
+    {
+        if (lifecycleEvents == null || lifecycleEvents.Count == 0)
+            return;
+
+        for (int i = 0; i < lifecycleEvents.Count; i++)
+            EffectLifecycleChanged?.Invoke(lifecycleEvents[i]);
     }
 
     public void AppendStatModifiers(List<RuntimeStatModifier> buffer)

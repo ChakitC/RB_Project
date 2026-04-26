@@ -131,23 +131,30 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     void ResolveRefs()
     {
         if (!ctx)
+        {
             TryGetComponent(out ctx);
+            if (!ctx)
+                ctx = GetComponentInParent<CharacteContext>();
+        }
+
+        Transform actorRoot = ctx ? ctx.transform : transform.root;
+
         if (!stateHub)
-            TryGetComponent(out stateHub);
+            stateHub = ResolveActorComponent<StateHub>(actorRoot);
         if (!healthSystem)
-            TryGetComponent(out healthSystem);
+            healthSystem = ResolveActorComponent<HealthSystem>(actorRoot);
         if (!characterController)
-            TryGetComponent(out characterController);
+            characterController = ResolveActorComponent<CharacterController>(actorRoot);
         if (!navMeshAgent)
-            TryGetComponent(out navMeshAgent);
+            navMeshAgent = ResolveActorComponent<NavMeshAgent>(actorRoot);
         if (!capsuleCollider)
-            TryGetComponent(out capsuleCollider);
+            capsuleCollider = ResolveActorComponent<CapsuleCollider>(actorRoot);
         if (!animBrain)
-            TryGetComponent(out animBrain);
+            animBrain = ResolveActorComponent<CharacterAnimBrain>(actorRoot);
         if (!fieldAllyMember)
-            TryGetComponent(out fieldAllyMember);
+            fieldAllyMember = ResolveActorComponent<FieldAllyMember>(actorRoot);
         if (!behaviorTree)
-            TryGetComponent(out behaviorTree);
+            behaviorTree = ResolveActorComponent<BehaviorTree>(actorRoot);
 
         if (ctx != null)
         {
@@ -162,6 +169,23 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
             if (ctx.KnockbackMotor == null)
                 ctx.KnockbackMotor = this;
         }
+    }
+
+    T ResolveActorComponent<T>(Transform actorRoot) where T : Component
+    {
+        if (actorRoot != null && actorRoot.TryGetComponent(out T rootComponent))
+            return rootComponent;
+
+        if (TryGetComponent(out T localComponent))
+            return localComponent;
+
+        T parentComponent = GetComponentInParent<T>();
+        if (parentComponent != null)
+            return parentComponent;
+
+        return actorRoot != null
+            ? actorRoot.GetComponentInChildren<T>(true)
+            : GetComponentInChildren<T>(true);
     }
 
     bool CanApply(KnockbackData knockback)
@@ -315,7 +339,8 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
     void FaceTowardKnockbackPoint(KnockbackData knockback)
     {
-        Vector3 lookDirection = knockback.HitPoint - transform.position;
+        Transform facingTransform = ResolveFacingTransform();
+        Vector3 lookDirection = knockback.HitPoint - facingTransform.position;
         lookDirection = Vector3.ProjectOnPlane(lookDirection, Vector3.up);
 
         if (lookDirection.sqrMagnitude <= 0.0001f)
@@ -324,7 +349,21 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         if (lookDirection.sqrMagnitude <= 0.0001f)
             return;
 
-        transform.rotation = Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
+        facingTransform.rotation = Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
+    }
+
+    Transform ResolveFacingTransform()
+    {
+        if (ctx != null)
+            return ctx.transform;
+
+        if (characterController != null)
+            return characterController.transform;
+
+        if (navMeshAgent != null)
+            return navMeshAgent.transform;
+
+        return transform;
     }
 
     void Tick(float dt)

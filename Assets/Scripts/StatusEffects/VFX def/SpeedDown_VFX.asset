@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8fc1c360a3e74b70bb08ed0f9622ce23, type: 3}
+  m_Name: SpeedDown_VFX
+  m_EditorClassIdentifier: 
+  applyBurst:
+    prefab: {fileID: 0}
+    anchor: 1
+    customAnchorName: 
+    localOffset: {x: 0, y: 0, z: 0}
+    rotationEuler: {x: 0, y: 0, z: 0}
+    scale: 1
+    extraLife: 0
+    minInterval: 0
+    parentToAnchor: 0
+    useAnchorRotation: 0
+  activeLoop:
+    prefab: {fileID: 914125107827245812, guid: a2389a77b0bef6f4b88fb99d32b70274, type: 3}
+    anchor: 1
+    customAnchorName: 
+    localOffset: {x: 0, y: 1.1, z: 0}
+    rotationEuler: {x: 0, y: 0, z: 0}
+    scale: 1.3
+    extraLife: 0
+    minInterval: 0
+    parentToAnchor: 1
+    useAnchorRotation: 0
+  refreshBurst:
+    prefab: {fileID: 0}
+    anchor: 1
+    customAnchorName: 
+    localOffset: {x: 0, y: 0, z: 0}
+    rotationEuler: {x: 0, y: 0, z: 0}
+    scale: 1
+    extraLife: 0
+    minInterval: 0
+    parentToAnchor: 0
+    useAnchorRotation: 0
+  stackBurst:
+    prefab: {fileID: 0}
+    anchor: 1
+    customAnchorName: 
+    localOffset: {x: 0, y: 0, z: 0}
+    rotationEuler: {x: 0, y: 0, z: 0}
+    scale: 1
+    extraLife: 0
+    minInterval: 0
+    parentToAnchor: 0
+    useAnchorRotation: 0
+  removeBurst:
+    prefab: {fileID: 0}
+    anchor: 1
+    customAnchorName: 
+    localOffset: {x: 0, y: 0, z: 0}
+    rotationEuler: {x: 0, y: 0, z: 0}
+    scale: 1
+    extraLife: 0
+    minInterval: 0
+    parentToAnchor: 0
+    useAnchorRotation: 0
+  tickBurst:
+    prefab: {fileID: 0}
+    anchor: 1
+    customAnchorName: 
+    localOffset: {x: 0, y: 0, z: 0}
+    rotationEuler: {x: 0, y: 0, z: 0}
+    scale: 1
+    extraLife: 0
+    minInterval: 0
+    parentToAnchor: 0
+    useAnchorRotation: 0
+  scaleLoopByStacks: 1
+  loopScalePerAdditionalStack: 0.1
+  loopMaxScaleMultiplier: 2

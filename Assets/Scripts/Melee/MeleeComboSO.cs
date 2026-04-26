@@ -36,6 +36,9 @@ public sealed class MeleeComboSO : ScriptableObject
         public ImpactReactionKind knockbackReaction;
         public bool knockbackInterruptsActions;
 
+        [Header("Stagger")]
+        [Min(0f)] public float staggerPower;
+
         public KnockbackSettings ToKnockbackSettings()
         {
             return new KnockbackSettings(
@@ -113,6 +116,7 @@ public sealed class MeleeComboSO : ScriptableObject
             s.chainWindowN = Clamp01Ordered(s.chainWindowN);
             s.knockbackDistance = Mathf.Max(0f, s.knockbackDistance);
             s.knockbackDuration = Mathf.Max(0f, s.knockbackDuration);
+            s.staggerPower = Mathf.Max(0f, s.staggerPower);
 
             // if last step, allow chainWindow to be zeroed by user; otherwise keep as is
             steps[i] = s;

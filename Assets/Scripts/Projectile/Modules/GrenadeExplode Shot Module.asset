@@ -52,8 +52,8 @@ MonoBehaviour:
   allowCrit: 1
   applyKnockback: 1
   knockbackForce: 6
-  knockbackDistance: 7
-  knockbackDuration: 2
+  knockbackDistance: 2
+  knockbackDuration: 1
   knockbackProgressCurve:
     serializedVersion: 2
     m_Curve:

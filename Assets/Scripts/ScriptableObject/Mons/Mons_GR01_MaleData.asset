@@ -20,9 +20,10 @@ MonoBehaviour:
   characterAvatar: {fileID: 9000000, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}
   controller: {fileID: 9100000, guid: 5bff3db2195f8944e8403ede2c0ccb2c, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
-  weaponHandMode: 0
+  weaponHandMode: 2
+  combatRole: 0
   chainAttackSkill: {fileID: 0}
-  maxHP: 1000
+  maxHP: 10000
   maxStamina: 80
   Damage: 10
   armor: 1

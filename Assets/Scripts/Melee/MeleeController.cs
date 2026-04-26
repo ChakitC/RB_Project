@@ -144,7 +144,7 @@ public sealed class MeleeController : MonoBehaviour
         if (!_attackWindowActive || other == null)
             return;
 
-        var target = other.GetComponentInParent<IDamageable>();
+        var target = DamageableResolver.ResolveFrom(other);
         if (target == null || !target.IsAlive)
             return;
         if (IsSelfTarget(target))
@@ -190,7 +190,7 @@ public sealed class MeleeController : MonoBehaviour
         if (_selfDamageable == null)
             _selfDamageable = GetComponent<IDamageable>();
         if (_selfDamageable == null)
-            _selfDamageable = GetComponentInParent<IDamageable>();
+            _selfDamageable = DamageableResolver.ResolveFrom(transform);
     }
 
     bool OwnsHitboxCollider(Collider other)
@@ -263,9 +263,20 @@ public sealed class MeleeController : MonoBehaviour
             _activeChainId == 0 ? CombatEventBus.NextChainId() : _activeChainId,
             0,
             PassiveEventOrigin.External,
-            knockback: knockback);
+            knockback: knockback,
+            stagger: BuildStaggerPayload());
 
         target.TakeDamage(in damageContext);
+    }
+
+    StaggerPayload BuildStaggerPayload()
+    {
+        var activeStep = brain != null ? brain.CurrentMeleeStep : default(MeleeComboSO.Step);
+        float staggerPower = activeStep.staggerPower;
+        if (staggerPower <= 0f && ctx != null && ctx.StatsHub != null)
+            staggerPower = ctx.StatsHub.GetSkillBaseDamage() * 0.5f;
+
+        return new StaggerPayload(staggerPower, 1f, _activeSourceId);
     }
 
     KnockbackData BuildKnockback(Collider other)

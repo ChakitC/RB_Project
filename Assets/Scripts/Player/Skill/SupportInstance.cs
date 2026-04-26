@@ -70,6 +70,10 @@ public class SupportInstance
                 case StatType.CritChance:
                     stats.critChance = (stats.critChance + mod.add) * mod.mul;
                     break;
+
+                case StatType.StaggerPower:
+                    stats.staggerPower = (stats.staggerPower + mod.add) * mod.mul;
+                    break;
             }
         }
     }

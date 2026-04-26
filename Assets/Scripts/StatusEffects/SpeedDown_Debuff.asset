@@ -15,6 +15,7 @@ MonoBehaviour:
   effectId: SpeedDown
   icon: {fileID: 0}
   category: 2
+  vfxProfile: {fileID: 11400000, guid: 8e48e46c551a2834a9c3777f3fbfe98d, type: 2}
   duration: 10
   maxStacks: 1
   stackMode: 3

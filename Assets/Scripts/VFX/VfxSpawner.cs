@@ -21,18 +21,45 @@ public class VfxSpawner : MonoBehaviour
        DontDestroyOnLoad(gameObject);
     }
 
-    public void SpawnVfx(GameObject prefab, Vector3 pos, Vector3 normal, float extraLife = 0f ,float scale = 1f)
+    public GameObject SpawnVfx(GameObject prefab, Vector3 pos, Vector3 normal, float extraLife = 0f ,float scale = 1f)
     {
-        if (prefab == null) return;
-
         Quaternion rot = normal.sqrMagnitude > 0.0001f
             ? Quaternion.LookRotation(normal.normalized)
             : Quaternion.identity;
-        GameObject vfx = Instantiate(prefab, pos, rot);
-        
-        vfx.transform.localScale *= scale;
+
+        return SpawnVfx(prefab, pos, rot, extraLife, scale);
+    }
+
+    public GameObject SpawnVfx(GameObject prefab, Vector3 pos, Quaternion rotation, float extraLife = 0f, float scale = 1f)
+    {
+        if (prefab == null) return null;
+
+        GameObject vfx = InstantiateVfx(prefab, pos, rotation, null, scale);
 
         float duration = CalculateLifetimeAndDisableLoops(vfx) + Mathf.Max(0f, extraLife);
+        Destroy(vfx, duration);
+        return vfx;
+    }
+
+    public GameObject SpawnLoopingVfx(GameObject prefab, Vector3 pos, Quaternion rotation, Transform parent = null, float scale = 1f)
+    {
+        if (prefab == null) return null;
+
+        return InstantiateVfx(prefab, pos, rotation, parent, scale);
+    }
+
+    public void StopLoopingVfx(GameObject vfx, bool allowParticlesToFinish = true, float extraLife = 0f)
+    {
+        if (vfx == null) return;
+
+        if (!allowParticlesToFinish)
+        {
+            Destroy(vfx);
+            return;
+        }
+
+        float duration = CalculateLifetimeAndDisableLoops(vfx) + Mathf.Max(0f, extraLife);
+        StopParticleEmission(vfx);
         Destroy(vfx, duration);
     }
 
@@ -40,6 +67,29 @@ public class VfxSpawner : MonoBehaviour
     {
         if (numberPrefab == null) return;
         DamageNumber dn = numberPrefab.Spawn(position, number);
+    }
+
+    GameObject InstantiateVfx(GameObject prefab, Vector3 pos, Quaternion rotation, Transform parent, float scale)
+    {
+        GameObject vfx = parent
+            ? Instantiate(prefab, pos, rotation, parent)
+            : Instantiate(prefab, pos, rotation);
+
+        vfx.transform.localScale *= Mathf.Max(0f, scale);
+        return vfx;
+    }
+
+    void StopParticleEmission(GameObject vfx)
+    {
+        var particleSystems = vfx.GetComponentsInChildren<ParticleSystem>(true);
+        for (int i = 0; i < particleSystems.Length; i++)
+        {
+            var ps = particleSystems[i];
+            if (ps == null)
+                continue;
+
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        }
     }
 
     float CalculateLifetimeAndDisableLoops(GameObject vfx)

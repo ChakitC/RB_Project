@@ -223,7 +223,7 @@ public class GrenadeExplodeModule : ProjectileModule
     var damaged = new HashSet<int>();
 
     int ownerId = (ignoreOwner && ctx.collisionIgnoreRoot != null) ? ctx.collisionIgnoreRoot.root.GetInstanceID() : 0;
-    IDamageable hitTarget = hitCol != null ? hitCol.GetComponentInParent<IDamageable>() : null;
+    IDamageable hitTarget = DamageableResolver.ResolveFrom(hitCol);
     int hitTargetId = Projectile.GetDamageableIdentityKey(hitTarget);
 
     foreach (var c in cols)
@@ -233,7 +233,7 @@ public class GrenadeExplodeModule : ProjectileModule
         int rid = c.transform.root.GetInstanceID();
         if (ownerId != 0 && rid == ownerId) continue;
 
-        var dmgable = c.GetComponentInParent<IDamageable>();
+        var dmgable = DamageableResolver.ResolveFrom(c);
         if (dmgable == null) continue;
 
         int targetId = Projectile.GetDamageableIdentityKey(dmgable);
@@ -253,7 +253,7 @@ public class GrenadeExplodeModule : ProjectileModule
         float scaled = baseDmg * factor;
 
         float armor = 0f;
-        if (c.GetComponentInParent<IHasArmor>() is IHasArmor hasArmor)
+        if (dmgable is IHasArmor hasArmor)
             armor = hasArmor.Armor;
 
         float critR = allowCrit ? p.critRate : 0f;

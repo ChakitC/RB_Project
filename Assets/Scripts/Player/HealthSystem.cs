@@ -31,10 +31,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
     Coroutine dieRoutine;
     float IHasArmor.Armor => GetFinalArmor();
 
-    [Header("Health Bar")]
-    public GameObject healthBarPrefab;
     Slider healthBarSlider;
-    public float healthBarHight = 2f;
 
     [Header("Hub Sync")]
     [SerializeField] private bool autoRefreshFromHub = true;
@@ -55,7 +52,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
 
     void Start()
     {
-        if (!CTX) CTX = GetComponent<CharacteContext>();
+        if (!CTX) CTX = GetComponentInParent<CharacteContext>();
         if (!statsHub) statsHub = GetComponent<StatsHub>();
         if (!statusEffectController) statusEffectController = GetComponent<StatusEffectController>();
         if (!combatEventBus) combatEventBus = GetComponent<CombatEventBus>();
@@ -68,7 +65,6 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         }
 
         InitializeFromHub(resetCurrentToMax: true);
-        CreateHealthBarIfNeeded();
         ApplyHealthBarValues();
         CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
     }
@@ -110,18 +106,16 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
     public void CancelHold(Interactor i) { }
     public void CompleteHold(Interactor i) { }
 
-    void CreateHealthBarIfNeeded()
+    public void SetHealthBarSlider(Slider slider)
     {
-        if (!healthBarPrefab)
-            return;
+        healthBarSlider = slider;
+        ApplyHealthBarValues();
+    }
 
-        var healthBarInstance = Instantiate(
-            healthBarPrefab,
-            transform.position + Vector3.up * healthBarHight,
-            Quaternion.identity,
-            transform);
-
-        healthBarSlider = healthBarInstance.GetComponentInChildren<Slider>();
+    public void ClearHealthBarSlider(Slider slider)
+    {
+        if (healthBarSlider == slider)
+            healthBarSlider = null;
     }
 
     void ApplyHealthBarValues()
@@ -289,10 +283,20 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
     CharacterKnockbackMotor ResolveKnockbackMotor()
     {
         if (CTX == null)
+        {
+            CTX = GetComponent<CharacteContext>();
+            if (CTX == null)
+                CTX = GetComponentInParent<CharacteContext>();
+        }
+
+        if (CTX == null)
             return null;
 
         if (CTX.KnockbackMotor == null)
-            CTX.KnockbackMotor = GetComponent<CharacterKnockbackMotor>();
+            CTX.KnockbackMotor = CTX.GetComponent<CharacterKnockbackMotor>();
+
+        if (CTX.KnockbackMotor == null)
+            CTX.KnockbackMotor = CTX.GetComponentInChildren<CharacterKnockbackMotor>(true);
 
         return CTX.KnockbackMotor;
     }
@@ -440,7 +444,15 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
     {
         yield return new WaitForSeconds(5.0f);
         ReturnbaseUI?.Invoke();
-        Destroy(gameObject);
+
+        GameObject destroyTarget = GetDestroyTarget();
+        if (destroyTarget != null)
+            Destroy(destroyTarget);
+    }
+
+    protected virtual GameObject GetDestroyTarget()
+    {
+        return gameObject;
     }
 
     IEnumerator DownCoroutine()

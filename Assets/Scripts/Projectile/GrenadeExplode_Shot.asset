@@ -15,8 +15,8 @@ MonoBehaviour:
   baseSpeed: 30
   lifeTime: 3
   applyKnockbackOnHit: 0
-  knockbackDistance: 9.38
-  knockbackDuration: 2
+  knockbackDistance: 0.5
+  knockbackDuration: 1
   knockbackProgressCurve:
     serializedVersion: 2
     m_Curve:
@@ -52,6 +52,10 @@ MonoBehaviour:
     m_RotationOrder: 4
   knockbackReaction: 0
   knockbackInterruptsActions: 0
+  overrideStaggerPower: 0
+  staggerPower: 0
+  staggerPowerMultiplier: 1
+  bonusStaggerPower: 0
   modules:
   - {fileID: 11400000, guid: f4d195ae2d8b99a4587914e344cd0804, type: 2}
   - {fileID: 11400000, guid: 068619fb740793c4dbe3e8a59a74d60d, type: 2}

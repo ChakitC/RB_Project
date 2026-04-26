@@ -10,6 +10,7 @@ public class FinalSkillStats
     public float manaCost;
     public float castTime;
     public float cooldown;
+    public float staggerPower;
 
     // 0..100 (%)
     public float critChance;
@@ -40,6 +41,7 @@ public class SkillInstance
                 manaCost = 0f,
                 castTime = 0f,
                 cooldown = 0f,
+                staggerPower = 0f,
                 critChance = 0f,
                 critMultiplier = 2f
             };
@@ -53,6 +55,7 @@ public class SkillInstance
             manaCost = def.baseManaCost,
             castTime = def.baseCastTime,
             cooldown = def.baseCooldown,
+            staggerPower = def.baseStaggerPower,
             critChance = def.baseCritChance,
             critMultiplier = 2f
         };
@@ -75,6 +78,7 @@ public class SkillInstance
         stats.manaCost = Mathf.Max(0f, stats.manaCost);
         stats.castTime = Mathf.Max(0f, stats.castTime);
         stats.cooldown = Mathf.Max(0f, stats.cooldown);
+        stats.staggerPower = Mathf.Max(0f, stats.staggerPower);
         stats.critMultiplier = Mathf.Max(1f, stats.critMultiplier);
 
         return stats;

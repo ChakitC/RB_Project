@@ -3,6 +3,7 @@ using UnityEngine;
 public class PlayerMovementCC : MonoBehaviour
 {
     [Header("Ref")]
+    [SerializeField] Transform actorRoot;
     [SerializeField] StateHub stateHub;
 
     [Header("Move")]
@@ -23,20 +24,57 @@ public class PlayerMovementCC : MonoBehaviour
     CharacterAnimBrain _brain;
     PlayerContext _characteContext;
     StatsHub statsHub;
+    CharacterController _characterController;
 
     float currentSpeed;
 
     void Awake()
     {
-        _characteContext = GetComponent<PlayerContext>();
-        statsHub = GetComponent<StatsHub>();
-        if (!stateHub)
-            stateHub = GetComponent<StateHub>();
+        ResolveReferences();
+    }
 
-        _brain = GetComponent<CharacterAnimBrain>();
+    void ResolveReferences()
+    {
+        if (!actorRoot)
+        {
+            PlayerContext parentContext = GetComponentInParent<PlayerContext>();
+            actorRoot = parentContext ? parentContext.transform : transform;
+        }
+
+        _characteContext = actorRoot.GetComponent<PlayerContext>();
+        if (!_characteContext)
+            _characteContext = GetComponentInParent<PlayerContext>();
+
+        statsHub = actorRoot.GetComponent<StatsHub>();
+        if (!statsHub)
+            statsHub = GetComponentInParent<StatsHub>();
+
+        if (!stateHub)
+            stateHub = actorRoot.GetComponent<StateHub>();
+        if (!stateHub)
+            stateHub = GetComponentInParent<StateHub>();
+
+        _brain = _characteContext != null ? _characteContext.AnimBrain : null;
+        if (!_brain)
+            _brain = actorRoot.GetComponent<CharacterAnimBrain>();
+        if (!_brain)
+            _brain = actorRoot.GetComponentInChildren<CharacterAnimBrain>(true);
+        if (!_brain)
+            _brain = GetComponentInParent<CharacterAnimBrain>();
+
+        _characterController = _characteContext != null ? _characteContext.cc : null;
+        if (!_characterController)
+            _characterController = actorRoot.GetComponent<CharacterController>();
 
         if (_characteContext != null)
-            _characteContext.AnimBrain = _brain;
+        {
+            if (_characteContext.movement == null)
+                _characteContext.movement = this;
+            if (_characteContext.cc == null)
+                _characteContext.cc = _characterController;
+            if (_brain != null)
+                _characteContext.AnimBrain = _brain;
+        }
     }
 
     void Start()
@@ -63,6 +101,9 @@ public class PlayerMovementCC : MonoBehaviour
     void HandleAiming(LayerMask groundMask)
     {
         var cameraMain = Camera.main;
+        if (cameraMain == null || _characteContext == null || _characteContext.aimTarget == null)
+            return;
+
         Ray ray = cameraMain.ScreenPointToRay(_characteContext.lookInput);
 
         if (Physics.Raycast(ray, out RaycastHit hit, 500f, groundMask))
@@ -74,14 +115,18 @@ public class PlayerMovementCC : MonoBehaviour
                 _characteContext.aimTarget.position = ray.GetPoint(d);
         }
 
-        Vector3 dir = _characteContext.aimTarget.position - transform.position;
+        Transform rotateRoot = actorRoot ? actorRoot : transform;
+        Vector3 dir = _characteContext.aimTarget.position - rotateRoot.position;
         dir.y = 0;
         if (dir.sqrMagnitude > 0.001f)
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 0.2f);
+            rotateRoot.rotation = Quaternion.Slerp(rotateRoot.rotation, Quaternion.LookRotation(dir), 0.2f);
     }
 
     void Move()
     {
+        if (_characteContext == null || stateHub == null || _characterController == null)
+            return;
+
         if (!stateHub.CanMove())
         {
             _move01 = 0f;
@@ -97,7 +142,11 @@ public class PlayerMovementCC : MonoBehaviour
             return;
         }
 
-        var cameraTransform = Camera.main.transform;
+        var cameraMain = Camera.main;
+        if (cameraMain == null)
+            return;
+
+        var cameraTransform = cameraMain.transform;
         Vector3 forward = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
         Vector3 right = Vector3.ProjectOnPlane(cameraTransform.right, Vector3.up).normalized;
 
@@ -108,7 +157,8 @@ public class PlayerMovementCC : MonoBehaviour
             moveWorld.Normalize();
 
         Vector3 moveWorldDir = moveWorld.sqrMagnitude > 0.0001f ? moveWorld.normalized : Vector3.zero;
-        Vector3 moveLocal3 = transform.InverseTransformDirection(moveWorldDir);
+        Transform movementRoot = actorRoot ? actorRoot : transform;
+        Vector3 moveLocal3 = movementRoot.InverseTransformDirection(moveWorldDir);
 
         float baseMoveSpeed = GetBaseMoveSpeedFromHubOrFallback();
         float targetSpeed = baseMoveSpeed;
@@ -145,7 +195,7 @@ public class PlayerMovementCC : MonoBehaviour
         if (stateHub.Isdown && currentSpeed > targetSpeed)
             currentSpeed = targetSpeed;
 
-        _characteContext.cc.SimpleMove(moveWorld * currentSpeed);
+        _characterController.SimpleMove(moveWorld * currentSpeed);
 
         float input01 = Mathf.Clamp01(moveInput.magnitude);
         float target01 = input01;

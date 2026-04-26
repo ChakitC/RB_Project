@@ -37,6 +37,7 @@ public class WeaponSystem : MonoBehaviour
     public float stability = 0f;
     public bool autoloader;
     public float bulletSpeed = 20f;
+    public float staggerPower = 0f;
 
     public bool isAiming = false;
 
@@ -89,21 +90,63 @@ public class WeaponSystem : MonoBehaviour
 
     void Awake()
     {
-        if (!ctx) ctx = GetComponent<CharacteContext>();
-        if (!statsHub) statsHub = GetComponent<StatsHub>();
-        if (!statusEffectController) statusEffectController = GetComponent<StatusEffectController>();
-        if (!combatEventBus) combatEventBus = GetComponent<CombatEventBus>();
-        if (!affixRuntimeController) affixRuntimeController = GetComponent<WeaponAffixRuntimeController>();
+        ResolveReferences();
 
         if (!currentWeapon && ctx) currentWeapon = ctx.currentWeapon;
 
         RefreshFirePointReference(logIfMissing: true);
     }
 
+    void ResolveReferences()
+    {
+        if (!ctx)
+            ctx = GetComponent<CharacteContext>();
+
+        if (!ctx)
+            ctx = GetComponentInParent<CharacteContext>();
+
+        Transform ownerRoot = ctx ? ctx.transform : transform.root;
+
+        if (!statsHub)
+            statsHub = GetComponent<StatsHub>();
+
+        if (!statsHub && ctx)
+            statsHub = ctx.StatsHub;
+
+        if (!statsHub && ownerRoot)
+            statsHub = ownerRoot.GetComponentInChildren<StatsHub>(true);
+
+        if (!statusEffectController)
+            statusEffectController = GetComponent<StatusEffectController>();
+
+        if (!statusEffectController && ownerRoot)
+            statusEffectController = ownerRoot.GetComponentInChildren<StatusEffectController>(true);
+
+        if (!combatEventBus)
+            combatEventBus = GetComponent<CombatEventBus>();
+
+        if (!combatEventBus && ctx)
+            combatEventBus = ctx.CombatEventBus;
+
+        if (!combatEventBus && ownerRoot)
+            combatEventBus = ownerRoot.GetComponentInChildren<CombatEventBus>(true);
+
+        if (!affixRuntimeController)
+            affixRuntimeController = GetComponent<WeaponAffixRuntimeController>();
+
+        if (ctx != null && ctx.WeaponSystem != this)
+            ctx.WeaponSystem = this;
+    }
+
     public bool RefreshFirePointReference(bool logIfMissing = false)
     {
+        ResolveReferences();
+
         if (!firePoint)
-            firePoint = FindChildByName(transform, DefaultFirePointName);
+        {
+            Transform ownerRoot = ctx ? ctx.transform : transform;
+            firePoint = FindChildByName(ownerRoot, DefaultFirePointName);
+        }
 
         if (firePoint)
         {
@@ -197,22 +240,32 @@ public class WeaponSystem : MonoBehaviour
 
     void RefreshWeaponVisual()
     {
-        PlayerVisual visual = null;
+        ResolveReferences();
 
-        if (ctx != null)
+        CharacterVisualController visual = ctx != null ? ctx.Visual : null;
+
+        if (!visual && ctx != null)
         {
-            visual = ctx.Visual;
-            if (!visual)
-            {
-                visual = GetComponent<PlayerVisual>();
-                if (visual != null)
-                    ctx.Visual = visual;
-            }
+            visual = ctx.GetComponentInChildren<CharacterVisualController>(true);
+            if (visual != null)
+                ctx.Visual = visual;
         }
-        else
+
+        if (!visual)
+            visual = GetComponent<CharacterVisualController>();
+
+        if (!visual)
+            visual = GetComponentInParent<CharacterVisualController>();
+
+        if (!visual)
         {
-            visual = GetComponent<PlayerVisual>();
+            Transform ownerRoot = ctx ? ctx.transform : transform.root;
+            if (ownerRoot)
+                visual = ownerRoot.GetComponentInChildren<CharacterVisualController>(true);
         }
+
+        if (ctx != null && visual != null && ctx.Visual != visual)
+            ctx.Visual = visual;
 
         visual?.BuildModelFromWeaponDef();
     }
@@ -284,6 +337,7 @@ public class WeaponSystem : MonoBehaviour
         critMultiplier = FinalCritMult;
         stability = FinalStability;
         bulletSpeed = FinalBulletSpeed;
+        staggerPower = currentWeapon ? Mathf.Max(0f, currentWeapon.staggerPower) : 0f;
         reloadTime = FinalReloadTime;
         maxMagazine = MaxMagazine;
 
@@ -715,7 +769,8 @@ public class WeaponSystem : MonoBehaviour
             stats = new ProjectileStats
             {
                 damage = projectileDamage,
-                speed = projectileSpeed
+                speed = projectileSpeed,
+                staggerPower = staggerPower
             },
             hitCue = currentWeapon != null ? currentWeapon.hitCue : null,
             sourceId = weaponSourceId,

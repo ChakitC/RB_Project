@@ -97,7 +97,7 @@ internal sealed class FieldAllySequenceRunner
         return false;
     }
 
-    public bool TryStartSequenceStep(ChainAttackStepDef step, Transform lockedTarget)
+    public bool TryStartSequenceStep(ChainAttackStepDef step, Transform lockedTarget, Transform lockedTargetAnchor = null)
     {
         if (step == null)
             return false;
@@ -137,12 +137,20 @@ internal sealed class FieldAllySequenceRunner
             return false;
         }
 
+        Transform resolvedTargetAnchor = lockedTargetAnchor;
+        if (resolvedTargetAnchor == null &&
+            ChainAttackTargetingUtility.TryResolveTargetAnchor(lockedTarget, out Transform discoveredAnchor))
+        {
+            resolvedTargetAnchor = discoveredAnchor;
+        }
+
         PendingSequenceExecution execution = new()
         {
             executionId = NextExecutionId(),
             owner = _reservationOwner,
             step = step,
             lockedTarget = lockedTarget,
+            lockedTargetAnchor = resolvedTargetAnchor,
             attackRuntimeSkill = resolvedRuntimeSkill,
             attackSkillDef = resolvedSkillDef,
             attackSkillLevel = resolvedSkillLevel,
@@ -153,7 +161,7 @@ internal sealed class FieldAllySequenceRunner
         };
 
         _pendingExecution = execution;
-        skillCastBridge.ApplyChainAimTargetOverride(execution.lockedTarget);
+        skillCastBridge.ApplyChainAimTargetOverride(execution);
 
         if (step.enterMode == ChainActorEnterMode.UtilityWarpInToTarget)
             return TryStartEnterUtility(execution);
@@ -163,6 +171,9 @@ internal sealed class FieldAllySequenceRunner
             CleanupActiveExecution(success: false);
             return false;
         }
+
+        if (RequiresEntrySnapBeforeAttack(execution))
+            execution.entrySnapApplied = true;
 
         return TryStartAttack(execution);
     }
@@ -372,8 +383,10 @@ internal sealed class FieldAllySequenceRunner
             return false;
         }
 
+        execution.entrySnapApplied = true;
+
         if (execution.step.faceLockedTargetOnStart)
-            transitionController.FaceTarget(execution.lockedTarget);
+            transitionController.FaceTarget(execution);
 
         return TryStartAttack(execution);
     }
@@ -385,6 +398,12 @@ internal sealed class FieldAllySequenceRunner
             execution.attackSkillDef == null ||
             owner.AnimBrainRef == null)
         {
+            return false;
+        }
+
+        if (!EnsureEntrySnapAppliedBeforeAttack(execution))
+        {
+            CleanupActiveExecution(success: false);
             return false;
         }
 
@@ -403,7 +422,7 @@ internal sealed class FieldAllySequenceRunner
         execution.attackSkillUser = attackSkillUser;
 
         if (execution.step.faceLockedTargetOnStart)
-            transitionController.FaceTarget(execution.lockedTarget);
+            transitionController.FaceTarget(execution);
 
         execution.attackPayloadReleased = false;
         execution.attackRequestId = NextRequestId();
@@ -448,8 +467,10 @@ internal sealed class FieldAllySequenceRunner
             return;
         }
 
+        _pendingExecution.entrySnapApplied = true;
+
         if (_pendingExecution.step.faceLockedTargetOnStart)
-            transitionController.FaceTarget(_pendingExecution.lockedTarget);
+            transitionController.FaceTarget(_pendingExecution);
 
         SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForEnterComplete);
         owner.LogExecution($"Teleported '{owner.ActorName}' into chain attack pose for step '{_pendingExecution.step.RuntimeId}'.");
@@ -461,7 +482,7 @@ internal sealed class FieldAllySequenceRunner
             return;
 
         if (_pendingExecution.step.faceLockedTargetOnCast)
-            transitionController.FaceTarget(_pendingExecution.lockedTarget);
+            transitionController.FaceTarget(_pendingExecution);
 
         if (!skillCastBridge.TryReleaseAttackPayload(_pendingExecution, owner.AnimBrainRef, requestId))
         {
@@ -684,6 +705,40 @@ internal sealed class FieldAllySequenceRunner
         _pendingExecution.enterRequestId = 0;
         SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForAttackStart);
         owner.LogExecution($"Queued attack start for step '{_pendingExecution.step.RuntimeId}' after {reason}.");
+    }
+
+    bool EnsureEntrySnapAppliedBeforeAttack(PendingSequenceExecution execution)
+    {
+        if (!RequiresEntrySnapBeforeAttack(execution) || execution.entrySnapApplied)
+            return true;
+
+        owner.LogExecution(
+            $"Entry snap was missing before attack for step '{execution.step.RuntimeId}'. Forcing teleport recovery.");
+
+        if (!transitionController.TryTeleportToEntryPose(execution))
+        {
+            owner.LogExecution($"Step '{execution.step.RuntimeId}' failed to resolve a forced entry snap pose.");
+            return false;
+        }
+
+        execution.entrySnapApplied = true;
+
+        if (execution.step.faceLockedTargetOnStart)
+            transitionController.FaceTarget(execution);
+
+        owner.LogExecution($"Forced entry snap for '{owner.ActorName}' before attack step '{execution.step.RuntimeId}'.");
+        return true;
+    }
+
+    static bool RequiresEntrySnapBeforeAttack(PendingSequenceExecution execution)
+    {
+        if (execution == null || execution.step == null)
+            return false;
+
+        ChainAttackStepDef step = execution.step;
+        return step.enterMode == ChainActorEnterMode.InstantTeleportToTarget ||
+               step.enterMode == ChainActorEnterMode.UtilityWarpInToTarget ||
+               step.moveMode == ChainActorMoveMode.WarpToLockedTargetAnchor;
     }
 
     void QueueImmediateReturnUtilityStart()

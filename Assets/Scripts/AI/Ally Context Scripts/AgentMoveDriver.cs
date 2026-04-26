@@ -26,11 +26,25 @@ public class AgentMoveDriver : MonoBehaviour
     void Awake()
     {
         if (!agent)
+        {
             agent = GetComponent<NavMeshAgent>();
+            if (!agent)
+                agent = GetComponentInParent<NavMeshAgent>();
+        }
+
         if (!stateHub)
+        {
             stateHub = GetComponent<StateHub>();
+            if (!stateHub)
+                stateHub = GetComponentInParent<StateHub>();
+        }
+
         if (!ctx)
+        {
             ctx = GetComponent<CharacteContext>();
+            if (!ctx)
+                ctx = GetComponentInParent<CharacteContext>();
+        }
     }
 
     void Update()

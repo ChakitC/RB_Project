@@ -19,11 +19,13 @@ internal sealed class PendingSequenceExecution
     public object owner;
     public ChainAttackStepDef step;
     public Transform lockedTarget;
+    public Transform lockedTargetAnchor;
     public ISkillUser attackSkillUser;
     public SkillInstance attackRuntimeSkill;
     public SkillGemDefinition attackSkillDef;
     public int attackSkillLevel;
     public bool ignoreResourceCosts;
+    public bool entrySnapApplied;
     public bool attackPayloadReleased;
     public bool continueReleased;
     public bool releaseReservationOnComplete;

@@ -10,7 +10,7 @@ public class AiRotateToTarget : Action
     public SharedVariable<GameObject> target;
 
     [Tooltip("ถ้าใส่ จะหมุน transform นี้แทนตัว root หลัก เช่น model/pivot")]
-    public SharedVariable<Transform> rotateRoot;
+    public SharedVariable<GameObject> rotateRoot;
 
     [Header("Rotate Settings")]
     [Tooltip("ความเร็วในการหมุน (deg/sec)")]
@@ -47,7 +47,7 @@ public class AiRotateToTarget : Action
     {
         _rotateTransform =
             (rotateRoot != null && rotateRoot.Value != null)
-            ? rotateRoot.Value
+            ? rotateRoot.Value.transform
             : _self;
 
         if (_agent != null)

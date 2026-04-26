@@ -107,6 +107,10 @@ public class SkillGemDefinition : ScriptableObject
     public float baseDamage = 10f;
 
     [PropertyOrder(-79)]
+    [FoldoutGroup("Gameplay", Expanded = true), LabelText("Stagger Power"), MinValue(0f)]
+    public float baseStaggerPower = 10f;
+
+    [PropertyOrder(-79)]
     [FoldoutGroup("Gameplay", Expanded = true), LabelText("Mana Cost"), MinValue(0f)]
     public float baseManaCost = 10f;
 
@@ -527,6 +531,7 @@ public class SkillGemDefinition : ScriptableObject
             manaCost = baseManaCost,
             castTime = baseCastTime,
             cooldown = baseCooldown,
+            staggerPower = baseStaggerPower,
             critChance = baseCritChance,
             critMultiplier = 2f,
         };

@@ -429,8 +429,14 @@ public class CharacterSkillManager : MonoBehaviour
     private void CacheReferences()
     {
         ctx = GetComponent<CharacteContext>();
+        if (ctx == null)
+            ctx = GetComponentInParent<CharacteContext>();
+
         skillUser = GetComponent<ISkillUser>();
-        animBrain = GetComponent<CharacterAnimBrain>();
+        if (skillUser == null && ctx != null && ctx.EnegySystem != null)
+            skillUser = ctx.EnegySystem;
+
+        animBrain = ResolveAnimBrainReference();
         weaponSystem = GetComponent<WeaponSystem>();
 
         if (ctx == null)
@@ -447,11 +453,33 @@ public class CharacterSkillManager : MonoBehaviour
 
         if (ctx.AnimBrain == null)
             ctx.AnimBrain = animBrain;
+        else if (animBrain == null)
+            animBrain = ctx.AnimBrain;
 
         if (ctx.WeaponSystem == null)
             ctx.WeaponSystem = weaponSystem;
         else if (weaponSystem == null)
             weaponSystem = ctx.WeaponSystem;
+    }
+
+    private CharacterAnimBrain ResolveAnimBrainReference()
+    {
+        if (ctx != null && ctx.AnimBrain != null)
+            return ctx.AnimBrain;
+
+        var resolved = GetComponent<CharacterAnimBrain>();
+        if (resolved != null)
+            return resolved;
+
+        resolved = GetComponentInChildren<CharacterAnimBrain>(true);
+        if (resolved != null)
+            return resolved;
+
+        resolved = GetComponentInParent<CharacterAnimBrain>();
+        if (resolved != null)
+            return resolved;
+
+        return ctx != null ? ctx.GetComponentInChildren<CharacterAnimBrain>(true) : null;
     }
 
     private int CountConfiguredPassiveSlots()

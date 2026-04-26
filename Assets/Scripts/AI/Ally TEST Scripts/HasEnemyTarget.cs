@@ -19,7 +19,7 @@ public class HasEnemyFromSensor : Conditional
     {
         if (sensor == null)
         {
-            sensor = gameObject.GetComponent<AITargetSensor>();
+            sensor = gameObject.GetComponentInParent<AITargetSensor>();
         }
     }
 

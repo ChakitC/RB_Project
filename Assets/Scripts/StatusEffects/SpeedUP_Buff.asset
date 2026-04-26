@@ -15,6 +15,7 @@ MonoBehaviour:
   effectId: SpeedUP
   icon: {fileID: 0}
   category: 1
+  vfxProfile: {fileID: 11400000, guid: dae1a1a2fb07ad945b11809a064fa0da, type: 2}
   duration: 10
   maxStacks: 1
   stackMode: 3

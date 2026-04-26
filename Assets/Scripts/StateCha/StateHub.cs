@@ -31,6 +31,8 @@ public sealed class StateHub : MonoBehaviour
     [SerializeField] private bool statusEffectStunned;
     [SerializeField] private ControlBlockFlags externalControlBlocks = ControlBlockFlags.None;
     [SerializeField] private bool externalStunned;
+    [SerializeField] private ControlBlockFlags staggerControlBlocks = ControlBlockFlags.None;
+    [SerializeField] private bool staggerStunned;
 
     public float MoveSpeed01 { get; private set; }
     public bool DesiredFireHeld { get; private set; }
@@ -48,9 +50,9 @@ public sealed class StateHub : MonoBehaviour
     public bool IsAlive => LifeSM.CurrentId == LifeStateId.Alive;
     public bool Isdown => LifeSM.CurrentId == LifeStateId.Down;
 
-    ControlBlockFlags ActiveControlBlocks => statusEffectControlBlocks | externalControlBlocks;
+    ControlBlockFlags ActiveControlBlocks => statusEffectControlBlocks | externalControlBlocks | staggerControlBlocks;
 
-    bool HasStunOverride => statusEffectStunned || externalStunned;
+    bool HasStunOverride => statusEffectStunned || externalStunned || staggerStunned;
 
     bool IsMoveBlockedByStatusEffects =>
         HasStunOverride || (ActiveControlBlocks & ControlBlockFlags.Move) != 0;
@@ -70,7 +72,10 @@ public sealed class StateHub : MonoBehaviour
         if (!animBrain)
         {
             animBrain = ctx.GetComponent<CharacterAnimBrain>();
-            if (ctx.AnimBrain == null)
+            if (!animBrain)
+                animBrain = ctx.GetComponentInChildren<CharacterAnimBrain>(true);
+
+            if (animBrain != null && ctx.AnimBrain == null)
                 ctx.AnimBrain = animBrain;
         }
 
@@ -384,6 +389,29 @@ public sealed class StateHub : MonoBehaviour
 
         externalControlBlocks = controlBlocks;
         externalStunned = stunned;
+
+        if (changed && stunned && ctx != null)
+        {
+            var meleeController = ctx.MeleeController;
+            if (!meleeController)
+                meleeController = ctx.GetComponent<MeleeController>();
+
+            meleeController?.InterruptMelee();
+        }
+
+        if (changed)
+        {
+            SyncStatusDrivenMoveState();
+            CancelHeldFireIfShootBlocked();
+        }
+    }
+
+    public void SetStaggerControlState(ControlBlockFlags controlBlocks, bool stunned)
+    {
+        bool changed = staggerControlBlocks != controlBlocks || staggerStunned != stunned;
+
+        staggerControlBlocks = controlBlocks;
+        staggerStunned = stunned;
 
         if (changed && stunned && ctx != null)
         {

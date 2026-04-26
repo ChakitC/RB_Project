@@ -19,10 +19,13 @@ internal sealed class FieldAllyAutonomyScope
     bool _defaultAgentHadPath;
     bool _actorProtectionApplied;
     bool _collisionMaskCaptured;
+    bool _rigidbodyStateCaptured;
     int _actorInvincibilityToken;
     int _actorUntargetableToken;
     LayerMask _defaultRigidbodyExcludeLayers;
     LayerMask _defaultCharacterControllerExcludeLayers;
+    bool _defaultRigidbodyIsKinematic;
+    bool _defaultRigidbodyUseGravity;
     Vector3 _defaultAgentDestination;
 
     public FieldAllyAutonomyScope(FieldAllyMember owner, FieldAllyTransitionController transitionController)
@@ -84,6 +87,9 @@ internal sealed class FieldAllyAutonomyScope
         if (ApplyTemporaryNoCollision())
             capturedAny = true;
 
+        if (ApplyTemporaryRigidbodyTeleportControl())
+            capturedAny = true;
+
         if (ApplyPlayerChainLock())
             capturedAny = true;
 
@@ -133,6 +139,7 @@ internal sealed class FieldAllyAutonomyScope
 
         RestoreTemporaryComponentDisables();
         RestoreTemporaryActorProtection();
+        RestoreTemporaryRigidbodyTeleportControl();
         RestoreTemporaryNoCollision();
         RestorePlayerChainLock();
         _autonomyCaptured = false;
@@ -221,6 +228,45 @@ internal sealed class FieldAllyAutonomyScope
             owner.ActorCharacterControllerRef.excludeLayers = _defaultCharacterControllerExcludeLayers;
 
         _collisionMaskCaptured = false;
+    }
+
+    bool ApplyTemporaryRigidbodyTeleportControl()
+    {
+        owner.RefreshCollisionReferences();
+
+        Rigidbody actorRigidbody = owner.ActorRigidbodyRef;
+        if (actorRigidbody == null)
+            return false;
+
+        if (!_rigidbodyStateCaptured)
+        {
+            _defaultRigidbodyIsKinematic = actorRigidbody.isKinematic;
+            _defaultRigidbodyUseGravity = actorRigidbody.useGravity;
+            _rigidbodyStateCaptured = true;
+        }
+
+        actorRigidbody.linearVelocity = Vector3.zero;
+        actorRigidbody.angularVelocity = Vector3.zero;
+        actorRigidbody.useGravity = false;
+        actorRigidbody.isKinematic = true;
+        return true;
+    }
+
+    void RestoreTemporaryRigidbodyTeleportControl()
+    {
+        if (!_rigidbodyStateCaptured)
+            return;
+
+        Rigidbody actorRigidbody = owner.ActorRigidbodyRef;
+        if (actorRigidbody != null)
+        {
+            actorRigidbody.linearVelocity = Vector3.zero;
+            actorRigidbody.angularVelocity = Vector3.zero;
+            actorRigidbody.useGravity = _defaultRigidbodyUseGravity;
+            actorRigidbody.isKinematic = _defaultRigidbodyIsKinematic;
+        }
+
+        _rigidbodyStateCaptured = false;
     }
 
     bool ApplyTemporaryComponentDisables()

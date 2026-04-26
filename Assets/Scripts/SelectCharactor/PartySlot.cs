@@ -18,7 +18,7 @@ public class PartySlot : MonoBehaviour
     [SerializeField] private int partyIndex = 0;     // 0 = player
     [SerializeField] private string fallbackId = "";
     [SerializeField] private Animator animator;
-    [SerializeField] private PlayerVisual playerVisual;
+    [SerializeField] private CharacterVisualController playerVisual;
     
     [Header("Runtime")]
     public string IDCharacter;

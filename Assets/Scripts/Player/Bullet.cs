@@ -20,7 +20,7 @@ public class Bullet : MonoBehaviour
     Transform shooterRoot;
     List<Collider> ignoredCols = new List<Collider>();
     WeaponType gunType;
-    float baseDamage, critRate, critMult;
+    float baseDamage, critRate, critMult, staggerPower;
 
     void Awake()
     {
@@ -34,7 +34,14 @@ public class Bullet : MonoBehaviour
         Destroy(gameObject, lifetime);
     }
 
-    public void Initialize(Transform shooter, Vector3 shooterPosition, WeaponType gunType, float baseDamage, float critRate, float critMult)
+    public void Initialize(
+        Transform shooter,
+        Vector3 shooterPosition,
+        WeaponType gunType,
+        float baseDamage,
+        float critRate,
+        float critMult,
+        float staggerPower = 0f)
     {
         this.shooterRoot = shooter.root;
         this.spawnPos = shooterPosition;
@@ -42,6 +49,7 @@ public class Bullet : MonoBehaviour
         this.baseDamage = baseDamage;
         this.critRate = critRate;
         this.critMult = critMult;
+        this.staggerPower = staggerPower;
 
         foreach (var col in shooterRoot.GetComponentsInChildren<Collider>())
         {
@@ -64,12 +72,12 @@ public class Bullet : MonoBehaviour
         // กันโดนตัวเอง
         if (shooterRoot && other.transform.root == shooterRoot) return;
 
-        var damageable = other.GetComponentInParent<IDamageable>();
+        var damageable = DamageableResolver.ResolveFrom(other);
         if (damageable != null)
         {
             float armor = 0f;
             
-            if (other.GetComponentInParent<IHasArmor>() is IHasArmor target)
+            if (damageable is IHasArmor target)
             {
                 armor = target.Armor;
             }
@@ -98,7 +106,8 @@ public class Bullet : MonoBehaviour
             damageable.TakeDamage(
                 finalDamage,
                 shooterRoot != null ? shooterRoot.gameObject : null,
-                sourceId: $"bullet:{gunType}");
+                sourceId: $"bullet:{gunType}",
+                stagger: new StaggerPayload(staggerPower, 1f, $"bullet:{gunType}"));
             Destroy(gameObject);
         }
         else if (other.CompareTag("Wall"))

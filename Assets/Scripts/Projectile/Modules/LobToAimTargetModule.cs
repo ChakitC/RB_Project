@@ -147,6 +147,9 @@ public class LobToAimTargetModule : ProjectileModule
 
     Transform FindAimTarget(ProjectileContext ctx)
     {
+        if (ctx.aimTarget != null)
+            return ctx.aimTarget;
+
         Transform aimTarget = FindAimTargetInHierarchy(ctx.sourceActor);
         if (aimTarget != null)
             return aimTarget;

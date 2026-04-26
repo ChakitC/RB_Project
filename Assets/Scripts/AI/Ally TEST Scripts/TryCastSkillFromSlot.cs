@@ -56,17 +56,17 @@ public class TryCastSkillFromSlot : ActionNode
     private bool TryCacheReferences()
     {
         if (CTX == null)
-            CTX = gameObject.GetComponent<CharacteContext>();
+            CTX = gameObject.GetComponentInParent<CharacteContext>();
 
         if (CTX == null)
             return false;
 
         if (CTX.SkillManager == null)
-            CTX.SkillManager = gameObject.GetComponent<CharacterSkillManager>();
+            CTX.SkillManager = gameObject.GetComponentInParent<CharacterSkillManager>();
 
         var resolvedAnimBrain = CTX.AnimBrain != null
             ? CTX.AnimBrain
-            : gameObject.GetComponent<CharacterAnimBrain>();
+            : gameObject.GetComponentInParent<CharacterAnimBrain>();
 
         if (CTX.AnimBrain == null)
             CTX.AnimBrain = resolvedAnimBrain;

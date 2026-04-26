@@ -210,18 +210,45 @@ public sealed class AIAimTargetDriver : MonoBehaviour
             return false;
 
         AITargetInfo targetInfo = target.GetComponentInParent<AITargetInfo>();
-        if (preferChainAttackPoint &&
-            targetInfo != null &&
-            targetInfo.ChainAttackPoint != null)
+        if (targetInfo != null)
         {
-            point = targetInfo.ChainAttackPoint.position;
-            return true;
+            Transform targetPoint = preferChainAttackPoint
+                ? targetInfo.ChainAttackPoint
+                : targetInfo.AimPoint;
+            if (targetPoint != null)
+            {
+                point = targetPoint.position;
+                return true;
+            }
         }
 
         IAITargetable targetable = FindTargetable(target);
         if (targetable != null && targetable.AimPoint != null)
         {
             point = targetable.AimPoint.position;
+            return true;
+        }
+
+        Transform rootTransform = ResolveTargetRoot(target);
+        AITargetInfo childTargetInfo = rootTransform != null
+            ? rootTransform.GetComponentInChildren<AITargetInfo>(true)
+            : null;
+        if (childTargetInfo != null)
+        {
+            Transform targetPoint = preferChainAttackPoint
+                ? childTargetInfo.ChainAttackPoint
+                : childTargetInfo.AimPoint;
+            if (targetPoint != null)
+            {
+                point = targetPoint.position;
+                return true;
+            }
+        }
+
+        IAITargetable childTargetable = FindTargetableInChildren(rootTransform);
+        if (childTargetable != null && childTargetable.AimPoint != null)
+        {
+            point = childTargetable.AimPoint.position;
             return true;
         }
 
@@ -242,6 +269,37 @@ public sealed class AIAimTargetDriver : MonoBehaviour
         }
 
         return null;
+    }
+
+    IAITargetable FindTargetableInChildren(Transform start)
+    {
+        if (start == null)
+            return null;
+
+        MonoBehaviour[] all = start.GetComponentsInChildren<MonoBehaviour>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i] is IAITargetable targetable)
+                return targetable;
+        }
+
+        return null;
+    }
+
+    static Transform ResolveTargetRoot(Transform start)
+    {
+        if (start == null)
+            return null;
+
+        CharacteContext targetContext = start.GetComponentInParent<CharacteContext>();
+        if (targetContext != null)
+            return targetContext.transform;
+
+        Rigidbody rigidbody = start.GetComponentInParent<Rigidbody>();
+        if (rigidbody != null)
+            return rigidbody.transform;
+
+        return start.root != null ? start.root : start;
     }
 
     string GetAimTargetName()

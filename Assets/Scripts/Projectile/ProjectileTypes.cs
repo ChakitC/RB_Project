@@ -37,12 +37,14 @@ public struct ProjectileStats
 {
     public float damage;
     public float speed;
+    public float staggerPower;
 }
 
 public struct ProjectileContext
 {
     public Transform sourceActor;
     public Transform collisionIgnoreRoot;
+    public Transform aimTarget;
     public CombatEventBus combatEventBus;
     public StatusEffectController statusEffectController;
     public Vector3 dir;

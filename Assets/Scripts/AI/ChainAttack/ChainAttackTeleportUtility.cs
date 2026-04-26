@@ -9,7 +9,9 @@ public static class ChainAttackTeleportUtility
         Transform anchorTransform,
         Quaternion fallbackBaseRotation,
         out Vector3 teleportPosition,
-        out Quaternion teleportRotation)
+        out Quaternion teleportRotation,
+        bool? requireNavMeshAtAnchorOverride = null,
+        float? navMeshSampleDistanceOverride = null)
     {
         teleportPosition = Vector3.zero;
         teleportRotation = Quaternion.identity;
@@ -19,8 +21,8 @@ public static class ChainAttackTeleportUtility
 
         ChainAttackTeleportRuntimeConfig config = new(
             profile.useAnchorRotationAsBase,
-            profile.requireNavMeshAtAnchor,
-            profile.navMeshSampleDistance,
+            requireNavMeshAtAnchorOverride ?? profile.requireNavMeshAtAnchor,
+            navMeshSampleDistanceOverride ?? profile.navMeshSampleDistance,
             profile.anchorPositionOffset,
             profile.probeOrientation,
             profile.allowFallbackToBaseRotation,

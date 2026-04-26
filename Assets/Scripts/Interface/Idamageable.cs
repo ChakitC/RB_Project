@@ -26,7 +26,8 @@ public static class DamageableExtensions
         PassiveEventOrigin origin = PassiveEventOrigin.External,
         string originPassiveId = null,
         string originRuleId = null,
-        KnockbackData knockback = default)
+        KnockbackData knockback = default,
+        StaggerPayload stagger = default)
     {
         if (damageable == null)
             return;
@@ -47,10 +48,57 @@ public static class DamageableExtensions
             origin,
             originPassiveId,
             originRuleId,
-            knockback);
+            knockback,
+            stagger);
 
         damageable.TakeDamage(in damageContext);
     }
 }
 
+public static class DamageableResolver
+{
+    public static IDamageable ResolveFrom(Collider collider)
+    {
+        return collider != null ? ResolveFrom(collider.transform) : null;
+    }
+
+    public static IDamageable ResolveFrom(Component component)
+    {
+        return component != null ? ResolveFrom(component.transform) : null;
+    }
+
+    public static IDamageable ResolveFrom(Transform transform)
+    {
+        if (transform == null)
+            return null;
+
+        CharacteContext context = transform.GetComponentInParent<CharacteContext>();
+        if (context != null)
+        {
+            HealthSystem health = ResolveContextHealth(context);
+            if (health != null)
+                return health;
+        }
+
+        return transform.GetComponentInParent<IDamageable>();
+    }
+
+    static HealthSystem ResolveContextHealth(CharacteContext context)
+    {
+        if (context == null)
+            return null;
+
+        if (context.HealthSystem != null)
+            return context.HealthSystem;
+
+        HealthSystem health = context.GetComponent<HealthSystem>();
+        if (health == null)
+            health = context.GetComponentInChildren<HealthSystem>(true);
+
+        if (health != null)
+            context.HealthSystem = health;
+
+        return health;
+    }
+}
 

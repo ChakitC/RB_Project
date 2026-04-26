@@ -2,27 +2,59 @@ using UnityEngine;
 
 public class RootMotionCCDriver : MonoBehaviour
 {
-    [SerializeField] private CharacterAnimBrain brain; // หรือใส่ ref อื่นที่บอกว่า RootMotionActive
+    [SerializeField] private CharacterAnimBrain brain;
     [SerializeField] private bool zeroY = true;
     [SerializeField] private bool applyRootRotation = false;
 
-    private CharacterController cc;
-    private Animator animator;
+    [SerializeField] private CharacterController cc;
+    [SerializeField] private Animator animator;
 
     void Awake()
     {
-        cc = GetComponent<CharacterController>();
-        animator = GetComponent<Animator>();
+        ResolveReferences();
 
-        if (!brain) brain = GetComponent<CharacterAnimBrain>();
+        if (animator)
+            animator.applyRootMotion = false;
+    }
 
-        // ให้ Animator เรียก OnAnimatorMove และเรารับผิดชอบการขยับเอง
-        animator.applyRootMotion = true;
+    public void Configure(CharacterAnimBrain animBrain, CharacterController characterController, Animator sourceAnimator)
+    {
+        brain = animBrain;
+        cc = characterController;
+        animator = sourceAnimator;
+
+        if (animator)
+            animator.applyRootMotion = false;
+    }
+
+    void ResolveReferences()
+    {
+        if (!cc)
+            cc = GetComponent<CharacterController>();
+        if (!cc)
+            cc = GetComponentInParent<CharacterController>();
+        if (!cc)
+            cc = GetComponentInChildren<CharacterController>(true);
+
+        if (!animator)
+            animator = GetComponent<Animator>();
+        if (!animator)
+            animator = GetComponentInParent<Animator>();
+        if (!animator)
+            animator = GetComponentInChildren<Animator>(true);
+
+        if (!brain)
+            brain = GetComponent<CharacterAnimBrain>();
+        if (!brain)
+            brain = GetComponentInParent<CharacterAnimBrain>();
+        if (!brain)
+            brain = GetComponentInChildren<CharacterAnimBrain>(true);
     }
 
     void OnAnimatorMove()
     {
         if (!brain || !brain.RootMotionActive) return;
+        if (!cc || !animator) return;
 
         Vector3 delta = animator.deltaPosition;
         if (zeroY) delta.y = 0f;

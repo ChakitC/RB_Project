@@ -131,6 +131,7 @@ MonoBehaviour:
   prefabweapone: {fileID: 0}
   IsSlot: 0
   modelRoot: {fileID: 2946593003498775809}
+  buildModelAutomatically: 1
   animancer: {fileID: 6001444376581780648}
   rightHandName: hand.r
   leftHandName: hand.l
@@ -146,6 +147,12 @@ MonoBehaviour:
   firePointLocalPos: {x: 0, y: 1, z: 1.2}
   firePointLocalRotEuler: {x: -90, y: 0, z: 0}
   firePointLocalScale: {x: 1, y: 1, z: 1}
+  healthBarPrefab: {fileID: 0}
+  healthBarHight: 2
+  healthBarBoneName: c_traj
+  healthBarLocalOffset: {x: 0, y: 0, z: 0}
+  healthBarLocalRotEuler: {x: 0, y: 0, z: 0}
+  healthBarLocalScale: {x: 1, y: 1, z: 1}
 --- !u!114 &6759423992435277807
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -12,6 +12,10 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
     [Header("RootModel")]
     [SerializeField] private Transform modelRoot;
 
+    [Header("Model Build")]
+    [SerializeField, Tooltip("Disable when a model is already placed under modelRoot and should not be recreated automatically.")]
+    private bool buildModelAutomatically = true;
+
     [Header("Animancer Player (root)")]
     [SerializeField] public AnimancerComponent animancer;
 
@@ -66,12 +70,12 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         if (!animancer) Debug.LogWarning("[CharacterVisualController] Missing AnimancerComponent", this);
         if (!modelRoot) Debug.LogWarning("[CharacterVisualController] modelRoot Missing", this);
 
-        TryBuildCurrentModel(silent: true);
+        TryBuildCurrentModelAutomatically(silent: true);
     }
 
     private void Start()
     {
-        TryBuildCurrentModel(silent: true);
+        TryBuildCurrentModelAutomatically(silent: true);
     }
 
     private void OnValidate()
@@ -88,7 +92,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
     public void OnLoad(GameSaveData data)
     {
         EnsureReferences();
-        TryBuildCurrentModel(silent: false);
+        TryBuildCurrentModelAutomatically(silent: false);
     }
 
     void EnsureReferences()
@@ -101,6 +105,18 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
 
         if (_ctx != null && _ctx.Visual != this)
             _ctx.Visual = this;
+
+        if (animancer == null)
+            animancer = GetComponent<AnimancerComponent>();
+
+        if (animancer == null && _ctx != null)
+            animancer = _ctx.GetComponentInChildren<AnimancerComponent>(true);
+
+        if (animancer == null)
+            animancer = GetComponentInParent<AnimancerComponent>();
+
+        if (animancer == null)
+            animancer = GetComponentInChildren<AnimancerComponent>(true);
 
         if (_partyLoader == null)
             _partyLoader = _ctx != null ? _ctx.CharacterLoad : null;
@@ -171,6 +187,88 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         BuildModel(prefab);
     }
 
+    void TryBuildCurrentModelAutomatically(bool silent)
+    {
+        if (buildModelAutomatically)
+        {
+            TryBuildCurrentModel(silent);
+            return;
+        }
+
+        SetupExistingModel(silent);
+    }
+
+    void SetupExistingModel(bool silent)
+    {
+        if (!TryResolveExistingAnimator(silent))
+            return;
+
+        _currentModel = ResolveExistingModelObject();
+        if (!_currentModel)
+        {
+            if (!silent)
+                Debug.LogWarning("[CharacterVisualController] Existing model root not found", this);
+            return;
+        }
+
+        AttachFirePointToModelBone();
+        CreateHealthBarOnModelBone();
+        BuildModelFromWeaponDef();
+        ConfigureAnimatorRuntime();
+    }
+
+    bool TryResolveExistingAnimator(bool silent)
+    {
+        if (animator)
+            return true;
+
+        if (animancer && animancer.Animator)
+            animator = animancer.Animator;
+
+        if (!animator && modelRoot)
+            animator = modelRoot.GetComponentInChildren<Animator>(true);
+
+        if (!animator)
+            animator = GetComponentInChildren<Animator>(true);
+
+        if (!animator && _ctx)
+            animator = _ctx.GetComponentInChildren<Animator>(true);
+
+        if (!animator)
+            animator = GetComponentInParent<Animator>();
+
+        if (!animator && !silent)
+            Debug.LogWarning("[CharacterVisualController] Existing model Animator not found", this);
+
+        return animator;
+    }
+
+    GameObject ResolveExistingModelObject()
+    {
+        if (animator)
+        {
+            if (modelRoot && animator.transform.IsChildOf(modelRoot))
+                return GetTopChildUnderRoot(animator.transform, modelRoot).gameObject;
+
+            return animator.gameObject;
+        }
+
+        if (modelRoot && modelRoot.childCount > 0)
+            return modelRoot.GetChild(0).gameObject;
+
+        return null;
+    }
+
+    static Transform GetTopChildUnderRoot(Transform child, Transform root)
+    {
+        Transform current = child;
+
+        while (current.parent && current.parent != root && current.parent.IsChildOf(root))
+            current = current.parent;
+
+        return current;
+    }
+
     bool TryGetCharacterPrefab(out GameObject prefab, bool silent)
     {
         prefab = null;
@@ -218,7 +316,12 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         AttachFirePointToModelBone();
         CreateHealthBarOnModelBone();
         BuildModelFromWeaponDef();
-        
+
+        ConfigureAnimatorRuntime();
+    }
+
+    private void ConfigureAnimatorRuntime()
+    {
         var stats = GetCurrentCharacterStats();
         if (!animator || !stats)
             return;
@@ -358,6 +461,19 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
     private void CreateHealthBarOnModelBone()
     {
         EnsureReferences();
+
+        if (_healthBarInstance)
+        {
+            ApplyHealthBarOffset();
+
+            if (_healthSystem != null)
+            {
+                var existingSlider = _healthBarInstance.GetComponentInChildren<Slider>(true);
+                _healthSystem.SetHealthBarSlider(existingSlider);
+            }
+
+            return;
+        }
 
         if (!_currentModel || _healthSystem == null || !healthBarPrefab || string.IsNullOrWhiteSpace(healthBarBoneName))
             return;

@@ -99,6 +99,8 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         if (IsActive && !ShouldReplace(knockback))
             return false;
 
+        CancelReloadForKnockback();
+
         if (knockback.InterruptActions)
             InterruptGameplayActions();
 
@@ -533,6 +535,16 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
         if (navMeshAgent != null && navMeshAgent.enabled)
             _restoreAgentToDefaultAutonomy = true;
+    }
+
+    void CancelReloadForKnockback()
+    {
+        var weaponSystem = ctx != null ? ctx.WeaponSystem : null;
+        if (!weaponSystem)
+            weaponSystem = GetComponent<WeaponSystem>();
+
+        if (weaponSystem != null && weaponSystem.IsReloading)
+            weaponSystem.CancelReload();
     }
 
     void EnableAgentOverride()

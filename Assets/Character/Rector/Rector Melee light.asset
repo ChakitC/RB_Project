@@ -18,8 +18,8 @@ MonoBehaviour:
       _Speed: 1
       _Events:
         _NormalizedTimes:
-        - 0.25276425
-        - 0.50173974
+        - 0.2
+        - 0.67
         - NaN
         _Callbacks: []
         _Names:
@@ -68,6 +68,7 @@ MonoBehaviour:
       m_RotationOrder: 4
     knockbackReaction: 0
     knockbackInterruptsActions: 1
+    staggerPower: 0
   defaultChainStartN: 0.35
   defaultChainEndN: 0.8
   references:

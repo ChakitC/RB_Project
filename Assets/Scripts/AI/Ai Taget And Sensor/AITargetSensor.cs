@@ -71,10 +71,12 @@ public class AITargetSensor : MonoBehaviour
 
     [Header("Debug Runtime")]
     [SerializeField] private Transform currentTarget;
+    [SerializeField] private Transform visibleTarget;
     [SerializeField] private Transform lastSeenTarget;
     [SerializeField] private Vector3 lastSeenPosition;
     [SerializeField] private bool hasLineOfSight;
     [SerializeField] private float targetDistance;
+    [SerializeField] private float visibleTargetDistance;
     [SerializeField] private float lastSeenTime = float.NegativeInfinity;
     [SerializeField] private float currentTargetScore = float.NegativeInfinity;
     [SerializeField] private float visibleBestScore = float.NegativeInfinity;
@@ -92,18 +94,22 @@ public class AITargetSensor : MonoBehaviour
 
     public AITargetingProfileDef TargetingProfile => targetingProfile;
     public Transform CurrentTarget => IsCurrentTargetRetained() ? currentTarget : null;
+    public Transform VisibleTarget => IsTrackedTargetStillValid(visibleTarget) ? visibleTarget : null;
     public Transform LastSeenTarget => IsTrackedTargetStillValid(lastSeenTarget) ? lastSeenTarget : null;
     public Vector3 LastSeenPosition => lastSeenPosition;
     public bool HasLineOfSight => hasLineOfSight;
     public float GracePeriod => GetGracePeriodValue();
     public float TargetDistance => targetDistance;
+    public float VisibleTargetDistance => visibleTargetDistance;
     public float LastSeenTime => lastSeenTime;
     public float TimeSinceLastSeen => Time.time - lastSeenTime;
 
     public bool HasLiveTarget => CurrentTarget != null;
+    public bool HasVisibleTarget => VisibleTarget != null;
     public bool HasAnyTarget => HasLiveTarget || IsWithinGracePeriod();
 
     public event Action<Transform, Transform> OnTargetChanged;
+    public event Action<Transform, Transform> OnVisibleTargetChanged;
 
     void Awake()
     {
@@ -136,6 +142,8 @@ public class AITargetSensor : MonoBehaviour
 
         if (healthSystem != null)
             healthSystem.DamageTaken -= OnDamageTaken;
+
+        SetVisibleTarget(null, 0f);
     }
 
     void Update()
@@ -159,6 +167,7 @@ public class AITargetSensor : MonoBehaviour
 
     public void ClearTargetMemory()
     {
+        SetVisibleTarget(null, 0f);
         SetCurrentTarget(null);
         if (!ShouldKeepLastSeenTarget())
             lastSeenTarget = null;
@@ -290,6 +299,10 @@ public class AITargetSensor : MonoBehaviour
         }
 
         visibleBestScore = hasBestVisible ? bestVisible.Score : float.NegativeInfinity;
+        if (hasBestVisible)
+            SetVisibleTarget(bestVisible.TargetRoot, bestVisible.Distance);
+        else
+            SetVisibleTarget(null, 0f);
 
         if (hasBestVisible)
         {
@@ -568,6 +581,20 @@ public class AITargetSensor : MonoBehaviour
         OnTargetChanged?.Invoke(old, newTarget);
     }
 
+    void SetVisibleTarget(Transform newTarget, float distance)
+    {
+        if (visibleTarget == newTarget)
+        {
+            visibleTargetDistance = newTarget != null ? distance : 0f;
+            return;
+        }
+
+        Transform old = visibleTarget;
+        visibleTarget = newTarget;
+        visibleTargetDistance = newTarget != null ? distance : 0f;
+        OnVisibleTargetChanged?.Invoke(old, newTarget);
+    }
+
     bool TryResolveTarget(Collider hit, out Transform targetRoot, out IAITargetable targetable)
     {
         targetRoot = null;
@@ -633,6 +660,12 @@ public class AITargetSensor : MonoBehaviour
             hasLineOfSight = false;
             targetDistance = 0f;
             currentTargetScore = float.NegativeInfinity;
+            invalidated = true;
+        }
+
+        if (visibleTarget != null && !IsTrackedTargetStillValid(visibleTarget))
+        {
+            SetVisibleTarget(null, 0f);
             invalidated = true;
         }
 

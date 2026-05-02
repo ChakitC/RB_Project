@@ -401,7 +401,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         if (damage <= 0f)
             return;
 
-        var targetDamageable = GetComponent<IDamageable>();
+        var targetDamageable = GetComponentInParent<IDamageable>();
         if (targetDamageable == null || !targetDamageable.IsAlive)
             return;
 

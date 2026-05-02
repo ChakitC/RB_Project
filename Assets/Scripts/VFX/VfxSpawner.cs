@@ -3,22 +3,79 @@ using DamageNumbersPro;
 
 public class VfxSpawner : MonoBehaviour
 {
-    public static VfxSpawner Instance { get; private set; }
+    static VfxSpawner _instance;
+    static bool _isQuitting;
+
+    public static VfxSpawner Instance
+    {
+        get
+        {
+            if (_instance != null)
+                return _instance;
+
+            if (_isQuitting)
+                return null;
+
+            _instance = FindAnyObjectByType<VfxSpawner>();
+            if (_instance != null)
+                return _instance;
+
+            GameObject spawnerObject = new GameObject(nameof(VfxSpawner));
+            _instance = spawnerObject.AddComponent<VfxSpawner>();
+            return _instance;
+        }
+    }
+
     const float DefaultVfxLifetime = 2f;
     const float LifetimeSafetyBuffer = 0.25f;
 
     public DamageNumber numberPrefab;
-    
-    
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStaticState()
+    {
+        _instance = null;
+        _isQuitting = false;
+        Application.quitting -= HandleApplicationQuitting;
+        Application.quitting += HandleApplicationQuitting;
+    }
+
+    static void HandleApplicationQuitting()
+    {
+        _isQuitting = true;
+    }
+
     private void Awake()
     {
-        if (Instance != null && Instance != this)
+        if (_instance != null && _instance != this)
         {
+            _instance.ApplySerializedFallbacksFrom(this);
             Destroy(gameObject);
             return;
         }
-        Instance = this;
-       DontDestroyOnLoad(gameObject);
+
+        _instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    void OnApplicationQuit()
+    {
+        _isQuitting = true;
+    }
+
+    void OnDestroy()
+    {
+        if (_instance == this)
+            _instance = null;
+    }
+
+    void ApplySerializedFallbacksFrom(VfxSpawner other)
+    {
+        if (other == null)
+            return;
+
+        if (numberPrefab == null && other.numberPrefab != null)
+            numberPrefab = other.numberPrefab;
     }
 
     public GameObject SpawnVfx(GameObject prefab, Vector3 pos, Vector3 normal, float extraLife = 0f ,float scale = 1f)

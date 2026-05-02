@@ -10,44 +10,141 @@ public class HasEnemyFromSensor : Conditional
 {
     public SharedVariable<GameObject> currentEnemy;
     public SharedVariable<bool> InCombat;
-    
-   
 
     private AITargetSensor sensor;
+    private AITargetSensor subscribedSensor;
+
+    public override void OnAwake()
+    {
+        CacheSensor();
+        SubscribeToSensor();
+        SyncOutputsFromSensor();
+    }
+
+    public override void OnBehaviorTreeStarted()
+    {
+        CacheSensor();
+        SubscribeToSensor();
+        SyncOutputsFromSensor();
+    }
 
     public override void OnStart()
     {
-        if (sensor == null)
-        {
-            sensor = gameObject.GetComponentInParent<AITargetSensor>();
-        }
+        CacheSensor();
+        SubscribeToSensor();
+        SyncOutputsFromSensor();
     }
 
     public override TaskStatus OnUpdate()
     {
-        if (sensor == null)
+        CacheSensor();
+        SubscribeToSensor();
+
+        return SyncOutputsFromSensor()
+            ? TaskStatus.Success
+            : TaskStatus.Failure;
+    }
+
+    public override void OnBehaviorTreeStopped(bool paused)
+    {
+        UnsubscribeFromSensor();
+
+        if (!paused)
+            ClearOutputs();
+    }
+
+    public override void OnDestroy()
+    {
+        UnsubscribeFromSensor();
+        base.OnDestroy();
+    }
+
+    private void CacheSensor()
+    {
+        if (sensor != null)
+            return;
+
+        AllyContext allyContext = gameObject.GetComponent<AllyContext>();
+        if (allyContext == null)
+            allyContext = gameObject.GetComponentInParent<AllyContext>();
+
+        if (allyContext != null && allyContext.AITargetSensor != null)
         {
-            if (currentEnemy != null) currentEnemy.Value = null;
-            if (InCombat != null) InCombat.Value = false;
-            return TaskStatus.Failure;
+            sensor = allyContext.AITargetSensor;
+            return;
         }
 
-        Transform target = sensor.CurrentTarget;
+        sensor = gameObject.GetComponent<AITargetSensor>();
+        if (sensor == null)
+            sensor = gameObject.GetComponentInParent<AITargetSensor>();
+        if (sensor == null)
+            sensor = gameObject.GetComponentInChildren<AITargetSensor>(true);
 
+        if (allyContext != null && allyContext.AITargetSensor == null)
+            allyContext.AITargetSensor = sensor;
+    }
+
+    private void SubscribeToSensor()
+    {
+        if (sensor == subscribedSensor)
+            return;
+
+        UnsubscribeFromSensor();
+
+        if (sensor == null)
+            return;
+
+        subscribedSensor = sensor;
+        subscribedSensor.OnVisibleTargetChanged += HandleSensorVisibleTargetChanged;
+    }
+
+    private void UnsubscribeFromSensor()
+    {
+        if (subscribedSensor == null)
+            return;
+
+        subscribedSensor.OnVisibleTargetChanged -= HandleSensorVisibleTargetChanged;
+        subscribedSensor = null;
+    }
+
+    private void HandleSensorVisibleTargetChanged(Transform oldTarget, Transform newTarget)
+    {
+        SyncOutputsFromTarget(newTarget);
+    }
+
+    private bool SyncOutputsFromSensor()
+    {
+        if (sensor == null)
+        {
+            ClearOutputs();
+            return false;
+        }
+
+        return SyncOutputsFromTarget(sensor.VisibleTarget);
+    }
+
+    private bool SyncOutputsFromTarget(Transform target)
+    {
         if (target != null)
         {
             if (currentEnemy != null) currentEnemy.Value = target.gameObject;
             if (InCombat != null) InCombat.Value = true;
-            return TaskStatus.Success;
+            return true;
         }
 
+        ClearOutputs();
+        return false;
+    }
+
+    private void ClearOutputs()
+    {
         if (currentEnemy != null) currentEnemy.Value = null;
         if (InCombat != null) InCombat.Value = false;
-        return TaskStatus.Failure;
     }
 
     public override void Reset()
     {
+        UnsubscribeFromSensor();
         sensor = null;
         currentEnemy = null;
         InCombat = false;

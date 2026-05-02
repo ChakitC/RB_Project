@@ -522,10 +522,27 @@ public class WeaponSystem : MonoBehaviour
         }
     }
 
-    bool IsReloadBlockedByLifeState()
+    bool IsReloadBlockedByActorState()
     {
         var stateHub = ctx != null ? ctx.stateHub : null;
-        return stateHub != null && (!stateHub.IsAlive || stateHub.Isdown);
+        if (stateHub != null)
+        {
+            if (!stateHub.IsAlive || stateHub.Isdown)
+                return true;
+
+            if (stateHub.MoveSM != null && stateHub.MoveSM.CurrentId == MoveStateId.Knockback)
+                return true;
+        }
+
+        var knockbackMotor = ctx != null ? ctx.KnockbackMotor : null;
+        if (!knockbackMotor && ctx != null)
+            knockbackMotor = ctx.GetComponentInChildren<CharacterKnockbackMotor>(true);
+        if (!knockbackMotor)
+            knockbackMotor = GetComponentInParent<CharacterKnockbackMotor>();
+        if (!knockbackMotor)
+            knockbackMotor = GetComponentInChildren<CharacterKnockbackMotor>(true);
+
+        return knockbackMotor != null && knockbackMotor.IsActive;
     }
 
     void AbortReloadRoutine()
@@ -541,7 +558,7 @@ public class WeaponSystem : MonoBehaviour
     {
         RefreshDerivedStats();
 
-        if (IsReloadBlockedByLifeState())
+        if (IsReloadBlockedByActorState())
             return;
 
         isFiring = false;
@@ -606,7 +623,7 @@ public class WeaponSystem : MonoBehaviour
     {
         isReloading = true;
 
-        if (IsReloadBlockedByLifeState())
+        if (IsReloadBlockedByActorState())
         {
             AbortReloadRoutine();
             yield break;
@@ -615,7 +632,7 @@ public class WeaponSystem : MonoBehaviour
         if (startInsertDelay > 0f)
             yield return new WaitForSeconds(startInsertDelay);
 
-        if (IsReloadBlockedByLifeState())
+        if (IsReloadBlockedByActorState())
         {
             AbortReloadRoutine();
             yield break;
@@ -623,7 +640,7 @@ public class WeaponSystem : MonoBehaviour
 
         while (magazine < MaxMagazine)
         {
-            if (IsReloadBlockedByLifeState())
+            if (IsReloadBlockedByActorState())
             {
                 AbortReloadRoutine();
                 yield break;
@@ -645,7 +662,7 @@ public class WeaponSystem : MonoBehaviour
         if (endInsertDelay > 0f)
             yield return new WaitForSeconds(endInsertDelay);
 
-        if (IsReloadBlockedByLifeState())
+        if (IsReloadBlockedByActorState())
         {
             AbortReloadRoutine();
             yield break;
@@ -665,7 +682,7 @@ public class WeaponSystem : MonoBehaviour
         isReloading = true;
         yield return new WaitForSeconds(reloadTime);
 
-        if (IsReloadBlockedByLifeState())
+        if (IsReloadBlockedByActorState())
         {
             AbortReloadRoutine();
             yield break;

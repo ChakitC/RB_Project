@@ -68,18 +68,19 @@ public class WeaponAffixRuntimeController : MonoBehaviour, IStatModifierProvider
     public void HandleReloadCompleted()
     {
         var instance = weaponSystem != null ? weaponSystem.CurrentWeaponInstance : null;
-        if (instance == null || !TryResolveAffix(instance.mainAffix, out var definition))
+        if (instance == null)
             return;
 
-        if (definition.behaviorType != WeaponAffixBehaviorType.TimedBuffOnReload)
-            return;
+        bool appliedAny = ApplyReloadBuff(instance.mainAffix, instance.instanceId);
 
-        var effect = GetOrCreateReloadBuffEffect(definition, instance.mainAffix, instance.instanceId);
-        if (effect == null)
-            return;
+        if (instance.subAffixes != null)
+        {
+            for (int i = 0; i < instance.subAffixes.Count; i++)
+                appliedAny |= ApplyReloadBuff(instance.subAffixes[i], instance.instanceId);
+        }
 
-        statusEffectController?.ApplyEffect(effect, gameObject, 1);
-        statsHub?.MarkDirty();
+        if (appliedAny)
+            statsHub?.MarkDirty();
     }
 
     public void AppendStatModifiers(List<RuntimeStatModifier> buffer)
@@ -88,26 +89,51 @@ public class WeaponAffixRuntimeController : MonoBehaviour, IStatModifierProvider
             return;
 
         var instance = weaponSystem.CurrentWeaponInstance;
-        if (instance == null || instance.subAffixes == null || instance.subAffixes.Count == 0)
+        if (instance == null)
             return;
 
         string sourceId = BuildSourceId(instance.instanceId);
 
+        AppendStatModifier(buffer, instance.mainAffix, sourceId);
+
+        if (instance.subAffixes == null)
+            return;
+
         for (int i = 0; i < instance.subAffixes.Count; i++)
         {
-            var rolledAffix = instance.subAffixes[i];
-            if (!TryResolveAffix(rolledAffix, out var definition))
-                continue;
-
-            if (definition.behaviorType != WeaponAffixBehaviorType.StatModifier)
-                continue;
-
-            buffer.Add(new RuntimeStatModifier(
-                definition.statType,
-                definition.modifierOp,
-                definition.ResolvePrimaryValue(rolledAffix),
-                sourceId));
+            AppendStatModifier(buffer, instance.subAffixes[i], sourceId);
         }
+    }
+
+    bool ApplyReloadBuff(RolledAffixData rolledAffix, string instanceId)
+    {
+        if (!TryResolveAffix(rolledAffix, out var definition))
+            return false;
+
+        if (definition.behaviorType != WeaponAffixBehaviorType.TimedBuffOnReload)
+            return false;
+
+        var effect = GetOrCreateReloadBuffEffect(definition, rolledAffix, instanceId);
+        if (effect == null)
+            return false;
+
+        statusEffectController?.ApplyEffect(effect, gameObject, 1);
+        return true;
+    }
+
+    void AppendStatModifier(List<RuntimeStatModifier> buffer, RolledAffixData rolledAffix, string sourceId)
+    {
+        if (!TryResolveAffix(rolledAffix, out var definition))
+            return;
+
+        if (definition.behaviorType != WeaponAffixBehaviorType.StatModifier)
+            return;
+
+        buffer.Add(new RuntimeStatModifier(
+            definition.statType,
+            definition.modifierOp,
+            definition.ResolvePrimaryValue(rolledAffix),
+            sourceId));
     }
 
     bool TryResolveAffix(RolledAffixData rolledAffix, out WeaponAffixDefinition definition)

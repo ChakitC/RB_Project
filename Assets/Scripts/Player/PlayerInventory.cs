@@ -48,14 +48,31 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     void Awake()
     {
-        if (!ctx)
-            TryGetComponent(out ctx);
-
-        if (!weaponSystem)
-            TryGetComponent(out weaponSystem);
+        ResolveReferences();
 
         InitializeInventorySystem();
         EnsureSlotCount();
+    }
+
+    void ResolveReferences()
+    {
+        if (!ctx)
+            TryGetComponent(out ctx);
+
+        if (!ctx)
+            ctx = GetComponentInParent<CharacteContext>();
+
+        if (!weaponSystem && ctx != null && ctx.WeaponSystem != null)
+            weaponSystem = ctx.WeaponSystem;
+
+        if (!weaponSystem)
+            weaponSystem = GetComponentInChildren<WeaponSystem>(true);
+
+        if (!weaponSystem && ctx != null)
+            weaponSystem = ctx.GetComponentInChildren<WeaponSystem>(true);
+
+        if (ctx != null && weaponSystem != null && ctx.WeaponSystem != weaponSystem)
+            ctx.WeaponSystem = weaponSystem;
     }
 
     void Start()
@@ -470,6 +487,8 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     bool ApplyEquippedWeaponIfPossible()
     {
+        ResolveReferences();
+
         var instance = GetWeaponInstance(equippedWeaponInstanceId);
         if (instance == null && !TryAssignFirstWeaponInstance())
             return false;

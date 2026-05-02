@@ -119,7 +119,7 @@ public class StatsHub : MonoBehaviour
     {
         _modifierProviders.Clear();
 
-        var behaviours = GetComponents<MonoBehaviour>();
+        var behaviours = GetComponentsInChildren<MonoBehaviour>(true);
         for (int i = 0; i < behaviours.Length; i++)
         {
             if (behaviours[i] == null || behaviours[i] == this)

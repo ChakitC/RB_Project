@@ -100,6 +100,7 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
     readonly Collider[] _overlapBuffer = new Collider[32];
     readonly HashSet<int> _sweepColliderIds = new();
     private CharacterAnimBrain.MeleeType _activeMeleeType = CharacterAnimBrain.MeleeType.Light;
+    private bool _samplingActive;
 
     private void Awake()
     {
@@ -117,14 +118,17 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
 
     private void OnDisable()
     {
+        _samplingActive = false;
         SetAllHitboxes(false);
     }
 
     public void Activate(CharacterAnimBrain.MeleeType meleeType)
     {
         _activeMeleeType = meleeType;
+        _sweepColliderIds.Clear();
         SetHitboxesForActiveType(true);
-        NotifyExistingContacts();
+        _samplingActive = true;
+        SampleActiveContacts();
     }
 
     public void Activate()
@@ -134,7 +138,9 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
 
     public void Deactivate()
     {
+        _samplingActive = false;
         SetAllHitboxes(false);
+        _sweepColliderIds.Clear();
     }
 
     public bool IsTargetAllowed(Collider other)
@@ -153,6 +159,14 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
 
     private void OnTriggerEnter(Collider other) => NotifyContact(other);
     private void OnTriggerStay(Collider other)  => NotifyContact(other);
+
+    private void LateUpdate()
+    {
+        if (!_samplingActive)
+            return;
+
+        SampleActiveContacts();
+    }
 
     private void NotifyContact(Collider other)
     {
@@ -179,9 +193,8 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
             GetActiveHitboxGroup().SetEnabled(true);
     }
 
-    private void NotifyExistingContacts()
+    private void SampleActiveContacts()
     {
-        _sweepColliderIds.Clear();
         SampleExistingContacts(GetActiveHitboxGroup());
     }
 

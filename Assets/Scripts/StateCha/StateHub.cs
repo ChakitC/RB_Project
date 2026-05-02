@@ -183,6 +183,7 @@ public sealed class StateHub : MonoBehaviour
         WeaponSM.Tick(dt);
 
         UpdateStand();
+        ResumeDesiredFireIfPossible();
 
         if (debugInInspector)
             UpdateDebugSnapshot();
@@ -229,6 +230,35 @@ public sealed class StateHub : MonoBehaviour
 
         ResolveWeaponSystem()?.SetFiring(false);
         SetFireHeld(false);
+    }
+
+    void ResumeDesiredFireIfPossible()
+    {
+        if (!DesiredFireHeld || ctx == null)
+            return;
+
+        var weaponSystem = ResolveWeaponSystem();
+        if (weaponSystem == null || (weaponSystem.IsFiringHeld && FireHeld))
+            return;
+
+        TryStartHeldFire();
+    }
+
+    void TryStartHeldFire()
+    {
+        if (ctx == null)
+            return;
+
+        var weaponSystem = ResolveWeaponSystem();
+        if (weaponSystem == null)
+            return;
+
+        if (WeaponSM.CurrentId == WeaponStateId.Melee) return;
+        if (MoveSM.CurrentId == MoveStateId.Dash) return;
+        if (!CanShoot()) return;
+
+        weaponSystem.SetFiring(true);
+        SetFireHeld(true);
     }
 
     void UpdateDebugSnapshot()
@@ -440,12 +470,7 @@ public sealed class StateHub : MonoBehaviour
     public void RequestOnFire()
     {
         SetDesiredFireHeld(true);
-
-        if (WeaponSM.CurrentId == WeaponStateId.Melee) return;
-        if (MoveSM.CurrentId == MoveStateId.Dash) return;
-        if (!ctx.stateHub.CanShoot()) return;
-        ctx.WeaponSystem.SetFiring(true);
-        ctx.stateHub.SetFireHeld(true);
+        TryStartHeldFire();
     }
 
     public void RequestCanceledFire()

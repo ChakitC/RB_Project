@@ -21,26 +21,26 @@ public class MoveToPlayerOffsetNavMesh : Action
 
   
     private NavMeshAgent _agent;
+    private CharacteContext _ctx;
+    private CharacterAnimBrain _animBrain;
 
     public override void OnStart()
     {
-        if (_agent == null)
-        {
-            _agent = gameObject.GetComponentInParent<NavMeshAgent>();
-        }
+        CacheReferences();
 
         if (_agent != null && stopDistance != null)
         {
             _agent.stoppingDistance = stopDistance.Value;
-            _agent.isStopped = false;
+            ResumeAgentIfAllowed();
         }
     }
 
     public override TaskStatus OnUpdate()
     {
+        CacheReferences();
         
         // ไม่มี Agent = ทำอะไรไม่ได้ → Fail
-        if (_agent == null)
+        if (_agent == null || !_agent.enabled)
         {
             return TaskStatus.Failure;
         }
@@ -50,6 +50,16 @@ public class MoveToPlayerOffsetNavMesh : Action
         if (Taget == null || Taget.Value == null)
         {
             _agent.isStopped = true;
+            return TaskStatus.Failure;
+        }
+
+        if (IsRootMotionActive())
+        {
+            return TaskStatus.Running;
+        }
+
+        if (!_agent.isOnNavMesh && !TryRecoverAgentOnNavMesh())
+        {
             return TaskStatus.Failure;
         }
 
@@ -65,7 +75,12 @@ public class MoveToPlayerOffsetNavMesh : Action
         targetPos.y = _agent.transform.position.y;
 
         // สั่งให้ Agent เดินไปตำแหน่งนี้
-        _agent.SetDestination(targetPos);
+        ResumeAgentIfAllowed();
+
+        if (!_agent.SetDestination(targetPos))
+        {
+            return TaskStatus.Failure;
+        }
 
         // ถ้า path คำนวณเสร็จแล้ว และเข้าใกล้ในระยะที่ต้องการ → Success
         if (!_agent.pathPending)
@@ -96,5 +111,79 @@ public class MoveToPlayerOffsetNavMesh : Action
        
         offsetFromPlayer = Vector3.zero;
         stopDistance = 1.5f;
+    }
+
+    private void CacheReferences()
+    {
+        if (_agent == null)
+        {
+            _agent = gameObject.GetComponentInParent<NavMeshAgent>();
+        }
+
+        if (_ctx == null)
+        {
+            _ctx = gameObject.GetComponentInParent<CharacteContext>();
+        }
+
+        if (_animBrain != null)
+        {
+            return;
+        }
+
+        if (_ctx != null && _ctx.AnimBrain != null)
+        {
+            _animBrain = _ctx.AnimBrain;
+            return;
+        }
+
+        _animBrain = gameObject.GetComponentInChildren<CharacterAnimBrain>(true);
+        if (_animBrain == null)
+        {
+            _animBrain = gameObject.GetComponentInParent<CharacterAnimBrain>();
+        }
+    }
+
+    private bool IsRootMotionActive()
+    {
+        return _animBrain != null && _animBrain.RootMotionActive;
+    }
+
+    private void ResumeAgentIfAllowed()
+    {
+        if (_agent == null || !_agent.enabled || !_agent.isOnNavMesh || IsRootMotionActive())
+        {
+            return;
+        }
+
+        if (!_agent.updatePosition)
+        {
+            _agent.updatePosition = true;
+            _agent.nextPosition = _agent.transform.position;
+        }
+
+        if (_agent.isStopped)
+        {
+            _agent.isStopped = false;
+        }
+    }
+
+    private bool TryRecoverAgentOnNavMesh()
+    {
+        if (_agent == null || !_agent.enabled)
+        {
+            return false;
+        }
+
+        if (_agent.isOnNavMesh)
+        {
+            return true;
+        }
+
+        if (!NavMesh.SamplePosition(_agent.transform.position, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+        {
+            return false;
+        }
+
+        return _agent.Warp(hit.position);
     }
 }

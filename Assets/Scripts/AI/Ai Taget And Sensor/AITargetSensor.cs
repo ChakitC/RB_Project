@@ -102,7 +102,8 @@ public class AITargetSensor : MonoBehaviour
     public float TargetDistance => targetDistance;
     public float VisibleTargetDistance => visibleTargetDistance;
     public float LastSeenTime => lastSeenTime;
-    public float TimeSinceLastSeen => Time.time - lastSeenTime;
+    public float TimeSinceLastSeen => WorldNow - lastSeenTime;
+    float WorldNow => TimeSlowManager.Instance.WorldTime;
 
     public bool HasLiveTarget => CurrentTarget != null;
     public bool HasVisibleTarget => VisibleTarget != null;
@@ -149,12 +150,12 @@ public class AITargetSensor : MonoBehaviour
     void Update()
     {
         if (RefreshTrackedTargetValidity())
-            nextScanTime = Time.time;
+            nextScanTime = WorldNow;
 
-        if (Time.time < nextScanTime)
+        if (WorldNow < nextScanTime)
             return;
 
-        nextScanTime = Time.time + Mathf.Max(0.01f, scanInterval);
+        nextScanTime = WorldNow + Mathf.Max(0.01f, scanInterval);
         Scan(false);
     }
 
@@ -162,7 +163,7 @@ public class AITargetSensor : MonoBehaviour
     {
         RefreshTrackedTargetValidity();
         Scan(true);
-        nextScanTime = Time.time + Mathf.Max(0.01f, scanInterval);
+        nextScanTime = WorldNow + Mathf.Max(0.01f, scanInterval);
     }
 
     public void ClearTargetMemory()
@@ -195,7 +196,7 @@ public class AITargetSensor : MonoBehaviour
         if (!forceImmediateScan)
             return;
 
-        nextScanTime = Time.time;
+        nextScanTime = WorldNow;
         ScheduleNextRetargetEvaluation();
     }
 
@@ -246,7 +247,7 @@ public class AITargetSensor : MonoBehaviour
             return false;
 
         tauntTarget = targetRoot;
-        tauntUntilTime = Time.time + duration;
+        tauntUntilTime = WorldNow + duration;
         RegisterThreatInternal(targetRoot, targetable, GetMaxThreatPerTargetValue());
         ForceScan();
         return true;
@@ -315,7 +316,7 @@ public class AITargetSensor : MonoBehaviour
             if (currentTarget == bestVisible.TargetRoot)
             {
                 ApplyVisibleTarget(bestVisible);
-                if (ignoreRetargetTimers || Time.time >= nextRetargetEvaluationTime)
+                if (ignoreRetargetTimers || WorldNow >= nextRetargetEvaluationTime)
                     ScheduleNextRetargetEvaluation();
 
                 return;
@@ -371,7 +372,7 @@ public class AITargetSensor : MonoBehaviour
         lastSeenPosition = candidate.TargetPoint;
         hasLineOfSight = candidate.HasLineOfSight;
         targetDistance = candidate.Distance;
-        lastSeenTime = Time.time;
+        lastSeenTime = WorldNow;
         currentTargetScore = candidate.Score;
     }
 
@@ -513,7 +514,7 @@ public class AITargetSensor : MonoBehaviour
     {
         if (!DoesCandidateBeatCurrent(currentVisible.Score, bestVisible.Score))
         {
-            if (Time.time >= nextRetargetEvaluationTime)
+            if (WorldNow >= nextRetargetEvaluationTime)
                 ScheduleNextRetargetEvaluation();
 
             return false;
@@ -522,10 +523,10 @@ public class AITargetSensor : MonoBehaviour
         if (ignoreRetargetTimers)
             return true;
 
-        if (Time.time - currentTargetAcquiredTime < GetMinTargetLockDurationValue())
+        if (WorldNow - currentTargetAcquiredTime < GetMinTargetLockDurationValue())
             return false;
 
-        if (Time.time < nextRetargetEvaluationTime)
+        if (WorldNow < nextRetargetEvaluationTime)
             return false;
 
         ScheduleNextRetargetEvaluation();
@@ -537,7 +538,7 @@ public class AITargetSensor : MonoBehaviour
         if (ignoreRetargetTimers)
             return true;
 
-        if (Time.time - lastSeenTime < GetLostTargetHoldDurationValue())
+        if (WorldNow - lastSeenTime < GetLostTargetHoldDurationValue())
             return false;
 
         ScheduleNextRetargetEvaluation();
@@ -556,7 +557,7 @@ public class AITargetSensor : MonoBehaviour
         Vector2 intervalRange = GetRetargetIntervalRangeValue();
         float minInterval = Mathf.Max(0.05f, intervalRange.x);
         float maxInterval = Mathf.Max(minInterval, intervalRange.y);
-        nextRetargetEvaluationTime = Time.time + UnityEngine.Random.Range(minInterval, maxInterval);
+        nextRetargetEvaluationTime = WorldNow + UnityEngine.Random.Range(minInterval, maxInterval);
     }
 
     void SetCurrentTarget(Transform newTarget)
@@ -569,13 +570,13 @@ public class AITargetSensor : MonoBehaviour
 
         if (newTarget != null)
         {
-            currentTargetAcquiredTime = Time.time;
+            currentTargetAcquiredTime = WorldNow;
             ScheduleNextRetargetEvaluation();
         }
         else
         {
             currentTargetAcquiredTime = float.NegativeInfinity;
-            nextRetargetEvaluationTime = Time.time;
+            nextRetargetEvaluationTime = WorldNow;
         }
 
         OnTargetChanged?.Invoke(old, newTarget);
@@ -866,7 +867,7 @@ public class AITargetSensor : MonoBehaviour
         if (lastSeenTarget != null && !IsTrackedTargetStillValid(lastSeenTarget))
             return false;
 
-        return Time.time - lastSeenTime <= GetGracePeriodValue();
+        return WorldNow - lastSeenTime <= GetGracePeriodValue();
     }
 
     bool IsCurrentTargetRetained()
@@ -880,7 +881,7 @@ public class AITargetSensor : MonoBehaviour
         if (hasLineOfSight)
             return true;
 
-        return Time.time - lastSeenTime <= GetGracePeriodValue();
+        return WorldNow - lastSeenTime <= GetGracePeriodValue();
     }
 
     void OnDamageTaken(float amount, GameObject attacker)
@@ -902,7 +903,7 @@ public class AITargetSensor : MonoBehaviour
             entry = new ThreatEntry();
             entry.Target = targetRoot;
             entry.Threat = 0f;
-            entry.LastUpdateTime = Time.time;
+            entry.LastUpdateTime = WorldNow;
             threatEntries.Add(instanceId, entry);
         }
 
@@ -911,7 +912,7 @@ public class AITargetSensor : MonoBehaviour
         float multiplier = targetable != null ? Mathf.Max(0f, targetable.ThreatMultiplier) : 1f;
         entry.Target = targetRoot;
         entry.Threat = Mathf.Clamp(entry.Threat + amount * multiplier, 0f, GetMaxThreatPerTargetValue());
-        entry.LastUpdateTime = Time.time;
+        entry.LastUpdateTime = WorldNow;
     }
 
     void UpdateThreatEntry(ThreatEntry entry)
@@ -919,12 +920,12 @@ public class AITargetSensor : MonoBehaviour
         if (entry == null)
             return;
 
-        float elapsed = Mathf.Max(0f, Time.time - entry.LastUpdateTime);
+        float elapsed = Mathf.Max(0f, WorldNow - entry.LastUpdateTime);
         if (elapsed <= 0f)
             return;
 
         entry.Threat = Mathf.Max(0f, entry.Threat - GetThreatDecayPerSecondValue() * elapsed);
-        entry.LastUpdateTime = Time.time;
+        entry.LastUpdateTime = WorldNow;
     }
 
     bool ShouldKeepLastSeenTarget()
@@ -1045,7 +1046,7 @@ public class AITargetSensor : MonoBehaviour
     bool IsTauntedTarget(Transform target)
     {
         return tauntTarget != null &&
-               Time.time <= tauntUntilTime &&
+               WorldNow <= tauntUntilTime &&
                target != null &&
                tauntTarget == target;
     }
@@ -1055,7 +1056,7 @@ public class AITargetSensor : MonoBehaviour
         if (tauntTarget == null)
             return;
 
-        if (Time.time <= tauntUntilTime && IsTrackedTargetStillValid(tauntTarget))
+        if (WorldNow <= tauntUntilTime && IsTrackedTargetStillValid(tauntTarget))
             return;
 
         tauntTarget = null;

@@ -8,6 +8,7 @@ public class TryCastSkillFromSlot : ActionNode
 
     private CharacteContext CTX;
     private CharacterAnimBrain animBrain;
+    private CharacterSkillManager observedSkillManager;
     private int activeRequestId;
     private bool waitingForAnimation;
     private TaskStatus currentStatus = TaskStatus.Failure;
@@ -21,6 +22,7 @@ public class TryCastSkillFromSlot : ActionNode
         if (!TryCacheReferences() || CTX.SkillManager == null)
             return;
 
+        observedSkillManager = CTX.SkillManager;
         var result = CTX.SkillManager.TryStartCastSlot(SlotIndex);
         switch (result.Kind)
         {
@@ -37,6 +39,8 @@ public class TryCastSkillFromSlot : ActionNode
                 currentStatus = TaskStatus.Running;
                 animBrain.PlaybackEvent -= OnPlaybackEvent;
                 animBrain.PlaybackEvent += OnPlaybackEvent;
+                observedSkillManager.CastCancelled -= OnCastCancelled;
+                observedSkillManager.CastCancelled += OnCastCancelled;
                 break;
         }
     }
@@ -108,5 +112,18 @@ public class TryCastSkillFromSlot : ActionNode
     {
         if (animBrain != null)
             animBrain.PlaybackEvent -= OnPlaybackEvent;
+
+        if (observedSkillManager != null)
+            observedSkillManager.CastCancelled -= OnCastCancelled;
+    }
+
+    private void OnCastCancelled(ActiveSkillCastInfo castInfo, SkillCastCancelReason reason)
+    {
+        if (!waitingForAnimation || castInfo.RequestId != activeRequestId)
+            return;
+
+        currentStatus = TaskStatus.Failure;
+        waitingForAnimation = false;
+        UnsubscribePlaybackEvent();
     }
 }

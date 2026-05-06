@@ -66,7 +66,7 @@ public sealed partial class CharacterAnimBrain
                 };
 
             state.SharedEvents = runtimeEvents;
-            _watchdogDeadline = Time.time + ResolveWatchdogDuration(state) + owner.ChainPlaybackWatchdogGraceSeconds;
+            _watchdogDeadline = owner.AnimationTime + ResolveWatchdogDuration(state) + owner.ChainPlaybackWatchdogGraceSeconds;
         }
 
         public override void Update()
@@ -76,7 +76,7 @@ public sealed partial class CharacterAnimBrain
 
             owner.PollActiveChainPlayback(state);
 
-            if (Time.time >= _watchdogDeadline)
+            if (owner.AnimationTime >= _watchdogDeadline)
                 ForceExitFromWatchdog();
         }
 

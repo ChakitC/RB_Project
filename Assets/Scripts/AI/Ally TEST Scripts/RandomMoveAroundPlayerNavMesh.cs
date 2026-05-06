@@ -117,7 +117,7 @@ public class RandomMoveAroundPlayerNavMesh : Action
         {
             // ถ้ารอครบเวลาแล้ว → จบ cycle นี้ด้วย Success
             // ให้ Repeater/Sequence ภายนอกสั่งเริ่ม Task ใหม่ → จะสุ่มจุดใหม่ใน OnStart
-            if (Time.time >= _waitUntilTime)
+            if (TimeSlowManager.Instance.WorldTime >= _waitUntilTime)
             {
                 _isWaiting = false;
                 return TaskStatus.Success;
@@ -143,7 +143,7 @@ public class RandomMoveAroundPlayerNavMesh : Action
                 if (wt > 0f)
                 {
                     _isWaiting = true;
-                    _waitUntilTime = Time.time + wt;
+                    _waitUntilTime = TimeSlowManager.Instance.WorldTime + wt;
                     // ตอนนี้ Enter โหมดรอ → Running ไปก่อน
                     return TaskStatus.Running;
                 }

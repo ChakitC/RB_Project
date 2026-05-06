@@ -94,7 +94,7 @@ public class VfxSpawner : MonoBehaviour
         GameObject vfx = InstantiateVfx(prefab, pos, rotation, null, scale);
 
         float duration = CalculateLifetimeAndDisableLoops(vfx) + Mathf.Max(0f, extraLife);
-        Destroy(vfx, duration);
+        DestroyVfxWithWorldTime(vfx, duration);
         return vfx;
     }
 
@@ -102,7 +102,9 @@ public class VfxSpawner : MonoBehaviour
     {
         if (prefab == null) return null;
 
-        return InstantiateVfx(prefab, pos, rotation, parent, scale);
+        GameObject vfx = InstantiateVfx(prefab, pos, rotation, parent, scale);
+        EnsureWorldTimeScaler(vfx);
+        return vfx;
     }
 
     public void StopLoopingVfx(GameObject vfx, bool allowParticlesToFinish = true, float extraLife = 0f)
@@ -117,7 +119,7 @@ public class VfxSpawner : MonoBehaviour
 
         float duration = CalculateLifetimeAndDisableLoops(vfx) + Mathf.Max(0f, extraLife);
         StopParticleEmission(vfx);
-        Destroy(vfx, duration);
+        DestroyVfxWithWorldTime(vfx, duration);
     }
 
     public void SpawnDamageNumber(Vector3 position , float number)
@@ -134,6 +136,23 @@ public class VfxSpawner : MonoBehaviour
 
         vfx.transform.localScale *= Mathf.Max(0f, scale);
         return vfx;
+    }
+
+    void DestroyVfxWithWorldTime(GameObject vfx, float duration)
+    {
+        if (vfx == null)
+            return;
+
+        EnsureWorldTimeScaler(vfx).DestroyAfterWorldSeconds(duration);
+    }
+
+    WorldTimeScaledVfx EnsureWorldTimeScaler(GameObject vfx)
+    {
+        WorldTimeScaledVfx scaler = vfx.GetComponent<WorldTimeScaledVfx>();
+        if (scaler == null)
+            scaler = vfx.AddComponent<WorldTimeScaledVfx>();
+
+        return scaler;
     }
 
     void StopParticleEmission(GameObject vfx)

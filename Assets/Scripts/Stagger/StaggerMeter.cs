@@ -129,16 +129,54 @@ public sealed class StaggerMeter : MonoBehaviour
 
     void ResolveRefs()
     {
+        Transform actorRoot = ResolveActorRoot();
+
         if (!stateHub)
-            TryGetComponent(out stateHub);
+            stateHub = ResolveActorComponent<StateHub>(actorRoot);
         if (!animBrain)
-            TryGetComponent(out animBrain);
+            animBrain = ResolveActorComponent<CharacterAnimBrain>(actorRoot);
         if (!healthSystem)
-            TryGetComponent(out healthSystem);
+            healthSystem = ResolveActorComponent<HealthSystem>(actorRoot);
         if (!navMeshAgent)
-            TryGetComponent(out navMeshAgent);
+            navMeshAgent = ResolveActorComponent<NavMeshAgent>(actorRoot);
         if (!behaviorTree)
-            TryGetComponent(out behaviorTree);
+            behaviorTree = ResolveActorComponent<BehaviorTree>(actorRoot);
+    }
+
+    Transform ResolveActorRoot()
+    {
+        if (stateHub != null)
+            return stateHub.transform;
+
+        if (TryGetComponent(out CharacteContext localContext))
+            return localContext.transform;
+
+        CharacteContext parentContext = GetComponentInParent<CharacteContext>();
+        if (parentContext != null)
+            return parentContext.transform;
+
+        StateHub parentStateHub = GetComponentInParent<StateHub>();
+        if (parentStateHub != null)
+            return parentStateHub.transform;
+
+        return transform.root;
+    }
+
+    T ResolveActorComponent<T>(Transform actorRoot) where T : Component
+    {
+        if (actorRoot != null && actorRoot.TryGetComponent(out T rootComponent))
+            return rootComponent;
+
+        if (TryGetComponent(out T localComponent))
+            return localComponent;
+
+        T parentComponent = GetComponentInParent<T>();
+        if (parentComponent != null)
+            return parentComponent;
+
+        return actorRoot != null
+            ? actorRoot.GetComponentInChildren<T>(true)
+            : GetComponentInChildren<T>(true);
     }
 
     bool CanGainStagger(float amount)
@@ -208,6 +246,8 @@ public sealed class StaggerMeter : MonoBehaviour
     {
         if (!isStaggered || dt <= 0f)
             return;
+
+        SuspendAgent();
 
         staggerTimeRemaining = Mathf.Max(0f, staggerTimeRemaining - dt);
         if (staggerTimeRemaining <= 0f)

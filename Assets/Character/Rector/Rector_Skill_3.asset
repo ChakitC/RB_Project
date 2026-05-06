@@ -18,6 +18,7 @@ MonoBehaviour:
   tags: 10
   description: 
   baseDamage: 10
+  baseStaggerPower: 10
   baseManaCost: 0
   baseCastTime: 0.5
   baseCooldown: 10
@@ -28,19 +29,38 @@ MonoBehaviour:
   baseRadius: 0
   maxLevel: 20
   payload: {fileID: 11400000, guid: a24687dba31b4ab09a9146e1ef5148f8, type: 2}
+  legacySkillPrefab: {fileID: 0}
+  legacyHelperFacingMode: 0
+  legacyProjectileTrailVfxPrefab: {fileID: 0}
+  legacyProjectileHitVfxPrefab: {fileID: 0}
+  legacyProjectileHitVfxScale: 1
   castCue: {fileID: 0}
   skillClip:
     _FadeDuration: 0.25
     _Speed: 1
     _Events:
       _NormalizedTimes:
-      - 0.45942482
+      - 0.069919996
+      - 0.34854856
       - NaN
       _Callbacks: []
-      _Names: []
+      _Names:
+      - {fileID: 11400000, guid: fcffb1725faae934bbafd4eeccec9990, type: 2}
+      - {fileID: 11400000, guid: 9752b5160a8826b4faa115ca219e42a6, type: 2}
     _Clip: {fileID: 7218412512397633768, guid: 5035feff0922f894bb9fdcfe0bbe8b54, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.4594248
+  blockablePreCast: 1
+  preCastOpenEvent: {fileID: 11400000, guid: fcffb1725faae934bbafd4eeccec9990, type: 2}
+  preCastCloseEvent: {fileID: 11400000, guid: 9752b5160a8826b4faa115ca219e42a6, type: 2}
+  useFallbackPreCastWindow: 1
+  fallbackPreCastOpenNormalized: 0
+  fallbackPreCastCloseNormalized: 0.35
+  preCastIndicatorPrefab: {fileID: 0}
+  cancelPreCastOnStun: 1
+  cancelPreCastOnStagger: 1
+  legacyChainContinueMode: 0
+  legacyChainContinueNormalizedTime: 1
   perLevelData: []
   previewLevel: 1
   references:

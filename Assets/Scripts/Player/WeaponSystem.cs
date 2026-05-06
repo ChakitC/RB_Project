@@ -43,7 +43,7 @@ public class WeaponSystem : MonoBehaviour
 
     public bool IsReloading => isReloading;
     public bool IsFiringHeld => _isFiringHeld;
-    public bool CanFire => !isReloading && magazine > 0 && Time.time >= nextFireTime;
+    public bool CanFire => !isReloading && magazine > 0 && GetWeaponTime() >= nextFireTime;
     public int CurrentAmmo => magazine;
     public int MagazineSize => MaxMagazine;
     public bool IsMagazineEmpty => magazine <= 0;
@@ -399,7 +399,7 @@ public class WeaponSystem : MonoBehaviour
     {
         RefreshDerivedStats();
 
-        if (firingMode == FiringMode.Auto && isFiring && Time.time >= nextFireTime)
+        if (firingMode == FiringMode.Auto && isFiring && GetWeaponTime() >= nextFireTime)
             TryShoot();
 
         if (!firePoint)
@@ -407,24 +407,24 @@ public class WeaponSystem : MonoBehaviour
 
         if (isFiring && (firingMode == FiringMode.Auto || firingMode == FiringMode.Burst))
         {
-            swayTimer += Time.deltaTime * swaySpeed;
+            swayTimer += GetWeaponDeltaTime() * swaySpeed;
             float angle = Mathf.Sin(swayTimer) * maxSwayAngle;
             firePoint.localRotation = firePointOriginalRot * Quaternion.Euler(0f, angle, 0f);
             return;
         }
 
-        swayTimer = Mathf.MoveTowards(swayTimer, 0f, Time.deltaTime * swaySpeed);
+        swayTimer = Mathf.MoveTowards(swayTimer, 0f, GetWeaponDeltaTime() * swaySpeed);
         firePoint.localRotation = Quaternion.Lerp(
             firePoint.localRotation,
             firePointOriginalRot,
-            Time.deltaTime * returnSpeed);
+            GetWeaponDeltaTime() * returnSpeed);
     }
 
     public void TryShoot()
     {
         RefreshDerivedStats();
 
-        if (isReloading || Time.time < nextFireTime)
+        if (isReloading || GetWeaponTime() < nextFireTime)
             return;
 
         if (magazine <= 0)
@@ -439,7 +439,7 @@ public class WeaponSystem : MonoBehaviour
         if (!projectilePrefab || !firePoint)
             return;
 
-        nextFireTime = Time.time + fireRate;
+        nextFireTime = GetWeaponTime() + fireRate;
 
         magazine--;
         SyncWeaponInstanceState();
@@ -630,7 +630,7 @@ public class WeaponSystem : MonoBehaviour
         }
 
         if (startInsertDelay > 0f)
-            yield return new WaitForSeconds(startInsertDelay);
+            yield return WaitForWeaponSeconds(startInsertDelay);
 
         if (IsReloadBlockedByActorState())
         {
@@ -654,13 +654,13 @@ public class WeaponSystem : MonoBehaviour
             ctx.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
 
             if (perBulletInsertTime > 0f)
-                yield return new WaitForSeconds(perBulletInsertTime);
+                yield return WaitForWeaponSeconds(perBulletInsertTime);
             else
                 yield return null;
         }
 
         if (endInsertDelay > 0f)
-            yield return new WaitForSeconds(endInsertDelay);
+            yield return WaitForWeaponSeconds(endInsertDelay);
 
         if (IsReloadBlockedByActorState())
         {
@@ -680,7 +680,7 @@ public class WeaponSystem : MonoBehaviour
     IEnumerator ReloadFullMagRoutine()
     {
         isReloading = true;
-        yield return new WaitForSeconds(reloadTime);
+        yield return WaitForWeaponSeconds(reloadTime);
 
         if (IsReloadBlockedByActorState())
         {
@@ -708,7 +708,7 @@ public class WeaponSystem : MonoBehaviour
 
         while (shots > 0)
         {
-            if (Time.time < nextFireTime)
+            if (GetWeaponTime() < nextFireTime)
             {
                 yield return null;
                 continue;
@@ -718,7 +718,7 @@ public class WeaponSystem : MonoBehaviour
             shots--;
 
             if (shots > 0)
-                yield return new WaitForSeconds(burstInterval);
+                yield return WaitForWeaponSeconds(burstInterval);
         }
 
         isFiring = false;
@@ -727,6 +727,31 @@ public class WeaponSystem : MonoBehaviour
     }
 
     public void OnAim(bool value) => isAiming = value;
+
+    bool UsesWorldSlow()
+    {
+        return !(ctx is PlayerContext);
+    }
+
+    float GetWeaponTime()
+    {
+        return UsesWorldSlow() ? TimeSlowManager.Instance.WorldTime : Time.time;
+    }
+
+    float GetWeaponDeltaTime()
+    {
+        return UsesWorldSlow() ? TimeSlowManager.Instance.WorldDeltaTime : Time.deltaTime;
+    }
+
+    IEnumerator WaitForWeaponSeconds(float seconds)
+    {
+        float remaining = Mathf.Max(0f, seconds);
+        while (remaining > 0f)
+        {
+            remaining -= GetWeaponDeltaTime();
+            yield return null;
+        }
+    }
 
     void PublishReloadEvent()
     {

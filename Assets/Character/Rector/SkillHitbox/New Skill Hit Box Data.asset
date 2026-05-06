@@ -17,7 +17,7 @@ MonoBehaviour:
     shapes:
     - shapeName: Hit01
       type: 1
-      localPosition: {x: 0, y: 0, z: 0.42}
+      localPosition: {x: 0, y: 0, z: 0.41999817}
       localEulerAngles: {x: -0, y: 0, z: 0}
       localScale: {x: 1, y: 1, z: 1}
       center: {x: 0, y: 1.84, z: 0}
@@ -29,7 +29,7 @@ MonoBehaviour:
     shapes:
     - shapeName: Hit02
       type: 1
-      localPosition: {x: 0, y: -1.09, z: 1.184}
+      localPosition: {x: 0, y: -1.09, z: 2.880001}
       localEulerAngles: {x: -0, y: 0, z: 0}
       localScale: {x: 1, y: 1, z: 1}
       center: {x: 0, y: 1.79, z: 0}

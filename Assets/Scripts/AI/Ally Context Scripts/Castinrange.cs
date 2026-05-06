@@ -1,13 +1,12 @@
 using UnityEngine;
 using Opsive.BehaviorDesigner.Runtime.Tasks;
 using Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals;
-using Opsive.GraphDesigner.Runtime;
 using Opsive.GraphDesigner.Runtime.Variables;
 using VHierarchy.Libs;
 
 [Opsive.Shared.Utility.Category("Ally/Enemy")]
-[NodeDescription("Success ถ้ามีเป้าสด มี Line of Sight และเป้าอยู่ในระยะยิง")]
-public class IsTargetInShootRange : Conditional
+[Opsive.Shared.Utility.Description("Success ถ้ามีเป้าสด มี Line of Sight และเป้าอยู่ในช่วง Castinrange")]
+public class Castinrange : Conditional
 {
     [Header("Refs")]
 
@@ -15,8 +14,11 @@ public class IsTargetInShootRange : Conditional
     private AITargetSensor sensor;
 
     [Header("Settings")]
-    [Tooltip("ระยะยิงสูงสุด ถ้าเป้าหมายอยู่ใกล้กว่าหรือเท่าค่านี้จะคืน Success")]
-    public SharedVariable<float> shootRange = 8f;
+    [Tooltip("ระยะ cast น้อยสุด ถ้าเป้าหมายใกล้กว่านี้จะคืน Failure")]
+    public SharedVariable<float> minCastRange = 5f;
+
+    [Tooltip("ค่าระยะ cast ฝั่งไกล ถ้าเป้าหมายไกลกว่าค่านี้จะคืน Failure")]
+    public SharedVariable<float> maxCastRange = 6f;
 
     [Tooltip("ถ้าเปิดไว้ จะต้องมี CurrentTarget ที่ยังเห็นอยู่จริงเท่านั้น ถึงจะยิงได้")]
     public SharedVariable<bool> requireLiveTarget = true;
@@ -86,7 +88,12 @@ public class IsTargetInShootRange : Conditional
         if (sensor.CurrentTarget != null && currentEnemy != null)
             currentEnemy.Value = sensor.CurrentTarget.gameObject;
 
-        return dist <= shootRange.Value ? TaskStatus.Success : TaskStatus.Failure;
+        float lowerSetting = Mathf.Min(minCastRange.Value, maxCastRange.Value);
+        float upperSetting = Mathf.Max(minCastRange.Value, maxCastRange.Value);
+        float minRange = Mathf.Max(0f, lowerSetting);
+        float maxRange = Mathf.Max(0f, upperSetting);
+
+        return dist >= minRange && dist <= maxRange ? TaskStatus.Success : TaskStatus.Failure;
     }
 
     private void ClearOutputs()
@@ -98,7 +105,8 @@ public class IsTargetInShootRange : Conditional
     public override void Reset()
     {
         sensor = null;
-        shootRange = 8f;
+        minCastRange = 5f;
+        maxCastRange = 6f;
         requireLiveTarget = true;
         requireLineOfSight = true;
         currentEnemy = null;

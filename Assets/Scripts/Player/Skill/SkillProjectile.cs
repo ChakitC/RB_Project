@@ -21,6 +21,8 @@ public class SkillProjectile : MonoBehaviour
     FinalSkillStats stats;
 
     Vector3 spawnPos;
+    Vector3 moveDirection = Vector3.forward;
+    float age;
     readonly List<Collider> ignoredCols = new List<Collider>();
 
     void Awake()
@@ -32,7 +34,6 @@ public class SkillProjectile : MonoBehaviour
         rb.useGravity = false;
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
 
-        Destroy(gameObject, lifetime);
     }
 
     public void Initialize(
@@ -55,6 +56,7 @@ public class SkillProjectile : MonoBehaviour
         this.vfxScale      = vfxScale;
 
         this.speed         = speed > 0 ? speed : this.speed;
+        age = 0f;
 
         if (caster is Component casterComp)
         {
@@ -84,11 +86,26 @@ public class SkillProjectile : MonoBehaviour
         if (dir.sqrMagnitude < 0.0001f)
             dir = transform.forward;
 
-        dir.Normalize();
+        moveDirection = dir.normalized;
+        ApplyVelocity();
+    }
 
-        // ใช้ velocity ถ้า linearVelocity ไม่รองรับใน Unity เวอร์ชันคุณ
-        rb.linearVelocity = dir * speed;
-        // rb.velocity = dir * speed;
+    void FixedUpdate()
+    {
+        float worldScale = TimeSlowManager.Instance.WorldTimeScale;
+        age += Time.fixedDeltaTime * worldScale;
+        if (age >= lifetime)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        ApplyVelocity();
+    }
+
+    void ApplyVelocity()
+    {
+        rb.linearVelocity = moveDirection * speed * TimeSlowManager.Instance.WorldTimeScale;
     }
 
     void OnTriggerEnter(Collider other)
@@ -198,6 +215,9 @@ public class SkillProjectile : MonoBehaviour
         // ถ้าอยากให้สเกลตาม vfxScale จริง ๆ
         if (vfxScale != 1f)
             vfx.transform.localScale *= vfxScale;
+
+        if (vfx.GetComponent<WorldTimeScaledVfx>() == null)
+            vfx.AddComponent<WorldTimeScaledVfx>();
     }
 
     void OnDestroy()

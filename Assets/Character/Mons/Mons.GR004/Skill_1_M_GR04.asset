@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
+  m_Name: Skill_1_M_GR04
+  m_EditorClassIdentifier: 
+  icon: {fileID: 0}
+  displayName: Skill.M.GR.04
+  skillId: Skill.M.GR.04
+  tags: 16
+  description: 
+  baseDamage: 100
+  baseStaggerPower: 10
+  baseManaCost: 0
+  baseCastTime: 0.5
+  baseCooldown: 10
+  baseCritChance: 5
+  baseProjectilesCount: 1
+  projectileSpeed: 5
+  AreaofEffec: 0
+  baseRadius: 0
+  maxLevel: 20
+  payload: {fileID: 11400000, guid: 1b0b63c4dba573f40a567f00909fcb66, type: 2}
+  legacySkillPrefab: {fileID: 0}
+  legacyHelperFacingMode: 0
+  legacyProjectileTrailVfxPrefab: {fileID: 0}
+  legacyProjectileHitVfxPrefab: {fileID: 0}
+  legacyProjectileHitVfxScale: 1
+  castCue: {fileID: 0}
+  skillClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes:
+      - 0.3285714
+      - 0.42169946
+      - NaN
+      _Callbacks: []
+      _Names:
+      - {fileID: 11400000, guid: 85bb0c93bfa4490c9607cf5deac42c5b, type: 2}
+      - {fileID: 11400000, guid: 4c642c18b11e431c910ac176caf49adc, type: 2}
+    _Clip: {fileID: 8286034878134953762, guid: 003301ab44e7a1b4db0c1497f791f876, type: 3}
+    _NormalizedStartTime: NaN
+  castPointNormalized: 0.3
+  blockablePreCast: 0
+  preCastOpenEvent: {fileID: 0}
+  preCastCloseEvent: {fileID: 0}
+  useFallbackPreCastWindow: 1
+  fallbackPreCastOpenNormalized: 0
+  fallbackPreCastCloseNormalized: 0.35
+  preCastIndicatorPrefab: {fileID: 0}
+  cancelPreCastOnStun: 1
+  cancelPreCastOnStagger: 1
+  legacyChainContinueMode: 0
+  legacyChainContinueNormalizedTime: 1
+  perLevelData: []
+  previewLevel: 1
+  references:
+    version: 2
+    RefIds: []

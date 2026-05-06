@@ -10,10 +10,102 @@ using UnityEditor.SceneManagement;
 public sealed class SetSkillHitBoxData : MonoBehaviour
 {
     const string LoadLayoutUndoLabel = "Load Skill HitBox Layout";
+    const string CreateTemplateUndoLabel = "Create Skill HitBox Template";
 
     [SerializeField] private Transform sourceHitboxRoot;
     [SerializeField] private SkillHitBoxData skillHitBoxData;
     [SerializeField] private bool includeInactiveObjects = true;
+    [SerializeField, MinValue(1), LabelText("Template Group Count")]
+    [PropertyTooltip("Number of SkillHitboxGroup templates to create when pressing Create Source Template.")]
+    private int templateGroupCount = 1;
+
+    [Button("Create Source Template")]
+    [PropertyTooltip("Create editable SkillHitboxGroup templates with default capsule colliders under Source Hitbox Root.")]
+    private void CreateSourceTemplate()
+    {
+#if UNITY_EDITOR
+        if (!TryGetEditableRoot(out Transform root))
+            return;
+
+        Undo.IncrementCurrentGroup();
+        int undoGroup = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName(CreateTemplateUndoLabel);
+
+        List<GameObject> createdObjects = new List<GameObject>();
+
+        try
+        {
+            int groupCount = Mathf.Max(1, templateGroupCount);
+            int layer = root.gameObject.layer;
+            GameObject firstGroupObject = null;
+
+            for (int i = 0; i < groupCount; i++)
+            {
+                string groupKey = GetNextTemplateGroupKey(root);
+                GameObject groupObject = CreateTemplateGroup(root, groupKey, layer, createdObjects);
+
+                if (firstGroupObject == null)
+                    firstGroupObject = groupObject;
+            }
+
+            MarkHierarchyDirty(root);
+            if (firstGroupObject != null)
+            {
+                Selection.activeObject = firstGroupObject;
+                EditorGUIUtility.PingObject(firstGroupObject);
+            }
+
+            Debug.Log(
+                $"Created {groupCount} SkillHitBox template group(s) under '{root.name}'.",
+                root);
+        }
+        catch (Exception ex)
+        {
+            CleanupCreatedObjects(createdObjects);
+            MarkHierarchyDirty(root);
+            Debug.LogError($"Failed to create SkillHitBox template: {ex.Message}", this);
+        }
+        finally
+        {
+            Undo.CollapseUndoOperations(undoGroup);
+        }
+#else
+        Debug.LogWarning("CreateSourceTemplate is only available in the Unity Editor.", this);
+#endif
+    }
+
+    static GameObject CreateTemplateGroup(
+        Transform root,
+        string groupKey,
+        int layer,
+        List<GameObject> createdObjects)
+    {
+        GameObject groupObject = CreateChildObject(
+            root,
+            groupKey,
+            layer,
+            createdObjects,
+            CreateTemplateUndoLabel);
+
+        SkillHitboxGroup group = groupObject.AddComponent<SkillHitboxGroup>();
+
+        GameObject shapeObject = CreateChildObject(
+            groupObject.transform,
+            "HitBox01",
+            layer,
+            createdObjects,
+            CreateTemplateUndoLabel);
+
+        CapsuleCollider collider = shapeObject.AddComponent<CapsuleCollider>();
+        collider.isTrigger = true;
+        collider.enabled = false;
+        collider.radius = 0.5f;
+        collider.height = 1f;
+        collider.direction = 1;
+
+        group.Configure(groupKey, new[] { collider });
+        return groupObject;
+    }
 
     [Button("Load Layout From Data")]
     [PropertyTooltip("โหลด hit box จาก SkillHitBoxData ออกมาเป็น GameObject และ Collider ใต้ Source Hitbox Root เพื่อปรับตำแหน่ง ขนาด และรูปทรงใน scene")]
@@ -174,9 +266,9 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
 #endif
     }
 
-    [Button("Rebuild Layout From Source")]
+    [Button("Save Layout From Source")]
     [PropertyTooltip("อ่าน SkillHitboxGroup และ Collider ใต้ Source Hitbox Root กลับไปบันทึกเป็น SkillHitBoxData หลังจากปรับแต่งใน scene เสร็จ")]
-    private void RebuildLayoutFromSource()
+    private void SaveLayoutFromSource()
     {
         if (skillHitBoxData == null)
         {
@@ -414,13 +506,14 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
         Transform parent,
         string objectName,
         int layer,
-        List<GameObject> createdObjects)
+        List<GameObject> createdObjects,
+        string undoLabel = LoadLayoutUndoLabel)
     {
         GameObject createdObject = new GameObject(objectName);
         createdObject.layer = layer;
         createdObject.transform.SetParent(parent, false);
 #if UNITY_EDITOR
-        Undo.RegisterCreatedObjectUndo(createdObject, LoadLayoutUndoLabel);
+        Undo.RegisterCreatedObjectUndo(createdObject, undoLabel);
 #endif
         createdObjects?.Add(createdObject);
         return createdObject;
@@ -505,6 +598,36 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
 #else
         return 0;
 #endif
+    }
+
+    static string GetNextTemplateGroupKey(Transform root)
+    {
+        const string groupPrefix = "Group";
+
+        HashSet<string> usedGroupKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (root != null)
+        {
+            SkillHitboxGroup[] existingGroups = root.GetComponentsInChildren<SkillHitboxGroup>(true);
+            for (int i = 0; i < existingGroups.Length; i++)
+            {
+                SkillHitboxGroup existingGroup = existingGroups[i];
+                if (existingGroup == null)
+                    continue;
+
+                string existingKey = existingGroup.GroupKey;
+                if (!string.IsNullOrWhiteSpace(existingKey))
+                    usedGroupKeys.Add(existingKey.Trim());
+            }
+        }
+
+        for (int i = 1; i < 1000; i++)
+        {
+            string candidate = $"{groupPrefix}{i:D2}";
+            if (!usedGroupKeys.Contains(candidate))
+                return candidate;
+        }
+
+        return $"{groupPrefix}{usedGroupKeys.Count + 1:D2}";
     }
 
     static void MarkHierarchyDirty(Transform root)

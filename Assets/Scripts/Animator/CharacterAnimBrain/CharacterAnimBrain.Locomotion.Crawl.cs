@@ -63,7 +63,7 @@ public sealed partial class CharacterAnimBrain
             float speed01 = Mathf.Clamp01(owner.MoveSpeed01 * owner.CrawlSpeedMultiplier01);
             Vector2 target = dir * speed01;
 
-            float t = 1f - Mathf.Exp(-owner.CrawlParamLerp * Time.deltaTime);
+            float t = 1f - Mathf.Exp(-owner.CrawlParamLerp * owner.AnimationDeltaTime);
             current = Vector2.Lerp(current, target, t);
 
             mixerState.ParameterX = current.x;

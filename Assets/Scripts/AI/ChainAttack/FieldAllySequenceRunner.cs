@@ -16,6 +16,7 @@ internal sealed class FieldAllySequenceRunner
     int _lastCompletedExecutionId;
     bool _lastCompletedExecutionSucceeded;
     bool _lastCompletedExecutionHadDeferredCleanup;
+    float WorldNow => TimeSlowManager.Instance.WorldTime;
 
     public FieldAllySequenceRunner(
         FieldAllyMember owner,
@@ -912,7 +913,7 @@ internal sealed class FieldAllySequenceRunner
             return;
 
         execution.phase = phase;
-        execution.phaseStartedAt = Time.time;
+        execution.phaseStartedAt = WorldNow;
     }
 
     bool HasPhaseTimedOut(PendingSequenceExecution execution, float timeoutSeconds)
@@ -921,7 +922,7 @@ internal sealed class FieldAllySequenceRunner
             return false;
 
         float timeout = Mathf.Max(0.1f, timeoutSeconds);
-        return execution.phaseStartedAt > 0f && Time.time - execution.phaseStartedAt >= timeout;
+        return execution.phaseStartedAt > 0f && WorldNow - execution.phaseStartedAt >= timeout;
     }
 
     void CancelDeferredSequenceCleanup()

@@ -15,6 +15,8 @@ public class Bullet : MonoBehaviour
     Rigidbody rb;
     Collider myCol;
     Vector3 spawnPos;
+    Vector3 moveDirection = Vector3.forward;
+    float age;
 
     // จากผู้ยิง
     Transform shooterRoot;
@@ -31,7 +33,6 @@ public class Bullet : MonoBehaviour
         rb.useGravity = false;
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
 
-        Destroy(gameObject, lifetime);
     }
 
     public void Initialize(
@@ -50,6 +51,7 @@ public class Bullet : MonoBehaviour
         this.critRate = critRate;
         this.critMult = critMult;
         this.staggerPower = staggerPower;
+        age = 0f;
 
         foreach (var col in shooterRoot.GetComponentsInChildren<Collider>())
         {
@@ -61,7 +63,32 @@ public class Bullet : MonoBehaviour
         }
     }
 
-    public void SetDirection(Vector3 dir) => rb.linearVelocity = dir.normalized * speed;
+    public void SetDirection(Vector3 dir)
+    {
+        if (dir.sqrMagnitude < 0.0001f)
+            dir = transform.forward;
+
+        moveDirection = dir.normalized;
+        ApplyVelocity();
+    }
+
+    void FixedUpdate()
+    {
+        float worldScale = TimeSlowManager.Instance.WorldTimeScale;
+        age += Time.fixedDeltaTime * worldScale;
+        if (age >= lifetime)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        ApplyVelocity();
+    }
+
+    void ApplyVelocity()
+    {
+        rb.linearVelocity = moveDirection * speed * TimeSlowManager.Instance.WorldTimeScale;
+    }
 
     float DistanceFromSpawn() => Vector3.Distance(spawnPos, transform.position);
 

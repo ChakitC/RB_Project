@@ -17,6 +17,7 @@ public sealed class AllyHelperProcController : MonoBehaviour
     readonly HashSet<SkillHelperDef> _resolvedHelperDefinitionSet = new();
 
     bool _subscribed;
+    float WorldNow => TimeSlowManager.Instance.WorldTime;
 
     void Awake()
     {
@@ -250,7 +251,7 @@ public sealed class AllyHelperProcController : MonoBehaviour
         if (!_nextReadyTimeByDef.TryGetValue(helperDef, out float readyAt))
             return true;
 
-        if (Time.time >= readyAt)
+        if (WorldNow >= readyAt)
         {
             _nextReadyTimeByDef.Remove(helperDef);
             return true;
@@ -271,7 +272,7 @@ public sealed class AllyHelperProcController : MonoBehaviour
             return;
         }
 
-        _nextReadyTimeByDef[helperDef] = Time.time + cooldown;
+        _nextReadyTimeByDef[helperDef] = WorldNow + cooldown;
     }
 
     bool IsAttackIdLocked(SkillHelperDef helperDef, string attackId)
@@ -283,7 +284,7 @@ public sealed class AllyHelperProcController : MonoBehaviour
         if (!_attackIdLocks.TryGetValue(key, out float expiresAt))
             return false;
 
-        if (Time.time <= expiresAt)
+        if (WorldNow <= expiresAt)
             return true;
 
         _attackIdLocks.Remove(key);
@@ -296,7 +297,7 @@ public sealed class AllyHelperProcController : MonoBehaviour
             return;
 
         _attackIdLocks[BuildAttackIdLockKey(helperDef, attackId)] =
-            Time.time + Mathf.Max(attackIdLockTtlSeconds, helperDef.internalCooldownSeconds);
+            WorldNow + Mathf.Max(attackIdLockTtlSeconds, helperDef.internalCooldownSeconds);
     }
 
     void CleanupExpiredAttackIdLocks()
@@ -304,7 +305,7 @@ public sealed class AllyHelperProcController : MonoBehaviour
         if (_attackIdLocks.Count == 0)
             return;
 
-        float now = Time.time;
+        float now = WorldNow;
         List<string> expiredKeys = null;
 
         foreach (var pair in _attackIdLocks)

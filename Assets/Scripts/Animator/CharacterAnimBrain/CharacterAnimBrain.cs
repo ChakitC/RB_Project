@@ -10,6 +10,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private bool _initialized;
     private Animator _boundAnimator;
     private CharacterAnimProfileSO _boundAnimProfile;
+    private float _baseAnimancerGraphSpeed = 1f;
+    private bool _hasCachedAnimancerGraphSpeed;
 
     private enum PendingAction { None, Empty, Hold, Reload, Melee }
     private PendingAction _pendingAction;
@@ -384,9 +386,63 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         _initWarned = false;
 
+        ApplyWorldAnimationSpeed();
         RefreshStatusLocomotion();
         locomotionSM.CurrentState?.Update();
         actionSM.CurrentState?.Update();
+    }
+
+    private bool UsesWorldAnimationSlow()
+    {
+        return !(ctx is PlayerContext);
+    }
+
+    internal float AnimationDeltaTime
+    {
+        get
+        {
+            if (UsesWorldAnimationSlow())
+                return TimeSlowManager.Instance.WorldDeltaTime;
+
+            return Time.deltaTime;
+        }
+    }
+
+    internal float AnimationTime
+    {
+        get
+        {
+            if (UsesWorldAnimationSlow())
+                return TimeSlowManager.Instance.WorldTime;
+
+            return Time.time;
+        }
+    }
+
+    private void ApplyWorldAnimationSpeed()
+    {
+        if (!animancer || !animancer.IsGraphInitialized)
+            return;
+
+        if (!_hasCachedAnimancerGraphSpeed)
+        {
+            _baseAnimancerGraphSpeed = animancer.Graph.Speed;
+            _hasCachedAnimancerGraphSpeed = true;
+        }
+
+        float scale = UsesWorldAnimationSlow()
+            ? TimeSlowManager.Instance.WorldTimeScale
+            : 1f;
+
+        animancer.Graph.Speed = _baseAnimancerGraphSpeed * scale;
+    }
+
+    private void RestoreWorldAnimationSpeed()
+    {
+        if (!animancer || !animancer.IsGraphInitialized || !_hasCachedAnimancerGraphSpeed)
+            return;
+
+        animancer.Graph.Speed = _baseAnimancerGraphSpeed;
     }
 
     // ===================== Public API =====================
@@ -1287,7 +1343,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             runtimeEvents,
             _activeSkillTimelineEventNames,
             ResolveSkillClip(_activeSkillDefinition),
-            RaiseSkillTimelineEvent);
+            RaiseSkillTimelineEvent,
+            warnMissing: true);
+
+        BindActiveSkillPreCastTimelineEvents(runtimeEvents);
     }
 
     internal void BindActiveChainTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
@@ -1299,14 +1358,16 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             runtimeEvents,
             _activeChainTimelineEventNames,
             ResolveSkillClip(_activeChainSkillDefinition),
-            RaiseChainSkillTimelineEvent);
+            RaiseChainSkillTimelineEvent,
+            warnMissing: true);
     }
 
     private void BindTimelineEventCallbacks(
         AnimancerEvent.Sequence runtimeEvents,
         IReadOnlyList<StringReference> eventNames,
         ClipTransition clip,
-        Action<StringReference> raiseTimelineEvent)
+        Action<StringReference> raiseTimelineEvent,
+        bool warnMissing)
     {
         if (runtimeEvents == null || eventNames == null || eventNames.Count == 0 || raiseTimelineEvent == null)
             return;
@@ -1319,18 +1380,87 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             if (eventName == null || string.IsNullOrWhiteSpace(eventName.String))
                 continue;
 
-            StringReference capturedEventName = eventName;
-            int count = runtimeEvents.SetCallbacks(
-                capturedEventName,
-                () => raiseTimelineEvent(capturedEventName));
-
-            if (count == 0)
-            {
-                Debug.LogWarning(
-                    $"[CharacterAnimBrain] Skill clip '{clipName}' is missing timeline event '{capturedEventName}'.",
-                    this);
-            }
+            BindTimelineEventCallback(runtimeEvents, eventName, clipName, raiseTimelineEvent, warnMissing);
         }
+    }
+
+    private void BindTimelineEventCallback(
+        AnimancerEvent.Sequence runtimeEvents,
+        StringReference eventName,
+        string clipName,
+        Action<StringReference> raiseTimelineEvent,
+        bool warnMissing)
+    {
+        if (runtimeEvents == null ||
+            eventName == null ||
+            string.IsNullOrWhiteSpace(eventName.String) ||
+            raiseTimelineEvent == null)
+        {
+            return;
+        }
+
+        StringReference capturedEventName = eventName;
+        int count = runtimeEvents.SetCallbacks(
+            capturedEventName,
+            () => raiseTimelineEvent(capturedEventName));
+
+        if (count == 0 && warnMissing)
+        {
+            Debug.LogWarning(
+                $"[CharacterAnimBrain] Skill clip '{clipName}' is missing timeline event '{capturedEventName}'.",
+                this);
+        }
+    }
+
+    private void BindActiveSkillPreCastTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
+    {
+        SkillGemDefinition skillDef = _activeSkillDefinition;
+        if (runtimeEvents == null || skillDef == null || !skillDef.BlockablePreCast)
+            return;
+
+        string clipName = ResolveSkillClip(skillDef) != null && ResolveSkillClip(skillDef).Clip != null
+            ? ResolveSkillClip(skillDef).Clip.name
+            : "<none>";
+
+        BindTimelineEventCallback(
+            runtimeEvents,
+            skillDef.PreCastOpenEventName,
+            clipName,
+            RaiseSkillTimelineEvent,
+            warnMissing: false);
+
+        BindTimelineEventCallback(
+            runtimeEvents,
+            skillDef.PreCastCloseEventName,
+            clipName,
+            RaiseSkillTimelineEvent,
+            warnMissing: false);
+
+        if (!skillDef.UseFallbackPreCastWindow)
+            return;
+
+        AddFallbackSkillTimelineEvent(
+            runtimeEvents,
+            skillDef.FallbackPreCastOpenNormalized,
+            skillDef.PreCastOpenEventName);
+
+        AddFallbackSkillTimelineEvent(
+            runtimeEvents,
+            skillDef.FallbackPreCastCloseNormalized,
+            skillDef.PreCastCloseEventName);
+    }
+
+    private void AddFallbackSkillTimelineEvent(
+        AnimancerEvent.Sequence runtimeEvents,
+        float normalizedTime,
+        StringReference eventName)
+    {
+        if (runtimeEvents == null || eventName == null || string.IsNullOrWhiteSpace(eventName.String))
+            return;
+
+        float clampedTime = Mathf.Clamp(normalizedTime, 0f, 0.999f);
+        StringReference capturedEventName = eventName;
+        runtimeEvents.Add(clampedTime, () => RaiseSkillTimelineEvent(capturedEventName));
     }
 
     private void RaiseSkillTimelineEvent(StringReference eventName)
@@ -1450,6 +1580,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void OnDisable()
     {
+        RestoreWorldAnimationSpeed();
         InterruptActiveSkillRequest();
         InterruptActiveUtilityRequest();
         InterruptActiveChainRequest();
@@ -1457,6 +1588,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void OnDestroy()
     {
+        RestoreWorldAnimationSpeed();
         InterruptActiveSkillRequest();
         InterruptActiveUtilityRequest();
         InterruptActiveChainRequest();

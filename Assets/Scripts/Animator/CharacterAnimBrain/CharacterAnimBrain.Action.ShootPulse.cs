@@ -20,7 +20,7 @@ public sealed partial class CharacterAnimBrain
             // ถ้ากดค้างและไม่มี holdLoop -> กันการรีสตาร์ตถี่เกิน (auto fire rate สูง ๆ)
             if (owner.IsHoldingFire && owner.ShootHoldLoopClip == null)
             {
-                if (Time.time - lastPlayTime < owner.HoldPulseMinInterval)
+                if (owner.AnimationTime - lastPlayTime < owner.HoldPulseMinInterval)
                     return false;
             }
 
@@ -30,7 +30,7 @@ public sealed partial class CharacterAnimBrain
 
     public override void OnEnterState()
     {
-        lastPlayTime = Time.time;
+        lastPlayTime = owner.AnimationTime;
 
         owner.ActLayer.StartFade(1f, owner.ActionFadeIn);
         state = owner.ActLayer.Play(owner.ShootPulseClip);

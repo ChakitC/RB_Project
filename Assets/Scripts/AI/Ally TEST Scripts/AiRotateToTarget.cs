@@ -86,7 +86,7 @@ public class AiRotateToTarget : Action
             _rotateTransform.rotation = Quaternion.RotateTowards(
                 _rotateTransform.rotation,
                 desiredRotation,
-                rotateSpeed * Time.deltaTime
+                rotateSpeed * TimeSlowManager.Instance.WorldDeltaTime
             );
         }
 

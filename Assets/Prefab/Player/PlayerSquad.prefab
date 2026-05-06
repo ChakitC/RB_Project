@@ -427,9 +427,17 @@ PrefabInstance:
       propertyPath: m_Name
       value: Ally 1
       objectReference: {fileID: 0}
+    - target: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 4555766906707524166, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
       propertyPath: radius
       value: 15.08
+      objectReference: {fileID: 0}
+    - target: {fileID: 4606287451783796443, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
+      propertyPath: debugInInspector
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5566096177820386735, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
       propertyPath: partyIndex
@@ -777,6 +785,14 @@ PrefabInstance:
       propertyPath: allyHelper
       value: 
       objectReference: {fileID: 1930289400172877872}
+    - target: {fileID: 1956943878282865192, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+      propertyPath: healthBarHight
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 1956943878282865192, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+      propertyPath: healthBarLocalRotEuler.x
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2311559804654788738, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
       propertyPath: m_Name
       value: Player
@@ -831,6 +847,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3749669808023046127, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5818043391274991836, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+      propertyPath: debugInInspector
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9126503440091188613, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+      propertyPath: debugInInspector
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -1122,9 +1146,17 @@ PrefabInstance:
       propertyPath: m_Name
       value: Ally 2
       objectReference: {fileID: 0}
+    - target: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 4555766906707524166, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
       propertyPath: radius
       value: 15.08
+      objectReference: {fileID: 0}
+    - target: {fileID: 4606287451783796443, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
+      propertyPath: debugInInspector
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6038198926316112224, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
       propertyPath: manager

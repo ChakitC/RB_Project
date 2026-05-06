@@ -37,7 +37,7 @@ public class AiShoot : Action
         phase = ShootPhase.Firing;
 
         float fireTime = (fireDuration != null) ? fireDuration.Value : 3f;
-        stateEndTime = Time.time + Mathf.Max(0.01f, fireTime);
+        stateEndTime = TimeSlowManager.Instance.WorldTime + Mathf.Max(0.01f, fireTime);
 
         if (CTX != null && CTX.stateHub != null)
         {
@@ -80,13 +80,13 @@ public class AiShoot : Action
         {
             StartFire(CTX);
 
-            if (Time.time >= stateEndTime)
+            if (TimeSlowManager.Instance.WorldTime >= stateEndTime)
             {
                 StopFire(CTX);
 
                 phase = ShootPhase.Waiting;
                 float waitTime = (waitDuration != null) ? waitDuration.Value : 5f;
-                stateEndTime = Time.time + Mathf.Max(0.01f, waitTime);
+                stateEndTime = TimeSlowManager.Instance.WorldTime + Mathf.Max(0.01f, waitTime);
             }
 
             return TaskStatus.Running;
@@ -95,7 +95,7 @@ public class AiShoot : Action
         // ---------- Phase: Waiting ----------
         StopFire(CTX);
 
-        if (Time.time >= stateEndTime)
+        if (TimeSlowManager.Instance.WorldTime >= stateEndTime)
         {
             // รอครบแล้ว จบ task สำเร็จ
             return TaskStatus.Success;

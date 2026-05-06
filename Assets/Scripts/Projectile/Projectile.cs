@@ -269,7 +269,8 @@ public class Projectile : MonoBehaviour
         _overrideVelThisFrame = false;
         _overridePosThisFrame = false;
 
-        float dt = Time.fixedDeltaTime;
+        float worldScale = TimeSlowManager.Instance.WorldTimeScale;
+        float dt = Time.fixedDeltaTime * worldScale;
 
         _age += dt;
         float lifeTime = (config != null) ? config.lifeTime : 3f;
@@ -306,7 +307,7 @@ public class Projectile : MonoBehaviour
             return;
         }
 
-        Vector3 vel = _overrideVelThisFrame ? _overrideVel : (_ctx.dir * _ctx.stats.speed);
+        Vector3 vel = _overrideVelThisFrame ? _overrideVel * worldScale : (_ctx.dir * _ctx.stats.speed * worldScale);
         SetRbVelocity(vel);
     }
 
@@ -550,6 +551,9 @@ public class Projectile : MonoBehaviour
         var vfx = Instantiate(ballVfxPrefab, transform.position, Quaternion.identity, transform);
         if (vfxScale != 1f)
             vfx.transform.localScale *= vfxScale;
+
+        if (vfx.GetComponent<WorldTimeScaledVfx>() == null)
+            vfx.AddComponent<WorldTimeScaledVfx>();
     }
 
     void PlayHitCue(Vector3 hitPosition)

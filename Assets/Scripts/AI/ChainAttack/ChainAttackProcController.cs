@@ -19,6 +19,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
     readonly HashSet<SkillChainDef> _resolvedSkillChainSet = new();
 
     bool _subscribed;
+    float WorldNow => TimeSlowManager.Instance.WorldTime;
 
     void Awake()
     {
@@ -217,7 +218,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
         if (!_nextReadyTimeByDef.TryGetValue(chainDef, out float readyAt))
             return true;
 
-        if (Time.time >= readyAt)
+        if (WorldNow >= readyAt)
         {
             _nextReadyTimeByDef.Remove(chainDef);
             return true;
@@ -238,7 +239,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
             return;
         }
 
-        _nextReadyTimeByDef[chainDef] = Time.time + cooldown;
+        _nextReadyTimeByDef[chainDef] = WorldNow + cooldown;
     }
 
     bool IsAttackIdLocked(SkillChainDef chainDef, string attackId)
@@ -250,7 +251,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
         if (!_attackIdLocks.TryGetValue(key, out float expiresAt))
             return false;
 
-        if (Time.time <= expiresAt)
+        if (WorldNow <= expiresAt)
             return true;
 
         _attackIdLocks.Remove(key);
@@ -263,7 +264,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
             return;
 
         _attackIdLocks[BuildAttackIdLockKey(chainDef, attackId)] =
-            Time.time + Mathf.Max(attackIdLockTtlSeconds, chainDef.internalCooldownSeconds);
+            WorldNow + Mathf.Max(attackIdLockTtlSeconds, chainDef.internalCooldownSeconds);
     }
 
     void CleanupExpiredAttackIdLocks()
@@ -271,7 +272,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
         if (_attackIdLocks.Count == 0)
             return;
 
-        float now = Time.time;
+        float now = WorldNow;
         List<string> expiredKeys = null;
 
         foreach (var pair in _attackIdLocks)

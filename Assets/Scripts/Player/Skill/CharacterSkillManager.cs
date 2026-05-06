@@ -17,6 +17,10 @@ public class CharacterSkillManager : MonoBehaviour
     private SkillSlot pendingSlot;
     private SkillCastOrchestrator castOrchestrator;
 
+    public event Action<ActiveSkillCastInfo> CastStarted;
+    public event Action<ActiveSkillCastInfo> CastReleased;
+    public event Action<ActiveSkillCastInfo, SkillCastCancelReason> CastCancelled;
+
     [Header("Autonomous Loadout")]
     public ISkillUser skillUser;
     [FormerlySerializedAs("slots")]
@@ -54,7 +58,7 @@ public class CharacterSkillManager : MonoBehaviour
     {
         MigrateLegacyHelperProcSlotsIfNeeded();
         CacheReferences();
-        castOrchestrator = new SkillCastOrchestrator(this);
+        EnsureCastOrchestrator();
 
         if (skillUser == null)
             Debug.LogError("CharacterSkillManager requires an ISkillUser component.");
@@ -87,13 +91,13 @@ public class CharacterSkillManager : MonoBehaviour
         }
 
         pendingSlot = null;
-        castOrchestrator?.CancelPendingCast();
+        castOrchestrator?.CancelPendingCast(SkillCastCancelReason.Disabled);
     }
 
     private void OnDestroy()
     {
         pendingSlot = null;
-        castOrchestrator?.CancelPendingCast();
+        castOrchestrator?.CancelPendingCast(SkillCastCancelReason.Disabled);
     }
 
     private void Update()
@@ -162,6 +166,18 @@ public class CharacterSkillManager : MonoBehaviour
                skillUser != null &&
                !IsSkillUseBlocked() &&
                playerCommandSkill.runtimeSkill.CanCast(skillUser);
+    }
+
+    public bool TryGetActiveCast(out ActiveSkillCastInfo castInfo)
+    {
+        EnsureCastOrchestrator();
+        return castOrchestrator.TryGetActiveCast(out castInfo);
+    }
+
+    public bool TryCancelActiveCast(SkillCastCancelReason reason)
+    {
+        EnsureCastOrchestrator();
+        return castOrchestrator.TryCancelActiveCast(reason);
     }
 
     public SkillCastStartResult TryStartPlayerCommandSkill()
@@ -266,7 +282,7 @@ public class CharacterSkillManager : MonoBehaviour
         if (slot == null || slot.runtimeSkill == null || skillUser == null)
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
-        castOrchestrator ??= new SkillCastOrchestrator(this);
+        EnsureCastOrchestrator();
         SkillInstance runtimeSkill = slot.runtimeSkill;
         SkillCastStartResult result = castOrchestrator.TryStartCast(new SkillCastRequest(
             runtimeSkill,
@@ -293,7 +309,7 @@ public class CharacterSkillManager : MonoBehaviour
         if (entry == null || entry.runtimeSkill == null || skillUser == null)
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
-        castOrchestrator ??= new SkillCastOrchestrator(this);
+        EnsureCastOrchestrator();
         SkillInstance runtimeSkill = entry.runtimeSkill;
         return castOrchestrator.TryStartCast(new SkillCastRequest(
             runtimeSkill,
@@ -462,6 +478,34 @@ public class CharacterSkillManager : MonoBehaviour
             weaponSystem = ctx.WeaponSystem;
     }
 
+    private void EnsureCastOrchestrator()
+    {
+        if (castOrchestrator != null)
+            return;
+
+        castOrchestrator = new SkillCastOrchestrator(this);
+        castOrchestrator.CastStarted += OnCastStarted;
+        castOrchestrator.CastReleased += OnCastReleased;
+        castOrchestrator.CastCancelled += OnCastCancelled;
+    }
+
+    private void OnCastStarted(ActiveSkillCastInfo castInfo)
+    {
+        CastStarted?.Invoke(castInfo);
+    }
+
+    private void OnCastReleased(ActiveSkillCastInfo castInfo)
+    {
+        pendingSlot = null;
+        CastReleased?.Invoke(castInfo);
+    }
+
+    private void OnCastCancelled(ActiveSkillCastInfo castInfo, SkillCastCancelReason reason)
+    {
+        pendingSlot = null;
+        CastCancelled?.Invoke(castInfo, reason);
+    }
+
     private CharacterAnimBrain ResolveAnimBrainReference()
     {
         if (ctx != null && ctx.AnimBrain != null)
@@ -575,13 +619,13 @@ public class CharacterSkillManager : MonoBehaviour
     private void OnCharacterDown()
     {
         pendingSlot = null;
-        castOrchestrator?.CancelPendingCast();
+        castOrchestrator?.CancelPendingCast(SkillCastCancelReason.CharacterDown);
     }
 
     private void OnCharacterDead()
     {
         pendingSlot = null;
-        castOrchestrator?.CancelPendingCast();
+        castOrchestrator?.CancelPendingCast(SkillCastCancelReason.CharacterDead);
     }
 }
 
@@ -644,15 +688,57 @@ public readonly struct SkillCastRequest
     }
 }
 
+public enum SkillCastCancelReason
+{
+    InvalidState,
+    AnimationInterrupted,
+    Disabled,
+    Blocked,
+    Stunned,
+    Staggered,
+    CharacterDown,
+    CharacterDead,
+}
+
+public readonly struct ActiveSkillCastInfo
+{
+    public readonly int RequestId;
+    public readonly SkillInstance RuntimeSkill;
+    public readonly SkillGemDefinition SkillDef;
+    public readonly ISkillUser SkillUser;
+    public readonly CharacterAnimBrain AnimationDriver;
+    public readonly float CastPointNormalized;
+    public readonly bool Released;
+    public readonly bool RequiresTimelineEvents;
+    public readonly string DebugSource;
+
+    public bool IsValid => RequestId > 0 && RuntimeSkill != null && SkillDef != null && SkillUser != null;
+
+    public ActiveSkillCastInfo(
+        int requestId,
+        SkillInstance runtimeSkill,
+        SkillGemDefinition skillDef,
+        ISkillUser skillUser,
+        CharacterAnimBrain animationDriver,
+        float castPointNormalized,
+        bool released,
+        bool requiresTimelineEvents,
+        string debugSource)
+    {
+        RequestId = requestId;
+        RuntimeSkill = runtimeSkill;
+        SkillDef = skillDef;
+        SkillUser = skillUser;
+        AnimationDriver = animationDriver;
+        CastPointNormalized = castPointNormalized;
+        Released = released;
+        RequiresTimelineEvents = requiresTimelineEvents;
+        DebugSource = debugSource;
+    }
+}
+
 public sealed class SkillCastOrchestrator
 {
-    private enum PendingCastCancelReason
-    {
-        InvalidState,
-        AnimationInterrupted,
-        Disabled,
-    }
-
     private sealed class PendingCastContext
     {
         public SkillCastRequest Request;
@@ -666,6 +752,20 @@ public sealed class SkillCastOrchestrator
         public float CastPointNormalized;
         public bool RequiresTimelineEvents;
         public readonly List<StringReference> TimelineEventNames = new List<StringReference>();
+
+        public ActiveSkillCastInfo ToInfo()
+        {
+            return new ActiveSkillCastInfo(
+                RequestId,
+                RuntimeSkill,
+                SkillDef,
+                SkillUser,
+                AnimationDriver,
+                CastPointNormalized,
+                Released,
+                RequiresTimelineEvents,
+                Request.DebugSource);
+        }
     }
 
     private readonly Component owner;
@@ -682,18 +782,55 @@ public sealed class SkillCastOrchestrator
     public bool HasPendingCast => pendingCast != null;
     public int ActiveRequestId => pendingCast != null ? pendingCast.RequestId : 0;
 
+    public event Action<ActiveSkillCastInfo> CastStarted;
+    public event Action<ActiveSkillCastInfo> CastReleased;
+    public event Action<ActiveSkillCastInfo, SkillCastCancelReason> CastCancelled;
+
     public void Tick()
     {
         if (pendingCast == null)
             return;
 
         if (!CanProceed(pendingCast.Request))
-            CancelPendingCast(PendingCastCancelReason.InvalidState);
+            CancelPendingCast(SkillCastCancelReason.InvalidState);
     }
 
     public void CancelPendingCast()
     {
-        CancelPendingCast(PendingCastCancelReason.Disabled);
+        CancelPendingCast(SkillCastCancelReason.Disabled);
+    }
+
+    public void CancelPendingCast(SkillCastCancelReason reason)
+    {
+        if (pendingCast == null)
+            return;
+
+        PendingCastContext context = pendingCast;
+        pendingCast = null;
+        Unsubscribe(context.AnimationDriver);
+        CancelPendingCastRequest(context, stopAnimation: reason != SkillCastCancelReason.AnimationInterrupted);
+        CastCancelled?.Invoke(context.ToInfo(), reason);
+    }
+
+    public bool TryGetActiveCast(out ActiveSkillCastInfo castInfo)
+    {
+        if (pendingCast == null)
+        {
+            castInfo = default;
+            return false;
+        }
+
+        castInfo = pendingCast.ToInfo();
+        return true;
+    }
+
+    public bool TryCancelActiveCast(SkillCastCancelReason reason)
+    {
+        if (pendingCast == null || pendingCast.Released)
+            return false;
+
+        CancelPendingCast(reason);
+        return true;
     }
 
     public SkillCastStartResult TryStartCast(in SkillCastRequest request)
@@ -745,6 +882,7 @@ public sealed class SkillCastOrchestrator
             {
                 Subscribe(context.AnimationDriver);
                 pendingCast = context;
+                CastStarted?.Invoke(context.ToInfo());
                 return new SkillCastStartResult(SkillCastStartKind.WaitingForAnimation, context.RequestId);
             }
         }
@@ -848,27 +986,18 @@ public sealed class SkillCastOrchestrator
         if (!CanProceed(context.Request))
         {
             CancelPendingCastRequest(context, stopAnimation: false);
+            CastCancelled?.Invoke(context.ToInfo(), SkillCastCancelReason.InvalidState);
             return false;
         }
 
         context.Released = true;
+        CastReleased?.Invoke(context.ToInfo());
         return TryReleaseCast(
             context.Request,
             context.RequestId,
             context.RuntimeSkill,
             context.SkillUser,
             context.AnimationDriver);
-    }
-
-    private void CancelPendingCast(PendingCastCancelReason reason)
-    {
-        if (pendingCast == null)
-            return;
-
-        PendingCastContext context = pendingCast;
-        pendingCast = null;
-        Unsubscribe(context.AnimationDriver);
-        CancelPendingCastRequest(context, stopAnimation: reason != PendingCastCancelReason.AnimationInterrupted);
     }
 
     private void CancelPendingCastRequest(PendingCastContext context, bool stopAnimation)
@@ -891,7 +1020,7 @@ public sealed class SkillCastOrchestrator
         if (pendingCast == null || pendingCast.RequestId != requestId)
             return;
 
-        CancelPendingCast(PendingCastCancelReason.AnimationInterrupted);
+        CancelPendingCast(SkillCastCancelReason.AnimationInterrupted);
     }
 
     private void Subscribe(CharacterAnimBrain animationDriver)

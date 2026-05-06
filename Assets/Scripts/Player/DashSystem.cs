@@ -19,6 +19,12 @@ public class DashSystem : MonoBehaviour
     [SerializeField] private LayerMask dashIFrameExclude;
     [SerializeField] private CombatEventBus combatEventBus;
 
+    [Header("Perfect Dodge")]
+    [SerializeField, Range(0.05f, 1f)] private float perfectDashSlowScale = 0.2f;
+    [SerializeField, Min(0f)] private float perfectDashSlowDuration = 0.35f;
+    [SerializeField] private LayerMask perfectDodgeThreatLayers;
+    [SerializeField, Min(0f)] private float perfectDodgeThreatScanPadding = 0.25f;
+
     LayerMask _origCCExclude;
     LayerMask _origRBExclude;
     bool _collisionExcludeCaptured;
@@ -28,7 +34,10 @@ public class DashSystem : MonoBehaviour
     Vector3 lastMoveDir = Vector3.forward;
     bool isDashing;
     float _perfectDodgeWindowUntil;
+    bool _perfectDodgeTriggeredThisDash;
     readonly HashSet<string> _consumedPerfectDodgeAttackIds = new();
+    readonly Collider[] _perfectDodgeThreatHits = new Collider[24];
+    Vector3 _lastDashDirection = Vector3.forward;
 
     Coroutine _dashRoutine;
     Coroutine _invincibleRoutine;
@@ -36,7 +45,7 @@ public class DashSystem : MonoBehaviour
     int _nextExternalCollisionIgnoreToken = 1;
 
     public bool IsDashing => isDashing;
-    public bool IsPerfectDodgeWindowActive => isDashing && Time.time <= _perfectDodgeWindowUntil;
+    public bool IsPerfectDodgeWindowActive => isDashing && Time.unscaledTime <= _perfectDodgeWindowUntil;
     Transform ActorRoot => actorRoot ? actorRoot : transform;
 
     void Awake()
@@ -193,6 +202,7 @@ public class DashSystem : MonoBehaviour
         if (dashDir.sqrMagnitude < 0.001f)
             dashDir = root.forward;
         dashDir.Normalize();
+        _lastDashDirection = dashDir;
 
         Vector3 dashDirLocalBeforeTurn = root.InverseTransformDirection(dashDir);
 
@@ -218,7 +228,8 @@ public class DashSystem : MonoBehaviour
             FaceDashDirection(dashDir);
         StartDashIframe();
         _consumedPerfectDodgeAttackIds.Clear();
-        _perfectDodgeWindowUntil = Time.time + dashInvincibleTime;
+        _perfectDodgeTriggeredThisDash = false;
+        _perfectDodgeWindowUntil = Time.unscaledTime + dashInvincibleTime;
 
         ctx.stateHub?.ReportDashStarted(dashDuration, dashDir);
         PublishDashEvent(PassiveEventType.DashStarted, dashDuration);
@@ -252,6 +263,7 @@ public class DashSystem : MonoBehaviour
             preventedContext.OriginRuleId);
 
         combatEventBus.Publish(dodgeContext);
+        TriggerPerfectDodgeSlow();
         return true;
     }
 
@@ -265,8 +277,11 @@ public class DashSystem : MonoBehaviour
         float t = 0f;
         while (t < dashDuration)
         {
-            ctx.cc.Move(dir * speed * Time.deltaTime);
-            t += Time.deltaTime;
+            TryDetectPerfectDodgeThreat();
+
+            float dt = Time.unscaledDeltaTime;
+            ctx.cc.Move(dir * speed * dt);
+            t += dt;
             yield return null;
         }
 
@@ -281,10 +296,84 @@ public class DashSystem : MonoBehaviour
     {
         if (ctx != null && ctx.HealthSystem != null)
             ctx.HealthSystem.SetInvincible(true);
-        yield return new WaitForSeconds(time);
+        yield return new WaitForSecondsRealtime(time);
         if (ctx != null && ctx.HealthSystem != null)
             ctx.HealthSystem.SetInvincible(false);
         _invincibleRoutine = null;
+    }
+
+    void TryDetectPerfectDodgeThreat()
+    {
+        if (_perfectDodgeTriggeredThisDash || !IsPerfectDodgeWindowActive || ctx == null || ctx.cc == null)
+            return;
+
+        if (perfectDodgeThreatLayers.value == 0)
+            return;
+
+        float radius = ctx.cc.radius + perfectDodgeThreatScanPadding;
+        float height = ctx.cc.height;
+        Vector3 center = ctx.cc.transform.TransformPoint(ctx.cc.center);
+        float capsuleHalfLine = Mathf.Max(0f, height * 0.5f - ctx.cc.radius);
+        Vector3 p1 = center + Vector3.up * capsuleHalfLine;
+        Vector3 p2 = center - Vector3.up * capsuleHalfLine;
+
+        int count = Physics.OverlapCapsuleNonAlloc(
+            p1,
+            p2,
+            radius,
+            _perfectDodgeThreatHits,
+            perfectDodgeThreatLayers,
+            QueryTriggerInteraction.Collide);
+
+        Transform actorRootTransform = ActorRoot.root;
+        for (int i = 0; i < count; i++)
+        {
+            Collider hit = _perfectDodgeThreatHits[i];
+            _perfectDodgeThreatHits[i] = null;
+            if (hit == null)
+                continue;
+
+            Transform hitRoot = hit.attachedRigidbody != null
+                ? hit.attachedRigidbody.transform.root
+                : hit.transform.root;
+
+            if (hitRoot == null || hitRoot == actorRootTransform)
+                continue;
+
+            PublishExternalPerfectDodge(hitRoot.gameObject);
+            TriggerPerfectDodgeSlow();
+            return;
+        }
+    }
+
+    void PublishExternalPerfectDodge(GameObject source)
+    {
+        if (combatEventBus == null)
+            return;
+
+        string attackId = source != null ? $"dash-threat:{source.GetInstanceID()}" : null;
+        if (!string.IsNullOrWhiteSpace(attackId) && !_consumedPerfectDodgeAttackIds.Add(attackId))
+            return;
+
+        var dodgeContext = combatEventBus.CreateExternalContext(
+            PassiveEventType.PerfectDodge,
+            source,
+            ResolveActorGameObject(),
+            "dash:threat-scan",
+            attackId,
+            0f);
+
+        combatEventBus.Publish(dodgeContext);
+    }
+
+    void TriggerPerfectDodgeSlow()
+    {
+        if (_perfectDodgeTriggeredThisDash)
+            return;
+
+        _perfectDodgeTriggeredThisDash = true;
+        TimeSlowManager.Instance.StartSlow(perfectDashSlowScale, perfectDashSlowDuration);
+        PerfectDashScreenFx.Instance?.Play(_lastDashDirection, perfectDashSlowDuration, perfectDashSlowScale);
     }
 
     void RefreshCollisionIgnoreState()
@@ -393,6 +482,7 @@ public class DashSystem : MonoBehaviour
     void ResetPerfectDodgeWindow()
     {
         _perfectDodgeWindowUntil = 0f;
+        _perfectDodgeTriggeredThisDash = false;
         _consumedPerfectDodgeAttackIds.Clear();
     }
 }

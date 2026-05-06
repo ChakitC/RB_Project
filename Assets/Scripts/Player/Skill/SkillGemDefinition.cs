@@ -17,6 +17,8 @@ using UnityEditor;
 public class SkillGemDefinition : ScriptableObject
 {
     private const float DefaultCastPointNormalized = 0.35f;
+    private const string DefaultPreCastOpenEventName = "PreCastOpen";
+    private const string DefaultPreCastCloseEventName = "PreCastClose";
     private const float WarningCastPointMin = 0.05f;
     private const float WarningCastPointMax = 0.95f;
 
@@ -196,6 +198,42 @@ public class SkillGemDefinition : ScriptableObject
     [PropertyOrder(-35)]
     [FoldoutGroup("Presentation", Expanded = true), LabelText("Cast Point"), Range(0f, 1f), SuffixLabel("normalized")]
     public float castPointNormalized = DefaultCastPointNormalized;
+
+    [PropertyOrder(-34)]
+    [FoldoutGroup("Pre-Cast Block", Expanded = false), LabelText("Blockable"), ToggleLeft]
+    [SerializeField] private bool blockablePreCast;
+
+    [PropertyOrder(-33)]
+    [FoldoutGroup("Pre-Cast Block", Expanded = false), AssetsOnly, LabelText("Open Event")]
+    [SerializeField] private StringAsset preCastOpenEvent;
+
+    [PropertyOrder(-32)]
+    [FoldoutGroup("Pre-Cast Block", Expanded = false), AssetsOnly, LabelText("Close Event")]
+    [SerializeField] private StringAsset preCastCloseEvent;
+
+    [PropertyOrder(-31)]
+    [FoldoutGroup("Pre-Cast Block", Expanded = false), LabelText("Fallback Window"), ToggleLeft]
+    [SerializeField] private bool useFallbackPreCastWindow = true;
+
+    [PropertyOrder(-30)]
+    [FoldoutGroup("Pre-Cast Block", Expanded = false), LabelText("Fallback Open"), Range(0f, 1f), SuffixLabel("normalized")]
+    [SerializeField] private float fallbackPreCastOpenNormalized = 0f;
+
+    [PropertyOrder(-29)]
+    [FoldoutGroup("Pre-Cast Block", Expanded = false), LabelText("Fallback Close"), Range(0f, 1f), SuffixLabel("normalized")]
+    [SerializeField] private float fallbackPreCastCloseNormalized = DefaultCastPointNormalized;
+
+    [PropertyOrder(-28)]
+    [FoldoutGroup("Pre-Cast Block", Expanded = false), AssetsOnly, LabelText("Indicator Prefab")]
+    [SerializeField] private GameObject preCastIndicatorPrefab;
+
+    [PropertyOrder(-27)]
+    [FoldoutGroup("Pre-Cast Block", Expanded = false), LabelText("Cancel On Stun"), ToggleLeft]
+    [SerializeField] private bool cancelPreCastOnStun = true;
+
+    [PropertyOrder(-26)]
+    [FoldoutGroup("Pre-Cast Block", Expanded = false), LabelText("Cancel On Stagger"), ToggleLeft]
+    [SerializeField] private bool cancelPreCastOnStagger = true;
 
     [SerializeField, HideInInspector, FormerlySerializedAs("chainContinueMode")]
     private ChainStepContinueMode legacyChainContinueMode = ChainStepContinueMode.OnStepComplete;
@@ -687,6 +725,60 @@ public class SkillGemDefinition : ScriptableObject
         return Mathf.Clamp(castPointNormalized, 0f, 0.999f);
     }
 
+    public bool BlockablePreCast => blockablePreCast;
+    public bool UseFallbackPreCastWindow => blockablePreCast && useFallbackPreCastWindow;
+    public StringReference PreCastOpenEventName => ResolvePreCastEventName(preCastOpenEvent, DefaultPreCastOpenEventName);
+    public StringReference PreCastCloseEventName => ResolvePreCastEventName(preCastCloseEvent, DefaultPreCastCloseEventName);
+    public GameObject PreCastIndicatorPrefab => preCastIndicatorPrefab;
+    public bool CancelPreCastOnStun => cancelPreCastOnStun;
+    public bool CancelPreCastOnStagger => cancelPreCastOnStagger;
+
+    public float FallbackPreCastOpenNormalized
+    {
+        get
+        {
+            if (!float.IsFinite(fallbackPreCastOpenNormalized))
+                return 0f;
+
+            return Mathf.Clamp(fallbackPreCastOpenNormalized, 0f, 0.999f);
+        }
+    }
+
+    public float FallbackPreCastCloseNormalized
+    {
+        get
+        {
+            float close = float.IsFinite(fallbackPreCastCloseNormalized)
+                ? Mathf.Clamp(fallbackPreCastCloseNormalized, 0f, 0.999f)
+                : GetCastPointNormalized();
+
+            float open = FallbackPreCastOpenNormalized;
+            if (close <= open)
+                close = Mathf.Max(open, GetCastPointNormalized());
+
+            return Mathf.Clamp(close, 0f, 0.999f);
+        }
+    }
+
+    public bool IsPreCastOpenEvent(StringReference eventName)
+    {
+        return MatchesTimelineEvent(eventName, PreCastOpenEventName);
+    }
+
+    public bool IsPreCastCloseEvent(StringReference eventName)
+    {
+        return MatchesTimelineEvent(eventName, PreCastCloseEventName);
+    }
+
+    public void CollectPreCastTimelineEventNames(List<StringReference> eventNames)
+    {
+        if (!blockablePreCast)
+            return;
+
+        AddUniqueTimelineEvent(eventNames, PreCastOpenEventName);
+        AddUniqueTimelineEvent(eventNames, PreCastCloseEventName);
+    }
+
     public ChainStepContinueMode GetChainContinueMode()
     {
         return payload != null
@@ -699,5 +791,32 @@ public class SkillGemDefinition : ScriptableObject
         return payload != null
             ? payload.GetChainContinueNormalizedTime()
             : 1f;
+    }
+
+    static StringReference ResolvePreCastEventName(StringAsset asset, string fallbackName)
+    {
+        if (asset != null)
+            return asset;
+
+        return string.IsNullOrWhiteSpace(fallbackName)
+            ? null
+            : StringReference.Get(fallbackName);
+    }
+
+    static void AddUniqueTimelineEvent(List<StringReference> eventNames, StringReference eventName)
+    {
+        if (eventNames == null || eventName == null || string.IsNullOrWhiteSpace(eventName.String))
+            return;
+
+        if (!eventNames.Contains(eventName))
+            eventNames.Add(eventName);
+    }
+
+    static bool MatchesTimelineEvent(StringReference left, StringReference right)
+    {
+        return left != null &&
+               right != null &&
+               !string.IsNullOrWhiteSpace(left.String) &&
+               string.Equals(left.String, right.String, StringComparison.Ordinal);
     }
 }

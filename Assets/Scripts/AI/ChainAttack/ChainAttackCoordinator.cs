@@ -36,6 +36,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
 
     public bool IsSequenceActive => _activeRoutine != null;
     public Transform LockedTarget => _activeRuntime != null ? _activeRuntime.targetTransform : null;
+    float WorldNow => TimeSlowManager.Instance.WorldTime;
 
     void Awake()
     {
@@ -116,7 +117,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             targetObject = targetObject,
             targetTransform = targetTransform,
             targetAnchor = targetAnchor,
-            startedAt = Time.time,
+            startedAt = WorldNow,
         };
 
         if (ShouldProtectPlayer(runtime: _activeRuntime))
@@ -173,7 +174,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             }
 
             if (step.delayBefore > 0f)
-                yield return new WaitForSeconds(step.delayBefore);
+                yield return WaitForWorldSeconds(step.delayBefore);
 
             if (runtime.hadLateStepFailure && runtime.sequenceDef.stopWhenAnyStepFails)
             {
@@ -201,7 +202,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
                 : runtime.sequenceDef.defaultStepIntervalSeconds;
 
             if (interval > 0f && i < runtime.sequenceDef.steps.Length - 1)
-                yield return new WaitForSeconds(interval);
+                yield return WaitForWorldSeconds(interval);
         }
 
         while (runtime.pendingTrackedStepCompletions > 0)
@@ -530,7 +531,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         if (runtime == null || runtime.sequenceDef == null)
             return false;
 
-        if (Time.time - runtime.startedAt > runtime.sequenceDef.maxSequenceDurationSeconds)
+        if (WorldNow - runtime.startedAt > runtime.sequenceDef.maxSequenceDurationSeconds)
         {
             Log(runtime.sequenceDef, "Sequence cancelled because it exceeded maxSequenceDurationSeconds.");
             return false;
@@ -557,6 +558,16 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             return;
 
         Debug.Log($"[ChainAttackCoordinator] {message}", this);
+    }
+
+    IEnumerator WaitForWorldSeconds(float seconds)
+    {
+        float remaining = Mathf.Max(0f, seconds);
+        while (remaining > 0f)
+        {
+            remaining -= TimeSlowManager.Instance.WorldDeltaTime;
+            yield return null;
+        }
     }
 
     void ApplyPlayerProtection()

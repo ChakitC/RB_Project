@@ -76,7 +76,7 @@ public class Patrol : Action
 
         if (_isWaiting)
         {
-            return Time.time >= _waitUntilTime
+            return TimeSlowManager.Instance.WorldTime >= _waitUntilTime
                 ? TaskStatus.Success
                 : TaskStatus.Running;
         }
@@ -140,7 +140,7 @@ public class Patrol : Action
 
         _agent.isStopped = true;
         _isWaiting = true;
-        _waitUntilTime = Time.time + waitSeconds;
+        _waitUntilTime = TimeSlowManager.Instance.WorldTime + waitSeconds;
         return TaskStatus.Running;
     }
 

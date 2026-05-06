@@ -1,7 +1,7 @@
 {
     "inventory": {
         "maxSlotCount": 20,
-        "gold": 1001244,
+        "gold": 1001251,
         "slots": [
             {
                 "itemId": "SMG_RB01",
@@ -154,8 +154,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 4563,
-                    "currentMagazine": 22
+                    "shotCounter": 4763,
+                    "currentMagazine": 25
                 }
             },
             {

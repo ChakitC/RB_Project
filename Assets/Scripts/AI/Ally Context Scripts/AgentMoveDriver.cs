@@ -62,11 +62,14 @@ public class AgentMoveDriver : MonoBehaviour
             return;
         }
 
-        float dt = Time.deltaTime;
+        float dt = UsesWorldSlow() ? TimeSlowManager.Instance.WorldDeltaTime : Time.deltaTime;
 
         if (ctx != null)
         {
             float targetSpeed = ctx.GetMoveSpeedForCurrentLifeState();
+            if (UsesWorldSlow())
+                targetSpeed *= TimeSlowManager.Instance.WorldTimeScale;
+
             if (!Mathf.Approximately(agent.speed, targetSpeed))
                 agent.speed = targetSpeed;
         }
@@ -146,5 +149,10 @@ public class AgentMoveDriver : MonoBehaviour
                 ctx.AnimBrain.MoveDirLocal = dirLocal;
             }
         }
+    }
+
+    bool UsesWorldSlow()
+    {
+        return !(ctx is PlayerContext);
     }
 }

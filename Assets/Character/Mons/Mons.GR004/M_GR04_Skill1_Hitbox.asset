@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 80deaf2a97c84641b3d3751e54e15f8f, type: 3}
+  m_Name: M_GR04_Skill1_Hitbox
+  m_EditorClassIdentifier: 
+  groups:
+  - groupKey: Group01
+    shapes:
+    - shapeName: HitBox01
+      type: 1
+      localPosition: {x: 0, y: 1.094, z: 0}
+      localEulerAngles: {x: -0, y: 0, z: 0}
+      localScale: {x: 2.6546, y: 2.6546, z: 2.6546}
+      center: {x: 0, y: 0, z: 0}
+      size: {x: 0, y: 0, z: 0}
+      radius: 0.5
+      height: 1
+      direction: 1
+  - groupKey: Group02
+    shapes:
+    - shapeName: HitBox01
+      type: 1
+      localPosition: {x: 0, y: 0, z: 2.2560005}
+      localEulerAngles: {x: -0, y: 0, z: 0}
+      localScale: {x: 4.8608, y: 4.8608, z: 4.8608}
+      center: {x: 0, y: 0, z: 0}
+      size: {x: 0, y: 0, z: 0}
+      radius: 0.5
+      height: 1
+      direction: 1
+  legacyHitBoxDatas: []
+  legacyHitBoxCollider: {fileID: 0}

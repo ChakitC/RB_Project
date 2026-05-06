@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 135783913915257396}
   - component: {fileID: 108602767525825308}
   - component: {fileID: -4058661720185104407}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Projectile 10 green 1 TEST
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -211,7 +211,7 @@ GameObject:
   - component: {fileID: 4911460293347168}
   - component: {fileID: 198610743031584148}
   - component: {fileID: 199890707567675450}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Derbis
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5063,7 +5063,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8890155781337229894}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Visuals
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5100,7 +5100,7 @@ GameObject:
   - component: {fileID: 8036014170632028259}
   - component: {fileID: 7190959148076081236}
   - component: {fileID: 3273741062938571760}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Projectile
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -10001,9 +10001,37 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 8890155781337229894}
     m_Modifications:
+    - target: {fileID: 1035689222466914, guid: fae7d8f670da44c4fbef473695272926, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1165806239830302, guid: fae7d8f670da44c4fbef473695272926, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1190208339282206, guid: fae7d8f670da44c4fbef473695272926, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 1447606066226438, guid: fae7d8f670da44c4fbef473695272926, type: 3}
       propertyPath: m_Name
       value: Hit 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 1447606066226438, guid: fae7d8f670da44c4fbef473695272926, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1608504049070754, guid: fae7d8f670da44c4fbef473695272926, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1754831881049934, guid: fae7d8f670da44c4fbef473695272926, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1921340636743274, guid: fae7d8f670da44c4fbef473695272926, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 4658177019048704, guid: fae7d8f670da44c4fbef473695272926, type: 3}
       propertyPath: m_RootOrder
@@ -10130,6 +10158,26 @@ PrefabInstance:
     - target: {fileID: 1195979354075316, guid: 0c1d21299412c1b4685f7282c52222a4, type: 3}
       propertyPath: m_Name
       value: Flash 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 1195979354075316, guid: 0c1d21299412c1b4685f7282c52222a4, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1290259912180946, guid: 0c1d21299412c1b4685f7282c52222a4, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1398693972365002, guid: 0c1d21299412c1b4685f7282c52222a4, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1602814244152546, guid: 0c1d21299412c1b4685f7282c52222a4, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1931988753848452, guid: 0c1d21299412c1b4685f7282c52222a4, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 4512791078345560, guid: 0c1d21299412c1b4685f7282c52222a4, type: 3}
       propertyPath: m_RootOrder

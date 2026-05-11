@@ -36,12 +36,39 @@ public sealed class PlayerPassiveProgress : MonoBehaviour
 
     void Awake()
     {
-        if (!ctx) TryGetComponent(out ctx);
-        if (!levelSystem) TryGetComponent(out levelSystem);
-        if (!passiveController) TryGetComponent(out passiveController);
+        ResolveReferences();
 
         if (ctx != null)
             ctx.PassiveProgress = this;
+    }
+
+    void ResolveReferences()
+    {
+        if (!ctx)
+        {
+            TryGetComponent(out ctx);
+            if (!ctx)
+                ctx = GetComponentInParent<CharacteContext>();
+        }
+
+        ctx?.ResolveReferences();
+
+        if (ctx != null && ctx.PassiveProgress != this)
+            ctx.PassiveProgress = this;
+
+        if (!levelSystem && ctx != null)
+            levelSystem = ctx.levelSystem;
+        if (!levelSystem)
+            TryGetComponent(out levelSystem);
+        if (!levelSystem && ctx != null)
+            levelSystem = ctx.GetComponentInChildren<LevelSystem>(true);
+
+        if (!passiveController && ctx != null)
+            passiveController = ctx.PassiveController;
+        if (!passiveController)
+            TryGetComponent(out passiveController);
+        if (!passiveController && ctx != null)
+            passiveController = ctx.GetComponentInChildren<PassiveController>(true);
     }
 
     void Start()

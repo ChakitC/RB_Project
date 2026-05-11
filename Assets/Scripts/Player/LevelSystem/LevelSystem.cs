@@ -68,10 +68,31 @@ public class LevelSystem : MonoBehaviour
     }
 
     // ---------- Unity ----------
+
+    private void Awake()
+    {
+        ResolveReferences();
+    }
     
     private void Start()
     {
+        ResolveReferences();
         SetState();
+    }
+
+    void ResolveReferences()
+    {
+        if (!CTX)
+        {
+            TryGetComponent(out CTX);
+            if (!CTX)
+                CTX = GetComponentInParent<CharacteContext>();
+        }
+
+        CTX?.ResolveReferences();
+
+        if (CTX != null && CTX.levelSystem != this)
+            CTX.levelSystem = this;
     }
 
     // ---------- Public API ----------
@@ -130,11 +151,13 @@ public class LevelSystem : MonoBehaviour
             return;
         }
         
-        if (CTX != null)
+        ResolveReferences();
+
+        if (CTX != null && CTX.baseStats != null)
         {
             ChracterID = CTX.baseStats.characterId;
         }
-        else
+        else if (_slot != null)
         {
             ChracterID = _slot.IDCharacter;
         }

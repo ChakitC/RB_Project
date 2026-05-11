@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Opsive.Shared.Editor.Import.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.Shared.Editor.Import.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.Shared.Editor.Import.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.Shared.Editor.Import.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.Shared.Editor.Import.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.Shared.Editor.Import.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Opsive.Shared.Editor.Import.dll

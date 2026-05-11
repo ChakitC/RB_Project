@@ -35,6 +35,7 @@ public sealed class PreCastBlockController : MonoBehaviour
     GameObject activeBlockWindowVfx;
     bool hasActiveBlockableCast;
     bool preCastWindowOpen;
+    CharacteContext ctx;
 
     public bool HasActiveBlockableCast => hasActiveBlockableCast;
     public bool IsPreCastWindowOpen => preCastWindowOpen;
@@ -100,11 +101,24 @@ public sealed class PreCastBlockController : MonoBehaviour
 
     void CacheReferences()
     {
+        if (!ctx)
+        {
+            TryGetComponent(out ctx);
+            if (!ctx)
+                ctx = GetComponentInParent<CharacteContext>();
+        }
+
+        ctx?.ResolveReferences();
+
+        if (!skillManager)
+            skillManager = ctx != null ? ctx.SkillManager : null;
         if (!skillManager)
             skillManager = GetComponent<CharacterSkillManager>();
         if (!skillManager)
             skillManager = GetComponentInParent<CharacterSkillManager>();
 
+        if (!animBrain)
+            animBrain = ctx != null ? ctx.AnimBrain : null;
         if (!animBrain)
             animBrain = GetComponent<CharacterAnimBrain>();
         if (!animBrain)
@@ -112,6 +126,8 @@ public sealed class PreCastBlockController : MonoBehaviour
         if (!animBrain)
             animBrain = GetComponentInParent<CharacterAnimBrain>();
 
+        if (!stateHub)
+            stateHub = ctx != null ? ctx.stateHub : null;
         if (!stateHub)
             stateHub = GetComponent<StateHub>();
         if (!stateHub)

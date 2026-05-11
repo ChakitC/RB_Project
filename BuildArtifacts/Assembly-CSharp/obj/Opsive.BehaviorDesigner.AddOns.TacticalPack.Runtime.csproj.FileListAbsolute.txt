@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Opsive.BehaviorDesigner.AddOns.TacticalPack.Runtime.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Opsive.BehaviorDesigner.AddOns.TacticalPack.Runtime.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.AddOns.TacticalPack.Runtime.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.AddOns.TacticalPack.Runtime.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.AddOns.TacticalPack.Runtime.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.AddOns.TacticalPack.Runtime.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.AddOns.TacticalPack.Runtime.pdb

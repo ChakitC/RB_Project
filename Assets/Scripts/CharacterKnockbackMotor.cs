@@ -139,18 +139,28 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
                 ctx = GetComponentInParent<CharacteContext>();
         }
 
+        ctx?.ResolveReferences();
+
         Transform actorRoot = ctx ? ctx.transform : transform.root;
 
         if (!stateHub)
+            stateHub = ctx != null ? ctx.stateHub : null;
+        if (!stateHub)
             stateHub = ResolveActorComponent<StateHub>(actorRoot);
         if (!healthSystem)
+            healthSystem = ctx != null ? ctx.HealthSystem : null;
+        if (!healthSystem)
             healthSystem = ResolveActorComponent<HealthSystem>(actorRoot);
+        if (!characterController)
+            characterController = ctx != null ? ctx.cc : null;
         if (!characterController)
             characterController = ResolveActorComponent<CharacterController>(actorRoot);
         if (!navMeshAgent)
             navMeshAgent = ResolveActorComponent<NavMeshAgent>(actorRoot);
         if (!capsuleCollider)
             capsuleCollider = ResolveActorComponent<CapsuleCollider>(actorRoot);
+        if (!animBrain)
+            animBrain = ctx != null ? ctx.AnimBrain : null;
         if (!animBrain)
             animBrain = ResolveActorComponent<CharacterAnimBrain>(actorRoot);
         if (!fieldAllyMember)
@@ -510,7 +520,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
         var weaponSystem = ctx.WeaponSystem;
         if (!weaponSystem)
-            weaponSystem = GetComponent<WeaponSystem>();
+            weaponSystem = ctx.GetComponentInChildren<WeaponSystem>(true);
 
         if (weaponSystem != null)
         {
@@ -541,7 +551,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     {
         var weaponSystem = ctx != null ? ctx.WeaponSystem : null;
         if (!weaponSystem)
-            weaponSystem = GetComponent<WeaponSystem>();
+            weaponSystem = ctx != null ? ctx.GetComponentInChildren<WeaponSystem>(true) : GetComponent<WeaponSystem>();
 
         if (weaponSystem != null && weaponSystem.IsReloading)
             weaponSystem.CancelReload();

@@ -444,25 +444,34 @@ public class CharacterSkillManager : MonoBehaviour
 
     private void CacheReferences()
     {
-        ctx = GetComponent<CharacteContext>();
         if (ctx == null)
-            ctx = GetComponentInParent<CharacteContext>();
+        {
+            TryGetComponent(out ctx);
+            if (ctx == null)
+                ctx = GetComponentInParent<CharacteContext>();
+        }
+
+        ctx?.ResolveReferences();
 
         skillUser = GetComponent<ISkillUser>();
         if (skillUser == null && ctx != null && ctx.EnegySystem != null)
             skillUser = ctx.EnegySystem;
 
         animBrain = ResolveAnimBrainReference();
-        weaponSystem = GetComponent<WeaponSystem>();
+        weaponSystem = ctx != null ? ctx.WeaponSystem : null;
+        if (weaponSystem == null)
+            weaponSystem = GetComponent<WeaponSystem>();
+        if (weaponSystem == null && ctx != null)
+            weaponSystem = ctx.GetComponentInChildren<WeaponSystem>(true);
 
         if (ctx == null)
             return;
 
         if (ctx.stateHub == null)
-            ctx.stateHub = GetComponent<StateHub>();
+            ctx.stateHub = ctx.GetComponentInChildren<StateHub>(true);
 
         if (ctx.HealthSystem == null)
-            ctx.HealthSystem = GetComponent<HealthSystem>();
+            ctx.HealthSystem = ctx.GetComponentInChildren<HealthSystem>(true);
 
         if (ctx.SkillManager == null)
             ctx.SkillManager = this;

@@ -21,9 +21,6 @@ public class AITargetInfo : MonoBehaviour, IAITargetable
 
     public static event Action<AITargetInfo> GlobalTargetStateChanged;
 
-    PlayerContext _playerContext;
-    AllyContext _allyContext;
-    EnemyContext _enemyContext;
     CharacteContext _characterContext;
     
     
@@ -89,23 +86,10 @@ public class AITargetInfo : MonoBehaviour, IAITargetable
         if (targetRole == AITargetRole.Companion)
             return AITargetIdentity.Companion;
 
-        if (_playerContext == null)
-            _playerContext = GetComponentInParent<PlayerContext>();
+        ResolveCharacterContext();
 
-        if (_playerContext != null)
-            return AITargetIdentity.Player;
-
-        if (_allyContext == null)
-            _allyContext = GetComponentInParent<AllyContext>();
-
-        if (_allyContext != null)
-            return AITargetIdentity.Companion;
-
-        if (_enemyContext == null)
-            _enemyContext = GetComponentInParent<EnemyContext>();
-
-        if (_enemyContext != null)
-            return AITargetIdentity.Enemy;
+        if (_characterContext != null)
+            return _characterContext.TargetIdentity;
 
         return AITargetIdentity.Generic;
     }
@@ -127,12 +111,20 @@ public class AITargetInfo : MonoBehaviour, IAITargetable
                 return CharacterCombatRole.Sniper;
         }
 
-        if (_characterContext == null)
-            _characterContext = GetComponentInParent<CharacteContext>();
+        ResolveCharacterContext();
 
         if (_characterContext != null && _characterContext.baseStats != null)
             return _characterContext.baseStats.combatRole;
 
         return CharacterCombatRole.Generic;
+    }
+
+    void ResolveCharacterContext()
+    {
+        if (_characterContext != null)
+            return;
+
+        _characterContext = GetComponentInParent<CharacteContext>();
+        _characterContext?.ResolveReferences();
     }
 }

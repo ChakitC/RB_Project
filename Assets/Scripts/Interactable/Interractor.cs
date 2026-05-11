@@ -27,6 +27,10 @@ public class Interactor : MonoBehaviour
     void Awake()
     {
         if (!ctx) ctx = GetComponentInParent<CharacteContext>();
+        ctx?.ResolveReferences();
+
+        if (ctx != null && ctx.Interactor != this)
+            ctx.Interactor = this;
     }
 
     void Update()

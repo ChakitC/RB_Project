@@ -12,20 +12,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee0d6ef073118da4dbabdd47dabdedc7, type: 3}
   m_Name: Milano_Data
   m_EditorClassIdentifier: 
+  icon: {fileID: 21300000, guid: e6802d661d9907f4aabec2bd00ec240d, type: 3}
   characterId: ID.Milano
   characterName: Milano
-  icon: {fileID: 21300000, guid: e6802d661d9907f4aabec2bd00ec240d, type: 3}
   CharacterPrefab: {fileID: 8110434242060674094, guid: 01aa34cc79aac4b46b16fa5d16afe69c, type: 3}
   CharacterPrefabBasement: {fileID: 6957377695244800489, guid: 55d5e2de30de1084cbf841c3c208a4cb, type: 3}
   characterAvatar: {fileID: 9000000, guid: ef38f6af2a6e2fe45a5743a4c01a14d3, type: 3}
   controller: {fileID: 9100000, guid: fce933fc6f421e0499ea7ba70a7cade0, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
-  weaponHandMode: 2
+  weaponHandMode: 0
+  combatRole: 0
+  chainAttackSkill: {fileID: 0}
   maxHP: 1000
   maxStamina: 50
   Damage: 10
-  critMultiplier: 1.2
   armor: 20
+  critMultiplier: 1.2
   critRate: 10
   Enagy: 100
   speed: 4.5

@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\ToolbarExtender.Editor.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\ToolbarExtender.Editor.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ToolbarExtender.Editor.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ToolbarExtender.Editor.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ToolbarExtender.Editor.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ToolbarExtender.Editor.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ToolbarExtender.Editor.pdb

@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\MagicaClothV2.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\MagicaClothV2.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\MagicaClothV2.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\MagicaClothV2.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\MagicaClothV2.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\MagicaClothV2.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\MagicaClothV2.dll

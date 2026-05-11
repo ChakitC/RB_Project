@@ -24,6 +24,10 @@ public sealed class AllyHelperProcController : MonoBehaviour
         if (playerContext == null)
             playerContext = GetComponent<PlayerContext>();
 
+        playerContext?.ResolveReferences();
+
+        if (combatEventBus == null)
+            combatEventBus = playerContext != null ? playerContext.CombatEventBus : null;
         if (combatEventBus == null)
             combatEventBus = GetComponent<CombatEventBus>();
 

@@ -35,6 +35,13 @@ public class CharacterContextPartyLoader : MonoBehaviour, IGameSaveAble, ISaveOr
     {
         if (ctx == null)
             ctx = GetComponent<CharacteContext>();
+        if (ctx == null)
+            ctx = GetComponentInParent<CharacteContext>();
+
+        ctx?.ResolveReferences();
+
+        if (ctx != null && ctx.CharacterLoad != this)
+            ctx.CharacterLoad = this;
     }
 
     bool TryApplySavedOrFallbackDefinition(GameSaveData data)

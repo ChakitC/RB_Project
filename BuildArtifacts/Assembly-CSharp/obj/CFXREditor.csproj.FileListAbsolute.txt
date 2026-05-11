@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\CFXREditor.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\CFXREditor.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\CFXREditor.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\CFXREditor.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\CFXREditor.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\CFXREditor.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\CFXREditor.dll

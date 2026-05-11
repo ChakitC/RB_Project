@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\SingularityGroup.HotReload.Runtime.Public.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\SingularityGroup.HotReload.Runtime.Public.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\SingularityGroup.HotReload.Runtime.Public.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\SingularityGroup.HotReload.Runtime.Public.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\SingularityGroup.HotReload.Runtime.Public.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\SingularityGroup.HotReload.Runtime.Public.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\SingularityGroup.HotReload.Runtime.Public.pdb

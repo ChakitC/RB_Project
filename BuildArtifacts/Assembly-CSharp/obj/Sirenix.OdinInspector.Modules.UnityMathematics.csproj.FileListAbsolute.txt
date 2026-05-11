@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Sirenix.OdinInspector.Modules.UnityMathematics.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Sirenix.OdinInspector.Modules.UnityMathematics.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Sirenix.OdinInspector.Modules.UnityMathematics.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Sirenix.OdinInspector.Modules.UnityMathematics.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Sirenix.OdinInspector.Modules.UnityMathematics.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Sirenix.OdinInspector.Modules.UnityMathematics.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Sirenix.OdinInspector.Modules.UnityMathematics.dll

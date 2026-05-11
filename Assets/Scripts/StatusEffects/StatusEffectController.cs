@@ -34,12 +34,36 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
     void Awake()
     {
-        if (!ctx) TryGetComponent(out ctx);
-        if (!statsHub) TryGetComponent(out statsHub);
-        if (!stateHub) TryGetComponent(out stateHub);
+        ResolveReferences();
 
         if (autoCreateVfxPresenter)
             EnsureVfxPresenter();
+    }
+
+    void ResolveReferences()
+    {
+        if (!ctx)
+        {
+            TryGetComponent(out ctx);
+            if (!ctx)
+                ctx = GetComponentInParent<CharacteContext>();
+        }
+
+        ctx?.ResolveReferences();
+
+        if (!statsHub && ctx != null)
+            statsHub = ctx.StatsHub;
+        if (!statsHub)
+            TryGetComponent(out statsHub);
+        if (!statsHub && ctx != null)
+            statsHub = ctx.GetComponentInChildren<StatsHub>(true);
+
+        if (!stateHub && ctx != null)
+            stateHub = ctx.stateHub;
+        if (!stateHub)
+            TryGetComponent(out stateHub);
+        if (!stateHub && ctx != null)
+            stateHub = ctx.GetComponentInChildren<StateHub>(true);
     }
 
     void EnsureVfxPresenter()
@@ -116,6 +140,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
     void OnEnable()
     {
+        ResolveReferences();
         statsHub?.MarkDirty();
         SyncControlState();
         RefreshDebugSnapshot();

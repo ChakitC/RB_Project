@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\CFXRDemo.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\CFXRDemo.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\CFXRDemo.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\CFXRDemo.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\CFXRDemo.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\CFXRDemo.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\CFXRDemo.pdb

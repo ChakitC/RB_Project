@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Assembly-CSharp-firstpass.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Assembly-CSharp-firstpass.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Assembly-CSharp-firstpass.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Assembly-CSharp-firstpass.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Assembly-CSharp-firstpass.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Assembly-CSharp-firstpass.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Assembly-CSharp-firstpass.pdb

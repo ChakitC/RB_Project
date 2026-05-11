@@ -96,8 +96,7 @@ public sealed class StateHub : MonoBehaviour
 
     void Awake()
     {
-        if (!ctx)
-            ctx = GetComponent<CharacteContext>();
+        ResolveReferences();
 
         if (GetComponent<CharacterAudioEmitter>() == null)
             gameObject.AddComponent<CharacterAudioEmitter>();
@@ -171,6 +170,21 @@ public sealed class StateHub : MonoBehaviour
         }
     }
 
+    void ResolveReferences()
+    {
+        if (!ctx)
+        {
+            TryGetComponent(out ctx);
+            if (!ctx)
+                ctx = GetComponentInParent<CharacteContext>();
+        }
+
+        ctx?.ResolveReferences();
+
+        if (ctx != null && ctx.stateHub != this)
+            ctx.stateHub = this;
+    }
+
     void Update()
     {
         SyncStatusDrivenMoveState();
@@ -215,7 +229,7 @@ public sealed class StateHub : MonoBehaviour
         var weaponSystem = ctx.WeaponSystem;
         if (!weaponSystem)
         {
-            weaponSystem = ctx.GetComponent<WeaponSystem>();
+            weaponSystem = ctx.GetComponentInChildren<WeaponSystem>(true);
             if (ctx.WeaponSystem == null)
                 ctx.WeaponSystem = weaponSystem;
         }
@@ -329,6 +343,9 @@ public sealed class StateHub : MonoBehaviour
 
     void UpdateStand()
     {
+        if (ctx == null)
+            return;
+
         var ws = ctx.WeaponSystem;
         if (ws == null)
             return;
@@ -401,7 +418,7 @@ public sealed class StateHub : MonoBehaviour
         {
             var meleeController = ctx.MeleeController;
             if (!meleeController)
-                meleeController = ctx.GetComponent<MeleeController>();
+                meleeController = ctx.GetComponentInChildren<MeleeController>(true);
 
             meleeController?.InterruptMelee();
         }
@@ -424,7 +441,7 @@ public sealed class StateHub : MonoBehaviour
         {
             var meleeController = ctx.MeleeController;
             if (!meleeController)
-                meleeController = ctx.GetComponent<MeleeController>();
+                meleeController = ctx.GetComponentInChildren<MeleeController>(true);
 
             meleeController?.InterruptMelee();
         }
@@ -447,7 +464,7 @@ public sealed class StateHub : MonoBehaviour
         {
             var meleeController = ctx.MeleeController;
             if (!meleeController)
-                meleeController = ctx.GetComponent<MeleeController>();
+                meleeController = ctx.GetComponentInChildren<MeleeController>(true);
 
             meleeController?.InterruptMelee();
         }
@@ -461,6 +478,9 @@ public sealed class StateHub : MonoBehaviour
 
     public void RequestReload()
     {
+        if (ctx == null || ctx.WeaponSystem == null)
+            return;
+
         if (!IsAlive || Isdown || IsSkillAnimating())
             return;
 
@@ -475,6 +495,9 @@ public sealed class StateHub : MonoBehaviour
 
     public void RequestCanceledFire()
     {
+        if (ctx == null || ctx.WeaponSystem == null || ctx.stateHub == null)
+            return;
+
         SetDesiredFireHeld(false);
         ctx.WeaponSystem.SetFiring(false);
         ctx.stateHub.SetFireHeld(false);
@@ -490,7 +513,7 @@ public sealed class StateHub : MonoBehaviour
 
         var meleeController = ctx.MeleeController;
         if (!meleeController)
-            meleeController = ctx.GetComponent<MeleeController>();
+            meleeController = ctx.GetComponentInChildren<MeleeController>(true);
         if (!meleeController)
             meleeController = ctx.gameObject.AddComponent<MeleeController>();
 
@@ -500,6 +523,9 @@ public sealed class StateHub : MonoBehaviour
 
     public void RequestOnDash()
     {
+        if (ctx == null || ctx.stateHub == null || ctx.WeaponSystem == null || ctx.DashSystem == null)
+            return;
+
         if (!ctx.stateHub.CanMove()) return;
 
         ctx.WeaponSystem.SetFiring(false);

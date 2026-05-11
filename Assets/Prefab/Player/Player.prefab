@@ -128,6 +128,12 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 36863
   combatEventBus: {fileID: 1666845100770680886}
+  perfectDashSlowScale: 0.2
+  perfectDashSlowDuration: 0.35
+  perfectDodgeThreatLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  perfectDodgeThreatScanPadding: 0.25
 --- !u!114 &3077095089375782856
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -507,14 +513,15 @@ MonoBehaviour:
   currentWeapon: {fileID: 11400000, guid: 499f11e7a7237d746896c22e012bf3ad, type: 2}
   stateHub: {fileID: 9126503440091188613}
   StatsHub: {fileID: 5818043391274991836}
-  CombatEventBus: {fileID: 0}
+  CombatEventBus: {fileID: 1666845100770680886}
   rb: {fileID: 2207675358697019086}
   cc: {fileID: 7373962052237540882}
   TargetInfo: {fileID: 3675228139914604767}
-  WeaponSystem: {fileID: 0}
-  AnimBrain: {fileID: 0}
-  AnimDriver: {fileID: 0}
-  MeleeController: {fileID: 0}
+  Equipment: {fileID: 0}
+  WeaponSystem: {fileID: 4048141596046314092}
+  AnimBrain: {fileID: 7895287034516787951}
+  AnimDriver: {fileID: 3933203452649057500}
+  MeleeController: {fileID: 4440949455955109371}
   CharacterLoad: {fileID: 7935780743584248329}
   Visual: {fileID: 1956943878282865192}
   UIManager: {fileID: 0}
@@ -869,6 +876,7 @@ MonoBehaviour:
   itemDatabase: {fileID: 11400000, guid: 75de2aa1ba9d794408c0f15d3732ddcf, type: 2}
   weaponDatabase: {fileID: 11400000, guid: 20f7356349b6343448b194bf2e9ed2c8, type: 2}
   ctx: {fileID: 1638387977988830713}
+  equipment: {fileID: 0}
   weaponSystem: {fileID: 0}
   gold: 0
   equippedWeaponInstanceId: 
@@ -1429,9 +1437,10 @@ MonoBehaviour:
   prefabweapone: {fileID: 0}
   IsSlot: 0
   modelRoot: {fileID: 2315058692641633103}
+  buildModelAutomatically: 1
   animancer: {fileID: 7383821111389677251}
-  rightHandName: hand.r
-  leftHandName: hand.l
+  rightHandName: Weapon.R
+  leftHandName: Weapon.L
   animator: {fileID: -1361530361806445852}
   rightLocalPos: {x: 0, y: 0.28, z: -0.03}
   rightLocalRotEuler: {x: 180, y: 0, z: -90}

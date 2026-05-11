@@ -15,6 +15,8 @@ AvatarMask:
     m_Weight: 0
   - m_Path: Roma_Body
     m_Weight: 0
+  - m_Path: Roma_Body.001
+    m_Weight: 0
   - m_Path: Roma_Emotion
     m_Weight: 0
   - m_Path: Roma_Hair
@@ -25,13 +27,13 @@ AvatarMask:
     m_Weight: 0
   - m_Path: root/c_traj
     m_Weight: 0
-  - m_Path: root/c_traj/Carrots
+  - m_Path: root/c_traj/Roma.Carrots
+    m_Weight: 1
+  - m_Path: root/c_traj/Roma.Carrots/Roma.Carrots.003
     m_Weight: 0
-  - m_Path: root/c_traj/Carrots/Carrots.003
+  - m_Path: root/c_traj/Roma.Carrots/Roma.Carrots.003/Roma.Carrots.002
     m_Weight: 0
-  - m_Path: root/c_traj/Carrots/Carrots.003/Carrots.002
-    m_Weight: 0
-  - m_Path: root/c_traj/Carrots/Carrots.003/Carrots.002/Carrots.001
+  - m_Path: root/c_traj/Roma.Carrots/Roma.Carrots.003/Roma.Carrots.002/Roma.Carrots.001
     m_Weight: 0
   - m_Path: root/c_traj/root.x
     m_Weight: 0
@@ -221,6 +223,8 @@ AvatarMask:
     m_Weight: 1
   - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/thumb1.l/thumb2.l/thumb3.l
     m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/Weapon.L
+    m_Weight: 1
   - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r
     m_Weight: 1
   - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r
@@ -271,6 +275,8 @@ AvatarMask:
     m_Weight: 1
   - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/thumb1.r/thumb2.r/thumb3.r
     m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/Weapon.R
+    m_Weight: 1
   - m_Path: root/c_traj/root.x/thigh_stretch.l
     m_Weight: 0
   - m_Path: root/c_traj/root.x/thigh_stretch.l/Bag05
@@ -305,7 +311,3 @@ AvatarMask:
     m_Weight: 0
   - m_Path: root/c_traj/root.x/thigh_stretch.r/thigh_twist.r
     m_Weight: 0
-  - m_Path: root/c_traj/Wapon.L
-    m_Weight: 1
-  - m_Path: root/c_traj/Wapon.R
-    m_Weight: 1

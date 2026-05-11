@@ -14,8 +14,19 @@ public sealed class CombatEventBus : MonoBehaviour
 
     void Awake()
     {
+        ResolveReferences();
+    }
+
+    void ResolveReferences()
+    {
         if (!ctx)
+        {
             TryGetComponent(out ctx);
+            if (!ctx)
+                ctx = GetComponentInParent<CharacteContext>();
+        }
+
+        ctx?.ResolveReferences();
 
         if (ctx != null)
             ctx.CombatEventBus = this;

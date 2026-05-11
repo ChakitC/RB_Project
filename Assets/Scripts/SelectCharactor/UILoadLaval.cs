@@ -5,6 +5,8 @@ public class UILoadLaval : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private BasementContext CTX;
+    [SerializeField] private GameObject weaponEquipmentObject;
+    private UIWeaponEquipment weaponEquipmentUI;
     
     
     [Header("References Text")]
@@ -33,6 +35,14 @@ public class UILoadLaval : MonoBehaviour
     private float Damage, Armor, MAXHP, Stamina, Critrate, CritDamage, Enagy, Speed;
     private int levelCurrent, currentXP ,nextXpTonewLavel ,currentGold;
     private string characterId,  Name;
+
+    private void Awake()
+    {
+        if (CTX == null)
+            CTX = GetComponentInParent<BasementContext>(true);
+
+        ResolveWeaponEquipmentUI();
+    }
     
     private void BindLevelSystem(LevelSystem newLs)
     {
@@ -53,8 +63,9 @@ public class UILoadLaval : MonoBehaviour
         // ถ้า BindSlot มาก่อนแล้ว ค่อยซับตรงนี้ได้
         if (levelSystem != null)
             levelSystem.LevelChanged += OnLevelChanged;
-        
-      
+
+        if (_slot != null)
+            SendWeaponEquipmentData();
 
     }
 
@@ -82,17 +93,111 @@ public class UILoadLaval : MonoBehaviour
         if (_slot == null)
         {
             BindLevelSystem(null);
+            ClearWeaponEquipmentData();
             Debug.Log("[UILoadLaval] _Slot == null");
             return;
            
         }
         
-        characterId = _slot.IDCharacter;
+        characterId = ResolveBoundCharacterId();
         
         BindLevelSystem(_slot.levelSystem);
         LoadLavel();
         Calculatestatusfromslot();
         UpdateStatTexts();
+        SendWeaponEquipmentData();
+    }
+
+    public void SendWeaponEquipmentData()
+    {
+        ResolveWeaponEquipmentUI();
+
+        if (weaponEquipmentUI == null)
+            return;
+
+        PlayerInventory inventory = CTX != null ? CTX.playerInventory : null;
+        weaponEquipmentUI.BindSource(inventory, ResolveBoundCharacterId(), _slot);
+    }
+
+    public void ToggleWeaponEquipment()
+    {
+        ResolveWeaponEquipmentUI();
+
+        if (weaponEquipmentObject == null)
+            return;
+
+        bool nextActive = !weaponEquipmentObject.activeSelf;
+        weaponEquipmentObject.SetActive(nextActive);
+
+        if (nextActive)
+            SendWeaponEquipmentData();
+    }
+
+    public void OpenWeaponEquipment()
+    {
+        ResolveWeaponEquipmentUI();
+
+        if (weaponEquipmentObject == null)
+            return;
+
+        weaponEquipmentObject.SetActive(true);
+        SendWeaponEquipmentData();
+    }
+
+    public void CloseWeaponEquipment()
+    {
+        ResolveWeaponEquipmentUI();
+
+        if (weaponEquipmentObject != null)
+            weaponEquipmentObject.SetActive(false);
+    }
+
+    private void ClearWeaponEquipmentData()
+    {
+        ResolveWeaponEquipmentUI();
+
+        if (weaponEquipmentUI != null)
+            weaponEquipmentUI.BindSource(null, null, null);
+    }
+
+    private string ResolveBoundCharacterId()
+    {
+        if (_slot == null)
+            return null;
+
+        if (_slot.Selected != null && !string.IsNullOrWhiteSpace(_slot.Selected.characterId))
+            return _slot.Selected.characterId;
+
+        return _slot.IDCharacter;
+    }
+
+    private void ResolveWeaponEquipmentUI()
+    {
+        if (weaponEquipmentUI != null)
+            return;
+
+        if (weaponEquipmentObject != null)
+        {
+            weaponEquipmentUI = weaponEquipmentObject.GetComponent<UIWeaponEquipment>();
+            if (weaponEquipmentUI == null)
+                weaponEquipmentUI = weaponEquipmentObject.GetComponentInChildren<UIWeaponEquipment>(true);
+
+            return;
+        }
+
+        if (transform.root != null)
+        {
+            weaponEquipmentUI = transform.root.GetComponentInChildren<UIWeaponEquipment>(true);
+            if (weaponEquipmentUI != null)
+                weaponEquipmentObject = weaponEquipmentUI.gameObject;
+        }
+
+        if (weaponEquipmentUI == null)
+        {
+            weaponEquipmentUI = FindFirstObjectByType<UIWeaponEquipment>(FindObjectsInactive.Include);
+            if (weaponEquipmentUI != null)
+                weaponEquipmentObject = weaponEquipmentUI.gameObject;
+        }
     }
 
     private void ClearUI()

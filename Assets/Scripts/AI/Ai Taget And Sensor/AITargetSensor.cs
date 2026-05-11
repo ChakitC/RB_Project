@@ -87,6 +87,7 @@ public class AITargetSensor : MonoBehaviour
     readonly HashSet<int> candidateInstanceIds = new HashSet<int>();
 
     Collider[] overlapBuffer;
+    CharacteContext ownerContext;
     HealthSystem healthSystem;
     Transform tauntTarget;
     float tauntUntilTime = float.NegativeInfinity;
@@ -114,6 +115,8 @@ public class AITargetSensor : MonoBehaviour
 
     void Awake()
     {
+        ResolveReferences();
+
         if (sensorOrigin == null)
             sensorOrigin = transform;
 
@@ -122,16 +125,13 @@ public class AITargetSensor : MonoBehaviour
 
         maxHits = Mathf.Max(1, maxHits);
         overlapBuffer = new Collider[maxHits];
-        healthSystem = GetComponent<HealthSystem>();
         ScheduleNextRetargetEvaluation();
     }
 
     void OnEnable()
     {
+        ResolveReferences();
         AITargetInfo.GlobalTargetStateChanged += HandleGlobalTargetStateChanged;
-
-        if (healthSystem == null)
-            healthSystem = GetComponent<HealthSystem>();
 
         if (healthSystem != null)
             healthSystem.DamageTaken += OnDamageTaken;
@@ -145,6 +145,28 @@ public class AITargetSensor : MonoBehaviour
             healthSystem.DamageTaken -= OnDamageTaken;
 
         SetVisibleTarget(null, 0f);
+    }
+
+    void ResolveReferences()
+    {
+        if (!ownerContext)
+        {
+            TryGetComponent(out ownerContext);
+            if (!ownerContext)
+                ownerContext = GetComponentInParent<CharacteContext>();
+        }
+
+        ownerContext?.ResolveReferences();
+
+        if (ownerContext is AllyContext allyContext && allyContext.AITargetSensor != this)
+            allyContext.AITargetSensor = this;
+
+        if (!healthSystem && ownerContext != null)
+            healthSystem = ownerContext.HealthSystem;
+        if (!healthSystem)
+            TryGetComponent(out healthSystem);
+        if (!healthSystem && ownerContext != null)
+            healthSystem = ownerContext.GetComponentInChildren<HealthSystem>(true);
     }
 
     void Update()

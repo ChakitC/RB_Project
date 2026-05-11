@@ -45,6 +45,8 @@ public class AgentMoveDriver : MonoBehaviour
             if (!ctx)
                 ctx = GetComponentInParent<CharacteContext>();
         }
+
+        ctx?.ResolveReferences();
     }
 
     void Update()
@@ -153,6 +155,6 @@ public class AgentMoveDriver : MonoBehaviour
 
     bool UsesWorldSlow()
     {
-        return !(ctx is PlayerContext);
+        return ctx == null || ctx.UsesWorldSlow;
     }
 }

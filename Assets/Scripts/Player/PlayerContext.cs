@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 
+[DefaultExecutionOrder(-200)]
 public class PlayerContext : CharacteContext
 {
     [Header("Modules")]
@@ -30,6 +31,9 @@ public class PlayerContext : CharacteContext
     [SerializeField, HideInInspector] private bool wrapPartyCommandSelection = true;
     [SerializeField, HideInInspector] private bool logPartyCommandExecution;
 
+    public override bool UsesWorldSlow => false;
+    public override AITargetIdentity TargetIdentity => AITargetIdentity.Player;
+
     void Awake()
     {
         ResolveReferences();
@@ -43,19 +47,30 @@ public class PlayerContext : CharacteContext
             ui.SetContext(this);
     }
 
-    public void ResolveReferences()
+    public override void ResolveReferences()
     {
+        base.ResolveReferences();
+
+        if (playerUIContext == null)
+            playerUIContext = ResolveActorComponent(playerUIContext);
+
         if (allyHelper == null)
-            allyHelper = GetComponent<AllyHelperManager>();
+            allyHelper = ResolveActorComponent(allyHelper);
 
         if (fieldAllyManager == null)
-            fieldAllyManager = GetComponent<FieldAllyManager>();
+            fieldAllyManager = ResolveActorComponent(fieldAllyManager);
 
         if (chainAttackCoordinator == null)
-            chainAttackCoordinator = GetComponent<ChainAttackCoordinator>();
+            chainAttackCoordinator = ResolveActorComponent(chainAttackCoordinator);
 
         if (partyCommand == null)
-            partyCommand = GetComponent<PartyCommandController>();
+            partyCommand = ResolveActorComponent(partyCommand);
+
+        if (movement == null)
+            movement = ResolveActorComponent(movement);
+
+        if (inventory == null)
+            inventory = ResolveActorComponent(inventory);
     }
 
     void TryMigrateLegacyPartyCommandConfiguration()

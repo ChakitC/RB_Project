@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Kybernetik.Animancer.Editor.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Kybernetik.Animancer.Editor.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Kybernetik.Animancer.Editor.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Kybernetik.Animancer.Editor.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Kybernetik.Animancer.Editor.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Kybernetik.Animancer.Editor.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Kybernetik.Animancer.Editor.pdb

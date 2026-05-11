@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\ToonyColorsPro.Demo.Editor.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\ToonyColorsPro.Demo.Editor.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ToonyColorsPro.Demo.Editor.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ToonyColorsPro.Demo.Editor.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ToonyColorsPro.Demo.Editor.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ToonyColorsPro.Demo.Editor.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ToonyColorsPro.Demo.Editor.pdb

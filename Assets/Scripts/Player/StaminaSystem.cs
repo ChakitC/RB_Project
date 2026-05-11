@@ -35,14 +35,36 @@ public class StaminaSystem : MonoBehaviour
 
     void Awake()
     {
-        if (!characterContext) characterContext = GetComponent<CharacteContext>();
-        if (!statsHub) statsHub = GetComponent<StatsHub>();
+        ResolveReferences();
     }
 
     void Start()
     {
+        ResolveReferences();
         RecalculateMaximumStamina(resetCurrentToMax: true);
         Notify();
+    }
+
+    void ResolveReferences()
+    {
+        if (!characterContext)
+        {
+            TryGetComponent(out characterContext);
+            if (!characterContext)
+                characterContext = GetComponentInParent<CharacteContext>();
+        }
+
+        characterContext?.ResolveReferences();
+
+        if (characterContext != null && characterContext.StaminaSystem != this)
+            characterContext.StaminaSystem = this;
+
+        if (!statsHub && characterContext != null)
+            statsHub = characterContext.StatsHub;
+        if (!statsHub)
+            TryGetComponent(out statsHub);
+        if (!statsHub && characterContext != null)
+            statsHub = characterContext.GetComponentInChildren<StatsHub>(true);
     }
 
     void Update()

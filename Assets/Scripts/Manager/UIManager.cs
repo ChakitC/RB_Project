@@ -70,11 +70,13 @@ public class UIManager : MonoBehaviour
         if (!ctx) ctx = FindAnyObjectByType<PlayerContext>();
         if (!ctx) ctx = FindAnyObjectByType<CharacteContext>();
 
+        ctx?.ResolveReferences();
+
         if (ctx && ctx.UIManager != this)
             ctx.UIManager = this;
 
         if (!statusEffectController && ctx)
-            statusEffectController = ctx.GetComponent<StatusEffectController>();
+            statusEffectController = ctx.GetComponentInChildren<StatusEffectController>(true);
     }
 
     void BindStatusEffectUI()

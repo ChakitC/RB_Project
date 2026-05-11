@@ -9,6 +9,8 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
 
     [Header("Binding")]
     [SerializeField] private PlayerInventory inventorySource;
+    [SerializeField] private string characterId;
+    [SerializeField] private PartySlot boundPartySlot;
 
     [Header("UI References")]
     [SerializeField] private RectTransform slotContainer;
@@ -21,6 +23,7 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
     readonly List<int> weaponSlotIndices = new();
 
     InventorySystem inventorySystem;
+    string equipmentOwnerId;
 
     protected override DragItemUI DragVisual => dragItemUI;
     protected override Canvas RootCanvas => rootCanvas;
@@ -46,7 +49,7 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
         if (inventorySource == null)
             inventorySource = ResolveInventorySource();
 
-        BindSource(inventorySource);
+        BindSource(inventorySource, characterId);
     }
 
     void OnDestroy()
@@ -56,9 +59,22 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
 
     public void BindSource(PlayerInventory inventory)
     {
+        BindSource(inventory, null);
+    }
+
+    public void BindSource(PlayerInventory inventory, string ownerCharacterId)
+    {
+        BindSource(inventory, ownerCharacterId, null);
+    }
+
+    public void BindSource(PlayerInventory inventory, string ownerCharacterId, PartySlot partySlot)
+    {
         UnbindCurrentSource();
 
         inventorySource = inventory;
+        characterId = ownerCharacterId;
+        boundPartySlot = partySlot;
+        equipmentOwnerId = CharacterEquipment.BuildCharacterOwnerId(characterId);
         inventorySystem = inventorySource != null ? inventorySource.InventorySystem : null;
 
         if (inventorySystem != null)
@@ -186,6 +202,7 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
     void HandleEquippedWeaponChanged(string equippedInstanceId)
     {
         RefreshEquippedSlot();
+        RefreshBoundPartySlotPreview();
     }
 
     void HandleEquipDrop()
@@ -197,8 +214,25 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
         if (slotData == null || !slotData.HasWeaponInstance || slotData.weaponInstance == null)
             return;
 
-        if (inventorySource.EquipWeaponInstance(slotData.weaponInstance.instanceId))
+        string instanceId = slotData.weaponInstance.instanceId;
+        bool equipped = string.IsNullOrWhiteSpace(equipmentOwnerId)
+            ? inventorySource.EquipWeaponInstance(instanceId)
+            : inventorySource.EquipWeaponInstanceForOwner(equipmentOwnerId, instanceId);
+
+        if (equipped)
+        {
             RefreshEquippedSlot();
+            RefreshBoundPartySlotPreview();
+            return;
+        }
+
+        Debug.LogWarning("[UIWeaponEquipment] Weapon is already equipped by another character or cannot be equipped.", this);
+    }
+
+    void RefreshBoundPartySlotPreview()
+    {
+        if (boundPartySlot != null)
+            boundPartySlot.RefreshSelectedWeaponVisual();
     }
 
     void RebuildWeaponSlotIndexCache()
@@ -286,7 +320,8 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
 
     InventorySlotData GetEquippedSlotData()
     {
-        if (inventorySystem == null || inventorySource == null || string.IsNullOrWhiteSpace(inventorySource.EquippedWeaponInstanceId))
+        string equippedInstanceId = GetBoundEquippedWeaponInstanceId();
+        if (inventorySystem == null || inventorySource == null || string.IsNullOrWhiteSpace(equippedInstanceId))
             return new InventorySlotData();
 
         for (int i = 0; i < inventorySystem.Slots.Count; i++)
@@ -295,11 +330,36 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
             if (slot == null || !slot.HasWeaponInstance || slot.weaponInstance == null)
                 continue;
 
-            if (string.Equals(slot.weaponInstance.instanceId, inventorySource.EquippedWeaponInstanceId, StringComparison.Ordinal))
+            if (string.Equals(slot.weaponInstance.instanceId, equippedInstanceId, StringComparison.Ordinal))
                 return slot;
         }
 
         return new InventorySlotData();
+    }
+
+    string GetBoundEquippedWeaponInstanceId()
+    {
+        if (inventorySource == null)
+            return null;
+
+        if (string.IsNullOrWhiteSpace(equipmentOwnerId))
+            return inventorySource.EquippedWeaponInstanceId;
+
+        if (CharacterEquipment.TryFindSceneEquipmentByOwner(equipmentOwnerId, out var equipment) &&
+            equipment != null &&
+            !string.IsNullOrWhiteSpace(equipment.EquippedWeaponInstanceId))
+        {
+            return equipment.EquippedWeaponInstanceId;
+        }
+
+        var data = LoadCurrentGameData();
+        return CharacterEquipment.FindEquipmentEntry(data?.equipment, equipmentOwnerId);
+    }
+
+    static GameSaveData LoadCurrentGameData()
+    {
+        int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
+        return SaveSystem.LoadGame(saveSlot);
     }
 
     static bool IsWeaponSlot(InventorySlotData slotData)

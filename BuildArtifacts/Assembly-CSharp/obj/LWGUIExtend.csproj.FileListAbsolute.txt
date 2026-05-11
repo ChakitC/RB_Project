@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\LWGUIExtend.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\LWGUIExtend.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\LWGUIExtend.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\LWGUIExtend.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\LWGUIExtend.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\LWGUIExtend.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\LWGUIExtend.dll

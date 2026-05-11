@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\ASP.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ASP.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ASP.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ASP.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ASP.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\ASP.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\ASP.dll

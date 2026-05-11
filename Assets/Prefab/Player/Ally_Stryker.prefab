@@ -50,9 +50,10 @@ MonoBehaviour:
   prefabweapone: {fileID: 0}
   IsSlot: 0
   modelRoot: {fileID: 7107260667182768185}
+  buildModelAutomatically: 1
   animancer: {fileID: 2912202768560880375}
-  rightHandName: hand.r
-  leftHandName: hand.l
+  rightHandName: Weapon.R
+  leftHandName: Weapon.L
   animator: {fileID: 5879616477380449198}
   rightLocalPos: {x: 0, y: 0.28, z: -0.03}
   rightLocalRotEuler: {x: 180, y: 0, z: -90}
@@ -169,6 +170,7 @@ GameObject:
   - component: {fileID: 4917278530332384066}
   - component: {fileID: 3886805759331930848}
   - component: {fileID: 2948696378916355059}
+  - component: {fileID: 5646034634250052821}
   m_Layer: 10
   m_Name: GamePlayStats_System
   m_TagString: Untagged
@@ -269,6 +271,38 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ctx: {fileID: 3059205003566966071}
+--- !u!114 &5646034634250052821
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 953685864490983404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 054283c474680534cb008378f47a7724, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 3059205003566966071}
+  defaultWeapon: {fileID: 0}
+  equipDefaultOnStart: 1
+  usePlayerInventorySave: 1
+  equipmentOwnerId: 
+  currentWeapon: {fileID: 0}
+  currentWeaponInstance:
+    instanceId: 
+    baseWeaponId: 
+    rarity: 0
+    mainAffix:
+      affixId: 
+      hasPrimaryValue: 0
+      primaryValue: 0
+      hasSecondaryValue: 0
+      secondaryValue: 0
+    subAffixes: []
+    shotCounter: 0
+    currentMagazine: -1
+  equippedWeaponInstanceId: 
 --- !u!1 &1610395787929324768
 GameObject:
   m_ObjectHideFlags: 0
@@ -437,6 +471,7 @@ MonoBehaviour:
   rb: {fileID: 755043487724053691}
   cc: {fileID: 7154190368743996575}
   TargetInfo: {fileID: 4934957585661581971}
+  Equipment: {fileID: 0}
   WeaponSystem: {fileID: 6987636084120509540}
   AnimBrain: {fileID: 6756038978356485017}
   AnimDriver: {fileID: 2705162881607156007}
@@ -689,10 +724,12 @@ MonoBehaviour:
   originHeightOffset: 0.5
   fallbackTargetHeightOffset: 0.6
   currentTarget: {fileID: 0}
+  visibleTarget: {fileID: 0}
   lastSeenTarget: {fileID: 0}
   lastSeenPosition: {x: 0, y: 0, z: 0}
   hasLineOfSight: 0
   targetDistance: 0
+  visibleTargetDistance: 0
   lastSeenTime: -Infinity
   currentTargetScore: -Infinity
   visibleBestScore: -Infinity
@@ -1948,3 +1985,9 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   combatEventBus: {fileID: 2948696378916355059}
+  perfectDashSlowScale: 0.2
+  perfectDashSlowDuration: 0.35
+  perfectDodgeThreatLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  perfectDodgeThreatScanPadding: 0.25

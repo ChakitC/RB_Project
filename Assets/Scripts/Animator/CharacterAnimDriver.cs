@@ -13,21 +13,26 @@ public sealed class CharacterAnimDriver : MonoBehaviour
 
     void Awake()
     {
-        if (!hub) hub = GetComponent<StateHub>();
-        if (!brain) brain = GetComponent<CharacterAnimBrain>();
+        ResolveReferences();
     }
 
     void OnEnable()
     {
-        if (hub == null) return;
+        ResolveReferences();
 
-        hub.ShotFired += OnShotFired;
-        hub.ReloadStarted += OnReloadStarted;
-        hub.DashStarted += OnDashStarted;
+        if (hub != null)
+        {
+            hub.ShotFired += OnShotFired;
+            hub.ReloadStarted += OnReloadStarted;
+            hub.DashStarted += OnDashStarted;
+        }
 
-        _HealthSystem.CharacterDead += OnCharacterDead;
-        _HealthSystem.CharacterDown += OnCharacterDown;
-        CTX.HealthSystem.CharacterRevive += OnCharacterRevive;
+        if (_HealthSystem != null)
+        {
+            _HealthSystem.CharacterDead += OnCharacterDead;
+            _HealthSystem.CharacterDown += OnCharacterDown;
+            _HealthSystem.CharacterRevive += OnCharacterRevive;
+        }
     }
 
     void OnDisable()
@@ -38,13 +43,67 @@ public sealed class CharacterAnimDriver : MonoBehaviour
             hub.ReloadStarted -= OnReloadStarted;
             hub.DashStarted -= OnDashStarted;
 
+        }
+
+        if (_HealthSystem != null)
+        {
             _HealthSystem.CharacterDead -= OnCharacterDead;
             _HealthSystem.CharacterDown -= OnCharacterDown;
-            CTX.HealthSystem.CharacterRevive -= OnCharacterRevive;
+            _HealthSystem.CharacterRevive -= OnCharacterRevive;
         }
 
         if (brain != null)
             brain.SetFireHoldContext(false, false);
+    }
+
+    void ResolveReferences()
+    {
+        if (!CTX)
+        {
+            TryGetComponent(out CTX);
+            if (!CTX)
+                CTX = GetComponentInParent<CharacteContext>();
+        }
+
+        CTX?.ResolveReferences();
+
+        if (CTX != null && CTX.AnimDriver != this)
+            CTX.AnimDriver = this;
+
+        if (!hub && CTX != null)
+            hub = CTX.stateHub;
+        if (!hub)
+            TryGetComponent(out hub);
+        if (!hub && CTX != null)
+            hub = CTX.GetComponentInChildren<StateHub>(true);
+
+        if (!StatsHub && CTX != null)
+            StatsHub = CTX.StatsHub;
+        if (!StatsHub)
+            TryGetComponent(out StatsHub);
+        if (!StatsHub && CTX != null)
+            StatsHub = CTX.GetComponentInChildren<StatsHub>(true);
+
+        if (!brain && CTX != null)
+            brain = CTX.AnimBrain;
+        if (!brain)
+            TryGetComponent(out brain);
+        if (!brain && CTX != null)
+            brain = CTX.GetComponentInChildren<CharacterAnimBrain>(true);
+
+        if (!_HealthSystem && CTX != null)
+            _HealthSystem = CTX.HealthSystem;
+        if (!_HealthSystem)
+            TryGetComponent(out _HealthSystem);
+        if (!_HealthSystem && CTX != null)
+            _HealthSystem = CTX.GetComponentInChildren<HealthSystem>(true);
+
+        if (!_WeaponSystem && CTX != null)
+            _WeaponSystem = CTX.WeaponSystem;
+        if (!_WeaponSystem)
+            TryGetComponent(out _WeaponSystem);
+        if (!_WeaponSystem && CTX != null)
+            _WeaponSystem = CTX.GetComponentInChildren<WeaponSystem>(true);
     }
 
     void LateUpdate()
@@ -57,18 +116,18 @@ public sealed class CharacterAnimDriver : MonoBehaviour
 
     void OnCharacterRevive()
     {
-        brain.SetDowned(false);
+        brain?.SetDowned(false);
     }
 
     void OnCharacterDown()
     {
         Debug.Log("brain.SetDowned");
-        brain.SetDowned(true);
+        brain?.SetDowned(true);
     }
 
     void OnCharacterDead()
     {
-        brain.PlayDead();
+        brain?.PlayDead();
         Debug.Log("play Dead");
     }
 
@@ -84,6 +143,9 @@ public sealed class CharacterAnimDriver : MonoBehaviour
 
     void OnDashStarted(float duration, Vector3 dirWorld)
     {
+        if (brain == null)
+            return;
+
         Vector3 local3 = transform.InverseTransformDirection(dirWorld);
         Vector2 dashDirLocal = new Vector2(local3.x, local3.z);
         brain.PlayDash(duration, dashDirLocal);

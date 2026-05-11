@@ -12,20 +12,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee0d6ef073118da4dbabdd47dabdedc7, type: 3}
   m_Name: Feno_Data
   m_EditorClassIdentifier: 
+  icon: {fileID: 0}
   characterId: ID.Feno
   characterName: Feno
-  icon: {fileID: 0}
   CharacterPrefab: {fileID: 8073746211628435587, guid: fbe4b2d13f588374f8d255bef213e276, type: 3}
   CharacterPrefabBasement: {fileID: 1573142221251232858, guid: 3aa33a97252aa184fb72da364bee813c, type: 3}
   characterAvatar: {fileID: 9000000, guid: 593976350e751b340bc9e474264dda15, type: 3}
   controller: {fileID: 9100000, guid: 0ac7642607b38b64da8fcff818c6002b, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
-  weaponHandMode: 2
+  weaponHandMode: 0
+  combatRole: 3
+  chainAttackSkill: {fileID: 0}
   maxHP: 100000
   maxStamina: 50
   Damage: 10
-  critMultiplier: 1.2
   armor: 20
+  critMultiplier: 1.2
   critRate: 10
   Enagy: 100
   speed: 4.5

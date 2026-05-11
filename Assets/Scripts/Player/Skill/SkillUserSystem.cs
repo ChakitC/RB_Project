@@ -173,15 +173,35 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
         if (initialized)
             return;
 
-        if (!characteContext) characteContext = GetComponent<CharacteContext>();
-        if (!statsHub) statsHub = GetComponent<StatsHub>();
-        if (!statsHub) statsHub = GetComponentInParent<StatsHub>();
+        ResolveReferences();
 
         maximumEnergy = GetMaximumEnergyFromHubOrFallback();
         currentEnergy = maximumEnergy;
         initialized = true;
 
         NotifyEnergyChanged();
+    }
+
+    void ResolveReferences()
+    {
+        if (!characteContext)
+        {
+            TryGetComponent(out characteContext);
+            if (!characteContext)
+                characteContext = GetComponentInParent<CharacteContext>();
+        }
+
+        characteContext?.ResolveReferences();
+
+        if (characteContext != null && characteContext.EnegySystem != this)
+            characteContext.EnegySystem = this;
+
+        if (!statsHub && characteContext != null)
+            statsHub = characteContext.StatsHub;
+        if (!statsHub)
+            TryGetComponent(out statsHub);
+        if (!statsHub && characteContext != null)
+            statsHub = characteContext.GetComponentInChildren<StatsHub>(true);
     }
 
     public void SetRuntimeAimTransformOverride(Transform overrideTransform)

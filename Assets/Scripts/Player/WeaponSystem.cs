@@ -105,7 +105,12 @@ public class WeaponSystem : MonoBehaviour
         if (!ctx)
             ctx = GetComponentInParent<CharacteContext>();
 
+        ctx?.ResolveReferences();
+
         Transform ownerRoot = ctx ? ctx.transform : transform.root;
+
+        if (!statsHub)
+            statsHub = ctx != null ? ctx.StatsHub : null;
 
         if (!statsHub)
             statsHub = GetComponent<StatsHub>();
@@ -730,7 +735,7 @@ public class WeaponSystem : MonoBehaviour
 
     bool UsesWorldSlow()
     {
-        return !(ctx is PlayerContext);
+        return ctx == null || ctx.UsesWorldSlow;
     }
 
     float GetWeaponTime()

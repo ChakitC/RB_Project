@@ -192,9 +192,13 @@ public class SpawnOnDragOutButton : MonoBehaviour,
     void PlaceIntoNearestSlot(GameObject newObj)
     {
         if (!newObj) return;
-        if (_slots == null || _slots.Length == 0) return;
+        if (_slots == null || _slots.Length == 0)
+        {
+            DestroyDragObject(newObj);
+            return;
+        }
 
-        Transform newRoot = newObj.transform.root;
+        Transform newRoot = newObj.transform;
 
         // หา slot ที่ใกล้ที่สุด
         Transform best = null;
@@ -220,11 +224,18 @@ public class SpawnOnDragOutButton : MonoBehaviour,
             }
         }
 
-        if (!best) return;
+        if (!best)
+        {
+            DestroyDragObject(newObj);
+            return;
+        }
 
         // ถ้าไกลเกิน ไม่ถือว่าลง slot
         if (bestSqr > snapMaxDistance * snapMaxDistance)
+        {
+            DestroyDragObject(newObj);
             return;
+        }
 
         // ลบของเก่า "เฉพาะใน slot นี้"
         for (int i = best.childCount - 1; i >= 0; i--)
@@ -234,24 +245,66 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
             if (child == newRoot) continue; // กันไม่ลบของใหม่แบบชัวร์
             
-            _Animator.SetBool("IsPicked",false);
-            
+            if (!IsReplaceableSlotChild(child, newRoot))
+                continue;
+
+            child.gameObject.SetActive(false);
             Destroy(child.gameObject);
         }
 
-       
-        newRoot.SetParent(best, false);
-        newRoot.localPosition = Vector3.zero;
-        newRoot.localRotation = Quaternion.Euler(0f, 0f + 0f, 0f);
-        newRoot.localScale = Vector3.one;
-
-        
-        var wp = newRoot.position;
-        wp.y = fixedY;
-        newRoot.position = wp;
+        SyncDroppedCharacterToSlot(best, newRoot);
+        DestroyDragObject(newObj);
     }
 
-   
+    void DestroyDragObject(GameObject dragObject)
+    {
+        if (!dragObject)
+            return;
+
+        dragObject.SetActive(false);
+        Destroy(dragObject);
+    }
+
+    bool IsReplaceableSlotChild(Transform child, Transform newRoot)
+    {
+        if (!child)
+            return false;
+
+        if (child == newRoot || child.IsChildOf(newRoot))
+            return false;
+
+        if (!requireSelectableInSlot)
+            return true;
+
+        if (child.GetComponentInChildren<CharacterSelectable>(true) != null)
+            return true;
+
+        if (child.GetComponentInChildren<CharacterDefHolder>(true) != null)
+            return true;
+
+        string childName = child.name;
+        return childName.IndexOf("Select", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    void SyncDroppedCharacterToSlot(Transform slotTransform, Transform characterRoot)
+    {
+        if (!slotTransform || !characterRoot)
+            return;
+
+        var slot = slotTransform.GetComponent<PartySlot>();
+        if (!slot)
+            slot = slotTransform.GetComponentInParent<PartySlot>();
+
+        if (!slot)
+            return;
+
+        var holder = characterRoot.GetComponentInChildren<CharacterDefHolder>(true);
+        if (!holder || !holder.def)
+            return;
+
+        slot.SetCharacterDef(holder.def, true);
+        slot.RefreshSelectedCharacterVisual();
+    }
 
     void CacheSlots()
     {

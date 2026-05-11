@@ -44,7 +44,7 @@ MonoBehaviour:
   snapTo8Directions: 1
   locomotionDirectionalClips:
     idle: {fileID: 5487989288048153974, guid: 0fe0a7dc98bb2fa4a9ff7d5be7eb0ab6, type: 3}
-    forward: {fileID: 2718465186313594679, guid: 58a826f5004c5a54893b807d6696dc4e, type: 3}
+    forward: {fileID: 1606450360269762143, guid: 58a826f5004c5a54893b807d6696dc4e, type: 3}
     backward: {fileID: 3630704421837926502, guid: f802650346e12374780da059cd43d325, type: 3}
     left: {fileID: 583729431000011259, guid: 0404bea5c3932cc438487112ccc8bb28, type: 3}
     right: {fileID: 4506590830449897675, guid: 3d62fd3d33a5f894fbb72ce5a71bbc78, type: 3}
@@ -144,7 +144,7 @@ MonoBehaviour:
     _Clip: {fileID: 8354638251797088515, guid: 252d4fb362435ff49bb2fa0b3f592932, type: 3}
     _NormalizedStartTime: NaN
   shootPulse:
-    _FadeDuration: 0.25
+    _FadeDuration: 0.080000006
     _Speed: 1
     _Events:
       _NormalizedTimes: []
@@ -153,7 +153,7 @@ MonoBehaviour:
     _Clip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
     _NormalizedStartTime: NaN
   shootHoldLoop:
-    _FadeDuration: 0.25
+    _FadeDuration: 0.080000006
     _Speed: 1
     _Events:
       _NormalizedTimes: []
@@ -169,7 +169,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 8696769760049100611, guid: c3112324236f1cb4295770ec4e8c8276, type: 3}
+    _Clip: {fileID: 3744762482871154653, guid: c3112324236f1cb4295770ec4e8c8276, type: 3}
     _NormalizedStartTime: NaN
   meleeCombo: {fileID: 11400000, guid: aad74cd29d1adde448ce0f8716aed4b2, type: 2}
   meleeCanInterruptReload: 1

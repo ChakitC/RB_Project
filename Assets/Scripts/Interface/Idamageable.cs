@@ -88,6 +88,8 @@ public static class DamageableResolver
         if (context == null)
             return null;
 
+        context.ResolveReferences();
+
         if (context.HealthSystem != null)
             return context.HealthSystem;
 
@@ -101,4 +103,3 @@ public static class DamageableResolver
         return health;
     }
 }
-

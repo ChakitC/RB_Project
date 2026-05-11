@@ -11,6 +11,11 @@ public class GunConfig : ItemDefinition
     public GameObject BulletPrefab; 
     public GameObject WeaponPrefab;
 
+    [Header("Weapon Model Mount")]
+    [ToggleLeft] public bool overrideWeaponModelMountOffset = false;
+    public WeaponModelMountOffset rightHandWeaponModelMount = WeaponModelMountOffset.Identity;
+    public WeaponModelMountOffset leftHandWeaponModelMount = WeaponModelMountOffset.Identity;
+
     [Header("Audio")]
     public AudioCue fireCue;
     public AudioCue hitCue;

@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
-[DefaultExecutionOrder(-100)]
+
+[DefaultExecutionOrder(-200)]
 public abstract class CharacteContext : MonoBehaviour
 {
     [Header("Character_BaseStatus")]    
@@ -16,6 +17,7 @@ public abstract class CharacteContext : MonoBehaviour
     
     [Header("Common Modules")]
     public AITargetInfo TargetInfo;
+    public CharacterEquipment Equipment;
     public WeaponSystem WeaponSystem;
     public CharacterAnimBrain AnimBrain;
     public CharacterAnimDriver AnimDriver;
@@ -46,24 +48,74 @@ public abstract class CharacteContext : MonoBehaviour
     public Vector2 moveInput;
     public Vector2 lookInput;
     
+    public virtual bool UsesWorldSlow => true;
+    public virtual AITargetIdentity TargetIdentity => AITargetIdentity.Generic;
     
-    public float baseDamage => baseStats.Damage;
-    public float basearmor => baseStats.armor;
-    public float basemaxHealth => baseStats.maxHP;
-    public float basecritRate => baseStats.critRate;
-    public float basecritMultiplier => baseStats.critMultiplier;
-    public float baseStamina => baseStats.maxStamina;
-    public float baseEnagy => baseStats.Enagy;
-    public float baseSpeed => baseStats.speed;
+    public float baseDamage => baseStats != null ? baseStats.Damage : 0f;
+    public float basearmor => baseStats != null ? baseStats.armor : 0f;
+    public float basemaxHealth => baseStats != null ? baseStats.maxHP : 0f;
+    public float basecritRate => baseStats != null ? baseStats.critRate : 0f;
+    public float basecritMultiplier => baseStats != null ? baseStats.critMultiplier : 1f;
+    public float baseStamina => baseStats != null ? baseStats.maxStamina : 0f;
+    public float baseEnagy => baseStats != null ? baseStats.Enagy : 0f;
+    public float baseSpeed => baseStats != null ? baseStats.speed : 0f;
     
-    public float SpeedDown => baseStats.speedDown;
+    public float SpeedDown => baseStats != null ? baseStats.speedDown : 0f;
+
+    public virtual void ResolveReferences()
+    {
+        stateHub = ResolveActorComponent(stateHub);
+        StatsHub = ResolveActorComponent(StatsHub);
+        CombatEventBus = ResolveActorComponent(CombatEventBus);
+        rb = ResolveActorComponent(rb);
+        cc = ResolveActorComponent(cc);
+
+        TargetInfo = ResolveActorComponent(TargetInfo);
+        Equipment = ResolveActorComponent(Equipment);
+        WeaponSystem = ResolveActorComponent(WeaponSystem);
+        if (Equipment == null && Application.isPlaying && (currentWeapon != null || WeaponSystem != null))
+            Equipment = gameObject.AddComponent<CharacterEquipment>();
+        AnimBrain = ResolveActorComponent(AnimBrain);
+        AnimDriver = ResolveActorComponent(AnimDriver);
+        MeleeController = ResolveActorComponent(MeleeController);
+
+        CharacterLoad = ResolveActorComponent(CharacterLoad);
+        Visual = ResolveActorComponent(Visual);
+        UIManager = ResolveActorComponent(UIManager);
+
+        levelSystem = ResolveActorComponent(levelSystem);
+        HealthSystem = ResolveActorComponent(HealthSystem);
+        StaminaSystem = ResolveActorComponent(StaminaSystem);
+        DashSystem = ResolveActorComponent(DashSystem);
+        KnockbackMotor = ResolveActorComponent(KnockbackMotor);
+        PassiveController = ResolveActorComponent(PassiveController);
+        PassiveProgress = ResolveActorComponent(PassiveProgress);
+        EnegySystem = ResolveActorComponent(EnegySystem);
+        Interactor = ResolveActorComponent(Interactor);
+        SkillManager = ResolveActorComponent(SkillManager);
+    }
+
+    protected T ResolveActorComponent<T>(T current, bool includeChildren = true) where T : Component
+    {
+        if (current != null)
+            return current;
+
+        if (TryGetComponent(out T localComponent))
+            return localComponent;
+
+        if (includeChildren)
+        {
+            T childComponent = GetComponentInChildren<T>(true);
+            if (childComponent != null)
+                return childComponent;
+        }
+
+        return GetComponentInParent<T>();
+    }
 
     public float GetMoveSpeedForCurrentLifeState()
     {
-        if (StatsHub == null)
-            StatsHub = GetComponent<StatsHub>();
-        if (stateHub == null)
-            stateHub = GetComponent<StateHub>();
+        ResolveReferences();
 
         float moveSpeed = StatsHub ? StatsHub.GetMoveSpeed() : baseSpeed;
 

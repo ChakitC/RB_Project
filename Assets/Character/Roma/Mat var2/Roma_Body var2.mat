@@ -207,7 +207,7 @@ Material:
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OffsetShadowDistance: 15
-    - _OutlineWidth: 3.05
+    - _OutlineWidth: 3.1
     - _OverrideLightColorIntensityToggle: 0
     - _OverrideLightDirToggle: 0
     - _OverrideZTest: 0

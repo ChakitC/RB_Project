@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Opsive.GraphDesigner.Runtime.Variables.ECS.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Opsive.GraphDesigner.Runtime.Variables.ECS.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.GraphDesigner.Runtime.Variables.ECS.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.GraphDesigner.Runtime.Variables.ECS.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.GraphDesigner.Runtime.Variables.ECS.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.GraphDesigner.Runtime.Variables.ECS.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.GraphDesigner.Runtime.Variables.ECS.pdb

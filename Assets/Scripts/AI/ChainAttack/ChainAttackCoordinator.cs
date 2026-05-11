@@ -43,6 +43,10 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         if (playerContext == null)
             playerContext = GetComponent<PlayerContext>();
 
+        playerContext?.ResolveReferences();
+
+        if (fieldAllyManager == null)
+            fieldAllyManager = playerContext != null ? playerContext.fieldAllyManager : null;
         if (fieldAllyManager == null)
             fieldAllyManager = GetComponent<FieldAllyManager>();
 
@@ -131,6 +135,8 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
     {
         if (playerContext == null)
             playerContext = GetComponent<PlayerContext>();
+
+        playerContext?.ResolveReferences();
 
         if (allyHelperManager == null && playerContext != null)
             allyHelperManager = playerContext.allyHelper;

@@ -172,7 +172,7 @@ Material:
     - _EmissionToggle: 0
     - _EnableSSSRamp: 0
     - _EnvironmentReflections: 1
-    - _FOVShiftX: 0.207
+    - _FOVShiftX: 0
     - _FaceShadowMapPow: 0.2
     - _FaceShadowSmoothness: 0
     - _FakeLightIntensity: 0
@@ -198,11 +198,11 @@ Material:
     - _IsUsingRampOcclusionTexture: 0
     - _MatCapReflectionStrength: 1
     - _MatCapRollStabilize: 1
-    - _MaterialID: 1
+    - _MaterialID: 6
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OffsetShadowDistance: 15
-    - _OutlineWidth: 10.3
+    - _OutlineWidth: 3.1
     - _OverrideLightColorIntensityToggle: 0
     - _OverrideLightDirToggle: 0
     - _OverrideZTest: 0
@@ -221,7 +221,7 @@ Material:
     - _RimLightOverShadow: 1
     - _RimLightSmoothness: 0.2
     - _RimLightStrength: 0.35
-    - _ScaleAsScreenSpaceOutline: 0
+    - _ScaleAsScreenSpaceOutline: 1
     - _ShadowColorMode: 0
     - _Smoothness: 0
     - _SmoothnessTextureChannel: 0
@@ -244,12 +244,12 @@ Material:
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: 3.261278, g: 0.0001000762, b: -3.9253182, a: 0}
+    - _CharacterCenterWS: {r: 30.372782, g: 0.000099897385, b: -4.7629476, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FaceFrontDirection: {r: 0, g: 0, b: 1, a: 0}
-    - _FaceRightDirection: {r: 1, g: 0, b: 0, a: 0}
+    - _FaceFrontDirection: {r: -0.0051611993, g: -0.028812282, b: -0.99957246, a: 0}
+    - _FaceRightDirection: {r: -0.9999639, g: 0.007038635, b: 0.0049603344, a: 0}
     - _FaceUVCtrl: {r: 0, g: 1, b: 0, a: 0}
     - _FakeLightColor: {r: 0, g: 0, b: 0, a: 0}
     - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}

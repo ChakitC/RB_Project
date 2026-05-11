@@ -78,9 +78,17 @@ public class CharacterSelectable : MonoBehaviour
         if (!force && def == _lastDef) return;
 
         _lastDef = def;
+        if (def == null)
+        {
+            _parentSlot.SetCharacterDef(null, true);
+            return;
+        }
+
         _parentSlot.IDCharacter = def.characterId;
         _parentSlot.SetCharacterDef(def, true);
-        _parentSlot.levelSystem.SetState();
+
+        if (_parentSlot.levelSystem != null)
+            _parentSlot.levelSystem.SetState();
         
     }
 

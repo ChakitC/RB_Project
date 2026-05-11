@@ -18,3 +18,8 @@ MonoBehaviour:
     gunTable: {fileID: 0}
     amount: 1
     weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: 079515c14deaf5d479322be89a4f56a8, type: 2}
+    gunTable: {fileID: 0}
+    amount: 1
+    weight: 1

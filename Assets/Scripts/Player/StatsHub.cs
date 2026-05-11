@@ -73,17 +73,43 @@ public class StatsHub : MonoBehaviour
 
     void Awake()
     {
-        if (!ctx) TryGetComponent(out ctx);
-        if (!weapon) TryGetComponent(out weapon);
-        if (!statusEffectController) TryGetComponent(out statusEffectController);
+        ResolveReferences();
         RebuildModifierProviders();
     }
 
     void OnEnable()
     {
+        ResolveReferences();
         RebuildModifierProviders();
         _nextDebugRefreshTime = -1f;
         MarkDirty();
+    }
+
+    void ResolveReferences()
+    {
+        if (!ctx)
+        {
+            TryGetComponent(out ctx);
+            if (!ctx)
+                ctx = GetComponentInParent<CharacteContext>();
+        }
+
+        ctx?.ResolveReferences();
+
+        if (ctx != null && ctx.StatsHub != this)
+            ctx.StatsHub = this;
+
+        if (!weapon && ctx != null)
+            weapon = ctx.WeaponSystem;
+        if (!weapon)
+            TryGetComponent(out weapon);
+        if (!weapon && ctx != null)
+            weapon = ctx.GetComponentInChildren<WeaponSystem>(true);
+
+        if (!statusEffectController && ctx != null)
+            statusEffectController = ctx.GetComponentInChildren<StatusEffectController>(true);
+        if (!statusEffectController)
+            TryGetComponent(out statusEffectController);
     }
 
     void Update()

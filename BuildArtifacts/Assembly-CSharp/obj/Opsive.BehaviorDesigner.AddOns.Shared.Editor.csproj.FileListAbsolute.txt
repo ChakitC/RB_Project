@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Opsive.BehaviorDesigner.AddOns.Shared.Editor.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Opsive.BehaviorDesigner.AddOns.Shared.Editor.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.AddOns.Shared.Editor.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.AddOns.Shared.Editor.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.AddOns.Shared.Editor.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.AddOns.Shared.Editor.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.AddOns.Shared.Editor.pdb

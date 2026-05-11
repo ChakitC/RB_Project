@@ -77,6 +77,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 6866604449762594723}
     m_Modifications:
+    - target: {fileID: 1403050670928376894, guid: fbe4b2d13f588374f8d255bef213e276, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3883564116810567520, guid: fbe4b2d13f588374f8d255bef213e276, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4430476662667053358, guid: fbe4b2d13f588374f8d255bef213e276, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 8073746211628435587, guid: fbe4b2d13f588374f8d255bef213e276, type: 3}
       propertyPath: m_Name
       value: Feno

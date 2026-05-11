@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\KinoBloom.Runtime.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\KinoBloom.Runtime.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\KinoBloom.Runtime.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\KinoBloom.Runtime.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\KinoBloom.Runtime.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\KinoBloom.Runtime.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\KinoBloom.Runtime.dll

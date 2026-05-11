@@ -103,6 +103,8 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         if (_ctx == null)
             _ctx = GetComponentInParent<CharacteContext>();
 
+        _ctx?.ResolveReferences();
+
         if (_ctx != null && _ctx.Visual != this)
             _ctx.Visual = this;
 
@@ -394,10 +396,13 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
             else
             {
                 if (_rightObj) Destroy(_rightObj);
-                _rightObj = Instantiate(weaponPrefab, rHand, false);
-                _rightObj.transform.localPosition = rightLocalPos;
-                _rightObj.transform.localRotation = Quaternion.Euler(rightLocalRotEuler);
-                _rightObj.transform.localScale = rightLocalScale;
+                _rightObj = WeaponModelMountUtility.SpawnWeapon(
+                    _ctx.currentWeapon,
+                    rHand,
+                    rightHand: true,
+                    CreateRightWeaponMountFallback(),
+                    CreateLeftWeaponMountFallback(),
+                    this);
             }
         }
         else
@@ -418,10 +423,13 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
             else
             {
                 if (_leftObj) Destroy(_leftObj);
-                _leftObj = Instantiate(weaponPrefab, lHand, false);
-                _leftObj.transform.localPosition = leftLocalPos;
-                _leftObj.transform.localRotation = Quaternion.Euler(leftLocalRotEuler);
-                _leftObj.transform.localScale = leftLocalScale;
+                _leftObj = WeaponModelMountUtility.SpawnWeapon(
+                    _ctx.currentWeapon,
+                    lHand,
+                    rightHand: false,
+                    CreateRightWeaponMountFallback(),
+                    CreateLeftWeaponMountFallback(),
+                    this);
             }
         }
         else
@@ -429,6 +437,26 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
             if (_leftObj) Destroy(_leftObj);
             _leftObj = null;
         }
+    }
+
+    WeaponModelMountOffset CreateRightWeaponMountFallback()
+    {
+        return new WeaponModelMountOffset
+        {
+            localPosition = rightLocalPos,
+            localRotationEuler = rightLocalRotEuler,
+            localScale = rightLocalScale
+        };
+    }
+
+    WeaponModelMountOffset CreateLeftWeaponMountFallback()
+    {
+        return new WeaponModelMountOffset
+        {
+            localPosition = leftLocalPos,
+            localRotationEuler = leftLocalRotEuler,
+            localScale = leftLocalScale
+        };
     }
 
     private void AttachFirePointToModelBone()

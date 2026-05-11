@@ -52,10 +52,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
 
     void Start()
     {
-        if (!CTX) CTX = GetComponentInParent<CharacteContext>();
-        if (!statsHub) statsHub = GetComponent<StatsHub>();
-        if (!statusEffectController) statusEffectController = GetComponent<StatusEffectController>();
-        if (!combatEventBus) combatEventBus = GetComponent<CombatEventBus>();
+        ResolveReferences();
 
         downTimeDefault = DownTime;
         if (!CTX)
@@ -67,6 +64,40 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         InitializeFromHub(resetCurrentToMax: true);
         ApplyHealthBarValues();
         CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
+    }
+
+    void ResolveReferences()
+    {
+        if (!CTX)
+        {
+            TryGetComponent(out CTX);
+            if (!CTX)
+                CTX = GetComponentInParent<CharacteContext>();
+        }
+
+        CTX?.ResolveReferences();
+
+        if (CTX != null && CTX.HealthSystem != this)
+            CTX.HealthSystem = this;
+
+        if (!statsHub && CTX != null)
+            statsHub = CTX.StatsHub;
+        if (!statsHub)
+            TryGetComponent(out statsHub);
+        if (!statsHub && CTX != null)
+            statsHub = CTX.GetComponentInChildren<StatsHub>(true);
+
+        if (!statusEffectController && CTX != null)
+            statusEffectController = CTX.GetComponentInChildren<StatusEffectController>(true);
+        if (!statusEffectController)
+            TryGetComponent(out statusEffectController);
+
+        if (!combatEventBus && CTX != null)
+            combatEventBus = CTX.CombatEventBus;
+        if (!combatEventBus)
+            TryGetComponent(out combatEventBus);
+        if (!combatEventBus && CTX != null)
+            combatEventBus = CTX.GetComponentInChildren<CombatEventBus>(true);
     }
 
     void Update()
@@ -413,7 +444,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
 
         var weaponSystem = CTX != null ? CTX.WeaponSystem : null;
         if (!weaponSystem && CTX)
-            weaponSystem = CTX.GetComponent<WeaponSystem>();
+            weaponSystem = CTX.GetComponentInChildren<WeaponSystem>(true);
         if (weaponSystem != null && weaponSystem.IsReloading)
             weaponSystem.CancelReload();
 

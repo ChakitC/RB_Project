@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.AI;
 
-[DefaultExecutionOrder(-90)]
+[DefaultExecutionOrder(-200)]
 public class AllyContext : CharacteContext
 {
     [Header("NavMeshAgent")]
@@ -12,6 +12,27 @@ public class AllyContext : CharacteContext
     public NavMeshAgent  agent;
 
     public AgentMoveDriver AgentMoveDriver;
+
+    public override AITargetIdentity TargetIdentity => AITargetIdentity.Companion;
+
+    void Awake()
+    {
+        ResolveReferences();
+    }
+
+    public override void ResolveReferences()
+    {
+        base.ResolveReferences();
+
+        if (AITargetSensor == null)
+            AITargetSensor = ResolveActorComponent(AITargetSensor);
+
+        if (agent == null)
+            agent = ResolveActorComponent(agent);
+
+        if (AgentMoveDriver == null)
+            AgentMoveDriver = ResolveActorComponent(AgentMoveDriver);
+    }
 
     public override bool ShouldBeInMoveState()
     {

@@ -247,7 +247,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     {
         animProfile = null;
 
-        if (!ctx) ctx = GetComponent<CharacteContext>();
+        ResolveReferences();
         if (ctx == null || ctx.baseStats == null)
             return false;
 
@@ -259,7 +259,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     {
         if (!animancer) return "AnimancerComponent missing.";
         if (animancer.Animator == null) return "Animancer.Animator missing.";
-        if (!ctx) ctx = GetComponent<CharacteContext>();
+        ResolveReferences();
         if (ctx == null) return "CharacteContext missing.";
         if (ctx.baseStats == null) return "CharacteContext.baseStats missing.";
         if (ctx.baseStats.animProfile == null)
@@ -270,12 +270,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private bool TryInitialize()
     {
-        if (!animancer) animancer = GetComponent<AnimancerComponent>();
+        ResolveReferences();
         if (!animancer || animancer.Animator == null)
             return false;
-
-        if (!statusEffectController)
-            statusEffectController = GetComponent<StatusEffectController>();
 
         if (!TryGetAnimProfile(out var animProfile))
             return false;
@@ -367,7 +364,32 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void Awake()
     {
-        if (!animancer) animancer = GetComponent<AnimancerComponent>();
+        ResolveReferences();
+    }
+
+    private void ResolveReferences()
+    {
+        if (!ctx)
+        {
+            TryGetComponent(out ctx);
+            if (!ctx)
+                ctx = GetComponentInParent<CharacteContext>();
+        }
+
+        ctx?.ResolveReferences();
+
+        if (ctx != null && ctx.AnimBrain != this)
+            ctx.AnimBrain = this;
+
+        if (!animancer)
+            animancer = GetComponent<AnimancerComponent>();
+        if (!animancer && ctx != null)
+            animancer = ctx.GetComponentInChildren<AnimancerComponent>(true);
+
+        if (!statusEffectController && ctx != null)
+            statusEffectController = ctx.GetComponentInChildren<StatusEffectController>(true);
+        if (!statusEffectController)
+            statusEffectController = GetComponent<StatusEffectController>();
     }
 
     private bool _initWarned;
@@ -394,7 +416,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private bool UsesWorldAnimationSlow()
     {
-        return !(ctx is PlayerContext);
+        return ctx == null || ctx.UsesWorldSlow;
     }
 
     internal float AnimationDeltaTime
@@ -1001,7 +1023,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private StatusLocomotionKind ResolveStatusLocomotionKind()
     {
         if (!statusEffectController)
-            statusEffectController = GetComponent<StatusEffectController>();
+            ResolveReferences();
 
         var activeEffects = statusEffectController?.ActiveEffects;
         StatusLocomotionKind best = StatusLocomotionKind.None;

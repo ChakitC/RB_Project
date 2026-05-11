@@ -32,10 +32,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
     void Awake()
     {
-        if (!ctx) TryGetComponent(out ctx);
-        if (!statsHub) TryGetComponent(out statsHub);
-        if (!combatEventBus) TryGetComponent(out combatEventBus);
-        if (!statusEffectController) TryGetComponent(out statusEffectController);
+        ResolveReferences();
 
         if (ctx != null)
             ctx.PassiveController = this;
@@ -45,8 +42,43 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
     void OnEnable()
     {
+        ResolveReferences();
         RefreshPassiveLoadout();
         SubscribeToEvents();
+    }
+
+    void ResolveReferences()
+    {
+        if (!ctx)
+        {
+            TryGetComponent(out ctx);
+            if (!ctx)
+                ctx = GetComponentInParent<CharacteContext>();
+        }
+
+        ctx?.ResolveReferences();
+
+        if (ctx != null && ctx.PassiveController != this)
+            ctx.PassiveController = this;
+
+        if (!statsHub && ctx != null)
+            statsHub = ctx.StatsHub;
+        if (!statsHub)
+            TryGetComponent(out statsHub);
+        if (!statsHub && ctx != null)
+            statsHub = ctx.GetComponentInChildren<StatsHub>(true);
+
+        if (!combatEventBus && ctx != null)
+            combatEventBus = ctx.CombatEventBus;
+        if (!combatEventBus)
+            TryGetComponent(out combatEventBus);
+        if (!combatEventBus && ctx != null)
+            combatEventBus = ctx.GetComponentInChildren<CombatEventBus>(true);
+
+        if (!statusEffectController && ctx != null)
+            statusEffectController = ctx.GetComponentInChildren<StatusEffectController>(true);
+        if (!statusEffectController)
+            TryGetComponent(out statusEffectController);
     }
 
     void OnDisable()

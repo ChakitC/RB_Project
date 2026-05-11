@@ -23,8 +23,8 @@
         {
             "characterId": "ID.Noemi",
             "progress": {
-                "level": 29,
-                "xp": 4350,
+                "level": 30,
+                "xp": 0,
                 "skillPoints": 0,
                 "passiveProgressInitialized": false,
                 "unlockedPassiveNodeIds": []

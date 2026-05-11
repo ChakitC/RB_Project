@@ -26,6 +26,15 @@ MonoBehaviour:
   pickupPrefab: {fileID: 0}
   BulletPrefab: {fileID: 1401322386234506, guid: 2e7cf060ea43be14986bea7326d77e1c, type: 3}
   WeaponPrefab: {fileID: 3491401369918143333, guid: ac96f38a10dcca647b07513064f22f1b, type: 3}
+  overrideWeaponModelMountOffset: 1
+  rightHandWeaponModelMount:
+    localPosition: {x: -0.195, y: 0.183, z: -0.036}
+    localRotationEuler: {x: -0, y: 180, z: 90}
+    localScale: {x: 1.2, y: 1.2, z: 1.2}
+  leftHandWeaponModelMount:
+    localPosition: {x: 0.195, y: 0.183, z: -0.036}
+    localRotationEuler: {x: -0.000005008957, y: 0.0000050089566, z: 90}
+    localScale: {x: 1.2, y: 1.2, z: 1.2}
   fireCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
   hitCue: {fileID: 11400000, guid: f553b85156097ad4091b995baff05cb9, type: 2}
   emptyCue: {fileID: 11400000, guid: 86252ae28322830499f1116974f2ea2a, type: 2}
@@ -41,6 +50,7 @@ MonoBehaviour:
   critMultiplier: 1.2
   stability: 0
   BulletSpeed: 10
+  staggerPower: 10
   autoloader: 0
   magazineReload: 1
   reloadTime: 1

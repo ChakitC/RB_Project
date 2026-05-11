@@ -1,7 +1,7 @@
 {
     "inventory": {
         "maxSlotCount": 20,
-        "gold": 1001251,
+        "gold": 994261,
         "slots": [
             {
                 "itemId": "SMG_RB01",
@@ -18,8 +18,8 @@
                         "secondaryValue": 0.0
                     },
                     "subAffixes": [],
-                    "shotCounter": 1366,
-                    "currentMagazine": 8
+                    "shotCounter": 1674,
+                    "currentMagazine": 0
                 }
             },
             {
@@ -86,8 +86,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 145,
-                    "currentMagazine": 1
+                    "shotCounter": 155,
+                    "currentMagazine": 0
                 }
             },
             {
@@ -120,8 +120,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 798,
-                    "currentMagazine": 25
+                    "shotCounter": 1195,
+                    "currentMagazine": 11
                 }
             },
             {
@@ -154,27 +154,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 4763,
-                    "currentMagazine": 25
-                }
-            },
-            {
-                "itemId": "",
-                "amount": 0,
-                "weaponInstance": {
-                    "instanceId": "",
-                    "baseWeaponId": "",
-                    "rarity": 0,
-                    "mainAffix": {
-                        "affixId": "",
-                        "hasPrimaryValue": false,
-                        "primaryValue": 0.0,
-                        "hasSecondaryValue": false,
-                        "secondaryValue": 0.0
-                    },
-                    "subAffixes": [],
-                    "shotCounter": 0,
-                    "currentMagazine": -1
+                    "shotCounter": 5198,
+                    "currentMagazine": 24
                 }
             },
             {
@@ -207,8 +188,27 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 1880,
-                    "currentMagazine": 21
+                    "shotCounter": 1899,
+                    "currentMagazine": 2
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1
                 }
             },
             {
@@ -462,6 +462,62 @@
     },
     "weapon": {
         "equippedWeaponInstanceId": "5393a3d1497d43d29b64f34d09f4e75b"
+    },
+    "equipment": {
+        "entries": [
+            {
+                "ownerId": "character:ID.Roma",
+                "equippedWeaponInstanceId": "5393a3d1497d43d29b64f34d09f4e75b"
+            },
+            {
+                "ownerId": "player",
+                "equippedWeaponInstanceId": ""
+            },
+            {
+                "ownerId": "character:ID.Abbygail",
+                "equippedWeaponInstanceId": "ba967d7fca944cdeb451412b7c61a49b"
+            },
+            {
+                "ownerId": "ally:Helper",
+                "equippedWeaponInstanceId": ""
+            },
+            {
+                "ownerId": "character:ID.Aires",
+                "equippedWeaponInstanceId": "944166ad62284a008725d33753827409"
+            },
+            {
+                "ownerId": "ally:PartySlot2",
+                "equippedWeaponInstanceId": ""
+            },
+            {
+                "ownerId": "character:ID.Feno",
+                "equippedWeaponInstanceId": "9c6715952d3a4641a26a26af87c72af8"
+            },
+            {
+                "ownerId": "ally:PartySlot1",
+                "equippedWeaponInstanceId": ""
+            },
+            {
+                "ownerId": "helper",
+                "equippedWeaponInstanceId": ""
+            },
+            {
+                "ownerId": "character:ID.Noemi",
+                "equippedWeaponInstanceId": "e8b4abab36aa4924890ac8f5fd9f8f1d"
+            },
+            {
+                "ownerId": "character:ID.Milano",
+                "equippedWeaponInstanceId": "6a18546602c7446fb9c627a52b7d9131"
+            },
+            {
+                "ownerId": "character:ID.Dorothy",
+                "equippedWeaponInstanceId": ""
+            },
+            {
+                "ownerId": "character:ID.Roger",
+                "equippedWeaponInstanceId": ""
+            }
+        ]
     },
     "party": {
         "partyIds": []

@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.AI;
 
+[DefaultExecutionOrder(-200)]
 public class EnemyContext : CharacteContext
 {
     [Header("Collider")]
@@ -22,6 +23,8 @@ public class EnemyContext : CharacteContext
     float _baseAnimatorSpeed = 1f;
     bool _hasCachedAgentTuning;
     bool _hasCachedAnimatorSpeed;
+
+    public override AITargetIdentity TargetIdentity => AITargetIdentity.Enemy;
 
     private void Awake()
     {
@@ -53,19 +56,27 @@ public class EnemyContext : CharacteContext
         return AgentMoveDriver != null && AgentMoveDriver.agentismoving;
     }
 
-    void ResolveReferences()
+    public override void ResolveReferences()
     {
+        base.ResolveReferences();
+
         if (!Agent)
-            Agent = GetComponent<NavMeshAgent>();
+            Agent = ResolveActorComponent(Agent);
 
         if (!AgentMoveDriver)
-            AgentMoveDriver = GetComponent<AgentMoveDriver>();
+            AgentMoveDriver = ResolveActorComponent(AgentMoveDriver);
 
         if (!animator)
-            animator = GetComponentInChildren<Animator>(true);
+            animator = ResolveActorComponent(animator);
 
         if (!AnimBrain)
-            AnimBrain = GetComponentInChildren<CharacterAnimBrain>(true);
+            AnimBrain = ResolveActorComponent(AnimBrain);
+
+        if (!Collider)
+            Collider = ResolveActorComponent(Collider);
+
+        if (!dropper)
+            dropper = ResolveActorComponent(dropper);
     }
 
     void CacheBaseWorldSlowValues()

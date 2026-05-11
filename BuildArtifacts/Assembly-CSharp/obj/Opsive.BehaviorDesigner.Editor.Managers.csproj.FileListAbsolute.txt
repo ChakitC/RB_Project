@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Opsive.BehaviorDesigner.Editor.Managers.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\Opsive.BehaviorDesigner.Editor.Managers.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.Editor.Managers.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.Editor.Managers.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.Editor.Managers.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.Editor.Managers.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\Opsive.BehaviorDesigner.Editor.Managers.pdb

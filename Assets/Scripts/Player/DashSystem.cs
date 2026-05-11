@@ -65,6 +65,10 @@ public class DashSystem : MonoBehaviour
         if (ctx == null)
             ctx = GetComponentInParent<CharacteContext>();
 
+        ctx?.ResolveReferences();
+
+        if (!combatEventBus)
+            combatEventBus = ctx != null ? ctx.CombatEventBus : null;
         if (!combatEventBus)
             combatEventBus = actorRoot.GetComponent<CombatEventBus>();
         if (!combatEventBus)

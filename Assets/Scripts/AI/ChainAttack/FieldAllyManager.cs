@@ -17,6 +17,8 @@ public sealed class FieldAllyManager : MonoBehaviour
         if (playerContext == null)
             playerContext = GetComponent<PlayerContext>();
 
+        playerContext?.ResolveReferences();
+
         RebuildRegistry();
 
         if (playerContext != null && playerContext.fieldAllyManager == null)

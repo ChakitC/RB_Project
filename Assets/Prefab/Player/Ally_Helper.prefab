@@ -132,6 +132,7 @@ GameObject:
   - component: {fileID: 5080804848825205463}
   - component: {fileID: 8202124887941467727}
   - component: {fileID: 9166499488002340364}
+  - component: {fileID: 5693974557749337110}
   m_Layer: 10
   m_Name: Ally_Helper
   m_TagString: Ally
@@ -369,22 +370,20 @@ MonoBehaviour:
       m_UnityObjects: []
       m_Version: 3.4
     m_SharedVariableData:
-    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
-        UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
+    - m_ObjectType: 
       m_ValueHashes: 
-      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278927dafeacd28e0b00
-      m_ValuePositions: 00000000060000000600000007000000
-      m_Values: 506c6179657202ffffffff
+      m_LongValueHashes: 
+      m_ValuePositions: 
+      m_Values: 
       m_UnityObjects: []
-      m_Version: 3.4
-    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
-        UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
+      m_Version: 
+    - m_ObjectType: 
       m_ValueHashes: 
-      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278927dafeacd28e0b00
-      m_ValuePositions: 00000000050000000500000006000000
-      m_Values: 546167657402ffffffff
+      m_LongValueHashes: 
+      m_ValuePositions: 
+      m_Values: 
       m_UnityObjects: []
-      m_Version: 3.4
+      m_Version: 
     m_DisabledEventNodesData: []
     m_DisabledLogicNodesData: []
     m_UniqueID: -531285451
@@ -677,6 +676,7 @@ MonoBehaviour:
   prefabweapone: {fileID: 0}
   IsSlot: 0
   modelRoot: {fileID: 3586924839157382583}
+  buildModelAutomatically: 1
   animancer: {fileID: 9179638184040891329}
   rightHandName: hand.r
   leftHandName: hand.l
@@ -717,6 +717,8 @@ MonoBehaviour:
   CombatEventBus: {fileID: 0}
   rb: {fileID: 6421898623282018613}
   cc: {fileID: 3471594666334970129}
+  TargetInfo: {fileID: 0}
+  Equipment: {fileID: 0}
   WeaponSystem: {fileID: 7891857970785766110}
   AnimBrain: {fileID: 5860819487336822159}
   AnimDriver: {fileID: 705906447145546997}
@@ -928,6 +930,12 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   combatEventBus: {fileID: 0}
+  perfectDashSlowScale: 0.2
+  perfectDashSlowDuration: 0.35
+  perfectDodgeThreatLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  perfectDodgeThreatScanPadding: 0.25
 --- !u!114 &6313946665518259353
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1287,10 +1295,12 @@ MonoBehaviour:
   originHeightOffset: 0.5
   fallbackTargetHeightOffset: 0.6
   currentTarget: {fileID: 0}
+  visibleTarget: {fileID: 0}
   lastSeenTarget: {fileID: 0}
   lastSeenPosition: {x: 0, y: 0, z: 0}
   hasLineOfSight: 0
   targetDistance: 0
+  visibleTargetDistance: 0
   lastSeenTime: -Infinity
   currentTargetScore: -Infinity
   visibleBestScore: -Infinity
@@ -1309,6 +1319,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   characterPanel: {fileID: 0}
+  characterPanelSearchRoot: {fileID: 0}
   animancer: {fileID: 9179638184040891329}
   animancerLayerIndex: 0
   fadeInDuration: 0.4
@@ -1391,6 +1402,38 @@ MonoBehaviour:
   - helperProc: {fileID: 11400000, guid: 61266ad809f609e40ae69b87f64da449, type: 2}
   legacyHelperProcSlots: []
   passiveSlots: []
+--- !u!114 &5693974557749337110
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5546123616510741782}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 054283c474680534cb008378f47a7724, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 8723794045760714937}
+  defaultWeapon: {fileID: 0}
+  equipDefaultOnStart: 1
+  usePlayerInventorySave: 1
+  equipmentOwnerId: 
+  currentWeapon: {fileID: 0}
+  currentWeaponInstance:
+    instanceId: 
+    baseWeaponId: 
+    rarity: 0
+    mainAffix:
+      affixId: 
+      hasPrimaryValue: 0
+      primaryValue: 0
+      hasSecondaryValue: 0
+      secondaryValue: 0
+    subAffixes: []
+    shotCounter: 0
+    currentMagazine: -1
+  equippedWeaponInstanceId: 
 --- !u!1 &5742793755352266359
 GameObject:
   m_ObjectHideFlags: 0
@@ -1438,6 +1481,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   actorRole: 3
   manager: {fileID: 0}
+  actorRoot: {fileID: 0}
   actorContext: {fileID: 8723794045760714937}
   actorHealthSystem: {fileID: 0}
   actorTargetInfo: {fileID: 0}

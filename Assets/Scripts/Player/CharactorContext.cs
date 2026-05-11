@@ -1,27 +1,7 @@
+using System;
 using UnityEngine;
 
-public class PlayerContext : CharacteContext
+[Obsolete("Use PlayerContext. This legacy alias exists only to avoid duplicate PlayerContext declarations.")]
+public class CharactorContext : PlayerContext
 {
-    
-    [Header("Modules")]
-    public PlayerMovementCC movement;
-    
-    
-    [Header("Inventory")]
-    public PlayerInventory inventory;
-
-    [Header("Aim Target Reference")]
-    public Transform aimTarget;
-
-    [Header("Input Values")]
-    public Vector2 moveInput;
-    public Vector2 lookInput;
-    
-    [Header("Character State")]
-    public StateHub  stateHub;
-    
-    public bool isPC = false;
-    // public bool isPC = true;
-    
-   
 }

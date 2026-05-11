@@ -24,6 +24,19 @@ public class PlayerWeaponData
 }
 
 [Serializable]
+public class CharacterEquipmentSaveData
+{
+    public string ownerId;
+    public string equippedWeaponInstanceId;
+}
+
+[Serializable]
+public class EquipmentSaveData
+{
+    public List<CharacterEquipmentSaveData> entries = new();
+}
+
+[Serializable]
 public class PartyData
 {
     public List<string> partyIds = new();

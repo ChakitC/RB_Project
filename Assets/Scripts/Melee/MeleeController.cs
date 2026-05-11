@@ -166,17 +166,47 @@ public sealed class MeleeController : MonoBehaviour
     void ResolveRefs()
     {
         if (!ctx)
+        {
             TryGetComponent(out ctx);
+            if (!ctx)
+                ctx = GetComponentInParent<CharacteContext>();
+        }
+
+        ctx?.ResolveReferences();
+
+        if (!stateHub && ctx != null)
+            stateHub = ctx.stateHub;
         if (!stateHub)
             TryGetComponent(out stateHub);
+        if (!stateHub && ctx != null)
+            stateHub = ctx.GetComponentInChildren<StateHub>(true);
+
+        if (!brain && ctx != null)
+            brain = ctx.AnimBrain;
         if (!brain)
             TryGetComponent(out brain);
+        if (!brain && ctx != null)
+            brain = ctx.GetComponentInChildren<CharacterAnimBrain>(true);
+
+        if (!weaponSystem && ctx != null)
+            weaponSystem = ctx.WeaponSystem;
         if (!weaponSystem)
             TryGetComponent(out weaponSystem);
+        if (!weaponSystem && ctx != null)
+            weaponSystem = ctx.GetComponentInChildren<WeaponSystem>(true);
+
+        if (!statusEffectController && ctx != null)
+            statusEffectController = ctx.GetComponentInChildren<StatusEffectController>(true);
         if (!statusEffectController)
             TryGetComponent(out statusEffectController);
+
+        if (!combatEventBus && ctx != null)
+            combatEventBus = ctx.CombatEventBus;
         if (!combatEventBus)
             TryGetComponent(out combatEventBus);
+        if (!combatEventBus && ctx != null)
+            combatEventBus = ctx.GetComponentInChildren<CombatEventBus>(true);
+
         if (!hitboxTrigger)
             hitboxTrigger = GetComponentInChildren<MeleeHitboxTrigger>(true);
 

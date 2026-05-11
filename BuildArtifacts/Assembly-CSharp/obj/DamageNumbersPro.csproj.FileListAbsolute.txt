@@ -1,0 +1,7 @@
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\DamageNumbersPro.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\DamageNumbersPro.csproj.AssemblyReference.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\DamageNumbersPro.csproj.CoreCompileInputs.cache
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\DamageNumbersPro.csproj.CopyComplete
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\DamageNumbersPro.dll
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\obj\DamageNumbersPro.pdb
+P:\Game_RB_Project\BuildArtifacts\Assembly-CSharp\bin\DamageNumbersPro.dll

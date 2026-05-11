@@ -7,6 +7,7 @@ public class GameSaveData
 {
     public PlayerInventoryData inventory;
     public PlayerWeaponData weapon;
+    public EquipmentSaveData equipment;
     public PartyData party = new PartyData();
 }
 

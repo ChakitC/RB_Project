@@ -38,6 +38,7 @@ public class PlayerMovementCC : MonoBehaviour
         if (!actorRoot)
         {
             PlayerContext parentContext = GetComponentInParent<PlayerContext>();
+            parentContext?.ResolveReferences();
             actorRoot = parentContext ? parentContext.transform : transform;
         }
 
@@ -45,10 +46,16 @@ public class PlayerMovementCC : MonoBehaviour
         if (!_characteContext)
             _characteContext = GetComponentInParent<PlayerContext>();
 
-        statsHub = actorRoot.GetComponent<StatsHub>();
+        _characteContext?.ResolveReferences();
+
+        statsHub = _characteContext != null ? _characteContext.StatsHub : null;
+        if (!statsHub)
+            statsHub = actorRoot.GetComponent<StatsHub>();
         if (!statsHub)
             statsHub = GetComponentInParent<StatsHub>();
 
+        if (!stateHub)
+            stateHub = _characteContext != null ? _characteContext.stateHub : null;
         if (!stateHub)
             stateHub = actorRoot.GetComponent<StateHub>();
         if (!stateHub)

@@ -9,9 +9,29 @@ public class CharacterAudioEmitter : MonoBehaviour
 
     void Awake()
     {
-        if (!ctx) ctx = GetComponent<CharacteContext>();
-        if (!stateHub) stateHub = GetComponent<StateHub>();
-        if (!healthSystem) healthSystem = GetComponent<HealthSystem>();
+        ResolveReferences();
+    }
+
+    void ResolveReferences()
+    {
+        if (!ctx)
+        {
+            TryGetComponent(out ctx);
+            if (!ctx)
+                ctx = GetComponentInParent<CharacteContext>();
+        }
+
+        ctx?.ResolveReferences();
+
+        if (!stateHub && ctx != null)
+            stateHub = ctx.stateHub;
+        if (!stateHub)
+            TryGetComponent(out stateHub);
+
+        if (!healthSystem && ctx != null)
+            healthSystem = ctx.HealthSystem;
+        if (!healthSystem)
+            TryGetComponent(out healthSystem);
     }
 
     void OnEnable()

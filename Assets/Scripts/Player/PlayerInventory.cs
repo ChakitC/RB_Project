@@ -14,6 +14,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
     public ItemDatabase itemDatabase;
     [SerializeField] private WeaponDatabase weaponDatabase;
     [SerializeField] private CharacteContext ctx;
+    [SerializeField] private CharacterEquipment equipment;
     [SerializeField] private WeaponSystem weaponSystem;
 
     [Header("Currency")]
@@ -62,6 +63,26 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (!ctx)
             ctx = GetComponentInParent<CharacteContext>();
 
+        ctx?.ResolveReferences();
+
+        if (ctx is PlayerContext playerContext && playerContext.inventory != this)
+            playerContext.inventory = this;
+
+        if (!equipment && ctx != null && ctx.Equipment != null)
+            equipment = ctx.Equipment;
+
+        if (!equipment)
+            equipment = GetComponent<CharacterEquipment>();
+
+        if (!equipment && ctx != null)
+            equipment = ctx.GetComponentInChildren<CharacterEquipment>(true);
+
+        if (!equipment && ctx != null)
+            equipment = ctx.gameObject.AddComponent<CharacterEquipment>();
+
+        if (ctx != null && equipment != null && ctx.Equipment != equipment)
+            ctx.Equipment = equipment;
+
         if (!weaponSystem && ctx != null && ctx.WeaponSystem != null)
             weaponSystem = ctx.WeaponSystem;
 
@@ -73,6 +94,8 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         if (ctx != null && weaponSystem != null && ctx.WeaponSystem != weaponSystem)
             ctx.WeaponSystem = weaponSystem;
+
+        equipment?.ResolveReferences();
     }
 
     void Start()
@@ -197,12 +220,15 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
             slot.Clear();
             inventorySystem.NotifySlotChanged(i);
+            CharacterEquipment.ReleaseRemovedInventoryWeapon(instanceId);
 
             if (string.Equals(equippedWeaponInstanceId, instanceId, StringComparison.Ordinal))
             {
                 SetEquippedWeaponInstanceId(null);
-                TryAssignFirstWeaponInstance();
-                ApplyEquippedWeaponIfPossible();
+                if (TryAssignFirstWeaponInstance())
+                    ApplyEquippedWeaponIfPossible();
+                else
+                    ClearEquippedWeaponRuntime();
             }
 
             return true;
@@ -216,6 +242,12 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (string.IsNullOrWhiteSpace(instanceId))
             return false;
 
+        ResolveReferences();
+
+        string requesterOwnerId = equipment != null ? equipment.OwnerId : null;
+        if (CharacterEquipment.IsWeaponInstanceUnavailable(instanceId, requesterOwnerId, equipment))
+            return false;
+
         if (GetWeaponInstance(instanceId) == null)
             return false;
 
@@ -226,6 +258,38 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             SaveManager.Instance.Save();
 
         return equipped;
+    }
+
+    public bool EquipWeaponInstanceForOwner(string equipmentOwnerId, string instanceId)
+    {
+        if (string.IsNullOrWhiteSpace(equipmentOwnerId) || string.IsNullOrWhiteSpace(instanceId))
+            return false;
+
+        if (!TryGetWeaponInstanceWithDefinition(instanceId, out _, out _))
+            return false;
+
+        if (CharacterEquipment.IsWeaponInstanceUnavailable(instanceId, equipmentOwnerId, null))
+            return false;
+
+        if (CharacterEquipment.TryFindSceneEquipmentByOwner(equipmentOwnerId, out CharacterEquipment targetEquipment))
+        {
+            bool equipped = targetEquipment.EquipFromInventory(this, instanceId);
+            if (equipped && targetEquipment.IsPlayerEquipment)
+                SetEquippedWeaponInstanceId(instanceId);
+
+            if (equipped && SaveManager.Instance != null)
+                SaveManager.Instance.Save();
+
+            return equipped;
+        }
+
+        if (CharacterEquipment.IsWeaponInstanceEquippedByOther(instanceId, null))
+            return false;
+
+        if (SaveManager.Instance != null)
+            SaveManager.Instance.Save();
+
+        return CharacterEquipment.SaveEquipmentAssignment(equipmentOwnerId, instanceId, this);
     }
 
     public WeaponInstanceData GetWeaponInstance(string instanceId)
@@ -246,6 +310,22 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
 
         return null;
+    }
+
+    public bool TryGetWeaponInstanceWithDefinition(
+        string instanceId,
+        out GunConfig weaponDefinition,
+        out WeaponInstanceData weaponInstance)
+    {
+        weaponDefinition = null;
+        weaponInstance = null;
+
+        weaponInstance = GetWeaponInstance(instanceId);
+        if (weaponInstance == null)
+            return false;
+
+        weaponDefinition = ResolveWeaponDefinition(weaponInstance.baseWeaponId);
+        return weaponDefinition != null;
     }
 
     public bool HasItem(ItemDefinition item, int amount = 1)
@@ -405,11 +485,14 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (data == null)
             return;
 
+        SyncEquippedWeaponIdFromEquipment();
+
         data.inventory = ToData();
         if (data.weapon == null)
             data.weapon = new PlayerWeaponData();
 
         data.weapon.equippedWeaponInstanceId = equippedWeaponInstanceId;
+        CharacterEquipment.WriteSceneEquipmentToSave(data, this);
     }
 
     public void OnLoad(GameSaveData data)
@@ -430,11 +513,16 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         else
             EnsureSlotCount();
 
-        SetEquippedWeaponInstanceId(data.weapon != null ? data.weapon.equippedWeaponInstanceId : equippedWeaponInstanceId);
+        string legacyEquippedWeaponId = data.weapon != null ? data.weapon.equippedWeaponInstanceId : equippedWeaponInstanceId;
+        SetEquippedWeaponInstanceId(legacyEquippedWeaponId);
 
         ForceRefreshGoldUI();
         EnsureDefaultWeaponInstance();
         ApplyEquippedWeaponIfPossible();
+
+        string equipmentPlayerWeaponId = CharacterEquipment.ApplySceneEquipmentFromInventory(data, this, equippedWeaponInstanceId);
+        if (!string.IsNullOrWhiteSpace(equipmentPlayerWeaponId))
+            SetEquippedWeaponInstanceId(equipmentPlayerWeaponId);
     }
 
     void InitializeInventorySystem()
@@ -460,10 +548,11 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (TryAssignFirstWeaponInstance())
             return;
 
-        if (ctx == null || ctx.currentWeapon == null)
+        GunConfig defaultWeapon = ResolveDefaultWeaponDefinition();
+        if (defaultWeapon == null)
             return;
 
-        var defaultInstance = WeaponInstanceFactory.CreatePlainInstance(ctx.currentWeapon);
+        var defaultInstance = WeaponInstanceFactory.CreatePlainInstance(defaultWeapon);
         if (!AddWeaponInstance(defaultInstance))
             return;
 
@@ -504,6 +593,9 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             return false;
         }
 
+        if (equipment != null)
+            return equipment.Equip(weaponDef, instance);
+
         if (ctx != null)
             ctx.currentWeapon = weaponDef;
 
@@ -511,6 +603,52 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             weaponSystem.Equip(weaponDef, instance);
 
         return true;
+    }
+
+    void ClearEquippedWeaponRuntime()
+    {
+        ResolveReferences();
+
+        if (equipment != null)
+        {
+            equipment.ClearEquipment();
+            return;
+        }
+
+        if (ctx != null)
+            ctx.currentWeapon = null;
+
+        if (weaponSystem != null)
+            weaponSystem.Equip(null, null);
+    }
+
+    void SyncEquippedWeaponIdFromEquipment()
+    {
+        ResolveReferences();
+
+        if (equipment == null || string.IsNullOrWhiteSpace(equipment.EquippedWeaponInstanceId))
+            return;
+
+        SetEquippedWeaponInstanceId(equipment.EquippedWeaponInstanceId);
+    }
+
+    GunConfig ResolveDefaultWeaponDefinition()
+    {
+        ResolveReferences();
+
+        if (equipment != null && equipment.DefaultWeapon != null)
+            return equipment.DefaultWeapon;
+
+        if (ctx != null && ctx.currentWeapon != null)
+            return ctx.currentWeapon;
+
+        if (equipment != null && equipment.CurrentWeapon != null)
+            return equipment.CurrentWeapon;
+
+        if (weaponSystem != null && weaponSystem.CurrentWeapon != null)
+            return weaponSystem.CurrentWeapon;
+
+        return null;
     }
 
     GunConfig ResolveWeaponDefinition(string baseWeaponId)
@@ -530,6 +668,20 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             var fromItemDb = itemDatabase.GetItemById(baseWeaponId) as GunConfig;
             if (fromItemDb != null)
                 return fromItemDb;
+        }
+
+        if (equipment != null && equipment.CurrentWeapon != null)
+        {
+            var currentId = WeaponInstanceFactory.ResolveBaseWeaponId(equipment.CurrentWeapon);
+            if (string.Equals(currentId, baseWeaponId, StringComparison.Ordinal))
+                return equipment.CurrentWeapon;
+        }
+
+        if (equipment != null && equipment.DefaultWeapon != null)
+        {
+            var defaultId = WeaponInstanceFactory.ResolveBaseWeaponId(equipment.DefaultWeapon);
+            if (string.Equals(defaultId, baseWeaponId, StringComparison.Ordinal))
+                return equipment.DefaultWeapon;
         }
 
         if (ctx != null && ctx.currentWeapon != null)

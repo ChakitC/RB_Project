@@ -111,6 +111,7 @@ public class UILoadLaval : MonoBehaviour
     public void SendWeaponEquipmentData()
     {
         ResolveWeaponEquipmentUI();
+        EnsureBoundSlot();
 
         if (weaponEquipmentUI == null)
             return;
@@ -136,6 +137,7 @@ public class UILoadLaval : MonoBehaviour
     public void OpenWeaponEquipment()
     {
         ResolveWeaponEquipmentUI();
+        EnsureBoundSlot();
 
         if (weaponEquipmentObject == null)
             return;
@@ -147,6 +149,10 @@ public class UILoadLaval : MonoBehaviour
     public void CloseWeaponEquipment()
     {
         ResolveWeaponEquipmentUI();
+        EnsureBoundSlot();
+
+        if (_slot != null)
+            _slot.RefreshSelectedWeaponVisual();
 
         if (weaponEquipmentObject != null)
             weaponEquipmentObject.SetActive(false);
@@ -161,6 +167,51 @@ public class UILoadLaval : MonoBehaviour
     }
 
     private string ResolveBoundCharacterId()
+    {
+        EnsureBoundSlot();
+
+        if (_slot == null)
+            return null;
+
+        if (_slot.Selected != null && !string.IsNullOrWhiteSpace(_slot.Selected.characterId))
+            return _slot.Selected.characterId;
+
+        return _slot.IDCharacter;
+    }
+
+    private void EnsureBoundSlot()
+    {
+        if (_slot != null)
+            return;
+
+        PartySlot fallback = FindDefaultPartySlot();
+        if (fallback == null)
+            return;
+
+        _slot = fallback;
+        characterId = ResolveBoundCharacterIdWithoutFallback();
+        BindLevelSystem(_slot.levelSystem);
+    }
+
+    private PartySlot FindDefaultPartySlot()
+    {
+        var slots = FindObjectsByType<PartySlot>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        PartySlot best = null;
+
+        for (int i = 0; i < slots.Length; i++)
+        {
+            PartySlot slot = slots[i];
+            if (slot == null || slot.Selected == null)
+                continue;
+
+            if (best == null || slot.PartyIndex < best.PartyIndex)
+                best = slot;
+        }
+
+        return best;
+    }
+
+    private string ResolveBoundCharacterIdWithoutFallback()
     {
         if (_slot == null)
             return null;

@@ -622,6 +622,7 @@ public class Projectile : MonoBehaviour
         var prefab = _ctx.projectilePrefab != null ? _ctx.projectilePrefab : this;
 
         var p = Instantiate(prefab, pos, Quaternion.LookRotation(dir));
+        ProjectileLayerUtility.InheritLayer(p.gameObject, gameObject);
 
         var childCtx = _ctx;
         childCtx.dir = dir.normalized;

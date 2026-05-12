@@ -371,11 +371,7 @@ public class WeaponSystem : MonoBehaviour
 
         if (isReloading && shootInterruptsReload)
         {
-            if (reloadRoutine != null)
-                StopCoroutine(reloadRoutine);
-
-            isReloading = false;
-            reloadRoutine = null;
+            CancelReload();
         }
 
         switch (firingMode)
@@ -519,6 +515,7 @@ public class WeaponSystem : MonoBehaviour
         isReloading = false;
         isBursting = false;
         StopReloadCue();
+        ctx?.AnimBrain?.StopReloadAction();
 
         if (burstCo != null)
         {
@@ -801,6 +798,7 @@ public class WeaponSystem : MonoBehaviour
             return;
 
         var projectile = Instantiate(prefabComp, firePoint.position, firePoint.rotation);
+        ProjectileLayerUtility.ApplyForContext(projectile.gameObject, ctx);
 
         projectile.gunType = gunType;
         projectile.critRate = critRate;

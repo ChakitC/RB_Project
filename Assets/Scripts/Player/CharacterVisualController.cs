@@ -20,8 +20,8 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
     [SerializeField] public AnimancerComponent animancer;
 
     [Header("Bone (Humanoid preferred)")]
-    [SerializeField] private string rightHandName = "hand.r";
-    [SerializeField] private string leftHandName = "hand.l";
+    [SerializeField] private string rightHandName = "Weapon.R";
+    [SerializeField] private string leftHandName = "Weapon.L";
     public Animator animator;
 
     [Header("Optional Offsets")]
@@ -648,10 +648,25 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
 
     private Transform GetHandTransform(Animator anim, bool right)
     {
-        if (anim && anim.isHuman)
+        if (!anim)
+            return null;
+
+        var namedMount = FindChildByName(anim.transform, right ? rightHandName : leftHandName);
+        if (namedMount)
+            return namedMount;
+
+        namedMount = FindChildByName(anim.transform, right ? "Weapon.R" : "Weapon.L");
+        if (namedMount)
+            return namedMount;
+
+        namedMount = FindChildByName(anim.transform, right ? "hand.r" : "hand.l");
+        if (namedMount)
+            return namedMount;
+
+        if (anim.isHuman)
             return anim.GetBoneTransform(right ? HumanBodyBones.RightHand : HumanBodyBones.LeftHand);
 
-        return FindChildByName(anim.transform, right ? rightHandName : leftHandName);
+        return null;
     }
 
     private static Transform FindChildByName(Transform root, string targetName)

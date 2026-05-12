@@ -24,6 +24,7 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
 
     InventorySystem inventorySystem;
     string equipmentOwnerId;
+    bool hasSourceBinding;
 
     protected override DragItemUI DragVisual => dragItemUI;
     protected override Canvas RootCanvas => rootCanvas;
@@ -46,15 +47,27 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
 
     void Start()
     {
+        if (hasSourceBinding)
+        {
+            RefreshAll();
+            RefreshBoundPartySlotPreview();
+            return;
+        }
+
         if (inventorySource == null)
             inventorySource = ResolveInventorySource();
 
-        BindSource(inventorySource, characterId);
+        BindSource(inventorySource, characterId, boundPartySlot);
     }
 
     void OnDestroy()
     {
         UnbindCurrentSource();
+    }
+
+    void OnDisable()
+    {
+        RefreshBoundPartySlotPreview();
     }
 
     public void BindSource(PlayerInventory inventory)
@@ -70,6 +83,7 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
     public void BindSource(PlayerInventory inventory, string ownerCharacterId, PartySlot partySlot)
     {
         UnbindCurrentSource();
+        hasSourceBinding = true;
 
         inventorySource = inventory;
         characterId = ownerCharacterId;
@@ -87,6 +101,7 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
             inventorySource.OnEquippedWeaponChanged += HandleEquippedWeaponChanged;
 
         RefreshAll();
+        RefreshBoundPartySlotPreview();
     }
 
     PlayerInventory ResolveInventorySource()
@@ -202,7 +217,7 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
     void HandleEquippedWeaponChanged(string equippedInstanceId)
     {
         RefreshEquippedSlot();
-        RefreshBoundPartySlotPreview();
+        RefreshBoundPartySlotPreview(string.IsNullOrWhiteSpace(equipmentOwnerId) ? equippedInstanceId : null);
     }
 
     void HandleEquipDrop()
@@ -222,17 +237,22 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
         if (equipped)
         {
             RefreshEquippedSlot();
-            RefreshBoundPartySlotPreview();
+            RefreshBoundPartySlotPreview(instanceId);
             return;
         }
 
         Debug.LogWarning("[UIWeaponEquipment] Weapon is already equipped by another character or cannot be equipped.", this);
     }
 
-    void RefreshBoundPartySlotPreview()
+    void RefreshBoundPartySlotPreview(string preferredEquippedInstanceId = null)
     {
         if (boundPartySlot != null)
-            boundPartySlot.RefreshSelectedWeaponVisual();
+        {
+            if (string.IsNullOrWhiteSpace(preferredEquippedInstanceId))
+                preferredEquippedInstanceId = GetBoundEquippedWeaponInstanceId();
+
+            boundPartySlot.RefreshSelectedWeaponVisual(preferredEquippedInstanceId, inventorySource);
+        }
     }
 
     void RebuildWeaponSlotIndexCache()
@@ -345,6 +365,11 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
         if (string.IsNullOrWhiteSpace(equipmentOwnerId))
             return inventorySource.EquippedWeaponInstanceId;
 
+        var data = LoadCurrentGameData();
+        string savedInstanceId = CharacterEquipment.FindEquipmentEntry(data?.equipment, equipmentOwnerId);
+        if (!string.IsNullOrWhiteSpace(savedInstanceId))
+            return savedInstanceId;
+
         if (CharacterEquipment.TryFindSceneEquipmentByOwner(equipmentOwnerId, out var equipment) &&
             equipment != null &&
             !string.IsNullOrWhiteSpace(equipment.EquippedWeaponInstanceId))
@@ -352,8 +377,7 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
             return equipment.EquippedWeaponInstanceId;
         }
 
-        var data = LoadCurrentGameData();
-        return CharacterEquipment.FindEquipmentEntry(data?.equipment, equipmentOwnerId);
+        return null;
     }
 
     static GameSaveData LoadCurrentGameData()

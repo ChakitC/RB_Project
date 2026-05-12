@@ -21,6 +21,8 @@ public class PartySlot : MonoBehaviour
     [SerializeField] private CharacterStats selected;
 
     public int LoadOrder => -100;
+    public int CurrentSlot => currentSlot;
+    public int PartyIndex => partyIndex;
     public CharacterStats Selected => selected;
 
     void Awake()
@@ -87,10 +89,12 @@ public class PartySlot : MonoBehaviour
             levelSystem.SetState();
     }
 
-    public void RefreshSelectedWeaponVisual()
+    public void RefreshSelectedWeaponVisual(
+        string preferredEquippedInstanceId = null,
+        PlayerInventory preferredInventory = null)
     {
         EnsureVisualPreview();
-        visualPreview?.RefreshWeapon(selected);
+        visualPreview?.RefreshWeapon(selected, preferredEquippedInstanceId, preferredInventory);
     }
 
     public void ClearTemporarySelectObjects()

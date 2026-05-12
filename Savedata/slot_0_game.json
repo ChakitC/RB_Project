@@ -18,8 +18,8 @@
                         "secondaryValue": 0.0
                     },
                     "subAffixes": [],
-                    "shotCounter": 1674,
-                    "currentMagazine": 0
+                    "shotCounter": 1734,
+                    "currentMagazine": 30
                 }
             },
             {
@@ -120,8 +120,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 1195,
-                    "currentMagazine": 11
+                    "shotCounter": 1244,
+                    "currentMagazine": 22
                 }
             },
             {
@@ -154,8 +154,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 5198,
-                    "currentMagazine": 24
+                    "shotCounter": 5746,
+                    "currentMagazine": 28
                 }
             },
             {
@@ -193,11 +193,11 @@
                 }
             },
             {
-                "itemId": "",
-                "amount": 0,
+                "itemId": "RB.HMG.01",
+                "amount": 1,
                 "weaponInstance": {
-                    "instanceId": "",
-                    "baseWeaponId": "",
+                    "instanceId": "12dac3b40d764d29ae240974fc9a07e1",
+                    "baseWeaponId": "RB.HMG.01",
                     "rarity": 0,
                     "mainAffix": {
                         "affixId": "",
@@ -206,9 +206,17 @@
                         "hasSecondaryValue": false,
                         "secondaryValue": 0.0
                     },
-                    "subAffixes": [],
-                    "shotCounter": 0,
-                    "currentMagazine": -1
+                    "subAffixes": [
+                        {
+                            "affixId": "Damge.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 32.542301177978519,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        }
+                    ],
+                    "shotCounter": 20,
+                    "currentMagazine": 99
                 }
             },
             {
@@ -491,7 +499,7 @@
             },
             {
                 "ownerId": "character:ID.Feno",
-                "equippedWeaponInstanceId": "9c6715952d3a4641a26a26af87c72af8"
+                "equippedWeaponInstanceId": "12dac3b40d764d29ae240974fc9a07e1"
             },
             {
                 "ownerId": "ally:PartySlot1",

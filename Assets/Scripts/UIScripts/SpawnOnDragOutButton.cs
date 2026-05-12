@@ -5,11 +5,19 @@ using UnityEngine.EventSystems;
 public class SpawnOnDragOutButton : MonoBehaviour,
     IPointerDownHandler, IDragHandler, IPointerUpHandler
 {
+    const string SharedDragObjectName = "CharactorSelect_DragPooled";
+
+    static GameObject sharedDragObject;
+    static SpawnOnDragOutButton activeOwner;
+
     [Header("Spawn")]
     public GameObject prefab;
     public Transform worldParent;
     public Camera worldCamera;
     public Animator _Animator;
+
+    [Header("Drag Pool")]
+    [SerializeField] private Transform poolRoot;
 
     [Header("Match CharacterSelectManager Layers")]
     public LayerMask characterLayer;   
@@ -22,6 +30,7 @@ public class SpawnOnDragOutButton : MonoBehaviour,
     [Header("Integration")]
     public CharacterSelectManager selectManagerToDisable; 
     public bool disableManagerWhileDragging = true;
+    [SerializeField] private UILoadLaval loadLevelUI;
     
     [Header("Fixed Y")]
     public float fixedY = 0f;
@@ -40,6 +49,8 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
     GameObject _current;
     CharacterSelectable _selectable;
+    CharacterDragVisualPreview _dragVisual;
+    CharacterStats _currentDef;
     Vector3 _offset;
     float _startY;
     
@@ -71,6 +82,25 @@ public class SpawnOnDragOutButton : MonoBehaviour,
             CacheSlots();
         }
         
+    }
+
+    void OnDisable()
+    {
+        if (_current)
+        {
+            ReleaseDragObject(_current);
+            _current = null;
+            _selectable = null;
+            _dragVisual = null;
+            _currentDef = null;
+            _Animator = null;
+        }
+
+        _pressed = false;
+        _spawned = false;
+
+        if (disableManagerWhileDragging && selectManagerToDisable)
+            selectManagerToDisable.enabled = true;
     }
     
 
@@ -118,6 +148,9 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
             _current = null;
             _selectable = null;
+            _dragVisual = null;
+            _currentDef = null;
+            _Animator = null;
         }
 
         if (disableManagerWhileDragging && selectManagerToDisable)
@@ -130,23 +163,43 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
     void Spawn(Vector2 screenPos)
     {
-        if (!prefab) return;
         if (!worldCamera) worldCamera = Camera.main;
 
-        _current = Instantiate(prefab, worldParent);
+        var selected = ResolveSelectedCharacterDef();
+        if (!selected)
+        {
+            Debug.LogWarning("[SpawnOnDragOutButton] CharacterStats not found from this button or source prefab.", this);
+            return;
+        }
+
+        _current = AcquireDragObject();
+        if (!_current)
+            return;
+
+        _currentDef = selected;
+        _dragVisual = _current.GetComponent<CharacterDragVisualPreview>();
+        if (!_dragVisual || !_dragVisual.Build(selected))
+        {
+            ReleaseDragObject(_current);
+            _current = null;
+            _dragVisual = null;
+            _currentDef = null;
+            return;
+        }
 
         _selectable = _current.GetComponent<CharacterSelectable>();
         _selectable?.SetPicked(true);
 
 
-        _Animator = _current.GetComponentInChildren<Animator>(true);
+        _Animator = _dragVisual.Animator;
         if (_Animator != null)
         {
-            _Animator.SetBool("IsPicked", true); 
+            _dragVisual.SetPicked(true);
+            BuildDragWeaponPreview(selected);
         }
         else
         {
-            Debug.LogWarning("Spawned prefab has no Animator (or it's not on root).");
+            Debug.LogWarning("Drag preview has no Animator.", _current);
         }
         
         // หา pos จาก raycast เหมือนเดิม
@@ -165,6 +218,110 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
         _startY = _current.transform.position.y;
         _offset = Vector3.zero;
+    }
+
+    GameObject AcquireDragObject()
+    {
+        if (activeOwner && activeOwner != this)
+            activeOwner.ReleaseActiveDragObject();
+
+        if (!sharedDragObject)
+            sharedDragObject = CreateDragObject();
+
+        if (!sharedDragObject)
+            return null;
+
+        sharedDragObject.name = SharedDragObjectName;
+        sharedDragObject.transform.SetParent(worldParent, false);
+        sharedDragObject.SetActive(true);
+        activeOwner = this;
+        return sharedDragObject;
+    }
+
+    GameObject CreateDragObject()
+    {
+        var dragObject = new GameObject(SharedDragObjectName);
+        if (prefab)
+            dragObject.layer = prefab.layer;
+
+        dragObject.AddComponent<CharacterDefHolder>();
+        dragObject.AddComponent<CharacterDragVisualPreview>();
+        dragObject.AddComponent<CharacterDragWeaponPreview>();
+        dragObject.transform.SetParent(GetPoolParent(), false);
+        dragObject.SetActive(false);
+        return dragObject;
+    }
+
+    void ReleaseDragObject(GameObject dragObject)
+    {
+        if (!dragObject)
+            return;
+
+        var selectable = dragObject.GetComponent<CharacterSelectable>();
+        if (selectable)
+            selectable.SetPicked(false);
+
+        var visual = dragObject.GetComponent<CharacterDragVisualPreview>();
+        if (visual)
+            visual.SetPicked(false);
+
+        dragObject.transform.SetParent(GetPoolParent(), false);
+        dragObject.SetActive(false);
+
+        if (dragObject == sharedDragObject && activeOwner == this)
+            activeOwner = null;
+    }
+
+    Transform GetPoolParent()
+    {
+        if (poolRoot)
+            return poolRoot;
+
+        return worldParent;
+    }
+
+    void ReleaseActiveDragObject()
+    {
+        if (!_current)
+            return;
+
+        ReleaseDragObject(_current);
+        _current = null;
+        _selectable = null;
+        _dragVisual = null;
+        _currentDef = null;
+        _Animator = null;
+        _pressed = false;
+        _spawned = false;
+
+        if (disableManagerWhileDragging && selectManagerToDisable)
+            selectManagerToDisable.enabled = true;
+    }
+
+    CharacterStats ResolveSelectedCharacterDef()
+    {
+        var holder = GetComponentInChildren<CharacterDefHolder>(true);
+        if (holder && holder.def)
+            return holder.def;
+
+        if (!prefab)
+            return null;
+
+        holder = prefab.GetComponentInChildren<CharacterDefHolder>(true);
+        return holder ? holder.def : null;
+    }
+
+    void BuildDragWeaponPreview(CharacterStats selected)
+    {
+        if (!_current || !selected)
+            return;
+
+        var weaponPreview = _current.GetComponent<CharacterDragWeaponPreview>();
+        if (!weaponPreview)
+            weaponPreview = _current.AddComponent<CharacterDragWeaponPreview>();
+
+        weaponPreview.SetAnimator(_Animator);
+        weaponPreview.Build(selected, partyIndex: -1);
     }
 
 
@@ -194,7 +351,7 @@ public class SpawnOnDragOutButton : MonoBehaviour,
         if (!newObj) return;
         if (_slots == null || _slots.Length == 0)
         {
-            DestroyDragObject(newObj);
+            ReleaseDragObject(newObj);
             return;
         }
 
@@ -226,14 +383,14 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
         if (!best)
         {
-            DestroyDragObject(newObj);
+            ReleaseDragObject(newObj);
             return;
         }
 
         // ถ้าไกลเกิน ไม่ถือว่าลง slot
         if (bestSqr > snapMaxDistance * snapMaxDistance)
         {
-            DestroyDragObject(newObj);
+            ReleaseDragObject(newObj);
             return;
         }
 
@@ -253,16 +410,7 @@ public class SpawnOnDragOutButton : MonoBehaviour,
         }
 
         SyncDroppedCharacterToSlot(best, newRoot);
-        DestroyDragObject(newObj);
-    }
-
-    void DestroyDragObject(GameObject dragObject)
-    {
-        if (!dragObject)
-            return;
-
-        dragObject.SetActive(false);
-        Destroy(dragObject);
+        ReleaseDragObject(newObj);
     }
 
     bool IsReplaceableSlotChild(Transform child, Transform newRoot)
@@ -298,12 +446,35 @@ public class SpawnOnDragOutButton : MonoBehaviour,
         if (!slot)
             return;
 
+        CharacterStats droppedDef = null;
+
         var holder = characterRoot.GetComponentInChildren<CharacterDefHolder>(true);
-        if (!holder || !holder.def)
+        if (holder && holder.def)
+            droppedDef = holder.def;
+
+        if (!droppedDef && _current && characterRoot == _current.transform)
+            droppedDef = _currentDef;
+
+        if (!droppedDef)
             return;
 
-        slot.SetCharacterDef(holder.def, true);
+        slot.SetCharacterDef(droppedDef, true);
         slot.RefreshSelectedCharacterVisual();
+        BindLoadLevelUIToSlot(slot);
+    }
+
+    void BindLoadLevelUIToSlot(PartySlot slot)
+    {
+        if (!slot)
+            return;
+
+        if (!loadLevelUI && transform.root)
+            loadLevelUI = transform.root.GetComponentInChildren<UILoadLaval>(true);
+
+        if (!loadLevelUI)
+            loadLevelUI = FindFirstObjectByType<UILoadLaval>(FindObjectsInactive.Include);
+
+        loadLevelUI?.BindSlot(slot);
     }
 
     void CacheSlots()

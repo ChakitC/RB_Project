@@ -120,6 +120,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private Locomotion_Skill skill;
     private Locomotion_Utility utility;
     private Action_Reload reloadState;
+    private Locomotion_Reload fullBodyReloadState;
     private LocomotionState_Live locomotion;
     private Locomotion_MeleeCombo meleeCombo;
     private Action_Empty empty;
@@ -161,6 +162,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private ClipTransition ShootHoldLoopClip => AnimProfile.shootHoldLoop;
     private float HoldPulseMinInterval => AnimProfile.holdPulseMinInterval;
     private ClipTransition ReloadClip => AnimProfile.reload;
+    private CharacterAnimProfileSO.ReloadBodyMode ReloadMode => AnimProfile.reloadBodyMode;
     private MeleeComboSO DefaultMeleeCombo => AnimProfile.meleeCombo;
     private MeleeComboSO LightCombo => AnimProfile.lightCombo;
     private MeleeComboSO HeavyCombo => AnimProfile.heavyCombo;
@@ -205,6 +207,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
          locomotionSM.CurrentState == utility ||
          locomotionSM.CurrentState == chain ||
          locomotionSM.CurrentState == meleeCombo ||
+         locomotionSM.CurrentState == fullBodyReloadState ||
          locomotionSM.CurrentState == knockbackState ||
          locomotionSM.CurrentState == deadState ||
          locomotionSM.CurrentState == statusEffectState);
@@ -304,6 +307,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         shootOnce = new Action_ShootPulse(this);
         shootHold = new Action_ShootHold(this);
         reloadState = new Action_Reload(this);
+        fullBodyReloadState = new Locomotion_Reload(this);
         dashState = new Locomotion_Dash(this);
         knockbackState = new Locomotion_Knockback(this);
         deadState = new Locomotion_Dead(this);
@@ -344,7 +348,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
                 break;
 
             case PendingAction.Reload:
-                actionSM.TrySetState(reloadState);
+                PlayReloadNow();
                 break;
 
             case PendingAction.Melee:
@@ -527,7 +531,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!TryInitialize())
             return;
 
-        actionSM.TrySetState(reloadState);
+        PlayReloadNow();
     }
 
     public void PlayDash(float dashDuration, Vector2 dashDirLocal)
@@ -579,6 +583,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (IsDowned || locomotionSM.CurrentState == deadState)
             return false;
 
+        StopReloadAction();
         knockbackState.SetKnockback(knockback);
 
         try
@@ -704,6 +709,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!TryInitialize() || !HasValidSkillClip(skillDef))
             return;
 
+        if (IsShootBlockingPlaybackActive)
+            return;
+
+        StopReloadAction();
         ClearActiveSkillRequest();
         _activeSkillDefinition = skillDef;
         locomotionSM.TryResetState(skill);
@@ -734,6 +743,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!TryInitialize() || !HasValidSkillClip(skillDef))
             return false;
 
+        if (IsShootBlockingPlaybackActive)
+            return false;
+
+        StopReloadAction();
         ArmSkillRequest(requestId, skillDef, castPointNormalized, timelineEventNames);
 
         try
@@ -761,6 +774,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!TryInitialize() || !HasValidUtilityWarpOutClip())
             return false;
 
+        StopReloadAction();
         ArmUtilityRequest(requestId, UtilityWarpOutCastPointNormalized);
 
         try
@@ -846,6 +860,23 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     
     // ===================== Helpers =====================
     
+    private void PlayReloadNow()
+    {
+        if (!_initialized)
+            return;
+
+        if (ReloadMode == CharacterAnimProfileSO.ReloadBodyMode.FullBody)
+        {
+            if (locomotionSM.CurrentState == fullBodyReloadState)
+                locomotionSM.TryResetState(fullBodyReloadState);
+            else
+                locomotionSM.TrySetState(fullBodyReloadState);
+            return;
+        }
+
+        actionSM.TrySetState(reloadState);
+    }
+
     public void StopReloadAction()
     {
         if (IsChainPlaybackActive)
@@ -857,6 +888,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         {
             reloadState.CancelNow();
             actionSM.TrySetState(empty);
+        }
+
+        if (locomotionSM.CurrentState == fullBodyReloadState)
+        {
+            fullBodyReloadState.CancelNow();
+            locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
         }
     }
 
@@ -994,6 +1031,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
             meleeController?.InterruptMelee();
         }
+
+        if (hardOverride && locomotionSM.CurrentState == fullBodyReloadState)
+            fullBodyReloadState.CancelNow();
 
         bool canTakeOver = hardOverride ||
                            locomotionSM.CurrentState == locomotion ||

@@ -113,6 +113,7 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
                 prefab.gameObject,
                 context.CastOrigin.position,
                 Quaternion.LookRotation(dir, Vector3.up));
+            ProjectileLayerUtility.ApplyForSkillUser(projectileObject, context.User);
 
             Projectile projectileInstance = projectileObject.GetComponent<Projectile>();
             if (projectileInstance == null)

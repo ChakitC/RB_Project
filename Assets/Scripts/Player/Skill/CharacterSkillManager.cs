@@ -106,6 +106,12 @@ public class CharacterSkillManager : MonoBehaviour
         if (castOrchestrator != null && castOrchestrator.HasPendingCast)
             return;
 
+        if (IsSkillStartBlockedByAnimation())
+        {
+            pendingSlot = null;
+            return;
+        }
+
         pendingSlot = null;
         if (autonomousSlots == null)
             return;
@@ -153,6 +159,7 @@ public class CharacterSkillManager : MonoBehaviour
         return slot != null &&
                slot.runtimeSkill != null &&
                skillUser != null &&
+               !IsSkillStartBlockedByAnimation() &&
                !IsSkillUseBlocked() &&
                slot.runtimeSkill.CanCast(skillUser);
     }
@@ -164,6 +171,7 @@ public class CharacterSkillManager : MonoBehaviour
         return playerCommandSkill != null &&
                playerCommandSkill.runtimeSkill != null &&
                skillUser != null &&
+               !IsSkillStartBlockedByAnimation() &&
                !IsSkillUseBlocked() &&
                playerCommandSkill.runtimeSkill.CanCast(skillUser);
     }
@@ -282,6 +290,9 @@ public class CharacterSkillManager : MonoBehaviour
         if (slot == null || slot.runtimeSkill == null || skillUser == null)
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
+        if (IsSkillStartBlockedByAnimation())
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+
         EnsureCastOrchestrator();
         SkillInstance runtimeSkill = slot.runtimeSkill;
         SkillCastStartResult result = castOrchestrator.TryStartCast(new SkillCastRequest(
@@ -307,6 +318,9 @@ public class CharacterSkillManager : MonoBehaviour
         EnsureRuntimeSkill(entry);
 
         if (entry == null || entry.runtimeSkill == null || skillUser == null)
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+
+        if (IsSkillStartBlockedByAnimation())
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         EnsureCastOrchestrator();
@@ -611,6 +625,11 @@ public class CharacterSkillManager : MonoBehaviour
     private bool IsSkillUseBlocked()
     {
         return ctx != null && ctx.stateHub != null && !ctx.stateHub.CanUseSkill();
+    }
+
+    private bool IsSkillStartBlockedByAnimation()
+    {
+        return animBrain != null && animBrain.IsShootBlockingPlaybackActive;
     }
 
     private void StopWeaponActivityForSkillCast()

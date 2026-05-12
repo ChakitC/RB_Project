@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -10,8 +9,8 @@ public class PartySlotVisualPreview : MonoBehaviour
     [SerializeField] private WeaponDatabase weaponDatabase;
 
     [Header("Weapon Preview")]
-    [SerializeField] private string rightHandName = "hand.r";
-    [SerializeField] private string leftHandName = "hand.l";
+    [SerializeField] private string rightHandName = "Weapon.R";
+    [SerializeField] private string leftHandName = "Weapon.L";
 
     [SerializeField] private Vector3 rightLocalPos;
     [SerializeField] private Vector3 rightLocalRotEuler;
@@ -65,6 +64,7 @@ public class PartySlotVisualPreview : MonoBehaviour
 
         currentModel = Instantiate(selected.CharacterPrefabBasement, modelRoot, false);
         currentModel.name = $"{selected.name}_Preview";
+        DisablePreviewEquipmentSaveParticipation(currentModel);
 
         var t = currentModel.transform;
         t.localPosition = Vector3.zero;
@@ -90,7 +90,10 @@ public class PartySlotVisualPreview : MonoBehaviour
         RefreshWeapon(selected);
     }
 
-    public void RefreshWeapon(CharacterStats selected)
+    public void RefreshWeapon(
+        CharacterStats selected,
+        string preferredEquippedInstanceId = null,
+        PlayerInventory preferredInventory = null)
     {
         ClearWeaponPreview();
 
@@ -103,8 +106,18 @@ public class PartySlotVisualPreview : MonoBehaviour
         if (!useRightHand && !useLeftHand)
             return;
 
-        if (!TryResolveSelectedCharacterWeapon(selected, out var weapon) || weapon == null)
+        if (!CharacterWeaponPreviewResolver.TryResolveSelectedCharacterWeapon(
+                selected,
+                currentSlot,
+                partyIndex,
+                weaponDatabase,
+                preferredInventory,
+                preferredEquippedInstanceId,
+                out var weapon) ||
+            weapon == null)
+        {
             return;
+        }
 
         if (useRightHand)
             rightWeaponObj = SpawnWeaponOnHand(weapon, rightHand: true);
@@ -212,6 +225,16 @@ public class PartySlotVisualPreview : MonoBehaviour
         return child.name.IndexOf("Select", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
+    static void DisablePreviewEquipmentSaveParticipation(GameObject root)
+    {
+        if (!root)
+            return;
+
+        var equipments = root.GetComponentsInChildren<CharacterEquipment>(true);
+        for (int i = 0; i < equipments.Length; i++)
+            equipments[i].SetPlayerInventorySaveParticipation(false);
+    }
+
     GameObject SpawnWeaponOnHand(GunConfig weapon, bool rightHand)
     {
         var hand = GetHandTransform(animator, rightHand);
@@ -255,194 +278,6 @@ public class PartySlotVisualPreview : MonoBehaviour
         };
     }
 
-    bool TryResolveSelectedCharacterWeapon(CharacterStats selected, out GunConfig weapon)
-    {
-        weapon = null;
-
-        if (selected == null)
-            return false;
-
-        string ownerId = CharacterEquipment.BuildCharacterOwnerId(selected.characterId);
-        if (string.IsNullOrWhiteSpace(ownerId))
-            return false;
-
-        if (TryResolveCharacterWeaponFromSceneEquipment(ownerId, out weapon))
-            return true;
-
-        var data = LoadCurrentGameData();
-        string equippedId = CharacterEquipment.FindEquipmentEntry(data?.equipment, ownerId);
-        if (string.IsNullOrWhiteSpace(equippedId) && partyIndex == 0)
-            equippedId = data?.weapon?.equippedWeaponInstanceId;
-
-        if (string.IsNullOrWhiteSpace(equippedId))
-            return false;
-
-        if (TryResolveWeaponFromRuntimeInventory(equippedId, out weapon))
-            return true;
-
-        return TryResolveWeaponFromSave(data, equippedId, out weapon);
-    }
-
-    bool TryResolveCharacterWeaponFromSceneEquipment(string ownerId, out GunConfig weapon)
-    {
-        weapon = null;
-
-        if (!CharacterEquipment.TryFindSceneEquipmentByOwner(ownerId, out var equipment) || equipment == null)
-            return false;
-
-        if (equipment.CurrentWeapon != null)
-        {
-            weapon = equipment.CurrentWeapon;
-            return true;
-        }
-
-        string equippedId = equipment.EquippedWeaponInstanceId;
-        if (string.IsNullOrWhiteSpace(equippedId))
-            return false;
-
-        return TryResolveWeaponFromRuntimeInventory(equippedId, out weapon);
-    }
-
-    bool TryResolveWeaponFromRuntimeInventory(string equippedId, out GunConfig weapon)
-    {
-        weapon = null;
-
-        if (string.IsNullOrWhiteSpace(equippedId))
-            return false;
-
-        var inventories = Object.FindObjectsByType<PlayerInventory>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        for (int i = 0; i < inventories.Length; i++)
-        {
-            var inventory = inventories[i];
-            if (!inventory)
-                continue;
-
-            string baseWeaponId = FindBaseWeaponId(inventory.Slots, equippedId);
-            if (TryResolveWeaponDefinition(baseWeaponId, inventory, out weapon))
-                return true;
-        }
-
-        return false;
-    }
-
-    bool TryResolveWeaponFromSave(GameSaveData data, string equippedId, out GunConfig weapon)
-    {
-        weapon = null;
-
-        if (data == null || string.IsNullOrWhiteSpace(equippedId))
-            return false;
-
-        string baseWeaponId = FindBaseWeaponId(data.inventory?.slots, equippedId);
-        return TryResolveWeaponDefinition(baseWeaponId, null, out weapon);
-    }
-
-    GameSaveData LoadCurrentGameData()
-    {
-        int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : currentSlot;
-        return SaveSystem.LoadGame(saveSlot);
-    }
-
-    bool TryResolveWeaponDefinition(string baseWeaponId, PlayerInventory sourceInventory, out GunConfig weapon)
-    {
-        weapon = null;
-
-        if (string.IsNullOrWhiteSpace(baseWeaponId))
-            return false;
-
-        if (weaponDatabase != null)
-        {
-            weapon = weaponDatabase.GetById(baseWeaponId);
-            if (weapon != null)
-                return true;
-        }
-
-        if (sourceInventory != null && sourceInventory.itemDatabase != null)
-        {
-            weapon = sourceInventory.itemDatabase.GetItemById(baseWeaponId) as GunConfig;
-            if (weapon != null)
-                return true;
-        }
-
-        var loadedWeaponDatabases = Resources.FindObjectsOfTypeAll<WeaponDatabase>();
-        for (int i = 0; i < loadedWeaponDatabases.Length; i++)
-        {
-            var loadedDb = loadedWeaponDatabases[i];
-            if (!loadedDb)
-                continue;
-
-            weapon = loadedDb.GetById(baseWeaponId);
-            if (weapon != null)
-                return true;
-        }
-
-        var loadedItemDatabases = Resources.FindObjectsOfTypeAll<ItemDatabase>();
-        for (int i = 0; i < loadedItemDatabases.Length; i++)
-        {
-            var loadedDb = loadedItemDatabases[i];
-            if (!loadedDb)
-                continue;
-
-            weapon = loadedDb.GetItemById(baseWeaponId) as GunConfig;
-            if (weapon != null)
-                return true;
-        }
-
-        var loadedWeapons = Resources.FindObjectsOfTypeAll<GunConfig>();
-        for (int i = 0; i < loadedWeapons.Length; i++)
-        {
-            var candidate = loadedWeapons[i];
-            if (!candidate)
-                continue;
-
-            string candidateId = WeaponInstanceFactory.ResolveBaseWeaponId(candidate);
-            if (!string.Equals(candidateId, baseWeaponId, StringComparison.Ordinal))
-                continue;
-
-            weapon = candidate;
-            return true;
-        }
-
-        return false;
-    }
-
-    static string FindBaseWeaponId(IReadOnlyList<InventorySlotData> slots, string equippedInstanceId)
-    {
-        if (slots == null || string.IsNullOrWhiteSpace(equippedInstanceId))
-            return null;
-
-        for (int i = 0; i < slots.Count; i++)
-        {
-            var slot = slots[i];
-            var instance = slot?.weaponInstance;
-            if (instance == null)
-                continue;
-
-            if (string.Equals(instance.instanceId, equippedInstanceId, StringComparison.Ordinal))
-                return instance.baseWeaponId;
-        }
-
-        return null;
-    }
-
-    static string FindBaseWeaponId(IReadOnlyList<InventorySlotSaveData> slots, string equippedInstanceId)
-    {
-        if (slots == null || string.IsNullOrWhiteSpace(equippedInstanceId))
-            return null;
-
-        for (int i = 0; i < slots.Count; i++)
-        {
-            var slot = slots[i];
-            var instance = slot?.weaponInstance;
-            if (instance == null)
-                continue;
-
-            if (string.Equals(instance.instanceId, equippedInstanceId, StringComparison.Ordinal))
-                return instance.baseWeaponId;
-        }
-
-        return null;
-    }
-
     static bool ShouldUseRightHand(CharacterStats stats)
     {
         if (!stats)
@@ -466,10 +301,22 @@ public class PartySlotVisualPreview : MonoBehaviour
         if (!anim)
             return null;
 
+        var namedMount = FindChildByName(anim.transform, rightHand ? rightHandName : leftHandName);
+        if (namedMount)
+            return namedMount;
+
+        namedMount = FindChildByName(anim.transform, rightHand ? "Weapon.R" : "Weapon.L");
+        if (namedMount)
+            return namedMount;
+
+        namedMount = FindChildByName(anim.transform, rightHand ? "hand.r" : "hand.l");
+        if (namedMount)
+            return namedMount;
+
         if (anim.isHuman)
             return anim.GetBoneTransform(rightHand ? HumanBodyBones.RightHand : HumanBodyBones.LeftHand);
 
-        return FindChildByName(anim.transform, rightHand ? rightHandName : leftHandName);
+        return null;
     }
 
     static Transform FindChildByName(Transform root, string targetName)

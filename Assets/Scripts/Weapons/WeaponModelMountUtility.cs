@@ -57,7 +57,7 @@ public static class WeaponModelMountUtility
         return rightHand ? fallbackRight : fallbackLeft;
     }
 
-    static void ApplyOffset(Transform target, WeaponModelMountOffset offset)
+    public static void ApplyOffset(Transform target, WeaponModelMountOffset offset)
     {
         if (!target)
             return;

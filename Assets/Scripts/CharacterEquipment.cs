@@ -38,6 +38,11 @@ public class CharacterEquipment : MonoBehaviour
     public event Action<string> OnEquippedWeaponChanged;
     public event Action<GunConfig, WeaponInstanceData> OnEquipmentChanged;
 
+    public void SetPlayerInventorySaveParticipation(bool participates)
+    {
+        usePlayerInventorySave = participates;
+    }
+
     public static string BuildCharacterOwnerId(string characterId)
     {
         if (string.IsNullOrWhiteSpace(characterId))

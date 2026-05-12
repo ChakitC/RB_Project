@@ -51,6 +51,7 @@ public class ShootManager : MonoBehaviour
         Quaternion rot = Quaternion.LookRotation(direction);
 
         GameObject bulletObj = Object.Instantiate(bulletPrefab, origin, rot);
+        ProjectileLayerUtility.ApplyForSource(bulletObj, shooter);
 
         Bullet bullet = bulletObj.GetComponent<Bullet>();
         if (bullet != null)

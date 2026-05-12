@@ -7,6 +7,12 @@ using Object = UnityEngine.Object;
 [CreateAssetMenu(menuName = "Game/Characters/Animation Profile", fileName = "CharacterAnimProfile")]
 public sealed class CharacterAnimProfileSO : ScriptableObject
 {
+    public enum ReloadBodyMode
+    {
+        UpperBody = 0,
+        FullBody = 1,
+    }
+
     [Serializable]
     public sealed class DirectionalClipSet2D
     {
@@ -201,8 +207,10 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     public ClipTransition shootHoldLoop;
     [Min(0f)] public float holdPulseMinInterval = 0.08f;
 
-    [Header("Reload (Layer 1)")]
+    [Header("Reload (Layer 1 or Full Body)")]
     public ClipTransition reload;
+    [Tooltip("UpperBody blends reload over locomotion using the action mask. FullBody plays reload on the locomotion layer and temporarily owns the whole character.")]
+    public ReloadBodyMode reloadBodyMode = ReloadBodyMode.UpperBody;
 
     [Header("Melee Combo")]
     public MeleeComboSO meleeCombo;

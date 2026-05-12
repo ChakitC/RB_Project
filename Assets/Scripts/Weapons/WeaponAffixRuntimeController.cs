@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class WeaponAffixRuntimeController : MonoBehaviour, IStatModifierProvider
+public class WeaponAffixRuntimeController : MonoBehaviour, IStatModifierProvider, IWeaponRuntimeEffectHandler
 {
     [Header("Refs")]
     [SerializeField] private WeaponSystem weaponSystem;

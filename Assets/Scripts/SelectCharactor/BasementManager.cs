@@ -13,6 +13,7 @@ public class BasementContext : MonoBehaviour
 
 
    public UIInventory Inventory;
+   public ShopPanelUI Shop;
 
    private void Awake()
    {
@@ -21,5 +22,6 @@ public class BasementContext : MonoBehaviour
       if (!camManager) camManager = GetComponent<CameraManager>();
       if (!characterSelectManager) characterSelectManager = GetComponent<CharacterSelectManager>();
       if (!uiBaseMentManager) uiBaseMentManager = GetComponent<UiBaseMentManager>();
+      if (!Shop) Shop = GetComponentInChildren<ShopPanelUI>(true);
    }
 }

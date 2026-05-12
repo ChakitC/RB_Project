@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using TMPro;
 using UnityEngine;
@@ -291,6 +292,7 @@ public class InventorySlotTooltipUI : MonoBehaviour
         if (slotData.HasWeaponInstance && slotData.weaponInstance != null)
         {
             builder.Append("Rarity: ").AppendLine(slotData.weaponInstance.rarity.ToString());
+            AppendWeaponUpgradeSummary(builder, slotData.weaponInstance);
         }
 
         if (item is GunConfig gunConfig)
@@ -301,6 +303,7 @@ public class InventorySlotTooltipUI : MonoBehaviour
         }
 
         AppendWeaponAffixes(builder, slotData);
+        AppendWeaponUpgradeMilestones(builder, slotData, item as GunConfig);
 
         if (!string.IsNullOrWhiteSpace(item.description))
         {
@@ -311,6 +314,18 @@ public class InventorySlotTooltipUI : MonoBehaviour
         }
 
         return builder.ToString().TrimEnd();
+    }
+
+    static void AppendWeaponUpgradeSummary(StringBuilder builder, WeaponInstanceData weaponInstance)
+    {
+        if (weaponInstance == null)
+            return;
+
+        if (weaponInstance.upgradeLevel > 0)
+            builder.Append("Upgrade: +").AppendLine(weaponInstance.upgradeLevel.ToString());
+
+        if (weaponInstance.upgradeTier > 0)
+            builder.Append("Tier: ").AppendLine(weaponInstance.upgradeTier.ToString());
     }
 
     static string ResolveMagazineText(InventorySlotData slotData, GunConfig gunConfig)
@@ -363,6 +378,161 @@ public class InventorySlotTooltipUI : MonoBehaviour
             subIndex++;
             AppendAffixLine(builder, $"Sub {subIndex}", rolledAffix);
         }
+    }
+
+    static void AppendWeaponUpgradeMilestones(
+        StringBuilder builder,
+        InventorySlotData slotData,
+        GunConfig gunConfig)
+    {
+        if (builder == null ||
+            slotData == null ||
+            !slotData.HasWeaponInstance ||
+            slotData.weaponInstance == null ||
+            !gunConfig ||
+            gunConfig.upgradeCurve == null ||
+            slotData.weaponInstance.upgradeLevel <= 0)
+        {
+            return;
+        }
+
+        var activeMilestones = new List<WeaponUpgradeMilestone>();
+        gunConfig.upgradeCurve.GetActiveMilestones(
+            activeMilestones,
+            gunConfig.WeaponType,
+            slotData.weaponInstance.upgradeLevel);
+
+        if (activeMilestones.Count == 0)
+            return;
+
+        if (builder.Length > 0)
+            builder.AppendLine();
+
+        builder.AppendLine("Upgrade Milestones:");
+
+        for (int i = 0; i < activeMilestones.Count; i++)
+        {
+            var milestone = activeMilestones[i];
+            if (milestone == null)
+                continue;
+
+            string milestoneName = ResolveUpgradeMilestoneName(milestone, i);
+            builder.Append("- ").Append(milestoneName);
+
+            string milestoneSummary = BuildUpgradeMilestoneSummary(milestone);
+            if (!string.IsNullOrWhiteSpace(milestoneSummary))
+                builder.Append(" (").Append(milestoneSummary).Append(')');
+
+            string description = ResolveUpgradeDescription(milestone.description);
+            if (!string.IsNullOrWhiteSpace(description))
+                builder.Append(" - ").Append(description);
+
+            builder.AppendLine();
+
+            AppendUpgradeMilestoneEffects(builder, milestone);
+        }
+    }
+
+    static void AppendUpgradeMilestoneEffects(StringBuilder builder, WeaponUpgradeMilestone milestone)
+    {
+        if (builder == null || milestone == null || milestone.effects == null)
+            return;
+
+        for (int i = 0; i < milestone.effects.Count; i++)
+        {
+            var effect = milestone.effects[i];
+            if (effect == null || effect.effectType == WeaponUpgradeEffectType.None)
+                continue;
+
+            string effectName = ResolveUpgradeEffectName(effect, milestone, i);
+            string effectSummary = BuildUpgradeEffectSummary(effect);
+            string effectDescription = ResolveUpgradeDescription(effect.description);
+
+            builder.Append("  - ").Append(effectName);
+
+            if (!string.IsNullOrWhiteSpace(effectSummary))
+                builder.Append(": ").Append(effectSummary);
+
+            if (!string.IsNullOrWhiteSpace(effectDescription))
+                builder.Append(" - ").Append(effectDescription);
+
+            builder.AppendLine();
+        }
+    }
+
+    static string ResolveUpgradeMilestoneName(WeaponUpgradeMilestone milestone, int index)
+    {
+        if (milestone == null)
+            return "Unknown Milestone";
+
+        if (!string.IsNullOrWhiteSpace(milestone.displayName))
+            return milestone.displayName.Trim();
+
+        if (!string.IsNullOrWhiteSpace(milestone.milestoneId))
+            return milestone.milestoneId.Trim();
+
+        return $"+{Mathf.Max(1, milestone.requiredLevel)}";
+    }
+
+    static string ResolveUpgradeEffectName(WeaponUpgradeEffect effect, WeaponUpgradeMilestone milestone, int index)
+    {
+        if (effect == null)
+            return "Unknown Effect";
+
+        if (!string.IsNullOrWhiteSpace(effect.displayName))
+            return effect.displayName.Trim();
+
+        if (!string.IsNullOrWhiteSpace(effect.effectId))
+            return effect.effectId.Trim();
+
+        return MakeReadable(effect.effectType.ToString());
+    }
+
+    static string ResolveUpgradeDescription(string description)
+    {
+        return string.IsNullOrWhiteSpace(description) ? string.Empty : description.Trim();
+    }
+
+    static string BuildUpgradeMilestoneSummary(WeaponUpgradeMilestone milestone)
+    {
+        if (milestone == null)
+            return string.Empty;
+
+        if (!milestone.increaseTier)
+            return string.Empty;
+
+        return $"+{Mathf.Max(1, milestone.tierIncreaseAmount)} Tier";
+    }
+
+    static string BuildUpgradeEffectSummary(WeaponUpgradeEffect effect)
+    {
+        if (effect == null)
+            return string.Empty;
+
+        return effect.effectType switch
+        {
+            WeaponUpgradeEffectType.StatModifier => BuildUpgradeStatModifierSummary(effect),
+            WeaponUpgradeEffectType.ExtraProjectileChance => $"{FormatNumber(effect.procChance * 100f)}% extra projectile chance",
+            WeaponUpgradeEffectType.SpecialProjectileEveryNthShot => $"Every {Mathf.Max(1, effect.requiredShots)} shots",
+            WeaponUpgradeEffectType.TimedBuffOnReload => $"On reload: {BuildUpgradeStatModifierSummary(effect)} for {FormatNumber(effect.buffDurationSeconds)}s",
+            _ => string.Empty
+        };
+    }
+
+    static string BuildUpgradeStatModifierSummary(WeaponUpgradeEffect effect)
+    {
+        if (effect == null)
+            return string.Empty;
+
+        string statName = MakeReadable(effect.statType.ToString());
+
+        return effect.modifierOp switch
+        {
+            ModifierOp.Flat => $"{FormatSignedNumber(effect.value)} {statName}",
+            ModifierOp.AddPercent => $"{FormatSignedNumber(effect.value)}% {statName}",
+            ModifierOp.Multiply => $"x{FormatNumber(effect.value)} {statName}",
+            _ => $"{FormatSignedNumber(effect.value)} {statName}"
+        };
     }
 
     static void AppendAffixHeader(StringBuilder builder)

@@ -175,6 +175,22 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         return added;
     }
 
+    public bool CanAddItem(ItemDefinition item, int amount = 1)
+    {
+        InitializeInventorySystem();
+
+        if (item == null || amount <= 0)
+            return false;
+
+        if (itemDatabase != null && itemDatabase.goldItem != null && item == itemDatabase.goldItem)
+            return true;
+
+        if (item is GunConfig gun && !item.stackable)
+            return inventorySystem.CanAddWeaponInstances(gun, amount);
+
+        return inventorySystem.CanAddItem(item, amount);
+    }
+
     public bool AddWeaponInstance(WeaponInstanceData weaponInstance)
     {
         InitializeInventorySystem();
@@ -310,6 +326,46 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
 
         return null;
+    }
+
+    public bool NotifyWeaponInstanceChanged(string instanceId)
+    {
+        InitializeInventorySystem();
+
+        int slotIndex = FindWeaponInstanceSlotIndex(instanceId);
+        if (slotIndex < 0)
+            return false;
+
+        inventorySystem.NotifySlotChanged(slotIndex);
+
+        if (string.Equals(equippedWeaponInstanceId, instanceId, StringComparison.Ordinal))
+        {
+            ResolveReferences();
+            ctx?.StatsHub?.MarkDirty();
+            weaponSystem?.NotifyWeaponInstanceChanged();
+        }
+
+        return true;
+    }
+
+    public int FindWeaponInstanceSlotIndex(string instanceId)
+    {
+        InitializeInventorySystem();
+
+        if (string.IsNullOrWhiteSpace(instanceId))
+            return -1;
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var slot = slots[i];
+            if (slot == null || !slot.HasWeaponInstance || slot.weaponInstance == null)
+                continue;
+
+            if (string.Equals(slot.weaponInstance.instanceId, instanceId, StringComparison.Ordinal))
+                return i;
+        }
+
+        return -1;
     }
 
     public bool TryGetWeaponInstanceWithDefinition(

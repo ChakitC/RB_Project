@@ -11,6 +11,9 @@ public class GunConfig : ItemDefinition
     public GameObject BulletPrefab; 
     public GameObject WeaponPrefab;
 
+    [Header("Upgrade")]
+    public WeaponUpgradeCurve upgradeCurve;
+
     [Header("Weapon Model Mount")]
     [ToggleLeft] public bool overrideWeaponModelMountOffset = false;
     public WeaponModelMountOffset rightHandWeaponModelMount = WeaponModelMountOffset.Identity;

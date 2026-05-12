@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(WeaponAffixRuntimeController))]
+[RequireComponent(typeof(WeaponUpgradeRuntimeController))]
 public class WeaponSystem : MonoBehaviour
 {
     const string DefaultFirePointName = "FirePoint";
@@ -87,6 +88,7 @@ public class WeaponSystem : MonoBehaviour
     bool isBursting;
 
     FiringMode firingMode = FiringMode.Auto;
+    readonly List<IWeaponRuntimeEffectHandler> runtimeEffectHandlers = new();
 
     void Awake()
     {
@@ -139,8 +141,13 @@ public class WeaponSystem : MonoBehaviour
         if (!affixRuntimeController)
             affixRuntimeController = GetComponent<WeaponAffixRuntimeController>();
 
+        if (Application.isPlaying && GetComponentInChildren<WeaponUpgradeRuntimeController>(true) == null)
+            gameObject.AddComponent<WeaponUpgradeRuntimeController>();
+
         if (ctx != null && ctx.WeaponSystem != this)
             ctx.WeaponSystem = this;
+
+        RebuildRuntimeEffectHandlers();
     }
 
     public bool RefreshFirePointReference(bool logIfMissing = false)
@@ -235,7 +242,7 @@ public class WeaponSystem : MonoBehaviour
         magazine = Mathf.Clamp(magazine, 0, MaxMagazine);
         SyncWeaponInstanceState();
 
-        affixRuntimeController?.NotifyWeaponEquipped();
+        NotifyRuntimeEffectHandlersWeaponEquipped();
         statsHub?.MarkDirty();
         RefreshWeaponVisual();
 
@@ -465,7 +472,7 @@ public class WeaponSystem : MonoBehaviour
         if (combatEventBus != null)
             combatEventBus.Publish(shotContext);
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnShotFired, gameObject);
-        affixRuntimeController?.HandleShotFired();
+        NotifyRuntimeEffectHandlersShotFired();
 
         if (magazine <= 0 && autoloader)
             TryReload();
@@ -675,7 +682,7 @@ public class WeaponSystem : MonoBehaviour
         StopReloadCue();
         SyncWeaponInstanceState();
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnReload, gameObject);
-        affixRuntimeController?.HandleReloadCompleted();
+        NotifyRuntimeEffectHandlersReloadCompleted();
         PublishReloadEvent();
     }
 
@@ -697,7 +704,7 @@ public class WeaponSystem : MonoBehaviour
         reloadRoutine = null;
         StopReloadCue();
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnReload, gameObject);
-        affixRuntimeController?.HandleReloadCompleted();
+        NotifyRuntimeEffectHandlersReloadCompleted();
         PublishReloadEvent();
     }
 
@@ -846,6 +853,70 @@ public class WeaponSystem : MonoBehaviour
             Debug.LogWarning("Projectile prefab is missing Projectile component.", prefab);
 
         return projectileComponent != null;
+    }
+
+    public void NotifyWeaponInstanceChanged()
+    {
+        ResolveReferences();
+
+        statsHub?.MarkDirty();
+        RefreshDerivedStats();
+        magazine = Mathf.Clamp(magazine, 0, MaxMagazine);
+        SyncWeaponInstanceState();
+        ctx?.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
+        NotifyRuntimeEffectHandlersWeaponEquipped();
+    }
+
+    void RebuildRuntimeEffectHandlers()
+    {
+        runtimeEffectHandlers.Clear();
+
+        AddRuntimeEffectHandler(affixRuntimeController);
+
+        Transform ownerRoot = ctx ? ctx.transform : transform.root;
+        if (!ownerRoot)
+            ownerRoot = transform;
+
+        var behaviours = ownerRoot.GetComponentsInChildren<MonoBehaviour>(true);
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            if (behaviours[i] is IWeaponRuntimeEffectHandler handler)
+                AddRuntimeEffectHandler(handler);
+        }
+    }
+
+    void AddRuntimeEffectHandler(IWeaponRuntimeEffectHandler handler)
+    {
+        if (handler == null || runtimeEffectHandlers.Contains(handler))
+            return;
+
+        runtimeEffectHandlers.Add(handler);
+    }
+
+    void NotifyRuntimeEffectHandlersWeaponEquipped()
+    {
+        RebuildRuntimeEffectHandlers();
+
+        for (int i = 0; i < runtimeEffectHandlers.Count; i++)
+            runtimeEffectHandlers[i]?.NotifyWeaponEquipped();
+    }
+
+    void NotifyRuntimeEffectHandlersShotFired()
+    {
+        if (runtimeEffectHandlers.Count == 0)
+            RebuildRuntimeEffectHandlers();
+
+        for (int i = 0; i < runtimeEffectHandlers.Count; i++)
+            runtimeEffectHandlers[i]?.HandleShotFired();
+    }
+
+    void NotifyRuntimeEffectHandlersReloadCompleted()
+    {
+        if (runtimeEffectHandlers.Count == 0)
+            RebuildRuntimeEffectHandlers();
+
+        for (int i = 0; i < runtimeEffectHandlers.Count; i++)
+            runtimeEffectHandlers[i]?.HandleReloadCompleted();
     }
 
     int ResolveStartingMagazine()

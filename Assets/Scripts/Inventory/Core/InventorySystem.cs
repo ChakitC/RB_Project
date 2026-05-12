@@ -106,6 +106,19 @@ public class InventorySystem
         return true;
     }
 
+    public bool CanAddItem(ItemDefinition item, int amount = 1)
+    {
+        if (item == null || amount <= 0)
+            return false;
+
+        if (item.stackable)
+            return CanAddStackableItem(item, amount);
+
+        var payload = new InventorySlotData();
+        payload.SetItem(item, 1);
+        return HasEmptySlotsForPayload(payload, amount);
+    }
+
     public bool AddWeaponInstance(GunConfig baseWeapon, WeaponInstanceData instance)
     {
         if (!baseWeapon || instance == null)
@@ -128,6 +141,21 @@ public class InventorySystem
         }
 
         return false;
+    }
+
+    public bool CanAddWeaponInstances(GunConfig baseWeapon, int amount = 1)
+    {
+        if (!baseWeapon || amount <= 0)
+            return false;
+
+        var payload = new InventorySlotData();
+        payload.SetWeaponInstance(baseWeapon, new WeaponInstanceData
+        {
+            instanceId = "__shop_probe__",
+            baseWeaponId = WeaponInstanceFactory.ResolveBaseWeaponId(baseWeapon)
+        });
+
+        return HasEmptySlotsForPayload(payload, amount);
     }
 
     public bool HasItem(ItemDefinition item, int amount = 1)
@@ -317,5 +345,57 @@ public class InventorySystem
 
         if (secondIndex != firstIndex)
             NotifySlotChanged(secondIndex);
+    }
+
+    bool CanAddStackableItem(ItemDefinition item, int amount)
+    {
+        int remaining = amount;
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var slot = slots[i];
+            if (slot.IsEmpty || slot.HasWeaponInstance || slot.item != item || slot.quantity >= slot.MaxStack)
+                continue;
+
+            remaining -= Mathf.Min(slot.MaxStack - slot.quantity, remaining);
+            if (remaining <= 0)
+                return true;
+        }
+
+        var payload = new InventorySlotData();
+        payload.SetItem(item, 1);
+        int stackSize = Mathf.Max(1, item.maxStack);
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            if (!slots[i].IsEmpty || !CanPlaceItem(i, payload))
+                continue;
+
+            remaining -= Mathf.Min(stackSize, remaining);
+            if (remaining <= 0)
+                return true;
+        }
+
+        return false;
+    }
+
+    bool HasEmptySlotsForPayload(InventorySlotData payload, int amount)
+    {
+        if (payload == null || payload.IsEmpty || amount <= 0)
+            return false;
+
+        int remaining = amount;
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            if (!slots[i].IsEmpty || !CanPlaceItem(i, payload))
+                continue;
+
+            remaining--;
+            if (remaining <= 0)
+                return true;
+        }
+
+        return false;
     }
 }

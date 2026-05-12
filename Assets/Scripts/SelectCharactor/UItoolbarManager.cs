@@ -9,6 +9,7 @@ public class UItoolbarManager : MonoBehaviour
   [SerializeField] private AudioCue upgradeCue;
   [SerializeField] private AudioCue shopCue;
   private bool _inventoryOpen = false;
+  private bool _shopOpen = false;
   
   public void OpenInventoryMenu()
   {
@@ -49,10 +50,42 @@ public class UItoolbarManager : MonoBehaviour
   
   public void OpenShopMenu()
   {
-    Debug.Log("Opening Shop Menu");
+    var shopPanel = ResolveShopPanel();
+    if (shopPanel == null)
+    {
+      Debug.LogWarning("Shop panel not assigned on BasementContext.");
+      return;
+    }
+
+    _shopOpen = !shopPanel.IsOpen;
+
+    if (_shopOpen)
+    {
+      shopPanel.Open(null, bct != null ? bct.playerInventory : null);
+      Debug.Log("Opening Shop Menu");
+    }
+    else
+    {
+      shopPanel.Close();
+      Debug.Log("Closing Shop Menu");
+    }
 
     if (shopCue != null)
       AudioService.Instance.Play(shopCue);
+  }
+
+  ShopPanelUI ResolveShopPanel()
+  {
+    if (bct == null)
+      bct = GetComponentInParent<BasementContext>();
+
+    if (bct == null)
+      bct = FindFirstObjectByType<BasementContext>(FindObjectsInactive.Include);
+
+    if (bct != null && bct.Shop != null)
+      return bct.Shop;
+
+    return FindFirstObjectByType<ShopPanelUI>(FindObjectsInactive.Include);
   }
   
 }

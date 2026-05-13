@@ -39,6 +39,18 @@ public class GunConfig : ItemDefinition
     public float stability = 0f;
     public float BulletSpeed = 30f;
 
+    [Header("Ammo Reserve")]
+    [ToggleLeft] public bool infiniteReserveAmmo = false;
+
+    [Tooltip("0 uses maxMagazine * 3 as the reserve cap.")]
+    [Min(0)] public int maxReserveAmmo = 0;
+
+    [Tooltip("When disabled, reserve ammo starts full.")]
+    [ToggleLeft] public bool overrideStartingReserveAmmo = false;
+
+    [ShowIf(nameof(overrideStartingReserveAmmo))]
+    [Min(0)] public int startingReserveAmmo = 0;
+
     [Header("Stagger")]
     [Min(0f)] public float staggerPower = 10f;
     

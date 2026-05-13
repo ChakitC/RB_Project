@@ -28,6 +28,30 @@ public class ShopItemRowUI : MonoBehaviour
             buyButton.onClick.RemoveListener(HandleBuyClicked);
     }
 
+    public void ConfigureReferences(
+        Image icon,
+        TMP_Text itemName,
+        TMP_Text quantity,
+        TMP_Text price,
+        TMP_Text stock,
+        TMP_Text reason,
+        Button buy)
+    {
+        if (buyButton != null)
+            buyButton.onClick.RemoveListener(HandleBuyClicked);
+
+        iconImage = icon;
+        nameText = itemName;
+        quantityText = quantity;
+        priceText = price;
+        stockText = stock;
+        reasonText = reason;
+        buyButton = buy;
+
+        if (buyButton != null)
+            buyButton.onClick.AddListener(HandleBuyClicked);
+    }
+
     public void Bind(
         ShopPanelUI shopPanel,
         int index,

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -55,6 +56,8 @@ public class StatsHub : MonoBehaviour
 
     readonly List<IStatModifierProvider> _modifierProviders = new();
     readonly List<RuntimeStatModifier> _modifierBuffer = new();
+
+    public event Action StatsDirty;
 
     float _cachedDamage;
     float _cachedArmor;
@@ -139,6 +142,7 @@ public class StatsHub : MonoBehaviour
     public void MarkDirty()
     {
         _isDirty = true;
+        StatsDirty?.Invoke();
     }
 
     public void RebuildModifierProviders()

@@ -22,6 +22,7 @@ public class DashSystem : MonoBehaviour
     [Header("Perfect Dodge")]
     [SerializeField, Range(0.05f, 1f)] private float perfectDashSlowScale = 0.2f;
     [SerializeField, Min(0f)] private float perfectDashSlowDuration = 0.35f;
+    [SerializeField, Min(0f)] private float perfectDashFreeAmmoDuration = 0.35f;
     [SerializeField] private LayerMask perfectDodgeThreatLayers;
     [SerializeField, Min(0f)] private float perfectDodgeThreatScanPadding = 0.25f;
 
@@ -376,6 +377,7 @@ public class DashSystem : MonoBehaviour
             return;
 
         _perfectDodgeTriggeredThisDash = true;
+        ctx?.WeaponSystem?.GrantFreeAmmo(perfectDashFreeAmmoDuration);
         TimeSlowManager.Instance.StartSlow(perfectDashSlowScale, perfectDashSlowDuration);
         PerfectDashScreenFx.Instance?.Play(_lastDashDirection, perfectDashSlowDuration, perfectDashSlowScale);
     }

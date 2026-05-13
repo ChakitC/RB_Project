@@ -12,16 +12,33 @@ public class DragItemUI : MonoBehaviour
 
     CanvasGroup canvasGroup;
     Canvas rootCanvas;
+    bool initialized;
+    bool isShowing;
 
     void Awake()
     {
+        Initialize();
+
+        if (!isShowing)
+            Hide();
+    }
+
+    void Initialize()
+    {
+        if (initialized)
+            return;
+
         if (rectTransform == null)
             rectTransform = transform as RectTransform;
 
         canvasGroup = GetComponent<CanvasGroup>();
-        canvasGroup.blocksRaycasts = false;
-        canvasGroup.interactable = false;
-        Hide();
+        if (canvasGroup != null)
+        {
+            canvasGroup.blocksRaycasts = false;
+            canvasGroup.interactable = false;
+        }
+
+        initialized = true;
     }
 
     public void SetCanvas(Canvas canvas)
@@ -31,14 +48,21 @@ public class DragItemUI : MonoBehaviour
 
     public void Show(InventorySlotData slotData, Vector2 screenPosition, Camera eventCamera = null)
     {
-        ApplySlot(slotData);
+        Initialize();
+        isShowing = true;
         gameObject.SetActive(true);
-        canvasGroup.alpha = 1f;
+        ApplySlot(slotData);
+
+        if (canvasGroup != null)
+            canvasGroup.alpha = 1f;
+
         Move(screenPosition, eventCamera);
     }
 
     public void Move(Vector2 screenPosition, Camera eventCamera = null)
     {
+        Initialize();
+
         if (rectTransform == null)
             return;
 
@@ -65,6 +89,9 @@ public class DragItemUI : MonoBehaviour
 
     public void Hide()
     {
+        Initialize();
+        isShowing = false;
+
         if (iconImage != null)
         {
             iconImage.sprite = null;

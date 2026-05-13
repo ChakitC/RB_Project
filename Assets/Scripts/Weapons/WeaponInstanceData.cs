@@ -11,6 +11,8 @@ public class WeaponInstanceData
     public List<RolledAffixData> subAffixes = new();
     public int shotCounter;
     public int currentMagazine = -1;
+    public int currentReserveAmmo = -1;
+    public bool reserveAmmoInitialized;
     public int upgradeLevel;
     public int upgradeTier;
     public int upgradeExp;
@@ -28,6 +30,8 @@ public class WeaponInstanceData
             mainAffix = mainAffix != null ? mainAffix.DeepClone() : null,
             shotCounter = shotCounter,
             currentMagazine = currentMagazine,
+            currentReserveAmmo = currentReserveAmmo,
+            reserveAmmoInitialized = reserveAmmoInitialized,
             upgradeLevel = upgradeLevel,
             upgradeTier = upgradeTier,
             upgradeExp = upgradeExp,

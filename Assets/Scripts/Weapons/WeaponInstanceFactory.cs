@@ -4,6 +4,8 @@ using UnityEngine;
 
 public static class WeaponInstanceFactory
 {
+    public const int DefaultReserveMagazineMultiplier = 3;
+
     static readonly List<WeaponAffixDefinition> CandidateBuffer = new();
 
     public static WeaponInstanceData CreateInstance(GunConfig baseWeapon, WeaponRarity rarity, WeaponAffixDatabase affixDatabase)
@@ -27,6 +29,8 @@ public static class WeaponInstanceFactory
             baseWeaponId = ResolveBaseWeaponId(baseWeapon),
             rarity = rarity,
             currentMagazine = ResolveDefaultMagazine(baseWeapon),
+            currentReserveAmmo = ResolveDefaultReserveAmmo(baseWeapon),
+            reserveAmmoInitialized = true,
             shotCounter = 0
         };
     }
@@ -50,6 +54,49 @@ public static class WeaponInstanceFactory
         int maxMagazine = Mathf.Max(baseWeapon.maxMagazine, baseWeapon.magazine);
         int defaultMagazine = baseWeapon.magazine > 0 ? baseWeapon.magazine : maxMagazine;
         return Mathf.Clamp(defaultMagazine, 0, maxMagazine);
+    }
+
+    public static bool UsesFiniteReserveAmmo(GunConfig baseWeapon)
+    {
+        return baseWeapon != null && !baseWeapon.infiniteReserveAmmo;
+    }
+
+    public static int ResolveMaxReserveAmmo(GunConfig baseWeapon)
+    {
+        int maxMagazine = baseWeapon ? Mathf.Max(baseWeapon.maxMagazine, baseWeapon.magazine) : 0;
+        return ResolveMaxReserveAmmo(baseWeapon, maxMagazine);
+    }
+
+    public static int ResolveMaxReserveAmmo(GunConfig baseWeapon, int maxMagazine)
+    {
+        if (!UsesFiniteReserveAmmo(baseWeapon))
+            return 0;
+
+        if (baseWeapon.maxReserveAmmo > 0)
+            return baseWeapon.maxReserveAmmo;
+
+        return Mathf.Max(0, maxMagazine) * DefaultReserveMagazineMultiplier;
+    }
+
+    public static int ResolveDefaultReserveAmmo(GunConfig baseWeapon)
+    {
+        int maxMagazine = baseWeapon ? Mathf.Max(baseWeapon.maxMagazine, baseWeapon.magazine) : 0;
+        return ResolveDefaultReserveAmmo(baseWeapon, maxMagazine);
+    }
+
+    public static int ResolveDefaultReserveAmmo(GunConfig baseWeapon, int maxMagazine)
+    {
+        if (!UsesFiniteReserveAmmo(baseWeapon))
+            return -1;
+
+        int maxReserveAmmo = ResolveMaxReserveAmmo(baseWeapon, maxMagazine);
+        if (maxReserveAmmo <= 0)
+            return 0;
+
+        if (baseWeapon.overrideStartingReserveAmmo)
+            return Mathf.Clamp(baseWeapon.startingReserveAmmo, 0, maxReserveAmmo);
+
+        return maxReserveAmmo;
     }
 
     static void RollAffixes(WeaponInstanceData instance, GunConfig baseWeapon, WeaponAffixDatabase affixDatabase)

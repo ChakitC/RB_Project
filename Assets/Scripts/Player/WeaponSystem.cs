@@ -31,6 +31,9 @@ public class WeaponSystem : MonoBehaviour
     public float fireRate = 0f;
     public int magazine = 0;
     public int maxMagazine = 0;
+    public int reserveAmmo = 0;
+    public int maxReserveAmmo = 0;
+    public bool infiniteReserveAmmo = false;
     public float reloadTime = 0f;
     public float critRate = 0f;
     public float critMultiplier = 1f;
@@ -47,7 +50,15 @@ public class WeaponSystem : MonoBehaviour
     public bool CanFire => !isReloading && magazine > 0 && GetWeaponTime() >= nextFireTime;
     public int CurrentAmmo => magazine;
     public int MagazineSize => MaxMagazine;
+    public int CurrentReserveAmmo => HasInfiniteReserveAmmo ? -1 : reserveAmmo;
+    public int ReserveAmmoSize => HasInfiniteReserveAmmo ? -1 : MaxReserveAmmo;
+    public bool HasInfiniteReserveAmmo => currentWeapon != null && currentWeapon.infiniteReserveAmmo;
+    public bool HasReserveAmmo => HasInfiniteReserveAmmo || reserveAmmo > 0;
     public bool IsMagazineEmpty => magazine <= 0;
+    public bool IsOutOfAmmo => magazine <= 0 && !HasReserveAmmo;
+    public bool CanReload => !isReloading && currentWeapon != null && magazine < MaxMagazine && HasReserveAmmo;
+    public bool IsFreeAmmoActive => Time.unscaledTime < freeAmmoUntilUnscaledTime;
+    public float FreeAmmoRemaining => Mathf.Max(0f, freeAmmoUntilUnscaledTime - Time.unscaledTime);
 
     bool _isFiringHeld;
     readonly Dictionary<GameObject, Projectile> _projectilePrefabCache = new();
@@ -86,6 +97,10 @@ public class WeaponSystem : MonoBehaviour
     float nextFireTime;
     bool isReloading;
     bool isBursting;
+    float freeAmmoUntilUnscaledTime;
+    bool derivedStatsDirty = true;
+    GunConfig derivedStatsWeapon;
+    StatsHub subscribedStatsHub;
 
     FiringMode firingMode = FiringMode.Auto;
     readonly List<IWeaponRuntimeEffectHandler> runtimeEffectHandlers = new();
@@ -97,6 +112,12 @@ public class WeaponSystem : MonoBehaviour
         if (!currentWeapon && ctx) currentWeapon = ctx.currentWeapon;
 
         RefreshFirePointReference(logIfMissing: true);
+    }
+
+    void OnEnable()
+    {
+        ResolveReferences();
+        MarkDerivedStatsDirty();
     }
 
     void ResolveReferences()
@@ -137,6 +158,8 @@ public class WeaponSystem : MonoBehaviour
 
         if (!combatEventBus && ownerRoot)
             combatEventBus = ownerRoot.GetComponentInChildren<CombatEventBus>(true);
+
+        SubscribeToStatsHub(statsHub);
 
         if (!affixRuntimeController)
             affixRuntimeController = GetComponent<WeaponAffixRuntimeController>();
@@ -194,7 +217,7 @@ public class WeaponSystem : MonoBehaviour
     void Start()
     {
         Equip(currentWeapon, currentWeaponInstance);
-        ctx.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
+        UpdateAmmoUI();
     }
 
     public void Equip(GunConfig weapon)
@@ -205,14 +228,22 @@ public class WeaponSystem : MonoBehaviour
     public void Equip(GunConfig weapon, WeaponInstanceData instance)
     {
         var previousWeapon = currentWeapon;
+
+        SyncWeaponInstanceState();
+        StopWeaponActivity(clearHeld: true, stopReloadAnim: true, syncInstance: false);
+
         currentWeapon = weapon;
         currentWeaponInstance = instance;
+        MarkDerivedStatsDirty();
 
         if (ctx != null)
             ctx.currentWeapon = currentWeapon;
 
         if (!currentWeapon)
+        {
+            ClearWeaponState();
             return;
+        }
 
         gunType = currentWeapon.WeaponType;
         firingMode = currentWeapon.firingModes;
@@ -237,13 +268,16 @@ public class WeaponSystem : MonoBehaviour
         projectilePrefab = currentWeapon.BulletPrefab;
         TryResolveProjectilePrefab(projectilePrefab, out _);
 
-        magazine = ResolveStartingMagazine();
-        RefreshDerivedStats();
-        magazine = Mathf.Clamp(magazine, 0, MaxMagazine);
-        SyncWeaponInstanceState();
-
         NotifyRuntimeEffectHandlersWeaponEquipped();
         statsHub?.MarkDirty();
+        RefreshDerivedStats();
+        magazine = ResolveStartingMagazine();
+        reserveAmmo = ResolveStartingReserveAmmo();
+        magazine = Mathf.Clamp(magazine, 0, MaxMagazine);
+        ClampReserveAmmoToMax();
+        SyncWeaponInstanceState();
+        UpdateAmmoUI();
+
         RefreshWeaponVisual();
 
         if (currentWeapon != null && currentWeapon != previousWeapon)
@@ -289,14 +323,24 @@ public class WeaponSystem : MonoBehaviour
         isBursting = false;
         isReloading = false;
         _isFiringHeld = false;
+        burstCo = null;
         reloadRoutine = null;
         StopReloadCue();
         SyncWeaponInstanceState();
+        UnsubscribeFromStatsHub();
+    }
+
+    void OnDestroy()
+    {
+        UnsubscribeFromStatsHub();
     }
 
     int MaxMagazine =>
         statsHub ? statsHub.GetMaxMagazine(currentWeapon) :
         (currentWeapon ? currentWeapon.maxMagazine : 0);
+
+    int MaxReserveAmmo =>
+        WeaponInstanceFactory.ResolveMaxReserveAmmo(currentWeapon, MaxMagazine);
 
     float FireInterval =>
         statsHub ? statsHub.GetFireInterval(currentWeapon) :
@@ -332,7 +376,8 @@ public class WeaponSystem : MonoBehaviour
         if (reloadPerBullet)
         {
             int missing = Mathf.Max(0, MaxMagazine - magazine);
-            return startInsertDelay + (missing * perBulletInsertTime) + endInsertDelay;
+            int reloadable = HasInfiniteReserveAmmo ? missing : Mathf.Min(missing, Mathf.Max(0, reserveAmmo));
+            return startInsertDelay + (reloadable * perBulletInsertTime) + endInsertDelay;
         }
 
         return reloadTime;
@@ -341,7 +386,12 @@ public class WeaponSystem : MonoBehaviour
     void RefreshDerivedStats()
     {
         if (!currentWeapon)
+        {
+            ClearDerivedStats();
+            derivedStatsDirty = false;
+            derivedStatsWeapon = null;
             return;
+        }
 
         damage = FinalDamage;
         fireRate = FireInterval;
@@ -352,6 +402,11 @@ public class WeaponSystem : MonoBehaviour
         staggerPower = currentWeapon ? Mathf.Max(0f, currentWeapon.staggerPower) : 0f;
         reloadTime = FinalReloadTime;
         maxMagazine = MaxMagazine;
+        infiniteReserveAmmo = HasInfiniteReserveAmmo;
+        maxReserveAmmo = MaxReserveAmmo;
+
+        if (!infiniteReserveAmmo)
+            reserveAmmo = Mathf.Clamp(reserveAmmo, 0, maxReserveAmmo);
 
         float k = 0.1f;
         float stabilityFactor = 1f / (1f + stability * k);
@@ -359,6 +414,78 @@ public class WeaponSystem : MonoBehaviour
         swaySpeed = baseSwaySpeed * stabilityFactor;
         maxSwayAngle = baseMaxSwayAngle * stabilityFactor;
         returnSpeed = baseReturnSpeed * (1f + stability * k);
+        derivedStatsDirty = false;
+        derivedStatsWeapon = currentWeapon;
+    }
+
+    void RefreshDerivedStatsIfDirty()
+    {
+        if (!derivedStatsDirty && derivedStatsWeapon == currentWeapon)
+            return;
+
+        RefreshDerivedStats();
+    }
+
+    void MarkDerivedStatsDirty()
+    {
+        derivedStatsDirty = true;
+    }
+
+    void SubscribeToStatsHub(StatsHub nextStatsHub)
+    {
+        if (subscribedStatsHub == nextStatsHub)
+            return;
+
+        UnsubscribeFromStatsHub();
+        subscribedStatsHub = nextStatsHub;
+
+        if (subscribedStatsHub != null)
+            subscribedStatsHub.StatsDirty += MarkDerivedStatsDirty;
+    }
+
+    void UnsubscribeFromStatsHub()
+    {
+        if (subscribedStatsHub == null)
+            return;
+
+        subscribedStatsHub.StatsDirty -= MarkDerivedStatsDirty;
+        subscribedStatsHub = null;
+    }
+
+    void ClearDerivedStats()
+    {
+        gunType = default;
+        damage = 0f;
+        fireRate = 0f;
+        magazine = 0;
+        maxMagazine = 0;
+        reserveAmmo = 0;
+        maxReserveAmmo = 0;
+        infiniteReserveAmmo = false;
+        reloadTime = 0f;
+        critRate = 0f;
+        critMultiplier = 1f;
+        magazineRelode = false;
+        stability = 0f;
+        autoloader = false;
+        bulletSpeed = 20f;
+        staggerPower = 0f;
+        burstCount = 0;
+        burstInterval = 0f;
+
+        reloadPerBullet = true;
+        startInsertDelay = 0f;
+        perBulletInsertTime = 0f;
+        endInsertDelay = 0f;
+        shootInterruptsReload = true;
+
+        baseSwaySpeed = 0f;
+        baseMaxSwayAngle = 0f;
+        baseReturnSpeed = 0f;
+        swaySpeed = 0f;
+        maxSwayAngle = 0f;
+        returnSpeed = 0f;
+        swayTimer = 0f;
     }
 
     public void SetFiring(bool value)
@@ -367,13 +494,11 @@ public class WeaponSystem : MonoBehaviour
 
         if (!value)
         {
-            isFiring = false;
-            if (isBursting)
-                isBursting = false;
+            StopFiringState(clearHeld: false);
             return;
         }
 
-        if (!ctx.stateHub.CanShoot())
+        if (!currentWeapon || !CanShootNow())
             return;
 
         if (isReloading && shootInterruptsReload)
@@ -384,7 +509,7 @@ public class WeaponSystem : MonoBehaviour
         switch (firingMode)
         {
             case FiringMode.Burst:
-                if (isReloading || isBursting)
+                if (isReloading || isBursting || burstCo != null)
                     return;
 
                 isBursting = true;
@@ -405,7 +530,7 @@ public class WeaponSystem : MonoBehaviour
 
     void Update()
     {
-        RefreshDerivedStats();
+        RefreshDerivedStatsIfDirty();
 
         if (firingMode == FiringMode.Auto && isFiring && GetWeaponTime() >= nextFireTime)
             TryShoot();
@@ -428,30 +553,33 @@ public class WeaponSystem : MonoBehaviour
             GetWeaponDeltaTime() * returnSpeed);
     }
 
-    public void TryShoot()
+    public bool TryShoot()
     {
-        RefreshDerivedStats();
+        RefreshDerivedStatsIfDirty();
 
-        if (isReloading || GetWeaponTime() < nextFireTime)
-            return;
+        if (!currentWeapon || isReloading || GetWeaponTime() < nextFireTime || !CanShootNow())
+            return false;
 
         if (magazine <= 0)
         {
-            if (autoloader)
+            if (autoloader && HasReserveAmmo)
                 TryReload();
             else
                 PlayWeaponCue(currentWeapon != null ? currentWeapon.emptyCue : null, false);
-            return;
+            return false;
         }
 
         if (!projectilePrefab || !firePoint)
-            return;
+            return false;
 
         nextFireTime = GetWeaponTime() + fireRate;
 
-        magazine--;
-        SyncWeaponInstanceState();
-        ctx.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
+        if (!IsFreeAmmoActive)
+        {
+            magazine--;
+            SyncWeaponInstanceState();
+            UpdateAmmoUI();
+        }
 
         string weaponSourceId = GetWeaponSourceId();
         string attackId = combatEventBus != null ? combatEventBus.CreateAttackId(weaponSourceId) : null;
@@ -468,14 +596,16 @@ public class WeaponSystem : MonoBehaviour
 
         PlayWeaponCue(currentWeapon != null ? currentWeapon.fireCue : null, false);
 
-        ctx.stateHub.ReportShotFired();
+        ctx?.stateHub?.ReportShotFired();
         if (combatEventBus != null)
             combatEventBus.Publish(shotContext);
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnShotFired, gameObject);
         NotifyRuntimeEffectHandlersShotFired();
 
-        if (magazine <= 0 && autoloader)
+        if (magazine <= 0 && autoloader && HasReserveAmmo)
             TryReload();
+
+        return true;
     }
 
     public bool SpawnAffixProjectile(
@@ -510,25 +640,11 @@ public class WeaponSystem : MonoBehaviour
 
     public void CancelReload()
     {
-        if (!isReloading)
+        if (!isReloading && reloadRoutine == null)
             return;
 
-        if (reloadRoutine != null)
-        {
-            StopCoroutine(reloadRoutine);
-            reloadRoutine = null;
-        }
-
-        isReloading = false;
-        isBursting = false;
-        StopReloadCue();
-        ctx?.AnimBrain?.StopReloadAction();
-
-        if (burstCo != null)
-        {
-            StopCoroutine(burstCo);
-            burstCo = null;
-        }
+        StopReloadState(stopRoutine: true, stopAnim: true, syncInstance: true);
+        StopBurstRoutine();
     }
 
     bool IsReloadBlockedByActorState()
@@ -556,25 +672,28 @@ public class WeaponSystem : MonoBehaviour
 
     void AbortReloadRoutine()
     {
-        isReloading = false;
-        reloadRoutine = null;
-        isBursting = false;
-        StopReloadCue();
+        StopReloadState(stopRoutine: false, stopAnim: false, syncInstance: false);
+        StopBurstRoutine();
         SyncWeaponInstanceState();
     }
 
     public void TryReload()
     {
-        RefreshDerivedStats();
+        RefreshDerivedStatsIfDirty();
 
         if (IsReloadBlockedByActorState())
             return;
 
-        isFiring = false;
-        isBursting = false;
+        StopFiringState(clearHeld: false);
 
         if (isReloading || magazine >= MaxMagazine)
             return;
+
+        if (!HasReserveAmmo)
+        {
+            PlayWeaponCue(currentWeapon != null ? currentWeapon.emptyCue : null, false);
+            return;
+        }
 
         if (reloadRoutine != null)
             StopCoroutine(reloadRoutine);
@@ -597,7 +716,7 @@ public class WeaponSystem : MonoBehaviour
 
     public bool CanRestoreMagazine(int amount, bool fillToMax = false)
     {
-        RefreshDerivedStats();
+        RefreshDerivedStatsIfDirty();
 
         if (!currentWeapon || MaxMagazine <= 0)
             return false;
@@ -606,6 +725,36 @@ public class WeaponSystem : MonoBehaviour
             return magazine < MaxMagazine;
 
         return amount > 0 && magazine < MaxMagazine;
+    }
+
+    public bool CanRestoreReserveAmmo(int amount, bool fillToMax = false)
+    {
+        RefreshDerivedStatsIfDirty();
+
+        if (!currentWeapon || HasInfiniteReserveAmmo || MaxReserveAmmo <= 0)
+            return false;
+
+        if (fillToMax)
+            return reserveAmmo < MaxReserveAmmo;
+
+        return amount > 0 && reserveAmmo < MaxReserveAmmo;
+    }
+
+    public bool RestoreReserveAmmo(int amount, bool fillToMax = false)
+    {
+        if (!CanRestoreReserveAmmo(amount, fillToMax))
+            return false;
+
+        int previous = reserveAmmo;
+        int amountToRestore = fillToMax ? MaxReserveAmmo - reserveAmmo : Mathf.Max(0, amount);
+        reserveAmmo = Mathf.Clamp(reserveAmmo + amountToRestore, 0, MaxReserveAmmo);
+
+        if (reserveAmmo <= previous)
+            return false;
+
+        SyncWeaponInstanceState();
+        UpdateAmmoUI();
+        return true;
     }
 
     public bool RestoreMagazine(int amount, bool fillToMax = false)
@@ -624,13 +773,24 @@ public class WeaponSystem : MonoBehaviour
             return false;
 
         SyncWeaponInstanceState();
-        ctx.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
+        UpdateAmmoUI();
         return true;
+    }
+
+    public void GrantFreeAmmo(float duration)
+    {
+        if (duration <= 0f)
+            return;
+
+        freeAmmoUntilUnscaledTime = Mathf.Max(
+            freeAmmoUntilUnscaledTime,
+            Time.unscaledTime + duration);
     }
 
     IEnumerator ReloadPerBulletRoutine()
     {
         isReloading = true;
+        bool reloadedAny = false;
 
         if (IsReloadBlockedByActorState())
         {
@@ -658,9 +818,14 @@ public class WeaponSystem : MonoBehaviour
             if (shootInterruptsReload && (isFiring || isBursting))
                 break;
 
-            magazine++;
+            int restored = ConsumeReserveAmmo(1);
+            if (restored <= 0)
+                break;
+
+            magazine += restored;
+            reloadedAny = true;
             SyncWeaponInstanceState();
-            ctx.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
+            UpdateAmmoUI();
 
             if (perBulletInsertTime > 0f)
                 yield return WaitForWeaponSeconds(perBulletInsertTime);
@@ -681,9 +846,12 @@ public class WeaponSystem : MonoBehaviour
         reloadRoutine = null;
         StopReloadCue();
         SyncWeaponInstanceState();
-        statusEffectController?.NotifyTrigger(EffectTriggerType.OnReload, gameObject);
-        NotifyRuntimeEffectHandlersReloadCompleted();
-        PublishReloadEvent();
+        if (reloadedAny)
+        {
+            statusEffectController?.NotifyTrigger(EffectTriggerType.OnReload, gameObject);
+            NotifyRuntimeEffectHandlersReloadCompleted();
+            PublishReloadEvent();
+        }
     }
 
     IEnumerator ReloadFullMagRoutine()
@@ -697,9 +865,21 @@ public class WeaponSystem : MonoBehaviour
             yield break;
         }
 
-        magazine = MaxMagazine;
+        int missing = Mathf.Max(0, MaxMagazine - magazine);
+        int restored = ConsumeReserveAmmo(missing);
+        if (restored <= 0)
+        {
+            isReloading = false;
+            reloadRoutine = null;
+            StopReloadCue();
+            SyncWeaponInstanceState();
+            UpdateAmmoUI();
+            yield break;
+        }
+
+        magazine = Mathf.Clamp(magazine + restored, 0, MaxMagazine);
         SyncWeaponInstanceState();
-        ctx.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
+        UpdateAmmoUI();
         isReloading = false;
         reloadRoutine = null;
         StopReloadCue();
@@ -711,11 +891,16 @@ public class WeaponSystem : MonoBehaviour
     IEnumerator FireBurst()
     {
         if (isReloading)
+        {
+            burstCo = null;
+            isBursting = false;
+            isFiring = false;
             yield break;
+        }
 
         int shots = burstCount;
 
-        while (shots > 0)
+        while (shots > 0 && isBursting && isFiring && isActiveAndEnabled)
         {
             if (GetWeaponTime() < nextFireTime)
             {
@@ -723,8 +908,18 @@ public class WeaponSystem : MonoBehaviour
                 continue;
             }
 
-            TryShoot();
-            shots--;
+            if (TryShoot())
+            {
+                shots--;
+            }
+            else
+            {
+                if (isReloading || magazine <= 0 || !projectilePrefab || !firePoint || !CanShootNow())
+                    break;
+
+                yield return null;
+                continue;
+            }
 
             if (shots > 0)
                 yield return WaitForWeaponSeconds(burstInterval);
@@ -744,12 +939,14 @@ public class WeaponSystem : MonoBehaviour
 
     float GetWeaponTime()
     {
-        return UsesWorldSlow() ? TimeSlowManager.Instance.WorldTime : Time.time;
+        var timeSlow = TimeSlowManager.Instance;
+        return UsesWorldSlow() && timeSlow != null ? timeSlow.WorldTime : Time.time;
     }
 
     float GetWeaponDeltaTime()
     {
-        return UsesWorldSlow() ? TimeSlowManager.Instance.WorldDeltaTime : Time.deltaTime;
+        var timeSlow = TimeSlowManager.Instance;
+        return UsesWorldSlow() && timeSlow != null ? timeSlow.WorldDeltaTime : Time.deltaTime;
     }
 
     IEnumerator WaitForWeaponSeconds(float seconds)
@@ -859,12 +1056,84 @@ public class WeaponSystem : MonoBehaviour
     {
         ResolveReferences();
 
+        NotifyRuntimeEffectHandlersWeaponEquipped();
         statsHub?.MarkDirty();
+        MarkDerivedStatsDirty();
         RefreshDerivedStats();
         magazine = Mathf.Clamp(magazine, 0, MaxMagazine);
+        ClampReserveAmmoToMax();
         SyncWeaponInstanceState();
-        ctx?.UIManager?.UpdateAmmoText(magazine, MaxMagazine);
+        UpdateAmmoUI();
+    }
+
+    bool CanShootNow()
+    {
+        var stateHub = ctx != null ? ctx.stateHub : null;
+        return stateHub != null && stateHub.CanShoot();
+    }
+
+    void ClearWeaponState()
+    {
+        projectilePrefab = null;
+        nextFireTime = 0f;
+        freeAmmoUntilUnscaledTime = 0f;
+        firingMode = FiringMode.Auto;
+
+        ClearDerivedStats();
+        derivedStatsDirty = false;
+        derivedStatsWeapon = null;
+
+        if (firePoint)
+            firePoint.localRotation = firePointOriginalRot;
+
         NotifyRuntimeEffectHandlersWeaponEquipped();
+        statsHub?.MarkDirty();
+        UpdateAmmoUI();
+        RefreshWeaponVisual();
+    }
+
+    void StopWeaponActivity(bool clearHeld, bool stopReloadAnim, bool syncInstance)
+    {
+        StopFiringState(clearHeld);
+        StopReloadState(stopRoutine: true, stopAnim: stopReloadAnim, syncInstance: syncInstance);
+    }
+
+    void StopFiringState(bool clearHeld)
+    {
+        if (clearHeld)
+            _isFiringHeld = false;
+
+        isFiring = false;
+        StopBurstRoutine();
+    }
+
+    void StopBurstRoutine()
+    {
+        if (burstCo != null)
+        {
+            StopCoroutine(burstCo);
+            burstCo = null;
+        }
+
+        isBursting = false;
+    }
+
+    void StopReloadState(bool stopRoutine, bool stopAnim, bool syncInstance)
+    {
+        if (stopRoutine && reloadRoutine != null)
+        {
+            StopCoroutine(reloadRoutine);
+        }
+
+        reloadRoutine = null;
+        isReloading = false;
+        StopReloadCue();
+
+        if (stopAnim)
+            ctx?.AnimBrain?.StopReloadAction();
+
+        if (syncInstance)
+            SyncWeaponInstanceState();
     }
 
     void RebuildRuntimeEffectHandlers()
@@ -934,12 +1203,69 @@ public class WeaponSystem : MonoBehaviour
         return WeaponInstanceFactory.ResolveDefaultMagazine(currentWeapon);
     }
 
+    int ResolveStartingReserveAmmo()
+    {
+        if (!WeaponInstanceFactory.UsesFiniteReserveAmmo(currentWeapon))
+            return 0;
+
+        if (currentWeaponInstance != null)
+        {
+            int defaultReserveAmmo = WeaponInstanceFactory.ResolveDefaultReserveAmmo(currentWeapon, MaxMagazine);
+            int desiredReserveAmmo = currentWeaponInstance.currentReserveAmmo;
+            if (!currentWeaponInstance.reserveAmmoInitialized || desiredReserveAmmo < 0)
+                desiredReserveAmmo = defaultReserveAmmo;
+
+            return Mathf.Clamp(desiredReserveAmmo, 0, MaxReserveAmmo);
+        }
+
+        return Mathf.Max(0, WeaponInstanceFactory.ResolveDefaultReserveAmmo(currentWeapon, MaxMagazine));
+    }
+
     void SyncWeaponInstanceState()
     {
         if (currentWeaponInstance == null)
             return;
 
         currentWeaponInstance.currentMagazine = Mathf.Max(0, magazine);
+        currentWeaponInstance.currentReserveAmmo = HasInfiniteReserveAmmo ? -1 : Mathf.Max(0, reserveAmmo);
+        currentWeaponInstance.reserveAmmoInitialized = true;
+    }
+
+    int ConsumeReserveAmmo(int amount)
+    {
+        int requested = Mathf.Max(0, amount);
+        if (requested <= 0)
+            return 0;
+
+        if (HasInfiniteReserveAmmo)
+            return requested;
+
+        int consumed = Mathf.Min(requested, Mathf.Max(0, reserveAmmo));
+        reserveAmmo -= consumed;
+        return consumed;
+    }
+
+    void ClampReserveAmmoToMax()
+    {
+        infiniteReserveAmmo = HasInfiniteReserveAmmo;
+        maxReserveAmmo = MaxReserveAmmo;
+
+        if (infiniteReserveAmmo)
+        {
+            reserveAmmo = 0;
+            return;
+        }
+
+        reserveAmmo = Mathf.Clamp(reserveAmmo, 0, maxReserveAmmo);
+    }
+
+    void UpdateAmmoUI()
+    {
+        ctx?.UIManager?.UpdateAmmoText(
+            magazine,
+            MaxMagazine,
+            HasInfiniteReserveAmmo ? -1 : reserveAmmo,
+            HasInfiniteReserveAmmo);
     }
 
     string GetWeaponSourceId()

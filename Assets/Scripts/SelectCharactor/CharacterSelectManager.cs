@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class CharacterSelectManager : MonoBehaviour
 {
@@ -19,7 +20,12 @@ public class CharacterSelectManager : MonoBehaviour
     void HandleClickAndDrag()
     {
         if (Input.GetMouseButtonDown(0))
+        {
+            if (IsPointerOverUI())
+                return;
+
             TrySelectCharacter();
+        }
 
         if (Input.GetMouseButton(0) && _selected != null)
             DragFollowGround();
@@ -63,6 +69,25 @@ public class CharacterSelectManager : MonoBehaviour
 
             _selectedSelectable.SetPicked(true);
         }
+    }
+
+    bool IsPointerOverUI()
+    {
+        if (EventSystem.current == null)
+            return false;
+
+        if (Input.touchCount > 0)
+        {
+            for (int i = 0; i < Input.touchCount; i++)
+            {
+                Touch touch = Input.GetTouch(i);
+                if (touch.phase == TouchPhase.Began &&
+                    EventSystem.current.IsPointerOverGameObject(touch.fingerId))
+                    return true;
+            }
+        }
+
+        return EventSystem.current.IsPointerOverGameObject();
     }
 
     void DragFollowGround()

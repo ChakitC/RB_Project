@@ -300,6 +300,7 @@ public class InventorySlotTooltipUI : MonoBehaviour
             builder.Append("Damage: ").AppendLine(FormatNumber(gunConfig.damage));
             builder.Append("Fire Rate: ").AppendLine(FormatNumber(gunConfig.fireRate));
             builder.Append("Magazine: ").AppendLine(ResolveMagazineText(slotData, gunConfig));
+            builder.Append("Reserve Ammo: ").AppendLine(ResolveReserveAmmoText(slotData, gunConfig));
         }
 
         AppendWeaponAffixes(builder, slotData);
@@ -335,6 +336,19 @@ public class InventorySlotTooltipUI : MonoBehaviour
             return $"{slotData.weaponInstance.currentMagazine}/{maxMagazine}";
 
         return maxMagazine.ToString();
+    }
+
+    static string ResolveReserveAmmoText(InventorySlotData slotData, GunConfig gunConfig)
+    {
+        if (!WeaponInstanceFactory.UsesFiniteReserveAmmo(gunConfig))
+            return "INF";
+
+        int maxReserveAmmo = WeaponInstanceFactory.ResolveMaxReserveAmmo(gunConfig);
+        if (slotData != null && slotData.weaponInstance != null && slotData.weaponInstance.currentReserveAmmo >= 0)
+            return $"{slotData.weaponInstance.currentReserveAmmo}/{maxReserveAmmo}";
+
+        int defaultReserveAmmo = WeaponInstanceFactory.ResolveDefaultReserveAmmo(gunConfig);
+        return $"{defaultReserveAmmo}/{maxReserveAmmo}";
     }
 
     static string FormatNumber(float value)

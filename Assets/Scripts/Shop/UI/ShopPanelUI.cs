@@ -27,13 +27,50 @@ public class ShopPanelUI : MonoBehaviour
     public bool IsOpen => gameObject.activeSelf;
     public ShopCatalog CurrentCatalog => catalog;
 
+    public void ConfigureReferences(
+        ShopCatalog newCatalog,
+        PlayerInventory inventory,
+        ShopService service,
+        RectTransform rows,
+        ShopItemRowUI row,
+        TMP_Text gold,
+        TMP_Text message,
+        GameObject empty,
+        Button close)
+    {
+        if (newCatalog != null)
+            catalog = newCatalog;
+
+        rowContainer = rows;
+        rowPrefab = row;
+        goldText = gold;
+        messageText = message;
+        emptyState = empty;
+
+        if (closeButton != null)
+            closeButton.onClick.RemoveListener(Close);
+
+        closeButton = close;
+
+        if (closeButton != null)
+            closeButton.onClick.AddListener(Close);
+
+        shopService = service;
+        BindService(shopService);
+        BindSource(inventory);
+        Refresh();
+    }
+
     void Awake()
     {
         ResolveReferences();
         BindService(shopService);
 
         if (closeButton != null)
+        {
+            closeButton.onClick.RemoveListener(Close);
             closeButton.onClick.AddListener(Close);
+        }
 
         RebuildRows();
     }

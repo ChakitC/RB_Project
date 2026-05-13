@@ -23,9 +23,10 @@ MonoBehaviour:
   itemType: 1
   stackable: 0
   maxStack: 1
-  pickupPrefab: {fileID: 0}
+  pickupPrefab: {fileID: 919132149155446097, guid: 2ca27192a7f0b664e832423ec6e6561a, type: 3}
   BulletPrefab: {fileID: 1661335766552818198, guid: 58731d9f905ebd8408adc3a356e8a607, type: 3}
   WeaponPrefab: {fileID: 1991939279194961263, guid: 9001473d1df37e24293d9cd4edc08eb0, type: 3}
+  upgradeCurve: {fileID: 0}
   overrideWeaponModelMountOffset: 1
   rightHandWeaponModelMount:
     localPosition: {x: 0, y: 0.443, z: 0}

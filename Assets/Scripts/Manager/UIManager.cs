@@ -96,9 +96,21 @@ public class UIManager : MonoBehaviour
 
     public void UpdateAmmoText(int currentAmmo, int maxAmmo)
     {
+        UpdateAmmoText(currentAmmo, maxAmmo, -1, false);
+    }
+
+    public void UpdateAmmoText(int currentAmmo, int maxAmmo, int reserveAmmo, bool infiniteReserveAmmo)
+    {
         if (!ammoText) return;
-        ammoText.text = $"{currentAmmo}/{maxAmmo}";
-        ammoText.color = currentAmmo == 0 ? Color.red : Color.white;
+
+        bool showReserve = infiniteReserveAmmo || reserveAmmo >= 0;
+        string reserveText = infiniteReserveAmmo ? "INF" : reserveAmmo.ToString();
+        ammoText.text = showReserve
+            ? $"{currentAmmo}/{maxAmmo} | {reserveText}"
+            : $"{currentAmmo}/{maxAmmo}";
+
+        bool totalEmpty = currentAmmo <= 0 && !infiniteReserveAmmo && reserveAmmo <= 0;
+        ammoText.color = totalEmpty ? Color.red : currentAmmo <= 0 ? Color.yellow : Color.white;
     }
 
     public void UpdateStamina(float currentStamina, float maxStamina)

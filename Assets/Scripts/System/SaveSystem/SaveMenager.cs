@@ -246,6 +246,29 @@ public class SaveManager : MonoBehaviour
 
         SaveSystem.SaveCharacterProgress(currentSlot, characterId, data);
     }
+
+    public bool LoadCharacterUnlockState(string characterId)
+    {
+        if (string.IsNullOrWhiteSpace(characterId))
+            return false;
+
+        var data = SaveSystem.LoadCharacterProgress(currentSlot, characterId);
+        return data != null && data.unlocked;
+    }
+
+    public void SaveCharacterUnlockState(string characterId, bool unlocked)
+    {
+        if (string.IsNullOrWhiteSpace(characterId))
+            return;
+
+        var data = SaveSystem.LoadCharacterProgress(currentSlot, characterId) ?? new CharacterProgressData();
+        data.unlocked = unlocked;
+
+        if (data.unlockedPassiveNodeIds == null)
+            data.unlockedPassiveNodeIds = new List<string>();
+
+        SaveSystem.SaveCharacterProgress(currentSlot, characterId, data);
+    }
     
 
     // Debug

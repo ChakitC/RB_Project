@@ -1,6 +1,8 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class SpawnOnDragOutButton : MonoBehaviour,
     IPointerDownHandler, IDragHandler, IPointerUpHandler
@@ -31,6 +33,14 @@ public class SpawnOnDragOutButton : MonoBehaviour,
     public CharacterSelectManager selectManagerToDisable; 
     public bool disableManagerWhileDragging = true;
     [SerializeField] private UILoadLaval loadLevelUI;
+
+    [Header("Unlock UI")]
+    [SerializeField] private PlayerInventory payerInventory;
+    [SerializeField] private GameObject lockedRoot;
+    [SerializeField] private GameObject unlockedRoot;
+    [SerializeField] private TMP_Text unlockCostText;
+    [SerializeField] private TMP_Text unlockReasonText;
+    [SerializeField] private Button unlockButton;
     
     [Header("Fixed Y")]
     public float fixedY = 0f;
@@ -80,12 +90,24 @@ public class SpawnOnDragOutButton : MonoBehaviour,
             }
 
             CacheSlots();
+            if (unlockButton)
+                unlockButton.onClick.AddListener(HandleUnlockClicked);
+
+            RefreshUnlockState();
         }
         
     }
 
+    void OnEnable()
+    {
+        CharacterUnlockService.CharacterUnlocked += HandleCharacterUnlocked;
+        RefreshUnlockState();
+    }
+
     void OnDisable()
     {
+        CharacterUnlockService.CharacterUnlocked -= HandleCharacterUnlocked;
+
         if (_current)
         {
             ReleaseDragObject(_current);
@@ -101,6 +123,14 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
         if (disableManagerWhileDragging && selectManagerToDisable)
             selectManagerToDisable.enabled = true;
+    }
+
+    void OnDestroy()
+    {
+        CharacterUnlockService.CharacterUnlocked -= HandleCharacterUnlocked;
+
+        if (unlockButton)
+            unlockButton.onClick.RemoveListener(HandleUnlockClicked);
     }
     
 
@@ -459,6 +489,9 @@ public class SpawnOnDragOutButton : MonoBehaviour,
             return;
 
         slot.SetCharacterDef(droppedDef, true);
+        if (slot.Selected != droppedDef)
+            return;
+
         slot.RefreshSelectedCharacterVisual();
         BindLoadLevelUIToSlot(slot);
     }
@@ -475,6 +508,82 @@ public class SpawnOnDragOutButton : MonoBehaviour,
             loadLevelUI = FindFirstObjectByType<UILoadLaval>(FindObjectsInactive.Include);
 
         loadLevelUI?.BindSlot(slot);
+    }
+
+    void HandleUnlockClicked()
+    {
+        CharacterStats selected = ResolveSelectedCharacterDef();
+        if (!selected)
+            return;
+
+        ResolvePayerInventory();
+        if (!CharacterUnlockService.TryUnlockForSelection(selected.characterId, payerInventory, out string reason))
+        {
+            ShowUnlockReason(reason);
+            return;
+        }
+
+        RefreshUnlockState();
+    }
+
+    void HandleCharacterUnlocked(string characterId)
+    {
+        CharacterStats selected = ResolveSelectedCharacterDef();
+        if (!selected || !string.Equals(selected.characterId, characterId, StringComparison.Ordinal))
+            return;
+
+        RefreshUnlockState();
+    }
+
+    void RefreshUnlockState()
+    {
+        CharacterStats selected = ResolveSelectedCharacterDef();
+        string characterId = selected != null ? selected.characterId : string.Empty;
+        bool hasCharacter = selected != null && !string.IsNullOrWhiteSpace(characterId);
+        bool unlocked = hasCharacter && CharacterUnlockService.IsUnlockedForSelection(characterId);
+
+        if (lockedRoot)
+            lockedRoot.SetActive(hasCharacter && !unlocked);
+
+        if (unlockedRoot)
+            unlockedRoot.SetActive(unlocked);
+
+        int cost = hasCharacter ? CharacterUnlockService.GetGoldCost(characterId) : 0;
+        if (unlockCostText)
+            unlockCostText.text = cost > 0 ? cost.ToString("N0") : string.Empty;
+
+        ResolvePayerInventory();
+
+        string reason = string.Empty;
+        bool canUnlock = hasCharacter && !unlocked &&
+                         CharacterUnlockService.CanUnlock(characterId, payerInventory, out reason);
+
+        if (unlockButton)
+            unlockButton.interactable = canUnlock;
+
+        if (unlockReasonText)
+            unlockReasonText.text = unlocked ? string.Empty : ResolveLockedReason(characterId, reason);
+    }
+
+    string ResolveLockedReason(string characterId, string fallback)
+    {
+        string message = CharacterUnlockService.GetLockedMessage(characterId);
+        if (!string.IsNullOrWhiteSpace(message))
+            return message;
+
+        return fallback;
+    }
+
+    void ShowUnlockReason(string reason)
+    {
+        if (unlockReasonText)
+            unlockReasonText.text = reason;
+    }
+
+    void ResolvePayerInventory()
+    {
+        if (!payerInventory)
+            payerInventory = FindFirstObjectByType<PlayerInventory>(FindObjectsInactive.Include);
     }
 
     void CacheSlots()

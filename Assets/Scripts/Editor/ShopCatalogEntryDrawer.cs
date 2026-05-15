@@ -13,8 +13,8 @@ public class ShopCatalogEntryDrawer : PropertyDrawer
         if (!property.isExpanded)
             return line;
 
-        // Header + entry id + quantity + buy price + sell price + stock.
-        return line * 6f + VerticalSpacing * 5f;
+        // Header + quantity + buy price + sell price + stock.
+        return line * 5f + VerticalSpacing * 4f;
     }
 
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -49,21 +49,12 @@ public class ShopCatalogEntryDrawer : PropertyDrawer
         EditorGUI.indentLevel++;
 
         float y = position.y + line + VerticalSpacing;
-        DrawTextField(position, ref y, property.FindPropertyRelative("entryId"), "Entry Id");
         DrawIntField(position, ref y, property.FindPropertyRelative("quantity"), "Quantity", 1);
         DrawIntField(position, ref y, property.FindPropertyRelative("buyPrice"), "Buy Price", 0);
         DrawIntField(position, ref y, property.FindPropertyRelative("sellPrice"), "Sell Price", 0);
         DrawIntField(position, ref y, property.FindPropertyRelative("stock"), "Stock", -1);
 
         EditorGUI.indentLevel = previousIndent;
-    }
-
-    void DrawTextField(Rect position, ref float y, SerializedProperty property, string label)
-    {
-        float line = EditorGUIUtility.singleLineHeight;
-        Rect rect = new Rect(position.x, y, position.width, line);
-        property.stringValue = EditorGUI.TextField(rect, label, property.stringValue);
-        y += line + VerticalSpacing;
     }
 
     void DrawIntField(Rect position, ref float y, SerializedProperty property, string label, int minValue)

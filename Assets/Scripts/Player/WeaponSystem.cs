@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(WeaponAffixRuntimeController))]
@@ -57,11 +56,12 @@ public class WeaponSystem : MonoBehaviour
     public bool IsMagazineEmpty => magazine <= 0;
     public bool IsOutOfAmmo => magazine <= 0 && !HasReserveAmmo;
     public bool CanReload => !isReloading && currentWeapon != null && magazine < MaxMagazine && HasReserveAmmo;
-    public bool IsFreeAmmoActive => Time.unscaledTime < freeAmmoUntilUnscaledTime;
-    public float FreeAmmoRemaining => Mathf.Max(0f, freeAmmoUntilUnscaledTime - Time.unscaledTime);
+    public bool IsFreeAmmoActive => ammoState.IsFreeAmmoActive;
+    public float FreeAmmoRemaining => ammoState.FreeAmmoRemaining;
 
     bool _isFiringHeld;
-    readonly Dictionary<GameObject, Projectile> _projectilePrefabCache = new();
+    readonly WeaponAmmoState ammoState = new();
+    readonly WeaponProjectileSpawner projectileSpawner = new();
 
     float baseSwaySpeed = 0f;
     float baseMaxSwayAngle = 0f;
@@ -80,6 +80,7 @@ public class WeaponSystem : MonoBehaviour
     bool shootInterruptsReload = true;
     Coroutine reloadRoutine;
     AudioHandle reloadAudioHandle;
+    readonly WeaponReloadController reloadController = new();
 
     [Header("Burst Settings")]
     public int burstCount = 0;
@@ -97,13 +98,14 @@ public class WeaponSystem : MonoBehaviour
     float nextFireTime;
     bool isReloading;
     bool isBursting;
-    float freeAmmoUntilUnscaledTime;
     bool derivedStatsDirty = true;
     GunConfig derivedStatsWeapon;
+    WeaponStatSnapshot statSnapshot;
     StatsHub subscribedStatsHub;
 
     FiringMode firingMode = FiringMode.Auto;
-    readonly List<IWeaponRuntimeEffectHandler> runtimeEffectHandlers = new();
+    readonly WeaponFireController fireController = new();
+    readonly WeaponRuntimeEffectDispatcher runtimeEffectDispatcher = new();
 
     void Awake()
     {
@@ -271,10 +273,8 @@ public class WeaponSystem : MonoBehaviour
         NotifyRuntimeEffectHandlersWeaponEquipped();
         statsHub?.MarkDirty();
         RefreshDerivedStats();
-        magazine = ResolveStartingMagazine();
-        reserveAmmo = ResolveStartingReserveAmmo();
-        magazine = Mathf.Clamp(magazine, 0, MaxMagazine);
-        ClampReserveAmmoToMax();
+        ammoState.Equip(currentWeapon, currentWeaponInstance, MaxMagazine, MaxReserveAmmo, HasInfiniteReserveAmmo);
+        SyncAmmoMirrorsFromState();
         SyncWeaponInstanceState();
         UpdateAmmoUI();
 
@@ -342,45 +342,18 @@ public class WeaponSystem : MonoBehaviour
     int MaxReserveAmmo =>
         WeaponInstanceFactory.ResolveMaxReserveAmmo(currentWeapon, MaxMagazine);
 
-    float FireInterval =>
-        statsHub ? statsHub.GetFireInterval(currentWeapon) :
-        (currentWeapon ? currentWeapon.fireRate : 0f);
-
-    float FinalDamage =>
-        statsHub ? statsHub.GetDamage(currentWeapon) :
-        (currentWeapon ? currentWeapon.damage : 0f) + (ctx ? ctx.baseDamage : 0f);
-
-    float FinalCritRate =>
-        statsHub ? statsHub.GetCritRatePercent(currentWeapon) :
-        (currentWeapon ? currentWeapon.critRate : 0f) + (ctx ? ctx.basecritRate : 0f);
-
-    float FinalCritMult =>
-        statsHub ? statsHub.GetCritMultiplier(currentWeapon) :
-        (currentWeapon ? Mathf.Max(1f, currentWeapon.critMultiplier) : 1f) +
-        (ctx ? Mathf.Max(1f, ctx.basecritMultiplier) - 1f : 0f);
-
-    float FinalStability =>
-        statsHub ? statsHub.GetStability(currentWeapon) :
-        (currentWeapon ? currentWeapon.stability : 0f);
-
-    float FinalBulletSpeed =>
-        statsHub ? statsHub.GetBulletSpeed(currentWeapon) :
-        (currentWeapon ? currentWeapon.BulletSpeed : 0f);
-
-    float FinalReloadTime =>
-        statsHub ? statsHub.GetReloadTime(currentWeapon) :
-        (currentWeapon ? currentWeapon.reloadTime : 0f);
-
     public float GetReloadAnimDuration()
     {
-        if (reloadPerBullet)
-        {
-            int missing = Mathf.Max(0, MaxMagazine - magazine);
-            int reloadable = HasInfiniteReserveAmmo ? missing : Mathf.Min(missing, Mathf.Max(0, reserveAmmo));
-            return startInsertDelay + (reloadable * perBulletInsertTime) + endInsertDelay;
-        }
-
-        return reloadTime;
+        return reloadController.GetAnimationDuration(
+            reloadPerBullet,
+            MaxMagazine,
+            magazine,
+            HasInfiniteReserveAmmo,
+            reserveAmmo,
+            startInsertDelay,
+            perBulletInsertTime,
+            endInsertDelay,
+            reloadTime);
     }
 
     void RefreshDerivedStats()
@@ -388,25 +361,29 @@ public class WeaponSystem : MonoBehaviour
         if (!currentWeapon)
         {
             ClearDerivedStats();
+            statSnapshot = default;
             derivedStatsDirty = false;
             derivedStatsWeapon = null;
             return;
         }
 
-        damage = FinalDamage;
-        fireRate = FireInterval;
-        critRate = FinalCritRate;
-        critMultiplier = FinalCritMult;
-        stability = FinalStability;
-        bulletSpeed = FinalBulletSpeed;
-        staggerPower = currentWeapon ? Mathf.Max(0f, currentWeapon.staggerPower) : 0f;
-        reloadTime = FinalReloadTime;
-        maxMagazine = MaxMagazine;
-        infiniteReserveAmmo = HasInfiniteReserveAmmo;
-        maxReserveAmmo = MaxReserveAmmo;
+        statSnapshot = WeaponStatSnapshotBuilder.Build(currentWeapon, statsHub, ctx);
 
-        if (!infiniteReserveAmmo)
-            reserveAmmo = Mathf.Clamp(reserveAmmo, 0, maxReserveAmmo);
+        damage = statSnapshot.Damage;
+        fireRate = statSnapshot.FireInterval;
+        critRate = statSnapshot.CritRate;
+        critMultiplier = statSnapshot.CritMultiplier;
+        stability = statSnapshot.Stability;
+        bulletSpeed = statSnapshot.BulletSpeed;
+        staggerPower = statSnapshot.StaggerPower;
+        reloadTime = statSnapshot.ReloadTime;
+        maxMagazine = statSnapshot.MaxMagazine;
+        infiniteReserveAmmo = statSnapshot.InfiniteReserveAmmo;
+        maxReserveAmmo = statSnapshot.MaxReserveAmmo;
+
+        SyncAmmoStateFromMirrors();
+        ammoState.RefreshLimits(maxMagazine, maxReserveAmmo, infiniteReserveAmmo, clampMagazine: false, resetInfiniteReserve: false);
+        SyncAmmoMirrorsFromState();
 
         float k = 0.1f;
         float stabilityFactor = 1f / (1f + stability * k);
@@ -454,6 +431,8 @@ public class WeaponSystem : MonoBehaviour
 
     void ClearDerivedStats()
     {
+        ammoState.ClearAmmo();
+
         gunType = default;
         damage = 0f;
         fireRate = 0f;
@@ -498,31 +477,27 @@ public class WeaponSystem : MonoBehaviour
             return;
         }
 
-        if (!currentWeapon || !CanShootNow())
+        bool hasWeapon = currentWeapon != null;
+        if (!fireController.CanStartFiring(hasWeapon, hasWeapon && CanShootNow()))
             return;
 
-        if (isReloading && shootInterruptsReload)
-        {
+        if (fireController.ShouldCancelReload(isReloading, shootInterruptsReload))
             CancelReload();
-        }
 
-        switch (firingMode)
+        switch (fireController.ResolveStartAction(firingMode, isReloading, isBursting, burstCo != null))
         {
-            case FiringMode.Burst:
-                if (isReloading || isBursting || burstCo != null)
-                    return;
-
+            case WeaponFireStartAction.Burst:
                 isBursting = true;
                 isFiring = true;
                 burstCo = StartCoroutine(FireBurst());
                 break;
 
-            case FiringMode.Semi:
+            case WeaponFireStartAction.Semi:
                 TryShoot();
                 isFiring = false;
                 break;
 
-            case FiringMode.Auto:
+            case WeaponFireStartAction.Auto:
                 isFiring = true;
                 break;
         }
@@ -557,55 +532,93 @@ public class WeaponSystem : MonoBehaviour
     {
         RefreshDerivedStatsIfDirty();
 
-        if (!currentWeapon || isReloading || GetWeaponTime() < nextFireTime || !CanShootNow())
+        if (!CanBeginShotAttempt())
             return false;
 
-        if (magazine <= 0)
-        {
-            if (autoloader && HasReserveAmmo)
-                TryReload();
-            else
-                PlayWeaponCue(currentWeapon != null ? currentWeapon.emptyCue : null, false);
+        if (TryHandleEmptyMagazineShot())
             return false;
-        }
 
-        if (!projectilePrefab || !firePoint)
+        if (!HasProjectileLaunchRefs())
             return false;
 
         nextFireTime = GetWeaponTime() + fireRate;
+        ConsumeAmmoForShotIfNeeded();
 
-        if (!IsFreeAmmoActive)
-        {
-            magazine--;
-            SyncWeaponInstanceState();
-            UpdateAmmoUI();
-        }
+        WeaponShotContext shot = CreateWeaponShotContext();
+        SpawnProjectile(shot);
 
+        PlayWeaponCue(currentWeapon != null ? currentWeapon.fireCue : null, false);
+        DispatchShotNotifications(shot);
+        TryStartAutoloadReloadAfterShot();
+
+        return true;
+    }
+
+    bool CanBeginShotAttempt()
+    {
+        return currentWeapon && !isReloading && GetWeaponTime() >= nextFireTime && CanShootNow();
+    }
+
+    bool TryHandleEmptyMagazineShot()
+    {
+        if (magazine > 0)
+            return false;
+
+        if (autoloader && HasReserveAmmo)
+            TryReload();
+        else
+            PlayWeaponCue(currentWeapon != null ? currentWeapon.emptyCue : null, false);
+
+        return true;
+    }
+
+    bool HasProjectileLaunchRefs()
+    {
+        return projectilePrefab && firePoint;
+    }
+
+    void ConsumeAmmoForShotIfNeeded()
+    {
+        if (IsFreeAmmoActive)
+            return;
+
+        SyncAmmoStateFromMirrors();
+        ammoState.ConsumeMagazineAmmo();
+        SyncAmmoMirrorsFromState();
+        SyncWeaponInstanceState();
+        UpdateAmmoUI();
+    }
+
+    WeaponShotContext CreateWeaponShotContext()
+    {
         string weaponSourceId = GetWeaponSourceId();
         string attackId = combatEventBus != null ? combatEventBus.CreateAttackId(weaponSourceId) : null;
-        PassiveEventContext shotContext = CreateShotContext(weaponSourceId, attackId);
+        PassiveEventContext passiveContext = CreateShotContext(weaponSourceId, attackId);
 
-        SpawnProjectile(
+        return new WeaponShotContext(
             projectileConfig,
             projectilePrefab,
+            firePoint,
             damage,
             bulletSpeed,
             weaponSourceId,
             attackId,
-            shotContext);
+            passiveContext);
+    }
 
-        PlayWeaponCue(currentWeapon != null ? currentWeapon.fireCue : null, false);
-
+    void DispatchShotNotifications(WeaponShotContext shot)
+    {
         ctx?.stateHub?.ReportShotFired();
         if (combatEventBus != null)
-            combatEventBus.Publish(shotContext);
+            combatEventBus.Publish(shot.PassiveContext);
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnShotFired, gameObject);
         NotifyRuntimeEffectHandlersShotFired();
+    }
 
+    void TryStartAutoloadReloadAfterShot()
+    {
         if (magazine <= 0 && autoloader && HasReserveAmmo)
             TryReload();
-
-        return true;
     }
 
     public bool SpawnAffixProjectile(
@@ -698,46 +711,44 @@ public class WeaponSystem : MonoBehaviour
         if (reloadRoutine != null)
             StopCoroutine(reloadRoutine);
 
-        if (reloadPerBullet)
+        switch (reloadController.ResolveReloadMode(reloadPerBullet, magazineRelode))
         {
-            reloadRoutine = StartCoroutine(ReloadPerBulletRoutine());
-            PlayReloadCue();
-        }
-        else if (magazineRelode)
-        {
-            reloadRoutine = StartCoroutine(ReloadFullMagRoutine());
-            PlayReloadCue();
-        }
-        else
-        {
-            Debug.LogWarning("[WeaponSystem] TryReload called but no reload mode is enabled.", this);
+            case WeaponReloadMode.PerBullet:
+                reloadRoutine = StartCoroutine(ReloadPerBulletRoutine());
+                PlayReloadCue();
+                break;
+
+            case WeaponReloadMode.FullMagazine:
+                reloadRoutine = StartCoroutine(ReloadFullMagRoutine());
+                PlayReloadCue();
+                break;
+
+            default:
+                Debug.LogWarning("[WeaponSystem] TryReload called but no reload mode is enabled.", this);
+                break;
         }
     }
 
     public bool CanRestoreMagazine(int amount, bool fillToMax = false)
     {
         RefreshDerivedStatsIfDirty();
+        SyncAmmoStateFromMirrors();
 
-        if (!currentWeapon || MaxMagazine <= 0)
+        if (!currentWeapon)
             return false;
 
-        if (fillToMax)
-            return magazine < MaxMagazine;
-
-        return amount > 0 && magazine < MaxMagazine;
+        return ammoState.CanRestoreMagazine(amount, fillToMax);
     }
 
     public bool CanRestoreReserveAmmo(int amount, bool fillToMax = false)
     {
         RefreshDerivedStatsIfDirty();
+        SyncAmmoStateFromMirrors();
 
-        if (!currentWeapon || HasInfiniteReserveAmmo || MaxReserveAmmo <= 0)
+        if (!currentWeapon)
             return false;
 
-        if (fillToMax)
-            return reserveAmmo < MaxReserveAmmo;
-
-        return amount > 0 && reserveAmmo < MaxReserveAmmo;
+        return ammoState.CanRestoreReserveAmmo(amount, fillToMax);
     }
 
     public bool RestoreReserveAmmo(int amount, bool fillToMax = false)
@@ -745,13 +756,10 @@ public class WeaponSystem : MonoBehaviour
         if (!CanRestoreReserveAmmo(amount, fillToMax))
             return false;
 
-        int previous = reserveAmmo;
-        int amountToRestore = fillToMax ? MaxReserveAmmo - reserveAmmo : Mathf.Max(0, amount);
-        reserveAmmo = Mathf.Clamp(reserveAmmo + amountToRestore, 0, MaxReserveAmmo);
-
-        if (reserveAmmo <= previous)
+        if (!ammoState.RestoreReserveAmmo(amount, fillToMax))
             return false;
 
+        SyncAmmoMirrorsFromState();
         SyncWeaponInstanceState();
         UpdateAmmoUI();
         return true;
@@ -765,13 +773,11 @@ public class WeaponSystem : MonoBehaviour
         if (isReloading)
             CancelReload();
 
-        int previous = magazine;
-        int amountToRestore = fillToMax ? MaxMagazine - magazine : Mathf.Max(0, amount);
-        magazine = Mathf.Clamp(magazine + amountToRestore, 0, MaxMagazine);
-
-        if (magazine <= previous)
+        SyncAmmoStateFromMirrors();
+        if (!ammoState.RestoreMagazine(amount, fillToMax))
             return false;
 
+        SyncAmmoMirrorsFromState();
         SyncWeaponInstanceState();
         UpdateAmmoUI();
         return true;
@@ -779,12 +785,7 @@ public class WeaponSystem : MonoBehaviour
 
     public void GrantFreeAmmo(float duration)
     {
-        if (duration <= 0f)
-            return;
-
-        freeAmmoUntilUnscaledTime = Mathf.Max(
-            freeAmmoUntilUnscaledTime,
-            Time.unscaledTime + duration);
+        ammoState.GrantFreeAmmo(duration);
     }
 
     IEnumerator ReloadPerBulletRoutine()
@@ -822,7 +823,7 @@ public class WeaponSystem : MonoBehaviour
             if (restored <= 0)
                 break;
 
-            magazine += restored;
+            AddMagazineAmmo(restored);
             reloadedAny = true;
             SyncWeaponInstanceState();
             UpdateAmmoUI();
@@ -877,7 +878,7 @@ public class WeaponSystem : MonoBehaviour
             yield break;
         }
 
-        magazine = Mathf.Clamp(magazine + restored, 0, MaxMagazine);
+        AddMagazineAmmo(restored);
         SyncWeaponInstanceState();
         UpdateAmmoUI();
         isReloading = false;
@@ -990,6 +991,19 @@ public class WeaponSystem : MonoBehaviour
     }
 
     void SpawnProjectile(
+        WeaponShotContext shot)
+    {
+        SpawnProjectile(
+            shot.ProjectileConfig,
+            shot.ProjectilePrefab,
+            shot.Damage,
+            shot.Speed,
+            shot.WeaponSourceId,
+            shot.AttackId,
+            shot.PassiveContext);
+    }
+
+    void SpawnProjectile(
         ProjectileConfig config,
         GameObject projectileToSpawn,
         float projectileDamage,
@@ -998,58 +1012,30 @@ public class WeaponSystem : MonoBehaviour
         string attackId,
         PassiveEventContext shotContext)
     {
-        if (!TryResolveProjectilePrefab(projectileToSpawn, out var prefabComp))
-            return;
-
-        var projectile = Instantiate(prefabComp, firePoint.position, firePoint.rotation);
-        ProjectileLayerUtility.ApplyForContext(projectile.gameObject, ctx);
-
-        projectile.gunType = gunType;
-        projectile.critRate = critRate;
-        projectile.critMult = critMultiplier;
-
-        projectile.Init(config, new ProjectileContext
-        {
-            sourceActor = transform,
-            collisionIgnoreRoot = transform.root,
-            combatEventBus = combatEventBus,
-            statusEffectController = statusEffectController,
-            dir = firePoint.forward,
-            stats = new ProjectileStats
-            {
-                damage = projectileDamage,
-                speed = projectileSpeed,
-                staggerPower = staggerPower
-            },
-            hitCue = currentWeapon != null ? currentWeapon.hitCue : null,
-            sourceId = weaponSourceId,
-            attackId = attackId,
-            chainId = shotContext.ChainId,
-            depth = shotContext.Depth,
-            origin = combatEventBus != null ? shotContext.Origin : PassiveEventOrigin.External,
-            originPassiveId = shotContext.OriginPassiveId,
-            originRuleId = shotContext.OriginRuleId,
-            projectilePrefab = prefabComp
-        });
+        projectileSpawner.Spawn(new WeaponProjectileSpawnContext(
+            config,
+            projectileToSpawn,
+            firePoint,
+            transform,
+            transform.root,
+            ctx,
+            combatEventBus,
+            statusEffectController,
+            gunType,
+            critRate,
+            critMultiplier,
+            projectileDamage,
+            projectileSpeed,
+            staggerPower,
+            currentWeapon != null ? currentWeapon.hitCue : null,
+            weaponSourceId,
+            attackId,
+            shotContext));
     }
 
     bool TryResolveProjectilePrefab(GameObject prefab, out Projectile projectileComponent)
     {
-        projectileComponent = null;
-
-        if (!prefab)
-            return false;
-
-        if (_projectilePrefabCache.TryGetValue(prefab, out projectileComponent))
-            return projectileComponent != null;
-
-        projectileComponent = prefab.GetComponent<Projectile>();
-        _projectilePrefabCache[prefab] = projectileComponent;
-
-        if (projectileComponent == null)
-            Debug.LogWarning("Projectile prefab is missing Projectile component.", prefab);
-
-        return projectileComponent != null;
+        return projectileSpawner.TryResolveProjectilePrefab(prefab, out projectileComponent);
     }
 
     public void NotifyWeaponInstanceChanged()
@@ -1060,7 +1046,9 @@ public class WeaponSystem : MonoBehaviour
         statsHub?.MarkDirty();
         MarkDerivedStatsDirty();
         RefreshDerivedStats();
-        magazine = Mathf.Clamp(magazine, 0, MaxMagazine);
+        SyncAmmoStateFromMirrors();
+        ammoState.RefreshLimits(MaxMagazine, MaxReserveAmmo, HasInfiniteReserveAmmo, clampMagazine: true, resetInfiniteReserve: true);
+        SyncAmmoMirrorsFromState();
         ClampReserveAmmoToMax();
         SyncWeaponInstanceState();
         UpdateAmmoUI();
@@ -1076,10 +1064,11 @@ public class WeaponSystem : MonoBehaviour
     {
         projectilePrefab = null;
         nextFireTime = 0f;
-        freeAmmoUntilUnscaledTime = 0f;
+        ammoState.ClearFreeAmmo();
         firingMode = FiringMode.Auto;
 
         ClearDerivedStats();
+        statSnapshot = default;
         derivedStatsDirty = false;
         derivedStatsWeapon = null;
 
@@ -1138,87 +1127,37 @@ public class WeaponSystem : MonoBehaviour
 
     void RebuildRuntimeEffectHandlers()
     {
-        runtimeEffectHandlers.Clear();
-
-        AddRuntimeEffectHandler(affixRuntimeController);
-
-        Transform ownerRoot = ctx ? ctx.transform : transform.root;
-        if (!ownerRoot)
-            ownerRoot = transform;
-
-        var behaviours = ownerRoot.GetComponentsInChildren<MonoBehaviour>(true);
-        for (int i = 0; i < behaviours.Length; i++)
-        {
-            if (behaviours[i] is IWeaponRuntimeEffectHandler handler)
-                AddRuntimeEffectHandler(handler);
-        }
-    }
-
-    void AddRuntimeEffectHandler(IWeaponRuntimeEffectHandler handler)
-    {
-        if (handler == null || runtimeEffectHandlers.Contains(handler))
-            return;
-
-        runtimeEffectHandlers.Add(handler);
+        runtimeEffectDispatcher.Rebuild(ctx, transform, affixRuntimeController);
     }
 
     void NotifyRuntimeEffectHandlersWeaponEquipped()
     {
-        RebuildRuntimeEffectHandlers();
-
-        for (int i = 0; i < runtimeEffectHandlers.Count; i++)
-            runtimeEffectHandlers[i]?.NotifyWeaponEquipped();
+        runtimeEffectDispatcher.NotifyWeaponEquipped(ctx, transform, affixRuntimeController);
     }
 
     void NotifyRuntimeEffectHandlersShotFired()
     {
-        if (runtimeEffectHandlers.Count == 0)
-            RebuildRuntimeEffectHandlers();
-
-        for (int i = 0; i < runtimeEffectHandlers.Count; i++)
-            runtimeEffectHandlers[i]?.HandleShotFired();
+        runtimeEffectDispatcher.NotifyShotFired(ctx, transform, affixRuntimeController);
     }
 
     void NotifyRuntimeEffectHandlersReloadCompleted()
     {
-        if (runtimeEffectHandlers.Count == 0)
-            RebuildRuntimeEffectHandlers();
-
-        for (int i = 0; i < runtimeEffectHandlers.Count; i++)
-            runtimeEffectHandlers[i]?.HandleReloadCompleted();
+        runtimeEffectDispatcher.NotifyReloadCompleted(ctx, transform, affixRuntimeController);
     }
 
-    int ResolveStartingMagazine()
+    void SyncAmmoStateFromMirrors()
     {
-        if (currentWeaponInstance != null)
-        {
-            int defaultMagazine = WeaponInstanceFactory.ResolveDefaultMagazine(currentWeapon);
-            int desiredMagazine = currentWeaponInstance.currentMagazine;
-            if (desiredMagazine < 0)
-                desiredMagazine = defaultMagazine;
-
-            return Mathf.Clamp(desiredMagazine, 0, Mathf.Max(currentWeapon.maxMagazine, defaultMagazine));
-        }
-
-        return WeaponInstanceFactory.ResolveDefaultMagazine(currentWeapon);
+        ammoState.SetCurrent(magazine, reserveAmmo);
+        ammoState.RefreshLimits(maxMagazine, maxReserveAmmo, infiniteReserveAmmo, clampMagazine: false, resetInfiniteReserve: false);
     }
 
-    int ResolveStartingReserveAmmo()
+    void SyncAmmoMirrorsFromState()
     {
-        if (!WeaponInstanceFactory.UsesFiniteReserveAmmo(currentWeapon))
-            return 0;
-
-        if (currentWeaponInstance != null)
-        {
-            int defaultReserveAmmo = WeaponInstanceFactory.ResolveDefaultReserveAmmo(currentWeapon, MaxMagazine);
-            int desiredReserveAmmo = currentWeaponInstance.currentReserveAmmo;
-            if (!currentWeaponInstance.reserveAmmoInitialized || desiredReserveAmmo < 0)
-                desiredReserveAmmo = defaultReserveAmmo;
-
-            return Mathf.Clamp(desiredReserveAmmo, 0, MaxReserveAmmo);
-        }
-
-        return Mathf.Max(0, WeaponInstanceFactory.ResolveDefaultReserveAmmo(currentWeapon, MaxMagazine));
+        magazine = ammoState.Magazine;
+        reserveAmmo = ammoState.ReserveAmmo;
+        maxMagazine = ammoState.MaxMagazine;
+        maxReserveAmmo = ammoState.MaxReserveAmmo;
+        infiniteReserveAmmo = ammoState.HasInfiniteReserveAmmo;
     }
 
     void SyncWeaponInstanceState()
@@ -1226,37 +1165,30 @@ public class WeaponSystem : MonoBehaviour
         if (currentWeaponInstance == null)
             return;
 
-        currentWeaponInstance.currentMagazine = Mathf.Max(0, magazine);
-        currentWeaponInstance.currentReserveAmmo = HasInfiniteReserveAmmo ? -1 : Mathf.Max(0, reserveAmmo);
-        currentWeaponInstance.reserveAmmoInitialized = true;
+        SyncAmmoStateFromMirrors();
+        ammoState.SyncInstance(currentWeaponInstance);
     }
 
     int ConsumeReserveAmmo(int amount)
     {
-        int requested = Mathf.Max(0, amount);
-        if (requested <= 0)
-            return 0;
-
-        if (HasInfiniteReserveAmmo)
-            return requested;
-
-        int consumed = Mathf.Min(requested, Mathf.Max(0, reserveAmmo));
-        reserveAmmo -= consumed;
+        SyncAmmoStateFromMirrors();
+        int consumed = ammoState.ConsumeReserveAmmo(amount);
+        SyncAmmoMirrorsFromState();
         return consumed;
+    }
+
+    void AddMagazineAmmo(int amount)
+    {
+        SyncAmmoStateFromMirrors();
+        ammoState.AddMagazineAmmo(amount);
+        SyncAmmoMirrorsFromState();
     }
 
     void ClampReserveAmmoToMax()
     {
-        infiniteReserveAmmo = HasInfiniteReserveAmmo;
-        maxReserveAmmo = MaxReserveAmmo;
-
-        if (infiniteReserveAmmo)
-        {
-            reserveAmmo = 0;
-            return;
-        }
-
-        reserveAmmo = Mathf.Clamp(reserveAmmo, 0, maxReserveAmmo);
+        SyncAmmoStateFromMirrors();
+        ammoState.RefreshLimits(MaxMagazine, MaxReserveAmmo, HasInfiniteReserveAmmo, clampMagazine: false, resetInfiniteReserve: true);
+        SyncAmmoMirrorsFromState();
     }
 
     void UpdateAmmoUI()

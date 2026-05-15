@@ -85,10 +85,7 @@ public class Interactor : MonoBehaviour
             if (hitCtx != null && hitCtx == ctx)
                 continue;
 
-            var link = h.collider.GetComponentInParent<InteractableLink>(true);
-            if (!link) continue;
-
-            var best = link.GetBest(this);
+            var best = FindBestInteractableForHit(h.collider, hitCtx);
 
          
             if (best != null)
@@ -96,6 +93,52 @@ public class Interactor : MonoBehaviour
         }
 
         return null;
+    }
+
+    IInteractable FindBestInteractableForHit(Collider hitCollider, CharacteContext hitCtx)
+    {
+        if (!hitCollider)
+            return null;
+
+        var directLink = hitCollider.GetComponentInParent<InteractableLink>(true);
+        var best = directLink ? directLink.GetBest(this) : null;
+        if (best != null)
+            return best;
+
+        if (hitCtx != null)
+            return FindBestFromLinks(hitCtx.GetComponentsInChildren<InteractableLink>(true));
+
+        var ownerBody = hitCollider.attachedRigidbody;
+        if (ownerBody != null)
+            return FindBestFromLinks(ownerBody.GetComponentsInChildren<InteractableLink>(true));
+
+        return null;
+    }
+
+    IInteractable FindBestFromLinks(InteractableLink[] links)
+    {
+        if (links == null || links.Length == 0)
+            return null;
+
+        IInteractable best = null;
+        int bestPrio = int.MinValue;
+
+        for (int i = 0; i < links.Length; i++)
+        {
+            var link = links[i];
+            if (!link) continue;
+
+            var candidate = link.GetBest(this);
+            if (candidate == null) continue;
+
+            if (candidate.Priority > bestPrio)
+            {
+                bestPrio = candidate.Priority;
+                best = candidate;
+            }
+        }
+
+        return best;
     }
 
     public void InteractPressed()

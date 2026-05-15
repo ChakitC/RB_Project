@@ -10,36 +10,36 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ee0d6ef073118da4dbabdd47dabdedc7, type: 3}
-  m_Name: Roma_Data
+  m_Name: ChaDef.Aires
   m_EditorClassIdentifier: 
-  icon: {fileID: 21300000, guid: 00175ad6f08e47c43b0271b5facc92cb, type: 3}
-  characterId: ID.Roma
-  characterName: Roma
-  CharacterPrefab: {fileID: 1810244535466419119, guid: b07ee821af6ad75499da139780801d3c, type: 3}
-  CharacterPrefabBasement: {fileID: 2216855701626034192, guid: 4928a12a67c6e254ea0ce3e6b3046b60, type: 3}
-  characterAvatar: {fileID: 9000000, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
-  controller: {fileID: 9100000, guid: f555da46cd7e0404e9dc79bbbda06e9a, type: 2}
+  icon: {fileID: 21300000, guid: 1954205d1c06f07409309528f57711af, type: 3}
+  characterId: ID.Aires
+  characterName: Aires
+  CharacterPrefab: {fileID: 6529442347700744484, guid: 6fc8435470cea994d843648ad902acba, type: 3}
+  CharacterPrefabBasement: {fileID: 4578862238211764230, guid: 56ba8f587cb37a94d8d4b223e45cf8cf, type: 3}
+  characterAvatar: {fileID: 9000000, guid: 411cad361d9bf2c45b315ee7ff2425f0, type: 3}
+  controller: {fileID: 9100000, guid: fc3e6424aee06f4498f1cedcc3b293ac, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
-  weaponHandMode: 2
-  combatRole: 3
+  weaponHandMode: 0
+  combatRole: 0
   chainAttackSkill: {fileID: 0}
   maxHP: 100000
   maxStamina: 50
-  Damage: 50
+  Damage: 10
   armor: 1
   critMultiplier: 1.2
   critRate: 10
   Enagy: 100
   speed: 4.5
   speedDown: 1
-  DamageScaling: 5
-  ArmorScaling: 0.5
-  MAXHPScaling: 5
-  StaminaScaling: 2.5
-  CritrateScaling: 0.05
-  CritDamageScaling: 0.05
-  EnagyScaling: 5
-  SpeedScaling: 0.05
+  DamageScaling: 1
+  ArmorScaling: 0
+  MAXHPScaling: 100
+  StaminaScaling: 0
+  CritrateScaling: 0.1
+  CritDamageScaling: 0
+  EnagyScaling: 0
+  SpeedScaling: 0
   passives: []
   dashCue: {fileID: 0}
   meleeLightCue: {fileID: 0}

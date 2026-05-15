@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class InteractableLink : MonoBehaviour
 {
@@ -8,16 +9,35 @@ public class InteractableLink : MonoBehaviour
     {
         if (targets == null || targets.Length == 0)
         {
-            var found = GetComponentsInParent<MonoBehaviour>(true);
-            var list = new System.Collections.Generic.List<MonoBehaviour>();
+            var list = new List<MonoBehaviour>();
+            AddInteractables(GetComponentsInParent<MonoBehaviour>(true), list);
 
-            foreach (var mb in found)
+            var ownerContext = GetComponentInParent<CharacteContext>();
+            if (ownerContext != null)
             {
-                if (mb is IInteractable)
-                    list.Add(mb);
+                AddInteractables(ownerContext.GetComponentsInChildren<MonoBehaviour>(true), list);
+            }
+            else if (transform.parent != null)
+            {
+                AddInteractables(transform.parent.GetComponentsInChildren<MonoBehaviour>(true), list);
             }
 
             targets = list.ToArray();
+        }
+    }
+
+    static void AddInteractables(MonoBehaviour[] found, List<MonoBehaviour> list)
+    {
+        if (found == null)
+            return;
+
+        foreach (var mb in found)
+        {
+            if (!mb) continue;
+            if (mb is not IInteractable) continue;
+            if (list.Contains(mb)) continue;
+
+            list.Add(mb);
         }
     }
 

@@ -12,23 +12,19 @@ public class CharacterSelectable : MonoBehaviour
 
     [Header("Definition Sync")]
     public bool syncDefToParentSlot = true;
-    
+
     [Header("LoadParty")]
     public string IDCharacter;
     [SerializeField] private string fallbackId = "";
     [SerializeField] private int currentSlot;
     [SerializeField] private int partyIndex = 0;
-    
-    
+
     Coroutine cacheCo;
 
-    CharacterDefHolder _defRef;   // อยู่ในลูก
-    PartySlot _parentSlot;     // อยู่ในพาเรนต์ (SlotPoint)
-    CharacterStats _lastDef;   // กัน set ซ้ำๆ
+    CharacterDefHolder _defRef;
+    PartySlot _parentSlot;
+    CharacterStats _lastDef;
 
-    // void Awake() => ScheduleCache(true);
-    
-    
     void OnEnable() => ScheduleCache(true);
 
     void OnTransformChildrenChanged() => ScheduleCache(true);
@@ -42,7 +38,7 @@ public class CharacterSelectable : MonoBehaviour
 
     IEnumerator CacheNextFrame(bool force)
     {
-        yield return null; // รอ 1 เฟรมให้การย้าย parent/child เสร็จ
+        yield return null;
         CacheRefs(force);
         if (syncDefToParentSlot) SyncDefToSlot(force);
         cacheCo = null;
@@ -59,37 +55,33 @@ public class CharacterSelectable : MonoBehaviour
         if (force || colliderInvalid)
             capsuleCollider = GetComponentInChildren<CapsuleCollider>(true);
 
-        // cache def ref จากลูก
         if (force || _defRef == null || !_defRef.transform.IsChildOf(transform))
             _defRef = GetComponentInChildren<CharacterDefHolder>(true);
 
-        // cache slot จาก parent (SlotPoint)
         if (force || _parentSlot == null)
             _parentSlot = GetComponentInParent<PartySlot>(true);
     }
 
     void SyncDefToSlot(bool force)
     {
-        if (_parentSlot == null) return; // ไม่ได้อยู่ใต้ slot ก็ไม่ทำ
+        if (_parentSlot == null) return;
 
         var def = (_defRef != null) ? _defRef.def : null;
 
-        // กัน set ซ้ำๆ ถ้า def ไม่เปลี่ยน
         if (!force && def == _lastDef) return;
 
-        _lastDef = def;
         if (def == null)
         {
+            _lastDef = def;
             _parentSlot.SetCharacterDef(null, true);
             return;
         }
 
-        _parentSlot.IDCharacter = def.characterId;
+        _lastDef = def;
         _parentSlot.SetCharacterDef(def, true);
 
-        if (_parentSlot.levelSystem != null)
+        if (_parentSlot.Selected == def && _parentSlot.levelSystem != null)
             _parentSlot.levelSystem.SetState();
-        
     }
 
     public void SetPicked(bool isPicked)
@@ -105,7 +97,4 @@ public class CharacterSelectable : MonoBehaviour
 
         animator.SetBool(pickedBoolName, isPicked);
     }
-    
-    
-    
 }

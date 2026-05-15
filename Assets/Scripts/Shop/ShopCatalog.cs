@@ -6,6 +6,7 @@ using UnityEngine;
 public class ShopCatalogEntry
 {
     [Header("Identity")]
+    [Tooltip("Optional legacy override. Leave empty to use an auto runtime id.")]
     public string entryId;
 
     [Header("Item")]
@@ -30,7 +31,19 @@ public class ShopCatalogEntry
         if (!string.IsNullOrWhiteSpace(entryId))
             return entryId.Trim();
 
-        return $"entry_{Mathf.Max(0, fallbackIndex):000}";
+        return BuildAutoRuntimeId("entry", 0, fallbackIndex);
+    }
+
+    public string BuildAutoRuntimeId(string scope, int generation, int index)
+    {
+        string scopePart = NormalizeRuntimeIdPart(scope, "entry");
+        string itemPart = ResolveRuntimeItemIdPart();
+        int safeIndex = Mathf.Max(0, index);
+
+        if (generation > 0)
+            return $"{scopePart}_{Mathf.Max(0, generation):000}_{safeIndex:000}_{itemPart}";
+
+        return $"{scopePart}_{safeIndex:000}_{itemPart}";
     }
 
     public string ResolveDisplayName()
@@ -43,20 +56,58 @@ public class ShopCatalogEntry
 
         return item.name;
     }
+
+    string ResolveRuntimeItemIdPart()
+    {
+        if (item == null)
+            return "missing_item";
+
+        if (!string.IsNullOrWhiteSpace(item.itemId))
+            return NormalizeRuntimeIdPart(item.itemId, "item");
+
+        return NormalizeRuntimeIdPart(item.name, "item");
+    }
+
+    static string NormalizeRuntimeIdPart(string value, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return fallback;
+
+        char[] chars = value.Trim().ToLowerInvariant().ToCharArray();
+        for (int i = 0; i < chars.Length; i++)
+        {
+            if (!char.IsLetterOrDigit(chars[i]))
+                chars[i] = '_';
+        }
+
+        string normalized = new string(chars).Trim('_');
+        return string.IsNullOrEmpty(normalized) ? fallback : normalized;
+    }
 }
 
 [CreateAssetMenu(fileName = "ShopCatalog", menuName = "Game/Shop/Catalog")]
-public class ShopCatalog : ScriptableObject
+public class ShopCatalog : ShopCatalogBase
 {
     public List<ShopCatalogEntry> entries = new();
 
-    public int EntryCount => entries != null ? entries.Count : 0;
+    public override int EntryCount => entries != null ? entries.Count : 0;
 
-    public ShopCatalogEntry GetEntry(int index)
+    public override ShopCatalogEntry GetEntry(int index)
     {
         if (entries == null || index < 0 || index >= entries.Count)
             return null;
 
         return entries[index];
+    }
+
+    public override string ResolveEntryRuntimeId(int index, ShopCatalogEntry entry)
+    {
+        if (entry == null)
+            return $"missing_{Mathf.Max(0, index):000}";
+
+        if (!string.IsNullOrWhiteSpace(entry.entryId))
+            return entry.entryId.Trim();
+
+        return entry.BuildAutoRuntimeId("manual", 0, index);
     }
 }

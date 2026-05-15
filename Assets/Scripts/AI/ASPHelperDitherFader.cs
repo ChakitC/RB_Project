@@ -15,6 +15,8 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
     [SerializeField] private ASPCharacterPanel characterPanel;
     [SerializeField] private Transform characterPanelSearchRoot;
     [SerializeField] private AnimancerComponent animancer;
+    [SerializeField, Tooltip("Object disabled after fade-out. Leave empty to disable this GameObject.")]
+    private GameObject deactivateTarget;
 
     [Header("Fade")]
     [SerializeField] private int animancerLayerIndex;
@@ -55,6 +57,7 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
     
     public void SetHiddenImmediate()
     {
+        EnsureFaderObjectActive();
         InitializeReferences();
 
         StopFadeRoutine();
@@ -66,6 +69,7 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
 
     public void BeginAnimationLifecycle(bool hideOnAnimationComplete)
     {
+        EnsureFaderObjectActive();
         InitializeReferences();
         if (characterPanel == null)
             return;
@@ -94,7 +98,7 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
 
         if (isHidden)
         {
-            gameObject.SetActive(false);
+            DeactivateTarget();
             return;
         }
 
@@ -110,7 +114,7 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
 
         if (isHidden)
         {
-            gameObject.SetActive(false);
+            DeactivateTarget();
             return;
         }
 
@@ -192,8 +196,8 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
         {
             ApplyDithering(targetDithering);
 
-            if (deactivateAfterFade && gameObject.activeSelf)
-                gameObject.SetActive(false);
+            if (deactivateAfterFade)
+                DeactivateTarget();
 
             return;
         }
@@ -219,8 +223,21 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
         ApplyDithering(targetDithering);
         fadeRoutine = null;
 
-        if (deactivateAfterFade && gameObject.activeSelf)
-            gameObject.SetActive(false);
+        if (deactivateAfterFade)
+            DeactivateTarget();
+    }
+
+    void DeactivateTarget()
+    {
+        GameObject target = deactivateTarget != null ? deactivateTarget : gameObject;
+        if (target != null && target.activeSelf)
+            target.SetActive(false);
+    }
+
+    void EnsureFaderObjectActive()
+    {
+        if (deactivateTarget != null && deactivateTarget != gameObject && !gameObject.activeSelf)
+            gameObject.SetActive(true);
     }
 
     void ApplyDithering(float value)

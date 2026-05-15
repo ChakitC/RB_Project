@@ -46,7 +46,7 @@ GameObject:
   - component: {fileID: 4583674911629759830}
   - component: {fileID: 2623208603735383099}
   m_Layer: 0
-  m_Name: Epic_PickupVisual
+  m_Name: Epic_PickupVisual Base
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

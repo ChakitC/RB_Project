@@ -7,7 +7,7 @@ using UnityEngine.UI;
 public class ShopPanelUI : MonoBehaviour
 {
     [Header("Binding")]
-    [SerializeField] private ShopCatalog catalog;
+    [SerializeField] private ShopCatalogBase catalog;
     [SerializeField] private PlayerInventory inventorySource;
     [SerializeField] private ShopService shopService;
 
@@ -25,10 +25,10 @@ public class ShopPanelUI : MonoBehaviour
     PlayerInventory boundInventorySource;
 
     public bool IsOpen => gameObject.activeSelf;
-    public ShopCatalog CurrentCatalog => catalog;
+    public ShopCatalogBase CurrentCatalog => catalog;
 
     public void ConfigureReferences(
-        ShopCatalog newCatalog,
+        ShopCatalogBase newCatalog,
         PlayerInventory inventory,
         ShopService service,
         RectTransform rows,
@@ -58,6 +58,7 @@ public class ShopPanelUI : MonoBehaviour
         shopService = service;
         BindService(shopService);
         BindSource(inventory);
+        PrepareCatalogForOpen();
         Refresh();
     }
 
@@ -80,6 +81,7 @@ public class ShopPanelUI : MonoBehaviour
         ResolveReferences();
         BindService(shopService);
         BindSource(inventorySource);
+        PrepareCatalogForOpen();
         Refresh();
     }
 
@@ -97,7 +99,7 @@ public class ShopPanelUI : MonoBehaviour
         Open(null, null);
     }
 
-    public void Open(ShopCatalog catalogOverride, PlayerInventory inventoryOverride)
+    public void Open(ShopCatalogBase catalogOverride, PlayerInventory inventoryOverride)
     {
         if (catalogOverride != null)
             catalog = catalogOverride;
@@ -107,6 +109,7 @@ public class ShopPanelUI : MonoBehaviour
         if (inventoryOverride != null)
             BindSource(inventoryOverride);
 
+        PrepareCatalogForOpen();
         gameObject.SetActive(true);
         Refresh();
     }
@@ -124,9 +127,10 @@ public class ShopPanelUI : MonoBehaviour
             Open();
     }
 
-    public void SetCatalog(ShopCatalog newCatalog)
+    public void SetCatalog(ShopCatalogBase newCatalog)
     {
         catalog = newCatalog;
+        PrepareCatalogForOpen();
         Refresh();
     }
 
@@ -275,12 +279,18 @@ public class ShopPanelUI : MonoBehaviour
             messageText.text = message ?? string.Empty;
     }
 
+    void PrepareCatalogForOpen()
+    {
+        if (catalog != null)
+            catalog.PrepareForOpen();
+    }
+
     void HandleGoldChanged(int gold)
     {
         Refresh();
     }
 
-    void HandleStockChanged(ShopCatalog changedCatalog, int entryIndex)
+    void HandleStockChanged(ShopCatalogBase changedCatalog, int entryIndex)
     {
         if (changedCatalog == null || changedCatalog == catalog)
             Refresh();

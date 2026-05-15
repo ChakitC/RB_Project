@@ -26,6 +26,7 @@ MonoBehaviour:
   pickupPrefab: {fileID: 0}
   BulletPrefab: {fileID: 1661335766552818198, guid: c75d1af27a531f544894b89177b365a2, type: 3}
   WeaponPrefab: {fileID: 6124780253990639866, guid: 8858a72d851712d4e95c8334aff953f0, type: 3}
+  upgradeCurve: {fileID: 0}
   overrideWeaponModelMountOffset: 1
   rightHandWeaponModelMount:
     localPosition: {x: -0.016, y: 0.458, z: -0.036}
@@ -50,6 +51,10 @@ MonoBehaviour:
   critMultiplier: 1.2
   stability: 0
   BulletSpeed: 30
+  infiniteReserveAmmo: 0
+  maxReserveAmmo: 300
+  overrideStartingReserveAmmo: 0
+  startingReserveAmmo: 0
   staggerPower: 10
   autoloader: 0
   magazineReload: 1

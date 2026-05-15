@@ -49,6 +49,7 @@ public class CharacterProgressData
 {
     public int level = 1;
     public int xp = 0;
+    public bool unlocked = false;
     public int skillPoints = 0;
     public bool passiveProgressInitialized = false;
     public List<string> unlockedPassiveNodeIds = new();
@@ -59,6 +60,7 @@ public class CharacterProgressData
         {
             level = level,
             xp = xp,
+            unlocked = unlocked,
             skillPoints = skillPoints,
             passiveProgressInitialized = passiveProgressInitialized,
             unlockedPassiveNodeIds = unlockedPassiveNodeIds != null ? new List<string>(unlockedPassiveNodeIds) : new List<string>()

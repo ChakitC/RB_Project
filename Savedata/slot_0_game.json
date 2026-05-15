@@ -18,10 +18,10 @@
                         "secondaryValue": 0.0
                     },
                     "subAffixes": [],
-                    "shotCounter": 1734,
-                    "currentMagazine": 30,
-                    "currentReserveAmmo": -1,
-                    "reserveAmmoInitialized": false,
+                    "shotCounter": 2481,
+                    "currentMagazine": 21,
+                    "currentReserveAmmo": 168,
+                    "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
                     "upgradeExp": 0,
@@ -138,10 +138,10 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 1244,
-                    "currentMagazine": 22,
-                    "currentReserveAmmo": -1,
-                    "reserveAmmoInitialized": false,
+                    "shotCounter": 2076,
+                    "currentMagazine": 0,
+                    "currentReserveAmmo": 60,
+                    "reserveAmmoInitialized": true,
                     "upgradeLevel": 2,
                     "upgradeTier": 0,
                     "upgradeExp": 0,
@@ -178,9 +178,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 6017,
-                    "currentMagazine": 12,
-                    "currentReserveAmmo": 171,
+                    "shotCounter": 6061,
+                    "currentMagazine": 29,
+                    "currentReserveAmmo": 110,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 30,
                     "upgradeTier": 3,
@@ -222,9 +222,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 1899,
-                    "currentMagazine": 2,
-                    "currentReserveAmmo": 300,
+                    "shotCounter": 1903,
+                    "currentMagazine": 28,
+                    "currentReserveAmmo": 270,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -255,9 +255,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 20,
-                    "currentMagazine": 99,
-                    "currentReserveAmmo": 300,
+                    "shotCounter": 235,
+                    "currentMagazine": 84,
+                    "currentReserveAmmo": 200,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -593,13 +593,13 @@
         ]
     },
     "weapon": {
-        "equippedWeaponInstanceId": "5393a3d1497d43d29b64f34d09f4e75b"
+        "equippedWeaponInstanceId": "944166ad62284a008725d33753827409"
     },
     "equipment": {
         "entries": [
             {
                 "ownerId": "character:ID.Roma",
-                "equippedWeaponInstanceId": "5393a3d1497d43d29b64f34d09f4e75b"
+                "equippedWeaponInstanceId": "944166ad62284a008725d33753827409"
             },
             {
                 "ownerId": "player",
@@ -615,7 +615,7 @@
             },
             {
                 "ownerId": "character:ID.Aires",
-                "equippedWeaponInstanceId": "e9380f839a7f432a858232500ccab7c9"
+                "equippedWeaponInstanceId": "9c6715952d3a4641a26a26af87c72af8"
             },
             {
                 "ownerId": "ally:PartySlot2",

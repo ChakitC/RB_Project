@@ -16,36 +16,36 @@ MonoBehaviour:
   - entryId: 
     item: {fileID: 11400000, guid: 6efa75999c21ad64a9a7c53c8fb76a32, type: 2}
     quantity: 1
-    buyPrice: 0
+    buyPrice: 1
     sellPrice: 0
     stock: -1
   - entryId: 
     item: {fileID: 11400000, guid: 499f11e7a7237d746896c22e012bf3ad, type: 2}
     quantity: 1
-    buyPrice: 0
+    buyPrice: 1
     sellPrice: 0
     stock: -1
   - entryId: 
     item: {fileID: 11400000, guid: bb67bf88d3f3a1f429b7e329d23582ca, type: 2}
     quantity: 1
-    buyPrice: 0
+    buyPrice: 1
     sellPrice: 0
     stock: -1
   - entryId: 
     item: {fileID: 11400000, guid: 7b0b9a415d44e2c4daf5a132a950ce3d, type: 2}
     quantity: 1
-    buyPrice: 0
+    buyPrice: 1
     sellPrice: 0
     stock: -1
   - entryId: 
     item: {fileID: 11400000, guid: a490ebbf91cee9545b07ee1ca71d0c0a, type: 2}
     quantity: 1
-    buyPrice: 0
+    buyPrice: 1
     sellPrice: 0
     stock: -1
   - entryId: 
     item: {fileID: 11400000, guid: 079515c14deaf5d479322be89a4f56a8, type: 2}
     quantity: 1
-    buyPrice: 0
+    buyPrice: 1
     sellPrice: 0
     stock: -1

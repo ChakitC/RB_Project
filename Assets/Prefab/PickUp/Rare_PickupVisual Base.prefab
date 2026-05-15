@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 3286093541104186975}
   - component: {fileID: 3772244916370106167}
   m_Layer: 0
-  m_Name: Rare_PickupVisual
+  m_Name: Rare_PickupVisual Base
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

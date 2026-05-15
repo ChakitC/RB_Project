@@ -21,12 +21,22 @@ public class SkillPickup : MonoBehaviour
     bool _initialized;
     float _spawnTime;
     Collider _pickupCollider;
+    PickupVisualMotion _pickupVisualMotion;
+    bool _collecting;
+
+    void Reset()
+    {
+        TryGetComponent(out _pickupVisualMotion);
+    }
 
     void Awake()
     {
         _pickupCollider = GetComponent<Collider>();
         if (_pickupCollider != null && !_pickupCollider.isTrigger)
             _pickupCollider.isTrigger = true;
+
+        if (_pickupVisualMotion == null)
+            TryGetComponent(out _pickupVisualMotion);
 
         _spawnTime = Time.time;
         if (lifetimeSeconds > 0f)
@@ -42,6 +52,9 @@ public class SkillPickup : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
+        if (_collecting)
+            return;
+
         if (Time.time < _spawnTime + pickupDelaySeconds)
             return;
 
@@ -64,7 +77,7 @@ public class SkillPickup : MonoBehaviour
         }
 
         if (appliedAnyEffect)
-            Destroy(gameObject);
+            CompletePickup(targetObject.transform);
     }
 
     GameObject ResolveTargetObject(Collider other)
@@ -130,5 +143,34 @@ public class SkillPickup : MonoBehaviour
             return targetObject == _context.SourceObject;
 
         return _context.SourceRoot != null && targetObject.transform.root == _context.SourceRoot;
+    }
+
+    void CompletePickup(Transform collector)
+    {
+        _collecting = true;
+        DisablePickupColliders();
+
+        if (_pickupVisualMotion == null)
+            TryGetComponent(out _pickupVisualMotion);
+
+        if (_pickupVisualMotion == null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        _pickupVisualMotion.enabled = true;
+        _pickupVisualMotion.PlayCollectTo(collector, DestroySelf);
+    }
+
+    void DisablePickupColliders()
+    {
+        foreach (var pickupCollider in GetComponentsInChildren<Collider>())
+            pickupCollider.enabled = false;
+    }
+
+    void DestroySelf()
+    {
+        Destroy(gameObject);
     }
 }

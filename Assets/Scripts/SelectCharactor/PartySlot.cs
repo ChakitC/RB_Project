@@ -72,6 +72,10 @@ public class PartySlot : MonoBehaviour
             return;
         }
 
+        def = ResolveUnlockedDefinition(def);
+        if (def == null)
+            return;
+
         SetCharacterDef(def, save);
     }
 
@@ -105,11 +109,60 @@ public class PartySlot : MonoBehaviour
 
     public void SetCharacterDef(CharacterStats def, bool save)
     {
+        if (def != null && !CharacterUnlockService.IsUnlockedForSelection(def))
+        {
+            Debug.LogWarning($"[PartySlot] Character is locked: {def.characterId}", this);
+            return;
+        }
+
         selected = def;
         IDCharacter = def ? def.characterId : "";
 
         if (save && SaveManager.Instance != null)
             SaveManager.Instance.SaveParty();
+    }
+
+    CharacterStats ResolveUnlockedDefinition(CharacterStats requested)
+    {
+        if (requested == null || CharacterUnlockService.IsUnlockedForSelection(requested))
+            return requested;
+
+        Debug.LogWarning($"[PartySlot] Saved/selected character is locked: {requested.characterId}", this);
+
+        CharacterStats fallback = ResolveUnlockedFallback();
+        if (fallback != null)
+            return fallback;
+
+        Debug.LogWarning("[PartySlot] No unlocked fallback character found.", this);
+        return null;
+    }
+
+    CharacterStats ResolveUnlockedFallback()
+    {
+        if (db == null)
+            return null;
+
+        if (!string.IsNullOrWhiteSpace(fallbackId))
+        {
+            CharacterStats fallback = db.GetById(fallbackId);
+            if (fallback != null && CharacterUnlockService.IsUnlockedForSelection(fallback))
+                return fallback;
+        }
+
+        if (selected != null && CharacterUnlockService.IsUnlockedForSelection(selected))
+            return selected;
+
+        if (db.characters == null)
+            return null;
+
+        for (int i = 0; i < db.characters.Count; i++)
+        {
+            CharacterStats candidate = db.characters[i];
+            if (candidate != null && CharacterUnlockService.IsUnlockedForSelection(candidate))
+                return candidate;
+        }
+
+        return null;
     }
 
     void EnsureVisualPreview()

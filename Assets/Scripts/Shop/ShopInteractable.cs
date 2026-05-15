@@ -3,7 +3,7 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class ShopInteractable : MonoBehaviour, IInteractable
 {
-    [SerializeField] private ShopCatalog catalog;
+    [SerializeField] private ShopCatalogBase catalog;
     [SerializeField] private ShopPanelUI shopPanel;
     [SerializeField] private int priority;
     [SerializeField] private string prompt = "Open Shop";
@@ -32,7 +32,7 @@ public class ShopInteractable : MonoBehaviour, IInteractable
         panel.Open(activeCatalog, inventory);
     }
 
-    ShopCatalog ResolveCatalog()
+    ShopCatalogBase ResolveCatalog()
     {
         if (catalog != null)
             return catalog;

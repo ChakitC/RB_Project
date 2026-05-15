@@ -33,6 +33,10 @@ public class ItemDefinition : ScriptableObject
     public int maxStack = 99;
     public GameObject pickupPrefab;
 
+    [Header("Economy")]
+    [Min(0)] public int baseBuyPrice;
+    [Min(0)] public int baseSellPrice;
+
     public virtual GameObject ResolvePickupVisualPrefab()
     {
         return pickupVisualPrefab;

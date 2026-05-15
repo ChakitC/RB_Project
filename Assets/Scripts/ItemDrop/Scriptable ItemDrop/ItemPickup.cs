@@ -6,6 +6,9 @@ public class ItemPickup : MonoBehaviour
     public int amount = 1;
     [SerializeField] private WeaponInstanceData weaponInstance;
     [SerializeField] private ItemPickupVisualPresenter visualPresenter;
+    [SerializeField] private PickupVisualMotion pickupVisualMotion;
+
+    bool _collecting;
 
     public WeaponInstanceData WeaponInstance => weaponInstance;
 
@@ -13,12 +16,18 @@ public class ItemPickup : MonoBehaviour
     {
         if (visualPresenter == null)
             TryGetComponent(out visualPresenter);
+
+        if (pickupVisualMotion == null)
+            TryGetComponent(out pickupVisualMotion);
     }
 
     void Awake()
     {
         if (visualPresenter == null)
             TryGetComponent(out visualPresenter);
+
+        if (pickupVisualMotion == null)
+            TryGetComponent(out pickupVisualMotion);
 
         RefreshVisual();
     }
@@ -40,7 +49,10 @@ public class ItemPickup : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        var inventory = other.GetComponent<PlayerInventory>();
+        if (_collecting)
+            return;
+
+        var inventory = ResolveInventory(other);
         if (inventory == null)
             return;
 
@@ -50,7 +62,7 @@ public class ItemPickup : MonoBehaviour
 
         if (pickedUp)
         {
-            Destroy(gameObject);
+            CompletePickup(inventory.transform);
         }
         else
         {
@@ -64,5 +76,46 @@ public class ItemPickup : MonoBehaviour
             return;
 
         visualPresenter.Present(item);
+    }
+
+    PlayerInventory ResolveInventory(Collider other)
+    {
+        if (other == null)
+            return null;
+
+        var inventory = other.GetComponent<PlayerInventory>();
+        if (inventory != null)
+            return inventory;
+
+        return other.GetComponentInParent<PlayerInventory>();
+    }
+
+    void CompletePickup(Transform collector)
+    {
+        _collecting = true;
+        DisablePickupColliders();
+
+        if (pickupVisualMotion == null)
+            TryGetComponent(out pickupVisualMotion);
+
+        if (pickupVisualMotion == null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        pickupVisualMotion.enabled = true;
+        pickupVisualMotion.PlayCollectTo(collector, DestroySelf);
+    }
+
+    void DisablePickupColliders()
+    {
+        foreach (var pickupCollider in GetComponentsInChildren<Collider>())
+            pickupCollider.enabled = false;
+    }
+
+    void DestroySelf()
+    {
+        Destroy(gameObject);
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 [DisallowMultipleComponent]
@@ -10,11 +11,49 @@ public class PickupVisualMotion : MonoBehaviour
     [SerializeField, Min(0f)] private float wobbleAngle = 5f;
     [SerializeField, Min(0f)] private float wobbleFrequency = 0.65f;
     [SerializeField] private bool randomizePhase = true;
+    [SerializeField, Min(0.01f)] private float collectDuration = 0.35f;
+    [SerializeField] private Vector3 collectTargetOffset = new Vector3(0f, 1.1f, 0f);
+    [SerializeField, Min(0f)] private float collectArcHeight = 0.6f;
+    [SerializeField, Range(0f, 1f)] private float collectEndScale = 0.15f;
 
     Transform _target;
     Vector3 _baseLocalPosition;
     Quaternion _baseLocalRotation;
     float _phaseOffset;
+    bool _collecting;
+    Transform _collectTarget;
+    Vector3 _collectStartPosition;
+    Vector3 _collectStartScale;
+    float _collectElapsed;
+    Action _collectComplete;
+
+    public bool IsCollecting => _collecting;
+
+    public void PlayCollectTo(Transform target, Action onComplete)
+    {
+        if (_collecting)
+            return;
+
+        if (target == null || collectDuration <= 0f)
+        {
+            onComplete?.Invoke();
+            return;
+        }
+
+        ResolveTarget();
+        if (_target != null && _target != transform)
+        {
+            _target.localPosition = _baseLocalPosition;
+            _target.localRotation = _baseLocalRotation;
+        }
+
+        _collecting = true;
+        _collectTarget = target;
+        _collectStartPosition = transform.position;
+        _collectStartScale = transform.localScale;
+        _collectElapsed = 0f;
+        _collectComplete = onComplete;
+    }
 
     void Reset()
     {
@@ -40,6 +79,9 @@ public class PickupVisualMotion : MonoBehaviour
         bobFrequency = Mathf.Max(0f, bobFrequency);
         wobbleAngle = Mathf.Max(0f, wobbleAngle);
         wobbleFrequency = Mathf.Max(0f, wobbleFrequency);
+        collectDuration = Mathf.Max(0.01f, collectDuration);
+        collectArcHeight = Mathf.Max(0f, collectArcHeight);
+        collectEndScale = Mathf.Clamp01(collectEndScale);
 
         if (visualRoot == null && transform.childCount > 0)
             visualRoot = transform.GetChild(0);
@@ -49,6 +91,12 @@ public class PickupVisualMotion : MonoBehaviour
     {
         if (!Application.isPlaying)
             return;
+
+        if (_collecting)
+        {
+            UpdateCollectMotion();
+            return;
+        }
 
         ResolveTarget();
         if (_target == null)
@@ -67,6 +115,33 @@ public class PickupVisualMotion : MonoBehaviour
 
         _target.localPosition = _baseLocalPosition + animatedOffset;
         _target.localRotation = _baseLocalRotation * animatedRotation;
+    }
+
+    void UpdateCollectMotion()
+    {
+        _collectElapsed += Time.deltaTime;
+        float progress = Mathf.Clamp01(_collectElapsed / collectDuration);
+        float easedProgress = progress * progress * (3f - 2f * progress);
+
+        Vector3 targetPosition = _collectTarget != null
+            ? _collectTarget.position + collectTargetOffset
+            : transform.position;
+
+        Vector3 position = Vector3.Lerp(_collectStartPosition, targetPosition, easedProgress);
+        position.y += Mathf.Sin(progress * Mathf.PI) * collectArcHeight;
+
+        transform.position = position;
+        transform.localScale = Vector3.Lerp(_collectStartScale, _collectStartScale * collectEndScale, easedProgress);
+
+        if (progress < 1f)
+            return;
+
+        _collecting = false;
+        _collectTarget = null;
+
+        var onComplete = _collectComplete;
+        _collectComplete = null;
+        onComplete?.Invoke();
     }
 
     void ResolveTarget()
@@ -94,6 +169,6 @@ public class PickupVisualMotion : MonoBehaviour
             return;
         }
 
-        _phaseOffset = Random.Range(0f, Mathf.PI * 2f);
+        _phaseOffset = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
     }
 }

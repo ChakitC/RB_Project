@@ -51,6 +51,10 @@ MonoBehaviour:
   critMultiplier: 1.2
   stability: 10
   BulletSpeed: 30
+  infiniteReserveAmmo: 0
+  maxReserveAmmo: 300
+  overrideStartingReserveAmmo: 0
+  startingReserveAmmo: 0
   staggerPower: 10
   autoloader: 0
   magazineReload: 1

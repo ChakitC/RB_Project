@@ -5,15 +5,15 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class ShopService : MonoBehaviour
 {
-    [SerializeField] private ShopCatalog defaultCatalog;
+    [SerializeField] private ShopCatalogBase defaultCatalog;
     [SerializeField] private bool saveAfterPurchase = true;
 
     readonly Dictionary<string, int> remainingStockByEntry = new();
 
-    public ShopCatalog DefaultCatalog => defaultCatalog;
-    public event Action<ShopCatalog, int> OnStockChanged;
+    public ShopCatalogBase DefaultCatalog => defaultCatalog;
+    public event Action<ShopCatalogBase, int> OnStockChanged;
 
-    public bool CanBuy(PlayerInventory buyer, ShopCatalog catalog, int entryIndex, out string reason)
+    public bool CanBuy(PlayerInventory buyer, ShopCatalogBase catalog, int entryIndex, out string reason)
     {
         reason = string.Empty;
 
@@ -50,7 +50,7 @@ public class ShopService : MonoBehaviour
         return true;
     }
 
-    public bool TryBuy(PlayerInventory buyer, ShopCatalog catalog, int entryIndex, out string reason)
+    public bool TryBuy(PlayerInventory buyer, ShopCatalogBase catalog, int entryIndex, out string reason)
     {
         reason = string.Empty;
 
@@ -86,7 +86,7 @@ public class ShopService : MonoBehaviour
         return true;
     }
 
-    public int GetRemainingStock(ShopCatalog catalog, int entryIndex)
+    public int GetRemainingStock(ShopCatalogBase catalog, int entryIndex)
     {
         catalog = ResolveCatalog(catalog);
         var entry = catalog != null ? catalog.GetEntry(entryIndex) : null;
@@ -104,7 +104,7 @@ public class ShopService : MonoBehaviour
         return stock;
     }
 
-    ShopCatalog ResolveCatalog(ShopCatalog catalog)
+    ShopCatalogBase ResolveCatalog(ShopCatalogBase catalog)
     {
         return catalog != null ? catalog : defaultCatalog;
     }
@@ -127,7 +127,7 @@ public class ShopService : MonoBehaviour
         return true;
     }
 
-    void ConsumeStock(ShopCatalog catalog, int entryIndex, ShopCatalogEntry entry)
+    void ConsumeStock(ShopCatalogBase catalog, int entryIndex, ShopCatalogEntry entry)
     {
         if (entry == null || !entry.HasLimitedStock)
             return;
@@ -138,10 +138,15 @@ public class ShopService : MonoBehaviour
         OnStockChanged?.Invoke(catalog, entryIndex);
     }
 
-    string BuildStockKey(ShopCatalog catalog, int entryIndex, ShopCatalogEntry entry)
+    string BuildStockKey(ShopCatalogBase catalog, int entryIndex, ShopCatalogEntry entry)
     {
         int catalogId = catalog != null ? catalog.GetInstanceID() : 0;
-        string entryId = entry != null ? entry.ResolveRuntimeId(entryIndex) : $"entry_{entryIndex:000}";
+        string entryId = catalog != null
+            ? catalog.ResolveEntryRuntimeId(entryIndex, entry)
+            : entry != null
+                ? entry.ResolveRuntimeId(entryIndex)
+                : $"entry_{entryIndex:000}";
+
         return $"{catalogId}:{entryId}";
     }
 }

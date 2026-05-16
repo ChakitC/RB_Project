@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee0d6ef073118da4dbabdd47dabdedc7, type: 3}
   m_Name: ChaDef.Feno
   m_EditorClassIdentifier: 
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 28e7cb120529af14f862ecb36d8ff881, type: 3}
   characterId: ID.Feno
   characterName: Feno
   CharacterPrefab: {fileID: 8073746211628435587, guid: fbe4b2d13f588374f8d255bef213e276, type: 3}

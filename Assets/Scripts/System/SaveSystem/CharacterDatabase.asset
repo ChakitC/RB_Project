@@ -15,10 +15,10 @@ MonoBehaviour:
   characters:
   - {fileID: 11400000, guid: 4d9e2a3439c48844eb23631bb2e3270d, type: 2}
   - {fileID: 11400000, guid: 9c8a18aa233223d4c837f37c9244adff, type: 2}
-  - {fileID: 11400000, guid: cf68c469f9aa3154582681d0318e66b7, type: 2}
   - {fileID: 11400000, guid: b67c36477807dce418a129c31f6a3a46, type: 2}
   - {fileID: 11400000, guid: dd3bdbe42622e59458c309e7244eba98, type: 2}
   - {fileID: 11400000, guid: 1d9593e3e1011294bb9e8380578cae0b, type: 2}
   - {fileID: 11400000, guid: 012b11f913e9bd241a0fe9f9d2363275, type: 2}
   - {fileID: 11400000, guid: 18eb2fcc17d5e7d4a8d667f4d0325774, type: 2}
   - {fileID: 11400000, guid: 455da4e569b0c6e409b2a5197d404c6e, type: 2}
+  unlockEntries: []

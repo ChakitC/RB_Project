@@ -5,7 +5,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class SpawnOnDragOutButton : MonoBehaviour,
-    IPointerDownHandler, IDragHandler, IPointerUpHandler
+    IPointerDownHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerUpHandler
 {
     const string SharedDragObjectName = "CharactorSelect_DragPooled";
 
@@ -29,10 +29,19 @@ public class SpawnOnDragOutButton : MonoBehaviour,
     public float dragHoverY = 0.3f;
     public float maxRayDistance = 1000f;
 
+    [Header("Scroll List Gesture")]
+    [SerializeField] private ScrollRect parentScrollRect;
+    [SerializeField] private bool forwardHorizontalDragToScrollRect = true;
+    [SerializeField, Min(0f)] private float dragOutMinDistance = 24f;
+    [SerializeField, Min(1f)] private float horizontalScrollBias = 1.15f;
+
     [Header("Integration")]
     public CharacterSelectManager selectManagerToDisable; 
     public bool disableManagerWhileDragging = true;
     [SerializeField] private UILoadLaval loadLevelUI;
+
+    [Header("Character Binding")]
+    [SerializeField] private CharacterStats characterOverride;
 
     [Header("Unlock UI")]
     [SerializeField] private PlayerInventory payerInventory;
@@ -56,6 +65,10 @@ public class SpawnOnDragOutButton : MonoBehaviour,
     bool _pressed;
     bool _spawned;
     int _pointerId;
+    Vector2 _pressScreenPos;
+    bool _forwardingScrollDrag;
+    bool _beganForwardedScrollDrag;
+    bool _finishingRelease;
 
     GameObject _current;
     CharacterSelectable _selectable;
@@ -82,6 +95,7 @@ public class SpawnOnDragOutButton : MonoBehaviour,
         {
             _rect = transform as RectTransform;
             if (!worldCamera) worldCamera = Camera.main;
+            if (!parentScrollRect) parentScrollRect = GetComponentInParent<ScrollRect>();
 
             if (!slotsRoot && autoFindSlotsRoot)
             {
@@ -120,6 +134,8 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
         _pressed = false;
         _spawned = false;
+        _forwardingScrollDrag = false;
+        _beganForwardedScrollDrag = false;
 
         if (disableManagerWhileDragging && selectManagerToDisable)
             selectManagerToDisable.enabled = true;
@@ -132,28 +148,44 @@ public class SpawnOnDragOutButton : MonoBehaviour,
         if (unlockButton)
             unlockButton.onClick.RemoveListener(HandleUnlockClicked);
     }
-    
 
     public void OnPointerDown(PointerEventData e)
     {
         _pressed = true;
         _spawned = false;
         _pointerId = e.pointerId;
+        _pressScreenPos = e.position;
+        _forwardingScrollDrag = false;
+        _beganForwardedScrollDrag = false;
 
         if (disableManagerWhileDragging && selectManagerToDisable)
             selectManagerToDisable.enabled = false;
+    }
+
+    public void OnBeginDrag(PointerEventData e)
+    {
+        if (!_pressed || e.pointerId != _pointerId)
+            return;
+
+        ResolveParentScrollRect();
+
+        if (CanForwardToScrollRect())
+            ExecuteEvents.Execute(parentScrollRect.gameObject, e, ExecuteEvents.initializePotentialDrag);
     }
 
     public void OnDrag(PointerEventData e)
     {
         if (!_pressed || e.pointerId != _pointerId) return;
 
+        if (TryForwardScrollDrag(e))
+            return;
+
         bool inside = RectTransformUtility.RectangleContainsScreenPoint(
             _rect, e.position, e.pressEventCamera
         );
 
         // ออกจากปุ่มครั้งแรก => สปอน
-        if (!_spawned && !inside)
+        if (!_spawned && !inside && CanSpawnFromDragOut(e))
         {
             _spawned = true;
             Spawn(e.position);
@@ -164,27 +196,125 @@ public class SpawnOnDragOutButton : MonoBehaviour,
             DragFollowGround(e.position);
     }
 
+    public void OnEndDrag(PointerEventData e)
+    {
+        if (!_pressed || e.pointerId != _pointerId)
+            return;
+
+        FinishPointerRelease(e);
+    }
+
     public void OnPointerUp(PointerEventData e)
     {
-        if (!_pressed || e.pointerId != _pointerId) return;
-        _pressed = false;
+        if (!_pressed || e.pointerId != _pointerId)
+            return;
 
-        if (_current)
+        FinishPointerRelease(e);
+    }
+
+    void FinishPointerRelease(PointerEventData e)
+    {
+        if (_finishingRelease)
+            return;
+
+        _finishingRelease = true;
+        GameObject releasing = _current;
+
+        try
         {
-            ResetY();
-            if (_selectable) _selectable.SetPicked(false);
+            if (_forwardingScrollDrag)
+            {
+                EndForwardedScrollDrag(e);
+                return;
+            }
 
-            PlaceIntoNearestSlot(_current);  
+            if (_current)
+            {
+                ResetY();
+                if (_selectable) _selectable.SetPicked(false);
+
+                PlaceIntoNearestSlot(_current);
+            }
+        }
+        finally
+        {
+            if (releasing && releasing.activeSelf)
+                ReleaseDragObject(releasing);
 
             _current = null;
             _selectable = null;
             _dragVisual = null;
             _currentDef = null;
             _Animator = null;
+            _finishingRelease = false;
+            ResetInteractionState();
+            RestoreSelectManager();
         }
+    }
 
+    void ResetInteractionState()
+    {
+        _pressed = false;
+        _spawned = false;
+        _forwardingScrollDrag = false;
+        _beganForwardedScrollDrag = false;
+    }
+
+    void RestoreSelectManager()
+    {
         if (disableManagerWhileDragging && selectManagerToDisable)
             selectManagerToDisable.enabled = true;
+    }
+
+    public void SetCharacterDef(CharacterStats characterDef)
+    {
+        characterOverride = characterDef;
+
+        var holder = GetComponentInChildren<CharacterDefHolder>(true);
+        if (!holder)
+            holder = gameObject.AddComponent<CharacterDefHolder>();
+
+        holder.def = characterDef;
+        RefreshUnlockState();
+    }
+
+    public void SetParentScrollRect(ScrollRect scrollRect)
+    {
+        parentScrollRect = scrollRect;
+    }
+
+    public void CopyDragSettingsFrom(SpawnOnDragOutButton source)
+    {
+        if (!source)
+            return;
+
+        prefab = source.prefab;
+        worldParent = source.worldParent;
+        worldCamera = source.worldCamera;
+        poolRoot = source.poolRoot;
+        characterLayer = source.characterLayer;
+        groundLayer = source.groundLayer;
+        dragHoverY = source.dragHoverY;
+        maxRayDistance = source.maxRayDistance;
+        selectManagerToDisable = source.selectManagerToDisable;
+        disableManagerWhileDragging = source.disableManagerWhileDragging;
+        loadLevelUI = source.loadLevelUI;
+        payerInventory = source.payerInventory;
+        fixedY = source.fixedY;
+        spawnYaw = source.spawnYaw;
+        yOffsetDegrees = source.yOffsetDegrees;
+        replaceableLayer = source.replaceableLayer;
+        checkRadius = source.checkRadius;
+        yOffset = source.yOffset;
+        slotsRoot = source.slotsRoot;
+        autoFindSlotsRoot = source.autoFindSlotsRoot;
+        slotsRootTag = source.slotsRootTag;
+        snapMaxDistance = source.snapMaxDistance;
+        useXZOnly = source.useXZOnly;
+        requireSelectableInSlot = source.requireSelectableInSlot;
+
+        CacheSlots();
+        RefreshUnlockState();
     }
     
 
@@ -295,11 +425,22 @@ public class SpawnOnDragOutButton : MonoBehaviour,
         if (visual)
             visual.SetPicked(false);
 
-        dragObject.transform.SetParent(GetPoolParent(), false);
         dragObject.SetActive(false);
 
-        if (dragObject == sharedDragObject && activeOwner == this)
+        if (dragObject == sharedDragObject)
+            sharedDragObject = null;
+
+        if (activeOwner == this)
             activeOwner = null;
+
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+            DestroyImmediate(dragObject);
+        else
+            Destroy(dragObject);
+#else
+        Destroy(dragObject);
+#endif
     }
 
     Transform GetPoolParent()
@@ -323,6 +464,8 @@ public class SpawnOnDragOutButton : MonoBehaviour,
         _Animator = null;
         _pressed = false;
         _spawned = false;
+        _forwardingScrollDrag = false;
+        _beganForwardedScrollDrag = false;
 
         if (disableManagerWhileDragging && selectManagerToDisable)
             selectManagerToDisable.enabled = true;
@@ -330,6 +473,9 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
     CharacterStats ResolveSelectedCharacterDef()
     {
+        if (characterOverride)
+            return characterOverride;
+
         var holder = GetComponentInChildren<CharacterDefHolder>(true);
         if (holder && holder.def)
             return holder.def;
@@ -367,6 +513,82 @@ public class SpawnOnDragOutButton : MonoBehaviour,
        
     }
 
+    bool TryForwardScrollDrag(PointerEventData e)
+    {
+        if (!_forwardingScrollDrag && ShouldStartForwardingScroll(e))
+            BeginForwardedScrollDrag(e);
+
+        if (!_forwardingScrollDrag)
+            return false;
+
+        ForwardScrollDrag(e);
+        return true;
+    }
+
+    bool ShouldStartForwardingScroll(PointerEventData e)
+    {
+        if (_spawned || !CanForwardToScrollRect())
+            return false;
+
+        Vector2 delta = e.position - _pressScreenPos;
+        float threshold = EventSystem.current != null ? EventSystem.current.pixelDragThreshold : 5f;
+        threshold = Mathf.Max(1f, threshold);
+
+        if (delta.sqrMagnitude < threshold * threshold)
+            return false;
+
+        float absX = Mathf.Abs(delta.x);
+        float absY = Mathf.Abs(delta.y);
+        return absX >= absY * horizontalScrollBias;
+    }
+
+    bool CanSpawnFromDragOut(PointerEventData e)
+    {
+        if (!CanForwardToScrollRect())
+            return true;
+
+        return (e.position - _pressScreenPos).magnitude >= dragOutMinDistance;
+    }
+
+    bool CanForwardToScrollRect()
+    {
+        ResolveParentScrollRect();
+        return forwardHorizontalDragToScrollRect && parentScrollRect != null && parentScrollRect.gameObject.activeInHierarchy;
+    }
+
+    void ResolveParentScrollRect()
+    {
+        if (!parentScrollRect)
+            parentScrollRect = GetComponentInParent<ScrollRect>();
+    }
+
+    void BeginForwardedScrollDrag(PointerEventData e)
+    {
+        if (!CanForwardToScrollRect())
+            return;
+
+        _forwardingScrollDrag = true;
+        _beganForwardedScrollDrag = true;
+        ExecuteEvents.Execute(parentScrollRect.gameObject, e, ExecuteEvents.beginDragHandler);
+    }
+
+    void ForwardScrollDrag(PointerEventData e)
+    {
+        if (!parentScrollRect)
+            return;
+
+        ExecuteEvents.Execute(parentScrollRect.gameObject, e, ExecuteEvents.dragHandler);
+    }
+
+    void EndForwardedScrollDrag(PointerEventData e)
+    {
+        if (_beganForwardedScrollDrag && parentScrollRect)
+            ExecuteEvents.Execute(parentScrollRect.gameObject, e, ExecuteEvents.endDragHandler);
+
+        _forwardingScrollDrag = false;
+        _beganForwardedScrollDrag = false;
+    }
+
     void ResetY()
     {
         Vector3 pos = _current.transform.position;
@@ -379,9 +601,10 @@ public class SpawnOnDragOutButton : MonoBehaviour,
     void PlaceIntoNearestSlot(GameObject newObj)
     {
         if (!newObj) return;
+        try
+        {
         if (_slots == null || _slots.Length == 0)
         {
-            ReleaseDragObject(newObj);
             return;
         }
 
@@ -413,14 +636,12 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
         if (!best)
         {
-            ReleaseDragObject(newObj);
             return;
         }
 
         // ถ้าไกลเกิน ไม่ถือว่าลง slot
         if (bestSqr > snapMaxDistance * snapMaxDistance)
         {
-            ReleaseDragObject(newObj);
             return;
         }
 
@@ -440,7 +661,11 @@ public class SpawnOnDragOutButton : MonoBehaviour,
         }
 
         SyncDroppedCharacterToSlot(best, newRoot);
-        ReleaseDragObject(newObj);
+        }
+        finally
+        {
+            ReleaseDragObject(newObj);
+        }
     }
 
     bool IsReplaceableSlotChild(Transform child, Transform newRoot)

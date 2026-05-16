@@ -138,8 +138,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 2076,
-                    "currentMagazine": 0,
+                    "shotCounter": 2362,
+                    "currentMagazine": 14,
                     "currentReserveAmmo": 60,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 2,
@@ -178,9 +178,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 6061,
-                    "currentMagazine": 29,
-                    "currentReserveAmmo": 110,
+                    "shotCounter": 6323,
+                    "currentMagazine": 27,
+                    "currentReserveAmmo": 129,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 30,
                     "upgradeTier": 3,
@@ -222,9 +222,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 1903,
-                    "currentMagazine": 28,
-                    "currentReserveAmmo": 270,
+                    "shotCounter": 1941,
+                    "currentMagazine": 20,
+                    "currentReserveAmmo": 300,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -255,8 +255,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 235,
-                    "currentMagazine": 84,
+                    "shotCounter": 361,
+                    "currentMagazine": 58,
                     "currentReserveAmmo": 200,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
@@ -593,13 +593,13 @@
         ]
     },
     "weapon": {
-        "equippedWeaponInstanceId": "944166ad62284a008725d33753827409"
+        "equippedWeaponInstanceId": "5393a3d1497d43d29b64f34d09f4e75b"
     },
     "equipment": {
         "entries": [
             {
                 "ownerId": "character:ID.Roma",
-                "equippedWeaponInstanceId": "944166ad62284a008725d33753827409"
+                "equippedWeaponInstanceId": "5393a3d1497d43d29b64f34d09f4e75b"
             },
             {
                 "ownerId": "player",

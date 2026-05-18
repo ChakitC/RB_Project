@@ -3,6 +3,10 @@ using UnityEngine.AI;
 
 internal sealed class FieldAllyTransitionController
 {
+    static readonly float[] AttackAnimationSampleFractions = { 0f, 0.1f, 0.25f, 0.5f, 0.75f, 0.98f };
+    static readonly float[] UtilityPostTeleportSampleFractions = { 0f, 0.33f, 0.66f, 0.98f };
+    const float DuplicateSampleTimeEpsilon = 0.0005f;
+
     readonly FieldAllyMember owner;
 
     bool _visualHiddenForChainTransition;
@@ -91,6 +95,35 @@ internal sealed class FieldAllyTransitionController
         if (execution == null || execution.step == null || targetAnchor == null)
             return false;
 
+        if (execution.step.teleportProfile != null)
+        {
+            HideVisualForTeleport();
+
+            bool foundSafePose = TryResolveEntryTeleportPose(
+                execution.step,
+                targetAnchor,
+                out _,
+                out _,
+                (candidatePosition, candidateRotation) =>
+                {
+                    TeleportActorTo(candidatePosition, candidateRotation);
+                    if (ValidateEntryCandidatePose(execution))
+                        return true;
+
+                    TeleportActorTo(execution.recordedOriginPosition, execution.recordedOriginRotation);
+                    return false;
+                });
+
+            if (!foundSafePose)
+            {
+                TeleportActorTo(execution.recordedOriginPosition, execution.recordedOriginRotation);
+                RevealVisualAfterTeleportIfNeeded();
+                return false;
+            }
+
+            return true;
+        }
+
         if (!TryResolveEntryTeleportPose(
                 execution.step,
                 targetAnchor,
@@ -102,6 +135,13 @@ internal sealed class FieldAllyTransitionController
 
         HideVisualForTeleport();
         TeleportActorTo(teleportPosition, teleportRotation);
+        if (!ValidateEntryCandidatePose(execution))
+        {
+            TeleportActorTo(execution.recordedOriginPosition, execution.recordedOriginRotation);
+            RevealVisualAfterTeleportIfNeeded();
+            return false;
+        }
+
         return true;
     }
 
@@ -109,7 +149,8 @@ internal sealed class FieldAllyTransitionController
         ChainAttackStepDef step,
         Transform lockedTarget,
         out Vector3 teleportPosition,
-        out Quaternion teleportRotation)
+        out Quaternion teleportRotation,
+        System.Func<Vector3, Quaternion, bool> poseValidator = null)
     {
         teleportPosition = Vector3.zero;
         teleportRotation = Quaternion.identity;
@@ -129,7 +170,10 @@ internal sealed class FieldAllyTransitionController
                 out teleportPosition,
                 out teleportRotation,
                 step.requireNavMeshAtWarpPoint,
-                step.warpNavMeshSampleDistance);
+                step.warpNavMeshSampleDistance,
+                owner.ChainTeleportProbeColliderRef,
+                owner.TransformRef,
+                poseValidator);
         }
 
         return TryResolveLegacyWarpPose(step, lockedTarget, out teleportPosition, out teleportRotation);
@@ -195,7 +239,152 @@ internal sealed class FieldAllyTransitionController
 
         HideVisualForTeleport();
         TeleportActorTo(finalPosition, finalRotation);
+        if (!IsCurrentProbeClearAfterTeleport(step))
+            return false;
+
         return true;
+    }
+
+    bool ValidateEntryCandidatePose(PendingSequenceExecution execution)
+    {
+        if (execution == null || execution.step == null)
+            return false;
+
+        if (!IsCurrentProbeClearAfterTeleport(execution.step))
+            return false;
+
+        return ValidateEntryAnimationSamples(execution);
+    }
+
+    bool ValidateEntryAnimationSamples(PendingSequenceExecution execution)
+    {
+        ChainAttackStepDef step = execution != null ? execution.step : null;
+        ChainAttackTeleportProfileDef profile = step != null ? step.teleportProfile : null;
+        if (step == null || profile == null || profile.obstacleLayers.value == 0)
+            return true;
+
+        CharacterAnimBrain animBrain = owner.AnimBrainRef;
+        if (animBrain == null)
+        {
+            LogAnimationValidation(profile, "Skipped animation pose validation because AnimBrain is missing.");
+            return true;
+        }
+
+        if (!animBrain.TryGetAnimationSamplingRoot(out GameObject sampleRoot) || sampleRoot == null)
+        {
+            LogAnimationValidation(profile, "Skipped animation pose validation because no Animator sample root was available.");
+            return true;
+        }
+
+        if (ShouldValidateUtilityWarpOutTail(execution) &&
+            animBrain.TryResolveChainUtilityWarpOutAnimationClip(
+                out AnimationClip utilityWarpOutClip,
+                out float utilityCastPointNormalized))
+        {
+            float utilityEndNormalized = utilityCastPointNormalized < 0.98f ? 0.98f : 1f;
+            if (!ValidateAnimationClipSamples(
+                    step,
+                    sampleRoot,
+                    utilityWarpOutClip,
+                    "utility warp-out tail",
+                    utilityCastPointNormalized,
+                    utilityEndNormalized,
+                    UtilityPostTeleportSampleFractions))
+            {
+                return false;
+            }
+        }
+
+        if (!animBrain.TryResolveChainSkillAnimationClip(execution.attackSkillDef, out AnimationClip attackClip))
+        {
+            LogAnimationValidation(profile, "Skipped attack animation pose validation because no chain skill clip was resolved.");
+            return true;
+        }
+
+        return ValidateAnimationClipSamples(
+            step,
+            sampleRoot,
+            attackClip,
+            "attack skill",
+            0f,
+            0.98f,
+            AttackAnimationSampleFractions);
+    }
+
+    bool ValidateAnimationClipSamples(
+        ChainAttackStepDef step,
+        GameObject sampleRoot,
+        AnimationClip clip,
+        string label,
+        float startNormalized,
+        float endNormalized,
+        float[] sampleFractions)
+    {
+        ChainAttackTeleportProfileDef profile = step != null ? step.teleportProfile : null;
+        if (step == null || sampleRoot == null || clip == null || sampleFractions == null || sampleFractions.Length == 0)
+            return true;
+
+        if (clip.length <= 0.0001f)
+            return true;
+
+        TransformPoseSnapshot[] snapshots = CaptureTransformHierarchy(sampleRoot.transform);
+        float start = Mathf.Clamp01(startNormalized);
+        float end = Mathf.Clamp01(endNormalized);
+        if (end < start)
+            end = start;
+
+        float previousSampleTime = -1f;
+
+        try
+        {
+            for (int i = 0; i < sampleFractions.Length; i++)
+            {
+                float normalized = Mathf.Lerp(start, end, Mathf.Clamp01(sampleFractions[i]));
+                float sampleTime = Mathf.Clamp(normalized * clip.length, 0f, clip.length);
+                if (previousSampleTime >= 0f &&
+                    Mathf.Abs(sampleTime - previousSampleTime) <= DuplicateSampleTimeEpsilon)
+                {
+                    continue;
+                }
+
+                previousSampleTime = sampleTime;
+                clip.SampleAnimation(sampleRoot, sampleTime);
+                Physics.SyncTransforms();
+
+                if (IsCurrentProbeClearAfterTeleport(step))
+                    continue;
+
+                LogAnimationValidation(
+                    profile,
+                    $"Rejected {label} sample for clip '{clip.name}' at normalized={normalized:0.###} time={sampleTime:0.###} because the probe overlaps obstacle layers.");
+                return false;
+            }
+        }
+        finally
+        {
+            RestoreTransformHierarchy(snapshots);
+            Physics.SyncTransforms();
+        }
+
+        LogAnimationValidation(profile, $"Animation pose validation passed for {label} clip '{clip.name}'.");
+        return true;
+    }
+
+    bool ShouldValidateUtilityWarpOutTail(PendingSequenceExecution execution)
+    {
+        return execution != null &&
+               execution.step != null &&
+               execution.step.enterMode == ChainActorEnterMode.UtilityWarpInToTarget &&
+               owner.AnimBrainRef != null &&
+               owner.AnimBrainRef.IsChainUtilityPlaybackActive;
+    }
+
+    void LogAnimationValidation(ChainAttackTeleportProfileDef profile, string message)
+    {
+        if (profile == null || !profile.debugLogging)
+            return;
+
+        Debug.Log($"[ChainAttackAnimationPoseValidator:{profile.name}] {message}", owner.GameObjectRef);
     }
 
     public void TeleportActorTo(Vector3 worldPosition, Quaternion worldRotation)
@@ -327,6 +516,74 @@ internal sealed class FieldAllyTransitionController
 
             default:
                 return false;
+        }
+    }
+
+    bool IsCurrentProbeClearAfterTeleport(ChainAttackStepDef step)
+    {
+        ChainAttackTeleportProfileDef profile = step != null ? step.teleportProfile : null;
+        if (profile == null || profile.obstacleLayers.value == 0)
+            return true;
+
+        bool clear = ChainAttackTeleportUtility.IsCurrentProbeColliderClear(
+            owner.ChainTeleportProbeColliderRef,
+            owner.TransformRef,
+            profile.obstacleLayers,
+            profile.obstacleTriggerInteraction,
+            profile.debugLogging,
+            profile.name);
+
+        if (!clear)
+            owner.LogExecution($"Teleport pose rejected after applying actor pose because current probe overlaps obstacle layers for step '{step.RuntimeId}'.");
+
+        return clear;
+    }
+
+    static TransformPoseSnapshot[] CaptureTransformHierarchy(Transform root)
+    {
+        if (root == null)
+            return new TransformPoseSnapshot[0];
+
+        Transform[] transforms = root.GetComponentsInChildren<Transform>(true);
+        TransformPoseSnapshot[] snapshots = new TransformPoseSnapshot[transforms.Length];
+        for (int i = 0; i < transforms.Length; i++)
+            snapshots[i] = new TransformPoseSnapshot(transforms[i]);
+
+        return snapshots;
+    }
+
+    static void RestoreTransformHierarchy(TransformPoseSnapshot[] snapshots)
+    {
+        if (snapshots == null)
+            return;
+
+        for (int i = 0; i < snapshots.Length; i++)
+            snapshots[i].Restore();
+    }
+
+    readonly struct TransformPoseSnapshot
+    {
+        readonly Transform transform;
+        readonly Vector3 localPosition;
+        readonly Quaternion localRotation;
+        readonly Vector3 localScale;
+
+        public TransformPoseSnapshot(Transform transform)
+        {
+            this.transform = transform;
+            localPosition = transform != null ? transform.localPosition : Vector3.zero;
+            localRotation = transform != null ? transform.localRotation : Quaternion.identity;
+            localScale = transform != null ? transform.localScale : Vector3.one;
+        }
+
+        public void Restore()
+        {
+            if (transform == null)
+                return;
+
+            transform.localPosition = localPosition;
+            transform.localRotation = localRotation;
+            transform.localScale = localScale;
         }
     }
 }

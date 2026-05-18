@@ -47,7 +47,7 @@ public sealed partial class CharacterAnimBrain
             }
 
             _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
-                usesRootMotion: true,
+                usesRootMotion: owner.UseRootMotionForChainPlayback,
                 preserveFireHoldIntent: true);
             owner.EmitPlaybackSignal(owner.ResolveActiveChainPlaybackKind(), PlaybackPhase.Started, owner.ActiveChainRequestId);
 

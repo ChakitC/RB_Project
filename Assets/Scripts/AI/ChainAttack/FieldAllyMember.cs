@@ -21,6 +21,8 @@ public sealed class FieldAllyMember : MonoBehaviour
     [SerializeField] private ChainSkillUserProxy skillUserProxy;
     [SerializeField] private AIAimTargetDriver aimTargetDriver;
     [SerializeField] private ASPHelperDitherFader actorFader;
+    [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Teleport Probe Collider")]
+    [SerializeField] private Collider chainTeleportProbeCollider;
     [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Disable Components During Sequence")]
     [SerializeField] private MonoBehaviour[] componentsToDisableDuringSequence;
     [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Auto Disable Player Input/Move")]
@@ -320,6 +322,9 @@ public sealed class FieldAllyMember : MonoBehaviour
             actorRoot = context.transform;
 
         RefreshCollisionReferences();
+        Collider contextPositionCollider = ResolveCharacterPositionCollider(context);
+        if (contextPositionCollider != null)
+            chainTeleportProbeCollider = contextPositionCollider;
 
         if (manager == null)
             manager = FindFirstObjectByType<FieldAllyManager>();
@@ -416,6 +421,47 @@ public sealed class FieldAllyMember : MonoBehaviour
             actorContext.KnockbackMotor = ResolveKnockbackMotor(actorContext);
     }
 
+    Collider ResolveChainTeleportProbeCollider()
+    {
+        Collider contextPositionCollider = ResolveCharacterPositionCollider(ActorContext);
+        if (contextPositionCollider != null)
+            return contextPositionCollider;
+
+        if (chainTeleportProbeCollider != null)
+            return chainTeleportProbeCollider;
+
+        Transform root = ResolveActorTransform();
+        if (root != null)
+        {
+            Collider rootCollider = root.GetComponent<Collider>();
+            if (rootCollider != null)
+                return rootCollider;
+        }
+
+        CharacteContext context = ActorContext;
+        if (context != null)
+        {
+            Collider contextCollider = context.GetComponent<Collider>();
+            if (contextCollider != null)
+                return contextCollider;
+        }
+
+        return null;
+    }
+
+    static Collider ResolveCharacterPositionCollider(CharacteContext context)
+    {
+        if (context == null)
+            return null;
+
+        if (context.ColliderRefs == null)
+            context.ResolveReferences();
+
+        return context.ColliderRefs != null
+            ? context.ColliderRefs.CharacterPositionCollider
+            : null;
+    }
+
     internal bool IsActorInKnockback()
     {
         CharacteContext context = ActorContext;
@@ -510,6 +556,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     internal ChainSkillUserProxy SkillUserProxyRef => skillUserProxy;
     internal AIAimTargetDriver AimTargetDriverRef => aimTargetDriver;
     internal ASPHelperDitherFader ActorFaderRef => actorFader;
+    internal Collider ChainTeleportProbeColliderRef => ResolveChainTeleportProbeCollider();
     internal CharacteContext ActorContextRef => ActorContext;
     internal HealthSystem ActorHealthSystemRef => actorHealthSystem;
     internal AITargetInfo ActorTargetInfoRef => actorTargetInfo;

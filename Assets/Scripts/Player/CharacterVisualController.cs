@@ -213,6 +213,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
             return;
         }
 
+        BindCurrentModelReferences();
         AttachFirePointToModelBone();
         CreateHealthBarOnModelBone();
         BuildModelFromWeaponDef();
@@ -296,6 +297,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
     {
         DetachFirePointFromCurrentModel();
         DestroyHealthBarInstance();
+        ClearCurrentModelReferences();
 
         for (int i = modelRoot.childCount - 1; i >= 0; i--)
             Destroy(modelRoot.GetChild(i).gameObject);
@@ -315,11 +317,35 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
             return;
         }
 
+        BindCurrentModelReferences();
         AttachFirePointToModelBone();
         CreateHealthBarOnModelBone();
         BuildModelFromWeaponDef();
 
         ConfigureAnimatorRuntime();
+    }
+
+    void ClearCurrentModelReferences()
+    {
+        if (_ctx == null || _ctx.ColliderRefs == null)
+            return;
+
+        Transform colliderRefsTransform = _ctx.ColliderRefs.transform;
+        bool belongsToCurrentModel = _currentModel != null && colliderRefsTransform.IsChildOf(_currentModel.transform);
+        bool belongsToModelRoot = modelRoot != null && colliderRefsTransform.IsChildOf(modelRoot);
+
+        if (belongsToCurrentModel || belongsToModelRoot)
+            _ctx.ColliderRefs = null;
+    }
+
+    void BindCurrentModelReferences()
+    {
+        if (_ctx == null || _currentModel == null)
+            return;
+
+        CharacterColliderRefs colliderRefs = _currentModel.GetComponentInChildren<CharacterColliderRefs>(true);
+        if (colliderRefs != null)
+            _ctx.ColliderRefs = colliderRefs;
     }
 
     private void ConfigureAnimatorRuntime()

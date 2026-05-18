@@ -307,6 +307,61 @@ public sealed partial class CharacterAnimBrain
         }
     }
 
+    internal bool TryGetAnimationSamplingRoot(out GameObject sampleRoot)
+    {
+        sampleRoot = null;
+
+        if (!TryInitialize() || animancer == null || animancer.Animator == null)
+            return false;
+
+        sampleRoot = animancer.Animator.gameObject;
+        return sampleRoot != null;
+    }
+
+    internal bool TryResolveChainSkillAnimationClip(SkillGemDefinition skillDef, out AnimationClip clip)
+    {
+        clip = null;
+
+        if (skillDef == null || !TryInitialize())
+            return false;
+
+        return TryExtractAnimationClip(ResolveSkillClip(skillDef), out clip);
+    }
+
+    internal bool TryResolveChainUtilityWarpOutAnimationClip(
+        out AnimationClip clip,
+        out float castPointNormalized)
+    {
+        clip = null;
+        castPointNormalized = 0f;
+
+        if (!TryInitialize())
+            return false;
+
+        castPointNormalized = UtilityWarpOutCastPointNormalized;
+        return TryExtractAnimationClip(UtilityWarpOutClip, out clip);
+    }
+
+    internal bool TryResolveChainUtilityWarpInAnimationClip(
+        out AnimationClip clip,
+        out float castPointNormalized)
+    {
+        clip = null;
+        castPointNormalized = 0f;
+
+        if (!TryInitialize())
+            return false;
+
+        castPointNormalized = UtilityWarpInCastPointNormalized;
+        return TryExtractAnimationClip(UtilityWarpInClip, out clip);
+    }
+
+    static bool TryExtractAnimationClip(ClipTransition transition, out AnimationClip clip)
+    {
+        clip = transition != null ? transition.Clip : null;
+        return transition != null && transition.IsValid && clip != null;
+    }
+
     private ClipTransition ResolveChainClip()
     {
         return _activeChainKind switch

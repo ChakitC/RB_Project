@@ -85,7 +85,7 @@ MonoBehaviour:
     requireNavMeshAtWarpPoint: 0
     warpNavMeshSampleDistance: 1
     helperChainAttackSequence: {fileID: 0}
-    helperHideOnComplete: 1
+    helperHideOnComplete: 0
   - stepId: ally02_attack
     actorRole: 2
     delayBefore: 0

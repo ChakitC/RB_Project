@@ -860,7 +860,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 886609839402011435, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 256169978366491004}
   m_SourcePrefab: {fileID: 100100000, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
 --- !u!114 &528124381220547875 stripped
 MonoBehaviour:
@@ -949,6 +952,49 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3749669808023046127, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
   m_PrefabInstance: {fileID: 7693828120943624140}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &7388200380819911911 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 886609839402011435, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+  m_PrefabInstance: {fileID: 7693828120943624140}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &256169978366491004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7388200380819911911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 054283c474680534cb008378f47a7724, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 8969286749348563509}
+  defaultWeapon: {fileID: 0}
+  equipDefaultOnStart: 1
+  usePlayerInventorySave: 1
+  equipmentOwnerId: 
+  currentWeapon: {fileID: 0}
+  currentWeaponInstance:
+    instanceId: 
+    baseWeaponId: 
+    rarity: 0
+    mainAffix:
+      affixId: 
+      hasPrimaryValue: 0
+      primaryValue: 0
+      hasSecondaryValue: 0
+      secondaryValue: 0
+    subAffixes: []
+    shotCounter: 0
+    currentMagazine: -1
+    currentReserveAmmo: -1
+    reserveAmmoInitialized: 0
+    upgradeLevel: 0
+    upgradeTier: 0
+    upgradeExp: 0
+    unlockedUpgradeMilestoneIds: []
+  equippedWeaponInstanceId: 
 --- !u!114 &8827633069400678508 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1173181556611555232, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
@@ -976,7 +1022,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1666845100770680886, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
   m_PrefabInstance: {fileID: 7693828120943624140}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 7388200380819911911}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: adfb12cae569d5841be3adf15ae6913d, type: 3}

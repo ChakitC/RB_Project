@@ -53,6 +53,9 @@ public class AllyHelperManager : MonoBehaviour
     [SerializeField] private float minSummonRadius = 1.2f;
     [SerializeField] private float navMeshSampleDistance = 2f;
     [SerializeField] private bool facePlayerForward = true;
+
+    [Header("Chain Attack Teleport")]
+    [SerializeField] private Collider allyHelperTeleportProbeCollider;
     
     CharacterAnimBrain allyAnimBrain;
     ISkillUser allySkillUser;
@@ -529,6 +532,10 @@ public class AllyHelperManager : MonoBehaviour
         if (allyContext != null && allyContext.cc == null)
             allyContext.cc = allyCharacterController;
 
+        Collider contextPositionCollider = ResolveCharacterPositionCollider(allyContext);
+        if (contextPositionCollider != null)
+            allyHelperTeleportProbeCollider = contextPositionCollider;
+
         allyTargetInfo = allyHelper.GetComponent<AITargetInfo>();
         if (allyTargetInfo == null)
             allyTargetInfo = allyHelper.GetComponentInChildren<AITargetInfo>(true);
@@ -539,6 +546,49 @@ public class AllyHelperManager : MonoBehaviour
 
         SubscribeToHelperFader(nextHelperFader);
         EnsureHelperSkillCastOrchestrator();
+    }
+
+    Collider ResolveHelperTeleportProbeCollider()
+    {
+        if (allyHelper == null)
+            return null;
+
+        CharacteContext context = allyContext != null
+            ? allyContext
+            : allyHelper.GetComponent<CharacteContext>();
+
+        Collider contextPositionCollider = ResolveCharacterPositionCollider(context);
+        if (contextPositionCollider != null)
+            return contextPositionCollider;
+
+        if (allyHelperTeleportProbeCollider != null)
+            return allyHelperTeleportProbeCollider;
+
+        Collider rootCollider = allyHelper.GetComponent<Collider>();
+        if (rootCollider != null)
+            return rootCollider;
+
+        if (allyContext != null)
+        {
+            Collider contextCollider = allyContext.GetComponent<Collider>();
+            if (contextCollider != null)
+                return contextCollider;
+        }
+
+        return null;
+    }
+
+    static Collider ResolveCharacterPositionCollider(CharacteContext context)
+    {
+        if (context == null)
+            return null;
+
+        if (context.ColliderRefs == null)
+            context.ResolveReferences();
+
+        return context.ColliderRefs != null
+            ? context.ColliderRefs.CharacterPositionCollider
+            : null;
     }
 
     void SubscribeToAnimBrain(CharacterAnimBrain nextAnimBrain)
@@ -834,11 +884,23 @@ public class AllyHelperManager : MonoBehaviour
                 return true;
             }
 
+            Vector3 originalHelperPosition = allyHelper != null ? allyHelper.transform.position : Vector3.zero;
+            Quaternion originalHelperRotation = allyHelper != null ? allyHelper.transform.rotation : Quaternion.identity;
+
             if (!TryResolveChainAttackTeleportPose(
                     pendingChainAttackSequence.sequenceDef,
                     pendingChainAttackSequence.anchorTransform,
                     out Vector3 teleportPosition,
-                    out Quaternion teleportRotation))
+                    out _,
+                    (candidatePosition, candidateRotation) =>
+                    {
+                        TeleportHelperTo(candidatePosition, candidateRotation);
+                        if (IsCurrentHelperChainTeleportProbeClear(pendingChainAttackSequence.sequenceDef))
+                            return true;
+
+                        TeleportHelperTo(originalHelperPosition, originalHelperRotation);
+                        return false;
+                    }))
             {
                 Log(pendingChainAttackSequence.sequenceDef, "Chain attack cancelled: no safe teleport pose was found.");
                 CancelActiveChainAttackSequence(interrupted: false);
@@ -848,7 +910,6 @@ public class AllyHelperManager : MonoBehaviour
             if (pendingChainAttackSequence.sequenceDef.hideHelperAtWarpCastMoment)
                 allyHelperFader?.SetHiddenImmediate();
 
-            TeleportHelperTo(teleportPosition, teleportRotation);
             pendingChainAttackSequence.phase = ChainAttackPhase.WaitingForWarpComplete;
             Log(pendingChainAttackSequence.sequenceDef, $"Teleported helper to chain attack pose at {teleportPosition}.");
             return true;
@@ -1389,19 +1450,25 @@ public class AllyHelperManager : MonoBehaviour
         HelperChainAttackSequenceDef sequenceDef,
         Transform anchorTransform,
         out Vector3 teleportPosition,
-        out Quaternion teleportRotation)
+        out Quaternion teleportRotation,
+        System.Func<Vector3, Quaternion, bool> poseValidator = null)
     {
         Quaternion fallbackBaseRotation =
             playerContext != null ? playerContext.transform.rotation :
             allyHelper != null ? allyHelper.transform.rotation :
             Quaternion.identity;
 
+        Collider probeCollider = ResolveHelperTeleportProbeCollider();
+
         return ChainAttackTeleportUtility.TryResolveTeleportPose(
             sequenceDef,
             anchorTransform,
             fallbackBaseRotation,
             out teleportPosition,
-            out teleportRotation);
+            out teleportRotation,
+            probeCollider,
+            allyHelper != null ? allyHelper.transform : null,
+            poseValidator);
     }
 
     void TeleportHelperTo(Vector3 worldPosition, Quaternion worldRotation)
@@ -1426,6 +1493,20 @@ public class AllyHelperManager : MonoBehaviour
             allyHelper.transform.position = navHit.position;
             allyAgent.nextPosition = navHit.position;
         }
+    }
+
+    bool IsCurrentHelperChainTeleportProbeClear(HelperChainAttackSequenceDef sequenceDef)
+    {
+        if (sequenceDef == null || sequenceDef.obstacleLayers.value == 0)
+            return true;
+
+        return ChainAttackTeleportUtility.IsCurrentProbeColliderClear(
+            ResolveHelperTeleportProbeCollider(),
+            allyHelper != null ? allyHelper.transform : null,
+            sequenceDef.obstacleLayers,
+            sequenceDef.obstacleTriggerInteraction,
+            sequenceDef.debugLogging,
+            sequenceDef.name);
     }
 
     void SyncHelperAgentToTransform()

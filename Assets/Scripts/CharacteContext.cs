@@ -27,6 +27,7 @@ public abstract class CharacteContext : MonoBehaviour
     public CharacterContextPartyLoader CharacterLoad;
     public CharacterVisualController Visual;
     public UIManager UIManager;
+    public CharacterColliderRefs ColliderRefs;
     
     
     [Header("Modules")]
@@ -82,6 +83,7 @@ public abstract class CharacteContext : MonoBehaviour
         CharacterLoad = ResolveActorComponent(CharacterLoad);
         Visual = ResolveActorComponent(Visual);
         UIManager = ResolveActorComponent(UIManager);
+        ColliderRefs = ResolveActorComponent(ColliderRefs);
 
         levelSystem = ResolveActorComponent(levelSystem);
         HealthSystem = ResolveActorComponent(HealthSystem);

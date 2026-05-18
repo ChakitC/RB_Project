@@ -12,18 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 16c7d9cbe31b44caa984ea2789dcb6a0, type: 3}
   m_Name: Example.ChainAttack.Teleport.RightFlank
   m_EditorClassIdentifier: 
-  useAnchorRotationAsBase: 1
-  requireNavMeshAtAnchor: 1
+  useAnchorRotationAsBase: 0
+  requireNavMeshAtAnchor: 0
   navMeshSampleDistance: 1.2
   anchorPositionOffset: {x: 0, y: 0, z: -1.35}
   probeOrientation: 1
-  allowFallbackToBaseRotation: 1
+  allowFallbackToBaseRotation: 0
   orientationAngles:
   - 60
   clearanceCenterOffset: {x: 0, y: 1, z: 0.45}
   clearanceHalfExtents: {x: 0.35, y: 0.9, z: 0.8}
   obstacleLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 131072
   obstacleTriggerInteraction: 1
-  debugLogging: 0
+  debugLogging: 1

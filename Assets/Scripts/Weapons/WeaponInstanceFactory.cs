@@ -25,7 +25,7 @@ public static class WeaponInstanceFactory
 
         return new WeaponInstanceData
         {
-            instanceId = Guid.NewGuid().ToString("N"),
+            instanceId = CreateInstanceId(),
             baseWeaponId = ResolveBaseWeaponId(baseWeapon),
             rarity = rarity,
             currentMagazine = ResolveDefaultMagazine(baseWeapon),
@@ -33,6 +33,35 @@ public static class WeaponInstanceFactory
             reserveAmmoInitialized = true,
             shotCounter = 0
         };
+    }
+
+    public static string CreateInstanceId()
+    {
+        return Guid.NewGuid().ToString("N");
+    }
+
+    public static void ApplyUpgradeLevel(
+        WeaponInstanceData instance,
+        GunConfig baseWeapon,
+        int upgradeLevel,
+        WeaponUpgradeCurve fallbackCurve)
+    {
+        if (instance == null || !baseWeapon)
+            return;
+
+        int level = Mathf.Max(0, upgradeLevel);
+        var curve = WeaponUpgradeService.ResolveUpgradeCurve(baseWeapon, fallbackCurve);
+        if (curve != null)
+            level = Mathf.Clamp(level, 0, curve.GetMaxLevel(instance.rarity));
+
+        instance.upgradeLevel = level;
+        instance.upgradeTier = 0;
+        instance.upgradeExp = 0;
+        instance.unlockedUpgradeMilestoneIds ??= new List<string>();
+        instance.unlockedUpgradeMilestoneIds.Clear();
+
+        if (curve != null && instance.upgradeLevel > 0)
+            curve.SyncUnlockedMilestones(instance, baseWeapon);
     }
 
     public static string ResolveBaseWeaponId(GunConfig baseWeapon)

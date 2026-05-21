@@ -175,7 +175,7 @@ public class ShopPanelStarterAutoBuilder : MonoBehaviour
         SetLayout(icon.gameObject, 56f, 56f);
 
         var nameText = CreateText("NameText", root.transform, "Item Name", 20f, FontStyles.Bold, TextAlignmentOptions.MidlineLeft);
-        SetLayout(nameText.gameObject, 220f, 0f, 1f);
+        SetLayout(nameText.gameObject, 190f, 0f, 1f);
 
         var quantityText = CreateText("QuantityText", root.transform, "x1", 16f, FontStyles.Normal, TextAlignmentOptions.MidlineRight);
         SetLayout(quantityText.gameObject, 54f);
@@ -188,7 +188,8 @@ public class ShopPanelStarterAutoBuilder : MonoBehaviour
 
         var reasonText = CreateText("ReasonText", root.transform, "", 13f, FontStyles.Normal, TextAlignmentOptions.MidlineLeft);
         reasonText.color = new Color32(255, 175, 110, 255);
-        SetLayout(reasonText.gameObject, 135f);
+        reasonText.overflowMode = TextOverflowModes.Ellipsis;
+        SetLayout(reasonText.gameObject, 190f);
 
         var buyButton = CreateButton("BuyButton", root.transform, "Buy", 74f, 44f);
 

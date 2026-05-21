@@ -282,7 +282,16 @@ public class ShopPanelUI : MonoBehaviour
     void PrepareCatalogForOpen()
     {
         if (catalog != null)
+        {
+            if (shopService != null)
+            {
+                catalog.ConfigureWeaponGenerationDefaults(
+                    shopService.WeaponAffixDatabase,
+                    shopService.FallbackUpgradeCurve);
+            }
+
             catalog.PrepareForOpen();
+        }
     }
 
     void HandleGoldChanged(int gold)

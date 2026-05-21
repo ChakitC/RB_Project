@@ -23,7 +23,7 @@ MonoBehaviour:
     m_Bits: 0
   hideHelperAtWarpCastMoment: 1
   useAnchorRotationAsBase: 1
-  requireNavMeshAtAnchor: 1
+  requireNavMeshAtAnchor: 0
   navMeshSampleDistance: 0.75
   anchorPositionOffset: {x: 0, y: 0, z: 0}
   probeOrientation: 1
@@ -40,4 +40,4 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   obstacleTriggerInteraction: 1
-  debugLogging: 0
+  debugLogging: 1

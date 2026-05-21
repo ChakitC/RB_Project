@@ -191,6 +191,12 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         return inventorySystem.CanAddItem(item, amount);
     }
 
+    public bool CanAddWeaponInstance(GunConfig weapon, int amount = 1)
+    {
+        InitializeInventorySystem();
+        return inventorySystem.CanAddWeaponInstances(weapon, amount);
+    }
+
     public bool AddWeaponInstance(WeaponInstanceData weaponInstance)
     {
         InitializeInventorySystem();

@@ -138,9 +138,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 2526,
+                    "shotCounter": 2826,
                     "currentMagazine": 0,
-                    "currentReserveAmmo": 210,
+                    "currentReserveAmmo": 0,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 2,
                     "upgradeTier": 0,
@@ -178,9 +178,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 6468,
-                    "currentMagazine": 28,
-                    "currentReserveAmmo": 262,
+                    "shotCounter": 6801,
+                    "currentMagazine": 29,
+                    "currentReserveAmmo": 296,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 30,
                     "upgradeTier": 3,
@@ -190,6 +190,39 @@
                         "upgrade-tier-20",
                         "upgrade-tier-30"
                     ]
+                }
+            },
+            {
+                "itemId": "RB.HMG.01",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "12dac3b40d764d29ae240974fc9a07e1",
+                    "baseWeaponId": "RB.HMG.01",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [
+                        {
+                            "affixId": "Damge.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 32.542301177978519,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        }
+                    ],
+                    "shotCounter": 1019,
+                    "currentMagazine": 0,
+                    "currentReserveAmmo": 300,
+                    "reserveAmmoInitialized": true,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
                 }
             },
             {
@@ -225,39 +258,6 @@
                     "shotCounter": 1941,
                     "currentMagazine": 20,
                     "currentReserveAmmo": 300,
-                    "reserveAmmoInitialized": true,
-                    "upgradeLevel": 0,
-                    "upgradeTier": 0,
-                    "upgradeExp": 0,
-                    "unlockedUpgradeMilestoneIds": []
-                }
-            },
-            {
-                "itemId": "RB.HMG.01",
-                "amount": 1,
-                "weaponInstance": {
-                    "instanceId": "12dac3b40d764d29ae240974fc9a07e1",
-                    "baseWeaponId": "RB.HMG.01",
-                    "rarity": 0,
-                    "mainAffix": {
-                        "affixId": "",
-                        "hasPrimaryValue": false,
-                        "primaryValue": 0.0,
-                        "hasSecondaryValue": false,
-                        "secondaryValue": 0.0
-                    },
-                    "subAffixes": [
-                        {
-                            "affixId": "Damge.1",
-                            "hasPrimaryValue": true,
-                            "primaryValue": 32.542301177978519,
-                            "hasSecondaryValue": false,
-                            "secondaryValue": 0.0
-                        }
-                    ],
-                    "shotCounter": 636,
-                    "currentMagazine": 83,
-                    "currentReserveAmmo": 200,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -305,10 +305,10 @@
                         "secondaryValue": 0.0
                     },
                     "subAffixes": [],
-                    "shotCounter": 0,
-                    "currentMagazine": 30,
-                    "currentReserveAmmo": -1,
-                    "reserveAmmoInitialized": false,
+                    "shotCounter": 330,
+                    "currentMagazine": 0,
+                    "currentReserveAmmo": 300,
+                    "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
                     "upgradeExp": 0,
@@ -615,7 +615,7 @@
             },
             {
                 "ownerId": "character:ID.Aires",
-                "equippedWeaponInstanceId": "9c6715952d3a4641a26a26af87c72af8"
+                "equippedWeaponInstanceId": "1a5391133fc44acba453df156c0f3d92"
             },
             {
                 "ownerId": "ally:PartySlot2",

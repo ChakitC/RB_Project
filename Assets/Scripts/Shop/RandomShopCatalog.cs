@@ -28,7 +28,17 @@ public class RandomShopCatalog : ShopCatalogBase
     [Tooltip("-1 means unlimited. 0 means sold out.")]
     [SerializeField, Min(-1)] private int maxStock = -1;
 
+    [Header("Random Weapon Instance")]
+    [SerializeField] private WeaponAffixDatabase weaponAffixDatabase;
+    [SerializeField] private WeaponUpgradeCurve fallbackUpgradeCurve;
+    [SerializeField] private RarityTable weaponRarityTable;
+    [SerializeField, Min(0)] private int minWeaponUpgradeLevel = 0;
+    [SerializeField, Min(0)] private int maxWeaponUpgradeLevel = 0;
+    [SerializeField] private bool randomWeaponRollAffixes = true;
+
     [NonSerialized] private List<ShopCatalogEntry> runtimeEntries;
+    [NonSerialized] private WeaponAffixDatabase runtimeWeaponAffixDatabase;
+    [NonSerialized] private WeaponUpgradeCurve runtimeFallbackUpgradeCurve;
     [NonSerialized] private int runtimeGeneration;
     [NonSerialized] private int lastPrepareFrame = -1;
 
@@ -52,6 +62,14 @@ public class RandomShopCatalog : ShopCatalogBase
         lastPrepareFrame = -1;
     }
 
+    public override void ConfigureWeaponGenerationDefaults(
+        WeaponAffixDatabase affixDatabase,
+        WeaponUpgradeCurve upgradeCurve)
+    {
+        runtimeWeaponAffixDatabase = affixDatabase;
+        runtimeFallbackUpgradeCurve = upgradeCurve;
+    }
+
     void OnValidate()
     {
         randomEntryCount = Mathf.Max(0, randomEntryCount);
@@ -59,6 +77,8 @@ public class RandomShopCatalog : ShopCatalogBase
         maxQuantity = Mathf.Max(minQuantity, maxQuantity);
         minStock = Mathf.Max(-1, minStock);
         maxStock = Mathf.Max(minStock, maxStock);
+        minWeaponUpgradeLevel = Mathf.Max(0, minWeaponUpgradeLevel);
+        maxWeaponUpgradeLevel = Mathf.Max(minWeaponUpgradeLevel, maxWeaponUpgradeLevel);
     }
 
     public override void PrepareForOpen()
@@ -158,7 +178,7 @@ public class RandomShopCatalog : ShopCatalogBase
 
     ShopCatalogEntry CreateRandomEntry(ItemDefinition item)
     {
-        return new ShopCatalogEntry
+        var entry = new ShopCatalogEntry
         {
             entryId = string.Empty,
             item = item,
@@ -167,6 +187,60 @@ public class RandomShopCatalog : ShopCatalogBase
             sellPrice = ResolveRandomSellPrice(item),
             stock = RollInclusive(minStock, maxStock)
         };
+
+        ApplyRandomWeaponInstance(entry, item);
+        return entry;
+    }
+
+    void ApplyRandomWeaponInstance(ShopCatalogEntry entry, ItemDefinition item)
+    {
+        if (entry == null || !(item is GunConfig))
+            return;
+
+        var gun = item as GunConfig;
+        var affixDatabase = ResolveWeaponAffixDatabase();
+        var upgradeCurve = ResolveFallbackUpgradeCurve();
+        WeaponRarity rarity = RollRandomWeaponRarity();
+        int upgradeLevel = RollInclusive(minWeaponUpgradeLevel, maxWeaponUpgradeLevel);
+
+        entry.weaponRarity = rarity;
+        entry.weaponUpgradeLevel = upgradeLevel;
+        entry.rollWeaponAffixes = randomWeaponRollAffixes;
+
+        var instance = randomWeaponRollAffixes
+            ? WeaponInstanceFactory.CreateInstance(gun, rarity, affixDatabase)
+            : WeaponInstanceFactory.CreatePlainInstance(gun, rarity);
+
+        WeaponInstanceFactory.ApplyUpgradeLevel(instance, gun, upgradeLevel, upgradeCurve);
+
+        string affixSummary = WeaponAffixDisplayUtility.BuildSummary(instance, affixDatabase);
+        entry.SetWeaponInstanceTemplate(instance, affixSummary);
+    }
+
+    WeaponRarity RollRandomWeaponRarity()
+    {
+        if (weaponRarityTable == null ||
+            weaponRarityTable.entries == null ||
+            weaponRarityTable.entries.Count == 0)
+        {
+            return WeaponRarity.Common;
+        }
+
+        ItemRarity itemRarity = weaponRarityTable != null
+            ? weaponRarityTable.RollRarity()
+            : ItemRarity.Common;
+
+        return WeaponRarityUtility.FromItemRarity(itemRarity);
+    }
+
+    WeaponAffixDatabase ResolveWeaponAffixDatabase()
+    {
+        return weaponAffixDatabase != null ? weaponAffixDatabase : runtimeWeaponAffixDatabase;
+    }
+
+    WeaponUpgradeCurve ResolveFallbackUpgradeCurve()
+    {
+        return fallbackUpgradeCurve != null ? fallbackUpgradeCurve : runtimeFallbackUpgradeCurve;
     }
 
     int ResolveRandomBuyPrice(ItemDefinition item)

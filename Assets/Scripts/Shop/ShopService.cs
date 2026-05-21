@@ -8,9 +8,15 @@ public class ShopService : MonoBehaviour
     [SerializeField] private ShopCatalogBase defaultCatalog;
     [SerializeField] private bool saveAfterPurchase = true;
 
+    [Header("Weapon Instance")]
+    [SerializeField] private WeaponAffixDatabase weaponAffixDatabase;
+    [SerializeField] private WeaponUpgradeCurve fallbackUpgradeCurve;
+
     readonly Dictionary<string, int> remainingStockByEntry = new();
 
     public ShopCatalogBase DefaultCatalog => defaultCatalog;
+    public WeaponAffixDatabase WeaponAffixDatabase => weaponAffixDatabase;
+    public WeaponUpgradeCurve FallbackUpgradeCurve => fallbackUpgradeCurve;
     public event Action<ShopCatalogBase, int> OnStockChanged;
 
     public bool CanBuy(PlayerInventory buyer, ShopCatalogBase catalog, int entryIndex, out string reason)
@@ -41,11 +47,8 @@ public class ShopService : MonoBehaviour
             return false;
         }
 
-        if (!buyer.CanAddItem(entry.item, entry.QuantityPerPurchase))
-        {
-            reason = "Inventory is full.";
+        if (!CanAddPurchase(buyer, entry, out reason))
             return false;
-        }
 
         return true;
     }
@@ -69,12 +72,11 @@ public class ShopService : MonoBehaviour
             return false;
         }
 
-        if (!buyer.AddItem(entry.item, entry.QuantityPerPurchase))
+        if (!TryAddPurchase(buyer, entry, out reason))
         {
             if (price > 0)
                 buyer.AddGold(price);
 
-            reason = "Inventory is full.";
             return false;
         }
 
@@ -125,6 +127,144 @@ public class ShopService : MonoBehaviour
 
         reason = string.Empty;
         return true;
+    }
+
+    bool CanAddPurchase(PlayerInventory buyer, ShopCatalogEntry entry, out string reason)
+    {
+        reason = string.Empty;
+
+        if (buyer == null || entry == null || entry.item == null)
+        {
+            reason = "Missing shop item.";
+            return false;
+        }
+
+        if (entry.item is GunConfig gun)
+        {
+            if (!buyer.CanAddWeaponInstance(gun, entry.QuantityPerPurchase))
+            {
+                reason = "Inventory is full.";
+                return false;
+            }
+
+            return true;
+        }
+
+        if (!buyer.CanAddItem(entry.item, entry.QuantityPerPurchase))
+        {
+            reason = "Inventory is full.";
+            return false;
+        }
+
+        return true;
+    }
+
+    bool TryAddPurchase(PlayerInventory buyer, ShopCatalogEntry entry, out string reason)
+    {
+        reason = string.Empty;
+
+        if (buyer == null || entry == null || entry.item == null)
+        {
+            reason = "Missing shop item.";
+            return false;
+        }
+
+        if (entry.item is GunConfig gun)
+            return TryAddWeaponPurchase(buyer, entry, gun, out reason);
+
+        if (!buyer.AddItem(entry.item, entry.QuantityPerPurchase))
+        {
+            reason = "Inventory is full.";
+            return false;
+        }
+
+        return true;
+    }
+
+    bool TryAddWeaponPurchase(PlayerInventory buyer, ShopCatalogEntry entry, GunConfig gun, out string reason)
+    {
+        reason = string.Empty;
+
+        var addedInstanceIds = new List<string>();
+        int count = entry.QuantityPerPurchase;
+
+        for (int i = 0; i < count; i++)
+        {
+            var instance = CreateShopWeaponInstance(gun, entry);
+            if (instance == null)
+            {
+                RollbackAddedWeaponInstances(buyer, addedInstanceIds);
+                reason = "Could not create weapon instance.";
+                return false;
+            }
+
+            if (!buyer.AddWeaponInstance(instance))
+            {
+                RollbackAddedWeaponInstances(buyer, addedInstanceIds);
+                reason = "Could not add weapon to inventory.";
+                return false;
+            }
+
+            addedInstanceIds.Add(instance.instanceId);
+        }
+
+        return true;
+    }
+
+    WeaponInstanceData CreateShopWeaponInstance(GunConfig gun, ShopCatalogEntry entry)
+    {
+        if (!gun || entry == null)
+            return null;
+
+        var templatedInstance = entry.CreateWeaponInstanceFromTemplate();
+        if (templatedInstance != null)
+            return templatedInstance;
+
+        if (entry.ShouldRandomizeWeaponInstance)
+            return CreateRandomWeaponInstance(gun);
+
+        WeaponInstanceData instance = entry.rollWeaponAffixes
+            ? WeaponInstanceFactory.CreateInstance(gun, entry.weaponRarity, weaponAffixDatabase)
+            : WeaponInstanceFactory.CreatePlainInstance(gun, entry.weaponRarity);
+
+        WeaponInstanceFactory.ApplyUpgradeLevel(instance, gun, entry.WeaponUpgradeLevel, fallbackUpgradeCurve);
+        return instance;
+    }
+
+    WeaponInstanceData CreateRandomWeaponInstance(GunConfig gun)
+    {
+        if (!gun)
+            return null;
+
+        WeaponRarity rarity = RollWeaponRarity();
+        var instance = WeaponInstanceFactory.CreateInstance(gun, rarity, weaponAffixDatabase);
+
+        var curve = WeaponUpgradeService.ResolveUpgradeCurve(gun, fallbackUpgradeCurve);
+        int maxLevel = curve != null ? curve.GetMaxLevel(rarity) : 10;
+        int upgradeLevel = maxLevel > 0 ? UnityEngine.Random.Range(0, maxLevel + 1) : 0;
+        WeaponInstanceFactory.ApplyUpgradeLevel(instance, gun, upgradeLevel, fallbackUpgradeCurve);
+        return instance;
+    }
+
+    static WeaponRarity RollWeaponRarity()
+    {
+        float roll = UnityEngine.Random.value;
+        if (roll >= 0.9f)
+            return WeaponRarity.Epic;
+
+        if (roll >= 0.65f)
+            return WeaponRarity.Rare;
+
+        return WeaponRarity.Common;
+    }
+
+    void RollbackAddedWeaponInstances(PlayerInventory buyer, List<string> instanceIds)
+    {
+        if (buyer == null || instanceIds == null)
+            return;
+
+        for (int i = 0; i < instanceIds.Count; i++)
+            buyer.RemoveWeaponInstance(instanceIds[i]);
     }
 
     void ConsumeStock(ShopCatalogBase catalog, int entryIndex, ShopCatalogEntry entry)

@@ -8,6 +8,12 @@ public abstract class ShopCatalogBase : ScriptableObject
     {
     }
 
+    public virtual void ConfigureWeaponGenerationDefaults(
+        WeaponAffixDatabase affixDatabase,
+        WeaponUpgradeCurve upgradeCurve)
+    {
+    }
+
     public abstract ShopCatalogEntry GetEntry(int index);
 
     public virtual string ResolveEntryRuntimeId(int index, ShopCatalogEntry entry)

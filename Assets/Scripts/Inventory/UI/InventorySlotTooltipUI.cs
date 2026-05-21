@@ -22,7 +22,7 @@ public class InventorySlotTooltipUI : MonoBehaviour
     TextMeshProUGUI titleText;
     TextMeshProUGUI bodyText;
 
-    InventorySlotUI activeSlot;
+    Component activeOwner;
 
     public static InventorySlotTooltipUI GetOrCreate(Canvas rootCanvas)
     {
@@ -51,7 +51,7 @@ public class InventorySlotTooltipUI : MonoBehaviour
     {
         return instance != null &&
                instance.gameObject.activeSelf &&
-               instance.activeSlot == slot;
+               instance.activeOwner == slot;
     }
 
     public static void HideForSlot(InventorySlotUI slot)
@@ -62,6 +62,14 @@ public class InventorySlotTooltipUI : MonoBehaviour
         instance.HideFor(slot);
     }
 
+    public static void HideForOwner(Component owner)
+    {
+        if (instance == null)
+            return;
+
+        instance.HideFor(owner);
+    }
+
     public static void RefreshForSlot(
         InventorySlotUI slot,
         InventorySlotData slotData,
@@ -69,7 +77,7 @@ public class InventorySlotTooltipUI : MonoBehaviour
         Canvas rootCanvas,
         Camera eventCamera = null)
     {
-        if (instance == null || !instance.gameObject.activeSelf || instance.activeSlot != slot)
+        if (instance == null || !instance.gameObject.activeSelf || instance.activeOwner != slot)
             return;
 
         instance.ShowFor(slot, slotData, screenPosition, rootCanvas, eventCamera);
@@ -103,14 +111,24 @@ public class InventorySlotTooltipUI : MonoBehaviour
         Canvas rootCanvas,
         Camera eventCamera = null)
     {
-        if (slot == null || slotData == null || slotData.IsEmpty || slotData.item == null || rootCanvas == null)
+        ShowFor(slot as Component, slotData, screenPosition, rootCanvas, eventCamera);
+    }
+
+    public void ShowFor(
+        Component owner,
+        InventorySlotData slotData,
+        Vector2 screenPosition,
+        Canvas rootCanvas,
+        Camera eventCamera = null)
+    {
+        if (owner == null || slotData == null || slotData.IsEmpty || slotData.item == null || rootCanvas == null)
         {
-            HideFor(slot);
+            HideFor(owner);
             return;
         }
 
         AttachToCanvas(rootCanvas);
-        activeSlot = slot;
+        activeOwner = owner;
         ApplySlot(slotData);
 
         if (!gameObject.activeSelf)
@@ -126,7 +144,12 @@ public class InventorySlotTooltipUI : MonoBehaviour
 
     public void HideFor(InventorySlotUI slot)
     {
-        if (activeSlot != null && slot != null && activeSlot != slot)
+        HideFor(slot as Component);
+    }
+
+    public void HideFor(Component owner)
+    {
+        if (activeOwner != null && owner != null && activeOwner != owner)
             return;
 
         Hide();
@@ -256,7 +279,7 @@ public class InventorySlotTooltipUI : MonoBehaviour
 
     void Hide()
     {
-        activeSlot = null;
+        activeOwner = null;
 
         if (canvasGroup != null)
             canvasGroup.alpha = 0f;

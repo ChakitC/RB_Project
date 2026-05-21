@@ -7,12 +7,11 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Abbygail_Emotion
+  m_Name: Mat_Abbygail_Van
   m_Shader: {fileID: 4800000, guid: 55a54603fab88d940a3374f8ae9f78e8, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - _ALPHATEST_ON
   - _SPECULAR_LIGHTING_ON
   - _STYLE_CELSHADING
   m_InvalidKeywords:
@@ -30,7 +29,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: 56d1b48ed91ce9340a5cd3f23a3fad79, type: 3}
+        m_Texture: {fileID: 2800000, guid: 667c0ebd5a05dff4d8c5edd1ffaf9803, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpMap:
@@ -137,7 +136,7 @@ Material:
     m_Floats:
     - _AddPrecomputedVelocity: 0
     - _AdvanceGroup: 0
-    - _AlphaClip: 1
+    - _AlphaClip: 0
     - _AlphaToMask: 0
     - _BakeGISource: 0
     - _Blend: 0
@@ -185,11 +184,11 @@ Material:
     - _IsUsingRampOcclusionTexture: 0
     - _MatCapReflectionStrength: 1
     - _MatCapRollStabilize: 1
-    - _MaterialID: 3
+    - _MaterialID: 1
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OffsetShadowDistance: 15
-    - _OutlineWidth: 4.66
+    - _OutlineWidth: 6.82
     - _OverrideLightColorIntensityToggle: 0
     - _OverrideLightDirToggle: 0
     - _OverrideZTest: 0
@@ -231,12 +230,12 @@ Material:
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: 8.892818, g: 0.00010108948, b: 3.0767689, a: 0}
+    - _CharacterCenterWS: {r: -38.655838, g: -0.25989896, b: -1.5639544, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FaceFrontDirection: {r: 0.029860664, g: 0, b: -0.99955416, a: 0}
-    - _FaceRightDirection: {r: -0.99955416, g: 0, b: -0.029860664, a: 0}
+    - _FaceFrontDirection: {r: 0.80145425, g: 0, b: 0.5980561, a: 0}
+    - _FaceRightDirection: {r: 0.5980561, g: 0, b: -0.80145425, a: 0}
     - _FaceUVCtrl: {r: 0, g: 1, b: 0, a: 0}
     - _FakeLightColor: {r: 0, g: 0, b: 0, a: 0}
     - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}
@@ -255,7 +254,7 @@ Material:
     - _SurfaceUVCtrl: {r: 1, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
---- !u!114 &6705210044312071460
+--- !u!114 &3039912615501877150
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}

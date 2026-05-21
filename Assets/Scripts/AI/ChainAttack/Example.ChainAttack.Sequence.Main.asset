@@ -46,7 +46,7 @@ MonoBehaviour:
     skipIfActorUnavailable: 1
     skipIfTargetMissing: 1
     requireActorAlive: 1
-    enterMode: 0
+    enterMode: 1
     teleportProfile: {fileID: 0}
     allowFallbackToInstantTeleportIfUtilityUnavailable: 1
     exitMode: 0

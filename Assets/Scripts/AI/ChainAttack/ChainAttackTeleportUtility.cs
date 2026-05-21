@@ -323,8 +323,7 @@ public static class ChainAttackTeleportUtility
             return false;
         }
 
-        bool shouldSampleNavMesh = config.requireNavMeshAtAnchor || config.HasProbeCollider;
-        if (shouldSampleNavMesh)
+        if (config.requireNavMeshAtAnchor)
         {
             if (!NavMesh.SamplePosition(
                     teleportPosition,
@@ -341,12 +340,12 @@ public static class ChainAttackTeleportUtility
 
             Log(config, $"NavMesh sampled yaw={yawAngle:0.###}: {teleportPosition} -> {navHit.position}.");
             teleportPosition = navHit.position;
-        }
 
-        if (config.HasProbeCollider && !IsProbeColliderOnNavMesh(config, teleportPosition, teleportRotation))
-        {
-            Log(config, $"Rejected yaw={yawAngle:0.###}: probe footprint is not fully on NavMesh at {teleportPosition}.");
-            return false;
+            if (config.HasProbeCollider && !IsProbeColliderOnNavMesh(config, teleportPosition, teleportRotation))
+            {
+                Log(config, $"Rejected yaw={yawAngle:0.###}: probe footprint is not fully on NavMesh at {teleportPosition}.");
+                return false;
+            }
         }
 
         if (!IsTeleportPoseClear(config, teleportPosition, teleportRotation, requireLegacyClearance))
@@ -716,7 +715,8 @@ public static class ChainAttackTeleportUtility
         if (radius <= MinProbeExtent)
             return false;
 
-        Vector3 footCenter = pointA.y <= pointB.y ? pointA : pointB;
+        Vector3 lowerSegmentCenter = pointA.y <= pointB.y ? pointA : pointB;
+        Vector3 footCenter = lowerSegmentCenter - Vector3.up * radius;
         Vector3 planarA = ResolvePlanarAxis(sideA, Vector3.right) * radius;
         Vector3 planarB = ResolvePlanarAxis(sideB, Vector3.forward) * radius;
 

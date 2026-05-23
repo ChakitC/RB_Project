@@ -22,6 +22,89 @@ public enum CharacterCombatRole
     Assault = 5
 }
 
+[System.Serializable]
+public sealed class CharacterEventVoiceLine
+{
+    [LabelText("Voice Cue"), AssetsOnly]
+    public AudioCue cue;
+
+    [Range(0f, 1f)]
+    public float chance = 1f;
+
+    [MinValue(0f), SuffixLabel("s")]
+    public float cooldown = 0f;
+}
+
+[System.Serializable]
+public sealed class CharacterVoiceProfile
+{
+    [FoldoutGroup("Skill Voice", Expanded = false), LabelText("Default Skill Voice Cue"), AssetsOnly]
+    public AudioCue defaultSkillVoiceCue;
+
+    [FoldoutGroup("Skill Voice", Expanded = false), LabelText("Default Chance"), Range(0f, 1f)]
+    public float defaultSkillVoiceChance = 1f;
+
+    [FoldoutGroup("Skill Voice", Expanded = false), LabelText("Default Cooldown"), MinValue(0f), SuffixLabel("s")]
+    public float defaultSkillVoiceCooldown = 0f;
+
+    [FoldoutGroup("Skill Voice", Expanded = false), LabelText("Global Cooldown"), MinValue(0f), SuffixLabel("s")]
+    public float globalSkillVoiceCooldown = 0.25f;
+
+    [FoldoutGroup("Skill Voice", Expanded = false), LabelText("Skill Cast Lines")]
+    [ListDrawerSettings(ShowFoldout = true, DefaultExpandedState = true, DraggableItems = true, ShowPaging = false, NumberOfItemsPerPage = 0)]
+    public List<CharacterSkillVoiceLine> skillCastLines = new();
+
+    [FoldoutGroup("Event Voice", Expanded = false), LabelText("Dash")]
+    public CharacterEventVoiceLine dashVoice = new();
+
+    [FoldoutGroup("Event Voice", Expanded = false), LabelText("Knockback")]
+    public CharacterEventVoiceLine knockbackVoice = new();
+
+    [FoldoutGroup("Event Voice", Expanded = false), LabelText("Select Character")]
+    public CharacterEventVoiceLine selectCharacterVoice = new();
+
+    [FoldoutGroup("Event Voice", Expanded = false), LabelText("Pick Up Character")]
+    public CharacterEventVoiceLine pickupCharacterVoice = new();
+
+    [FoldoutGroup("Low HP Voice", Expanded = false), LabelText("Voice")]
+    public CharacterEventVoiceLine lowHpVoice = new();
+
+    [FoldoutGroup("Low HP Voice", Expanded = false), LabelText("Threshold"), Range(0f, 1f)]
+    public float lowHpThreshold = 0.3f;
+}
+
+[System.Serializable]
+public sealed class CharacterSkillVoiceLine
+{
+    [HorizontalGroup("Match", Width = 160), LabelText("Skill"), AssetsOnly]
+    public SkillGemDefinition skill;
+
+    [HorizontalGroup("Match"), LabelText("Tags")]
+    public SkillTag tags = SkillTag.None;
+
+    [LabelText("Voice Cue"), AssetsOnly]
+    public AudioCue cue;
+
+    [Range(0f, 1f)]
+    public float chance = 1f;
+
+    [MinValue(0f), SuffixLabel("s")]
+    public float cooldown = 0f;
+
+    public bool MatchesExactSkill(SkillGemDefinition skillDef)
+    {
+        return skill != null && skill == skillDef;
+    }
+
+    public bool MatchesTags(SkillGemDefinition skillDef)
+    {
+        return skill == null &&
+               tags != SkillTag.None &&
+               skillDef != null &&
+               (skillDef.tags & tags) != 0;
+    }
+}
+
 
 
 [HideMonoScript]
@@ -196,6 +279,10 @@ public class CharacterStats : ScriptableObject
     [PropertyOrder(-20)]
     [FoldoutGroup("Audio", Expanded = false), LabelText("Dash Cue"), AssetsOnly]
     public AudioCue dashCue;
+
+    [PropertyOrder(-13)]
+    [FoldoutGroup("Audio", Expanded = false), LabelText("Voice Profile")]
+    public CharacterVoiceProfile voiceProfile = new();
 
     [PropertyOrder(-19)]
     [FoldoutGroup("Audio", Expanded = false), LabelText("Melee Light Cue"), AssetsOnly]

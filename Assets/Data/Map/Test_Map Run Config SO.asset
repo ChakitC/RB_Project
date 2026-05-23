@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 351903b7dde783b4c9fc7af84c44e233, type: 3}
+  m_Name: Test_Map Run Config SO
+  m_EditorClassIdentifier: 
+  randomizeSeed: 1
+  seed: 0
+  criticalPathNodeCount: 6
+  minBranchCount: 1
+  maxBranchCount: 3
+  maxOutgoingPerNode: 3
+  forceBlueBeforeBoss: 1
+  pitySystem:
+    maxRedStreakBeforeBlue: 3
+    forcedBlueType: 6
+  mainPathWeights:
+  - type: 1
+    weight: 1
+  blueWeights:
+  - type: 6
+    weight: 1
+  branchDeadEndWeights:
+  - type: 6
+    weight: 1
+  roomDefinitions:
+  - {fileID: 11400000, guid: 358a9da960b94735a284e3ff5df2b9b6, type: 2}
+  - {fileID: 11400000, guid: d24a8b4637d940189f73b57e3bba39ef, type: 2}
+  - {fileID: 11400000, guid: fd29d88aa3596c74bb0c4457c9675a16, type: 2}
+  - {fileID: 11400000, guid: 77033f30cb434e8dbeb4954514680a9d, type: 2}
+  - {fileID: 11400000, guid: 141e12a3e6bf4307b4681a7f74c1090b, type: 2}
+  - {fileID: 11400000, guid: 6cecae8ac1664951b80318e4a10d1636, type: 2}
+  - {fileID: 11400000, guid: 06b6c3ee1a594ed3b83a6a6fcb8f7034, type: 2}
+  - {fileID: 11400000, guid: 098c7f6845e04eaaa05bd5cb487d29bd, type: 2}
+  - {fileID: 11400000, guid: 6f6b54f2b6ee4b5f8880661b2ea47294, type: 2}
+  encounterDefinitions: []

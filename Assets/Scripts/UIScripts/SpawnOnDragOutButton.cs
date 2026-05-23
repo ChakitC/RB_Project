@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -76,6 +77,7 @@ public class SpawnOnDragOutButton : MonoBehaviour,
     CharacterStats _currentDef;
     Vector3 _offset;
     float _startY;
+    readonly Dictionary<CharacterEventVoiceLine, float> _voiceReadyAt = new();
     
     
     [Header("Slots (Nearest)")]
@@ -375,6 +377,7 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
         // ตั้งทีเดียว
         _current.transform.SetPositionAndRotation(pos, rot);
+        PlaySelectCharacterVoice(selected, _current.transform.position);
 
         _startY = _current.transform.position.y;
         _offset = Vector3.zero;
@@ -498,6 +501,15 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
         weaponPreview.SetAnimator(_Animator);
         weaponPreview.Build(selected, partyIndex: -1);
+    }
+
+    void PlaySelectCharacterVoice(CharacterStats selected, Vector3 position)
+    {
+        CharacterVoiceProfile voiceProfile = selected != null ? selected.voiceProfile : null;
+        CharacterVoicePlayback.TryPlayAtPosition(
+            voiceProfile != null ? voiceProfile.selectCharacterVoice : null,
+            position,
+            _voiceReadyAt);
     }
 
 

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5facc781340f11648a9bbf51a0b6807b, type: 3}
+  m_Name: New Room Definition SO
+  m_EditorClassIdentifier: 
+  displayName: 
+  nodeType: 1
+  weight: 1
+  roomPrefab: {fileID: 0}
+  maxExitCount: 3
+  lockExitsUntilClear: 1
+  startEncounterOnEnter: 1
+  requiresClearBeforeExit: 1
+  clearRewardTable: {fileID: 0}
+  clearRewardRolls: 0
+  clearRewardRarity: 0
+  mapHint: 
+  mapIcon: {fileID: 0}

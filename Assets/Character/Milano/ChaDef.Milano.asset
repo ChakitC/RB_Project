@@ -42,6 +42,33 @@ MonoBehaviour:
   SpeedScaling: 0
   passives: []
   dashCue: {fileID: 0}
+  voiceProfile:
+    defaultSkillVoiceCue: {fileID: 11400000, guid: 23129b248915d554fb9c79ce82807e1b, type: 2}
+    defaultSkillVoiceChance: 1
+    defaultSkillVoiceCooldown: 0
+    globalSkillVoiceCooldown: 0.25
+    skillCastLines: []
+    dashVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    knockbackVoice:
+      cue: {fileID: 11400000, guid: 85d2061e0b17a104c80b673fb668b93b, type: 2}
+      chance: 1
+      cooldown: 0
+    selectCharacterVoice:
+      cue: {fileID: 11400000, guid: 09d5c40276242a447a0115532a242d18, type: 2}
+      chance: 1
+      cooldown: 0
+    pickupCharacterVoice:
+      cue: {fileID: 11400000, guid: 3b2ca810c74b7804cbc2a3d9a0b2cdf5, type: 2}
+      chance: 1
+      cooldown: 0
+    lowHpVoice:
+      cue: {fileID: 11400000, guid: c99cbba862d167a4ba8e59aab0af711c, type: 2}
+      chance: 1
+      cooldown: 0
+    lowHpThreshold: 0.3
   meleeLightCue: {fileID: 0}
   meleeHeavyCue: {fileID: 0}
   damagedCue: {fileID: 0}

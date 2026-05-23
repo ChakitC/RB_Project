@@ -198,7 +198,7 @@ Material:
     - _IsUsingRampOcclusionTexture: 0
     - _MatCapReflectionStrength: 1
     - _MatCapRollStabilize: 1
-    - _MaterialID: 2
+    - _MaterialID: 1
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OffsetShadowDistance: 15
@@ -244,7 +244,7 @@ Material:
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: -36.904263, g: 0.27010015, b: -8.373473, a: 0}
+    - _CharacterCenterWS: {r: 1110.7462, g: 0.270134, b: 950.1071, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}

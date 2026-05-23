@@ -456,14 +456,29 @@ public class AudioService : MonoBehaviour
         source.clip = variation.clip;
         source.time = 0f;
         source.loop = request.overrideLoop ? request.loop : cue.loop;
-        source.spatialBlend = cue.spatialBlend;
+        source.spatialBlend = ResolveSpatialBlend(cue);
         source.panStereo = cue.stereoPan;
         source.priority = Mathf.Clamp(cue.priority, 0, 256);
         source.minDistance = Mathf.Max(0f, cue.minDistance);
         source.maxDistance = Mathf.Max(source.minDistance, cue.maxDistance);
-        source.dopplerLevel = Mathf.Max(0f, cue.dopplerLevel);
+        source.dopplerLevel = cue.audibilityMode == AudioCueAudibilityMode.Global2D ? 0f : Mathf.Max(0f, cue.dopplerLevel);
         source.rolloffMode = cue.rolloffMode;
         source.outputAudioMixerGroup = ResolveMixerGroup(cue.category);
+    }
+
+    float ResolveSpatialBlend(AudioCue cue)
+    {
+        switch (cue.audibilityMode)
+        {
+            case AudioCueAudibilityMode.Global2D:
+                return 0f;
+
+            case AudioCueAudibilityMode.Hybrid:
+                return Mathf.Clamp01(cue.hybridSpatialBlend);
+
+            default:
+                return Mathf.Clamp01(cue.spatialBlend);
+        }
     }
 
     bool TryEnforceInstanceLimit(AudioCue cue)
@@ -572,7 +587,15 @@ public class AudioService : MonoBehaviour
             ? 1f
             : variation.volumeMultiplier;
 
-        return Mathf.Max(0f, cue.baseVolume * randomMultiplier * variationMultiplier);
+        return Mathf.Max(0f, cue.baseVolume * randomMultiplier * variationMultiplier * ResolveAudibilityVolumeBoost(cue));
+    }
+
+    float ResolveAudibilityVolumeBoost(AudioCue cue)
+    {
+        if (cue.audibilityMode == AudioCueAudibilityMode.Global2D)
+            return 1f;
+
+        return Mathf.Max(0f, cue.listenerVolumeBoost);
     }
 
     float ResolveBasePitch(AudioCue cue, AudioCue.Variation variation)

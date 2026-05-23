@@ -12,20 +12,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee0d6ef073118da4dbabdd47dabdedc7, type: 3}
   m_Name: Chadef.Abbygail
   m_EditorClassIdentifier: 
+  icon: {fileID: 21300000, guid: 862ea79153b03744a8e079af72bbe3fb, type: 3}
   characterId: ID.Abbygail
   characterName: Abbygail
-  icon: {fileID: 21300000, guid: 862ea79153b03744a8e079af72bbe3fb, type: 3}
   CharacterPrefab: {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
   CharacterPrefabBasement: {fileID: 850771095375289685, guid: 2b42015445faf5b4e81cc24f1ae8f1a8, type: 3}
   characterAvatar: {fileID: 9000000, guid: 8131203fb0a8e424ca3b9e144ecc0bca, type: 3}
   controller: {fileID: 9100000, guid: 003a064ee1d2b7641bb4de8c370f49ba, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
   weaponHandMode: 3
+  combatRole: 0
+  chainAttackSkill: {fileID: 0}
   maxHP: 1000
   maxStamina: 80
   Damage: 10
-  critMultiplier: 5
   armor: 1
+  critMultiplier: 5
   critRate: 1
   Enagy: 100
   speed: 4.5
@@ -40,6 +42,33 @@ MonoBehaviour:
   SpeedScaling: 0
   passives: []
   dashCue: {fileID: 0}
+  voiceProfile:
+    defaultSkillVoiceCue: {fileID: 11400000, guid: c8879417815035e46b25d699e3bdb92c, type: 2}
+    defaultSkillVoiceChance: 1
+    defaultSkillVoiceCooldown: 0
+    globalSkillVoiceCooldown: 0.25
+    skillCastLines: []
+    dashVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    knockbackVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    selectCharacterVoice:
+      cue: {fileID: 11400000, guid: 1d9331a52e02ed247a954ce66ea11e2f, type: 2}
+      chance: 1
+      cooldown: 0
+    pickupCharacterVoice:
+      cue: {fileID: 11400000, guid: bfbcce3de7de4794f9bb5d8946e79c78, type: 2}
+      chance: 1
+      cooldown: 0
+    lowHpVoice:
+      cue: {fileID: 11400000, guid: 91b110e282d3ff546a8e3ed94283994f, type: 2}
+      chance: 1
+      cooldown: 0
+    lowHpThreshold: 0.3
   meleeLightCue: {fileID: 0}
   meleeHeavyCue: {fileID: 0}
   damagedCue: {fileID: 0}

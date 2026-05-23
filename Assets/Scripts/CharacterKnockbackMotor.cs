@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.AI;
 using Opsive.BehaviorDesigner.Runtime;
@@ -55,6 +56,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         RemainingDisplacement.sqrMagnitude > 0.0001f;
 
     public KnockbackData ActiveKnockback => _activeKnockback;
+    public event Action<KnockbackData> KnockbackStarted;
 
     void Awake()
     {
@@ -347,6 +349,8 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
         if (stateHub != null && stateHub.MoveSM != null)
             stateHub.MoveSM.TryChange(MoveStateId.Knockback);
+
+        KnockbackStarted?.Invoke(knockback);
     }
 
     void FaceTowardKnockbackPoint(KnockbackData knockback)

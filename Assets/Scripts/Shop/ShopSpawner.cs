@@ -134,11 +134,9 @@ public class ShopSpawner : MonoBehaviour
         if (!TryRollTier(out ShopTierEntry selectedEntry))
             return false;
 
-        spawnedShop = Instantiate(
-            selectedEntry.prefab,
-            ResolveSpawnPosition(),
-            ResolveSpawnRotation(),
-            ResolveSpawnParent());
+        Transform spawnParent = ResolveSpawnParent();
+        spawnedShop = Instantiate(selectedEntry.prefab, spawnParent);
+        ApplySpawnTransform(spawnedShop.transform, spawnParent);
 
         spawnedTier = selectedEntry.tier;
         spawnedShop.name = $"{selectedEntry.prefab.name}_Spawned_Tier_{spawnedTier}";
@@ -205,6 +203,33 @@ public class ShopSpawner : MonoBehaviour
 
         Transform spawnTransform = spawnPoint != null ? spawnPoint : transform;
         return spawnTransform.rotation;
+    }
+
+    void ApplySpawnTransform(Transform spawnedTransform, Transform spawnParent)
+    {
+        if (spawnedTransform == null)
+            return;
+
+        spawnedTransform.localPosition = ResolveLocalSpawnPosition(spawnParent);
+        spawnedTransform.localRotation = ResolveLocalSpawnRotation(spawnParent);
+    }
+
+    Vector3 ResolveLocalSpawnPosition(Transform spawnParent)
+    {
+        if (useSavedSpawnTransform && spawnParent == transform)
+            return savedSpawnPosition;
+
+        Vector3 worldPosition = ResolveSpawnPosition();
+        return spawnParent != null ? spawnParent.InverseTransformPoint(worldPosition) : worldPosition;
+    }
+
+    Quaternion ResolveLocalSpawnRotation(Transform spawnParent)
+    {
+        if (useSavedSpawnTransform && spawnParent == transform)
+            return Quaternion.Euler(savedSpawnEulerAngles);
+
+        Quaternion worldRotation = ResolveSpawnRotation();
+        return spawnParent != null ? Quaternion.Inverse(spawnParent.rotation) * worldRotation : worldRotation;
     }
 
     public void SaveSpawnTransform(Vector3 position, Quaternion rotation)

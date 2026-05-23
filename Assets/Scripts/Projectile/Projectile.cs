@@ -334,6 +334,7 @@ public class Projectile : MonoBehaviour
         
         
         bool hitWall = other.CompareTag("Wall");
+        bool moduleWantsHitNotification = HasModuleWantsHitNotification(other, target);
 
         
         bool willExplodeAoE = useAreaDamage &&
@@ -341,7 +342,7 @@ public class Projectile : MonoBehaviour
                               !_areaExploded &&
                               !HasModuleSuppressingBuiltinAreaDamage();
 
-        if (target == null && !hitWall && !willExplodeAoE) return;
+        if (target == null && !hitWall && !willExplodeAoE && !moduleWantsHitNotification) return;
 
         // ===== AoE =====
         if (willExplodeAoE)
@@ -429,6 +430,21 @@ public class Projectile : MonoBehaviour
         {
             var module = config.modules[i];
             if (module != null && module.SuppressBuiltinDamageableHit(this, _ctx, _states[i], target))
+                return true;
+        }
+
+        return false;
+    }
+
+    bool HasModuleWantsHitNotification(Collider other, IDamageable target)
+    {
+        if (config == null || config.modules == null || _states == null)
+            return false;
+
+        for (int i = 0; i < config.modules.Count; i++)
+        {
+            var module = config.modules[i];
+            if (module != null && module.WantsHitNotification(this, _ctx, _states[i], other, target))
                 return true;
         }
 

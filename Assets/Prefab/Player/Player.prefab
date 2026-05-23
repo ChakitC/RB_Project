@@ -50,7 +50,7 @@ MonoBehaviour:
   maxDistance: 3
   interactMask:
     serializedVersion: 2
-    m_Bits: 1024
+    m_Bits: 263168
   originHeight: 1.2
   selfOffset: 0.05
   useSphereCast: 1
@@ -526,6 +526,7 @@ MonoBehaviour:
   CharacterLoad: {fileID: 7935780743584248329}
   Visual: {fileID: 1956943878282865192}
   UIManager: {fileID: 0}
+  ColliderRefs: {fileID: 0}
   levelSystem: {fileID: 7448423437953034685}
   HealthSystem: {fileID: 1629402543204886545}
   StaminaSystem: {fileID: 4770091200891185323}
@@ -1185,6 +1186,7 @@ MonoBehaviour:
   statusEffectController: {fileID: 8620874944121039693}
   deactivateOwnerOnSkillExit: 1
   chainPlaybackWatchdogGraceSeconds: 0.15
+  useRootMotionForChainPlayback: 0
   locomotionLayerIndex: 0
   actionLayerIndex: 1
 --- !u!114 &3933203452649057500
@@ -1309,6 +1311,7 @@ MonoBehaviour:
   skillUserProxy: {fileID: 6449575512280067904}
   aimTargetDriver: {fileID: 0}
   actorFader: {fileID: 1668939218008690410}
+  chainTeleportProbeCollider: {fileID: 0}
   componentsToDisableDuringSequence: []
   autoDisablePlayerInputAndMovement: 1
   makeAllyInvincibleDuringSequence: 1
@@ -1475,6 +1478,7 @@ MonoBehaviour:
   characterPanel: {fileID: 0}
   characterPanelSearchRoot: {fileID: 2315058692641633103}
   animancer: {fileID: 7383821111389677251}
+  deactivateTarget: {fileID: 0}
   animancerLayerIndex: 0
   fadeInDuration: 0.18
   fadeOutDuration: 0.18
@@ -1787,6 +1791,7 @@ MonoBehaviour:
   minSummonRadius: 1.2
   navMeshSampleDistance: 2
   facePlayerForward: 1
+  allyHelperTeleportProbeCollider: {fileID: 0}
 --- !u!114 &3051231319480124175
 MonoBehaviour:
   m_ObjectHideFlags: 0

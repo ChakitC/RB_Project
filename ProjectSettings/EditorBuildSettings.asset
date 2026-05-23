@@ -15,6 +15,9 @@ EditorBuildSettings:
     path: Assets/Scenes/Prototype_Map02.unity
     guid: 310c3e721c4e58b44b464dc40cefe1c9
   - enabled: 1
+    path: Assets/Scenes/MapPlayMode GR_01 Prototy/MapRun.unity
+    guid: 54cb6d8d2b43989488ffb8fd11bd1dc4
+  - enabled: 1
     path: Assets/Scenes/Map_TestAI/Map_TestAI.unity
     guid: a5211f06306a55246b08b1300372a2bc
   - enabled: 1

@@ -7,6 +7,7 @@ public class GrenadeExplodeModule : ProjectileModule
     [Header("Trigger")]
     public bool explodeOnDamageableHit = true;
     public bool explodeOnWallHit = true;
+    public bool explodeOnTerrainHit = true;
 
     [Tooltip("ระเบิดเองเมื่อครบเวลา (<=0 = ปิด)")]
     public float fuseTime = 0f;
@@ -102,6 +103,24 @@ public class GrenadeExplodeModule : ProjectileModule
         return !float.IsNaN(value) && !float.IsInfinity(value);
     }
 
+    static bool IsTerrainHit(Collider collider)
+    {
+        if (collider == null)
+            return false;
+
+        if (collider is TerrainCollider)
+            return true;
+
+        GameObject hitObject = collider.gameObject;
+        if (hitObject.tag == "Terrain")
+            return true;
+
+        if (LayerMask.LayerToName(hitObject.layer) == "Terrain")
+            return true;
+
+        return collider.GetComponentInParent<Terrain>() != null;
+    }
+
     class State : IProjectileModuleState
     {
         public float t;
@@ -114,6 +133,9 @@ public class GrenadeExplodeModule : ProjectileModule
     public override bool SuppressBuiltinAreaDamage(Projectile p, ProjectileContext ctx, IProjectileModuleState state) => true;
     public override bool SuppressBuiltinDamageableHit(Projectile p, ProjectileContext ctx, IProjectileModuleState state, IDamageable target)
         => suppressDirectHitDamage && explodeOnDamageableHit && target != null;
+    public override bool WantsHitNotification(Projectile p, ProjectileContext ctx, IProjectileModuleState state,
+        Collider other, IDamageable target)
+        => target == null && explodeOnTerrainHit && IsTerrainHit(other);
 
     public override void OnSpawn(Projectile p, ProjectileContext ctx, IProjectileModuleState st)
     {
@@ -160,8 +182,10 @@ public class GrenadeExplodeModule : ProjectileModule
             return;
         }
 
-        // target == null -> wall (Projectile ของคุณส่ง OnHit มาเฉพาะ damageable/wall อยู่แล้ว)
-        if (hit.collider != null && hit.collider.CompareTag("Wall") && explodeOnWallHit)
+        // target == null -> world collision that this module is allowed to explode on.
+        bool hitWall = hit.collider != null && hit.collider.CompareTag("Wall");
+        bool hitTerrain = IsTerrainHit(hit.collider);
+        if ((hitWall && explodeOnWallHit) || (hitTerrain && explodeOnTerrainHit))
         {
             Explode(p, ctx, hit.ResolvePoint(p.transform.position), hit.collider, st);
             p.RequestDespawn();

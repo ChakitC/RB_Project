@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -11,6 +12,7 @@ public class CharacterSelectManager : MonoBehaviour
     private CharacterSelectable _selectedSelectable;
     private float _startY = 0f;
     private Vector3 _offset;
+    readonly Dictionary<CharacterEventVoiceLine, float> _voiceReadyAt = new();
 
     void Update()
     {
@@ -68,7 +70,31 @@ public class CharacterSelectManager : MonoBehaviour
             }
 
             _selectedSelectable.SetPicked(true);
+            PlayPickupCharacterVoice(_selectedSelectable);
         }
+    }
+
+    void PlayPickupCharacterVoice(CharacterSelectable selectable)
+    {
+        CharacterStats stats = ResolveCharacterStats(selectable);
+        CharacterVoiceProfile voiceProfile = stats != null ? stats.voiceProfile : null;
+        CharacterVoicePlayback.TryPlayAtPosition(
+            voiceProfile != null ? voiceProfile.pickupCharacterVoice : null,
+            selectable != null ? selectable.transform.position : transform.position,
+            _voiceReadyAt);
+    }
+
+    static CharacterStats ResolveCharacterStats(CharacterSelectable selectable)
+    {
+        if (selectable == null)
+            return null;
+
+        CharacterDefHolder holder = selectable.GetComponentInChildren<CharacterDefHolder>(true);
+        if (holder != null && holder.def != null)
+            return holder.def;
+
+        PartySlot slot = selectable.GetComponentInParent<PartySlot>(true);
+        return slot != null ? slot.Selected : null;
     }
 
     bool IsPointerOverUI()

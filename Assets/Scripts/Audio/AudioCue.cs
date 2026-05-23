@@ -2,6 +2,13 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum AudioCueAudibilityMode
+{
+    Spatial3D = 0,
+    Global2D = 1,
+    Hybrid = 2
+}
+
 [CreateAssetMenu(fileName = "AudioCue", menuName = "Audio/Audio Cue")]
 public sealed class AudioCue : ScriptableObject
 {
@@ -19,8 +26,11 @@ public sealed class AudioCue : ScriptableObject
     public AudioCategory category = AudioCategory.Sfx;
 
     [Header("Playback")]
+    public AudioCueAudibilityMode audibilityMode = AudioCueAudibilityMode.Spatial3D;
     public bool loop;
     [Range(0f, 1f)] public float spatialBlend = 1f;
+    [Range(0f, 1f)] public float hybridSpatialBlend = 0.35f;
+    [Min(0f)] public float listenerVolumeBoost = 1f;
     public bool followTarget;
     [Range(-1f, 1f)] public float stereoPan;
     [Range(0, 256)] public int priority = 128;

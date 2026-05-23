@@ -596,7 +596,7 @@ PrefabInstance:
     - target: {fileID: 4358677403141846059, guid: 881459ad74a726442a7eedce559d537d, type: 3}
       propertyPath: CharacterDef
       value: 
-      objectReference: {fileID: 11400000, guid: 86a954f5c9a247244a02bf6c3b2b4e31, type: 2}
+      objectReference: {fileID: 11400000, guid: 18eb2fcc17d5e7d4a8d667f4d0325774, type: 2}
     - target: {fileID: 4729402904180971851, guid: 881459ad74a726442a7eedce559d537d, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0.75

@@ -924,14 +924,28 @@ public sealed class SkillCastOrchestrator
         if (request.UseAnimationDriver && !request.AllowImmediateFallback)
             return Rejected();
 
-        return TryReleaseCast(
-                request,
-                requestId,
-                runtimeSkill,
-                skillUser,
-                executionAnimBrain)
-            ? new SkillCastStartResult(SkillCastStartKind.ImmediateSuccess, requestId)
-            : Rejected();
+        bool released = TryReleaseCast(
+            request,
+            requestId,
+            runtimeSkill,
+            skillUser,
+            executionAnimBrain);
+
+        if (!released)
+            return Rejected();
+
+        CastReleased?.Invoke(new ActiveSkillCastInfo(
+            requestId,
+            runtimeSkill,
+            skillDef,
+            skillUser,
+            executionAnimBrain,
+            skillDef.GetCastPointNormalized(),
+            released: true,
+            requiresTimelineEvents: false,
+            request.DebugSource));
+
+        return new SkillCastStartResult(SkillCastStartKind.ImmediateSuccess, requestId);
     }
 
     private bool TryResolveStartState(

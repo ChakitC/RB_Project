@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5facc781340f11648a9bbf51a0b6807b, type: 3}
+  m_Name: RoomDefinition.Start
+  m_EditorClassIdentifier: 
+  displayName: Start
+  nodeType: 0
+  weight: 1
+  roomPrefab: {fileID: 7200509890596922283, guid: 4a39b938b0fc950449df4c043e729b6a, type: 3}
+  maxExitCount: 1
+  exitMask: 1
+  allowSupersetExitMask: 0
+  lockExitsUntilClear: 0
+  startEncounterOnEnter: 0
+  requiresClearBeforeExit: 0
+  clearRewardTable: {fileID: 0}
+  clearRewardRolls: 0
+  clearRewardRarity: 0
+  riskLevel: 0
+  mapHint: Start room
+  mapIcon: {fileID: 0}

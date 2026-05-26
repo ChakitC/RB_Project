@@ -145,7 +145,7 @@ public class InventorySlotUI : MonoBehaviour,
 
         if (amountText != null)
         {
-            bool showAmount = hasItem && !slotData.HasWeaponInstance && slotData.quantity > 1;
+            bool showAmount = hasItem && !slotData.HasUniqueInstance && slotData.quantity > 1;
             amountText.text = showAmount ? slotData.quantity.ToString() : string.Empty;
             amountText.gameObject.SetActive(showAmount);
         }

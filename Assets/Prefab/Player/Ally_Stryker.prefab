@@ -172,6 +172,9 @@ GameObject:
   - component: {fileID: 3886805759331930848}
   - component: {fileID: 2948696378916355059}
   - component: {fileID: 5646034634250052821}
+  - component: {fileID: 2694061841624252001}
+  - component: {fileID: 6478615454785119033}
+  - component: {fileID: 1503688718885460384}
   m_Layer: 10
   m_Name: GamePlayStats_System
   m_TagString: Untagged
@@ -310,6 +313,86 @@ MonoBehaviour:
     upgradeExp: 0
     unlockedUpgradeMilestoneIds: []
   equippedWeaponInstanceId: 
+--- !u!114 &2694061841624252001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 953685864490983404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79f5d60bd1a5a7a469215e14289294e4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  statsHub: {fileID: 0}
+  passiveController: {fileID: 0}
+  itemDatabase: {fileID: 0}
+  slotCount: 5
+  equippedAccessories:
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  usePlayerInventorySave: 1
+  equipmentOwnerId: 
+--- !u!114 &6478615454785119033
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 953685864490983404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e716cb6fc5623b341b06a9f6033cc659, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  statsHub: {fileID: 0}
+  combatEventBus: {fileID: 0}
+  statusEffectController: {fileID: 0}
+  runtimePassives: []
+  extraPassives: []
+  maxEventDepth: 8
+  chainStateTtlSeconds: 10
+--- !u!114 &1503688718885460384
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 953685864490983404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3292dd23900d4479b67a34db40bd5988, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  levelSystem: {fileID: 0}
+  passiveController: {fileID: 0}
+  passiveTree: {fileID: 0}
+  pointsPerLevel: 1
+  grantCatchUpPointsFromCurrentLevel: 1
+  availablePoints: 0
+  unlockedNodeIds: []
 --- !u!1 &1610395787929324768
 GameObject:
   m_ObjectHideFlags: 0
@@ -478,7 +561,8 @@ MonoBehaviour:
   rb: {fileID: 755043487724053691}
   cc: {fileID: 7154190368743996575}
   TargetInfo: {fileID: 4934957585661581971}
-  Equipment: {fileID: 0}
+  Equipment: {fileID: 5646034634250052821}
+  AccessoryLoadout: {fileID: 2694061841624252001}
   WeaponSystem: {fileID: 6987636084120509540}
   AnimBrain: {fileID: 6756038978356485017}
   AnimDriver: {fileID: 2705162881607156007}
@@ -492,8 +576,8 @@ MonoBehaviour:
   StaminaSystem: {fileID: 4917278530332384066}
   DashSystem: {fileID: 6582203035813745574}
   KnockbackMotor: {fileID: 5866700442643536325}
-  PassiveController: {fileID: 0}
-  PassiveProgress: {fileID: 0}
+  PassiveController: {fileID: 6478615454785119033}
+  PassiveProgress: {fileID: 1503688718885460384}
   EnegySystem: {fileID: 3091736426749422193}
   Interactor: {fileID: 967215922111579164}
   SkillManager: {fileID: 3385807349592701744}
@@ -1990,12 +2074,20 @@ MonoBehaviour:
   agent: {fileID: 1585247101988985248}
   stateHub: {fileID: 4366097613187803013}
   ctx: {fileID: 3059205003566966071}
+  characterController: {fileID: 0}
   rampUpTime: 0.12
   rampDownTime: 0.18
   move01Start: 0.1
   move01Stop: 0.05
   enterDelay: 0.06
   exitDelay: 0.1
+  separateCompanionFromPlayer: 1
+  playerKeepoutRadius: 0.65
+  separationMargin: 0.1
+  separationSpeed: 12
+  separationPauseDuration: 0.1
+  separationNavMeshSampleRadius: 0.75
+  playerResolveInterval: 0.5
   agentismoving: 0
 --- !u!114 &6582203035813745574
 MonoBehaviour:

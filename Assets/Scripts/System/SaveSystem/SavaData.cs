@@ -7,6 +7,7 @@ public class InventorySlotSaveData
     public string itemId;
     public int amount;
     public WeaponInstanceData weaponInstance;
+    public AccessoryInstanceData accessoryInstance;
 }
 
 [Serializable]

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public enum ItemType
 {
@@ -8,15 +8,16 @@ public enum ItemType
     Material,
     QuestItem,
     SkillGem,
-    SupportGem
+    SupportGem,
+    Accessory
 }
 
 [CreateAssetMenu(fileName = "NewItem", menuName = "Game/Item")]
 public class ItemDefinition : ScriptableObject
 {
     [Header("Identity")]
-    public string itemId;          // key ไม่ซ้ำ (ใช้เซฟ/โหลด)
-    public string displayName;     // ชื่อเอาไปโชว์
+    public string itemId;          // key à¹„à¸¡à¹ˆà¸‹à¹‰à¸³ (à¹ƒà¸Šà¹‰à¹€à¸‹à¸Ÿ/à¹‚à¸«à¸¥à¸”)
+    public string displayName;     // à¸Šà¸·à¹ˆà¸­à¹€à¸­à¸²à¹„à¸›à¹‚à¸Šà¸§à¹Œ
     [TextArea]
     public string description;
 

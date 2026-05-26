@@ -309,7 +309,7 @@ public class InventorySlotTooltipUI : MonoBehaviour
 
         builder.Append("Type: ").AppendLine(item.itemType.ToString());
 
-        if (!slotData.HasWeaponInstance && slotData.quantity > 1)
+        if (!slotData.HasUniqueInstance && slotData.quantity > 1)
             builder.Append("Quantity: ").AppendLine(slotData.quantity.ToString());
 
         if (slotData.HasWeaponInstance && slotData.weaponInstance != null)
@@ -326,6 +326,7 @@ public class InventorySlotTooltipUI : MonoBehaviour
             builder.Append("Reserve Ammo: ").AppendLine(ResolveReserveAmmoText(slotData, gunConfig));
         }
 
+        AppendAccessorySummary(builder, slotData, item as AccessoryDefinition);
         AppendWeaponAffixes(builder, slotData);
         AppendWeaponUpgradeMilestones(builder, slotData, item as GunConfig);
 
@@ -350,6 +351,141 @@ public class InventorySlotTooltipUI : MonoBehaviour
 
         if (weaponInstance.upgradeTier > 0)
             builder.Append("Tier: ").AppendLine(weaponInstance.upgradeTier.ToString());
+    }
+
+    static void AppendAccessorySummary(
+        StringBuilder builder,
+        InventorySlotData slotData,
+        AccessoryDefinition accessory)
+    {
+        if (builder == null || accessory == null)
+            return;
+
+        AccessoryInstanceData instance = slotData != null ? slotData.accessoryInstance : null;
+        AccessoryModifierDefinition modifier = instance != null
+            ? accessory.GetModifierById(instance.modifierId)
+            : null;
+
+        if (instance != null && instance.upgradeLevel > 0)
+            builder.Append("Upgrade: +").AppendLine(instance.upgradeLevel.ToString());
+
+        if (modifier != null)
+            builder.Append("Modifier: ").AppendLine(ResolveAccessoryModifierName(modifier));
+
+        if (accessory.tags != null && accessory.tags.Count > 0)
+        {
+            string tags = BuildAccessoryTagSummary(accessory.tags);
+            if (!string.IsNullOrWhiteSpace(tags))
+                builder.Append("Tags: ").AppendLine(tags);
+        }
+
+        AppendAccessoryEffectLines(builder, "Effects", accessory.statModifiers, accessory.passives);
+
+        if (modifier != null)
+            AppendAccessoryEffectLines(builder, "Modifier Effects", modifier.statModifiers, modifier.passives);
+    }
+
+    static void AppendAccessoryEffectLines(
+        StringBuilder builder,
+        string header,
+        List<PassiveStatModifier> statModifiers,
+        List<PassiveDefinition> passives)
+    {
+        bool hasHeader = false;
+
+        if (statModifiers != null)
+        {
+            for (int i = 0; i < statModifiers.Count; i++)
+            {
+                PassiveStatModifier modifier = statModifiers[i];
+                if (modifier == null)
+                    continue;
+
+                AppendAccessoryEffectHeader(builder, header, ref hasHeader);
+                builder.Append("- ").AppendLine(BuildPassiveStatModifierSummary(modifier));
+            }
+        }
+
+        if (passives == null)
+            return;
+
+        for (int i = 0; i < passives.Count; i++)
+        {
+            PassiveDefinition passive = passives[i];
+            if (passive == null)
+                continue;
+
+            AppendAccessoryEffectHeader(builder, header, ref hasHeader);
+            builder.Append("- ").AppendLine(ResolvePassiveName(passive));
+        }
+    }
+
+    static void AppendAccessoryEffectHeader(StringBuilder builder, string header, ref bool hasHeader)
+    {
+        if (hasHeader)
+            return;
+
+        if (builder.Length > 0)
+            builder.AppendLine();
+
+        builder.AppendLine(header + ":");
+        hasHeader = true;
+    }
+
+    static string ResolveAccessoryModifierName(AccessoryModifierDefinition modifier)
+    {
+        if (modifier == null)
+            return string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(modifier.displayName))
+            return modifier.displayName.Trim();
+
+        return modifier.RuntimeId;
+    }
+
+    static string ResolvePassiveName(PassiveDefinition passive)
+    {
+        if (passive == null)
+            return string.Empty;
+
+        return !string.IsNullOrWhiteSpace(passive.passiveId) ? passive.passiveId.Trim() : passive.name;
+    }
+
+    static string BuildAccessoryTagSummary(List<string> tags)
+    {
+        if (tags == null || tags.Count == 0)
+            return string.Empty;
+
+        var builder = new StringBuilder();
+        for (int i = 0; i < tags.Count; i++)
+        {
+            string tag = tags[i];
+            if (string.IsNullOrWhiteSpace(tag))
+                continue;
+
+            if (builder.Length > 0)
+                builder.Append(", ");
+
+            builder.Append(tag.Trim());
+        }
+
+        return builder.ToString();
+    }
+
+    static string BuildPassiveStatModifierSummary(PassiveStatModifier modifier)
+    {
+        if (modifier == null)
+            return string.Empty;
+
+        string statName = MakeReadable(modifier.statType.ToString());
+
+        return modifier.operation switch
+        {
+            ModifierOp.Flat => $"{FormatSignedNumber(modifier.value)} {statName}",
+            ModifierOp.AddPercent => $"{FormatSignedNumber(modifier.value)}% {statName}",
+            ModifierOp.Multiply => $"x{FormatNumber(modifier.value)} {statName}",
+            _ => $"{FormatSignedNumber(modifier.value)} {statName}"
+        };
     }
 
     static string ResolveMagazineText(InventorySlotData slotData, GunConfig gunConfig)

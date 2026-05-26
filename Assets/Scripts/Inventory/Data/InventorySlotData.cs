@@ -7,11 +7,14 @@ public class InventorySlotData
     public ItemDefinition item;
     public int quantity;
     public WeaponInstanceData weaponInstance;
+    public AccessoryInstanceData accessoryInstance;
 
     public bool HasWeaponInstance => weaponInstance != null;
+    public bool HasAccessoryInstance => accessoryInstance != null;
+    public bool HasUniqueInstance => HasWeaponInstance || HasAccessoryInstance;
     public bool IsEmpty => item == null || quantity <= 0;
-    public bool IsStackable => !HasWeaponInstance && item != null && item.stackable;
-    public int MaxStack => HasWeaponInstance ? 1 : item != null ? Mathf.Max(1, item.maxStack) : 0;
+    public bool IsStackable => !HasUniqueInstance && item != null && item.stackable;
+    public int MaxStack => HasUniqueInstance ? 1 : item != null ? Mathf.Max(1, item.maxStack) : 0;
 
     public void SetItem(ItemDefinition value, int stackAmount)
     {
@@ -23,6 +26,7 @@ public class InventorySlotData
 
         item = value;
         weaponInstance = null;
+        accessoryInstance = null;
         quantity = value.stackable ? Mathf.Clamp(stackAmount, 1, Mathf.Max(1, value.maxStack)) : 1;
     }
 
@@ -37,6 +41,21 @@ public class InventorySlotData
         item = baseWeapon;
         quantity = 1;
         weaponInstance = instance.DeepClone();
+        accessoryInstance = null;
+    }
+
+    public void SetAccessoryInstance(AccessoryDefinition accessory, AccessoryInstanceData instance)
+    {
+        if (!accessory || instance == null)
+        {
+            Clear();
+            return;
+        }
+
+        item = accessory;
+        quantity = 1;
+        weaponInstance = null;
+        accessoryInstance = instance.DeepClone();
     }
 
     public void CopyFrom(InventorySlotData other)
@@ -50,6 +69,12 @@ public class InventorySlotData
         if (other.HasWeaponInstance)
         {
             SetWeaponInstance(other.item as GunConfig, other.weaponInstance);
+            return;
+        }
+
+        if (other.HasAccessoryInstance)
+        {
+            SetAccessoryInstance(other.item as AccessoryDefinition, other.accessoryInstance);
             return;
         }
 
@@ -68,8 +93,8 @@ public class InventorySlotData
         return other != null &&
                !IsEmpty &&
                !other.IsEmpty &&
-               !HasWeaponInstance &&
-               !other.HasWeaponInstance &&
+               !HasUniqueInstance &&
+               !other.HasUniqueInstance &&
                item == other.item &&
                item != null &&
                item.stackable;
@@ -80,5 +105,6 @@ public class InventorySlotData
         item = null;
         quantity = 0;
         weaponInstance = null;
+        accessoryInstance = null;
     }
 }

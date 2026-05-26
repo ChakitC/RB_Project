@@ -77,7 +77,7 @@ public class InventorySystem
             for (int i = 0; i < slots.Count; i++)
             {
                 var slot = slots[i];
-                if (slot.IsEmpty || slot.HasWeaponInstance || slot.item != item || slot.quantity >= slot.MaxStack)
+                if (slot.IsEmpty || slot.HasUniqueInstance || slot.item != item || slot.quantity >= slot.MaxStack)
                     continue;
 
                 int canAdd = slot.MaxStack - slot.quantity;
@@ -143,6 +143,30 @@ public class InventorySystem
         return false;
     }
 
+    public bool AddAccessoryInstance(AccessoryDefinition accessory, AccessoryInstanceData instance)
+    {
+        if (!accessory || instance == null)
+            return false;
+
+        var payload = new InventorySlotData();
+        payload.SetAccessoryInstance(accessory, instance);
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            if (!slots[i].IsEmpty)
+                continue;
+
+            if (!CanPlaceItem(i, payload))
+                continue;
+
+            slots[i].CopyFrom(payload);
+            NotifySlotChanged(i);
+            return true;
+        }
+
+        return false;
+    }
+
     public bool CanAddWeaponInstances(GunConfig baseWeapon, int amount = 1)
     {
         if (!baseWeapon || amount <= 0)
@@ -158,6 +182,21 @@ public class InventorySystem
         return HasEmptySlotsForPayload(payload, amount);
     }
 
+    public bool CanAddAccessoryInstances(AccessoryDefinition accessory, int amount = 1)
+    {
+        if (!accessory || amount <= 0)
+            return false;
+
+        var payload = new InventorySlotData();
+        payload.SetAccessoryInstance(accessory, new AccessoryInstanceData
+        {
+            instanceId = "__accessory_probe__",
+            accessoryId = AccessoryInstanceFactory.ResolveAccessoryId(accessory)
+        });
+
+        return HasEmptySlotsForPayload(payload, amount);
+    }
+
     public bool HasItem(ItemDefinition item, int amount = 1)
     {
         if (item == null || amount <= 0)
@@ -167,7 +206,7 @@ public class InventorySystem
         for (int i = 0; i < slots.Count; i++)
         {
             var slot = slots[i];
-            if (slot.IsEmpty || slot.HasWeaponInstance || slot.item != item)
+            if (slot.IsEmpty || slot.HasUniqueInstance || slot.item != item)
                 continue;
 
             total += slot.quantity;
@@ -186,7 +225,7 @@ public class InventorySystem
         for (int i = 0; i < slots.Count; i++)
         {
             var slot = slots[i];
-            if (slot.IsEmpty || slot.HasWeaponInstance || slot.item != item)
+            if (slot.IsEmpty || slot.HasUniqueInstance || slot.item != item)
                 continue;
 
             int toRemove = Mathf.Min(slot.quantity, amount);
@@ -274,7 +313,7 @@ public class InventorySystem
         var source = slots[fromIndex];
         var target = slots[toIndex];
 
-        if (source.IsEmpty || source.HasWeaponInstance || !source.IsStackable)
+        if (source.IsEmpty || source.HasUniqueInstance || !source.IsStackable)
             return false;
 
         if (!target.IsEmpty)
@@ -354,7 +393,7 @@ public class InventorySystem
         for (int i = 0; i < slots.Count; i++)
         {
             var slot = slots[i];
-            if (slot.IsEmpty || slot.HasWeaponInstance || slot.item != item || slot.quantity >= slot.MaxStack)
+            if (slot.IsEmpty || slot.HasUniqueInstance || slot.item != item || slot.quantity >= slot.MaxStack)
                 continue;
 
             remaining -= Mathf.Min(slot.MaxStack - slot.quantity, remaining);

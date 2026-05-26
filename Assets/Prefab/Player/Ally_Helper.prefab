@@ -14,6 +14,9 @@ GameObject:
   - component: {fileID: 6674914611058789611}
   - component: {fileID: 1499039619125665064}
   - component: {fileID: 5779990549465913024}
+  - component: {fileID: 2362201806535484381}
+  - component: {fileID: 7146810742816155018}
+  - component: {fileID: 6555781975922311043}
   m_Layer: 0
   m_Name: GamePlayStats_System
   m_TagString: Untagged
@@ -152,6 +155,86 @@ MonoBehaviour:
     upgradeExp: 0
     unlockedUpgradeMilestoneIds: []
   equippedWeaponInstanceId: 
+--- !u!114 &2362201806535484381
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 512232045649630411}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79f5d60bd1a5a7a469215e14289294e4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  statsHub: {fileID: 0}
+  passiveController: {fileID: 0}
+  itemDatabase: {fileID: 0}
+  slotCount: 5
+  equippedAccessories:
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  usePlayerInventorySave: 1
+  equipmentOwnerId: 
+--- !u!114 &7146810742816155018
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 512232045649630411}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e716cb6fc5623b341b06a9f6033cc659, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  statsHub: {fileID: 0}
+  combatEventBus: {fileID: 0}
+  statusEffectController: {fileID: 0}
+  runtimePassives: []
+  extraPassives: []
+  maxEventDepth: 8
+  chainStateTtlSeconds: 10
+--- !u!114 &6555781975922311043
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 512232045649630411}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3292dd23900d4479b67a34db40bd5988, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  levelSystem: {fileID: 0}
+  passiveController: {fileID: 0}
+  passiveTree: {fileID: 0}
+  pointsPerLevel: 1
+  grantCatchUpPointsFromCurrentLevel: 1
+  availablePoints: 0
+  unlockedNodeIds: []
 --- !u!1 &602880269784607860
 GameObject:
   m_ObjectHideFlags: 0
@@ -1130,20 +1213,22 @@ MonoBehaviour:
   cc: {fileID: 3471594666334970129}
   TargetInfo: {fileID: 7030153476449209181}
   Equipment: {fileID: 5779990549465913024}
+  AccessoryLoadout: {fileID: 2362201806535484381}
   WeaponSystem: {fileID: 2207919931193287054}
-  AnimBrain: {fileID: 0}
+  AnimBrain: {fileID: 5728039111650578654}
   AnimDriver: {fileID: 5681820240419234125}
   MeleeController: {fileID: 9124542019871945994}
   CharacterLoad: {fileID: 2187588555598731297}
-  Visual: {fileID: 0}
+  Visual: {fileID: 3475030861834118874}
   UIManager: {fileID: 0}
+  ColliderRefs: {fileID: 0}
   levelSystem: {fileID: 3370044619517406839}
   HealthSystem: {fileID: 6674914611058789611}
   StaminaSystem: {fileID: 5952653430675107378}
   DashSystem: {fileID: 5038378700834558391}
-  KnockbackMotor: {fileID: 0}
-  PassiveController: {fileID: 0}
-  PassiveProgress: {fileID: 0}
+  KnockbackMotor: {fileID: 4947922598450173769}
+  PassiveController: {fileID: 7146810742816155018}
+  PassiveProgress: {fileID: 6555781975922311043}
   EnegySystem: {fileID: 3101511230285474531}
   Interactor: {fileID: 5990405013486080644}
   SkillManager: {fileID: 4610970780752423343}
@@ -1413,6 +1498,7 @@ MonoBehaviour:
   skillUserProxy: {fileID: 4234101389728358262}
   aimTargetDriver: {fileID: 7076995523026804934}
   actorFader: {fileID: 6696634910283690687}
+  chainTeleportProbeCollider: {fileID: 0}
   componentsToDisableDuringSequence: []
   autoDisablePlayerInputAndMovement: 1
   makeAllyInvincibleDuringSequence: 1
@@ -1526,6 +1612,7 @@ MonoBehaviour:
   statusEffectController: {fileID: 1626903556438485816}
   deactivateOwnerOnSkillExit: 0
   chainPlaybackWatchdogGraceSeconds: 0.15
+  useRootMotionForChainPlayback: 0
   locomotionLayerIndex: 0
   actionLayerIndex: 1
 --- !u!1 &7026519053676239010
@@ -1595,12 +1682,20 @@ MonoBehaviour:
   agent: {fileID: 5087575678296884270}
   stateHub: {fileID: 8066545536225098251}
   ctx: {fileID: 8723794045760714937}
+  characterController: {fileID: 0}
   rampUpTime: 0.12
   rampDownTime: 0.18
   move01Start: 0.1
   move01Stop: 0.05
   enterDelay: 0.06
   exitDelay: 0.1
+  separateCompanionFromPlayer: 1
+  playerKeepoutRadius: 0.65
+  separationMargin: 0.1
+  separationSpeed: 12
+  separationPauseDuration: 0.1
+  separationNavMeshSampleRadius: 0.75
+  playerResolveInterval: 0.5
   agentismoving: 0
 --- !u!114 &5038378700834558391
 MonoBehaviour:

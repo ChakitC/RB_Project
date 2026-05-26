@@ -18,6 +18,7 @@ public abstract class CharacteContext : MonoBehaviour
     [Header("Common Modules")]
     public AITargetInfo TargetInfo;
     public CharacterEquipment Equipment;
+    public AccessoryLoadout AccessoryLoadout;
     public WeaponSystem WeaponSystem;
     public CharacterAnimBrain AnimBrain;
     public CharacterAnimDriver AnimDriver;
@@ -74,6 +75,13 @@ public abstract class CharacteContext : MonoBehaviour
 
         TargetInfo = ResolveActorComponent(TargetInfo);
         Equipment = ResolveActorComponent(Equipment);
+        AccessoryLoadout = ResolveActorComponent(AccessoryLoadout);
+        if (AccessoryLoadout == null &&
+            Application.isPlaying &&
+            (TargetIdentity == AITargetIdentity.Player || TargetIdentity == AITargetIdentity.Companion))
+        {
+            AccessoryLoadout = gameObject.AddComponent<AccessoryLoadout>();
+        }
         WeaponSystem = ResolveActorComponent(WeaponSystem);
         if (Equipment == null && Application.isPlaying && (currentWeapon != null || WeaponSystem != null))
             Equipment = gameObject.AddComponent<CharacterEquipment>();

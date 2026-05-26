@@ -23,6 +23,8 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
     readonly List<ActivePassiveModifier> _activeModifiers = new();
     readonly List<TriggeredPassiveRuntime> _triggeredPassives = new();
     readonly List<CustomPassiveDef> _customPassives = new();
+    readonly List<IPassiveDefinitionProvider> _passiveProviders = new();
+    readonly List<PassiveDefinition> _providerPassiveBuffer = new();
     readonly Dictionary<ulong, HashSet<RuleExecutionKey>> _executionsByChain = new();
     readonly Dictionary<ulong, double> _chainLastSeenTime = new();
     readonly List<ulong> _chainCleanupBuffer = new();
@@ -114,6 +116,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             AddPassivesFromList(ctx != null && ctx.baseStats != null ? ctx.baseStats.passives : null);
 
         AddPassivesFromList(runtimePassives);
+        AddPassivesFromProviders();
         AddPassivesFromList(extraPassives);
 
         for (int i = 0; i < _customPassives.Count; i++)
@@ -462,6 +465,40 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
         for (int i = 0; i < passives.Count; i++)
             AddPassive(passives[i]);
+    }
+
+    void AddPassivesFromProviders()
+    {
+        RebuildPassiveProviders();
+
+        _providerPassiveBuffer.Clear();
+
+        for (int i = 0; i < _passiveProviders.Count; i++)
+        {
+            var provider = _passiveProviders[i];
+            if (provider == null)
+                continue;
+
+            provider.AppendPassiveDefinitions(_providerPassiveBuffer);
+        }
+
+        AddPassivesFromList(_providerPassiveBuffer);
+        _providerPassiveBuffer.Clear();
+    }
+
+    void RebuildPassiveProviders()
+    {
+        _passiveProviders.Clear();
+
+        var behaviours = GetComponentsInChildren<MonoBehaviour>(true);
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            if (behaviours[i] == null || behaviours[i] == this)
+                continue;
+
+            if (behaviours[i] is IPassiveDefinitionProvider provider)
+                _passiveProviders.Add(provider);
+        }
     }
 
     void AddPassive(PassiveDefinition definition)

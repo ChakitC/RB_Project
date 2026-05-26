@@ -69,6 +69,117 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targets: []
+--- !u!1 &489768155248160083
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7376985383572113109}
+  - component: {fileID: 4800197423176489028}
+  - component: {fileID: 2723905703233099677}
+  m_Layer: 6
+  m_Name: Character_Equipment
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7376985383572113109
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 489768155248160083}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7488652941193234196}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4800197423176489028
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 489768155248160083}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 054283c474680534cb008378f47a7724, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  defaultWeapon: {fileID: 0}
+  equipDefaultOnStart: 1
+  usePlayerInventorySave: 1
+  equipmentOwnerId: 
+  currentWeapon: {fileID: 0}
+  currentWeaponInstance:
+    instanceId: 
+    baseWeaponId: 
+    rarity: 0
+    mainAffix:
+      affixId: 
+      hasPrimaryValue: 0
+      primaryValue: 0
+      hasSecondaryValue: 0
+      secondaryValue: 0
+    subAffixes: []
+    shotCounter: 0
+    currentMagazine: -1
+    currentReserveAmmo: -1
+    reserveAmmoInitialized: 0
+    upgradeLevel: 0
+    upgradeTier: 0
+    upgradeExp: 0
+    unlockedUpgradeMilestoneIds: []
+  equippedWeaponInstanceId: 
+--- !u!114 &2723905703233099677
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 489768155248160083}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79f5d60bd1a5a7a469215e14289294e4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  statsHub: {fileID: 0}
+  passiveController: {fileID: 0}
+  itemDatabase: {fileID: 0}
+  slotCount: 5
+  equippedAccessories:
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  - instanceId: 
+    accessoryId: 
+    modifierId: 
+    upgradeLevel: 0
+  usePlayerInventorySave: 1
+  equipmentOwnerId: 
 --- !u!1 &761144632922127028
 GameObject:
   m_ObjectHideFlags: 0
@@ -517,7 +628,8 @@ MonoBehaviour:
   rb: {fileID: 2207675358697019086}
   cc: {fileID: 7373962052237540882}
   TargetInfo: {fileID: 3675228139914604767}
-  Equipment: {fileID: 0}
+  Equipment: {fileID: 4800197423176489028}
+  AccessoryLoadout: {fileID: 2723905703233099677}
   WeaponSystem: {fileID: 4048141596046314092}
   AnimBrain: {fileID: 7895287034516787951}
   AnimDriver: {fileID: 3933203452649057500}
@@ -878,6 +990,7 @@ MonoBehaviour:
   weaponDatabase: {fileID: 11400000, guid: 20f7356349b6343448b194bf2e9ed2c8, type: 2}
   ctx: {fileID: 1638387977988830713}
   equipment: {fileID: 0}
+  accessoryLoadout: {fileID: 0}
   weaponSystem: {fileID: 0}
   gold: 0
   equippedWeaponInstanceId: 
@@ -1101,6 +1214,7 @@ Transform:
   - {fileID: 8129864256177310804}
   - {fileID: 5218265094994354303}
   - {fileID: 1781496498836893735}
+  - {fileID: 7376985383572113109}
   m_Father: {fileID: 3749669808023046127}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &3113097119089341131

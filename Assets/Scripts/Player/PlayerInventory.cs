@@ -15,6 +15,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
     [SerializeField] private WeaponDatabase weaponDatabase;
     [SerializeField] private CharacteContext ctx;
     [SerializeField] private CharacterEquipment equipment;
+    [SerializeField] private AccessoryLoadout accessoryLoadout;
     [SerializeField] private WeaponSystem weaponSystem;
 
     [Header("Currency")]
@@ -83,6 +84,21 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (ctx != null && equipment != null && ctx.Equipment != equipment)
             ctx.Equipment = equipment;
 
+        if (!accessoryLoadout && ctx != null && ctx.AccessoryLoadout != null)
+            accessoryLoadout = ctx.AccessoryLoadout;
+
+        if (!accessoryLoadout)
+            accessoryLoadout = GetComponent<AccessoryLoadout>();
+
+        if (!accessoryLoadout && ctx != null)
+            accessoryLoadout = ctx.GetComponentInChildren<AccessoryLoadout>(true);
+
+        if (!accessoryLoadout && ctx != null)
+            accessoryLoadout = ctx.gameObject.AddComponent<AccessoryLoadout>();
+
+        if (ctx != null && accessoryLoadout != null && ctx.AccessoryLoadout != accessoryLoadout)
+            ctx.AccessoryLoadout = accessoryLoadout;
+
         if (!weaponSystem && ctx != null && ctx.WeaponSystem != null)
             weaponSystem = ctx.WeaponSystem;
 
@@ -96,6 +112,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             ctx.WeaponSystem = weaponSystem;
 
         equipment?.ResolveReferences();
+        accessoryLoadout?.ResolveReferences();
     }
 
     void Start()
@@ -154,11 +171,33 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         if (item is GunConfig gun && !item.stackable)
         {
+            if (!inventorySystem.CanAddWeaponInstances(gun, amount))
+                return false;
+
             bool allAdded = true;
             for (int i = 0; i < amount; i++)
             {
                 var instance = WeaponInstanceFactory.CreatePlainInstance(gun);
                 if (!AddWeaponInstance(instance))
+                {
+                    allAdded = false;
+                    break;
+                }
+            }
+
+            return allAdded;
+        }
+
+        if (item is AccessoryDefinition accessory && !item.stackable)
+        {
+            if (!inventorySystem.CanAddAccessoryInstances(accessory, amount))
+                return false;
+
+            bool allAdded = true;
+            for (int i = 0; i < amount; i++)
+            {
+                var instance = AccessoryInstanceFactory.CreateInstance(accessory);
+                if (!AddAccessoryInstance(instance))
                 {
                     allAdded = false;
                     break;
@@ -188,6 +227,9 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (item is GunConfig gun && !item.stackable)
             return inventorySystem.CanAddWeaponInstances(gun, amount);
 
+        if (item is AccessoryDefinition accessory && !item.stackable)
+            return inventorySystem.CanAddAccessoryInstances(accessory, amount);
+
         return inventorySystem.CanAddItem(item, amount);
     }
 
@@ -195,6 +237,12 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
     {
         InitializeInventorySystem();
         return inventorySystem.CanAddWeaponInstances(weapon, amount);
+    }
+
+    public bool CanAddAccessoryInstance(AccessoryDefinition accessory, int amount = 1)
+    {
+        InitializeInventorySystem();
+        return inventorySystem.CanAddAccessoryInstances(accessory, amount);
     }
 
     public bool AddWeaponInstance(WeaponInstanceData weaponInstance)
@@ -220,6 +268,36 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         if (string.IsNullOrWhiteSpace(equippedWeaponInstanceId))
             SetEquippedWeaponInstanceId(instanceCopy.instanceId);
+
+        return true;
+    }
+
+    public bool AddAccessoryInstance(AccessoryInstanceData accessoryInstance)
+    {
+        InitializeInventorySystem();
+
+        if (accessoryInstance == null)
+            return false;
+
+        var instanceCopy = accessoryInstance.DeepClone();
+        if (string.IsNullOrWhiteSpace(instanceCopy.instanceId))
+            instanceCopy.instanceId = AccessoryInstanceFactory.CreateInstanceId();
+
+        var accessoryDef = ResolveAccessoryDefinition(instanceCopy.accessoryId);
+        if (accessoryDef == null)
+        {
+            Debug.LogWarning($"[PlayerInventory] Could not resolve accessory definition: {instanceCopy.accessoryId}");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(instanceCopy.accessoryId))
+            instanceCopy.accessoryId = AccessoryInstanceFactory.ResolveAccessoryId(accessoryDef);
+
+        if (!inventorySystem.AddAccessoryInstance(accessoryDef, instanceCopy))
+        {
+            Debug.Log("Inventory full!");
+            return false;
+        }
 
         return true;
     }
@@ -253,6 +331,31 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
                     ClearEquippedWeaponRuntime();
             }
 
+            return true;
+        }
+
+        return false;
+    }
+
+    public bool RemoveAccessoryInstance(string instanceId)
+    {
+        InitializeInventorySystem();
+
+        if (string.IsNullOrWhiteSpace(instanceId))
+            return false;
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var slot = slots[i];
+            if (slot == null || !slot.HasAccessoryInstance || slot.accessoryInstance == null)
+                continue;
+
+            if (!string.Equals(slot.accessoryInstance.instanceId, instanceId, StringComparison.Ordinal))
+                continue;
+
+            slot.Clear();
+            inventorySystem.NotifySlotChanged(i);
+            AccessoryLoadout.ReleaseRemovedInventoryAccessory(instanceId);
             return true;
         }
 
@@ -314,6 +417,66 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         return CharacterEquipment.SaveEquipmentAssignment(equipmentOwnerId, instanceId, this);
     }
 
+    public bool EquipAccessoryInstance(string instanceId, int slotIndex = -1)
+    {
+        if (string.IsNullOrWhiteSpace(instanceId))
+            return false;
+
+        ResolveReferences();
+
+        if (accessoryLoadout == null)
+            return false;
+
+        string requesterOwnerId = accessoryLoadout.OwnerId;
+        if (AccessoryLoadout.IsAccessoryInstanceUnavailable(instanceId, requesterOwnerId, accessoryLoadout))
+            return false;
+
+        if (!TryGetAccessoryInstanceWithDefinition(instanceId, out _, out _))
+            return false;
+
+        bool equipped = accessoryLoadout.TryEquipFromInventory(this, instanceId, slotIndex);
+        if (equipped && SaveManager.Instance != null)
+            SaveManager.Instance.Save();
+
+        return equipped;
+    }
+
+    public bool EquipAccessoryInstanceForOwner(string equipmentOwnerId, string instanceId, int slotIndex = -1)
+    {
+        if (string.IsNullOrWhiteSpace(equipmentOwnerId) || string.IsNullOrWhiteSpace(instanceId))
+            return false;
+
+        if (!TryGetAccessoryInstanceWithDefinition(instanceId, out _, out _))
+            return false;
+
+        AccessoryLoadout targetLoadout = FindSceneAccessoryLoadoutByOwner(equipmentOwnerId);
+        if (AccessoryLoadout.IsAccessoryInstanceUnavailable(instanceId, equipmentOwnerId, targetLoadout))
+            return false;
+
+        if (targetLoadout == null)
+            return false;
+
+        bool equipped = targetLoadout.TryEquipFromInventory(this, instanceId, slotIndex);
+        if (equipped && SaveManager.Instance != null)
+            SaveManager.Instance.Save();
+
+        return equipped;
+    }
+
+    public bool UnequipAccessorySlot(int slotIndex)
+    {
+        ResolveReferences();
+
+        if (accessoryLoadout == null)
+            return false;
+
+        bool changed = accessoryLoadout.UnequipSlot(slotIndex);
+        if (changed && SaveManager.Instance != null)
+            SaveManager.Instance.Save();
+
+        return changed;
+    }
+
     public WeaponInstanceData GetWeaponInstance(string instanceId)
     {
         InitializeInventorySystem();
@@ -329,6 +492,26 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
             if (string.Equals(slot.weaponInstance.instanceId, instanceId, StringComparison.Ordinal))
                 return slot.weaponInstance;
+        }
+
+        return null;
+    }
+
+    public AccessoryInstanceData GetAccessoryInstance(string instanceId)
+    {
+        InitializeInventorySystem();
+
+        if (string.IsNullOrWhiteSpace(instanceId))
+            return null;
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var slot = slots[i];
+            if (slot == null || !slot.HasAccessoryInstance || slot.accessoryInstance == null)
+                continue;
+
+            if (string.Equals(slot.accessoryInstance.instanceId, instanceId, StringComparison.Ordinal))
+                return slot.accessoryInstance;
         }
 
         return null;
@@ -354,6 +537,24 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         return true;
     }
 
+    public bool NotifyAccessoryInstanceChanged(string instanceId)
+    {
+        InitializeInventorySystem();
+
+        int slotIndex = FindAccessoryInstanceSlotIndex(instanceId);
+        if (slotIndex < 0)
+            return false;
+
+        inventorySystem.NotifySlotChanged(slotIndex);
+
+        ResolveReferences();
+        accessoryLoadout?.ResolveReferences();
+        ctx?.StatsHub?.MarkDirty();
+        ctx?.PassiveController?.RefreshPassiveLoadout();
+
+        return true;
+    }
+
     public int FindWeaponInstanceSlotIndex(string instanceId)
     {
         InitializeInventorySystem();
@@ -374,6 +575,26 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         return -1;
     }
 
+    public int FindAccessoryInstanceSlotIndex(string instanceId)
+    {
+        InitializeInventorySystem();
+
+        if (string.IsNullOrWhiteSpace(instanceId))
+            return -1;
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var slot = slots[i];
+            if (slot == null || !slot.HasAccessoryInstance || slot.accessoryInstance == null)
+                continue;
+
+            if (string.Equals(slot.accessoryInstance.instanceId, instanceId, StringComparison.Ordinal))
+                return i;
+        }
+
+        return -1;
+    }
+
     public bool TryGetWeaponInstanceWithDefinition(
         string instanceId,
         out GunConfig weaponDefinition,
@@ -388,6 +609,22 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         weaponDefinition = ResolveWeaponDefinition(weaponInstance.baseWeaponId);
         return weaponDefinition != null;
+    }
+
+    public bool TryGetAccessoryInstanceWithDefinition(
+        string instanceId,
+        out AccessoryDefinition accessoryDefinition,
+        out AccessoryInstanceData accessoryInstance)
+    {
+        accessoryDefinition = null;
+        accessoryInstance = null;
+
+        accessoryInstance = GetAccessoryInstance(instanceId);
+        if (accessoryInstance == null)
+            return false;
+
+        accessoryDefinition = ResolveAccessoryDefinition(accessoryInstance.accessoryId);
+        return accessoryDefinition != null;
     }
 
     public bool HasItem(ItemDefinition item, int amount = 1)
@@ -462,6 +699,17 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
                 continue;
             }
 
+            if (slot.HasAccessoryInstance && slot.accessoryInstance != null)
+            {
+                data.slots.Add(new InventorySlotSaveData
+                {
+                    itemId = slot.item != null ? slot.item.itemId : slot.accessoryInstance.accessoryId,
+                    amount = 1,
+                    accessoryInstance = slot.accessoryInstance.DeepClone()
+                });
+                continue;
+            }
+
             data.slots.Add(new InventorySlotSaveData
             {
                 itemId = slot.item != null ? slot.item.itemId : null,
@@ -522,6 +770,24 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
                 continue;
             }
 
+            if (slotData.accessoryInstance != null)
+            {
+                var instance = slotData.accessoryInstance.DeepClone();
+                if (string.IsNullOrWhiteSpace(instance.accessoryId))
+                    instance.accessoryId = slotData.itemId;
+
+                var accessoryDef = ResolveAccessoryDefinition(instance.accessoryId);
+                if (accessoryDef == null)
+                {
+                    Debug.LogWarning($"Accessory with id {instance.accessoryId} not found in database");
+                    slot.Clear();
+                    continue;
+                }
+
+                slot.SetAccessoryInstance(accessoryDef, instance);
+                continue;
+            }
+
             if (string.IsNullOrEmpty(slotData.itemId) || slotData.amount <= 0)
             {
                 slot.Clear();
@@ -555,6 +821,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         data.weapon.equippedWeaponInstanceId = equippedWeaponInstanceId;
         CharacterEquipment.WriteSceneEquipmentToSave(data, this);
+        AccessoryLoadout.WriteSceneLoadoutsToSave(data, this);
     }
 
     public void OnLoad(GameSaveData data)
@@ -585,6 +852,8 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         string equipmentPlayerWeaponId = CharacterEquipment.ApplySceneEquipmentFromInventory(data, this, equippedWeaponInstanceId);
         if (!string.IsNullOrWhiteSpace(equipmentPlayerWeaponId))
             SetEquippedWeaponInstanceId(equipmentPlayerWeaponId);
+
+        AccessoryLoadout.ApplySceneLoadoutsFromInventory(data, this);
     }
 
     void InitializeInventorySystem()
@@ -751,6 +1020,54 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             var currentId = WeaponInstanceFactory.ResolveBaseWeaponId(ctx.currentWeapon);
             if (string.Equals(currentId, baseWeaponId, StringComparison.Ordinal))
                 return ctx.currentWeapon;
+        }
+
+        return null;
+    }
+
+    AccessoryDefinition ResolveAccessoryDefinition(string accessoryId)
+    {
+        if (string.IsNullOrWhiteSpace(accessoryId))
+            return null;
+
+        if (itemDatabase != null)
+        {
+            var fromItemDb = itemDatabase.GetItemById(accessoryId) as AccessoryDefinition;
+            if (fromItemDb != null)
+                return fromItemDb;
+        }
+
+        AccessoryDefinition[] definitions = Resources.FindObjectsOfTypeAll<AccessoryDefinition>();
+        for (int i = 0; i < definitions.Length; i++)
+        {
+            AccessoryDefinition definition = definitions[i];
+            if (definition == null)
+                continue;
+
+            if (string.Equals(definition.RuntimeId, accessoryId, StringComparison.Ordinal))
+                return definition;
+        }
+
+        return null;
+    }
+
+    AccessoryLoadout FindSceneAccessoryLoadoutByOwner(string ownerId)
+    {
+        if (string.IsNullOrWhiteSpace(ownerId))
+            return null;
+
+        AccessoryLoadout[] loadouts = FindObjectsByType<AccessoryLoadout>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < loadouts.Length; i++)
+        {
+            AccessoryLoadout candidate = loadouts[i];
+            if (candidate == null || !candidate.UsesPlayerInventorySave)
+                continue;
+
+            if (string.Equals(candidate.OwnerId, ownerId, StringComparison.Ordinal))
+                return candidate;
         }
 
         return null;

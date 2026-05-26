@@ -1,4 +1,5 @@
 using System;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 [Serializable]
@@ -6,6 +7,27 @@ public sealed class EncounterWave
 {
     [Tooltip("enemy prefab ที่ wave นี้สามารถสุ่ม spawn ได้")]
     [SerializeField] private GameObject[] enemyPrefabs;
+
+#if UNITY_EDITOR
+    [ShowInInspector]
+    [FoldoutGroup("Enemy Base Stats", Expanded = true)]
+    [ListDrawerSettings(ShowFoldout = true, DefaultExpandedState = true, DraggableItems = false, ShowPaging = false, NumberOfItemsPerPage = 0)]
+    [LabelText("Prefab Base Stats")]
+    private EncounterEnemyBaseStatsPreview[] EnemyBaseStatsPreview
+    {
+        get
+        {
+            if (enemyPrefabs == null || enemyPrefabs.Length == 0)
+                return Array.Empty<EncounterEnemyBaseStatsPreview>();
+
+            EncounterEnemyBaseStatsPreview[] previews = new EncounterEnemyBaseStatsPreview[enemyPrefabs.Length];
+            for (int i = 0; i < enemyPrefabs.Length; i++)
+                previews[i] = new EncounterEnemyBaseStatsPreview(i, enemyPrefabs[i]);
+
+            return previews;
+        }
+    }
+#endif
 
     [Tooltip("จำนวนศัตรูที่จะ spawn ใน wave นี้")]
     [SerializeField, Min(1)] private int spawnCount = 1;
@@ -39,6 +61,92 @@ public sealed class EncounterWave
 
         return null;
     }
+
+#if UNITY_EDITOR
+    static CharacterStats ResolveEnemyBaseStats(GameObject prefab, out string status)
+    {
+        if (prefab == null)
+        {
+            status = "Prefab slot is empty.";
+            return null;
+        }
+
+        EnemyContext enemyContext = prefab.GetComponentInChildren<EnemyContext>(true);
+        if (enemyContext != null)
+        {
+            if (enemyContext.baseStats != null)
+            {
+                status = "Resolved from EnemyContext.baseStats.";
+                return enemyContext.baseStats;
+            }
+
+            status = "EnemyContext found, but baseStats is not assigned.";
+            return null;
+        }
+
+        CharacteContext characterContext = prefab.GetComponentInChildren<CharacteContext>(true);
+        if (characterContext != null)
+        {
+            if (characterContext.baseStats != null)
+            {
+                status = "Resolved from CharacteContext.baseStats.";
+                return characterContext.baseStats;
+            }
+
+            status = "CharacteContext found, but baseStats is not assigned.";
+            return null;
+        }
+
+        status = "No EnemyContext or CharacteContext found on prefab.";
+        return null;
+    }
+
+    [Serializable]
+    sealed class EncounterEnemyBaseStatsPreview
+    {
+        readonly int index;
+        readonly GameObject prefab;
+        readonly CharacterStats baseStats;
+        readonly string status;
+
+        public EncounterEnemyBaseStatsPreview(int index, GameObject prefab)
+        {
+            this.index = index;
+            this.prefab = prefab;
+            baseStats = ResolveEnemyBaseStats(prefab, out status);
+        }
+
+        [ShowInInspector, ReadOnly]
+        [HorizontalGroup("Source", Width = 70)]
+        [LabelText("Slot")]
+        string Slot => $"#{index}";
+
+        [ShowInInspector, ReadOnly]
+        [HorizontalGroup("Source")]
+        [LabelText("Prefab")]
+        GameObject Prefab => prefab;
+
+        [ShowInInspector, ReadOnly]
+        [LabelText("Status")]
+        string Status => status;
+
+        [ShowInInspector, ReadOnly]
+        [LabelText("Base Summary")]
+        string BaseSummary => baseStats == null
+            ? "No CharacterStats resolved."
+            : $"HP {baseStats.maxHP:0.##} | DMG {baseStats.Damage:0.##} | ARM {baseStats.armor:0.##} | SPD {baseStats.speed:0.##} | CR {baseStats.critRate:0.##} | CD {baseStats.critMultiplier:0.##}";
+
+        [ShowInInspector, ReadOnly]
+        [LabelText("Growth / Lv")]
+        string GrowthSummary => baseStats == null
+            ? "No CharacterStats resolved."
+            : $"HP +{baseStats.MAXHPScaling:0.##} | DMG +{baseStats.DamageScaling:0.##} | ARM +{baseStats.ArmorScaling:0.##} | SPD +{baseStats.SpeedScaling:0.##}";
+
+        [ShowInInspector, InlineEditor]
+        [LabelText("Editable Base Stats")]
+        CharacterStats EditableBaseStats => baseStats;
+    }
+#endif
 }
 
 [CreateAssetMenu(menuName = "Game/Map/Encounter Definition")]

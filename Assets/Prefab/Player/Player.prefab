@@ -384,7 +384,6 @@ GameObject:
   - component: {fileID: 2048828252462802381}
   - component: {fileID: 3693568544021270016}
   - component: {fileID: 1173181556611555232}
-  - component: {fileID: 8610645875360634224}
   - component: {fileID: 5818043391274991836}
   - component: {fileID: 9126503440091188613}
   - component: {fileID: 7935780743584248329}
@@ -882,22 +881,6 @@ MonoBehaviour:
   weaponSystem: {fileID: 0}
   gold: 0
   equippedWeaponInstanceId: 
---- !u!208 &8610645875360634224
-NavMeshObstacle:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2311559804654788738}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Shape: 0
-  m_Extents: {x: 0.67, y: 1.385, z: 0.67}
-  m_MoveThreshold: 0.1
-  m_Carve: 0
-  m_CarveOnlyStationary: 1
-  m_Center: {x: 0, y: 1.25, z: 0}
-  m_TimeToStationary: 0.5
 --- !u!114 &5818043391274991836
 MonoBehaviour:
   m_ObjectHideFlags: 0

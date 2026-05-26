@@ -23,7 +23,7 @@ MonoBehaviour:
   weaponHandMode: 0
   combatRole: 0
   chainAttackSkill: {fileID: 0}
-  maxHP: 100000
+  maxHP: 30000
   maxStamina: 50
   Damage: 10
   armor: 1

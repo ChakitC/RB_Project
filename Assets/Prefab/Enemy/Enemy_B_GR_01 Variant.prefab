@@ -146,6 +146,22 @@ PrefabInstance:
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: eeaacc3b3d4f906488e731bd1082adb8, type: 2}
+    - target: {fileID: 1692327919204438350, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1692327919204438350, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1692327919204438350, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 1692327919204438350, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
     - target: {fileID: 1879165679072882653, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: buildModelAutomatically
       value: 0
@@ -197,6 +213,14 @@ PrefabInstance:
     - target: {fileID: 3160894530039119532, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: m_Radius
       value: 1.14
+      objectReference: {fileID: 0}
+    - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: Collider
+      value: 
+      objectReference: {fileID: 2822109499110157335}
+    - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: Equipment
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: baseStats
@@ -253,6 +277,10 @@ PrefabInstance:
     - target: {fileID: 5993987419785758348, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: autonomousSlots.Array.data[2].runtimeSkill.level
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6926906578778700563, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: logTransitions
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7146074806545161233, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: m_Subtree
@@ -48025,6 +48053,9 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1733441924618278912}
     m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7649753103391906527, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 0}
     - targetCorrespondingSourceObject: {fileID: 4066815104232824939, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       insertIndex: -1
       addedObject: {fileID: 488939075171126940}

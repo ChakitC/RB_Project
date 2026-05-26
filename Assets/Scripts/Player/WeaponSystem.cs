@@ -51,7 +51,9 @@ public class WeaponSystem : MonoBehaviour
     public int MagazineSize => MaxMagazine;
     public int CurrentReserveAmmo => HasInfiniteReserveAmmo ? -1 : reserveAmmo;
     public int ReserveAmmoSize => HasInfiniteReserveAmmo ? -1 : MaxReserveAmmo;
-    public bool HasInfiniteReserveAmmo => currentWeapon != null && currentWeapon.infiniteReserveAmmo;
+    public bool HasInfiniteReserveAmmo =>
+        currentWeapon != null &&
+        (currentWeapon.infiniteReserveAmmo || (ctx != null && ctx.ForceInfiniteReserveAmmo));
     public bool HasReserveAmmo => HasInfiniteReserveAmmo || reserveAmmo > 0;
     public bool IsMagazineEmpty => magazine <= 0;
     public bool IsOutOfAmmo => magazine <= 0 && !HasReserveAmmo;
@@ -340,7 +342,7 @@ public class WeaponSystem : MonoBehaviour
         (currentWeapon ? currentWeapon.maxMagazine : 0);
 
     int MaxReserveAmmo =>
-        WeaponInstanceFactory.ResolveMaxReserveAmmo(currentWeapon, MaxMagazine);
+        HasInfiniteReserveAmmo ? 0 : WeaponInstanceFactory.ResolveMaxReserveAmmo(currentWeapon, MaxMagazine);
 
     public float GetReloadAnimDuration()
     {

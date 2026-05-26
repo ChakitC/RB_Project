@@ -19,7 +19,12 @@ public class MoveToPlayerOffsetNavMesh : Action
     [Tooltip("ระยะที่ถือว่าเข้าใกล้พอแล้ว (เอาไว้ใช้แทน followMin)")]
     public SharedVariable<float> stopDistance;
 
-  
+    [Header("Player Keepout")]
+    [SerializeField] private bool keepDestinationOutsidePlayer = true;
+    [SerializeField, Min(0f)] private float playerKeepoutRadius = 0.65f;
+    [SerializeField, Min(0f)] private float destinationMargin = 0.1f;
+    [SerializeField, Min(0f)] private float destinationSampleRadius = 1.5f;
+
     private NavMeshAgent _agent;
     private CharacteContext _ctx;
     private CharacterAnimBrain _animBrain;
@@ -40,7 +45,7 @@ public class MoveToPlayerOffsetNavMesh : Action
         CacheReferences();
         
         // ไม่มี Agent = ทำอะไรไม่ได้ → Fail
-        if (_agent == null || !_agent.enabled)
+        if (_agent == null || !_agent.isActiveAndEnabled)
         {
             return TaskStatus.Failure;
         }
@@ -49,7 +54,7 @@ public class MoveToPlayerOffsetNavMesh : Action
         // ไม่มี Taget ให้ตาม → หยุดแล้ว Fail
         if (Taget == null || Taget.Value == null)
         {
-            _agent.isStopped = true;
+            StopAgentIfReady();
             return TaskStatus.Failure;
         }
 
@@ -73,6 +78,7 @@ public class MoveToPlayerOffsetNavMesh : Action
 
         // ล็อกความสูงตาม Agent (ป้องกันหลุด navmesh บางเคส)
         targetPos.y = _agent.transform.position.y;
+        targetPos = ResolveDestinationOutsidePlayerKeepout(playerTransform, targetPos);
 
         // สั่งให้ Agent เดินไปตำแหน่งนี้
         ResumeAgentIfAllowed();
@@ -90,7 +96,7 @@ public class MoveToPlayerOffsetNavMesh : Action
 
             if (remaining <= stop + 0.05f)
             {
-                _agent.isStopped = true;
+                StopAgentIfReady();
                 return TaskStatus.Success;
             }
         }
@@ -100,10 +106,7 @@ public class MoveToPlayerOffsetNavMesh : Action
 
     public override void OnEnd()
     {
-        if (_agent != null)
-        {
-            _agent.isStopped = true;
-        }
+        StopAgentIfReady();
     }
 
     public override void Reset()
@@ -150,7 +153,7 @@ public class MoveToPlayerOffsetNavMesh : Action
 
     private void ResumeAgentIfAllowed()
     {
-        if (_agent == null || !_agent.enabled || !_agent.isOnNavMesh || IsRootMotionActive())
+        if (!CanControlAgent() || IsRootMotionActive())
         {
             return;
         }
@@ -169,7 +172,7 @@ public class MoveToPlayerOffsetNavMesh : Action
 
     private bool TryRecoverAgentOnNavMesh()
     {
-        if (_agent == null || !_agent.enabled)
+        if (_agent == null || !_agent.isActiveAndEnabled)
         {
             return false;
         }
@@ -185,5 +188,80 @@ public class MoveToPlayerOffsetNavMesh : Action
         }
 
         return _agent.Warp(hit.position);
+    }
+
+    private bool CanControlAgent()
+    {
+        return _agent != null && _agent.isActiveAndEnabled && _agent.isOnNavMesh;
+    }
+
+    private void StopAgentIfReady()
+    {
+        if (CanControlAgent())
+        {
+            _agent.isStopped = true;
+        }
+    }
+
+    private Vector3 ResolveDestinationOutsidePlayerKeepout(Transform playerTransform, Vector3 targetPos)
+    {
+        if (!keepDestinationOutsidePlayer || playerTransform == null || _agent == null)
+            return targetPos;
+
+        Transform playerRoot = ResolvePlayerRoot(playerTransform);
+        Vector3 playerPosition = playerRoot.position;
+        float keepoutRadius = ResolvePlayerKeepoutRadius(playerRoot) + Mathf.Max(_agent.radius, 0f) + destinationMargin;
+        Vector3 offset = targetPos - playerPosition;
+        offset.y = 0f;
+
+        if (offset.sqrMagnitude < keepoutRadius * keepoutRadius)
+        {
+            Vector3 direction = offset.sqrMagnitude > 0.0001f
+                ? offset.normalized
+                : ResolveFallbackKeepoutDirection(playerRoot, playerPosition);
+
+            targetPos = playerPosition + direction * keepoutRadius;
+        }
+
+        if (NavMesh.SamplePosition(targetPos, out NavMeshHit hit, destinationSampleRadius, _agent.areaMask))
+            targetPos = hit.position;
+
+        return targetPos;
+    }
+
+    private Transform ResolvePlayerRoot(Transform playerTransform)
+    {
+        CharacteContext playerContext = playerTransform.GetComponentInParent<CharacteContext>();
+        return playerContext != null ? playerContext.transform : playerTransform;
+    }
+
+    private float ResolvePlayerKeepoutRadius(Transform playerRoot)
+    {
+        float radius = Mathf.Max(playerKeepoutRadius, 0f);
+        CharacterController playerController = playerRoot.GetComponent<CharacterController>();
+        if (playerController != null)
+            radius = Mathf.Max(radius, playerController.radius);
+
+        NavMeshObstacle obstacle = playerRoot.GetComponent<NavMeshObstacle>();
+        if (obstacle != null)
+            radius = Mathf.Max(radius, obstacle.radius);
+
+        return Mathf.Max(radius, 0.01f);
+    }
+
+    private Vector3 ResolveFallbackKeepoutDirection(Transform playerRoot, Vector3 playerPosition)
+    {
+        Vector3 direction = _agent.transform.position - playerPosition;
+        direction.y = 0f;
+        if (direction.sqrMagnitude <= 0.0001f)
+        {
+            direction = -playerRoot.forward;
+            direction.y = 0f;
+        }
+
+        if (direction.sqrMagnitude <= 0.0001f)
+            direction = Vector3.forward;
+
+        return direction.normalized;
     }
 }

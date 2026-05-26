@@ -28,4 +28,4 @@ MonoBehaviour:
   executionSkillLevel: 1
   hideHelperOnSkillComplete: 1
   blockWhileHelperBusy: 1
-  debugLogging: 1
+  debugLogging: 0

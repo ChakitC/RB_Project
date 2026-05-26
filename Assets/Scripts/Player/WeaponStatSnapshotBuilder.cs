@@ -11,6 +11,9 @@ public static class WeaponStatSnapshotBuilder
 
         int maxMagazine = statsHub ? statsHub.GetMaxMagazine(weapon) : weapon.maxMagazine;
 
+        bool infiniteReserveAmmo = weapon.infiniteReserveAmmo || (ctx != null && ctx.ForceInfiniteReserveAmmo);
+        int maxReserveAmmo = infiniteReserveAmmo ? 0 : WeaponInstanceFactory.ResolveMaxReserveAmmo(weapon, maxMagazine);
+
         return new WeaponStatSnapshot(
             weapon,
             weapon.WeaponType,
@@ -18,8 +21,8 @@ public static class WeaponStatSnapshotBuilder
             ResolveDamage(weapon, statsHub, ctx),
             ResolveFireInterval(weapon, statsHub),
             maxMagazine,
-            WeaponInstanceFactory.ResolveMaxReserveAmmo(weapon, maxMagazine),
-            weapon.infiniteReserveAmmo,
+            maxReserveAmmo,
+            infiniteReserveAmmo,
             ResolveReloadTime(weapon, statsHub),
             ResolveCritRate(weapon, statsHub, ctx),
             ResolveCritMultiplier(weapon, statsHub, ctx),

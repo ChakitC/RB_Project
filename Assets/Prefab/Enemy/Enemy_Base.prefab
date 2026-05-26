@@ -1085,6 +1085,7 @@ MonoBehaviour:
   Agent: {fileID: 3160894530039119532}
   dropper: {fileID: 848695909115927668}
   animator: {fileID: 1608284013549844060}
+  forceInfiniteReserveAmmo: 1
 --- !u!114 &7553791555562528323
 MonoBehaviour:
   m_ObjectHideFlags: 0

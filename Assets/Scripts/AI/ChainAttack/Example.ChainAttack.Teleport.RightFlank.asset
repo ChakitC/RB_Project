@@ -26,4 +26,4 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 131072
   obstacleTriggerInteraction: 1
-  debugLogging: 1
+  debugLogging: 0

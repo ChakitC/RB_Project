@@ -1443,7 +1443,6 @@ Transform:
   - {fileID: 5300586639509103118}
   - {fileID: 8119643211102900951}
   - {fileID: 5274596598177947098}
-  - {fileID: 5802195467635700606}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &7477059563664606553
@@ -16983,80 +16982,6 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 0}
---- !u!1001 &7025740654383927054
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 857914268851577184}
-    m_Modifications:
-    - target: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 0.57462746
-      objectReference: {fileID: 0}
-    - target: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 0.57462746
-      objectReference: {fileID: 0}
-    - target: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 0.57462746
-      objectReference: {fileID: 0}
-    - target: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -0.25
-      objectReference: {fileID: 0}
-    - target: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.00010083337
-      objectReference: {fileID: 0}
-    - target: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -0.21
-      objectReference: {fileID: 0}
-    - target: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: -0.99999046
-      objectReference: {fileID: 0}
-    - target: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0.0043739635
-      objectReference: {fileID: 0}
-    - target: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 359.499
-      objectReference: {fileID: 0}
-    - target: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8743962433968012939, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-      propertyPath: m_Name
-      value: Enemy_B_GR_01 Variant
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
---- !u!4 &5802195467635700606 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 3532506490438794352, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
-  m_PrefabInstance: {fileID: 7025740654383927054}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &8671345000721245484
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -17075,7 +17000,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3559514951137114358, guid: 0c6027789ba24b941ad1ad4417bfa6b5, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 9.9
+      value: 11.07
       objectReference: {fileID: 0}
     - target: {fileID: 3559514951137114358, guid: 0c6027789ba24b941ad1ad4417bfa6b5, type: 3}
       propertyPath: m_LocalRotation.w

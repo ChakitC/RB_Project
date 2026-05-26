@@ -167,29 +167,41 @@ public class CharacterAudioEmitter : MonoBehaviour
 
     void OnSkillCastReleased(ActiveSkillCastInfo castInfo)
     {
+        TryPlaySkillVoice(castInfo.SkillDef);
+    }
+
+    public bool TryPlaySkillVoice(SkillGemDefinition skillDef)
+    {
+        ResolveReferences();
+
         CharacterVoiceProfile voiceProfile = GetVoiceProfile();
         if (voiceProfile == null)
-            return;
+            return false;
 
         float now = Time.unscaledTime;
         if (voiceProfile.globalSkillVoiceCooldown > 0f && now < nextSkillVoiceAllowedAt)
-            return;
+            return false;
 
-        if (TryGetSkillVoiceLine(voiceProfile, castInfo.SkillDef, out CharacterSkillVoiceLine voiceLine))
+        if (TryGetSkillVoiceLine(voiceProfile, skillDef, out CharacterSkillVoiceLine voiceLine))
         {
             if (!CanPlaySkillVoiceLine(voiceLine, now))
-                return;
+                return false;
 
-            PlayCue(voiceLine.cue);
+            if (!PlayCue(voiceLine.cue))
+                return false;
+
             StampSkillVoiceCooldowns(voiceProfile, voiceLine, now);
-            return;
+            return true;
         }
 
         if (!CanPlayDefaultSkillVoice(voiceProfile, now))
-            return;
+            return false;
 
-        PlayCue(voiceProfile.defaultSkillVoiceCue);
+        if (!PlayCue(voiceProfile.defaultSkillVoiceCue))
+            return false;
+
         StampDefaultSkillVoiceCooldowns(voiceProfile, now);
+        return true;
     }
 
     CharacterStats GetStats()
@@ -335,13 +347,14 @@ public class CharacterAudioEmitter : MonoBehaviour
         return true;
     }
 
-    void PlayCue(AudioCue cue)
+    bool PlayCue(AudioCue cue)
     {
         if (cue == null)
-            return;
+            return false;
 
         Transform followTarget = ctx != null ? ctx.transform : transform;
-        AudioService.Instance.PlayAttached(cue, followTarget, Vector3.zero);
+        AudioHandle handle = AudioService.Instance.PlayAttached(cue, followTarget, Vector3.zero);
+        return handle.IsValid;
     }
 }
 

@@ -11,6 +11,7 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
     [SerializeField] private PlayerInventory inventorySource;
     [SerializeField] private string characterId;
     [SerializeField] private PartySlot boundPartySlot;
+    [SerializeField] private CharacterDatabase characterDatabase;
 
     [Header("UI References")]
     [SerializeField] private RectTransform slotContainer;
@@ -25,6 +26,8 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
     InventorySystem inventorySystem;
     string equipmentOwnerId;
     bool hasSourceBinding;
+    GameSaveData cachedGameData;
+    bool gameDataCacheValid;
 
     protected override DragItemUI DragVisual => dragItemUI;
     protected override Canvas RootCanvas => rootCanvas;
@@ -90,6 +93,8 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
         boundPartySlot = partySlot;
         equipmentOwnerId = CharacterEquipment.BuildCharacterOwnerId(characterId);
         inventorySystem = inventorySource != null ? inventorySource.InventorySystem : null;
+        if (characterDatabase == null)
+            characterDatabase = ResolveCharacterDatabase();
 
         if (inventorySystem != null)
         {
@@ -122,6 +127,7 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
 
     public void RefreshAll()
     {
+        InvalidateGameDataCache();
         RebuildWeaponSlotIndexCache();
         RebuildSlots();
 
@@ -136,7 +142,9 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
         if (!TryGetInventorySlotIndex(slotIndex, out var inventorySlotIndex))
             return;
 
-        slotUIs[slotIndex].Bind(this, slotIndex, inventorySystem.GetSlot(inventorySlotIndex));
+        var slotData = inventorySystem.GetSlot(inventorySlotIndex);
+        slotUIs[slotIndex].Bind(this, slotIndex, slotData);
+        slotUIs[slotIndex].SetEquippedCharacterIcon(ResolveEquippedCharacterIcon(slotData));
     }
 
     public void RefreshEquippedSlot()
@@ -144,7 +152,9 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
         if (equippedSlotUI == null)
             return;
 
-        equippedSlotUI.Bind(this, EquippedSlotVirtualIndex, GetEquippedSlotData());
+        var slotData = GetEquippedSlotData();
+        equippedSlotUI.Bind(this, EquippedSlotVirtualIndex, slotData);
+        equippedSlotUI.SetEquippedCharacterIcon(ResolveEquippedCharacterIcon(slotData));
         equippedSlotUI.SetDraggingVisual(false);
     }
 
@@ -216,7 +226,7 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
 
     void HandleEquippedWeaponChanged(string equippedInstanceId)
     {
-        RefreshEquippedSlot();
+        RefreshAll();
         RefreshBoundPartySlotPreview(string.IsNullOrWhiteSpace(equipmentOwnerId) ? equippedInstanceId : null);
     }
 
@@ -236,7 +246,7 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
 
         if (equipped)
         {
-            RefreshEquippedSlot();
+            RefreshAll();
             RefreshBoundPartySlotPreview(instanceId);
             return;
         }
@@ -365,7 +375,7 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
         if (string.IsNullOrWhiteSpace(equipmentOwnerId))
             return inventorySource.EquippedWeaponInstanceId;
 
-        var data = LoadCurrentGameData();
+        var data = GetCurrentGameData();
         string savedInstanceId = CharacterEquipment.FindEquipmentEntry(data?.equipment, equipmentOwnerId);
         if (!string.IsNullOrWhiteSpace(savedInstanceId))
             return savedInstanceId;
@@ -375,6 +385,242 @@ public class UIWeaponEquipment : InventorySlotOwnerBase
             !string.IsNullOrWhiteSpace(equipment.EquippedWeaponInstanceId))
         {
             return equipment.EquippedWeaponInstanceId;
+        }
+
+        return null;
+    }
+
+    Sprite ResolveEquippedCharacterIcon(InventorySlotData slotData)
+    {
+        if (slotData == null || !slotData.HasWeaponInstance || slotData.weaponInstance == null)
+            return null;
+
+        return ResolveEquippedCharacterIcon(slotData.weaponInstance.instanceId);
+    }
+
+    Sprite ResolveEquippedCharacterIcon(string instanceId)
+    {
+        if (string.IsNullOrWhiteSpace(instanceId))
+            return null;
+
+        if (CharacterEquipment.TryFindSceneEquipmentByWeaponInstance(instanceId, out CharacterEquipment equipment) &&
+            equipment != null)
+        {
+            CharacterStats sceneStats = equipment.Context != null ? equipment.Context.baseStats : null;
+            if (sceneStats != null && sceneStats.icon != null)
+                return sceneStats.icon;
+
+            CharacterStats ownerStats = ResolveOwnerCharacterStats(equipment.OwnerId);
+            if (ownerStats != null)
+                return ownerStats.icon;
+        }
+
+        CharacterStats savedOwnerStats = ResolveOwnerCharacterStats(FindSavedOwnerIdForWeaponInstance(instanceId));
+        return savedOwnerStats != null ? savedOwnerStats.icon : null;
+    }
+
+    string FindSavedOwnerIdForWeaponInstance(string instanceId)
+    {
+        if (string.IsNullOrWhiteSpace(instanceId))
+            return null;
+
+        var data = GetCurrentGameData();
+        var entries = data?.equipment?.entries;
+        if (entries != null)
+        {
+            for (int i = 0; i < entries.Count; i++)
+            {
+                CharacterEquipmentSaveData entry = entries[i];
+                if (entry == null)
+                    continue;
+
+                if (string.Equals(entry.equippedWeaponInstanceId, instanceId, StringComparison.Ordinal))
+                    return entry.ownerId;
+            }
+        }
+
+        if (data?.weapon != null &&
+            string.Equals(data.weapon.equippedWeaponInstanceId, instanceId, StringComparison.Ordinal))
+        {
+            return "player";
+        }
+
+        if (inventorySource != null &&
+            string.Equals(inventorySource.EquippedWeaponInstanceId, instanceId, StringComparison.Ordinal))
+        {
+            return "player";
+        }
+
+        return null;
+    }
+
+    CharacterStats ResolveOwnerCharacterStats(string ownerId)
+    {
+        if (string.IsNullOrWhiteSpace(ownerId))
+            return null;
+
+        if (CharacterEquipment.TryParseCharacterOwnerId(ownerId, out string characterOwnerId))
+            return ResolveCharacterStats(characterOwnerId);
+
+        if (string.Equals(ownerId, "player", StringComparison.Ordinal))
+            return ResolvePartyCharacterStats(0);
+
+        if (string.Equals(ownerId, "helper", StringComparison.Ordinal))
+            return ResolveChainRoleCharacterStats(ChainActorRole.Helper);
+
+        const string AllyOwnerPrefix = "ally:";
+        if (ownerId.StartsWith(AllyOwnerPrefix, StringComparison.Ordinal) &&
+            Enum.TryParse(ownerId.Substring(AllyOwnerPrefix.Length), out ChainActorRole role))
+        {
+            return ResolveChainRoleCharacterStats(role);
+        }
+
+        return null;
+    }
+
+    CharacterStats ResolveChainRoleCharacterStats(ChainActorRole role)
+    {
+        switch (role)
+        {
+            case ChainActorRole.Player:
+                return ResolvePartyCharacterStats(0);
+            case ChainActorRole.PartySlot1:
+                return ResolvePartyCharacterStats(1);
+            case ChainActorRole.PartySlot2:
+                return ResolvePartyCharacterStats(2);
+            default:
+                return null;
+        }
+    }
+
+    CharacterStats ResolvePartyCharacterStats(int partyIndex)
+    {
+        if (partyIndex < 0)
+            return null;
+
+        PartySlot partySlot = FindPartySlot(partyIndex);
+        CharacterStats fromSlot = partySlot != null ? partySlot.Selected : null;
+        if (fromSlot != null)
+            return fromSlot;
+
+        string slotCharacterId = partySlot != null ? partySlot.IDCharacter : null;
+        if (!string.IsNullOrWhiteSpace(slotCharacterId))
+            return ResolveCharacterStats(slotCharacterId);
+
+        var data = GetCurrentGameData();
+        if (data?.party?.partyIds == null || partyIndex >= data.party.partyIds.Count)
+            return null;
+
+        return ResolveCharacterStats(data.party.partyIds[partyIndex]);
+    }
+
+    CharacterStats ResolveCharacterStats(string ownerCharacterId)
+    {
+        if (string.IsNullOrWhiteSpace(ownerCharacterId))
+            return null;
+
+        if (boundPartySlot != null &&
+            boundPartySlot.Selected != null &&
+            string.Equals(boundPartySlot.Selected.characterId, ownerCharacterId, StringComparison.Ordinal))
+        {
+            return boundPartySlot.Selected;
+        }
+
+        PartySlot partySlot = FindPartySlot(ownerCharacterId);
+        if (partySlot != null && partySlot.Selected != null)
+            return partySlot.Selected;
+
+        if (characterDatabase == null)
+            characterDatabase = ResolveCharacterDatabase();
+
+        CharacterStats fromDatabase = characterDatabase != null ? characterDatabase.GetById(ownerCharacterId) : null;
+        if (fromDatabase != null)
+            return fromDatabase;
+
+        CharacterDatabase[] databases = Resources.FindObjectsOfTypeAll<CharacterDatabase>();
+        for (int i = 0; i < databases.Length; i++)
+        {
+            CharacterDatabase database = databases[i];
+            if (database == null || database == characterDatabase)
+                continue;
+
+            CharacterStats candidate = database.GetById(ownerCharacterId);
+            if (candidate != null)
+            {
+                characterDatabase = database;
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    PartySlot FindPartySlot(int partyIndex)
+    {
+        PartySlot[] partySlots = FindObjectsByType<PartySlot>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        PartySlot fallback = null;
+        int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
+
+        for (int i = 0; i < partySlots.Length; i++)
+        {
+            PartySlot partySlot = partySlots[i];
+            if (partySlot == null || partySlot.PartyIndex != partyIndex)
+                continue;
+
+            if (partySlot.CurrentSlot == saveSlot)
+                return partySlot;
+
+            fallback ??= partySlot;
+        }
+
+        return fallback;
+    }
+
+    PartySlot FindPartySlot(string ownerCharacterId)
+    {
+        if (string.IsNullOrWhiteSpace(ownerCharacterId))
+            return null;
+
+        PartySlot[] partySlots = FindObjectsByType<PartySlot>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < partySlots.Length; i++)
+        {
+            PartySlot partySlot = partySlots[i];
+            if (partySlot == null)
+                continue;
+
+            string selectedId = partySlot.Selected != null ? partySlot.Selected.characterId : partySlot.IDCharacter;
+            if (string.Equals(selectedId, ownerCharacterId, StringComparison.Ordinal))
+                return partySlot;
+        }
+
+        return null;
+    }
+
+    GameSaveData GetCurrentGameData()
+    {
+        if (!gameDataCacheValid)
+        {
+            cachedGameData = LoadCurrentGameData();
+            gameDataCacheValid = true;
+        }
+
+        return cachedGameData;
+    }
+
+    void InvalidateGameDataCache()
+    {
+        cachedGameData = null;
+        gameDataCacheValid = false;
+    }
+
+    static CharacterDatabase ResolveCharacterDatabase()
+    {
+        CharacterDatabase[] databases = Resources.FindObjectsOfTypeAll<CharacterDatabase>();
+        for (int i = 0; i < databases.Length; i++)
+        {
+            CharacterDatabase candidate = databases[i];
+            if (candidate != null && candidate.characters != null && candidate.characters.Count > 0)
+                return candidate;
         }
 
         return null;

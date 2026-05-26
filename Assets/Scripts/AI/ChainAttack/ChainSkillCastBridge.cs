@@ -156,6 +156,10 @@ internal sealed class ChainSkillCastBridge
             useAnimationDriver: false,
             debugSource: $"chain:{execution.step.RuntimeId}"));
         execution.attackPayloadReleased = castResult.Started;
+
+        if (castResult.Started)
+            TryPlayChainSkillVoice(execution.attackSkillDef);
+
         return castResult.Started;
     }
 
@@ -242,6 +246,33 @@ internal sealed class ChainSkillCastBridge
             return aimAnchor;
 
         return execution.lockedTarget;
+    }
+
+    void TryPlayChainSkillVoice(SkillGemDefinition skillDef)
+    {
+        CharacterAudioEmitter audioEmitter = ResolveAudioEmitter();
+        audioEmitter?.TryPlaySkillVoice(skillDef);
+    }
+
+    CharacterAudioEmitter ResolveAudioEmitter()
+    {
+        CharacteContext actorContext = owner.ActorContextRef;
+        CharacterAudioEmitter audioEmitter = null;
+
+        if (actorContext != null)
+        {
+            audioEmitter = actorContext.GetComponent<CharacterAudioEmitter>();
+            if (audioEmitter == null)
+                audioEmitter = actorContext.GetComponentInChildren<CharacterAudioEmitter>(true);
+        }
+
+        if (audioEmitter == null)
+            audioEmitter = owner.GetComponent<CharacterAudioEmitter>();
+
+        if (audioEmitter == null)
+            audioEmitter = owner.GetComponentInChildren<CharacterAudioEmitter>(true);
+
+        return audioEmitter;
     }
 
     ISkillUser ResolveDirectSkillUser()

@@ -65,6 +65,7 @@ public class AllyHelperManager : MonoBehaviour
     NavMeshAgent allyAgent;
     CharacterController allyCharacterController;
     BehaviorTree allyBehaviorTree;
+    CharacterAudioEmitter allyAudioEmitter;
     SkillCastOrchestrator helperSkillCastOrchestrator;
     Component helperSkillCastOwner;
     PendingHelperSkill pendingHelperSkill;
@@ -539,6 +540,10 @@ public class AllyHelperManager : MonoBehaviour
         allyTargetInfo = allyHelper.GetComponent<AITargetInfo>();
         if (allyTargetInfo == null)
             allyTargetInfo = allyHelper.GetComponentInChildren<AITargetInfo>(true);
+
+        allyAudioEmitter = allyHelper.GetComponent<CharacterAudioEmitter>();
+        if (allyAudioEmitter == null)
+            allyAudioEmitter = allyHelper.GetComponentInChildren<CharacterAudioEmitter>(true);
 
         ASPHelperDitherFader nextHelperFader = allyHelper.GetComponent<ASPHelperDitherFader>();
         if (nextHelperFader == null)
@@ -1189,10 +1194,34 @@ public class AllyHelperManager : MonoBehaviour
             debugSource: $"helper:{skillDef.name}"));
 
         if (result.Started)
+        {
+            TryPlayHelperSkillVoice(skillDef);
             return true;
+        }
 
         Debug.LogWarning($"Helper skill '{skillDef.name}' could not execute. Check helper payload or legacy projectile setup.", this);
         return false;
+    }
+
+    void TryPlayHelperSkillVoice(SkillGemDefinition skillDef)
+    {
+        CharacterAudioEmitter audioEmitter = ResolveHelperAudioEmitter();
+        audioEmitter?.TryPlaySkillVoice(skillDef);
+    }
+
+    CharacterAudioEmitter ResolveHelperAudioEmitter()
+    {
+        if (allyAudioEmitter != null)
+            return allyAudioEmitter;
+
+        if (allyHelper == null)
+            return null;
+
+        allyAudioEmitter = allyHelper.GetComponent<CharacterAudioEmitter>();
+        if (allyAudioEmitter == null)
+            allyAudioEmitter = allyHelper.GetComponentInChildren<CharacterAudioEmitter>(true);
+
+        return allyAudioEmitter;
     }
 
     void EnsureHelperSkillCastOrchestrator()

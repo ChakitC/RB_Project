@@ -9,6 +9,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 532813554804964915, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: targetMask.m_Bits
+      value: 1088
+      objectReference: {fileID: 0}
+    - target: {fileID: 532813554804964915, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: heavyHitboxes.colliders.Array.size
       value: 1
       objectReference: {fileID: 0}
@@ -32,13 +36,29 @@ PrefabInstance:
       propertyPath: behaviorTree
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 1692327919204438350, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1692327919204438350, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1692327919204438350, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 1692327919204438350, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
     - target: {fileID: 1879165679072882653, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: buildModelAutomatically
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2482698924855760932, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 18.724983
+      value: 0.72
       objectReference: {fileID: 0}
     - target: {fileID: 2482698924855760932, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: m_LocalPosition.y
@@ -46,7 +66,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2482698924855760932, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -11.587633
+      value: -13.71
       objectReference: {fileID: 0}
     - target: {fileID: 2482698924855760932, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: m_LocalRotation.w
@@ -77,6 +97,14 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: Collider
+      value: 
+      objectReference: {fileID: 5697420406442127243}
+    - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: Equipment
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: baseStats
       value: 
       objectReference: {fileID: 11400000, guid: 471fb5f22b26c6f429dc9ff44fe76911, type: 2}
@@ -99,6 +127,10 @@ PrefabInstance:
     - target: {fileID: 5993987419785758348, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: autonomousSlots.Array.data[0].runtimeSkill.level
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6926906578778700563, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: logTransitions
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7180067156307174043, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: behaviorTree

@@ -51,6 +51,7 @@ public abstract class CharacteContext : MonoBehaviour
     
     public virtual bool UsesWorldSlow => true;
     public virtual AITargetIdentity TargetIdentity => AITargetIdentity.Generic;
+    public virtual bool ForceInfiniteReserveAmmo => false;
     
     public float baseDamage => baseStats != null ? baseStats.Damage : 0f;
     public float basearmor => baseStats != null ? baseStats.armor : 0f;

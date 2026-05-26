@@ -51,6 +51,20 @@ public class CharacterEquipment : MonoBehaviour
         return CharacterOwnerPrefix + characterId;
     }
 
+    public static bool TryParseCharacterOwnerId(string ownerId, out string characterId)
+    {
+        characterId = null;
+
+        if (string.IsNullOrWhiteSpace(ownerId) ||
+            !ownerId.StartsWith(CharacterOwnerPrefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        characterId = ownerId.Substring(CharacterOwnerPrefix.Length);
+        return !string.IsNullOrWhiteSpace(characterId);
+    }
+
     void Awake()
     {
         ResolveReferences();
@@ -528,6 +542,32 @@ public class CharacterEquipment : MonoBehaviour
                 equipment = candidate;
                 return true;
             }
+        }
+
+        return false;
+    }
+
+    public static bool TryFindSceneEquipmentByWeaponInstance(string instanceId, out CharacterEquipment equipment)
+    {
+        equipment = null;
+
+        if (string.IsNullOrWhiteSpace(instanceId))
+            return false;
+
+        var equipments = new List<CharacterEquipment>();
+        GatherSceneEquipments(equipments);
+
+        for (int i = 0; i < equipments.Count; i++)
+        {
+            CharacterEquipment candidate = equipments[i];
+            if (candidate == null || !candidate.UsesPlayerInventorySave)
+                continue;
+
+            if (!string.Equals(candidate.equippedWeaponInstanceId, instanceId, StringComparison.Ordinal))
+                continue;
+
+            equipment = candidate;
+            return true;
         }
 
         return false;

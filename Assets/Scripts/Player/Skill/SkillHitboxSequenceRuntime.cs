@@ -531,8 +531,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         if (MeleeController.IsCombatOnlyHitbox(other))
             return;
 
-        Transform otherRoot = other.transform.root;
-        if (_casterRoot != null && otherRoot == _casterRoot)
+        if (BelongsToCaster(other.transform))
             return;
 
         IDamageable target = DamageableResolver.ResolveFrom(other);
@@ -568,6 +567,21 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
             TrySpawnImpactVfx(step, hitPoint);
         }
+    }
+
+    bool BelongsToCaster(Transform other)
+    {
+        if (_casterRoot == null || other == null)
+            return false;
+
+        if (other == _casterRoot || other.IsChildOf(_casterRoot))
+            return true;
+
+        CharacteContext otherContext = other.GetComponentInParent<CharacteContext>();
+        if (otherContext != null && otherContext.transform == _casterRoot)
+            return true;
+
+        return other.root == _casterRoot;
     }
 
     void TrySpawnStepStartVfx(StepRuntimeState step)

@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a780e55d1ef881b41bb64444e02e41db, type: 3}
+  m_Name: M.GR.01 Encounter Definition SO
+  m_EditorClassIdentifier: 
+  displayName: 
+  nodeType: 1
+  weight: 1
+  bossEncounter: 0
+  waves:
+  - enemyPrefabs:
+    - {fileID: 2674987616401726930, guid: 56706bf9c93bf494e9e39755db49cdf6, type: 3}
+    - {fileID: 2674987616401726930, guid: 51f57ea8b52629a43a3fd3991fdf0c1c, type: 3}
+    spawnCount: 3
+    initialDelay: 0
+    spawnInterval: 0.25
+    waitForWaveClear: 0
+  - enemyPrefabs:
+    - {fileID: 4978597242027806435, guid: 4792765822eec6541bf0ddb715c82983, type: 3}
+    spawnCount: 1
+    initialDelay: 0
+    spawnInterval: 0.25
+    waitForWaveClear: 0
+  completeWhenNoEnemies: 1

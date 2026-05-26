@@ -575,6 +575,15 @@ MonoBehaviour:
   playerContext: {fileID: 0}
   encounterDirector: {fileID: 0}
   mapView: {fileID: 0}
+  rebuildRoomNavMeshAfterSpawn: 1
+  partyWarpNavMeshSampleRadius: 3
+  partyWarpCollisionMask:
+    serializedVersion: 2
+    m_Bits: 131072
+  partyWarpCollisionPadding: 0.05
+  partyWarpGroundClearance: 0.08
+  partyWarpSafeSearchRadius: 2
+  partyWarpSafeSearchSteps: 12
   logLifecycle: 1
 --- !u!4 &1211085295
 Transform:

@@ -19,9 +19,9 @@ MonoBehaviour:
   maxExitCount: 3
   exitMask: 11
   allowSupersetExitMask: 0
-  lockExitsUntilClear: 0
-  startEncounterOnEnter: 0
-  requiresClearBeforeExit: 0
+  lockExitsUntilClear: 1
+  startEncounterOnEnter: 1
+  requiresClearBeforeExit: 1
   clearRewardTable: {fileID: 0}
   clearRewardRolls: 0
   clearRewardRarity: 0

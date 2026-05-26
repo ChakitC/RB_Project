@@ -40,4 +40,4 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   obstacleTriggerInteraction: 1
-  debugLogging: 1
+  debugLogging: 0

@@ -74,12 +74,10 @@ public class RandomMoveAroundPlayerNavMesh : Action
         if (NavMesh.SamplePosition(candidate, out hit, 2f, NavMesh.AllAreas))
         {
             _currentTarget = hit.position;
-            Debug.Log("Successfully found NavMesh position for the target.");
         }
         else
         {
             _currentTarget = candidate;
-            Debug.LogWarning("Failed to find suitable NavMesh position, using candidate position instead.");
         }
 
         _currentTarget.y = _agent.transform.position.y;

@@ -15,13 +15,17 @@ public class InventorySlotUI : MonoBehaviour,
     IPointerExitHandler
 {
     [SerializeField] private Image iconImage;
+    [SerializeField] private Image equippedCharacterIconImage;
     [SerializeField] private TMP_Text amountText;
     [SerializeField] private GameObject hoverHighlight;
     [SerializeField, Min(0f)] private float hoverDetailDelay = 3f;
+    [SerializeField, Min(0f)] private float equippedCharacterIconSize = 28f;
+    [SerializeField] private Vector2 equippedCharacterIconOffset = new(-4f, 4f);
 
     CanvasGroup canvasGroup;
     IInventorySlotUIOwner owner;
     InventorySlotData slotData;
+    Sprite equippedCharacterIcon;
     int slotIndex = -1;
     bool isDraggingVisual;
     bool isPointerInside;
@@ -47,7 +51,18 @@ public class InventorySlotUI : MonoBehaviour,
         owner = inventoryUI;
         slotIndex = index;
         slotData = data;
+        equippedCharacterIcon = null;
         RefreshVisuals();
+    }
+
+    public void SetEquippedCharacterIcon(Sprite icon)
+    {
+        equippedCharacterIcon = icon;
+
+        if (equippedCharacterIcon != null)
+            EnsureEquippedCharacterIconImage();
+
+        ApplyEquippedCharacterIcon();
     }
 
     public void SetDraggingVisual(bool isDragging)
@@ -140,6 +155,7 @@ public class InventorySlotUI : MonoBehaviour,
 
         if (!hasItem)
         {
+            equippedCharacterIcon = null;
             StopHoverDetailCountdown();
             HideHoverDetails();
         }
@@ -158,6 +174,7 @@ public class InventorySlotUI : MonoBehaviour,
         }
 
         ApplyVisualState();
+        ApplyEquippedCharacterIcon();
     }
 
     void ApplyVisualState()
@@ -166,6 +183,38 @@ public class InventorySlotUI : MonoBehaviour,
             return;
 
         canvasGroup.alpha = isDraggingVisual ? 0.35f : 1f;
+    }
+
+    void EnsureEquippedCharacterIconImage()
+    {
+        if (equippedCharacterIconImage != null)
+            return;
+
+        var iconObject = new GameObject("EquippedCharacterIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        iconObject.transform.SetParent(transform, false);
+
+        var rectTransform = iconObject.GetComponent<RectTransform>();
+        rectTransform.anchorMin = new Vector2(1f, 0f);
+        rectTransform.anchorMax = new Vector2(1f, 0f);
+        rectTransform.pivot = new Vector2(1f, 0f);
+        rectTransform.sizeDelta = new Vector2(equippedCharacterIconSize, equippedCharacterIconSize);
+        rectTransform.anchoredPosition = equippedCharacterIconOffset;
+
+        equippedCharacterIconImage = iconObject.GetComponent<Image>();
+        equippedCharacterIconImage.preserveAspect = true;
+        equippedCharacterIconImage.raycastTarget = false;
+        equippedCharacterIconImage.enabled = false;
+    }
+
+    void ApplyEquippedCharacterIcon()
+    {
+        if (equippedCharacterIconImage == null)
+            return;
+
+        equippedCharacterIconImage.sprite = equippedCharacterIcon;
+        equippedCharacterIconImage.enabled = equippedCharacterIcon != null;
+        equippedCharacterIconImage.gameObject.SetActive(equippedCharacterIcon != null);
+        equippedCharacterIconImage.transform.SetAsLastSibling();
     }
 
     void BeginHoverDetailCountdown()

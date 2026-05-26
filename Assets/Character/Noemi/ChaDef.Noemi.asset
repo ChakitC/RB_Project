@@ -20,10 +20,10 @@ MonoBehaviour:
   characterAvatar: {fileID: 9000000, guid: c3ad3ffbeca2c8d469e319eff2954ddf, type: 3}
   controller: {fileID: 9100000, guid: 48e6511e44d5d4348855e0d5067a844b, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
-  weaponHandMode: 0
+  weaponHandMode: 3
   combatRole: 0
   chainAttackSkill: {fileID: 0}
-  maxHP: 100
+  maxHP: 10000
   maxStamina: 80
   Damage: 10
   armor: 1
@@ -42,6 +42,33 @@ MonoBehaviour:
   SpeedScaling: 0
   passives: []
   dashCue: {fileID: 0}
+  voiceProfile:
+    defaultSkillVoiceCue: {fileID: 11400000, guid: 400d22447db9ce04090e63a436c9f26b, type: 2}
+    defaultSkillVoiceChance: 1
+    defaultSkillVoiceCooldown: 0
+    globalSkillVoiceCooldown: 0.25
+    skillCastLines: []
+    dashVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    knockbackVoice:
+      cue: {fileID: 11400000, guid: 2471bb736b24ee849a60f0d11d0030f1, type: 2}
+      chance: 1
+      cooldown: 0
+    selectCharacterVoice:
+      cue: {fileID: 11400000, guid: c523307a4d998fc4fbc6a9cfab5a843e, type: 2}
+      chance: 1
+      cooldown: 0
+    pickupCharacterVoice:
+      cue: {fileID: 11400000, guid: 7b313b2caefb3e14a9930512b7c50c03, type: 2}
+      chance: 1
+      cooldown: 0
+    lowHpVoice:
+      cue: {fileID: 11400000, guid: 6a393fa4d89c69246a9016d4e177d129, type: 2}
+      chance: 1
+      cooldown: 0
+    lowHpThreshold: 0.3
   meleeLightCue: {fileID: 0}
   meleeHeavyCue: {fileID: 0}
   damagedCue: {fileID: 0}

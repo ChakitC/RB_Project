@@ -36,8 +36,17 @@ public sealed class SkillCastContext
         if (user is Component component)
         {
             CasterObject = component.gameObject;
-            CasterRoot = component.transform.root;
+            CasterRoot = ResolveCasterRoot(component);
         }
+    }
+
+    static Transform ResolveCasterRoot(Component component)
+    {
+        if (component == null)
+            return null;
+
+        CharacteContext context = component.GetComponentInParent<CharacteContext>();
+        return context != null ? context.transform : component.transform;
     }
 
     static Vector3 ResolveAimDirection(ISkillUser user)

@@ -26,6 +26,8 @@ Material:
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
   - _ALPHATEST_ON
+  - _RECEIVE_ASP_SHADOW
+  - _RECEIVE_OFFSETED_SHADOW_ON
   - _SPECULAR_LIGHTING_ON
   - _STYLE_CELSHADING
   - _USE_BAKED_NORAML
@@ -203,7 +205,7 @@ Material:
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OffsetShadowDistance: 15
-    - _OutlineWidth: 3.1
+    - _OutlineWidth: 3.82
     - _OverrideLightColorIntensityToggle: 0
     - _OverrideLightDirToggle: 0
     - _OverrideZTest: 0
@@ -214,8 +216,8 @@ Material:
     - _Parallax: 0.005
     - _QueueOffset: 0
     - _RampOcclusionStrength: 0
-    - _ReceiveASPShadow: 0
-    - _ReceiveOffsetedDepthMap: 0
+    - _ReceiveASPShadow: 1
+    - _ReceiveOffsetedDepthMap: 1
     - _ReceiveShadows: 1
     - _RimLightAlign: 0
     - _RimLightOn: 0
@@ -245,12 +247,12 @@ Material:
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: 13.930906, g: 0.000099897385, b: 3.0281305, a: 0}
+    - _CharacterCenterWS: {r: 23.361593, g: 0.006, b: 11.28252, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FaceFrontDirection: {r: -0.1567599, g: 0, b: -0.9876367, a: 0}
-    - _FaceRightDirection: {r: -0.9876367, g: 0, b: 0.1567599, a: 0}
+    - _FaceFrontDirection: {r: 0, g: 0, b: 1, a: 0}
+    - _FaceRightDirection: {r: 1, g: 0, b: 0, a: 0}
     - _FaceUVCtrl: {r: 0, g: 1, b: 0, a: 0}
     - _FakeLightColor: {r: 0, g: 0, b: 0, a: 0}
     - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}

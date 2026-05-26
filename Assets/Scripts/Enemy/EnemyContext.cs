@@ -18,6 +18,9 @@ public class EnemyContext : CharacteContext
     [Header("Animator")]
     public Animator animator;
 
+    [Header("Enemy Ammo")]
+    [SerializeField] private bool forceInfiniteReserveAmmo;
+
     float _baseAgentAcceleration = 8f;
     float _baseAgentAngularSpeed = 120f;
     float _baseAnimatorSpeed = 1f;
@@ -25,6 +28,7 @@ public class EnemyContext : CharacteContext
     bool _hasCachedAnimatorSpeed;
 
     public override AITargetIdentity TargetIdentity => AITargetIdentity.Enemy;
+    public override bool ForceInfiniteReserveAmmo => forceInfiniteReserveAmmo;
 
     private void Awake()
     {

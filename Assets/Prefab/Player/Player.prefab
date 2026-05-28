@@ -270,7 +270,7 @@ MonoBehaviour:
   speedLerp: 12
   groundMask:
     serializedVersion: 2
-    m_Bits: 1023
+    m_Bits: 4096
 --- !u!114 &3729042986192515201
 MonoBehaviour:
   m_ObjectHideFlags: 0

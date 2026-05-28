@@ -101,8 +101,8 @@ public class SaveManager : MonoBehaviour
                 try { p.OnSaveParty(party); }
                 catch (Exception ex) { Debug.LogError($"[SaveManager] Error in OnSaveParty on {p}: {ex}"); }
             }
-            
-            return party;
+
+            return HasPartyIds(party) ? party : LoadPersistedPartyFallback(party);
             
         }
 
@@ -111,11 +111,45 @@ public class SaveManager : MonoBehaviour
         if (committer != null)
         {
             committer.OnSaveParty(party);
-            return party;
+            return HasPartyIds(party) ? party : LoadPersistedPartyFallback(party);
         }
+
+        PartyData fallbackParty = LoadPersistedPartyFallback(null);
+        if (HasPartyIds(fallbackParty))
+            return fallbackParty;
 
         Debug.LogWarning("[SaveManager] No party source found (no IGameSaveParty and no PartySelectionCommitter).");
         return party;
+    }
+
+    PartyData LoadPersistedPartyFallback(PartyData fallback)
+    {
+        PartyData persistedParty = SaveSystem.LoadPartyOnly(currentSlot) ?? _loaded?.party;
+        return HasPartyIds(persistedParty) ? ClonePartyData(persistedParty) : fallback;
+    }
+
+    static bool HasPartyIds(PartyData party)
+    {
+        if (party?.partyIds == null)
+            return false;
+
+        for (int i = 0; i < party.partyIds.Count; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(party.partyIds[i]))
+                return true;
+        }
+
+        return false;
+    }
+
+    static PartyData ClonePartyData(PartyData source)
+    {
+        var clone = new PartyData();
+        if (source?.partyIds == null)
+            return clone;
+
+        clone.partyIds.AddRange(source.partyIds);
+        return clone;
     }
 
     //ApplyParty เรียง order

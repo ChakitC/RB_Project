@@ -23,7 +23,6 @@ MonoBehaviour:
   itemType: 1
   stackable: 0
   maxStack: 1
-  pickupPrefab: {fileID: 0}
   baseBuyPrice: 0
   baseSellPrice: 0
   BulletPrefab: {fileID: 7234640618046847812, guid: de907b0f2086f5a49b659333a92a81d8, type: 3}

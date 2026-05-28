@@ -7,14 +7,18 @@ using Random = UnityEngine.Random;
 public enum DropEntryContentType
 {
     Item,
-    GunTable
+    GunTable,
+    AccessoryTable
 }
 
 [Serializable]
 public class DropEntry
 {
+    const int MaxNestedTableDepth = 8;
+
     bool IsItemEntry => contentType == DropEntryContentType.Item;
     bool IsGunTableEntry => contentType == DropEntryContentType.GunTable;
+    bool IsAccessoryTableEntry => contentType == DropEntryContentType.AccessoryTable;
 
     [LabelText("Source Type")]
     public DropEntryContentType contentType = DropEntryContentType.Item;
@@ -25,16 +29,29 @@ public class DropEntry
     [ShowIf(nameof(IsGunTableEntry))]
     public GunDropTable gunTable;
 
+    [ShowIf(nameof(IsAccessoryTableEntry))]
+    [LabelText("Accessory Table")]
+    public DropTable accessoryTable;
+
     [Min(1)]
     public int amount = 1;
 
+    [PropertyTooltip("Relative roll weight inside this DropTable. Chance = this weight / total positive weights. Example: weights 1, 3, 6 become 10%, 30%, 60%. If total weight is 0 or less, the first non-null entry is used.")]
     public float weight = 1f;
 
     public bool TryResolveItem(out ItemDefinition resolvedItem)
     {
+        return TryResolveItem(out resolvedItem, 0);
+    }
+
+    bool TryResolveItem(out ItemDefinition resolvedItem, int nestedDepth)
+    {
         resolvedItem = contentType switch
         {
             DropEntryContentType.GunTable => gunTable != null ? gunTable.GetRandomWeapon() : null,
+            DropEntryContentType.AccessoryTable => TryResolveAccessoryTableItem(out ItemDefinition accessoryItem, nestedDepth)
+                ? accessoryItem
+                : null,
             _ => item
         };
 
@@ -44,6 +61,27 @@ public class DropEntry
     public int ResolveAmount()
     {
         return Mathf.Max(1, amount);
+    }
+
+    bool TryResolveAccessoryTableItem(out ItemDefinition resolvedItem, int nestedDepth)
+    {
+        resolvedItem = null;
+
+        if (accessoryTable == null || nestedDepth >= MaxNestedTableDepth)
+            return false;
+
+        DropEntry accessoryEntry = accessoryTable.GetRandomEntry();
+        if (accessoryEntry == null || !accessoryEntry.TryResolveItem(out ItemDefinition candidate, nestedDepth + 1))
+            return false;
+
+        if (candidate is AccessoryDefinition)
+        {
+            resolvedItem = candidate;
+            return true;
+        }
+
+        Debug.LogWarning($"[DropTable] Accessory Table resolved non-accessory item '{candidate.name}'.");
+        return false;
     }
 }
 

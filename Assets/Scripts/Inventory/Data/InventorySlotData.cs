@@ -9,8 +9,8 @@ public class InventorySlotData
     public WeaponInstanceData weaponInstance;
     public AccessoryInstanceData accessoryInstance;
 
-    public bool HasWeaponInstance => weaponInstance != null;
-    public bool HasAccessoryInstance => accessoryInstance != null;
+    public bool HasWeaponInstance => weaponInstance != null && !weaponInstance.IsEmpty;
+    public bool HasAccessoryInstance => accessoryInstance != null && !accessoryInstance.IsEmpty;
     public bool HasUniqueInstance => HasWeaponInstance || HasAccessoryInstance;
     public bool IsEmpty => item == null || quantity <= 0;
     public bool IsStackable => !HasUniqueInstance && item != null && item.stackable;

@@ -46,7 +46,7 @@ public class ItemDropManager : MonoBehaviour
             return;
         }
 
-        GameObject pickupPrefab = ResolvePickupPrefab(item, rarity, nameof(DropItem));
+        GameObject pickupPrefab = ResolvePickupPrefab(rarity, nameof(DropItem));
         if (pickupPrefab == null)
             return;
 
@@ -113,14 +113,9 @@ public class ItemDropManager : MonoBehaviour
         return true;
     }
 
-    GameObject ResolvePickupPrefab(ItemDefinition item, WeaponRarity rarity, string caller)
+    GameObject ResolvePickupPrefab(WeaponRarity rarity, string caller)
     {
-        if (item == null)
-            return null;
-
-        GameObject pickupPrefab = item.pickupPrefab != null
-            ? item.pickupPrefab
-            : ResolveDefaultPickupPrefab(rarity);
+        GameObject pickupPrefab = ResolveDefaultPickupPrefab(rarity);
 
         if (!TryGetPickupTemplate(pickupPrefab, caller, out _))
             return null;

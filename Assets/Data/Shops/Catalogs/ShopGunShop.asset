@@ -73,3 +73,13 @@ MonoBehaviour:
     weaponRarity: 0
     weaponUpgradeLevel: 6
     rollWeaponAffixes: 1
+  - entryId: 
+    item: {fileID: 11400000, guid: 18e8cdeb39ab4176ab726c7da2566e2f, type: 2}
+    quantity: 1
+    buyPrice: 0
+    sellPrice: 0
+    stock: -1
+    randomizeWeaponInstance: 0
+    weaponRarity: 0
+    weaponUpgradeLevel: 0
+    rollWeaponAffixes: 0

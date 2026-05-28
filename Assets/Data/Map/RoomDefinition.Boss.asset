@@ -18,7 +18,7 @@ MonoBehaviour:
   roomPrefab: {fileID: 716234661549823274, guid: b894061df39801341ba5c3922d8ac5b5, type: 3}
   maxExitCount: 1
   exitMask: 1
-  allowSupersetExitMask: 0
+  allowSupersetExitMask: 1
   lockExitsUntilClear: 1
   startEncounterOnEnter: 1
   requiresClearBeforeExit: 1

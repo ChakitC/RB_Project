@@ -23,7 +23,6 @@ MonoBehaviour:
   itemType: 1
   stackable: 1
   maxStack: 1
-  pickupPrefab: {fileID: 0}
   BulletPrefab: {fileID: 0}
   WeaponPrefab: {fileID: 0}
   fireCue: {fileID: 0}

@@ -1148,7 +1148,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_BoundingSphereOverride: {x: 0, y: 4.2433372e-35, z: 8.95e-43, w: 1.1548365e-33}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ForceVisible: 0
@@ -1207,6 +1207,7 @@ GameObject:
   - component: {fileID: 1221841774}
   - component: {fileID: 1221841773}
   - component: {fileID: 1221841776}
+  - component: {fileID: 1221841777}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1332,6 +1333,32 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+--- !u!114 &1221841777
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1221841772}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15859aff2fb84714b4201d2515396840, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 0}
+  clip: {fileID: 0}
+  normalizedStartTime: 0
+  speed: 1
+  applyRootMotion: 0
+  stopOnDisable: 1
+  hasRestorePose: 1
+  restorePoseRoot: {fileID: 1221841775}
+  restorePose:
+  - transform: {fileID: 1221841775}
+    localPosition: {x: 0, y: 1, z: -10}
+    localRotation: {x: 0, y: 0, z: 0, w: 1}
+    localScale: {x: 1, y: 1, z: 1}
+  applyInEditMode: 1
 --- !u!1 &1521452616
 GameObject:
   m_ObjectHideFlags: 0

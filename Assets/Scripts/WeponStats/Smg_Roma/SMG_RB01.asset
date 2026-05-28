@@ -23,7 +23,6 @@ MonoBehaviour:
   itemType: 1
   stackable: 0
   maxStack: 1
-  pickupPrefab: {fileID: 3709054158771440009, guid: 1a9e6c9ce148282419ade179f9adc827, type: 3}
   BulletPrefab: {fileID: 7234640618046847812, guid: de907b0f2086f5a49b659333a92a81d8, type: 3}
   WeaponPrefab: {fileID: 8248849999540993267, guid: 80bcab744c838fc4eb5e48346757b847, type: 3}
   upgradeCurve: {fileID: 0}

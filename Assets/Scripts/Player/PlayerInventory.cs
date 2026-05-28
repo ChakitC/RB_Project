@@ -453,14 +453,16 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (AccessoryLoadout.IsAccessoryInstanceUnavailable(instanceId, equipmentOwnerId, targetLoadout))
             return false;
 
-        if (targetLoadout == null)
-            return false;
+        if (targetLoadout != null)
+        {
+            bool equipped = targetLoadout.TryEquipFromInventory(this, instanceId, slotIndex);
+            if (equipped && SaveManager.Instance != null)
+                SaveManager.Instance.Save();
 
-        bool equipped = targetLoadout.TryEquipFromInventory(this, instanceId, slotIndex);
-        if (equipped && SaveManager.Instance != null)
-            SaveManager.Instance.Save();
+            return equipped;
+        }
 
-        return equipped;
+        return AccessoryLoadout.SaveLoadoutAssignment(equipmentOwnerId, instanceId, slotIndex, this);
     }
 
     public bool UnequipAccessorySlot(int slotIndex)
@@ -755,7 +757,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
                 continue;
             }
 
-            if (slotData.weaponInstance != null)
+            if (HasSavedWeaponInstance(slotData.weaponInstance))
             {
                 var instance = slotData.weaponInstance.DeepClone();
                 var weaponDef = ResolveWeaponDefinition(instance.baseWeaponId);
@@ -770,7 +772,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
                 continue;
             }
 
-            if (slotData.accessoryInstance != null)
+            if (HasSavedAccessoryInstance(slotData.accessoryInstance, slotData.itemId))
             {
                 var instance = slotData.accessoryInstance.DeepClone();
                 if (string.IsNullOrWhiteSpace(instance.accessoryId))
@@ -806,6 +808,22 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
 
         inventorySystem.NotifyInventoryReset();
+    }
+
+    static bool HasSavedWeaponInstance(WeaponInstanceData instance)
+    {
+        return instance != null && !instance.IsEmpty;
+    }
+
+    bool HasSavedAccessoryInstance(AccessoryInstanceData instance, string fallbackItemId)
+    {
+        if (instance == null)
+            return false;
+
+        if (!instance.IsEmpty)
+            return true;
+
+        return ResolveAccessoryDefinition(fallbackItemId) != null;
     }
 
     public void OnSave(GameSaveData data)

@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d1671d52f3ee574bad40bffd4d1eb09, type: 3}
+  m_Name: Passive.RabbitLag_DashReload
+  m_EditorClassIdentifier: 
+  passiveId: Passive.RabbitLag_DashReload
+  description: ตอน Dash มีโอกาส 20% เติมกระสุน 20% ของแม็กกาซีน
+  behaviors:
+  - {fileID: 11400000, guid: 35753437706b46cda2ee1c06e5c1c561, type: 2}

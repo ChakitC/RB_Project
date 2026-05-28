@@ -141,8 +141,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   iconImage: {fileID: 7286136984452336883}
+  equippedCharacterIconImage: {fileID: 0}
   amountText: {fileID: 8787837650211415105}
   hoverHighlight: {fileID: 3990782666459058339}
+  hoverDetailDelay: 3
+  equippedCharacterIconSize: 28
+  equippedCharacterIconOffset: {x: -4, y: 4}
 --- !u!1 &2813785206619621488
 GameObject:
   m_ObjectHideFlags: 0
@@ -1001,6 +1005,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   inventorySource: {fileID: 0}
+  characterId: 
+  boundPartySlot: {fileID: 0}
+  characterDatabase: {fileID: 0}
+  equipmentKind: 0
+  useCustomGridItemKind: 0
+  gridItemKind: 0
+  includeAllEquipmentKindsInGrid: 1
+  equippedAccessorySlotIndex: 0
+  equippedSlotUIs: []
   slotContainer: {fileID: 1209997355556615841}
   slotPrefab: {fileID: 6291690027686834937, guid: ab5aac18b3315fd4cbd1cc20bce13490, type: 3}
   equippedSlotUI: {fileID: 2016420186832171315}

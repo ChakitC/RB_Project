@@ -18,6 +18,7 @@ public class WeaponInstanceData
     public int upgradeExp;
     public List<string> unlockedUpgradeMilestoneIds = new();
 
+    public bool IsEmpty => string.IsNullOrWhiteSpace(baseWeaponId);
     public bool HasMainAffix => mainAffix != null && !mainAffix.IsEmpty;
 
     public WeaponInstanceData DeepClone()

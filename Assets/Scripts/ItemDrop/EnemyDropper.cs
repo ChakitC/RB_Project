@@ -35,25 +35,6 @@ public class EnemyDropper : MonoBehaviour
             return;
         }
 
-        if (!SpawnFallbackPickup(item, amount, weaponRarity))
-            Debug.LogWarning("[EnemyDropper] ItemDropManager is missing and the selected item has no pickup prefab fallback.", this);
-    }
-
-    bool SpawnFallbackPickup(ItemDefinition item, int amount, WeaponRarity rarity)
-    {
-        if (item == null || item.pickupPrefab == null)
-            return false;
-
-        var pickupObject = Instantiate(item.pickupPrefab, transform.position, Quaternion.identity);
-        var pickup = pickupObject != null ? pickupObject.GetComponent<ItemPickup>() : null;
-        if (pickup == null)
-            return false;
-
-        WeaponInstanceData weaponInstance = null;
-        if (item is GunConfig gun)
-            weaponInstance = WeaponInstanceFactory.CreatePlainInstance(gun, rarity);
-
-        pickup.Initialize(item, amount, weaponInstance);
-        return true;
+        Debug.LogWarning("[EnemyDropper] ItemDropManager is missing; item drops require the central pickup shell setup.", this);
     }
 }

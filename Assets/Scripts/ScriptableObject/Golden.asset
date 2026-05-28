@@ -23,4 +23,3 @@ MonoBehaviour:
   itemType: 3
   stackable: 1
   maxStack: 99999
-  pickupPrefab: {fileID: 0}

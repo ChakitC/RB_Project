@@ -333,6 +333,19 @@ public class CharacterEquipment : MonoBehaviour
                 instanceId = null;
             }
 
+            string legacyOwnerId = equipment.ResolveLegacyOwnerId();
+            if (string.IsNullOrWhiteSpace(instanceId) &&
+                TryFindValidPersistedEquipmentEntry(data.equipment, ownerId, legacyOwnerId, inventory, out string persistedInstanceId))
+            {
+                instanceId = persistedInstanceId;
+            }
+
+            if (string.IsNullOrWhiteSpace(instanceId) &&
+                TryFindLegacyPlayerWeaponForOwner(data, ownerId, inventory, out string legacyPlayerInstanceId))
+            {
+                instanceId = legacyPlayerInstanceId;
+            }
+
             if (!string.IsNullOrWhiteSpace(instanceId) && !usedInstanceIds.Add(instanceId))
                 instanceId = null;
 
@@ -341,13 +354,66 @@ public class CharacterEquipment : MonoBehaviour
 
             UpsertEquipmentEntry(data.equipment, ownerId, instanceId);
 
-            string legacyOwnerId = equipment.ResolveLegacyOwnerId();
             if (!string.IsNullOrWhiteSpace(legacyOwnerId) &&
                 !string.Equals(ownerId, legacyOwnerId, StringComparison.Ordinal))
             {
                 UpsertEquipmentEntry(data.equipment, legacyOwnerId, null);
             }
         }
+    }
+
+    static bool TryFindValidPersistedEquipmentEntry(
+        EquipmentSaveData data,
+        string ownerId,
+        string legacyOwnerId,
+        PlayerInventory inventory,
+        out string instanceId)
+    {
+        instanceId = FindEquipmentEntry(data, ownerId);
+        if (IsValidPersistedInventoryWeapon(instanceId, inventory))
+            return true;
+
+        if (!string.Equals(ownerId, legacyOwnerId, StringComparison.Ordinal))
+        {
+            instanceId = FindEquipmentEntry(data, legacyOwnerId);
+            if (IsValidPersistedInventoryWeapon(instanceId, inventory))
+                return true;
+        }
+
+        instanceId = null;
+        return false;
+    }
+
+    static bool IsValidPersistedInventoryWeapon(string instanceId, PlayerInventory inventory)
+    {
+        if (string.IsNullOrWhiteSpace(instanceId))
+            return false;
+
+        return inventory == null || inventory.TryGetWeaponInstanceWithDefinition(instanceId, out _, out _);
+    }
+
+    static bool TryFindLegacyPlayerWeaponForOwner(
+        GameSaveData data,
+        string ownerId,
+        PlayerInventory inventory,
+        out string instanceId)
+    {
+        instanceId = data?.weapon?.equippedWeaponInstanceId;
+        if (string.IsNullOrWhiteSpace(instanceId))
+            return false;
+
+        if (inventory != null && !inventory.TryGetWeaponInstanceWithDefinition(instanceId, out _, out _))
+            return false;
+
+        if (string.Equals(ownerId, "player", StringComparison.Ordinal))
+            return true;
+
+        if (!TryParseCharacterOwnerId(ownerId, out string characterId))
+            return false;
+
+        return data?.party?.partyIds != null &&
+               data.party.partyIds.Count > 0 &&
+               string.Equals(data.party.partyIds[0], characterId, StringComparison.Ordinal);
     }
 
     public static bool SaveEquipmentAssignment(string ownerId, string instanceId, PlayerInventory inventory = null)

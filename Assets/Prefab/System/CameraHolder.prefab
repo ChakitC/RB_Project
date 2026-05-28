@@ -60,6 +60,7 @@ GameObject:
   - component: {fileID: 5478141767642294992}
   - component: {fileID: 5346517260373307267}
   - component: {fileID: 8418497808476302663}
+  - component: {fileID: 7725517066255669348}
   m_Layer: 0
   m_Name: 'Camera '
   m_TagString: MainCamera
@@ -194,3 +195,44 @@ MonoBehaviour:
   blendDistance: 0
   weight: 1
   sharedProfile: {fileID: 11400000, guid: 4c6faafd20289fc41804b86f23bff78f, type: 2}
+--- !u!114 &7725517066255669348
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2151110332578885825}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c577fbf8b1ee406e90c5e4e85411319f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sourceCamera: {fileID: 0}
+  target: {fileID: 0}
+  previewInEditMode: 1
+  occluderLayers:
+    serializedVersion: 2
+    m_Bits: 524287
+  triggerInteraction: 1
+  sphereRadius: 1.26
+  maxHits: 1
+  fadeOnlyNearestOccluders: 1
+  nearestDepthTolerance: 0.75
+  fadeContinuousOccluderChain: 1
+  occluderChainGap: 16.82
+  fadeWholeOccluderGroup: 1
+  occluderGroupContainer: {fileID: 0}
+  occluderGroupContainerName: Terrain
+  useRendererBoundsFallback: 1
+  rendererBoundsPadding: 0
+  rendererCacheRefreshInterval: 1
+  fadedValue: 0
+  cutoutRadius: 56.3
+  cutoutSoftness: 22.4
+  fadeSpeed: 1.5
+  cutoutCenterOffset: {x: 0, y: 0, z: 0}
+  drawOccluderDebug: 1
+  drawOccluderDebugOnlyWhenSelected: 1
+  debugCastColor: {r: 1, g: 0.82, b: 0.1, a: 0.8}
+  debugCandidateColor: {r: 0.15, g: 0.65, b: 1, a: 0.9}
+  debugActiveCandidateColor: {r: 0.25, g: 1, b: 0.35, a: 0.95}

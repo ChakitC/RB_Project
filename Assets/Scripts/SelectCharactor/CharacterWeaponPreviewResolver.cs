@@ -141,7 +141,15 @@ public static class CharacterWeaponPreviewResolver
     static GameSaveData LoadCurrentGameData(int currentSlot)
     {
         int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : currentSlot;
-        return SaveSystem.LoadGame(saveSlot);
+        GameSaveData data = SaveSystem.LoadGame(saveSlot);
+        PartyData party = SaveSystem.LoadPartyOnly(saveSlot);
+        if (party != null)
+        {
+            data ??= new GameSaveData();
+            data.party = party;
+        }
+
+        return data;
     }
 
     static bool ShouldUseLegacyPlayerWeapon(GameSaveData data, CharacterStats selected, int partyIndex)

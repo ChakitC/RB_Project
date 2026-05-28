@@ -32,7 +32,6 @@ public class ItemDefinition : ScriptableObject
     public ItemType itemType;
     public bool stackable = true;
     public int maxStack = 99;
-    public GameObject pickupPrefab;
 
     [Header("Economy")]
     [Min(0)] public int baseBuyPrice;

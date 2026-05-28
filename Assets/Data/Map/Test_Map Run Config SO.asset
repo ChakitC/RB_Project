@@ -43,3 +43,4 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6f6b54f2b6ee4b5f8880661b2ea47294, type: 2}
   encounterDefinitions:
   - {fileID: 11400000, guid: c3b4fe0a55d207a47a5e0aefa4e8ce51, type: 2}
+  - {fileID: 11400000, guid: 3f6a12f5300f3904b88a3a589366411c, type: 2}

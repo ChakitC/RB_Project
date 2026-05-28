@@ -18,7 +18,6 @@ MonoBehaviour:
   itemType: 0
   stackable: 1
   maxStack: 99
-  pickupPrefab: {fileID: 0}
   WeaponPrefab: {fileID: 0}
   WeaponType: 0
   firingModes: 0

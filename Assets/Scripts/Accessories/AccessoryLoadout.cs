@@ -398,6 +398,91 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
         return false;
     }
 
+    public static bool TryFindSceneLoadoutByOwner(string ownerId, out AccessoryLoadout loadout)
+    {
+        loadout = null;
+
+        if (string.IsNullOrWhiteSpace(ownerId))
+            return false;
+
+        var loadouts = new List<AccessoryLoadout>();
+        GatherSceneLoadouts(loadouts);
+
+        for (int i = 0; i < loadouts.Count; i++)
+        {
+            AccessoryLoadout candidate = loadouts[i];
+            if (candidate == null || !candidate.UsesPlayerInventorySave)
+                continue;
+
+            if (string.Equals(candidate.ResolveOwnerId(), ownerId, StringComparison.Ordinal) ||
+                string.Equals(candidate.ResolveLegacyOwnerId(), ownerId, StringComparison.Ordinal))
+            {
+                loadout = candidate;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static bool SaveLoadoutAssignment(
+        string ownerId,
+        string instanceId,
+        int slotIndex,
+        PlayerInventory inventory = null)
+    {
+        if (string.IsNullOrWhiteSpace(ownerId) || string.IsNullOrWhiteSpace(instanceId))
+            return false;
+
+        int targetSlotIndex = Mathf.Max(0, slotIndex);
+
+        if (inventory == null ||
+            !inventory.TryGetAccessoryInstanceWithDefinition(
+                instanceId,
+                out _,
+                out AccessoryInstanceData inventoryInstance))
+        {
+            return false;
+        }
+
+        if (IsAccessoryInstanceUnavailable(instanceId, ownerId, null))
+            return false;
+
+        int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
+        GameSaveData data = SaveSystem.LoadGame(saveSlot) ?? new GameSaveData();
+        data.accessories ??= new AccessoryLoadoutSaveData();
+        data.accessories.entries ??= new List<CharacterAccessoryLoadoutSaveData>();
+
+        RemoveInstanceAssignments(data.accessories, instanceId, ownerId);
+
+        CharacterAccessoryLoadoutSaveData entry = FindLoadoutEntry(data.accessories, ownerId);
+        if (entry == null)
+        {
+            entry = new CharacterAccessoryLoadoutSaveData
+            {
+                ownerId = ownerId
+            };
+            data.accessories.entries.Add(entry);
+        }
+
+        entry.slotCount = Mathf.Max(entry.slotCount, targetSlotIndex + 1);
+        EnsureSavedAccessorySlots(entry, targetSlotIndex + 1);
+
+        for (int i = 0; i < entry.equippedAccessories.Count; i++)
+        {
+            AccessoryInstanceData assignedInstance = entry.equippedAccessories[i];
+            if (assignedInstance == null)
+                continue;
+
+            if (string.Equals(assignedInstance.instanceId, instanceId, StringComparison.Ordinal))
+                entry.equippedAccessories[i] = null;
+        }
+
+        entry.equippedAccessories[targetSlotIndex] = inventoryInstance.DeepClone();
+        SaveSystem.SaveGame(data, saveSlot);
+        return true;
+    }
+
     public static CharacterAccessoryLoadoutSaveData FindLoadoutEntry(AccessoryLoadoutSaveData data, string ownerId)
     {
         if (data?.entries == null || string.IsNullOrWhiteSpace(ownerId))
@@ -414,6 +499,21 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
         }
 
         return null;
+    }
+
+    static void EnsureSavedAccessorySlots(CharacterAccessoryLoadoutSaveData entry, int minSlotCount)
+    {
+        if (entry == null)
+            return;
+
+        entry.equippedAccessories ??= new List<AccessoryInstanceData>();
+        entry.slotCount = Mathf.Max(entry.slotCount, minSlotCount);
+
+        while (entry.equippedAccessories.Count < entry.slotCount)
+            entry.equippedAccessories.Add(null);
+
+        while (entry.equippedAccessories.Count > entry.slotCount)
+            entry.equippedAccessories.RemoveAt(entry.equippedAccessories.Count - 1);
     }
 
     void EnsureSlotCount()

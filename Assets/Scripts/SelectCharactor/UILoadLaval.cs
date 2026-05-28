@@ -6,7 +6,9 @@ public class UILoadLaval : MonoBehaviour
     [Header("References")]
     [SerializeField] private BasementContext CTX;
     [SerializeField] private GameObject weaponEquipmentObject;
-    private UIWeaponEquipment weaponEquipmentUI;
+    [SerializeField] private GameObject accessoryEquipmentObject;
+    private UIEquipment weaponEquipmentUI;
+    private UIEquipment accessoryEquipmentUI;
     
     
     [Header("References Text")]
@@ -42,6 +44,7 @@ public class UILoadLaval : MonoBehaviour
             CTX = GetComponentInParent<BasementContext>(true);
 
         ResolveWeaponEquipmentUI();
+        ResolveAccessoryEquipmentUI();
     }
     
     private void BindLevelSystem(LevelSystem newLs)
@@ -65,7 +68,7 @@ public class UILoadLaval : MonoBehaviour
             levelSystem.LevelChanged += OnLevelChanged;
 
         if (_slot != null)
-            SendWeaponEquipmentData();
+            SendEquipmentData();
 
     }
 
@@ -93,7 +96,7 @@ public class UILoadLaval : MonoBehaviour
         if (_slot == null)
         {
             BindLevelSystem(null);
-            ClearWeaponEquipmentData();
+            ClearEquipmentData();
             Debug.Log("[UILoadLaval] _Slot == null");
             return;
            
@@ -105,7 +108,13 @@ public class UILoadLaval : MonoBehaviour
         LoadLavel();
         Calculatestatusfromslot();
         UpdateStatTexts();
+        SendEquipmentData();
+    }
+
+    public void SendEquipmentData()
+    {
         SendWeaponEquipmentData();
+        SendAccessoryEquipmentData();
     }
 
     public void SendWeaponEquipmentData()
@@ -117,12 +126,25 @@ public class UILoadLaval : MonoBehaviour
             return;
 
         PlayerInventory inventory = CTX != null ? CTX.playerInventory : null;
-        weaponEquipmentUI.BindSource(inventory, ResolveBoundCharacterId(), _slot);
+        weaponEquipmentUI.BindSource(inventory, ResolveBoundCharacterId(), _slot, EquipmentItemKind.Weapon);
+    }
+
+    public void SendAccessoryEquipmentData()
+    {
+        ResolveAccessoryEquipmentUI();
+        EnsureBoundSlot();
+
+        if (accessoryEquipmentUI == null || accessoryEquipmentUI == weaponEquipmentUI)
+            return;
+
+        PlayerInventory inventory = CTX != null ? CTX.playerInventory : null;
+        accessoryEquipmentUI.BindSource(inventory, ResolveBoundCharacterId(), _slot, EquipmentItemKind.Accessory);
     }
 
     public void ToggleWeaponEquipment()
     {
         ResolveWeaponEquipmentUI();
+        ResolveAccessoryEquipmentUI();
 
         if (weaponEquipmentObject == null)
             return;
@@ -130,25 +152,60 @@ public class UILoadLaval : MonoBehaviour
         bool nextActive = !weaponEquipmentObject.activeSelf;
         weaponEquipmentObject.SetActive(nextActive);
 
+        if (accessoryEquipmentObject != null && accessoryEquipmentObject != weaponEquipmentObject)
+            accessoryEquipmentObject.SetActive(nextActive);
+
         if (nextActive)
-            SendWeaponEquipmentData();
+            SendEquipmentData();
+    }
+
+    public void ToggleAccessoryEquipment()
+    {
+        ResolveAccessoryEquipmentUI();
+
+        if (accessoryEquipmentObject == null)
+            return;
+
+        bool nextActive = !accessoryEquipmentObject.activeSelf;
+        accessoryEquipmentObject.SetActive(nextActive);
+
+        if (nextActive)
+            SendAccessoryEquipmentData();
     }
 
     public void OpenWeaponEquipment()
     {
         ResolveWeaponEquipmentUI();
+        ResolveAccessoryEquipmentUI();
         EnsureBoundSlot();
 
         if (weaponEquipmentObject == null)
             return;
 
         weaponEquipmentObject.SetActive(true);
-        SendWeaponEquipmentData();
+
+        if (accessoryEquipmentObject != null && accessoryEquipmentObject != weaponEquipmentObject)
+            accessoryEquipmentObject.SetActive(true);
+
+        SendEquipmentData();
+    }
+
+    public void OpenAccessoryEquipment()
+    {
+        ResolveAccessoryEquipmentUI();
+        EnsureBoundSlot();
+
+        if (accessoryEquipmentObject == null)
+            return;
+
+        accessoryEquipmentObject.SetActive(true);
+        SendAccessoryEquipmentData();
     }
 
     public void CloseWeaponEquipment()
     {
         ResolveWeaponEquipmentUI();
+        ResolveAccessoryEquipmentUI();
         EnsureBoundSlot();
 
         if (_slot != null)
@@ -156,6 +213,18 @@ public class UILoadLaval : MonoBehaviour
 
         if (weaponEquipmentObject != null)
             weaponEquipmentObject.SetActive(false);
+
+        if (accessoryEquipmentObject != null && accessoryEquipmentObject != weaponEquipmentObject)
+            accessoryEquipmentObject.SetActive(false);
+    }
+
+    public void CloseAccessoryEquipment()
+    {
+        ResolveAccessoryEquipmentUI();
+        EnsureBoundSlot();
+
+        if (accessoryEquipmentObject != null)
+            accessoryEquipmentObject.SetActive(false);
     }
 
     private void ClearWeaponEquipmentData()
@@ -164,6 +233,20 @@ public class UILoadLaval : MonoBehaviour
 
         if (weaponEquipmentUI != null)
             weaponEquipmentUI.BindSource(null, null, null);
+    }
+
+    private void ClearAccessoryEquipmentData()
+    {
+        ResolveAccessoryEquipmentUI();
+
+        if (accessoryEquipmentUI != null && accessoryEquipmentUI != weaponEquipmentUI)
+            accessoryEquipmentUI.BindSource(null, null, null);
+    }
+
+    private void ClearEquipmentData()
+    {
+        ClearWeaponEquipmentData();
+        ClearAccessoryEquipmentData();
     }
 
     private string ResolveBoundCharacterId()
@@ -224,31 +307,60 @@ public class UILoadLaval : MonoBehaviour
 
     private void ResolveWeaponEquipmentUI()
     {
-        if (weaponEquipmentUI != null)
-            return;
+        weaponEquipmentUI = ResolveEquipmentUI(weaponEquipmentObject, EquipmentItemKind.Weapon, null);
+        if (weaponEquipmentUI != null && weaponEquipmentObject == null)
+            weaponEquipmentObject = weaponEquipmentUI.gameObject;
+    }
 
-        if (weaponEquipmentObject != null)
+    private void ResolveAccessoryEquipmentUI()
+    {
+        accessoryEquipmentUI = ResolveEquipmentUI(accessoryEquipmentObject, EquipmentItemKind.Accessory, weaponEquipmentUI);
+        if (accessoryEquipmentUI != null && accessoryEquipmentObject == null)
+            accessoryEquipmentObject = accessoryEquipmentUI.gameObject;
+    }
+
+    private UIEquipment ResolveEquipmentUI(GameObject equipmentObject, EquipmentItemKind itemKind, UIEquipment excludedUI)
+    {
+        if (equipmentObject != null)
         {
-            weaponEquipmentUI = weaponEquipmentObject.GetComponent<UIWeaponEquipment>();
-            if (weaponEquipmentUI == null)
-                weaponEquipmentUI = weaponEquipmentObject.GetComponentInChildren<UIWeaponEquipment>(true);
+            UIEquipment equipmentUI = equipmentObject.GetComponent<UIEquipment>();
+            if (equipmentUI == null)
+                equipmentUI = equipmentObject.GetComponentInChildren<UIEquipment>(true);
 
-            return;
+            if (equipmentUI == null)
+                return null;
+
+            if (equipmentUI != excludedUI)
+                return equipmentUI;
+
+            Debug.LogWarning($"[UILoadLaval] {itemKind} equipment UI cannot use the same UIEquipment instance.", this);
+            return null;
         }
 
-        if (transform.root != null)
+        UIEquipment[] equipmentUIs = transform.root != null
+            ? transform.root.GetComponentsInChildren<UIEquipment>(true)
+            : FindObjectsByType<UIEquipment>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        for (int i = 0; i < equipmentUIs.Length; i++)
         {
-            weaponEquipmentUI = transform.root.GetComponentInChildren<UIWeaponEquipment>(true);
-            if (weaponEquipmentUI != null)
-                weaponEquipmentObject = weaponEquipmentUI.gameObject;
+            UIEquipment candidate = equipmentUIs[i];
+            if (candidate == null || candidate == excludedUI || candidate.EquipmentKind != itemKind)
+                continue;
+
+            return candidate;
         }
 
-        if (weaponEquipmentUI == null)
+        if (itemKind != EquipmentItemKind.Weapon)
+            return null;
+
+        for (int i = 0; i < equipmentUIs.Length; i++)
         {
-            weaponEquipmentUI = FindFirstObjectByType<UIWeaponEquipment>(FindObjectsInactive.Include);
-            if (weaponEquipmentUI != null)
-                weaponEquipmentObject = weaponEquipmentUI.gameObject;
+            UIEquipment candidate = equipmentUIs[i];
+            if (candidate != null && candidate != excludedUI)
+                return candidate;
         }
+
+        return null;
     }
 
     private void ClearUI()

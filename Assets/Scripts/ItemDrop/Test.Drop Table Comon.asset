@@ -16,10 +16,12 @@ MonoBehaviour:
   - contentType: 0
     item: {fileID: 11400000, guid: 2835846abd2c7a94eadc3f9065613e14, type: 2}
     gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
     amount: 1
     weight: 1
-  - contentType: 0
-    item: {fileID: 11400000, guid: 079515c14deaf5d479322be89a4f56a8, type: 2}
+  - contentType: 2
+    item: {fileID: 0}
     gunTable: {fileID: 0}
+    accessoryTable: {fileID: 11400000, guid: 81bfa78d559ed4047a10e6a37f3a19ff, type: 2}
     amount: 1
     weight: 1

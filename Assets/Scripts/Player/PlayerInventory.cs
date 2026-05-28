@@ -20,7 +20,9 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     [Header("Currency")]
     [SerializeField] private int gold;
+    [SerializeField] private int scrap;
     public int Gold => gold;
+    public int Scrap => scrap;
 
     [Header("Weapon Instance")]
     [SerializeField] private string equippedWeaponInstanceId;
@@ -46,6 +48,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
     }
 
     public event Action<int> OnGoldChanged;
+    public event Action<int> OnScrapChanged;
     public event Action<string> OnEquippedWeaponChanged;
 
     void Awake()
@@ -122,14 +125,14 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             Debug.Log("Save Manager Missing");
             EnsureDefaultWeaponInstance();
             ApplyEquippedWeaponIfPossible();
-            ForceRefreshGoldUI();
+            ForceRefreshCurrencyUI();
             return;
         }
 
         SaveManager.Instance.Load();
         EnsureDefaultWeaponInstance();
         ApplyEquippedWeaponIfPossible();
-        ForceRefreshGoldUI();
+        ForceRefreshCurrencyUI();
     }
 
     public void AddGold(int amount)
@@ -151,9 +154,39 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         return true;
     }
 
+    public void AddScrap(int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        scrap += amount;
+        OnScrapChanged?.Invoke(scrap);
+    }
+
+    public bool SpendScrap(int amount)
+    {
+        if (amount <= 0 || scrap < amount)
+            return false;
+
+        scrap -= amount;
+        OnScrapChanged?.Invoke(scrap);
+        return true;
+    }
+
+    public void ForceRefreshCurrencyUI()
+    {
+        ForceRefreshGoldUI();
+        ForceRefreshScrapUI();
+    }
+
     public void ForceRefreshGoldUI()
     {
         OnGoldChanged?.Invoke(gold);
+    }
+
+    public void ForceRefreshScrapUI()
+    {
+        OnScrapChanged?.Invoke(scrap);
     }
 
     public bool AddItem(ItemDefinition item, int amount = 1)
@@ -166,6 +199,12 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (itemDatabase != null && itemDatabase.goldItem != null && item == itemDatabase.goldItem)
         {
             AddGold(amount);
+            return true;
+        }
+
+        if (itemDatabase != null && itemDatabase.scrapItem != null && item == itemDatabase.scrapItem)
+        {
+            AddScrap(amount);
             return true;
         }
 
@@ -222,6 +261,9 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             return false;
 
         if (itemDatabase != null && itemDatabase.goldItem != null && item == itemDatabase.goldItem)
+            return true;
+
+        if (itemDatabase != null && itemDatabase.scrapItem != null && item == itemDatabase.scrapItem)
             return true;
 
         if (item is GunConfig gun && !item.stackable)
@@ -678,6 +720,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         var data = new PlayerInventoryData
         {
             gold = gold,
+            scrap = scrap,
             maxSlotCount = slotCount
         };
 
@@ -733,7 +776,9 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
 
         gold = Mathf.Max(0, data.gold);
+        scrap = Mathf.Max(0, data.scrap);
         OnGoldChanged?.Invoke(gold);
+        OnScrapChanged?.Invoke(scrap);
         
         if (data.maxSlotCount > 0)
             slotCount = data.maxSlotCount;
@@ -851,7 +896,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             Debug.Log("[PlayerInventory] No save data");
             EnsureDefaultWeaponInstance();
             ApplyEquippedWeaponIfPossible();
-            ForceRefreshGoldUI();
+            ForceRefreshCurrencyUI();
             return;
         }
 
@@ -863,7 +908,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         string legacyEquippedWeaponId = data.weapon != null ? data.weapon.equippedWeaponInstanceId : equippedWeaponInstanceId;
         SetEquippedWeaponInstanceId(legacyEquippedWeaponId);
 
-        ForceRefreshGoldUI();
+        ForceRefreshCurrencyUI();
         EnsureDefaultWeaponInstance();
         ApplyEquippedWeaponIfPossible();
 

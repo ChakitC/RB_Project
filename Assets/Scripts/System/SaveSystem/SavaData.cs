@@ -15,6 +15,7 @@ public class PlayerInventoryData
 {
     public int maxSlotCount;
     public int gold;
+    public int scrap;
     public List<InventorySlotSaveData> slots = new();
 }
 

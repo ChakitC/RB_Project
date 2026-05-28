@@ -26,6 +26,7 @@ public class WeaponUpgradeLevelCost
     [Tooltip("Cost to reach this upgrade level. Example: targetLevel 10 means +9 -> +10.")]
     [Min(1)] public int targetLevel = 1;
     [Min(0)] public int goldCost = 0;
+    [Min(0)] public int scrapCost = 0;
     public List<WeaponUpgradeMaterialCost> materials = new();
 }
 
@@ -34,6 +35,7 @@ public class WeaponUpgradeResolvedCost
 {
     public int targetLevel;
     public int goldCost;
+    public int scrapCost;
     public List<WeaponUpgradeMaterialCost> materials = new();
 }
 
@@ -157,6 +159,8 @@ public class WeaponUpgradeCurve : ScriptableObject
     [Header("Fallback Cost")]
     [Min(0)] public int baseGoldCost = 100;
     [Min(0)] public int goldCostPerLevel = 25;
+    [Min(0)] public int baseScrapCost = 10;
+    [Min(0)] public int scrapCostPerLevel = 5;
 
     [Header("Explicit Cost Overrides")]
     public List<WeaponUpgradeLevelCost> levelCosts = new();
@@ -195,13 +199,15 @@ public class WeaponUpgradeCurve : ScriptableObject
         var resolved = new WeaponUpgradeResolvedCost
         {
             targetLevel = targetLevel,
-            goldCost = Mathf.Max(0, baseGoldCost + goldCostPerLevel * Mathf.Max(0, targetLevel - 1))
+            goldCost = Mathf.Max(0, baseGoldCost + goldCostPerLevel * Mathf.Max(0, targetLevel - 1)),
+            scrapCost = Mathf.Max(0, baseScrapCost + scrapCostPerLevel * Mathf.Max(0, targetLevel - 1))
         };
 
         var explicitCost = FindExplicitCost(targetLevel);
         if (explicitCost != null)
         {
             resolved.goldCost = Mathf.Max(0, explicitCost.goldCost);
+            resolved.scrapCost = Mathf.Max(0, explicitCost.scrapCost);
             CopyMaterialCosts(explicitCost.materials, resolved.materials);
         }
 

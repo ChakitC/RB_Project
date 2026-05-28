@@ -23,16 +23,35 @@ public class CurrencyManager : MonoBehaviour
         return currentGold;
     }
 
+    public int GetCurrentScrap(PlayerInventory playerInventory)
+    {
+        if (!playerInventory) return 0;
+        var currentScrap = playerInventory.Scrap;
+        return currentScrap;
+    }
+
     public void GrantGold(PlayerInventory playerInventory, int amount)
     {
         if (playerInventory == null) return;
         playerInventory.AddGold(amount);
     }
 
+    public void GrantScrap(PlayerInventory playerInventory, int amount)
+    {
+        if (playerInventory == null) return;
+        playerInventory.AddScrap(amount);
+    }
+
     public void SpendGold(PlayerInventory playerInventory, int amount)
     {
         if (playerInventory == null) return;
         playerInventory.SpendGold(amount);
+    }
+
+    public void SpendScrap(PlayerInventory playerInventory, int amount)
+    {
+        if (playerInventory == null) return;
+        playerInventory.SpendScrap(amount);
     }
 }
 

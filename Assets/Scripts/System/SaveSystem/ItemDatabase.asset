@@ -20,3 +20,4 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 079515c14deaf5d479322be89a4f56a8, type: 2}
   - {fileID: 11400000, guid: 18e8cdeb39ab4176ab726c7da2566e2f, type: 2}
   goldItem: {fileID: 11400000, guid: 2835846abd2c7a94eadc3f9065613e14, type: 2}
+  scrapItem: {fileID: 11400000, guid: 9d4ed1d350564e74b851fe0fb8a49a2a, type: 2}

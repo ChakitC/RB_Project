@@ -162,8 +162,12 @@ public class RandomShopCatalog : ShopCatalogBase
         if (item == null)
             return false;
 
-        if (excludeGoldItem && itemDatabase != null && item == itemDatabase.goldItem)
+        if (excludeGoldItem &&
+            itemDatabase != null &&
+            (item == itemDatabase.goldItem || item == itemDatabase.scrapItem))
+        {
             return false;
+        }
 
         return AllowsItemType(item.itemType);
     }

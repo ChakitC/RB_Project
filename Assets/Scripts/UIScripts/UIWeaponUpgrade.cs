@@ -27,10 +27,12 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private TMP_Text levelText;
     [SerializeField] private TMP_Text tierText;
+    [SerializeField] private TMP_Text scrapText;
     [SerializeField] private TMP_Text costText;
     [SerializeField] private TMP_Text previewText;
     [SerializeField] private TMP_Text reasonText;
     [SerializeField] private Button upgradeButton;
+    [SerializeField] private Button dismantleButton;
 
     readonly List<InventorySlotUI> slotUIs = new();
     readonly List<int> weaponSlotIndices = new();
@@ -69,6 +71,9 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
         if (upgradeButton != null)
             upgradeButton.onClick.AddListener(HandleUpgradeClicked);
 
+        if (dismantleButton != null)
+            dismantleButton.onClick.AddListener(HandleDismantleClicked);
+
         BindSource(inventorySource);
     }
 
@@ -76,6 +81,9 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
     {
         if (upgradeButton != null)
             upgradeButton.onClick.RemoveListener(HandleUpgradeClicked);
+
+        if (dismantleButton != null)
+            dismantleButton.onClick.RemoveListener(HandleDismantleClicked);
 
         UnbindInventoryEvents();
     }
@@ -94,7 +102,10 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
         }
 
         if (inventorySource != null)
+        {
             inventorySource.OnGoldChanged += HandleGoldChanged;
+            inventorySource.OnScrapChanged += HandleScrapChanged;
+        }
 
         RefreshAll();
     }
@@ -132,6 +143,7 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
 
         RefreshUpgradeSlot();
         RefreshDetails();
+        RefreshScrapText();
     }
 
     public void RefreshSlot(int slotIndex)
@@ -238,6 +250,28 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
         RefreshAll();
     }
 
+    void HandleDismantleClicked()
+    {
+        if (inventorySource == null || string.IsNullOrWhiteSpace(selectedInstanceId))
+            return;
+
+        int scrapGranted;
+        string dismantleReason;
+        bool dismantled = upgradeService != null
+            ? upgradeService.TryDismantle(inventorySource, selectedInstanceId, out scrapGranted, out dismantleReason)
+            : WeaponUpgradeService.TryDismantleWithDefaultReward(inventorySource, selectedInstanceId, out scrapGranted, out dismantleReason);
+
+        if (dismantled)
+            selectedInstanceId = null;
+
+        RefreshAll();
+
+        if (reasonText != null)
+            reasonText.text = dismantled
+                ? $"Gained {scrapGranted} Scrap."
+                : dismantleReason ?? string.Empty;
+    }
+
     void RefreshDetails()
     {
         if (!TryResolveSelected(out var weapon, out var instance))
@@ -254,6 +288,11 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
             out var cost,
             out string reason);
 
+        int dismantleReward = 0;
+        bool canDismantle = upgradeService != null
+            ? upgradeService.CanDismantle(inventorySource, selectedInstanceId, out dismantleReward, out _)
+            : WeaponUpgradeService.CanDismantleWithDefaultReward(inventorySource, selectedInstanceId, out dismantleReward, out _);
+
         if (titleText != null)
             titleText.text = ResolveItemTitle(weapon);
 
@@ -269,13 +308,16 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
             costText.text = cost != null ? BuildCostText(cost) : string.Empty;
 
         if (previewText != null)
-            previewText.text = BuildPreviewText(weapon, instance, curve);
+            previewText.text = BuildPreviewText(weapon, instance, curve, dismantleReward);
 
         if (reasonText != null)
             reasonText.text = canUpgrade ? string.Empty : reason ?? string.Empty;
 
         if (upgradeButton != null)
             upgradeButton.interactable = canUpgrade;
+
+        if (dismantleButton != null)
+            dismantleButton.interactable = canDismantle;
     }
 
     bool TryResolveSelected(out GunConfig weapon, out WeaponInstanceData instance)
@@ -312,6 +354,9 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
 
         if (upgradeButton != null)
             upgradeButton.interactable = false;
+
+        if (dismantleButton != null)
+            dismantleButton.interactable = false;
     }
 
     string BuildCostText(WeaponUpgradeResolvedCost cost)
@@ -320,7 +365,23 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
             return string.Empty;
 
         var builder = new StringBuilder();
-        builder.Append("Cost: ").Append(cost.goldCost).Append(" Gold");
+        builder.Append("Cost:");
+
+        bool hasCurrencyCost = false;
+        if (cost.goldCost > 0)
+        {
+            builder.Append(" ").Append(cost.goldCost).Append(" Gold");
+            hasCurrencyCost = true;
+        }
+
+        if (cost.scrapCost > 0)
+        {
+            if (hasCurrencyCost)
+                builder.Append(",");
+
+            builder.Append(" ").Append(cost.scrapCost).Append(" Scrap");
+            hasCurrencyCost = true;
+        }
 
         if (cost.materials != null)
         {
@@ -338,13 +399,23 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
             }
         }
 
+        if (!hasCurrencyCost && !HasMaterialCost(cost.materials))
+            builder.Append(" Free");
+
         return builder.ToString();
     }
 
-    string BuildPreviewText(GunConfig weapon, WeaponInstanceData instance, WeaponUpgradeCurve curve)
+    string BuildPreviewText(
+        GunConfig weapon,
+        WeaponInstanceData instance,
+        WeaponUpgradeCurve curve,
+        int dismantleReward)
     {
-        if (!weapon || instance == null || curve == null)
+        if (!weapon || instance == null)
             return string.Empty;
+
+        if (curve == null)
+            return dismantleReward > 0 ? $"Dismantle: +{dismantleReward} Scrap" : string.Empty;
 
         int currentLevel = Mathf.Max(0, instance.upgradeLevel);
         int maxLevel = curve.GetMaxLevel(instance.rarity);
@@ -364,7 +435,28 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
             builder.Append("Unlock: ").Append(ResolveMilestoneTitle(milestone));
         }
 
+        if (dismantleReward > 0)
+        {
+            builder.AppendLine();
+            builder.Append("Dismantle: +").Append(dismantleReward).Append(" Scrap");
+        }
+
         return builder.ToString();
+    }
+
+    static bool HasMaterialCost(List<WeaponUpgradeMaterialCost> materials)
+    {
+        if (materials == null)
+            return false;
+
+        for (int i = 0; i < materials.Count; i++)
+        {
+            var material = materials[i];
+            if (material != null && material.IsValid)
+                return true;
+        }
+
+        return false;
     }
 
     WeaponUpgradeCurve ResolveFallbackCurve()
@@ -394,6 +486,18 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
     void HandleGoldChanged(int gold)
     {
         RefreshDetails();
+    }
+
+    void HandleScrapChanged(int scrap)
+    {
+        RefreshDetails();
+        RefreshScrapText();
+    }
+
+    void RefreshScrapText()
+    {
+        if (scrapText != null)
+            scrapText.text = inventorySource != null ? inventorySource.Scrap.ToString("N0") : "0";
     }
 
     void RebuildWeaponSlotIndexCache()
@@ -494,7 +598,10 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
         }
 
         if (inventorySource != null)
+        {
             inventorySource.OnGoldChanged -= HandleGoldChanged;
+            inventorySource.OnScrapChanged -= HandleScrapChanged;
+        }
     }
 
     PlayerInventory ResolveInventorySource()

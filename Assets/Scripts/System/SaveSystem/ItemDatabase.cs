@@ -9,6 +9,7 @@ public class ItemDatabase : ScriptableObject
     
     [Header("Special Items")]
     public ItemDefinition goldItem;
+    public ItemDefinition scrapItem;
 
     private Dictionary<string, ItemDefinition> _lookup;
 
@@ -23,17 +24,11 @@ public class ItemDatabase : ScriptableObject
             
         foreach (var item in items)
         {
-            if (item == null || string.IsNullOrWhiteSpace(item.itemId))
-                continue;
-
-            if (_lookup.ContainsKey(item.itemId))
-            {
-                Debug.LogWarning($"Duplicate itemId detected: {item.itemId}");
-                continue;
-            }
-
-            _lookup.Add(item.itemId, item);
+            AddToLookup(item);
         }
+
+        AddToLookup(goldItem);
+        AddToLookup(scrapItem);
     }
 
     public ItemDefinition GetItemById(string id)
@@ -43,5 +38,22 @@ public class ItemDatabase : ScriptableObject
 
         _lookup.TryGetValue(id, out var item);
         return item;
+    }
+
+    void AddToLookup(ItemDefinition item)
+    {
+        if (item == null || string.IsNullOrWhiteSpace(item.itemId))
+            return;
+
+        if (_lookup.TryGetValue(item.itemId, out var existing))
+        {
+            if (existing == item)
+                return;
+
+            Debug.LogWarning($"Duplicate itemId detected: {item.itemId}");
+            return;
+        }
+
+        _lookup.Add(item.itemId, item);
     }
 }

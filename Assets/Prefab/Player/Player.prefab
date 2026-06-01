@@ -552,13 +552,13 @@ CharacterController:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Height: 2.45
-  m_Radius: 0.5
+  m_Height: 2.53
+  m_Radius: 0.45
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 1, z: 0}
+  m_Center: {x: 0, y: 1.28, z: 0}
 --- !u!54 &2207675358697019086
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -679,6 +679,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ctx: {fileID: 1638387977988830713}
+  chainAttackDefinition: {fileID: 11400000, guid: 76fce4e87d6149799ec70e9d71b7a7d2, type: 2}
 --- !u!114 &4443219407110611579
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -880,6 +881,22 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 4fcaeec2-0b0d-4fcc-9e49-456bbea159e9
     m_ActionName: 'Player/OpenPassiveTree[/Keyboard/k]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 4051215997299661844}
+        m_TargetAssemblyTypeName: PlayerInputHandler, Assembly-CSharp
+        m_MethodName: OpenChainSkill
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 49786a61-7128-44cf-b321-bea08ecf34ec
+    m_ActionName: 'Player/ChainAttackOpen[/Keyboard/q]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player
@@ -993,6 +1010,7 @@ MonoBehaviour:
   accessoryLoadout: {fileID: 0}
   weaponSystem: {fileID: 0}
   gold: 0
+  scrap: 0
   equippedWeaponInstanceId: 
 --- !u!114 &5818043391274991836
 MonoBehaviour:
@@ -1632,7 +1650,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 8094514788681644716}
   m_Father: {fileID: 3749669808023046127}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7388651086747767413
@@ -1952,6 +1971,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerContext: {fileID: 1638387977988830713}
+  chainAttackProcController: {fileID: 5007163616709502794}
   maximumCommandPoints: 3
   currentCommandPoints: 0
   fillCommandPointsOnStart: 1
@@ -1978,3 +1998,65 @@ MonoBehaviour:
   selectedPartyCommandIndex: 0
   wrapPartyCommandSelection: 1
   logPartyCommandExecution: 0
+--- !u!1001 &7062182068417119161
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2315058692641633103}
+    m_Modifications:
+    - target: {fileID: 1320847152907368725, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1320847152907368725, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1320847152907368725, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1320847152907368725, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.007204606
+      objectReference: {fileID: 0}
+    - target: {fileID: 1320847152907368725, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1320847152907368725, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.99997413
+      objectReference: {fileID: 0}
+    - target: {fileID: 1320847152907368725, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1320847152907368725, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1320847152907368725, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 179.174
+      objectReference: {fileID: 0}
+    - target: {fileID: 1320847152907368725, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1810244535466419119, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+      propertyPath: m_Name
+      value: Roma
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+--- !u!4 &8094514788681644716 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1320847152907368725, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+  m_PrefabInstance: {fileID: 7062182068417119161}
+  m_PrefabAsset: {fileID: 0}

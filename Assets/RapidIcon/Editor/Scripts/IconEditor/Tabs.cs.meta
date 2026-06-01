@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 43277a6de4118d145a17df3c98e17ffd
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 204667
+  packageName: RapidIcon | In-Editor Icon Generator
+  packageVersion: 1.7.4
+  assetPath: Assets/RapidIcon/Editor/Scripts/IconEditor/Tabs.cs
+  uploadId: 808938

@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 3ddb549f2327e954b9e89f3dfd58593c
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  preprocessorOverride: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 204667
+  packageName: RapidIcon | In-Editor Icon Generator
+  packageVersion: 1.7.4
+  assetPath: Assets/RapidIcon/Shaders/PostProcessing/Underlay.shader
+  uploadId: 808938

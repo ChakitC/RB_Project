@@ -1,7 +1,8 @@
 {
     "inventory": {
         "maxSlotCount": 20,
-        "gold": 964996,
+        "gold": 965050,
+        "scrap": 0,
         "slots": [
             {
                 "itemId": "SMG_RB01",
@@ -160,9 +161,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 3629,
-                    "currentMagazine": 23,
-                    "currentReserveAmmo": 208,
+                    "shotCounter": 4228,
+                    "currentMagazine": 11,
+                    "currentReserveAmmo": 0,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 20,
                     "upgradeTier": 2,
@@ -429,9 +430,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 2162,
-                    "currentMagazine": 6,
-                    "currentReserveAmmo": 270,
+                    "shotCounter": 2296,
+                    "currentMagazine": 22,
+                    "currentReserveAmmo": 150,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -468,9 +469,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 169,
-                    "currentMagazine": 34,
-                    "currentReserveAmmo": 300,
+                    "shotCounter": 560,
+                    "currentMagazine": 55,
+                    "currentReserveAmmo": 197,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 16,
                     "upgradeTier": 1,
@@ -516,9 +517,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 4730,
-                    "currentMagazine": 16,
-                    "currentReserveAmmo": 240,
+                    "shotCounter": 6124,
+                    "currentMagazine": 28,
+                    "currentReserveAmmo": 154,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 2,
                     "upgradeTier": 0,
@@ -562,9 +563,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 9061,
-                    "currentMagazine": 29,
-                    "currentReserveAmmo": 3,
+                    "shotCounter": 9564,
+                    "currentMagazine": 30,
+                    "currentReserveAmmo": 120,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 30,
                     "upgradeTier": 3,
@@ -802,7 +803,7 @@
         ]
     },
     "weapon": {
-        "equippedWeaponInstanceId": "e875436829464c588bbed213014ef844"
+        "equippedWeaponInstanceId": "9c6715952d3a4641a26a26af87c72af8"
     },
     "equipment": {
         "entries": [
@@ -824,7 +825,7 @@
             },
             {
                 "ownerId": "character:ID.Aires",
-                "equippedWeaponInstanceId": "9c6715952d3a4641a26a26af87c72af8"
+                "equippedWeaponInstanceId": "5393a3d1497d43d29b64f34d09f4e75b"
             },
             {
                 "ownerId": "ally:PartySlot2",
@@ -1055,6 +1056,42 @@
                     {
                         "instanceId": "acc_0b52f654d3a44e3dad34cf60ef0f9d47",
                         "accessoryId": "Accessory.RabbitLag",
+                        "modifierId": "",
+                        "upgradeLevel": 0
+                    },
+                    {
+                        "instanceId": "",
+                        "accessoryId": "",
+                        "modifierId": "",
+                        "upgradeLevel": 0
+                    },
+                    {
+                        "instanceId": "",
+                        "accessoryId": "",
+                        "modifierId": "",
+                        "upgradeLevel": 0
+                    },
+                    {
+                        "instanceId": "",
+                        "accessoryId": "",
+                        "modifierId": "",
+                        "upgradeLevel": 0
+                    }
+                ]
+            },
+            {
+                "ownerId": "character:ID.Dorothy",
+                "slotCount": 5,
+                "equippedAccessories": [
+                    {
+                        "instanceId": "",
+                        "accessoryId": "",
+                        "modifierId": "",
+                        "upgradeLevel": 0
+                    },
+                    {
+                        "instanceId": "",
+                        "accessoryId": "",
                         "modifierId": "",
                         "upgradeLevel": 0
                     },

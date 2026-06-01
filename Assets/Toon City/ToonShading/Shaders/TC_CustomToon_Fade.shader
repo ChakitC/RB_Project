@@ -16,8 +16,10 @@ Shader "Toon/TC_CustomToon_Fade"
 		_CutoutRadius("Cutout Radius", Range(0, 30)) = 4
 		_CutoutSoftness("Cutout Softness", Range(0.01, 30)) = 1.5
 		_CutoutStrength("Cutout Strength", Range(0, 1)) = 0
+		_CutoutVerticalInfluence("Cutout Vertical Influence", Range(0, 1)) = 0
 		_InteriorBlackColor("Interior Black Color", Color) = (0,0,0,1)
 		_InteriorBlackStrength("Interior Black Strength", Range(0, 1)) = 1
+		_OcclusionInteriorBlackStrength("Occlusion Interior Black Strength", Range(0, 1)) = 0.2
 		_InteriorBlackStartY("Interior Black Start World Y", Float) = 1
 		_InteriorBlackSoftness("Interior Black Softness", Float) = 2
 		_InteriorBlackFadeBoost("Interior Black Fade Boost", Range(1, 8)) = 4
@@ -172,24 +174,27 @@ Shader "Toon/TC_CustomToon_Fade"
 			return lerp( 1.0, saturate( fade ), heightMask );
 		}
 
-		float ToonCutoutMask( float3 worldPosition, float4 cutoutCenter, float cutoutRadius, float cutoutSoftness, float cutoutStrength )
+		float ToonCutoutMask( float3 worldPosition, float4 cutoutCenter, float cutoutRadius, float cutoutSoftness, float cutoutStrength, float cutoutVerticalInfluence )
 		{
 			float radius = max( cutoutRadius, 0.0 );
 			float softness = max( cutoutSoftness, 0.0001 );
-			float distanceToCenter = distance( worldPosition.xz, cutoutCenter.xz );
+			float verticalInfluence = saturate( cutoutVerticalInfluence );
+			float3 weightedDelta = worldPosition - cutoutCenter.xyz;
+			weightedDelta.y *= verticalInfluence;
+			float distanceToCenter = lerp( distance( worldPosition.xz, cutoutCenter.xz ), length( weightedDelta ), verticalInfluence );
 			float radialMask = 1.0 - smoothstep( radius, radius + softness, distanceToCenter );
 			return saturate( radialMask * cutoutStrength );
 		}
 
-		float ToonCutoutFadeMask( float3 worldPosition, float fadeBottomY, float fadeSoftness, float4 cutoutCenter, float cutoutRadius, float cutoutSoftness, float cutoutStrength )
+		float ToonCutoutFadeMask( float3 worldPosition, float fadeBottomY, float fadeSoftness, float4 cutoutCenter, float cutoutRadius, float cutoutSoftness, float cutoutStrength, float cutoutVerticalInfluence )
 		{
 			float heightMask = saturate( ( worldPosition.y - fadeBottomY ) / max( fadeSoftness, 0.0001 ) );
-			return saturate( heightMask * ToonCutoutMask( worldPosition, cutoutCenter, cutoutRadius, cutoutSoftness, cutoutStrength ) );
+			return saturate( heightMask * ToonCutoutMask( worldPosition, cutoutCenter, cutoutRadius, cutoutSoftness, cutoutStrength, cutoutVerticalInfluence ) );
 		}
 
-		float ToonCutoutFadeVisibility( float3 worldPosition, float fade, float fadeBottomY, float fadeSoftness, float4 cutoutCenter, float cutoutRadius, float cutoutSoftness, float cutoutStrength )
+		float ToonCutoutFadeVisibility( float3 worldPosition, float fade, float fadeBottomY, float fadeSoftness, float4 cutoutCenter, float cutoutRadius, float cutoutSoftness, float cutoutStrength, float cutoutVerticalInfluence )
 		{
-			float fadeMask = ToonCutoutFadeMask( worldPosition, fadeBottomY, fadeSoftness, cutoutCenter, cutoutRadius, cutoutSoftness, cutoutStrength );
+			float fadeMask = ToonCutoutFadeMask( worldPosition, fadeBottomY, fadeSoftness, cutoutCenter, cutoutRadius, cutoutSoftness, cutoutStrength, cutoutVerticalInfluence );
 			return lerp( 1.0, saturate( fade ), fadeMask );
 		}
 
@@ -199,18 +204,18 @@ Shader "Toon/TC_CustomToon_Fade"
 			return visibility - ToonFadeDitherThreshold( clipPosition.xy, ditherScale );
 		}
 
-		float ToonCutoutDitherFadeClipValue( float3 worldPosition, float4 clipPosition, float fade, float fadeBottomY, float fadeSoftness, float ditherScale, float4 cutoutCenter, float cutoutRadius, float cutoutSoftness, float cutoutStrength )
+		float ToonCutoutDitherFadeClipValue( float3 worldPosition, float4 clipPosition, float fade, float fadeBottomY, float fadeSoftness, float ditherScale, float4 cutoutCenter, float cutoutRadius, float cutoutSoftness, float cutoutStrength, float cutoutVerticalInfluence )
 		{
-			float visibility = ToonCutoutFadeVisibility( worldPosition, fade, fadeBottomY, fadeSoftness, cutoutCenter, cutoutRadius, cutoutSoftness, cutoutStrength );
+			float visibility = ToonCutoutFadeVisibility( worldPosition, fade, fadeBottomY, fadeSoftness, cutoutCenter, cutoutRadius, cutoutSoftness, cutoutStrength, cutoutVerticalInfluence );
 			return visibility - ToonFadeDitherThreshold( clipPosition.xy, ditherScale );
 		}
 
-		float3 ToonApplyInteriorBlack( float3 color, float3 worldPosition, float fade, float4 blackColor, float blackStrength, float blackStartY, float blackSoftness, float blackFadeBoost, float4 cutoutCenter, float cutoutRadius, float cutoutSoftness, float cutoutStrength )
+		float3 ToonApplyInteriorBlack( float3 color, float3 worldPosition, float fade, float4 blackColor, float blackStrength, float occlusionBlackStrength, float blackStartY, float blackSoftness, float blackFadeBoost, float4 cutoutCenter, float cutoutRadius, float cutoutSoftness, float cutoutStrength, float cutoutVerticalInfluence )
 		{
 			float fadeActive = saturate( ( 1.0 - saturate( fade ) ) * max( blackFadeBoost, 0.0 ) );
 			float heightMask = saturate( ( worldPosition.y - blackStartY ) / max( blackSoftness, 0.0001 ) );
-			float cutoutMask = ToonCutoutMask( worldPosition, cutoutCenter, cutoutRadius, cutoutSoftness, cutoutStrength );
-			float blackAmount = saturate( fadeActive * heightMask * cutoutMask * blackStrength );
+			float cutoutMask = ToonCutoutMask( worldPosition, cutoutCenter, cutoutRadius, cutoutSoftness, cutoutStrength, cutoutVerticalInfluence );
+			float blackAmount = saturate( fadeActive * heightMask * cutoutMask * blackStrength * saturate( occlusionBlackStrength ) );
 			return lerp( color, blackColor.rgb, blackAmount );
 		}
 
@@ -324,6 +329,8 @@ Shader "Toon/TC_CustomToon_Fade"
 			float _CutoutRadius;
 			float _CutoutSoftness;
 			float _CutoutStrength;
+			float _CutoutVerticalInfluence;
+			float _OcclusionInteriorBlackStrength;
 			float4 _InteriorBlackColor;
 			float _InteriorBlackStrength;
 			float _InteriorBlackStartY;
@@ -529,7 +536,7 @@ Shader "Toon/TC_CustomToon_Fade"
 				float2 uv_TextureSample = IN.ase_texcoord3.xy * _TextureSample_ST.xy + _TextureSample_ST.zw;
 				float4 tex2DNode50 = tex2D( _TextureSample, uv_TextureSample );
 				float3 ase_worldNormal = IN.ase_texcoord5.xyz;
-				clip( ToonCutoutDitherFadeClipValue( WorldPosition, IN.clipPos, _Fade, _FadeBottomY, _FadeSoftness, _DitherScale, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength ) );
+				clip( ToonCutoutDitherFadeClipValue( WorldPosition, IN.clipPos, _Fade, _FadeBottomY, _FadeSoftness, _DitherScale, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength, _CutoutVerticalInfluence ) );
 				float3 bakedGI41 = ASEIndirectDiffuse( IN.lightmapUVOrVertexSH.xy, ase_worldNormal);
 				Light ase_mainLight = GetMainLight( ShadowCoords );
 				MixRealtimeAndBakedGI(ase_mainLight, ase_worldNormal, bakedGI41, half4(0,0,0,0));
@@ -551,7 +558,7 @@ Shader "Toon/TC_CustomToon_Fade"
 				float3 BakedAlbedo = 0;
 				float3 BakedEmission = 0;
 				float3 Color = ( ( float4( temp_output_55_0 , 0.0 ) * tex2DNode50 ) + ( float4( bakedGI41 , 0.0 ) * tex2DNode50 ) + ( ( tex2DNode50 * float4( staticSwitch45 , 0.0 ) ) * ( tex2D( _TextureRamp, temp_cast_4 ) * ( ( temp_output_40_0 * max( max( break62.x , break62.y ) , break62.z ) ) + max( max( break65.x , break65.y ) , break65.z ) ) ) ) ).rgb;
-				Color = ToonApplyInteriorBlack( Color, WorldPosition, _Fade, _InteriorBlackColor, _InteriorBlackStrength, _InteriorBlackStartY, _InteriorBlackSoftness, _InteriorBlackFadeBoost, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength );
+				Color = ToonApplyInteriorBlack( Color, WorldPosition, _Fade, _InteriorBlackColor, _InteriorBlackStrength, _OcclusionInteriorBlackStrength, _InteriorBlackStartY, _InteriorBlackSoftness, _InteriorBlackFadeBoost, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength, _CutoutVerticalInfluence );
 				float Alpha = 1;
 				float AlphaClipThreshold = 0.5;
 				float AlphaClipThresholdShadow = 0.5;
@@ -654,6 +661,8 @@ Shader "Toon/TC_CustomToon_Fade"
 			float _CutoutRadius;
 			float _CutoutSoftness;
 			float _CutoutStrength;
+			float _CutoutVerticalInfluence;
+			float _OcclusionInteriorBlackStrength;
 			float4 _InteriorBlackColor;
 			float _InteriorBlackStrength;
 			float _InteriorBlackStartY;
@@ -917,6 +926,8 @@ Shader "Toon/TC_CustomToon_Fade"
 			float _CutoutRadius;
 			float _CutoutSoftness;
 			float _CutoutStrength;
+			float _CutoutVerticalInfluence;
+			float _OcclusionInteriorBlackStrength;
 			float4 _InteriorBlackColor;
 			float _InteriorBlackStrength;
 			float _InteriorBlackStartY;
@@ -1063,7 +1074,7 @@ Shader "Toon/TC_CustomToon_Fade"
 
 				#if defined(ASE_NEEDS_FRAG_WORLD_POSITION)
 				float3 WorldPosition = IN.worldPos;
-				clip( ToonCutoutDitherFadeClipValue( WorldPosition, IN.clipPos, _Fade, _FadeBottomY, _FadeSoftness, _DitherScale, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength ) );
+				clip( ToonCutoutDitherFadeClipValue( WorldPosition, IN.clipPos, _Fade, _FadeBottomY, _FadeSoftness, _DitherScale, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength, _CutoutVerticalInfluence ) );
 				#endif
 				float4 ShadowCoords = float4( 0, 0, 0, 0 );
 
@@ -1190,6 +1201,8 @@ Shader "Toon/TC_CustomToon_Fade"
 			float _CutoutRadius;
 			float _CutoutSoftness;
 			float _CutoutStrength;
+			float _CutoutVerticalInfluence;
+			float _OcclusionInteriorBlackStrength;
 			float4 _InteriorBlackColor;
 			float _InteriorBlackStrength;
 			float _InteriorBlackStartY;
@@ -1395,7 +1408,7 @@ Shader "Toon/TC_CustomToon_Fade"
 				float2 uv_TextureSample = IN.ase_texcoord3.xy * _TextureSample_ST.xy + _TextureSample_ST.zw;
 				float4 tex2DNode50 = tex2D( _TextureSample, uv_TextureSample );
 				float3 ase_worldNormal = IN.ase_texcoord5.xyz;
-				clip( ToonCutoutDitherFadeClipValue( WorldPosition, IN.clipPos, _Fade, _FadeBottomY, _FadeSoftness, _DitherScale, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength ) );
+				clip( ToonCutoutDitherFadeClipValue( WorldPosition, IN.clipPos, _Fade, _FadeBottomY, _FadeSoftness, _DitherScale, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength, _CutoutVerticalInfluence ) );
 				float3 bakedGI41 = ASEIndirectDiffuse( IN.lightmapUVOrVertexSH.xy, ase_worldNormal);
 				Light ase_mainLight = GetMainLight( ShadowCoords );
 				MixRealtimeAndBakedGI(ase_mainLight, ase_worldNormal, bakedGI41, half4(0,0,0,0));
@@ -1417,7 +1430,7 @@ Shader "Toon/TC_CustomToon_Fade"
 				float3 BakedAlbedo = 0;
 				float3 BakedEmission = 0;
 				float3 Color = ( ( float4( temp_output_55_0 , 0.0 ) * tex2DNode50 ) + ( float4( bakedGI41 , 0.0 ) * tex2DNode50 ) + ( ( tex2DNode50 * float4( staticSwitch45 , 0.0 ) ) * ( tex2D( _TextureRamp, temp_cast_4 ) * ( ( temp_output_40_0 * max( max( break62.x , break62.y ) , break62.z ) ) + max( max( break65.x , break65.y ) , break65.z ) ) ) ) ).rgb;
-				Color = ToonApplyInteriorBlack( Color, WorldPosition, _Fade, _InteriorBlackColor, _InteriorBlackStrength, _InteriorBlackStartY, _InteriorBlackSoftness, _InteriorBlackFadeBoost, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength );
+				Color = ToonApplyInteriorBlack( Color, WorldPosition, _Fade, _InteriorBlackColor, _InteriorBlackStrength, _OcclusionInteriorBlackStrength, _InteriorBlackStartY, _InteriorBlackSoftness, _InteriorBlackFadeBoost, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength, _CutoutVerticalInfluence );
 				float Alpha = 1;
 				float AlphaClipThreshold = 0.5;
 				float AlphaClipThresholdShadow = 0.5;
@@ -1514,6 +1527,8 @@ Shader "Toon/TC_CustomToon_Fade"
 			float _CutoutRadius;
 			float _CutoutSoftness;
 			float _CutoutStrength;
+			float _CutoutVerticalInfluence;
+			float _OcclusionInteriorBlackStrength;
 			float4 _InteriorBlackColor;
 			float _InteriorBlackStrength;
 			float _InteriorBlackStartY;
@@ -1741,6 +1756,8 @@ Shader "Toon/TC_CustomToon_Fade"
 			float _CutoutRadius;
 			float _CutoutSoftness;
 			float _CutoutStrength;
+			float _CutoutVerticalInfluence;
+			float _OcclusionInteriorBlackStrength;
 			float4 _InteriorBlackColor;
 			float _InteriorBlackStrength;
 			float _InteriorBlackStartY;
@@ -1980,6 +1997,8 @@ Shader "Toon/TC_CustomToon_Fade"
 			float _CutoutRadius;
 			float _CutoutSoftness;
 			float _CutoutStrength;
+			float _CutoutVerticalInfluence;
+			float _OcclusionInteriorBlackStrength;
 			float4 _InteriorBlackColor;
 			float _InteriorBlackStrength;
 			float _InteriorBlackStartY;
@@ -2127,7 +2146,7 @@ Shader "Toon/TC_CustomToon_Fade"
 				surfaceDescription.Alpha = 1;
 				surfaceDescription.AlphaClipThreshold = 0.5;
 
-				clip( ToonCutoutDitherFadeClipValue( IN.worldPos, IN.clipPos, _Fade, _FadeBottomY, _FadeSoftness, _DitherScale, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength ) );
+				clip( ToonCutoutDitherFadeClipValue( IN.worldPos, IN.clipPos, _Fade, _FadeBottomY, _FadeSoftness, _DitherScale, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength, _CutoutVerticalInfluence ) );
 
 				#if _ALPHATEST_ON
 					clip(surfaceDescription.Alpha - surfaceDescription.AlphaClipThreshold);
@@ -2217,6 +2236,8 @@ Shader "Toon/TC_CustomToon_Fade"
 			float _CutoutRadius;
 			float _CutoutSoftness;
 			float _CutoutStrength;
+			float _CutoutVerticalInfluence;
+			float _OcclusionInteriorBlackStrength;
 			float4 _InteriorBlackColor;
 			float _InteriorBlackStrength;
 			float _InteriorBlackStartY;
@@ -2363,7 +2384,7 @@ Shader "Toon/TC_CustomToon_Fade"
 				surfaceDescription.Alpha = 1;
 				surfaceDescription.AlphaClipThreshold = 0.5;
 				
-				clip( ToonCutoutDitherFadeClipValue( IN.worldPos, IN.clipPos, _Fade, _FadeBottomY, _FadeSoftness, _DitherScale, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength ) );
+				clip( ToonCutoutDitherFadeClipValue( IN.worldPos, IN.clipPos, _Fade, _FadeBottomY, _FadeSoftness, _DitherScale, _CutoutCenter, _CutoutRadius, _CutoutSoftness, _CutoutStrength, _CutoutVerticalInfluence ) );
 
 				#if _ALPHATEST_ON
 					clip(surfaceDescription.Alpha - surfaceDescription.AlphaClipThreshold);

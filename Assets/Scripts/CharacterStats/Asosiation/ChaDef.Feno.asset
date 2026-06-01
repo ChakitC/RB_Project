@@ -40,7 +40,8 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
-  passives: []
+  passives:
+  - {fileID: 11400000, guid: 8d2b0f0e7a7a4f3c9ad6cfe8bd48c181, type: 2}
   dashCue: {fileID: 0}
   meleeLightCue: {fileID: 0}
   meleeHeavyCue: {fileID: 0}

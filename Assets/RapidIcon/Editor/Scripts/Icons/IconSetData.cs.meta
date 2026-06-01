@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 386ec4ab5b06b0e4fa8b220121084976
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 204667
+  packageName: RapidIcon | In-Editor Icon Generator
+  packageVersion: 1.7.4
+  assetPath: Assets/RapidIcon/Editor/Scripts/Icons/IconSetData.cs
+  uploadId: 808938

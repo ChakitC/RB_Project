@@ -7,6 +7,8 @@ public enum PickupCollectorRule
     OwnerOnly,
     NonOwnerOnly,
     PlayerExceptOwner,
+    PlayerOrCompanionOnly,
+    CompanionOnly,
 }
 
 [RequireComponent(typeof(Collider))]
@@ -48,6 +50,11 @@ public class SkillPickup : MonoBehaviour
         _context = context;
         _initialized = true;
         _spawnTime = Time.time;
+    }
+
+    public void SetCollectorRule(PickupCollectorRule rule)
+    {
+        collectorRule = rule;
     }
 
     void OnTriggerEnter(Collider other)
@@ -111,10 +118,50 @@ public class SkillPickup : MonoBehaviour
             case PickupCollectorRule.PlayerExceptOwner:
                 return targetObject != null && targetObject.CompareTag("Player") && !isOwner;
 
+            case PickupCollectorRule.PlayerOrCompanionOnly:
+                return IsPlayerOrCompanionCollector(targetObject);
+
+            case PickupCollectorRule.CompanionOnly:
+                return IsCompanionCollector(targetObject);
+
             case PickupCollectorRule.Anyone:
             default:
                 return true;
         }
+    }
+
+    bool IsPlayerOrCompanionCollector(GameObject targetObject)
+    {
+        CharacteContext collectorContext = ResolveCollectorContext(targetObject);
+        if (collectorContext != null)
+        {
+            return collectorContext.TargetIdentity == AITargetIdentity.Player ||
+                   collectorContext.TargetIdentity == AITargetIdentity.Companion;
+        }
+
+        return targetObject != null && targetObject.CompareTag("Player");
+    }
+
+    bool IsCompanionCollector(GameObject targetObject)
+    {
+        CharacteContext collectorContext = ResolveCollectorContext(targetObject);
+        return collectorContext != null && collectorContext.TargetIdentity == AITargetIdentity.Companion;
+    }
+
+    CharacteContext ResolveCollectorContext(GameObject targetObject)
+    {
+        if (targetObject == null)
+            return null;
+
+        CharacteContext context = targetObject.GetComponent<CharacteContext>();
+        if (context != null)
+            return context;
+
+        context = targetObject.GetComponentInParent<CharacteContext>();
+        if (context != null)
+            return context;
+
+        return targetObject.GetComponentInChildren<CharacteContext>(true);
     }
 
     Transform ResolveCollectorTransform(Transform hitTransform)

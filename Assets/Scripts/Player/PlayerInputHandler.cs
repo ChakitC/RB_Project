@@ -4,6 +4,8 @@ using UnityEngine.InputSystem;
 public class PlayerInputHandler : MonoBehaviour
 {
     [SerializeField] PlayerContext ctx;
+    [Header("Chain Attack")]
+    [SerializeField] SkillChainDef chainAttackDefinition;
 
     void Awake()
     {
@@ -171,5 +173,17 @@ public class PlayerInputHandler : MonoBehaviour
 
         bool isOpen = ctx.playerUIContext.passiveTree.activeSelf;
         ctx.playerUIContext.passiveTree.SetActive(!isOpen);
+    }
+
+    public void OpenChainSkill(InputAction.CallbackContext c)
+    {
+        if (!c.performed)
+            return;
+
+        ResolveReferences();
+        if (ctx?.partyCommand == null)
+            return;
+
+        ctx.partyCommand.TryExecuteChainAttack(chainAttackDefinition);
     }
 }

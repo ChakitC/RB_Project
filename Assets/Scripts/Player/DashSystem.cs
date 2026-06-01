@@ -379,7 +379,18 @@ public class DashSystem : MonoBehaviour
         _perfectDodgeTriggeredThisDash = true;
         ctx?.WeaponSystem?.GrantFreeAmmo(perfectDashFreeAmmoDuration);
         TimeSlowManager.Instance.StartSlow(perfectDashSlowScale, perfectDashSlowDuration);
-        PerfectDashScreenFx.Instance?.Play(_lastDashDirection, perfectDashSlowDuration, perfectDashSlowScale);
+
+        bool playedPlayerUiEffect = false;
+        if (ctx != null && ctx.UIManager != null)
+        {
+            playedPlayerUiEffect = ctx.UIManager.PlayPerfectDodgeFullscreenEffect(
+                _lastDashDirection,
+                perfectDashSlowDuration,
+                perfectDashSlowScale);
+        }
+
+        if (!playedPlayerUiEffect)
+            PerfectDashScreenFx.Instance?.Play(_lastDashDirection, perfectDashSlowDuration, perfectDashSlowScale);
     }
 
     void RefreshCollisionIgnoreState()

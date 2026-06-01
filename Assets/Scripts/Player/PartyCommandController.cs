@@ -6,6 +6,7 @@ using UnityEngine;
 public sealed class PartyCommandController : MonoBehaviour
 {
     [SerializeField] private PlayerContext playerContext;
+    [SerializeField] private ChainAttackProcController chainAttackProcController;
 
     [Header("Party Command")]
     [SerializeField, Min(0f)] private float maximumCommandPoints = 3f;
@@ -90,6 +91,9 @@ public sealed class PartyCommandController : MonoBehaviour
             playerContext.partyCommand = this;
 
         playerContext.ResolveReferences();
+
+        if (chainAttackProcController == null)
+            chainAttackProcController = playerContext.GetComponentInChildren<ChainAttackProcController>(true);
     }
 
     void InitializeRuntimeStateFromSerializedData()
@@ -298,6 +302,61 @@ public sealed class PartyCommandController : MonoBehaviour
         return TryExecutePartyCommand(index);
     }
 
+    public bool TryExecuteChainAttack(SkillChainDef chainDef)
+    {
+        ResolveReferences();
+
+        string chainLabel = ResolveChainAttackLabel(chainDef);
+        if (TryGetChainAttackBlockReason(chainDef, out PartyCommandBlockReason blockReason))
+        {
+            if (logPartyCommandExecution)
+            {
+                Debug.Log(
+                    $"[PartyCommandController] Chain attack '{chainLabel}' blocked: " +
+                    $"{BuildChainAttackBlockReasonLabel(chainDef, blockReason)}.",
+                    this);
+            }
+
+            RefreshPartyCommandUi(force: true);
+            return false;
+        }
+
+        bool started = chainAttackProcController.TryStartManualSequence(chainDef);
+        if (!started)
+        {
+            if (logPartyCommandExecution)
+            {
+                Debug.LogWarning(
+                    $"[PartyCommandController] Chain attack '{chainLabel}' failed to start " +
+                    "after passing validation.",
+                    this);
+            }
+
+            RefreshPartyCommandUi(force: true);
+            return false;
+        }
+
+        float commandPointCost = chainDef.ClampedCommandPointCost;
+        if (commandPointCost > 0f && !TrySpendCommandPoints(commandPointCost))
+        {
+            Debug.LogWarning(
+                $"[PartyCommandController] Chain attack '{chainLabel}' started but " +
+                "command points could not be spent.",
+                this);
+        }
+
+        if (logPartyCommandExecution)
+        {
+            Debug.Log(
+                $"[PartyCommandController] Executed chain attack '{chainLabel}' for " +
+                $"{commandPointCost:0.##} CP.",
+                this);
+        }
+
+        RefreshPartyCommandUi(force: true);
+        return true;
+    }
+
     public bool TryExecutePartyCommand(int index)
     {
         ResolveReferences();
@@ -438,6 +497,57 @@ public sealed class PartyCommandController : MonoBehaviour
                 reason = PartyCommandBlockReason.MissingConfig;
                 return true;
         }
+    }
+
+    bool TryGetChainAttackBlockReason(
+        SkillChainDef chainDef,
+        out PartyCommandBlockReason reason)
+    {
+        reason = PartyCommandBlockReason.None;
+
+        if (chainDef == null || !chainDef.HasExecutionConfigured)
+        {
+            reason = PartyCommandBlockReason.MissingConfig;
+            return true;
+        }
+
+        if (chainDef.requireOwnerAlive && !IsPartyCommandOwnerAvailable())
+        {
+            reason = PartyCommandBlockReason.OwnerUnavailable;
+            return true;
+        }
+
+        if (chainAttackProcController == null)
+        {
+            reason = PartyCommandBlockReason.SequenceUnavailable;
+            return true;
+        }
+
+        if (chainDef.blockWhileChainBusy && chainAttackProcController.IsSequenceActive)
+        {
+            reason = PartyCommandBlockReason.SequenceBusy;
+            return true;
+        }
+
+        if (chainAttackProcController.IsSequenceCooldownActive(chainDef, out _))
+        {
+            reason = PartyCommandBlockReason.Cooldown;
+            return true;
+        }
+
+        if (!CanSpendCommandPoints(chainDef.ClampedCommandPointCost))
+        {
+            reason = PartyCommandBlockReason.NotEnoughCommandPoints;
+            return true;
+        }
+
+        if (!chainAttackProcController.CanStartManualSequence(chainDef))
+        {
+            reason = PartyCommandBlockReason.MissingTarget;
+            return true;
+        }
+
+        return false;
     }
 
     bool TryGetHelperPartyCommandBlockReason(
@@ -692,6 +802,39 @@ public sealed class PartyCommandController : MonoBehaviour
             PartyCommandBlockReason.MissingTarget => "No Target",
             _ => "Invalid",
         };
+    }
+
+    string BuildChainAttackBlockReasonLabel(SkillChainDef chainDef, PartyCommandBlockReason reason)
+    {
+        if (reason == PartyCommandBlockReason.Cooldown &&
+            chainAttackProcController != null &&
+            chainAttackProcController.IsSequenceCooldownActive(chainDef, out float remainingSeconds))
+        {
+            return $"Cooldown {remainingSeconds:0.0}s";
+        }
+
+        return reason switch
+        {
+            PartyCommandBlockReason.None => "Ready",
+            PartyCommandBlockReason.NotEnoughCommandPoints => "No CP",
+            PartyCommandBlockReason.Cooldown => "Cooldown",
+            PartyCommandBlockReason.OwnerUnavailable => "Owner Down",
+            PartyCommandBlockReason.SequenceUnavailable => "Chain Offline",
+            PartyCommandBlockReason.SequenceBusy => "Chain Busy",
+            PartyCommandBlockReason.MissingTarget => "No Target",
+            _ => "Invalid",
+        };
+    }
+
+    static string ResolveChainAttackLabel(SkillChainDef chainDef)
+    {
+        if (chainDef == null)
+            return "Chain Attack";
+
+        if (!string.IsNullOrWhiteSpace(chainDef.displayName))
+            return chainDef.displayName.Trim();
+
+        return string.IsNullOrWhiteSpace(chainDef.name) ? "Chain Attack" : chainDef.name;
     }
 
     string BuildPartyCommandCooldownLabel(int commandIndex)

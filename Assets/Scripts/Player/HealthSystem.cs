@@ -44,6 +44,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
     public event Action CharacterRevive;
     public event Action ReturnbaseUI;
     public event Action<float, GameObject> DamageTaken;
+    public event Action<float, float, float> Healed;
 
     public bool IsAlive => currentHealth > 0f;
     public bool IsDown => currentHealth <= 0f && DownTime > 0f;
@@ -253,8 +254,11 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         if (currentHealth <= previous)
             return false;
 
+        float healedAmount = currentHealth - previous;
         ApplyHealthBarValues();
         CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
+        CTX.UIManager?.PlayHealFullscreenEffect(healedAmount, currentHealth, maximumHealth);
+        Healed?.Invoke(healedAmount, currentHealth, maximumHealth);
         return true;
     }
 

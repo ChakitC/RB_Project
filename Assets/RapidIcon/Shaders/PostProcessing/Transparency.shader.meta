@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 4fbf5a470ce0bd341b7e867ab7ead320
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  preprocessorOverride: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 204667
+  packageName: RapidIcon | In-Editor Icon Generator
+  packageVersion: 1.7.4
+  assetPath: Assets/RapidIcon/Shaders/PostProcessing/Transparency.shader
+  uploadId: 808938

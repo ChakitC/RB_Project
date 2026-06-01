@@ -20,6 +20,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
 
     bool _subscribed;
     float WorldNow => TimeSlowManager.Instance.WorldTime;
+    public bool IsSequenceActive => chainAttackCoordinator != null && chainAttackCoordinator.IsSequenceActive;
 
     void Awake()
     {
@@ -53,10 +54,15 @@ public sealed class ChainAttackProcController : MonoBehaviour
 
     public bool TryTriggerSequence(SkillChainDef chainDef)
     {
+        return TryStartManualSequence(chainDef);
+    }
+
+    public bool TryStartManualSequence(SkillChainDef chainDef)
+    {
         if (chainDef == null || chainAttackCoordinator == null)
             return false;
 
-        if (!CanStartSequence(chainDef))
+        if (!CanStartManualSequence(chainDef))
             return false;
 
         bool started = chainAttackCoordinator.TryStartSequence(chainDef.chainSequence);
@@ -64,6 +70,38 @@ public sealed class ChainAttackProcController : MonoBehaviour
             StampCooldown(chainDef);
 
         return started;
+    }
+
+    public bool CanStartManualSequence(SkillChainDef chainDef)
+    {
+        if (chainDef == null || chainAttackCoordinator == null)
+            return false;
+
+        if (!CanStartSequence(chainDef))
+            return false;
+
+        return chainAttackCoordinator.CanStartSequence(chainDef.chainSequence);
+    }
+
+    public bool IsSequenceCooldownActive(SkillChainDef chainDef, out float remainingSeconds)
+    {
+        remainingSeconds = 0f;
+
+        if (chainDef == null)
+            return false;
+
+        if (!_nextReadyTimeByDef.TryGetValue(chainDef, out float readyAt))
+            return false;
+
+        remainingSeconds = readyAt - WorldNow;
+        if (remainingSeconds <= 0f)
+        {
+            _nextReadyTimeByDef.Remove(chainDef);
+            remainingSeconds = 0f;
+            return false;
+        }
+
+        return true;
     }
 
     void Subscribe()
@@ -216,19 +254,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
 
     bool IsCooldownReady(SkillChainDef chainDef)
     {
-        if (chainDef == null)
-            return false;
-
-        if (!_nextReadyTimeByDef.TryGetValue(chainDef, out float readyAt))
-            return true;
-
-        if (WorldNow >= readyAt)
-        {
-            _nextReadyTimeByDef.Remove(chainDef);
-            return true;
-        }
-
-        return false;
+        return chainDef != null && !IsSequenceCooldownActive(chainDef, out _);
     }
 
     void StampCooldown(SkillChainDef chainDef)

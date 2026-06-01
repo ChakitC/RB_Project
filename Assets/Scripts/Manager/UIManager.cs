@@ -8,8 +8,12 @@ public class UIManager : MonoBehaviour
     [Header("Refs")]
     [SerializeField] private CharacteContext ctx;
     [SerializeField] private StatusEffectController statusEffectController;
+    [SerializeField] private GameObject playerHudRoot;
+    [SerializeField] private MonoBehaviour fullscreenEffects;
 
     public GameObject Inventory;
+    public IPlayerFullscreenEffectController FullscreenEffects =>
+        fullscreenEffects as IPlayerFullscreenEffectController;
 
     [Header("Audio")]
     [SerializeField] private AudioCue inventoryToggleCue;
@@ -122,7 +126,33 @@ public class UIManager : MonoBehaviour
         if (!statusEffectController && ctx)
             statusEffectController = ctx.GetComponentInChildren<StatusEffectController>(true);
 
+        if (!playerHudRoot)
+        {
+            Transform playerHud = transform.Find("PlayerHUD");
+            if (playerHud)
+                playerHudRoot = playerHud.gameObject;
+        }
+
+        if (!fullscreenEffects)
+            fullscreenEffects = ResolveFullscreenEffectBehaviour(playerHudRoot);
+
         RefreshCharacterIcon();
+    }
+
+    static MonoBehaviour ResolveFullscreenEffectBehaviour(GameObject root)
+    {
+        if (!root)
+            return null;
+
+        MonoBehaviour[] behaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            MonoBehaviour behaviour = behaviours[i];
+            if (behaviour is IPlayerFullscreenEffectController)
+                return behaviour;
+        }
+
+        return null;
     }
 
     void BindStatusEffectUI()
@@ -195,6 +225,18 @@ public class UIManager : MonoBehaviour
 
         if (HPText)
             HPText.text = $"{currentHPText:0}/{maxHPText:0}";
+    }
+
+    public bool PlayHealFullscreenEffect(float amount, float currentHealth, float maximumHealth)
+    {
+        IPlayerFullscreenEffectController effectController = FullscreenEffects;
+        return effectController != null && effectController.PlayHeal(amount, currentHealth, maximumHealth);
+    }
+
+    public bool PlayPerfectDodgeFullscreenEffect(Vector3 worldDashDirection, float slowDuration, float slowScale)
+    {
+        IPlayerFullscreenEffectController effectController = FullscreenEffects;
+        return effectController != null && effectController.PlayPerfectDodge(worldDashDirection, slowDuration, slowScale);
     }
 
     void RefreshCharacterIcon()

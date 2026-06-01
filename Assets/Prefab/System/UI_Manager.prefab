@@ -120,6 +120,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ctx: {fileID: 0}
   statusEffectController: {fileID: 0}
+  playerHudRoot: {fileID: 2267823252360264282}
+  fullscreenEffects: {fileID: 8824302912045973712}
   Inventory: {fileID: 0}
   inventoryToggleCue: {fileID: 0}
   ammoText: {fileID: 7476090704398749054}
@@ -2455,6 +2457,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6592853672502404155}
+  - component: {fileID: 8824302912045973712}
   m_Layer: 5
   m_Name: PlayerHUD
   m_TagString: Untagged
@@ -2487,6 +2490,33 @@ RectTransform:
   m_AnchoredPosition: {x: -0.000061035, y: 1.5643e-10}
   m_SizeDelta: {x: 1920, y: 1080}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &8824302912045973712
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2267823252360264282}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 099f069a8ee04ceba8e0f396167df95b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerContext: {fileID: 0}
+  playerUIContext: {fileID: 0}
+  uiManager: {fileID: 2831334294821934803}
+  healScreenEffectPrefab: {fileID: 3942825033974895155, guid: ebe327400de958040a5082d7a1a2270f, type: 3}
+  perfectDodgeScreenEffectPrefab: {fileID: 3942825033974895155, guid: 4f30d9dc02bd2bc4986ea81cef8ab42f, type: 3}
+  targetCamera: {fileID: 0}
+  screenEffectCameraDistance: 0.004
+  screenEffectSizeMultiplier: 1.15
+  minimumScreenEffectLifetime: 1.1
+  healEffectCooldownSeconds: 0.08
+  screenEffectOpacityMultiplier: 1.35
+  useScreenEffectFade: 1
+  fadeInDuration: 0.08
+  fadeOutDuration: 0.25
+  useUnscaledEffectTime: 1
 --- !u!1 &2289006372409530458
 GameObject:
   m_ObjectHideFlags: 0

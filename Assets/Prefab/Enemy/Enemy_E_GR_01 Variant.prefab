@@ -142,7 +142,7 @@ PrefabInstance:
       objectReference: {fileID: 1409960314190186736}
     - target: {fileID: 7649753103391906527, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: m_Name
-      value: Enemy_M_GR_04 Variant
+      value: Enemy_E_GR_01 Variant
       objectReference: {fileID: 0}
     - target: {fileID: 8333949894183582049, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: m_Height

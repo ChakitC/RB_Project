@@ -9,6 +9,8 @@ public sealed class CameraOcclusionCutoutFader : MonoBehaviour
     static readonly int CutoutRadiusId = Shader.PropertyToID("_CutoutRadius");
     static readonly int CutoutSoftnessId = Shader.PropertyToID("_CutoutSoftness");
     static readonly int CutoutStrengthId = Shader.PropertyToID("_CutoutStrength");
+    static readonly int CutoutVerticalInfluenceId = Shader.PropertyToID("_CutoutVerticalInfluence");
+    static readonly int OcclusionInteriorBlackStrengthId = Shader.PropertyToID("_OcclusionInteriorBlackStrength");
 
     [Header("References")]
     [SerializeField] private Camera sourceCamera;
@@ -35,6 +37,8 @@ public sealed class CameraOcclusionCutoutFader : MonoBehaviour
     [SerializeField] private float fadedValue;
     [SerializeField] private float cutoutRadius = 4f;
     [SerializeField] private float cutoutSoftness = 1.5f;
+    [SerializeField, Range(0f, 1f)] private float cutoutVerticalInfluence = 1f;
+    [SerializeField, Range(0f, 1f)] private float occlusionInteriorBlackStrength = 0.2f;
     [SerializeField] private float fadeSpeed = 8f;
     [SerializeField] private Vector3 cutoutCenterOffset;
 
@@ -75,6 +79,8 @@ public sealed class CameraOcclusionCutoutFader : MonoBehaviour
         rendererCacheRefreshInterval = Mathf.Max(0.1f, rendererCacheRefreshInterval);
         cutoutRadius = Mathf.Max(0f, cutoutRadius);
         cutoutSoftness = Mathf.Max(0.01f, cutoutSoftness);
+        cutoutVerticalInfluence = Mathf.Clamp01(cutoutVerticalInfluence);
+        occlusionInteriorBlackStrength = Mathf.Clamp01(occlusionInteriorBlackStrength);
         fadeSpeed = Mathf.Max(0f, fadeSpeed);
     }
 
@@ -464,6 +470,8 @@ public sealed class CameraOcclusionCutoutFader : MonoBehaviour
         propertyBlock.SetFloat(CutoutRadiusId, Mathf.Max(0f, cutoutRadius));
         propertyBlock.SetFloat(CutoutSoftnessId, Mathf.Max(0.01f, cutoutSoftness));
         propertyBlock.SetFloat(CutoutStrengthId, clampedStrength);
+        propertyBlock.SetFloat(CutoutVerticalInfluenceId, Mathf.Clamp01(cutoutVerticalInfluence));
+        propertyBlock.SetFloat(OcclusionInteriorBlackStrengthId, Mathf.Clamp01(occlusionInteriorBlackStrength));
         renderer.SetPropertyBlock(propertyBlock);
     }
 

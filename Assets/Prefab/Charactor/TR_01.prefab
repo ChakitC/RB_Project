@@ -98,7 +98,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CurrentBackFaceOutlineMethod: 0
-  BackfaceOutlineColor: {r: 0, g: 0, b: 0, a: 0}
+  BackfaceOutlineColor: {r: 0, g: 0, b: 0, a: 1}
   BackFaceOutlineWidth: 3.4
   BackFaceOutlineFadeStartEnd: {x: 50, y: 50}
   ScaleWidthAsScreenSpaceOutline: 1

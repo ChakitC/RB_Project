@@ -227,8 +227,10 @@ MonoBehaviour:
   rendererBoundsPadding: 0
   rendererCacheRefreshInterval: 1
   fadedValue: 0
-  cutoutRadius: 56.3
-  cutoutSoftness: 22.4
+  cutoutRadius: 24
+  cutoutSoftness: 8
+  cutoutVerticalInfluence: 1
+  occlusionInteriorBlackStrength: 0.15
   fadeSpeed: 1.5
   cutoutCenterOffset: {x: 0, y: 0, z: 0}
   drawOccluderDebug: 1

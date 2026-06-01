@@ -20,6 +20,9 @@ public sealed class SkillChainDef : ScriptableObject
     public bool oncePerAttackId = true;
     public bool requireOwnerAlive = true;
 
+    [Header("Cost")]
+    [Min(0f)] public float commandPointCost = 1f;
+
     [Header("Execution")]
     [FormerlySerializedAs("sequence")]
     public ChainAttackSequenceDef chainSequence;
@@ -30,5 +33,6 @@ public sealed class SkillChainDef : ScriptableObject
     public bool debugLogging;
 
     public string RuntimeId => string.IsNullOrWhiteSpace(chainId) ? name : chainId;
+    public float ClampedCommandPointCost => Mathf.Max(0f, commandPointCost);
     public bool HasExecutionConfigured => chainSequence != null && chainSequence.HasAnySteps;
 }

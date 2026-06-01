@@ -224,6 +224,7 @@ GameObject:
   - component: {fileID: 5662836804660615994}
   - component: {fileID: 176282264514133012}
   - component: {fileID: 7060247235419904634}
+  - component: {fileID: 2693384276896790355}
   m_Layer: 9
   m_Name: Weapone_System
   m_TagString: Untagged
@@ -295,12 +296,21 @@ MonoBehaviour:
     subAffixes: []
     shotCounter: 0
     currentMagazine: -1
+    currentReserveAmmo: -1
+    reserveAmmoInitialized: 0
+    upgradeLevel: 0
+    upgradeTier: 0
+    upgradeExp: 0
+    unlockedUpgradeMilestoneIds: []
   firePoint: {fileID: 1692327919204438350}
   gunType: 0
   damage: 0
   fireRate: 0
   magazine: 0
   maxMagazine: 0
+  reserveAmmo: 0
+  maxReserveAmmo: 0
+  infiniteReserveAmmo: 0
   reloadTime: 0
   critRate: 0
   critMultiplier: 0
@@ -313,6 +323,23 @@ MonoBehaviour:
   burstCount: 0
   burstInterval: 0
   isFiring: 0
+--- !u!114 &2693384276896790355
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1686298089897785156}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7dfc967edea74f59b763c50d23d87e9d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  weaponSystem: {fileID: 0}
+  statsHub: {fileID: 0}
+  statusEffectController: {fileID: 0}
+  upgradeCurveOverride: {fileID: 0}
 --- !u!1 &2608424597002485207
 GameObject:
   m_ObjectHideFlags: 0
@@ -408,6 +435,7 @@ MonoBehaviour:
   combatEventBus: {fileID: 0}
   perfectDashSlowScale: 0.2
   perfectDashSlowDuration: 0.35
+  perfectDashFreeAmmoDuration: 0.35
   perfectDodgeThreatLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -427,12 +455,20 @@ MonoBehaviour:
   agent: {fileID: 3160894530039119532}
   stateHub: {fileID: 6926906578778700563}
   ctx: {fileID: 4463375380434640548}
+  characterController: {fileID: 0}
   rampUpTime: 0.12
   rampDownTime: 0.18
   move01Start: 0.1
   move01Stop: 0.05
   enterDelay: 0.06
   exitDelay: 0.1
+  separateCompanionFromPlayer: 1
+  playerKeepoutRadius: 0.65
+  separationMargin: 0.1
+  separationSpeed: 12
+  separationPauseDuration: 0.1
+  separationNavMeshSampleRadius: 0.75
+  playerResolveInterval: 0.5
   agentismoving: 0
 --- !u!114 &1436004007804140760
 MonoBehaviour:
@@ -807,6 +843,7 @@ MonoBehaviour:
   statusEffectController: {fileID: 8475986916130434765}
   deactivateOwnerOnSkillExit: 0
   chainPlaybackWatchdogGraceSeconds: 0.15
+  useRootMotionForChainPlayback: 0
   locomotionLayerIndex: 0
   actionLayerIndex: 1
 --- !u!114 &2016865547201611848
@@ -1061,6 +1098,8 @@ MonoBehaviour:
   rb: {fileID: 991524704810201650}
   cc: {fileID: 8333949894183582049}
   TargetInfo: {fileID: 2596423232265115448}
+  Equipment: {fileID: 0}
+  AccessoryLoadout: {fileID: 0}
   WeaponSystem: {fileID: 7060247235419904634}
   AnimBrain: {fileID: 2022206065969024217}
   AnimDriver: {fileID: 2016865547201611848}
@@ -1068,6 +1107,7 @@ MonoBehaviour:
   CharacterLoad: {fileID: 0}
   Visual: {fileID: 1879165679072882653}
   UIManager: {fileID: 0}
+  ColliderRefs: {fileID: 0}
   levelSystem: {fileID: 802596624525694837}
   HealthSystem: {fileID: 4372935134327282892}
   StaminaSystem: {fileID: 3620542892003728669}

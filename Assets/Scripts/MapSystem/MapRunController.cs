@@ -328,10 +328,21 @@ public class MapRunController : MonoBehaviour
 
         Vector3 previousPlayerPosition = player.transform.position;
         Transform spawn = room.GetPlayerSpawnPoint(entranceDirection);
-        if (!WarpCharacter(player, spawn.position, spawn.rotation))
-            return false;
+        Transform partyRoot = ResolvePartyWarpRoot(player);
+        Vector3 delta;
+        if (partyRoot != null && partyRoot != player.transform)
+        {
+            if (!WarpPartyRootToPlayerSpawn(player, partyRoot, spawn.position, spawn.rotation, out delta))
+                return false;
+        }
+        else
+        {
+            if (!WarpCharacter(player, spawn.position, spawn.rotation))
+                return false;
 
-        Vector3 delta = player.transform.position - previousPlayerPosition;
+            delta = player.transform.position - previousPlayerPosition;
+        }
+
         CharacteContext[] contexts = FindObjectsByType<CharacteContext>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         for (int i = 0; i < contexts.Length; i++)
         {
@@ -339,10 +350,175 @@ public class MapRunController : MonoBehaviour
             if (ctx == null || ctx == player || ctx.TargetIdentity != AITargetIdentity.Companion)
                 continue;
 
+            if (partyRoot != null && ctx.transform.IsChildOf(partyRoot))
+                continue;
+
             WarpCharacter(ctx, ctx.transform.position + delta, spawn.rotation);
         }
 
         return true;
+    }
+
+    Transform ResolvePartyWarpRoot(CharacteContext player)
+    {
+        if (player == null)
+            return null;
+
+        Transform current = player.transform.parent;
+        while (current != null)
+        {
+            if (IsPartyWarpRootCandidate(current, player))
+                return current;
+
+            current = current.parent;
+        }
+
+        return player.transform;
+    }
+
+    bool IsPartyWarpRootCandidate(Transform candidate, CharacteContext player)
+    {
+        if (candidate == null || player == null)
+            return false;
+
+        if (ContainsIgnoreCase(candidate.name, "Squad") ||
+            ContainsIgnoreCase(candidate.name, "Party"))
+        {
+            return true;
+        }
+
+        CharacteContext[] contexts = candidate.GetComponentsInChildren<CharacteContext>(true);
+        bool hasPlayer = false;
+        bool hasCompanion = false;
+        bool hasEnemy = false;
+
+        for (int i = 0; i < contexts.Length; i++)
+        {
+            CharacteContext ctx = contexts[i];
+            if (ctx == null)
+                continue;
+
+            AITargetIdentity identity = ctx.TargetIdentity;
+            if (ctx == player || identity == AITargetIdentity.Player)
+                hasPlayer = true;
+            else if (identity == AITargetIdentity.Companion)
+                hasCompanion = true;
+            else if (identity == AITargetIdentity.Enemy)
+                hasEnemy = true;
+        }
+
+        return hasPlayer && hasCompanion && !hasEnemy;
+    }
+
+    static bool ContainsIgnoreCase(string value, string search)
+    {
+        return !string.IsNullOrEmpty(value) &&
+               !string.IsNullOrEmpty(search) &&
+               value.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    bool WarpPartyRootToPlayerSpawn(
+        CharacteContext player,
+        Transform partyRoot,
+        Vector3 position,
+        Quaternion rotation,
+        out Vector3 delta)
+    {
+        delta = Vector3.zero;
+        if (player == null || partyRoot == null)
+            return false;
+
+        player.ResolveReferences();
+
+        NavMeshAgent playerAgent = player.GetComponent<NavMeshAgent>();
+        if (playerAgent == null)
+            playerAgent = player.GetComponentInChildren<NavMeshAgent>(true);
+
+        if (!TryResolveSafeWarpPosition(player, playerAgent, position, rotation, out Vector3 safePosition, out Collider blocker))
+        {
+            WarnWarpBlocked(player, position, blocker);
+            Physics.SyncTransforms();
+            return false;
+        }
+
+        CharacterController[] controllers = partyRoot.GetComponentsInChildren<CharacterController>(true);
+        bool[] controllerEnabledStates = DisableControllers(controllers);
+
+        try
+        {
+            Vector3 previousPlayerPosition = player.transform.position;
+            SetRootPoseForChildPose(partyRoot, player.transform, safePosition, rotation);
+            delta = player.transform.position - previousPlayerPosition;
+            SyncWarpedAgentsUnderRoot(partyRoot);
+        }
+        finally
+        {
+            RestoreControllers(controllers, controllerEnabledStates);
+            Physics.SyncTransforms();
+        }
+
+        return true;
+    }
+
+    static void SetRootPoseForChildPose(
+        Transform root,
+        Transform child,
+        Vector3 childWorldPosition,
+        Quaternion childWorldRotation)
+    {
+        if (root == null || child == null)
+            return;
+
+        Quaternion childLocalRotationToRoot = Quaternion.Inverse(root.rotation) * child.rotation;
+        root.rotation = childWorldRotation * Quaternion.Inverse(childLocalRotationToRoot);
+        root.position += childWorldPosition - child.position;
+    }
+
+    bool[] DisableControllers(CharacterController[] controllers)
+    {
+        if (controllers == null)
+            return Array.Empty<bool>();
+
+        bool[] enabledStates = new bool[controllers.Length];
+        for (int i = 0; i < controllers.Length; i++)
+        {
+            CharacterController controller = controllers[i];
+            if (controller == null)
+                continue;
+
+            enabledStates[i] = controller.enabled;
+            if (controller.enabled)
+                controller.enabled = false;
+        }
+
+        return enabledStates;
+    }
+
+    static void RestoreControllers(CharacterController[] controllers, bool[] enabledStates)
+    {
+        if (controllers == null || enabledStates == null)
+            return;
+
+        int count = Mathf.Min(controllers.Length, enabledStates.Length);
+        for (int i = 0; i < count; i++)
+        {
+            if (controllers[i] != null)
+                controllers[i].enabled = enabledStates[i];
+        }
+    }
+
+    void SyncWarpedAgentsUnderRoot(Transform root)
+    {
+        if (root == null)
+            return;
+
+        NavMeshAgent[] agents = root.GetComponentsInChildren<NavMeshAgent>(true);
+        for (int i = 0; i < agents.Length; i++)
+        {
+            NavMeshAgent agent = agents[i];
+            if (agent != null && agent.enabled)
+                TryWarpAgent(agent, agent.transform.position);
+        }
     }
 
     CharacteContext ResolvePlayerContext()

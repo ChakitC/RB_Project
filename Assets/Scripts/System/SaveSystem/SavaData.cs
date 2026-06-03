@@ -20,12 +20,6 @@ public class PlayerInventoryData
 }
 
 [Serializable]
-public class PlayerWeaponData
-{
-    public string equippedWeaponInstanceId;
-}
-
-[Serializable]
 public class CharacterEquipmentSaveData
 {
     public string ownerId;

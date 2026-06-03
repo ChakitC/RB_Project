@@ -608,8 +608,8 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
 
         Transform firePoint = _firePoint ? _firePoint : null;
 
-        if (!firePoint && _weaponSystem && IsValidExternalFirePoint(_weaponSystem.firePoint))
-            firePoint = _weaponSystem.firePoint;
+        if (!firePoint && _weaponSystem && IsValidExternalFirePoint(_weaponSystem.FirePoint))
+            firePoint = _weaponSystem.FirePoint;
 
         if (!firePoint)
         {
@@ -618,7 +618,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         }
 
         if (!firePoint && _weaponSystem)
-            firePoint = _weaponSystem.firePoint;
+            firePoint = _weaponSystem.FirePoint;
 
         if (!firePoint)
             return null;
@@ -628,8 +628,8 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         if (_defaultFirePointParent == null)
             _defaultFirePointParent = firePoint.parent ? firePoint.parent : transform;
 
-        if (_weaponSystem && _weaponSystem.firePoint != firePoint)
-            _weaponSystem.firePoint = firePoint;
+        if (_weaponSystem && _weaponSystem.FirePoint != firePoint)
+            _weaponSystem.BindFirePoint(firePoint);
 
         return firePoint;
     }

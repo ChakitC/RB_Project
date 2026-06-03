@@ -879,10 +879,6 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         SyncEquippedWeaponIdFromEquipment();
 
         data.inventory = ToData();
-        if (data.weapon == null)
-            data.weapon = new PlayerWeaponData();
-
-        data.weapon.equippedWeaponInstanceId = equippedWeaponInstanceId;
         CharacterEquipment.WriteSceneEquipmentToSave(data, this);
         AccessoryLoadout.WriteSceneLoadoutsToSave(data, this);
     }
@@ -905,18 +901,47 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         else
             EnsureSlotCount();
 
-        string legacyEquippedWeaponId = data.weapon != null ? data.weapon.equippedWeaponInstanceId : equippedWeaponInstanceId;
-        SetEquippedWeaponInstanceId(legacyEquippedWeaponId);
+        SetEquippedWeaponInstanceId(ResolveSavedPlayerWeaponInstanceId(data));
 
         ForceRefreshCurrencyUI();
         EnsureDefaultWeaponInstance();
         ApplyEquippedWeaponIfPossible();
 
-        string equipmentPlayerWeaponId = CharacterEquipment.ApplySceneEquipmentFromInventory(data, this, equippedWeaponInstanceId);
+        string equipmentPlayerWeaponId = CharacterEquipment.ApplySceneEquipmentFromInventory(data, this);
         if (!string.IsNullOrWhiteSpace(equipmentPlayerWeaponId))
             SetEquippedWeaponInstanceId(equipmentPlayerWeaponId);
 
         AccessoryLoadout.ApplySceneLoadoutsFromInventory(data, this);
+    }
+
+    string ResolveSavedPlayerWeaponInstanceId(GameSaveData data)
+    {
+        string partyLeaderOwnerId = ResolvePartyLeaderOwnerId(data);
+        if (CharacterEquipment.TryFindEquipmentEntry(data?.equipment, partyLeaderOwnerId, out string savedInstanceId) &&
+            !string.IsNullOrWhiteSpace(savedInstanceId))
+        {
+            return savedInstanceId;
+        }
+
+        ResolveReferences();
+
+        string equipmentOwnerId = equipment != null ? equipment.OwnerId : null;
+        if (!string.Equals(equipmentOwnerId, partyLeaderOwnerId, StringComparison.Ordinal) &&
+            CharacterEquipment.TryFindEquipmentEntry(data?.equipment, equipmentOwnerId, out savedInstanceId) &&
+            !string.IsNullOrWhiteSpace(savedInstanceId))
+        {
+            return savedInstanceId;
+        }
+
+        return equippedWeaponInstanceId;
+    }
+
+    static string ResolvePartyLeaderOwnerId(GameSaveData data)
+    {
+        if (data?.party?.partyIds == null || data.party.partyIds.Count == 0)
+            return null;
+
+        return CharacterEquipment.BuildCharacterOwnerId(data.party.partyIds[0]);
     }
 
     void InitializeInventorySystem()

@@ -28,6 +28,14 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
     readonly Dictionary<ulong, HashSet<RuleExecutionKey>> _executionsByChain = new();
     readonly Dictionary<ulong, double> _chainLastSeenTime = new();
     readonly List<ulong> _chainCleanupBuffer = new();
+    readonly List<PassiveEventSourceRequest> _eventSourceRequests = new();
+    readonly List<PassiveEventSourceRequest> _eventSourceKindRequests = new();
+    readonly HashSet<PassiveEventSourceKind> _requiredEventSourceKinds = new();
+    readonly Dictionary<PassiveEventSourceKind, PassiveEventSource> _activeEventSources = new();
+    readonly HashSet<PassiveEventSource> _autoAddedEventSources = new();
+    readonly List<PassiveEventSourceKind> _eventSourceKindCleanupBuffer = new();
+
+    public event Action StatModifiersChanged;
 
     long _nextIndependentModifierId;
     bool _subscribed;
@@ -86,11 +94,12 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
     void OnDisable()
     {
         UnsubscribeFromEvents();
+        ReleaseAllOptionalEventSources();
         UnloadCustomPassives();
         _activeModifiers.Clear();
         _executionsByChain.Clear();
         _chainLastSeenTime.Clear();
-        statsHub?.MarkDirty();
+        NotifyStatModifiersChanged();
     }
 
     void Update()
@@ -98,9 +107,18 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         double now = Time.timeAsDouble;
 
         if (CleanupExpiredModifiers(now))
-            statsHub?.MarkDirty();
+            NotifyStatModifiersChanged();
 
         CleanupOldChainState(now);
+    }
+
+    void NotifyStatModifiersChanged()
+    {
+        var handler = StatModifiersChanged;
+        if (handler != null)
+            handler.Invoke();
+        else
+            statsHub?.MarkDirty();
     }
 
     public void RefreshPassiveLoadout()
@@ -129,8 +147,9 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 definition.behaviors[j]?.OnEquipped(this, definition);
         }
 
+        RefreshOptionalEventSources();
         statsHub?.RebuildModifierProviders();
-        statsHub?.MarkDirty();
+        NotifyStatModifiersChanged();
     }
 
     bool TryAddPassivesFromSkillManager()
@@ -366,6 +385,9 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             if (!MatchesOriginFilter(rule.originFilter, context.Origin))
                 continue;
 
+            if (!MatchesEventSource(rule, context))
+                continue;
+
             if (rule.requireTarget && context.Target == null)
                 continue;
 
@@ -428,7 +450,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             return;
 
         if (targetController.TryApplyRuntimeModifier(action, sourceId, now))
-            targetController.statsHub?.MarkDirty();
+            targetController.NotifyStatModifiersChanged();
     }
 
     void ApplyStatusEffectAction(
@@ -456,6 +478,172 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             PassiveEventOrigin.Passive,
             passiveId,
             ruleId);
+    }
+
+    void RefreshOptionalEventSources()
+    {
+        _eventSourceRequests.Clear();
+        _requiredEventSourceKinds.Clear();
+
+        CollectRequiredEventSourceRequests(_eventSourceRequests);
+
+        for (int i = 0; i < _eventSourceRequests.Count; i++)
+        {
+            var request = _eventSourceRequests[i];
+            if (request.IsValid)
+                _requiredEventSourceKinds.Add(request.Kind);
+        }
+
+        foreach (PassiveEventSourceKind kind in _requiredEventSourceKinds)
+        {
+            PassiveEventSource source = EnsureEventSource(kind);
+            if (source == null)
+                continue;
+
+            _eventSourceKindRequests.Clear();
+            for (int i = 0; i < _eventSourceRequests.Count; i++)
+            {
+                var request = _eventSourceRequests[i];
+                if (request.Kind == kind && request.IsValid)
+                    _eventSourceKindRequests.Add(request);
+            }
+
+            source.ApplyRequests(ctx, combatEventBus, _eventSourceKindRequests);
+        }
+
+        _eventSourceKindRequests.Clear();
+        ReleaseUnusedOptionalEventSources();
+    }
+
+    void CollectRequiredEventSourceRequests(List<PassiveEventSourceRequest> buffer)
+    {
+        if (buffer == null)
+            return;
+
+        for (int i = 0; i < _triggeredPassives.Count; i++)
+        {
+            TriggeredPassiveRuntime runtime = _triggeredPassives[i];
+            if (runtime?.Definition == null || runtime.Definition.rules == null)
+                continue;
+
+            for (int j = 0; j < runtime.Definition.rules.Count; j++)
+            {
+                TriggeredPassiveRule rule = runtime.Definition.rules[j];
+                if (rule == null || rule.eventSourceKind == PassiveEventSourceKind.None)
+                    continue;
+
+                var request = new PassiveEventSourceRequest(
+                    rule.eventSourceKind,
+                    rule.trigger,
+                    rule.RuntimeEventSourceId,
+                    rule.eventSourceFloatValue,
+                    rule.eventSourceIntValue);
+
+                if (request.IsValid)
+                    buffer.Add(request);
+            }
+        }
+    }
+
+    PassiveEventSource EnsureEventSource(PassiveEventSourceKind kind)
+    {
+        if (kind == PassiveEventSourceKind.None)
+            return null;
+
+        if (_activeEventSources.TryGetValue(kind, out PassiveEventSource activeSource) && activeSource != null)
+            return activeSource;
+
+        PassiveEventSource source = FindEventSource(kind);
+        if (source == null)
+        {
+            Type sourceType = PassiveEventSourceRegistry.GetSourceType(kind);
+            if (sourceType == null || !typeof(PassiveEventSource).IsAssignableFrom(sourceType))
+                return null;
+
+            GameObject host = ctx != null ? ctx.gameObject : gameObject;
+            source = host.AddComponent(sourceType) as PassiveEventSource;
+            if (source != null)
+                _autoAddedEventSources.Add(source);
+        }
+
+        if (source != null)
+            _activeEventSources[kind] = source;
+
+        return source;
+    }
+
+    PassiveEventSource FindEventSource(PassiveEventSourceKind kind)
+    {
+        PassiveEventSource[] sources = ctx != null
+            ? ctx.GetComponentsInChildren<PassiveEventSource>(true)
+            : GetComponentsInChildren<PassiveEventSource>(true);
+
+        for (int i = 0; i < sources.Length; i++)
+        {
+            PassiveEventSource source = sources[i];
+            if (source != null && source.Kind == kind)
+                return source;
+        }
+
+        return null;
+    }
+
+    void ReleaseUnusedOptionalEventSources()
+    {
+        _eventSourceKindCleanupBuffer.Clear();
+
+        foreach (var pair in _activeEventSources)
+        {
+            if (_requiredEventSourceKinds.Contains(pair.Key))
+                continue;
+
+            PassiveEventSource source = pair.Value;
+            ReleaseOptionalEventSource(source);
+            _eventSourceKindCleanupBuffer.Add(pair.Key);
+        }
+
+        for (int i = 0; i < _eventSourceKindCleanupBuffer.Count; i++)
+            _activeEventSources.Remove(_eventSourceKindCleanupBuffer[i]);
+
+        _eventSourceKindCleanupBuffer.Clear();
+    }
+
+    void ReleaseAllOptionalEventSources()
+    {
+        foreach (var pair in _activeEventSources)
+            ReleaseOptionalEventSource(pair.Value);
+
+        _activeEventSources.Clear();
+        _autoAddedEventSources.Clear();
+        _requiredEventSourceKinds.Clear();
+        _eventSourceRequests.Clear();
+        _eventSourceKindRequests.Clear();
+        _eventSourceKindCleanupBuffer.Clear();
+    }
+
+    void ReleaseOptionalEventSource(PassiveEventSource source)
+    {
+        if (source == null)
+            return;
+
+        source.ClearRequests();
+
+        if (!_autoAddedEventSources.Contains(source))
+            return;
+
+        _autoAddedEventSources.Remove(source);
+        DestroyOptionalEventSource(source);
+    }
+
+    static void DestroyOptionalEventSource(PassiveEventSource source)
+    {
+        if (source == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(source);
+        else
+            DestroyImmediate(source);
     }
 
     void AddPassivesFromList(List<PassiveDefinition> passives)
@@ -641,6 +829,14 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             PassiveOriginFilter.Any => true,
             _ => false
         };
+    }
+
+    bool MatchesEventSource(TriggeredPassiveRule rule, PassiveEventContext context)
+    {
+        if (rule == null || rule.eventSourceKind == PassiveEventSourceKind.None)
+            return true;
+
+        return string.Equals(context.SourceId, rule.RuntimeEventSourceId, StringComparison.Ordinal);
     }
 
     GameObject ResolveTargetObject(PassiveTargetSelector selector, PassiveEventContext context)

@@ -22,6 +22,45 @@ public readonly struct StaggerPayload
     }
 }
 
+public readonly struct DamageResult
+{
+    public DamageResult(
+        IDamageable target,
+        GameObject attacker,
+        float requestedDamage,
+        float appliedDamage,
+        bool wasPrevented,
+        bool wasAliveBefore,
+        bool isAliveAfter)
+    {
+        Target = target;
+        Attacker = attacker;
+        RequestedDamage = SanitizeNonNegative(requestedDamage);
+        AppliedDamage = SanitizeNonNegative(appliedDamage);
+        WasPrevented = wasPrevented;
+        WasAliveBefore = wasAliveBefore;
+        IsAliveAfter = isAliveAfter;
+    }
+
+    public IDamageable Target { get; }
+    public GameObject Attacker { get; }
+    public float RequestedDamage { get; }
+    public float AppliedDamage { get; }
+    public bool WasPrevented { get; }
+    public bool WasAliveBefore { get; }
+    public bool IsAliveAfter { get; }
+    public bool Applied => AppliedDamage > 0f;
+    public bool Killed => WasAliveBefore && Applied && !IsAliveAfter;
+
+    static float SanitizeNonNegative(float value)
+    {
+        if (float.IsNaN(value) || float.IsInfinity(value))
+            return 0f;
+
+        return Mathf.Max(0f, value);
+    }
+}
+
 public readonly struct DamageContext
 {
     public DamageContext(

@@ -22,6 +22,10 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
     [SerializeField] private float verticalOffset = 0.65f;
     [SerializeField, Min(0f)] private float scatterRadius = 0.45f;
 
+    [Header("Drop Arc")]
+    [SerializeField] private bool useDropArcMotion;
+    [SerializeField] private PickupDropArcSettings dropArcSettings = new PickupDropArcSettings();
+
     [Header("Toss")]
     [SerializeField] private bool applyRigidbodyImpulse = true;
     [SerializeField, Min(0f)] private float horizontalImpulse = 1.6f;
@@ -78,17 +82,18 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
     {
         int count = Mathf.Max(1, dropCount);
         Vector3 origin = ResolveSpawnOrigin(sourceRoot);
+        bool useDropArc = ShouldUseDropArcMotion();
+        float burstAngleOffset = useDropArc ? dropArcSettings.CreateBurstAngleOffset() : 0f;
 
         for (int i = 0; i < count; i++)
         {
-            Vector3 scatter = Random.insideUnitSphere;
-            scatter.y = 0f;
-            if (scatter.sqrMagnitude > 0.0001f)
-                scatter = scatter.normalized * Random.Range(0f, scatterRadius);
+            Vector3 spawnPosition = useDropArc
+                ? dropArcSettings.ResolveStartPosition(origin)
+                : ResolveScatteredSpawnPosition(origin);
 
             GameObject pickupObject = Object.Instantiate(
                 pickupPrefab,
-                origin + scatter,
+                spawnPosition,
                 ResolveSpawnRotation(sourceRoot));
 
             SkillPickup pickup = pickupObject.GetComponent<SkillPickup>();
@@ -109,7 +114,10 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
                 null,
                 null));
 
-            ApplyImpulse(pickupObject, sourceRoot);
+            if (useDropArc)
+                PlayDropArc(pickupObject, origin, i, count, burstAngleOffset);
+            else
+                ApplyImpulse(pickupObject, sourceRoot);
         }
     }
 
@@ -158,6 +166,37 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
             return sourceRoot.rotation;
 
         return Quaternion.LookRotation(forward.normalized, Vector3.up);
+    }
+
+    Vector3 ResolveScatteredSpawnPosition(Vector3 origin)
+    {
+        Vector3 scatter = Random.insideUnitSphere;
+        scatter.y = 0f;
+        if (scatter.sqrMagnitude > 0.0001f)
+            scatter = scatter.normalized * Random.Range(0f, scatterRadius);
+
+        return origin + scatter;
+    }
+
+    bool ShouldUseDropArcMotion()
+    {
+        return useDropArcMotion && dropArcSettings != null && dropArcSettings.Enabled;
+    }
+
+    void PlayDropArc(GameObject pickupObject, Vector3 origin, int dropIndex, int dropCount, float burstAngleOffset)
+    {
+        if (pickupObject == null || !ShouldUseDropArcMotion())
+            return;
+
+        var arcMotion = pickupObject.GetComponent<PickupDropArcMotion>();
+        if (arcMotion == null)
+            arcMotion = pickupObject.AddComponent<PickupDropArcMotion>();
+
+        Vector3 startPosition = dropArcSettings.ResolveStartPosition(origin);
+        Vector3 landingPosition = dropArcSettings.ResolveLandingPosition(origin, dropIndex, dropCount, burstAngleOffset);
+        float delay = dropArcSettings.ResolveDelay(dropIndex);
+
+        arcMotion.Play(startPosition, landingPosition, dropArcSettings.Duration, dropArcSettings.ArcHeight, delay);
     }
 
     void ApplyImpulse(GameObject pickupObject, Transform sourceRoot)

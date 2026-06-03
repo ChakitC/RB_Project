@@ -15,13 +15,34 @@ MonoBehaviour:
   procChance: 0.08
   internalCooldownSeconds: 1.5
   originFilter: 0
-  pickupPrefab: {fileID: 100100000, guid: 288685abcba1c654694dc5ef43192bc4, type: 3}
+  pickupPrefab: {fileID: 3692556497259945272, guid: ba49bcb09baf7524fa3af49b0ad4bcaa, type: 3}
   overrideCollectorRule: 1
   collectorRule: 5
   dropCount: 1
   backOffset: 0.35
   verticalOffset: 0.65
   scatterRadius: 0.45
-  applyRigidbodyImpulse: 1
+  useDropArcMotion: 1
+  dropArcSettings:
+    enabled: 1
+    startHeight: 0.35
+    minRadius: 0.8
+    maxRadius: 1.45
+    duration: 0.5
+    arcHeight: 1.15
+    staggerDelay: 0.03
+    angleJitterDegrees: 18
+    landingAttempts: 8
+    landingHeightOffset: 0.06
+    groundMask:
+      serializedVersion: 2
+      m_Bits: 4294967295
+    groundProbeHeight: 3
+    groundProbeDistance: 8
+    terrainClearanceMask:
+      serializedVersion: 2
+      m_Bits: 131072
+    terrainClearanceRadius: 0.28
+  applyRigidbodyImpulse: 0
   horizontalImpulse: 1.6
   upwardImpulse: 2.2

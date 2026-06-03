@@ -2,7 +2,7 @@ using UnityEngine;
 
 public interface IDamageable
 {
-    void TakeDamage(in DamageContext damageContext);
+    DamageResult TakeDamage(in DamageContext damageContext);
     
     bool IsAlive { get; }
     
@@ -15,7 +15,7 @@ public interface IHasArmor
 
 public static class DamageableExtensions
 {
-    public static void TakeDamage(
+    public static DamageResult TakeDamage(
         this IDamageable damageable,
         float finalDamage,
         GameObject attacker = null,
@@ -30,7 +30,7 @@ public static class DamageableExtensions
         StaggerPayload stagger = default)
     {
         if (damageable == null)
-            return;
+            return default;
 
         string resolvedSourceId = !string.IsNullOrWhiteSpace(sourceId)
             ? sourceId
@@ -51,7 +51,7 @@ public static class DamageableExtensions
             knockback,
             stagger);
 
-        damageable.TakeDamage(in damageContext);
+        return damageable.TakeDamage(in damageContext);
     }
 }
 

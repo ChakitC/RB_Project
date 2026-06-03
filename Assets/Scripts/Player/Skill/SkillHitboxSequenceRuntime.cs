@@ -558,10 +558,12 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             }
 
             KnockbackData knockback = BuildKnockback(step, hitPoint);
-            bool applied = ApplyResolvedDamage(step, target, finalDamage, hitPoint, knockback);
-            if (!applied)
+            DamageResult result = ApplyResolvedDamage(step, target, finalDamage, hitPoint, knockback);
+            if (!result.Applied)
             {
-                UnregisterHit(step, targetKey);
+                if (!result.WasPrevented)
+                    UnregisterHit(step, targetKey);
+
                 continue;
             }
 
@@ -704,13 +706,10 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             : default;
     }
 
-    bool ApplyResolvedDamage(StepRuntimeState step, IDamageable target, float finalDamage, Vector3 hitPoint, KnockbackData knockback)
+    DamageResult ApplyResolvedDamage(StepRuntimeState step, IDamageable target, float finalDamage, Vector3 hitPoint, KnockbackData knockback)
     {
         if (target == null || finalDamage <= 0f || !target.IsAlive)
-            return false;
-
-        if (_payload != null && _payload.ShowDamageNumbers && VfxSpawner.Instance != null)
-            VfxSpawner.Instance.SpawnDamageNumber(hitPoint, finalDamage);
+            return default;
 
         bool wasAliveBeforeDamage = target.IsAlive;
         GameObject attacker = _sourceObject != null ? _sourceObject : gameObject;
@@ -725,9 +724,15 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             knockback: knockback,
             stagger: BuildStaggerPayload(step));
 
-        target.TakeDamage(in damageContext);
-        NotifyOwnerCombatTriggers(target, finalDamage, wasAliveBeforeDamage);
-        return true;
+        DamageResult result = target.TakeDamage(in damageContext);
+        if (!result.Applied)
+            return result;
+
+        if (_payload != null && _payload.ShowDamageNumbers && VfxSpawner.Instance != null)
+            VfxSpawner.Instance.SpawnDamageNumber(hitPoint, result.AppliedDamage);
+
+        NotifyOwnerCombatTriggers(target, result.AppliedDamage, wasAliveBeforeDamage, result.Killed);
+        return result;
     }
 
     StaggerPayload BuildStaggerPayload(StepRuntimeState step)
@@ -741,7 +746,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         return new StaggerPayload(staggerPower, 1f, _sourceId);
     }
 
-    void NotifyOwnerCombatTriggers(IDamageable target, float finalDamage, bool wasAliveBeforeDamage)
+    void NotifyOwnerCombatTriggers(IDamageable target, float appliedDamage, bool wasAliveBeforeDamage, bool killed)
     {
         if (target == null || !wasAliveBeforeDamage)
             return;
@@ -753,17 +758,17 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
         if (_combatEventBus != null)
         {
-            PassiveEventContext hitContext = CreateOwnerEventContext(PassiveEventType.Hit, targetObject, finalDamage);
+            PassiveEventContext hitContext = CreateOwnerEventContext(PassiveEventType.Hit, targetObject, appliedDamage);
             _combatEventBus.Publish(hitContext);
         }
 
-        if (!target.IsAlive)
+        if (killed)
         {
             _statusEffectController?.NotifyTrigger(EffectTriggerType.OnKill, targetObject);
 
             if (_combatEventBus != null)
             {
-                PassiveEventContext killContext = CreateOwnerEventContext(PassiveEventType.Kill, targetObject, finalDamage);
+                PassiveEventContext killContext = CreateOwnerEventContext(PassiveEventType.Kill, targetObject, appliedDamage);
                 _combatEventBus.Publish(killContext);
             }
         }

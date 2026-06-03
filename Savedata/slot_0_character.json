@@ -87,28 +87,6 @@
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": []
             }
-        },
-        {
-            "characterId": "GR_NM01",
-            "progress": {
-                "level": 28,
-                "xp": 1525,
-                "unlocked": false,
-                "skillPoints": 0,
-                "passiveProgressInitialized": false,
-                "unlockedPassiveNodeIds": []
-            }
-        },
-        {
-            "characterId": "NB_GR_02",
-            "progress": {
-                "level": 19,
-                "xp": 333,
-                "unlocked": false,
-                "skillPoints": 0,
-                "passiveProgressInitialized": false,
-                "unlockedPassiveNodeIds": []
-            }
         }
     ]
 }

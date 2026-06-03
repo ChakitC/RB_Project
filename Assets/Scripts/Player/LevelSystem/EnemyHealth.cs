@@ -13,10 +13,10 @@ public class EnemyHealth : HealthSystem
     GameObject _lastAttacker;
     bool _xpGranted;
 
-    public override void TakeDamage(in DamageContext damageContext)
+    public override DamageResult TakeDamage(in DamageContext damageContext)
     {
         if (!IsAlive)
-            return;
+            return new DamageResult(this, damageContext.Attacker, damageContext.Damage, 0f, false, false, IsAlive);
 
         if (damageContext.Attacker != null)
             _lastAttacker = damageContext.Attacker;
@@ -27,10 +27,12 @@ public class EnemyHealth : HealthSystem
         if (meter != null && meter.IsStaggered && damageContext.Damage > 0f)
             resolvedContext = damageContext.WithDamage(damageContext.Damage * meter.DamageTakenMultiplier);
 
-        ApplyDamage(in resolvedContext);
+        DamageResult result = ApplyDamage(in resolvedContext);
 
-        if (meter != null && IsAlive && damageContext.HasStagger)
+        if (meter != null && result.Applied && result.IsAliveAfter && damageContext.HasStagger)
             meter.ApplyStagger(damageContext.Stagger, damageContext.Attacker);
+
+        return result;
     }
 
     public override void Die()

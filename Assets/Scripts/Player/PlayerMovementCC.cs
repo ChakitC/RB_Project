@@ -191,9 +191,9 @@ public class PlayerMovementCC : MonoBehaviour
 
         if (_characteContext.WeaponSystem != null)
         {
-            if (_characteContext.WeaponSystem.isAiming)
+            if (_characteContext.WeaponSystem.IsAiming)
                 targetSpeed *= aimSpeedMult;
-            if (_characteContext.WeaponSystem.isFiring)
+            if (_characteContext.WeaponSystem.IsFiringActivity)
                 targetSpeed *= fireSpeedMult;
         }
 

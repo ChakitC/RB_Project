@@ -158,9 +158,12 @@ public sealed class MeleeController : MonoBehaviour
         if (finalDamage <= 0f)
             return;
 
-        ApplyDamageToTarget(target, finalDamage, BuildKnockback(other));
-        NotifyOwnerCombatTriggers(target, finalDamage);
-        SpawnDamageNumber(other, finalDamage);
+        DamageResult result = ApplyDamageToTarget(target, finalDamage, BuildKnockback(other));
+        if (!result.Applied)
+            return;
+
+        NotifyOwnerCombatTriggers(target, result.AppliedDamage, result.Killed);
+        SpawnDamageNumber(other, result.AppliedDamage);
     }
 
     void ResolveRefs()
@@ -282,7 +285,7 @@ public sealed class MeleeController : MonoBehaviour
             armor);
     }
 
-    void ApplyDamageToTarget(IDamageable target, float finalDamage, KnockbackData knockback)
+    DamageResult ApplyDamageToTarget(IDamageable target, float finalDamage, KnockbackData knockback)
     {
         var attacker = ctx != null ? ctx.gameObject : gameObject;
         var damageContext = new DamageContext(
@@ -296,7 +299,7 @@ public sealed class MeleeController : MonoBehaviour
             knockback: knockback,
             stagger: BuildStaggerPayload());
 
-        target.TakeDamage(in damageContext);
+        return target.TakeDamage(in damageContext);
     }
 
     StaggerPayload BuildStaggerPayload()
@@ -327,7 +330,7 @@ public sealed class MeleeController : MonoBehaviour
             : default;
     }
 
-    void NotifyOwnerCombatTriggers(IDamageable target, float finalDamage)
+    void NotifyOwnerCombatTriggers(IDamageable target, float appliedDamage, bool killed)
     {
         if (target == null)
             return;
@@ -339,17 +342,17 @@ public sealed class MeleeController : MonoBehaviour
 
         if (combatEventBus != null)
         {
-            var hitContext = CreateOwnerEventContext(PassiveEventType.Hit, targetObject, finalDamage);
+            var hitContext = CreateOwnerEventContext(PassiveEventType.Hit, targetObject, appliedDamage);
             combatEventBus.Publish(hitContext);
         }
 
-        if (!target.IsAlive)
+        if (killed)
         {
             statusEffectController?.NotifyTrigger(EffectTriggerType.OnKill, targetObject);
 
             if (combatEventBus != null)
             {
-                var killContext = CreateOwnerEventContext(PassiveEventType.Kill, targetObject, finalDamage);
+                var killContext = CreateOwnerEventContext(PassiveEventType.Kill, targetObject, appliedDamage);
                 combatEventBus.Publish(killContext);
             }
         }

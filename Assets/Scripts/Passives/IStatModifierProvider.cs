@@ -1,7 +1,10 @@
+using System;
 using System.Collections.Generic;
 
 public interface IStatModifierProvider
 {
+    event Action StatModifiersChanged;
+
     void AppendStatModifiers(List<RuntimeStatModifier> buffer);
 }
 

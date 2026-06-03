@@ -239,7 +239,7 @@ public class CharacterEquipment : MonoBehaviour
         if (!string.IsNullOrWhiteSpace(characterOwnerId))
             return characterOwnerId;
 
-        return ResolveLegacyOwnerId();
+        return null;
     }
 
     string ResolveCharacterOwnerId()
@@ -248,43 +248,12 @@ public class CharacterEquipment : MonoBehaviour
         return BuildCharacterOwnerId(ctx != null && ctx.baseStats != null ? ctx.baseStats.characterId : null);
     }
 
-    string ResolveLegacyOwnerId()
+    bool TryFindSavedEquipmentEntry(EquipmentSaveData data, out string instanceId)
     {
-        ResolveReferences();
+        instanceId = null;
 
-        if (ctx == null)
-            return null;
-
-        if (ctx.TargetIdentity == AITargetIdentity.Player)
-            return "player";
-
-        if (ctx.TargetIdentity == AITargetIdentity.Companion)
-        {
-            FieldAllyMember fieldAlly = GetComponentInParent<FieldAllyMember>(true);
-            if (fieldAlly == null)
-                fieldAlly = GetComponentInChildren<FieldAllyMember>(true);
-
-            if (fieldAlly != null && fieldAlly.ActorRole != ChainActorRole.None)
-                return $"ally:{fieldAlly.ActorRole}";
-
-            return "helper";
-        }
-
-        return null;
-    }
-
-    string FindSavedEquipmentEntryWithFallback(EquipmentSaveData data)
-    {
         string ownerId = ResolveOwnerId();
-        string instanceId = FindEquipmentEntry(data, ownerId);
-        if (!string.IsNullOrWhiteSpace(instanceId))
-            return instanceId;
-
-        string legacyOwnerId = ResolveLegacyOwnerId();
-        if (!string.Equals(ownerId, legacyOwnerId, StringComparison.Ordinal))
-            instanceId = FindEquipmentEntry(data, legacyOwnerId);
-
-        return instanceId;
+        return TryFindEquipmentEntry(data, ownerId, out instanceId);
     }
 
     bool ShouldUsePlayerInventorySave()
@@ -333,17 +302,17 @@ public class CharacterEquipment : MonoBehaviour
                 instanceId = null;
             }
 
-            string legacyOwnerId = equipment.ResolveLegacyOwnerId();
             if (string.IsNullOrWhiteSpace(instanceId) &&
-                TryFindValidPersistedEquipmentEntry(data.equipment, ownerId, legacyOwnerId, inventory, out string persistedInstanceId))
+                equipment.IsPlayerEquipment &&
+                TryGetValidInventoryEquippedWeapon(inventory, out string inventoryEquippedInstanceId))
             {
-                instanceId = persistedInstanceId;
+                instanceId = inventoryEquippedInstanceId;
             }
 
             if (string.IsNullOrWhiteSpace(instanceId) &&
-                TryFindLegacyPlayerWeaponForOwner(data, ownerId, inventory, out string legacyPlayerInstanceId))
+                TryFindValidPersistedEquipmentEntry(data.equipment, ownerId, inventory, out string persistedInstanceId))
             {
-                instanceId = legacyPlayerInstanceId;
+                instanceId = persistedInstanceId;
             }
 
             if (!string.IsNullOrWhiteSpace(instanceId) && !usedInstanceIds.Add(instanceId))
@@ -353,32 +322,17 @@ public class CharacterEquipment : MonoBehaviour
                 RemoveInstanceAssignments(data.equipment, instanceId, ownerId);
 
             UpsertEquipmentEntry(data.equipment, ownerId, instanceId);
-
-            if (!string.IsNullOrWhiteSpace(legacyOwnerId) &&
-                !string.Equals(ownerId, legacyOwnerId, StringComparison.Ordinal))
-            {
-                UpsertEquipmentEntry(data.equipment, legacyOwnerId, null);
-            }
         }
     }
 
     static bool TryFindValidPersistedEquipmentEntry(
         EquipmentSaveData data,
         string ownerId,
-        string legacyOwnerId,
         PlayerInventory inventory,
         out string instanceId)
     {
-        instanceId = FindEquipmentEntry(data, ownerId);
-        if (IsValidPersistedInventoryWeapon(instanceId, inventory))
-            return true;
-
-        if (!string.Equals(ownerId, legacyOwnerId, StringComparison.Ordinal))
-        {
-            instanceId = FindEquipmentEntry(data, legacyOwnerId);
-            if (IsValidPersistedInventoryWeapon(instanceId, inventory))
-                return true;
-        }
+        if (TryFindEquipmentEntry(data, ownerId, out instanceId))
+            return IsValidPersistedInventoryWeapon(instanceId, inventory);
 
         instanceId = null;
         return false;
@@ -392,28 +346,11 @@ public class CharacterEquipment : MonoBehaviour
         return inventory == null || inventory.TryGetWeaponInstanceWithDefinition(instanceId, out _, out _);
     }
 
-    static bool TryFindLegacyPlayerWeaponForOwner(
-        GameSaveData data,
-        string ownerId,
-        PlayerInventory inventory,
-        out string instanceId)
+    static bool TryGetValidInventoryEquippedWeapon(PlayerInventory inventory, out string instanceId)
     {
-        instanceId = data?.weapon?.equippedWeaponInstanceId;
-        if (string.IsNullOrWhiteSpace(instanceId))
-            return false;
-
-        if (inventory != null && !inventory.TryGetWeaponInstanceWithDefinition(instanceId, out _, out _))
-            return false;
-
-        if (string.Equals(ownerId, "player", StringComparison.Ordinal))
-            return true;
-
-        if (!TryParseCharacterOwnerId(ownerId, out string characterId))
-            return false;
-
-        return data?.party?.partyIds != null &&
-               data.party.partyIds.Count > 0 &&
-               string.Equals(data.party.partyIds[0], characterId, StringComparison.Ordinal);
+        instanceId = inventory != null ? inventory.EquippedWeaponInstanceId : null;
+        return !string.IsNullOrWhiteSpace(instanceId) &&
+               inventory.TryGetWeaponInstanceWithDefinition(instanceId, out _, out _);
     }
 
     public static bool SaveEquipmentAssignment(string ownerId, string instanceId, PlayerInventory inventory = null)
@@ -439,8 +376,7 @@ public class CharacterEquipment : MonoBehaviour
 
     public static string ApplySceneEquipmentFromInventory(
         GameSaveData data,
-        PlayerInventory inventory,
-        string legacyPlayerEquippedId)
+        PlayerInventory inventory)
     {
         if (inventory == null)
             return null;
@@ -461,9 +397,7 @@ public class CharacterEquipment : MonoBehaviour
             if (string.IsNullOrWhiteSpace(ownerId))
                 continue;
 
-            string instanceId = equipment.FindSavedEquipmentEntryWithFallback(data?.equipment);
-            if (string.IsNullOrWhiteSpace(instanceId) && equipment.IsPlayerEquipment)
-                instanceId = legacyPlayerEquippedId;
+            equipment.TryFindSavedEquipmentEntry(data?.equipment, out string instanceId);
 
             if (string.IsNullOrWhiteSpace(instanceId))
                 continue;
@@ -554,10 +488,6 @@ public class CharacterEquipment : MonoBehaviour
             if (IsSameEquipmentOwner(ownerId, requesterOwnerId, requester))
                 continue;
 
-            string legacyOwnerId = equipment.ResolveLegacyOwnerId();
-            if (IsSameEquipmentOwner(legacyOwnerId, requesterOwnerId, requester))
-                continue;
-
             return true;
         }
 
@@ -581,9 +511,7 @@ public class CharacterEquipment : MonoBehaviour
             string.Equals(ownerId, requesterResolvedOwnerId, StringComparison.Ordinal))
             return true;
 
-        string requesterLegacyOwnerId = requester.ResolveLegacyOwnerId();
-        return !string.IsNullOrWhiteSpace(requesterLegacyOwnerId) &&
-               string.Equals(ownerId, requesterLegacyOwnerId, StringComparison.Ordinal);
+        return false;
     }
 
     public static bool TryFindSceneEquipmentByOwner(string ownerId, out CharacterEquipment equipment)
@@ -602,8 +530,7 @@ public class CharacterEquipment : MonoBehaviour
             if (candidate == null || !candidate.UsesPlayerInventorySave)
                 continue;
 
-            if (string.Equals(candidate.ResolveOwnerId(), ownerId, StringComparison.Ordinal) ||
-                string.Equals(candidate.ResolveLegacyOwnerId(), ownerId, StringComparison.Ordinal))
+            if (string.Equals(candidate.ResolveOwnerId(), ownerId, StringComparison.Ordinal))
             {
                 equipment = candidate;
                 return true;
@@ -718,20 +645,20 @@ public class CharacterEquipment : MonoBehaviour
         if (equipment.IsPlayerEquipment)
             return 0;
 
-        string ownerId = equipment.ResolveOwnerId();
-        if (!string.IsNullOrWhiteSpace(ownerId) && ownerId.StartsWith("ally:", StringComparison.Ordinal))
-            return 10;
-
-        if (string.Equals(ownerId, "helper", StringComparison.Ordinal))
-            return 20;
-
         return 100;
     }
 
     public static string FindEquipmentEntry(EquipmentSaveData data, string ownerId)
     {
+        return TryFindEquipmentEntry(data, ownerId, out string instanceId) ? instanceId : null;
+    }
+
+    public static bool TryFindEquipmentEntry(EquipmentSaveData data, string ownerId, out string instanceId)
+    {
+        instanceId = null;
+
         if (data?.entries == null || string.IsNullOrWhiteSpace(ownerId))
-            return null;
+            return false;
 
         for (int i = 0; i < data.entries.Count; i++)
         {
@@ -740,10 +667,13 @@ public class CharacterEquipment : MonoBehaviour
                 continue;
 
             if (string.Equals(entry.ownerId, ownerId, StringComparison.Ordinal))
-                return entry.equippedWeaponInstanceId;
+            {
+                instanceId = entry.equippedWeaponInstanceId;
+                return true;
+            }
         }
 
-        return null;
+        return false;
     }
 
     static EquipmentSaveData LoadPersistedEquipmentData()

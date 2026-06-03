@@ -14,6 +14,9 @@ public class ItemDropManager : MonoBehaviour
     [Header("Weapon Instance")]
     [SerializeField] private WeaponAffixDatabase weaponAffixDatabase;
 
+    [Header("Drop Scatter Motion")]
+    [SerializeField] private PickupDropArcSettings dropArcSettings = new PickupDropArcSettings();
+
     GameObject runtimePickupTemplate;
 
     void Awake()
@@ -52,13 +55,14 @@ public class ItemDropManager : MonoBehaviour
 
         if (item is GunConfig)
         {
+            float burstAngleOffset = CreateBurstAngleOffset();
             for (int i = 0; i < amount; i++)
-                SpawnPickup(pickupPrefab, item, 1, position, rarity);
+                SpawnPickup(pickupPrefab, item, 1, position, rarity, i, amount, burstAngleOffset);
 
             return;
         }
 
-        SpawnPickup(pickupPrefab, item, amount, position, rarity);
+        SpawnPickup(pickupPrefab, item, amount, position, rarity, 0, 1, CreateBurstAngleOffset());
     }
 
     public void DropPickup(GameObject pickupPrefab, Vector3 position, WeaponRarity rarity)
@@ -78,8 +82,9 @@ public class ItemDropManager : MonoBehaviour
             if (template.amount <= 0)
                 Debug.LogWarning($"DropPickup: invalid weapon amount {template.amount} on {pickupPrefab.name}, defaulting to 1.");
 
+            float burstAngleOffset = CreateBurstAngleOffset();
             for (int i = 0; i < weaponDropCount; i++)
-                SpawnPickup(pickupPrefab, template.item, 1, position, rarity);
+                SpawnPickup(pickupPrefab, template.item, 1, position, rarity, i, weaponDropCount, burstAngleOffset);
 
             return;
         }
@@ -90,7 +95,7 @@ public class ItemDropManager : MonoBehaviour
             return;
         }
 
-        SpawnPickup(pickupPrefab, template.item, template.amount, position, rarity);
+        SpawnPickup(pickupPrefab, template.item, template.amount, position, rarity, 0, 1, CreateBurstAngleOffset());
     }
 
     bool TryGetPickupTemplate(GameObject pickupPrefab, string caller, out ItemPickup template)
@@ -163,9 +168,10 @@ public class ItemDropManager : MonoBehaviour
         return runtimePickupTemplate;
     }
 
-    void SpawnPickup(GameObject pickupPrefab, ItemDefinition item, int amount, Vector3 position, WeaponRarity rarity)
+    void SpawnPickup(GameObject pickupPrefab, ItemDefinition item, int amount, Vector3 position, WeaponRarity rarity, int dropIndex, int dropCount, float burstAngleOffset)
     {
-        var pickupObject = Instantiate(pickupPrefab, position, Quaternion.identity);
+        Vector3 spawnPosition = ShouldPlayDropArc() ? dropArcSettings.ResolveStartPosition(position) : position;
+        var pickupObject = Instantiate(pickupPrefab, spawnPosition, Quaternion.identity);
         var pickup = pickupObject.GetComponent<ItemPickup>();
 
         if (!ConfigurePickup(pickup, item, amount, rarity))
@@ -173,6 +179,8 @@ public class ItemDropManager : MonoBehaviour
             Destroy(pickupObject);
             return;
         }
+
+        PlayDropArc(pickupObject, position, dropIndex, dropCount, burstAngleOffset);
 
         if (!pickupObject.activeSelf)
             pickupObject.SetActive(true);
@@ -191,5 +199,31 @@ public class ItemDropManager : MonoBehaviour
         pickup.Initialize(item, amount, weaponInstance);
 
         return true;
+    }
+
+    float CreateBurstAngleOffset()
+    {
+        return dropArcSettings != null ? dropArcSettings.CreateBurstAngleOffset() : 0f;
+    }
+
+    bool ShouldPlayDropArc()
+    {
+        return dropArcSettings != null && dropArcSettings.Enabled;
+    }
+
+    void PlayDropArc(GameObject pickupObject, Vector3 origin, int dropIndex, int dropCount, float burstAngleOffset)
+    {
+        if (pickupObject == null || !ShouldPlayDropArc())
+            return;
+
+        var arcMotion = pickupObject.GetComponent<PickupDropArcMotion>();
+        if (arcMotion == null)
+            arcMotion = pickupObject.AddComponent<PickupDropArcMotion>();
+
+        Vector3 startPosition = dropArcSettings.ResolveStartPosition(origin);
+        Vector3 landingPosition = dropArcSettings.ResolveLandingPosition(origin, dropIndex, dropCount, burstAngleOffset);
+        float delay = dropArcSettings.ResolveDelay(dropIndex);
+
+        arcMotion.Play(startPosition, landingPosition, dropArcSettings.Duration, dropArcSettings.ArcHeight, delay);
     }
 }

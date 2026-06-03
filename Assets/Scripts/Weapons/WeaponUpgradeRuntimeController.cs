@@ -17,6 +17,8 @@ public class WeaponUpgradeRuntimeController : MonoBehaviour, IStatModifierProvid
     readonly Dictionary<string, int> _shotCounters = new();
     readonly Dictionary<string, StatusEffectDef> _reloadBuffCache = new();
 
+    public event System.Action StatModifiersChanged;
+
     void Awake()
     {
         ResolveReferences();
@@ -26,13 +28,13 @@ public class WeaponUpgradeRuntimeController : MonoBehaviour, IStatModifierProvid
     {
         ResolveReferences();
         statsHub?.RebuildModifierProviders();
-        statsHub?.MarkDirty();
+        NotifyStatModifiersChanged();
     }
 
     void OnDisable()
     {
         statsHub?.RebuildModifierProviders();
-        statsHub?.MarkDirty();
+        NotifyStatModifiersChanged();
     }
 
     void ResolveReferences()
@@ -73,7 +75,16 @@ public class WeaponUpgradeRuntimeController : MonoBehaviour, IStatModifierProvid
     public void NotifyWeaponEquipped()
     {
         _shotCounters.Clear();
-        statsHub?.MarkDirty();
+        NotifyStatModifiersChanged();
+    }
+
+    void NotifyStatModifiersChanged()
+    {
+        var handler = StatModifiersChanged;
+        if (handler != null)
+            handler.Invoke();
+        else
+            statsHub?.MarkDirty();
     }
 
     public void AppendStatModifiers(List<RuntimeStatModifier> buffer)
@@ -141,7 +152,7 @@ public class WeaponUpgradeRuntimeController : MonoBehaviour, IStatModifierProvid
         }
 
         if (appliedAny)
-            statsHub?.MarkDirty();
+            NotifyStatModifiersChanged();
     }
 
     void HandleShotMilestone(WeaponUpgradeMilestone milestone, int milestoneIndex, WeaponInstanceData instance)

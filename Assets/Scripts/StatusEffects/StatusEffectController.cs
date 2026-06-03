@@ -29,6 +29,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
     public IReadOnlyList<StatusEffectInstance> ActiveEffects => _activeEffects;
 
+    public event Action StatModifiersChanged;
     public event Action EffectsChanged;
     public event Action<StatusEffectEvent> EffectLifecycleChanged;
 
@@ -141,14 +142,14 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
     void OnEnable()
     {
         ResolveReferences();
-        statsHub?.MarkDirty();
+        NotifyStatModifiersChanged();
         SyncControlState();
         RefreshDebugSnapshot();
     }
 
     void OnDisable()
     {
-        statsHub?.MarkDirty();
+        NotifyStatModifiersChanged();
         if (stateHub != null)
             stateHub.SetStatusEffectControlState(ControlBlockFlags.None, false);
         RefreshDebugSnapshot();
@@ -521,9 +522,18 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
     void NotifyEffectsChangedCore()
     {
-        statsHub?.MarkDirty();
+        NotifyStatModifiersChanged();
         SyncControlState();
         RefreshDebugSnapshot();
+    }
+
+    void NotifyStatModifiersChanged()
+    {
+        var handler = StatModifiersChanged;
+        if (handler != null)
+            handler.Invoke();
+        else
+            statsHub?.MarkDirty();
     }
 
     void AddStatusEffectEvent(

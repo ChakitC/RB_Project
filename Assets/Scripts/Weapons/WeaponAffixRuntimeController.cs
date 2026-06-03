@@ -11,6 +11,8 @@ public class WeaponAffixRuntimeController : MonoBehaviour, IStatModifierProvider
 
     readonly Dictionary<string, StatusEffectDef> _reloadBuffCache = new();
 
+    public event System.Action StatModifiersChanged;
+
     void Awake()
     {
         if (!weaponSystem) TryGetComponent(out weaponSystem);
@@ -21,18 +23,18 @@ public class WeaponAffixRuntimeController : MonoBehaviour, IStatModifierProvider
     void OnEnable()
     {
         statsHub?.RebuildModifierProviders();
-        statsHub?.MarkDirty();
+        NotifyStatModifiersChanged();
     }
 
     void OnDisable()
     {
         statsHub?.RebuildModifierProviders();
-        statsHub?.MarkDirty();
+        NotifyStatModifiersChanged();
     }
 
     public void NotifyWeaponEquipped()
     {
-        statsHub?.MarkDirty();
+        NotifyStatModifiersChanged();
     }
 
     public void HandleShotFired()
@@ -80,6 +82,15 @@ public class WeaponAffixRuntimeController : MonoBehaviour, IStatModifierProvider
         }
 
         if (appliedAny)
+            NotifyStatModifiersChanged();
+    }
+
+    void NotifyStatModifiersChanged()
+    {
+        var handler = StatModifiersChanged;
+        if (handler != null)
+            handler.Invoke();
+        else
             statsHub?.MarkDirty();
     }
 

@@ -26,6 +26,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
     public bool UsesPlayerInventorySave => ShouldUsePlayerInventorySave();
     public IReadOnlyList<AccessoryInstanceData> EquippedAccessories => equippedAccessories;
 
+    public event Action StatModifiersChanged;
     public event Action OnLoadoutChanged;
 
     void Awake()
@@ -284,7 +285,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
             if (loadout == null || !loadout.UsesPlayerInventorySave)
                 continue;
 
-            CharacterAccessoryLoadoutSaveData entry = loadout.FindSavedEntryWithFallback(data?.accessories);
+            CharacterAccessoryLoadoutSaveData entry = loadout.FindSavedEntry(data?.accessories);
             if (entry == null)
                 continue;
 
@@ -339,10 +340,6 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
 
             string ownerId = loadout.ResolveOwnerId();
             if (IsSameLoadoutOwner(ownerId, requesterOwnerId, requester))
-                continue;
-
-            string legacyOwnerId = loadout.ResolveLegacyOwnerId();
-            if (IsSameLoadoutOwner(legacyOwnerId, requesterOwnerId, requester))
                 continue;
 
             return true;
@@ -414,8 +411,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
             if (candidate == null || !candidate.UsesPlayerInventorySave)
                 continue;
 
-            if (string.Equals(candidate.ResolveOwnerId(), ownerId, StringComparison.Ordinal) ||
-                string.Equals(candidate.ResolveLegacyOwnerId(), ownerId, StringComparison.Ordinal))
+            if (string.Equals(candidate.ResolveOwnerId(), ownerId, StringComparison.Ordinal))
             {
                 loadout = candidate;
                 return true;
@@ -643,9 +639,18 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
     void RefreshRuntime()
     {
         statsHub?.RebuildModifierProviders();
-        statsHub?.MarkDirty();
+        NotifyStatModifiersChanged();
         passiveController?.RefreshPassiveLoadout();
         OnLoadoutChanged?.Invoke();
+    }
+
+    void NotifyStatModifiersChanged()
+    {
+        var handler = StatModifiersChanged;
+        if (handler != null)
+            handler.Invoke();
+        else
+            statsHub?.MarkDirty();
     }
 
     string ResolveOwnerId()
@@ -662,38 +667,13 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
         if (!string.IsNullOrWhiteSpace(characterOwnerId))
             return characterOwnerId;
 
-        return ResolveLegacyOwnerId();
+        return null;
     }
 
     string ResolveCharacterOwnerId()
     {
         ResolveReferences();
         return CharacterEquipment.BuildCharacterOwnerId(ctx != null && ctx.baseStats != null ? ctx.baseStats.characterId : null);
-    }
-
-    string ResolveLegacyOwnerId()
-    {
-        ResolveReferences();
-
-        if (ctx == null)
-            return null;
-
-        if (ctx.TargetIdentity == AITargetIdentity.Player)
-            return "player";
-
-        if (ctx.TargetIdentity == AITargetIdentity.Companion)
-        {
-            FieldAllyMember fieldAlly = GetComponentInParent<FieldAllyMember>(true);
-            if (fieldAlly == null)
-                fieldAlly = GetComponentInChildren<FieldAllyMember>(true);
-
-            if (fieldAlly != null && fieldAlly.ActorRole != ChainActorRole.None)
-                return $"ally:{fieldAlly.ActorRole}";
-
-            return "helper";
-        }
-
-        return null;
     }
 
     bool ShouldUsePlayerInventorySave()
@@ -707,18 +687,10 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
                ctx.TargetIdentity == AITargetIdentity.Companion;
     }
 
-    CharacterAccessoryLoadoutSaveData FindSavedEntryWithFallback(AccessoryLoadoutSaveData data)
+    CharacterAccessoryLoadoutSaveData FindSavedEntry(AccessoryLoadoutSaveData data)
     {
         string ownerId = ResolveOwnerId();
-        CharacterAccessoryLoadoutSaveData entry = FindLoadoutEntry(data, ownerId);
-        if (entry != null)
-            return entry;
-
-        string legacyOwnerId = ResolveLegacyOwnerId();
-        if (!string.Equals(ownerId, legacyOwnerId, StringComparison.Ordinal))
-            entry = FindLoadoutEntry(data, legacyOwnerId);
-
-        return entry;
+        return FindLoadoutEntry(data, ownerId);
     }
 
     CharacterAccessoryLoadoutSaveData CreateSaveEntry(PlayerInventory inventory, HashSet<string> usedInstanceIds)
@@ -1041,9 +1013,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
             return true;
         }
 
-        string requesterLegacyOwnerId = requester.ResolveLegacyOwnerId();
-        return !string.IsNullOrWhiteSpace(requesterLegacyOwnerId) &&
-               string.Equals(ownerId, requesterLegacyOwnerId, StringComparison.Ordinal);
+        return false;
     }
 }
 

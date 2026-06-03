@@ -604,7 +604,7 @@ public class Projectile : MonoBehaviour
 #endif
     }
 
-    void NotifyOwnerCombatTriggers(IDamageable target, float finalDamage, bool wasAliveBeforeDamage)
+    void NotifyOwnerCombatTriggers(IDamageable target, float appliedDamage, bool wasAliveBeforeDamage, bool killed)
     {
         if (target == null || !wasAliveBeforeDamage)
             return;
@@ -617,17 +617,17 @@ public class Projectile : MonoBehaviour
         var ownerEventBus = ResolveOwnerCombatEventBus();
         if (ownerEventBus != null)
         {
-            var hitContext = CreateOwnerEventContext(ownerEventBus, PassiveEventType.Hit, targetObject, finalDamage);
+            var hitContext = CreateOwnerEventContext(ownerEventBus, PassiveEventType.Hit, targetObject, appliedDamage);
             ownerEventBus.Publish(hitContext);
         }
 
-        if (!target.IsAlive)
+        if (killed)
         {
             ownerStatusController?.NotifyTrigger(EffectTriggerType.OnKill, targetObject);
 
             if (ownerEventBus != null)
             {
-                var killContext = CreateOwnerEventContext(ownerEventBus, PassiveEventType.Kill, targetObject, finalDamage);
+                var killContext = CreateOwnerEventContext(ownerEventBus, PassiveEventType.Kill, targetObject, appliedDamage);
                 ownerEventBus.Publish(killContext);
             }
         }
@@ -772,7 +772,7 @@ public class Projectile : MonoBehaviour
         return Vector3.forward;
     }
 
-    void ApplyDamageToTarget(IDamageable target, float finalDamage, GameObject attackerGO, KnockbackData knockback)
+    DamageResult ApplyDamageToTarget(IDamageable target, float finalDamage, GameObject attackerGO, KnockbackData knockback)
     {
         var damageContext = new DamageContext(
             finalDamage,
@@ -787,7 +787,7 @@ public class Projectile : MonoBehaviour
             knockback,
             BuildStaggerPayload());
 
-        target.TakeDamage(in damageContext);
+        return target.TakeDamage(in damageContext);
     }
 
     StaggerPayload BuildStaggerPayload()
@@ -822,13 +822,16 @@ public class Projectile : MonoBehaviour
         if (!wasAliveBeforeDamage)
             return;
 
-        if (showDamageNumber)
-            SpawnDamageNumber(hit.ResolvePoint(transform.position), finalDamage);
-
         var attackerGO = ResolveSourceObject();
-        ApplyDamageToTarget(target, finalDamage, attackerGO, knockback);
+        DamageResult result = ApplyDamageToTarget(target, finalDamage, attackerGO, knockback);
+        if (!result.Applied)
+            return;
+
+        if (showDamageNumber)
+            SpawnDamageNumber(hit.ResolvePoint(transform.position), result.AppliedDamage);
+
         NotifyDamageApplied(hit, target);
-        NotifyOwnerCombatTriggers(target, finalDamage, wasAliveBeforeDamage);
+        NotifyOwnerCombatTriggers(target, result.AppliedDamage, wasAliveBeforeDamage, result.Killed);
     }
 
     PassiveEventContext CreateOwnerEventContext(CombatEventBus ownerEventBus, PassiveEventType type, GameObject targetObject, float value)

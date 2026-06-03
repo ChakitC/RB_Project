@@ -146,7 +146,11 @@ public static class EquipmentAssignmentService
 
     static InventorySlotData GetEquippedAccessorySlotData(PlayerInventory inventory, string ownerId, int slotIndex)
     {
-        string resolvedOwnerId = string.IsNullOrWhiteSpace(ownerId) ? "player" : ownerId;
+        string resolvedOwnerId = string.IsNullOrWhiteSpace(ownerId)
+            ? ResolveDefaultOwnerId(inventory)
+            : ownerId;
+        if (string.IsNullOrWhiteSpace(resolvedOwnerId))
+            return new InventorySlotData();
 
         if (AccessoryLoadout.TryFindSceneLoadoutByOwner(resolvedOwnerId, out AccessoryLoadout loadout) &&
             loadout != null)
@@ -187,7 +191,11 @@ public static class EquipmentAssignmentService
             return null;
 
         if (string.IsNullOrWhiteSpace(ownerId))
-            return inventory.EquippedWeaponInstanceId;
+        {
+            ownerId = ResolveDefaultOwnerId(inventory);
+            if (string.IsNullOrWhiteSpace(ownerId))
+                return inventory.EquippedWeaponInstanceId;
+        }
 
         if (CharacterEquipment.TryFindSceneEquipmentByOwner(ownerId, out CharacterEquipment equipment) &&
             equipment != null &&
@@ -197,11 +205,16 @@ public static class EquipmentAssignmentService
         }
 
         GameSaveData data = LoadCurrentGameData();
-        string savedInstanceId = CharacterEquipment.FindEquipmentEntry(data?.equipment, ownerId);
-        if (!string.IsNullOrWhiteSpace(savedInstanceId))
+        if (CharacterEquipment.TryFindEquipmentEntry(data?.equipment, ownerId, out string savedInstanceId) &&
+            !string.IsNullOrWhiteSpace(savedInstanceId))
+        {
             return savedInstanceId;
+        }
 
-        return ResolveLegacyPlayerWeaponForOwner(data, ownerId);
+        if (string.Equals(ownerId, ResolveDefaultOwnerId(inventory), StringComparison.Ordinal))
+            return ResolveInventoryEquippedWeaponInstanceId(inventory);
+
+        return null;
     }
 
     static string FindAssignedWeaponOwnerId(PlayerInventory inventory, string instanceId)
@@ -217,87 +230,52 @@ public static class EquipmentAssignmentService
         if (!string.IsNullOrWhiteSpace(savedOwnerId))
             return savedOwnerId;
 
-        if (data?.weapon != null &&
-            string.Equals(data.weapon.equippedWeaponInstanceId, instanceId, StringComparison.Ordinal))
+        return null;
+    }
+
+    static string ResolveDefaultOwnerId(PlayerInventory inventory)
+    {
+        if (inventory != null)
         {
-            return ResolveLegacyPlayerOwnerId(data) ?? "player";
+            CharacteContext context = inventory.GetComponent<CharacteContext>();
+            if (context == null)
+                context = inventory.GetComponentInParent<CharacteContext>();
+
+            context?.ResolveReferences();
+            if (context != null && context.baseStats != null)
+                return CharacterEquipment.BuildCharacterOwnerId(context.baseStats.characterId);
         }
 
-        if (HasModernSavedWeaponAssignments(data))
+        GameSaveData data = LoadCurrentGameData();
+        if (data?.party?.partyIds == null || data.party.partyIds.Count == 0)
             return null;
 
-        if (data?.weapon != null &&
-            string.Equals(data.weapon.equippedWeaponInstanceId, instanceId, StringComparison.Ordinal))
-        {
-            return "player";
-        }
-
-        if (inventory != null &&
-            string.Equals(inventory.EquippedWeaponInstanceId, instanceId, StringComparison.Ordinal))
-        {
-            return "player";
-        }
-
-        return null;
+        return CharacterEquipment.BuildCharacterOwnerId(data.party.partyIds[0]);
     }
 
-    static string ResolveLegacyPlayerWeaponForOwner(GameSaveData data, string ownerId)
+    static string ResolveInventoryEquippedWeaponInstanceId(PlayerInventory inventory)
     {
-        if (data?.weapon == null || string.IsNullOrWhiteSpace(data.weapon.equippedWeaponInstanceId))
+        if (inventory == null)
             return null;
 
-        string legacyPlayerOwnerId = ResolveLegacyPlayerOwnerId(data);
-        if (!string.IsNullOrWhiteSpace(legacyPlayerOwnerId) &&
-            string.Equals(ownerId, legacyPlayerOwnerId, StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(inventory.EquippedWeaponInstanceId))
+            return inventory.EquippedWeaponInstanceId;
+
+        var slots = inventory.Slots;
+        if (slots == null)
+            return null;
+
+        for (int i = 0; i < slots.Count; i++)
         {
-            return data.weapon.equippedWeaponInstanceId;
-        }
-
-        return null;
-    }
-
-    static string ResolveLegacyPlayerOwnerId(GameSaveData data)
-    {
-        if (data?.party?.partyIds != null && data.party.partyIds.Count > 0)
-        {
-            string leaderId = data.party.partyIds[0];
-            if (!string.IsNullOrWhiteSpace(leaderId))
-                return CharacterEquipment.BuildCharacterOwnerId(leaderId);
-        }
-
-        return null;
-    }
-
-    static bool HasModernSavedWeaponAssignments(GameSaveData data)
-    {
-        var entries = data?.equipment?.entries;
-        if (entries == null)
-            return false;
-
-        for (int i = 0; i < entries.Count; i++)
-        {
-            CharacterEquipmentSaveData entry = entries[i];
-            if (entry == null)
+            InventorySlotData slot = slots[i];
+            if (slot?.weaponInstance == null)
                 continue;
 
-            if (!string.IsNullOrWhiteSpace(entry.equippedWeaponInstanceId) &&
-                !IsLegacyWeaponOwnerId(entry.ownerId))
-            {
-                return true;
-            }
+            if (!string.IsNullOrWhiteSpace(slot.weaponInstance.instanceId))
+                return slot.weaponInstance.instanceId;
         }
 
-        return false;
-    }
-
-    static bool IsLegacyWeaponOwnerId(string ownerId)
-    {
-        if (string.IsNullOrWhiteSpace(ownerId))
-            return false;
-
-        return string.Equals(ownerId, "player", StringComparison.Ordinal) ||
-               string.Equals(ownerId, "helper", StringComparison.Ordinal) ||
-               ownerId.StartsWith("ally:", StringComparison.Ordinal);
+        return null;
     }
 
     static string FindAssignedAccessoryOwnerId(string instanceId)
@@ -364,14 +342,10 @@ public static class EquipmentAssignmentService
         if (entries == null)
             return null;
 
-        bool hasModernAssignments = HasModernSavedWeaponAssignments(data);
         for (int i = 0; i < entries.Count; i++)
         {
             CharacterEquipmentSaveData entry = entries[i];
             if (entry == null)
-                continue;
-
-            if (hasModernAssignments && IsLegacyWeaponOwnerId(entry.ownerId))
                 continue;
 
             if (string.Equals(entry.equippedWeaponInstanceId, instanceId, StringComparison.Ordinal))

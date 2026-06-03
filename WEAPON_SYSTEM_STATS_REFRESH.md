@@ -1,70 +1,115 @@
 # WeaponSystem Stats Refresh
 
-## สรุป
+## Summary
 
-`WeaponSystem` ไม่เรียก `RefreshDerivedStats()` ทุก frame แล้ว แต่ใช้ dirty flow แทน:
+`WeaponSystem` does not recalculate derived weapon stats every frame. It keeps
+public mirror fields fresh through dirty events, side-effect-free
+`StatsHub.Revision` checks, and limited fallback signature probes.
 
-1. ระบบที่เปลี่ยน stat เรียก `StatsHub.MarkDirty()`
-2. `StatsHub` ยิง event `StatsDirty`
-3. `WeaponSystem` รับ event แล้ว mark derived stats เป็น dirty
-4. `WeaponSystem` refresh ค่าเมื่อจำเป็น เช่น ก่อนยิง, ก่อน reload, ตอน `Update()` frame ถัดไป, หรือเมื่อตัว weapon/instance เปลี่ยน
+Current flow:
 
-ผลคือบัพ/ดีบัพปกติยังทำงานทัน โดยไม่ต้องคำนวณ stat ซ้ำทุก frame
+1. `StatsHub` collects all `IStatModifierProvider` output into one modifier
+   snapshot when the cache is refreshed.
+2. `StatsHub` computes an input signature from base stats, level, current
+   weapon, provider identity/active state, and all runtime modifiers.
+3. If the signature changes during a cache refresh or fallback probe, `StatsHub`
+   recalculates cached stats and increments `StatsHub.Revision`.
+4. `StatsHub.Revision` is a cheap read with no cache refresh side effects.
+5. Providers raise `IStatModifierProvider.StatModifiersChanged` as the normal
+   path. `StatsHub` subscribes to those events and calls `MarkDirty()`.
+6. `WeaponSystem` observes `StatsHub.StatsDirty` and `StatsHub.Revision`. If the
+   derived stats are dirty or the revision changed, weapon derived stats are
+   refreshed before use.
 
-## Contract
+This means a dynamic provider that forgets to call `StatsHub.MarkDirty()` should
+not create permanently stale stats. Weapon actions force a fallback probe before
+important work, and idle `WeaponSystem.Update()` probes are throttled. In editor
+or development builds, silent signature changes can log a warning so the missing
+provider event can be fixed.
 
-ทุกระบบที่เปลี่ยนค่า stat ต้องเรียก:
+## Provider Contract
+
+Any component implementing `IStatModifierProvider` must expose:
 
 ```csharp
-statsHub.MarkDirty();
+public event Action StatModifiersChanged;
+
+public void AppendStatModifiers(List<RuntimeStatModifier> buffer)
+{
+    // Append the provider's current stat modifiers.
+}
 ```
 
-เมื่อค่า stat มีผลต่อ weapon เช่น:
+When the provider knows its output changed, it should invoke
+`StatModifiersChanged`. This keeps stat consumers responsive without waiting for
+the signature probe path.
 
-- Damage
-- CritRate
-- CritMultiplier
-- FireInterval
-- ReloadTime
-- Stability
-- BulletSpeed
-- MaxMagazine
+`AppendStatModifiers()` should be side-effect free. It may be called for cache
+rebuilds and signature probes, so it should only append current data.
 
-ถ้าระบบนั้นเป็น `IStatModifierProvider` และค่าที่ append เปลี่ยนไป ต้องเรียก `MarkDirty()` ตอนค่ามีการเปลี่ยนจริง
+## Stats That Affect Weapons
 
-## Flow ที่ปลอดภัย
+Weapon-derived stats depend on these `StatType` values:
 
-ระบบเหล่านี้ปลอดภัย เพราะมีการ mark dirty อยู่แล้ว:
+- `Damage`
+- `CritRate`
+- `CritMultiplier`
+- `FireInterval`
+- `ReloadTime`
+- `Stability`
+- `BulletSpeed`
+- `MaxMagazine`
 
-- `StatusEffectController` เมื่อบัพ/ดีบัพถูกเพิ่ม, refresh, หมดเวลา, หรือถูก remove
-- `WeaponAffixRuntimeController` เมื่อ equip weapon หรือ reload buff ทำงาน
-- `WeaponUpgradeRuntimeController` เมื่อ equip weapon หรือ reload buff ทำงาน
-- `PlayerInventory.NotifyWeaponInstanceChanged()` และ `WeaponUpgradeService.NotifyWeaponInstanceChanged()`
+`StatsHub` also caches character-facing values such as `Armor`, `MoveSpeed`,
+`MaxHP`, `MaxStamina`, and `MaxEnergy`.
 
-ดังนั้นกรณีทั่วไปจะทำงานถูก:
+## Existing Providers
 
-- ได้บัพ damage แล้วนัดถัดไปใช้ damage ใหม่
-- ดีบัพ fire rate หมดเวลาแล้ว frame ถัดไปกลับเป็นค่าใหม่
-- auto fire ค้างอยู่แล้วบัพเปลี่ยน ค่า refresh ก่อนยิงใน frame นั้น
-- reload ใช้ reload time / max magazine ล่าสุดก่อนเริ่ม reload
+These provider components currently raise `StatModifiersChanged`:
 
-## กรณีที่ต้องระวัง
+- `StatusEffectController`
+- `PassiveController`
+- `AccessoryLoadout`
+- `WeaponAffixRuntimeController`
+- `WeaponUpgradeRuntimeController`
 
-จะมีปัญหาได้ถ้ามี modifier provider ที่ค่าเปลี่ยนเอง แต่ไม่เรียก `StatsHub.MarkDirty()` เช่น:
+`StatsHub.RebuildModifierProviders()` scans child components, subscribes to
+provider events, and marks the cache dirty when the provider hierarchy changes.
 
-- stat เปลี่ยนตามเวลาแบบ custom โดยไม่ผ่าน `StatusEffectController`
-- stat เปลี่ยนตาม HP, combo, heat, stance, distance หรือเงื่อนไขอื่นทุก frame
-- provider เก็บ internal state แล้ว `AppendStatModifiers()` คืนค่าไม่เท่าเดิม แต่ไม่มีใครบอก `StatsHub`
+## WeaponSystem Refresh Points
 
-ถ้ามีระบบแบบนี้ ให้แก้โดย:
+`WeaponSystem` refreshes derived stats only when needed:
 
-1. เรียก `statsHub.MarkDirty()` ตอนค่าที่ส่งออกเปลี่ยน
-2. หรือถ้าค่านั้นจำเป็นต้องสดทุก frame จริง ๆ ให้แยกเป็นระบบคำนวณเฉพาะจุด ไม่ควรทำให้ `WeaponSystem` กลับไป refresh stat ทั้งหมดทุก frame
+- before shooting
+- before reloading
+- during equip
+- when a weapon instance changes
+- when ammo/stat limits are queried
+- when `StatsHub.Revision` differs from the observed revision
+- when the throttled fallback probe detects a silent input change
 
-## ไฟล์ที่เกี่ยวข้อง
+Do not restore unconditional `RefreshDerivedStats()` calls or unthrottled
+signature probes every frame.
 
-- `Assets/Scripts/Player/WeaponSystem.cs`
+## Dynamic Provider Guidance
+
+For new dynamic providers:
+
+1. Implement `IStatModifierProvider`.
+2. Keep `AppendStatModifiers()` deterministic for the current provider state.
+3. Invoke `StatModifiersChanged` when internal state changes modifier output.
+4. Avoid modifiers that depend directly on `Time.time` without a discrete state
+   change. If a value truly must change continuously, use a local calculation at
+   the consumer instead of forcing global stat cache churn.
+
+## Related Files
+
 - `Assets/Scripts/Player/StatsHub.cs`
+- `Assets/Scripts/Player/WeaponSystem.cs`
+- `Assets/Scripts/Passives/IStatModifierProvider.cs`
 - `Assets/Scripts/StatusEffects/StatusEffectController.cs`
+- `Assets/Scripts/Passives/PassiveController.cs`
+- `Assets/Scripts/Accessories/AccessoryLoadout.cs`
 - `Assets/Scripts/Weapons/WeaponAffixRuntimeController.cs`
 - `Assets/Scripts/Weapons/WeaponUpgradeRuntimeController.cs`
+- `PASSIVE_EVENT_SOURCE_ARCHITECTURE.md`

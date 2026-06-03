@@ -359,13 +359,13 @@ public sealed class StateHub : MonoBehaviour
             return;
         }
 
-        if (ws.magazine <= 0)
+        if (ws.IsMagazineEmpty)
         {
             WeaponSM.TryChange(WeaponStateId.NoBullet);
             return;
         }
 
-        if (ws.isFiring)
+        if (ws.IsFiringActivity)
         {
             WeaponSM.TryChange(WeaponStateId.Firing);
             return;

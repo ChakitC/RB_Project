@@ -605,35 +605,7 @@ public class UIEquipment : InventorySlotOwnerBase
         if (CharacterEquipment.TryParseCharacterOwnerId(ownerId, out string characterOwnerId))
             return ResolveCharacterStats(characterOwnerId);
 
-        if (string.Equals(ownerId, "player", StringComparison.Ordinal))
-            return ResolvePartyCharacterStats(0);
-
-        if (string.Equals(ownerId, "helper", StringComparison.Ordinal))
-            return ResolveChainRoleCharacterStats(ChainActorRole.Helper);
-
-        const string AllyOwnerPrefix = "ally:";
-        if (ownerId.StartsWith(AllyOwnerPrefix, StringComparison.Ordinal) &&
-            Enum.TryParse(ownerId.Substring(AllyOwnerPrefix.Length), out ChainActorRole role))
-        {
-            return ResolveChainRoleCharacterStats(role);
-        }
-
         return null;
-    }
-
-    CharacterStats ResolveChainRoleCharacterStats(ChainActorRole role)
-    {
-        switch (role)
-        {
-            case ChainActorRole.Player:
-                return ResolvePartyCharacterStats(0);
-            case ChainActorRole.PartySlot1:
-                return ResolvePartyCharacterStats(1);
-            case ChainActorRole.PartySlot2:
-                return ResolvePartyCharacterStats(2);
-            default:
-                return null;
-        }
     }
 
     CharacterStats ResolvePartyCharacterStats(int partyIndex)

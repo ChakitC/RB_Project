@@ -56,8 +56,18 @@ public class StatsHub : MonoBehaviour
 
     readonly List<IStatModifierProvider> _modifierProviders = new();
     readonly List<RuntimeStatModifier> _modifierBuffer = new();
+    readonly List<RuntimeStatModifier> _modifierProbeBuffer = new();
+    readonly List<IStatModifierProvider> _subscribedModifierProviders = new();
+
+    bool _hasCachedInputSignature;
+    int _cachedInputSignature;
+    int _revision;
+    int _lastSignatureProbeFrame = -1;
+    GunConfig _lastSignatureProbeWeapon;
+    int _lastSignatureProbe;
 
     public event Action StatsDirty;
+    public int Revision => _revision;
 
     float _cachedDamage;
     float _cachedArmor;
@@ -85,6 +95,25 @@ public class StatsHub : MonoBehaviour
         ResolveReferences();
         RebuildModifierProviders();
         _nextDebugRefreshTime = -1f;
+        MarkDirty();
+    }
+
+    void OnDisable()
+    {
+        UnsubscribeModifierProviders();
+    }
+
+    void OnDestroy()
+    {
+        UnsubscribeModifierProviders();
+    }
+
+    void OnTransformChildrenChanged()
+    {
+        if (!isActiveAndEnabled)
+            return;
+
+        RebuildModifierProviders();
         MarkDirty();
     }
 
@@ -145,8 +174,16 @@ public class StatsHub : MonoBehaviour
         StatsDirty?.Invoke();
     }
 
+    public bool RefreshCacheIfInputsChanged(bool logSilentChange = false)
+    {
+        int previousRevision = _revision;
+        EnsureCacheFresh(GetCurrentWeapon(), logSilentChange);
+        return _revision != previousRevision;
+    }
+
     public void RebuildModifierProviders()
     {
+        UnsubscribeModifierProviders();
         _modifierProviders.Clear();
 
         var behaviours = GetComponentsInChildren<MonoBehaviour>(true);
@@ -156,8 +193,47 @@ public class StatsHub : MonoBehaviour
                 continue;
 
             if (behaviours[i] is IStatModifierProvider provider)
+            {
                 _modifierProviders.Add(provider);
+                SubscribeModifierProvider(provider);
+            }
         }
+
+        InvalidateSignatureProbe();
+    }
+
+    void SubscribeModifierProvider(IStatModifierProvider provider)
+    {
+        if (provider == null)
+            return;
+
+        provider.StatModifiersChanged -= HandleModifierProviderChanged;
+        provider.StatModifiersChanged += HandleModifierProviderChanged;
+        _subscribedModifierProviders.Add(provider);
+    }
+
+    void UnsubscribeModifierProviders()
+    {
+        for (int i = 0; i < _subscribedModifierProviders.Count; i++)
+        {
+            var provider = _subscribedModifierProviders[i];
+            if (provider != null)
+                provider.StatModifiersChanged -= HandleModifierProviderChanged;
+        }
+
+        _subscribedModifierProviders.Clear();
+    }
+
+    void HandleModifierProviderChanged()
+    {
+        InvalidateSignatureProbe();
+        MarkDirty();
+    }
+
+    void InvalidateSignatureProbe()
+    {
+        _lastSignatureProbeFrame = -1;
+        _lastSignatureProbeWeapon = null;
     }
 
     void RefreshDebug(GunConfig w)
@@ -197,16 +273,58 @@ public class StatsHub : MonoBehaviour
         dbgFinalMaxEnergy = _cachedMaxEnergy;
     }
 
-    void EnsureCacheFresh(GunConfig w)
+    void EnsureCacheFresh(GunConfig w, bool logSilentChange = false)
     {
-        if (!_isDirty && w == _cachedWeapon)
+        bool wasDirty = _isDirty;
+        bool weaponChanged = w != _cachedWeapon;
+        bool missingSignature = !_hasCachedInputSignature;
+
+        if (wasDirty || weaponChanged || missingSignature)
+        {
+            if (logSilentChange && !wasDirty && !missingSignature)
+                LogSilentInputChange(w);
+
+            RecalculateCache(w);
+            return;
+        }
+
+        int currentSignature = ProbeInputSignature(w);
+        if (currentSignature == _cachedInputSignature)
             return;
 
-        RecalculateCache(w);
+        if (logSilentChange)
+            LogSilentInputChange(w);
+
+        RecalculateCache(w, _modifierProbeBuffer, currentSignature);
+    }
+
+    void LogSilentInputChange(GunConfig w)
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        string weaponName = w ? w.name : "<none>";
+        Debug.LogWarning(
+            $"StatsHub input changed without dirty event. Check IStatModifierProvider.StatModifiersChanged for weapon '{weaponName}'.",
+            this);
+#endif
     }
 
     void RecalculateCache(GunConfig w)
     {
+        CollectModifierSnapshot(_modifierBuffer);
+        int inputSignature = CalculateInputSignature(w, _modifierBuffer);
+        RecalculateCacheFromSnapshot(w, inputSignature);
+    }
+
+    void RecalculateCache(GunConfig w, List<RuntimeStatModifier> modifierSnapshot, int inputSignature)
+    {
+        _modifierBuffer.Clear();
+        _modifierBuffer.AddRange(modifierSnapshot);
+        RecalculateCacheFromSnapshot(w, inputSignature);
+    }
+
+    void RecalculateCacheFromSnapshot(GunConfig w, int inputSignature)
+    {
+        bool signatureChanged = !_hasCachedInputSignature || inputSignature != _cachedInputSignature || w != _cachedWeapon;
         _cachedWeapon = w;
 
         float characterDamage = GetCharacterDamageBase();
@@ -227,36 +345,59 @@ public class StatsHub : MonoBehaviour
         float weaponBulletSpeed = w ? w.BulletSpeed : 0f;
         float weaponMagazine = w ? w.maxMagazine : 0f;
 
-        _cachedDamage = Mathf.Max(0f, ApplyStatusModifiers(StatType.Damage, weaponDamage + characterDamage));
-        _cachedArmor = Mathf.Max(0f, ApplyStatusModifiers(StatType.Armor, characterArmor));
-        _cachedMoveSpeed = Mathf.Max(0f, ApplyStatusModifiers(StatType.MoveSpeed, characterMoveSpeed));
-        _cachedCritRatePercent = Mathf.Clamp(ApplyStatusModifiers(StatType.CritRate, weaponCritRate + characterCritRate), 0f, 100f);
-        _cachedCritMultiplier = Mathf.Max(1f, ApplyStatusModifiers(StatType.CritMultiplier, weaponCritMult + (characterCritMult - BASE_CRIT_MULT)));
-        _cachedFireInterval = Mathf.Max(0.01f, ApplyStatusModifiers(StatType.FireInterval, weaponFireInterval));
-        _cachedReloadTime = Mathf.Max(0f, ApplyStatusModifiers(StatType.ReloadTime, weaponReloadTime));
-        _cachedStability = Mathf.Max(0f, ApplyStatusModifiers(StatType.Stability, weaponStability));
-        _cachedBulletSpeed = Mathf.Max(0f, ApplyStatusModifiers(StatType.BulletSpeed, weaponBulletSpeed));
-        _cachedMaxMagazine = Mathf.Max(0, Mathf.RoundToInt(ApplyStatusModifiers(StatType.MaxMagazine, weaponMagazine)));
-        _cachedMaxHealth = Mathf.Max(1f, ApplyStatusModifiers(StatType.MaxHP, characterMaxHealth));
-        _cachedMaxStamina = Mathf.Max(1f, ApplyStatusModifiers(StatType.MaxStamina, characterMaxStamina));
-        _cachedMaxEnergy = Mathf.Max(0f, ApplyStatusModifiers(StatType.MaxEnergy, characterMaxEnergy));
-        _cachedSkillBaseDamage = Mathf.Max(0f, ApplyStatusModifiers(StatType.Damage, characterDamage));
+        _cachedDamage = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.Damage, weaponDamage + characterDamage));
+        _cachedArmor = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.Armor, characterArmor));
+        _cachedMoveSpeed = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.MoveSpeed, characterMoveSpeed));
+        _cachedCritRatePercent = Mathf.Clamp(ApplyStatusModifiers(_modifierBuffer, StatType.CritRate, weaponCritRate + characterCritRate), 0f, 100f);
+        _cachedCritMultiplier = Mathf.Max(1f, ApplyStatusModifiers(_modifierBuffer, StatType.CritMultiplier, weaponCritMult + (characterCritMult - BASE_CRIT_MULT)));
+        _cachedFireInterval = Mathf.Max(0.01f, ApplyStatusModifiers(_modifierBuffer, StatType.FireInterval, weaponFireInterval));
+        _cachedReloadTime = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.ReloadTime, weaponReloadTime));
+        _cachedStability = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.Stability, weaponStability));
+        _cachedBulletSpeed = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.BulletSpeed, weaponBulletSpeed));
+        _cachedMaxMagazine = Mathf.Max(0, Mathf.RoundToInt(ApplyStatusModifiers(_modifierBuffer, StatType.MaxMagazine, weaponMagazine)));
+        _cachedMaxHealth = Mathf.Max(1f, ApplyStatusModifiers(_modifierBuffer, StatType.MaxHP, characterMaxHealth));
+        _cachedMaxStamina = Mathf.Max(1f, ApplyStatusModifiers(_modifierBuffer, StatType.MaxStamina, characterMaxStamina));
+        _cachedMaxEnergy = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.MaxEnergy, characterMaxEnergy));
+        _cachedSkillBaseDamage = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.Damage, characterDamage));
 
+        _cachedInputSignature = inputSignature;
+        _hasCachedInputSignature = true;
         _isDirty = false;
+        InvalidateSignatureProbe();
+
+        if (signatureChanged)
+            _revision++;
     }
 
-    float ApplyStatusModifiers(StatType statType, float baseValue)
+    int ProbeInputSignature(GunConfig w)
     {
-        // Authoring contract: AddPercent uses whole percentages (10 => +10%),
-        // Multiply uses direct factors (1.2 => x1.2).
-        float flat = 0f;
-        float addPercent01 = 0f;
-        float multiply = 1f;
+        int frame = Application.isPlaying ? Time.frameCount : -1;
+        if (Application.isPlaying &&
+            _lastSignatureProbeFrame == frame &&
+            _lastSignatureProbeWeapon == w)
+        {
+            return _lastSignatureProbe;
+        }
+
+        CollectModifierSnapshot(_modifierProbeBuffer);
+        int signature = CalculateInputSignature(w, _modifierProbeBuffer);
+
+        if (Application.isPlaying)
+        {
+            _lastSignatureProbeFrame = frame;
+            _lastSignatureProbeWeapon = w;
+            _lastSignatureProbe = signature;
+        }
+
+        return signature;
+    }
+
+    void CollectModifierSnapshot(List<RuntimeStatModifier> buffer)
+    {
+        buffer.Clear();
 
         if (_modifierProviders.Count == 0)
             RebuildModifierProviders();
-
-        _modifierBuffer.Clear();
 
         for (int i = 0; i < _modifierProviders.Count; i++)
         {
@@ -264,12 +405,95 @@ public class StatsHub : MonoBehaviour
             if (provider == null)
                 continue;
 
-            provider.AppendStatModifiers(_modifierBuffer);
-        }
+            if (provider is Behaviour behaviour && !behaviour.isActiveAndEnabled)
+                continue;
 
-        for (int i = 0; i < _modifierBuffer.Count; i++)
+            provider.AppendStatModifiers(buffer);
+        }
+    }
+
+    int CalculateInputSignature(GunConfig w, List<RuntimeStatModifier> modifiers)
+    {
+        unchecked
         {
-            var modifier = _modifierBuffer[i];
+            int hash = 17;
+
+            hash = CombineHash(hash, ctx ? ctx.GetInstanceID() : 0);
+            hash = CombineHash(hash, ctx != null && ctx.baseStats != null ? ctx.baseStats.GetInstanceID() : 0);
+            hash = CombineHash(hash, GetLevel());
+            hash = CombineHash(hash, GetCharacterDamageBase());
+            hash = CombineHash(hash, GetCharacterArmorBase());
+            hash = CombineHash(hash, GetCharacterMoveSpeedBase());
+            hash = CombineHash(hash, GetCharacterCritRateBase());
+            hash = CombineHash(hash, GetCharacterCritMultiplierBase());
+            hash = CombineHash(hash, GetCharacterMaxHealthBase());
+            hash = CombineHash(hash, GetCharacterMaxStaminaBase());
+            hash = CombineHash(hash, GetCharacterMaxEnergyBase());
+
+            hash = CombineHash(hash, w ? w.GetInstanceID() : 0);
+            hash = CombineHash(hash, w ? w.damage : 0f);
+            hash = CombineHash(hash, w ? w.critRate : 0f);
+            hash = CombineHash(hash, w ? w.critMultiplier : BASE_CRIT_MULT);
+            hash = CombineHash(hash, w ? w.fireRate : 0f);
+            hash = CombineHash(hash, w ? w.reloadTime : 0f);
+            hash = CombineHash(hash, w ? w.stability : 0f);
+            hash = CombineHash(hash, w ? w.BulletSpeed : 0f);
+            hash = CombineHash(hash, w ? w.maxMagazine : 0);
+
+            for (int i = 0; i < _modifierProviders.Count; i++)
+            {
+                var provider = _modifierProviders[i];
+                if (provider == null)
+                {
+                    hash = CombineHash(hash, 0);
+                    hash = CombineHash(hash, 0);
+                    continue;
+                }
+
+                hash = CombineHash(hash, provider is UnityEngine.Object obj ? obj.GetInstanceID() : 0);
+                hash = CombineHash(hash, provider is Behaviour behaviour && behaviour.isActiveAndEnabled ? 1 : 0);
+            }
+
+            hash = CombineHash(hash, modifiers.Count);
+            for (int i = 0; i < modifiers.Count; i++)
+            {
+                var modifier = modifiers[i];
+                hash = CombineHash(hash, (int)modifier.StatType);
+                hash = CombineHash(hash, (int)modifier.Operation);
+                hash = CombineHash(hash, modifier.Value);
+                hash = CombineHash(hash, modifier.SourceId);
+            }
+
+            return hash;
+        }
+    }
+
+    static int CombineHash(int hash, int value)
+    {
+        unchecked { return hash * 31 + value; }
+    }
+
+    static int CombineHash(int hash, float value)
+    {
+        unchecked { return hash * 31 + value.GetHashCode(); }
+    }
+
+    static int CombineHash(int hash, string value)
+    {
+        unchecked { return hash * 31 + (value != null ? StringComparer.Ordinal.GetHashCode(value) : 0); }
+    }
+
+    float ApplyStatusModifiers(List<RuntimeStatModifier> modifiers, StatType statType, float baseValue)
+    {
+        // Authoring contract: AddPercent uses whole percentages (10 => +10%),
+        // Multiply uses direct factors (1.2 => x1.2).
+        float flat = 0f;
+        float addPercent01 = 0f;
+        float multiply = 1f;
+
+        for (int i = 0; i < modifiers.Count; i++)
+        {
+            var modifier = modifiers[i];
             if (modifier.StatType != statType)
                 continue;
 
@@ -294,27 +518,27 @@ public class StatsHub : MonoBehaviour
 
     float GetCharacterDamageBase()
     {
-        return ctx ? ctx.baseDamage + ctx.baseStats.DamageScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.baseDamage + ctx.baseStats.DamageScaling * GetLevel() : 0f;
     }
 
     float GetCharacterArmorBase()
     {
-        return ctx ? ctx.basearmor + ctx.baseStats.ArmorScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.basearmor + ctx.baseStats.ArmorScaling * GetLevel() : 0f;
     }
 
     float GetCharacterMoveSpeedBase()
     {
-        return ctx ? ctx.baseSpeed + ctx.baseStats.SpeedScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.baseSpeed + ctx.baseStats.SpeedScaling * GetLevel() : 0f;
     }
 
     float GetCharacterCritRateBase()
     {
-        return ctx ? ctx.basecritRate + ctx.baseStats.CritrateScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.basecritRate + ctx.baseStats.CritrateScaling * GetLevel() : 0f;
     }
 
     float GetCharacterCritMultiplierBase()
     {
-        if (!ctx)
+        if (ctx == null || ctx.baseStats == null)
             return BASE_CRIT_MULT;
 
         return Mathf.Max(1f, ctx.basecritMultiplier + ctx.baseStats.CritDamageScaling * GetLevel());
@@ -322,17 +546,17 @@ public class StatsHub : MonoBehaviour
 
     float GetCharacterMaxHealthBase()
     {
-        return ctx ? ctx.basemaxHealth + ctx.baseStats.MAXHPScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.basemaxHealth + ctx.baseStats.MAXHPScaling * GetLevel() : 0f;
     }
 
     float GetCharacterMaxStaminaBase()
     {
-        return ctx ? ctx.baseStamina + ctx.baseStats.StaminaScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.baseStamina + ctx.baseStats.StaminaScaling * GetLevel() : 0f;
     }
 
     float GetCharacterMaxEnergyBase()
     {
-        return ctx ? ctx.baseEnagy + ctx.baseStats.EnagyScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.baseEnagy + ctx.baseStats.EnagyScaling * GetLevel() : 0f;
     }
 
     float GetLevel()
@@ -349,45 +573,53 @@ public class StatsHub : MonoBehaviour
 
     float GetDamageInternal(GunConfig w)
     {
-        return Mathf.Max(0f, ApplyStatusModifiers(StatType.Damage, (w ? w.damage : 0f) + GetCharacterDamageBase()));
+        EnsureCacheFresh(GetCurrentWeapon());
+        return Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.Damage, (w ? w.damage : 0f) + GetCharacterDamageBase()));
     }
 
     float GetCritRatePercentInternal(GunConfig w)
     {
+        EnsureCacheFresh(GetCurrentWeapon());
         float baseValue = (w ? w.critRate : 0f) + GetCharacterCritRateBase();
-        return Mathf.Clamp(ApplyStatusModifiers(StatType.CritRate, baseValue), 0f, 100f);
+        return Mathf.Clamp(ApplyStatusModifiers(_modifierBuffer, StatType.CritRate, baseValue), 0f, 100f);
     }
 
     float GetCritMultiplierInternal(GunConfig w)
     {
+        EnsureCacheFresh(GetCurrentWeapon());
         float weaponMult = w ? Mathf.Max(1f, w.critMultiplier) : BASE_CRIT_MULT;
         float charBonus = GetCharacterCritMultiplierBase() - BASE_CRIT_MULT;
-        return Mathf.Max(1f, ApplyStatusModifiers(StatType.CritMultiplier, weaponMult + charBonus));
+        return Mathf.Max(1f, ApplyStatusModifiers(_modifierBuffer, StatType.CritMultiplier, weaponMult + charBonus));
     }
 
     float GetFireIntervalInternal(GunConfig w)
     {
-        return Mathf.Max(0.01f, ApplyStatusModifiers(StatType.FireInterval, w ? w.fireRate : 0f));
+        EnsureCacheFresh(GetCurrentWeapon());
+        return Mathf.Max(0.01f, ApplyStatusModifiers(_modifierBuffer, StatType.FireInterval, w ? w.fireRate : 0f));
     }
 
     float GetReloadTimeInternal(GunConfig w)
     {
-        return Mathf.Max(0f, ApplyStatusModifiers(StatType.ReloadTime, w ? w.reloadTime : 0f));
+        EnsureCacheFresh(GetCurrentWeapon());
+        return Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.ReloadTime, w ? w.reloadTime : 0f));
     }
 
     float GetStabilityInternal(GunConfig w)
     {
-        return Mathf.Max(0f, ApplyStatusModifiers(StatType.Stability, w ? w.stability : 0f));
+        EnsureCacheFresh(GetCurrentWeapon());
+        return Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.Stability, w ? w.stability : 0f));
     }
 
     float GetBulletSpeedInternal(GunConfig w)
     {
-        return Mathf.Max(0f, ApplyStatusModifiers(StatType.BulletSpeed, w ? w.BulletSpeed : 0f));
+        EnsureCacheFresh(GetCurrentWeapon());
+        return Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.BulletSpeed, w ? w.BulletSpeed : 0f));
     }
 
     int GetMaxMagazineInternal(GunConfig w)
     {
-        return Mathf.Max(0, Mathf.RoundToInt(ApplyStatusModifiers(StatType.MaxMagazine, w ? w.maxMagazine : 0f)));
+        EnsureCacheFresh(GetCurrentWeapon());
+        return Mathf.Max(0, Mathf.RoundToInt(ApplyStatusModifiers(_modifierBuffer, StatType.MaxMagazine, w ? w.maxMagazine : 0f)));
     }
 
     public GunConfig CurrentWeapon => GetCurrentWeapon();

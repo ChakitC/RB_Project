@@ -262,38 +262,40 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         return true;
     }
 
-    public virtual void TakeDamage(in DamageContext damageContext)
+    public virtual DamageResult TakeDamage(in DamageContext damageContext)
     {
-        ApplyDamageInternal(Mathf.Max(0f, damageContext.Damage), damageContext.Attacker, true, damageContext);
+        return ApplyDamageInternal(Mathf.Max(0f, damageContext.Damage), damageContext.Attacker, true, damageContext);
     }
 
-    protected void ApplyDamage(float damage, GameObject attacker)
+    protected DamageResult ApplyDamage(float damage, GameObject attacker)
     {
-        ApplyDamageInternal(Mathf.Max(0f, damage), attacker, false, default);
+        return ApplyDamageInternal(Mathf.Max(0f, damage), attacker, false, default);
     }
 
-    protected void ApplyDamage(in DamageContext damageContext)
+    protected DamageResult ApplyDamage(in DamageContext damageContext)
     {
-        ApplyDamageInternal(Mathf.Max(0f, damageContext.Damage), damageContext.Attacker, true, damageContext);
+        return ApplyDamageInternal(Mathf.Max(0f, damageContext.Damage), damageContext.Attacker, true, damageContext);
     }
 
-    void ApplyDamageInternal(float damage, GameObject attacker, bool hasContext, in DamageContext damageContext)
+    DamageResult ApplyDamageInternal(float damage, GameObject attacker, bool hasContext, in DamageContext damageContext)
     {
+        bool wasAliveBefore = IsAlive;
+
         if (damage <= 0f)
-            return;
+            return BuildDamageResult(attacker, damage, 0f, false, wasAliveBefore);
 
         if (CTX == null || CTX.stateHub == null || CTX.stateHub.LifeSM == null)
-            return;
+            return BuildDamageResult(attacker, damage, 0f, false, wasAliveBefore);
 
         if (CTX.stateHub.LifeSM.CurrentId == LifeStateId.Down ||
             CTX.stateHub.LifeSM.CurrentId == LifeStateId.Dead)
-            return;
+            return BuildDamageResult(attacker, damage, 0f, false, wasAliveBefore);
 
         if (IsInvincible)
         {
             var preventedContext = PublishDamageEvent(PassiveEventType.DamagePrevented, damage, attacker, hasContext, damageContext);
             CTX.DashSystem?.TryRegisterPerfectDodge(in preventedContext);
-            return;
+            return BuildDamageResult(attacker, damage, 0f, true, wasAliveBefore);
         }
 
         if (hasContext && damageContext.HasKnockback)
@@ -313,6 +315,13 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
 
         if (currentHealth <= 0f)
             Down();
+
+        return BuildDamageResult(attacker, damage, appliedDamage, false, wasAliveBefore);
+    }
+
+    DamageResult BuildDamageResult(GameObject attacker, float requestedDamage, float appliedDamage, bool wasPrevented, bool wasAliveBefore)
+    {
+        return new DamageResult(this, attacker, requestedDamage, appliedDamage, wasPrevented, wasAliveBefore, IsAlive);
     }
 
     CharacterKnockbackMotor ResolveKnockbackMotor()

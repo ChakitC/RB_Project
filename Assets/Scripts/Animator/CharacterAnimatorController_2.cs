@@ -137,7 +137,7 @@ public class CharacterAnimatorController_2 : MonoBehaviour
             return;
         }
         
-        if (Shoot != null && ctx.WeaponSystem.isFiring)
+        if (Shoot != null && ctx.WeaponSystem.IsFiringActivity)
         {
             if (_currentActionClip  != Shoot) PlayForce(Shoot);
             return;

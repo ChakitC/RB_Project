@@ -6,6 +6,7 @@ using UnityEngine;
 public class WeaponSystem : MonoBehaviour
 {
     const string DefaultFirePointName = "FirePoint";
+    const float StatsHubProbeIntervalSeconds = 0.2f;
 
     [Header("Refs")]
     public CharacteContext ctx;
@@ -47,6 +48,9 @@ public class WeaponSystem : MonoBehaviour
     public bool IsReloading => isReloading;
     public bool IsFiringHeld => _isFiringHeld;
     public bool CanFire => !isReloading && magazine > 0 && GetWeaponTime() >= nextFireTime;
+    public bool IsAiming => isAiming;
+    public Transform FirePoint => firePoint;
+    public float Damage => damage;
     public int CurrentAmmo => magazine;
     public int MagazineSize => MaxMagazine;
     public int CurrentReserveAmmo => HasInfiniteReserveAmmo ? -1 : reserveAmmo;
@@ -104,6 +108,8 @@ public class WeaponSystem : MonoBehaviour
     GunConfig derivedStatsWeapon;
     WeaponStatSnapshot statSnapshot;
     StatsHub subscribedStatsHub;
+    int observedStatsHubRevision = -1;
+    float nextStatsHubProbeTime;
 
     FiringMode firingMode = FiringMode.Auto;
     readonly WeaponFireController fireController = new();
@@ -121,6 +127,7 @@ public class WeaponSystem : MonoBehaviour
     void OnEnable()
     {
         ResolveReferences();
+        nextStatsHubProbeTime = 0f;
         MarkDerivedStatsDirty();
     }
 
@@ -184,13 +191,12 @@ public class WeaponSystem : MonoBehaviour
         if (!firePoint)
         {
             Transform ownerRoot = ctx ? ctx.transform : transform;
-            firePoint = FindChildByName(ownerRoot, DefaultFirePointName);
+            BindFirePoint(FindChildByName(ownerRoot, DefaultFirePointName));
         }
 
         if (firePoint)
         {
-            firePointOriginalRot = firePoint.localRotation;
-            swayTimer = 0f;
+            CacheFirePointRestPose();
             return true;
         }
 
@@ -198,6 +204,23 @@ public class WeaponSystem : MonoBehaviour
             Debug.LogError("WeaponSystem: firePoint is missing.", this);
 
         return false;
+    }
+
+    public bool BindFirePoint(Transform value)
+    {
+        firePoint = value;
+
+        if (!firePoint)
+            return false;
+
+        CacheFirePointRestPose();
+        return true;
+    }
+
+    void CacheFirePointRestPose()
+    {
+        firePointOriginalRot = firePoint.localRotation;
+        swayTimer = 0f;
     }
 
     private static Transform FindChildByName(Transform root, string targetName)
@@ -366,6 +389,7 @@ public class WeaponSystem : MonoBehaviour
             statSnapshot = default;
             derivedStatsDirty = false;
             derivedStatsWeapon = null;
+            observedStatsHubRevision = ResolveStatsHubRevision();
             return;
         }
 
@@ -395,14 +419,62 @@ public class WeaponSystem : MonoBehaviour
         returnSpeed = baseReturnSpeed * (1f + stability * k);
         derivedStatsDirty = false;
         derivedStatsWeapon = currentWeapon;
+        observedStatsHubRevision = ResolveStatsHubRevision();
     }
 
-    void RefreshDerivedStatsIfDirty()
+    void RefreshDerivedStatsIfDirty(bool forceStatsHubProbe = false)
     {
-        if (!derivedStatsDirty && derivedStatsWeapon == currentWeapon)
+        int statsHubRevision = ResolveStatsHubRevision();
+        bool shouldRefresh =
+            derivedStatsDirty ||
+            derivedStatsWeapon != currentWeapon ||
+            observedStatsHubRevision != statsHubRevision;
+
+        if (!shouldRefresh && ShouldProbeStatsHubInputs(forceStatsHubProbe))
+        {
+            if (statsHub.RefreshCacheIfInputsChanged(logSilentChange: true))
+                statsHubRevision = ResolveStatsHubRevision();
+
+            shouldRefresh = observedStatsHubRevision != statsHubRevision;
+        }
+
+        if (!shouldRefresh)
             return;
 
         RefreshDerivedStats();
+    }
+
+    bool ShouldProbeStatsHubInputs(bool forceProbe)
+    {
+        if (statsHub == null)
+            return false;
+
+        if (forceProbe)
+        {
+            ScheduleNextStatsHubProbe();
+            return true;
+        }
+
+        if (!Application.isPlaying)
+            return true;
+
+        float now = Time.unscaledTime;
+        if (now < nextStatsHubProbeTime)
+            return false;
+
+        nextStatsHubProbeTime = now + StatsHubProbeIntervalSeconds;
+        return true;
+    }
+
+    void ScheduleNextStatsHubProbe()
+    {
+        if (Application.isPlaying)
+            nextStatsHubProbeTime = Time.unscaledTime + StatsHubProbeIntervalSeconds;
+    }
+
+    int ResolveStatsHubRevision()
+    {
+        return statsHub != null ? statsHub.Revision : -1;
     }
 
     void MarkDerivedStatsDirty()
@@ -417,6 +489,7 @@ public class WeaponSystem : MonoBehaviour
 
         UnsubscribeFromStatsHub();
         subscribedStatsHub = nextStatsHub;
+        observedStatsHubRevision = -1;
 
         if (subscribedStatsHub != null)
             subscribedStatsHub.StatsDirty += MarkDerivedStatsDirty;
@@ -429,6 +502,7 @@ public class WeaponSystem : MonoBehaviour
 
         subscribedStatsHub.StatsDirty -= MarkDerivedStatsDirty;
         subscribedStatsHub = null;
+        observedStatsHubRevision = -1;
     }
 
     void ClearDerivedStats()
@@ -532,7 +606,7 @@ public class WeaponSystem : MonoBehaviour
 
     public bool TryShoot()
     {
-        RefreshDerivedStatsIfDirty();
+        RefreshDerivedStatsIfDirty(forceStatsHubProbe: true);
 
         if (!CanBeginShotAttempt())
             return false;
@@ -694,7 +768,7 @@ public class WeaponSystem : MonoBehaviour
 
     public void TryReload()
     {
-        RefreshDerivedStatsIfDirty();
+        RefreshDerivedStatsIfDirty(forceStatsHubProbe: true);
 
         if (IsReloadBlockedByActorState())
             return;
@@ -733,7 +807,7 @@ public class WeaponSystem : MonoBehaviour
 
     public bool CanRestoreMagazine(int amount, bool fillToMax = false)
     {
-        RefreshDerivedStatsIfDirty();
+        RefreshDerivedStatsIfDirty(forceStatsHubProbe: true);
         SyncAmmoStateFromMirrors();
 
         if (!currentWeapon)
@@ -744,7 +818,7 @@ public class WeaponSystem : MonoBehaviour
 
     public bool CanRestoreReserveAmmo(int amount, bool fillToMax = false)
     {
-        RefreshDerivedStatsIfDirty();
+        RefreshDerivedStatsIfDirty(forceStatsHubProbe: true);
         SyncAmmoStateFromMirrors();
 
         if (!currentWeapon)

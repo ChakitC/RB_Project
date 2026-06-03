@@ -43,10 +43,13 @@ public static class CharacterWeaponPreviewResolver
         var data = LoadCurrentGameData(currentSlot);
         string equippedId = preferredEquippedInstanceId;
         if (string.IsNullOrWhiteSpace(equippedId))
-            equippedId = CharacterEquipment.FindEquipmentEntry(data?.equipment, ownerId);
+            CharacterEquipment.TryFindEquipmentEntry(data?.equipment, ownerId, out equippedId);
 
-        if (string.IsNullOrWhiteSpace(equippedId) && ShouldUseLegacyPlayerWeapon(data, selected, partyIndex))
-            equippedId = data?.weapon?.equippedWeaponInstanceId;
+        if (string.IsNullOrWhiteSpace(equippedId) &&
+            ShouldUsePlayerInventoryFallback(data, selected, partyIndex))
+        {
+            equippedId = ResolveInventoryEquippedWeaponInstanceId(preferredInventory);
+        }
 
         if (!string.IsNullOrWhiteSpace(equippedId))
         {
@@ -55,6 +58,12 @@ public static class CharacterWeaponPreviewResolver
 
             if (TryResolveWeaponFromSave(data, equippedId, weaponDatabase, out weapon))
                 return true;
+        }
+
+        if (ShouldUsePlayerInventoryFallback(data, selected, partyIndex) &&
+            TryResolveFirstSavedWeapon(data, weaponDatabase, out weapon))
+        {
+            return true;
         }
 
         return TryResolveCharacterWeaponFromSceneEquipment(ownerId, weaponDatabase, preferredInventory, out weapon);
@@ -152,7 +161,7 @@ public static class CharacterWeaponPreviewResolver
         return data;
     }
 
-    static bool ShouldUseLegacyPlayerWeapon(GameSaveData data, CharacterStats selected, int partyIndex)
+    static bool ShouldUsePlayerInventoryFallback(GameSaveData data, CharacterStats selected, int partyIndex)
     {
         if (partyIndex == 0)
             return true;
@@ -161,6 +170,46 @@ public static class CharacterWeaponPreviewResolver
             return false;
 
         return string.Equals(data.party.partyIds[0], selected.characterId, StringComparison.Ordinal);
+    }
+
+    static string ResolveInventoryEquippedWeaponInstanceId(PlayerInventory inventory)
+    {
+        if (!inventory)
+            return null;
+
+        if (!string.IsNullOrWhiteSpace(inventory.EquippedWeaponInstanceId))
+            return inventory.EquippedWeaponInstanceId;
+
+        var slots = inventory.Slots;
+        if (slots == null)
+            return null;
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var instance = slots[i]?.weaponInstance;
+            if (instance != null && !string.IsNullOrWhiteSpace(instance.instanceId))
+                return instance.instanceId;
+        }
+
+        return null;
+    }
+
+    static bool TryResolveFirstSavedWeapon(GameSaveData data, WeaponDatabase weaponDatabase, out GunConfig weapon)
+    {
+        weapon = null;
+
+        var slots = data?.inventory?.slots;
+        if (slots == null)
+            return false;
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            string baseWeaponId = slots[i]?.weaponInstance?.baseWeaponId;
+            if (TryResolveWeaponDefinition(baseWeaponId, null, weaponDatabase, out weapon))
+                return true;
+        }
+
+        return false;
     }
 
     static bool TryResolveWeaponDefinition(

@@ -19,7 +19,8 @@ public enum PassiveEventType
     PerfectDodge,
     Reload,
     DashStarted,
-    DashEnded
+    DashEnded,
+    MovementDistanceReached
 }
 
 public enum PassiveEventOrigin

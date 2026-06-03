@@ -95,6 +95,29 @@ public class LevelSystem : MonoBehaviour
             CTX.levelSystem = this;
     }
 
+    bool TryResolvePersistentCharacterId(out string characterId)
+    {
+        characterId = null;
+        ResolveReferences();
+
+        if (CTX != null)
+        {
+            if (CTX.TargetIdentity != AITargetIdentity.Player &&
+                CTX.TargetIdentity != AITargetIdentity.Companion)
+            {
+                return false;
+            }
+
+            if (CTX.baseStats != null)
+                characterId = CTX.baseStats.characterId;
+        }
+
+        if (string.IsNullOrWhiteSpace(characterId) && _slot != null)
+            characterId = _slot.IDCharacter;
+
+        return SaveDataMigration.ShouldPersistCharacterProgress(characterId);
+    }
+
     // ---------- Public API ----------
     
     /// <summary>เพิ่ม XP แบบ delta (รองรับก้อนใหญ่)</summary>
@@ -113,10 +136,9 @@ public class LevelSystem : MonoBehaviour
         if (IsMaxLevel) return;
 
         // หา CharacterID ให้จบก่อน (กัน null)
-        if (CTX != null && CTX.baseStats != null)
-            ChracterID = CTX.baseStats.characterId;
-        else if (_slot != null)
-            ChracterID = _slot.IDCharacter;
+        bool shouldPersist = TryResolvePersistentCharacterId(out string persistentCharacterId);
+        if (shouldPersist)
+            ChracterID = persistentCharacterId;
 
         currentXp += amount;
 
@@ -135,7 +157,7 @@ public class LevelSystem : MonoBehaviour
             currentXp = 0;
 
         // Save ครั้งเดียวด้วยค่าสุดท้าย
-        if (SaveManager.Instance != null && !string.IsNullOrEmpty(ChracterID))
+        if (shouldPersist && SaveManager.Instance != null && !string.IsNullOrEmpty(ChracterID))
             SaveManager.Instance.SaveCharacterLevel(ChracterID, level, currentXp);
 
         RaiseXp();
@@ -145,21 +167,19 @@ public class LevelSystem : MonoBehaviour
     /// <summary>ตั้งค่าด้วย (level,xp) เช่นตอน Load</summary>
     public void SetState()
     {
+        if (!TryResolvePersistentCharacterId(out string persistentCharacterId))
+        {
+            ClampStateToTable();
+            RaiseAll();
+            return;
+        }
+
+        ChracterID = persistentCharacterId;
+
         if (SaveManager.Instance == null) 
         {
             Debug.Log("[LevelSystem] SaveManager is Missing");
             return;
-        }
-        
-        ResolveReferences();
-
-        if (CTX != null && CTX.baseStats != null)
-        {
-            ChracterID = CTX.baseStats.characterId;
-        }
-        else if (_slot != null)
-        {
-            ChracterID = _slot.IDCharacter;
         }
          
         var data = SaveManager.Instance.LoadCharacterLevel(ChracterID);

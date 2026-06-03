@@ -1,17 +1,13 @@
 using System;
-using System.Collections.Generic;
-using UnityEngine.Serialization;
 
 [Serializable]
 public class GameSaveData
 {
+    public const int CurrentVersion = 2;
+
+    public int saveVersion = CurrentVersion;
     public PlayerInventoryData inventory;
-    public PlayerWeaponData weapon;
     public EquipmentSaveData equipment;
     public AccessoryLoadoutSaveData accessories;
     public PartyData party = new PartyData();
 }
-
-
-   
-

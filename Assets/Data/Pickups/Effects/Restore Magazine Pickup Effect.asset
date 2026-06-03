@@ -15,3 +15,4 @@ MonoBehaviour:
   amount: 1
   fillToMax: 1
   restoreTarget: 1
+  recipientMode: 0

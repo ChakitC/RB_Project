@@ -31,6 +31,7 @@ public static class SaveSystem
     public static void SaveGame(GameSaveData data, int slot)
     {
         if (data == null) return;
+        SaveDataMigration.NormalizeGameSaveForWrite(data);
         var json = JsonUtility.ToJson(data, true);
         WriteAtomic(GamePath(slot), json);
     }
@@ -41,7 +42,15 @@ public static class SaveSystem
         if (!File.Exists(path)) return null;
 
         var json = File.ReadAllText(path);
-        return string.IsNullOrWhiteSpace(json) ? null : JsonUtility.FromJson<GameSaveData>(json);
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        PartyData partyOnly = LoadPartyOnly(slot);
+        GameSaveData data = SaveDataMigration.LoadAndMigrateGameSave(json, partyOnly, out bool migrated);
+        if (data != null && migrated)
+            SaveGame(data, slot);
+
+        return data;
     }
 
     // ---------- PARTY ONLY ----------
@@ -63,29 +72,11 @@ public static class SaveSystem
     }
     public static string GetPartyMemberId(int slot, int index)
     {
-        
-        var path = ResolveReadPath(PartyPath(slot));
-        Debug.Log($"[GetPartyMemberId] path={path}");
+        PartyData party = LoadPartyOnly(slot);
+        if (party?.partyIds == null || index < 0 || index >= party.partyIds.Count)
+            return null;
 
-        var json = File.Exists(path) ? File.ReadAllText(path) : "(no file)";
-        Debug.Log($"[GetPartyMemberId] json=\n{json}");
-
-        var party = JsonUtility.FromJson<PartyData>(json);
-        Debug.Log($"count={(party?.partyIds==null ? -1 : party.partyIds.Count)}");
-
-        if (party?.partyIds != null)
-        {
-            for (int i = 0; i < party.partyIds.Count; i++)
-            {
-                var v = party.partyIds[i];
-                Debug.Log($"partyIds[{i}] = {(v==null ? "NULL" : $"'{v}' len={v.Length}")}");
-            }
-        }
-        
-        return party.partyIds[index];    
-        
-
-
+        return party.partyIds[index];
     }
 
 
@@ -115,10 +106,12 @@ public static class SaveSystem
     public static void SaveCharacterProgress(int slot, string characterId, CharacterProgressData data)
     {
         if (string.IsNullOrEmpty(characterId) || data == null) return;
+        if (!SaveDataMigration.ShouldPersistCharacterProgress(characterId)) return;
         if (slot < 0) slot = 0;
 
         var file = LoadCharacterProgressFile(slot);
         if (file.entries == null) file.entries = new List<CharacterProgressEntry>();
+        SaveDataMigration.RemoveNonPersistentCharacterProgressEntries(file);
 
         // หา entry เดิม
         var entry = file.entries.Find(e => e != null && e.characterId == characterId);
@@ -141,6 +134,7 @@ public static class SaveSystem
     public static CharacterProgressData LoadCharacterProgress(int slot, string characterId)
     {
         if (string.IsNullOrEmpty(characterId)) return null;
+        if (!SaveDataMigration.ShouldPersistCharacterProgress(characterId)) return null;
         if (slot < 0) slot = 0;
 
         var file = LoadCharacterProgressFile(slot);
@@ -159,8 +153,14 @@ public static class SaveSystem
         var json = File.ReadAllText(path);
         if (string.IsNullOrWhiteSpace(json)) return new CharacterProgressSaveFile();
 
-        var file = JsonUtility.FromJson<CharacterProgressSaveFile>(json);
-        return file ?? new CharacterProgressSaveFile();
+        var file = JsonUtility.FromJson<CharacterProgressSaveFile>(json) ?? new CharacterProgressSaveFile();
+        if (SaveDataMigration.RemoveNonPersistentCharacterProgressEntries(file))
+        {
+            var migratedJson = JsonUtility.ToJson(file, true);
+            WriteAtomic(CharacterPath(slot), migratedJson);
+        }
+
+        return file;
     }
 
     static string ResolveReadPath(string preferredPath)

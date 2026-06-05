@@ -167,6 +167,26 @@ MonoBehaviour:
   rarePickupPrefab: {fileID: 2790711977759852646, guid: 3e01af9a7a01b8349b6fbf898e2f757d, type: 3}
   epicPickupPrefab: {fileID: 3412904867508883357, guid: 7c04a362ba3e35642b6e54aebfe564fb, type: 3}
   weaponAffixDatabase: {fileID: 11400000, guid: d951cbf91c99476428d7c7928e413832, type: 2}
+  dropArcSettings:
+    enabled: 1
+    startHeight: 0.45
+    minRadius: 1.1
+    maxRadius: 2.4
+    duration: 0.55
+    arcHeight: 1.5
+    staggerDelay: 0.035
+    angleJitterDegrees: 18
+    landingAttempts: 8
+    landingHeightOffset: 0.06
+    groundMask:
+      serializedVersion: 2
+      m_Bits: 4294967295
+    groundProbeHeight: 3
+    groundProbeDistance: 8
+    terrainClearanceMask:
+      serializedVersion: 2
+      m_Bits: 131072
+    terrainClearanceRadius: 0.28
 --- !u!1 &368537843
 GameObject:
   m_ObjectHideFlags: 0

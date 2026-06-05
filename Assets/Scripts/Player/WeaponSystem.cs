@@ -256,6 +256,9 @@ public class WeaponSystem : MonoBehaviour
     {
         var previousWeapon = currentWeapon;
 
+        if (weapon != null && instance == null && TryGetEquipmentInstanceForWeapon(weapon, out WeaponInstanceData equipmentInstance))
+            instance = equipmentInstance;
+
         SyncWeaponInstanceState();
         StopWeaponActivity(clearHeld: true, stopReloadAnim: true, syncInstance: false);
 
@@ -307,6 +310,33 @@ public class WeaponSystem : MonoBehaviour
 
         if (currentWeapon != null && currentWeapon != previousWeapon)
             PlayWeaponCue(currentWeapon.equipCue, true);
+    }
+
+    bool TryGetEquipmentInstanceForWeapon(GunConfig weapon, out WeaponInstanceData instance)
+    {
+        instance = null;
+
+        if (ctx == null || ctx.Equipment == null)
+            ResolveReferences();
+
+        CharacterEquipment equipment = ctx != null ? ctx.Equipment : null;
+        if (equipment == null || equipment.CurrentWeaponInstance == null)
+            return false;
+
+        if (!IsInstanceForWeapon(equipment.CurrentWeaponInstance, weapon))
+            return false;
+
+        instance = equipment.CurrentWeaponInstance;
+        return true;
+    }
+
+    static bool IsInstanceForWeapon(WeaponInstanceData instance, GunConfig weapon)
+    {
+        if (instance == null || weapon == null)
+            return false;
+
+        string weaponId = WeaponInstanceFactory.ResolveBaseWeaponId(weapon);
+        return string.Equals(instance.baseWeaponId, weaponId, System.StringComparison.Ordinal);
     }
 
     void RefreshWeaponVisual()

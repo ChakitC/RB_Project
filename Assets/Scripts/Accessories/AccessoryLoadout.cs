@@ -476,6 +476,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
 
         entry.equippedAccessories[targetSlotIndex] = inventoryInstance.DeepClone();
         SaveSystem.SaveGame(data, saveSlot);
+        SaveManager.Instance?.RefreshLoadedCacheFromDisk();
         return true;
     }
 

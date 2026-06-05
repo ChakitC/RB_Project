@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: de111678c081eb545b41c72e880516ca
+guid: 36a8267c975d3e347845516dc08b6cb8
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -31,9 +31,9 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: HMG_Attack_End_remap
-      takeName: HMG_Attack_End_remap
-      internalID: 934377257775701634
+      name: Feno_Move_Foward
+      takeName: Feno_Move_Foward
+      internalID: -3045897872586947758
       firstFrame: 0
       lastFrame: 20
       wrapMode: 0
@@ -42,7 +42,7 @@ ModelImporter:
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
-      loopTime: 0
+      loopTime: 1
       loopBlend: 0
       loopBlendOrientation: 0
       loopBlendPositionY: 0

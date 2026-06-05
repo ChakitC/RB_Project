@@ -36,7 +36,7 @@ MonoBehaviour:
     landingHeightOffset: 0.06
     groundMask:
       serializedVersion: 2
-      m_Bits: 4294967295
+      m_Bits: 524287
     groundProbeHeight: 3
     groundProbeDistance: 8
     terrainClearanceMask:

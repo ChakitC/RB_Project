@@ -2,20 +2,20 @@
     "saveVersion": 2,
     "inventory": {
         "maxSlotCount": 20,
-        "gold": 964070,
+        "gold": 963070,
         "scrap": 0,
         "slots": [
             {
-                "itemId": "SMG_RB01",
+                "itemId": "RB.HMG.01",
                 "amount": 1,
                 "weaponInstance": {
-                    "instanceId": "e8b4abab36aa4924890ac8f5fd9f8f1d",
-                    "baseWeaponId": "SMG_RB01",
-                    "rarity": 2,
+                    "instanceId": "f6127e751d1741c595efad94bcfe4eda",
+                    "baseWeaponId": "RB.HMG.01",
+                    "rarity": 1,
                     "mainAffix": {
                         "affixId": "Stabiity.1",
                         "hasPrimaryValue": true,
-                        "primaryValue": 20.401439666748048,
+                        "primaryValue": 1.1658668518066407,
                         "hasSecondaryValue": false,
                         "secondaryValue": 0.0
                     },
@@ -23,29 +23,20 @@
                         {
                             "affixId": "Crit.1",
                             "hasPrimaryValue": true,
-                            "primaryValue": 0.3785178065299988,
-                            "hasSecondaryValue": false,
-                            "secondaryValue": 0.0
-                        },
-                        {
-                            "affixId": "Damge.1",
-                            "hasPrimaryValue": true,
-                            "primaryValue": 33.17728805541992,
+                            "primaryValue": 0.9616607427597046,
                             "hasSecondaryValue": false,
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 8541,
-                    "currentMagazine": 29,
-                    "currentReserveAmmo": 226,
+                    "shotCounter": 1607,
+                    "currentMagazine": 99,
+                    "currentReserveAmmo": 184,
                     "reserveAmmoInitialized": true,
-                    "upgradeLevel": 30,
-                    "upgradeTier": 3,
+                    "upgradeLevel": 16,
+                    "upgradeTier": 1,
                     "upgradeExp": 0,
                     "unlockedUpgradeMilestoneIds": [
-                        "upgrade-tier-10",
-                        "upgrade-tier-20",
-                        "upgrade-tier-30"
+                        "upgrade-tier-10"
                     ]
                 },
                 "accessoryInstance": {
@@ -116,9 +107,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 1005,
-                    "currentMagazine": 2,
-                    "currentReserveAmmo": 95,
+                    "shotCounter": 1008,
+                    "currentMagazine": 5,
+                    "currentReserveAmmo": 100,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -162,9 +153,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 4746,
-                    "currentMagazine": 28,
-                    "currentReserveAmmo": 292,
+                    "shotCounter": 4794,
+                    "currentMagazine": 29,
+                    "currentReserveAmmo": 281,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 20,
                     "upgradeTier": 2,
@@ -204,9 +195,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 1314,
-                    "currentMagazine": 29,
-                    "currentReserveAmmo": 300,
+                    "shotCounter": 2352,
+                    "currentMagazine": 99,
+                    "currentReserveAmmo": 77,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -312,8 +303,8 @@
                         "secondaryValue": 0.0
                     },
                     "subAffixes": [],
-                    "shotCounter": 0,
-                    "currentMagazine": 30,
+                    "shotCounter": 4,
+                    "currentMagazine": 26,
                     "currentReserveAmmo": 300,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
@@ -382,8 +373,8 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 2031,
-                    "currentMagazine": 29,
+                    "shotCounter": 2032,
+                    "currentMagazine": 30,
                     "currentReserveAmmo": 300,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 20,
@@ -448,16 +439,16 @@
                 }
             },
             {
-                "itemId": "RB.HMG.01",
+                "itemId": "SMG_RB01",
                 "amount": 1,
                 "weaponInstance": {
-                    "instanceId": "f6127e751d1741c595efad94bcfe4eda",
-                    "baseWeaponId": "RB.HMG.01",
-                    "rarity": 1,
+                    "instanceId": "e8b4abab36aa4924890ac8f5fd9f8f1d",
+                    "baseWeaponId": "SMG_RB01",
+                    "rarity": 2,
                     "mainAffix": {
                         "affixId": "Stabiity.1",
                         "hasPrimaryValue": true,
-                        "primaryValue": 1.1658668518066407,
+                        "primaryValue": 20.401439666748048,
                         "hasSecondaryValue": false,
                         "secondaryValue": 0.0
                     },
@@ -465,20 +456,29 @@
                         {
                             "affixId": "Crit.1",
                             "hasPrimaryValue": true,
-                            "primaryValue": 0.9616607427597046,
+                            "primaryValue": 0.3785178065299988,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        },
+                        {
+                            "affixId": "Damge.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 33.17728805541992,
                             "hasSecondaryValue": false,
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 1588,
-                    "currentMagazine": 0,
-                    "currentReserveAmmo": 0,
+                    "shotCounter": 8723,
+                    "currentMagazine": 24,
+                    "currentReserveAmmo": 55,
                     "reserveAmmoInitialized": true,
-                    "upgradeLevel": 16,
-                    "upgradeTier": 1,
+                    "upgradeLevel": 30,
+                    "upgradeTier": 3,
                     "upgradeExp": 0,
                     "unlockedUpgradeMilestoneIds": [
-                        "upgrade-tier-10"
+                        "upgrade-tier-10",
+                        "upgrade-tier-20",
+                        "upgrade-tier-30"
                     ]
                 },
                 "accessoryInstance": {
@@ -518,9 +518,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 7121,
-                    "currentMagazine": 11,
-                    "currentReserveAmmo": 0,
+                    "shotCounter": 7612,
+                    "currentMagazine": 30,
+                    "currentReserveAmmo": 300,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 2,
                     "upgradeTier": 0,
@@ -564,9 +564,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 9600,
-                    "currentMagazine": 30,
-                    "currentReserveAmmo": 300,
+                    "shotCounter": 9658,
+                    "currentMagazine": 29,
+                    "currentReserveAmmo": 287,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 30,
                     "upgradeTier": 3,
@@ -607,9 +607,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 0,
-                    "currentMagazine": 100,
-                    "currentReserveAmmo": 300,
+                    "shotCounter": 40,
+                    "currentMagazine": 99,
+                    "currentReserveAmmo": 277,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -807,7 +807,7 @@
         "entries": [
             {
                 "ownerId": "character:ID.Roma",
-                "equippedWeaponInstanceId": ""
+                "equippedWeaponInstanceId": "e875436829464c588bbed213014ef844"
             },
             {
                 "ownerId": "character:ID.Abbygail",
@@ -819,7 +819,7 @@
             },
             {
                 "ownerId": "character:ID.Feno",
-                "equippedWeaponInstanceId": "12dac3b40d764d29ae240974fc9a07e1"
+                "equippedWeaponInstanceId": "f6127e751d1741c595efad94bcfe4eda"
             },
             {
                 "ownerId": "character:ID.Noemi",
@@ -1032,8 +1032,8 @@
                         "upgradeLevel": 0
                     },
                     {
-                        "instanceId": "",
-                        "accessoryId": "",
+                        "instanceId": "acc_0b52f654d3a44e3dad34cf60ef0f9d47",
+                        "accessoryId": "Accessory.RabbitLag",
                         "modifierId": "",
                         "upgradeLevel": 0
                     },
@@ -1097,9 +1097,9 @@
     },
     "party": {
         "partyIds": [
-            "ID.Roma",
-            "ID.Noemi",
             "ID.Feno",
+            "ID.Aires",
+            "ID.Milano",
             "ID.Abbygail"
         ]
     }

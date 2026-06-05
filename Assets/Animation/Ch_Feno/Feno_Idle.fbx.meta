@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 39f30fdb12eff9f4ea22bcf99602976e
+guid: b19cf7bb677757048a2b15aff435c1d8
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -31,18 +31,18 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: HMG_Stand_Attack_Start_remap
-      takeName: HMG_Stand_Attack_Start_remap
-      internalID: 6765361383130296639
+      name: Feno_Idle
+      takeName: Feno_Idle
+      internalID: 2072940358198767037
       firstFrame: 0
-      lastFrame: 30
+      lastFrame: 42
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
-      loopTime: 0
+      loopTime: 1
       loopBlend: 0
       loopBlendOrientation: 0
       loopBlendPositionY: 0

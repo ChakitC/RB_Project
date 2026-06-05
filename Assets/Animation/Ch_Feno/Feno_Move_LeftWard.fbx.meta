@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: d0e07c7ae3b6cc84e8cc27f7d816a16e
+guid: 38e87c7d80756bc46ae2e7b09802f992
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -31,18 +31,18 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: HMG_Move_Ing_remap
-      takeName: HMG_Move_Ing_remap
-      internalID: 3364562180811945816
+      name: Feno_Move_LeftWard
+      takeName: Feno_Move_LeftWard
+      internalID: -5866403235549782745
       firstFrame: 0
-      lastFrame: 20
+      lastFrame: 19
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
-      loopTime: 0
+      loopTime: 1
       loopBlend: 0
       loopBlendOrientation: 0
       loopBlendPositionY: 0

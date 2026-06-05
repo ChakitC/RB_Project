@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 288b0ccf0dd3d5e42bdda76b9307eb95
+guid: 3b5ffe0ac65d7514799300c13a24e82f
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: HMG_Attack_Start_remap
-      takeName: HMG_Attack_Start_remap
-      internalID: 396118120679923081
+      name: Feno_KnockBack
+      takeName: Feno_KnockBack
+      internalID: -5429344033362466626
       firstFrame: 0
-      lastFrame: 30
+      lastFrame: 15
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

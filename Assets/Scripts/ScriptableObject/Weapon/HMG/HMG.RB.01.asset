@@ -28,7 +28,7 @@ MonoBehaviour:
   BulletPrefab: {fileID: 7234640618046847812, guid: de907b0f2086f5a49b659333a92a81d8, type: 3}
   WeaponPrefab: {fileID: 1991939279194961263, guid: 9001473d1df37e24293d9cd4edc08eb0, type: 3}
   upgradeCurve: {fileID: 0}
-  overrideWeaponModelMountOffset: 0
+  overrideWeaponModelMountOffset: 1
   rightHandWeaponModelMount:
     localPosition: {x: 0, y: 0.443, z: 0}
     localRotationEuler: {x: -0, y: 180, z: 90}
@@ -59,7 +59,7 @@ MonoBehaviour:
   staggerPower: 10
   autoloader: 0
   magazineReload: 1
-  reloadTime: 1
+  reloadTime: 3
   reloadPerBullet: 0
   startInsertDelay: 0
   perBulletInsertTime: 0

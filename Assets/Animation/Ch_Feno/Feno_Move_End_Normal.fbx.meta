@@ -31,9 +31,9 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: HMG_Move_End_Normal_remap
-      takeName: HMG_Move_End_Normal_remap
-      internalID: 7458526900190653035
+      name: Feno_Move_End_Normal
+      takeName: Feno_Move_End_Normal
+      internalID: 6245346274179123039
       firstFrame: 0
       lastFrame: 20
       wrapMode: 0

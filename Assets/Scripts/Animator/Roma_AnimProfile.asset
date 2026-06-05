@@ -23,19 +23,15 @@ MonoBehaviour:
       _Callbacks: []
       _Names: []
     _Animations:
-    - {fileID: 5487989288048153974, guid: 0fe0a7dc98bb2fa4a9ff7d5be7eb0ab6, type: 3}
-    - {fileID: 2718465186313594679, guid: 58a826f5004c5a54893b807d6696dc4e, type: 3}
-    - {fileID: 3630704421837926502, guid: f802650346e12374780da059cd43d325, type: 3}
-    - {fileID: 583729431000011259, guid: 0404bea5c3932cc438487112ccc8bb28, type: 3}
-    - {fileID: 4506590830449897675, guid: 3d62fd3d33a5f894fbb72ce5a71bbc78, type: 3}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
     _Speeds: []
     _SynchronizeChildren: 
     _Thresholds:
     - {x: 0, y: 0}
     - {x: 0, y: 1}
     - {x: 0, y: -1}
-    - {x: -1, y: 0}
-    - {x: 1, y: 0}
     _DefaultParameter: {x: 0, y: 0}
     _Type: 0
     _ParameterNameX: {fileID: 0}
@@ -171,6 +167,7 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 3744762482871154653, guid: c3112324236f1cb4295770ec4e8c8276, type: 3}
     _NormalizedStartTime: NaN
+  reloadBodyMode: 0
   meleeCombo: {fileID: 11400000, guid: aad74cd29d1adde448ce0f8716aed4b2, type: 2}
   meleeCanInterruptReload: 1
   lightCombo: {fileID: 11400000, guid: d16447a5b5fa9274b8bf020390af7750, type: 2}

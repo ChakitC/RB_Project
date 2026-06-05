@@ -24,6 +24,7 @@ public class CharacterEquipment : MonoBehaviour
     [SerializeField] private GunConfig currentWeapon;
     [SerializeField] private WeaponInstanceData currentWeaponInstance;
     [SerializeField] private string equippedWeaponInstanceId;
+    bool savedEquipmentLoadApplied;
 
     public CharacteContext Context => ctx;
     public WeaponSystem WeaponSystem => weaponSystem;
@@ -74,6 +75,9 @@ public class CharacterEquipment : MonoBehaviour
     void Start()
     {
         if (!equipDefaultOnStart)
+            return;
+
+        if (savedEquipmentLoadApplied)
             return;
 
         bool needsRuntimeEquip =
@@ -294,6 +298,7 @@ public class CharacterEquipment : MonoBehaviour
             if (string.IsNullOrWhiteSpace(ownerId))
                 continue;
 
+            bool shouldClearAssignment = false;
             string instanceId = equipment.equippedWeaponInstanceId;
             if (!string.IsNullOrWhiteSpace(instanceId) &&
                 inventory != null &&
@@ -316,10 +321,20 @@ public class CharacterEquipment : MonoBehaviour
             }
 
             if (!string.IsNullOrWhiteSpace(instanceId) && !usedInstanceIds.Add(instanceId))
+            {
                 instanceId = null;
+                shouldClearAssignment = true;
+            }
 
-            if (!string.IsNullOrWhiteSpace(instanceId))
-                RemoveInstanceAssignments(data.equipment, instanceId, ownerId);
+            if (string.IsNullOrWhiteSpace(instanceId))
+            {
+                if (shouldClearAssignment)
+                    UpsertEquipmentEntry(data.equipment, ownerId, null);
+
+                continue;
+            }
+
+            RemoveInstanceAssignments(data.equipment, instanceId, ownerId);
 
             UpsertEquipmentEntry(data.equipment, ownerId, instanceId);
         }
@@ -371,6 +386,7 @@ public class CharacterEquipment : MonoBehaviour
         RemoveInstanceAssignments(data.equipment, instanceId, ownerId);
         UpsertEquipmentEntry(data.equipment, ownerId, instanceId);
         SaveSystem.SaveGame(data, saveSlot);
+        SaveManager.Instance?.RefreshLoadedCacheFromDisk();
         return true;
     }
 
@@ -378,7 +394,7 @@ public class CharacterEquipment : MonoBehaviour
         GameSaveData data,
         PlayerInventory inventory)
     {
-        if (inventory == null)
+        if (inventory == null || !HasSavedEquipmentEntries(data?.equipment))
             return null;
 
         var equipments = new List<CharacterEquipment>();
@@ -397,14 +413,18 @@ public class CharacterEquipment : MonoBehaviour
             if (string.IsNullOrWhiteSpace(ownerId))
                 continue;
 
-            equipment.TryFindSavedEquipmentEntry(data?.equipment, out string instanceId);
+            equipment.savedEquipmentLoadApplied = true;
 
-            if (string.IsNullOrWhiteSpace(instanceId))
+            bool hasSavedEntry = equipment.TryFindSavedEquipmentEntry(data.equipment, out string instanceId);
+            if (!hasSavedEntry || string.IsNullOrWhiteSpace(instanceId))
+            {
+                equipment.ClearEquipment();
                 continue;
+            }
 
             if (usedInstanceIds.Contains(instanceId))
             {
-                equipment.EquipFallbackAfterInventoryMiss();
+                equipment.ClearEquipment();
                 continue;
             }
 
@@ -416,7 +436,7 @@ public class CharacterEquipment : MonoBehaviour
             }
             else
             {
-                equipment.EquipFallbackAfterInventoryMiss();
+                equipment.ClearEquipment();
             }
         }
 
@@ -651,6 +671,20 @@ public class CharacterEquipment : MonoBehaviour
     public static string FindEquipmentEntry(EquipmentSaveData data, string ownerId)
     {
         return TryFindEquipmentEntry(data, ownerId, out string instanceId) ? instanceId : null;
+    }
+
+    public static bool HasSavedEquipmentEntries(EquipmentSaveData data)
+    {
+        if (data?.entries == null)
+            return false;
+
+        for (int i = 0; i < data.entries.Count; i++)
+        {
+            if (data.entries[i] != null && !string.IsNullOrWhiteSpace(data.entries[i].ownerId))
+                return true;
+        }
+
+        return false;
     }
 
     public static bool TryFindEquipmentEntry(EquipmentSaveData data, string ownerId, out string instanceId)

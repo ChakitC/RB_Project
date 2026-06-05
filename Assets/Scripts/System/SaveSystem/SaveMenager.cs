@@ -174,7 +174,7 @@ public class SaveManager : MonoBehaviour
     // ---------- Full Save ----------
     public void Save()
     {
-        var data = new GameSaveData();
+        var data = LoadCurrentSlotDataForCache() ?? new GameSaveData();
 
         // (แนะนำ) ฝัง snapshot party ปัจจุบันไว้ในเกมเซฟด้วย เผื่อ party.json หาย
         data.party = CollectPartyData();
@@ -191,25 +191,16 @@ public class SaveManager : MonoBehaviour
 
     public void Load()
     {
-        var data = SaveSystem.LoadGame(currentSlot);
-        var partyOnly = SaveSystem.LoadPartyOnly(currentSlot);
+        var data = LoadCurrentSlotDataForCache();
 
         // ถ้าไม่มี game.json แต่มี party.json -> ยังโหลดได้
         if (data == null)
         {
-            if (partyOnly == null)
-            {
-                Debug.LogWarning("[SaveManager] No save data to load");
-                return;
-            }
-
-            data = new GameSaveData();
+            Debug.LogWarning("[SaveManager] No save data to load");
+            return;
         }
 
         // override party ด้วย party-only ล่าสุดถ้ามี
-        if (partyOnly != null)
-            data.party = partyOnly;
-
         _loaded = data;
 
         // 1) apply party ก่อน (เพื่อให้ตัวที่ใช้ partyIds[0] เซ็ตตัวละครได้ก่อน)
@@ -221,6 +212,30 @@ public class SaveManager : MonoBehaviour
             try { p.OnLoad(data); }
             catch (Exception ex) { Debug.LogError($"[SaveManager] Error in OnLoad on {p}: {ex}"); }
         }
+    }
+
+    public void RefreshLoadedCacheFromDisk()
+    {
+        _loaded = LoadCurrentSlotDataForCache();
+    }
+
+    private GameSaveData LoadCurrentSlotDataForCache()
+    {
+        var data = SaveSystem.LoadGame(currentSlot);
+        var partyOnly = SaveSystem.LoadPartyOnly(currentSlot);
+
+        if (data == null)
+        {
+            if (partyOnly == null)
+                return null;
+
+            data = new GameSaveData();
+        }
+
+        if (partyOnly != null)
+            data.party = partyOnly;
+
+        return data;
     }
 
     private void ApplyLoadedToParticipants()

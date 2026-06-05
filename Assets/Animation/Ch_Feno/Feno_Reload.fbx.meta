@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 658e6405c3992f246a2180f671511d9f
+guid: 3283d99a51c9cb3448db1d6049606a51
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: HMG_Stand_Reload_remap
-      takeName: HMG_Stand_Reload_remap
-      internalID: 6259429584745594775
+      name: Feno_Reload
+      takeName: Feno_Reload
+      internalID: 1258394224539027415
       firstFrame: 0
-      lastFrame: 80
+      lastFrame: 81
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

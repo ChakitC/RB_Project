@@ -136,6 +136,35 @@ Inventory and equipment save flows must preserve:
 - currency
 - migration support for older save shapes
 
+UI-driven owner assignments can be saved without a live scene
+`CharacterEquipment` or `AccessoryLoadout` for that owner, such as Basement
+party slots. Direct assignment saves must refresh `SaveManager`'s loaded cache
+after writing the file so the next scene load does not reapply stale equipment
+data.
+
+Scene saves should not clear an existing weapon assignment just because a
+runtime `CharacterEquipment` cannot currently resolve a valid replacement
+instance. Preserve the persisted owner entry unless the save path is resolving
+a deliberate duplicate assignment.
+
+When loading saved data that already contains `equipment.entries`, those entries
+are the authoritative weapon assignment source for each owner. `PlayerInventory`
+only resolves the saved instance id into `WeaponInstanceData`; it should not
+silently choose the first inventory weapon or let runtime default equipment
+replace a missing, blank, duplicate, or unresolved saved assignment. Runtime
+startup fallback should only create or select a default weapon when there is no
+current slot save data to load.
+
+`CharacterEquipment` owns the active weapon instance assignment for a character
+at runtime. `WeaponSystem` may re-run equip during Unity startup, but when it is
+given a weapon without an instance it should mirror the matching instance from
+`CharacterEquipment` instead of clearing the runtime instance id.
+
+Full game saves should seed from the latest persisted save data before scene
+participants write their current state. This keeps equipment and inventory data
+owned by unavailable or not-yet-resolved scene participants from being replaced
+with empty defaults during scene transitions.
+
 When adding persisted fields, add migration support if old saves may be loaded.
 
 ## Extension Rules
@@ -148,4 +177,3 @@ When adding persisted fields, add migration support if old saves may be loaded.
 - Use `EquipmentAssignmentService` for UI-driven equip operations.
 - Do not remove serialized inventory or equipment fields without checking save
   compatibility and prefab usage.
-

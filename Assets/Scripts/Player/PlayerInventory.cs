@@ -130,8 +130,11 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
 
         SaveManager.Instance.Load();
-        EnsureDefaultWeaponInstance();
-        ApplyEquippedWeaponIfPossible();
+        if (!HasCurrentSlotSaveData())
+        {
+            EnsureDefaultWeaponInstance();
+            ApplyEquippedWeaponIfPossible();
+        }
         ForceRefreshCurrencyUI();
     }
 
@@ -456,7 +459,11 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (SaveManager.Instance != null)
             SaveManager.Instance.Save();
 
-        return CharacterEquipment.SaveEquipmentAssignment(equipmentOwnerId, instanceId, this);
+        bool saved = CharacterEquipment.SaveEquipmentAssignment(equipmentOwnerId, instanceId, this);
+        if (saved && IsCurrentPartyLeaderOwner(equipmentOwnerId))
+            SetEquippedWeaponInstanceId(instanceId);
+
+        return saved;
     }
 
     public bool EquipAccessoryInstance(string instanceId, int slotIndex = -1)
@@ -901,15 +908,19 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         else
             EnsureSlotCount();
 
-        SetEquippedWeaponInstanceId(ResolveSavedPlayerWeaponInstanceId(data));
-
         ForceRefreshCurrencyUI();
-        EnsureDefaultWeaponInstance();
-        ApplyEquippedWeaponIfPossible();
 
-        string equipmentPlayerWeaponId = CharacterEquipment.ApplySceneEquipmentFromInventory(data, this);
-        if (!string.IsNullOrWhiteSpace(equipmentPlayerWeaponId))
+        if (CharacterEquipment.HasSavedEquipmentEntries(data.equipment))
+        {
+            string equipmentPlayerWeaponId = CharacterEquipment.ApplySceneEquipmentFromInventory(data, this);
             SetEquippedWeaponInstanceId(equipmentPlayerWeaponId);
+        }
+        else
+        {
+            SetEquippedWeaponInstanceId(ResolveSavedPlayerWeaponInstanceId(data));
+            EnsureDefaultWeaponInstance();
+            ApplyEquippedWeaponIfPossible();
+        }
 
         AccessoryLoadout.ApplySceneLoadoutsFromInventory(data, this);
     }
@@ -917,8 +928,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
     string ResolveSavedPlayerWeaponInstanceId(GameSaveData data)
     {
         string partyLeaderOwnerId = ResolvePartyLeaderOwnerId(data);
-        if (CharacterEquipment.TryFindEquipmentEntry(data?.equipment, partyLeaderOwnerId, out string savedInstanceId) &&
-            !string.IsNullOrWhiteSpace(savedInstanceId))
+        if (CharacterEquipment.TryFindEquipmentEntry(data?.equipment, partyLeaderOwnerId, out string savedInstanceId))
         {
             return savedInstanceId;
         }
@@ -927,11 +937,13 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         string equipmentOwnerId = equipment != null ? equipment.OwnerId : null;
         if (!string.Equals(equipmentOwnerId, partyLeaderOwnerId, StringComparison.Ordinal) &&
-            CharacterEquipment.TryFindEquipmentEntry(data?.equipment, equipmentOwnerId, out savedInstanceId) &&
-            !string.IsNullOrWhiteSpace(savedInstanceId))
+            CharacterEquipment.TryFindEquipmentEntry(data?.equipment, equipmentOwnerId, out savedInstanceId))
         {
             return savedInstanceId;
         }
+
+        if (CharacterEquipment.HasSavedEquipmentEntries(data?.equipment))
+            return null;
 
         return equippedWeaponInstanceId;
     }
@@ -942,6 +954,33 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             return null;
 
         return CharacterEquipment.BuildCharacterOwnerId(data.party.partyIds[0]);
+    }
+
+    static bool HasCurrentSlotSaveData()
+    {
+        if (SaveManager.Instance == null)
+            return false;
+
+        int saveSlot = SaveManager.Instance.currentSlot;
+        return SaveSystem.LoadGame(saveSlot) != null || SaveSystem.LoadPartyOnly(saveSlot) != null;
+    }
+
+    static bool IsCurrentPartyLeaderOwner(string ownerId)
+    {
+        if (string.IsNullOrWhiteSpace(ownerId))
+            return false;
+
+        int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
+        string leaderId = SaveSystem.GetPartyMemberId(saveSlot, 0);
+        if (string.IsNullOrWhiteSpace(leaderId))
+        {
+            GameSaveData data = SaveSystem.LoadGame(saveSlot);
+            if (data?.party?.partyIds != null && data.party.partyIds.Count > 0)
+                leaderId = data.party.partyIds[0];
+        }
+
+        string leaderOwnerId = CharacterEquipment.BuildCharacterOwnerId(leaderId);
+        return string.Equals(ownerId, leaderOwnerId, StringComparison.Ordinal);
     }
 
     void InitializeInventorySystem()
@@ -1046,6 +1085,9 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         ResolveReferences();
 
         if (equipment == null || string.IsNullOrWhiteSpace(equipment.EquippedWeaponInstanceId))
+            return;
+
+        if (!TryGetWeaponInstanceWithDefinition(equipment.EquippedWeaponInstanceId, out _, out _))
             return;
 
         SetEquippedWeaponInstanceId(equipment.EquippedWeaponInstanceId);

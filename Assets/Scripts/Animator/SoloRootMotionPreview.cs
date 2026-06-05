@@ -9,7 +9,7 @@ using UnityEditor;
 #endif
 
 /// <summary>
-/// Plays one AnimationClip for scene preview, with an edit-mode root motion toggle.
+/// Plays one AnimationClip or a masked upper-body overlay for scene preview, with an edit-mode root motion toggle.
 /// </summary>
 [ExecuteAlways]
 [DisallowMultipleComponent]
@@ -17,6 +17,12 @@ using UnityEditor;
 [DefaultExecutionOrder(DefaultExecutionOrder)]
 public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
 {
+    public enum PreviewMode
+    {
+        SingleClip = 0,
+        UpperBody = 1,
+    }
+
     public const int DefaultExecutionOrder = -5000;
     private const float RootMotionScrubStep = 1f / 30f;
     private const int MaxRootMotionScrubSteps = 300;
@@ -51,8 +57,20 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
     [SerializeField, Tooltip("The Animator component which this preview controls.")]
     private Animator animator;
 
-    [SerializeField, Tooltip("The animation that will be previewed.")]
+    [SerializeField, Tooltip("How the preview graph should be built.")]
+    private PreviewMode previewMode;
+
+    [SerializeField, Tooltip("The animation that will be previewed. In Upper Body mode this is the base locomotion clip.")]
     private AnimationClip clip;
+
+    [SerializeField, Tooltip("The animation that will be layered over the base clip in Upper Body mode.")]
+    private AnimationClip upperBodyClip;
+
+    [SerializeField, Tooltip("The AvatarMask used by the upper-body layer. Leave empty only when the overlay should affect the full body.")]
+    private AvatarMask upperBodyMask;
+
+    [SerializeField, Range(0f, 1f), Tooltip("The blend weight for the upper-body layer.")]
+    private float upperBodyWeight = 1f;
 
     [SerializeField, Range(0f, 1f), Tooltip("The normalized time that the preview starts at.")]
     private float normalizedStartTime;
@@ -68,10 +86,16 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
 
     private PlayableGraph graph;
     private AnimationClipPlayable playable;
+    private AnimationClipPlayable upperBodyPlayable;
+    private AnimationLayerMixerPlayable layerMixer;
     private bool isPlaying;
     private bool hasCachedAnimatorRootMotion;
     private bool cachedAnimatorRootMotion;
     private Animator cachedAnimator;
+    private PreviewMode activePreviewMode;
+    private AnimationClip activeClip;
+    private AnimationClip activeUpperBodyClip;
+    private AvatarMask activeUpperBodyMask;
     private bool hasPreviewOrigin;
     private Vector3 previewOriginPosition;
     private Quaternion previewOriginRotation;
@@ -107,6 +131,19 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
         }
     }
 
+    public PreviewMode Mode
+    {
+        get => previewMode;
+        set
+        {
+            if (previewMode == value)
+                return;
+
+            previewMode = value;
+            Play();
+        }
+    }
+
     public AnimationClip Clip
     {
         get => clip;
@@ -117,6 +154,42 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
 
             clip = value;
             Play();
+        }
+    }
+
+    public AnimationClip UpperBodyClip
+    {
+        get => upperBodyClip;
+        set
+        {
+            if (upperBodyClip == value)
+                return;
+
+            upperBodyClip = value;
+            Play();
+        }
+    }
+
+    public AvatarMask UpperBodyMask
+    {
+        get => upperBodyMask;
+        set
+        {
+            if (upperBodyMask == value)
+                return;
+
+            upperBodyMask = value;
+            Play();
+        }
+    }
+
+    public float UpperBodyWeight
+    {
+        get => upperBodyWeight;
+        set
+        {
+            upperBodyWeight = Mathf.Clamp01(value);
+            ApplyUpperBodyLayerSettings();
         }
     }
 
@@ -184,8 +257,7 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
         set
         {
             speed = value;
-            if (playable.IsValid())
-                playable.SetSpeed(speed);
+            ApplyPlayableSpeedSettings();
         }
     }
 
@@ -246,17 +318,20 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
     private void OnValidate()
     {
         normalizedStartTime = Mathf.Clamp01(normalizedStartTime);
+        upperBodyWeight = Mathf.Clamp01(upperBodyWeight);
         if (Application.isPlaying)
             return;
 
         ApplyAnimatorRootMotionSetting();
+        ApplyUpperBodyLayerSettings();
 
         if (applyInEditMode && enabled)
         {
-            if (!IsInitialized)
+            if (!IsInitialized || IsGraphConfigurationDirty())
+            {
                 Play();
-
-            if (playable.IsValid())
+            }
+            else if (playable.IsValid())
             {
                 SetTime(normalizedStartTime * Length);
                 Evaluate(0f);
@@ -290,11 +365,14 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
         }
 
         clip = previewClip;
-        Length = clip.length;
-        IsLooping = clip.isLooping;
+        Length = GetPreviewLength(clip);
+        IsLooping = GetPreviewLooping(clip);
 
         if (animator == null)
+        {
+            StopPreview(false);
             return;
+        }
 
         EnsureRestorePoseCached();
 
@@ -306,8 +384,8 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
         if (graph.IsValid())
             graph.Destroy();
 
-        playable = AnimationPlayableUtilities.PlayClip(animator, clip, out graph);
-        playable.SetSpeed(speed);
+        CreatePlayableGraph();
+        ApplyPlayableSpeedSettings();
         SetTime(normalizedStartTime * Length);
 
         if (speed != 0f)
@@ -374,6 +452,7 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
             return;
 
         ApplyAnimatorRootMotionSetting();
+        ApplyUpperBodyLayerSettings();
         graph.Evaluate(deltaTime);
     }
 
@@ -469,8 +548,10 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
 
     private void SetTime(double value)
     {
-        playable.SetTime(value);
-        playable.SetTime(value);
+        SetPlayableTime(playable, value);
+
+        if (upperBodyPlayable.IsValid())
+            SetPlayableTime(upperBodyPlayable, value);
     }
 
     private void SetPreviewTime(double value)
@@ -530,12 +611,12 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
         graph.Play();
         SetTime(startTime);
 
-        playable.SetSpeed(0d);
+        SetPlayableSpeed(0d);
         graph.Evaluate(0f);
 
         if (remaining > 0.0001d)
         {
-            playable.SetSpeed(direction);
+            SetPlayableSpeed(direction);
 
             double stepSize = Math.Max(RootMotionScrubStep, remaining / MaxRootMotionScrubSteps);
             while (remaining > 0.0001d)
@@ -547,7 +628,7 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
         }
 
         SetTime(targetTime);
-        playable.SetSpeed(speed);
+        ApplyPlayableSpeedSettings();
 
         if (wasPlaying)
             graph.Play();
@@ -653,10 +734,118 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
         hasCachedAnimatorRootMotion = false;
     }
 
+    private void CreatePlayableGraph()
+    {
+        if (ShouldBuildUpperBodyGraph())
+            CreateUpperBodyPlayableGraph();
+        else
+            playable = AnimationPlayableUtilities.PlayClip(animator, clip, out graph);
+
+        MarkGraphConfiguration();
+    }
+
+    private bool ShouldBuildUpperBodyGraph()
+    {
+        return previewMode == PreviewMode.UpperBody && upperBodyClip != null;
+    }
+
+    private void CreateUpperBodyPlayableGraph()
+    {
+        graph = PlayableGraph.Create($"{nameof(SoloRootMotionPreview)} Upper Body");
+
+        AnimationPlayableOutput output = AnimationPlayableOutput.Create(graph, "Animation", animator);
+        playable = AnimationClipPlayable.Create(graph, clip);
+        upperBodyPlayable = AnimationClipPlayable.Create(graph, upperBodyClip);
+        layerMixer = AnimationLayerMixerPlayable.Create(graph, 2);
+
+        graph.Connect(playable, 0, layerMixer, 0);
+        graph.Connect(upperBodyPlayable, 0, layerMixer, 1);
+
+        layerMixer.SetInputWeight(0, 1f);
+        ApplyUpperBodyLayerSettings();
+
+        output.SetSourcePlayable(layerMixer);
+    }
+
+    private float GetPreviewLength(AnimationClip baseClip)
+    {
+        float length = baseClip != null ? baseClip.length : 0f;
+
+        if (previewMode == PreviewMode.UpperBody && upperBodyClip != null)
+            length = Mathf.Max(length, upperBodyClip.length);
+
+        return length;
+    }
+
+    private bool GetPreviewLooping(AnimationClip baseClip)
+    {
+        if (baseClip == null)
+            return false;
+
+        if (previewMode != PreviewMode.UpperBody || upperBodyClip == null)
+            return baseClip.isLooping;
+
+        return baseClip.isLooping && upperBodyClip.isLooping;
+    }
+
+    private bool IsGraphConfigurationDirty()
+    {
+        return activePreviewMode != previewMode ||
+               activeClip != clip ||
+               activeUpperBodyClip != upperBodyClip ||
+               activeUpperBodyMask != upperBodyMask;
+    }
+
+    private void MarkGraphConfiguration()
+    {
+        activePreviewMode = previewMode;
+        activeClip = clip;
+        activeUpperBodyClip = upperBodyClip;
+        activeUpperBodyMask = upperBodyMask;
+    }
+
+    private void ApplyUpperBodyLayerSettings()
+    {
+        if (!layerMixer.IsValid())
+            return;
+
+        layerMixer.SetInputWeight(0, 1f);
+        layerMixer.SetInputWeight(1, upperBodyWeight);
+
+        if (upperBodyMask != null)
+            layerMixer.SetLayerMaskFromAvatarMask(1, upperBodyMask);
+    }
+
+    private void ApplyPlayableSpeedSettings()
+    {
+        SetPlayableSpeed(speed);
+    }
+
+    private void SetPlayableSpeed(double value)
+    {
+        if (playable.IsValid())
+            playable.SetSpeed(value);
+
+        if (upperBodyPlayable.IsValid())
+            upperBodyPlayable.SetSpeed(value);
+    }
+
+    private static void SetPlayableTime(AnimationClipPlayable target, double value)
+    {
+        if (!target.IsValid())
+            return;
+
+        target.SetTime(value);
+        target.SetTime(value);
+    }
+
     public void GetAnimationClips(List<AnimationClip> clips)
     {
         if (clip != null)
             clips.Add(clip);
+
+        if (upperBodyClip != null && upperBodyClip != clip)
+            clips.Add(upperBodyClip);
     }
 
 #if UNITY_EDITOR
@@ -708,7 +897,11 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
 internal sealed class SoloRootMotionPreviewEditor : Editor
 {
     private SerializedProperty animatorProperty;
+    private SerializedProperty previewModeProperty;
     private SerializedProperty clipProperty;
+    private SerializedProperty upperBodyClipProperty;
+    private SerializedProperty upperBodyMaskProperty;
+    private SerializedProperty upperBodyWeightProperty;
     private SerializedProperty applyInEditModeProperty;
     private SerializedProperty applyRootMotionProperty;
     private SerializedProperty normalizedStartTimeProperty;
@@ -718,7 +911,11 @@ internal sealed class SoloRootMotionPreviewEditor : Editor
     private void OnEnable()
     {
         animatorProperty = serializedObject.FindProperty("animator");
+        previewModeProperty = serializedObject.FindProperty("previewMode");
         clipProperty = serializedObject.FindProperty("clip");
+        upperBodyClipProperty = serializedObject.FindProperty("upperBodyClip");
+        upperBodyMaskProperty = serializedObject.FindProperty("upperBodyMask");
+        upperBodyWeightProperty = serializedObject.FindProperty("upperBodyWeight");
         applyInEditModeProperty = serializedObject.FindProperty("applyInEditMode");
         applyRootMotionProperty = serializedObject.FindProperty("applyRootMotion");
         normalizedStartTimeProperty = serializedObject.FindProperty("normalizedStartTime");
@@ -731,16 +928,38 @@ internal sealed class SoloRootMotionPreviewEditor : Editor
         serializedObject.Update();
 
         EditorGUILayout.PropertyField(animatorProperty);
-        EditorGUILayout.PropertyField(clipProperty);
+        EditorGUILayout.PropertyField(previewModeProperty);
+
+        bool isUpperBodyMode = previewModeProperty.enumValueIndex == (int)SoloRootMotionPreview.PreviewMode.UpperBody;
+        GUIContent clipLabel = isUpperBodyMode
+            ? new GUIContent("Base Clip", "The locomotion clip used under the upper-body overlay.")
+            : new GUIContent("Clip", "The animation that will be previewed.");
+
+        EditorGUILayout.PropertyField(clipProperty, clipLabel);
+
+        if (isUpperBodyMode)
+        {
+            EditorGUILayout.PropertyField(upperBodyClipProperty);
+            EditorGUILayout.PropertyField(upperBodyMaskProperty);
+            EditorGUILayout.PropertyField(upperBodyWeightProperty);
+
+            if (upperBodyClipProperty.objectReferenceValue == null)
+                EditorGUILayout.HelpBox("Upper Body Clip is empty, so the preview will play the base clip only.", MessageType.Info);
+
+            if (upperBodyMaskProperty.objectReferenceValue == null)
+                EditorGUILayout.HelpBox("Upper Body Mask is empty, so the overlay affects the full body.", MessageType.Warning);
+        }
+
         EditorGUILayout.PropertyField(applyInEditModeProperty);
         EditorGUILayout.PropertyField(applyRootMotionProperty);
         EditorGUILayout.PropertyField(normalizedStartTimeProperty);
         EditorGUILayout.PropertyField(speedProperty);
         EditorGUILayout.PropertyField(stopOnDisableProperty);
 
-        serializedObject.ApplyModifiedProperties();
-
         var preview = (SoloRootMotionPreview)target;
+        bool changed = serializedObject.ApplyModifiedProperties();
+        if (changed && Application.isPlaying && preview.enabled)
+            preview.Play();
 
         using (new EditorGUI.DisabledScope(preview.Clip == null || preview.Animator == null))
         {

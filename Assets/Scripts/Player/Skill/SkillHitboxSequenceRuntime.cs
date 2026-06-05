@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Animancer;
 using UnityEngine;
 
 [DisallowMultipleComponent]
@@ -11,12 +10,9 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     {
         public int StepIndex;
         public string StepLabel;
-        public StringReference ActivateEventName;
-        public StringReference DeactivateEventName;
         public PrefabHitboxSkillPayloadDef.HitboxStep Definition;
         public readonly List<SkillHitboxGroup> Groups = new List<SkillHitboxGroup>();
         public readonly HashSet<int> HitTargetIds = new HashSet<int>();
-        public bool UsesSequentialBinding;
         public bool IsActive;
         public bool HasSpawnedImpactThisActivation;
     }
@@ -24,17 +20,10 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     [Header("Authoring")]
     [SerializeField] private SkillHitboxGroup[] groups = Array.Empty<SkillHitboxGroup>();
 
-    readonly Dictionary<StringReference, StepRuntimeState> _stepsByActivateEvent =
-        new Dictionary<StringReference, StepRuntimeState>();
-
-    readonly Dictionary<StringReference, StepRuntimeState> _stepsByDeactivateEvent =
-        new Dictionary<StringReference, StepRuntimeState>();
-
     readonly Dictionary<SkillHitboxGroup, int> _groupActivationCounts =
         new Dictionary<SkillHitboxGroup, int>();
 
     readonly List<StepRuntimeState> _steps = new List<StepRuntimeState>();
-    readonly List<StepRuntimeState> _sequentialSteps = new List<StepRuntimeState>();
     readonly List<StepRuntimeState> _activeSteps = new List<StepRuntimeState>();
     readonly HashSet<int> _skillHitTargetIds = new HashSet<int>();
     readonly HashSet<int> _ownedColliderIds = new HashSet<int>();
@@ -193,10 +182,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
     void BuildStepLookup()
     {
-        _stepsByActivateEvent.Clear();
-        _stepsByDeactivateEvent.Clear();
         _steps.Clear();
-        _sequentialSteps.Clear();
         _groupActivationCounts.Clear();
         _activeSteps.Clear();
         _skillHitTargetIds.Clear();
@@ -234,17 +220,12 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         if (configuredSteps == null)
             return;
 
-        StringReference sequentialActivateEvent = _payload != null ? _payload.SequentialActivateEventName : null;
-        StringReference sequentialDeactivateEvent = _payload != null ? _payload.SequentialDeactivateEventName : null;
-        bool hasSequentialEventsConfigured = _payload != null && _payload.HasSequentialTimelineEvents;
-        bool hasSequentialSteps = false;
-        for (int i = 0; i < configuredSteps.Count; i++)
+        if (_payload == null || !_payload.HasHitboxTimelineEvents)
         {
-            if (configuredSteps[i] != null && configuredSteps[i].UsesSequentialBinding)
-            {
-                hasSequentialSteps = true;
-                break;
-            }
+            Debug.LogWarning(
+                "[SkillHitboxSequenceRuntime] Payload is missing valid hitbox start/end timeline events.",
+                this);
+            return;
         }
 
         for (int i = 0; i < configuredSteps.Count; i++)
@@ -256,9 +237,8 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             StepRuntimeState state = new StepRuntimeState
             {
                 StepIndex = i,
-                StepLabel = step.UsesSequentialBinding ? $"Step {i + 1}" : step.StepLabel,
+                StepLabel = $"Step {i + 1}",
                 Definition = step,
-                UsesSequentialBinding = step.UsesSequentialBinding,
             };
 
             IReadOnlyList<string> groupKeys = step.GroupKeys;
@@ -289,73 +269,6 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             }
 
             _steps.Add(state);
-
-            if (step.UsesSequentialBinding)
-            {
-                if (!hasSequentialEventsConfigured)
-                {
-                    Debug.LogWarning(
-                        $"[SkillHitboxSequenceRuntime] Step '{state.StepLabel}' uses sequential binding but the payload is missing shared Hit_On/Hit_Off events.",
-                        this);
-                    _steps.Remove(state);
-                    continue;
-                }
-
-                _sequentialSteps.Add(state);
-                continue;
-            }
-
-            StringReference activateEventName = step.ActivateEventName;
-            StringReference deactivateEventName = step.DeactivateEventName;
-            if (!PrefabHitboxSkillPayloadDef.IsValidTimelineEvent(activateEventName) ||
-                !PrefabHitboxSkillPayloadDef.IsValidTimelineEvent(deactivateEventName))
-            {
-                Debug.LogWarning(
-                    $"[SkillHitboxSequenceRuntime] Step '{state.StepLabel}' is missing a valid activate/deactivate timeline event.",
-                    this);
-                _steps.Remove(state);
-                continue;
-            }
-
-            if (activateEventName == deactivateEventName)
-            {
-                Debug.LogWarning(
-                    $"[SkillHitboxSequenceRuntime] Step '{state.StepLabel}' cannot use the same timeline event for both activate and deactivate.",
-                    this);
-                _steps.Remove(state);
-                continue;
-            }
-
-            if (hasSequentialSteps &&
-                hasSequentialEventsConfigured &&
-                (activateEventName == sequentialActivateEvent ||
-                 activateEventName == sequentialDeactivateEvent ||
-                 deactivateEventName == sequentialActivateEvent ||
-                 deactivateEventName == sequentialDeactivateEvent))
-            {
-                Debug.LogWarning(
-                    $"[SkillHitboxSequenceRuntime] Step '{state.StepLabel}' reuses the shared sequential event asset. Assign a dedicated override event instead.",
-                    this);
-                _steps.Remove(state);
-                continue;
-            }
-
-            if (_stepsByActivateEvent.ContainsKey(activateEventName) ||
-                _stepsByActivateEvent.ContainsKey(deactivateEventName) ||
-                _stepsByDeactivateEvent.ContainsKey(activateEventName) ||
-                _stepsByDeactivateEvent.ContainsKey(deactivateEventName))
-            {
-                Debug.LogWarning(
-                    $"[SkillHitboxSequenceRuntime] Duplicate timeline event detected for step '{state.StepLabel}'. Keeping the first step only.",
-                    this);
-                _steps.Remove(state);
-                continue;
-            }
-
-            state.ActivateEventName = activateEventName;
-            state.DeactivateEventName = deactivateEventName;
-            _stepsByActivateEvent.Add(activateEventName, state);
-            _stepsByDeactivateEvent.Add(deactivateEventName, state);
         }
     }
 
@@ -386,7 +299,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             basisRotation * _localRotationOffset);
     }
 
-    void OnSkillTimelineEventRaised(int requestId, StringReference eventName)
+    void OnSkillTimelineEventRaised(int requestId, CombatTimelineEventName eventName)
     {
         if (!_initialized ||
             requestId != _requestId ||
@@ -395,26 +308,17 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             return;
         }
 
-        if (_payload != null && eventName == _payload.SequentialActivateEventName)
+        if (_payload != null && eventName == _payload.HitboxStartEventName)
         {
             ActivateNextSequentialStep();
             return;
         }
 
-        if (_payload != null && eventName == _payload.SequentialDeactivateEventName)
+        if (_payload != null && eventName == _payload.HitboxEndEventName)
         {
             DeactivateCurrentSequentialStep();
             return;
         }
-
-        if (_stepsByActivateEvent.TryGetValue(eventName, out StepRuntimeState step))
-        {
-            ActivateStep(step);
-            return;
-        }
-
-        if (_stepsByDeactivateEvent.TryGetValue(eventName, out step))
-            DeactivateStep(step);
     }
 
     void ActivateNextSequentialStep()
@@ -422,10 +326,10 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         if (_activeSequentialStep != null && _activeSequentialStep.IsActive)
             return;
 
-        if (_nextSequentialStepIndex < 0 || _nextSequentialStepIndex >= _sequentialSteps.Count)
+        if (_nextSequentialStepIndex < 0 || _nextSequentialStepIndex >= _steps.Count)
             return;
 
-        StepRuntimeState step = _sequentialSteps[_nextSequentialStepIndex];
+        StepRuntimeState step = _steps[_nextSequentialStepIndex];
         _nextSequentialStepIndex++;
         _activeSequentialStep = step;
         ActivateStep(step);

@@ -30,6 +30,18 @@ MonoBehaviour:
     duration: 0
     chainWindowN: {x: 0.35, y: 0.85}
     dropBufferOnWindowExpire: 1
+    applyKnockback: 0
+    knockbackDistance: 0
+    knockbackDuration: 0
+    knockbackProgressCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    knockbackReaction: 0
+    knockbackInterruptsActions: 0
+    staggerPower: 0
   - clip:
       _FadeDuration: 0.25
       _Speed: 1
@@ -47,6 +59,18 @@ MonoBehaviour:
     duration: 0
     chainWindowN: {x: 0, y: 0.85}
     dropBufferOnWindowExpire: 1
+    applyKnockback: 0
+    knockbackDistance: 0
+    knockbackDuration: 0
+    knockbackProgressCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    knockbackReaction: 0
+    knockbackInterruptsActions: 0
+    staggerPower: 0
   defaultChainStartN: 0.35
   defaultChainEndN: 0.8
   references:

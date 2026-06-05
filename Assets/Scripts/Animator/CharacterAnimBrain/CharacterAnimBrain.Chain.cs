@@ -24,7 +24,7 @@ public sealed partial class CharacterAnimBrain
     private bool _activeChainAdvanceReleased;
     private ChainPlaybackKind _activeChainKind;
     private bool _chainStateCanExit = true;
-    private readonly List<StringReference> _activeChainTimelineEventNames = new List<StringReference>();
+    private readonly List<CombatTimelineEventName> _activeChainTimelineEventNames = new List<CombatTimelineEventName>();
 
     private ClipTransition ActiveChainClip => ResolveChainClip();
     private bool HasActiveChainClip => HasValidChainClip();

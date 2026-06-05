@@ -51,8 +51,8 @@ MonoBehaviour:
     _NormalizedStartTime: NaN
   castPointNormalized: 0.4594248
   blockablePreCast: 1
-  preCastOpenEvent: {fileID: 11400000, guid: fcffb1725faae934bbafd4eeccec9990, type: 2}
-  preCastCloseEvent: {fileID: 11400000, guid: 9752b5160a8826b4faa115ca219e42a6, type: 2}
+  preCastOpenTimelineEvent: 200
+  preCastCloseTimelineEvent: 201
   useFallbackPreCastWindow: 1
   fallbackPreCastOpenNormalized: 0
   fallbackPreCastCloseNormalized: 0.35

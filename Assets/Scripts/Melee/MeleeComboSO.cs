@@ -6,8 +6,8 @@ using Animancer;
 [CreateAssetMenu(menuName = "Combat/Melee Combo", fileName = "MeleeComboSO")]
 public sealed class MeleeComboSO : ScriptableObject
 {
-    public static readonly StringReference HitStartEventName = "HitStart";
-    public static readonly StringReference HitEndEventName = "HitEnd";
+    public const CombatTimelineEventName HitStartEventName = CombatTimelineEventName.HitStart;
+    public const CombatTimelineEventName HitEndEventName = CombatTimelineEventName.HitEnd;
     public static readonly string[] HitEventNames = { "HitStart", "HitEnd" };
 
     [Serializable]
@@ -136,15 +136,19 @@ public sealed class MeleeComboSO : ScriptableObject
         steps[index] = s;
     }
 
-    private static int CountNamedEvents(ClipTransition clip, StringReference eventName)
+    private static int CountNamedEvents(ClipTransition clip, CombatTimelineEventName eventName)
     {
         var events = clip != null ? clip.Events : null;
         if (events == null)
             return 0;
 
+        StringReference animancerEventName = CombatTimelineEventNames.ToStringReference(eventName);
+        if (animancerEventName == null)
+            return 0;
+
         int count = 0;
         int index = -1;
-        while ((index = events.IndexOf(eventName, index + 1)) >= 0)
+        while ((index = events.IndexOf(animancerEventName, index + 1)) >= 0)
             count++;
 
         return count;

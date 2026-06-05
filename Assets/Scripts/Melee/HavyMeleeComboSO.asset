@@ -21,7 +21,8 @@ MonoBehaviour:
         - 0
         - 1
         - 1
-        _Callbacks: []
+        _Callbacks:
+        - rid: 5481181570766733699
         _Names:
         - {fileID: 11400000, guid: a1d9c7b1f0f54a2b8c1d6e7f90123456, type: 2}
         - {fileID: 11400000, guid: b2e8d6c4a1b347c98d0e1f2a34567890, type: 2}
@@ -30,8 +31,24 @@ MonoBehaviour:
     duration: 0
     chainWindowN: {x: 0, y: 0.85}
     dropBufferOnWindowExpire: 0
+    applyKnockback: 0
+    knockbackDistance: 0
+    knockbackDuration: 0
+    knockbackProgressCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    knockbackReaction: 0
+    knockbackInterruptsActions: 0
+    staggerPower: 0
   defaultChainStartN: 0.148
   defaultChainEndN: 0.608
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 5481181570766733699
+      type: {class: AnimancerEvent/ParameterString, ns: Animancer, asm: Kybernetik.Animancer}
+      data:
+        _Value: 

@@ -17,8 +17,6 @@ using UnityEditor;
 public class SkillGemDefinition : ScriptableObject
 {
     private const float DefaultCastPointNormalized = 0.35f;
-    private const string DefaultPreCastOpenEventName = "PreCastOpen";
-    private const string DefaultPreCastCloseEventName = "PreCastClose";
     private const float WarningCastPointMin = 0.05f;
     private const float WarningCastPointMax = 0.95f;
 
@@ -204,12 +202,12 @@ public class SkillGemDefinition : ScriptableObject
     [SerializeField] private bool blockablePreCast;
 
     [PropertyOrder(-33)]
-    [FoldoutGroup("Pre-Cast Block", Expanded = false), AssetsOnly, LabelText("Open Event")]
-    [SerializeField] private StringAsset preCastOpenEvent;
+    [FoldoutGroup("Pre-Cast Block", Expanded = false), LabelText("Open Event")]
+    [SerializeField] private CombatTimelineEventName preCastOpenTimelineEvent = CombatTimelineEventName.PreCastOpen;
 
     [PropertyOrder(-32)]
-    [FoldoutGroup("Pre-Cast Block", Expanded = false), AssetsOnly, LabelText("Close Event")]
-    [SerializeField] private StringAsset preCastCloseEvent;
+    [FoldoutGroup("Pre-Cast Block", Expanded = false), LabelText("Close Event")]
+    [SerializeField] private CombatTimelineEventName preCastCloseTimelineEvent = CombatTimelineEventName.PreCastClose;
 
     [PropertyOrder(-31)]
     [FoldoutGroup("Pre-Cast Block", Expanded = false), LabelText("Fallback Window"), ToggleLeft]
@@ -727,8 +725,8 @@ public class SkillGemDefinition : ScriptableObject
 
     public bool BlockablePreCast => blockablePreCast;
     public bool UseFallbackPreCastWindow => blockablePreCast && useFallbackPreCastWindow;
-    public StringReference PreCastOpenEventName => ResolvePreCastEventName(preCastOpenEvent, DefaultPreCastOpenEventName);
-    public StringReference PreCastCloseEventName => ResolvePreCastEventName(preCastCloseEvent, DefaultPreCastCloseEventName);
+    public CombatTimelineEventName PreCastOpenEventName => preCastOpenTimelineEvent;
+    public CombatTimelineEventName PreCastCloseEventName => preCastCloseTimelineEvent;
     public GameObject PreCastIndicatorPrefab => preCastIndicatorPrefab;
     public bool CancelPreCastOnStun => cancelPreCastOnStun;
     public bool CancelPreCastOnStagger => cancelPreCastOnStagger;
@@ -760,23 +758,23 @@ public class SkillGemDefinition : ScriptableObject
         }
     }
 
-    public bool IsPreCastOpenEvent(StringReference eventName)
+    public bool IsPreCastOpenEvent(CombatTimelineEventName eventName)
     {
-        return MatchesTimelineEvent(eventName, PreCastOpenEventName);
+        return eventName == PreCastOpenEventName;
     }
 
-    public bool IsPreCastCloseEvent(StringReference eventName)
+    public bool IsPreCastCloseEvent(CombatTimelineEventName eventName)
     {
-        return MatchesTimelineEvent(eventName, PreCastCloseEventName);
+        return eventName == PreCastCloseEventName;
     }
 
-    public void CollectPreCastTimelineEventNames(List<StringReference> eventNames)
+    public void CollectPreCastTimelineEventNames(List<CombatTimelineEventName> eventNames)
     {
         if (!blockablePreCast)
             return;
 
-        AddUniqueTimelineEvent(eventNames, PreCastOpenEventName);
-        AddUniqueTimelineEvent(eventNames, PreCastCloseEventName);
+        CombatTimelineEventNames.AddUnique(eventNames, PreCastOpenEventName);
+        CombatTimelineEventNames.AddUnique(eventNames, PreCastCloseEventName);
     }
 
     public ChainStepContinueMode GetChainContinueMode()
@@ -793,30 +791,4 @@ public class SkillGemDefinition : ScriptableObject
             : 1f;
     }
 
-    static StringReference ResolvePreCastEventName(StringAsset asset, string fallbackName)
-    {
-        if (asset != null)
-            return asset;
-
-        return string.IsNullOrWhiteSpace(fallbackName)
-            ? null
-            : StringReference.Get(fallbackName);
-    }
-
-    static void AddUniqueTimelineEvent(List<StringReference> eventNames, StringReference eventName)
-    {
-        if (eventNames == null || eventName == null || string.IsNullOrWhiteSpace(eventName.String))
-            return;
-
-        if (!eventNames.Contains(eventName))
-            eventNames.Add(eventName);
-    }
-
-    static bool MatchesTimelineEvent(StringReference left, StringReference right)
-    {
-        return left != null &&
-               right != null &&
-               !string.IsNullOrWhiteSpace(left.String) &&
-               string.Equals(left.String, right.String, StringComparison.Ordinal);
-    }
 }

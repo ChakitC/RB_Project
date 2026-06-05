@@ -779,7 +779,7 @@ public sealed class SkillCastOrchestrator
         public bool Cancelled;
         public float CastPointNormalized;
         public bool RequiresTimelineEvents;
-        public readonly List<StringReference> TimelineEventNames = new List<StringReference>();
+        public readonly List<CombatTimelineEventName> TimelineEventNames = new List<CombatTimelineEventName>();
 
         public ActiveSkillCastInfo ToInfo()
         {

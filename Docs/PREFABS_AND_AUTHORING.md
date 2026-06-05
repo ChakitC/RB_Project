@@ -51,6 +51,45 @@ Do not remove local authoring references such as `hitboxTrigger`, `firePoint`,
 `modelRoot`, `healthBarPrefab`, database references, or prefab references just
 because a context exists.
 
+## Combat Timeline Event Authoring
+
+Animancer-driven combat and hitbox events should use `CombatTimelineEventName`
+enum values in gameplay data instead of authoring new `StringAsset` references.
+The enum values have explicit numeric ids because Unity serializes enum fields
+by number.
+
+Current supported event keys include common hitbox events (`HitStart`, `HitEnd`)
+and pre-cast block events (`PreCastOpen`, `PreCastClose`). Prefab hitbox skill
+payloads are sequential-only: every `HitStart` opens the next configured step
+and every `HitEnd` closes the currently active step. Multi-step skill hitboxes
+should order their payload steps to match the `HitStart`/`HitEnd` pairs in the
+Animancer clip.
+
+Timeline event authoring is enum-only. New authoring should select enum values
+from the inspector dropdown. Do not add `StringAsset` timeline-event fields back
+for gameplay hitbox or pre-cast flow, and do not reorder existing enum values;
+append new values with explicit numbers.
+
+## Animation Preview Authoring
+
+`SoloRootMotionPreview` supports a single-clip preview and an `Upper Body`
+preview. Use `Upper Body` when checking actions such as shooting while the
+character continues to play a locomotion clip.
+
+In `Upper Body` mode:
+
+- `Base Clip` should be the locomotion or walk clip.
+- `Upper Body Clip` should be the shoot, aim, reload, or other action clip.
+- `Upper Body Mask` should usually match the character profile's
+  `upperBodyMask` so the action layer does not replace the legs/root.
+- `Upper Body Weight` controls how strongly the action layer blends over the
+  base clip.
+- `Apply Root Motion` can be enabled when the base locomotion clip should move
+  the preview transform while scrubbing or playing.
+
+Leaving `Upper Body Mask` empty makes the overlay affect the full body, which is
+only appropriate for intentional full-body preview checks.
+
 ## Context-Owned References
 
 If the reference is a peer module shared by character systems, prefer resolving

@@ -1,18 +1,11 @@
 using System;
 using System.Collections.Generic;
-using Animancer;
 using UnityEngine;
 using UnityEngine.Serialization;
 
 [CreateAssetMenu(fileName = "Prefab Hitbox Skill Payload", menuName = "Game/Skill Payload/Prefab Hitbox")]
 public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
 {
-    public enum TimelineBindingMode
-    {
-        Explicit = 0,
-        Sequential = 1,
-    }
-
     public enum HitboxAnchorMode
     {
         CastOrigin = 0,
@@ -60,13 +53,6 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
     [Serializable]
     public sealed class HitboxStep
     {
-        [SerializeField] private TimelineBindingMode timelineBindingMode = TimelineBindingMode.Sequential;
-        [FormerlySerializedAs("activateEvent")]
-        [SerializeField] private StringAsset activateEventOverride;
-        [FormerlySerializedAs("deactivateEvent")]
-        [SerializeField] private StringAsset deactivateEventOverride;
-        [FormerlySerializedAs("eventKey")]
-        [SerializeField, HideInInspector] private string legacyEventKey = "Hit01";
         [SerializeField] private string[] groupKeys = Array.Empty<string>();
         [SerializeField] private float damageMultiplier = 1f;
         [SerializeField] private HitPolicy hitPolicy = HitPolicy.OncePerStep;
@@ -81,35 +67,7 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         [SerializeField] private StepStartVfxSettings stepStartVfx = new StepStartVfxSettings();
         [SerializeField] private ImpactVfxSettings impactVfx = new ImpactVfxSettings();
 
-        public TimelineBindingMode BindingMode => timelineBindingMode;
-        public bool UsesSequentialBinding => timelineBindingMode == TimelineBindingMode.Sequential;
-        public bool UsesExplicitBinding => !UsesSequentialBinding;
-        public StringAsset ActivateEventAsset => activateEventOverride;
-        public StringAsset DeactivateEventAsset => deactivateEventOverride;
-        public StringReference ActivateEventName => UsesExplicitBinding
-            ? ResolveExplicitEventName(activateEventOverride, legacyEventKey, isOn: true)
-            : null;
-        public StringReference DeactivateEventName => UsesExplicitBinding
-            ? ResolveExplicitEventName(deactivateEventOverride, legacyEventKey, isOn: false)
-            : null;
-        public string StepLabel
-        {
-            get
-            {
-                if (UsesSequentialBinding)
-                    return "Sequential";
-
-                if (activateEventOverride != null)
-                    return activateEventOverride.name;
-
-                if (deactivateEventOverride != null)
-                    return deactivateEventOverride.name;
-
-                return string.IsNullOrWhiteSpace(legacyEventKey)
-                    ? "<missing>"
-                    : legacyEventKey.Trim();
-            }
-        }
+        public string StepLabel => "Sequential";
 
         public IReadOnlyList<string> GroupKeys => groupKeys ?? Array.Empty<string>();
         public float DamageMultiplier => damageMultiplier;
@@ -147,8 +105,8 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
     [SerializeField, Min(0.1f)] private float maxSequenceLifetime = 4f;
 
     [Header("Timeline")]
-    [SerializeField] private StringAsset sequentialActivateEvent;
-    [SerializeField] private StringAsset sequentialDeactivateEvent;
+    [SerializeField] private CombatTimelineEventName hitboxStartEventName = CombatTimelineEventName.HitStart;
+    [SerializeField] private CombatTimelineEventName hitboxEndEventName = CombatTimelineEventName.HitEnd;
 
     [Header("Targeting")]
     [SerializeField] private LayerMask targetMask = ~0;
@@ -168,40 +126,23 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
     public Vector3 LocalEulerOffset => localEulerOffset;
     public float MaxSequenceLifetime => Mathf.Max(0.1f, maxSequenceLifetime);
     public bool ShowDamageNumbers => showDamageNumbers;
-    public StringReference SequentialActivateEventName => sequentialActivateEvent;
-    public StringReference SequentialDeactivateEventName => sequentialDeactivateEvent;
+    public CombatTimelineEventName HitboxStartEventName => hitboxStartEventName;
+    public CombatTimelineEventName HitboxEndEventName => hitboxEndEventName;
     public SkillHitBoxData HitBoxData => hitBoxData;
-    public bool HasSequentialTimelineEvents =>
-        IsValidTimelineEvent(SequentialActivateEventName) &&
-        IsValidTimelineEvent(SequentialDeactivateEventName);
+    public bool HasHitboxTimelineEvents =>
+        IsValidTimelineEvent(HitboxStartEventName) &&
+        IsValidTimelineEvent(HitboxEndEventName);
 
-    public override void CollectTimelineEventNames(List<StringReference> eventNames)
+    public override void CollectTimelineEventNames(List<CombatTimelineEventName> eventNames)
     {
         if (eventNames == null || steps == null)
             return;
 
-        bool requiresSequentialEvents = false;
-        for (int i = 0; i < steps.Count; i++)
-        {
-            HitboxStep step = steps[i];
-            if (step == null)
-                continue;
+        if (steps.Count == 0)
+            return;
 
-            if (step.UsesSequentialBinding)
-            {
-                requiresSequentialEvents = true;
-                continue;
-            }
-
-            AddUnique(eventNames, step.ActivateEventName);
-            AddUnique(eventNames, step.DeactivateEventName);
-        }
-
-        if (requiresSequentialEvents)
-        {
-            AddUnique(eventNames, SequentialActivateEventName);
-            AddUnique(eventNames, SequentialDeactivateEventName);
-        }
+        CombatTimelineEventNames.AddUnique(eventNames, HitboxStartEventName);
+        CombatTimelineEventNames.AddUnique(eventNames, HitboxEndEventName);
     }
 
     public override void Execute(SkillCastContext context)
@@ -311,38 +252,14 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         }
     }
 
-    internal static bool IsValidTimelineEvent(StringReference eventName)
+    internal static bool IsValidTimelineEvent(CombatTimelineEventName eventName)
     {
-        return eventName != null && !string.IsNullOrWhiteSpace(eventName.String);
+        return CombatTimelineEventNames.IsValid(eventName);
     }
 
-    internal static string DescribeTimelineEvent(StringReference eventName)
+    internal static string DescribeTimelineEvent(CombatTimelineEventName eventName)
     {
-        return eventName != null ? eventName.String : "<none>";
-    }
-
-    static StringReference ResolveExplicitEventName(StringAsset asset, string legacyEventKey, bool isOn)
-    {
-        if (asset != null)
-            return asset;
-
-        if (string.IsNullOrWhiteSpace(legacyEventKey))
-            return null;
-
-        string trimmed = legacyEventKey.Trim();
-        if (trimmed.Length == 0)
-            return null;
-
-        return StringReference.Get($"{trimmed}_{(isOn ? "On" : "Off")}");
-    }
-
-    static void AddUnique(List<StringReference> eventNames, StringReference eventName)
-    {
-        if (eventNames == null || !IsValidTimelineEvent(eventName))
-            return;
-
-        if (!eventNames.Contains(eventName))
-            eventNames.Add(eventName);
+        return CombatTimelineEventNames.IsValid(eventName) ? eventName.ToString() : "<none>";
     }
 
     bool TryValidateRuntimeConfiguration(out string errorMessage)
@@ -373,6 +290,12 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
 
         if (steps == null || steps.Count == 0)
             issues.Add($"Skill payload '{name}' has no hitbox steps configured.");
+
+        if (!HasHitboxTimelineEvents)
+            issues.Add($"Skill payload '{name}' must define valid hitbox start and end timeline events.");
+
+        if (HitboxStartEventName == HitboxEndEventName)
+            issues.Add($"Skill payload '{name}' cannot use the same timeline event for hitbox start and end.");
 
         for (int stepIndex = 0; stepIndex < steps.Count; stepIndex++)
         {

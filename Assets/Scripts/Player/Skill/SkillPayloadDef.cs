@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Animancer;
 using UnityEngine;
 
 public enum SkillHelperFacingMode
@@ -19,7 +18,7 @@ public abstract class SkillPayloadDef : ScriptableObject
     public virtual bool RequiresSkillTimelineEvents => false;
     public virtual bool HasExecutionPresentationAssets => false;
 
-    public virtual void CollectTimelineEventNames(List<StringReference> eventNames)
+    public virtual void CollectTimelineEventNames(List<CombatTimelineEventName> eventNames)
     {
     }
 

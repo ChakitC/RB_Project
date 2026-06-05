@@ -226,7 +226,7 @@ public sealed class PreCastBlockController : MonoBehaviour
         ClearActiveCast();
     }
 
-    void OnSkillTimelineEventRaised(int requestId, StringReference eventName)
+    void OnSkillTimelineEventRaised(int requestId, CombatTimelineEventName eventName)
     {
         if (!MatchesActiveCast(requestId) || activeSkillDef == null)
             return;

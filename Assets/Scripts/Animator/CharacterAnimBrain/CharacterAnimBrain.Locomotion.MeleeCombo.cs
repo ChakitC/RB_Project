@@ -164,8 +164,12 @@ public sealed partial class CharacterAnimBrain
 
             runtimeEvents = new AnimancerEvent.Sequence(cfg.clip.Events);
 
-            int hitStartCount = runtimeEvents.SetCallbacks(MeleeComboSO.HitStartEventName, owner.onMeleeHitStartCache);
-            int hitEndCount = runtimeEvents.SetCallbacks(MeleeComboSO.HitEndEventName, owner.onMeleeHitEndCache);
+            int hitStartCount = runtimeEvents.SetCallbacks(
+                CombatTimelineEventNames.ToStringReference(MeleeComboSO.HitStartEventName),
+                owner.onMeleeHitStartCache);
+            int hitEndCount = runtimeEvents.SetCallbacks(
+                CombatTimelineEventNames.ToStringReference(MeleeComboSO.HitEndEventName),
+                owner.onMeleeHitEndCache);
 
             if (hitStartCount == 0 || hitEndCount == 0)
             {

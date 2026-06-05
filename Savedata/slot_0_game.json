@@ -2,7 +2,7 @@
     "saveVersion": 2,
     "inventory": {
         "maxSlotCount": 20,
-        "gold": 963070,
+        "gold": 963083,
         "scrap": 0,
         "slots": [
             {
@@ -28,9 +28,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 1607,
-                    "currentMagazine": 99,
-                    "currentReserveAmmo": 184,
+                    "shotCounter": 2272,
+                    "currentMagazine": 29,
+                    "currentReserveAmmo": 300,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 16,
                     "upgradeTier": 1,
@@ -61,9 +61,9 @@
                         "secondaryValue": 0.0
                     },
                     "subAffixes": [],
-                    "shotCounter": 3082,
-                    "currentMagazine": 0,
-                    "currentReserveAmmo": 0,
+                    "shotCounter": 3105,
+                    "currentMagazine": 29,
+                    "currentReserveAmmo": 248,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -153,9 +153,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 4794,
+                    "shotCounter": 5200,
                     "currentMagazine": 29,
-                    "currentReserveAmmo": 281,
+                    "currentReserveAmmo": 293,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 20,
                     "upgradeTier": 2,
@@ -518,9 +518,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 7612,
-                    "currentMagazine": 30,
-                    "currentReserveAmmo": 300,
+                    "shotCounter": 8120,
+                    "currentMagazine": 25,
+                    "currentReserveAmmo": 210,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 2,
                     "upgradeTier": 0,
@@ -1097,9 +1097,9 @@
     },
     "party": {
         "partyIds": [
-            "ID.Feno",
+            "ID.Roma",
             "ID.Aires",
-            "ID.Milano",
+            "ID.Feno",
             "ID.Abbygail"
         ]
     }

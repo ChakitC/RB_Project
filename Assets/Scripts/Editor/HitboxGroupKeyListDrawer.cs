@@ -16,9 +16,6 @@ public sealed class PrefabHitboxStepDrawer : PropertyDrawer
             return height;
 
         height += VerticalSpacing;
-        height += GetVisiblePropertyHeight(property.FindPropertyRelative("timelineBindingMode"));
-        height += GetVisiblePropertyHeight(property.FindPropertyRelative("activateEventOverride"));
-        height += GetVisiblePropertyHeight(property.FindPropertyRelative("deactivateEventOverride"));
         height += HitboxGroupKeyListGUI.GetPropertyHeight(property.FindPropertyRelative("groupKeys"));
         height += GetVisiblePropertyHeight(property.FindPropertyRelative("damageMultiplier"));
         height += GetVisiblePropertyHeight(property.FindPropertyRelative("hitPolicy"));
@@ -57,9 +54,6 @@ public sealed class PrefabHitboxStepDrawer : PropertyDrawer
         float y = headerRect.yMax + VerticalSpacing;
 
         EditorGUI.indentLevel++;
-        DrawProperty(ref y, position, property.FindPropertyRelative("timelineBindingMode"));
-        DrawProperty(ref y, position, property.FindPropertyRelative("activateEventOverride"));
-        DrawProperty(ref y, position, property.FindPropertyRelative("deactivateEventOverride"));
         HitboxGroupKeyListGUI.Draw(ref y, position, property.FindPropertyRelative("groupKeys"));
         DrawProperty(ref y, position, property.FindPropertyRelative("damageMultiplier"));
         DrawProperty(ref y, position, property.FindPropertyRelative("hitPolicy"));

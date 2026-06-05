@@ -136,7 +136,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private float _activeSkillCastPointNormalized = 0.35f;
     private bool _activeSkillReleaseRequested;
     private bool _activeSkillReleased;
-    private readonly List<StringReference> _activeSkillTimelineEventNames = new List<StringReference>();
+    private readonly List<CombatTimelineEventName> _activeSkillTimelineEventNames = new List<CombatTimelineEventName>();
     private int _activeUtilityRequestId;
     private float _activeUtilityCastPointNormalized = 0.35f;
     private bool _activeUtilityReleaseRequested;
@@ -218,7 +218,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     public event Action<PlaybackSignal> PlaybackEvent;
     public event Action<int> SkillCastMomentReached;
     public event Action<int> SkillCastInterrupted;
-    public event Action<int, StringReference> SkillTimelineEventRaised;
+    public event Action<int, CombatTimelineEventName> SkillTimelineEventRaised;
     public event Action SkillCompleted;
 
     internal bool TryGetActiveSkillNormalizedTime(int requestId, out float normalizedTime)
@@ -734,7 +734,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         int requestId,
         SkillGemDefinition skillDef,
         float castPointNormalized,
-        IReadOnlyList<StringReference> timelineEventNames)
+        IReadOnlyList<CombatTimelineEventName> timelineEventNames)
     {
         if (IsChainPlaybackActive)
             return false;
@@ -1428,9 +1428,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void BindTimelineEventCallbacks(
         AnimancerEvent.Sequence runtimeEvents,
-        IReadOnlyList<StringReference> eventNames,
+        IReadOnlyList<CombatTimelineEventName> eventNames,
         ClipTransition clip,
-        Action<StringReference> raiseTimelineEvent,
+        Action<CombatTimelineEventName> raiseTimelineEvent,
         bool warnMissing)
     {
         if (runtimeEvents == null || eventNames == null || eventNames.Count == 0 || raiseTimelineEvent == null)
@@ -1440,8 +1440,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         for (int i = 0; i < eventNames.Count; i++)
         {
-            StringReference eventName = eventNames[i];
-            if (eventName == null || string.IsNullOrWhiteSpace(eventName.String))
+            CombatTimelineEventName eventName = eventNames[i];
+            if (!CombatTimelineEventNames.IsValid(eventName))
                 continue;
 
             BindTimelineEventCallback(runtimeEvents, eventName, clipName, raiseTimelineEvent, warnMissing);
@@ -1450,28 +1450,31 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void BindTimelineEventCallback(
         AnimancerEvent.Sequence runtimeEvents,
-        StringReference eventName,
+        CombatTimelineEventName eventName,
         string clipName,
-        Action<StringReference> raiseTimelineEvent,
+        Action<CombatTimelineEventName> raiseTimelineEvent,
         bool warnMissing)
     {
         if (runtimeEvents == null ||
-            eventName == null ||
-            string.IsNullOrWhiteSpace(eventName.String) ||
+            !CombatTimelineEventNames.IsValid(eventName) ||
             raiseTimelineEvent == null)
         {
             return;
         }
 
-        StringReference capturedEventName = eventName;
+        CombatTimelineEventName capturedEventName = eventName;
+        StringReference animancerEventName = CombatTimelineEventNames.ToStringReference(capturedEventName);
+        if (animancerEventName == null || string.IsNullOrWhiteSpace(animancerEventName.String))
+            return;
+
         int count = runtimeEvents.SetCallbacks(
-            capturedEventName,
+            animancerEventName,
             () => raiseTimelineEvent(capturedEventName));
 
         if (count == 0 && warnMissing)
         {
             Debug.LogWarning(
-                $"[CharacterAnimBrain] Skill clip '{clipName}' is missing timeline event '{capturedEventName}'.",
+                $"[CharacterAnimBrain] Skill clip '{clipName}' is missing timeline event '{capturedEventName}' ({animancerEventName}).",
                 this);
         }
     }
@@ -1517,22 +1520,21 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private void AddFallbackSkillTimelineEvent(
         AnimancerEvent.Sequence runtimeEvents,
         float normalizedTime,
-        StringReference eventName)
+        CombatTimelineEventName eventName)
     {
-        if (runtimeEvents == null || eventName == null || string.IsNullOrWhiteSpace(eventName.String))
+        if (runtimeEvents == null || !CombatTimelineEventNames.IsValid(eventName))
             return;
 
         float clampedTime = Mathf.Clamp(normalizedTime, 0f, 0.999f);
-        StringReference capturedEventName = eventName;
+        CombatTimelineEventName capturedEventName = eventName;
         runtimeEvents.Add(clampedTime, () => RaiseSkillTimelineEvent(capturedEventName));
     }
 
-    private void RaiseSkillTimelineEvent(StringReference eventName)
+    private void RaiseSkillTimelineEvent(CombatTimelineEventName eventName)
     {
         if (!_activeSkillReleaseRequested ||
             _activeSkillRequestId <= 0 ||
-            eventName == null ||
-            string.IsNullOrWhiteSpace(eventName.String))
+            !CombatTimelineEventNames.IsValid(eventName))
         {
             return;
         }
@@ -1540,13 +1542,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         SkillTimelineEventRaised?.Invoke(_activeSkillRequestId, eventName);
     }
 
-    private void RaiseChainSkillTimelineEvent(StringReference eventName)
+    private void RaiseChainSkillTimelineEvent(CombatTimelineEventName eventName)
     {
         if (_activeChainKind != ChainPlaybackKind.Skill ||
             !_activeChainReleaseRequested ||
             _activeChainRequestId <= 0 ||
-            eventName == null ||
-            string.IsNullOrWhiteSpace(eventName.String))
+            !CombatTimelineEventNames.IsValid(eventName))
         {
             return;
         }
@@ -1558,7 +1559,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         int requestId,
         SkillGemDefinition skillDef,
         float castPointNormalized,
-        IReadOnlyList<StringReference> timelineEventNames)
+        IReadOnlyList<CombatTimelineEventName> timelineEventNames)
     {
         _activeSkillDefinition = skillDef;
         _activeSkillRequestId = requestId;
@@ -1586,7 +1587,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         _activeSkillTimelineEventNames.Clear();
     }
 
-    private void SetActiveSkillTimelineEventNames(IReadOnlyList<StringReference> timelineEventNames)
+    private void SetActiveSkillTimelineEventNames(IReadOnlyList<CombatTimelineEventName> timelineEventNames)
     {
         _activeSkillTimelineEventNames.Clear();
 
@@ -1595,8 +1596,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         for (int i = 0; i < timelineEventNames.Count; i++)
         {
-            StringReference eventName = timelineEventNames[i];
-            if (eventName == null || string.IsNullOrWhiteSpace(eventName.String))
+            CombatTimelineEventName eventName = timelineEventNames[i];
+            if (!CombatTimelineEventNames.IsValid(eventName))
                 continue;
 
             if (_activeSkillTimelineEventNames.Contains(eventName))

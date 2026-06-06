@@ -47,6 +47,7 @@ public class WeaponSystem : MonoBehaviour
 
     public bool IsReloading => isReloading;
     public bool IsFiringHeld => _isFiringHeld;
+    public FiringMode CurrentFiringMode => firingMode;
     public bool CanFire => !isReloading && magazine > 0 && GetWeaponTime() >= nextFireTime;
     public bool IsAiming => isAiming;
     public Transform FirePoint => firePoint;

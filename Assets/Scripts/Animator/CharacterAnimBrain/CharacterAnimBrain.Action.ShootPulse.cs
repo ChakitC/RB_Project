@@ -33,6 +33,7 @@ public sealed partial class CharacterAnimBrain
         lastPlayTime = owner.AnimationTime;
 
         owner.ActLayer.StartFade(1f, owner.ActionFadeIn);
+        owner.SetActivePairUpperAction(PairOffsetUpperAction.ShootPulse);
         state = owner.ActLayer.Play(owner.ShootPulseClip);
 
         owner.onShootEndCache ??= owner.HandleShootPulseEnd;

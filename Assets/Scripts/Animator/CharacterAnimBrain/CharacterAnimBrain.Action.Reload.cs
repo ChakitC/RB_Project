@@ -34,6 +34,7 @@ public sealed partial class CharacterAnimBrain
             _lockExit = true;
 
             owner.ActLayer.StartFade(1f, owner.ActionFadeIn);
+            owner.SetActivePairUpperAction(PairOffsetUpperAction.Reload);
 
             state = owner.ActLayer.Play(owner.ReloadClip);
 

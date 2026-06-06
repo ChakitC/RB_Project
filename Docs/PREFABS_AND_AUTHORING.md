@@ -21,6 +21,7 @@ Common references should be assigned on the context when possible:
 - `WeaponSystem`
 - `CharacterAnimBrain`
 - `CharacterAnimDriver`
+- `CharacterPairOffsetApplier`
 - `HealthSystem`
 - `StaminaSystem`
 - `DashSystem`
@@ -141,10 +142,41 @@ generic-rig bone path list.
 
 Pair offset data that should live outside a preview component can be authored in
 a `PairOffsetProfilesSO` asset. Create it from `Game > Characters > Pair Offset
-Profiles`. The asset stores the `Base Clip`, `Upper Body Clip`, profile weight,
-and per-bone path, local Euler offset, and weight. It stores bone paths relative
-to the Animator root instead of scene `Transform` references so the same data can
-be used later by runtime animation systems.
+Profiles`. The asset stores a runtime `Base Pose` enum, an `Upper Action` enum,
+the preview `Base Clip`, the preview `Upper Body Clip`, profile weight, and
+per-bone path, local Euler offset, and weight. Runtime animation lookup uses the
+enum pair, not clip names or clip references. The clip references are retained
+for preview load/save workflows.
+
+Runtime pair offsets are applied by `CharacterPairOffsetApplier`. Add it to
+character prefabs that use pair offsets and bind it on the context when possible.
+When a character's anim profile has a `PairOffsetProfilesSO` assigned but the
+component is missing, `CharacteContext` can add the applier at runtime. Assign
+the `PairOffsetProfilesSO` asset on the character's `CharacterAnimProfileSO`
+under `Pair Offsets`. At runtime, `CharacterAnimBrain` reports the active
+locomotion `Base Pose`, upper-body action (`ShootPulse`, `ShootHold`, or
+`Reload`), and action-layer weight. The applier finds the matching enum-keyed SO
+profile and applies bone rotations after animation sampling. The applier uses
+the `Animator` assigned on the character's `AnimancerComponent` as the skeleton
+root, so it follows the active model instance instead of a parent placeholder
+Animator. Runtime lookup checks the enum pair first, then falls back to the
+preview clip references mapped through `CharacterAnimProfileSO`, so older
+clip-keyed `PairOffsetProfilesSO` entries can still work while they are being
+migrated to explicit enum keys. While an upper-body action is held, changing
+movement direction changes the active locomotion blend. The applier uses the
+current locomotion parameter to blend multiple `Base Pose` profiles in the same
+frame, so offsets can follow transitions such as `Forward + ShootHold` blending
+into `ForwardRight + ShootHold` or `Right + ShootHold`. Author one profile per
+locomotion direction that needs a different correction. Profiles with
+`Base Pose = None` or `Upper Action = None` are authoring-only and will not be
+used by enum lookup, but may still match through clip-reference fallback. Enable
+`Show Debug State` on the applier in Play Mode to see whether the active pair is
+missing, the profile is missing, or a stored bone path cannot be resolved under
+the active Animator root.
+
+`ShootPulse` is forwarded from weapon shot events only for semi-auto firing
+mode. Auto and burst weapons should author held-fire behavior through
+`ShootHold`/hold loop clips instead of relying on pulse restarts per projectile.
 
 ## Context-Owned References
 
@@ -225,9 +257,9 @@ Weapon data should preserve:
 runtime mirrors and refreshing derived stats.
 Runtime code should prefer `WeaponSystem` facade properties and methods over
 direct public mirror field access. Use `CurrentAmmo`, `IsMagazineEmpty`,
-`IsAiming`, `IsFiringActivity`, `Damage`, `FirePoint`, and `BindFirePoint`
-where applicable. Keep mirror fields valid for inspector/debug compatibility
-until that compatibility is intentionally retired.
+`IsAiming`, `CurrentFiringMode`, `IsFiringActivity`, `Damage`, `FirePoint`, and
+`BindFirePoint` where applicable. Keep mirror fields valid for inspector/debug
+compatibility until that compatibility is intentionally retired.
 
 ## Passive Authoring
 

@@ -133,7 +133,12 @@ public sealed class CharacterAnimDriver : MonoBehaviour
 
     void OnShotFired()
     {
-        if (brain != null) brain.NotifyShotFired();
+        if (brain != null &&
+            _WeaponSystem != null &&
+            _WeaponSystem.CurrentFiringMode == FiringMode.Semi)
+        {
+            brain.NotifyShotFired();
+        }
     }
 
     void OnReloadStarted(float reloadTime)

@@ -23,6 +23,7 @@ public sealed partial class CharacterAnimBrain
         public override void OnEnterState()
         {
             owner.ActLayer.StartFade(1f, owner.ActionFadeIn);
+            owner.SetActivePairUpperAction(PairOffsetUpperAction.ShootHold);
 
             if (owner.ShootHoldLoopClip != null)
                 state = owner.ActLayer.Play(owner.ShootHoldLoopClip);
@@ -45,7 +46,6 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnExitState()
         {
-            
             owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
         }
     }

@@ -22,6 +22,7 @@ public abstract class CharacteContext : MonoBehaviour
     public WeaponSystem WeaponSystem;
     public CharacterAnimBrain AnimBrain;
     public CharacterAnimDriver AnimDriver;
+    public CharacterPairOffsetApplier PairOffsetApplier;
     public MeleeController MeleeController;
     
     [Header("Visual")] 
@@ -87,6 +88,15 @@ public abstract class CharacteContext : MonoBehaviour
             Equipment = gameObject.AddComponent<CharacterEquipment>();
         AnimBrain = ResolveActorComponent(AnimBrain);
         AnimDriver = ResolveActorComponent(AnimDriver);
+        PairOffsetApplier = ResolveActorComponent(PairOffsetApplier);
+        if (PairOffsetApplier == null &&
+            Application.isPlaying &&
+            baseStats != null &&
+            baseStats.animProfile != null &&
+            baseStats.animProfile.pairOffsetProfiles != null)
+        {
+            PairOffsetApplier = gameObject.AddComponent<CharacterPairOffsetApplier>();
+        }
         MeleeController = ResolveActorComponent(MeleeController);
 
         CharacterLoad = ResolveActorComponent(CharacterLoad);

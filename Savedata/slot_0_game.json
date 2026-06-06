@@ -28,9 +28,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 2272,
-                    "currentMagazine": 29,
-                    "currentReserveAmmo": 300,
+                    "shotCounter": 2483,
+                    "currentMagazine": 99,
+                    "currentReserveAmmo": 65,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 16,
                     "upgradeTier": 1,
@@ -154,7 +154,7 @@
                         }
                     ],
                     "shotCounter": 5200,
-                    "currentMagazine": 29,
+                    "currentMagazine": 34,
                     "currentReserveAmmo": 293,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 20,
@@ -519,7 +519,7 @@
                         }
                     ],
                     "shotCounter": 8120,
-                    "currentMagazine": 25,
+                    "currentMagazine": 30,
                     "currentReserveAmmo": 210,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 2,
@@ -1097,9 +1097,9 @@
     },
     "party": {
         "partyIds": [
-            "ID.Roma",
-            "ID.Aires",
             "ID.Feno",
+            "ID.Aires",
+            "ID.Roma",
             "ID.Abbygail"
         ]
     }

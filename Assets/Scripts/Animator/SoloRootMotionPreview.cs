@@ -77,6 +77,10 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
         public bool enabled = true;
         [Tooltip("ชื่อ profile สำหรับอ่านใน inspector และ SO browser")]
         public string profileName;
+        [Tooltip("Runtime locomotion pose key used by CharacterPairOffsetApplier")]
+        public PairOffsetBasePose basePose;
+        [Tooltip("Runtime upper-body action key used by CharacterPairOffsetApplier")]
+        public PairOffsetUpperAction upperAction;
         [Tooltip("คลิป locomotion/base ที่ profile นี้ผูกอยู่")]
         public AnimationClip baseClip;
         [Tooltip("คลิปช่วงบนที่ profile นี้ผูกอยู่")]
@@ -514,6 +518,8 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
         PairOffsetProfilesSO.PairOffsetProfile assetProfile = pairOffsetProfileAsset.UpsertProfile(
             profile.enabled,
             GetPairOffsetProfileName(profile),
+            profile.basePose,
+            profile.upperAction,
             profile.baseClip,
             profile.upperBodyClip,
             profile.weight);
@@ -1200,6 +1206,8 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
         profile.profileName = string.IsNullOrWhiteSpace(assetProfile.ProfileName)
             ? GetDefaultPairOffsetProfileName(assetProfile.BaseClip, assetProfile.UpperBodyClip)
             : assetProfile.ProfileName;
+        profile.basePose = assetProfile.BasePose;
+        profile.upperAction = assetProfile.UpperAction;
         profile.baseClip = assetProfile.BaseClip;
         profile.upperBodyClip = assetProfile.UpperBodyClip;
         profile.weight = assetProfile.Weight;

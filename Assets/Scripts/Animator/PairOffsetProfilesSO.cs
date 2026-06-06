@@ -5,10 +5,38 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "PairOffsetProfiles", menuName = "Game/Characters/Pair Offset Profiles")]
 public sealed class PairOffsetProfilesSO : ScriptableObject
 {
-    [SerializeField, Tooltip("รายการ rotation offset ที่เลือกตามคู่ Base Clip + Upper Body Clip")]
+    [SerializeField, Tooltip("Rotation offsets keyed by a locomotion pose and upper-body action.")]
     private List<PairOffsetProfile> pairOffsetProfiles = new List<PairOffsetProfile>();
 
     public IReadOnlyList<PairOffsetProfile> PairOffsetProfiles => pairOffsetProfiles;
+
+    public PairOffsetProfile FindProfile(
+        PairOffsetBasePose basePose,
+        PairOffsetUpperAction upperAction,
+        bool includeDisabled)
+    {
+        if (pairOffsetProfiles == null ||
+            basePose == PairOffsetBasePose.None ||
+            upperAction == PairOffsetUpperAction.None)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < pairOffsetProfiles.Count; i++)
+        {
+            PairOffsetProfile profile = pairOffsetProfiles[i];
+            if (profile == null)
+                continue;
+
+            if (!includeDisabled && !profile.Enabled)
+                continue;
+
+            if (profile.BasePose == basePose && profile.UpperAction == upperAction)
+                return profile;
+        }
+
+        return null;
+    }
 
     public PairOffsetProfile FindProfile(AnimationClip baseClip, AnimationClip upperBodyClip, bool includeDisabled)
     {
@@ -34,6 +62,8 @@ public sealed class PairOffsetProfilesSO : ScriptableObject
     public PairOffsetProfile UpsertProfile(
         bool enabled,
         string profileName,
+        PairOffsetBasePose basePose,
+        PairOffsetUpperAction upperAction,
         AnimationClip baseClip,
         AnimationClip upperBodyClip,
         float weight)
@@ -41,15 +71,35 @@ public sealed class PairOffsetProfilesSO : ScriptableObject
         if (pairOffsetProfiles == null)
             pairOffsetProfiles = new List<PairOffsetProfile>();
 
-        PairOffsetProfile profile = FindProfile(baseClip, upperBodyClip, true);
+        PairOffsetProfile profile = FindProfile(basePose, upperAction, true);
+        if (profile == null)
+            profile = FindProfile(baseClip, upperBodyClip, true);
+
         if (profile == null)
         {
             profile = new PairOffsetProfile();
             pairOffsetProfiles.Add(profile);
         }
 
-        profile.Configure(enabled, profileName, baseClip, upperBodyClip, weight);
+        profile.Configure(enabled, profileName, basePose, upperAction, baseClip, upperBodyClip, weight);
         return profile;
+    }
+
+    public PairOffsetProfile UpsertProfile(
+        bool enabled,
+        string profileName,
+        AnimationClip baseClip,
+        AnimationClip upperBodyClip,
+        float weight)
+    {
+        return UpsertProfile(
+            enabled,
+            profileName,
+            PairOffsetBasePose.None,
+            PairOffsetUpperAction.None,
+            baseClip,
+            upperBodyClip,
+            weight);
     }
 
     public void NormalizeProfiles()
@@ -69,21 +119,19 @@ public sealed class PairOffsetProfilesSO : ScriptableObject
     [Serializable]
     public sealed class PairOffsetProfile
     {
-        [SerializeField, Tooltip("เปิดหรือปิด profile นี้")]
-        private bool enabled = true;
-        [SerializeField, Tooltip("ชื่อ profile สำหรับอ่านใน inspector และ browser")]
-        private string profileName;
-        [SerializeField, Tooltip("คลิป locomotion/base ที่ profile นี้ผูกอยู่")]
-        private AnimationClip baseClip;
-        [SerializeField, Tooltip("คลิปช่วงบนที่ profile นี้ผูกอยู่")]
-        private AnimationClip upperBodyClip;
-        [SerializeField, Range(0f, 1f), Tooltip("น้ำหนักรวมของ offset ทั้ง profile")]
-        private float weight = 1f;
-        [SerializeField, Tooltip("รายการกระดูกที่มี local rotation offset")]
-        private List<BoneRotationOffset> boneOffsets = new List<BoneRotationOffset>();
+        [SerializeField] private bool enabled = true;
+        [SerializeField] private string profileName;
+        [SerializeField] private PairOffsetBasePose basePose;
+        [SerializeField] private PairOffsetUpperAction upperAction;
+        [SerializeField] private AnimationClip baseClip;
+        [SerializeField] private AnimationClip upperBodyClip;
+        [SerializeField, Range(0f, 1f)] private float weight = 1f;
+        [SerializeField] private List<BoneRotationOffset> boneOffsets = new List<BoneRotationOffset>();
 
         public bool Enabled => enabled;
         public string ProfileName => profileName;
+        public PairOffsetBasePose BasePose => basePose;
+        public PairOffsetUpperAction UpperAction => upperAction;
         public AnimationClip BaseClip => baseClip;
         public AnimationClip UpperBodyClip => upperBodyClip;
         public float Weight => Mathf.Clamp01(weight);
@@ -96,8 +144,31 @@ public sealed class PairOffsetProfilesSO : ScriptableObject
             AnimationClip upperBodyClip,
             float weight)
         {
+            Configure(
+                enabled,
+                profileName,
+                basePose,
+                upperAction,
+                baseClip,
+                upperBodyClip,
+                weight);
+        }
+
+        public void Configure(
+            bool enabled,
+            string profileName,
+            PairOffsetBasePose basePose,
+            PairOffsetUpperAction upperAction,
+            AnimationClip baseClip,
+            AnimationClip upperBodyClip,
+            float weight)
+        {
             this.enabled = enabled;
             this.profileName = profileName;
+            if (basePose != PairOffsetBasePose.None)
+                this.basePose = basePose;
+            if (upperAction != PairOffsetUpperAction.None)
+                this.upperAction = upperAction;
             this.baseClip = baseClip;
             this.upperBodyClip = upperBodyClip;
             this.weight = Mathf.Clamp01(weight);
@@ -136,14 +207,10 @@ public sealed class PairOffsetProfilesSO : ScriptableObject
     [Serializable]
     public sealed class BoneRotationOffset
     {
-        [SerializeField, Tooltip("เปิดหรือปิด offset ของกระดูกนี้")]
-        private bool enabled = true;
-        [SerializeField, Tooltip("path ของกระดูกเทียบจาก Animator root")]
-        private string bonePath;
-        [SerializeField, Tooltip("มุมหมุน local ที่จะทาเพิ่มหลัง animation sample")]
-        private Vector3 localEulerOffset;
-        [SerializeField, Range(0f, 1f), Tooltip("น้ำหนัก offset ของกระดูกนี้")]
-        private float weight = 1f;
+        [SerializeField] private bool enabled = true;
+        [SerializeField] private string bonePath;
+        [SerializeField] private Vector3 localEulerOffset;
+        [SerializeField, Range(0f, 1f)] private float weight = 1f;
 
         public bool Enabled => enabled;
         public string BonePath => bonePath;

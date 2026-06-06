@@ -18,6 +18,7 @@ public sealed partial class CharacterAnimBrain
         {
             mixerState = owner.LocoLayer.Play(owner.LocomotionMixer) as Vector2MixerState;
             current = Vector2.zero;
+            owner.SetActivePairBasePoseBlend(current);
         }
 
         public override void Update()
@@ -37,8 +38,7 @@ public sealed partial class CharacterAnimBrain
 
             mixerState.ParameterX = current.x;
             mixerState.ParameterY = current.y;
-
-            
+            owner.SetActivePairBasePoseBlend(current);
         }
 
         private static Vector2 Snap8(Vector2 v)

@@ -24,7 +24,7 @@ types, including:
 - movement bodies: `Rigidbody`, `CharacterController`
 - common modules: `TargetInfo`, `CharacterEquipment`, `AccessoryLoadout`,
   `WeaponSystem`, `CharacterAnimBrain`, `CharacterAnimDriver`,
-  `MeleeController`
+  `CharacterPairOffsetApplier`, `MeleeController`
 - visual and collider support: `CharacterContextPartyLoader`,
   `CharacterVisualController`, `UIManager`, `CharacterColliderRefs`
 - gameplay modules: `LevelSystem`, `HealthSystem`, `StaminaSystem`,
@@ -118,4 +118,3 @@ if (ctx is AllyContext allyContext)
   and prefab usage.
 - Moving newly created Unity classes into unrelated files to work around stale
   `.csproj` generation.
-

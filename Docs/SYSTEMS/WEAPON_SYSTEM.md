@@ -30,7 +30,7 @@ External callers currently use `WeaponSystem` for:
   `NotifyWeaponInstanceChanged`
 - fire/reload: `SetFiring`, `TryShoot`, `TryReload`, `CancelReload`,
   `GetReloadAnimDuration`, `IsReloading`, `IsFiringHeld`,
-  `IsFiringActivity`
+  `CurrentFiringMode`, `IsFiringActivity`
 - ammo: `CurrentAmmo`, `MagazineSize`, `CurrentReserveAmmo`,
   `ReserveAmmoSize`, `IsMagazineEmpty`, `CanRestoreMagazine`,
   `RestoreMagazine`, `CanRestoreReserveAmmo`, `RestoreReserveAmmo`,
@@ -48,6 +48,8 @@ reads or writes to these fields.
 Current migrated callers:
 
 - `StateHub` reads `IsMagazineEmpty` and `IsFiringActivity`.
+- `CharacterAnimDriver` reads `CurrentFiringMode` to play shot pulse animation
+  only for semi-auto shots.
 - `CharacterAnimatorController_2` reads `IsFiringActivity`.
 - `PlayerMovementCC` reads `IsAiming` and `IsFiringActivity`.
 - `CharacterVisualController` reads `FirePoint` and writes through
@@ -147,6 +149,11 @@ upgrades, and any custom dynamic modifier provider.
 12. publishes `ShotFired` through `CombatEventBus`
 13. notifies status effects and weapon runtime effect handlers
 14. starts autoload reload when applicable
+
+`CharacterAnimDriver` listens to `StateHub.ShotFired`, but forwards shot pulse
+animation to `CharacterAnimBrain` only when `WeaponSystem.CurrentFiringMode` is
+`Semi`. Auto and burst weapons should use held-fire animation behavior instead
+of restarting `ShootPulse` every projectile.
 
 ## Reload Flow
 

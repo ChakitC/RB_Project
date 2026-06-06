@@ -204,6 +204,9 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     public ClipTransition shootHoldLoop;
     [Min(0f)] public float holdPulseMinInterval = 0.08f;
 
+    [Header("Pair Offsets")]
+    public PairOffsetProfilesSO pairOffsetProfiles;
+
     [Header("Reload (Layer 1 or Full Body)")]
     public ClipTransition reload;
     [Tooltip("UpperBody blends reload over locomotion using the action mask. FullBody plays reload on the locomotion layer and temporarily owns the whole character.")]
@@ -267,6 +270,56 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     {
         EnsureLocomotionDirectionalClips();
         return locomotionDirectionalClips.TryGetIssue(out issue);
+    }
+
+    public PairOffsetProfilesSO.PairOffsetProfile FindPairOffsetProfile(
+        PairOffsetBasePose basePose,
+        PairOffsetUpperAction upperAction,
+        bool includeDisabled)
+    {
+        if (pairOffsetProfiles == null)
+            return null;
+
+        PairOffsetProfilesSO.PairOffsetProfile profile =
+            pairOffsetProfiles.FindProfile(basePose, upperAction, includeDisabled);
+        if (profile != null)
+            return profile;
+
+        AnimationClip baseClip = GetPairOffsetBaseClip(basePose);
+        AnimationClip upperClip = GetPairOffsetUpperClip(upperAction);
+        return baseClip != null && upperClip != null
+            ? pairOffsetProfiles.FindProfile(baseClip, upperClip, includeDisabled)
+            : null;
+    }
+
+    public AnimationClip GetPairOffsetBaseClip(PairOffsetBasePose pose)
+    {
+        EnsureLocomotionDirectionalClips();
+
+        return pose switch
+        {
+            PairOffsetBasePose.Idle => locomotionDirectionalClips.idle,
+            PairOffsetBasePose.Forward => locomotionDirectionalClips.forward,
+            PairOffsetBasePose.Backward => locomotionDirectionalClips.backward,
+            PairOffsetBasePose.Left => locomotionDirectionalClips.left,
+            PairOffsetBasePose.Right => locomotionDirectionalClips.right,
+            PairOffsetBasePose.ForwardLeft => locomotionDirectionalClips.forwardLeft,
+            PairOffsetBasePose.ForwardRight => locomotionDirectionalClips.forwardRight,
+            PairOffsetBasePose.BackwardLeft => locomotionDirectionalClips.backwardLeft,
+            PairOffsetBasePose.BackwardRight => locomotionDirectionalClips.backwardRight,
+            _ => null,
+        };
+    }
+
+    public AnimationClip GetPairOffsetUpperClip(PairOffsetUpperAction action)
+    {
+        return action switch
+        {
+            PairOffsetUpperAction.ShootPulse => shootPulse != null ? shootPulse.Clip : null,
+            PairOffsetUpperAction.ShootHold => shootHoldLoop != null ? shootHoldLoop.Clip : null,
+            PairOffsetUpperAction.Reload => reload != null ? reload.Clip : null,
+            _ => null,
+        };
     }
 
     private void OnEnable()

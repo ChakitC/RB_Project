@@ -566,6 +566,7 @@ MonoBehaviour:
   WeaponSystem: {fileID: 6987636084120509540}
   AnimBrain: {fileID: 6756038978356485017}
   AnimDriver: {fileID: 2705162881607156007}
+  PairOffsetApplier: {fileID: 6927647070226357498}
   MeleeController: {fileID: 3848525355350381702}
   CharacterLoad: {fileID: 5566096177820386735}
   Visual: {fileID: 5135303409400166651}
@@ -1393,6 +1394,7 @@ GameObject:
   - component: {fileID: 6756038978356485017}
   - component: {fileID: 2705162881607156007}
   - component: {fileID: 2912202768560880375}
+  - component: {fileID: 6927647070226357498}
   m_Layer: 10
   m_Name: Animation_System
   m_TagString: Untagged
@@ -1468,6 +1470,23 @@ MonoBehaviour:
   _Animator: {fileID: 5879616477380449198}
   _Transitions: {fileID: 0}
   _ActionOnDisable: 0
+--- !u!114 &6927647070226357498
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2837304008164890900}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02bf62edce9240d5a0ab14964e067c2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 3059205003566966071}
+  brain: {fileID: 6756038978356485017}
+  animator: {fileID: 0}
+  applyPairOffsets: 1
+  directionTransitionDuration: 0.08
 --- !u!1 &4846791555918864231
 GameObject:
   m_ObjectHideFlags: 0

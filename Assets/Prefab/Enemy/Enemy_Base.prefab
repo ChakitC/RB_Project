@@ -567,8 +567,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4006599713941928424}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 0, y: 1, z: 1.2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -789,6 +789,7 @@ GameObject:
   - component: {fileID: 7890524168451456044}
   - component: {fileID: 2022206065969024217}
   - component: {fileID: 2016865547201611848}
+  - component: {fileID: 5480232084052243234}
   m_Layer: 9
   m_Name: Animation_System
   m_TagString: Untagged
@@ -864,6 +865,23 @@ MonoBehaviour:
   _HealthSystem: {fileID: 4372935134327282892}
   _WeaponSystem: {fileID: 7060247235419904634}
   CTX: {fileID: 4463375380434640548}
+--- !u!114 &5480232084052243234
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4467390547590674431}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02bf62edce9240d5a0ab14964e067c2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 4463375380434640548}
+  brain: {fileID: 2022206065969024217}
+  animator: {fileID: 0}
+  applyPairOffsets: 1
+  directionTransitionDuration: 0.08
 --- !u!1 &5489049317917762303
 GameObject:
   m_ObjectHideFlags: 0
@@ -979,6 +997,7 @@ GameObject:
   - component: {fileID: 5993987419785758348}
   - component: {fileID: 1695257887938755810}
   - component: {fileID: 2065103687812396271}
+  - component: {fileID: -5386552744308611412}
   m_Layer: 9
   m_Name: Enemy_Base
   m_TagString: Enamy
@@ -1098,11 +1117,12 @@ MonoBehaviour:
   rb: {fileID: 991524704810201650}
   cc: {fileID: 8333949894183582049}
   TargetInfo: {fileID: 2596423232265115448}
-  Equipment: {fileID: 0}
+  Equipment: {fileID: -5386552744308611412}
   AccessoryLoadout: {fileID: 0}
   WeaponSystem: {fileID: 7060247235419904634}
   AnimBrain: {fileID: 2022206065969024217}
   AnimDriver: {fileID: 2016865547201611848}
+  PairOffsetApplier: {fileID: 5480232084052243234}
   MeleeController: {fileID: 6396605468909271155}
   CharacterLoad: {fileID: 0}
   Visual: {fileID: 1879165679072882653}
@@ -1360,6 +1380,44 @@ MonoBehaviour:
   allowBlockWindowVfxParticlesToFinish: 1
   blockWindowVfxExtraLife: 0
   logBlocks: 0
+--- !u!114 &-5386552744308611412
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7649753103391906527}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 054283c474680534cb008378f47a7724, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  defaultWeapon: {fileID: 0}
+  equipDefaultOnStart: 1
+  usePlayerInventorySave: 1
+  equipmentOwnerId: 
+  currentWeapon: {fileID: 0}
+  currentWeaponInstance:
+    instanceId: 
+    baseWeaponId: 
+    rarity: 0
+    mainAffix:
+      affixId: 
+      hasPrimaryValue: 0
+      primaryValue: 0
+      hasSecondaryValue: 0
+      secondaryValue: 0
+    subAffixes: []
+    shotCounter: 0
+    currentMagazine: -1
+    currentReserveAmmo: -1
+    reserveAmmoInitialized: 0
+    upgradeLevel: 0
+    upgradeTier: 0
+    upgradeExp: 0
+    unlockedUpgradeMilestoneIds: []
+  equippedWeaponInstanceId: 
 --- !u!1 &8836043026795576592
 GameObject:
   m_ObjectHideFlags: 0

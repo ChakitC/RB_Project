@@ -41,6 +41,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private Action onDeadEndCache;
 
     private float _reloadDuration = 0f;
+    private readonly List<PairOffsetBasePoseWeight> _activePairBasePoseWeights = new List<PairOffsetBasePoseWeight>(3);
+    private PairOffsetBasePose _activePairBasePose = PairOffsetBasePose.None;
+    private PairOffsetUpperAction _activePairUpperAction = PairOffsetUpperAction.None;
 
     public enum MeleeType { Light, Heavy }
     private enum StatusLocomotionKind { None, Root, MiniStune, Stune, Freez }
@@ -178,6 +181,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private float UtilityWarpInCastPointNormalized => AnimProfile.utilityWarpInCastPointNormalized;
     private ClipTransition LegacySkillClip => AnimProfile.skillClip;
     private ClipTransition SkillClip => ResolveSkillClip(_activeSkillDefinition);
+    public PairOffsetProfilesSO PairOffsetProfiles => AnimProfile != null ? AnimProfile.pairOffsetProfiles : null;
     private ClipTransition MiniStuneClip => AnimProfile.miniStune;
     private ClipTransition StuneClip => AnimProfile.stune;
     private ClipTransition RootClip => AnimProfile.root;
@@ -322,6 +326,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         locomotionSM.ForceSetState(locomotion);
         actionSM.ForceSetState(empty);
+        ClearActivePairOffsetState();
 
         _initialized = true;
 
@@ -519,6 +524,86 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     public void FireUp()
     {
         SetDesiredFireHold(false);
+    }
+
+    public bool TryGetActivePairOffsetState(
+        out PairOffsetProfilesSO profiles,
+        out PairOffsetBasePose basePose,
+        out PairOffsetUpperAction upperAction,
+        out float weight)
+    {
+        profiles = null;
+        basePose = PairOffsetBasePose.None;
+        upperAction = PairOffsetUpperAction.None;
+        weight = 0f;
+
+        if (!TryInitialize() ||
+            IsExclusiveLocomotionActive ||
+            locomotionSM.CurrentState != locomotion)
+        {
+            return false;
+        }
+
+        profiles = PairOffsetProfiles;
+        basePose = _activePairBasePose;
+        upperAction = _activePairUpperAction;
+        weight = Mathf.Clamp01(ActLayer.Weight);
+
+        return profiles != null &&
+               basePose != PairOffsetBasePose.None &&
+               upperAction != PairOffsetUpperAction.None &&
+               weight > 0.001f;
+    }
+
+    public bool TryGetActivePairOffsetBlend(
+        List<PairOffsetBasePoseWeight> basePoseWeights,
+        out PairOffsetProfilesSO profiles,
+        out PairOffsetUpperAction upperAction,
+        out float weight)
+    {
+        profiles = null;
+        upperAction = PairOffsetUpperAction.None;
+        weight = 0f;
+        basePoseWeights?.Clear();
+
+        if (basePoseWeights == null ||
+            !TryInitialize() ||
+            IsExclusiveLocomotionActive ||
+            locomotionSM.CurrentState != locomotion)
+        {
+            return false;
+        }
+
+        profiles = PairOffsetProfiles;
+        upperAction = _activePairUpperAction;
+        weight = Mathf.Clamp01(ActLayer.Weight);
+
+        if (profiles == null ||
+            upperAction == PairOffsetUpperAction.None ||
+            weight <= 0.001f ||
+            _activePairBasePoseWeights.Count == 0)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < _activePairBasePoseWeights.Count; i++)
+        {
+            PairOffsetBasePoseWeight poseWeight = _activePairBasePoseWeights[i];
+            if (poseWeight.Pose != PairOffsetBasePose.None && poseWeight.Weight > 0.001f)
+                basePoseWeights.Add(poseWeight);
+        }
+
+        return basePoseWeights.Count > 0;
+    }
+
+    public PairOffsetProfilesSO.PairOffsetProfile FindPairOffsetProfile(
+        PairOffsetBasePose basePose,
+        PairOffsetUpperAction upperAction,
+        bool includeDisabled)
+    {
+        return AnimProfile != null
+            ? AnimProfile.FindPairOffsetProfile(basePose, upperAction, includeDisabled)
+            : null;
     }
 
     public void PlayReload(float reloadDuration)
@@ -903,6 +988,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     {
         _pendingAction = PendingAction.Empty;
         _pendingPulse = false;
+        ClearActivePairUpperAction();
 
         if (!_initialized)
             return;
@@ -985,6 +1071,113 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         if (actionSM.CurrentState == empty)
             actionSM.TrySetState(shootHold);
+    }
+
+    private void SetActivePairBasePose(PairOffsetBasePose pose)
+    {
+        _activePairBasePose = pose;
+        _activePairBasePoseWeights.Clear();
+        if (pose != PairOffsetBasePose.None)
+            _activePairBasePoseWeights.Add(new PairOffsetBasePoseWeight(pose, 1f));
+    }
+
+    private void SetActivePairUpperAction(PairOffsetUpperAction action)
+    {
+        _activePairUpperAction = action;
+    }
+
+    private void ClearActivePairUpperAction()
+    {
+        _activePairUpperAction = PairOffsetUpperAction.None;
+    }
+
+    private void ClearActivePairOffsetState()
+    {
+        _activePairBasePose = PairOffsetBasePose.None;
+        _activePairBasePoseWeights.Clear();
+        _activePairUpperAction = PairOffsetUpperAction.None;
+    }
+
+    private void SetActivePairBasePoseBlend(Vector2 parameter)
+    {
+        _activePairBasePoseWeights.Clear();
+
+        float magnitude = Mathf.Clamp01(parameter.magnitude);
+        if (magnitude <= 0.001f)
+        {
+            _activePairBasePose = PairOffsetBasePose.Idle;
+            _activePairBasePoseWeights.Add(new PairOffsetBasePoseWeight(PairOffsetBasePose.Idle, 1f));
+            return;
+        }
+
+        float idleWeight = 1f - magnitude;
+        if (idleWeight > 0.001f)
+            _activePairBasePoseWeights.Add(new PairOffsetBasePoseWeight(PairOffsetBasePose.Idle, idleWeight));
+
+        Vector2 direction = parameter / magnitude;
+        float angle = Mathf.Atan2(direction.y, direction.x);
+        float octantFloat = angle / (Mathf.PI * 0.25f);
+        octantFloat = octantFloat % 8f;
+        if (octantFloat < 0f)
+            octantFloat += 8f;
+
+        int lowerOctant = Mathf.FloorToInt(octantFloat);
+        int upperOctant = (lowerOctant + 1) % 8;
+        float upperWeight = octantFloat - lowerOctant;
+        float lowerWeight = 1f - upperWeight;
+
+        AddActivePairBasePoseWeight(MapOctantToPairBasePose(lowerOctant), magnitude * lowerWeight);
+        AddActivePairBasePoseWeight(MapOctantToPairBasePose(upperOctant), magnitude * upperWeight);
+
+        _activePairBasePose = ResolveDominantLocomotionPairBasePose(parameter);
+    }
+
+    private void AddActivePairBasePoseWeight(PairOffsetBasePose pose, float weight)
+    {
+        if (pose == PairOffsetBasePose.None || weight <= 0.001f)
+            return;
+
+        for (int i = 0; i < _activePairBasePoseWeights.Count; i++)
+        {
+            PairOffsetBasePoseWeight existing = _activePairBasePoseWeights[i];
+            if (existing.Pose != pose)
+                continue;
+
+            _activePairBasePoseWeights[i] = new PairOffsetBasePoseWeight(pose, existing.Weight + weight);
+            return;
+        }
+
+        _activePairBasePoseWeights.Add(new PairOffsetBasePoseWeight(pose, weight));
+    }
+
+    private PairOffsetBasePose ResolveDominantLocomotionPairBasePose(Vector2 parameter)
+    {
+        if (parameter.sqrMagnitude < 0.0001f)
+            return PairOffsetBasePose.Idle;
+
+        parameter.Normalize();
+
+        float angle = Mathf.Atan2(parameter.y, parameter.x);
+        int octant = Mathf.RoundToInt(angle / (Mathf.PI * 0.25f));
+        octant = (octant % 8 + 8) % 8;
+
+        return MapOctantToPairBasePose(octant);
+    }
+
+    private static PairOffsetBasePose MapOctantToPairBasePose(int octant)
+    {
+        return octant switch
+        {
+            0 => PairOffsetBasePose.Right,
+            1 => PairOffsetBasePose.ForwardRight,
+            2 => PairOffsetBasePose.Forward,
+            3 => PairOffsetBasePose.ForwardLeft,
+            4 => PairOffsetBasePose.Left,
+            5 => PairOffsetBasePose.BackwardLeft,
+            6 => PairOffsetBasePose.Backward,
+            7 => PairOffsetBasePose.BackwardRight,
+            _ => PairOffsetBasePose.Idle,
+        };
     }
 
     private void HandleShootPulseEnd()

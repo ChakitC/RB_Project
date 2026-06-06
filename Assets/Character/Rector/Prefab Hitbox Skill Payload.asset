@@ -12,6 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1f4e6f7ebbd443f8b1550f5c5d6b1e72, type: 3}
   m_Name: Prefab Hitbox Skill Payload
   m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
   hitBoxData: {fileID: 11400000, guid: 9563bd85f693369479210a19d182ed81, type: 2}
   legacySequencePrefab: {fileID: 2282538207875165747, guid: a77b61f6520c0f84a96c7c52321c00f5, type: 3}
   anchorMode: 1
@@ -28,6 +31,56 @@ MonoBehaviour:
   queryTriggers: 2
   showDamageNumbers: 1
   steps:
+  - groupKeys:
+    - Group01
+    damageMultiplier: 1
+    hitPolicy: 1
+    clearHitCacheOnEnter: 1
+    overrideKnockback: 1
+    knockbackDistance: 7
+    knockbackDuration: 1.5
+    knockbackProgressCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0.00066185
+        value: -0.0017700195
+        inSlope: 3.654122
+        outSlope: 3.654122
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0.17099094
+      - serializedVersion: 3
+        time: 0.22526096
+        value: 0.68758255
+        inSlope: 1.2573568
+        outSlope: 1.2573568
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    knockbackReaction: 0
+    knockbackInterruptsActions: 1
+    stepStartVfx:
+      prefab: {fileID: 0}
+      scale: 1
+    impactVfx:
+      prefab: {fileID: 0}
+      scale: 1
+      spawnPolicy: 1
   - groupKeys:
     - Group01
     damageMultiplier: 1

@@ -15,39 +15,14 @@ MonoBehaviour:
   upperBodyMask: {fileID: 31900000, guid: 3ff359338d40c5f40a861f9c3afbd210, type: 2}
   actionFadeIn: 0.06
   actionFadeOut: 0.08
-  locomotionMixer:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Animations:
-    - {fileID: 5842118489928674393, guid: 379ab45fcbed4b24aafeaba89a306a17, type: 3}
-    - {fileID: -3129449787151212416, guid: 9d075004451ed734792f095847b44f96, type: 3}
-    - {fileID: -3129449787151212416, guid: 9d075004451ed734792f095847b44f96, type: 3}
-    - {fileID: -3129449787151212416, guid: 9d075004451ed734792f095847b44f96, type: 3}
-    - {fileID: -3129449787151212416, guid: 9d075004451ed734792f095847b44f96, type: 3}
-    _Speeds: []
-    _SynchronizeChildren: 
-    _Thresholds:
-    - {x: 0, y: 0}
-    - {x: 0, y: 1}
-    - {x: 0, y: -1}
-    - {x: -1, y: 0}
-    - {x: 1, y: 0}
-    _DefaultParameter: {x: 0, y: 0}
-    _Type: 0
-    _ParameterNameX: {fileID: 0}
-    _ParameterNameY: {fileID: 0}
   locomotionParamLerp: 29.3
   snapTo8Directions: 1
   locomotionDirectionalClips:
-    idle: {fileID: 0}
-    forward: {fileID: 0}
-    backward: {fileID: 0}
-    left: {fileID: 0}
-    right: {fileID: 0}
+    idle: {fileID: 5842118489928674393, guid: 379ab45fcbed4b24aafeaba89a306a17, type: 3}
+    forward: {fileID: -3129449787151212416, guid: 9d075004451ed734792f095847b44f96, type: 3}
+    backward: {fileID: -3129449787151212416, guid: 9d075004451ed734792f095847b44f96, type: 3}
+    left: {fileID: -3129449787151212416, guid: 9d075004451ed734792f095847b44f96, type: 3}
+    right: {fileID: -3129449787151212416, guid: 9d075004451ed734792f095847b44f96, type: 3}
     forwardLeft: {fileID: 0}
     forwardRight: {fileID: 0}
     backwardLeft: {fileID: 0}

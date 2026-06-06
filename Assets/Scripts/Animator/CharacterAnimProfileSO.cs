@@ -62,14 +62,14 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
         public string GetStatusLabel()
         {
             if (!HasAnyAssignments)
-                return "serialized mixer";
+                return "directional clips missing";
 
             if (!HasCardinalSet)
-                return "directional override incomplete";
+                return "directional clips incomplete";
 
             return HasFullEightDirectionSet
-                ? "generated 8-direction"
-                : "generated 4-direction";
+                ? "directional clips 8-direction"
+                : "directional clips 4-direction";
         }
 
         public bool TryGetIssue(out string issue)
@@ -77,24 +77,27 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
             issue = null;
 
             if (!HasAnyAssignments)
-                return false;
+            {
+                issue = "Locomotion directional clips are missing. Idle, Forward, Backward, Left, and Right are all required.";
+                return true;
+            }
 
             if (!HasCardinalSet)
             {
-                issue = "Locomotion directional override is incomplete. Idle, Forward, Backward, Left, and Right are all required.";
+                issue = "Locomotion directional clips are incomplete. Idle, Forward, Backward, Left, and Right are all required.";
                 return true;
             }
 
             if (HasAnyDiagonalAssignments && !HasFullEightDirectionSet)
             {
-                issue = "Locomotion directional override is missing one or more diagonal clips, so it will fall back to 4-direction blending.";
+                issue = "Locomotion directional clips are missing one or more diagonal clips, so the mixer will use 4-direction blending.";
                 return true;
             }
 
             return false;
         }
 
-        public MixerTransition2D CreateMixer(MixerTransition2D template)
+        public MixerTransition2D CreateMixer(float fadeDuration, float speed)
         {
             if (!HasCardinalSet)
                 return null;
@@ -102,18 +105,10 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
             var mixer = new MixerTransition2D
             {
                 Type = MixerTransition2D.MixerType.Directional,
-                FadeDuration = template != null ? template.FadeDuration : 0.25f,
-                Speed = template != null ? template.Speed : 1f,
+                FadeDuration = SanitizeNonNegative(fadeDuration, DefaultLocomotionFadeDuration),
+                Speed = SanitizePlaybackSpeed(speed),
                 DefaultParameter = Vector2.zero,
             };
-
-            if (template != null)
-            {
-                mixer.ParameterNameX = template.ParameterNameX;
-                mixer.ParameterNameY = template.ParameterNameY;
-                mixer.Speeds = template.Speeds;
-                mixer.SynchronizeChildren = template.SynchronizeChildren;
-            }
 
             if (HasFullEightDirectionSet)
             {
@@ -168,6 +163,9 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
         }
     }
 
+    private const float DefaultLocomotionFadeDuration = 0.25f;
+    private const float DefaultLocomotionPlaybackSpeed = 1f;
+
     [NonSerialized] private MixerTransition2D resolvedLocomotionMixer;
 
     [Header("Layers")]
@@ -176,12 +174,11 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     [Min(0f)] public float actionFadeOut = 0.08f;
 
     [Header("Locomotion (Layer 0)")]
-    public MixerTransition2D locomotionMixer;
+    public DirectionalClipSet2D locomotionDirectionalClips = new();
     [Min(0f)] public float locomotionParamLerp = 14f;
     public bool snapTo8Directions = true;
-
-    [Header("Locomotion Override (Optional Explicit Directional Clips)")]
-    public DirectionalClipSet2D locomotionDirectionalClips = new();
+    [Min(0f)] public float locomotionFadeDuration = DefaultLocomotionFadeDuration;
+    [Min(0f)] public float locomotionPlaybackSpeed = DefaultLocomotionPlaybackSpeed;
 
 
     [Header("StatusEffec (Layer 0)")] 
@@ -239,8 +236,14 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
 
     public MixerTransition2D ResolveLocomotionMixer()
     {
+        EnsureLocomotionDirectionalClips();
+
         if (resolvedLocomotionMixer == null)
-            resolvedLocomotionMixer = locomotionDirectionalClips.CreateMixer(locomotionMixer) ?? locomotionMixer;
+        {
+            resolvedLocomotionMixer = locomotionDirectionalClips.CreateMixer(
+                locomotionFadeDuration,
+                locomotionPlaybackSpeed);
+        }
 
         return resolvedLocomotionMixer;
     }
@@ -255,18 +258,49 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     }
 
     public string GetLocomotionConfigurationLabel()
-        => locomotionDirectionalClips.GetStatusLabel();
+    {
+        EnsureLocomotionDirectionalClips();
+        return locomotionDirectionalClips.GetStatusLabel();
+    }
 
     public bool TryGetLocomotionConfigurationIssue(out string issue)
-        => locomotionDirectionalClips.TryGetIssue(out issue);
+    {
+        EnsureLocomotionDirectionalClips();
+        return locomotionDirectionalClips.TryGetIssue(out issue);
+    }
 
     private void OnEnable()
     {
+        EnsureLocomotionDirectionalClips();
         resolvedLocomotionMixer = null;
     }
 
     private void OnValidate()
     {
+        locomotionFadeDuration = SanitizeNonNegative(locomotionFadeDuration, DefaultLocomotionFadeDuration);
+        locomotionPlaybackSpeed = SanitizePlaybackSpeed(locomotionPlaybackSpeed);
+        EnsureLocomotionDirectionalClips();
         resolvedLocomotionMixer = null;
+    }
+
+    private void EnsureLocomotionDirectionalClips()
+    {
+        locomotionDirectionalClips ??= new DirectionalClipSet2D();
+    }
+
+    private static float SanitizeNonNegative(float value, float fallback)
+    {
+        if (float.IsNaN(value) || value < 0f)
+            return fallback;
+
+        return value;
+    }
+
+    private static float SanitizePlaybackSpeed(float value)
+    {
+        if (float.IsNaN(value) || value < 0f || Mathf.Approximately(value, 0f))
+            return DefaultLocomotionPlaybackSpeed;
+
+        return value;
     }
 }

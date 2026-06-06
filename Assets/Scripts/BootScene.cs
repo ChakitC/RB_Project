@@ -3,8 +3,14 @@ using UnityEngine.SceneManagement;
 
 public class BootScene : MonoBehaviour
 {
+    [SerializeField] bool RunGame = false;
+        
     private void Start()
     {
-        SceneManager.LoadScene("Basement");
+        if (RunGame)
+        {
+          SceneManager.LoadScene("Basement");
+        }
     }
+    
 }

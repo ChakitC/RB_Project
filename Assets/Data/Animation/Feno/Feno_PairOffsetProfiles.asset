@@ -1,0 +1,95 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d0de14684f44f1d8896f2dcbe1d8363, type: 3}
+  m_Name: Feno_PairOffsetProfiles
+  m_EditorClassIdentifier: 
+  pairOffsetProfiles:
+  - enabled: 1
+    profileName: Feno_Move_Backward + Feno_Shoot
+    baseClip: {fileID: -3466377131361662731, guid: 6745c372b962c434d86818756021e80f, type: 3}
+    upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -19.421997, y: 31.971283, z: -11.697998}
+      weight: 1
+  - enabled: 1
+    profileName: Feno_Move_Foward + Feno_Shoot
+    baseClip: {fileID: -3045897872586947758, guid: 36a8267c975d3e347845516dc08b6cb8, type: 3}
+    upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -27.500793, y: 56.340286, z: -57.343475}
+      weight: 1
+  - enabled: 1
+    profileName: Feno_Move_FowardLeftWard + Feno_Shoot
+    baseClip: {fileID: 6920732240284510162, guid: 904d1c8d49b34384ca2d12bd008bfda4, type: 3}
+    upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -2.1906128, y: 69.84573, z: -49.90164}
+      weight: 1
+  - enabled: 1
+    profileName: Feno_Move_FowardRight + Feno_Shoot
+    baseClip: {fileID: -4519924575139466294, guid: 7dcc1064d68e82b4f8784c67b254d639, type: 3}
+    upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -27.49115, y: 59.02707, z: -67.9234}
+      weight: 1
+  - enabled: 1
+    profileName: Feno_Move_BackwardLeft + Feno_Shoot
+    baseClip: {fileID: 8674496477672625794, guid: 6adbd18bea0de6044a4854c8eb958fe6, type: 3}
+    upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -15.872986, y: 70.24284, z: -10.195679}
+      weight: 1
+  - enabled: 1
+    profileName: Feno_Move_BackwardRight + Feno_Shoot
+    baseClip: {fileID: -1644124186931358686, guid: 17bd1a8d41faaf840ae58d455021039f, type: 3}
+    upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -21.077759, y: 12.903915, z: -12.11438}
+      weight: 1
+  - enabled: 1
+    profileName: Feno_Move_LeftWard + Feno_Shoot
+    baseClip: {fileID: -5866403235549782745, guid: 38e87c7d80756bc46ae2e7b09802f992, type: 3}
+    upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -16.529358, y: 32.520752, z: -11.820984}
+      weight: 1
+  - enabled: 1
+    profileName: Feno_Move_RightWard + Feno_Shoot
+    baseClip: {fileID: 3879186716961495795, guid: 25b5a22e7f002eb4e9ca22e15226f62f, type: 3}
+    upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -21.39392, y: 32.540833, z: -10.996094}
+      weight: 1

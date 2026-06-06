@@ -1175,31 +1175,6 @@ MonoBehaviour:
   upperBodyMask: {fileID: 31900000, guid: f72e7e1d22577b3478c2d74cad0fc9a7, type: 2}
   actionFadeIn: 0.06
   actionFadeOut: 0.08
-  locomotionMixer:
-    _FadeDuration: 0.819
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Animations:
-    - {fileID: 560398883196807270, guid: 467da6d947dcd1b4c897c92f3405e4d2, type: 3}
-    - {fileID: -7122979919366478934, guid: 8f7b64c44690e234590b51fd18a29ceb, type: 3}
-    - {fileID: 1136212033492241107, guid: 652e95173cc888445b43d3d1669ff6c2, type: 3}
-    - {fileID: -588419628872660736, guid: 11a168f2429c81f43a70d434194a6a9e, type: 3}
-    - {fileID: 8869001604393740876, guid: 5055b2b08d462fe478b8354eac67fe7c, type: 3}
-    _Speeds: []
-    _SynchronizeChildren: 
-    _Thresholds:
-    - {x: 0, y: 0}
-    - {x: 0, y: 1}
-    - {x: 0, y: -1}
-    - {x: 1, y: 0}
-    - {x: -1, y: 0}
-    _DefaultParameter: {x: 0, y: 0}
-    _Type: 0
-    _ParameterNameX: {fileID: 0}
-    _ParameterNameY: {fileID: 0}
   locomotionParamLerp: 14
   snapTo8Directions: 1
   dashF:

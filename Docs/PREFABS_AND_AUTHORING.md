@@ -70,6 +70,17 @@ from the inspector dropdown. Do not add `StringAsset` timeline-event fields back
 for gameplay hitbox or pre-cast flow, and do not reorder existing enum values;
 append new values with explicit numbers.
 
+## Animation Profile Authoring
+
+Character locomotion profiles use `Locomotion Directional Clips` as the primary
+Layer 0 locomotion source. Assign at least `Idle`, `Forward`, `Backward`,
+`Left`, and `Right`; diagonal clips are optional, but if any diagonal is used all
+four diagonal directions should be assigned. The runtime generates the Animancer
+directional mixer from these clips.
+
+`Locomotion Param Lerp`, `Snap To 8 Directions`, `Locomotion Fade Duration`, and
+`Locomotion Playback Speed` tune that generated mixer.
+
 ## Animation Preview Authoring
 
 `SoloRootMotionPreview` supports a single-clip preview and an `Upper Body`
@@ -89,6 +100,51 @@ In `Upper Body` mode:
 
 Leaving `Upper Body Mask` empty makes the overlay affect the full body, which is
 only appropriate for intentional full-body preview checks.
+
+Generic rigs can use pair-specific rotation offsets when the same upper-body
+clip needs different corrections for different locomotion clips. Enable
+`Apply Pair Bone Offsets`, then create one profile per `Base Clip` plus
+`Upper Body Clip` pair. For example, `WalkForward + Shoot` and
+`WalkBackward + Shoot` should be separate profiles when they need different
+spine or chest correction.
+
+Pair offset profiles store bone paths relative to the Animator root, so they do
+not require Humanoid bone mappings. Select generic rig bones in the hierarchy,
+use `Add Selected Bones`, then tune each bone's local Euler rotation offset and
+weight. The preview restores the previously applied offsets before each
+animation sample, then reapplies the active profile after sampling so offsets do
+not accumulate frame by frame.
+
+The custom inspector is organized into `Preview Setup`, `Playback`,
+`Pair Offset Library`, `Current Working Profile`, and `Advanced` sections. The
+raw local profile list is intentionally hidden in `Advanced`; normal tuning
+should use `Current Working Profile` so only the active clip pair is edited.
+
+After tuning pair offset values, use `Capture Pose` to record the current
+preview bone pose back into `Local Euler Offset`. Use `Save To SO` or
+`Save Current Pair` to commit the current profile and write it into the assigned
+`PairOffsetProfilesSO` asset. Save also records prefab instance overrides when
+applicable and saves the owning scene or asset.
+
+Use `Load Current Pair` to copy the profile matching the current `Base Clip`
+plus `Upper Body Clip` from the assigned asset back into the preview component.
+Use `Load All` to merge every asset profile back into the preview component. The
+`SO Profiles` browser lists each asset element with `Select` and `Load` buttons;
+loading one SO element switches the preview to that profile's `Base Clip` and
+`Upper Body Clip`. Loading overwrites matching component profiles but does not
+delete component profiles that are not present in the asset.
+
+The current profile's bone editor shows each bone offset with its enabled state,
+resolved transform, stored bone path, local Euler offset, and weight. Use
+`Add Selected Bones`, `Refresh Paths`, and `Remove Missing` to maintain the
+generic-rig bone path list.
+
+Pair offset data that should live outside a preview component can be authored in
+a `PairOffsetProfilesSO` asset. Create it from `Game > Characters > Pair Offset
+Profiles`. The asset stores the `Base Clip`, `Upper Body Clip`, profile weight,
+and per-bone path, local Euler offset, and weight. It stores bone paths relative
+to the Animator root instead of scene `Transform` references so the same data can
+be used later by runtime animation systems.
 
 ## Context-Owned References
 

@@ -8,7 +8,11 @@ public sealed class PassiveActionDefinition
     public string actionId = "action";
     public PassiveActionType actionType = PassiveActionType.GrantModifier;
     public PassiveTargetSelector targetSelector = PassiveTargetSelector.Self;
-    public string sourceIdOverride;
+
+    [Header("Identity Overrides")]
+    public string modifierKeyOverride;
+    public string appliedByIdOverride;
+    public string emittedEventSourceIdOverride;
 
     [Header("Runtime Modifier")]
     public List<PassiveStatModifier> modifiers = new();

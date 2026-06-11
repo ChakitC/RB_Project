@@ -46,7 +46,7 @@ public class DamageByCalculatorEffectDef : EffectDef
                 d.TakeDamage(
                     final,
                     ctx.Caster ? ctx.Caster.gameObject : null,
-                    sourceId: ctx.Ability != null ? $"ability:{ctx.Ability.name}" : "ability");
+                    damageSourceId: ctx.Ability != null ? $"ability:{ctx.Ability.name}" : "ability");
             }
         }
     }

@@ -32,12 +32,11 @@ public sealed partial class CharacterAnimBrain
     {
         lastPlayTime = owner.AnimationTime;
 
-        owner.ActLayer.StartFade(1f, owner.ActionFadeIn);
-        owner.SetActivePairUpperAction(PairOffsetUpperAction.ShootPulse);
-        state = owner.ActLayer.Play(owner.ShootPulseClip);
+        state = owner.PlayActionTransition(owner.ShootPulseClip, PairOffsetUpperAction.ShootPulse);
 
         owner.onShootEndCache ??= owner.HandleShootPulseEnd;
-        state.Events(owner).OnEnd = owner.onShootEndCache;
+        if (state != null)
+            state.Events(owner).OnEnd = owner.onShootEndCache;
     }
 
     public override void OnExitState()

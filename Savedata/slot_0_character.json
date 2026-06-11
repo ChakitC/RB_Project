@@ -50,8 +50,8 @@
                 "level": 30,
                 "xp": 0,
                 "unlocked": false,
-                "skillPoints": 0,
-                "passiveProgressInitialized": false,
+                "skillPoints": 29,
+                "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": []
             }
         },

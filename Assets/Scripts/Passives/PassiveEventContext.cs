@@ -7,7 +7,7 @@ public readonly struct PassiveEventContext
         GameObject actor,
         GameObject source,
         GameObject target,
-        string sourceId,
+        string eventSourceId,
         string attackId,
         float value,
         double time,
@@ -21,7 +21,7 @@ public readonly struct PassiveEventContext
         Actor = actor;
         Source = source;
         Target = target;
-        SourceId = sourceId;
+        EventSourceId = eventSourceId;
         AttackId = attackId;
         Value = value;
         Time = time;
@@ -36,7 +36,7 @@ public readonly struct PassiveEventContext
     public GameObject Actor { get; }
     public GameObject Source { get; }
     public GameObject Target { get; }
-    public string SourceId { get; }
+    public string EventSourceId { get; }
     public string AttackId { get; }
     public float Value { get; }
     public double Time { get; }

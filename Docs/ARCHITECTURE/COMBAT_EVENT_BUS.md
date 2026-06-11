@@ -24,7 +24,7 @@ coupling to weapon, projectile, melee, dash, or health systems.
 - `Actor`: owning actor object.
 - `Source`: object that produced the event.
 - `Target`: optional target object.
-- `SourceId`: stable source identifier used by passive rules and optional event
+- `EventSourceId`: stable event-route identifier used by passive rules and optional event
   sources.
 - `AttackId`: id used to group one attack or shot.
 - `Value`: event-specific numeric value.
@@ -65,7 +65,7 @@ damage-prevented events from the health system, but should not trigger owner
 1. A gameplay system creates a context with `CombatEventBus.CreateExternalContext`.
 2. The system calls `CombatEventBus.Publish`.
 3. `PassiveController.HandlePassiveEvent` receives the event.
-4. Triggered passive rules compare event type, origin filter, source id, target
+4. Triggered passive rules compare event type, origin filter, event source id, target
    requirement, attack id requirement, cooldown, counters, and chain execution.
 5. Matching rules execute actions.
 6. Actions may grant runtime modifiers, apply status effects, or emit child
@@ -74,17 +74,27 @@ damage-prevented events from the health system, but should not trigger owner
 
 `PassiveController` has a depth limit to avoid recursive passive loops.
 
-## SourceId And AttackId
+## Scoped Runtime Identities
 
-Use `SourceId` when a passive rule needs to distinguish event sources. Examples:
+The combat pipeline uses separate names for identities with different ownership:
 
-- weapon source id
-- affix source id
-- optional event source id
-- passive action source id
+- `PassiveEventContext.EventSourceId` routes and filters combat events.
+- `DamageContext.DamageSourceId` identifies the weapon, skill, or effect that
+  produced damage. Damage publishers map it to `EventSourceId` when creating
+  `Hit`, `Kill`, `TakeDamage`, or `DamagePrevented` events.
+- `RuntimeStatModifier.ModifierKey` groups modifier replace, refresh, and stack
+  behavior and participates in the `StatsHub` cache signature.
+- `StatusEffectInstance.AppliedById` records what applied the status effect.
+  Status tick damage and status stat modifiers use the status definition's own
+  `status:{effectId}` identity instead.
+
+Use `EventSourceId` when a passive rule needs to distinguish event sources, such
+as weapon events, optional event sources, or emitted passive events.
 
 Use `AttackId` when multiple events belong to the same shot or attack and a rule
 needs once-per-attack behavior.
+
+Use only the scoped identity property that matches the owning system.
 
 ## Publishing Guidelines
 
@@ -92,7 +102,7 @@ When adding a new event publisher:
 
 1. Resolve `CombatEventBus` through `ctx.CombatEventBus` when possible.
 2. Create a `PassiveEventContext`.
-3. Set a stable `SourceId` if rules must match the source.
+3. Set a stable `EventSourceId` if rules must match the source.
 4. Set `Target` when the event is target-specific.
 5. Set `AttackId` for shot/attack chains.
 6. Publish through `CombatEventBus.Publish`.

@@ -17,11 +17,14 @@ public class WeaponAffixDefinition : ScriptableObject
     public List<WeaponType> allowedWeaponTypes = new();
 
     [Header("Roll")]
+    [Tooltip("For a Flat Stability affix, values are percentage points.")]
     public float minRollValue = 0f;
+    [Tooltip("For a Flat Stability affix, values are percentage points.")]
     public float maxRollValue = 0f;
 
     [Header("Stat Modifier")]
     public StatType statType = StatType.CritRate;
+    [Tooltip("For Stability, Flat adds percentage points. Final Stability is clamped to 0-100%.")]
     public ModifierOp modifierOp = ModifierOp.Flat;
 
     [Header("Timed Reload Buff")]

@@ -258,6 +258,13 @@ public class UIEquipment : InventorySlotOwnerBase
         if (!TryGetBoundSlotData(slotIndex, out var slotData))
             return;
 
+        if (eventData.button == PointerEventData.InputButton.Right &&
+            TryGetEquippedSlotDisplayIndex(slotIndex, out int equippedSlotDisplayIndex))
+        {
+            HandleUnequip(equippedSlotDisplayIndex);
+            return;
+        }
+
         switch (eventData.button)
         {
             case PointerEventData.InputButton.Left:
@@ -268,6 +275,35 @@ public class UIEquipment : InventorySlotOwnerBase
                 OnRightClick?.Invoke(slotIndex, slotData);
                 break;
         }
+    }
+
+    void HandleUnequip(int equippedSlotDisplayIndex)
+    {
+        if (inventorySource == null ||
+            !TryGetEquippedSlotBinding(equippedSlotDisplayIndex, out var binding))
+        {
+            return;
+        }
+
+        InventorySlotData slotData = GetEquippedSlotData(binding);
+        if (slotData == null || slotData.IsEmpty)
+            return;
+
+        bool unequipped = EquipmentAssignmentService.TryUnequip(
+            inventorySource,
+            binding.ItemKind,
+            equipmentOwnerId,
+            binding.SlotIndex);
+
+        if (!unequipped)
+        {
+            Debug.LogWarning($"[UIEquipment] Could not unequip {binding.ItemKind}.", this);
+            return;
+        }
+
+        RefreshAll();
+        if (binding.ItemKind == EquipmentItemKind.Weapon)
+            RefreshBoundPartySlotPreview();
     }
 
     public override void HandlePointerEnter(int slotIndex)

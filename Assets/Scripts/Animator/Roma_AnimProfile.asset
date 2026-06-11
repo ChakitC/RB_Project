@@ -15,8 +15,6 @@ MonoBehaviour:
   upperBodyMask: {fileID: 31900000, guid: 3ff359338d40c5f40a861f9c3afbd210, type: 2}
   actionFadeIn: 0.06
   actionFadeOut: 0.08
-  locomotionParamLerp: 14
-  snapTo8Directions: 1
   locomotionDirectionalClips:
     idle: {fileID: 5487989288048153974, guid: 0fe0a7dc98bb2fa4a9ff7d5be7eb0ab6, type: 3}
     forward: {fileID: 1606450360269762143, guid: 58a826f5004c5a54893b807d6696dc4e, type: 3}
@@ -27,6 +25,10 @@ MonoBehaviour:
     forwardRight: {fileID: 3417370728480570267, guid: 36884d3b49f8382478ae7bcd52068933, type: 3}
     backwardLeft: {fileID: -596120106417223001, guid: 954ede865601d5d47836d4fa3bf822e8, type: 3}
     backwardRight: {fileID: -8557995361944161523, guid: b1110dabcc4788949b033d3cd4190a53, type: 3}
+  locomotionParamLerp: 14
+  snapTo8Directions: 1
+  locomotionFadeDuration: 0.25
+  locomotionPlaybackSpeed: 1
   miniStune:
     _FadeDuration: 0.25
     _Speed: 1
@@ -137,6 +139,7 @@ MonoBehaviour:
     _Clip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
     _NormalizedStartTime: NaN
   holdPulseMinInterval: 0.08
+  pairOffsetProfiles: {fileID: 11400000, guid: 8f769e332ea88a74e822f45d54a648dd, type: 2}
   reload:
     _FadeDuration: 0.25
     _Speed: 1

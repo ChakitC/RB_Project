@@ -17,7 +17,7 @@ public readonly struct WeaponProjectileSpawnContext
     public readonly float Speed;
     public readonly float StaggerPower;
     public readonly AudioCue HitCue;
-    public readonly string SourceId;
+    public readonly string DamageSourceId;
     public readonly string AttackId;
     public readonly PassiveEventContext PassiveContext;
 
@@ -37,7 +37,7 @@ public readonly struct WeaponProjectileSpawnContext
         float speed,
         float staggerPower,
         AudioCue hitCue,
-        string sourceId,
+        string damageSourceId,
         string attackId,
         PassiveEventContext passiveContext)
     {
@@ -56,7 +56,7 @@ public readonly struct WeaponProjectileSpawnContext
         Speed = speed;
         StaggerPower = staggerPower;
         HitCue = hitCue;
-        SourceId = sourceId;
+        DamageSourceId = damageSourceId;
         AttackId = attackId;
         PassiveContext = passiveContext;
     }

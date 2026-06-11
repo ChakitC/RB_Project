@@ -30,6 +30,7 @@ public class StaminaSystem : MonoBehaviour
 
     public float Max => maximumStamina;
     public float Current => currentStamina;
+    internal float ResolvedRegenerationRate => ResolveRegenerationRate();
 
     public event Action<float, float> OnStaminaChanged; // (current,max)
 
@@ -82,7 +83,7 @@ public class StaminaSystem : MonoBehaviour
         if (Time.time < unblockRegenerationAtTime) return;
         if (currentStamina >= maximumStamina) return;
 
-        SetCurrent(currentStamina + regenerationRate * Time.deltaTime);
+        SetCurrent(currentStamina + ResolveRegenerationRate() * Time.deltaTime);
     }
 
     public void RecalculateMaximumStamina(bool resetCurrentToMax = false)
@@ -147,6 +148,13 @@ public class StaminaSystem : MonoBehaviour
 
         currentStamina = clamped;
         Notify();
+    }
+
+    float ResolveRegenerationRate()
+    {
+        return statsHub != null
+            ? statsHub.GetStaminaRegenerationRate(regenerationRate)
+            : Mathf.Max(0f, regenerationRate);
     }
 
     void Notify() => OnStaminaChanged?.Invoke(currentStamina, maximumStamina);

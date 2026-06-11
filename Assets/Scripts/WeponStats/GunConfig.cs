@@ -36,6 +36,9 @@ public class GunConfig : ItemDefinition
     public int maxMagazine = 0;
     public float critRate = 0f;            
     public float critMultiplier = 1f;
+    [LabelText("Stability (%)")]
+    [Range(0f, 100f)]
+    [Tooltip("Reduces weapon sway. 0% uses full sway and 100% removes sway completely.")]
     public float stability = 0f;
     public float BulletSpeed = 30f;
 

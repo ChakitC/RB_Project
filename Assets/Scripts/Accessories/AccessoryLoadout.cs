@@ -215,11 +215,11 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
             if (definition == null || instance == null)
                 continue;
 
-            AppendStatModifiers(buffer, definition.statModifiers, BuildSourceId(instance, "base"));
+            AppendStatModifiers(buffer, definition.statModifiers, BuildModifierKey(instance, "base"));
 
             AccessoryModifierDefinition modifier = definition.GetModifierById(instance.modifierId);
             if (modifier != null)
-                AppendStatModifiers(buffer, modifier.statModifiers, BuildSourceId(instance, modifier.RuntimeId));
+                AppendStatModifiers(buffer, modifier.statModifiers, BuildModifierKey(instance, modifier.RuntimeId));
         }
     }
 
@@ -475,6 +475,35 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
         }
 
         entry.equippedAccessories[targetSlotIndex] = inventoryInstance.DeepClone();
+        SaveSystem.SaveGame(data, saveSlot);
+        SaveManager.Instance?.RefreshLoadedCacheFromDisk();
+        return true;
+    }
+
+    public static bool ClearLoadoutAssignment(string ownerId, int slotIndex)
+    {
+        if (string.IsNullOrWhiteSpace(ownerId) || slotIndex < 0)
+            return false;
+
+        int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
+        GameSaveData data = SaveSystem.LoadGame(saveSlot) ?? new GameSaveData();
+        data.accessories ??= new AccessoryLoadoutSaveData();
+        data.accessories.entries ??= new List<CharacterAccessoryLoadoutSaveData>();
+
+        CharacterAccessoryLoadoutSaveData entry = FindLoadoutEntry(data.accessories, ownerId);
+        if (entry == null)
+        {
+            entry = new CharacterAccessoryLoadoutSaveData
+            {
+                ownerId = ownerId
+            };
+            data.accessories.entries.Add(entry);
+        }
+
+        entry.slotCount = Mathf.Max(entry.slotCount, slotIndex + 1);
+        EnsureSavedAccessorySlots(entry, slotIndex + 1);
+        entry.equippedAccessories[slotIndex] = null;
+
         SaveSystem.SaveGame(data, saveSlot);
         SaveManager.Instance?.RefreshLoadedCacheFromDisk();
         return true;
@@ -765,7 +794,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
         RefreshRuntime();
     }
 
-    static void AppendStatModifiers(List<RuntimeStatModifier> buffer, List<PassiveStatModifier> modifiers, string sourceId)
+    static void AppendStatModifiers(List<RuntimeStatModifier> buffer, List<PassiveStatModifier> modifiers, string modifierKey)
     {
         if (buffer == null || modifiers == null)
             return;
@@ -780,7 +809,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
                 modifier.statType,
                 modifier.operation,
                 modifier.value,
-                sourceId));
+                modifierKey));
         }
     }
 
@@ -797,7 +826,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
         }
     }
 
-    static string BuildSourceId(AccessoryInstanceData instance, string suffix)
+    static string BuildModifierKey(AccessoryInstanceData instance, string suffix)
     {
         string instanceId = instance != null && !string.IsNullOrWhiteSpace(instance.instanceId)
             ? instance.instanceId

@@ -41,6 +41,8 @@ public enum StatType
     BulletSpeed,
     MaxMagazine,
     StaggerPower,
+    StaminaRegenRate,
+    MaxReserveAmmo,
 }
 
 // โมดิฟายค่า Stat แบบ generic

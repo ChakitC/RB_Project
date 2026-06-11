@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 319ee0bb48ab34b40abadacfab9c6b3b
+guid: 9b9e207997456584cbcccd4acca629c7
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Sheil_Formation_Pickup_remap
-      takeName: Sheil_Formation_Pickup_remap
-      internalID: 3765184957420256895
+      name: Aires_Formation_Pickup
+      takeName: Aires_Formation_Pickup
+      internalID: -1558801275649862684
       firstFrame: 0
-      lastFrame: 131
+      lastFrame: 132
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

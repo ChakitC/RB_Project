@@ -1,0 +1,123 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d0de14684f44f1d8896f2dcbe1d8363, type: 3}
+  m_Name: AiresPairOffsetProfiles
+  m_EditorClassIdentifier: 
+  pairOffsetProfiles:
+  - enabled: 1
+    profileName: Aires_MoveForward + Aires_Shoot
+    basePose: 2
+    upperAction: 2
+    baseClip: {fileID: 5456017156087166052, guid: aabf368a96be2704788b05122752661a, type: 3}
+    upperBodyClip: {fileID: -6020367743652357319, guid: 620741ad4e4c047448e2a5aa046f674d, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -18.039978, y: -47.898712, z: 9.5564575}
+      weight: 1
+  - enabled: 1
+    profileName: Aires_MoveForwardLeft + Aires_Shoot
+    basePose: 6
+    upperAction: 2
+    baseClip: {fileID: -6441763577452721488, guid: 2e1951320d8127f4c8b54da07ada1be2, type: 3}
+    upperBodyClip: {fileID: -6020367743652357319, guid: 620741ad4e4c047448e2a5aa046f674d, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -13.631836, y: -7.119934, z: -10.855469}
+      weight: 1
+  - enabled: 1
+    profileName: Aires_MoveForwardRight + Aires_Shoot
+    basePose: 7
+    upperAction: 2
+    baseClip: {fileID: 1636488453058315857, guid: 12f8afd119f42b94694d0efc981d6087, type: 3}
+    upperBodyClip: {fileID: -6020367743652357319, guid: 620741ad4e4c047448e2a5aa046f674d, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -13.0061035, y: -78.62341, z: 19.592957}
+      weight: 1
+  - enabled: 1
+    profileName: Aires_MoveLeftWard + Aires_Shoot
+    basePose: 4
+    upperAction: 2
+    baseClip: {fileID: 1149440935533867922, guid: df770aa428eb67f40aa30b994bc97479, type: 3}
+    upperBodyClip: {fileID: -6020367743652357319, guid: 620741ad4e4c047448e2a5aa046f674d, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -7.679138, y: -19.249756, z: 13.168701}
+      weight: 1
+  - enabled: 1
+    profileName: Aires_MoveRightWard + Aires_Shoot
+    basePose: 5
+    upperAction: 2
+    baseClip: {fileID: -8379018205806400304, guid: 830a791da7b820f44a50d83a9798d88f, type: 3}
+    upperBodyClip: {fileID: -6020367743652357319, guid: 620741ad4e4c047448e2a5aa046f674d, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -10.77124, y: -12.828247, z: -1.729187}
+      weight: 1
+  - enabled: 1
+    profileName: Aires_MoveBackward + Aires_Shoot
+    basePose: 3
+    upperAction: 2
+    baseClip: {fileID: -5855760804906528420, guid: 27248ced7d406ac498bf1dd8ea966778, type: 3}
+    upperBodyClip: {fileID: -6020367743652357319, guid: 620741ad4e4c047448e2a5aa046f674d, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -17.445007, y: -48.623657, z: 13.363831}
+      weight: 1
+  - enabled: 1
+    profileName: Aires_MoveBackwardLeft + Aires_Shoot
+    basePose: 8
+    upperAction: 2
+    baseClip: {fileID: -418957763463484483, guid: 2164880bf1dbc4347b76e67cc0ddaddf, type: 3}
+    upperBodyClip: {fileID: -6020367743652357319, guid: 620741ad4e4c047448e2a5aa046f674d, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -17.626648, y: -89.097534, z: 15.883804}
+      weight: 1
+  - enabled: 1
+    profileName: Aires_MoveBackwardRight + Aires_Shoot
+    basePose: 9
+    upperAction: 2
+    baseClip: {fileID: -5049042431101585512, guid: abbc82ee5533f394cbb7af118e2ba050, type: 3}
+    upperBodyClip: {fileID: -6020367743652357319, guid: 620741ad4e4c047448e2a5aa046f674d, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -9.216064, y: -10.676575, z: 3.5404663}
+      weight: 1
+  - enabled: 1
+    profileName: Aires_Idle + Aires_Shoot
+    basePose: 1
+    upperAction: 2
+    baseClip: {fileID: 7104115770596092634, guid: 1dd795bd2ddf805438036ac0d4e72884, type: 3}
+    upperBodyClip: {fileID: -6020367743652357319, guid: 620741ad4e4c047448e2a5aa046f674d, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -13.979614, y: -49.393066, z: 8.1203}
+      weight: 1

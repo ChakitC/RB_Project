@@ -1,0 +1,111 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d0de14684f44f1d8896f2dcbe1d8363, type: 3}
+  m_Name: Roma_PairOffsetProfiles
+  m_EditorClassIdentifier: 
+  pairOffsetProfiles:
+  - enabled: 1
+    profileName: Roma_MoveForWard + SMG2_Shoot
+    basePose: 0
+    upperAction: 0
+    baseClip: {fileID: 1606450360269762143, guid: 58a826f5004c5a54893b807d6696dc4e, type: 3}
+    upperBodyClip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -12.759888, y: -23.026917, z: -1.9835205}
+      weight: 1
+  - enabled: 1
+    profileName: Roma_Move_BackWardLeft + SMG2_Shoot
+    basePose: 0
+    upperAction: 0
+    baseClip: {fileID: -596120106417223001, guid: 954ede865601d5d47836d4fa3bf822e8, type: 3}
+    upperBodyClip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -0.25830078, y: -28.885254, z: -0.99627686}
+      weight: 1
+  - enabled: 1
+    profileName: Roma_Move_BackWardRight + SMG2_Shoot
+    basePose: 0
+    upperAction: 0
+    baseClip: {fileID: -8557995361944161523, guid: b1110dabcc4788949b033d3cd4190a53, type: 3}
+    upperBodyClip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: 0, y: 0, z: 0}
+      weight: 1
+  - enabled: 1
+    profileName: SMG2_Move_Backward + SMG2_Shoot
+    basePose: 0
+    upperAction: 0
+    baseClip: {fileID: 3630704421837926502, guid: f802650346e12374780da059cd43d325, type: 3}
+    upperBodyClip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: 0, y: 0, z: 0}
+      weight: 1
+  - enabled: 1
+    profileName: SMG2_Move_Leftward + SMG2_Shoot
+    basePose: 0
+    upperAction: 0
+    baseClip: {fileID: 583729431000011259, guid: 0404bea5c3932cc438487112ccc8bb28, type: 3}
+    upperBodyClip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: 0, y: -7.083374, z: 5.95047}
+      weight: 1
+  - enabled: 1
+    profileName: SMG2_Move_Rightward + SMG2_Shoot
+    basePose: 0
+    upperAction: 0
+    baseClip: {fileID: 4506590830449897675, guid: 3d62fd3d33a5f894fbb72ce5a71bbc78, type: 3}
+    upperBodyClip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -2.9244385, y: 3.0433807, z: -9.891968}
+      weight: 1
+  - enabled: 1
+    profileName: Roma_MoveForWardLeft + SMG2_Shoot
+    basePose: 0
+    upperAction: 0
+    baseClip: {fileID: -7521650866325861691, guid: 2f7eebb131feaaa4bbf82ad500e7b5f7, type: 3}
+    upperBodyClip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -7.2160645, y: -1.5234375, z: -7.4543457}
+      weight: 1
+  - enabled: 1
+    profileName: Roma_MoveForWardRight + SMG2_Shoot
+    basePose: 0
+    upperAction: 0
+    baseClip: {fileID: 3417370728480570267, guid: 36884d3b49f8382478ae7bcd52068933, type: 3}
+    upperBodyClip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: -11.766846, y: -50.62982, z: 4.277939}
+      weight: 1

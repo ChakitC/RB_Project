@@ -61,7 +61,7 @@ Important fields:
 
 - `Kind`: source kind to activate.
 - `EventType`: event type the source should publish.
-- `SourceId`: stable id used to route events back to matching rules.
+- `EventSourceId`: stable id used to route events back to matching rules.
 - `FloatValue`: source-specific numeric value, such as movement distance.
 - `IntValue`: source-specific integer value for future sources.
 
@@ -88,7 +88,7 @@ Rules:
 - A source should only tick/scan while it has active requests.
 - `ClearRequests()` must stop source logic and clear runtime state.
 - A source should publish events through `CombatEventBus`.
-- A source should set `PassiveEventContext.SourceId` to the request `SourceId`.
+- A source should set `PassiveEventContext.EventSourceId` to the request `EventSourceId`.
 
 ### `PassiveEventSourceRegistry`
 
@@ -116,7 +116,7 @@ Rules:
 - `eventSourceKind == None` means the rule uses a normal gameplay event and needs no optional source.
 - `eventSourceKind != None` means `PassiveController` must activate a matching optional source.
 - `eventSourceId` may be left empty. The rule generates a stable runtime id from kind, trigger, float value, and int value.
-- Matching optional-source rules must compare `context.SourceId` with `rule.RuntimeEventSourceId`.
+- Matching optional-source rules must compare `context.EventSourceId` with `rule.RuntimeEventSourceId`.
 
 This prevents different configs from triggering each other. For example, a 2-meter movement passive and a 5-meter movement passive must not share the same event route.
 
@@ -148,7 +148,7 @@ Behavior:
 - Publishes an event each time accumulated distance reaches the configured step.
 - Supports multiple simultaneous requests, such as 2 meters and 5 meters.
 - Uses `PassiveEventContext.Value` for the distance step.
-- Uses `PassiveEventContext.SourceId` for request routing.
+- Uses `PassiveEventContext.EventSourceId` for request routing.
 
 Example passive rule:
 
@@ -168,7 +168,7 @@ This means the passive rule fires whenever this character moves another 2 meters
 3. Create a new class that derives from `PassiveEventSource`.
 4. Implement `ApplyRequests(...)` and `ClearRequests()`.
 5. Publish events through `CombatEventBus`.
-6. Set `SourceId` on every published event.
+6. Set `EventSourceId` on every published event.
 7. Register the source type in `PassiveEventSourceRegistry`.
 8. Configure triggered passive rules with the new `eventSourceKind`.
 

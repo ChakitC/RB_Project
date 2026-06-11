@@ -7,6 +7,8 @@ using UnityEngine;
 [DefaultExecutionOrder(-120)]
 public sealed partial class CharacterAnimBrain : MonoBehaviour
 {
+    private const float ActionLayerActiveWeightThreshold = 0.001f;
+
     private bool _initialized;
     private Animator _boundAnimator;
     private CharacterAnimProfileSO _boundAnimProfile;
@@ -1071,6 +1073,26 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         if (actionSM.CurrentState == empty)
             actionSM.TrySetState(shootHold);
+    }
+
+    private AnimancerState PlayActionTransition(ClipTransition transition, PairOffsetUpperAction upperAction)
+    {
+        if (transition == null || !transition.IsValid)
+            return null;
+
+        SetActivePairUpperAction(upperAction);
+
+        if (ActLayer.Weight > ActionLayerActiveWeightThreshold && ActLayer.CurrentState != null)
+        {
+            ActLayer.StartFade(1f, ActionFadeIn);
+            return ActLayer.Play(transition);
+        }
+
+        float layerWeight = ActLayer.Weight;
+        AnimancerState state = ActLayer.Play(transition, 0f, transition.FadeMode);
+        ActLayer.Weight = layerWeight;
+        ActLayer.StartFade(1f, ActionFadeIn);
+        return state;
     }
 
     private void SetActivePairBasePose(PairOffsetBasePose pose)

@@ -103,16 +103,16 @@ public class WeaponAffixRuntimeController : MonoBehaviour, IStatModifierProvider
         if (instance == null)
             return;
 
-        string sourceId = BuildSourceId(instance.instanceId);
+        string modifierKey = BuildModifierKey(instance.instanceId);
 
-        AppendStatModifier(buffer, instance.mainAffix, sourceId);
+        AppendStatModifier(buffer, instance.mainAffix, modifierKey);
 
         if (instance.subAffixes == null)
             return;
 
         for (int i = 0; i < instance.subAffixes.Count; i++)
         {
-            AppendStatModifier(buffer, instance.subAffixes[i], sourceId);
+            AppendStatModifier(buffer, instance.subAffixes[i], modifierKey);
         }
     }
 
@@ -132,7 +132,7 @@ public class WeaponAffixRuntimeController : MonoBehaviour, IStatModifierProvider
         return true;
     }
 
-    void AppendStatModifier(List<RuntimeStatModifier> buffer, RolledAffixData rolledAffix, string sourceId)
+    void AppendStatModifier(List<RuntimeStatModifier> buffer, RolledAffixData rolledAffix, string modifierKey)
     {
         if (!TryResolveAffix(rolledAffix, out var definition))
             return;
@@ -144,7 +144,7 @@ public class WeaponAffixRuntimeController : MonoBehaviour, IStatModifierProvider
             definition.statType,
             definition.modifierOp,
             definition.ResolvePrimaryValue(rolledAffix),
-            sourceId));
+            modifierKey));
     }
 
     bool TryResolveAffix(RolledAffixData rolledAffix, out WeaponAffixDefinition definition)
@@ -168,7 +168,7 @@ public class WeaponAffixRuntimeController : MonoBehaviour, IStatModifierProvider
             return existing;
 
         var effect = ScriptableObject.CreateInstance<StatusEffectDef>();
-        effect.effectId = $"{BuildSourceId(instanceId)}:{definition.affixId}:reload-buff";
+        effect.effectId = $"{BuildModifierKey(instanceId)}:{definition.affixId}:reload-buff";
         effect.category = StatusEffectCategory.Buff;
         effect.duration = Mathf.Max(0f, definition.buffDurationSeconds);
         effect.maxStacks = 1;
@@ -187,7 +187,7 @@ public class WeaponAffixRuntimeController : MonoBehaviour, IStatModifierProvider
         return effect;
     }
 
-    static string BuildSourceId(string instanceId)
+    static string BuildModifierKey(string instanceId)
     {
         return string.IsNullOrWhiteSpace(instanceId)
             ? "weapon:unknown"

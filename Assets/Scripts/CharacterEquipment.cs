@@ -390,6 +390,21 @@ public class CharacterEquipment : MonoBehaviour
         return true;
     }
 
+    public static bool ClearEquipmentAssignment(string ownerId)
+    {
+        if (string.IsNullOrWhiteSpace(ownerId))
+            return false;
+
+        int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
+        var data = SaveSystem.LoadGame(saveSlot) ?? new GameSaveData();
+        data.equipment ??= new EquipmentSaveData();
+
+        UpsertEquipmentEntry(data.equipment, ownerId, null);
+        SaveSystem.SaveGame(data, saveSlot);
+        SaveManager.Instance?.RefreshLoadedCacheFromDisk();
+        return true;
+    }
+
     public static string ApplySceneEquipmentFromInventory(
         GameSaveData data,
         PlayerInventory inventory)

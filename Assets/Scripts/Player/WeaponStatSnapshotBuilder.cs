@@ -12,7 +12,11 @@ public static class WeaponStatSnapshotBuilder
         int maxMagazine = statsHub ? statsHub.GetMaxMagazine(weapon) : weapon.maxMagazine;
 
         bool infiniteReserveAmmo = weapon.infiniteReserveAmmo || (ctx != null && ctx.ForceInfiniteReserveAmmo);
-        int maxReserveAmmo = infiniteReserveAmmo ? 0 : WeaponInstanceFactory.ResolveMaxReserveAmmo(weapon, maxMagazine);
+        int maxReserveAmmo = infiniteReserveAmmo
+            ? 0
+            : statsHub
+                ? statsHub.GetMaxReserveAmmo(weapon)
+                : WeaponInstanceFactory.ResolveMaxReserveAmmo(weapon, maxMagazine);
 
         return new WeaponStatSnapshot(
             weapon,

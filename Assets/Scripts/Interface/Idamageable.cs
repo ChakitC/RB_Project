@@ -19,7 +19,7 @@ public static class DamageableExtensions
         this IDamageable damageable,
         float finalDamage,
         GameObject attacker = null,
-        string sourceId = null,
+        string damageSourceId = null,
         string attackId = null,
         ulong chainId = 0,
         int depth = 0,
@@ -32,8 +32,8 @@ public static class DamageableExtensions
         if (damageable == null)
             return default;
 
-        string resolvedSourceId = !string.IsNullOrWhiteSpace(sourceId)
-            ? sourceId
+        string resolvedDamageSourceId = !string.IsNullOrWhiteSpace(damageSourceId)
+            ? damageSourceId
             : attacker != null ? $"attacker:{attacker.name}" : "damage";
 
         ulong resolvedChainId = chainId == 0 ? CombatEventBus.NextChainId() : chainId;
@@ -41,7 +41,7 @@ public static class DamageableExtensions
         var damageContext = new DamageContext(
             finalDamage,
             attacker,
-            resolvedSourceId,
+            resolvedDamageSourceId,
             attackId,
             resolvedChainId,
             depth,

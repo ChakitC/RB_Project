@@ -8,6 +8,7 @@ data.
 
 - `Assets\Scripts\Player\PlayerInventory.cs`
 - `Assets\Scripts\Inventory`
+- `Assets\Resources\GameSettings\InventorySettings.asset`
 - `Assets\Scripts\CharacterEquipment.cs`
 - `Assets\Scripts\EquipmentAssignmentService.cs`
 - `Assets\Scripts\Accessories`
@@ -40,6 +41,13 @@ It resolves:
 When inventory adds a non-stackable weapon or accessory, it creates an instance
 data object instead of storing only the base definition.
 
+Inventory capacity is owned by the central `InventorySettings` asset under
+`Resources/GameSettings`. Player and scene prefabs must not serialize their own
+slot count. `PlayerInventory.ConfiguredCapacity` exposes the configured value,
+while `PlayerInventory.Capacity` can temporarily be larger when an older save
+contains more occupied slots. Overflow items are preserved and compacted back
+into the configured capacity as space becomes available.
+
 ## CharacterEquipment
 
 `CharacterEquipment` is the runtime equipment owner for a character. It tracks:
@@ -70,10 +78,16 @@ equipment:
 - detect whether an inventory slot contains a weapon or accessory
 - extract instance ids
 - equip by owner
+- unequip by owner and equipped slot
 - find current equipped slot data
 - find which owner has an instance assigned
 
 Use this service instead of duplicating assignment logic in UI scripts.
+
+`UIEquipment` treats a right-click on a non-empty equipped slot as an unequip
+request. The item remains in inventory. Weapon unequip clears the active
+`WeaponSystem` state, while accessory unequip refreshes the loadout so stat and
+passive providers stop contributing immediately.
 
 ## Weapon Instances
 
@@ -106,6 +120,22 @@ Important concepts:
 Accessory loadouts should resolve through `CharacteContext.AccessoryLoadout`
 when possible.
 
+Accessory stat modifiers can affect stamina capacity and stamina regeneration.
+`MaxStamina` is calculated by `StatsHub` and applied by `StaminaSystem` when it
+refreshes maximum stamina. `StaminaRegenRate` is also calculated through
+`StatsHub`; `StaminaSystem` applies it to the serialized regeneration rate each
+frame after the regeneration delay has elapsed.
+
+Accessory `Stability` modifiers use percentage units. A `Flat` value adds
+percentage points to the weapon's Stability and the final result is clamped to
+`0-100%`. For example, `+10 Flat Stability` changes `30%` to `40%`.
+
+Accessory `MaxReserveAmmo` modifiers are applied by `StatsHub` after the
+weapon's base reserve capacity is resolved. Percentage modifiers use whole
+percentage values, so `25` means `+25%`. Increasing capacity does not grant free
+ammo. When capacity decreases, current reserve ammo is clamped to the new
+maximum. Infinite-reserve weapons ignore this stat.
+
 ## Pickups And Drops
 
 Pickup-related scripts live under `Assets\Scripts\Pickup`, and drop logic lives
@@ -133,14 +163,24 @@ Inventory and equipment save flows must preserve:
 - weapon and accessory instance data
 - equipped instance ids
 - owner-specific equipment assignments
+- explicit empty weapon and accessory slots after unequip
 - currency
 - migration support for older save shapes
+
+The legacy `PlayerInventoryData.maxSlotCount` field remains readable for JSON
+compatibility but is no longer authoritative. New capacity changes come from
+`InventorySettings`, and loading a larger legacy inventory must never discard
+items beyond the configured slot count.
 
 UI-driven owner assignments can be saved without a live scene
 `CharacterEquipment` or `AccessoryLoadout` for that owner, such as Basement
 party slots. Direct assignment saves must refresh `SaveManager`'s loaded cache
 after writing the file so the next scene load does not reapply stale equipment
 data.
+
+Unequip operations must persist an explicit empty assignment for the owner.
+This distinguishes a player-selected empty slot from legacy save data that has
+no assignment entry and may still use startup default equipment.
 
 Scene saves should not clear an existing weapon assignment just because a
 runtime `CharacterEquipment` cannot currently resolve a valid replacement

@@ -40,7 +40,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     Transform _casterRoot;
     GameObject _sourceObject;
     Quaternion _localRotationOffset;
-    string _sourceId;
+    string _damageSourceId;
     string _attackId;
     ulong _chainId;
     int _requestId;
@@ -173,10 +173,10 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             _statusEffectController = null;
         }
 
-        _sourceId = _context != null && _context.SkillDef != null
+        _damageSourceId = _context != null && _context.SkillDef != null
             ? $"skill:{_context.SkillDef.name}"
             : "skill:prefab_hitbox";
-        _attackId = _combatEventBus != null ? _combatEventBus.CreateAttackId($"{_sourceId}:hitbox") : null;
+        _attackId = _combatEventBus != null ? _combatEventBus.CreateAttackId($"{_damageSourceId}:hitbox") : null;
         _chainId = CombatEventBus.NextChainId();
     }
 
@@ -620,7 +620,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         var damageContext = new DamageContext(
             finalDamage,
             attacker,
-            _sourceId,
+            _damageSourceId,
             _attackId,
             _chainId == 0 ? CombatEventBus.NextChainId() : _chainId,
             1,
@@ -647,7 +647,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             staggerPower = _context.SkillStats.staggerPower * Mathf.Max(0f, step.Definition.DamageMultiplier);
         }
 
-        return new StaggerPayload(staggerPower, 1f, _sourceId);
+        return new StaggerPayload(staggerPower, 1f, _damageSourceId);
     }
 
     void NotifyOwnerCombatTriggers(IDamageable target, float appliedDamage, bool wasAliveBeforeDamage, bool killed)
@@ -689,7 +689,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
                 source,
                 source,
                 targetObject,
-                _sourceId,
+                _damageSourceId,
                 _attackId,
                 value,
                 Time.timeAsDouble,
@@ -704,7 +704,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
                 type,
                 source,
                 targetObject,
-                _sourceId,
+                _damageSourceId,
                 _attackId,
                 value,
                 PassiveEventOrigin.External);
@@ -714,7 +714,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             type,
             source,
             targetObject,
-            _sourceId,
+            _damageSourceId,
             _attackId,
             value,
             PassiveEventOrigin.External);

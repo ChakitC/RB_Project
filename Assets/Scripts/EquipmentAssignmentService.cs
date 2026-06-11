@@ -84,6 +84,33 @@ public static class EquipmentAssignmentService
         }
     }
 
+    public static bool TryUnequip(
+        PlayerInventory inventory,
+        EquipmentItemKind itemKind,
+        string ownerId,
+        int equippedSlotIndex = 0)
+    {
+        if (inventory == null)
+            return false;
+
+        switch (itemKind)
+        {
+            case EquipmentItemKind.Weapon:
+                return string.IsNullOrWhiteSpace(ownerId)
+                    ? inventory.UnequipWeapon()
+                    : inventory.UnequipWeaponForOwner(ownerId);
+
+            case EquipmentItemKind.Accessory:
+                int accessorySlotIndex = Mathf.Max(0, equippedSlotIndex);
+                return string.IsNullOrWhiteSpace(ownerId)
+                    ? inventory.UnequipAccessorySlot(accessorySlotIndex)
+                    : inventory.UnequipAccessorySlotForOwner(ownerId, accessorySlotIndex);
+
+            default:
+                return false;
+        }
+    }
+
     public static InventorySlotData GetEquippedSlotData(
         PlayerInventory inventory,
         EquipmentItemKind itemKind,
@@ -205,11 +232,8 @@ public static class EquipmentAssignmentService
         }
 
         GameSaveData data = LoadCurrentGameData();
-        if (CharacterEquipment.TryFindEquipmentEntry(data?.equipment, ownerId, out string savedInstanceId) &&
-            !string.IsNullOrWhiteSpace(savedInstanceId))
-        {
+        if (CharacterEquipment.TryFindEquipmentEntry(data?.equipment, ownerId, out string savedInstanceId))
             return savedInstanceId;
-        }
 
         if (string.Equals(ownerId, ResolveDefaultOwnerId(inventory), StringComparison.Ordinal))
             return ResolveInventoryEquippedWeaponInstanceId(inventory);

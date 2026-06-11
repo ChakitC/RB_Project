@@ -43,7 +43,7 @@ public sealed class ApplyStatusOnHitModule : ProjectileModule
                 application.effect,
                 source,
                 application.initialStacks,
-                ctx.sourceId,
+                ctx.damageSourceId,
                 ctx.chainId,
                 ctx.depth + 1,
                 ctx.origin,

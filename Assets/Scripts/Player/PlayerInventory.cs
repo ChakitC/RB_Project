@@ -4,9 +4,6 @@ using UnityEngine;
 
 public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 {
-    [Header("Settings")]
-    public int slotCount = 0;
-
     [Header("Runtime")]
     public List<InventorySlotData> slots = new();
 
@@ -30,6 +27,8 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
     InventorySystem inventorySystem;
 
     public int LoadOrder => 0;
+    public int ConfiguredCapacity => InventorySettings.ResolveDefaultSlotCount();
+    public int Capacity => inventorySystem != null ? inventorySystem.Capacity : Mathf.Max(ConfiguredCapacity, slots?.Count ?? 0);
     public string EquippedWeaponInstanceId => equippedWeaponInstanceId;
     public InventorySystem InventorySystem => inventorySystem;
     public IReadOnlyList<InventorySlotData> Slots => inventorySystem != null ? inventorySystem.Slots : slots;
@@ -365,6 +364,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
             slot.Clear();
             inventorySystem.NotifySlotChanged(i);
+            inventorySystem.NormalizeConfiguredSlotCount();
             CharacterEquipment.ReleaseRemovedInventoryWeapon(instanceId);
 
             if (string.Equals(equippedWeaponInstanceId, instanceId, StringComparison.Ordinal))
@@ -400,6 +400,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
             slot.Clear();
             inventorySystem.NotifySlotChanged(i);
+            inventorySystem.NormalizeConfiguredSlotCount();
             AccessoryLoadout.ReleaseRemovedInventoryAccessory(instanceId);
             return true;
         }
@@ -466,6 +467,54 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         return saved;
     }
 
+    public bool UnequipWeapon()
+    {
+        ResolveReferences();
+
+        string ownerId = equipment != null ? equipment.OwnerId : null;
+        bool hadWeapon = equipment != null
+            ? equipment.CurrentWeapon != null || !string.IsNullOrWhiteSpace(equipment.EquippedWeaponInstanceId)
+            : !string.IsNullOrWhiteSpace(equippedWeaponInstanceId);
+
+        ClearEquippedWeaponRuntime();
+        bool idChanged = SetEquippedWeaponInstanceId(null);
+        bool saved = !string.IsNullOrWhiteSpace(ownerId) && CharacterEquipment.ClearEquipmentAssignment(ownerId);
+
+        if ((hadWeapon || idChanged || saved) && SaveManager.Instance != null)
+            SaveManager.Instance.Save();
+
+        return hadWeapon || idChanged || saved;
+    }
+
+    public bool UnequipWeaponForOwner(string equipmentOwnerId)
+    {
+        if (string.IsNullOrWhiteSpace(equipmentOwnerId))
+            return UnequipWeapon();
+
+        ResolveReferences();
+
+        bool hadWeapon = false;
+        if (CharacterEquipment.TryFindSceneEquipmentByOwner(equipmentOwnerId, out CharacterEquipment targetEquipment))
+        {
+            hadWeapon = targetEquipment.CurrentWeapon != null ||
+                        !string.IsNullOrWhiteSpace(targetEquipment.EquippedWeaponInstanceId);
+            targetEquipment.ClearEquipment();
+        }
+
+        bool idChanged = false;
+        if ((targetEquipment != null && targetEquipment.IsPlayerEquipment) ||
+            IsCurrentPartyLeaderOwner(equipmentOwnerId))
+        {
+            idChanged = SetEquippedWeaponInstanceId(null);
+        }
+
+        bool saved = CharacterEquipment.ClearEquipmentAssignment(equipmentOwnerId);
+        if ((hadWeapon || idChanged || saved) && SaveManager.Instance != null)
+            SaveManager.Instance.Save();
+
+        return hadWeapon || idChanged || saved;
+    }
+
     public bool EquipAccessoryInstance(string instanceId, int slotIndex = -1)
     {
         if (string.IsNullOrWhiteSpace(instanceId))
@@ -526,6 +575,24 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             SaveManager.Instance.Save();
 
         return changed;
+    }
+
+    public bool UnequipAccessorySlotForOwner(string equipmentOwnerId, int slotIndex)
+    {
+        if (string.IsNullOrWhiteSpace(equipmentOwnerId))
+            return UnequipAccessorySlot(slotIndex);
+
+        if (slotIndex < 0)
+            return false;
+
+        AccessoryLoadout targetLoadout = FindSceneAccessoryLoadoutByOwner(equipmentOwnerId);
+        bool changed = targetLoadout != null && targetLoadout.UnequipSlot(slotIndex);
+        bool saved = AccessoryLoadout.ClearLoadoutAssignment(equipmentOwnerId, slotIndex);
+
+        if ((changed || saved) && SaveManager.Instance != null)
+            SaveManager.Instance.Save();
+
+        return changed || saved;
     }
 
     public WeaponInstanceData GetWeaponInstance(string instanceId)
@@ -727,8 +794,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         var data = new PlayerInventoryData
         {
             gold = gold,
-            scrap = scrap,
-            maxSlotCount = slotCount
+            scrap = scrap
         };
 
         for (int i = 0; i < slots.Count; i++)
@@ -787,15 +853,12 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         OnGoldChanged?.Invoke(gold);
         OnScrapChanged?.Invoke(scrap);
         
-        if (data.maxSlotCount > 0)
-            slotCount = data.maxSlotCount;
-
-        EnsureSlotCount();
+        int incomingCount = data.slots != null ? data.slots.Count : 0;
+        inventorySystem.EnsureSlotCount(Mathf.Max(ConfiguredCapacity, incomingCount));
 
         for (int i = 0; i < slots.Count; i++)
             slots[i].Clear();
 
-        int incomingCount = data.slots != null ? data.slots.Count : 0;
         int count = Mathf.Min(slots.Count, incomingCount);
 
         for (int i = 0; i < count; i++)
@@ -859,6 +922,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             slot.SetItem(itemDef, slotData.amount);
         }
 
+        inventorySystem.NormalizeConfiguredSlotCount(notifyReset: false);
         inventorySystem.NotifyInventoryReset();
     }
 
@@ -988,14 +1052,14 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (slots == null)
             slots = new List<InventorySlotData>();
 
-        inventorySystem ??= new InventorySystem(slots, slotCount);
-        inventorySystem.EnsureSlotCount(slotCount);
+        int configuredCapacity = ConfiguredCapacity;
+        inventorySystem ??= new InventorySystem(slots, configuredCapacity);
+        inventorySystem.SetConfiguredSlotCount(configuredCapacity);
     }
 
     void EnsureSlotCount()
     {
         InitializeInventorySystem();
-        inventorySystem.EnsureSlotCount(slotCount);
     }
 
     void EnsureDefaultWeaponInstance()

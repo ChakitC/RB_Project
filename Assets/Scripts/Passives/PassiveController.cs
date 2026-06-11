@@ -213,12 +213,12 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                     statModifier.statType,
                     statModifier.operation,
                     statModifier.value * stackCount,
-                    modifier.SourceId));
+                    modifier.ModifierKey));
             }
         }
     }
 
-    public bool TryApplyRuntimeModifier(PassiveActionDefinition action, string sourceId, double now)
+    public bool TryApplyRuntimeModifier(PassiveActionDefinition action, string modifierKey, double now)
     {
         if (action == null || action.modifiers == null || action.modifiers.Count == 0)
             return false;
@@ -227,32 +227,32 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
         int maxStacks = action.maxStacks <= 0 ? int.MaxValue : action.maxStacks;
         int grantedStacks = Mathf.Clamp(action.grantedStacks, 1, maxStacks);
-        string resolvedSourceId = string.IsNullOrWhiteSpace(sourceId)
+        string resolvedModifierKey = string.IsNullOrWhiteSpace(modifierKey)
             ? $"passive:{GetInstanceID()}:modifier"
-            : sourceId;
+            : modifierKey;
 
         switch (action.stackPolicy)
         {
             case PassiveModifierStackPolicy.Independent:
-                _activeModifiers.Add(CreateActiveModifier(action, $"{resolvedSourceId}:inst:{++_nextIndependentModifierId}", grantedStacks, maxStacks, now));
+                _activeModifiers.Add(CreateActiveModifier(action, $"{resolvedModifierKey}:inst:{++_nextIndependentModifierId}", grantedStacks, maxStacks, now));
                 return true;
 
             case PassiveModifierStackPolicy.IgnoreWhileActive:
             {
-                var existing = FindActiveModifier(resolvedSourceId, now);
+                var existing = FindActiveModifier(resolvedModifierKey, now);
                 if (existing != null)
                     return false;
 
-                _activeModifiers.Add(CreateActiveModifier(action, resolvedSourceId, grantedStacks, maxStacks, now));
+                _activeModifiers.Add(CreateActiveModifier(action, resolvedModifierKey, grantedStacks, maxStacks, now));
                 return true;
             }
 
             case PassiveModifierStackPolicy.RefreshDuration:
             {
-                var existing = FindActiveModifier(resolvedSourceId, now);
+                var existing = FindActiveModifier(resolvedModifierKey, now);
                 if (existing == null)
                 {
-                    _activeModifiers.Add(CreateActiveModifier(action, resolvedSourceId, grantedStacks, maxStacks, now));
+                    _activeModifiers.Add(CreateActiveModifier(action, resolvedModifierKey, grantedStacks, maxStacks, now));
                     return true;
                 }
 
@@ -265,10 +265,10 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
             case PassiveModifierStackPolicy.AddStacks:
             {
-                var existing = FindActiveModifier(resolvedSourceId, now);
+                var existing = FindActiveModifier(resolvedModifierKey, now);
                 if (existing == null)
                 {
-                    _activeModifiers.Add(CreateActiveModifier(action, resolvedSourceId, grantedStacks, maxStacks, now));
+                    _activeModifiers.Add(CreateActiveModifier(action, resolvedModifierKey, grantedStacks, maxStacks, now));
                     return true;
                 }
 
@@ -282,10 +282,10 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             case PassiveModifierStackPolicy.Replace:
             default:
             {
-                var existing = FindActiveModifier(resolvedSourceId, now);
+                var existing = FindActiveModifier(resolvedModifierKey, now);
                 if (existing == null)
                 {
-                    _activeModifiers.Add(CreateActiveModifier(action, resolvedSourceId, grantedStacks, maxStacks, now));
+                    _activeModifiers.Add(CreateActiveModifier(action, resolvedModifierKey, grantedStacks, maxStacks, now));
                     return true;
                 }
 
@@ -302,7 +302,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         in PassiveEventContext parent,
         PassiveEventType type,
         GameObject target = null,
-        string sourceId = null,
+        string eventSourceId = null,
         float value = 0f,
         string originPassiveId = null,
         string originRuleId = null)
@@ -315,7 +315,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             type,
             gameObject,
             target,
-            sourceId,
+            eventSourceId,
             parent.AttackId,
             value,
             PassiveEventOrigin.Passive,
@@ -420,27 +420,26 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             if (action == null)
                 continue;
 
-            string sourceId = ResolveActionSourceId(passiveId, ruleId, action);
             GameObject targetObject = ResolveTargetObject(action.targetSelector, context);
 
             switch (action.actionType)
             {
                 case PassiveActionType.GrantModifier:
-                    ApplyModifierAction(action, targetObject, sourceId, context.Time);
+                    ApplyModifierAction(action, targetObject, ResolveModifierKey(passiveId, ruleId, action), context.Time);
                     break;
 
                 case PassiveActionType.ApplyStatusEffect:
-                    ApplyStatusEffectAction(action, targetObject, sourceId, context, passiveId, ruleId);
+                    ApplyStatusEffectAction(action, targetObject, ResolveAppliedById(passiveId, ruleId, action), context, passiveId, ruleId);
                     break;
 
                 case PassiveActionType.EmitEvent:
-                    PublishChildEvent(context, action.emittedEventType, targetObject, sourceId, action.emittedValue, passiveId, ruleId);
+                    PublishChildEvent(context, action.emittedEventType, targetObject, ResolveEmittedEventSourceId(passiveId, ruleId, action), action.emittedValue, passiveId, ruleId);
                     break;
             }
         }
     }
 
-    void ApplyModifierAction(PassiveActionDefinition action, GameObject targetObject, string sourceId, double now)
+    void ApplyModifierAction(PassiveActionDefinition action, GameObject targetObject, string modifierKey, double now)
     {
         if (action == null || targetObject == null)
             return;
@@ -449,14 +448,14 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         if (targetController == null)
             return;
 
-        if (targetController.TryApplyRuntimeModifier(action, sourceId, now))
+        if (targetController.TryApplyRuntimeModifier(action, modifierKey, now))
             targetController.NotifyStatModifiersChanged();
     }
 
     void ApplyStatusEffectAction(
         PassiveActionDefinition action,
         GameObject targetObject,
-        string sourceId,
+        string appliedById,
         PassiveEventContext context,
         string passiveId,
         string ruleId)
@@ -472,7 +471,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             action.statusEffect,
             gameObject,
             action.statusInitialStacks,
-            sourceId,
+            appliedById,
             context.ChainId,
             context.Depth + 1,
             PassiveEventOrigin.Passive,
@@ -715,7 +714,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         if (definition == null || definition.modifiers == null)
             return;
 
-        string sourceId = $"passive:{definition.RuntimeId}";
+        string modifierKey = $"passive:{definition.RuntimeId}";
         for (int i = 0; i < definition.modifiers.Count; i++)
         {
             var modifier = definition.modifiers[i];
@@ -726,7 +725,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 modifier.statType,
                 modifier.operation,
                 modifier.value,
-                sourceId));
+                modifierKey));
         }
     }
 
@@ -836,7 +835,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         if (rule == null || rule.eventSourceKind == PassiveEventSourceKind.None)
             return true;
 
-        return string.Equals(context.SourceId, rule.RuntimeEventSourceId, StringComparison.Ordinal);
+        return string.Equals(context.EventSourceId, rule.RuntimeEventSourceId, StringComparison.Ordinal);
     }
 
     GameObject ResolveTargetObject(PassiveTargetSelector selector, PassiveEventContext context)
@@ -847,19 +846,38 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         return gameObject;
     }
 
-    string ResolveActionSourceId(string passiveId, string ruleId, PassiveActionDefinition action)
+    string ResolveModifierKey(string passiveId, string ruleId, PassiveActionDefinition action)
     {
-        if (action != null && !string.IsNullOrWhiteSpace(action.sourceIdOverride))
-            return action.sourceIdOverride;
+        if (action != null && !string.IsNullOrWhiteSpace(action.modifierKeyOverride))
+            return action.modifierKeyOverride;
 
-        string actionId = action != null && !string.IsNullOrWhiteSpace(action.actionId)
-            ? action.actionId
-            : "action";
+        return ResolveDefaultActionId(passiveId, ruleId, action);
+    }
+
+    string ResolveAppliedById(string passiveId, string ruleId, PassiveActionDefinition action)
+    {
+        if (action != null && !string.IsNullOrWhiteSpace(action.appliedByIdOverride))
+            return action.appliedByIdOverride;
+
+        return ResolveDefaultActionId(passiveId, ruleId, action);
+    }
+
+    string ResolveEmittedEventSourceId(string passiveId, string ruleId, PassiveActionDefinition action)
+    {
+        if (action != null && !string.IsNullOrWhiteSpace(action.emittedEventSourceIdOverride))
+            return action.emittedEventSourceIdOverride;
+
+        return ResolveDefaultActionId(passiveId, ruleId, action);
+    }
+
+    string ResolveDefaultActionId(string passiveId, string ruleId, PassiveActionDefinition action)
+    {
+        string actionId = action != null && !string.IsNullOrWhiteSpace(action.actionId) ? action.actionId : "action";
 
         return $"{passiveId}:{ruleId}:{actionId}";
     }
 
-    ActivePassiveModifier FindActiveModifier(string sourceId, double now)
+    ActivePassiveModifier FindActiveModifier(string modifierKey, double now)
     {
         for (int i = 0; i < _activeModifiers.Count; i++)
         {
@@ -867,18 +885,18 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             if (modifier == null || modifier.IsExpired(now))
                 continue;
 
-            if (string.Equals(modifier.SourceId, sourceId, StringComparison.Ordinal))
+            if (string.Equals(modifier.ModifierKey, modifierKey, StringComparison.Ordinal))
                 return modifier;
         }
 
         return null;
     }
 
-    ActivePassiveModifier CreateActiveModifier(PassiveActionDefinition action, string sourceId, int stacks, int maxStacks, double now)
+    ActivePassiveModifier CreateActiveModifier(PassiveActionDefinition action, string modifierKey, int stacks, int maxStacks, double now)
     {
         return new ActivePassiveModifier
         {
-            SourceId = sourceId,
+            ModifierKey = modifierKey,
             Modifiers = action.modifiers,
             Stacks = stacks,
             MaxStacks = maxStacks,
@@ -964,7 +982,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
     sealed class ActivePassiveModifier
     {
-        public string SourceId;
+        public string ModifierKey;
         public List<PassiveStatModifier> Modifiers;
         public int Stacks;
         public int MaxStacks;

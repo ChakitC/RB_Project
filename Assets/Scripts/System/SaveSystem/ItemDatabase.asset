@@ -19,5 +19,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6efa75999c21ad64a9a7c53c8fb76a32, type: 2}
   - {fileID: 11400000, guid: 079515c14deaf5d479322be89a4f56a8, type: 2}
   - {fileID: 11400000, guid: 18e8cdeb39ab4176ab726c7da2566e2f, type: 2}
+  - {fileID: 11400000, guid: de33336735f94ec78c790227d896cc97, type: 2}
+  - {fileID: 11400000, guid: e02158f665af45cb83f5ba211cc006ca, type: 2}
+  - {fileID: 11400000, guid: 8e8e71f53ee74f6391d3a96820a02fdc, type: 2}
+  - {fileID: 11400000, guid: 8f4061b0e6af47e796b48b914707db21, type: 2}
+  - {fileID: 11400000, guid: 65b8b2d6eb324e758c7030f151220ffd, type: 2}
   goldItem: {fileID: 11400000, guid: 2835846abd2c7a94eadc3f9065613e14, type: 2}
   scrapItem: {fileID: 11400000, guid: 9d4ed1d350564e74b851fe0fb8a49a2a, type: 2}

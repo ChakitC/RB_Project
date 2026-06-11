@@ -34,7 +34,7 @@ public sealed class WeaponProjectileSpawner
                 staggerPower = context.StaggerPower
             },
             hitCue = context.HitCue,
-            sourceId = context.SourceId,
+            damageSourceId = context.DamageSourceId,
             attackId = context.AttackId,
             chainId = context.PassiveContext.ChainId,
             depth = context.PassiveContext.Depth,

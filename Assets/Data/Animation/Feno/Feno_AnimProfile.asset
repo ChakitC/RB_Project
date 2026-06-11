@@ -15,8 +15,6 @@ MonoBehaviour:
   upperBodyMask: {fileID: 31900000, guid: dc69d0ab3c69b9e4598872c3f24428b3, type: 2}
   actionFadeIn: 0.06
   actionFadeOut: 0.08
-  locomotionParamLerp: 14
-  snapTo8Directions: 0
   locomotionDirectionalClips:
     idle: {fileID: 2072940358198767037, guid: b19cf7bb677757048a2b15aff435c1d8, type: 3}
     forward: {fileID: -3045897872586947758, guid: 36a8267c975d3e347845516dc08b6cb8, type: 3}
@@ -27,6 +25,10 @@ MonoBehaviour:
     forwardRight: {fileID: -4519924575139466294, guid: 7dcc1064d68e82b4f8784c67b254d639, type: 3}
     backwardLeft: {fileID: 8674496477672625794, guid: 6adbd18bea0de6044a4854c8eb958fe6, type: 3}
     backwardRight: {fileID: -1644124186931358686, guid: 17bd1a8d41faaf840ae58d455021039f, type: 3}
+  locomotionParamLerp: 14
+  snapTo8Directions: 1
+  locomotionFadeDuration: 0.25
+  locomotionPlaybackSpeed: 1
   miniStune:
     _FadeDuration: 0.25
     _Speed: 1
@@ -118,7 +120,7 @@ MonoBehaviour:
     _Clip: {fileID: 8354638251797088515, guid: 252d4fb362435ff49bb2fa0b3f592932, type: 3}
     _NormalizedStartTime: NaN
   shootPulse:
-    _FadeDuration: 0.25
+    _FadeDuration: 0.033333335
     _Speed: 1
     _Events:
       _NormalizedTimes: []
@@ -127,7 +129,7 @@ MonoBehaviour:
     _Clip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     _NormalizedStartTime: NaN
   shootHoldLoop:
-    _FadeDuration: 0.25
+    _FadeDuration: 0.033333335
     _Speed: 1
     _Events:
       _NormalizedTimes: []
@@ -136,6 +138,7 @@ MonoBehaviour:
     _Clip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     _NormalizedStartTime: NaN
   holdPulseMinInterval: 0.08
+  pairOffsetProfiles: {fileID: 11400000, guid: e46b18a5c7226674cae05d654e27119b, type: 2}
   reload:
     _FadeDuration: 0.25
     _Speed: 1

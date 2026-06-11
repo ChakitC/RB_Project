@@ -2,16 +2,16 @@ using UnityEngine;
 
 public readonly struct StaggerPayload
 {
-    public StaggerPayload(float amount, float multiplier = 1f, string sourceId = null)
+    public StaggerPayload(float amount, float multiplier = 1f, string staggerSourceId = null)
     {
         Amount = amount;
         Multiplier = multiplier;
-        SourceId = sourceId;
+        StaggerSourceId = staggerSourceId;
     }
 
     public float Amount { get; }
     public float Multiplier { get; }
-    public string SourceId { get; }
+    public string StaggerSourceId { get; }
 
     public bool HasValue => IsFinite(Amount) && Amount > 0f && IsFinite(Multiplier) && Multiplier > 0f;
     public float ResolvedAmount => HasValue ? Amount * Mathf.Max(0f, Multiplier) : 0f;
@@ -66,7 +66,7 @@ public readonly struct DamageContext
     public DamageContext(
         float damage,
         GameObject attacker,
-        string sourceId,
+        string damageSourceId,
         string attackId,
         ulong chainId,
         int depth,
@@ -78,7 +78,7 @@ public readonly struct DamageContext
     {
         Damage = damage;
         Attacker = attacker;
-        SourceId = sourceId;
+        DamageSourceId = damageSourceId;
         AttackId = attackId;
         ChainId = chainId;
         Depth = depth;
@@ -91,7 +91,7 @@ public readonly struct DamageContext
 
     public float Damage { get; }
     public GameObject Attacker { get; }
-    public string SourceId { get; }
+    public string DamageSourceId { get; }
     public string AttackId { get; }
     public ulong ChainId { get; }
     public int Depth { get; }
@@ -108,7 +108,7 @@ public readonly struct DamageContext
         return new DamageContext(
             damage,
             Attacker,
-            SourceId,
+            DamageSourceId,
             AttackId,
             ChainId,
             Depth,

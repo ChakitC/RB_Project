@@ -29,7 +29,6 @@ MonoBehaviour:
     - actionId: action
       actionType: 1
       targetSelector: 0
-      sourceIdOverride: 
       modifiers: []
       grantedStacks: 1
       maxStacks: 1

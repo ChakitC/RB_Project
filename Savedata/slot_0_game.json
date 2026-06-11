@@ -1,8 +1,8 @@
 {
-    "saveVersion": 2,
+    "saveVersion": 3,
     "inventory": {
-        "maxSlotCount": 20,
-        "gold": 963083,
+        "maxSlotCount": 0,
+        "gold": 963072,
         "scrap": 0,
         "slots": [
             {
@@ -28,9 +28,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 2483,
-                    "currentMagazine": 99,
-                    "currentReserveAmmo": 65,
+                    "shotCounter": 6800,
+                    "currentMagazine": 77,
+                    "currentReserveAmmo": 375,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 16,
                     "upgradeTier": 1,
@@ -61,9 +61,9 @@
                         "secondaryValue": 0.0
                     },
                     "subAffixes": [],
-                    "shotCounter": 3105,
+                    "shotCounter": 3177,
                     "currentMagazine": 29,
-                    "currentReserveAmmo": 248,
+                    "currentReserveAmmo": 295,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -153,9 +153,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 5200,
-                    "currentMagazine": 34,
-                    "currentReserveAmmo": 293,
+                    "shotCounter": 8390,
+                    "currentMagazine": 29,
+                    "currentReserveAmmo": 265,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 20,
                     "upgradeTier": 2,
@@ -303,9 +303,9 @@
                         "secondaryValue": 0.0
                     },
                     "subAffixes": [],
-                    "shotCounter": 4,
-                    "currentMagazine": 26,
-                    "currentReserveAmmo": 300,
+                    "shotCounter": 29,
+                    "currentMagazine": 29,
+                    "currentReserveAmmo": 272,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -334,9 +334,9 @@
                         "secondaryValue": 0.0
                     },
                     "subAffixes": [],
-                    "shotCounter": 5383,
-                    "currentMagazine": 26,
-                    "currentReserveAmmo": 240,
+                    "shotCounter": 8238,
+                    "currentMagazine": 30,
+                    "currentReserveAmmo": 300,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -373,7 +373,7 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 2032,
+                    "shotCounter": 2033,
                     "currentMagazine": 30,
                     "currentReserveAmmo": 300,
                     "reserveAmmoInitialized": true,
@@ -422,9 +422,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 2402,
-                    "currentMagazine": 14,
-                    "currentReserveAmmo": 240,
+                    "shotCounter": 2483,
+                    "currentMagazine": 29,
+                    "currentReserveAmmo": 265,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -518,9 +518,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 8120,
-                    "currentMagazine": 30,
-                    "currentReserveAmmo": 210,
+                    "shotCounter": 10375,
+                    "currentMagazine": 29,
+                    "currentReserveAmmo": 230,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 2,
                     "upgradeTier": 0,
@@ -564,9 +564,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 9658,
+                    "shotCounter": 10710,
                     "currentMagazine": 29,
-                    "currentReserveAmmo": 287,
+                    "currentReserveAmmo": 355,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 30,
                     "upgradeTier": 3,
@@ -646,9 +646,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 892,
+                    "shotCounter": 2146,
                     "currentMagazine": 84,
-                    "currentReserveAmmo": 0,
+                    "currentReserveAmmo": 272,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -800,6 +800,626 @@
                     "modifierId": "",
                     "upgradeLevel": 0
                 }
+            },
+            {
+                "itemId": "Accessory.CarrotleafHeavyWeaveArmor",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "acc_d7950dfb72a749bea2e7c5cc61f0bf01",
+                    "accessoryId": "Accessory.CarrotleafHeavyWeaveArmor",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "Accessory.RabbitHat",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "acc_37a37e2e9e274ce5a27af988a0698976",
+                    "accessoryId": "Accessory.RabbitHat",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "Accessory.RabbitGlove",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "acc_a3c3255fa6be4a6eba447ce0054e0de7",
+                    "accessoryId": "Accessory.RabbitGlove",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "Accessory.RabbitCharm",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "acc_11f64159dbfd4357bcc3bcc404d80b45",
+                    "accessoryId": "Accessory.RabbitCharm",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "Accessory.FenosFieldPack",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "acc_d23f59d9207c4f7dbe939050a1005384",
+                    "accessoryId": "Accessory.FenosFieldPack",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "Accessory.FenosFieldPack",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "acc_97a89f30a5f24b48b6081bd784fbbb38",
+                    "accessoryId": "Accessory.FenosFieldPack",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "",
+                "amount": 0,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
             }
         ]
     },
@@ -815,7 +1435,7 @@
             },
             {
                 "ownerId": "character:ID.Aires",
-                "equippedWeaponInstanceId": "9c6715952d3a4641a26a26af87c72af8"
+                "equippedWeaponInstanceId": "1a5391133fc44acba453df156c0f3d92"
             },
             {
                 "ownerId": "character:ID.Feno",
@@ -827,7 +1447,7 @@
             },
             {
                 "ownerId": "character:ID.Milano",
-                "equippedWeaponInstanceId": "6a18546602c7446fb9c627a52b7d9131"
+                "equippedWeaponInstanceId": "85b1b92b4b7d481f9789392240f283c5"
             },
             {
                 "ownerId": "character:ID.Dorothy",
@@ -835,7 +1455,7 @@
             },
             {
                 "ownerId": "character:ID.Roger",
-                "equippedWeaponInstanceId": ""
+                "equippedWeaponInstanceId": "e9380f839a7f432a858232500ccab7c9"
             }
         ]
     },
@@ -846,8 +1466,20 @@
                 "slotCount": 5,
                 "equippedAccessories": [
                     {
-                        "instanceId": "",
-                        "accessoryId": "",
+                        "instanceId": "acc_97a89f30a5f24b48b6081bd784fbbb38",
+                        "accessoryId": "Accessory.FenosFieldPack",
+                        "modifierId": "",
+                        "upgradeLevel": 0
+                    },
+                    {
+                        "instanceId": "acc_11f64159dbfd4357bcc3bcc404d80b45",
+                        "accessoryId": "Accessory.RabbitCharm",
+                        "modifierId": "",
+                        "upgradeLevel": 0
+                    },
+                    {
+                        "instanceId": "acc_a3c3255fa6be4a6eba447ce0054e0de7",
+                        "accessoryId": "Accessory.RabbitGlove",
                         "modifierId": "",
                         "upgradeLevel": 0
                     },
@@ -860,18 +1492,6 @@
                     {
                         "instanceId": "",
                         "accessoryId": "",
-                        "modifierId": "",
-                        "upgradeLevel": 0
-                    },
-                    {
-                        "instanceId": "",
-                        "accessoryId": "",
-                        "modifierId": "",
-                        "upgradeLevel": 0
-                    },
-                    {
-                        "instanceId": "acc_4552a1ea2a75420e881d2fe3f5073649",
-                        "accessoryId": "Accessory.RabbitLag",
                         "modifierId": "",
                         "upgradeLevel": 0
                     }
@@ -990,8 +1610,8 @@
                 "slotCount": 5,
                 "equippedAccessories": [
                     {
-                        "instanceId": "",
-                        "accessoryId": "",
+                        "instanceId": "acc_d7950dfb72a749bea2e7c5cc61f0bf01",
+                        "accessoryId": "Accessory.CarrotleafHeavyWeaveArmor",
                         "modifierId": "",
                         "upgradeLevel": 0
                     },
@@ -1002,8 +1622,8 @@
                         "upgradeLevel": 0
                     },
                     {
-                        "instanceId": "",
-                        "accessoryId": "",
+                        "instanceId": "acc_37a37e2e9e274ce5a27af988a0698976",
+                        "accessoryId": "Accessory.RabbitHat",
                         "modifierId": "",
                         "upgradeLevel": 0
                     },
@@ -1026,8 +1646,8 @@
                 "slotCount": 5,
                 "equippedAccessories": [
                     {
-                        "instanceId": "",
-                        "accessoryId": "",
+                        "instanceId": "acc_d23f59d9207c4f7dbe939050a1005384",
+                        "accessoryId": "Accessory.FenosFieldPack",
                         "modifierId": "",
                         "upgradeLevel": 0
                     },
@@ -1092,14 +1712,50 @@
                         "upgradeLevel": 0
                     }
                 ]
+            },
+            {
+                "ownerId": "character:ID.Roger",
+                "slotCount": 5,
+                "equippedAccessories": [
+                    {
+                        "instanceId": "",
+                        "accessoryId": "",
+                        "modifierId": "",
+                        "upgradeLevel": 0
+                    },
+                    {
+                        "instanceId": "",
+                        "accessoryId": "",
+                        "modifierId": "",
+                        "upgradeLevel": 0
+                    },
+                    {
+                        "instanceId": "",
+                        "accessoryId": "",
+                        "modifierId": "",
+                        "upgradeLevel": 0
+                    },
+                    {
+                        "instanceId": "",
+                        "accessoryId": "",
+                        "modifierId": "",
+                        "upgradeLevel": 0
+                    },
+                    {
+                        "instanceId": "",
+                        "accessoryId": "",
+                        "modifierId": "",
+                        "upgradeLevel": 0
+                    }
+                ]
             }
         ]
     },
     "party": {
         "partyIds": [
+            "ID.Roma",
             "ID.Feno",
             "ID.Aires",
-            "ID.Roma",
             "ID.Abbygail"
         ]
     }

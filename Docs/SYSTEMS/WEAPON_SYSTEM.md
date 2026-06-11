@@ -87,6 +87,12 @@ Weapon stats come from `WeaponStatSnapshotBuilder` and `StatsHub`.
 modifiers, passive modifiers, affix modifiers, and upgrade modifiers through
 `IStatModifierProvider`.
 
+`MaxReserveAmmo` is resolved after `MaxMagazine`, because weapons without an
+explicit reserve limit derive their capacity from magazine size. The final
+reserve capacity is included in `WeaponStatSnapshot`. Increasing the limit does
+not add ammo; decreasing it clamps the current reserve count. Infinite-reserve
+weapons bypass reserve-capacity modifiers.
+
 `StatsHub` keeps a modifier snapshot and input signature. When base stats, level,
 current weapon, provider state, or modifier output changes during a cache
 refresh or fallback probe, `StatsHub` refreshes its cached values and increments
@@ -106,6 +112,23 @@ refresh only when needed:
 
 Do not force `WeaponSystem` to recalculate all derived stats or run unthrottled
 signature probes every frame.
+
+### Stability Percentage
+
+`Stability` is authored and exposed as a percentage from `0` to `100`:
+
+- `0%` keeps the weapon's full authored sway speed and sway angle.
+- `50%` halves both sway speed and sway angle.
+- `100%` removes weapon sway completely.
+
+The runtime sway multiplier is `1 - (Stability / 100)`. Stability also scales
+return speed from `1x` at `0%` to `2x` at `100%`. This stat controls weapon
+sway only; recoil, projectile spread, and other accuracy behavior remain
+separate systems.
+
+Final Stability is clamped to `0-100%` after all modifiers. A `Flat` Stability
+modifier adds percentage points, so `30 Stability + 10 Flat = 40%`. Author
+these values as whole percentages, not `0-1` normalized values.
 
 ## Stat Modifier Contract
 
@@ -170,6 +193,10 @@ of restarting `ShootPulse` every projectile.
 
 `CancelReload()` is responsible for stopping the reload state, animation/audio
 side effects, burst routine, and weapon instance sync.
+
+Reload movement policy comes from the actor's `CharacterAnimProfileSO`.
+`UpperBody` reload allows movement. `FullBody` reload blocks normal movement,
+while Dash is still allowed and interrupts the reload through `CancelReload()`.
 
 ## Ammo And Weapon Instances
 

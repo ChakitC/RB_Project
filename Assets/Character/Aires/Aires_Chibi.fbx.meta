@@ -7,6 +7,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: DefaultMaterial
+    second: {fileID: 2100000, guid: d5b44e9bd18291f47bed5ff1c8e61720, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: M_Aires_Body
     second: {fileID: 2100000, guid: fe1d72f2b93b0b444a294e6338870571, type: 2}
   - first:

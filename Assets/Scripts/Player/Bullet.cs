@@ -133,7 +133,7 @@ public class Bullet : MonoBehaviour
             damageable.TakeDamage(
                 finalDamage,
                 shooterRoot != null ? shooterRoot.gameObject : null,
-                sourceId: $"bullet:{gunType}",
+                damageSourceId: $"bullet:{gunType}",
                 stagger: new StaggerPayload(staggerPower, 1f, $"bullet:{gunType}"));
             Destroy(gameObject);
         }

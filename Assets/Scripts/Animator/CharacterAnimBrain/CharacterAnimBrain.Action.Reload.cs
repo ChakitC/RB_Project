@@ -33,10 +33,12 @@ public sealed partial class CharacterAnimBrain
         {
             _lockExit = true;
 
-            owner.ActLayer.StartFade(1f, owner.ActionFadeIn);
-            owner.SetActivePairUpperAction(PairOffsetUpperAction.Reload);
-
-            state = owner.ActLayer.Play(owner.ReloadClip);
+            state = owner.PlayActionTransition(owner.ReloadClip, PairOffsetUpperAction.Reload);
+            if (state == null)
+            {
+                _lockExit = false;
+                return;
+            }
 
             float len = Mathf.Max(0.01f, state.Length);
             float dur = Mathf.Max(0.01f, owner._reloadDuration);

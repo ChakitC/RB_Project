@@ -6,7 +6,7 @@ public sealed class MovementDistanceEventSource : PassiveEventSource
     [SerializeField, Min(0.01f)] private float defaultDistanceStep = 2f;
     [SerializeField, Min(1)] private int maxEventsPerRequestPerFrame = 8;
 
-    readonly Dictionary<string, DistanceRequestState> _statesBySourceId = new();
+    readonly Dictionary<string, DistanceRequestState> _statesByEventSourceId = new();
     readonly List<string> _removeBuffer = new();
 
     CharacteContext _ctx;
@@ -24,7 +24,7 @@ public sealed class MovementDistanceEventSource : PassiveEventSource
         _ctx = ctx != null ? ctx : ResolveContext();
         _combatEventBus = combatEventBus != null ? combatEventBus : ResolveCombatEventBus();
 
-        foreach (var pair in _statesBySourceId)
+        foreach (var pair in _statesByEventSourceId)
             pair.Value.Required = false;
 
         if (requests != null)
@@ -35,7 +35,7 @@ public sealed class MovementDistanceEventSource : PassiveEventSource
 
         RemoveUnusedStates();
 
-        if (_statesBySourceId.Count == 0)
+        if (_statesByEventSourceId.Count == 0)
         {
             ClearRequests();
             return;
@@ -48,7 +48,7 @@ public sealed class MovementDistanceEventSource : PassiveEventSource
 
     public override void ClearRequests()
     {
-        _statesBySourceId.Clear();
+        _statesByEventSourceId.Clear();
         _removeBuffer.Clear();
         _hasLastPosition = false;
         enabled = false;
@@ -56,7 +56,7 @@ public sealed class MovementDistanceEventSource : PassiveEventSource
 
     void LateUpdate()
     {
-        if (_statesBySourceId.Count == 0)
+        if (_statesByEventSourceId.Count == 0)
             return;
 
         if (_ctx == null)
@@ -84,7 +84,7 @@ public sealed class MovementDistanceEventSource : PassiveEventSource
         if (distance <= 0.0001f)
             return;
 
-        foreach (var pair in _statesBySourceId)
+        foreach (var pair in _statesByEventSourceId)
             TickRequest(pair.Value, distance);
     }
 
@@ -93,13 +93,13 @@ public sealed class MovementDistanceEventSource : PassiveEventSource
         if (!request.IsValid || request.Kind != Kind)
             return;
 
-        if (!_statesBySourceId.TryGetValue(request.SourceId, out DistanceRequestState state))
+        if (!_statesByEventSourceId.TryGetValue(request.EventSourceId, out DistanceRequestState state))
         {
             state = new DistanceRequestState
             {
-                SourceId = request.SourceId
+                EventSourceId = request.EventSourceId
             };
-            _statesBySourceId.Add(request.SourceId, state);
+            _statesByEventSourceId.Add(request.EventSourceId, state);
         }
 
         state.EventType = request.EventType;
@@ -111,14 +111,14 @@ public sealed class MovementDistanceEventSource : PassiveEventSource
     {
         _removeBuffer.Clear();
 
-        foreach (var pair in _statesBySourceId)
+        foreach (var pair in _statesByEventSourceId)
         {
             if (!pair.Value.Required)
                 _removeBuffer.Add(pair.Key);
         }
 
         for (int i = 0; i < _removeBuffer.Count; i++)
-            _statesBySourceId.Remove(_removeBuffer[i]);
+            _statesByEventSourceId.Remove(_removeBuffer[i]);
 
         _removeBuffer.Clear();
     }
@@ -152,7 +152,7 @@ public sealed class MovementDistanceEventSource : PassiveEventSource
             state.EventType,
             ResolveActorGameObject(),
             null,
-            state.SourceId,
+            state.EventSourceId,
             null,
             state.DistanceStep);
 
@@ -211,7 +211,7 @@ public sealed class MovementDistanceEventSource : PassiveEventSource
 
     sealed class DistanceRequestState
     {
-        public string SourceId;
+        public string EventSourceId;
         public PassiveEventType EventType;
         public float DistanceStep;
         public float AccumulatedDistance;

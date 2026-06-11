@@ -6,6 +6,8 @@ using UnityEngine;
 public class StatsHub : MonoBehaviour
 {
     const float BASE_CRIT_MULT = 1f;
+    const float MIN_STABILITY_PERCENT = 0f;
+    const float MAX_STABILITY_PERCENT = 100f;
 
     [Header("Refs")]
     [SerializeField] private CharacteContext ctx;
@@ -31,9 +33,10 @@ public class StatsHub : MonoBehaviour
     [SerializeField] private float dbgWeaponCritMult;
     [SerializeField] private float dbgWeaponFireInterval;
     [SerializeField] private float dbgWeaponReloadTime;
-    [SerializeField] private float dbgWeaponStability;
+    [SerializeField, InspectorName("Weapon Stability (%)")] private float dbgWeaponStability;
     [SerializeField] private float dbgWeaponBulletSpeed;
     [SerializeField] private int dbgWeaponMaxMagazine;
+    [SerializeField] private int dbgWeaponMaxReserveAmmo;
 
     [SerializeField] private float dbgFinalDamage;
     [SerializeField] private float dbgFinalArmor;
@@ -43,11 +46,13 @@ public class StatsHub : MonoBehaviour
     [SerializeField] private float dbgFinalCritMult;
     [SerializeField] private float dbgFinalFireInterval;
     [SerializeField] private float dbgFinalReloadTime;
-    [SerializeField] private float dbgFinalStability;
+    [SerializeField, InspectorName("Final Stability (%)")] private float dbgFinalStability;
     [SerializeField] private float dbgFinalBulletSpeed;
     [SerializeField] private int dbgFinalMaxMagazine;
+    [SerializeField] private int dbgFinalMaxReserveAmmo;
     [SerializeField] private float dbgFinalMaxHP;
     [SerializeField] private float dbgFinalMaxStamina;
+    [SerializeField, InspectorName("Final Stamina Regen")] private float dbgFinalStaminaRegen;
     [SerializeField] private float dbgFinalMaxEnergy;
 
     float _nextDebugRefreshTime = -1f;
@@ -79,6 +84,7 @@ public class StatsHub : MonoBehaviour
     float _cachedStability;
     float _cachedBulletSpeed;
     int _cachedMaxMagazine;
+    int _cachedMaxReserveAmmo;
     float _cachedMaxHealth;
     float _cachedMaxStamina;
     float _cachedMaxEnergy;
@@ -256,6 +262,7 @@ public class StatsHub : MonoBehaviour
         dbgWeaponStability = w ? w.stability : 0f;
         dbgWeaponBulletSpeed = w ? w.BulletSpeed : 0f;
         dbgWeaponMaxMagazine = w ? w.maxMagazine : 0;
+        dbgWeaponMaxReserveAmmo = w ? WeaponInstanceFactory.ResolveMaxReserveAmmo(w) : 0;
 
         dbgFinalDamage = _cachedDamage;
         dbgFinalArmor = _cachedArmor;
@@ -268,8 +275,12 @@ public class StatsHub : MonoBehaviour
         dbgFinalStability = _cachedStability;
         dbgFinalBulletSpeed = _cachedBulletSpeed;
         dbgFinalMaxMagazine = _cachedMaxMagazine;
+        dbgFinalMaxReserveAmmo = _cachedMaxReserveAmmo;
         dbgFinalMaxHP = _cachedMaxHealth;
         dbgFinalMaxStamina = _cachedMaxStamina;
+        dbgFinalStaminaRegen = ctx != null && ctx.StaminaSystem != null
+            ? ctx.StaminaSystem.ResolvedRegenerationRate
+            : 0f;
         dbgFinalMaxEnergy = _cachedMaxEnergy;
     }
 
@@ -352,9 +363,16 @@ public class StatsHub : MonoBehaviour
         _cachedCritMultiplier = Mathf.Max(1f, ApplyStatusModifiers(_modifierBuffer, StatType.CritMultiplier, weaponCritMult + (characterCritMult - BASE_CRIT_MULT)));
         _cachedFireInterval = Mathf.Max(0.01f, ApplyStatusModifiers(_modifierBuffer, StatType.FireInterval, weaponFireInterval));
         _cachedReloadTime = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.ReloadTime, weaponReloadTime));
-        _cachedStability = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.Stability, weaponStability));
+        _cachedStability = Mathf.Clamp(
+            ApplyStatusModifiers(_modifierBuffer, StatType.Stability, weaponStability),
+            MIN_STABILITY_PERCENT,
+            MAX_STABILITY_PERCENT);
         _cachedBulletSpeed = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.BulletSpeed, weaponBulletSpeed));
         _cachedMaxMagazine = Mathf.Max(0, Mathf.RoundToInt(ApplyStatusModifiers(_modifierBuffer, StatType.MaxMagazine, weaponMagazine)));
+        int weaponReserveAmmo = w ? WeaponInstanceFactory.ResolveMaxReserveAmmo(w, _cachedMaxMagazine) : 0;
+        _cachedMaxReserveAmmo = w && !w.infiniteReserveAmmo
+            ? Mathf.Max(0, Mathf.RoundToInt(ApplyStatusModifiers(_modifierBuffer, StatType.MaxReserveAmmo, weaponReserveAmmo)))
+            : 0;
         _cachedMaxHealth = Mathf.Max(1f, ApplyStatusModifiers(_modifierBuffer, StatType.MaxHP, characterMaxHealth));
         _cachedMaxStamina = Mathf.Max(1f, ApplyStatusModifiers(_modifierBuffer, StatType.MaxStamina, characterMaxStamina));
         _cachedMaxEnergy = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.MaxEnergy, characterMaxEnergy));
@@ -439,6 +457,8 @@ public class StatsHub : MonoBehaviour
             hash = CombineHash(hash, w ? w.stability : 0f);
             hash = CombineHash(hash, w ? w.BulletSpeed : 0f);
             hash = CombineHash(hash, w ? w.maxMagazine : 0);
+            hash = CombineHash(hash, w ? w.maxReserveAmmo : 0);
+            hash = CombineHash(hash, w != null && w.infiniteReserveAmmo ? 1 : 0);
 
             for (int i = 0; i < _modifierProviders.Count; i++)
             {
@@ -461,7 +481,7 @@ public class StatsHub : MonoBehaviour
                 hash = CombineHash(hash, (int)modifier.StatType);
                 hash = CombineHash(hash, (int)modifier.Operation);
                 hash = CombineHash(hash, modifier.Value);
-                hash = CombineHash(hash, modifier.SourceId);
+                hash = CombineHash(hash, modifier.ModifierKey);
             }
 
             return hash;
@@ -607,7 +627,10 @@ public class StatsHub : MonoBehaviour
     float GetStabilityInternal(GunConfig w)
     {
         EnsureCacheFresh(GetCurrentWeapon());
-        return Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.Stability, w ? w.stability : 0f));
+        return Mathf.Clamp(
+            ApplyStatusModifiers(_modifierBuffer, StatType.Stability, w ? w.stability : 0f),
+            MIN_STABILITY_PERCENT,
+            MAX_STABILITY_PERCENT);
     }
 
     float GetBulletSpeedInternal(GunConfig w)
@@ -622,6 +645,17 @@ public class StatsHub : MonoBehaviour
         return Mathf.Max(0, Mathf.RoundToInt(ApplyStatusModifiers(_modifierBuffer, StatType.MaxMagazine, w ? w.maxMagazine : 0f)));
     }
 
+    int GetMaxReserveAmmoInternal(GunConfig w)
+    {
+        if (!w || w.infiniteReserveAmmo)
+            return 0;
+
+        EnsureCacheFresh(GetCurrentWeapon());
+        int maxMagazine = GetMaxMagazine(w);
+        int baseValue = WeaponInstanceFactory.ResolveMaxReserveAmmo(w, maxMagazine);
+        return Mathf.Max(0, Mathf.RoundToInt(ApplyStatusModifiers(_modifierBuffer, StatType.MaxReserveAmmo, baseValue)));
+    }
+
     public GunConfig CurrentWeapon => GetCurrentWeapon();
 
     public float Damage => GetDamage(CurrentWeapon);
@@ -632,6 +666,7 @@ public class StatsHub : MonoBehaviour
     public float Stability => GetStability(CurrentWeapon);
     public float BulletSpeed => GetBulletSpeed(CurrentWeapon);
     public int MaxMagazine => GetMaxMagazine(CurrentWeapon);
+    public int MaxReserveAmmo => GetMaxReserveAmmo(CurrentWeapon);
     public float ReloadTime => GetReloadTime(CurrentWeapon);
 
     public float GetFireInterval(GunConfig w)
@@ -730,6 +765,18 @@ public class StatsHub : MonoBehaviour
         return GetMaxMagazineInternal(w);
     }
 
+    public int GetMaxReserveAmmo(GunConfig w)
+    {
+        GunConfig current = GetCurrentWeapon();
+        if (w == current)
+        {
+            EnsureCacheFresh(current);
+            return _cachedMaxReserveAmmo;
+        }
+
+        return GetMaxReserveAmmoInternal(w);
+    }
+
     public float GetMaximumHealth()
     {
         EnsureCacheFresh(GetCurrentWeapon());
@@ -752,6 +799,12 @@ public class StatsHub : MonoBehaviour
     {
         EnsureCacheFresh(GetCurrentWeapon());
         return _cachedMaxStamina;
+    }
+
+    public float GetStaminaRegenerationRate(float baseRate)
+    {
+        EnsureCacheFresh(GetCurrentWeapon());
+        return Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.StaminaRegenRate, Mathf.Max(0f, baseRate)));
     }
 
     public float GetMaximumEnergy()

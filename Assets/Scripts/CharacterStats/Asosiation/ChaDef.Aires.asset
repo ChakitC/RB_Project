@@ -19,7 +19,7 @@ MonoBehaviour:
   CharacterPrefabBasement: {fileID: 4578862238211764230, guid: 56ba8f587cb37a94d8d4b223e45cf8cf, type: 3}
   characterAvatar: {fileID: 9000000, guid: 411cad361d9bf2c45b315ee7ff2425f0, type: 3}
   controller: {fileID: 9100000, guid: fc3e6424aee06f4498f1cedcc3b293ac, type: 2}
-  animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
+  animProfile: {fileID: 11400000, guid: a616c757aab22224faaf2ff69aa02880, type: 2}
   weaponHandMode: 0
   combatRole: 0
   chainAttackSkill: {fileID: 0}

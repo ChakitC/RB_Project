@@ -68,10 +68,29 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour
         }
 
         RestoreAppliedOffsets();
-        int appliedProfileCount = ApplyProfiles(basePoseWeights, upperAction, actionWeight);
-        SetDebugState(appliedProfileCount > 0
-            ? $"Applying {appliedProfileCount} profile(s) for {upperAction}, action weight {actionWeight:0.###}."
-            : $"No profiles for blended {upperAction} poses.");
+        int appliedProfileCount = ApplyProfiles(
+            basePoseWeights,
+            upperAction,
+            actionWeight,
+            out int appliedBoneCount,
+            out int missingBoneCount,
+            out string firstMissingBonePath);
+
+        if (appliedBoneCount > 0)
+        {
+            string missingSuffix = missingBoneCount > 0
+                ? $" Missing {missingBoneCount} bone path(s), first: {firstMissingBonePath}."
+                : string.Empty;
+            SetDebugState($"Applying {appliedProfileCount} profile(s), {appliedBoneCount} bone(s) for {upperAction}, action weight {actionWeight:0.###}.{missingSuffix}");
+        }
+        else if (appliedProfileCount > 0 && missingBoneCount > 0)
+        {
+            SetDebugState($"Profile(s) matched for {upperAction}, but no bones resolved. Missing {missingBoneCount} path(s), first: {firstMissingBonePath}");
+        }
+        else
+        {
+            SetDebugState($"No profiles for blended {upperAction} poses.");
+        }
     }
 
     private void OnDisable()
@@ -138,9 +157,16 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour
     private int ApplyProfiles(
         IReadOnlyList<PairOffsetBasePoseWeight> poseWeights,
         PairOffsetUpperAction upperAction,
-        float actionWeight)
+        float actionWeight,
+        out int appliedBoneCount,
+        out int missingBoneCount,
+        out string firstMissingBonePath)
     {
         int appliedProfileCount = 0;
+        appliedBoneCount = 0;
+        missingBoneCount = 0;
+        firstMissingBonePath = null;
+
         if (poseWeights == null)
             return appliedProfileCount;
 
@@ -155,18 +181,36 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour
             if (profile == null)
                 continue;
 
-            ApplyProfile(profile, actionWeight * Mathf.Clamp01(poseWeight.Weight));
+            int profileAppliedBoneCount = ApplyProfile(
+                profile,
+                actionWeight * Mathf.Clamp01(poseWeight.Weight),
+                out int profileMissingBoneCount,
+                out string profileFirstMissingBonePath);
+
+            appliedBoneCount += profileAppliedBoneCount;
+            missingBoneCount += profileMissingBoneCount;
+            if (firstMissingBonePath == null && profileFirstMissingBonePath != null)
+                firstMissingBonePath = profileFirstMissingBonePath;
+
             appliedProfileCount++;
         }
 
         return appliedProfileCount;
     }
 
-    private void ApplyProfile(PairOffsetProfilesSO.PairOffsetProfile profile, float actionWeight)
+    private int ApplyProfile(
+        PairOffsetProfilesSO.PairOffsetProfile profile,
+        float actionWeight,
+        out int missingBoneCount,
+        out string firstMissingBonePath)
     {
+        int appliedBoneCount = 0;
+        missingBoneCount = 0;
+        firstMissingBonePath = null;
+
         IReadOnlyList<PairOffsetProfilesSO.BoneRotationOffset> offsets = profile.BoneOffsets;
         if (offsets == null || offsets.Count == 0)
-            return;
+            return appliedBoneCount;
 
         Transform root = animator != null ? animator.transform : transform;
         for (int i = 0; i < offsets.Count; i++)
@@ -178,7 +222,9 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour
             Transform bone = ResolveBone(root, offset.BonePath);
             if (bone == null)
             {
-                SetDebugState($"Bone path not found under {root.name}: {offset.BonePath}");
+                missingBoneCount++;
+                if (firstMissingBonePath == null)
+                    firstMissingBonePath = $"{root.name}: {offset.BonePath}";
                 continue;
             }
 
@@ -193,7 +239,10 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour
                 offsetRotation = Quaternion.Slerp(Quaternion.identity, offsetRotation, weight);
 
             bone.localRotation *= offsetRotation;
+            appliedBoneCount++;
         }
+
+        return appliedBoneCount;
     }
 
     private Transform ResolveBone(Transform root, string path)

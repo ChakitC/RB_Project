@@ -101,7 +101,7 @@ public class WeaponUpgradeRuntimeController : MonoBehaviour, IStatModifierProvid
         if (instance == null || !weapon || curve == null)
             return;
 
-        curve.AppendStatModifiers(buffer, weapon, instance, BuildSourceId(instance.instanceId));
+        curve.AppendStatModifiers(buffer, weapon, instance, BuildModifierKey(instance.instanceId));
     }
 
     public void HandleShotFired()
@@ -245,7 +245,7 @@ public class WeaponUpgradeRuntimeController : MonoBehaviour, IStatModifierProvid
             return existing;
 
         var statusEffect = ScriptableObject.CreateInstance<StatusEffectDef>();
-        statusEffect.effectId = $"{BuildSourceId(instanceId)}:{milestoneId}:{effectId}:reload-buff";
+        statusEffect.effectId = $"{BuildModifierKey(instanceId)}:{milestoneId}:{effectId}:reload-buff";
         statusEffect.category = StatusEffectCategory.Buff;
         statusEffect.duration = Mathf.Max(0f, effect.buffDurationSeconds);
         statusEffect.maxStacks = 1;
@@ -288,7 +288,7 @@ public class WeaponUpgradeRuntimeController : MonoBehaviour, IStatModifierProvid
         return $"{resolvedInstanceId}:{resolvedMilestoneId}:{effectId}";
     }
 
-    static string BuildSourceId(string instanceId)
+    static string BuildModifierKey(string instanceId)
     {
         return string.IsNullOrWhiteSpace(instanceId)
             ? "weapon-upgrade:unknown"

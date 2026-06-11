@@ -5,9 +5,12 @@ using UnityEngine;
 public class InventorySystem
 {
     readonly List<InventorySlotData> slots;
+    int configuredSlotCount;
 
     public Func<int, InventorySlotData, bool> PlacementValidator { get; set; }
     public IReadOnlyList<InventorySlotData> Slots => slots;
+    public int ConfiguredSlotCount => configuredSlotCount;
+    public int Capacity => slots.Count;
 
     public event Action<int> OnSlotChanged;
     public event Action OnInventoryReset;
@@ -15,7 +18,21 @@ public class InventorySystem
     public InventorySystem(List<InventorySlotData> backingSlots, int slotCount)
     {
         slots = backingSlots ?? new List<InventorySlotData>();
-        EnsureSlotCount(slotCount);
+        SetConfiguredSlotCount(slotCount);
+    }
+
+    public void SetConfiguredSlotCount(int slotCount)
+    {
+        int resolvedSlotCount = Mathf.Max(0, slotCount);
+        int previousCount = slots.Count;
+
+        configuredSlotCount = resolvedSlotCount;
+        EnsureSlotCount(configuredSlotCount);
+
+        bool changed = slots.Count != previousCount;
+        changed |= NormalizeConfiguredSlotCountInternal();
+        if (changed)
+            NotifyInventoryReset();
     }
 
     public void EnsureSlotCount(int slotCount)
@@ -30,11 +47,21 @@ public class InventorySystem
             EnsureSlotObject(i);
     }
 
+    public bool NormalizeConfiguredSlotCount(bool notifyReset = true)
+    {
+        bool changed = NormalizeConfiguredSlotCountInternal();
+        if (changed && notifyReset)
+            NotifyInventoryReset();
+
+        return changed;
+    }
+
     public void ClearAll()
     {
         for (int i = 0; i < slots.Count; i++)
             EnsureSlotObject(i).Clear();
 
+        NormalizeConfiguredSlotCount(notifyReset: false);
         NotifyInventoryReset();
     }
 
@@ -103,6 +130,7 @@ public class InventorySystem
             NotifySlotChanged(emptyIndex);
         }
 
+        NormalizeConfiguredSlotCount();
         return true;
     }
 
@@ -238,9 +266,13 @@ public class InventorySystem
             NotifySlotChanged(i);
 
             if (amount <= 0)
+            {
+                NormalizeConfiguredSlotCount();
                 return true;
+            }
         }
 
+        NormalizeConfiguredSlotCount();
         return true;
     }
 
@@ -263,6 +295,7 @@ public class InventorySystem
             target.CopyFrom(source);
             source.Clear();
             NotifySlotsChanged(fromIndex, toIndex);
+            NormalizeConfiguredSlotCount();
             return true;
         }
 
@@ -276,6 +309,7 @@ public class InventorySystem
         source.CopyFrom(target);
         target.CopyFrom(sourceCopy);
         NotifySlotsChanged(fromIndex, toIndex);
+        NormalizeConfiguredSlotCount();
         return true;
     }
 
@@ -302,6 +336,7 @@ public class InventorySystem
             source.Clear();
 
         NotifySlotsChanged(fromIndex, toIndex);
+        NormalizeConfiguredSlotCount();
         return true;
     }
 
@@ -384,6 +419,55 @@ public class InventorySystem
 
         if (secondIndex != firstIndex)
             NotifySlotChanged(secondIndex);
+    }
+
+    bool NormalizeConfiguredSlotCountInternal()
+    {
+        EnsureSlotCount(configuredSlotCount);
+
+        bool changed = MoveOverflowIntoConfiguredSlots();
+        int previousCount = slots.Count;
+
+        while (slots.Count > configuredSlotCount && slots[slots.Count - 1].IsEmpty)
+            slots.RemoveAt(slots.Count - 1);
+
+        return changed || slots.Count != previousCount;
+    }
+
+    bool MoveOverflowIntoConfiguredSlots()
+    {
+        if (slots.Count <= configuredSlotCount)
+            return false;
+
+        bool changed = false;
+        for (int readIndex = configuredSlotCount; readIndex < slots.Count; readIndex++)
+        {
+            InventorySlotData source = slots[readIndex];
+            if (source.IsEmpty)
+                continue;
+
+            int targetIndex = FindCompatibleEmptySlotIndex(readIndex, source);
+            if (targetIndex < 0)
+                continue;
+
+            slots[targetIndex].CopyFrom(source);
+            source.Clear();
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    int FindCompatibleEmptySlotIndex(int endExclusive, InventorySlotData source)
+    {
+        int end = Mathf.Min(endExclusive, slots.Count);
+        for (int i = 0; i < end; i++)
+        {
+            if (slots[i].IsEmpty && CanPlaceItem(i, source))
+                return i;
+        }
+
+        return -1;
     }
 
     bool CanAddStackableItem(ItemDefinition item, int amount)

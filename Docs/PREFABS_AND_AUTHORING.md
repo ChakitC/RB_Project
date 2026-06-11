@@ -177,6 +177,15 @@ the active Animator root.
 `ShootPulse` is forwarded from weapon shot events only for semi-auto firing
 mode. Auto and burst weapons should author held-fire behavior through
 `ShootHold`/hold loop clips instead of relying on pulse restarts per projectile.
+When the action layer is inactive, the first upper-body action plays its state
+immediately and fades the action layer in over locomotion. Cross-fades inside
+the action layer are reserved for transitions from an already visible action
+pose, such as `ShootPulse` into `ShootHold` or reload.
+
+`CharacterAnimProfileSO.reloadBodyMode` also controls movement during reload.
+`UpperBody` keeps locomotion available. `FullBody` blocks normal movement for
+the reload duration, but Dash remains available and cancels the active reload
+before starting.
 
 ## Context-Owned References
 
@@ -211,6 +220,10 @@ Player prefabs commonly need:
 - stats, health, stamina, dash, passive, and skill systems
 
 Player-only systems may depend on `PlayerContext`.
+
+Do not author inventory capacity on player or scene prefabs. The shared value is
+configured in `Assets\Resources\GameSettings\InventorySettings.asset`; prefab
+instances only own inventory runtime data and component references.
 
 ## Ally Prefab Expectations
 
@@ -252,6 +265,11 @@ Weapon data should preserve:
 - ammo limits
 - crit, stability, bullet speed, stagger, and cue data
 - affix and upgrade compatibility
+
+Author weapon `Stability` as a percentage from `0` to `100`. `0%` keeps full
+sway and `100%` removes sway. For passives, accessories, affixes, status
+effects, and upgrades, a `Flat` Stability modifier is authored as percentage
+points: a value of `10` changes `30%` Stability to `40%`.
 
 `WeaponSystem` is responsible for copying relevant weapon data into public
 runtime mirrors and refreshing derived stats.

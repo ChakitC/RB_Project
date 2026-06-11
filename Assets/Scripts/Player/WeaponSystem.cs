@@ -38,6 +38,7 @@ public class WeaponSystem : MonoBehaviour
     public float critRate = 0f;
     public float critMultiplier = 1f;
     public bool magazineRelode = false;
+    [InspectorName("Stability (%)")]
     public float stability = 0f;
     public bool autoloader;
     public float bulletSpeed = 20f;
@@ -396,7 +397,11 @@ public class WeaponSystem : MonoBehaviour
         (currentWeapon ? currentWeapon.maxMagazine : 0);
 
     int MaxReserveAmmo =>
-        HasInfiniteReserveAmmo ? 0 : WeaponInstanceFactory.ResolveMaxReserveAmmo(currentWeapon, MaxMagazine);
+        HasInfiniteReserveAmmo
+            ? 0
+            : statsHub
+                ? statsHub.GetMaxReserveAmmo(currentWeapon)
+                : WeaponInstanceFactory.ResolveMaxReserveAmmo(currentWeapon, MaxMagazine);
 
     public float GetReloadAnimDuration()
     {
@@ -442,12 +447,12 @@ public class WeaponSystem : MonoBehaviour
         ammoState.RefreshLimits(maxMagazine, maxReserveAmmo, infiniteReserveAmmo, clampMagazine: false, resetInfiniteReserve: false);
         SyncAmmoMirrorsFromState();
 
-        float k = 0.1f;
-        float stabilityFactor = 1f / (1f + stability * k);
+        float stability01 = Mathf.Clamp01(stability * 0.01f);
+        float swayMultiplier = 1f - stability01;
 
-        swaySpeed = baseSwaySpeed * stabilityFactor;
-        maxSwayAngle = baseMaxSwayAngle * stabilityFactor;
-        returnSpeed = baseReturnSpeed * (1f + stability * k);
+        swaySpeed = baseSwaySpeed * swayMultiplier;
+        maxSwayAngle = baseMaxSwayAngle * swayMultiplier;
+        returnSpeed = baseReturnSpeed * (1f + stability01);
         derivedStatsDirty = false;
         derivedStatsWeapon = currentWeapon;
         observedStatsHubRevision = ResolveStatsHubRevision();

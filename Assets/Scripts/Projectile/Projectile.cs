@@ -202,7 +202,7 @@ public class Projectile : MonoBehaviour
                 speed  = (def != null) ? def.projectileSpeed : 20f,
                 staggerPower = (skillStats != null) ? skillStats.staggerPower : 0f
             },
-            sourceId = def != null ? $"skill:{def.name}" : "skill",
+            damageSourceId = def != null ? $"skill:{def.name}" : "skill",
             chainId = CombatEventBus.NextChainId(),
             origin = PassiveEventOrigin.External,
             projectilePrefab = prefabProjectileForChildren != null ? prefabProjectileForChildren : this
@@ -777,7 +777,7 @@ public class Projectile : MonoBehaviour
         var damageContext = new DamageContext(
             finalDamage,
             attackerGO,
-            _ctx.sourceId,
+            _ctx.damageSourceId,
             _ctx.attackId,
             _ctx.chainId == 0 ? CombatEventBus.NextChainId() : _ctx.chainId,
             _ctx.depth + 1,
@@ -793,9 +793,9 @@ public class Projectile : MonoBehaviour
     StaggerPayload BuildStaggerPayload()
     {
         if (config != null)
-            return config.ToStaggerPayload(_ctx.stats.staggerPower, _ctx.sourceId);
+            return config.ToStaggerPayload(_ctx.stats.staggerPower, _ctx.damageSourceId);
 
-        return new StaggerPayload(_ctx.stats.staggerPower, 1f, _ctx.sourceId);
+        return new StaggerPayload(_ctx.stats.staggerPower, 1f, _ctx.damageSourceId);
     }
 
     public void ApplyResolvedDamage(IDamageable target, float finalDamage, in ProjectileHitInfo hit, bool showDamageNumber = false)
@@ -845,7 +845,7 @@ public class Projectile : MonoBehaviour
                 sourceObject,
                 sourceObject,
                 targetObject,
-                _ctx.sourceId,
+                _ctx.damageSourceId,
                 _ctx.attackId,
                 value,
                 Time.timeAsDouble,
@@ -860,7 +860,7 @@ public class Projectile : MonoBehaviour
                 type,
                 sourceObject,
                 targetObject,
-                _ctx.sourceId,
+                _ctx.damageSourceId,
                 _ctx.attackId,
                 value,
                 _ctx.origin,
@@ -872,7 +872,7 @@ public class Projectile : MonoBehaviour
             type,
             sourceObject,
             targetObject,
-            _ctx.sourceId,
+            _ctx.damageSourceId,
             _ctx.attackId,
             value,
             _ctx.origin,

@@ -19,3 +19,33 @@ MonoBehaviour:
     accessoryTable: {fileID: 0}
     amount: 1
     weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: de33336735f94ec78c790227d896cc97, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: e02158f665af45cb83f5ba211cc006ca, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: 8e8e71f53ee74f6391d3a96820a02fdc, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: 8f4061b0e6af47e796b48b914707db21, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: 65b8b2d6eb324e758c7030f151220ffd, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1

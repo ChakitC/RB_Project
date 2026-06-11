@@ -1,0 +1,395 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!319 &31900000
+AvatarMask:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Aires Upper Body
+  m_Mask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+  m_Elements:
+  - m_Path: 
+    m_Weight: 1
+  - m_Path: Aires_Body
+    m_Weight: 0
+  - m_Path: Aires_Emotion
+    m_Weight: 0
+  - m_Path: Aires_Face
+    m_Weight: 0
+  - m_Path: Aires_Hair
+    m_Weight: 0
+  - m_Path: root
+    m_Weight: 0
+  - m_Path: root/c_traj
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x/Bag.002
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x/spine_01.x
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.l/Bag.003
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.l/c_kilt_01_02.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.l/c_kilt_01_02.l/c_kilt_01_03.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.l/c_kilt_01_02.l/c_kilt_01_03.l/Bag.004
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.r/c_kilt_01_02.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_01_01.r/c_kilt_01_02.r/c_kilt_01_03.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.l/Bag.005
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.l/c_kilt_02_02.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.l/c_kilt_02_02.l/c_kilt_02_03.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.l/c_kilt_02_02.l/c_kilt_02_03.l/Bag.006
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.r/Bag.001
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.r/c_kilt_02_02.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_02_01.r/c_kilt_02_02.r/c_kilt_02_03.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_03_01.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_03_01.l/c_kilt_03_02.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_03_01.l/c_kilt_03_02.l/c_kilt_03_03.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_03_01.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_03_01.r/c_kilt_03_02.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_03_01.r/c_kilt_03_02.r/c_kilt_03_03.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.l/Bag.008
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.l/c_kilt_04_02.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.l/c_kilt_04_02.l/c_kilt_04_03.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.l/c_kilt_04_02.l/c_kilt_04_03.l/Bag.007
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.r/c_kilt_04_02.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_04_01.r/c_kilt_04_02.r/c_kilt_04_03.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.l/Bag.009
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.l/c_kilt_05_02.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.l/c_kilt_05_02.l/c_kilt_05_03.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.l/c_kilt_05_02.l/c_kilt_05_03.l/Bag.010
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.r/c_kilt_05_02.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_05_01.r/c_kilt_05_02.r/c_kilt_05_03.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_06_01.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_06_01.l/c_kilt_06_02.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_06_01.l/c_kilt_06_02.l/c_kilt_06_03.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_06_01.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_06_01.r/c_kilt_06_02.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/c_kilt_master.x/c_kilt_06_01.r/c_kilt_06_02.r/c_kilt_06_03.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/ribbon.x
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/ribbon.x/Ribbon.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/ribbon.x/Ribbon.L/Ribbon.001.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/ribbon.x/Ribbon.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/ribbon.x/Ribbon.R/Ribbon.001.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.003.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.003.L/Aires.Hair.004.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.003.L/Aires.Hair.004.L/Aires.Hair.005.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.003.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.003.R/Aires.Hair.004.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.003.R/Aires.Hair.004.R/Aires.Hair.005.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.006.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.006.L/Aires.Hair.007.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.006.L/Aires.Hair.007.L/Aires.Hair.008.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.006.L/Aires.Hair.007.L/Aires.Hair.008.L/Aires.Hair.009.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.006.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.006.R/Aires.Hair.007.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.006.R/Aires.Hair.007.R/Aires.Hair.008.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.006.R/Aires.Hair.007.R/Aires.Hair.008.R/Aires.Hair.009.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.010
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.010/Aires.Hair.011
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.010/Aires.Hair.011/Aires.Hair.012
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.013
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.013/Aires.Hair.014
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.013/Aires.Hair.014/Aires.Hair.015
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.016.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.016.L/Aires.Hair.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.016.L/Aires.Hair.L/Aires.Hair.001.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.016.L/Aires.Hair.L/Aires.Hair.001.L/Aires.Hair.002.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.016.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.016.R/Aires.Hair.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.016.R/Aires.Hair.R/Aires.Hair.001.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.016.R/Aires.Hair.R/Aires.Hair.001.R/Aires.Hair.002.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.017.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.017.L/Aires.Hair.018.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.017.L/Aires.Hair.018.L/Aires.Hair.019.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.017.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.017.R/Aires.Hair.018.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.017.R/Aires.Hair.018.R/Aires.Hair.019.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.020.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.020.L/Aires.Hair.021.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.020.L/Aires.Hair.021.L/Aires.Hair.022.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.020.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.020.R/Aires.Hair.021.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.020.R/Aires.Hair.021.R/Aires.Hair.022.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.023.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.023.L/Aires.Hair.024.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.023.L/Aires.Hair.024.L/Aires.Hair.025.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.023.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.023.R/Aires.Hair.024.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Aires.Hair.023.R/Aires.Hair.024.R/Aires.Hair.025.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Ear.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Ear.L/Ear.002.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Ear.L/Ear.002.L/Ear.001.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Ear.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Ear.R/Ear.002.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Ear.R/Ear.002.R/Ear.001.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/neck.x/head.x/Hat
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/arm_twist.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/arm_twist_2.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/arm_twist_3.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/forearm_twist.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/forearm_twist_2.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/forearm_twist_3.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/index1_base.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/index1_base.l/index1.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/index1_base.l/index1.l/index2.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/index1_base.l/index1.l/index2.l/index3.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/middle1_base.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/middle1_base.l/middle1.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/middle1_base.l/middle1.l/middle2.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/middle1_base.l/middle1.l/middle2.l/middle3.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/pinky1_base.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/pinky1_base.l/pinky1.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/pinky1_base.l/pinky1.l/pinky2.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/pinky1_base.l/pinky1.l/pinky2.l/pinky3.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/ring1_base.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/ring1_base.l/ring1.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/ring1_base.l/ring1.l/ring2.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/ring1_base.l/ring1.l/ring2.l/ring3.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/thumb1.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/thumb1.l/thumb2.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/thumb1.l/thumb2.l/thumb3.l
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/Weapon.L
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/Weapon.L/Weapon.L.001
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.l/arm_stretch.l/forearm_stretch.l/hand.l/Weapon.L/Weapon.L.002
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/arm_twist.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/arm_twist_2.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/arm_twist_3.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/forearm_twist.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/forearm_twist_2.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/forearm_twist_3.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/index1_base.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/index1_base.r/index1.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/index1_base.r/index1.r/index2.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/index1_base.r/index1.r/index2.r/index3.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/middle1_base.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/middle1_base.r/middle1.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/middle1_base.r/middle1.r/middle2.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/middle1_base.r/middle1.r/middle2.r/middle3.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/pinky1_base.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/pinky1_base.r/pinky1.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/pinky1_base.r/pinky1.r/pinky2.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/pinky1_base.r/pinky1.r/pinky2.r/pinky3.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/ring1_base.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/ring1_base.r/ring1.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/ring1_base.r/ring1.r/ring2.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/ring1_base.r/ring1.r/ring2.r/ring3.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/thumb1.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/thumb1.r/thumb2.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/thumb1.r/thumb2.r/thumb3.r
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r/hand.r/Weapon.R
+    m_Weight: 1
+  - m_Path: root/c_traj/root.x/thigh_stretch.l
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x/thigh_stretch.l/leg_stretch.l
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x/thigh_stretch.l/leg_stretch.l/foot.l
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x/thigh_stretch.l/leg_stretch.l/foot.l/toes_01.l
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x/thigh_stretch.l/leg_stretch.l/leg_twist.l
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x/thigh_stretch.l/thigh_twist.l
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x/thigh_stretch.r
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x/thigh_stretch.r/leg_stretch.r
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x/thigh_stretch.r/leg_stretch.r/foot.r
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x/thigh_stretch.r/leg_stretch.r/foot.r/toes_01.r
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x/thigh_stretch.r/leg_stretch.r/leg_twist.r
+    m_Weight: 0
+  - m_Path: root/c_traj/root.x/thigh_stretch.r/thigh_twist.r
+    m_Weight: 0
+  - m_Path: Umballa.001
+    m_Weight: 0

@@ -15,6 +15,8 @@ MonoBehaviour:
   pairOffsetProfiles:
   - enabled: 1
     profileName: Feno_Move_Backward + Feno_Shoot
+    basePose: 3
+    upperAction: 2
     baseClip: {fileID: -3466377131361662731, guid: 6745c372b962c434d86818756021e80f, type: 3}
     upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     weight: 1
@@ -25,6 +27,8 @@ MonoBehaviour:
       weight: 1
   - enabled: 1
     profileName: Feno_Move_Foward + Feno_Shoot
+    basePose: 2
+    upperAction: 2
     baseClip: {fileID: -3045897872586947758, guid: 36a8267c975d3e347845516dc08b6cb8, type: 3}
     upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     weight: 1
@@ -35,6 +39,8 @@ MonoBehaviour:
       weight: 1
   - enabled: 1
     profileName: Feno_Move_FowardLeftWard + Feno_Shoot
+    basePose: 6
+    upperAction: 2
     baseClip: {fileID: 6920732240284510162, guid: 904d1c8d49b34384ca2d12bd008bfda4, type: 3}
     upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     weight: 1
@@ -45,6 +51,8 @@ MonoBehaviour:
       weight: 1
   - enabled: 1
     profileName: Feno_Move_FowardRight + Feno_Shoot
+    basePose: 7
+    upperAction: 2
     baseClip: {fileID: -4519924575139466294, guid: 7dcc1064d68e82b4f8784c67b254d639, type: 3}
     upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     weight: 1
@@ -55,6 +63,8 @@ MonoBehaviour:
       weight: 1
   - enabled: 1
     profileName: Feno_Move_BackwardLeft + Feno_Shoot
+    basePose: 8
+    upperAction: 2
     baseClip: {fileID: 8674496477672625794, guid: 6adbd18bea0de6044a4854c8eb958fe6, type: 3}
     upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     weight: 1
@@ -65,6 +75,8 @@ MonoBehaviour:
       weight: 1
   - enabled: 1
     profileName: Feno_Move_BackwardRight + Feno_Shoot
+    basePose: 9
+    upperAction: 2
     baseClip: {fileID: -1644124186931358686, guid: 17bd1a8d41faaf840ae58d455021039f, type: 3}
     upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     weight: 1
@@ -75,6 +87,8 @@ MonoBehaviour:
       weight: 1
   - enabled: 1
     profileName: Feno_Move_LeftWard + Feno_Shoot
+    basePose: 4
+    upperAction: 2
     baseClip: {fileID: -5866403235549782745, guid: 38e87c7d80756bc46ae2e7b09802f992, type: 3}
     upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     weight: 1
@@ -85,6 +99,8 @@ MonoBehaviour:
       weight: 1
   - enabled: 1
     profileName: Feno_Move_RightWard + Feno_Shoot
+    basePose: 5
+    upperAction: 2
     baseClip: {fileID: 3879186716961495795, guid: 25b5a22e7f002eb4e9ca22e15226f62f, type: 3}
     upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     weight: 1

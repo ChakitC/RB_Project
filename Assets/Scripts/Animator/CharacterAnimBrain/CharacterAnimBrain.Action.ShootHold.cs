@@ -22,16 +22,7 @@ public sealed partial class CharacterAnimBrain
         
         public override void OnEnterState()
         {
-            owner.ActLayer.StartFade(1f, owner.ActionFadeIn);
-            owner.SetActivePairUpperAction(PairOffsetUpperAction.ShootHold);
-
-            if (owner.ShootHoldLoopClip != null)
-                state = owner.ActLayer.Play(owner.ShootHoldLoopClip);
-          
-            else
-                state = null;
-            
-           
+            state = owner.PlayActionTransition(owner.ShootHoldLoopClip, PairOffsetUpperAction.ShootHold);
         }
 
         public override void Update()

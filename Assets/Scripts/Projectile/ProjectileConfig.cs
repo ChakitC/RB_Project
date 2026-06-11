@@ -35,10 +35,10 @@ public class ProjectileConfig : ScriptableObject
             knockbackInterruptsActions);
     }
 
-    public StaggerPayload ToStaggerPayload(float baseStaggerPower, string sourceId)
+    public StaggerPayload ToStaggerPayload(float baseStaggerPower, string staggerSourceId)
     {
         float basePower = overrideStaggerPower ? staggerPower : baseStaggerPower;
         float resolvedPower = basePower * Mathf.Max(0f, staggerPowerMultiplier) + Mathf.Max(0f, bonusStaggerPower);
-        return new StaggerPayload(resolvedPower, 1f, sourceId);
+        return new StaggerPayload(resolvedPower, 1f, staggerSourceId);
     }
 }

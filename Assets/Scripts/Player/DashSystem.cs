@@ -260,7 +260,7 @@ public class DashSystem : MonoBehaviour
             PassiveEventType.PerfectDodge,
             preventedContext.Source,
             ResolveActorGameObject(),
-            preventedContext.SourceId,
+            preventedContext.EventSourceId,
             preventedContext.AttackId,
             preventedContext.Value,
             preventedContext.Origin,

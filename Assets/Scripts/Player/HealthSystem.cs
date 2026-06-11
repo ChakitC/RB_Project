@@ -366,7 +366,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
                     actorObject,
                     attacker,
                     actorObject,
-                    damageContext.SourceId,
+                    damageContext.DamageSourceId,
                     damageContext.AttackId,
                     value,
                     Time.timeAsDouble,
@@ -381,7 +381,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
                     eventType,
                     attacker,
                     actorObject,
-                    damageContext.SourceId,
+                    damageContext.DamageSourceId,
                     damageContext.AttackId,
                     value,
                     damageContext.Origin,
@@ -396,7 +396,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
                 eventType,
                 attacker,
                 actorObject,
-                damageContext.SourceId,
+                damageContext.DamageSourceId,
                 damageContext.AttackId,
                 value,
                 damageContext.Origin,
@@ -407,12 +407,12 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
             return external;
         }
 
-        string fallbackSourceId = attacker != null ? $"attacker:{attacker.name}" : "damage";
+        string fallbackEventSourceId = attacker != null ? $"attacker:{attacker.name}" : "damage";
         var context = combatEventBus.CreateExternalContext(
             eventType,
             attacker,
             actorObject,
-            fallbackSourceId,
+            fallbackEventSourceId,
             null,
             value,
             PassiveEventOrigin.External);

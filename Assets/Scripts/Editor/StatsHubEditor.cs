@@ -31,6 +31,7 @@ public class StatsHubEditor : Editor
         "dbgWeaponStability",
         "dbgWeaponBulletSpeed",
         "dbgWeaponMaxMagazine",
+        "dbgWeaponMaxReserveAmmo",
         "dbgFinalDamage",
         "dbgFinalArmor",
         "dbgFinalMoveSpeed",
@@ -42,8 +43,10 @@ public class StatsHubEditor : Editor
         "dbgFinalStability",
         "dbgFinalBulletSpeed",
         "dbgFinalMaxMagazine",
+        "dbgFinalMaxReserveAmmo",
         "dbgFinalMaxHP",
         "dbgFinalMaxStamina",
+        "dbgFinalStaminaRegen",
         "dbgFinalMaxEnergy"
     };
 

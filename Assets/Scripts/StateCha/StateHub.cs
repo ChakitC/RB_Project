@@ -94,6 +94,17 @@ public sealed class StateHub : MonoBehaviour
         return animBrain != null && animBrain.IsSkillPlaybackActive;
     }
 
+    bool IsFullBodyReloadMovementBlocked()
+    {
+        if (ctx == null || ctx.baseStats == null || ctx.baseStats.animProfile == null)
+            return false;
+
+        WeaponSystem weaponSystem = ResolveWeaponSystem();
+        return weaponSystem != null &&
+               weaponSystem.IsReloading &&
+               ctx.baseStats.animProfile.reloadBodyMode == CharacterAnimProfileSO.ReloadBodyMode.FullBody;
+    }
+
     void Awake()
     {
         ResolveReferences();
@@ -313,6 +324,18 @@ public sealed class StateHub : MonoBehaviour
     public bool CanMove() =>
         (IsAlive || Isdown) &&
         !IsMoveBlockedByStatusEffects &&
+        !IsFullBodyReloadMovementBlocked() &&
+        UISM.CurrentId != UIStateId.Inventory &&
+        UISM.CurrentId != UIStateId.Pause &&
+        WeaponSM.CurrentId != WeaponStateId.Melee &&
+        MoveSM.CurrentId != MoveStateId.Dash &&
+        MoveSM.CurrentId != MoveStateId.Knockback &&
+        MoveSM.CurrentId != MoveStateId.Stunned;
+
+    public bool CanDash() =>
+        IsAlive &&
+        !Isdown &&
+        !IsMoveBlockedByStatusEffects &&
         UISM.CurrentId != UIStateId.Inventory &&
         UISM.CurrentId != UIStateId.Pause &&
         WeaponSM.CurrentId != WeaponStateId.Melee &&
@@ -526,7 +549,7 @@ public sealed class StateHub : MonoBehaviour
         if (ctx == null || ctx.stateHub == null || ctx.WeaponSystem == null || ctx.DashSystem == null)
             return;
 
-        if (!ctx.stateHub.CanMove()) return;
+        if (!ctx.stateHub.CanDash()) return;
 
         ctx.WeaponSystem.SetFiring(false);
         ctx.stateHub.SetFireHeld(false);

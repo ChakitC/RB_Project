@@ -50,7 +50,7 @@ public struct ProjectileContext
     public Vector3 dir;
     public ProjectileStats stats;
     public AudioCue hitCue;
-    public string sourceId;
+    public string damageSourceId;
     public string attackId;
     public ulong chainId;
     public int depth;

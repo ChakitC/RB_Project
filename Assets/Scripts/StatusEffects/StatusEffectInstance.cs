@@ -10,7 +10,7 @@ public sealed class StatusEffectInstance
         GameObject source,
         int initialStacks,
         float now,
-        string sourceId,
+        string appliedById,
         ulong chainId,
         int depth,
         PassiveEventOrigin origin,
@@ -19,7 +19,7 @@ public sealed class StatusEffectInstance
     {
         Definition = definition;
         Source = source;
-        SourceId = sourceId;
+        AppliedById = appliedById;
         ChainId = chainId;
         Depth = Mathf.Max(0, depth);
         Origin = origin;
@@ -38,7 +38,7 @@ public sealed class StatusEffectInstance
 
     public StatusEffectDef Definition { get; }
     public GameObject Source { get; private set; }
-    public string SourceId { get; private set; }
+    public string AppliedById { get; private set; }
     public ulong ChainId { get; private set; }
     public int Depth { get; private set; }
     public PassiveEventOrigin Origin { get; private set; }
@@ -56,15 +56,15 @@ public sealed class StatusEffectInstance
     }
 
     public void UpdateContext(
-        string sourceId,
+        string appliedById,
         ulong chainId,
         int depth,
         PassiveEventOrigin origin,
         string originPassiveId,
         string originRuleId)
     {
-        if (!string.IsNullOrWhiteSpace(sourceId))
-            SourceId = sourceId;
+        if (!string.IsNullOrWhiteSpace(appliedById))
+            AppliedById = appliedById;
 
         if (chainId != 0)
             ChainId = chainId;

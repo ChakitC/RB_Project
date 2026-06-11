@@ -477,6 +477,17 @@ public class InventorySlotTooltipUI : MonoBehaviour
         if (modifier == null)
             return string.Empty;
 
+        if (modifier.statType == StatType.Stability)
+        {
+            return modifier.operation switch
+            {
+                ModifierOp.Flat => $"{FormatSignedNumber(modifier.value)}% Weapon Stability",
+                ModifierOp.AddPercent => $"{FormatSignedNumber(modifier.value)}% increased Weapon Stability",
+                ModifierOp.Multiply => $"x{FormatNumber(modifier.value)} Weapon Stability",
+                _ => $"{FormatSignedNumber(modifier.value)}% Weapon Stability"
+            };
+        }
+
         string statName = MakeReadable(modifier.statType.ToString());
 
         return modifier.operation switch

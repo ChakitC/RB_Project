@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: a3b6c9159ef3c9a48ba97395e90cc40d
+guid: 44c607652c22aa147ab32e1bc0379577
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -31,9 +31,9 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Sheil_Formation_Idle
-      takeName: Sheil_Formation_Idle
-      internalID: 4260180667735274378
+      name: Aires_Formation_Idle
+      takeName: Aires_Formation_Idle
+      internalID: 2577741913764275101
       firstFrame: 0
       lastFrame: 60
       wrapMode: 0

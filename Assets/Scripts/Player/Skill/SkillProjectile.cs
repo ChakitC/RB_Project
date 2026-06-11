@@ -142,11 +142,11 @@ public class SkillProjectile : MonoBehaviour
     void ApplyDamage(IDamageable damageable)
     {
         GameObject attacker = caster is Component casterComponent ? casterComponent.gameObject : null;
-        const string sourceId = "skill:legacy_projectile";
+        const string damageSourceId = "skill:legacy_projectile";
 
         if (stats == null)
         {
-            damageable.TakeDamage(0f, attacker, sourceId);
+            damageable.TakeDamage(0f, attacker, damageSourceId);
             return;
         }
 
@@ -170,8 +170,8 @@ public class SkillProjectile : MonoBehaviour
         damageable.TakeDamage(
             damage,
             attacker,
-            sourceId,
-            stagger: new StaggerPayload(stats.staggerPower, 1f, sourceId));
+            damageSourceId,
+            stagger: new StaggerPayload(stats.staggerPower, 1f, damageSourceId));
     }
 
     void DoAreaDamage()

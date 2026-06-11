@@ -1002,7 +1002,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc986635da1a1b745acc956b94d7eb6f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  slotCount: 20
   slots: []
   itemDatabase: {fileID: 11400000, guid: 75de2aa1ba9d794408c0f15d3732ddcf, type: 2}
   weaponDatabase: {fileID: 11400000, guid: 20f7356349b6343448b194bf2e9ed2c8, type: 2}
@@ -1045,6 +1044,7 @@ MonoBehaviour:
   dbgWeaponStability: 0
   dbgWeaponBulletSpeed: 0
   dbgWeaponMaxMagazine: 0
+  dbgWeaponMaxReserveAmmo: 0
   dbgFinalDamage: 0
   dbgFinalArmor: 0
   dbgFinalMoveSpeed: 0
@@ -1056,6 +1056,7 @@ MonoBehaviour:
   dbgFinalStability: 0
   dbgFinalBulletSpeed: 0
   dbgFinalMaxMagazine: 0
+  dbgFinalMaxReserveAmmo: 0
   dbgFinalMaxHP: 0
   dbgFinalMaxStamina: 0
   dbgFinalMaxEnergy: 0
@@ -1340,7 +1341,8 @@ MonoBehaviour:
   brain: {fileID: 7895287034516787951}
   animator: {fileID: 0}
   applyPairOffsets: 1
-  directionTransitionDuration: 0.08
+  showDebugState: 0
+  debugState: 
 --- !u!1 &5412059387107507624
 GameObject:
   m_ObjectHideFlags: 0

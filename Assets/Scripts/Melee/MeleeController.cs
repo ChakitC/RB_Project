@@ -18,7 +18,7 @@ public sealed class MeleeController : MonoBehaviour
     IDamageable _selfDamageable;
 
     bool _attackWindowActive;
-    string _activeSourceId;
+    string _activeDamageSourceId;
     string _activeAttackId;
     ulong _activeChainId;
 
@@ -116,9 +116,9 @@ public sealed class MeleeController : MonoBehaviour
         _attackWindowActive = true;
         _hitTargetIds.Clear();
 
-        _activeSourceId = GetMeleeSourceId();
+        _activeDamageSourceId = GetMeleeDamageSourceId();
         _activeAttackId = combatEventBus != null
-            ? combatEventBus.CreateAttackId($"{_activeSourceId}:melee")
+            ? combatEventBus.CreateAttackId($"{_activeDamageSourceId}:melee")
             : null;
         _activeChainId = combatEventBus != null ? CombatEventBus.NextChainId() : 0;
 
@@ -291,7 +291,7 @@ public sealed class MeleeController : MonoBehaviour
         var damageContext = new DamageContext(
             finalDamage,
             attacker,
-            _activeSourceId,
+            _activeDamageSourceId,
             _activeAttackId,
             _activeChainId == 0 ? CombatEventBus.NextChainId() : _activeChainId,
             0,
@@ -309,7 +309,7 @@ public sealed class MeleeController : MonoBehaviour
         if (staggerPower <= 0f && ctx != null && ctx.StatsHub != null)
             staggerPower = ctx.StatsHub.GetSkillBaseDamage() * 0.5f;
 
-        return new StaggerPayload(staggerPower, 1f, _activeSourceId);
+        return new StaggerPayload(staggerPower, 1f, _activeDamageSourceId);
     }
 
     KnockbackData BuildKnockback(Collider other)
@@ -369,7 +369,7 @@ public sealed class MeleeController : MonoBehaviour
                 sourceObject,
                 sourceObject,
                 targetObject,
-                _activeSourceId,
+                _activeDamageSourceId,
                 _activeAttackId,
                 value,
                 Time.timeAsDouble,
@@ -384,7 +384,7 @@ public sealed class MeleeController : MonoBehaviour
                 type,
                 sourceObject,
                 targetObject,
-                _activeSourceId,
+                _activeDamageSourceId,
                 _activeAttackId,
                 value,
                 PassiveEventOrigin.External);
@@ -394,7 +394,7 @@ public sealed class MeleeController : MonoBehaviour
             type,
             sourceObject,
             targetObject,
-            _activeSourceId,
+            _activeDamageSourceId,
             _activeAttackId,
             value,
             PassiveEventOrigin.External);
@@ -444,7 +444,7 @@ public sealed class MeleeController : MonoBehaviour
         return _selfDamageable;
     }
 
-    string GetMeleeSourceId()
+    string GetMeleeDamageSourceId()
     {
         if (weaponSystem != null && weaponSystem.CurrentWeaponInstance != null &&
             !string.IsNullOrWhiteSpace(weaponSystem.CurrentWeaponInstance.instanceId))

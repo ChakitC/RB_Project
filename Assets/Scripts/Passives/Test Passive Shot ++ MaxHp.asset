@@ -29,7 +29,6 @@ MonoBehaviour:
     - actionId: action
       actionType: 0
       targetSelector: 0
-      sourceIdOverride: 
       modifiers:
       - statType: 11
         operation: 0

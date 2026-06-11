@@ -71,6 +71,28 @@ Current passive action types:
 Child events carry passive origin metadata and increment event depth. Depth is
 bounded to avoid recursive passive loops.
 
+Each action type has its own optional identity override:
+
+- `modifierKeyOverride` affects only runtime modifier stacking and refresh.
+- `appliedByIdOverride` affects only status-effect application provenance.
+- `emittedEventSourceIdOverride` affects only child-event routing.
+
+Author the scoped override for the action type, or leave it empty to use
+`{passiveId}:{ruleId}:{actionId}`.
+
+## Ammo Drop On Shot
+
+`DropAmmoOnShotPassiveBehavior` listens for external `ShotFired` events and can
+spawn a configured `SkillPickup` behind the firing character. Proc chance,
+internal cooldown, collector rule, drop count, placement, and drop arc are
+authored per behavior asset, so character passives and accessory passives can
+reuse the behavior without sharing balance values.
+
+`Feno's Field Pack` uses its own behavior, pickup prefab, and pickup effect. It
+has a 6% proc chance with a 2-second internal cooldown and restores 4 magazine
+rounds to the collector and allies. Feno's character passive remains separate
+and keeps its stronger 8-round pickup.
+
 ## Core Events
 
 Core gameplay events should stay in their owning systems:
@@ -114,8 +136,8 @@ Rules configure:
 - `eventSourceFloatValue` as the distance step
 - optional `eventSourceId`; when empty, the rule generates a stable runtime id
 
-The source publishes through `CombatEventBus` and sets the event `SourceId`.
-Triggered rules match `context.SourceId` against `rule.RuntimeEventSourceId`.
+The source publishes through `CombatEventBus` and sets the event `EventSourceId`.
+Triggered rules match `context.EventSourceId` against `rule.RuntimeEventSourceId`.
 
 ## Adding A New Optional Source
 
@@ -123,11 +145,16 @@ Triggered rules match `context.SourceId` against `rule.RuntimeEventSourceId`.
 2. Implement `PassiveEventSource`.
 3. Keep the source inactive when it has no requests.
 4. Publish events through `CombatEventBus`.
-5. Set `PassiveEventContext.SourceId` to the request source id.
+5. Set `PassiveEventContext.EventSourceId` to the request source id.
 6. Add the source type to `PassiveEventSourceRegistry`.
 7. Add authoring guidance for rule fields.
 
 ## Dynamic Stat Modifier Rule
+
+Runtime stat modifiers use `ModifierKey`, not event source identity. The key is
+used for passive stack/replace/refresh behavior and for `StatsHub` cache input
+signatures. Status-effect modifiers use `status:{effectId}` so changing who
+applied an effect does not change the modifier's ownership key.
 
 If a passive, custom passive behavior, or optional event source changes the
 output of an `IStatModifierProvider`, it must raise `StatModifiersChanged`.

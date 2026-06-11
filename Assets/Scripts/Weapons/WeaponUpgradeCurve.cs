@@ -50,7 +50,11 @@ public class WeaponRarityLevelCap
 public class WeaponUpgradeStatBonus
 {
     public StatType statType = StatType.Damage;
+
+    [Tooltip("For Stability, Flat adds percentage points. Example: 30 Stability + 10 Flat = 40%.")]
     public ModifierOp operation = ModifierOp.Flat;
+
+    [Tooltip("For Stability with Flat, enter percentage points gained per upgrade step.")]
     public float valuePerStep = 1f;
     [Min(1)] public int firstLevel = 1;
     [Min(1)] public int levelsPerStep = 1;
@@ -85,7 +89,11 @@ public class WeaponUpgradeEffect
 
     [Header("Stat Modifier")]
     public StatType statType = StatType.Damage;
+
+    [Tooltip("For Stability, Flat adds percentage points. Example: 30 Stability + 10 Flat = 40%.")]
     public ModifierOp modifierOp = ModifierOp.Flat;
+
+    [Tooltip("For Stability with Flat, enter percentage points rather than a 0-1 ratio.")]
     public float value = 0f;
 
     [Header("Trigger")]
@@ -218,7 +226,7 @@ public class WeaponUpgradeCurve : ScriptableObject
         List<RuntimeStatModifier> buffer,
         GunConfig weapon,
         WeaponInstanceData instance,
-        string sourceId)
+        string modifierKey)
     {
         if (buffer == null || !weapon || instance == null)
             return;
@@ -227,8 +235,8 @@ public class WeaponUpgradeCurve : ScriptableObject
         if (upgradeLevel <= 0)
             return;
 
-        AppendLevelStatBonuses(buffer, weapon.WeaponType, upgradeLevel, sourceId);
-        AppendMilestoneStatBonuses(buffer, weapon.WeaponType, upgradeLevel, sourceId);
+        AppendLevelStatBonuses(buffer, weapon.WeaponType, upgradeLevel, modifierKey);
+        AppendMilestoneStatBonuses(buffer, weapon.WeaponType, upgradeLevel, modifierKey);
     }
 
     public int SyncUnlockedMilestones(WeaponInstanceData instance, GunConfig weapon)
@@ -302,7 +310,7 @@ public class WeaponUpgradeCurve : ScriptableObject
         List<RuntimeStatModifier> buffer,
         WeaponType weaponType,
         int upgradeLevel,
-        string sourceId)
+        string modifierKey)
     {
         if (statBonuses == null)
             return;
@@ -317,7 +325,7 @@ public class WeaponUpgradeCurve : ScriptableObject
             if (Mathf.Approximately(value, 0f))
                 continue;
 
-            buffer.Add(new RuntimeStatModifier(bonus.statType, bonus.operation, value, sourceId));
+            buffer.Add(new RuntimeStatModifier(bonus.statType, bonus.operation, value, modifierKey));
         }
     }
 
@@ -325,7 +333,7 @@ public class WeaponUpgradeCurve : ScriptableObject
         List<RuntimeStatModifier> buffer,
         WeaponType weaponType,
         int upgradeLevel,
-        string sourceId)
+        string modifierKey)
     {
         if (milestones == null)
             return;
@@ -352,8 +360,8 @@ public class WeaponUpgradeCurve : ScriptableObject
                     continue;
                 }
 
-                string effectSourceId = $"{sourceId}:{milestone.ResolveId(i)}:{effect.ResolveId(milestone.ResolveId(i), j)}";
-                buffer.Add(new RuntimeStatModifier(effect.statType, effect.modifierOp, effect.value, effectSourceId));
+                string effectModifierKey = $"{modifierKey}:{milestone.ResolveId(i)}:{effect.ResolveId(milestone.ResolveId(i), j)}";
+                buffer.Add(new RuntimeStatModifier(effect.statType, effect.modifierOp, effect.value, effectModifierKey));
             }
         }
     }

@@ -1,8 +1,8 @@
+using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
 [HideMonoScript]
-[CreateAssetMenu(fileName = "Spawn Pickup Skill Payload", menuName = "Game/Skill Payload/Spawn Pickup")]
 public class SpawnPickupSkillPayloadDef : SkillPayloadDef
 {
     private bool UsesFixedSpawnCount => !useSkillProjectileCount;
@@ -95,5 +95,20 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
     private bool HasValidPickupPrefab(GameObject prefab)
     {
         return prefab == null || prefab.GetComponent<SkillPickup>() != null;
+    }
+
+    public override void CollectValidationIssues(List<string> issues)
+    {
+        if (issues == null)
+            return;
+
+        if (pickupPrefab == null)
+        {
+            issues.Add("Spawn Pickup payload has no pickup prefab configured.");
+            return;
+        }
+
+        if (pickupPrefab.GetComponent<SkillPickup>() == null)
+            issues.Add("Spawn Pickup payload prefab has no SkillPickup component.");
     }
 }

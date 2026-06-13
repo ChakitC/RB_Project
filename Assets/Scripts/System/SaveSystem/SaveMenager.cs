@@ -189,6 +189,56 @@ public class SaveManager : MonoBehaviour
         _loaded = data;
     }
 
+    public bool SaveInventoryOnly()
+    {
+        return SaveInventorySections(includeEquipment: false, includeAccessories: false);
+    }
+
+    public bool SaveInventoryAndEquipment()
+    {
+        return SaveInventorySections(includeEquipment: true, includeAccessories: false);
+    }
+
+    public bool SaveInventoryAndAccessories()
+    {
+        return SaveInventorySections(includeEquipment: false, includeAccessories: true);
+    }
+
+    bool SaveInventorySections(bool includeEquipment, bool includeAccessories)
+    {
+        PlayerInventory inventory = _participants.OfType<PlayerInventory>().FirstOrDefault();
+        if (inventory == null)
+        {
+            Debug.LogWarning("[SaveManager] No PlayerInventory participant found for partial save.");
+            return false;
+        }
+
+        var data = new GameSaveData
+        {
+            inventory = inventory.ToData()
+        };
+
+        if (includeEquipment)
+            CharacterEquipment.WriteSceneEquipmentToSave(data, inventory);
+        if (includeAccessories)
+            AccessoryLoadout.WriteSceneLoadoutsToSave(data, inventory);
+
+        SaveSystem.SaveInventory(data.inventory, currentSlot);
+        if (includeEquipment)
+            SaveSystem.SaveEquipment(data.equipment, currentSlot);
+        if (includeAccessories)
+            SaveSystem.SaveAccessories(data.accessories, currentSlot);
+
+        _loaded ??= new GameSaveData();
+        _loaded.inventory = data.inventory;
+        if (includeEquipment)
+            _loaded.equipment = data.equipment;
+        if (includeAccessories)
+            _loaded.accessories = data.accessories;
+
+        return true;
+    }
+
     public void Load()
     {
         var data = LoadCurrentSlotDataForCache();

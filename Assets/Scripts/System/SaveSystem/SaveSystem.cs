@@ -22,6 +22,9 @@ public static class SaveSystem
     public static string CurrentDirectory => Dir;
 
     static string GamePath(int slot)  => Path.Combine(Dir, $"slot_{slot}_game.json");
+    static string InventoryPath(int slot) => Path.Combine(Dir, $"slot_{slot}_inventory.json");
+    static string EquipmentPath(int slot) => Path.Combine(Dir, $"slot_{slot}_equipment.json");
+    static string AccessoriesPath(int slot) => Path.Combine(Dir, $"slot_{slot}_accessories.json");
     static string PartyPath(int slot) => Path.Combine(Dir, $"slot_{slot}_party.json");
     
     static string CharacterPath(int slot) => Path.Combine(Dir, $"slot_{slot}_character.json");
@@ -31,12 +34,145 @@ public static class SaveSystem
     public static void SaveGame(GameSaveData data, int slot)
     {
         if (data == null) return;
+        if (slot < 0) slot = 0;
+
         SaveDataMigration.NormalizeGameSaveForWrite(data);
-        var json = JsonUtility.ToJson(data, true);
-        WriteAtomic(GamePath(slot), json);
+        UpdatePartyOnly(data.party, slot);
+        if (data.inventory != null)
+            WriteJson(InventoryPath(slot), data.inventory);
+        if (data.equipment != null)
+            WriteJson(EquipmentPath(slot), data.equipment);
+        if (data.accessories != null)
+            WriteJson(AccessoriesPath(slot), data.accessories);
     }
 
     public static GameSaveData LoadGame(int slot)
+    {
+        if (slot < 0) slot = 0;
+
+        string inventoryPath = ResolveReadPath(InventoryPath(slot));
+        string equipmentPath = ResolveReadPath(EquipmentPath(slot));
+        string accessoriesPath = ResolveReadPath(AccessoriesPath(slot));
+        bool hasInventory = File.Exists(inventoryPath);
+        bool hasEquipment = File.Exists(equipmentPath);
+        bool hasAccessories = File.Exists(accessoriesPath);
+
+        PartyData party = LoadPartyOnly(slot);
+        GameSaveData legacy = null;
+        if (!hasInventory || !hasEquipment || !hasAccessories)
+            legacy = LoadLegacyGame(slot, party);
+
+        if (!hasInventory && !hasEquipment && !hasAccessories && legacy == null)
+            return null;
+
+        var data = new GameSaveData
+        {
+            inventory = hasInventory ? ReadJson<PlayerInventoryData>(inventoryPath) : legacy?.inventory,
+            equipment = hasEquipment ? ReadJson<EquipmentSaveData>(equipmentPath) : legacy?.equipment,
+            accessories = hasAccessories ? ReadJson<AccessoryLoadoutSaveData>(accessoriesPath) : legacy?.accessories,
+            party = party ?? legacy?.party ?? new PartyData()
+        };
+
+        SaveDataMigration.NormalizeGameSaveForWrite(data);
+
+        if (!hasInventory && data.inventory != null)
+            SaveInventory(data.inventory, slot);
+        if (!hasEquipment && data.equipment != null)
+            SaveEquipment(data.equipment, slot);
+        if (!hasAccessories && data.accessories != null)
+            SaveAccessories(data.accessories, slot);
+        if (party == null && data.party != null)
+            UpdatePartyOnly(data.party, slot);
+
+        return data;
+    }
+
+    public static void SaveInventory(PlayerInventoryData data, int slot)
+    {
+        if (data == null) return;
+        if (slot < 0) slot = 0;
+        WriteJson(InventoryPath(slot), data);
+    }
+
+    public static PlayerInventoryData LoadInventory(int slot)
+    {
+        if (slot < 0) slot = 0;
+        string path = ResolveReadPath(InventoryPath(slot));
+        if (File.Exists(path))
+            return ReadJson<PlayerInventoryData>(path);
+
+        GameSaveData legacy = LoadLegacyGame(slot, LoadPartyOnly(slot));
+        if (legacy?.inventory != null)
+            SaveInventory(legacy.inventory, slot);
+        return legacy?.inventory;
+    }
+
+    public static void SaveEquipment(EquipmentSaveData data, int slot)
+    {
+        if (data == null) return;
+        if (slot < 0) slot = 0;
+
+        var aggregate = new GameSaveData
+        {
+            equipment = data,
+            party = LoadPartyOnly(slot) ?? new PartyData()
+        };
+        SaveDataMigration.NormalizeGameSaveForWrite(aggregate);
+        WriteJson(EquipmentPath(slot), aggregate.equipment);
+    }
+
+    public static EquipmentSaveData LoadEquipment(int slot)
+    {
+        if (slot < 0) slot = 0;
+        string path = ResolveReadPath(EquipmentPath(slot));
+        if (File.Exists(path))
+            return ReadJson<EquipmentSaveData>(path);
+
+        PartyData party = LoadPartyOnly(slot);
+        GameSaveData legacy = LoadLegacyGame(slot, party);
+        if (legacy?.equipment != null)
+            SaveEquipment(legacy.equipment, slot);
+        return legacy?.equipment;
+    }
+
+    public static void SaveAccessories(AccessoryLoadoutSaveData data, int slot)
+    {
+        if (data == null) return;
+        if (slot < 0) slot = 0;
+
+        var aggregate = new GameSaveData
+        {
+            accessories = data,
+            party = LoadPartyOnly(slot) ?? new PartyData()
+        };
+        SaveDataMigration.NormalizeGameSaveForWrite(aggregate);
+        WriteJson(AccessoriesPath(slot), aggregate.accessories);
+    }
+
+    public static AccessoryLoadoutSaveData LoadAccessories(int slot)
+    {
+        if (slot < 0) slot = 0;
+        string path = ResolveReadPath(AccessoriesPath(slot));
+        if (File.Exists(path))
+            return ReadJson<AccessoryLoadoutSaveData>(path);
+
+        PartyData party = LoadPartyOnly(slot);
+        GameSaveData legacy = LoadLegacyGame(slot, party);
+        if (legacy?.accessories != null)
+            SaveAccessories(legacy.accessories, slot);
+        return legacy?.accessories;
+    }
+
+    public static bool HasGameData(int slot)
+    {
+        if (slot < 0) slot = 0;
+        return File.Exists(ResolveReadPath(InventoryPath(slot))) ||
+               File.Exists(ResolveReadPath(EquipmentPath(slot))) ||
+               File.Exists(ResolveReadPath(AccessoriesPath(slot))) ||
+               File.Exists(ResolveReadPath(GamePath(slot)));
+    }
+
+    static GameSaveData LoadLegacyGame(int slot, PartyData partyOnly)
     {
         var path = ResolveReadPath(GamePath(slot));
         if (!File.Exists(path)) return null;
@@ -45,12 +181,20 @@ public static class SaveSystem
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        PartyData partyOnly = LoadPartyOnly(slot);
-        GameSaveData data = SaveDataMigration.LoadAndMigrateGameSave(json, partyOnly, out bool migrated);
-        if (data != null && migrated)
-            SaveGame(data, slot);
+        return SaveDataMigration.LoadAndMigrateGameSave(json, partyOnly, out _);
+    }
 
-        return data;
+    static void WriteJson<T>(string path, T data)
+    {
+        var json = JsonUtility.ToJson(data, true);
+        WriteAtomic(path, json);
+    }
+
+    static T ReadJson<T>(string path) where T : class
+    {
+        if (!File.Exists(path)) return null;
+        var json = File.ReadAllText(path);
+        return string.IsNullOrWhiteSpace(json) ? null : JsonUtility.FromJson<T>(json);
     }
 
     // ---------- PARTY ONLY ----------

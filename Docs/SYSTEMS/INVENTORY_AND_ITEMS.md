@@ -115,10 +115,19 @@ Important concepts:
 - `AccessoryDefinition`: base item data
 - `AccessoryInstanceData`: per-instance data
 - `AccessoryLoadout`: equipped accessory slots on a character
+- `AccessoryDismantleService`: validates dismantling and grants scrap
 - accessory modifier definitions and providers
 
 Accessory loadouts should resolve through `CharacteContext.AccessoryLoadout`
 when possible.
+
+The weapon upgrade UI lists both weapon and accessory instances. Accessories
+cannot be upgraded there, but they can be dismantled when they are not assigned
+to any player or companion loadout. The default reward is `10` scrap, plus `5`
+when the instance has a modifier, plus `3` per accessory upgrade level. These
+values and the save/assignment rules are serialized on
+`AccessoryDismantleService`. A successful dismantle removes the inventory
+instance first, grants scrap, and then saves the game.
 
 Accessory stat modifiers can affect stamina capacity and stamina regeneration.
 `MaxStamina` is calculated by `StatsHub` and applied by `StaminaSystem` when it
@@ -135,6 +144,18 @@ weapon's base reserve capacity is resolved. Percentage modifiers use whole
 percentage values, so `25` means `+25%`. Increasing capacity does not grant free
 ammo. When capacity decreases, current reserve ammo is clamped to the new
 maximum. Infinite-reserve weapons ignore this stat.
+
+### Starter Mafia Accessories
+
+The early-game mafia accessory set is authored under
+`Assets/Data/Items/Accessories_SO/StarterMafia`. Its triggered passives are
+under `Assets/Data/Combat/Passives/StarterMafia`.
+
+The set contains Gang Signet Ring, Old Leather Holster, Slow Gold Watch,
+Collector's Shades, Pointed Leather Shoes, Under-Suit Vest, Taped Magazine,
+Trunk Ammo Box, Casino Lucky Coin, Cleaner's Lighter, Emergency Pager, and
+Dashboard Rosary. All twelve items are registered in `ItemDatabase` and the
+common accessory drop table.
 
 ## Pickups And Drops
 
@@ -156,6 +177,28 @@ and companion checks.
 ## Save System
 
 Save data is under `Assets\Scripts\System\SaveSystem`.
+
+Inventory-related data is stored in separate files per save slot:
+
+- `slot_{slot}_inventory.json`: currency, inventory slots, and weapon/accessory
+  instance data
+- `slot_{slot}_equipment.json`: owner-specific equipped weapon instance ids
+- `slot_{slot}_accessories.json`: owner-specific accessory loadouts
+- `slot_{slot}_party.json`: current party ids
+- `slot_{slot}_character.json`: character level, unlock, skill point, and passive
+  progression data
+
+`slot_{slot}_game.json` is a legacy aggregate format. When a split file is
+missing, `SaveSystem` reads the corresponding section from the legacy file and
+writes the new file without deleting the legacy source. This also allows an
+interrupted migration to resume one section at a time. New saves do not update
+the legacy aggregate file.
+
+Use the system-specific save APIs for frequent changes. Shop purchases, weapon
+upgrades, and dismantling write inventory only. Weapon equip writes inventory
+plus equipment, while accessory equip writes inventory plus accessory loadouts.
+Full saves remain appropriate for scene transitions and explicit full-save
+actions.
 
 Inventory and equipment save flows must preserve:
 

@@ -964,10 +964,6 @@ MonoBehaviour:
       supports: []
     maxSupportSlots: 3
   helperProcLoadout: []
-  legacyHelperProcSlots:
-  - skillKind: 1
-    allyChainSkill: {fileID: 11400000, guid: 76fce4e87d6149799ec70e9d71b7a7d2, type: 2}
-    helperChainSkill: {fileID: 0}
   passiveSlots: []
 --- !u!114 &3693568544021270016
 MonoBehaviour:

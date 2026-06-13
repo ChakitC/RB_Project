@@ -49,3 +49,75 @@ MonoBehaviour:
     accessoryTable: {fileID: 0}
     amount: 1
     weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: c0010000000000000000000000000000, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: c0020000000000000000000000000000, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: c0030000000000000000000000000000, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: c0040000000000000000000000000000, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: c0050000000000000000000000000000, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: c0060000000000000000000000000000, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: c0070000000000000000000000000000, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: c0080000000000000000000000000000, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: c0090000000000000000000000000000, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: c00a0000000000000000000000000000, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: c00b0000000000000000000000000000, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1
+  - contentType: 0
+    item: {fileID: 11400000, guid: c00c0000000000000000000000000000, type: 2}
+    gunTable: {fileID: 0}
+    accessoryTable: {fileID: 0}
+    amount: 1
+    weight: 1

@@ -380,12 +380,11 @@ public class CharacterEquipment : MonoBehaviour
             return false;
 
         int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
-        var data = SaveSystem.LoadGame(saveSlot) ?? new GameSaveData();
-        data.equipment ??= new EquipmentSaveData();
+        EquipmentSaveData data = SaveSystem.LoadEquipment(saveSlot) ?? new EquipmentSaveData();
 
-        RemoveInstanceAssignments(data.equipment, instanceId, ownerId);
-        UpsertEquipmentEntry(data.equipment, ownerId, instanceId);
-        SaveSystem.SaveGame(data, saveSlot);
+        RemoveInstanceAssignments(data, instanceId, ownerId);
+        UpsertEquipmentEntry(data, ownerId, instanceId);
+        SaveSystem.SaveEquipment(data, saveSlot);
         SaveManager.Instance?.RefreshLoadedCacheFromDisk();
         return true;
     }
@@ -396,11 +395,10 @@ public class CharacterEquipment : MonoBehaviour
             return false;
 
         int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
-        var data = SaveSystem.LoadGame(saveSlot) ?? new GameSaveData();
-        data.equipment ??= new EquipmentSaveData();
+        EquipmentSaveData data = SaveSystem.LoadEquipment(saveSlot) ?? new EquipmentSaveData();
 
-        UpsertEquipmentEntry(data.equipment, ownerId, null);
-        SaveSystem.SaveGame(data, saveSlot);
+        UpsertEquipmentEntry(data, ownerId, null);
+        SaveSystem.SaveEquipment(data, saveSlot);
         SaveManager.Instance?.RefreshLoadedCacheFromDisk();
         return true;
     }
@@ -482,8 +480,7 @@ public class CharacterEquipment : MonoBehaviour
             return false;
 
         int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
-        var data = SaveSystem.LoadGame(saveSlot);
-        var entries = data?.equipment?.entries;
+        var entries = SaveSystem.LoadEquipment(saveSlot)?.entries;
         if (entries == null)
             return false;
 
@@ -728,8 +725,7 @@ public class CharacterEquipment : MonoBehaviour
     static EquipmentSaveData LoadPersistedEquipmentData()
     {
         int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
-        var data = SaveSystem.LoadGame(saveSlot);
-        return CloneEquipmentData(data?.equipment);
+        return CloneEquipmentData(SaveSystem.LoadEquipment(saveSlot));
     }
 
     static EquipmentSaveData CloneEquipmentData(EquipmentSaveData source)

@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
   m_Name: Skill_1_M_GR04
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   icon: {fileID: 0}
   displayName: Skill.M.GR.04
   skillId: Skill.M.GR.04
@@ -28,12 +28,7 @@ MonoBehaviour:
   AreaofEffec: 0
   baseRadius: 0
   maxLevel: 20
-  payload: {fileID: 11400000, guid: 1b0b63c4dba573f40a567f00909fcb66, type: 2}
-  legacySkillPrefab: {fileID: 0}
-  legacyHelperFacingMode: 0
-  legacyProjectileTrailVfxPrefab: {fileID: 0}
-  legacyProjectileHitVfxPrefab: {fileID: 0}
-  legacyProjectileHitVfxScale: 1
+  payload: {fileID: 4985363870349233182}
   castCue: {fileID: 0}
   skillClip:
     _FadeDuration: 0.25
@@ -59,10 +54,114 @@ MonoBehaviour:
   preCastIndicatorPrefab: {fileID: 0}
   cancelPreCastOnStun: 1
   cancelPreCastOnStagger: 1
-  legacyChainContinueMode: 0
-  legacyChainContinueNormalizedTime: 1
   perLevelData: []
   previewLevel: 1
   references:
     version: 2
     RefIds: []
+--- !u!114 &4985363870349233182
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f4e6f7ebbd443f8b1550f5c5d6b1e72, type: 3}
+  m_Name: Prefab Hitbox Execution
+  m_EditorClassIdentifier:
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  hitboxLayout:
+    groups:
+    - groupKey: Group01
+      shapes:
+      - shapeName: HitBox01
+        type: 1
+        localPosition: {x: 0, y: 1.094, z: 0}
+        localEulerAngles: {x: -0, y: 0, z: 0}
+        localScale: {x: 2.6546, y: 2.6546, z: 2.6546}
+        center: {x: 0, y: 0, z: 0}
+        size: {x: 0, y: 0, z: 0}
+        radius: 0.5
+        height: 1
+        direction: 1
+    - groupKey: Group02
+      shapes:
+      - shapeName: HitBox01
+        type: 1
+        localPosition: {x: 0, y: 0, z: 2.2560005}
+        localEulerAngles: {x: -0, y: 0, z: 0}
+        localScale: {x: 4.8608, y: 4.8608, z: 4.8608}
+        center: {x: 0, y: 0, z: 0}
+        size: {x: 0, y: 0, z: 0}
+        radius: 0.5
+        height: 1
+        direction: 1
+  anchorMode: 0
+  anchorChildPath:
+  followAnchor: 1
+  localPositionOffset: {x: 0, y: 0, z: 0}
+  localEulerOffset: {x: 0, y: 0, z: 0}
+  maxSequenceLifetime: 4
+  hitboxStartEventName: 10
+  hitboxEndEventName: 11
+  targetMask:
+    serializedVersion: 2
+    m_Bits: 1088
+  queryTriggers: 2
+  showDamageNumbers: 1
+  steps:
+  - groupKeys:
+    - Group01
+    - Group02
+    damageMultiplier: 2
+    hitPolicy: 1
+    clearHitCacheOnEnter: 1
+    overrideKnockback: 1
+    knockbackDistance: 4
+    knockbackDuration: 1
+    knockbackProgressCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 10.837979
+        outSlope: 10.837979
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0.078730226
+      - serializedVersion: 3
+        time: 0.1586734
+        value: 0.8162289
+        inSlope: 0.86115956
+        outSlope: 0.86115956
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.18307388
+        outWeight: 0.032153916
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0.030598307
+        outSlope: 0.030598307
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.058851417
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    knockbackReaction: 0
+    knockbackInterruptsActions: 1
+    stepStartVfx:
+      prefab: {fileID: 0}
+      scale: 1
+    impactVfx:
+      prefab: {fileID: 0}
+      scale: 1
+      spawnPolicy: 1

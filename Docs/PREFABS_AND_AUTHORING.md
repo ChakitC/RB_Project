@@ -52,6 +52,40 @@ Do not remove local authoring references such as `hitboxTrigger`, `firePoint`,
 `modelRoot`, `healthBarPrefab`, database references, or prefab references just
 because a context exists.
 
+## Equipment Upgrade UI
+
+`Assets/UI/UIWeaponUpgrade.prefab` is the shared weapon upgrade and equipment
+dismantle panel. Its root should include both `WeaponUpgradeService` and
+`AccessoryDismantleService`.
+
+On `UIWeaponUpgrade`, bind:
+
+- `upgradeService`
+- `accessoryDismantleService`
+- `upgradeButton`
+- `dismantleButton`
+- the inventory list, selected slot, detail text, and drag visual references
+
+The inventory list accepts weapon and accessory instances. Weapon selections
+can upgrade or dismantle. Accessory selections disable Upgrade and allow
+Dismantle only when `EquipmentAssignmentService` reports that the instance is
+not equipped by any character. Inventory slots and the selected-item slot show
+the assigned character portrait when the instance is equipped, matching the
+portrait marker used by `UIEquipment`.
+
+## Skill Hitbox Layout Authoring
+
+Prefab-hitbox skills store collider layout data inside their embedded
+`PrefabHitboxSkillPayloadDef`. Hitbox layout assets are not part of the supported
+authoring workflow.
+
+To edit a layout using scene colliders, add `SetSkillHitBoxData` to an authoring
+object, assign the owning `SkillGemDefinition`, and optionally assign a separate
+`Source Hitbox Root`. The selected skill must use a prefab-hitbox execution
+payload. Use the component controls to create a template, load the inline layout,
+save the edited hierarchy back into the skill, and validate group keys and
+shape values.
+
 ## Combat Timeline Event Authoring
 
 Animancer-driven combat and hitbox events should use `CombatTimelineEventName`
@@ -98,6 +132,9 @@ In `Upper Body` mode:
   base clip.
 - `Apply Root Motion` can be enabled when the base locomotion clip should move
   the preview transform while scrubbing or playing.
+- For Generic clips that contain movement, set the FBX Animation importer's
+  `Root Motion Node` to the rig motion root (commonly `root`). Otherwise the
+  skeleton can move away from the GameObject root during preview.
 
 Leaving `Upper Body Mask` empty makes the overlay affect the full body, which is
 only appropriate for intentional full-body preview checks.

@@ -18,6 +18,7 @@ MonoBehaviour:
   tags: 4
   description: DropThis
   baseDamage: 20
+  baseStaggerPower: 10
   baseManaCost: 0
   baseCastTime: 0.5
   baseCooldown: 0
@@ -27,7 +28,7 @@ MonoBehaviour:
   AreaofEffec: 0
   baseRadius: 0
   maxLevel: 20
-  payload: {fileID: 11400000, guid: 4ea5e8c6f5049574dae7c651ad83899d, type: 2}
+  payload: {fileID: 758225176658077734}
   castCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
   skillClip:
     _FadeDuration: 0
@@ -39,8 +40,38 @@ MonoBehaviour:
     _Clip: {fileID: -4998367185726637814, guid: 867b0aac164726b4c813731fb9a97fe8, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.5385356
+  blockablePreCast: 0
+  preCastOpenTimelineEvent: 200
+  preCastCloseTimelineEvent: 201
+  useFallbackPreCastWindow: 1
+  fallbackPreCastOpenNormalized: 0
+  fallbackPreCastCloseNormalized: 0.35
+  preCastIndicatorPrefab: {fileID: 0}
+  cancelPreCastOnStun: 1
+  cancelPreCastOnStagger: 1
   perLevelData: []
   previewLevel: 1
   references:
     version: 2
     RefIds: []
+--- !u!114 &758225176658077734
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 902f7fe66e9382d4d91381b1eed145e8, type: 3}
+  m_Name: Spawn Pickup Execution
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  pickupPrefab: {fileID: 5905325361012273201, guid: 9d0a8b351d0849c4a8f8b698f2f34b4f, type: 3}
+  useSkillProjectileCount: 0
+  spawnCount: 1
+  forwardOffset: 0
+  spreadWidth: 0
+  verticalOffset: 0.1

@@ -1330,7 +1330,6 @@ MonoBehaviour:
       supports: []
     maxSupportSlots: 3
   helperProcLoadout: []
-  legacyHelperProcSlots: []
   passiveSlots: []
 --- !u!114 &1695257887938755810
 MonoBehaviour:

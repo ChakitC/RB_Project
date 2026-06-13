@@ -1,0 +1,292 @@
+{
+    "entries": [
+        {
+            "ownerId": "character:ID.Roma",
+            "slotCount": 5,
+            "equippedAccessories": [
+                {
+                    "instanceId": "acc_0b52f654d3a44e3dad34cf60ef0f9d47",
+                    "accessoryId": "Accessory.RabbitLag",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_11f64159dbfd4357bcc3bcc404d80b45",
+                    "accessoryId": "Accessory.RabbitCharm",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_a3c3255fa6be4a6eba447ce0054e0de7",
+                    "accessoryId": "Accessory.RabbitGlove",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_4552a1ea2a75420e881d2fe3f5073649",
+                    "accessoryId": "Accessory.RabbitLag",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_b0fd05b5a5914aa8a523ae44d7f94001",
+                    "accessoryId": "Accessory.RabbitLag",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            ]
+        },
+        {
+            "ownerId": "character:ID.Abbygail",
+            "slotCount": 5,
+            "equippedAccessories": [
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            ]
+        },
+        {
+            "ownerId": "character:ID.Milano",
+            "slotCount": 5,
+            "equippedAccessories": [
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            ]
+        },
+        {
+            "ownerId": "character:ID.Noemi",
+            "slotCount": 5,
+            "equippedAccessories": [
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            ]
+        },
+        {
+            "ownerId": "character:ID.Aires",
+            "slotCount": 5,
+            "equippedAccessories": [
+                {
+                    "instanceId": "acc_d7950dfb72a749bea2e7c5cc61f0bf01",
+                    "accessoryId": "Accessory.CarrotleafHeavyWeaveArmor",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_48d80ae398834f0d981f7682f562a77e",
+                    "accessoryId": "Accessory.RabbitLag",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_37a37e2e9e274ce5a27af988a0698976",
+                    "accessoryId": "Accessory.RabbitHat",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_49f09b1f37a94bfaa0adc5873505f2cc",
+                    "accessoryId": "Accessory.RabbitCharm",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_ee7816d71f8744fba80f67eda768d73b",
+                    "accessoryId": "Accessory.RabbitGlove",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            ]
+        },
+        {
+            "ownerId": "character:ID.Feno",
+            "slotCount": 5,
+            "equippedAccessories": [
+                {
+                    "instanceId": "acc_d23f59d9207c4f7dbe939050a1005384",
+                    "accessoryId": "Accessory.FenosFieldPack",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_97a89f30a5f24b48b6081bd784fbbb38",
+                    "accessoryId": "Accessory.FenosFieldPack",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_455e2409871143e2af1e53ca578c1566",
+                    "accessoryId": "Accessory.FenosFieldPack",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_f63f173e83764644915ddcffd915bb6a",
+                    "accessoryId": "Accessory.RabbitGlove",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_0aea413397db476fbad45c08b81b15ad",
+                    "accessoryId": "Accessory.FenosFieldPack",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            ]
+        },
+        {
+            "ownerId": "character:ID.Dorothy",
+            "slotCount": 5,
+            "equippedAccessories": [
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            ]
+        },
+        {
+            "ownerId": "character:ID.Roger",
+            "slotCount": 5,
+            "equippedAccessories": [
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            ]
+        }
+    ]
+}

@@ -51,45 +51,6 @@ public sealed class HelperProcSlot
     }
 }
 
-public enum CharacterChainSkillKind
-{
-    None = 0,
-    AllySequence = 1,
-    HelperProc = 2,
-}
-
-[System.Serializable]
-public sealed class CharacterChainSlot
-{
-    public CharacterChainSkillKind skillKind = CharacterChainSkillKind.AllySequence;
-    public SkillChainDef allyChainSkill;
-    public SkillHelperDef helperChainSkill;
-
-    public bool IsConfigured => ResolveAllyChainSkill() != null || ResolveHelperChainSkill() != null;
-
-    public SkillChainDef ResolveAllyChainSkill()
-    {
-        return skillKind == CharacterChainSkillKind.AllySequence
-            ? allyChainSkill
-            : null;
-    }
-
-    public SkillHelperDef ResolveHelperChainSkill()
-    {
-        return skillKind == CharacterChainSkillKind.HelperProc
-            ? helperChainSkill
-            : null;
-    }
-
-    public HelperProcSlot ToHelperProcSlot()
-    {
-        SkillHelperDef definition = ResolveHelperChainSkill();
-        return definition != null
-            ? new HelperProcSlot { helperProc = definition }
-            : null;
-    }
-}
-
 [System.Serializable]
 public sealed class PassiveSkillSlot
 {

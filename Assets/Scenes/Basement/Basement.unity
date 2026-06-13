@@ -315,6 +315,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: UIWeaponUpgrade
       objectReference: {fileID: 0}
+    - target: {fileID: 100000, guid: 558d6d1ba11c42108a2d87e2ece3b042, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: 558d6d1ba11c42108a2d87e2ece3b042, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -614,6 +618,14 @@ PrefabInstance:
     - target: {fileID: 162003, guid: 558d6d1ba11c42108a2d87e2ece3b042, type: 3}
       propertyPath: m_ActiveFontFeatures.Array.size
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1156413876292115050, guid: 558d6d1ba11c42108a2d87e2ece3b042, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 629
+      objectReference: {fileID: 0}
+    - target: {fileID: 1156413876292115050, guid: 558d6d1ba11c42108a2d87e2ece3b042, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 153
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2674,6 +2686,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   inventory: {fileID: 1912400193}
   text: {fileID: 242369367}
+  currency: 0
   prefix: 
 --- !u!1 &261875976
 GameObject:
@@ -12927,6 +12940,7 @@ MonoBehaviour:
   accessoryLoadout: {fileID: 0}
   weaponSystem: {fileID: 0}
   gold: 0
+  scrap: 0
   equippedWeaponInstanceId: 
 --- !u!4 &1912400194
 Transform:

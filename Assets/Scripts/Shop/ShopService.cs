@@ -83,7 +83,7 @@ public class ShopService : MonoBehaviour
         ConsumeStock(catalog, entryIndex, entry);
 
         if (saveAfterPurchase && SaveManager.Instance != null)
-            SaveManager.Instance.Save();
+            SaveManager.Instance.SaveInventoryOnly();
 
         return true;
     }

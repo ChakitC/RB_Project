@@ -18,6 +18,7 @@ MonoBehaviour:
   tags: 10
   description: Boom!!
   baseDamage: 20
+  baseStaggerPower: 10
   baseManaCost: 10
   baseCastTime: 0.5
   baseCooldown: 0
@@ -27,12 +28,7 @@ MonoBehaviour:
   AreaofEffec: 0
   baseRadius: 0
   maxLevel: 20
-  payload: {fileID: 11400000, guid: a74514c786114adb832923126b6b5ddc, type: 2}
-  legacySkillPrefab: {fileID: 0}
-  legacyHelperFacingMode: 0
-  legacyProjectileTrailVfxPrefab: {fileID: 0}
-  legacyProjectileHitVfxPrefab: {fileID: 0}
-  legacyProjectileHitVfxScale: 1
+  payload: {fileID: 8127143239805940496}
   castCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
   skillClip:
     _FadeDuration: 0.25
@@ -44,10 +40,38 @@ MonoBehaviour:
     _Clip: {fileID: -8374479895102863559, guid: 875bf0d7944892c47a1c8eb164dc64c2, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.5
-  legacyChainContinueMode: 0
-  legacyChainContinueNormalizedTime: 1
+  blockablePreCast: 0
+  preCastOpenTimelineEvent: 200
+  preCastCloseTimelineEvent: 201
+  useFallbackPreCastWindow: 1
+  fallbackPreCastOpenNormalized: 0
+  fallbackPreCastCloseNormalized: 0.35
+  preCastIndicatorPrefab: {fileID: 0}
+  cancelPreCastOnStun: 1
+  cancelPreCastOnStagger: 1
   perLevelData: []
   previewLevel: 1
   references:
     version: 2
     RefIds: []
+--- !u!114 &8127143239805940496
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c14e08b308ccf04e840b98ddd6b4a28, type: 3}
+  m_Name: Projectile Execution
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  projectilePrefab: {fileID: 9164722303049109862, guid: a2689cdd55e31c948aec00496448e0ef, type: 3}
+  projectileConfigOverride: {fileID: 0}
+  spreadAngle: 10
+  projectileTrailVfxPrefab: {fileID: 3239568679811347795, guid: a454aaceaff2e07419aa061a002c28a8, type: 3}
+  projectileHitVfxPrefab: {fileID: 8295974722891363362, guid: 25477c0d7d0187d4e8cb92a3bc1860ba, type: 3}
+  projectileHitVfxScale: 2

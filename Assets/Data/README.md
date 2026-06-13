@@ -31,9 +31,7 @@ When moving existing assets, move them through Unity's Project window or move th
 - `Pickups/Effects`: `PickupEffectDef` assets
 - `Progression/Levels`: `LevelTableSO`
 - `Shops/Catalogs`: `ShopCatalog`
-- `Skills/Definitions`: `SkillGemDefinition`
-- `Skills/Payloads`: `SkillPayloadDef` assets
-- `Skills/Hitboxes`: `SkillHitBoxData`
+- `Skills/Definitions`: `SkillGemDefinition` assets with one embedded `SkillPayloadDef`
 - `Skills/SupportGems`: `SupportGemDefinition`
 - `Weapons/Definitions`: `GunConfig`
 - `Weapons/Affixes`: `WeaponAffixDefinition`

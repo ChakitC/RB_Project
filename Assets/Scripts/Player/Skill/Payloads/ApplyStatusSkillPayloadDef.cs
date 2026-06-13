@@ -4,7 +4,6 @@ using Sirenix.OdinInspector;
 using UnityEngine;
 
 [HideMonoScript]
-[CreateAssetMenu(fileName = "Apply Status Skill Payload", menuName = "Game/Skill Payload/Apply Status")]
 public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
 {
     [Serializable]
@@ -25,9 +24,6 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
     [LabelText("Status Effects")]
     [ListDrawerSettings(DefaultExpandedState = true, DraggableItems = true, ShowFoldout = true)]
     private List<StatusApplication> applications = new();
-
-    [SerializeField, HideInInspector] private StatusEffectDef effect;
-    [SerializeField, HideInInspector, Min(1)] private int stacks = 1;
 
     [SerializeField, BoxGroup("Setup"), ToggleLeft]
     [LabelText("Prefer Caster Root")]
@@ -67,14 +63,30 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
                 appliedAny = true;
             }
         }
-        else if (effect != null)
-        {
-            controller.ApplyEffect(effect, source, Mathf.Max(1, stacks));
-            appliedAny = true;
-        }
-
         if (!appliedAny)
             Debug.LogError($"Skill payload '{name}' is missing its status effect configuration.", this);
+    }
+
+    public override void CollectValidationIssues(List<string> issues)
+    {
+        if (issues == null)
+            return;
+
+        bool hasConfiguredApplication = false;
+        if (applications != null)
+        {
+            for (int i = 0; i < applications.Count; i++)
+            {
+                if (applications[i] != null && applications[i].effect != null)
+                {
+                    hasConfiguredApplication = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasConfiguredApplication)
+            issues.Add("Apply Status payload has no status effect configured.");
     }
 
     StatusEffectController ResolveController(SkillCastContext context)
@@ -100,22 +112,6 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
             return FindController(context.CasterRoot.gameObject);
 
         return null;
-    }
-
-    void OnValidate()
-    {
-        if (effect == null)
-            return;
-
-        applications ??= new List<StatusApplication>();
-        if (applications.Count > 0)
-            return;
-
-        applications.Add(new StatusApplication
-        {
-            effect = effect,
-            stacks = Mathf.Max(1, stacks)
-        });
     }
 
     static StatusEffectController FindController(GameObject target)

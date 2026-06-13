@@ -290,11 +290,11 @@ static class HitboxGroupKeyListGUI
 
     static string GetHelpMessage(SerializedProperty property, HitboxGroupOptions options)
     {
-        if (options.HitBoxData == null)
-            return "Assign Hit Box Data before selecting hitbox groups.";
+        if (!options.HasLayout)
+            return "Configure the inline hitbox layout before selecting hitbox groups.";
 
         if (options.AvailableKeys.Count == 0)
-            return $"SkillHitBoxData '{options.HitBoxData.name}' has no valid group keys.";
+            return "The inline hitbox layout has no valid group keys.";
 
         List<string> missingKeys = new List<string>();
         for (int i = 0; i < property.arraySize; i++)
@@ -338,23 +338,21 @@ static class HitboxGroupKeyListGUI
         if (property == null)
             return options;
 
-        SerializedProperty hitBoxDataProperty = property.serializedObject.FindProperty("hitBoxData");
-        options.HitBoxData = hitBoxDataProperty != null
-            ? hitBoxDataProperty.objectReferenceValue as SkillHitBoxData
-            : null;
-
-        if (options.HitBoxData == null)
+        SerializedProperty layoutProperty = property.serializedObject.FindProperty("hitboxLayout");
+        SerializedProperty groupsProperty = layoutProperty?.FindPropertyRelative("groups");
+        options.HasLayout = groupsProperty != null;
+        if (groupsProperty == null)
             return options;
 
         HashSet<string> seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        IReadOnlyList<SkillHitBoxData.HitBoxGroupData> groups = options.HitBoxData.Groups;
-        for (int i = 0; i < groups.Count; i++)
+        for (int i = 0; i < groupsProperty.arraySize; i++)
         {
-            SkillHitBoxData.HitBoxGroupData group = groups[i];
-            if (group == null)
+            SerializedProperty groupProperty = groupsProperty.GetArrayElementAtIndex(i);
+            SerializedProperty groupKeyProperty = groupProperty?.FindPropertyRelative("groupKey");
+            if (groupKeyProperty == null)
                 continue;
 
-            string key = group.GroupKey;
+            string key = groupKeyProperty.stringValue?.Trim();
             if (string.IsNullOrWhiteSpace(key) || !seenKeys.Add(key))
                 continue;
 
@@ -366,7 +364,7 @@ static class HitboxGroupKeyListGUI
 
     sealed class HitboxGroupOptions
     {
-        public SkillHitBoxData HitBoxData;
+        public bool HasLayout;
         public readonly List<string> AvailableKeys = new List<string>();
     }
 }

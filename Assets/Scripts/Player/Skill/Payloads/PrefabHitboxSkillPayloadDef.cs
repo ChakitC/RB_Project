@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
 
-[CreateAssetMenu(fileName = "Prefab Hitbox Skill Payload", menuName = "Game/Skill Payload/Prefab Hitbox")]
 public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
 {
     public enum HitboxAnchorMode
@@ -93,10 +91,10 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         }
     }
 
+    [Header("Hitbox Layout")]
+    [SerializeField] private SkillHitboxLayoutData hitboxLayout = new SkillHitboxLayoutData();
+
     [Header("Runtime")]
-    [SerializeField] private SkillHitBoxData hitBoxData;
-    [FormerlySerializedAs("sequencePrefab")]
-    [SerializeField, HideInInspector] private SkillHitboxSequenceRuntime legacySequencePrefab;
     [SerializeField] private HitboxAnchorMode anchorMode = HitboxAnchorMode.CastOrigin;
     [SerializeField] private string anchorChildPath;
     [SerializeField] private bool followAnchor = true;
@@ -128,7 +126,8 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
     public bool ShowDamageNumbers => showDamageNumbers;
     public CombatTimelineEventName HitboxStartEventName => hitboxStartEventName;
     public CombatTimelineEventName HitboxEndEventName => hitboxEndEventName;
-    public SkillHitBoxData HitBoxData => hitBoxData;
+    public SkillHitboxLayoutData HitboxLayout => hitboxLayout ?? (hitboxLayout = new SkillHitboxLayoutData());
+    public bool HasInlineHitboxLayout => HitboxLayout.HasGroups;
     public bool HasHitboxTimelineEvents =>
         IsValidTimelineEvent(HitboxStartEventName) &&
         IsValidTimelineEvent(HitboxEndEventName);
@@ -150,14 +149,10 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         if (context == null)
             return;
 
-        if (hitBoxData == null)
+        if (!HasInlineHitboxLayout)
         {
-            string legacyHint = legacySequencePrefab != null
-                ? " A legacy hitbox prefab reference is still present on this asset."
-                : string.Empty;
-
             Debug.LogError(
-                $"Skill payload '{name}' requires a SkillHitBoxData asset. Migrate the old prefab layout before using this payload.{legacyHint}",
+                $"Skill payload '{name}' requires an inline hitbox layout.",
                 this);
             return;
         }
@@ -194,7 +189,7 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
 
         if (!SkillHitboxRuntimeBuilder.TryBuild(
                 runtime.transform,
-                hitBoxData,
+                HitboxLayout,
                 runtimeObject.layer,
                 out SkillHitboxGroup[] runtimeGroups,
                 out string buildError))
@@ -206,6 +201,20 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
 
         runtime.AssignGroups(runtimeGroups);
         runtime.Initialize(context, this);
+    }
+
+    public override void CollectValidationIssues(List<string> issues)
+    {
+        if (issues == null)
+            return;
+
+        if (!TryValidateRuntimeConfiguration(out string validationError))
+            issues.Add(validationError);
+    }
+
+    public void ReplaceHitboxLayoutGroups(List<SkillHitboxLayoutData.HitBoxGroupData> groups)
+    {
+        HitboxLayout.ReplaceGroups(groups);
     }
 
     internal void ResolveSpawnPose(
@@ -266,20 +275,20 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
     {
         errorMessage = null;
 
-        if (hitBoxData == null)
+        if (!HasInlineHitboxLayout)
         {
-            errorMessage = $"Skill payload '{name}' is missing SkillHitBoxData.";
+            errorMessage = $"Skill payload '{name}' is missing its inline hitbox layout.";
             return false;
         }
 
         List<string> issues = new List<string>();
-        hitBoxData.CollectValidationIssues(issues);
+        HitboxLayout.CollectValidationIssues(issues);
 
         HashSet<string> availableGroupKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        IReadOnlyList<SkillHitBoxData.HitBoxGroupData> dataGroups = hitBoxData.Groups;
+        IReadOnlyList<SkillHitboxLayoutData.HitBoxGroupData> dataGroups = HitboxLayout.Groups;
         for (int i = 0; i < dataGroups.Count; i++)
         {
-            SkillHitBoxData.HitBoxGroupData group = dataGroups[i];
+            SkillHitboxLayoutData.HitBoxGroupData group = dataGroups[i];
             if (group == null)
                 continue;
 
@@ -297,7 +306,7 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         if (HitboxStartEventName == HitboxEndEventName)
             issues.Add($"Skill payload '{name}' cannot use the same timeline event for hitbox start and end.");
 
-        for (int stepIndex = 0; stepIndex < steps.Count; stepIndex++)
+        for (int stepIndex = 0; steps != null && stepIndex < steps.Count; stepIndex++)
         {
             HitboxStep step = steps[stepIndex];
             if (step == null)

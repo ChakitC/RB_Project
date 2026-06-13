@@ -1,5 +1,26 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-3365710208504643867
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c14e08b308ccf04e840b98ddd6b4a28, type: 3}
+  m_Name: Projectile Execution
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  projectilePrefab: {fileID: 9164722303049109862, guid: a2689cdd55e31c948aec00496448e0ef, type: 3}
+  projectileConfigOverride: {fileID: 0}
+  spreadAngle: 10
+  projectileTrailVfxPrefab: {fileID: 8926415343284817078, guid: 530eb190399095046ab59b0eded72e1a, type: 3}
+  projectileHitVfxPrefab: {fileID: 1141330259687333427, guid: 6718dc24203da53468af9ada8fef7d6d, type: 3}
+  projectileHitVfxScale: 2
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18,6 +39,7 @@ MonoBehaviour:
   tags: 10
   description: Electric  boom !!
   baseDamage: 10
+  baseStaggerPower: 10
   baseManaCost: 10
   baseCastTime: 0.5
   baseCooldown: 0
@@ -27,12 +49,7 @@ MonoBehaviour:
   AreaofEffec: 0
   baseRadius: 0
   maxLevel: 20
-  payload: {fileID: 11400000, guid: 791246f70c504b16a3252d3964955f74, type: 2}
-  legacySkillPrefab: {fileID: 0}
-  legacyHelperFacingMode: 0
-  legacyProjectileTrailVfxPrefab: {fileID: 0}
-  legacyProjectileHitVfxPrefab: {fileID: 0}
-  legacyProjectileHitVfxScale: 1
+  payload: {fileID: -3365710208504643867}
   castCue: {fileID: 0}
   skillClip:
     _FadeDuration: 0.25
@@ -44,8 +61,15 @@ MonoBehaviour:
     _Clip: {fileID: -8374479895102863559, guid: 875bf0d7944892c47a1c8eb164dc64c2, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.5
-  legacyChainContinueMode: 0
-  legacyChainContinueNormalizedTime: 1
+  blockablePreCast: 0
+  preCastOpenTimelineEvent: 200
+  preCastCloseTimelineEvent: 201
+  useFallbackPreCastWindow: 1
+  fallbackPreCastOpenNormalized: 0
+  fallbackPreCastCloseNormalized: 0.35
+  preCastIndicatorPrefab: {fileID: 0}
+  cancelPreCastOnStun: 1
+  cancelPreCastOnStagger: 1
   perLevelData:
   - requiredLevel: 1
     damage: 0

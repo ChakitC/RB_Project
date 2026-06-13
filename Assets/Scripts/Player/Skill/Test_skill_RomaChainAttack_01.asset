@@ -18,6 +18,7 @@ MonoBehaviour:
   tags: 4
   description: 
   baseDamage: 10
+  baseStaggerPower: 10
   baseManaCost: 0
   baseCastTime: 0.5
   baseCooldown: 0
@@ -27,7 +28,7 @@ MonoBehaviour:
   AreaofEffec: 0
   baseRadius: 0
   maxLevel: 20
-  payload: {fileID: 11400000, guid: e926a93c5b344cdfa2c3be66941c8067, type: 2}
+  payload: {fileID: 7138734675216657894}
   castCue: {fileID: 0}
   skillClip:
     _FadeDuration: 0
@@ -39,8 +40,38 @@ MonoBehaviour:
     _Clip: {fileID: -5924742034376740567, guid: 02ffae2fd2bd8ff41af2e8787ff4aabc, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.3531141
+  blockablePreCast: 0
+  preCastOpenTimelineEvent: 200
+  preCastCloseTimelineEvent: 201
+  useFallbackPreCastWindow: 1
+  fallbackPreCastOpenNormalized: 0
+  fallbackPreCastCloseNormalized: 0.35
+  preCastIndicatorPrefab: {fileID: 0}
+  cancelPreCastOnStun: 1
+  cancelPreCastOnStagger: 1
   perLevelData: []
   previewLevel: 1
   references:
     version: 2
     RefIds: []
+--- !u!114 &7138734675216657894
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c14e08b308ccf04e840b98ddd6b4a28, type: 3}
+  m_Name: Projectile Execution
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 1
+  chainContinueNormalizedTime: 0.3531141
+  projectilePrefab: {fileID: 9164722303049109862, guid: a2689cdd55e31c948aec00496448e0ef, type: 3}
+  projectileConfigOverride: {fileID: 0}
+  spreadAngle: 10
+  projectileTrailVfxPrefab: {fileID: 3239568679811347795, guid: a454aaceaff2e07419aa061a002c28a8, type: 3}
+  projectileHitVfxPrefab: {fileID: 8295974722891363362, guid: 25477c0d7d0187d4e8cb92a3bc1860ba, type: 3}
+  projectileHitVfxScale: 1

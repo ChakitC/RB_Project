@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
 #if UNITY_EDITOR
@@ -5,7 +6,6 @@ using UnityEditor;
 #endif
 
 [HideMonoScript]
-[CreateAssetMenu(fileName = "Projectile Skill Payload", menuName = "Game/Skill Payload/Projectile")]
 public class ProjectileSkillPayloadDef : SkillPayloadDef
 {
     [PropertyOrder(-30)]
@@ -79,13 +79,13 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
         return projectilePrefab;
     }
 
-    public void AssignMigratedProjectilePrefab(Projectile prefab)
+    public override void CollectValidationIssues(List<string> issues)
     {
-        if (prefab == null)
+        if (issues == null)
             return;
 
-        projectilePrefab = prefab;
-        MarkDirty(this);
+        if (projectilePrefab == null)
+            issues.Add("Projectile payload has no projectile prefab configured.");
     }
 
     public override void Execute(SkillCastContext context)

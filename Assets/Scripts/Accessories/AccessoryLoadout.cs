@@ -354,8 +354,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
             return false;
 
         int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
-        var data = SaveSystem.LoadGame(saveSlot);
-        var entries = data?.accessories?.entries;
+        var entries = SaveSystem.LoadAccessories(saveSlot)?.entries;
         if (entries == null)
             return false;
 
@@ -445,20 +444,19 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
             return false;
 
         int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
-        GameSaveData data = SaveSystem.LoadGame(saveSlot) ?? new GameSaveData();
-        data.accessories ??= new AccessoryLoadoutSaveData();
-        data.accessories.entries ??= new List<CharacterAccessoryLoadoutSaveData>();
+        AccessoryLoadoutSaveData data = SaveSystem.LoadAccessories(saveSlot) ?? new AccessoryLoadoutSaveData();
+        data.entries ??= new List<CharacterAccessoryLoadoutSaveData>();
 
-        RemoveInstanceAssignments(data.accessories, instanceId, ownerId);
+        RemoveInstanceAssignments(data, instanceId, ownerId);
 
-        CharacterAccessoryLoadoutSaveData entry = FindLoadoutEntry(data.accessories, ownerId);
+        CharacterAccessoryLoadoutSaveData entry = FindLoadoutEntry(data, ownerId);
         if (entry == null)
         {
             entry = new CharacterAccessoryLoadoutSaveData
             {
                 ownerId = ownerId
             };
-            data.accessories.entries.Add(entry);
+            data.entries.Add(entry);
         }
 
         entry.slotCount = Mathf.Max(entry.slotCount, targetSlotIndex + 1);
@@ -475,7 +473,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
         }
 
         entry.equippedAccessories[targetSlotIndex] = inventoryInstance.DeepClone();
-        SaveSystem.SaveGame(data, saveSlot);
+        SaveSystem.SaveAccessories(data, saveSlot);
         SaveManager.Instance?.RefreshLoadedCacheFromDisk();
         return true;
     }
@@ -486,25 +484,24 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
             return false;
 
         int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
-        GameSaveData data = SaveSystem.LoadGame(saveSlot) ?? new GameSaveData();
-        data.accessories ??= new AccessoryLoadoutSaveData();
-        data.accessories.entries ??= new List<CharacterAccessoryLoadoutSaveData>();
+        AccessoryLoadoutSaveData data = SaveSystem.LoadAccessories(saveSlot) ?? new AccessoryLoadoutSaveData();
+        data.entries ??= new List<CharacterAccessoryLoadoutSaveData>();
 
-        CharacterAccessoryLoadoutSaveData entry = FindLoadoutEntry(data.accessories, ownerId);
+        CharacterAccessoryLoadoutSaveData entry = FindLoadoutEntry(data, ownerId);
         if (entry == null)
         {
             entry = new CharacterAccessoryLoadoutSaveData
             {
                 ownerId = ownerId
             };
-            data.accessories.entries.Add(entry);
+            data.entries.Add(entry);
         }
 
         entry.slotCount = Mathf.Max(entry.slotCount, slotIndex + 1);
         EnsureSavedAccessorySlots(entry, slotIndex + 1);
         entry.equippedAccessories[slotIndex] = null;
 
-        SaveSystem.SaveGame(data, saveSlot);
+        SaveSystem.SaveAccessories(data, saveSlot);
         SaveManager.Instance?.RefreshLoadedCacheFromDisk();
         return true;
     }
@@ -895,8 +892,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
     static AccessoryLoadoutSaveData LoadPersistedAccessoryData()
     {
         int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
-        var data = SaveSystem.LoadGame(saveSlot);
-        return CloneAccessoryData(data?.accessories);
+        return CloneAccessoryData(SaveSystem.LoadAccessories(saveSlot));
     }
 
     static AccessoryLoadoutSaveData CloneAccessoryData(AccessoryLoadoutSaveData source)

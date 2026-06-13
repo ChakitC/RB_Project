@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
   m_Name: Rector_Skill_1
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   icon: {fileID: 0}
   displayName: Rector_Skill_1
   skillId: Rector_Skill_1
@@ -30,12 +30,7 @@ MonoBehaviour:
   AreaofEffec: 0
   baseRadius: 0
   maxLevel: 20
-  payload: {fileID: 11400000, guid: 083b4ff2fbb2b9347b456eed4a0c1d2d, type: 2}
-  legacySkillPrefab: {fileID: 0}
-  legacyHelperFacingMode: 0
-  legacyProjectileTrailVfxPrefab: {fileID: 0}
-  legacyProjectileHitVfxPrefab: {fileID: 0}
-  legacyProjectileHitVfxScale: 1
+  payload: {fileID: 4845383700712859180}
   castCue: {fileID: 0}
   skillClip:
     _FadeDuration: 0.13000001
@@ -69,10 +64,213 @@ MonoBehaviour:
   preCastIndicatorPrefab: {fileID: 0}
   cancelPreCastOnStun: 1
   cancelPreCastOnStagger: 1
-  legacyChainContinueMode: 0
-  legacyChainContinueNormalizedTime: 1
   perLevelData: []
   previewLevel: 1
   references:
     version: 2
     RefIds: []
+--- !u!114 &4845383700712859180
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f4e6f7ebbd443f8b1550f5c5d6b1e72, type: 3}
+  m_Name: Prefab Hitbox Execution
+  m_EditorClassIdentifier:
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  hitboxLayout:
+    groups:
+    - groupKey: Group01
+      shapes:
+      - shapeName: Hit01
+        type: 1
+        localPosition: {x: 0, y: 0, z: 0.41999817}
+        localEulerAngles: {x: -0, y: 0, z: 0}
+        localScale: {x: 1, y: 1, z: 1}
+        center: {x: 0, y: 1.84, z: 0}
+        size: {x: 0, y: 0, z: 0}
+        radius: 2.28
+        height: 1
+        direction: 1
+    - groupKey: Group02
+      shapes:
+      - shapeName: Hit02
+        type: 1
+        localPosition: {x: 0, y: -1.09, z: 2.880001}
+        localEulerAngles: {x: -0, y: 0, z: 0}
+        localScale: {x: 1, y: 1, z: 1}
+        center: {x: 0, y: 1.79, z: 0}
+        size: {x: 0, y: 0, z: 0}
+        radius: 2.99
+        height: 1
+        direction: 1
+  anchorMode: 1
+  anchorChildPath:
+  followAnchor: 1
+  localPositionOffset: {x: 0, y: 0, z: 0}
+  localEulerOffset: {x: 0, y: 0, z: 0}
+  maxSequenceLifetime: 4
+  hitboxStartEventName: 10
+  hitboxEndEventName: 11
+  targetMask:
+    serializedVersion: 2
+    m_Bits: 65535
+  queryTriggers: 2
+  showDamageNumbers: 1
+  steps:
+  - groupKeys:
+    - Group01
+    damageMultiplier: 1
+    hitPolicy: 1
+    clearHitCacheOnEnter: 1
+    overrideKnockback: 1
+    knockbackDistance: 7
+    knockbackDuration: 1.5
+    knockbackProgressCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0.00066185
+        value: -0.0017700195
+        inSlope: 3.654122
+        outSlope: 3.654122
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0.17099094
+      - serializedVersion: 3
+        time: 0.22526096
+        value: 0.68758255
+        inSlope: 1.2573568
+        outSlope: 1.2573568
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    knockbackReaction: 0
+    knockbackInterruptsActions: 1
+    stepStartVfx:
+      prefab: {fileID: 0}
+      scale: 1
+    impactVfx:
+      prefab: {fileID: 0}
+      scale: 1
+      spawnPolicy: 1
+  - groupKeys:
+    - Group01
+    damageMultiplier: 1
+    hitPolicy: 1
+    clearHitCacheOnEnter: 1
+    overrideKnockback: 1
+    knockbackDistance: 7
+    knockbackDuration: 1.5
+    knockbackProgressCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0.00066185
+        value: -0.0017700195
+        inSlope: 3.654122
+        outSlope: 3.654122
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0.17099094
+      - serializedVersion: 3
+        time: 0.22526096
+        value: 0.68758255
+        inSlope: 1.2573568
+        outSlope: 1.2573568
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    knockbackReaction: 0
+    knockbackInterruptsActions: 1
+    stepStartVfx:
+      prefab: {fileID: 0}
+      scale: 1
+    impactVfx:
+      prefab: {fileID: 0}
+      scale: 1
+      spawnPolicy: 1
+  - groupKeys:
+    - Group02
+    damageMultiplier: 1
+    hitPolicy: 1
+    clearHitCacheOnEnter: 1
+    overrideKnockback: 1
+    knockbackDistance: 7
+    knockbackDuration: 1.5
+    knockbackProgressCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0.0006790161
+        value: 0
+        inSlope: 6.498354
+        outSlope: 6.498354
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0.2750689
+      - serializedVersion: 3
+        time: 0.23960787
+        value: 0.78800523
+        inSlope: 1.0238256
+        outSlope: 1.0238256
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    knockbackReaction: 0
+    knockbackInterruptsActions: 1
+    stepStartVfx:
+      prefab: {fileID: 0}
+      scale: 1
+    impactVfx:
+      prefab: {fileID: 0}
+      scale: 1
+      spawnPolicy: 1

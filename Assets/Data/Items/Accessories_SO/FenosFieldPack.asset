@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Feno's Field Pack
   description: Increases reserve ammo capacity by 25%. Shots have a 6% chance to
     drop a 4-round ammo pickup, with a 2-second cooldown.
-  icon: {fileID: 21300000, guid: 8fafc6006aa08fe4293dc0bff5f94173, type: 3}
+  icon: {fileID: 21300000, guid: 1fba2087f75299f4ab16214f72d27d57, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}

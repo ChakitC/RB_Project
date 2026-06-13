@@ -22,6 +22,10 @@ public abstract class SkillPayloadDef : ScriptableObject
     {
     }
 
+    public virtual void CollectValidationIssues(List<string> issues)
+    {
+    }
+
     public ChainStepContinueMode GetChainContinueMode()
     {
         return chainContinueMode;

@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8d1e08d93db328428ab5893f0dc770a, type: 3}
+  m_Name: Passive.CasinoLuckyCoin
+  m_EditorClassIdentifier: 
+  passiveId: Passive.Accessory.CasinoLuckyCoin
+  description: After a kill, gain 5 critical rate for 4 seconds.
+  rules:
+  - ruleId: lucky_streak
+    trigger: 3
+    originFilter: 0
+    requiredCount: 1
+    countWindowSeconds: 0
+    cooldownSeconds: 0
+    counterConsumeMode: 0
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    eventSourceKind: 0
+    eventSourceId: 
+    eventSourceFloatValue: 2
+    eventSourceIntValue: 0
+    actions:
+    - actionId: lucky_streak_crit
+      actionType: 0
+      targetSelector: 0
+      modifierKeyOverride: 
+      appliedByIdOverride: 
+      emittedEventSourceIdOverride: 
+      modifiers:
+      - statType: 9
+        operation: 0
+        value: 5
+      grantedStacks: 1
+      maxStacks: 1
+      durationSeconds: 4
+      stackPolicy: 1
+      statusEffect: {fileID: 0}
+      statusInitialStacks: 1
+      emittedEventType: 0
+      emittedValue: 0

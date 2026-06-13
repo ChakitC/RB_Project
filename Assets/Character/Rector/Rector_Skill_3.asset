@@ -1,5 +1,26 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7084758134643645102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c14e08b308ccf04e840b98ddd6b4a28, type: 3}
+  m_Name: Projectile Execution
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  projectilePrefab: {fileID: 6520590583272355747, guid: 2e1d9e93839881b4da274627cbf77e4c, type: 3}
+  projectileConfigOverride: {fileID: 0}
+  spreadAngle: 10
+  projectileTrailVfxPrefab: {fileID: 0}
+  projectileHitVfxPrefab: {fileID: 0}
+  projectileHitVfxScale: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -28,12 +49,7 @@ MonoBehaviour:
   AreaofEffec: 0
   baseRadius: 0
   maxLevel: 20
-  payload: {fileID: 11400000, guid: a24687dba31b4ab09a9146e1ef5148f8, type: 2}
-  legacySkillPrefab: {fileID: 0}
-  legacyHelperFacingMode: 0
-  legacyProjectileTrailVfxPrefab: {fileID: 0}
-  legacyProjectileHitVfxPrefab: {fileID: 0}
-  legacyProjectileHitVfxScale: 1
+  payload: {fileID: -7084758134643645102}
   castCue: {fileID: 0}
   skillClip:
     _FadeDuration: 0.25
@@ -59,8 +75,6 @@ MonoBehaviour:
   preCastIndicatorPrefab: {fileID: 0}
   cancelPreCastOnStun: 1
   cancelPreCastOnStagger: 1
-  legacyChainContinueMode: 0
-  legacyChainContinueNormalizedTime: 1
   perLevelData: []
   previewLevel: 1
   references:

@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8d1e08d93db328428ab5893f0dc770a, type: 3}
+  m_Name: Passive.DashboardRosary
+  m_EditorClassIdentifier: 
+  passiveId: Passive.Accessory.DashboardRosary
+  description: After a perfect dodge, gain 15% armor for 4 seconds.
+  rules:
+  - ruleId: close_call
+    trigger: 6
+    originFilter: 0
+    requiredCount: 1
+    countWindowSeconds: 0
+    cooldownSeconds: 0
+    counterConsumeMode: 0
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    eventSourceKind: 0
+    eventSourceId: 
+    eventSourceFloatValue: 2
+    eventSourceIntValue: 0
+    actions:
+    - actionId: close_call_armor
+      actionType: 0
+      targetSelector: 0
+      modifierKeyOverride: 
+      appliedByIdOverride: 
+      emittedEventSourceIdOverride: 
+      modifiers:
+      - statType: 7
+        operation: 1
+        value: 15
+      grantedStacks: 1
+      maxStacks: 1
+      durationSeconds: 4
+      stackPolicy: 1
+      statusEffect: {fileID: 0}
+      statusInitialStacks: 1
+      emittedEventType: 0
+      emittedValue: 0

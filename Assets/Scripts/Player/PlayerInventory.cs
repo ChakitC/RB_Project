@@ -426,7 +426,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         bool equipped = ApplyEquippedWeaponIfPossible();
 
         if (equipped && changed && SaveManager.Instance != null)
-            SaveManager.Instance.Save();
+            SaveManager.Instance.SaveInventoryAndEquipment();
 
         return equipped;
     }
@@ -449,7 +449,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
                 SetEquippedWeaponInstanceId(instanceId);
 
             if (equipped && SaveManager.Instance != null)
-                SaveManager.Instance.Save();
+                SaveManager.Instance.SaveInventoryAndEquipment();
 
             return equipped;
         }
@@ -458,7 +458,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             return false;
 
         if (SaveManager.Instance != null)
-            SaveManager.Instance.Save();
+            SaveManager.Instance.SaveInventoryOnly();
 
         bool saved = CharacterEquipment.SaveEquipmentAssignment(equipmentOwnerId, instanceId, this);
         if (saved && IsCurrentPartyLeaderOwner(equipmentOwnerId))
@@ -481,7 +481,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         bool saved = !string.IsNullOrWhiteSpace(ownerId) && CharacterEquipment.ClearEquipmentAssignment(ownerId);
 
         if ((hadWeapon || idChanged || saved) && SaveManager.Instance != null)
-            SaveManager.Instance.Save();
+            SaveManager.Instance.SaveInventoryOnly();
 
         return hadWeapon || idChanged || saved;
     }
@@ -510,7 +510,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         bool saved = CharacterEquipment.ClearEquipmentAssignment(equipmentOwnerId);
         if ((hadWeapon || idChanged || saved) && SaveManager.Instance != null)
-            SaveManager.Instance.Save();
+            SaveManager.Instance.SaveInventoryOnly();
 
         return hadWeapon || idChanged || saved;
     }
@@ -534,7 +534,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         bool equipped = accessoryLoadout.TryEquipFromInventory(this, instanceId, slotIndex);
         if (equipped && SaveManager.Instance != null)
-            SaveManager.Instance.Save();
+            SaveManager.Instance.SaveInventoryAndAccessories();
 
         return equipped;
     }
@@ -555,11 +555,12 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         {
             bool equipped = targetLoadout.TryEquipFromInventory(this, instanceId, slotIndex);
             if (equipped && SaveManager.Instance != null)
-                SaveManager.Instance.Save();
+                SaveManager.Instance.SaveInventoryAndAccessories();
 
             return equipped;
         }
 
+        SaveManager.Instance?.SaveInventoryOnly();
         return AccessoryLoadout.SaveLoadoutAssignment(equipmentOwnerId, instanceId, slotIndex, this);
     }
 
@@ -572,7 +573,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         bool changed = accessoryLoadout.UnequipSlot(slotIndex);
         if (changed && SaveManager.Instance != null)
-            SaveManager.Instance.Save();
+            SaveManager.Instance.SaveInventoryAndAccessories();
 
         return changed;
     }
@@ -588,9 +589,6 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         AccessoryLoadout targetLoadout = FindSceneAccessoryLoadoutByOwner(equipmentOwnerId);
         bool changed = targetLoadout != null && targetLoadout.UnequipSlot(slotIndex);
         bool saved = AccessoryLoadout.ClearLoadoutAssignment(equipmentOwnerId, slotIndex);
-
-        if ((changed || saved) && SaveManager.Instance != null)
-            SaveManager.Instance.Save();
 
         return changed || saved;
     }
@@ -1026,7 +1024,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             return false;
 
         int saveSlot = SaveManager.Instance.currentSlot;
-        return SaveSystem.LoadGame(saveSlot) != null || SaveSystem.LoadPartyOnly(saveSlot) != null;
+        return SaveSystem.HasGameData(saveSlot) || SaveSystem.LoadPartyOnly(saveSlot) != null;
     }
 
     static bool IsCurrentPartyLeaderOwner(string ownerId)

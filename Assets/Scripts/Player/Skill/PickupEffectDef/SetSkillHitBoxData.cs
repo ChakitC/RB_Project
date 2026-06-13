@@ -13,7 +13,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
     const string CreateTemplateUndoLabel = "Create Skill HitBox Template";
 
     [SerializeField] private Transform sourceHitboxRoot;
-    [SerializeField] private SkillHitBoxData skillHitBoxData;
+    [SerializeField] private SkillGemDefinition skill;
     [SerializeField] private bool includeInactiveObjects = true;
     [SerializeField, MinValue(1), LabelText("Template Group Count")]
     [PropertyTooltip("Number of SkillHitboxGroup templates to create when pressing Create Source Template.")]
@@ -108,29 +108,28 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
     }
 
     [Button("Load Layout From Data")]
-    [PropertyTooltip("โหลด hit box จาก SkillHitBoxData ออกมาเป็น GameObject และ Collider ใต้ Source Hitbox Root เพื่อปรับตำแหน่ง ขนาด และรูปทรงใน scene")]
+    [PropertyTooltip("โหลด inline hitbox layout จาก Skill ออกมาเป็น GameObject และ Collider ใต้ Source Hitbox Root เพื่อปรับตำแหน่ง ขนาด และรูปทรงใน scene")]
     private void LoadLayoutFromData()
     {
 #if UNITY_EDITOR
-        if (skillHitBoxData == null)
-        {
-            Debug.LogWarning("SkillHitBoxData is not assigned.", this);
+        if (!TryGetHitboxPayload(out PrefabHitboxSkillPayloadDef payload))
             return;
-        }
+
+        SkillHitboxLayoutData hitboxLayout = payload.HitboxLayout;
 
         if (!TryGetEditableRoot(out Transform root))
             return;
 
-        IReadOnlyList<SkillHitBoxData.HitBoxGroupData> sourceGroups = skillHitBoxData.Groups;
+        IReadOnlyList<SkillHitboxLayoutData.HitBoxGroupData> sourceGroups = hitboxLayout.Groups;
         if (sourceGroups == null || sourceGroups.Count == 0)
         {
-            Debug.LogWarning($"SkillHitBoxData '{skillHitBoxData.name}' has no groups to load.", skillHitBoxData);
+            Debug.LogWarning($"Skill '{skill.name}' has no inline hitbox groups to load.", skill);
             return;
         }
 
         if (!HasLoadableGroups(sourceGroups))
         {
-            Debug.LogWarning($"SkillHitBoxData '{skillHitBoxData.name}' has no loadable hitbox shapes.", skillHitBoxData);
+            Debug.LogWarning($"Skill '{skill.name}' has no loadable inline hitbox shapes.", skill);
             return;
         }
 
@@ -149,12 +148,12 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
 
             for (int groupIndex = 0; groupIndex < sourceGroups.Count; groupIndex++)
             {
-                SkillHitBoxData.HitBoxGroupData sourceGroup = sourceGroups[groupIndex];
+                SkillHitboxLayoutData.HitBoxGroupData sourceGroup = sourceGroups[groupIndex];
                 if (sourceGroup == null)
                 {
                     Debug.LogWarning(
                         $"Skipping hitbox group at index {groupIndex} because it is null.",
-                        skillHitBoxData);
+                        skill);
                     continue;
                 }
 
@@ -164,16 +163,16 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
                 {
                     Debug.LogWarning(
                         $"Skipping hitbox group at index {groupIndex} because the group key is empty.",
-                        skillHitBoxData);
+                        skill);
                     continue;
                 }
 
-                List<SkillHitBoxData.HitBoxShapeData> sourceShapes = sourceGroup.Shapes;
+                List<SkillHitboxLayoutData.HitBoxShapeData> sourceShapes = sourceGroup.Shapes;
                 if (sourceShapes == null || sourceShapes.Count == 0)
                 {
                     Debug.LogWarning(
                         $"Skipping hitbox group '{groupKey}' because it has no shapes.",
-                        skillHitBoxData);
+                        skill);
                     continue;
                 }
 
@@ -183,12 +182,12 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
 
                 for (int shapeIndex = 0; shapeIndex < sourceShapes.Count; shapeIndex++)
                 {
-                    SkillHitBoxData.HitBoxShapeData sourceShape = sourceShapes[shapeIndex];
+                    SkillHitboxLayoutData.HitBoxShapeData sourceShape = sourceShapes[shapeIndex];
                     if (sourceShape == null)
                     {
                         Debug.LogWarning(
                             $"Skipping hitbox shape at index {shapeIndex} in group '{groupKey}' because it is null.",
-                            skillHitBoxData);
+                            skill);
                         continue;
                     }
 
@@ -209,7 +208,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
                         Undo.DestroyObjectImmediate(shapeObject);
                         Debug.LogWarning(
                             $"Skipping hitbox shape '{shapeName}' in group '{groupKey}': {errorMessage}",
-                            skillHitBoxData);
+                            skill);
                         continue;
                     }
 
@@ -225,7 +224,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
                     Undo.DestroyObjectImmediate(groupObject);
                     Debug.LogWarning(
                         $"Skipping hitbox group '{groupKey}' because no colliders could be created.",
-                        skillHitBoxData);
+                        skill);
                     continue;
                 }
 
@@ -238,13 +237,13 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
             if (createdGroupCount == 0)
             {
                 Debug.LogWarning(
-                    $"Failed to load '{skillHitBoxData.name}' because no editable hitbox groups could be created.",
-                    skillHitBoxData);
+                    $"Failed to load '{skill.name}' because no editable hitbox groups could be created.",
+                    skill);
                 return;
             }
 
             Debug.Log(
-                $"Loaded SkillHitBoxData '{skillHitBoxData.name}' into '{root.name}': " +
+                $"Loaded inline hitbox layout from skill '{skill.name}' into '{root.name}': " +
                 $"{createdGroupCount} groups / {createdColliderCount} colliders " +
                 $"(removed {removedGroupCount} existing groups).",
                 root);
@@ -254,7 +253,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
             CleanupCreatedObjects(createdObjects);
             MarkHierarchyDirty(root);
             Debug.LogError(
-                $"Failed to load SkillHitBoxData '{skillHitBoxData.name}' into the scene: {ex.Message}",
+                $"Failed to load inline hitbox layout from skill '{skill.name}' into the scene: {ex.Message}",
                 this);
         }
         finally
@@ -267,14 +266,11 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
     }
 
     [Button("Save Layout From Source")]
-    [PropertyTooltip("อ่าน SkillHitboxGroup และ Collider ใต้ Source Hitbox Root กลับไปบันทึกเป็น SkillHitBoxData หลังจากปรับแต่งใน scene เสร็จ")]
+    [PropertyTooltip("อ่าน SkillHitboxGroup และ Collider ใต้ Source Hitbox Root กลับไปบันทึกใน embedded hitbox payload ของ Skill")]
     private void SaveLayoutFromSource()
     {
-        if (skillHitBoxData == null)
-        {
-            Debug.LogWarning("SkillHitBoxData is not assigned.", this);
+        if (!TryGetHitboxPayload(out PrefabHitboxSkillPayloadDef payload))
             return;
-        }
 
         Transform root = GetSourceRoot();
         SkillHitboxGroup[] sourceGroups = root.GetComponentsInChildren<SkillHitboxGroup>(includeInactiveObjects);
@@ -284,7 +280,8 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
             return;
         }
 
-        List<SkillHitBoxData.HitBoxGroupData> rebuiltGroups = new List<SkillHitBoxData.HitBoxGroupData>();
+        List<SkillHitboxLayoutData.HitBoxGroupData> rebuiltGroups =
+            new List<SkillHitboxLayoutData.HitBoxGroupData>();
         int extractedColliderCount = 0;
 
         for (int i = 0; i < sourceGroups.Length; i++)
@@ -293,7 +290,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
             if (sourceGroup == null)
                 continue;
 
-            SkillHitBoxData.HitBoxGroupData groupData = new SkillHitBoxData.HitBoxGroupData
+            SkillHitboxLayoutData.HitBoxGroupData groupData = new SkillHitboxLayoutData.HitBoxGroupData
             {
                 GroupKey = sourceGroup.GroupKey
             };
@@ -302,7 +299,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
             for (int colliderIndex = 0; colliderIndex < colliders.Count; colliderIndex++)
             {
                 Collider collider = colliders[colliderIndex];
-                if (!TryCreateShapeData(root, collider, out SkillHitBoxData.HitBoxShapeData shapeData))
+                if (!TryCreateShapeData(root, collider, out SkillHitboxLayoutData.HitBoxShapeData shapeData))
                     continue;
 
                 groupData.Shapes.Add(shapeData);
@@ -322,58 +319,56 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
 
         if (rebuiltGroups.Count == 0)
         {
-            Debug.LogWarning("No hitbox layout could be exported into SkillHitBoxData.", this);
+            Debug.LogWarning("No hitbox layout could be exported into the skill.", this);
             return;
         }
 
-        skillHitBoxData.ReplaceGroups(rebuiltGroups);
+        payload.ReplaceHitboxLayoutGroups(rebuiltGroups);
 
         List<string> validationIssues = new List<string>();
-        int issueCount = skillHitBoxData.CollectValidationIssues(validationIssues);
-        MarkAssetDirty(skillHitBoxData);
+        int issueCount = payload.HitboxLayout.CollectValidationIssues(validationIssues);
+        MarkAssetDirty(payload);
 
         if (issueCount > 0)
         {
             Debug.LogWarning(
-                $"Saved SkillHitBoxData from '{root.name}', but found {issueCount} validation issue(s).\n- " +
+                $"Saved inline hitbox layout from '{root.name}', but found {issueCount} validation issue(s).\n- " +
                 string.Join("\n- ", validationIssues),
-                skillHitBoxData);
+                skill);
             return;
         }
 
         Debug.Log(
-            $"Saved SkillHitBoxData from '{root.name}': {rebuiltGroups.Count} groups / {extractedColliderCount} colliders.",
-            skillHitBoxData);
+            $"Saved inline hitbox layout to skill '{skill.name}' from '{root.name}': " +
+            $"{rebuiltGroups.Count} groups / {extractedColliderCount} colliders.",
+            skill);
     }
 
     [Button("Validate Current Data")]
-    [PropertyTooltip("ตรวจสอบว่า SkillHitBoxData ปัจจุบันมี group key, shape และค่าของ collider ครบและถูกต้องหรือไม่")]
+    [PropertyTooltip("ตรวจสอบว่า inline hitbox layout ใน Skill มี group key, shape และค่าของ collider ครบและถูกต้องหรือไม่")]
     private void ValidateCurrentData()
     {
-        if (skillHitBoxData == null)
-        {
-            Debug.LogWarning("SkillHitBoxData is not assigned.", this);
+        if (!TryGetHitboxPayload(out PrefabHitboxSkillPayloadDef payload))
             return;
-        }
 
         List<string> validationIssues = new List<string>();
-        int issueCount = skillHitBoxData.CollectValidationIssues(validationIssues);
+        int issueCount = payload.HitboxLayout.CollectValidationIssues(validationIssues);
         if (issueCount == 0)
         {
-            Debug.Log($"SkillHitBoxData '{skillHitBoxData.name}' passed validation.", skillHitBoxData);
+            Debug.Log($"Skill '{skill.name}' inline hitbox layout passed validation.", skill);
             return;
         }
 
         Debug.LogWarning(
-            $"SkillHitBoxData '{skillHitBoxData.name}' has {issueCount} validation issue(s).\n- " +
+            $"Skill '{skill.name}' inline hitbox layout has {issueCount} validation issue(s).\n- " +
             string.Join("\n- ", validationIssues),
-            skillHitBoxData);
+            skill);
     }
 
     static bool TryCreateShapeData(
         Transform root,
         Collider collider,
-        out SkillHitBoxData.HitBoxShapeData shapeData)
+        out SkillHitboxLayoutData.HitBoxShapeData shapeData)
     {
         shapeData = null;
 
@@ -381,7 +376,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
             return false;
 
         Transform colliderTransform = collider.transform;
-        shapeData = new SkillHitBoxData.HitBoxShapeData
+        shapeData = new SkillHitboxLayoutData.HitBoxShapeData
         {
             ShapeName = colliderTransform.name,
             LocalPosition = root.InverseTransformPoint(colliderTransform.position),
@@ -391,7 +386,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
 
         if (collider is BoxCollider box)
         {
-            shapeData.Type = SkillHitBoxData.HitBoxType.Box;
+            shapeData.Type = SkillHitboxLayoutData.HitBoxType.Box;
             shapeData.Center = box.center;
             shapeData.Size = box.size;
             shapeData.Radius = 0f;
@@ -402,7 +397,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
 
         if (collider is CapsuleCollider capsule)
         {
-            shapeData.Type = SkillHitBoxData.HitBoxType.Capsule;
+            shapeData.Type = SkillHitboxLayoutData.HitBoxType.Capsule;
             shapeData.Center = capsule.center;
             shapeData.Size = Vector3.zero;
             shapeData.Radius = capsule.radius;
@@ -413,7 +408,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
 
         if (collider is SphereCollider sphere)
         {
-            shapeData.Type = SkillHitBoxData.HitBoxType.Sphere;
+            shapeData.Type = SkillHitboxLayoutData.HitBoxType.Sphere;
             shapeData.Center = sphere.center;
             shapeData.Size = Vector3.zero;
             shapeData.Radius = sphere.radius;
@@ -427,14 +422,14 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
         return false;
     }
 
-    static bool HasLoadableGroups(IReadOnlyList<SkillHitBoxData.HitBoxGroupData> sourceGroups)
+    static bool HasLoadableGroups(IReadOnlyList<SkillHitboxLayoutData.HitBoxGroupData> sourceGroups)
     {
         if (sourceGroups == null || sourceGroups.Count == 0)
             return false;
 
         for (int groupIndex = 0; groupIndex < sourceGroups.Count; groupIndex++)
         {
-            SkillHitBoxData.HitBoxGroupData sourceGroup = sourceGroups[groupIndex];
+            SkillHitboxLayoutData.HitBoxGroupData sourceGroup = sourceGroups[groupIndex];
             if (sourceGroup == null)
                 continue;
 
@@ -442,7 +437,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
             if (string.IsNullOrWhiteSpace(groupKey))
                 continue;
 
-            List<SkillHitBoxData.HitBoxShapeData> sourceShapes = sourceGroup.Shapes;
+            List<SkillHitboxLayoutData.HitBoxShapeData> sourceShapes = sourceGroup.Shapes;
             if (sourceShapes == null || sourceShapes.Count == 0)
                 continue;
 
@@ -458,7 +453,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
 
     static bool TryAddColliderFromShapeData(
         GameObject shapeObject,
-        SkillHitBoxData.HitBoxShapeData sourceShape,
+        SkillHitboxLayoutData.HitBoxShapeData sourceShape,
         out Collider createdCollider,
         out string errorMessage)
     {
@@ -473,14 +468,14 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
 
         switch (sourceShape.Type)
         {
-            case SkillHitBoxData.HitBoxType.Box:
+            case SkillHitboxLayoutData.HitBoxType.Box:
                 BoxCollider box = shapeObject.AddComponent<BoxCollider>();
                 box.center = sourceShape.Center;
                 box.size = sourceShape.Size;
                 createdCollider = box;
                 return true;
 
-            case SkillHitBoxData.HitBoxType.Capsule:
+            case SkillHitboxLayoutData.HitBoxType.Capsule:
                 CapsuleCollider capsule = shapeObject.AddComponent<CapsuleCollider>();
                 capsule.center = sourceShape.Center;
                 capsule.radius = sourceShape.Radius;
@@ -489,7 +484,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
                 createdCollider = capsule;
                 return true;
 
-            case SkillHitBoxData.HitBoxType.Sphere:
+            case SkillHitboxLayoutData.HitBoxType.Sphere:
                 SphereCollider sphere = shapeObject.AddComponent<SphereCollider>();
                 sphere.center = sourceShape.Center;
                 sphere.radius = sourceShape.Radius;
@@ -532,6 +527,25 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
 
             UnityEngine.Object.DestroyImmediate(createdObject);
         }
+    }
+
+    bool TryGetHitboxPayload(out PrefabHitboxSkillPayloadDef payload)
+    {
+        payload = null;
+        if (skill == null)
+        {
+            Debug.LogWarning("Skill is not assigned.", this);
+            return false;
+        }
+
+        payload = skill.payload as PrefabHitboxSkillPayloadDef;
+        if (payload != null)
+            return true;
+
+        Debug.LogWarning(
+            $"Skill '{skill.name}' does not use a PrefabHitboxSkillPayloadDef execution payload.",
+            skill);
+        return false;
     }
 
     Transform GetSourceRoot()
@@ -643,7 +657,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
 #endif
     }
 
-    static void MarkAssetDirty(SkillHitBoxData data)
+    static void MarkAssetDirty(UnityEngine.Object data)
     {
 #if UNITY_EDITOR
         if (data == null)

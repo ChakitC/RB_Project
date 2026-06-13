@@ -822,7 +822,7 @@ static class SkillHitboxRuntimeBuilder
 {
     public static bool TryBuild(
         Transform root,
-        SkillHitBoxData hitBoxData,
+        SkillHitboxLayoutData hitboxLayout,
         int layer,
         out SkillHitboxGroup[] builtGroups,
         out string errorMessage)
@@ -836,16 +836,16 @@ static class SkillHitboxRuntimeBuilder
             return false;
         }
 
-        if (hitBoxData == null)
+        if (hitboxLayout == null)
         {
-            errorMessage = "SkillHitBoxData is missing.";
+            errorMessage = "Inline hitbox layout is missing.";
             return false;
         }
 
-        IReadOnlyList<SkillHitBoxData.HitBoxGroupData> sourceGroups = hitBoxData.Groups;
+        IReadOnlyList<SkillHitboxLayoutData.HitBoxGroupData> sourceGroups = hitboxLayout.Groups;
         if (sourceGroups == null || sourceGroups.Count == 0)
         {
-            errorMessage = $"SkillHitBoxData '{hitBoxData.name}' has no hitbox groups.";
+            errorMessage = "Inline hitbox layout has no groups.";
             return false;
         }
 
@@ -856,10 +856,10 @@ static class SkillHitboxRuntimeBuilder
         {
             for (int i = 0; i < sourceGroups.Count; i++)
             {
-                SkillHitBoxData.HitBoxGroupData sourceGroup = sourceGroups[i];
+                SkillHitboxLayoutData.HitBoxGroupData sourceGroup = sourceGroups[i];
                 if (sourceGroup == null)
                 {
-                    errorMessage = $"SkillHitBoxData '{hitBoxData.name}' has a null group at index {i}.";
+                    errorMessage = $"Inline hitbox layout has a null group at index {i}.";
                     Cleanup(createdObjects);
                     return false;
                 }
@@ -867,15 +867,15 @@ static class SkillHitboxRuntimeBuilder
                 string groupKey = sourceGroup.GroupKey;
                 if (string.IsNullOrWhiteSpace(groupKey))
                 {
-                    errorMessage = $"SkillHitBoxData '{hitBoxData.name}' has a group with an empty key.";
+                    errorMessage = "Inline hitbox layout has a group with an empty key.";
                     Cleanup(createdObjects);
                     return false;
                 }
 
-                List<SkillHitBoxData.HitBoxShapeData> sourceShapes = sourceGroup.Shapes;
+                List<SkillHitboxLayoutData.HitBoxShapeData> sourceShapes = sourceGroup.Shapes;
                 if (sourceShapes == null || sourceShapes.Count == 0)
                 {
-                    errorMessage = $"SkillHitBoxData '{hitBoxData.name}' group '{groupKey}' has no shapes.";
+                    errorMessage = $"Inline hitbox group '{groupKey}' has no shapes.";
                     Cleanup(createdObjects);
                     return false;
                 }
@@ -890,10 +890,10 @@ static class SkillHitboxRuntimeBuilder
 
                 for (int shapeIndex = 0; shapeIndex < sourceShapes.Count; shapeIndex++)
                 {
-                    SkillHitBoxData.HitBoxShapeData sourceShape = sourceShapes[shapeIndex];
+                    SkillHitboxLayoutData.HitBoxShapeData sourceShape = sourceShapes[shapeIndex];
                     if (sourceShape == null)
                     {
-                        errorMessage = $"SkillHitBoxData '{hitBoxData.name}' group '{groupKey}' has a null shape.";
+                        errorMessage = $"Inline hitbox group '{groupKey}' has a null shape.";
                         Cleanup(createdObjects);
                         return false;
                     }
@@ -927,14 +927,14 @@ static class SkillHitboxRuntimeBuilder
         catch (Exception ex)
         {
             Cleanup(createdObjects);
-            errorMessage = $"Failed to build hitbox runtime from '{hitBoxData.name}': {ex.Message}";
+            errorMessage = $"Failed to build inline hitbox runtime: {ex.Message}";
             return false;
         }
     }
 
     static bool TryAddCollider(
         GameObject shapeObject,
-        SkillHitBoxData.HitBoxShapeData sourceShape,
+        SkillHitboxLayoutData.HitBoxShapeData sourceShape,
         out Collider runtimeCollider,
         out string errorMessage)
     {
@@ -949,14 +949,14 @@ static class SkillHitboxRuntimeBuilder
 
         switch (sourceShape.Type)
         {
-            case SkillHitBoxData.HitBoxType.Box:
+            case SkillHitboxLayoutData.HitBoxType.Box:
                 BoxCollider box = shapeObject.AddComponent<BoxCollider>();
                 box.center = sourceShape.Center;
                 box.size = sourceShape.Size;
                 runtimeCollider = box;
                 return true;
 
-            case SkillHitBoxData.HitBoxType.Capsule:
+            case SkillHitboxLayoutData.HitBoxType.Capsule:
                 CapsuleCollider capsule = shapeObject.AddComponent<CapsuleCollider>();
                 capsule.center = sourceShape.Center;
                 capsule.radius = sourceShape.Radius;
@@ -965,7 +965,7 @@ static class SkillHitboxRuntimeBuilder
                 runtimeCollider = capsule;
                 return true;
 
-            case SkillHitBoxData.HitBoxType.Sphere:
+            case SkillHitboxLayoutData.HitBoxType.Sphere:
                 SphereCollider sphere = shapeObject.AddComponent<SphereCollider>();
                 sphere.center = sourceShape.Center;
                 sphere.radius = sourceShape.Radius;

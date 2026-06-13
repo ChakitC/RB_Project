@@ -8,7 +8,6 @@ public class CharacterSkillManager : MonoBehaviour
 {
     static readonly SkillSlot[] EmptyAutonomousSlots = Array.Empty<SkillSlot>();
     static readonly HelperProcSlot[] EmptyHelperProcSlots = Array.Empty<HelperProcSlot>();
-    static readonly CharacterChainSlot[] EmptyLegacyHelperProcSlots = Array.Empty<CharacterChainSlot>();
     static readonly PassiveSkillSlot[] EmptyPassiveSlots = Array.Empty<PassiveSkillSlot>();
 
     private CharacteContext ctx;
@@ -35,11 +34,6 @@ public class CharacterSkillManager : MonoBehaviour
     [Header("Helper Proc Loadout")]
     [SerializeField] private HelperProcSlot[] helperProcLoadout = EmptyHelperProcSlots;
 
-    [FormerlySerializedAs("helperProcSlots")]
-    [FormerlySerializedAs("reactiveProcSlots")]
-    [FormerlySerializedAs("chainSlots")]
-    [SerializeField, HideInInspector] private CharacterChainSlot[] legacyHelperProcSlots = EmptyLegacyHelperProcSlots;
-
     [Header("Passive Loadout")]
     [FormerlySerializedAs("passiveSlots")]
     [SerializeField] private PassiveSkillSlot[] passiveSlots = EmptyPassiveSlots;
@@ -56,7 +50,6 @@ public class CharacterSkillManager : MonoBehaviour
 
     private void Awake()
     {
-        MigrateLegacyHelperProcSlotsIfNeeded();
         CacheReferences();
         EnsureCastOrchestrator();
 
@@ -64,11 +57,6 @@ public class CharacterSkillManager : MonoBehaviour
             Debug.LogError("CharacterSkillManager requires an ISkillUser component.");
 
         RebuildAllRuntimeSkills();
-    }
-
-    private void OnValidate()
-    {
-        MigrateLegacyHelperProcSlotsIfNeeded();
     }
 
     private void OnEnable()
@@ -218,8 +206,6 @@ public class CharacterSkillManager : MonoBehaviour
 
     public void AppendConfiguredHelperChainDefinitions(List<SkillHelperDef> buffer, HashSet<SkillHelperDef> dedupe = null)
     {
-        MigrateLegacyHelperProcSlotsIfNeeded();
-
         if (buffer == null || helperProcLoadout == null)
             return;
 
@@ -562,31 +548,6 @@ public class CharacterSkillManager : MonoBehaviour
         }
 
         return count;
-    }
-
-    private void MigrateLegacyHelperProcSlotsIfNeeded()
-    {
-        if (helperProcLoadout != null && helperProcLoadout.Length > 0)
-            return;
-
-        if (legacyHelperProcSlots == null || legacyHelperProcSlots.Length == 0)
-            return;
-
-        List<HelperProcSlot> migrated = null;
-        for (int i = 0; i < legacyHelperProcSlots.Length; i++)
-        {
-            HelperProcSlot migratedSlot = legacyHelperProcSlots[i]?.ToHelperProcSlot();
-            if (migratedSlot == null || !migratedSlot.IsConfigured)
-                continue;
-
-            migrated ??= new List<HelperProcSlot>();
-            migrated.Add(migratedSlot);
-        }
-
-        if (migrated == null || migrated.Count == 0)
-            return;
-
-        helperProcLoadout = migrated.ToArray();
     }
 
     private bool IsSlotCastStillValid(SkillSlot slot, SkillInstance runtimeSkill)

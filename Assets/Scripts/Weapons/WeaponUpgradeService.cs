@@ -145,7 +145,7 @@ public class WeaponUpgradeService : MonoBehaviour
         WeaponUpgradeRuntimeRefresh.NotifyWeaponInstanceChanged(instance.instanceId);
 
         if (SaveManager.Instance != null)
-            SaveManager.Instance.Save();
+            SaveManager.Instance.SaveInventoryOnly();
 
         reason = null;
         return true;
@@ -382,7 +382,7 @@ public class WeaponUpgradeService : MonoBehaviour
         scrapGranted = scrapReward;
 
         if (saveAfterDismantle && SaveManager.Instance != null)
-            SaveManager.Instance.Save();
+            SaveManager.Instance.SaveInventoryOnly();
 
         reason = null;
         return true;

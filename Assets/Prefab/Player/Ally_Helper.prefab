@@ -1868,7 +1868,6 @@ MonoBehaviour:
   - helperProc: {fileID: 11400000, guid: ee9a73ae9a17aa24a8d64b929173f63d, type: 2}
   - helperProc: {fileID: 11400000, guid: ad6da32b25db43148aa75f021e358549, type: 2}
   - helperProc: {fileID: 11400000, guid: 61266ad809f609e40ae69b87f64da449, type: 2}
-  legacyHelperProcSlots: []
   passiveSlots: []
 --- !u!1 &8793336297671156958
 GameObject:

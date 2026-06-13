@@ -2,8 +2,8 @@
     "saveVersion": 3,
     "inventory": {
         "maxSlotCount": 0,
-        "gold": 963072,
-        "scrap": 0,
+        "gold": 963118,
+        "scrap": 120,
         "slots": [
             {
                 "itemId": "RB.HMG.01",
@@ -28,9 +28,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 6800,
-                    "currentMagazine": 77,
-                    "currentReserveAmmo": 375,
+                    "shotCounter": 7607,
+                    "currentMagazine": 0,
+                    "currentReserveAmmo": 169,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 16,
                     "upgradeTier": 1,
@@ -78,12 +78,12 @@
                 }
             },
             {
-                "itemId": "SP_RB_01",
+                "itemId": "Accessory.RabbitGlove",
                 "amount": 1,
                 "weaponInstance": {
-                    "instanceId": "6a18546602c7446fb9c627a52b7d9131",
-                    "baseWeaponId": "SP_RB_01",
-                    "rarity": 2,
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
                     "mainAffix": {
                         "affixId": "",
                         "hasPrimaryValue": false,
@@ -91,34 +91,19 @@
                         "hasSecondaryValue": false,
                         "secondaryValue": 0.0
                     },
-                    "subAffixes": [
-                        {
-                            "affixId": "Crit.1",
-                            "hasPrimaryValue": true,
-                            "primaryValue": 0.24954748153686524,
-                            "hasSecondaryValue": false,
-                            "secondaryValue": 0.0
-                        },
-                        {
-                            "affixId": "Damge.1",
-                            "hasPrimaryValue": true,
-                            "primaryValue": 38.31777572631836,
-                            "hasSecondaryValue": false,
-                            "secondaryValue": 0.0
-                        }
-                    ],
-                    "shotCounter": 1008,
-                    "currentMagazine": 5,
-                    "currentReserveAmmo": 100,
-                    "reserveAmmoInitialized": true,
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
                     "upgradeExp": 0,
                     "unlockedUpgradeMilestoneIds": []
                 },
                 "accessoryInstance": {
-                    "instanceId": "",
-                    "accessoryId": "",
+                    "instanceId": "acc_f63f173e83764644915ddcffd915bb6a",
+                    "accessoryId": "Accessory.RabbitGlove",
                     "modifierId": "",
                     "upgradeLevel": 0
                 }
@@ -153,9 +138,9 @@
                             "secondaryValue": 0.0
                         }
                     ],
-                    "shotCounter": 8390,
-                    "currentMagazine": 29,
-                    "currentReserveAmmo": 265,
+                    "shotCounter": 9456,
+                    "currentMagazine": 0,
+                    "currentReserveAmmo": 0,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 20,
                     "upgradeTier": 2,
@@ -173,50 +158,11 @@
                 }
             },
             {
-                "itemId": "RB.HMG.01",
+                "itemId": "Accessory.FenosFieldPack",
                 "amount": 1,
                 "weaponInstance": {
-                    "instanceId": "12dac3b40d764d29ae240974fc9a07e1",
-                    "baseWeaponId": "RB.HMG.01",
-                    "rarity": 0,
-                    "mainAffix": {
-                        "affixId": "",
-                        "hasPrimaryValue": false,
-                        "primaryValue": 0.0,
-                        "hasSecondaryValue": false,
-                        "secondaryValue": 0.0
-                    },
-                    "subAffixes": [
-                        {
-                            "affixId": "Damge.1",
-                            "hasPrimaryValue": true,
-                            "primaryValue": 32.542301177978519,
-                            "hasSecondaryValue": false,
-                            "secondaryValue": 0.0
-                        }
-                    ],
-                    "shotCounter": 2352,
-                    "currentMagazine": 99,
-                    "currentReserveAmmo": 77,
-                    "reserveAmmoInitialized": true,
-                    "upgradeLevel": 0,
-                    "upgradeTier": 0,
-                    "upgradeExp": 0,
-                    "unlockedUpgradeMilestoneIds": []
-                },
-                "accessoryInstance": {
                     "instanceId": "",
-                    "accessoryId": "",
-                    "modifierId": "",
-                    "upgradeLevel": 0
-                }
-            },
-            {
-                "itemId": "SP_RB_01",
-                "amount": 1,
-                "weaponInstance": {
-                    "instanceId": "5f9f138a811f40c99435f5dc401f14eb",
-                    "baseWeaponId": "SP_RB_01",
+                    "baseWeaponId": "",
                     "rarity": 0,
                     "mainAffix": {
                         "affixId": "",
@@ -226,18 +172,49 @@
                         "secondaryValue": 0.0
                     },
                     "subAffixes": [],
-                    "shotCounter": 56,
-                    "currentMagazine": 4,
-                    "currentReserveAmmo": 45,
-                    "reserveAmmoInitialized": true,
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
                     "upgradeExp": 0,
                     "unlockedUpgradeMilestoneIds": []
                 },
                 "accessoryInstance": {
+                    "instanceId": "acc_455e2409871143e2af1e53ca578c1566",
+                    "accessoryId": "Accessory.FenosFieldPack",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "Accessory.RabbitCharm",
+                "amount": 1,
+                "weaponInstance": {
                     "instanceId": "",
-                    "accessoryId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "acc_49f09b1f37a94bfaa0adc5873505f2cc",
+                    "accessoryId": "Accessory.RabbitCharm",
                     "modifierId": "",
                     "upgradeLevel": 0
                 }
@@ -334,9 +311,9 @@
                         "secondaryValue": 0.0
                     },
                     "subAffixes": [],
-                    "shotCounter": 8238,
-                    "currentMagazine": 30,
-                    "currentReserveAmmo": 300,
+                    "shotCounter": 8960,
+                    "currentMagazine": 0,
+                    "currentReserveAmmo": 0,
                     "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
@@ -585,11 +562,11 @@
                 }
             },
             {
-                "itemId": "RB.HMG.01",
+                "itemId": "Accessory.RabbitLag",
                 "amount": 1,
                 "weaponInstance": {
-                    "instanceId": "b51549ee603349e8b8775c24e6159f1b",
-                    "baseWeaponId": "RB.HMG.01",
+                    "instanceId": "",
+                    "baseWeaponId": "",
                     "rarity": 0,
                     "mainAffix": {
                         "affixId": "",
@@ -598,27 +575,19 @@
                         "hasSecondaryValue": false,
                         "secondaryValue": 0.0
                     },
-                    "subAffixes": [
-                        {
-                            "affixId": "Crit.1",
-                            "hasPrimaryValue": true,
-                            "primaryValue": 0.19502055644989015,
-                            "hasSecondaryValue": false,
-                            "secondaryValue": 0.0
-                        }
-                    ],
-                    "shotCounter": 40,
-                    "currentMagazine": 99,
-                    "currentReserveAmmo": 277,
-                    "reserveAmmoInitialized": true,
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
                     "upgradeExp": 0,
                     "unlockedUpgradeMilestoneIds": []
                 },
                 "accessoryInstance": {
-                    "instanceId": "",
-                    "accessoryId": "",
+                    "instanceId": "acc_b0fd05b5a5914aa8a523ae44d7f94001",
+                    "accessoryId": "Accessory.RabbitLag",
                     "modifierId": "",
                     "upgradeLevel": 0
                 }
@@ -988,8 +957,8 @@
                 }
             },
             {
-                "itemId": "",
-                "amount": 0,
+                "itemId": "Accessory.RabbitGlove",
+                "amount": 1,
                 "weaponInstance": {
                     "instanceId": "",
                     "baseWeaponId": "",
@@ -1006,6 +975,83 @@
                     "currentMagazine": -1,
                     "currentReserveAmmo": -1,
                     "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "acc_ee7816d71f8744fba80f67eda768d73b",
+                    "accessoryId": "Accessory.RabbitGlove",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "Accessory.FenosFieldPack",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "",
+                    "baseWeaponId": "",
+                    "rarity": 0,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [],
+                    "shotCounter": 0,
+                    "currentMagazine": -1,
+                    "currentReserveAmmo": -1,
+                    "reserveAmmoInitialized": false,
+                    "upgradeLevel": 0,
+                    "upgradeTier": 0,
+                    "upgradeExp": 0,
+                    "unlockedUpgradeMilestoneIds": []
+                },
+                "accessoryInstance": {
+                    "instanceId": "acc_0aea413397db476fbad45c08b81b15ad",
+                    "accessoryId": "Accessory.FenosFieldPack",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            },
+            {
+                "itemId": "SP_RB_01",
+                "amount": 1,
+                "weaponInstance": {
+                    "instanceId": "67cb2879ee214e7099478c372f4e7e3c",
+                    "baseWeaponId": "SP_RB_01",
+                    "rarity": 2,
+                    "mainAffix": {
+                        "affixId": "",
+                        "hasPrimaryValue": false,
+                        "primaryValue": 0.0,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    "subAffixes": [
+                        {
+                            "affixId": "Damge.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 22.44569969177246,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        },
+                        {
+                            "affixId": "Crit.1",
+                            "hasPrimaryValue": true,
+                            "primaryValue": 0.371604859828949,
+                            "hasSecondaryValue": false,
+                            "secondaryValue": 0.0
+                        }
+                    ],
+                    "shotCounter": 0,
+                    "currentMagazine": 5,
+                    "currentReserveAmmo": 100,
+                    "reserveAmmoInitialized": true,
                     "upgradeLevel": 0,
                     "upgradeTier": 0,
                     "upgradeExp": 0,
@@ -1019,8 +1065,8 @@
                 }
             },
             {
-                "itemId": "",
-                "amount": 0,
+                "itemId": "Accessory.RabbitCharm",
+                "amount": 1,
                 "weaponInstance": {
                     "instanceId": "",
                     "baseWeaponId": "",
@@ -1043,70 +1089,8 @@
                     "unlockedUpgradeMilestoneIds": []
                 },
                 "accessoryInstance": {
-                    "instanceId": "",
-                    "accessoryId": "",
-                    "modifierId": "",
-                    "upgradeLevel": 0
-                }
-            },
-            {
-                "itemId": "",
-                "amount": 0,
-                "weaponInstance": {
-                    "instanceId": "",
-                    "baseWeaponId": "",
-                    "rarity": 0,
-                    "mainAffix": {
-                        "affixId": "",
-                        "hasPrimaryValue": false,
-                        "primaryValue": 0.0,
-                        "hasSecondaryValue": false,
-                        "secondaryValue": 0.0
-                    },
-                    "subAffixes": [],
-                    "shotCounter": 0,
-                    "currentMagazine": -1,
-                    "currentReserveAmmo": -1,
-                    "reserveAmmoInitialized": false,
-                    "upgradeLevel": 0,
-                    "upgradeTier": 0,
-                    "upgradeExp": 0,
-                    "unlockedUpgradeMilestoneIds": []
-                },
-                "accessoryInstance": {
-                    "instanceId": "",
-                    "accessoryId": "",
-                    "modifierId": "",
-                    "upgradeLevel": 0
-                }
-            },
-            {
-                "itemId": "",
-                "amount": 0,
-                "weaponInstance": {
-                    "instanceId": "",
-                    "baseWeaponId": "",
-                    "rarity": 0,
-                    "mainAffix": {
-                        "affixId": "",
-                        "hasPrimaryValue": false,
-                        "primaryValue": 0.0,
-                        "hasSecondaryValue": false,
-                        "secondaryValue": 0.0
-                    },
-                    "subAffixes": [],
-                    "shotCounter": 0,
-                    "currentMagazine": -1,
-                    "currentReserveAmmo": -1,
-                    "reserveAmmoInitialized": false,
-                    "upgradeLevel": 0,
-                    "upgradeTier": 0,
-                    "upgradeExp": 0,
-                    "unlockedUpgradeMilestoneIds": []
-                },
-                "accessoryInstance": {
-                    "instanceId": "",
-                    "accessoryId": "",
+                    "instanceId": "acc_bc92ddd9cb4b4ed5a005d86e21fb465c",
+                    "accessoryId": "Accessory.RabbitCharm",
                     "modifierId": "",
                     "upgradeLevel": 0
                 }
@@ -1466,8 +1450,8 @@
                 "slotCount": 5,
                 "equippedAccessories": [
                     {
-                        "instanceId": "acc_97a89f30a5f24b48b6081bd784fbbb38",
-                        "accessoryId": "Accessory.FenosFieldPack",
+                        "instanceId": "acc_0b52f654d3a44e3dad34cf60ef0f9d47",
+                        "accessoryId": "Accessory.RabbitLag",
                         "modifierId": "",
                         "upgradeLevel": 0
                     },
@@ -1484,14 +1468,14 @@
                         "upgradeLevel": 0
                     },
                     {
-                        "instanceId": "",
-                        "accessoryId": "",
+                        "instanceId": "acc_4552a1ea2a75420e881d2fe3f5073649",
+                        "accessoryId": "Accessory.RabbitLag",
                         "modifierId": "",
                         "upgradeLevel": 0
                     },
                     {
-                        "instanceId": "",
-                        "accessoryId": "",
+                        "instanceId": "acc_b0fd05b5a5914aa8a523ae44d7f94001",
+                        "accessoryId": "Accessory.RabbitLag",
                         "modifierId": "",
                         "upgradeLevel": 0
                     }
@@ -1628,14 +1612,14 @@
                         "upgradeLevel": 0
                     },
                     {
-                        "instanceId": "",
-                        "accessoryId": "",
+                        "instanceId": "acc_bc92ddd9cb4b4ed5a005d86e21fb465c",
+                        "accessoryId": "Accessory.RabbitCharm",
                         "modifierId": "",
                         "upgradeLevel": 0
                     },
                     {
-                        "instanceId": "",
-                        "accessoryId": "",
+                        "instanceId": "acc_ee7816d71f8744fba80f67eda768d73b",
+                        "accessoryId": "Accessory.RabbitGlove",
                         "modifierId": "",
                         "upgradeLevel": 0
                     }
@@ -1652,26 +1636,26 @@
                         "upgradeLevel": 0
                     },
                     {
-                        "instanceId": "acc_0b52f654d3a44e3dad34cf60ef0f9d47",
-                        "accessoryId": "Accessory.RabbitLag",
+                        "instanceId": "acc_97a89f30a5f24b48b6081bd784fbbb38",
+                        "accessoryId": "Accessory.FenosFieldPack",
                         "modifierId": "",
                         "upgradeLevel": 0
                     },
                     {
-                        "instanceId": "",
-                        "accessoryId": "",
+                        "instanceId": "acc_455e2409871143e2af1e53ca578c1566",
+                        "accessoryId": "Accessory.FenosFieldPack",
                         "modifierId": "",
                         "upgradeLevel": 0
                     },
                     {
-                        "instanceId": "",
-                        "accessoryId": "",
+                        "instanceId": "acc_f63f173e83764644915ddcffd915bb6a",
+                        "accessoryId": "Accessory.RabbitGlove",
                         "modifierId": "",
                         "upgradeLevel": 0
                     },
                     {
-                        "instanceId": "",
-                        "accessoryId": "",
+                        "instanceId": "acc_0aea413397db476fbad45c08b81b15ad",
+                        "accessoryId": "Accessory.FenosFieldPack",
                         "modifierId": "",
                         "upgradeLevel": 0
                     }

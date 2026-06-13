@@ -4,16 +4,11 @@ using System.Text;
 using Animancer;
 using Sirenix.OdinInspector;
 using UnityEngine;
-using UnityEngine.Serialization;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
 
 [HideMonoScript]
-[CreateAssetMenu(
-    fileName = "NewSkillGem",
-    menuName = "Game/Skill Gem"
-)]
 public class SkillGemDefinition : ScriptableObject
 {
     private const float DefaultCastPointNormalized = 0.35f;
@@ -34,14 +29,6 @@ public class SkillGemDefinition : ScriptableObject
     private bool HasProjectilePresentationAssets => ProjectilePayload != null && ProjectilePayload.HasProjectilePresentationAssets;
     private bool HasAnimationPresentationAssets => castCue != null || skillClip != null;
     private bool HasAnyPresentationAssets => HasProjectilePresentationAssets || HasAnimationPresentationAssets;
-    private bool HasLegacyRootExecutionData =>
-        legacySkillPrefab != null ||
-        legacyProjectileTrailVfxPrefab != null ||
-        legacyProjectileHitVfxPrefab != null ||
-        !Mathf.Approximately(legacyProjectileHitVfxScale, 1f) ||
-        legacyHelperFacingMode != SkillHelperFacingMode.KeepCurrentFacing ||
-        legacyChainContinueMode != ChainStepContinueMode.OnStepComplete ||
-        !Mathf.Approximately(legacyChainContinueNormalizedTime, 1f);
     private bool HasBlockingError => GetConfigStatus() == SkillConfigStatus.Error;
     private bool HasWarning => !HasBlockingError && !string.IsNullOrEmpty(WarningSummary);
     private bool HasInfo => !string.IsNullOrEmpty(InfoSummary);
@@ -152,10 +139,6 @@ public class SkillGemDefinition : ScriptableObject
         ? $"Payload ({payload.name})"
         : "None";
 
-    [PropertyOrder(-59)]
-    [ShowInInspector, ReadOnly, FoldoutGroup("Execution", Expanded = true), LabelText("Legacy Fallback")]
-    private string FallbackExecutionSourceLabel => "Disabled";
-
     [PropertyOrder(-58)]
     [ShowInInspector, ReadOnly, FoldoutGroup("Execution", Expanded = true), LabelText("Resolved Runtime Mode")]
     private string ResolvedRuntimeModeLabel => GetResolvedRuntimeModeLabel();
@@ -165,24 +148,8 @@ public class SkillGemDefinition : ScriptableObject
     private string ProjectileOwnershipLabel => GetProjectileOwnershipLabel();
 
     [PropertyOrder(-56)]
-    [FoldoutGroup("Execution", Expanded = true), AssetsOnly, InlineEditor, LabelText("Payload Asset")]
+    [SerializeField, HideInInspector]
     public SkillPayloadDef payload;
-
-    [PropertyOrder(-55)]
-    [SerializeField, HideInInspector, FormerlySerializedAs("skillPrefab")]
-    private GameObject legacySkillPrefab;
-
-    [SerializeField, HideInInspector, FormerlySerializedAs("helperFacingMode")]
-    private SkillHelperFacingMode legacyHelperFacingMode = SkillHelperFacingMode.KeepCurrentFacing;
-
-    [SerializeField, HideInInspector, FormerlySerializedAs("BallVfxPrefab")]
-    private GameObject legacyProjectileTrailVfxPrefab;
-
-    [SerializeField, HideInInspector, FormerlySerializedAs("SkillVfxhit")]
-    private GameObject legacyProjectileHitVfxPrefab;
-
-    [SerializeField, HideInInspector, FormerlySerializedAs("projectileHitVfxScale")]
-    private float legacyProjectileHitVfxScale = 1f;
 
     [PropertyOrder(-37)]
     [FoldoutGroup("Presentation", Expanded = true), AssetsOnly, LabelText("Cast Cue")]
@@ -232,12 +199,6 @@ public class SkillGemDefinition : ScriptableObject
     [PropertyOrder(-26)]
     [FoldoutGroup("Pre-Cast Block", Expanded = false), LabelText("Cancel On Stagger"), ToggleLeft]
     [SerializeField] private bool cancelPreCastOnStagger = true;
-
-    [SerializeField, HideInInspector, FormerlySerializedAs("chainContinueMode")]
-    private ChainStepContinueMode legacyChainContinueMode = ChainStepContinueMode.OnStepComplete;
-
-    [SerializeField, HideInInspector, FormerlySerializedAs("chainContinueNormalizedTime")]
-    private float legacyChainContinueNormalizedTime = 1f;
 
     [Serializable]
     public class LevelData
@@ -318,9 +279,9 @@ public class SkillGemDefinition : ScriptableObject
     private string DeltaPreviewLabel => BuildDeltaPreview(previewLevel);
 
     [PropertyOrder(200)]
-    [ShowInInspector, ReadOnly, FoldoutGroup("Tools", Expanded = true), LabelText("Migration")]
+    [ShowInInspector, ReadOnly, FoldoutGroup("Tools", Expanded = true), LabelText("Authoring")]
     private string ToolingSummary =>
-        "Use these helpers to sort level rows and normalize cast timing. Execution-specific data now lives on the payload asset.";
+        "Use these helpers to sort level rows and normalize cast timing. Execution data is owned by the embedded payload.";
 
     [PropertyOrder(201)]
     [FoldoutGroup("Tools", Expanded = true), Button("Sort Level Rows")]
@@ -433,9 +394,19 @@ public class SkillGemDefinition : ScriptableObject
 
             if (payload == null)
                 issues.Add("Execution payload is required.");
+            else
+                payload.CollectValidationIssues(issues);
 
-            if (HasProjectilePayload && !ProjectilePayload.HasResolvableProjectilePrefab())
-                issues.Add("Projectile payload has no projectile prefab configured.");
+#if UNITY_EDITOR
+            if (payload != null && !IsPayloadEmbedded())
+                issues.Add("Execution payload must be embedded in the same asset as this skill.");
+            else if (payload != null)
+            {
+                int embeddedPayloadCount = GetEmbeddedPayloadCount();
+                if (embeddedPayloadCount != 1)
+                    issues.Add($"Skill asset must contain exactly one embedded payload, but found {embeddedPayloadCount}.");
+            }
+#endif
 
             return string.Join("\n", issues);
         }
@@ -472,8 +443,10 @@ public class SkillGemDefinition : ScriptableObject
             if (EmptyOverrideRowCount > 0)
                 notes.Add($"{EmptyOverrideRowCount} per-level rows have no override values and only serve as base-stat fallback markers.");
 
-            if (HasLegacyRootExecutionData)
-                notes.Add("This asset still contains deprecated execution data on the root. Runtime ignores it; migrate the data into the payload asset manually.");
+#if UNITY_EDITOR
+            if (payload != null && IsPayloadEmbedded())
+                notes.Add("Execution payload is embedded and owned by this skill asset.");
+#endif
 
             return string.Join("\n", notes);
         }
@@ -647,6 +620,35 @@ public class SkillGemDefinition : ScriptableObject
 
         return builder.ToString();
     }
+
+#if UNITY_EDITOR
+    private bool IsPayloadEmbedded()
+    {
+        if (payload == null || !AssetDatabase.IsSubAsset(payload))
+            return false;
+
+        string skillPath = AssetDatabase.GetAssetPath(this);
+        return !string.IsNullOrEmpty(skillPath) &&
+               string.Equals(skillPath, AssetDatabase.GetAssetPath(payload), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private int GetEmbeddedPayloadCount()
+    {
+        string skillPath = AssetDatabase.GetAssetPath(this);
+        if (string.IsNullOrEmpty(skillPath))
+            return 0;
+
+        int count = 0;
+        UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(skillPath);
+        for (int i = 0; i < assets.Length; i++)
+        {
+            if (assets[i] is SkillPayloadDef)
+                count++;
+        }
+
+        return count;
+    }
+#endif
 
     private static void MarkDirty(UnityEngine.Object target)
     {

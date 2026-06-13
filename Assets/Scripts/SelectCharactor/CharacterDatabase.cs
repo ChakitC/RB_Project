@@ -239,7 +239,7 @@ public static class CharacterUnlockService
         }
 
         SaveManager.Instance.SaveCharacterUnlockState(characterId, true);
-        SaveManager.Instance.Save();
+        SaveManager.Instance.SaveInventoryOnly();
 
         CharacterUnlocked?.Invoke(characterId);
         return true;

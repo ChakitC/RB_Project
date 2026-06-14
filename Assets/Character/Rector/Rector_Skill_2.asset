@@ -35,13 +35,42 @@ MonoBehaviour:
     _Speed: 1
     _Events:
       _NormalizedTimes:
+      - 0.37513813
       - 0.37586266
       - NaN
       _Callbacks: []
-      _Names: []
+      _Names:
+      - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
     _Clip: {fileID: 2136544592977676055, guid: 4bcf35f2995f0bc449b24d6bf4362be3, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.3758627
+  skillVfxEvents:
+  - cueIndex: 0
+    action: 0
+    prefab: {fileID: 5137123306192418792, guid: 89ca180365695504f9545b3e9627d5fb, type: 3}
+    anchor: 0
+    customAnchorPath: 
+    humanoidBone: 18
+    localPosition: {x: 0, y: 0, z: -0.82}
+    localEulerAngles: {x: 270, y: -0, z: 0}
+    localScale: {x: 3.9222693, y: 3.8151193, z: 1.8485}
+    parentToAnchor: 0
+    loopKey: 
+    extraLife: 0
+    allowParticlesToFinish: 1
+  - cueIndex: 0
+    action: 0
+    prefab: {fileID: 4992953110337114404, guid: 1b19cea65b6c61249b292a620bfb39e7, type: 3}
+    anchor: 0
+    customAnchorPath: 
+    humanoidBone: 18
+    localPosition: {x: 0, y: 0, z: -0.81}
+    localEulerAngles: {x: -0, y: 0, z: 0}
+    localScale: {x: 10.28274, y: 10.28274, z: 10.28274}
+    parentToAnchor: 0
+    loopKey: 
+    extraLife: 0
+    allowParticlesToFinish: 1
   blockablePreCast: 0
   preCastOpenTimelineEvent: 200
   preCastCloseTimelineEvent: 201

@@ -27,7 +27,7 @@ public class SkillGemDefinition : ScriptableObject
     private bool HasProjectileExecutionIntent => HasProjectilePayload;
     private bool HasAnyRadiusConfigured => baseRadius > 0f || HasRadiusOverride();
     private bool HasProjectilePresentationAssets => ProjectilePayload != null && ProjectilePayload.HasProjectilePresentationAssets;
-    private bool HasAnimationPresentationAssets => castCue != null || skillClip != null;
+    private bool HasAnimationPresentationAssets => castCue != null || skillClip != null || HasSkillVfxEvents;
     private bool HasAnyPresentationAssets => HasProjectilePresentationAssets || HasAnimationPresentationAssets;
     private bool HasBlockingError => GetConfigStatus() == SkillConfigStatus.Error;
     private bool HasWarning => !HasBlockingError && !string.IsNullOrEmpty(WarningSummary);
@@ -164,6 +164,9 @@ public class SkillGemDefinition : ScriptableObject
     [FoldoutGroup("Presentation", Expanded = true), LabelText("Cast Point"), Range(0f, 1f), SuffixLabel("normalized")]
     public float castPointNormalized = DefaultCastPointNormalized;
 
+    [SerializeField, HideInInspector]
+    private List<SkillVfxEvent> skillVfxEvents = new List<SkillVfxEvent>();
+
     [PropertyOrder(-34)]
     [FoldoutGroup("Pre-Cast Block", Expanded = false), LabelText("Blockable"), ToggleLeft]
     [SerializeField] private bool blockablePreCast;
@@ -265,6 +268,149 @@ public class SkillGemDefinition : ScriptableObject
     [LabelText("Per-Level Overrides")]
     [Tooltip("Runtime uses the highest required level with a real override. Rows with no override values still act as base-stat fallback markers.")]
     public List<LevelData> perLevelData = new();
+
+    public IReadOnlyList<SkillVfxEvent> SkillVfxEvents => skillVfxEvents ?? (skillVfxEvents = new List<SkillVfxEvent>());
+    public bool HasSkillVfxEvents => skillVfxEvents != null && skillVfxEvents.Count > 0;
+    public bool RequiresSkillTimelineEvents =>
+        (payload != null && payload.RequiresSkillTimelineEvents) || HasSkillVfxEvents;
+
+    public void ReplaceSkillVfxEvents(List<SkillVfxEvent> events)
+    {
+        skillVfxEvents = events ?? new List<SkillVfxEvent>();
+    }
+
+    public void MoveSkillVfxCue(int oldCueIndex, int newCueIndex)
+    {
+        if (skillVfxEvents == null || oldCueIndex < 0 || newCueIndex < 0 || oldCueIndex == newCueIndex)
+            return;
+
+        for (int i = 0; i < skillVfxEvents.Count; i++)
+        {
+            SkillVfxEvent cue = skillVfxEvents[i];
+            if (cue == null)
+                continue;
+
+            if (cue.cueIndex == oldCueIndex)
+            {
+                cue.cueIndex = newCueIndex;
+            }
+            else if (oldCueIndex < newCueIndex && cue.cueIndex > oldCueIndex && cue.cueIndex <= newCueIndex)
+            {
+                cue.cueIndex--;
+            }
+            else if (oldCueIndex > newCueIndex && cue.cueIndex >= newCueIndex && cue.cueIndex < oldCueIndex)
+            {
+                cue.cueIndex++;
+            }
+        }
+    }
+
+    public void RemoveSkillVfxCue(int cueIndex)
+    {
+        if (skillVfxEvents == null || cueIndex < 0)
+            return;
+
+        skillVfxEvents.RemoveAll(cue => cue != null && cue.cueIndex == cueIndex);
+        for (int i = 0; i < skillVfxEvents.Count; i++)
+        {
+            SkillVfxEvent cue = skillVfxEvents[i];
+            if (cue != null && cue.cueIndex > cueIndex)
+                cue.cueIndex--;
+        }
+    }
+
+    public int GetSkillVfxMarkerCount()
+    {
+        AnimancerEvent.Sequence events = skillClip?.Events;
+        if (events == null)
+            return 0;
+
+        StringReference vfxEventName = CombatTimelineEventNames.ToStringReference(CombatTimelineEventName.Vfx);
+        int count = 0;
+        for (int i = 0; i < events.Count; i++)
+        {
+            if (events.GetName(i) == vfxEventName)
+                count++;
+        }
+
+        return count;
+    }
+
+    public void CollectTimelineEventNames(List<CombatTimelineEventName> eventNames)
+    {
+        if (eventNames == null)
+            return;
+
+        payload?.CollectTimelineEventNames(eventNames);
+
+        if (HasSkillVfxEvents)
+            CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.Vfx);
+    }
+
+    public void CollectSkillVfxValidationIssues(List<string> issues)
+    {
+        CollectSkillVfxValidationIssues(skillVfxEvents, GetSkillVfxMarkerCount(), issues);
+    }
+
+    public static void CollectSkillVfxValidationIssues(
+        IReadOnlyList<SkillVfxEvent> events,
+        List<string> issues)
+    {
+        CollectSkillVfxValidationIssues(events, -1, issues);
+    }
+
+    private static void CollectSkillVfxValidationIssues(
+        IReadOnlyList<SkillVfxEvent> events,
+        int markerCount,
+        List<string> issues)
+    {
+        if (issues == null || events == null)
+            return;
+
+        var orderedIndices = new List<int>(events.Count);
+        for (int i = 0; i < events.Count; i++)
+        {
+            SkillVfxEvent cue = events[i];
+            if (cue == null)
+            {
+                issues.Add($"Timeline VFX entry {i + 1} is null.");
+                continue;
+            }
+
+            cue.CollectValidationIssues(issues, i);
+
+            if (markerCount >= 0 && cue.cueIndex >= markerCount)
+                issues.Add($"Timeline VFX entry {i + 1} targets cue {cue.cueIndex + 1}, but the Skill Clip has only {markerCount} Vfx marker(s).");
+
+            orderedIndices.Add(i);
+        }
+
+        orderedIndices.Sort((left, right) =>
+        {
+            int cueComparison = events[left].cueIndex.CompareTo(events[right].cueIndex);
+            return cueComparison != 0 ? cueComparison : left.CompareTo(right);
+        });
+
+        var activeLoopKeys = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < orderedIndices.Count; i++)
+        {
+            int sourceIndex = orderedIndices[i];
+            SkillVfxEvent cue = events[sourceIndex];
+            if (string.IsNullOrWhiteSpace(cue.loopKey))
+                continue;
+
+            string key = cue.loopKey.Trim();
+            if (cue.action == SkillVfxAction.StartLoop)
+            {
+                activeLoopKeys.Add(key);
+            }
+            else if (cue.action == SkillVfxAction.StopLoop && !activeLoopKeys.Remove(key))
+            {
+                issues.Add(
+                    $"Timeline VFX entry {sourceIndex + 1} stops loop '{key}' before a matching active Start Loop cue.");
+            }
+        }
+    }
 
     [PropertyOrder(-19)]
     [SerializeField, FoldoutGroup("Level Scaling", Expanded = true), BoxGroup("Level Scaling/Effective Preview"), LabelText("Selected Level"), MinValue(1)]
@@ -396,6 +542,8 @@ public class SkillGemDefinition : ScriptableObject
                 issues.Add("Execution payload is required.");
             else
                 payload.CollectValidationIssues(issues);
+
+            CollectSkillVfxValidationIssues(issues);
 
 #if UNITY_EDITOR
             if (payload != null && !IsPayloadEmbedded())

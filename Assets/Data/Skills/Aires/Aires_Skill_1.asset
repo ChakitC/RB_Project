@@ -35,16 +35,47 @@ MonoBehaviour:
     _Speed: 1
     _Events:
       _NormalizedTimes:
-      - 0.43620127
-      - 0.4911669
+      - 0.32154697
+      - 0.4071823
+      - 0.41213065
+      - 0.48781753
       - NaN
       _Callbacks: []
       _Names:
+      - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
+      - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
       - {fileID: 11400000, guid: a1d9c7b1f0f54a2b8c1d6e7f90123456, type: 2}
       - {fileID: 11400000, guid: b2e8d6c4a1b347c98d0e1f2a34567890, type: 2}
     _Clip: {fileID: -7027819902610041453, guid: 84fd65bb1f9faa747b98cbb036a282cf, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.128
+  skillVfxEvents:
+  - cueIndex: 0
+    action: 0
+    prefab: {fileID: 2449807036778766759, guid: b6b8fc14049f58f4782bc4448d8f53e1, type: 3}
+    anchor: 1
+    customAnchorPath: 
+    humanoidBone: 18
+    localPosition: {x: 0, y: 1.352, z: -0.464}
+    localEulerAngles: {x: 318.32056, y: 180, z: 180}
+    localScale: {x: 1, y: 1, z: 1}
+    parentToAnchor: 0
+    loopKey: 
+    extraLife: 0
+    allowParticlesToFinish: 1
+  - cueIndex: 1
+    action: 0
+    prefab: {fileID: 7849791404790678207, guid: 42913e44bd86c194f80b76492e6fe2fd, type: 3}
+    anchor: 1
+    customAnchorPath: 
+    humanoidBone: 18
+    localPosition: {x: 0, y: 0, z: 0.99000025}
+    localEulerAngles: {x: -0, y: 0, z: 0}
+    localScale: {x: 1.2758, y: 1.2758, z: 1.2758}
+    parentToAnchor: 0
+    loopKey: 
+    extraLife: 0
+    allowParticlesToFinish: 1
   blockablePreCast: 0
   preCastOpenTimelineEvent: 200
   preCastCloseTimelineEvent: 201
@@ -80,7 +111,7 @@ MonoBehaviour:
       shapes:
       - shapeName: HitBox01
         type: 1
-        localPosition: {x: 0, y: 0, z: 0.4100001}
+        localPosition: {x: 0, y: 0, z: 0.41000032}
         localEulerAngles: {x: -0, y: 0, z: 0}
         localScale: {x: 7.4230137, y: 7.4230137, z: 7.4230137}
         center: {x: 0, y: 0, z: 0}

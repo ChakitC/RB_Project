@@ -58,14 +58,30 @@ MonoBehaviour:
       _NormalizedTimes:
       - 0.069919996
       - 0.34854856
+      - 0.47016576
       - NaN
       _Callbacks: []
       _Names:
       - {fileID: 11400000, guid: fcffb1725faae934bbafd4eeccec9990, type: 2}
       - {fileID: 11400000, guid: 9752b5160a8826b4faa115ca219e42a6, type: 2}
+      - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
     _Clip: {fileID: 7218412512397633768, guid: 5035feff0922f894bb9fdcfe0bbe8b54, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.4594248
+  skillVfxEvents:
+  - cueIndex: 0
+    action: 0
+    prefab: {fileID: 1179295499806372, guid: 77dab895a85240e4b956a829297b100a, type: 3}
+    anchor: 0
+    customAnchorPath: 
+    humanoidBone: 18
+    localPosition: {x: 0, y: 1.5700002, z: 1.38}
+    localEulerAngles: {x: -0, y: 180, z: 180}
+    localScale: {x: 1.8627, y: 1.8627, z: 1.8627}
+    parentToAnchor: 0
+    loopKey: 
+    extraLife: 0
+    allowParticlesToFinish: 1
   blockablePreCast: 1
   preCastOpenTimelineEvent: 200
   preCastCloseTimelineEvent: 201

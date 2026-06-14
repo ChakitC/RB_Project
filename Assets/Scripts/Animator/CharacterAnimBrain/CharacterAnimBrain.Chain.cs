@@ -270,10 +270,13 @@ public sealed partial class CharacterAnimBrain
         _activeChainAdvanceReleased = false;
         _chainStateCanExit = false;
         SetActiveChainTimelineEventNames(kind == ChainPlaybackKind.Skill ? skillDef : null);
+        if (kind == ChainPlaybackKind.Skill)
+            BeginSkillVfxRequest(requestId, skillDef);
     }
 
     private void ClearActiveChainRequest()
     {
+        _skillVfxPresenter?.EndRequest(_activeChainRequestId);
         _activeChainKind = ChainPlaybackKind.None;
         _activeChainSkillDefinition = null;
         _activeChainRequestId = 0;
@@ -383,9 +386,9 @@ public sealed partial class CharacterAnimBrain
     {
         _activeChainTimelineEventNames.Clear();
 
-        if (skillDef == null || skillDef.payload == null)
+        if (skillDef == null)
             return;
 
-        skillDef.payload.CollectTimelineEventNames(_activeChainTimelineEventNames);
+        skillDef.CollectTimelineEventNames(_activeChainTimelineEventNames);
     }
 }

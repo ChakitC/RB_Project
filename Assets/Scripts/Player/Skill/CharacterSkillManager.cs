@@ -833,7 +833,7 @@ public sealed class SkillCastOrchestrator
         int requestId = ResolveRequestId(request.RequestedId);
         CharacterAnimBrain executionAnimBrain = request.AnimationDriver;
         bool hasExternalSkillExecutionContext = HasActiveSkillExecutionContext(executionAnimBrain, requestId);
-        bool requiresTimelineEvents = skillDef.payload != null && skillDef.payload.RequiresSkillTimelineEvents;
+        bool requiresTimelineEvents = skillDef.RequiresSkillTimelineEvents;
 
         if (!request.UseAnimationDriver &&
             requiresTimelineEvents &&
@@ -859,7 +859,7 @@ public sealed class SkillCastOrchestrator
                 RequiresTimelineEvents = requiresTimelineEvents,
             };
 
-            skillDef.payload?.CollectTimelineEventNames(context.TimelineEventNames);
+            skillDef.CollectTimelineEventNames(context.TimelineEventNames);
 
             bool started = executionAnimBrain.TryPlaySkill(
                 context.RequestId,

@@ -3119,19 +3119,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8335628630423029272, guid: 593976350e751b340bc9e474264dda15, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.9846438
+      value: 0.06189078
       objectReference: {fileID: 0}
     - target: {fileID: 8335628630423029272, guid: 593976350e751b340bc9e474264dda15, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.115958795
+      value: -0.6992865
       objectReference: {fileID: 0}
     - target: {fileID: 8335628630423029272, guid: 593976350e751b340bc9e474264dda15, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.108943336
+      value: 0.50081056
       objectReference: {fileID: 0}
     - target: {fileID: 8335628630423029272, guid: 593976350e751b340bc9e474264dda15, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.07184397
+      value: -0.5063168
       objectReference: {fileID: 0}
     - target: {fileID: 8335628630423029272, guid: 593976350e751b340bc9e474264dda15, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -4074,6 +4074,8 @@ MonoBehaviour:
   pairOffsetProfiles:
   - enabled: 1
     profileName: Feno_Move_Backward + Feno_Shoot
+    basePose: 0
+    upperAction: 0
     baseClip: {fileID: -3466377131361662731, guid: 6745c372b962c434d86818756021e80f, type: 3}
     upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     weight: 1
@@ -4085,6 +4087,8 @@ MonoBehaviour:
       weight: 1
   - enabled: 1
     profileName: Feno_Move_Foward + Feno_Shoot
+    basePose: 0
+    upperAction: 0
     baseClip: {fileID: -3045897872586947758, guid: 36a8267c975d3e347845516dc08b6cb8, type: 3}
     upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     weight: 1
@@ -4096,6 +4100,8 @@ MonoBehaviour:
       weight: 1
   - enabled: 1
     profileName: Feno_Move_FowardLeftWard + Feno_Shoot
+    basePose: 0
+    upperAction: 0
     baseClip: {fileID: 6920732240284510162, guid: 904d1c8d49b34384ca2d12bd008bfda4, type: 3}
     upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     weight: 1
@@ -4107,6 +4113,8 @@ MonoBehaviour:
       weight: 1
   - enabled: 1
     profileName: Feno_Move_FowardRight + Feno_Shoot
+    basePose: 0
+    upperAction: 0
     baseClip: {fileID: -4519924575139466294, guid: 7dcc1064d68e82b4f8784c67b254d639, type: 3}
     upperBodyClip: {fileID: 3063790465706759721, guid: 5a3cfc88406fb784da99628699c8e876, type: 3}
     weight: 1

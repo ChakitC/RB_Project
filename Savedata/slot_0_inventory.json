@@ -1,7 +1,7 @@
 {
     "maxSlotCount": 0,
-    "gold": 963118,
-    "scrap": 120,
+    "gold": 963120,
+    "scrap": 130,
     "slots": [
         {
             "itemId": "RB.HMG.01",
@@ -26,9 +26,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 7607,
-                "currentMagazine": 0,
-                "currentReserveAmmo": 169,
+                "shotCounter": 8402,
+                "currentMagazine": 86,
+                "currentReserveAmmo": 275,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 16,
                 "upgradeTier": 1,
@@ -136,9 +136,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 9456,
-                "currentMagazine": 0,
-                "currentReserveAmmo": 0,
+                "shotCounter": 9927,
+                "currentMagazine": 29,
+                "currentReserveAmmo": 111,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
                 "upgradeTier": 2,
@@ -309,7 +309,7 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 8960,
+                "shotCounter": 9434,
                 "currentMagazine": 0,
                 "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
@@ -398,7 +398,7 @@
                     }
                 ],
                 "shotCounter": 2483,
-                "currentMagazine": 29,
+                "currentMagazine": 30,
                 "currentReserveAmmo": 265,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
@@ -591,11 +591,11 @@
             }
         },
         {
-            "itemId": "RB.HMG.01",
-            "amount": 1,
+            "itemId": "",
+            "amount": 0,
             "weaponInstance": {
-                "instanceId": "5e1efece8201483a8e7eb118c95eb986",
-                "baseWeaponId": "RB.HMG.01",
+                "instanceId": "",
+                "baseWeaponId": "",
                 "rarity": 0,
                 "mainAffix": {
                     "affixId": "",
@@ -604,19 +604,11 @@
                     "hasSecondaryValue": false,
                     "secondaryValue": 0.0
                 },
-                "subAffixes": [
-                    {
-                        "affixId": "Damge.1",
-                        "hasPrimaryValue": true,
-                        "primaryValue": 5.115187168121338,
-                        "hasSecondaryValue": false,
-                        "secondaryValue": 0.0
-                    }
-                ],
-                "shotCounter": 2146,
-                "currentMagazine": 84,
-                "currentReserveAmmo": 272,
-                "reserveAmmoInitialized": true,
+                "subAffixes": [],
+                "shotCounter": 0,
+                "currentMagazine": -1,
+                "currentReserveAmmo": -1,
+                "reserveAmmoInitialized": false,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
                 "upgradeExp": 0,

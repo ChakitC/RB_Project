@@ -71,6 +71,7 @@ public static class SkillPayloadValidationTool
             issues.Add($"The skill asset contains {embeddedPayloads.Count} embedded payload objects; exactly one is allowed.");
 
         skill.payload.CollectValidationIssues(issues);
+        skill.CollectSkillVfxValidationIssues(issues);
     }
 
     private static List<SkillGemDefinition> FindAllSkills()

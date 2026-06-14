@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
   m_Name: Rector_Skill_1
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   icon: {fileID: 0}
   displayName: Rector_Skill_1
   skillId: Rector_Skill_1
@@ -38,23 +38,69 @@ MonoBehaviour:
     _Events:
       _NormalizedTimes:
       - 0.11291548
+      - 0.116574585
       - 0.1746059
+      - 0.36574584
       - 0.36628684
       - 0.44670472
       - 0.69016147
+      - 0.6906077
       - 0.7408357
       - NaN
       _Callbacks: []
       _Names:
       - {fileID: 11400000, guid: a1d9c7b1f0f54a2b8c1d6e7f90123456, type: 2}
+      - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
       - {fileID: 11400000, guid: b2e8d6c4a1b347c98d0e1f2a34567890, type: 2}
+      - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
       - {fileID: 11400000, guid: a1d9c7b1f0f54a2b8c1d6e7f90123456, type: 2}
       - {fileID: 11400000, guid: b2e8d6c4a1b347c98d0e1f2a34567890, type: 2}
       - {fileID: 11400000, guid: a1d9c7b1f0f54a2b8c1d6e7f90123456, type: 2}
+      - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
       - {fileID: 11400000, guid: b2e8d6c4a1b347c98d0e1f2a34567890, type: 2}
-    _Clip: {fileID: 4459832563456208079, guid: 8726aa19f1b54694e84b1c05689de1e5, type: 3}
+    _Clip: {fileID: -4899949704464372382, guid: 6a2e8e24f12e1114080aa52567f1a426, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.052
+  skillVfxEvents:
+  - cueIndex: 0
+    action: 0
+    prefab: {fileID: 2449807036778766759, guid: b6b8fc14049f58f4782bc4448d8f53e1, type: 3}
+    anchor: 0
+    customAnchorPath: 
+    humanoidBone: 18
+    localPosition: {x: 0, y: 0, z: 1.2299995}
+    localEulerAngles: {x: 270, y: 0, z: 0}
+    localScale: {x: 2.6889744, y: 2.6889741, z: 2.6889741}
+    parentToAnchor: 0
+    loopKey: 
+    extraLife: 0
+    allowParticlesToFinish: 1
+  - cueIndex: 1
+    action: 0
+    prefab: {fileID: 2449807036778766759, guid: b6b8fc14049f58f4782bc4448d8f53e1, type: 3}
+    anchor: 0
+    customAnchorPath: 
+    humanoidBone: 18
+    localPosition: {x: 0, y: 0, z: 1.1199999}
+    localEulerAngles: {x: 270, y: 0, z: 0}
+    localScale: {x: 2.6889744, y: 2.6889741, z: 2.6889741}
+    parentToAnchor: 0
+    loopKey: 
+    extraLife: 0
+    allowParticlesToFinish: 1
+  - cueIndex: 2
+    action: 0
+    prefab: {fileID: 2449807036778766759, guid: b6b8fc14049f58f4782bc4448d8f53e1, type: 3}
+    anchor: 0
+    customAnchorPath: 
+    humanoidBone: 18
+    localPosition: {x: 0, y: 0, z: 0.72000027}
+    localEulerAngles: {x: 270, y: 0, z: 0}
+    localScale: {x: 4.000925, y: 4.000925, z: 4.000925}
+    parentToAnchor: 0
+    loopKey: 
+    extraLife: 0
+    allowParticlesToFinish: 1
   blockablePreCast: 0
   preCastOpenTimelineEvent: 200
   preCastCloseTimelineEvent: 201
@@ -80,7 +126,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1f4e6f7ebbd443f8b1550f5c5d6b1e72, type: 3}
   m_Name: Prefab Hitbox Execution
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   helperFacingMode: 0
   chainContinueMode: 0
   chainContinueNormalizedTime: 1
@@ -111,7 +157,7 @@ MonoBehaviour:
         height: 1
         direction: 1
   anchorMode: 1
-  anchorChildPath:
+  anchorChildPath: 
   followAnchor: 1
   localPositionOffset: {x: 0, y: 0, z: 0}
   localEulerOffset: {x: 0, y: 0, z: 0}

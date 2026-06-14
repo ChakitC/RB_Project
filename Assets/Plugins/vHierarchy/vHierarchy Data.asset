@@ -22,19 +22,22 @@ MonoBehaviour:
         keys: []
         values: []
       goDatasByInstanceId:
-        keys: 8e1678ff
+        keys: 
+        values: []
+    - goDatasByGlobalId:
+        keys: []
+        values: []
+      goDatasByInstanceId:
+        keys: 
+        values: []
+    - goDatasByGlobalId:
+        keys:
+        - GlobalObjectId_V1-2-8453286d27ef02d4eb69c66e0bd36033-2431617436259737450-364477453
         values:
         - iColor: 0
           icon: 
-    - goDatasByGlobalId:
-        keys: []
-        values: []
       goDatasByInstanceId:
-        keys: 
-        values: []
-    - goDatasByGlobalId:
-        keys: []
-        values: []
-      goDatasByInstanceId:
-        keys: 
-        values: []
+        keys: 7c6cc9ff
+        values:
+        - iColor: 0
+          icon: 

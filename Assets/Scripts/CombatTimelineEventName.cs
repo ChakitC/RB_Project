@@ -10,6 +10,8 @@ public enum CombatTimelineEventName
     SpawnEffect = 13,
     ShakeCamera = 14,
 
+    Vfx = 20,
+
     PreCastOpen = 200,
     PreCastClose = 201,
 }
@@ -43,6 +45,8 @@ public static class CombatTimelineEventNames
                 return "SpawnEffect";
             case CombatTimelineEventName.ShakeCamera:
                 return "ShakeCamera";
+            case CombatTimelineEventName.Vfx:
+                return "Vfx";
             case CombatTimelineEventName.PreCastOpen:
                 return "PreCastOpen";
             case CombatTimelineEventName.PreCastClose:

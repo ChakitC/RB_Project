@@ -26,9 +26,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 8402,
-                "currentMagazine": 86,
-                "currentReserveAmmo": 275,
+                "shotCounter": 8460,
+                "currentMagazine": 44,
+                "currentReserveAmmo": 600,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 16,
                 "upgradeTier": 1,
@@ -136,9 +136,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 9927,
+                "shotCounter": 9999,
                 "currentMagazine": 29,
-                "currentReserveAmmo": 111,
+                "currentReserveAmmo": 248,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
                 "upgradeTier": 2,
@@ -309,9 +309,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 9434,
-                "currentMagazine": 0,
-                "currentReserveAmmo": 0,
+                "shotCounter": 9498,
+                "currentMagazine": 30,
+                "currentReserveAmmo": 210,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -591,24 +591,39 @@
             }
         },
         {
-            "itemId": "",
-            "amount": 0,
+            "itemId": "SMG_GR01",
+            "amount": 1,
             "weaponInstance": {
-                "instanceId": "",
-                "baseWeaponId": "",
-                "rarity": 0,
+                "instanceId": "b597992638124e759f85f1fa16b1e264",
+                "baseWeaponId": "SMG_GR01",
+                "rarity": 2,
                 "mainAffix": {
-                    "affixId": "",
-                    "hasPrimaryValue": false,
-                    "primaryValue": 0.0,
+                    "affixId": "Stabiity.1",
+                    "hasPrimaryValue": true,
+                    "primaryValue": 6.384033203125,
                     "hasSecondaryValue": false,
                     "secondaryValue": 0.0
                 },
-                "subAffixes": [],
+                "subAffixes": [
+                    {
+                        "affixId": "Crit.1",
+                        "hasPrimaryValue": true,
+                        "primaryValue": 0.5448020100593567,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    {
+                        "affixId": "Damge.1",
+                        "hasPrimaryValue": true,
+                        "primaryValue": 49.780250549316409,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    }
+                ],
                 "shotCounter": 0,
-                "currentMagazine": -1,
-                "currentReserveAmmo": -1,
-                "reserveAmmoInitialized": false,
+                "currentMagazine": 30,
+                "currentReserveAmmo": 300,
+                "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
                 "upgradeExp": 0,
@@ -1086,8 +1101,8 @@
             }
         },
         {
-            "itemId": "",
-            "amount": 0,
+            "itemId": "Accessory.FenosFieldPack",
+            "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
                 "baseWeaponId": "",
@@ -1110,8 +1125,8 @@
                 "unlockedUpgradeMilestoneIds": []
             },
             "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
+                "instanceId": "acc_3d2ff082150e41678e079f575e0ec0c2",
+                "accessoryId": "Accessory.FenosFieldPack",
                 "modifierId": "",
                 "upgradeLevel": 0
             }

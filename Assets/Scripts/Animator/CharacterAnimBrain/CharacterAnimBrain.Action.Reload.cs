@@ -9,6 +9,8 @@ public sealed partial class CharacterAnimBrain
     {
         private readonly CharacterAnimBrain owner;
         private AnimancerState state;
+        private AnimancerEvent.Sequence runtimeEvents;
+        private AnimationVfxSessionToken vfxSession;
         private bool _lockExit;
 
         public Action_Reload(CharacterAnimBrain owner) => this.owner = owner;
@@ -19,18 +21,23 @@ public sealed partial class CharacterAnimBrain
         public void CancelNow()
         {
             _lockExit = false;
-
-            if (state != null)
-            {
-                state.Events(owner).OnEnd = null;
-                state = null;
-            }
+            ClearStateEvents();
+            EndVfxSession();
 
             owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
         }
 
+        public override void OnExitState()
+        {
+            _lockExit = false;
+            ClearStateEvents();
+            EndVfxSession();
+        }
+
         public override void OnEnterState()
         {
+            ClearStateEvents();
+            EndVfxSession();
             _lockExit = true;
 
             state = owner.PlayActionTransition(owner.ReloadClip, PairOffsetUpperAction.Reload);
@@ -44,11 +51,47 @@ public sealed partial class CharacterAnimBrain
             float dur = Mathf.Max(0.01f, owner._reloadDuration);
             state.Speed = len / dur;
 
-            state.Events(owner).OnEnd = () =>
-            {
-                _lockExit = false;
-                owner.actionSM.TrySetState(owner.empty);
-            };
+            runtimeEvents = state.Events(owner);
+            BindVfx();
+            runtimeEvents.OnEnd = OnReloadEnd;
+        }
+
+        internal void EndVfxSession()
+        {
+            owner.EndAnimationVfxSession(vfxSession);
+            vfxSession = default;
+        }
+
+        private void BindVfx()
+        {
+            AnimationVfxTrack track = owner.ReloadVfxTrack;
+            if (runtimeEvents == null || track == null || track.CueCount == 0)
+                return;
+
+            AnimationVfxSessionToken token = owner.BeginAnimationVfxSession(track);
+            vfxSession = token;
+            AnimationVfxEventBinder.Bind(
+                runtimeEvents,
+                cueIndex => owner.HandleAnimationVfxCue(token, cueIndex));
+        }
+
+        private void OnReloadEnd()
+        {
+            if (owner.actionSM.CurrentState != this)
+                return;
+
+            _lockExit = false;
+            EndVfxSession();
+            owner.actionSM.TrySetState(owner.empty);
+        }
+
+        private void ClearStateEvents()
+        {
+            if (runtimeEvents != null)
+                runtimeEvents.OnEnd = null;
+
+            runtimeEvents = null;
+            state = null;
         }
     }
 
@@ -56,6 +99,8 @@ public sealed partial class CharacterAnimBrain
     {
         private readonly CharacterAnimBrain owner;
         private AnimancerState state;
+        private AnimancerEvent.Sequence runtimeEvents;
+        private AnimationVfxSessionToken vfxSession;
         private bool _lockExit;
         private bool _prevApplyRootMotion;
 
@@ -73,10 +118,13 @@ public sealed partial class CharacterAnimBrain
         {
             _lockExit = false;
             ClearStateEvents();
+            EndVfxSession();
         }
 
         public override void OnEnterState()
         {
+            ClearStateEvents();
+            EndVfxSession();
             _lockExit = true;
 
             _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
@@ -90,14 +138,36 @@ public sealed partial class CharacterAnimBrain
             float dur = Mathf.Max(0.01f, owner._reloadDuration);
             state.Speed = len / dur;
 
-            state.Events(owner).OnEnd = OnReloadEnd;
+            runtimeEvents = state.Events(owner);
+            BindVfx();
+            runtimeEvents.OnEnd = OnReloadEnd;
         }
 
         public override void OnExitState()
         {
             ClearStateEvents();
+            EndVfxSession();
             _lockExit = false;
             owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
+        }
+
+        internal void EndVfxSession()
+        {
+            owner.EndAnimationVfxSession(vfxSession);
+            vfxSession = default;
+        }
+
+        private void BindVfx()
+        {
+            AnimationVfxTrack track = owner.ReloadVfxTrack;
+            if (runtimeEvents == null || track == null || track.CueCount == 0)
+                return;
+
+            AnimationVfxSessionToken token = owner.BeginAnimationVfxSession(track);
+            vfxSession = token;
+            AnimationVfxEventBinder.Bind(
+                runtimeEvents,
+                cueIndex => owner.HandleAnimationVfxCue(token, cueIndex));
         }
 
         private void OnReloadEnd()
@@ -111,10 +181,10 @@ public sealed partial class CharacterAnimBrain
 
         private void ClearStateEvents()
         {
-            if (state == null)
-                return;
+            if (runtimeEvents != null)
+                runtimeEvents.OnEnd = null;
 
-            state.Events(owner).OnEnd = null;
+            runtimeEvents = null;
             state = null;
         }
     }

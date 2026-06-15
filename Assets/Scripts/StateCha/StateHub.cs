@@ -554,10 +554,9 @@ public sealed class StateHub : MonoBehaviour
         ctx.WeaponSystem.SetFiring(false);
         ctx.stateHub.SetFireHeld(false);
 
-        if (WeaponSM.CurrentId == WeaponStateId.Reloading)
+        bool cancelFullBodyReload = IsFullBodyReloadMovementBlocked();
+        if (ctx.DashSystem.TryDash() && cancelFullBodyReload)
             ctx.WeaponSystem.CancelReload();
-
-        ctx.DashSystem.TryDash();
     }
 
     public void SetMoveSpeed01(float v01)

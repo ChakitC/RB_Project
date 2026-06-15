@@ -33,10 +33,10 @@ public sealed class SkillVfxAuthoringSlot : MonoBehaviour
     [Button("Add VFX Prefabs", ButtonSizes.Large)]
     private void AddVfxPrefabs()
     {
-        SetSkillVfxData authoring = ResolveAuthoring();
+        SetAnimationVfxData authoring = ResolveAuthoring();
         if (authoring == null)
         {
-            Debug.LogWarning("Could not find SetSkillVfxData for this VFX slot.", this);
+            Debug.LogWarning("Could not find SetAnimationVfxData for this VFX slot.", this);
             return;
         }
 
@@ -48,7 +48,7 @@ public sealed class SkillVfxAuthoringSlot : MonoBehaviour
     [PropertyTooltip("Create an entry without a prefab. Use this for Stop Loop or manual setup.")]
     private void AddEmptyVfxEntry()
     {
-        SetSkillVfxData authoring = ResolveAuthoring();
+        SetAnimationVfxData authoring = ResolveAuthoring();
         if (authoring != null)
             authoring.AddEmptyEntryToSlot(this);
     }
@@ -56,7 +56,7 @@ public sealed class SkillVfxAuthoringSlot : MonoBehaviour
     [Button("Play Slot Preview")]
     private void PlaySlotPreview()
     {
-        SetSkillVfxData authoring = ResolveAuthoring();
+        SetAnimationVfxData authoring = ResolveAuthoring();
         if (authoring != null)
             authoring.PlayVfx(cueIndex);
     }
@@ -64,7 +64,7 @@ public sealed class SkillVfxAuthoringSlot : MonoBehaviour
     [Button("Stop Slot Preview")]
     private void StopSlotPreview()
     {
-        SetSkillVfxData authoring = ResolveAuthoring();
+        SetAnimationVfxData authoring = ResolveAuthoring();
         if (authoring != null)
             authoring.StopVfx(cueIndex);
     }
@@ -74,14 +74,14 @@ public sealed class SkillVfxAuthoringSlot : MonoBehaviour
         gameObject.name = $"Vfx_Slot_{cueIndex + 1}";
     }
 
-    SetSkillVfxData ResolveAuthoring()
+    SetAnimationVfxData ResolveAuthoring()
     {
-        SetSkillVfxData authoring = GetComponentInParent<SetSkillVfxData>();
+        SetAnimationVfxData authoring = GetComponentInParent<SetAnimationVfxData>();
         if (authoring != null)
             return authoring;
 
 #if UNITY_EDITOR
-        SetSkillVfxData[] candidates = FindObjectsByType<SetSkillVfxData>(
+        SetAnimationVfxData[] candidates = FindObjectsByType<SetAnimationVfxData>(
             FindObjectsInactive.Include,
             FindObjectsSortMode.None);
         for (int i = 0; i < candidates.Length; i++)

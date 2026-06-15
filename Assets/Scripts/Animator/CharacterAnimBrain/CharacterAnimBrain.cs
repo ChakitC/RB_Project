@@ -138,6 +138,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private Action onUtilityCastMomentCache;
     private SkillGemDefinition _activeSkillDefinition;
     private SkillVfxPresenter _skillVfxPresenter;
+    private AnimationVfxPresenter _animationVfxPresenter;
     private int _activeSkillRequestId;
     private float _activeSkillCastPointNormalized = 0.35f;
     private bool _activeSkillReleaseRequested;
@@ -163,6 +164,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private bool SnapTo8Directions => AnimProfile.snapTo8Directions;
     private ClipTransition DashForward => AnimProfile.dashF;
     private ClipTransition DashBackward => AnimProfile.dashB;
+    private AnimationVfxTrack DashForwardVfxTrack =>
+        AnimProfile.GetAnimationVfxTrack(CharacterAnimProfileSO.DashForwardVfxEntryId);
+    private AnimationVfxTrack DashBackwardVfxTrack =>
+        AnimProfile.GetAnimationVfxTrack(CharacterAnimProfileSO.DashBackwardVfxEntryId);
     private ClipTransition DashLeft => AnimProfile.dashL;
     private ClipTransition DashRight => AnimProfile.dashR;
     private ClipTransition DeadClip => AnimProfile.dead;
@@ -170,6 +175,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private ClipTransition ShootHoldLoopClip => AnimProfile.shootHoldLoop;
     private float HoldPulseMinInterval => AnimProfile.holdPulseMinInterval;
     private ClipTransition ReloadClip => AnimProfile.reload;
+    private AnimationVfxTrack ReloadVfxTrack =>
+        AnimProfile.GetAnimationVfxTrack(CharacterAnimProfileSO.ReloadVfxEntryId);
     private CharacterAnimProfileSO.ReloadBodyMode ReloadMode => AnimProfile.reloadBodyMode;
     private MeleeComboSO DefaultMeleeCombo => AnimProfile.meleeCombo;
     private MeleeComboSO LightCombo => AnimProfile.lightCombo;
@@ -289,13 +296,21 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!TryGetAnimProfile(out var animProfile))
             return false;
 
-        if (_initialized &&
-            (animancer.Animator != _boundAnimator || animProfile != _boundAnimProfile) &&
-            ((_activeSkillRequestId != 0 || _activeSkillReleaseRequested) ||
-             (_activeUtilityRequestId != 0 || _activeUtilityReleaseRequested)))
+        bool bindingChanged = _initialized &&
+                              (animancer.Animator != _boundAnimator || animProfile != _boundAnimProfile);
+        if (bindingChanged)
         {
-            InterruptActiveSkillRequest();
-            InterruptActiveUtilityRequest();
+            if ((_activeSkillRequestId != 0 || _activeSkillReleaseRequested) ||
+                (_activeUtilityRequestId != 0 || _activeUtilityReleaseRequested))
+            {
+                InterruptActiveSkillRequest();
+                InterruptActiveUtilityRequest();
+            }
+
+            dashState?.EndVfxSession();
+            reloadState?.EndVfxSession();
+            fullBodyReloadState?.EndVfxSession();
+            meleeCombo?.EndVfxSession();
         }
 
         // ถ้า Animator หรือ profile เปลี่ยน (เช่น rebuild model / switch character) ต้อง init ใหม่
@@ -635,7 +650,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!TryInitialize())
             return;
         
-        StopReloadAction();
+        if (ReloadMode == CharacterAnimProfileSO.ReloadBodyMode.FullBody)
+            StopReloadAction();
         if (locomotionSM.CurrentState == dashState)
             locomotionSM.TryResetState(dashState);
         else
@@ -1636,6 +1652,38 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         BindActiveSkillPreCastTimelineEvents(runtimeEvents);
     }
 
+    internal AnimationVfxSessionToken BeginAnimationVfxSession(IAnimationVfxCueSource source)
+    {
+        if (source == null)
+            return default;
+
+        if (_animationVfxPresenter == null)
+            _animationVfxPresenter = GetComponent<AnimationVfxPresenter>();
+        if (_animationVfxPresenter == null)
+            _animationVfxPresenter = gameObject.AddComponent<AnimationVfxPresenter>();
+
+        Transform root = ctx != null ? ctx.transform : transform;
+        SkillUserSystem skillUser = ctx != null ? ctx.EnegySystem : null;
+        Animator animator = animancer != null ? animancer.Animator : null;
+        return _animationVfxPresenter.BeginSession(
+            source,
+            new AnimationVfxAnchorContext(
+                root,
+                skillUser != null ? skillUser.CastOrigin : root,
+                skillUser != null ? skillUser.AimTransform : root,
+                animator));
+    }
+
+    internal void HandleAnimationVfxCue(AnimationVfxSessionToken token, int cueIndex)
+    {
+        _animationVfxPresenter?.HandleCue(token, cueIndex);
+    }
+
+    internal void EndAnimationVfxSession(AnimationVfxSessionToken token)
+    {
+        _animationVfxPresenter?.EndSession(token);
+    }
+
     internal void BindActiveChainTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
     {
         if (_activeChainKind != ChainPlaybackKind.Skill)
@@ -1687,18 +1735,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (runtimeEvents == null || skillDef == null || !skillDef.HasSkillVfxEvents || raiseVfxCue == null)
             return;
 
-        StringReference vfxEventName = CombatTimelineEventNames.ToStringReference(CombatTimelineEventName.Vfx);
-        int cueIndex = 0;
-        for (int eventIndex = 0; eventIndex < runtimeEvents.Count; eventIndex++)
-        {
-            if (runtimeEvents.GetName(eventIndex) != vfxEventName)
-                continue;
-
-            int capturedCueIndex = cueIndex++;
-            runtimeEvents.SetCallback(eventIndex, () => raiseVfxCue(capturedCueIndex));
-        }
-
-        if (cueIndex == 0)
+        int boundCueCount = AnimationVfxEventBinder.Bind(runtimeEvents, raiseVfxCue);
+        if (boundCueCount == 0)
         {
             string clipName = clip != null && clip.Clip != null ? clip.Clip.name : "<none>";
             Debug.LogWarning(
@@ -1897,8 +1935,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void BeginSkillVfxRequest(int requestId, SkillGemDefinition skillDef)
     {
-        _skillVfxPresenter?.EndRequest(0);
-
         if (requestId <= 0 || skillDef == null || !skillDef.HasSkillVfxEvents)
             return;
 
@@ -1950,6 +1986,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void OnDisable()
     {
+        dashState?.EndVfxSession();
+        reloadState?.EndVfxSession();
+        fullBodyReloadState?.EndVfxSession();
+        meleeCombo?.EndVfxSession();
         RestoreWorldAnimationSpeed();
         InterruptActiveSkillRequest();
         InterruptActiveUtilityRequest();
@@ -1958,6 +1998,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void OnDestroy()
     {
+        dashState?.EndVfxSession();
+        reloadState?.EndVfxSession();
+        fullBodyReloadState?.EndVfxSession();
+        meleeCombo?.EndVfxSession();
         RestoreWorldAnimationSpeed();
         InterruptActiveSkillRequest();
         InterruptActiveUtilityRequest();

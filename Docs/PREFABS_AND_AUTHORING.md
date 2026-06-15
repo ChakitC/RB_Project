@@ -172,8 +172,9 @@ Place the same Animancer event named `Vfx` once for every VFX cue. Occurrence 1
 uses cue index 0, occurrence 2 uses cue index 1, and so on. Every entry under the
 same slot is saved with that slot's cue index and runs at the same marker.
 
-Open `Tools > RB Tools > Skill Animation VFX Timeline` to preview and edit the
-assigned skill animation against the character resolved by `SetSkillVfxData`.
+Open `Tools > RB > Animation VFX > Animation Event VFX Timeline` to preview and
+edit Skill or Melee animation data against the character resolved by
+`SetAnimationVfxData`. The old Skill timeline menu opens the same window.
 Assign the component directly or select it in the Hierarchy and press
 `Use Selection`. The window reads the Skill Definition and Animator from that
 component; it does not keep a separate preview-character reference.
@@ -218,6 +219,31 @@ a VFX marker across another marker reorders their cue indices. Removing a VFX
 marker also removes entries in that cue group and shifts later cue indices down.
 Stopping or closing the window stops VFX previews and exits Unity Animation Mode
 so the sampled character pose is restored.
+
+## Shared Animation VFX Authoring
+
+Use `SetAnimationVfxData` for source-neutral entries such as a
+`MeleeComboSO.Step` or `CharacterAnimProfileSO` Dash/Reload animation. Select
+the source and entry in the shared timeline, create or sync slots, place prefab
+children, then save the VFX data.
+Assigning a `MeleeComboSO` on the component selects the first valid step by
+default. The component inspector exposes a Step dropdown and the resolved
+animation clip, so authoring does not require typing a step GUID manually.
+
+For a `CharacterAnimProfileSO`, select `Dash Forward`, `Dash Backward`, or
+`Reload`. These entries store independent embedded `AnimationVfxTrack` data
+beside the existing `dashF`, `dashB`, and `reload` transitions. Missing clips
+remain visible in the entry list so validation can report them. Dash Left and
+Dash Right are not runtime Timeline VFX entries yet.
+
+Keep existing `SetSkillVfxData` components on scenes and prefabs. They inherit
+the shared authoring behavior while preserving the old component GUID, Skill
+reference, hierarchy slots, entries, and buttons. V2 requires no prefab or scene
+conversion.
+
+The hierarchy owner is `(source asset, entry ID)`. Changing a Melee step stops
+preview and rebuilds from that step. Maintain step IDs with
+`Tools > RB > Animation VFX > Assign Missing Melee Step IDs`.
 
 ## Animation Profile Authoring
 
@@ -334,9 +360,11 @@ the action layer are reserved for transitions from an already visible action
 pose, such as `ShootPulse` into `ShootHold` or reload.
 
 `CharacterAnimProfileSO.reloadBodyMode` also controls movement during reload.
-`UpperBody` keeps locomotion available. `FullBody` blocks normal movement for
-the reload duration, but Dash remains available and cancels the active reload
-before starting.
+`UpperBody` keeps locomotion available and continues the reload animation,
+gameplay routine, and Reload VFX session while Dash plays on the locomotion
+layer. `FullBody` blocks normal movement; a successful Dash cancels the reload
+before the Dash animation takes ownership. A failed Dash attempt does not
+cancel either reload mode.
 
 ## Context-Owned References
 

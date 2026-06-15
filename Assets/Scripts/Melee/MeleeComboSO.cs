@@ -8,11 +8,17 @@ public sealed class MeleeComboSO : ScriptableObject
 {
     public const CombatTimelineEventName HitStartEventName = CombatTimelineEventName.HitStart;
     public const CombatTimelineEventName HitEndEventName = CombatTimelineEventName.HitEnd;
-    public static readonly string[] HitEventNames = { "HitStart", "HitEnd" };
+    public static readonly string[] HitEventNames = { "HitStart", "HitEnd", "Vfx" };
 
     [Serializable]
     public struct Step
     {
+        [SerializeField, HideInInspector]
+        private string entryId;
+
+        [SerializeField]
+        private AnimationVfxTrack animationVfxTrack;
+
         [Tooltip("Animancer ClipTransition ของท่านี้")]
         [EventNames(typeof(MeleeComboSO), nameof(HitEventNames))]
         public ClipTransition clip;
@@ -39,6 +45,19 @@ public sealed class MeleeComboSO : ScriptableObject
         [Header("Stagger")]
         [Min(0f)] public float staggerPower;
 
+        public string EntryId => entryId;
+        public AnimationVfxTrack AnimationVfxTrack => animationVfxTrack;
+
+        internal void SetEntryId(string value)
+        {
+            entryId = value;
+        }
+
+        internal void SetAnimationVfxTrack(AnimationVfxTrack value)
+        {
+            animationVfxTrack = value;
+        }
+
         public KnockbackSettings ToKnockbackSettings()
         {
             return new KnockbackSettings(
@@ -59,6 +78,76 @@ public sealed class MeleeComboSO : ScriptableObject
 
     public IReadOnlyList<Step> Steps => steps;
     public int Count => steps?.Count ?? 0;
+
+    public bool TryGetStep(string entryId, out Step step, out int index)
+    {
+        if (steps != null && !string.IsNullOrWhiteSpace(entryId))
+        {
+            for (int i = 0; i < steps.Count; i++)
+            {
+                if (string.Equals(steps[i].EntryId, entryId, StringComparison.Ordinal))
+                {
+                    step = steps[i];
+                    index = i;
+                    return true;
+                }
+            }
+        }
+
+        step = default;
+        index = -1;
+        return false;
+    }
+
+    public bool ReplaceStepVfxTrack(string entryId, AnimationVfxTrack track)
+    {
+        if (!TryGetStep(entryId, out Step step, out int index))
+            return false;
+
+        step.SetAnimationVfxTrack(track ?? new AnimationVfxTrack());
+        steps[index] = step;
+        return true;
+    }
+
+    public bool SetStepChainWindow(string entryId, Vector2 chainWindowN)
+    {
+        if (!TryGetStep(entryId, out Step step, out int index))
+            return false;
+
+        step.chainWindowN = Clamp01Ordered(chainWindowN);
+        steps[index] = step;
+        return true;
+    }
+
+#if UNITY_EDITOR
+    public bool EnsureUniqueStepEntryIds()
+    {
+        if (steps == null)
+            return false;
+
+        bool changed = false;
+        var usedIds = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < steps.Count; i++)
+        {
+            Step step = steps[i];
+            string id = step.EntryId;
+            if (string.IsNullOrWhiteSpace(id) || !usedIds.Add(id))
+            {
+                do
+                {
+                    id = Guid.NewGuid().ToString("N");
+                }
+                while (!usedIds.Add(id));
+
+                step.SetEntryId(id);
+                steps[i] = step;
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+#endif
 
     public bool IsValid(out string reason)
     {
@@ -97,6 +186,7 @@ public sealed class MeleeComboSO : ScriptableObject
                 reason = $"Step {i} has unbalanced HitStart/HitEnd events ({hitStartCount}/{hitEndCount}).";
                 return false;
             }
+
         }
 
         reason = "";

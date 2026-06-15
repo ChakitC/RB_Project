@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: LightMeleeComboSO
   m_EditorClassIdentifier: 
   steps:
-  - clip:
+  - entryId: a8e1449a4bae41d2b9a67ba90b235ab6
+    clip:
       _FadeDuration: 0.18666667
       _Speed: 1
       _Events:
@@ -42,7 +43,8 @@ MonoBehaviour:
     knockbackReaction: 0
     knockbackInterruptsActions: 0
     staggerPower: 0
-  - clip:
+  - entryId: 352adabb60ba43f5a873f61d2882d05d
+    clip:
       _FadeDuration: 0.25
       _Speed: 1
       _Events:

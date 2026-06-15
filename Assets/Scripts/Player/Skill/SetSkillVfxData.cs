@@ -7,7 +7,7 @@ using UnityEditor.SceneManagement;
 #endif
 
 [HideMonoScript]
-public sealed class SetSkillVfxData : MonoBehaviour
+public sealed class SetSkillVfxData : SetAnimationVfxData
 {
     const string CreateEntryUndoLabel = "Create Skill VFX Entry";
     const string SyncSlotsUndoLabel = "Create Skill VFX Slots";
@@ -22,9 +22,6 @@ public sealed class SetSkillVfxData : MonoBehaviour
     [Title("Authoring Target")]
     [SerializeField] private SkillGemDefinition skill;
     [SerializeField, HideInInspector] private SkillGemDefinition authoringSkill;
-    [SerializeField] private Transform characterRoot;
-    [SerializeField] private Transform sourceVfxRoot;
-    [SerializeField] private bool includeInactiveObjects = true;
 
     [Title("New Entry Settings")]
     [SerializeField, Min(0), LabelText("VFX Cue Index")]
@@ -59,14 +56,13 @@ public sealed class SetSkillVfxData : MonoBehaviour
     private string AuthoringStatus => BuildAuthoringStatus();
 
     public SkillGemDefinition Skill => skill;
-    public Transform CharacterRoot => GetCharacterRoot();
-    public Animator PreviewAnimator
+    protected override ScriptableObject ResolveTimelineSourceAsset() => skill;
+
+    protected override string ResolveTimelineEntryId() => "main";
+
+    protected override void AssignTimelineSourceAsset(ScriptableObject asset)
     {
-        get
-        {
-            Transform root = GetCharacterRoot();
-            return root != null ? root.GetComponentInChildren<Animator>(true) : null;
-        }
+        skill = asset as SkillGemDefinition;
     }
 
     private bool NewEntryRequiresPrefab => newAction != SkillVfxAction.StopLoop;
@@ -186,7 +182,7 @@ public sealed class SetSkillVfxData : MonoBehaviour
 #endif
     }
 
-    public void AddPrefabsToSlot(SkillVfxAuthoringSlot slot, IReadOnlyList<GameObject> prefabs)
+    public new void AddPrefabsToSlot(SkillVfxAuthoringSlot slot, IReadOnlyList<GameObject> prefabs)
     {
 #if UNITY_EDITOR
         if (!PrepareAuthoringForAssignedSkill() || slot == null || prefabs == null ||
@@ -222,7 +218,7 @@ public sealed class SetSkillVfxData : MonoBehaviour
 #endif
     }
 
-    public void AddEmptyEntryToSlot(SkillVfxAuthoringSlot slot)
+    public new void AddEmptyEntryToSlot(SkillVfxAuthoringSlot slot)
     {
 #if UNITY_EDITOR
         if (!PrepareAuthoringForAssignedSkill() || slot == null || !ContainsAuthoringTransform(slot.transform))
@@ -335,7 +331,7 @@ public sealed class SetSkillVfxData : MonoBehaviour
     }
 
     [Button("Refresh All Visuals")]
-    public void RefreshAllVisuals()
+    public new void RefreshAllVisuals()
     {
         SkillVfxAuthoringEntry[] entries = GetSourceEntries();
         for (int i = 0; i < entries.Length; i++)
@@ -359,7 +355,7 @@ public sealed class SetSkillVfxData : MonoBehaviour
     }
 
     [Button("Stop All VFX")]
-    public void StopAllVfx()
+    public new void StopAllVfx()
     {
         SkillVfxAuthoringEntry[] entries = GetSourceEntries();
         for (int i = 0; i < entries.Length; i++)
@@ -373,7 +369,7 @@ public sealed class SetSkillVfxData : MonoBehaviour
 #endif
     }
 
-    public void StopAllLoopPreviews(bool allowParticlesToFinish)
+    public new void StopAllLoopPreviews(bool allowParticlesToFinish)
     {
 #if UNITY_EDITOR
         foreach (List<SkillVfxAuthoringEntry> entries in activePreviewLoops.Values)
@@ -395,7 +391,7 @@ public sealed class SetSkillVfxData : MonoBehaviour
 #endif
     }
 
-    public void PlayVfx(int cueIndex)
+    public new void PlayVfx(int cueIndex)
     {
         SkillVfxAuthoringEntry[] entries = GetSourceEntries();
 #if UNITY_EDITOR
@@ -429,7 +425,7 @@ public sealed class SetSkillVfxData : MonoBehaviour
         }
     }
 
-    public void PlayOneShotVfx(int cueIndex)
+    public new void PlayOneShotVfx(int cueIndex)
     {
         SkillVfxAuthoringEntry[] entries = GetSourceEntries();
         for (int i = 0; i < entries.Length; i++)
@@ -440,7 +436,7 @@ public sealed class SetSkillVfxData : MonoBehaviour
         }
     }
 
-    public void StopVfx(int cueIndex)
+    public new void StopVfx(int cueIndex)
     {
         SkillVfxAuthoringEntry[] entries = GetSourceEntries();
         for (int i = 0; i < entries.Length; i++)
@@ -476,7 +472,7 @@ public sealed class SetSkillVfxData : MonoBehaviour
 #endif
     }
 
-    public void SyncLoopPreviews(int appliedCueCount)
+    public new void SyncLoopPreviews(int appliedCueCount)
     {
 #if UNITY_EDITOR
         SkillVfxAuthoringEntry[] entries = GetSourceEntries();
@@ -624,7 +620,7 @@ public sealed class SetSkillVfxData : MonoBehaviour
     }
 #endif
 
-    public SkillVfxAuthoringEntry FindEntry(int cueIndex)
+    public new SkillVfxAuthoringEntry FindEntry(int cueIndex)
     {
         SkillVfxAuthoringEntry[] entries = GetSourceEntries();
         for (int i = 0; i < entries.Length; i++)
@@ -637,7 +633,7 @@ public sealed class SetSkillVfxData : MonoBehaviour
         return null;
     }
 
-    public SkillVfxAuthoringSlot FindSlot(int cueIndex)
+    public new SkillVfxAuthoringSlot FindSlot(int cueIndex)
     {
         SkillVfxAuthoringSlot[] slots = GetSourceSlots();
         for (int i = 0; i < slots.Length; i++)
@@ -1246,7 +1242,7 @@ public sealed class SetSkillVfxData : MonoBehaviour
         return true;
     }
 
-    public bool ContainsAuthoringTransform(Transform candidate)
+    public new bool ContainsAuthoringTransform(Transform candidate)
     {
         Transform sourceRoot = GetSourceRoot();
         return sourceRoot != null && candidate != null &&
@@ -1261,7 +1257,7 @@ public sealed class SetSkillVfxData : MonoBehaviour
         return ResolveCharacterRoot(transform);
     }
 
-    Transform GetSourceRoot()
+    new Transform GetSourceRoot()
     {
         if (this == null)
             return null;

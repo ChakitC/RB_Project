@@ -7,6 +7,10 @@ using Object = UnityEngine.Object;
 [CreateAssetMenu(menuName = "Game/Characters/Animation Profile", fileName = "CharacterAnimProfile")]
 public sealed class CharacterAnimProfileSO : ScriptableObject
 {
+    public const string DashForwardVfxEntryId = "dash.forward";
+    public const string DashBackwardVfxEntryId = "dash.backward";
+    public const string ReloadVfxEntryId = "reload";
+
     public enum ReloadBodyMode
     {
         UpperBody = 0,
@@ -192,7 +196,9 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
 
     [Header("Dash (Layer 0)")]
     public ClipTransition dashF;
+    [SerializeField] private AnimationVfxTrack dashForwardVfxTrack = new();
     public ClipTransition dashB;
+    [SerializeField] private AnimationVfxTrack dashBackwardVfxTrack = new();
     public ClipTransition dashL;
     public ClipTransition dashR;
 
@@ -209,6 +215,7 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
 
     [Header("Reload (Layer 1 or Full Body)")]
     public ClipTransition reload;
+    [SerializeField] private AnimationVfxTrack reloadVfxTrack = new();
     [Tooltip("UpperBody blends reload over locomotion using the action mask. FullBody plays reload on the locomotion layer and temporarily owns the whole character.")]
     public ReloadBodyMode reloadBodyMode = ReloadBodyMode.UpperBody;
 
@@ -236,6 +243,65 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
 
     [Header("Skill (Layer 0, Legacy Fallback)")]
     public ClipTransition skillClip;
+
+    public bool TryGetAnimationVfxEntry(
+        string entryId,
+        out ClipTransition transition,
+        out AnimationVfxTrack track)
+    {
+        transition = null;
+        track = null;
+
+        switch (entryId)
+        {
+            case DashForwardVfxEntryId:
+                transition = dashF;
+                track = dashForwardVfxTrack ?? new AnimationVfxTrack();
+                return true;
+
+            case DashBackwardVfxEntryId:
+                transition = dashB;
+                track = dashBackwardVfxTrack ?? new AnimationVfxTrack();
+                return true;
+
+            case ReloadVfxEntryId:
+                transition = reload;
+                track = reloadVfxTrack ?? new AnimationVfxTrack();
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    public AnimationVfxTrack GetAnimationVfxTrack(string entryId)
+    {
+        return TryGetAnimationVfxEntry(entryId, out _, out AnimationVfxTrack track)
+            ? track
+            : null;
+    }
+
+    public bool ReplaceAnimationVfxTrack(string entryId, AnimationVfxTrack track)
+    {
+        AnimationVfxTrack replacement = track ?? new AnimationVfxTrack();
+        switch (entryId)
+        {
+            case DashForwardVfxEntryId:
+                dashForwardVfxTrack = replacement;
+                return true;
+
+            case DashBackwardVfxEntryId:
+                dashBackwardVfxTrack = replacement;
+                return true;
+
+            case ReloadVfxEntryId:
+                reloadVfxTrack = replacement;
+                return true;
+
+            default:
+                return false;
+        }
+    }
 
     public MixerTransition2D ResolveLocomotionMixer()
     {

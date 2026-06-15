@@ -49,7 +49,7 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
     private int cueIndex;
 
     [SerializeField]
-    private SkillVfxAction action;
+    private AnimationVfxAction action;
 
     [SerializeField, HideInInspector]
     private GameObject prefab;
@@ -58,7 +58,7 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
     private GameObject AuthoredPrefab => ResolvePrefabAsset();
 
     [SerializeField, ShowIf(nameof(RequiresPrefab))]
-    private SkillVfxAnchor anchor = SkillVfxAnchor.CastOrigin;
+    private AnimationVfxAnchor anchor = AnimationVfxAnchor.CastOrigin;
 
     [SerializeField, ShowIf(nameof(ShowCustomAnchorPath))]
     private string customAnchorPath;
@@ -71,10 +71,10 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
 
     [ShowInInspector, ShowIf(nameof(RequiresPrefab)), LabelText("Anchor Mode")]
     [PropertyTooltip("World Space keeps the spawned VFX at its spawn position. Follow Anchor moves it with the selected anchor.")]
-    private SkillVfxAnchorMode AnchorMode
+    private AnimationVfxAnchorMode AnchorMode
     {
-        get => parentToAnchor ? SkillVfxAnchorMode.FollowAnchor : SkillVfxAnchorMode.WorldSpace;
-        set => parentToAnchor = value == SkillVfxAnchorMode.FollowAnchor;
+        get => parentToAnchor ? AnimationVfxAnchorMode.FollowAnchor : AnimationVfxAnchorMode.WorldSpace;
+        set => parentToAnchor = value == AnimationVfxAnchorMode.FollowAnchor;
     }
 
     [SerializeField, ShowIf(nameof(UsesLoopKey))]
@@ -94,39 +94,67 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
             return slot != null ? slot.CueIndex : cueIndex;
         }
     }
-    public SkillVfxAction Action => action;
+    public SkillVfxAction Action => (SkillVfxAction)action;
+    public AnimationVfxAction AnimationAction => action;
     public GameObject Prefab => ResolvePrefabAsset();
-    public SkillVfxAnchor Anchor => anchor;
+    public SkillVfxAnchor Anchor => (SkillVfxAnchor)anchor;
+    public AnimationVfxAnchor AnimationAnchor => anchor;
+    public AnimationVfxAnchorMode AnimationAnchorMode => parentToAnchor
+        ? AnimationVfxAnchorMode.FollowAnchor
+        : AnimationVfxAnchorMode.WorldSpace;
     public string CustomAnchorPath => customAnchorPath;
     public HumanBodyBones HumanoidBone => humanoidBone;
     public bool ParentToAnchor => parentToAnchor;
     public string LoopKey => loopKey;
     public float ExtraLife => extraLife;
     public bool AllowParticlesToFinish => allowParticlesToFinish;
-    public bool RequiresPrefab => action != SkillVfxAction.StopLoop;
+    public bool RequiresPrefab => action != AnimationVfxAction.StopLoop;
 
-    private bool UsesLoopKey => action != SkillVfxAction.OneShot;
+    private bool UsesLoopKey => action != AnimationVfxAction.OneShot;
     private bool ShowLegacyCueIndex => GetComponentInParent<SkillVfxAuthoringSlot>() == null;
-    private bool ShowCustomAnchorPath => RequiresPrefab && anchor == SkillVfxAnchor.CustomChildPath;
-    private bool ShowHumanoidBone => RequiresPrefab && anchor == SkillVfxAnchor.HumanoidBone;
-    private bool ShowExtraLife => action == SkillVfxAction.OneShot || action == SkillVfxAction.StopLoop;
-    private bool ShowStopOptions => action == SkillVfxAction.StopLoop;
+    private bool ShowCustomAnchorPath => RequiresPrefab && anchor == AnimationVfxAnchor.CustomChildPath;
+    private bool ShowHumanoidBone => RequiresPrefab && anchor == AnimationVfxAnchor.HumanoidBone;
+    private bool ShowExtraLife => action == AnimationVfxAction.OneShot || action == AnimationVfxAction.StopLoop;
+    private bool ShowStopOptions => action == AnimationVfxAction.StopLoop;
 
-    public void Configure(SkillVfxEvent cue)
+    public void Configure(IAnimationVfxCue cue)
     {
         if (cue == null)
             return;
 
-        cueIndex = Mathf.Max(0, cue.cueIndex);
-        action = cue.action;
-        prefab = cue.prefab;
-        anchor = cue.anchor;
-        customAnchorPath = cue.customAnchorPath;
-        humanoidBone = cue.humanoidBone;
-        parentToAnchor = cue.parentToAnchor;
-        loopKey = cue.loopKey;
-        extraLife = cue.extraLife;
-        allowParticlesToFinish = cue.allowParticlesToFinish;
+        cueIndex = Mathf.Max(0, cue.CueIndex);
+        action = cue.Action;
+        prefab = cue.Prefab;
+        anchor = cue.Anchor;
+        customAnchorPath = cue.CustomAnchorPath;
+        humanoidBone = cue.HumanoidBone;
+        parentToAnchor = cue.AnchorMode == AnimationVfxAnchorMode.FollowAnchor;
+        loopKey = cue.LoopKey;
+        extraLife = cue.ExtraLife;
+        allowParticlesToFinish = cue.AllowParticlesToFinish;
+    }
+
+    public void Configure(SkillVfxEvent cue)
+    {
+        Configure((IAnimationVfxCue)cue);
+    }
+
+    public AnimationVfxCue CreateAnimationData()
+    {
+        return new AnimationVfxCue
+        {
+            cueIndex = CueIndex,
+            action = action,
+            prefab = ResolvePrefabAsset(),
+            anchor = anchor,
+            customAnchorPath = customAnchorPath,
+            humanoidBone = humanoidBone,
+            anchorMode = AnimationAnchorMode,
+            loopKey = loopKey,
+            extraLife = extraLife,
+            allowParticlesToFinish = allowParticlesToFinish,
+            localScale = Vector3.one,
+        };
     }
 
     public SkillVfxEvent CreateData()
@@ -134,9 +162,9 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
         return new SkillVfxEvent
         {
             cueIndex = CueIndex,
-            action = action,
+            action = (SkillVfxAction)action,
             prefab = ResolvePrefabAsset(),
-            anchor = anchor,
+            anchor = (SkillVfxAnchor)anchor,
             customAnchorPath = customAnchorPath,
             humanoidBone = humanoidBone,
             parentToAnchor = parentToAnchor,
@@ -297,13 +325,13 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
                 continue;
 
             ParticleSystem.MainModule main = particleSystem.main;
-            main.loop = action == SkillVfxAction.StartLoop && visualPreviewOriginalLooping[i];
+            main.loop = action == AnimationVfxAction.StartLoop && visualPreviewOriginalLooping[i];
             particleSystem.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
             particleSystem.Simulate(0.0001f, withChildren: false, restart: true, fixedTimeStep: false);
         }
 
         visualPreviewActive = visualPreviewParticleSystems.Length > 0;
-        visualPreviewLooping = action == SkillVfxAction.StartLoop;
+        visualPreviewLooping = action == AnimationVfxAction.StartLoop;
         visualPreviewStopping = false;
         visualPreviewElapsedTime = 0.0001f;
         lastPreviewUpdateTime = EditorApplication.timeSinceStartup;

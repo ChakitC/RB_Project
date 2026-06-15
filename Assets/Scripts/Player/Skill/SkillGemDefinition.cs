@@ -364,52 +364,11 @@ public class SkillGemDefinition : ScriptableObject
         int markerCount,
         List<string> issues)
     {
-        if (issues == null || events == null)
-            return;
-
-        var orderedIndices = new List<int>(events.Count);
-        for (int i = 0; i < events.Count; i++)
-        {
-            SkillVfxEvent cue = events[i];
-            if (cue == null)
-            {
-                issues.Add($"Timeline VFX entry {i + 1} is null.");
-                continue;
-            }
-
-            cue.CollectValidationIssues(issues, i);
-
-            if (markerCount >= 0 && cue.cueIndex >= markerCount)
-                issues.Add($"Timeline VFX entry {i + 1} targets cue {cue.cueIndex + 1}, but the Skill Clip has only {markerCount} Vfx marker(s).");
-
-            orderedIndices.Add(i);
-        }
-
-        orderedIndices.Sort((left, right) =>
-        {
-            int cueComparison = events[left].cueIndex.CompareTo(events[right].cueIndex);
-            return cueComparison != 0 ? cueComparison : left.CompareTo(right);
-        });
-
-        var activeLoopKeys = new HashSet<string>(StringComparer.Ordinal);
-        for (int i = 0; i < orderedIndices.Count; i++)
-        {
-            int sourceIndex = orderedIndices[i];
-            SkillVfxEvent cue = events[sourceIndex];
-            if (string.IsNullOrWhiteSpace(cue.loopKey))
-                continue;
-
-            string key = cue.loopKey.Trim();
-            if (cue.action == SkillVfxAction.StartLoop)
-            {
-                activeLoopKeys.Add(key);
-            }
-            else if (cue.action == SkillVfxAction.StopLoop && !activeLoopKeys.Remove(key))
-            {
-                issues.Add(
-                    $"Timeline VFX entry {sourceIndex + 1} stops loop '{key}' before a matching active Start Loop cue.");
-            }
-        }
+        AnimationVfxValidation.CollectIssues(
+            new SkillVfxCueSource(events),
+            markerCount,
+            "Skill Clip",
+            issues);
     }
 
     [PropertyOrder(-19)]

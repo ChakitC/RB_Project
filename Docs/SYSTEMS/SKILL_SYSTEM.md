@@ -55,7 +55,8 @@ prefabs, and pickup prefabs.
 ## Timeline VFX
 
 Skill-level animation VFX are authored in the scene or Prefab Mode through
-`SetSkillVfxData`. The serialized runtime list remains owned by
+`SetSkillVfxData`, which now inherits shared `SetAnimationVfxData` authoring.
+The serialized runtime list remains owned by
 `SkillGemDefinition`, but it is hidden from the normal skill inspector and is
 written by the authoring component's `Save VFX To Skill` action.
 
@@ -84,8 +85,10 @@ owner changes, preventing scene entries from being saved into another Skill.
 The skill definition collects timeline requirements from both its execution
 payload and its VFX entries. Projectile, helper, and chain skills therefore bind
 their VFX Animancer events even when the payload itself does not require hitbox
-events. Runtime VFX sessions are keyed by animation request id. Loop instances
-are stopped when the request ends or is interrupted.
+events. `SkillVfxPresenter` maps animation request ids to sessions owned by the
+shared `AnimationVfxPresenter`; the shared presenter does not depend on
+`SkillGemDefinition`. Loop instances are isolated per session and are stopped
+when that request ends or is interrupted.
 Request completion and interruption clear remaining loop groups immediately.
 Graceful particle completion is reserved for explicit `StopLoop` cues.
 
@@ -95,8 +98,10 @@ cue 0, the second is cue 1, and so on. Multiple entries may share one cue index
 when several actions should run at the same occurrence. There is no numbered VFX
 event-name compatibility path.
 
-The editor timeline at `Tools > RB Tools > Skill Animation VFX Timeline` uses a
-scene or Prefab Mode `SetSkillVfxData` as its authoring target. It samples the
+The editor timeline at
+`Tools > RB > Animation VFX > Animation Event VFX Timeline` uses a scene or
+Prefab Mode `SetAnimationVfxData` target. The old Skill menu is an alias to the
+same window, and existing `SetSkillVfxData` components require no migration. It samples the
 assigned Skill Definition's clip through Unity Animation Mode, edits the same
 Animancer event sequence stored in `skillClip`, and triggers scene VFX previews
 when playback crosses VFX markers. Dragging repeated `Vfx` markers across each

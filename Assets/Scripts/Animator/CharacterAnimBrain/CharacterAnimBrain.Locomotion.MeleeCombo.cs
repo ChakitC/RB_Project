@@ -21,6 +21,7 @@ public sealed partial class CharacterAnimBrain
         private float _cs;
         private float _ce;
         private MeleeComboSO.Step _cfg;
+        private AnimationVfxSessionToken vfxSession;
 
         public MeleeComboSO CurrentCombo => comboLocked;
 
@@ -97,6 +98,7 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnExitState()
         {
+            EndVfxSession();
             if (state != null)
             {
                 state.SharedEvents = null;
@@ -110,6 +112,7 @@ public sealed partial class CharacterAnimBrain
 
         private void PlayStep(int newStep)
         {
+            EndVfxSession();
             step = newStep;
             windowExpired = false;
 
@@ -163,6 +166,14 @@ public sealed partial class CharacterAnimBrain
             owner.onMeleeHitEndCache = () => owner.MeleeHitEnd?.Invoke();
 
             runtimeEvents = new AnimancerEvent.Sequence(cfg.clip.Events);
+
+            if (cfg.AnimationVfxTrack != null)
+            {
+                vfxSession = owner.BeginAnimationVfxSession(cfg.AnimationVfxTrack);
+                AnimationVfxEventBinder.Bind(
+                    runtimeEvents,
+                    cueIndex => owner.HandleAnimationVfxCue(vfxSession, cueIndex));
+            }
 
             int hitStartCount = runtimeEvents.SetCallbacks(
                 CombatTimelineEventNames.ToStringReference(MeleeComboSO.HitStartEventName),
@@ -258,6 +269,12 @@ public sealed partial class CharacterAnimBrain
             state.SharedEvents = runtimeEvents;
         }
 
+        internal void EndVfxSession()
+        {
+            owner.EndAnimationVfxSession(vfxSession);
+            vfxSession = default;
+        }
+
         private void Advance()
         {
             var combo = comboLocked != null ? comboLocked : owner.DefaultMeleeCombo;
@@ -288,6 +305,7 @@ public sealed partial class CharacterAnimBrain
 
         private void EndComboSafe()
         {
+            EndVfxSession();
             owner.MeleeComboEnded?.Invoke();
             owner.EmitPlaybackSignal(PlaybackKind.Melee, PlaybackPhase.Completed, 0);
 

@@ -195,8 +195,11 @@ of restarting `ShootPulse` every projectile.
 side effects, burst routine, and weapon instance sync.
 
 Reload movement policy comes from the actor's `CharacterAnimProfileSO`.
-`UpperBody` reload allows movement. `FullBody` reload blocks normal movement,
-while Dash is still allowed and interrupts the reload through `CancelReload()`.
+`UpperBody` reload allows movement and remains active while Dash plays on the
+locomotion layer. `FullBody` reload blocks normal movement; Dash is still
+allowed, but `CancelReload()` runs only after the Dash attempt succeeds. Failed
+Dash attempts leave the reload routine, animation, and Timeline VFX session
+active.
 
 ## Ammo And Weapon Instances
 

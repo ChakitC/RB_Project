@@ -4,28 +4,28 @@ using UnityEngine;
 
 public enum SkillVfxAction
 {
-    OneShot = 0,
-    StartLoop = 1,
-    StopLoop = 2,
+    OneShot = (int)AnimationVfxAction.OneShot,
+    StartLoop = (int)AnimationVfxAction.StartLoop,
+    StopLoop = (int)AnimationVfxAction.StopLoop,
 }
 
 public enum SkillVfxAnchor
 {
-    CasterRoot = 0,
-    CastOrigin = 1,
-    AimTransform = 2,
-    CustomChildPath = 3,
-    HumanoidBone = 4,
+    CasterRoot = (int)AnimationVfxAnchor.CasterRoot,
+    CastOrigin = (int)AnimationVfxAnchor.CastOrigin,
+    AimTransform = (int)AnimationVfxAnchor.AimTransform,
+    CustomChildPath = (int)AnimationVfxAnchor.CustomChildPath,
+    HumanoidBone = (int)AnimationVfxAnchor.HumanoidBone,
 }
 
 public enum SkillVfxAnchorMode
 {
-    WorldSpace = 0,
-    FollowAnchor = 1,
+    WorldSpace = (int)AnimationVfxAnchorMode.WorldSpace,
+    FollowAnchor = (int)AnimationVfxAnchorMode.FollowAnchor,
 }
 
 [Serializable]
-public sealed class SkillVfxEvent
+public sealed class SkillVfxEvent : IAnimationVfxCue
 {
     [Min(0)]
     public int cueIndex;
@@ -45,81 +45,53 @@ public sealed class SkillVfxEvent
 
     public bool RequiresPrefab => action != SkillVfxAction.StopLoop;
 
+    int IAnimationVfxCue.CueIndex => cueIndex;
+    AnimationVfxAction IAnimationVfxCue.Action => (AnimationVfxAction)action;
+    GameObject IAnimationVfxCue.Prefab => prefab;
+    AnimationVfxAnchor IAnimationVfxCue.Anchor => (AnimationVfxAnchor)anchor;
+    AnimationVfxAnchorMode IAnimationVfxCue.AnchorMode => parentToAnchor
+        ? AnimationVfxAnchorMode.FollowAnchor
+        : AnimationVfxAnchorMode.WorldSpace;
+    string IAnimationVfxCue.CustomAnchorPath => customAnchorPath;
+    HumanBodyBones IAnimationVfxCue.HumanoidBone => humanoidBone;
+    Vector3 IAnimationVfxCue.LocalPosition => localPosition;
+    Vector3 IAnimationVfxCue.LocalEulerAngles => localEulerAngles;
+    Vector3 IAnimationVfxCue.LocalScale => localScale;
+    string IAnimationVfxCue.LoopKey => loopKey;
+    float IAnimationVfxCue.ExtraLife => extraLife;
+    bool IAnimationVfxCue.AllowParticlesToFinish => allowParticlesToFinish;
+
     public void CollectValidationIssues(List<string> issues, int index)
     {
-        if (issues == null)
-            return;
-
-        string label = $"Timeline VFX entry {index + 1}";
-
-        if (cueIndex < 0)
-            issues.Add($"{label} requires a non-negative cue index.");
-
-        if (RequiresPrefab && prefab == null)
-            issues.Add($"{label} requires a VFX prefab.");
-
-        if (anchor == SkillVfxAnchor.CustomChildPath && string.IsNullOrWhiteSpace(customAnchorPath))
-            issues.Add($"{label} uses Custom Child Path but has no path.");
-
-        if ((action == SkillVfxAction.StartLoop || action == SkillVfxAction.StopLoop) && string.IsNullOrWhiteSpace(loopKey))
-            issues.Add($"{label} requires a Loop Key for {action}.");
+        AnimationVfxValidation.CollectCueIssues(this, index, issues);
     }
 }
 
 public static class SkillVfxAnchorResolver
 {
+    public static AnimationVfxAnchorContext CreateContext(Transform source)
+    {
+        Transform root = ResolveCharacterRoot(source);
+        ISkillUser skillUser = ResolveSkillUser(root);
+        Animator animator = root != null ? root.GetComponentInChildren<Animator>(true) : null;
+        return new AnimationVfxAnchorContext(
+            root,
+            skillUser?.CastOrigin,
+            skillUser?.AimTransform,
+            animator);
+    }
+
     public static Transform Resolve(Transform source, SkillVfxEvent cue)
     {
         if (source == null)
             return null;
 
-        Transform root = ResolveCharacterRoot(source);
-        if (cue == null)
-            return root;
-
-        switch (cue.anchor)
-        {
-            case SkillVfxAnchor.CastOrigin:
-                return ResolveSkillUser(root)?.CastOrigin ?? root;
-
-            case SkillVfxAnchor.AimTransform:
-                return ResolveSkillUser(root)?.AimTransform ?? root;
-
-            case SkillVfxAnchor.CustomChildPath:
-                if (string.IsNullOrWhiteSpace(cue.customAnchorPath))
-                    return root;
-
-                Transform custom = root.Find(cue.customAnchorPath.Trim());
-                return custom != null ? custom : root;
-
-            case SkillVfxAnchor.HumanoidBone:
-                Animator animator = root.GetComponentInChildren<Animator>(true);
-                if (animator != null && animator.isHuman)
-                {
-                    Transform bone = animator.GetBoneTransform(cue.humanoidBone);
-                    if (bone != null)
-                        return bone;
-                }
-
-                return root;
-
-            case SkillVfxAnchor.CasterRoot:
-            default:
-                return root;
-        }
+        return AnimationVfxAnchorResolver.Resolve(CreateContext(source), cue);
     }
 
     public static void ResolvePose(Transform anchor, SkillVfxEvent cue, out Vector3 position, out Quaternion rotation)
     {
-        if (anchor == null)
-        {
-            position = Vector3.zero;
-            rotation = Quaternion.identity;
-            return;
-        }
-
-        position = anchor.TransformPoint(cue != null ? cue.localPosition : Vector3.zero);
-        rotation = anchor.rotation * Quaternion.Euler(cue != null ? cue.localEulerAngles : Vector3.zero);
+        AnimationVfxAnchorResolver.ResolvePose(anchor, cue, out position, out rotation);
     }
 
     static Transform ResolveCharacterRoot(Transform source)

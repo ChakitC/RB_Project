@@ -16,6 +16,7 @@ public enum AnimationVfxAnchor
     AimTransform = 2,
     CustomChildPath = 3,
     HumanoidBone = 4,
+    GenericBone = 5,
 }
 
 public enum AnimationVfxAnchorMode
@@ -206,6 +207,13 @@ public static class AnimationVfxAnchorResolver
 
                 return root;
 
+            case AnimationVfxAnchor.GenericBone:
+                if (context.Animator == null || string.IsNullOrWhiteSpace(cue.CustomAnchorPath))
+                    return root;
+
+                Transform genericBone = context.Animator.transform.Find(cue.CustomAnchorPath.Trim());
+                return genericBone != null ? genericBone : root;
+
             case AnimationVfxAnchor.CasterRoot:
             default:
                 return root;
@@ -225,8 +233,21 @@ public static class AnimationVfxAnchorResolver
             return;
         }
 
-        position = anchor.TransformPoint(cue != null ? cue.LocalPosition : Vector3.zero);
+        Vector3 localPosition = cue != null ? cue.LocalPosition : Vector3.zero;
+        position = cue != null && cue.Anchor == AnimationVfxAnchor.GenericBone
+            ? anchor.position + anchor.rotation * localPosition
+            : anchor.TransformPoint(localPosition);
         rotation = anchor.rotation * Quaternion.Euler(cue != null ? cue.LocalEulerAngles : Vector3.zero);
+    }
+
+    public static Vector3 ResolveLocalPosition(Transform anchor, IAnimationVfxCue cue, Vector3 worldPosition)
+    {
+        if (anchor == null)
+            return Vector3.zero;
+
+        return cue != null && cue.Anchor == AnimationVfxAnchor.GenericBone
+            ? Quaternion.Inverse(anchor.rotation) * (worldPosition - anchor.position)
+            : anchor.InverseTransformPoint(worldPosition);
     }
 }
 
@@ -303,13 +324,51 @@ public static class AnimationVfxValidation
         if (cue.Action != AnimationVfxAction.StopLoop && cue.Prefab == null)
             issues.Add($"{label} requires a VFX prefab.");
 
-        if (cue.Anchor == AnimationVfxAnchor.CustomChildPath && string.IsNullOrWhiteSpace(cue.CustomAnchorPath))
-            issues.Add($"{label} uses Custom Child Path but has no path.");
+        if ((cue.Anchor == AnimationVfxAnchor.CustomChildPath || cue.Anchor == AnimationVfxAnchor.GenericBone) &&
+            string.IsNullOrWhiteSpace(cue.CustomAnchorPath))
+        {
+            string anchorLabel = cue.Anchor == AnimationVfxAnchor.GenericBone
+                ? "Generic Bone"
+                : "Custom Child Path";
+            issues.Add($"{label} uses {anchorLabel} but has no path.");
+        }
 
         if ((cue.Action == AnimationVfxAction.StartLoop || cue.Action == AnimationVfxAction.StopLoop) &&
             string.IsNullOrWhiteSpace(cue.LoopKey))
         {
             issues.Add($"{label} requires a Loop Key for {cue.Action}.");
+        }
+    }
+
+    public static void CollectAnchorResolutionIssues(
+        AnimationVfxAnchorContext context,
+        IAnimationVfxCue cue,
+        string label,
+        List<string> issues)
+    {
+        if (cue == null || issues == null || cue.Action == AnimationVfxAction.StopLoop)
+            return;
+
+        Transform root = context.CharacterRoot;
+        if (cue.Anchor == AnimationVfxAnchor.CustomChildPath &&
+            !string.IsNullOrWhiteSpace(cue.CustomAnchorPath) &&
+            (root == null || root.Find(cue.CustomAnchorPath.Trim()) == null))
+        {
+            issues.Add($"{label} cannot find custom anchor path '{cue.CustomAnchorPath}'.");
+        }
+
+        if (cue.Anchor == AnimationVfxAnchor.HumanoidBone &&
+            (context.Animator == null || !context.Animator.isHuman ||
+             context.Animator.GetBoneTransform(cue.HumanoidBone) == null))
+        {
+            issues.Add($"{label} cannot resolve Humanoid bone '{cue.HumanoidBone}'.");
+        }
+
+        if (cue.Anchor == AnimationVfxAnchor.GenericBone &&
+            !string.IsNullOrWhiteSpace(cue.CustomAnchorPath) &&
+            (context.Animator == null || context.Animator.transform.Find(cue.CustomAnchorPath.Trim()) == null))
+        {
+            issues.Add($"{label} cannot find Generic bone path '{cue.CustomAnchorPath}' below the Animator root.");
         }
     }
 }

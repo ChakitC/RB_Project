@@ -49,6 +49,7 @@ public class CharacterProgressData
     public int skillPoints = 0;
     public bool passiveProgressInitialized = false;
     public List<string> unlockedPassiveNodeIds = new();
+    public List<CharacterSkillSelectionSaveData> selectedSkillOptions = new();
 
     public CharacterProgressData DeepClone()
     {
@@ -59,8 +60,31 @@ public class CharacterProgressData
             unlocked = unlocked,
             skillPoints = skillPoints,
             passiveProgressInitialized = passiveProgressInitialized,
-            unlockedPassiveNodeIds = unlockedPassiveNodeIds != null ? new List<string>(unlockedPassiveNodeIds) : new List<string>()
+            unlockedPassiveNodeIds = unlockedPassiveNodeIds != null ? new List<string>(unlockedPassiveNodeIds) : new List<string>(),
+            selectedSkillOptions = CloneSkillSelections(selectedSkillOptions)
         };
+    }
+
+    static List<CharacterSkillSelectionSaveData> CloneSkillSelections(List<CharacterSkillSelectionSaveData> source)
+    {
+        var clone = new List<CharacterSkillSelectionSaveData>();
+        if (source == null)
+            return clone;
+
+        for (int i = 0; i < source.Count; i++)
+        {
+            CharacterSkillSelectionSaveData entry = source[i];
+            if (entry == null)
+                continue;
+
+            clone.Add(new CharacterSkillSelectionSaveData
+            {
+                slotId = entry.slotId,
+                optionId = entry.optionId
+            });
+        }
+
+        return clone;
     }
 }
 

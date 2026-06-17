@@ -201,6 +201,11 @@ public class CharacterStats : ScriptableObject
     [PropertyOrder(-138)]
     [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Default Chain Skill"), AssetsOnly]
     public SkillGemDefinition chainAttackSkill;
+
+    [PropertyOrder(-137)]
+    [FoldoutGroup("Skill Loadout", Expanded = false), LabelText("Skill Slots")]
+    [ListDrawerSettings(ShowFoldout = true, DefaultExpandedState = true, DraggableItems = true, ShowPaging = false, NumberOfItemsPerPage = 0)]
+    public List<CharacterSkillLoadoutSlot> skillSlots = new();
     
     
     [PropertyOrder(-120)]

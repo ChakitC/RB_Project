@@ -16,6 +16,7 @@ public enum SkillVfxAnchor
     AimTransform = (int)AnimationVfxAnchor.AimTransform,
     CustomChildPath = (int)AnimationVfxAnchor.CustomChildPath,
     HumanoidBone = (int)AnimationVfxAnchor.HumanoidBone,
+    GenericBone = (int)AnimationVfxAnchor.GenericBone,
 }
 
 public enum SkillVfxAnchorMode

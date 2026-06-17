@@ -19,6 +19,31 @@ authoring workflow.
 calculated stats, and cooldown timestamps. Runtime state must not be written to
 the definition or its payload.
 
+## Character Skill Loadouts
+
+Character default active-skill loadouts are authored on `CharacterStats`.
+Each `CharacterSkillLoadoutSlot` defines a stable `slotId`, optional label,
+hotkey, default option index, and any number of selectable
+`CharacterSkillLoadoutOption` entries. Each option points at a
+`SkillGemDefinition`, level, support gems, and optional `optionId`.
+
+`CharacterSkillManager` resolves command slots at runtime from
+`ctx.baseStats.skillSlots`. If a prefab-authored `autonomousSlots` entry at the
+same index has `skillAsset` assigned, that prefab entry overrides the
+`CharacterStats` slot for compatibility with older prefabs. Empty prefab entries
+do not override stats-authored slots.
+
+Runtime skill switching uses `CharacterSkillManager.TrySelectSkillOption(...)`.
+The manager rebuilds the affected `SkillInstance`, cancels any pending cast from
+that slot, and persists `{ slotId, optionId }` to the owning character progress
+when requested. It never writes the selected option back into the
+`CharacterStats` asset.
+
+When `optionId` is empty, runtime lookup falls back to the selected
+`SkillGemDefinition.skillId`. Keep option ids unique within one slot so saved
+selections can be restored after reload. Invalid saved selections fall back to
+the slot's default configured option.
+
 ## Creating And Editing Skills
 
 Create skills through `Assets > Create > Game > Skill Gem`. The command creates
@@ -55,10 +80,10 @@ prefabs, and pickup prefabs.
 ## Timeline VFX
 
 Skill-level animation VFX are authored in the scene or Prefab Mode through
-`SetSkillVfxData`, which now inherits shared `SetAnimationVfxData` authoring.
-The serialized runtime list remains owned by
+`SetAnimationVfxData`, with the `SkillGemDefinition` selected as the source and
+entry `main`. The serialized runtime list remains owned by
 `SkillGemDefinition`, but it is hidden from the normal skill inspector and is
-written by the authoring component's `Save VFX To Skill` action.
+written through the shared `Save VFX Data` action.
 
 Each authoring entry binds a zero-based VFX cue index to one of these actions:
 
@@ -77,10 +102,13 @@ while `FollowAnchor` parents the spawned instance to that anchor after spawning.
 settings, and one direct prefab-instance child that supplies the prefab asset and
 visual placement. Saving flattens all entries back into `SkillVfxEvent` records;
 entries in the same slot receive the same cue index. Runtime does not read
-`SetSkillVfxData`, slots, or authoring entries.
-`SetSkillVfxData` also tracks the Skill Definition that owns its current scene
-hierarchy. VFX authoring commands rebuild slots from the assigned Skill when that
-owner changes, preventing scene entries from being saved into another Skill.
+`SetAnimationVfxData`, slots, or authoring entries.
+`SetAnimationVfxData` tracks the source asset and entry that own its current
+scene hierarchy. Changing the assigned Skill immediately replaces the current
+VFX slots and entries with data rebuilt from that Skill. Create/Sync performs
+the same replacement every time, preventing stale scene entries from being
+saved into another Skill. Unsaved hierarchy edits are discarded by replacement
+and can be restored with Unity Undo.
 
 The skill definition collects timeline requirements from both its execution
 payload and its VFX entries. Projectile, helper, and chain skills therefore bind
@@ -101,8 +129,8 @@ event-name compatibility path.
 The editor timeline at
 `Tools > RB > Animation VFX > Animation Event VFX Timeline` uses a scene or
 Prefab Mode `SetAnimationVfxData` target. The old Skill menu is an alias to the
-same window, and existing `SetSkillVfxData` components require no migration. It samples the
-assigned Skill Definition's clip through Unity Animation Mode, edits the same
+same window. It samples the assigned Skill Definition's clip through Unity
+Animation Mode, edits the same
 Animancer event sequence stored in `skillClip`, and triggers scene VFX previews
 when playback crosses VFX markers. Dragging repeated `Vfx` markers across each
 other reorders the associated cue groups. Event timing is not duplicated in the

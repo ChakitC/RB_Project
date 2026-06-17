@@ -18,10 +18,21 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
     [System.NonSerialized] float visualPreviewDuration;
     [System.NonSerialized] GameObject visualPreviewRoot;
     [System.NonSerialized] GameObject visualPreviewSource;
+    [System.NonSerialized] AnimationVfxFollowAnchor visualPreviewFollowAnchor;
     [System.NonSerialized] ParticleSystem[] visualPreviewParticleSystems = System.Array.Empty<ParticleSystem>();
     [System.NonSerialized] bool[] visualPreviewOriginalLooping = System.Array.Empty<bool>();
     [System.NonSerialized] MonoBehaviour[] cartoonFxPreviewBehaviours = System.Array.Empty<MonoBehaviour>();
     [System.NonSerialized] bool cartoonFxPreviewBehavioursCached;
+    [System.NonSerialized] bool timelinePreviewActive;
+    [System.NonSerialized] float timelinePreviewElapsedTime;
+    [System.NonSerialized] float timelinePreviewStopTime = -1f;
+    [System.NonSerialized] bool timelinePreviewAllowFinish;
+    [System.NonSerialized] float timelinePreviewStopExtraLife;
+    [System.NonSerialized] bool timelinePreviewCompleted;
+    [System.NonSerialized] float timelinePreviewCompletedTime;
+    [System.NonSerialized] float timelinePreviewCompletedStopTime = -1f;
+    [System.NonSerialized] bool timelinePreviewCompletedAllowFinish;
+    [System.NonSerialized] float timelinePreviewCompletedExtraLife;
 
     public static int ActivePreviewCount => PreviewCoordinator.ActiveCount;
     public static int ActivePreviewParticleSystemCount => PreviewCoordinator.ActiveParticleSystemCount;
@@ -57,10 +68,10 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
     [ShowInInspector, ReadOnly, ShowIf(nameof(RequiresPrefab)), LabelText("VFX Prefab From Child")]
     private GameObject AuthoredPrefab => ResolvePrefabAsset();
 
-    [SerializeField, ShowIf(nameof(RequiresPrefab))]
+    [SerializeField, ShowIf(nameof(RequiresPrefab)), OnValueChanged(nameof(OnAnchorChanged))]
     private AnimationVfxAnchor anchor = AnimationVfxAnchor.CastOrigin;
 
-    [SerializeField, ShowIf(nameof(ShowCustomAnchorPath))]
+    [SerializeField, ShowIf(nameof(ShowAnchorPath)), LabelText("$AnchorPathLabel")]
     private string customAnchorPath;
 
     [SerializeField, ShowIf(nameof(ShowHumanoidBone))]
@@ -112,10 +123,46 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
 
     private bool UsesLoopKey => action != AnimationVfxAction.OneShot;
     private bool ShowLegacyCueIndex => GetComponentInParent<SkillVfxAuthoringSlot>() == null;
-    private bool ShowCustomAnchorPath => RequiresPrefab && anchor == AnimationVfxAnchor.CustomChildPath;
+    private bool ShowAnchorPath => RequiresPrefab &&
+                                   (anchor == AnimationVfxAnchor.CustomChildPath ||
+                                    anchor == AnimationVfxAnchor.GenericBone);
+    private bool ShowGenericBonePath => RequiresPrefab && anchor == AnimationVfxAnchor.GenericBone;
+    private string AnchorPathLabel => anchor == AnimationVfxAnchor.GenericBone
+        ? "Generic Bone Path"
+        : "Custom Anchor Path";
     private bool ShowHumanoidBone => RequiresPrefab && anchor == AnimationVfxAnchor.HumanoidBone;
     private bool ShowExtraLife => action == AnimationVfxAction.OneShot || action == AnimationVfxAction.StopLoop;
     private bool ShowStopOptions => action == AnimationVfxAction.StopLoop;
+
+    void OnAnchorChanged()
+    {
+        if (anchor == AnimationVfxAnchor.GenericBone)
+            parentToAnchor = true;
+    }
+
+    [Button("Use Selected Bone"), ShowIf(nameof(ShowGenericBonePath))]
+    void UseSelectedGenericBone()
+    {
+#if UNITY_EDITOR
+        SetAnimationVfxData authoring = ResolveAuthoring();
+        if (authoring == null)
+        {
+            Debug.LogWarning("Could not find SetAnimationVfxData for this VFX entry.", this);
+            return;
+        }
+
+        if (!authoring.TryGetSelectedGenericBonePath(out string path, out string error))
+        {
+            Debug.LogWarning(error, this);
+            return;
+        }
+
+        Undo.RecordObject(this, "Set Generic Bone Path");
+        customAnchorPath = path;
+        parentToAnchor = true;
+        EditorUtility.SetDirty(this);
+#endif
+    }
 
     public void Configure(IAnimationVfxCue cue)
     {
@@ -275,48 +322,10 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
     public void PlayVisualPreview()
     {
 #if UNITY_EDITOR
+        ResolveAuthoring()?.StopTimelineVfxPreview();
         ReleasePlaybackPreview();
-
-        GameObject authoredInstance = FindAuthoredPrefabInstance();
-        GameObject source = authoredInstance != null ? authoredInstance : prefab;
-        if (source == null)
+        if (!PreparePlaybackPreview(true))
             return;
-
-        Transform placement = authoredInstance != null ? authoredInstance.transform : transform;
-        if (visualPreviewRoot == null || visualPreviewSource != source)
-        {
-            DestroyPlaybackPreview();
-            visualPreviewRoot = Instantiate(source);
-            visualPreviewSource = source;
-            visualPreviewRoot.name = $"__SkillVfxPlayback_Cue{CueIndex + 1}";
-            SetPlaybackHideFlags(visualPreviewRoot.transform);
-            visualPreviewParticleSystems = visualPreviewRoot.GetComponentsInChildren<ParticleSystem>(true);
-            visualPreviewOriginalLooping = new bool[visualPreviewParticleSystems.Length];
-            for (int i = 0; i < visualPreviewParticleSystems.Length; i++)
-            {
-                ParticleSystem particleSystem = visualPreviewParticleSystems[i];
-                if (particleSystem != null)
-                    visualPreviewOriginalLooping[i] = particleSystem.main.loop;
-            }
-
-            visualPreviewDuration = CalculatePreviewDuration(visualPreviewParticleSystems);
-        }
-
-        visualPreviewRoot.transform.SetParent(null, true);
-        visualPreviewRoot.transform.SetPositionAndRotation(placement.position, placement.rotation);
-        visualPreviewRoot.transform.localScale = authoredInstance != null
-            ? placement.lossyScale
-            : Vector3.Scale(placement.lossyScale, source.transform.localScale);
-
-        if (parentToAnchor)
-        {
-            Transform anchorTransform = SkillVfxAnchorResolver.Resolve(transform, CreateData());
-            if (anchorTransform != null)
-                visualPreviewRoot.transform.SetParent(anchorTransform, true);
-        }
-
-        visualPreviewRoot.SetActive(true);
-        RegisterCartoonFxEditorPreview();
 
         for (int i = 0; i < visualPreviewParticleSystems.Length; i++)
         {
@@ -340,6 +349,98 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
         EnsureSceneViewParticleEffectsVisible();
         if (visualPreviewActive)
             PreviewCoordinator.Register(this);
+#endif
+    }
+
+    public bool SampleTimelinePreview(
+        float elapsedTime,
+        float stopTime,
+        bool allowParticlesToFinishAfterStop,
+        float stopExtraLife,
+        bool forceRestart)
+    {
+#if UNITY_EDITOR
+        if (Application.isPlaying || action == AnimationVfxAction.StopLoop || elapsedTime < 0f ||
+            (stopTime >= 0f && !allowParticlesToFinishAfterStop))
+        {
+            StopTimelinePreview();
+            return false;
+        }
+
+        float sampleTime = Mathf.Max(0f, elapsedTime);
+        float clampedStopTime = stopTime >= 0f ? Mathf.Clamp(stopTime, 0f, sampleTime) : -1f;
+        float clampedExtraLife = Mathf.Max(0f, stopExtraLife);
+        bool matchesCompletedSample = timelinePreviewCompleted &&
+                                      Mathf.Approximately(clampedStopTime, timelinePreviewCompletedStopTime) &&
+                                      allowParticlesToFinishAfterStop == timelinePreviewCompletedAllowFinish &&
+                                      Mathf.Approximately(clampedExtraLife, timelinePreviewCompletedExtraLife);
+        if (!forceRestart && matchesCompletedSample && sampleTime >= timelinePreviewCompletedTime)
+            return false;
+
+        timelinePreviewCompleted = false;
+        bool wasTimelineActive = timelinePreviewActive;
+        bool restart = forceRestart || !wasTimelineActive || sampleTime < timelinePreviewElapsedTime ||
+                       !Mathf.Approximately(clampedStopTime, timelinePreviewStopTime) ||
+                       allowParticlesToFinishAfterStop != timelinePreviewAllowFinish ||
+                       !Mathf.Approximately(stopExtraLife, timelinePreviewStopExtraLife);
+
+        PreviewCoordinator.Unregister(this);
+        visualPreviewActive = false;
+        visualPreviewLooping = false;
+        visualPreviewStopping = false;
+        if (!PreparePlaybackPreview(restart))
+        {
+            StopTimelinePreview();
+            return false;
+        }
+
+        if (restart)
+        {
+            UnregisterCartoonFxEditorPreview();
+            RegisterCartoonFxEditorPreview();
+            RestartTimelineParticles(sampleTime, clampedStopTime);
+        }
+        else
+        {
+            AdvanceTimelineParticles(timelinePreviewElapsedTime, sampleTime, clampedStopTime);
+        }
+
+        timelinePreviewActive = true;
+        timelinePreviewElapsedTime = sampleTime;
+        timelinePreviewStopTime = clampedStopTime;
+        timelinePreviewAllowFinish = allowParticlesToFinishAfterStop;
+        timelinePreviewStopExtraLife = clampedExtraLife;
+        visualPreviewFollowAnchor?.ApplyNow();
+
+        bool anyAlive = HasAliveTimelineParticles();
+        bool shouldRemainVisible = clampedStopTime < 0f
+            ? action == AnimationVfxAction.StartLoop || anyAlive || sampleTime <= visualPreviewDuration
+            : anyAlive || sampleTime - clampedStopTime <= visualPreviewDuration + timelinePreviewStopExtraLife;
+        if (!shouldRemainVisible)
+        {
+            ReleasePlaybackPreview();
+            timelinePreviewCompleted = true;
+            timelinePreviewCompletedTime = sampleTime;
+            timelinePreviewCompletedStopTime = clampedStopTime;
+            timelinePreviewCompletedAllowFinish = allowParticlesToFinishAfterStop;
+            timelinePreviewCompletedExtraLife = clampedExtraLife;
+            return false;
+        }
+
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    public void StopTimelinePreview()
+    {
+#if UNITY_EDITOR
+        if (!timelinePreviewActive && visualPreviewRoot == null)
+            return;
+
+        ReleasePlaybackPreview();
+        SceneView.RepaintAll();
 #endif
     }
 
@@ -368,6 +469,8 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
 #if UNITY_EDITOR
         if (!visualPreviewActive || Application.isPlaying)
             return false;
+
+        visualPreviewFollowAnchor?.ApplyNow();
 
         float deltaTime = Mathf.Clamp((float)(editorTime - lastPreviewUpdateTime), 0f, 0.1f);
         lastPreviewUpdateTime = editorTime;
@@ -449,6 +552,16 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
         visualPreviewStopping = false;
         visualPreviewElapsedTime = 0f;
         visualPreviewStopDeadline = 0d;
+        timelinePreviewActive = false;
+        timelinePreviewElapsedTime = 0f;
+        timelinePreviewStopTime = -1f;
+        timelinePreviewAllowFinish = false;
+        timelinePreviewStopExtraLife = 0f;
+        timelinePreviewCompleted = false;
+        timelinePreviewCompletedTime = 0f;
+        timelinePreviewCompletedStopTime = -1f;
+        timelinePreviewCompletedAllowFinish = false;
+        timelinePreviewCompletedExtraLife = 0f;
 
         for (int i = 0; i < visualPreviewParticleSystems.Length; i++)
         {
@@ -460,6 +573,170 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
         UnregisterCartoonFxEditorPreview();
         if (visualPreviewRoot != null)
             visualPreviewRoot.SetActive(false);
+    }
+
+    bool PreparePlaybackPreview(bool resetPose)
+    {
+        GameObject authoredInstance = FindAuthoredPrefabInstance();
+        GameObject source = authoredInstance != null ? authoredInstance : prefab;
+        if (source == null)
+            return false;
+
+        if (visualPreviewRoot == null || visualPreviewSource != source)
+        {
+            DestroyPlaybackPreview();
+            visualPreviewRoot = Instantiate(source);
+            visualPreviewSource = source;
+            visualPreviewRoot.name = $"__SkillVfxPlayback_Cue{CueIndex + 1}";
+            SetPlaybackHideFlags(visualPreviewRoot.transform);
+            visualPreviewParticleSystems = visualPreviewRoot.GetComponentsInChildren<ParticleSystem>(true);
+            visualPreviewOriginalLooping = new bool[visualPreviewParticleSystems.Length];
+            for (int i = 0; i < visualPreviewParticleSystems.Length; i++)
+            {
+                ParticleSystem particleSystem = visualPreviewParticleSystems[i];
+                if (particleSystem != null)
+                    visualPreviewOriginalLooping[i] = particleSystem.main.loop;
+            }
+
+            visualPreviewDuration = CalculatePreviewDuration(visualPreviewParticleSystems);
+            resetPose = true;
+        }
+
+        if (resetPose)
+            ApplyPlaybackPose(authoredInstance, source);
+        else
+            visualPreviewFollowAnchor?.ApplyNow();
+
+        visualPreviewRoot.SetActive(true);
+        RegisterCartoonFxEditorPreview();
+        EnsureSceneViewParticleEffectsVisible();
+        return true;
+    }
+
+    void ApplyPlaybackPose(GameObject authoredInstance, GameObject source)
+    {
+        Transform placement = authoredInstance != null ? authoredInstance.transform : transform;
+        visualPreviewRoot.transform.SetParent(null, true);
+        visualPreviewRoot.transform.SetPositionAndRotation(placement.position, placement.rotation);
+        visualPreviewRoot.transform.localScale = authoredInstance != null
+            ? placement.lossyScale
+            : Vector3.Scale(placement.lossyScale, source.transform.localScale);
+
+        RemoveVisualPreviewFollower();
+        if (!parentToAnchor)
+            return;
+
+        IAnimationVfxCue cue = CreateAnimationData();
+        Transform anchorTransform = ResolvePreviewAnchor(cue);
+        if (anchorTransform == null)
+            return;
+
+        if (anchor == AnimationVfxAnchor.GenericBone)
+        {
+            Vector3 localPosition = AnimationVfxAnchorResolver.ResolveLocalPosition(
+                anchorTransform,
+                cue,
+                placement.position);
+            Quaternion localRotation = Quaternion.Inverse(anchorTransform.rotation) * placement.rotation;
+            visualPreviewFollowAnchor = visualPreviewRoot.AddComponent<AnimationVfxFollowAnchor>();
+            visualPreviewFollowAnchor.Configure(anchorTransform, localPosition, localRotation);
+            visualPreviewFollowAnchor.ApplyNow();
+        }
+        else
+        {
+            visualPreviewRoot.transform.SetParent(anchorTransform, true);
+        }
+    }
+
+    void RestartTimelineParticles(float sampleTime, float stopTime)
+    {
+        SetTimelineParticleLooping(true);
+        StopTimelineParticles(ParticleSystemStopBehavior.StopEmittingAndClear);
+
+        float emittingTime = stopTime >= 0f ? stopTime : sampleTime;
+        SimulateTimelineParticles(Mathf.Max(0.0001f, emittingTime), true);
+        if (stopTime < 0f)
+            return;
+
+        SetTimelineParticleLooping(false);
+        StopTimelineParticles(ParticleSystemStopBehavior.StopEmitting);
+        float afterStop = sampleTime - stopTime;
+        if (afterStop > 0f)
+            SimulateTimelineParticles(afterStop, false);
+    }
+
+    void AdvanceTimelineParticles(float previousTime, float sampleTime, float stopTime)
+    {
+        if (sampleTime <= previousTime)
+            return;
+
+        if (stopTime < 0f)
+        {
+            SimulateTimelineParticles(sampleTime - previousTime, false);
+            return;
+        }
+
+        if (previousTime < stopTime)
+        {
+            float beforeStop = Mathf.Min(sampleTime, stopTime) - previousTime;
+            if (beforeStop > 0f)
+                SimulateTimelineParticles(beforeStop, false);
+            if (sampleTime < stopTime)
+                return;
+
+            SetTimelineParticleLooping(false);
+            StopTimelineParticles(ParticleSystemStopBehavior.StopEmitting);
+        }
+
+        float afterStop = sampleTime - Mathf.Max(previousTime, stopTime);
+        if (afterStop > 0f)
+            SimulateTimelineParticles(afterStop, false);
+    }
+
+    void SetTimelineParticleLooping(bool enabled)
+    {
+        for (int i = 0; i < visualPreviewParticleSystems.Length; i++)
+        {
+            ParticleSystem particleSystem = visualPreviewParticleSystems[i];
+            if (particleSystem == null)
+                continue;
+            ParticleSystem.MainModule main = particleSystem.main;
+            main.loop = enabled && action == AnimationVfxAction.StartLoop && visualPreviewOriginalLooping[i];
+        }
+    }
+
+    void StopTimelineParticles(ParticleSystemStopBehavior behavior)
+    {
+        for (int i = 0; i < visualPreviewParticleSystems.Length; i++)
+        {
+            ParticleSystem particleSystem = visualPreviewParticleSystems[i];
+            if (particleSystem != null)
+                particleSystem.Stop(false, behavior);
+        }
+    }
+
+    void SimulateTimelineParticles(float time, bool restart)
+    {
+        if (time <= 0f)
+            return;
+        for (int i = 0; i < visualPreviewParticleSystems.Length; i++)
+        {
+            ParticleSystem particleSystem = visualPreviewParticleSystems[i];
+            if (particleSystem != null)
+                particleSystem.Simulate(time, withChildren: false, restart: restart, fixedTimeStep: false);
+        }
+    }
+
+    bool HasAliveTimelineParticles()
+    {
+        for (int i = 0; i < visualPreviewParticleSystems.Length; i++)
+        {
+            ParticleSystem particleSystem = visualPreviewParticleSystems[i];
+            if (particleSystem != null && particleSystem.IsAlive(withChildren: false))
+                return true;
+        }
+
+        return false;
     }
 
     void DestroyPlaybackPreview()
@@ -476,6 +753,53 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
 
         visualPreviewRoot = null;
         visualPreviewSource = null;
+        visualPreviewFollowAnchor = null;
+    }
+
+    Transform ResolvePreviewAnchor(IAnimationVfxCue cue)
+    {
+        if (cue != null && cue.Anchor == AnimationVfxAnchor.GenericBone)
+        {
+            SetAnimationVfxData authoring = ResolveAuthoring();
+            if (authoring != null)
+            {
+                var context = new AnimationVfxAnchorContext(
+                    authoring.CharacterRoot,
+                    null,
+                    null,
+                    authoring.PreviewAnimator);
+                return AnimationVfxAnchorResolver.Resolve(context, cue);
+            }
+        }
+
+        return SkillVfxAnchorResolver.Resolve(transform, CreateData());
+    }
+
+    void RemoveVisualPreviewFollower()
+    {
+        if (visualPreviewFollowAnchor == null && visualPreviewRoot != null)
+            visualPreviewFollowAnchor = visualPreviewRoot.GetComponent<AnimationVfxFollowAnchor>();
+        if (visualPreviewFollowAnchor != null)
+            DestroyImmediate(visualPreviewFollowAnchor);
+        visualPreviewFollowAnchor = null;
+    }
+
+    SetAnimationVfxData ResolveAuthoring()
+    {
+        SetAnimationVfxData authoring = GetComponentInParent<SetAnimationVfxData>();
+        if (authoring != null)
+            return authoring;
+
+        SetAnimationVfxData[] candidates = FindObjectsByType<SetAnimationVfxData>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            if (candidates[i] != null && candidates[i].ContainsAuthoringTransform(transform))
+                return candidates[i];
+        }
+
+        return null;
     }
 
     static void EnsureSceneViewParticleEffectsVisible()

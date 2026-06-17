@@ -34,6 +34,24 @@ Common references should be assigned on the context when possible:
 Runtime code can resolve missing references, but important prefab context fields
 should still be bound when authoring stable production prefabs.
 
+## Character Skill Loadout Authoring
+
+Author character-default active skills on the `CharacterStats` asset under
+`Skill Loadout`. A slot represents one command slot and should have a stable
+`slotId`, hotkey, default option index, and one or more options. An option points
+at the actual `SkillGemDefinition`, level, and support gems to use when selected.
+
+Use explicit `optionId` values when multiple options in the same slot could
+reference skills with missing or duplicate `skillId` values. If `optionId` is
+empty, runtime save/load uses the skill definition's `skillId`.
+
+`CharacterSkillManager` builds runtime command slots from `ctx.baseStats`.
+Prefab-authored `autonomousSlots` are still supported as compatibility
+overrides: an entry with `skillAsset` assigned replaces the same index from
+`CharacterStats`; an empty entry does not. New character prefabs should prefer
+leaving active-skill choices in `CharacterStats` unless that prefab truly needs a
+local override.
+
 ## Direct Serialized References
 
 Direct serialized references are appropriate for:
@@ -108,39 +126,42 @@ append new values with explicit numbers.
 
 ## Skill Timeline VFX Authoring
 
-Add `SetSkillVfxData` to the character or an authoring object in the scene or
-Prefab Mode. Assign the target `SkillGemDefinition`. `Character Root` and
-`Source VFX Root` are optional: the component resolves the nearest character
-context and uses its own transform as the source container when they are empty.
+Add `SetAnimationVfxData` to the character or an authoring object in the scene
+or Prefab Mode. Assign the target `SkillGemDefinition` as `Source Asset` and use
+the `main` entry. `Character Root` and `Source VFX Root` are optional: the
+component resolves the nearest character context and uses its own transform as
+the source container when they are empty.
 
 Use this workflow:
 
 1. Add the repeated `Vfx` events at the required times in the Skill Animation
    VFX Timeline.
-2. Press `Create / Sync VFX Slots`. The tool creates one
-   `SkillVfxAuthoringSlot` for each timeline VFX cue and migrates legacy entries
-   into the matching slot.
+2. Press `Create / Sync VFX Slots`. The tool replaces existing VFX slots and
+   entries, creates one `SkillVfxAuthoringSlot` for each timeline VFX cue, and
+   reloads saved entries from the assigned asset.
 3. Select a slot, add one or more assets to `VFX Prefabs To Add`, then press
    `Add VFX Prefabs`. The tool creates one `SkillVfxAuthoringEntry` per prefab.
 4. Move, rotate, or scale each prefab child in the Scene view, then configure
    its anchor, anchor mode, action, and loop settings on its entry component.
 5. Preview from the timeline or with `Play All VFX` / `Stop All VFX`.
-6. Press `Save VFX Data` in the timeline window or `Save VFX To Skill` on
-   `SetSkillVfxData` after every authoring change.
+6. Press `Save VFX Data` in the timeline window or on `SetAnimationVfxData`
+   after every authoring change.
 
 Use `Add Empty VFX Entry` on a slot to author `StopLoop` or an entry whose prefab
-will be assigned manually. `New Entry Settings` and `Create Authoring Entry`
-remain available for advanced cases and place the new entry in the selected cue
-index's slot.
+will be assigned manually. Use `Add VFX Prefabs` on the slot for prefab-backed
+entries; the authoring component no longer exposes Skill-specific new-entry
+fields.
 
-`Load VFX From Skill` replaces `SkillVfxAuthoringSlot` objects and legacy loose
+`Load VFX Data` replaces `SkillVfxAuthoringSlot` objects and legacy loose
 `SkillVfxAuthoringEntry` objects under `Source VFX Root`, groups entries by cue,
 creates visible prefab-instance children, and reconstructs their saved placement.
 `Clear Authoring Slots` removes the same authoring hierarchy after confirmation.
 Other character children, bones, hitboxes, and authored objects are not removed.
 The authoring hierarchy records which Skill Definition owns it. Changing the
-assigned Skill before adding, syncing, or saving VFX rebuilds the hierarchy from
-the newly assigned Skill, so prefab entries from the previous Skill are not reused.
+assigned Skill immediately rebuilds the hierarchy from the new Skill, so prefab
+entries from the previous Skill are not reused. Create/Sync is a replace
+operation: unsaved placement or entry changes are discarded in favor of asset
+data. Use Unity Undo to restore the hierarchy when this was accidental.
 
 `Play All VFX` and `Stop All VFX` use the authored prefab children as placement
 sources and play temporary, non-saved scene instances. Each entry supports one
@@ -150,12 +171,19 @@ selected anchor when saving; its scale is stored as a multiplier relative to the
 prefab asset. A slot supports multiple VFX by containing multiple entries.
 
 `Custom Child Path` is relative to the character context root. `Humanoid Bone`
-requires a valid Humanoid Animator. Validation reports unresolved paths or
-bones. `Anchor Mode` controls attachment after spawning: `World Space` keeps the
-VFX at its spawn pose, while `Follow Anchor` moves it with the selected caster
-root, cast origin, aim transform, custom child, or Humanoid bone. Editor preview
-uses the same attachment behavior. `StartLoop` and `StopLoop` entries must use
-the same non-empty loop key.
+requires a valid Humanoid Animator. For Generic rigs, select `Generic Bone`,
+select the required bone Transform in the Hierarchy, and press
+`Use Selected Bone`. The stored path is relative to the preview Animator root,
+not the character context root. The picker rejects the Animator root and objects
+outside its hierarchy. Validation reports unresolved paths or bones.
+
+`Anchor Mode` controls attachment after spawning: `World Space` keeps the VFX
+at its sampled spawn pose, while `Follow Anchor` moves it with the selected
+anchor. Selecting `Generic Bone` defaults to `Follow Anchor`, but it can be
+changed to `World Space`. Generic bone follow tracks position and rotation only;
+it does not inherit bone scale or scale its local position offset. Other anchor
+types retain their existing parenting behavior. Editor preview uses the same
+rules. `StartLoop` and `StopLoop` entries must use the same non-empty loop key.
 The editor preview tracks active loops by that key. Scrubbing to a point between
 Start and Stop keeps the loop active, while scrubbing before Start or after Stop
 removes it. A Stop cue can either clear immediately or stop emission and let
@@ -181,29 +209,30 @@ component; it does not keep a separate preview-character reference.
 
 Use Play, Pause, Stop, Loop, Speed, or drag the red playhead to inspect the
 animation in the Scene view. The lower timeline separates animation, cast point,
-hitbox, VFX, and other Animancer events. Scrubbing the playhead across a `Vfx`
-marker previews that cue in both directions. Particle previews are simulated on
-temporary playback instances and remain visible without selecting the authored
-Hierarchy objects. The timeline advances cached ParticleSystems incrementally,
-rather than relying on Unity's selection-driven Particle Effect panel. Completed
-preview instances are deactivated and reused when the same cue plays again, which
-avoids repeated prefab instantiation and hierarchy scans while scrubbing or
-looping playback. Cartoon FX Remaster playback instances
-also register their package editor-update hook directly, so shader position and
-light animation updates do not require opening the CFXR component inspector.
-Changing Hierarchy selection or timeline-window focus does not stop particle
-simulation. Preview updates are coordinated by one shared
-75 FPS tick owned by the Skill Animation VFX Timeline window. Authoring entries
-never subscribe to `EditorApplication.update` themselves. The window subscribes
-only while animation playback or a VFX preview is active, advances cached
-ParticleSystems incrementally, and performs one player-loop request and Scene
-view repaint per tick. The Preview Runtime row shows active preview, cached
-ParticleSystem, registered CFXR callback, and actual update-rate counts. Closing the
-window, entering Play Mode, compiling scripts, or quitting the Editor removes
-preview objects and unregisters Cartoon FX editor callbacks. Starting a preview also enables `Effects` and
-`Particle Systems` in every Scene View because Unity otherwise filters normal
-particle renderers while its selection-driven Particle Effect preview remains
-visible.
+hitbox, VFX, and other Animancer events. Timeline VFX state is sampled from the
+playhead instead of being triggered and left to run on editor time. A OneShot is
+simulated to `playhead time - marker time` and disappears after its particles
+finish. StartLoop/StopLoop groups are reconstructed from preceding markers,
+including graceful emission stop and `Extra Life`. Pause freezes both animation
+and particles; scrubbing backward or jumping time restarts simulation at that
+position; Stop clears all timeline playback instances.
+
+Particle previews use temporary, non-saved instances and remain visible without
+selecting authored Hierarchy objects. During Play the window advances cached
+ParticleSystems incrementally on its 75 FPS tick. Scrubbing rebuilds from the
+requested time, and completed instances are deactivated for reuse. Animation is
+sampled before VFX so Follow Anchor and Generic Bone previews use the same frame
+pose. Cartoon FX Remaster instances register their package editor callback
+directly; no CFXR package modification or component-inspector selection is
+required. Closing the window, changing source/entry, entering Play Mode, or
+compiling removes the sampled instances and unregisters callbacks.
+
+`Play Visual Preview`, `Refresh Visual Preview`, and `Play All VFX` remain manual
+realtime previews driven by editor time. Starting a manual preview stops timeline
+sampling, and sampling the timeline stops manual previews. The `Manual Preview`
+row reports active manual instances, ParticleSystems, CFXR callbacks, and their
+update rate. Both modes enable `Effects` and `Particle Systems` in every Scene
+View because Unity may otherwise hide normal particle renderers.
 Drag a marker to change its normalized time without triggering crossed cues.
 Right-click the timeline at the target time and choose an event from the
 VFX, Hitbox, Pre-Cast, or Other submenu. Alternatively, choose an enum value
@@ -213,10 +242,11 @@ Missing Animancer `StringAsset` event-name assets are created under
 `Assets/Data/CombatTimelineEvents`. `Vfx` is the only event that may be repeated;
 other duplicate enum event keys are rejected.
 
-Crossing a `Vfx` marker during playback triggers entries with the matching cue
-index. Clicking a VFX marker selects its first matching authoring entry. Dragging
-a VFX marker across another marker reorders their cue indices. Removing a VFX
-marker also removes entries in that cue group and shifts later cue indices down.
+Each `Vfx` marker defines the start time for its matching cue index. Clicking a
+VFX marker selects its first matching authoring entry, moves the playhead to that
+marker, and samples the cue at its start. Dragging a VFX marker across another
+marker reorders their cue indices. Removing a VFX marker also removes entries in
+that cue group and shifts later cue indices down.
 Stopping or closing the window stops VFX previews and exits Unity Animation Mode
 so the sampled character pose is restored.
 
@@ -236,13 +266,16 @@ beside the existing `dashF`, `dashB`, and `reload` transitions. Missing clips
 remain visible in the entry list so validation can report them. Dash Left and
 Dash Right are not runtime Timeline VFX entries yet.
 
-Keep existing `SetSkillVfxData` components on scenes and prefabs. They inherit
-the shared authoring behavior while preserving the old component GUID, Skill
-reference, hierarchy slots, entries, and buttons. V2 requires no prefab or scene
-conversion.
+Use only `SetAnimationVfxData` for Skill, Melee, and Character Profile
+authoring. The `GameSetup` scene's former Skill-specific components were
+migrated in place, preserving their MonoBehaviour file IDs, source roots, and
+existing slot/entry hierarchy.
 
-The hierarchy owner is `(source asset, entry ID)`. Changing a Melee step stops
-preview and rebuilds from that step. Maintain step IDs with
+The hierarchy owner is `(source asset, entry ID)`. Changing a source asset or
+entry, including a Melee step or Character Profile Dash/Reload entry, stops
+preview and immediately rebuilds from that selection. Selecting null, an
+unsupported source, or an entry without Vfx markers clears only VFX slots and
+entries below the source root. Maintain step IDs with
 `Tools > RB > Animation VFX > Assign Missing Melee Step IDs`.
 
 ## Animation Profile Authoring

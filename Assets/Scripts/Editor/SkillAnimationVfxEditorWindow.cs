@@ -19,6 +19,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
 
     readonly AnimationPreviewSession previewSession = new AnimationPreviewSession();
     readonly List<TimelineEvent> timelineEvents = new List<TimelineEvent>();
+    readonly List<float> vfxMarkerTimes = new List<float>();
     readonly List<Track> tracks = new List<Track>();
 
     SetAnimationVfxData authoringTarget;
@@ -185,14 +186,14 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             }
 
             if (authoringTarget == null)
-                EditorGUILayout.HelpBox("Assign a SetAnimationVfxData or SetSkillVfxData component.", MessageType.Info);
+                EditorGUILayout.HelpBox("Assign a SetAnimationVfxData component.", MessageType.Info);
             else if (source == null)
                 EditorGUILayout.HelpBox("Select a supported SkillGemDefinition, MeleeComboSO, or CharacterAnimProfileSO entry.", MessageType.Warning);
             else if (clip == null)
                 EditorGUILayout.HelpBox("The selected entry has no valid ClipTransition.", MessageType.Warning);
 
             EditorGUILayout.LabelField(
-                "Preview Runtime",
+                "Manual Preview",
                 $"Active: {SkillVfxAuthoringEntry.ActivePreviewCount} / " +
                 $"Particles: {SkillVfxAuthoringEntry.ActivePreviewParticleSystemCount} / " +
                 $"CFXR: {SkillVfxAuthoringEntry.ActivePreviewCartoonFxCallbackCount} / " +
@@ -421,7 +422,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         if (!scrub || !contentArea.Contains(current.mousePosition))
             return;
         isPlaying = false;
-        ScrubTo(MouseToNormalized(contentArea, current.mousePosition.x), true);
+        ScrubTo(MouseToNormalized(contentArea, current.mousePosition.x));
         current.Use();
     }
 
@@ -573,8 +574,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     {
         previewSession.Configure(animator, clip);
         previewSession.Sample(normalizedTime);
-        SyncLoopPreviewsAt(normalizedTime);
-        TriggerOneShotVfxAt(normalizedTime);
+        SampleTimelineVfx(clip, true);
         isPlaying = true;
         lastEditorTime = EditorApplication.timeSinceStartup;
         nextPreviewUpdateTime = 0d;
@@ -597,84 +597,37 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         UpdateEditorUpdateSubscription();
     }
 
-    void ScrubTo(float nextTime, bool triggerCrossedVfx = false)
+    void ScrubTo(float nextTime)
     {
-        float previous = normalizedTime;
         normalizedTime = Mathf.Clamp01(nextTime);
-        if (triggerCrossedVfx)
-            TriggerVfxBetweenScrubPositions(previous, normalizedTime);
-        SyncLoopPreviewsAt(normalizedTime);
         AnimationClip clip = GetClip(GetSource());
         Animator animator = authoringTarget != null ? authoringTarget.PreviewAnimator : null;
         if (clip != null && animator != null && !Application.isPlaying)
         {
             previewSession.Configure(animator, clip);
             previewSession.Sample(normalizedTime);
+            SampleTimelineVfx(clip, true);
         }
+        else
+            authoringTarget?.StopTimelineVfxPreview();
         RepaintViews();
     }
 
-    void TriggerVfxBetweenScrubPositions(float previous, float next)
+    void SampleTimelineVfx(AnimationClip clip, bool forceRestart)
     {
-        if (authoringTarget == null || Mathf.Approximately(previous, next))
+        if (authoringTarget == null || clip == null)
             return;
-        BuildTimelineEvents(GetSource());
-        bool forward = next > previous;
-        for (int i = 0; i < timelineEvents.Count; i++)
-        {
-            TimelineEvent e = timelineEvents[i];
-            if (e.EventName != CombatTimelineEventName.Vfx)
-                continue;
-            bool crossed = forward ? e.NormalizedTime > previous && e.NormalizedTime <= next : e.NormalizedTime < previous && e.NormalizedTime >= next;
-            if (crossed) authoringTarget.PlayVfx(e.VfxCueIndex);
-        }
-    }
 
-    void TriggerVfxBetween(float start, float end)
-    {
         BuildTimelineEvents(GetSource());
+        vfxMarkerTimes.Clear();
         for (int i = 0; i < timelineEvents.Count; i++)
         {
-            TimelineEvent e = timelineEvents[i];
-            if (e.EventName == CombatTimelineEventName.Vfx && e.NormalizedTime > start && e.NormalizedTime <= end)
-                authoringTarget?.PlayVfx(e.VfxCueIndex);
+            TimelineEvent timelineEvent = timelineEvents[i];
+            if (timelineEvent.EventName == CombatTimelineEventName.Vfx)
+                vfxMarkerTimes.Add(timelineEvent.NormalizedTime * clip.length);
         }
-    }
 
-    void TriggerVfxAt(float time)
-    {
-        BuildTimelineEvents(GetSource());
-        for (int i = 0; i < timelineEvents.Count; i++)
-        {
-            TimelineEvent e = timelineEvents[i];
-            if (e.EventName == CombatTimelineEventName.Vfx && Mathf.Approximately(e.NormalizedTime, time))
-                authoringTarget?.PlayVfx(e.VfxCueIndex);
-        }
-    }
-
-    void TriggerOneShotVfxAt(float time)
-    {
-        BuildTimelineEvents(GetSource());
-        for (int i = 0; i < timelineEvents.Count; i++)
-        {
-            TimelineEvent e = timelineEvents[i];
-            if (e.EventName == CombatTimelineEventName.Vfx && Mathf.Approximately(e.NormalizedTime, time))
-                authoringTarget?.PlayOneShotVfx(e.VfxCueIndex);
-        }
-    }
-
-    void SyncLoopPreviewsAt(float time)
-    {
-        if (authoringTarget == null)
-            return;
-        BuildTimelineEvents(GetSource());
-        int applied = 0;
-        for (int i = 0; i < timelineEvents.Count; i++)
-        {
-            if (timelineEvents[i].EventName == CombatTimelineEventName.Vfx && timelineEvents[i].NormalizedTime <= time)
-                applied++;
-        }
-        authoringTarget.SyncLoopPreviews(applied);
+        authoringTarget.SampleTimelineVfx(normalizedTime * clip.length, vfxMarkerTimes, forceRestart);
     }
 
     void OnEditorUpdate()
@@ -693,19 +646,16 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
                 StopPreview(false);
                 return;
             }
-            float previous = normalizedTime;
             float delta = Mathf.Max(0f, (float)(now - lastEditorTime)) * playbackSpeed;
             lastEditorTime = now;
             float next = normalizedTime + delta / Mathf.Max(0.0001f, clip.length);
+            bool forceRestart = false;
             if (next >= 1f)
             {
-                TriggerVfxBetween(previous, 1f);
                 if (loopPlayback)
                 {
-                    authoringTarget?.StopAllLoopPreviews(false);
                     next = Mathf.Repeat(next, 1f);
-                    TriggerVfxAt(0f);
-                    TriggerVfxBetween(0f, next);
+                    forceRestart = true;
                 }
                 else
                 {
@@ -713,14 +663,10 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
                     isPlaying = false;
                 }
             }
-            else
-            {
-                TriggerVfxBetween(previous, next);
-            }
             normalizedTime = Mathf.Clamp01(next);
-            SyncLoopPreviewsAt(normalizedTime);
             previewSession.Configure(animator, clip);
             previewSession.Sample(normalizedTime);
+            SampleTimelineVfx(clip, forceRestart);
             repaint = true;
         }
         if (SkillVfxAuthoringEntry.UpdateActivePreviews(now))
@@ -740,14 +686,13 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         SkillVfxAuthoringSlot slot = authoringTarget.FindSlot(timelineEvent.VfxCueIndex);
         SkillVfxAuthoringEntry entry = authoringTarget.FindEntry(timelineEvent.VfxCueIndex);
         Selection.activeGameObject = slot != null ? slot.gameObject : entry != null ? entry.gameObject : null;
-        authoringTarget.PlayVfx(timelineEvent.VfxCueIndex);
+        ScrubTo(timelineEvent.NormalizedTime);
     }
 
     void SetSourceSelection(ScriptableObject asset, string entryId)
     {
         StopPreview(true);
         authoringTarget.SetTimelineSource(asset, entryId);
-        authoringTarget.PrepareTimelineAuthoring();
         ResetSelection();
         Repaint();
     }

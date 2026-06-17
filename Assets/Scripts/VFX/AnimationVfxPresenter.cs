@@ -154,8 +154,7 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
         if (instance == null)
             return;
 
-        if (cue.AnchorMode == AnimationVfxAnchorMode.FollowAnchor && anchor != null)
-            instance.transform.SetParent(anchor, true);
+        ApplyFollowMode(instance, anchor, cue);
 
         ApplyScale(instance, cue.LocalScale);
     }
@@ -172,11 +171,17 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
         string key = cue.LoopKey.Trim();
         Transform anchor = AnimationVfxAnchorResolver.Resolve(session.Anchors, cue);
         AnimationVfxAnchorResolver.ResolvePose(anchor, cue, out Vector3 position, out Quaternion rotation);
-        Transform parent = cue.AnchorMode == AnimationVfxAnchorMode.FollowAnchor ? anchor : null;
+        bool usesGenericBoneFollower = UsesGenericBoneFollower(cue);
+        Transform parent = cue.AnchorMode == AnimationVfxAnchorMode.FollowAnchor && !usesGenericBoneFollower
+            ? anchor
+            : null;
         GameObject instance = spawner.SpawnLoopingVfx(cue.Prefab, position, rotation, parent);
-        ApplyScale(instance, cue.LocalScale);
         if (instance == null)
             return;
+
+        if (usesGenericBoneFollower)
+            ConfigureGenericBoneFollower(instance, anchor, cue);
+        ApplyScale(instance, cue.LocalScale);
 
         if (!session.ActiveLoops.TryGetValue(key, out List<GameObject> instances))
         {
@@ -232,5 +237,35 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
     {
         if (instance != null)
             instance.transform.localScale = Vector3.Scale(instance.transform.localScale, scaleMultiplier);
+    }
+
+    static void ApplyFollowMode(GameObject instance, Transform anchor, IAnimationVfxCue cue)
+    {
+        if (instance == null || anchor == null || cue == null ||
+            cue.AnchorMode != AnimationVfxAnchorMode.FollowAnchor)
+            return;
+
+        if (UsesGenericBoneFollower(cue))
+            ConfigureGenericBoneFollower(instance, anchor, cue);
+        else
+            instance.transform.SetParent(anchor, true);
+    }
+
+    static bool UsesGenericBoneFollower(IAnimationVfxCue cue)
+    {
+        return cue != null &&
+               cue.Anchor == AnimationVfxAnchor.GenericBone &&
+               cue.AnchorMode == AnimationVfxAnchorMode.FollowAnchor;
+    }
+
+    static void ConfigureGenericBoneFollower(GameObject instance, Transform anchor, IAnimationVfxCue cue)
+    {
+        if (instance == null || anchor == null || cue == null)
+            return;
+
+        AnimationVfxFollowAnchor follower = instance.GetComponent<AnimationVfxFollowAnchor>();
+        if (follower == null)
+            follower = instance.AddComponent<AnimationVfxFollowAnchor>();
+        follower.Configure(anchor, cue.LocalPosition, Quaternion.Euler(cue.LocalEulerAngles));
     }
 }

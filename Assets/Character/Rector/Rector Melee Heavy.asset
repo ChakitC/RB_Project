@@ -14,22 +14,52 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   steps:
   - entryId: 72a785bedb9b40cc8be7e7e656340dbf
+    animationVfxTrack:
+      cues:
+      - cueIndex: 0
+        action: 0
+        prefab: {fileID: 481947888716730270, guid: b4f04d135faa2bc42b6a131603b9e813, type: 3}
+        anchor: 0
+        customAnchorPath: 
+        humanoidBone: 18
+        localPosition: {x: 0, y: 0.1, z: 0.9}
+        localEulerAngles: {x: 90, y: 0, z: 0}
+        localScale: {x: 2.4522483, y: 2.4522483, z: 2.4522483}
+        anchorMode: 0
+        loopKey: 
+        extraLife: 0
+        allowParticlesToFinish: 1
+      - cueIndex: 0
+        action: 0
+        prefab: {fileID: 5065936571968506168, guid: 47bd8c1439339424690d425f7149144e, type: 3}
+        anchor: 0
+        customAnchorPath: 
+        humanoidBone: 18
+        localPosition: {x: 0, y: 0, z: 1.16}
+        localEulerAngles: {x: 270, y: 0, z: 0}
+        localScale: {x: 3.6681654, y: 3.6681654, z: 3.6681654}
+        anchorMode: 0
+        loopKey: 
+        extraLife: 0
+        allowParticlesToFinish: 1
     clip:
       _FadeDuration: 0.25
       _Speed: 1
       _Events:
         _NormalizedTimes:
         - 0.71764094
+        - 0.71978754
         - 0.78781027
         - NaN
         _Callbacks: []
         _Names:
         - {fileID: 11400000, guid: a1d9c7b1f0f54a2b8c1d6e7f90123456, type: 2}
+        - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
         - {fileID: 11400000, guid: b2e8d6c4a1b347c98d0e1f2a34567890, type: 2}
       _Clip: {fileID: 5145724591987174810, guid: d0dae8f4604301e4ebf5a18e12ee9fb2, type: 3}
       _NormalizedStartTime: NaN
     duration: 0
-    chainWindowN: {x: 0, y: 0}
+    chainWindowN: {x: 0.8007968, y: 0.85790175}
     dropBufferOnWindowExpire: 0
     applyKnockback: 1
     knockbackDistance: 7
@@ -69,6 +99,7 @@ MonoBehaviour:
       m_RotationOrder: 4
     knockbackReaction: 0
     knockbackInterruptsActions: 1
+    staggerPower: 0
   defaultChainStartN: 0.35
   defaultChainEndN: 0.8
   references:

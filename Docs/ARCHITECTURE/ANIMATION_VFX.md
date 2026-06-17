@@ -15,6 +15,13 @@ sessions may use the same loop key without affecting each other.
 transform, and Animator. The shared presenter must not discover Skill-specific
 references itself.
 
+`GenericBone` resolves a stored transform path below the context Animator root,
+so the same cue contract works with Generic rigs as well as Humanoid rigs.
+`WorldSpace` samples the bone pose once. `FollowAnchor` uses
+`AnimationVfxFollowAnchor` to update world position and rotation in `LateUpdate`
+without parenting the VFX to the bone, so animated or non-uniform bone scale is
+not inherited. Other anchor modes retain their existing parenting behavior.
+
 ## Timeline Binding
 
 `AnimationVfxEventBinder` binds the shared Animancer event name `Vfx` on a
@@ -53,10 +60,38 @@ HitStart/HitEnd events and an editable normalized Chain Window. Character
 profile entries contribute no gameplay lanes; they use Animation, VFX, and
 Other Events only.
 
-`SetAnimationVfxData` owns generic source/entry authoring, hierarchy placement,
-and preview state. `SetSkillVfxData` inherits it while retaining its script GUID,
-serialized Skill fields, slots, entries, public buttons, and existing scene or
-prefab workflow.
+`SetAnimationVfxData` is the only scene authoring component. It owns generic
+source/entry selection, hierarchy placement, preview state, validation, and
+save/load actions. Skill, Melee, and Character Profile data all flow through
+their `IAnimationVfxTimelineSource` adapters.
+
+The timeline window uses deterministic editor sampling rather than firing a VFX
+and allowing it to advance on editor time. It samples the animation pose first,
+reconstructs OneShot and loop state from every `Vfx` marker up to the playhead,
+then simulates each ParticleSystem to its elapsed cue time. Forward playback
+advances the cached systems incrementally at 75 FPS; scrubbing, rewinding, and
+playback-loop wrap restart simulation at the requested time. Pause leaves the
+sampled animation and VFX state frozen, while Stop, source changes, window close,
+and Play Mode transitions clear the timeline preview.
+
+Timeline sampling and manual preview are separate modes. Entry preview buttons
+and `Play All VFX` retain realtime editor-clock playback. Starting either mode
+stops the other so they cannot control the same temporary playback instances.
+Runtime event binding and `AnimationVfxPresenter` are unaffected.
+
+The selected source asset and entry are the authoring source of truth. Changing
+either selection immediately stops preview, removes existing VFX slots and
+entries, and rebuilds them from the selected asset. `Create / Sync VFX Slots`
+and `Load VFX Data` use the same replace-and-rebuild operation. Unsaved hierarchy
+changes are discarded by rebuild, but the complete operation is grouped for
+Unity Undo. Non-VFX children below the configured source root are not removed.
+
+Generic bone paths are stored in the existing custom-path field for serialized
+compatibility, but are interpreted relative to the Animator rather than the
+character context root. The authoring entry's `Use Selected Bone` button accepts
+only a Transform below the preview Animator and writes the Animator-relative
+path. Selecting `GenericBone` defaults the entry to `FollowAnchor`; authors may
+still switch it to `WorldSpace`.
 
 Melee step GUIDs are editor identity only. Run
 `Tools > RB > Animation VFX > Assign Missing Melee Step IDs` when IDs are empty

@@ -4,17 +4,34 @@ using Animancer;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-public class CharacterSkillManager : MonoBehaviour
+public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 {
     static readonly SkillSlot[] EmptyAutonomousSlots = Array.Empty<SkillSlot>();
     static readonly HelperProcSlot[] EmptyHelperProcSlots = Array.Empty<HelperProcSlot>();
     static readonly PassiveSkillSlot[] EmptyPassiveSlots = Array.Empty<PassiveSkillSlot>();
+    static readonly CharacterSkillLoadoutOption[] EmptySkillOptions = Array.Empty<CharacterSkillLoadoutOption>();
+
+    sealed class ResolvedCommandSlotState
+    {
+        public SkillSlot slot;
+        public CharacterSkillLoadoutSlot statsSlot;
+        public CharacterSkillLoadoutOption selectedOption;
+        public int selectedOptionIndex = -1;
+        public string slotId;
+        public bool usesPrefabOverride;
+    }
 
     private CharacteContext ctx;
     private CharacterAnimBrain animBrain;
     private WeaponSystem weaponSystem;
     private SkillSlot pendingSlot;
     private SkillCastOrchestrator castOrchestrator;
+    private CharacterStats observedBaseStats;
+    private int observedAutonomousSlotCount = -1;
+    private bool commandSlotsBuilt;
+
+    readonly List<SkillSlot> resolvedCommandSlots = new();
+    readonly List<ResolvedCommandSlotState> resolvedCommandSlotStates = new();
 
     public event Action<ActiveSkillCastInfo> CastStarted;
     public event Action<ActiveSkillCastInfo> CastReleased;
@@ -38,7 +55,15 @@ public class CharacterSkillManager : MonoBehaviour
     [FormerlySerializedAs("passiveSlots")]
     [SerializeField] private PassiveSkillSlot[] passiveSlots = EmptyPassiveSlots;
 
-    public IReadOnlyList<SkillSlot> AutonomousSlots => autonomousSlots ?? EmptyAutonomousSlots;
+    public int LoadOrder => -90;
+    public IReadOnlyList<SkillSlot> AutonomousSlots
+    {
+        get
+        {
+            RefreshResolvedCommandSlotsIfNeeded();
+            return commandSlotsBuilt ? resolvedCommandSlots : EmptyAutonomousSlots;
+        }
+    }
     public IReadOnlyList<SkillSlot> CommandSlots => AutonomousSlots;
     public CharacterSkillEntry PlayerCommandSkill => playerCommandSkill;
     public CharacterSkillEntry ChainAttackSkill => chainAttackSkill;
@@ -88,8 +113,19 @@ public class CharacterSkillManager : MonoBehaviour
         castOrchestrator?.CancelPendingCast(SkillCastCancelReason.Disabled);
     }
 
+    public void OnSave(GameSaveData data)
+    {
+    }
+
+    public void OnLoad(GameSaveData data)
+    {
+        CacheReferences();
+        RebuildResolvedCommandSlots();
+    }
+
     private void Update()
     {
+        RefreshResolvedCommandSlotsIfNeeded();
         castOrchestrator?.Tick();
         if (castOrchestrator != null && castOrchestrator.HasPendingCast)
             return;
@@ -101,10 +137,10 @@ public class CharacterSkillManager : MonoBehaviour
         }
 
         pendingSlot = null;
-        if (autonomousSlots == null)
+        if (resolvedCommandSlots.Count == 0)
             return;
 
-        foreach (SkillSlot slot in autonomousSlots)
+        foreach (SkillSlot slot in resolvedCommandSlots)
         {
             if (slot == null)
                 continue;
@@ -150,6 +186,104 @@ public class CharacterSkillManager : MonoBehaviour
                !IsSkillStartBlockedByAnimation() &&
                !IsSkillUseBlocked() &&
                slot.runtimeSkill.CanCast(skillUser);
+    }
+
+    public bool TrySelectSkillOption(int slotIndex, int optionIndex, bool persist = true)
+    {
+        CacheReferences();
+
+        if (!TryGetCommandSlotState(slotIndex, out ResolvedCommandSlotState state))
+            return false;
+
+        if (state.usesPrefabOverride || state.statsSlot == null)
+            return false;
+
+        if (!state.statsSlot.TryGetOption(optionIndex, out CharacterSkillLoadoutOption option))
+            return false;
+
+        if (!IsCurrentSelectedSkillOption(state, optionIndex, option))
+            ApplySelectedSkillOption(state, optionIndex, option);
+
+        if (persist)
+            PersistSkillSelection(state.slotId, ResolveOptionId(option, optionIndex));
+
+        return true;
+    }
+
+    public bool TrySelectSkillOption(string slotId, string optionId, bool persist = true)
+    {
+        CacheReferences();
+
+        if (!TryGetCommandSlotState(slotId, out ResolvedCommandSlotState state))
+            return false;
+
+        if (state.usesPrefabOverride || state.statsSlot == null)
+            return false;
+
+        if (!state.statsSlot.TryGetOptionById(optionId, out int optionIndex, out CharacterSkillLoadoutOption option))
+            return false;
+
+        if (!IsCurrentSelectedSkillOption(state, optionIndex, option))
+            ApplySelectedSkillOption(state, optionIndex, option);
+
+        if (persist)
+            PersistSkillSelection(state.slotId, ResolveOptionId(option, optionIndex));
+
+        return true;
+    }
+
+    public bool TryGetSkillOptions(int slotIndex, out IReadOnlyList<CharacterSkillLoadoutOption> options)
+    {
+        CacheReferences();
+        options = EmptySkillOptions;
+
+        if (!TryGetCommandSlotState(slotIndex, out ResolvedCommandSlotState state))
+            return false;
+
+        if (state.usesPrefabOverride || state.statsSlot == null)
+            return false;
+
+        options = state.statsSlot.Options;
+        return options.Count > 0;
+    }
+
+    public bool TryGetSkillOptions(string slotId, out IReadOnlyList<CharacterSkillLoadoutOption> options)
+    {
+        CacheReferences();
+        options = EmptySkillOptions;
+
+        if (!TryGetCommandSlotState(slotId, out ResolvedCommandSlotState state))
+            return false;
+
+        if (state.usesPrefabOverride || state.statsSlot == null)
+            return false;
+
+        options = state.statsSlot.Options;
+        return options.Count > 0;
+    }
+
+    public bool TryGetSelectedSkillOption(int slotIndex, out CharacterSkillLoadoutOption option)
+    {
+        CacheReferences();
+        option = null;
+
+        if (!TryGetCommandSlotState(slotIndex, out ResolvedCommandSlotState state))
+            return false;
+
+        option = state.selectedOption;
+        return option != null;
+    }
+
+    public bool TryGetSelectedSkillOption(string slotId, out CharacterSkillLoadoutOption option)
+    {
+        CacheReferences();
+        option = null;
+
+        if (!TryGetCommandSlotState(slotId, out ResolvedCommandSlotState state))
+            return false;
+
+        option = state.selectedOption;
+        return option != null;
     }
 
     public bool CanStartPlayerCommandSkill()
@@ -241,15 +375,14 @@ public class CharacterSkillManager : MonoBehaviour
         if (!TryGetCommandSlot(index, out SkillSlot slot))
             return;
 
-        if (ReferenceEquals(pendingSlot, slot))
-        {
-            pendingSlot = null;
-            castOrchestrator?.CancelPendingCast();
-        }
+        CancelPendingSlotIfNeeded(slot);
 
-        slot.skillAsset = null;
-        slot.supportAssets = null;
-        slot.runtimeSkill = null;
+        ClearRuntimeSlot(slot);
+        if (TryGetCommandSlotState(index, out ResolvedCommandSlotState state))
+        {
+            state.selectedOption = null;
+            state.selectedOptionIndex = -1;
+        }
     }
 
     public void AssignSkillToSlot(int index, SkillGemDefinition asset, int level = 1)
@@ -257,15 +390,16 @@ public class CharacterSkillManager : MonoBehaviour
         if (!TryGetCommandSlot(index, out SkillSlot slot))
             return;
 
-        if (ReferenceEquals(pendingSlot, slot))
-        {
-            pendingSlot = null;
-            castOrchestrator?.CancelPendingCast();
-        }
+        CancelPendingSlotIfNeeded(slot);
 
         slot.skillAsset = asset;
         slot.skillLevel = level;
         slot.runtimeSkill = BuildRuntimeSkill(slot, asset, level);
+        if (TryGetCommandSlotState(index, out ResolvedCommandSlotState state))
+        {
+            state.selectedOption = null;
+            state.selectedOptionIndex = -1;
+        }
     }
 
     private SkillCastStartResult TryBeginCast(SkillSlot slot)
@@ -289,7 +423,7 @@ public class CharacterSkillManager : MonoBehaviour
             onStarted: StopWeaponActivityForSkillCast,
             useAnimationDriver: true,
             allowImmediateFallback: true,
-            debugSource: $"slot:{slot.hotkey}"));
+            debugSource: BuildSlotDebugSource(slot)));
 
         pendingSlot = result.Kind == SkillCastStartKind.WaitingForAnimation
             ? slot
@@ -376,28 +510,57 @@ public class CharacterSkillManager : MonoBehaviour
     private bool TryGetCommandSlot(int slotIndex, out SkillSlot slot)
     {
         slot = null;
+        RefreshResolvedCommandSlotsIfNeeded();
 
-        if (autonomousSlots == null || slotIndex < 0 || slotIndex >= autonomousSlots.Length)
+        if (slotIndex < 0 || slotIndex >= resolvedCommandSlots.Count)
             return false;
 
-        slot = autonomousSlots[slotIndex];
+        slot = resolvedCommandSlots[slotIndex];
         return slot != null;
+    }
+
+    private bool TryGetCommandSlotState(int slotIndex, out ResolvedCommandSlotState state)
+    {
+        state = null;
+        RefreshResolvedCommandSlotsIfNeeded();
+
+        if (slotIndex < 0 || slotIndex >= resolvedCommandSlotStates.Count)
+            return false;
+
+        state = resolvedCommandSlotStates[slotIndex];
+        return state != null && state.slot != null;
+    }
+
+    private bool TryGetCommandSlotState(string slotId, out ResolvedCommandSlotState state)
+    {
+        state = null;
+        RefreshResolvedCommandSlotsIfNeeded();
+
+        if (string.IsNullOrWhiteSpace(slotId))
+            return false;
+
+        string resolvedSlotId = slotId.Trim();
+        for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
+        {
+            ResolvedCommandSlotState candidate = resolvedCommandSlotStates[i];
+            if (candidate == null || string.IsNullOrWhiteSpace(candidate.slotId))
+                continue;
+
+            if (!string.Equals(candidate.slotId, resolvedSlotId, StringComparison.Ordinal))
+                continue;
+
+            state = candidate;
+            return true;
+        }
+
+        return false;
     }
 
     private void RebuildAllRuntimeSkills()
     {
-        RebuildAllAutonomousRuntimeSkills();
+        RebuildResolvedCommandSlots();
         EnsureRuntimeSkill(playerCommandSkill);
         EnsureRuntimeSkill(chainAttackSkill);
-    }
-
-    private void RebuildAllAutonomousRuntimeSkills()
-    {
-        if (autonomousSlots == null)
-            return;
-
-        for (int i = 0; i < autonomousSlots.Length; i++)
-            EnsureCommandRuntimeSkill(autonomousSlots[i]);
     }
 
     private void EnsureCommandRuntimeSkill(SkillSlot slot)
@@ -485,6 +648,333 @@ public class CharacterSkillManager : MonoBehaviour
             ctx.WeaponSystem = weaponSystem;
         else if (weaponSystem == null)
             weaponSystem = ctx.WeaponSystem;
+
+        RefreshResolvedCommandSlotsIfNeeded();
+    }
+
+    private void RefreshResolvedCommandSlotsIfNeeded()
+    {
+        CharacterStats currentBaseStats = ctx != null ? ctx.baseStats : null;
+        int currentAutonomousSlotCount = autonomousSlots != null ? autonomousSlots.Length : 0;
+
+        if (commandSlotsBuilt &&
+            observedBaseStats == currentBaseStats &&
+            observedAutonomousSlotCount == currentAutonomousSlotCount)
+        {
+            return;
+        }
+
+        RebuildResolvedCommandSlots();
+    }
+
+    private void RebuildResolvedCommandSlots()
+    {
+        observedBaseStats = ctx != null ? ctx.baseStats : null;
+        observedAutonomousSlotCount = autonomousSlots != null ? autonomousSlots.Length : 0;
+        commandSlotsBuilt = true;
+
+        resolvedCommandSlots.Clear();
+        resolvedCommandSlotStates.Clear();
+
+        List<CharacterSkillSelectionSaveData> savedSelections = LoadSavedSkillSelections();
+        List<CharacterSkillLoadoutSlot> statsSlots = observedBaseStats != null ? observedBaseStats.skillSlots : null;
+        int statsSlotCount = statsSlots != null ? statsSlots.Count : 0;
+        int serializedSlotCount = autonomousSlots != null ? autonomousSlots.Length : 0;
+        int slotCount = Mathf.Max(statsSlotCount, serializedSlotCount);
+
+        for (int i = 0; i < slotCount; i++)
+        {
+            SkillSlot serializedSlot = GetSerializedAutonomousSlot(i);
+            CharacterSkillLoadoutSlot statsSlot = i < statsSlotCount ? statsSlots[i] : null;
+
+            if (IsPrefabOverrideSlot(serializedSlot))
+            {
+                AddPrefabOverrideSlot(i, serializedSlot);
+                continue;
+            }
+
+            if (statsSlot != null)
+            {
+                AddStatsLoadoutSlot(i, statsSlot, savedSelections);
+                continue;
+            }
+
+            AddPassthroughSerializedSlot(i, serializedSlot);
+        }
+    }
+
+    private void AddPrefabOverrideSlot(int slotIndex, SkillSlot slot)
+    {
+        SkillSlot resolvedSlot = slot ?? new SkillSlot();
+        EnsureCommandRuntimeSkill(resolvedSlot);
+        AddResolvedSlot(resolvedSlot, new ResolvedCommandSlotState
+        {
+            slot = resolvedSlot,
+            slotId = $"prefab:{slotIndex}",
+            usesPrefabOverride = true
+        });
+    }
+
+    private void AddStatsLoadoutSlot(
+        int slotIndex,
+        CharacterSkillLoadoutSlot statsSlot,
+        List<CharacterSkillSelectionSaveData> savedSelections)
+    {
+        var runtimeSlot = new SkillSlot
+        {
+            hotkey = statsSlot.hotkey
+        };
+
+        var state = new ResolvedCommandSlotState
+        {
+            slot = runtimeSlot,
+            statsSlot = statsSlot,
+            slotId = ResolveSlotId(statsSlot, slotIndex)
+        };
+
+        ApplySavedOrDefaultSelection(state, savedSelections);
+        AddResolvedSlot(runtimeSlot, state);
+    }
+
+    private void AddPassthroughSerializedSlot(int slotIndex, SkillSlot slot)
+    {
+        SkillSlot resolvedSlot = slot ?? new SkillSlot();
+        EnsureCommandRuntimeSkill(resolvedSlot);
+        AddResolvedSlot(resolvedSlot, new ResolvedCommandSlotState
+        {
+            slot = resolvedSlot,
+            slotId = $"slot:{slotIndex}"
+        });
+    }
+
+    private void AddResolvedSlot(SkillSlot slot, ResolvedCommandSlotState state)
+    {
+        resolvedCommandSlots.Add(slot);
+        resolvedCommandSlotStates.Add(state);
+    }
+
+    private SkillSlot GetSerializedAutonomousSlot(int slotIndex)
+    {
+        if (autonomousSlots == null || slotIndex < 0 || slotIndex >= autonomousSlots.Length)
+            return null;
+
+        return autonomousSlots[slotIndex];
+    }
+
+    private static bool IsPrefabOverrideSlot(SkillSlot slot)
+    {
+        return slot != null && slot.skillAsset != null;
+    }
+
+    private void ApplySavedOrDefaultSelection(
+        ResolvedCommandSlotState state,
+        List<CharacterSkillSelectionSaveData> savedSelections)
+    {
+        if (state == null || state.statsSlot == null || state.slot == null)
+            return;
+
+        string savedOptionId = FindSavedOptionId(savedSelections, state.slotId);
+        if (!string.IsNullOrWhiteSpace(savedOptionId) &&
+            state.statsSlot.TryGetOptionById(savedOptionId, out int savedOptionIndex, out CharacterSkillLoadoutOption savedOption))
+        {
+            ApplySelectedSkillOption(state, savedOptionIndex, savedOption, cancelPending: false);
+            return;
+        }
+
+        if (state.statsSlot.TryGetDefaultOption(out int defaultOptionIndex, out CharacterSkillLoadoutOption defaultOption))
+        {
+            ApplySelectedSkillOption(state, defaultOptionIndex, defaultOption, cancelPending: false);
+            return;
+        }
+
+        ClearRuntimeSlot(state.slot);
+    }
+
+    private void ApplySelectedSkillOption(
+        ResolvedCommandSlotState state,
+        int optionIndex,
+        CharacterSkillLoadoutOption option,
+        bool cancelPending = true)
+    {
+        if (state == null || state.slot == null)
+            return;
+
+        if (cancelPending)
+            CancelPendingSlotIfNeeded(state.slot);
+
+        state.selectedOption = option;
+        state.selectedOptionIndex = optionIndex;
+        ApplySkillOptionToSlot(state.slot, state.statsSlot, option);
+    }
+
+    private static bool IsCurrentSelectedSkillOption(
+        ResolvedCommandSlotState state,
+        int optionIndex,
+        CharacterSkillLoadoutOption option)
+    {
+        return state != null &&
+               state.slot != null &&
+               state.selectedOptionIndex == optionIndex &&
+               ReferenceEquals(state.selectedOption, option) &&
+               option != null &&
+               option.skillAsset != null &&
+               state.slot.skillAsset == option.skillAsset &&
+               state.slot.runtimeSkill != null &&
+               state.slot.runtimeSkill.def == option.skillAsset;
+    }
+
+    private void ApplySkillOptionToSlot(
+        SkillSlot slot,
+        CharacterSkillLoadoutSlot statsSlot,
+        CharacterSkillLoadoutOption option)
+    {
+        if (slot == null)
+            return;
+
+        slot.hotkey = statsSlot != null ? statsSlot.hotkey : slot.hotkey;
+
+        if (option == null || option.skillAsset == null)
+        {
+            ClearRuntimeSlot(slot);
+            return;
+        }
+
+        slot.skillAsset = option.skillAsset;
+        slot.skillLevel = Mathf.Max(1, option.skillLevel);
+        slot.supportAssets = option.supportAssets;
+        slot.maxSupportSlots = Mathf.Max(0, option.maxSupportSlots);
+        slot.runtimeSkill = BuildRuntimeSkill(slot, slot.skillAsset, slot.skillLevel);
+    }
+
+    private static void ClearRuntimeSlot(SkillSlot slot)
+    {
+        if (slot == null)
+            return;
+
+        slot.skillAsset = null;
+        slot.supportAssets = null;
+        slot.runtimeSkill = null;
+    }
+
+    private void CancelPendingSlotIfNeeded(SkillSlot slot)
+    {
+        if (!ReferenceEquals(pendingSlot, slot))
+            return;
+
+        pendingSlot = null;
+        castOrchestrator?.CancelPendingCast(SkillCastCancelReason.InvalidState);
+    }
+
+    private List<CharacterSkillSelectionSaveData> LoadSavedSkillSelections()
+    {
+        string characterId = ResolveCharacterIdForSave();
+        if (string.IsNullOrWhiteSpace(characterId) || SaveManager.Instance == null)
+            return null;
+
+        CharacterProgressData progress = SaveManager.Instance.LoadCharacterProgressData(characterId);
+        return progress != null ? progress.selectedSkillOptions : null;
+    }
+
+    private void PersistSkillSelection(string slotId, string optionId)
+    {
+        string characterId = ResolveCharacterIdForSave();
+        if (string.IsNullOrWhiteSpace(characterId) ||
+            string.IsNullOrWhiteSpace(slotId) ||
+            string.IsNullOrWhiteSpace(optionId) ||
+            SaveManager.Instance == null)
+        {
+            return;
+        }
+
+        CharacterProgressData progress = SaveManager.Instance.LoadCharacterProgressData(characterId);
+        progress.selectedSkillOptions ??= new List<CharacterSkillSelectionSaveData>();
+
+        CharacterSkillSelectionSaveData target = null;
+        for (int i = progress.selectedSkillOptions.Count - 1; i >= 0; i--)
+        {
+            CharacterSkillSelectionSaveData entry = progress.selectedSkillOptions[i];
+            if (entry == null)
+            {
+                progress.selectedSkillOptions.RemoveAt(i);
+                continue;
+            }
+
+            if (!string.Equals(entry.slotId, slotId, StringComparison.Ordinal))
+                continue;
+
+            if (target == null)
+                target = entry;
+            else
+                progress.selectedSkillOptions.RemoveAt(i);
+        }
+
+        if (target == null)
+        {
+            target = new CharacterSkillSelectionSaveData();
+            progress.selectedSkillOptions.Add(target);
+        }
+
+        target.slotId = slotId;
+        target.optionId = optionId;
+        SaveManager.Instance.SaveCharacterProgressData(characterId, progress);
+    }
+
+    private string ResolveCharacterIdForSave()
+    {
+        CharacterStats stats = ctx != null ? ctx.baseStats : null;
+        return stats != null && !string.IsNullOrWhiteSpace(stats.characterId)
+            ? stats.characterId.Trim()
+            : null;
+    }
+
+    private static string FindSavedOptionId(List<CharacterSkillSelectionSaveData> savedSelections, string slotId)
+    {
+        if (savedSelections == null || string.IsNullOrWhiteSpace(slotId))
+            return null;
+
+        for (int i = 0; i < savedSelections.Count; i++)
+        {
+            CharacterSkillSelectionSaveData entry = savedSelections[i];
+            if (entry == null)
+                continue;
+
+            if (string.Equals(entry.slotId, slotId, StringComparison.Ordinal))
+                return entry.optionId;
+        }
+
+        return null;
+    }
+
+    private static string ResolveSlotId(CharacterSkillLoadoutSlot slot, int slotIndex)
+    {
+        if (slot != null && !string.IsNullOrWhiteSpace(slot.ResolvedSlotId))
+            return slot.ResolvedSlotId;
+
+        return $"slot:{Mathf.Max(0, slotIndex)}";
+    }
+
+    private static string ResolveOptionId(CharacterSkillLoadoutOption option, int optionIndex)
+    {
+        if (option != null && !string.IsNullOrWhiteSpace(option.ResolvedOptionId))
+            return option.ResolvedOptionId;
+
+        return $"option:{Mathf.Max(0, optionIndex)}";
+    }
+
+    private string BuildSlotDebugSource(SkillSlot slot)
+    {
+        for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
+        {
+            ResolvedCommandSlotState state = resolvedCommandSlotStates[i];
+            if (state == null || !ReferenceEquals(state.slot, slot))
+                continue;
+
+            return !string.IsNullOrWhiteSpace(state.slotId)
+                ? $"slot:{state.slotId}"
+                : $"slot:{i}";
+        }
+
+        return slot != null ? $"slot:{slot.hotkey}" : "slot:<null>";
     }
 
     private void EnsureCastOrchestrator()

@@ -36,6 +36,22 @@ public class SetAnimationVfxData : MonoBehaviour
     [System.NonSerialized]
     readonly Dictionary<string, List<SkillVfxAuthoringEntry>> activePreviewLoops =
         new Dictionary<string, List<SkillVfxAuthoringEntry>>(System.StringComparer.Ordinal);
+    [System.NonSerialized]
+    readonly Dictionary<SkillVfxAuthoringEntry, TimelinePreviewSample> timelinePreviewSamples =
+        new Dictionary<SkillVfxAuthoringEntry, TimelinePreviewSample>();
+    [System.NonSerialized]
+    readonly Dictionary<string, TimelinePreviewLoopGroup> timelinePreviewLoopGroups =
+        new Dictionary<string, TimelinePreviewLoopGroup>(System.StringComparer.Ordinal);
+    [System.NonSerialized]
+    readonly HashSet<string> timelinePreviewReplacedLoopKeys =
+        new HashSet<string>(System.StringComparer.Ordinal);
+    [System.NonSerialized] HashSet<SkillVfxAuthoringEntry> timelinePreviewEntries =
+        new HashSet<SkillVfxAuthoringEntry>();
+    [System.NonSerialized] HashSet<SkillVfxAuthoringEntry> nextTimelinePreviewEntries =
+        new HashSet<SkillVfxAuthoringEntry>();
+    [System.NonSerialized] bool timelinePreviewModeActive;
+    [System.NonSerialized] int timelinePreviewGeneration;
+    [System.NonSerialized] bool rebuildingAuthoring;
 #endif
 
     public ScriptableObject TimelineSourceAsset => ResolveTimelineSourceAsset();
@@ -60,13 +76,30 @@ public class SetAnimationVfxData : MonoBehaviour
 
     void OnTimelineSourceAssetChanged()
     {
-        SelectFirstValidTimelineEntry();
-        ResetAuthoringOwner();
+#if UNITY_EDITOR
+        if (rebuildingAuthoring)
+            return;
+
+        rebuildingAuthoring = true;
+        try
+        {
+            SelectFirstValidTimelineEntry();
+        }
+        finally
+        {
+            rebuildingAuthoring = false;
+        }
+
+        RebuildTimelineAuthoring("Change Animation VFX Source");
+#endif
     }
 
     void OnTimelineEntryChanged()
     {
-        ResetAuthoringOwner();
+#if UNITY_EDITOR
+        if (!rebuildingAuthoring)
+            RebuildTimelineAuthoring("Change Animation VFX Entry");
+#endif
     }
 
     void SelectFirstValidTimelineEntry()
@@ -129,29 +162,27 @@ public class SetAnimationVfxData : MonoBehaviour
 #endif
     }
 
-    void ResetAuthoringOwner()
-    {
-        StopAllVfx();
-        authoringSourceAsset = null;
-        authoringEntryId = null;
-#if UNITY_EDITOR
-        EditorUtility.SetDirty(this);
-#endif
-    }
-
     public void SetTimelineSource(ScriptableObject asset, string entryId)
     {
 #if UNITY_EDITOR
         if (TimelineSourceAsset == asset && string.Equals(TimelineEntryId, entryId, System.StringComparison.Ordinal))
             return;
 
-        StopAllVfx();
         Undo.RecordObject(this, "Change Animation VFX Source");
-        AssignTimelineSourceAsset(asset);
-        sourceAsset = asset;
-        selectedEntryId = entryId;
-        SelectFirstValidTimelineEntry();
-        ResetAuthoringOwner();
+        rebuildingAuthoring = true;
+        try
+        {
+            AssignTimelineSourceAsset(asset);
+            sourceAsset = asset;
+            selectedEntryId = entryId;
+            SelectFirstValidTimelineEntry();
+        }
+        finally
+        {
+            rebuildingAuthoring = false;
+        }
+
+        RebuildTimelineAuthoring("Change Animation VFX Source");
         EditorUtility.SetDirty(this);
 #else
         AssignTimelineSourceAsset(asset);
@@ -159,6 +190,75 @@ public class SetAnimationVfxData : MonoBehaviour
         selectedEntryId = string.IsNullOrWhiteSpace(entryId) ? "main" : entryId;
 #endif
     }
+
+#if UNITY_EDITOR
+    bool RebuildTimelineAuthoring(string undoLabel)
+    {
+        if (rebuildingAuthoring)
+            return false;
+
+        Transform root = GetSourceRoot();
+        if (root == null)
+        {
+            Debug.LogWarning("Could not resolve Animation VFX Source Root.", this);
+            return false;
+        }
+
+        IAnimationVfxTimelineSource source = CreateTimelineSource();
+        Transform character = GetAnimationCharacterRoot();
+        string label = string.IsNullOrWhiteSpace(undoLabel) ? SyncUndoLabel : undoLabel;
+
+        StopAllVfx();
+        Undo.IncrementCurrentGroup();
+        int undoGroup = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName(label);
+        rebuildingAuthoring = true;
+        try
+        {
+            Undo.RecordObject(this, label);
+            RemoveExistingAuthoring(root);
+
+            bool canRebuild = source != null && source.MarkerCount > 0 && character != null;
+            if (canRebuild)
+                RebuildAuthoring(source, character, root, label);
+
+            authoringSourceAsset = source?.SourceAsset;
+            authoringEntryId = source?.EntryId;
+            EditorUtility.SetDirty(this);
+            MarkHierarchyDirty(root);
+        }
+        finally
+        {
+            rebuildingAuthoring = false;
+            Undo.CollapseUndoOperations(undoGroup);
+        }
+
+        if (source == null)
+        {
+            string reason = TimelineSourceAsset == null
+                ? "no Source Asset is assigned"
+                : $"'{TimelineSourceAsset.name}' is not a supported Animation VFX source";
+            Debug.LogWarning($"Cleared Animation VFX authoring because {reason}.", this);
+            return false;
+        }
+
+        if (source.MarkerCount <= 0)
+        {
+            Debug.LogWarning(
+                $"Cleared Animation VFX authoring because '{source.DisplayName}' has no Vfx marker.",
+                source.SourceAsset);
+            return false;
+        }
+
+        if (character == null)
+        {
+            Debug.LogWarning("Cleared Animation VFX authoring because Character Root could not be resolved.", this);
+            return false;
+        }
+
+        return true;
+    }
+#endif
 
     public bool PrepareTimelineAuthoring()
     {
@@ -186,109 +286,33 @@ public class SetAnimationVfxData : MonoBehaviour
             return true;
         }
 
-        StopAllVfx();
-        Undo.IncrementCurrentGroup();
-        int undoGroup = Undo.GetCurrentGroup();
-        Undo.SetCurrentGroupName("Switch Animation VFX Entry");
-        try
-        {
-            RemoveExistingAuthoring(root);
-            RebuildAuthoring(source, character, root, "Switch Animation VFX Entry");
-            Undo.RecordObject(this, "Switch Animation VFX Entry");
-            authoringSourceAsset = source.SourceAsset;
-            authoringEntryId = source.EntryId;
-            EditorUtility.SetDirty(this);
-            MarkHierarchyDirty(root);
-        }
-        finally
-        {
-            Undo.CollapseUndoOperations(undoGroup);
-        }
-
-        return true;
+        return RebuildTimelineAuthoring("Switch Animation VFX Entry");
 #else
         return TimelineSourceAsset != null;
 #endif
     }
 
+    [Title("Authoring Actions")]
+    [Button("Create / Sync VFX Slots", ButtonSizes.Large)]
+    [PropertyTooltip("Replace the current authoring hierarchy with slots and saved VFX data from the selected Source Asset and Entry.")]
     public void CreateOrSyncTimelineVfxSlots()
     {
 #if UNITY_EDITOR
-        IAnimationVfxTimelineSource source = CreateTimelineSource();
-        if (source == null || !PrepareTimelineAuthoring() ||
-            !TryGetAuthoringRoots(out Transform character, out Transform root))
-        {
-            return;
-        }
-
-        int markerCount = source.MarkerCount;
-        if (markerCount <= 0)
-        {
-            Debug.LogWarning($"'{source.DisplayName}' has no Vfx marker.", source.SourceAsset);
-            return;
-        }
-
-        Undo.IncrementCurrentGroup();
-        int undoGroup = Undo.GetCurrentGroup();
-        Undo.SetCurrentGroupName(SyncUndoLabel);
-        try
-        {
-            MigrateLegacyEntriesToSlots(root);
-            var slotsByCue = new Dictionary<int, SkillVfxAuthoringSlot>();
-            SkillVfxAuthoringSlot[] slots = GetSourceSlots();
-            for (int i = 0; i < slots.Length; i++)
-            {
-                if (slots[i] != null && !slotsByCue.ContainsKey(slots[i].CueIndex))
-                    slotsByCue.Add(slots[i].CueIndex, slots[i]);
-            }
-
-            for (int cueIndex = 0; cueIndex < markerCount; cueIndex++)
-            {
-                if (slotsByCue.ContainsKey(cueIndex))
-                    continue;
-
-                SkillVfxAuthoringSlot slot = CreateSlotObject(root, cueIndex, SyncUndoLabel);
-                slotsByCue.Add(cueIndex, slot);
-                CreateSavedCueEntries(source, cueIndex, character, slot.transform, SyncUndoLabel);
-            }
-
-            MarkHierarchyDirty(root);
-        }
-        finally
-        {
-            Undo.CollapseUndoOperations(undoGroup);
-        }
+        RebuildTimelineAuthoring(SyncUndoLabel);
 #endif
     }
 
+    [Button("Load VFX Data", ButtonSizes.Large)]
+    [PropertyTooltip("Discard unsaved hierarchy changes and rebuild from the selected Source Asset and Entry.")]
     public void LoadTimelineVfxData()
     {
 #if UNITY_EDITOR
-        IAnimationVfxTimelineSource source = CreateTimelineSource();
-        if (source == null || !TryGetAuthoringRoots(out Transform character, out Transform root))
-            return;
-
-        Undo.IncrementCurrentGroup();
-        int undoGroup = Undo.GetCurrentGroup();
-        Undo.SetCurrentGroupName(LoadUndoLabel);
-        try
-        {
-            StopAllVfx();
-            RemoveExistingAuthoring(root);
-            RebuildAuthoring(source, character, root, LoadUndoLabel);
-            Undo.RecordObject(this, LoadUndoLabel);
-            authoringSourceAsset = source.SourceAsset;
-            authoringEntryId = source.EntryId;
-            EditorUtility.SetDirty(this);
-            MarkHierarchyDirty(root);
-        }
-        finally
-        {
-            Undo.CollapseUndoOperations(undoGroup);
-        }
+        RebuildTimelineAuthoring(LoadUndoLabel);
 #endif
     }
 
+    [Button("Save VFX Data", ButtonSizes.Large)]
+    [PropertyTooltip("Save all authoring entries under Source VFX Root through the selected source adapter.")]
     public void SaveTimelineVfxData()
     {
 #if UNITY_EDITOR
@@ -406,13 +430,32 @@ public class SetAnimationVfxData : MonoBehaviour
 #endif
     }
 
+    [Button("Refresh All Visuals")]
     public void RefreshAllVisuals()
     {
+        StopTimelineVfxPreview();
         SkillVfxAuthoringEntry[] entries = GetSourceEntries();
         for (int i = 0; i < entries.Length; i++)
             entries[i]?.RefreshVisualPreview();
     }
 
+    [Button("Play All VFX")]
+    public void PlayAllVfx()
+    {
+        StopAllVfx();
+        SkillVfxAuthoringEntry[] entries = GetSourceEntries();
+        var cueIndices = new SortedSet<int>();
+        for (int i = 0; i < entries.Length; i++)
+        {
+            if (entries[i] != null && entries[i].CueIndex >= 0)
+                cueIndices.Add(entries[i].CueIndex);
+        }
+
+        foreach (int cueIndex in cueIndices)
+            PlayVfx(cueIndex);
+    }
+
+    [Button("Stop All VFX")]
     public void StopAllVfx()
     {
         SkillVfxAuthoringEntry[] entries = GetSourceEntries();
@@ -420,30 +463,256 @@ public class SetAnimationVfxData : MonoBehaviour
             entries[i]?.StopVisualPreview();
 #if UNITY_EDITOR
         activePreviewLoops.Clear();
+        timelinePreviewSamples.Clear();
+        timelinePreviewLoopGroups.Clear();
+        timelinePreviewReplacedLoopKeys.Clear();
+        timelinePreviewEntries.Clear();
+        nextTimelinePreviewEntries.Clear();
+        timelinePreviewModeActive = false;
 #endif
     }
 
-    public void StopAllLoopPreviews(bool allowParticlesToFinish)
+    public void SampleTimelineVfx(
+        float playheadTime,
+        IReadOnlyList<float> markerTimes,
+        bool forceRestart)
     {
 #if UNITY_EDITOR
-        foreach (List<SkillVfxAuthoringEntry> entries in activePreviewLoops.Values)
+        if (Application.isPlaying || markerTimes == null)
         {
-            for (int i = 0; i < entries.Count; i++)
+            StopTimelineVfxPreview();
+            return;
+        }
+
+        SkillVfxAuthoringEntry[] entries = GetSourceEntries();
+        if (!timelinePreviewModeActive)
+        {
+            for (int i = 0; i < entries.Length; i++)
+                entries[i]?.StopVisualPreview();
+            activePreviewLoops.Clear();
+            timelinePreviewModeActive = true;
+            forceRestart = true;
+        }
+
+        timelinePreviewSamples.Clear();
+        timelinePreviewGeneration++;
+        if (timelinePreviewGeneration <= 0)
+        {
+            timelinePreviewGeneration = 1;
+            foreach (TimelinePreviewLoopGroup group in timelinePreviewLoopGroups.Values)
+                group.Generation = 0;
+        }
+
+        // Rebuild cue state from marker zero so play and scrub resolve the same loops.
+        float clampedPlayheadTime = Mathf.Max(0f, playheadTime);
+        for (int cueIndex = 0; cueIndex < markerTimes.Count; cueIndex++)
+        {
+            float markerTime = Mathf.Max(0f, markerTimes[cueIndex]);
+            if (markerTime > clampedPlayheadTime)
+                break;
+
+            timelinePreviewReplacedLoopKeys.Clear();
+            for (int i = 0; i < entries.Length; i++)
             {
-                if (entries[i] == null)
+                SkillVfxAuthoringEntry entry = entries[i];
+                if (entry == null || entry.CueIndex != cueIndex ||
+                    entry.AnimationAction != AnimationVfxAction.StartLoop || entry.Prefab == null)
+                {
                     continue;
-                if (allowParticlesToFinish)
-                    entries[i].StopLoopVisualPreview(true, 0f);
-                else
-                    entries[i].StopVisualPreview();
+                }
+
+                string key = NormalizeLoopKey(entry.LoopKey);
+                if (key == null || !timelinePreviewReplacedLoopKeys.Add(key))
+                    continue;
+
+                TimelinePreviewLoopGroup group = GetTimelinePreviewLoopGroup(key);
+                group.Generation = timelinePreviewGeneration;
+                group.StartTime = markerTime;
+                group.Active = true;
+                group.Entries.Clear();
+            }
+
+            for (int i = 0; i < entries.Length; i++)
+            {
+                SkillVfxAuthoringEntry entry = entries[i];
+                if (entry == null || entry.CueIndex != cueIndex)
+                    continue;
+
+                if (entry.AnimationAction == AnimationVfxAction.OneShot)
+                {
+                    timelinePreviewSamples[entry] = new TimelinePreviewSample(
+                        clampedPlayheadTime - markerTime,
+                        -1f,
+                        false,
+                        0f);
+                    continue;
+                }
+
+                string key = NormalizeLoopKey(entry.LoopKey);
+                if (key == null)
+                    continue;
+
+                if (entry.AnimationAction == AnimationVfxAction.StartLoop)
+                {
+                    if (entry.Prefab == null ||
+                        !timelinePreviewLoopGroups.TryGetValue(key, out TimelinePreviewLoopGroup group) ||
+                        group.Generation != timelinePreviewGeneration || !group.Active)
+                    {
+                        continue;
+                    }
+
+                    group.Entries.Add(entry);
+                    continue;
+                }
+
+                if (!timelinePreviewLoopGroups.TryGetValue(key, out TimelinePreviewLoopGroup activeGroup) ||
+                    activeGroup.Generation != timelinePreviewGeneration || !activeGroup.Active)
+                {
+                    continue;
+                }
+
+                if (entry.AllowParticlesToFinish)
+                {
+                    float elapsedTime = clampedPlayheadTime - activeGroup.StartTime;
+                    float stopTime = markerTime - activeGroup.StartTime;
+                    for (int j = 0; j < activeGroup.Entries.Count; j++)
+                    {
+                        SkillVfxAuthoringEntry loopEntry = activeGroup.Entries[j];
+                        if (loopEntry != null)
+                        {
+                            timelinePreviewSamples[loopEntry] = new TimelinePreviewSample(
+                                elapsedTime,
+                                stopTime,
+                                true,
+                                entry.ExtraLife);
+                        }
+                    }
+                }
+
+                activeGroup.Active = false;
             }
         }
-        activePreviewLoops.Clear();
+
+        foreach (TimelinePreviewLoopGroup group in timelinePreviewLoopGroups.Values)
+        {
+            if (group.Generation != timelinePreviewGeneration || !group.Active)
+                continue;
+
+            float elapsedTime = clampedPlayheadTime - group.StartTime;
+            for (int i = 0; i < group.Entries.Count; i++)
+            {
+                SkillVfxAuthoringEntry entry = group.Entries[i];
+                if (entry != null)
+                    timelinePreviewSamples[entry] = new TimelinePreviewSample(elapsedTime, -1f, false, 0f);
+            }
+        }
+
+        nextTimelinePreviewEntries.Clear();
+        foreach (KeyValuePair<SkillVfxAuthoringEntry, TimelinePreviewSample> pair in timelinePreviewSamples)
+        {
+            SkillVfxAuthoringEntry entry = pair.Key;
+            TimelinePreviewSample sample = pair.Value;
+            if (entry != null && entry.SampleTimelinePreview(
+                    sample.ElapsedTime,
+                    sample.StopTime,
+                    sample.AllowParticlesToFinish,
+                    sample.StopExtraLife,
+                    forceRestart))
+            {
+                nextTimelinePreviewEntries.Add(entry);
+            }
+        }
+
+        foreach (SkillVfxAuthoringEntry entry in timelinePreviewEntries)
+        {
+            if (entry != null && !nextTimelinePreviewEntries.Contains(entry))
+                entry.StopTimelinePreview();
+        }
+
+        HashSet<SkillVfxAuthoringEntry> previousEntries = timelinePreviewEntries;
+        timelinePreviewEntries = nextTimelinePreviewEntries;
+        nextTimelinePreviewEntries = previousEntries;
+#endif
+    }
+
+    public void StopTimelineVfxPreview()
+    {
+#if UNITY_EDITOR
+        foreach (SkillVfxAuthoringEntry entry in timelinePreviewEntries)
+            entry?.StopTimelinePreview();
+        timelinePreviewEntries.Clear();
+        nextTimelinePreviewEntries.Clear();
+        timelinePreviewSamples.Clear();
+        timelinePreviewLoopGroups.Clear();
+        timelinePreviewReplacedLoopKeys.Clear();
+        timelinePreviewModeActive = false;
+#endif
+    }
+
+    [Button("Clear Authoring Slots")]
+    [PropertyTooltip("Remove only Animation VFX slots and entries under Source VFX Root.")]
+    void ClearAuthoringEntries()
+    {
+#if UNITY_EDITOR
+        Transform root = GetSourceRoot();
+        if (root == null)
+            return;
+
+        SkillVfxAuthoringEntry[] entries = GetSourceEntries();
+        SkillVfxAuthoringSlot[] slots = GetSourceSlots();
+        if (entries.Length == 0 && slots.Length == 0)
+            return;
+
+        if (!EditorUtility.DisplayDialog(
+                "Clear Animation VFX Authoring Slots",
+                $"Remove {slots.Length} slot(s) and {entries.Length} VFX entry(s) under '{root.name}'?",
+                "Remove",
+                "Cancel"))
+        {
+            return;
+        }
+
+        const string undoLabel = "Clear Animation VFX Authoring Slots";
+        StopAllVfx();
+        Undo.IncrementCurrentGroup();
+        int undoGroup = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName(undoLabel);
+        RemoveExistingAuthoring(root);
+        MarkHierarchyDirty(root);
+        Undo.CollapseUndoOperations(undoGroup);
+#endif
+    }
+
+    [Button("Validate Current Data")]
+    void ValidateCurrentData()
+    {
+#if UNITY_EDITOR
+        IAnimationVfxTimelineSource source = CreateTimelineSource();
+        if (source == null)
+        {
+            Debug.LogWarning("Select a supported Animation VFX Source Asset and Entry before validation.", this);
+            return;
+        }
+
+        if (!TryBuildSourceData(source, out List<AnimationVfxCue> cues, out List<string> issues))
+            return;
+
+        if (issues.Count == 0)
+        {
+            Debug.Log($"Animation VFX authoring data for '{source.DisplayName}' passed validation ({cues.Count} entries).", this);
+            return;
+        }
+
+        Debug.LogWarning(
+            $"Animation VFX authoring data for '{source.DisplayName}' has {issues.Count} issue(s):\n- " +
+            string.Join("\n- ", issues),
+            this);
 #endif
     }
 
     public void PlayVfx(int cueIndex)
     {
+        StopTimelineVfxPreview();
         SkillVfxAuthoringEntry[] entries = GetSourceEntries();
 #if UNITY_EDITOR
         var replacedKeys = new HashSet<string>(System.StringComparer.Ordinal);
@@ -466,74 +735,15 @@ public class SetAnimationVfxData : MonoBehaviour
         }
     }
 
-    public void PlayOneShotVfx(int cueIndex)
-    {
-        SkillVfxAuthoringEntry[] entries = GetSourceEntries();
-        for (int i = 0; i < entries.Length; i++)
-        {
-            if (entries[i] != null && entries[i].CueIndex == cueIndex &&
-                entries[i].AnimationAction == AnimationVfxAction.OneShot)
-                entries[i].PlayVisualPreview();
-        }
-    }
-
     public void StopVfx(int cueIndex)
     {
+        StopTimelineVfxPreview();
         SkillVfxAuthoringEntry[] entries = GetSourceEntries();
         for (int i = 0; i < entries.Length; i++)
         {
             if (entries[i] != null && entries[i].CueIndex == cueIndex)
                 entries[i].StopVisualPreview();
         }
-    }
-
-    public void SyncLoopPreviews(int appliedCueCount)
-    {
-#if UNITY_EDITOR
-        SkillVfxAuthoringEntry[] entries = GetSourceEntries();
-        var desired = new Dictionary<string, List<SkillVfxAuthoringEntry>>(System.StringComparer.Ordinal);
-        for (int cueIndex = 0; cueIndex < appliedCueCount; cueIndex++)
-        {
-            for (int i = 0; i < entries.Length; i++)
-            {
-                SkillVfxAuthoringEntry entry = entries[i];
-                if (entry == null || entry.CueIndex != cueIndex)
-                    continue;
-                string key = NormalizeLoopKey(entry.LoopKey);
-                if (key == null)
-                    continue;
-                if (entry.AnimationAction == AnimationVfxAction.StartLoop && entry.Prefab != null)
-                {
-                    if (!desired.TryGetValue(key, out List<SkillVfxAuthoringEntry> group))
-                    {
-                        group = new List<SkillVfxAuthoringEntry>();
-                        desired[key] = group;
-                    }
-                    group.Add(entry);
-                }
-                else if (entry.AnimationAction == AnimationVfxAction.StopLoop)
-                    desired.Remove(key);
-            }
-        }
-
-        var activeKeys = new List<string>(activePreviewLoops.Keys);
-        for (int i = 0; i < activeKeys.Count; i++)
-        {
-            string key = activeKeys[i];
-            if (!desired.TryGetValue(key, out List<SkillVfxAuthoringEntry> group) ||
-                !AreSamePreviewGroup(activePreviewLoops[key], group))
-                StopPreviewLoopGroup(key, false, 0f);
-        }
-
-        foreach (KeyValuePair<string, List<SkillVfxAuthoringEntry>> pair in desired)
-        {
-            if (activePreviewLoops.ContainsKey(pair.Key))
-                continue;
-            for (int i = 0; i < pair.Value.Count; i++)
-                pair.Value[i]?.PlayVisualPreview();
-            activePreviewLoops[pair.Key] = new List<SkillVfxAuthoringEntry>(pair.Value);
-        }
-#endif
     }
 
     public SkillVfxAuthoringEntry FindEntry(int cueIndex)
@@ -565,6 +775,39 @@ public class SetAnimationVfxData : MonoBehaviour
     }
 
 #if UNITY_EDITOR
+    public bool TryGetSelectedGenericBonePath(out string path, out string error)
+    {
+        path = null;
+        error = null;
+
+        Animator animator = PreviewAnimator;
+        if (animator == null)
+        {
+            error = "The Animation VFX authoring target has no Animator below Character Root.";
+            return false;
+        }
+
+        Transform selected = Selection.activeTransform;
+        if (selected == null)
+        {
+            error = "Select a bone Transform below the preview Animator first.";
+            return false;
+        }
+
+        if (selected == animator.transform || !selected.IsChildOf(animator.transform))
+        {
+            error = $"'{selected.name}' must be below Animator '{animator.name}' and cannot be the Animator root.";
+            return false;
+        }
+
+        path = AnimationUtility.CalculateTransformPath(selected, animator.transform);
+        if (!string.IsNullOrWhiteSpace(path))
+            return true;
+
+        error = $"Could not calculate a Generic bone path for '{selected.name}'.";
+        return false;
+    }
+
     IAnimationVfxTimelineSource CreateTimelineSource()
     {
         return AnimationVfxTimelineSourceFactory.Create(TimelineSourceAsset, TimelineEntryId);
@@ -602,10 +845,15 @@ public class SetAnimationVfxData : MonoBehaviour
                 issues.Add($"Entry '{entry.name}' could not resolve its anchor.");
             else if (cue.action != AnimationVfxAction.StopLoop)
             {
-                cue.localPosition = anchor.InverseTransformPoint(placement.position);
+                cue.localPosition = AnimationVfxAnchorResolver.ResolveLocalPosition(anchor, cue, placement.position);
                 cue.localEulerAngles = (Quaternion.Inverse(anchor.rotation) * placement.rotation).eulerAngles;
                 cue.localScale = CalculateScaleMultiplier(placement, cue.prefab);
             }
+            AnimationVfxValidation.CollectAnchorResolutionIssues(
+                context,
+                cue,
+                $"Entry '{entry.name}'",
+                issues);
             cues.Add(cue);
         }
 
@@ -635,23 +883,6 @@ public class SetAnimationVfxData : MonoBehaviour
                 slots.Add(cue.CueIndex, slot);
             }
             SkillVfxAuthoringEntry entry = CreateEntryObject(slot.transform, cue, undoLabel);
-            ApplyStoredPose(character, entry, cue);
-        }
-    }
-
-    static void CreateSavedCueEntries(
-        IAnimationVfxTimelineSource source,
-        int cueIndex,
-        Transform character,
-        Transform root,
-        string undoLabel)
-    {
-        for (int i = 0; i < source.CueCount; i++)
-        {
-            IAnimationVfxCue cue = source.GetCue(i);
-            if (cue == null || cue.CueIndex != cueIndex)
-                continue;
-            SkillVfxAuthoringEntry entry = CreateEntryObject(root, cue, undoLabel);
             ApplyStoredPose(character, entry, cue);
         }
     }
@@ -728,19 +959,6 @@ public class SetAnimationVfxData : MonoBehaviour
         return false;
     }
 
-    static void MigrateLegacyEntriesToSlots(Transform root)
-    {
-        SkillVfxAuthoringEntry[] entries = root.GetComponentsInChildren<SkillVfxAuthoringEntry>(true);
-        for (int i = 0; i < entries.Length; i++)
-        {
-            SkillVfxAuthoringEntry entry = entries[i];
-            if (entry == null || entry.GetComponentInParent<SkillVfxAuthoringSlot>() != null)
-                continue;
-            SkillVfxAuthoringSlot slot = CreateSlotObject(root, entry.CueIndex, SyncUndoLabel);
-            Undo.SetTransformParent(entry.transform, slot.transform, SyncUndoLabel);
-        }
-    }
-
     static void RemoveExistingAuthoring(Transform root)
     {
         SkillVfxAuthoringSlot[] slots = root.GetComponentsInChildren<SkillVfxAuthoringSlot>(true);
@@ -809,17 +1027,6 @@ public class SetAnimationVfxData : MonoBehaviour
         }
     }
 
-    static bool AreSamePreviewGroup(List<SkillVfxAuthoringEntry> left, List<SkillVfxAuthoringEntry> right)
-    {
-        if (left == null || right == null || left.Count != right.Count)
-            return false;
-        for (int i = 0; i < left.Count; i++)
-        {
-            if (left[i] != right[i])
-                return false;
-        }
-        return true;
-    }
 #else
     void PlayPreviewEntry(SkillVfxAuthoringEntry entry)
     {
@@ -867,6 +1074,47 @@ public class SetAnimationVfxData : MonoBehaviour
     {
         return string.IsNullOrWhiteSpace(loopKey) ? null : loopKey.Trim();
     }
+
+#if UNITY_EDITOR
+    TimelinePreviewLoopGroup GetTimelinePreviewLoopGroup(string key)
+    {
+        if (!timelinePreviewLoopGroups.TryGetValue(key, out TimelinePreviewLoopGroup group))
+        {
+            group = new TimelinePreviewLoopGroup();
+            timelinePreviewLoopGroups.Add(key, group);
+        }
+
+        return group;
+    }
+
+    readonly struct TimelinePreviewSample
+    {
+        public readonly float ElapsedTime;
+        public readonly float StopTime;
+        public readonly bool AllowParticlesToFinish;
+        public readonly float StopExtraLife;
+
+        public TimelinePreviewSample(
+            float elapsedTime,
+            float stopTime,
+            bool allowParticlesToFinish,
+            float stopExtraLife)
+        {
+            ElapsedTime = elapsedTime;
+            StopTime = stopTime;
+            AllowParticlesToFinish = allowParticlesToFinish;
+            StopExtraLife = stopExtraLife;
+        }
+    }
+
+    sealed class TimelinePreviewLoopGroup
+    {
+        public readonly List<SkillVfxAuthoringEntry> Entries = new List<SkillVfxAuthoringEntry>();
+        public int Generation;
+        public float StartTime;
+        public bool Active;
+    }
+#endif
 
     static Vector3 CalculateScaleMultiplier(Transform placement, GameObject prefabAsset)
     {

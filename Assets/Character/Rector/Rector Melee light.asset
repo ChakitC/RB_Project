@@ -14,22 +14,52 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   steps:
   - entryId: 3741ab58d4e041a2974c7b6aa4e9cc71
+    animationVfxTrack:
+      cues:
+      - cueIndex: 0
+        action: 0
+        prefab: {fileID: 3440437423129685215, guid: f73ef999ae2ab8a4aaaa6008b3173df4, type: 3}
+        anchor: 0
+        customAnchorPath: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r
+        humanoidBone: 18
+        localPosition: {x: 1.6799998, y: 1.96, z: 2.24}
+        localEulerAngles: {x: 13.898131, y: 152.0659, z: 305.9455}
+        localScale: {x: 1.5940006, y: 1.594, z: 1.5940006}
+        anchorMode: 1
+        loopKey: 
+        extraLife: 0
+        allowParticlesToFinish: 1
+      - cueIndex: 0
+        action: 0
+        prefab: {fileID: 3440437423129685215, guid: f73ef999ae2ab8a4aaaa6008b3173df4, type: 3}
+        anchor: 0
+        customAnchorPath: 
+        humanoidBone: 18
+        localPosition: {x: 1.2799997, y: 1.86, z: 1.97}
+        localEulerAngles: {x: 10.058472, y: 154.80257, z: 294.3968}
+        localScale: {x: 1.5939997, y: 1.5939999, z: 1.5939994}
+        anchorMode: 1
+        loopKey: 
+        extraLife: 0
+        allowParticlesToFinish: 1
     clip:
       _FadeDuration: 0.25
       _Speed: 1
       _Events:
         _NormalizedTimes:
         - 0.2
+        - 0.28486055
         - 0.67
         - NaN
         _Callbacks: []
         _Names:
         - {fileID: 11400000, guid: a1d9c7b1f0f54a2b8c1d6e7f90123456, type: 2}
+        - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
         - {fileID: 11400000, guid: b2e8d6c4a1b347c98d0e1f2a34567890, type: 2}
       _Clip: {fileID: 4071596695020390534, guid: ee996ceef47c7f946863e887517453d2, type: 3}
       _NormalizedStartTime: NaN
     duration: 0
-    chainWindowN: {x: 0, y: 0}
+    chainWindowN: {x: 0.42098275, y: 0.53585654}
     dropBufferOnWindowExpire: 0
     applyKnockback: 1
     knockbackDistance: 4

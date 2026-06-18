@@ -23,6 +23,28 @@ MonoBehaviour:
   weaponHandMode: 0
   combatRole: 0
   chainAttackSkill: {fileID: 0}
+  skillSlots:
+  - slotId: 0
+    displayName: 
+    hotkey: 282
+    defaultOptionIndex: 0
+    options:
+    - optionId: 
+      displayName: 
+      skillAsset: {fileID: 11400000, guid: 561595d896a27e041a2839938b3e6202, type: 2}
+      skillLevel: 1
+      supportAssets: []
+      maxSupportSlots: 3
+  - slotId: 1
+    displayName: 
+    hotkey: 258
+    defaultOptionIndex: 0
+    options: []
+  - slotId: 2
+    displayName: 
+    hotkey: 259
+    defaultOptionIndex: 0
+    options: []
   maxHP: 30000
   maxStamina: 50
   Damage: 10

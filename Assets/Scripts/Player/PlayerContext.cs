@@ -4,6 +4,7 @@ using UnityEngine;
 [DefaultExecutionOrder(-200)]
 public class PlayerContext : CharacteContext
 {
+    public static PlayerContext Instance { get; private set; }
     [Header("Modules")]
     public PlayerUIContext playerUIContext;
 
@@ -36,8 +37,14 @@ public class PlayerContext : CharacteContext
 
     void Awake()
     {
+        Instance = this;
         ResolveReferences();
         TryMigrateLegacyPartyCommandConfiguration();
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
 
     void Start()

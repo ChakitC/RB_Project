@@ -67,6 +67,7 @@ Most gameplay code should enter through the character context:
 
 For details, read:
 
+- `Docs\GAMEPLAY_OVERVIEW.md`
 - `Docs\ARCHITECTURE\CHARACTER_CONTEXT.md`
 - `Docs\ARCHITECTURE\COMBAT_EVENT_BUS.md`
 - `Docs\SYSTEMS\WEAPON_SYSTEM.md`

@@ -167,6 +167,17 @@ public class SkillGemDefinition : ScriptableObject
     [SerializeField, HideInInspector]
     private List<SkillVfxEvent> skillVfxEvents = new List<SkillVfxEvent>();
 
+    [PropertyOrder(-25)]
+    [FoldoutGroup("Cutscene Skill", Expanded = false), LabelText("Is Cutscene Skill"), ToggleLeft]
+    [SerializeField] private bool isCutsceneSkill;
+
+    [PropertyOrder(-24)]
+    [FoldoutGroup("Cutscene Skill", Expanded = false), ShowIf(nameof(isCutsceneSkill)), HideLabel]
+    [SerializeField] private CutsceneDef cutsceneDef = new CutsceneDef();
+
+    public bool IsCutsceneSkill => isCutsceneSkill;
+    public CutsceneDef CutsceneDef => cutsceneDef;
+
     [PropertyOrder(-34)]
     [FoldoutGroup("Pre-Cast Block", Expanded = false), LabelText("Blockable"), ToggleLeft]
     [SerializeField] private bool blockablePreCast;
@@ -272,7 +283,7 @@ public class SkillGemDefinition : ScriptableObject
     public IReadOnlyList<SkillVfxEvent> SkillVfxEvents => skillVfxEvents ?? (skillVfxEvents = new List<SkillVfxEvent>());
     public bool HasSkillVfxEvents => skillVfxEvents != null && skillVfxEvents.Count > 0;
     public bool RequiresSkillTimelineEvents =>
-        (payload != null && payload.RequiresSkillTimelineEvents) || HasSkillVfxEvents;
+        (payload != null && payload.RequiresSkillTimelineEvents) || HasSkillVfxEvents || isCutsceneSkill;
 
     public void ReplaceSkillVfxEvents(List<SkillVfxEvent> events)
     {
@@ -345,6 +356,12 @@ public class SkillGemDefinition : ScriptableObject
 
         if (HasSkillVfxEvents)
             CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.Vfx);
+
+        if (isCutsceneSkill)
+        {
+            CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.CutsceneSkillStart);
+            CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.CutsceneSkillEnd);
+        }
     }
 
     public void CollectSkillVfxValidationIssues(List<string> issues)

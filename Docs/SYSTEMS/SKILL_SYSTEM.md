@@ -204,3 +204,90 @@ A valid skill must satisfy all of the following:
 
 For C# validation, run only `Assets/Scripts/CheckAssemblyBuild.ps1` as described
 in `Docs/VALIDATION.md`.
+
+---
+
+## Cutscene Skill Cutscene
+
+Cutscene Skills add a two-phase presentation on top of the normal skill flow:
+
+**Phase 1 — Cutscene:** a dedicated character animation and camera animation play
+while the main scene is hidden. No gameplay effects occur yet.
+
+**Phase 2 — Execution:** the scene returns to normal, the character plays the
+attack/buff animation, and the payload fires at `castPointNormalized` as usual.
+
+### Enabling a Skill as Cutscene
+
+Open the `SkillGemDefinition` asset and expand the **Cutscene Skill** foldout:
+
+1. Enable **Is Cutscene Skill**.
+2. Assign `characterCutsceneClip` — a `ClipTransition` played on the cutscene
+   character rig. Add `Vfx` markers to this clip to drive cutscene VFX spawning
+   (see **Authoring Cutscene VFX** below).
+3. Assign `cameraCutsceneClip` — the `AnimationClip` played on the cutscene
+   camera rig.
+4. Tune `worldSlowScale` (default 0.05), `fadeInDuration`, `fadeOutDuration`,
+   and `barThickness` as needed.
+
+The foldout is hidden for non-cutscene skills; they require no additional setup.
+
+### Authoring Cutscene VFX
+
+Cutscene VFX are authored via the same `SetAnimationVfxData` tool as regular
+skill VFX:
+
+1. In the cutscene scene, add a `SetAnimationVfxData` component (on the
+   cutscene character object or any authoring holder).
+2. Set **Source Asset** = the `SkillGemDefinition`.
+3. Set **Entry** = **"Cutscene VFX"** (only visible when **Is Cutscene Skill**
+   is enabled).
+4. Set **Character Root** = the cutscene character rig root.
+5. Add `Vfx` markers to `characterCutsceneClip` at the desired spawn times, then
+   use **Create / Sync VFX Slots** to generate authoring slots for each marker.
+6. Place VFX prefabs in the slots, position them relative to the cutscene
+   character's bones (using the same anchor types as regular skill VFX).
+7. Press **Save VFX Data** — data writes to `CutsceneDef.cutsceneVfxEvents`
+   inside the `SkillGemDefinition`.
+
+At runtime, `CutsceneSkillPresenter` fires each `Vfx` event via Animancer and
+spawns the corresponding prefabs, automatically moving them to the **"Cutscene"**
+layer so the cutscene camera can see them.
+
+### Animation Clip Structure
+
+The `skillClip` for an Cutscene Skill must contain these Animancer event markers
+in order:
+
+| Marker | Animancer event name |
+|--------|----------------------|
+| Cutscene start | `CutsceneSkillStart` |
+| Cutscene end | `CutsceneSkillEnd` |
+| Skill fires | `castPointNormalized` (existing cast-point event) |
+
+`castPointNormalized` must be **after** `CutsceneSkillEnd` so gameplay effects
+only trigger once the cutscene has finished.
+
+### Runtime
+
+`CutsceneSkillPresenter` listens to `CharacterSkillManager.CastStarted`
+and `CharacterAnimBrain.SkillTimelineEventRaised`. On `CutsceneSkillStart` it:
+
+- Calls `TimeSlowManager.StartSlow(worldSlowScale, float.MaxValue)` (enemies slow,
+  player animation continues normally because `PlayerContext.UsesWorldSlow = false`).
+- Disables `CameraF` (main follow camera) and enables the cutscene camera.
+- Plays `characterCutsceneClip` (`ClipTransition`) and `cameraCutsceneClip`
+  (`AnimationClip`) via `AnimancerComponent.Play()` in unscaled time mode.
+- Fades in the letterbox overlay (black bars + solid background, unscaled time).
+- Binds `Vfx` Animancer event callbacks on the cutscene character state; each
+  `Vfx` event spawns the corresponding `cutsceneVfxEvents` cues, using
+  `AnimationVfxAnchorResolver` for placement and `SetLayerRecursive` to put them
+  on the **"Cutscene"** layer.
+
+On `CutsceneSkillEnd` it reverses all of the above and re-enables the main camera.
+If the cast is cancelled mid-cutscene, `CastCancelled` triggers a fast 0.05 s exit.
+
+### Scene Setup
+
+See `Docs/PREFABS_AND_AUTHORING.md` — **Cutscene Skill Cutscene Scene Objects**
+for the required hierarchy, layer, and component wiring.

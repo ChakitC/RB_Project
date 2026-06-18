@@ -45,6 +45,14 @@ public sealed class SkillVfxTimelineSource : IAnimationVfxTimelineSource
                 new[] { hitbox.HitboxStartEventName, hitbox.HitboxEndEventName },
                 allowDuplicateEvents: true));
         }
+        if (skill != null && skill.IsCutsceneSkill)
+        {
+            lanes.Add(new AnimationVfxTimelineLane(
+                "Cutscene",
+                AnimationVfxTimelineLaneKind.Events,
+                new[] { CombatTimelineEventName.CutsceneSkillStart, CombatTimelineEventName.CutsceneSkillEnd },
+                readOnly: true));
+        }
     }
 
     public ScriptableObject SourceAsset => skill;

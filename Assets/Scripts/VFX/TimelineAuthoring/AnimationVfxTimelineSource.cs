@@ -9,7 +9,11 @@ public static class AnimationVfxTimelineSourceFactory
     public static IAnimationVfxTimelineSource Create(ScriptableObject asset, string entryId)
     {
         if (asset is SkillGemDefinition skill)
-            return new SkillVfxTimelineSource(skill);
+        {
+            return skill.IsCutsceneSkill
+                ? (IAnimationVfxTimelineSource)new CombinedCutsceneSkillVfxTimelineSource(skill)
+                : new SkillVfxTimelineSource(skill);
+        }
         if (asset is MeleeComboSO combo)
             return new MeleeComboVfxTimelineSource(combo, entryId);
         if (asset is CharacterAnimProfileSO profile)
@@ -20,7 +24,7 @@ public static class AnimationVfxTimelineSourceFactory
     public static List<AnimationVfxTimelineEntry> GetEntries(ScriptableObject asset)
     {
         var entries = new List<AnimationVfxTimelineEntry>();
-        if (asset is SkillGemDefinition)
+        if (asset is SkillGemDefinition skill)
         {
             entries.Add(new AnimationVfxTimelineEntry("main", "Main Skill"));
         }

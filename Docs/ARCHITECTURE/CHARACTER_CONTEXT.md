@@ -109,6 +109,35 @@ if (ctx is AllyContext allyContext)
 }
 ```
 
+## PlayerContext Static Access
+
+`PlayerContext` exposes a static `Instance` property for secondary systems that
+need a reference to the player context but live outside the player prefab
+hierarchy (e.g. camera, UI overlays, mini-map).
+
+```csharp
+PlayerContext ctx = PlayerContext.Instance; // null if no player is alive
+```
+
+`Instance` is set in `PlayerContext.Awake` and cleared in `PlayerContext.OnDestroy`.
+It is safe to read every frame; null-check before use.
+
+**When to use `PlayerContext.Instance`:**
+
+- The calling component is not on the player prefab (camera, world UI, etc.).
+- Only one player exists in the scene.
+- No manual serialized reference is needed.
+
+**When NOT to use it:**
+
+- Inside character modules that already have `ctx` available — read through
+  `ctx` directly.
+- In systems that run on ally or enemy objects — use their own context.
+- Any future multi-player scenario where `Get(index)` on a registry would
+  be needed instead.
+
+---
+
 ## Avoid
 
 - Declaring another `public class PlayerContext`.

@@ -14,7 +14,7 @@ public abstract class CharacteContext : MonoBehaviour
     public CombatEventBus CombatEventBus;
     public Rigidbody rb;
     public CharacterController cc;
-    
+
     [Header("Common Modules")]
     public AITargetInfo TargetInfo;
     public CharacterEquipment Equipment;

@@ -28,18 +28,28 @@ public sealed class AnimationVfxTimelineLane
     public AnimationVfxTimelineLaneKind Kind { get; }
     public IReadOnlyList<CombatTimelineEventName> EventNames { get; }
     public bool AllowDuplicateEvents { get; }
+    public bool ReadOnly { get; }
 
     public AnimationVfxTimelineLane(
         string label,
         AnimationVfxTimelineLaneKind kind,
         IReadOnlyList<CombatTimelineEventName> eventNames = null,
-        bool allowDuplicateEvents = false)
+        bool allowDuplicateEvents = false,
+        bool readOnly = false)
     {
         Label = label;
         Kind = kind;
         EventNames = eventNames ?? Array.Empty<CombatTimelineEventName>();
         AllowDuplicateEvents = allowDuplicateEvents;
+        ReadOnly = readOnly;
     }
+}
+
+public interface IAnimationVfxTimelineMultiMode
+{
+    string SecondaryModeLabel { get; }
+    bool IsSecondaryMode { get; }
+    void SetMode(bool secondary);
 }
 
 public interface IAnimationVfxTimelineSource : IAnimationVfxCueSource

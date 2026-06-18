@@ -217,6 +217,63 @@ including graceful emission stop and `Extra Life`. Pause freezes both animation
 and particles; scrubbing backward or jumping time restarts simulation at that
 position; Stop clears all timeline playback instances.
 
+---
+
+## Cutscene Skill Cutscene Scene Objects
+
+These objects must be present in the gameplay scene for Cutscene Skills to work.
+
+### 1. Unity Layer
+
+Create a layer named **`Cutscene`** in **Edit → Project Settings → Tags and Layers**.
+
+### 2. Main Camera
+
+On the main camera's `Camera` component set **Culling Mask** to exclude the
+`Cutscene` layer. The `CameraF` component on the same object is disabled/enabled
+by `CutsceneSkillPresenter` automatically.
+
+### 3. CutsceneCameraRig (new GameObject in scene)
+
+```
+CutsceneCameraRig
+├── AnimancerComponent          ← plays cameraCutsceneClip
+└── CutsceneCamera (child)
+    └── Camera component
+        - Clear Flags  : Solid Color  (background = black, hides main scene)
+        - Culling Mask : Cutscene layer only
+        - Depth        : 1  (renders on top of main camera at depth 0)
+        → disabled by default
+```
+
+### 4. CutsceneCharacter (new GameObject in scene)
+
+```
+CutsceneCharacter               ← Layer = Cutscene (set on this object AND all children)
+├── SkinnedMeshRenderer         ← shared mesh/material from the character model
+└── AnimancerComponent          ← plays characterCutsceneClip
+```
+
+Set the layer to `Cutscene` on every object in this hierarchy so the cutscene
+camera can see them and the main camera cannot.
+
+### 5. CutsceneSkillPresenter
+
+Add `CutsceneSkillPresenter` to the **player prefab** (or to a persistent
+scene GameObject) and wire the serialized fields:
+
+| Field | Assignment |
+|-------|-----------|
+| `_skillManager` | Player's `CharacterSkillManager` |
+| `_animBrain` | Player's `CharacterAnimBrain` |
+| `_mainFollowCamera` | Main camera's `CameraF` component |
+| `_cutsceneCamera` | `CutsceneCamera` Camera component |
+| `_cutsceneCamAnimancer` | `CutsceneCameraRig` AnimancerComponent |
+| `_cutsceneCharAnimancer` | `CutsceneCharacter` AnimancerComponent |
+
+`_sortingOrder` (default 31999) controls the letterbox overlay depth relative to
+other screen effects. Adjust `_barColor` to change the bar/background colour.
+
 Particle previews use temporary, non-saved instances and remain visible without
 selecting authored Hierarchy objects. During Play the window advances cached
 ParticleSystems incrementally on its 75 FPS tick. Scrubbing rebuilds from the

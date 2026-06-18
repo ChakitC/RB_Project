@@ -10,10 +10,15 @@ public enum CombatTimelineEventName
     SpawnEffect = 13,
     ShakeCamera = 14,
 
+    TauntApply = 30,
+
     Vfx = 20,
 
     PreCastOpen = 200,
     PreCastClose = 201,
+
+    CutsceneSkillStart = 210,
+    CutsceneSkillEnd   = 211,
 }
 
 public static class CombatTimelineEventNames
@@ -45,12 +50,18 @@ public static class CombatTimelineEventNames
                 return "SpawnEffect";
             case CombatTimelineEventName.ShakeCamera:
                 return "ShakeCamera";
+            case CombatTimelineEventName.TauntApply:
+                return "TauntApply";
             case CombatTimelineEventName.Vfx:
                 return "Vfx";
             case CombatTimelineEventName.PreCastOpen:
                 return "PreCastOpen";
             case CombatTimelineEventName.PreCastClose:
                 return "PreCastClose";
+            case CombatTimelineEventName.CutsceneSkillStart:
+                return "CutsceneSkillStart";
+            case CombatTimelineEventName.CutsceneSkillEnd:
+                return "CutsceneSkillEnd";
         }
 
         return eventName == CombatTimelineEventName.None ? null : eventName.ToString();

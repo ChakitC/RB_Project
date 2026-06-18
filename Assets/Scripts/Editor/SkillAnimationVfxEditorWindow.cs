@@ -37,6 +37,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     bool draggingRangeEnd;
     float draggedNormalizedTime;
     CombatTimelineEventName eventToAdd = CombatTimelineEventName.Vfx;
+    bool _cutsceneModeActive;
 
     [MenuItem(MenuPath)]
     static void OpenWindow()
@@ -89,7 +90,11 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         IAnimationVfxTimelineSource source = GetSource();
         AnimationClip clip = GetClip(source);
         Animator animator = authoringTarget != null ? authoringTarget.PreviewAnimator : null;
+
+        if (source is IAnimationVfxTimelineMultiMode multiMode)
+            multiMode.SetMode(_cutsceneModeActive);
         BuildTracks(source);
+        DrawMultiModeToggle(source);
 
         DrawSourceSummary(source, clip, animator);
         DrawTransport(source, clip, animator);
@@ -357,16 +362,22 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         {
             TimelineEvent timelineEvent = timelineEvents[i];
             int trackIndex = GetTrackIndex(timelineEvent.EventName);
+            bool readOnly = tracks[trackIndex].Lane?.ReadOnly ?? false;
             Rect row = GetTrackContentRect(area, trackIndex);
             float time = draggingEventIndex == timelineEvent.SerializedIndex ? draggedNormalizedTime : timelineEvent.NormalizedTime;
             Rect marker = GetMarkerRect(row, time);
-            DrawMarker(marker, GetEventColor(timelineEvent.EventName), timelineEvent.DisplayName);
+            Color color = GetEventColor(timelineEvent.EventName);
+            if (readOnly) color.a *= 0.55f;
+            DrawMarker(marker, color, timelineEvent.DisplayName);
             if (current.type == EventType.MouseDown && current.button == 0 && marker.Contains(current.mousePosition))
             {
-                draggingEventIndex = timelineEvent.SerializedIndex;
+                if (!readOnly)
+                {
+                    draggingEventIndex = timelineEvent.SerializedIndex;
+                    draggedNormalizedTime = time;
+                    isPlaying = false;
+                }
                 selectedEventIndex = timelineEvent.SerializedIndex;
-                draggedNormalizedTime = time;
-                isPlaying = false;
                 SelectAndPreviewEntry(timelineEvent);
                 current.Use();
             }
@@ -714,6 +725,19 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         selectedEventIndex = -1;
         draggingPointTrack = -1;
         draggingRangeTrack = -1;
+        _cutsceneModeActive = false;
+    }
+
+    void DrawMultiModeToggle(IAnimationVfxTimelineSource source)
+    {
+        if (source is not IAnimationVfxTimelineMultiMode multi)
+            return;
+        EditorGUILayout.BeginHorizontal();
+        bool wantMain = GUILayout.Toggle(!_cutsceneModeActive, "Main", EditorStyles.miniButtonLeft);
+        bool wantSecondary = GUILayout.Toggle(_cutsceneModeActive, multi.SecondaryModeLabel, EditorStyles.miniButtonRight);
+        EditorGUILayout.EndHorizontal();
+        if (wantMain && _cutsceneModeActive) { _cutsceneModeActive = false; Repaint(); }
+        else if (wantSecondary && !_cutsceneModeActive) { _cutsceneModeActive = true; Repaint(); }
     }
 
     IAnimationVfxTimelineSource GetSource()

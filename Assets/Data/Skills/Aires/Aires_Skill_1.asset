@@ -35,6 +35,7 @@ MonoBehaviour:
     _Speed: 1
     _Events:
       _NormalizedTimes:
+      - 0.16733068
       - 0.32154697
       - 0.4071823
       - 0.41213065
@@ -42,6 +43,7 @@ MonoBehaviour:
       - NaN
       _Callbacks: []
       _Names:
+      - {fileID: 11400000, guid: 74278b3794beb9a4c9fdf911427eb18a, type: 2}
       - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
       - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
       - {fileID: 11400000, guid: a1d9c7b1f0f54a2b8c1d6e7f90123456, type: 2}

@@ -48,6 +48,24 @@ MonoBehaviour:
   taget: {fileID: 0}
   smooth: 0.1
   offset: {x: -4.97, y: -0.21, z: 0}
+  lookAheadWeight: 0.4
+  lookAheadSmooth: 0.15
+  defaultLookAheadDistance: 3
+  lookAheadTable:
+  - weaponType: 0
+    distance: 7
+  - weaponType: 5
+    distance: 5
+  - weaponType: 3
+    distance: 4
+  - weaponType: 4
+    distance: 3
+  - weaponType: 1
+    distance: 2.5
+  - weaponType: 2
+    distance: 2
+  - weaponType: 6
+    distance: 0.5
 --- !u!1 &2151110332578885825
 GameObject:
   m_ObjectHideFlags: 0
@@ -61,6 +79,7 @@ GameObject:
   - component: {fileID: 5346517260373307267}
   - component: {fileID: 8418497808476302663}
   - component: {fileID: 7725517066255669348}
+  - component: {fileID: 8884233916458205665}
   m_Layer: 0
   m_Name: 'Camera '
   m_TagString: MainCamera
@@ -207,7 +226,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c577fbf8b1ee406e90c5e4e85411319f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sourceCamera: {fileID: 0}
+  sourceCamera: {fileID: 5478141767642294992}
   target: {fileID: 0}
   previewInEditMode: 1
   occluderLayers:
@@ -238,3 +257,25 @@ MonoBehaviour:
   debugCastColor: {r: 1, g: 0.82, b: 0.1, a: 0.8}
   debugCandidateColor: {r: 0.15, g: 0.65, b: 1, a: 0.9}
   debugActiveCandidateColor: {r: 0.25, g: 1, b: 0.35, a: 0.95}
+--- !u!95 &8884233916458205665
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2151110332578885825}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 0}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0

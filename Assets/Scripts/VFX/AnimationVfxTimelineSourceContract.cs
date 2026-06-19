@@ -50,6 +50,8 @@ public interface IAnimationVfxTimelineMultiMode
     string SecondaryModeLabel { get; }
     bool IsSecondaryMode { get; }
     void SetMode(bool secondary);
+    ClipTransition ReferenceTransition { get; }
+    IAnimationVfxCueSource ReferenceCueSource { get; }
 }
 
 public interface IAnimationVfxTimelineSource : IAnimationVfxCueSource

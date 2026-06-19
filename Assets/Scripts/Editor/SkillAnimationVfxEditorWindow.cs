@@ -38,6 +38,10 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     float draggedNormalizedTime;
     CombatTimelineEventName eventToAdd = CombatTimelineEventName.Vfx;
     bool _cutsceneModeActive;
+    float _cutsceneSkillFraction;
+    bool _playheadInCutscene;
+    float _cutsceneNormalizedTime;
+    readonly List<TimelineEvent> _cutsceneTimelineEvents = new List<TimelineEvent>();
 
     [MenuItem(MenuPath)]
     static void OpenWindow()
@@ -256,6 +260,15 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     void BuildTracks(IAnimationVfxTimelineSource source)
     {
         tracks.Clear();
+        _cutsceneSkillFraction = 0f;
+        if (source is IAnimationVfxTimelineMultiMode m && m.ReferenceTransition is { IsValid: true } refT)
+        {
+            AnimationClip skillClip = GetClip(source);
+            float refLen  = refT.Clip.length;
+            float mainLen = skillClip != null ? skillClip.length : 0f;
+            float total   = refLen + mainLen;
+            _cutsceneSkillFraction = total > 0f ? refLen / total : 0f;
+        }
         tracks.Add(new Track("Animation", TrackKind.Animation, null));
         if (source != null)
         {
@@ -277,7 +290,9 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             return;
 
         BuildTimelineEvents(source);
-        DrawAnimationTrack(GetTrackContentRect(area, 0), clip);
+        AnimationClip refClip = source is IAnimationVfxTimelineMultiMode rm && rm.ReferenceTransition is { IsValid: true } rt
+            ? rt.Clip : null;
+        DrawAnimationTrack(GetTrackContentRect(area, FindTrack(TrackKind.Animation)), clip, _cutsceneSkillFraction, refClip);
         DrawAdapterLanes(area, source);
         DrawEventMarkers(area, source);
         DrawPlayhead(contentArea);
@@ -395,18 +410,40 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             draggingEventIndex = -1;
             current.Use();
         }
+
+        if (_cutsceneSkillFraction > 0f)
+        {
+            for (int i = 0; i < _cutsceneTimelineEvents.Count; i++)
+            {
+                TimelineEvent ev = _cutsceneTimelineEvents[i];
+                int trackIndex = GetTrackIndex(ev.EventName);
+                Rect row = GetTrackContentRect(area, trackIndex);
+                Rect marker = GetCutsceneMarkerRect(row, ev.NormalizedTime);
+                Color color = GetEventColor(ev.EventName);
+                color.a *= 0.65f;
+                DrawMarker(marker, color, ev.DisplayName);
+            }
+        }
     }
 
     void DrawRuler(Rect area, AnimationClip clip)
     {
         EditorGUI.DrawRect(area, new Color(0.17f, 0.17f, 0.17f));
-        float length = clip != null ? clip.length : 0f;
+        float skillLen = clip != null ? clip.length : 0f;
+        float totalLen = _cutsceneSkillFraction > 0f
+            ? skillLen / Mathf.Max(0.001f, 1f - _cutsceneSkillFraction)
+            : skillLen;
         for (int i = 0; i <= 10; i++)
         {
             float n = i / 10f;
             float x = Mathf.Lerp(area.xMin, area.xMax, n);
             EditorGUI.DrawRect(new Rect(x, area.yMax - 8f, 1f, 8f), new Color(0.55f, 0.55f, 0.55f));
-            GUI.Label(new Rect(x + 2f, area.y + 2f, 58f, 18f), (length * n).ToString("0.00") + "s", EditorStyles.miniLabel);
+            GUI.Label(new Rect(x + 2f, area.y + 2f, 58f, 18f), (totalLen * n).ToString("0.00") + "s", EditorStyles.miniLabel);
+        }
+        if (_cutsceneSkillFraction > 0f)
+        {
+            float sepX = Mathf.Lerp(area.xMin, area.xMax, _cutsceneSkillFraction);
+            EditorGUI.DrawRect(new Rect(sepX - 1f, area.y, 2f, area.height), new Color(0.3f, 0.9f, 0.6f, 0.7f));
         }
     }
 
@@ -417,11 +454,27 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         GUI.Label(new Rect(row.x + 6f, row.y + 9f, LabelWidth - 10f, 20f), label, EditorStyles.miniBoldLabel);
     }
 
-    static void DrawAnimationTrack(Rect row, AnimationClip clip)
+    static void DrawAnimationTrack(Rect row, AnimationClip clip, float cutsceneFraction = 0f, AnimationClip refClip = null)
     {
-        Rect rect = new Rect(row.x + 2f, row.y + 7f, row.width - 4f, row.height - 14f);
-        EditorGUI.DrawRect(rect, new Color(0.18f, 0.38f, 0.58f));
-        GUI.Label(new Rect(rect.x + 6f, rect.y + 2f, rect.width - 12f, 18f), clip.name, EditorStyles.whiteMiniLabel);
+        float totalW = row.width - 4f;
+        if (cutsceneFraction > 0f && refClip != null)
+        {
+            float cw = totalW * cutsceneFraction;
+            Rect cr = new Rect(row.x + 2f, row.y + 7f, cw, row.height - 14f);
+            EditorGUI.DrawRect(cr, new Color(0.18f, 0.48f, 0.38f));
+            GUI.Label(new Rect(cr.x + 4f, cr.y + 2f, Mathf.Max(0f, cr.width - 8f), 18f),
+                $"{refClip.name}  ({refClip.length:0.00}s)", EditorStyles.whiteMiniLabel);
+            float sw = totalW * (1f - cutsceneFraction);
+            Rect sr = new Rect(row.x + 2f + cw, row.y + 7f, sw, row.height - 14f);
+            EditorGUI.DrawRect(sr, new Color(0.18f, 0.38f, 0.58f));
+            GUI.Label(new Rect(sr.x + 4f, sr.y + 2f, Mathf.Max(0f, sr.width - 8f), 18f), clip.name, EditorStyles.whiteMiniLabel);
+        }
+        else
+        {
+            Rect rect = new Rect(row.x + 2f, row.y + 7f, totalW, row.height - 14f);
+            EditorGUI.DrawRect(rect, new Color(0.18f, 0.38f, 0.58f));
+            GUI.Label(new Rect(rect.x + 6f, rect.y + 2f, rect.width - 12f, 18f), clip.name, EditorStyles.whiteMiniLabel);
+        }
     }
 
     void HandleTimelineScrub(Rect contentArea, AnimationClip clip)
@@ -433,7 +486,16 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         if (!scrub || !contentArea.Contains(current.mousePosition))
             return;
         isPlaying = false;
-        ScrubTo(MouseToNormalized(contentArea, current.mousePosition.x));
+        float rawNorm = Mathf.InverseLerp(contentArea.xMin, contentArea.xMax, current.mousePosition.x);
+        if (_cutsceneSkillFraction > 0f && rawNorm < _cutsceneSkillFraction)
+        {
+            ScrubToCutscene(rawNorm / _cutsceneSkillFraction);
+        }
+        else
+        {
+            _playheadInCutscene = false;
+            ScrubTo(MouseToNormalized(contentArea, current.mousePosition.x));
+        }
         current.Use();
     }
 
@@ -540,6 +602,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     void BuildTimelineEvents(IAnimationVfxTimelineSource source)
     {
         timelineEvents.Clear();
+        _cutsceneTimelineEvents.Clear();
         ClipTransition transition = source?.Transition;
         AnimancerEvent.Sequence.Serializable events = transition?.SerializedEvents;
         float[] times = events?.NormalizedTimes;
@@ -563,9 +626,42 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
                 displayName = BuildVfxMarkerLabel(source, cueIndex);
             timelineEvents.Add(new TimelineEvent(i, Mathf.Clamp01(times[i]), displayName, eventName, cueIndex));
         }
+
+        if (_cutsceneSkillFraction > 0f && source is IAnimationVfxTimelineMultiMode mm && !mm.IsSecondaryMode)
+        {
+            ClipTransition refT = mm.ReferenceTransition;
+            if (refT != null && refT.IsValid)
+                BuildCutsceneTimelineEventsFrom(refT, mm.ReferenceCueSource);
+        }
     }
 
-    static string BuildVfxMarkerLabel(IAnimationVfxTimelineSource source, int cueIndex)
+    void BuildCutsceneTimelineEventsFrom(ClipTransition transition, IAnimationVfxCueSource cueSource)
+    {
+        AnimancerEvent.Sequence.Serializable events = transition?.SerializedEvents;
+        float[] times = events?.NormalizedTimes;
+        if (times == null || times.Length <= 1)
+            return;
+        StringAsset[] names = events.Names;
+        AnimancerEvent.Sequence runtimeEvents = transition.Events;
+        int vfxCueIndex = 0;
+        for (int i = 0; i < times.Length - 1; i++)
+        {
+            if (!float.IsFinite(times[i]))
+                continue;
+            string displayName = names != null && i < names.Length && names[i] != null
+                ? names[i].name
+                : runtimeEvents.GetName(i)?.String;
+            if (string.IsNullOrWhiteSpace(displayName))
+                displayName = "Event " + (i + 1);
+            Enum.TryParse(displayName, true, out CombatTimelineEventName eventName);
+            int cueIndex = eventName == CombatTimelineEventName.Vfx ? vfxCueIndex++ : -1;
+            if (cueIndex >= 0 && cueSource != null)
+                displayName = BuildVfxMarkerLabel(cueSource, cueIndex);
+            _cutsceneTimelineEvents.Add(new TimelineEvent(i, Mathf.Clamp01(times[i]), displayName, eventName, cueIndex));
+        }
+    }
+
+    static string BuildVfxMarkerLabel(IAnimationVfxCueSource source, int cueIndex)
     {
         int count = 0;
         string first = null;
@@ -583,9 +679,32 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
 
     void PlayPreview(Animator animator, AnimationClip clip)
     {
-        previewSession.Configure(animator, clip);
-        previewSession.Sample(normalizedTime);
-        SampleTimelineVfx(clip, true);
+        IAnimationVfxTimelineSource source = GetSource();
+        AnimationClip cutsceneClip = GetCutsceneClip(source);
+        Animator cutsceneAnimator = cutsceneClip != null ? authoringTarget?.CutscenePreviewAnimator : null;
+        if (cutsceneClip != null && cutsceneAnimator != null && (_playheadInCutscene || normalizedTime == 0f))
+        {
+            if (!_playheadInCutscene)
+            {
+                _playheadInCutscene = true;
+                _cutsceneNormalizedTime = 0f;
+            }
+            AnimationClip cameraClip = GetCutsceneCameraClip(source);
+            Animator cameraAnimator = authoringTarget?.CutsceneCameraAnimator;
+            previewSession.Configure(cutsceneAnimator, cutsceneClip);
+            if (cameraClip != null && cameraAnimator != null)
+                previewSession.ConfigureSecondary(cameraAnimator, cameraClip);
+            else
+                previewSession.ClearSecondary();
+            previewSession.Sample(_cutsceneNormalizedTime);
+        }
+        else
+        {
+            _playheadInCutscene = false;
+            previewSession.Configure(animator, clip);
+            previewSession.Sample(normalizedTime);
+            SampleTimelineVfx(clip, true);
+        }
         isPlaying = true;
         lastEditorTime = EditorApplication.timeSinceStartup;
         nextPreviewUpdateTime = 0d;
@@ -601,6 +720,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     void StopPreview(bool rewind)
     {
         isPlaying = false;
+        _playheadInCutscene = false;
         authoringTarget?.StopAllVfx();
         previewSession.Stop();
         if (rewind) normalizedTime = 0f;
@@ -621,6 +741,28 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         }
         else
             authoringTarget?.StopTimelineVfxPreview();
+        RepaintViews();
+    }
+
+    void ScrubToCutscene(float cutsceneNorm)
+    {
+        _cutsceneNormalizedTime = Mathf.Clamp01(cutsceneNorm);
+        _playheadInCutscene = true;
+        IAnimationVfxTimelineSource source = GetSource();
+        AnimationClip cutsceneClip = GetCutsceneClip(source);
+        Animator cutsceneAnimator = authoringTarget?.CutscenePreviewAnimator;
+        if (cutsceneClip != null && cutsceneAnimator != null && !Application.isPlaying)
+        {
+            AnimationClip cameraClip = GetCutsceneCameraClip(source);
+            Animator cameraAnimator = authoringTarget?.CutsceneCameraAnimator;
+            previewSession.Configure(cutsceneAnimator, cutsceneClip);
+            if (cameraClip != null && cameraAnimator != null)
+                previewSession.ConfigureSecondary(cameraAnimator, cameraClip);
+            else
+                previewSession.ClearSecondary();
+            previewSession.Sample(_cutsceneNormalizedTime);
+        }
+        authoringTarget?.StopTimelineVfxPreview();
         RepaintViews();
     }
 
@@ -650,34 +792,105 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         bool repaint = false;
         if (isPlaying)
         {
-            AnimationClip clip = GetClip(GetSource());
-            Animator animator = authoringTarget != null ? authoringTarget.PreviewAnimator : null;
-            if (clip == null || animator == null)
-            {
-                StopPreview(false);
-                return;
-            }
             float delta = Mathf.Max(0f, (float)(now - lastEditorTime)) * playbackSpeed;
             lastEditorTime = now;
-            float next = normalizedTime + delta / Mathf.Max(0.0001f, clip.length);
-            bool forceRestart = false;
-            if (next >= 1f)
+            if (_playheadInCutscene)
             {
-                if (loopPlayback)
+                IAnimationVfxTimelineSource source = GetSource();
+                AnimationClip cutsceneClip = GetCutsceneClip(source);
+                Animator cutsceneAnimator = authoringTarget?.CutscenePreviewAnimator;
+                if (cutsceneClip == null || cutsceneAnimator == null)
                 {
-                    next = Mathf.Repeat(next, 1f);
-                    forceRestart = true;
+                    StopPreview(false);
+                    return;
+                }
+                float next = _cutsceneNormalizedTime + delta / Mathf.Max(0.0001f, cutsceneClip.length);
+                if (next >= 1f)
+                {
+                    _playheadInCutscene = false;
+                    normalizedTime = 0f;
+                    AnimationClip skillClip = GetClip(source);
+                    Animator skillAnimator = authoringTarget != null ? authoringTarget.PreviewAnimator : null;
+                    if (skillClip != null && skillAnimator != null)
+                    {
+                        previewSession.Configure(skillAnimator, skillClip);
+                        previewSession.Sample(normalizedTime);
+                        SampleTimelineVfx(skillClip, true);
+                    }
+                    else
+                    {
+                        isPlaying = false;
+                    }
                 }
                 else
                 {
-                    next = 1f;
-                    isPlaying = false;
+                    _cutsceneNormalizedTime = next;
+                    AnimationClip cameraClip = GetCutsceneCameraClip(source);
+                    Animator cameraAnimator = authoringTarget?.CutsceneCameraAnimator;
+                    previewSession.Configure(cutsceneAnimator, cutsceneClip);
+                    if (cameraClip != null && cameraAnimator != null)
+                        previewSession.ConfigureSecondary(cameraAnimator, cameraClip);
+                    else
+                        previewSession.ClearSecondary();
+                    previewSession.Sample(_cutsceneNormalizedTime);
                 }
             }
-            normalizedTime = Mathf.Clamp01(next);
-            previewSession.Configure(animator, clip);
-            previewSession.Sample(normalizedTime);
-            SampleTimelineVfx(clip, forceRestart);
+            else
+            {
+                AnimationClip clip = GetClip(GetSource());
+                Animator animator = authoringTarget != null ? authoringTarget.PreviewAnimator : null;
+                if (clip == null || animator == null)
+                {
+                    StopPreview(false);
+                    return;
+                }
+                float next = normalizedTime + delta / Mathf.Max(0.0001f, clip.length);
+                if (next >= 1f)
+                {
+                    if (loopPlayback)
+                    {
+                        IAnimationVfxTimelineSource loopSource = GetSource();
+                        AnimationClip cutsceneClip = GetCutsceneClip(loopSource);
+                        Animator cutsceneAnimator = authoringTarget?.CutscenePreviewAnimator;
+                        if (cutsceneClip != null && cutsceneAnimator != null)
+                        {
+                            _playheadInCutscene = true;
+                            _cutsceneNormalizedTime = 0f;
+                            AnimationClip cameraClip = GetCutsceneCameraClip(loopSource);
+                            Animator cameraAnimator = authoringTarget?.CutsceneCameraAnimator;
+                            previewSession.Configure(cutsceneAnimator, cutsceneClip);
+                            if (cameraClip != null && cameraAnimator != null)
+                                previewSession.ConfigureSecondary(cameraAnimator, cameraClip);
+                            else
+                                previewSession.ClearSecondary();
+                            previewSession.Sample(0f);
+                            authoringTarget?.StopTimelineVfxPreview();
+                        }
+                        else
+                        {
+                            normalizedTime = Mathf.Repeat(next, 1f);
+                            previewSession.Configure(animator, clip);
+                            previewSession.Sample(normalizedTime);
+                            SampleTimelineVfx(clip, true);
+                        }
+                    }
+                    else
+                    {
+                        normalizedTime = 1f;
+                        isPlaying = false;
+                        previewSession.Configure(animator, clip);
+                        previewSession.Sample(normalizedTime);
+                        SampleTimelineVfx(clip, false);
+                    }
+                }
+                else
+                {
+                    normalizedTime = next;
+                    previewSession.Configure(animator, clip);
+                    previewSession.Sample(normalizedTime);
+                    SampleTimelineVfx(clip, false);
+                }
+            }
             repaint = true;
         }
         if (SkillVfxAuthoringEntry.UpdateActivePreviews(now))
@@ -726,6 +939,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         draggingPointTrack = -1;
         draggingRangeTrack = -1;
         _cutsceneModeActive = false;
+        _playheadInCutscene = false;
     }
 
     void DrawMultiModeToggle(IAnimationVfxTimelineSource source)
@@ -868,6 +1082,17 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         ClipTransition transition = source?.Transition;
         return transition != null && transition.IsValid ? transition.Clip : null;
     }
+    static AnimationClip GetCutsceneClip(IAnimationVfxTimelineSource source)
+    {
+        if (source is not IAnimationVfxTimelineMultiMode mm) return null;
+        ClipTransition refT = mm.ReferenceTransition;
+        return refT != null && refT.IsValid ? refT.Clip : null;
+    }
+    static AnimationClip GetCutsceneCameraClip(IAnimationVfxTimelineSource source)
+    {
+        SkillGemDefinition skill = source?.SourceAsset as SkillGemDefinition;
+        return skill?.CutsceneDef?.cameraCutsceneClip;
+    }
 
     static StringAsset ResolveOrCreateEventNameAsset(CombatTimelineEventName eventName)
     {
@@ -923,7 +1148,10 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
 
     void DrawPlayhead(Rect contentArea)
     {
-        float x = Mathf.Lerp(contentArea.xMin, contentArea.xMax, normalizedTime);
+        float combined = _playheadInCutscene
+            ? _cutsceneNormalizedTime * _cutsceneSkillFraction
+            : _cutsceneSkillFraction + normalizedTime * (1f - _cutsceneSkillFraction);
+        float x = Mathf.Lerp(contentArea.xMin, contentArea.xMax, combined);
         EditorGUI.DrawRect(new Rect(x - 1f, contentArea.y, 2f, contentArea.height), new Color(1f, 0.25f, 0.2f));
     }
 
@@ -934,9 +1162,16 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         Rect row = GetTrackRect(area, index);
         return new Rect(row.x + LabelWidth, row.y, Mathf.Max(1f, row.width - LabelWidth), row.height);
     }
-    static Rect GetMarkerRect(Rect row, float normalized)
+    Rect GetMarkerRect(Rect row, float normalized)
     {
-        float x = Mathf.Lerp(row.xMin, row.xMax, Mathf.Clamp01(normalized));
+        float adjusted = _cutsceneSkillFraction + Mathf.Clamp01(normalized) * (1f - _cutsceneSkillFraction);
+        float x = Mathf.Lerp(row.xMin, row.xMax, adjusted);
+        return new Rect(x - MarkerWidth * 0.5f, row.y + 3f, MarkerWidth, row.height - 6f);
+    }
+    Rect GetCutsceneMarkerRect(Rect row, float cutsceneNormalized)
+    {
+        float combined = Mathf.Clamp01(cutsceneNormalized) * _cutsceneSkillFraction;
+        float x = Mathf.Lerp(row.xMin, row.xMax, combined);
         return new Rect(x - MarkerWidth * 0.5f, row.y + 3f, MarkerWidth, row.height - 6f);
     }
     static void DrawMarker(Rect marker, Color color, string label)
@@ -944,7 +1179,12 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         EditorGUI.DrawRect(marker, color);
         GUI.Label(new Rect(marker.xMax + 3f, marker.y + 7f, 100f, 18f), label, EditorStyles.miniLabel);
     }
-    static float MouseToNormalized(Rect row, float mouseX) => Mathf.InverseLerp(row.xMin, row.xMax, mouseX);
+    float MouseToNormalized(Rect row, float mouseX)
+    {
+        float raw = Mathf.InverseLerp(row.xMin, row.xMax, mouseX);
+        if (_cutsceneSkillFraction <= 0f) return raw;
+        return Mathf.Clamp01((raw - _cutsceneSkillFraction) / Mathf.Max(0.001f, 1f - _cutsceneSkillFraction));
+    }
     static Color GetEventColor(CombatTimelineEventName name)
     {
         if (name == CombatTimelineEventName.HitStart) return new Color(0.3f, 0.9f, 0.35f);
@@ -989,6 +1229,8 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     {
         Animator animator;
         AnimationClip clip;
+        Animator secondaryAnimator;
+        AnimationClip secondaryClip;
         bool ownsAnimationMode;
         public void Configure(Animator nextAnimator, AnimationClip nextClip)
         {
@@ -996,6 +1238,16 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             Stop();
             animator = nextAnimator;
             clip = nextClip;
+        }
+        public void ConfigureSecondary(Animator nextAnimator, AnimationClip nextClip)
+        {
+            secondaryAnimator = nextAnimator;
+            secondaryClip = nextClip;
+        }
+        public void ClearSecondary()
+        {
+            secondaryAnimator = null;
+            secondaryClip = null;
         }
         public void Sample(float time)
         {
@@ -1005,8 +1257,14 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
                 AnimationMode.StartAnimationMode();
                 ownsAnimationMode = true;
             }
+            float t = Mathf.Clamp01(time);
             AnimationMode.BeginSampling();
-            try { AnimationMode.SampleAnimationClip(animator.gameObject, clip, Mathf.Clamp01(time) * clip.length); }
+            try
+            {
+                AnimationMode.SampleAnimationClip(animator.gameObject, clip, t * clip.length);
+                if (secondaryAnimator != null && secondaryClip != null && secondaryAnimator.gameObject.activeInHierarchy)
+                    AnimationMode.SampleAnimationClip(secondaryAnimator.gameObject, secondaryClip, t * secondaryClip.length);
+            }
             finally { AnimationMode.EndSampling(); }
         }
         public void Stop()
@@ -1015,6 +1273,8 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             ownsAnimationMode = false;
             animator = null;
             clip = null;
+            secondaryAnimator = null;
+            secondaryClip = null;
         }
     }
 }

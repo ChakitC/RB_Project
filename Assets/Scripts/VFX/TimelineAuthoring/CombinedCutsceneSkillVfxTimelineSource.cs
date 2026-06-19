@@ -24,6 +24,8 @@ public sealed class CombinedCutsceneSkillVfxTimelineSource
     public string SecondaryModeLabel => "Cutscene VFX";
     public bool IsSecondaryMode => _secondary;
     public void SetMode(bool secondary) => _secondary = secondary;
+    public ClipTransition ReferenceTransition => _secondary ? null : _cutscene.Transition;
+    public IAnimationVfxCueSource ReferenceCueSource => _secondary ? null : _cutscene;
 
     // IAnimationVfxTimelineSource — delegate to Active
     public ScriptableObject SourceAsset                      => Active.SourceAsset;

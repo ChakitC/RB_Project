@@ -198,7 +198,7 @@ Material:
     - _IsUsingRampOcclusionTexture: 0
     - _MatCapReflectionStrength: 1
     - _MatCapRollStabilize: 1
-    - _MaterialID: 5
+    - _MaterialID: 6
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OffsetShadowDistance: 15
@@ -244,12 +244,12 @@ Material:
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: 0.0268155, g: -0.10613219, b: -0.10318744, a: 0}
+    - _CharacterCenterWS: {r: 0, g: 0, b: 0, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FaceFrontDirection: {r: 0, g: 0, b: 1, a: 0}
-    - _FaceRightDirection: {r: 1, g: 0, b: 0, a: 0}
+    - _FaceFrontDirection: {r: 0.8072551, g: 0.07652326, b: 0.58522105, a: 0}
+    - _FaceRightDirection: {r: 0.58823663, g: -0.18518695, b: -0.7871999, a: 0}
     - _FaceUVCtrl: {r: 0, g: 1, b: 0, a: 0}
     - _FakeLightColor: {r: 0, g: 0, b: 0, a: 0}
     - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 64bca5e158f507e49842527aa4ede201
+guid: 979b593bba18c5e49943d0202eaf28f7
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Roma_Ultimate_1
-      takeName: Roma_Ultimate_1
-      internalID: -6664157530632832028
+      name: Roma_Ultimate.1_Camera
+      takeName: Roma_Ultimate.1_Camera
+      internalID: 1679754845598486846
       firstFrame: 0
-      lastFrame: 100
+      lastFrame: 50
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

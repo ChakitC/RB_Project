@@ -20,6 +20,8 @@ public class SetAnimationVfxData : MonoBehaviour
     [OnValueChanged(nameof(OnTimelineEntryChanged))]
     [SerializeField] private string selectedEntryId = "main";
     [SerializeField] protected Transform characterRoot;
+    [SerializeField] protected Transform cutsceneCharacterRoot;
+    [SerializeField] protected Transform cutsceneCameraRoot;
     [SerializeField] protected Transform sourceVfxRoot;
     [SerializeField] protected bool includeInactiveObjects = true;
 
@@ -63,6 +65,24 @@ public class SetAnimationVfxData : MonoBehaviour
         {
             Transform root = GetAnimationCharacterRoot();
             return root != null ? root.GetComponentInChildren<Animator>(true) : null;
+        }
+    }
+    public Animator CutscenePreviewAnimator
+    {
+        get
+        {
+            return cutsceneCharacterRoot != null
+                ? cutsceneCharacterRoot.GetComponentInChildren<Animator>(true)
+                : null;
+        }
+    }
+    public Animator CutsceneCameraAnimator
+    {
+        get
+        {
+            return cutsceneCameraRoot != null
+                ? cutsceneCameraRoot.GetComponentInChildren<Animator>(true)
+                : null;
         }
     }
 

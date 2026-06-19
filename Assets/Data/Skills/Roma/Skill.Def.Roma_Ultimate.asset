@@ -42,7 +42,30 @@ MonoBehaviour:
     m_Bits: 524287
   queryTriggers: 2
   showDamageNumbers: 1
-  steps: []
+  steps:
+  - groupKeys:
+    - Group01
+    damageMultiplier: 1
+    hitPolicy: 1
+    clearHitCacheOnEnter: 1
+    overrideKnockback: 0
+    knockbackDistance: 0
+    knockbackDuration: 0.12
+    knockbackProgressCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    knockbackReaction: 2
+    knockbackInterruptsActions: 1
+    stepStartVfx:
+      prefab: {fileID: 0}
+      scale: 1
+    impactVfx:
+      prefab: {fileID: 0}
+      scale: 1
+      spawnPolicy: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0

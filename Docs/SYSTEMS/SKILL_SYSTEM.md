@@ -244,7 +244,7 @@ skill VFX:
    is enabled).
 4. Set **Character Root** = the cutscene character rig root.
 5. Add `Vfx` markers to `characterCutsceneClip` at the desired spawn times, then
-   use **Create / Sync VFX Slots** to generate authoring slots for each marker.
+   use **Load / Sync VFX Data** to generate authoring slots for each marker.
 6. Place VFX prefabs in the slots, position them relative to the cutscene
    character's bones (using the same anchor types as regular skill VFX).
 7. Press **Save VFX Data** — data writes to `CutsceneDef.cutsceneVfxEvents`
@@ -270,8 +270,12 @@ only trigger once the cutscene has finished.
 
 ### Runtime
 
-`CutsceneSkillPresenter` listens to `CharacterSkillManager.CastStarted`
-and `CharacterAnimBrain.SkillTimelineEventRaised`. On `CutsceneSkillStart` it:
+`CutsceneSkillPresenter` resolves its owner through `CharacteContext`, then
+listens to the resolved `CharacterSkillManager.CastStarted` and
+`CharacterAnimBrain.SkillTimelineEventRaised`. It also auto-resolves scene
+presentation references from `Camera.main`, `CutsceneCamera`,
+`CutsceneCameraRig`, and `CutsceneCharacter` when serialized overrides are left
+empty. On `CutsceneSkillStart` it:
 
 - Calls `TimeSlowManager.StartSlow(worldSlowScale, float.MaxValue)` (enemies slow,
   player animation continues normally because `PlayerContext.UsesWorldSlow = false`).

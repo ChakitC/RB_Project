@@ -45,6 +45,7 @@ public class SplitOnHitModule : ProjectileModule
             Vector3 d = Quaternion.AngleAxis(ang, Vector3.up) * baseDir;
 
             var child = p.SpawnChild(childConfig, spawnPos, d, childDamageMultiplier, childSpeedMultiplier);
+            if (child == null) continue;
 
             if (ignoreRoot != null)
                 child.IgnoreRoot(ignoreRoot);

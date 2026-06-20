@@ -96,6 +96,7 @@ public sealed class SkillVfxTimelineSource : IAnimationVfxTimelineSource
                     loopKey = cue.loopKey,
                     extraLife = cue.extraLife,
                     allowParticlesToFinish = cue.allowParticlesToFinish,
+                    animClip = cue.animClip,
                 });
             }
         }

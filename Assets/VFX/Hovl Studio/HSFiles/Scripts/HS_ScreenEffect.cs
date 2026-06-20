@@ -35,6 +35,7 @@ namespace Hovl
 
         void Start()
         {
+            
             // Only snap when entering Play mode
             if (!Application.isPlaying)
                 return;

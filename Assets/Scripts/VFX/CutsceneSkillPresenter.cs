@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using Animancer;
 using UnityEngine;
@@ -7,9 +7,12 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class CutsceneSkillPresenter : MonoBehaviour
 {
-    [Header("Skill References")]
-    [SerializeField] private CharacterSkillManager _skillManager;
-    [SerializeField] private CharacterAnimBrain _animBrain;
+    const string CutsceneCameraName = "CutsceneCamera";
+    const string CutsceneCameraRigName = "CutsceneCameraRig";
+    const string CutsceneCharacterName = "CutsceneCharacter";
+
+    [Header("Actor")]
+    [SerializeField] private CharacteContext _ctx;
 
     [Header("Camera")]
     [SerializeField] private CameraF _mainFollowCamera;
@@ -38,19 +41,23 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
     readonly Dictionary<string, List<GameObject>> _cutsceneVfxLoops =
         new Dictionary<string, List<GameObject>>(System.StringComparer.Ordinal);
 
+    CharacterSkillManager _skillManager;
+    CharacterAnimBrain _animBrain;
+
     static int _cutsceneLayer = -1;
 
-    // ─────────────────────────────────────────────────────────────
     // Unity lifecycle
-    // ─────────────────────────────────────────────────────────────
 
     void Awake()
     {
+        ResolveReferences();
         EnsureOverlay();
     }
 
     void OnEnable()
     {
+        ResolveReferences();
+
         if (_skillManager != null)
         {
             _skillManager.CastStarted   += HandleCastStarted;
@@ -82,9 +89,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
             UpdateBarHeights(_pendingDef.barThickness);
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Event handlers
-    // ─────────────────────────────────────────────────────────────
 
     void HandleCastStarted(ActiveSkillCastInfo castInfo)
     {
@@ -118,9 +123,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
             EndCutscene(_pendingDef.fadeOutDuration);
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Cutscene control
-    // ─────────────────────────────────────────────────────────────
 
     void StartCutscene(CutsceneDef def)
     {
@@ -230,9 +233,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
             _cutsceneCamAnimancer.Animator.updateMode = AnimatorUpdateMode.Normal;
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Overlay (black bars)
-    // ─────────────────────────────────────────────────────────────
 
     IEnumerator FadeOverlay(float from, float to, float duration)
     {
@@ -310,9 +311,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         return rect;
     }
 
-    // ─────────────────────────────────────────────────────────────
     // VFX spawning
-    // ─────────────────────────────────────────────────────────────
 
     void SpawnCutsceneVfxForCue(CutsceneVfxCueSource source, int cueIndex, AnimationVfxAnchorContext context)
     {
@@ -371,6 +370,8 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         if (layer >= 0)
             SetLayerRecursive(spawned, layer);
 
+        AnimationVfxPresenter.PlayAnimClip(spawned, cue.AnimClip);
+
         _spawnedCutsceneVfx.Add(spawned);
 
         if (cue.Action == AnimationVfxAction.StartLoop && !string.IsNullOrWhiteSpace(cue.LoopKey))
@@ -396,9 +397,161 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         _cutsceneVfxLoops.Clear();
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Helpers
-    // ─────────────────────────────────────────────────────────────
+
+    void ResolveReferences()
+    {
+        if (!_ctx)
+        {
+            TryGetComponent(out _ctx);
+            if (!_ctx)
+                _ctx = GetComponentInParent<CharacteContext>();
+        }
+
+        _ctx?.ResolveReferences();
+
+        if (_ctx != null)
+        {
+            _skillManager = _ctx.SkillManager;
+            _animBrain = _ctx.AnimBrain;
+        }
+
+        if (!_skillManager)
+            TryGetComponent(out _skillManager);
+        if (!_skillManager)
+            _skillManager = GetComponentInChildren<CharacterSkillManager>(true);
+        if (!_skillManager)
+            _skillManager = GetComponentInParent<CharacterSkillManager>();
+
+        if (!_animBrain)
+            TryGetComponent(out _animBrain);
+        if (!_animBrain)
+            _animBrain = GetComponentInChildren<CharacterAnimBrain>(true);
+        if (!_animBrain)
+            _animBrain = GetComponentInParent<CharacterAnimBrain>();
+
+        ResolveSceneReferences();
+    }
+
+    void ResolveSceneReferences()
+    {
+        if (!_mainFollowCamera)
+            _mainFollowCamera = ResolveMainFollowCamera();
+
+        if (!_cutsceneCamera)
+            _cutsceneCamera = ResolveCutsceneCameraFromRig();
+        if (!_cutsceneCamera)
+            _cutsceneCamera = ResolveCutsceneCamera();
+
+        if (!_cutsceneCamAnimancer)
+            _cutsceneCamAnimancer = ResolveCutsceneCameraAnimancer();
+
+        if (!_cutsceneCharAnimancer)
+            _cutsceneCharAnimancer = ResolveNamedAnimancer(CutsceneCharacterName);
+    }
+
+    CameraF ResolveMainFollowCamera()
+    {
+        Camera mainCamera = Camera.main;
+        if (mainCamera != null && mainCamera.TryGetComponent(out CameraF followCamera))
+            return followCamera;
+        if (mainCamera != null)
+        {
+            followCamera = mainCamera.GetComponentInParent<CameraF>(true);
+            if (followCamera != null)
+                return followCamera;
+        }
+
+        CameraF fallback = null;
+        CameraF[] candidates = FindObjectsByType<CameraF>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            Camera candidateCamera = candidates[i] != null ? candidates[i].GetComponent<Camera>() : null;
+            if (candidateCamera == null && candidates[i] != null)
+                candidateCamera = candidates[i].GetComponentInChildren<Camera>(true);
+            if (candidateCamera == null)
+                continue;
+
+            if (candidateCamera.CompareTag("MainCamera"))
+                return candidates[i];
+
+            if (!IsCutsceneOnlyCamera(candidateCamera) && fallback == null)
+                fallback = candidates[i];
+        }
+
+        return fallback;
+    }
+
+    Camera ResolveCutsceneCameraFromRig()
+    {
+        return _cutsceneCamAnimancer != null
+            ? _cutsceneCamAnimancer.GetComponentInChildren<Camera>(true)
+            : null;
+    }
+
+    Camera ResolveCutsceneCamera()
+    {
+        Camera fallback = null;
+        Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < cameras.Length; i++)
+        {
+            Camera camera = cameras[i];
+            if (camera == null)
+                continue;
+
+            if (string.Equals(camera.name, CutsceneCameraName, System.StringComparison.Ordinal))
+                return camera;
+
+            if (IsCutsceneOnlyCamera(camera) && fallback == null)
+                fallback = camera;
+        }
+
+        return fallback;
+    }
+
+    AnimancerComponent ResolveCutsceneCameraAnimancer()
+    {
+        if (_cutsceneCamera != null)
+        {
+            AnimancerComponent parentAnimancer = _cutsceneCamera.GetComponentInParent<AnimancerComponent>(true);
+            if (parentAnimancer != null)
+                return parentAnimancer;
+        }
+
+        return ResolveNamedAnimancer(CutsceneCameraRigName);
+    }
+
+    AnimancerComponent ResolveNamedAnimancer(string objectName)
+    {
+        if (string.IsNullOrEmpty(objectName))
+            return null;
+
+        AnimancerComponent[] candidates = FindObjectsByType<AnimancerComponent>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            AnimancerComponent candidate = candidates[i];
+            if (candidate != null && string.Equals(candidate.name, objectName, System.StringComparison.Ordinal))
+                return candidate;
+        }
+
+        return null;
+    }
+
+    static bool IsCutsceneOnlyCamera(Camera camera)
+    {
+        if (camera == null)
+            return false;
+
+        int layer = GetCutsceneLayer();
+        if (layer < 0)
+            return false;
+
+        int cutsceneMask = 1 << layer;
+        return (camera.cullingMask & cutsceneMask) != 0 &&
+               (camera.cullingMask & ~cutsceneMask) == 0;
+    }
 
     AnimationVfxAnchorContext BuildCutsceneAnchorContext()
     {
@@ -424,9 +577,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
             SetLayerRecursive(t.GetChild(i).gameObject, layer);
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Nested types
-    // ─────────────────────────────────────────────────────────────
 
     sealed class CutsceneVfxCueSource : IAnimationVfxCueSource
     {

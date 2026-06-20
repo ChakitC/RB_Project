@@ -109,18 +109,14 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
         for (int i = 0; i < projectileCount; i++)
         {
             Vector3 dir = ComputeDirection(context.AimDirection, i, projectileCount);
-            GameObject projectileObject = Object.Instantiate(
-                prefab.gameObject,
+            var pool = ProjectilePool.Instance;
+            if (pool == null) continue;
+            Projectile projectileInstance = pool.Get(
+                prefab,
                 context.CastOrigin.position,
                 Quaternion.LookRotation(dir, Vector3.up));
-            ProjectileLayerUtility.ApplyForSkillUser(projectileObject, context.User);
-
-            Projectile projectileInstance = projectileObject.GetComponent<Projectile>();
-            if (projectileInstance == null)
-            {
-                Object.Destroy(projectileObject);
-                continue;
-            }
+            if (projectileInstance == null) continue;
+            ProjectileLayerUtility.ApplyForSkillUser(projectileInstance.gameObject, context.User);
 
             projectileInstance.InitFromSkillExecution(
                 projectileConfigOverride != null ? projectileConfigOverride : projectileInstance.config,

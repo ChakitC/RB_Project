@@ -151,7 +151,12 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
 
         Transform anchor = AnimationVfxAnchorResolver.Resolve(session.Anchors, cue);
         AnimationVfxAnchorResolver.ResolvePose(anchor, cue, out Vector3 position, out Quaternion rotation);
-        GameObject instance = spawner.SpawnVfx(cue.Prefab, position, rotation, cue.ExtraLife);
+        GameObject instance = spawner.SpawnVfx(
+            cue.Prefab,
+            position,
+            rotation,
+            cue.ExtraLife,
+            minimumLifetime: GetAnimClipLifetime(cue.AnimClip));
         if (instance == null)
             return;
 
@@ -269,10 +274,16 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
         AnimationVfxFollowAnchor follower = instance.GetComponent<AnimationVfxFollowAnchor>();
         if (follower == null)
             follower = instance.AddComponent<AnimationVfxFollowAnchor>();
+        follower.enabled = true;
         follower.Configure(anchor, cue.LocalPosition, Quaternion.Euler(cue.LocalEulerAngles));
     }
 
-    static void PlayAnimClip(GameObject instance, AnimationClip clip)
+    static float GetAnimClipLifetime(AnimationClip clip)
+    {
+        return clip != null ? clip.length : 0f;
+    }
+
+    internal static void PlayAnimClip(GameObject instance, AnimationClip clip)
     {
         if (instance == null || clip == null)
             return;

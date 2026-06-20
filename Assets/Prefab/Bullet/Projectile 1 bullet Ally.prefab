@@ -90,7 +90,7 @@ MonoBehaviour:
   rotationOffset: {x: 0, y: 0, z: 0}
   hit: {fileID: 2946403313239334806}
   hitPS: {fileID: 3035588883579196360}
-  flash: {fileID: 7285807686318056662}
+  flash: {fileID: 0}
   rb: {fileID: 4937409727773074319}
   col: {fileID: 7384557288778966816}
   lightSourse: {fileID: 8547484312053192128}
@@ -248,6 +248,7 @@ MonoBehaviour:
   config: {fileID: 0}
   ballVfxPrefab: {fileID: 0}
   hitVfxPrefab: {fileID: 1096352044232144, guid: 6e4b9c1925f0d3f4d8446e551a2e20d3, type: 3}
+  spawnFlashPrefab: {fileID: 0}
   vfxScale: 1
   gunType: 0
   critRate: 0
@@ -5359,10 +5360,5 @@ PrefabInstance:
 --- !u!4 &7282705578151785806 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4205697589028422, guid: 7658ae01d0a0655468898c47617f4de6, type: 3}
-  m_PrefabInstance: {fileID: 7286735325818098440}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &7285807686318056662 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 1069073989498846, guid: 7658ae01d0a0655468898c47617f4de6, type: 3}
   m_PrefabInstance: {fileID: 7286735325818098440}
   m_PrefabAsset: {fileID: 0}

@@ -81,8 +81,8 @@ Runtime event binding and `AnimationVfxPresenter` are unaffected.
 
 The selected source asset and entry are the authoring source of truth. Changing
 either selection immediately stops preview, removes existing VFX slots and
-entries, and rebuilds them from the selected asset. `Create / Sync VFX Slots`
-and `Load VFX Data` use the same replace-and-rebuild operation. Unsaved hierarchy
+entries, and rebuilds them from the selected asset. `Load / Sync VFX Data` uses
+the same replace-and-rebuild operation for manual reloads. Unsaved hierarchy
 changes are discarded by rebuild, but the complete operation is grouped for
 Unity Undo. Non-VFX children below the configured source root are not removed.
 
@@ -105,7 +105,10 @@ it looks for an `Animator` via `GetComponentInChildren`, then gets or adds an
 `AnimancerComponent` on that Animator's GameObject and calls `animancer.Play(clip)`.
 No `AnimancerComponent` is required on the prefab beforehand — it is added at
 runtime if absent. The clip's own `wrapMode` determines looping behavior.
-If no `Animator` is found on the instance, the call is silently skipped.
+For OneShot cues, `AnimationVfxPresenter` passes the clip length to
+`VfxSpawner` as the minimum lifetime, so pooled VFX are not returned before the
+animated VFX clip can finish. If no `Animator` is found on the instance, the
+call is silently skipped.
 
 In the editor, `SkillVfxAuthoringEntry.SamplePreviewAnimClip` samples the clip
 via `AnimationClip.SampleAnimation` at the current preview time. OneShot cues
@@ -117,6 +120,67 @@ sampling — `SampleAnimation` writes transforms directly.
 `AnimationVfxCue` and `SkillVfxEvent` both serialize `animClip`. The authoring
 entry's `Configure` and `CreateAnimationData` methods round-trip it through
 save/load. The Inspector field is shown only when the action is not `StopLoop`.
+
+## VFX Pooling
+
+`VfxPool` is a component on the `GamePlaySystem` prefab, sitting alongside
+`VfxSpawner` on the same GameObject. `VfxSpawner` resolves it through
+`EnsurePool()` from `Awake`, from runtime-created spawners, and before each VFX
+instantiate request, falling back to `AddComponent` only when the pool is absent
+(e.g. runtime-created spawners in tests). The `Max Per Pool` field on the
+`VfxPool` Inspector controls the idle-instance cap per prefab and defaults to
+20.
+
+`VfxPool` manages a per-prefab `Stack<GameObject>`. All VFX that flow through `VfxSpawner`
+(`SpawnVfx`, `SpawnLoopingVfx`, `StopLoopingVfx`) are automatically pooled; no
+call-site changes are required.
+
+`PooledVfxHandle` is added to each VFX instance the first time it is
+instantiated. It caches the particle system array, loop flags (captured before
+any `CalculateLifetimeAndDisableLoops` mutation), trail renderers, and the
+original `localScale`. Scale is applied as `_originalLocalScale * scale` inside
+`PrepareForReuse` — the `*=` pattern from the old `InstantiateVfx` is removed
+to prevent compounding scale across reuses. New instances are instantiated with
+the requested position, rotation, and parent so `Awake`/`OnEnable` see the first
+spawn pose.
+
+**Lifecycle for pooled instances:**
+
+1. `VfxPool.Get` pops an idle instance (or calls `Instantiate(prefab, pos, rot,
+   parent)` if the stack is empty), then calls
+   `handle.PrepareForReuse(pos, rot, parent, scale)`.
+2. `PrepareForReuse` clears any `AnimationVfxFollowAnchor`, stops any
+   `AnimancerComponent` under the VFX, restores loop flags, sets
+   parent/pose/scale, activates the object, and calls `ps.Play` with a fresh
+   random seed on each particle system.
+3. When the VFX's lifetime expires, `WorldTimeScaledVfx.Update` calls
+   `handle.ReturnToPool()` instead of `Destroy`. For immediate removal,
+   `StopLoopingVfx(allowParticlesToFinish: false)` does the same.
+4. `ReturnToPool` clears any follow-anchor helper, stops any VFX Animancer
+   playback, stops and clears all particle systems, clears trail renderers,
+   reparents the instance to the VfxSpawner transform with
+   `worldPositionStays = false`, deactivates it, and pushes it back to the
+   stack. If the stack already holds `MaxPerPool` (20) entries, the instance is
+   destroyed instead.
+
+**Safety invariants:**
+
+- `_isPooled` on `PooledVfxHandle` guards against double-return from concurrent
+  paths (e.g. `StopLoopingVfx` and `WorldTimeScaledVfx.Update` racing).
+- `VfxPool.Get` null-checks each popped instance and skips destroyed ones,
+  protecting against VFX that were parented to an enemy and destroyed with it.
+- Idle instances live under the VfxSpawner GameObject (DontDestroyOnLoad) so
+  they survive scene unloads and parent-object destruction.
+- `WorldTimeScaledVfx.OnEnable` resets `_destroyAfterLifetime = false` and
+  re-caches `_handle` on every activation, so pool reuse does not carry over
+  stale lifetime state from a previous use.
+- Runtime-added `AnimationVfxFollowAnchor` components are disabled when no anchor
+  is configured and are re-enabled only when a `GenericBone` `FollowAnchor` cue
+  configures them again, so a later `WorldSpace` cue cannot keep following an old
+  bone.
+- Runtime-added or prefab-authored `AnimancerComponent` instances under a pooled
+  VFX are stopped before reuse and on return to the pool, so a cue with no
+  `AnimClip` cannot continue playback from a previous cue.
 
 ## Skill Compatibility
 

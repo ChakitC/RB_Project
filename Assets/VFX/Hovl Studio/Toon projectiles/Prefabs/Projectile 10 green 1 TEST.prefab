@@ -52,6 +52,7 @@ MonoBehaviour:
   config: {fileID: 11400000, guid: e9d20aa54f2461f43a373bbebcb4f211, type: 2}
   ballVfxPrefab: {fileID: 0}
   hitVfxPrefab: {fileID: 1447606066226438, guid: fae7d8f670da44c4fbef473695272926, type: 3}
+  spawnFlashPrefab: {fileID: 0}
   vfxScale: 1
   gunType: 0
   critRate: 0

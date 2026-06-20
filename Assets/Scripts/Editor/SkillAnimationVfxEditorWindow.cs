@@ -169,17 +169,24 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         {
             using (new EditorGUI.DisabledScope(GetSource() == null))
             {
-                if (GUILayout.Button("Create / Sync VFX Slots"))
-                    authoringTarget.CreateOrSyncTimelineVfxSlots();
-                if (GUILayout.Button("Load VFX Data"))
-                    authoringTarget.LoadTimelineVfxData();
-                if (GUILayout.Button("Save VFX Data"))
+                if (DrawTintedButton("Save VFX Data", new Color(0.55f, 0.9f, 0.55f)))
                 {
                     authoringTarget.SaveTimelineVfxData();
                     BuildTimelineEvents(GetSource());
                 }
+                if (DrawTintedButton("Load / Sync VFX Data", new Color(1f, 0.78f, 0.35f)))
+                    authoringTarget.LoadTimelineVfxData();
             }
         }
+    }
+
+    static bool DrawTintedButton(string label, Color color)
+    {
+        Color previousColor = GUI.backgroundColor;
+        GUI.backgroundColor = color;
+        bool pressed = GUILayout.Button(label);
+        GUI.backgroundColor = previousColor;
+        return pressed;
     }
 
     void DrawSourceSummary(IAnimationVfxTimelineSource source, AnimationClip clip, Animator animator)

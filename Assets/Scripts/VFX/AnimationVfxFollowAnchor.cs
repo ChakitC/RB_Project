@@ -12,13 +12,25 @@ public sealed class AnimationVfxFollowAnchor : MonoBehaviour
         anchor = target;
         localPosition = position;
         localRotation = rotation;
+        enabled = anchor != null;
         ApplyNow();
+    }
+
+    public void ClearAnchor()
+    {
+        anchor = null;
+        localPosition = Vector3.zero;
+        localRotation = Quaternion.identity;
+        enabled = false;
     }
 
     public void ApplyNow()
     {
         if (anchor == null)
+        {
+            enabled = false;
             return;
+        }
 
         transform.SetPositionAndRotation(
             anchor.position + anchor.rotation * localPosition,

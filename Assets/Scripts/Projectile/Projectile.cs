@@ -12,8 +12,9 @@ public class Projectile : MonoBehaviour
     public ProjectileConfig config;
 
     [Header("VFX Spawn")]
-    public GameObject ballVfxPrefab;     // ✅ ตอนยิงจะ spawn เป็นลูกของ projectile
+    public GameObject ballVfxPrefab;
     public GameObject hitVfxPrefab;
+    public GameObject spawnFlashPrefab;
     public float vfxScale = 1f;
 
     [Header("Damage (Unified via DamageCalculator)")]
@@ -34,7 +35,11 @@ public class Projectile : MonoBehaviour
     public SkillGemDefinition SourceSkillDef { get; private set; }
     public ProjectileSkillPayloadDef SourceSkillExecution { get; private set; }
     public FinalSkillStats SourceSkillStats { get; private set; }
-    
+    public Projectile SourcePrefab { get; private set; }
+
+    ProjectilePool _pool;
+    GameObject _ballVfxInstance;
+
     bool _overrideVelThisFrame;
     Vector3 _overrideVel;
     bool _overridePosThisFrame;
@@ -543,7 +548,12 @@ public class Projectile : MonoBehaviour
                 config.modules[i]?.OnExpire(this, _ctx, _states[i]);
         }
 
-        gameObject.Destroy();
+        StopBallVfx();
+
+        if (_pool != null)
+            _pool.Return(this);
+        else
+            gameObject.Destroy();
     }
     
     void SpawnDamageNumber(Vector3 hitpos, float damage)
@@ -562,14 +572,19 @@ public class Projectile : MonoBehaviour
 
     void SpawnBallVfx()
     {
+        StopBallVfx();
         if (!ballVfxPrefab) return;
+        if (VfxSpawner.Instance == null) return;
+        _ballVfxInstance = VfxSpawner.Instance.SpawnLoopingVfx(
+            ballVfxPrefab, transform.position, Quaternion.identity, transform, vfxScale);
+    }
 
-        var vfx = Instantiate(ballVfxPrefab, transform.position, Quaternion.identity, transform);
-        if (vfxScale != 1f)
-            vfx.transform.localScale *= vfxScale;
-
-        if (vfx.GetComponent<WorldTimeScaledVfx>() == null)
-            vfx.AddComponent<WorldTimeScaledVfx>();
+    void StopBallVfx()
+    {
+        if (_ballVfxInstance == null) return;
+        if (VfxSpawner.Instance != null)
+            VfxSpawner.Instance.StopLoopingVfx(_ballVfxInstance, allowParticlesToFinish: false);
+        _ballVfxInstance = null;
     }
 
     void PlayHitCue(Vector3 hitPosition)
@@ -593,6 +608,37 @@ public class Projectile : MonoBehaviour
             if (c) Physics.IgnoreCollision(_col, c, false);
 
         _ignoredCols.Clear();
+    }
+
+    public void PrepareForSpawn(ProjectilePool pool, Projectile sourcePrefab, Vector3 pos, Quaternion rot)
+    {
+        _pool = pool;
+        SourcePrefab = sourcePrefab;
+        if (sourcePrefab != null)
+            ProjectileLayerUtility.InheritLayer(gameObject, sourcePrefab.gameObject);
+        transform.SetParent(null, false);
+        // Set rb.position/rotation before SetActive so the interpolation buffer starts
+        // from the correct location — otherwise PhysX interpolates from the despawn
+        // position for one frame, making the spawn point appear to jitter.
+        if (_rb != null)
+        {
+            _rb.position = pos;
+            _rb.rotation = rot;
+            SetRbVelocity(Vector3.zero);
+            _rb.detectCollisions = true;
+        }
+        transform.SetPositionAndRotation(pos, rot);
+        _isDespawning = false;
+        if (_col != null) _col.enabled = true;
+        gameObject.SetActive(true);
+        if (spawnFlashPrefab != null && VfxSpawner.Instance != null)
+            VfxSpawner.Instance.SpawnVfx(spawnFlashPrefab, pos, rot);
+    }
+
+    public void MarkPooledSource(ProjectilePool pool, Projectile sourcePrefab)
+    {
+        _pool = pool;
+        SourcePrefab = sourcePrefab;
     }
 
     void SetRbVelocity(Vector3 v)
@@ -637,7 +683,11 @@ public class Projectile : MonoBehaviour
     {
         var prefab = _ctx.projectilePrefab != null ? _ctx.projectilePrefab : this;
 
-        var p = Instantiate(prefab, pos, Quaternion.LookRotation(dir));
+        var spawnPool = ProjectilePool.Instance;
+        var p = spawnPool != null
+            ? spawnPool.Get(prefab, pos, Quaternion.LookRotation(dir))
+            : Instantiate(prefab, pos, Quaternion.LookRotation(dir));
+        if (p == null) return null;
         ProjectileLayerUtility.InheritLayer(p.gameObject, gameObject);
 
         var childCtx = _ctx;

@@ -86,6 +86,11 @@ public static class DamageCalculator
                 maxRange = 3f;
                 break;
 
+            case WeaponType.Hmg:
+                dropPerMeter = baseDamage * 0.004f;
+                maxRange = 30f;
+                break;
+
             case WeaponType.Melee:
                 dropPerMeter = 0f;
                 maxRange = Mathf.Infinity;

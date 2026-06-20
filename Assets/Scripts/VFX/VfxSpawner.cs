@@ -11,17 +11,24 @@ public class VfxSpawner : MonoBehaviour
         get
         {
             if (_instance != null)
+            {
+                _instance.EnsurePool();
                 return _instance;
+            }
 
             if (_isQuitting)
                 return null;
 
             _instance = FindAnyObjectByType<VfxSpawner>();
             if (_instance != null)
+            {
+                _instance.EnsurePool();
                 return _instance;
+            }
 
             GameObject spawnerObject = new GameObject(nameof(VfxSpawner));
             _instance = spawnerObject.AddComponent<VfxSpawner>();
+            _instance.EnsurePool();
             return _instance;
         }
     }
@@ -30,6 +37,8 @@ public class VfxSpawner : MonoBehaviour
     const float LifetimeSafetyBuffer = 0.25f;
 
     public DamageNumber numberPrefab;
+
+    VfxPool _pool;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStaticState()
@@ -55,6 +64,7 @@ public class VfxSpawner : MonoBehaviour
         }
 
         _instance = this;
+        EnsurePool();
         DontDestroyOnLoad(gameObject);
     }
 
@@ -78,22 +88,39 @@ public class VfxSpawner : MonoBehaviour
             numberPrefab = other.numberPrefab;
     }
 
-    public GameObject SpawnVfx(GameObject prefab, Vector3 pos, Vector3 normal, float extraLife = 0f ,float scale = 1f)
+    public GameObject SpawnVfx(
+        GameObject prefab,
+        Vector3 pos,
+        Vector3 normal,
+        float extraLife = 0f,
+        float scale = 1f,
+        float minimumLifetime = 0f)
     {
         Quaternion rot = normal.sqrMagnitude > 0.0001f
             ? Quaternion.LookRotation(normal.normalized)
             : Quaternion.identity;
 
-        return SpawnVfx(prefab, pos, rot, extraLife, scale);
+        return SpawnVfx(prefab, pos, rot, extraLife, scale, minimumLifetime);
     }
 
-    public GameObject SpawnVfx(GameObject prefab, Vector3 pos, Quaternion rotation, float extraLife = 0f, float scale = 1f)
+    public GameObject SpawnVfx(
+        GameObject prefab,
+        Vector3 pos,
+        Quaternion rotation,
+        float extraLife = 0f,
+        float scale = 1f,
+        float minimumLifetime = 0f)
     {
         if (prefab == null) return null;
 
         GameObject vfx = InstantiateVfx(prefab, pos, rotation, null, scale);
 
-        float duration = CalculateLifetimeAndDisableLoops(vfx) + Mathf.Max(0f, extraLife);
+        PooledVfxHandle handle = vfx.GetComponent<PooledVfxHandle>();
+        float duration = handle != null
+            ? CalculateLifetimeAndDisableLoops(handle.ParticleSystems, handle.TrailRenderers)
+            : CalculateLifetimeAndDisableLoops(vfx);
+        duration = Mathf.Max(duration, Mathf.Max(0f, minimumLifetime)) + Mathf.Max(0f, extraLife);
+
         DestroyVfxWithWorldTime(vfx, duration);
         return vfx;
     }
@@ -111,14 +138,30 @@ public class VfxSpawner : MonoBehaviour
     {
         if (vfx == null) return;
 
+        PooledVfxHandle handle = vfx.GetComponent<PooledVfxHandle>();
+
         if (!allowParticlesToFinish)
         {
-            Destroy(vfx);
+            if (handle != null)
+                handle.ReturnToPool();
+            else
+                Destroy(vfx);
             return;
         }
 
-        float duration = CalculateLifetimeAndDisableLoops(vfx) + Mathf.Max(0f, extraLife);
-        StopParticleEmission(vfx);
+        float duration;
+        if (handle != null)
+        {
+            duration = CalculateLifetimeAndDisableLoops(handle.ParticleSystems, handle.TrailRenderers);
+            StopParticleEmission(handle.ParticleSystems);
+        }
+        else
+        {
+            duration = CalculateLifetimeAndDisableLoops(vfx);
+            StopParticleEmission(vfx);
+        }
+        duration += Mathf.Max(0f, extraLife);
+
         DestroyVfxWithWorldTime(vfx, duration);
     }
 
@@ -130,12 +173,19 @@ public class VfxSpawner : MonoBehaviour
 
     GameObject InstantiateVfx(GameObject prefab, Vector3 pos, Quaternion rotation, Transform parent, float scale)
     {
-        GameObject vfx = parent
-            ? Instantiate(prefab, pos, rotation, parent)
-            : Instantiate(prefab, pos, rotation);
+        return EnsurePool().Get(prefab, pos, rotation, parent, scale);
+    }
 
-        vfx.transform.localScale *= Mathf.Max(0f, scale);
-        return vfx;
+    VfxPool EnsurePool()
+    {
+        if (_pool != null)
+            return _pool;
+
+        _pool = GetComponent<VfxPool>();
+        if (_pool == null)
+            _pool = gameObject.AddComponent<VfxPool>();
+
+        return _pool;
     }
 
     void DestroyVfxWithWorldTime(GameObject vfx, float duration)
@@ -168,6 +218,18 @@ public class VfxSpawner : MonoBehaviour
         }
     }
 
+    void StopParticleEmission(ParticleSystem[] particleSystems)
+    {
+        for (int i = 0; i < particleSystems.Length; i++)
+        {
+            var ps = particleSystems[i];
+            if (ps == null)
+                continue;
+
+            ps.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+        }
+    }
+
     float CalculateLifetimeAndDisableLoops(GameObject vfx)
     {
         float longestLifetime = 0f;
@@ -187,6 +249,38 @@ public class VfxSpawner : MonoBehaviour
         }
 
         var trailRenderers = vfx.GetComponentsInChildren<TrailRenderer>(true);
+        for (int i = 0; i < trailRenderers.Length; i++)
+        {
+            var trail = trailRenderers[i];
+            if (trail == null)
+                continue;
+
+            longestLifetime = Mathf.Max(longestLifetime, trail.time);
+        }
+
+        if (longestLifetime <= 0f)
+            longestLifetime = DefaultVfxLifetime;
+
+        return longestLifetime + LifetimeSafetyBuffer;
+    }
+
+    float CalculateLifetimeAndDisableLoops(ParticleSystem[] particleSystems, TrailRenderer[] trailRenderers)
+    {
+        float longestLifetime = 0f;
+
+        for (int i = 0; i < particleSystems.Length; i++)
+        {
+            var ps = particleSystems[i];
+            if (ps == null)
+                continue;
+
+            var main = ps.main;
+            if (main.loop)
+                main.loop = false;
+
+            longestLifetime = Mathf.Max(longestLifetime, EstimateParticleLifetime(ps));
+        }
+
         for (int i = 0; i < trailRenderers.Length; i++)
         {
             var trail = trailRenderers[i];

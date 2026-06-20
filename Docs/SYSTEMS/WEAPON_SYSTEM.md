@@ -130,6 +130,21 @@ Final Stability is clamped to `0-100%` after all modifiers. A `Flat` Stability
 modifier adds percentage points, so `30 Stability + 10 Flat = 40%`. Author
 these values as whole percentages, not `0-1` normalized values.
 
+### Damage Range Falloff
+
+Projectile damage is finalized through `DamageCalculator`, which applies range
+falloff before critical and armor modifiers. Current falloff profiles are:
+
+| Weapon Type | Free Range | Damage Drop After Free Range |
+| --- | ---: | ---: |
+| Sniper | 120 units | none |
+| Shotgun | 12 units | 2% base damage per unit |
+| Pistol | 25 units | 0.5% base damage per unit |
+| Rifle | 40 units | 0.3% base damage per unit |
+| SMG | 3 units | 8% base damage per unit |
+| HMG | 30 units | 0.4% base damage per unit |
+| Melee | infinite | none |
+
 ## Stat Modifier Contract
 
 Any component that contributes runtime modifiers should implement
@@ -152,6 +167,30 @@ This applies when changes affect weapon-relevant stats such as:
 
 This applies to status effects, passive modifiers, weapon affixes, weapon
 upgrades, and any custom dynamic modifier provider.
+
+## Projectile Pooling
+
+Projectiles are managed through `ProjectilePool` (singleton, `DontDestroyOnLoad`), which reuses instances instead of calling `Instantiate`/`Destroy` on every shot.
+
+**Spawn paths** — all three routes go through the pool:
+
+- Normal fire: `WeaponProjectileSpawner.Spawn` → `ProjectilePool.Instance.Get(prefab, pos, rot)`
+- Skill projectiles: `ProjectileSkillPayloadDef.Execute` → `ProjectilePool.Instance.Get(prefab, pos, rot)`
+- Child/split projectiles: `Projectile.SpawnChild` → `ProjectilePool.Instance.Get(prefab, pos, rot)`
+
+**Despawn** — `Projectile.Despawn` routes to `ProjectilePool.Return`, which reparents to the pool transform and calls `SetActive(false)`. If the projectile has no pool reference (spawned before pool existed), it falls back to `Destroy`.
+
+**Cap**: 128 idle instances per prefab by default. Configured via the `ProjectilePool` component's `maxPerPool` serialized field. Instances above the cap are destroyed instead of pooled.
+
+**Layer reset on reuse** — `PrepareForSpawn` calls `ProjectileLayerUtility.InheritLayer` to reset the hierarchy to the prefab's authored layer before the caller applies `ApplyForContext` or `ApplyForSkillUser`. This prevents stale layers when an instance is reused for a different bullet faction.
+
+**Ball/trail VFX** — routed through `VfxSpawner.SpawnLoopingVfx` / `StopLoopingVfx`, sharing the existing `VfxPool`. VFX is detached from the projectile before it is returned to the pool, so trails do not teleport or linger on reused instances.
+
+**Spawn flash VFX** — assign `spawnFlashPrefab` on `Projectile` to play a one-shot muzzle flash at the spawn position. `PrepareForSpawn` calls `VfxSpawner.SpawnVfx(spawnFlashPrefab, pos, rot)` immediately after each pool reuse, covering all spawn paths (normal fire, skill, child/split). Leave the field null if the projectile has no flash effect.
+
+**Hovl Studio `HS_ProjectileMover` compatibility** — prefabs that carry `HS_ProjectileMover` on a child VFX object must have their `Flash` Inspector field set to a Project asset prefab (not a scene-hierarchy child instance). `HS_ProjectileMover` now routes flash through `VfxSpawner.SpawnVfx` on every `OnEnable`, and `OnDisable` stops all coroutines so the lifetime timer does not outlive pool tenure. The pool-aware `notDestroy` path is selected automatically when `ProjectilePool.Instance` is present.
+
+**Prewarm** — call `ProjectilePool.Instance.Prewarm(prefab, count)` to fill the pool before a scene starts. Not wired to any automatic trigger (phase 2).
 
 ## Shoot Flow
 

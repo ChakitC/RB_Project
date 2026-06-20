@@ -26,7 +26,7 @@ MonoBehaviour:
   skillSlots:
   - slotId: 0
     displayName: 
-    hotkey: 282
+    hotkey: 257
     defaultOptionIndex: 0
     options:
     - optionId: 
@@ -44,7 +44,13 @@ MonoBehaviour:
     displayName: 
     hotkey: 259
     defaultOptionIndex: 0
-    options: []
+    options:
+    - optionId: 
+      displayName: 
+      skillAsset: {fileID: 11400000, guid: 017e7afd0b669134396b5761021a3c2b, type: 2}
+      skillLevel: 1
+      supportAssets: []
+      maxSupportSlots: 3
   maxHP: 30000
   maxStamina: 50
   Damage: 10

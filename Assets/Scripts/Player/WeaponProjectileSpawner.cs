@@ -13,7 +13,10 @@ public sealed class WeaponProjectileSpawner
         if (!context.FirePoint)
             return;
 
-        var projectile = Object.Instantiate(prefabComp, context.FirePoint.position, context.FirePoint.rotation);
+        var pool = ProjectilePool.Instance;
+        if (pool == null) return;
+        var projectile = pool.Get(prefabComp, context.FirePoint.position, context.FirePoint.rotation);
+        if (projectile == null) return;
         ProjectileLayerUtility.ApplyForContext(projectile.gameObject, context.OwnerContext);
 
         projectile.gunType = context.GunType;

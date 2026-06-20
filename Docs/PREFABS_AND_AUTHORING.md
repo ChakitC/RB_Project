@@ -136,7 +136,7 @@ Use this workflow:
 
 1. Add the repeated `Vfx` events at the required times in the Skill Animation
    VFX Timeline.
-2. Press `Create / Sync VFX Slots`. The tool replaces existing VFX slots and
+2. Press `Load / Sync VFX Data`. The tool replaces existing VFX slots and
    entries, creates one `SkillVfxAuthoringSlot` for each timeline VFX cue, and
    reloads saved entries from the assigned asset.
 3. Select a slot, add one or more assets to `VFX Prefabs To Add`, then press
@@ -152,14 +152,14 @@ will be assigned manually. Use `Add VFX Prefabs` on the slot for prefab-backed
 entries; the authoring component no longer exposes Skill-specific new-entry
 fields.
 
-`Load VFX Data` replaces `SkillVfxAuthoringSlot` objects and legacy loose
+`Load / Sync VFX Data` replaces `SkillVfxAuthoringSlot` objects and legacy loose
 `SkillVfxAuthoringEntry` objects under `Source VFX Root`, groups entries by cue,
 creates visible prefab-instance children, and reconstructs their saved placement.
 `Clear Authoring Slots` removes the same authoring hierarchy after confirmation.
 Other character children, bones, hitboxes, and authored objects are not removed.
 The authoring hierarchy records which Skill Definition owns it. Changing the
 assigned Skill immediately rebuilds the hierarchy from the new Skill, so prefab
-entries from the previous Skill are not reused. Create/Sync is a replace
+entries from the previous Skill are not reused. Load/Sync is a replace
 operation: unsaved placement or entry changes are discarded in favor of asset
 data. Use Unity Undo to restore the hierarchy when this was accidental.
 
@@ -230,8 +230,9 @@ Create a layer named **`Cutscene`** in **Edit → Project Settings → Tags and 
 ### 2. Main Camera
 
 On the main camera's `Camera` component set **Culling Mask** to exclude the
-`Cutscene` layer. The `CameraF` component on the same object is disabled/enabled
-by `CutsceneSkillPresenter` automatically.
+`Cutscene` layer. `CutsceneSkillPresenter` auto-resolves the `CameraF` component
+from `Camera.main` or from a parent holder such as `CameraHolder.prefab`, then
+disables/enables it automatically.
 
 ### 3. CutsceneCameraRig (new GameObject in scene)
 
@@ -260,16 +261,21 @@ camera can see them and the main camera cannot.
 ### 5. CutsceneSkillPresenter
 
 Add `CutsceneSkillPresenter` to the **player prefab** (or to a persistent
-scene GameObject) and wire the serialized fields:
+scene GameObject). On the player prefab it resolves `CharacterSkillManager`
+and `CharacterAnimBrain` through the prefab's `CharacteContext` automatically.
+If the presenter lives on a persistent scene GameObject, assign `_ctx` to the
+player's `CharacteContext`. The camera and cutscene-character fields can be left
+empty when the scene objects use the documented names and layer setup below.
+
+Optional serialized overrides:
 
 | Field | Assignment |
 |-------|-----------|
-| `_skillManager` | Player's `CharacterSkillManager` |
-| `_animBrain` | Player's `CharacterAnimBrain` |
-| `_mainFollowCamera` | Main camera's `CameraF` component |
-| `_cutsceneCamera` | `CutsceneCamera` Camera component |
-| `_cutsceneCamAnimancer` | `CutsceneCameraRig` AnimancerComponent |
-| `_cutsceneCharAnimancer` | `CutsceneCharacter` AnimancerComponent |
+| `_ctx` | Player's `CharacteContext` when the presenter is not on the player prefab |
+| `_mainFollowCamera` | Main camera's `CameraF` component when auto-resolve should be overridden |
+| `_cutsceneCamera` | `CutsceneCamera` Camera component when auto-resolve should be overridden |
+| `_cutsceneCamAnimancer` | `CutsceneCameraRig` AnimancerComponent when auto-resolve should be overridden |
+| `_cutsceneCharAnimancer` | `CutsceneCharacter` AnimancerComponent when auto-resolve should be overridden |
 
 `_sortingOrder` (default 31999) controls the letterbox overlay depth relative to
 other screen effects. Adjust `_barColor` to change the bar/background colour.

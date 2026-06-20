@@ -12,6 +12,7 @@ public sealed class WorldTimeScaledVfx : MonoBehaviour
     float _destroyAfterWorldSeconds;
     float _age;
     bool _destroyAfterLifetime;
+    PooledVfxHandle _handle;
 
     void Awake()
     {
@@ -21,6 +22,8 @@ public sealed class WorldTimeScaledVfx : MonoBehaviour
     void OnEnable()
     {
         _age = 0f;
+        _destroyAfterLifetime = false;
+        _handle = GetComponent<PooledVfxHandle>();
     }
 
     void Update()
@@ -32,7 +35,12 @@ public sealed class WorldTimeScaledVfx : MonoBehaviour
 
         _age += TimeSlowManager.Instance.WorldDeltaTime;
         if (_age >= _destroyAfterWorldSeconds)
-            Destroy(gameObject);
+        {
+            if (_handle != null)
+                _handle.ReturnToPool();
+            else
+                Destroy(gameObject);
+        }
     }
 
     public void DestroyAfterWorldSeconds(float seconds)

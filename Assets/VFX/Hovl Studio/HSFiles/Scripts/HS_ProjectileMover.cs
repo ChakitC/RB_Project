@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -16,23 +16,17 @@ public class HS_ProjectileMover : MonoBehaviour
     [SerializeField] protected Light lightSourse;
     [SerializeField] protected GameObject[] Detached;
     [SerializeField] protected ParticleSystem projectilePS;
-    private bool startChecker = false;
-    [SerializeField]protected bool notDestroy = false;
+    protected bool startChecker = false;
+    [SerializeField] protected bool notDestroy = false;
 
     protected virtual void Start()
     {
+        if (ProjectilePool.Instance != null)
+            notDestroy = true;
+
         if (!startChecker)
-        {
-            /*lightSourse = GetComponent<Light>();
-            rb = GetComponent<Rigidbody>();
-            col = GetComponent<Collider>();
-            if (hit != null)
-                hitPS = hit.GetComponent<ParticleSystem>();*/
-            if (flash != null)
-            {
-                flash.transform.parent = null;
-            }
-        }
+            SpawnFlashVfx();
+
         if (notDestroy)
             StartCoroutine(DisableTimer(5));
         else
@@ -43,7 +37,7 @@ public class HS_ProjectileMover : MonoBehaviour
     protected virtual IEnumerator DisableTimer(float time)
     {
         yield return new WaitForSeconds(time);
-        if(gameObject.activeSelf)
+        if (gameObject.activeSelf)
             gameObject.SetActive(false);
         yield break;
     }
@@ -52,22 +46,29 @@ public class HS_ProjectileMover : MonoBehaviour
     {
         if (startChecker)
         {
-            if (flash != null)
-            {
-                flash.transform.parent = null;
-            }
+            SpawnFlashVfx();
             if (lightSourse != null)
                 lightSourse.enabled = true;
             col.enabled = true;
             rb.constraints = RigidbodyConstraints.None;
+            if (notDestroy)
+                StartCoroutine(DisableTimer(5));
         }
+    }
+
+    void OnDisable() => StopAllCoroutines();
+
+    void SpawnFlashVfx()
+    {
+        if (flash == null || VfxSpawner.Instance == null) return;
+        VfxSpawner.Instance.SpawnVfx(flash, transform.position, transform.rotation);
     }
 
     protected virtual void FixedUpdate()
     {
         if (speed != 0)
         {
-            rb.linearVelocity = transform.forward * speed;      
+            rb.linearVelocity = transform.forward * speed;
         }
     }
 
@@ -76,7 +77,6 @@ public class HS_ProjectileMover : MonoBehaviour
     {
         //Lock all axes movement and rotation
         rb.constraints = RigidbodyConstraints.FreezeAll;
-        //speed = 0;
         if (lightSourse != null)
             lightSourse.enabled = false;
         col.enabled = false;
@@ -101,7 +101,7 @@ public class HS_ProjectileMover : MonoBehaviour
             hitPS.Play();
         }
 
-        //Removing trail from the projectile on cillision enter or smooth removing. Detached elements must have "AutoDestroying script"
+        //Removing trail from the projectile on collision enter or smooth removing. Detached elements must have "AutoDestroying script"
         foreach (var detachedPrefab in Detached)
         {
             if (detachedPrefab != null)

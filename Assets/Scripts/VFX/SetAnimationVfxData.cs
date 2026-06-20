@@ -332,10 +332,6 @@ public class SetAnimationVfxData : MonoBehaviour
 #endif
     }
 
-    [Title("Data Sync")]
-    [InfoBox("Authoring hierarchy is out of sync with the selected source and entry. Click 'Create / Sync VFX Slots' to rebuild.", InfoMessageType.Warning, nameof(IsAuthoringOutOfSync))]
-    [Button("Create / Sync VFX Slots", ButtonSizes.Large)]
-    [PropertyTooltip("Replace the current authoring hierarchy with slots and saved VFX data from the selected Source Asset and Entry.")]
     public void CreateOrSyncTimelineVfxSlots()
     {
 #if UNITY_EDITOR
@@ -343,17 +339,10 @@ public class SetAnimationVfxData : MonoBehaviour
 #endif
     }
 
+    [Title("Data Sync")]
+    [InfoBox("Authoring hierarchy is out of sync with the selected source and entry. Click 'Load / Sync VFX Data' to rebuild from saved data.", InfoMessageType.Warning, nameof(IsAuthoringOutOfSync))]
     [ButtonGroup("vfxDataSyncRow")]
-    [Button("Load VFX Data")]
-    [PropertyTooltip("Discard unsaved hierarchy changes and rebuild from the selected Source Asset and Entry.")]
-    public void LoadTimelineVfxData()
-    {
-#if UNITY_EDITOR
-        RebuildTimelineAuthoring(LoadUndoLabel);
-#endif
-    }
-
-    [ButtonGroup("vfxDataSyncRow")]
+    [GUIColor(0.55f, 0.9f, 0.55f)]
     [Button("Save VFX Data")]
     [PropertyTooltip("Save all authoring entries under Source VFX Root through the selected source adapter.")]
     public void SaveTimelineVfxData()
@@ -375,6 +364,17 @@ public class SetAnimationVfxData : MonoBehaviour
                 string.Join("\n- ", issues),
                 source.SourceAsset);
         }
+#endif
+    }
+
+    [ButtonGroup("vfxDataSyncRow")]
+    [GUIColor(1f, 0.78f, 0.35f)]
+    [Button("Load / Sync VFX Data")]
+    [PropertyTooltip("Discard unsaved hierarchy changes and rebuild from the selected Source Asset and Entry.")]
+    public void LoadTimelineVfxData()
+    {
+#if UNITY_EDITOR
+        RebuildTimelineAuthoring(LoadUndoLabel);
 #endif
     }
 

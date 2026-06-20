@@ -79,6 +79,7 @@ public static class AnimationVfxTimelineSourceFactory
             loopKey = cue.LoopKey,
             extraLife = cue.ExtraLife,
             allowParticlesToFinish = cue.AllowParticlesToFinish,
+            animClip = cue.AnimClip,
         };
     }
 

@@ -38,5 +38,6 @@ public enum ControlBlockFlags
     None = 0,
     Move = 1 << 0,
     Shoot = 1 << 1,
-    Skill = 1 << 2
+    Skill = 1 << 2,
+    Rotate = 1 << 3
 }

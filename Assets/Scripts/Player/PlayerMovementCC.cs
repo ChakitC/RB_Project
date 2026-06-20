@@ -138,6 +138,9 @@ public class PlayerMovementCC : MonoBehaviour
         if (cameraMain == null || _characteContext == null || _characteContext.aimTarget == null)
             return;
 
+        if (stateHub != null && !stateHub.CanRotate())
+            return;
+
         Ray ray = cameraMain.ScreenPointToRay(_characteContext.lookInput);
 
         if (Physics.Raycast(ray, out RaycastHit hit, 500f, groundMask))

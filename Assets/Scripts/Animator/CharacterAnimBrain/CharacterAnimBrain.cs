@@ -213,6 +213,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private ClipTransition LegacySkillClip => AnimProfile.skillClip;
     private ClipTransition SkillClip => ResolveSkillClip(_activeSkillDefinition);
     public PairOffsetProfilesSO PairOffsetProfiles => AnimProfile != null ? AnimProfile.pairOffsetProfiles : null;
+    public SkillGemDefinition ActiveSkillDefinition => _activeSkillDefinition;
     private ClipTransition MiniStuneClip => AnimProfile.miniStune;
     private ClipTransition StuneClip => AnimProfile.stune;
     private ClipTransition RootClip => AnimProfile.root;

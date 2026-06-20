@@ -38,6 +38,10 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
     AnimationVfxSessionToken _cutsceneVfxToken;
     bool _hasCutsceneVfxSession;
 
+    Vector3 _savedCameraHolderPosition;
+    Quaternion _savedCameraHolderRotation;
+    bool _cameraHolderRelocated;
+
     CharacterSkillManager _skillManager;
     CharacterAnimBrain _animBrain;
 
@@ -54,10 +58,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         ResolveReferences();
 
         if (_skillManager != null)
-        {
-            _skillManager.CastStarted   += HandleCastStarted;
             _skillManager.CastCancelled += HandleCastCancelled;
-        }
 
         if (_animBrain != null)
         {
@@ -69,10 +70,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
     void OnDisable()
     {
         if (_skillManager != null)
-        {
-            _skillManager.CastStarted   -= HandleCastStarted;
             _skillManager.CastCancelled -= HandleCastCancelled;
-        }
 
         if (_animBrain != null)
         {
@@ -92,15 +90,6 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
     // Event handlers
 
-    void HandleCastStarted(ActiveSkillCastInfo castInfo)
-    {
-        if (!castInfo.SkillDef.IsCutsceneSkill)
-            return;
-
-        _pendingDef   = castInfo.SkillDef.CutsceneDef;
-        _pendingReqId = castInfo.RequestId;
-    }
-
     void HandleCastCancelled(ActiveSkillCastInfo castInfo, SkillCastCancelReason reason)
     {
         if (castInfo.RequestId != _pendingReqId)
@@ -115,13 +104,21 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
     void HandleTimelineEvent(int requestId, CombatTimelineEventName eventName)
     {
-        if (requestId != _pendingReqId || _pendingDef == null)
-            return;
-
         if (eventName == CombatTimelineEventName.CutsceneSkillStart)
-            StartCutscene(_pendingDef);
+        {
+            if (_cutsceneActive) return;
+            var skillDef = _animBrain?.ActiveSkillDefinition;
+            if (skillDef == null || !skillDef.IsCutsceneSkill) return;
+            _pendingDef   = skillDef.CutsceneDef;
+            _pendingReqId = requestId;
+            if (_pendingDef != null)
+                StartCutscene(_pendingDef);
+        }
         else if (eventName == CombatTimelineEventName.CutsceneSkillEnd)
-            EndCutscene(_pendingDef.fadeOutDuration);
+        {
+            if (!_cutsceneActive || requestId != _pendingReqId) return;
+            EndCutscene(_pendingDef?.fadeOutDuration ?? 0.2f);
+        }
     }
 
     void HandleVfxCue(CharacterAnimBrain.SkillAnimationVfxCueSignal signal)
@@ -146,12 +143,14 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         _cutsceneActive = true;
 
         TimeSlowManager.Instance.StartSlow(def.worldSlowScale, float.MaxValue);
+        _ctx?.stateHub?.AddExternalControlBlock(ControlBlockFlags.Rotate);
 
         if (_mainFollowCamera != null)
             _mainFollowCamera.enabled = false;
 
         // Character animation is driven by CharacterAnimBrain on the gameplay LocoLayer.
         // Drive only camera animation and VFX from here.
+        SnapCameraHolderToCtx();
         PlayCameraAnimation(def.cameraCutsceneClip);
         StartCutsceneVfxSession(def);
 
@@ -170,11 +169,13 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         _pendingReqId   = 0;
 
         TimeSlowManager.Instance.StartSlow(2f, 0f);
+        _ctx?.stateHub?.RemoveExternalControlBlock(ControlBlockFlags.Rotate);
 
         if (_mainFollowCamera != null)
             _mainFollowCamera.enabled = true;
 
         StopCameraAnimation();
+        RestoreCameraHolder();
         EndCutsceneVfxSession();
 
         float currentAlpha = _overlayGroup != null ? _overlayGroup.alpha : 0f;
@@ -190,11 +191,13 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         _pendingReqId   = 0;
 
         TimeSlowManager.Instance.StartSlow(2f, 0f);
+        _ctx?.stateHub?.RemoveExternalControlBlock(ControlBlockFlags.Rotate);
 
         if (_mainFollowCamera != null)
             _mainFollowCamera.enabled = true;
 
         StopCameraAnimation();
+        RestoreCameraHolder();
         EndCutsceneVfxSession();
 
         if (_overlayRoutine != null)
@@ -211,7 +214,12 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
     void PlayCameraAnimation(AnimationClip clip)
     {
-        if (clip == null || _mainFollowCamera == null) return;
+        if (clip == null) return;
+
+        if (_mainFollowCamera == null)
+            _mainFollowCamera = ResolveMainFollowCamera();
+
+        if (_mainFollowCamera == null) return;
 
         if (_cameraHolderAnimancer == null)
             _cameraHolderAnimancer = _mainFollowCamera.GetComponentInChildren<AnimancerComponent>(true);
@@ -232,6 +240,37 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         if (_cameraHolderAnimancer.Animator != null)
             _cameraHolderAnimancer.Animator.updateMode = AnimatorUpdateMode.Normal;
         _cameraHolderAnimancer.Stop();
+    }
+
+    void SnapCameraHolderToCtx()
+    {
+        if (_ctx == null) return;
+
+        if (_mainFollowCamera == null)
+            _mainFollowCamera = ResolveMainFollowCamera();
+
+        if (_mainFollowCamera == null)
+        {
+            Debug.LogWarning("[CutsceneSkillPresenter] Cannot snap CameraHolder — CameraF not found.", this);
+            return;
+        }
+
+        Transform holder = _mainFollowCamera.transform;
+        _savedCameraHolderPosition = holder.position;
+        _savedCameraHolderRotation = holder.rotation;
+        _cameraHolderRelocated = true;
+
+        holder.SetPositionAndRotation(_ctx.transform.position, _ctx.transform.rotation);
+    }
+
+    void RestoreCameraHolder()
+    {
+        if (!_cameraHolderRelocated) return;
+        _cameraHolderRelocated = false;
+
+        if (_mainFollowCamera == null) return;
+        _mainFollowCamera.transform.SetPositionAndRotation(
+            _savedCameraHolderPosition, _savedCameraHolderRotation);
     }
 
     // Cutscene VFX session

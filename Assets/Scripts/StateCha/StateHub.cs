@@ -453,6 +453,21 @@ public sealed class StateHub : MonoBehaviour
         }
     }
 
+    public void AddExternalControlBlock(ControlBlockFlags flag)
+    {
+        externalControlBlocks |= flag;
+        CancelHeldFireIfShootBlocked();
+    }
+
+    public void RemoveExternalControlBlock(ControlBlockFlags flag)
+    {
+        externalControlBlocks &= ~flag;
+        CancelHeldFireIfShootBlocked();
+    }
+
+    public bool CanRotate() =>
+        !HasStunOverride && (ActiveControlBlocks & ControlBlockFlags.Rotate) == 0;
+
     public void SetExternalControlState(ControlBlockFlags controlBlocks, bool stunned)
     {
         bool changed = externalControlBlocks != controlBlocks || externalStunned != stunned;

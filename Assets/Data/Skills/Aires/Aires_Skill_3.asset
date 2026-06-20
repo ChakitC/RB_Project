@@ -15,12 +15,12 @@ MonoBehaviour:
   helperFacingMode: 0
   chainContinueMode: 0
   chainContinueNormalizedTime: 1
-  radius: 10
+  radius: 50
   duration: 3
   requireLineOfSight: 0
   targetLayers:
     serializedVersion: 2
-    m_Bits: 524287
+    m_Bits: 512
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -23,6 +23,18 @@ MonoBehaviour:
   weaponHandMode: 2
   combatRole: 3
   chainAttackSkill: {fileID: 0}
+  skillSlots:
+  - slotId: 0
+    displayName: Roma.Ualtimeat
+    hotkey: 282
+    defaultOptionIndex: 0
+    options:
+    - optionId: Roma.Ualtimeat.1
+      displayName: Roma.Ualtimeat.1
+      skillAsset: {fileID: 11400000, guid: 7f5265c036ab5814580557d966839af1, type: 2}
+      skillLevel: 1
+      supportAssets: []
+      maxSupportSlots: 3
   maxHP: 100000
   maxStamina: 50
   Damage: 50

@@ -28,10 +28,11 @@ hotkey, default option index, and any number of selectable
 `SkillGemDefinition`, level, support gems, and optional `optionId`.
 
 `CharacterSkillManager` resolves command slots at runtime from
-`ctx.baseStats.skillSlots`. If a prefab-authored `autonomousSlots` entry at the
-same index has `skillAsset` assigned, that prefab entry overrides the
-`CharacterStats` slot for compatibility with older prefabs. Empty prefab entries
-do not override stats-authored slots.
+`ctx.baseStats.skillSlots`. `CharacterStats` is authoritative for every slot it
+defines, even when the prefab has a `CharacterSkillManager.autonomousSlots` entry
+with `skillAsset` assigned at the same index. Prefab-authored
+`autonomousSlots` entries are used only as legacy fallback slots when
+`CharacterStats` does not define that index.
 
 Runtime skill switching uses `CharacterSkillManager.TrySelectSkillOption(...)`.
 The manager rebuilds the affected `SkillInstance`, cancels any pending cast from

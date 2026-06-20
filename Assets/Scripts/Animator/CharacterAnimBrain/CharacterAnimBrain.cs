@@ -87,6 +87,28 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         }
     }
 
+    public enum SkillAnimationVfxPhase
+    {
+        MainSkill = 0,
+        Cutscene = 1,
+    }
+
+    public readonly struct SkillAnimationVfxCueSignal
+    {
+        public readonly int RequestId;
+        public readonly SkillGemDefinition SkillDef;
+        public readonly SkillAnimationVfxPhase Phase;
+        public readonly int CueIndex;
+
+        public SkillAnimationVfxCueSignal(int requestId, SkillGemDefinition skillDef, SkillAnimationVfxPhase phase, int cueIndex)
+        {
+            RequestId = requestId;
+            SkillDef = skillDef;
+            Phase = phase;
+            CueIndex = cueIndex;
+        }
+    }
+
     public bool IsDowned { get; private set; }
     private LocomotionState_Crawl crawlState;
     private Locomotion_StatusEffect statusEffectState;
@@ -137,7 +159,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private Action onShootEndCache;
     private Action onUtilityCastMomentCache;
     private SkillGemDefinition _activeSkillDefinition;
-    private SkillVfxPresenter _skillVfxPresenter;
     private AnimationVfxPresenter _animationVfxPresenter;
     private int _activeSkillRequestId;
     private float _activeSkillCastPointNormalized = 0.35f;
@@ -233,6 +254,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     public event Action<int> SkillCastMomentReached;
     public event Action<int> SkillCastInterrupted;
     public event Action<int, CombatTimelineEventName> SkillTimelineEventRaised;
+    public event Action<SkillAnimationVfxCueSignal> SkillAnimationVfxCueRaised;
     public event Action SkillCompleted;
 
     internal bool TryGetActiveSkillNormalizedTime(int requestId, out float normalizedTime)
@@ -1857,7 +1879,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!_activeSkillReleaseRequested || _activeSkillRequestId <= 0 || cueIndex < 0)
             return;
 
-        _skillVfxPresenter?.HandleVfxCue(_activeSkillRequestId, cueIndex);
+        SkillAnimationVfxCueRaised?.Invoke(new SkillAnimationVfxCueSignal(
+            _activeSkillRequestId, _activeSkillDefinition, SkillAnimationVfxPhase.MainSkill, cueIndex));
         SkillTimelineEventRaised?.Invoke(_activeSkillRequestId, CombatTimelineEventName.Vfx);
     }
 
@@ -1871,8 +1894,18 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             return;
         }
 
-        _skillVfxPresenter?.HandleVfxCue(_activeChainRequestId, cueIndex);
+        SkillAnimationVfxCueRaised?.Invoke(new SkillAnimationVfxCueSignal(
+            _activeChainRequestId, _activeChainSkillDefinition, SkillAnimationVfxPhase.MainSkill, cueIndex));
         SkillTimelineEventRaised?.Invoke(_activeChainRequestId, CombatTimelineEventName.Vfx);
+    }
+
+    private void RaiseCutsceneVfxCueInternal(int cueIndex)
+    {
+        if (!_activeSkillReleaseRequested || _activeSkillRequestId <= 0 || cueIndex < 0)
+            return;
+
+        SkillAnimationVfxCueRaised?.Invoke(new SkillAnimationVfxCueSignal(
+            _activeSkillRequestId, _activeSkillDefinition, SkillAnimationVfxPhase.Cutscene, cueIndex));
     }
 
     private void ArmSkillRequest(
@@ -1887,7 +1920,16 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         _activeSkillReleaseRequested = true;
         _activeSkillReleased = false;
         SetActiveSkillTimelineEventNames(skillDef, timelineEventNames);
-        BeginSkillVfxRequest(requestId, skillDef);
+        EnsureSkillVfxPresenter(skillDef);
+    }
+
+    private void EnsureSkillVfxPresenter(SkillGemDefinition skillDef)
+    {
+        if (skillDef == null || !skillDef.HasSkillVfxEvents)
+            return;
+        if (GetComponent<SkillVfxPresenter>() != null)
+            return;
+        gameObject.AddComponent<SkillVfxPresenter>();
     }
 
     private void ArmUtilityRequest(int requestId, float castPointNormalized)
@@ -1900,7 +1942,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void ClearActiveSkillRequest()
     {
-        _skillVfxPresenter?.EndRequest(_activeSkillRequestId);
         _activeSkillDefinition = null;
         _activeSkillRequestId = 0;
         _activeSkillCastPointNormalized = 0.35f;
@@ -1931,21 +1972,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
             _activeSkillTimelineEventNames.Add(eventName);
         }
-    }
-
-    private void BeginSkillVfxRequest(int requestId, SkillGemDefinition skillDef)
-    {
-        if (requestId <= 0 || skillDef == null || !skillDef.HasSkillVfxEvents)
-            return;
-
-        if (_skillVfxPresenter == null)
-            _skillVfxPresenter = GetComponent<SkillVfxPresenter>();
-
-        if (_skillVfxPresenter == null)
-            _skillVfxPresenter = gameObject.AddComponent<SkillVfxPresenter>();
-
-        _skillVfxPresenter.Initialize(this);
-        _skillVfxPresenter.BeginRequest(requestId, skillDef);
     }
 
     private void ClearActiveUtilityRequest()

@@ -8,53 +8,111 @@ public sealed class SkillVfxPresenter : MonoBehaviour
         new Dictionary<int, AnimationVfxSessionToken>();
 
     CharacterAnimBrain _animBrain;
+    CharacterSkillManager _skillManager;
     AnimationVfxPresenter _presenter;
 
-    public void Initialize(CharacterAnimBrain animBrain)
+    void OnEnable()
     {
-        _animBrain = animBrain;
-        EnsurePresenter();
+        ResolveReferences();
+        Subscribe();
     }
 
-    public void BeginRequest(int requestId, SkillGemDefinition skill)
+    void OnDisable()
     {
-        if (requestId <= 0 || skill == null)
-            return;
-
-        EndRequest(requestId);
-        EnsurePresenter();
-        if (_presenter == null)
-            return;
-
-        Transform source = _animBrain != null ? _animBrain.transform : transform;
-        AnimationVfxSessionToken token = _presenter.BeginSession(
-            new SkillVfxCueSource(skill.SkillVfxEvents),
-            SkillVfxAnchorResolver.CreateContext(source));
-        _sessionsByRequest[requestId] = token;
+        Unsubscribe();
+        EndAllSessions();
     }
 
-    public void HandleVfxCue(int requestId, int cueIndex)
+    void ResolveReferences()
     {
-        if (requestId <= 0 || cueIndex < 0 || _presenter == null ||
-            !_sessionsByRequest.TryGetValue(requestId, out AnimationVfxSessionToken token))
+        if (!_animBrain)
         {
-            return;
+            TryGetComponent(out _animBrain);
+            if (!_animBrain)
+                _animBrain = GetComponentInParent<CharacterAnimBrain>();
         }
 
-        _presenter.HandleCue(token, cueIndex);
+        if (!_skillManager)
+        {
+            TryGetComponent(out _skillManager);
+            if (!_skillManager)
+                _skillManager = GetComponentInParent<CharacterSkillManager>();
+        }
+
+        EnsurePresenter();
     }
 
-    public void EndRequest(int requestId)
+    void Subscribe()
+    {
+        if (_animBrain != null)
+        {
+            _animBrain.SkillAnimationVfxCueRaised += HandleVfxCue;
+            _animBrain.PlaybackEvent += HandlePlaybackEvent;
+        }
+
+        if (_skillManager != null)
+            _skillManager.CastCancelled += HandleCastCancelled;
+    }
+
+    void Unsubscribe()
+    {
+        if (_animBrain != null)
+        {
+            _animBrain.SkillAnimationVfxCueRaised -= HandleVfxCue;
+            _animBrain.PlaybackEvent -= HandlePlaybackEvent;
+        }
+
+        if (_skillManager != null)
+            _skillManager.CastCancelled -= HandleCastCancelled;
+    }
+
+    void HandleVfxCue(CharacterAnimBrain.SkillAnimationVfxCueSignal signal)
+    {
+        if (signal.Phase != CharacterAnimBrain.SkillAnimationVfxPhase.MainSkill)
+            return;
+        if (signal.RequestId <= 0 || signal.CueIndex < 0)
+            return;
+        if (signal.SkillDef == null || !signal.SkillDef.HasSkillVfxEvents)
+            return;
+
+        if (!_sessionsByRequest.TryGetValue(signal.RequestId, out AnimationVfxSessionToken token))
+        {
+            EnsurePresenter();
+            if (_presenter == null) return;
+
+            Transform source = _animBrain != null ? _animBrain.transform : transform;
+            token = _presenter.BeginSession(
+                new SkillVfxCueSource(signal.SkillDef.SkillVfxEvents),
+                SkillVfxAnchorResolver.CreateContext(source));
+            _sessionsByRequest[signal.RequestId] = token;
+        }
+
+        _presenter?.HandleCue(token, signal.CueIndex);
+    }
+
+    void HandlePlaybackEvent(CharacterAnimBrain.PlaybackSignal signal)
+    {
+        if (signal.Kind != CharacterAnimBrain.PlaybackKind.Skill &&
+            signal.Kind != CharacterAnimBrain.PlaybackKind.ChainSkill)
+            return;
+
+        if (signal.Phase == CharacterAnimBrain.PlaybackPhase.Completed ||
+            signal.Phase == CharacterAnimBrain.PlaybackPhase.Interrupted)
+        {
+            EndRequest(signal.RequestId);
+        }
+    }
+
+    void HandleCastCancelled(ActiveSkillCastInfo castInfo, SkillCastCancelReason reason)
+    {
+        EndRequest(castInfo.RequestId);
+    }
+
+    void EndRequest(int requestId)
     {
         if (requestId <= 0)
         {
-            if (_presenter != null)
-            {
-                foreach (AnimationVfxSessionToken sessionToken in _sessionsByRequest.Values)
-                    _presenter.EndSession(sessionToken);
-            }
-
-            _sessionsByRequest.Clear();
+            EndAllSessions();
             return;
         }
 
@@ -65,9 +123,15 @@ public sealed class SkillVfxPresenter : MonoBehaviour
         _presenter?.EndSession(token);
     }
 
-    void OnDisable()
+    void EndAllSessions()
     {
-        EndRequest(0);
+        if (_presenter != null)
+        {
+            foreach (AnimationVfxSessionToken token in _sessionsByRequest.Values)
+                _presenter.EndSession(token);
+        }
+
+        _sessionsByRequest.Clear();
     }
 
     void EnsurePresenter()

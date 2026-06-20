@@ -46,11 +46,10 @@ reference skills with missing or duplicate `skillId` values. If `optionId` is
 empty, runtime save/load uses the skill definition's `skillId`.
 
 `CharacterSkillManager` builds runtime command slots from `ctx.baseStats`.
-Prefab-authored `autonomousSlots` are still supported as compatibility
-overrides: an entry with `skillAsset` assigned replaces the same index from
-`CharacterStats`; an empty entry does not. New character prefabs should prefer
-leaving active-skill choices in `CharacterStats` unless that prefab truly needs a
-local override.
+`CharacterStats` is authoritative for every slot index it defines. Prefab-authored
+`autonomousSlots` are still supported only as legacy fallback slots when
+`CharacterStats` does not define that index. New character prefabs should leave
+active-skill choices in `CharacterStats`.
 
 ## Direct Serialized References
 

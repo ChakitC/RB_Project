@@ -136,9 +136,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 15400,
-                "currentMagazine": 29,
-                "currentReserveAmmo": 9,
+                "shotCounter": 15426,
+                "currentMagazine": 14,
+                "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
                 "upgradeTier": 2,

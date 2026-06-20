@@ -687,15 +687,15 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             SkillSlot serializedSlot = GetSerializedAutonomousSlot(i);
             CharacterSkillLoadoutSlot statsSlot = i < statsSlotCount ? statsSlots[i] : null;
 
-            if (IsPrefabOverrideSlot(serializedSlot))
-            {
-                AddPrefabOverrideSlot(i, serializedSlot);
-                continue;
-            }
-
             if (statsSlot != null)
             {
                 AddStatsLoadoutSlot(i, statsSlot, savedSelections);
+                continue;
+            }
+
+            if (IsPrefabOverrideSlot(serializedSlot))
+            {
+                AddPrefabOverrideSlot(i, serializedSlot);
                 continue;
             }
 

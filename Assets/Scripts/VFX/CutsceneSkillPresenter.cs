@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using Animancer;
 using UnityEngine;
@@ -7,20 +7,16 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class CutsceneSkillPresenter : MonoBehaviour
 {
-    const string CutsceneCameraName = "CutsceneCamera";
-    const string CutsceneCameraRigName = "CutsceneCameraRig";
-    const string CutsceneCharacterName = "CutsceneCharacter";
-
     [Header("Actor")]
     [SerializeField] private CharacteContext _ctx;
 
     [Header("Camera")]
     [SerializeField] private CameraF _mainFollowCamera;
-    [SerializeField] private Camera _cutsceneCamera;
-    [SerializeField] private AnimancerComponent _cutsceneCamAnimancer;
+    [SerializeField] private Camera _cutsceneCamera;           // legacy — no longer toggled by runtime
+    [SerializeField] private AnimancerComponent _cutsceneCamAnimancer; // legacy — no longer used for camera animation
 
     [Header("Cutscene Character")]
-    [SerializeField] private AnimancerComponent _cutsceneCharAnimancer;
+    [SerializeField] private AnimancerComponent _cutsceneCharAnimancer; // legacy — character anim now driven by CharacterAnimBrain
 
     [Header("Overlay")]
     [SerializeField] private int _sortingOrder = 31999;
@@ -37,14 +33,13 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
     RectTransform _topBar;
     RectTransform _bottomBar;
 
-    readonly List<GameObject> _spawnedCutsceneVfx = new List<GameObject>();
-    readonly Dictionary<string, List<GameObject>> _cutsceneVfxLoops =
-        new Dictionary<string, List<GameObject>>(System.StringComparer.Ordinal);
+    AnimancerComponent _cameraHolderAnimancer;
+    AnimationVfxPresenter _cutsceneVfxPresenter;
+    AnimationVfxSessionToken _cutsceneVfxToken;
+    bool _hasCutsceneVfxSession;
 
     CharacterSkillManager _skillManager;
     CharacterAnimBrain _animBrain;
-
-    static int _cutsceneLayer = -1;
 
     // Unity lifecycle
 
@@ -65,7 +60,10 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         }
 
         if (_animBrain != null)
-            _animBrain.SkillTimelineEventRaised += HandleTimelineEvent;
+        {
+            _animBrain.SkillTimelineEventRaised   += HandleTimelineEvent;
+            _animBrain.SkillAnimationVfxCueRaised += HandleVfxCue;
+        }
     }
 
     void OnDisable()
@@ -77,7 +75,10 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         }
 
         if (_animBrain != null)
-            _animBrain.SkillTimelineEventRaised -= HandleTimelineEvent;
+        {
+            _animBrain.SkillTimelineEventRaised   -= HandleTimelineEvent;
+            _animBrain.SkillAnimationVfxCueRaised -= HandleVfxCue;
+        }
 
         if (_cutsceneActive)
             ForceEndCutscene();
@@ -123,6 +124,18 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
             EndCutscene(_pendingDef.fadeOutDuration);
     }
 
+    void HandleVfxCue(CharacterAnimBrain.SkillAnimationVfxCueSignal signal)
+    {
+        if (signal.RequestId != _pendingReqId || _pendingDef == null)
+            return;
+        if (signal.Phase != CharacterAnimBrain.SkillAnimationVfxPhase.Cutscene)
+            return;
+        if (!_hasCutsceneVfxSession || _cutsceneVfxPresenter == null)
+            return;
+
+        _cutsceneVfxPresenter.HandleCue(_cutsceneVfxToken, signal.CueIndex);
+    }
+
     // Cutscene control
 
     void StartCutscene(CutsceneDef def)
@@ -137,35 +150,10 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         if (_mainFollowCamera != null)
             _mainFollowCamera.enabled = false;
 
-        if (_cutsceneCamera != null)
-            _cutsceneCamera.enabled = true;
-
-        if (_cutsceneCharAnimancer != null && def.characterCutsceneClip != null && def.characterCutsceneClip.IsValid)
-        {
-            _cutsceneCharAnimancer.Animator.updateMode = AnimatorUpdateMode.UnscaledTime;
-            AnimancerState state = _cutsceneCharAnimancer.Play(def.characterCutsceneClip);
-            if (def.cutsceneVfxEvents != null && def.cutsceneVfxEvents.Count > 0)
-            {
-                AnimationVfxAnchorContext context = BuildCutsceneAnchorContext();
-                var cueSource = new CutsceneVfxCueSource(def.cutsceneVfxEvents);
-                var runtimeEvents = new AnimancerEvent.Sequence(def.characterCutsceneClip.Events);
-                AnimationVfxEventBinder.Bind(runtimeEvents,
-                    cueIndex => SpawnCutsceneVfxForCue(cueSource, cueIndex, context));
-                state.SharedEvents = runtimeEvents;
-            }
-        }
-
-        if (_cutsceneCamAnimancer != null && def.cameraCutsceneClip != null)
-        {
-            if (_cutsceneCharAnimancer != null)
-            {
-                Transform charRoot = _cutsceneCharAnimancer.transform;
-                _cutsceneCamAnimancer.transform.SetPositionAndRotation(
-                    charRoot.position, charRoot.rotation);
-            }
-            _cutsceneCamAnimancer.Animator.updateMode = AnimatorUpdateMode.UnscaledTime;
-            _cutsceneCamAnimancer.Play(def.cameraCutsceneClip);
-        }
+        // Character animation is driven by CharacterAnimBrain on the gameplay LocoLayer.
+        // Drive only camera animation and VFX from here.
+        PlayCameraAnimation(def.cameraCutsceneClip);
+        StartCutsceneVfxSession(def);
 
         if (_overlayRoutine != null)
             StopCoroutine(_overlayRoutine);
@@ -186,11 +174,8 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         if (_mainFollowCamera != null)
             _mainFollowCamera.enabled = true;
 
-        if (_cutsceneCamera != null)
-            _cutsceneCamera.enabled = false;
-
-        ResetAnimancerUpdateModes();
-        StopAndClearVfx();
+        StopCameraAnimation();
+        EndCutsceneVfxSession();
 
         float currentAlpha = _overlayGroup != null ? _overlayGroup.alpha : 0f;
         if (_overlayRoutine != null)
@@ -209,11 +194,8 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         if (_mainFollowCamera != null)
             _mainFollowCamera.enabled = true;
 
-        if (_cutsceneCamera != null)
-            _cutsceneCamera.enabled = false;
-
-        ResetAnimancerUpdateModes();
-        StopAndClearVfx();
+        StopCameraAnimation();
+        EndCutsceneVfxSession();
 
         if (_overlayRoutine != null)
         {
@@ -225,12 +207,59 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
             _overlayGroup.alpha = 0f;
     }
 
-    void ResetAnimancerUpdateModes()
+    // Camera animation
+
+    void PlayCameraAnimation(AnimationClip clip)
     {
-        if (_cutsceneCharAnimancer != null && _cutsceneCharAnimancer.Animator != null)
-            _cutsceneCharAnimancer.Animator.updateMode = AnimatorUpdateMode.Normal;
-        if (_cutsceneCamAnimancer != null && _cutsceneCamAnimancer.Animator != null)
-            _cutsceneCamAnimancer.Animator.updateMode = AnimatorUpdateMode.Normal;
+        if (clip == null || _mainFollowCamera == null) return;
+
+        if (_cameraHolderAnimancer == null)
+            _cameraHolderAnimancer = _mainFollowCamera.GetComponentInChildren<AnimancerComponent>(true);
+
+        if (_cameraHolderAnimancer == null)
+        {
+            Debug.LogWarning("[CutsceneSkillPresenter] No AnimancerComponent found under CameraHolder — camera animation skipped.", this);
+            return;
+        }
+
+        _cameraHolderAnimancer.Animator.updateMode = AnimatorUpdateMode.UnscaledTime;
+        _cameraHolderAnimancer.Play(clip);
+    }
+
+    void StopCameraAnimation()
+    {
+        if (_cameraHolderAnimancer == null) return;
+        if (_cameraHolderAnimancer.Animator != null)
+            _cameraHolderAnimancer.Animator.updateMode = AnimatorUpdateMode.Normal;
+        _cameraHolderAnimancer.Stop();
+    }
+
+    // Cutscene VFX session
+
+    void StartCutsceneVfxSession(CutsceneDef def)
+    {
+        if (def.cutsceneVfxEvents == null || def.cutsceneVfxEvents.Count == 0)
+            return;
+
+        if (_cutsceneVfxPresenter == null)
+            _cutsceneVfxPresenter = GetComponent<AnimationVfxPresenter>();
+        if (_cutsceneVfxPresenter == null)
+            _cutsceneVfxPresenter = gameObject.AddComponent<AnimationVfxPresenter>();
+
+        EndCutsceneVfxSession();
+
+        _cutsceneVfxToken = _cutsceneVfxPresenter.BeginSession(
+            new CutsceneVfxCueSource(def.cutsceneVfxEvents),
+            BuildCutsceneAnchorContext());
+        _hasCutsceneVfxSession = true;
+    }
+
+    void EndCutsceneVfxSession()
+    {
+        if (!_hasCutsceneVfxSession) return;
+        _hasCutsceneVfxSession = false;
+        _cutsceneVfxPresenter?.EndSession(_cutsceneVfxToken);
+        _cutsceneVfxToken = default;
     }
 
     // Overlay (black bars)
@@ -311,92 +340,6 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         return rect;
     }
 
-    // VFX spawning
-
-    void SpawnCutsceneVfxForCue(CutsceneVfxCueSource source, int cueIndex, AnimationVfxAnchorContext context)
-    {
-        for (int i = 0; i < source.CueCount; i++)
-        {
-            IAnimationVfxCue cue = source.GetCue(i);
-            if (cue != null && cue.CueIndex == cueIndex)
-                SpawnCutsceneVfxEntry(cue, context);
-        }
-    }
-
-    void SpawnCutsceneVfxEntry(IAnimationVfxCue cue, AnimationVfxAnchorContext context)
-    {
-        if (cue.Action == AnimationVfxAction.StopLoop)
-        {
-            string stopKey = cue.LoopKey?.Trim();
-            if (!string.IsNullOrEmpty(stopKey) &&
-                _cutsceneVfxLoops.TryGetValue(stopKey, out List<GameObject> loopInstances))
-            {
-                _cutsceneVfxLoops.Remove(stopKey);
-                for (int i = 0; i < loopInstances.Count; i++)
-                {
-                    _spawnedCutsceneVfx.Remove(loopInstances[i]);
-                    if (loopInstances[i] != null)
-                        Destroy(loopInstances[i]);
-                }
-            }
-            return;
-        }
-
-        if (cue.Prefab == null)
-            return;
-
-        Transform anchor = AnimationVfxAnchorResolver.Resolve(context, cue);
-        AnimationVfxAnchorResolver.ResolvePose(anchor, cue, out Vector3 pos, out Quaternion rot);
-
-        GameObject spawned = Instantiate(cue.Prefab, pos, rot);
-        spawned.transform.localScale = Vector3.Scale(spawned.transform.localScale, cue.LocalScale);
-
-        if (cue.AnchorMode == AnimationVfxAnchorMode.FollowAnchor && anchor != null)
-        {
-            if (cue.Anchor == AnimationVfxAnchor.GenericBone)
-            {
-                AnimationVfxFollowAnchor follower = spawned.GetComponent<AnimationVfxFollowAnchor>();
-                if (follower == null)
-                    follower = spawned.AddComponent<AnimationVfxFollowAnchor>();
-                follower.Configure(anchor, cue.LocalPosition, Quaternion.Euler(cue.LocalEulerAngles));
-            }
-            else
-            {
-                spawned.transform.SetParent(anchor, true);
-            }
-        }
-
-        int layer = GetCutsceneLayer();
-        if (layer >= 0)
-            SetLayerRecursive(spawned, layer);
-
-        AnimationVfxPresenter.PlayAnimClip(spawned, cue.AnimClip);
-
-        _spawnedCutsceneVfx.Add(spawned);
-
-        if (cue.Action == AnimationVfxAction.StartLoop && !string.IsNullOrWhiteSpace(cue.LoopKey))
-        {
-            string loopKey = cue.LoopKey.Trim();
-            if (!_cutsceneVfxLoops.TryGetValue(loopKey, out List<GameObject> loopInstances))
-            {
-                loopInstances = new List<GameObject>();
-                _cutsceneVfxLoops.Add(loopKey, loopInstances);
-            }
-            loopInstances.Add(spawned);
-        }
-    }
-
-    void StopAndClearVfx()
-    {
-        for (int i = 0; i < _spawnedCutsceneVfx.Count; i++)
-        {
-            if (_spawnedCutsceneVfx[i] != null)
-                Destroy(_spawnedCutsceneVfx[i]);
-        }
-        _spawnedCutsceneVfx.Clear();
-        _cutsceneVfxLoops.Clear();
-    }
-
     // Helpers
 
     void ResolveReferences()
@@ -430,24 +373,8 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         if (!_animBrain)
             _animBrain = GetComponentInParent<CharacterAnimBrain>();
 
-        ResolveSceneReferences();
-    }
-
-    void ResolveSceneReferences()
-    {
         if (!_mainFollowCamera)
             _mainFollowCamera = ResolveMainFollowCamera();
-
-        if (!_cutsceneCamera)
-            _cutsceneCamera = ResolveCutsceneCameraFromRig();
-        if (!_cutsceneCamera)
-            _cutsceneCamera = ResolveCutsceneCamera();
-
-        if (!_cutsceneCamAnimancer)
-            _cutsceneCamAnimancer = ResolveCutsceneCameraAnimancer();
-
-        if (!_cutsceneCharAnimancer)
-            _cutsceneCharAnimancer = ResolveNamedAnimancer(CutsceneCharacterName);
     }
 
     CameraF ResolveMainFollowCamera()
@@ -475,106 +402,24 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
             if (candidateCamera.CompareTag("MainCamera"))
                 return candidates[i];
 
-            if (!IsCutsceneOnlyCamera(candidateCamera) && fallback == null)
+            if (fallback == null)
                 fallback = candidates[i];
         }
 
         return fallback;
     }
 
-    Camera ResolveCutsceneCameraFromRig()
-    {
-        return _cutsceneCamAnimancer != null
-            ? _cutsceneCamAnimancer.GetComponentInChildren<Camera>(true)
-            : null;
-    }
-
-    Camera ResolveCutsceneCamera()
-    {
-        Camera fallback = null;
-        Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        for (int i = 0; i < cameras.Length; i++)
-        {
-            Camera camera = cameras[i];
-            if (camera == null)
-                continue;
-
-            if (string.Equals(camera.name, CutsceneCameraName, System.StringComparison.Ordinal))
-                return camera;
-
-            if (IsCutsceneOnlyCamera(camera) && fallback == null)
-                fallback = camera;
-        }
-
-        return fallback;
-    }
-
-    AnimancerComponent ResolveCutsceneCameraAnimancer()
-    {
-        if (_cutsceneCamera != null)
-        {
-            AnimancerComponent parentAnimancer = _cutsceneCamera.GetComponentInParent<AnimancerComponent>(true);
-            if (parentAnimancer != null)
-                return parentAnimancer;
-        }
-
-        return ResolveNamedAnimancer(CutsceneCameraRigName);
-    }
-
-    AnimancerComponent ResolveNamedAnimancer(string objectName)
-    {
-        if (string.IsNullOrEmpty(objectName))
-            return null;
-
-        AnimancerComponent[] candidates = FindObjectsByType<AnimancerComponent>(
-            FindObjectsInactive.Include,
-            FindObjectsSortMode.None);
-        for (int i = 0; i < candidates.Length; i++)
-        {
-            AnimancerComponent candidate = candidates[i];
-            if (candidate != null && string.Equals(candidate.name, objectName, System.StringComparison.Ordinal))
-                return candidate;
-        }
-
-        return null;
-    }
-
-    static bool IsCutsceneOnlyCamera(Camera camera)
-    {
-        if (camera == null)
-            return false;
-
-        int layer = GetCutsceneLayer();
-        if (layer < 0)
-            return false;
-
-        int cutsceneMask = 1 << layer;
-        return (camera.cullingMask & cutsceneMask) != 0 &&
-               (camera.cullingMask & ~cutsceneMask) == 0;
-    }
-
     AnimationVfxAnchorContext BuildCutsceneAnchorContext()
     {
-        if (_cutsceneCharAnimancer == null)
-            return default;
-        Transform root = _cutsceneCharAnimancer.transform;
+        if (_ctx == null) return default;
+        Transform root = _ctx.transform;
+        SkillUserSystem skillUser = _ctx.EnegySystem;
         Animator animator = root.GetComponentInChildren<Animator>(true);
-        return new AnimationVfxAnchorContext(root, root, root, animator);
-    }
-
-    static int GetCutsceneLayer()
-    {
-        if (_cutsceneLayer < 0)
-            _cutsceneLayer = LayerMask.NameToLayer("Cutscene");
-        return _cutsceneLayer;
-    }
-
-    static void SetLayerRecursive(GameObject root, int layer)
-    {
-        root.layer = layer;
-        Transform t = root.transform;
-        for (int i = 0; i < t.childCount; i++)
-            SetLayerRecursive(t.GetChild(i).gameObject, layer);
+        return new AnimationVfxAnchorContext(
+            root,
+            skillUser != null ? skillUser.CastOrigin : root,
+            skillUser != null ? skillUser.AimTransform : root,
+            animator);
     }
 
     // Nested types

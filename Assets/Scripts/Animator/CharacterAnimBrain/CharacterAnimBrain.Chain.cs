@@ -271,12 +271,11 @@ public sealed partial class CharacterAnimBrain
         _chainStateCanExit = false;
         SetActiveChainTimelineEventNames(kind == ChainPlaybackKind.Skill ? skillDef : null);
         if (kind == ChainPlaybackKind.Skill)
-            BeginSkillVfxRequest(requestId, skillDef);
+            EnsureSkillVfxPresenter(skillDef);
     }
 
     private void ClearActiveChainRequest()
     {
-        _skillVfxPresenter?.EndRequest(_activeChainRequestId);
         _activeChainKind = ChainPlaybackKind.None;
         _activeChainSkillDefinition = null;
         _activeChainRequestId = 0;

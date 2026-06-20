@@ -283,7 +283,7 @@ public class SkillGemDefinition : ScriptableObject
     public IReadOnlyList<SkillVfxEvent> SkillVfxEvents => skillVfxEvents ?? (skillVfxEvents = new List<SkillVfxEvent>());
     public bool HasSkillVfxEvents => skillVfxEvents != null && skillVfxEvents.Count > 0;
     public bool RequiresSkillTimelineEvents =>
-        (payload != null && payload.RequiresSkillTimelineEvents) || HasSkillVfxEvents || isCutsceneSkill;
+        (payload != null && payload.RequiresSkillTimelineEvents) || HasSkillVfxEvents;
 
     public void ReplaceSkillVfxEvents(List<SkillVfxEvent> events)
     {
@@ -356,12 +356,6 @@ public class SkillGemDefinition : ScriptableObject
 
         if (HasSkillVfxEvents)
             CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.Vfx);
-
-        if (isCutsceneSkill)
-        {
-            CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.CutsceneSkillStart);
-            CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.CutsceneSkillEnd);
-        }
     }
 
     public void CollectSkillVfxValidationIssues(List<string> issues)

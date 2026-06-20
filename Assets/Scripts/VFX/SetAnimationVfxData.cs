@@ -13,26 +13,46 @@ public class SetAnimationVfxData : MonoBehaviour
     const string SyncUndoLabel = "Sync Animation VFX Slots";
     const string LoadUndoLabel = "Load Animation VFX Data";
 
-    [Title("Animation VFX Source")]
+    [BoxGroup("VFX Source/Asset & Entry")]
+    [LabelText("Source Asset  (Skill / Combo / Anim Profile)")]
     [OnValueChanged(nameof(OnTimelineSourceAssetChanged))]
     [SerializeField] private ScriptableObject sourceAsset;
+
+    [BoxGroup("VFX Source/Asset & Entry")]
     [ValueDropdown(nameof(GetTimelineEntryOptions))]
     [OnValueChanged(nameof(OnTimelineEntryChanged))]
     [SerializeField] private string selectedEntryId = "main";
-    [SerializeField] protected Transform characterRoot;
-    [SerializeField] protected Transform cutsceneCharacterRoot;
-    [SerializeField] protected Transform cutsceneCameraRoot;
-    [SerializeField] protected Transform sourceVfxRoot;
-    [SerializeField] protected bool includeInactiveObjects = true;
 
+    [BoxGroup("VFX Source/Asset & Entry")]
     [ShowInInspector, ReadOnly, LabelText("Selected Entry")]
     private string SelectedTimelineEntryLabel => GetSelectedTimelineEntryLabel();
 
+    [BoxGroup("VFX Source/Asset & Entry")]
     [ShowInInspector, ReadOnly, LabelText("Animation Clip")]
     private AnimationClip SelectedAnimationClip => GetSelectedAnimationClip();
 
+    [BoxGroup("VFX Source/Authoring Roots")]
+    [SerializeField] protected Transform characterRoot;
+
+    [BoxGroup("VFX Source/Authoring Roots")]
+    [SerializeField] protected Transform sourceVfxRoot;
+
+    [BoxGroup("VFX Source/Authoring Roots")]
+    [SerializeField] protected bool includeInactiveObjects = true;
+
+    [FoldoutGroup("VFX Source/Cutscene Roots", false)]
+    [SerializeField] protected Transform cutsceneCharacterRoot;
+
+    [FoldoutGroup("VFX Source/Cutscene Roots", false)]
+    [SerializeField] protected Transform cutsceneCameraRoot;
+
     [SerializeField, HideInInspector] private ScriptableObject authoringSourceAsset;
     [SerializeField, HideInInspector] private string authoringEntryId;
+
+    private bool IsAuthoringOutOfSync =>
+        TimelineSourceAsset != null &&
+        (authoringSourceAsset != TimelineSourceAsset ||
+         !string.Equals(authoringEntryId, TimelineEntryId, System.StringComparison.Ordinal));
 
 #if UNITY_EDITOR
     [System.NonSerialized]
@@ -312,7 +332,8 @@ public class SetAnimationVfxData : MonoBehaviour
 #endif
     }
 
-    [Title("Authoring Actions")]
+    [Title("Data Sync")]
+    [InfoBox("Authoring hierarchy is out of sync with the selected source and entry. Click 'Create / Sync VFX Slots' to rebuild.", InfoMessageType.Warning, nameof(IsAuthoringOutOfSync))]
     [Button("Create / Sync VFX Slots", ButtonSizes.Large)]
     [PropertyTooltip("Replace the current authoring hierarchy with slots and saved VFX data from the selected Source Asset and Entry.")]
     public void CreateOrSyncTimelineVfxSlots()
@@ -322,7 +343,8 @@ public class SetAnimationVfxData : MonoBehaviour
 #endif
     }
 
-    [Button("Load VFX Data", ButtonSizes.Large)]
+    [ButtonGroup("vfxDataSyncRow")]
+    [Button("Load VFX Data")]
     [PropertyTooltip("Discard unsaved hierarchy changes and rebuild from the selected Source Asset and Entry.")]
     public void LoadTimelineVfxData()
     {
@@ -331,7 +353,8 @@ public class SetAnimationVfxData : MonoBehaviour
 #endif
     }
 
-    [Button("Save VFX Data", ButtonSizes.Large)]
+    [ButtonGroup("vfxDataSyncRow")]
+    [Button("Save VFX Data")]
     [PropertyTooltip("Save all authoring entries under Source VFX Root through the selected source adapter.")]
     public void SaveTimelineVfxData()
     {
@@ -451,6 +474,7 @@ public class SetAnimationVfxData : MonoBehaviour
     }
 
     [Button("Refresh All Visuals")]
+    [PropertyOrder(10)]
     public void RefreshAllVisuals()
     {
         StopTimelineVfxPreview();
@@ -459,6 +483,8 @@ public class SetAnimationVfxData : MonoBehaviour
             entries[i]?.RefreshVisualPreview();
     }
 
+    [Title("Preview")]
+    [ButtonGroup("vfxPreviewRow")]
     [Button("Play All VFX")]
     public void PlayAllVfx()
     {
@@ -475,6 +501,7 @@ public class SetAnimationVfxData : MonoBehaviour
             PlayVfx(cueIndex);
     }
 
+    [ButtonGroup("vfxPreviewRow")]
     [Button("Stop All VFX")]
     public void StopAllVfx()
     {
@@ -669,6 +696,9 @@ public class SetAnimationVfxData : MonoBehaviour
 #endif
     }
 
+    [ButtonGroup("vfxMaintenanceRow")]
+    [PropertyOrder(1)]
+    [GUIColor(1f, 0.6f, 0.6f)]
     [Button("Clear Authoring Slots")]
     [PropertyTooltip("Remove only Animation VFX slots and entries under Source VFX Root.")]
     void ClearAuthoringEntries()
@@ -703,6 +733,8 @@ public class SetAnimationVfxData : MonoBehaviour
 #endif
     }
 
+    [Title("Maintenance")]
+    [ButtonGroup("vfxMaintenanceRow")]
     [Button("Validate Current Data")]
     void ValidateCurrentData()
     {
@@ -826,6 +858,13 @@ public class SetAnimationVfxData : MonoBehaviour
 
         error = $"Could not calculate a Generic bone path for '{selected.name}'.";
         return false;
+    }
+
+    public Transform ResolveEntryPreviewAnchor(IAnimationVfxCue cue)
+    {
+        Transform character = GetAnimationCharacterRoot();
+        AnimationVfxAnchorContext context = BuildAnchorContext(character);
+        return AnimationVfxAnchorResolver.Resolve(context, cue);
     }
 
     IAnimationVfxTimelineSource CreateTimelineSource()

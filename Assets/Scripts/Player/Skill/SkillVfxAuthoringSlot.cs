@@ -44,7 +44,7 @@ public sealed class SkillVfxAuthoringSlot : MonoBehaviour
         prefabsToAdd.Clear();
     }
 
-    [Button("Add Empty VFX Entry")]
+    [Button("Add Empty VFX Entry", ButtonSizes.Large)]
     [PropertyTooltip("Create an entry without a prefab. Use this for Stop Loop or manual setup.")]
     private void AddEmptyVfxEntry()
     {
@@ -53,6 +53,7 @@ public sealed class SkillVfxAuthoringSlot : MonoBehaviour
             authoring.AddEmptyEntryToSlot(this);
     }
 
+    [ButtonGroup("slotPreviewRow")]
     [Button("Play Slot Preview")]
     private void PlaySlotPreview()
     {
@@ -61,6 +62,7 @@ public sealed class SkillVfxAuthoringSlot : MonoBehaviour
             authoring.PlayVfx(cueIndex);
     }
 
+    [ButtonGroup("slotPreviewRow")]
     [Button("Stop Slot Preview")]
     private void StopSlotPreview()
     {

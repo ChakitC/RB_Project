@@ -720,10 +720,18 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     void StopPreview(bool rewind)
     {
         isPlaying = false;
-        _playheadInCutscene = false;
         authoringTarget?.StopAllVfx();
         previewSession.Stop();
-        if (rewind) normalizedTime = 0f;
+        if (rewind)
+        {
+            normalizedTime = 0f;
+            _cutsceneNormalizedTime = 0f;
+            _playheadInCutscene = _cutsceneSkillFraction > 0f;
+        }
+        else
+        {
+            _playheadInCutscene = false;
+        }
         RepaintViews();
         UpdateEditorUpdateSubscription();
     }
@@ -1232,6 +1240,15 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         Animator secondaryAnimator;
         AnimationClip secondaryClip;
         bool ownsAnimationMode;
+
+        // Re-origin state: keeps the character at its placed scene position while still
+        // showing root-motion displacement relative to where the animation was authored.
+        bool rootOffsetReady;
+        Vector3 placedPos;       // character world position when preview started
+        Quaternion placedRot;    // character world rotation when preview started
+        Vector3 clipOriginPos;   // clip's root position at t=0 (authored origin)
+        Quaternion clipOriginRot;// clip's root rotation at t=0
+
         public void Configure(Animator nextAnimator, AnimationClip nextClip)
         {
             if (animator == nextAnimator && clip == nextClip) return;
@@ -1258,19 +1275,49 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
                 ownsAnimationMode = true;
             }
             float t = Mathf.Clamp01(time);
+            bool hasSecondary = secondaryAnimator != null && secondaryClip != null
+                && secondaryAnimator.gameObject.activeInHierarchy;
+
+            // On the first sample after entering animation mode, record the character's
+            // placed position and the clip's authored root pose at t=0. Every subsequent
+            // frame we apply only the *displacement* from that authored origin on top of
+            // the placed position. This means:
+            //   - in-place animations → character stays at its scene position
+            //   - root-motion animations → character moves by the same delta as the clip
+            // NOTE: do NOT re-root the secondary (camera) animator — camera clips are
+            // authored to sweep freely through the scene and must animate unrestrained.
+            if (!rootOffsetReady)
+            {
+                placedPos = animator.transform.position;
+                placedRot = animator.transform.rotation;
+                AnimationMode.BeginSampling();
+                try { AnimationMode.SampleAnimationClip(animator.gameObject, clip, 0f); }
+                finally { AnimationMode.EndSampling(); }
+                clipOriginPos = animator.transform.position;
+                clipOriginRot = animator.transform.rotation;
+                animator.transform.SetPositionAndRotation(placedPos, placedRot);
+                rootOffsetReady = true;
+            }
+
             AnimationMode.BeginSampling();
             try
             {
                 AnimationMode.SampleAnimationClip(animator.gameObject, clip, t * clip.length);
-                if (secondaryAnimator != null && secondaryClip != null && secondaryAnimator.gameObject.activeInHierarchy)
+                if (hasSecondary)
                     AnimationMode.SampleAnimationClip(secondaryAnimator.gameObject, secondaryClip, t * secondaryClip.length);
             }
             finally { AnimationMode.EndSampling(); }
+
+            // Re-root: displace from placed position by the clip's motion delta.
+            Vector3 displacement = animator.transform.position - clipOriginPos;
+            Quaternion rotDelta = Quaternion.Inverse(clipOriginRot) * animator.transform.rotation;
+            animator.transform.SetPositionAndRotation(placedPos + displacement, placedRot * rotDelta);
         }
         public void Stop()
         {
             if (ownsAnimationMode && AnimationMode.InAnimationMode()) AnimationMode.StopAnimationMode();
             ownsAnimationMode = false;
+            rootOffsetReady = false;
             animator = null;
             clip = null;
             secondaryAnimator = null;

@@ -35,7 +35,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   icon: {fileID: 0}
   displayName: 
-  skillId: 
+  skillId: Aires.Skill.3
   tags: 0
   description: 
   baseDamage: 10
@@ -55,13 +55,65 @@ MonoBehaviour:
     _FadeDuration: 0.25
     _Speed: 1
     _Events:
-      _NormalizedTimes: []
+      _NormalizedTimes:
+      - 0
+      - 0.30411687
+      - 0.37383798
+      - NaN
       _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 0}
+      _Names:
+      - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
+      - {fileID: 11400000, guid: 74278b3794beb9a4c9fdf911427eb18a, type: 2}
+      - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
+    _Clip: {fileID: 8720029984051212183, guid: e72832d5dba903a4997d701bfe93da7f, type: 3}
     _NormalizedStartTime: NaN
-  castPointNormalized: 0.35
-  skillVfxEvents: []
+  castPointNormalized: 0.07968128
+  skillVfxEvents:
+  - cueIndex: 0
+    action: 0
+    prefab: {fileID: 43444466480138613, guid: 1c58b9df7b15ddc4e8dc0e47884c5a29, type: 3}
+    anchor: 1
+    customAnchorPath: 
+    humanoidBone: 18
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: -0, y: 0, z: 0}
+    localScale: {x: 1, y: 1, z: 1}
+    parentToAnchor: 0
+    loopKey: 
+    extraLife: 0
+    allowParticlesToFinish: 1
+    animClip: {fileID: 0}
+  - cueIndex: 1
+    action: 0
+    prefab: {fileID: 2061477674351967392, guid: 91f2fc1fbb658b148a4ab7cc61d8fb70, type: 3}
+    anchor: 1
+    customAnchorPath: 
+    humanoidBone: 18
+    localPosition: {x: 0, y: 2.3, z: -0.27100003}
+    localEulerAngles: {x: 270, y: 0, z: 0}
+    localScale: {x: 1.4667, y: 1.4666998, z: 1.4666998}
+    parentToAnchor: 0
+    loopKey: 
+    extraLife: 0
+    allowParticlesToFinish: 1
+    animClip: {fileID: 0}
+  isCutsceneSkill: 0
+  cutsceneDef:
+    characterCutsceneClip:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    cameraCutsceneClip: {fileID: 0}
+    worldSlowScale: 0.05
+    fadeInDuration: 0.08
+    fadeOutDuration: 0.12
+    barThickness: 0.08
+    cutsceneVfxEvents: []
   blockablePreCast: 0
   preCastOpenTimelineEvent: 200
   preCastCloseTimelineEvent: 201

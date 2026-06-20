@@ -1,14 +1,9 @@
 fileFormatVersion: 2
-guid: e9fd6d8d79ec90746903dbe00ab40d6c
+guid: ed68ad6fec703714e83d661b5da94732
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects:
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: Aires_Prop_Skill_2
-    second: {fileID: 2100000, guid: 7f89860cb6779dc419fe78a71399e88e, type: 2}
+  externalObjects: {}
   materials:
     materialImportMode: 2
     materialName: 0

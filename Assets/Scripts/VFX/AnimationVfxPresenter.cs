@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Animancer;
 using UnityEngine;
 
 public readonly struct AnimationVfxSessionToken : IEquatable<AnimationVfxSessionToken>
@@ -157,6 +158,7 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
         ApplyFollowMode(instance, anchor, cue);
 
         ApplyScale(instance, cue.LocalScale);
+        PlayAnimClip(instance, cue.AnimClip);
     }
 
     void StartLoop(Session session, IAnimationVfxCue cue)
@@ -182,6 +184,7 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
         if (usesGenericBoneFollower)
             ConfigureGenericBoneFollower(instance, anchor, cue);
         ApplyScale(instance, cue.LocalScale);
+        PlayAnimClip(instance, cue.AnimClip);
 
         if (!session.ActiveLoops.TryGetValue(key, out List<GameObject> instances))
         {
@@ -267,5 +270,18 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
         if (follower == null)
             follower = instance.AddComponent<AnimationVfxFollowAnchor>();
         follower.Configure(anchor, cue.LocalPosition, Quaternion.Euler(cue.LocalEulerAngles));
+    }
+
+    static void PlayAnimClip(GameObject instance, AnimationClip clip)
+    {
+        if (instance == null || clip == null)
+            return;
+        Animator animator = instance.GetComponentInChildren<Animator>(true);
+        if (animator == null)
+            return;
+        AnimancerComponent animancer = animator.GetComponent<AnimancerComponent>();
+        if (animancer == null)
+            animancer = animator.gameObject.AddComponent<AnimancerComponent>();
+        animancer.Play(clip);
     }
 }

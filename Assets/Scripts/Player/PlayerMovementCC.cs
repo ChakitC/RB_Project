@@ -20,6 +20,7 @@ public class PlayerMovementCC : MonoBehaviour
     [SerializeField] float speedLerp = 12f;
 
     [SerializeField] LayerMask groundMask = ~0;
+    [SerializeField] LayerMask characterSeparationLayers;
 
     CharacterAnimBrain _brain;
     PlayerContext _characteContext;
@@ -92,6 +93,7 @@ public class PlayerMovementCC : MonoBehaviour
     void Update()
     {
         Move();
+        ResolveCharacterOverlaps();
     }
 
     float GetBaseMoveSpeedFromHubOrFallback()
@@ -103,6 +105,31 @@ public class PlayerMovementCC : MonoBehaviour
             return statsHub.GetMoveSpeed();
 
         return fallbackMoveSpeed;
+    }
+
+    void ResolveCharacterOverlaps()
+    {
+        if (_characteContext == null || _characteContext.ColliderRefs == null) return;
+        if (_characterController == null || characterSeparationLayers == 0) return;
+
+        Collider playerCol = _characteContext.ColliderRefs.CharacterPositionCollider;
+        if (playerCol == null) return;
+
+        Bounds b = playerCol.bounds;
+        Collider[] hits = Physics.OverlapSphere(b.center, b.extents.magnitude, characterSeparationLayers, QueryTriggerInteraction.Ignore);
+
+        foreach (Collider hit in hits)
+        {
+            if (hit == playerCol) continue;
+
+            if (!Physics.ComputePenetration(
+                playerCol, playerCol.transform.position, playerCol.transform.rotation,
+                hit, hit.transform.position, hit.transform.rotation,
+                out Vector3 dir, out float dist))
+                continue;
+
+            _characterController.Move(dir * dist);
+        }
     }
 
     void HandleAiming(LayerMask groundMask)

@@ -35,18 +35,18 @@ MonoBehaviour:
     _Speed: 1
     _Events:
       _NormalizedTimes:
-      - 0.16733068
-      - 0.32154697
-      - 0.4071823
-      - 0.41213065
-      - 0.48781753
+      - 0.41633937
+      - 0.520817
+      - 0.520817
+      - 0.52395916
+      - 0.5852317
       - NaN
       _Callbacks: []
       _Names:
-      - {fileID: 11400000, guid: 74278b3794beb9a4c9fdf911427eb18a, type: 2}
       - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
       - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
       - {fileID: 11400000, guid: a1d9c7b1f0f54a2b8c1d6e7f90123456, type: 2}
+      - {fileID: 11400000, guid: 74278b3794beb9a4c9fdf911427eb18a, type: 2}
       - {fileID: 11400000, guid: b2e8d6c4a1b347c98d0e1f2a34567890, type: 2}
     _Clip: {fileID: -7027819902610041453, guid: 84fd65bb1f9faa747b98cbb036a282cf, type: 3}
     _NormalizedStartTime: NaN
@@ -58,9 +58,9 @@ MonoBehaviour:
     anchor: 1
     customAnchorPath: 
     humanoidBone: 18
-    localPosition: {x: 0, y: 1.352, z: -0.464}
+    localPosition: {x: 0, y: 1.3519998, z: -0.464}
     localEulerAngles: {x: 318.32056, y: 180, z: 180}
-    localScale: {x: 1, y: 1, z: 1}
+    localScale: {x: 1, y: 1.0000001, z: 1.0000001}
     parentToAnchor: 0
     loopKey: 
     extraLife: 0
@@ -78,6 +78,23 @@ MonoBehaviour:
     loopKey: 
     extraLife: 0
     allowParticlesToFinish: 1
+  isCutsceneSkill: 0
+  cutsceneDef:
+    characterCutsceneClip:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    cameraCutsceneClip: {fileID: 0}
+    worldSlowScale: 0.05
+    fadeInDuration: 0.08
+    fadeOutDuration: 0.12
+    barThickness: 0.08
+    cutsceneVfxEvents: []
   blockablePreCast: 0
   preCastOpenTimelineEvent: 200
   preCastCloseTimelineEvent: 201

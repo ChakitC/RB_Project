@@ -271,6 +271,9 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 4096
+  characterSeparationLayers:
+    serializedVersion: 2
+    m_Bits: 1536
 --- !u!114 &3729042986192515201
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1055,6 +1058,7 @@ MonoBehaviour:
   dbgFinalMaxReserveAmmo: 0
   dbgFinalMaxHP: 0
   dbgFinalMaxStamina: 0
+  dbgFinalStaminaRegen: 0
   dbgFinalMaxEnergy: 0
 --- !u!114 &9126503440091188613
 MonoBehaviour:

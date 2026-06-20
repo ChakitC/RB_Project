@@ -40,6 +40,7 @@ public interface IAnimationVfxCue
     string LoopKey { get; }
     float ExtraLife { get; }
     bool AllowParticlesToFinish { get; }
+    AnimationClip AnimClip { get; }
 }
 
 public interface IAnimationVfxCueSource
@@ -64,6 +65,7 @@ public sealed class AnimationVfxCue : IAnimationVfxCue
     public string loopKey;
     [Min(0f)] public float extraLife;
     public bool allowParticlesToFinish = true;
+    public AnimationClip animClip;
 
     int IAnimationVfxCue.CueIndex => cueIndex;
     AnimationVfxAction IAnimationVfxCue.Action => action;
@@ -78,6 +80,7 @@ public sealed class AnimationVfxCue : IAnimationVfxCue
     string IAnimationVfxCue.LoopKey => loopKey;
     float IAnimationVfxCue.ExtraLife => extraLife;
     bool IAnimationVfxCue.AllowParticlesToFinish => allowParticlesToFinish;
+    AnimationClip IAnimationVfxCue.AnimClip => animClip;
 }
 
 [Serializable]

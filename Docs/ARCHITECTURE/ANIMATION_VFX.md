@@ -97,6 +97,27 @@ Melee step GUIDs are editor identity only. Run
 `Tools > RB > Animation VFX > Assign Missing Melee Step IDs` when IDs are empty
 or duplicated. The command changes IDs only.
 
+## Animator Clip Playback
+
+`IAnimationVfxCue` carries an optional `AnimClip` (`AnimationClip`). When set,
+`AnimationVfxPresenter` calls `PlayAnimClip` after spawning the VFX instance:
+it looks for an `Animator` via `GetComponentInChildren`, then gets or adds an
+`AnimancerComponent` on that Animator's GameObject and calls `animancer.Play(clip)`.
+No `AnimancerComponent` is required on the prefab beforehand — it is added at
+runtime if absent. The clip's own `wrapMode` determines looping behavior.
+If no `Animator` is found on the instance, the call is silently skipped.
+
+In the editor, `SkillVfxAuthoringEntry.SamplePreviewAnimClip` samples the clip
+via `AnimationClip.SampleAnimation` at the current preview time. OneShot cues
+clamp to `clip.length`; StartLoop cues wrap with modulo. The helper is called
+from `UpdateVisualPreview` (realtime preview) and `SampleTimelinePreview`
+(timeline scrub preview). No `Animator` component is required for editor
+sampling — `SampleAnimation` writes transforms directly.
+
+`AnimationVfxCue` and `SkillVfxEvent` both serialize `animClip`. The authoring
+entry's `Configure` and `CreateAnimationData` methods round-trip it through
+save/load. The Inspector field is shown only when the action is not `StopLoop`.
+
 ## Skill Compatibility
 
 Skill assets continue to serialize `SkillVfxEvent` in `SkillGemDefinition`.

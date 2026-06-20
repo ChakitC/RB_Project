@@ -43,6 +43,7 @@ public sealed class SkillVfxEvent : IAnimationVfxCue
     [Min(0f)]
     public float extraLife;
     public bool allowParticlesToFinish = true;
+    public AnimationClip animClip;
 
     public bool RequiresPrefab => action != SkillVfxAction.StopLoop;
 
@@ -61,6 +62,7 @@ public sealed class SkillVfxEvent : IAnimationVfxCue
     string IAnimationVfxCue.LoopKey => loopKey;
     float IAnimationVfxCue.ExtraLife => extraLife;
     bool IAnimationVfxCue.AllowParticlesToFinish => allowParticlesToFinish;
+    AnimationClip IAnimationVfxCue.AnimClip => animClip;
 
     public void CollectValidationIssues(List<string> issues, int index)
     {

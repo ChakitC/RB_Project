@@ -619,6 +619,7 @@ MonoBehaviour:
   dbgWeaponStability: 0
   dbgWeaponBulletSpeed: 0
   dbgWeaponMaxMagazine: 0
+  dbgWeaponMaxReserveAmmo: 0
   dbgFinalDamage: 0
   dbgFinalArmor: 0
   dbgFinalMoveSpeed: 0
@@ -630,8 +631,10 @@ MonoBehaviour:
   dbgFinalStability: 0
   dbgFinalBulletSpeed: 0
   dbgFinalMaxMagazine: 0
+  dbgFinalMaxReserveAmmo: 0
   dbgFinalMaxHP: 0
   dbgFinalMaxStamina: 0
+  dbgFinalStaminaRegen: 0
   dbgFinalMaxEnergy: 0
 --- !u!114 &4366097613187803013
 MonoBehaviour:
@@ -1486,7 +1489,8 @@ MonoBehaviour:
   brain: {fileID: 6756038978356485017}
   animator: {fileID: 0}
   applyPairOffsets: 1
-  directionTransitionDuration: 0.08
+  showDebugState: 0
+  debugState: 
 --- !u!1 &4846791555918864231
 GameObject:
   m_ObjectHideFlags: 0
@@ -2077,6 +2081,10 @@ MonoBehaviour:
   applyRootRotation: 0
   agent: {fileID: 1585247101988985248}
   animator: {fileID: 5879616477380449198}
+  ctx: {fileID: 3059205003566966071}
+  pushLayers:
+    serializedVersion: 2
+    m_Bits: 576
 --- !u!114 &4358868359549360660
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -187,6 +187,8 @@ public class AgentMoveDriver : MonoBehaviour
     {
         if (!separateCompanionFromPlayer || ctx == null || ctx.TargetIdentity != AITargetIdentity.Companion)
             return;
+        if (ctx.AnimBrain != null && ctx.AnimBrain.RootMotionActive)
+            return;
 
         CharacteContext player = ResolvePlayerContext();
         if (player == null)

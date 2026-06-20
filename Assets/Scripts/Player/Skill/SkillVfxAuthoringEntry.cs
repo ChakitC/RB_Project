@@ -97,6 +97,9 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
     [SerializeField, ShowIf(nameof(ShowStopOptions))]
     private bool allowParticlesToFinish = true;
 
+    [SerializeField, ShowIf(nameof(RequiresPrefab))]
+    private AnimationClip animClip;
+
     public int CueIndex
     {
         get
@@ -120,6 +123,7 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
     public float ExtraLife => extraLife;
     public bool AllowParticlesToFinish => allowParticlesToFinish;
     public bool RequiresPrefab => action != AnimationVfxAction.StopLoop;
+    public AnimationClip AnimClip => animClip;
 
     private bool UsesLoopKey => action != AnimationVfxAction.OneShot;
     private bool ShowLegacyCueIndex => GetComponentInParent<SkillVfxAuthoringSlot>() == null;
@@ -179,6 +183,7 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
         loopKey = cue.LoopKey;
         extraLife = cue.ExtraLife;
         allowParticlesToFinish = cue.AllowParticlesToFinish;
+        animClip = cue.AnimClip;
     }
 
     public void Configure(SkillVfxEvent cue)
@@ -200,6 +205,7 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
             loopKey = loopKey,
             extraLife = extraLife,
             allowParticlesToFinish = allowParticlesToFinish,
+            animClip = animClip,
             localScale = Vector3.one,
         };
     }
@@ -307,6 +313,7 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
     }
 
     [Button("Refresh Visual Preview")]
+    [PropertyOrder(10)]
     public void RefreshVisualPreview()
     {
 #if UNITY_EDITOR
@@ -318,6 +325,7 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
 #endif
     }
 
+    [ButtonGroup("entryPreviewRow")]
     [Button("Play Visual Preview")]
     public void PlayVisualPreview()
     {
@@ -405,6 +413,8 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
             AdvanceTimelineParticles(timelinePreviewElapsedTime, sampleTime, clampedStopTime);
         }
 
+        SamplePreviewAnimClip(sampleTime);
+
         timelinePreviewActive = true;
         timelinePreviewElapsedTime = sampleTime;
         timelinePreviewStopTime = clampedStopTime;
@@ -444,6 +454,7 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
 #endif
     }
 
+    [ButtonGroup("entryPreviewRow")]
     [Button("Stop Visual Preview")]
     public void StopVisualPreview()
     {
@@ -489,6 +500,8 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
             if (particleSystem.IsAlive(withChildren: false))
                 anyAlive = true;
         }
+
+        SamplePreviewAnimClip(visualPreviewElapsedTime);
 
         if (visualPreviewStopping)
             visualPreviewActive = anyAlive || editorTime < visualPreviewStopDeadline;
@@ -599,6 +612,8 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
             }
 
             visualPreviewDuration = CalculatePreviewDuration(visualPreviewParticleSystems);
+            if (animClip != null)
+                visualPreviewDuration = Mathf.Max(visualPreviewDuration, animClip.length);
             resetPose = true;
         }
 
@@ -739,6 +754,16 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
         return false;
     }
 
+    void SamplePreviewAnimClip(float time)
+    {
+        if (animClip == null || visualPreviewRoot == null)
+            return;
+        float sampleTime = action == AnimationVfxAction.StartLoop
+            ? time % Mathf.Max(0.0001f, animClip.length)
+            : Mathf.Min(time, animClip.length);
+        animClip.SampleAnimation(visualPreviewRoot, sampleTime);
+    }
+
     void DestroyPlaybackPreview()
     {
         ReleasePlaybackPreview();
@@ -758,19 +783,9 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
 
     Transform ResolvePreviewAnchor(IAnimationVfxCue cue)
     {
-        if (cue != null && cue.Anchor == AnimationVfxAnchor.GenericBone)
-        {
-            SetAnimationVfxData authoring = ResolveAuthoring();
-            if (authoring != null)
-            {
-                var context = new AnimationVfxAnchorContext(
-                    authoring.CharacterRoot,
-                    null,
-                    null,
-                    authoring.PreviewAnimator);
-                return AnimationVfxAnchorResolver.Resolve(context, cue);
-            }
-        }
+        SetAnimationVfxData authoring = ResolveAuthoring();
+        if (authoring != null)
+            return authoring.ResolveEntryPreviewAnchor(cue);
 
         return SkillVfxAnchorResolver.Resolve(transform, CreateData());
     }

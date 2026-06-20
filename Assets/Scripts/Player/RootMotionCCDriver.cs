@@ -3,7 +3,7 @@ using UnityEngine;
 public class RootMotionCCDriver : MonoBehaviour
 {
     [SerializeField] private CharacterAnimBrain brain;
-    [SerializeField] private bool zeroY = true;
+    [SerializeField] private bool zeroY = false;
     [SerializeField] private bool applyRootRotation = false;
 
     [SerializeField] private CharacterController cc;
@@ -17,11 +17,12 @@ public class RootMotionCCDriver : MonoBehaviour
             animator.applyRootMotion = false;
     }
 
-    public void Configure(CharacterAnimBrain animBrain, CharacterController characterController, Animator sourceAnimator)
+    public void Configure(CharacterAnimBrain animBrain, CharacterController characterController, Animator sourceAnimator, bool suppressY = false)
     {
         brain = animBrain;
         cc = characterController;
         animator = sourceAnimator;
+        zeroY = suppressY;
 
         if (animator)
             animator.applyRootMotion = false;

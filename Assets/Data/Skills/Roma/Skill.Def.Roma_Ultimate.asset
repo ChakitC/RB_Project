@@ -83,7 +83,7 @@ MonoBehaviour:
   skillId: Roma.Ultimate.01
   tags: 18
   description: 
-  baseDamage: 10
+  baseDamage: 10.02
   baseStaggerPower: 10
   baseManaCost: 10
   baseCastTime: 0.5
@@ -105,7 +105,7 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: -4876317453393239407, guid: cff60580c39c3b74581f8a13f7e37daa, type: 3}
     _NormalizedStartTime: NaN
-  castPointNormalized: 0.35
+  castPointNormalized: 0
   skillVfxEvents: []
   isCutsceneSkill: 1
   cutsceneDef:
@@ -118,7 +118,7 @@ MonoBehaviour:
         _Names: []
       _Clip: {fileID: -6664157530632832028, guid: 64bca5e158f507e49842527aa4ede201, type: 3}
       _NormalizedStartTime: NaN
-    cameraCutsceneClip: {fileID: 0}
+    cameraCutsceneClip: {fileID: 1679754845598486846, guid: 979b593bba18c5e49943d0202eaf28f7, type: 3}
     worldSlowScale: 0.05
     fadeInDuration: 0.08
     fadeOutDuration: 0.12

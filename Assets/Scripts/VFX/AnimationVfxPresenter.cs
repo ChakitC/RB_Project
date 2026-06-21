@@ -28,13 +28,15 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
     {
         public readonly IAnimationVfxCueSource Source;
         public readonly AnimationVfxAnchorContext Anchors;
+        public readonly int LayerOverride;
         public readonly Dictionary<string, List<GameObject>> ActiveLoops =
             new Dictionary<string, List<GameObject>>(StringComparer.Ordinal);
 
-        public Session(IAnimationVfxCueSource source, AnimationVfxAnchorContext anchors)
+        public Session(IAnimationVfxCueSource source, AnimationVfxAnchorContext anchors, int layerOverride = -1)
         {
             Source = source;
             Anchors = anchors;
+            LayerOverride = layerOverride;
         }
     }
 
@@ -45,13 +47,14 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
 
     public AnimationVfxSessionToken BeginSession(
         IAnimationVfxCueSource source,
-        AnimationVfxAnchorContext anchors)
+        AnimationVfxAnchorContext anchors,
+        int layerOverride = -1)
     {
         if (source == null)
             return default;
 
         AnimationVfxSessionToken token = CreateToken();
-        _sessions.Add(token, new Session(source, anchors.WithFallbackRoot(transform)));
+        _sessions.Add(token, new Session(source, anchors.WithFallbackRoot(transform), layerOverride));
         return token;
     }
 
@@ -160,6 +163,9 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
         if (instance == null)
             return;
 
+        if (session.LayerOverride >= 0)
+            SetLayerRecursive(instance.transform, session.LayerOverride);
+
         ApplyFollowMode(instance, anchor, cue);
 
         ApplyScale(instance, cue.LocalScale);
@@ -196,6 +202,9 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
             instances = new List<GameObject>();
             session.ActiveLoops.Add(key, instances);
         }
+
+        if (session.LayerOverride >= 0)
+            SetLayerRecursive(instance.transform, session.LayerOverride);
 
         instances.Add(instance);
     }
@@ -239,6 +248,13 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
             spawner.StopLoopingVfx(instance, allowParticlesToFinish, extraLife);
         else
             Destroy(instance);
+    }
+
+    static void SetLayerRecursive(Transform t, int layer)
+    {
+        t.gameObject.layer = layer;
+        foreach (Transform child in t)
+            SetLayerRecursive(child, layer);
     }
 
     static void ApplyScale(GameObject instance, Vector3 scaleMultiplier)

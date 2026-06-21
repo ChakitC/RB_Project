@@ -14,6 +14,8 @@ public sealed class PooledVfxHandle : MonoBehaviour
     bool[] _initialLoopFlags;
     TrailRenderer[] _trailRenderers;
     Vector3 _originalLocalScale;
+    Transform[] _childTransforms;
+    int[] _initialLayers;
 
     public ParticleSystem[] ParticleSystems => _particleSystems;
     public TrailRenderer[] TrailRenderers => _trailRenderers;
@@ -35,6 +37,12 @@ public sealed class PooledVfxHandle : MonoBehaviour
         }
 
         _trailRenderers = GetComponentsInChildren<TrailRenderer>(true);
+
+        _childTransforms = GetComponentsInChildren<Transform>(true);
+        _initialLayers = new int[_childTransforms.Length];
+        for (int i = 0; i < _childTransforms.Length; i++)
+            if (_childTransforms[i] != null)
+                _initialLayers[i] = _childTransforms[i].gameObject.layer;
     }
 
     public void PrepareForReuse(Vector3 pos, Quaternion rot, Transform parent, float scale)
@@ -50,6 +58,10 @@ public sealed class PooledVfxHandle : MonoBehaviour
             var main = ps.main;
             main.loop = _initialLoopFlags[i];
         }
+
+        for (int i = 0; i < _childTransforms.Length; i++)
+            if (_childTransforms[i] != null)
+                _childTransforms[i].gameObject.layer = _initialLayers[i];
 
         transform.SetParent(parent, false);
         transform.SetPositionAndRotation(pos, rot);

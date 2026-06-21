@@ -1661,6 +1661,9 @@ MonoBehaviour:
   _cutsceneCamera: {fileID: 0}
   _cutsceneCamAnimancer: {fileID: 0}
   _cutsceneCharAnimancer: {fileID: 0}
+  _cutsceneVisibleLayers:
+    serializedVersion: 2
+    m_Bits: 524288
   _sortingOrder: 31999
   _barColor: {r: 0, g: 0, b: 0, a: 1}
 --- !u!1 &7099621951742700281

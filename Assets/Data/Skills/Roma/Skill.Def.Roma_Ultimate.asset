@@ -39,7 +39,7 @@ MonoBehaviour:
   hitboxEndEventName: 11
   targetMask:
     serializedVersion: 2
-    m_Bits: 524287
+    m_Bits: 522239
   queryTriggers: 2
   showDamageNumbers: 1
   steps:
@@ -100,9 +100,12 @@ MonoBehaviour:
     _FadeDuration: 0.25
     _Speed: 1
     _Events:
-      _NormalizedTimes: []
+      _NormalizedTimes:
+      - 0.07051947
+      - NaN
       _Callbacks: []
-      _Names: []
+      _Names:
+      - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
     _Clip: {fileID: -4876317453393239407, guid: cff60580c39c3b74581f8a13f7e37daa, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0

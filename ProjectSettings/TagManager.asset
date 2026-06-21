@@ -22,7 +22,7 @@ TagManager:
   - EnemyBullet
   - Enemy
   - Ally
-  - CoverLayer
+  - 
   - Ground
   - CharacterSelect
   - Ground Y
@@ -30,7 +30,7 @@ TagManager:
   - EnemyHitbox
   - Terrain
   - Interactable
-  - 
+  - Cutscene
   - 
   - 
   - 

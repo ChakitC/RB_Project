@@ -18,6 +18,9 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
     [Header("Cutscene Character")]
     [SerializeField] private AnimancerComponent _cutsceneCharAnimancer; // legacy — character anim now driven by CharacterAnimBrain
 
+    [Header("Cutscene Visibility")]
+    [SerializeField] LayerMask _cutsceneVisibleLayers;
+
     [Header("Overlay")]
     [SerializeField] private int _sortingOrder = 31999;
     [SerializeField] private Color _barColor = new Color(0f, 0f, 0f, 1f);
@@ -41,6 +44,11 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
     Vector3 _savedCameraHolderPosition;
     Quaternion _savedCameraHolderRotation;
     bool _cameraHolderRelocated;
+
+    Camera _gameplayCamera;
+    int _savedCullingMask;
+    readonly Dictionary<GameObject, int> _savedActorLayers = new();
+    bool _visibilityOverrideActive;
 
     CharacterSkillManager _skillManager;
     CharacterAnimBrain _animBrain;
@@ -144,6 +152,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
         TimeSlowManager.Instance.StartSlow(def.worldSlowScale, float.MaxValue);
         _ctx?.stateHub?.AddExternalControlBlock(ControlBlockFlags.Rotate);
+        EnterCutsceneVisibility();
 
         if (_mainFollowCamera != null)
             _mainFollowCamera.enabled = false;
@@ -170,6 +179,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
         TimeSlowManager.Instance.StartSlow(2f, 0f);
         _ctx?.stateHub?.RemoveExternalControlBlock(ControlBlockFlags.Rotate);
+        ExitCutsceneVisibility();
 
         if (_mainFollowCamera != null)
             _mainFollowCamera.enabled = true;
@@ -192,6 +202,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
         TimeSlowManager.Instance.StartSlow(2f, 0f);
         _ctx?.stateHub?.RemoveExternalControlBlock(ControlBlockFlags.Rotate);
+        ExitCutsceneVisibility();
 
         if (_mainFollowCamera != null)
             _mainFollowCamera.enabled = true;
@@ -289,7 +300,8 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
         _cutsceneVfxToken = _cutsceneVfxPresenter.BeginSession(
             new CutsceneVfxCueSource(def.cutsceneVfxEvents),
-            BuildCutsceneAnchorContext());
+            BuildCutsceneAnchorContext(),
+            LayerMask.NameToLayer("Cutscene"));
         _hasCutsceneVfxSession = true;
     }
 
@@ -459,6 +471,62 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
             skillUser != null ? skillUser.CastOrigin : root,
             skillUser != null ? skillUser.AimTransform : root,
             animator);
+    }
+
+    // Cutscene visibility
+
+    void EnterCutsceneVisibility()
+    {
+        if ((int)_cutsceneVisibleLayers == 0) return;
+
+        int actorLayer = LayerMask.NameToLayer("Cutscene");
+        if (actorLayer < 0)
+        {
+            Debug.LogWarning("[CutsceneSkillPresenter] 'Cutscene' layer not defined in Tags & Layers — visibility override skipped.", this);
+            return;
+        }
+
+        _gameplayCamera = Camera.main;
+        if (_gameplayCamera != null)
+        {
+            _savedCullingMask = _gameplayCamera.cullingMask;
+            _gameplayCamera.cullingMask = (int)_cutsceneVisibleLayers;
+        }
+
+        if (_ctx != null)
+            CollectAndSetLayers(_ctx.gameObject, actorLayer);
+
+        _visibilityOverrideActive = true;
+    }
+
+    void ExitCutsceneVisibility()
+    {
+        if (!_visibilityOverrideActive) return;
+        _visibilityOverrideActive = false;
+
+        if (_gameplayCamera != null)
+        {
+            _gameplayCamera.cullingMask = _savedCullingMask;
+            _gameplayCamera = null;
+        }
+
+        RestoreActorLayers();
+    }
+
+    void CollectAndSetLayers(GameObject go, int layer)
+    {
+        _savedActorLayers[go] = go.layer;
+        go.layer = layer;
+        foreach (Transform child in go.transform)
+            CollectAndSetLayers(child.gameObject, layer);
+    }
+
+    void RestoreActorLayers()
+    {
+        foreach (var kvp in _savedActorLayers)
+            if (kvp.Key != null)
+                kvp.Key.layer = kvp.Value;
+        _savedActorLayers.Clear();
     }
 
     // Nested types

@@ -26,8 +26,8 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 15995,
-                "currentMagazine": 103,
+                "shotCounter": 16364,
+                "currentMagazine": 74,
                 "currentReserveAmmo": 497,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 16,
@@ -59,9 +59,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 3177,
+                "shotCounter": 3207,
                 "currentMagazine": 29,
-                "currentReserveAmmo": 295,
+                "currentReserveAmmo": 265,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -136,9 +136,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 15590,
+                "shotCounter": 15839,
                 "currentMagazine": 29,
-                "currentReserveAmmo": 252,
+                "currentReserveAmmo": 197,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
                 "upgradeTier": 2,
@@ -309,9 +309,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 14884,
-                "currentMagazine": 18,
-                "currentReserveAmmo": 240,
+                "shotCounter": 15299,
+                "currentMagazine": 21,
+                "currentReserveAmmo": 210,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -397,9 +397,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 2483,
-                "currentMagazine": 30,
-                "currentReserveAmmo": 265,
+                "shotCounter": 2498,
+                "currentMagazine": 29,
+                "currentReserveAmmo": 251,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -1086,8 +1086,8 @@
             }
         },
         {
-            "itemId": "",
-            "amount": 0,
+            "itemId": "Accessory.CollectorsShades",
+            "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
                 "baseWeaponId": "",
@@ -1110,15 +1110,15 @@
                 "unlockedUpgradeMilestoneIds": []
             },
             "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
+                "instanceId": "acc_b3735f8a35f04116b5c2f786f739e34b",
+                "accessoryId": "Accessory.CollectorsShades",
                 "modifierId": "",
                 "upgradeLevel": 0
             }
         },
         {
-            "itemId": "",
-            "amount": 0,
+            "itemId": "Accessory.TrunkAmmoBox",
+            "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
                 "baseWeaponId": "",
@@ -1141,8 +1141,8 @@
                 "unlockedUpgradeMilestoneIds": []
             },
             "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
+                "instanceId": "acc_66a32856dcbc45a6a390cc29ea690d32",
+                "accessoryId": "Accessory.TrunkAmmoBox",
                 "modifierId": "",
                 "upgradeLevel": 0
             }

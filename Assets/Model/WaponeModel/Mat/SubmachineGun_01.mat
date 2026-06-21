@@ -248,8 +248,8 @@ Material:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FaceFrontDirection: {r: 0.0000014719569, g: 0.037210874, b: 0.99930745, a: 0}
-    - _FaceRightDirection: {r: 1, g: 0.0000010094274, b: -0.0000015105647, a: 0}
+    - _FaceFrontDirection: {r: 0.50412863, g: 0.037210878, b: -0.8628264, a: 0}
+    - _FaceRightDirection: {r: -0.8634244, g: 0.000001010485, b: -0.50447804, a: 0}
     - _FaceUVCtrl: {r: 0, g: 1, b: 0, a: 0}
     - _FakeLightColor: {r: 0, g: 0, b: 0, a: 0}
     - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}

@@ -5,6 +5,8 @@ using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
+    public static UIManager Instance { get; private set; }
+
     [Header("Refs")]
     [SerializeField] private CharacteContext ctx;
     [SerializeField] private StatusEffectController statusEffectController;
@@ -46,6 +48,9 @@ public class UIManager : MonoBehaviour
     AllyContext ally1Context;
     AllyContext ally2Context;
     float vitalHudRefreshTimer;
+    Canvas hudCanvas;
+    bool hudVisibleBeforeCutscene = true;
+    bool hudHiddenByCutscene;
 
     [Header("Status Effects")]
     [SerializeField] private StatusEffectGridUI buffGridUI;
@@ -53,6 +58,15 @@ public class UIManager : MonoBehaviour
 
     void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning("[UI] Multiple UIManager instances; ignoring extra.", this);
+        }
+        else
+        {
+            Instance = this;
+        }
+
         ResolveReferences();
         BindStatusEffectUI();
 
@@ -106,6 +120,9 @@ public class UIManager : MonoBehaviour
 
     void OnDestroy()
     {
+        if (Instance == this)
+            Instance = null;
+
         if (ctx && ctx.StaminaSystem != null)
             ctx.StaminaSystem.OnStaminaChanged -= UpdateStamina;
 
@@ -237,6 +254,43 @@ public class UIManager : MonoBehaviour
     {
         IPlayerFullscreenEffectController effectController = FullscreenEffects;
         return effectController != null && effectController.PlayPerfectDodge(worldDashDirection, slowDuration, slowScale);
+    }
+
+    public void SetHudVisible(bool visible)
+    {
+        if (!ResolveHudCanvas())
+            return;
+
+        if (!visible)
+        {
+            if (hudHiddenByCutscene)
+                return;
+
+            hudVisibleBeforeCutscene = hudCanvas.enabled;
+            hudHiddenByCutscene = true;
+            hudCanvas.enabled = false;
+            return;
+        }
+
+        if (!hudHiddenByCutscene)
+            return;
+
+        hudHiddenByCutscene = false;
+        hudCanvas.enabled = hudVisibleBeforeCutscene;
+    }
+
+    bool ResolveHudCanvas()
+    {
+        if (hudCanvas != null)
+            return true;
+
+        if (!playerHudRoot)
+            return false;
+
+        if (!playerHudRoot.TryGetComponent(out hudCanvas))
+            hudCanvas = playerHudRoot.GetComponentInParent<Canvas>();
+
+        return hudCanvas != null;
     }
 
     void RefreshCharacterIcon()

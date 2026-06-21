@@ -29,14 +29,20 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
         public readonly IAnimationVfxCueSource Source;
         public readonly AnimationVfxAnchorContext Anchors;
         public readonly int LayerOverride;
+        public readonly bool UseWorldTimeScale;
         public readonly Dictionary<string, List<GameObject>> ActiveLoops =
             new Dictionary<string, List<GameObject>>(StringComparer.Ordinal);
 
-        public Session(IAnimationVfxCueSource source, AnimationVfxAnchorContext anchors, int layerOverride = -1)
+        public Session(
+            IAnimationVfxCueSource source,
+            AnimationVfxAnchorContext anchors,
+            int layerOverride = -1,
+            bool useWorldTimeScale = true)
         {
             Source = source;
             Anchors = anchors;
             LayerOverride = layerOverride;
+            UseWorldTimeScale = useWorldTimeScale;
         }
     }
 
@@ -48,13 +54,14 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
     public AnimationVfxSessionToken BeginSession(
         IAnimationVfxCueSource source,
         AnimationVfxAnchorContext anchors,
-        int layerOverride = -1)
+        int layerOverride = -1,
+        bool useWorldTimeScale = true)
     {
         if (source == null)
             return default;
 
         AnimationVfxSessionToken token = CreateToken();
-        _sessions.Add(token, new Session(source, anchors.WithFallbackRoot(transform), layerOverride));
+        _sessions.Add(token, new Session(source, anchors.WithFallbackRoot(transform), layerOverride, useWorldTimeScale));
         return token;
     }
 
@@ -165,6 +172,7 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
 
         if (session.LayerOverride >= 0)
             SetLayerRecursive(instance.transform, session.LayerOverride);
+        SetWorldTimeScaleMode(instance, session.UseWorldTimeScale);
 
         ApplyFollowMode(instance, anchor, cue);
 
@@ -194,6 +202,7 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
 
         if (usesGenericBoneFollower)
             ConfigureGenericBoneFollower(instance, anchor, cue);
+        SetWorldTimeScaleMode(instance, session.UseWorldTimeScale);
         ApplyScale(instance, cue.LocalScale);
         PlayAnimClip(instance, cue.AnimClip);
 
@@ -255,6 +264,16 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
         t.gameObject.layer = layer;
         foreach (Transform child in t)
             SetLayerRecursive(child, layer);
+    }
+
+    static void SetWorldTimeScaleMode(GameObject instance, bool useWorldTimeScale)
+    {
+        if (instance == null)
+            return;
+
+        WorldTimeScaledVfx scaler = instance.GetComponent<WorldTimeScaledVfx>();
+        if (scaler != null)
+            scaler.SetUseWorldTimeScale(useWorldTimeScale);
     }
 
     static void ApplyScale(GameObject instance, Vector3 scaleMultiplier)

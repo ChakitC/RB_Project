@@ -48,8 +48,10 @@ public class SetAnimationVfxData : MonoBehaviour
 
     [SerializeField, HideInInspector] private ScriptableObject authoringSourceAsset;
     [SerializeField, HideInInspector] private string authoringEntryId;
+    [SerializeField, HideInInspector] private string activeAuthoringEntryId = "main";
 
     private bool IsAuthoringOutOfSync =>
+        !UsesModeContainers() &&
         TimelineSourceAsset != null &&
         (authoringSourceAsset != TimelineSourceAsset ||
          !string.Equals(authoringEntryId, TimelineEntryId, System.StringComparison.Ordinal));
@@ -78,6 +80,8 @@ public class SetAnimationVfxData : MonoBehaviour
 
     public ScriptableObject TimelineSourceAsset => ResolveTimelineSourceAsset();
     public string TimelineEntryId => ResolveTimelineEntryId();
+    public string ActiveAuthoringEntryId =>
+        string.IsNullOrEmpty(activeAuthoringEntryId) ? "main" : activeAuthoringEntryId;
     public Transform CharacterRoot => GetAnimationCharacterRoot();
     public Animator PreviewAnimator
     {
@@ -109,6 +113,11 @@ public class SetAnimationVfxData : MonoBehaviour
     protected virtual ScriptableObject ResolveTimelineSourceAsset() => sourceAsset;
     protected virtual string ResolveTimelineEntryId() => selectedEntryId;
 
+    public void SetActiveAuthoringEntry(string entryId)
+    {
+        activeAuthoringEntryId = NormalizeAuthoringEntryId(entryId);
+    }
+
     protected virtual void AssignTimelineSourceAsset(ScriptableObject asset)
     {
         sourceAsset = asset;
@@ -124,6 +133,7 @@ public class SetAnimationVfxData : MonoBehaviour
         try
         {
             SelectFirstValidTimelineEntry();
+            SetActiveAuthoringEntry(selectedEntryId);
         }
         finally
         {
@@ -137,6 +147,7 @@ public class SetAnimationVfxData : MonoBehaviour
     void OnTimelineEntryChanged()
     {
 #if UNITY_EDITOR
+        SetActiveAuthoringEntry(selectedEntryId);
         if (!rebuildingAuthoring)
             RebuildTimelineAuthoring("Change Animation VFX Entry");
 #endif
@@ -216,6 +227,7 @@ public class SetAnimationVfxData : MonoBehaviour
             sourceAsset = asset;
             selectedEntryId = entryId;
             SelectFirstValidTimelineEntry();
+            SetActiveAuthoringEntry(selectedEntryId);
         }
         finally
         {
@@ -228,23 +240,27 @@ public class SetAnimationVfxData : MonoBehaviour
         AssignTimelineSourceAsset(asset);
         sourceAsset = asset;
         selectedEntryId = string.IsNullOrWhiteSpace(entryId) ? "main" : entryId;
+        SetActiveAuthoringEntry(selectedEntryId);
 #endif
     }
 
 #if UNITY_EDITOR
-    bool RebuildTimelineAuthoring(string undoLabel)
+    bool RebuildTimelineAuthoring(string undoLabel) =>
+        RebuildTimelineAuthoring(undoLabel, CreateTimelineSource());
+
+    bool RebuildTimelineAuthoring(string undoLabel, IAnimationVfxTimelineSource source)
     {
         if (rebuildingAuthoring)
             return false;
 
-        Transform root = GetSourceRoot();
+        string entryId = source != null ? source.EntryId : ActiveAuthoringEntryId;
+        Transform root = GetOrCreateModeContainer(entryId, undoLabel);
         if (root == null)
         {
             Debug.LogWarning("Could not resolve Animation VFX Source Root.", this);
             return false;
         }
 
-        IAnimationVfxTimelineSource source = CreateTimelineSource();
         Transform character = GetAnimationCharacterRoot();
         string label = string.IsNullOrWhiteSpace(undoLabel) ? SyncUndoLabel : undoLabel;
 
@@ -307,6 +323,9 @@ public class SetAnimationVfxData : MonoBehaviour
         if (source == null || !TryGetAuthoringRoots(out Transform character, out Transform root))
             return false;
 
+        if (UsesModeContainers())
+            return GetOrCreateModeContainer(source.EntryId, "Prepare Animation VFX Authoring") != null;
+
         if (authoringSourceAsset == source.SourceAsset &&
             string.Equals(authoringEntryId, source.EntryId, System.StringComparison.Ordinal))
         {
@@ -332,6 +351,38 @@ public class SetAnimationVfxData : MonoBehaviour
 #endif
     }
 
+    public bool PrepareTimelineAuthoring(IAnimationVfxTimelineSource source)
+    {
+#if UNITY_EDITOR
+        if (source == null || !TryGetAuthoringRoots(out Transform character, out Transform root))
+            return false;
+
+        if (UsesModeContainers())
+            return GetOrCreateModeContainer(source.EntryId, "Prepare Animation VFX Authoring") != null;
+
+        if (authoringSourceAsset == source.SourceAsset &&
+            string.Equals(authoringEntryId, source.EntryId, System.StringComparison.Ordinal))
+            return true;
+
+        SkillVfxAuthoringEntry[] existingEntries = GetSourceEntries(source.EntryId);
+        SkillVfxAuthoringSlot[] existingSlots = GetSourceSlots(source.EntryId);
+        if (authoringSourceAsset == null && string.IsNullOrWhiteSpace(authoringEntryId) &&
+            (existingEntries.Length > 0 || existingSlots.Length > 0))
+        {
+            Undo.RecordObject(this, "Adopt Animation VFX Authoring");
+            authoringSourceAsset = source.SourceAsset;
+            authoringEntryId = source.EntryId;
+            EditorUtility.SetDirty(this);
+            MarkHierarchyDirty(root);
+            return true;
+        }
+
+        return RebuildTimelineAuthoring("Switch Animation VFX Entry", source);
+#else
+        return source != null;
+#endif
+    }
+
     public void CreateOrSyncTimelineVfxSlots()
     {
 #if UNITY_EDITOR
@@ -348,6 +399,12 @@ public class SetAnimationVfxData : MonoBehaviour
     public void SaveTimelineVfxData()
     {
 #if UNITY_EDITOR
+        if (UsesModeContainers())
+        {
+            SaveAllTimelineVfxData();
+            return;
+        }
+
         IAnimationVfxTimelineSource source = CreateTimelineSource();
         if (source == null || !PrepareTimelineAuthoring() ||
             !TryBuildSourceData(source, out List<AnimationVfxCue> cues, out List<string> issues))
@@ -374,7 +431,58 @@ public class SetAnimationVfxData : MonoBehaviour
     public void LoadTimelineVfxData()
     {
 #if UNITY_EDITOR
+        if (UsesModeContainers())
+        {
+            LoadAllTimelineVfxData();
+            return;
+        }
+
         RebuildTimelineAuthoring(LoadUndoLabel);
+#endif
+    }
+
+    public void SaveTimelineVfxData(IAnimationVfxTimelineSource source)
+    {
+#if UNITY_EDITOR
+        if (source == null || !PrepareTimelineAuthoring(source) ||
+            !TryBuildSourceData(source, out List<AnimationVfxCue> cues, out List<string> issues))
+        {
+            return;
+        }
+
+        source.ReplaceCues(cues);
+        source.Save();
+        if (issues.Count > 0)
+        {
+            Debug.LogWarning(
+                $"Saved {cues.Count} Animation VFX entries to '{source.DisplayName}', but found {issues.Count} issue(s):\n- " +
+                string.Join("\n- ", issues),
+                source.SourceAsset);
+        }
+#endif
+    }
+
+    public void LoadTimelineVfxData(IAnimationVfxTimelineSource source)
+    {
+#if UNITY_EDITOR
+        RebuildTimelineAuthoring(LoadUndoLabel, source);
+#endif
+    }
+
+    public void SaveAllTimelineVfxData()
+    {
+#if UNITY_EDITOR
+        foreach (IAnimationVfxTimelineSource source in EnumerateModeSources())
+            SaveTimelineVfxData(source);
+#endif
+    }
+
+    public void LoadAllTimelineVfxData()
+    {
+#if UNITY_EDITOR
+        foreach (IAnimationVfxTimelineSource source in EnumerateModeSources())
+            RebuildTimelineAuthoring(LoadUndoLabel, source);
+        MigrateLegacyFlatAuthoring();
 #endif
     }
 
@@ -882,11 +990,13 @@ public class SetAnimationVfxData : MonoBehaviour
         if (!TryGetAuthoringRoots(out Transform character, out Transform root))
             return false;
 
-        SkillVfxAuthoringEntry[] entries = GetSourceEntries();
-        SkillVfxAuthoringSlot[] slots = GetSourceSlots();
+        root = ResolveScanRoot(source.EntryId);
+        SkillVfxAuthoringEntry[] entries = GetSourceEntries(source.EntryId);
+        SkillVfxAuthoringSlot[] slots = GetSourceSlots(source.EntryId);
         if (entries.Length == 0 && slots.Length == 0)
         {
-            Debug.LogWarning($"No Animation VFX authoring slot was found under '{root.name}'.", this);
+            string rootName = root != null ? root.name : GetSourceRoot()?.name ?? name;
+            Debug.LogWarning($"No Animation VFX authoring slot was found under '{rootName}'.", this);
             return false;
         }
 
@@ -1105,7 +1215,12 @@ public class SetAnimationVfxData : MonoBehaviour
 
     SkillVfxAuthoringEntry[] GetSourceEntries()
     {
-        Transform root = GetSourceRoot();
+        return GetSourceEntries(ActiveAuthoringEntryId);
+    }
+
+    SkillVfxAuthoringEntry[] GetSourceEntries(string entryId)
+    {
+        Transform root = ResolveScanRoot(entryId);
         return root != null
             ? root.GetComponentsInChildren<SkillVfxAuthoringEntry>(includeInactiveObjects)
             : System.Array.Empty<SkillVfxAuthoringEntry>();
@@ -1113,10 +1228,133 @@ public class SetAnimationVfxData : MonoBehaviour
 
     SkillVfxAuthoringSlot[] GetSourceSlots()
     {
-        Transform root = GetSourceRoot();
+        return GetSourceSlots(ActiveAuthoringEntryId);
+    }
+
+    SkillVfxAuthoringSlot[] GetSourceSlots(string entryId)
+    {
+        Transform root = ResolveScanRoot(entryId);
         return root != null
             ? root.GetComponentsInChildren<SkillVfxAuthoringSlot>(includeInactiveObjects)
             : System.Array.Empty<SkillVfxAuthoringSlot>();
+    }
+
+    bool UsesModeContainers()
+    {
+        return TimelineSourceAsset is SkillGemDefinition skill && skill.IsCutsceneSkill;
+    }
+
+    Transform ResolveScanRoot(string entryId)
+    {
+        Transform root = GetSourceRoot();
+        if (root == null || !UsesModeContainers())
+            return root;
+
+        string wanted = NormalizeAuthoringEntryId(entryId);
+        SkillVfxAuthoringGroup[] groups = root.GetComponentsInChildren<SkillVfxAuthoringGroup>(true);
+        for (int i = 0; i < groups.Length; i++)
+        {
+            SkillVfxAuthoringGroup group = groups[i];
+            if (group != null && string.Equals(group.EntryId, wanted, System.StringComparison.Ordinal))
+                return group.transform;
+        }
+
+        return null;
+    }
+
+#if UNITY_EDITOR
+    Transform GetOrCreateModeContainer(string entryId, string undoLabel)
+    {
+        Transform root = GetSourceRoot();
+        if (root == null || !UsesModeContainers())
+            return root;
+
+        string normalized = NormalizeAuthoringEntryId(entryId);
+        Transform existing = ResolveScanRoot(normalized);
+        if (existing != null)
+            return existing;
+
+        string label = string.IsNullOrWhiteSpace(undoLabel) ? SyncUndoLabel : undoLabel;
+        GameObject container = new GameObject("VFX_Container");
+        container.transform.SetParent(root, false);
+        Undo.RegisterCreatedObjectUndo(container, label);
+        SkillVfxAuthoringGroup group = Undo.AddComponent<SkillVfxAuthoringGroup>(container);
+        group.Configure(normalized);
+        return container.transform;
+    }
+
+    IEnumerable<IAnimationVfxTimelineSource> EnumerateModeSources()
+    {
+        ScriptableObject asset = TimelineSourceAsset;
+        if (asset is SkillGemDefinition skill && skill.IsCutsceneSkill)
+        {
+            yield return AnimationVfxTimelineSourceFactory.Create(skill, "main");
+            yield return AnimationVfxTimelineSourceFactory.Create(skill, "cutscene");
+            yield break;
+        }
+
+        IAnimationVfxTimelineSource source = CreateTimelineSource();
+        if (source != null)
+            yield return source;
+    }
+
+    void MigrateLegacyFlatAuthoring()
+    {
+        Transform root = GetSourceRoot();
+        if (root == null || !UsesModeContainers())
+            return;
+
+        SkillVfxAuthoringSlot[] slots = root.GetComponentsInChildren<SkillVfxAuthoringSlot>(true);
+        SkillVfxAuthoringEntry[] entries = root.GetComponentsInChildren<SkillVfxAuthoringEntry>(true);
+        bool hasLegacy = false;
+        for (int i = 0; i < slots.Length && !hasLegacy; i++)
+            hasLegacy = slots[i] != null && !IsInsideAuthoringGroup(slots[i].transform, root);
+        for (int i = 0; i < entries.Length && !hasLegacy; i++)
+            hasLegacy = entries[i] != null && !IsInsideAuthoringGroup(entries[i].transform, root);
+        if (!hasLegacy)
+            return;
+
+        const string undoLabel = "Migrate Legacy Animation VFX Authoring";
+        Undo.IncrementCurrentGroup();
+        int undoGroup = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName(undoLabel);
+        for (int i = slots.Length - 1; i >= 0; i--)
+        {
+            SkillVfxAuthoringSlot slot = slots[i];
+            if (slot != null && !IsInsideAuthoringGroup(slot.transform, root))
+                Undo.DestroyObjectImmediate(slot.gameObject);
+        }
+
+        for (int i = entries.Length - 1; i >= 0; i--)
+        {
+            SkillVfxAuthoringEntry entry = entries[i];
+            if (entry != null &&
+                !IsInsideAuthoringGroup(entry.transform, root) &&
+                entry.GetComponentInParent<SkillVfxAuthoringSlot>() == null)
+            {
+                Undo.DestroyObjectImmediate(entry.gameObject);
+            }
+        }
+
+        MarkHierarchyDirty(root);
+        Undo.CollapseUndoOperations(undoGroup);
+    }
+
+    static bool IsInsideAuthoringGroup(Transform candidate, Transform root)
+    {
+        for (Transform current = candidate; current != null && current != root; current = current.parent)
+        {
+            if (current.GetComponent<SkillVfxAuthoringGroup>() != null)
+                return true;
+        }
+
+        return false;
+    }
+#endif
+
+    static string NormalizeAuthoringEntryId(string entryId)
+    {
+        return string.IsNullOrEmpty(entryId) ? "main" : entryId;
     }
 
     static Transform ResolveCharacterRoot(Transform source)

@@ -44,6 +44,11 @@ replay, completion, state exit, interruption, profile change, or disable.
 Upper-body Reload and Dash can therefore keep independent sessions active at
 the same time, including when both tracks use the same loop key.
 
+Cutscene skill VFX uses the shared `AnimationVfxPresenter` with the `Cutscene`
+GameObject layer override, but opts out of `TimeSlowManager.WorldTimeScale`.
+Cutscene presentation slows the world behind the character, while the cutscene
+animation and its VFX should play at presentation speed.
+
 ## Editor Source Adapters
 
 `IAnimationVfxTimelineSource` is the shared editor contract for source/entry

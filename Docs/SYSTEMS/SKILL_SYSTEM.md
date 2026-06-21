@@ -284,13 +284,44 @@ empty. On `CutsceneSkillStart` it:
 - Plays `characterCutsceneClip` (`ClipTransition`) and `cameraCutsceneClip`
   (`AnimationClip`) via `AnimancerComponent.Play()` in unscaled time mode.
 - Fades in the letterbox overlay (black bars + solid background, unscaled time).
+- Hides the global player HUD through `UIManager.Instance`; this is required
+  because the HUD is screen-space UI and is not hidden by camera culling masks.
 - Binds `Vfx` Animancer event callbacks on the cutscene character state; each
   `Vfx` event spawns the corresponding `cutsceneVfxEvents` cues, using
   `AnimationVfxAnchorResolver` for placement and `SetLayerRecursive` to put them
   on the **"Cutscene"** layer.
 
-On `CutsceneSkillEnd` it reverses all of the above and re-enables the main camera.
+On `CutsceneSkillEnd` it reverses all of the above, restores the player HUD, and
+re-enables the main camera.
 If the cast is cancelled mid-cutscene, `CastCancelled` triggers a fast 0.05 s exit.
+
+### Concurrency Arbitration
+
+The camera, the global `TimeSlowManager`, the camera `cullingMask`, the player
+HUD visibility, and the letterbox overlay are shared resources, so two
+characters triggering a cutscene-skill at the same time (or back-to-back) would
+fight over them. A single `CutsceneDirector` singleton arbitrates one
+"cinematic stage" with an
+`Idle → Active → Cooldown` state machine:
+
+- Before any takeover, `CutsceneSkillPresenter.StartCutscene` calls
+  `CutsceneDirector.Instance.TryBegin(this)`. The grant is **first-come,
+  first-served** — while the stage is `Active` (owned by another presenter) or in
+  `Cooldown`, the request is rejected and `StartCutscene` returns immediately.
+- A **rejected** cutscene performs **no** cinematic takeover (no camera/time/
+  overlay/cutscene-VFX). The character still plays its cutscene + main-skill
+  animation via `CharacterAnimBrain`, and main-skill VFX still plays — "do the
+  moves without the movie."
+- `EndCutscene` and `ForceEndCutscene` call `CutsceneDirector.Instance.End(this)`
+  to release the stage. `End` is owner-checked and idempotent. Releasing starts a
+  cooldown that rejects new cinematics for `cinematicCooldownSeconds` (designer-
+  tunable, default 0.35 s) to prevent back-to-back cinematic whiplash.
+- The cooldown is measured in **unscaled real-time** (`Time.unscaledTime`) because
+  the world is slowed during a cutscene; scaled time would stretch it ~20×.
+
+The director is created lazily on first access, so no scene setup is required. A
+designer may drop a `CutsceneDirector` onto the System/bootstrap object to tune
+`cinematicCooldownSeconds`; the lazy singleton picks up the placed instance.
 
 ### Scene Setup
 

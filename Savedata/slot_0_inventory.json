@@ -1,6 +1,6 @@
 {
     "maxSlotCount": 0,
-    "gold": 963245,
+    "gold": 963246,
     "scrap": 410,
     "slots": [
         {
@@ -26,8 +26,8 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 16364,
-                "currentMagazine": 74,
+                "shotCounter": 16560,
+                "currentMagazine": 85,
                 "currentReserveAmmo": 497,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 16,
@@ -136,9 +136,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 15839,
+                "shotCounter": 15998,
                 "currentMagazine": 29,
-                "currentReserveAmmo": 197,
+                "currentReserveAmmo": 213,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
                 "upgradeTier": 2,
@@ -309,9 +309,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 15299,
-                "currentMagazine": 21,
-                "currentReserveAmmo": 210,
+                "shotCounter": 15496,
+                "currentMagazine": 14,
+                "currentReserveAmmo": 180,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -1148,8 +1148,8 @@
             }
         },
         {
-            "itemId": "",
-            "amount": 0,
+            "itemId": "Accessory.TapedMagazine",
+            "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
                 "baseWeaponId": "",
@@ -1172,15 +1172,15 @@
                 "unlockedUpgradeMilestoneIds": []
             },
             "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
+                "instanceId": "acc_fc8b592d64944615a39e01c09e0e7e81",
+                "accessoryId": "Accessory.TapedMagazine",
                 "modifierId": "",
                 "upgradeLevel": 0
             }
         },
         {
-            "itemId": "",
-            "amount": 0,
+            "itemId": "Accessory.EmergencyPager",
+            "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
                 "baseWeaponId": "",
@@ -1203,8 +1203,8 @@
                 "unlockedUpgradeMilestoneIds": []
             },
             "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
+                "instanceId": "acc_64e700a13ccf46f3932620d70c7eafcb",
+                "accessoryId": "Accessory.EmergencyPager",
                 "modifierId": "",
                 "upgradeLevel": 0
             }

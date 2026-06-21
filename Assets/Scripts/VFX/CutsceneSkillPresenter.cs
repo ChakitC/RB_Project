@@ -146,9 +146,13 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
     void StartCutscene(CutsceneDef def)
     {
         if (_cutsceneActive)
-            ForceEndCutscene();
+            ForceEndCutscene();                       // releases the lock if this presenter still held it
+
+        if (!CutsceneDirector.Instance.TryBegin(this))
+            return;                                   // denied → no cinematic; character anim still plays
 
         _cutsceneActive = true;
+        UIManager.Instance?.SetHudVisible(false);
 
         TimeSlowManager.Instance.StartSlow(def.worldSlowScale, float.MaxValue);
         _ctx?.stateHub?.AddExternalControlBlock(ControlBlockFlags.Rotate);
@@ -192,6 +196,9 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         if (_overlayRoutine != null)
             StopCoroutine(_overlayRoutine);
         _overlayRoutine = StartCoroutine(FadeOverlay(currentAlpha, 0f, fadeOutDuration));
+
+        UIManager.Instance?.SetHudVisible(true);
+        CutsceneDirector.Instance.End(this);
     }
 
     void ForceEndCutscene()
@@ -219,6 +226,9 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
         if (_overlayGroup != null)
             _overlayGroup.alpha = 0f;
+
+        UIManager.Instance?.SetHudVisible(true);
+        CutsceneDirector.Instance.End(this);
     }
 
     // Camera animation
@@ -301,7 +311,8 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         _cutsceneVfxToken = _cutsceneVfxPresenter.BeginSession(
             new CutsceneVfxCueSource(def.cutsceneVfxEvents),
             BuildCutsceneAnchorContext(),
-            LayerMask.NameToLayer("Cutscene"));
+            LayerMask.NameToLayer("Cutscene"),
+            useWorldTimeScale: false);
         _hasCutsceneVfxSession = true;
     }
 

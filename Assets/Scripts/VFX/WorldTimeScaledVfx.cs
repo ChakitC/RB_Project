@@ -12,6 +12,7 @@ public sealed class WorldTimeScaledVfx : MonoBehaviour
     float _destroyAfterWorldSeconds;
     float _age;
     bool _destroyAfterLifetime;
+    bool _useWorldTimeScale = true;
     PooledVfxHandle _handle;
 
     void Awake()
@@ -21,6 +22,7 @@ public sealed class WorldTimeScaledVfx : MonoBehaviour
 
     void OnEnable()
     {
+        _useWorldTimeScale = true;
         _age = 0f;
         _destroyAfterLifetime = false;
         _handle = GetComponent<PooledVfxHandle>();
@@ -33,7 +35,7 @@ public sealed class WorldTimeScaledVfx : MonoBehaviour
         if (!_destroyAfterLifetime)
             return;
 
-        _age += TimeSlowManager.Instance.WorldDeltaTime;
+        _age += _useWorldTimeScale ? TimeSlowManager.Instance.WorldDeltaTime : Time.deltaTime;
         if (_age >= _destroyAfterWorldSeconds)
         {
             if (_handle != null)
@@ -54,6 +56,12 @@ public sealed class WorldTimeScaledVfx : MonoBehaviour
     {
         CacheComponents();
         ApplyScale(1f);
+    }
+
+    public void SetUseWorldTimeScale(bool value)
+    {
+        _useWorldTimeScale = value;
+        ApplyScale(value ? TimeSlowManager.Instance.WorldTimeScale : 1f);
     }
 
     void CacheComponents()
@@ -88,7 +96,7 @@ public sealed class WorldTimeScaledVfx : MonoBehaviour
 
     void ApplyWorldScale()
     {
-        ApplyScale(TimeSlowManager.Instance.WorldTimeScale);
+        ApplyScale(_useWorldTimeScale ? TimeSlowManager.Instance.WorldTimeScale : 1f);
     }
 
     void ApplyScale(float scale)

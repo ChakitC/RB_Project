@@ -131,6 +131,14 @@ the `main` entry. `Character Root` and `Source VFX Root` are optional: the
 component resolves the nearest character context and uses its own transform as
 the source container when they are empty.
 
+For cutscene skills, the timeline window uses one authoring component for both
+the main skill clip and the cutscene clip. `Load / Sync VFX Data` creates
+separate `VFX_Main` and `VFX_Cutscene` containers under the source root, each
+with slots for that clip's own `Vfx` markers. `Save VFX Data` writes entries
+from `VFX_Main` back to `SkillVfxEvents` and entries from `VFX_Cutscene` back to
+`CutsceneDef.cutsceneVfxEvents`. Toggling between Main and Cutscene VFX changes
+the active preview/editing container without deleting the other container.
+
 Use this workflow:
 
 1. Add the repeated `Vfx` events at the required times in the Skill Animation

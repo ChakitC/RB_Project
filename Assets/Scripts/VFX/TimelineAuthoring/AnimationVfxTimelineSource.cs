@@ -10,6 +10,8 @@ public static class AnimationVfxTimelineSourceFactory
     {
         if (asset is SkillGemDefinition skill)
         {
+            if (string.Equals(entryId, "cutscene", System.StringComparison.Ordinal) && skill.IsCutsceneSkill)
+                return new CutsceneSkillVfxTimelineSource(skill);
             return skill.IsCutsceneSkill
                 ? (IAnimationVfxTimelineSource)new CombinedCutsceneSkillVfxTimelineSource(skill)
                 : new SkillVfxTimelineSource(skill);
@@ -27,6 +29,8 @@ public static class AnimationVfxTimelineSourceFactory
         if (asset is SkillGemDefinition skill)
         {
             entries.Add(new AnimationVfxTimelineEntry("main", "Main Skill"));
+            if (skill.IsCutsceneSkill)
+                entries.Add(new AnimationVfxTimelineEntry("cutscene", "Cutscene VFX"));
         }
         else if (asset is MeleeComboSO combo)
         {

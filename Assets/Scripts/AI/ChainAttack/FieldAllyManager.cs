@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -9,6 +10,9 @@ public sealed class FieldAllyManager : MonoBehaviour
     [SerializeField] private bool logRegistration;
 
     readonly Dictionary<ChainActorRole, FieldAllyMember> _membersByRole = new();
+
+    public event Action<ChainActorRole, FieldAllyMember> MemberRegistered;
+    public event Action<ChainActorRole> MemberUnregistered;
 
     public IEnumerable<FieldAllyMember> RegisteredMembers => _membersByRole.Values;
 
@@ -49,6 +53,7 @@ public sealed class FieldAllyManager : MonoBehaviour
         }
 
         _membersByRole[member.ActorRole] = member;
+        MemberRegistered?.Invoke(member.ActorRole, member);
 
         if (logRegistration)
             Debug.Log($"[FieldAllyManager] Registered '{member.name}' as '{member.ActorRole}'.", this);
@@ -60,7 +65,10 @@ public sealed class FieldAllyManager : MonoBehaviour
             return;
 
         if (_membersByRole.TryGetValue(member.ActorRole, out FieldAllyMember existing) && existing == member)
+        {
             _membersByRole.Remove(member.ActorRole);
+            MemberUnregistered?.Invoke(member.ActorRole);
+        }
     }
 
     public void FinalizeSequenceReservations(object owner, bool interrupted)

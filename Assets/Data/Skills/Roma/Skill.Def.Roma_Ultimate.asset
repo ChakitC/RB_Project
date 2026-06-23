@@ -131,13 +131,11 @@ MonoBehaviour:
       _Speed: 1
       _Events:
         _NormalizedTimes:
-        - 0
-        - 0.3094496
+        - 0.034108635
         - 0.52967834
         - NaN
         _Callbacks: []
         _Names:
-        - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
         - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
         - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
       _Clip: {fileID: -6664157530632832028, guid: 64bca5e158f507e49842527aa4ede201, type: 3}
@@ -162,15 +160,15 @@ MonoBehaviour:
       extraLife: 0
       allowParticlesToFinish: 1
       animClip: {fileID: 0}
-    - cueIndex: 2
+    - cueIndex: 1
       action: 0
       prefab: {fileID: 6721007384533448649, guid: 98557619806f23c499c9cdb620a31541, type: 3}
       anchor: 0
       customAnchorPath: 
       humanoidBone: 18
-      localPosition: {x: 0, y: 1.096, z: 0.07200003}
+      localPosition: {x: -0.09700004, y: 1.096, z: 0.072000034}
       localEulerAngles: {x: -0, y: 0, z: 0}
-      localScale: {x: 2.691585, y: 2.691584, z: 2.691585}
+      localScale: {x: 2.012419, y: 2.0124183, z: 2.012419}
       anchorMode: 0
       loopKey: 
       extraLife: 0

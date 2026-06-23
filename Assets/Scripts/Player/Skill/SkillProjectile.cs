@@ -129,7 +129,7 @@ public class SkillProjectile : MonoBehaviour
             }
         }
 
-        if (other.CompareTag("Wall"))
+        if (ProjectileLayerUtility.IsWall(other))
             didHit = true;
 
         if (didHit)

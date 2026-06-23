@@ -607,8 +607,18 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
             for (int i = 0; i < visualPreviewParticleSystems.Length; i++)
             {
                 ParticleSystem particleSystem = visualPreviewParticleSystems[i];
-                if (particleSystem != null)
-                    visualPreviewOriginalLooping[i] = particleSystem.main.loop;
+                if (particleSystem == null)
+                    continue;
+
+                visualPreviewOriginalLooping[i] = particleSystem.main.loop;
+
+                // Deterministic editor preview: pin the random seed so scrubbing to the same
+                // playhead time always reproduces the same particle state (no flicker).
+                // Applied once on the throwaway clone - never touches the prefab asset.
+                particleSystem.useAutoRandomSeed = false;
+                particleSystem.randomSeed = (uint)(i + 1);
+                ParticleSystem.MainModule main = particleSystem.main;
+                main.useUnscaledTime = true;
             }
 
             visualPreviewDuration = CalculatePreviewDuration(visualPreviewParticleSystems);

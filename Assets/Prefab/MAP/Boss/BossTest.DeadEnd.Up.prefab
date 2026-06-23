@@ -1419,7 +1419,7 @@ GameObject:
   - component: {fileID: 857914268851577184}
   - component: {fileID: 7477059563664606553}
   m_Layer: 0
-  m_Name: Boss.DeadEnd.Up
+  m_Name: BossTest.DeadEnd.Up
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

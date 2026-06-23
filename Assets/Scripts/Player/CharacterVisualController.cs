@@ -293,7 +293,10 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         return prefab;
     }
 
-    private void BuildModel(GameObject prefab)
+    private void BuildModel(
+        GameObject prefab,
+        RuntimeAnimatorController controllerOverride = null,
+        Avatar avatarOverride = null)
     {
         DetachFirePointFromCurrentModel();
         DestroyHealthBarInstance();
@@ -322,7 +325,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         CreateHealthBarOnModelBone();
         BuildModelFromWeaponDef();
 
-        ConfigureAnimatorRuntime();
+        ConfigureAnimatorRuntime(controllerOverride, avatarOverride);
     }
 
     void ClearCurrentModelReferences()
@@ -348,14 +351,19 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
             _ctx.ColliderRefs = colliderRefs;
     }
 
-    private void ConfigureAnimatorRuntime()
+    private void ConfigureAnimatorRuntime(
+        RuntimeAnimatorController controllerOverride = null,
+        Avatar avatarOverride = null)
     {
         var stats = GetCurrentCharacterStats();
-        if (!animator || !stats)
+        if (!animator)
             return;
 
-        animator.runtimeAnimatorController = stats.controller;
-        animator.avatar = stats.characterAvatar;
+        var controller = controllerOverride != null ? controllerOverride : (stats ? stats.controller : null);
+        var avatar = avatarOverride != null ? avatarOverride : (stats ? stats.characterAvatar : null);
+
+        animator.runtimeAnimatorController = controller;
+        animator.avatar = avatar;
 
         animator.enabled = false;
         animator.enabled = true;
@@ -365,6 +373,24 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         if (animancer) animancer.Animator = animator;
 
         EnsureRootMotionDriverOnAnimator();
+    }
+
+    public void ApplyFormOverride(
+        GameObject prefab,
+        RuntimeAnimatorController controller = null,
+        Avatar avatar = null)
+    {
+        EnsureReferences();
+
+        if (!prefab || !modelRoot)
+            return;
+
+        BuildModel(prefab, controller, avatar);
+    }
+
+    public void RestoreDefaultForm()
+    {
+        TryBuildCurrentModel(silent: false);
     }
 
     private void EnsureRootMotionDriverOnAnimator()
@@ -547,6 +573,8 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         _loggedMissingHealthBarBone = false;
 
         _healthBarInstance = Instantiate(healthBarPrefab, targetBone, false);
+        if (!_healthBarInstance.GetComponent<Billboard>())
+            _healthBarInstance.AddComponent<Billboard>();
         ApplyHealthBarOffset();
 
         var slider = _healthBarInstance.GetComponentInChildren<Slider>(true);

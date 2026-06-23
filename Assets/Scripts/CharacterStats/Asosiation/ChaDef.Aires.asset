@@ -39,7 +39,13 @@ MonoBehaviour:
     displayName: 
     hotkey: 258
     defaultOptionIndex: 0
-    options: []
+    options:
+    - optionId: Test.Aires.Ultimate
+      displayName: Aires.Ultimate
+      skillAsset: {fileID: 11400000, guid: 7f5265c036ab5814580557d966839af1, type: 2}
+      skillLevel: 1
+      supportAssets: []
+      maxSupportSlots: 3
   - slotId: 2
     displayName: 
     hotkey: 259

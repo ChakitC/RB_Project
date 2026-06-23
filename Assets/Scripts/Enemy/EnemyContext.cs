@@ -42,7 +42,7 @@ public class EnemyContext : CharacteContext
         CacheBaseWorldSlowValues();
 
         if (Agent != null)
-            Agent.speed = GetMoveSpeedForCurrentLifeState() * TimeSlowManager.Instance.WorldTimeScale;
+            Agent.speed = GetMoveSpeedForCurrentLifeState() * (UsesWorldSlow ? TimeSlowManager.Instance.WorldTimeScale : 1f);
     }
 
     private void Update()
@@ -104,7 +104,7 @@ public class EnemyContext : CharacteContext
         ResolveReferences();
         CacheBaseWorldSlowValues();
 
-        float scale = TimeSlowManager.Instance.WorldTimeScale;
+        float scale = UsesWorldSlow ? TimeSlowManager.Instance.WorldTimeScale : 1f;
 
         if (Agent != null)
         {

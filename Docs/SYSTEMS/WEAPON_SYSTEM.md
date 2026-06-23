@@ -190,6 +190,8 @@ Projectiles are managed through `ProjectilePool` (singleton, `DontDestroyOnLoad`
 
 **Hovl Studio `HS_ProjectileMover` compatibility** — prefabs that carry `HS_ProjectileMover` on a child VFX object must have their `Flash` Inspector field set to a Project asset prefab (not a scene-hierarchy child instance). `HS_ProjectileMover` now routes flash through `VfxSpawner.SpawnVfx` on every `OnEnable`, and `OnDisable` stops all coroutines so the lifetime timer does not outlive pool tenure. The pool-aware `notDestroy` path is selected automatically when `ProjectilePool.Instance` is present.
 
+**Debug VFX kill-switch** — untick `Spawn Vfx` on the `VfxSpawner` Inspector to suppress all VFX and damage numbers without affecting gameplay (projectiles, hitboxes, and damage calculations still run normally). Useful for isolating perf/pooling issues caused by VFX prefabs.
+
 **Prewarm** — call `ProjectilePool.Instance.Prewarm(prefab, count)` to fill the pool before a scene starts. Not wired to any automatic trigger (phase 2).
 
 ## Shoot Flow

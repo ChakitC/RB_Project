@@ -183,6 +183,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return slot != null &&
                slot.runtimeSkill != null &&
                skillUser != null &&
+               !CutsceneDirector.IsCinematicPlaying &&
                !IsSkillStartBlockedByAnimation() &&
                !IsSkillUseBlocked() &&
                slot.runtimeSkill.CanCast(skillUser);
@@ -293,6 +294,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return playerCommandSkill != null &&
                playerCommandSkill.runtimeSkill != null &&
                skillUser != null &&
+               !CutsceneDirector.IsCinematicPlaying &&
                !IsSkillStartBlockedByAnimation() &&
                !IsSkillUseBlocked() &&
                playerCommandSkill.runtimeSkill.CanCast(skillUser);
@@ -407,6 +409,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         CacheReferences();
         EnsureCommandRuntimeSkill(slot);
 
+        if (CutsceneDirector.IsCinematicPlaying)
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+
         if (slot == null || slot.runtimeSkill == null || skillUser == null)
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
@@ -436,6 +441,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     {
         CacheReferences();
         EnsureRuntimeSkill(entry);
+
+        if (CutsceneDirector.IsCinematicPlaying)
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         if (entry == null || entry.runtimeSkill == null || skillUser == null)
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);

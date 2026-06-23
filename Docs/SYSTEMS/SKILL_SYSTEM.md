@@ -73,10 +73,37 @@ Current payload implementations are:
 - `PrefabHitboxSkillPayloadDef`
 - `ApplyStatusSkillPayloadDef`
 - `SpawnPickupSkillPayloadDef`
+- `MorphSkillPayloadDef`
 
 Reusable dependencies remain normal asset references. Examples include
 projectile prefabs, `ProjectileConfig`, `StatusEffectDef`, audio cues, VFX
 prefabs, and pickup prefabs.
+
+### Morph / Awakening Payload
+
+`MorphSkillPayloadDef` is a visual-only temporary form change. It does not change
+base stats, weapon data, hitboxes, or scaling. The payload applies at the normal
+skill cast moment, defers the actual animator/model swap by one frame, and
+reverts automatically after `duration`.
+
+`Change Mode` controls which visual data changes:
+
+- `AnimationOnly`: applies a temporary `CharacterAnimProfileSO` override.
+- `ModelOnly`: rebuilds the character model from `Morph Model Prefab`.
+- `Both`: changes the model and animation profile together.
+
+Changing the model or animation profile causes `CharacterAnimBrain` to rebind on
+the next update. Any active skill animation is intentionally interrupted at that
+cast moment and returns to the locomotion state for the new form. If the cast is
+interrupted before the deferred apply runs, the runtime host is destroyed without
+leaving a morph active. If the character dies or is despawned during morph, the
+host shuts down and clears the override.
+
+Author morph skills as embedded payloads on the owning `SkillGemDefinition`.
+Set a positive `duration`, assign `Morph Anim Profile` for animation-changing
+modes, and assign `Morph Model Prefab` for model-changing modes. The optional
+controller and avatar fields override the model animator runtime controller and
+avatar; when they are empty, the current `CharacterStats` values are used.
 
 ## Timeline VFX
 

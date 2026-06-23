@@ -38,6 +38,12 @@ public class VfxSpawner : MonoBehaviour
 
     public DamageNumber numberPrefab;
 
+    [Header("Debug")]
+    [Tooltip("ติ๊กออกเพื่อปิด VFX และเลขดาเมจทั้งหมด (gameplay ทำงานปกติ) สำหรับดีบัค")]
+    [SerializeField] bool spawnVfx = true;
+
+    public bool SpawnVfxEnabled { get => spawnVfx; set => spawnVfx = value; }
+
     VfxPool _pool;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -111,6 +117,7 @@ public class VfxSpawner : MonoBehaviour
         float scale = 1f,
         float minimumLifetime = 0f)
     {
+        if (!spawnVfx) return null;
         if (prefab == null) return null;
 
         GameObject vfx = InstantiateVfx(prefab, pos, rotation, null, scale);
@@ -127,6 +134,7 @@ public class VfxSpawner : MonoBehaviour
 
     public GameObject SpawnLoopingVfx(GameObject prefab, Vector3 pos, Quaternion rotation, Transform parent = null, float scale = 1f)
     {
+        if (!spawnVfx) return null;
         if (prefab == null) return null;
 
         GameObject vfx = InstantiateVfx(prefab, pos, rotation, parent, scale);
@@ -167,6 +175,7 @@ public class VfxSpawner : MonoBehaviour
 
     public void SpawnDamageNumber(Vector3 position , float number)
     {
+        if (!spawnVfx) return;
         if (numberPrefab == null) return;
         DamageNumber dn = numberPrefab.Spawn(position, number);
     }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -66,6 +67,8 @@ public class WeaponSystem : MonoBehaviour
     public bool CanReload => !isReloading && currentWeapon != null && magazine < MaxMagazine && HasReserveAmmo;
     public bool IsFreeAmmoActive => ammoState.IsFreeAmmoActive;
     public float FreeAmmoRemaining => ammoState.FreeAmmoRemaining;
+
+    public event Action<int, int, int, bool> AmmoChanged;
 
     bool _isFiringHeld;
     readonly WeaponAmmoState ammoState = new();
@@ -1305,11 +1308,7 @@ public class WeaponSystem : MonoBehaviour
 
     void UpdateAmmoUI()
     {
-        ctx?.UIManager?.UpdateAmmoText(
-            magazine,
-            MaxMagazine,
-            HasInfiniteReserveAmmo ? -1 : reserveAmmo,
-            HasInfiniteReserveAmmo);
+        AmmoChanged?.Invoke(magazine, MaxMagazine, reserveAmmo, HasInfiniteReserveAmmo);
     }
 
     string GetWeaponSourceId()

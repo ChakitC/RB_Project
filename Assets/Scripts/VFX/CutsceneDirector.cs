@@ -69,5 +69,7 @@ public sealed class CutsceneDirector : MonoBehaviour
         _cooldownUntilUnscaled = Time.unscaledTime + cinematicCooldownSeconds;
     }
 
+    public static bool IsCinematicPlaying => _instance != null && _instance._stage == Stage.Active;
+
     public bool IsOwner(object owner) => _stage == Stage.Active && ReferenceEquals(_owner, owner);
 }

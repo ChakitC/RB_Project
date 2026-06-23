@@ -1,7 +1,7 @@
 {
     "maxSlotCount": 0,
-    "gold": 963246,
-    "scrap": 410,
+    "gold": 963264,
+    "scrap": 450,
     "slots": [
         {
             "itemId": "RB.HMG.01",
@@ -26,9 +26,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 16560,
-                "currentMagazine": 85,
-                "currentReserveAmmo": 497,
+                "shotCounter": 18802,
+                "currentMagazine": 48,
+                "currentReserveAmmo": 394,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 16,
                 "upgradeTier": 1,
@@ -136,9 +136,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 15998,
+                "shotCounter": 17673,
                 "currentMagazine": 29,
-                "currentReserveAmmo": 213,
+                "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
                 "upgradeTier": 2,
@@ -309,9 +309,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 15496,
-                "currentMagazine": 14,
-                "currentReserveAmmo": 180,
+                "shotCounter": 17100,
+                "currentMagazine": 0,
+                "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -666,9 +666,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 21,
-                "currentMagazine": 0,
-                "currentReserveAmmo": 95,
+                "shotCounter": 35,
+                "currentMagazine": 1,
+                "currentReserveAmmo": 80,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -1086,7 +1086,7 @@
             }
         },
         {
-            "itemId": "Accessory.CollectorsShades",
+            "itemId": "Accessory.CasinoLuckyCoin",
             "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
@@ -1110,14 +1110,14 @@
                 "unlockedUpgradeMilestoneIds": []
             },
             "accessoryInstance": {
-                "instanceId": "acc_b3735f8a35f04116b5c2f786f739e34b",
-                "accessoryId": "Accessory.CollectorsShades",
+                "instanceId": "acc_9659ae73a8474f60aa82e8da0bd72900",
+                "accessoryId": "Accessory.CasinoLuckyCoin",
                 "modifierId": "",
                 "upgradeLevel": 0
             }
         },
         {
-            "itemId": "Accessory.TrunkAmmoBox",
+            "itemId": "Accessory.PointedLeatherShoes",
             "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
@@ -1141,70 +1141,8 @@
                 "unlockedUpgradeMilestoneIds": []
             },
             "accessoryInstance": {
-                "instanceId": "acc_66a32856dcbc45a6a390cc29ea690d32",
-                "accessoryId": "Accessory.TrunkAmmoBox",
-                "modifierId": "",
-                "upgradeLevel": 0
-            }
-        },
-        {
-            "itemId": "Accessory.TapedMagazine",
-            "amount": 1,
-            "weaponInstance": {
-                "instanceId": "",
-                "baseWeaponId": "",
-                "rarity": 0,
-                "mainAffix": {
-                    "affixId": "",
-                    "hasPrimaryValue": false,
-                    "primaryValue": 0.0,
-                    "hasSecondaryValue": false,
-                    "secondaryValue": 0.0
-                },
-                "subAffixes": [],
-                "shotCounter": 0,
-                "currentMagazine": -1,
-                "currentReserveAmmo": -1,
-                "reserveAmmoInitialized": false,
-                "upgradeLevel": 0,
-                "upgradeTier": 0,
-                "upgradeExp": 0,
-                "unlockedUpgradeMilestoneIds": []
-            },
-            "accessoryInstance": {
-                "instanceId": "acc_fc8b592d64944615a39e01c09e0e7e81",
-                "accessoryId": "Accessory.TapedMagazine",
-                "modifierId": "",
-                "upgradeLevel": 0
-            }
-        },
-        {
-            "itemId": "Accessory.EmergencyPager",
-            "amount": 1,
-            "weaponInstance": {
-                "instanceId": "",
-                "baseWeaponId": "",
-                "rarity": 0,
-                "mainAffix": {
-                    "affixId": "",
-                    "hasPrimaryValue": false,
-                    "primaryValue": 0.0,
-                    "hasSecondaryValue": false,
-                    "secondaryValue": 0.0
-                },
-                "subAffixes": [],
-                "shotCounter": 0,
-                "currentMagazine": -1,
-                "currentReserveAmmo": -1,
-                "reserveAmmoInitialized": false,
-                "upgradeLevel": 0,
-                "upgradeTier": 0,
-                "upgradeExp": 0,
-                "unlockedUpgradeMilestoneIds": []
-            },
-            "accessoryInstance": {
-                "instanceId": "acc_64e700a13ccf46f3932620d70c7eafcb",
-                "accessoryId": "Accessory.EmergencyPager",
+                "instanceId": "acc_56c1f169f89b4e5dbdaff0474e8de9b8",
+                "accessoryId": "Accessory.PointedLeatherShoes",
                 "modifierId": "",
                 "upgradeLevel": 0
             }
@@ -1236,6 +1174,68 @@
             "accessoryInstance": {
                 "instanceId": "",
                 "accessoryId": "",
+                "modifierId": "",
+                "upgradeLevel": 0
+            }
+        },
+        {
+            "itemId": "",
+            "amount": 0,
+            "weaponInstance": {
+                "instanceId": "",
+                "baseWeaponId": "",
+                "rarity": 0,
+                "mainAffix": {
+                    "affixId": "",
+                    "hasPrimaryValue": false,
+                    "primaryValue": 0.0,
+                    "hasSecondaryValue": false,
+                    "secondaryValue": 0.0
+                },
+                "subAffixes": [],
+                "shotCounter": 0,
+                "currentMagazine": -1,
+                "currentReserveAmmo": -1,
+                "reserveAmmoInitialized": false,
+                "upgradeLevel": 0,
+                "upgradeTier": 0,
+                "upgradeExp": 0,
+                "unlockedUpgradeMilestoneIds": []
+            },
+            "accessoryInstance": {
+                "instanceId": "",
+                "accessoryId": "",
+                "modifierId": "",
+                "upgradeLevel": 0
+            }
+        },
+        {
+            "itemId": "Accessory.RabbitCharm",
+            "amount": 1,
+            "weaponInstance": {
+                "instanceId": "",
+                "baseWeaponId": "",
+                "rarity": 0,
+                "mainAffix": {
+                    "affixId": "",
+                    "hasPrimaryValue": false,
+                    "primaryValue": 0.0,
+                    "hasSecondaryValue": false,
+                    "secondaryValue": 0.0
+                },
+                "subAffixes": [],
+                "shotCounter": 0,
+                "currentMagazine": -1,
+                "currentReserveAmmo": -1,
+                "reserveAmmoInitialized": false,
+                "upgradeLevel": 0,
+                "upgradeTier": 0,
+                "upgradeExp": 0,
+                "unlockedUpgradeMilestoneIds": []
+            },
+            "accessoryInstance": {
+                "instanceId": "acc_79774f5418d34c17add7f5240d1a5b5a",
+                "accessoryId": "Accessory.RabbitCharm",
                 "modifierId": "",
                 "upgradeLevel": 0
             }

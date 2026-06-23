@@ -131,6 +131,10 @@ public class Projectile : MonoBehaviour
         _spawnPos = transform.position;
 
         SetupIgnoreCollisionFromCollisionRoot();
+
+        if (_ctx.sourceActor != null)
+            ProjectileLayerUtility.ApplyForSource(gameObject, _ctx.sourceActor);
+
         SetupModules();
         SpawnBallVfx();
     }
@@ -305,6 +309,21 @@ public class Projectile : MonoBehaviour
             return;
         }
 
+        if (!_overridePosThisFrame)
+        {
+            Vector3 sweepVel = _overrideVelThisFrame
+                ? _overrideVel * worldScale
+                : (_ctx.dir * _ctx.stats.speed * worldScale);
+            float sweepDist = sweepVel.magnitude * Time.fixedDeltaTime;
+
+            if (sweepDist > 0.001f)
+            {
+                Vector3 sweepDir = sweepVel.normalized;
+                if (TrySweepWallHit(sweepDir, sweepDist))
+                    return;
+            }
+        }
+
         if (_overridePosThisFrame)
         {
             _rb.MovePosition(_overridePos);
@@ -338,7 +357,7 @@ public class Projectile : MonoBehaviour
         
         
         
-        bool hitWall = other.CompareTag("Wall");
+        bool hitWall = ProjectileLayerUtility.IsWall(other);
         bool moduleWantsHitNotification = HasModuleWantsHitNotification(other, target);
 
         
@@ -648,6 +667,77 @@ public class Projectile : MonoBehaviour
 #else
         _rb.velocity = v;
 #endif
+    }
+
+    bool TrySweepWallHit(Vector3 sweepDir, float sweepDist)
+    {
+        int wallMask = ProjectileLayerUtility.GetWallMask();
+        if (wallMask == 0) return false;
+
+        float radius = GetSweepRadius();
+
+        if (!Physics.SphereCast(
+            _rb.position, radius, sweepDir, out RaycastHit hit,
+            sweepDist, wallMask, QueryTriggerInteraction.Ignore))
+            return false;
+
+        Transform hitRoot = hit.transform.root;
+        if (_shooterRoot && hitRoot == _shooterRoot) return false;
+        if (_ignoredRootIds.Contains(hitRoot.GetInstanceID())) return false;
+
+        Vector3 hitPos = hit.point;
+        Vector3 hitNormal = hit.normal.sqrMagnitude > 0.0001f ? hit.normal : -sweepDir;
+
+        bool willExplodeAoE = useAreaDamage &&
+                              areaRadius > 0f &&
+                              !_areaExploded &&
+                              !HasModuleSuppressingBuiltinAreaDamage();
+
+        if (willExplodeAoE)
+        {
+            _areaExploded = true;
+            RequestDespawn();
+            transform.position = hitPos;
+            ApplyAreaDamage();
+        }
+        else if (despawnOnHitWall)
+        {
+            RequestDespawn();
+        }
+
+        SpawnHitVfx(hitPos, hitNormal);
+        PlayHitCue(hitPos);
+
+        var hitInfo = new ProjectileHitInfo(hitPos, hitNormal, hit.collider);
+        NotifyHit(hitInfo, null);
+
+        if (_requestedExpire)
+            Despawn(expired: true);
+        else if (_requestedDespawnThisHit)
+            Despawn();
+
+        return true;
+    }
+
+    float GetSweepRadius()
+    {
+        if (_col is SphereCollider sphere)
+        {
+            Vector3 s = transform.lossyScale;
+            return sphere.radius * Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.y), Mathf.Abs(s.z));
+        }
+        if (_col is CapsuleCollider capsule)
+        {
+            Vector3 s = transform.lossyScale;
+            return capsule.radius * Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.y), Mathf.Abs(s.z));
+        }
+        if (_col is BoxCollider box)
+        {
+            Vector3 half = Vector3.Scale(box.size * 0.5f, transform.lossyScale);
+            return Mathf.Max(0.01f, Mathf.Min(Mathf.Abs(half.x), Mathf.Abs(half.y), Mathf.Abs(half.z)));
+        }
+        Vector3 e = _col.bounds.extents;
+        return Mathf.Max(0.01f, Mathf.Min(e.x, e.y, e.z));
     }
 
     void NotifyOwnerCombatTriggers(IDamageable target, float appliedDamage, bool wasAliveBeforeDamage, bool killed)

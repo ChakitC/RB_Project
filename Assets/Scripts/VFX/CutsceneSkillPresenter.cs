@@ -41,6 +41,8 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
     AnimationVfxSessionToken _cutsceneVfxToken;
     bool _hasCutsceneVfxSession;
 
+    bool _worldSlowExemptionPushed;
+
     Vector3 _savedCameraHolderPosition;
     Quaternion _savedCameraHolderRotation;
     bool _cameraHolderRelocated;
@@ -154,6 +156,12 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         _cutsceneActive = true;
         UIManager.Instance?.SetHudVisible(false);
 
+        if (_ctx != null && !_worldSlowExemptionPushed)
+        {
+            _ctx.PushWorldSlowExemption();
+            _worldSlowExemptionPushed = true;
+        }
+
         TimeSlowManager.Instance.StartSlow(def.worldSlowScale, float.MaxValue);
         _ctx?.stateHub?.AddExternalControlBlock(ControlBlockFlags.Rotate);
         EnterCutsceneVisibility();
@@ -181,6 +189,12 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         _pendingDef     = null;
         _pendingReqId   = 0;
 
+        if (_ctx != null && _worldSlowExemptionPushed)
+        {
+            _ctx.PopWorldSlowExemption();
+            _worldSlowExemptionPushed = false;
+        }
+
         TimeSlowManager.Instance.StartSlow(2f, 0f);
         _ctx?.stateHub?.RemoveExternalControlBlock(ControlBlockFlags.Rotate);
         ExitCutsceneVisibility();
@@ -206,6 +220,12 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         _cutsceneActive = false;
         _pendingDef     = null;
         _pendingReqId   = 0;
+
+        if (_ctx != null && _worldSlowExemptionPushed)
+        {
+            _ctx.PopWorldSlowExemption();
+            _worldSlowExemptionPushed = false;
+        }
 
         TimeSlowManager.Instance.StartSlow(2f, 0f);
         _ctx?.stateHub?.RemoveExternalControlBlock(ControlBlockFlags.Rotate);

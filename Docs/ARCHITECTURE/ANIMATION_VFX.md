@@ -73,11 +73,15 @@ their `IAnimationVfxTimelineSource` adapters.
 The timeline window uses deterministic editor sampling rather than firing a VFX
 and allowing it to advance on editor time. It samples the animation pose first,
 reconstructs OneShot and loop state from every `Vfx` marker up to the playhead,
-then simulates each ParticleSystem to its elapsed cue time. Forward playback
-advances the cached systems incrementally at 75 FPS; scrubbing, rewinding, and
-playback-loop wrap restart simulation at the requested time. Pause leaves the
-sampled animation and VFX state frozen, while Stop, source changes, window close,
-and Play Mode transitions clear the timeline preview.
+then simulates each ParticleSystem to its elapsed cue time. The temporary
+preview clone pins each ParticleSystem with `useAutoRandomSeed = false`, a fixed
+`randomSeed`, and `useUnscaledTime` so resampling the same playhead time
+reproduces the same particle state without flicker; the source prefab asset is
+not modified. Forward playback advances the cached systems incrementally at 75
+FPS; scrubbing, rewinding, and playback-loop wrap restart simulation at the
+requested time. Pause leaves the sampled animation and VFX state frozen, while
+Stop, source changes, window close, and Play Mode transitions clear the timeline
+preview.
 
 Timeline sampling and manual preview are separate modes. Entry preview buttons
 and `Play All VFX` retain realtime editor-clock playback. Starting either mode

@@ -30,6 +30,8 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     double lastEditorTime;
     double nextPreviewUpdateTime;
     bool editorUpdateSubscribed;
+    bool _scrubSamplePending;
+    bool _scrubSampleIsCutscene;
     int draggingEventIndex = -1;
     int selectedEventIndex = -1;
     int draggingPointTrack = -1;
@@ -855,6 +857,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             SampleTimelineVfx(clip, true);
         }
         isPlaying = true;
+        _scrubSamplePending = false;
         lastEditorTime = EditorApplication.timeSinceStartup;
         nextPreviewUpdateTime = 0d;
         UpdateEditorUpdateSubscription();
@@ -869,6 +872,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     void StopPreview(bool rewind)
     {
         isPlaying = false;
+        _scrubSamplePending = false;
         authoringTarget?.StopAllVfx();
         previewSession.Stop();
         if (rewind)
@@ -885,9 +889,46 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         UpdateEditorUpdateSubscription();
     }
 
+    // Scrub requests arrive one-per-MouseDrag while the user drags the playhead. Sampling the
+    // animation on every one of those events spams AnimationMode/TempJob allocations faster than
+    // the editor player loop can reclaim them, which trips Unity's "Internal: deleting an allocation
+    // that is older than its permitted lifetime of 4 frames" warning. Instead we only record the
+    // requested playhead time here and coalesce the actual sample into a single pass per editor
+    // tick (OnEditorUpdate), which also ticks the player loop so those temp allocations get freed.
     void ScrubTo(float nextTime)
     {
         normalizedTime = Mathf.Clamp01(nextTime);
+        RequestScrubSample(false);
+    }
+
+    void ScrubToCutscene(float cutsceneNorm)
+    {
+        _cutsceneNormalizedTime = Mathf.Clamp01(cutsceneNorm);
+        _playheadInCutscene = true;
+        RequestScrubSample(true);
+    }
+
+    void RequestScrubSample(bool cutscene)
+    {
+        _scrubSamplePending = true;
+        _scrubSampleIsCutscene = cutscene;
+        UpdateEditorUpdateSubscription();
+        RepaintViews();
+    }
+
+    // Runs at most once per editor tick (throttled by PreviewUpdateInterval) regardless of how many
+    // scrub requests were queued since the last tick, so a fast drag collapses to a single sample.
+    void PerformPendingScrubSample()
+    {
+        _scrubSamplePending = false;
+        if (_scrubSampleIsCutscene)
+            SampleCutsceneAtPlayhead();
+        else
+            SampleMainAtPlayhead();
+    }
+
+    void SampleMainAtPlayhead()
+    {
         AnimationClip clip = GetClip(GetSource());
         Animator animator = authoringTarget != null ? authoringTarget.PreviewAnimator : null;
         if (clip != null && animator != null && !Application.isPlaying)
@@ -898,13 +939,10 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         }
         else
             authoringTarget?.StopTimelineVfxPreview();
-        RepaintViews();
     }
 
-    void ScrubToCutscene(float cutsceneNorm)
+    void SampleCutsceneAtPlayhead()
     {
-        _cutsceneNormalizedTime = Mathf.Clamp01(cutsceneNorm);
-        _playheadInCutscene = true;
         IAnimationVfxTimelineSource source = GetSource();
         AnimationClip cutsceneClip = GetCutsceneClip(source);
         Animator cutsceneAnimator = authoringTarget?.CutscenePreviewAnimator;
@@ -918,12 +956,10 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             else
                 previewSession.ClearSecondary();
             previewSession.Sample(_cutsceneNormalizedTime);
-        }
-        if (cutsceneClip != null && cutsceneAnimator != null && !Application.isPlaying)
             SampleCutsceneTimelineVfx(cutsceneClip, true);
+        }
         else
             authoringTarget?.StopTimelineVfxPreview();
-        RepaintViews();
     }
 
     void SampleTimelineVfx(AnimationClip clip, bool forceRestart)
@@ -971,6 +1007,11 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             return;
         nextPreviewUpdateTime = now + PreviewUpdateInterval;
         bool repaint = false;
+        if (_scrubSamplePending)
+        {
+            PerformPendingScrubSample();
+            repaint = true;
+        }
         if (isPlaying)
         {
             float delta = Mathf.Max(0f, (float)(now - lastEditorTime)) * playbackSpeed;
@@ -1184,6 +1225,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         authoringTarget = null;
         previewSession.Stop();
         isPlaying = false;
+        _scrubSamplePending = false;
         ResetSelection();
         timelineEvents.Clear();
     }
@@ -1198,7 +1240,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
 
     void UpdateEditorUpdateSubscription()
     {
-        bool needs = isPlaying || SkillVfxAuthoringEntry.HasActivePreviews;
+        bool needs = isPlaying || _scrubSamplePending || SkillVfxAuthoringEntry.HasActivePreviews;
         if (needs == editorUpdateSubscribed)
             return;
         if (needs)

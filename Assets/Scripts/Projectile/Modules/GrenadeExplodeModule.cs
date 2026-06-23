@@ -183,7 +183,7 @@ public class GrenadeExplodeModule : ProjectileModule
         }
 
         // target == null -> world collision that this module is allowed to explode on.
-        bool hitWall = hit.collider != null && hit.collider.CompareTag("Wall");
+        bool hitWall = ProjectileLayerUtility.IsWall(hit.collider);
         bool hitTerrain = IsTerrainHit(hit.collider);
         if ((hitWall && explodeOnWallHit) || (hitTerrain && explodeOnTerrainHit))
         {

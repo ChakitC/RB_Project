@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -47,6 +48,7 @@ public class DashSystem : MonoBehaviour
 
     public bool IsDashing => isDashing;
     public bool IsPerfectDodgeWindowActive => isDashing && Time.unscaledTime <= _perfectDodgeWindowUntil;
+    public Func<Vector3, float, float, bool> PerfectDodgeHandler;
     Transform ActorRoot => actorRoot ? actorRoot : transform;
 
     void Awake()
@@ -380,16 +382,10 @@ public class DashSystem : MonoBehaviour
         ctx?.WeaponSystem?.GrantFreeAmmo(perfectDashFreeAmmoDuration);
         TimeSlowManager.Instance.StartSlow(perfectDashSlowScale, perfectDashSlowDuration);
 
-        bool playedPlayerUiEffect = false;
-        if (ctx != null && ctx.UIManager != null)
-        {
-            playedPlayerUiEffect = ctx.UIManager.PlayPerfectDodgeFullscreenEffect(
-                _lastDashDirection,
-                perfectDashSlowDuration,
-                perfectDashSlowScale);
-        }
+        bool handled = PerfectDodgeHandler != null &&
+            PerfectDodgeHandler(_lastDashDirection, perfectDashSlowDuration, perfectDashSlowScale);
 
-        if (!playedPlayerUiEffect)
+        if (!handled)
             PerfectDashScreenFx.Instance?.Play(_lastDashDirection, perfectDashSlowDuration, perfectDashSlowScale);
     }
 

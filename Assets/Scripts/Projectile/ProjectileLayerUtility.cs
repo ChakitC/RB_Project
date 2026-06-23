@@ -11,6 +11,30 @@ public static class ProjectileLayerUtility
     static bool warnedMissingPlayerLayer;
     static bool warnedMissingEnemyLayer;
 
+    static readonly string[] WallLayerNames = { "Default", "Ground", "Terrain" };
+    static int cachedWallMask = -1;
+
+    public static int GetWallMask()
+    {
+        if (cachedWallMask < 0)
+        {
+            cachedWallMask = 0;
+            foreach (var name in WallLayerNames)
+            {
+                int layer = LayerMask.NameToLayer(name);
+                if (layer >= 0)
+                    cachedWallMask |= 1 << layer;
+            }
+        }
+        return cachedWallMask;
+    }
+
+    public static bool IsWall(Collider col)
+    {
+        if (col == null) return false;
+        return ((1 << col.gameObject.layer) & GetWallMask()) != 0;
+    }
+
     public static void ApplyForContext(GameObject projectileObject, CharacteContext ctx)
     {
         if (projectileObject == null || ctx == null)
@@ -125,5 +149,32 @@ public static class ProjectileLayerUtility
 
         for (int i = 0; i < node.childCount; i++)
             ApplyLayerRecursively(node.GetChild(i), layer);
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void ValidateCollisionMatrix()
+    {
+        int wallMask = GetWallMask();
+        if (wallMask == 0) return;
+
+        ValidateBulletWallCollision(PlayerBulletLayerName, ref playerBulletLayer, ref warnedMissingPlayerLayer, wallMask);
+        ValidateBulletWallCollision(EnemyBulletLayerName, ref enemyBulletLayer, ref warnedMissingEnemyLayer, wallMask);
+    }
+
+    static void ValidateBulletWallCollision(string bulletLayerName, ref int cachedBulletLayer, ref bool warnedMissing, int wallMask)
+    {
+        if (!TryGetLayer(bulletLayerName, ref cachedBulletLayer, ref warnedMissing, out int bulletLayer))
+            return;
+
+        for (int wallLayer = 0; wallLayer < 32; wallLayer++)
+        {
+            if ((wallMask & (1 << wallLayer)) == 0) continue;
+            if (!Physics.GetIgnoreLayerCollision(bulletLayer, wallLayer)) continue;
+
+            Debug.LogWarning(
+                $"[ProjectileLayerUtility] Collision between '{bulletLayerName}' (layer {bulletLayer}) " +
+                $"and '{LayerMask.LayerToName(wallLayer)}' (layer {wallLayer}) is disabled in the collision matrix. " +
+                $"Projectiles on this layer may pass through walls.");
+        }
     }
 }

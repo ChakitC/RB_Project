@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 5135303409400166651}
   - component: {fileID: 2772596635337804382}
   - component: {fileID: 2254012503189899454}
+  - component: {fileID: 898602719743778276}
   m_Layer: 10
   m_Name: CharacterVisual_System
   m_TagString: Untagged
@@ -116,6 +117,28 @@ MonoBehaviour:
   centerOffset: {x: 0, y: 1, z: 0}
   headOffset: {x: 0, y: 1.7, z: 0}
   warnWhenSpawnerMissing: 0
+--- !u!114 &898602719743778276
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 547019438355007}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f9ef3bfd3e601e4f84e96a88a201c54, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _ctx: {fileID: 3059205003566966071}
+  _mainFollowCamera: {fileID: 0}
+  _cutsceneCamera: {fileID: 0}
+  _cutsceneCamAnimancer: {fileID: 0}
+  _cutsceneCharAnimancer: {fileID: 2912202768560880375}
+  _cutsceneVisibleLayers:
+    serializedVersion: 2
+    m_Bits: 524288
+  _sortingOrder: 31999
+  _barColor: {r: 0, g: 0, b: 0, a: 1}
 --- !u!1 &862084567106511717
 GameObject:
   m_ObjectHideFlags: 0

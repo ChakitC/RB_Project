@@ -12,6 +12,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private bool _initialized;
     private Animator _boundAnimator;
     private CharacterAnimProfileSO _boundAnimProfile;
+    private CharacterAnimProfileSO _animProfileOverride;
     private float _baseAnimancerGraphSpeed = 1f;
     private bool _hasCachedAnimancerGraphSpeed;
 
@@ -289,12 +290,31 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     {
         animProfile = null;
 
+        if (_animProfileOverride != null)
+        {
+            animProfile = _animProfileOverride;
+            return true;
+        }
+
         ResolveReferences();
         if (ctx == null || ctx.baseStats == null)
             return false;
 
         animProfile = ctx.baseStats.animProfile;
         return animProfile != null;
+    }
+
+    public void SetAnimProfileOverride(CharacterAnimProfileSO profile)
+    {
+        if (_animProfileOverride == profile)
+            return;
+
+        _animProfileOverride = profile;
+    }
+
+    public void ClearAnimProfileOverride()
+    {
+        SetAnimProfileOverride(null);
     }
 
     private string GetInitializationError()

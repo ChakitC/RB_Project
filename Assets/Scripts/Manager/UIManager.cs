@@ -45,9 +45,13 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Image ally2HpFillImage;
     [SerializeField] private Image ally2EnergyFillImage;
 
-    AllyContext ally1Context;
-    AllyContext ally2Context;
-    float vitalHudRefreshTimer;
+    HealthSystem _ally1Health;
+    SkillUserSystem _ally1Energy;
+    HealthSystem _ally2Health;
+    SkillUserSystem _ally2Energy;
+    FieldAllyManager _fieldAllyManager;
+    PartyCommandLabelData _partyCommandLabelData;
+    bool _partyCommandCooldownActive;
     Canvas hudCanvas;
     bool hudVisibleBeforeCutscene = true;
     bool hudHiddenByCutscene;
@@ -77,45 +81,18 @@ public class UIManager : MonoBehaviour
     void Start()
     {
         ResolveReferences();
-
-        if (ctx && ctx.StaminaSystem != null)
-        {
-            ctx.StaminaSystem.OnStaminaChanged -= UpdateStamina;
-            ctx.StaminaSystem.OnStaminaChanged += UpdateStamina;
-            UpdateStamina(ctx.StaminaSystem.Current, ctx.StaminaSystem.Max);
-        }
-
-        if (ctx is PlayerContext playerContext && playerContext.partyCommand != null)
-        {
-            UpdateCommandPointText(
-                playerContext.partyCommand.CurrentCommandPoints,
-                playerContext.partyCommand.MaximumCommandPoints);
-            UpdatePartyCommandText(playerContext.partyCommand.GetSelectedPartyCommandUiLabel());
-        }
-
-        if (ctx && ctx.HealthSystem != null)
-            UpdateHPText(ctx.HealthSystem.currentHealth, ctx.HealthSystem.maximumHealth);
-
-        if (ctx && ctx.EnegySystem != null)
-            UpdateEnegyText(ctx.EnegySystem.CurrentEnergy, ctx.EnegySystem.MaximumEnergy);
-
-        RefreshCharacterIcon();
-        ResolveAllyHudContexts();
-        RefreshAllyVitalHuds();
-
-        BindStatusEffectUI();
+        BindRuntimeSources();
     }
 
     void Update()
     {
-        vitalHudRefreshTimer += Time.unscaledDeltaTime;
-        if (vitalHudRefreshTimer < vitalHudRefreshInterval)
+        if (!_partyCommandCooldownActive)
             return;
 
-        vitalHudRefreshTimer = 0f;
-        RefreshPlayerVitalHud();
-        ResolveAllyHudContexts();
-        RefreshAllyVitalHuds();
+        if (_partyCommandLabelData.CooldownReadyTime <= Time.time)
+            _partyCommandCooldownActive = false;
+
+        FormatPartyCommandLabel();
     }
 
     void OnDestroy()
@@ -123,8 +100,7 @@ public class UIManager : MonoBehaviour
         if (Instance == this)
             Instance = null;
 
-        if (ctx && ctx.StaminaSystem != null)
-            ctx.StaminaSystem.OnStaminaChanged -= UpdateStamina;
+        UnbindRuntimeSources();
 
         if (ctx && ctx.UIManager == this)
             ctx.UIManager = null;
@@ -303,86 +279,6 @@ public class UIManager : MonoBehaviour
         characterIconImage.enabled = icon != null;
     }
 
-    void RefreshPlayerVitalHud()
-    {
-        if (ctx == null)
-            return;
-
-        ctx.ResolveReferences();
-
-        if (ctx.HealthSystem != null)
-            SetFillAmount(hpFillImage, ctx.HealthSystem.currentHealth, ctx.HealthSystem.maximumHealth);
-
-        if (ctx.EnegySystem != null)
-            SetFillAmount(energyFillImage, ctx.EnegySystem.CurrentEnergy, ctx.EnegySystem.MaximumEnergy);
-
-        if (ctx.StaminaSystem != null)
-            SetFillAmount(staminaFillImage, ctx.StaminaSystem.Current, ctx.StaminaSystem.Max);
-
-        RefreshCharacterIcon();
-    }
-
-    void ResolveAllyHudContexts()
-    {
-        AllyContext resolvedAlly1 = null;
-        AllyContext resolvedAlly2 = null;
-
-        if (ctx is PlayerContext playerContext)
-        {
-            playerContext.ResolveReferences();
-            FieldAllyManager fieldAllyManager = playerContext.fieldAllyManager;
-            if (fieldAllyManager != null)
-            {
-                if (fieldAllyManager.TryGetMember(ChainActorRole.PartySlot1, out FieldAllyMember member1))
-                    resolvedAlly1 = member1.ActorContext as AllyContext;
-
-                if (fieldAllyManager.TryGetMember(ChainActorRole.PartySlot2, out FieldAllyMember member2))
-                    resolvedAlly2 = member2.ActorContext as AllyContext;
-            }
-        }
-
-        ResolveAllyContextsFromHierarchy(ref resolvedAlly1, ref resolvedAlly2);
-
-        ally1Context = resolvedAlly1;
-        ally2Context = resolvedAlly2;
-    }
-
-    void ResolveAllyContextsFromHierarchy(ref AllyContext resolvedAlly1, ref AllyContext resolvedAlly2)
-    {
-        Transform searchRoot = ctx != null ? ctx.transform.root : transform.root;
-        if (searchRoot == null)
-            return;
-
-        AllyContext[] allies = searchRoot.GetComponentsInChildren<AllyContext>(true);
-        for (int i = 0; i < allies.Length; i++)
-        {
-            AllyContext ally = allies[i];
-            if (ally == null || IsHelperAlly(ally))
-                continue;
-
-            FieldAllyMember member = ally.GetComponentInChildren<FieldAllyMember>(true);
-            if (member != null)
-            {
-                if (member.ActorRole == ChainActorRole.PartySlot1 && resolvedAlly1 == null)
-                {
-                    resolvedAlly1 = ally;
-                    continue;
-                }
-
-                if (member.ActorRole == ChainActorRole.PartySlot2 && resolvedAlly2 == null)
-                {
-                    resolvedAlly2 = ally;
-                    continue;
-                }
-            }
-
-            if (resolvedAlly1 == null)
-                resolvedAlly1 = ally;
-            else if (resolvedAlly2 == null && ally != resolvedAlly1)
-                resolvedAlly2 = ally;
-        }
-    }
-
     static bool IsHelperAlly(AllyContext ally)
     {
         FieldAllyMember member = ally.GetComponentInChildren<FieldAllyMember>(true);
@@ -392,60 +288,278 @@ public class UIManager : MonoBehaviour
         return ally.name.IndexOf("Helper", System.StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
-    void RefreshAllyVitalHuds()
+    void BindRuntimeSources()
     {
-        RefreshVitalHud(ally1Context, ally1VitalRoot, ally1IconImage, ally1HpFillImage, ally1EnergyFillImage);
-        RefreshVitalHud(ally2Context, ally2VitalRoot, ally2IconImage, ally2HpFillImage, ally2EnergyFillImage);
+        if (!ctx)
+            return;
+
+        ctx.ResolveReferences();
+
+        if (ctx.HealthSystem != null)
+        {
+            ctx.HealthSystem.HealthChanged -= OnHealthChanged;
+            ctx.HealthSystem.HealthChanged += OnHealthChanged;
+            ctx.HealthSystem.Healed -= OnHealed;
+            ctx.HealthSystem.Healed += OnHealed;
+            UpdateHPText(ctx.HealthSystem.currentHealth, ctx.HealthSystem.maximumHealth);
+        }
+
+        if (ctx.EnegySystem != null)
+        {
+            ctx.EnegySystem.EnergyChanged -= OnEnergyChanged;
+            ctx.EnegySystem.EnergyChanged += OnEnergyChanged;
+            UpdateEnegyText(ctx.EnegySystem.CurrentEnergy, ctx.EnegySystem.MaximumEnergy);
+        }
+
+        if (ctx.StaminaSystem != null)
+        {
+            ctx.StaminaSystem.OnStaminaChanged -= UpdateStamina;
+            ctx.StaminaSystem.OnStaminaChanged += UpdateStamina;
+            UpdateStamina(ctx.StaminaSystem.Current, ctx.StaminaSystem.Max);
+        }
+
+        if (ctx.WeaponSystem != null)
+        {
+            ctx.WeaponSystem.AmmoChanged -= OnAmmoChanged;
+            ctx.WeaponSystem.AmmoChanged += OnAmmoChanged;
+            var ws = ctx.WeaponSystem;
+            UpdateAmmoText(ws.CurrentAmmo, ws.MagazineSize, ws.CurrentReserveAmmo, ws.HasInfiniteReserveAmmo);
+        }
+
+        if (ctx is PlayerContext playerCtx)
+        {
+            if (playerCtx.partyCommand != null)
+            {
+                playerCtx.partyCommand.CommandPointsChanged -= OnCommandPointsChanged;
+                playerCtx.partyCommand.CommandPointsChanged += OnCommandPointsChanged;
+                playerCtx.partyCommand.PartyCommandLabelChanged -= OnPartyCommandLabelChanged;
+                playerCtx.partyCommand.PartyCommandLabelChanged += OnPartyCommandLabelChanged;
+                UpdateCommandPointText(playerCtx.partyCommand.CurrentCommandPoints, playerCtx.partyCommand.MaximumCommandPoints);
+            }
+
+            if (playerCtx.fieldAllyManager != null)
+            {
+                _fieldAllyManager = playerCtx.fieldAllyManager;
+                _fieldAllyManager.MemberRegistered -= OnAllyRegistered;
+                _fieldAllyManager.MemberRegistered += OnAllyRegistered;
+                _fieldAllyManager.MemberUnregistered -= OnAllyUnregistered;
+                _fieldAllyManager.MemberUnregistered += OnAllyUnregistered;
+                BindAllySlotFromManager(ChainActorRole.PartySlot1);
+                BindAllySlotFromManager(ChainActorRole.PartySlot2);
+            }
+            else
+            {
+                UnbindAllySlot(ChainActorRole.PartySlot1);
+                UnbindAllySlot(ChainActorRole.PartySlot2);
+            }
+
+            if (playerCtx.DashSystem != null)
+                playerCtx.DashSystem.PerfectDodgeHandler = OnPerfectDodge;
+        }
+
+        RefreshCharacterIcon();
+        BindStatusEffectUI();
     }
 
-    static void RefreshVitalHud(
-        CharacteContext targetContext,
-        GameObject root,
-        Image iconImage,
-        Image hpFill,
-        Image energyFill)
+    void UnbindRuntimeSources()
     {
-        bool hasContext = targetContext != null;
-        if (root != null && root.activeSelf != hasContext)
-            root.SetActive(hasContext);
+        UnbindAllySlot(ChainActorRole.PartySlot1);
+        UnbindAllySlot(ChainActorRole.PartySlot2);
 
-        if (!hasContext)
+        if (_fieldAllyManager != null)
         {
-            if (iconImage)
-                iconImage.enabled = false;
+            _fieldAllyManager.MemberRegistered -= OnAllyRegistered;
+            _fieldAllyManager.MemberUnregistered -= OnAllyUnregistered;
+            _fieldAllyManager = null;
+        }
 
-            SetFillAmount(hpFill, 0f, 1f);
-            SetFillAmount(energyFill, 0f, 1f);
+        if (ctx)
+        {
+            if (ctx.HealthSystem != null)
+            {
+                ctx.HealthSystem.HealthChanged -= OnHealthChanged;
+                ctx.HealthSystem.Healed -= OnHealed;
+            }
+
+            if (ctx.EnegySystem != null)
+                ctx.EnegySystem.EnergyChanged -= OnEnergyChanged;
+
+            if (ctx.StaminaSystem != null)
+                ctx.StaminaSystem.OnStaminaChanged -= UpdateStamina;
+
+            if (ctx.WeaponSystem != null)
+                ctx.WeaponSystem.AmmoChanged -= OnAmmoChanged;
+
+            if (ctx is PlayerContext playerCtx)
+            {
+                if (playerCtx.partyCommand != null)
+                {
+                    playerCtx.partyCommand.CommandPointsChanged -= OnCommandPointsChanged;
+                    playerCtx.partyCommand.PartyCommandLabelChanged -= OnPartyCommandLabelChanged;
+                }
+
+                if (playerCtx.DashSystem != null)
+                    playerCtx.DashSystem.PerfectDodgeHandler = null;
+            }
+        }
+    }
+
+    void OnHealthChanged(float current, float max) => UpdateHPText(current, max);
+
+    void OnHealed(float amount, float current, float max) => PlayHealFullscreenEffect(amount, current, max);
+
+    void OnEnergyChanged(float current, float max) => UpdateEnegyText(current, max);
+
+    void OnAmmoChanged(int magazine, int maxMagazine, int reserveAmmo, bool infiniteReserve)
+    {
+        UpdateAmmoText(magazine, maxMagazine, infiniteReserve ? -1 : reserveAmmo, infiniteReserve);
+    }
+
+    void OnCommandPointsChanged(float current, float max) => UpdateCommandPointText(current, max);
+
+    void OnPartyCommandLabelChanged(PartyCommandLabelData data)
+    {
+        _partyCommandLabelData = data;
+        _partyCommandCooldownActive = data.BlockReason == PartyCommandBlockReason.Cooldown && data.CooldownReadyTime > Time.time;
+        FormatPartyCommandLabel();
+    }
+
+    void FormatPartyCommandLabel()
+    {
+        if (_partyCommandLabelData.CommandName == null)
+            return;
+
+        string label;
+        if (_partyCommandLabelData.BlockReason == PartyCommandBlockReason.MissingConfig)
+        {
+            label = "Party Command: none";
+        }
+        else
+        {
+            label = $"{_partyCommandLabelData.CommandName} | {_partyCommandLabelData.CommandPointCost:0.##} CP";
+            string blockLabel = FormatBlockReason(_partyCommandLabelData.BlockReason, _partyCommandLabelData.CooldownReadyTime);
+            if (blockLabel != null)
+                label = $"{label} [{blockLabel}]";
+        }
+
+        UpdatePartyCommandText(label);
+    }
+
+    static string FormatBlockReason(PartyCommandBlockReason reason, float cooldownReadyTime)
+    {
+        return reason switch
+        {
+            PartyCommandBlockReason.None => null,
+            PartyCommandBlockReason.NotEnoughCommandPoints => "No CP",
+            PartyCommandBlockReason.Cooldown => $"Cooldown {Mathf.Max(0f, cooldownReadyTime - Time.time):0.0}s",
+            PartyCommandBlockReason.OwnerUnavailable => "Owner Down",
+            PartyCommandBlockReason.HelperUnavailable => "Helper Offline",
+            PartyCommandBlockReason.HelperBusy => "Helper Busy",
+            PartyCommandBlockReason.AllyUnavailable => "Ally Offline",
+            PartyCommandBlockReason.AllyBusy => "Ally Busy",
+            PartyCommandBlockReason.SkillUnavailable => "No Skill",
+            PartyCommandBlockReason.SkillBlocked => "Skill Blocked",
+            PartyCommandBlockReason.SequenceUnavailable => "Ally Offline",
+            PartyCommandBlockReason.SequenceBusy => "Chain Busy",
+            PartyCommandBlockReason.MissingTarget => "No Target",
+            _ => "Invalid",
+        };
+    }
+
+    bool OnPerfectDodge(Vector3 direction, float duration, float scale)
+    {
+        return PlayPerfectDodgeFullscreenEffect(direction, duration, scale);
+    }
+
+    void OnAllyRegistered(ChainActorRole role, FieldAllyMember member) => BindAllySlot(role, member);
+
+    void OnAllyUnregistered(ChainActorRole role) => UnbindAllySlot(role);
+
+    void BindAllySlotFromManager(ChainActorRole role)
+    {
+        if (_fieldAllyManager != null && _fieldAllyManager.TryGetMember(role, out FieldAllyMember member))
+            BindAllySlot(role, member);
+        else
+            UnbindAllySlot(role);
+    }
+
+    void BindAllySlot(ChainActorRole role, FieldAllyMember member)
+    {
+        AllyContext allyCtx = member != null ? member.ActorContext as AllyContext : null;
+        if (allyCtx != null && IsHelperAlly(allyCtx))
+            allyCtx = null;
+
+        UnbindAllySlot(role);
+
+        if (allyCtx == null)
+            return;
+
+        allyCtx.ResolveReferences();
+        HealthSystem health = allyCtx.HealthSystem;
+        SkillUserSystem energy = allyCtx.EnegySystem;
+        GameObject root;
+        Image iconImage, hpFill, energyFill;
+
+        if (role == ChainActorRole.PartySlot1)
+        {
+            _ally1Health = health;
+            _ally1Energy = energy;
+            if (health != null) health.HealthChanged += OnAlly1HealthChanged;
+            if (energy != null) energy.EnergyChanged += OnAlly1EnergyChanged;
+            root = ally1VitalRoot; iconImage = ally1IconImage;
+            hpFill = ally1HpFillImage; energyFill = ally1EnergyFillImage;
+        }
+        else if (role == ChainActorRole.PartySlot2)
+        {
+            _ally2Health = health;
+            _ally2Energy = energy;
+            if (health != null) health.HealthChanged += OnAlly2HealthChanged;
+            if (energy != null) energy.EnergyChanged += OnAlly2EnergyChanged;
+            root = ally2VitalRoot; iconImage = ally2IconImage;
+            hpFill = ally2HpFillImage; energyFill = ally2EnergyFillImage;
+        }
+        else
+        {
             return;
         }
 
-        targetContext.ResolveReferences();
-
+        if (root) root.SetActive(true);
         if (iconImage)
         {
-            Sprite icon = targetContext.baseStats != null ? targetContext.baseStats.icon : null;
+            Sprite icon = allyCtx.baseStats != null ? allyCtx.baseStats.icon : null;
             iconImage.sprite = icon;
             iconImage.enabled = icon != null;
         }
-
-        HealthSystem health = targetContext.HealthSystem;
-        if (health == null)
-            health = targetContext.GetComponentInChildren<HealthSystem>(true);
-
-        if (health != null)
-            SetFillAmount(hpFill, health.currentHealth, health.maximumHealth);
-        else
-            SetFillAmount(hpFill, 0f, 1f);
-
-        SkillUserSystem energy = targetContext.EnegySystem;
-        if (energy == null)
-            energy = targetContext.GetComponentInChildren<SkillUserSystem>(true);
-
-        if (energy != null)
-            SetFillAmount(energyFill, energy.CurrentEnergy, energy.MaximumEnergy);
-        else
-            SetFillAmount(energyFill, 0f, 1f);
+        SetFillAmount(hpFill, health != null ? health.currentHealth : 0f,
+            health != null ? health.maximumHealth : 1f);
+        SetFillAmount(energyFill, energy != null ? energy.CurrentEnergy : 0f,
+            energy != null ? energy.MaximumEnergy : 1f);
     }
+
+    void UnbindAllySlot(ChainActorRole role)
+    {
+        if (role == ChainActorRole.PartySlot1)
+        {
+            if (_ally1Health != null) _ally1Health.HealthChanged -= OnAlly1HealthChanged;
+            if (_ally1Energy != null) _ally1Energy.EnergyChanged -= OnAlly1EnergyChanged;
+            _ally1Health = null;
+            _ally1Energy = null;
+            if (ally1VitalRoot) ally1VitalRoot.SetActive(false);
+        }
+        else if (role == ChainActorRole.PartySlot2)
+        {
+            if (_ally2Health != null) _ally2Health.HealthChanged -= OnAlly2HealthChanged;
+            if (_ally2Energy != null) _ally2Energy.EnergyChanged -= OnAlly2EnergyChanged;
+            _ally2Health = null;
+            _ally2Energy = null;
+            if (ally2VitalRoot) ally2VitalRoot.SetActive(false);
+        }
+    }
+
+    void OnAlly1HealthChanged(float current, float max) => SetFillAmount(ally1HpFillImage, current, max);
+    void OnAlly1EnergyChanged(float current, float max) => SetFillAmount(ally1EnergyFillImage, current, max);
+    void OnAlly2HealthChanged(float current, float max) => SetFillAmount(ally2HpFillImage, current, max);
+    void OnAlly2EnergyChanged(float current, float max) => SetFillAmount(ally2EnergyFillImage, current, max);
 
     static void SetFillAmount(Image fillImage, float current, float maximum)
     {

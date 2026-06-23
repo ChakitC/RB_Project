@@ -137,7 +137,7 @@ public class Bullet : MonoBehaviour
                 stagger: new StaggerPayload(staggerPower, 1f, $"bullet:{gunType}"));
             Destroy(gameObject);
         }
-        else if (other.CompareTag("Wall"))
+        else if (ProjectileLayerUtility.IsWall(other))
         {
             Destroy(gameObject);
         }

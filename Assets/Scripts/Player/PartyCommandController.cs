@@ -19,9 +19,9 @@ public sealed class PartyCommandController : MonoBehaviour
     [SerializeField] private bool logPartyCommandExecution;
 
     readonly Dictionary<int, float> _partyCommandReadyAt = new();
-    string _lastPartyCommandUiLabel;
 
     public event Action<float, float> CommandPointsChanged;
+    public event Action<PartyCommandLabelData> PartyCommandLabelChanged;
 
     public float MaximumCommandPoints => maximumCommandPoints;
     public float CurrentCommandPoints => currentCommandPoints;
@@ -38,13 +38,12 @@ public sealed class PartyCommandController : MonoBehaviour
     void Start()
     {
         NotifyCommandPointsChanged();
-        RefreshPartyCommandUi(force: true);
+        RaisePartyCommandLabel();
     }
 
     void Update()
     {
         RegenerateCommandPoints();
-        RefreshPartyCommandUi(force: false);
     }
 
     public void ImportLegacyConfiguration(
@@ -76,7 +75,7 @@ public sealed class PartyCommandController : MonoBehaviour
         _partyCommandReadyAt.Clear();
         InitializeRuntimeStateFromSerializedData();
         NotifyCommandPointsChanged();
-        RefreshPartyCommandUi(force: true);
+        RaisePartyCommandLabel();
     }
 
     void ResolveReferences()
@@ -190,8 +189,8 @@ public sealed class PartyCommandController : MonoBehaviour
 
     void NotifyCommandPointsChanged()
     {
-        playerContext?.UIManager?.UpdateCommandPointText(currentCommandPoints, maximumCommandPoints);
         CommandPointsChanged?.Invoke(currentCommandPoints, maximumCommandPoints);
+        RaisePartyCommandLabel();
     }
 
     public bool SelectNextPartyCommand()
@@ -210,7 +209,7 @@ public sealed class PartyCommandController : MonoBehaviour
             return false;
 
         selectedPartyCommandIndex = slotIndex;
-        RefreshPartyCommandUi(force: true);
+        RaisePartyCommandLabel();
         return true;
     }
 
@@ -221,7 +220,7 @@ public sealed class PartyCommandController : MonoBehaviour
             return false;
 
         selectedPartyCommandIndex = nextIndex;
-        RefreshPartyCommandUi(force: true);
+        RaisePartyCommandLabel();
         return true;
     }
 
@@ -317,7 +316,7 @@ public sealed class PartyCommandController : MonoBehaviour
                     this);
             }
 
-            RefreshPartyCommandUi(force: true);
+            RaisePartyCommandLabel();
             return false;
         }
 
@@ -332,7 +331,7 @@ public sealed class PartyCommandController : MonoBehaviour
                     this);
             }
 
-            RefreshPartyCommandUi(force: true);
+            RaisePartyCommandLabel();
             return false;
         }
 
@@ -353,7 +352,7 @@ public sealed class PartyCommandController : MonoBehaviour
                 this);
         }
 
-        RefreshPartyCommandUi(force: true);
+        RaisePartyCommandLabel();
         return true;
     }
 
@@ -376,7 +375,7 @@ public sealed class PartyCommandController : MonoBehaviour
                     this);
             }
 
-            RefreshPartyCommandUi(force: true);
+            RaisePartyCommandLabel();
             return false;
         }
 
@@ -418,7 +417,7 @@ public sealed class PartyCommandController : MonoBehaviour
                     this);
             }
 
-            RefreshPartyCommandUi(force: true);
+            RaisePartyCommandLabel();
             return false;
         }
 
@@ -441,7 +440,7 @@ public sealed class PartyCommandController : MonoBehaviour
                 this);
         }
 
-        RefreshPartyCommandUi(force: true);
+        RaisePartyCommandLabel();
         return true;
     }
 
@@ -845,17 +844,24 @@ public sealed class PartyCommandController : MonoBehaviour
         return $"Cooldown {remainingSeconds:0.0}s";
     }
 
-    void RefreshPartyCommandUi(bool force)
+    PartyCommandLabelData BuildPartyCommandLabelData()
     {
-        if (playerContext == null || playerContext.UIManager == null)
-            return;
+        int index = NormalizeSelectedPartyCommandSelection();
+        if (!TryGetConfiguredPartyCommand(index, out PartyCommandDefinition command))
+            return new PartyCommandLabelData("none", 0f, PartyCommandBlockReason.MissingConfig, 0f);
 
-        string nextLabel = GetSelectedPartyCommandUiLabel();
-        if (!force && string.Equals(_lastPartyCommandUiLabel, nextLabel, StringComparison.Ordinal))
-            return;
+        TryGetPartyCommandBlockReason(index, command, out PartyCommandBlockReason blockReason);
 
-        playerContext.UIManager.UpdatePartyCommandText(nextLabel);
-        _lastPartyCommandUiLabel = nextLabel;
+        float cooldownReadyTime = 0f;
+        if (blockReason == PartyCommandBlockReason.Cooldown && _partyCommandReadyAt.TryGetValue(index, out float readyAt))
+            cooldownReadyTime = readyAt;
+
+        return new PartyCommandLabelData(command.ResolvedDisplayName, command.ClampedCommandPointCost, blockReason, cooldownReadyTime);
+    }
+
+    void RaisePartyCommandLabel()
+    {
+        PartyCommandLabelChanged?.Invoke(BuildPartyCommandLabelData());
     }
 
     static int Mod(int value, int length)
@@ -894,6 +900,22 @@ public enum PartyCommandBlockReason
     AllyBusy = 11,
     SkillUnavailable = 12,
     SkillBlocked = 13,
+}
+
+public readonly struct PartyCommandLabelData
+{
+    public readonly string CommandName;
+    public readonly float CommandPointCost;
+    public readonly PartyCommandBlockReason BlockReason;
+    public readonly float CooldownReadyTime;
+
+    public PartyCommandLabelData(string commandName, float commandPointCost, PartyCommandBlockReason blockReason, float cooldownReadyTime)
+    {
+        CommandName = commandName;
+        CommandPointCost = commandPointCost;
+        BlockReason = blockReason;
+        CooldownReadyTime = cooldownReadyTime;
+    }
 }
 
 [Serializable]

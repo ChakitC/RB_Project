@@ -103,6 +103,25 @@ payload. Use the component controls to create a template, load the inline layout
 save the edited hierarchy back into the skill, and validate group keys and
 shape values.
 
+## Morph Skill Authoring
+
+Morph / Awakening skills use `MorphSkillPayloadDef` as the embedded execution
+payload on a `SkillGemDefinition`. Choose `AnimationOnly`, `ModelOnly`, or
+`Both`, then assign the required animation profile and/or morph model prefab for
+that mode. Use the optional controller and avatar fields only when the morph
+model should not use the current `CharacterStats` controller/avatar.
+
+Model-changing morphs rebuild the character visual through
+`CharacterVisualController`, so the morph prefab must be compatible with the
+same mounting conventions as the default model. Keep weapon mount bones named
+`Weapon.R` / `Weapon.L` or `hand.r` / `hand.l`, and keep the fire point and
+health bar target bone available as `c_traj` unless the prefab's controller
+fields are configured differently. Missing mount bones will leave weapons, fire
+points, or health bars detached or logged as warnings.
+
+Animation-only morphs keep the current model and avatar. Author the replacement
+`CharacterAnimProfileSO` with clips that are compatible with that rig.
+
 ## Combat Timeline Event Authoring
 
 Animancer-driven combat and hitbox events should use `CombatTimelineEventName`

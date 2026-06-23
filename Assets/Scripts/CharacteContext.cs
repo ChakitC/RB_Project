@@ -51,7 +51,20 @@ public abstract class CharacteContext : MonoBehaviour
     public Vector2 moveInput;
     public Vector2 lookInput;
     
-    public virtual bool UsesWorldSlow => true;
+    int _worldSlowExemptionCount;
+
+    public virtual bool UsesWorldSlow => _worldSlowExemptionCount <= 0;
+
+    public void PushWorldSlowExemption()
+    {
+        _worldSlowExemptionCount++;
+    }
+
+    public void PopWorldSlowExemption()
+    {
+        if (_worldSlowExemptionCount > 0)
+            _worldSlowExemptionCount--;
+    }
     public virtual AITargetIdentity TargetIdentity => AITargetIdentity.Generic;
     public virtual bool ForceInfiniteReserveAmmo => false;
     

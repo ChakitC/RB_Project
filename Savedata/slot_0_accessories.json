@@ -41,14 +41,14 @@
             "slotCount": 5,
             "equippedAccessories": [
                 {
-                    "instanceId": "",
-                    "accessoryId": "",
+                    "instanceId": "acc_309314786bb549288b361dcaee570164",
+                    "accessoryId": "Accessory.RabbitCharm",
                     "modifierId": "",
                     "upgradeLevel": 0
                 },
                 {
-                    "instanceId": "",
-                    "accessoryId": "",
+                    "instanceId": "acc_5972c988e12646219e8ab8d7f3caa93f",
+                    "accessoryId": "Accessory.CarrotleafHeavyWeaveArmor",
                     "modifierId": "",
                     "upgradeLevel": 0
                 },

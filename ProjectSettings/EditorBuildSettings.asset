@@ -23,6 +23,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Map_Play_Pototype/State_1.unity
     guid: 9acafeb1d8bf61a4694f332b97fd5174
+  - enabled: 1
+    path: Assets/Scenes/MapBossTest/BoosTest.unity
+    guid: c5b7cc78ef77aa04e91a92fc524f6641
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 99f9c9493070a9d4c979a8fec7c5a8d3, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

@@ -42,6 +42,13 @@ Use context properties instead of subtype checks for common behavior:
 - `ctx.TargetIdentity` identifies player, companion, enemy, neutral, or generic
   AI target identity.
 - `ctx.UsesWorldSlow` controls whether systems should use world-slow time.
+  Returns `false` when the context has an active world-slow exemption (see
+  below) or when the subtype overrides it (e.g. `PlayerContext`).
+- `ctx.PushWorldSlowExemption()` / `ctx.PopWorldSlowExemption()` temporarily
+  make `UsesWorldSlow` return `false` for any character type. Used by
+  `CutsceneSkillPresenter` so the cutscene caster's own animation and agent
+  run at normal speed while the rest of the world is slowed. Calls are
+  ref-counted and safe to nest.
 - `ctx.ForceInfiniteReserveAmmo` allows subtype-specific ammo policy without
   hard-coding enemy checks in common weapon logic.
 

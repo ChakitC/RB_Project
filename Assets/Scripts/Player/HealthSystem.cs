@@ -45,6 +45,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
     public event Action ReturnbaseUI;
     public event Action<float, GameObject> DamageTaken;
     public event Action<float, float, float> Healed;
+    public event Action<float, float> HealthChanged;
 
     public bool IsAlive => currentHealth > 0f;
     public bool IsDown => currentHealth <= 0f && DownTime > 0f;
@@ -63,8 +64,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         }
 
         InitializeFromHub(resetCurrentToMax: true);
-        ApplyHealthBarValues();
-        CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
+        RaiseHealthChanged();
     }
 
     void ResolveReferences()
@@ -159,6 +159,12 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         healthBarSlider.value = currentHealth;
     }
 
+    void RaiseHealthChanged()
+    {
+        ApplyHealthBarValues();
+        HealthChanged?.Invoke(currentHealth, maximumHealth);
+    }
+
     void InitializeFromHub(bool resetCurrentToMax)
     {
         float newMaximumHealth = statsHub ? statsHub.GetMaximumHealth() : CTX.basemaxHealth;
@@ -201,8 +207,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         if (armorChanged)
             cachedArmor = newArmor;
 
-        ApplyHealthBarValues();
-        CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
+        RaiseHealthChanged();
     }
 
     float GetFinalArmor()
@@ -255,9 +260,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
             return false;
 
         float healedAmount = currentHealth - previous;
-        ApplyHealthBarValues();
-        CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
-        CTX.UIManager?.PlayHealFullscreenEffect(healedAmount, currentHealth, maximumHealth);
+        RaiseHealthChanged();
         Healed?.Invoke(healedAmount, currentHealth, maximumHealth);
         return true;
     }
@@ -309,9 +312,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         PublishDamageEvent(PassiveEventType.TakeDamage, appliedDamage, attacker, hasContext, damageContext);
         DamageTaken?.Invoke(appliedDamage, attacker);
 
-        CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
-        if (healthBarSlider != null)
-            healthBarSlider.value = currentHealth;
+        RaiseHealthChanged();
 
         if (currentHealth <= 0f)
             Down();
@@ -444,8 +445,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         if (CTX.cc)
             CTX.cc.enabled = true;
 
-        ApplyHealthBarValues();
-        CTX.UIManager?.UpdateHPText(currentHealth, maximumHealth);
+        RaiseHealthChanged();
 
         CTX.stateHub.LifeSM.TryChange(LifeStateId.Alive);
         CharacterRevive?.Invoke();

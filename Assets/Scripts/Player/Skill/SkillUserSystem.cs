@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -24,6 +25,8 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
 
     float refreshTimer;
     bool initialized;
+
+    public event Action<float, float> EnergyChanged;
 
     public Transform CastOrigin => castOrigin ? castOrigin : transform;
     public Transform AimTransform => runtimeAimTransformOverride ? runtimeAimTransformOverride : aimTransform ? aimTransform : transform;
@@ -165,7 +168,7 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
 
     void NotifyEnergyChanged()
     {
-        characteContext?.UIManager?.UpdateEnegyText(currentEnergy, maximumEnergy);
+        EnergyChanged?.Invoke(currentEnergy, maximumEnergy);
     }
 
     void EnsureInitialized()

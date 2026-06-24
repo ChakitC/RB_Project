@@ -615,3 +615,39 @@ Check all of these first:
 
 If any answer is unclear, keep the field and migrate deliberately in a separate
 task.
+
+## Guaranteed Interruption Command — Prefab Checklist
+
+### Player Prefab
+
+- Add `InterruptionCommandController` component.
+- Set `PlayerContext.interruptionCommand` to the new component (or let
+  `ResolveReferences` find it automatically).
+- In the Input Asset, add an `InterruptionCommand` action (Button) with
+  binding `<Keyboard>/g`. Wire the `PlayerInput` event to
+  `PlayerInputHandler.OnInterruptionCommand`.
+- Configure `targetSearchMask` and `targetSearchRadius` on the controller.
+
+### Ally Prefab (participating allies)
+
+- Requires: `AllyContext`, `FieldAllyMember`, `CharacterSkillManager`,
+  `CharacterAnimBrain`, `AIAimTargetDriver`, `NavMeshAgent`, `BehaviorTree`.
+- Add `AllyInterruptionController` component.
+- Assign `interruptionSkill`: a `CharacterSkillEntry` pointing at a
+  `PrefabHitboxSkillPayloadDef` skill whose animation clip has a `HitStart`
+  timeline event.
+- Assign `teleportProfile`: a `ChainAttackTeleportProfileDef` asset.
+- Configure knockback settings: `knockbackDistance` > 0, `knockbackDuration` > 0.
+- Allies without a configured `AllyInterruptionController` or missing
+  skill/profile are simply never selected for interruption.
+
+### Enemy / Target Prefab
+
+- Requires: `CharacterSkillManager`, `PreCastBlockController`,
+  `CharacterKnockbackMotor`.
+- The blockable skill must have `BlockablePreCast` enabled on its
+  `SkillGemDefinition` and correct `PreCastOpen` / `PreCastClose` timeline
+  events.
+- The skill's cast point must be gated by the cast-moment Animancer event
+  (the default pending-cast path). The Pre-Cast Hold mechanism freezes the
+  playhead before this event fires.

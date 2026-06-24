@@ -286,6 +286,20 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         return false;
     }
 
+    internal bool TryAcquirePreCastHold(int requestId, float speedMultiplier, float safetyMarginNormalized, out SkillPreCastHoldHandle handle)
+    {
+        handle = default;
+        if (!_initialized || locomotionSM.CurrentState != skill) return false;
+        if (requestId <= 0 || requestId != _activeSkillRequestId) return false;
+        if (!HasPendingSkillReleaseRequest) return false;
+        return skill.TryBeginPreCastHold(requestId, speedMultiplier, safetyMarginNormalized, out handle);
+    }
+
+    internal void ReleasePreCastHold(SkillPreCastHoldHandle handle)
+    {
+        if (handle.IsValid) skill?.ReleasePreCastHold(handle);
+    }
+
     private bool TryGetAnimProfile(out CharacterAnimProfileSO animProfile)
     {
         animProfile = null;

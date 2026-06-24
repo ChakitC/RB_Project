@@ -141,6 +141,13 @@ public class PlayerInputHandler : MonoBehaviour
             ctx.partyCommand.TrySelectPartyCommandSlot(3);
     }
 
+    public void OnInterruptionCommand(InputAction.CallbackContext c)
+    {
+        if (!c.performed) return;
+        ResolveReferences();
+        ctx?.interruptionCommand?.TryExecuteInterruptionCommand();
+    }
+
     public void OnReload(InputAction.CallbackContext c)
     {
         if (!c.performed) return;

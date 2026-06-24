@@ -14,6 +14,7 @@ public class PlayerContext : CharacteContext
     public FieldAllyManager fieldAllyManager;
     public ChainAttackCoordinator chainAttackCoordinator;
     public PartyCommandController partyCommand;
+    public InterruptionCommandController interruptionCommand;
 
     [Header("Inventory")]
     public PlayerInventory inventory;
@@ -72,6 +73,9 @@ public class PlayerContext : CharacteContext
 
         if (partyCommand == null)
             partyCommand = ResolveActorComponent(partyCommand);
+
+        if (interruptionCommand == null)
+            interruptionCommand = ResolveActorComponent(interruptionCommand);
 
         if (movement == null)
             movement = ResolveActorComponent(movement);

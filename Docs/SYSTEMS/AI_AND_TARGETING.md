@@ -131,3 +131,40 @@ When adding AI behavior:
 6. Avoid common code branches based only on `PlayerContext`, `AllyContext`, or
    `EnemyContext`.
 
+## Guaranteed Interruption Command
+
+The player can press the Interruption Command input (default G) to order a
+ready ally to interrupt an enemy that is currently inside a blockable Pre-Cast
+window. Once the command is accepted, the block is guaranteed regardless of
+collider or damage outcome.
+
+### Flow
+
+1. `InterruptionCommandController` (on the player) searches near
+   `PlayerContext.aimTarget` for an enemy with an active blockable pre-cast
+   window (`PreCastBlockController.CanBlockActiveCast()`).
+2. Selects the nearest qualifying ally via `AllyInterruptionController.IsReadyForInterruption()`.
+   Ally must be alive, not busy, not reserved, have a configured interruption
+   skill, and a resolvable safe teleport pose.
+3. Reserves the ally (`FieldAllyMember.TryReserve`) and the block
+   (`PreCastBlockController.TryReserveBlock`) which acquires a Pre-Cast Hold
+   on the enemy animation, freezing the playhead before the cast point.
+4. Ally suspends its BehaviorTree and NavMeshAgent, warps to the safe pose,
+   locks aim on the target, and starts its interruption skill via
+   `CharacterSkillManager.TryStartExternalSkill`.
+5. At the ally skill's `HitStart` timeline event, the reserved block is
+   completed (`CompleteReservedBlock` → `TryCancelActiveCast(Blocked)`), and
+   a force-replace knockback is applied to the target.
+6. After the ally skill animation finishes, autonomy is restored and the
+   reservation is released.
+
+### Reservation Interaction
+
+- **PartyCommand**: `TryGetAllyCommandSlotBlockReason` checks `IsReserved`
+  alongside `IsBusy`, so a reserved ally cannot be used for party commands.
+- **ChainAttack**: `ChainAttackCoordinator.RunStep` already calls
+  `member.TryReserve(runtime)` which fails for a foreign-token reservation.
+  No chain code change is needed.
+- An ally reserved for interruption cannot be selected for either system until
+  the interruption completes or is cancelled.
+

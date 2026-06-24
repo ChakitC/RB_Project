@@ -111,6 +111,25 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         return true;
     }
 
+    public bool ApplyKnockback(KnockbackData knockback, bool forceReplace)
+    {
+        if (!forceReplace) return ApplyKnockback(knockback);
+
+        ResolveRefs();
+
+        if (!CanApply(knockback))
+            return false;
+
+        CancelReloadForKnockback();
+
+        if (knockback.InterruptActions)
+            InterruptGameplayActions();
+
+        BeginKnockback(knockback);
+        BeginReaction(knockback);
+        return true;
+    }
+
     public void StopKnockback(bool preserveMoveState = true, bool clearReactionState = false)
     {
         _targetDisplacement = Vector3.zero;

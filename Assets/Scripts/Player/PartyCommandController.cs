@@ -671,7 +671,7 @@ public sealed class PartyCommandController : MonoBehaviour
             return true;
         }
 
-        if (member.IsBusy)
+        if (member.IsBusy || member.IsReserved)
         {
             reason = PartyCommandBlockReason.AllyBusy;
             return true;

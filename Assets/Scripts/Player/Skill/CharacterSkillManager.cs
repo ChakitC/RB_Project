@@ -318,6 +318,25 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return TryBeginEntryCast(playerCommandSkill, "player-command");
     }
 
+    public bool CanStartExternalSkill(CharacterSkillEntry entry)
+    {
+        CacheReferences();
+        EnsureRuntimeSkill(entry);
+        return entry != null &&
+               entry.runtimeSkill != null &&
+               skillUser != null &&
+               !CutsceneDirector.IsCinematicPlaying &&
+               !IsSkillStartBlockedByAnimation() &&
+               !IsSkillUseBlocked() &&
+               entry.runtimeSkill.CanCast(skillUser);
+    }
+
+    public SkillCastStartResult TryStartExternalSkill(CharacterSkillEntry entry, string debugSource)
+    {
+        CacheReferences();
+        return TryBeginEntryCast(entry, debugSource);
+    }
+
     public bool TryGetChainAttackRuntimeSkill(out SkillInstance runtimeSkill)
     {
         CacheReferences();

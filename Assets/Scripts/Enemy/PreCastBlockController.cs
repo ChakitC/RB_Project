@@ -37,10 +37,18 @@ public sealed class PreCastBlockController : MonoBehaviour
     bool preCastWindowOpen;
     CharacteContext ctx;
 
+    bool _hasReservation;
+    ActiveSkillCastInfo _reservedCast;
+    GameObject _reservationSource;
+    SkillPreCastHoldHandle _holdHandle;
+    int _reservationId;
+    int _reservationCounter;
+
     public bool HasActiveBlockableCast => hasActiveBlockableCast;
     public bool IsPreCastWindowOpen => preCastWindowOpen;
     public int ActiveRequestId => hasActiveBlockableCast ? activeCast.RequestId : 0;
     public SkillGemDefinition ActiveSkillDef => activeSkillDef;
+    public bool HasActiveReservation => _hasReservation;
 
     public event Action<ActiveSkillCastInfo> PreCastWindowOpened;
     public event Action<ActiveSkillCastInfo> PreCastWindowClosed;
@@ -60,6 +68,11 @@ public sealed class PreCastBlockController : MonoBehaviour
     void OnDisable()
     {
         Unsubscribe();
+        if (_hasReservation)
+        {
+            ReleaseHoldInternal();
+            ClearReservationState();
+        }
         ClearActiveCast();
     }
 
@@ -82,7 +95,14 @@ public sealed class PreCastBlockController : MonoBehaviour
         if (!CanBlockActiveCast())
             return false;
 
-        ActiveSkillCastInfo blockedCast = activeCast;
+        return DoBlockInternal(activeCast, source);
+    }
+
+    bool DoBlockInternal(ActiveSkillCastInfo blockedCast, GameObject source)
+    {
+        if (skillManager == null)
+            return false;
+
         bool cancelled = skillManager.TryCancelActiveCast(SkillCastCancelReason.Blocked);
         if (!cancelled)
             return false;
@@ -97,6 +117,54 @@ public sealed class PreCastBlockController : MonoBehaviour
         }
 
         return true;
+    }
+
+    public bool TryReserveBlock(GameObject source, float holdSpeedMultiplier, float holdSafetyMargin, out PreCastBlockReservation reservation)
+    {
+        reservation = default;
+        if (_hasReservation) return false;
+        if (!CanBlockActiveCast() || animBrain == null) return false;
+        if (!animBrain.TryAcquirePreCastHold(activeCast.RequestId, holdSpeedMultiplier, holdSafetyMargin, out var hold))
+            return false;
+
+        _hasReservation = true;
+        _reservedCast = activeCast;
+        _reservationSource = source;
+        _holdHandle = hold;
+        _reservationId = ++_reservationCounter;
+
+        ClosePreCastWindow();
+
+        reservation = new PreCastBlockReservation(this, _reservedCast.RequestId, _reservationId);
+        return true;
+    }
+
+    public ReservedBlockResult CompleteReservedBlock(PreCastBlockReservation reservation)
+    {
+        if (!_hasReservation || reservation.ReservationId != _reservationId || reservation.RequestId != _reservedCast.RequestId)
+            return ReservedBlockResult.InvalidReservation;
+
+        ActiveSkillCastInfo blockedCast = _reservedCast;
+        GameObject source = _reservationSource;
+        ReleaseHoldInternal();
+        ClearReservationState();
+
+        return DoBlockInternal(blockedCast, source) ? ReservedBlockResult.Success : ReservedBlockResult.CastAlreadyGone;
+    }
+
+    void ReleaseHoldInternal()
+    {
+        if (_holdHandle.IsValid && animBrain != null)
+            animBrain.ReleasePreCastHold(_holdHandle);
+        _holdHandle = default;
+    }
+
+    void ClearReservationState()
+    {
+        _hasReservation = false;
+        _reservedCast = default;
+        _reservationSource = null;
+        _reservationId = 0;
     }
 
     void CacheReferences()
@@ -212,6 +280,13 @@ public sealed class PreCastBlockController : MonoBehaviour
 
     void OnCastReleased(ActiveSkillCastInfo castInfo)
     {
+        if (_hasReservation && _reservedCast.RequestId == castInfo.RequestId)
+        {
+            Debug.LogError("[PreCastBlockController] Safety hold failed: cast released while reserved.", this);
+            ReleaseHoldInternal();
+            ClearReservationState();
+        }
+
         if (!MatchesActiveCast(castInfo.RequestId))
             return;
 
@@ -220,6 +295,12 @@ public sealed class PreCastBlockController : MonoBehaviour
 
     void OnCastCancelled(ActiveSkillCastInfo castInfo, SkillCastCancelReason reason)
     {
+        if (_hasReservation && _reservedCast.RequestId == castInfo.RequestId)
+        {
+            ReleaseHoldInternal();
+            ClearReservationState();
+        }
+
         if (!MatchesActiveCast(castInfo.RequestId))
             return;
 

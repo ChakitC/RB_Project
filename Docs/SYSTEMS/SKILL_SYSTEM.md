@@ -368,3 +368,49 @@ designer may drop a `CutsceneDirector` onto the System/bootstrap object to tune
 
 See `Docs/PREFABS_AND_AUTHORING.md` — **Cutscene Skill Cutscene Scene Objects**
 for the required hierarchy, layer, and component wiring.
+
+## Pre-Cast Hold Mechanism
+
+`CharacterAnimBrain` exposes a Pre-Cast Hold API that freezes an enemy's skill
+animation playhead before the cast point, preventing the cast-moment Animancer
+event from firing. This is used by the Guaranteed Interruption Command.
+
+- `TryAcquirePreCastHold(requestId, speedMultiplier, safetyMarginNormalized)`
+  slows the animation to `speedMultiplier` and clamps `NormalizedTime` to
+  `castPoint - safetyMargin`. Once the ceiling is reached, speed is set to 0.
+- The hold operates on `AnimancerState.Speed` / `NormalizedTime` (per-clip),
+  not `animancer.Graph.Speed`, so world-slow composes multiplicatively.
+- `ReleasePreCastHold(handle)` restores the original state speed.
+- The hold is automatically cleared when the skill locomotion state exits.
+
+The `SkillCastOrchestrator` cancellation invariants are unchanged — the hold
+prevents the payload from releasing by freezing time, not by suppressing
+orchestrator logic.
+
+## Two-Phase Reservation Block
+
+`PreCastBlockController` supports a two-phase block for the interruption
+command:
+
+1. **`TryReserveBlock`**: acquires a Pre-Cast Hold on the enemy animation,
+   closes the pre-cast window/indicator, and returns a `PreCastBlockReservation`.
+   While reserved, `CanBlockActiveCast()` returns false (window is closed),
+   preventing duplicate commands.
+2. **`CompleteReservedBlock`**: releases the hold and calls
+   `TryCancelActiveCast(Blocked)` via the shared `DoBlockInternal` core.
+   Fires `CastBlocked` once on success.
+
+If the enemy's cast is cancelled externally while reserved, `OnCastCancelled`
+releases the hold and clears the reservation (no double-block). If the cast
+payload somehow releases while reserved (invariant violation), a
+`Debug.LogError` is logged and the reservation is cleaned up.
+
+## External Skill API
+
+`CharacterSkillManager` exposes two methods for systems that start skills on
+behalf of a character without going through the loadout/slot path:
+
+- `CanStartExternalSkill(CharacterSkillEntry)`: preflight check (alive, not
+  blocked by animation, skill can cast).
+- `TryStartExternalSkill(CharacterSkillEntry, debugSource)`: delegates to the
+  existing `TryBeginEntryCast` internal method.

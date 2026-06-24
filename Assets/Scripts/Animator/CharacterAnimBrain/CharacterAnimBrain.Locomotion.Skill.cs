@@ -16,6 +16,13 @@ public sealed partial class CharacterAnimBrain
         private readonly Action _onSkillEndCache;
         private readonly System.Action<int> _raiseCutsceneVfxCueCache;
 
+        private bool _holdActive;
+        private int _holdId;
+        private float _holdCeilingNormalized;
+        private float _holdSpeedMultiplier;
+        private float _originalStateSpeed = 1f;
+        private static int _nextHoldId = 1;
+
         public Locomotion_Skill(CharacterAnimBrain owner)
         {
             this.owner = owner;
@@ -138,6 +145,9 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnExitState()
         {
+            _holdActive = false;
+            _holdId = 0;
+
             if (_state != null)
             {
                 _state.SharedEvents = null;
@@ -178,6 +188,56 @@ public sealed partial class CharacterAnimBrain
                 owner.locomotionSM.TrySetState(owner.crawlState);
             else
                 owner.locomotionSM.TrySetState(owner.locomotion);
+        }
+
+        public override void Update()
+        {
+            if (_holdActive && _state != null)
+                EnforceHold(_state.NormalizedTime);
+        }
+
+        internal bool TryBeginPreCastHold(int requestId, float speedMultiplier, float safetyMargin, out SkillPreCastHoldHandle handle)
+        {
+            handle = default;
+            if (_inCutscenePhase || _state == null) return false;
+            if (requestId != owner._activeSkillRequestId) return false;
+
+            float castPoint = owner.ActiveSkillCastPointNormalized;
+            float currentNt = _state.NormalizedTime;
+            float margin = Mathf.Max(0.005f, safetyMargin);
+            float ceiling = Mathf.Max(castPoint - margin, currentNt);
+
+            _holdActive = true;
+            _holdId = _nextHoldId++;
+            _holdCeilingNormalized = ceiling;
+            _holdSpeedMultiplier = Mathf.Clamp01(speedMultiplier);
+            _originalStateSpeed = _state.Speed;
+
+            EnforceHold(currentNt);
+            handle = new SkillPreCastHoldHandle(requestId, _holdId);
+            return true;
+        }
+
+        internal void ReleasePreCastHold(SkillPreCastHoldHandle handle)
+        {
+            if (!_holdActive || handle.HoldId != _holdId) return;
+            if (_state != null) _state.Speed = _originalStateSpeed;
+            _holdActive = false;
+            _holdId = 0;
+        }
+
+        private void EnforceHold(float currentNt)
+        {
+            if (_state == null) return;
+            if (currentNt >= _holdCeilingNormalized)
+            {
+                _state.NormalizedTime = _holdCeilingNormalized;
+                _state.Speed = 0f;
+            }
+            else
+            {
+                _state.Speed = _originalStateSpeed * _holdSpeedMultiplier;
+            }
         }
     }
 }

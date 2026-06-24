@@ -41,8 +41,8 @@ MonoBehaviour:
     defaultOptionIndex: 0
     options:
     - optionId: Test.Aires.Ultimate
-      displayName: Aires.Ultimate
-      skillAsset: {fileID: 11400000, guid: 7f5265c036ab5814580557d966839af1, type: 2}
+      displayName: Aires.2
+      skillAsset: {fileID: 11400000, guid: fa756f6057a4e834b9d708818cb7d06e, type: 2}
       skillLevel: 1
       supportAssets: []
       maxSupportSlots: 3

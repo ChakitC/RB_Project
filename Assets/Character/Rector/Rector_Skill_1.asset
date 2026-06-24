@@ -68,19 +68,6 @@ MonoBehaviour:
     anchor: 0
     customAnchorPath: 
     humanoidBone: 18
-    localPosition: {x: 0, y: 0, z: 1.2299995}
-    localEulerAngles: {x: 270, y: 0, z: 0}
-    localScale: {x: 2.6889744, y: 2.6889741, z: 2.6889741}
-    parentToAnchor: 0
-    loopKey: 
-    extraLife: 0
-    allowParticlesToFinish: 1
-  - cueIndex: 1
-    action: 0
-    prefab: {fileID: 2449807036778766759, guid: b6b8fc14049f58f4782bc4448d8f53e1, type: 3}
-    anchor: 0
-    customAnchorPath: 
-    humanoidBone: 18
     localPosition: {x: 0, y: 0, z: 1.1199999}
     localEulerAngles: {x: 270, y: 0, z: 0}
     localScale: {x: 2.6889744, y: 2.6889741, z: 2.6889741}
@@ -88,7 +75,8 @@ MonoBehaviour:
     loopKey: 
     extraLife: 0
     allowParticlesToFinish: 1
-  - cueIndex: 2
+    animClip: {fileID: 0}
+  - cueIndex: 1
     action: 0
     prefab: {fileID: 2449807036778766759, guid: b6b8fc14049f58f4782bc4448d8f53e1, type: 3}
     anchor: 0
@@ -101,6 +89,24 @@ MonoBehaviour:
     loopKey: 
     extraLife: 0
     allowParticlesToFinish: 1
+    animClip: {fileID: 0}
+  isCutsceneSkill: 0
+  cutsceneDef:
+    characterCutsceneClip:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    cameraCutsceneClip: {fileID: 0}
+    worldSlowScale: 0.05
+    fadeInDuration: 0.08
+    fadeOutDuration: 0.12
+    barThickness: 0.08
+    cutsceneVfxEvents: []
   blockablePreCast: 0
   preCastOpenTimelineEvent: 200
   preCastCloseTimelineEvent: 201

@@ -122,6 +122,13 @@ points, or health bars detached or logged as warnings.
 Animation-only morphs keep the current model and avatar. Author the replacement
 `CharacterAnimProfileSO` with clips that are compatible with that rig.
 
+To buff the caster while morphed, add entries to `Status Effects (while morphed)`:
+each is a `StatusEffectDef` plus stack count, applied when the morph activates and
+removed when it reverts. Use stat-modifier status effects to raise attack, defense,
+or speed; author them as permanent so the morph controls removal, and give each a
+dedicated `effectId` so reverting does not strip identically-identified buffs that
+came from other sources.
+
 ## Combat Timeline Event Authoring
 
 Animancer-driven combat and hitbox events should use `CombatTimelineEventName`

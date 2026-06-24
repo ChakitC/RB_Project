@@ -12,6 +12,17 @@ public enum MorphChangeMode
 [HideMonoScript]
 public sealed class MorphSkillPayloadDef : SkillPayloadDef
 {
+    // โครงสร้างเดียวกับ ApplyStatusSkillPayloadDef.StatusApplication (decouple ไว้ในไฟล์ตัวเอง)
+    [System.Serializable]
+    public sealed class MorphStatusApplication
+    {
+        [AssetsOnly, Required, InlineEditor, LabelText("Status Effect")]
+        public StatusEffectDef effect;
+
+        [Min(1), LabelText("Stacks")]
+        public int stacks = 1;
+    }
+
     [SerializeField, BoxGroup("Morph")]
     [LabelText("Change Mode")]
     private MorphChangeMode changeMode = MorphChangeMode.Both;
@@ -36,15 +47,35 @@ public sealed class MorphSkillPayloadDef : SkillPayloadDef
     [LabelText("Morph Anim Profile")]
     private CharacterAnimProfileSO morphAnimProfile;
 
+    [SerializeField, BoxGroup("Morph/Status"), LabelText("Status Effects (while morphed)")]
+    [ListDrawerSettings(DefaultExpandedState = true, DraggableItems = true, ShowFoldout = true)]
+    private List<MorphStatusApplication> statusApplications = new();
+
     public MorphChangeMode ChangeMode => changeMode;
     public float Duration => duration;
     public GameObject MorphModelPrefab => morphModelPrefab;
     public RuntimeAnimatorController MorphController => morphController;
     public Avatar MorphAvatar => morphAvatar;
     public CharacterAnimProfileSO MorphAnimProfile => morphAnimProfile;
+    public IReadOnlyList<MorphStatusApplication> StatusApplications => statusApplications;
 
     public bool ChangesModel => changeMode != MorphChangeMode.AnimationOnly;
     public bool ChangesAnimation => changeMode != MorphChangeMode.ModelOnly;
+
+    public bool ChangesStatus
+    {
+        get
+        {
+            if (statusApplications == null)
+                return false;
+
+            for (int i = 0; i < statusApplications.Count; i++)
+                if (statusApplications[i] != null && statusApplications[i].effect != null)
+                    return true;
+
+            return false;
+        }
+    }
 
     public override void CollectValidationIssues(List<string> issues)
     {
@@ -59,6 +90,14 @@ public sealed class MorphSkillPayloadDef : SkillPayloadDef
 
         if (ChangesAnimation && morphAnimProfile == null)
             issues.Add("Morph payload changes Animation but Morph Anim Profile is missing.");
+
+        if (!ChangesModel && !ChangesAnimation && !ChangesStatus)
+            issues.Add("Morph payload does nothing: configure a visual change and/or at least one status effect.");
+
+        if (statusApplications != null)
+            for (int i = 0; i < statusApplications.Count; i++)
+                if (statusApplications[i] != null && statusApplications[i].effect == null)
+                    issues.Add($"Morph payload status entry #{i} has no Status Effect assigned.");
     }
 
     public override void Execute(SkillCastContext context)

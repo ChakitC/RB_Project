@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public sealed class MorphSkillRuntime : MonoBehaviour
@@ -6,6 +7,9 @@ public sealed class MorphSkillRuntime : MonoBehaviour
     private CharacterAnimBrain animBrain;
     private CharacterVisualController visual;
     private HealthSystem healthSystem;
+    private StatusEffectController statusController;
+    private GameObject statusSource;
+    private readonly List<StatusEffectDef> appliedStatusDefs = new();
     private Transform casterRoot;
     private int requestId;
 
@@ -35,9 +39,16 @@ public sealed class MorphSkillRuntime : MonoBehaviour
         if (animBrain == null && ctx != null)
             animBrain = ctx.AnimBrain;
 
+        // resolve StatusEffectController จาก caster root (แนวเดียวกับ ApplyStatusSkillPayloadDef)
+        if (casterRoot != null)
+            statusController = casterRoot.GetComponentInChildren<StatusEffectController>(true)
+                            ?? casterRoot.GetComponentInParent<StatusEffectController>();
+        statusSource = castContext != null ? castContext.CasterObject : null;
+
         if (payload == null ||
             (payload.ChangesModel && visual == null) ||
-            (payload.ChangesAnimation && animBrain == null))
+            (payload.ChangesAnimation && animBrain == null) ||
+            (payload.ChangesStatus && statusController == null))
         {
             Shutdown();
             return;
@@ -86,6 +97,20 @@ public sealed class MorphSkillRuntime : MonoBehaviour
         if (payload.ChangesAnimation && animBrain != null)
             animBrain.SetAnimProfileOverride(payload.MorphAnimProfile);
 
+        if (payload.ChangesStatus && statusController != null)
+        {
+            var apps = payload.StatusApplications;
+            for (int i = 0; i < apps.Count; i++)
+            {
+                var app = apps[i];
+                if (app == null || app.effect == null)
+                    continue;
+
+                statusController.ApplyEffect(app.effect, statusSource, Mathf.Max(1, app.stacks));
+                appliedStatusDefs.Add(app.effect);   // จำไว้ถอดตอน revert
+            }
+        }
+
         applied = true;
     }
 
@@ -99,6 +124,13 @@ public sealed class MorphSkillRuntime : MonoBehaviour
 
         if (payload != null && payload.ChangesModel && visual != null)
             visual.RestoreDefaultForm();
+
+        if (statusController != null)
+        {
+            for (int i = 0; i < appliedStatusDefs.Count; i++)
+                statusController.RemoveEffect(appliedStatusDefs[i]);   // RemoveEffect แมตช์ด้วย effectId
+        }
+        appliedStatusDefs.Clear();
 
         applied = false;
     }

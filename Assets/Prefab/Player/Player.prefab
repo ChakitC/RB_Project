@@ -237,7 +237,7 @@ MonoBehaviour:
     m_Bits: 1023
   dashIFrameExclude:
     serializedVersion: 2
-    m_Bits: 36863
+    m_Bits: 34815
   combatEventBus: {fileID: 1666845100770680886}
   perfectDashSlowScale: 0.2
   perfectDashSlowDuration: 0.35

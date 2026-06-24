@@ -258,7 +258,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             using (new EditorGUI.DisabledScope(source == null || eventToAdd == CombatTimelineEventName.None))
             {
                 if (GUILayout.Button("Add Event", GUILayout.Width(90f)))
-                    AddEventAtPlayhead(source, eventToAdd);
+                    AddEventAtPlayhead(source, eventToAdd, useActiveEntry: true);
             }
             using (new EditorGUI.DisabledScope(source == null || selectedEventIndex < 0))
             {
@@ -594,12 +594,14 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         current.Use();
     }
 
-    void AddEventAtPlayhead(IAnimationVfxTimelineSource source, CombatTimelineEventName eventName)
+    void AddEventAtPlayhead(IAnimationVfxTimelineSource source, CombatTimelineEventName eventName, bool useActiveEntry = false)
     {
         if (source == null || eventName == CombatTimelineEventName.None)
             return;
 
-        if (_playheadInCutscene
+        Debug.Log($"[AddEvent] useActiveEntry={useActiveEntry} _playheadInCutscene={_playheadInCutscene} _cutsceneModeActive={_cutsceneModeActive} IsSecondary={((source as IAnimationVfxTimelineMultiMode)?.IsSecondaryMode)} entryId={source.EntryId} clip={source.Transition?.Clip?.name}");
+
+        if (!useActiveEntry && _playheadInCutscene
             && source is IAnimationVfxTimelineMultiMode multiMode
             && !multiMode.IsSecondaryMode
             && multiMode.ReferenceTransition is { IsValid: true })
@@ -756,25 +758,26 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         ClipTransition transition = source?.Transition;
         AnimancerEvent.Sequence.Serializable events = transition?.SerializedEvents;
         float[] times = events?.NormalizedTimes;
-        if (times == null || times.Length <= 1)
-            return;
-        StringAsset[] names = events.Names;
-        AnimancerEvent.Sequence runtimeEvents = transition.Events;
-        int vfxCueIndex = 0;
-        for (int i = 0; i < times.Length - 1; i++)
+        if (times != null && times.Length > 1)
         {
-            if (!float.IsFinite(times[i]))
-                continue;
-            string displayName = names != null && i < names.Length && names[i] != null
-                ? names[i].name
-                : runtimeEvents.GetName(i)?.String;
-            if (string.IsNullOrWhiteSpace(displayName))
-                displayName = "Event " + (i + 1);
-            Enum.TryParse(displayName, true, out CombatTimelineEventName eventName);
-            int cueIndex = eventName == CombatTimelineEventName.Vfx ? vfxCueIndex++ : -1;
-            if (cueIndex >= 0)
-                displayName = BuildVfxMarkerLabel(source, cueIndex);
-            timelineEvents.Add(new TimelineEvent(i, Mathf.Clamp01(times[i]), displayName, eventName, cueIndex));
+            StringAsset[] names = events.Names;
+            AnimancerEvent.Sequence runtimeEvents = transition.Events;
+            int vfxCueIndex = 0;
+            for (int i = 0; i < times.Length - 1; i++)
+            {
+                if (!float.IsFinite(times[i]))
+                    continue;
+                string displayName = names != null && i < names.Length && names[i] != null
+                    ? names[i].name
+                    : runtimeEvents.GetName(i)?.String;
+                if (string.IsNullOrWhiteSpace(displayName))
+                    displayName = "Event " + (i + 1);
+                Enum.TryParse(displayName, true, out CombatTimelineEventName eventName);
+                int cueIndex = eventName == CombatTimelineEventName.Vfx ? vfxCueIndex++ : -1;
+                if (cueIndex >= 0)
+                    displayName = BuildVfxMarkerLabel(source, cueIndex);
+                timelineEvents.Add(new TimelineEvent(i, Mathf.Clamp01(times[i]), displayName, eventName, cueIndex));
+            }
         }
 
         if (_cutsceneSkillFraction > 0f && source is IAnimationVfxTimelineMultiMode mm && !mm.IsSecondaryMode)

@@ -1,0 +1,145 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-4640737377914395889
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4efd4b36f91e4044b4ba92aaec661dcb, type: 3}
+  m_Name: Morph Execution
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 0
+  changeMode: 0
+  duration: 8
+  morphModelPrefab: {fileID: 0}
+  morphController: {fileID: 0}
+  morphAvatar: {fileID: 0}
+  morphAnimProfile: {fileID: 11400000, guid: 041856afdf417ac4e99bbff0ee27d157, type: 2}
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
+  m_Name: Aires_Skill_2
+  m_EditorClassIdentifier: 
+  icon: {fileID: 0}
+  displayName: 
+  skillId: Roma.Ultimate.01
+  tags: 18
+  description: 
+  baseDamage: 10.02
+  baseStaggerPower: 10
+  baseManaCost: 10
+  baseCastTime: 0.5
+  baseCooldown: 0
+  baseCritChance: 5
+  baseProjectilesCount: 1
+  projectileSpeed: 5
+  AreaofEffec: 0
+  baseRadius: 0
+  maxLevel: 20
+  payload: {fileID: -4640737377914395889}
+  castCue: {fileID: 0}
+  skillClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes:
+      - 0.31068996
+      - NaN
+      _Callbacks: []
+      _Names:
+      - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
+    _Clip: {fileID: -4876317453393239407, guid: cff60580c39c3b74581f8a13f7e37daa, type: 3}
+    _NormalizedStartTime: NaN
+  castPointNormalized: 0
+  skillVfxEvents:
+  - cueIndex: 0
+    action: 0
+    prefab: {fileID: 1814315751473787963, guid: e9459def1a517a24ba482f9e639df7ff, type: 3}
+    anchor: 0
+    customAnchorPath: 
+    humanoidBone: 18
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 270, y: -0.000002521822, z: 0}
+    localScale: {x: 1.0000007, y: 1.0000004, z: 1.0000001}
+    parentToAnchor: 0
+    loopKey: 
+    extraLife: 0
+    allowParticlesToFinish: 1
+    animClip: {fileID: 0}
+  isCutsceneSkill: 1
+  cutsceneDef:
+    characterCutsceneClip:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes:
+        - 0.034108635
+        - 0.52967834
+        - NaN
+        _Callbacks: []
+        _Names:
+        - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
+        - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
+      _Clip: {fileID: -6664157530632832028, guid: 64bca5e158f507e49842527aa4ede201, type: 3}
+      _NormalizedStartTime: NaN
+    cameraCutsceneClip: {fileID: 1679754845598486846, guid: 979b593bba18c5e49943d0202eaf28f7, type: 3}
+    worldSlowScale: 0.05
+    fadeInDuration: 0.08
+    fadeOutDuration: 0.12
+    barThickness: 0.08
+    cutsceneVfxEvents:
+    - cueIndex: 0
+      action: 0
+      prefab: {fileID: 5625733165965871918, guid: ce12f4ba5683e264ca9931fe664aac33, type: 3}
+      anchor: 0
+      customAnchorPath: 
+      humanoidBone: 18
+      localPosition: {x: -0.83700025, y: 1.04, z: -0.9110004}
+      localEulerAngles: {x: 270, y: -0.00000019089583, z: 0}
+      localScale: {x: 0.4908803, y: 0.49088013, z: 0.49088007}
+      anchorMode: 0
+      loopKey: 
+      extraLife: 0
+      allowParticlesToFinish: 1
+      animClip: {fileID: 0}
+    - cueIndex: 1
+      action: 0
+      prefab: {fileID: 6721007384533448649, guid: 98557619806f23c499c9cdb620a31541, type: 3}
+      anchor: 0
+      customAnchorPath: 
+      humanoidBone: 18
+      localPosition: {x: -0.09700004, y: 1.096, z: 0.072000034}
+      localEulerAngles: {x: -0, y: 0, z: 0}
+      localScale: {x: 2.012419, y: 2.0124183, z: 2.012419}
+      anchorMode: 0
+      loopKey: 
+      extraLife: 0
+      allowParticlesToFinish: 1
+      animClip: {fileID: 0}
+  blockablePreCast: 0
+  preCastOpenTimelineEvent: 200
+  preCastCloseTimelineEvent: 201
+  useFallbackPreCastWindow: 1
+  fallbackPreCastOpenNormalized: 0
+  fallbackPreCastCloseNormalized: 0.35
+  preCastIndicatorPrefab: {fileID: 0}
+  cancelPreCastOnStun: 1
+  cancelPreCastOnStagger: 1
+  perLevelData: []
+  previewLevel: 1
+  references:
+    version: 2
+    RefIds: []

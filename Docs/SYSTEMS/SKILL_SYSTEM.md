@@ -81,10 +81,13 @@ prefabs, and pickup prefabs.
 
 ### Morph / Awakening Payload
 
-`MorphSkillPayloadDef` is a visual-only temporary form change. It does not change
-base stats, weapon data, hitboxes, or scaling. The payload applies at the normal
-skill cast moment, defers the actual animator/model swap by one frame, and
-reverts automatically after `duration`.
+`MorphSkillPayloadDef` is a temporary form change: a visual swap plus an optional
+self status buff. It never writes to `CharacterStats`/`baseStats`, weapon data,
+hitboxes, or scaling. Visuals change through an override layer and stats change
+through the `StatusEffect` layer (`StatusEffectController` already feeds `StatsHub`
+as an `IStatModifierProvider`). The payload applies at the normal skill cast
+moment, defers the actual animator/model swap by one frame, and reverts
+automatically after `duration`.
 
 `Change Mode` controls which visual data changes:
 
@@ -97,13 +100,24 @@ the next update. Any active skill animation is intentionally interrupted at that
 cast moment and returns to the locomotion state for the new form. If the cast is
 interrupted before the deferred apply runs, the runtime host is destroyed without
 leaving a morph active. If the character dies or is despawned during morph, the
-host shuts down and clears the override.
+host shuts down, clears the override, and removes any morph status.
 
 Author morph skills as embedded payloads on the owning `SkillGemDefinition`.
 Set a positive `duration`, assign `Morph Anim Profile` for animation-changing
 modes, and assign `Morph Model Prefab` for model-changing modes. The optional
 controller and avatar fields override the model animator runtime controller and
 avatar; when they are empty, the current `CharacterStats` values are used.
+
+Morph can also apply status effects to the caster for the transformed duration.
+Fill `Status Effects (while morphed)` with one or more `StatusEffectDef` entries
+(each with a stack count). They are applied through `StatusEffectController` when
+the morph activates and removed when it reverts (on `duration`, interrupt before
+apply, or death). Status effects that carry stat modifiers are how a morph raises
+stats such as attack, defense, or speed without touching `baseStats`. The morph
+owns the buff lifetime, so author the `StatusEffectDef` as permanent (or with a
+duration at least as long as the morph) and give it an `effectId` that does not
+collide with normally applied buffs, because `RemoveEffect` matches by definition
+reference and then by `effectId`.
 
 ## Timeline VFX
 

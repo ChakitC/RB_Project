@@ -70,9 +70,11 @@ MonoBehaviour:
       _Events:
         _NormalizedTimes:
         - 0
+        - 0.67052704
         - NaN
         _Callbacks: []
         _Names:
+        - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
         - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
       _Clip: {fileID: 2078312008541828654, guid: efdc20fd52d48104da2bec8be2f029e2, type: 3}
       _NormalizedStartTime: NaN
@@ -81,7 +83,91 @@ MonoBehaviour:
     fadeInDuration: 0.08
     fadeOutDuration: 0.12
     barThickness: 0.08
-    cutsceneVfxEvents: []
+    cutsceneVfxEvents:
+    - cueIndex: 0
+      action: 0
+      prefab: {fileID: 1345155941251913987, guid: a66d93e4fb0803c40a9177e1c5f84870, type: 3}
+      anchor: 1
+      customAnchorPath: 
+      humanoidBone: 18
+      localPosition: {x: 0, y: 0, z: 0}
+      localEulerAngles: {x: -0, y: 0, z: 0}
+      localScale: {x: 1, y: 1, z: 1}
+      anchorMode: 0
+      loopKey: 
+      extraLife: 0
+      allowParticlesToFinish: 1
+      animClip: {fileID: -2627289581020525374, guid: 239faa341118d38428b05726c6a95469, type: 3}
+    - cueIndex: 0
+      action: 0
+      prefab: {fileID: 1345155941251913987, guid: a66d93e4fb0803c40a9177e1c5f84870, type: 3}
+      anchor: 1
+      customAnchorPath: 
+      humanoidBone: 18
+      localPosition: {x: 0, y: 0, z: 0}
+      localEulerAngles: {x: -0, y: 0, z: 0}
+      localScale: {x: 1, y: 1, z: 1}
+      anchorMode: 0
+      loopKey: 
+      extraLife: 0
+      allowParticlesToFinish: 1
+      animClip: {fileID: 2466738962667711663, guid: a286bc565f6ed334f8f93df9218823c0, type: 3}
+    - cueIndex: 1
+      action: 0
+      prefab: {fileID: 1445044223594936685, guid: 2f0cb963eab3b1c47bf012b9cbbc1c09, type: 3}
+      anchor: 1
+      customAnchorPath: 
+      humanoidBone: 18
+      localPosition: {x: 1, y: 0, z: 0}
+      localEulerAngles: {x: -0, y: 0, z: 0}
+      localScale: {x: 1, y: 1, z: 1}
+      anchorMode: 0
+      loopKey: 
+      extraLife: 0
+      allowParticlesToFinish: 1
+      animClip: {fileID: 0}
+    - cueIndex: 1
+      action: 0
+      prefab: {fileID: 1445044223594936685, guid: 2f0cb963eab3b1c47bf012b9cbbc1c09, type: 3}
+      anchor: 1
+      customAnchorPath: 
+      humanoidBone: 18
+      localPosition: {x: -1.492, y: 0, z: 0}
+      localEulerAngles: {x: -0, y: 0, z: 0}
+      localScale: {x: 1, y: 1, z: 1}
+      anchorMode: 0
+      loopKey: 
+      extraLife: 0
+      allowParticlesToFinish: 1
+      animClip: {fileID: 0}
+    - cueIndex: 1
+      action: 0
+      prefab: {fileID: 3719875545375078249, guid: 489c10ce518f41d4a802f5f5a58a9605, type: 3}
+      anchor: 1
+      customAnchorPath: 
+      humanoidBone: 18
+      localPosition: {x: 1.4, y: 0, z: 0}
+      localEulerAngles: {x: -0, y: 0, z: 0}
+      localScale: {x: 1, y: 1, z: 1}
+      anchorMode: 0
+      loopKey: 
+      extraLife: 0
+      allowParticlesToFinish: 1
+      animClip: {fileID: 0}
+    - cueIndex: 1
+      action: 0
+      prefab: {fileID: 3719875545375078249, guid: 489c10ce518f41d4a802f5f5a58a9605, type: 3}
+      anchor: 1
+      customAnchorPath: 
+      humanoidBone: 18
+      localPosition: {x: -1.69, y: 0, z: 0}
+      localEulerAngles: {x: -0, y: 0, z: 0}
+      localScale: {x: 1, y: 1, z: 1}
+      anchorMode: 0
+      loopKey: 
+      extraLife: 0
+      allowParticlesToFinish: 1
+      animClip: {fileID: 0}
   blockablePreCast: 0
   preCastOpenTimelineEvent: 200
   preCastCloseTimelineEvent: 201

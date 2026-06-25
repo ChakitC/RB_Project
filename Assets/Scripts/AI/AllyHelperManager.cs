@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
@@ -81,8 +82,11 @@ public class AllyHelperManager : MonoBehaviour
     int _helperInvincibilityToken;
     int _helperUntargetableToken;
 
+    public event Action<CharacterAnimBrain, CharacterAnimBrain> HelperAnimBrainChanged;
+
     public bool IsHelperActive => allyHelper != null && allyHelper.activeSelf;
     public GameObject HelperObject => allyHelper;
+    public CharacterAnimBrain HelperAnimBrain => allyAnimBrain;
     public CharacterSkillManager HelperSkillManager
     {
         get
@@ -601,6 +605,8 @@ public class AllyHelperManager : MonoBehaviour
         if (allyAnimBrain == nextAnimBrain)
             return;
 
+        CharacterAnimBrain prev = allyAnimBrain;
+
         if (allyAnimBrain != null)
         {
             allyAnimBrain.PlaybackEvent -= OnAllyPlaybackEvent;
@@ -612,6 +618,8 @@ public class AllyHelperManager : MonoBehaviour
         {
             allyAnimBrain.PlaybackEvent += OnAllyPlaybackEvent;
         }
+
+        HelperAnimBrainChanged?.Invoke(prev, allyAnimBrain);
     }
 
     void SubscribeToHelperFader(ASPHelperDitherFader nextHelperFader)
@@ -681,7 +689,7 @@ public class AllyHelperManager : MonoBehaviour
 
     Vector3 ResolveSummonPosition(Vector3 playerPos)
     {
-        Vector2 random2D = Random.insideUnitCircle.normalized * Random.Range(minSummonRadius, summonRadius);
+        Vector2 random2D = UnityEngine.Random.insideUnitCircle.normalized * UnityEngine.Random.Range(minSummonRadius, summonRadius);
         Vector3 rawSpawnPos = playerPos + new Vector3(random2D.x, 0f, random2D.y);
 
         if (NavMesh.SamplePosition(rawSpawnPos, out NavMeshHit hit, navMeshSampleDistance, NavMesh.AllAreas))

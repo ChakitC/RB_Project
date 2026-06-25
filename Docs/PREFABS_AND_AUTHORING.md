@@ -137,12 +137,20 @@ The enum values have explicit numeric ids because Unity serializes enum fields
 by number.
 
 Current supported event keys include common hitbox events (`HitStart`, `HitEnd`),
-pre-cast block events (`PreCastOpen`, `PreCastClose`), and the repeatable skill
-presentation event (`Vfx`). Prefab hitbox skill
-payloads are sequential-only: every `HitStart` opens the next configured step
-and every `HitEnd` closes the currently active step. Multi-step skill hitboxes
-should order their payload steps to match the `HitStart`/`HitEnd` pairs in the
-Animancer clip.
+pre-cast block events (`PreCastOpen`, `PreCastClose`), the repeatable skill
+presentation event (`Vfx`), and the camera shake marker (`ShakeCamera`).
+Prefab hitbox skill payloads are sequential-only: every `HitStart` opens the
+next configured step and every `HitEnd` closes the currently active step.
+Multi-step skill hitboxes should order their payload steps to match the
+`HitStart`/`HitEnd` pairs in the Animancer clip.
+
+`ShakeCamera` markers are supported only in the main skill clip. Place one or
+more `ShakeCamera` Animancer events in the clip timeline at the desired shake
+points. `SkillGemDefinition` auto-detects these markers and arms the binding;
+skills without `ShakeCamera` markers produce no missing-marker warning.
+`GameplayCameraController` handles the shake using its own Inspector settings — no per-skill
+configuration is needed. Camera shake fires for player, field ally, and
+summoned helper skills only; enemy skills are not subscribed.
 
 Timeline event authoring is enum-only. New authoring should select enum values
 from the inspector dropdown. Do not add `StringAsset` timeline-event fields back
@@ -263,7 +271,7 @@ Create a layer named **`Cutscene`** in **Edit → Project Settings → Tags and 
 ### 2. Main Camera
 
 On the main camera's `Camera` component set **Culling Mask** to exclude the
-`Cutscene` layer. `CutsceneSkillPresenter` auto-resolves the `CameraF` component
+`Cutscene` layer. `CutsceneSkillPresenter` auto-resolves the `GameplayCameraController` component
 from `Camera.main` or from a parent holder such as `CameraHolder.prefab`, then
 disables/enables it automatically.
 
@@ -305,7 +313,7 @@ Optional serialized overrides:
 | Field | Assignment |
 |-------|-----------|
 | `_ctx` | Player's `CharacteContext` when the presenter is not on the player prefab |
-| `_mainFollowCamera` | Main camera's `CameraF` component when auto-resolve should be overridden |
+| `_mainFollowCamera` | Main camera's `GameplayCameraController` component when auto-resolve should be overridden |
 | `_cutsceneCamera` | `CutsceneCamera` Camera component when auto-resolve should be overridden |
 | `_cutsceneCamAnimancer` | `CutsceneCameraRig` AnimancerComponent when auto-resolve should be overridden |
 | `_cutsceneCharAnimancer` | `CutsceneCharacter` AnimancerComponent when auto-resolve should be overridden |
@@ -643,15 +651,21 @@ task.
 - Bind `BehaviorTree` and `AIAimTargetDriver` on `AllyContext`, or allow
   `AllyContext.ResolveReferences()` to resolve them from the actor hierarchy.
 - Add `AllyInterruptionController` component.
-- Assign `interruptionSkill`: a `CharacterSkillEntry` pointing at a
-  `PrefabHitboxSkillPayloadDef` skill whose animation clip has a `HitStart`
-  timeline event.
+- Assign `interruptionSkill`: a `CharacterSkillEntry` whose animation clip has
+  a `HitStart` timeline event. The interruption runtime explicitly binds this
+  event, so the skill may use a payload such as `ProjectileSkillPayloadDef`
+  that does not otherwise require timeline events.
 - Assign `teleportProfile`: a `ChainAttackTeleportProfileDef` asset.
+- `ASPHelperDitherFader` is optional. When present through
+  `FieldAllyMember.ActorFaderRef`, the ally is hidden before the snap and
+  fades in with the interruption animation. Without it, the snap remains
+  immediate and the interruption still executes.
 - Configure knockback settings: `knockbackDistance` > 0, `knockbackDuration` > 0.
 - Allies without a configured `AllyInterruptionController` or missing
   skill/profile are simply never selected for interruption.
 - Keep `logInterruptionFlow` disabled for normal play. Enable it on the test
-  scene instance to trace warp, skill, impact, fallback, and cleanup.
+  scene instance to trace visual hide, snap, fade-in, skill, impact, fallback,
+  and cleanup.
 
 ### Enemy / Target Prefab
 

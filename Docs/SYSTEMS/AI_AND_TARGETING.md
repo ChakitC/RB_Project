@@ -153,9 +153,13 @@ collider or damage outcome.
 3. Reserves the ally (`FieldAllyMember.TryReserve`) and the block
    (`PreCastBlockController.TryReserveBlock`) which acquires a Pre-Cast Hold
    on the enemy animation, freezing the playhead before the cast point.
-4. Ally suspends its BehaviorTree and NavMeshAgent, warps to the safe pose,
-   locks aim on the target, and starts its interruption skill via
-   `CharacterSkillManager.TryStartExternalSkill`. These actor modules are read
+4. Ally suspends its BehaviorTree and NavMeshAgent, hides through the optional
+   `ASPHelperDitherFader`, snaps its root, Rigidbody, CharacterController, and
+   NavMeshAgent state to the safe pose, then locks aim on the target and starts
+   fading in with its interruption skill via
+   `CharacterSkillManager.TryStartExternalSkill`, explicitly requiring the
+   `HitStart` timeline event even when the skill payload does not normally use
+   timeline events. These actor modules are read
    through `AllyContext`; `FieldAllyMember` is used only for shared ally
    reservation and chain coordination.
 5. At the ally skill's `HitStart` timeline event, the reserved block is

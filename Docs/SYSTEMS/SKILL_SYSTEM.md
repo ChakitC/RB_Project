@@ -207,6 +207,25 @@ looping behavior must be authored in each prefab. Scrubbing rebuilds loop state 
 cues at or before the playhead; only one-shot cues are replayed when crossing a
 marker in either direction.
 
+## Camera Shake Markers
+
+Place one or more `ShakeCamera` Animancer events in the main skill clip to
+trigger camera shake at those points. `SkillGemDefinition` scans the clip for
+`ShakeCamera` markers and arms the timeline binding automatically — skills
+without the marker do not produce missing-marker warnings.
+
+`GameplayCameraController` handles the shake internally using trauma-based Perlin noise on the
+Camera child's local pose. Multiple markers in the same clip stack trauma
+additively. Shake intensity and decay are configured on `GameplayCameraController`'s Inspector
+(see `CAMERA.md`). Decay uses unscaled time so shake speed is stable during
+world slow.
+
+`ShakeCamera` markers in the cutscene character clip are not bound. Only the
+main skill clip fires `ShakeCamera`. Camera shake fires for player, field ally,
+and summoned helper skills. Enemy skills are not subscribed.
+
+---
+
 `PrefabHitboxSkillPayloadDef` owns its hitbox groups and shapes as inline
 serialized data. Runtime hitbox execution does not depend on a separate hitbox
 layout asset. This keeps layout, step group keys, targeting, anchor, and timeline
@@ -321,7 +340,7 @@ empty. On `CutsceneSkillStart` it:
 
 - Calls `TimeSlowManager.StartSlow(worldSlowScale, float.MaxValue)` (enemies slow,
   player animation continues normally because `PlayerContext.UsesWorldSlow = false`).
-- Disables `CameraF` (main follow camera) and enables the cutscene camera.
+- Disables `GameplayCameraController` (main follow camera) and enables the cutscene camera.
 - Plays `characterCutsceneClip` (`ClipTransition`) and `cameraCutsceneClip`
   (`AnimationClip`) via `AnimancerComponent.Play()` in unscaled time mode.
 - Fades in the letterbox overlay (black bars + solid background, unscaled time).

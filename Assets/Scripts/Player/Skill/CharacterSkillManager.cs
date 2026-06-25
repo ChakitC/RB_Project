@@ -331,10 +331,13 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
                entry.runtimeSkill.CanCast(skillUser);
     }
 
-    public SkillCastStartResult TryStartExternalSkill(CharacterSkillEntry entry, string debugSource)
+    public SkillCastStartResult TryStartExternalSkill(
+        CharacterSkillEntry entry,
+        string debugSource,
+        CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None)
     {
         CacheReferences();
-        return TryBeginEntryCast(entry, debugSource);
+        return TryBeginEntryCast(entry, debugSource, requiredTimelineEvent);
     }
 
     public bool TryGetChainAttackRuntimeSkill(out SkillInstance runtimeSkill)
@@ -456,7 +459,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return result;
     }
 
-    private SkillCastStartResult TryBeginEntryCast(CharacterSkillEntry entry, string debugSource)
+    private SkillCastStartResult TryBeginEntryCast(
+        CharacterSkillEntry entry,
+        string debugSource,
+        CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None)
     {
         CacheReferences();
         EnsureRuntimeSkill(entry);
@@ -480,6 +486,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             onStarted: StopWeaponActivityForSkillCast,
             useAnimationDriver: true,
             allowImmediateFallback: true,
+            requiredTimelineEvent: requiredTimelineEvent,
             debugSource: debugSource));
     }
 
@@ -1167,6 +1174,7 @@ public readonly struct SkillCastRequest
     public readonly bool IgnoreResourceCosts;
     public readonly bool UseAnimationDriver;
     public readonly bool AllowImmediateFallback;
+    public readonly CombatTimelineEventName RequiredTimelineEvent;
     public readonly string DebugSource;
 
     public SkillCastRequest(
@@ -1179,6 +1187,7 @@ public readonly struct SkillCastRequest
         bool ignoreResourceCosts = false,
         bool useAnimationDriver = true,
         bool allowImmediateFallback = true,
+        CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None,
         string debugSource = null)
     {
         RuntimeSkill = runtimeSkill;
@@ -1190,6 +1199,7 @@ public readonly struct SkillCastRequest
         IgnoreResourceCosts = ignoreResourceCosts;
         UseAnimationDriver = useAnimationDriver;
         AllowImmediateFallback = allowImmediateFallback;
+        RequiredTimelineEvent = requiredTimelineEvent;
         DebugSource = debugSource;
     }
 }
@@ -1350,7 +1360,9 @@ public sealed class SkillCastOrchestrator
         int requestId = ResolveRequestId(request.RequestedId);
         CharacterAnimBrain executionAnimBrain = request.AnimationDriver;
         bool hasExternalSkillExecutionContext = HasActiveSkillExecutionContext(executionAnimBrain, requestId);
-        bool requiresTimelineEvents = skillDef.RequiresSkillTimelineEvents;
+        bool requiresTimelineEvents =
+            skillDef.RequiresSkillTimelineEvents ||
+            CombatTimelineEventNames.IsValid(request.RequiredTimelineEvent);
 
         if (!request.UseAnimationDriver &&
             requiresTimelineEvents &&
@@ -1377,6 +1389,9 @@ public sealed class SkillCastOrchestrator
             };
 
             skillDef.CollectTimelineEventNames(context.TimelineEventNames);
+            CombatTimelineEventNames.AddUnique(
+                context.TimelineEventNames,
+                request.RequiredTimelineEvent);
 
             bool started = executionAnimBrain.TryPlaySkill(
                 context.RequestId,

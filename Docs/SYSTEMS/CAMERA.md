@@ -6,15 +6,15 @@ The camera layer has three components, each with a distinct responsibility.
 
 | Component | File | Responsibility |
 |-----------|------|----------------|
-| `CameraF` | `Assets/Scripts/CameraF.cs` | Gameplay follow camera with aim-ahead |
+| `GameplayCameraController` | `Assets/Scripts/GameplayCameraController.cs` | Gameplay follow camera with aim-ahead |
 | `CameraShake` | `Assets/Scripts/CameraShake.cs` | Trauma-based shake — API only, not yet wired |
 | `CameraManager` | `Assets/Scripts/SelectCharactor/CameraManager.cs` | Cinemachine camera switcher for the Select Screen |
 
 ---
 
-## CameraF — Follow Camera with Aim-Ahead
+## GameplayCameraController — Follow Camera with Aim-Ahead
 
-`CameraF` runs in `LateUpdate` and moves the camera to the player using
+`GameplayCameraController` runs in `LateUpdate` and moves the camera to the player using
 `SmoothDamp`. On top of the base follow it applies an **aim-ahead offset**
 that shifts the frame toward the world position the player is aiming at,
 so the player can see more battlefield in the shooting direction.
@@ -55,12 +55,12 @@ Configured via `lookAheadTable` in the Inspector (defaults below):
 | Pistol | 2 units |
 | Melee | 0.5 units |
 
-`CameraF` reads the current weapon type from `PlayerContext.Instance.WeaponSystem.gunType`
+`GameplayCameraController` reads the current weapon type from `PlayerContext.Instance.WeaponSystem.gunType`
 automatically — no serialized reference needed on the camera.
 
 ### Scene Setup
 
-1. Place `CameraF` on the camera rig GameObject.
+1. Place `GameplayCameraController` on the camera rig GameObject.
 2. Assign `taget` → player root Transform.
 3. Assign `aimTarget` → the same `aimTarget` Transform referenced by `PlayerContext`.
 4. Tune `offset`, `smooth`, `lookAheadWeight`, `lookAheadSmooth` to taste.
@@ -68,12 +68,62 @@ automatically — no serialized reference needed on the camera.
 
 ---
 
-## CameraShake — Trauma-Based Shake API
+## Skill Timeline Camera Shake
 
-`CameraShake` accumulates **trauma** (0–1) and converts it to a position and
-rotation shake applied to `localPosition` / `localEulerAngles`.
-Shake intensity = `trauma²`, so light trauma produces subtle movement and
-high trauma produces strong movement.
+`GameplayCameraController` has a built-in trauma shake system that fires when a `ShakeCamera`
+marker in a main skill clip is reached. Shake is applied to the Camera child's
+`localPosition` / `localEulerAngles`, leaving the rig's world position
+(follow + aim-ahead) untouched.
+
+### Supported Sources
+
+Shake fires for skills cast by:
+
+- the player (`PlayerContext.AnimBrain`)
+- field allies registered in `FieldAllyManager`
+- the summoned helper managed by `AllyHelperManager`
+
+Enemy skills do not trigger camera shake. `GameplayCameraController` subscribes to
+`SkillTimelineEventRaised` from each source's `CharacterAnimBrain` and
+refreshes subscriptions when allies register/unregister or the helper changes.
+
+### Shake Behavior
+
+- Intensity = `trauma²` (quadratic falloff via Perlin noise)
+- Multiple `ShakeCamera` markers in one clip stack trauma additively
+- Trauma decays using `Time.unscaledDeltaTime`, so shake speed and decay are
+  stable during world slow
+- Markers in a cutscene character clip are not bound; only the main skill clip
+  fires `ShakeCamera`
+
+### Inspector Fields (on `GameplayCameraController`)
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `shakeTraumaPerMarker` | 0.6 | Trauma added per `ShakeCamera` marker |
+| `shakeMaxPositionOffset` | 0.3 | Peak local position offset at full trauma |
+| `shakeMaxRotationDeg` | 2 | Peak Z-rotation in degrees at full trauma |
+| `shakeTraumaDecayPerSecond` | 1.5 | How fast trauma drains to zero |
+| `shakeNoiseSpeed` | 8 | Frequency of Perlin noise motion |
+
+### Prefab Setup
+
+```
+CameraHolder       ← GameplayCameraController here (auto-resolves first child as shake target)
+  └─ Camera        ← shake applied to localPosition / localEulerAngles
+```
+
+`GameplayCameraController` stores the Camera child's base local pose at `Awake` and restores it
+when shake ends or the component is disabled.
+
+---
+
+## CameraShake — Legacy Shake Component
+
+`CameraShake` is a standalone trauma shake component with its own `AddTrauma`
+public API. It is **not used** by the skill timeline camera shake system above.
+The component and its API are preserved for potential future use by other
+systems (e.g., explosion effects, damage feedback).
 
 ### Public API
 
@@ -81,8 +131,6 @@ high trauma produces strong movement.
 CameraShake shake = ...; // GetComponent or cached reference
 shake.AddTrauma(0.4f);   // add trauma; clamps to [0, 1] internally
 ```
-
-Trauma decays automatically at `traumaDecayPerSecond` — no manual reset needed.
 
 ### Inspector Fields
 
@@ -92,22 +140,6 @@ Trauma decays automatically at `traumaDecayPerSecond` — no manual reset needed
 | `maxRotationDeg` | 2 | Peak Z-rotation in degrees at full trauma |
 | `traumaDecayPerSecond` | 1.5 | How fast trauma drains to zero |
 | `noiseSpeed` | 8 | Frequency of Perlin noise motion |
-
-### Scene Setup
-
-Place `CameraShake` on a **child ShakeNode** that is a child of the camera
-rig, not on the rig itself. `CameraF` controls the rig's world position;
-`CameraShake` applies local offsets on the child so the two do not fight.
-
-```
-CameraRig          ← CameraF here
-  └─ ShakeNode     ← CameraShake here
-       └─ Camera
-```
-
-> `CameraShake` is not yet connected to any gameplay event.
-> Wire it up by calling `AddTrauma` from damage handlers, explosion effects,
-> or any other combat event that should produce screen shake.
 
 ---
 

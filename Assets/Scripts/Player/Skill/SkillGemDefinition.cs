@@ -356,6 +356,26 @@ public class SkillGemDefinition : ScriptableObject
 
         if (HasSkillVfxEvents)
             CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.Vfx);
+
+        if (HasShakeCameraMarker())
+            CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.ShakeCamera);
+    }
+
+    bool HasShakeCameraMarker()
+    {
+        AnimancerEvent.Sequence events = skillClip?.Events;
+        if (events == null)
+            return false;
+
+        StringReference shakeName =
+            CombatTimelineEventNames.ToStringReference(CombatTimelineEventName.ShakeCamera);
+        for (int i = 0; i < events.Count; i++)
+        {
+            if (events.GetName(i) == shakeName)
+                return true;
+        }
+
+        return false;
     }
 
     public void CollectSkillVfxValidationIssues(List<string> issues)

@@ -11,7 +11,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
     [SerializeField] private CharacteContext _ctx;
 
     [Header("Camera")]
-    [SerializeField] private CameraF _mainFollowCamera;
+    [SerializeField] private GameplayCameraController _mainFollowCamera;
     [SerializeField] private Camera _cutsceneCamera;           // legacy — no longer toggled by runtime
     [SerializeField] private AnimancerComponent _cutsceneCamAnimancer; // legacy — no longer used for camera animation
 
@@ -292,7 +292,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
         if (_mainFollowCamera == null)
         {
-            Debug.LogWarning("[CutsceneSkillPresenter] Cannot snap CameraHolder — CameraF not found.", this);
+            Debug.LogWarning("[CutsceneSkillPresenter] Cannot snap CameraHolder — GameplayCameraController not found.", this);
             return;
         }
 
@@ -459,20 +459,20 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
             _mainFollowCamera = ResolveMainFollowCamera();
     }
 
-    CameraF ResolveMainFollowCamera()
+    GameplayCameraController ResolveMainFollowCamera()
     {
         Camera mainCamera = Camera.main;
-        if (mainCamera != null && mainCamera.TryGetComponent(out CameraF followCamera))
+        if (mainCamera != null && mainCamera.TryGetComponent(out GameplayCameraController followCamera))
             return followCamera;
         if (mainCamera != null)
         {
-            followCamera = mainCamera.GetComponentInParent<CameraF>(true);
+            followCamera = mainCamera.GetComponentInParent<GameplayCameraController>(true);
             if (followCamera != null)
                 return followCamera;
         }
 
-        CameraF fallback = null;
-        CameraF[] candidates = FindObjectsByType<CameraF>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        GameplayCameraController fallback = null;
+        GameplayCameraController[] candidates = FindObjectsByType<GameplayCameraController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         for (int i = 0; i < candidates.Length; i++)
         {
             Camera candidateCamera = candidates[i] != null ? candidates[i].GetComponent<Camera>() : null;

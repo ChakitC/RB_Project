@@ -3,11 +3,16 @@ using Opsive.BehaviorDesigner.Runtime;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Serialization;
 
 [DisallowMultipleComponent]
 public sealed class AllyInterruptionController : MonoBehaviour
 {
-    enum State { Idle, Reserved, Warping, Casting, Impact, Completed, Cancelled }
+    enum State { Idle, Reserved, Warping, Casting, Impact, RebaseSettling, Completed, Cancelled }
+
+    const float MotionPoseStablePositionEpsilon = 0.0025f;
+    const float MotionPoseStableYawEpsilon = 0.25f;
+    const float RequiredMotionPoseStableSeconds = 0.08f;
 
     [Header("Refs")]
     [SerializeField] private FieldAllyMember fieldAllyMember;
@@ -15,6 +20,11 @@ public sealed class AllyInterruptionController : MonoBehaviour
     [Header("Skill")]
     [SerializeField] private CharacterSkillEntry interruptionSkill;
     [SerializeField, AssetsOnly] private ChainAttackTeleportProfileDef teleportProfile;
+
+    [Header("Root Rebase")]
+    [SerializeField] private string motionBoneName = "c_traj";
+    [FormerlySerializedAs("rebaseHiddenSettleSeconds")]
+    [SerializeField, Min(0.1f)] private float rebaseSettleTimeoutSeconds = 0.75f;
 
     [Header("Knockback")]
     [SerializeField, Min(0.01f)] private float knockbackDistance = 2f;
@@ -43,6 +53,10 @@ public sealed class AllyInterruptionController : MonoBehaviour
     AIAimTargetDriver _aimDriver;
     Transform _actorTransform;
     ASPHelperDitherFader _actorFader;
+    CharacterVisualController _visualController;
+    Transform _visualRoot;
+    Vector3 _authoredVisualLocalPosition;
+    Quaternion _authoredVisualLocalRotation;
 
     bool _btWasEnabled;
     bool _btSuspended;
@@ -54,6 +68,17 @@ public sealed class AllyInterruptionController : MonoBehaviour
     bool _savedRigidbodyIsKinematic;
     bool _savedRigidbodyUseGravity;
     bool _visualHiddenForSnap;
+    bool _hasAuthoredVisualPose;
+    bool _blockCompletedSuccessfully;
+    Transform _rebaseMotionBone;
+    Animator _rebaseAnimator;
+    Vector3 _rebaseAnchorWorldPosition;
+    float _rebaseAnchorWorldYaw;
+    Vector3 _previousMotionPosePosition;
+    float _previousMotionPoseYaw;
+    float _rebaseSettleElapsed;
+    float _motionPoseStableElapsed;
+    bool _hasPreviousMotionPose;
 
     public bool IsExecuting => _state != State.Idle;
 
@@ -64,7 +89,12 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     void OnDisable()
     {
-        if (_state == State.Impact)
+        if (_state == State.RebaseSettling)
+        {
+            LogFlow("disabled during visible root rebase settle; committing current compensation");
+            CommitVisibleRootRebase(timedOut: true);
+        }
+        else if (_state == State.Impact)
         {
             LogFlow("disabled after impact; restoring autonomy");
             CompleteAndRestore();
@@ -80,6 +110,14 @@ public sealed class AllyInterruptionController : MonoBehaviour
         _timeoutTimer -= Time.deltaTime;
         if (_timeoutTimer <= 0f)
             RunFallback("ImpactTimeout");
+    }
+
+    void LateUpdate()
+    {
+        if (_state != State.RebaseSettling)
+            return;
+
+        TickVisibleRootRebaseSettle();
     }
 
     public bool IsReadyForInterruption()
@@ -123,6 +161,8 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
         _target = target;
         _blockReservation = blockReservation;
+        _blockCompletedSuccessfully = false;
+        CacheVisualRootPose();
         _state = State.Reserved;
         LogFlow(
             $"begin target='{ResolveName(target.Transform)}' targetRequestId={blockReservation.RequestId} reservationId={blockReservation.ReservationId} safePosition={safePos}");
@@ -189,6 +229,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
         if (_blockReservation.IsValid && _blockReservation.Controller != null)
         {
             ReservedBlockResult result = _blockReservation.Controller.CompleteReservedBlock(_blockReservation);
+            _blockCompletedSuccessfully = result == ReservedBlockResult.Success;
             LogFlow(
                 $"impact block result={result} allyRequestId={_activeRequestId} targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}",
                 warning: result != ReservedBlockResult.Success);
@@ -235,6 +276,9 @@ public sealed class AllyInterruptionController : MonoBehaviour
     void OnSkillCompleted()
     {
         if (_state != State.Impact) return;
+
+        if (_blockCompletedSuccessfully && TryBeginVisibleRootRebase())
+            return;
 
         CompleteAndRestore();
     }
@@ -298,6 +342,9 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     void Cleanup()
     {
+        if (_state == State.RebaseSettling)
+            TryCommitVisibleRootRebase("cleanup", warning: true);
+
         State finalState = _state;
         int allyRequestId = _activeRequestId;
         int targetRequestId = _blockReservation.RequestId;
@@ -313,6 +360,10 @@ public sealed class AllyInterruptionController : MonoBehaviour
         _blockReservation = default;
         _activeRequestId = 0;
         _timeoutTimer = 0f;
+        _visualRoot = null;
+        _hasAuthoredVisualPose = false;
+        _blockCompletedSuccessfully = false;
+        ClearVisibleRootRebaseState();
         _state = State.Idle;
         LogFlow(
             $"cleanup finalState={finalState} allyRequestId={allyRequestId} targetRequestId={targetRequestId} reservationId={reservationId} autonomyRestored=true");
@@ -466,12 +517,239 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     void RestoreVisibleState()
     {
-        if (!_visualHiddenForSnap)
+        bool wasHiddenForSnap = _visualHiddenForSnap;
+        _visualHiddenForSnap = false;
+
+        if (_actorFader == null || !_actorFader.gameObject.activeInHierarchy)
             return;
 
-        _visualHiddenForSnap = false;
-        _actorFader?.BeginAnimationLifecycle(hideOnAnimationComplete: false);
-        LogFlow("visibility restored after interrupted snap");
+        _actorFader.BeginAnimationLifecycle(hideOnAnimationComplete: false);
+
+        if (wasHiddenForSnap)
+            LogFlow("visibility restored after hidden transition");
+    }
+
+    void CacheVisualRootPose()
+    {
+        _visualRoot = _visualController != null ? _visualController.ModelRoot : null;
+        _hasAuthoredVisualPose = _visualRoot != null;
+
+        if (!_hasAuthoredVisualPose)
+            return;
+
+        _authoredVisualLocalPosition = _visualRoot.localPosition;
+        _authoredVisualLocalRotation = _visualRoot.localRotation;
+    }
+
+    bool TryBeginVisibleRootRebase()
+    {
+        if (!_hasAuthoredVisualPose || _visualRoot == null)
+        {
+            LogFlow("root rebase skipped reason=MissingVisualRoot");
+            return false;
+        }
+
+        _rebaseAnimator = ResolveAnimator();
+        _rebaseMotionBone = ResolveMotionBone(_rebaseAnimator);
+        if (_rebaseMotionBone == null)
+        {
+            LogFlow($"root rebase skipped reason=MotionBoneNotFound bone='{motionBoneName}'");
+            ClearVisibleRootRebaseState();
+            return false;
+        }
+
+        _rebaseAnchorWorldPosition = _rebaseMotionBone.position;
+        _rebaseAnchorWorldPosition.y = _actorTransform != null
+            ? _actorTransform.position.y
+            : _rebaseAnchorWorldPosition.y;
+        _rebaseAnchorWorldYaw = _rebaseMotionBone.eulerAngles.y;
+
+        if (!ChainAttackActorRootRebaseUtility.TryRebaseToAnimationRoot(
+                _ctx,
+                _visualRoot,
+                _rebaseMotionBone,
+                _agent,
+                out Vector3 positionDelta,
+                out float yawDelta,
+                out string failureReason))
+        {
+            LogFlow($"root rebase skipped reason='{failureReason}'", warning: true);
+            ClearVisibleRootRebaseState();
+            return false;
+        }
+
+        _rebaseSettleElapsed = 0f;
+        _motionPoseStableElapsed = 0f;
+        _hasPreviousMotionPose = false;
+        _state = State.RebaseSettling;
+
+        LogFlow(
+            $"visible root rebase started bone='{motionBoneName}' positionDelta={positionDelta} yawDelta={yawDelta:0.###}");
+        return true;
+    }
+
+    void TickVisibleRootRebaseSettle()
+    {
+        if (_rebaseMotionBone == null || _rebaseAnimator == null || _visualRoot == null)
+        {
+            LogFlow("visible root rebase lost required references; committing current compensation", warning: true);
+            CommitVisibleRootRebase(timedOut: true);
+            return;
+        }
+
+        SampleMotionPose(out Vector3 motionPosePosition, out float motionPoseYaw);
+        UpdateMotionPoseStability(motionPosePosition, motionPoseYaw);
+
+        if (!ChainAttackActorRootRebaseUtility.TryCompensateVisualRootToAnimationPose(
+                _visualRoot,
+                _rebaseMotionBone,
+                _rebaseAnchorWorldPosition,
+                _rebaseAnchorWorldYaw,
+                out _,
+                out _,
+                out string failureReason))
+        {
+            LogFlow($"visible root rebase compensation failed reason='{failureReason}'", warning: true);
+            CommitVisibleRootRebase(timedOut: true);
+            return;
+        }
+
+        _rebaseSettleElapsed += Time.deltaTime;
+        bool rootMotionFinished = _animBrain == null || !_animBrain.RootMotionActive;
+        if (rootMotionFinished && _motionPoseStableElapsed >= RequiredMotionPoseStableSeconds)
+        {
+            CommitVisibleRootRebase(timedOut: false);
+            return;
+        }
+
+        if (_rebaseSettleElapsed >= Mathf.Max(0.1f, rebaseSettleTimeoutSeconds))
+            CommitVisibleRootRebase(timedOut: true);
+    }
+
+    void UpdateMotionPoseStability(Vector3 position, float yaw)
+    {
+        if (!_hasPreviousMotionPose)
+        {
+            _previousMotionPosePosition = position;
+            _previousMotionPoseYaw = yaw;
+            _hasPreviousMotionPose = true;
+            _motionPoseStableElapsed = 0f;
+            return;
+        }
+
+        float positionDelta = Vector3.Distance(position, _previousMotionPosePosition);
+        float yawDelta = Mathf.Abs(Mathf.DeltaAngle(_previousMotionPoseYaw, yaw));
+        _motionPoseStableElapsed =
+            positionDelta <= MotionPoseStablePositionEpsilon &&
+            yawDelta <= MotionPoseStableYawEpsilon
+                ? _motionPoseStableElapsed + Time.deltaTime
+                : 0f;
+
+        _previousMotionPosePosition = position;
+        _previousMotionPoseYaw = yaw;
+    }
+
+    void SampleMotionPose(out Vector3 position, out float yaw)
+    {
+        position = _rebaseAnimator.transform.InverseTransformPoint(_rebaseMotionBone.position);
+        position.y = 0f;
+        yaw = Mathf.DeltaAngle(
+            _rebaseAnimator.transform.eulerAngles.y,
+            _rebaseMotionBone.eulerAngles.y);
+    }
+
+    void CommitVisibleRootRebase(bool timedOut)
+    {
+        TryCommitVisibleRootRebase(
+            timedOut ? "settle timeout" : "motion pose stable",
+            warning: timedOut);
+        CompleteAndRestore();
+    }
+
+    bool TryCommitVisibleRootRebase(string reason, bool warning)
+    {
+        if (_visualRoot == null || !_hasAuthoredVisualPose)
+        {
+            LogFlow($"visible root rebase commit skipped reason=MissingVisualRoot source='{reason}'", warning: true);
+            ClearVisibleRootRebaseState();
+            return false;
+        }
+
+        bool committed = ChainAttackActorRootRebaseUtility.TryCommitVisualRootCompensation(
+            _ctx,
+            _visualRoot,
+            _authoredVisualLocalPosition,
+            _authoredVisualLocalRotation,
+            _agent,
+            out Vector3 positionDelta,
+            out float yawDelta,
+            out string failureReason);
+
+        if (committed)
+        {
+            LogFlow(
+                $"visible root rebase committed source='{reason}' positionDelta={positionDelta} yawDelta={yawDelta:0.###}",
+                warning);
+        }
+        else
+        {
+            LogFlow(
+                $"visible root rebase commit failed source='{reason}' reason='{failureReason}'",
+                warning: true);
+        }
+
+        ClearVisibleRootRebaseState();
+        return committed;
+    }
+
+    void ClearVisibleRootRebaseState()
+    {
+        _rebaseMotionBone = null;
+        _rebaseAnimator = null;
+        _rebaseAnchorWorldPosition = Vector3.zero;
+        _rebaseAnchorWorldYaw = 0f;
+        _previousMotionPosePosition = Vector3.zero;
+        _previousMotionPoseYaw = 0f;
+        _rebaseSettleElapsed = 0f;
+        _motionPoseStableElapsed = 0f;
+        _hasPreviousMotionPose = false;
+    }
+
+    Animator ResolveAnimator()
+    {
+        Animator animator = _visualController != null ? _visualController.animator : null;
+        if (animator == null && _ctx != null)
+            animator = _ctx.GetComponentInChildren<Animator>(true);
+
+        return animator;
+    }
+
+    Transform ResolveMotionBone(Animator animator)
+    {
+        if (string.IsNullOrWhiteSpace(motionBoneName))
+            return null;
+
+        return animator != null
+            ? FindChildByName(animator.transform, motionBoneName.Trim())
+            : null;
+    }
+
+    static Transform FindChildByName(Transform root, string targetName)
+    {
+        if (root == null)
+            return null;
+
+        if (root.name == targetName)
+            return root;
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform found = FindChildByName(root.GetChild(i), targetName);
+            if (found != null)
+                return found;
+        }
+
+        return null;
     }
 
     void LockAim()
@@ -530,7 +808,11 @@ public sealed class AllyInterruptionController : MonoBehaviour
             _behaviorTree = _ctx.BehaviorTree;
             _agent = _ctx.agent;
             _aimDriver = _ctx.AimTargetDriver;
+            _visualController = _ctx.Visual;
         }
+
+        if (_visualController == null)
+            _visualController = GetComponentInChildren<CharacterVisualController>(true);
 
         _actorTransform = _ctx != null ? _ctx.transform : transform;
     }

@@ -1803,7 +1803,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   fieldAllyMember: {fileID: 0}
   interruptionSkill:
-    skillAsset: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
+    skillAsset: {fileID: 11400000, guid: 762b42e521970fa45a8d258e7d1a3a65, type: 2}
     skillLevel: 1
     supportAssets: []
     runtimeSkill:
@@ -1812,6 +1812,8 @@ MonoBehaviour:
       supports: []
     maxSupportSlots: 3
   teleportProfile: {fileID: 11400000, guid: 67b40f9eb19a474fb266e3e7e25852fb, type: 2}
+  motionBoneName: root.x
+  rebaseSettleTimeoutSeconds: 0.75
   knockbackDistance: 2
   knockbackDuration: 0.4
   knockbackReaction: 0

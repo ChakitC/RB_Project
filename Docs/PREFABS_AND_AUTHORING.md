@@ -656,10 +656,19 @@ task.
   event, so the skill may use a payload such as `ProjectileSkillPayloadDef`
   that does not otherwise require timeline events.
 - Assign `teleportProfile`: a `ChainAttackTeleportProfileDef` asset.
+- Set `motionBoneName` to the animation motion bone used for end-of-skill root
+  alignment (`c_traj` by default). The bone must resolve below the active
+  Animator, and `CharacterVisualController.ModelRoot` must be a child of the
+  ally context root.
+- `rebaseSettleTimeoutSeconds` is the maximum visible compensation period while
+  the Animator blends back to locomotion. The default `0.75` seconds is a hard
+  recovery timeout; normal completion occurs earlier when the motion-bone pose
+  is stable.
 - `ASPHelperDitherFader` is optional. When present through
   `FieldAllyMember.ActorFaderRef`, the ally is hidden before the snap and
-  fades in with the interruption animation. Without it, the snap remains
-  immediate and the interruption still executes.
+  fades in with the interruption animation. The fader is not used at the end of
+  the skill; visible root compensation handles the return to locomotion, so the
+  end-of-skill rebase also works when no fader is configured.
 - Configure knockback settings: `knockbackDistance` > 0, `knockbackDuration` > 0.
 - Allies without a configured `AllyInterruptionController` or missing
   skill/profile are simply never selected for interruption.

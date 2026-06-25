@@ -165,8 +165,15 @@ collider or damage outcome.
 5. At the ally skill's `HitStart` timeline event, the reserved block is
    completed (`CompleteReservedBlock` → `TryCancelActiveCast(Blocked)`), and
    a force-replace knockback is applied to the target.
-6. After the ally skill animation finishes, autonomy is restored and the
-   reservation is released.
+6. After a successful block and normal ally skill completion, the interruption
+   controller rebases the ally context root to the configured motion bone
+   (`c_traj` by default) while preserving the visible world pose. During the
+   blend back to locomotion, `LateUpdate` compensates the visual root so the
+   motion bone remains fixed in world XZ/yaw with no end-of-skill fade-out.
+7. When the motion-bone pose stabilizes, the accumulated visual compensation
+   is committed into the context root and the visual root returns to its cached
+   local pose without moving on screen. Autonomy and the reservation are then
+   restored. A timeout commits the current pose as recovery.
 
 ### Reservation Interaction
 
@@ -189,7 +196,8 @@ controllers:
 - `PreCastBlockController.logPreCastFlow` logs the enemy cast, pre-cast window,
   hold reservation, and block lifecycle under `[PreCast.Target]`.
 - `AllyInterruptionController.logInterruptionFlow` logs warp, external skill,
-  `HitStart`, block completion, fallback, and cleanup under `[PreCast.Ally]`.
+  `HitStart`, block completion, visible root rebase settle/commit, fallback,
+  and cleanup under `[PreCast.Ally]`.
 
 Use `requestId` and `reservationId` to correlate target and ally messages.
 Normal logs are disabled by default to avoid Console noise. The safety-hold

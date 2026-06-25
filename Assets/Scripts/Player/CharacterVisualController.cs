@@ -62,6 +62,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
     private GameObject _leftObj;
 
     public int LoadOrder => 100;
+    public Transform ModelRoot => modelRoot;
 
     private void Awake()
     {

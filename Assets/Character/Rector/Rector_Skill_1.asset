@@ -172,7 +172,7 @@ MonoBehaviour:
   hitboxEndEventName: 11
   targetMask:
     serializedVersion: 2
-    m_Bits: 65535
+    m_Bits: 63487
   queryTriggers: 2
   showDamageNumbers: 1
   steps:

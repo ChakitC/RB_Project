@@ -28,6 +28,10 @@ internal sealed class FieldAllyAutonomyScope
     bool _defaultRigidbodyUseGravity;
     Vector3 _defaultAgentDestination;
 
+    bool IsPlayerActor =>
+        owner.ActorContextRef != null &&
+        owner.ActorContextRef.TargetIdentity == AITargetIdentity.Player;
+
     public FieldAllyAutonomyScope(FieldAllyMember owner, FieldAllyTransitionController transitionController)
     {
         this.owner = owner;
@@ -147,7 +151,7 @@ internal sealed class FieldAllyAutonomyScope
 
     bool ApplyTemporaryActorProtection()
     {
-        if (owner.ActorRoleValue == ChainActorRole.Player || _actorProtectionApplied)
+        if (IsPlayerActor || _actorProtectionApplied)
             return false;
 
         if (!owner.MakeAllyInvincibleDuringSequence && !owner.MakeAllyUntargetableDuringSequence)
@@ -330,7 +334,7 @@ internal sealed class FieldAllyAutonomyScope
             }
         }
 
-        if (owner.ActorRoleValue == ChainActorRole.Player && owner.AutoDisablePlayerInputAndMovement)
+        if (IsPlayerActor && owner.AutoDisablePlayerInputAndMovement)
         {
             resolved ??= new List<MonoBehaviour>(2);
 
@@ -350,7 +354,7 @@ internal sealed class FieldAllyAutonomyScope
 
     bool ApplyPlayerChainLock()
     {
-        if (owner.ActorRoleValue != ChainActorRole.Player || owner.ActorContextRef == null)
+        if (!IsPlayerActor)
             return false;
 
         owner.ActorContextRef.moveInput = Vector2.zero;
@@ -367,7 +371,7 @@ internal sealed class FieldAllyAutonomyScope
 
     void RestorePlayerChainLock()
     {
-        if (owner.ActorRoleValue != ChainActorRole.Player || owner.ActorContextRef == null)
+        if (!IsPlayerActor)
             return;
 
         owner.ActorContextRef.moveInput = Vector2.zero;

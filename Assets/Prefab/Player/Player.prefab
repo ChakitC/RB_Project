@@ -660,6 +660,7 @@ MonoBehaviour:
   fieldAllyManager: {fileID: 2832843673297047600}
   chainAttackCoordinator: {fileID: 8702287995565794057}
   partyCommand: {fileID: 2720740744562527200}
+  interruptionCommand: {fileID: 0}
   inventory: {fileID: 1173181556611555232}
   aimTarget: {fileID: 37773055136607646}
   maximumCommandPoints: 3
@@ -901,6 +902,22 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 49786a61-7128-44cf-b321-bea08ecf34ec
     m_ActionName: 'Player/ChainAttackOpen[/Keyboard/q]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 4051215997299661844}
+        m_TargetAssemblyTypeName: PlayerInputHandler, Assembly-CSharp
+        m_MethodName: OnInterruptionCommand
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: b3ad637f-eee0-4da7-8ab5-43186a5ad4f1
+    m_ActionName: 'Player/Block[/Keyboard/g]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player
@@ -1437,13 +1454,7 @@ MonoBehaviour:
   manager: {fileID: 2832843673297047600}
   actorRoot: {fileID: 3749669808023046127}
   actorContext: {fileID: 1638387977988830713}
-  actorHealthSystem: {fileID: 1629402543204886545}
-  actorTargetInfo: {fileID: 3675228139914604767}
-  actorRigidbody: {fileID: 2207675358697019086}
-  actorCharacterController: {fileID: 7373962052237540882}
   behaviorTree: {fileID: 0}
-  agent: {fileID: 0}
-  animBrain: {fileID: 7895287034516787951}
   skillUserProxy: {fileID: 6449575512280067904}
   aimTargetDriver: {fileID: 0}
   actorFader: {fileID: 1668939218008690410}
@@ -1980,6 +1991,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4306609352430200500}
   - component: {fileID: 2720740744562527200}
+  - component: {fileID: 5084191306873448319}
   m_Layer: 6
   m_Name: PartyCommand
   m_TagString: Untagged
@@ -2042,6 +2054,26 @@ MonoBehaviour:
   selectedPartyCommandIndex: 0
   wrapPartyCommandSelection: 1
   logPartyCommandExecution: 0
+--- !u!114 &5084191306873448319
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8967953885467585272}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f832b5d2afc5b5b4681b90fcbb25df03, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerContext: {fileID: 1638387977988830713}
+  targetSearchMask:
+    serializedVersion: 2
+    m_Bits: 512
+  targetSearchRadius: 4
+  holdSpeedMultiplier: 0.1
+  holdSafetyMargin: 0.08
+  logInterruptionFlow: 0
 --- !u!1001 &7062182068417119161
 PrefabInstance:
   m_ObjectHideFlags: 0

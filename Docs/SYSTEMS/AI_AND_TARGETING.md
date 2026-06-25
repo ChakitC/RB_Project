@@ -36,6 +36,10 @@ memory. Common identity should come from `CharacteContext.TargetIdentity`.
 Common code should use `ctx.TargetIdentity` or `IAITargetable.TargetIdentity`
 instead of hard-coded context subtype checks.
 
+`FieldAllyMember.ActorRole` is only a chain registry and sequence-selection
+key. Player- or companion-specific behavior must use the member's
+`CharacteContext.TargetIdentity`.
+
 ## Target Info
 
 `AITargetInfo` implements `IAITargetable` and exposes:
@@ -151,7 +155,9 @@ collider or damage outcome.
    on the enemy animation, freezing the playhead before the cast point.
 4. Ally suspends its BehaviorTree and NavMeshAgent, warps to the safe pose,
    locks aim on the target, and starts its interruption skill via
-   `CharacterSkillManager.TryStartExternalSkill`.
+   `CharacterSkillManager.TryStartExternalSkill`. These actor modules are read
+   through `AllyContext`; `FieldAllyMember` is used only for shared ally
+   reservation and chain coordination.
 5. At the ally skill's `HitStart` timeline event, the reserved block is
    completed (`CompleteReservedBlock` → `TryCancelActiveCast(Blocked)`), and
    a force-replace knockback is applied to the target.
@@ -168,3 +174,20 @@ collider or damage outcome.
 - An ally reserved for interruption cannot be selected for either system until
   the interruption completes or is cancelled.
 
+### Debug Logging
+
+The interruption flow has opt-in Inspector logs on all three participating
+controllers:
+
+- `InterruptionCommandController.logInterruptionFlow` logs one command summary
+  under `[PreCast.Command]`, including `attemptId`, target scan counts, ally
+  scan counts, and the final command result.
+- `PreCastBlockController.logPreCastFlow` logs the enemy cast, pre-cast window,
+  hold reservation, and block lifecycle under `[PreCast.Target]`.
+- `AllyInterruptionController.logInterruptionFlow` logs warp, external skill,
+  `HitStart`, block completion, fallback, and cleanup under `[PreCast.Ally]`.
+
+Use `requestId` and `reservationId` to correlate target and ally messages.
+Normal logs are disabled by default to avoid Console noise. The safety-hold
+invariant remains an unconditional error because a cast must never release
+while its pre-cast hold reservation is active.

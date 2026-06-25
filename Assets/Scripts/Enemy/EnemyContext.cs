@@ -8,6 +8,7 @@ public class EnemyContext : CharacteContext
     [Header("Collider")]
     public CapsuleCollider Collider;
     public AgentMoveDriver AgentMoveDriver;
+    public StaggerMeter StaggerMeter;
 
     [Header("NavMeshAgent")]
     public NavMeshAgent Agent;
@@ -69,6 +70,9 @@ public class EnemyContext : CharacteContext
 
         if (!AgentMoveDriver)
             AgentMoveDriver = ResolveActorComponent(AgentMoveDriver);
+
+        if (!StaggerMeter)
+            StaggerMeter = ResolveActorComponent(StaggerMeter);
 
         if (!animator)
             animator = ResolveActorComponent(animator);

@@ -1261,6 +1261,8 @@ MonoBehaviour:
   AITargetSensor: {fileID: 206531557553532069}
   agent: {fileID: 5087575678296884270}
   AgentMoveDriver: {fileID: 6817894532092306520}
+  BehaviorTree: {fileID: 7276888293349109092}
+  AimTargetDriver: {fileID: 7076995523026804934}
 --- !u!114 &4416478195407666796
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1515,15 +1517,7 @@ MonoBehaviour:
   manager: {fileID: 0}
   actorRoot: {fileID: 3068579875291832276}
   actorContext: {fileID: 8723794045760714937}
-  actorHealthSystem: {fileID: 6674914611058789611}
-  actorTargetInfo: {fileID: 7030153476449209181}
-  actorRigidbody: {fileID: 6421898623282018613}
-  actorCharacterController: {fileID: 3471594666334970129}
-  behaviorTree: {fileID: 7276888293349109092}
-  agent: {fileID: 5087575678296884270}
-  animBrain: {fileID: 5728039111650578654}
   skillUserProxy: {fileID: 4234101389728358262}
-  aimTargetDriver: {fileID: 7076995523026804934}
   actorFader: {fileID: 6696634910283690687}
   chainTeleportProbeCollider: {fileID: 0}
   componentsToDisableDuringSequence: []

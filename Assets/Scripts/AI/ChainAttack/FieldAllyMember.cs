@@ -11,15 +11,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     [SerializeField] private FieldAllyManager manager;
     [SerializeField] private Transform actorRoot;
     [SerializeField] private CharacteContext actorContext;
-    [SerializeField] private HealthSystem actorHealthSystem;
-    [SerializeField] private AITargetInfo actorTargetInfo;
-    [SerializeField] private Rigidbody actorRigidbody;
-    [SerializeField] private CharacterController actorCharacterController;
-    [SerializeField] private BehaviorTree behaviorTree;
-    [SerializeField] private NavMeshAgent agent;
-    [SerializeField] private CharacterAnimBrain animBrain;
     [SerializeField] private ChainSkillUserProxy skillUserProxy;
-    [SerializeField] private AIAimTargetDriver aimTargetDriver;
     [SerializeField] private ASPHelperDitherFader actorFader;
     [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Teleport Probe Collider")]
     [SerializeField] private Collider chainTeleportProbeCollider;
@@ -57,6 +49,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     FieldAllyAutonomyScope _autonomyScope;
     ChainSkillCastBridge _skillCastBridge;
     FieldAllySequenceRunner _sequenceRunner;
+    CharacterAnimBrain _subscribedAnimBrain;
 
     public ChainActorRole ActorRole => actorRole;
     public bool IsReserved
@@ -130,12 +123,7 @@ public sealed class FieldAllyMember : MonoBehaviour
             if (context == null)
                 return null;
 
-            if (context.SkillManager == null)
-                context.SkillManager = context.GetComponent<CharacterSkillManager>();
-
-            if (context.SkillManager == null)
-                context.SkillManager = context.GetComponentInChildren<CharacterSkillManager>(true);
-
+            context.ResolveReferences();
             return context.SkillManager;
         }
     }
@@ -164,6 +152,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         get
         {
             CharacteContext context = ActorContext;
+            context?.ResolveReferences();
             return context != null &&
                    context.stateHub != null &&
                    context.stateHub.IsAlive &&
@@ -318,6 +307,8 @@ public sealed class FieldAllyMember : MonoBehaviour
     {
         EnsureModules();
         CharacteContext context = ActorContext;
+        context?.ResolveReferences();
+
         if (actorRoot == null && context != null)
             actorRoot = context.transform;
 
@@ -329,19 +320,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (manager == null)
             manager = FindFirstObjectByType<FieldAllyManager>();
 
-        if (behaviorTree == null && context != null)
-            behaviorTree = context.GetComponentInChildren<BehaviorTree>(true);
-
-        if (agent == null && context != null)
-            agent = context.GetComponent<NavMeshAgent>();
-
         CharacterAnimBrain nextAnimBrain = context != null ? context.AnimBrain : null;
-        if (nextAnimBrain == null && context != null)
-            nextAnimBrain = context.GetComponentInChildren<CharacterAnimBrain>(true);
-
-        if (context != null && context.AnimBrain == null)
-            context.AnimBrain = nextAnimBrain;
-
         SubscribeToAnimBrain(nextAnimBrain);
 
         if (skillUserProxy == null)
@@ -349,12 +328,6 @@ public sealed class FieldAllyMember : MonoBehaviour
 
         if (skillUserProxy == null)
             skillUserProxy = gameObject.AddComponent<ChainSkillUserProxy>();
-
-        if (aimTargetDriver == null)
-            aimTargetDriver = GetComponent<AIAimTargetDriver>();
-
-        if (aimTargetDriver == null && Application.isPlaying)
-            aimTargetDriver = gameObject.AddComponent<AIAimTargetDriver>();
 
         if (directSkillUserSource is not ISkillUser)
             directSkillUserSource = null;
@@ -371,54 +344,8 @@ public sealed class FieldAllyMember : MonoBehaviour
 
     internal void RefreshCollisionReferences()
     {
-        if (actorContext == null)
-            actorContext = ActorContext;
-
-        if (actorContext != null && actorContext.HealthSystem != null)
-            actorHealthSystem = actorContext.HealthSystem;
-        else if (actorHealthSystem == null)
-        {
-            if (actorContext != null)
-            {
-                actorHealthSystem = actorContext.GetComponent<HealthSystem>();
-                if (actorHealthSystem == null)
-                    actorHealthSystem = actorContext.GetComponentInChildren<HealthSystem>(true);
-            }
-        }
-
-        if (actorContext != null && actorContext.HealthSystem == null)
-            actorContext.HealthSystem = actorHealthSystem;
-
-        if (actorTargetInfo == null)
-        {
-            if (actorContext != null)
-                actorTargetInfo = actorContext.GetComponentInChildren<AITargetInfo>(true);
-        }
-
-        if (actorContext != null && actorContext.rb != null)
-            actorRigidbody = actorContext.rb;
-        else if (actorRigidbody == null)
-        {
-            if (actorContext != null)
-                actorRigidbody = actorContext.GetComponent<Rigidbody>();
-        }
-
-        if (actorContext != null && actorContext.rb == null)
-            actorContext.rb = actorRigidbody;
-
-        if (actorContext != null && actorContext.cc != null)
-            actorCharacterController = actorContext.cc;
-        else if (actorCharacterController == null)
-        {
-            if (actorContext != null)
-                actorCharacterController = actorContext.GetComponent<CharacterController>();
-        }
-
-        if (actorContext != null && actorContext.cc == null)
-            actorContext.cc = actorCharacterController;
-
-        if (actorContext != null && actorContext.KnockbackMotor == null)
-            actorContext.KnockbackMotor = ResolveKnockbackMotor(actorContext);
+        CharacteContext context = ActorContext;
+        context?.ResolveReferences();
     }
 
     Collider ResolveChainTeleportProbeCollider()
@@ -454,8 +381,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (context == null)
             return null;
 
-        if (context.ColliderRefs == null)
-            context.ResolveReferences();
+        context.ResolveReferences();
 
         return context.ColliderRefs != null
             ? context.ColliderRefs.CharacterPositionCollider
@@ -465,51 +391,36 @@ public sealed class FieldAllyMember : MonoBehaviour
     internal bool IsActorInKnockback()
     {
         CharacteContext context = ActorContext;
-        CharacterKnockbackMotor knockbackMotor = ResolveKnockbackMotor(context);
+        context?.ResolveReferences();
+        CharacterKnockbackMotor knockbackMotor = context != null ? context.KnockbackMotor : null;
 
         if (knockbackMotor != null && knockbackMotor.IsActive)
             return true;
 
-        return actorContext != null &&
-               actorContext.stateHub != null &&
-               actorContext.stateHub.MoveSM != null &&
-               actorContext.stateHub.MoveSM.CurrentId == MoveStateId.Knockback;
-    }
-
-    static CharacterKnockbackMotor ResolveKnockbackMotor(CharacteContext context)
-    {
-        if (context == null)
-            return null;
-
-        if (context.KnockbackMotor != null)
-            return context.KnockbackMotor;
-
-        CharacterKnockbackMotor knockbackMotor = context.GetComponent<CharacterKnockbackMotor>();
-        if (knockbackMotor == null)
-            knockbackMotor = context.GetComponentInChildren<CharacterKnockbackMotor>(true);
-
-        context.KnockbackMotor = knockbackMotor;
-        return knockbackMotor;
+        return context != null &&
+               context.stateHub != null &&
+               context.stateHub.MoveSM != null &&
+               context.stateHub.MoveSM.CurrentId == MoveStateId.Knockback;
     }
 
     void SubscribeToAnimBrain(CharacterAnimBrain nextAnimBrain)
     {
-        if (animBrain != null && _sequenceRunner != null)
+        if (_subscribedAnimBrain != null && _sequenceRunner != null)
         {
-            animBrain.ChainCastMomentReached -= _sequenceRunner.OnChainCastMomentReached;
-            animBrain.ChainAdvanceMomentReached -= _sequenceRunner.OnChainAdvanceMomentReached;
-            animBrain.ChainPlaybackInterrupted -= _sequenceRunner.OnChainPlaybackInterrupted;
-            animBrain.ChainPlaybackCompleted -= _sequenceRunner.OnChainPlaybackCompleted;
+            _subscribedAnimBrain.ChainCastMomentReached -= _sequenceRunner.OnChainCastMomentReached;
+            _subscribedAnimBrain.ChainAdvanceMomentReached -= _sequenceRunner.OnChainAdvanceMomentReached;
+            _subscribedAnimBrain.ChainPlaybackInterrupted -= _sequenceRunner.OnChainPlaybackInterrupted;
+            _subscribedAnimBrain.ChainPlaybackCompleted -= _sequenceRunner.OnChainPlaybackCompleted;
         }
 
-        animBrain = nextAnimBrain;
+        _subscribedAnimBrain = nextAnimBrain;
 
-        if (animBrain != null && _sequenceRunner != null)
+        if (_subscribedAnimBrain != null && _sequenceRunner != null)
         {
-            animBrain.ChainCastMomentReached += _sequenceRunner.OnChainCastMomentReached;
-            animBrain.ChainAdvanceMomentReached += _sequenceRunner.OnChainAdvanceMomentReached;
-            animBrain.ChainPlaybackInterrupted += _sequenceRunner.OnChainPlaybackInterrupted;
-            animBrain.ChainPlaybackCompleted += _sequenceRunner.OnChainPlaybackCompleted;
+            _subscribedAnimBrain.ChainCastMomentReached += _sequenceRunner.OnChainCastMomentReached;
+            _subscribedAnimBrain.ChainAdvanceMomentReached += _sequenceRunner.OnChainAdvanceMomentReached;
+            _subscribedAnimBrain.ChainPlaybackInterrupted += _sequenceRunner.OnChainPlaybackInterrupted;
+            _subscribedAnimBrain.ChainPlaybackCompleted += _sequenceRunner.OnChainPlaybackCompleted;
         }
     }
 
@@ -550,18 +461,18 @@ public sealed class FieldAllyMember : MonoBehaviour
     internal GameObject GameObjectRef => TransformRef != null ? TransformRef.gameObject : gameObject;
     internal string ActorName => TransformRef != null ? TransformRef.name : name;
     internal ChainActorRole ActorRoleValue => actorRole;
-    internal BehaviorTree BehaviorTreeRef => behaviorTree;
-    internal NavMeshAgent AgentRef => agent;
-    internal CharacterAnimBrain AnimBrainRef => animBrain;
+    internal BehaviorTree BehaviorTreeRef => ActorContext is AllyContext allyContext ? allyContext.BehaviorTree : null;
+    internal NavMeshAgent AgentRef => ActorContext is AllyContext allyContext ? allyContext.agent : null;
+    internal CharacterAnimBrain AnimBrainRef => ActorContext != null ? ActorContext.AnimBrain : null;
     internal ChainSkillUserProxy SkillUserProxyRef => skillUserProxy;
-    internal AIAimTargetDriver AimTargetDriverRef => aimTargetDriver;
+    internal AIAimTargetDriver AimTargetDriverRef => ActorContext is AllyContext allyContext ? allyContext.AimTargetDriver : null;
     internal ASPHelperDitherFader ActorFaderRef => actorFader;
     internal Collider ChainTeleportProbeColliderRef => ResolveChainTeleportProbeCollider();
     internal CharacteContext ActorContextRef => ActorContext;
-    internal HealthSystem ActorHealthSystemRef => actorHealthSystem;
-    internal AITargetInfo ActorTargetInfoRef => actorTargetInfo;
-    internal Rigidbody ActorRigidbodyRef => actorRigidbody;
-    internal CharacterController ActorCharacterControllerRef => actorCharacterController;
+    internal HealthSystem ActorHealthSystemRef => ActorContext != null ? ActorContext.HealthSystem : null;
+    internal AITargetInfo ActorTargetInfoRef => ActorContext != null ? ActorContext.TargetInfo : null;
+    internal Rigidbody ActorRigidbodyRef => ActorContext != null ? ActorContext.rb : null;
+    internal CharacterController ActorCharacterControllerRef => ActorContext != null ? ActorContext.cc : null;
     internal MonoBehaviour[] ComponentsToDisableDuringSequenceRef => componentsToDisableDuringSequence;
     internal bool AutoDisablePlayerInputAndMovement => autoDisablePlayerInputAndMovement;
     internal bool MakeAllyInvincibleDuringSequence => makeAllyInvincibleDuringSequence;

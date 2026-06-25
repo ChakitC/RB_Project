@@ -487,6 +487,10 @@ MonoBehaviour:
   applyRootRotation: 0
   agent: {fileID: 3160894530039119532}
   animator: {fileID: 1608284013549844060}
+  ctx: {fileID: 0}
+  pushLayers:
+    serializedVersion: 2
+    m_Bits: 0
 --- !u!114 &7180067156307174043
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -881,7 +885,8 @@ MonoBehaviour:
   brain: {fileID: 2022206065969024217}
   animator: {fileID: 0}
   applyPairOffsets: 1
-  directionTransitionDuration: 0.08
+  showDebugState: 0
+  debugState: 
 --- !u!1 &5489049317917762303
 GameObject:
   m_ObjectHideFlags: 0
@@ -1142,6 +1147,7 @@ MonoBehaviour:
   lookInput: {x: 0, y: 0}
   Collider: {fileID: 0}
   AgentMoveDriver: {fileID: 860930448790366792}
+  StaggerMeter: {fileID: 7180067156307174043}
   Agent: {fileID: 3160894530039119532}
   dropper: {fileID: 848695909115927668}
   animator: {fileID: 1608284013549844060}
@@ -1178,6 +1184,7 @@ MonoBehaviour:
   dbgWeaponStability: 0
   dbgWeaponBulletSpeed: 0
   dbgWeaponMaxMagazine: 0
+  dbgWeaponMaxReserveAmmo: 0
   dbgFinalDamage: 0
   dbgFinalArmor: 0
   dbgFinalMoveSpeed: 0
@@ -1189,8 +1196,10 @@ MonoBehaviour:
   dbgFinalStability: 0
   dbgFinalBulletSpeed: 0
   dbgFinalMaxMagazine: 0
+  dbgFinalMaxReserveAmmo: 0
   dbgFinalMaxHP: 0
   dbgFinalMaxStamina: 0
+  dbgFinalStaminaRegen: 0
   dbgFinalMaxEnergy: 0
 --- !u!114 &6926906578778700563
 MonoBehaviour:
@@ -1364,10 +1373,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cd5e1c1c1d46495aa64c589596a831b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillManager: {fileID: 5993987419785758348}
-  animBrain: {fileID: 2022206065969024217}
-  stateHub: {fileID: 6926906578778700563}
-  staggerMeter: {fileID: 7180067156307174043}
   indicatorAnchor: {fileID: 2482698924855760932}
   blockWindowVfxPrefab: {fileID: 8433079331162208932, guid: f107cbdff5c32dd43ab634d92cfca023, type: 3}
   blockWindowVfxAnchor: {fileID: 2482698924855760932}
@@ -1378,7 +1383,8 @@ MonoBehaviour:
   useAnchorRotationForBlockWindowVfx: 1
   allowBlockWindowVfxParticlesToFinish: 1
   blockWindowVfxExtraLife: 0
-  logBlocks: 0
+  logBlocks: 1
+  logPreCastFlow: 0
 --- !u!114 &-5386552744308611412
 MonoBehaviour:
   m_ObjectHideFlags: 0

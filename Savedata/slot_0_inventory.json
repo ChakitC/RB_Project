@@ -26,9 +26,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 19969,
-                "currentMagazine": 17,
-                "currentReserveAmmo": 188,
+                "shotCounter": 20201,
+                "currentMagazine": 3,
+                "currentReserveAmmo": 85,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 16,
                 "upgradeTier": 1,
@@ -136,8 +136,8 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 18226,
-                "currentMagazine": 26,
+                "shotCounter": 18330,
+                "currentMagazine": 29,
                 "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
@@ -309,8 +309,8 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 17646,
-                "currentMagazine": 10,
+                "shotCounter": 17708,
+                "currentMagazine": 0,
                 "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,

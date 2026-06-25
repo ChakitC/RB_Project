@@ -34,12 +34,33 @@ MonoBehaviour:
     _FadeDuration: 0
     _Speed: 1
     _Events:
-      _NormalizedTimes: []
+      _NormalizedTimes:
+      - 0.22344828
+      - NaN
       _Callbacks: []
-      _Names: []
+      _Names:
+      - {fileID: 11400000, guid: a1d9c7b1f0f54a2b8c1d6e7f90123456, type: 2}
     _Clip: {fileID: -5924742034376740567, guid: 02ffae2fd2bd8ff41af2e8787ff4aabc, type: 3}
     _NormalizedStartTime: NaN
   castPointNormalized: 0.3531141
+  skillVfxEvents: []
+  isCutsceneSkill: 0
+  cutsceneDef:
+    characterCutsceneClip:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    cameraCutsceneClip: {fileID: 0}
+    worldSlowScale: 0.05
+    fadeInDuration: 0.08
+    fadeOutDuration: 0.12
+    barThickness: 0.08
+    cutsceneVfxEvents: []
   blockablePreCast: 0
   preCastOpenTimelineEvent: 200
   preCastCloseTimelineEvent: 201

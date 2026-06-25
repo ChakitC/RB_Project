@@ -42,7 +42,7 @@ MonoBehaviour:
   baseStaggerPower: 10
   baseManaCost: 0
   baseCastTime: 0.5
-  baseCooldown: 10
+  baseCooldown: 2
   baseCritChance: 5
   baseProjectilesCount: 1
   projectileSpeed: 25
@@ -82,6 +82,24 @@ MonoBehaviour:
     loopKey: 
     extraLife: 0
     allowParticlesToFinish: 1
+    animClip: {fileID: 0}
+  isCutsceneSkill: 0
+  cutsceneDef:
+    characterCutsceneClip:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    cameraCutsceneClip: {fileID: 0}
+    worldSlowScale: 0.05
+    fadeInDuration: 0.08
+    fadeOutDuration: 0.12
+    barThickness: 0.08
+    cutsceneVfxEvents: []
   blockablePreCast: 1
   preCastOpenTimelineEvent: 200
   preCastCloseTimelineEvent: 201

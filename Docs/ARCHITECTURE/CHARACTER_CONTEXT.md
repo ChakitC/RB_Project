@@ -11,8 +11,9 @@ until there is a dedicated rename task.
   manager, field ally manager, chain attack coordinator, party command, and UI.
 - `AllyContext`: ally-only references such as `AITargetSensor`, `NavMeshAgent`,
   and `AgentMoveDriver`.
-- `EnemyContext`: enemy-only references such as enemy `NavMeshAgent`, collider,
-  dropper, animator, and forced infinite reserve ammo setting.
+- `EnemyContext`: enemy-only references such as enemy `NavMeshAgent`,
+  `StaggerMeter`, collider, dropper, animator, and forced infinite reserve ammo
+  setting.
 - `CharactorContext.cs`: legacy alias only. Do not add new logic there.
 
 ## Base Context Responsibilities

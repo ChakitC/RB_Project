@@ -1,4 +1,5 @@
 using System;
+using Opsive.BehaviorDesigner.Runtime;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -12,6 +13,10 @@ public class AllyContext : CharacteContext
     public NavMeshAgent  agent;
 
     public AgentMoveDriver AgentMoveDriver;
+
+    public BehaviorTree BehaviorTree;
+
+    public AIAimTargetDriver AimTargetDriver;
 
     public override AITargetIdentity TargetIdentity => AITargetIdentity.Companion;
 
@@ -32,6 +37,15 @@ public class AllyContext : CharacteContext
 
         if (AgentMoveDriver == null)
             AgentMoveDriver = ResolveActorComponent(AgentMoveDriver);
+
+        if (BehaviorTree == null)
+            BehaviorTree = ResolveActorComponent(BehaviorTree);
+
+        if (AimTargetDriver == null)
+            AimTargetDriver = ResolveActorComponent(AimTargetDriver);
+
+        if (AimTargetDriver == null && Application.isPlaying)
+            AimTargetDriver = gameObject.AddComponent<AIAimTargetDriver>();
     }
 
     public override bool ShouldBeInMoveState()

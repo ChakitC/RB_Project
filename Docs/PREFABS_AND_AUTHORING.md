@@ -512,6 +512,12 @@ it through context:
 Avoid adding duplicate serialized peer-component fields across modules when the
 context can already resolve the component.
 
+`FieldAllyMember` only needs its actor context plus chain-specific authoring
+references. Do not bind `HealthSystem`, `AITargetInfo`, `Rigidbody`,
+`CharacterController`, `CharacterAnimBrain`, `NavMeshAgent`, `BehaviorTree`, or
+`AIAimTargetDriver` directly on the component. Shared modules are resolved
+through `CharacteContext`; ally-only modules are resolved through `AllyContext`.
+
 ## Player Prefab Expectations
 
 Player prefabs commonly need:
@@ -627,11 +633,15 @@ task.
   binding `<Keyboard>/g`. Wire the `PlayerInput` event to
   `PlayerInputHandler.OnInterruptionCommand`.
 - Configure `targetSearchMask` and `targetSearchRadius` on the controller.
+- Keep `logInterruptionFlow` disabled for normal play. Enable it on the test
+  scene instance when diagnosing command target/ally selection.
 
 ### Ally Prefab (participating allies)
 
 - Requires: `AllyContext`, `FieldAllyMember`, `CharacterSkillManager`,
   `CharacterAnimBrain`, `AIAimTargetDriver`, `NavMeshAgent`, `BehaviorTree`.
+- Bind `BehaviorTree` and `AIAimTargetDriver` on `AllyContext`, or allow
+  `AllyContext.ResolveReferences()` to resolve them from the actor hierarchy.
 - Add `AllyInterruptionController` component.
 - Assign `interruptionSkill`: a `CharacterSkillEntry` pointing at a
   `PrefabHitboxSkillPayloadDef` skill whose animation clip has a `HitStart`
@@ -640,14 +650,20 @@ task.
 - Configure knockback settings: `knockbackDistance` > 0, `knockbackDuration` > 0.
 - Allies without a configured `AllyInterruptionController` or missing
   skill/profile are simply never selected for interruption.
+- Keep `logInterruptionFlow` disabled for normal play. Enable it on the test
+  scene instance to trace warp, skill, impact, fallback, and cleanup.
 
 ### Enemy / Target Prefab
 
 - Requires: `CharacterSkillManager`, `PreCastBlockController`,
   `CharacterKnockbackMotor`.
+- Keep one `PreCastBlockController` per enemy actor. Bind `StaggerMeter` on
+  `EnemyContext`, or allow `EnemyContext.ResolveReferences()` to resolve it.
 - The blockable skill must have `BlockablePreCast` enabled on its
   `SkillGemDefinition` and correct `PreCastOpen` / `PreCastClose` timeline
   events.
 - The skill's cast point must be gated by the cast-moment Animancer event
   (the default pending-cast path). The Pre-Cast Hold mechanism freezes the
   playhead before this event fires.
+- Keep `logPreCastFlow` disabled for normal play. Enable it on the test scene
+  instance to trace the cast window and block reservation lifecycle.

@@ -26,19 +26,23 @@ public sealed class AllyInterruptionController : MonoBehaviour
     [Header("Timeout")]
     [SerializeField, Min(0.1f)] private float impactTimeoutSeconds = 2f;
 
+    [Header("Debug")]
+    [SerializeField] private bool logInterruptionFlow;
+
     State _state;
     InterruptionTargetContext _target;
     PreCastBlockReservation _blockReservation;
     int _activeRequestId;
     float _timeoutTimer;
 
-    CharacteContext _ctx;
+    AllyContext _ctx;
     CharacterAnimBrain _animBrain;
     CharacterSkillManager _skillManager;
     BehaviorTree _behaviorTree;
     NavMeshAgent _agent;
     AIAimTargetDriver _aimDriver;
     Transform _actorTransform;
+    ASPHelperDitherFader _actorFader;
 
     bool _btWasEnabled;
     bool _btSuspended;
@@ -46,6 +50,10 @@ public sealed class AllyInterruptionController : MonoBehaviour
     bool _savedAgentStopped;
     bool _savedAgentUpdatePosition;
     bool _savedAgentUpdateRotation;
+    bool _rigidbodyOverrideActive;
+    bool _savedRigidbodyIsKinematic;
+    bool _savedRigidbodyUseGravity;
+    bool _visualHiddenForSnap;
 
     public bool IsExecuting => _state != State.Idle;
 
@@ -57,9 +65,12 @@ public sealed class AllyInterruptionController : MonoBehaviour
     void OnDisable()
     {
         if (_state == State.Impact)
+        {
+            LogFlow("disabled after impact; restoring autonomy");
             CompleteAndRestore();
+        }
         else if (_state != State.Idle)
-            RunFallback();
+            RunFallback("Disabled");
     }
 
     void Update()
@@ -68,7 +79,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
         _timeoutTimer -= Time.deltaTime;
         if (_timeoutTimer <= 0f)
-            RunFallback();
+            RunFallback("ImpactTimeout");
     }
 
     public bool IsReadyForInterruption()
@@ -95,36 +106,61 @@ public sealed class AllyInterruptionController : MonoBehaviour
             _actorTransform != null ? _actorTransform.rotation : Quaternion.identity,
             out pos,
             out rot,
-            probeCollider: fieldAllyMember != null ? fieldAllyMember.ChainTeleportProbeColliderRef : null,
+            probeCollider: _ctx != null && _ctx.ColliderRefs != null
+                ? _ctx.ColliderRefs.CharacterPositionCollider
+                : null,
             probeRoot: _actorTransform);
     }
 
     public bool BeginInterruption(InterruptionTargetContext target, PreCastBlockReservation blockReservation, Vector3 safePos, Quaternion safeRot)
     {
         ResolveRefs();
-        if (_state != State.Idle) return false;
+        if (_state != State.Idle)
+        {
+            LogFlow($"begin rejected reason=StateNotIdle state={_state}", warning: true);
+            return false;
+        }
 
         _target = target;
         _blockReservation = blockReservation;
         _state = State.Reserved;
+        LogFlow(
+            $"begin target='{ResolveName(target.Transform)}' targetRequestId={blockReservation.RequestId} reservationId={blockReservation.ReservationId} safePosition={safePos}");
 
         SuspendAutonomy();
 
-        WarpToPosition(safePos, safeRot);
+        HideVisualForSnap();
+        ApplyActorPose(safePos, safeRot);
         FaceTarget();
         LockAim();
         _state = State.Warping;
+        LogFlow(
+            $"snap applied targetRequestId={blockReservation.RequestId} reservationId={blockReservation.ReservationId} position={safePos}");
 
-        var result = _skillManager.TryStartExternalSkill(interruptionSkill, "interruption");
+        if (_skillManager == null)
+        {
+            LogFlow("skill start rejected reason=MissingSkillManager", warning: true);
+            RunFallback("MissingSkillManager");
+            return false;
+        }
+
+        var result = _skillManager.TryStartExternalSkill(
+            interruptionSkill,
+            "interruption",
+            CombatTimelineEventName.HitStart);
         if (!result.Started)
         {
-            RunFallback();
+            LogFlow($"skill start rejected kind={result.Kind}", warning: true);
+            RunFallback($"SkillStart:{result.Kind}");
             return false;
         }
 
         _activeRequestId = result.RequestId;
         _state = State.Casting;
         _timeoutTimer = impactTimeoutSeconds;
+        LogFlow(
+            $"skill started kind={result.Kind} allyRequestId={result.RequestId} targetRequestId={blockReservation.RequestId} reservationId={blockReservation.ReservationId}");
+        BeginVisualFadeIn();
 
         if (_animBrain != null)
         {
@@ -140,6 +176,8 @@ public sealed class AllyInterruptionController : MonoBehaviour
         if (_state != State.Casting) return;
         if (requestId != _activeRequestId) return;
         if (eventName != CombatTimelineEventName.HitStart) return;
+        LogFlow(
+            $"timeline event={eventName} allyRequestId={requestId} targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}");
         OnImpact();
     }
 
@@ -149,7 +187,18 @@ public sealed class AllyInterruptionController : MonoBehaviour
         UnsubscribeImpactTimeline();
 
         if (_blockReservation.IsValid && _blockReservation.Controller != null)
-            _blockReservation.Controller.CompleteReservedBlock(_blockReservation);
+        {
+            ReservedBlockResult result = _blockReservation.Controller.CompleteReservedBlock(_blockReservation);
+            LogFlow(
+                $"impact block result={result} allyRequestId={_activeRequestId} targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}",
+                warning: result != ReservedBlockResult.Success);
+        }
+        else
+        {
+            LogFlow(
+                $"impact block result={ReservedBlockResult.InvalidReservation} allyRequestId={_activeRequestId}",
+                warning: true);
+        }
 
         bool targetAlive = _target.Health != null && _target.Health.IsAlive;
         if (targetAlive && _target.Knockback != null && _actorTransform != null && _target.Transform != null)
@@ -196,7 +245,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
         if (_state == State.Casting)
         {
-            RunFallback();
+            RunFallback("SkillInterrupted");
             return;
         }
 
@@ -207,17 +256,25 @@ public sealed class AllyInterruptionController : MonoBehaviour
     void CompleteAndRestore()
     {
         _state = State.Completed;
+        LogFlow(
+            $"completed allyRequestId={_activeRequestId} targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}");
         Cleanup();
     }
 
-    void RunFallback()
+    void RunFallback(string reason)
     {
         UnsubscribeSkillEvents();
+        LogFlow(
+            $"fallback reason={reason} state={_state} allyRequestId={_activeRequestId} targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}",
+            warning: true);
 
         if (_blockReservation.IsValid && _blockReservation.Controller != null)
         {
             bool targetAlive = _target.Health != null && _target.Health.IsAlive;
-            _blockReservation.Controller.CompleteReservedBlock(_blockReservation);
+            ReservedBlockResult result = _blockReservation.Controller.CompleteReservedBlock(_blockReservation);
+            LogFlow(
+                $"fallback block result={result} targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}",
+                warning: result != ReservedBlockResult.Success);
 
             if (targetAlive && _target.Knockback != null && _actorTransform != null && _target.Transform != null)
             {
@@ -241,8 +298,14 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     void Cleanup()
     {
+        State finalState = _state;
+        int allyRequestId = _activeRequestId;
+        int targetRequestId = _blockReservation.RequestId;
+        int reservationId = _blockReservation.ReservationId;
+
         UnsubscribeSkillEvents();
         ClearAim();
+        RestoreVisibleState();
         RestoreAutonomy();
         ReleaseAllyReservation();
 
@@ -251,6 +314,8 @@ public sealed class AllyInterruptionController : MonoBehaviour
         _activeRequestId = 0;
         _timeoutTimer = 0f;
         _state = State.Idle;
+        LogFlow(
+            $"cleanup finalState={finalState} allyRequestId={allyRequestId} targetRequestId={targetRequestId} reservationId={reservationId} autonomyRestored=true");
     }
 
     void SuspendAutonomy()
@@ -275,6 +340,18 @@ public sealed class AllyInterruptionController : MonoBehaviour
             _agent.updateRotation = false;
             _agentOverrideActive = true;
         }
+
+        Rigidbody actorRigidbody = _ctx != null ? _ctx.rb : null;
+        if (actorRigidbody != null)
+        {
+            _savedRigidbodyIsKinematic = actorRigidbody.isKinematic;
+            _savedRigidbodyUseGravity = actorRigidbody.useGravity;
+            actorRigidbody.linearVelocity = Vector3.zero;
+            actorRigidbody.angularVelocity = Vector3.zero;
+            actorRigidbody.useGravity = false;
+            actorRigidbody.isKinematic = true;
+            _rigidbodyOverrideActive = true;
+        }
     }
 
     void RestoreAutonomy()
@@ -296,18 +373,65 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
             _agentOverrideActive = false;
         }
+
+        if (_rigidbodyOverrideActive)
+        {
+            Rigidbody actorRigidbody = _ctx != null ? _ctx.rb : null;
+            if (actorRigidbody != null)
+            {
+                actorRigidbody.linearVelocity = Vector3.zero;
+                actorRigidbody.angularVelocity = Vector3.zero;
+                actorRigidbody.useGravity = _savedRigidbodyUseGravity;
+                actorRigidbody.isKinematic = _savedRigidbodyIsKinematic;
+            }
+
+            _rigidbodyOverrideActive = false;
+        }
     }
 
-    void WarpToPosition(Vector3 pos, Quaternion rot)
+    void ApplyActorPose(Vector3 pos, Quaternion rot)
     {
-        if (_actorTransform != null)
+        CharacterController characterController = _ctx != null ? _ctx.cc : null;
+        bool restoreCharacterController = characterController != null && characterController.enabled;
+        if (restoreCharacterController)
+            characterController.enabled = false;
+
+        Rigidbody actorRigidbody = _ctx != null ? _ctx.rb : null;
+        if (actorRigidbody != null)
         {
-            _actorTransform.position = pos;
-            _actorTransform.rotation = rot;
+            actorRigidbody.linearVelocity = Vector3.zero;
+            actorRigidbody.angularVelocity = Vector3.zero;
+            actorRigidbody.position = pos;
+            actorRigidbody.rotation = rot;
         }
 
+        if (_actorTransform != null)
+            _actorTransform.SetPositionAndRotation(pos, rot);
+
+        Physics.SyncTransforms();
+
+        if (restoreCharacterController && characterController != null)
+            characterController.enabled = true;
+
         if (_agent != null && _agent.enabled)
-            _agent.Warp(pos);
+        {
+            if (_agent.isOnNavMesh)
+            {
+                _agent.nextPosition = pos;
+            }
+            else if (NavMesh.SamplePosition(pos, out NavMeshHit navHit, 1f, NavMesh.AllAreas))
+            {
+                Vector3 snappedPosition = navHit.position;
+                if (_actorTransform != null)
+                    _actorTransform.SetPositionAndRotation(snappedPosition, rot);
+                if (actorRigidbody != null)
+                    actorRigidbody.position = snappedPosition;
+
+                _agent.Warp(snappedPosition);
+                _agent.nextPosition = snappedPosition;
+                Physics.SyncTransforms();
+            }
+        }
     }
 
     void FaceTarget()
@@ -317,7 +441,37 @@ public sealed class AllyInterruptionController : MonoBehaviour
         Vector3 dir = _target.Transform.position - _actorTransform.position;
         dir.y = 0f;
         if (dir.sqrMagnitude > 0.0001f)
-            _actorTransform.rotation = Quaternion.LookRotation(dir, Vector3.up);
+            ApplyActorPose(_actorTransform.position, Quaternion.LookRotation(dir, Vector3.up));
+    }
+
+    void HideVisualForSnap()
+    {
+        if (_actorFader == null || !_actorFader.gameObject.activeInHierarchy)
+            return;
+
+        _actorFader.SetHiddenImmediate();
+        _visualHiddenForSnap = true;
+        LogFlow("visual hidden for snap");
+    }
+
+    void BeginVisualFadeIn()
+    {
+        if (!_visualHiddenForSnap || _actorFader == null)
+            return;
+
+        _visualHiddenForSnap = false;
+        _actorFader.BeginAnimationLifecycle(hideOnAnimationComplete: false);
+        LogFlow("fade-in started");
+    }
+
+    void RestoreVisibleState()
+    {
+        if (!_visualHiddenForSnap)
+            return;
+
+        _visualHiddenForSnap = false;
+        _actorFader?.BeginAnimationLifecycle(hideOnAnimationComplete: false);
+        LogFlow("visibility restored after interrupted snap");
     }
 
     void LockAim()
@@ -359,26 +513,42 @@ public sealed class AllyInterruptionController : MonoBehaviour
             fieldAllyMember = GetComponent<FieldAllyMember>();
 
         if (fieldAllyMember != null)
+            _actorFader = fieldAllyMember.ActorFaderRef;
+
+        if (_ctx == null)
+            TryGetComponent(out _ctx);
+        if (_ctx == null)
+            _ctx = GetComponentInParent<AllyContext>();
+        if (_ctx == null && fieldAllyMember != null)
+            _ctx = fieldAllyMember.ActorContextRef as AllyContext;
+
+        if (_ctx != null)
         {
-            _ctx = fieldAllyMember.ActorContextRef;
-            _animBrain = fieldAllyMember.AnimBrainRef;
-            _skillManager = fieldAllyMember.SkillManager;
-            _behaviorTree = fieldAllyMember.BehaviorTreeRef;
-            _agent = fieldAllyMember.AgentRef;
-            _aimDriver = fieldAllyMember.AimTargetDriverRef;
-            _actorTransform = fieldAllyMember.TransformRef;
+            _ctx.ResolveReferences();
+            _animBrain = _ctx.AnimBrain;
+            _skillManager = _ctx.SkillManager;
+            _behaviorTree = _ctx.BehaviorTree;
+            _agent = _ctx.agent;
+            _aimDriver = _ctx.AimTargetDriver;
         }
+
+        _actorTransform = _ctx != null ? _ctx.transform : transform;
+    }
+
+    void LogFlow(string message, bool warning = false)
+    {
+        if (!logInterruptionFlow)
+            return;
+
+        string formatted = $"[PreCast.Ally] ally='{name}' {message}";
+        if (warning)
+            Debug.LogWarning(formatted, this);
         else
-        {
-            if (_ctx == null) TryGetComponent(out _ctx);
-            if (_ctx == null) _ctx = GetComponentInParent<CharacteContext>();
-            if (_ctx != null)
-            {
-                _ctx.ResolveReferences();
-                _animBrain = _ctx.AnimBrain;
-                _skillManager = _ctx.SkillManager;
-            }
-            _actorTransform = _ctx != null ? _ctx.transform : transform;
-        }
+            Debug.Log(formatted, this);
+    }
+
+    static string ResolveName(Transform target)
+    {
+        return target != null ? target.name : "<none>";
     }
 }

@@ -26,6 +26,7 @@ internal sealed class PendingSequenceExecution
     public int attackSkillLevel;
     public bool ignoreResourceCosts;
     public bool entrySnapApplied;
+    public TargetedSkillPlacementResult placementResult;
     public bool attackPayloadReleased;
     public bool continueReleased;
     public bool releaseReservationOnComplete;

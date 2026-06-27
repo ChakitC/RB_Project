@@ -40,6 +40,7 @@ public sealed class PreCastBlockController : MonoBehaviour
     SkillPreCastHoldHandle _holdHandle;
     int _reservationId;
     int _reservationCounter;
+    bool _reservationWindowWasOpen;
 
     public bool HasActiveBlockableCast => hasActiveBlockableCast;
     public bool IsPreCastWindowOpen => preCastWindowOpen;
@@ -157,6 +158,7 @@ public sealed class PreCastBlockController : MonoBehaviour
         _reservationSource = source;
         _holdHandle = hold;
         _reservationId = ++_reservationCounter;
+        _reservationWindowWasOpen = preCastWindowOpen;
 
         ClosePreCastWindow("Reservation");
 
@@ -189,6 +191,47 @@ public sealed class PreCastBlockController : MonoBehaviour
         return result;
     }
 
+    public bool CancelReservedBlock(PreCastBlockReservation reservation)
+    {
+        if (!_hasReservation ||
+            reservation.ReservationId != _reservationId ||
+            reservation.RequestId != _reservedCast.RequestId)
+        {
+            LogFlow(
+                $"reservation cancellation rejected suppliedRequestId={reservation.RequestId} " +
+                $"suppliedReservationId={reservation.ReservationId} activeRequestId={_reservedCast.RequestId} " +
+                $"activeReservationId={_reservationId}");
+            return false;
+        }
+
+        ActiveSkillCastInfo reservedCast = _reservedCast;
+        int reservationId = _reservationId;
+        bool restoreWindow = _reservationWindowWasOpen && CanRestoreReservedWindow(reservedCast.RequestId);
+
+        ReleaseHoldInternal();
+        ClearReservationState();
+
+        if (restoreWindow)
+            OpenPreCastWindow("ReservationCancelled");
+
+        LogFlow(
+            $"reservation cancelled requestId={reservedCast.RequestId} reservationId={reservationId} " +
+            $"windowRestored={restoreWindow}");
+        return true;
+    }
+
+    bool CanRestoreReservedWindow(int requestId)
+    {
+        if (!MatchesActiveCast(requestId) || activeSkillDef == null || !activeSkillDef.BlockablePreCast)
+            return false;
+
+        CharacterSkillManager skillManager = ctx != null ? ctx.SkillManager : null;
+        return skillManager != null &&
+               skillManager.TryGetActiveCast(out ActiveSkillCastInfo currentCast) &&
+               currentCast.RequestId == requestId &&
+               !currentCast.Released;
+    }
+
     void ReleaseHoldInternal()
     {
         CharacterAnimBrain animBrain = ctx != null ? ctx.AnimBrain : null;
@@ -203,6 +246,7 @@ public sealed class PreCastBlockController : MonoBehaviour
         _reservedCast = default;
         _reservationSource = null;
         _reservationId = 0;
+        _reservationWindowWasOpen = false;
     }
 
     void CacheReferences()

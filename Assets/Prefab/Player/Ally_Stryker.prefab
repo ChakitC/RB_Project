@@ -1801,9 +1801,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c032ebca09343fd47b67f0a1b915de79, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  fieldAllyMember: {fileID: 0}
+  fieldAllyMember: {fileID: 1692569504618657093}
   interruptionSkill:
-    skillAsset: {fileID: 11400000, guid: 762b42e521970fa45a8d258e7d1a3a65, type: 2}
+    skillAsset: {fileID: 11400000, guid: f6a8de83801770146923403b369c8797, type: 2}
     skillLevel: 1
     supportAssets: []
     runtimeSkill:

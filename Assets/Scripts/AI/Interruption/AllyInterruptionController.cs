@@ -1,4 +1,5 @@
 using System;
+using Animancer;
 using Opsive.BehaviorDesigner.Runtime;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -13,6 +14,8 @@ public sealed class AllyInterruptionController : MonoBehaviour
     const float MotionPoseStablePositionEpsilon = 0.0025f;
     const float MotionPoseStableYawEpsilon = 0.25f;
     const float RequiredMotionPoseStableSeconds = 0.08f;
+    const float RootMotionImpactPositionTolerance = 0.05f;
+    const float RootMotionImpactYawTolerance = 2f;
 
     [Header("Refs")]
     [SerializeField] private FieldAllyMember fieldAllyMember;
@@ -70,6 +73,15 @@ public sealed class AllyInterruptionController : MonoBehaviour
     bool _visualHiddenForSnap;
     bool _hasAuthoredVisualPose;
     bool _blockCompletedSuccessfully;
+    bool _guaranteeCommitted;
+    bool _blockCompletionAttempted;
+    bool _impactReached;
+    bool _cleanupRunning;
+    ReservedBlockResult _blockCompletionResult;
+    TargetedSkillPlacementResult _placementResult;
+    Vector3 _originalActorPosition;
+    Quaternion _originalActorRotation;
+    bool _hasOriginalActorPose;
     Transform _rebaseMotionBone;
     Animator _rebaseAnimator;
     Vector3 _rebaseAnchorWorldPosition;
@@ -99,8 +111,10 @@ public sealed class AllyInterruptionController : MonoBehaviour
             LogFlow("disabled after impact; restoring autonomy");
             CompleteAndRestore();
         }
+        else if (_state != State.Idle && _guaranteeCommitted)
+            RunGuaranteedFallback("Disabled");
         else if (_state != State.Idle)
-            RunFallback("Disabled");
+            RollbackBeforeGuarantee("Disabled");
     }
 
     void Update()
@@ -109,7 +123,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
         _timeoutTimer -= Time.deltaTime;
         if (_timeoutTimer <= 0f)
-            RunFallback("ImpactTimeout");
+            RunGuaranteedFallback("ImpactTimeout");
     }
 
     void LateUpdate()
@@ -131,26 +145,98 @@ public sealed class AllyInterruptionController : MonoBehaviour
         return _skillManager.CanStartExternalSkill(interruptionSkill);
     }
 
-    public bool TryResolveSafePose(Transform targetAnchor, out Vector3 pos, out Quaternion rot)
+    public bool TryResolvePlacement(
+        Transform targetAnchor,
+        Transform targetRoot,
+        out TargetedSkillPlacementResult result)
     {
         ResolveRefs();
-        pos = Vector3.zero;
-        rot = Quaternion.identity;
-        if (targetAnchor == null || teleportProfile == null) return false;
+        if (teleportProfile == null)
+        {
+            result = TargetedSkillPlacementResult.Failed("Teleport profile is missing.");
+            return false;
+        }
 
-        return ChainAttackTeleportUtility.TryResolveTeleportPose(
+        SkillGemDefinition skillDef = interruptionSkill != null ? interruptionSkill.skillAsset : null;
+        if (skillDef == null)
+        {
+            result = TargetedSkillPlacementResult.Failed("Interruption skill asset is missing.");
+            return false;
+        }
+
+        if (_animBrain == null)
+        {
+            result = TargetedSkillPlacementResult.Failed("CharacterAnimBrain is missing.");
+            return false;
+        }
+
+        if (!_animBrain.TryResolveSkillAnimationClip(skillDef, out AnimationClip attackClip) ||
+            attackClip == null)
+        {
+            result = TargetedSkillPlacementResult.Failed(
+                $"Skill '{skillDef.name}' has no resolvable animation clip.");
+            return false;
+        }
+
+        if (!_animBrain.TryGetRootMotionSamplingAnimator(out Animator samplingAnimator))
+        {
+            result = TargetedSkillPlacementResult.Failed("Root-motion sampling Animator is missing.");
+            return false;
+        }
+
+        float impactNormalized = ResolveInterruptionImpactNormalized(skillDef);
+        Collider probeCollider = _ctx != null && _ctx.ColliderRefs != null
+            ? _ctx.ColliderRefs.CharacterPositionCollider
+            : null;
+
+        bool resolved = TargetedSkillPlacementResolver.TryResolve(
             teleportProfile,
             targetAnchor,
             _actorTransform != null ? _actorTransform.rotation : Quaternion.identity,
-            out pos,
-            out rot,
-            probeCollider: _ctx != null && _ctx.ColliderRefs != null
-                ? _ctx.ColliderRefs.CharacterPositionCollider
-                : null,
-            probeRoot: _actorTransform);
+            attackClip,
+            samplingAnimator,
+            impactNormalized,
+            faceTarget: true,
+            teleportProfile.requireNavMeshAtAnchor,
+            teleportProfile.navMeshSampleDistance,
+            probeCollider,
+            _actorTransform,
+            targetRoot,
+            out result);
+
+        if (resolved)
+        {
+            LogFlow(
+                $"placement accepted mode={result.Mode} yaw={result.AcceptedYaw:0.###} " +
+                $"start={result.StartPosition} impact={result.ImpactPosition} impactN={impactNormalized:0.###}");
+        }
+        else
+            LogFlow($"placement failed reason='{result.FailureReason}'", warning: true);
+
+        return resolved;
     }
 
-    public bool BeginInterruption(InterruptionTargetContext target, PreCastBlockReservation blockReservation, Vector3 safePos, Quaternion safeRot)
+    static float ResolveInterruptionImpactNormalized(SkillGemDefinition skillDef)
+    {
+        if (skillDef == null)
+            return 0.35f;
+
+        AnimancerEvent.Sequence events = skillDef.skillClip != null ? skillDef.skillClip.Events : null;
+        StringReference hitStartName = CombatTimelineEventNames.ToStringReference(CombatTimelineEventName.HitStart);
+        if (events != null && hitStartName != null)
+        {
+            int index = events.IndexOf(hitStartName);
+            if (index >= 0)
+                return Mathf.Clamp(events[index].normalizedTime, 0f, 0.999f);
+        }
+
+        return skillDef.GetCastPointNormalized();
+    }
+
+    public bool BeginInterruption(
+        InterruptionTargetContext target,
+        PreCastBlockReservation blockReservation,
+        TargetedSkillPlacementResult placementResult)
     {
         ResolveRefs();
         if (_state != State.Idle)
@@ -159,43 +245,61 @@ public sealed class AllyInterruptionController : MonoBehaviour
             return false;
         }
 
+        if (!blockReservation.IsValid || !placementResult.IsValid)
+        {
+            LogFlow("begin rejected reason=InvalidReservationOrPlacement", warning: true);
+            return false;
+        }
+
         _target = target;
         _blockReservation = blockReservation;
+        _placementResult = placementResult;
         _blockCompletedSuccessfully = false;
+        _guaranteeCommitted = false;
+        _blockCompletionAttempted = false;
+        _blockCompletionResult = default;
+        _impactReached = false;
+        CacheOriginalActorPose();
         CacheVisualRootPose();
         _state = State.Reserved;
         LogFlow(
-            $"begin target='{ResolveName(target.Transform)}' targetRequestId={blockReservation.RequestId} reservationId={blockReservation.ReservationId} safePosition={safePos}");
+            $"begin target='{ResolveName(target.Transform)}' targetRequestId={blockReservation.RequestId} " +
+            $"reservationId={blockReservation.ReservationId} mode={placementResult.Mode} " +
+            $"startPosition={placementResult.StartPosition}");
 
         SuspendAutonomy();
 
         HideVisualForSnap();
-        ApplyActorPose(safePos, safeRot);
-        FaceTarget();
+        ApplyActorPose(placementResult.StartPosition, placementResult.StartRotation);
+        if (!placementResult.UsesRootMotion)
+            FaceTarget();
         LockAim();
         _state = State.Warping;
         LogFlow(
-            $"snap applied targetRequestId={blockReservation.RequestId} reservationId={blockReservation.ReservationId} position={safePos}");
+            $"snap applied targetRequestId={blockReservation.RequestId} " +
+            $"reservationId={blockReservation.ReservationId} position={placementResult.StartPosition}");
 
         if (_skillManager == null)
         {
             LogFlow("skill start rejected reason=MissingSkillManager", warning: true);
-            RunFallback("MissingSkillManager");
+            RollbackBeforeGuarantee("MissingSkillManager");
             return false;
         }
 
         var result = _skillManager.TryStartExternalSkill(
             interruptionSkill,
             "interruption",
-            CombatTimelineEventName.HitStart);
+            CombatTimelineEventName.HitStart,
+            usePlanarRootMotion: placementResult.UsesRootMotion);
         if (!result.Started)
         {
             LogFlow($"skill start rejected kind={result.Kind}", warning: true);
-            RunFallback($"SkillStart:{result.Kind}");
+            RollbackBeforeGuarantee($"SkillStart:{result.Kind}");
             return false;
         }
 
         _activeRequestId = result.RequestId;
+        _guaranteeCommitted = true;
         _state = State.Casting;
         _timeoutTimer = impactTimeoutSeconds;
         LogFlow(
@@ -205,7 +309,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
         if (_animBrain != null)
         {
             _animBrain.SkillTimelineEventRaised += OnTimelineEvent;
-            _animBrain.SkillCastInterrupted += OnSkillInterrupted;
+            _animBrain.PlaybackEvent += OnPlaybackEvent;
         }
 
         return true;
@@ -218,29 +322,52 @@ public sealed class AllyInterruptionController : MonoBehaviour
         if (eventName != CombatTimelineEventName.HitStart) return;
         LogFlow(
             $"timeline event={eventName} allyRequestId={requestId} targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}");
+        ValidateRootMotionImpactPose();
         OnImpact();
+    }
+
+    void ValidateRootMotionImpactPose()
+    {
+        if (!_placementResult.UsesRootMotion || _actorTransform == null)
+            return;
+
+        Vector3 actualPosition = _actorTransform.position;
+        Vector3 expectedPosition = _placementResult.ImpactPosition;
+        actualPosition.y = 0f;
+        expectedPosition.y = 0f;
+
+        float positionError = Vector3.Distance(actualPosition, expectedPosition);
+        float yawError = Mathf.Abs(Mathf.DeltaAngle(
+            _actorTransform.rotation.eulerAngles.y,
+            _placementResult.ImpactRotation.eulerAngles.y));
+
+        if (positionError <= RootMotionImpactPositionTolerance &&
+            yawError <= RootMotionImpactYawTolerance)
+        {
+            LogFlow(
+                $"root-motion impact matched sampled trajectory positionError={positionError:0.####}m yawError={yawError:0.###}deg");
+            return;
+        }
+
+        Debug.LogWarning(
+            $"[PreCast.Ally] Root-motion impact drifted from the sampled trajectory for '{name}' " +
+            $"(positionError={positionError:0.####}m, yawError={yawError:0.###}deg).",
+            this);
     }
 
     void OnImpact()
     {
         _state = State.Impact;
+        _impactReached = true;
         UnsubscribeImpactTimeline();
 
-        if (_blockReservation.IsValid && _blockReservation.Controller != null)
-        {
-            ReservedBlockResult result = _blockReservation.Controller.CompleteReservedBlock(_blockReservation);
-            _blockCompletedSuccessfully = result == ReservedBlockResult.Success;
-            LogFlow(
-                $"impact block result={result} allyRequestId={_activeRequestId} targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}",
-                warning: result != ReservedBlockResult.Success);
-        }
-        else
-        {
-            LogFlow(
-                $"impact block result={ReservedBlockResult.InvalidReservation} allyRequestId={_activeRequestId}",
-                warning: true);
-        }
+        ReservedBlockResult blockResult = CompleteReservedBlockOnce("HitStart");
+        if (blockResult == ReservedBlockResult.Success)
+            ApplyImpactKnockback();
+    }
 
+    void ApplyImpactKnockback()
+    {
         bool targetAlive = _target.Health != null && _target.Health.IsAlive;
         if (targetAlive && _target.Knockback != null && _actorTransform != null && _target.Transform != null)
         {
@@ -256,45 +383,41 @@ public sealed class AllyInterruptionController : MonoBehaviour
             if (kb.IsValid)
                 _target.Knockback.ApplyKnockback(kb, forceReplace: true);
         }
-
-        ScheduleRestore();
     }
 
-    void ScheduleRestore()
+    void OnPlaybackEvent(CharacterAnimBrain.PlaybackSignal signal)
     {
-        if (_animBrain != null)
+        if (signal.Kind != CharacterAnimBrain.PlaybackKind.Skill ||
+            signal.RequestId != _activeRequestId)
         {
-            _animBrain.SkillCompleted -= OnSkillCompleted;
-            _animBrain.SkillCompleted += OnSkillCompleted;
-        }
-        else
-        {
-            CompleteAndRestore();
-        }
-    }
-
-    void OnSkillCompleted()
-    {
-        if (_state != State.Impact) return;
-
-        if (_blockCompletedSuccessfully && TryBeginVisibleRootRebase())
             return;
+        }
 
-        CompleteAndRestore();
-    }
+        if (signal.Phase == CharacterAnimBrain.PlaybackPhase.Interrupted)
+        {
+            if (_state == State.Casting)
+                RunGuaranteedFallback("SkillInterrupted");
+            else if (_state == State.Impact)
+                CompleteAndRestore();
+            return;
+        }
 
-    void OnSkillInterrupted(int requestId)
-    {
-        if (requestId != _activeRequestId) return;
+        if (signal.Phase != CharacterAnimBrain.PlaybackPhase.Completed)
+            return;
 
         if (_state == State.Casting)
         {
-            RunFallback("SkillInterrupted");
+            RunGuaranteedFallback("SkillCompletedBeforeHitStart");
             return;
         }
 
-        if (_state == State.Impact)
-            CompleteAndRestore();
+        if (_state != State.Impact)
+            return;
+
+        if (_impactReached && _blockCompletedSuccessfully && TryBeginVisibleRootRebase())
+            return;
+
+        CompleteAndRestore();
     }
 
     void CompleteAndRestore()
@@ -305,43 +428,70 @@ public sealed class AllyInterruptionController : MonoBehaviour
         Cleanup();
     }
 
-    void RunFallback(string reason)
+    ReservedBlockResult CompleteReservedBlockOnce(string source)
     {
-        UnsubscribeSkillEvents();
+        if (_blockCompletionAttempted)
+            return _blockCompletionResult;
+
+        _blockCompletionAttempted = true;
+        ReservedBlockResult result = _blockReservation.IsValid &&
+                                     _blockReservation.Controller != null
+            ? _blockReservation.Controller.CompleteReservedBlock(_blockReservation)
+            : ReservedBlockResult.InvalidReservation;
+        _blockCompletionResult = result;
+        _blockCompletedSuccessfully = result == ReservedBlockResult.Success;
         LogFlow(
-            $"fallback reason={reason} state={_state} allyRequestId={_activeRequestId} targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}",
-            warning: true);
+            $"block completion source={source} result={result} allyRequestId={_activeRequestId} " +
+            $"targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}",
+            warning: result == ReservedBlockResult.InvalidReservation);
+        return result;
+    }
 
-        if (_blockReservation.IsValid && _blockReservation.Controller != null)
+    void RollbackBeforeGuarantee(string reason)
+    {
+        if (_guaranteeCommitted)
         {
-            bool targetAlive = _target.Health != null && _target.Health.IsAlive;
-            ReservedBlockResult result = _blockReservation.Controller.CompleteReservedBlock(_blockReservation);
-            LogFlow(
-                $"fallback block result={result} targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}",
-                warning: result != ReservedBlockResult.Success);
-
-            if (targetAlive && _target.Knockback != null && _actorTransform != null && _target.Transform != null)
-            {
-                var kb = KnockbackData.FromOrigin(
-                    _actorTransform.position,
-                    _target.Transform.position,
-                    knockbackDistance,
-                    knockbackDuration,
-                    knockbackReaction,
-                    knockbackInterruptActions,
-                    knockbackProgressCurve);
-
-                if (kb.IsValid)
-                    _target.Knockback.ApplyKnockback(kb, forceReplace: true);
-            }
+            RunGuaranteedFallback(reason);
+            return;
         }
 
+        LogFlow(
+            $"rollback reason={reason} state={_state} targetRequestId={_blockReservation.RequestId} " +
+            $"reservationId={_blockReservation.ReservationId}",
+            warning: true);
+        UnsubscribeSkillEvents();
+        _blockReservation.Controller?.CancelReservedBlock(_blockReservation);
+        RestoreOriginalActorPose();
         _state = State.Cancelled;
+        Cleanup();
+    }
+
+    void RunGuaranteedFallback(string reason)
+    {
+        if (!_guaranteeCommitted)
+        {
+            RollbackBeforeGuarantee(reason);
+            return;
+        }
+
+        LogFlow(
+            $"guaranteed fallback reason={reason} state={_state} allyRequestId={_activeRequestId} " +
+            $"targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}",
+            warning: true);
+
+        _state = State.Cancelled;
+        UnsubscribeSkillEvents();
+        StopActiveSkillPlayback();
+        CompleteReservedBlockOnce(reason);
         Cleanup();
     }
 
     void Cleanup()
     {
+        if (_cleanupRunning || _state == State.Idle)
+            return;
+
+        _cleanupRunning = true;
         if (_state == State.RebaseSettling)
             TryCommitVisibleRootRebase("cleanup", warning: true);
 
@@ -363,8 +513,15 @@ public sealed class AllyInterruptionController : MonoBehaviour
         _visualRoot = null;
         _hasAuthoredVisualPose = false;
         _blockCompletedSuccessfully = false;
+        _guaranteeCommitted = false;
+        _blockCompletionAttempted = false;
+        _blockCompletionResult = default;
+        _impactReached = false;
+        _placementResult = default;
+        _hasOriginalActorPose = false;
         ClearVisibleRootRebaseState();
         _state = State.Idle;
+        _cleanupRunning = false;
         LogFlow(
             $"cleanup finalState={finalState} allyRequestId={allyRequestId} targetRequestId={targetRequestId} reservationId={reservationId} autonomyRestored=true");
     }
@@ -438,6 +595,32 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
             _rigidbodyOverrideActive = false;
         }
+    }
+
+    void CacheOriginalActorPose()
+    {
+        _hasOriginalActorPose = _actorTransform != null;
+        if (!_hasOriginalActorPose)
+            return;
+
+        _originalActorPosition = _actorTransform.position;
+        _originalActorRotation = _actorTransform.rotation;
+    }
+
+    void RestoreOriginalActorPose()
+    {
+        if (!_hasOriginalActorPose)
+            return;
+
+        ApplyActorPose(_originalActorPosition, _originalActorRotation);
+        _hasOriginalActorPose = false;
+        LogFlow("original actor pose restored");
+    }
+
+    void StopActiveSkillPlayback()
+    {
+        if (_animBrain != null && _activeRequestId > 0)
+            _animBrain.CancelSkillCastRequest(_activeRequestId);
     }
 
     void ApplyActorPose(Vector3 pos, Quaternion rot)
@@ -780,8 +963,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
         if (_animBrain != null)
         {
             _animBrain.SkillTimelineEventRaised -= OnTimelineEvent;
-            _animBrain.SkillCompleted -= OnSkillCompleted;
-            _animBrain.SkillCastInterrupted -= OnSkillInterrupted;
+            _animBrain.PlaybackEvent -= OnPlaybackEvent;
         }
     }
 
@@ -833,4 +1015,5 @@ public sealed class AllyInterruptionController : MonoBehaviour
     {
         return target != null ? target.name : "<none>";
     }
+
 }

@@ -19,6 +19,13 @@ public class RootMotionNavMeshDriver : MonoBehaviour
     private bool _cachedAgentUpdatePosition;
     private bool _cachedAgentUpdateRotation;
     private bool _hasCachedAgentState;
+    private Transform _actorRoot;
+
+    Transform ActorRoot => _actorRoot != null
+        ? _actorRoot
+        : ctx != null
+            ? ctx.transform
+            : transform;
 
     void Awake()
     {
@@ -27,11 +34,41 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         if (!animator) animator = GetComponent<Animator>();
         if (!ctx) ctx = GetComponent<CharacteContext>();
         if (!ctx) ctx = GetComponentInParent<CharacteContext>();
+        _actorRoot = ctx != null ? ctx.transform : transform;
 
         if (animator)
             animator.applyRootMotion = false;
 
         _prevRM = brain && brain.RootMotionActive;
+    }
+
+    public void Configure(
+        CharacterAnimBrain animBrain,
+        NavMeshAgent navMeshAgent,
+        Animator sourceAnimator,
+        CharacteContext context,
+        Transform actorRoot,
+        RootMotionNavMeshDriver settingsSource = null)
+    {
+        if (settingsSource != null && settingsSource != this)
+        {
+            zeroY = settingsSource.zeroY;
+            applyRootRotation = settingsSource.applyRootRotation;
+            pushLayers = settingsSource.pushLayers;
+        }
+
+        brain = animBrain;
+        agent = navMeshAgent;
+        animator = sourceAnimator;
+        ctx = context;
+        _actorRoot = actorRoot != null
+            ? actorRoot
+            : context != null
+                ? context.transform
+                : transform;
+
+        if (animator)
+            animator.applyRootMotion = false;
     }
 
     void Update()
@@ -46,7 +83,7 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         }
 
         if (rm && agent && agent.enabled)
-            agent.nextPosition = transform.position;
+            agent.nextPosition = ActorRoot.position;
     }
 
     private void EnterRootMotion()
@@ -68,7 +105,7 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         agent.isStopped = true;
         agent.updatePosition = false;
         agent.updateRotation = false;
-        agent.nextPosition = transform.position;
+        agent.nextPosition = ActorRoot.position;
     }
 
     private void ExitRootMotion()
@@ -77,7 +114,7 @@ public class RootMotionNavMeshDriver : MonoBehaviour
             animator.applyRootMotion = false;
 
         if (agent && agent.enabled)
-            agent.nextPosition = transform.position;
+            agent.nextPosition = ActorRoot.position;
 
         if (_hasCachedAgentState && agent && agent.enabled)
         {
@@ -95,15 +132,19 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         if (!animator) return;
 
         Vector3 delta = animator.deltaPosition;
-        if (zeroY) delta.y = 0f;
+        if (zeroY || brain.RootMotionPlanarOnly) delta.y = 0f;
 
-        transform.position += delta;
+        Transform actorRoot = ActorRoot;
+        actorRoot.position += delta;
 
         if (agent && agent.enabled)
-            agent.nextPosition = transform.position;
+            agent.nextPosition = actorRoot.position;
 
-        if (applyRootRotation)
-            transform.rotation *= animator.deltaRotation;
+        if (applyRootRotation || brain.RootMotionYawActive)
+        {
+            float yawDelta = Mathf.DeltaAngle(0f, animator.deltaRotation.eulerAngles.y);
+            actorRoot.rotation *= Quaternion.AngleAxis(yawDelta, Vector3.up);
+        }
 
         if (pushLayers != 0)
             PushOverlappingCharacters();
@@ -138,10 +179,10 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         if (!agent || !agent.enabled) return;
         if (!agent.isOnNavMesh) return;
 
-        float d = Vector3.Distance(agent.nextPosition, transform.position);
+        float d = Vector3.Distance(agent.nextPosition, ActorRoot.position);
         if (d > warpIfDistanceGreaterThan)
-            agent.Warp(transform.position);
+            agent.Warp(ActorRoot.position);
         else
-            agent.nextPosition = transform.position;
+            agent.nextPosition = ActorRoot.position;
     }
 }

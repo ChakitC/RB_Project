@@ -660,7 +660,7 @@ MonoBehaviour:
   fieldAllyManager: {fileID: 2832843673297047600}
   chainAttackCoordinator: {fileID: 8702287995565794057}
   partyCommand: {fileID: 2720740744562527200}
-  interruptionCommand: {fileID: 0}
+  interruptionCommand: {fileID: 5084191306873448319}
   inventory: {fileID: 1173181556611555232}
   aimTarget: {fileID: 37773055136607646}
   maximumCommandPoints: 3
@@ -1454,9 +1454,7 @@ MonoBehaviour:
   manager: {fileID: 2832843673297047600}
   actorRoot: {fileID: 3749669808023046127}
   actorContext: {fileID: 1638387977988830713}
-  behaviorTree: {fileID: 0}
   skillUserProxy: {fileID: 6449575512280067904}
-  aimTargetDriver: {fileID: 0}
   actorFader: {fileID: 1668939218008690410}
   chainTeleportProbeCollider: {fileID: 0}
   componentsToDisableDuringSequence: []

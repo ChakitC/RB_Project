@@ -80,8 +80,12 @@ internal sealed class FieldAllyTransitionController
 
         ChainAttackStepDef step = execution.step;
 
-        if (step.enterMode == ChainActorEnterMode.InstantTeleportToTarget)
+        if (step.enterMode == ChainActorEnterMode.InstantTeleportToTarget ||
+            (step.moveMode == ChainActorMoveMode.WarpToLockedTargetAnchor &&
+             step.teleportProfile != null))
+        {
             return TryTeleportToEntryPose(execution);
+        }
 
         if (step.moveMode == ChainActorMoveMode.WarpToLockedTargetAnchor)
             return TryWarpToLockedTargetAnchor(step, ResolveExecutionTargetAnchor(execution));
@@ -94,6 +98,12 @@ internal sealed class FieldAllyTransitionController
         Transform targetAnchor = ResolveExecutionTargetAnchor(execution);
         if (execution == null || execution.step == null || targetAnchor == null)
             return false;
+
+        if (!TryApplyTargetedPlacement(execution, targetAnchor, out bool placementHandled))
+            return false;
+
+        if (placementHandled)
+            return true;
 
         if (execution.step.teleportProfile != null)
         {
@@ -142,6 +152,101 @@ internal sealed class FieldAllyTransitionController
             return false;
         }
 
+        return true;
+    }
+
+    bool TryApplyTargetedPlacement(
+        PendingSequenceExecution execution,
+        Transform targetAnchor,
+        out bool handled)
+    {
+        handled = false;
+
+        if (execution == null ||
+            execution.step == null ||
+            execution.step.teleportProfile == null ||
+            execution.attackSkillDef == null ||
+            owner.AnimBrainRef == null)
+        {
+            return true;
+        }
+
+        handled = true;
+        if (execution.placementResult.IsValid)
+        {
+            HideVisualForTeleport();
+            TeleportActorTo(
+                execution.placementResult.StartPosition,
+                execution.placementResult.StartRotation);
+            if (execution.placementResult.UsesRootMotion ||
+                ValidateEntryCandidatePose(execution))
+            {
+                return true;
+            }
+
+            TeleportActorTo(execution.recordedOriginPosition, execution.recordedOriginRotation);
+            RevealVisualAfterTeleportIfNeeded();
+            return false;
+        }
+
+        if (!owner.AnimBrainRef.TryResolveChainSkillAnimationClip(
+                execution.attackSkillDef,
+                out AnimationClip attackClip) ||
+            attackClip == null)
+        {
+            owner.LogExecution(
+                $"Targeted placement could not resolve the attack clip for step '{execution.step.RuntimeId}'.");
+            handled = true;
+            return false;
+        }
+
+        if (!owner.AnimBrainRef.TryGetRootMotionSamplingAnimator(out Animator samplingAnimator))
+        {
+            owner.LogExecution(
+                $"Targeted placement failed for step '{execution.step.RuntimeId}': missing sampling Animator.");
+            handled = true;
+            return false;
+        }
+
+        bool faceTarget =
+            execution.step.faceLockedTargetOnStart ||
+            execution.step.faceLockedTargetOnCast;
+
+        if (!TargetedSkillPlacementResolver.TryResolve(
+                execution.step.teleportProfile,
+                targetAnchor,
+                owner.TransformRef.rotation,
+                attackClip,
+                samplingAnimator,
+                execution.attackSkillDef.GetCastPointNormalized(),
+                faceTarget,
+                execution.step.requireNavMeshAtWarpPoint,
+                execution.step.warpNavMeshSampleDistance,
+                owner.ChainTeleportProbeColliderRef,
+                owner.TransformRef,
+                execution.lockedTarget,
+                out TargetedSkillPlacementResult placementResult))
+        {
+            owner.LogExecution(
+                $"Step '{execution.step.RuntimeId}' targeted placement failed: " +
+                placementResult.FailureReason);
+            return false;
+        }
+
+        HideVisualForTeleport();
+        TeleportActorTo(placementResult.StartPosition, placementResult.StartRotation);
+        if (!placementResult.UsesRootMotion && !ValidateEntryCandidatePose(execution))
+        {
+            TeleportActorTo(execution.recordedOriginPosition, execution.recordedOriginRotation);
+            RevealVisualAfterTeleportIfNeeded();
+            return false;
+        }
+
+        execution.placementResult = placementResult;
+        owner.LogExecution(
+            $"Resolved targeted entry for step '{execution.step.RuntimeId}' mode={placementResult.Mode} " +
+            $"yaw={placementResult.AcceptedYaw:0.###}, start={placementResult.StartPosition}, " +
+            $"impact={placementResult.ImpactPosition}.");
         return true;
     }
 

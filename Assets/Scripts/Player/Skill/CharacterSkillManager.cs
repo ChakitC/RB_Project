@@ -334,10 +334,11 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     public SkillCastStartResult TryStartExternalSkill(
         CharacterSkillEntry entry,
         string debugSource,
-        CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None)
+        CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None,
+        bool usePlanarRootMotion = false)
     {
         CacheReferences();
-        return TryBeginEntryCast(entry, debugSource, requiredTimelineEvent);
+        return TryBeginEntryCast(entry, debugSource, requiredTimelineEvent, usePlanarRootMotion);
     }
 
     public bool TryGetChainAttackRuntimeSkill(out SkillInstance runtimeSkill)
@@ -462,7 +463,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     private SkillCastStartResult TryBeginEntryCast(
         CharacterSkillEntry entry,
         string debugSource,
-        CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None)
+        CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None,
+        bool usePlanarRootMotion = false)
     {
         CacheReferences();
         EnsureRuntimeSkill(entry);
@@ -487,6 +489,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             useAnimationDriver: true,
             allowImmediateFallback: true,
             requiredTimelineEvent: requiredTimelineEvent,
+            usePlanarRootMotion: usePlanarRootMotion,
             debugSource: debugSource));
     }
 
@@ -1175,6 +1178,7 @@ public readonly struct SkillCastRequest
     public readonly bool UseAnimationDriver;
     public readonly bool AllowImmediateFallback;
     public readonly CombatTimelineEventName RequiredTimelineEvent;
+    public readonly bool UsePlanarRootMotion;
     public readonly string DebugSource;
 
     public SkillCastRequest(
@@ -1188,6 +1192,7 @@ public readonly struct SkillCastRequest
         bool useAnimationDriver = true,
         bool allowImmediateFallback = true,
         CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None,
+        bool usePlanarRootMotion = false,
         string debugSource = null)
     {
         RuntimeSkill = runtimeSkill;
@@ -1200,6 +1205,7 @@ public readonly struct SkillCastRequest
         UseAnimationDriver = useAnimationDriver;
         AllowImmediateFallback = allowImmediateFallback;
         RequiredTimelineEvent = requiredTimelineEvent;
+        UsePlanarRootMotion = usePlanarRootMotion;
         DebugSource = debugSource;
     }
 }
@@ -1397,7 +1403,8 @@ public sealed class SkillCastOrchestrator
                 context.RequestId,
                 context.SkillDef,
                 context.CastPointNormalized,
-                context.TimelineEventNames);
+                context.TimelineEventNames,
+                request.UsePlanarRootMotion);
 
             if (started)
             {

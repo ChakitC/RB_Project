@@ -107,6 +107,59 @@ Enemy world-slow behavior is handled through `ctx.UsesWorldSlow` and the enemy
 context's own world-slow application. Common systems should not branch on
 `EnemyContext` unless they need enemy-only fields.
 
+## Root Motion Trajectory Placement
+
+Chain Attack and Guaranteed Interruption share placement code under
+`Assets\Scripts\AI\TargetedSkillPlacement`. Their execution lifecycles remain
+separate. Placement is represented by one immutable
+`TargetedSkillPlacementResult` containing the mode, start pose, expected impact
+pose, accepted yaw, and failure reason.
+
+The target pose is sampled once before the attack animation starts. The result
+is retained for the whole execution; target movement after that point does not
+re-snap or re-resolve the actor.
+
+The resolver samples the attack clip through a hidden clone of the active
+Animator rig and a manual `PlayableGraph` at approximately 30 Hz. Accumulated
+planar `Animator.deltaPosition` and yaw are cached by clip and Avatar.
+
+The existing teleport profile `anchorPositionOffset` defines the actor pose at
+the impact point. Chain attacks use the skill cast point. Guaranteed
+Interruption uses the skill's `HitStart` Animancer marker when present and
+falls back to the skill cast point. The system derives the required animation
+start pose from the sampled impact transform, then tests target-relative yaw
+candidates in this order:
+
+`0, +15, -15, +30, -30, ... 180`
+
+Each candidate must have clear start and impact poses against the configured
+obstacle mask and must keep the sampled full-clip trajectory clear. The
+designated target collider may be ignored only for the impact pose and the
+sample segment that reaches it; all other obstacles remain blocking throughout
+the trajectory. Every sample and sweep between adjacent samples is checked.
+When the step requires NavMesh placement, the actor footprint is checked on the
+NavMesh across the full trajectory.
+
+Accepted attacks snap to the derived start pose and enable request-scoped
+planar root motion. Player movement is applied through `RootMotionCCDriver`;
+party and interruption ally movement is applied through
+`RootMotionNavMeshDriver`. Both consume XZ translation and yaw only for this
+request. The sequence does not call `FaceTarget` after placement, so the
+sampled animation reaches the impact pose without a corrective snap. Clips with
+no extracted displacement or yaw retain the legacy teleport flow.
+
+Sampling or trajectory-validation errors fail placement explicitly. Legacy
+teleport is used only when sampling succeeds and the clip has no meaningful
+planar movement or yaw; errors never silently fall back to teleport.
+
+At the cast callback, the runtime compares the actor pose with the sampled
+impact pose. A planar error above `0.05m` or yaw error above 2 degrees emits a
+warning for clip/Avatar validation.
+
+This flow does not read a motion bone, alter an FBX importer, bake a trajectory
+asset, or require new Inspector fields. Helper chain attacks remain on their
+existing flow.
+
 ## Time Rules
 
 Systems that should respect world slow should use:
@@ -147,33 +200,51 @@ collider or damage outcome.
 1. `InterruptionCommandController` (on the player) searches near
    `PlayerContext.aimTarget` for an enemy with an active blockable pre-cast
    window (`PreCastBlockController.CanBlockActiveCast()`).
-2. Selects the nearest qualifying ally via `AllyInterruptionController.IsReadyForInterruption()`.
-   Ally must be alive, not busy, not reserved, have a configured interruption
-   skill, and a resolvable safe teleport pose.
+2. Scans qualifying allies once. Each candidate resolves one
+   `TargetedSkillPlacementResult`; the selected ally and that same result are
+   returned together. Placement is not resolved a second time.
 3. Reserves the ally (`FieldAllyMember.TryReserve`) and the block
    (`PreCastBlockController.TryReserveBlock`) which acquires a Pre-Cast Hold
    on the enemy animation, freezing the playhead before the cast point.
 4. Ally suspends its BehaviorTree and NavMeshAgent, hides through the optional
-   `ASPHelperDitherFader`, snaps its root, Rigidbody, CharacterController, and
-   NavMeshAgent state to the safe pose, then locks aim on the target and starts
-   fading in with its interruption skill via
+   `ASPHelperDitherFader`, then applies the selected placement start pose once.
+   Root-motion placement uses
+   `HitStart` as the sampled impact point and does not call `FaceTarget` after
+   the snap; legacy teleport placement still faces the target. The ally then
+   locks aim on the target and starts fading in with its interruption skill via
    `CharacterSkillManager.TryStartExternalSkill`, explicitly requiring the
    `HitStart` timeline event even when the skill payload does not normally use
    timeline events. These actor modules are read
    through `AllyContext`; `FieldAllyMember` is used only for shared ally
    reservation and chain coordination.
-5. At the ally skill's `HitStart` timeline event, the reserved block is
-   completed (`CompleteReservedBlock` → `TryCancelActiveCast(Blocked)`), and
-   a force-replace knockback is applied to the target.
-6. After a successful block and normal ally skill completion, the interruption
+5. The guarantee is committed only after the ally skill animation request
+   starts successfully. Before that boundary, failure restores the ally's
+   original pose and autonomy and calls
+   `PreCastBlockController.CancelReservedBlock(...)`. This releases the hold
+   and reopens the same pre-cast window when the enemy cast is still valid; the
+   enemy cast is not cancelled.
+6. After guarantee commit, `HitStart`, timeout, interruption, or early
+   animation completion can complete the reserved block at most once. Timeout
+   and interruption before `HitStart` do not apply knockback.
+7. At the ally skill's real `HitStart` timeline event, the reserved block is
+   completed through `CompleteReservedBlock`, which calls
+   `TryCancelActiveCast(Blocked)`. Force-replace knockback is applied only when
+   that block completion succeeds.
+8. Completion and interruption are matched through request-scoped
+   `CharacterAnimBrain.PlaybackEvent` signals.
+9. After a successful block at `HitStart` and normal ally skill completion, the interruption
    controller rebases the ally context root to the configured motion bone
    (`c_traj` by default) while preserving the visible world pose. During the
    blend back to locomotion, `LateUpdate` compensates the visual root so the
    motion bone remains fixed in world XZ/yaw with no end-of-skill fade-out.
-7. When the motion-bone pose stabilizes, the accumulated visual compensation
+10. When the motion-bone pose stabilizes, the accumulated visual compensation
    is committed into the context root and the visual root returns to its cached
    local pose without moving on screen. Autonomy and the reservation are then
    restored. A timeout commits the current pose as recovery.
+
+All exits converge on idempotent cleanup that restores BehaviorTree,
+NavMeshAgent, Rigidbody, CharacterController usage, visibility, aim override,
+root-motion policy, and ally reservation.
 
 ### Reservation Interaction
 
@@ -200,6 +271,9 @@ controllers:
   and cleanup under `[PreCast.Ally]`.
 
 Use `requestId` and `reservationId` to correlate target and ally messages.
-Normal logs are disabled by default to avoid Console noise. The safety-hold
-invariant remains an unconditional error because a cast must never release
-while its pre-cast hold reservation is active.
+Normal success logs are disabled by default to avoid Console noise. Command
+failures caused by missing configuration, no available ally, failed safe-pose
+placement, or rejected skill start still emit a warning with the ally scan and
+safe-pose failure reason, including the last rejected yaw and placement check.
+The safety-hold invariant remains an unconditional error because a cast must
+never release while its pre-cast hold reservation is active.

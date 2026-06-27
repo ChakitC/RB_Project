@@ -59,6 +59,7 @@ public sealed partial class CharacterAnimBrain
             _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
                 usesRootMotion: true,
                 preserveFireHoldIntent: true);
+            owner.ApplyActiveSkillRootMotionPolicy();
             owner.EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.Started, owner._activeSkillRequestId);
 
             var skillDef = owner._activeSkillDefinition;
@@ -157,6 +158,7 @@ public sealed partial class CharacterAnimBrain
 
             _inCutscenePhase = false;
             owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
+            owner.ClearActiveRootMotionPolicy();
             owner.NotifySkillStateExited(_completedNormally);
         }
 

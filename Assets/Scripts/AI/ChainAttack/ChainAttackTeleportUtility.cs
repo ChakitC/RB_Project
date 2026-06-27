@@ -57,6 +57,7 @@ public static class ChainAttackTeleportUtility
             profile.HasClearanceProbe,
             probeCollider,
             probeRoot,
+            null,
             profile.debugLogging,
             profile.name);
 
@@ -94,6 +95,7 @@ public static class ChainAttackTeleportUtility
             profile.HasClearanceProbe,
             probeCollider,
             probeRoot,
+            null,
             profile.debugLogging,
             profile.name);
 
@@ -126,10 +128,138 @@ public static class ChainAttackTeleportUtility
             hasClearanceProbe: false,
             probeCollider,
             probeRoot,
+            allowedOverlapRoot: null,
             debugLogging,
             debugName);
 
         return IsCurrentProbeColliderClear(config);
+    }
+
+    public static bool IsProbePoseClear(
+        ChainAttackTeleportProfileDef profile,
+        Vector3 worldPosition,
+        Quaternion worldRotation,
+        Collider probeCollider,
+        Transform probeRoot,
+        Transform allowedOverlapRoot = null)
+    {
+        if (profile == null)
+            return false;
+
+        ChainAttackTeleportRuntimeConfig config = CreateRuntimeConfig(
+            profile,
+            profile.requireNavMeshAtAnchor,
+            profile.navMeshSampleDistance,
+            probeCollider,
+            probeRoot,
+            allowedOverlapRoot);
+
+        return IsTeleportPoseClear(
+            config,
+            worldPosition,
+            worldRotation,
+            requireLegacyClearance: profile.HasClearanceProbe);
+    }
+
+    public static bool IsProbePoseOnNavMesh(
+        ChainAttackTeleportProfileDef profile,
+        Vector3 worldPosition,
+        Quaternion worldRotation,
+        Collider probeCollider,
+        Transform probeRoot,
+        float navMeshSampleDistance)
+    {
+        if (profile == null)
+            return false;
+
+        ChainAttackTeleportRuntimeConfig config = CreateRuntimeConfig(
+            profile,
+            true,
+            navMeshSampleDistance,
+            probeCollider,
+            probeRoot);
+
+        if (!NavMesh.SamplePosition(
+                worldPosition,
+                out _,
+                Mathf.Max(0.05f, navMeshSampleDistance),
+                NavMesh.AllAreas))
+        {
+            return false;
+        }
+
+        return !config.HasProbeCollider ||
+               IsProbeColliderOnNavMesh(config, worldPosition, worldRotation);
+    }
+
+    public static bool IsProbeSweepClear(
+        ChainAttackTeleportProfileDef profile,
+        Vector3 startPosition,
+        Quaternion startRotation,
+        Vector3 endPosition,
+        Quaternion endRotation,
+        Collider probeCollider,
+        Transform probeRoot,
+        Transform allowedOverlapRoot = null)
+    {
+        if (profile == null || profile.obstacleLayers.value == 0)
+            return true;
+
+        ChainAttackTeleportRuntimeConfig config = CreateRuntimeConfig(
+            profile,
+            profile.requireNavMeshAtAnchor,
+            profile.navMeshSampleDistance,
+            probeCollider,
+            probeRoot,
+            allowedOverlapRoot);
+
+        GetProbeSweepPose(config, startPosition, startRotation, out Vector3 startCenter, out float startRadius);
+        GetProbeSweepPose(config, endPosition, endRotation, out Vector3 endCenter, out float endRadius);
+
+        Vector3 direction = endCenter - startCenter;
+        float distance = direction.magnitude;
+        if (distance <= 0.001f)
+            return true;
+
+        float radius = Mathf.Max(0.05f, Mathf.Max(startRadius, endRadius));
+        int hitCount = Physics.SphereCastNonAlloc(
+            startCenter,
+            radius,
+            direction / distance,
+            CastHitBuffer,
+            distance,
+            profile.obstacleLayers,
+            profile.obstacleTriggerInteraction);
+
+        return !HasBlockingCastHit(hitCount, config);
+    }
+
+    static ChainAttackTeleportRuntimeConfig CreateRuntimeConfig(
+        ChainAttackTeleportProfileDef profile,
+        bool requireNavMeshAtAnchor,
+        float navMeshSampleDistance,
+        Collider probeCollider,
+        Transform probeRoot,
+        Transform allowedOverlapRoot = null)
+    {
+        return new ChainAttackTeleportRuntimeConfig(
+            profile.useAnchorRotationAsBase,
+            requireNavMeshAtAnchor,
+            navMeshSampleDistance,
+            profile.anchorPositionOffset,
+            profile.probeOrientation,
+            profile.allowFallbackToBaseRotation,
+            profile.GetOrientationAngles(),
+            profile.clearanceCenterOffset,
+            profile.clearanceHalfExtents,
+            profile.obstacleLayers,
+            profile.obstacleTriggerInteraction,
+            profile.HasClearanceProbe,
+            probeCollider,
+            probeRoot,
+            allowedOverlapRoot,
+            profile.debugLogging,
+            profile.name);
     }
 
     static bool TryResolveTeleportPose(
@@ -379,12 +509,14 @@ public static class ChainAttackTeleportUtility
             return true;
 
         Vector3 center = teleportPosition + rotation * config.clearanceCenterOffset;
-        return !Physics.CheckBox(
+        int hitCount = Physics.OverlapBoxNonAlloc(
             center,
             config.clearanceHalfExtents,
+            OverlapBuffer,
             rotation,
             config.obstacleLayers,
             config.obstacleTriggerInteraction);
+        return !HasBlockingOverlap(hitCount, config);
     }
 
     static bool IsAnchorPathClear(
@@ -414,6 +546,79 @@ public static class ChainAttackTeleportUtility
             config.obstacleTriggerInteraction);
 
         return !HasBlockingCastHit(hitCount, config);
+    }
+
+    static void GetProbeSweepPose(
+        ChainAttackTeleportRuntimeConfig config,
+        Vector3 worldPosition,
+        Quaternion worldRotation,
+        out Vector3 center,
+        out float radius)
+    {
+        center = worldPosition + worldRotation * config.clearanceCenterOffset;
+        radius = ResolvePathProbeRadius(config);
+
+        Collider probeCollider = config.probeCollider;
+        if (probeCollider is BoxCollider box)
+        {
+            GetBoxProbePose(
+                config,
+                box,
+                worldPosition,
+                worldRotation,
+                out center,
+                out _,
+                out Vector3 halfExtents,
+                out _,
+                out _,
+                out _);
+            radius = Mathf.Max(0.05f, Mathf.Min(halfExtents.x, halfExtents.z));
+            return;
+        }
+
+        if (probeCollider is CapsuleCollider capsule)
+        {
+            GetCapsuleProbePose(
+                config,
+                capsule,
+                worldPosition,
+                worldRotation,
+                out center,
+                out _,
+                out _,
+                out radius,
+                out _,
+                out _,
+                out _);
+            return;
+        }
+
+        if (probeCollider is SphereCollider sphere)
+        {
+            GetSphereProbePose(
+                config,
+                sphere,
+                worldPosition,
+                worldRotation,
+                out center,
+                out radius,
+                out _,
+                out _);
+            return;
+        }
+
+        if (probeCollider == null)
+            return;
+
+        GetBoundsProbePose(
+            config,
+            probeCollider,
+            worldPosition,
+            worldRotation,
+            out center,
+            out _,
+            out Vector3 boundsHalfExtents);
+        radius = Mathf.Max(0.05f, Mathf.Min(boundsHalfExtents.x, boundsHalfExtents.z));
     }
 
     static bool IsProbeColliderOnNavMesh(
@@ -1021,7 +1226,9 @@ public static class ChainAttackTeleportUtility
             Collider hit = OverlapBuffer[i];
             OverlapBuffer[i] = null;
 
-            if (hit == null || IsSelfProbeCollider(hit, config))
+            if (hit == null ||
+                IsSelfProbeCollider(hit, config) ||
+                IsAllowedOverlapCollider(hit, config))
                 continue;
 
             Log(
@@ -1046,7 +1253,9 @@ public static class ChainAttackTeleportUtility
             Collider hit = OverlapBuffer[i];
             OverlapBuffer[i] = null;
 
-            if (hit == null || IsSelfProbeCollider(hit, config))
+            if (hit == null ||
+                IsSelfProbeCollider(hit, config) ||
+                IsAllowedOverlapCollider(hit, config))
                 continue;
 
             bool penetrates = Physics.ComputePenetration(
@@ -1089,7 +1298,9 @@ public static class ChainAttackTeleportUtility
             Collider hit = CastHitBuffer[i].collider;
             CastHitBuffer[i] = default;
 
-            if (hit == null || IsSelfProbeCollider(hit, config))
+            if (hit == null ||
+                IsSelfProbeCollider(hit, config) ||
+                IsAllowedOverlapCollider(hit, config))
                 continue;
 
             Log(
@@ -1115,6 +1326,15 @@ public static class ChainAttackTeleportUtility
 
         Transform root = ResolveProbeRoot(config);
         return root != null && hit.transform != null && hit.transform.IsChildOf(root);
+    }
+
+    static bool IsAllowedOverlapCollider(Collider hit, ChainAttackTeleportRuntimeConfig config)
+    {
+        Transform allowedRoot = config.allowedOverlapRoot;
+        return hit != null &&
+               hit.transform != null &&
+               allowedRoot != null &&
+               (hit.transform == allowedRoot || hit.transform.IsChildOf(allowedRoot));
     }
 
     static bool HasPositiveExtents(Vector3 extents)
@@ -1253,7 +1473,9 @@ public static class ChainAttackTeleportUtility
             Collider hit = OverlapBuffer[i];
             OverlapBuffer[i] = null;
 
-            if (hit == null || IsSelfProbeCollider(hit, config))
+            if (hit == null ||
+                IsSelfProbeCollider(hit, config) ||
+                IsAllowedOverlapCollider(hit, config))
                 continue;
 
             int layerMask = 1 << hit.gameObject.layer;
@@ -1296,6 +1518,7 @@ public static class ChainAttackTeleportUtility
         public readonly bool hasClearanceProbe;
         public readonly Collider probeCollider;
         public readonly Transform probeRoot;
+        public readonly Transform allowedOverlapRoot;
         public readonly bool debugLogging;
         public readonly string debugName;
         public bool HasProbeCollider => probeCollider != null;
@@ -1315,6 +1538,7 @@ public static class ChainAttackTeleportUtility
             bool hasClearanceProbe,
             Collider probeCollider,
             Transform probeRoot,
+            Transform allowedOverlapRoot,
             bool debugLogging,
             string debugName)
         {
@@ -1332,6 +1556,7 @@ public static class ChainAttackTeleportUtility
             this.hasClearanceProbe = hasClearanceProbe;
             this.probeCollider = probeCollider;
             this.probeRoot = probeRoot;
+            this.allowedOverlapRoot = allowedOverlapRoot;
             this.debugLogging = debugLogging;
             this.debugName = debugName;
         }

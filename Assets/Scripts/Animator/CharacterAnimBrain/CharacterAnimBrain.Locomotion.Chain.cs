@@ -46,8 +46,9 @@ public sealed partial class CharacterAnimBrain
                 return;
             }
 
+            owner.ApplyActiveChainRootMotionPolicy();
             _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
-                usesRootMotion: owner.UseRootMotionForChainPlayback,
+                usesRootMotion: owner.ActiveChainUsesRootMotion,
                 preserveFireHoldIntent: true);
             owner.EmitPlaybackSignal(owner.ResolveActiveChainPlaybackKind(), PlaybackPhase.Started, owner.ActiveChainRequestId);
 
@@ -92,6 +93,7 @@ public sealed partial class CharacterAnimBrain
             }
 
             owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
+            owner.ClearActiveChainRootMotionPolicy();
             owner.NotifyChainPlaybackStateExited(_completedNormally);
         }
 

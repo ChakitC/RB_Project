@@ -399,13 +399,67 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         if (!animator)
             return;
 
-        var driver = animator.GetComponent<RootMotionCCDriver>();
-        if (!driver)
-            driver = animator.gameObject.AddComponent<RootMotionCCDriver>();
-
         CharacterAnimBrain animBrain = _ctx != null ? _ctx.AnimBrain : null;
         if (!animBrain && _ctx)
             animBrain = _ctx.GetComponentInChildren<CharacterAnimBrain>(true);
+
+        if (_ctx is AllyContext allyContext && allyContext.agent != null)
+        {
+            RootMotionCCDriver[] ccDrivers = _ctx.GetComponentsInChildren<RootMotionCCDriver>(true);
+            for (int i = 0; i < ccDrivers.Length; i++)
+                ccDrivers[i].enabled = false;
+
+            RootMotionNavMeshDriver navDriver = animator.GetComponent<RootMotionNavMeshDriver>();
+            if (!navDriver)
+                navDriver = animator.gameObject.AddComponent<RootMotionNavMeshDriver>();
+
+            RootMotionNavMeshDriver[] navDrivers =
+                _ctx.GetComponentsInChildren<RootMotionNavMeshDriver>(true);
+            RootMotionNavMeshDriver settingsSource = null;
+            for (int i = 0; i < navDrivers.Length; i++)
+            {
+                if (navDrivers[i] != navDriver)
+                {
+                    if (settingsSource == null)
+                        settingsSource = navDrivers[i];
+                    navDrivers[i].enabled = false;
+                }
+            }
+
+            navDriver.enabled = true;
+            navDriver.Configure(
+                animBrain,
+                allyContext.agent,
+                animator,
+                _ctx,
+                _ctx.transform,
+                settingsSource);
+            return;
+        }
+
+        bool isPlayer = _ctx is PlayerContext;
+        if (isPlayer)
+        {
+            RootMotionNavMeshDriver[] existingNavDrivers =
+                _ctx.GetComponentsInChildren<RootMotionNavMeshDriver>(true);
+            for (int i = 0; i < existingNavDrivers.Length; i++)
+                existingNavDrivers[i].enabled = false;
+        }
+
+        RootMotionCCDriver driver = animator.GetComponent<RootMotionCCDriver>();
+        if (!driver)
+            driver = animator.gameObject.AddComponent<RootMotionCCDriver>();
+
+        if (isPlayer)
+        {
+            RootMotionCCDriver[] existingCcDrivers =
+                _ctx.GetComponentsInChildren<RootMotionCCDriver>(true);
+            for (int i = 0; i < existingCcDrivers.Length; i++)
+            {
+                if (existingCcDrivers[i] != driver)
+                    existingCcDrivers[i].enabled = false;
+            }
+        }
 
         CharacterController characterController = _ctx != null ? _ctx.cc : null;
         if (!characterController && _ctx)
@@ -413,6 +467,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         if (!characterController && _ctx)
             characterController = _ctx.GetComponentInChildren<CharacterController>(true);
 
+        driver.enabled = true;
         driver.Configure(animBrain, characterController, animator);
     }
 

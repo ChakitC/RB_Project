@@ -418,6 +418,9 @@ command:
 2. **`CompleteReservedBlock`**: releases the hold and calls
    `TryCancelActiveCast(Blocked)` via the shared `DoBlockInternal` core.
    Fires `CastBlocked` once on success.
+3. **`CancelReservedBlock`**: releases the hold without cancelling the enemy
+   cast. If the same unreleased cast is still active, its pre-cast window and
+   presentation are reopened.
 
 If the enemy's cast is cancelled externally while reserved, `OnCastCancelled`
 releases the hold and clears the reservation (no double-block). If the cast
@@ -431,5 +434,13 @@ behalf of a character without going through the loadout/slot path:
 
 - `CanStartExternalSkill(CharacterSkillEntry)`: preflight check (alive, not
   blocked by animation, skill can cast).
-- `TryStartExternalSkill(CharacterSkillEntry, debugSource)`: delegates to the
-  existing `TryBeginEntryCast` internal method.
+- `TryStartExternalSkill(CharacterSkillEntry, debugSource, requiredTimelineEvent, usePlanarRootMotion)`:
+  delegates to the existing `TryBeginEntryCast` internal method. The timeline
+  event and planar root-motion flags are optional. Planar translation and yaw
+  are scoped to that animation request and are cleared on normal completion,
+  interruption, disable, or destruction.
+
+`CharacterAnimBrain.PlaybackEvent` reports request-scoped `Started`,
+`CastMoment`, `AdvanceMoment`, `Completed`, and `Interrupted` phases. Systems
+that own a specific external request must filter by both playback kind and
+request id instead of relying on the legacy parameterless completion event.

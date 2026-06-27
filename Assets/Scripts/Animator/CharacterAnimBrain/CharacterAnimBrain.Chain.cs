@@ -22,6 +22,8 @@ public sealed partial class CharacterAnimBrain
     private bool _activeChainReleased;
     private bool _activeChainAdvanceRequested;
     private bool _activeChainAdvanceReleased;
+    private bool _activeChainUsesRootMotion;
+    private bool _activeChainUsesPlanarRootMotion;
     private ChainPlaybackKind _activeChainKind;
     private bool _chainStateCanExit = true;
     private readonly List<CombatTimelineEventName> _activeChainTimelineEventNames = new List<CombatTimelineEventName>();
@@ -30,6 +32,10 @@ public sealed partial class CharacterAnimBrain
     private bool HasActiveChainClip => HasValidChainClip();
     internal int ActiveChainRequestId => _activeChainRequestId;
     internal bool CanExitChainState => _chainStateCanExit;
+    internal bool ActiveChainUsesRootMotion => _activeChainUsesRootMotion;
+    internal bool ActiveChainUsesPlanarRootMotion => _activeChainUsesPlanarRootMotion;
+    public bool RootMotionPlanarOnly { get; private set; }
+    public bool RootMotionYawActive { get; private set; }
 
     public bool IsChainPlaybackActive =>
         _activeChainReleaseRequested ||
@@ -53,6 +59,23 @@ public sealed partial class CharacterAnimBrain
         bool requestAdvanceMoment,
         float advancePointNormalized)
     {
+        return TryPlayChainSkill(
+            requestId,
+            skillDef,
+            castPointNormalized,
+            requestAdvanceMoment,
+            advancePointNormalized,
+            usePlanarRootMotion: false);
+    }
+
+    public bool TryPlayChainSkill(
+        int requestId,
+        SkillGemDefinition skillDef,
+        float castPointNormalized,
+        bool requestAdvanceMoment,
+        float advancePointNormalized,
+        bool usePlanarRootMotion)
+    {
         if (skillDef == null)
             return false;
 
@@ -62,7 +85,9 @@ public sealed partial class CharacterAnimBrain
             skillDef,
             castPointNormalized,
             requestAdvanceMoment,
-            advancePointNormalized);
+            advancePointNormalized,
+            usesRootMotion: usePlanarRootMotion || UseRootMotionForChainPlayback,
+            usesPlanarRootMotion: usePlanarRootMotion);
     }
 
     public bool TryPlayChainUtilityWarpOut(int requestId)
@@ -73,7 +98,9 @@ public sealed partial class CharacterAnimBrain
             null,
             UtilityWarpOutCastPointNormalized,
             requestAdvanceMoment: false,
-            advancePointNormalized: 1f);
+            advancePointNormalized: 1f,
+            usesRootMotion: UseRootMotionForChainPlayback,
+            usesPlanarRootMotion: false);
     }
 
     public bool TryPlayChainUtilityWarpIn(int requestId)
@@ -84,7 +111,9 @@ public sealed partial class CharacterAnimBrain
             null,
             UtilityWarpInCastPointNormalized,
             requestAdvanceMoment: false,
-            advancePointNormalized: 1f);
+            advancePointNormalized: 1f,
+            usesRootMotion: UseRootMotionForChainPlayback,
+            usesPlanarRootMotion: false);
     }
 
     public void CancelChainPlaybackRequest(int requestId)
@@ -216,7 +245,9 @@ public sealed partial class CharacterAnimBrain
         SkillGemDefinition skillDef,
         float castPointNormalized,
         bool requestAdvanceMoment,
-        float advancePointNormalized)
+        float advancePointNormalized,
+        bool usesRootMotion,
+        bool usesPlanarRootMotion)
     {
         if (requestId <= 0 || IsChainPlaybackActive)
             return false;
@@ -233,7 +264,9 @@ public sealed partial class CharacterAnimBrain
             skillDef,
             castPointNormalized,
             requestAdvanceMoment,
-            advancePointNormalized);
+            advancePointNormalized,
+            usesRootMotion,
+            usesPlanarRootMotion);
 
         try
         {
@@ -255,7 +288,9 @@ public sealed partial class CharacterAnimBrain
         SkillGemDefinition skillDef,
         float castPointNormalized,
         bool requestAdvanceMoment,
-        float advancePointNormalized)
+        float advancePointNormalized,
+        bool usesRootMotion,
+        bool usesPlanarRootMotion)
     {
         _activeChainKind = kind;
         _activeChainSkillDefinition = skillDef;
@@ -268,6 +303,8 @@ public sealed partial class CharacterAnimBrain
         _activeChainReleaseRequested = true;
         _activeChainReleased = false;
         _activeChainAdvanceReleased = false;
+        _activeChainUsesRootMotion = usesRootMotion;
+        _activeChainUsesPlanarRootMotion = usesRootMotion && usesPlanarRootMotion;
         _chainStateCanExit = false;
         SetActiveChainTimelineEventNames(kind == ChainPlaybackKind.Skill ? skillDef : null);
         if (kind == ChainPlaybackKind.Skill)
@@ -285,6 +322,8 @@ public sealed partial class CharacterAnimBrain
         _activeChainReleased = false;
         _activeChainAdvanceRequested = false;
         _activeChainAdvanceReleased = false;
+        _activeChainUsesRootMotion = false;
+        _activeChainUsesPlanarRootMotion = false;
         _chainStateCanExit = true;
         _activeChainTimelineEventNames.Clear();
     }
@@ -320,14 +359,37 @@ public sealed partial class CharacterAnimBrain
         return sampleRoot != null;
     }
 
-    internal bool TryResolveChainSkillAnimationClip(SkillGemDefinition skillDef, out AnimationClip clip)
+    internal bool TryGetRootMotionSamplingAnimator(out Animator samplingAnimator)
     {
-        clip = null;
+        samplingAnimator = null;
 
-        if (skillDef == null || !TryInitialize())
+        if (!TryInitialize() || animancer == null || animancer.Animator == null)
             return false;
 
-        return TryExtractAnimationClip(ResolveSkillClip(skillDef), out clip);
+        samplingAnimator = animancer.Animator;
+        return true;
+    }
+
+    internal void ApplyActiveChainRootMotionPolicy()
+    {
+        RootMotionPlanarOnly = _activeChainUsesPlanarRootMotion;
+        RootMotionYawActive = _activeChainUsesPlanarRootMotion;
+    }
+
+    internal void ClearActiveChainRootMotionPolicy()
+    {
+        ClearActiveRootMotionPolicy();
+    }
+
+    internal void ClearActiveRootMotionPolicy()
+    {
+        RootMotionPlanarOnly = false;
+        RootMotionYawActive = false;
+    }
+
+    internal bool TryResolveChainSkillAnimationClip(SkillGemDefinition skillDef, out AnimationClip clip)
+    {
+        return TryResolveSkillAnimationClip(skillDef, out clip);
     }
 
     internal bool TryResolveChainUtilityWarpOutAnimationClip(

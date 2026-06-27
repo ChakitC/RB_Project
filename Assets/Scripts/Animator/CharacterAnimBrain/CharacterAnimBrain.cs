@@ -165,6 +165,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private float _activeSkillCastPointNormalized = 0.35f;
     private bool _activeSkillReleaseRequested;
     private bool _activeSkillReleased;
+    private bool _activeSkillUsesPlanarRootMotion;
     private readonly List<CombatTimelineEventName> _activeSkillTimelineEventNames = new List<CombatTimelineEventName>();
     private int _activeUtilityRequestId;
     private float _activeUtilityCastPointNormalized = 0.35f;
@@ -883,12 +884,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public bool TryPlaySkill(int requestId, float castPointNormalized)
     {
-        return TryPlaySkill(requestId, null, castPointNormalized, null);
+        return TryPlaySkill(requestId, null, castPointNormalized, null, usePlanarRootMotion: false);
     }
 
     public bool TryPlaySkill(int requestId, SkillGemDefinition skillDef, float castPointNormalized)
     {
-        return TryPlaySkill(requestId, skillDef, castPointNormalized, null);
+        return TryPlaySkill(requestId, skillDef, castPointNormalized, null, usePlanarRootMotion: false);
     }
 
     public bool TryPlaySkill(
@@ -896,6 +897,21 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         SkillGemDefinition skillDef,
         float castPointNormalized,
         IReadOnlyList<CombatTimelineEventName> timelineEventNames)
+    {
+        return TryPlaySkill(
+            requestId,
+            skillDef,
+            castPointNormalized,
+            timelineEventNames,
+            usePlanarRootMotion: false);
+    }
+
+    public bool TryPlaySkill(
+        int requestId,
+        SkillGemDefinition skillDef,
+        float castPointNormalized,
+        IReadOnlyList<CombatTimelineEventName> timelineEventNames,
+        bool usePlanarRootMotion)
     {
         if (IsChainPlaybackActive)
             return false;
@@ -910,7 +926,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             return false;
 
         StopReloadAction();
-        ArmSkillRequest(requestId, skillDef, castPointNormalized, timelineEventNames);
+        ArmSkillRequest(
+            requestId,
+            skillDef,
+            castPointNormalized,
+            timelineEventNames,
+            usePlanarRootMotion);
 
         try
         {
@@ -1555,6 +1576,16 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         return clip != null && clip.IsValid;
     }
 
+    internal bool TryResolveSkillAnimationClip(SkillGemDefinition skillDef, out AnimationClip clip)
+    {
+        clip = null;
+
+        if (skillDef == null || !TryInitialize())
+            return false;
+
+        return TryExtractAnimationClip(ResolveSkillClip(skillDef), out clip);
+    }
+
     private PlaybackKind ResolveCurrentPlaybackKind()
     {
         if (IsChainPlaybackActive)
@@ -1947,15 +1978,23 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         int requestId,
         SkillGemDefinition skillDef,
         float castPointNormalized,
-        IReadOnlyList<CombatTimelineEventName> timelineEventNames)
+        IReadOnlyList<CombatTimelineEventName> timelineEventNames,
+        bool usePlanarRootMotion)
     {
         _activeSkillDefinition = skillDef;
         _activeSkillRequestId = requestId;
         _activeSkillCastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
         _activeSkillReleaseRequested = true;
         _activeSkillReleased = false;
+        _activeSkillUsesPlanarRootMotion = usePlanarRootMotion;
         SetActiveSkillTimelineEventNames(skillDef, timelineEventNames);
         EnsureSkillVfxPresenter(skillDef);
+    }
+
+    internal void ApplyActiveSkillRootMotionPolicy()
+    {
+        RootMotionPlanarOnly = _activeSkillUsesPlanarRootMotion;
+        RootMotionYawActive = _activeSkillUsesPlanarRootMotion;
     }
 
     private void EnsureSkillVfxPresenter(SkillGemDefinition skillDef)
@@ -1982,6 +2021,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         _activeSkillCastPointNormalized = 0.35f;
         _activeSkillReleaseRequested = false;
         _activeSkillReleased = false;
+        _activeSkillUsesPlanarRootMotion = false;
         _activeSkillTimelineEventNames.Clear();
     }
 
@@ -2052,6 +2092,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         fullBodyReloadState?.EndVfxSession();
         meleeCombo?.EndVfxSession();
         RestoreWorldAnimationSpeed();
+        RootMotionActive = false;
+        ClearActiveChainRootMotionPolicy();
         InterruptActiveSkillRequest();
         InterruptActiveUtilityRequest();
         InterruptActiveChainRequest();
@@ -2064,6 +2106,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         fullBodyReloadState?.EndVfxSession();
         meleeCombo?.EndVfxSession();
         RestoreWorldAnimationSpeed();
+        RootMotionActive = false;
+        ClearActiveChainRootMotionPolicy();
         InterruptActiveSkillRequest();
         InterruptActiveUtilityRequest();
         InterruptActiveChainRequest();

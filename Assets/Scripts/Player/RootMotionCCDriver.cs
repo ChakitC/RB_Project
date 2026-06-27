@@ -58,11 +58,15 @@ public class RootMotionCCDriver : MonoBehaviour
         if (!cc || !animator) return;
 
         Vector3 delta = animator.deltaPosition;
-        if (zeroY) delta.y = 0f;
+        if (zeroY || brain.RootMotionPlanarOnly) delta.y = 0f;
 
         cc.Move(delta);
 
-        if (applyRootRotation)
-            transform.rotation *= animator.deltaRotation;
+        if (applyRootRotation || brain.RootMotionYawActive)
+        {
+            float yawDelta = Mathf.DeltaAngle(0f, animator.deltaRotation.eulerAngles.y);
+            Transform actorRoot = cc.transform;
+            actorRoot.rotation *= Quaternion.AngleAxis(yawDelta, Vector3.up);
+        }
     }
 }

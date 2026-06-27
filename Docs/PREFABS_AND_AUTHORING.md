@@ -561,6 +561,28 @@ Ally prefabs commonly need:
 Ally-only systems may depend on `AllyContext` when they need ally-specific
 fields such as `AITargetSensor`, `NavMeshAgent`, or `AgentMoveDriver`.
 
+## Root Motion Trajectory Authoring
+
+No additional prefab, skill asset, or FBX importer fields are required for
+player and party chain-attack root motion placement or Guaranteed Interruption
+ally placement. The attack `AnimationClip` remains the source of truth: Unity
+must already extract the clip's root motion so `Animator.deltaPosition` and
+`Animator.deltaRotation` produce the intended movement during playback.
+
+Do not assign a motion-bone name, add a trajectory component, bake an asset, or
+change the clip to use `c_traj`/`root` for this flow. Runtime code creates and
+destroys hidden sampling objects, caches trajectories per clip and Avatar, and
+adds the appropriate root-motion driver to the active Animator model. Existing
+teleport-profile collision masks, probe collider, anchor offset, and optional
+NavMesh requirement are reused.
+
+The chain attack probe collider must continue to represent the actor footprint.
+Guaranteed Interruption uses the ally context's character-position collider in
+the same way. The current prefab reference is used for start, impact,
+full-trajectory, target-overlap, sweep, and NavMesh-footprint validation. A clip
+with no extracted XZ displacement or yaw uses the existing teleport behavior.
+Helper chain attacks are not changed by this feature.
+
 ## Enemy Prefab Expectations
 
 Enemy prefabs commonly need:
@@ -659,7 +681,9 @@ task.
 - Set `motionBoneName` to the animation motion bone used for end-of-skill root
   alignment (`c_traj` by default). The bone must resolve below the active
   Animator, and `CharacterVisualController.ModelRoot` must be a child of the
-  ally context root.
+  ally context root. This field is only for the visible root rebase after the
+  interruption skill ends; safe-pose placement samples Unity-extracted root
+  motion from the skill clip and does not read this bone.
 - `rebaseSettleTimeoutSeconds` is the maximum visible compensation period while
   the Animator blends back to locomotion. The default `0.75` seconds is a hard
   recovery timeout; normal completion occurs earlier when the motion-bone pose

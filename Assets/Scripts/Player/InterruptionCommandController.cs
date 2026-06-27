@@ -5,6 +5,25 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class InterruptionCommandController : MonoBehaviour
 {
+    readonly struct AllyCandidate
+    {
+        public readonly AllyInterruptionController Controller;
+        public readonly FieldAllyMember Member;
+        public readonly TargetedSkillPlacementResult Placement;
+
+        public AllyCandidate(
+            AllyInterruptionController controller,
+            FieldAllyMember member,
+            TargetedSkillPlacementResult placement)
+        {
+            Controller = controller;
+            Member = member;
+            Placement = placement;
+        }
+
+        public bool IsValid => Controller != null && Member != null && Placement.IsValid;
+    }
+
     [Header("Refs")]
     [SerializeField] private PlayerContext playerContext;
 
@@ -49,23 +68,38 @@ public sealed class InterruptionCommandController : MonoBehaviour
                 targetDiagnostics);
         }
 
-        Transform targetAnchor = ResolveTargetAnchor(targetCtx.Transform);
+        Transform targetAnchor = targetCtx.Anchor != null
+            ? targetCtx.Anchor
+            : ResolveTargetAnchor(targetCtx.Transform);
         LogCommand(attemptId,
             $"target selected name='{ResolveName(targetCtx.Transform)}' requestId={targetCtx.Block.ActiveRequestId}; {targetDiagnostics}");
 
-        if (!TrySelectAlly(targetAnchor, out AllyInterruptionController allyCtrl, out FieldAllyMember allyMember, out string allyDiagnostics))
-            return Finish(attemptId, InterruptionCommandResult.NoAvailableAlly, allyDiagnostics);
+        if (!TrySelectAlly(
+                targetAnchor,
+                targetCtx.Transform,
+                out AllyCandidate allyCandidate,
+                out bool placementFailed,
+                out string allyDiagnostics))
+        {
+            return Finish(
+                attemptId,
+                placementFailed
+                    ? InterruptionCommandResult.TeleportFailed
+                    : InterruptionCommandResult.NoAvailableAlly,
+                allyDiagnostics);
+        }
 
-        if (!allyCtrl.TryResolveSafePose(targetAnchor, out Vector3 safePos, out Quaternion safeRot))
-            return Finish(attemptId, InterruptionCommandResult.TeleportFailed,
-                $"ally='{ResolveName(allyMember.TransformRef)}' safe pose could not be resolved");
+        AllyInterruptionController allyCtrl = allyCandidate.Controller;
+        FieldAllyMember allyMember = allyCandidate.Member;
+        TargetedSkillPlacementResult placement = allyCandidate.Placement;
 
         if (!allyMember.TryReserve(allyCtrl))
             return Finish(attemptId, InterruptionCommandResult.NoAvailableAlly,
                 $"ally='{ResolveName(allyMember.TransformRef)}' reservation was rejected");
 
         LogCommand(attemptId,
-            $"ally selected name='{ResolveName(allyMember.TransformRef)}' safePosition={safePos}; {allyDiagnostics}");
+            $"ally selected name='{ResolveName(allyMember.TransformRef)}' mode={placement.Mode} " +
+            $"startPosition={placement.StartPosition}; {allyDiagnostics}");
 
         if (!targetCtx.Block.TryReserveBlock(gameObject, holdSpeedMultiplier, holdSafetyMargin, out PreCastBlockReservation reservation))
         {
@@ -77,8 +111,12 @@ public sealed class InterruptionCommandController : MonoBehaviour
         LogCommand(attemptId,
             $"block reserved requestId={reservation.RequestId} reservationId={reservation.ReservationId}");
 
-        if (!allyCtrl.BeginInterruption(targetCtx, reservation, safePos, safeRot))
+        if (!allyCtrl.BeginInterruption(
+                targetCtx,
+                reservation,
+                placement))
         {
+            targetCtx.Block.CancelReservedBlock(reservation);
             allyMember.ReleaseReservation(allyCtrl);
             return Finish(attemptId, InterruptionCommandResult.SkillRejected,
                 $"ally='{ResolveName(allyMember.TransformRef)}' rejected interruption start");
@@ -138,6 +176,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
 
             CharacteContext targetContext = block.GetComponentInParent<CharacteContext>();
             targetContext?.ResolveReferences();
+            Transform targetRoot = targetContext != null ? targetContext.transform : block.transform;
 
             HealthSystem health = targetContext != null
                 ? targetContext.HealthSystem
@@ -164,8 +203,8 @@ public sealed class InterruptionCommandController : MonoBehaviour
                 bestDist = dist;
                 bestCtx = new InterruptionTargetContext
                 {
-                    Transform = block.transform,
-                    Anchor = ResolveTargetAnchor(block.transform),
+                    Transform = targetRoot,
+                    Anchor = ResolveTargetAnchor(targetRoot),
                     Block = block,
                     Knockback = knockback,
                     Health = health
@@ -192,12 +231,13 @@ public sealed class InterruptionCommandController : MonoBehaviour
 
     bool TrySelectAlly(
         Transform targetAnchor,
-        out AllyInterruptionController bestCtrl,
-        out FieldAllyMember bestMember,
+        Transform targetRoot,
+        out AllyCandidate bestCandidate,
+        out bool placementFailed,
         out string diagnostics)
     {
-        bestCtrl = null;
-        bestMember = null;
+        bestCandidate = default;
+        placementFailed = false;
         diagnostics = null;
 
         FieldAllyManager allyManager = playerContext.fieldAllyManager;
@@ -214,6 +254,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
         int notReadyCount = 0;
         int noSafePoseCount = 0;
         int candidateCount = 0;
+        List<string> safePoseFailureReasons = new List<string>(4);
 
         foreach (FieldAllyMember member in allyManager.RegisteredMembers)
         {
@@ -233,9 +274,19 @@ public sealed class InterruptionCommandController : MonoBehaviour
                 continue;
             }
 
-            if (!ctrl.TryResolveSafePose(targetAnchor, out _, out _))
+            if (!ctrl.TryResolvePlacement(
+                    targetAnchor,
+                    targetRoot,
+                    out TargetedSkillPlacementResult placement))
             {
                 noSafePoseCount++;
+                if (safePoseFailureReasons.Count < 4)
+                {
+                    string reason = string.IsNullOrEmpty(placement.FailureReason)
+                        ? "unknown"
+                        : placement.FailureReason;
+                    safePoseFailureReasons.Add($"{ResolveName(member.TransformRef)}: {reason}");
+                }
                 continue;
             }
 
@@ -245,18 +296,17 @@ public sealed class InterruptionCommandController : MonoBehaviour
             if (dist < bestDist)
             {
                 bestDist = dist;
-                bestCtrl = ctrl;
-                bestMember = member;
+                bestCandidate = new AllyCandidate(ctrl, member, placement);
             }
         }
 
-        if (logInterruptionFlow)
-        {
-            diagnostics =
-                $"allyScan registered={registeredCount} missingController={missingControllerCount} notReady={notReadyCount} noSafePose={noSafePoseCount} candidates={candidateCount}";
-        }
+        diagnostics =
+            $"allyScan registered={registeredCount} missingController={missingControllerCount} notReady={notReadyCount} noSafePose={noSafePoseCount} candidates={candidateCount}";
+        if (safePoseFailureReasons.Count > 0)
+            diagnostics += $"; safePoseFailures=[{string.Join(" | ", safePoseFailureReasons)}]";
 
-        return bestCtrl != null;
+        placementFailed = candidateCount == 0 && noSafePoseCount > 0;
+        return bestCandidate.IsValid;
     }
 
     Transform ResolveTargetAnchor(Transform targetTransform)
@@ -270,6 +320,8 @@ public sealed class InterruptionCommandController : MonoBehaviour
     {
         CommandFinished?.Invoke(result);
         bool warning = result == InterruptionCommandResult.MissingConfiguration
+            || result == InterruptionCommandResult.NoAvailableAlly
+            || result == InterruptionCommandResult.TeleportFailed
             || result == InterruptionCommandResult.SkillRejected;
         LogCommand(attemptId, $"finished result={result}; {details}", warning);
         return result;
@@ -277,7 +329,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
 
     void LogCommand(int attemptId, string message, bool warning = false)
     {
-        if (!logInterruptionFlow)
+        if (!logInterruptionFlow && !warning)
             return;
 
         string formatted = $"[PreCast.Command] attemptId={attemptId} {message}";

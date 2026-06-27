@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 1dfe50ae56ca8c54f95a5fce4f6fb19d
+guid: 70d665413b9ae1e4bbb03661da9516db
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -31,9 +31,9 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Aires_Block
-      takeName: Aires_Block
-      internalID: -2639457781765362822
+      name: Aires_Block_Root.Test
+      takeName: Aires_Block_Root.Test
+      internalID: -6348440289532276459
       firstFrame: 0
       lastFrame: 60
       wrapMode: 0
@@ -118,7 +118,7 @@ ModelImporter:
     legStretch: 0.05
     feetSpacing: 0
     globalScale: 1
-    rootMotionBoneName: 
+    rootMotionBoneName: root
     hasTranslationDoF: 0
     hasExtraRoot: 0
     skeletonHasParents: 1
@@ -126,7 +126,7 @@ ModelImporter:
   autoGenerateAvatarMappingIfUnspecified: 1
   animationType: 2
   humanoidOversampling: 1
-  avatarSetup: 0
+  avatarSetup: 1
   addHumanoidExtraRootOnlyWhenUsingAvatar: 1
   importBlendShapeDeformPercent: 1
   remapMaterialsIfMaterialImportModeIsNone: 0

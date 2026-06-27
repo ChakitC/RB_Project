@@ -625,27 +625,9 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     void ApplyActorPose(Vector3 pos, Quaternion rot)
     {
-        CharacterController characterController = _ctx != null ? _ctx.cc : null;
-        bool restoreCharacterController = characterController != null && characterController.enabled;
-        if (restoreCharacterController)
-            characterController.enabled = false;
+        ActorPoseSnapper.Snap(_actorTransform, _ctx?.cc, _ctx?.rb, pos, rot);
 
         Rigidbody actorRigidbody = _ctx != null ? _ctx.rb : null;
-        if (actorRigidbody != null)
-        {
-            actorRigidbody.linearVelocity = Vector3.zero;
-            actorRigidbody.angularVelocity = Vector3.zero;
-            actorRigidbody.position = pos;
-            actorRigidbody.rotation = rot;
-        }
-
-        if (_actorTransform != null)
-            _actorTransform.SetPositionAndRotation(pos, rot);
-
-        Physics.SyncTransforms();
-
-        if (restoreCharacterController && characterController != null)
-            characterController.enabled = true;
 
         if (_agent != null && _agent.enabled)
         {

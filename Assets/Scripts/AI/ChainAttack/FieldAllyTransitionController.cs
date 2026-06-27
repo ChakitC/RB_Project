@@ -543,26 +543,8 @@ internal sealed class FieldAllyTransitionController
             return;
 
         owner.RefreshCollisionReferences();
-
-        CharacterController characterController = owner.ActorCharacterControllerRef;
-        bool restoreCharacterController = characterController != null && characterController.enabled;
-        if (restoreCharacterController)
-            characterController.enabled = false;
-
-        Rigidbody rigidbody = owner.ActorRigidbodyRef;
-        if (rigidbody != null)
-        {
-            rigidbody.linearVelocity = Vector3.zero;
-            rigidbody.angularVelocity = Vector3.zero;
-            rigidbody.position = worldPosition;
-            rigidbody.rotation = worldRotation;
-        }
-
-        actorTransform.SetPositionAndRotation(worldPosition, worldRotation);
-        Physics.SyncTransforms();
-
-        if (restoreCharacterController && characterController != null)
-            characterController.enabled = true;
+        ActorPoseSnapper.Snap(actorTransform, owner.ActorCharacterControllerRef,
+                              owner.ActorRigidbodyRef, worldPosition, worldRotation);
     }
 
     public void FaceTarget(Transform lockedTarget)

@@ -44,7 +44,7 @@ public sealed partial class CharacterAnimBrain
             _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
                 usesRootMotion: true,
                 preserveFireHoldIntent: true);
-            owner.EmitPlaybackSignal(PlaybackKind.UtilityWarpOut, PlaybackPhase.Started, owner._activeUtilityRequestId);
+            owner.EmitPlaybackSignal(PlaybackKind.UtilityWarpOut, PlaybackPhase.Started, owner._utilityChannel.RequestId);
 
             state = owner.LocoLayer.Play(utilityClip);
             state.NormalizedTime = 0f;

@@ -35,6 +35,15 @@ and dead transitions. Driver subscribes to `HealthSystem` life events only when
 no `StateHub` is available, so a transition is never handled by both sources.
 Other audio and gameplay subscribers continue to use `HealthSystem` events.
 
+## Internal Playback Channels
+
+`CharacterAnimBrain` uses an internal `PlaybackChannel` to manage request state
+for skill, utility, and chain playback subsystems. Each channel wraps a
+`PlaybackRequestState` with a `PlaybackKind` tag and shared lifecycle helpers.
+The public event surface (`SkillCastMomentReached`, `SkillCompleted`,
+`SkillCastInterrupted`, `ChainCastMomentReached`, `ChainPlaybackCompleted`,
+`ChainPlaybackInterrupted`, `PlaybackEvent`) is unchanged.
+
 ## Context Resolution
 
 Character prefabs must expose both `CharacterAnimDriver` and

@@ -5,19 +5,19 @@ public sealed partial class CharacterAnimBrain
     private sealed class Locomotion_StatusEffect : LocomotionState
     {
         private readonly CharacterAnimBrain owner;
-        private StatusLocomotionKind kind;
+        private StatusLocomotionPose kind;
 
         public Locomotion_StatusEffect(CharacterAnimBrain owner)
         {
             this.owner = owner;
         }
 
-        public void SetKind(StatusLocomotionKind value)
+        public void SetKind(StatusLocomotionPose value)
         {
             kind = value;
         }
 
-        public override bool CanEnterState => kind != StatusLocomotionKind.None &&
+        public override bool CanEnterState => kind != StatusLocomotionPose.None &&
                                               owner.GetStatusLocomotionClip(kind) != null;
 
         public override void OnEnterState()

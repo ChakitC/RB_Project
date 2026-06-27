@@ -60,9 +60,9 @@ public sealed partial class CharacterAnimBrain
                 usesRootMotion: true,
                 preserveFireHoldIntent: true);
             owner.ApplyActiveSkillRootMotionPolicy();
-            owner.EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.Started, owner._skillRequest.RequestId);
+            owner.EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.Started, owner._skillChannel.Request.RequestId);
 
-            var skillDef = owner._skillRequest.Definition;
+            var skillDef = owner._skillChannel.Request.Definition;
             if (skillDef != null && skillDef.IsCutsceneSkill)
             {
                 var def = skillDef.CutsceneDef;
@@ -202,7 +202,7 @@ public sealed partial class CharacterAnimBrain
         {
             handle = default;
             if (_inCutscenePhase || _state == null) return false;
-            if (requestId != owner._skillRequest.RequestId) return false;
+            if (requestId != owner._skillChannel.Request.RequestId) return false;
 
             float castPoint = owner.ActiveSkillCastPointNormalized;
             float currentNt = _state.NormalizedTime;

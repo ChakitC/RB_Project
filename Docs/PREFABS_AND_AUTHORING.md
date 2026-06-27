@@ -639,6 +639,29 @@ Passive authoring should keep these fields stable:
 Optional event source rules should define a source id explicitly when designers
 need multiple rules to share or distinguish the same source.
 
+## Status Effect Locomotion Pose
+
+`StatusEffectDef` has a `locomotionPose` field (enum `StatusLocomotionPose`)
+under the Gameplay header. It controls which locomotion animation plays when the
+status effect is active:
+
+| Value | Behavior |
+|-------|----------|
+| `Auto` (default) | Derives the pose from structured flags: `pushStunnedState` → Stun, `controlBlocks.Move` → Root. MiniStun and Freeze require explicit assignment. |
+| `None` | No locomotion override. |
+| `Root` | Rooted in place; aim and rotate still allowed. |
+| `MiniStun` | Brief stun animation. |
+| `Stun` | Full stun animation. |
+| `Freeze` | Frozen animation (highest priority). |
+
+Priority order: Freeze > Stun > MiniStun > Root.
+
+For existing assets that relied on string-token matching (effectId/name/tags),
+run `Tools > Status > Migrate Locomotion Pose` once after upgrading. The
+migration tool scans all `StatusEffectDef` assets and sets `locomotionPose`
+based on the old string heuristic. Assets left as `Auto` use the structured
+fallback automatically.
+
 ## Before Removing A Serialized Field
 
 Check all of these first:

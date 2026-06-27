@@ -49,7 +49,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private PairOffsetUpperAction _activePairUpperAction = PairOffsetUpperAction.None;
 
     public enum MeleeType { Light, Heavy }
-    private enum StatusLocomotionKind { None, Root, MiniStune, Stune, Freez }
 
     public enum PlaybackKind
     {
@@ -113,9 +112,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     public bool IsDowned { get; private set; }
     private LocomotionState_Crawl crawlState;
     private Locomotion_StatusEffect statusEffectState;
-    private StatusLocomotionKind _currentStatusLocomotionKind;
-    private StatusLocomotionKind _externalStatusLocomotionKind;
-    private StatusLocomotionKind _staggerStatusLocomotionKind;
+    private StatusLocomotionPose _currentStatusLocomotionPose;
+    private StatusLocomotionPose _externalStatusLocomotionPose;
+    private StatusLocomotionPose _staggerStatusLocomotionPose;
 
     // pending (กรณีเรียก SetDowned ก่อน init)
     private bool _pendingDownedSet;
@@ -159,12 +158,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     // cache delegates ลด alloc
     private Action onShootEndCache;
     private Action onUtilityCastMomentCache;
-    private readonly PlaybackRequestState _skillRequest = new PlaybackRequestState();
+    private readonly PlaybackChannel _skillChannel = new() { Kind = PlaybackKind.Skill };
     private AnimationVfxPresenter _animationVfxPresenter;
-    private int _activeUtilityRequestId;
-    private float _activeUtilityCastPointNormalized = 0.35f;
-    private bool _activeUtilityReleaseRequested;
-    private bool _activeUtilityReleased;
+    private readonly PlaybackChannel _utilityChannel = new() { Kind = PlaybackKind.UtilityWarpOut };
 
     private AnimancerLayer LocoLayer => animancer.Layers[locomotionLayerIndex];
     private AnimancerLayer ActLayer => animancer.Layers[actionLayerIndex];
@@ -207,34 +203,34 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private ClipTransition UtilityWarpInClip => AnimProfile.utilityWarpInClip;
     private float UtilityWarpInCastPointNormalized => AnimProfile.utilityWarpInCastPointNormalized;
     private ClipTransition LegacySkillClip => AnimProfile.skillClip;
-    private ClipTransition SkillClip => ResolveSkillClip(_skillRequest.Definition);
+    private ClipTransition SkillClip => ResolveSkillClip(_skillChannel.Request.Definition);
     public PairOffsetProfilesSO PairOffsetProfiles => AnimProfile != null ? AnimProfile.pairOffsetProfiles : null;
-    public SkillGemDefinition ActiveSkillDefinition => _skillRequest.Definition;
+    public SkillGemDefinition ActiveSkillDefinition => _skillChannel.Request.Definition;
     private ClipTransition MiniStuneClip => AnimProfile.miniStune;
     private ClipTransition StuneClip => AnimProfile.stune;
     private ClipTransition RootClip => AnimProfile.root;
     private ClipTransition FreezClip => AnimProfile.freez;
     private ClipTransition KnockbackClip => AnimProfile.knockback;
-    private bool HasActiveSkillClip => HasValidSkillClip(_skillRequest.Definition);
+    private bool HasActiveSkillClip => HasValidSkillClip(_skillChannel.Request.Definition);
     private bool HasActiveUtilityWarpOutClip => HasValidUtilityWarpOutClip();
-    internal float ActiveSkillCastPointNormalized => _skillRequest.CastPointNormalized;
-    internal bool HasPendingSkillReleaseRequest => _skillRequest.ReleaseRequested;
-    internal float ActiveUtilityCastPointNormalized => _activeUtilityCastPointNormalized;
-    internal bool HasPendingUtilityReleaseRequest => _activeUtilityReleaseRequested;
+    internal float ActiveSkillCastPointNormalized => _skillChannel.Request.CastPointNormalized;
+    internal bool HasPendingSkillReleaseRequest => _skillChannel.Request.ReleaseRequested;
+    internal float ActiveUtilityCastPointNormalized => _utilityChannel.Request.CastPointNormalized;
+    internal bool HasPendingUtilityReleaseRequest => _utilityChannel.Request.ReleaseRequested;
     public bool IsSkillPlaybackActive =>
-        _skillRequest.ReleaseRequested ||
-        _skillRequest.RequestId != 0 ||
+        _skillChannel.IsActive ||
         (_initialized && locomotionSM.CurrentState == skill);
-    public bool IsUtilityPlaybackActive =>
-        _activeUtilityReleaseRequested ||
-        _activeUtilityRequestId != 0 ||
+    private bool IsUtilityPlaybackActive =>
+        _utilityChannel.IsActive ||
         (_initialized && locomotionSM.CurrentState == utility);
+    /// <summary>True when any skill, utility, or chain playback blocks shooting.</summary>
     public bool IsShootBlockingPlaybackActive =>
         IsSkillPlaybackActive ||
         IsUtilityPlaybackActive ||
         IsChainPlaybackActive;
-    public bool IsSkillActive => IsShootBlockingPlaybackActive;
+    /// <summary>True when a utility warp or chain-utility is active.</summary>
     public bool IsUtilityActive => IsUtilityPlaybackActive || IsChainUtilityPlaybackActive;
+    /// <summary>True when locomotion is fully owned by an exclusive action (skill/utility/chain/melee/reload/knockback/dead/status).</summary>
     public bool IsExclusiveLocomotionActive =>
         _initialized &&
         (locomotionSM.CurrentState == skill ||
@@ -246,6 +242,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
          locomotionSM.CurrentState == deadState ||
          locomotionSM.CurrentState == statusEffectState);
     public PlaybackKind CurrentPlaybackKind => ResolveCurrentPlaybackKind();
+
+    private bool ExternalCommandBlockedByChain() => IsChainPlaybackActive;
 
     public event Action<PlaybackSignal> PlaybackEvent;
     public event Action<int> SkillCastMomentReached;
@@ -261,17 +259,17 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (requestId <= 0 || !_initialized)
             return false;
 
-        if (requestId == _skillRequest.RequestId &&
-            _skillRequest.ReleaseRequested &&
+        if (requestId == _skillChannel.Request.RequestId &&
+            _skillChannel.Request.ReleaseRequested &&
             locomotionSM.CurrentState == skill &&
             skill != null)
         {
             return skill.TryGetNormalizedTime(out normalizedTime);
         }
 
-        if (requestId == _chainRequest.RequestId &&
+        if (requestId == _chainChannel.Request.RequestId &&
             _activeChainKind == ChainPlaybackKind.Skill &&
-            _chainRequest.ReleaseRequested &&
+            _chainChannel.Request.ReleaseRequested &&
             locomotionSM.CurrentState == chain &&
             chain != null)
         {
@@ -285,7 +283,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     {
         handle = default;
         if (!_initialized || locomotionSM.CurrentState != skill) return false;
-        if (requestId <= 0 || requestId != _skillRequest.RequestId) return false;
+        if (requestId <= 0 || requestId != _skillChannel.Request.RequestId) return false;
         if (!HasPendingSkillReleaseRequest) return false;
         return skill.TryBeginPreCastHold(requestId, speedMultiplier, safetyMarginNormalized, out handle);
     }
@@ -352,8 +350,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
                               (animancer.Animator != _boundAnimator || animProfile != _boundAnimProfile);
         if (bindingChanged)
         {
-            if ((_skillRequest.RequestId != 0 || _skillRequest.ReleaseRequested) ||
-                (_activeUtilityRequestId != 0 || _activeUtilityReleaseRequested))
+            if (_skillChannel.IsActive || _utilityChannel.IsActive)
             {
                 InterruptActiveSkillRequest();
                 InterruptActiveUtilityRequest();
@@ -451,8 +448,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private void ResolveReferences()
     {
         if (!ctx)
-        {
-            TryGetComponent(out ctx);
+        {  
             if (!ctx)
                 ctx = GetComponentInParent<CharacteContext>();
         }
@@ -574,7 +570,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void NotifyShotFired()
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return;
 
         if (!TryInitialize())
@@ -678,7 +674,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PlayReload(float reloadDuration)
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return;
 
         _reloadDuration = Mathf.Max(0.01f, reloadDuration);
@@ -693,7 +689,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PlayDash(float dashDuration, Vector2 dashDirLocal)
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return;
 
         _dashDuration = Mathf.Max(0.01f, dashDuration);
@@ -712,7 +708,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void EndDashNow()
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return;
 
         if (!TryInitialize()) return;
@@ -729,7 +725,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public bool PlayKnockback(KnockbackData knockback)
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return false;
 
         if (!knockback.IsValid)
@@ -768,7 +764,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PressMelee(MeleeType type)
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return;
 
         CurrentMeleeType = type;
@@ -836,21 +832,21 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void SetExternalStatusLocomotion(ImpactReactionKind reaction)
     {
-        StatusLocomotionKind desired = MapReactionToStatusLocomotion(reaction);
-        if (_externalStatusLocomotionKind == desired)
+        StatusLocomotionPose desired = MapReactionToStatusLocomotion(reaction);
+        if (_externalStatusLocomotionPose == desired)
             return;
 
-        _externalStatusLocomotionKind = desired;
+        _externalStatusLocomotionPose = desired;
         RefreshStatusLocomotion();
     }
 
     public void SetStaggerStatusLocomotion(ImpactReactionKind reaction)
     {
-        StatusLocomotionKind desired = MapReactionToStatusLocomotion(reaction);
-        if (_staggerStatusLocomotionKind == desired)
+        StatusLocomotionPose desired = MapReactionToStatusLocomotion(reaction);
+        if (_staggerStatusLocomotionPose == desired)
             return;
 
-        _staggerStatusLocomotionKind = desired;
+        _staggerStatusLocomotionPose = desired;
         RefreshStatusLocomotion();
     }
 
@@ -861,7 +857,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PlaySkill(SkillGemDefinition skillDef)
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return;
 
         if (!TryInitialize() || !HasValidSkillClip(skillDef))
@@ -872,7 +868,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         StopReloadAction();
         ClearActiveSkillRequest();
-        _skillRequest.Definition = skillDef;
+        _skillChannel.Request.Definition = skillDef;
         locomotionSM.TryResetState(skill);
     }
 
@@ -907,7 +903,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         IReadOnlyList<CombatTimelineEventName> timelineEventNames,
         bool usePlanarRootMotion)
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return false;
 
         if (requestId <= 0)
@@ -943,7 +939,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public bool TryPlayUtilityWarpOut(int requestId)
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return false;
 
         if (requestId <= 0)
@@ -971,10 +967,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void CancelSkillCastRequest(int requestId)
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return;
 
-        if (requestId <= 0 || requestId != _skillRequest.RequestId)
+        if (requestId <= 0 || requestId != _skillChannel.Request.RequestId)
             return;
 
         ClearActiveSkillRequest();
@@ -988,10 +984,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void CancelUtilityCastRequest(int requestId)
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return;
 
-        if (requestId <= 0 || requestId != _activeUtilityRequestId)
+        if (requestId <= 0 || requestId != _utilityChannel.RequestId)
             return;
 
         ClearActiveUtilityRequest();
@@ -1005,7 +1001,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void CancelMeleeNow()
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return;
 
         if (!TryInitialize())
@@ -1057,7 +1053,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void StopReloadAction()
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return;
 
         if (!TryInitialize()) return;
@@ -1303,7 +1299,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void RefreshStatusLocomotion()
     {
-        if (IsChainPlaybackActive)
+        if (ExternalCommandBlockedByChain())
             return;
 
         if (!_initialized)
@@ -1315,13 +1311,13 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (locomotionSM.CurrentState == knockbackState)
             return;
 
-        StatusLocomotionKind desired = ResolveStatusLocomotionKind();
+        StatusLocomotionPose desired = ResolveStatusLocomotionPose();
 
-        if (desired == StatusLocomotionKind.None)
+        if (desired == StatusLocomotionPose.None)
         {
             if (locomotionSM.CurrentState == statusEffectState)
             {
-                _currentStatusLocomotionKind = StatusLocomotionKind.None;
+                _currentStatusLocomotionPose = StatusLocomotionPose.None;
                 locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
             }
 
@@ -1353,26 +1349,26 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         if (locomotionSM.CurrentState == statusEffectState)
         {
-            if (_currentStatusLocomotionKind != desired)
+            if (_currentStatusLocomotionPose != desired)
             {
-                _currentStatusLocomotionKind = desired;
+                _currentStatusLocomotionPose = desired;
                 locomotionSM.TryResetState(statusEffectState);
             }
 
             return;
         }
 
-        _currentStatusLocomotionKind = desired;
+        _currentStatusLocomotionPose = desired;
         locomotionSM.TrySetState(statusEffectState);
     }
 
-    private StatusLocomotionKind ResolveStatusLocomotionKind()
+    private StatusLocomotionPose ResolveStatusLocomotionPose()
     {
         if (!statusEffectController)
             ResolveReferences();
 
         var activeEffects = statusEffectController?.ActiveEffects;
-        StatusLocomotionKind best = StatusLocomotionKind.None;
+        StatusLocomotionPose best = StatusLocomotionPose.None;
         int bestPriority = 0;
 
         if (activeEffects != null)
@@ -1384,8 +1380,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
                 if (definition == null || instance.CurrentStacks <= 0)
                     continue;
 
-                StatusLocomotionKind candidate = ResolveStatusLocomotionKind(definition);
-                if (candidate == StatusLocomotionKind.None || GetStatusLocomotionClip(candidate) == null)
+                StatusLocomotionPose candidate = ResolveStatusLocomotionPose(definition);
+                if (candidate == StatusLocomotionPose.None || GetStatusLocomotionClip(candidate) == null)
                     continue;
 
                 int priority = GetStatusLocomotionPriority(candidate);
@@ -1397,155 +1393,80 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             }
         }
 
-        if (_externalStatusLocomotionKind != StatusLocomotionKind.None &&
-            GetStatusLocomotionClip(_externalStatusLocomotionKind) != null)
+        if (_externalStatusLocomotionPose != StatusLocomotionPose.None &&
+            GetStatusLocomotionClip(_externalStatusLocomotionPose) != null)
         {
-            int priority = GetStatusLocomotionPriority(_externalStatusLocomotionKind);
+            int priority = GetStatusLocomotionPriority(_externalStatusLocomotionPose);
             if (priority > bestPriority)
             {
-                best = _externalStatusLocomotionKind;
+                best = _externalStatusLocomotionPose;
                 bestPriority = priority;
             }
         }
 
-        if (_staggerStatusLocomotionKind != StatusLocomotionKind.None &&
-            GetStatusLocomotionClip(_staggerStatusLocomotionKind) != null)
+        if (_staggerStatusLocomotionPose != StatusLocomotionPose.None &&
+            GetStatusLocomotionClip(_staggerStatusLocomotionPose) != null)
         {
-            int priority = GetStatusLocomotionPriority(_staggerStatusLocomotionKind);
+            int priority = GetStatusLocomotionPriority(_staggerStatusLocomotionPose);
             if (priority > bestPriority)
-                return _staggerStatusLocomotionKind;
+                return _staggerStatusLocomotionPose;
         }
 
         return best;
     }
 
-    private StatusLocomotionKind ResolveStatusLocomotionKind(StatusEffectDef definition)
+    private StatusLocomotionPose ResolveStatusLocomotionPose(StatusEffectDef def)
     {
-        if (definition == null)
-            return StatusLocomotionKind.None;
-
-        if (HasStatusMarker(definition, "miniStune", "miniStun", "mini_stun", "mini-stun"))
-            return StatusLocomotionKind.MiniStune;
-
-        if (HasStatusMarker(definition, "freez", "freeze", "frozen"))
-            return StatusLocomotionKind.Freez;
-
-        if (HasStatusMarker(definition, "stune", "stun"))
-            return StatusLocomotionKind.Stune;
-
-        if (HasStatusMarker(definition, "root", "rooted"))
-            return StatusLocomotionKind.Root;
-
-        if (definition.pushStunnedState)
-            return StatusLocomotionKind.Stune;
-
-        if ((definition.controlBlocks & ControlBlockFlags.Move) != 0)
-            return StatusLocomotionKind.Root;
-
-        return StatusLocomotionKind.None;
+        if (def == null) return StatusLocomotionPose.None;
+        if (def.locomotionPose != StatusLocomotionPose.Auto) return def.locomotionPose;
+        if (def.pushStunnedState) return StatusLocomotionPose.Stun;
+        if ((def.controlBlocks & ControlBlockFlags.Move) != 0) return StatusLocomotionPose.Root;
+        return StatusLocomotionPose.None;
     }
 
-    private static bool HasStatusMarker(StatusEffectDef definition, params string[] tokens)
-    {
-        if (definition == null)
-            return false;
-
-        if (ContainsStatusToken(definition.effectId, tokens))
-            return true;
-
-        if (ContainsStatusToken(definition.name, tokens))
-            return true;
-
-        if (definition.tags == null)
-            return false;
-
-        for (int i = 0; i < definition.tags.Count; i++)
-        {
-            if (ContainsStatusToken(definition.tags[i], tokens))
-                return true;
-        }
-
-        return false;
-    }
-
-    private static bool ContainsStatusToken(string value, params string[] tokens)
-    {
-        if (string.IsNullOrWhiteSpace(value) || tokens == null || tokens.Length == 0)
-            return false;
-
-        string normalizedValue = NormalizeStatusToken(value);
-        if (string.IsNullOrEmpty(normalizedValue))
-            return false;
-
-        for (int i = 0; i < tokens.Length; i++)
-        {
-            string token = NormalizeStatusToken(tokens[i]);
-            if (string.IsNullOrEmpty(token))
-                continue;
-
-            if (normalizedValue.IndexOf(token, StringComparison.Ordinal) >= 0)
-                return true;
-        }
-
-        return false;
-    }
-
-    private static string NormalizeStatusToken(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return string.Empty;
-
-        return value.Trim()
-            .ToLowerInvariant()
-            .Replace(" ", string.Empty)
-            .Replace("_", string.Empty)
-            .Replace("-", string.Empty)
-            .Replace(":", string.Empty);
-    }
-
-    private int GetStatusLocomotionPriority(StatusLocomotionKind kind)
+    private int GetStatusLocomotionPriority(StatusLocomotionPose kind)
     {
         return kind switch
         {
-            StatusLocomotionKind.Freez => 40,
-            StatusLocomotionKind.Stune => 30,
-            StatusLocomotionKind.MiniStune => 20,
-            StatusLocomotionKind.Root => 10,
+            StatusLocomotionPose.Freeze => 40,
+            StatusLocomotionPose.Stun => 30,
+            StatusLocomotionPose.MiniStun => 20,
+            StatusLocomotionPose.Root => 10,
             _ => 0,
         };
     }
 
-    private static StatusLocomotionKind MapReactionToStatusLocomotion(ImpactReactionKind reaction)
+    private static StatusLocomotionPose MapReactionToStatusLocomotion(ImpactReactionKind reaction)
     {
         return reaction switch
         {
-            ImpactReactionKind.Root => StatusLocomotionKind.Root,
-            ImpactReactionKind.MiniStun => StatusLocomotionKind.MiniStune,
-            ImpactReactionKind.Stun => StatusLocomotionKind.Stune,
-            _ => StatusLocomotionKind.None,
+            ImpactReactionKind.Root => StatusLocomotionPose.Root,
+            ImpactReactionKind.MiniStun => StatusLocomotionPose.MiniStun,
+            ImpactReactionKind.Stun => StatusLocomotionPose.Stun,
+            _ => StatusLocomotionPose.None,
         };
     }
 
-    private bool IsHardStatusLocomotion(StatusLocomotionKind kind)
+    private bool IsHardStatusLocomotion(StatusLocomotionPose kind)
     {
-        return kind == StatusLocomotionKind.MiniStune ||
-               kind == StatusLocomotionKind.Stune ||
-               kind == StatusLocomotionKind.Freez;
+        return kind == StatusLocomotionPose.MiniStun ||
+               kind == StatusLocomotionPose.Stun ||
+               kind == StatusLocomotionPose.Freeze;
     }
 
-    private bool ShouldInterruptActionLayer(StatusLocomotionKind kind)
+    private bool ShouldInterruptActionLayer(StatusLocomotionPose kind)
     {
         return IsHardStatusLocomotion(kind);
     }
 
-    private ClipTransition GetStatusLocomotionClip(StatusLocomotionKind kind)
+    private ClipTransition GetStatusLocomotionClip(StatusLocomotionPose kind)
     {
         return kind switch
         {
-            StatusLocomotionKind.MiniStune => MiniStuneClip,
-            StatusLocomotionKind.Stune => StuneClip,
-            StatusLocomotionKind.Root => RootClip,
-            StatusLocomotionKind.Freez => FreezClip,
+            StatusLocomotionPose.MiniStun => MiniStuneClip,
+            StatusLocomotionPose.Stun => StuneClip,
+            StatusLocomotionPose.Root => RootClip,
+            StatusLocomotionPose.Freeze => FreezClip,
             _ => null,
         };
     }
@@ -1624,34 +1545,34 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     internal void NotifySkillCastMoment()
     {
-        if (!_skillRequest.ReleaseRequested || _skillRequest.Released)
+        if (!_skillChannel.Request.ReleaseRequested || _skillChannel.Request.Released)
             return;
 
-        _skillRequest.Released = true;
-        EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.CastMoment, _skillRequest.RequestId);
-        SkillCastMomentReached?.Invoke(_skillRequest.RequestId);
+        _skillChannel.Request.Released = true;
+        EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.CastMoment, _skillChannel.Request.RequestId);
+        SkillCastMomentReached?.Invoke(_skillChannel.Request.RequestId);
     }
 
     internal void NotifyUtilityCastMoment()
     {
-        if (!_activeUtilityReleaseRequested || _activeUtilityReleased)
+        if (!_utilityChannel.Request.ReleaseRequested || _utilityChannel.Request.Released)
             return;
 
-        _activeUtilityReleased = true;
-        EmitPlaybackSignal(PlaybackKind.UtilityWarpOut, PlaybackPhase.CastMoment, _activeUtilityRequestId);
-        SkillCastMomentReached?.Invoke(_activeUtilityRequestId);
+        _utilityChannel.Request.Released = true;
+        EmitPlaybackSignal(PlaybackKind.UtilityWarpOut, PlaybackPhase.CastMoment, _utilityChannel.RequestId);
+        SkillCastMomentReached?.Invoke(_utilityChannel.RequestId);
     }
 
     internal void NotifySkillStateExited(bool completedNormally)
     {
-        int requestId = _skillRequest.RequestId;
-        SkillGemDefinition activeSkillDefinition = _skillRequest.Definition;
+        int requestId = _skillChannel.Request.RequestId;
+        SkillGemDefinition activeSkillDefinition = _skillChannel.Request.Definition;
         bool shouldReleaseOnComplete =
             completedNormally &&
-            _skillRequest.ReleaseRequested &&
-            !_skillRequest.Released &&
+            _skillChannel.Request.ReleaseRequested &&
+            !_skillChannel.Request.Released &&
             requestId > 0;
-        bool interrupted = !completedNormally && _skillRequest.ReleaseRequested && requestId > 0;
+        bool interrupted = !completedNormally && _skillChannel.Request.ReleaseRequested && requestId > 0;
         bool shouldDeactivateOwner =
             deactivateOwnerOnSkillExit &&
             activeSkillDefinition == null &&
@@ -1659,7 +1580,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         if (shouldReleaseOnComplete)
         {
-            _skillRequest.Released = true;
+            _skillChannel.Request.Released = true;
             EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.CastMoment, requestId);
             SkillCastMomentReached?.Invoke(requestId);
         }
@@ -1684,18 +1605,17 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     internal void NotifyUtilityStateExited(bool completedNormally)
     {
-        int requestId = _activeUtilityRequestId;
+        int requestId = _utilityChannel.RequestId;
         bool shouldReleaseOnComplete =
             completedNormally &&
-            _activeUtilityReleaseRequested &&
-            !_activeUtilityReleased &&
+            _utilityChannel.Request.ReleaseRequested &&
+            !_utilityChannel.Request.Released &&
             requestId > 0;
-        // Utility interruptions after release still need to unwind dependent sequences.
-        bool interrupted = !completedNormally && _activeUtilityReleaseRequested && requestId > 0;
+        bool interrupted = !completedNormally && _utilityChannel.Request.ReleaseRequested && requestId > 0;
 
         if (shouldReleaseOnComplete)
         {
-            _activeUtilityReleased = true;
+            _utilityChannel.Request.Released = true;
             EmitPlaybackSignal(PlaybackKind.UtilityWarpOut, PlaybackPhase.CastMoment, requestId);
             SkillCastMomentReached?.Invoke(requestId);
         }
@@ -1717,17 +1637,17 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     internal void BindActiveSkillTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
     {
-        ClipTransition clip = ResolveSkillClip(_skillRequest.Definition);
+        ClipTransition clip = ResolveSkillClip(_skillChannel.Request.Definition);
         BindTimelineEventCallbacks(
             runtimeEvents,
-            _skillRequest.TimelineEventNames,
+            _skillChannel.Request.TimelineEventNames,
             clip,
             RaiseSkillTimelineEvent,
             warnMissing: true);
 
         BindVfxTimelineEventCallbacks(
             runtimeEvents,
-            _skillRequest.Definition,
+            _skillChannel.Request.Definition,
             clip,
             RaiseSkillVfxTimelineEvent);
 
@@ -1771,17 +1691,17 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (_activeChainKind != ChainPlaybackKind.Skill)
             return;
 
-        ClipTransition clip = ResolveSkillClip(_chainRequest.Definition);
+        ClipTransition clip = ResolveSkillClip(_chainChannel.Request.Definition);
         BindTimelineEventCallbacks(
             runtimeEvents,
-            _chainRequest.TimelineEventNames,
+            _chainChannel.Request.TimelineEventNames,
             clip,
             RaiseChainSkillTimelineEvent,
             warnMissing: true);
 
         BindVfxTimelineEventCallbacks(
             runtimeEvents,
-            _chainRequest.Definition,
+            _chainChannel.Request.Definition,
             clip,
             RaiseChainSkillVfxTimelineEvent);
     }
@@ -1860,7 +1780,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void BindActiveSkillPreCastTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
     {
-        SkillGemDefinition skillDef = _skillRequest.Definition;
+        SkillGemDefinition skillDef = _skillChannel.Request.Definition;
         if (runtimeEvents == null || skillDef == null || !skillDef.BlockablePreCast)
             return;
 
@@ -1911,61 +1831,61 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void RaiseSkillTimelineEvent(CombatTimelineEventName eventName)
     {
-        if (!_skillRequest.ReleaseRequested ||
-            _skillRequest.RequestId <= 0 ||
+        if (!_skillChannel.Request.ReleaseRequested ||
+            _skillChannel.Request.RequestId <= 0 ||
             !CombatTimelineEventNames.IsValid(eventName))
         {
             return;
         }
 
-        SkillTimelineEventRaised?.Invoke(_skillRequest.RequestId, eventName);
+        SkillTimelineEventRaised?.Invoke(_skillChannel.Request.RequestId, eventName);
     }
 
     private void RaiseChainSkillTimelineEvent(CombatTimelineEventName eventName)
     {
         if (_activeChainKind != ChainPlaybackKind.Skill ||
-            !_chainRequest.ReleaseRequested ||
-            _chainRequest.RequestId <= 0 ||
+            !_chainChannel.Request.ReleaseRequested ||
+            _chainChannel.Request.RequestId <= 0 ||
             !CombatTimelineEventNames.IsValid(eventName))
         {
             return;
         }
 
-        SkillTimelineEventRaised?.Invoke(_chainRequest.RequestId, eventName);
+        SkillTimelineEventRaised?.Invoke(_chainChannel.Request.RequestId, eventName);
     }
 
     private void RaiseSkillVfxTimelineEvent(int cueIndex)
     {
-        if (!_skillRequest.ReleaseRequested || _skillRequest.RequestId <= 0 || cueIndex < 0)
+        if (!_skillChannel.Request.ReleaseRequested || _skillChannel.Request.RequestId <= 0 || cueIndex < 0)
             return;
 
         SkillAnimationVfxCueRaised?.Invoke(new SkillAnimationVfxCueSignal(
-            _skillRequest.RequestId, _skillRequest.Definition, SkillAnimationVfxPhase.MainSkill, cueIndex));
-        SkillTimelineEventRaised?.Invoke(_skillRequest.RequestId, CombatTimelineEventName.Vfx);
+            _skillChannel.Request.RequestId, _skillChannel.Request.Definition, SkillAnimationVfxPhase.MainSkill, cueIndex));
+        SkillTimelineEventRaised?.Invoke(_skillChannel.Request.RequestId, CombatTimelineEventName.Vfx);
     }
 
     private void RaiseChainSkillVfxTimelineEvent(int cueIndex)
     {
         if (_activeChainKind != ChainPlaybackKind.Skill ||
-            !_chainRequest.ReleaseRequested ||
-            _chainRequest.RequestId <= 0 ||
+            !_chainChannel.Request.ReleaseRequested ||
+            _chainChannel.Request.RequestId <= 0 ||
             cueIndex < 0)
         {
             return;
         }
 
         SkillAnimationVfxCueRaised?.Invoke(new SkillAnimationVfxCueSignal(
-            _chainRequest.RequestId, _chainRequest.Definition, SkillAnimationVfxPhase.MainSkill, cueIndex));
-        SkillTimelineEventRaised?.Invoke(_chainRequest.RequestId, CombatTimelineEventName.Vfx);
+            _chainChannel.Request.RequestId, _chainChannel.Request.Definition, SkillAnimationVfxPhase.MainSkill, cueIndex));
+        SkillTimelineEventRaised?.Invoke(_chainChannel.Request.RequestId, CombatTimelineEventName.Vfx);
     }
 
     private void RaiseCutsceneVfxCueInternal(int cueIndex)
     {
-        if (!_skillRequest.ReleaseRequested || _skillRequest.RequestId <= 0 || cueIndex < 0)
+        if (!_skillChannel.Request.ReleaseRequested || _skillChannel.Request.RequestId <= 0 || cueIndex < 0)
             return;
 
         SkillAnimationVfxCueRaised?.Invoke(new SkillAnimationVfxCueSignal(
-            _skillRequest.RequestId, _skillRequest.Definition, SkillAnimationVfxPhase.Cutscene, cueIndex));
+            _skillChannel.Request.RequestId, _skillChannel.Request.Definition, SkillAnimationVfxPhase.Cutscene, cueIndex));
     }
 
     private void ArmSkillRequest(
@@ -1975,12 +1895,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         IReadOnlyList<CombatTimelineEventName> timelineEventNames,
         bool usePlanarRootMotion)
     {
-        _skillRequest.Definition = skillDef;
-        _skillRequest.RequestId = requestId;
-        _skillRequest.CastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
-        _skillRequest.ReleaseRequested = true;
-        _skillRequest.Released = false;
-        _skillRequest.UsesPlanarRootMotion = usePlanarRootMotion;
+        _skillChannel.Request.Definition = skillDef;
+        _skillChannel.Request.RequestId = requestId;
+        _skillChannel.Request.CastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
+        _skillChannel.Request.ReleaseRequested = true;
+        _skillChannel.Request.Released = false;
+        _skillChannel.Request.UsesPlanarRootMotion = usePlanarRootMotion;
         SetActiveSkillTimelineEventNames(skillDef, timelineEventNames);
         EnsureSkillVfxPresenter(skillDef);
     }
@@ -1991,7 +1911,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         RootMotionYawActive = planar;
     }
 
-    internal void ApplyActiveSkillRootMotionPolicy() => SetRootMotionPolicy(_skillRequest.UsesPlanarRootMotion);
+    internal void ApplyActiveSkillRootMotionPolicy() => SetRootMotionPolicy(_skillChannel.Request.UsesPlanarRootMotion);
 
     private void EnsureSkillVfxPresenter(SkillGemDefinition skillDef)
     {
@@ -2004,24 +1924,26 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void ArmUtilityRequest(int requestId, float castPointNormalized)
     {
-        _activeUtilityRequestId = requestId;
-        _activeUtilityCastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
-        _activeUtilityReleaseRequested = true;
-        _activeUtilityReleased = false;
+        _utilityChannel.Request.RequestId = requestId;
+        _utilityChannel.Request.CastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
+        _utilityChannel.Request.ReleaseRequested = true;
+        _utilityChannel.Request.Released = false;
+        _utilityChannel.Kind = PlaybackKind.UtilityWarpOut;
     }
 
     private void ClearActiveSkillRequest()
     {
-        _skillRequest.Clear();
+        _skillChannel.Clear();
+        _skillChannel.Kind = PlaybackKind.Skill;
     }
 
     private void SetActiveSkillTimelineEventNames(
         SkillGemDefinition skillDef,
         IReadOnlyList<CombatTimelineEventName> timelineEventNames)
     {
-        _skillRequest.TimelineEventNames.Clear();
+        _skillChannel.Request.TimelineEventNames.Clear();
 
-        skillDef?.CollectTimelineEventNames(_skillRequest.TimelineEventNames);
+        skillDef?.CollectTimelineEventNames(_skillChannel.Request.TimelineEventNames);
 
         if (timelineEventNames == null || timelineEventNames.Count == 0)
             return;
@@ -2032,19 +1954,17 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             if (!CombatTimelineEventNames.IsValid(eventName))
                 continue;
 
-            if (_skillRequest.TimelineEventNames.Contains(eventName))
+            if (_skillChannel.Request.TimelineEventNames.Contains(eventName))
                 continue;
 
-            _skillRequest.TimelineEventNames.Add(eventName);
+            _skillChannel.Request.TimelineEventNames.Add(eventName);
         }
     }
 
     private void ClearActiveUtilityRequest()
     {
-        _activeUtilityRequestId = 0;
-        _activeUtilityCastPointNormalized = 0.35f;
-        _activeUtilityReleaseRequested = false;
-        _activeUtilityReleased = false;
+        _utilityChannel.Clear();
+        _utilityChannel.Kind = PlaybackKind.UtilityWarpOut;
     }
 
     private void NotifyInterrupted(PlaybackKind kind, int requestId,
@@ -2057,8 +1977,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void InterruptActiveSkillRequest()
     {
-        int requestId = _skillRequest.RequestId;
-        bool shouldNotify = _skillRequest.ReleaseRequested && !_skillRequest.Released && requestId > 0;
+        int requestId = _skillChannel.Request.RequestId;
+        bool shouldNotify = _skillChannel.Request.ReleaseRequested && !_skillChannel.Request.Released && requestId > 0;
 
         ClearActiveSkillRequest();
 
@@ -2068,8 +1988,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void InterruptActiveUtilityRequest()
     {
-        int requestId = _activeUtilityRequestId;
-        bool shouldNotify = _activeUtilityReleaseRequested && requestId > 0;
+        int requestId = _utilityChannel.RequestId;
+        bool shouldNotify = _utilityChannel.Request.ReleaseRequested && requestId > 0;
 
         ClearActiveUtilityRequest();
 

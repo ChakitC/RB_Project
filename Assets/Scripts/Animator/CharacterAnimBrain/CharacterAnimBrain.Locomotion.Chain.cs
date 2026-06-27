@@ -137,7 +137,7 @@ public sealed partial class CharacterAnimBrain
 
             _watchdogDeadline = float.PositiveInfinity;
 
-            bool castReleased = owner._chainRequest.Released;
+            bool castReleased = owner._chainChannel.Request.Released;
             int requestId = owner.ActiveChainRequestId;
 
             Debug.LogWarning(

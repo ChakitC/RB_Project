@@ -22,6 +22,7 @@ public sealed class StatusEffectDef : ScriptableObject
     public float tickDamage;
 
     [Header("Gameplay")]
+    public StatusLocomotionPose locomotionPose = StatusLocomotionPose.Auto;
     public ControlBlockFlags controlBlocks = ControlBlockFlags.None;
     public bool pushStunnedState;
     public List<string> tags = new();

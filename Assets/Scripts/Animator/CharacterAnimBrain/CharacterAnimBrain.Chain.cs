@@ -14,7 +14,7 @@ public sealed partial class CharacterAnimBrain
     }
 
     private Locomotion_Chain chain;
-    private readonly PlaybackRequestState _chainRequest = new PlaybackRequestState();
+    private readonly PlaybackChannel _chainChannel = new();
     private float _activeChainAdvancePointNormalized = 1f;
     private bool _activeChainAdvanceRequested;
     private bool _activeChainAdvanceReleased;
@@ -24,18 +24,18 @@ public sealed partial class CharacterAnimBrain
 
     private ClipTransition ActiveChainClip => ResolveChainClip();
     private bool HasActiveChainClip => HasValidChainClip();
-    internal int ActiveChainRequestId => _chainRequest.RequestId;
+    internal int ActiveChainRequestId => _chainChannel.RequestId;
     internal bool CanExitChainState => _chainStateCanExit;
     internal bool ActiveChainUsesRootMotion => _activeChainUsesRootMotion;
-    internal bool ActiveChainUsesPlanarRootMotion => _chainRequest.UsesPlanarRootMotion;
+    internal bool ActiveChainUsesPlanarRootMotion => _chainChannel.Request.UsesPlanarRootMotion;
     public bool RootMotionPlanarOnly { get; private set; }
     public bool RootMotionYawActive { get; private set; }
 
     public bool IsChainPlaybackActive =>
-        _chainRequest.ReleaseRequested ||
-        _chainRequest.RequestId != 0 ||
+        _chainChannel.IsActive ||
         (_initialized && locomotionSM.CurrentState == chain);
 
+    /// <summary>True when the active chain playback is a utility warp (in or out).</summary>
     public bool IsChainUtilityPlaybackActive =>
         (_activeChainKind == ChainPlaybackKind.UtilityWarpOut ||
          _activeChainKind == ChainPlaybackKind.UtilityWarpIn) &&
@@ -112,7 +112,7 @@ public sealed partial class CharacterAnimBrain
 
     public void CancelChainPlaybackRequest(int requestId)
     {
-        if (requestId <= 0 || requestId != _chainRequest.RequestId)
+        if (requestId <= 0 || requestId != _chainChannel.Request.RequestId)
             return;
 
         if (!TryInitialize())
@@ -131,21 +131,21 @@ public sealed partial class CharacterAnimBrain
 
     internal void PollActiveChainPlayback(AnimancerState state)
     {
-        if (state == null || _chainRequest.RequestId <= 0)
+        if (state == null || _chainChannel.Request.RequestId <= 0)
         {
             return;
         }
 
-        if (_chainRequest.ReleaseRequested &&
-            !_chainRequest.Released &&
-            state.NormalizedTime >= _chainRequest.CastPointNormalized)
+        if (_chainChannel.Request.ReleaseRequested &&
+            !_chainChannel.Request.Released &&
+            state.NormalizedTime >= _chainChannel.Request.CastPointNormalized)
         {
-            int requestId = _chainRequest.RequestId;
-            _chainRequest.Released = true;
+            int requestId = _chainChannel.Request.RequestId;
+            _chainChannel.Request.Released = true;
             EmitPlaybackSignal(ResolveActiveChainPlaybackKind(), PlaybackPhase.CastMoment, requestId);
             ChainCastMomentReached?.Invoke(requestId);
 
-            if (requestId != _chainRequest.RequestId)
+            if (requestId != _chainChannel.Request.RequestId)
                 return;
         }
 
@@ -153,7 +153,7 @@ public sealed partial class CharacterAnimBrain
             !_activeChainAdvanceReleased &&
             state.NormalizedTime >= _activeChainAdvancePointNormalized)
         {
-            int requestId = _chainRequest.RequestId;
+            int requestId = _chainChannel.Request.RequestId;
             _activeChainAdvanceReleased = true;
             EmitPlaybackSignal(ResolveActiveChainPlaybackKind(), PlaybackPhase.AdvanceMoment, requestId);
             ChainAdvanceMomentReached?.Invoke(requestId);
@@ -162,21 +162,21 @@ public sealed partial class CharacterAnimBrain
 
     internal void NotifyChainPlaybackStateExited(bool completedNormally)
     {
-        int requestId = _chainRequest.RequestId;
+        int requestId = _chainChannel.Request.RequestId;
         PlaybackKind playbackKind = ResolveActiveChainPlaybackKind();
         bool shouldReleaseOnComplete =
             completedNormally &&
-            _chainRequest.ReleaseRequested &&
-            !_chainRequest.Released &&
+            _chainChannel.Request.ReleaseRequested &&
+            !_chainChannel.Request.Released &&
             requestId > 0;
         bool interrupted =
             !completedNormally &&
-            _chainRequest.ReleaseRequested &&
+            _chainChannel.Request.ReleaseRequested &&
             requestId > 0;
 
         if (shouldReleaseOnComplete)
         {
-            _chainRequest.Released = true;
+            _chainChannel.Request.Released = true;
             EmitPlaybackSignal(playbackKind, PlaybackPhase.CastMoment, requestId);
             ChainCastMomentReached?.Invoke(requestId);
         }
@@ -287,18 +287,18 @@ public sealed partial class CharacterAnimBrain
         bool usesPlanarRootMotion)
     {
         _activeChainKind = kind;
-        _chainRequest.Definition = skillDef;
-        _chainRequest.RequestId = requestId;
-        _chainRequest.CastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
+        _chainChannel.Request.Definition = skillDef;
+        _chainChannel.Request.RequestId = requestId;
+        _chainChannel.Request.CastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
         _activeChainAdvanceRequested = requestAdvanceMoment;
         _activeChainAdvancePointNormalized = requestAdvanceMoment
-            ? Mathf.Clamp(Mathf.Max(_chainRequest.CastPointNormalized, advancePointNormalized), 0f, 0.999f)
+            ? Mathf.Clamp(Mathf.Max(_chainChannel.Request.CastPointNormalized, advancePointNormalized), 0f, 0.999f)
             : 1f;
-        _chainRequest.ReleaseRequested = true;
-        _chainRequest.Released = false;
+        _chainChannel.Request.ReleaseRequested = true;
+        _chainChannel.Request.Released = false;
         _activeChainAdvanceReleased = false;
         _activeChainUsesRootMotion = usesRootMotion;
-        _chainRequest.UsesPlanarRootMotion = usesRootMotion && usesPlanarRootMotion;
+        _chainChannel.Request.UsesPlanarRootMotion = usesRootMotion && usesPlanarRootMotion;
         _chainStateCanExit = false;
         SetActiveChainTimelineEventNames(kind == ChainPlaybackKind.Skill ? skillDef : null);
         if (kind == ChainPlaybackKind.Skill)
@@ -307,7 +307,7 @@ public sealed partial class CharacterAnimBrain
 
     private void ClearActiveChainRequest()
     {
-        _chainRequest.Clear();
+        _chainChannel.Clear();
         _activeChainKind = ChainPlaybackKind.None;
         _activeChainAdvancePointNormalized = 1f;
         _activeChainAdvanceRequested = false;
@@ -318,10 +318,10 @@ public sealed partial class CharacterAnimBrain
 
     private void InterruptActiveChainRequest()
     {
-        int requestId = _chainRequest.RequestId;
+        int requestId = _chainChannel.Request.RequestId;
         PlaybackKind playbackKind = ResolveActiveChainPlaybackKind();
         bool shouldNotify =
-            (_chainRequest.ReleaseRequested || _activeChainAdvanceRequested) &&
+            (_chainChannel.Request.ReleaseRequested || _activeChainAdvanceRequested) &&
             requestId > 0;
 
         ClearActiveChainRequest();
@@ -352,7 +352,7 @@ public sealed partial class CharacterAnimBrain
         return true;
     }
 
-    internal void ApplyActiveChainRootMotionPolicy() => SetRootMotionPolicy(_chainRequest.UsesPlanarRootMotion);
+    internal void ApplyActiveChainRootMotionPolicy() => SetRootMotionPolicy(_chainChannel.Request.UsesPlanarRootMotion);
 
     internal void ClearActiveChainRootMotionPolicy()
     {
@@ -404,7 +404,7 @@ public sealed partial class CharacterAnimBrain
     {
         return _activeChainKind switch
         {
-            ChainPlaybackKind.Skill => ResolveSkillClip(_chainRequest.Definition),
+            ChainPlaybackKind.Skill => ResolveSkillClip(_chainChannel.Request.Definition),
             ChainPlaybackKind.UtilityWarpOut => UtilityWarpOutClip,
             ChainPlaybackKind.UtilityWarpIn => UtilityWarpInClip,
             _ => null,
@@ -419,11 +419,11 @@ public sealed partial class CharacterAnimBrain
 
     private void SetActiveChainTimelineEventNames(SkillGemDefinition skillDef)
     {
-        _chainRequest.TimelineEventNames.Clear();
+        _chainChannel.Request.TimelineEventNames.Clear();
 
         if (skillDef == null)
             return;
 
-        skillDef.CollectTimelineEventNames(_chainRequest.TimelineEventNames);
+        skillDef.CollectTimelineEventNames(_chainChannel.Request.TimelineEventNames);
     }
 }

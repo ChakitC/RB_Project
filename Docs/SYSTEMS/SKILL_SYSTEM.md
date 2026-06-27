@@ -19,6 +19,11 @@ authoring workflow.
 calculated stats, and cooldown timestamps. Runtime state must not be written to
 the definition or its payload.
 
+Skill playback and cancellation commands are issued through
+`CharacterAnimDriver`. `CharacterAnimBrain` remains available through
+`CharacterAnimDriver.Brain` and `SkillCastContext.AnimBrain` for request-scoped
+events, normalized-time queries, timeline payloads, and interruption tracking.
+
 ## Character Skill Loadouts
 
 Character default active-skill loadouts are authored on `CharacterStats`.
@@ -390,9 +395,10 @@ for the required hierarchy, layer, and component wiring.
 
 ## Pre-Cast Hold Mechanism
 
-`CharacterAnimBrain` exposes a Pre-Cast Hold API that freezes an enemy's skill
-animation playhead before the cast point, preventing the cast-moment Animancer
-event from firing. This is used by the Guaranteed Interruption Command.
+`CharacterAnimDriver` exposes the Pre-Cast Hold command facade used by the
+Guaranteed Interruption Command. `CharacterAnimBrain` owns the underlying hold
+state that freezes an enemy's skill animation playhead before the cast point,
+preventing the cast-moment Animancer event from firing.
 
 - `TryAcquirePreCastHold(requestId, speedMultiplier, safetyMarginNormalized)`
   slows the animation to `speedMultiplier` and clamps `NormalizedTime` to

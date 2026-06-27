@@ -464,6 +464,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     internal BehaviorTree BehaviorTreeRef => ActorContext is AllyContext allyContext ? allyContext.BehaviorTree : null;
     internal NavMeshAgent AgentRef => ActorContext is AllyContext allyContext ? allyContext.agent : null;
     internal CharacterAnimBrain AnimBrainRef => ActorContext != null ? ActorContext.AnimBrain : null;
+    internal CharacterAnimDriver AnimDriverRef => ActorContext != null ? ActorContext.AnimDriver : null;
     internal ChainSkillUserProxy SkillUserProxyRef => skillUserProxy;
     internal AIAimTargetDriver AimTargetDriverRef => ActorContext is AllyContext allyContext ? allyContext.AimTargetDriver : null;
     internal ASPHelperDitherFader ActorFaderRef => actorFader;

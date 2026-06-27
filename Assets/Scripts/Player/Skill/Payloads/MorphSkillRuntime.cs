@@ -5,6 +5,7 @@ public sealed class MorphSkillRuntime : MonoBehaviour
 {
     private MorphSkillPayloadDef payload;
     private CharacterAnimBrain animBrain;
+    private CharacterAnimDriver animDriver;
     private CharacterVisualController visual;
     private HealthSystem healthSystem;
     private StatusEffectController statusController;
@@ -34,6 +35,7 @@ public sealed class MorphSkillRuntime : MonoBehaviour
             ctx.ResolveReferences();
             visual = ctx.Visual;
             healthSystem = ctx.HealthSystem;
+            animDriver = ctx.AnimDriver;
         }
 
         if (animBrain == null && ctx != null)
@@ -47,7 +49,7 @@ public sealed class MorphSkillRuntime : MonoBehaviour
 
         if (payload == null ||
             (payload.ChangesModel && visual == null) ||
-            (payload.ChangesAnimation && animBrain == null) ||
+            (payload.ChangesAnimation && (animBrain == null || animDriver == null)) ||
             (payload.ChangesStatus && statusController == null))
         {
             Shutdown();
@@ -94,8 +96,8 @@ public sealed class MorphSkillRuntime : MonoBehaviour
         if (payload.ChangesModel && visual != null)
             visual.ApplyFormOverride(payload.MorphModelPrefab, payload.MorphController, payload.MorphAvatar);
 
-        if (payload.ChangesAnimation && animBrain != null)
-            animBrain.SetAnimProfileOverride(payload.MorphAnimProfile);
+        if (payload.ChangesAnimation && animDriver != null)
+            animDriver.SetAnimProfileOverride(payload.MorphAnimProfile);
 
         if (payload.ChangesStatus && statusController != null)
         {
@@ -119,8 +121,8 @@ public sealed class MorphSkillRuntime : MonoBehaviour
         if (!applied)
             return;
 
-        if (payload != null && payload.ChangesAnimation && animBrain != null)
-            animBrain.ClearAnimProfileOverride();
+        if (payload != null && payload.ChangesAnimation && animDriver != null)
+            animDriver.ClearAnimProfileOverride();
 
         if (payload != null && payload.ChangesModel && visual != null)
             visual.RestoreDefaultForm();

@@ -160,11 +160,11 @@ public class AgentMoveDriver : MonoBehaviour
             }
         }
 
-        if (ctx != null && ctx.AnimBrain != null)
+        if (stateHub != null)
         {
             if (moveWorldDir.sqrMagnitude < 0.0001f)
             {
-                ctx.AnimBrain.MoveDirLocal = Vector2.zero;
+                stateHub.SetMoveDirLocal(Vector2.zero);
             }
             else
             {
@@ -173,7 +173,7 @@ public class AgentMoveDriver : MonoBehaviour
                 if (dirLocal.sqrMagnitude > 1.0001f)
                     dirLocal.Normalize();
 
-                ctx.AnimBrain.MoveDirLocal = dirLocal;
+                stateHub.SetMoveDirLocal(dirLocal);
             }
         }
     }

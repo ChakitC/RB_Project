@@ -35,6 +35,7 @@ public sealed class StateHub : MonoBehaviour
     [SerializeField] private bool staggerStunned;
 
     public float MoveSpeed01 { get; private set; }
+    public Vector2 MoveDirLocal { get; private set; }
     public bool DesiredFireHeld { get; private set; }
     public bool FireHeld { get; private set; }
     public Vector3 DashDirWorld { get; private set; } = Vector3.forward;
@@ -46,6 +47,7 @@ public sealed class StateHub : MonoBehaviour
     public event Action Died;
     public event Action<bool> FireHeldChanged;
     public event Action ShotFired;
+    public event Action<LifeStateId, LifeStateId> LifeStateChanged;
 
     public bool IsAlive => LifeSM.CurrentId == LifeStateId.Alive;
     public bool Isdown => LifeSM.CurrentId == LifeStateId.Down;
@@ -162,8 +164,9 @@ public sealed class StateHub : MonoBehaviour
                 ReloadStarted?.Invoke(GetReloadAnimationDuration());
         };
 
-        LifeSM.OnChanged += (_, to) =>
+        LifeSM.OnChanged += (from, to) =>
         {
+            LifeStateChanged?.Invoke(from, to);
             CancelHeldFireIfShootBlocked();
 
             if (to == LifeStateId.Dead)
@@ -577,6 +580,11 @@ public sealed class StateHub : MonoBehaviour
     public void SetMoveSpeed01(float v01)
     {
         MoveSpeed01 = v01;
+    }
+
+    public void SetMoveDirLocal(Vector2 value)
+    {
+        MoveDirLocal = value;
     }
 
     public void SetDesiredFireHeld(bool held)

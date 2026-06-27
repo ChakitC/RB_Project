@@ -130,7 +130,7 @@ internal sealed class ChainSkillCastBridge
         return true;
     }
 
-    public bool TryReleaseAttackPayload(PendingSequenceExecution execution, CharacterAnimBrain animBrain, int requestId)
+    public bool TryReleaseAttackPayload(PendingSequenceExecution execution, CharacterAnimDriver animDriver, int requestId)
     {
         if (execution == null || execution.attackSkillDef == null)
             return false;
@@ -150,7 +150,7 @@ internal sealed class ChainSkillCastBridge
         SkillCastStartResult castResult = _skillCastOrchestrator.TryStartCast(new SkillCastRequest(
             runtimeSkill,
             attackSkillUser,
-            animationDriver: animBrain,
+            animationDriver: animDriver,
             requestedId: requestId,
             ignoreResourceCosts: execution.ignoreResourceCosts,
             useAnimationDriver: false,

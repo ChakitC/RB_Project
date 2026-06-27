@@ -140,14 +140,14 @@ public sealed class PreCastBlockController : MonoBehaviour
             return false;
         }
 
-        CharacterAnimBrain animBrain = ctx != null ? ctx.AnimBrain : null;
-        if (animBrain == null)
+        CharacterAnimDriver animDriver = ctx != null ? ctx.AnimDriver : null;
+        if (animDriver == null)
         {
-            LogFlow($"reservation rejected reason=MissingAnimBrain requestId={activeCast.RequestId}", warning: true);
+            LogFlow($"reservation rejected reason=MissingAnimDriver requestId={activeCast.RequestId}", warning: true);
             return false;
         }
 
-        if (!animBrain.TryAcquirePreCastHold(activeCast.RequestId, holdSpeedMultiplier, holdSafetyMargin, out var hold))
+        if (!animDriver.TryAcquirePreCastHold(activeCast.RequestId, holdSpeedMultiplier, holdSafetyMargin, out var hold))
         {
             LogFlow($"reservation rejected reason=HoldRejected requestId={activeCast.RequestId}", warning: true);
             return false;
@@ -234,9 +234,9 @@ public sealed class PreCastBlockController : MonoBehaviour
 
     void ReleaseHoldInternal()
     {
-        CharacterAnimBrain animBrain = ctx != null ? ctx.AnimBrain : null;
-        if (_holdHandle.IsValid && animBrain != null)
-            animBrain.ReleasePreCastHold(_holdHandle);
+        CharacterAnimDriver animDriver = ctx != null ? ctx.AnimDriver : null;
+        if (_holdHandle.IsValid && animDriver != null)
+            animDriver.ReleasePreCastHold(_holdHandle);
         _holdHandle = default;
     }
 

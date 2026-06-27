@@ -36,6 +36,10 @@ types, including:
 Common systems should primarily depend on `CharacteContext` and read peer
 modules through `ctx`.
 
+Animation commands resolve through `ctx.AnimDriver`. Direct `ctx.AnimBrain`
+access is reserved for state queries, sampling, and event subscriptions. See
+`Docs/ARCHITECTURE/ANIMATION_COMMAND_FLOW.md`.
+
 ## Identity And Time
 
 Use context properties instead of subtype checks for common behavior:

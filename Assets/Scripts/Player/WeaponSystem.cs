@@ -1234,7 +1234,7 @@ public class WeaponSystem : MonoBehaviour
         StopReloadCue();
 
         if (stopAnim)
-            ctx?.AnimBrain?.StopReloadAction();
+            ctx?.AnimDriver?.StopReloadAction();
 
         if (syncInstance)
             SyncWeaponInstanceState();

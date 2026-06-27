@@ -108,7 +108,7 @@ internal sealed class FieldAllySequenceRunner
 
         owner.CacheReferences();
 
-        if (owner.AnimBrainRef == null || _reservationOwner == null)
+        if (owner.AnimDriverRef == null || owner.AnimBrainRef == null || _reservationOwner == null)
             return false;
 
         if (step.requireActorAlive && !owner.IsAliveActor)
@@ -359,13 +359,13 @@ internal sealed class FieldAllySequenceRunner
 
     bool TryStartEnterUtility(PendingSequenceExecution execution)
     {
-        if (execution == null || owner.AnimBrainRef == null)
+        if (execution == null || owner.AnimDriverRef == null)
             return false;
 
         execution.enterRequestId = NextRequestId();
         SetExecutionPhase(execution, SequenceExecutionPhase.WaitingForEnterCastMoment);
 
-        bool started = owner.AnimBrainRef.TryPlayChainUtilityWarpOut(execution.enterRequestId);
+        bool started = owner.AnimDriverRef.TryPlayChainUtilityWarpOut(execution.enterRequestId);
         if (started)
         {
             transitionController.StartChainVisualLifecycle(hideOnAnimationComplete: true);
@@ -432,7 +432,7 @@ internal sealed class FieldAllySequenceRunner
         execution.attackRequestId = NextRequestId();
         SetExecutionPhase(execution, SequenceExecutionPhase.WaitingForAttackCastMoment);
 
-        bool started = owner.AnimBrainRef.TryPlayChainSkill(
+        bool started = owner.AnimDriverRef.TryPlayChainSkill(
             execution.attackRequestId,
             execution.attackSkillDef,
             execution.attackSkillDef.GetCastPointNormalized(),
@@ -464,7 +464,7 @@ internal sealed class FieldAllySequenceRunner
             owner.LogExecution($"Step '{_pendingExecution.step.RuntimeId}' failed to resolve a warp-in pose.");
             if (owner.AnimBrainRef != null)
             {
-                owner.AnimBrainRef.CancelChainPlaybackRequest(requestId);
+                owner.AnimDriverRef?.CancelChainPlaybackRequest(requestId);
                 return;
             }
 
@@ -497,7 +497,7 @@ internal sealed class FieldAllySequenceRunner
 
         ValidateRootMotionImpactPose(_pendingExecution);
 
-        if (!skillCastBridge.TryReleaseAttackPayload(_pendingExecution, owner.AnimBrainRef, requestId))
+        if (!skillCastBridge.TryReleaseAttackPayload(_pendingExecution, owner.AnimDriverRef, requestId))
         {
             if (_pendingExecution.attackSkillUser == null)
             {
@@ -512,7 +512,7 @@ internal sealed class FieldAllySequenceRunner
 
             if (owner.AnimBrainRef != null)
             {
-                owner.AnimBrainRef.CancelChainPlaybackRequest(requestId);
+                owner.AnimDriverRef?.CancelChainPlaybackRequest(requestId);
                 return;
             }
 
@@ -660,7 +660,7 @@ internal sealed class FieldAllySequenceRunner
                     owner.LogExecution(
                         $"Utility warp-out completion timed out for step '{_pendingExecution.step.RuntimeId}'. " +
                         "Forcing attack handoff.");
-                    owner.AnimBrainRef.CancelChainPlaybackRequest(_pendingExecution.enterRequestId);
+                    owner.AnimDriverRef?.CancelChainPlaybackRequest(_pendingExecution.enterRequestId);
                     QueueAttackStart("utility completion timeout recovery");
                 }
                 return;
@@ -734,7 +734,7 @@ internal sealed class FieldAllySequenceRunner
                 if (HasPhaseTimedOut(_pendingExecution, owner.UtilityRecoveryTimeoutSeconds))
                 {
                     owner.LogExecution($"Return utility completion timed out for '{owner.ActorName}'. Forcing return cleanup.");
-                    owner.AnimBrainRef.CancelChainPlaybackRequest(_pendingExecution.exitRequestId);
+                    owner.AnimDriverRef?.CancelChainPlaybackRequest(_pendingExecution.exitRequestId);
                     CleanupActiveExecution(success: true);
                 }
                 return;
@@ -801,7 +801,7 @@ internal sealed class FieldAllySequenceRunner
         Quaternion returnRotation,
         bool releaseReservationOnComplete)
     {
-        if (owner.AnimBrainRef == null)
+        if (owner.AnimDriverRef == null)
             return false;
 
         if (_pendingExecution == null)
@@ -822,7 +822,7 @@ internal sealed class FieldAllySequenceRunner
         _pendingExecution.exitRequestId = NextRequestId();
         SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForExitCastMoment);
 
-        bool started = owner.AnimBrainRef.TryPlayChainUtilityWarpOut(_pendingExecution.exitRequestId);
+        bool started = owner.AnimDriverRef.TryPlayChainUtilityWarpOut(_pendingExecution.exitRequestId);
         if (started)
         {
             transitionController.StartChainVisualLifecycle(hideOnAnimationComplete: true);
@@ -843,7 +843,7 @@ internal sealed class FieldAllySequenceRunner
         Quaternion returnRotation,
         bool releaseReservationOnComplete)
     {
-        if (owner.AnimBrainRef == null)
+        if (owner.AnimDriverRef == null)
             return false;
 
         if (_pendingExecution == null)
@@ -867,7 +867,7 @@ internal sealed class FieldAllySequenceRunner
         transitionController.HideVisualForTeleport();
         transitionController.TeleportActorTo(returnPosition, returnRotation);
 
-        bool started = owner.AnimBrainRef.TryPlayChainUtilityWarpIn(_pendingExecution.exitRequestId);
+        bool started = owner.AnimDriverRef.TryPlayChainUtilityWarpIn(_pendingExecution.exitRequestId);
         if (!started)
         {
             _pendingExecution.exitRequestId = 0;

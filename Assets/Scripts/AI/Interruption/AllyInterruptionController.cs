@@ -50,6 +50,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     AllyContext _ctx;
     CharacterAnimBrain _animBrain;
+    CharacterAnimDriver _animDriver;
     CharacterSkillManager _skillManager;
     BehaviorTree _behaviorTree;
     NavMeshAgent _agent;
@@ -619,8 +620,8 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     void StopActiveSkillPlayback()
     {
-        if (_animBrain != null && _activeRequestId > 0)
-            _animBrain.CancelSkillCastRequest(_activeRequestId);
+        if (_animDriver != null && _activeRequestId > 0)
+            _animDriver.CancelSkillCastRequest(_activeRequestId);
     }
 
     void ApplyActorPose(Vector3 pos, Quaternion rot)
@@ -968,6 +969,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
         {
             _ctx.ResolveReferences();
             _animBrain = _ctx.AnimBrain;
+            _animDriver = _ctx.AnimDriver;
             _skillManager = _ctx.SkillManager;
             _behaviorTree = _ctx.BehaviorTree;
             _agent = _ctx.agent;

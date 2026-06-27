@@ -26,7 +26,9 @@ public sealed class StaggerMeter : MonoBehaviour
 
     [Header("Refs")]
     [SerializeField] private StateHub stateHub;
+    // TODO(deprecate): Keep serialized Brain compatibility until prefabs are audited.
     [SerializeField] private CharacterAnimBrain animBrain;
+    private CharacterAnimDriver animDriver;
     [SerializeField] private HealthSystem healthSystem;
     [SerializeField] private NavMeshAgent navMeshAgent;
     [SerializeField] private BehaviorTree behaviorTree;
@@ -135,6 +137,8 @@ public sealed class StaggerMeter : MonoBehaviour
             stateHub = ResolveActorComponent<StateHub>(actorRoot);
         if (!animBrain)
             animBrain = ResolveActorComponent<CharacterAnimBrain>(actorRoot);
+        if (!animDriver)
+            animDriver = ResolveActorComponent<CharacterAnimDriver>(actorRoot);
         if (!healthSystem)
             healthSystem = ResolveActorComponent<HealthSystem>(actorRoot);
         if (!navMeshAgent)
@@ -285,13 +289,13 @@ public sealed class StaggerMeter : MonoBehaviour
             ControlBlockFlags.Move | ControlBlockFlags.Shoot | ControlBlockFlags.Skill,
             true);
 
-        animBrain?.SetStaggerStatusLocomotion(ImpactReactionKind.Stun);
+        animDriver?.SetStaggerStatusLocomotion(ImpactReactionKind.Stun);
     }
 
     void ClearControlState()
     {
         stateHub?.SetStaggerControlState(ControlBlockFlags.None, false);
-        animBrain?.SetStaggerStatusLocomotion(ImpactReactionKind.None);
+        animDriver?.SetStaggerStatusLocomotion(ImpactReactionKind.None);
     }
 
     void SuspendAgent()

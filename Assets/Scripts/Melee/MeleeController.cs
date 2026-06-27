@@ -9,6 +9,7 @@ public sealed class MeleeController : MonoBehaviour
     [SerializeField] private CharacteContext ctx;
     [SerializeField] private StateHub stateHub;
     [SerializeField] private CharacterAnimBrain brain;
+    private CharacterAnimDriver animDriver;
     [SerializeField] private WeaponSystem weaponSystem;
     [SerializeField] private StatusEffectController statusEffectController;
     [SerializeField] private CombatEventBus combatEventBus;
@@ -61,7 +62,7 @@ public sealed class MeleeController : MonoBehaviour
     {
         ResolveRefs();
 
-        if (ctx == null || stateHub == null || brain == null)
+        if (ctx == null || stateHub == null || brain == null || animDriver == null)
             return false;
         if (!stateHub.CanStartMelee())
             return false;
@@ -86,7 +87,7 @@ public sealed class MeleeController : MonoBehaviour
         stateHub.SetFireHeld(false);
         stateHub.WeaponSM.TryChange(WeaponStateId.Melee);
 
-        brain.PressMelee(meleeType);
+        animDriver.PressMelee(meleeType);
         stateHub.ReportMeleeStarted(meleeType);
         return true;
     }
@@ -96,7 +97,7 @@ public sealed class MeleeController : MonoBehaviour
         ResolveRefs();
 
         CloseAttackWindow();
-        brain?.CancelMeleeNow();
+        animDriver?.CancelMeleeNow();
 
         if (stateHub != null && stateHub.WeaponSM.CurrentId == WeaponStateId.Melee)
             stateHub.WeaponSM.TryChange(WeaponStateId.Ready);
@@ -190,6 +191,13 @@ public sealed class MeleeController : MonoBehaviour
             TryGetComponent(out brain);
         if (!brain && ctx != null)
             brain = ctx.GetComponentInChildren<CharacterAnimBrain>(true);
+
+        if (!animDriver && ctx != null)
+            animDriver = ctx.AnimDriver;
+        if (!animDriver)
+            TryGetComponent(out animDriver);
+        if (!animDriver && ctx != null)
+            animDriver = ctx.GetComponentInChildren<CharacterAnimDriver>(true);
 
         if (!weaponSystem && ctx != null)
             weaponSystem = ctx.WeaponSystem;

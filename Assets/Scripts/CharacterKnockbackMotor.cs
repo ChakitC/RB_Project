@@ -15,6 +15,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     [SerializeField] private NavMeshAgent navMeshAgent;
     [SerializeField] private CapsuleCollider capsuleCollider;
     [SerializeField] private CharacterAnimBrain animBrain;
+    private CharacterAnimDriver animDriver;
     [SerializeField] private FieldAllyMember fieldAllyMember;
     [SerializeField] private BehaviorTree behaviorTree;
 
@@ -145,7 +146,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
         RestoreBehaviorTreeOverride(preserveMoveState);
 
-        animBrain?.StopKnockbackPlayback();
+        animDriver?.StopKnockbackPlayback();
 
         if (clearReactionState || _clearReactionOnKnockbackEnd)
             ClearReactionState();
@@ -184,6 +185,10 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
             animBrain = ctx != null ? ctx.AnimBrain : null;
         if (!animBrain)
             animBrain = ResolveActorComponent<CharacterAnimBrain>(actorRoot);
+        if (!animDriver)
+            animDriver = ctx != null ? ctx.AnimDriver : null;
+        if (!animDriver)
+            animDriver = ResolveActorComponent<CharacterAnimDriver>(actorRoot);
         if (!fieldAllyMember)
             fieldAllyMember = ResolveActorComponent<FieldAllyMember>(actorRoot);
         if (!behaviorTree)
@@ -330,7 +335,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         ControlBlockFlags blocks = GetReactionControlBlocks(_activeReaction);
         bool stunned = _activeReaction == ImpactReactionKind.Stun;
         stateHub?.SetExternalControlState(blocks, stunned);
-        animBrain?.SetExternalStatusLocomotion(_activeReaction);
+        animDriver?.SetExternalStatusLocomotion(_activeReaction);
     }
 
     void TickReaction(float dt)
@@ -351,7 +356,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         _reactionTimeRemaining = 0f;
         _clearReactionOnKnockbackEnd = false;
         stateHub?.SetExternalControlState(ControlBlockFlags.None, false);
-        animBrain?.SetExternalStatusLocomotion(ImpactReactionKind.None);
+        animDriver?.SetExternalStatusLocomotion(ImpactReactionKind.None);
     }
 
     void BeginKnockback(KnockbackData knockback)
@@ -364,7 +369,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
         EnableAgentOverride();
         FaceTowardKnockbackPoint(knockback);
-        animBrain?.PlayKnockback(knockback);
+        animDriver?.PlayKnockback(knockback);
 
         if (stateHub != null && stateHub.MoveSM != null)
             stateHub.MoveSM.TryChange(MoveStateId.Knockback);
@@ -563,7 +568,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
             meleeController = GetComponent<MeleeController>();
 
         meleeController?.InterruptMelee();
-        animBrain?.InterruptActivePlaybackForExternalControlLoss();
+        animDriver?.InterruptActivePlaybackForExternalControlLoss();
         SuspendBehaviorTreeOverride();
 
         if (navMeshAgent != null && navMeshAgent.enabled)

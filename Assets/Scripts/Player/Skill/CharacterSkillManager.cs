@@ -23,6 +23,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     private CharacteContext ctx;
     private CharacterAnimBrain animBrain;
+    private CharacterAnimDriver animDriver;
     private WeaponSystem weaponSystem;
     private SkillSlot pendingSlot;
     private SkillCastOrchestrator castOrchestrator;
@@ -446,7 +447,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         SkillCastStartResult result = castOrchestrator.TryStartCast(new SkillCastRequest(
             runtimeSkill,
             skillUser,
-            animationDriver: animBrain,
+            animationDriver: animDriver,
             canProceed: () => IsSlotCastStillValid(slot, runtimeSkill),
             onStarted: StopWeaponActivityForSkillCast,
             useAnimationDriver: true,
@@ -483,7 +484,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return castOrchestrator.TryStartCast(new SkillCastRequest(
             runtimeSkill,
             skillUser,
-            animationDriver: animBrain,
+            animationDriver: animDriver,
             canProceed: () => IsSkillEntryCastStillValid(entry, runtimeSkill),
             onStarted: StopWeaponActivityForSkillCast,
             useAnimationDriver: true,
@@ -657,7 +658,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (skillUser == null && ctx != null && ctx.EnegySystem != null)
             skillUser = ctx.EnegySystem;
 
-        animBrain = ResolveAnimBrainReference();
+        animDriver = ResolveAnimDriverReference();
+        animBrain = animDriver != null && animDriver.Brain != null
+            ? animDriver.Brain
+            : ResolveAnimBrainReference();
         weaponSystem = ctx != null ? ctx.WeaponSystem : null;
         if (weaponSystem == null)
             weaponSystem = GetComponent<WeaponSystem>();
@@ -1062,6 +1066,22 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return ctx != null ? ctx.GetComponentInChildren<CharacterAnimBrain>(true) : null;
     }
 
+    private CharacterAnimDriver ResolveAnimDriverReference()
+    {
+        if (ctx != null && ctx.AnimDriver != null)
+            return ctx.AnimDriver;
+
+        var resolved = GetComponent<CharacterAnimDriver>();
+        if (resolved != null)
+            return resolved;
+
+        resolved = GetComponentInChildren<CharacterAnimDriver>(true);
+        if (resolved != null)
+            return resolved;
+
+        return GetComponentInParent<CharacterAnimDriver>();
+    }
+
     private int CountConfiguredPassiveSlots()
     {
         if (passiveSlots == null)
@@ -1170,7 +1190,7 @@ public readonly struct SkillCastRequest
 {
     public readonly SkillInstance RuntimeSkill;
     public readonly ISkillUser SkillUser;
-    public readonly CharacterAnimBrain AnimationDriver;
+    public readonly CharacterAnimDriver AnimationDriver;
     public readonly Func<bool> CanProceed;
     public readonly Action OnStarted;
     public readonly int RequestedId;
@@ -1184,7 +1204,7 @@ public readonly struct SkillCastRequest
     public SkillCastRequest(
         SkillInstance runtimeSkill,
         ISkillUser skillUser,
-        CharacterAnimBrain animationDriver = null,
+        CharacterAnimDriver animationDriver = null,
         Func<bool> canProceed = null,
         Action onStarted = null,
         int requestedId = 0,
@@ -1228,7 +1248,7 @@ public readonly struct ActiveSkillCastInfo
     public readonly SkillInstance RuntimeSkill;
     public readonly SkillGemDefinition SkillDef;
     public readonly ISkillUser SkillUser;
-    public readonly CharacterAnimBrain AnimationDriver;
+    public readonly CharacterAnimDriver AnimationDriver;
     public readonly float CastPointNormalized;
     public readonly bool Released;
     public readonly bool RequiresTimelineEvents;
@@ -1241,7 +1261,7 @@ public readonly struct ActiveSkillCastInfo
         SkillInstance runtimeSkill,
         SkillGemDefinition skillDef,
         ISkillUser skillUser,
-        CharacterAnimBrain animationDriver,
+        CharacterAnimDriver animationDriver,
         float castPointNormalized,
         bool released,
         bool requiresTimelineEvents,
@@ -1267,7 +1287,7 @@ public sealed class SkillCastOrchestrator
         public SkillInstance RuntimeSkill;
         public SkillGemDefinition SkillDef;
         public ISkillUser SkillUser;
-        public CharacterAnimBrain AnimationDriver;
+        public CharacterAnimDriver AnimationDriver;
         public int RequestId;
         public bool Released;
         public bool Cancelled;
@@ -1364,8 +1384,8 @@ public sealed class SkillCastOrchestrator
             return Rejected();
 
         int requestId = ResolveRequestId(request.RequestedId);
-        CharacterAnimBrain executionAnimBrain = request.AnimationDriver;
-        bool hasExternalSkillExecutionContext = HasActiveSkillExecutionContext(executionAnimBrain, requestId);
+        CharacterAnimDriver executionAnimDriver = request.AnimationDriver;
+        bool hasExternalSkillExecutionContext = HasActiveSkillExecutionContext(executionAnimDriver, requestId);
         bool requiresTimelineEvents =
             skillDef.RequiresSkillTimelineEvents ||
             CombatTimelineEventNames.IsValid(request.RequiredTimelineEvent);
@@ -1380,7 +1400,7 @@ public sealed class SkillCastOrchestrator
 
         request.OnStarted?.Invoke();
 
-        if (request.UseAnimationDriver && executionAnimBrain != null)
+        if (request.UseAnimationDriver && executionAnimDriver != null)
         {
             var context = new PendingCastContext
             {
@@ -1388,7 +1408,7 @@ public sealed class SkillCastOrchestrator
                 RuntimeSkill = runtimeSkill,
                 SkillDef = skillDef,
                 SkillUser = skillUser,
-                AnimationDriver = executionAnimBrain,
+                AnimationDriver = executionAnimDriver,
                 RequestId = requestId,
                 CastPointNormalized = skillDef.GetCastPointNormalized(),
                 RequiresTimelineEvents = requiresTimelineEvents,
@@ -1399,7 +1419,7 @@ public sealed class SkillCastOrchestrator
                 context.TimelineEventNames,
                 request.RequiredTimelineEvent);
 
-            bool started = executionAnimBrain.TryPlaySkill(
+            bool started = executionAnimDriver.TryPlaySkill(
                 context.RequestId,
                 context.SkillDef,
                 context.CastPointNormalized,
@@ -1429,7 +1449,7 @@ public sealed class SkillCastOrchestrator
             requestId,
             runtimeSkill,
             skillUser,
-            executionAnimBrain);
+            executionAnimDriver);
 
         if (!released)
             return Rejected();
@@ -1439,7 +1459,7 @@ public sealed class SkillCastOrchestrator
             runtimeSkill,
             skillDef,
             skillUser,
-            executionAnimBrain,
+            executionAnimDriver,
             skillDef.GetCastPointNormalized(),
             released: true,
             requiresTimelineEvents: false,
@@ -1478,13 +1498,17 @@ public sealed class SkillCastOrchestrator
         int requestId,
         SkillInstance runtimeSkill,
         ISkillUser skillUser,
-        CharacterAnimBrain executionAnimBrain)
+        CharacterAnimDriver executionAnimDriver)
     {
         if (runtimeSkill == null || skillUser == null || runtimeSkill.def == null || runtimeSkill.def.payload == null)
             return false;
 
         if (!CanProceed(request))
             return false;
+
+        CharacterAnimBrain executionAnimBrain = executionAnimDriver != null
+            ? executionAnimDriver.Brain
+            : null;
 
         if (request.IgnoreResourceCosts)
         {
@@ -1565,22 +1589,24 @@ public sealed class SkillCastOrchestrator
         CancelPendingCast(SkillCastCancelReason.AnimationInterrupted);
     }
 
-    private void Subscribe(CharacterAnimBrain animationDriver)
+    private void Subscribe(CharacterAnimDriver animationDriver)
     {
-        if (animationDriver == null)
+        CharacterAnimBrain animationBrain = animationDriver != null ? animationDriver.Brain : null;
+        if (animationBrain == null)
             return;
 
-        animationDriver.SkillCastMomentReached += OnSkillCastMomentReached;
-        animationDriver.SkillCastInterrupted += OnSkillCastInterrupted;
+        animationBrain.SkillCastMomentReached += OnSkillCastMomentReached;
+        animationBrain.SkillCastInterrupted += OnSkillCastInterrupted;
     }
 
-    private void Unsubscribe(CharacterAnimBrain animationDriver)
+    private void Unsubscribe(CharacterAnimDriver animationDriver)
     {
-        if (animationDriver == null)
+        CharacterAnimBrain animationBrain = animationDriver != null ? animationDriver.Brain : null;
+        if (animationBrain == null)
             return;
 
-        animationDriver.SkillCastMomentReached -= OnSkillCastMomentReached;
-        animationDriver.SkillCastInterrupted -= OnSkillCastInterrupted;
+        animationBrain.SkillCastMomentReached -= OnSkillCastMomentReached;
+        animationBrain.SkillCastInterrupted -= OnSkillCastInterrupted;
     }
 
     private bool CanProceed(in SkillCastRequest request)
@@ -1631,11 +1657,12 @@ public sealed class SkillCastOrchestrator
         return nextCastRequestId++;
     }
 
-    private bool HasActiveSkillExecutionContext(CharacterAnimBrain animationDriver, int requestId)
+    private bool HasActiveSkillExecutionContext(CharacterAnimDriver animationDriver, int requestId)
     {
-        return animationDriver != null &&
+        CharacterAnimBrain animationBrain = animationDriver != null ? animationDriver.Brain : null;
+        return animationBrain != null &&
                requestId > 0 &&
-               animationDriver.TryGetActiveSkillNormalizedTime(requestId, out _);
+               animationBrain.TryGetActiveSkillNormalizedTime(requestId, out _);
     }
 
     private void PlayCastCue(SkillInstance skill, ISkillUser skillUser)

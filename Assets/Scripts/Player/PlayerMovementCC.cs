@@ -246,11 +246,9 @@ public class PlayerMovementCC : MonoBehaviour
 
         HandleAiming(groundMask);
 
-        if (_characteContext.AnimBrain != null)
-        {
-            _characteContext.AnimBrain.MoveDirLocal = moveWorldDir.sqrMagnitude < 0.0001f
+        stateHub.SetMoveDirLocal(
+            moveWorldDir.sqrMagnitude < 0.0001f
                 ? Vector2.zero
-                : new Vector2(moveLocal3.x, moveLocal3.z);
-        }
+                : new Vector2(moveLocal3.x, moveLocal3.z));
     }
 }

@@ -59,6 +59,7 @@ public class AllyHelperManager : MonoBehaviour
     [SerializeField] private Collider allyHelperTeleportProbeCollider;
     
     CharacterAnimBrain allyAnimBrain;
+    CharacterAnimDriver allyAnimDriver;
     ISkillUser allySkillUser;
     ASPHelperDitherFader allyHelperFader;
     HealthSystem allyHealthSystem;
@@ -152,7 +153,7 @@ public class AllyHelperManager : MonoBehaviour
             return false;
 
         CacheHelperReferences();
-        return allyAnimBrain != null;
+        return allyAnimBrain != null && allyAnimDriver != null;
     }
 
     public bool HasConfiguredCommandSlot(int slotIndex = 0)
@@ -289,7 +290,7 @@ public class AllyHelperManager : MonoBehaviour
 
         if (skillDef == null)
         {
-            allyAnimBrain.PlaySkill();
+            allyAnimDriver.PlaySkill();
 
             if (!allyAnimBrain.IsSkillPlaybackActive)
             {
@@ -315,7 +316,7 @@ public class AllyHelperManager : MonoBehaviour
             Debug.Log($"[AllyHelperManager] Starting helper skill '{skillDef.name}' with request {requestId}.", this);
 
         ApplyTemporaryHelperSkillAutonomy();
-        bool started = allyAnimBrain.TryPlaySkill(
+        bool started = allyAnimDriver.TryPlaySkill(
             requestId,
             skillDef,
             skillDef.GetCastPointNormalized());
@@ -451,7 +452,7 @@ public class AllyHelperManager : MonoBehaviour
 
         ApplyTemporaryHelperSkillAutonomy();
 
-        bool started = allyAnimBrain.TryPlayUtilityWarpOut(
+        bool started = allyAnimDriver.TryPlayUtilityWarpOut(
             pendingChainAttackSequence.warpRequestId);
 
         if (started)
@@ -498,6 +499,7 @@ public class AllyHelperManager : MonoBehaviour
             return;
 
         allyContext = allyHelper.GetComponent<AllyContext>();
+        allyContext?.ResolveReferences();
         allyBehaviorTree = allyHelper.GetComponent<BehaviorTree>();
 
         if (allyContext != null && allyContext.AITargetSensor == null)
@@ -518,6 +520,13 @@ public class AllyHelperManager : MonoBehaviour
             allyContext.AnimBrain = nextAnimBrain;
 
         SubscribeToAnimBrain(nextAnimBrain);
+
+        allyAnimDriver = allyContext != null ? allyContext.AnimDriver : null;
+        if (allyAnimDriver == null)
+            allyAnimDriver = allyHelper.GetComponent<CharacterAnimDriver>();
+
+        if (allyContext != null && allyContext.AnimDriver == null)
+            allyContext.AnimDriver = allyAnimDriver;
 
         allySkillUser = allyHelper.GetComponent<ISkillUser>();
         if (allySkillUser == null && allyContext != null && allyContext.EnegySystem != null)
@@ -650,9 +659,9 @@ public class AllyHelperManager : MonoBehaviour
         }
 
         CacheHelperReferences();
-        if (allyAnimBrain == null)
+        if (allyAnimBrain == null || allyAnimDriver == null)
         {
-            Debug.LogWarning("Summon failed: CharacterAnimBrain is null", this);
+            Debug.LogWarning("Summon failed: animation Brain or Driver is null", this);
             return false;
         }
 
@@ -1195,7 +1204,7 @@ public class AllyHelperManager : MonoBehaviour
         SkillCastStartResult result = helperSkillCastOrchestrator.TryStartCast(new SkillCastRequest(
             runtimeSkill,
             allySkillUser,
-            animationDriver: allyAnimBrain,
+            animationDriver: allyAnimDriver,
             requestedId: requestId,
             ignoreResourceCosts: true,
             useAnimationDriver: false,
@@ -1271,7 +1280,7 @@ public class AllyHelperManager : MonoBehaviour
         pendingChainAttackSequence.chainAttackRequestId = NextHelperSkillRequestId();
         pendingChainAttackSequence.phase = ChainAttackPhase.WaitingForChainCastMoment;
 
-        bool started = allyAnimBrain.TryPlaySkill(
+        bool started = allyAnimDriver.TryPlaySkill(
             pendingChainAttackSequence.chainAttackRequestId,
             pendingChainAttackSequence.chainAttackSkillDef,
             pendingChainAttackSequence.chainAttackSkillDef.GetCastPointNormalized());

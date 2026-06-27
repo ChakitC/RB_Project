@@ -87,7 +87,9 @@ fields are fallback settings when no profile is assigned.
 - `AgentMoveDriver`
 
 `AgentMoveDriver` drives stable move animation state from `NavMeshAgent`
-movement and writes normalized movement into `StateHub` and `CharacterAnimBrain`.
+movement and writes normalized speed plus local direction into `StateHub`.
+`CharacterAnimDriver` forwards that intent to `CharacterAnimBrain` during
+`LateUpdate`.
 
 It also supports companion separation from the player by resolving the player
 through `CharacteContext.TargetIdentity == Player`.

@@ -23,9 +23,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     [Header("Core")]
     [SerializeField] private AnimancerComponent animancer;
     [SerializeField] private CharacteContext ctx;
-    [SerializeField] private StatusEffectController statusEffectController;
-    [SerializeField] private bool deactivateOwnerOnSkillExit;
-
     [Header("Chain")]
     [SerializeField, Min(0.05f)] private float chainPlaybackWatchdogGraceSeconds = 0.15f;
     [SerializeField] private bool useRootMotionForChainPlayback;
@@ -47,8 +44,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private readonly List<PairOffsetBasePoseWeight> _activePairBasePoseWeights = new List<PairOffsetBasePoseWeight>(3);
     private PairOffsetBasePose _activePairBasePose = PairOffsetBasePose.None;
     private PairOffsetUpperAction _activePairUpperAction = PairOffsetUpperAction.None;
-
-    public enum MeleeType { Light, Heavy }
 
     public enum PlaybackKind
     {
@@ -113,8 +108,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private LocomotionState_Crawl crawlState;
     private Locomotion_StatusEffect statusEffectState;
     private StatusLocomotionPose _currentStatusLocomotionPose;
-    private StatusLocomotionPose _externalStatusLocomotionPose;
-    private StatusLocomotionPose _staggerStatusLocomotionPose;
+    private StatusLocomotionPose _statusLocomotionIntent;
 
     // pending (กรณีเรียก SetDowned ก่อน init)
     private bool _pendingDownedSet;
@@ -122,16 +116,18 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private bool _pendingCrawlIntro;
 
     public bool RootMotionActive { get; private set; }
-    public MeleeType CurrentMeleeType { get; private set; } = MeleeType.Light;
     public MeleeComboSO.Step CurrentMeleeStep { get; internal set; }
     public int CurrentMeleeStepIndex { get; internal set; }
+    public bool IsMeleePlaybackActive => _initialized && locomotionSM.CurrentState == meleeCombo;
     public event Action MeleeHitStart;
     public event Action MeleeHitEnd;
     public event Action MeleeComboEnded;
+    public event Action MeleeChainWindowOpened;
+    public event Action MeleeChainWindowClosed;
+    public event Action MeleeStepCompleted;
 
     private Action onMeleeHitStartCache;
     private Action onMeleeHitEndCache;
-    private Action onMeleeEndCache;
     private Action onSkillCastMomentCache;
     
 
@@ -462,11 +458,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             animancer = GetComponent<AnimancerComponent>();
         if (!animancer && ctx != null)
             animancer = ctx.GetComponentInChildren<AnimancerComponent>(true);
-
-        if (!statusEffectController && ctx != null)
-            statusEffectController = ctx.GetComponentInChildren<StatusEffectController>(true);
-        if (!statusEffectController)
-            statusEffectController = GetComponent<StatusEffectController>();
     }
 
     private bool _initWarned;
@@ -762,31 +753,37 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
     }
 
-    public void PressMelee(MeleeType type)
+    internal bool TryStartMeleePlayback(MeleeComboSO combo, MeleeComboSO.Step firstStep, int stepIndex)
     {
         if (ExternalCommandBlockedByChain())
-            return;
-
-        CurrentMeleeType = type;
-
-        var selected = (type == MeleeType.Light) ? LightCombo : HeavyCombo;
-        if (selected == null)
-            selected = DefaultMeleeCombo;
-        if (selected == null) return;
-
-        if (!TryInitialize()) return;
-
-        if (locomotionSM.CurrentState == meleeCombo)
-        {
-            if (meleeCombo.CurrentCombo == selected)
-                meleeCombo.QueueNextPress();
-            return;
-        }
+            return false;
+        if (!TryInitialize())
+            return false;
 
         StopReloadAction();
+        meleeCombo.PrepareForStart(combo, firstStep, stepIndex);
+        return locomotionSM.TrySetState(meleeCombo);
+    }
 
-        meleeCombo.SetCombo(selected);
-        locomotionSM.TrySetState(meleeCombo);
+    internal void AdvanceMeleeStep(MeleeComboSO.Step step, int stepIndex)
+    {
+        if (locomotionSM.CurrentState != meleeCombo)
+            return;
+        meleeCombo.PlayStepExternal(step, stepIndex);
+    }
+
+    internal void CompleteMeleePlayback()
+    {
+        if (locomotionSM.CurrentState != meleeCombo)
+            return;
+
+        meleeCombo.EndVfxSession();
+        MeleeComboEnded?.Invoke();
+        EmitPlaybackSignal(PlaybackKind.Melee, PlaybackPhase.Completed, 0);
+
+        bool exited = locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
+        if (!exited)
+            ExitExclusiveLocomotion(false);
     }
 
     public void PlayDead()
@@ -830,23 +827,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         return shouldPlayIntro;
     }
 
-    public void SetExternalStatusLocomotion(ImpactReactionKind reaction)
+    internal void SetStatusLocomotionIntent(StatusLocomotionPose intent)
     {
-        StatusLocomotionPose desired = MapReactionToStatusLocomotion(reaction);
-        if (_externalStatusLocomotionPose == desired)
+        if (_statusLocomotionIntent == intent)
             return;
 
-        _externalStatusLocomotionPose = desired;
-        RefreshStatusLocomotion();
-    }
-
-    public void SetStaggerStatusLocomotion(ImpactReactionKind reaction)
-    {
-        StatusLocomotionPose desired = MapReactionToStatusLocomotion(reaction);
-        if (_staggerStatusLocomotionPose == desired)
-            return;
-
-        _staggerStatusLocomotionPose = desired;
+        _statusLocomotionIntent = intent;
         RefreshStatusLocomotion();
     }
 
@@ -1311,7 +1297,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (locomotionSM.CurrentState == knockbackState)
             return;
 
-        StatusLocomotionPose desired = ResolveStatusLocomotionPose();
+        StatusLocomotionPose desired = _statusLocomotionIntent;
+        if (desired != StatusLocomotionPose.None && GetStatusLocomotionClip(desired) == null)
+            desired = StatusLocomotionPose.None;
 
         if (desired == StatusLocomotionPose.None)
         {
@@ -1325,14 +1313,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         }
 
         bool hardOverride = IsHardStatusLocomotion(desired);
-        if (hardOverride && locomotionSM.CurrentState == meleeCombo)
-        {
-            var meleeController = ctx != null ? ctx.MeleeController : null;
-            if (!meleeController && ctx != null)
-                meleeController = ctx.GetComponent<MeleeController>();
-
-            meleeController?.InterruptMelee();
-        }
 
         if (hardOverride && locomotionSM.CurrentState == fullBodyReloadState)
             fullBodyReloadState.CancelNow();
@@ -1360,91 +1340,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         _currentStatusLocomotionPose = desired;
         locomotionSM.TrySetState(statusEffectState);
-    }
-
-    private StatusLocomotionPose ResolveStatusLocomotionPose()
-    {
-        if (!statusEffectController)
-            ResolveReferences();
-
-        var activeEffects = statusEffectController?.ActiveEffects;
-        StatusLocomotionPose best = StatusLocomotionPose.None;
-        int bestPriority = 0;
-
-        if (activeEffects != null)
-        {
-            for (int i = 0; i < activeEffects.Count; i++)
-            {
-                var instance = activeEffects[i];
-                var definition = instance?.Definition;
-                if (definition == null || instance.CurrentStacks <= 0)
-                    continue;
-
-                StatusLocomotionPose candidate = ResolveStatusLocomotionPose(definition);
-                if (candidate == StatusLocomotionPose.None || GetStatusLocomotionClip(candidate) == null)
-                    continue;
-
-                int priority = GetStatusLocomotionPriority(candidate);
-                if (priority <= bestPriority)
-                    continue;
-
-                best = candidate;
-                bestPriority = priority;
-            }
-        }
-
-        if (_externalStatusLocomotionPose != StatusLocomotionPose.None &&
-            GetStatusLocomotionClip(_externalStatusLocomotionPose) != null)
-        {
-            int priority = GetStatusLocomotionPriority(_externalStatusLocomotionPose);
-            if (priority > bestPriority)
-            {
-                best = _externalStatusLocomotionPose;
-                bestPriority = priority;
-            }
-        }
-
-        if (_staggerStatusLocomotionPose != StatusLocomotionPose.None &&
-            GetStatusLocomotionClip(_staggerStatusLocomotionPose) != null)
-        {
-            int priority = GetStatusLocomotionPriority(_staggerStatusLocomotionPose);
-            if (priority > bestPriority)
-                return _staggerStatusLocomotionPose;
-        }
-
-        return best;
-    }
-
-    private StatusLocomotionPose ResolveStatusLocomotionPose(StatusEffectDef def)
-    {
-        if (def == null) return StatusLocomotionPose.None;
-        if (def.locomotionPose != StatusLocomotionPose.Auto) return def.locomotionPose;
-        if (def.pushStunnedState) return StatusLocomotionPose.Stun;
-        if ((def.controlBlocks & ControlBlockFlags.Move) != 0) return StatusLocomotionPose.Root;
-        return StatusLocomotionPose.None;
-    }
-
-    private int GetStatusLocomotionPriority(StatusLocomotionPose kind)
-    {
-        return kind switch
-        {
-            StatusLocomotionPose.Freeze => 40,
-            StatusLocomotionPose.Stun => 30,
-            StatusLocomotionPose.MiniStun => 20,
-            StatusLocomotionPose.Root => 10,
-            _ => 0,
-        };
-    }
-
-    private static StatusLocomotionPose MapReactionToStatusLocomotion(ImpactReactionKind reaction)
-    {
-        return reaction switch
-        {
-            ImpactReactionKind.Root => StatusLocomotionPose.Root,
-            ImpactReactionKind.MiniStun => StatusLocomotionPose.MiniStun,
-            ImpactReactionKind.Stun => StatusLocomotionPose.Stun,
-            _ => StatusLocomotionPose.None,
-        };
     }
 
     private bool IsHardStatusLocomotion(StatusLocomotionPose kind)
@@ -1566,17 +1461,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     internal void NotifySkillStateExited(bool completedNormally)
     {
         int requestId = _skillChannel.Request.RequestId;
-        SkillGemDefinition activeSkillDefinition = _skillChannel.Request.Definition;
         bool shouldReleaseOnComplete =
             completedNormally &&
             _skillChannel.Request.ReleaseRequested &&
             !_skillChannel.Request.Released &&
             requestId > 0;
         bool interrupted = !completedNormally && _skillChannel.Request.ReleaseRequested && requestId > 0;
-        bool shouldDeactivateOwner =
-            deactivateOwnerOnSkillExit &&
-            activeSkillDefinition == null &&
-            gameObject.activeSelf;
 
         if (shouldReleaseOnComplete)
         {
@@ -1591,9 +1481,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         {
             EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.Completed, requestId);
             SkillCompleted?.Invoke();
-
-            if (shouldDeactivateOwner)
-                gameObject.SetActive(false);
         }
 
         if (interrupted && requestId > 0)

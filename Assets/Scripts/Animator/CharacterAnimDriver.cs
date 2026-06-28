@@ -15,6 +15,11 @@ public sealed class CharacterAnimDriver : MonoBehaviour
     bool _missingBrainWarningLogged;
     bool _usesHealthLifeFallback;
 
+    StatusEffectController _statusEffects;
+    StatusLocomotionPose _externalStatusLocomotionPose;
+    StatusLocomotionPose _staggerStatusLocomotionPose;
+    readonly StatusLocomotionIntentResolver _statusResolver = new();
+
     public CharacterAnimBrain Brain => brain;
 
     void Awake()
@@ -41,6 +46,9 @@ public sealed class CharacterAnimDriver : MonoBehaviour
             _HealthSystem.CharacterDown += OnCharacterDown;
             _HealthSystem.CharacterRevive += OnCharacterRevive;
         }
+
+        if (_statusEffects != null)
+            _statusEffects.EffectsChanged += OnEffectsChanged;
     }
 
     void OnDisable()
@@ -67,6 +75,9 @@ public sealed class CharacterAnimDriver : MonoBehaviour
         }
 
         _usesHealthLifeFallback = false;
+
+        if (_statusEffects != null)
+            _statusEffects.EffectsChanged -= OnEffectsChanged;
 
         if (brain != null)
             brain.SetFireHoldContext(false, false);
@@ -120,6 +131,13 @@ public sealed class CharacterAnimDriver : MonoBehaviour
             TryGetComponent(out _WeaponSystem);
         if (!_WeaponSystem && CTX != null)
             _WeaponSystem = CTX.GetComponentInChildren<WeaponSystem>(true);
+
+        if (!_statusEffects && CTX != null)
+            _statusEffects = CTX.StatusEffects;
+        if (!_statusEffects)
+            TryGetComponent(out _statusEffects);
+        if (!_statusEffects && CTX != null)
+            _statusEffects = CTX.GetComponentInChildren<StatusEffectController>(true);
     }
 
     void LateUpdate()
@@ -202,14 +220,41 @@ public sealed class CharacterAnimDriver : MonoBehaviour
 
     public void SetExternalStatusLocomotion(ImpactReactionKind reaction)
     {
-        if (CanIssueCommand(nameof(SetExternalStatusLocomotion)))
-            brain.SetExternalStatusLocomotion(reaction);
+        StatusLocomotionPose desired = StatusLocomotionIntentResolver.MapReaction(reaction);
+        if (_externalStatusLocomotionPose == desired)
+            return;
+
+        _externalStatusLocomotionPose = desired;
+        RefreshStatusIntent();
     }
 
     public void SetStaggerStatusLocomotion(ImpactReactionKind reaction)
     {
-        if (CanIssueCommand(nameof(SetStaggerStatusLocomotion)))
-            brain.SetStaggerStatusLocomotion(reaction);
+        StatusLocomotionPose desired = StatusLocomotionIntentResolver.MapReaction(reaction);
+        if (_staggerStatusLocomotionPose == desired)
+            return;
+
+        _staggerStatusLocomotionPose = desired;
+        RefreshStatusIntent();
+    }
+
+    void OnEffectsChanged()
+    {
+        RefreshStatusIntent();
+    }
+
+    void RefreshStatusIntent()
+    {
+        if (!CanIssueCommand(nameof(RefreshStatusIntent)))
+            return;
+
+        var activeEffects = _statusEffects != null ? _statusEffects.ActiveEffects : null;
+        StatusLocomotionPose intent = _statusResolver.Resolve(
+            activeEffects,
+            _externalStatusLocomotionPose,
+            _staggerStatusLocomotionPose);
+
+        brain.SetStatusLocomotionIntent(intent);
     }
 
     public void InterruptActivePlaybackForExternalControlLoss()
@@ -218,10 +263,14 @@ public sealed class CharacterAnimDriver : MonoBehaviour
             brain.InterruptActivePlaybackForExternalControlLoss();
     }
 
-    public void PressMelee(CharacterAnimBrain.MeleeType type)
+    public void PressMelee(MeleeType type)
     {
-        if (CanIssueCommand(nameof(PressMelee)))
-            brain.PressMelee(type);
+        if (!CanIssueCommand(nameof(PressMelee)))
+            return;
+
+        var meleeController = CTX != null ? CTX.MeleeController : null;
+        if (meleeController != null)
+            meleeController.PressMelee(type);
     }
 
     public void CancelMeleeNow()

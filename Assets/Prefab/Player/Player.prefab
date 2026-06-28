@@ -642,6 +642,7 @@ MonoBehaviour:
   Visual: {fileID: 1956943878282865192}
   UIManager: {fileID: 0}
   ColliderRefs: {fileID: 6238810295164373960}
+  StatusEffects: {fileID: 8620874944121039693}
   levelSystem: {fileID: 7448423437953034685}
   HealthSystem: {fileID: 1629402543204886545}
   StaminaSystem: {fileID: 4770091200891185323}
@@ -1318,8 +1319,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animancer: {fileID: 7383821111389677251}
   ctx: {fileID: 1638387977988830713}
-  statusEffectController: {fileID: 8620874944121039693}
-  deactivateOwnerOnSkillExit: 1
   chainPlaybackWatchdogGraceSeconds: 0.15
   useRootMotionForChainPlayback: 0
   locomotionLayerIndex: 0

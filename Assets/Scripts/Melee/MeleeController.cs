@@ -17,6 +17,8 @@ public sealed class MeleeController : MonoBehaviour
 
     readonly HashSet<int> _hitTargetIds = new();
     IDamageable _selfDamageable;
+    readonly MeleeComboSession _session = new();
+    MeleeType _currentMeleeType;
 
     bool _attackWindowActive;
     string _activeDamageSourceId;
@@ -37,6 +39,9 @@ public sealed class MeleeController : MonoBehaviour
             brain.MeleeHitStart += OnHitStart;
             brain.MeleeHitEnd += OnHitEnd;
             brain.MeleeComboEnded += OnComboEnded;
+            brain.MeleeChainWindowOpened += OnChainWindowOpened;
+            brain.MeleeChainWindowClosed += OnChainWindowClosed;
+            brain.MeleeStepCompleted += OnStepCompleted;
         }
 
         if (hitboxTrigger != null)
@@ -50,6 +55,9 @@ public sealed class MeleeController : MonoBehaviour
             brain.MeleeHitStart -= OnHitStart;
             brain.MeleeHitEnd -= OnHitEnd;
             brain.MeleeComboEnded -= OnComboEnded;
+            brain.MeleeChainWindowOpened -= OnChainWindowOpened;
+            brain.MeleeChainWindowClosed -= OnChainWindowClosed;
+            brain.MeleeStepCompleted -= OnStepCompleted;
         }
 
         if (hitboxTrigger != null)
@@ -58,17 +66,38 @@ public sealed class MeleeController : MonoBehaviour
         CloseAttackWindow();
     }
 
-    public bool TryStartMelee(CharacterAnimBrain.MeleeType meleeType)
+    public void PressMelee(MeleeType meleeType)
+    {
+        ResolveRefs();
+        if (brain == null) return;
+
+        if (brain.IsMeleePlaybackActive)
+        {
+            if (meleeType != _currentMeleeType)
+                return;
+
+            var action = _session.QueuePress();
+            if (action == MeleeSessionAction.Advance)
+                brain.AdvanceMeleeStep(_session.CurrentStep, _session.CurrentStepIndex);
+            return;
+        }
+
+        TryStartMelee(meleeType);
+    }
+
+    public bool TryStartMelee(MeleeType meleeType)
     {
         ResolveRefs();
 
-        if (ctx == null || stateHub == null || brain == null || animDriver == null)
+        if (ctx == null || stateHub == null || brain == null)
             return false;
         if (!stateHub.CanStartMelee())
             return false;
         if (brain.IsSkillPlaybackActive)
             return false;
-        if (!HasValidCombo(meleeType))
+
+        var combo = ResolveRequestedCombo(meleeType);
+        if (combo == null || !combo.IsValid(out _))
             return false;
 
         if (weaponSystem != null)
@@ -87,7 +116,15 @@ public sealed class MeleeController : MonoBehaviour
         stateHub.SetFireHeld(false);
         stateHub.WeaponSM.TryChange(WeaponStateId.Melee);
 
-        animDriver.PressMelee(meleeType);
+        _currentMeleeType = meleeType;
+        _session.Start(combo);
+
+        if (!brain.TryStartMeleePlayback(combo, _session.CurrentStep, _session.CurrentStepIndex))
+        {
+            _session.Clear();
+            return false;
+        }
+
         stateHub.ReportMeleeStarted(meleeType);
         return true;
     }
@@ -96,6 +133,7 @@ public sealed class MeleeController : MonoBehaviour
     {
         ResolveRefs();
 
+        _session.Clear();
         CloseAttackWindow();
         animDriver?.CancelMeleeNow();
 
@@ -123,8 +161,7 @@ public sealed class MeleeController : MonoBehaviour
             : null;
         _activeChainId = combatEventBus != null ? CombatEventBus.NextChainId() : 0;
 
-        var meleeType = brain != null ? brain.CurrentMeleeType : CharacterAnimBrain.MeleeType.Light;
-        hitboxTrigger?.Activate(meleeType);
+        hitboxTrigger?.Activate(_currentMeleeType);
     }
 
     void OnHitEnd()
@@ -134,10 +171,34 @@ public sealed class MeleeController : MonoBehaviour
 
     void OnComboEnded()
     {
+        _session.Clear();
         CloseAttackWindow();
 
         if (stateHub != null)
             stateHub.WeaponSM.TryChange(WeaponStateId.Ready);
+    }
+
+    void OnChainWindowOpened()
+    {
+        if (!_session.IsActive) return;
+        var action = _session.NotifyChainWindowOpened();
+        if (action == MeleeSessionAction.Advance && brain != null)
+            brain.AdvanceMeleeStep(_session.CurrentStep, _session.CurrentStepIndex);
+    }
+
+    void OnChainWindowClosed()
+    {
+        _session.NotifyChainWindowClosed();
+    }
+
+    void OnStepCompleted()
+    {
+        if (!_session.IsActive) return;
+        var action = _session.NotifyStepCompleted();
+        if (action == MeleeSessionAction.Advance && brain != null)
+            brain.AdvanceMeleeStep(_session.CurrentStep, _session.CurrentStepIndex);
+        else if (action == MeleeSessionAction.Complete && brain != null)
+            brain.CompleteMeleePlayback();
     }
 
     void OnHitboxContact(Collider other)
@@ -243,19 +304,19 @@ public sealed class MeleeController : MonoBehaviour
         return hitboxTrigger != null && hitboxTrigger.IsHitboxCollider(other);
     }
 
-    bool HasValidCombo(CharacterAnimBrain.MeleeType meleeType)
+    bool HasValidCombo(MeleeType meleeType)
     {
         var combo = ResolveRequestedCombo(meleeType);
         return combo != null && combo.IsValid(out _);
     }
 
-    MeleeComboSO ResolveRequestedCombo(CharacterAnimBrain.MeleeType meleeType)
+    MeleeComboSO ResolveRequestedCombo(MeleeType meleeType)
     {
         var profile = ctx != null && ctx.baseStats != null ? ctx.baseStats.animProfile : null;
         if (profile == null)
             return null;
 
-        var combo = meleeType == CharacterAnimBrain.MeleeType.Light
+        var combo = meleeType == MeleeType.Light
             ? profile.lightCombo
             : profile.heavyCombo;
 
@@ -312,7 +373,7 @@ public sealed class MeleeController : MonoBehaviour
 
     StaggerPayload BuildStaggerPayload()
     {
-        var activeStep = brain != null ? brain.CurrentMeleeStep : default(MeleeComboSO.Step);
+        var activeStep = _session.IsActive ? _session.CurrentStep : default(MeleeComboSO.Step);
         float staggerPower = activeStep.staggerPower;
         if (staggerPower <= 0f && ctx != null && ctx.StatsHub != null)
             staggerPower = ctx.StatsHub.GetSkillBaseDamage() * 0.5f;
@@ -322,7 +383,7 @@ public sealed class MeleeController : MonoBehaviour
 
     KnockbackData BuildKnockback(Collider other)
     {
-        var activeStep = brain != null ? brain.CurrentMeleeStep : default(MeleeComboSO.Step);
+        var activeStep = _session.IsActive ? _session.CurrentStep : default(MeleeComboSO.Step);
         if (!activeStep.applyKnockback)
             return default(KnockbackData);
 

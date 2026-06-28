@@ -33,7 +33,7 @@ public abstract class CharacteContext : MonoBehaviour
     
     
     [Header("Modules")]
-    
+    public StatusEffectController StatusEffects;
     public LevelSystem levelSystem;
     public HealthSystem HealthSystem;
     public StaminaSystem StaminaSystem;
@@ -117,6 +117,7 @@ public abstract class CharacteContext : MonoBehaviour
         UIManager = ResolveActorComponent(UIManager);
         ColliderRefs = ResolveActorComponent(ColliderRefs);
 
+        StatusEffects = ResolveActorComponent(StatusEffects);
         levelSystem = ResolveActorComponent(levelSystem);
         HealthSystem = ResolveActorComponent(HealthSystem);
         StaminaSystem = ResolveActorComponent(StaminaSystem);

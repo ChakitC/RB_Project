@@ -99,7 +99,7 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
 
     readonly Collider[] _overlapBuffer = new Collider[32];
     readonly HashSet<int> _sweepColliderIds = new();
-    private CharacterAnimBrain.MeleeType _activeMeleeType = CharacterAnimBrain.MeleeType.Light;
+    private MeleeType _activeMeleeType = MeleeType.Light;
     private bool _samplingActive;
 
     private void Awake()
@@ -122,7 +122,7 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
         SetAllHitboxes(false);
     }
 
-    public void Activate(CharacterAnimBrain.MeleeType meleeType)
+    public void Activate(MeleeType meleeType)
     {
         _activeMeleeType = meleeType;
         _sweepColliderIds.Clear();
@@ -133,7 +133,7 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
 
     public void Activate()
     {
-        Activate(CharacterAnimBrain.MeleeType.Light);
+        Activate(MeleeType.Light);
     }
 
     public void Deactivate()
@@ -339,7 +339,7 @@ public sealed class MeleeHitboxTrigger : MonoBehaviour
     private HitboxGroup GetActiveHitboxGroup()
     {
         EnsureHitboxGroups();
-        return _activeMeleeType == CharacterAnimBrain.MeleeType.Heavy
+        return _activeMeleeType == MeleeType.Heavy
             ? heavyHitboxes
             : lightHitboxes;
     }

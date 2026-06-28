@@ -26,9 +26,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 20413,
-                "currentMagazine": 0,
-                "currentReserveAmmo": 0,
+                "shotCounter": 20537,
+                "currentMagazine": 19,
+                "currentReserveAmmo": 497,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 16,
                 "upgradeTier": 1,
@@ -59,9 +59,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 3207,
+                "shotCounter": 3219,
                 "currentMagazine": 29,
-                "currentReserveAmmo": 265,
+                "currentReserveAmmo": 300,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -136,8 +136,8 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 18362,
-                "currentMagazine": 20,
+                "shotCounter": 18407,
+                "currentMagazine": 26,
                 "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
@@ -309,9 +309,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 17776,
-                "currentMagazine": 0,
-                "currentReserveAmmo": 0,
+                "shotCounter": 17885,
+                "currentMagazine": 27,
+                "currentReserveAmmo": 210,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -397,9 +397,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 2498,
-                "currentMagazine": 29,
-                "currentReserveAmmo": 251,
+                "shotCounter": 2520,
+                "currentMagazine": 28,
+                "currentReserveAmmo": 230,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,

@@ -119,13 +119,13 @@ public class CharacterAudioEmitter : MonoBehaviour
         TryPlayEventVoice(voiceProfile != null ? voiceProfile.dashVoice : null);
     }
 
-    void OnMeleeStarted(CharacterAnimBrain.MeleeType meleeType)
+    void OnMeleeStarted(MeleeType meleeType)
     {
         var stats = GetStats();
         if (stats == null)
             return;
 
-        AudioCue cue = meleeType == CharacterAnimBrain.MeleeType.Light
+        AudioCue cue = meleeType == MeleeType.Light
             ? (stats.meleeLightCue != null ? stats.meleeLightCue : stats.meleeHeavyCue)
             : (stats.meleeHeavyCue != null ? stats.meleeHeavyCue : stats.meleeLightCue);
 

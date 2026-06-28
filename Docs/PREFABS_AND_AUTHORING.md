@@ -639,6 +639,20 @@ Passive authoring should keep these fields stable:
 Optional event source rules should define a source id explicitly when designers
 need multiple rules to share or distinguish the same source.
 
+## Removed Serialized Fields (Responsibility Reduction)
+
+The following serialized fields were removed from `CharacterAnimBrain`:
+
+- `deactivateOwnerOnSkillExit` — actor lifecycle no longer in Brain; only
+  `Player.prefab` had it enabled, but the trigger condition (null skill
+  definition) never fired in normal gameplay.
+- `statusEffectController` — status policy moved to `CharacterAnimDriver`;
+  `StatusEffectController` is now resolved through `CharacteContext.StatusEffects`.
+
+Re-save Player, Ally, and Enemy prefabs after opening Unity to clear stale
+serialized data. The prefab YAML values are harmless but will be removed on
+next save.
+
 ## Status Effect Locomotion Pose
 
 `StatusEffectDef` has a `locomotionPose` field (enum `StatusLocomotionPose`)

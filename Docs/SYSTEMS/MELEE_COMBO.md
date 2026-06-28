@@ -22,6 +22,13 @@ target one occurrence, and an empty marker is valid.
 
 ## Runtime Lifecycle
 
+`MeleeController` owns the combo session (`MeleeComboSession`) and drives the
+combo flow. It selects the combo from the anim profile, starts playback via
+`Brain.TryStartMeleePlayback`, and advances or completes via
+`Brain.AdvanceMeleeStep` / `Brain.CompleteMeleePlayback` in response to
+`MeleeChainWindowOpened`, `MeleeChainWindowClosed`, and `MeleeStepCompleted`
+events. `MeleeType` is a top-level enum.
+
 `CharacterAnimBrain` creates one `AnimationVfxPresenter` session for the active
 step and binds it to the same runtime Animancer sequence used by melee hit and
 chain callbacks. The session ends before replay or advance and on completion,

@@ -246,12 +246,12 @@ Material:
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: 0, g: 0, b: 0, a: 0}
+    - _CharacterCenterWS: {r: 12.81, g: 0.1, b: -4.23, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FaceFrontDirection: {r: -0.5041289, g: 0.037210945, b: 0.86282647, a: 0}
-    - _FaceRightDirection: {r: 0.8634245, g: 0.0000010095537, b: 0.5044783, a: 0}
+    - _FaceFrontDirection: {r: -0.014397394, g: 0.03721095, b: 0.99920374, a: 0}
+    - _FaceRightDirection: {r: 0.9998962, g: 0.0000010094664, b: 0.014407335, a: 0}
     - _FaceUVCtrl: {r: 0, g: 1, b: 0, a: 0}
     - _FakeLightColor: {r: 0, g: 0, b: 0, a: 0}
     - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}

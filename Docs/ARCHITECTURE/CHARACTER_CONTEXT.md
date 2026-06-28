@@ -28,7 +28,8 @@ types, including:
   `CharacterPairOffsetApplier`, `MeleeController`
 - visual and collider support: `CharacterContextPartyLoader`,
   `CharacterVisualController`, `UIManager`, `CharacterColliderRefs`
-- gameplay modules: `LevelSystem`, `HealthSystem`, `StaminaSystem`,
+- gameplay modules: `StatusEffectController` (`StatusEffects`),
+  `LevelSystem`, `HealthSystem`, `StaminaSystem`,
   `DashSystem`, `CharacterKnockbackMotor`, `PassiveController`,
   `PlayerPassiveProgress`, `SkillUserSystem`, `Interactor`,
   `CharacterSkillManager`

@@ -40,7 +40,7 @@ public sealed class StateHub : MonoBehaviour
     public bool FireHeld { get; private set; }
     public Vector3 DashDirWorld { get; private set; } = Vector3.forward;
 
-    public event Action<CharacterAnimBrain.MeleeType> Melee;
+    public event Action<MeleeType> Melee;
     public event Action<float> ReloadStarted;
     public event Action<float, Vector3> DashStarted;
     public event Action StunStarted;
@@ -544,7 +544,7 @@ public sealed class StateHub : MonoBehaviour
         ctx.stateHub.SetFireHeld(false);
     }
 
-    public bool RequestOnMelee(CharacterAnimBrain.MeleeType meleeType = CharacterAnimBrain.MeleeType.Heavy)
+    public bool RequestOnMelee(MeleeType meleeType = MeleeType.Heavy)
     {
         if (!CanStartMelee())
             return false;
@@ -614,7 +614,7 @@ public sealed class StateHub : MonoBehaviour
         DashStarted?.Invoke(duration, DashDirWorld);
     }
 
-    public void ReportMeleeStarted(CharacterAnimBrain.MeleeType meleeType)
+    public void ReportMeleeStarted(MeleeType meleeType)
     {
         Melee?.Invoke(meleeType);
     }

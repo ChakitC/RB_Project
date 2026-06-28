@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class StartMelee : ActionNode
 {
-    [SerializeField] private CharacterAnimBrain.MeleeType meleeType = CharacterAnimBrain.MeleeType.Heavy;
+    [SerializeField] private MeleeType meleeType = MeleeType.Heavy;
 
     private StateHub _stateHub;
 

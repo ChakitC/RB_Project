@@ -15,6 +15,33 @@ Gameplay system -> StateHub or controller -> CharacterAnimDriver -> CharacterAni
 - Other systems may read Brain state, sample normalized time, and subscribe to
   Brain events. They must route playback and mutation commands through Driver.
 
+## Status Locomotion
+
+`CharacterAnimDriver` owns status locomotion intent resolution. It subscribes to
+`StatusEffectController.EffectsChanged` and holds external/stagger reaction state.
+`StatusLocomotionIntentResolver` (pure class) merges active effects, external
+reactions, and stagger reactions by priority into a single intent pose.
+Driver sends the resolved intent to Brain via `SetStatusLocomotionIntent`.
+Brain still owns clip-availability fallback and reconciles the intent after
+exclusive states (knockback, skill) end.
+
+External callers (`StaggerMeter`, `CharacterKnockbackMotor`) continue to call
+`Driver.SetExternalStatusLocomotion` / `Driver.SetStaggerStatusLocomotion` with
+unchanged signatures.
+
+## Melee Combo
+
+`MeleeController` owns melee combo policy. It holds a `MeleeComboSession` (pure
+class) that tracks the active combo, step index, input buffer, chain window, and
+repeat logic. `MeleeType` is a top-level enum (no longer nested in Brain).
+
+Flow: `MeleeController.PressMelee(type)` → session decides step →
+`Brain.TryStartMeleePlayback` / `Brain.AdvanceMeleeStep`. Brain plays the clip
+and emits `MeleeChainWindowOpened`, `MeleeChainWindowClosed`,
+`MeleeStepCompleted`. MeleeController receives these events, asks the session,
+and calls Brain to advance or complete. All callbacks are synchronous
+(same-frame, no re-entrancy).
+
 `CharacterAnimDriver.Brain` exposes the resolved Brain for read and event access.
 The Driver command facade mirrors the Brain command signatures so request ids,
 timing, root-motion flags, and return values remain unchanged.

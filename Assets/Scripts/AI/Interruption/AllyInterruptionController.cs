@@ -77,6 +77,8 @@ public sealed class AllyInterruptionController : MonoBehaviour
     bool _guaranteeCommitted;
     bool _blockCompletionAttempted;
     bool _impactReached;
+    bool _hitLagFired;
+    bool _hitLagPending;
     bool _cleanupRunning;
     ReservedBlockResult _blockCompletionResult;
     TargetedSkillPlacementResult _placementResult;
@@ -260,6 +262,8 @@ public sealed class AllyInterruptionController : MonoBehaviour
         _blockCompletionAttempted = false;
         _blockCompletionResult = default;
         _impactReached = false;
+        _hitLagFired = false;
+        _hitLagPending = false;
         CacheOriginalActorPose();
         CacheVisualRootPose();
         _state = State.Reserved;
@@ -318,13 +322,25 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     void OnTimelineEvent(int requestId, CombatTimelineEventName eventName)
     {
-        if (_state != State.Casting) return;
+        if (_state != State.Casting && _state != State.Impact) return;
         if (requestId != _activeRequestId) return;
-        if (eventName != CombatTimelineEventName.HitStart) return;
-        LogFlow(
-            $"timeline event={eventName} allyRequestId={requestId} targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}");
-        ValidateRootMotionImpactPose();
-        OnImpact();
+
+        if (eventName == CombatTimelineEventName.HitStart && _state == State.Casting)
+        {
+            LogFlow(
+                $"timeline event={eventName} allyRequestId={requestId} targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}");
+            ValidateRootMotionImpactPose();
+            OnImpact();
+            return;
+        }
+
+        if (eventName == CombatTimelineEventName.HitLag)
+        {
+            if (_impactReached && _blockCompletedSuccessfully && !_hitLagFired)
+                TriggerHitLag();
+            else if (!_hitLagFired)
+                _hitLagPending = true;
+        }
     }
 
     void ValidateRootMotionImpactPose()
@@ -360,11 +376,29 @@ public sealed class AllyInterruptionController : MonoBehaviour
     {
         _state = State.Impact;
         _impactReached = true;
-        UnsubscribeImpactTimeline();
 
         ReservedBlockResult blockResult = CompleteReservedBlockOnce("HitStart");
         if (blockResult == ReservedBlockResult.Success)
+        {
             ApplyImpactKnockback();
+
+            if (_hitLagPending && !_hitLagFired)
+                TriggerHitLag();
+        }
+    }
+
+    void TriggerHitLag()
+    {
+        _hitLagFired = true;
+        _hitLagPending = false;
+
+        SkillGemDefinition skillDef = interruptionSkill != null ? interruptionSkill.skillAsset : null;
+        if (skillDef == null || !skillDef.HasHitLag)
+            return;
+
+        GlobalTimeScaleManager.Instance.RequestHitLag(skillDef.HitLagDuration, skillDef.HitLagTimeScale);
+        LogFlow(
+            $"hitlag fired duration={skillDef.HitLagDuration:0.###}s scale={skillDef.HitLagTimeScale:0.###}");
     }
 
     void ApplyImpactKnockback()
@@ -518,6 +552,8 @@ public sealed class AllyInterruptionController : MonoBehaviour
         _blockCompletionAttempted = false;
         _blockCompletionResult = default;
         _impactReached = false;
+        _hitLagFired = false;
+        _hitLagPending = false;
         _placementResult = default;
         _hasOriginalActorPose = false;
         ClearVisibleRootRebaseState();

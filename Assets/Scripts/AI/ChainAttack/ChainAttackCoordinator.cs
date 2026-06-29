@@ -36,6 +36,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
 
     public bool IsSequenceActive => _activeRoutine != null;
     public Transform LockedTarget => _activeRuntime != null ? _activeRuntime.targetTransform : null;
+    public event Action<ChainAttackSequenceDef, GameObject, bool> SequenceFinished;
     float WorldNow => TimeSlowManager.Instance.WorldTime;
 
     void Awake()
@@ -230,9 +231,14 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
                 ? $"Sequence '{runtime.sequenceDef.RuntimeId}' completed."
                 : $"Sequence '{runtime.sequenceDef.RuntimeId}' ended early.");
 
+        var finishedDef = runtime.sequenceDef;
+        var finishedTarget = runtime.targetObject;
+
         RestorePlayerProtection();
         _activeRoutine = null;
         _activeRuntime = null;
+
+        SequenceFinished?.Invoke(finishedDef, finishedTarget, completedSuccessfully);
     }
 
     IEnumerator RunStep(ActiveChainRuntime runtime, ChainAttackStepDef step, Action<bool> onFinished)

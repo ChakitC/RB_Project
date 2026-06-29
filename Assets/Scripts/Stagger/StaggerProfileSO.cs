@@ -8,6 +8,7 @@ public sealed class StaggerProfileSO : ScriptableObject
     [Min(0f)] public float staggerGainMultiplier = 1f;
 
     [Header("Break State")]
+    [Min(0.01f)] public float chainReadyDuration = 3f;
     [Min(0.01f)] public float staggerDuration = 1.5f;
     [Min(1f)] public float damageTakenMultiplierWhileStaggered = 1.25f;
     [Min(0f)] public float postStaggerImmunity = 1f;

@@ -20,6 +20,8 @@ public static class AnimationVfxTimelineSourceFactory
             return new MeleeComboVfxTimelineSource(combo, entryId);
         if (asset is CharacterAnimProfileSO profile)
             return new CharacterAnimProfileVfxTimelineSource(profile, entryId);
+        if (asset is CutsceneDefSO cutsceneDef)
+            return new CutsceneDefVfxTimelineSource(cutsceneDef);
         return null;
     }
 
@@ -49,6 +51,10 @@ public static class AnimationVfxTimelineSourceFactory
             AddProfileEntry(entries, profile, CharacterAnimProfileSO.DashForwardVfxEntryId);
             AddProfileEntry(entries, profile, CharacterAnimProfileSO.DashBackwardVfxEntryId);
             AddProfileEntry(entries, profile, CharacterAnimProfileSO.ReloadVfxEntryId);
+        }
+        else if (asset is CutsceneDefSO)
+        {
+            entries.Add(new AnimationVfxTimelineEntry("cutscene", "Cutscene VFX"));
         }
         return entries;
     }

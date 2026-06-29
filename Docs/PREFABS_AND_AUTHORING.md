@@ -69,6 +69,20 @@ Do not remove local authoring references such as `hitboxTrigger`, `firePoint`,
 `modelRoot`, `healthBarPrefab`, database references, or prefab references just
 because a context exists.
 
+## Overhead Health And Stagger Bar
+
+Character prefabs use `Assets/UI/CharacterOverheadBars.prefab` through the
+`CharacterVisualController.healthBarPrefab` field. The controller mounts the
+instance on the configured health-bar bone and binds `CharacterOverheadBarsView`
+to the actor's `HealthSystem` and optional `StaggerMeter`.
+
+The upper bar shows current HP in green with missing HP in muted red. The lower
+bar shows current stagger in yellow with unfilled capacity in muted brown.
+Characters without a `StaggerMeter` hide the lower bar. Keep
+`StaggerMeter.staggerBarPrefab` unassigned when using the combined overhead bar
+so a second stagger bar is not created. The same prefab also contains the
+ChainReady prompt and binds it to the actor's `StaggerMeter` automatically.
+
 ## Equipment Upgrade UI
 
 `Assets/UI/UIWeaponUpgrade.prefab` is the shared weapon upgrade and equipment
@@ -138,7 +152,15 @@ by number.
 
 Current supported event keys include common hitbox events (`HitStart`, `HitEnd`),
 pre-cast block events (`PreCastOpen`, `PreCastClose`), the repeatable skill
-presentation event (`Vfx`), and the camera shake marker (`ShakeCamera`).
+presentation event (`Vfx`), the camera shake marker (`ShakeCamera`), and the
+HitLag feedback marker (`HitLag`).
+
+`GlobalTimeScaleManager` is the single owner of `Time.timeScale`. Pause
+(`UI_Pause`) and HitLag requests are composed through it — pause always wins,
+then the strongest (lowest) active HitLag scale, then `1f`. Direct
+`Time.timeScale` writes outside this manager should be avoided.
+`TimeSlowManager.WorldTimeScale` is a separate opt-in axis that does not write
+`Time.timeScale`.
 Prefab hitbox skill payloads are sequential-only: every `HitStart` opens the
 next configured step and every `HitEnd` closes the currently active step.
 Multi-step skill hitboxes should order their payload steps to match the
@@ -598,6 +620,62 @@ Enemy prefabs commonly need:
 Enemy-only systems may depend on `EnemyContext` when they need enemy-specific
 fields.
 
+### ChainReady Prompt
+
+`Assets/UI/CharacterOverheadBars.prefab` includes `ChainReadyPromptView` and a
+world-space `TMP_Text` prompt. `CharacterOverheadBarsView.Bind` passes the
+actor's `StaggerMeter` to it, so enemy variants using the shared overhead prefab
+need no additional prompt component. The prompt shows `[F] CHAIN` with a
+countdown when the enemy enters ChainReady and hides on exit.
+
+### ChainReady Animation Clip
+
+On the enemy's `CharacterAnimProfileSO` asset, optionally assign a
+`chainReady` clip under the StatusEffect section. If no clip is assigned the
+enemy freezes in its current locomotion pose during ChainReady with no error.
+
+### Chain Ready Duration
+
+`StaggerProfileSO` has a `chainReadyDuration` field (default 3 s). The
+`StaggerMeter` component also has a serialized fallback value. The profile
+takes priority when assigned.
+
+### ChainReady Intro Cutscene
+
+The intro cutscene is split across two assets:
+
+**`SkillChainDef`** (per chain):
+
+| Field | Purpose |
+|---|---|
+| `enableChainReadyIntroCutscene` | Opt-in toggle (default OFF). Existing assets keep current behavior. |
+
+**`CharacterStats`** (per playable character, under **Chain Attack**):
+
+| Field | Purpose |
+|---|---|
+| `introChainCutscene` | Reference to a **`CutsceneDefSO`** asset (create via *Assets ▸ Create ▸ Game ▸ Cutscene ▸ Cutscene Def*). The SO holds a `CutsceneDef`: assign `characterCutsceneClip` (the character's intro animation), optionally `cameraCutsceneClip`, `worldSlowScale`, fade durations, and `barThickness`. Do not edit `cutsceneVfxEvents` by hand — author it with the **Animation VFX** tool (below). |
+
+**Cutscene VFX authoring:** the intro's VFX uses the same `SetAnimationVfxData`
+workflow as skill cutscenes. Drop the `CutsceneDefSO` asset into the **Source
+Asset** field, select the **Cutscene VFX** entry, add `Vfx` markers to
+`characterCutsceneClip`, then place and **Save VFX Data** — it writes to the
+SO's `cutscene.cutsceneVfxEvents`.
+
+When both the `SkillChainDef` toggle is on **and** the active character's
+`CharacterStats.introChainCutscene` references a `CutsceneDefSO` with a valid clip, pressing F on a
+ChainReady target plays a one-shot cinematic intro before the chain's first
+step. The intro uses the same stage runtime as skill cutscenes
+(`CutsceneSkillPresenter` + `CutsceneDirector`). If the clip is unassigned,
+the toggle is off, or the cinematic stage is busy, the chain starts immediately
+with no error.
+
+The character clip plays on the **chain locomotion channel** via
+`CharacterAnimBrain.TryPlayChainCutscene` — it is presentation-only and never
+spawns damage or a skill payload. Each playable character authors their own
+clip on their `CharacterStats` asset; shipped assets should leave the clip
+unassigned until authored.
+
 ## Weapon Authoring
 
 Weapon data should preserve:
@@ -667,8 +745,9 @@ status effect is active:
 | `MiniStun` | Brief stun animation. |
 | `Stun` | Full stun animation. |
 | `Freeze` | Frozen animation (highest priority). |
+| `ChainReady` | ChainReady pose (plays during the ChainReady window before stagger stun). |
 
-Priority order: Freeze > Stun > MiniStun > Root.
+Priority order: Freeze > ChainReady > Stun > MiniStun > Root.
 
 For existing assets that relied on string-token matching (effectId/name/tags),
 run `Tools > Status > Migrate Locomotion Pose` once after upgrading. The

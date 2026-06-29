@@ -17,6 +17,7 @@ public sealed class StaggerMeter : MonoBehaviour
     [SerializeField, FoldoutGroup("Fallback Values"), Min(0.01f)] private float staggerDuration = 1.5f;
     [SerializeField, FoldoutGroup("Fallback Values"), Min(1f)] private float damageTakenMultiplierWhileStaggered = 1.25f;
     [SerializeField, FoldoutGroup("Fallback Values"), Min(0f)] private float postStaggerImmunity = 1f;
+    [SerializeField, FoldoutGroup("Fallback Values"), Min(0.01f)] private float chainReadyDuration = 3f;
     [SerializeField, FoldoutGroup("Fallback Values"), Min(0f)] private float decayDelay = 1.5f;
     [SerializeField, FoldoutGroup("Fallback Values"), Min(0f)] private float decayPerSecond = 20f;
 
@@ -42,6 +43,10 @@ public sealed class StaggerMeter : MonoBehaviour
     [SerializeField] private bool isStaggered;
     [SerializeField] private float staggerTimeRemaining;
     [SerializeField] private float immunityTimeRemaining;
+    [SerializeField] private bool isChainReady;
+    [SerializeField] private bool isChainExecutionActive;
+    [SerializeField] private float chainReadyTimeRemaining;
+    GameObject chainReadySource;
 
     Slider staggerBarSlider;
     float timeSinceLastGain;
@@ -57,10 +62,17 @@ public sealed class StaggerMeter : MonoBehaviour
     public event Action StaggerStarted;
     public event Action StaggerEnded;
     public event Action<float, float> MeterChanged;
+    public event Action ChainReadyStarted;
+    public event Action ChainReadyEnded;
+    public event Action<float, float> ChainReadyTimeChanged;
 
     public float CurrentStagger => currentStagger;
     public float MaxStagger => ResolveMaxStagger();
     public bool IsStaggered => isStaggered;
+    public bool IsChainReady => isChainReady;
+    public bool IsChainExecutionActive => isChainExecutionActive;
+    public float ChainReadyTimeRemaining => chainReadyTimeRemaining;
+    public float ChainReadyDuration => ResolveChainReadyDuration();
     public float DamageTakenMultiplier => isStaggered ? ResolveDamageTakenMultiplier() : 1f;
 
     void Awake()
@@ -98,6 +110,7 @@ public sealed class StaggerMeter : MonoBehaviour
     {
         float dt = Time.deltaTime;
         TickImmunity(dt);
+        TickChainReady(dt);
         TickStagger(dt);
         TickDecay(dt);
     }
@@ -123,8 +136,8 @@ public sealed class StaggerMeter : MonoBehaviour
         timeSinceLastGain = 0f;
         NotifyMeterChanged();
 
-        if (currentStagger >= ResolveMaxStagger())
-            EnterStagger(source);
+        if (currentStagger >= ResolveMaxStagger() && !isChainReady)
+            EnterChainReady(source);
 
         return true;
     }
@@ -194,6 +207,9 @@ public sealed class StaggerMeter : MonoBehaviour
         if (immunityTimeRemaining > 0f)
             return false;
 
+        if (isChainReady)
+            return false;
+
         return !isStaggered || !ignoreStaggerGainWhileStaggered;
     }
 
@@ -234,6 +250,8 @@ public sealed class StaggerMeter : MonoBehaviour
 
     void ClearStaggerState()
     {
+        CancelChainReady();
+
         bool wasStaggered = isStaggered;
         isStaggered = false;
         staggerTimeRemaining = 0f;
@@ -268,7 +286,7 @@ public sealed class StaggerMeter : MonoBehaviour
 
     void TickDecay(float dt)
     {
-        if (isStaggered || currentStagger <= 0f || dt <= 0f)
+        if (isStaggered || isChainReady || currentStagger <= 0f || dt <= 0f)
             return;
 
         timeSinceLastGain += dt;
@@ -370,6 +388,7 @@ public sealed class StaggerMeter : MonoBehaviour
     {
         currentStagger = 0f;
         NotifyMeterChanged();
+        CancelChainReady();
         ClearStaggerState();
     }
 
@@ -402,11 +421,94 @@ public sealed class StaggerMeter : MonoBehaviour
         MeterChanged?.Invoke(currentStagger, ResolveMaxStagger());
     }
 
+    void EnterChainReady(GameObject source)
+    {
+        if (isChainReady)
+            return;
+
+        isChainReady = true;
+        isChainExecutionActive = false;
+        chainReadySource = source;
+        chainReadyTimeRemaining = ResolveChainReadyDuration();
+
+        ApplyChainReadyControlState();
+        SuspendAgent();
+        NotifyMeterChanged();
+        ChainReadyStarted?.Invoke();
+        ChainReadyTimeChanged?.Invoke(chainReadyTimeRemaining, ResolveChainReadyDuration());
+    }
+
+    void TickChainReady(float dt)
+    {
+        if (!isChainReady || dt <= 0f)
+            return;
+
+        SuspendAgent();
+
+        if (isChainExecutionActive)
+            return;
+
+        chainReadyTimeRemaining = Mathf.Max(0f, chainReadyTimeRemaining - dt);
+        ChainReadyTimeChanged?.Invoke(chainReadyTimeRemaining, ResolveChainReadyDuration());
+
+        if (chainReadyTimeRemaining <= 0f)
+            CompleteChainReadyAndEnterStagger();
+    }
+
+    void ApplyChainReadyControlState()
+    {
+        stateHub?.SetStaggerControlState(
+            ControlBlockFlags.Move | ControlBlockFlags.Shoot | ControlBlockFlags.Skill,
+            true);
+
+        animDriver?.SetStaggerStatusLocomotionPose(StatusLocomotionPose.ChainReady);
+        animDriver?.InterruptActivePlaybackForExternalControlLoss();
+    }
+
+    public void BeginChainExecution()
+    {
+        if (!isChainReady)
+            return;
+
+        isChainExecutionActive = true;
+    }
+
+    public bool CompleteChainReadyAndEnterStagger()
+    {
+        if (!isChainReady)
+            return false;
+
+        isChainReady = false;
+        isChainExecutionActive = false;
+        chainReadyTimeRemaining = 0f;
+        ChainReadyEnded?.Invoke();
+
+        EnterStagger(chainReadySource);
+        chainReadySource = null;
+        return true;
+    }
+
+    void CancelChainReady()
+    {
+        if (!isChainReady)
+            return;
+
+        isChainReady = false;
+        isChainExecutionActive = false;
+        chainReadyTimeRemaining = 0f;
+        chainReadySource = null;
+
+        ClearControlState();
+        RestoreAgent();
+        ChainReadyEnded?.Invoke();
+    }
+
     float ResolveMaxStagger() => Mathf.Max(1f, profile != null ? profile.maxStagger : maxStagger);
     float ResolveGainMultiplier() => Mathf.Max(0f, profile != null ? profile.staggerGainMultiplier : staggerGainMultiplier);
     float ResolveStaggerDuration() => Mathf.Max(0.01f, profile != null ? profile.staggerDuration : staggerDuration);
     float ResolveDamageTakenMultiplier() => Mathf.Max(1f, profile != null ? profile.damageTakenMultiplierWhileStaggered : damageTakenMultiplierWhileStaggered);
     float ResolvePostStaggerImmunity() => Mathf.Max(0f, profile != null ? profile.postStaggerImmunity : postStaggerImmunity);
+    float ResolveChainReadyDuration() => Mathf.Max(0.01f, profile != null ? profile.chainReadyDuration : chainReadyDuration);
     float ResolveDecayDelay() => Mathf.Max(0f, profile != null ? profile.decayDelay : decayDelay);
     float ResolveDecayPerSecond() => Mathf.Max(0f, profile != null ? profile.decayPerSecond : decayPerSecond);
 }

@@ -1529,8 +1529,10 @@ public sealed class SkillCastOrchestrator
         if (!IsSharedCooldownReady(runtimeSkill, castStats))
             return false;
 
+        if (!runtimeSkill.Cast(skillUser, executionAnimBrain, requestId))
+            return false;
+
         StampSharedCooldown(runtimeSkill, castStats);
-        runtimeSkill.Cast(skillUser, executionAnimBrain, requestId);
         PlayCastCue(runtimeSkill, skillUser);
         return true;
     }

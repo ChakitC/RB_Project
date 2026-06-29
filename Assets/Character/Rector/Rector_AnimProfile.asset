@@ -15,8 +15,6 @@ MonoBehaviour:
   upperBodyMask: {fileID: 31900000, guid: 3ff359338d40c5f40a861f9c3afbd210, type: 2}
   actionFadeIn: 0.06
   actionFadeOut: 0.08
-  locomotionParamLerp: 29.3
-  snapTo8Directions: 1
   locomotionDirectionalClips:
     idle: {fileID: 5842118489928674393, guid: 379ab45fcbed4b24aafeaba89a306a17, type: 3}
     forward: {fileID: -3129449787151212416, guid: 9d075004451ed734792f095847b44f96, type: 3}
@@ -27,6 +25,10 @@ MonoBehaviour:
     forwardRight: {fileID: 0}
     backwardLeft: {fileID: 0}
     backwardRight: {fileID: 0}
+  locomotionParamLerp: 29.3
+  snapTo8Directions: 1
+  locomotionFadeDuration: 0.25
+  locomotionPlaybackSpeed: 1
   miniStune:
     _FadeDuration: 0.25
     _Speed: 1
@@ -63,6 +65,15 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 6500254727769745521, guid: b0250f33440b0c44988fecb4560b83a8, type: 3}
     _NormalizedStartTime: NaN
+  chainReady:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -6239092401349363682, guid: 8170b71f25268e744babfc58e66c5b51, type: 3}
+    _NormalizedStartTime: NaN
   knockback:
     _FadeDuration: 0.36666667
     _Speed: 1
@@ -81,6 +92,8 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 0}
     _NormalizedStartTime: NaN
+  dashForwardVfxTrack:
+    cues: []
   dashB:
     _FadeDuration: 0.25
     _Speed: 1
@@ -90,6 +103,8 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 0}
     _NormalizedStartTime: NaN
+  dashBackwardVfxTrack:
+    cues: []
   dashL:
     _FadeDuration: 0.25
     _Speed: 1
@@ -136,6 +151,7 @@ MonoBehaviour:
     _Clip: {fileID: 0}
     _NormalizedStartTime: NaN
   holdPulseMinInterval: 0.08
+  pairOffsetProfiles: {fileID: 0}
   reload:
     _FadeDuration: 0.25
     _Speed: 1
@@ -145,10 +161,22 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 0}
     _NormalizedStartTime: NaN
+  reloadVfxTrack:
+    cues: []
+  reloadBodyMode: 0
   meleeCombo: {fileID: 11400000, guid: 1857e836be2e4d44db88dd8a7c85fb3f, type: 2}
   meleeCanInterruptReload: 1
   lightCombo: {fileID: 11400000, guid: 4ed39c12c340dc449a483c4ad0330ce2, type: 2}
   heavyCombo: {fileID: 11400000, guid: ef78d3c80f0621e49a6b64aeab7f4a83, type: 2}
+  crawling:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: NaN
   crawlMixer:
     _FadeDuration: 0.25
     _Speed: 1

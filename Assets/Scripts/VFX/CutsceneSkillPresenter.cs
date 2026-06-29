@@ -25,8 +25,11 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
     [SerializeField] private int _sortingOrder = 31999;
     [SerializeField] private Color _barColor = new Color(0f, 0f, 0f, 1f);
 
+    enum CutsceneSource { Skill, ChainIntro }
+
     CutsceneDef _pendingDef;
     int _pendingReqId;
+    CutsceneSource _pendingSource;
     bool _cutsceneActive;
 
     Coroutine _overlayRoutine;
@@ -89,7 +92,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         }
 
         if (_cutsceneActive)
-            ForceEndCutscene();
+            ForceEndStage();
     }
 
     void LateUpdate()
@@ -102,14 +105,14 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
     void HandleCastCancelled(ActiveSkillCastInfo castInfo, SkillCastCancelReason reason)
     {
-        if (castInfo.RequestId != _pendingReqId)
+        if (_pendingSource != CutsceneSource.Skill || castInfo.RequestId != _pendingReqId)
             return;
 
         _pendingDef   = null;
         _pendingReqId = 0;
 
         if (_cutsceneActive)
-            EndCutscene(fadeOutDuration: 0.05f);
+            EndStage(fadeOutDuration: 0.05f);
     }
 
     void HandleTimelineEvent(int requestId, CombatTimelineEventName eventName)
@@ -119,15 +122,14 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
             if (_cutsceneActive) return;
             var skillDef = _animBrain?.ActiveSkillDefinition;
             if (skillDef == null || !skillDef.IsCutsceneSkill) return;
-            _pendingDef   = skillDef.CutsceneDef;
-            _pendingReqId = requestId;
-            if (_pendingDef != null)
-                StartCutscene(_pendingDef);
+            var def = skillDef.CutsceneDef;
+            if (def != null)
+                BeginStage(def, requestId, CutsceneSource.Skill);
         }
         else if (eventName == CombatTimelineEventName.CutsceneSkillEnd)
         {
-            if (!_cutsceneActive || requestId != _pendingReqId) return;
-            EndCutscene(_pendingDef?.fadeOutDuration ?? 0.2f);
+            if (!_cutsceneActive || _pendingSource != CutsceneSource.Skill || requestId != _pendingReqId) return;
+            EndStage(_pendingDef?.fadeOutDuration ?? 0.2f);
         }
     }
 
@@ -143,16 +145,32 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         _cutsceneVfxPresenter.HandleCue(_cutsceneVfxToken, signal.CueIndex);
     }
 
-    // Cutscene control
+    // Chain intro cutscene API
 
-    void StartCutscene(CutsceneDef def)
+    public bool TryBeginChainIntro(CutsceneDef def, int chainRequestId)
+    {
+        return def != null && BeginStage(def, chainRequestId, CutsceneSource.ChainIntro);
+    }
+
+    public void EndChainIntro(int chainRequestId)
+    {
+        if (_cutsceneActive && _pendingSource == CutsceneSource.ChainIntro && chainRequestId == _pendingReqId)
+            EndStage(_pendingDef?.fadeOutDuration ?? 0.2f);
+    }
+
+    // Stage control (shared by skill cutscenes and ChainReady intro)
+
+    bool BeginStage(CutsceneDef def, int requestId, CutsceneSource source)
     {
         if (_cutsceneActive)
-            ForceEndCutscene();                       // releases the lock if this presenter still held it
+            ForceEndStage();
 
         if (!CutsceneDirector.Instance.TryBegin(this))
-            return;                                   // denied → no cinematic; character anim still plays
+            return false;
 
+        _pendingDef = def;
+        _pendingReqId = requestId;
+        _pendingSource = source;
         _cutsceneActive = true;
         UIManager.Instance?.SetHudVisible(false);
 
@@ -169,8 +187,6 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         if (_mainFollowCamera != null)
             _mainFollowCamera.enabled = false;
 
-        // Character animation is driven by CharacterAnimBrain on the gameplay LocoLayer.
-        // Drive only camera animation and VFX from here.
         SnapCameraHolderToCtx();
         PlayCameraAnimation(def.cameraCutsceneClip);
         StartCutsceneVfxSession(def);
@@ -178,9 +194,10 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         if (_overlayRoutine != null)
             StopCoroutine(_overlayRoutine);
         _overlayRoutine = StartCoroutine(FadeOverlay(0f, 1f, def.fadeInDuration));
+        return true;
     }
 
-    void EndCutscene(float fadeOutDuration)
+    void EndStage(float fadeOutDuration)
     {
         if (!_cutsceneActive)
             return;
@@ -215,7 +232,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         CutsceneDirector.Instance.End(this);
     }
 
-    void ForceEndCutscene()
+    void ForceEndStage()
     {
         _cutsceneActive = false;
         _pendingDef     = null;

@@ -301,6 +301,51 @@ public sealed class PartyCommandController : MonoBehaviour
         return TryExecutePartyCommand(index);
     }
 
+    public enum ChainReadyInputResult { NoReadyTarget, Consumed }
+
+    public ChainReadyInputResult TryExecuteChainReadyChainAttack(SkillChainDef chainDef)
+    {
+        ResolveReferences();
+
+        if (chainDef == null || chainDef.chainSequence == null ||
+            chainAttackProcController == null || playerContext == null)
+            return ChainReadyInputResult.NoReadyTarget;
+
+        AllyHelperManager helperManager = playerContext.allyHelper;
+        if (!ChainAttackTargetingUtility.TryResolveLockedTarget(
+                playerContext,
+                chainDef.chainSequence,
+                null,
+                helperManager != null ? helperManager.HelperObject : null,
+                out GameObject target,
+                out Transform targetTransform,
+                out _))
+        {
+            return ChainReadyInputResult.NoReadyTarget;
+        }
+
+        StaggerMeter meter = target.GetComponentInParent<StaggerMeter>();
+        if (meter == null)
+            meter = target.GetComponentInChildren<StaggerMeter>();
+        if (meter == null || !meter.IsChainReady || meter.IsChainExecutionActive)
+            return ChainReadyInputResult.NoReadyTarget;
+
+        if (TryGetChainAttackBlockReason(chainDef, out _))
+        {
+            RaisePartyCommandLabel();
+            return ChainReadyInputResult.Consumed;
+        }
+
+        if (chainAttackProcController.TryStartChainReadyManualSequence(
+                chainDef, target, targetTransform, meter))
+        {
+            TrySpendCommandPoints(chainDef.ClampedCommandPointCost);
+        }
+
+        RaisePartyCommandLabel();
+        return ChainReadyInputResult.Consumed;
+    }
+
     public bool TryExecuteChainAttack(SkillChainDef chainDef)
     {
         ResolveReferences();

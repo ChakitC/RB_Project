@@ -238,6 +238,15 @@ public sealed class CharacterAnimDriver : MonoBehaviour
         RefreshStatusIntent();
     }
 
+    public void SetStaggerStatusLocomotionPose(StatusLocomotionPose pose)
+    {
+        if (_staggerStatusLocomotionPose == pose)
+            return;
+
+        _staggerStatusLocomotionPose = pose;
+        RefreshStatusIntent();
+    }
+
     void OnEffectsChanged()
     {
         RefreshStatusIntent();

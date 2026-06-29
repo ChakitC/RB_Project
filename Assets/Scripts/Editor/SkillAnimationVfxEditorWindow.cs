@@ -1388,6 +1388,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     static string GetEventMenuPath(CombatTimelineEventName eventName)
     {
         if (eventName == CombatTimelineEventName.Vfx) return "VFX/Vfx";
+        if (eventName == CombatTimelineEventName.HitLag) return "Feedback/" + eventName;
         if (eventName == CombatTimelineEventName.HitStart || eventName == CombatTimelineEventName.HitEnd) return "Hitbox/" + eventName;
         if (eventName == CombatTimelineEventName.PreCastOpen || eventName == CombatTimelineEventName.PreCastClose) return "Pre-Cast/" + eventName;
         return "Other/" + eventName;
@@ -1451,6 +1452,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         if (name == CombatTimelineEventName.HitStart) return new Color(0.3f, 0.9f, 0.35f);
         if (name == CombatTimelineEventName.HitEnd) return new Color(0.95f, 0.35f, 0.3f);
         if (name == CombatTimelineEventName.Vfx) return new Color(0.65f, 0.35f, 1f);
+        if (name == CombatTimelineEventName.HitLag) return new Color(0.95f, 0.85f, 0.25f);
         return new Color(0.35f, 0.75f, 0.95f);
     }
 

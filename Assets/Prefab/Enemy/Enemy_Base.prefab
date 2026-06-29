@@ -64,7 +64,7 @@ MonoBehaviour:
   firePointLocalPos: {x: 0, y: 1, z: 1.2}
   firePointLocalRotEuler: {x: -90, y: 0, z: 0}
   firePointLocalScale: {x: 1, y: 1, z: 1}
-  healthBarPrefab: {fileID: 3278180561930833838, guid: dfe2ec53bbc8aca498982ab8a0952b57, type: 3}
+  healthBarPrefab: {fileID: 3196080228300109906, guid: b6b91f21e65c3634eb2a54a84bd884bd, type: 3}
   healthBarHight: 3
   healthBarBoneName: c_traj
   healthBarLocalOffset: {x: 0, y: 0, z: 0}
@@ -845,8 +845,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animancer: {fileID: 7890524168451456044}
   ctx: {fileID: 4463375380434640548}
-  statusEffectController: {fileID: 8475986916130434765}
-  deactivateOwnerOnSkillExit: 0
   chainPlaybackWatchdogGraceSeconds: 0.15
   useRootMotionForChainPlayback: 0
   locomotionLayerIndex: 0
@@ -1133,6 +1131,7 @@ MonoBehaviour:
   Visual: {fileID: 1879165679072882653}
   UIManager: {fileID: 0}
   ColliderRefs: {fileID: 0}
+  StatusEffects: {fileID: 8475986916130434765}
   levelSystem: {fileID: 802596624525694837}
   HealthSystem: {fileID: 4372935134327282892}
   StaminaSystem: {fileID: 3620542892003728669}

@@ -37,12 +37,14 @@ MonoBehaviour:
       _NormalizedTimes:
       - 0.41579315
       - 0.41649196
+      - 0.4186747
       - 0.45632425
       - NaN
       _Callbacks: []
       _Names:
       - {fileID: 11400000, guid: a1d9c7b1f0f54a2b8c1d6e7f90123456, type: 2}
       - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
+      - {fileID: 11400000, guid: 1cf7e6b3297823d46882176b6f3e6840, type: 2}
       - {fileID: 11400000, guid: b2e8d6c4a1b347c98d0e1f2a34567890, type: 2}
     _Clip: {fileID: -2639457781765362822, guid: 1dfe50ae56ca8c54f95a5fce4f6fb19d, type: 3}
     _NormalizedStartTime: NaN
@@ -62,6 +64,8 @@ MonoBehaviour:
     extraLife: 0
     allowParticlesToFinish: 1
     animClip: {fileID: 0}
+  hitLagDuration: 0.06
+  hitLagTimeScale: 0.05
   isCutsceneSkill: 0
   cutsceneDef:
     characterCutsceneClip:

@@ -221,8 +221,8 @@ public sealed class UI_Inventory : IState<CharacteContext>
 
 public sealed class UI_Pause : IState<CharacteContext>
 {
-    public void Enter(CharacteContext ctx) => Time.timeScale = 0f;
-    public void Exit(CharacteContext ctx) => Time.timeScale = 1f;
+    public void Enter(CharacteContext ctx) => GlobalTimeScaleManager.Instance.SetPaused(true);
+    public void Exit(CharacteContext ctx) => GlobalTimeScaleManager.Instance.SetPaused(false);
 
     public void Tick(CharacteContext ctx, float dt)
     {

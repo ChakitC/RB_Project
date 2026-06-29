@@ -116,12 +116,12 @@ public class SkillInstance
 
     public bool CanCast(ISkillUser user) => CanCast(user, out _);
 
-    public void Cast(ISkillUser user, CharacterAnimBrain animBrain = null, int requestId = 0)
+    public bool Cast(ISkillUser user, CharacterAnimBrain animBrain = null, int requestId = 0)
     {
         if (!CanCast(user, out var stats))
-            return;
+            return false;
 
-        ExecuteCast(user, stats, spendEnergy: true, animBrain, requestId);
+        return ExecuteCast(user, stats, spendEnergy: true, animBrain, requestId);
     }
 
     public bool TryCastIgnoringResourceCosts(ISkillUser user, CharacterAnimBrain animBrain = null, int requestId = 0)

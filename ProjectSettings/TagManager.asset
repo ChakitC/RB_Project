@@ -22,7 +22,7 @@ TagManager:
   - EnemyBullet
   - Enemy
   - Ally
-  - 
+  - WorldUI
   - Ground
   - CharacterSelect
   - Ground Y

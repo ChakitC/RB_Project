@@ -54,6 +54,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
     private Transform _defaultFirePointParent;
     private Transform _firePoint;
     private GameObject _healthBarInstance;
+    private CharacterOverheadBarsView _overheadBarsView;
     private bool _loggedMissingFirePointBone;
     private bool _loggedMissingHealthBarBone;
 
@@ -601,12 +602,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         if (_healthBarInstance)
         {
             ApplyHealthBarOffset();
-
-            if (_healthSystem != null)
-            {
-                var existingSlider = _healthBarInstance.GetComponentInChildren<Slider>(true);
-                _healthSystem.SetHealthBarSlider(existingSlider);
-            }
+            BindHealthBarInstance();
 
             return;
         }
@@ -632,9 +628,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         if (!_healthBarInstance.GetComponent<Billboard>())
             _healthBarInstance.AddComponent<Billboard>();
         ApplyHealthBarOffset();
-
-        var slider = _healthBarInstance.GetComponentInChildren<Slider>(true);
-        _healthSystem.SetHealthBarSlider(slider);
+        BindHealthBarInstance();
     }
 
     private void DestroyHealthBarInstance()
@@ -642,14 +636,52 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         if (!_healthBarInstance)
             return;
 
-        if (_healthSystem != null)
+        if (_overheadBarsView != null)
         {
-            var slider = _healthBarInstance.GetComponentInChildren<Slider>(true);
-            _healthSystem.ClearHealthBarSlider(slider);
+            _overheadBarsView.Unbind();
+            _overheadBarsView = null;
+        }
+        else if (_healthSystem != null)
+        {
+            var legacySlider = _healthBarInstance.GetComponentInChildren<Slider>(true);
+            _healthSystem.ClearHealthBarSlider(legacySlider);
         }
 
         Destroy(_healthBarInstance);
         _healthBarInstance = null;
+    }
+
+    private void BindHealthBarInstance()
+    {
+        if (!_healthBarInstance || _healthSystem == null)
+            return;
+
+        _overheadBarsView = _healthBarInstance.GetComponent<CharacterOverheadBarsView>();
+        if (_overheadBarsView != null)
+        {
+            _overheadBarsView.Bind(_healthSystem, ResolveStaggerMeter());
+            return;
+        }
+
+        var legacySlider = _healthBarInstance.GetComponentInChildren<Slider>(true);
+        _healthSystem.SetHealthBarSlider(legacySlider);
+    }
+
+    private StaggerMeter ResolveStaggerMeter()
+    {
+        if (_ctx != null)
+        {
+            StaggerMeter meter = _ctx.GetComponent<StaggerMeter>();
+            if (meter != null)
+                return meter;
+
+            meter = _ctx.GetComponentInChildren<StaggerMeter>(true);
+            if (meter != null)
+                return meter;
+        }
+
+        StaggerMeter parentMeter = GetComponentInParent<StaggerMeter>();
+        return parentMeter != null ? parentMeter : GetComponentInChildren<StaggerMeter>(true);
     }
 
     private void DetachFirePointFromCurrentModel()

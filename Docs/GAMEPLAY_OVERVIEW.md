@@ -100,8 +100,9 @@ A typical combat encounter flows as follows:
 5. **Status effects** — hits can apply buffs or debuffs. Effects stack according to
    their stack mode (refresh, add stack, independent instances, or strongest-only) and
    can block movement, shooting, or skill use on affected characters.
-6. **Stagger and Stun** — each character has a hidden Stagger Meter. Certain attacks
-   deal stagger damage alongside normal damage. When the meter fills the character is
+6. **Stagger and Stun** — characters with a Stagger Meter show it as the yellow
+   lower bar beneath their green overhead HP bar. Certain attacks deal stagger
+   damage alongside normal damage. When the meter fills the character is
    **Stunned**: movement, shooting, and skill use are all locked out for the stun
    duration, AI stops acting, and all incoming damage is amplified. After recovery the
    character gains a brief **immunity window** before the meter can fill again. The
@@ -167,9 +168,30 @@ recorded origin, fade out and deactivate, or stay at the attack position.
 
 ## Stagger and Stun
 
-Every character has a **Stagger Meter** — a hidden gauge that fills when the character
-takes hits that carry stagger damage. When the meter reaches its maximum the character
-is immediately **Stunned**.
+Characters with a **Stagger Meter** display it as a yellow overhead gauge that
+fills when they take hits carrying stagger damage. Unfilled stagger capacity is
+shown in muted brown; the HP bar above it uses green for current HP and muted red
+for missing HP. When the meter reaches its maximum the character enters
+**ChainReady** (not stunned immediately).
+
+### ChainReady Window
+
+When the meter fills, the enemy enters a **ChainReady** state for a configurable
+duration (default 3 s):
+
+- Movement, shooting, and skill use are all blocked; AI is suspended.
+- The meter stays pinned at max and does not decay.
+- Damage remains at 1× (no stagger multiplier), but the enemy **cannot drop below 1 HP**.
+- A world-space `[F] CHAIN` prompt with a countdown is displayed.
+- Aiming at the ChainReady enemy and pressing **F** starts a **Manual Chain Attack**
+  on that explicit target. The F key is consumed only when a valid ChainReady target
+  is aimed; otherwise normal Interact/Revive proceeds.
+- If F is blocked (CP/cooldown/busy), the press is still consumed and the countdown
+  continues running.
+- Auto-proc chains are blocked from selecting a ChainReady enemy.
+
+When the chain **finishes** (success, fail, or cancel) or the window **times out**,
+the enemy enters the full **Stun** phase. The HP clamp is released at this point.
 
 ### While Stunned
 
@@ -212,6 +234,7 @@ Each character's stagger behavior is configured through a **StaggerProfileSO** a
 |-----------|---------|-------------|
 | Max Stagger | 100 | meter capacity |
 | Stagger Gain Multiplier | ×1 | scales all incoming stagger |
+| Chain Ready Duration | 3 s | how long the ChainReady window lasts before auto-stagger |
 | Stagger Duration | 1.5 s | how long the stun lasts |
 | Damage Multiplier (stunned) | ×1.25 | bonus damage received while stunned |
 | Post-Stagger Immunity | 1 s | immunity window after recovery |

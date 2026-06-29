@@ -57,6 +57,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         Melee = 7,
         Dead = 8,
         StatusEffect = 9,
+        ChainCutscene = 10,
     }
 
     public enum PlaybackPhase
@@ -206,6 +207,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private ClipTransition StuneClip => AnimProfile.stune;
     private ClipTransition RootClip => AnimProfile.root;
     private ClipTransition FreezClip => AnimProfile.freez;
+    private ClipTransition ChainReadyClip => AnimProfile.chainReady;
     private ClipTransition KnockbackClip => AnimProfile.knockback;
     private bool HasActiveSkillClip => HasValidSkillClip(_skillChannel.Request.Definition);
     private bool HasActiveUtilityWarpOutClip => HasValidUtilityWarpOutClip();
@@ -1346,7 +1348,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     {
         return kind == StatusLocomotionPose.MiniStun ||
                kind == StatusLocomotionPose.Stun ||
-               kind == StatusLocomotionPose.Freeze;
+               kind == StatusLocomotionPose.Freeze ||
+               kind == StatusLocomotionPose.ChainReady;
     }
 
     private bool ShouldInterruptActionLayer(StatusLocomotionPose kind)
@@ -1362,6 +1365,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             StatusLocomotionPose.Stun => StuneClip,
             StatusLocomotionPose.Root => RootClip,
             StatusLocomotionPose.Freeze => FreezClip,
+            StatusLocomotionPose.ChainReady => ChainReadyClip,
             _ => null,
         };
     }
@@ -1426,6 +1430,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             ChainPlaybackKind.Skill => PlaybackKind.ChainSkill,
             ChainPlaybackKind.UtilityWarpOut => PlaybackKind.ChainUtilityWarpOut,
             ChainPlaybackKind.UtilityWarpIn => PlaybackKind.ChainUtilityWarpIn,
+            ChainPlaybackKind.Cutscene => PlaybackKind.ChainCutscene,
             _ => PlaybackKind.None,
         };
     }

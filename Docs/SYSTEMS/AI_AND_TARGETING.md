@@ -231,7 +231,12 @@ collider or damage outcome.
 7. At the ally skill's real `HitStart` timeline event, the reserved block is
    completed through `CompleteReservedBlock`, which calls
    `TryCancelActiveCast(Blocked)`. Force-replace knockback is applied only when
-   that block completion succeeds.
+   that block completion succeeds. If the skill clip has a `HitLag` marker and
+   the block succeeded, `AllyInterruptionController` fires a one-shot HitLag
+   micro-freeze through `GlobalTimeScaleManager`. The marker may be at or after
+   `HitStart`; if it arrives before, the freeze is pended and fires on
+   block-confirm. Cancelled, failed, or never-impacted executions produce no
+   HitLag.
 8. Completion and interruption are matched through request-scoped
    `CharacterAnimBrain.PlaybackEvent` signals.
 9. After a successful block at `HitStart` and normal ally skill completion, the interruption
@@ -277,5 +282,51 @@ Normal success logs are disabled by default to avoid Console noise. Command
 failures caused by missing configuration, no available ally, failed safe-pose
 placement, or rejected skill start still emit a warning with the ally scan and
 safe-pose failure reason, including the last rejected yaw and placement check.
+
+## ChainReady Manual Chain Dispatch
+
+When an enemy's stagger meter fills, it enters **ChainReady** instead of
+stunning immediately. During this window the player can aim at the ChainReady
+enemy and press **F** (the Interact action) to start a **Manual Chain Attack**
+on that explicit target.
+
+### F-key dispatch flow
+
+1. `PlayerInputHandler.OnInterrace` checks for a ChainReady target first via
+   `PartyCommandController.TryExecuteChainReadyChainAttack`.
+2. `TryExecuteChainReadyChainAttack` resolves the aimed target through
+   `ChainAttackTargetingUtility.TryResolveLockedTarget`, then checks its
+   `StaggerMeter.IsChainReady`.
+3. If no ChainReady target is aimed, `NoReadyTarget` is returned and F falls
+   through to normal Interact/Revive.
+4. If a ChainReady target is aimed, F is **Consumed** regardless of whether
+   the chain actually starts (CP/cooldown/busy blocks still eat the press).
+5. On success, `ChainAttackProcController.TryStartChainReadyManualSequence`
+   calls `StaggerMeter.BeginChainExecution` to pause the ChainReady timeout.
+   If `SkillChainDef.HasChainReadyIntroCutscene` is true, an **intro cutscene**
+   plays first (camera, world-slow, letterbox, VFX via `CutsceneSkillPresenter`).
+   The chain's first step only starts after the cutscene completes. If the intro
+   is interrupted or the target dies mid-cutscene, the chain aborts but the enemy
+   still enters stagger. If the feature is off, the clip is unassigned, or the
+   `CutsceneDirector` is busy, the chain starts immediately (no cutscene).
+6. A second F press during the intro or chain is blocked by
+   `meter.IsChainExecutionActive` (set at step 5).
+
+### Auto-proc blocking
+
+`ChainAttackProcController.CanProc` blocks auto-proc chains when
+`context.Target` has a `StaggerMeter` in ChainReady state. This reserves
+the window for the player's manual F chain.
+
+**Limitation:** `AimTargetOnly` proc chains resolve their target inside
+`TryStartSequence` and are not covered by this block.
+
+### Chain completion → Stagger handoff
+
+`ChainAttackCoordinator.SequenceFinished` fires at the single coroutine exit.
+`ChainAttackProcController.OnSequenceFinished` listens for the pending
+ChainReady target and calls `StaggerMeter.CompleteChainReadyAndEnterStagger`,
+which transitions seamlessly from ChainReady lock to Stun lock without
+restoring the agent in between.
 The safety-hold invariant remains an unconditional error because a cast must
 never release while its pre-cast hold reservation is active.

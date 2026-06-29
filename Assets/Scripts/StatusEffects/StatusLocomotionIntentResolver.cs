@@ -66,6 +66,7 @@ internal sealed class StatusLocomotionIntentResolver
         return kind switch
         {
             StatusLocomotionPose.Freeze => 40,
+            StatusLocomotionPose.ChainReady => 35,
             StatusLocomotionPose.Stun => 30,
             StatusLocomotionPose.MiniStun => 20,
             StatusLocomotionPose.Root => 10,

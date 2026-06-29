@@ -9,6 +9,7 @@ public enum CombatTimelineEventName
     FootStep = 12,
     SpawnEffect = 13,
     ShakeCamera = 14,
+    HitLag = 15,
 
     TauntApply = 30,
 
@@ -50,6 +51,8 @@ public static class CombatTimelineEventNames
                 return "SpawnEffect";
             case CombatTimelineEventName.ShakeCamera:
                 return "ShakeCamera";
+            case CombatTimelineEventName.HitLag:
+                return "HitLag";
             case CombatTimelineEventName.TauntApply:
                 return "TauntApply";
             case CombatTimelineEventName.Vfx:

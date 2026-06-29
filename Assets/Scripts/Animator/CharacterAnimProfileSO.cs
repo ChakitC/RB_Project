@@ -190,6 +190,7 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     public ClipTransition stune;
     public ClipTransition root;
     public ClipTransition freez;
+    public ClipTransition chainReady;
 
     [Header("Knockback (Layer 0)")]
     public ClipTransition knockback;

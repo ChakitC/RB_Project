@@ -1,6 +1,6 @@
 {
     "maxSlotCount": 0,
-    "gold": 963265,
+    "gold": 963266,
     "scrap": 450,
     "slots": [
         {
@@ -26,9 +26,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 20537,
-                "currentMagazine": 19,
-                "currentReserveAmmo": 497,
+                "shotCounter": 22947,
+                "currentMagazine": 0,
+                "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 16,
                 "upgradeTier": 1,
@@ -59,9 +59,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 3219,
-                "currentMagazine": 29,
-                "currentReserveAmmo": 300,
+                "shotCounter": 3278,
+                "currentMagazine": 0,
+                "currentReserveAmmo": 270,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -136,8 +136,8 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 18407,
-                "currentMagazine": 26,
+                "shotCounter": 19760,
+                "currentMagazine": 12,
                 "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
@@ -309,9 +309,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 17885,
-                "currentMagazine": 27,
-                "currentReserveAmmo": 210,
+                "shotCounter": 19343,
+                "currentMagazine": 0,
+                "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -397,9 +397,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 2520,
-                "currentMagazine": 28,
-                "currentReserveAmmo": 230,
+                "shotCounter": 2712,
+                "currentMagazine": 7,
+                "currentReserveAmmo": 300,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -666,9 +666,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 35,
-                "currentMagazine": 1,
-                "currentReserveAmmo": 80,
+                "shotCounter": 78,
+                "currentMagazine": 3,
+                "currentReserveAmmo": 35,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -1148,8 +1148,8 @@
             }
         },
         {
-            "itemId": "",
-            "amount": 0,
+            "itemId": "Accessory.CleanersLighter",
+            "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
                 "baseWeaponId": "",
@@ -1172,8 +1172,8 @@
                 "unlockedUpgradeMilestoneIds": []
             },
             "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
+                "instanceId": "acc_ab356509e0c849ddacb28636d46b5f17",
+                "accessoryId": "Accessory.CleanersLighter",
                 "modifierId": "",
                 "upgradeLevel": 0
             }

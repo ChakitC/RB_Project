@@ -14,7 +14,7 @@ public class SetAnimationVfxData : MonoBehaviour
     const string LoadUndoLabel = "Load Animation VFX Data";
 
     [BoxGroup("VFX Source/Asset & Entry")]
-    [LabelText("Source Asset  (Skill / Combo / Anim Profile)")]
+    [LabelText("Source Asset  (Skill / Combo / Anim Profile / Cutscene)")]
     [OnValueChanged(nameof(OnTimelineSourceAssetChanged))]
     [SerializeField] private ScriptableObject sourceAsset;
 

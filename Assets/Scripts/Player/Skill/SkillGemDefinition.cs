@@ -167,6 +167,18 @@ public class SkillGemDefinition : ScriptableObject
     [SerializeField, HideInInspector]
     private List<SkillVfxEvent> skillVfxEvents = new List<SkillVfxEvent>();
 
+    [PropertyOrder(-26)]
+    [FoldoutGroup("Feedback", Expanded = false), LabelText("HitLag Duration"), MinValue(0f), SuffixLabel("s")]
+    [SerializeField] private float hitLagDuration = 0.06f;
+
+    [PropertyOrder(-26)]
+    [FoldoutGroup("Feedback", Expanded = false), LabelText("HitLag Time Scale"), Range(0.01f, 1f)]
+    [SerializeField] private float hitLagTimeScale = 0.05f;
+
+    public float HitLagDuration => hitLagDuration;
+    public float HitLagTimeScale => hitLagTimeScale;
+    public bool HasHitLag => HasHitLagMarker();
+
     [PropertyOrder(-25)]
     [FoldoutGroup("Cutscene Skill", Expanded = false), LabelText("Is Cutscene Skill"), ToggleLeft]
     [SerializeField] private bool isCutsceneSkill;
@@ -359,6 +371,9 @@ public class SkillGemDefinition : ScriptableObject
 
         if (HasShakeCameraMarker())
             CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.ShakeCamera);
+
+        if (HasHitLagMarker())
+            CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.HitLag);
     }
 
     bool HasShakeCameraMarker()
@@ -372,6 +387,23 @@ public class SkillGemDefinition : ScriptableObject
         for (int i = 0; i < events.Count; i++)
         {
             if (events.GetName(i) == shakeName)
+                return true;
+        }
+
+        return false;
+    }
+
+    bool HasHitLagMarker()
+    {
+        AnimancerEvent.Sequence events = skillClip?.Events;
+        if (events == null)
+            return false;
+
+        StringReference hitLagName =
+            CombatTimelineEventNames.ToStringReference(CombatTimelineEventName.HitLag);
+        for (int i = 0; i < events.Count; i++)
+        {
+            if (events.GetName(i) == hitLagName)
                 return true;
         }
 

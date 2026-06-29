@@ -58,11 +58,11 @@ MonoBehaviour:
         - {fileID: 919132149155446097, guid: 1b7d6975aa559e24ea930841ce4c557d, type: 3}
         - {fileID: 919132149155446097, guid: 923ac931b03d81b4aae7d5a66ec1d199, type: 3}
         - {fileID: 6692544003493520757, guid: 85d366f180d28424ca444809993d6248, type: 3}
-        - {fileID: 1810244535466419119, guid: b07ee821af6ad75499da139780801d3c, type: 3}
         - {fileID: 4651303126784831026, guid: a649f9e44b30d794d8890f73f0ad0d3e, type: 3}
         - {fileID: 919132149155446097, guid: 411cad361d9bf2c45b315ee7ff2425f0, type: 3}
         - {fileID: 6529442347700744484, guid: 6fc8435470cea994d843648ad902acba, type: 3}
         - {fileID: 2455486968630159720, guid: 6d10d8f609388e14fa46a8a7f1fc1202, type: 3}
+        - {fileID: 1810244535466419119, guid: b07ee821af6ad75499da139780801d3c, type: 3}
     - rid: 8789001712040411215
       type: {class: SerializableEventSequenceDrawerSettings, ns: Animancer.Editor, asm: Kybernetik.Animancer.Editor}
       data:

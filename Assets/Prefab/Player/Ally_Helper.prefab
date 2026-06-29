@@ -324,7 +324,7 @@ MonoBehaviour:
   firePointLocalPos: {x: 0, y: 0, z: 0}
   firePointLocalRotEuler: {x: 0, y: 0, z: 0}
   firePointLocalScale: {x: 1, y: 1, z: 1}
-  healthBarPrefab: {fileID: 3278180561930833838, guid: dfe2ec53bbc8aca498982ab8a0952b57, type: 3}
+  healthBarPrefab: {fileID: 3196080228300109906, guid: b6b91f21e65c3634eb2a54a84bd884bd, type: 3}
   healthBarHight: 3
   healthBarBoneName: c_traj
   healthBarLocalOffset: {x: 0, y: 0, z: 0}

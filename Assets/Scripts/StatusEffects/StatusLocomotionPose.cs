@@ -6,4 +6,5 @@ public enum StatusLocomotionPose
     MiniStun = 3,
     Stun = 4,
     Freeze = 5,
+    ChainReady = 6,
 }

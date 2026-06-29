@@ -11,6 +11,7 @@ public sealed partial class CharacterAnimBrain
         Skill = 1,
         UtilityWarpOut = 2,
         UtilityWarpIn = 3,
+        Cutscene = 4,
     }
 
     private Locomotion_Chain chain;
@@ -21,6 +22,7 @@ public sealed partial class CharacterAnimBrain
     private bool _activeChainUsesRootMotion;
     private ChainPlaybackKind _activeChainKind;
     private bool _chainStateCanExit = true;
+    private ClipTransition _activeChainCutsceneClip;
 
     private ClipTransition ActiveChainClip => ResolveChainClip();
     private bool HasActiveChainClip => HasValidChainClip();
@@ -104,6 +106,21 @@ public sealed partial class CharacterAnimBrain
             ChainPlaybackKind.UtilityWarpIn,
             null,
             UtilityWarpInCastPointNormalized,
+            requestAdvanceMoment: false,
+            advancePointNormalized: 1f,
+            usesRootMotion: UseRootMotionForChainPlayback,
+            usesPlanarRootMotion: false);
+    }
+
+    public bool TryPlayChainCutscene(int requestId, ClipTransition clip)
+    {
+        if (clip == null || !clip.IsValid) return false;
+        _activeChainCutsceneClip = clip;
+        return TryStartChainPlayback(
+            requestId,
+            ChainPlaybackKind.Cutscene,
+            skillDef: null,
+            castPointNormalized: 0f,
             requestAdvanceMoment: false,
             advancePointNormalized: 1f,
             usesRootMotion: UseRootMotionForChainPlayback,
@@ -309,6 +326,7 @@ public sealed partial class CharacterAnimBrain
     {
         _chainChannel.Clear();
         _activeChainKind = ChainPlaybackKind.None;
+        _activeChainCutsceneClip = null;
         _activeChainAdvancePointNormalized = 1f;
         _activeChainAdvanceRequested = false;
         _activeChainAdvanceReleased = false;
@@ -407,6 +425,7 @@ public sealed partial class CharacterAnimBrain
             ChainPlaybackKind.Skill => ResolveSkillClip(_chainChannel.Request.Definition),
             ChainPlaybackKind.UtilityWarpOut => UtilityWarpOutClip,
             ChainPlaybackKind.UtilityWarpIn => UtilityWarpInClip,
+            ChainPlaybackKind.Cutscene => _activeChainCutsceneClip,
             _ => null,
         };
     }

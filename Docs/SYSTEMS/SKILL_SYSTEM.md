@@ -229,6 +229,26 @@ world slow.
 main skill clip fires `ShakeCamera`. Camera shake fires for player, field ally,
 and summoned helper skills. Enemy skills are not subscribed.
 
+## HitLag Markers
+
+Place a `HitLag` Animancer event in the main skill clip to trigger a global
+micro-freeze (`Time.timeScale` dip) at that point. `SkillGemDefinition` scans
+the clip for `HitLag` markers and arms the timeline binding automatically —
+skills without the marker produce no freeze. Per-skill tuning fields on
+`SkillGemDefinition` control the freeze: `HitLag Duration` (default `0.06s`,
+unscaled) and `HitLag Time Scale` (default `0.05`). No marker = off.
+
+`GlobalTimeScaleManager` owns `Time.timeScale` and composes pause, HitLag,
+and the default `1f` scale. Overlapping HitLag requests use the lowest
+(strongest) scale until all expire. `TimeSlowManager.WorldTimeScale` is a
+separate opt-in axis and is not affected.
+
+Currently, HitLag runtime triggering is wired only through the Guaranteed
+Interruption flow in `AllyInterruptionController`. The HitLag fires exactly
+once per interruption execution, only after the block is confirmed
+successfully. If the `HitLag` marker arrives before `HitStart`, it is pended
+and fires on block-confirm.
+
 ---
 
 `PrefabHitboxSkillPayloadDef` owns its hitbox groups and shapes as inline
@@ -336,7 +356,14 @@ only trigger once the cutscene has finished.
 
 ### Runtime
 
-`CutsceneSkillPresenter` resolves its owner through `CharacteContext`, then
+`CutsceneSkillPresenter` serves both **skill cutscenes** and the
+**ChainReady intro cutscene**. The stage logic (camera, world-slow, letterbox,
+visibility override) is source-agnostic; a `CutsceneSource` enum (`Skill`,
+`ChainIntro`) ensures that `CastCancelled` only ends a skill-sourced cutscene
+and never a chain intro, and vice-versa. The chain intro path uses
+`TryBeginChainIntro`/`EndChainIntro` instead of timeline events.
+
+It resolves its owner through `CharacteContext`, then
 listens to the resolved `CharacterSkillManager.CastStarted` and
 `CharacterAnimBrain.SkillTimelineEventRaised`. It also auto-resolves scene
 presentation references from `Camera.main`, `CutsceneCamera`,
@@ -369,15 +396,13 @@ fight over them. A single `CutsceneDirector` singleton arbitrates one
 "cinematic stage" with an
 `Idle → Active → Cooldown` state machine:
 
-- Before any takeover, `CutsceneSkillPresenter.StartCutscene` calls
+- Before any takeover, `CutsceneSkillPresenter.BeginStage` calls
   `CutsceneDirector.Instance.TryBegin(this)`. The grant is **first-come,
   first-served** — while the stage is `Active` (owned by another presenter) or in
-  `Cooldown`, the request is rejected and `StartCutscene` returns immediately.
-- A **rejected** cutscene performs **no** cinematic takeover (no camera/time/
-  overlay/cutscene-VFX). The character still plays its cutscene + main-skill
-  animation via `CharacterAnimBrain`, and main-skill VFX still plays — "do the
-  moves without the movie."
-- `EndCutscene` and `ForceEndCutscene` call `CutsceneDirector.Instance.End(this)`
+  `Cooldown`, the request is rejected and `BeginStage` returns `false`.
+- A **rejected** skill cutscene performs **no** cinematic takeover. A rejected
+  ChainReady intro causes the chain to start immediately without any cutscene.
+- `EndStage` and `ForceEndStage` call `CutsceneDirector.Instance.End(this)`
   to release the stage. `End` is owner-checked and idempotent. Releasing starts a
   cooldown that rejects new cinematics for `cinematicCooldownSeconds` (designer-
   tunable, default 0.35 s) to prevent back-to-back cinematic whiplash.

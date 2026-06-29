@@ -203,6 +203,16 @@ public class CharacterStats : ScriptableObject
     public SkillGemDefinition chainAttackSkill;
 
     [PropertyOrder(-137)]
+    [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Intro Chain Cutscene"), AssetsOnly]
+    public CutsceneDefSO introChainCutscene;
+
+    public bool HasIntroChainCutscene =>
+        introChainCutscene != null &&
+        introChainCutscene.cutscene != null &&
+        introChainCutscene.cutscene.characterCutsceneClip != null &&
+        introChainCutscene.cutscene.characterCutsceneClip.IsValid;
+
+    [PropertyOrder(-136)]
     [FoldoutGroup("Skill Loadout", Expanded = false), LabelText("Skill Slots")]
     [ListDrawerSettings(ShowFoldout = true, DefaultExpandedState = true, DraggableItems = true, ShowPaging = false, NumberOfItemsPerPage = 0)]
     public List<CharacterSkillLoadoutSlot> skillSlots = new();

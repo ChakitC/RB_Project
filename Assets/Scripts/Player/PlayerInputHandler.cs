@@ -7,6 +7,8 @@ public class PlayerInputHandler : MonoBehaviour
     [Header("Chain Attack")]
     [SerializeField] SkillChainDef chainAttackDefinition;
 
+    bool _chainConsumedInteractPress;
+
     void Awake()
     {
         ResolveReferences();
@@ -77,8 +79,30 @@ public class PlayerInputHandler : MonoBehaviour
     public void OnInterrace(InputAction.CallbackContext c)
     {
         ResolveReferences();
-        if (c.performed) ctx?.Interactor?.InteractPressed();
-        if (c.canceled) ctx?.Interactor?.InteractReleased();
+
+        if (c.performed)
+        {
+            if (ctx?.partyCommand != null &&
+                ctx.partyCommand.TryExecuteChainReadyChainAttack(chainAttackDefinition)
+                    == PartyCommandController.ChainReadyInputResult.Consumed)
+            {
+                _chainConsumedInteractPress = true;
+                return;
+            }
+
+            ctx?.Interactor?.InteractPressed();
+        }
+
+        if (c.canceled)
+        {
+            if (_chainConsumedInteractPress)
+            {
+                _chainConsumedInteractPress = false;
+                return;
+            }
+
+            ctx?.Interactor?.InteractReleased();
+        }
     }
 
     public void OnAllyHelperCall(InputAction.CallbackContext c)

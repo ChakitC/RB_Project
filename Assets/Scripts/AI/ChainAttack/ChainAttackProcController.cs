@@ -18,7 +18,21 @@ public sealed class ChainAttackProcController : MonoBehaviour
     readonly List<SkillChainDef> _resolvedSkillChainDefinitions = new();
     readonly HashSet<SkillChainDef> _resolvedSkillChainSet = new();
 
+    StaggerMeter _pendingChainReadyMeter;
+    GameObject _pendingChainReadyTarget;
     bool _subscribed;
+
+    int _nextIntroRequestId = 900000;
+    int _pendingIntroId;
+    SkillChainDef _pendingIntroDef;
+    Transform _pendingIntroTargetTransform;
+    CharacterAnimBrain _animBrain;
+    CutsceneSkillPresenter _cutscenePresenter;
+    bool _introGateActive;
+    bool _deferredChainStartPending;
+    SkillChainDef _deferredChainStartDef;
+    Transform _deferredChainStartTarget;
+
     float WorldNow => TimeSlowManager.Instance.WorldTime;
     public bool IsSequenceActive => chainAttackCoordinator != null && chainAttackCoordinator.IsSequenceActive;
 
@@ -39,6 +53,15 @@ public sealed class ChainAttackProcController : MonoBehaviour
 
         if (chainAttackCoordinator == null)
             chainAttackCoordinator = GetComponent<ChainAttackCoordinator>();
+
+        ResolveAnimBrainAndPresenter();
+    }
+
+    void Update()
+    {
+        if (!_deferredChainStartPending) return;
+        _deferredChainStartPending = false;
+        ExecuteDeferredChainStart();
     }
 
     void OnEnable()
@@ -48,8 +71,21 @@ public sealed class ChainAttackProcController : MonoBehaviour
 
     void OnDisable()
     {
+        _deferredChainStartPending = false;
+        _deferredChainStartDef = null;
+        _deferredChainStartTarget = null;
+
+        if (_introGateActive)
+        {
+            if (_cutscenePresenter != null)
+                _cutscenePresenter.EndChainIntro(_pendingIntroId);
+            ClearIntroGate();
+        }
+
         Unsubscribe();
         _attackIdLocks.Clear();
+        _pendingChainReadyMeter = null;
+        _pendingChainReadyTarget = null;
     }
 
     public bool TryTriggerSequence(SkillChainDef chainDef)
@@ -110,6 +146,8 @@ public sealed class ChainAttackProcController : MonoBehaviour
             return;
 
         combatEventBus.EventPublished += OnCombatEventPublished;
+        if (chainAttackCoordinator != null)
+            chainAttackCoordinator.SequenceFinished += OnSequenceFinished;
         _subscribed = true;
     }
 
@@ -119,6 +157,8 @@ public sealed class ChainAttackProcController : MonoBehaviour
             return;
 
         combatEventBus.EventPublished -= OnCombatEventPublished;
+        if (chainAttackCoordinator != null)
+            chainAttackCoordinator.SequenceFinished -= OnSequenceFinished;
         _subscribed = false;
     }
 
@@ -175,6 +215,179 @@ public sealed class ChainAttackProcController : MonoBehaviour
             _resolvedSkillChainDefinitions.Add(definition);
         }
     }
+    public bool TryStartChainReadyManualSequence(
+        SkillChainDef chainDef,
+        GameObject target,
+        Transform targetTransform,
+        StaggerMeter meter)
+    {
+        if (chainDef == null || chainAttackCoordinator == null || meter == null)
+            return false;
+
+        if (chainDef.enableChainReadyIntroCutscene &&
+            ResolveIntroCutsceneDef() != null &&
+            TryStartIntroCutscene(chainDef, target, targetTransform, meter))
+        {
+            return true;
+        }
+
+        if (!chainAttackCoordinator.TryStartSequence(chainDef.chainSequence, targetTransform))
+            return false;
+
+        StampCooldown(chainDef);
+        _pendingChainReadyTarget = target;
+        _pendingChainReadyMeter = meter;
+        meter.BeginChainExecution();
+        return true;
+    }
+
+    CutsceneDef ResolveIntroCutsceneDef()
+    {
+        if (playerContext == null || playerContext.baseStats == null)
+            return null;
+        return playerContext.baseStats.HasIntroChainCutscene
+            ? playerContext.baseStats.introChainCutscene.cutscene
+            : null;
+    }
+
+    bool TryStartIntroCutscene(
+        SkillChainDef chainDef,
+        GameObject target,
+        Transform targetTransform,
+        StaggerMeter meter)
+    {
+        ResolveAnimBrainAndPresenter();
+        if (_animBrain == null) return false;
+
+        CutsceneDef introDef = ResolveIntroCutsceneDef();
+        if (introDef == null) return false;
+
+        int introId = ++_nextIntroRequestId;
+
+        bool stageStarted = _cutscenePresenter != null &&
+            _cutscenePresenter.TryBeginChainIntro(introDef, introId);
+        if (!stageStarted)
+            return false;
+
+        if (!_animBrain.TryPlayChainCutscene(introId, introDef.characterCutsceneClip))
+        {
+            _cutscenePresenter.EndChainIntro(introId);
+            return false;
+        }
+
+        StampCooldown(chainDef);
+        _pendingChainReadyTarget = target;
+        _pendingChainReadyMeter = meter;
+        meter.BeginChainExecution();
+
+        _pendingIntroId = introId;
+        _pendingIntroDef = chainDef;
+        _pendingIntroTargetTransform = targetTransform;
+        _introGateActive = true;
+        _animBrain.ChainPlaybackCompleted += OnIntroChainPlaybackCompleted;
+        _animBrain.ChainPlaybackInterrupted += OnIntroChainPlaybackInterrupted;
+        return true;
+    }
+
+    void OnIntroChainPlaybackCompleted(int id)
+    {
+        if (!_introGateActive || id != _pendingIntroId) return;
+
+        SkillChainDef def = _pendingIntroDef;
+        Transform target = _pendingIntroTargetTransform;
+        ClearIntroGate();
+
+        if (_cutscenePresenter != null)
+            _cutscenePresenter.EndChainIntro(id);
+
+        // Defer chain start by one frame: the chain locomotion state is still exiting
+        // during this callback, so IsChainPlaybackActive would reject a new playback.
+        _deferredChainStartDef = def;
+        _deferredChainStartTarget = target;
+        _deferredChainStartPending = true;
+    }
+
+    void OnIntroChainPlaybackInterrupted(int id)
+    {
+        if (!_introGateActive || id != _pendingIntroId) return;
+        ClearIntroGate();
+
+        if (_cutscenePresenter != null)
+            _cutscenePresenter.EndChainIntro(id);
+
+        AbortPendingChainReady();
+    }
+
+    void ExecuteDeferredChainStart()
+    {
+        SkillChainDef def = _deferredChainStartDef;
+        Transform target = _deferredChainStartTarget;
+        _deferredChainStartDef = null;
+        _deferredChainStartTarget = null;
+
+        if (def == null || _pendingChainReadyTarget == null || target == null)
+        {
+            AbortPendingChainReady();
+            return;
+        }
+
+        if (!chainAttackCoordinator.TryStartSequence(def.chainSequence, target))
+            AbortPendingChainReady();
+    }
+
+    void ClearIntroGate()
+    {
+        _introGateActive = false;
+        _pendingIntroId = 0;
+        _pendingIntroDef = null;
+        _pendingIntroTargetTransform = null;
+
+        if (_animBrain != null)
+        {
+            _animBrain.ChainPlaybackCompleted -= OnIntroChainPlaybackCompleted;
+            _animBrain.ChainPlaybackInterrupted -= OnIntroChainPlaybackInterrupted;
+        }
+    }
+
+    void AbortPendingChainReady()
+    {
+        StaggerMeter meter = _pendingChainReadyMeter;
+        _pendingChainReadyMeter = null;
+        _pendingChainReadyTarget = null;
+
+        if (meter != null && meter.IsChainReady)
+            meter.CompleteChainReadyAndEnterStagger();
+    }
+
+    void ResolveAnimBrainAndPresenter()
+    {
+        if (_animBrain == null && playerContext != null)
+            _animBrain = playerContext.AnimBrain;
+        if (_animBrain == null)
+            _animBrain = GetComponentInChildren<CharacterAnimBrain>(true);
+
+        if (_cutscenePresenter == null)
+            _cutscenePresenter = GetComponentInChildren<CutsceneSkillPresenter>(true);
+        if (_cutscenePresenter == null && playerContext != null)
+            _cutscenePresenter = playerContext.GetComponentInChildren<CutsceneSkillPresenter>(true);
+    }
+
+    void OnSequenceFinished(ChainAttackSequenceDef seq, GameObject target, bool success)
+    {
+        if (_pendingChainReadyMeter == null)
+            return;
+
+        if (target != _pendingChainReadyTarget)
+            return;
+
+        StaggerMeter meter = _pendingChainReadyMeter;
+        _pendingChainReadyMeter = null;
+        _pendingChainReadyTarget = null;
+
+        if (meter != null && meter.IsChainReady)
+            meter.CompleteChainReadyAndEnterStagger();
+    }
+
     bool CanProc(SkillChainDef chainDef, PassiveEventContext context)
     {
         if (chainDef == null || chainAttackCoordinator == null)
@@ -193,6 +406,18 @@ public sealed class ChainAttackProcController : MonoBehaviour
         {
             Log(chainDef, $"Blocked '{chainDef.RuntimeId}': event '{context.Type}' has no target.");
             return false;
+        }
+
+        if (context.Target != null)
+        {
+            StaggerMeter targetMeter = context.Target.GetComponentInParent<StaggerMeter>();
+            if (targetMeter == null)
+                targetMeter = context.Target.GetComponentInChildren<StaggerMeter>();
+            if (targetMeter != null && targetMeter.IsChainReady)
+            {
+                Log(chainDef, $"Blocked '{chainDef.RuntimeId}': target is ChainReady (reserved for manual chain).");
+                return false;
+            }
         }
 
         if (chainDef.requireAttackId && string.IsNullOrWhiteSpace(context.AttackId))

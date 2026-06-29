@@ -36,6 +36,7 @@ public class AiRotateToTarget : Action
 
     private bool _cachedUpdateRotation;
     private bool _cachedIsStopped;
+    private CharacteContext _ctx;
 
     public override void OnAwake()
     {
@@ -45,6 +46,7 @@ public class AiRotateToTarget : Action
 
     public override void OnStart()
     {
+        _ctx = gameObject.GetComponentInParent<CharacteContext>();
         _rotateTransform =
             (rotateRoot != null && rotateRoot.Value != null)
             ? rotateRoot.Value.transform
@@ -67,6 +69,8 @@ public class AiRotateToTarget : Action
     {
         if (target == null || target.Value == null)
             return failWhenTargetLost ? TaskStatus.Failure : TaskStatus.Success;
+
+        if (!_ctx.stateHub.CanRotate()) { return TaskStatus.Failure; }
 
         if (_rotateTransform == null)
             _rotateTransform = _self;

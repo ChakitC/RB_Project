@@ -27,6 +27,13 @@ public class EnemyHealth : HealthSystem
         if (meter != null && meter.IsStaggered && damageContext.Damage > 0f)
             resolvedContext = damageContext.WithDamage(damageContext.Damage * meter.DamageTakenMultiplier);
 
+        if (meter != null && (meter.IsChainReady || meter.IsChainExecutionActive) && resolvedContext.Damage > 0f)
+        {
+            float maxLethalSafe = Mathf.Max(0f, currentHealth - 1f);
+            if (resolvedContext.Damage > maxLethalSafe)
+                resolvedContext = resolvedContext.WithDamage(maxLethalSafe);
+        }
+
         DamageResult result = ApplyDamage(in resolvedContext);
 
         if (meter != null && result.Applied && result.IsAliveAfter && damageContext.HasStagger)

@@ -65,6 +65,15 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 1648223601719058379, guid: 35b99bcfba8789947b53a3a72db2dc21, type: 3}
     _NormalizedStartTime: NaN
+  chainReady:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: NaN
   knockback:
     _FadeDuration: 0.25
     _Speed: 1
@@ -83,6 +92,8 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: -6563992784706278712, guid: 36ac3f5df5b14bb46ae6633f9a008cf8, type: 3}
     _NormalizedStartTime: NaN
+  dashForwardVfxTrack:
+    cues: []
   dashB:
     _FadeDuration: 0.25
     _Speed: 1
@@ -92,6 +103,8 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: -8603680718571749577, guid: 7ad77ea747fa19a4d83e3d4a58c7ff4b, type: 3}
     _NormalizedStartTime: NaN
+  dashBackwardVfxTrack:
+    cues: []
   dashL:
     _FadeDuration: 0.25
     _Speed: 1
@@ -148,6 +161,8 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: -9000076617396853339, guid: e667b603101f5c84782390bc9200d636, type: 3}
     _NormalizedStartTime: NaN
+  reloadVfxTrack:
+    cues: []
   reloadBodyMode: 0
   meleeCombo: {fileID: 0}
   meleeCanInterruptReload: 1
@@ -196,7 +211,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: -8821902106451663880, guid: e791be750e102ee4883a2b8987f3c7aa, type: 3}
+    _Clip: {fileID: 2548037273130504702, guid: 4f569030b89d30644aafd5e41f7017fb, type: 3}
     _NormalizedStartTime: NaN
   utilityWarpOutCastPointNormalized: 0.35
   utilityWarpInClip:
@@ -206,7 +221,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 2548037273130504702, guid: 4f569030b89d30644aafd5e41f7017fb, type: 3}
+    _Clip: {fileID: -8821902106451663880, guid: e791be750e102ee4883a2b8987f3c7aa, type: 3}
     _NormalizedStartTime: NaN
   utilityWarpInCastPointNormalized: 0.35
   skillClip:

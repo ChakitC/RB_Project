@@ -396,7 +396,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
         if (skillDef == null || !skillDef.HasHitLag)
             return;
 
-        GlobalTimeScaleManager.Instance.RequestHitLag(skillDef.HitLagDuration, skillDef.HitLagTimeScale);
+        GlobalTimeScaleManager.Instance.RequestHitLag(skillDef.HitLagDuration, skillDef.HitLagTimeScale, skillDef.HitLagShape);
         LogFlow(
             $"hitlag fired duration={skillDef.HitLagDuration:0.###}s scale={skillDef.HitLagTimeScale:0.###}");
     }

@@ -236,12 +236,24 @@ micro-freeze (`Time.timeScale` dip) at that point. `SkillGemDefinition` scans
 the clip for `HitLag` markers and arms the timeline binding automatically —
 skills without the marker produce no freeze. Per-skill tuning fields on
 `SkillGemDefinition` control the freeze: `HitLag Duration` (default `0.06s`,
-unscaled) and `HitLag Time Scale` (default `0.05`). No marker = off.
+unscaled), `HitLag Time Scale` (default `0.05`), and the optional
+`HitLag Shape` curve. No marker = off.
+
+`HitLag Shape` is an `AnimationCurve` envelope whose X axis is normalized
+progress (0 = start, 1 = end) and Y axis is a blend factor (0 = normal speed,
+1 = full depth at `HitLag Time Scale`). The effective scale per request is
+`Lerp(1, hitLagTimeScale, Clamp01(curve.Evaluate(progress)))`. When the curve
+is empty/null the manager falls back to its serialized `_defaultHitLagShape`,
+which defaults to `Constant(1.0)` (step behavior identical to pre-curve).
 
 `GlobalTimeScaleManager` owns `Time.timeScale` and composes pause, HitLag,
 and the default `1f` scale. Overlapping HitLag requests use the lowest
-(strongest) scale until all expire. `TimeSlowManager.WorldTimeScale` is a
-separate opt-in axis and is not affected.
+(strongest) scale until all expire.
+
+`TimeSlowManager.WorldTimeScale` is a separate opt-in axis and is not affected.
+It uses the same curve-driven envelope formula for finite-duration world slows
+(e.g. perfect-dodge slow in `DashSystem`). Infinite-duration slows (cutscene)
+hold at full depth until manually reset.
 
 Currently, HitLag runtime triggering is wired only through the Guaranteed
 Interruption flow in `AllyInterruptionController`. The HitLag fires exactly

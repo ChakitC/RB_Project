@@ -159,8 +159,18 @@ HitLag feedback marker (`HitLag`).
 (`UI_Pause`) and HitLag requests are composed through it — pause always wins,
 then the strongest (lowest) active HitLag scale, then `1f`. Direct
 `Time.timeScale` writes outside this manager should be avoided.
+HitLag requests use an `AnimationCurve` envelope (blend 0–1 over normalized
+progress) to shape the freeze. The manager has a serialized
+`_defaultHitLagShape` (falls back to `Constant(1.0)` = step behavior).
+Per-skill override: set `HitLag Shape` on `SkillGemDefinition`; leave empty
+to use the manager default.
 `TimeSlowManager.WorldTimeScale` is a separate opt-in axis that does not write
-`Time.timeScale`.
+`Time.timeScale`. It also uses an `AnimationCurve` envelope for finite-duration
+slows (same blend formula as HitLag). The manager has a serialized
+`_defaultSlowShape` (falls back to `Constant(1.0)` = step behavior).
+`DashSystem` exposes a per-prefab `perfectDashSlowShape` curve. Infinite-duration
+slows (cutscene) use the default curve and hold at full depth until manually
+reset.
 Prefab hitbox skill payloads are sequential-only: every `HitStart` opens the
 next configured step and every `HitEnd` closes the currently active step.
 Multi-step skill hitboxes should order their payload steps to match the

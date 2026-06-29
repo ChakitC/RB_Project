@@ -108,7 +108,15 @@ A typical combat encounter flows as follows:
    character gains a brief **immunity window** before the meter can fill again. The
    meter decays back to zero on its own if the character stops taking stagger hits
    (see [Stagger and Stun](#stagger-and-stun) below).
-7. **Chain Attack** — when conditions are met the player can launch a coordinated
+7. **Interrupt enemy casts** — when an enemy begins a blockable skill it opens a
+   **Pre-Cast window** (shown with an indicator/VFX). The player can press the
+   **Interruption Command** (default **G**) to order a ready AI ally to dash in and
+   interrupt that cast. Once accepted, the interrupt is **guaranteed** (see
+   [Guaranteed Interruption Command](#guaranteed-interruption-command) below).
+8. **Impact feedback (HitLag)** — heavy hits can play a brief global **micro-freeze**
+   that punctuates the moment of impact. The freeze is authored per skill on its
+   animation timeline (see the Skill Gem [Feedback](#impact-feedback-hitlag) note).
+9. **Chain Attack** — when conditions are met the player can launch a coordinated
    Chain Attack sequence (see below).
 
 ---
@@ -139,6 +147,22 @@ Special **Cutscene Skills** add a cinematic two-phase presentation: the world sl
 near-freeze, a dedicated character and camera animation play, then the scene returns
 and the payload fires normally.
 
+### Impact Feedback (HitLag)
+
+A skill can place a **HitLag** marker on its animation timeline to add a brief global
+**micro-freeze** at the moment of impact — a short slow-down of game time that gives
+heavy hits more weight. Each skill tunes its own feedback:
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| HitLag Duration | 0.06 s | how long the freeze lasts (unscaled time) |
+| HitLag Time Scale | 0.05 | how far time slows during the freeze (1 = normal) |
+| HitLag Shape | optional | curve that blends the slow-down in and out over the duration |
+
+The freeze is driven globally: overlapping requests compose and the strongest (slowest)
+one wins, and it always resets between scenes. Without a curve the effect is a flat
+hold; with one it can ease in and recover smoothly.
+
 ---
 
 ## Chain Attack
@@ -166,6 +190,38 @@ recorded origin, fade out and deactivate, or stay at the attack position.
 
 ---
 
+## Guaranteed Interruption Command
+
+When an enemy starts a skill flagged as **blockable**, it opens a **Pre-Cast window**
+during the wind-up — a tagged moment before the cast actually fires, shown to the
+player with an indicator and VFX. While that window is open the player can press the
+**Interruption Command** (default **G**) to send a ready AI ally in to interrupt the
+cast.
+
+Unlike a normal collision-based block, an accepted command is **guaranteed**: the enemy
+cast will be cancelled regardless of collider overlap or damage outcome.
+
+**Flow:**
+
+1. The command looks near the player's aim point for an enemy with an open blockable
+   Pre-Cast window.
+2. It picks the nearest **ready ally** that can reach a valid attack pose against the
+   target.
+3. It reserves both the ally and the enemy's cast. Reserving the cast places a
+   **Pre-Cast Hold** on the enemy: the wind-up animation is **soft-slowed** (and held at
+   a safety margin before the cast point) so the enemy cannot finish casting before the
+   ally arrives — a "Soft Slow + Hard Safety Hold" guarantee.
+4. The ally suspends its own AI, moves/warps into position, and plays its interrupt
+   skill.
+5. On the skill's impact the enemy cast is cancelled and knockback is applied. If the
+   skill carries a **HitLag** marker, the interrupt also fires an impact micro-freeze.
+
+If no valid target, no available ally, or no safe attack pose can be found, the command
+is rejected and the enemy cast continues normally. If the attempt is aborted before the
+ally commits, the hold is released and the same Pre-Cast window reopens.
+
+---
+
 ## Stagger and Stun
 
 Characters with a **Stagger Meter** display it as a yellow overhead gauge that
@@ -189,6 +245,12 @@ duration (default 3 s):
 - If F is blocked (CP/cooldown/busy), the press is still consumed and the countdown
   continues running.
 - Auto-proc chains are blocked from selecting a ChainReady enemy.
+
+Optionally, a Manual Chain Attack can open with a per-character **intro cutscene**
+(camera move, world-slow, letterbox, and VFX) before the first chain step. The cutscene
+is opt-in per skill chain and plays only when an intro clip is assigned and the cutscene
+director is free; otherwise the chain starts immediately. If the intro is interrupted or
+the target dies mid-cutscene the chain aborts, but the enemy still proceeds into stagger.
 
 When the chain **finishes** (success, fail, or cancel) or the window **times out**,
 the enemy enters the full **Stun** phase. The HP clamp is released at this point.

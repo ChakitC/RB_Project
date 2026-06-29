@@ -175,8 +175,13 @@ public class SkillGemDefinition : ScriptableObject
     [FoldoutGroup("Feedback", Expanded = false), LabelText("HitLag Time Scale"), Range(0.01f, 1f)]
     [SerializeField] private float hitLagTimeScale = 0.05f;
 
+    [PropertyOrder(-26)]
+    [FoldoutGroup("Feedback", Expanded = false), LabelText("HitLag Shape (optional)")]
+    [SerializeField] private AnimationCurve hitLagShape = null;
+
     public float HitLagDuration => hitLagDuration;
     public float HitLagTimeScale => hitLagTimeScale;
+    public AnimationCurve HitLagShape => hitLagShape;
     public bool HasHitLag => HasHitLagMarker();
 
     [PropertyOrder(-25)]

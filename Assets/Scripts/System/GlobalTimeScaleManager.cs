@@ -7,6 +7,8 @@ public sealed class GlobalTimeScaleManager : MonoBehaviour
 {
     static GlobalTimeScaleManager _instance;
 
+    [SerializeField] AnimationCurve _defaultHitLagShape;
+
     readonly List<HitLagRequest> _requests = new List<HitLagRequest>();
     bool _paused;
 
@@ -38,6 +40,9 @@ public sealed class GlobalTimeScaleManager : MonoBehaviour
         _instance = this;
         DontDestroyOnLoad(gameObject);
         SceneManager.sceneUnloaded += OnSceneUnloaded;
+
+        if (_defaultHitLagShape == null || _defaultHitLagShape.length == 0)
+            _defaultHitLagShape = BuildDefaultShape();
     }
 
     void OnDestroy()
@@ -72,6 +77,9 @@ public sealed class GlobalTimeScaleManager : MonoBehaviour
     }
 
     public void RequestHitLag(float duration, float timeScale)
+        => RequestHitLag(duration, timeScale, null);
+
+    public void RequestHitLag(float duration, float timeScale, AnimationCurve shape)
     {
         duration = Mathf.Max(0f, duration);
         timeScale = Mathf.Clamp(timeScale, 0.01f, 1f);
@@ -79,7 +87,7 @@ public sealed class GlobalTimeScaleManager : MonoBehaviour
         if (duration <= 0f)
             return;
 
-        _requests.Add(new HitLagRequest(duration, timeScale));
+        _requests.Add(new HitLagRequest(duration, timeScale, shape ?? _defaultHitLagShape));
         ApplyComposedScale();
     }
 
@@ -107,8 +115,14 @@ public sealed class GlobalTimeScaleManager : MonoBehaviour
         float scale = 1f;
         for (int i = 0; i < _requests.Count; i++)
         {
-            if (_requests[i].TimeScale < scale)
-                scale = _requests[i].TimeScale;
+            HitLagRequest req = _requests[i];
+            float progress = req.Duration > 0f ? 1f - (req.Remaining / req.Duration) : 1f;
+            float blend = req.Shape != null ? req.Shape.Evaluate(progress) : 1f;
+            blend = Mathf.Clamp01(blend);
+            float reqScale = Mathf.Lerp(1f, req.TimeScale, blend);
+            reqScale = Mathf.Clamp(reqScale, 0.01f, 1f);
+            if (reqScale < scale)
+                scale = reqScale;
         }
 
         Time.timeScale = scale;
@@ -119,15 +133,24 @@ public sealed class GlobalTimeScaleManager : MonoBehaviour
         ForceReset();
     }
 
+    static AnimationCurve BuildDefaultShape()
+    {
+        return AnimationCurve.Constant(0f, 1f, 1f);
+    }
+
     struct HitLagRequest
     {
         public float Remaining;
+        public readonly float Duration;
         public readonly float TimeScale;
+        public readonly AnimationCurve Shape;
 
-        public HitLagRequest(float duration, float timeScale)
+        public HitLagRequest(float duration, float timeScale, AnimationCurve shape)
         {
             Remaining = duration;
+            Duration = duration;
             TimeScale = timeScale;
+            Shape = shape;
         }
     }
 }

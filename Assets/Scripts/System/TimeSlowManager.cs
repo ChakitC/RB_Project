@@ -1,4 +1,3 @@
-using System.Collections;
 using UnityEngine;
 
 [DefaultExecutionOrder(-10000)]
@@ -6,7 +5,13 @@ public sealed class TimeSlowManager : MonoBehaviour
 {
     static TimeSlowManager _instance;
 
-    Coroutine _slowRoutine;
+    [SerializeField] AnimationCurve _defaultSlowShape;
+
+    float _targetScale;
+    float _duration;
+    float _elapsed;
+    AnimationCurve _activeShape;
+    bool _active;
 
     public static TimeSlowManager Instance
     {
@@ -41,48 +46,67 @@ public sealed class TimeSlowManager : MonoBehaviour
 
         _instance = this;
         DontDestroyOnLoad(gameObject);
+
+        if (_defaultSlowShape == null || _defaultSlowShape.length == 0)
+            _defaultSlowShape = BuildDefaultShape();
     }
 
     void Update()
     {
+        if (_active)
+        {
+            _elapsed += Time.unscaledDeltaTime;
+
+            if (_elapsed >= _duration)
+            {
+                _active = false;
+                WorldTimeScale = 1f;
+                IsSlowing = false;
+            }
+            else
+            {
+                float progress = _duration > 0f ? _elapsed / _duration : 1f;
+                float blend = _activeShape != null ? _activeShape.Evaluate(progress) : 1f;
+                blend = Mathf.Clamp01(blend);
+                WorldTimeScale = Mathf.Lerp(1f, _targetScale, blend);
+                WorldTimeScale = Mathf.Clamp(WorldTimeScale, 0.05f, 1f);
+            }
+        }
+
         WorldTime += UnscaledWorldDeltaTime;
     }
 
     public void StartSlow(float scale, float duration)
+        => StartSlow(scale, duration, null);
+
+    public void StartSlow(float scale, float duration, AnimationCurve shape)
     {
         scale = Mathf.Clamp(scale, 0.05f, 1f);
         duration = Mathf.Max(0f, duration);
 
-        if (_slowRoutine != null)
-        {
-            StopCoroutine(_slowRoutine);
-            _slowRoutine = null;
-        }
-
         if (duration <= 0f || scale >= 1f)
         {
+            _active = false;
             WorldTimeScale = 1f;
             IsSlowing = false;
             return;
         }
 
-        _slowRoutine = StartCoroutine(SlowRoutine(scale, duration));
-    }
-
-    IEnumerator SlowRoutine(float scale, float duration)
-    {
-        WorldTimeScale = scale;
+        _targetScale = scale;
+        _duration = duration;
+        _elapsed = 0f;
+        _activeShape = shape ?? _defaultSlowShape;
+        _active = true;
         IsSlowing = true;
 
-        float elapsed = 0f;
-        while (elapsed < duration)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            yield return null;
-        }
+        float blend = _activeShape != null ? _activeShape.Evaluate(0f) : 1f;
+        blend = Mathf.Clamp01(blend);
+        WorldTimeScale = Mathf.Lerp(1f, _targetScale, blend);
+        WorldTimeScale = Mathf.Clamp(WorldTimeScale, 0.05f, 1f);
+    }
 
-        WorldTimeScale = 1f;
-        IsSlowing = false;
-        _slowRoutine = null;
+    static AnimationCurve BuildDefaultShape()
+    {
+        return AnimationCurve.Constant(0f, 1f, 1f);
     }
 }

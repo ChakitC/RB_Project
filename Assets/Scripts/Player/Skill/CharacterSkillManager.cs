@@ -319,27 +319,29 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return TryBeginEntryCast(playerCommandSkill, "player-command");
     }
 
-    public bool CanStartExternalSkill(CharacterSkillEntry entry)
+    public bool CanStartExternalSkill(CharacterSkillEntry entry, bool ignoreResourceCosts = false)
     {
         CacheReferences();
         EnsureRuntimeSkill(entry);
-        return entry != null &&
-               entry.runtimeSkill != null &&
-               skillUser != null &&
-               !CutsceneDirector.IsCinematicPlaying &&
-               !IsSkillStartBlockedByAnimation() &&
-               !IsSkillUseBlocked() &&
-               entry.runtimeSkill.CanCast(skillUser);
+        if (entry == null || entry.runtimeSkill == null || skillUser == null)
+            return false;
+        if (CutsceneDirector.IsCinematicPlaying || IsSkillStartBlockedByAnimation() || IsSkillUseBlocked())
+            return false;
+        if (ignoreResourceCosts)
+            return true;
+        return entry.runtimeSkill.CanCast(skillUser);
     }
 
     public SkillCastStartResult TryStartExternalSkill(
         CharacterSkillEntry entry,
         string debugSource,
         CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None,
-        bool usePlanarRootMotion = false)
+        bool usePlanarRootMotion = false,
+        bool ignoreResourceCosts = false,
+        bool stampCooldown = true)
     {
         CacheReferences();
-        return TryBeginEntryCast(entry, debugSource, requiredTimelineEvent, usePlanarRootMotion);
+        return TryBeginEntryCast(entry, debugSource, requiredTimelineEvent, usePlanarRootMotion, ignoreResourceCosts, stampCooldown);
     }
 
     public bool TryGetChainAttackRuntimeSkill(out SkillInstance runtimeSkill)
@@ -465,7 +467,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         CharacterSkillEntry entry,
         string debugSource,
         CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None,
-        bool usePlanarRootMotion = false)
+        bool usePlanarRootMotion = false,
+        bool ignoreResourceCosts = false,
+        bool stampCooldown = true)
     {
         CacheReferences();
         EnsureRuntimeSkill(entry);
@@ -491,6 +495,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             allowImmediateFallback: true,
             requiredTimelineEvent: requiredTimelineEvent,
             usePlanarRootMotion: usePlanarRootMotion,
+            ignoreResourceCosts: ignoreResourceCosts,
+            stampCooldown: stampCooldown,
             debugSource: debugSource));
     }
 
@@ -1195,6 +1201,7 @@ public readonly struct SkillCastRequest
     public readonly Action OnStarted;
     public readonly int RequestedId;
     public readonly bool IgnoreResourceCosts;
+    public readonly bool StampCooldown;
     public readonly bool UseAnimationDriver;
     public readonly bool AllowImmediateFallback;
     public readonly CombatTimelineEventName RequiredTimelineEvent;
@@ -1209,6 +1216,7 @@ public readonly struct SkillCastRequest
         Action onStarted = null,
         int requestedId = 0,
         bool ignoreResourceCosts = false,
+        bool stampCooldown = true,
         bool useAnimationDriver = true,
         bool allowImmediateFallback = true,
         CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None,
@@ -1222,6 +1230,7 @@ public readonly struct SkillCastRequest
         OnStarted = onStarted;
         RequestedId = requestedId;
         IgnoreResourceCosts = ignoreResourceCosts;
+        StampCooldown = stampCooldown;
         UseAnimationDriver = useAnimationDriver;
         AllowImmediateFallback = allowImmediateFallback;
         RequiredTimelineEvent = requiredTimelineEvent;
@@ -1515,7 +1524,8 @@ public sealed class SkillCastOrchestrator
             bool executedIgnoringCosts = runtimeSkill.TryCastIgnoringResourceCosts(
                 skillUser,
                 executionAnimBrain,
-                requestId);
+                requestId,
+                request.StampCooldown);
 
             if (executedIgnoringCosts)
                 PlayCastCue(runtimeSkill, skillUser);

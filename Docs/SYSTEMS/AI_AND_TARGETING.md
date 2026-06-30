@@ -192,12 +192,33 @@ When adding AI behavior:
 
 ## Guaranteed Interruption Command
 
-The player can press the Interruption Command input (default G) to order a
-ready ally to interrupt an enemy that is currently inside a blockable Pre-Cast
-window. Once the command is accepted, the block is guaranteed regardless of
-collider or damage outcome.
+The player can press the Interruption Command input (default G) to interrupt
+an enemy that is currently inside a blockable Pre-Cast window. The command
+selects either the **player** or a **ready ally** as the executor. Once the
+command is accepted, the block is guaranteed regardless of collider or damage
+outcome.
 
-### Flow
+### Actor Selection (Decision Tree)
+
+`InterruptionCommandController` picks the executor in this order:
+
+1. Compute XZ distance from player to target anchor.
+2. If player is ready (`PlayerInterruptionController.IsReadyForInterruption()`)
+   **and** within `playerInterruptRange` (default 4 m):
+   - Player placement succeeds → **Player executes**.
+   - Player placement fails → fall back to ally selection. If no ally is
+     available → `TeleportFailed` (no unsafe warp).
+3. Otherwise (player far or not ready):
+   - Ally selection succeeds → **Ally executes** (unchanged from before).
+   - No ally available **and** player is ready → player warp branch: if
+     placement succeeds → **Player executes (warp)**; placement fails →
+     `TeleportFailed`.
+   - No ally available **and** player not ready → `NoAvailableInterrupter`.
+
+`InterruptionExecutorKind` (Ally / Player) is set on
+`InterruptionCommandExecution` so subscribers can distinguish the executor.
+
+### Flow — Ally Path
 
 1. `InterruptionCommandController` (on the player) searches near
    `PlayerContext.aimTarget` for an enemy with an active blockable pre-cast
@@ -253,6 +274,29 @@ All exits converge on idempotent cleanup that restores BehaviorTree,
 NavMeshAgent, Rigidbody, CharacterController usage, visibility, aim override,
 root-motion policy, and ally reservation.
 
+### Flow — Player Path
+
+1. After target is found, `InterruptionCommandController` resolves placement
+   through `PlayerInterruptionController.TryResolvePlacement` (same
+   `TargetedSkillPlacementResolver` as ally).
+2. Reserves the block (`PreCastBlockController.TryReserveBlock`). Player does
+   not use `FieldAllyMember` reservation.
+3. `PlayerInterruptionController.BeginInterruption` caches the original pose,
+   suspends `PlayerMovementCC` so character separation and aim rotation cannot
+   displace the sampled root-motion trajectory, optionally hides via
+   `ASPHelperDitherFader`, snaps to the start pose, and starts the interruption
+   skill via `TryStartExternalSkill` with
+   `ignoreResourceCosts: true` and `stampCooldown: false` — the interrupt does
+   not spend energy, does not write `_lastCastTime`, and does not affect the
+   main skill's cooldown.
+4. `RootMotionCCDriver` moves the player via root motion during the skill.
+   After completion the player **stays at the end-of-animation position** — no
+   snap-back, no visible-root rebase.
+5. Guarantee commit, block completion, knockback, HitLag, timeout, and
+   fallback logic are identical to the ally path.
+6. Cleanup restores visibility and the prior `PlayerMovementCC.enabled` state;
+   no BehaviorTree/NavMeshAgent/Rigidbody restoration is needed for the player.
+
 ### Reservation Interaction
 
 - **PartyCommand**: `TryGetAllyCommandSlotBlockReason` checks `IsReserved`
@@ -270,12 +314,14 @@ controllers:
 
 - `InterruptionCommandController.logInterruptionFlow` logs one command summary
   under `[PreCast.Command]`, including `attemptId`, target scan counts, ally
-  scan counts, and the final command result.
+  scan counts, player readiness/distance, and the final command result.
 - `PreCastBlockController.logPreCastFlow` logs the enemy cast, pre-cast window,
   hold reservation, and block lifecycle under `[PreCast.Target]`.
 - `AllyInterruptionController.logInterruptionFlow` logs warp, external skill,
   `HitStart`, block completion, visible root rebase settle/commit, fallback,
   and cleanup under `[PreCast.Ally]`.
+- `PlayerInterruptionController.logInterruptionFlow` logs snap, external skill,
+  `HitStart`, block completion, fallback, and cleanup under `[PreCast.Player]`.
 
 Use `requestId` and `reservationId` to correlate target and ally messages.
 Normal success logs are disabled by default to avoid Console noise. Command

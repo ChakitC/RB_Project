@@ -24,7 +24,9 @@ over **Rabbit Town**.
 ### Challenge
 
 Players face enemies, traps, and environmental hazards throughout missions. Threat
-composition and positioning vary each run due to procedural level generation.
+composition, positioning, route choices, and mission opportunities vary each run due
+to procedural level generation. Decisions made while exploring can alter later
+encounters and the final boss fight.
 
 ### Equipment
 
@@ -64,13 +66,84 @@ Basement is where players:
 ## Unique Feature — Procedural Mission Levels
 
 The core replayability driver is a procedurally generated mission level structure that
-is re-randomized each run. Key points:
+is re-randomized each run. The generator is designed to create new decisions, not only
+new room arrangements. Each mission asks the player to choose which risks to accept,
+which opportunities to pursue, and which advantages to prepare before the objective or
+boss encounter.
 
-- Players must explore thoroughly; shortcuts, secret areas, and hidden rooms are
-  generated fresh each session.
-- Secret areas can contain bosses, recruitable characters, and special equipment
-  necessary to unlock additional content.
-- No two runs through the same mission stage are identical in layout.
+### Route Decisions
+
+- Routes branch between recognizable room types such as Combat, Elite, Security,
+  Armory, Shop, Rescue, Event, and Secret rooms.
+- The player receives partial information about upcoming routes and must choose between
+  safety, speed, resources, and high-value rewards.
+- Some route decisions cannot be fully reversed. Taking a shortcut may skip useful
+  facilities, while exploring a dangerous branch may consume resources or raise the
+  mission's Alert level.
+- Shortcuts, secret areas, hidden rooms, and alternate objective paths are generated
+  fresh each session.
+
+### Alert Level
+
+Actions during a mission can raise or lower the enemy faction's **Alert level**. Loud
+combat, extended delays, triggered security systems, or allowing an enemy to call for
+reinforcements can increase Alert. Disabling security systems, completing certain
+events, or spending mission resources can reduce it.
+
+Higher Alert can change later encounters by:
+
+- Adding reinforcements, traps, or elite enemies.
+- Giving enemies more aggressive formations or additional blockable casts.
+- Increasing the pressure during the objective or boss encounter.
+- Improving selected risk-based rewards when the player survives the added danger.
+
+### Mission Opportunities and Resources
+
+Procedural rooms can offer opportunities that compete for limited mission resources
+such as Intel, access keys, or breaching charges. These resources may be spent to:
+
+- Open a secret room or high-value loot cache.
+- Reveal more of the mission map.
+- Disable security and reduce Alert.
+- Reroll or access a special shop inventory.
+- Rescue a character or call a Helper into the mission.
+- Unlock a shortcut to the objective or boss.
+
+Because the player cannot claim every opportunity in one run, exploration creates
+build and route decisions rather than rewarding exhaustive room clearing by default.
+
+### Run-Changing Encounters
+
+Special rooms can alter the remainder of the mission:
+
+| Room or Event | Possible Decision |
+|---------------|-------------------|
+| Security Room | reduce Alert or reveal upcoming routes |
+| Armory | claim stronger equipment at the cost of increased Alert |
+| Rescue | gain a temporary Helper or information about a secret area |
+| Drug Lab | accept a powerful mutation modifier with a drawback |
+| Informant | reveal the boss, a hidden route, or a special reward |
+
+Encounter spaces also change the value of different builds. Tight rooms favor area
+attacks and control effects, open rooms reward projectile range and party positioning,
+and hazardous rooms can create opportunities for interrupts, stagger damage, or
+environmental kills.
+
+### Consequences at the Objective
+
+Choices made during exploration must remain visible at the mission objective or boss
+fight. For example, the player may:
+
+- Disable a power source to remove one of the boss's abilities.
+- Rescue an ally who can participate as a Helper or Chain Attack participant.
+- Steal prototype equipment for a special reward while adding an extra boss phase.
+- Reach the boss quickly with fewer upgrades, or arrive later with more resources but
+  a higher Alert level.
+
+Secret areas can still contain bosses, recruitable characters, and special equipment
+needed to unlock additional content. No two runs through the same mission stage should
+be identical in layout, available opportunities, or the consequences of the player's
+route decisions.
 
 ---
 

@@ -1,6 +1,6 @@
 {
     "maxSlotCount": 0,
-    "gold": 963266,
+    "gold": 963327,
     "scrap": 450,
     "slots": [
         {
@@ -26,9 +26,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 22947,
-                "currentMagazine": 0,
-                "currentReserveAmmo": 0,
+                "shotCounter": 23553,
+                "currentMagazine": 9,
+                "currentReserveAmmo": 291,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 16,
                 "upgradeTier": 1,
@@ -136,9 +136,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 19760,
-                "currentMagazine": 12,
-                "currentReserveAmmo": 0,
+                "shotCounter": 20322,
+                "currentMagazine": 18,
+                "currentReserveAmmo": 44,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
                 "upgradeTier": 2,
@@ -309,7 +309,7 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 19343,
+                "shotCounter": 19797,
                 "currentMagazine": 0,
                 "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,

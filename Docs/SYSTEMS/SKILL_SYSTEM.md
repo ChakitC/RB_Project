@@ -475,13 +475,21 @@ payload somehow releases while reserved (invariant violation), a
 `CharacterSkillManager` exposes two methods for systems that start skills on
 behalf of a character without going through the loadout/slot path:
 
-- `CanStartExternalSkill(CharacterSkillEntry)`: preflight check (alive, not
-  blocked by animation, skill can cast).
-- `TryStartExternalSkill(CharacterSkillEntry, debugSource, requiredTimelineEvent, usePlanarRootMotion)`:
+- `CanStartExternalSkill(CharacterSkillEntry, ignoreResourceCosts)`: preflight
+  check (alive, not blocked by animation, skill can cast). When
+  `ignoreResourceCosts` is `true`, the energy/cooldown `CanCast` check is
+  skipped (used by Guaranteed Interruption so the player can interrupt without
+  sufficient energy).
+- `TryStartExternalSkill(CharacterSkillEntry, debugSource, requiredTimelineEvent, usePlanarRootMotion, ignoreResourceCosts, stampCooldown)`:
   delegates to the existing `TryBeginEntryCast` internal method. The timeline
-  event and planar root-motion flags are optional. Planar translation and yaw
-  are scoped to that animation request and are cleared on normal completion,
-  interruption, disable, or destruction.
+  event and planar root-motion flags are optional. When `ignoreResourceCosts`
+  is `true`, the cast bypasses energy checks and shared cooldown. When
+  `stampCooldown` is `false`, `SkillInstance` does not write `_lastCastTime`
+  after a successful cast, so the skill's personal cooldown is not consumed
+  (used by player interruption to avoid affecting the main skill cooldown).
+  Both parameters default to the backward-compatible values (`false` / `true`).
+  Planar translation and yaw are scoped to that animation request and are
+  cleared on normal completion, interruption, disable, or destruction.
 
 `CharacterAnimBrain.PlaybackEvent` reports request-scoped `Started`,
 `CastMoment`, `AdvanceMoment`, `Completed`, and `Interrupted` phases. Systems

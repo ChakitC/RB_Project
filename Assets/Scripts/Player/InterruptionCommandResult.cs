@@ -7,5 +7,6 @@ public enum InterruptionCommandResult
     TeleportFailed,
     SkillRejected,
     TargetWindowClosed,
-    Cancelled
+    Cancelled,
+    NoAvailableInterrupter
 }

@@ -789,8 +789,19 @@ task.
   binding `<Keyboard>/g`. Wire the `PlayerInput` event to
   `PlayerInputHandler.OnInterruptionCommand`.
 - Configure `targetSearchMask` and `targetSearchRadius` on the controller.
+- Add `PlayerInterruptionController` component.
+- Assign `interruptionSkill`: a `CharacterSkillEntry` whose animation clip has
+  a `HitStart` timeline event (same requirement as the ally skill).
+- Assign `teleportProfile`: a `ChainAttackTeleportProfileDef` asset (e.g.
+  `Example.ChainAttack.Teleport.LeftFlank`).
+- Set knockback settings (`knockbackDistance`, `knockbackDuration`,
+  `knockbackReaction`, `knockbackProgressCurve`) to match the ally values.
+- Set `impactTimeoutSeconds` to match the ally value.
+- Bind `playerInterruptionController` on `InterruptionCommandController`
+  (or let `Awake` resolve it from the same object, parent, or children).
+- Set `playerInterruptRange` on `InterruptionCommandController` (default 4 m).
 - Keep `logInterruptionFlow` disabled for normal play. Enable it on the test
-  scene instance when diagnosing command target/ally selection.
+  scene instance when diagnosing command target/ally/player selection.
 
 ### Ally Prefab (participating allies)
 

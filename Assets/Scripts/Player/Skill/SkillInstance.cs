@@ -124,13 +124,13 @@ public class SkillInstance
         return ExecuteCast(user, stats, spendEnergy: true, animBrain, requestId);
     }
 
-    public bool TryCastIgnoringResourceCosts(ISkillUser user, CharacterAnimBrain animBrain = null, int requestId = 0)
+    public bool TryCastIgnoringResourceCosts(ISkillUser user, CharacterAnimBrain animBrain = null, int requestId = 0, bool stampCooldown = true)
     {
         if (def == null || user == null)
             return false;
 
         var stats = GetFinalStats(user);
-        return ExecuteCast(user, stats, spendEnergy: false, animBrain, requestId);
+        return ExecuteCast(user, stats, spendEnergy: false, animBrain, requestId, stampCooldown);
     }
 
     bool ExecuteCast(
@@ -138,7 +138,8 @@ public class SkillInstance
         FinalSkillStats stats,
         bool spendEnergy,
         CharacterAnimBrain animBrain = null,
-        int requestId = 0)
+        int requestId = 0,
+        bool stampCooldown = true)
     {
         if (def == null || def.payload == null || user == null || stats == null)
             return false;
@@ -156,7 +157,7 @@ public class SkillInstance
 
         var castContext = new SkillCastContext(user, def, stats, animBrain, requestId);
         bool executed = TryExecutePayload(castContext);
-        if (executed)
+        if (executed && stampCooldown)
             _lastCastTime = Time.time;
         return executed;
     }

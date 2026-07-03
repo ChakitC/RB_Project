@@ -339,6 +339,10 @@ public sealed partial class CharacterAnimBrain
         _activeChainAdvanceReleased = false;
         _activeChainUsesRootMotion = usesRootMotion;
         _chainChannel.Request.UsesPlanarRootMotion = usesRootMotion && usesPlanarRootMotion;
+        _chainChannel.Request.IgnoresCharacterCollisionDuringRootMotion =
+            usesRootMotion &&
+            kind == ChainPlaybackKind.Skill &&
+            (skillDef == null || skillDef.IgnoreCharacterCollisionDuringRootMotion);
         _chainStateCanExit = false;
         SetActiveChainTimelineEventNames(kind == ChainPlaybackKind.Skill ? skillDef : null);
         if (kind == ChainPlaybackKind.Skill)
@@ -394,14 +398,16 @@ public sealed partial class CharacterAnimBrain
         return true;
     }
 
-    internal void ApplyActiveChainRootMotionPolicy() => SetRootMotionPolicy(_chainChannel.Request.UsesPlanarRootMotion);
+    internal void ApplyActiveChainRootMotionPolicy() => SetRootMotionPolicy(
+        _chainChannel.Request.UsesPlanarRootMotion,
+        _chainChannel.Request.IgnoresCharacterCollisionDuringRootMotion);
 
     internal void ClearActiveChainRootMotionPolicy()
     {
         ClearActiveRootMotionPolicy();
     }
 
-    internal void ClearActiveRootMotionPolicy() => SetRootMotionPolicy(false);
+    internal void ClearActiveRootMotionPolicy() => SetRootMotionPolicy(false, false);
 
     internal bool TryResolveChainSkillAnimationClip(SkillGemDefinition skillDef, out AnimationClip clip)
     {

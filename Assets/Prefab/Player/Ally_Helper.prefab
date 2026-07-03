@@ -1703,7 +1703,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   brain: {fileID: 5728039111650578654}
-  zeroY: 1
+  zeroY: 0
   applyRootRotation: 0
   agent: {fileID: 5087575678296884270}
   animator: {fileID: 215546885493181984}

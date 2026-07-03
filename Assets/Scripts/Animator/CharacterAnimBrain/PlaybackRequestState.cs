@@ -8,6 +8,7 @@ internal sealed class PlaybackRequestState
     public bool ReleaseRequested;
     public bool Released;
     public bool UsesPlanarRootMotion;
+    public bool IgnoresCharacterCollisionDuringRootMotion;
     public readonly List<CombatTimelineEventName> TimelineEventNames = new();
 
     public void Clear()
@@ -18,6 +19,7 @@ internal sealed class PlaybackRequestState
         ReleaseRequested = false;
         Released = false;
         UsesPlanarRootMotion = false;
+        IgnoresCharacterCollisionDuringRootMotion = false;
         TimelineEventNames.Clear();
     }
 }

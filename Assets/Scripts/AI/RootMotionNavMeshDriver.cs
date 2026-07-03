@@ -170,8 +170,33 @@ public class RootMotionNavMeshDriver : MonoBehaviour
                 continue;
 
             var cc = hit.GetComponentInParent<CharacterController>();
-            if (cc) cc.Move(-dir * dist);
+            if (!cc) continue;
+
+            Vector3 planarDirection = ResolvePlanarPushDirection(aiCol, hit, -dir, cc.transform);
+            if (planarDirection.sqrMagnitude > 0.0001f)
+                cc.Move(planarDirection * dist);
         }
+    }
+
+    static Vector3 ResolvePlanarPushDirection(
+        Collider source,
+        Collider hit,
+        Vector3 penetrationDirection,
+        Transform fallbackRoot)
+    {
+        Vector3 planarDirection = Vector3.ProjectOnPlane(penetrationDirection, Vector3.up);
+        if (planarDirection.sqrMagnitude <= 0.0001f)
+        {
+            planarDirection = hit.bounds.center - source.bounds.center;
+            planarDirection.y = 0f;
+        }
+
+        if (planarDirection.sqrMagnitude <= 0.0001f && fallbackRoot != null)
+            planarDirection = Vector3.ProjectOnPlane(fallbackRoot.forward, Vector3.up);
+
+        return planarDirection.sqrMagnitude > 0.0001f
+            ? planarDirection.normalized
+            : Vector3.zero;
     }
 
     public void ResyncAgent(float warpIfDistanceGreaterThan = 0.5f)

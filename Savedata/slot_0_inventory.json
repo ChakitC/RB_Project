@@ -309,8 +309,8 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 21846,
-                "currentMagazine": 1,
+                "shotCounter": 21847,
+                "currentMagazine": 0,
                 "currentReserveAmmo": 300,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,

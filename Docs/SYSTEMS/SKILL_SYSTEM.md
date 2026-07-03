@@ -495,6 +495,16 @@ behalf of a character without going through the loadout/slot path:
   Planar translation and yaw are scoped to that animation request and are
   cleared on normal completion, interruption, disable, or destruction.
 
+Each `SkillGemDefinition` also exposes **Ignore Character Collision During Root
+Motion** under **Presentation**. It defaults to enabled. While that skill or
+chain-skill animation owns root motion, `RootMotionCCDriver` temporarily adds
+the `Player`, `Enemy`, and `Ally` layers to the actor
+`CharacterController.excludeLayers`. Ground, terrain, and obstacle collision
+remain active, so clips may keep their intended Y displacement without using
+other character bodies as ground or steps. The collision override is
+request-scoped and is released on normal completion, interruption, component
+disable, or destruction.
+
 `CharacterAnimBrain.PlaybackEvent` reports request-scoped `Started`,
 `CastMoment`, `AdvanceMoment`, `Completed`, and `Interrupted` phases. Systems
 that own a specific external request must filter by both playback kind and

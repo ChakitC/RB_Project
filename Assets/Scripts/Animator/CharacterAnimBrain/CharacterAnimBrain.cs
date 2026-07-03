@@ -117,6 +117,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private bool _pendingCrawlIntro;
 
     public bool RootMotionActive { get; private set; }
+    public bool RootMotionIgnoresCharacterCollision { get; private set; }
     public MeleeComboSO.Step CurrentMeleeStep { get; internal set; }
     public int CurrentMeleeStepIndex { get; internal set; }
     public bool IsMeleePlaybackActive => _initialized && locomotionSM.CurrentState == meleeCombo;
@@ -1838,17 +1839,22 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         _skillChannel.Request.ReleaseRequested = true;
         _skillChannel.Request.Released = false;
         _skillChannel.Request.UsesPlanarRootMotion = usePlanarRootMotion;
+        _skillChannel.Request.IgnoresCharacterCollisionDuringRootMotion =
+            skillDef == null || skillDef.IgnoreCharacterCollisionDuringRootMotion;
         SetActiveSkillTimelineEventNames(skillDef, timelineEventNames);
         EnsureSkillVfxPresenter(skillDef);
     }
 
-    private void SetRootMotionPolicy(bool planar)
+    private void SetRootMotionPolicy(bool planar, bool ignoreCharacterCollision)
     {
         RootMotionPlanarOnly = planar;
         RootMotionYawActive = planar;
+        RootMotionIgnoresCharacterCollision = ignoreCharacterCollision;
     }
 
-    internal void ApplyActiveSkillRootMotionPolicy() => SetRootMotionPolicy(_skillChannel.Request.UsesPlanarRootMotion);
+    internal void ApplyActiveSkillRootMotionPolicy() => SetRootMotionPolicy(
+        _skillChannel.Request.UsesPlanarRootMotion,
+        _skillChannel.Request.IgnoresCharacterCollisionDuringRootMotion);
 
     private void EnsureSkillVfxPresenter(SkillGemDefinition skillDef)
     {

@@ -161,6 +161,11 @@ public class SkillGemDefinition : ScriptableObject
     public ClipTransition skillClip;
 
     [PropertyOrder(-35)]
+    [FoldoutGroup("Presentation", Expanded = true), LabelText("Ignore Character Collision During Root Motion"), ToggleLeft]
+    [Tooltip("Keeps root motion collision against the world while preventing Player, Enemy, and Ally bodies from acting as ground or steps.")]
+    [SerializeField] private bool ignoreCharacterCollisionDuringRootMotion = true;
+
+    [PropertyOrder(-35)]
     [FoldoutGroup("Presentation", Expanded = true), LabelText("Cast Point"), Range(0f, 1f), SuffixLabel("normalized")]
     public float castPointNormalized = DefaultCastPointNormalized;
 
@@ -183,6 +188,7 @@ public class SkillGemDefinition : ScriptableObject
     public float HitLagTimeScale => hitLagTimeScale;
     public AnimationCurve HitLagShape => hitLagShape;
     public bool HasHitLag => HasHitLagMarker();
+    public bool IgnoreCharacterCollisionDuringRootMotion => ignoreCharacterCollisionDuringRootMotion;
 
     [PropertyOrder(-25)]
     [FoldoutGroup("Cutscene Skill", Expanded = false), LabelText("Is Cutscene Skill"), ToggleLeft]

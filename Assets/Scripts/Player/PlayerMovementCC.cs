@@ -128,8 +128,30 @@ public class PlayerMovementCC : MonoBehaviour
                 out Vector3 dir, out float dist))
                 continue;
 
-            _characterController.Move(dir * dist);
+            Vector3 planarDirection = ResolvePlanarSeparationDirection(playerCol, hit, dir);
+            if (planarDirection.sqrMagnitude > 0.0001f)
+                _characterController.Move(planarDirection * dist);
         }
+    }
+
+    Vector3 ResolvePlanarSeparationDirection(Collider playerCol, Collider hit, Vector3 penetrationDirection)
+    {
+        Vector3 planarDirection = Vector3.ProjectOnPlane(penetrationDirection, Vector3.up);
+        if (planarDirection.sqrMagnitude <= 0.0001f)
+        {
+            planarDirection = playerCol.bounds.center - hit.bounds.center;
+            planarDirection.y = 0f;
+        }
+
+        if (planarDirection.sqrMagnitude <= 0.0001f)
+        {
+            Transform fallbackRoot = actorRoot ? actorRoot : transform;
+            planarDirection = Vector3.ProjectOnPlane(fallbackRoot.forward, Vector3.up);
+        }
+
+        return planarDirection.sqrMagnitude > 0.0001f
+            ? planarDirection.normalized
+            : Vector3.zero;
     }
 
     void HandleAiming(LayerMask groundMask)

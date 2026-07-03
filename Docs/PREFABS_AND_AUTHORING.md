@@ -611,6 +611,21 @@ ally placement. The attack `AnimationClip` remains the source of truth: Unity
 must already extract the clip's root motion so `Animator.deltaPosition` and
 `Animator.deltaRotation` produce the intended movement during playback.
 
+`SkillGemDefinition > Presentation > Ignore Character Collision During Root
+Motion` defaults to enabled. Keep it enabled for jumping, lunging, and other
+clips with Y root motion so Player, Enemy, and Ally bodies cannot become ground
+or steps. This setting does not disable world collision. Disable it only for a
+skill whose root-motion movement is intentionally blocked by character bodies.
+No prefab reference is required; the runtime root-motion driver resolves the
+character layers and restores the previous collision state when playback ends
+or is interrupted.
+
+Ally prefabs using `RootMotionNavMeshDriver` must leave **Zero Y** disabled.
+Per-request `RootMotionPlanarOnly` is responsible for suppressing Y on targeted
+placement flows such as Guaranteed Interruption. Enabling **Zero Y** on the
+prefab suppresses vertical root motion for every Ally skill and is only
+appropriate for actors that must remain permanently planar.
+
 Do not assign a motion-bone name, add a trajectory component, bake an asset, or
 change the clip to use `c_traj`/`root` for this flow. Runtime code creates and
 destroys hidden sampling objects, caches trajectories per clip and Avatar, and

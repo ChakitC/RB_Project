@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7b1d978f7b04ecbad7dbb474397d4be, type: 3}
   m_Name: StaggerProfile
   m_EditorClassIdentifier: 
-  maxStagger: 100
+  maxStagger: 2000
   staggerGainMultiplier: 1
   chainReadyDuration: 5
   staggerDuration: 5

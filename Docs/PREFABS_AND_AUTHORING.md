@@ -256,7 +256,11 @@ anchor. Selecting `Generic Bone` defaults to `Follow Anchor`, but it can be
 changed to `World Space`. Generic bone follow tracks position and rotation only;
 it does not inherit bone scale or scale its local position offset. Other anchor
 types retain their existing parenting behavior. Editor preview uses the same
-rules. `StartLoop` and `StopLoop` entries must use the same non-empty loop key.
+rules. One-shot preview lifetime uses the same Particle System, Trail Renderer,
+safety buffer, Animation Clip, and `Extra Life` calculation as runtime. Prefabs
+without a Particle System, Trail Renderer, or Animation Clip use `Extra Life`
+as their total lifetime instead of adding it to a fallback. `StartLoop` and
+`StopLoop` entries must use the same non-empty loop key.
 The editor preview tracks active loops by that key. Scrubbing to a point between
 Start and Stop keeps the loop active, while scrubbing before Start or after Stop
 removes it. A Stop cue can either clear immediately or stop emission and let
@@ -306,6 +310,12 @@ On the main camera's `Camera` component set **Culling Mask** to exclude the
 `Cutscene` layer. `CutsceneSkillPresenter` auto-resolves the `GameplayCameraController` component
 from `Camera.main` or from a parent holder such as `CameraHolder.prefab`, then
 disables/enables it automatically.
+
+During a cutscene, `CutsceneSkillPresenter` also removes the `WorldUI` layer
+from every other camera that renders it, including `WorldUICamera`, and restores
+each camera's original culling mask when the cutscene ends. Character overhead
+health, stagger, and ChainReady displays therefore remain hidden during the
+cutscene even when World UI is rendered by a separate URP camera.
 
 ### 3. CutsceneCameraRig (new GameObject in scene)
 
@@ -671,6 +681,10 @@ workflow as skill cutscenes. Drop the `CutsceneDefSO` asset into the **Source
 Asset** field, select the **Cutscene VFX** entry, add `Vfx` markers to
 `characterCutsceneClip`, then place and **Save VFX Data** — it writes to the
 SO's `cutscene.cutsceneVfxEvents`.
+The editor preview samples both `characterCutsceneClip` and
+`cameraCutsceneClip` when the source is a standalone `CutsceneDefSO`.
+Adding the first `Vfx` timeline marker creates its authoring slot immediately,
+including when the cutscene previously had no markers.
 
 When both the `SkillChainDef` toggle is on **and** the active character's
 `CharacterStats.introChainCutscene` references a `CutsceneDefSO` with a valid clip, pressing F on a
@@ -682,9 +696,12 @@ with no error.
 
 The character clip plays on the **chain locomotion channel** via
 `CharacterAnimBrain.TryPlayChainCutscene` — it is presentation-only and never
-spawns damage or a skill payload. Each playable character authors their own
-clip on their `CharacterStats` asset; shipped assets should leave the clip
-unassigned until authored.
+spawns damage or a skill payload. The chain channel binds the clip's `Vfx`
+markers and forwards their cue indices to the active `CutsceneSkillPresenter`
+session; a marker at normalized time `0` fires immediately when playback starts.
+Each playable character authors their own clip on their
+`CharacterStats` asset; shipped assets should leave the clip unassigned until
+authored.
 
 ## Weapon Authoring
 

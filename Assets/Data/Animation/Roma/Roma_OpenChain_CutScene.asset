@@ -1,0 +1,80 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9811c6092f4f3049a21165057cab95a, type: 3}
+  m_Name: Roma_OpenChain_CutScene
+  m_EditorClassIdentifier: 
+  cutscene:
+    characterCutsceneClip:
+      _FadeDuration: 0
+      _Speed: 1
+      _Events:
+        _NormalizedTimes:
+        - 0
+        - 0.56503826
+        - NaN
+        _Callbacks: []
+        _Names:
+        - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
+        - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
+      _Clip: {fileID: 8459714056551021300, guid: 7ddb8bf905f5f7342aa7657c74132e7d, type: 3}
+      _NormalizedStartTime: NaN
+    cameraCutsceneClip: {fileID: -3396866470015411139, guid: e865786172e305041833fd28abb6a204, type: 3}
+    worldSlowScale: 0.112
+    fadeInDuration: 0.08
+    fadeOutDuration: 0.12
+    barThickness: 0.08
+    cutsceneVfxEvents:
+    - cueIndex: 0
+      action: 0
+      prefab: {fileID: 7249212541332141243, guid: bbfe7df36c003be4299aec0bff52ac1d, type: 3}
+      anchor: 0
+      customAnchorPath: 
+      humanoidBone: 18
+      localPosition: {x: -0.76, y: 0.98, z: -0.9000001}
+      localEulerAngles: {x: -0, y: 200.32777, z: -0}
+      localScale: {x: 1.2686996, y: 1.2687, z: 1.2686998}
+      anchorMode: 1
+      loopKey: 
+      extraLife: 1.666
+      allowParticlesToFinish: 1
+      animClip: {fileID: 0}
+    - cueIndex: 0
+      action: 0
+      prefab: {fileID: 0}
+      anchor: 1
+      customAnchorPath: 
+      humanoidBone: 18
+      localPosition: {x: 0, y: 0, z: 0}
+      localEulerAngles: {x: -0, y: 0, z: 0}
+      localScale: {x: 1, y: 1, z: 1}
+      anchorMode: 0
+      loopKey: 
+      extraLife: 0
+      allowParticlesToFinish: 1
+      animClip: {fileID: 0}
+    - cueIndex: 1
+      action: 0
+      prefab: {fileID: 0}
+      anchor: 1
+      customAnchorPath: 
+      humanoidBone: 18
+      localPosition: {x: 0, y: 0, z: 0}
+      localEulerAngles: {x: -0, y: 0, z: 0}
+      localScale: {x: 1, y: 1, z: 1}
+      anchorMode: 0
+      loopKey: 
+      extraLife: 0
+      allowParticlesToFinish: 1
+      animClip: {fileID: 0}
+  references:
+    version: 2
+    RefIds: []

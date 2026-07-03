@@ -3,26 +3,9 @@ using UnityEngine.AI;
 
 public static class ChainAttackTeleportUtility
 {
-    const float ZeroAngleEpsilon = 0.001f;
     const float MinProbeExtent = 0.001f;
     static readonly Collider[] OverlapBuffer = new Collider[64];
     static readonly RaycastHit[] CastHitBuffer = new RaycastHit[32];
-    static readonly float[] FallbackOrientationAngles =
-    {
-        0f,
-        15f, -15f,
-        30f, -30f,
-        45f, -45f,
-        60f, -60f,
-        75f, -75f,
-        90f, -90f,
-        105f, -105f,
-        120f, -120f,
-        135f, -135f,
-        150f, -150f,
-        165f, -165f,
-        180f,
-    };
 
     public static bool TryResolveTeleportPose(
         ChainAttackTeleportProfileDef profile,
@@ -34,7 +17,8 @@ public static class ChainAttackTeleportUtility
         float? navMeshSampleDistanceOverride = null,
         Collider probeCollider = null,
         Transform probeRoot = null,
-        System.Func<Vector3, Quaternion, bool> poseValidator = null)
+        System.Func<Vector3, Quaternion, bool> poseValidator = null,
+        Vector3? preferredActorPosition = null)
     {
         teleportPosition = Vector3.zero;
         teleportRotation = Quaternion.identity;
@@ -47,9 +31,6 @@ public static class ChainAttackTeleportUtility
             requireNavMeshAtAnchorOverride ?? profile.requireNavMeshAtAnchor,
             navMeshSampleDistanceOverride ?? profile.navMeshSampleDistance,
             profile.anchorPositionOffset,
-            profile.probeOrientation,
-            profile.allowFallbackToBaseRotation,
-            profile.GetOrientationAngles(),
             profile.clearanceCenterOffset,
             profile.clearanceHalfExtents,
             profile.obstacleLayers,
@@ -61,7 +42,7 @@ public static class ChainAttackTeleportUtility
             profile.debugLogging,
             profile.name);
 
-        return TryResolveTeleportPose(config, anchorTransform, fallbackBaseRotation, poseValidator, out teleportPosition, out teleportRotation);
+        return TryResolveTeleportPose(config, anchorTransform, fallbackBaseRotation, poseValidator, preferredActorPosition, out teleportPosition, out teleportRotation);
     }
 
     public static bool TryResolveTeleportPose(
@@ -72,7 +53,8 @@ public static class ChainAttackTeleportUtility
         out Quaternion teleportRotation,
         Collider probeCollider = null,
         Transform probeRoot = null,
-        System.Func<Vector3, Quaternion, bool> poseValidator = null)
+        System.Func<Vector3, Quaternion, bool> poseValidator = null,
+        Vector3? preferredActorPosition = null)
     {
         teleportPosition = Vector3.zero;
         teleportRotation = Quaternion.identity;
@@ -85,9 +67,6 @@ public static class ChainAttackTeleportUtility
             profile.requireNavMeshAtAnchor,
             profile.navMeshSampleDistance,
             profile.anchorPositionOffset,
-            profile.probeOrientation,
-            profile.allowFallbackToBaseRotation,
-            profile.GetOrientationAngles(),
             profile.clearanceCenterOffset,
             profile.clearanceHalfExtents,
             profile.obstacleLayers,
@@ -99,7 +78,7 @@ public static class ChainAttackTeleportUtility
             profile.debugLogging,
             profile.name);
 
-        return TryResolveTeleportPose(config, anchorTransform, fallbackBaseRotation, poseValidator, out teleportPosition, out teleportRotation);
+        return TryResolveTeleportPose(config, anchorTransform, fallbackBaseRotation, poseValidator, preferredActorPosition, out teleportPosition, out teleportRotation);
     }
 
     public static bool IsCurrentProbeColliderClear(
@@ -118,9 +97,6 @@ public static class ChainAttackTeleportUtility
             requireNavMeshAtAnchor: false,
             navMeshSampleDistance: 0.05f,
             anchorPositionOffset: Vector3.zero,
-            probeOrientation: false,
-            allowFallbackToBaseRotation: false,
-            orientationAngles: null,
             clearanceCenterOffset: Vector3.zero,
             clearanceHalfExtents: Vector3.zero,
             obstacleLayers,
@@ -247,9 +223,6 @@ public static class ChainAttackTeleportUtility
             requireNavMeshAtAnchor,
             navMeshSampleDistance,
             profile.anchorPositionOffset,
-            profile.probeOrientation,
-            profile.allowFallbackToBaseRotation,
-            profile.GetOrientationAngles(),
             profile.clearanceCenterOffset,
             profile.clearanceHalfExtents,
             profile.obstacleLayers,
@@ -267,6 +240,7 @@ public static class ChainAttackTeleportUtility
         Transform anchorTransform,
         Quaternion fallbackBaseRotation,
         System.Func<Vector3, Quaternion, bool> poseValidator,
+        Vector3? preferredActorPosition,
         out Vector3 teleportPosition,
         out Quaternion teleportRotation)
     {
@@ -283,112 +257,30 @@ public static class ChainAttackTeleportUtility
             ? anchorTransform.rotation
             : fallbackBaseRotation;
 
-        bool shouldResolveCandidates = config.probeOrientation;
+        float baseYaw = TargetedSkillSnapSidePriority.ResolveBaseYaw(
+            anchorTransform, config.anchorPositionOffset, preferredActorPosition);
 
-        if (!shouldResolveCandidates)
+        float[] offsets = TargetedSkillSnapSidePriority.CandidateYawOffsets;
+        for (int i = 0; i < offsets.Length; i++)
         {
-            if (!TryResolveTeleportPoseCandidate(
+            float yaw = baseYaw + offsets[i];
+
+            if (TryResolveTeleportPoseCandidate(
                     config,
                     anchorTransform,
                     baseRotation,
-                    0f,
-                    requireLegacyClearance: config.hasClearanceProbe,
-                    out teleportPosition,
-                    out teleportRotation))
-            {
-                return false;
-            }
-
-            return IsResolvedTeleportPoseAccepted(config, 0f, teleportPosition, teleportRotation, poseValidator);
-        }
-
-        int orientationAngleCount = config.orientationAngles != null ? config.orientationAngles.Length : 0;
-        float[] testedAngles = new float[orientationAngleCount + FallbackOrientationAngles.Length];
-        int testedAngleCount = 0;
-
-        for (int i = 0; i < orientationAngleCount; i++)
-        {
-            float yawAngle = config.orientationAngles[i];
-
-            if (TryResolveTeleportPoseCandidateIfNew(
-                    config,
-                    anchorTransform,
-                    baseRotation,
-                    yawAngle,
+                    yaw,
                     config.hasClearanceProbe,
-                    testedAngles,
-                    ref testedAngleCount,
-                    poseValidator,
                     out teleportPosition,
-                    out teleportRotation))
+                    out teleportRotation) &&
+                IsResolvedTeleportPoseAccepted(config, yaw, teleportPosition, teleportRotation, poseValidator))
             {
                 return true;
             }
         }
 
-        if (!config.allowFallbackToBaseRotation)
-        {
-            Log(config, "Teleport pose resolve failed: all yaw candidates were blocked and fallback is disabled.");
-            return false;
-        }
-
-        Log(config, "Configured yaw candidates were blocked. Sweeping fallback yaw angles before failing.");
-        for (int i = 0; i < FallbackOrientationAngles.Length; i++)
-        {
-            if (TryResolveTeleportPoseCandidateIfNew(
-                    config,
-                    anchorTransform,
-                    baseRotation,
-                    FallbackOrientationAngles[i],
-                    config.hasClearanceProbe,
-                    testedAngles,
-                    ref testedAngleCount,
-                    poseValidator,
-                    out teleportPosition,
-                    out teleportRotation))
-            {
-                return true;
-            }
-        }
-
-        Log(config, "Teleport pose resolve failed: all configured and fallback yaw candidates were blocked.");
+        Log(config, "Teleport pose resolve failed: all swept yaw candidates were blocked.");
         return false;
-    }
-
-    static bool TryResolveTeleportPoseCandidateIfNew(
-        ChainAttackTeleportRuntimeConfig config,
-        Transform anchorTransform,
-        Quaternion baseRotation,
-        float yawAngle,
-        bool requireLegacyClearance,
-        float[] testedAngles,
-        ref int testedAngleCount,
-        System.Func<Vector3, Quaternion, bool> poseValidator,
-        out Vector3 teleportPosition,
-        out Quaternion teleportRotation)
-    {
-        teleportPosition = Vector3.zero;
-        teleportRotation = baseRotation;
-
-        if (HasTriedYawAngle(testedAngles, testedAngleCount, yawAngle))
-            return false;
-
-        if (testedAngleCount < testedAngles.Length)
-            testedAngles[testedAngleCount++] = yawAngle;
-
-        if (!TryResolveTeleportPoseCandidate(
-                config,
-                anchorTransform,
-                baseRotation,
-                yawAngle,
-                requireLegacyClearance,
-                out teleportPosition,
-                out teleportRotation))
-        {
-            return false;
-        }
-
-        return IsResolvedTeleportPoseAccepted(config, yawAngle, teleportPosition, teleportRotation, poseValidator);
     }
 
     static bool IsResolvedTeleportPoseAccepted(
@@ -1402,25 +1294,6 @@ public static class ChainAttackTeleportUtility
         };
     }
 
-    static bool IsZeroAngle(float angle)
-    {
-        return Mathf.Abs(Mathf.DeltaAngle(0f, angle)) <= ZeroAngleEpsilon;
-    }
-
-    static bool HasTriedYawAngle(float[] testedAngles, int testedAngleCount, float yawAngle)
-    {
-        if (testedAngles == null)
-            return false;
-
-        for (int i = 0; i < testedAngleCount && i < testedAngles.Length; i++)
-        {
-            if (Mathf.Abs(Mathf.DeltaAngle(testedAngles[i], yawAngle)) <= ZeroAngleEpsilon)
-                return true;
-        }
-
-        return false;
-    }
-
     static float ResolvePathProbeRadius(ChainAttackTeleportRuntimeConfig config)
     {
         float radius = config.hasClearanceProbe
@@ -1508,9 +1381,6 @@ public static class ChainAttackTeleportUtility
         public readonly bool requireNavMeshAtAnchor;
         public readonly float navMeshSampleDistance;
         public readonly Vector3 anchorPositionOffset;
-        public readonly bool probeOrientation;
-        public readonly bool allowFallbackToBaseRotation;
-        public readonly float[] orientationAngles;
         public readonly Vector3 clearanceCenterOffset;
         public readonly Vector3 clearanceHalfExtents;
         public readonly LayerMask obstacleLayers;
@@ -1528,9 +1398,6 @@ public static class ChainAttackTeleportUtility
             bool requireNavMeshAtAnchor,
             float navMeshSampleDistance,
             Vector3 anchorPositionOffset,
-            bool probeOrientation,
-            bool allowFallbackToBaseRotation,
-            float[] orientationAngles,
             Vector3 clearanceCenterOffset,
             Vector3 clearanceHalfExtents,
             LayerMask obstacleLayers,
@@ -1546,9 +1413,6 @@ public static class ChainAttackTeleportUtility
             this.requireNavMeshAtAnchor = requireNavMeshAtAnchor;
             this.navMeshSampleDistance = navMeshSampleDistance;
             this.anchorPositionOffset = anchorPositionOffset;
-            this.probeOrientation = probeOrientation;
-            this.allowFallbackToBaseRotation = allowFallbackToBaseRotation;
-            this.orientationAngles = orientationAngles;
             this.clearanceCenterOffset = clearanceCenterOffset;
             this.clearanceHalfExtents = clearanceHalfExtents;
             this.obstacleLayers = obstacleLayers;

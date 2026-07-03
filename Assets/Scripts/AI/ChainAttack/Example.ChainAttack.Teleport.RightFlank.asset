@@ -16,10 +16,6 @@ MonoBehaviour:
   requireNavMeshAtAnchor: 0
   navMeshSampleDistance: 1.2
   anchorPositionOffset: {x: 0, y: 0, z: -1.35}
-  probeOrientation: 1
-  allowFallbackToBaseRotation: 0
-  orientationAngles:
-  - 60
   clearanceCenterOffset: {x: 0, y: 1, z: 0.45}
   clearanceHalfExtents: {x: 0.35, y: 0.9, z: 0.8}
   obstacleLayers:

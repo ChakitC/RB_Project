@@ -390,6 +390,31 @@ public class SetAnimationVfxData : MonoBehaviour
 #endif
     }
 
+    public bool EnsureTimelineVfxSlot(IAnimationVfxTimelineSource source, int cueIndex)
+    {
+#if UNITY_EDITOR
+        if (source == null || cueIndex < 0 || !PrepareTimelineAuthoring(source))
+            return false;
+
+        SkillVfxAuthoringSlot[] slots = GetSourceSlots(source.EntryId);
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] != null && slots[i].CueIndex == cueIndex)
+                return true;
+        }
+
+        Transform root = ResolveScanRoot(source.EntryId);
+        if (root == null)
+            return false;
+
+        CreateSlotObject(root, cueIndex, "Add Animation VFX Slot");
+        MarkHierarchyDirty(root);
+        return true;
+#else
+        return false;
+#endif
+    }
+
     [Title("Data Sync")]
     [InfoBox("Authoring hierarchy is out of sync with the selected source and entry. Click 'Load / Sync VFX Data' to rebuild from saved data.", InfoMessageType.Warning, nameof(IsAuthoringOutOfSync))]
     [ButtonGroup("vfxDataSyncRow")]

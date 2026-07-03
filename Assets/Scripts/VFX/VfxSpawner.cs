@@ -33,7 +33,6 @@ public class VfxSpawner : MonoBehaviour
         }
     }
 
-    const float DefaultVfxLifetime = 2f;
     const float LifetimeSafetyBuffer = 0.25f;
 
     public DamageNumber numberPrefab;
@@ -241,41 +240,35 @@ public class VfxSpawner : MonoBehaviour
 
     float CalculateLifetimeAndDisableLoops(GameObject vfx)
     {
-        float longestLifetime = 0f;
-
-        var particleSystems = vfx.GetComponentsInChildren<ParticleSystem>(true);
-        for (int i = 0; i < particleSystems.Length; i++)
-        {
-            var ps = particleSystems[i];
-            if (ps == null)
-                continue;
-
-            var main = ps.main;
-            if (main.loop)
-                main.loop = false;
-
-            longestLifetime = Mathf.Max(longestLifetime, EstimateParticleLifetime(ps));
-        }
-
-        var trailRenderers = vfx.GetComponentsInChildren<TrailRenderer>(true);
-        for (int i = 0; i < trailRenderers.Length; i++)
-        {
-            var trail = trailRenderers[i];
-            if (trail == null)
-                continue;
-
-            longestLifetime = Mathf.Max(longestLifetime, trail.time);
-        }
-
-        if (longestLifetime <= 0f)
-            longestLifetime = DefaultVfxLifetime;
-
-        return longestLifetime + LifetimeSafetyBuffer;
+        return CalculateLifetime(
+            vfx.GetComponentsInChildren<ParticleSystem>(true),
+            vfx.GetComponentsInChildren<TrailRenderer>(true),
+            disableLoops: true);
     }
 
     float CalculateLifetimeAndDisableLoops(ParticleSystem[] particleSystems, TrailRenderer[] trailRenderers)
     {
+        return CalculateLifetime(particleSystems, trailRenderers, disableLoops: true);
+    }
+
+    internal static float EstimateLifetime(GameObject vfx)
+    {
+        if (vfx == null)
+            return 0f;
+
+        return CalculateLifetime(
+            vfx.GetComponentsInChildren<ParticleSystem>(true),
+            vfx.GetComponentsInChildren<TrailRenderer>(true),
+            disableLoops: false);
+    }
+
+    static float CalculateLifetime(
+        ParticleSystem[] particleSystems,
+        TrailRenderer[] trailRenderers,
+        bool disableLoops)
+    {
         float longestLifetime = 0f;
+        bool hasLifetimeSource = false;
 
         for (int i = 0; i < particleSystems.Length; i++)
         {
@@ -283,8 +276,9 @@ public class VfxSpawner : MonoBehaviour
             if (ps == null)
                 continue;
 
+            hasLifetimeSource = true;
             var main = ps.main;
-            if (main.loop)
+            if (disableLoops && main.loop)
                 main.loop = false;
 
             longestLifetime = Mathf.Max(longestLifetime, EstimateParticleLifetime(ps));
@@ -296,16 +290,14 @@ public class VfxSpawner : MonoBehaviour
             if (trail == null)
                 continue;
 
+            hasLifetimeSource = true;
             longestLifetime = Mathf.Max(longestLifetime, trail.time);
         }
 
-        if (longestLifetime <= 0f)
-            longestLifetime = DefaultVfxLifetime;
-
-        return longestLifetime + LifetimeSafetyBuffer;
+        return hasLifetimeSource ? longestLifetime + LifetimeSafetyBuffer : 0f;
     }
 
-    float EstimateParticleLifetime(ParticleSystem ps)
+    static float EstimateParticleLifetime(ParticleSystem ps)
     {
         if (ps == null)
             return 0f;
@@ -322,7 +314,7 @@ public class VfxSpawner : MonoBehaviour
         return duration;
     }
 
-    float GetCurveMax(ParticleSystem.MinMaxCurve curve)
+    static float GetCurveMax(ParticleSystem.MinMaxCurve curve)
     {
         return curve.mode switch
         {
@@ -336,7 +328,7 @@ public class VfxSpawner : MonoBehaviour
         };
     }
 
-    float EvaluateCurveMax(AnimationCurve curve, float multiplier)
+    static float EvaluateCurveMax(AnimationCurve curve, float multiplier)
     {
         if (curve == null || curve.length == 0)
             return 0f;

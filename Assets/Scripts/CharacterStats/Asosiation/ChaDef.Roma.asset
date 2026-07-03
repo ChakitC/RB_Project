@@ -21,8 +21,9 @@ MonoBehaviour:
   controller: {fileID: 9100000, guid: f555da46cd7e0404e9dc79bbbda06e9a, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
   weaponHandMode: 2
-  combatRole: 3
+  combatRole: 5
   chainAttackSkill: {fileID: 0}
+  introChainCutscene: {fileID: 11400000, guid: 3ee8ff8ceb425384e9ca8dc16042f9bb, type: 2}
   skillSlots:
   - slotId: 0
     displayName: Roma.Ualtimeat

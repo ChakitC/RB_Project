@@ -157,7 +157,8 @@ public sealed class PlayerInterruptionController : MonoBehaviour
             probeCollider,
             _actorTransform,
             targetRoot,
-            out result);
+            out result,
+            preferredActorPosition: _actorTransform != null ? _actorTransform.position : (Vector3?)null);
 
         if (resolved)
         {

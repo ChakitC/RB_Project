@@ -212,7 +212,7 @@ MonoBehaviour:
   m_characterShadowMapResolution: 2048
   ClipDistance: 9.3
   CascadeCount: 1
-  ShadowFadeRatio: 0.2
+  ShadowFadeRatio: 0.312
   UseScreenSpaceShadowPass: 1
   ScreenSpaceShadowColor: {r: 0, g: 0, b: 0, a: 0.38431373}
 --- !u!114 &7083169563607846560

@@ -4,23 +4,6 @@ using UnityEngine.AI;
 
 internal static class TargetedSkillPlacementResolver
 {
-    static readonly float[] CandidateYawAngles =
-    {
-        0f,
-        15f, -15f,
-        30f, -30f,
-        45f, -45f,
-        60f, -60f,
-        75f, -75f,
-        90f, -90f,
-        105f, -105f,
-        120f, -120f,
-        135f, -135f,
-        150f, -150f,
-        165f, -165f,
-        180f,
-    };
-
     public static bool TryResolve(
         ChainAttackTeleportProfileDef profile,
         Transform targetAnchor,
@@ -34,7 +17,8 @@ internal static class TargetedSkillPlacementResolver
         Collider probeCollider,
         Transform probeRoot,
         Transform targetRoot,
-        out TargetedSkillPlacementResult result)
+        out TargetedSkillPlacementResult result,
+        Vector3? preferredActorPosition = null)
     {
         if (profile == null)
         {
@@ -82,7 +66,8 @@ internal static class TargetedSkillPlacementResolver
                     requireNavMesh,
                     navMeshSampleDistance,
                     probeCollider,
-                    probeRoot))
+                    probeRoot,
+                    preferredActorPosition: preferredActorPosition))
             {
                 result = TargetedSkillPlacementResult.Failed(
                     $"Legacy teleport placement failed for clip '{attackClip.name}'.");
@@ -105,6 +90,7 @@ internal static class TargetedSkillPlacementResolver
                 probeCollider,
                 probeRoot,
                 targetRoot,
+                preferredActorPosition,
                 out Vector3 startPosition,
                 out Quaternion startRotation,
                 out Vector3 impactPosition,
@@ -138,6 +124,7 @@ internal static class TargetedSkillPlacementResolver
         Collider probeCollider,
         Transform probeRoot,
         Transform targetRoot,
+        Vector3? preferredActorPosition,
         out Vector3 startPosition,
         out Quaternion startRotation,
         out Vector3 impactPosition,
@@ -165,9 +152,13 @@ internal static class TargetedSkillPlacementResolver
             : PlanarRotation(fallbackBaseRotation);
         string lastRejectionReason = null;
 
-        for (int i = 0; i < CandidateYawAngles.Length; i++)
+        float baseYaw = TargetedSkillSnapSidePriority.ResolveBaseYaw(
+            anchorTransform, profile.anchorPositionOffset, preferredActorPosition);
+
+        float[] offsets = TargetedSkillSnapSidePriority.CandidateYawOffsets;
+        for (int i = 0; i < offsets.Length; i++)
         {
-            float yaw = CandidateYawAngles[i];
+            float yaw = baseYaw + offsets[i];
             Quaternion candidateYaw = Quaternion.AngleAxis(yaw, Vector3.up);
             Quaternion candidateImpactRotation = candidateYaw * baseRotation;
             Vector3 localOffset = candidateYaw * profile.anchorPositionOffset;

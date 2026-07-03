@@ -130,9 +130,26 @@ the impact point. Chain attacks use the skill cast point. Guaranteed
 Interruption uses the skill's `HitStart` Animancer marker when present and
 falls back to the skill cast point. The system derives the required animation
 start pose from the sampled impact transform, then tests target-relative yaw
-candidates in this order:
+candidates using one shared "direct-first ±15° sweep" algorithm
+(`TargetedSkillSnapSidePriority`), used identically by legacy teleport,
+root-motion placement, Guaranteed Interruption, Chain Attack, and Helper Chain
+Attack:
 
-`0, +15, -15, +30, -30, ... 180`
+`baseYaw, baseYaw±15, baseYaw±30, ... baseYaw+180`
+
+`baseYaw` is the angle toward the side the actor currently stands on, relative
+to the target anchor, when the caller supplies the actor's current position
+(Player/Ally interruption do this). Chain Attack and Helper Chain Attack do not
+supply an actor position, so `baseYaw` is `0` (the profile's
+`anchorPositionOffset` direction) and the sweep proceeds the same way. This
+sweep tries the actor-facing side first to reduce warping across the target,
+then falls back through the full 360° ring before failing — there is no
+separate "configured angles vs. fallback angles" split anymore. The legacy
+`probeOrientation` / `allowFallbackToBaseRotation` / `orientationAngles` fields
+have been removed from both `ChainAttackTeleportProfileDef` and
+`HelperChainAttackSequenceDef`; every profile always sweeps. The legacy
+clearance box is still opt-in per profile via `clearanceHalfExtents` /
+`obstacleLayers` (exposed through `HasClearanceProbe`).
 
 Each candidate must have clear start and impact poses against the configured
 obstacle mask and must keep the sampled full-clip trajectory clear. The

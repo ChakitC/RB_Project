@@ -1580,6 +1580,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     internal void BindActiveChainTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
     {
+        if (_activeChainKind == ChainPlaybackKind.Cutscene)
+        {
+            BindActiveChainCutsceneVfxTimelineEvents(runtimeEvents);
+            return;
+        }
+
         if (_activeChainKind != ChainPlaybackKind.Skill)
             return;
 
@@ -1596,6 +1602,31 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             _chainChannel.Request.Definition,
             clip,
             RaiseChainSkillVfxTimelineEvent);
+    }
+
+    private void BindActiveChainCutsceneVfxTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
+    {
+        CutsceneDef def = _activeChainCutsceneDef;
+        if (runtimeEvents == null ||
+            def?.cutsceneVfxEvents == null ||
+            def.cutsceneVfxEvents.Count == 0)
+        {
+            return;
+        }
+
+        int boundCueCount = AnimationVfxEventBinder.Bind(
+            runtimeEvents,
+            RaiseChainCutsceneVfxTimelineEvent,
+            invokeStartEventsImmediately: true);
+        if (boundCueCount == 0)
+        {
+            string clipName = _activeChainCutsceneClip?.Clip != null
+                ? _activeChainCutsceneClip.Clip.name
+                : "<none>";
+            Debug.LogWarning(
+                $"[CharacterAnimBrain] Chain cutscene clip '{clipName}' has VFX data but no 'Vfx' timeline event.",
+                this);
+        }
     }
 
     private void BindTimelineEventCallbacks(
@@ -1769,6 +1800,20 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         SkillAnimationVfxCueRaised?.Invoke(new SkillAnimationVfxCueSignal(
             _chainChannel.Request.RequestId, _chainChannel.Request.Definition, SkillAnimationVfxPhase.MainSkill, cueIndex));
         SkillTimelineEventRaised?.Invoke(_chainChannel.Request.RequestId, CombatTimelineEventName.Vfx);
+    }
+
+    private void RaiseChainCutsceneVfxTimelineEvent(int cueIndex)
+    {
+        if (_activeChainKind != ChainPlaybackKind.Cutscene ||
+            !_chainChannel.Request.ReleaseRequested ||
+            _chainChannel.Request.RequestId <= 0 ||
+            cueIndex < 0)
+        {
+            return;
+        }
+
+        SkillAnimationVfxCueRaised?.Invoke(new SkillAnimationVfxCueSignal(
+            _chainChannel.Request.RequestId, null, SkillAnimationVfxPhase.Cutscene, cueIndex));
     }
 
     private void RaiseCutsceneVfxCueInternal(int cueIndex)

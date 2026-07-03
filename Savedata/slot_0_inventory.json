@@ -1,6 +1,6 @@
 {
     "maxSlotCount": 0,
-    "gold": 963327,
+    "gold": 963328,
     "scrap": 450,
     "slots": [
         {
@@ -26,9 +26,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 23553,
-                "currentMagazine": 9,
-                "currentReserveAmmo": 291,
+                "shotCounter": 25932,
+                "currentMagazine": 64,
+                "currentReserveAmmo": 600,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 16,
                 "upgradeTier": 1,
@@ -136,9 +136,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 20322,
-                "currentMagazine": 18,
-                "currentReserveAmmo": 44,
+                "shotCounter": 22842,
+                "currentMagazine": 28,
+                "currentReserveAmmo": 300,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
                 "upgradeTier": 2,
@@ -309,9 +309,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 19797,
-                "currentMagazine": 0,
-                "currentReserveAmmo": 0,
+                "shotCounter": 21846,
+                "currentMagazine": 1,
+                "currentReserveAmmo": 300,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -666,9 +666,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 78,
-                "currentMagazine": 3,
-                "currentReserveAmmo": 35,
+                "shotCounter": 97,
+                "currentMagazine": 5,
+                "currentReserveAmmo": 100,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -1179,8 +1179,8 @@
             }
         },
         {
-            "itemId": "",
-            "amount": 0,
+            "itemId": "Accessory.CollectorsShades",
+            "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
                 "baseWeaponId": "",
@@ -1203,8 +1203,8 @@
                 "unlockedUpgradeMilestoneIds": []
             },
             "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
+                "instanceId": "acc_cabceded6fd243d2bc4d0dffacd10527",
+                "accessoryId": "Accessory.CollectorsShades",
                 "modifierId": "",
                 "upgradeLevel": 0
             }

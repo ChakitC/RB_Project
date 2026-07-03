@@ -28,3 +28,4 @@ MonoBehaviour:
   chainSequence: {fileID: 11400000, guid: 4b77c1abefb64238a5a3bbcb8a8460c1, type: 2}
   blockWhileChainBusy: 1
   debugLogging: 0
+  enableChainReadyIntroCutscene: 1

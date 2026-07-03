@@ -49,7 +49,7 @@ public sealed class WorldTimeScaledVfx : MonoBehaviour
     {
         _destroyAfterWorldSeconds = Mathf.Max(0f, seconds);
         _age = 0f;
-        _destroyAfterLifetime = _destroyAfterWorldSeconds > 0f;
+        _destroyAfterLifetime = true;
     }
 
     public void RestoreBaseSpeeds()

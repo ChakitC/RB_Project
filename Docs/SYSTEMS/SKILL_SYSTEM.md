@@ -384,6 +384,10 @@ empty. On `CutsceneSkillStart` it:
 
 - Calls `TimeSlowManager.StartSlow(worldSlowScale, float.MaxValue)` (enemies slow,
   player animation continues normally because `PlayerContext.UsesWorldSlow = false`).
+- Adds external `Move`, `Shoot`, and `Rotate` control blocks through `StateHub`
+  until the cinematic stage ends or is force-ended. New skill starts are
+  rejected by `CutsceneDirector.IsCinematicPlaying`; the active cutscene skill
+  remains valid until its cast point.
 - Disables `GameplayCameraController` (main follow camera) and enables the cutscene camera.
 - Plays `characterCutsceneClip` (`ClipTransition`) and `cameraCutsceneClip`
   (`AnimationClip`) via `AnimancerComponent.Play()` in unscaled time mode.

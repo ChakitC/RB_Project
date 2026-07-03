@@ -57,31 +57,37 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
 #endif
 
     [SerializeField, Min(0), LabelText("Legacy VFX Cue Index"), ShowIf(nameof(ShowLegacyCueIndex))]
+    [PropertyTooltip("ลำดับคิว VFX แบบเก่า เริ่มนับจาก 0 และจะแสดงเฉพาะ Entry ที่ไม่ได้อยู่ใต้ Skill VFX Authoring Slot")]
     private int cueIndex;
 
     [SerializeField]
+    [PropertyTooltip("กำหนดการทำงานของ VFX: One Shot เล่นหนึ่งครั้ง, Start Loop เริ่มเอฟเฟกต์ต่อเนื่อง และ Stop Loop หยุดเอฟเฟกต์ที่ใช้ Loop Key เดียวกัน")]
     private AnimationVfxAction action;
 
     [SerializeField, HideInInspector]
     private GameObject prefab;
 
     [ShowInInspector, ReadOnly, ShowIf(nameof(RequiresPrefab)), LabelText("VFX Prefab From Child")]
+    [PropertyTooltip("Prefab VFX ที่อ่านจากลูกโดยตรงของ Entry นี้ ตำแหน่ง การหมุน และขนาดของลูกจะถูกใช้เป็นค่าจัดวางตอนบันทึก")]
     private GameObject AuthoredPrefab => ResolvePrefabAsset();
 
     [SerializeField, ShowIf(nameof(RequiresPrefab)), OnValueChanged(nameof(OnAnchorChanged))]
+    [PropertyTooltip("จุดอ้างอิงบนตัวละครที่ใช้คำนวณตำแหน่งเกิดของ VFX")]
     private AnimationVfxAnchor anchor = AnimationVfxAnchor.CastOrigin;
 
     [SerializeField, ShowIf(nameof(ShowAnchorPath)), LabelText("$AnchorPathLabel")]
+    [PropertyTooltip("พาธของ Transform ใต้รากตัวละคร ใช้ระบุตำแหน่ง Custom Anchor หรือ Generic Bone")]
     private string customAnchorPath;
 
     [SerializeField, ShowIf(nameof(ShowHumanoidBone))]
+    [PropertyTooltip("กระดูก Humanoid ที่ใช้เป็นจุดอ้างอิงของ VFX")]
     private HumanBodyBones humanoidBone = HumanBodyBones.RightHand;
 
     [SerializeField, HideInInspector]
     private bool parentToAnchor;
 
     [ShowInInspector, ShowIf(nameof(RequiresPrefab)), LabelText("Anchor Mode")]
-    [PropertyTooltip("World Space keeps the spawned VFX at its spawn position. Follow Anchor moves it with the selected anchor.")]
+    [PropertyTooltip("World Space ให้ VFX อยู่ที่ตำแหน่งเกิดเดิม ส่วน Follow Anchor ให้ VFX เคลื่อนที่ตาม Anchor ที่เลือก")]
     private AnimationVfxAnchorMode AnchorMode
     {
         get => parentToAnchor ? AnimationVfxAnchorMode.FollowAnchor : AnimationVfxAnchorMode.WorldSpace;
@@ -89,15 +95,19 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
     }
 
     [SerializeField, ShowIf(nameof(UsesLoopKey))]
+    [PropertyTooltip("ชื่อกลุ่มของ VFX แบบ Loop โดย Start Loop และ Stop Loop ต้องใช้ค่าเดียวกันจึงจะควบคุมเอฟเฟกต์ชุดเดียวกัน")]
     private string loopKey;
 
     [SerializeField, Min(0f), ShowIf(nameof(ShowExtraLife))]
+    [PropertyTooltip("ถ้า VFX ไม่มี Particle System, Trail Renderer และ Animation Clip ค่านี้คืออายุรวมทั้งหมด มิฉะนั้นจะเป็นเวลาที่บวกเพิ่มก่อนทำลาย")]
     private float extraLife;
 
     [SerializeField, ShowIf(nameof(ShowStopOptions))]
+    [PropertyTooltip("เปิดไว้เพื่อหยุดปล่อยอนุภาคใหม่และรอให้อนุภาคเดิมเล่นจนจบ ปิดไว้เพื่อลบ VFX ทันที")]
     private bool allowParticlesToFinish = true;
 
     [SerializeField, ShowIf(nameof(RequiresPrefab))]
+    [PropertyTooltip("Animation Clip ของตัว VFX ที่ใช้สำหรับสุ่มตัวอย่างและแสดงผลใน Visual Preview")]
     private AnimationClip animClip;
 
     public int CueIndex
@@ -145,6 +155,7 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
     }
 
     [Button("Use Selected Bone"), ShowIf(nameof(ShowGenericBonePath))]
+    [PropertyTooltip("ใช้ Transform ที่เลือกอยู่ใน Hierarchy เป็น Generic Bone และบันทึกพาธจากรากตัวละครให้อัตโนมัติ")]
     void UseSelectedGenericBone()
     {
 #if UNITY_EDITOR
@@ -314,6 +325,7 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
 
     [Button("Refresh Visual Preview")]
     [PropertyOrder(10)]
+    [PropertyTooltip("สร้าง Visual Preview ใหม่จากค่าปัจจุบันของ Entry นี้")]
     public void RefreshVisualPreview()
     {
 #if UNITY_EDITOR
@@ -327,6 +339,7 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
 
     [ButtonGroup("entryPreviewRow")]
     [Button("Play Visual Preview")]
+    [PropertyTooltip("เล่นตัวอย่าง VFX ของ Entry นี้ใน Scene View โดยไม่บันทึกวัตถุตัวอย่างลง Scene")]
     public void PlayVisualPreview()
     {
 #if UNITY_EDITOR
@@ -456,6 +469,7 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
 
     [ButtonGroup("entryPreviewRow")]
     [Button("Stop Visual Preview")]
+    [PropertyTooltip("หยุดและลบ Visual Preview ของ Entry นี้")]
     public void StopVisualPreview()
     {
 #if UNITY_EDITOR
@@ -621,9 +635,11 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
                 main.useUnscaledTime = true;
             }
 
-            visualPreviewDuration = CalculatePreviewDuration(visualPreviewParticleSystems);
+            visualPreviewDuration = VfxSpawner.EstimateLifetime(visualPreviewRoot);
             if (animClip != null)
                 visualPreviewDuration = Mathf.Max(visualPreviewDuration, animClip.length);
+            if (action == AnimationVfxAction.OneShot)
+                visualPreviewDuration += Mathf.Max(0f, extraLife);
             resetPose = true;
         }
 
@@ -1074,56 +1090,6 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
                     DestroyImmediate(candidate);
             }
         }
-    }
-
-    static float CalculatePreviewDuration(ParticleSystem[] particleSystems)
-    {
-        float duration = 0.5f;
-        for (int i = 0; i < particleSystems.Length; i++)
-        {
-            ParticleSystem particleSystem = particleSystems[i];
-            if (particleSystem == null)
-                continue;
-
-            ParticleSystem.MainModule main = particleSystem.main;
-            duration = Mathf.Max(
-                duration,
-                main.duration + GetMaximumCurveValue(main.startDelay) + GetMaximumCurveValue(main.startLifetime));
-        }
-
-        return duration;
-    }
-
-    static float GetMaximumCurveValue(ParticleSystem.MinMaxCurve curve)
-    {
-        switch (curve.mode)
-        {
-            case ParticleSystemCurveMode.Constant:
-                return curve.constant;
-            case ParticleSystemCurveMode.TwoConstants:
-                return curve.constantMax;
-            case ParticleSystemCurveMode.Curve:
-                return GetMaximumCurveValue(curve.curve, curve.curveMultiplier);
-            case ParticleSystemCurveMode.TwoCurves:
-                return Mathf.Max(
-                    GetMaximumCurveValue(curve.curveMin, curve.curveMultiplier),
-                    GetMaximumCurveValue(curve.curveMax, curve.curveMultiplier));
-            default:
-                return 0f;
-        }
-    }
-
-    static float GetMaximumCurveValue(AnimationCurve curve, float multiplier)
-    {
-        if (curve == null || curve.length == 0)
-            return 0f;
-
-        float maximum = 0f;
-        Keyframe[] keys = curve.keys;
-        for (int i = 0; i < keys.Length; i++)
-            maximum = Mathf.Max(maximum, keys[i].value * multiplier);
-
-        return maximum;
     }
 
     GameObject FindAuthoredPrefabInstance()

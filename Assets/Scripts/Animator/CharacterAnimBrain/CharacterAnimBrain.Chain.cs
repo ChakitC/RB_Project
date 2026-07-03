@@ -23,6 +23,7 @@ public sealed partial class CharacterAnimBrain
     private ChainPlaybackKind _activeChainKind;
     private bool _chainStateCanExit = true;
     private ClipTransition _activeChainCutsceneClip;
+    private CutsceneDef _activeChainCutsceneDef;
 
     private ClipTransition ActiveChainClip => ResolveChainClip();
     private bool HasActiveChainClip => HasValidChainClip();
@@ -114,9 +115,24 @@ public sealed partial class CharacterAnimBrain
 
     public bool TryPlayChainCutscene(int requestId, ClipTransition clip)
     {
+        return TryPlayChainCutscene(requestId, clip, null);
+    }
+
+    public bool TryPlayChainCutscene(int requestId, CutsceneDef def)
+    {
+        return def != null
+            ? TryPlayChainCutscene(requestId, def.characterCutsceneClip, def)
+            : false;
+    }
+
+    private bool TryPlayChainCutscene(int requestId, ClipTransition clip, CutsceneDef def)
+    {
         if (clip == null || !clip.IsValid) return false;
+        if (requestId <= 0 || IsChainPlaybackActive) return false;
+
         _activeChainCutsceneClip = clip;
-        return TryStartChainPlayback(
+        _activeChainCutsceneDef = def;
+        bool started = TryStartChainPlayback(
             requestId,
             ChainPlaybackKind.Cutscene,
             skillDef: null,
@@ -125,6 +141,13 @@ public sealed partial class CharacterAnimBrain
             advancePointNormalized: 1f,
             usesRootMotion: UseRootMotionForChainPlayback,
             usesPlanarRootMotion: false);
+        if (!started)
+        {
+            _activeChainCutsceneClip = null;
+            _activeChainCutsceneDef = null;
+        }
+
+        return started;
     }
 
     public void CancelChainPlaybackRequest(int requestId)
@@ -327,6 +350,7 @@ public sealed partial class CharacterAnimBrain
         _chainChannel.Clear();
         _activeChainKind = ChainPlaybackKind.None;
         _activeChainCutsceneClip = null;
+        _activeChainCutsceneDef = null;
         _activeChainAdvancePointNormalized = 1f;
         _activeChainAdvanceRequested = false;
         _activeChainAdvanceReleased = false;

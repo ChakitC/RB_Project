@@ -269,7 +269,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
         if (!stageStarted)
             return false;
 
-        if (!_animBrain.TryPlayChainCutscene(introId, introDef.characterCutsceneClip))
+        if (!_animBrain.TryPlayChainCutscene(introId, introDef))
         {
             _cutscenePresenter.EndChainIntro(introId);
             return false;

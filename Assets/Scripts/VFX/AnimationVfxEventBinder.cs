@@ -3,7 +3,10 @@ using Animancer;
 
 public static class AnimationVfxEventBinder
 {
-    public static int Bind(AnimancerEvent.Sequence runtimeEvents, Action<int> handleCue)
+    public static int Bind(
+        AnimancerEvent.Sequence runtimeEvents,
+        Action<int> handleCue,
+        bool invokeStartEventsImmediately = false)
     {
         if (runtimeEvents == null || handleCue == null)
             return 0;
@@ -17,7 +20,10 @@ public static class AnimationVfxEventBinder
                 continue;
 
             int capturedCueIndex = cueIndex++;
-            runtimeEvents.SetCallback(eventIndex, () => handleCue(capturedCueIndex));
+            if (invokeStartEventsImmediately && runtimeEvents[eventIndex].normalizedTime <= 0f)
+                handleCue(capturedCueIndex);
+            else
+                runtimeEvents.SetCallback(eventIndex, () => handleCue(capturedCueIndex));
         }
 
         return cueIndex;

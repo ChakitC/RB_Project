@@ -27,6 +27,11 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
     enum CutsceneSource { Skill, ChainIntro }
 
+    const ControlBlockFlags CutsceneControlBlocks =
+        ControlBlockFlags.Move |
+        ControlBlockFlags.Shoot |
+        ControlBlockFlags.Rotate;
+
     CutsceneDef _pendingDef;
     int _pendingReqId;
     CutsceneSource _pendingSource;
@@ -52,6 +57,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
     Camera _gameplayCamera;
     int _savedCullingMask;
+    readonly Dictionary<Camera, int> _savedWorldUiCameraMasks = new();
     readonly Dictionary<GameObject, int> _savedActorLayers = new();
     bool _visibilityOverrideActive;
 
@@ -181,7 +187,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         }
 
         TimeSlowManager.Instance.StartSlow(def.worldSlowScale, float.MaxValue);
-        _ctx?.stateHub?.AddExternalControlBlock(ControlBlockFlags.Rotate);
+        _ctx?.stateHub?.AddExternalControlBlock(CutsceneControlBlocks);
         EnterCutsceneVisibility();
 
         if (_mainFollowCamera != null)
@@ -213,7 +219,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         }
 
         TimeSlowManager.Instance.StartSlow(2f, 0f);
-        _ctx?.stateHub?.RemoveExternalControlBlock(ControlBlockFlags.Rotate);
+        _ctx?.stateHub?.RemoveExternalControlBlock(CutsceneControlBlocks);
         ExitCutsceneVisibility();
 
         if (_mainFollowCamera != null)
@@ -245,7 +251,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         }
 
         TimeSlowManager.Instance.StartSlow(2f, 0f);
-        _ctx?.stateHub?.RemoveExternalControlBlock(ControlBlockFlags.Rotate);
+        _ctx?.stateHub?.RemoveExternalControlBlock(CutsceneControlBlocks);
         ExitCutsceneVisibility();
 
         if (_mainFollowCamera != null)
@@ -538,7 +544,15 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         if (_gameplayCamera != null)
         {
             _savedCullingMask = _gameplayCamera.cullingMask;
-            _gameplayCamera.cullingMask = (int)_cutsceneVisibleLayers;
+        }
+
+        SuppressWorldUiRendering();
+
+        if (_gameplayCamera != null)
+        {
+            int worldUiLayer = LayerMask.NameToLayer("WorldUI");
+            int worldUiMask = worldUiLayer >= 0 ? 1 << worldUiLayer : 0;
+            _gameplayCamera.cullingMask = (int)_cutsceneVisibleLayers & ~worldUiMask;
         }
 
         if (_ctx != null)
@@ -558,7 +572,40 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
             _gameplayCamera = null;
         }
 
+        RestoreWorldUiRendering();
         RestoreActorLayers();
+    }
+
+    void SuppressWorldUiRendering()
+    {
+        _savedWorldUiCameraMasks.Clear();
+
+        int worldUiLayer = LayerMask.NameToLayer("WorldUI");
+        if (worldUiLayer < 0)
+            return;
+
+        int worldUiMask = 1 << worldUiLayer;
+        Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < cameras.Length; i++)
+        {
+            Camera camera = cameras[i];
+            if (camera == null || camera == _gameplayCamera || (camera.cullingMask & worldUiMask) == 0)
+                continue;
+
+            _savedWorldUiCameraMasks[camera] = camera.cullingMask;
+            camera.cullingMask &= ~worldUiMask;
+        }
+    }
+
+    void RestoreWorldUiRendering()
+    {
+        foreach (KeyValuePair<Camera, int> pair in _savedWorldUiCameraMasks)
+        {
+            if (pair.Key != null)
+                pair.Key.cullingMask = pair.Value;
+        }
+
+        _savedWorldUiCameraMasks.Clear();
     }
 
     void CollectAndSetLayers(GameObject go, int layer)

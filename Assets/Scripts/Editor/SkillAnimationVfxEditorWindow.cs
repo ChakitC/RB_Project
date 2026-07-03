@@ -624,8 +624,12 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             return;
         }
 
-        if (eventName == CombatTimelineEventName.Vfx && authoringTarget != null && !authoringTarget.PrepareTimelineAuthoring(source))
+        bool isVfxEvent = eventName == CombatTimelineEventName.Vfx;
+        if (isVfxEvent && source.MarkerCount > 0 &&
+            authoringTarget != null && !authoringTarget.PrepareTimelineAuthoring(source))
+        {
             return;
+        }
         BuildTimelineEvents(source);
         if (!AllowsDuplicateEvent(source, eventName))
         {
@@ -649,6 +653,12 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         transition.SerializedEvents = events;
         source.Save();
         BuildTimelineEvents(source);
+        if (isVfxEvent && authoringTarget != null)
+        {
+            TimelineEvent added = FindTimelineEvent(selectedEventIndex);
+            if (added.VfxCueIndex >= 0)
+                authoringTarget.EnsureTimelineVfxSlot(source, added.VfxCueIndex);
+        }
     }
 
     void RemoveSelectedEvent(IAnimationVfxTimelineSource source)
@@ -855,7 +865,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         else
         {
             _playheadInCutscene = false;
-            previewSession.Configure(animator, clip);
+            ConfigureMainPreview(source, animator, clip);
             previewSession.Sample(normalizedTime);
             SampleTimelineVfx(clip, true);
         }
@@ -932,11 +942,12 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
 
     void SampleMainAtPlayhead()
     {
-        AnimationClip clip = GetClip(GetSource());
+        IAnimationVfxTimelineSource source = GetSource();
+        AnimationClip clip = GetClip(source);
         Animator animator = authoringTarget != null ? authoringTarget.PreviewAnimator : null;
         if (clip != null && animator != null && !Application.isPlaying)
         {
-            previewSession.Configure(animator, clip);
+            ConfigureMainPreview(source, animator, clip);
             previewSession.Sample(normalizedTime);
             SampleTimelineVfx(clip, true);
         }
@@ -1038,7 +1049,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
                     Animator skillAnimator = authoringTarget != null ? authoringTarget.PreviewAnimator : null;
                     if (skillClip != null && skillAnimator != null)
                     {
-                        previewSession.Configure(skillAnimator, skillClip);
+                        ConfigureMainPreview(source, skillAnimator, skillClip);
                         previewSession.Sample(normalizedTime);
                         SampleTimelineVfx(skillClip, true);
                     }
@@ -1063,7 +1074,8 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             }
             else
             {
-                AnimationClip clip = GetClip(GetSource());
+                IAnimationVfxTimelineSource mainSource = GetSource();
+                AnimationClip clip = GetClip(mainSource);
                 Animator animator = authoringTarget != null ? authoringTarget.PreviewAnimator : null;
                 if (clip == null || animator == null)
                 {
@@ -1075,7 +1087,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
                 {
                     if (loopPlayback)
                     {
-                        IAnimationVfxTimelineSource loopSource = GetSource();
+                        IAnimationVfxTimelineSource loopSource = mainSource;
                         AnimationClip cutsceneClip = GetCutsceneClip(loopSource);
                         Animator cutsceneAnimator = authoringTarget?.CutscenePreviewAnimator;
                         if (cutsceneClip != null && cutsceneAnimator != null)
@@ -1095,7 +1107,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
                         else
                         {
                             normalizedTime = Mathf.Repeat(next, 1f);
-                            previewSession.Configure(animator, clip);
+                            ConfigureMainPreview(loopSource, animator, clip);
                             previewSession.Sample(normalizedTime);
                             SampleTimelineVfx(clip, true);
                         }
@@ -1104,7 +1116,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
                     {
                         normalizedTime = 1f;
                         isPlaying = false;
-                        previewSession.Configure(animator, clip);
+                        ConfigureMainPreview(mainSource, animator, clip);
                         previewSession.Sample(normalizedTime);
                         SampleTimelineVfx(clip, false);
                     }
@@ -1112,7 +1124,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
                 else
                 {
                     normalizedTime = next;
-                    previewSession.Configure(animator, clip);
+                    ConfigureMainPreview(mainSource, animator, clip);
                     previewSession.Sample(normalizedTime);
                     SampleTimelineVfx(clip, false);
                 }
@@ -1351,8 +1363,32 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     }
     static AnimationClip GetCutsceneCameraClip(IAnimationVfxTimelineSource source)
     {
-        SkillGemDefinition skill = source?.SourceAsset as SkillGemDefinition;
-        return skill?.CutsceneDef?.cameraCutsceneClip;
+        return source?.SourceAsset switch
+        {
+            SkillGemDefinition skill => skill.CutsceneDef?.cameraCutsceneClip,
+            CutsceneDefSO cutscene => cutscene.cutscene?.cameraCutsceneClip,
+            _ => null,
+        };
+    }
+
+    void ConfigureMainPreview(
+        IAnimationVfxTimelineSource source,
+        Animator animator,
+        AnimationClip clip)
+    {
+        previewSession.Configure(animator, clip);
+        if (source?.SourceAsset is CutsceneDefSO)
+        {
+            AnimationClip cameraClip = GetCutsceneCameraClip(source);
+            Animator cameraAnimator = authoringTarget?.CutsceneCameraAnimator;
+            if (cameraClip != null && cameraAnimator != null)
+            {
+                previewSession.ConfigureSecondary(cameraAnimator, cameraClip);
+                return;
+            }
+        }
+
+        previewSession.ClearSecondary();
     }
 
     static StringAsset ResolveOrCreateEventNameAsset(CombatTimelineEventName eventName)

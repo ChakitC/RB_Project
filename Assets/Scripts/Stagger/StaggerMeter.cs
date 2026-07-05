@@ -142,6 +142,14 @@ public sealed class StaggerMeter : MonoBehaviour
         return true;
     }
 
+    internal void ResetRuntimeState()
+    {
+        currentStagger = 0f;
+        timeSinceLastGain = 0f;
+        ClearStaggerState();
+        NotifyMeterChanged();
+    }
+
     void ResolveRefs()
     {
         Transform actorRoot = ResolveActorRoot();

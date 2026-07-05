@@ -131,8 +131,9 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         if (!brain || !brain.RootMotionActive) return;
         if (!animator) return;
 
-        Vector3 delta = animator.deltaPosition;
-        if (zeroY || brain.RootMotionPlanarOnly) delta.y = 0f;
+        Vector3 delta = RootMotionDeltaUtility.GetPositionDelta(
+            animator,
+            zeroY || brain.RootMotionPlanarOnly);
 
         Transform actorRoot = ActorRoot;
         actorRoot.position += delta;
@@ -142,7 +143,7 @@ public class RootMotionNavMeshDriver : MonoBehaviour
 
         if (applyRootRotation || brain.RootMotionYawActive)
         {
-            float yawDelta = Mathf.DeltaAngle(0f, animator.deltaRotation.eulerAngles.y);
+            float yawDelta = RootMotionDeltaUtility.GetYawDelta(animator);
             actorRoot.rotation *= Quaternion.AngleAxis(yawDelta, Vector3.up);
         }
 

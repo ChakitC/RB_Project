@@ -595,6 +595,7 @@ MonoBehaviour:
   Visual: {fileID: 5135303409400166651}
   UIManager: {fileID: 0}
   ColliderRefs: {fileID: 0}
+  StatusEffects: {fileID: 0}
   levelSystem: {fileID: 8585106481643144049}
   HealthSystem: {fileID: 3886805759331930848}
   StaminaSystem: {fileID: 4917278530332384066}
@@ -1459,8 +1460,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animancer: {fileID: 2912202768560880375}
   ctx: {fileID: 3059205003566966071}
-  statusEffectController: {fileID: 1083789899064408605}
-  deactivateOwnerOnSkillExit: 0
   chainPlaybackWatchdogGraceSeconds: 0.15
   useRootMotionForChainPlayback: 0
   locomotionLayerIndex: 0
@@ -1803,7 +1802,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   fieldAllyMember: {fileID: 1692569504618657093}
   interruptionSkill:
-    skillAsset: {fileID: 11400000, guid: f6a8de83801770146923403b369c8797, type: 2}
+    skillAsset: {fileID: 11400000, guid: 762b42e521970fa45a8d258e7d1a3a65, type: 2}
     skillLevel: 1
     supportAssets: []
     runtimeSkill:
@@ -1817,10 +1816,28 @@ MonoBehaviour:
   knockbackDistance: 2
   knockbackDuration: 0.4
   knockbackReaction: 0
-  knockbackInterruptActions: 0
+  knockbackInterruptActions: 1
   knockbackProgressCurve:
     serializedVersion: 2
-    m_Curve: []
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
@@ -2197,6 +2214,12 @@ MonoBehaviour:
   combatEventBus: {fileID: 2948696378916355059}
   perfectDashSlowScale: 0.2
   perfectDashSlowDuration: 0.35
+  perfectDashSlowShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   perfectDashFreeAmmoDuration: 0.35
   perfectDodgeThreatLayers:
     serializedVersion: 2

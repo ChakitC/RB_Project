@@ -10,6 +10,7 @@ public sealed class CharacterOverheadBarsView : MonoBehaviour
     [SerializeField] private ChainReadyPromptView chainReadyPrompt;
 
     HealthSystem healthSystem;
+    ChainAttackTestTarget testTarget;
     StaggerMeter staggerMeter;
 
     public void Bind(HealthSystem health, StaggerMeter stagger)
@@ -17,8 +18,6 @@ public sealed class CharacterOverheadBarsView : MonoBehaviour
         Unbind();
 
         healthSystem = health;
-        staggerMeter = stagger;
-
         if (healthSystem != null)
         {
             healthSystem.HealthChanged += OnHealthChanged;
@@ -28,6 +27,31 @@ public sealed class CharacterOverheadBarsView : MonoBehaviour
         {
             SetSliderValue(healthSlider, 0f, 1f);
         }
+
+        BindStagger(stagger);
+    }
+
+    public void Bind(ChainAttackTestTarget target, StaggerMeter stagger)
+    {
+        Unbind();
+
+        testTarget = target;
+        if (testTarget != null)
+        {
+            testTarget.HealthChanged += OnHealthChanged;
+            OnHealthChanged(testTarget.CurrentHealth, testTarget.MaxHealth);
+        }
+        else
+        {
+            SetSliderValue(healthSlider, 0f, 1f);
+        }
+
+        BindStagger(stagger);
+    }
+
+    void BindStagger(StaggerMeter stagger)
+    {
+        staggerMeter = stagger;
 
         if (staggerRoot != null)
             staggerRoot.SetActive(staggerMeter != null);
@@ -50,11 +74,15 @@ public sealed class CharacterOverheadBarsView : MonoBehaviour
         if (healthSystem != null)
             healthSystem.HealthChanged -= OnHealthChanged;
 
+        if (testTarget != null)
+            testTarget.HealthChanged -= OnHealthChanged;
+
         if (staggerMeter != null)
             staggerMeter.MeterChanged -= OnStaggerChanged;
 
         chainReadyPrompt?.Bind(null);
         healthSystem = null;
+        testTarget = null;
         staggerMeter = null;
     }
 

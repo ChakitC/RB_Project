@@ -15,6 +15,7 @@ public readonly struct TargetedSkillPlacementResult
     public readonly Vector3 ImpactPosition;
     public readonly Quaternion ImpactRotation;
     public readonly float AcceptedYaw;
+    public readonly bool RequiresPositionSnap;
     public readonly string FailureReason;
 
     public bool IsValid => Mode != TargetedSkillPlacementMode.None;
@@ -27,6 +28,7 @@ public readonly struct TargetedSkillPlacementResult
         Vector3 impactPosition,
         Quaternion impactRotation,
         float acceptedYaw,
+        bool requiresPositionSnap,
         string failureReason)
     {
         Mode = mode;
@@ -35,12 +37,14 @@ public readonly struct TargetedSkillPlacementResult
         ImpactPosition = impactPosition;
         ImpactRotation = impactRotation;
         AcceptedYaw = acceptedYaw;
+        RequiresPositionSnap = requiresPositionSnap;
         FailureReason = failureReason;
     }
 
     public static TargetedSkillPlacementResult Legacy(
         Vector3 position,
-        Quaternion rotation)
+        Quaternion rotation,
+        bool requiresPositionSnap = true)
     {
         return new TargetedSkillPlacementResult(
             TargetedSkillPlacementMode.LegacyTeleport,
@@ -49,6 +53,7 @@ public readonly struct TargetedSkillPlacementResult
             position,
             rotation,
             0f,
+            requiresPositionSnap,
             null);
     }
 
@@ -57,7 +62,8 @@ public readonly struct TargetedSkillPlacementResult
         Quaternion startRotation,
         Vector3 impactPosition,
         Quaternion impactRotation,
-        float acceptedYaw)
+        float acceptedYaw,
+        bool requiresPositionSnap = true)
     {
         return new TargetedSkillPlacementResult(
             TargetedSkillPlacementMode.RootMotionTrajectory,
@@ -66,6 +72,7 @@ public readonly struct TargetedSkillPlacementResult
             impactPosition,
             impactRotation,
             acceptedYaw,
+            requiresPositionSnap,
             null);
     }
 
@@ -78,6 +85,7 @@ public readonly struct TargetedSkillPlacementResult
             Vector3.zero,
             Quaternion.identity,
             0f,
+            true,
             string.IsNullOrWhiteSpace(failureReason)
                 ? "Targeted skill placement failed."
                 : failureReason);

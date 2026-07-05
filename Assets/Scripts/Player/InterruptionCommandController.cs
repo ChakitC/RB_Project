@@ -35,6 +35,9 @@ public sealed class InterruptionCommandController : MonoBehaviour
     [Header("Player Interrupt")]
     [SerializeField, Min(0.5f)] private float playerInterruptRange = 4f;
 
+    [Header("No-Warp")]
+    [SerializeField, Min(0f)] private float noWarpStartDistance = 0.5f;
+
     [Header("Hold Tuning")]
     [SerializeField, Range(0f, 1f)] private float holdSpeedMultiplier = 0.1f;
     [SerializeField, Range(0f, 0.5f)] private float holdSafetyMargin = 0.08f;
@@ -96,7 +99,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
 
         if (playerClose)
         {
-            if (playerInterruptionController.TryResolvePlacement(targetAnchor, targetCtx.Transform, out var playerPlacement))
+            if (playerInterruptionController.TryResolvePlacement(targetAnchor, targetCtx.Transform, noWarpStartDistance, out var playerPlacement))
                 return ExecutePlayer(attemptId, targetCtx, targetAnchor, playerPlacement);
 
             LogCommand(attemptId, "player close but placement failed; falling back to ally");
@@ -118,7 +121,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
                 $"no ally available and player not ready; {allyDiagnostics}");
 
         LogCommand(attemptId, "no ally available; attempting player warp");
-        if (playerInterruptionController.TryResolvePlacement(targetAnchor, targetCtx.Transform, out var warpPlacement))
+        if (playerInterruptionController.TryResolvePlacement(targetAnchor, targetCtx.Transform, noWarpStartDistance, out var warpPlacement))
             return ExecutePlayer(attemptId, targetCtx, targetAnchor, warpPlacement);
 
         return Finish(attemptId, InterruptionCommandResult.TeleportFailed,
@@ -333,6 +336,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
         }
 
         float bestDist = float.MaxValue;
+        bool bestNoWarp = false;
         Vector3 targetPos = targetAnchor != null ? targetAnchor.position : Vector3.zero;
         int registeredCount = 0;
         int missingControllerCount = 0;
@@ -362,6 +366,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
             if (!ctrl.TryResolvePlacement(
                     targetAnchor,
                     targetRoot,
+                    noWarpStartDistance,
                     out TargetedSkillPlacementResult placement))
             {
                 noSafePoseCount++;
@@ -378,9 +383,20 @@ public sealed class InterruptionCommandController : MonoBehaviour
             candidateCount++;
             Transform allyTransform = member.TransformRef;
             float dist = allyTransform != null ? Vector3.Distance(targetPos, allyTransform.position) : float.MaxValue;
-            if (dist < bestDist)
+            bool candidateNoWarp = !placement.RequiresPositionSnap;
+
+            bool better;
+            if (!bestCandidate.IsValid)
+                better = true;
+            else if (candidateNoWarp != bestNoWarp)
+                better = candidateNoWarp;
+            else
+                better = dist < bestDist;
+
+            if (better)
             {
                 bestDist = dist;
+                bestNoWarp = candidateNoWarp;
                 bestCandidate = new AllyCandidate(ctrl, member, placement);
             }
         }

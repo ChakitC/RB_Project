@@ -446,11 +446,12 @@ internal sealed class TargetedSkillRootMotionCollector : MonoBehaviour
         if (animator == null)
             return;
 
-        Vector3 deltaPosition = animator.deltaPosition;
-        deltaPosition.y = 0f;
+        Vector3 deltaPosition = RootMotionDeltaUtility.GetPositionDelta(
+            animator,
+            suppressY: true);
 
         AccumulatedPosition += deltaPosition;
-        AccumulatedYaw += Mathf.DeltaAngle(0f, animator.deltaRotation.eulerAngles.y);
+        AccumulatedYaw += RootMotionDeltaUtility.GetYawDelta(animator);
         CallbackCount++;
 
         transform.SetPositionAndRotation(

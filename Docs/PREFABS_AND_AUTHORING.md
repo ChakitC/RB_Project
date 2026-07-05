@@ -655,6 +655,27 @@ Enemy prefabs commonly need:
 Enemy-only systems may depend on `EnemyContext` when they need enemy-specific
 fields.
 
+### ChainAttack Test Target
+
+Use `ChainAttackTestTarget` for a standalone ChainAttack and ChainReady target
+without a full enemy prefab:
+
+1. Add `ChainAttackTestTarget` to a GameObject. Unity also adds the required
+   `BoxCollider`, kinematic `Rigidbody`, and `StaggerMeter`.
+2. Set the inherited `AITargetInfo` Target Identity to `Enemy`.
+3. Optionally assign inherited Aim Point and Chain Attack Point transforms.
+   When unassigned, the component transform is used.
+4. Assign `Assets/UI/CharacterOverheadBars.prefab` to Overhead Bars Prefab.
+   The target binds its test HP, stagger meter, and ChainReady prompt to the
+   shared UI. Adjust Overhead Bars Offset when the model height differs.
+5. In Play Mode, damage the target with stagger payloads or use
+   `Force ChainReady`, aim at it, and press **F**.
+6. Use `Reset Target` to restore health, targetability, and stagger state.
+
+The target cannot receive lethal damage while ChainReady or a chain execution
+is active by default. Disable `preventDeathDuringChainReady` only when testing
+chain cancellation caused by target death.
+
 ### ChainReady Prompt
 
 `Assets/UI/CharacterOverheadBars.prefab` includes `ChainReadyPromptView` and a
@@ -832,6 +853,10 @@ task.
 - Bind `playerInterruptionController` on `InterruptionCommandController`
   (or let `Awake` resolve it from the same object, parent, or children).
 - Set `playerInterruptRange` on `InterruptionCommandController` (default 4 m).
+- Set `noWarpStartDistance` on `InterruptionCommandController` (default `0.5`
+  m, `Min(0)`). When the executing Player or Ally is already within this XZ
+  distance of the resolved start pose, it snaps rotation only (no position
+  jump, no hide/fade). `0` disables no-warp and always uses the warp flow.
 - Keep `logInterruptionFlow` disabled for normal play. Enable it on the test
   scene instance when diagnosing command target/ally/player selection.
 

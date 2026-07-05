@@ -105,6 +105,15 @@ public sealed class PlayerInterruptionController : MonoBehaviour
         Transform targetRoot,
         out TargetedSkillPlacementResult result)
     {
+        return TryResolvePlacement(targetAnchor, targetRoot, 0f, out result);
+    }
+
+    public bool TryResolvePlacement(
+        Transform targetAnchor,
+        Transform targetRoot,
+        float noWarpStartDistance,
+        out TargetedSkillPlacementResult result)
+    {
         ResolveRefs();
         if (teleportProfile == null)
         {
@@ -158,7 +167,8 @@ public sealed class PlayerInterruptionController : MonoBehaviour
             _actorTransform,
             targetRoot,
             out result,
-            preferredActorPosition: _actorTransform != null ? _actorTransform.position : (Vector3?)null);
+            preferredActorPosition: _actorTransform != null ? _actorTransform.position : (Vector3?)null,
+            noWarpStartDistance: noWarpStartDistance);
 
         if (resolved)
         {
@@ -225,7 +235,8 @@ public sealed class PlayerInterruptionController : MonoBehaviour
             $"startPosition={placementResult.StartPosition}");
 
         SuspendPlayerMovement();
-        HideVisualForSnap();
+        if (placementResult.RequiresPositionSnap)
+            HideVisualForSnap();
         ApplyActorPose(placementResult.StartPosition, placementResult.StartRotation);
         if (!placementResult.UsesRootMotion)
             FaceTarget();

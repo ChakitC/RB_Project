@@ -1,6 +1,6 @@
 {
     "maxSlotCount": 0,
-    "gold": 963328,
+    "gold": 963329,
     "scrap": 450,
     "slots": [
         {
@@ -26,9 +26,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 25932,
-                "currentMagazine": 64,
-                "currentReserveAmmo": 600,
+                "shotCounter": 26968,
+                "currentMagazine": 0,
+                "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 16,
                 "upgradeTier": 1,
@@ -136,9 +136,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 22842,
-                "currentMagazine": 28,
-                "currentReserveAmmo": 300,
+                "shotCounter": 23130,
+                "currentMagazine": 29,
+                "currentReserveAmmo": 44,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
                 "upgradeTier": 2,
@@ -309,9 +309,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 21847,
+                "shotCounter": 22321,
                 "currentMagazine": 0,
-                "currentReserveAmmo": 300,
+                "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -1241,8 +1241,8 @@
             }
         },
         {
-            "itemId": "",
-            "amount": 0,
+            "itemId": "Accessory.FenosFieldPack",
+            "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
                 "baseWeaponId": "",
@@ -1265,8 +1265,8 @@
                 "unlockedUpgradeMilestoneIds": []
             },
             "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
+                "instanceId": "acc_83cbeee4aa114051a4e82cd0cb7a34cf",
+                "accessoryId": "Accessory.FenosFieldPack",
                 "modifierId": "",
                 "upgradeLevel": 0
             }

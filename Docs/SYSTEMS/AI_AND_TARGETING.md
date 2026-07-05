@@ -235,6 +235,37 @@ outcome.
 `InterruptionExecutorKind` (Ally / Player) is set on
 `InterruptionCommandExecution` so subscribers can distinguish the executor.
 
+### No-Warp Current-Pose Placement
+
+The resolver (`TargetedSkillPlacementResolver.TryResolve`) still computes the
+ideal placement first (root-motion or legacy). When the caller passes a
+`noWarpStartDistance > 0` together with the actor's current position, the
+resolver then checks whether the actor is already within that XZ distance of
+the ideal start pose. If so, it re-validates the same
+obstacle/sweep/NavMesh/trajectory checks (`ValidateTrajectory`,
+`IsProbePoseClear`, `IsProbePoseOnNavMesh`) from the actor's current position
+instead of the ideal one. When that check passes, the result carries
+`RequiresPositionSnap = false`: the actor keeps its current position (only Y
+comes from the current pose) and snaps rotation to the ideal `startRotation`,
+so it turns into the attack angle immediately without a positional jump. When
+the actor is outside the threshold, or the current-pose check fails (e.g. an
+obstacle blocks the trajectory from there), the resolver falls back to the
+original ideal placement with `RequiresPositionSnap = true` (the existing warp
+flow, including `HideVisualForSnap`/fade).
+
+`InterruptionCommandController` exposes this threshold as
+`noWarpStartDistance` (default `0.5`m; `0` disables no-warp and always warps).
+It is forwarded to both `PlayerInterruptionController.TryResolvePlacement` and
+`AllyInterruptionController.TryResolvePlacement` overloads that accept it.
+Ally selection in `TrySelectAlly` prefers any candidate that does not require
+a position snap over one that does, even if the warping candidate is closer
+to the target; ties within the same warp/no-warp group are broken by distance
+as before.
+
+Chain Attack (`FieldAllyTransitionController`) does not pass
+`preferredActorPosition`/`noWarpStartDistance` to the resolver, so it keeps
+the default `noWarpStartDistance = 0` and its behavior is unchanged.
+
 ### Flow — Ally Path
 
 1. `InterruptionCommandController` (on the player) searches near

@@ -96,14 +96,15 @@ public class RootMotionCCDriver : MonoBehaviour
 
         SyncCharacterCollisionPolicy();
 
-        Vector3 delta = animator.deltaPosition;
-        if (zeroY || brain.RootMotionPlanarOnly) delta.y = 0f;
+        Vector3 delta = RootMotionDeltaUtility.GetPositionDelta(
+            animator,
+            zeroY || brain.RootMotionPlanarOnly);
 
         cc.Move(delta);
 
         if (applyRootRotation || brain.RootMotionYawActive)
         {
-            float yawDelta = Mathf.DeltaAngle(0f, animator.deltaRotation.eulerAngles.y);
+            float yawDelta = RootMotionDeltaUtility.GetYawDelta(animator);
             Transform actorRoot = cc.transform;
             actorRoot.rotation *= Quaternion.AngleAxis(yawDelta, Vector3.up);
         }

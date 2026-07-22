@@ -42,7 +42,7 @@ MonoBehaviour:
   baseStaggerPower: 10
   baseManaCost: 0
   baseCastTime: 0.5
-  baseCooldown: 2
+  baseCooldown: 5
   baseCritChance: 5
   baseProjectilesCount: 1
   projectileSpeed: 25
@@ -67,6 +67,7 @@ MonoBehaviour:
       - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
     _Clip: {fileID: 7218412512397633768, guid: 5035feff0922f894bb9fdcfe0bbe8b54, type: 3}
     _NormalizedStartTime: NaN
+  ignoreCharacterCollisionDuringRootMotion: 1
   castPointNormalized: 0.4594248
   skillVfxEvents:
   - cueIndex: 0
@@ -83,6 +84,14 @@ MonoBehaviour:
     extraLife: 0
     allowParticlesToFinish: 1
     animClip: {fileID: 0}
+  hitLagDuration: 0.06
+  hitLagTimeScale: 0.05
+  hitLagShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   isCutsceneSkill: 0
   cutsceneDef:
     characterCutsceneClip:

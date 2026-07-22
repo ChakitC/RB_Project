@@ -37,6 +37,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
 
     [Header("No-Warp")]
     [SerializeField, Min(0f)] private float noWarpStartDistance = 0.5f;
+    [SerializeField, Min(0f)] private float noWarpTargetDistance = 1.5f;
 
     [Header("Hold Tuning")]
     [SerializeField, Range(0f, 1f)] private float holdSpeedMultiplier = 0.1f;
@@ -99,7 +100,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
 
         if (playerClose)
         {
-            if (playerInterruptionController.TryResolvePlacement(targetAnchor, targetCtx.Transform, noWarpStartDistance, out var playerPlacement))
+            if (playerInterruptionController.TryResolvePlacement(targetAnchor, targetCtx.Transform, noWarpStartDistance, noWarpTargetDistance, out var playerPlacement))
                 return ExecutePlayer(attemptId, targetCtx, targetAnchor, playerPlacement);
 
             LogCommand(attemptId, "player close but placement failed; falling back to ally");
@@ -121,7 +122,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
                 $"no ally available and player not ready; {allyDiagnostics}");
 
         LogCommand(attemptId, "no ally available; attempting player warp");
-        if (playerInterruptionController.TryResolvePlacement(targetAnchor, targetCtx.Transform, noWarpStartDistance, out var warpPlacement))
+        if (playerInterruptionController.TryResolvePlacement(targetAnchor, targetCtx.Transform, noWarpStartDistance, noWarpTargetDistance, out var warpPlacement))
             return ExecutePlayer(attemptId, targetCtx, targetAnchor, warpPlacement);
 
         return Finish(attemptId, InterruptionCommandResult.TeleportFailed,
@@ -367,6 +368,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
                     targetAnchor,
                     targetRoot,
                     noWarpStartDistance,
+                    noWarpTargetDistance,
                     out TargetedSkillPlacementResult placement))
             {
                 noSafePoseCount++;

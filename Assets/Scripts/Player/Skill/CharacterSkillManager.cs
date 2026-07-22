@@ -1360,6 +1360,7 @@ public sealed class SkillCastOrchestrator
         pendingCast = null;
         Unsubscribe(context.AnimationDriver);
         CancelPendingCastRequest(context, stopAnimation: reason != SkillCastCancelReason.AnimationInterrupted);
+        StampCooldownForBlockedPreCast(context, reason);
         CastCancelled?.Invoke(context.ToInfo(), reason);
     }
 
@@ -1641,6 +1642,24 @@ public sealed class SkillCastOrchestrator
         }
 
         return false;
+    }
+
+    private void StampCooldownForBlockedPreCast(PendingCastContext context, SkillCastCancelReason reason)
+    {
+        if (reason != SkillCastCancelReason.Blocked)
+            return;
+
+        if (context == null ||
+            context.Released ||                 // defensive: block path already guards this
+            !context.Request.StampCooldown ||   // respects stampCooldown:false interruption paths
+            context.RuntimeSkill == null ||
+            context.SkillUser == null)
+        {
+            return;
+        }
+
+        if (context.RuntimeSkill.TryStampCooldownOnly(context.SkillUser, out FinalSkillStats stats))
+            StampSharedCooldown(context.RuntimeSkill, stats);
     }
 
     private void StampSharedCooldown(SkillInstance skill, FinalSkillStats stats)

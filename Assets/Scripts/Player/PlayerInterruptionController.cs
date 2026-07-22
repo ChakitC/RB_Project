@@ -105,13 +105,14 @@ public sealed class PlayerInterruptionController : MonoBehaviour
         Transform targetRoot,
         out TargetedSkillPlacementResult result)
     {
-        return TryResolvePlacement(targetAnchor, targetRoot, 0f, out result);
+        return TryResolvePlacement(targetAnchor, targetRoot, 0f, 0f, out result);
     }
 
     public bool TryResolvePlacement(
         Transform targetAnchor,
         Transform targetRoot,
         float noWarpStartDistance,
+        float noWarpTargetDistance,
         out TargetedSkillPlacementResult result)
     {
         ResolveRefs();
@@ -168,7 +169,8 @@ public sealed class PlayerInterruptionController : MonoBehaviour
             targetRoot,
             out result,
             preferredActorPosition: _actorTransform != null ? _actorTransform.position : (Vector3?)null,
-            noWarpStartDistance: noWarpStartDistance);
+            noWarpStartDistance: noWarpStartDistance,
+            noWarpTargetDistance: noWarpTargetDistance);
 
         if (resolved)
         {

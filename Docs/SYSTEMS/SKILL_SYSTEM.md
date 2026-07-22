@@ -464,10 +464,13 @@ command:
    preventing duplicate commands.
 2. **`CompleteReservedBlock`**: releases the hold and calls
    `TryCancelActiveCast(Blocked)` via the shared `DoBlockInternal` core.
-   Fires `CastBlocked` once on success.
+   Fires `CastBlocked` once on success. A confirmed block (direct `TryBlockCast`
+   or via `CompleteReservedBlock`) consumes the blocked skill's cooldown (see
+   `stampCooldown` below), so the enemy cannot immediately retry the same skill.
 3. **`CancelReservedBlock`**: releases the hold without cancelling the enemy
    cast. If the same unreleased cast is still active, its pre-cast window and
-   presentation are reopened.
+   presentation are reopened. This path does **not** stamp cooldown, since the
+   cast was never actually cancelled.
 
 If the enemy's cast is cancelled externally while reserved, `OnCastCancelled`
 releases the hold and clears the reservation (no double-block). If the cast
@@ -492,6 +495,14 @@ behalf of a character without going through the loadout/slot path:
   after a successful cast, so the skill's personal cooldown is not consumed
   (used by player interruption to avoid affecting the main skill cooldown).
   Both parameters default to the backward-compatible values (`false` / `true`).
+  A pending cast cancelled with `SkillCastCancelReason.Blocked` (enemy pre-cast
+  block, see Two-Phase Reservation Block above) also stamps cooldown at the
+  moment of the block, unless `stampCooldown` is `false` for that request.
+  Energy and the skill payload are not spent/executed in this case, since cast
+  point was never reached — only the per-instance and shared cooldowns are
+  consumed, exactly as if the cast had completed at the block moment. Other
+  cancel reasons (`Stunned`, `Staggered`, `AnimationInterrupted`, `Disabled`,
+  `CharacterDown`, `CharacterDead`, `InvalidState`) never stamp cooldown.
   Planar translation and yaw are scoped to that animation request and are
   cleared on normal completion, interruption, disable, or destruction.
 

@@ -857,6 +857,12 @@ task.
   m, `Min(0)`). When the executing Player or Ally is already within this XZ
   distance of the resolved start pose, it snaps rotation only (no position
   jump, no hide/fade). `0` disables no-warp and always uses the warp flow.
+- Set `noWarpTargetDistance` on `InterruptionCommandController` (default
+  `1.5` m, `Min(0)`). Fallback tier used when the actor is not close enough
+  to the ideal start pose (above) but is already within this XZ distance of
+  the target anchor: the actor attacks in place (root motion disabled, no
+  warp) instead of teleporting back to the ideal start. `0` disables this
+  fallback.
 - Keep `logInterruptionFlow` disabled for normal play. Enable it on the test
   scene instance when diagnosing command target/ally/player selection.
 

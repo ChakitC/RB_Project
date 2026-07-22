@@ -133,6 +133,23 @@ public class SkillInstance
         return ExecuteCast(user, stats, spendEnergy: false, animBrain, requestId, stampCooldown);
     }
 
+    /// <summary>
+    /// Stamps ONLY the per-instance cooldown (no energy spend, no support OnCast, no payload).
+    /// Used when a pre-cast cast is blocked/interrupted before cast point but should still
+    /// consume its cooldown. Returns the computed stats so the caller can also stamp any
+    /// shared (per-definition) cooldown.
+    /// </summary>
+    public bool TryStampCooldownOnly(ISkillUser user, out FinalSkillStats stats)
+    {
+        stats = null;
+        if (def == null || user == null)
+            return false;
+
+        stats = GetFinalStats(user);
+        _lastCastTime = Time.time;
+        return true;
+    }
+
     bool ExecuteCast(
         ISkillUser user,
         FinalSkillStats stats,

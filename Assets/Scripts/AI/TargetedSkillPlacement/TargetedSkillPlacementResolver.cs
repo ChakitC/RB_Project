@@ -19,7 +19,8 @@ internal static class TargetedSkillPlacementResolver
         Transform targetRoot,
         out TargetedSkillPlacementResult result,
         Vector3? preferredActorPosition = null,
-        float noWarpStartDistance = 0f)
+        float noWarpStartDistance = 0f,
+        float noWarpTargetDistance = 0f)
     {
         if (profile == null)
         {
@@ -83,6 +84,13 @@ internal static class TargetedSkillPlacementResolver
             {
                 result = noWarpLegacy;
             }
+            else if (TryBuildNoWarpInPlace(
+                    profile, targetAnchor, preferredActorPosition, noWarpTargetDistance,
+                    requireNavMesh, navMeshSampleDistance, probeCollider, probeRoot, targetRoot,
+                    out TargetedSkillPlacementResult inPlaceLegacy))
+            {
+                result = inPlaceLegacy;
+            }
             return true;
         }
 
@@ -125,6 +133,13 @@ internal static class TargetedSkillPlacementResolver
                 out TargetedSkillPlacementResult noWarpRoot))
         {
             result = noWarpRoot;
+        }
+        else if (TryBuildNoWarpInPlace(
+                profile, targetAnchor, preferredActorPosition, noWarpTargetDistance,
+                requireNavMesh, navMeshSampleDistance, probeCollider, probeRoot, targetRoot,
+                out TargetedSkillPlacementResult inPlaceRoot))
+        {
+            result = inPlaceRoot;
         }
         return true;
     }
@@ -482,6 +497,47 @@ internal static class TargetedSkillPlacementResolver
             return false;
 
         result = TargetedSkillPlacementResult.Legacy(currentPos, legacyRotation, requiresPositionSnap: false);
+        return true;
+    }
+
+    static bool TryBuildNoWarpInPlace(
+        ChainAttackTeleportProfileDef profile,
+        Transform anchorTransform,
+        Vector3? preferredActorPosition,
+        float noWarpTargetDistance,
+        bool requireNavMesh,
+        float navMeshSampleDistance,
+        Collider probeCollider,
+        Transform probeRoot,
+        Transform targetRoot,
+        out TargetedSkillPlacementResult result)
+    {
+        result = default;
+
+        if (noWarpTargetDistance <= 0f || !preferredActorPosition.HasValue || anchorTransform == null)
+            return false;
+
+        Vector3 currentPos = preferredActorPosition.Value;
+        if (PlanarDistance(currentPos, anchorTransform.position) > noWarpTargetDistance)
+            return false;
+
+        Vector3 lookDir = anchorTransform.position - currentPos;
+        lookDir.y = 0f;
+        Quaternion rotation = lookDir.sqrMagnitude > 0.0001f
+            ? Quaternion.LookRotation(lookDir.normalized, Vector3.up)
+            : (probeRoot != null ? PlanarRotation(probeRoot.rotation) : Quaternion.identity);
+
+        if (!ChainAttackTeleportUtility.IsProbePoseClear(
+                profile, currentPos, rotation, probeCollider, probeRoot, targetRoot))
+            return false;
+
+        if (requireNavMesh &&
+            !ChainAttackTeleportUtility.IsProbePoseOnNavMesh(
+                profile, currentPos, rotation, probeCollider, probeRoot, navMeshSampleDistance))
+            return false;
+
+        result = TargetedSkillPlacementResult.Legacy(currentPos, rotation, requiresPositionSnap: false);
+        Log(profile, $"No-warp in-place (near target) accepted: pos={currentPos}.");
         return true;
     }
 

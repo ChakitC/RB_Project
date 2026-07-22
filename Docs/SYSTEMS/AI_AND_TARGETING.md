@@ -262,9 +262,37 @@ a position snap over one that does, even if the warping candidate is closer
 to the target; ties within the same warp/no-warp group are broken by distance
 as before.
 
+#### No-Warp In-Place (Near Target) Fallback
+
+If the actor does not qualify for the ideal-start no-warp above (e.g. the
+skill has a long lunge so the ideal start pose is far away) but is already
+within `noWarpTargetDistance` (XZ) of the target anchor, the resolver falls
+back to a second no-warp tier: it accepts the actor's current pose as a
+**Legacy** placement (`UsesRootMotion == false`, `RequiresPositionSnap ==
+false`), facing the anchor, after the same obstacle/NavMesh checks (allowing
+overlap with the target itself). Because the result is `Legacy`, the
+controllers start the skill with `usePlanarRootMotion: false`, so the actor
+plays the attack in place instead of driving root motion forward and
+overshooting past the target it is already hugging.
+
+Precedence order (evaluated in this order per branch, root-motion or legacy):
+1. Actor within `noWarpStartDistance` of the ideal start pose → no-warp
+   root-motion/legacy (full animation trajectory kept).
+2. Actor not within (1) but within `noWarpTargetDistance` of the target
+   anchor → in-place Legacy fallback (root motion disabled, no warp, no
+   fade).
+3. Neither → original warp flow (`HideVisualForSnap` → snap to ideal start →
+   fade in).
+
+`noWarpTargetDistance = 0` disables the in-place fallback entirely (tier 1
+and tier 3 behave exactly as before this addition). Ally selection in
+`TrySelectAlly` treats in-place candidates as no-warp candidates (via
+`RequiresPositionSnap == false`), so they win over warp candidates using the
+same tie-break described above.
+
 Chain Attack (`FieldAllyTransitionController`) does not pass
-`preferredActorPosition`/`noWarpStartDistance` to the resolver, so it keeps
-the default `noWarpStartDistance = 0` and its behavior is unchanged.
+`preferredActorPosition`/`noWarpStartDistance`/`noWarpTargetDistance` to the
+resolver, so it keeps the defaults (`0`) and its behavior is unchanged.
 
 ### Flow — Ally Path
 

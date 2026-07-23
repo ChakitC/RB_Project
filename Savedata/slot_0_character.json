@@ -8,7 +8,11 @@
                 "unlocked": false,
                 "skillPoints": 29,
                 "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": []
+                "unlockedPassiveNodeIds": [],
+                "selectedSkillOptions": [],
+                "activeSkillPoints": 29,
+                "activeSkillProgressInitialized": true,
+                "activeSkillTrees": []
             }
         },
         {
@@ -19,7 +23,11 @@
                 "unlocked": false,
                 "skillPoints": 29,
                 "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": []
+                "unlockedPassiveNodeIds": [],
+                "selectedSkillOptions": [],
+                "activeSkillPoints": 0,
+                "activeSkillProgressInitialized": false,
+                "activeSkillTrees": []
             }
         },
         {
@@ -30,7 +38,11 @@
                 "unlocked": false,
                 "skillPoints": 29,
                 "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": []
+                "unlockedPassiveNodeIds": [],
+                "selectedSkillOptions": [],
+                "activeSkillPoints": 0,
+                "activeSkillProgressInitialized": false,
+                "activeSkillTrees": []
             }
         },
         {
@@ -41,7 +53,11 @@
                 "unlocked": false,
                 "skillPoints": 21,
                 "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": []
+                "unlockedPassiveNodeIds": [],
+                "selectedSkillOptions": [],
+                "activeSkillPoints": 29,
+                "activeSkillProgressInitialized": true,
+                "activeSkillTrees": []
             }
         },
         {
@@ -52,7 +68,11 @@
                 "unlocked": false,
                 "skillPoints": 29,
                 "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": []
+                "unlockedPassiveNodeIds": [],
+                "selectedSkillOptions": [],
+                "activeSkillPoints": 0,
+                "activeSkillProgressInitialized": false,
+                "activeSkillTrees": []
             }
         },
         {
@@ -63,7 +83,23 @@
                 "unlocked": false,
                 "skillPoints": 29,
                 "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": []
+                "unlockedPassiveNodeIds": [],
+                "selectedSkillOptions": [],
+                "activeSkillPoints": 28,
+                "activeSkillProgressInitialized": true,
+                "activeSkillTrees": [
+                    {
+                        "slotId": "0",
+                        "optionId": "Aires.Skill.1",
+                        "treeId": "Aires_Skill_1.1_Tree",
+                        "unlockedNodes": [
+                            {
+                                "nodeId": "Aires_1",
+                                "paidCost": 1
+                            }
+                        ]
+                    }
+                ]
             }
         },
         {
@@ -74,7 +110,11 @@
                 "unlocked": false,
                 "skillPoints": 29,
                 "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": []
+                "unlockedPassiveNodeIds": [],
+                "selectedSkillOptions": [],
+                "activeSkillPoints": 29,
+                "activeSkillProgressInitialized": true,
+                "activeSkillTrees": []
             }
         },
         {
@@ -85,7 +125,11 @@
                 "unlocked": false,
                 "skillPoints": 9,
                 "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": []
+                "unlockedPassiveNodeIds": [],
+                "selectedSkillOptions": [],
+                "activeSkillPoints": 29,
+                "activeSkillProgressInitialized": true,
+                "activeSkillTrees": []
             }
         }
     ]

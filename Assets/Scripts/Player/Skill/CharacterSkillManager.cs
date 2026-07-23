@@ -22,6 +22,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     }
 
     private CharacteContext ctx;
+    private CharacterActiveSkillProgress activeSkillProgress;
     private CharacterAnimBrain animBrain;
     private CharacterAnimDriver animDriver;
     private WeaponSystem weaponSystem;
@@ -88,6 +89,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     private void OnEnable()
     {
         CacheReferences();
+        SubscribeToActiveSkillProgress();
 
         if (ctx != null && ctx.HealthSystem != null)
         {
@@ -98,6 +100,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     private void OnDisable()
     {
+        UnsubscribeFromActiveSkillProgress();
+
         if (ctx != null && ctx.HealthSystem != null)
         {
             ctx.HealthSystem.CharacterDown -= OnCharacterDown;
@@ -525,12 +529,14 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     private static SkillInstance CreateRuntimeSkill(
         SkillGemDefinition asset,
         SupportGemDefinition[] supportAssets,
-        int resolvedSkillLevel)
+        int resolvedSkillLevel,
+        SkillUpgradeStatSnapshot upgradeSnapshot = null)
     {
         var instance = new SkillInstance
         {
             def = asset,
             level = resolvedSkillLevel,
+            upgradeSnapshot = upgradeSnapshot,
         };
 
         if (supportAssets == null)
@@ -676,6 +682,15 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         if (ctx == null)
             return;
+
+        CharacterActiveSkillProgress resolvedProgress = ctx.ActiveSkillProgress;
+        if (activeSkillProgress != resolvedProgress)
+        {
+            UnsubscribeFromActiveSkillProgress();
+            activeSkillProgress = resolvedProgress;
+            if (isActiveAndEnabled)
+                SubscribeToActiveSkillProgress();
+        }
 
         if (ctx.stateHub == null)
             ctx.stateHub = ctx.GetComponentInChildren<StateHub>(true);
@@ -851,7 +866,12 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         state.selectedOption = option;
         state.selectedOptionIndex = optionIndex;
-        ApplySkillOptionToSlot(state.slot, state.statsSlot, option);
+        ApplySkillOptionToSlot(
+            state.slot,
+            state.statsSlot,
+            option,
+            state.slotId,
+            ResolveOptionId(option, optionIndex));
     }
 
     private static bool IsCurrentSelectedSkillOption(
@@ -873,7 +893,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     private void ApplySkillOptionToSlot(
         SkillSlot slot,
         CharacterSkillLoadoutSlot statsSlot,
-        CharacterSkillLoadoutOption option)
+        CharacterSkillLoadoutOption option,
+        string slotId,
+        string optionId)
     {
         if (slot == null)
             return;
@@ -887,10 +909,55 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
 
         slot.skillAsset = option.skillAsset;
-        slot.skillLevel = Mathf.Max(1, option.skillLevel);
+        SkillUpgradeTreeDefinition upgradeTree = option.ResolvedUpgradeTree;
+        SkillUpgradeStatSnapshot upgradeSnapshot = activeSkillProgress != null && upgradeTree != null
+            ? activeSkillProgress.BuildSnapshot(slotId, optionId, upgradeTree)
+            : null;
+
+        int levelDelta = upgradeSnapshot != null ? upgradeSnapshot.SkillLevelDelta : 0;
+        slot.skillLevel = option.skillAsset.ClampLevel(Mathf.Max(1, option.skillLevel) + levelDelta);
         slot.supportAssets = option.supportAssets;
         slot.maxSupportSlots = Mathf.Max(0, option.maxSupportSlots);
-        slot.runtimeSkill = BuildRuntimeSkill(slot, slot.skillAsset, slot.skillLevel);
+        slot.runtimeSkill = CreateRuntimeSkill(
+            slot.skillAsset,
+            slot.supportAssets,
+            slot.skillLevel,
+            upgradeSnapshot);
+    }
+
+    private void SubscribeToActiveSkillProgress()
+    {
+        if (activeSkillProgress == null)
+            return;
+
+        activeSkillProgress.TreeChanged -= HandleActiveSkillTreeChanged;
+        activeSkillProgress.TreeChanged += HandleActiveSkillTreeChanged;
+    }
+
+    private void UnsubscribeFromActiveSkillProgress()
+    {
+        if (activeSkillProgress != null)
+            activeSkillProgress.TreeChanged -= HandleActiveSkillTreeChanged;
+    }
+
+    private void HandleActiveSkillTreeChanged(string slotId, string optionId)
+    {
+        if (!TryGetCommandSlotState(slotId, out ResolvedCommandSlotState state) ||
+            state.selectedOption == null ||
+            !string.Equals(
+                ResolveOptionId(state.selectedOption, state.selectedOptionIndex),
+                optionId,
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        ApplySkillOptionToSlot(
+            state.slot,
+            state.statsSlot,
+            state.selectedOption,
+            state.slotId,
+            optionId);
     }
 
     private static void ClearRuntimeSlot(SkillSlot slot)

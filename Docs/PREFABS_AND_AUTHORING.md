@@ -914,3 +914,83 @@ task.
   playhead before this event fires.
 - Keep `logPreCastFlow` disabled for normal play. Enable it on the test scene
   instance to trace the cast window and block reservation lifecycle.
+
+## Active Skill Screen
+
+Generate the placeholder uGUI/TMP assets with **Tools > RB > Skills > Build
+Active Skill Placeholder Prefabs**. The generated assets are:
+
+- `Assets/Prefab/User Interface/Active Skill/ActiveSkillScreen.prefab`
+- pooled Slot Tab, Variant Card, Upgrade Node, and Tree Connection prefabs in
+  the same folder
+- `Assets/UI/Active Skill/SkillScreenTheme.asset`
+
+The screen uses a 1920 x 1080 Canvas reference with `Scale With Screen Size`
+and a 0.5 width/height match. The runtime tree opens fitted to the complete
+graph. Scroll the mouse wheel anywhere in the tree viewport to zoom toward the
+pointer, from the current fit scale up to an absolute scale of `2.0`. Drag the
+empty viewport background with the left mouse button to pan; drags that start on
+a node or button remain UI interactions. Pan is hard-clamped to the scaled graph
+bounds plus fit padding, and an axis remains centered when its graph bounds are
+smaller than the viewport.
+
+`FIT TREE` resets only the current pan and zoom. Hover it to show the mouse
+controls. Selecting or unlocking a node preserves the current view, while
+opening the screen or changing the selected slot/variant fits the new tree.
+Viewport-size changes recompute the fit limit and clamp the preserved view.
+The tree canvas intentionally does not use `ScrollRect`. Check the screen
+manually at 1280 x 720, 1920 x 1080, and 2560 x 1440. Input is mouse-only.
+
+Author node positions in the Active Skill Tree Editor as they should appear on
+screen. `uiPosition` stores the center of each node. The editor uses GraphView
+coordinates with positive Y pointing down; the runtime tree converts them to
+centered uGUI coordinates with positive Y pointing up. Do not invert node Y
+values manually in the tree asset.
+
+Set a node's **Visual Scale** between `1.0` and `2.0` to enlarge it from the
+normal 96 x 96 runtime size up to 192 x 192. Scale affects presentation only;
+cost, prerequisites, effects, and saved progress do not change. Runtime auto-fit
+includes the scaled node bounds. Tree validation warns when node bounds overlap.
+
+Bind a gameplay character with `ActiveSkillScreenController.BindRuntime(ctx)`;
+opening the screen enters the Pause UI state and Back restores the previous
+state. Bind a lobby character definition with `BindLobby(characterStats)`;
+the lobby path reads and writes the same character progress repository without
+changing time state. The screen deliberately contains no character roster.
+`PlayerUIContext.activeSkillScreen` can hold the scene/prefab reference used by
+the caller.
+
+Author the normal Tree on the `SkillGemDefinition` asset under **Active Skill
+Tree > Upgrade Tree**. A `CharacterSkillLoadoutOption` automatically uses that
+Tree. Set **Upgrade Tree Override** on the Variant only when the same Skill Asset
+needs a different graph in that particular loadout option. Leaving both fields
+empty produces the screen's `No Active Skill Tree assigned to this variant.`
+state. Existing Variant Tree references from the earlier schema migrate to the
+override field through `FormerlySerializedAs`.
+
+For participating Player and Companion prefabs, keep one
+`CharacterActiveSkillProgress` on the context root. `CharacteContext` resolves
+it as the common `ActiveSkillProgress` reference and can add the component at
+runtime for backward-compatible prefabs. New or updated prefabs should bind it
+explicitly so the dependency is visible to authors.
+
+### Replacing Placeholder Art
+
+Assign frames, backgrounds, state sprites, and colors on `SkillScreenTheme`.
+Skill Variant icons continue to come from their `SkillGemDefinition`; node icons
+come from `SkillUpgradeNodeData`. Art replacement therefore does not require
+code or prefab hierarchy changes. Keep the controller/view component references
+intact when restyling the generated prefabs. The builder preserves an existing
+theme asset but rebuilds the placeholder prefabs, so do not rerun it after
+making manual prefab-only visual edits unless those edits are intentionally
+replaceable.
+
+Assign **Important Node Frame** to style nodes whose Visual Scale is above
+`1.0`. If it is empty, those nodes fall back to the normal **Node Frame**.
+
+`UpgradUI.prefab` wires `Skill_Tree_Button` to
+`UILoadLaval.OpenActiveSkillTree`. The controller instantiates its assigned
+`ActiveSkillScreen` prefab once as a standalone overlay Canvas and binds the
+currently selected `PartySlot.Selected` character through the lobby session
+before opening it. Keep the screen prefab root scale at one and its Canvas
+sorting order above the lobby UI; the prefab builder enforces both values.

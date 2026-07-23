@@ -216,6 +216,10 @@ public class CharacterStats : ScriptableObject
     [FoldoutGroup("Skill Loadout", Expanded = false), LabelText("Skill Slots")]
     [ListDrawerSettings(ShowFoldout = true, DefaultExpandedState = true, DraggableItems = true, ShowPaging = false, NumberOfItemsPerPage = 0)]
     public List<CharacterSkillLoadoutSlot> skillSlots = new();
+
+    [PropertyOrder(-135)]
+    [FoldoutGroup("Skill Loadout", Expanded = false), LabelText("Active Skill Points Per Level"), MinValue(0)]
+    public int activeSkillPointsPerLevel = 1;
     
     
     [PropertyOrder(-120)]

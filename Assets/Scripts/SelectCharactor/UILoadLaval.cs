@@ -7,8 +7,12 @@ public class UILoadLaval : MonoBehaviour
     [SerializeField] private BasementContext CTX;
     [SerializeField] private GameObject weaponEquipmentObject;
     [SerializeField] private GameObject accessoryEquipmentObject;
+
+    [Header("Active Skill Tree")]
+    [SerializeField] private ActiveSkillScreenController activeSkillScreenPrefab;
     private UIEquipment weaponEquipmentUI;
     private UIEquipment accessoryEquipmentUI;
+    private ActiveSkillScreenController activeSkillScreenInstance;
     
     
     [Header("References Text")]
@@ -76,6 +80,12 @@ public class UILoadLaval : MonoBehaviour
     {
         if (levelSystem != null)
             levelSystem.LevelChanged -= OnLevelChanged;
+    }
+
+    private void OnDestroy()
+    {
+        if (activeSkillScreenInstance != null)
+            Destroy(activeSkillScreenInstance.gameObject);
     }
     private void OnLevelChanged(int newLevel)
     {
@@ -200,6 +210,29 @@ public class UILoadLaval : MonoBehaviour
 
         accessoryEquipmentObject.SetActive(true);
         SendAccessoryEquipmentData();
+    }
+
+    public void OpenActiveSkillTree()
+    {
+        EnsureBoundSlot();
+        CharacterStats selectedCharacter = _slot != null ? _slot.Selected : null;
+        if (selectedCharacter == null)
+        {
+            Debug.LogWarning("[UILoadLaval] Select a character before opening the Active Skill Tree.", this);
+            return;
+        }
+
+        if (activeSkillScreenInstance == null && activeSkillScreenPrefab != null)
+            activeSkillScreenInstance = Instantiate(activeSkillScreenPrefab);
+
+        if (activeSkillScreenInstance == null)
+        {
+            Debug.LogWarning("[UILoadLaval] Active Skill Screen prefab is not assigned.", this);
+            return;
+        }
+
+        activeSkillScreenInstance.BindLobby(selectedCharacter);
+        activeSkillScreenInstance.Open();
     }
 
     public void CloseWeaponEquipment()

@@ -27,6 +27,9 @@ public class SkillInstance
 
     public List<SupportInstance> supports = new List<SupportInstance>();
 
+    [System.NonSerialized]
+    public SkillUpgradeStatSnapshot upgradeSnapshot;
+
     private float _lastCastTime = -999f;
 
     public FinalSkillStats GetFinalStats(ISkillUser user)
@@ -61,6 +64,7 @@ public class SkillInstance
         };
 
         def.ApplyLevelData(stats, def.ClampLevel(level));
+        upgradeSnapshot?.Apply(stats);
 
         foreach (var support in supports)
         {

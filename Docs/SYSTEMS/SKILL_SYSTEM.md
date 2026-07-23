@@ -520,3 +520,64 @@ disable, or destruction.
 `CastMoment`, `AdvanceMoment`, `Completed`, and `Interrupted` phases. Systems
 that own a specific external request must filter by both playback kind and
 request id instead of relying on the legacy parameterless completion event.
+
+## Active Skill Loadout and Upgrade Trees
+
+Each `CharacterStats.skillSlots` entry is a stable Skill Slot. Author a unique,
+non-empty `slotId`; each configured `CharacterSkillLoadoutOption` in that slot
+is a Skill Variant and needs a unique, non-empty `optionId`. Assign the default
+`SkillUpgradeTreeDefinition` on `SkillGemDefinition.upgradeTree`. A Variant can
+optionally replace it with `CharacterSkillLoadoutOption.upgradeTreeOverride`;
+all runtime and UI paths use `ResolvedUpgradeTree` (override first, then Skill
+Asset default). Tree and node IDs are persistent save keys and must not be
+renamed after release without a save migration.
+
+`CharacterActiveSkillProgress` is the shared runtime owner and is resolved
+through `CharacteContext.ActiveSkillProgress`. Active Skill Points are separate
+from Passive Points and are shared by every Slot and Variant on that character.
+The default grant is one point for each character level after level 1, controlled
+by `CharacterStats.activeSkillPointsPerLevel`. Old saves are caught up once by
+the `activeSkillProgressInitialized` flag.
+
+Progress is saved by `{slotId, optionId, treeId}`. Each unlocked node stores its
+paid cost. Resetting the current Variant clears its whole tree and refunds those
+saved costs, even when the authored costs have since changed. If a Variant is
+assigned a different `treeId`, the old paid costs are refunded and the new tree
+starts empty. A saved node missing from the current asset has no gameplay effect,
+but its paid cost remains refundable.
+
+All prerequisite IDs on a node use AND semantics; branches are not exclusive.
+Clicking a node only selects it and shows requirements plus a before/after stat
+preview. Points are spent only after the separate Unlock confirmation. The v1
+tree can change Skill Level and the supported skill stats: Damage, Area Radius,
+Projectile Count, Mana Cost, Cast Time, Cooldown, Crit Chance, and Stagger Power.
+Tree modifiers are deterministic:
+
+`Skill Level -> (base + sum(tree additions)) * product(tree multipliers) -> Support modifiers -> Character stats`
+
+The upgrade snapshot is attached to `SkillInstance`; it never mutates the source
+`SkillGemDefinition` or tree ScriptableObject. Selecting a Variant saves
+immediately. In gameplay, `CharacterSkillManager` rebuilds only the affected
+slot; lobby editing uses the same `CharacterProgressData` save contract.
+
+### Active Skill Tree Authoring
+
+Open **Tools > RB > Skills > Active Skill Tree Editor** to create/open a tree,
+add, duplicate, delete, drag, and connect nodes, edit properties, frame the
+graph, validate, and save. Multiple incoming connections become the node's AND
+prerequisite list. The runtime data contains only serializable node records and
+does not depend on GraphView. A node displays its assigned `icon` Sprite directly
+in the graph and refreshes the preview when the Inspector value changes.
+`uiPosition` is the node center in both authoring and runtime layouts. Set
+`visualScale` from `1.0` to `2.0` to enlarge a node for visual emphasis without
+changing its gameplay rules or saved progress.
+
+Use **Tools > RB > Skills > Validate Active Skill Trees** before committing
+content. Errors include missing/duplicate stable IDs, missing/self/cyclic
+prerequisites, invalid cost/level, unsupported stats, and unstable loadout IDs.
+A node with no effect, overlapping runtime node bounds, and a graph that
+auto-fits below the readable scale are warnings. Visual Scale outside `1.0` to
+`2.0` is an error. **Tools > RB > Skills > Run Active Skill Core Smoke Tests**
+checks catch-up, shared points, prerequisites, Variant isolation, refunds, tree
+replacement, default/override Tree resolution, stat stacking, scaled-node
+layout, frame fallback, and validation.

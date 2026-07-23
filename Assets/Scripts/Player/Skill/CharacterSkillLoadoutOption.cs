@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [Serializable]
 public sealed class CharacterSkillLoadoutOption
@@ -16,7 +17,15 @@ public sealed class CharacterSkillLoadoutOption
 
     public int maxSupportSlots = 3;
 
+    [Header("Active Skill Tree")]
+    [Tooltip("Optional. Leave empty to use the Upgrade Tree assigned to the Skill Asset.")]
+    [FormerlySerializedAs("upgradeTree")]
+    public SkillUpgradeTreeDefinition upgradeTreeOverride;
+
     public bool IsConfigured => skillAsset != null;
+    public SkillUpgradeTreeDefinition ResolvedUpgradeTree => upgradeTreeOverride != null
+        ? upgradeTreeOverride
+        : skillAsset != null ? skillAsset.upgradeTree : null;
 
     public string ResolvedOptionId
     {

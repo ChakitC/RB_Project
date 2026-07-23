@@ -41,6 +41,7 @@ public abstract class CharacteContext : MonoBehaviour
     public CharacterKnockbackMotor KnockbackMotor;
     public PassiveController PassiveController;
     public PlayerPassiveProgress PassiveProgress;
+    public CharacterActiveSkillProgress ActiveSkillProgress;
     public SkillUserSystem EnegySystem;
     public Interactor Interactor;
     public CharacterSkillManager SkillManager;
@@ -125,6 +126,13 @@ public abstract class CharacteContext : MonoBehaviour
         KnockbackMotor = ResolveActorComponent(KnockbackMotor);
         PassiveController = ResolveActorComponent(PassiveController);
         PassiveProgress = ResolveActorComponent(PassiveProgress);
+        ActiveSkillProgress = ResolveActorComponent(ActiveSkillProgress);
+        if (ActiveSkillProgress == null &&
+            Application.isPlaying &&
+            (TargetIdentity == AITargetIdentity.Player || TargetIdentity == AITargetIdentity.Companion))
+        {
+            ActiveSkillProgress = gameObject.AddComponent<CharacterActiveSkillProgress>();
+        }
         EnegySystem = ResolveActorComponent(EnegySystem);
         Interactor = ResolveActorComponent(Interactor);
         SkillManager = ResolveActorComponent(SkillManager);

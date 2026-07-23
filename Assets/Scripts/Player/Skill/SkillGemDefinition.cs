@@ -133,6 +133,11 @@ public class SkillGemDefinition : ScriptableObject
     [FoldoutGroup("Gameplay", Expanded = true), LabelText("Max Level"), MinValue(1)]
     public int maxLevel = 20;
 
+    [PropertyOrder(-65)]
+    [FoldoutGroup("Active Skill Tree", Expanded = false), AssetsOnly, LabelText("Upgrade Tree")]
+    [Tooltip("Default Active Skill Tree used by loadout variants that do not provide an override.")]
+    public SkillUpgradeTreeDefinition upgradeTree;
+
     [PropertyOrder(-60)]
     [ShowInInspector, ReadOnly, FoldoutGroup("Execution", Expanded = true), LabelText("Primary Source")]
     private string PrimaryExecutionSourceLabel => payload != null

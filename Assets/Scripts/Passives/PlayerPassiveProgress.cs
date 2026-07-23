@@ -281,7 +281,18 @@ public sealed class PlayerPassiveProgress : MonoBehaviour
         if (SaveManager.Instance == null || string.IsNullOrWhiteSpace(characterId))
             return;
 
-        SaveManager.Instance.SaveCharacterProgressData(characterId, _progressData);
+        // Merge only passive-owned fields so a long-lived passive snapshot cannot
+        // overwrite Active Skill Tree progress or a newly selected Skill Variant.
+        CharacterProgressData latest = SaveManager.Instance.LoadCharacterProgressData(characterId);
+        latest.level = _progressData.level;
+        latest.xp = _progressData.xp;
+        latest.skillPoints = _progressData.skillPoints;
+        latest.passiveProgressInitialized = _progressData.passiveProgressInitialized;
+        latest.unlockedPassiveNodeIds = _progressData.unlockedPassiveNodeIds != null
+            ? new List<string>(_progressData.unlockedPassiveNodeIds)
+            : new List<string>();
+        SaveManager.Instance.SaveCharacterProgressData(characterId, latest);
+        _progressData = latest;
     }
 
     void ApplyUnlockedPassives()

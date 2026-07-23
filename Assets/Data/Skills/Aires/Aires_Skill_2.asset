@@ -21,6 +21,7 @@ MonoBehaviour:
   morphController: {fileID: 0}
   morphAvatar: {fileID: 0}
   morphAnimProfile: {fileID: 11400000, guid: 041856afdf417ac4e99bbff0ee27d157, type: 2}
+  statusApplications: []
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -33,7 +34,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
   m_Name: Aires_Skill_2
   m_EditorClassIdentifier: 
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 622b3ff651b5e9a40a1e45bed2acbd9b, type: 3}
   displayName: 
   skillId: Roma.Ultimate.01
   tags: 18
@@ -49,6 +50,7 @@ MonoBehaviour:
   AreaofEffec: 0
   baseRadius: 0
   maxLevel: 20
+  upgradeTree: {fileID: 0}
   payload: {fileID: -4640737377914395889}
   castCue: {fileID: 0}
   skillClip:
@@ -63,6 +65,7 @@ MonoBehaviour:
       - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
     _Clip: {fileID: -4876317453393239407, guid: cff60580c39c3b74581f8a13f7e37daa, type: 3}
     _NormalizedStartTime: NaN
+  ignoreCharacterCollisionDuringRootMotion: 1
   castPointNormalized: 0
   skillVfxEvents:
   - cueIndex: 0
@@ -79,6 +82,14 @@ MonoBehaviour:
     extraLife: 0
     allowParticlesToFinish: 1
     animClip: {fileID: 0}
+  hitLagDuration: 0.06
+  hitLagTimeScale: 0.05
+  hitLagShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   isCutsceneSkill: 1
   cutsceneDef:
     characterCutsceneClip:

@@ -33,7 +33,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
   m_Name: Aires_Skill_3
   m_EditorClassIdentifier: 
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 2c406f12ba7b18248806ca4b7987e46c, type: 3}
   displayName: 
   skillId: Aires.Skill.3
   tags: 0
@@ -49,6 +49,7 @@ MonoBehaviour:
   AreaofEffec: 0
   baseRadius: 0
   maxLevel: 20
+  upgradeTree: {fileID: 0}
   payload: {fileID: -7446067993122877699}
   castCue: {fileID: 0}
   skillClip:
@@ -69,6 +70,7 @@ MonoBehaviour:
       - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
     _Clip: {fileID: 8720029984051212183, guid: e72832d5dba903a4997d701bfe93da7f, type: 3}
     _NormalizedStartTime: NaN
+  ignoreCharacterCollisionDuringRootMotion: 1
   castPointNormalized: 0.07968128
   skillVfxEvents:
   - cueIndex: 0
@@ -113,6 +115,14 @@ MonoBehaviour:
     extraLife: 0
     allowParticlesToFinish: 1
     animClip: {fileID: 0}
+  hitLagDuration: 0.06
+  hitLagTimeScale: 0.05
+  hitLagShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   isCutsceneSkill: 0
   cutsceneDef:
     characterCutsceneClip:

@@ -1,6 +1,6 @@
 {
     "maxSlotCount": 0,
-    "gold": 963329,
+    "gold": 963334,
     "scrap": 450,
     "slots": [
         {
@@ -26,9 +26,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 28200,
-                "currentMagazine": 21,
-                "currentReserveAmmo": 394,
+                "shotCounter": 28861,
+                "currentMagazine": 31,
+                "currentReserveAmmo": 497,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 16,
                 "upgradeTier": 1,
@@ -59,9 +59,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 3278,
-                "currentMagazine": 0,
-                "currentReserveAmmo": 270,
+                "shotCounter": 3353,
+                "currentMagazine": 30,
+                "currentReserveAmmo": 240,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -136,9 +136,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 23938,
+                "shotCounter": 25715,
                 "currentMagazine": 29,
-                "currentReserveAmmo": 159,
+                "currentReserveAmmo": 297,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
                 "upgradeTier": 2,
@@ -278,9 +278,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 29,
-                "currentMagazine": 29,
-                "currentReserveAmmo": 272,
+                "shotCounter": 81,
+                "currentMagazine": 16,
+                "currentReserveAmmo": 270,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -309,9 +309,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 23219,
-                "currentMagazine": 0,
-                "currentReserveAmmo": 0,
+                "shotCounter": 24669,
+                "currentMagazine": 15,
+                "currentReserveAmmo": 300,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -397,8 +397,8 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 2712,
-                "currentMagazine": 7,
+                "shotCounter": 3423,
+                "currentMagazine": 16,
                 "currentReserveAmmo": 300,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
@@ -1272,8 +1272,8 @@
             }
         },
         {
-            "itemId": "",
-            "amount": 0,
+            "itemId": "Accessory.RabbitGlove",
+            "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
                 "baseWeaponId": "",
@@ -1296,15 +1296,15 @@
                 "unlockedUpgradeMilestoneIds": []
             },
             "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
+                "instanceId": "acc_c6839c90eb174fd9b0f395265cc75383",
+                "accessoryId": "Accessory.RabbitGlove",
                 "modifierId": "",
                 "upgradeLevel": 0
             }
         },
         {
-            "itemId": "",
-            "amount": 0,
+            "itemId": "Accessory.RabbitLag",
+            "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
                 "baseWeaponId": "",
@@ -1327,8 +1327,8 @@
                 "unlockedUpgradeMilestoneIds": []
             },
             "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
+                "instanceId": "acc_97a033e638494e209d00a9afa67da0c0",
+                "accessoryId": "Accessory.RabbitLag",
                 "modifierId": "",
                 "upgradeLevel": 0
             }

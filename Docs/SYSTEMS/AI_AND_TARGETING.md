@@ -207,6 +207,32 @@ When adding AI behavior:
 6. Avoid common code branches based only on `PlayerContext`, `AllyContext`, or
    `EnemyContext`.
 
+### Target Orbit Action
+
+`Assets\Scripts\AI\Movement\TargetOrbitNavMesh.cs` provides the
+`TargetOrbitNavMesh` Behavior Designer action for controlled movement around a
+shared `GameObject` target. It keeps the actor inside a configured
+`minRadius`/`maxRadius` band, probes clockwise or counter-clockwise NavMesh
+waypoints, and continuously replans so a moving target remains the orbit
+center. `Random` direction is chosen once when the task starts.
+
+The action can optionally face the actor toward the target while strafing.
+When facing is disabled, the action leaves `NavMeshAgent.updateRotation`
+unchanged. `duration = 0` runs until the tree aborts the action; a positive
+duration returns success after that much active actor time. Movement locks and
+root motion pause the action and its duration instead of failing it.
+
+Navigation feel is controlled by `repathInterval` and `lookAheadAngle`. Failed
+probes retry progressively shorter look-ahead angles without reversing the
+configured orbit direction. `pathFailureTimeout = 0` fails immediately; a
+positive value allows retries for that many active seconds.
+
+`moveSpeed = 0` leaves speed ownership with the character movement system. A
+positive value acquires a request-scoped speed override from
+`AgentMoveDriver`, which remains responsible for applying world slow. The
+override and all temporary NavMeshAgent settings are released when the task
+ends or is aborted.
+
 ## Guaranteed Interruption Command
 
 The player can press the Interruption Command input (default G) to interrupt

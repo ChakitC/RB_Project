@@ -8,7 +8,7 @@ using UnityEngine.UI;
 
 public static class ActiveSkillScreenPrefabBuilder
 {
-    const int PlaceholderLayoutVersion = 3;
+    const int PlaceholderLayoutVersion = 4;
     const string PrefabFolder = "Assets/Prefab/User Interface/Active Skill";
     const string ThemeFolder = "Assets/UI/Active Skill";
     const string ThemePath = ThemeFolder + "/SkillScreenTheme.asset";
@@ -327,7 +327,7 @@ public static class ActiveSkillScreenPrefabBuilder
         TMP_Text emptyState = CreateText("EmptyState", treePanel, "No Active Skill Tree assigned.", 32f, TextAlignmentOptions.Center);
         Stretch(emptyState.rectTransform, 80f);
 
-        ActiveSkillNodeDetailPanel detail = BuildDetailPanel(treePanel);
+        ActiveSkillNodeDetailPanel detail = BuildDetailPanel(treePanel, viewport, treeView);
         ActiveSkillConfirmationDialog confirmation = BuildConfirmationDialog(root.transform);
 
         ScrollRect slotScroll = CreateScrollView("SlotTabs", root.transform, true, false, out RectTransform slotContent);
@@ -383,15 +383,26 @@ public static class ActiveSkillScreenPrefabBuilder
         PrefabUtility.UnloadPrefabContents(savedRoot);
     }
 
-    static ActiveSkillNodeDetailPanel BuildDetailPanel(Transform parent)
+    static ActiveSkillNodeDetailPanel BuildDetailPanel(
+        Transform parent,
+        RectTransform treeViewport,
+        ActiveSkillTreeView treeView)
     {
         RectTransform panel = CreatePanel("NodeDetailPanel", parent, new Color(0.08f, 0.08f, 0.08f, 0.96f));
         SetAnchors(panel, new Vector2(1f, 0f), new Vector2(1f, 0f));
         panel.sizeDelta = new Vector2(440f, 520f);
-        panel.anchoredPosition = new Vector2(-240f, 280f);
+        panel.anchoredPosition = new Vector2(238f, 280f);
+        CanvasGroup drawerGroup = panel.gameObject.AddComponent<CanvasGroup>();
+        drawerGroup.interactable = false;
+        drawerGroup.blocksRaycasts = false;
 
         TMP_Text title = CreateText("Title", panel, "Upgrade Node", 28f, TextAlignmentOptions.TopLeft);
-        SetTopRect(title.rectTransform, 20f, -18f, -20f, 48f);
+        SetTopRect(title.rectTransform, 20f, -18f, -70f, 48f);
+        Button close = CreateButton("CloseButton", panel, "X", 22f, new Color(0.22f, 0.22f, 0.22f, 1f));
+        RectTransform closeRect = close.GetComponent<RectTransform>();
+        SetAnchors(closeRect, Vector2.one, Vector2.one);
+        closeRect.sizeDelta = new Vector2(44f, 44f);
+        closeRect.anchoredPosition = new Vector2(-30f, -30f);
         TMP_Text description = CreateText("Description", panel, "Description", 19f, TextAlignmentOptions.TopLeft);
         SetTopRect(description.rectTransform, 20f, -72f, -20f, 70f);
         TMP_Text requirements = CreateText("Requirements", panel, "Requirements", 17f, TextAlignmentOptions.TopLeft);
@@ -405,13 +416,17 @@ public static class ActiveSkillScreenPrefabBuilder
         unlockRect.anchoredPosition = new Vector2(0f, 38f);
 
         ActiveSkillNodeDetailPanel detail = panel.gameObject.AddComponent<ActiveSkillNodeDetailPanel>();
+        SetObject(detail, "drawerRoot", panel);
+        SetObject(detail, "treeViewport", treeViewport);
+        SetObject(detail, "treeView", treeView);
+        SetObject(detail, "drawerGroup", drawerGroup);
+        SetObject(detail, "closeButton", close);
         SetObject(detail, "titleText", title);
         SetObject(detail, "descriptionText", description);
         SetObject(detail, "requirementText", requirements);
         SetObject(detail, "statPreviewText", preview);
         SetObject(detail, "unlockButton", unlock);
         SetObject(detail, "unlockButtonText", unlock.GetComponentInChildren<TMP_Text>());
-        panel.gameObject.SetActive(false);
         return detail;
     }
 

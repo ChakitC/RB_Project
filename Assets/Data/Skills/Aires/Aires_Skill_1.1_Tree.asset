@@ -61,7 +61,7 @@ MonoBehaviour:
     displayName: Upgrade Node
     description: 
     icon: {fileID: 21300000, guid: 9f75dcbc3ee13a448a51bdfcdee87569, type: 3}
-    uiPosition: {x: -496.5, y: -404}
+    uiPosition: {x: -525.5, y: -408}
     visualScale: 2
     cost: 1
     requiredCharacterLevel: 1
@@ -110,7 +110,7 @@ MonoBehaviour:
     displayName: Upgrade Node
     description: 
     icon: {fileID: 21300000, guid: 776300975d7e66e499e9f18138d7e07c, type: 3}
-    uiPosition: {x: -174.5, y: -404}
+    uiPosition: {x: -203.5, y: -408}
     visualScale: 2
     cost: 1
     requiredCharacterLevel: 1
@@ -122,7 +122,7 @@ MonoBehaviour:
     displayName: Upgrade Node
     description: 
     icon: {fileID: 21300000, guid: 54b4c392b6b387f45bcdd4bd8839f408, type: 3}
-    uiPosition: {x: -818.5, y: -404}
+    uiPosition: {x: -847.5, y: -408}
     visualScale: 2
     cost: 1
     requiredCharacterLevel: 1

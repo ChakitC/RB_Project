@@ -32,6 +32,7 @@ public sealed class ActiveSkillTreeView : MonoBehaviour, IScrollHandler, IBeginD
     float _currentScale = 1f;
     bool _hasGraphLayout;
     bool _isPanning;
+    bool _viewportTransitionActive;
 
     public void Bind(
         ActiveSkillLoadoutSession session,
@@ -79,7 +80,8 @@ public sealed class ActiveSkillTreeView : MonoBehaviour, IScrollHandler, IBeginD
         float requestedScale = eventData.scrollDelta.y > 0f
             ? _currentScale * factor
             : _currentScale / factor;
-        float newScale = Mathf.Clamp(requestedScale, _fitScale, ResolvedMaxZoomScale);
+        float minimumScale = Mathf.Min(_fitScale, _currentScale);
+        float newScale = Mathf.Clamp(requestedScale, minimumScale, ResolvedMaxZoomScale);
         if (Mathf.Approximately(newScale, _currentScale) ||
             !TryGetViewportLocalPoint(eventData.position, eventData.enterEventCamera, out Vector2 pointerLocal))
         {
@@ -138,8 +140,19 @@ public sealed class ActiveSkillTreeView : MonoBehaviour, IScrollHandler, IBeginD
 
     void OnRectTransformDimensionsChange()
     {
+        if (!_viewportTransitionActive && isActiveAndEnabled && _tree != null && _hasGraphLayout)
+            LayoutGraph(false, true);
+    }
+
+    public void SetViewportTransitionActive(bool active)
+    {
+        _viewportTransitionActive = active;
+    }
+
+    public void RefreshViewportBounds()
+    {
         if (isActiveAndEnabled && _tree != null && _hasGraphLayout)
-            LayoutGraph(false);
+            LayoutGraph(false, true);
     }
 
     void Rebuild()
@@ -237,7 +250,7 @@ public sealed class ActiveSkillTreeView : MonoBehaviour, IScrollHandler, IBeginD
         }
     }
 
-    void LayoutGraph(bool resetView)
+    void LayoutGraph(bool resetView, bool preserveScale = false)
     {
         if (viewport == null || contentRoot == null || _tree == null || _tree.nodes == null || _tree.nodes.Count == 0)
             return;
@@ -304,7 +317,11 @@ public sealed class ActiveSkillTreeView : MonoBehaviour, IScrollHandler, IBeginD
             return;
         }
 
-        _currentScale = Mathf.Clamp(_currentScale, _fitScale, ResolvedMaxZoomScale);
+        _currentScale = preserveScale
+            ? Mathf.Min(_currentScale, ResolvedMaxZoomScale)
+            : Mathf.Clamp(_currentScale, _fitScale, ResolvedMaxZoomScale);
+        if (!float.IsFinite(_currentScale) || _currentScale <= 0f)
+            _currentScale = _fitScale;
         ApplyScale();
         contentRoot.anchoredPosition = ClampPan(contentRoot.anchoredPosition);
     }

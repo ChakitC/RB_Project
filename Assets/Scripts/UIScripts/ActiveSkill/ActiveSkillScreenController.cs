@@ -56,6 +56,7 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
             resetTreeButton.onClick.AddListener(RequestResetTree);
         if (fitTreeButton != null)
             fitTreeButton.onClick.AddListener(ResetTreeView);
+        detailPanel?.SetCloseRequested(CloseNodeDetail);
         SetVisible(false);
     }
 
@@ -67,6 +68,7 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
             resetTreeButton.onClick.RemoveListener(RequestResetTree);
         if (fitTreeButton != null)
             fitTreeButton.onClick.RemoveListener(ResetTreeView);
+        detailPanel?.SetCloseRequested(null);
         ReleaseSession();
     }
 
@@ -101,7 +103,9 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
 
         _isOpen = false;
         confirmationDialog?.Hide();
-        detailPanel?.Hide();
+        _selectedNodeId = null;
+        detailPanel?.Hide(true);
+        treeView?.Refresh(null);
         SetVisible(false);
         RestoreRuntimeState();
         Closed?.Invoke();
@@ -282,6 +286,13 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
         treeView?.Refresh(_selectedNodeId);
     }
 
+    void CloseNodeDetail()
+    {
+        _selectedNodeId = null;
+        detailPanel?.Hide();
+        treeView?.Refresh(null);
+    }
+
     void RequestUnlockNode(string nodeId)
     {
         if (!TryGetSelectedNode(nodeId, out SkillUpgradeNodeData node))
@@ -435,6 +446,7 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
 
     void ClearVariantsAndTree()
     {
+        _selectedNodeId = null;
         if (selectedVariantCard != null)
             selectedVariantCard.gameObject.SetActive(false);
         for (int i = 0; i < _variantCards.Count; i++)

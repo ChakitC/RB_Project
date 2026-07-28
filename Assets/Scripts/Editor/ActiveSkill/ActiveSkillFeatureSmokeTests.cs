@@ -373,6 +373,25 @@ public static class ActiveSkillFeatureSmokeTests
             "Tree view zoom factor must default to 1.1 per wheel notch.");
         Expect(treeView.GetComponent<UnityEngine.UI.ScrollRect>() == null,
             "ActiveSkillTreeView must not use ScrollRect for pan and zoom.");
+
+        ActiveSkillNodeDetailPanel detailPanel =
+            activeSkillScreen.GetComponentInChildren<ActiveSkillNodeDetailPanel>(true);
+        Expect(detailPanel != null && detailPanel.gameObject.activeSelf,
+            "The node detail drawer must remain active so it can animate on screen.");
+        var serializedDetailPanel = new SerializedObject(detailPanel);
+        Equal(treeView, serializedDetailPanel.FindProperty("treeView")?.objectReferenceValue,
+            "The detail drawer must notify the tree view while resizing its viewport.");
+        Equal(treeView.transform as RectTransform,
+            serializedDetailPanel.FindProperty("treeViewport")?.objectReferenceValue,
+            "The detail drawer must resize the active tree viewport.");
+        var closeButton = serializedDetailPanel.FindProperty("closeButton")?.objectReferenceValue
+            as UnityEngine.UI.Button;
+        Expect(closeButton != null && closeButton.name == "CloseButton",
+            "The node detail drawer must expose a close button.");
+        Approximately(440f, serializedDetailPanel.FindProperty("drawerWidth").floatValue,
+            "The node detail drawer must reserve 440 logical pixels.");
+        Approximately(0.2f, serializedDetailPanel.FindProperty("transitionDuration").floatValue,
+            "The node detail drawer transition must take 0.2 seconds.");
     }
 
     static void TestTreeNavigationMath()

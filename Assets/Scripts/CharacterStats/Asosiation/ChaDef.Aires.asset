@@ -23,6 +23,7 @@ MonoBehaviour:
   weaponHandMode: 0
   combatRole: 0
   chainAttackSkill: {fileID: 0}
+  introChainCutscene: {fileID: 0}
   skillSlots:
   - slotId: 0
     displayName: 
@@ -35,6 +36,21 @@ MonoBehaviour:
       skillLevel: 1
       supportAssets: []
       maxSupportSlots: 3
+      upgradeTreeOverride: {fileID: 11400000, guid: 0e0c5a48ecedd994083b1cf170d0681a, type: 2}
+    - optionId: 
+      displayName: 
+      skillAsset: {fileID: 0}
+      skillLevel: 1
+      supportAssets: []
+      maxSupportSlots: 3
+      upgradeTreeOverride: {fileID: 11400000, guid: 0e0c5a48ecedd994083b1cf170d0681a, type: 2}
+    - optionId: 
+      displayName: 
+      skillAsset: {fileID: 0}
+      skillLevel: 1
+      supportAssets: []
+      maxSupportSlots: 3
+      upgradeTreeOverride: {fileID: 0}
   - slotId: 1
     displayName: 
     hotkey: 258
@@ -46,6 +62,7 @@ MonoBehaviour:
       skillLevel: 1
       supportAssets: []
       maxSupportSlots: 3
+      upgradeTreeOverride: {fileID: 0}
   - slotId: 2
     displayName: 
     hotkey: 259
@@ -57,6 +74,8 @@ MonoBehaviour:
       skillLevel: 1
       supportAssets: []
       maxSupportSlots: 3
+      upgradeTreeOverride: {fileID: 0}
+  activeSkillPointsPerLevel: 1
   maxHP: 30000
   maxStamina: 50
   Damage: 10

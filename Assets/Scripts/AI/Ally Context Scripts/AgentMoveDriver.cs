@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -35,6 +36,10 @@ public class AgentMoveDriver : MonoBehaviour
     bool _separationPauseActive;
     bool _restoreAgentStopped;
     float _separationPauseUntil;
+    readonly Dictionary<int, float> _moveSpeedOverrides = new();
+    int _nextMoveSpeedOverrideToken;
+    int _activeMoveSpeedOverrideToken;
+    float _activeMoveSpeedOverride;
     Transform ActorTransform => ctx != null ? ctx.transform : transform;
 
     public bool agentismoving;
@@ -79,6 +84,30 @@ public class AgentMoveDriver : MonoBehaviour
         TickSeparationPause();
     }
 
+    public int AcquireMoveSpeedOverride(float moveSpeed)
+    {
+        if (moveSpeed <= 0f)
+            return 0;
+
+        int token = NextMoveSpeedOverrideToken();
+        _moveSpeedOverrides[token] = moveSpeed;
+        _activeMoveSpeedOverrideToken = token;
+        _activeMoveSpeedOverride = moveSpeed;
+        ApplyResolvedMoveSpeed();
+        return token;
+    }
+
+    public void ReleaseMoveSpeedOverride(int token)
+    {
+        if (token == 0 || !_moveSpeedOverrides.Remove(token))
+            return;
+
+        if (token == _activeMoveSpeedOverrideToken)
+            ResolveLatestMoveSpeedOverride();
+
+        ApplyResolvedMoveSpeed();
+    }
+
     void UpdateAIMoveAnimFromNavMesh(NavMeshAgent agent)
     {
         if (!agent || !agent.enabled || !agent.isOnNavMesh)
@@ -91,15 +120,7 @@ public class AgentMoveDriver : MonoBehaviour
 
         float dt = UsesWorldSlow() ? TimeSlowManager.Instance.WorldDeltaTime : Time.deltaTime;
 
-        if (ctx != null)
-        {
-            float targetSpeed = ctx.GetMoveSpeedForCurrentLifeState();
-            if (UsesWorldSlow())
-                targetSpeed *= TimeSlowManager.Instance.WorldTimeScale;
-
-            if (!Mathf.Approximately(agent.speed, targetSpeed))
-                agent.speed = targetSpeed;
-        }
+        ApplyResolvedMoveSpeed();
 
         Vector3 vel = agent.velocity;
         vel.y = 0f;
@@ -181,6 +202,54 @@ public class AgentMoveDriver : MonoBehaviour
     bool UsesWorldSlow()
     {
         return ctx == null || ctx.UsesWorldSlow;
+    }
+
+    int NextMoveSpeedOverrideToken()
+    {
+        do
+        {
+            _nextMoveSpeedOverrideToken++;
+            if (_nextMoveSpeedOverrideToken <= 0)
+                _nextMoveSpeedOverrideToken = 1;
+        }
+        while (_moveSpeedOverrides.ContainsKey(_nextMoveSpeedOverrideToken));
+
+        return _nextMoveSpeedOverrideToken;
+    }
+
+    void ResolveLatestMoveSpeedOverride()
+    {
+        _activeMoveSpeedOverrideToken = 0;
+        _activeMoveSpeedOverride = 0f;
+
+        foreach (KeyValuePair<int, float> pair in _moveSpeedOverrides)
+        {
+            if (pair.Key <= _activeMoveSpeedOverrideToken)
+                continue;
+
+            _activeMoveSpeedOverrideToken = pair.Key;
+            _activeMoveSpeedOverride = pair.Value;
+        }
+    }
+
+    void ApplyResolvedMoveSpeed()
+    {
+        if (agent == null || !agent.enabled)
+            return;
+
+        float targetSpeed;
+        if (_activeMoveSpeedOverrideToken != 0)
+            targetSpeed = _activeMoveSpeedOverride;
+        else if (ctx != null)
+            targetSpeed = ctx.GetMoveSpeedForCurrentLifeState();
+        else
+            return;
+
+        if (UsesWorldSlow() && TimeSlowManager.Instance != null)
+            targetSpeed *= TimeSlowManager.Instance.WorldTimeScale;
+
+        if (!Mathf.Approximately(agent.speed, targetSpeed))
+            agent.speed = targetSpeed;
     }
 
     void TickPlayerSeparation()

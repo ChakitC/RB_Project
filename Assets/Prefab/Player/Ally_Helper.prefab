@@ -702,6 +702,7 @@ GameObject:
   - component: {fileID: 215546885493181984}
   - component: {fileID: 2187588555598731297}
   - component: {fileID: 1626903556438485816}
+  - component: {fileID: 723459649131664530}
   m_Layer: 10
   m_Name: Ally_Helper
   m_TagString: Ally
@@ -1246,6 +1247,7 @@ MonoBehaviour:
   Visual: {fileID: 3475030861834118874}
   UIManager: {fileID: 0}
   ColliderRefs: {fileID: 0}
+  StatusEffects: {fileID: 1626903556438485816}
   levelSystem: {fileID: 3370044619517406839}
   HealthSystem: {fileID: 6674914611058789611}
   StaminaSystem: {fileID: 5952653430675107378}
@@ -1253,6 +1255,7 @@ MonoBehaviour:
   KnockbackMotor: {fileID: 4947922598450173769}
   PassiveController: {fileID: 7146810742816155018}
   PassiveProgress: {fileID: 6555781975922311043}
+  ActiveSkillProgress: {fileID: 723459649131664530}
   EnegySystem: {fileID: 3101511230285474531}
   Interactor: {fileID: 5990405013486080644}
   SkillManager: {fileID: 4610970780752423343}
@@ -1468,6 +1471,20 @@ MonoBehaviour:
   dbgBuffs: 
   dbgDebuffs: 
   dbgNeutralEffects: 
+--- !u!114 &723459649131664530
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5546123616510741782}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88ef01dd98428b34fa0ca9f4f548b1bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  levelSystem: {fileID: 0}
 --- !u!1 &5742793755352266359
 GameObject:
   m_ObjectHideFlags: 0
@@ -1631,8 +1648,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animancer: {fileID: 4395463672058274139}
   ctx: {fileID: 8723794045760714937}
-  statusEffectController: {fileID: 1626903556438485816}
-  deactivateOwnerOnSkillExit: 0
   chainPlaybackWatchdogGraceSeconds: 0.15
   useRootMotionForChainPlayback: 0
   locomotionLayerIndex: 0
@@ -1768,6 +1783,12 @@ MonoBehaviour:
   combatEventBus: {fileID: 1499039619125665064}
   perfectDashSlowScale: 0.2
   perfectDashSlowDuration: 0.35
+  perfectDashSlowShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   perfectDashFreeAmmoDuration: 0.35
   perfectDodgeThreatLayers:
     serializedVersion: 2

@@ -10,6 +10,7 @@ public class PlayerMovementCC : MonoBehaviour
     [SerializeField] float fallbackMoveSpeed = 6f;
     [SerializeField] float rampUpTime = 0.25f;
     [SerializeField] float rampDownTime = 0.20f;
+    [SerializeField, Min(0f)] float rotationSharpness = 14f;
     float _move01;
 
     [Header("Slow While Combat")]
@@ -154,31 +155,28 @@ public class PlayerMovementCC : MonoBehaviour
             : Vector3.zero;
     }
 
-    void HandleAiming(LayerMask groundMask)
+    void HandleFacing(Vector3 movementDirection)
     {
-        var cameraMain = Camera.main;
-        if (cameraMain == null || _characteContext == null || _characteContext.aimTarget == null)
-            return;
-
         if (stateHub != null && !stateHub.CanRotate())
             return;
 
-        Ray ray = cameraMain.ScreenPointToRay(_characteContext.lookInput);
-
-        if (Physics.Raycast(ray, out RaycastHit hit, 500f, groundMask))
-            _characteContext.aimTarget.position = hit.point;
-        else
-        {
-            var plane = new Plane(Vector3.up, Vector3.zero);
-            if (plane.Raycast(ray, out float d))
-                _characteContext.aimTarget.position = ray.GetPoint(d);
-        }
-
         Transform rotateRoot = actorRoot ? actorRoot : transform;
-        Vector3 dir = _characteContext.aimTarget.position - rotateRoot.position;
-        dir.y = 0;
-        if (dir.sqrMagnitude > 0.001f)
-            rotateRoot.rotation = Quaternion.Slerp(rotateRoot.rotation, Quaternion.LookRotation(dir), 0.2f);
+        Vector3 facingDirection = movementDirection;
+        GameplayCameraController gameplayCamera = GameplayCameraController.Instance;
+        bool combatAligned = gameplayCamera != null && gameplayCamera.HasCombatAlignment;
+
+        if (combatAligned)
+            facingDirection = gameplayCamera.PlanarForward;
+
+        facingDirection = Vector3.ProjectOnPlane(facingDirection, Vector3.up);
+        if (facingDirection.sqrMagnitude <= 0.0001f)
+            return;
+
+        float blend = 1f - Mathf.Exp(-rotationSharpness * Time.deltaTime);
+        rotateRoot.rotation = Quaternion.Slerp(
+            rotateRoot.rotation,
+            Quaternion.LookRotation(facingDirection.normalized, Vector3.up),
+            blend);
     }
 
     void Move()
@@ -197,7 +195,7 @@ public class PlayerMovementCC : MonoBehaviour
         {
             _move01 = 0f;
             stateHub.SetMoveSpeed01(0f);
-            HandleAiming(groundMask);
+            HandleFacing(Vector3.zero);
             return;
         }
 
@@ -266,7 +264,7 @@ public class PlayerMovementCC : MonoBehaviour
         _move01 = Mathf.MoveTowards(_move01, target01, speed * Time.deltaTime);
         stateHub.SetMoveSpeed01(_move01);
 
-        HandleAiming(groundMask);
+        HandleFacing(moveWorldDir);
 
         stateHub.SetMoveDirLocal(
             moveWorldDir.sqrMagnitude < 0.0001f

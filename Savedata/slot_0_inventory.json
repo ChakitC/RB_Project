@@ -1,6 +1,6 @@
 {
     "maxSlotCount": 0,
-    "gold": 963334,
+    "gold": 963333,
     "scrap": 450,
     "slots": [
         {
@@ -26,9 +26,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 28861,
-                "currentMagazine": 31,
-                "currentReserveAmmo": 497,
+                "shotCounter": 29510,
+                "currentMagazine": 25,
+                "currentReserveAmmo": 600,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 16,
                 "upgradeTier": 1,
@@ -59,9 +59,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 3353,
-                "currentMagazine": 30,
-                "currentReserveAmmo": 240,
+                "shotCounter": 3513,
+                "currentMagazine": 20,
+                "currentReserveAmmo": 90,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -136,9 +136,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 25715,
+                "shotCounter": 26300,
                 "currentMagazine": 29,
-                "currentReserveAmmo": 297,
+                "currentReserveAmmo": 300,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
                 "upgradeTier": 2,
@@ -309,9 +309,9 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 24669,
-                "currentMagazine": 15,
-                "currentReserveAmmo": 300,
+                "shotCounter": 25546,
+                "currentMagazine": 24,
+                "currentReserveAmmo": 210,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -397,9 +397,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 3423,
-                "currentMagazine": 16,
-                "currentReserveAmmo": 300,
+                "shotCounter": 3815,
+                "currentMagazine": 30,
+                "currentReserveAmmo": 240,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -620,9 +620,9 @@
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 0,
-                "currentMagazine": 30,
-                "currentReserveAmmo": 300,
+                "shotCounter": 36,
+                "currentMagazine": 29,
+                "currentReserveAmmo": 265,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -1334,11 +1334,11 @@
             }
         },
         {
-            "itemId": "",
-            "amount": 0,
+            "itemId": "SP_RB_01",
+            "amount": 1,
             "weaponInstance": {
-                "instanceId": "",
-                "baseWeaponId": "",
+                "instanceId": "6a653af9de404aa9bc56ed20e5774d4e",
+                "baseWeaponId": "SP_RB_01",
                 "rarity": 0,
                 "mainAffix": {
                     "affixId": "",
@@ -1348,10 +1348,10 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 0,
-                "currentMagazine": -1,
-                "currentReserveAmmo": -1,
-                "reserveAmmoInitialized": false,
+                "shotCounter": 9,
+                "currentMagazine": 1,
+                "currentReserveAmmo": 95,
+                "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
                 "upgradeExp": 0,
@@ -1365,11 +1365,11 @@
             }
         },
         {
-            "itemId": "",
-            "amount": 0,
+            "itemId": "RB.HMG.01",
+            "amount": 1,
             "weaponInstance": {
-                "instanceId": "",
-                "baseWeaponId": "",
+                "instanceId": "17224d6066ba4ceda579cd2a3e092234",
+                "baseWeaponId": "RB.HMG.01",
                 "rarity": 0,
                 "mainAffix": {
                     "affixId": "",
@@ -1379,11 +1379,11 @@
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [],
-                "shotCounter": 0,
-                "currentMagazine": -1,
-                "currentReserveAmmo": -1,
-                "reserveAmmoInitialized": false,
-                "upgradeLevel": 0,
+                "shotCounter": 69,
+                "currentMagazine": 75,
+                "currentReserveAmmo": 256,
+                "reserveAmmoInitialized": true,
+                "upgradeLevel": 6,
                 "upgradeTier": 0,
                 "upgradeExp": 0,
                 "unlockedUpgradeMilestoneIds": []

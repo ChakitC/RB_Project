@@ -2,155 +2,116 @@
 
 ## Overview
 
-The camera layer has three components, each with a distinct responsibility.
+Gameplay uses an over-the-shoulder third-person camera built on Cinemachine 3.
+The project keeps ownership of input, state, aiming, profiles, UI suppression,
+and cinematic handoff.
 
-| Component | File | Responsibility |
-|-----------|------|----------------|
-| `GameplayCameraController` | `Assets/Scripts/GameplayCameraController.cs` | Gameplay follow camera with aim-ahead |
-| `CameraShake` | `Assets/Scripts/CameraShake.cs` | Trauma-based shake — API only, not yet wired |
-| `CameraManager` | `Assets/Scripts/SelectCharactor/CameraManager.cs` | Cinemachine camera switcher for the Select Screen |
+| Component | Responsibility |
+|-----------|----------------|
+| `GameplayCameraController` | Free Look / Shoulder Aim state, yaw/pitch, FOV, cursor ownership, recoil, Cinemachine setup, and cutscene handoff |
+| `CinemachineThirdPersonFollow` | Shoulder geometry, damping, camera distance, and obstacle push-in |
+| `CinemachineThirdPersonAim` | Stable center-screen orientation |
+| `ThirdPersonAimController` | Camera Aim Point and muzzle-obstruction validation |
+| `ThirdPersonCharacterProfile` | Per-character pivot, shoulder, distance, FOV, aim-rig, and fade calibration |
+| `ThirdPersonOcclusionFader` | Local-player close-camera fade and companion reticle/camera obstruction fade |
+| `ThirdPersonReticleView` | Dynamic spread, Shoulder Aim contraction, hit marker, and muzzle-blocked marker |
 
----
+`GameplayCameraController` remains on `CameraHolder` so existing
+`CutsceneSkillPresenter` references remain valid. Cinemachine runtime components
+are created beneath that holder and the existing camera receives a
+`CinemachineBrain`.
 
-## GameplayCameraController — Follow Camera with Aim-Ahead
+## Camera States
 
-`GameplayCameraController` runs in `LateUpdate` and moves the camera to the player using
-`SmoothDamp`. On top of the base follow it applies an **aim-ahead offset**
-that shifts the frame toward the world position the player is aiming at,
-so the player can see more battlefield in the shooting direction.
+### Free Look
 
-### Inspector Fields
+- Mouse delta orbits the camera.
+- The camera never auto-recenters.
+- WASD movement is camera-relative.
+- The character faces movement direction.
 
-| Field | Description |
-|-------|-------------|
-| `taget` | Transform to follow (player root) |
-| `smooth` | SmoothDamp time for base follow |
-| `offset` | Fixed positional offset from the target |
-| `aimTarget` | World-space aim cursor transform (assign `PlayerContext.aimTarget`) |
-| `lookAheadWeight` | 0–1 fraction of cursor distance applied as offset |
-| `lookAheadDistance` | Per-weapon-type distance cap (see table below) |
-| `lookAheadSmooth` | SmoothDamp time for the aim offset (faster than base follow) |
-| `defaultLookAheadDistance` | Fallback cap when no weapon is equipped |
+### Shoulder Aim
 
-### Aim-Ahead Formula
+- Hold right mouse button.
+- The v1 camera stays on the right shoulder.
+- Character yaw follows the camera's planar forward.
+- Camera distance and FOV blend to their aiming values.
+- Camera impulse strength is reduced.
 
-```
-delta       = aimTarget.position - player.position  (Y zeroed)
-lookAmount  = Min(delta.magnitude × lookAheadWeight, maxDistanceForWeapon)
-aimOffset   = normalize(delta) × lookAmount
-finalTarget = player.position + offset + aimOffset
-```
+### Hip Fire
 
-### Look-Ahead Distance per Weapon Type
+Hip fire is allowed. A fired shot starts a short combat-alignment window so the
+character turns toward camera yaw while spread and reticle bloom communicate
+the lower precision.
 
-Configured via `lookAheadTable` in the Inspector (defaults below):
+## Aim Point and Muzzle Trajectory
 
-| Weapon Type | Default Max Distance |
-|-------------|---------------------|
-| Sniper | 7 units |
-| HMG | 5 units |
-| Rifle | 4 units |
-| SMG | 3 units |
-| Shotgun | 2.5 units |
-| Pistol | 2 units |
-| Melee | 0.5 units |
+`ThirdPersonAimController` casts from the center of `Camera.main` and writes the
+validated result to `PlayerContext.aimTarget`. Projectile skills use the full
+3D direction from their cast origin to this point.
 
-`GameplayCameraController` reads the current weapon type from `PlayerContext.Instance.WeaponSystem.gunType`
-automatically — no serialized reference needed on the camera.
+Weapon projectiles do not spawn with the camera ray direction directly. The
+weapon resolves a direction from `WeaponSystem.FirePoint` to the Aim Point,
+applies the current spread cone, and stores that explicit direction in
+`WeaponShotContext` and `WeaponProjectileSpawnContext`. Nearby walls therefore
+block a shot even when the camera can see around them.
 
-### Scene Setup
+Player and companion colliders are ignored by friendly projectiles. Wall
+collision remains active through `ProjectileLayerUtility`.
 
-1. Place `GameplayCameraController` on the camera rig GameObject.
-2. Assign `taget` → player root Transform.
-3. Assign `aimTarget` → the same `aimTarget` Transform referenced by `PlayerContext`.
-4. Tune `offset`, `smooth`, `lookAheadWeight`, `lookAheadSmooth` to taste.
-5. Optionally override per-type distances in `lookAheadTable`.
+## Collision and Occlusion
 
----
+`CinemachineThirdPersonFollow.AvoidObstacles` pushes the camera inward. The old
+world-geometry cutout component is disabled at runtime; levels are not modified
+for the camera.
 
-## Skill Timeline Camera Shake
+When pushed very close, the local character fades using the ASP `_Dithering`
+property. Companions also fade while they obstruct the center reticle or sit
+between the player pivot and camera.
 
-`GameplayCameraController` has a built-in trauma shake system that fires when a `ShakeCamera`
-marker in a main skill clip is reached. Shake is applied to the Camera child's
-`localPosition` / `localEulerAngles`, leaving the rig's world position
-(follow + aim-ahead) untouched.
+## Camera Recoil and Impulses
 
-### Supported Sources
+Gun data supplies hip/aim spread, movement penalty, bloom, recovery, and camera
+kick. Stability reduces spread and recoil. `ShakeCamera` animation markers
+still subscribe from the player, field allies, and helper, but now generate
+short Cinemachine impulses. Shoulder Aim applies a lower impulse multiplier.
 
-Shake fires for skills cast by:
+## UI and Cursor Ownership
 
-- the player (`PlayerContext.AnimBrain`)
-- field allies registered in `FieldAllyManager`
-- the summoned helper managed by `AllyHelperManager`
+Gameplay locks and hides the cursor. It unlocks and suppresses camera input
+while inventory, passive tree, active-skill screen, pause menu, or cinematic
+skill playback is active.
 
-Enemy skills do not trigger camera shake. `GameplayCameraController` subscribes to
-`SkillTimelineEventRaised` from each source's `CharacterAnimBrain` and
-refreshes subscriptions when allies register/unregister or the helper changes.
+The pause menu creates a camera settings panel for horizontal sensitivity,
+vertical sensitivity, invert Y, and FOV. Values use independent `PlayerPrefs`
+keys, so old save data remains valid and missing values receive defaults.
 
-### Shake Behavior
+## Cinematic Handoff
 
-- Intensity = `trauma²` (quadratic falloff via Perlin noise)
-- Multiple `ShakeCamera` markers in one clip stack trauma additively
-- Trauma decays using `Time.unscaledDeltaTime`, so shake speed and decay are
-  stable during world slow
-- Markers in a cutscene character clip are not bound; only the main skill clip
-  fires `ShakeCamera`
+`CutsceneSkillPresenter` disables `GameplayCameraController` as before. The
+controller disables its Cinemachine camera and brain, allowing the existing
+camera-holder Animancer clip to drive the real camera. On re-enable, Cinemachine
+invalidates its previous state and restores the preserved TPS yaw/pitch without
+an isometric snap.
 
-### Inspector Fields (on `GameplayCameraController`)
+## Character Authoring
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `shakeTraumaPerMarker` | 0.6 | Trauma added per `ShakeCamera` marker |
-| `shakeMaxPositionOffset` | 0.3 | Peak local position offset at full trauma |
-| `shakeMaxRotationDeg` | 2 | Peak Z-rotation in degrees at full trauma |
-| `shakeTraumaDecayPerSecond` | 1.5 | How fast trauma drains to zero |
-| `shakeNoiseSpeed` | 8 | Frequency of Perlin noise motion |
+Every `CharacterStats` asset contains a `Third Person/TPS Profile`. The default
+profile is valid when no character-specific calibration is supplied. Tune:
 
-### Prefab Setup
+- pivot and shoulder offsets
+- free/aim distance
+- free/aim FOV
+- pitch limits and sensitivity multipliers
+- spine/chest/upper-chest aim weights
+- collision radius and fade distances
 
-```
-CameraHolder       ← GameplayCameraController here (auto-resolves first child as shake target)
-  └─ Camera        ← shake applied to localPosition / localEulerAngles
-```
+`CharacteContext.ResolveReferences` creates `ThirdPersonAimRigController` for
+player and companion identities at runtime, including dynamically spawned
+helpers and swapped character models.
 
-`GameplayCameraController` stores the Camera child's base local pose at `Awake` and restores it
-when shake ends or the component is disabled.
+## Select Screen
 
----
-
-## CameraShake — Legacy Shake Component
-
-`CameraShake` is a standalone trauma shake component with its own `AddTrauma`
-public API. It is **not used** by the skill timeline camera shake system above.
-The component and its API are preserved for potential future use by other
-systems (e.g., explosion effects, damage feedback).
-
-### Public API
-
-```csharp
-CameraShake shake = ...; // GetComponent or cached reference
-shake.AddTrauma(0.4f);   // add trauma; clamps to [0, 1] internally
-```
-
-### Inspector Fields
-
-| Field | Default | Description |
-|-------|---------|-------------|
-| `maxPositionOffset` | 0.3 | Peak local position offset at full trauma |
-| `maxRotationDeg` | 2 | Peak Z-rotation in degrees at full trauma |
-| `traumaDecayPerSecond` | 1.5 | How fast trauma drains to zero |
-| `noiseSpeed` | 8 | Frequency of Perlin noise motion |
-
----
-
-## CameraManager — Select Screen
-
-`CameraManager` switches between two Cinemachine cameras during the
-character and map selection flow by adjusting `Priority`.
-
-| Camera | Active When |
-|--------|-------------|
-| `CharacterSelectCamera` | character selection (default) |
-| `StadeSelectCamera` | map selection after `MobilizClick()` |
-
-This component is unrelated to gameplay camera behavior.
+`Assets/Scripts/SelectCharactor/CameraManager.cs` continues to switch its own
+Cinemachine cameras for character/map selection. It is separate from gameplay
+TPS state.

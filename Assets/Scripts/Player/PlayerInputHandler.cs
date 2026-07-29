@@ -54,9 +54,16 @@ public class PlayerInputHandler : MonoBehaviour
 
     public void OnMelee(InputAction.CallbackContext c)
     {
-     
         ResolveReferences();
-        if (c.performed) ctx?.stateHub?.RequestOnMelee();
+        if (!c.performed)
+            return;
+
+        ThirdPersonTargetingUtility.FacePlayerTowardSoftTarget(
+            ctx,
+            searchDistance: 4f,
+            searchRadius: 1.2f,
+            targetMask: ~0);
+        ctx?.stateHub?.RequestOnMelee();
     }
 
     public void OnFire(InputAction.CallbackContext c)

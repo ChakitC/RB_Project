@@ -159,13 +159,18 @@ public static class ChainAttackTargetingUtility
             return false;
 
         Vector3 aimPoint = playerContext.aimTarget.position;
-        Collider[] hits = Physics.OverlapSphere(
+        Camera gameplayCamera = Camera.main;
+        Vector3 searchOrigin = gameplayCamera != null
+            ? gameplayCamera.transform.position
+            : playerContext.transform.position + Vector3.up;
+        Collider[] hits = Physics.OverlapCapsule(
+            searchOrigin,
             aimPoint,
             Mathf.Max(0.1f, sequenceDef.aimSearchRadius),
             sequenceDef.targetLayers,
             sequenceDef.targetTriggerInteraction);
 
-        float bestDistanceSqr = float.PositiveInfinity;
+        float bestScore = float.PositiveInfinity;
 
         for (int i = 0; i < hits.Length; i++)
         {
@@ -185,21 +190,28 @@ public static class ChainAttackTargetingUtility
             }
 
             Vector3 candidatePoint = candidateAnchor != null ? candidateAnchor.position : candidateTransform.position;
-            if (sequenceDef.requireAimLineOfSight &&
-                !HasAimLineOfSight(
-                    aimPoint,
+            if (!ThirdPersonTargetingUtility.TryGetReticleScore(
+                    gameplayCamera,
                     candidatePoint,
-                    sequenceDef.aimObstacleLayers,
-                    sequenceDef.targetTriggerInteraction))
+                    out float score) ||
+                score >= bestScore)
             {
                 continue;
             }
 
-            float distanceSqr = (candidatePoint - aimPoint).sqrMagnitude;
-            if (distanceSqr >= bestDistanceSqr)
+            if (sequenceDef.requireAimLineOfSight &&
+                !ThirdPersonTargetingUtility.HasLineOfSight(
+                    searchOrigin,
+                    candidatePoint,
+                    candidateTransform,
+                    sequenceDef.aimObstacleLayers,
+                    sequenceDef.targetTriggerInteraction,
+                    playerContext.transform))
+            {
                 continue;
+            }
 
-            bestDistanceSqr = distanceSqr;
+            bestScore = score;
             targetObject = candidateObject;
             targetTransform = candidateTransform;
             anchorTransform = candidateAnchor;
@@ -269,28 +281,6 @@ public static class ChainAttackTargetingUtility
             return rigidbody.transform;
 
         return start.root != null ? start.root : start;
-    }
-
-    static bool HasAimLineOfSight(
-        Vector3 origin,
-        Vector3 targetPoint,
-        LayerMask obstacleLayers,
-        QueryTriggerInteraction triggerInteraction)
-    {
-        if (obstacleLayers == 0)
-            return true;
-
-        Vector3 direction = targetPoint - origin;
-        float distance = direction.magnitude;
-        if (distance <= 0.001f)
-            return true;
-
-        return !Physics.Raycast(
-            origin,
-            direction / distance,
-            distance,
-            obstacleLayers,
-            triggerInteraction);
     }
 
     static T FindInterfaceInParents<T>(Transform start) where T : class

@@ -95,6 +95,18 @@ public class GunConfig : ItemDefinition
     public float baseSwaySpeed = 0f;
     public float baseMaxSwayAngle = 0f;
     public float baseReturnSpeed = 0f;
+
+    [Header("Third Person Accuracy")]
+    [Min(0f)] public float hipSpreadDegrees = 2.2f;
+    [Min(0f)] public float aimSpreadDegrees = 0.35f;
+    [Min(0f)] public float moveSpreadPenaltyDegrees = 1f;
+    [Min(0f)] public float spreadPerShotDegrees = 0.45f;
+    [Min(0f)] public float maximumSpreadBloomDegrees = 3f;
+    [Min(0f)] public float spreadRecoveryDegreesPerSecond = 3.5f;
+
+    [Header("Third Person Camera Recoil")]
+    [Min(0f)] public float cameraRecoilPitch = 1.1f;
+    [Min(0f)] public float cameraRecoilYaw = 0.45f;
     
     
     [Title("Burst Settings")]

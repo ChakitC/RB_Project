@@ -67,6 +67,7 @@ public class WeaponSystem : MonoBehaviour
     public bool CanReload => !isReloading && currentWeapon != null && magazine < MaxMagazine && HasReserveAmmo;
     public bool IsFreeAmmoActive => ammoState.IsFreeAmmoActive;
     public float FreeAmmoRemaining => ammoState.FreeAmmoRemaining;
+    public float CurrentSpreadDegrees => ResolveCurrentSpreadDegrees();
 
     public event Action<int, int, int, bool> AmmoChanged;
 
@@ -80,6 +81,7 @@ public class WeaponSystem : MonoBehaviour
     float swaySpeed;
     float maxSwayAngle;
     float returnSpeed;
+    float spreadBloom;
 
     float swayTimer = 0f;
     Quaternion firePointOriginalRot;
@@ -580,6 +582,7 @@ public class WeaponSystem : MonoBehaviour
         maxSwayAngle = 0f;
         returnSpeed = 0f;
         swayTimer = 0f;
+        spreadBloom = 0f;
     }
 
     public void SetFiring(bool value)
@@ -622,6 +625,14 @@ public class WeaponSystem : MonoBehaviour
     {
         RefreshDerivedStatsIfDirty();
 
+        if (currentWeapon != null)
+        {
+            spreadBloom = Mathf.MoveTowards(
+                spreadBloom,
+                0f,
+                currentWeapon.spreadRecoveryDegreesPerSecond * GetWeaponDeltaTime());
+        }
+
         if (firingMode == FiringMode.Auto && isFiring && GetWeaponTime() >= nextFireTime)
             TryShoot();
 
@@ -661,6 +672,7 @@ public class WeaponSystem : MonoBehaviour
 
         WeaponShotContext shot = CreateWeaponShotContext();
         SpawnProjectile(shot);
+        ApplyThirdPersonShotFeedback();
 
         PlayWeaponCue(currentWeapon != null ? currentWeapon.fireCue : null, false);
         DispatchShotNotifications(shot);
@@ -710,12 +722,15 @@ public class WeaponSystem : MonoBehaviour
         string attackId = combatEventBus != null ? combatEventBus.CreateAttackId(weaponSourceId) : null;
         PassiveEventContext passiveContext = CreateShotContext(weaponSourceId, attackId);
 
+        Vector3 direction = ResolveProjectileDirection(CurrentSpreadDegrees);
+
         return new WeaponShotContext(
             projectileConfig,
             projectilePrefab,
             firePoint,
             damage,
             bulletSpeed,
+            direction,
             weaponSourceId,
             attackId,
             passiveContext);
@@ -734,6 +749,49 @@ public class WeaponSystem : MonoBehaviour
     {
         if (magazine <= 0 && autoloader && HasReserveAmmo)
             TryReload();
+    }
+
+    float ResolveCurrentSpreadDegrees()
+    {
+        if (currentWeapon == null)
+            return 0f;
+
+        float baseSpread = isAiming
+            ? currentWeapon.aimSpreadDegrees
+            : currentWeapon.hipSpreadDegrees;
+        float movementPenalty = ctx != null
+            ? currentWeapon.moveSpreadPenaltyDegrees * Mathf.Clamp01(ctx.moveInput.magnitude)
+            : 0f;
+        float stabilityMultiplier = 1f - Mathf.Clamp01(stability * 0.01f);
+        return Mathf.Max(0f, (baseSpread + movementPenalty + spreadBloom) * stabilityMultiplier);
+    }
+
+    Vector3 ResolveProjectileDirection(float spreadDegrees)
+    {
+        Vector3 direction = firePoint != null ? firePoint.forward : transform.forward;
+        if (ctx is PlayerContext player && player.thirdPersonAim != null)
+            direction = player.thirdPersonAim.ResolveShotDirection(firePoint, spreadDegrees);
+
+        return direction.sqrMagnitude > 0.0001f
+            ? direction.normalized
+            : transform.forward;
+    }
+
+    void ApplyThirdPersonShotFeedback()
+    {
+        if (currentWeapon == null)
+            return;
+
+        spreadBloom = Mathf.Min(
+            spreadBloom + currentWeapon.spreadPerShotDegrees,
+            currentWeapon.maximumSpreadBloomDegrees);
+
+        if (ctx is PlayerContext && GameplayCameraController.Instance != null)
+        {
+            GameplayCameraController.Instance.NotifyShotFired(
+                currentWeapon.cameraRecoilPitch,
+                currentWeapon.cameraRecoilYaw);
+        }
     }
 
     public bool SpawnAffixProjectile(
@@ -759,6 +817,7 @@ public class WeaponSystem : MonoBehaviour
             projectileToSpawn,
             damage * Mathf.Max(0f, damageMultiplier),
             bulletSpeed * Mathf.Max(0f, speedMultiplier),
+            ResolveProjectileDirection(CurrentSpreadDegrees),
             weaponSourceId,
             attackId,
             default);
@@ -1113,6 +1172,7 @@ public class WeaponSystem : MonoBehaviour
             shot.ProjectilePrefab,
             shot.Damage,
             shot.Speed,
+            shot.Direction,
             shot.WeaponSourceId,
             shot.AttackId,
             shot.PassiveContext);
@@ -1123,6 +1183,7 @@ public class WeaponSystem : MonoBehaviour
         GameObject projectileToSpawn,
         float projectileDamage,
         float projectileSpeed,
+        Vector3 projectileDirection,
         string weaponSourceId,
         string attackId,
         PassiveEventContext shotContext)
@@ -1141,6 +1202,7 @@ public class WeaponSystem : MonoBehaviour
             critMultiplier,
             projectileDamage,
             projectileSpeed,
+            projectileDirection,
             staggerPower,
             currentWeapon != null ? currentWeapon.hitCue : null,
             weaponSourceId,

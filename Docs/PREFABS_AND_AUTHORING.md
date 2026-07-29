@@ -22,6 +22,7 @@ Common references should be assigned on the context when possible:
 - `CharacterAnimBrain`
 - `CharacterAnimDriver`
 - `CharacterPairOffsetApplier`
+- `ThirdPersonAimRigController` (runtime fallback is available)
 - `HealthSystem`
 - `StaminaSystem`
 - `DashSystem`
@@ -33,6 +34,36 @@ Common references should be assigned on the context when possible:
 
 Runtime code can resolve missing references, but important prefab context fields
 should still be bound when authoring stable production prefabs.
+
+## Third-Person Character Calibration
+
+Each `CharacterStats` asset owns a `Third Person/TPS Profile`. Use it to
+calibrate the camera without adding character-specific branches to the camera
+controller:
+
+- `pivotOffset`: upper-body follow origin
+- `shoulderOffset`, `cameraSide`: shoulder framing (`cameraSide = 1` for v1)
+- `cameraDistance`, `aimCameraDistance`: free/aim distance
+- `freeLookFov`, `shoulderAimFov`: authored FOV relationship
+- pitch limits and sensitivity multipliers
+- humanoid spine/chest/upper-chest aim weights
+- camera collision radius and close-camera fade distances
+
+The default initialized profile is a valid fallback. Player and companion
+contexts add the procedural upper-body aim component at runtime, so dynamically
+spawned helpers and character model swaps use the same profile. Humanoid
+characters receive full upper-body pitch/yaw; non-Humanoid rigs keep gameplay
+aiming but require a rig-specific visual adapter.
+
+`Assets/Prefab/System/CameraHolder.prefab` remains the gameplay camera root.
+`GameplayCameraController` creates its Cinemachine camera/brain at runtime so
+existing scene instances and cutscene camera animations keep their serialized
+references.
+
+Run **Tools > RB Project > Validate Third Person Authoring** after changing the
+player prefab, camera prefab, input actions, or Build Settings scenes. The same
+validator is available to batch mode through
+`ThirdPersonAuthoringValidator.ValidateBatchMode`.
 
 ## Character Skill Loadout Authoring
 
@@ -82,6 +113,9 @@ Characters without a `StaggerMeter` hide the lower bar. Keep
 `StaggerMeter.staggerBarPrefab` unassigned when using the combined overhead bar
 so a second stagger bar is not created. The same prefab also contains the
 ChainReady prompt and binds it to the actor's `StaggerMeter` automatically.
+The local player does not instantiate this overhead bar; player HP/stagger
+belongs to the HUD. Enemy and companion overhead bars hide when world geometry
+blocks line of sight.
 
 ## Equipment Upgrade UI
 

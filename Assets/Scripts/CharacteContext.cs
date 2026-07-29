@@ -24,6 +24,7 @@ public abstract class CharacteContext : MonoBehaviour
     public CharacterAnimDriver AnimDriver;
     public CharacterPairOffsetApplier PairOffsetApplier;
     public MeleeController MeleeController;
+    public ThirdPersonAimRigController AimRig;
     
     [Header("Visual")] 
     public CharacterContextPartyLoader CharacterLoad;
@@ -112,6 +113,14 @@ public abstract class CharacteContext : MonoBehaviour
             PairOffsetApplier = gameObject.AddComponent<CharacterPairOffsetApplier>();
         }
         MeleeController = ResolveActorComponent(MeleeController);
+        AimRig = ResolveActorComponent(AimRig);
+        if (AimRig == null &&
+            Application.isPlaying &&
+            (TargetIdentity == AITargetIdentity.Player ||
+             TargetIdentity == AITargetIdentity.Companion))
+        {
+            AimRig = gameObject.AddComponent<ThirdPersonAimRigController>();
+        }
 
         CharacterLoad = ResolveActorComponent(CharacterLoad);
         Visual = ResolveActorComponent(Visual);

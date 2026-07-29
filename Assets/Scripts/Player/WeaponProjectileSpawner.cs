@@ -15,7 +15,11 @@ public sealed class WeaponProjectileSpawner
 
         var pool = ProjectilePool.Instance;
         if (pool == null) return;
-        var projectile = pool.Get(prefabComp, context.FirePoint.position, context.FirePoint.rotation);
+        Vector3 direction = context.Direction.sqrMagnitude > 0.0001f
+            ? context.Direction.normalized
+            : context.FirePoint.forward;
+        Quaternion rotation = Quaternion.LookRotation(direction, context.FirePoint.up);
+        var projectile = pool.Get(prefabComp, context.FirePoint.position, rotation);
         if (projectile == null) return;
         ProjectileLayerUtility.ApplyForContext(projectile.gameObject, context.OwnerContext);
 
@@ -29,7 +33,7 @@ public sealed class WeaponProjectileSpawner
             collisionIgnoreRoot = context.CollisionIgnoreRoot,
             combatEventBus = context.CombatEventBus,
             statusEffectController = context.StatusEffectController,
-            dir = context.FirePoint.forward,
+            dir = direction,
             stats = new ProjectileStats
             {
                 damage = context.Damage,

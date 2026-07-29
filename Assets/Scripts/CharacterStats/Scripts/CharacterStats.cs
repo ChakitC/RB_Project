@@ -190,6 +190,10 @@ public class CharacterStats : ScriptableObject
     [FoldoutGroup("Character Detail", Expanded = true), LabelText("Anim Profile"), AssetsOnly]
     public CharacterAnimProfileSO animProfile;
 
+    [PropertyOrder(-152)]
+    [FoldoutGroup("Third Person", Expanded = false), LabelText("TPS Profile")]
+    public ThirdPersonCharacterProfile thirdPersonProfile = ThirdPersonCharacterProfile.CreateDefault();
+
     [PropertyOrder(-140)]
     [FoldoutGroup("Weapon Visual", Expanded = true), LabelText("Weapon Hand Mode")]
     public CharacterWeaponHandMode weaponHandMode = CharacterWeaponHandMode.RightHand;

@@ -30,6 +30,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
 
     [Header("Target Search")]
     [SerializeField] private LayerMask targetSearchMask = ~0;
+    [SerializeField] private LayerMask targetObstacleMask = ~0;
     [SerializeField, Min(0.5f)] private float targetSearchRadius = 4f;
 
     [Header("Player Interrupt")]
@@ -228,7 +229,17 @@ public sealed class InterruptionCommandController : MonoBehaviour
         diagnostics = null;
 
         Vector3 center = playerContext.aimTarget.position;
-        int count = Physics.OverlapSphereNonAlloc(center, targetSearchRadius, _overlapBuffer, targetSearchMask, QueryTriggerInteraction.Ignore);
+        Camera gameplayCamera = Camera.main;
+        Vector3 searchOrigin = gameplayCamera != null
+            ? gameplayCamera.transform.position
+            : playerContext.transform.position + Vector3.up;
+        int count = Physics.OverlapCapsuleNonAlloc(
+            searchOrigin,
+            center,
+            targetSearchRadius,
+            _overlapBuffer,
+            targetSearchMask,
+            QueryTriggerInteraction.Ignore);
 
         float bestDist = float.MaxValue;
         InterruptionTargetContext bestCtx = default;
@@ -285,15 +296,33 @@ public sealed class InterruptionCommandController : MonoBehaviour
                 continue;
             }
 
-            candidateCount++;
-            float dist = Vector3.Distance(center, col.transform.position);
-            if (dist < bestDist)
+            Transform targetAnchor = ResolveTargetAnchor(targetRoot);
+            Vector3 targetPoint = targetAnchor != null
+                ? targetAnchor.position
+                : col.bounds.center;
+            if (!ThirdPersonTargetingUtility.TryGetReticleScore(
+                    gameplayCamera,
+                    targetPoint,
+                    out float score) ||
+                !ThirdPersonTargetingUtility.HasLineOfSight(
+                    searchOrigin,
+                    targetPoint,
+                    targetRoot,
+                    targetObstacleMask,
+                    QueryTriggerInteraction.Ignore,
+                    playerContext.transform))
             {
-                bestDist = dist;
+                continue;
+            }
+
+            candidateCount++;
+            if (score < bestDist)
+            {
+                bestDist = score;
                 bestCtx = new InterruptionTargetContext
                 {
                     Transform = targetRoot,
-                    Anchor = ResolveTargetAnchor(targetRoot),
+                    Anchor = targetAnchor,
                     Block = block,
                     Knockback = knockback,
                     Health = health

@@ -7,6 +7,7 @@ public readonly struct WeaponShotContext
     public readonly Transform FirePoint;
     public readonly float Damage;
     public readonly float Speed;
+    public readonly Vector3 Direction;
     public readonly string WeaponSourceId;
     public readonly string AttackId;
     public readonly PassiveEventContext PassiveContext;
@@ -17,6 +18,7 @@ public readonly struct WeaponShotContext
         Transform firePoint,
         float damage,
         float speed,
+        Vector3 direction,
         string weaponSourceId,
         string attackId,
         PassiveEventContext passiveContext)
@@ -26,6 +28,7 @@ public readonly struct WeaponShotContext
         FirePoint = firePoint;
         Damage = damage;
         Speed = speed;
+        Direction = direction;
         WeaponSourceId = weaponSourceId;
         AttackId = attackId;
         PassiveContext = passiveContext;

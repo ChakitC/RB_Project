@@ -2,7 +2,8 @@
 
 ## Setting and Premise
 
-RB Project is an Action RPG Looter Shooter presented in a semi-isometric perspective.
+RB Project is an Action RPG Looter Shooter presented as an over-the-shoulder
+third-person shooter.
 The player takes the role of an undercover police officer posing as a consultant inside
 a criminal gang in order to investigate and contain an escalating conflict.
 
@@ -17,8 +18,10 @@ over **Rabbit Town**.
 
 ### View and Controls
 
-- Semi-isometric camera with the player controlling character facing direction via the
-  mouse.
+- Free Look exploration camera with camera-relative movement. The character faces
+  movement direction until a combat action aligns them with the camera.
+- Hold right mouse button for Shoulder Aim; hip fire remains available at lower
+  precision.
 - Movement: **W A S D** for exploring areas and engaging in combat.
 
 ### Challenge
@@ -161,10 +164,12 @@ During missions the player controls the **main character** with:
 
 A typical combat encounter flows as follows:
 
-1. **Move and aim** — player positions with WASD and aims the firing direction with the
-   mouse.
-2. **Shoot** — hold the fire button to shoot. Weapons have a magazine; when it empties
-   the player must reload manually or be reloaded automatically.
+1. **Move and aim** — player positions with WASD, orbits with mouse delta, and
+   holds right mouse for Shoulder Aim. The center reticle resolves a 3D Aim Point.
+2. **Shoot** — hold the fire button to shoot. Bullets travel physically from the
+   muzzle toward the Aim Point, so nearby cover can block them. Weapons have a
+   magazine; when it empties the player must reload manually or be reloaded
+   automatically.
 3. **Use skills** — active skills (bound to hotkeys) are cast on cooldown. Each cast
    plays an animation, fires the payload (projectile, hitbox, status application, or
    pickup spawn), and enters cooldown.

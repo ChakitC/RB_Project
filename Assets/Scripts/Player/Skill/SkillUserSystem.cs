@@ -229,7 +229,6 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
             else
                 dir = transform.forward;
 
-            dir.y = 0f;
             if (dir.sqrMagnitude < 0.0001f)
                 dir = CastOrigin ? CastOrigin.forward : transform.forward;
 

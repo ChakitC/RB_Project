@@ -171,6 +171,18 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
             return;
         }
 
+        PlayerContext player = context.CasterRoot != null
+            ? context.CasterRoot.GetComponent<PlayerContext>()
+            : null;
+        if (player != null)
+        {
+            ThirdPersonTargetingUtility.FacePlayerTowardSoftTarget(
+                player,
+                searchDistance: 6f,
+                searchRadius: 1.5f,
+                targetMask: targetMask);
+        }
+
         ResolveSpawnPose(context, out _, out Vector3 spawnPosition, out Quaternion spawnRotation);
 
         GameObject runtimeObject = new GameObject($"{name}_HitboxRuntime");

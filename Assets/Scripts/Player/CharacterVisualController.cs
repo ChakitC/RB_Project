@@ -599,6 +599,12 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
     {
         EnsureReferences();
 
+        if (_ctx != null && _ctx.TargetIdentity == AITargetIdentity.Player)
+        {
+            DestroyHealthBarInstance();
+            return;
+        }
+
         if (_healthBarInstance)
         {
             ApplyHealthBarOffset();

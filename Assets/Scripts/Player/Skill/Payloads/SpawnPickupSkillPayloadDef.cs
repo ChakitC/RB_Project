@@ -39,6 +39,14 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
     [LabelText("Height"), SuffixLabel("m")]
     private float verticalOffset = 0f;
 
+    [SerializeField, BoxGroup("Placement"), Min(0.5f)]
+    [LabelText("Maximum Target Distance"), SuffixLabel("m")]
+    private float maximumTargetDistance = 12f;
+
+    [SerializeField, BoxGroup("Placement")]
+    [LabelText("Ground Layers")]
+    private LayerMask groundMask = ~0;
+
     [ShowInInspector, ReadOnly, BoxGroup("Placement"), LabelText("Placement Preview")]
     private string PlacementPreviewLabel => $"{forwardOffset:0.##}m forward, {spreadWidth:0.##}m spread, {verticalOffset:0.##}m height";
 
@@ -55,8 +63,10 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
             : Mathf.Max(1, spawnCount);
 
         Vector3 forward = context.AimDirection.sqrMagnitude > 0.0001f
-            ? context.AimDirection.normalized
+            ? Vector3.ProjectOnPlane(context.AimDirection, Vector3.up).normalized
             : Vector3.forward;
+        if (forward.sqrMagnitude <= 0.0001f)
+            forward = Vector3.forward;
 
         Vector3 side = Vector3.Cross(Vector3.up, forward);
         if (side.sqrMagnitude <= 0.0001f)
@@ -64,7 +74,31 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
         else
             side.Normalize();
 
-        Vector3 basePosition = context.CastPosition + forward * forwardOffset + Vector3.up * verticalOffset;
+        Vector3 basePosition = context.CastPosition + forward * forwardOffset;
+        PlayerContext player = context.CasterRoot != null
+            ? context.CasterRoot.GetComponent<PlayerContext>()
+            : null;
+        if (player != null && context.AimTransform != null)
+        {
+            Vector3 targetOffset = context.AimTransform.position - context.CastPosition;
+            targetOffset = Vector3.ClampMagnitude(
+                targetOffset,
+                Mathf.Max(0.5f, maximumTargetDistance));
+            basePosition = context.CastPosition + targetOffset;
+        }
+
+        if (Physics.Raycast(
+                basePosition + Vector3.up * 10f,
+                Vector3.down,
+                out RaycastHit groundHit,
+                30f,
+                groundMask,
+                QueryTriggerInteraction.Ignore))
+        {
+            basePosition = groundHit.point;
+        }
+
+        basePosition += Vector3.up * verticalOffset;
         Quaternion rotation = Quaternion.LookRotation(forward, Vector3.up);
 
         for (int i = 0; i < count; i++)

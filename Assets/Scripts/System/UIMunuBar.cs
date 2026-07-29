@@ -40,7 +40,10 @@ public class UIMunuBar : MonoBehaviour
     void Start()
     {
         if (menuBar != null)
+        {
             menuBar.SetActive(_MenubarOpen);
+            ThirdPersonCameraSettingsPanel.EnsureExists(menuBar);
+        }
     }
     void Update()
     {
@@ -48,7 +51,8 @@ public class UIMunuBar : MonoBehaviour
         {
             Debug.Log("Open Menu bar");
             _MenubarOpen = !_MenubarOpen;          
-            menuBar.SetActive(_MenubarOpen);
+            if (menuBar != null)
+                menuBar.SetActive(_MenubarOpen);
 
             if (menuToggleCue != null)
                 AudioService.Instance.Play(menuToggleCue);

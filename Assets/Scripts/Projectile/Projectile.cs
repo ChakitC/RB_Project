@@ -265,9 +265,13 @@ public class Projectile : MonoBehaviour
             return;
 
         Vector3 face = _ctx.dir;
-        face.y = 0f;
         if (face.sqrMagnitude > 0.0001f)
-            transform.rotation = Quaternion.LookRotation(face.normalized);
+        {
+            Vector3 up = Mathf.Abs(Vector3.Dot(face.normalized, Vector3.up)) > 0.98f
+                ? Vector3.forward
+                : Vector3.up;
+            transform.rotation = Quaternion.LookRotation(face.normalized, up);
+        }
     }
 
     void FixedUpdate()
@@ -341,6 +345,9 @@ public class Projectile : MonoBehaviour
             return;
 
         if (MeleeController.IsCombatOnlyHitbox(other))
+            return;
+
+        if (IsFriendlyCollider(other))
             return;
         
         if (_ignoredRootIds.Contains(other.transform.root.GetInstanceID()))
@@ -499,6 +506,7 @@ public class Projectile : MonoBehaviour
         {
             if (!h) continue;
             if (MeleeController.IsCombatOnlyHitbox(h)) continue;
+            if (IsFriendlyCollider(h)) continue;
 
             var root = h.transform.root;
             int rootId = root.GetInstanceID();
@@ -833,6 +841,30 @@ public class Projectile : MonoBehaviour
     public void IgnoreTarget(IDamageable target)
     {
         if (target is Component c) IgnoreRoot(c.transform.root);
+    }
+
+    bool IsFriendlyCollider(Collider other)
+    {
+        if (other == null || _ctx.sourceActor == null)
+            return false;
+
+        CharacteContext sourceContext = _ctx.sourceActor.GetComponentInParent<CharacteContext>();
+        CharacteContext targetContext = other.GetComponentInParent<CharacteContext>();
+        if (sourceContext == null || targetContext == null)
+            return false;
+
+        bool sourceFriendly =
+            sourceContext.TargetIdentity == AITargetIdentity.Player ||
+            sourceContext.TargetIdentity == AITargetIdentity.Companion;
+        bool targetFriendly =
+            targetContext.TargetIdentity == AITargetIdentity.Player ||
+            targetContext.TargetIdentity == AITargetIdentity.Companion;
+
+        if (sourceFriendly && targetFriendly)
+            return true;
+
+        return sourceContext.TargetIdentity == AITargetIdentity.Enemy &&
+               targetContext.TargetIdentity == AITargetIdentity.Enemy;
     }
 
     KnockbackData BuildConfiguredKnockback(in ProjectileHitInfo hit, bool useRadialDirection)

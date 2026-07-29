@@ -15,6 +15,7 @@ public class PlayerContext : CharacteContext
     public ChainAttackCoordinator chainAttackCoordinator;
     public PartyCommandController partyCommand;
     public InterruptionCommandController interruptionCommand;
+    public ThirdPersonAimController thirdPersonAim;
 
     [Header("Inventory")]
     public PlayerInventory inventory;
@@ -82,6 +83,12 @@ public class PlayerContext : CharacteContext
 
         if (inventory == null)
             inventory = ResolveActorComponent(inventory);
+
+        if (thirdPersonAim == null)
+            thirdPersonAim = ResolveActorComponent(thirdPersonAim);
+
+        if (Application.isPlaying && thirdPersonAim == null)
+            thirdPersonAim = gameObject.AddComponent<ThirdPersonAimController>();
     }
 
     void TryMigrateLegacyPartyCommandConfiguration()

@@ -15,6 +15,7 @@ public readonly struct WeaponProjectileSpawnContext
     public readonly float CritMultiplier;
     public readonly float Damage;
     public readonly float Speed;
+    public readonly Vector3 Direction;
     public readonly float StaggerPower;
     public readonly AudioCue HitCue;
     public readonly string DamageSourceId;
@@ -35,6 +36,7 @@ public readonly struct WeaponProjectileSpawnContext
         float critMultiplier,
         float damage,
         float speed,
+        Vector3 direction,
         float staggerPower,
         AudioCue hitCue,
         string damageSourceId,
@@ -54,6 +56,7 @@ public readonly struct WeaponProjectileSpawnContext
         CritMultiplier = critMultiplier;
         Damage = damage;
         Speed = speed;
+        Direction = direction;
         StaggerPower = staggerPower;
         HitCue = hitCue;
         DamageSourceId = damageSourceId;

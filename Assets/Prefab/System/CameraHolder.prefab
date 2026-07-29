@@ -49,29 +49,15 @@ MonoBehaviour:
   taget: {fileID: 0}
   smooth: 0.1
   offset: {x: -4.97, y: -0.21, z: 0}
-  lookAheadWeight: 0.4
-  lookAheadSmooth: 0.15
-  defaultLookAheadDistance: 3
-  lookAheadTable:
-  - weaponType: 0
-    distance: 7
-  - weaponType: 5
-    distance: 5
-  - weaponType: 3
-    distance: 4
-  - weaponType: 4
-    distance: 3
-  - weaponType: 1
-    distance: 2.5
-  - weaponType: 2
-    distance: 2
-  - weaponType: 6
-    distance: 0.5
-  shakeTraumaPerMarker: 0.6
-  shakeMaxPositionOffset: 0.3
-  shakeMaxRotationDeg: 2
-  shakeTraumaDecayPerSecond: 1.5
-  shakeNoiseSpeed: 8
+  cameraCollisionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  initialPitch: 12
+  aimBlendSpeed: 10
+  recoilRecoverySpeed: 11
+  combatAlignmentDuration: 0.3
+  shakeImpulsePerMarker: 0.55
+  aimShakeMultiplier: 0.45
 --- !u!1 &2151110332578885825
 GameObject:
   m_ObjectHideFlags: 0
@@ -229,7 +215,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2151110332578885825}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c577fbf8b1ee406e90c5e4e85411319f, type: 3}
   m_Name: 

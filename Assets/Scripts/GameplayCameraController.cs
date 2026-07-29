@@ -1,299 +1,484 @@
-using System;
 using System.Collections.Generic;
+using Unity.Cinemachine;
 using UnityEngine;
 
+[DefaultExecutionOrder(-50)]
+[DisallowMultipleComponent]
 public class GameplayCameraController : MonoBehaviour
 {
+    public static GameplayCameraController Instance { get; private set; }
+
+    [Header("Legacy Target")]
     public Transform taget;
-    public float smooth;
+    public float smooth = 0.08f;
     public Vector3 offset;
 
-    [Header("Aim Ahead")]
-    [SerializeField, Range(0f, 1f)] float lookAheadWeight = 0.4f;
-    [SerializeField] float lookAheadSmooth = 0.15f;
-    [SerializeField] float defaultLookAheadDistance = 3f;
-    [SerializeField] WeaponLookAheadEntry[] lookAheadTable = new WeaponLookAheadEntry[]
-    {
-        new WeaponLookAheadEntry { weaponType = WeaponType.Sniper,  distance = 7f },
-        new WeaponLookAheadEntry { weaponType = WeaponType.Hmg,     distance = 5f },
-        new WeaponLookAheadEntry { weaponType = WeaponType.Rifle,   distance = 4f },
-        new WeaponLookAheadEntry { weaponType = WeaponType.Smg,     distance = 3f },
-        new WeaponLookAheadEntry { weaponType = WeaponType.Shotgun, distance = 2.5f },
-        new WeaponLookAheadEntry { weaponType = WeaponType.Pistol,  distance = 2f },
-        new WeaponLookAheadEntry { weaponType = WeaponType.Melee,   distance = 0.5f },
-    };
+    [Header("Third Person")]
+    [SerializeField] private LayerMask cameraCollisionMask = ~0;
+    [SerializeField] private float initialPitch = 12f;
+    [SerializeField] private float aimBlendSpeed = 10f;
+    [SerializeField] private float recoilRecoverySpeed = 11f;
+    [SerializeField] private float combatAlignmentDuration = 0.3f;
 
-    [Header("Camera Shake")]
-    [SerializeField] float shakeTraumaPerMarker = 0.6f;
-    [SerializeField] float shakeMaxPositionOffset = 0.3f;
-    [SerializeField] float shakeMaxRotationDeg = 2f;
-    [SerializeField] float shakeTraumaDecayPerSecond = 1.5f;
-    [SerializeField] float shakeNoiseSpeed = 8f;
+    [Header("Camera Impulse")]
+    [SerializeField] private float shakeImpulsePerMarker = 0.55f;
+    [SerializeField, Range(0f, 1f)] private float aimShakeMultiplier = 0.45f;
 
-    Vector3 _followVelocity = Vector3.zero;
-    Vector3 _aimAheadVelocity = Vector3.zero;
-    Vector3 _currentAimAheadOffset = Vector3.zero;
-    bool _aimAheadEnabled;
-    bool _prevIsAiming;
+    Camera gameplayCamera;
+    CinemachineBrain brain;
+    CinemachineCamera virtualCamera;
+    CinemachineThirdPersonFollow thirdPersonFollow;
+    CinemachineThirdPersonAim thirdPersonAim;
+    CinemachineImpulseSource impulseSource;
+    CinemachineImpulseListener impulseListener;
+    Transform cameraTarget;
 
-    Transform _shakeTarget;
-    Vector3 _shakeBaseLocalPos;
-    Vector3 _shakeBaseLocalRot;
-    float _trauma;
-    float _noiseOffset;
+    PlayerContext playerContext;
+    ThirdPersonCharacterProfile profile;
+    UIMunuBar pauseMenu;
 
-    readonly List<CharacterAnimBrain> _subscribedBrains = new();
-    FieldAllyManager _fieldAllyManager;
-    AllyHelperManager _allyHelperManager;
+    float yaw;
+    float pitch;
+    float recoilPitch;
+    float recoilYaw;
+    float aimBlend;
+    float nextReferenceRefreshTime;
+    float combatAlignmentUntil;
+    bool cursorWasLocked;
+    bool runtimeRigReady;
+
+    readonly List<CharacterAnimBrain> subscribedBrains = new();
+    FieldAllyManager fieldAllyManager;
+    AllyHelperManager allyHelperManager;
+
+    public bool GameplayInputEnabled =>
+        isActiveAndEnabled &&
+        !CutsceneDirector.IsCinematicPlaying &&
+        !IsBlockingUiOpen();
+
+    public float PlanarYaw => yaw;
+    public Vector3 PlanarForward =>
+        Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+    public bool HasCombatAlignment =>
+        Time.unscaledTime < combatAlignmentUntil ||
+        (playerContext != null &&
+         playerContext.WeaponSystem != null &&
+         playerContext.WeaponSystem.IsAiming);
 
     void Awake()
     {
-        _noiseOffset = UnityEngine.Random.Range(0f, 100f);
-
-        if (transform.childCount > 0)
-        {
-            _shakeTarget = transform.GetChild(0);
-            _shakeBaseLocalPos = _shakeTarget.localPosition;
-            _shakeBaseLocalRot = _shakeTarget.localEulerAngles;
-        }
+        Instance = this;
+        ResolveMainCamera();
+        EnsureRuntimeRig();
+        ThirdPersonReticleView.EnsureExists();
     }
 
     void OnEnable()
     {
-        SubscribeAll();
+        Instance = this;
+        ResolveMainCamera();
+        EnsureRuntimeRig();
+        SetRigEnabled(true);
+        RefreshGameplayReferences(force: true);
     }
 
     void OnDisable()
     {
         UnsubscribeAll();
-        ResetShakeTarget();
+        SetRigEnabled(false);
+        SetCursorLocked(false);
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+
+        if (cameraTarget != null)
+            Destroy(cameraTarget.gameObject);
     }
 
     void LateUpdate()
     {
-        if (taget == null)
+        RefreshGameplayReferences(force: false);
+        if (taget == null || cameraTarget == null || virtualCamera == null)
             return;
 
-        TickAimAheadToggle();
-        Vector3 targetAimAhead = ComputeAimAheadOffset();
-        _currentAimAheadOffset = Vector3.SmoothDamp(
-            _currentAimAheadOffset, targetAimAhead, ref _aimAheadVelocity, lookAheadSmooth);
-
-        Vector3 targetPosition = taget.position + offset + _currentAimAheadOffset;
-        transform.position = Vector3.SmoothDamp(
-            transform.position, targetPosition, ref _followVelocity, smooth);
-
-        ApplyShake();
+        bool inputEnabled = GameplayInputEnabled;
+        SetCursorLocked(inputEnabled);
+        TickLookInput(inputEnabled);
+        TickRecoil();
+        TickCameraTarget();
+        TickCameraProperties();
     }
 
-    void TickAimAheadToggle()
+    public void NotifyShotFired(float pitchKick, float yawKick)
     {
-        PlayerContext ctx = PlayerContext.Instance;
-        bool isAiming = ctx != null && ctx.WeaponSystem != null && ctx.WeaponSystem.IsAiming;
-        if (isAiming && !_prevIsAiming)
-            _aimAheadEnabled = !_aimAheadEnabled;
-        _prevIsAiming = isAiming;
+        float stabilityMultiplier = 1f;
+        if (playerContext != null && playerContext.WeaponSystem != null)
+            stabilityMultiplier = 1f - Mathf.Clamp01(playerContext.WeaponSystem.stability * 0.01f);
+
+        recoilPitch += Mathf.Max(0f, pitchKick) * stabilityMultiplier;
+        recoilYaw += Random.Range(-Mathf.Abs(yawKick), Mathf.Abs(yawKick)) * stabilityMultiplier;
+        combatAlignmentUntil = Time.unscaledTime + combatAlignmentDuration;
     }
 
-    Vector3 ComputeAimAheadOffset()
+    public void RequestCombatAlignment(float duration = -1f)
     {
-        if (!_aimAheadEnabled)
-            return Vector3.zero;
-
-        PlayerContext ctx = PlayerContext.Instance;
-        if (ctx == null)
-            return Vector3.zero;
-
-        Transform aimTransform = ctx.aimTarget;
-        if (aimTransform == null)
-            return Vector3.zero;
-
-        Vector3 delta = aimTransform.position - taget.position;
-        delta.y = 0f;
-
-        float dist = delta.magnitude;
-        if (dist < 0.001f)
-            return Vector3.zero;
-
-        float maxDistance = GetCurrentLookAheadDistance();
-        float lookAmount = Mathf.Min(dist * lookAheadWeight, maxDistance);
-        return (delta / dist) * lookAmount;
+        combatAlignmentUntil = Time.unscaledTime +
+            (duration >= 0f ? duration : combatAlignmentDuration);
     }
 
-    float GetCurrentLookAheadDistance()
+    public void AddImpulse(float strength)
     {
-        PlayerContext ctx = PlayerContext.Instance;
-        if (ctx == null || ctx.WeaponSystem == null)
-            return defaultLookAheadDistance;
-
-        WeaponType current = ctx.WeaponSystem.gunType;
-        for (int i = 0; i < lookAheadTable.Length; i++)
-        {
-            if (lookAheadTable[i].weaponType == current)
-                return lookAheadTable[i].distance;
-        }
-
-        return defaultLookAheadDistance;
-    }
-
-    void ApplyShake()
-    {
-        if (_shakeTarget == null)
+        if (impulseSource == null)
             return;
 
-        float shake = _trauma * _trauma;
-
-        if (shake > 0.0001f)
-        {
-            float t = Time.unscaledTime * shakeNoiseSpeed + _noiseOffset;
-            float px = Mathf.PerlinNoise(t, 0f) * 2f - 1f;
-            float py = Mathf.PerlinNoise(0f, t) * 2f - 1f;
-            float rz = Mathf.PerlinNoise(t + 53f, t + 53f) * 2f - 1f;
-
-            _shakeTarget.localPosition = _shakeBaseLocalPos +
-                new Vector3(px, py, 0f) * (shakeMaxPositionOffset * shake);
-            _shakeTarget.localEulerAngles = _shakeBaseLocalRot +
-                new Vector3(0f, 0f, rz * shakeMaxRotationDeg * shake);
-        }
-        else
-        {
-            _shakeTarget.localPosition = _shakeBaseLocalPos;
-            _shakeTarget.localEulerAngles = _shakeBaseLocalRot;
-        }
-
-        _trauma = Mathf.MoveTowards(_trauma, 0f, shakeTraumaDecayPerSecond * Time.unscaledDeltaTime);
+        bool aiming = playerContext != null &&
+                      playerContext.WeaponSystem != null &&
+                      playerContext.WeaponSystem.IsAiming;
+        float multiplier = aiming ? aimShakeMultiplier : 1f;
+        impulseSource.GenerateImpulseWithVelocity(
+            new Vector3(0.12f, -0.18f, -0.08f) * strength * multiplier);
     }
 
-    void ResetShakeTarget()
+    public void SetSensitivity(float x, float y)
     {
-        _trauma = 0f;
-        if (_shakeTarget != null)
+        ThirdPersonCameraSettings.SensitivityX = x;
+        ThirdPersonCameraSettings.SensitivityY = y;
+    }
+
+    public void SetInvertY(bool value)
+    {
+        ThirdPersonCameraSettings.InvertY = value;
+    }
+
+    public void SetFieldOfView(float value)
+    {
+        ThirdPersonCameraSettings.FieldOfView = value;
+    }
+
+    void ResolveMainCamera()
+    {
+        if (gameplayCamera == null)
         {
-            _shakeTarget.localPosition = _shakeBaseLocalPos;
-            _shakeTarget.localEulerAngles = _shakeBaseLocalRot;
+            Camera[] cameras = GetComponentsInChildren<Camera>(true);
+            for (int i = 0; i < cameras.Length; i++)
+            {
+                if (cameras[i].CompareTag("MainCamera"))
+                {
+                    gameplayCamera = cameras[i];
+                    break;
+                }
+            }
+
+            if (gameplayCamera == null && cameras.Length > 0)
+                gameplayCamera = cameras[0];
         }
+
+        if (gameplayCamera == null)
+            gameplayCamera = Camera.main;
+    }
+
+    void EnsureRuntimeRig()
+    {
+        if (runtimeRigReady || gameplayCamera == null)
+            return;
+
+        brain = gameplayCamera.GetComponent<CinemachineBrain>();
+        if (brain == null)
+            brain = gameplayCamera.gameObject.AddComponent<CinemachineBrain>();
+        brain.UpdateMethod = CinemachineBrain.UpdateMethods.LateUpdate;
+        brain.BlendUpdateMethod = CinemachineBrain.BrainUpdateMethods.LateUpdate;
+        brain.IgnoreTimeScale = true;
+        brain.DefaultBlend = new CinemachineBlendDefinition(
+            CinemachineBlendDefinition.Styles.EaseInOut,
+            0.18f);
+
+        GameObject targetObject = new("TPS Camera Target");
+        targetObject.hideFlags = HideFlags.DontSave;
+        cameraTarget = targetObject.transform;
+
+        GameObject cameraObject = new("TPS Cinemachine Camera");
+        cameraObject.transform.SetParent(transform, false);
+        virtualCamera = cameraObject.AddComponent<CinemachineCamera>();
+        virtualCamera.Follow = cameraTarget;
+
+        thirdPersonFollow = cameraObject.AddComponent<CinemachineThirdPersonFollow>();
+        thirdPersonAim = cameraObject.AddComponent<CinemachineThirdPersonAim>();
+        thirdPersonAim.AimCollisionFilter = cameraCollisionMask;
+        thirdPersonAim.AimDistance = 250f;
+        thirdPersonAim.NoiseCancellation = false;
+
+        impulseListener = cameraObject.AddComponent<CinemachineImpulseListener>();
+        impulseListener.ChannelMask = 1;
+        impulseListener.Gain = 1f;
+        impulseListener.UseCameraSpace = true;
+
+        impulseSource = cameraObject.AddComponent<CinemachineImpulseSource>();
+
+        if (gameplayCamera.GetComponent<ThirdPersonOcclusionFader>() == null)
+            gameplayCamera.gameObject.AddComponent<ThirdPersonOcclusionFader>();
+
+        CameraOcclusionCutoutFader oldCutout =
+            gameplayCamera.GetComponent<CameraOcclusionCutoutFader>();
+        if (oldCutout != null)
+            oldCutout.enabled = false;
+
+        yaw = taget != null ? taget.eulerAngles.y : transform.eulerAngles.y;
+        pitch = initialPitch;
+        runtimeRigReady = true;
+        SetRigEnabled(isActiveAndEnabled);
+    }
+
+    void SetRigEnabled(bool value)
+    {
+        if (virtualCamera != null)
+            virtualCamera.enabled = value;
+        if (brain != null)
+            brain.enabled = value;
+
+        if (value && virtualCamera != null)
+        {
+            virtualCamera.PreviousStateIsValid = false;
+            virtualCamera.ForceCameraPosition(
+                gameplayCamera != null ? gameplayCamera.transform.position : transform.position,
+                gameplayCamera != null ? gameplayCamera.transform.rotation : transform.rotation);
+        }
+    }
+
+    void RefreshGameplayReferences(bool force)
+    {
+        if (!force && Time.unscaledTime < nextReferenceRefreshTime)
+            return;
+
+        nextReferenceRefreshTime = Time.unscaledTime + 0.5f;
+        PlayerContext nextPlayer = PlayerContext.Instance;
+        if (nextPlayer == null)
+            return;
+
+        bool changedPlayer = playerContext != nextPlayer;
+        playerContext = nextPlayer;
+        playerContext.ResolveReferences();
+        taget = playerContext.transform;
+        profile = playerContext.baseStats != null &&
+                  playerContext.baseStats.thirdPersonProfile != null
+            ? playerContext.baseStats.thirdPersonProfile
+            : ThirdPersonCharacterProfile.CreateDefault();
+
+        if (changedPlayer)
+        {
+            yaw = playerContext.transform.eulerAngles.y;
+            pitch = initialPitch;
+            SubscribeAll();
+        }
+
+        if (pauseMenu == null)
+            pauseMenu = FindAnyObjectByType<UIMunuBar>(FindObjectsInactive.Include);
+    }
+
+    void TickLookInput(bool inputEnabled)
+    {
+        if (playerContext == null)
+            return;
+
+        Vector2 lookDelta = playerContext.lookInput;
+        playerContext.lookInput = Vector2.zero;
+        if (!inputEnabled)
+            return;
+
+        float invert = ThirdPersonCameraSettings.InvertY ? -1f : 1f;
+        yaw += lookDelta.x *
+               ThirdPersonCameraSettings.SensitivityX *
+               profile.yawSensitivityMultiplier;
+        pitch += lookDelta.y *
+                 ThirdPersonCameraSettings.SensitivityY *
+                 profile.pitchSensitivityMultiplier *
+                 invert;
+        pitch = Mathf.Clamp(pitch, profile.minimumPitch, profile.maximumPitch);
+    }
+
+    void TickRecoil()
+    {
+        float recovery = 1f - Mathf.Exp(-recoilRecoverySpeed * Time.unscaledDeltaTime);
+        recoilPitch = Mathf.Lerp(recoilPitch, 0f, recovery);
+        recoilYaw = Mathf.Lerp(recoilYaw, 0f, recovery);
+    }
+
+    void TickCameraTarget()
+    {
+        Vector3 pivotPosition = taget.TransformPoint(profile.pivotOffset);
+        cameraTarget.SetPositionAndRotation(
+            pivotPosition,
+            Quaternion.Euler(-(pitch + recoilPitch), yaw + recoilYaw, 0f));
+
+        virtualCamera.transform.rotation = cameraTarget.rotation;
+    }
+
+    void TickCameraProperties()
+    {
+        bool aiming = playerContext != null &&
+                      playerContext.WeaponSystem != null &&
+                      playerContext.WeaponSystem.IsAiming;
+        float blendTarget = aiming ? 1f : 0f;
+        aimBlend = Mathf.MoveTowards(
+            aimBlend,
+            blendTarget,
+            aimBlendSpeed * Time.unscaledDeltaTime);
+
+        thirdPersonFollow.Damping = profile.followDamping;
+        thirdPersonFollow.ShoulderOffset = profile.shoulderOffset;
+        thirdPersonFollow.VerticalArmLength = profile.verticalArmLength;
+        thirdPersonFollow.CameraSide = profile.cameraSide;
+        thirdPersonFollow.CameraDistance = Mathf.Lerp(
+            profile.cameraDistance,
+            profile.aimCameraDistance,
+            aimBlend);
+        thirdPersonFollow.AvoidObstacles = new CinemachineThirdPersonFollow.ObstacleSettings
+        {
+            Enabled = true,
+            CollisionFilter = cameraCollisionMask,
+            IgnoreTag = "Player",
+            CameraRadius = profile.collisionRadius,
+            DampingIntoCollision = 0.03f,
+            DampingFromCollision = 0.22f
+        };
+
+        float baseFov = ThirdPersonCameraSettings.FieldOfView;
+        float aimFov = Mathf.Clamp(
+            baseFov - (profile.freeLookFov - profile.shoulderAimFov),
+            20f,
+            baseFov);
+        LensSettings lens = virtualCamera.Lens;
+        lens.FieldOfView = Mathf.Lerp(baseFov, aimFov, aimBlend);
+        virtualCamera.Lens = lens;
+
+        thirdPersonAim.AimCollisionFilter = cameraCollisionMask;
+    }
+
+    bool IsBlockingUiOpen()
+    {
+        if (playerContext != null && playerContext.playerUIContext != null)
+        {
+            PlayerUIContext ui = playerContext.playerUIContext;
+            if (ui.inventoryUI != null && ui.inventoryUI.activeInHierarchy)
+                return true;
+            if (ui.passiveTree != null && ui.passiveTree.activeInHierarchy)
+                return true;
+            if (ui.activeSkillScreen != null && ui.activeSkillScreen.gameObject.activeInHierarchy)
+                return true;
+        }
+
+        return pauseMenu != null &&
+               pauseMenu.menuBar != null &&
+               pauseMenu.menuBar.activeInHierarchy;
+    }
+
+    void SetCursorLocked(bool shouldLock)
+    {
+        if (cursorWasLocked == shouldLock)
+            return;
+
+        cursorWasLocked = shouldLock;
+        Cursor.lockState = shouldLock ? CursorLockMode.Locked : CursorLockMode.None;
+        Cursor.visible = !shouldLock;
     }
 
     void SubscribeAll()
     {
         UnsubscribeAll();
-
-        PlayerContext ctx = PlayerContext.Instance;
-        if (ctx == null)
+        if (playerContext == null)
             return;
 
-        if (ctx.AnimBrain != null)
-            SubscribeBrain(ctx.AnimBrain);
+        if (playerContext.AnimBrain != null)
+            SubscribeBrain(playerContext.AnimBrain);
 
-        _fieldAllyManager = ctx.fieldAllyManager;
-        if (_fieldAllyManager != null)
+        fieldAllyManager = playerContext.fieldAllyManager;
+        if (fieldAllyManager != null)
         {
-            _fieldAllyManager.MemberRegistered += OnAllyRegistered;
-            _fieldAllyManager.MemberUnregistered += OnAllyUnregistered;
-
-            foreach (FieldAllyMember member in _fieldAllyManager.RegisteredMembers)
+            fieldAllyManager.MemberRegistered += OnAllyRegistered;
+            fieldAllyManager.MemberUnregistered += OnAllyUnregistered;
+            foreach (FieldAllyMember member in fieldAllyManager.RegisteredMembers)
             {
-                CharacterAnimBrain brain = member != null ? member.AnimBrainRef : null;
-                if (brain != null)
-                    SubscribeBrain(brain);
+                if (member != null && member.AnimBrainRef != null)
+                    SubscribeBrain(member.AnimBrainRef);
             }
         }
 
-        _allyHelperManager = ctx.allyHelper;
-        if (_allyHelperManager != null)
+        allyHelperManager = playerContext.allyHelper;
+        if (allyHelperManager != null)
         {
-            _allyHelperManager.HelperAnimBrainChanged += OnHelperAnimBrainChanged;
-            CharacterAnimBrain helperBrain = _allyHelperManager.HelperAnimBrain;
-            if (helperBrain != null)
-                SubscribeBrain(helperBrain);
+            allyHelperManager.HelperAnimBrainChanged += OnHelperAnimBrainChanged;
+            if (allyHelperManager.HelperAnimBrain != null)
+                SubscribeBrain(allyHelperManager.HelperAnimBrain);
         }
     }
 
     void UnsubscribeAll()
     {
-        for (int i = _subscribedBrains.Count - 1; i >= 0; i--)
+        for (int i = subscribedBrains.Count - 1; i >= 0; i--)
         {
-            CharacterAnimBrain brain = _subscribedBrains[i];
-            if (brain != null)
-                brain.SkillTimelineEventRaised -= OnSkillTimelineEvent;
+            if (subscribedBrains[i] != null)
+                subscribedBrains[i].SkillTimelineEventRaised -= OnSkillTimelineEvent;
         }
-        _subscribedBrains.Clear();
+        subscribedBrains.Clear();
 
-        if (_fieldAllyManager != null)
+        if (fieldAllyManager != null)
         {
-            _fieldAllyManager.MemberRegistered -= OnAllyRegistered;
-            _fieldAllyManager.MemberUnregistered -= OnAllyUnregistered;
-            _fieldAllyManager = null;
+            fieldAllyManager.MemberRegistered -= OnAllyRegistered;
+            fieldAllyManager.MemberUnregistered -= OnAllyUnregistered;
+            fieldAllyManager = null;
         }
 
-        if (_allyHelperManager != null)
+        if (allyHelperManager != null)
         {
-            _allyHelperManager.HelperAnimBrainChanged -= OnHelperAnimBrainChanged;
-            _allyHelperManager = null;
+            allyHelperManager.HelperAnimBrainChanged -= OnHelperAnimBrainChanged;
+            allyHelperManager = null;
         }
     }
 
-    void SubscribeBrain(CharacterAnimBrain brain)
+    void SubscribeBrain(CharacterAnimBrain brainToSubscribe)
     {
-        if (brain == null || _subscribedBrains.Contains(brain))
+        if (brainToSubscribe == null || subscribedBrains.Contains(brainToSubscribe))
             return;
 
-        brain.SkillTimelineEventRaised += OnSkillTimelineEvent;
-        _subscribedBrains.Add(brain);
+        brainToSubscribe.SkillTimelineEventRaised += OnSkillTimelineEvent;
+        subscribedBrains.Add(brainToSubscribe);
     }
 
-    void UnsubscribeBrain(CharacterAnimBrain brain)
+    void UnsubscribeBrain(CharacterAnimBrain brainToUnsubscribe)
     {
-        if (brain == null)
+        if (brainToUnsubscribe == null)
             return;
 
-        brain.SkillTimelineEventRaised -= OnSkillTimelineEvent;
-        _subscribedBrains.Remove(brain);
+        brainToUnsubscribe.SkillTimelineEventRaised -= OnSkillTimelineEvent;
+        subscribedBrains.Remove(brainToUnsubscribe);
     }
 
     void OnSkillTimelineEvent(int requestId, CombatTimelineEventName eventName)
     {
-        if (eventName != CombatTimelineEventName.ShakeCamera)
-            return;
-
-        _trauma = Mathf.Clamp01(_trauma + shakeTraumaPerMarker);
+        if (eventName == CombatTimelineEventName.ShakeCamera)
+            AddImpulse(shakeImpulsePerMarker);
     }
 
     void OnAllyRegistered(ChainActorRole role, FieldAllyMember member)
     {
-        if (member == null)
-            return;
-
-        CharacterAnimBrain brain = member.AnimBrainRef;
-        if (brain != null)
-            SubscribeBrain(brain);
+        if (member != null && member.AnimBrainRef != null)
+            SubscribeBrain(member.AnimBrainRef);
     }
 
     void OnAllyUnregistered(ChainActorRole role)
     {
-        for (int i = _subscribedBrains.Count - 1; i >= 0; i--)
+        for (int i = subscribedBrains.Count - 1; i >= 0; i--)
         {
-            CharacterAnimBrain brain = _subscribedBrains[i];
-            if (brain == null)
-            {
-                _subscribedBrains.RemoveAt(i);
-                continue;
-            }
+            if (subscribedBrains[i] == null)
+                subscribedBrains.RemoveAt(i);
         }
     }
 
-    void OnHelperAnimBrainChanged(CharacterAnimBrain prev, CharacterAnimBrain next)
+    void OnHelperAnimBrainChanged(CharacterAnimBrain previous, CharacterAnimBrain next)
     {
-        if (prev != null)
-            UnsubscribeBrain(prev);
-        if (next != null)
-            SubscribeBrain(next);
-    }
-
-    [Serializable]
-    public struct WeaponLookAheadEntry
-    {
-        public WeaponType weaponType;
-        public float distance;
+        UnsubscribeBrain(previous);
+        SubscribeBrain(next);
     }
 }

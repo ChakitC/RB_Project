@@ -747,10 +747,15 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     Vector3 ResolveSequenceForward()
     {
         if (_context != null && _context.AimDirection.sqrMagnitude > 0.0001f)
-            return _context.AimDirection;
+        {
+            Vector3 planarAim = Vector3.ProjectOnPlane(_context.AimDirection, Vector3.up);
+            if (planarAim.sqrMagnitude > 0.0001f)
+                return planarAim.normalized;
+        }
 
-        if (transform.forward.sqrMagnitude > 0.0001f)
-            return transform.forward;
+        Vector3 planarForward = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+        if (planarForward.sqrMagnitude > 0.0001f)
+            return planarForward.normalized;
 
         return Vector3.forward;
     }

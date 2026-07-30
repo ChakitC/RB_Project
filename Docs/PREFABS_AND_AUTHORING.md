@@ -73,6 +73,15 @@ upper-body pose; Aim Point resolution and projectile trajectories still work.
 Model swaps cause the controller to discard old bone references and resolve the
 new visual rig.
 
+Keep the actor's authored `FirePoint` binding and `firePointBoneName` setup
+unchanged. If that fire-point bone (the current roster uses root-level
+`c_traj`) is not below Spine/Chest/UpperChest, the upper-body controller creates
+a runtime-only pivot below it and moves the muzzle origin through the blended
+pitch. If the fire point already belongs to the torso hierarchy, no extra pivot
+is added. Releasing aim, entering a rotation-locking/full-body state, or
+disabling the component restores the pivot to the authored pose. Projectile
+direction continues to target the existing Aim Point from the adjusted origin.
+
 `Assets/Prefab/System/CameraHolder.prefab` remains the gameplay camera root.
 `GameplayCameraController` creates its Cinemachine camera/brain at runtime so
 existing scene instances and cutscene camera animations keep their serialized

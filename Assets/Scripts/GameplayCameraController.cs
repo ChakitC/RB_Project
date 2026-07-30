@@ -6,6 +6,8 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class GameplayCameraController : MonoBehaviour
 {
+    const string AllyLayerName = "Ally";
+
     public static GameplayCameraController Instance { get; private set; }
 
     [Header("Legacy Target")]
@@ -337,7 +339,7 @@ public class GameplayCameraController : MonoBehaviour
         thirdPersonFollow.AvoidObstacles = new CinemachineThirdPersonFollow.ObstacleSettings
         {
             Enabled = true,
-            CollisionFilter = cameraCollisionMask,
+            CollisionFilter = ResolveCameraObstacleMask(),
             IgnoreTag = "Player",
             CameraRadius = profile.collisionRadius,
             DampingIntoCollision = 0.03f,
@@ -354,6 +356,16 @@ public class GameplayCameraController : MonoBehaviour
         virtualCamera.Lens = lens;
 
         thirdPersonAim.AimCollisionFilter = cameraCollisionMask;
+    }
+
+    LayerMask ResolveCameraObstacleMask()
+    {
+        LayerMask obstacleMask = cameraCollisionMask;
+        int allyLayer = LayerMask.NameToLayer(AllyLayerName);
+        if (allyLayer >= 0)
+            obstacleMask.value &= ~(1 << allyLayer);
+
+        return obstacleMask;
     }
 
     bool IsBlockingUiOpen()

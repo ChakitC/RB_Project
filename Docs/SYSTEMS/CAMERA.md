@@ -77,6 +77,11 @@ Pitch is clamped by `maximumUpperBodyPitch` (default `55` degrees) and
 distributed across only the resolved Spine, Chest, and UpperChest bones.
 It is applied after `CharacterPairOffsetApplier`, so authored locomotion/action
 pair corrections remain part of the final pose.
+When the model's configured fire-point bone is outside that torso hierarchy,
+the controller creates a runtime pivot and carries `WeaponSystem.FirePoint`
+through the same blended pitch around the resolved chest. Projectile direction
+is still resolved independently from the resulting muzzle position toward the
+existing Aim Point, including spread and muzzle-obstruction handling.
 Rotation-locking states and exclusive full-body animation playback suppress the
 procedural pose and blend it out. `maximumUpperBodyYaw` remains serialized for
 compatibility but is not used by the pitch-only controller.
@@ -89,15 +94,21 @@ The bindings are resolved again whenever a character model is swapped.
 
 ## Collision and Occlusion
 
-`CinemachineThirdPersonFollow.AvoidObstacles` pushes the camera inward. The old
-world-geometry cutout component is disabled at runtime; levels are not modified
-for the camera.
+`CinemachineThirdPersonFollow.AvoidObstacles` pushes the camera inward for world
+geometry. The `Ally` layer is excluded from only this follow-obstacle filter, so
+companions do not push the camera toward the player; the Aim Point collision
+filter remains unchanged. The old world-geometry cutout component is disabled
+at runtime; levels are not modified for the camera.
 
 When pushed very close, the local character fades using the ASP `_Dithering`
-property. Companions are not faded when they cross the center reticle or sit
-between the player pivot and camera. The close-camera and animation fades are
-independent; the strongest active fade wins, and disabling the camera fader
-releases only the camera-owned fade.
+property. Every active character whose target identity is `Companion` fades
+fully while its collider overlaps a `0.3`-meter capsule between the gameplay
+camera and player pivot. All overlapping companions fade together, including
+field allies and runtime helpers, without disabling their AI, colliders,
+targeting, or other gameplay. The fade releases when they leave the capsule or
+gameplay camera control hands off to a cutscene. Close-camera, companion
+occlusion, and animation fades remain visual concerns; disabling the camera
+fader releases only the camera-owned fade.
 
 ## Camera Recoil and Impulses
 

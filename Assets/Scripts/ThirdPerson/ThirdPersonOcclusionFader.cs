@@ -4,6 +4,10 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class ThirdPersonOcclusionFader : MonoBehaviour
 {
+    const string AllyLayerName = "Ally";
+    const float CompanionOcclusionRadius = 0.3f;
+    const int MaxCompanionOcclusionHits = 32;
+
     static readonly int DitheringId = Shader.PropertyToID("_Dithering");
 
     [SerializeField, Min(0.01f)] private float fadeSpeed = 8f;
@@ -13,19 +17,24 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
     readonly Dictionary<Renderer, MaterialPropertyBlock> originalPropertyBlocks = new();
     readonly HashSet<Renderer> unsupportedRenderers = new();
     readonly HashSet<CharacteContext> desiredFades = new();
+    readonly List<CharacteContext> fadeActors = new();
     readonly List<Material> materialBuffer = new();
+    readonly Collider[] companionOcclusionHits =
+        new Collider[MaxCompanionOcclusionHits];
     MaterialPropertyBlock propertyBlock;
     readonly ThirdPersonCharacterProfile fallbackProfile =
         ThirdPersonCharacterProfile.CreateDefault();
 
     Camera gameplayCamera;
     PlayerContext playerContext;
+    int companionLayerMask;
     float nextActorRefresh;
-    CharacteContext[] fadeActors = System.Array.Empty<CharacteContext>();
 
     void Awake()
     {
         propertyBlock = new MaterialPropertyBlock();
+        int allyLayer = LayerMask.NameToLayer(AllyLayerName);
+        companionLayerMask = allyLayer >= 0 ? 1 << allyLayer : 0;
         gameplayCamera = GetComponent<Camera>();
         if (gameplayCamera == null)
             gameplayCamera = GetComponentInChildren<Camera>(true);
@@ -33,6 +42,15 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
 
     void LateUpdate()
     {
+        GameplayCameraController cameraController =
+            GameplayCameraController.Instance;
+        if (cameraController == null || !cameraController.isActiveAndEnabled)
+        {
+            ReleaseAllFades();
+            nextActorRefresh = 0f;
+            return;
+        }
+
         if (gameplayCamera == null)
             gameplayCamera = Camera.main;
         if (gameplayCamera == null)
@@ -62,13 +80,35 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
         nextActorRefresh = Time.unscaledTime + 0.5f;
         if (playerContext == null)
         {
-            fadeActors = System.Array.Empty<CharacteContext>();
+            fadeActors.Clear();
             return;
         }
 
-        fadeActors = new CharacteContext[] { playerContext };
-        rendererCache[playerContext] =
-            playerContext.GetComponentsInChildren<Renderer>(true);
+        fadeActors.Clear();
+        AddFadeActor(playerContext);
+
+        CharacteContext[] contexts = FindObjectsByType<CharacteContext>(
+            FindObjectsInactive.Exclude,
+            FindObjectsSortMode.None);
+        for (int i = 0; i < contexts.Length; i++)
+        {
+            CharacteContext context = contexts[i];
+            if (context == null ||
+                context == playerContext ||
+                context.TargetIdentity != AITargetIdentity.Companion)
+            {
+                continue;
+            }
+
+            AddFadeActor(context);
+        }
+    }
+
+    void AddFadeActor(CharacteContext actor)
+    {
+        fadeActors.Add(actor);
+        rendererCache[actor] =
+            actor.GetComponentsInChildren<Renderer>(true);
     }
 
     void ResolveDesiredFades()
@@ -87,11 +127,49 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
             playerContext.transform.position + profile.pivotOffset);
         if (cameraDistance < profile.fadeStartDistance)
             desiredFades.Add(playerContext);
+
+        ResolveCompanionOcclusionFades(profile);
+    }
+
+    void ResolveCompanionOcclusionFades(
+        ThirdPersonCharacterProfile profile)
+    {
+        if (companionLayerMask == 0)
+            return;
+
+        Vector3 cameraPosition = gameplayCamera.transform.position;
+        Vector3 playerPivot =
+            playerContext.transform.TransformPoint(profile.pivotOffset);
+        int hitCount = Physics.OverlapCapsuleNonAlloc(
+            cameraPosition,
+            playerPivot,
+            CompanionOcclusionRadius,
+            companionOcclusionHits,
+            companionLayerMask,
+            QueryTriggerInteraction.Ignore);
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            Collider hit = companionOcclusionHits[i];
+            if (hit == null)
+                continue;
+
+            CharacteContext actor =
+                hit.GetComponentInParent<CharacteContext>();
+            if (actor != null &&
+                actor.TargetIdentity == AITargetIdentity.Companion)
+            {
+                if (!fadeActors.Contains(actor))
+                    AddFadeActor(actor);
+
+                desiredFades.Add(actor);
+            }
+        }
     }
 
     void ApplyFades()
     {
-        for (int i = 0; i < fadeActors.Length; i++)
+        for (int i = 0; i < fadeActors.Count; i++)
         {
             CharacteContext actor = fadeActors[i];
             if (actor == null)

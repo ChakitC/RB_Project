@@ -23,7 +23,7 @@ This file records canonical project terms. It is a glossary, not an implementati
   _Avoid_: ADS, Zoom Mode
 - **Aim Point** — the validated world-space point under the center-screen reticle that ranged attacks and aim-dependent skills intend to hit.
   _Avoid_: Mouse Point, Cursor Target
-- **Upper-body Aim** — the visual pitch of a character's torso toward the Aim Point during combat alignment. Character yaw and the actual Muzzle Trajectory remain separate concerns.
+- **Upper-body Aim** — the visual pitch of a character's torso and muzzle origin toward the Aim Point during combat alignment. Character yaw and the actual Muzzle Trajectory remain separate concerns.
   _Avoid_: Full-body Aim, Weapon IK
 - **Muzzle Trajectory** — the unobstructed path from the weapon muzzle toward the Aim Point. It is distinct from the camera sightline so nearby cover can block a shot.
   _Avoid_: Camera Ray

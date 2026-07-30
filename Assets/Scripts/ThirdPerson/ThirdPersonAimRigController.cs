@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[DefaultExecutionOrder(150)]
+[DefaultExecutionOrder(10100)]
 [DisallowMultipleComponent]
 public sealed class ThirdPersonAimRigController : MonoBehaviour
 {
@@ -15,7 +15,9 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
     readonly ThirdPersonCharacterProfile fallbackProfile =
         ThirdPersonCharacterProfile.CreateDefault();
     float currentWeight;
+    float currentPitch;
     bool aimDriverResolved;
+    bool missingBoneMapWarningIssued;
 
     void Awake()
     {
@@ -25,7 +27,7 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
     void LateUpdate()
     {
         ResolveReferences();
-        if (animator == null || !animator.isHuman)
+        if (animator == null || !HasAimBones())
             return;
 
         ThirdPersonCharacterProfile profile = characterContext != null &&
@@ -34,7 +36,13 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
             ? characterContext.baseStats.thirdPersonProfile
             : fallbackProfile;
 
-        bool active = TryResolveAimPoint(out Vector3 aimPoint);
+        float pitch = 0f;
+        bool active = CanApplyVisualAim() &&
+                      TryResolveAimPoint(out Vector3 aimPoint) &&
+                      TryResolvePitch(aimPoint, profile, out pitch);
+        if (active)
+            currentPitch = pitch;
+
         float targetWeight = active ? 1f : 0f;
         currentWeight = Mathf.MoveTowards(
             currentWeight,
@@ -43,47 +51,79 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
         if (currentWeight <= 0.001f)
             return;
 
-        Transform reference = characterContext != null ? characterContext.transform : transform;
-        Vector3 origin = chest != null ? chest.position : reference.position + Vector3.up;
-        Vector3 direction = aimPoint - origin;
-        if (direction.sqrMagnitude <= 0.0001f)
+        float totalBoneWeight =
+            GetActiveBoneWeight(spine, profile.spineAimWeight) +
+            GetActiveBoneWeight(chest, profile.chestAimWeight) +
+            GetActiveBoneWeight(upperChest, profile.upperChestAimWeight);
+        if (totalBoneWeight <= 0.001f)
             return;
 
-        direction.Normalize();
-        Vector3 planarDirection = Vector3.ProjectOnPlane(direction, Vector3.up);
-        if (planarDirection.sqrMagnitude <= 0.0001f)
-            planarDirection = reference.forward;
-
-        float yaw = Vector3.SignedAngle(reference.forward, planarDirection, Vector3.up);
-        float pitch = Mathf.Asin(Mathf.Clamp(direction.y, -1f, 1f)) * Mathf.Rad2Deg;
-        yaw = Mathf.Clamp(yaw, -profile.maximumUpperBodyYaw, profile.maximumUpperBodyYaw);
-        pitch = Mathf.Clamp(pitch, -profile.maximumUpperBodyPitch, profile.maximumUpperBodyPitch);
-
-        float totalBoneWeight = profile.spineAimWeight +
-                                profile.chestAimWeight +
-                                profile.upperChestAimWeight;
-        float normalization = totalBoneWeight > 1f
-            ? 1f / totalBoneWeight
-            : 1f;
-
-        ApplyBoneAim(
+        float normalization = 1f / totalBoneWeight;
+        Transform reference =
+            characterContext != null ? characterContext.transform : transform;
+        ApplyBonePitch(
             spine,
-            yaw,
-            pitch,
+            currentPitch,
             profile.spineAimWeight * normalization * currentWeight,
             reference);
-        ApplyBoneAim(
+        ApplyBonePitch(
             chest,
-            yaw,
-            pitch,
+            currentPitch,
             profile.chestAimWeight * normalization * currentWeight,
             reference);
-        ApplyBoneAim(
+        ApplyBonePitch(
             upperChest,
-            yaw,
-            pitch,
+            currentPitch,
             profile.upperChestAimWeight * normalization * currentWeight,
             reference);
+    }
+
+    bool CanApplyVisualAim()
+    {
+        if (characterContext == null)
+            return false;
+
+        StateHub stateHub = characterContext.stateHub;
+        if (stateHub != null &&
+            (!stateHub.IsAlive || stateHub.Isdown || !stateHub.CanRotate()))
+        {
+            return false;
+        }
+
+        CharacterAnimBrain animBrain = characterContext.AnimBrain;
+        return animBrain == null || !animBrain.IsExclusiveLocomotionActive;
+    }
+
+    bool TryResolvePitch(
+        Vector3 aimPoint,
+        ThirdPersonCharacterProfile profile,
+        out float pitch)
+    {
+        Transform reference =
+            characterContext != null ? characterContext.transform : transform;
+        Transform originBone = chest != null
+            ? chest
+            : upperChest != null
+                ? upperChest
+                : spine;
+        Vector3 origin = originBone != null
+            ? originBone.position
+            : reference.position + Vector3.up;
+        Vector3 direction = aimPoint - origin;
+        if (direction.sqrMagnitude <= 0.0001f)
+        {
+            pitch = 0f;
+            return false;
+        }
+
+        direction.Normalize();
+        pitch = Mathf.Asin(Mathf.Clamp(direction.y, -1f, 1f)) *
+                Mathf.Rad2Deg;
+        pitch = Mathf.Clamp(
+            pitch,
+            -profile.maximumUpperBodyPitch,
+            profile.maximumUpperBodyPitch);
+        return true;
     }
 
     bool TryResolveAimPoint(out Vector3 aimPoint)
@@ -143,15 +183,10 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
         if (animator != nextAnimator)
         {
             animator = nextAnimator;
-            spine = animator != null && animator.isHuman
-                ? animator.GetBoneTransform(HumanBodyBones.Spine)
-                : null;
-            chest = animator != null && animator.isHuman
-                ? animator.GetBoneTransform(HumanBodyBones.Chest)
-                : null;
-            upperChest = animator != null && animator.isHuman
-                ? animator.GetBoneTransform(HumanBodyBones.UpperChest)
-                : null;
+            currentWeight = 0f;
+            currentPitch = 0f;
+            missingBoneMapWarningIssued = false;
+            ResolveAimBones();
         }
 
         if (!aimDriverResolved && characterContext != null)
@@ -167,9 +202,56 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
         }
     }
 
-    static void ApplyBoneAim(
+    void ResolveAimBones()
+    {
+        spine = null;
+        chest = null;
+        upperChest = null;
+        if (animator == null)
+            return;
+
+        ThirdPersonAimBoneMap boneMap =
+            animator.GetComponent<ThirdPersonAimBoneMap>();
+        if (boneMap != null && boneMap.HasAnyBone)
+        {
+            spine = boneMap.Spine;
+            chest = boneMap.Chest;
+            upperChest = boneMap.UpperChest;
+            return;
+        }
+
+        if (animator.isHuman)
+        {
+            spine = animator.GetBoneTransform(HumanBodyBones.Spine);
+            chest = animator.GetBoneTransform(HumanBodyBones.Chest);
+            upperChest =
+                animator.GetBoneTransform(HumanBodyBones.UpperChest);
+            return;
+        }
+
+        if (!missingBoneMapWarningIssued)
+        {
+            Debug.LogWarning(
+                $"[{nameof(ThirdPersonAimRigController)}] Generic Animator " +
+                $"'{animator.name}' requires {nameof(ThirdPersonAimBoneMap)} " +
+                "on the Animator GameObject. Visual upper-body aim is disabled.",
+                animator);
+            missingBoneMapWarningIssued = true;
+        }
+    }
+
+    bool HasAimBones()
+    {
+        return spine != null || chest != null || upperChest != null;
+    }
+
+    static float GetActiveBoneWeight(Transform bone, float weight)
+    {
+        return bone != null ? Mathf.Max(0f, weight) : 0f;
+    }
+
+    static void ApplyBonePitch(
         Transform bone,
-        float yaw,
         float pitch,
         float weight,
         Transform reference)
@@ -177,10 +259,9 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
         if (bone == null || weight <= 0.001f)
             return;
 
-        Quaternion yawRotation = Quaternion.AngleAxis(yaw * weight, Vector3.up);
         Quaternion pitchRotation = Quaternion.AngleAxis(
             -pitch * weight,
             reference.right);
-        bone.rotation = yawRotation * pitchRotation * bone.rotation;
+        bone.rotation = pitchRotation * bone.rotation;
     }
 }

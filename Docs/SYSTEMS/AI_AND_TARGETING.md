@@ -374,7 +374,10 @@ resolver, so it keeps the defaults (`0`) and its behavior is unchanged.
 
 All exits converge on idempotent cleanup that restores BehaviorTree,
 NavMeshAgent, Rigidbody, CharacterController usage, visibility, aim override,
-root-motion policy, and ally reservation.
+root-motion policy, and ally reservation. If an interruption fade is stopped by
+disabling the actor or fader, the material is restored to fully visible. An
+explicit helper/chain fade-out-and-deactivate keeps the material hidden until
+the next animation lifecycle begins.
 
 ### Flow — Player Path
 

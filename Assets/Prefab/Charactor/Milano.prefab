@@ -3382,10 +3382,23 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ef38f6af2a6e2fe45a5743a4c01a14d3, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7242064189180653721}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ef38f6af2a6e2fe45a5743a4c01a14d3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5293318155919382104}
   m_SourcePrefab: {fileID: 100100000, guid: ef38f6af2a6e2fe45a5743a4c01a14d3, type: 3}
 --- !u!4 &340744018125072882 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8716142893449015437, guid: ef38f6af2a6e2fe45a5743a4c01a14d3, type: 3}
+  m_PrefabInstance: {fileID: 8957489410635323775}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1144335668618272615 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8335628630423029272, guid: ef38f6af2a6e2fe45a5743a4c01a14d3, type: 3}
+  m_PrefabInstance: {fileID: 8957489410635323775}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &4726480765917209755 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4456505482534452708, guid: ef38f6af2a6e2fe45a5743a4c01a14d3, type: 3}
   m_PrefabInstance: {fileID: 8957489410635323775}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &8110434242060674094 stripped
@@ -3431,6 +3444,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CharacterPositionCollider: {fileID: 8879619926161949866}
+--- !u!114 &5293318155919382104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8110434242060674094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bab361da65b03c5439d01bf3c29eff89, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  spine: {fileID: 1144335668618272615}
+  chest: {fileID: 4726480765917209755}
+  upperChest: {fileID: 0}
 --- !u!4 &8918776892534865556 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: ef38f6af2a6e2fe45a5743a4c01a14d3, type: 3}

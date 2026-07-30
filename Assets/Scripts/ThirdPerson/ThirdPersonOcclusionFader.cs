@@ -7,26 +7,25 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
     static readonly int DitheringId = Shader.PropertyToID("_Dithering");
 
     [SerializeField, Min(0.01f)] private float fadeSpeed = 8f;
-    [SerializeField, Min(0.01f)] private float allyProbeRadius = 0.2f;
-    [SerializeField, Min(0.1f)] private float allyProbeDistance = 30f;
 
     readonly Dictionary<CharacteContext, float> fadeAmounts = new();
     readonly Dictionary<CharacteContext, Renderer[]> rendererCache = new();
-    readonly Dictionary<Renderer, float> authoredDithering = new();
+    readonly Dictionary<Renderer, MaterialPropertyBlock> originalPropertyBlocks = new();
     readonly HashSet<Renderer> unsupportedRenderers = new();
     readonly HashSet<CharacteContext> desiredFades = new();
-    readonly RaycastHit[] probeHits = new RaycastHit[32];
-    readonly MaterialPropertyBlock propertyBlock = new();
+    readonly List<Material> materialBuffer = new();
+    MaterialPropertyBlock propertyBlock;
     readonly ThirdPersonCharacterProfile fallbackProfile =
         ThirdPersonCharacterProfile.CreateDefault();
 
     Camera gameplayCamera;
     PlayerContext playerContext;
     float nextActorRefresh;
-    CharacteContext[] friendlyActors = System.Array.Empty<CharacteContext>();
+    CharacteContext[] fadeActors = System.Array.Empty<CharacteContext>();
 
     void Awake()
     {
+        propertyBlock = new MaterialPropertyBlock();
         gameplayCamera = GetComponent<Camera>();
         if (gameplayCamera == null)
             gameplayCamera = GetComponentInChildren<Camera>(true);
@@ -46,8 +45,12 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
 
     void OnDestroy()
     {
-        foreach (KeyValuePair<CharacteContext, float> pair in fadeAmounts)
-            ApplyDithering(pair.Key, 0f);
+        ReleaseAllFades();
+    }
+
+    void OnDisable()
+    {
+        ReleaseAllFades();
     }
 
     void RefreshActors()
@@ -57,24 +60,15 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
             return;
 
         nextActorRefresh = Time.unscaledTime + 0.5f;
-        CharacteContext[] allActors = FindObjectsByType<CharacteContext>(
-            FindObjectsInactive.Exclude,
-            FindObjectsSortMode.None);
-        List<CharacteContext> friendlies = new();
-        for (int i = 0; i < allActors.Length; i++)
+        if (playerContext == null)
         {
-            CharacteContext actor = allActors[i];
-            if (actor != null &&
-                (actor.TargetIdentity == AITargetIdentity.Player ||
-                 actor.TargetIdentity == AITargetIdentity.Companion))
-            {
-                friendlies.Add(actor);
-                rendererCache[actor] =
-                    actor.GetComponentsInChildren<Renderer>(true);
-            }
+            fadeActors = System.Array.Empty<CharacteContext>();
+            return;
         }
 
-        friendlyActors = friendlies.ToArray();
+        fadeActors = new CharacteContext[] { playerContext };
+        rendererCache[playerContext] =
+            playerContext.GetComponentsInChildren<Renderer>(true);
     }
 
     void ResolveDesiredFades()
@@ -93,46 +87,13 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
             playerContext.transform.position + profile.pivotOffset);
         if (cameraDistance < profile.fadeStartDistance)
             desiredFades.Add(playerContext);
-
-        ProbeFriendlies(
-            new Ray(gameplayCamera.transform.position, gameplayCamera.transform.forward),
-            allyProbeDistance);
-
-        Vector3 pivot = playerContext.transform.TransformPoint(profile.pivotOffset);
-        Vector3 pivotToCamera = gameplayCamera.transform.position - pivot;
-        if (pivotToCamera.sqrMagnitude > 0.001f)
-            ProbeFriendlies(new Ray(pivot, pivotToCamera.normalized), pivotToCamera.magnitude);
-    }
-
-    void ProbeFriendlies(Ray ray, float distance)
-    {
-        int hitCount = Physics.SphereCastNonAlloc(
-            ray,
-            allyProbeRadius,
-            probeHits,
-            distance,
-            ~0,
-            QueryTriggerInteraction.Ignore);
-        for (int i = 0; i < hitCount; i++)
-        {
-            Collider collider = probeHits[i].collider;
-            CharacteContext actor = collider != null
-                ? collider.GetComponentInParent<CharacteContext>()
-                : null;
-            if (actor != null &&
-                actor != playerContext &&
-                actor.TargetIdentity == AITargetIdentity.Companion)
-            {
-                desiredFades.Add(actor);
-            }
-        }
     }
 
     void ApplyFades()
     {
-        for (int i = 0; i < friendlyActors.Length; i++)
+        for (int i = 0; i < fadeActors.Length; i++)
         {
-            CharacteContext actor = friendlyActors[i];
+            CharacteContext actor = fadeActors[i];
             if (actor == null)
                 continue;
 
@@ -169,6 +130,9 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
         if (actor == null)
             return;
 
+        if (propertyBlock == null)
+            propertyBlock = new MaterialPropertyBlock();
+
         if (!rendererCache.TryGetValue(actor, out Renderer[] renderers))
         {
             renderers = actor.GetComponentsInChildren<Renderer>(true);
@@ -178,42 +142,87 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
         for (int i = 0; i < renderers.Length; i++)
         {
             Renderer renderer = renderers[i];
-            if (renderer == null || unsupportedRenderers.Contains(renderer))
+            if (renderer == null)
                 continue;
 
-            if (!authoredDithering.TryGetValue(
-                    renderer,
-                    out float authoredValue))
+            if (value <= 0f)
             {
-                if (!TryResolveMaterialDithering(
-                        renderer,
-                        out authoredValue))
-                {
-                    unsupportedRenderers.Add(renderer);
-                    continue;
-                }
+                RestorePropertyBlock(renderer);
+                continue;
+            }
 
-                authoredDithering[renderer] = authoredValue;
+            if (unsupportedRenderers.Contains(renderer))
+                continue;
+
+            if (!TryResolveMaterialDithering(
+                    renderer,
+                    out float materialValue))
+            {
+                unsupportedRenderers.Add(renderer);
+                continue;
+            }
+
+            if (!originalPropertyBlocks.TryGetValue(
+                    renderer,
+                    out MaterialPropertyBlock originalPropertyBlock))
+            {
+                originalPropertyBlock = new MaterialPropertyBlock();
+                renderer.GetPropertyBlock(originalPropertyBlock);
+                originalPropertyBlocks[renderer] = originalPropertyBlock;
+            }
+
+            if (originalPropertyBlock.HasFloat(DitheringId))
+            {
+                materialValue = Mathf.Max(
+                    materialValue,
+                    originalPropertyBlock.GetFloat(DitheringId));
             }
 
             renderer.GetPropertyBlock(propertyBlock);
             propertyBlock.SetFloat(
                 DitheringId,
-                Mathf.Max(authoredValue, value));
+                Mathf.Max(materialValue, value));
             renderer.SetPropertyBlock(propertyBlock);
         }
     }
 
-    static bool TryResolveMaterialDithering(
+    void ReleaseAllFades()
+    {
+        foreach (KeyValuePair<Renderer, MaterialPropertyBlock> pair in originalPropertyBlocks)
+        {
+            if (pair.Key != null)
+                pair.Key.SetPropertyBlock(pair.Value);
+        }
+
+        originalPropertyBlocks.Clear();
+        fadeAmounts.Clear();
+        desiredFades.Clear();
+    }
+
+    void RestorePropertyBlock(Renderer renderer)
+    {
+        if (!originalPropertyBlocks.TryGetValue(
+                renderer,
+                out MaterialPropertyBlock originalPropertyBlock))
+        {
+            return;
+        }
+
+        renderer.SetPropertyBlock(originalPropertyBlock);
+        originalPropertyBlocks.Remove(renderer);
+    }
+
+    bool TryResolveMaterialDithering(
         Renderer renderer,
         out float value)
     {
         value = 0f;
         bool supported = false;
-        Material[] materials = renderer.sharedMaterials;
-        for (int i = 0; i < materials.Length; i++)
+        materialBuffer.Clear();
+        renderer.GetSharedMaterials(materialBuffer);
+        for (int i = 0; i < materialBuffer.Count; i++)
         {
-            Material material = materials[i];
+            Material material = materialBuffer[i];
             if (material != null && material.HasFloat(DitheringId))
             {
                 supported = true;

@@ -6,7 +6,7 @@ using Opsive.GraphDesigner.Runtime;
 using Opsive.GraphDesigner.Runtime.Variables;
 
 [Opsive.Shared.Utility.Category("Ally/Follow")]
-[NodeDescription("เดินสุ่มรอบ ๆ Player ด้วย NavMeshAgent ถ้า Player หนีไกลเกิน followMax จะหยุดและ Fail")]
+[Opsive.Shared.Utility.Description("เดินสุ่มรอบ ๆ Player ด้วย NavMeshAgent ถ้า Player หนีไกลเกิน followMax จะหยุดและ Fail")]
 public class RandomMoveAroundPlayerNavMesh : Action
 {
     [Tooltip("ตัวแปร Taget ที่แชร์ใน Behavior Tree")]

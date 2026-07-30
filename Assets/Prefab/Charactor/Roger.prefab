@@ -159,7 +159,20 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 43f45bf73dac45e43ad9de42bb9938e8, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4124133111919438559}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 43f45bf73dac45e43ad9de42bb9938e8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4026254223872184604}
   m_SourcePrefab: {fileID: 100100000, guid: 43f45bf73dac45e43ad9de42bb9938e8, type: 3}
+--- !u!4 &1463704953024671353 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8335628630423029272, guid: 43f45bf73dac45e43ad9de42bb9938e8, type: 3}
+  m_PrefabInstance: {fileID: 7493433380134135905}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6496079532929897861 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4456505482534452708, guid: 43f45bf73dac45e43ad9de42bb9938e8, type: 3}
+  m_PrefabInstance: {fileID: 7493433380134135905}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &7728014391609529648 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 43f45bf73dac45e43ad9de42bb9938e8, type: 3}
@@ -190,3 +203,18 @@ MonoBehaviour:
   _overrideLightAngle: {x: 0, y: 0, z: 0}
   HeadBoneTransform: {fileID: 0}
   CreateMaterialInstanceOnPlay: 0
+--- !u!114 &4026254223872184604
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7728014391609529648}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bab361da65b03c5439d01bf3c29eff89, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  spine: {fileID: 1463704953024671353}
+  chest: {fileID: 6496079532929897861}
+  upperChest: {fileID: 0}

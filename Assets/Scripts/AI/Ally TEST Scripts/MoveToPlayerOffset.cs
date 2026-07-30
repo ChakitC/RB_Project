@@ -6,7 +6,7 @@ using Opsive.GraphDesigner.Runtime;
 using Opsive.GraphDesigner.Runtime.Variables;
 
 [Opsive.Shared.Utility.Category("Ally/Follow")]
-[NodeDescription("ใช้ NavMeshAgent วิ่งไปยืนตำแหน่งรอบ ๆ Player ตาม Offset")]
+[Opsive.Shared.Utility.Description("ใช้ NavMeshAgent วิ่งไปยืนตำแหน่งรอบ ๆ Player ตาม Offset")]
 public class MoveToPlayerOffsetNavMesh : Action
 {
     

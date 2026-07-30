@@ -20,6 +20,28 @@ MonoBehaviour:
   characterAvatar: {fileID: 9000000, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
   controller: {fileID: 9100000, guid: f555da46cd7e0404e9dc79bbbda06e9a, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
+  thirdPersonProfile:
+    pivotOffset: {x: 0.6, y: 1.51, z: -0.11}
+    shoulderOffset: {x: 0.48, y: -0.2, z: 0}
+    verticalArmLength: 0.25
+    cameraDistance: 3.2
+    aimCameraDistance: 2.7
+    cameraSide: 1
+    followDamping: {x: 0.08, y: 0.12, z: 0.08}
+    minimumPitch: -55
+    maximumPitch: 72
+    freeLookFov: 60
+    shoulderAimFov: 48
+    yawSensitivityMultiplier: 1
+    pitchSensitivityMultiplier: 1
+    chestAimWeight: 0.55
+    upperChestAimWeight: 0.7
+    spineAimWeight: 0.35
+    maximumUpperBodyPitch: 55
+    maximumUpperBodyYaw: 65
+    collisionRadius: 0.22
+    fadeStartDistance: 1.05
+    fadeFullyHiddenDistance: 0.5
   weaponHandMode: 2
   combatRole: 5
   chainAttackSkill: {fileID: 0}
@@ -36,6 +58,8 @@ MonoBehaviour:
       skillLevel: 1
       supportAssets: []
       maxSupportSlots: 3
+      upgradeTreeOverride: {fileID: 0}
+  activeSkillPointsPerLevel: 1
   maxHP: 100000
   maxStamina: 50
   Damage: 50

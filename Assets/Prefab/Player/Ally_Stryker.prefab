@@ -465,6 +465,7 @@ GameObject:
   - component: {fileID: 5879616477380449198}
   - component: {fileID: 5566096177820386735}
   - component: {fileID: 1083789899064408605}
+  - component: {fileID: 3831703666553802021}
   m_Layer: 10
   m_Name: Ally_Stryker
   m_TagString: Ally
@@ -591,11 +592,12 @@ MonoBehaviour:
   AnimDriver: {fileID: 2705162881607156007}
   PairOffsetApplier: {fileID: 6927647070226357498}
   MeleeController: {fileID: 3848525355350381702}
+  AimRig: {fileID: 3831703666553802021}
   CharacterLoad: {fileID: 5566096177820386735}
   Visual: {fileID: 5135303409400166651}
   UIManager: {fileID: 0}
   ColliderRefs: {fileID: 0}
-  StatusEffects: {fileID: 0}
+  StatusEffects: {fileID: 1083789899064408605}
   levelSystem: {fileID: 8585106481643144049}
   HealthSystem: {fileID: 3886805759331930848}
   StaminaSystem: {fileID: 4917278530332384066}
@@ -753,6 +755,20 @@ MonoBehaviour:
   dbgBuffs: 
   dbgDebuffs: 
   dbgNeutralEffects: 
+--- !u!114 &3831703666553802021
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2275044329717223576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc1d371f926c4f64a7704ad9138d3884, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterContext: {fileID: 0}
+  blendSpeed: 12
 --- !u!1 &2357043900880950871
 GameObject:
   m_ObjectHideFlags: 0

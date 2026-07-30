@@ -5,7 +5,7 @@ using Opsive.GraphDesigner.Runtime;
 using Opsive.GraphDesigner.Runtime.Variables;
 
 [Opsive.Shared.Utility.Category("Ally/Enemy")]
-[NodeDescription("Success ถ้า AITargetSensor เจอศัตรูตัวปัจจุบัน และอัปเดต currentEnemy ให้ BT")]
+[Opsive.Shared.Utility.Description("Success ถ้า AITargetSensor เจอศัตรูตัวปัจจุบัน และอัปเดต currentEnemy ให้ BT")]
 public class HasEnemyFromSensor : Conditional
 {
     public SharedVariable<GameObject> currentEnemy;

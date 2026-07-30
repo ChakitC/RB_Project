@@ -85,7 +85,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         if (!Application.isPlaying)
             return;
 
-        ApplyFirePointOffset();
+        ApplyFirePointOffset(resolveContextReferences: false);
         ApplyHealthBarOffset();
     }
 
@@ -97,7 +97,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         TryBuildCurrentModelAutomatically(silent: false);
     }
 
-    void EnsureReferences()
+    void EnsureReferences(bool resolveContextReferences = true)
     {
         if (_ctx == null)
             _ctx = GetComponent<CharacteContext>();
@@ -105,7 +105,8 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         if (_ctx == null)
             _ctx = GetComponentInParent<CharacteContext>();
 
-        _ctx?.ResolveReferences();
+        if (resolveContextReferences)
+            _ctx?.ResolveReferences();
 
         if (_ctx != null && _ctx.Visual != this)
             _ctx.Visual = this;
@@ -700,9 +701,9 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         _weaponSystem?.RefreshFirePointReference();
     }
 
-    private void ApplyFirePointOffset()
+    private void ApplyFirePointOffset(bool resolveContextReferences = true)
     {
-        var firePoint = _firePoint ? _firePoint : GetFirePoint();
+        var firePoint = _firePoint ? _firePoint : GetFirePoint(resolveContextReferences);
         if (!firePoint)
             return;
 
@@ -724,9 +725,9 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         _healthBarInstance.transform.localScale = Vector3.Scale(prefabScale, healthBarLocalScale);
     }
 
-    private Transform GetFirePoint()
+    private Transform GetFirePoint(bool resolveContextReferences = true)
     {
-        EnsureReferences();
+        EnsureReferences(resolveContextReferences);
 
         Transform firePoint = _firePoint ? _firePoint : null;
 

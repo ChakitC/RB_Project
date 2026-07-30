@@ -12,8 +12,10 @@ and cinematic handoff.
 | `CinemachineThirdPersonFollow` | Shoulder geometry, damping, camera distance, and obstacle push-in |
 | `CinemachineThirdPersonAim` | Stable center-screen orientation |
 | `ThirdPersonAimController` | Camera Aim Point and muzzle-obstruction validation |
+| `ThirdPersonAimRigController` | Player/companion visual upper-body pitch toward the Aim Point |
+| `ThirdPersonAimBoneMap` | Generic-rig Spine, Chest, and optional UpperChest bindings |
 | `ThirdPersonCharacterProfile` | Per-character pivot, shoulder, distance, FOV, aim-rig, and fade calibration |
-| `ThirdPersonOcclusionFader` | Local-player close-camera fade and companion reticle/camera obstruction fade |
+| `ThirdPersonOcclusionFader` | Local-player close-camera fade |
 | `ThirdPersonReticleView` | Dynamic spread, Shoulder Aim contraction, hit marker, and muzzle-blocked marker |
 
 `GameplayCameraController` remains on `CameraHolder` so existing
@@ -59,6 +61,32 @@ block a shot even when the camera can see around them.
 Player and companion colliders are ignored by friendly projectiles. Wall
 collision remains active through `ProjectileLayerUtility`.
 
+## Upper-body Aim
+
+`ThirdPersonAimRigController` applies visual pitch only. Character root rotation
+continues to own yaw, so the procedural pose does not double the horizontal
+turn performed by player movement or AI facing.
+
+The player follows the validated Aim Point during Shoulder Aim and the brief
+Hip Fire combat-alignment window. Companions follow their AI Aim Point while
+their weapon is aiming or firing. Releasing combat alignment blends the last
+valid pitch back to the animation pose instead of resolving a new direction
+toward world origin.
+
+Pitch is clamped by `maximumUpperBodyPitch` (default `55` degrees) and
+distributed across only the resolved Spine, Chest, and UpperChest bones.
+It is applied after `CharacterPairOffsetApplier`, so authored locomotion/action
+pair corrections remain part of the final pose.
+Rotation-locking states and exclusive full-body animation playback suppress the
+procedural pose and blend it out. `maximumUpperBodyYaw` remains serialized for
+compatibility but is not used by the pitch-only controller.
+
+Humanoid Animators resolve the three bones through `HumanBodyBones`. Generic
+visual prefabs must place `ThirdPersonAimBoneMap` on the Animator GameObject and
+bind their rig transforms. A missing Generic map disables only the visual pose
+and emits one warning; gameplay aiming and projectile direction are unchanged.
+The bindings are resolved again whenever a character model is swapped.
+
 ## Collision and Occlusion
 
 `CinemachineThirdPersonFollow.AvoidObstacles` pushes the camera inward. The old
@@ -66,8 +94,10 @@ world-geometry cutout component is disabled at runtime; levels are not modified
 for the camera.
 
 When pushed very close, the local character fades using the ASP `_Dithering`
-property. Companions also fade while they obstruct the center reticle or sit
-between the player pivot and camera.
+property. Companions are not faded when they cross the center reticle or sit
+between the player pivot and camera. The close-camera and animation fades are
+independent; the strongest active fade wins, and disabling the camera fader
+releases only the camera-owned fade.
 
 ## Camera Recoil and Impulses
 
@@ -86,6 +116,12 @@ The pause menu creates a camera settings panel for horizontal sensitivity,
 vertical sensitivity, invert Y, and FOV. Values use independent `PlayerPrefs`
 keys, so old save data remains valid and missing values receive defaults.
 
+World-space character UI uses the `WorldUI` layer and is rendered by the
+`WorldUICamera` overlay in `CameraHolder`. `WorldUICameraSync` copies the main
+camera transform and projection after Cinemachine updates so overhead health,
+stagger, and ChainReady displays use the same framing in free look, Shoulder
+Aim, and animated camera states.
+
 ## Cinematic Handoff
 
 `CutsceneSkillPresenter` disables `GameplayCameraController` as before. The
@@ -103,12 +139,14 @@ profile is valid when no character-specific calibration is supplied. Tune:
 - free/aim distance
 - free/aim FOV
 - pitch limits and sensitivity multipliers
-- spine/chest/upper-chest aim weights
+- spine/chest/upper-chest pitch weights
 - collision radius and fade distances
 
 `CharacteContext.ResolveReferences` creates `ThirdPersonAimRigController` for
 player and companion identities at runtime, including dynamically spawned
-helpers and swapped character models.
+helpers and swapped character models. Generic character visual prefabs must
+also author `ThirdPersonAimBoneMap`; the third-person authoring validator checks
+every character registered in `CharacterDatabase`.
 
 ## Select Screen
 

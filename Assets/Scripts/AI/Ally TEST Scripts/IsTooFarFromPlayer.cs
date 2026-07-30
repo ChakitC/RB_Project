@@ -5,7 +5,7 @@ using Opsive.GraphDesigner.Runtime;               // NodeDescription / Category
 using Opsive.GraphDesigner.Runtime.Variables;    // SharedVariable<T>
 
 [Opsive.Shared.Utility.Category("Ally/Follow")]
-[NodeDescription("Success ถ้า Ally อยู่ไกลจาก Player มากกว่า followMax")]
+[Opsive.Shared.Utility.Description("Success ถ้า Ally อยู่ไกลจาก Player มากกว่า followMax")]
 public class IsTooFarFromPlayer : Conditional
 {
     [Tooltip("ตัวแปร Player ที่แชร์ใน Behavior Tree")]

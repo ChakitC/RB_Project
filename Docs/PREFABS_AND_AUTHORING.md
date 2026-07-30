@@ -46,19 +46,43 @@ controller:
 - `cameraDistance`, `aimCameraDistance`: free/aim distance
 - `freeLookFov`, `shoulderAimFov`: authored FOV relationship
 - pitch limits and sensitivity multipliers
-- humanoid spine/chest/upper-chest aim weights
+- spine/chest/upper-chest pitch weights
 - camera collision radius and close-camera fade distances
 
 The default initialized profile is a valid fallback. Player and companion
 contexts add the procedural upper-body aim component at runtime, so dynamically
-spawned helpers and character model swaps use the same profile. Humanoid
-characters receive full upper-body pitch/yaw; non-Humanoid rigs keep gameplay
-aiming but require a rig-specific visual adapter.
+spawned helpers and character model swaps use the same profile. Upper-body aim
+uses pitch only while character root rotation owns yaw. It follows the validated
+Aim Point during Shoulder Aim, Hip Fire combat alignment, and companion weapon
+activity, then blends back when alignment ends or a rotation-locking/full-body
+state takes ownership.
+
+Humanoid Animators resolve Spine, Chest, and UpperChest automatically. Every
+Generic character visual prefab must add `ThirdPersonAimBoneMap` to the same
+GameObject as its Animator and assign:
+
+- `Spine`: the lower torso rotation bone
+- `Chest`: the upper torso rotation bone
+- `Upper Chest`: optional when the rig has a third torso bone
+
+All assigned transforms must be unique descendants of that Animator. The
+current roster maps `spine_01.x` to Spine and `spine_02.x` to Chest, leaving
+Upper Chest empty. Missing or invalid Generic mappings fail third-person
+authoring validation. At runtime a missing map disables only the visual
+upper-body pose; Aim Point resolution and projectile trajectories still work.
+Model swaps cause the controller to discard old bone references and resolve the
+new visual rig.
 
 `Assets/Prefab/System/CameraHolder.prefab` remains the gameplay camera root.
 `GameplayCameraController` creates its Cinemachine camera/brain at runtime so
 existing scene instances and cutscene camera animations keep their serialized
 references.
+
+Keep `WorldUICamera` in the main camera's URP camera stack with a culling mask
+containing only the `WorldUI` layer. Its `WorldUICameraSync.sourceCamera` must
+reference the tagged main Camera so the overlay follows the Cinemachine camera
+transform and projection. Do not remove this synchronization while the main
+Camera excludes `WorldUI`.
 
 Run **Tools > RB Project > Validate Third Person Authoring** after changing the
 player prefab, camera prefab, input actions, or Build Settings scenes. The same

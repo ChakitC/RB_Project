@@ -32,6 +32,7 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
     int lifecycleToken;
     float currentDithering = HiddenDithering;
     bool isHidden = true;
+    bool preserveHiddenWhileDisabled;
     bool alphaClipWarningIssued;
     Renderer[] shadowRenderers;
     ShadowCastingMode[] originalShadowCastingModes;
@@ -50,18 +51,22 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
     {
         StopFadeRoutine();
         StopMonitorRoutine(true);
+        ApplyDithering(preserveHiddenWhileDisabled
+            ? HiddenDithering
+            : VisibleDithering);
 
         if (!gameObject.activeSelf || !gameObject.activeInHierarchy)
             Deactivated?.Invoke();
     }
     
-    public void SetHiddenImmediate()
+    public void SetHiddenImmediate(bool preserveWhileDisabled = false)
     {
         EnsureFaderObjectActive();
         InitializeReferences();
 
         StopFadeRoutine();
         StopMonitorRoutine(true);
+        preserveHiddenWhileDisabled = preserveWhileDisabled;
 
         ApplyDitheringSize();
         ApplyDithering(HiddenDithering);
@@ -95,6 +100,7 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
             return;
 
         StopMonitorRoutine(true);
+        preserveHiddenWhileDisabled = true;
 
         if (isHidden)
         {
@@ -111,6 +117,7 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
             return;
 
         StopMonitorRoutine(true);
+        preserveHiddenWhileDisabled = true;
 
         if (isHidden)
         {
@@ -164,6 +171,7 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
             if (float.IsFinite(remainingDuration) &&
                 remainingDuration <= GetFadeOutTriggerTime() + FadeTriggerEpsilon)
             {
+                preserveHiddenWhileDisabled = true;
                 StartFade(HiddenDithering, fadeOutDuration, deactivateAfterFade: false);
                 break;
             }
@@ -190,7 +198,10 @@ public sealed class ASPHelperDitherFader : MonoBehaviour
         StopFadeRoutine();
 
         if (targetDithering < HiddenDithering - FadeTriggerEpsilon)
+        {
+            preserveHiddenWhileDisabled = false;
             ApplyShadowCastingHidden(false);
+        }
 
         if (!gameObject.activeInHierarchy || duration <= 0f)
         {

@@ -5,7 +5,7 @@ using Opsive.GraphDesigner.Runtime;
 using Opsive.GraphDesigner.Runtime.Variables;
 
 [Opsive.Shared.Utility.Category("Ally/Utility")]
-[NodeDescription("เช็คว่ามี reference ไปที่ Player หรือยัง")]
+[Opsive.Shared.Utility.Description("เช็คว่ามี reference ไปที่ Player หรือยัง")]
 public class HasPlayer : Conditional
 {
     [Tooltip("ตัวแปร Player ที่ใช้แชร์ใน Behavior Tree")]

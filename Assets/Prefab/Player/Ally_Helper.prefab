@@ -703,6 +703,7 @@ GameObject:
   - component: {fileID: 2187588555598731297}
   - component: {fileID: 1626903556438485816}
   - component: {fileID: 723459649131664530}
+  - component: {fileID: 8400816988707940924}
   m_Layer: 10
   m_Name: Ally_Helper
   m_TagString: Ally
@@ -1243,6 +1244,7 @@ MonoBehaviour:
   AnimDriver: {fileID: 5681820240419234125}
   PairOffsetApplier: {fileID: 6757207689294103157}
   MeleeController: {fileID: 9124542019871945994}
+  AimRig: {fileID: 8400816988707940924}
   CharacterLoad: {fileID: 2187588555598731297}
   Visual: {fileID: 3475030861834118874}
   UIManager: {fileID: 0}
@@ -1485,6 +1487,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ctx: {fileID: 0}
   levelSystem: {fileID: 0}
+--- !u!114 &8400816988707940924
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5546123616510741782}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc1d371f926c4f64a7704ad9138d3884, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterContext: {fileID: 0}
+  blendSpeed: 12
 --- !u!1 &5742793755352266359
 GameObject:
   m_ObjectHideFlags: 0

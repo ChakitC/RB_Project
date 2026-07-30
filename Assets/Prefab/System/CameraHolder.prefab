@@ -299,6 +299,7 @@ GameObject:
   - component: {fileID: 1573119038592074073}
   - component: {fileID: 4848922909308762611}
   - component: {fileID: 3694905704945404817}
+  - component: {fileID: 7201355608847291129}
   m_Layer: 0
   m_Name: WorldUICamera
   m_TagString: Untagged
@@ -416,3 +417,16 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+--- !u!114 &7201355608847291129
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2166863678872850271}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f0c2b61d3a74f3e9b6c1a8524d90e18, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  sourceCamera: {fileID: 5478141767642294992}

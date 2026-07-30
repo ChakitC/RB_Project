@@ -5,7 +5,7 @@ using Opsive.GraphDesigner.Runtime;
 using Opsive.GraphDesigner.Runtime.Variables;
 
 [Opsive.Shared.Utility.Category("Ally/Follow")]
-[NodeDescription("Success ถ้า Ally อยู่ใกล้ Player (<= nearDistance)")]
+[Opsive.Shared.Utility.Description("Success ถ้า Ally อยู่ใกล้ Player (<= nearDistance)")]
 public class IsNearPlayer : Conditional
 {
     [Tooltip("ตัวแปร Player ที่แชร์ใน Behavior Tree")]

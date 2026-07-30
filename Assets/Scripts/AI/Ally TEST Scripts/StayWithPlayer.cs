@@ -5,7 +5,7 @@ using Opsive.GraphDesigner.Runtime;               // สำหรับ NodeDesc
 using Opsive.GraphDesigner.Runtime.Variables;    // สำหรับ SharedVariable<T>
 
 [Opsive.Shared.Utility.Category("Ally/Utility")]
-[NodeDescription("เช็คว่า Ally ควรอยู่ในโหมดตามผู้เล่นหรือเปล่า")]
+[Opsive.Shared.Utility.Description("เช็คว่า Ally ควรอยู่ในโหมดตามผู้เล่นหรือเปล่า")]
 public class StayWithPlayer : Conditional
 {
     [Tooltip("ถ้า true = Ally จะอยู่ในโหมดตามผู้เล่น")]

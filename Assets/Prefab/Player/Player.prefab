@@ -269,6 +269,7 @@ MonoBehaviour:
   fallbackMoveSpeed: 6
   rampUpTime: 0.25
   rampDownTime: 0.2
+  rotationSharpness: 14
   aimSpeedMult: 0.8
   fireSpeedMult: 0.65
   backwardSpeedMult: 0.6
@@ -513,6 +514,8 @@ GameObject:
   - component: {fileID: 7825177702547226700}
   - component: {fileID: 4875677148233401779}
   - component: {fileID: 7759154630619611733}
+  - component: {fileID: 3900802803091656922}
+  - component: {fileID: 6098239142180533381}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -645,6 +648,7 @@ MonoBehaviour:
   AnimDriver: {fileID: 3933203452649057500}
   PairOffsetApplier: {fileID: 3853088793137968342}
   MeleeController: {fileID: 4440949455955109371}
+  AimRig: {fileID: 3900802803091656922}
   CharacterLoad: {fileID: 7935780743584248329}
   Visual: {fileID: 1956943878282865192}
   UIManager: {fileID: 0}
@@ -657,6 +661,7 @@ MonoBehaviour:
   KnockbackMotor: {fileID: 3729042986192515201}
   PassiveController: {fileID: 2601669138343315329}
   PassiveProgress: {fileID: 4875677148233401779}
+  ActiveSkillProgress: {fileID: 0}
   EnegySystem: {fileID: 3693568544021270016}
   Interactor: {fileID: 7938086370648664434}
   SkillManager: {fileID: 2048828252462802381}
@@ -669,6 +674,7 @@ MonoBehaviour:
   chainAttackCoordinator: {fileID: 8702287995565794057}
   partyCommand: {fileID: 2720740744562527200}
   interruptionCommand: {fileID: 5084191306873448319}
+  thirdPersonAim: {fileID: 6098239142180533381}
   inventory: {fileID: 1173181556611555232}
   aimTarget: {fileID: 37773055136607646}
   maximumCommandPoints: 3
@@ -1259,6 +1265,38 @@ MonoBehaviour:
     m_RotationOrder: 4
   impactTimeoutSeconds: 2
   logInterruptionFlow: 0
+--- !u!114 &3900802803091656922
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2311559804654788738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc1d371f926c4f64a7704ad9138d3884, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterContext: {fileID: 1638387977988830713}
+  blendSpeed: 12
+--- !u!114 &6098239142180533381
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2311559804654788738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0c4d2965dc340d9bf32989360ea1415, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerContext: {fileID: 0}
+  aimCollisionMask:
+    serializedVersion: 2
+    m_Bits: 1048575
+  maximumAimDistance: 250
+  muzzleProbeRadius: 0.045
 --- !u!1 &2390375286862288330
 GameObject:
   m_ObjectHideFlags: 0
@@ -2110,8 +2148,13 @@ MonoBehaviour:
   targetSearchMask:
     serializedVersion: 2
     m_Bits: 512
+  targetObstacleMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   targetSearchRadius: 4
   playerInterruptRange: 4
+  noWarpStartDistance: 0.5
+  noWarpTargetDistance: 1.5
   holdSpeedMultiplier: 0.1
   holdSafetyMargin: 0.08
   logInterruptionFlow: 0

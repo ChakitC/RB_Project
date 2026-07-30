@@ -238,7 +238,7 @@ public class AllyHelperManager : MonoBehaviour
         }
 
         CacheHelperReferences();
-        allyHelperFader?.SetHiddenImmediate();
+        allyHelperFader?.SetHiddenImmediate(preserveWhileDisabled: true);
 
         if (allyHelper.activeSelf)
             allyHelper.SetActive(false);
@@ -688,7 +688,7 @@ public class AllyHelperManager : MonoBehaviour
     void HideHelperImmediate()
     {
         RestoreHelperSkillAutonomy();
-        allyHelperFader?.SetHiddenImmediate();
+        allyHelperFader?.SetHiddenImmediate(preserveWhileDisabled: true);
 
         if (allyHelper != null && allyHelper.activeSelf)
             allyHelper.SetActive(false);

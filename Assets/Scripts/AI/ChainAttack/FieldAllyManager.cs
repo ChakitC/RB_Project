@@ -38,6 +38,18 @@ public sealed class FieldAllyManager : MonoBehaviour
         return false;
     }
 
+    public void ConfigureRuntimeMembers(IReadOnlyList<FieldAllyMember> runtimeMembers)
+    {
+        if (runtimeMembers == null)
+            throw new ArgumentNullException(nameof(runtimeMembers));
+
+        members = new FieldAllyMember[runtimeMembers.Count];
+        for (int i = 0; i < runtimeMembers.Count; i++)
+            members[i] = runtimeMembers[i];
+
+        RebuildRegistry();
+    }
+
     public void Register(FieldAllyMember member)
     {
         if (member == null || member.ActorRole == ChainActorRole.None)

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 0fc64642a5fc4f7fbfdbdfbf04b481f2
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 368344
+  packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
+  packageVersion: 3.2.1p2
+  assetPath: Packages/com.opsive.behaviordesigner/Runtime/Systems/BehaviorTreeExecutionController.cs
+  uploadId: 957386

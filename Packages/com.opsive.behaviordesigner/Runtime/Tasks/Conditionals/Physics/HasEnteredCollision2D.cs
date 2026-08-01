@@ -6,7 +6,6 @@
 /// ---------------------------------------------
 namespace Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals.Physics
 {
-    using Opsive.GraphDesigner.Runtime;
     using Opsive.GraphDesigner.Runtime.Variables;
     using UnityEngine;
 
@@ -19,7 +18,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals.Physics
         [Tooltip("The collided GameObject.")]
         [SerializeField] protected SharedVariable<GameObject> m_StoredCollisionGameObject;
 
-        protected override bool ReceiveCollisionEnterCallback => true;
+        protected override bool ReceiveCollisionEnter2DCallback => true;
 
         private bool m_EnteredCollision;
 

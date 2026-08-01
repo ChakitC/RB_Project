@@ -15,6 +15,17 @@ This file records canonical project terms. It is a glossary, not an implementati
 - **Target Orbit** — controlled movement around a target within a radial band. Facing the target is an independent behavior choice.
   _Avoid_: Random Move Around Target, Orbit/Strafe Around Target
 
+## Combat Damage Terms
+
+- **Hit Zone** — a dedicated collider-backed region on a character that identifies which body part received a direct weapon-projectile hit. It does not own separate HP.
+  _Avoid_: Limb Health, Body-part HP
+- **Head** — the head Hit Zone. Its damage multiplier is resolved from the target's Hit Zone Damage Profile.
+  _Avoid_: Head Collider Damage
+- **Torso** — the body Hit Zone. It is the normal-damage region and defaults to a `1.0` multiplier.
+  _Avoid_: Body Collider, Chest HP
+- **Hit Zone Damage Profile** — target-side damage multiplier data used by `HealthSystem` after the projectile's normal damage calculation.
+  _Avoid_: Projectile Headshot Config
+
 ## Third-Person Shooter Terms
 
 - **Free Look** — the normal exploration state where the camera can orbit independently and movement is camera-relative. The character is not forced to face the camera direction until a combat action requires it.

@@ -633,7 +633,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             return result;
 
         if (_payload != null && _payload.ShowDamageNumbers && VfxSpawner.Instance != null)
-            VfxSpawner.Instance.SpawnDamageNumber(hitPoint, result.AppliedDamage);
+            VfxSpawner.Instance.SpawnDamageNumber(hitPoint, result.AppliedDamage, target);
 
         NotifyOwnerCombatTriggers(target, result.AppliedDamage, wasAliveBeforeDamage, result.Killed);
         return result;

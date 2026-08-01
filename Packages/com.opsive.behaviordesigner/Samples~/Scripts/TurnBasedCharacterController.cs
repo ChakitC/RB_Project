@@ -48,7 +48,9 @@ namespace Opsive.BehaviorDesigner.Samples
             m_Health = GetComponentInChildren<Health>();
             m_Health.OnUpdateValue += OnUpdateHealthValue;
 
-#if UNITY_2022
+#if UNITY_6000_5_OR_NEWER
+            m_TurnBasedSceneManager = Object.FindAnyObjectByType<TurnBasedSceneManager>();
+#elif UNITY_2022
             m_TurnBasedSceneManager = Object.FindObjectOfType<TurnBasedSceneManager>();
 #else
             m_TurnBasedSceneManager = Object.FindFirstObjectByType<TurnBasedSceneManager>();

@@ -2,17 +2,23 @@
     "name": "Opsive.GraphDesigner.Runtime.Wrappers",
     "rootNamespace": "",
     "references": [
-        "GUID:e9319bc8ab9315745bdf80aeffa01d6d"
+        "Opsive.GraphDesigner.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
-    "overrideReferences": true,
+    "overrideReferences": false,
     "precompiledReferences": [
         "Opsive.GraphDesigner.Runtime.dll"
     ],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.opsive.shared",
+            "expression": "3.0.0",
+            "define": "OPSIVE_SHARED_V3"
+        }
+    ],
     "noEngineReferences": false
 }

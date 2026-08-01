@@ -22,7 +22,9 @@ namespace Opsive.BehaviorDesigner.Samples
         /// <returns>Success after the scene has been restarted.</returns>
         public override TaskStatus OnUpdate()
         {
-#if UNITY_2022
+#if UNITY_6000_5_OR_NEWER
+            var hideSeekSceneManager = Object.FindAnyObjectByType<HideSeekSceneManager>();
+#elif UNITY_2022
             var hideSeekSceneManager = Object.FindObjectOfType<HideSeekSceneManager>();
 #else
             var hideSeekSceneManager = Object.FindFirstObjectByType<HideSeekSceneManager>();

@@ -5,6 +5,9 @@ using UnityEngine;
 [HideMonoScript]
 public class SpawnPickupSkillPayloadDef : SkillPayloadDef
 {
+    const int DefaultGroundLayer = 12;
+    const int DefaultGroundMask = 1 << DefaultGroundLayer;
+
     private bool UsesFixedSpawnCount => !useSkillProjectileCount;
 
     [PropertyOrder(-10)]
@@ -45,7 +48,7 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
 
     [SerializeField, BoxGroup("Placement")]
     [LabelText("Ground Layers")]
-    private LayerMask groundMask = ~0;
+    private LayerMask groundMask = DefaultGroundMask;
 
     [ShowInInspector, ReadOnly, BoxGroup("Placement"), LabelText("Placement Preview")]
     private string PlacementPreviewLabel => $"{forwardOffset:0.##}m forward, {spreadWidth:0.##}m spread, {verticalOffset:0.##}m height";
@@ -87,18 +90,6 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
             basePosition = context.CastPosition + targetOffset;
         }
 
-        if (Physics.Raycast(
-                basePosition + Vector3.up * 10f,
-                Vector3.down,
-                out RaycastHit groundHit,
-                30f,
-                groundMask,
-                QueryTriggerInteraction.Ignore))
-        {
-            basePosition = groundHit.point;
-        }
-
-        basePosition += Vector3.up * verticalOffset;
         Quaternion rotation = Quaternion.LookRotation(forward, Vector3.up);
 
         for (int i = 0; i < count; i++)
@@ -108,6 +99,10 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
                 : Mathf.Lerp(-spreadWidth * 0.5f, spreadWidth * 0.5f, (float)i / (count - 1));
 
             Vector3 spawnPosition = basePosition + side * lateralOffset;
+            if (TryResolveGroundPosition(spawnPosition, out Vector3 groundedPosition))
+                spawnPosition = groundedPosition;
+
+            spawnPosition += Vector3.up * verticalOffset;
             var pickupObject = Object.Instantiate(pickupPrefab, spawnPosition, rotation);
             var skillPickup = pickupObject.GetComponent<SkillPickup>();
             if (skillPickup == null)
@@ -124,6 +119,27 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
                 context.SkillDef,
                 context.SkillStats));
         }
+    }
+
+    bool TryResolveGroundPosition(Vector3 position, out Vector3 groundedPosition)
+    {
+        groundedPosition = position;
+        if (groundMask.value == 0)
+            return false;
+
+        if (!Physics.Raycast(
+                position + Vector3.up * 10f,
+                Vector3.down,
+                out RaycastHit groundHit,
+                30f,
+                groundMask,
+                QueryTriggerInteraction.Ignore))
+        {
+            return false;
+        }
+
+        groundedPosition = groundHit.point;
+        return true;
     }
 
     private bool HasValidPickupPrefab(GameObject prefab)
@@ -144,5 +160,8 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
 
         if (pickupPrefab.GetComponent<SkillPickup>() == null)
             issues.Add("Spawn Pickup payload prefab has no SkillPickup component.");
+
+        if (groundMask.value == 0)
+            issues.Add("Spawn Pickup payload has no ground layers configured.");
     }
 }

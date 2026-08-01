@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI;
 using Opsive.BehaviorDesigner.Runtime.Tasks;
 using Opsive.BehaviorDesigner.Runtime.Tasks.Actions;
 using Opsive.GraphDesigner.Runtime.Variables;
@@ -17,6 +18,12 @@ public class AiShoot : Action
 
     public SharedVariable<bool> returnSuccessWhenTargetLost = true;
 
+    [Header("Aiming")]
+    public bool faceTarget;
+
+    [Tooltip("Horizontal turn speed while this task is active (degrees per second).")]
+    public float turnSpeed = 720f;
+
     private enum ShootPhase
     {
         Firing,
@@ -25,6 +32,10 @@ public class AiShoot : Action
 
     private ShootPhase phase;
     private float stateEndTime;
+    private Transform actorTransform;
+    private NavMeshAgent agent;
+    private bool agentRotationCaptured;
+    private bool cachedAgentUpdateRotation;
 
     public override void OnStart()
     {
@@ -32,7 +43,19 @@ public class AiShoot : Action
         {
             CTX = gameObject.GetComponentInParent<CharacteContext>();
         }
-        
+
+        actorTransform = CTX != null ? CTX.transform : transform;
+        agentRotationCaptured = false;
+        agent = actorTransform != null
+            ? actorTransform.GetComponent<NavMeshAgent>()
+            : null;
+
+        if (faceTarget && agent != null)
+        {
+            cachedAgentUpdateRotation = agent.updateRotation;
+            agent.updateRotation = false;
+            agentRotationCaptured = true;
+        }
 
         phase = ShootPhase.Firing;
 
@@ -65,6 +88,8 @@ public class AiShoot : Action
             bool successWhenLost = returnSuccessWhenTargetLost != null && returnSuccessWhenTargetLost.Value;
             return successWhenLost ? TaskStatus.Success : TaskStatus.Failure;
         }
+
+        RotateTowardTarget(currentTarget);
 
         // กระสุนหมด / รีโหลดอยู่
         var weaponState = CTX.stateHub.WeaponSM.CurrentId;
@@ -106,9 +131,53 @@ public class AiShoot : Action
 
     public override void OnEnd()
     {
-        
+        if (agentRotationCaptured && agent != null)
+            agent.updateRotation = cachedAgentUpdateRotation;
+
+        agentRotationCaptured = false;
+
         if (CTX != null && CTX.stateHub != null)
             StopFire(CTX);
+    }
+
+    public override void Reset()
+    {
+        target = null;
+        fireDuration = 3f;
+        waitDuration = 5f;
+        returnSuccessWhenTargetLost = true;
+        faceTarget = false;
+        turnSpeed = 720f;
+    }
+
+    private void RotateTowardTarget(GameObject currentTarget)
+    {
+        if (!faceTarget ||
+            turnSpeed <= 0f ||
+            actorTransform == null ||
+            currentTarget == null ||
+            !CTX.stateHub.CanRotate())
+        {
+            return;
+        }
+
+        Vector3 direction =
+            currentTarget.transform.position - actorTransform.position;
+        direction.y = 0f;
+        if (direction.sqrMagnitude <= 0.0001f)
+            return;
+
+        float deltaTime =
+            CTX.UsesWorldSlow && TimeSlowManager.Instance != null
+                ? TimeSlowManager.Instance.WorldDeltaTime
+                : Time.deltaTime;
+
+        Quaternion targetRotation =
+            Quaternion.LookRotation(direction.normalized, Vector3.up);
+        actorTransform.rotation = Quaternion.RotateTowards(
+            actorTransform.rotation,
+            targetRotation,
+            turnSpeed * deltaTime);
     }
 
     private void StartFire(CharacteContext ctx)

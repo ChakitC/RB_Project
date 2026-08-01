@@ -28,10 +28,14 @@ public class MoveToPlayerOffsetNavMesh : Action
     private NavMeshAgent _agent;
     private CharacteContext _ctx;
     private CharacterAnimBrain _animBrain;
+    private readonly PartyFormationFollowRuntime _formationRuntime = new();
 
     public override void OnStart()
     {
         CacheReferences();
+
+        if (_formationRuntime.TryBegin(gameObject, Taget != null ? Taget.Value : null))
+            return;
 
         if (_agent != null && stopDistance != null)
         {
@@ -43,6 +47,14 @@ public class MoveToPlayerOffsetNavMesh : Action
     public override TaskStatus OnUpdate()
     {
         CacheReferences();
+
+        if (_formationRuntime.TryTick(
+                gameObject,
+                Taget != null ? Taget.Value : null,
+                out TaskStatus formationStatus))
+        {
+            return formationStatus;
+        }
         
         // ไม่มี Agent = ทำอะไรไม่ได้ → Fail
         if (_agent == null || !_agent.isActiveAndEnabled)
@@ -106,12 +118,18 @@ public class MoveToPlayerOffsetNavMesh : Action
 
     public override void OnEnd()
     {
+        if (_formationRuntime.IsAvailable)
+        {
+            _formationRuntime.End();
+            return;
+        }
+
         StopAgentIfReady();
     }
 
     public override void Reset()
     {
-       
+        _formationRuntime.Reset();
         offsetFromPlayer = Vector3.zero;
         stopDistance = 1.5f;
     }

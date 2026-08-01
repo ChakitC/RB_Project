@@ -231,6 +231,23 @@ public sealed class FieldAllyMember : MonoBehaviour
         SubscribeToAnimBrain(null);
     }
 
+    public void ConfigureRuntime(ChainActorRole role, FieldAllyManager runtimeManager)
+    {
+        if (role == ChainActorRole.None)
+            throw new ArgumentOutOfRangeException(nameof(role));
+        if (runtimeManager == null)
+            throw new ArgumentNullException(nameof(runtimeManager));
+
+        if (isActiveAndEnabled)
+            manager?.Unregister(this);
+
+        actorRole = role;
+        manager = runtimeManager;
+
+        if (isActiveAndEnabled)
+            manager.Register(this);
+    }
+
     public bool TryReserve(object owner)
     {
         EnsureModules();

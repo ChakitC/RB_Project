@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: fe01d449414f4d5d9845d645d73913d3
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 368344
+  packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
+  packageVersion: 3.2.1p2
+  assetPath: Packages/com.opsive.behaviordesigner/Runtime/Wrappers/Opsive.BehaviorDesigner.Runtime.Wrappers.asmdef
+  uploadId: 957386

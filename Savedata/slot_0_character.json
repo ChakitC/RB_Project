@@ -85,7 +85,7 @@
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
-                "activeSkillPoints": 28,
+                "activeSkillPoints": 25,
                 "activeSkillProgressInitialized": true,
                 "activeSkillTrees": [
                     {
@@ -95,6 +95,18 @@
                         "unlockedNodes": [
                             {
                                 "nodeId": "Aires_1",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "Aires_2",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "Aires_3",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "node_4",
                                 "paidCost": 1
                             }
                         ]

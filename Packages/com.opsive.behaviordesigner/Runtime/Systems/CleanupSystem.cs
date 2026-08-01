@@ -6,6 +6,7 @@
 /// ---------------------------------------------
 namespace Opsive.BehaviorDesigner.Runtime.Systems
 {
+    using Opsive.BehaviorDesigner.Runtime;
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Groups;
     using Unity.Burst;
@@ -18,7 +19,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
     /// </summary>
     [DisableAutoCreation]
     [UpdateInGroup(typeof(BehaviorTreeSystemGroup), OrderLast = true)]
+    #if !UNITY_EDITOR
     [BurstCompile]
+    #endif
     public partial struct EvaluationCleanupSystem : ISystem
     {
         private EntityQuery m_EvaluateCleanupQuery;
@@ -30,7 +33,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Creates the required objects for use within the job system.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
+        #if !UNITY_EDITOR
         [BurstCompile]
+        #endif
         private void OnCreate(ref SystemState state)
         {
             m_EvaluateCleanupQuery = new EntityQueryBuilder(Allocator.Temp)
@@ -47,11 +52,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Updates the data object values for use within the job system.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
+        #if !UNITY_EDITOR
         [BurstCompile]
+        #endif
         private void OnUpdate(ref SystemState state)
         {
-            state.Dependency.Complete();
-
             // Reset the evaluation status.
             m_EnabledComponentHandle.Update(ref state);
             m_EvaluateComponentHandle.Update(ref state);
@@ -68,7 +73,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <summary>
         /// Job that resets the EvaluationComponent component value.
         /// </summary>
+        #if !UNITY_EDITOR
         [BurstCompile(CompileSynchronously = true)]
+        #endif
         public struct EvaluationCleanupJob : IJobChunk
         {
             [UnityEngine.Tooltip("A reference to the Enabled Component Handle.")]
@@ -85,7 +92,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// <param name="unfilteredChunkIndex">The index of the chunk.</param>
             /// <param name="useEnabledMask">Should the enabled mask be used?</param>
             /// <param name="chunkEnabledMask">The bitwise enabled mask.</param>
+            #if !UNITY_EDITOR
             [BurstCompile]
+            #endif
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
                 var branchAccessor = chunk.GetBufferAccessor(ref BranchComponentHandle);
@@ -95,14 +104,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                         chunk.SetComponentEnabled<EvaluateFlag>(ref EvaluateComponentHandle, i, true);
                     }
 
-                    // Reset CanExecute for all branches so they can execute in the next tick.
                     var branchComponents = branchAccessor[i];
-                    for (int j = 0; j < branchComponents.Length; j++) {
-                        var branchComponent = branchComponents[j];
-                        branchComponent.CanExecute = true;
-                        branchComponent.LastActiveIndex = ushort.MaxValue;
-                        branchComponents[j] = branchComponent;
-                    }
+                    BehaviorTraversalCore.ResetBranchExecutionState(ref branchComponents);
                 }
             }
         }
@@ -113,7 +116,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
     /// </summary>
     [DisableAutoCreation]
     [UpdateInGroup(typeof(BehaviorTreeSystemGroup), OrderLast = true)]
+    #if !UNITY_EDITOR
     [BurstCompile]
+    #endif
     public partial struct InterruptedCleanupSystem : ISystem
     {
         private EntityQuery m_InterruptedCleanupQuery;
@@ -123,7 +128,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Creates the required objects for use within the job system.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
+        #if !UNITY_EDITOR
         [BurstCompile]
+        #endif
         private void OnCreate(ref SystemState state)
         {
             m_InterruptedCleanupQuery = new EntityQueryBuilder(Allocator.Temp)
@@ -136,7 +143,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Updates the data object values for use within the job system.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
+        #if !UNITY_EDITOR
         [BurstCompile]
+        #endif
         private void OnUpdate(ref SystemState state)
         {
             // Clean up the interrupted tag.
@@ -151,7 +160,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <summary>
         /// Job that resets the InterruptedFlag value.
         /// </summary>
+        #if !UNITY_EDITOR
         [BurstCompile(CompileSynchronously = true)]
+        #endif
         public partial struct InterruptedCleanupJob : IJobChunk
         {
             [UnityEngine.Tooltip("A reference to the Interrupted Component Handle.")]
@@ -162,7 +173,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// </summary>
             /// <param name="entity">The entity that is being acted upon.</param>
             /// <param name="entityIndex">The index of the entity.</param>
+            #if !UNITY_EDITOR
             [BurstCompile]
+            #endif
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
                 for (int i = 0; i < chunk.Count; i++) {

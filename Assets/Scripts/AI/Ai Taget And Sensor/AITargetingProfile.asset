@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gracePeriod: 1.25
   keepLastSeenTarget: 1
-  distanceScoreWeight: 12
+  distanceScoreWeight: 13.8
   playerPriorityBonus: 16
   companionPriorityBonus: 0
   tankPriorityBonus: 6

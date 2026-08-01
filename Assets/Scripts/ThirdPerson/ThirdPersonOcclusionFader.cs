@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[DefaultExecutionOrder(10200)]
 [DisallowMultipleComponent]
 public sealed class ThirdPersonOcclusionFader : MonoBehaviour
 {
     const string AllyLayerName = "Ally";
-    const float CompanionOcclusionRadius = 0.3f;
     const int MaxCompanionOcclusionHits = 32;
 
     static readonly int DitheringId = Shader.PropertyToID("_Dithering");
@@ -26,6 +26,7 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
         ThirdPersonCharacterProfile.CreateDefault();
 
     Camera gameplayCamera;
+    GameplayCameraController cameraController;
     PlayerContext playerContext;
     int companionLayerMask;
     float nextActorRefresh;
@@ -42,8 +43,7 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
 
     void LateUpdate()
     {
-        GameplayCameraController cameraController =
-            GameplayCameraController.Instance;
+        cameraController = GameplayCameraController.Instance;
         if (cameraController == null || !cameraController.isActiveAndEnabled)
         {
             ReleaseAllFades();
@@ -137,13 +137,17 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
         if (companionLayerMask == 0)
             return;
 
+        float fadeRadius = cameraController.CompanionFadeRadius;
+        if (fadeRadius <= 0f)
+            return;
+
         Vector3 cameraPosition = gameplayCamera.transform.position;
         Vector3 playerPivot =
             playerContext.transform.TransformPoint(profile.pivotOffset);
         int hitCount = Physics.OverlapCapsuleNonAlloc(
             cameraPosition,
             playerPivot,
-            CompanionOcclusionRadius,
+            fadeRadius,
             companionOcclusionHits,
             companionLayerMask,
             QueryTriggerInteraction.Ignore);
@@ -163,6 +167,85 @@ public sealed class ThirdPersonOcclusionFader : MonoBehaviour
                     AddFadeActor(actor);
 
                 desiredFades.Add(actor);
+            }
+        }
+
+        if (playerContext.WeaponSystem != null &&
+            playerContext.WeaponSystem.IsAiming)
+        {
+            ResolveCompanionVisualFades(
+                cameraPosition,
+                playerPivot,
+                fadeRadius);
+        }
+    }
+
+    void ResolveCompanionVisualFades(
+        Vector3 cameraPosition,
+        Vector3 playerPivot,
+        float fadeRadius)
+    {
+        Vector3 cameraToPivot = playerPivot - cameraPosition;
+        float corridorLength = cameraToPivot.magnitude;
+        if (corridorLength <= 0.001f)
+            return;
+
+        Ray corridorRay = new(
+            cameraPosition,
+            cameraToPivot / corridorLength);
+        float fadeRadiusSquared = fadeRadius * fadeRadius;
+
+        for (int i = 0; i < fadeActors.Count; i++)
+        {
+            CharacteContext actor = fadeActors[i];
+            if (actor == null ||
+                actor == playerContext ||
+                actor.TargetIdentity != AITargetIdentity.Companion ||
+                desiredFades.Contains(actor))
+            {
+                continue;
+            }
+
+            if (!rendererCache.TryGetValue(
+                    actor,
+                    out Renderer[] renderers))
+            {
+                renderers =
+                    actor.GetComponentsInChildren<Renderer>(true);
+                rendererCache[actor] = renderers;
+            }
+
+            for (int rendererIndex = 0;
+                 rendererIndex < renderers.Length;
+                 rendererIndex++)
+            {
+                Renderer renderer = renderers[rendererIndex];
+                if (renderer == null ||
+                    !renderer.enabled ||
+                    !renderer.gameObject.activeInHierarchy ||
+                    (renderer is not MeshRenderer &&
+                     renderer is not SkinnedMeshRenderer))
+                {
+                    continue;
+                }
+
+                Bounds visualBounds = renderer.bounds;
+                if (visualBounds.SqrDistance(cameraPosition) <=
+                    fadeRadiusSquared)
+                {
+                    desiredFades.Add(actor);
+                    break;
+                }
+
+                visualBounds.Expand(fadeRadius * 2f);
+                if (visualBounds.IntersectRay(
+                        corridorRay,
+                        out float hitDistance) &&
+                    hitDistance <= corridorLength)
+                {
+                    desiredFades.Add(actor);
+                    break;
+                }
             }
         }
     }

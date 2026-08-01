@@ -4,7 +4,7 @@ using UnityEngine;
 
 [DefaultExecutionOrder(-50)]
 [DisallowMultipleComponent]
-public class GameplayCameraController : MonoBehaviour
+public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
 {
     const string AllyLayerName = "Ally";
 
@@ -17,6 +17,8 @@ public class GameplayCameraController : MonoBehaviour
 
     [Header("Third Person")]
     [SerializeField] private LayerMask cameraCollisionMask = ~0;
+    [SerializeField, Min(0f), Tooltip("Radius around the camera-to-player capsule that fades blocking companions.")]
+    private float companionFadeRadius = 0.3f;
     [SerializeField] private float initialPitch = 12f;
     [SerializeField] private float aimBlendSpeed = 10f;
     [SerializeField] private float recoilRecoverySpeed = 11f;
@@ -59,6 +61,7 @@ public class GameplayCameraController : MonoBehaviour
         !IsBlockingUiOpen();
 
     public float PlanarYaw => yaw;
+    public float CompanionFadeRadius => Mathf.Max(0f, companionFadeRadius);
     public Vector3 PlanarForward =>
         Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
     public bool HasCombatAlignment =>
@@ -160,6 +163,16 @@ public class GameplayCameraController : MonoBehaviour
         ThirdPersonCameraSettings.FieldOfView = value;
     }
 
+    public void PrepareParty(PartyRuntime party)
+    {
+        BindPlayer(party?.Player);
+    }
+
+    public void PartySpawned(PartyRuntime party)
+    {
+        BindPlayer(party?.Player);
+    }
+
     void ResolveMainCamera()
     {
         if (gameplayCamera == null)
@@ -256,6 +269,14 @@ public class GameplayCameraController : MonoBehaviour
 
         nextReferenceRefreshTime = Time.unscaledTime + 0.5f;
         PlayerContext nextPlayer = PlayerContext.Instance;
+        if (nextPlayer == null)
+            return;
+
+        BindPlayer(nextPlayer);
+    }
+
+    void BindPlayer(PlayerContext nextPlayer)
+    {
         if (nextPlayer == null)
             return;
 

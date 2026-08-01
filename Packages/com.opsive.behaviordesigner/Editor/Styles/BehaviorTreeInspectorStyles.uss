@@ -1,0 +1,14 @@
+/* BehaviorTree Inspector Styling */
+.behavior-tree-inspector .behavior-tree-inspector-field,
+.behavior-tree-inspector .behavior-tree-inspector-field .unity-base-field,
+.behavior-tree-inspector .behavior-tree-shared-variables .unity-base-field
+{
+    margin-right: 0px;
+}
+
+.behavior-tree-inspector .behavior-tree-open-button,
+.behavior-tree-inspector .behavior-tree-shared-variables #split-primary-button,
+.behavior-tree-inspector .behavior-tree-shared-variables #split-dropdown-button
+{
+    margin-right: 0px;
+}

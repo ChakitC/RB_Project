@@ -225,7 +225,7 @@ public sealed class MeleeController : MonoBehaviour
             return;
 
         NotifyOwnerCombatTriggers(target, result.AppliedDamage, result.Killed);
-        SpawnDamageNumber(other, result.AppliedDamage);
+        SpawnDamageNumber(other, target, result.AppliedDamage);
     }
 
     void ResolveRefs()
@@ -469,7 +469,7 @@ public sealed class MeleeController : MonoBehaviour
             PassiveEventOrigin.External);
     }
 
-    void SpawnDamageNumber(Collider other, float finalDamage)
+    void SpawnDamageNumber(Collider other, IDamageable target, float finalDamage)
     {
         if (other == null || VfxSpawner.Instance == null)
             return;
@@ -478,7 +478,7 @@ public sealed class MeleeController : MonoBehaviour
         if (hitPoint == Vector3.zero)
             hitPoint = other.bounds.center;
 
-        VfxSpawner.Instance.SpawnDamageNumber(hitPoint, finalDamage);
+        VfxSpawner.Instance.SpawnDamageNumber(hitPoint, finalDamage, target);
     }
 
     void CloseAttackWindow()

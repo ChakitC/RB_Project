@@ -62,18 +62,18 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.Physics2DTasks
             }
 
             if (m_LinearDrag.Value >= 0.0f) {
-#if UNITY_6000_3_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
                 m_ResolvedRigidbody2D.linearDamping = m_LinearDrag.Value;
 #else
-                m_ResolvedRigidbody2D.linearDamping = m_LinearDrag.Value;
+                m_ResolvedRigidbody2D.drag = m_LinearDrag.Value;
 #endif
             }
 
             if (m_AngularDrag.Value >= 0.0f) {
-#if UNITY_6000_3_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
                 m_ResolvedRigidbody2D.angularDamping = m_AngularDrag.Value;
 #else
-                m_ResolvedRigidbody2D.angularDamping = m_AngularDrag.Value;
+                m_ResolvedRigidbody2D.angularDrag = m_AngularDrag.Value;
 #endif
             }
 

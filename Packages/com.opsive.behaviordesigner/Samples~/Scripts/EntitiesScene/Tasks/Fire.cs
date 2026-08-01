@@ -8,7 +8,6 @@ namespace Opsive.BehaviorDesigner.Samples
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Tasks;
     using Opsive.GraphDesigner.Runtime.Variables;
-    using Opsive.GraphDesigner.Runtime.Variables.ECS;
     using Unity.Entities;
     using UnityEngine;
 

@@ -109,6 +109,19 @@ public class AllyHelperManager : MonoBehaviour
         pendingChainAttackSequence != null ||
         (allyAnimBrain != null && allyAnimBrain.IsExclusiveLocomotionActive);
 
+    public void BindHelper(AllyContext helperContext)
+    {
+        if (helperContext == null)
+            throw new ArgumentNullException(nameof(helperContext));
+
+        if (playerContext == null)
+            playerContext = GetComponent<PlayerContext>();
+
+        allyContext = helperContext;
+        allyHelper = helperContext.gameObject;
+        CacheHelperReferences();
+    }
+
     public bool IsChainAttackExecutionReadyToContinue(int executionId)
     {
         if (executionId <= 0)

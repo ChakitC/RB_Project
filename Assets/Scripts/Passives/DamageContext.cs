@@ -74,7 +74,8 @@ public readonly struct DamageContext
         string originPassiveId = null,
         string originRuleId = null,
         KnockbackData knockback = default,
-        StaggerPayload stagger = default)
+        StaggerPayload stagger = default,
+        CharacterHitZone hitZone = CharacterHitZone.None)
     {
         Damage = damage;
         Attacker = attacker;
@@ -87,6 +88,7 @@ public readonly struct DamageContext
         OriginRuleId = originRuleId;
         Knockback = knockback;
         Stagger = stagger;
+        HitZone = hitZone;
     }
 
     public float Damage { get; }
@@ -100,6 +102,7 @@ public readonly struct DamageContext
     public string OriginRuleId { get; }
     public KnockbackData Knockback { get; }
     public StaggerPayload Stagger { get; }
+    public CharacterHitZone HitZone { get; }
     public bool HasKnockback => Knockback.IsValid;
     public bool HasStagger => Stagger.HasValue;
 
@@ -116,6 +119,7 @@ public readonly struct DamageContext
             OriginPassiveId,
             OriginRuleId,
             Knockback,
-            Stagger);
+            Stagger,
+            HitZone);
     }
 }

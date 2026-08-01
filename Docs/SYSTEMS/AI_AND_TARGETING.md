@@ -53,6 +53,11 @@ key. Player- or companion-specific behavior must use the member's
 - base target priority
 - threat multiplier
 
+When `aimPoint` is not assigned in the Inspector, `AITargetInfo` searches the
+character hierarchy for a transform named `spine_02.x` and uses it as the aim
+point. If that bone is unavailable, it falls back to the `AITargetInfo`
+transform. An explicitly assigned `aimPoint` always takes priority.
+
 It also supports untargetable tokens. Systems can acquire and release tokens
 without fighting over one boolean field.
 
@@ -78,6 +83,12 @@ Important sensor concepts:
 `AITargetingProfileDef` can override scoring and policy values. Local sensor
 fields are fallback settings when no profile is assigned.
 
+`HasEnemyFromSensor` uses the sensor's retained `CurrentTarget`, not only the
+currently visible target. A brief field-of-view or line-of-sight interruption
+therefore keeps the behavior tree in combat until the targeting profile's grace
+period expires. Invalid, untargetable, or dead targets are still cleared
+immediately.
+
 ## Ally Context And Movement
 
 `AllyContext` adds:
@@ -93,6 +104,36 @@ movement and writes normalized speed plus local direction into `StateHub`.
 
 It also supports companion separation from the player by resolving the player
 through `CharacteContext.TargetIdentity == Player`.
+
+### Party Formation
+
+`PartyFormationController` on the Player owns the out-of-combat companion
+layout. Formation identity comes from `CharacterContextPartyLoader.PartyIndex`,
+not `FieldAllyMember.ActorRole`:
+
+| Party index | Triangle slot | Single-file slot |
+| ---: | --- | --- |
+| 1 | rear-left `(-1.5, 0, -1.8)` | `(0, 0, -1.8)` |
+| 2 | rear-right `(1.5, 0, -1.8)` | `(0, 0, -3.2)` |
+| 3 | rear-center `(0, 0, -3.2)` | `(0, 0, -4.6)` |
+
+The layout follows the Player's planar movement heading and retains the last
+heading while the Player is stationary. It samples the desired slots at 10 Hz.
+If the triangle is blocked for 0.5 seconds it collapses into a single file; the
+triangle must remain clear for 1.5 seconds before it expands again.
+
+The existing `MoveToPlayerOffsetNavMesh` and
+`RandomMoveAroundPlayerNavMesh` Behavior Designer actions use formation
+movement when the bound Player has a `PartyFormationController`. Their legacy
+behavior remains as a fallback for test actors without a formation controller.
+Formation movement starts outside 1.25 m, stops inside 0.6 m, and throttles
+destination changes instead of recalculating a path every frame.
+
+Formation movement yields to combat, active skill/root-motion playback,
+reserved or busy sequence actors, interruption, knockback, stun, down, and
+death. A companion more than 15 m from its slot, or without a complete path for
+2 seconds, may warp to a sampled slot only when none of those higher-priority
+states is active.
 
 ## Enemy Context
 
@@ -207,6 +248,19 @@ When adding AI behavior:
 6. Avoid common code branches based only on `PlayerContext`, `AllyContext`, or
    `EnemyContext`.
 
+### Behavior Designer Subtree Variables
+
+Tasks stored in an external Behavior Designer Subtree must share data through
+Graph-scoped variables declared by that Subtree. The parent `BehaviorTree`
+inherits those variables and may override their initial values per prefab.
+
+Do not bind Subtree task fields directly to GameObject- or Scene-scoped
+variables. Those scopes are unavailable while the standalone Subtree asset is
+being edited and serialized, so reopening or saving the graph can discard the
+binding. Keep only one active `BehaviorTree` component for each authored AI
+graph on a GameObject, and remove any `UnknownSharedVariable` entry after its
+original variable type or obsolete authoring data has been verified.
+
 ### Target Orbit Action
 
 `Assets\Scripts\AI\Movement\TargetOrbitNavMesh.cs` provides the
@@ -224,14 +278,44 @@ root motion pause the action and its duration instead of failing it.
 
 Navigation feel is controlled by `repathInterval` and `lookAheadAngle`. Failed
 probes retry progressively shorter look-ahead angles without reversing the
-configured orbit direction. `pathFailureTimeout = 0` fails immediately; a
-positive value allows retries for that many active seconds.
+configured orbit direction. A failed periodic probe keeps following the current
+valid path; the failure timeout starts only when no usable path remains.
+`pathFailureTimeout = 0` fails immediately; a positive value allows retries for
+that many active seconds.
 
 `moveSpeed = 0` leaves speed ownership with the character movement system. A
 positive value acquires a request-scoped speed override from
 `AgentMoveDriver`, which remains responsible for applying world slow. The
 override and all temporary NavMeshAgent settings are released when the task
 ends or is aborted.
+
+### Enemy M_GR_01 Patrol-Orbit-Shoot Tree
+
+`Assets\Scripts\AI\Enemy_M_GR_01_PatrolOrbitShoot.asset` is assigned to the
+`BehaviorTree` on `Assets\Prefab\Enemy\Enemy_M_GR_01 Variant.prefab`.
+Its repeating selector gives combat higher priority than patrol:
+
+1. `HasEnemyFromSensor` writes the sensor's retained target to the graph-scoped
+   `CurrentTarget` variable. Brief line-of-sight interruptions use the targeting
+   profile's grace period instead of dropping combat immediately. This
+   variant's sensor requires the `Player` tag, so companions are not selected
+   by this tree.
+2. `TargetOrbitNavMesh` moves into a 5-7 m radial band and orbits for 2.5
+   active-world seconds while facing the target. It replans every 0.25 seconds,
+   keeps a valid current path when a periodic probe misses, and uses a 3-second
+   path-failure timeout so the orbit phase can still finish before firing.
+3. `AiShoot` faces `CurrentTarget` horizontally at 720 degrees per second,
+   fires for 1.5 seconds, and waits for 0.75 seconds before the combat cycle
+   reevaluates. It temporarily disables `NavMeshAgent` automatic rotation and
+   restores the previous setting when the task ends.
+4. When there is no visible target, `Patrol` selects random NavMesh points
+   within 6 m of the locked spawn-area center and waits 1 second at each point.
+
+The selector uses a lower-priority conditional abort, so acquiring a visible
+target interrupts patrol immediately. Losing sight keeps the current combat
+branch active during the sensor grace period; invalid targets or expired target
+memory return the actor to patrol. Movement speed remains owned by the character
+movement system because the orbit action's `moveSpeed` is zero.
 
 ## Guaranteed Interruption Command
 

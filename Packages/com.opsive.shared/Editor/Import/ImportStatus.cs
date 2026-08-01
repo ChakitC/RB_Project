@@ -20,8 +20,6 @@ namespace Opsive.Shared.Editor.Import
         [Tooltip("Has the Behavior Designer Welcome window been shown?")]
         [SerializeField] protected bool m_BehaviorWindowShown;
         [Tooltip("Has the State Designer Welcome window been shown?")]
-        [SerializeField] protected bool m_StateWindowShown;
-        [Tooltip("Package names whose startup window has already been shown.")]
         [FormerlySerializedAs("m_InitializedPackageNames")]
         [SerializeField] protected string[] m_StartupWindowShownPackageNames;
 

@@ -50,6 +50,19 @@ public class PlayerFullscreenEffectController : MonoBehaviour, IPlayerFullscreen
         ResolveReferences();
     }
 
+    public void BindContext(PlayerContext context, PlayerUIContext uiContext)
+    {
+        playerContext = context;
+        playerUIContext = uiContext;
+        ResolveLocalReferences();
+
+        if (playerContext != null && playerUIContext != null)
+            playerContext.playerUIContext = playerUIContext;
+
+        if (targetCamera == null && isActiveAndEnabled)
+            targetCamera = Camera.main;
+    }
+
     void ResolveReferences()
     {
         ResolveLocalReferences();

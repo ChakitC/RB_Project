@@ -455,7 +455,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             skillUser,
             animationDriver: animDriver,
             canProceed: () => IsSlotCastStillValid(slot, runtimeSkill),
-            onStarted: StopWeaponActivityForSkillCast,
+            onStarted: () => OnCommandSkillCastStarted(runtimeSkill),
             useAnimationDriver: true,
             allowImmediateFallback: true,
             debugSource: BuildSlotDebugSource(slot)));
@@ -465,6 +465,31 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             : null;
 
         return result;
+    }
+
+    private void OnCommandSkillCastStarted(SkillInstance runtimeSkill)
+    {
+        StopWeaponActivityForSkillCast();
+
+        SkillPayloadDef payload = runtimeSkill != null && runtimeSkill.def != null
+            ? runtimeSkill.def.payload
+            : null;
+        if (payload == null ||
+            payload.HelperFacingMode != SkillHelperFacingMode.FaceDetectedTargetOnCast ||
+            skillUser == null)
+        {
+            return;
+        }
+
+        Vector3 lookDirection = Vector3.ProjectOnPlane(skillUser.AimDirection, Vector3.up);
+        if (lookDirection.sqrMagnitude <= 0.0001f || skillUser is not Component skillUserComponent)
+            return;
+
+        CharacteContext characterContext = skillUserComponent.GetComponentInParent<CharacteContext>();
+        Transform actorRoot = characterContext != null
+            ? characterContext.transform
+            : skillUserComponent.transform;
+        actorRoot.rotation = Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
     }
 
     private SkillCastStartResult TryBeginEntryCast(

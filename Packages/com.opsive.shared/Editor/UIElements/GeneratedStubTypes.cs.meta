@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: ee980642220d145478deb3537ca8cc87
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 368344
+  packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
+  packageVersion: 3.2.1p2
+  assetPath: Packages/com.opsive.shared/Editor/UIElements/GeneratedStubTypes.cs
+  uploadId: 957386

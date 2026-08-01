@@ -76,11 +76,15 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.TransformTasks
         {
             Quaternion targetRotation;
             var currentRotation = transform.localRotation;
-            m_CurrentRotation += m_RotationInput.Value * m_RotationSpeed.Value * Time.deltaTime;
+            if (m_RelativeRotation.Value) {
+                m_CurrentRotation += m_RotationInput.Value * m_RotationSpeed.Value * Time.deltaTime;
 
-            // Clamp to the specified range if limits are set.
-            if (m_MinAngle.Value != float.MinValue || m_MaxAngle.Value != float.MaxValue) {
-                m_CurrentRotation = Mathf.Clamp(m_CurrentRotation, m_MinAngle.Value, m_MaxAngle.Value);
+                // Clamp to the specified range if limits are set.
+                if (m_MinAngle.Value != float.MinValue || m_MaxAngle.Value != float.MaxValue) {
+                    m_CurrentRotation = Mathf.Clamp(m_CurrentRotation, m_MinAngle.Value, m_MaxAngle.Value);
+                }
+            } else {
+                m_CurrentRotation = m_RotationInput.Value * m_RotationSpeed.Value;
             }
 
             // Apply the rotation to the Transform.

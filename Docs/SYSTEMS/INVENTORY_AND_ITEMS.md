@@ -171,6 +171,16 @@ Typical flow:
 5. inventory, weapon system, health, stamina, or other target system receives
    the effect
 
+During a map run, `ItemDropManager` parents normal `ItemPickup` instances under
+the active room's persistent runtime root. An uncollected item is disabled when
+the party leaves and becomes available again when that same map node is
+revisited. Collected items are destroyed normally and never return. This
+persistence is limited to the current in-memory run; starting a new run clears
+all cached rooms and their remaining drops.
+
+`SkillPickup` instances are temporary combat objects rather than persistent
+room loot and are cleared during room travel.
+
 Pickup collector logic should use `CharacteContext.TargetIdentity` for player
 and companion checks.
 

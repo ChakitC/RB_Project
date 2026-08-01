@@ -9,17 +9,19 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 1458000753, guid: c42964479d4f62540867ad0acdb1ef66, type: 3}
+  m_Script: {fileID: 1458000753, guid: 84bf46673498d8d4698d465c26c572a2, type: 3}
   m_Name: BehaviorDesignerSettings
   m_EditorClassIdentifier: 
   m_ShowHierarchyIcon: 1
   m_CheckForErrors: 1
   m_AutoSavePrefab: 0
+  m_KeepGraphSelected: 1
   m_MouseWheelScrollsGraph: 0
   m_GridLineSpacing: 10
   m_GridLineTransparency: 1
   m_ShowNodeIcon: 1
   m_ShowNodeDescription: 1
   m_SnapToGrid: 1
+  m_FlattenInjectedNodes: 0
   m_ShowNodeDebugInfo: 0
   m_DefaultGizmosColor: {r: 0, g: 1, b: 0, a: 0.6}

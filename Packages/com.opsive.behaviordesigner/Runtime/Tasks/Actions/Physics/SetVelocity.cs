@@ -48,7 +48,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.PhysicsTasks
                 targetVelocity = m_ResolvedRigidbody.transform.TransformDirection(targetVelocity);
             }
 
-#if UNITY_6000_3_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
             if (m_InterpolationSpeed.Value > 0.0f) {
                 m_ResolvedRigidbody.linearVelocity = Vector3.Lerp(m_ResolvedRigidbody.linearVelocity, targetVelocity, m_InterpolationSpeed.Value * Time.deltaTime);
             } else {
@@ -56,9 +56,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.PhysicsTasks
             }
 #else
             if (m_InterpolationSpeed.Value > 0.0f) {
-                m_ResolvedRigidbody.linearVelocity = Vector3.Lerp(m_ResolvedRigidbody.linearVelocity, targetVelocity, m_InterpolationSpeed.Value * Time.deltaTime);
+                m_ResolvedRigidbody.velocity = Vector3.Lerp(m_ResolvedRigidbody.velocity, targetVelocity, m_InterpolationSpeed.Value * Time.deltaTime);
             } else {
-                m_ResolvedRigidbody.linearVelocity = targetVelocity;
+                m_ResolvedRigidbody.velocity = targetVelocity;
             }
 #endif
 

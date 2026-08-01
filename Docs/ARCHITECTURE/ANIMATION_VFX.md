@@ -140,6 +140,14 @@ instantiate request, falling back to `AddComponent` only when the pool is absent
 `VfxPool` Inspector controls the idle-instance cap per prefab and defaults to
 20.
 
+`VfxSpawner` also owns the presentation policy for damage numbers. The
+`Show Player And Companion Damage Numbers` Inspector flag is disabled by
+default, suppressing numbers on targets whose `CharacteContext.TargetIdentity`
+is `Player` or `Companion` while leaving enemy and generic targets unchanged.
+Runtime settings may toggle the same policy through
+`ShowPlayerAndCompanionDamageNumbers`. Damage-number call sites must pass the
+resolved `IDamageable` target so the spawner can apply this policy centrally.
+
 `VfxPool` manages a per-prefab `Stack<GameObject>`. All VFX that flow through `VfxSpawner`
 (`SpawnVfx`, `SpawnLoopingVfx`, `StopLoopingVfx`) are automatically pooled; no
 call-site changes are required.

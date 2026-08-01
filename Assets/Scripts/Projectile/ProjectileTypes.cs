@@ -58,4 +58,5 @@ public struct ProjectileContext
     public string originPassiveId;
     public string originRuleId;
     public Projectile projectilePrefab;
+    public bool useHitZones;
 }

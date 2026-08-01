@@ -18,6 +18,7 @@ public class ItemDropManager : MonoBehaviour
     [SerializeField] private PickupDropArcSettings dropArcSettings = new PickupDropArcSettings();
 
     GameObject runtimePickupTemplate;
+    Transform spawnParent;
 
     void Awake()
     {
@@ -28,6 +29,16 @@ public class ItemDropManager : MonoBehaviour
         }
 
         Instance = this;
+    }
+
+    public void SetSpawnParent(Transform parent)
+    {
+        spawnParent = parent;
+    }
+
+    public void ClearSpawnParent()
+    {
+        spawnParent = null;
     }
 
     public void DropItem(ItemDefinition item, int amount, Vector3 position)
@@ -172,6 +183,9 @@ public class ItemDropManager : MonoBehaviour
     {
         Vector3 spawnPosition = ShouldPlayDropArc() ? dropArcSettings.ResolveStartPosition(position) : position;
         var pickupObject = Instantiate(pickupPrefab, spawnPosition, Quaternion.identity);
+        if (spawnParent != null)
+            pickupObject.transform.SetParent(spawnParent, true);
+
         var pickup = pickupObject.GetComponent<ItemPickup>();
 
         if (!ConfigurePickup(pickup, item, amount, rarity))

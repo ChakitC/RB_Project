@@ -106,6 +106,23 @@ public class UIManager : MonoBehaviour
             ctx.UIManager = null;
     }
 
+    public void BindContext(CharacteContext context)
+    {
+        if (ReferenceEquals(ctx, context))
+            return;
+
+        if (isActiveAndEnabled)
+            UnbindRuntimeSources();
+
+        ctx = context;
+        if (!isActiveAndEnabled)
+            return;
+
+        ResolveReferences();
+        BindStatusEffectUI();
+        BindRuntimeSources();
+    }
+
     void ResolveReferences()
     {
         if (!ctx) ctx = FindAnyObjectByType<PlayerContext>();

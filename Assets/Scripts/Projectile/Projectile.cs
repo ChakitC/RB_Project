@@ -53,6 +53,7 @@ public class Projectile : MonoBehaviour
     public void RequestDespawn() => _requestedDespawnThisHit = true;
     public void RequestExpire() => _requestedExpire = true;
     public void PreventDespawnThisHit() => _requestedDespawnThisHit = false;
+    public void DespawnForRoomTransition() => Despawn();
 
     // modules
     ProjectileContext _ctx;
@@ -356,6 +357,8 @@ public class Projectile : MonoBehaviour
         if (_shooterRoot && other.transform.root == _shooterRoot) return;
 
         var target = DamageableResolver.ResolveFrom(other);
+        if (!TryResolveHitZoneImpact(other, target, out CharacterHitZone hitZone))
+            return;
         
         
         // Debug.Log($"[Projectile] Hit: {other.name} root={other.transform.root.name}");
@@ -412,7 +415,13 @@ public class Projectile : MonoBehaviour
                 float finalDamage = CalcFinalDamage(target);
                 SpawnHitVfx(transform.position, -transform.forward);
                 PlayHitCue(transform.position);
-                ApplyResolvedDamage(target, finalDamage, hit, showDamageNumber: true);
+                ApplyResolvedDamage(
+                    target,
+                    finalDamage,
+                    hit,
+                    BuildConfiguredKnockback(hit, useRadialDirection: false),
+                    showDamageNumber: true,
+                    hitZone: hitZone);
             }
         }
         else if (hitWall)
@@ -435,6 +444,31 @@ public class Projectile : MonoBehaviour
             Despawn();
         
         
+    }
+
+    bool TryResolveHitZoneImpact(
+        Collider hitCollider,
+        IDamageable target,
+        out CharacterHitZone hitZone)
+    {
+        hitZone = CharacterHitZone.None;
+
+        if (!_ctx.useHitZones || target == null)
+            return true;
+
+        CharacteContext targetContext = hitCollider.GetComponentInParent<CharacteContext>();
+        if (targetContext == null && target is Component targetComponent)
+            targetContext = targetComponent.GetComponentInParent<CharacteContext>();
+
+        if (targetContext == null)
+            return true;
+
+        targetContext.ResolveReferences();
+        CharacterColliderRefs colliderRefs = targetContext.ColliderRefs;
+        if (colliderRefs == null || !colliderRefs.HasHitZones)
+            return true;
+
+        return colliderRefs.TryResolveHitZone(hitCollider, out hitZone);
     }
 
     bool HasModuleSuppressingBuiltinAreaDamage()
@@ -583,10 +617,10 @@ public class Projectile : MonoBehaviour
             gameObject.Destroy();
     }
     
-    void SpawnDamageNumber(Vector3 hitpos, float damage)
+    void SpawnDamageNumber(Vector3 hitpos, float damage, IDamageable target)
     {
         
-     VfxSpawner.Instance.SpawnDamageNumber(hitpos, damage);
+     VfxSpawner.Instance.SpawnDamageNumber(hitpos, damage, target);
      
     }
     void SpawnHitVfx(Vector3 hitPos, Vector3 hitNormal)
@@ -944,7 +978,12 @@ public class Projectile : MonoBehaviour
         return Vector3.forward;
     }
 
-    DamageResult ApplyDamageToTarget(IDamageable target, float finalDamage, GameObject attackerGO, KnockbackData knockback)
+    DamageResult ApplyDamageToTarget(
+        IDamageable target,
+        float finalDamage,
+        GameObject attackerGO,
+        KnockbackData knockback,
+        CharacterHitZone hitZone)
     {
         var damageContext = new DamageContext(
             finalDamage,
@@ -957,7 +996,8 @@ public class Projectile : MonoBehaviour
             _ctx.originPassiveId,
             _ctx.originRuleId,
             knockback,
-            BuildStaggerPayload());
+            BuildStaggerPayload(),
+            hitZone);
 
         return target.TakeDamage(in damageContext);
     }
@@ -977,7 +1017,8 @@ public class Projectile : MonoBehaviour
             finalDamage,
             hit,
             BuildConfiguredKnockback(hit, useRadialDirection: false),
-            showDamageNumber);
+            showDamageNumber,
+            CharacterHitZone.None);
     }
 
     public void ApplyResolvedDamage(
@@ -987,6 +1028,23 @@ public class Projectile : MonoBehaviour
         KnockbackData knockback,
         bool showDamageNumber = false)
     {
+        ApplyResolvedDamage(
+            target,
+            finalDamage,
+            hit,
+            knockback,
+            showDamageNumber,
+            CharacterHitZone.None);
+    }
+
+    void ApplyResolvedDamage(
+        IDamageable target,
+        float finalDamage,
+        in ProjectileHitInfo hit,
+        KnockbackData knockback,
+        bool showDamageNumber,
+        CharacterHitZone hitZone)
+    {
         if (target == null || finalDamage <= 0f)
             return;
 
@@ -995,12 +1053,12 @@ public class Projectile : MonoBehaviour
             return;
 
         var attackerGO = ResolveSourceObject();
-        DamageResult result = ApplyDamageToTarget(target, finalDamage, attackerGO, knockback);
+        DamageResult result = ApplyDamageToTarget(target, finalDamage, attackerGO, knockback, hitZone);
         if (!result.Applied)
             return;
 
         if (showDamageNumber)
-            SpawnDamageNumber(hit.ResolvePoint(transform.position), result.AppliedDamage);
+            SpawnDamageNumber(hit.ResolvePoint(transform.position), result.AppliedDamage, target);
 
         NotifyDamageApplied(hit, target);
         NotifyOwnerCombatTriggers(target, result.AppliedDamage, wasAliveBeforeDamage, result.Killed);

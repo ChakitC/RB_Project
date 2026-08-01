@@ -15,6 +15,15 @@ public class CharacterContextPartyLoader : MonoBehaviour, IGameSaveAble, ISaveOr
 
     // ให้ทำก่อน PlayerVisual
     public int LoadOrder => -100;
+    public int PartyIndex => partyIndex;
+
+    public void ConfigurePartyIndex(int index)
+    {
+        if (index < 0)
+            throw new System.ArgumentOutOfRangeException(nameof(index));
+
+        partyIndex = index;
+    }
 
     void Awake()
     {

@@ -60,10 +60,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.Physics2DTasks
                 targetVelocity = m_TargetVelocity.Value;
             }
 
-#if UNITY_6000_3_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
             var currentVelocity = m_ResolvedRigidbody2D.linearVelocity;
 #else
-            var currentVelocity = m_ResolvedRigidbody2D.linearVelocity;
+            var currentVelocity = m_ResolvedRigidbody2D.velocity;
 #endif
             var newVelocity = m_InterpolationSpeed.Value > 0.0f ? Vector2.Lerp(currentVelocity, targetVelocity, m_InterpolationSpeed.Value * Time.deltaTime) : targetVelocity;
 
@@ -74,10 +74,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.Physics2DTasks
                 newVelocity.y = currentVelocity.y;
             }
 
-#if UNITY_6000_3_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
             m_ResolvedRigidbody2D.linearVelocity = newVelocity;
 #else
-            m_ResolvedRigidbody2D.linearVelocity = newVelocity;
+            m_ResolvedRigidbody2D.velocity = newVelocity;
 #endif
 
             return TaskStatus.Success;

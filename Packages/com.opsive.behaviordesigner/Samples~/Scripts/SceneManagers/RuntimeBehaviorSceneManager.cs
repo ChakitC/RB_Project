@@ -93,8 +93,10 @@ namespace Opsive.BehaviorDesigner.Samples
             m_OpponentHealth.gameObject.SetActive(false);
 
             // Bind the health variable value to the health display.
-#if UNITY_2022
+#if UNITY_6000_5_OR_NEWER
             var sceneVariables = Object.FindAnyObjectByType<SceneSharedVariables>();
+#elif UNITY_2022
+            var sceneVariables = Object.FindObjectOfType<SceneSharedVariables>();
 #else
             var sceneVariables = Object.FindFirstObjectByType<SceneSharedVariables>();
 #endif

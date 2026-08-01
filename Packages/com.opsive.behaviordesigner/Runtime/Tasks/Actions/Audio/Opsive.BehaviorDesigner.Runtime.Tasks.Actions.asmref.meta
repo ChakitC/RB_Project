@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 5fdb5e8db4524e2ba1c8db84c8e9a42b
+AssemblyDefinitionReferenceImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 368344
+  packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
+  packageVersion: 3.2.1p2
+  assetPath: Packages/com.opsive.behaviordesigner/Runtime/Tasks/Actions/Audio/Opsive.BehaviorDesigner.Runtime.Tasks.Actions.asmref
+  uploadId: 957386

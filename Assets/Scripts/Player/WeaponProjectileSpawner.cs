@@ -48,7 +48,8 @@ public sealed class WeaponProjectileSpawner
             origin = context.CombatEventBus != null ? context.PassiveContext.Origin : PassiveEventOrigin.External,
             originPassiveId = context.PassiveContext.OriginPassiveId,
             originRuleId = context.PassiveContext.OriginRuleId,
-            projectilePrefab = prefabComp
+            projectilePrefab = prefabComp,
+            useHitZones = true
         });
     }
 

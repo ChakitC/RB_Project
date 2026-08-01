@@ -42,6 +42,7 @@ public class RoomController : MonoBehaviour
     private MapNode node;
     private bool roomCleared;
     private bool exitsLocked;
+    private RoomRuntimeContent runtimeContent;
 
     public Transform PlayerSpawnPoint => playerSpawnPoint != null ? playerSpawnPoint : transform;
     public Transform[] EnemySpawnPoints => enemySpawnPoints;
@@ -49,16 +50,30 @@ public class RoomController : MonoBehaviour
     public MapNode Node => node;
     public bool RoomCleared => roomCleared;
     public bool ExitsLocked => exitsLocked;
+    public RoomRuntimeContent RuntimeContent => ResolveRuntimeContent();
 
     public void Initialize(MapRunController run, MapNode currentNode)
     {
         runController = run;
         node = currentNode;
         roomCleared = currentNode != null && currentNode.IsCleared;
+        ResolveRuntimeContent().EnsureRoots();
 
         ResolveExits();
         ConfigureExits();
         SetExitsLocked(false);
+    }
+
+    RoomRuntimeContent ResolveRuntimeContent()
+    {
+        if (runtimeContent != null)
+            return runtimeContent;
+
+        runtimeContent = GetComponent<RoomRuntimeContent>();
+        if (runtimeContent == null)
+            runtimeContent = gameObject.AddComponent<RoomRuntimeContent>();
+
+        return runtimeContent;
     }
 
     public void BeginRoom(EncounterDirector encounterDirector)

@@ -102,13 +102,21 @@ at runtime; levels are not modified for the camera.
 
 When pushed very close, the local character fades using the ASP `_Dithering`
 property. Every active character whose target identity is `Companion` fades
-fully while its collider overlaps a `0.3`-meter capsule between the gameplay
-camera and player pivot. All overlapping companions fade together, including
-field allies and runtime helpers, without disabling their AI, colliders,
-targeting, or other gameplay. The fade releases when they leave the capsule or
-gameplay camera control hands off to a cutscene. Close-camera, companion
-occlusion, and animation fades remain visual concerns; disabling the camera
-fader releases only the camera-owned fade.
+fully while its collider overlaps the capsule between the gameplay camera and
+player pivot, whether or not the player is aiming. While aiming, a
+renderer-bounds fallback additionally catches companion meshes that enter the
+same visual corridor or come close to the camera, even when oversized parts
+such as hats extend beyond the actor collider.
+`CameraHolder > GameplayCameraController > Companion Fade Radius` controls both
+checks (`0.3` meters by default). All overlapping companions fade together,
+including field allies and runtime helpers, without disabling their AI,
+colliders, targeting, or other gameplay. The fade releases when they leave the
+camera corridor or gameplay camera control hands off to a cutscene.
+Character and mounted-weapon materials using `ASP/Character` must enable
+`Alpha Clipping` (`_ALPHATEST_ON`) so the camera-owned `_Dithering` value is
+rendered on every visible part.
+Close-camera, companion occlusion, and animation fades remain visual concerns;
+disabling the camera fader releases only the camera-owned fade.
 
 ## Camera Recoil and Impulses
 
@@ -139,7 +147,9 @@ Aim, and animated camera states.
 controller disables its Cinemachine camera and brain, allowing the existing
 camera-holder Animancer clip to drive the real camera. On re-enable, Cinemachine
 invalidates its previous state and restores the preserved TPS yaw/pitch without
-an isometric snap.
+an isometric snap. World-space billboards and the camera-owned occlusion fader
+run after camera synchronization and late character pose adjustments, so they
+consume the final camera and renderer transforms after a cinematic handoff.
 
 ## Character Authoring
 

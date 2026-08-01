@@ -107,7 +107,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.GameObjectTasks
         {
 #if UNITY_6000_4_OR_NEWER
             var allObjects = UnityEngine.Object.FindObjectsByType<GameObject>(includeInactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude);
-#elif UNITY_6000_3_OR_NEWER
+#elif UNITY_6000_0_OR_NEWER
             var allObjects = UnityEngine.Object.FindObjectsByType<GameObject>(includeInactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude, FindObjectsSortMode.None);
 #else
             var allObjects = UnityEngine.Object.FindObjectsOfType<GameObject>(includeInactive);

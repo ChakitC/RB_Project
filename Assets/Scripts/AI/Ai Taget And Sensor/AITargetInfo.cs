@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class AITargetInfo : MonoBehaviour, IAITargetable
 {
+    const string DefaultAimPointBoneName = "spine_02.x";
+
     [SerializeField] private Transform aimPoint;
     [SerializeField] private Transform chainAttackPoint;
     [SerializeField] private int teamId = 0;
@@ -22,10 +24,10 @@ public class AITargetInfo : MonoBehaviour, IAITargetable
     public static event Action<AITargetInfo> GlobalTargetStateChanged;
 
     CharacteContext _characterContext;
-    
-    
+    Transform _fallbackAimPoint;
+    bool _hasResolvedFallbackAimPoint;
 
-    public Transform AimPoint => aimPoint != null ? aimPoint : transform;
+    public Transform AimPoint => aimPoint != null ? aimPoint : ResolveFallbackAimPoint();
     public Transform ChainAttackPoint => chainAttackPoint != null ? chainAttackPoint : AimPoint;
     public bool IsAlive => isAlive;
     public bool IsTargetable => isTargetable && _untargetableTokens.Count == 0;
@@ -34,6 +36,11 @@ public class AITargetInfo : MonoBehaviour, IAITargetable
     public CharacterCombatRole CombatRole => ResolveCombatRole();
     public float BaseTargetPriority => baseTargetPriority;
     public float ThreatMultiplier => Mathf.Max(0f, threatMultiplier);
+
+    void Awake()
+    {
+        ResolveFallbackAimPoint();
+    }
 
     public void SetAlive(bool value)
     {
@@ -126,5 +133,28 @@ public class AITargetInfo : MonoBehaviour, IAITargetable
 
         _characterContext = GetComponentInParent<CharacteContext>();
         _characterContext?.ResolveReferences();
+    }
+
+    Transform ResolveFallbackAimPoint()
+    {
+        if (_hasResolvedFallbackAimPoint)
+            return _fallbackAimPoint != null ? _fallbackAimPoint : transform;
+
+        _hasResolvedFallbackAimPoint = true;
+
+        ResolveCharacterContext();
+        Transform searchRoot = _characterContext != null ? _characterContext.transform : transform;
+        Transform[] descendants = searchRoot.GetComponentsInChildren<Transform>(true);
+
+        for (int i = 0; i < descendants.Length; i++)
+        {
+            if (descendants[i].name == DefaultAimPointBoneName)
+            {
+                _fallbackAimPoint = descendants[i];
+                return _fallbackAimPoint;
+            }
+        }
+
+        return transform;
     }
 }

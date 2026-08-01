@@ -35,6 +35,72 @@ Common references should be assigned on the context when possible:
 Runtime code can resolve missing references, but important prefab context fields
 should still be bound when authoring stable production prefabs.
 
+## Runtime Party Spawn Authoring
+
+Gameplay scenes no longer place or instantiate `PlayerSquad.prefab`. Each scene
+must contain exactly one active `PartySpawnPoint`, assigned to
+`Assets/Data/Party/DefaultPartySpawnConfig.asset`. The config directly references
+the four actor roles and the separate `PlayerUI` prefab:
+
+- `Player`: `Player.prefab`, party index 0
+- `PartySlot1`: `Ally_Stryker.prefab`, party index 1
+- `PartySlot2`: `Ally_Stryker.prefab`, party index 2
+- `Helper`: `Ally_Helper.prefab`, party index 3
+
+The marker transform is the party origin. Each config entry's local position and
+rotation are applied relative to it. Do not also place a `PlayerContext`,
+`AllyContext`, or `PlayerUIContext` in the same scene; runtime validation treats
+that as an ambiguous duplicate setup and refuses to spawn.
+
+`PartySpawnPoint` builds an inactive `PartyRuntimeRoot`, binds party indices,
+chain roles, helper management, Behavior Designer's `player` variable, camera
+receivers, and Player UI, then activates the completed party atomically. Scene
+systems that require the runtime player should implement `IPartySpawnedReceiver`
+instead of serializing references into a legacy squad instance.
+
+`Player.prefab` must also contain `PartyFormationController`, referenced by
+`PlayerContext.partyFormation`. The authored defaults are a rear triangle at
+`(-1.5, 0, -1.8)`, `(1.5, 0, -1.8)`, and `(0, 0, -3.2)`, with a single-file
+fallback at Z distances `-1.8`, `-3.2`, and `-4.6`. Keep the movement hysteresis
+at 1.25 m start / 0.6 m stop unless the companion agent radius or character
+scale changes. Formation slots are assigned from party indices 1-3; do not use
+chain actor roles as formation authoring data.
+
+Use **Tools > RB > Party > Create Or Update Runtime Party Setup** to refresh the
+default config and migrate the supported gameplay scenes. Use
+**Tools > RB > Party > Run Party Spawn Smoke Tests** after changing a party
+prefab, the UI prefab, the config, or a gameplay scene. `PlayerSquad.prefab`
+remains only as a legacy migration source and is not a runtime dependency.
+
+## Map Room Spawn And Party Warp
+
+`MapRunController` places the player at the entrance selected by
+`RoomController.GetPlayerSpawnPoint`. Active companions are then placed
+individually in a small formation in front of the player and must successfully
+warp onto the spawned room's NavMesh. Their position relative to the initial
+`PartyRuntimeRoot` formation before the room transition is intentionally not
+preserved.
+
+Every entrance `SpawnPoint` must face into the room and sit near a walkable
+NavMesh area. Keep enough clear walkable space in front of it for the player
+and companion formation. A room transition fails visibly instead of starting
+an encounter with an active companion stranded off NavMesh.
+
+Each room prefab used by `MapRunConfigSO` must carry baked `NavMeshData` on its
+`NavMeshSurface`. `MapRunController` loads that baked data with the spawned
+prefab and does not rebuild NavMesh at runtime during room transitions.
+
+Room instances are created lazily per `MapNode.Id` and cached until the run
+ends. All cached rooms use the same room spawn anchor, so only the current room
+may be active. Components inside a room must tolerate repeated
+`OnEnable`/`OnDisable` calls and must not duplicate authored content each time a
+cached room is revisited.
+
+`RoomController` creates `RuntimeContent/Persistent`, `Encounter`, and
+`Temporary` children automatically. Do not add serialized prefab references
+for these runtime roots. Normal item drops use `Persistent`, spawned enemies
+use `Encounter`, and room-scoped disposable objects may use `Temporary`.
+
 ## Third-Person Character Calibration
 
 Each `CharacterStats` asset owns a `Third Person/TPS Profile`. Use it to
@@ -132,6 +198,32 @@ Direct serialized references are appropriate for:
 Do not remove local authoring references such as `hitboxTrigger`, `firePoint`,
 `modelRoot`, `healthBarPrefab`, database references, or prefab references just
 because a context exists.
+
+## Enemy Hit Zone Authoring
+
+Enemy visual prefabs that support part-based direct weapon damage must contain
+one `CharacterColliderRefs` component and dedicated hurtbox objects:
+
+- `HitZone_Head`: `SphereCollider`, trigger enabled, layer `Hit`
+- `HitZone_Torso`: `BoxCollider`, trigger enabled, layer `Hit`
+
+Parent each hurtbox below the matching animated bone so it follows the rig.
+Keep the shapes tight, non-overlapping, and separate from movement,
+navigation, attack, and `CharacterPositionCollider` colliders. Do not use an
+enemy's main `CapsuleCollider` as a hurtbox.
+
+In `CharacterColliderRefs`, register the exact collider references in
+`hitZones` as `Head` and `Torso`. Do not register arms or legs yet; on a
+configured enemy, unmapped actor colliders intentionally allow direct weapon
+projectiles to pass through.
+
+Bind
+`Assets/Data/Combat/Damage/DefaultEnemyHitZoneDamageProfile.asset` to
+`HealthSystem.hitZoneDamageProfile` on the enemy base prefab. Player and ally
+prefabs remain unconfigured and use legacy whole-character impacts.
+
+See `Docs/SYSTEMS/HEALTH_AND_HIT_ZONES.md` for source eligibility, fallback
+behavior, damage order, and the current authored prefab list.
 
 ## Overhead Health And Stagger Bar
 

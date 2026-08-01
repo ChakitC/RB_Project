@@ -12,6 +12,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
     [SerializeField] private StatsHub statsHub;
     [SerializeField] private StatusEffectController statusEffectController;
     [SerializeField] private CombatEventBus combatEventBus;
+    [SerializeField] private HitZoneDamageProfileSO hitZoneDamageProfile;
 
     [Header("Runtime")]
     [SerializeField] private float reviveTime = 2.0f;
@@ -44,6 +45,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
     public event Action CharacterRevive;
     public event Action ReturnbaseUI;
     public event Action<float, GameObject> DamageTaken;
+    public event Action<float, GameObject> HeadshotTaken;
     public event Action<float, float, float> Healed;
     public event Action<float, float> HealthChanged;
 
@@ -267,7 +269,12 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
 
     public virtual DamageResult TakeDamage(in DamageContext damageContext)
     {
-        return ApplyDamageInternal(Mathf.Max(0f, damageContext.Damage), damageContext.Attacker, true, damageContext);
+        DamageContext resolvedContext = ResolveHitZoneDamage(damageContext);
+        return ApplyDamageInternal(
+            Mathf.Max(0f, resolvedContext.Damage),
+            resolvedContext.Attacker,
+            true,
+            resolvedContext);
     }
 
     protected DamageResult ApplyDamage(float damage, GameObject attacker)
@@ -278,6 +285,18 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
     protected DamageResult ApplyDamage(in DamageContext damageContext)
     {
         return ApplyDamageInternal(Mathf.Max(0f, damageContext.Damage), damageContext.Attacker, true, damageContext);
+    }
+
+    protected DamageContext ResolveHitZoneDamage(in DamageContext damageContext)
+    {
+        if (damageContext.HitZone == CharacterHitZone.None || hitZoneDamageProfile == null)
+            return damageContext;
+
+        float multiplier = hitZoneDamageProfile.GetMultiplier(damageContext.HitZone);
+        if (Mathf.Approximately(multiplier, 1f))
+            return damageContext;
+
+        return damageContext.WithDamage(damageContext.Damage * multiplier);
     }
 
     DamageResult ApplyDamageInternal(float damage, GameObject attacker, bool hasContext, in DamageContext damageContext)
@@ -311,6 +330,8 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         statusEffectController?.NotifyTrigger(EffectTriggerType.OnTakeDamage, attacker);
         PublishDamageEvent(PassiveEventType.TakeDamage, appliedDamage, attacker, hasContext, damageContext);
         DamageTaken?.Invoke(appliedDamage, attacker);
+        if (hasContext && damageContext.HitZone == CharacterHitZone.Head && appliedDamage > 0f)
+            HeadshotTaken?.Invoke(appliedDamage, attacker);
 
         RaiseHealthChanged();
 

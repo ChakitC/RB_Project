@@ -46,12 +46,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.RigidbodyTasks
             base.OnStart();
             m_ElapsedTime = 0.0f;
             if (m_ResolvedRigidbody != null) {
-#if UNITY_6000_3_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
                 m_StartLinearDrag = m_ResolvedRigidbody.linearDamping;
                 m_StartAngularDrag = m_ResolvedRigidbody.angularDamping;
 #else
-                m_StartLinearDrag = m_ResolvedRigidbody.linearDamping;
-                m_StartAngularDrag = m_ResolvedRigidbody.angularDamping;
+                m_StartLinearDrag = m_ResolvedRigidbody.drag;
+                m_StartAngularDrag = m_ResolvedRigidbody.angularDrag;
 #endif
             }
         }
@@ -66,7 +66,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.RigidbodyTasks
                 return TaskStatus.Success;
             }
 
-#if UNITY_6000_3_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
             if (m_TransitionDuration.Value > 0.0f) {
                 m_ElapsedTime += Time.deltaTime;
                 var progress = Mathf.Clamp01(m_ElapsedTime / m_TransitionDuration.Value);
@@ -80,11 +80,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.RigidbodyTasks
             if (m_TransitionDuration.Value > 0.0f) {
                 m_ElapsedTime += Time.deltaTime;
                 var progress = Mathf.Clamp01(m_ElapsedTime / m_TransitionDuration.Value);
-                m_ResolvedRigidbody.linearDamping = Mathf.Lerp(m_StartLinearDrag, m_LinearDrag.Value, progress);
-                m_ResolvedRigidbody.angularDamping = Mathf.Lerp(m_StartAngularDrag, m_AngularDrag.Value, progress);
+                m_ResolvedRigidbody.drag = Mathf.Lerp(m_StartLinearDrag, m_LinearDrag.Value, progress);
+                m_ResolvedRigidbody.angularDrag = Mathf.Lerp(m_StartAngularDrag, m_AngularDrag.Value, progress);
             } else {
-                m_ResolvedRigidbody.linearDamping = m_LinearDrag.Value;
-                m_ResolvedRigidbody.angularDamping = m_AngularDrag.Value;
+                m_ResolvedRigidbody.drag = m_LinearDrag.Value;
+                m_ResolvedRigidbody.angularDrag = m_AngularDrag.Value;
             }
 #endif
 

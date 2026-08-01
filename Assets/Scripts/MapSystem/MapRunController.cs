@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Unity.AI.Navigation;
 using UnityEngine;
 using UnityEngine.AI;
@@ -6,7 +7,46 @@ using UnityEngine.AI;
 [DisallowMultipleComponent]
 public class MapRunController : MonoBehaviour
 {
+    sealed class CachedRoomEntry
+    {
+        public readonly MapNode Node;
+        public readonly GameObject Instance;
+        public readonly RoomController Controller;
+
+        public CachedRoomEntry(MapNode node, GameObject instance, RoomController controller)
+        {
+            Node = node;
+            Instance = instance;
+            Controller = controller;
+        }
+
+        public RoomRuntimeContent RuntimeContent => Controller != null ? Controller.RuntimeContent : null;
+    }
+
+    readonly struct TransformPose
+    {
+        public readonly Transform Transform;
+        public readonly Vector3 Position;
+        public readonly Quaternion Rotation;
+
+        public TransformPose(Transform transform)
+        {
+            Transform = transform;
+            Position = transform != null ? transform.position : Vector3.zero;
+            Rotation = transform != null ? transform.rotation : Quaternion.identity;
+        }
+    }
+
+    sealed class PartyPoseSnapshot
+    {
+        public TransformPose RootPose;
+        public readonly List<TransformPose> ActorPoses = new();
+    }
+
     private const string DefaultWarpCollisionLayerName = "Terrain";
+    private const float CompanionWarpForwardOffset = 1.5f;
+    private const float CompanionWarpLateralOffset = 0.9f;
+    private const float CompanionWarpRowSpacing = 1.25f;
     private static readonly Collider[] WarpCollisionHits = new Collider[32];
 
     [Header("Config")]
@@ -33,7 +73,6 @@ public class MapRunController : MonoBehaviour
     [SerializeField] private MapView mapView;
 
     [Header("Runtime NavMesh")]
-    [SerializeField] private bool rebuildRoomNavMeshAfterSpawn = true;
     [SerializeField, Min(0f)] private float partyWarpNavMeshSampleRadius = 3f;
 
     [Header("Runtime Warp Safety")]
@@ -51,6 +90,8 @@ public class MapRunController : MonoBehaviour
     private MapNode currentNode;
     private GameObject currentRoomInstance;
     private RoomController currentRoom;
+    private CachedRoomEntry currentRoomEntry;
+    private readonly Dictionary<string, CachedRoomEntry> roomCache = new();
     private bool isTransitioning;
     private bool warnedMissingWarpCollisionLayer;
 
@@ -59,6 +100,7 @@ public class MapRunController : MonoBehaviour
     public MapNode CurrentNode => currentNode;
     public RoomController CurrentRoom => currentRoom;
     public bool IsTransitioning => isTransitioning;
+    public int CachedRoomCount => roomCache.Count;
 
     void Start()
     {
@@ -86,6 +128,8 @@ public class MapRunController : MonoBehaviour
             Debug.LogError($"[MapRunController] Run Config is invalid:\n{configError}", this);
             return;
         }
+
+        ResetRoomCache();
 
         graph = MapGenerator.Generate(runConfig);
         if (graph == null)
@@ -115,8 +159,15 @@ public class MapRunController : MonoBehaviour
         if (isTransitioning || graph == null || currentNode == null || string.IsNullOrWhiteSpace(targetNodeId))
             return false;
 
-        if (currentRoom != null && currentRoom.ExitsLocked)
-            return false;
+        if (currentRoom != null)
+        {
+            if (currentRoom.ExitsLocked)
+                return false;
+
+            RoomDefinitionSO definition = currentNode.RoomDefinition;
+            if (definition != null && definition.RequiresClearBeforeExit && !currentRoom.RoomCleared)
+                return false;
+        }
 
         return IsOutgoingTravelTarget(targetNodeId) || IsReturnTravelTarget(targetNodeId);
     }
@@ -229,33 +280,35 @@ public class MapRunController : MonoBehaviour
         }
 
         isTransitioning = true;
-        encounterDirector?.StopEncounter();
-        DestroyCurrentRoom();
 
-        Transform anchor = roomSpawnAnchor != null ? roomSpawnAnchor : transform;
-        Quaternion roomRotation = anchor.rotation * Quaternion.Euler(0f, nextNode.RoomYawDegrees, 0f);
-        Log($"Entering node '{nextNode.Id}' ({nextNode.Type}) with room '{roomDefinition.name}', yaw={nextNode.RoomYawDegrees:0}.");
-        currentRoomInstance = Instantiate(roomDefinition.RoomPrefab, anchor.position, roomRotation, roomParent);
-        currentRoom = currentRoomInstance.GetComponentInChildren<RoomController>(true);
-        if (currentRoom == null)
+        CachedRoomEntry previousEntry = currentRoomEntry;
+        MapNode previousNode = currentNode;
+        PartyPoseSnapshot previousPartyPose = CapturePartyPose();
+
+        encounterDirector?.StopEncounter();
+        CleanupOutgoingRoom(previousEntry);
+        BindItemDropParent(null);
+        DeactivateCachedRoom(previousEntry);
+
+        CachedRoomEntry nextEntry = GetOrCreateCachedRoom(nextNode, roomDefinition);
+        ActivateCachedRoom(nextEntry);
+        nextEntry.Controller.Initialize(this, nextNode);
+        BindItemDropParent(nextEntry.RuntimeContent.PersistentRoot);
+
+        if (!MovePartyToRoomSpawn(nextEntry.Controller, entranceDirection))
         {
-            Debug.LogWarning($"[MapRunController] Spawned room '{roomDefinition.RoomPrefab.name}' has no RoomController. Adding one at runtime.", currentRoomInstance);
-            currentRoom = currentRoomInstance.AddComponent<RoomController>();
+            Debug.LogError($"[MapRunController] Failed to move the party into node {nextNode.Id}. Rolling back the room transition.", this);
+            RollbackTransition(previousEntry, previousNode, previousPartyPose, nextEntry);
+            isTransitioning = false;
+            return;
         }
 
+        currentRoomEntry = nextEntry;
+        currentRoomInstance = nextEntry.Instance;
+        currentRoom = nextEntry.Controller;
         currentNode = nextNode;
         currentNode.Visit();
         graph.RevealOutgoing(currentNode);
-
-        currentRoom.Initialize(this, currentNode);
-        RebuildSpawnedRoomNavMesh(currentRoomInstance);
-        if (!MovePartyToRoomSpawn(currentRoom, entranceDirection))
-        {
-            Debug.LogError($"[MapRunController] Failed to move player into node {currentNode.Id}. Room encounter will not start.", this);
-            isTransitioning = false;
-            NotifyMapChanged();
-            return;
-        }
 
         currentRoom.BeginRoom(encounterDirector);
 
@@ -263,44 +316,217 @@ public class MapRunController : MonoBehaviour
         NotifyMapChanged();
     }
 
-    void DestroyCurrentRoom()
+    CachedRoomEntry GetOrCreateCachedRoom(MapNode node, RoomDefinitionSO roomDefinition)
     {
-        if (currentRoomInstance != null)
+        if (roomCache.TryGetValue(node.Id, out CachedRoomEntry cachedEntry) && cachedEntry.Instance != null)
         {
-            RemoveRoomNavMeshData(currentRoomInstance);
-            currentRoomInstance.SetActive(false);
-            Destroy(currentRoomInstance);
+            Log($"Reusing cached room for node '{node.Id}' (instance {cachedEntry.Instance.GetInstanceID()}).");
+            return cachedEntry;
         }
 
-        currentRoomInstance = null;
-        currentRoom = null;
+        Transform anchor = roomSpawnAnchor != null ? roomSpawnAnchor : transform;
+        Quaternion roomRotation = anchor.rotation * Quaternion.Euler(0f, node.RoomYawDegrees, 0f);
+        Log($"Creating room for node '{node.Id}' ({node.Type}) with '{roomDefinition.name}', yaw={node.RoomYawDegrees:0}.");
+
+        GameObject instance = Instantiate(roomDefinition.RoomPrefab, anchor.position, roomRotation, roomParent);
+        RoomController controller = instance.GetComponentInChildren<RoomController>(true);
+        if (controller == null)
+        {
+            Debug.LogWarning($"[MapRunController] Spawned room '{roomDefinition.RoomPrefab.name}' has no RoomController. Adding one at runtime.", instance);
+            controller = instance.AddComponent<RoomController>();
+        }
+
+        var entry = new CachedRoomEntry(node, instance, controller);
+        roomCache[node.Id] = entry;
+        Log($"Cached room for node '{node.Id}' (instance {instance.GetInstanceID()}).");
+        return entry;
     }
 
-    void RebuildSpawnedRoomNavMesh(GameObject roomInstance)
+    void ActivateCachedRoom(CachedRoomEntry entry)
     {
-        if (!rebuildRoomNavMeshAfterSpawn || roomInstance == null)
+        if (entry == null || entry.Instance == null)
             return;
 
-        NavMeshSurface[] surfaces = roomInstance.GetComponentsInChildren<NavMeshSurface>(true);
-        if (surfaces == null || surfaces.Length == 0)
+        if (!entry.Instance.activeSelf)
+            entry.Instance.SetActive(true);
+
+        Physics.SyncTransforms();
+    }
+
+    void DeactivateCachedRoom(CachedRoomEntry entry)
+    {
+        if (entry == null || entry.Instance == null)
             return;
 
-        int rebuiltCount = 0;
-        for (int i = 0; i < surfaces.Length; i++)
+        RemoveRoomNavMeshData(entry.Instance);
+        entry.Instance.SetActive(false);
+        Log($"Deactivated cached room for node '{entry.Node.Id}'.");
+    }
+
+    void CleanupOutgoingRoom(CachedRoomEntry entry)
+    {
+        RoomTransitionCleanup.ClearTransientWorldObjects();
+        if (entry == null || entry.RuntimeContent == null)
+            return;
+
+        entry.RuntimeContent.ClearTemporaryContent();
+        entry.RuntimeContent.ClearEncounterContent();
+    }
+
+    void RollbackTransition(
+        CachedRoomEntry previousEntry,
+        MapNode previousNode,
+        PartyPoseSnapshot previousPartyPose,
+        CachedRoomEntry failedEntry)
+    {
+        BindItemDropParent(null);
+        DeactivateCachedRoom(failedEntry);
+
+        if (previousEntry == null || previousEntry.Instance == null)
         {
-            NavMeshSurface surface = surfaces[i];
-            if (surface == null)
-                continue;
-
-            surface.RemoveData();
-            if (!surface.isActiveAndEnabled)
-                continue;
-
-            surface.BuildNavMesh();
-            rebuiltCount++;
+            ActivateCachedRoom(failedEntry);
+            currentRoomEntry = failedEntry;
+            currentRoomInstance = failedEntry != null ? failedEntry.Instance : null;
+            currentRoom = failedEntry != null ? failedEntry.Controller : null;
+            currentNode = failedEntry != null ? failedEntry.Node : previousNode;
+            if (failedEntry != null && failedEntry.RuntimeContent != null)
+                BindItemDropParent(failedEntry.RuntimeContent.PersistentRoot);
+            return;
         }
 
-        Log($"Rebuilt {rebuiltCount} NavMeshSurface(s) for spawned room '{roomInstance.name}'.");
+        ActivateCachedRoom(previousEntry);
+        previousEntry.Controller.Initialize(this, previousNode);
+        RestorePartyPose(previousPartyPose);
+        BindItemDropParent(previousEntry.RuntimeContent.PersistentRoot);
+
+        currentRoomEntry = previousEntry;
+        currentRoomInstance = previousEntry.Instance;
+        currentRoom = previousEntry.Controller;
+        currentNode = previousNode;
+    }
+
+    void ResetRoomCache()
+    {
+        encounterDirector?.StopEncounter();
+        RoomTransitionCleanup.ClearTransientWorldObjects();
+        BindItemDropParent(null);
+
+        foreach (CachedRoomEntry entry in roomCache.Values)
+        {
+            if (entry == null || entry.Instance == null)
+                continue;
+
+            RemoveRoomNavMeshData(entry.Instance);
+            entry.Instance.SetActive(false);
+            Destroy(entry.Instance);
+        }
+
+        roomCache.Clear();
+        currentRoomEntry = null;
+        currentRoomInstance = null;
+        currentRoom = null;
+        currentNode = null;
+        isTransitioning = false;
+    }
+
+    void OnDestroy()
+    {
+        if (Application.isPlaying)
+            ResetRoomCache();
+    }
+
+    void BindItemDropParent(Transform parent)
+    {
+        if (ItemDropManager.Instance == null)
+            return;
+
+        if (parent != null)
+            ItemDropManager.Instance.SetSpawnParent(parent);
+        else
+            ItemDropManager.Instance.ClearSpawnParent();
+    }
+
+    PartyPoseSnapshot CapturePartyPose()
+    {
+        var snapshot = new PartyPoseSnapshot();
+        CharacteContext player = ResolvePlayerContext();
+        if (player == null)
+            return snapshot;
+
+        Transform partyRoot = ResolvePartyWarpRoot(player);
+        snapshot.RootPose = new TransformPose(partyRoot != null ? partyRoot : player.transform);
+
+        CharacteContext[] contexts = FindObjectsByType<CharacteContext>(
+            FindObjectsInactive.Exclude,
+            FindObjectsSortMode.None);
+        for (int i = 0; i < contexts.Length; i++)
+        {
+            CharacteContext context = contexts[i];
+            if (context == null)
+                continue;
+
+            AITargetIdentity identity = context.TargetIdentity;
+            if (context == player || identity == AITargetIdentity.Player || identity == AITargetIdentity.Companion)
+                snapshot.ActorPoses.Add(new TransformPose(context.transform));
+        }
+
+        return snapshot;
+    }
+
+    void RestorePartyPose(PartyPoseSnapshot snapshot)
+    {
+        if (snapshot == null)
+            return;
+
+        Transform root = snapshot.RootPose.Transform;
+        if (root != null)
+        {
+            CharacterController[] controllers = root.GetComponentsInChildren<CharacterController>(true);
+            bool[] controllerStates = DisableControllers(controllers);
+            root.SetPositionAndRotation(snapshot.RootPose.Position, snapshot.RootPose.Rotation);
+            RestoreControllers(controllers, controllerStates);
+            SyncWarpedAgentsUnderRoot(root);
+        }
+
+        for (int i = 0; i < snapshot.ActorPoses.Count; i++)
+            RestoreActorPose(snapshot.ActorPoses[i]);
+
+        Physics.SyncTransforms();
+    }
+
+    void RestoreActorPose(TransformPose pose)
+    {
+        Transform actor = pose.Transform;
+        if (actor == null)
+            return;
+
+        CharacterController controller = actor.GetComponent<CharacterController>();
+        if (controller == null)
+            controller = actor.GetComponentInChildren<CharacterController>(true);
+
+        bool controllerWasEnabled = controller != null && controller.enabled;
+        if (controllerWasEnabled)
+            controller.enabled = false;
+
+        NavMeshAgent agent = actor.GetComponent<NavMeshAgent>();
+        if (agent == null)
+            agent = actor.GetComponentInChildren<NavMeshAgent>(true);
+
+        if (agent != null && agent.isActiveAndEnabled)
+        {
+            if (!agent.Warp(pose.Position))
+                actor.position = pose.Position;
+            else
+                SyncWarpedAgent(agent);
+        }
+        else
+        {
+            actor.position = pose.Position;
+        }
+
+        actor.rotation = pose.Rotation;
+        if (controllerWasEnabled)
+            controller.enabled = true;
     }
 
     void RemoveRoomNavMeshData(GameObject roomInstance)
@@ -326,34 +552,34 @@ public class MapRunController : MonoBehaviour
         if (player == null)
             return true;
 
-        Vector3 previousPlayerPosition = player.transform.position;
         Transform spawn = room.GetPlayerSpawnPoint(entranceDirection);
         Transform partyRoot = ResolvePartyWarpRoot(player);
-        Vector3 delta;
         if (partyRoot != null && partyRoot != player.transform)
         {
-            if (!WarpPartyRootToPlayerSpawn(player, partyRoot, spawn.position, spawn.rotation, out delta))
+            if (!WarpPartyRootToPlayerSpawn(player, partyRoot, spawn.position, spawn.rotation))
                 return false;
         }
         else
         {
             if (!WarpCharacter(player, spawn.position, spawn.rotation))
                 return false;
-
-            delta = player.transform.position - previousPlayerPosition;
         }
 
         CharacteContext[] contexts = FindObjectsByType<CharacteContext>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        int companionIndex = 0;
         for (int i = 0; i < contexts.Length; i++)
         {
             CharacteContext ctx = contexts[i];
-            if (ctx == null || ctx == player || ctx.TargetIdentity != AITargetIdentity.Companion)
+            if (ctx == null ||
+                ctx == player ||
+                ctx.TargetIdentity != AITargetIdentity.Companion ||
+                !ctx.gameObject.activeInHierarchy)
                 continue;
 
-            if (partyRoot != null && ctx.transform.IsChildOf(partyRoot))
-                continue;
+            if (!WarpCompanionToRoomSpawn(ctx, player.transform, companionIndex))
+                return false;
 
-            WarpCharacter(ctx, ctx.transform.position + delta, spawn.rotation);
+            companionIndex++;
         }
 
         return true;
@@ -421,10 +647,8 @@ public class MapRunController : MonoBehaviour
         CharacteContext player,
         Transform partyRoot,
         Vector3 position,
-        Quaternion rotation,
-        out Vector3 delta)
+        Quaternion rotation)
     {
-        delta = Vector3.zero;
         if (player == null || partyRoot == null)
             return false;
 
@@ -446,9 +670,7 @@ public class MapRunController : MonoBehaviour
 
         try
         {
-            Vector3 previousPlayerPosition = player.transform.position;
             SetRootPoseForChildPose(partyRoot, player.transform, safePosition, rotation);
-            delta = player.transform.position - previousPlayerPosition;
             SyncWarpedAgentsUnderRoot(partyRoot);
         }
         finally
@@ -458,6 +680,39 @@ public class MapRunController : MonoBehaviour
         }
 
         return true;
+    }
+
+    bool WarpCompanionToRoomSpawn(CharacteContext companion, Transform player, int companionIndex)
+    {
+        if (companion == null || player == null)
+            return false;
+
+        int row = companionIndex / 2;
+        float side = companionIndex % 2 == 0 ? -1f : 1f;
+        Vector3 formationPosition =
+            player.position +
+            player.forward * (CompanionWarpForwardOffset + row * CompanionWarpRowSpacing) +
+            player.right * (CompanionWarpLateralOffset * side);
+
+        if (WarpCharacter(companion, formationPosition, player.rotation, requireActiveAgentNavMesh: true))
+            return true;
+
+        Vector3 centerFallback =
+            player.position +
+            player.forward * (CompanionWarpForwardOffset + companionIndex * CompanionWarpRowSpacing);
+
+        if (WarpCharacter(companion, centerFallback, player.rotation, requireActiveAgentNavMesh: true))
+        {
+            Debug.LogWarning(
+                $"[MapRunController] Companion '{companion.name}' used the center room-entry fallback at {centerFallback}.",
+                this);
+            return true;
+        }
+
+        Debug.LogError(
+            $"[MapRunController] Companion '{companion.name}' could not be placed on the new room NavMesh.",
+            this);
+        return false;
     }
 
     static void SetRootPoseForChildPose(
@@ -540,7 +795,11 @@ public class MapRunController : MonoBehaviour
         return null;
     }
 
-    bool WarpCharacter(CharacteContext ctx, Vector3 position, Quaternion rotation)
+    bool WarpCharacter(
+        CharacteContext ctx,
+        Vector3 position,
+        Quaternion rotation,
+        bool requireActiveAgentNavMesh = false)
     {
         if (ctx == null)
             return false;
@@ -556,6 +815,18 @@ public class MapRunController : MonoBehaviour
         if (agent == null)
             agent = ctx.GetComponentInChildren<NavMeshAgent>(true);
 
+        bool hasActiveAgent = agent != null && agent.isActiveAndEnabled;
+        if (requireActiveAgentNavMesh && !hasActiveAgent)
+        {
+            if (controllerWasEnabled)
+                controller.enabled = true;
+
+            Debug.LogWarning(
+                $"[MapRunController] Warp for '{ctx.name}' requires an active NavMeshAgent, but none was available.",
+                this);
+            return false;
+        }
+
         if (!TryResolveSafeWarpPosition(ctx, agent, position, rotation, out Vector3 safePosition, out Collider blocker))
         {
             if (controllerWasEnabled)
@@ -566,8 +837,24 @@ public class MapRunController : MonoBehaviour
             return false;
         }
 
-        if (agent == null || !agent.enabled || !TryWarpAgent(agent, safePosition, false))
+        if (hasActiveAgent)
+        {
+            if (!TryWarpAgent(agent, safePosition))
+            {
+                if (controllerWasEnabled)
+                    controller.enabled = true;
+
+                Debug.LogWarning(
+                    $"[MapRunController] NavMesh warp for '{ctx.name}' failed near {safePosition}.",
+                    this);
+                Physics.SyncTransforms();
+                return false;
+            }
+        }
+        else
+        {
             ctx.transform.position = safePosition;
+        }
 
         ctx.transform.rotation = rotation;
 
@@ -580,7 +867,7 @@ public class MapRunController : MonoBehaviour
 
     bool TryWarpAgent(NavMeshAgent agent, Vector3 position, bool allowNavMeshSample = true)
     {
-        if (agent == null || !agent.enabled)
+        if (agent == null || !agent.isActiveAndEnabled)
             return false;
 
         if (agent.Warp(position))

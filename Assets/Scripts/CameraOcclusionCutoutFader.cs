@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [ExecuteAlways]
-public sealed class CameraOcclusionCutoutFader : MonoBehaviour
+public sealed class CameraOcclusionCutoutFader : MonoBehaviour, IPartySpawnedReceiver
 {
     static readonly int FadeId = Shader.PropertyToID("_Fade");
     static readonly int CutoutCenterId = Shader.PropertyToID("_CutoutCenter");
@@ -67,6 +67,16 @@ public sealed class CameraOcclusionCutoutFader : MonoBehaviour
     void OnEnable()
     {
         Initialize();
+    }
+
+    public void PrepareParty(PartyRuntime party)
+    {
+        target = party?.Player != null ? party.Player.transform : null;
+    }
+
+    public void PartySpawned(PartyRuntime party)
+    {
+        target = party?.Player != null ? party.Player.transform : null;
     }
 
     void OnValidate()

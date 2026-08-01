@@ -13,7 +13,21 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.TransformTasks
     [Opsive.Shared.Utility.Description("Moves the Transform in a direction with acceleration.")]
     public class MoveInDirection : TargetGameObjectAction
     {
-        [Tooltip("The direction to move in. If this value is 0 then the forward Transform direction is used.")]
+        private const int c_DataVersion = 1;
+
+        /// <summary>
+        /// Specifies how the move direction should be interpreted.
+        /// </summary>
+        public enum DirectionMode
+        {
+            Forward,
+            WorldDirection,
+            LocalDirection
+        }
+
+        [Tooltip("How the move direction should be selected.")]
+        [SerializeField] protected DirectionMode m_DirectionMode = DirectionMode.Forward;
+        [Tooltip("The direction used when Direction Mode is World Direction or Local Direction.")]
         [SerializeField] protected SharedVariable<Vector3> m_Direction;
         [Tooltip("The base movement speed.")]
         [SerializeField] protected SharedVariable<float> m_Speed = 5f;
@@ -21,8 +35,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.TransformTasks
         [SerializeField] protected SharedVariable<float> m_Acceleration = 10f;
         [Tooltip("The maximum speed.")]
         [SerializeField] protected SharedVariable<float> m_MaxSpeed = 10f;
-        [Tooltip("Should the movement be relative to the Transform's local space?")]
+        [System.Obsolete("m_UseLocalSpace is obsolete in version 3.1.0. Use m_DirectionMode instead.")]
+        [Tooltip("Obsolete in version 3.1.0. Use Direction Mode instead.")]
         [SerializeField] protected SharedVariable<bool> m_UseLocalSpace = false;
+        [HideInInspector] [Tooltip("The serialized data version.")]
+        [SerializeField] private int m_DataVersion;
 
         private float m_CurrentSpeed;
         private Vector3 m_CurrentVelocity;
@@ -43,6 +60,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.TransformTasks
         public override void OnStart()
         {
             base.OnStart();
+            MigrateLegacyFields();
             m_CurrentSpeed = 0f;
             m_CurrentVelocity = Vector3.zero;
         }
@@ -53,15 +71,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.TransformTasks
         /// <returns>The status of the action.</returns>
         public override TaskStatus OnUpdate()
         {
-            Vector3 direction;
-            if (m_Direction.Value != Vector3.zero) {
-                direction = m_Direction.Value.normalized;
-            } else {
-                if (m_UseLocalSpace.Value) {
-                    direction = transform.localRotation * Vector3.forward;
-                } else {
-                    direction = transform.forward;
-                }
+            MigrateLegacyFields();
+            if (!TryGetDirection(out var direction)) {
+                return TaskStatus.Running;
             }
 
             // Calculate velocity.
@@ -71,22 +83,66 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.TransformTasks
 
             // Move.
             if (m_Rigidbody != null) {
-                var worldVelocity = m_UseLocalSpace.Value ? m_Rigidbody.rotation * m_CurrentVelocity : m_CurrentVelocity;
-#if UNITY_6000_3_OR_NEWER
-                m_Rigidbody.linearVelocity = worldVelocity;
+#if UNITY_6000_0_OR_NEWER
+                m_Rigidbody.linearVelocity = m_CurrentVelocity;
 #else
-                m_Rigidbody.linearVelocity = worldVelocity;
+                m_Rigidbody.velocity = m_CurrentVelocity;
 #endif
             } else {
                 var moveDelta = m_CurrentVelocity * Time.deltaTime;
-                if (m_UseLocalSpace.Value) {
-                    transform.localPosition += moveDelta;
-                } else {
-                    transform.position += moveDelta;
-                }
+                transform.position += moveDelta;
             }
 
             return TaskStatus.Running;
+        }
+
+        /// <summary>
+        /// Migrates the legacy direction fields to the explicit direction mode.
+        /// </summary>
+        public void MigrateLegacyFields()
+        {
+            if (m_DataVersion >= c_DataVersion) {
+                return;
+            }
+
+#pragma warning disable CS0618
+            if (m_Direction != null && (m_Direction.IsShared || m_Direction.Value != Vector3.zero)) {
+                m_DirectionMode = m_UseLocalSpace != null && m_UseLocalSpace.Value ? DirectionMode.LocalDirection : DirectionMode.WorldDirection;
+            } else {
+                m_DirectionMode = DirectionMode.Forward;
+            }
+#pragma warning restore CS0618
+
+            m_DataVersion = c_DataVersion;
+        }
+
+        /// <summary>
+        /// Returns the world-space direction to move in.
+        /// </summary>
+        /// <param name="direction">The world-space direction.</param>
+        /// <returns>True if a non-zero direction is available.</returns>
+        private bool TryGetDirection(out Vector3 direction)
+        {
+            switch (m_DirectionMode) {
+                case DirectionMode.WorldDirection:
+                    direction = m_Direction != null ? m_Direction.Value : Vector3.zero;
+                    if (direction == Vector3.zero) {
+                        return false;
+                    }
+                    direction.Normalize();
+                    return true;
+                case DirectionMode.LocalDirection:
+                    var localDirection = m_Direction != null ? m_Direction.Value : Vector3.zero;
+                    if (localDirection == Vector3.zero) {
+                        direction = Vector3.zero;
+                        return false;
+                    }
+                    direction = transform.TransformDirection(localDirection.normalized);
+                    return true;
+                default:
+                    direction = transform.forward;
+                    return true;
+            }
         }
 
         /// <summary>
@@ -95,11 +151,15 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.TransformTasks
         public override void Reset()
         {
             base.Reset();
+            m_DirectionMode = DirectionMode.Forward;
             m_Direction = Vector3.zero;
             m_Speed = 5f;
             m_Acceleration = 10f;
             m_MaxSpeed = 10f;
+#pragma warning disable CS0618
             m_UseLocalSpace = false;
+#pragma warning restore CS0618
+            m_DataVersion = c_DataVersion;
         }
     }
 }

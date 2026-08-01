@@ -43,8 +43,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b5955a1fd4c6d504b83d74ede059593e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   ctx: {fileID: 1638387977988830713}
   _Debug: 1
   maxDistance: 3
@@ -394,6 +394,7 @@ MonoBehaviour:
   statsHub: {fileID: 5818043391274991836}
   statusEffectController: {fileID: 8620874944121039693}
   combatEventBus: {fileID: 1666845100770680886}
+  hitZoneDamageProfile: {fileID: 0}
   reviveTime: 2
   maximumHealth: 0
   currentHealth: 0
@@ -500,6 +501,7 @@ GameObject:
   - component: {fileID: 2207675358697019086}
   - component: {fileID: -1361530361806445852}
   - component: {fileID: 1638387977988830713}
+  - component: {fileID: 6135798210440773301}
   - component: {fileID: 4051215997299661844}
   - component: {fileID: 4443219407110611579}
   - component: {fileID: 2048828252462802381}
@@ -671,6 +673,7 @@ MonoBehaviour:
   movement: {fileID: 3077095089375782856}
   allyHelper: {fileID: 1822283862806056950}
   fieldAllyManager: {fileID: 2832843673297047600}
+  partyFormation: {fileID: 6135798210440773301}
   chainAttackCoordinator: {fileID: 8702287995565794057}
   partyCommand: {fileID: 2720740744562527200}
   interruptionCommand: {fileID: 5084191306873448319}
@@ -685,6 +688,40 @@ MonoBehaviour:
   selectedPartyCommandIndex: 0
   wrapPartyCommandSelection: 1
   logPartyCommandExecution: 0
+--- !u!114 &6135798210440773301
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2311559804654788738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54fa0c20ce2c4d8491c517207b98e6d1, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  playerContext: {fileID: 1638387977988830713}
+  leftSlot: {x: -1.5, y: 0, z: -1.8}
+  rightSlot: {x: 1.5, y: 0, z: -1.8}
+  rearCenterSlot: {x: 0, y: 0, z: -3.2}
+  firstLineSlot: {x: 0, y: 0, z: -1.8}
+  secondLineSlot: {x: 0, y: 0, z: -3.2}
+  thirdLineSlot: {x: 0, y: 0, z: -4.6}
+  startMoveDistance: 1.25
+  stopDistance: 0.6
+  destinationUpdateInterval: 0.15
+  destinationChangeThreshold: 0.25
+  headingTurnSpeed: 180
+  headingMoveThreshold: 0.05
+  slotSampleRadius: 1
+  teleportSampleRadius: 1.5
+  geometryCheckInterval: 0.1
+  collapseDelay: 0.5
+  expandDelay: 1.5
+  teleportDistance: 15
+  invalidPathTimeout: 2
+  drawGizmos: 1
+  logFormationTransitions: 0
 --- !u!114 &4051215997299661844
 MonoBehaviour:
   m_ObjectHideFlags: 0

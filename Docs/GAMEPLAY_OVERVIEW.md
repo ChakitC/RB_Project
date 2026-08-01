@@ -315,7 +315,9 @@ duration (default 3 s):
 
 - Movement, shooting, and skill use are all blocked; AI is suspended.
 - The meter stays pinned at max and does not decay.
-- Damage remains at 1× (no stagger multiplier), but the enemy **cannot drop below 1 HP**.
+- Damage remains at 1× (no stagger multiplier), and lethal damage kills the
+  enemy normally during ChainReady. Once Chain Execution begins, lethal damage
+  is capped so the enemy cannot drop below 1 HP until execution ends.
 - A world-space `[F] CHAIN` prompt with a countdown is displayed.
 - Aiming at the ChainReady enemy and pressing **F** starts a **Manual Chain Attack**
   on that explicit target. The F key is consumed only when a valid ChainReady target

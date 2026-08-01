@@ -149,11 +149,20 @@ public class TargetOrbitNavMesh : Action
             return TaskStatus.Running;
         }
 
+        bool hasUsablePath = _agent.hasPath &&
+                             _agent.pathStatus != NavMeshPathStatus.PathInvalid;
+
         _repathElapsed = 0f;
         if (TrySetOrbitPath())
         {
             _pathFailureActive = false;
             _pathFailureElapsed = 0f;
+            ResumeAgent();
+            return TaskStatus.Running;
+        }
+
+        if (hasUsablePath)
+        {
             ResumeAgent();
             return TaskStatus.Running;
         }

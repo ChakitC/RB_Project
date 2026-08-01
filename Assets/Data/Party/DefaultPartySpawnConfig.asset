@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 21f7255bf2eb4ae4b16602dd349c76f7, type: 3}
+  m_Name: DefaultPartySpawnConfig
+  m_EditorClassIdentifier: 
+  members:
+  - role: 4
+    partyIndex: 0
+    prefab: {fileID: 2311559804654788738, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+  - role: 1
+    partyIndex: 1
+    prefab: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
+    localPosition: {x: 2.18, y: 0, z: -3.86}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+  - role: 2
+    partyIndex: 2
+    prefab: {fileID: 2275044329717223576, guid: d9418b1bfd567544f82b2a42efa28277, type: 3}
+    localPosition: {x: -1.82, y: 0, z: -4.06}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+  - role: 3
+    partyIndex: 3
+    prefab: {fileID: 5546123616510741782, guid: 0a8e3a2acc4fe8d4e9f2c0e5eefdd976, type: 3}
+    localPosition: {x: -4.94, y: 0, z: 0.02}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+  playerUIPrefab: {fileID: 2262640161921503855, guid: 2bc0b7b51164a6b4cb5086ee4978c781, type: 3}

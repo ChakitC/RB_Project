@@ -67,7 +67,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.GameObjectTasks
                 // Search in entire scene.
 #if UNITY_6000_4_OR_NEWER
                 var components = UnityEngine.Object.FindObjectsByType(componentType, FindObjectsInactive.Include);
-#elif UNITY_6000_3_OR_NEWER
+#elif UNITY_6000_0_OR_NEWER
                 var components = UnityEngine.Object.FindObjectsByType(componentType, FindObjectsInactive.Include, FindObjectsSortMode.None);
 #else
                 var components = UnityEngine.Object.FindObjectsOfType(componentType, true);

@@ -95,7 +95,7 @@ public class HasEnemyFromSensor : Conditional
             return;
 
         subscribedSensor = sensor;
-        subscribedSensor.OnVisibleTargetChanged += HandleSensorVisibleTargetChanged;
+        subscribedSensor.OnTargetChanged += HandleSensorTargetChanged;
     }
 
     private void UnsubscribeFromSensor()
@@ -103,13 +103,13 @@ public class HasEnemyFromSensor : Conditional
         if (subscribedSensor == null)
             return;
 
-        subscribedSensor.OnVisibleTargetChanged -= HandleSensorVisibleTargetChanged;
+        subscribedSensor.OnTargetChanged -= HandleSensorTargetChanged;
         subscribedSensor = null;
     }
 
-    private void HandleSensorVisibleTargetChanged(Transform oldTarget, Transform newTarget)
+    private void HandleSensorTargetChanged(Transform oldTarget, Transform newTarget)
     {
-        SyncOutputsFromTarget(newTarget);
+        SyncOutputsFromSensor();
     }
 
     private bool SyncOutputsFromSensor()
@@ -120,7 +120,7 @@ public class HasEnemyFromSensor : Conditional
             return false;
         }
 
-        return SyncOutputsFromTarget(sensor.VisibleTarget);
+        return SyncOutputsFromTarget(sensor.CurrentTarget);
     }
 
     private bool SyncOutputsFromTarget(Transform target)

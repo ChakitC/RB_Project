@@ -14,10 +14,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.PhysicsTasks
     public class MaterialControl : TargetGameObjectAction
     {
         [Tooltip("The physics material to apply.")]
-#if UNITY_6000_3_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
         [SerializeField] protected PhysicsMaterial m_PhysicMaterial;
 #else
-        [SerializeField] protected PhysicsMaterial m_PhysicMaterial;
+        [SerializeField] protected PhysicMaterial m_PhysicMaterial;
 #endif
         [Tooltip("The dynamic friction (0-1).")]
         [SerializeField] protected SharedVariable<float> m_DynamicFriction = 0.6f;
@@ -25,7 +25,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.PhysicsTasks
         [SerializeField] protected SharedVariable<float> m_StaticFriction = 0.6f;
         [Tooltip("The bounciness (0-1).")]
         [SerializeField] protected SharedVariable<float> m_Bounciness = 0.0f;
-#if UNITY_6000_3_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
         [Tooltip("The friction combine mode.")]
         [SerializeField] protected PhysicsMaterialCombine m_FrictionCombine = PhysicsMaterialCombine.Average;
         [Tooltip("The bounce combine mode.")]
@@ -34,11 +34,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.PhysicsTasks
         private PhysicsMaterial m_CreatedMaterial;
 #else
         [Tooltip("The friction combine mode.")]
-        [SerializeField] protected PhysicsMaterialCombine m_FrictionCombine = PhysicsMaterialCombine.Average;
+        [SerializeField] protected PhysicMaterialCombine m_FrictionCombine = PhysicMaterialCombine.Average;
         [Tooltip("The bounce combine mode.")]
-        [SerializeField] protected PhysicsMaterialCombine m_BounceCombine = PhysicsMaterialCombine.Average;
+        [SerializeField] protected PhysicMaterialCombine m_BounceCombine = PhysicMaterialCombine.Average;
 
-        private PhysicsMaterial m_CreatedMaterial;
+        private PhysicMaterial m_CreatedMaterial;
 #endif
         private Collider m_ResolvedCollider;
 
@@ -66,10 +66,10 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.PhysicsTasks
                 m_ResolvedCollider.material = m_PhysicMaterial;
             } else {
                 if (m_CreatedMaterial == null) {
-#if UNITY_6000_3_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
                     m_CreatedMaterial = new PhysicsMaterial("DynamicMaterial");
 #else
-                    m_CreatedMaterial = new PhysicsMaterial("DynamicMaterial");
+                    m_CreatedMaterial = new PhysicMaterial("DynamicMaterial");
 #endif
                 }
 
@@ -95,12 +95,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.PhysicsTasks
             m_DynamicFriction = 0.6f;
             m_StaticFriction = 0.6f;
             m_Bounciness = 0.0f;
-#if UNITY_6000_3_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
             m_FrictionCombine = PhysicsMaterialCombine.Average;
             m_BounceCombine = PhysicsMaterialCombine.Average;
 #else
-            m_FrictionCombine = PhysicsMaterialCombine.Average;
-            m_BounceCombine = PhysicsMaterialCombine.Average;
+            m_FrictionCombine = PhysicMaterialCombine.Average;
+            m_BounceCombine = PhysicMaterialCombine.Average;
 #endif
         }
     }

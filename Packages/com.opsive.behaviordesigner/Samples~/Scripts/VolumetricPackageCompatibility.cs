@@ -39,7 +39,11 @@ namespace Opsive.BehaviorDesigner.Samples
                 return;
             }
 
+#if UNITY_6000_5_OR_NEWER
+            var volume = UnityEngine.Object.FindAnyObjectByType(volumeType);
+#else
             var volume = UnityEngine.Object.FindFirstObjectByType(volumeType);
+#endif
             if (volume == null) {
                 return;
             }

@@ -75,3 +75,6 @@ MonoBehaviour:
   forwardOffset: 0
   spreadWidth: 0
   verticalOffset: 0.1
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4096

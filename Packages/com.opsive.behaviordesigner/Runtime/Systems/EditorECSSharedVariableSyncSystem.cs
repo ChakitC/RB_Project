@@ -9,7 +9,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Groups;
     using Opsive.GraphDesigner.Runtime;
-    using Opsive.GraphDesigner.Runtime.Variables.ECS;
+    using Opsive.GraphDesigner.Runtime.Variables;
     using System.Collections.Generic;
     using Unity.Entities;
 
@@ -104,7 +104,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                 return null;
             }
 
-            var behaviorTree = BehaviorTree.ResolveBehaviorTreeFromGlobalObjectId(graphReference.AuthoringBehaviorTreeGlobalObjectId, graphReference.DesignGraphUniqueID);
+            var behaviorTree = BehaviorTreeEditorUtility.ResolveBehaviorTreeFromGlobalObjectId(graphReference.AuthoringBehaviorTreeGlobalObjectId, graphReference.DesignGraphUniqueID);
             if (behaviorTree == null) {
                 return null;
             }

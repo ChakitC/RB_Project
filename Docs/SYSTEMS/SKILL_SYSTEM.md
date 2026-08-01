@@ -84,6 +84,12 @@ Reusable dependencies remain normal asset references. Examples include
 projectile prefabs, `ProjectileConfig`, `StatusEffectDef`, audio cues, VFX
 prefabs, and pickup prefabs.
 
+`SpawnPickupSkillPayloadDef` ground-snaps every spawned pickup after applying
+its lateral spread. Configure **Ground Layers** with world-floor layers only;
+the default is the project's `Ground` layer. Keeping character layers out of
+this mask makes a pickup aimed at a character land on the floor beneath them
+instead of spawning on top of their controller.
+
 ### Morph / Awakening Payload
 
 `MorphSkillPayloadDef` is a temporary form change: a visual swap plus an optional
@@ -581,3 +587,12 @@ auto-fits below the readable scale are warnings. Visual Scale outside `1.0` to
 checks catch-up, shared points, prerequisites, Variant isolation, refunds, tree
 replacement, default/override Tree resolution, stat stacking, scaled-node
 layout, frame fallback, and validation.
+
+## Command Skill Cast Facing
+
+Command-slot skills whose payload uses `FaceDetectedTargetOnCast` rotate the
+character root horizontally toward the skill user's current aim direction
+immediately before the skill animation starts. Skills using
+`KeepCurrentFacing` retain their existing facing. `Aires_Skill_3` enables this
+behavior so its animation and world-space VFX align with the current Aim
+Target.

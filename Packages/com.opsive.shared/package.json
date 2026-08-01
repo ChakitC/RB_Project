@@ -1,9 +1,12 @@
 {
   "name": "com.opsive.shared",
-  "version": "2.2.3",
+  "version": "2.3.0",
   "displayName": "Opsive Shared",
   "description": "Shared files between Opsive assets.",
   "documentationUrl": "https://opsive.com/",
+  "dependencies": {
+    "com.unity.ugui": "1.0.0"
+  },
   "author": {
     "name": "Opsive",
     "email": "support@opsive.com",

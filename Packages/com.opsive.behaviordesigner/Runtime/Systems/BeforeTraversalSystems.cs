@@ -6,10 +6,9 @@
 /// ---------------------------------------------
 namespace Opsive.BehaviorDesigner.Runtime.Systems
 {
+    using Opsive.BehaviorDesigner.Runtime;
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Groups;
-    using Opsive.BehaviorDesigner.Runtime.Tasks;
-    using Opsive.BehaviorDesigner.Runtime.Utility;
     using Unity.Burst;
     using Unity.Collections;
     using Unity.Entities;
@@ -51,87 +50,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                 var branchComponentsBuffer = branchComponents;
                 var taskComponentsBuffer = taskComponents;
                 var reevaluateTaskComponentsBuffer = reevaluateTaskComponents;
-
-                for (int i = 0; i < reevaluateTaskComponentsBuffer.Length; ++i) {
-                    var reevaluateTaskComponent = reevaluateTaskComponentsBuffer[i];
-                    var taskComponent = taskComponentsBuffer[reevaluateTaskComponent.Index];
-                    if (!taskComponent.CanReevaluate || !taskComponent.Enabled) {
-                        continue;
-                    }
-
-                    var branchComponent = branchComponentsBuffer[taskComponent.BranchIndex];
-                    if (branchComponent.ActiveIndex == ushort.MaxValue) {
-                        if (taskComponent.Reevaluate) {
-                            taskComponent.Reevaluate = false;
-                            taskComponentsBuffer[reevaluateTaskComponent.Index] = taskComponent;
-
-                            reevaluateTaskComponent.ReevaluateStatus = ReevaluateStatus.Inactive;
-                            reevaluateTaskComponentsBuffer[i] = reevaluateTaskComponent;
-                        }
-                        continue;
-                    }
-
-                    var reevaluate = false;
-                    if (reevaluateTaskComponent.AbortType == ConditionalAbortType.Self || reevaluateTaskComponent.AbortType == ConditionalAbortType.Both) {
-                        if (branchComponent.ActiveIndex > taskComponent.Index && branchComponent.ActiveIndex <= reevaluateTaskComponent.SelfPriorityUpperIndex) {
-                            reevaluate = true;
-                            if (reevaluateTaskComponent.ReevaluateStatus == ReevaluateStatus.Inactive) {
-                                reevaluateTaskComponent.ReevaluateStatus = ReevaluateStatus.Active;
-                                state.EntityManager.SetComponentEnabled(entity, reevaluateTaskComponent.ReevaluateFlagComponentType, true);
-                            }
-                        }
-                    }
-                    if (!reevaluate && (reevaluateTaskComponent.AbortType == ConditionalAbortType.LowerPriority || reevaluateTaskComponent.AbortType == ConditionalAbortType.Both)) {
-                        if (branchComponent.ActiveIndex > reevaluateTaskComponent.LowerPriorityLowerIndex && branchComponent.ActiveIndex <= reevaluateTaskComponent.LowerPriorityUpperIndex) {
-                            reevaluate = true;
-                            if (reevaluateTaskComponent.ReevaluateStatus == ReevaluateStatus.Inactive) {
-                                reevaluateTaskComponent.ReevaluateStatus = ReevaluateStatus.Active;
-                                state.EntityManager.SetComponentEnabled(entity, reevaluateTaskComponent.ReevaluateFlagComponentType, true);
-                            }
-                        }
-                    }
-
-                    if (!reevaluate && (taskComponent.Reevaluate || reevaluateTaskComponent.ReevaluateStatus == ReevaluateStatus.Dirty)) {
-                        if (!HasOtherTrackedReevaluators(i, reevaluateTaskComponent.ReevaluateFlagComponentType, ref reevaluateTaskComponentsBuffer)) {
-                            state.EntityManager.SetComponentEnabled(entity, reevaluateTaskComponent.ReevaluateFlagComponentType, false);
-                        }
-                        taskComponent.Reevaluate = false;
-                        reevaluateTaskComponent.ReevaluateStatus = ReevaluateStatus.Inactive;
-                    } else if (reevaluate && !taskComponent.Reevaluate) {
-                        // Store the status on reevaluation transition. This is compared after reevaluate systems execute.
-                        reevaluateTaskComponent.OriginalStatus = taskComponent.Status;
-                    }
-
-                    reevaluateTaskComponentsBuffer[i] = reevaluateTaskComponent;
-
-                    taskComponent.Reevaluate = reevaluate;
-                    taskComponentsBuffer[reevaluateTaskComponent.Index] = taskComponent;
-                }
+                BeforeTraversalCore.Reevaluate(state.EntityManager, entity, ref branchComponentsBuffer, ref taskComponentsBuffer, ref reevaluateTaskComponentsBuffer);
             }
-        }
-
-        /// <summary>
-        /// Returns true if another tracked task with the same reevaluation flag is active/dirty.
-        /// </summary>
-        /// <param name="index">The reevaluate task index being processed.</param>
-        /// <param name="reevaluateFlag">The reevaluate flag component type.</param>
-        /// <param name="reevaluateTaskComponents">All reevaluate task components.</param>
-        /// <returns>True if another matching reevaluator is active or dirty.</returns>
-        private bool HasOtherTrackedReevaluators(int index, ComponentType reevaluateFlag, ref DynamicBuffer<ReevaluateTaskComponent> reevaluateTaskComponents)
-        {
-            for (int i = 0; i < reevaluateTaskComponents.Length; ++i) {
-                if (i == index) {
-                    continue;
-                }
-
-                var reevaluateTaskComponent = reevaluateTaskComponents[i];
-                if ((reevaluateTaskComponent.ReevaluateStatus == ReevaluateStatus.Active || reevaluateTaskComponent.ReevaluateStatus == ReevaluateStatus.Dirty) &&
-                    reevaluateTaskComponent.ReevaluateFlagComponentType == reevaluateFlag) {
-                    return true;
-                }
-            }
-
-            return false;
         }
     }
 
@@ -157,9 +77,15 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Creates the jobs necessary for conditional aborts.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
+        #if !UNITY_EDITOR
         [BurstCompile]
+        #endif
         private void OnUpdate(ref SystemState state)
         {
+            if (m_Query.IsEmptyIgnoreFilter) {
+                return;
+            }
+
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
             state.Dependency = new ConditionalAbortsJob()
             {
@@ -176,7 +102,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Job which checks for any tasks that should be reevaluated with conditional aborts. This job only flags the tasks, it does not do
         /// the actual reevaluation or interruption.
         /// </summary>
+        #if !UNITY_EDITOR
         [BurstCompile]
+        #endif
         private partial struct ConditionalAbortsJob : IJobEntity
         {
             [Tooltip("CommandBuffer which sets the component data.")]
@@ -190,36 +118,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// <param name="branchComponents">An array of branch components.</param>
             /// <param name="taskComponents">An array of task components.</param>
             /// <param name="reevaluateTaskComponents">An array of reevaluate task components.</param>
+            #if !UNITY_EDITOR
             [BurstCompile]
+            #endif
             public void Execute(Entity entity, [EntityIndexInQuery] int entityIndex, ref DynamicBuffer<BranchComponent> branchComponents, ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<ReevaluateTaskComponent> reevaluateTaskComponents)
             {
-                for (int i = 0; i < reevaluateTaskComponents.Length; ++i) {
-                    var reevaluateTaskComponent = reevaluateTaskComponents[i];
-                    var taskComponent = taskComponents[reevaluateTaskComponent.Index];
-
-                    if (taskComponent.Reevaluate) {
-                        if (reevaluateTaskComponent.OriginalStatus != taskComponent.Status) {
-                            // The status is different. This will cause an interrupt.
-                            var branchComponent = branchComponents[taskComponent.BranchIndex];
-                            // The task with the highest priority should cause the abort.
-                            if (branchComponent.InterruptType == InterruptType.None || taskComponent.Index < branchComponent.InterruptIndex) {
-                                branchComponent.InterruptIndex = taskComponent.Index;
-                                branchComponent.InterruptType = InterruptType.Branch;
-                                branchComponents[taskComponent.BranchIndex] = branchComponent;
-                            } else {
-                                taskComponent.Status = TaskStatus.Inactive;
-                            }
-
-                            taskComponent.Reevaluate = false;
-                            taskComponents[reevaluateTaskComponent.Index] = taskComponent;
-                            EntityCommandBuffer.SetComponentEnabled<InterruptFlag>(entityIndex, entity, true);
-
-                            reevaluateTaskComponent.ReevaluateStatus = ReevaluateStatus.Dirty;
-                            var reevaluateTaskComponentsBuffer = reevaluateTaskComponents;
-                            reevaluateTaskComponentsBuffer[i] = reevaluateTaskComponent;
-                        }
-                    }
-                }
+                BeforeTraversalCore.InvokeConditionalAborts(entity, entityIndex, ref branchComponents, ref taskComponents, ref reevaluateTaskComponents, EntityCommandBuffer);
             }
         }
     }
@@ -229,6 +133,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
     /// </summary>
     [UpdateInGroup(typeof(InterruptSystemGroup))]
     [UpdateAfter(typeof(ConditionalAbortsInvokerSystem))]
+    [UpdateBefore(typeof(InterruptTaskSystemGroup))]
     public partial struct InterruptSystem : ISystem
     {
         private EntityQuery m_Query;
@@ -246,9 +151,17 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Creates the InterruptJob.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
+        #if !UNITY_EDITOR
         [BurstCompile]
+        #endif
         private void OnUpdate(ref SystemState state)
         {
+            // IsEmpty instead of IsEmptyIgnoreFilter so the enableable InterruptFlag is respected. Interrupts are rare
+            // so this prevents the job and sync point on the frames without an interrupt.
+            if (m_Query.IsEmpty) {
+                return;
+            }
+
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
             state.Dependency = new InterruptJob()
             {
@@ -264,7 +177,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <summary>
         /// Triggers the interrupts.
         /// </summary>
+        #if !UNITY_EDITOR
         [BurstCompile]
+        #endif
         private partial struct InterruptJob : IJobEntity
         {
             [Tooltip("CommandBuffer which sets the component data.")]
@@ -277,86 +192,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// <param name="entityIndex">The index of the entity.</param>
             /// <param name="branchComponents">An array of branch components.</param>
             /// <param name="taskComponents">An array of task components.</param>
+            #if !UNITY_EDITOR
             [BurstCompile]
+            #endif
             public void Execute(Entity entity, [EntityIndexInQuery] int entityIndex, DynamicBuffer<BranchComponent> branchComponents, DynamicBuffer<TaskComponent> taskComponents)
             {
-                for (ushort i = 0; i < branchComponents.Length; ++i) {
-                    var branchComponent = branchComponents[i];
-                    if (branchComponent.InterruptType != InterruptType.None) {
-                        var targetTaskComponent = taskComponents[branchComponent.InterruptIndex];
-                        var parentIndex = targetTaskComponent.ParentIndex == ushort.MaxValue ? targetTaskComponent.Index : targetTaskComponent.ParentIndex;
-                        TaskStatus prevActiveNewStatus;
-                        if (branchComponent.InterruptType == InterruptType.Branch) {
-                            branchComponent.NextIndex = branchComponent.InterruptIndex;
-                            branchComponents[i] = branchComponent;
-
-                            // Start the target task.
-                            targetTaskComponent.Status = TaskStatus.Running;
-                            // Set the target branch tasks to running. Any parent that uses conditional aborts should implement IInterruptResponder.
-                            while (parentIndex != ushort.MaxValue && taskComponents[parentIndex].Status != TaskStatus.Running) {
-                                var parentTaskComponent = taskComponents[parentIndex];
-                                parentTaskComponent.Status = TaskStatus.Running;
-                                taskComponents[parentIndex] = parentTaskComponent;
-                                parentIndex = parentTaskComponent.ParentIndex;
-                            }
-
-                            prevActiveNewStatus = TaskStatus.Failure;
-                        } else { // InterruptType.ImmediateSuccess/Failure.
-                            targetTaskComponent.Status = branchComponent.InterruptType == InterruptType.ImmediateSuccess ? TaskStatus.Success : TaskStatus.Failure;
-                            var targetBranchComponent = branchComponents[targetTaskComponent.BranchIndex];
-                            targetBranchComponent.NextIndex = targetTaskComponent.ParentIndex;
-                            branchComponents[targetTaskComponent.BranchIndex] = targetBranchComponent;
-
-                            prevActiveNewStatus = targetTaskComponent.Status;
-                        }
-
-                        // Determine if any other branches need to be interrupted.
-                        for (ushort j = i; j < branchComponents.Length; ++j) {
-                            if (i == j || TraversalUtility.IsParent((ushort)branchComponents[j].ActiveIndex, parentIndex, ref taskComponents)) {
-                                AbortChildren((ushort)branchComponents[j].ActiveIndex, parentIndex, ref taskComponents, prevActiveNewStatus);
-
-                                // Reset any queued children.
-                                var taskComponentBuffer = taskComponents;
-                                var childCount = TraversalUtility.GetChildCount(branchComponent.ActiveIndex, ref taskComponentBuffer);
-                                for (int k = 0; k < childCount; ++k) {
-                                    var childTaskComponent = taskComponents[branchComponent.ActiveIndex + k + 1];
-                                    if (childTaskComponent.Status == TaskStatus.Queued) {
-                                        childTaskComponent.Status = TaskStatus.Inactive;
-                                        taskComponentBuffer[branchComponent.ActiveIndex + k + 1] = childTaskComponent;
-                                    }
-                                }
-
-                                // If the branch is a parallel branch then reset the NextIndex. The current branch (i) will be interrupted normally above.
-                                var localBranchComponent = branchComponents[j];
-                                if (localBranchComponent.InterruptType == InterruptType.None) {
-                                    localBranchComponent.NextIndex = ushort.MaxValue;
-                                    branchComponents[j] = localBranchComponent;
-                                }
-                                EntityCommandBuffer.SetComponentEnabled<InterruptedFlag>(entityIndex, entity, true);
-                            }
-                        }
-
-                        taskComponents[targetTaskComponent.Index] = targetTaskComponent;
-                    }
-                }
-            }
-
-            /// <summary>
-            /// Aborts all of the children within the specified branch.
-            /// </summary>
-            /// <param name="activeIndex">The index of the active task within the branch.</param>
-            /// <param name="parentIndex">Aborts the tasks up to the specified parent index.</param>
-            /// <param name="taskComponents">All of the tasks.</param>
-            /// <param name="status">The abort status.</param>
-            [BurstCompile]
-            private void AbortChildren(ushort activeIndex, ushort parentIndex, ref DynamicBuffer<TaskComponent> taskComponents, TaskStatus status)
-            {
-                while (activeIndex != ushort.MaxValue && activeIndex != parentIndex) {
-                    var activeTask = taskComponents[activeIndex];
-                    activeTask.Status = status;
-                    taskComponents[activeIndex] = activeTask;
-                    activeIndex = activeTask.ParentIndex;
-                }
+                BeforeTraversalCore.Interrupt(entity, entityIndex, branchComponents, taskComponents, EntityCommandBuffer);
             }
         }
     }
@@ -371,23 +212,15 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Executes the system.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
+        #if !UNITY_EDITOR
         [BurstCompile]
+        #endif
         private void OnUpdate(ref SystemState state)
         {
             foreach (var (branchComponents, entity) in
                 SystemAPI.Query<DynamicBuffer<BranchComponent>>().WithAll<InterruptFlag>().WithEntityAccess()) {
-                for (int i = 0; i < branchComponents.Length; ++i) {
-                    var branchComponent = branchComponents[i];
-                    if (branchComponent.InterruptType != InterruptType.None) {
-                        // Reset the interruption.
-                        branchComponent.InterruptType = InterruptType.None;
-                        branchComponent.InterruptIndex = 0;
-                        var branchComponentBuffer = branchComponents;
-                        branchComponentBuffer[i] = branchComponent;
-
-                        state.EntityManager.SetComponentEnabled<InterruptFlag>(entity, false);
-                    }
-                }
+                var branchComponentBuffer = branchComponents;
+                BeforeTraversalCore.CleanupInterrupts(state.EntityManager, entity, ref branchComponentBuffer);
             }
         }
     }

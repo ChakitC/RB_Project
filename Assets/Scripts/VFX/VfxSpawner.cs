@@ -41,7 +41,16 @@ public class VfxSpawner : MonoBehaviour
     [Tooltip("ติ๊กออกเพื่อปิด VFX และเลขดาเมจทั้งหมด (gameplay ทำงานปกติ) สำหรับดีบัค")]
     [SerializeField] bool spawnVfx = true;
 
+    [Header("Damage Numbers")]
+    [Tooltip("Show damage numbers when the damaged target is the player or a companion.")]
+    [SerializeField] bool showPlayerAndCompanionDamageNumbers;
+
     public bool SpawnVfxEnabled { get => spawnVfx; set => spawnVfx = value; }
+    public bool ShowPlayerAndCompanionDamageNumbers
+    {
+        get => showPlayerAndCompanionDamageNumbers;
+        set => showPlayerAndCompanionDamageNumbers = value;
+    }
 
     VfxPool _pool;
 
@@ -172,11 +181,26 @@ public class VfxSpawner : MonoBehaviour
         DestroyVfxWithWorldTime(vfx, duration);
     }
 
-    public void SpawnDamageNumber(Vector3 position , float number)
+    public void SpawnDamageNumber(Vector3 position, float number, IDamageable target)
     {
         if (!spawnVfx) return;
         if (numberPrefab == null) return;
-        DamageNumber dn = numberPrefab.Spawn(position, number);
+        if (!showPlayerAndCompanionDamageNumbers && IsPlayerOrCompanion(target)) return;
+
+        numberPrefab.Spawn(position, number);
+    }
+
+    static bool IsPlayerOrCompanion(IDamageable target)
+    {
+        if (target is not Component targetComponent)
+            return false;
+
+        CharacteContext targetContext = targetComponent.GetComponentInParent<CharacteContext>();
+        if (targetContext == null)
+            return false;
+
+        return targetContext.TargetIdentity == AITargetIdentity.Player ||
+               targetContext.TargetIdentity == AITargetIdentity.Companion;
     }
 
     GameObject InstantiateVfx(GameObject prefab, Vector3 pos, Quaternion rotation, Transform parent, float scale)

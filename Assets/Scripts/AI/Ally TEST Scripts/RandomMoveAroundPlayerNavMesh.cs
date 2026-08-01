@@ -26,6 +26,7 @@ public class RandomMoveAroundPlayerNavMesh : Action
 
     private NavMeshAgent _agent;
     private Vector3 _currentTarget;
+    private readonly PartyFormationFollowRuntime _formationRuntime = new();
 
     // state สำหรับการรอ
     private bool _isWaiting;
@@ -33,6 +34,9 @@ public class RandomMoveAroundPlayerNavMesh : Action
 
     public override void OnStart()
     {
+        if (_formationRuntime.TryBegin(gameObject, Taget != null ? Taget.Value : null))
+            return;
+
         if (_agent == null)
         {
             _agent = GetComponent<NavMeshAgent>();
@@ -88,6 +92,14 @@ public class RandomMoveAroundPlayerNavMesh : Action
 
     public override TaskStatus OnUpdate()
     {
+        if (_formationRuntime.TryTick(
+                gameObject,
+                Taget != null ? Taget.Value : null,
+                out TaskStatus formationStatus))
+        {
+            return formationStatus;
+        }
+
         if (_agent == null || Taget == null || Taget.Value == null)
         {
             return TaskStatus.Failure;
@@ -159,6 +171,12 @@ public class RandomMoveAroundPlayerNavMesh : Action
 
     public override void OnEnd()
     {
+        if (_formationRuntime.IsAvailable)
+        {
+            _formationRuntime.End();
+            return;
+        }
+
         if (_agent != null)
         {
             _agent.isStopped = true;
@@ -169,6 +187,7 @@ public class RandomMoveAroundPlayerNavMesh : Action
 
     public override void Reset()
     {
+        _formationRuntime.Reset();
         wanderRadius = 2f;
         followMax = 6f;
         stopDistance = 0.3f;

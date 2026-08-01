@@ -51,7 +51,8 @@ MonoBehaviour:
   offset: {x: -4.97, y: -0.21, z: 0}
   cameraCollisionMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 1048575
+  companionFadeRadius: 0.3
   initialPitch: 12
   aimBlendSpeed: 10
   recoilRecoverySpeed: 11
@@ -427,6 +428,6 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7f0c2b61d3a74f3e9b6c1a8524d90e18, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   sourceCamera: {fileID: 5478141767642294992}

@@ -33,7 +33,9 @@ namespace Opsive.BehaviorDesigner.Samples.SceneManagers
         /// </summary>
         public void Awake()
         {
-#if UNITY_2022
+#if UNITY_6000_5_OR_NEWER
+            var behaviorTree = Object.FindAnyObjectByType<BehaviorTree>();
+#elif UNITY_2022
             var behaviorTree = Object.FindObjectOfType<BehaviorTree>();
 #else
             var behaviorTree = Object.FindFirstObjectByType<BehaviorTree>();

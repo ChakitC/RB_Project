@@ -158,7 +158,7 @@ Material:
     - _EmissionToggle: 0
     - _EnableSSSRamp: 0
     - _EnvironmentReflections: 1
-    - _FOVShiftX: 0.22
+    - _FOVShiftX: 0
     - _FaceShadowMapPow: 0.2
     - _FaceShadowSmoothness: 0
     - _FakeLightIntensity: 0
@@ -230,12 +230,12 @@ Material:
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: -4.9771824, g: 0.0001001358, b: -1.0976143, a: 0}
+    - _CharacterCenterWS: {r: 8.067, g: 0.00000023841858, b: -1.06, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FaceFrontDirection: {r: 1.0000001, g: 0, b: -0.00000011920929, a: 0}
-    - _FaceRightDirection: {r: -0.00000011920929, g: 0, b: -1.0000001, a: 0}
+    - _FaceFrontDirection: {r: 0, g: 0, b: 1, a: 0}
+    - _FaceRightDirection: {r: 1, g: 0, b: 0, a: 0}
     - _FaceUVCtrl: {r: 0, g: 1, b: 0, a: 0}
     - _FakeLightColor: {r: 0, g: 0, b: 0, a: 0}
     - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}

@@ -54,9 +54,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.Conversions
                     m_OutputValue.Value = m_InputQuaternion.Value.w;
                     break;
                 case ConversionType.Angle:
-                    var axis = m_Axis.Value.normalized;
-                    var identity = Quaternion.identity;
-                    m_OutputValue.Value = Quaternion.Angle(identity, m_InputQuaternion.Value);
+                    var axis = m_Axis.Value == Vector3.zero ? Vector3.forward : m_Axis.Value.normalized;
+                    m_InputQuaternion.Value.ToAngleAxis(out var angle, out var rotationAxis);
+                    m_OutputValue.Value = Vector3.Dot(rotationAxis, axis) < 0.0f ? -angle : angle;
                     break;
             }
 

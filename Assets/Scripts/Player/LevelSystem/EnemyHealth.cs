@@ -22,12 +22,12 @@ public class EnemyHealth : HealthSystem
             _lastAttacker = damageContext.Attacker;
 
         StaggerMeter meter = ResolveStaggerMeter();
-        DamageContext resolvedContext = damageContext;
+        DamageContext resolvedContext = ResolveHitZoneDamage(damageContext);
 
-        if (meter != null && meter.IsStaggered && damageContext.Damage > 0f)
-            resolvedContext = damageContext.WithDamage(damageContext.Damage * meter.DamageTakenMultiplier);
+        if (meter != null && meter.IsStaggered && resolvedContext.Damage > 0f)
+            resolvedContext = resolvedContext.WithDamage(resolvedContext.Damage * meter.DamageTakenMultiplier);
 
-        if (meter != null && (meter.IsChainReady || meter.IsChainExecutionActive) && resolvedContext.Damage > 0f)
+        if (meter != null && meter.IsChainExecutionActive && resolvedContext.Damage > 0f)
         {
             float maxLethalSafe = Mathf.Max(0f, currentHealth - 1f);
             if (resolvedContext.Damage > maxLethalSafe)

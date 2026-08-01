@@ -12,6 +12,7 @@ public class PlayerContext : CharacteContext
     public PlayerMovementCC movement;
     public AllyHelperManager allyHelper;
     public FieldAllyManager fieldAllyManager;
+    public PartyFormationController partyFormation;
     public ChainAttackCoordinator chainAttackCoordinator;
     public PartyCommandController partyCommand;
     public InterruptionCommandController interruptionCommand;
@@ -68,6 +69,9 @@ public class PlayerContext : CharacteContext
 
         if (fieldAllyManager == null)
             fieldAllyManager = ResolveActorComponent(fieldAllyManager);
+
+        if (partyFormation == null)
+            partyFormation = ResolveActorComponent(partyFormation);
 
         if (chainAttackCoordinator == null)
             chainAttackCoordinator = ResolveActorComponent(chainAttackCoordinator);

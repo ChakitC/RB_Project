@@ -99,7 +99,13 @@ public class EncounterDirector : MonoBehaviour
         }
 
         Transform spawnPoint = activeRoom.GetEnemySpawnPoint(spawnIndex);
-        GameObject enemyObject = Instantiate(prefab, spawnPoint.position, spawnPoint.rotation, enemyParent);
+        Transform spawnParent = activeRoom.RuntimeContent != null
+            ? activeRoom.RuntimeContent.EncounterRoot
+            : enemyParent;
+        GameObject enemyObject = Instantiate(prefab, spawnPoint.position, spawnPoint.rotation);
+        if (spawnParent != null)
+            enemyObject.transform.SetParent(spawnParent, true);
+
         TrackEnemyObject(enemyObject);
     }
 

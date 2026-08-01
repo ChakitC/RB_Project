@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d999bcd05b94a04482516e82de86278, type: 3}
   m_Name: Taunt Execution
   m_EditorClassIdentifier: 
-  helperFacingMode: 0
+  helperFacingMode: 1
   chainContinueMode: 0
   chainContinueNormalizedTime: 1
   radius: 50

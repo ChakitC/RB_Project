@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: f6aed8de22674fd78e46a73468881992
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 368344
+  packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
+  packageVersion: 3.2.1p2
+  assetPath: Packages/com.opsive.behaviordesigner/Editor/Controls/Actions/GameObject/FadeInOutControl.cs
+  uploadId: 957386

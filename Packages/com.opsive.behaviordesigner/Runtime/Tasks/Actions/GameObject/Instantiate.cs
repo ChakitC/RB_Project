@@ -19,29 +19,31 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.GameObjectTasks
         [SerializeField] protected SharedVariable<GameObject> m_Prefab;
         [Tooltip("The delay before instantiation (in seconds).")]
         [SerializeField] protected SharedVariable<float> m_Delay = 0f;
-        [Tooltip("The GameObject to use for position and rotation. If null, uses Position and Rotation values.")]
+        [Tooltip("The GameObject used as the spawn location.")]
         [SerializeField] protected SharedVariable<GameObject> m_Location;
-        [Tooltip("Should local position and rotation be used when Transform is specified?")]
+        [Tooltip("Use the Location GameObject's local position and rotation.")]
         [SerializeField] protected SharedVariable<bool> m_UseLocalTransform = false;
-        [Tooltip("The position to instantiate at. Only used if Location is null.")]
+        [Tooltip("The position used when a Location value is not available.")]
         [SerializeField] protected SharedVariable<Vector3> m_Position;
-        [Tooltip("The rotation to instantiate with. Only used if Location is null.")]
+        [Tooltip("Use the Location GameObject's rotation instead of the Rotation value.")]
+        [SerializeField] protected SharedVariable<bool> m_UseLocationObjectRotation = true;
+        [Tooltip("The Euler rotation used when a Location value is not available or Use Location Object Rotation is disabled.")]
         [SerializeField] protected SharedVariable<Vector3> m_Rotation;
         [Tooltip("Use the prefab's local scale instead of the Scale value.")]
         [SerializeField] protected SharedVariable<bool> m_UsePrefabScale = false;
-        [Tooltip("The scale to instantiate with. Only used if Use Prefab Scale is disabled.")]
+        [Tooltip("The scale assigned to the instantiated GameObject.")]
         [SerializeField] protected SharedVariable<Vector3> m_Scale = Vector3.one;
         [Tooltip("The parent GameObject to assign. If null, no parent is assigned.")]
         [SerializeField] protected SharedVariable<GameObject> m_Parent;
         [Tooltip("Should object pooling be used?")]
         [SerializeField] protected SharedVariable<bool> m_UsePooling = false;
-        [Tooltip("The initial pool size. Only used if Use Pooling is enabled.")]
+        [Tooltip("The initial object pool size.")]
         [SerializeField] protected SharedVariable<int> m_PoolSize = 10;
-        [Tooltip("The maximum pool size. Only used if Use Pooling is enabled.")]
+        [Tooltip("The maximum object pool size.")]
         [SerializeField] protected SharedVariable<int> m_MaxPoolSize = 20;
         [Tooltip("Should the GameObject be auto-destroyed after a duration?")]
         [SerializeField] protected SharedVariable<bool> m_AutoDestroy = false;
-        [Tooltip("The duration before auto-destroy. Only used if Auto Destroy is enabled.")]
+        [Tooltip("The duration before auto-destroying the instantiated GameObject.")]
         [SerializeField] protected SharedVariable<float> m_DestroyDuration = 5f;
         [Tooltip("The name to assign to the instantiated GameObject. If empty, uses the prefab name.")]
         [SerializeField] protected SharedVariable<string> m_ObjectName;
@@ -128,7 +130,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.GameObjectTasks
                 Quaternion rotation;
                 if (m_Location.Value != null) {
                     position = m_UseLocalTransform.Value ? m_Location.Value.transform.localPosition : m_Location.Value.transform.position;
-                    rotation = m_UseLocalTransform.Value ? m_Location.Value.transform.localRotation : m_Location.Value.transform.rotation;
+                    rotation = m_UseLocationObjectRotation.Value ?
+                        (m_UseLocalTransform.Value ? m_Location.Value.transform.localRotation : m_Location.Value.transform.rotation) :
+                        Quaternion.Euler(m_Rotation.Value);
                 } else {
                     position = m_Position.Value;
                     rotation = Quaternion.Euler(m_Rotation.Value);
@@ -150,7 +154,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.GameObjectTasks
                 }
 
                 instantiated.transform.localScale = m_UsePrefabScale.Value ? m_Prefab.Value.transform.localScale : m_Scale.Value;
-                if (!string.IsNullOrEmpty(m_ObjectName.Value)) {
+                if (m_ObjectName != null && !string.IsNullOrEmpty(m_ObjectName.Value)) {
                     instantiated.name = m_ObjectName.Value;
                 }
 
@@ -219,6 +223,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.GameObjectTasks
             m_Location = null;
             m_UseLocalTransform = false;
             m_Position = Vector3.zero;
+            m_UseLocationObjectRotation = true;
             m_Rotation = Vector3.zero;
             m_UsePrefabScale = false;
             m_Scale = Vector3.one;

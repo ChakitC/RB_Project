@@ -1,3 +1,4 @@
+using Opsive.BehaviorDesigner.Runtime;
 using UnityEngine;
 
 
@@ -23,6 +24,12 @@ public class CharacterContextPartyLoader : MonoBehaviour, IGameSaveAble, ISaveOr
             throw new System.ArgumentOutOfRangeException(nameof(index));
 
         partyIndex = index;
+    }
+
+    public bool TryApplyRuntimeDefinition()
+    {
+        EnsureContextReference();
+        return TryApplySavedOrFallbackDefinition(null);
     }
 
     void Awake()
@@ -95,8 +102,22 @@ public class CharacterContextPartyLoader : MonoBehaviour, IGameSaveAble, ISaveOr
         CurrentContext = def;
 
         if (ctx != null)
+        {
             ctx.baseStats = def;
+            ApplyBehaviorSubtree(def);
+        }
         else if (IsPlayAble)
             Debug.LogWarning("[CharacterContextPartyLoader] Playable loader is missing CharacteContext.", this);
+    }
+
+    void ApplyBehaviorSubtree(CharacterStats def)
+    {
+        if (def == null || def.behaviorSubtree == null || ctx is not AllyContext allyContext)
+            return;
+
+        allyContext.ResolveReferences();
+        BehaviorTree behaviorTree = allyContext.BehaviorTree;
+        if (behaviorTree != null && !object.ReferenceEquals(behaviorTree.Subgraph, def.behaviorSubtree))
+            behaviorTree.Subgraph = def.behaviorSubtree;
     }
 }

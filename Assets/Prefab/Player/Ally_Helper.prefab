@@ -96,6 +96,7 @@ MonoBehaviour:
   statsHub: {fileID: 7820936986505595733}
   statusEffectController: {fileID: 1626903556438485816}
   combatEventBus: {fileID: 1499039619125665064}
+  hitZoneDamageProfile: {fileID: 0}
   reviveTime: 2
   maximumHealth: 0
   currentHealth: 0
@@ -940,7 +941,23 @@ MonoBehaviour:
       m_Values: 0000
       m_UnityObjects: []
       m_Version: 3.4
-    m_SharedVariableData: []
+    m_SharedVariableData:
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
+        UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278927dafeacd28e0b00
+      m_ValuePositions: 00000000050000000500000006000000
+      m_Values: 546167657402ffffffff
+      m_UnityObjects: []
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Boolean,
+        mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427894886ea0b921c56fa
+      m_ValuePositions: 00000000000000000000000001000000
+      m_Values: 0200
+      m_UnityObjects: []
+      m_Version: 3.4
     m_DisabledEventNodesData: []
     m_DisabledLogicNodesData: []
     m_UniqueID: -531285451

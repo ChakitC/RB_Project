@@ -24,6 +24,22 @@ public class AiShoot : Action
     [Tooltip("Horizontal turn speed while this task is active (degrees per second).")]
     public float turnSpeed = 720f;
 
+    [Header("Fire Solution")]
+    [Tooltip("Stop firing and leave this task when the sensor loses line of sight.")]
+    public bool requireLineOfSight = true;
+
+    [Tooltip("Minimum planar distance required before firing. Set to 0 to disable.")]
+    [Min(0f)] public float minFireRange = 0.5f;
+
+    [Tooltip("Maximum planar distance allowed while firing. Set to 0 to disable.")]
+    [Min(0f)] public float maxFireRange = 10f;
+
+    [Tooltip("Maximum horizontal angle error allowed before firing. Only used when Face Target is enabled.")]
+    [Range(0f, 180f)] public float aimToleranceDegrees = 8f;
+
+    [Tooltip("How long a blocked or invalid firing solution may persist before this task fails so the tree can reposition.")]
+    [Min(0f)] public float fireSolutionLossTimeout = 0.5f;
+
     private enum ShootPhase
     {
         Firing,
@@ -34,8 +50,14 @@ public class AiShoot : Action
     private float stateEndTime;
     private Transform actorTransform;
     private NavMeshAgent agent;
+    private AITargetSensor targetSensor;
     private bool agentRotationCaptured;
     private bool cachedAgentUpdateRotation;
+    private bool phaseTimerStarted;
+    private float fireSolutionLostTime;
+    private Transform cachedTarget;
+    private IAITargetable cachedTargetable;
+    private Transform cachedAimPoint;
 
     public override void OnStart()
     {
@@ -45,6 +67,7 @@ public class AiShoot : Action
         }
 
         actorTransform = CTX != null ? CTX.transform : transform;
+        targetSensor = ResolveTargetSensor();
         agentRotationCaptured = false;
         agent = actorTransform != null
             ? actorTransform.GetComponent<NavMeshAgent>()
@@ -58,9 +81,9 @@ public class AiShoot : Action
         }
 
         phase = ShootPhase.Firing;
-
-        float fireTime = (fireDuration != null) ? fireDuration.Value : 3f;
-        stateEndTime = TimeSlowManager.Instance.WorldTime + Mathf.Max(0.01f, fireTime);
+        phaseTimerStarted = false;
+        fireSolutionLostTime = float.NegativeInfinity;
+        ClearTargetCache();
 
         if (CTX != null && CTX.stateHub != null)
         {
@@ -85,11 +108,21 @@ public class AiShoot : Action
         if (currentTarget == null)
         {
             StopFire(CTX);
-            bool successWhenLost = returnSuccessWhenTargetLost != null && returnSuccessWhenTargetLost.Value;
-            return successWhenLost ? TaskStatus.Success : TaskStatus.Failure;
+            return TargetLostStatus();
         }
 
-        RotateTowardTarget(currentTarget);
+        CacheTarget(currentTarget.transform);
+        if (!IsTaskTargetStillValid(currentTarget.transform))
+        {
+            StopFire(CTX);
+            return TargetLostStatus();
+        }
+
+        Vector3 aimPoint = ResolveAimPoint(currentTarget.transform);
+        RotateTowardTarget(aimPoint);
+
+        if (!HasValidFiringPosition(aimPoint))
+            return WaitForFiringSolutionOrFail();
 
         // กระสุนหมด / รีโหลดอยู่
         var weaponState = CTX.stateHub.WeaponSM.CurrentId;
@@ -103,24 +136,37 @@ public class AiShoot : Action
         // ---------- Phase: Firing ----------
         if (phase == ShootPhase.Firing)
         {
+            if (!IsAimAligned(aimPoint))
+                return WaitForFiringSolutionOrFail();
+
+            fireSolutionLostTime = float.NegativeInfinity;
+
+            if (!phaseTimerStarted)
+            {
+                float fireTime = (fireDuration != null) ? fireDuration.Value : 3f;
+                stateEndTime = GetActorTime() + Mathf.Max(0.01f, fireTime);
+                phaseTimerStarted = true;
+            }
+
             StartFire(CTX);
 
-            if (TimeSlowManager.Instance.WorldTime >= stateEndTime)
+            if (GetActorTime() >= stateEndTime)
             {
                 StopFire(CTX);
 
                 phase = ShootPhase.Waiting;
                 float waitTime = (waitDuration != null) ? waitDuration.Value : 5f;
-                stateEndTime = TimeSlowManager.Instance.WorldTime + Mathf.Max(0.01f, waitTime);
+                stateEndTime = GetActorTime() + Mathf.Max(0.01f, waitTime);
             }
 
             return TaskStatus.Running;
         }
 
         // ---------- Phase: Waiting ----------
+        fireSolutionLostTime = float.NegativeInfinity;
         StopFire(CTX);
 
-        if (TimeSlowManager.Instance.WorldTime >= stateEndTime)
+        if (GetActorTime() >= stateEndTime)
         {
             // รอครบแล้ว จบ task สำเร็จ
             return TaskStatus.Success;
@@ -148,21 +194,168 @@ public class AiShoot : Action
         returnSuccessWhenTargetLost = true;
         faceTarget = false;
         turnSpeed = 720f;
+        requireLineOfSight = true;
+        minFireRange = 0.5f;
+        maxFireRange = 10f;
+        aimToleranceDegrees = 8f;
+        fireSolutionLossTimeout = 0.5f;
     }
 
-    private void RotateTowardTarget(GameObject currentTarget)
+    private AITargetSensor ResolveTargetSensor()
+    {
+        AllyContext allyContext = CTX as AllyContext;
+        if (allyContext != null && allyContext.AITargetSensor != null)
+            return allyContext.AITargetSensor;
+
+        if (CTX == null)
+            return null;
+
+        AITargetSensor sensor = CTX.GetComponent<AITargetSensor>();
+        if (sensor == null)
+            sensor = CTX.GetComponentInChildren<AITargetSensor>(true);
+
+        return sensor;
+    }
+
+    private void CacheTarget(Transform currentTarget)
+    {
+        if (cachedTarget == currentTarget)
+            return;
+
+        cachedTarget = currentTarget;
+        cachedTargetable = FindTargetable(currentTarget);
+        cachedAimPoint = cachedTargetable != null ? cachedTargetable.AimPoint : null;
+    }
+
+    private void ClearTargetCache()
+    {
+        cachedTarget = null;
+        cachedTargetable = null;
+        cachedAimPoint = null;
+    }
+
+    private IAITargetable FindTargetable(Transform currentTarget)
+    {
+        if (currentTarget == null)
+            return null;
+
+        MonoBehaviour[] parentComponents =
+            currentTarget.GetComponentsInParent<MonoBehaviour>(true);
+        for (int i = 0; i < parentComponents.Length; i++)
+        {
+            if (parentComponents[i] is IAITargetable targetable)
+                return targetable;
+        }
+
+        MonoBehaviour[] childComponents =
+            currentTarget.GetComponentsInChildren<MonoBehaviour>(true);
+        for (int i = 0; i < childComponents.Length; i++)
+        {
+            if (childComponents[i] is IAITargetable targetable)
+                return targetable;
+        }
+
+        return null;
+    }
+
+    private bool IsTaskTargetStillValid(Transform currentTarget)
+    {
+        if (cachedTargetable != null &&
+            (!cachedTargetable.IsAlive || !cachedTargetable.IsTargetable))
+        {
+            return false;
+        }
+
+        if (targetSensor == null)
+            return true;
+
+        Transform sensorTarget = targetSensor.CurrentTarget;
+        return sensorTarget != null && IsSameTarget(sensorTarget, currentTarget);
+    }
+
+    private static bool IsSameTarget(Transform first, Transform second)
+    {
+        return first == second ||
+               first.IsChildOf(second) ||
+               second.IsChildOf(first);
+    }
+
+    private Vector3 ResolveAimPoint(Transform currentTarget)
+    {
+        if (cachedAimPoint != null)
+            return cachedAimPoint.position;
+
+        return currentTarget != null ? currentTarget.position : actorTransform.position;
+    }
+
+    private bool HasValidFiringPosition(Vector3 aimPoint)
+    {
+        if (targetSensor != null && requireLineOfSight && !targetSensor.HasLineOfSight)
+            return false;
+
+        Vector3 offset = aimPoint - actorTransform.position;
+        offset.y = 0f;
+        float distance = offset.magnitude;
+
+        if (minFireRange > 0f && distance < minFireRange)
+            return false;
+
+        return maxFireRange <= 0f || distance <= maxFireRange;
+    }
+
+    private bool IsAimAligned(Vector3 aimPoint)
+    {
+        if (!faceTarget || aimToleranceDegrees <= 0f || actorTransform == null)
+            return true;
+
+        Vector3 direction = aimPoint - actorTransform.position;
+        direction.y = 0f;
+        if (direction.sqrMagnitude <= 0.0001f)
+            return true;
+
+        return Vector3.Angle(actorTransform.forward, direction) <= aimToleranceDegrees;
+    }
+
+    private TaskStatus WaitForFiringSolutionOrFail()
+    {
+        StopFire(CTX);
+
+        float now = GetActorTime();
+        if (float.IsNegativeInfinity(fireSolutionLostTime))
+            fireSolutionLostTime = now;
+
+        return fireSolutionLossTimeout <= 0f ||
+               now - fireSolutionLostTime >= fireSolutionLossTimeout
+            ? TaskStatus.Failure
+            : TaskStatus.Running;
+    }
+
+    private TaskStatus TargetLostStatus()
+    {
+        bool successWhenLost =
+            returnSuccessWhenTargetLost != null && returnSuccessWhenTargetLost.Value;
+        return successWhenLost ? TaskStatus.Success : TaskStatus.Failure;
+    }
+
+    private float GetActorTime()
+    {
+        if (CTX != null && CTX.UsesWorldSlow && TimeSlowManager.Instance != null)
+            return TimeSlowManager.Instance.WorldTime;
+
+        return Time.time;
+    }
+
+    private void RotateTowardTarget(Vector3 aimPoint)
     {
         if (!faceTarget ||
             turnSpeed <= 0f ||
             actorTransform == null ||
-            currentTarget == null ||
             !CTX.stateHub.CanRotate())
         {
             return;
         }
 
-        Vector3 direction =
-            currentTarget.transform.position - actorTransform.position;
+        Vector3 direction = aimPoint - actorTransform.position;
         direction.y = 0f;
         if (direction.sqrMagnitude <= 0.0001f)
             return;

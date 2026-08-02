@@ -105,6 +105,30 @@ movement and writes normalized speed plus local direction into `StateHub`.
 It also supports companion separation from the player by resolving the player
 through `CharacteContext.TargetIdentity == Player`.
 
+### Ally Burst Shooting
+
+`Assets\Scripts\AI\Ally TEST Scripts\AiShoot.cs` owns the firing portion of
+the ally combat loop. It uses the graph-provided target together with the
+ally's `AITargetSensor`; it does not perform another target scan.
+
+Before firing, the task requires the target to remain alive and targetable,
+inside the configured planar `minFireRange` / `maxFireRange`, and in line of
+sight when `requireLineOfSight` is enabled. When `faceTarget` is enabled, the
+ally turns toward the target's `IAITargetable.AimPoint` and does not start the
+burst until it is within `aimToleranceDegrees`. The configured `fireDuration`
+therefore measures actual firing time rather than including the initial turn.
+
+A blocked firing solution stops held fire immediately. If the solution does
+not recover within `fireSolutionLossTimeout`, the task returns failure so the
+Behavior Tree can choose a movement or reposition branch. Losing the target
+uses `returnSuccessWhenTargetLost`. Normal completion fires for
+`fireDuration`, waits for `waitDuration`, then returns success so the combat
+tree can evaluate the target and position again.
+
+The task restores the `NavMeshAgent.updateRotation` value and cancels held
+fire on every normal or aborted exit. Its timers use world time for actors
+whose context has `UsesWorldSlow` enabled.
+
 ### Party Formation
 
 `PartyFormationController` on the Player owns the out-of-combat companion

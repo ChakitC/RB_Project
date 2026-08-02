@@ -2,6 +2,31 @@
 
 This file records canonical project terms. It is a glossary, not an implementation specification.
 
+## Map Progression Terms
+
+- **Test Stage** — a selectable map-progression band used to test continuous character growth across a defined level range over multiple runs.
+  _Avoid_: Test Map, Level Bracket Map
+- **Stage Placard** — a selectable map placard on the Basement Mobiliz board associated with one Test Stage. It is a direct selection and does not imply a level gate or world-space portal.
+  _Avoid_: Stage Card, Level Gate, Stage Lock, World Portal
+- **Mobiliz Board Page** — one page of Stage Placards on the Basement Mobiliz board. Adjacent pages are reached with bounded left and right navigation rather than wrapping around.
+  _Avoid_: Map Submenu, Carousel Loop
+- **Stage Run** — one attempt in a Test Stage that counts only after the Boss is cleared and the party returns to the Basement. Death, abandonment, or leaving before that return does not complete the run.
+  _Avoid_: Map Attempt, Room Run
+- **Stage XP Budget** — the approximate experience available during one successful Stage Run, derived from a Level Table range and its target number of successful runs. It targets a progression pace rather than guaranteeing an exact ending level.
+  _Avoid_: Forced Level, Guaranteed XP
+- **Stage Completion Bonus** — the completion-only portion of the Stage XP Budget granted to every deployed party member after the Stage Exit successfully returns the party to the Basement.
+  _Avoid_: Boss Kill XP, Attempt Reward
+- **Party XP Award** — experience granted in full to every deployed party member participating in the Stage Run, independent of which character lands the final hit. Characters left in the Basement roster do not receive it.
+  _Avoid_: Last-hit XP, Shared XP Split
+- **Stage Exit** — the player-activated return point revealed after the Boss is cleared, allowing the party to finish the Stage Run and return to the Basement after collecting rewards.
+  _Avoid_: Automatic Return, Boss Teleport
+- **Enemy Level** — the combat-scaling level assigned by the current Test Stage to enemies spawned during its Stage Run. Enemy prefabs provide base stats and per-level growth but do not choose this level.
+  _Avoid_: Prefab Level, Player-owned Enemy Level
+- **Stage Progress Count** — the Save/Profile-wide progression count retained across play sessions for one Test Stage. It advances after completed Stage Runs until the stage's final Enemy Level tier, then remains capped while the stage stays repeatable for farming.
+  _Avoid_: Attempt Count, Lifetime Clear Count, Global Run Count
+- **Run Seed** — the resolved random seed identifying the generated layout of one Stage Run. A recorded Run Seed allows that layout to be reproduced for testing.
+  _Avoid_: Stage ID, Save Seed
+
 ## Active Skill Terms
 
 - **Skill Slot** — one position in a character's active-skill loadout. It has a stable `slotId` and can contain multiple Skill Variants.

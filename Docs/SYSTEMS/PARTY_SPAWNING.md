@@ -24,7 +24,8 @@ The marker runs early from `Awake` and creates an inactive
 `PartyRuntimeRoot`. It instantiates all four actors and Player UI, then performs
 runtime binding while the roots are inactive:
 
-1. assign each `CharacterContextPartyLoader` party index;
+1. assign each `CharacterContextPartyLoader` party index, load its
+   `CharacterStats`, and apply the optional AI behavior Subtree;
 2. configure `FieldAllyMember` roles;
 3. bind Behavior Designer's `player` GameObject in graph variables or
    GameObject shared variables;
@@ -35,6 +36,11 @@ runtime binding while the roots are inactive:
 8. call `IPartySpawnedReceiver.PrepareParty` on scene receivers;
 9. activate actors, activate UI, then call `PartySpawned` and the static
    `PartySpawnPoint.Spawned` event.
+
+For allies that share the same prefab, assign `CharacterStats.behaviorSubtree`
+per character. The loader applies that Subtree while the party root is inactive
+and before Behavior Designer's `player` variable is bound. A missing Subtree
+keeps the prefab-authored behavior as a backward-compatible fallback.
 
 Any exception or failed binding rolls back the incomplete runtime objects. The
 system does not automatically respawn a party member after death. Scene changes

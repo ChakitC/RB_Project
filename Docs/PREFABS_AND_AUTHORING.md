@@ -759,6 +759,12 @@ Ally prefabs commonly need:
 - weapon or skill systems if the ally can attack
 - stats, health, passive, animation, and state systems
 
+When multiple allies share one runtime prefab, assign each character's
+Behavior Designer graph through `CharacterStats > AI > Behavior Subtree`.
+`CharacterContextPartyLoader` applies the selected Subtree to that ally's
+`BehaviorTree` instance before party runtime variable binding. Leave the field
+empty only when the prefab-authored behavior should remain as the fallback.
+
 Ally-only systems may depend on `AllyContext` when they need ally-specific
 fields such as `AITargetSensor`, `NavMeshAgent`, or `AgentMoveDriver`.
 

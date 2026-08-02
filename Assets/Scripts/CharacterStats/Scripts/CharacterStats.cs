@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Opsive.BehaviorDesigner.Runtime;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Playables;
@@ -189,6 +190,10 @@ public class CharacterStats : ScriptableObject
     [PropertyOrder(-153)]
     [FoldoutGroup("Character Detail", Expanded = true), LabelText("Anim Profile"), AssetsOnly]
     public CharacterAnimProfileSO animProfile;
+
+    [PropertyOrder(-152)]
+    [FoldoutGroup("AI", Expanded = false), LabelText("Behavior Subtree"), AssetsOnly]
+    public Subtree behaviorSubtree;
 
     [PropertyOrder(-152)]
     [FoldoutGroup("Third Person", Expanded = false), LabelText("TPS Profile")]

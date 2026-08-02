@@ -56,6 +56,7 @@ public static class PartyRuntimeBinder
             }
 
             actor.PartyLoader.ConfigurePartyIndex(actor.PartyIndex);
+            actor.PartyLoader.TryApplyRuntimeDefinition();
             actor.FieldMember.ConfigureRuntime(actor.Role, fieldManager);
             members.Add(actor.FieldMember);
 

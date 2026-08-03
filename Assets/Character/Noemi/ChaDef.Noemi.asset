@@ -15,14 +15,41 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 844d8a734333e144a84157a3d6ac1210, type: 3}
   characterId: ID.Noemi
   characterName: Noemi
+  CharacterWeaponType: 6
   CharacterPrefab: {fileID: 6880289854966530945, guid: 27694573f02cf864493d4799a6c90543, type: 3}
   CharacterPrefabBasement: {fileID: 6291370195802206555, guid: 3162f4cb2c5fa00429c826e50c2dfc06, type: 3}
   characterAvatar: {fileID: 9000000, guid: c3ad3ffbeca2c8d469e319eff2954ddf, type: 3}
   controller: {fileID: 9100000, guid: 48e6511e44d5d4348855e0d5067a844b, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
+  behaviorSubtree: {fileID: 0}
+  thirdPersonProfile:
+    pivotOffset: {x: 0, y: 1.55, z: 0}
+    shoulderOffset: {x: 0.48, y: -0.2, z: 0}
+    verticalArmLength: 0.25
+    cameraDistance: 3.2
+    aimCameraDistance: 2.7
+    cameraSide: 1
+    followDamping: {x: 0.08, y: 0.12, z: 0.08}
+    minimumPitch: -55
+    maximumPitch: 72
+    freeLookFov: 60
+    shoulderAimFov: 48
+    yawSensitivityMultiplier: 1
+    pitchSensitivityMultiplier: 1
+    chestAimWeight: 0.55
+    upperChestAimWeight: 0.7
+    spineAimWeight: 0.35
+    maximumUpperBodyPitch: 55
+    maximumUpperBodyYaw: 65
+    collisionRadius: 0.22
+    fadeStartDistance: 1.05
+    fadeFullyHiddenDistance: 0.5
   weaponHandMode: 3
   combatRole: 0
   chainAttackSkill: {fileID: 0}
+  introChainCutscene: {fileID: 0}
+  skillSlots: []
+  activeSkillPointsPerLevel: 1
   maxHP: 1000
   maxStamina: 80
   Damage: 10

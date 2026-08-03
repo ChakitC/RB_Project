@@ -15,14 +15,41 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 28e7cb120529af14f862ecb36d8ff881, type: 3}
   characterId: ID.Feno
   characterName: Feno
+  CharacterWeaponType: 5
   CharacterPrefab: {fileID: 8073746211628435587, guid: fbe4b2d13f588374f8d255bef213e276, type: 3}
   CharacterPrefabBasement: {fileID: 1573142221251232858, guid: 3aa33a97252aa184fb72da364bee813c, type: 3}
   characterAvatar: {fileID: 9000000, guid: 593976350e751b340bc9e474264dda15, type: 3}
   controller: {fileID: 9100000, guid: 0ac7642607b38b64da8fcff818c6002b, type: 2}
   animProfile: {fileID: 11400000, guid: 9e6c70081042d694b98b49b92ad5c08d, type: 2}
+  behaviorSubtree: {fileID: 0}
+  thirdPersonProfile:
+    pivotOffset: {x: 0, y: 1.55, z: 0}
+    shoulderOffset: {x: 0.48, y: -0.2, z: 0}
+    verticalArmLength: 0.25
+    cameraDistance: 3.2
+    aimCameraDistance: 2.7
+    cameraSide: 1
+    followDamping: {x: 0.08, y: 0.12, z: 0.08}
+    minimumPitch: -55
+    maximumPitch: 72
+    freeLookFov: 60
+    shoulderAimFov: 48
+    yawSensitivityMultiplier: 1
+    pitchSensitivityMultiplier: 1
+    chestAimWeight: 0.55
+    upperChestAimWeight: 0.7
+    spineAimWeight: 0.35
+    maximumUpperBodyPitch: 55
+    maximumUpperBodyYaw: 65
+    collisionRadius: 0.22
+    fadeStartDistance: 1.05
+    fadeFullyHiddenDistance: 0.5
   weaponHandMode: 0
   combatRole: 3
   chainAttackSkill: {fileID: 0}
+  introChainCutscene: {fileID: 0}
+  skillSlots: []
+  activeSkillPointsPerLevel: 1
   maxHP: 1100
   maxStamina: 90
   Damage: 9

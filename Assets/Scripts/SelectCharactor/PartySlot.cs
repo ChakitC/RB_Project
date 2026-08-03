@@ -24,6 +24,7 @@ public class PartySlot : MonoBehaviour
     public int CurrentSlot => SaveManager.Instance != null ? SaveManager.Instance.currentSlot : currentSlot;
     public int PartyIndex => partyIndex;
     public CharacterStats Selected => selected;
+    public event System.Action<CharacterStats> SelectedChanged;
 
     void Awake()
     {
@@ -117,6 +118,7 @@ public class PartySlot : MonoBehaviour
 
         selected = def;
         IDCharacter = def ? def.characterId : "";
+        SelectedChanged?.Invoke(selected);
 
         if (save && SaveManager.Instance != null)
             SaveManager.Instance.SaveParty();

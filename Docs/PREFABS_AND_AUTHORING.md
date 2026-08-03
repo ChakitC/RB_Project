@@ -1093,6 +1093,33 @@ migration tool scans all `StatusEffectDef` assets and sets `locomotionPose`
 based on the old string heuristic. Assets left as `Auto` use the structured
 fallback automatically.
 
+## Basement Character Info Cards
+
+`Assets/Prefab/User Interface/CharactorInfo.prefab` uses `CharacterInfoView` to
+display the `PartySlot.Selected` character assigned to each card in the
+Basement scene. The view resolves its `PartySlot` from the existing
+`FollowWorldToScreenUI.target`, refreshes when the slot selection changes, and
+hides the card content while the slot has no selected character.
+
+The bound fields are the character name, `CharacterWeaponType`, combat-role
+text, and combat-role icon. `SMG` and `HMG` are formatted as uppercase
+abbreviations. Rank remains prefab-authored and is not currently read from
+character data.
+
+Combat-role sprites are configured through the `Role Icons` list on
+`CharacterInfoView`; change that list when role art or role-to-icon grouping
+changes. Keep all six `CharacterCombatRole` entries covered. The Basement
+instances must continue to point `FollowWorldToScreenUI.target` at the same
+`PartySlot` passed by the `Edid` button to `UILoadLaval.BindSlot`. Each button
+also keeps its existing `GameObject.SetActive(true)` call for opening the edit
+panel.
+
+`CanvaCharactorInfo` is a HUD layer and must keep sorting order `0`, below the
+main `UI` Canvas at order `1`. This lets Shop, Upgrade, Inventory, and future
+modal screens cover the cards without adding per-screen hide/show events.
+Decorative images and text inside `CharactorInfo.prefab` must keep `Raycast
+Target` disabled; only the `Edid` button's target image should receive raycasts.
+
 ## Basement Character Shop
 
 `Assets/Prefab/User Interface/Shop/ShopPanel_Starter.prefab` contains

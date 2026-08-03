@@ -20,7 +20,7 @@
             "progress": {
                 "level": 30,
                 "xp": 0,
-                "unlocked": false,
+                "unlocked": true,
                 "skillPoints": 29,
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": [],
@@ -35,7 +35,7 @@
             "progress": {
                 "level": 30,
                 "xp": 0,
-                "unlocked": false,
+                "unlocked": true,
                 "skillPoints": 29,
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": [],
@@ -65,7 +65,7 @@
             "progress": {
                 "level": 30,
                 "xp": 0,
-                "unlocked": false,
+                "unlocked": true,
                 "skillPoints": 29,
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": [],
@@ -134,7 +134,7 @@
             "progress": {
                 "level": 30,
                 "xp": 0,
-                "unlocked": false,
+                "unlocked": true,
                 "skillPoints": 9,
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": [],

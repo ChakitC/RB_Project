@@ -12,19 +12,49 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee0d6ef073118da4dbabdd47dabdedc7, type: 3}
   m_Name: ChaDef.Roger
   m_EditorClassIdentifier: 
+  icon: {fileID: 21300000, guid: c2bf226318636b347bd4775eab8b9353, type: 3}
   characterId: ID.Roger
   characterName: Roger
-  icon: {fileID: 21300000, guid: c2bf226318636b347bd4775eab8b9353, type: 3}
+  CharacterWeaponType: 6
   CharacterPrefab: {fileID: 7728014391609529648, guid: 9825266718e5e7d4f89962764e689158, type: 3}
   CharacterPrefabBasement: {fileID: 5358490787443463952, guid: bc56484e0a2221946a51ae0eb45d5d80, type: 3}
   characterAvatar: {fileID: 9000000, guid: 43f45bf73dac45e43ad9de42bb9938e8, type: 3}
   controller: {fileID: 9100000, guid: 108e6fe407750bc4ba608605b8d13a76, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
+  behaviorSubtree: {fileID: 0}
+  thirdPersonProfile:
+    pivotOffset: {x: 0, y: 1.55, z: 0}
+    shoulderOffset: {x: 0.48, y: -0.2, z: 0}
+    verticalArmLength: 0.25
+    cameraDistance: 3.2
+    aimCameraDistance: 2.7
+    cameraSide: 1
+    followDamping: {x: 0.08, y: 0.12, z: 0.08}
+    minimumPitch: -55
+    maximumPitch: 72
+    freeLookFov: 60
+    shoulderAimFov: 48
+    yawSensitivityMultiplier: 1
+    pitchSensitivityMultiplier: 1
+    chestAimWeight: 0.55
+    upperChestAimWeight: 0.7
+    spineAimWeight: 0.35
+    maximumUpperBodyPitch: 55
+    maximumUpperBodyYaw: 65
+    collisionRadius: 0.22
+    fadeStartDistance: 1.05
+    fadeFullyHiddenDistance: 0.5
+  weaponHandMode: 0
+  combatRole: 0
+  chainAttackSkill: {fileID: 0}
+  introChainCutscene: {fileID: 0}
+  skillSlots: []
+  activeSkillPointsPerLevel: 1
   maxHP: 1000
   maxStamina: 80
   Damage: 10
-  critMultiplier: 1.5
   armor: 10
+  critMultiplier: 1.5
   critRate: 7
   Enagy: 100
   speed: 4.5
@@ -37,3 +67,38 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
+  passives: []
+  dashCue: {fileID: 0}
+  voiceProfile:
+    defaultSkillVoiceCue: {fileID: 0}
+    defaultSkillVoiceChance: 1
+    defaultSkillVoiceCooldown: 0
+    globalSkillVoiceCooldown: 0.25
+    skillCastLines: []
+    dashVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    knockbackVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    selectCharacterVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    pickupCharacterVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    lowHpVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    lowHpThreshold: 0.3
+  meleeLightCue: {fileID: 0}
+  meleeHeavyCue: {fileID: 0}
+  damagedCue: {fileID: 0}
+  downCue: {fileID: 0}
+  deathCue: {fileID: 0}
+  reviveCue: {fileID: 0}

@@ -72,6 +72,46 @@ default config and migrate the supported gameplay scenes. Use
 prefab, the UI prefab, the config, or a gameplay scene. `PlayerSquad.prefab`
 remains only as a legacy migration source and is not a runtime dependency.
 
+## Interaction Indicator UI
+
+`Assets/Prefab/User Interface/InteractionIndicator.prefab` is the shared
+world-space prompt for every `IInteractable`. `PlayerUI.prefab` owns one
+`InteractionIndicatorPresenter`; `PlayerUIRuntimeBinder` binds it to the
+runtime Player and the presenter reuses a single indicator instance rather
+than adding a Canvas to every interactable.
+
+The indicator appears only for the interactable currently focused by the
+Player `Interactor`. Its center label reads the active Input System binding for
+the existing `Interract` action, and its action label comes from
+`IInteractable.GetPrompt`. Keep prompts short, such as `Heal`, `Refill Ammo`,
+`Open Shop`, or `Revive`.
+
+While the Player is aiming, the `Interactor` resolves focus along the
+`ThirdPersonAimController` camera ray, so the reticle selects the interactable.
+The target must still be inside the Interactor's authored `maxDistance`; camera
+aim does not grant long-range interaction, and the aim collision hit prevents
+selection through blocking geometry. When the Player is not aiming, focus uses
+the existing sphere cast in front of the character. Keep interactable colliders
+on a layer included by the Player Interactor's `interactMask`.
+
+For normal objects, the indicator follows the center of the collider hit by the
+Interactor. Add `InteractionIndicatorAnchor` to an interactable hierarchy only
+when that automatic center is unsuitable, then assign its `Anchor Override`
+Transform. The indicator faces the gameplay camera and scales with camera
+distance to preserve a consistent apparent size. It uses the `WorldUI` layer,
+which must remain rendered by the `WorldUICamera` overlay.
+
+Only `IHoldInteractable` targets fill the radial progress ring. Progress uses
+that target's `HoldDuration`, resets immediately when the input is released or
+the hold becomes invalid, and pulses once when the completed interaction is
+accepted. Instant interactions retain their existing one-press behavior.
+
+Edit colors, type sizes, and ring geometry on the indicator prefab. Transition
+and completion-pulse timing are exposed on `InteractionIndicatorView`; distance
+scaling and the action name are exposed on `InteractionIndicatorPresenter` in
+`PlayerUI.prefab`. Rebuild the generated prefab and restore its PlayerUI binding
+with **Tools > RB > UI > Build Interaction Indicator Prefab**.
+
 ## Map Room Spawn And Party Warp
 
 `MapRunController` places the player at the entrance selected by
@@ -100,6 +140,40 @@ cached room is revisited.
 `Temporary` children automatically. Do not add serialized prefab references
 for these runtime roots. Normal item drops use `Persistent`, spawned enemies
 use `Encounter`, and room-scoped disposable objects may use `Temporary`.
+
+Test Stage combat rooms must author four `enemySpawnPoints` because the current
+encounters allow at most four simultaneous enemies. Additional enemies are
+created by later waves after the prior wave clears. The Test Stage Boss room
+must author one Boss spawn point plus `stageExitSpawnPoint`; keep the exit away
+from the Boss spawn so the portal remains usable around the corpse and drops.
+The Stage Exit root and its trigger collider must use the `Interactable` layer
+so the Player `Interactor` sphere cast can focus it and show the return prompt.
+
+The supported Test Stage enemy prefabs are the four Variant prefabs under
+`Assets/Prefab/GameEnemy`. Each must bind its canonical `CharacterStats` asset
+and carry `EnemyLevelSystem` on the `EnemyContext` object. Do not put a fixed
+combat level on these prefabs: `MapRunController` assigns it from the selected
+stage when the encounter spawns the enemy.
+
+Canonical Test Stage stats replace combat numbers only. They must retain the
+matching Variant's character prefab, Avatar, Animator Controller, Anim Profile,
+behavior subtree, weapon-hand mode, and combat role. An empty `animProfile`
+prevents `CharacterAnimBrain` from initializing and leaves the enemy model
+without locomotion or combat animation.
+
+Use **Tools > RB Project > Map > Apply Test Stage Content** only when the
+canonical Test Stage data, room sockets, enemy stat/weapon/drop-profile
+bindings, or Basement board must be regenerated. The authoring tool is
+idempotent but deliberately rewrites those owned assets. The Test Stage Heal
+room prefab should author one `HealInteractable` station and one
+`AmmoRefillInteractable` station, each with an `InteractableLink`, collider, and
+the `Interactable` layer. `RoomController` configures them as a one-use 50%
+party Heal Point and a reserve-only party Ammo Point; simple runtime fallbacks
+are created only when an authored station is missing. The authoring tool binds
+the existing `RoomDefinition.Heal` into all three Test Stage configs without
+rewriting that room asset. Keep the definition enabled, assigned to a prefab,
+and at two or more exits; the pre-Boss blue-node validator requires a usable
+multi-exit Heal definition.
 
 ## Third-Person Character Calibration
 
@@ -232,8 +306,10 @@ Character prefabs use `Assets/UI/CharacterOverheadBars.prefab` through the
 instance on the configured health-bar bone and binds `CharacterOverheadBarsView`
 to the actor's `HealthSystem` and optional `StaggerMeter`.
 
-The upper bar shows current HP in green with missing HP in muted red. The lower
-bar shows current stagger in yellow with unfilled capacity in muted brown.
+The upper bar shows current HP in green with missing HP in muted red and displays
+the owning character's current level as `Lv N`. The label listens to
+`LevelSystem` for companions and `EnemyLevelSystem` for enemies. The lower bar
+shows current stagger in yellow with unfilled capacity in muted brown.
 Characters without a `StaggerMeter` hide the lower bar. Keep
 `StaggerMeter.staggerBarPrefab` unassigned when using the combined overhead bar
 so a second stagger bar is not created. The same prefab also contains the
@@ -241,6 +317,27 @@ ChainReady prompt and binds it to the actor's `StaggerMeter` automatically.
 The local player does not instantiate this overhead bar; player HP/stagger
 belongs to the HUD. Enemy and companion overhead bars hide when world geometry
 blocks line of sight.
+
+## Inventory Window UI
+
+`Assets/UI/Canvas InventoryWindow.prefab` owns `InventoryUI`, and
+`Assets/UI/SlotUI.prefab` owns the reusable slot presentation. Keep the grid at
+nine columns and four visible rows unless the inventory-window design itself is
+being revised. `InventoryUI` calculates square cell size from the viewport, so
+do not author fixed slot sizes on instantiated slot objects.
+
+The prefab authors the complete `InventoryScrollView/Viewport/GridRoot`
+hierarchy and vertical scrollbar. Adjust the scroll-view margins, viewport
+padding, scrollbar width/spacing, and `InventoryUI.slotSpacing` in Prefab Mode;
+these values persist and are used by the responsive runtime calculation.
+`InventoryUI` still creates the same hierarchy as a defensive fallback for old
+or misconfigured prefabs whose serialized references are missing. The scrollbar
+and wheel scrolling should appear only when content exceeds four rows.
+
+`SlotUI.prefab` uses a subdued empty background, a gold hover state, and
+rarity-colored borders for weapon instances. Keep its icon image set to
+preserve aspect ratio and leave pointer raycasts on the slot root rather than on
+the icon, amount label, or hover overlay.
 
 ## Equipment Upgrade UI
 
@@ -262,6 +359,19 @@ Dismantle only when `EquipmentAssignmentService` reports that the instance is
 not equipped by any character. Inventory slots and the selected-item slot show
 the assigned character portrait when the instance is equipped, matching the
 portrait marker used by `UIEquipment`.
+
+## Menu Bar Save Slots
+
+`Assets/Prefab/User Interface/MenuBar.prefab` includes `MenuBarSaveSlotUI` on
+its root Canvas. The component creates the save-slot panel and confirmation
+overlay at runtime without requiring external sprites or font assets. Keep it on
+the Canvas root so its confirmation overlay can block the full menu.
+
+The panel provides `Save 1` through `Save 3`, highlights the current slot,
+marks empty slots, and disables Reset when the current slot has no data. Slot
+switches and resets both require confirmation and reload `Basement` through
+`SaveManager` without calling `SceneLoaderSystem.LoadBasement`, because that
+scene-loader method saves before changing scenes.
 
 ## Skill Hitbox Layout Authoring
 
@@ -982,6 +1092,32 @@ run `Tools > Status > Migrate Locomotion Pose` once after upgrading. The
 migration tool scans all `StatusEffectDef` assets and sets `locomotionPose`
 based on the old string heuristic. Assets left as `Auto` use the structured
 fallback automatically.
+
+## Basement Character Shop
+
+`Assets/Prefab/User Interface/Shop/ShopPanel_Starter.prefab` contains
+`ShopPanelUI` and `CharacterShopPageUI`. The Basement scene uses this prefab
+under the `UIShop` Canvas. At runtime the panel adds persistent `ITEMS` and
+`CHARACTERS` tabs, builds the character rows from
+`CharacterDatabase.characters`, and keeps the existing item-shop page intact.
+
+To add a playable character to the shop:
+
+1. Add its `CharacterStats` asset to `CharacterDatabase.characters`.
+2. Add a matching `CharacterDatabase.unlockEntries` entry.
+3. Set `unlockedByDefault`, `goldCost`, and the optional locked message on that
+   entry.
+
+The row uses `CharacterStats.icon` and `characterName`, so no character-row
+prefab edit is required. Characters without a matching unlock entry still
+appear, but they remain locked with `NOT FOR SALE` and emit an authoring warning.
+Purchases ask for confirmation, spend gold from the bound `PlayerInventory`,
+and save both the unlock and inventory balance to the active save slot.
+
+`Tools > Shop > Create Starter UI Prefabs` preserves this setup when rebuilding
+the starter shop prefabs. Keep the `CharacterDatabase` reference on
+`CharacterShopPageUI` and the `characterShopPage` reference on `ShopPanelUI`
+when creating prefab variants.
 
 ## Before Removing A Serialized Field
 

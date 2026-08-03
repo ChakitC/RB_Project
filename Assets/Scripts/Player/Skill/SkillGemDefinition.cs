@@ -94,6 +94,10 @@ public class SkillGemDefinition : ScriptableObject
     public float baseDamage = 10f;
 
     [PropertyOrder(-79)]
+    [FoldoutGroup("Gameplay", Expanded = true), LabelText("Damage Coefficient"), MinValue(0f)]
+    public float damageCoefficient;
+
+    [PropertyOrder(-79)]
     [FoldoutGroup("Gameplay", Expanded = true), LabelText("Stagger Power"), MinValue(0f)]
     public float baseStaggerPower = 10f;
 

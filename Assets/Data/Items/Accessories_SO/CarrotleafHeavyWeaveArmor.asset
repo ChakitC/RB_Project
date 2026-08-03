@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId: Accessory.CarrotleafHeavyWeaveArmor
   displayName: Carrotleaf Heavy Weave Armor
-  description: Increases maximum HP by 100 and armor by 10, but reduces stamina regeneration
-    rate by 20%.
+  description: Increases maximum HP by 5% and adds 2 armor, but reduces stamina regeneration
+    rate by 10%.
   icon: {fileID: 21300000, guid: 18cbbd28d32341146a962e8fbb248e42, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
@@ -24,22 +24,22 @@ MonoBehaviour:
   itemType: 7
   stackable: 0
   maxStack: 1
-  baseBuyPrice: 0
-  baseSellPrice: 0
+  baseBuyPrice: 200
+  baseSellPrice: 60
   tags:
   - HP
   - Armor
   - Stamina
   statModifiers:
   - statType: 11
-    operation: 0
-    value: 100
+    operation: 1
+    value: 5
   - statType: 7
     operation: 0
-    value: 10
+    value: 2
   - statType: 20
     operation: 1
-    value: -20
+    value: -10
   passives: []
   rollModifierOnCreate: 0
   noModifierWeight: 1

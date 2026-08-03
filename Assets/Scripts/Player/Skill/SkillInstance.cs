@@ -64,6 +64,9 @@ public class SkillInstance
         };
 
         def.ApplyLevelData(stats, def.ClampLevel(level));
+        if (user?.StatsHub != null && def.damageCoefficient > 0f)
+            stats.damage += Mathf.Max(0f, user.StatsHub.GetSkillBaseDamage()) * def.damageCoefficient;
+
         upgradeSnapshot?.Apply(stats);
 
         foreach (var support in supports)

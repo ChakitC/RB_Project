@@ -8,6 +8,8 @@ public class ShopInteractable : MonoBehaviour, IInteractable
     [SerializeField] private int priority;
     [SerializeField] private string prompt = "Open Shop";
 
+    private ShopCatalogBase runtimeCatalog;
+
     public int Priority => priority;
 
     public string GetPrompt(Interactor interactor)
@@ -35,10 +37,30 @@ public class ShopInteractable : MonoBehaviour, IInteractable
     ShopCatalogBase ResolveCatalog()
     {
         if (catalog != null)
-            return catalog;
+        {
+            if (catalog is not RandomShopCatalog randomCatalog)
+                return catalog;
+
+            if (runtimeCatalog == null)
+            {
+                var runtimeRandomCatalog = Instantiate(randomCatalog);
+                runtimeRandomCatalog.name = $"{randomCatalog.name} ({name})";
+                MapRunController runController = FindFirstObjectByType<MapRunController>();
+                runtimeRandomCatalog.ConfigureForTestStage(runController != null ? runController.RunConfig : null);
+                runtimeCatalog = runtimeRandomCatalog;
+            }
+
+            return runtimeCatalog;
+        }
 
         var panel = ResolvePanel();
         return panel != null ? panel.CurrentCatalog : null;
+    }
+
+    void OnDestroy()
+    {
+        if (runtimeCatalog != null)
+            Destroy(runtimeCatalog);
     }
 
     ShopPanelUI ResolvePanel()

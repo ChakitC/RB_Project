@@ -17,12 +17,13 @@ MonoBehaviour:
   skillId: Rector_Skill_2
   tags: 20
   description: Rector_Buff
-  baseDamage: 10
+  baseDamage: 0
+  damageCoefficient: 0
   baseStaggerPower: 10
   baseManaCost: 0
   baseCastTime: 0.5
   baseCooldown: 25
-  baseCritChance: 5
+  baseCritChance: 0
   baseProjectilesCount: 1
   projectileSpeed: 5
   AreaofEffec: 0

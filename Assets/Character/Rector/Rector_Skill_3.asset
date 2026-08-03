@@ -38,12 +38,13 @@ MonoBehaviour:
   skillId: Rector_Skill_3
   tags: 10
   description: 
-  baseDamage: 10
+  baseDamage: 90
+  damageCoefficient: 1
   baseStaggerPower: 10
   baseManaCost: 0
   baseCastTime: 0.5
-  baseCooldown: 5
-  baseCritChance: 5
+  baseCooldown: 6
+  baseCritChance: 0
   baseProjectilesCount: 1
   projectileSpeed: 25
   AreaofEffec: 0

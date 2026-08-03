@@ -62,6 +62,11 @@ public sealed class PlayerUIRuntimeBinder : MonoBehaviour
         for (int i = 0; i < fullscreenControllers.Length; i++)
             fullscreenControllers[i].BindContext(player, uiContext);
 
+        InteractionIndicatorPresenter[] interactionPresenters =
+            GetComponentsInChildren<InteractionIndicatorPresenter>(true);
+        for (int i = 0; i < interactionPresenters.Length; i++)
+            interactionPresenters[i].Bind(player);
+
         if (uiContext.activeSkillScreen != null)
             uiContext.activeSkillScreen.BindRuntime(player);
 

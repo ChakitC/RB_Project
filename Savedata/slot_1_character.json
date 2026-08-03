@@ -1,0 +1,64 @@
+{
+    "entries": [
+        {
+            "characterId": "ID.Feno",
+            "progress": {
+                "level": 7,
+                "xp": 409,
+                "unlocked": false,
+                "skillPoints": 6,
+                "passiveProgressInitialized": true,
+                "unlockedPassiveNodeIds": [],
+                "selectedSkillOptions": [],
+                "activeSkillPoints": 6,
+                "activeSkillProgressInitialized": true,
+                "activeSkillTrees": []
+            }
+        },
+        {
+            "characterId": "ID.Aires",
+            "progress": {
+                "level": 7,
+                "xp": 409,
+                "unlocked": false,
+                "skillPoints": 6,
+                "passiveProgressInitialized": true,
+                "unlockedPassiveNodeIds": [],
+                "selectedSkillOptions": [],
+                "activeSkillPoints": 6,
+                "activeSkillProgressInitialized": true,
+                "activeSkillTrees": []
+            }
+        },
+        {
+            "characterId": "ID.Milano",
+            "progress": {
+                "level": 7,
+                "xp": 409,
+                "unlocked": false,
+                "skillPoints": 6,
+                "passiveProgressInitialized": true,
+                "unlockedPassiveNodeIds": [],
+                "selectedSkillOptions": [],
+                "activeSkillPoints": 6,
+                "activeSkillProgressInitialized": true,
+                "activeSkillTrees": []
+            }
+        },
+        {
+            "characterId": "ID.Roma",
+            "progress": {
+                "level": 7,
+                "xp": 409,
+                "unlocked": false,
+                "skillPoints": 6,
+                "passiveProgressInitialized": true,
+                "unlockedPassiveNodeIds": [],
+                "selectedSkillOptions": [],
+                "activeSkillPoints": 6,
+                "activeSkillProgressInitialized": true,
+                "activeSkillTrees": []
+            }
+        }
+    ]
+}

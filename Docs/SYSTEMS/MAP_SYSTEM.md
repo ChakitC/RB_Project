@@ -6,6 +6,11 @@ the first time its node is entered, cached by `MapNode.Id`, and disabled when
 the party travels away. Returning to a visited node re-enables the same room
 instance instead of instantiating its prefab again.
 
+Exit directions are resolved against the configured room definitions during
+generation. The generator keeps its preferred layout when possible and chooses
+a compatible alternative when a room type only supports specific door shapes,
+such as a straight two-door Shop room.
+
 All cached rooms share the configured `roomSpawnAnchor`. Only the current room
 may be active. Disabling a room removes its baked `NavMeshSurface` data through
 the surface lifecycle; enabling the destination room adds that baked data
@@ -44,6 +49,138 @@ is committed only after a successful party warp.
 Starting a new run destroys every cached room and clears all runtime ownership.
 The cache is in-memory only; saving and loading a run across application
 sessions is outside the current map runtime contract.
+
+## Test Stages
+
+The Basement Mobiliz board contains a bounded second page with three Stage
+Placards. Selecting one immediately passes its `MapRunConfigSO` through the
+persistent `SceneLoaderSystem` and loads the shared `MapRun` scene. There are
+no character-level entrance gates, and every Test Stage remains replayable.
+
+The authored Test Stage configs are under `Assets/Data/Map/TestStages`:
+
+| Stage | Character range | Target clears | Enemy Level tiers | XP budget / run |
+| --- | --- | ---: | --- | ---: |
+| TEST STAGE 01 | Lv1-11 | 2 | 5, 10 | 1,625 |
+| TEST STAGE 02 | Lv11-20 | 3 | 13, 17, 20 | 2,900 |
+| TEST STAGE 03 | Lv20-30 | 5 | 22, 24, 26, 28, 30 | 5,940 |
+
+The Test Stage balance assumes the following fixed encounter composition:
+
+| Stage | Normal enemies | Elite enemies | Boss |
+| --- | ---: | ---: | ---: |
+| TEST STAGE 01 | 4 | 0 | 1 |
+| TEST STAGE 02 | 4 | 2 | 1 |
+| TEST STAGE 03 | 4 | 4 | 1 |
+
+The forced blue node immediately before the Boss is a `Heal` node. A Test Stage
+Heal room uses two independent one-use party stations authored in its prefab:
+
+- `Heal Point` restores 50% of maximum HP to each living party member. It does
+  not revive downed/dead actors and does not force a full heal.
+- `Ammo Point` fills each party member's reserve ammo to its current maximum.
+  It does not refill the loaded magazine.
+
+`RoomDefinition.Heal` uses the straight two-exit `Heal.Up.Down` room with
+encounter start, exit locking, and clear requirements disabled. Its maximum
+exit count is two, so the generator does not attach a branch to the forced Heal
+node and rotates the room to match its critical-path entrance and exit. During
+room initialization, `RoomController` configures the authored stations for
+party-wide behavior and creates simple runtime fallbacks only when a station is
+missing from the room prefab.
+
+HP and loaded/reserve ammo otherwise carry between rooms. Shop remains a branch
+dead-end node rather than the forced pre-Boss recovery node.
+
+### Test Stage Character Combat Scale
+
+| Character | Role | HP / HP-Lv | Damage / Damage-Lv | Armor / Armor-Lv | Crit / Crit Damage | Stamina | Speed |
+| --- | --- | --- | --- | --- | --- | ---: | ---: |
+| Roma | Assault | 900 / 32 | 14 / 0.55 | 6 / 0.25 | 10% / 1.6x | 80 | 4.7 |
+| Aires | Tank | 1,250 / 42 | 8 / 0.40 | 22 / 0.55 | 5% / 1.5x | 100 | 4.2 |
+| Feno | Support/HMG | 1,100 / 36 | 9 / 0.45 | 14 / 0.40 | 5% / 1.5x | 90 | 4.4 |
+| Milano | Marksman/Support | 950 / 33 | 11 / 0.50 | 8 / 0.30 | 12% / 1.75x | 80 | 4.5 |
+| Dorothy, Noemi, Roger, Abbygail | Generalist placeholder | 1,000 / 35 | 10 / 0.50 | 10 / 0.35 | 7% / 1.5x | 80 | 4.5 |
+
+All characters use 100 maximum Energy with no level growth. Stamina, critical
+chance, critical multiplier, Energy, and movement speed also have no level
+growth. Incomplete characters intentionally keep the generalist placeholder
+scale until their own weapons and skills are designed.
+
+The tuning target for a level-appropriate, familiar party is 25-45 seconds per
+normal combat room, 8-15 seconds per Elite, and 60-90 seconds for a Boss, with a
+70-80% first-attempt clear rate. Expected damage contribution is roughly
+35-40% from the controlled character, 20-22% from each field ally, and 15-20%
+from the helper. Losing one member should slow the fight materially; a viable
+solo Boss clear may take roughly two to three times longer.
+
+`Stage Progress Count` is stored per stable Stage ID and save slot in
+`slot_<n>_stage_progress.json`. It advances only when the Boss is cleared and
+the player uses the Stage Exit to return to Basement. It is capped at the
+config's target clear count; farming after the cap continues at the final
+Enemy Level tier. Use `SaveManager > Reset Test Stage Progress` from the
+component context menu for test resets.
+
+Every run resolves a fresh random seed and records it on `MapGraph.ResolvedSeed`
+and in the `MapRunController` lifecycle log. Directly playing the MapRun scene
+uses its serialized config as a legacy/editor fallback and logs that no
+Basement selection was supplied.
+
+## Test Stage Enemy Level And XP
+
+`EnemyLevelSystem` belongs to the spawned enemy and is assigned by the active
+Test Stage. Enemy Variant prefabs own only canonical Lv1 base stats and per-level
+growth. `StatsHub` evaluates scaled character stats as
+`Base + Scaling * (Level - 1)` for both players and enemies.
+
+Successful-run XP comes from the Level Table range divided by the target clear
+count. The runtime allocates 60% across regular enemies, 20% across Boss enemies,
+and 20% as the Stage Completion Bonus. Remainders are distributed across enemy
+spawns so clearing all authored enemies and taking the exit yields the exact
+per-run budget. Each award is granted in full to all four deployed party actors;
+it is not split and does not depend on last hit. Kill XP persists if the attempt
+is abandoned, while the completion bonus and Stage Progress Count require the
+Stage Exit.
+
+Legacy `MapRunConfigSO` assets with no Stage ID retain the old behavior: enemy
+prefabs are not level-overridden, XP uses `EnemyHealth.xpReward` and last-hit
+ownership, and no Stage Progress or completion bonus is recorded.
+
+### Test Stage Enemy Combat Scale
+
+Test Stage enemies use `Enemy_SMG_GR01` instead of the player/drop
+`SMG_GR01`. The enemy weapon contributes 10 damage, fires every 0.20 seconds,
+has no critical chance, and uses infinite reserve ammo. Canonical enemy
+`CharacterStats` remain separate:
+
+| Enemy | Base HP | HP/Lv | Base Damage | Damage/Lv | Base Armor | Armor/Lv |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| M1 | 380 | 7 | 15 | 3 | 3 | 0.25 |
+| M2 | 550 | 10 | 22 | 3.5 | 7 | 0.35 |
+| Elite | 1,010 | 16 | 40 | 5 | 15 | 0.50 |
+| Boss | 6,330 | 100 | 80 | 7 | 25 | 0.75 |
+
+The M1 HP curve targets 15 non-critical body shots at close SMG range for a
+Lv7 Roma against the Stage 01 Lv5 M1: 408 HP versus about 28.17 damage after
+armor per shot. Critical hits can reduce the observed count.
+The M2, Elite, and Boss HP curves are reduced on the same M1-derived scale so
+their previous durability hierarchy remains intact across later enemy levels.
+
+Their Lv1 basic projectile damage before mitigation is therefore 25, 32, 50,
+and 90 respectively. Enemy critical chance and growth are zero.
+
+## Test Stage Encounters And Exit
+
+Each stage has separate Combat and Boss encounter assets. A wave marked
+`Wait For Wave Clear` must be completely defeated before the next wave begins.
+Only the four Variant prefabs in `Assets/Prefab/GameEnemy` are used by these
+encounters; `Enemy_Base.prefab` is not a Test Stage spawn candidate.
+
+Combat room prefabs expose four enemy spawn points. The Boss room exposes one
+Boss spawn point and a dedicated `StageExitSpawnPoint`. Clearing the Boss
+reveals the cyan `Stage Exit Cyan` portal; returning is manual rather than
+automatic. If a room lacks the dedicated exit socket, runtime falls back to
+its first loot spawn point.
 
 ## Performance Validation
 

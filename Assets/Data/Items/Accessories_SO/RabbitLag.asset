@@ -24,11 +24,12 @@ MonoBehaviour:
   itemType: 7
   stackable: 0
   maxStack: 1
-  baseBuyPrice: 0
-  baseSellPrice: 0
+  baseBuyPrice: 250
+  baseSellPrice: 75
   tags:
   - Dash
   - Ammo
+  uniqueEquip: 1
   statModifiers: []
   passives:
   - {fileID: 11400000, guid: f22b58bdc8654981b6c3459b3e826fd3, type: 2}

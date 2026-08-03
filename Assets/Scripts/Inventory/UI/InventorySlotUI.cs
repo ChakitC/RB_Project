@@ -14,13 +14,22 @@ public class InventorySlotUI : MonoBehaviour,
     IPointerEnterHandler,
     IPointerExitHandler
 {
+    [SerializeField] private Image backgroundImage;
     [SerializeField] private Image iconImage;
     [SerializeField] private Image equippedCharacterIconImage;
     [SerializeField] private TMP_Text amountText;
     [SerializeField] private GameObject hoverHighlight;
+    [SerializeField] private Outline borderOutline;
     [SerializeField, Min(0f)] private float hoverDetailDelay = 3f;
     [SerializeField, Min(0f)] private float equippedCharacterIconSize = 28f;
     [SerializeField] private Vector2 equippedCharacterIconOffset = new(-4f, 4f);
+    [SerializeField] private Color emptyBackgroundColor = new(0.055f, 0.065f, 0.075f, 0.72f);
+    [SerializeField] private Color filledBackgroundColor = new(0.09f, 0.105f, 0.12f, 1f);
+    [SerializeField] private Color emptyBorderColor = new(0.2f, 0.22f, 0.24f, 0.7f);
+    [SerializeField] private Color commonBorderColor = new(0.45f, 0.48f, 0.52f, 1f);
+    [SerializeField] private Color rareBorderColor = new(0.2f, 0.55f, 0.95f, 1f);
+    [SerializeField] private Color epicBorderColor = new(0.7f, 0.35f, 0.95f, 1f);
+    [SerializeField] private Color hoverBorderColor = new(1f, 0.68f, 0.2f, 1f);
 
     CanvasGroup canvasGroup;
     IInventorySlotUIOwner owner;
@@ -36,6 +45,28 @@ public class InventorySlotUI : MonoBehaviour,
     void Awake()
     {
         canvasGroup = GetComponent<CanvasGroup>();
+
+        if (backgroundImage == null)
+            backgroundImage = GetComponent<Image>();
+
+        if (borderOutline == null)
+            borderOutline = GetComponent<Outline>();
+
+        if (borderOutline == null)
+        {
+            borderOutline = gameObject.AddComponent<Outline>();
+            borderOutline.effectDistance = new Vector2(2f, -2f);
+            borderOutline.useGraphicAlpha = true;
+        }
+
+        if (iconImage != null)
+        {
+            iconImage.preserveAspect = true;
+            iconImage.raycastTarget = false;
+        }
+
+        if (amountText != null)
+            amountText.raycastTarget = false;
     }
 
     void OnDisable()
@@ -112,11 +143,12 @@ public class InventorySlotUI : MonoBehaviour,
     public void OnPointerEnter(PointerEventData eventData)
     {
         if (hoverHighlight != null)
-            hoverHighlight.SetActive(true);
+            hoverHighlight.SetActive(slotData != null && !slotData.IsEmpty);
 
         isPointerInside = true;
         CachePointerPosition(eventData);
         BeginHoverDetailCountdown();
+        ApplyVisualState();
         owner?.HandlePointerEnter(slotIndex);
     }
 
@@ -129,6 +161,7 @@ public class InventorySlotUI : MonoBehaviour,
         hasPointerPosition = false;
         StopHoverDetailCountdown();
         HideHoverDetails();
+        ApplyVisualState();
         owner?.HandlePointerExit(slotIndex);
     }
 
@@ -179,10 +212,37 @@ public class InventorySlotUI : MonoBehaviour,
 
     void ApplyVisualState()
     {
-        if (canvasGroup == null)
-            return;
+        bool hasItem = slotData != null && !slotData.IsEmpty;
 
-        canvasGroup.alpha = isDraggingVisual ? 0.35f : 1f;
+        if (canvasGroup != null)
+            canvasGroup.alpha = isDraggingVisual ? 0.35f : 1f;
+
+        if (backgroundImage != null)
+            backgroundImage.color = hasItem ? filledBackgroundColor : emptyBackgroundColor;
+
+        if (borderOutline != null)
+            borderOutline.effectColor = ResolveBorderColor(hasItem);
+    }
+
+    Color ResolveBorderColor(bool hasItem)
+    {
+        if (!hasItem)
+            return emptyBorderColor;
+
+        if (isPointerInside && !isDraggingVisual)
+            return hoverBorderColor;
+
+        if (slotData.HasWeaponInstance && slotData.weaponInstance != null)
+        {
+            return slotData.weaponInstance.rarity switch
+            {
+                WeaponRarity.Rare => rareBorderColor,
+                WeaponRarity.Epic => epicBorderColor,
+                _ => commonBorderColor
+            };
+        }
+
+        return commonBorderColor;
     }
 
     void EnsureEquippedCharacterIconImage()

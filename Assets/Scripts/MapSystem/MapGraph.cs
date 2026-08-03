@@ -9,6 +9,7 @@ public sealed class MapGraph
     [SerializeField] private string startNodeId;
     [SerializeField] private string bossNodeId;
     [SerializeField] private List<string> criticalPathIds = new();
+    [SerializeField] private int resolvedSeed;
 
     private readonly Dictionary<string, MapNode> lookup = new();
 
@@ -16,6 +17,12 @@ public sealed class MapGraph
     public string StartNodeId => startNodeId;
     public string BossNodeId => bossNodeId;
     public IReadOnlyList<string> CriticalPathIds => criticalPathIds;
+    public int ResolvedSeed => resolvedSeed;
+
+    public void SetResolvedSeed(int seed)
+    {
+        resolvedSeed = seed;
+    }
 
     public MapNode StartNode => GetNode(startNodeId);
     public MapNode BossNode => GetNode(bossNodeId);

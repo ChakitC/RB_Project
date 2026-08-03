@@ -26,15 +26,15 @@ MonoBehaviour:
   maxHP: 1000
   maxStamina: 80
   Damage: 10
-  armor: 1
-  critMultiplier: 5
-  critRate: 1
+  armor: 10
+  critMultiplier: 1.5
+  critRate: 7
   Enagy: 100
   speed: 4.5
   speedDown: 1
-  DamageScaling: 0
-  ArmorScaling: 0
-  MAXHPScaling: 0
+  DamageScaling: 0.5
+  ArmorScaling: 0.35
+  MAXHPScaling: 35
   StaminaScaling: 0
   CritrateScaling: 0
   CritDamageScaling: 0

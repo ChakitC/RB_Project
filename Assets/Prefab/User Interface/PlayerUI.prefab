@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 9192765710667735113}
   - component: {fileID: 1184350765941798018}
   - component: {fileID: 8268009592059067634}
+  - component: {fileID: 1276195794196653983}
   m_Layer: 6
   m_Name: PlayerUI
   m_TagString: Untagged
@@ -67,6 +68,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uiContext: {fileID: 1184350765941798018}
+--- !u!114 &1276195794196653983
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2262640161921503855}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a913c0adbd6dea4cad5bf38dd0bceee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  indicatorPrefab: {fileID: 8952941891945795787, guid: 6297f547d8b676147b85581381fbe408, type: 3}
+  gameplayCamera: {fileID: 0}
+  interactActionName: Interract
+  fallbackBindingLabel: F
+  referenceDistance: 3
+  minimumScaleMultiplier: 0.5
+  maximumScaleMultiplier: 2
 --- !u!1001 &325110646083078427
 PrefabInstance:
   m_ObjectHideFlags: 0

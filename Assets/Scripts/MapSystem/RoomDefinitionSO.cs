@@ -54,7 +54,7 @@ public class RoomDefinitionSO : ScriptableObject
     public MapNodeType NodeType => nodeType;
     public float Weight => Mathf.Max(0f, weight);
     public GameObject RoomPrefab => roomPrefab;
-    public int MaxExitCount => Mathf.Max(1, maxExitCount);
+    public int MaxExitCount => Mathf.Min(Mathf.Max(1, maxExitCount), RoomExitDirectionUtility.Count(exitMask));
     public RoomExitMask ExitMask => exitMask;
     public bool AllowSupersetExitMask => allowSupersetExitMask;
     public bool LockExitsUntilClear => lockExitsUntilClear;

@@ -18,6 +18,8 @@ public class HealInteractable : MonoBehaviour, IInteractable
     [Header("Heal")]
     [SerializeField, Min(0f)] private float healAmount = 25f;
     [SerializeField] private bool healToFull;
+    [SerializeField] private bool healByMaxHealthPercent;
+    [SerializeField, Range(0f, 1f)] private float maxHealthPercent = 0.5f;
     [SerializeField] private HealRecipientMode recipientMode = HealRecipientMode.InteractorOnly;
 
     [Header("After Use")]
@@ -25,6 +27,15 @@ public class HealInteractable : MonoBehaviour, IInteractable
     [SerializeField] private GameObject objectToDeactivate;
 
     public int Priority => priority;
+
+    public void ConfigurePartyPercentHeal(float percent, bool oneUse = true)
+    {
+        healToFull = false;
+        healByMaxHealthPercent = true;
+        maxHealthPercent = Mathf.Clamp01(percent);
+        recipientMode = HealRecipientMode.InteractorAndAllies;
+        deactivateAfterUse = oneUse;
+    }
 
     public string GetPrompt(Interactor interactor)
     {
@@ -66,6 +77,9 @@ public class HealInteractable : MonoBehaviour, IInteractable
 
         if (healToFull)
             return Mathf.Max(0f, health.maximumHealth - health.currentHealth);
+
+        if (healByMaxHealthPercent)
+            return Mathf.Max(0f, health.maximumHealth * maxHealthPercent);
 
         return healAmount;
     }

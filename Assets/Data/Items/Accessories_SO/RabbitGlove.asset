@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId: Accessory.RabbitGlove
   displayName: RabbitGlove
-  description: Increases weapon stability by 3% and reduces reload time by 15%.
+  description: Adds 3 weapon stability and reduces reload time by 4%.
   icon: {fileID: 21300000, guid: 79c66846f2e7f804bb1413695f79fda4, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
@@ -23,8 +23,8 @@ MonoBehaviour:
   itemType: 7
   stackable: 0
   maxStack: 1
-  baseBuyPrice: 0
-  baseSellPrice: 0
+  baseBuyPrice: 150
+  baseSellPrice: 45
   tags:
   - Weapon
   - Stability
@@ -35,7 +35,7 @@ MonoBehaviour:
     value: 3
   - statType: 14
     operation: 1
-    value: -15
+    value: -4
   passives: []
   rollModifierOnCreate: 0
   noModifierWeight: 1

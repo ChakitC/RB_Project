@@ -20,20 +20,20 @@ MonoBehaviour:
   characterAvatar: {fileID: 9000000, guid: 43f45bf73dac45e43ad9de42bb9938e8, type: 3}
   controller: {fileID: 9100000, guid: 108e6fe407750bc4ba608605b8d13a76, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
-  maxHP: 100
+  maxHP: 1000
   maxStamina: 80
   Damage: 10
-  critMultiplier: 5
-  armor: 1
-  critRate: 1
+  critMultiplier: 1.5
+  armor: 10
+  critRate: 7
   Enagy: 100
   speed: 4.5
   speedDown: 1
-  DamageScaling: 1.5
-  ArmorScaling: 10
-  MAXHPScaling: 0.5
-  StaminaScaling: 0.5
-  CritrateScaling: 0.005
-  CritDamageScaling: 0.01
-  EnagyScaling: 1
-  SpeedScaling: 0.01
+  DamageScaling: 0.5
+  ArmorScaling: 0.35
+  MAXHPScaling: 35
+  StaminaScaling: 0
+  CritrateScaling: 0
+  CritDamageScaling: 0
+  EnagyScaling: 0
+  SpeedScaling: 0

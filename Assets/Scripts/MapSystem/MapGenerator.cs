@@ -18,6 +18,7 @@ public static class MapGenerator
         try
         {
             MapGraph graph = new MapGraph();
+            graph.SetResolvedSeed(seed);
             int criticalCount = config != null ? config.CriticalPathNodeCount : 6;
             int bossIndex = criticalCount - 1;
             int forcedBlueIndex = Mathf.Max(1, bossIndex - 1);
@@ -217,29 +218,91 @@ public static class MapGenerator
             return RoomExitMask.None;
 
         RoomExitMask reservedMask = graph != null ? graph.GetReturnExitMask(node) : RoomExitMask.None;
+        RoomExitMask preferredMask;
 
         if (node.Type == MapNodeType.Start && outgoingCount == 1)
-            return RandomSingleExitMask();
-
-        if (outgoingCount == 1)
-            return BuildAvailableExitMask(1, reservedMask, RoomExitMask.Up);
-
-        if (outgoingCount == 2)
+        {
+            preferredMask = RandomSingleExitMask();
+        }
+        else if (outgoingCount == 1)
+        {
+            preferredMask = BuildAvailableExitMask(1, reservedMask, RoomExitMask.Up);
+        }
+        else if (outgoingCount == 2)
         {
             if (reservedMask == RoomExitMask.None && MapPitySystem.IsBlueNodeType(node.Type))
-                return RoomExitMask.Left | RoomExitMask.Right;
+            {
+                preferredMask = RoomExitMask.Left | RoomExitMask.Right;
+            }
+            else
+            {
+                RoomExitMask preferredDirections = UnityEngine.Random.value < 0.5f
+                    ? RoomExitMask.Up | RoomExitMask.Right
+                    : RoomExitMask.Up | RoomExitMask.Left;
 
-            RoomExitMask preferredMask = UnityEngine.Random.value < 0.5f
-                ? RoomExitMask.Up | RoomExitMask.Right
-                : RoomExitMask.Up | RoomExitMask.Left;
-
-            return BuildAvailableExitMask(2, reservedMask, preferredMask);
+                preferredMask = BuildAvailableExitMask(2, reservedMask, preferredDirections);
+            }
+        }
+        else if (outgoingCount == 3)
+        {
+            preferredMask = BuildAvailableExitMask(3, reservedMask, RoomExitMask.Left | RoomExitMask.Right | RoomExitMask.Up);
+        }
+        else
+        {
+            preferredMask = BuildAvailableExitMask(4, reservedMask, RoomExitMask.Up | RoomExitMask.Right | RoomExitMask.Down | RoomExitMask.Left);
         }
 
-        if (outgoingCount == 3)
-            return BuildAvailableExitMask(3, reservedMask, RoomExitMask.Left | RoomExitMask.Right | RoomExitMask.Up);
+        return ChooseSupportedOutgoingMask(config, node.Type, outgoingCount, reservedMask, preferredMask);
+    }
 
-        return BuildAvailableExitMask(4, reservedMask, RoomExitMask.Up | RoomExitMask.Right | RoomExitMask.Down | RoomExitMask.Left);
+    static RoomExitMask ChooseSupportedOutgoingMask(
+        MapRunConfigSO config,
+        MapNodeType type,
+        int outgoingCount,
+        RoomExitMask reservedMask,
+        RoomExitMask preferredMask)
+    {
+        if (HasSupportingRoomDefinition(config, type, reservedMask | preferredMask))
+            return preferredMask;
+
+        for (int value = 1; value <= (int)(RoomExitMask.Up | RoomExitMask.Right | RoomExitMask.Down | RoomExitMask.Left); value++)
+        {
+            RoomExitMask candidateMask = (RoomExitMask)value;
+            if (RoomExitDirectionUtility.Count(candidateMask) != outgoingCount ||
+                (candidateMask & reservedMask) != 0)
+            {
+                continue;
+            }
+
+            if (HasSupportingRoomDefinition(config, type, reservedMask | candidateMask))
+                return candidateMask;
+        }
+
+        return preferredMask;
+    }
+
+    static bool HasSupportingRoomDefinition(MapRunConfigSO config, MapNodeType type, RoomExitMask requiredMask)
+    {
+        RoomDefinitionSO[] definitions = config != null ? config.RoomDefinitions : null;
+        if (definitions == null || definitions.Length == 0)
+            return true;
+
+        int requiredExitCount = RoomExitDirectionUtility.Count(requiredMask);
+        for (int i = 0; i < definitions.Length; i++)
+        {
+            RoomDefinitionSO definition = definitions[i];
+            if (definition != null &&
+                definition.Weight > 0f &&
+                definition.RoomPrefab != null &&
+                definition.NodeType == type &&
+                definition.MaxExitCount >= requiredExitCount &&
+                definition.TryGetRotationForExitMask(requiredMask, false, out _))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     static RoomExitMask RandomSingleExitMask()

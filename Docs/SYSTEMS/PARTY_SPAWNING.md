@@ -15,6 +15,19 @@ The default party contract is fixed to four roles:
 | PartySlot2 | 2 | `Ally_Stryker.prefab` |
 | Helper | 3 | `Ally_Helper.prefab` |
 
+The starting character lineup is Roma, Feno, Aires, and Milano for party
+indices `0` through `3`. Basement `PartySlot` components use the active
+`SaveManager.currentSlot`; their fallback ids follow the same lineup when the
+active slot has no saved party data.
+
+`CharacterDatabase.unlockEntries` contains all authored characters. Roma, Feno,
+Aires, and Milano are unlocked by default. Dorothy, Noemi, Roger, and Abbygail
+start locked unless their current-slot character progress explicitly records an
+unlock; each locked starter-roster character costs 100 gold in the Basement
+character shop. A character present in `CharacterDatabase.characters` without a
+matching unlock entry remains locked and unavailable for purchase instead of
+being treated as unlocked.
+
 If save data is unavailable, each actor's existing
 `CharacterContextPartyLoader` fallback character remains authoritative.
 

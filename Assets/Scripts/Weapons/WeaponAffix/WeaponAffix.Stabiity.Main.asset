@@ -19,11 +19,11 @@ MonoBehaviour:
   behaviorType: 2
   weight: 1
   allowedWeaponTypes: 0400000002000000030000000400000005000000
-  minRollValue: 0
-  maxRollValue: 50
+  minRollValue: 10
+  maxRollValue: 20
   statType: 16
   modifierOp: 0
-  buffDurationSeconds: 2
+  buffDurationSeconds: 3
   requiredShots: 10
   procChance: 0.25
   specialProjectileConfig: {fileID: 0}

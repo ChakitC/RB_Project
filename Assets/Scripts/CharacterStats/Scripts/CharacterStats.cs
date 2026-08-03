@@ -159,17 +159,20 @@ public class CharacterStats : ScriptableObject
         return Mathf.Max(1f, critMultiplier + CritDamageScaling * PreviewLevelOffset);
     }
 
-    [PropertyOrder(-160)]
+    [PropertyOrder(-161)]
     [FoldoutGroup("Character Detail", Expanded = true), HideLabel, PreviewField(80, ObjectFieldAlignment.Left), AssetsOnly]
     public Sprite icon;
 
-    [PropertyOrder(-159)]
+    [PropertyOrder(-160)]
     [FoldoutGroup("Character Detail", Expanded = true), LabelText("Character ID")]
     public string characterId;
 
-    [PropertyOrder(-158)]
+    [PropertyOrder(-159)]
     [FoldoutGroup("Character Detail", Expanded = true), LabelText("Character Name")]
     public string characterName;
+
+    [PropertyOrder(-158)] [FoldoutGroup("Character Detail", Expanded = true), LabelText("Character Name")]
+    public WeaponType CharacterWeaponType;
 
     [PropertyOrder(-157)]
     [FoldoutGroup("Character Detail", Expanded = true), LabelText("Character Prefab"), AssetsOnly]

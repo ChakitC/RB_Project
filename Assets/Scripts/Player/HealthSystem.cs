@@ -118,7 +118,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
 
     public int Priority => 100;
     public float HoldDuration => reviveTime;
-    public string GetPrompt(Interactor i) => CanInteract(i) ? "Hold [F] to Revive" : "Can't revive";
+    public string GetPrompt(Interactor i) => CanInteract(i) ? "Revive" : "Can't revive";
 
     public bool CanInteract(Interactor i)
     {

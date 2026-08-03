@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: RandomShopCatalog
   m_EditorClassIdentifier: 
   itemDatabase: {fileID: 11400000, guid: 75de2aa1ba9d794408c0f15d3732ddcf, type: 2}
-  refreshRandomOnOpen: 1
+  refreshRandomOnOpen: 0
   excludeGoldItem: 1
   randomEntryCount: 5
   allowDuplicateItems: 1
@@ -23,11 +23,11 @@ MonoBehaviour:
   useItemBasePrice: 1
   fallbackBuyPrice: 20
   fallbackSellPrice: 20
-  minStock: -1
-  maxStock: -1
+  minStock: 1
+  maxStock: 1
   weaponAffixDatabase: {fileID: 11400000, guid: d951cbf91c99476428d7c7928e413832, type: 2}
   fallbackUpgradeCurve: {fileID: 11400000, guid: 90bbfbf48243486fa29c0bdb80b03733, type: 2}
   weaponRarityTable: {fileID: 11400000, guid: f53121a9a1e95b644828f84e2c8a2ce7, type: 2}
   minWeaponUpgradeLevel: 0
-  maxWeaponUpgradeLevel: 30
+  maxWeaponUpgradeLevel: 25
   randomWeaponRollAffixes: 1

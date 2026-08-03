@@ -20,39 +20,42 @@ MonoBehaviour:
     maxLevel: 20
   - rarity: 2
     maxLevel: 30
-  baseGoldCost: 100
-  goldCostPerLevel: 25
+  baseGoldCost: 20
+  goldCostPerLevel: 5
+  baseScrapCost: 1
+  scrapCostPerLevel: 0
+  scrapCostPerTenLevels: 1
   levelCosts: []
   statBonuses:
   - statType: 0
-    operation: 0
-    valuePerStep: 2
+    operation: 1
+    valuePerStep: 0.2
     firstLevel: 1
     levelsPerStep: 1
     allowedWeaponTypes: []
   - statType: 16
     operation: 0
-    valuePerStep: 1
+    valuePerStep: 0.5
     firstLevel: 1
     levelsPerStep: 1
     allowedWeaponTypes: []
   - statType: 14
     operation: 1
-    valuePerStep: -1
+    valuePerStep: -0.2
     firstLevel: 1
     levelsPerStep: 1
     allowedWeaponTypes: []
   - statType: 15
     operation: 1
-    valuePerStep: -1
+    valuePerStep: -0.1
     firstLevel: 1
     levelsPerStep: 1
     allowedWeaponTypes: []
   - statType: 18
-    operation: 0
-    valuePerStep: 1
-    firstLevel: 5
-    levelsPerStep: 5
+    operation: 1
+    valuePerStep: 5
+    firstLevel: 10
+    levelsPerStep: 10
     allowedWeaponTypes: []
   milestones:
   - milestoneId: upgrade-tier-10
@@ -65,13 +68,13 @@ MonoBehaviour:
     effects:
     - effectId: extra-projectile-15
       displayName: Extra Shot
-      description: 15% chance to fire one extra projectile.
+      description: 3% chance to fire one extra projectile without consuming ammo.
       effectType: 2
       allowedWeaponTypes: []
       statType: 0
       modifierOp: 0
       value: 0
-      procChance: 0.15
+      procChance: 0.03
       requiredShots: 1
       specialProjectileConfig: {fileID: 0}
       specialProjectilePrefab: {fileID: 0}
@@ -89,14 +92,14 @@ MonoBehaviour:
     effects:
     - effectId: every-sixth-extra-projectile
       displayName: Sixth Shot
-      description: Every 6 shots fires one extra projectile.
+      description: Every 20 shots fires one extra projectile without consuming ammo.
       effectType: 3
       allowedWeaponTypes: []
       statType: 0
       modifierOp: 0
       value: 0
       procChance: 1
-      requiredShots: 6
+      requiredShots: 20
       specialProjectileConfig: {fileID: 0}
       specialProjectilePrefab: {fileID: 0}
       specialProjectileDamageMultiplier: 1
@@ -113,12 +116,12 @@ MonoBehaviour:
     effects:
     - effectId: reload-fire-speed-buff
       displayName: Reload Overdrive
-      description: On reload, fire interval is reduced for 4 seconds.
+      description: On reload, fire interval is reduced by 8% for 2 seconds.
       effectType: 4
       allowedWeaponTypes: []
       statType: 15
       modifierOp: 1
-      value: -20
+      value: -8
       procChance: 1
       requiredShots: 1
       specialProjectileConfig: {fileID: 0}
@@ -126,4 +129,4 @@ MonoBehaviour:
       specialProjectileDamageMultiplier: 1
       specialProjectileSpeedMultiplier: 1
       projectileCount: 1
-      buffDurationSeconds: 4
+      buffDurationSeconds: 2

@@ -132,6 +132,9 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
         if (!definition.CanEquip(ctx))
             return false;
 
+        if (definition.UniqueEquip && ContainsAccessoryId(instance.accessoryId, instance.instanceId))
+            return false;
+
         string ownerId = ResolveOwnerId();
         if (IsAccessoryInstanceUnavailable(instance.instanceId, ownerId, this))
             return false;
@@ -434,7 +437,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
         if (inventory == null ||
             !inventory.TryGetAccessoryInstanceWithDefinition(
                 instanceId,
-                out _,
+                out AccessoryDefinition definition,
                 out AccessoryInstanceData inventoryInstance))
         {
             return false;
@@ -457,6 +460,12 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
                 ownerId = ownerId
             };
             data.entries.Add(entry);
+        }
+
+        if (definition.UniqueEquip &&
+            EntryContainsAccessoryId(entry, inventoryInstance.accessoryId, instanceId))
+        {
+            return false;
         }
 
         entry.slotCount = Mathf.Max(entry.slotCount, targetSlotIndex + 1);
@@ -594,6 +603,27 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
         }
 
         return -1;
+    }
+
+    bool ContainsAccessoryId(string accessoryId, string exceptInstanceId = null)
+    {
+        if (string.IsNullOrWhiteSpace(accessoryId) || equippedAccessories == null)
+            return false;
+
+        for (int i = 0; i < equippedAccessories.Count; i++)
+        {
+            AccessoryInstanceData instance = equippedAccessories[i];
+            if (instance == null ||
+                string.Equals(instance.instanceId, exceptInstanceId, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (string.Equals(instance.accessoryId, accessoryId, StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
     }
 
     bool ContainsInstance(string instanceId)
@@ -767,6 +797,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
 
         if (entry.equippedAccessories != null)
         {
+            var equippedUniqueIds = new HashSet<string>(StringComparer.Ordinal);
             int count = Mathf.Min(equippedAccessories.Count, entry.equippedAccessories.Count);
             for (int i = 0; i < count; i++)
             {
@@ -781,6 +812,9 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
                     continue;
 
                 if (!definition.CanEquip(ctx))
+                    continue;
+
+                if (definition.UniqueEquip && !equippedUniqueIds.Add(inventoryInstance.accessoryId))
                     continue;
 
                 equippedAccessories[i] = inventoryInstance.DeepClone();
@@ -1037,6 +1071,30 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
             string.Equals(ownerId, requesterResolvedOwnerId, StringComparison.Ordinal))
         {
             return true;
+        }
+
+        return false;
+    }
+
+    static bool EntryContainsAccessoryId(
+        CharacterAccessoryLoadoutSaveData entry,
+        string accessoryId,
+        string exceptInstanceId = null)
+    {
+        if (entry?.equippedAccessories == null || string.IsNullOrWhiteSpace(accessoryId))
+            return false;
+
+        for (int i = 0; i < entry.equippedAccessories.Count; i++)
+        {
+            AccessoryInstanceData instance = entry.equippedAccessories[i];
+            if (instance == null ||
+                string.Equals(instance.instanceId, exceptInstanceId, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (string.Equals(instance.accessoryId, accessoryId, StringComparison.Ordinal))
+                return true;
         }
 
         return false;

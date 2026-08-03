@@ -8,10 +8,16 @@ public class InteractableLink : MonoBehaviour
     void Awake()
     {
         if (targets == null || targets.Length == 0)
-        {
-            var list = new List<MonoBehaviour>();
-            AddInteractables(GetComponentsInParent<MonoBehaviour>(true), list);
+            RefreshTargets();
+    }
 
+    internal void RefreshTargets()
+    {
+        var list = new List<MonoBehaviour>();
+        AddInteractables(GetComponentsInParent<MonoBehaviour>(true), list);
+
+        if (list.Count == 0)
+        {
             var ownerContext = GetComponentInParent<CharacteContext>();
             if (ownerContext != null)
             {
@@ -21,9 +27,9 @@ public class InteractableLink : MonoBehaviour
             {
                 AddInteractables(transform.parent.GetComponentsInChildren<MonoBehaviour>(true), list);
             }
-
-            targets = list.ToArray();
         }
+
+        targets = list.ToArray();
     }
 
     static void AddInteractables(MonoBehaviour[] found, List<MonoBehaviour> list)

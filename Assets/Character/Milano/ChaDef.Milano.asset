@@ -23,18 +23,18 @@ MonoBehaviour:
   weaponHandMode: 0
   combatRole: 3
   chainAttackSkill: {fileID: 0}
-  maxHP: 20000
+  maxHP: 950
   maxStamina: 80
-  Damage: 10
-  armor: 1
-  critMultiplier: 5
-  critRate: 1
+  Damage: 11
+  armor: 8
+  critMultiplier: 1.75
+  critRate: 12
   Enagy: 100
   speed: 4.5
   speedDown: 1
-  DamageScaling: 0
-  ArmorScaling: 0
-  MAXHPScaling: 0
+  DamageScaling: 0.5
+  ArmorScaling: 0.3
+  MAXHPScaling: 33
   StaminaScaling: 0
   CritrateScaling: 0
   CritDamageScaling: 0

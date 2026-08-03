@@ -17,12 +17,13 @@ MonoBehaviour:
   skillId: Aires.Skill.1
   tags: 17
   description: 
-  baseDamage: 10
-  baseStaggerPower: 10
-  baseManaCost: 10
+  baseDamage: 100
+  damageCoefficient: 12
+  baseStaggerPower: 60
+  baseManaCost: 25
   baseCastTime: 0.5
-  baseCooldown: 0
-  baseCritChance: 5
+  baseCooldown: 10
+  baseCritChance: 0
   baseProjectilesCount: 1
   projectileSpeed: 5
   AreaofEffec: 0

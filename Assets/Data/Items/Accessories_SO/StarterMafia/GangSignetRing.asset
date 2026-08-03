@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId: Accessory.GangSignetRing
   displayName: Gang Signet Ring
-  description: A gold family ring. Increases armor by 8% and maximum health by 5%.
-  icon: {fileID: 0}
+  description: A gold family ring. Adds 2 armor and increases maximum health by 4%.
+  icon: {fileID: 21300000, guid: 4e529b56c06b43c4c83266dc0535478c, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
@@ -23,19 +23,19 @@ MonoBehaviour:
   itemType: 7
   stackable: 0
   maxStack: 1
-  baseBuyPrice: 250
-  baseSellPrice: 75
+  baseBuyPrice: 200
+  baseSellPrice: 60
   tags:
   - Armor
   - Health
   - Mafia
   statModifiers:
   - statType: 7
-    operation: 1
-    value: 8
+    operation: 0
+    value: 2
   - statType: 11
     operation: 1
-    value: 5
+    value: 4
   passives: []
   rollModifierOnCreate: 0
   noModifierWeight: 1

@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId: Accessory.UnderSuitVest
   displayName: Under-Suit Vest
-  description: A thin armored vest hidden beneath a tailored suit. Increases armor by 12% but reduces movement speed by 3%.
-  icon: {fileID: 0}
+  description: A thin armored vest hidden beneath a tailored suit. Adds 5 armor but reduces movement speed by 2%.
+  icon: {fileID: 21300000, guid: 4e529b56c06b43c4c83266dc0535478c, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
@@ -23,19 +23,19 @@ MonoBehaviour:
   itemType: 7
   stackable: 0
   maxStack: 1
-  baseBuyPrice: 250
-  baseSellPrice: 75
+  baseBuyPrice: 200
+  baseSellPrice: 60
   tags:
   - Armor
   - Movement
   - Tank
   statModifiers:
   - statType: 7
-    operation: 1
-    value: 12
+    operation: 0
+    value: 5
   - statType: 8
     operation: 1
-    value: -3
+    value: -2
   passives: []
   rollModifierOnCreate: 0
   noModifierWeight: 1

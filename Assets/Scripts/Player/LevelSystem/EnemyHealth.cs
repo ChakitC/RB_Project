@@ -12,6 +12,14 @@ public class EnemyHealth : HealthSystem
 
     GameObject _lastAttacker;
     bool _xpGranted;
+    MapRunController _stageRun;
+    int _stageXpReward;
+
+    public void ConfigureStageXp(MapRunController run, int reward)
+    {
+        _stageRun = run;
+        _stageXpReward = Mathf.Max(0, reward);
+    }
 
     public override DamageResult TakeDamage(in DamageContext damageContext)
     {
@@ -48,7 +56,10 @@ public class EnemyHealth : HealthSystem
             return;
 
         _xpGranted = true;
-        GiveXpTo(_lastAttacker);
+        if (_stageRun != null)
+            _stageRun.GrantStageEnemyXp(_stageXpReward);
+        else
+            GiveXpTo(_lastAttacker);
 
         base.Die();
 

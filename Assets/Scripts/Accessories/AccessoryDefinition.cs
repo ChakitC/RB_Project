@@ -8,6 +8,10 @@ public class AccessoryDefinition : ItemDefinition
     [Header("Accessory Tags")]
     public List<string> tags = new();
 
+    [Header("Equip Rules")]
+    [Tooltip("When enabled, a character can equip only one instance of this accessory definition.")]
+    public bool uniqueEquip;
+
     [Header("Effects")]
     public List<PassiveStatModifier> statModifiers = new();
     public List<PassiveDefinition> passives = new();
@@ -18,6 +22,7 @@ public class AccessoryDefinition : ItemDefinition
     public List<AccessoryModifierDefinition> modifierPool = new();
 
     public string RuntimeId => string.IsNullOrWhiteSpace(itemId) ? name : itemId;
+    public bool UniqueEquip => uniqueEquip;
 
     void OnValidate()
     {

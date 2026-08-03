@@ -60,6 +60,13 @@ public static class PartySpawnFeatureSmokeTests
         Expect(config.PlayerUIPrefab != null, "Player UI prefab must be assigned.");
         Expect(config.PlayerUIPrefab.GetComponentInChildren<PlayerUIRuntimeBinder>(true) != null,
             "Player UI prefab must contain PlayerUIRuntimeBinder.");
+        Expect(config.PlayerUIPrefab.GetComponentInChildren<InteractionIndicatorPresenter>(true) != null,
+            "Player UI prefab must contain InteractionIndicatorPresenter.");
+
+        GameObject indicatorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefab/User Interface/InteractionIndicator.prefab");
+        Expect(indicatorPrefab != null && indicatorPrefab.GetComponent<InteractionIndicatorView>() != null,
+            "InteractionIndicator prefab must exist and contain InteractionIndicatorView.");
     }
 
     static void TestRuntimeComposition(PartySpawnConfigSO config)

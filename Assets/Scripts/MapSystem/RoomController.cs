@@ -28,6 +28,9 @@ public class RoomController : MonoBehaviour
     [Tooltip("ตำแหน่ง spawn loot หรือ reward หลังเคลียร์ห้อง")]
     [SerializeField] private Transform[] lootSpawnPoints;
 
+    [Tooltip("Dedicated spawn point for the Test Stage exit portal after the boss is cleared.")]
+    [SerializeField] private Transform stageExitSpawnPoint;
+
     [Tooltip("ประตูหรือ portal ออกจากห้อง เรียงตาม outgoing node ของ graph")]
     [SerializeField] private RoomExitInteractable[] exits;
 
@@ -47,6 +50,7 @@ public class RoomController : MonoBehaviour
     public Transform PlayerSpawnPoint => playerSpawnPoint != null ? playerSpawnPoint : transform;
     public Transform[] EnemySpawnPoints => enemySpawnPoints;
     public Transform[] LootSpawnPoints => lootSpawnPoints;
+    public MapRunController RunController => runController;
     public MapNode Node => node;
     public bool RoomCleared => roomCleared;
     public bool ExitsLocked => exitsLocked;
@@ -58,10 +62,89 @@ public class RoomController : MonoBehaviour
         node = currentNode;
         roomCleared = currentNode != null && currentNode.IsCleared;
         ResolveRuntimeContent().EnsureRoots();
+        EnsureTestStageRecoveryStations();
 
         ResolveExits();
         ConfigureExits();
         SetExitsLocked(false);
+    }
+
+    void EnsureTestStageRecoveryStations()
+    {
+        if (runController == null ||
+            runController.RunConfig == null ||
+            !runController.RunConfig.IsTestStage ||
+            node == null ||
+            node.Type != MapNodeType.Heal)
+        {
+            return;
+        }
+
+        Transform fallbackParent = RuntimeContent.PersistentRoot;
+        HealInteractable healStation = GetComponentInChildren<HealInteractable>(true);
+        if (healStation != null)
+        {
+            healStation.ConfigurePartyPercentHeal(0.5f);
+            healStation.GetComponent<InteractableLink>().RefreshTargets();
+        }
+        else
+        {
+            CreateHealStation(fallbackParent, new Vector3(-1.5f, 0.25f, 0f));
+        }
+
+        AmmoRefillInteractable ammoStation = GetComponentInChildren<AmmoRefillInteractable>(true);
+        if (ammoStation != null)
+        {
+            ammoStation.ConfigurePartyReserveRefill();
+            ammoStation.GetComponent<InteractableLink>().RefreshTargets();
+        }
+        else
+        {
+            CreateAmmoStation(fallbackParent, new Vector3(1.5f, 0.25f, 0f));
+        }
+    }
+
+    static void CreateHealStation(Transform parent, Vector3 localPosition)
+    {
+        Transform wrapper = new GameObject("HealStation").transform;
+        wrapper.SetParent(parent, false);
+
+        GameObject station = CreateRecoveryStationVisual(wrapper, "Heal Point", localPosition, new Color(0.2f, 0.85f, 0.35f));
+        station.AddComponent<HealInteractable>().ConfigurePartyPercentHeal(0.5f);
+        station.GetComponent<InteractableLink>().RefreshTargets();
+    }
+
+    static void CreateAmmoStation(Transform parent, Vector3 localPosition)
+    {
+        Transform wrapper = new GameObject("AmmoStation").transform;
+        wrapper.SetParent(parent, false);
+
+        GameObject station = CreateRecoveryStationVisual(wrapper, "Ammo Point", localPosition, new Color(0.2f, 0.55f, 1f));
+        station.AddComponent<AmmoRefillInteractable>().ConfigurePartyReserveRefill();
+        station.GetComponent<InteractableLink>().RefreshTargets();
+    }
+
+    static GameObject CreateRecoveryStationVisual(Transform parent, string name, Vector3 localPosition, Color color)
+    {
+        GameObject station = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        station.name = name;
+        station.transform.SetParent(parent, false);
+        station.transform.localPosition = localPosition;
+        station.transform.localScale = new Vector3(0.75f, 0.25f, 0.75f);
+
+        int interactableLayer = LayerMask.NameToLayer("Interactable");
+        if (interactableLayer >= 0)
+            station.layer = interactableLayer;
+
+        Collider stationCollider = station.GetComponent<Collider>();
+        if (stationCollider != null)
+            stationCollider.isTrigger = true;
+
+        Renderer stationRenderer = station.GetComponent<Renderer>();
+        if (stationRenderer != null)
+            stationRenderer.material.color = color;
+
+        return station;
     }
 
     RoomRuntimeContent ResolveRuntimeContent()
@@ -148,6 +231,17 @@ public class RoomController : MonoBehaviour
 
         Transform point = lootSpawnPoints[Mathf.Abs(index) % lootSpawnPoints.Length];
         return point != null ? point : transform;
+    }
+
+    public Transform GetStageExitSpawnPoint()
+    {
+        if (stageExitSpawnPoint != null)
+            return stageExitSpawnPoint;
+
+        if (lootSpawnPoints != null && lootSpawnPoints.Length > 0 && lootSpawnPoints[0] != null)
+            return lootSpawnPoints[0];
+
+        return transform;
     }
 
     public Transform GetPlayerSpawnPoint(RoomExitDirection? entranceDirection)

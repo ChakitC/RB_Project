@@ -94,6 +94,17 @@ public class MapRunController : MonoBehaviour
     private readonly Dictionary<string, CachedRoomEntry> roomCache = new();
     private bool isTransitioning;
     private bool warnedMissingWarpCollisionLayer;
+    private PartySpawnPoint partySpawnPoint;
+    private int stageProgressCount;
+    private int stageEnemyLevel;
+    private int regularXpRemaining;
+    private int bossXpRemaining;
+    private int regularEnemiesRemaining;
+    private int bossEnemiesRemaining;
+    private int completionXpReward;
+    private bool bossCleared;
+    private bool stageCompletionCommitted;
+    private GameObject stageExitInstance;
 
     public event Action<MapGraph, MapNode> MapChanged;
     public MapGraph CurrentGraph => graph;
@@ -101,6 +112,9 @@ public class MapRunController : MonoBehaviour
     public RoomController CurrentRoom => currentRoom;
     public bool IsTransitioning => isTransitioning;
     public int CachedRoomCount => roomCache.Count;
+    public MapRunConfigSO RunConfig => runConfig;
+    public bool CanCompleteStageRun => runConfig != null && runConfig.IsTestStage && bossCleared && !stageCompletionCommitted;
+    public int StageEnemyLevel => stageEnemyLevel;
 
     void Start()
     {
@@ -121,6 +135,18 @@ public class MapRunController : MonoBehaviour
         ResolveReferences();
         Log("StartRun requested.");
 
+        MapRunConfigSO selectedConfig = SceneLoaderSystem.Instance != null
+            ? SceneLoaderSystem.Instance.ConsumeSelectedMapRunConfig()
+            : null;
+        if (selectedConfig != null)
+        {
+            runConfig = selectedConfig;
+        }
+        else
+        {
+            Debug.LogWarning("[MapRunController] No stage selection was supplied by Basement. Using the serialized Run Config fallback.", this);
+        }
+
         if (runConfig == null)
             Debug.LogWarning("[MapRunController] Run Config is missing. Map generation will not be able to assign room definitions.", this);
         else if (!MapRunConfigValidator.Validate(runConfig, out string configError))
@@ -138,7 +164,8 @@ public class MapRunController : MonoBehaviour
             return;
         }
 
-        Log($"Generated map with {graph.Nodes.Count} nodes. Start='{graph.StartNodeId}', Boss='{graph.BossNodeId}'.");
+        ConfigureStageRun();
+        Log($"Generated map with {graph.Nodes.Count} nodes. Start='{graph.StartNodeId}', Boss='{graph.BossNodeId}', Seed={graph.ResolvedSeed}.");
 
         if (!MapPathValidator.Validate(graph, out string error))
         {
@@ -206,7 +233,173 @@ public class MapRunController : MonoBehaviour
             return;
 
         graph.RevealOutgoing(currentNode);
+        if (runConfig != null && runConfig.IsTestStage && currentNode.Type == MapNodeType.Boss)
+        {
+            bossCleared = true;
+            SpawnStageExit(room);
+        }
         NotifyMapChanged();
+    }
+
+    public void ConfigureStageEnemy(GameObject enemyObject, bool isBoss)
+    {
+        if (enemyObject == null || runConfig == null || !runConfig.IsTestStage)
+            return;
+
+        EnemyContext enemyContext = enemyObject.GetComponentInChildren<EnemyContext>(true);
+        if (enemyContext == null)
+        {
+            Debug.LogWarning($"[MapRunController] Stage enemy '{enemyObject.name}' has no EnemyContext.", enemyObject);
+            return;
+        }
+
+        EnemyLevelSystem enemyLevel = enemyContext.EnemyLevelSystem;
+        if (enemyLevel == null)
+            enemyLevel = enemyContext.GetComponent<EnemyLevelSystem>();
+        if (enemyLevel == null)
+            enemyLevel = enemyContext.gameObject.AddComponent<EnemyLevelSystem>();
+        enemyContext.EnemyLevelSystem = enemyLevel;
+        enemyLevel.SetLevel(stageEnemyLevel);
+
+        EnemyHealth health = enemyContext.GetComponentInChildren<EnemyHealth>(true);
+        if (health != null)
+            health.ConfigureStageXp(this, AllocateEnemyXp(isBoss));
+    }
+
+    public void GrantStageEnemyXp(int amount)
+    {
+        if (runConfig == null || !runConfig.IsTestStage || amount <= 0)
+            return;
+
+        GrantXpToDeployedParty(amount);
+    }
+
+    public void CompleteStageRunAndReturn()
+    {
+        if (!CanCompleteStageRun)
+            return;
+
+        stageCompletionCommitted = true;
+        GrantXpToDeployedParty(completionXpReward);
+
+        int nextProgress = Mathf.Min(runConfig.TargetRunCount, stageProgressCount + 1);
+        if (SaveManager.Instance != null)
+            SaveManager.Instance.SaveStageProgress(runConfig.StageId, nextProgress);
+        else
+            Debug.LogWarning("[MapRunController] SaveManager is missing; Stage Progress could not be saved.", this);
+
+        Log($"Completed '{runConfig.StageId}'. Progress {nextProgress}/{runConfig.TargetRunCount}.");
+        if (SceneLoaderSystem.Instance != null)
+            SceneLoaderSystem.Instance.LoadBasement();
+        else
+            Debug.LogError("[MapRunController] SceneLoaderSystem is missing; cannot return to Basement.", this);
+    }
+
+    void ConfigureStageRun()
+    {
+        stageProgressCount = 0;
+        stageEnemyLevel = 1;
+        regularXpRemaining = 0;
+        bossXpRemaining = 0;
+        regularEnemiesRemaining = 0;
+        bossEnemiesRemaining = 0;
+        completionXpReward = 0;
+        bossCleared = false;
+        stageCompletionCommitted = false;
+        stageExitInstance = null;
+
+        if (runConfig == null || !runConfig.IsTestStage || graph == null)
+            return;
+
+        if (SaveManager.Instance != null)
+            stageProgressCount = Mathf.Clamp(SaveManager.Instance.LoadStageProgress(runConfig.StageId), 0, runConfig.TargetRunCount);
+
+        stageEnemyLevel = runConfig.GetEnemyLevel(stageProgressCount);
+        int regularSpawnCount = 0;
+        int bossSpawnCount = 0;
+        for (int i = 0; i < graph.Nodes.Count; i++)
+        {
+            EncounterDefinitionSO encounter = graph.Nodes[i]?.EncounterDefinition;
+            if (encounter == null)
+                continue;
+
+            if (encounter.BossEncounter)
+                bossSpawnCount += encounter.TotalSpawnCount;
+            else
+                regularSpawnCount += encounter.TotalSpawnCount;
+        }
+
+        int budget = runConfig.GetXpBudgetPerRun();
+        int regularPool = Mathf.RoundToInt(budget * runConfig.RegularEnemyXpShare);
+        int bossPool = Mathf.RoundToInt(budget * runConfig.BossXpShare);
+        regularXpRemaining = regularPool;
+        bossXpRemaining = bossPool;
+        regularEnemiesRemaining = regularSpawnCount;
+        bossEnemiesRemaining = bossSpawnCount;
+        completionXpReward = Mathf.Max(0, budget - regularPool - bossPool);
+
+        Log($"Stage '{runConfig.StageId}' progress={stageProgressCount}/{runConfig.TargetRunCount}, enemyLv={stageEnemyLevel}, XP budget={budget} (regular pool {regularPool}/{regularSpawnCount}, boss pool {bossPool}/{bossSpawnCount}, completion {completionXpReward}).");
+    }
+
+    int AllocateEnemyXp(bool boss)
+    {
+        int enemiesRemaining = boss ? bossEnemiesRemaining : regularEnemiesRemaining;
+        int xpRemaining = boss ? bossXpRemaining : regularXpRemaining;
+        if (enemiesRemaining <= 0 || xpRemaining <= 0)
+            return 0;
+
+        int reward = Mathf.CeilToInt((float)xpRemaining / enemiesRemaining);
+        if (boss)
+        {
+            bossXpRemaining = Mathf.Max(0, bossXpRemaining - reward);
+            bossEnemiesRemaining = Mathf.Max(0, bossEnemiesRemaining - 1);
+        }
+        else
+        {
+            regularXpRemaining = Mathf.Max(0, regularXpRemaining - reward);
+            regularEnemiesRemaining = Mathf.Max(0, regularEnemiesRemaining - 1);
+        }
+
+        return reward;
+    }
+
+    void GrantXpToDeployedParty(int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        if (partySpawnPoint == null)
+            partySpawnPoint = FindFirstObjectByType<PartySpawnPoint>();
+        PartyRuntime party = partySpawnPoint != null ? partySpawnPoint.CurrentParty : null;
+        if (party == null)
+        {
+            Debug.LogWarning("[MapRunController] No deployed PartyRuntime was found for Stage XP.", this);
+            return;
+        }
+
+        for (int i = 0; i < party.Actors.Count; i++)
+        {
+            PartyRuntimeActor actor = party.Actors[i];
+            LevelSystem levelSystem = actor?.Context != null
+                ? actor.Context.GetComponentInChildren<LevelSystem>(true)
+                : null;
+            if (levelSystem != null)
+                levelSystem.AddXp(amount);
+        }
+    }
+
+    void SpawnStageExit(RoomController room)
+    {
+        if (stageExitInstance != null || room == null || runConfig.StageExitPrefab == null)
+            return;
+
+        Transform spawnPoint = room.GetStageExitSpawnPoint();
+        Transform parent = room.RuntimeContent != null ? room.RuntimeContent.PersistentRoot : room.transform;
+        stageExitInstance = Instantiate(runConfig.StageExitPrefab, spawnPoint.position, spawnPoint.rotation, parent);
+        StageExitInteractable stageExit = stageExitInstance.GetComponentInChildren<StageExitInteractable>(true);
+        if (stageExit == null)
+            stageExit = stageExitInstance.AddComponent<StageExitInteractable>();
+        stageExit.Configure(this);
     }
 
     bool IsOutgoingTravelTarget(string targetNodeId)

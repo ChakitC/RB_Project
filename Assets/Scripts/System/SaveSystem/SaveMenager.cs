@@ -6,6 +6,11 @@ using UnityEngine.SceneManagement;
 
 public class SaveManager : MonoBehaviour
 {
+    public const int SaveSlotCount = 3;
+
+    const string CurrentSlotPrefsKey = "RB.CurrentSaveSlot";
+    const string BasementSceneName = "Basement";
+
     public static SaveManager Instance { get; private set; }
 
     [Header("Config")]
@@ -32,6 +37,10 @@ public class SaveManager : MonoBehaviour
         }
 
         Instance = this;
+        currentSlot = Mathf.Clamp(
+            PlayerPrefs.GetInt(CurrentSlotPrefsKey, currentSlot),
+            0,
+            SaveSlotCount - 1);
         DontDestroyOnLoad(gameObject);
 
         SceneManager.sceneLoaded += OnSceneLoaded;
@@ -187,6 +196,51 @@ public class SaveManager : MonoBehaviour
 
         SaveSystem.SaveGame(data, currentSlot);
         _loaded = data;
+    }
+
+    public int LoadStageProgress(string stageId)
+    {
+        return SaveSystem.LoadStageProgress(currentSlot, stageId);
+    }
+
+    public void SaveStageProgress(string stageId, int progressCount)
+    {
+        SaveSystem.SaveStageProgress(currentSlot, stageId, progressCount);
+    }
+
+    [ContextMenu("Reset Test Stage Progress")]
+    public void ResetTestStageProgress()
+    {
+        SaveSystem.ResetStageProgress(currentSlot);
+        Debug.Log($"[SaveManager] Reset Test Stage progress for slot {currentSlot}.", this);
+    }
+
+    public bool HasSaveData(int slot)
+    {
+        return slot >= 0 && slot < SaveSlotCount && SaveSystem.HasAnyData(slot);
+    }
+
+    public bool SwitchSlotAndLoadBasement(int slot)
+    {
+        if (slot < 0 || slot >= SaveSlotCount || slot == currentSlot)
+            return false;
+
+        currentSlot = slot;
+        PlayerPrefs.SetInt(CurrentSlotPrefsKey, currentSlot);
+        PlayerPrefs.Save();
+        _loaded = null;
+        SceneManager.LoadScene(BasementSceneName);
+        return true;
+    }
+
+    public bool ResetCurrentSlotAndLoadBasement()
+    {
+        if (!SaveSystem.DeleteSlot(currentSlot))
+            return false;
+
+        _loaded = null;
+        SceneManager.LoadScene(BasementSceneName);
+        return true;
     }
 
     public bool SaveInventoryOnly()

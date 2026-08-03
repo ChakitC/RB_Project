@@ -184,7 +184,7 @@ public class LevelSystem : MonoBehaviour
          
         var data = SaveManager.Instance.LoadCharacterLevel(ChracterID);
         
-        var newLevel = data?.level ?? 10;
+        var newLevel = data?.level ?? 1;
         var newCurrentXp = data?.xp ?? 0;
 
         level = Mathf.Max(1, newLevel);

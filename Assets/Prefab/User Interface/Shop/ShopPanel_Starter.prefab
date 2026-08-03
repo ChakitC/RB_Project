@@ -156,6 +156,7 @@ GameObject:
   - component: {fileID: 9138464120494682588}
   - component: {fileID: 3000000000000000000}
   - component: {fileID: 3000000000000000001}
+  - component: {fileID: 3000000000000000002}
   m_Layer: 0
   m_Name: ShopPanel_Starter
   m_TagString: Untagged
@@ -284,6 +285,20 @@ MonoBehaviour:
   messageText: {fileID: 5608471562794510346}
   emptyState: {fileID: 2284824154313376316}
   closeButton: {fileID: 3296454420558984860}
+  characterShopPage: {fileID: 3000000000000000002}
+--- !u!114 &3000000000000000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000000000000000000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6f3f6ac83f1b4ebda9c45f6b11114b9d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  characterDatabase: {fileID: 11400000, guid: b8581ddfa804cb441bd7bb035e7a6bcb, type: 2}
 --- !u!1 &1148065478942154373
 GameObject:
   m_ObjectHideFlags: 0

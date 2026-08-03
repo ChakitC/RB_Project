@@ -19,8 +19,8 @@ MonoBehaviour:
   behaviorType: 1
   weight: 1
   allowedWeaponTypes: 0400000001000000020000000000000003000000040000000500000006000000
-  minRollValue: 0
-  maxRollValue: 1
+  minRollValue: 1
+  maxRollValue: 3
   statType: 9
   modifierOp: 0
   buffDurationSeconds: 4

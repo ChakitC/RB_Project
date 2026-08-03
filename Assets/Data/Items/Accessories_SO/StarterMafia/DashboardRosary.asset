@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: Accessory.DashboardRosary
   displayName: Dashboard Rosary
   description: A rosary taken from the crew's getaway car. After a perfect dodge, gain 15% armor for 4 seconds.
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 4e529b56c06b43c4c83266dc0535478c, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
@@ -29,6 +29,7 @@ MonoBehaviour:
   - Armor
   - PerfectDodge
   - Faith
+  uniqueEquip: 1
   statModifiers: []
   passives:
   - {fileID: 11400000, guid: d00c0000000000000000000000000000, type: 2}

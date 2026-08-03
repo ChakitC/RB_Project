@@ -21,7 +21,7 @@ MonoBehaviour:
   controller: {fileID: 9100000, guid: fc3e6424aee06f4498f1cedcc3b293ac, type: 2}
   animProfile: {fileID: 11400000, guid: a616c757aab22224faaf2ff69aa02880, type: 2}
   weaponHandMode: 0
-  combatRole: 0
+  combatRole: 1
   chainAttackSkill: {fileID: 0}
   introChainCutscene: {fileID: 0}
   skillSlots:
@@ -58,7 +58,7 @@ MonoBehaviour:
     options:
     - optionId: Test.Aires.Ultimate
       displayName: Aires.2
-      skillAsset: {fileID: 11400000, guid: fa756f6057a4e834b9d708818cb7d06e, type: 2}
+      skillAsset: {fileID: 0}
       skillLevel: 1
       supportAssets: []
       maxSupportSlots: 3
@@ -76,20 +76,20 @@ MonoBehaviour:
       maxSupportSlots: 3
       upgradeTreeOverride: {fileID: 0}
   activeSkillPointsPerLevel: 1
-  maxHP: 30000
-  maxStamina: 50
-  Damage: 10
-  armor: 1
-  critMultiplier: 1.2
-  critRate: 10
+  maxHP: 1250
+  maxStamina: 100
+  Damage: 8
+  armor: 22
+  critMultiplier: 1.5
+  critRate: 5
   Enagy: 100
-  speed: 4.5
+  speed: 4.2
   speedDown: 1
-  DamageScaling: 1
-  ArmorScaling: 0
-  MAXHPScaling: 100
+  DamageScaling: 0.4
+  ArmorScaling: 0.55
+  MAXHPScaling: 42
   StaminaScaling: 0
-  CritrateScaling: 0.1
+  CritrateScaling: 0
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0

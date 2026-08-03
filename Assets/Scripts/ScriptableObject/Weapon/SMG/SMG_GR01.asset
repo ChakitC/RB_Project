@@ -23,6 +23,8 @@ MonoBehaviour:
   itemType: 1
   stackable: 0
   maxStack: 1
+  baseBuyPrice: 300
+  baseSellPrice: 90
   BulletPrefab: {fileID: 1401322386234506, guid: 2e7cf060ea43be14986bea7326d77e1c, type: 3}
   WeaponPrefab: {fileID: 3491401369918143333, guid: ac96f38a10dcca647b07513064f22f1b, type: 3}
   upgradeCurve: {fileID: 0}
@@ -42,22 +44,22 @@ MonoBehaviour:
   equipCue: {fileID: 11400000, guid: 86252ae28322830499f1116974f2ea2a, type: 2}
   WeaponType: 3
   firingModes: 0
-  damage: 10
-  fireRate: 0.2
+  damage: 18
+  fireRate: 0.12
   magazine: 30
   maxMagazine: 30
-  critRate: 100
-  critMultiplier: 1.2
-  stability: 0
-  BulletSpeed: 10
+  critRate: 0
+  critMultiplier: 1
+  stability: 55
+  BulletSpeed: 50
   infiniteReserveAmmo: 0
-  maxReserveAmmo: 300
+  maxReserveAmmo: 240
   overrideStartingReserveAmmo: 0
   startingReserveAmmo: 0
   staggerPower: 10
   autoloader: 0
   magazineReload: 1
-  reloadTime: 1
+  reloadTime: 1.8
   reloadPerBullet: 0
   startInsertDelay: 0
   perBulletInsertTime: 0
@@ -66,5 +68,13 @@ MonoBehaviour:
   baseSwaySpeed: 20
   baseMaxSwayAngle: 5
   baseReturnSpeed: 1
+  hipSpreadDegrees: 2.2
+  aimSpreadDegrees: 0.35
+  moveSpreadPenaltyDegrees: 1
+  spreadPerShotDegrees: 0.45
+  maximumSpreadBloomDegrees: 3
+  spreadRecoveryDegreesPerSecond: 3.5
+  cameraRecoilPitch: 1.1
+  cameraRecoilYaw: 0.45
   burstCount: 0
   burstInterval: 0

@@ -8,6 +8,7 @@ public static class ShopUiPrefabBuilder
     const string PrefabFolder = "Assets/Prefab/User Interface/Shop";
     const string RowPrefabPath = PrefabFolder + "/ShopItemRow_Starter.prefab";
     const string PanelPrefabPath = PrefabFolder + "/ShopPanel_Starter.prefab";
+    const string CharacterDatabasePath = "Assets/Scripts/System/SaveSystem/CharacterDatabase.asset";
 
     [MenuItem("Tools/Shop/Create Starter UI Prefabs")]
     public static void CreateStarterPrefabs()
@@ -181,6 +182,13 @@ public static class ShopUiPrefabBuilder
         SetReference(panel, "messageText", messageText);
         SetReference(panel, "emptyState", emptyState.gameObject);
         SetReference(panel, "closeButton", closeButton);
+
+        var characterPage = root.AddComponent<CharacterShopPageUI>();
+        SetReference(
+            characterPage,
+            "characterDatabase",
+            AssetDatabase.LoadAssetAtPath<CharacterDatabase>(CharacterDatabasePath));
+        SetReference(panel, "characterShopPage", characterPage);
 
         var saved = PrefabUtility.SaveAsPrefabAsset(root, PanelPrefabPath);
         Object.DestroyImmediate(root);

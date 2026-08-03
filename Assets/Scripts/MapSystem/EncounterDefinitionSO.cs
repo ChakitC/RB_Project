@@ -178,4 +178,22 @@ public class EncounterDefinitionSO : ScriptableObject
     public bool BossEncounter => bossEncounter;
     public EncounterWave[] Waves => waves;
     public bool CompleteWhenNoEnemies => completeWhenNoEnemies;
+
+    public int TotalSpawnCount
+    {
+        get
+        {
+            if (waves == null)
+                return 0;
+
+            int total = 0;
+            for (int i = 0; i < waves.Length; i++)
+            {
+                if (waves[i] != null)
+                    total += waves[i].SpawnCount;
+            }
+
+            return total;
+        }
+    }
 }

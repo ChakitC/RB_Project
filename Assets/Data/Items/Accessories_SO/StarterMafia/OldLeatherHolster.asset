@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: Accessory.OldLeatherHolster
   displayName: Old Leather Holster
   description: A worn 1970s leather holster. Reduces reload time by 8% and adds 5 stability.
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 4e529b56c06b43c4c83266dc0535478c, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
@@ -23,8 +23,8 @@ MonoBehaviour:
   itemType: 7
   stackable: 0
   maxStack: 1
-  baseBuyPrice: 250
-  baseSellPrice: 75
+  baseBuyPrice: 200
+  baseSellPrice: 60
   tags:
   - Reload
   - Stability

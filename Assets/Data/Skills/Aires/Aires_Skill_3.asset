@@ -15,9 +15,9 @@ MonoBehaviour:
   helperFacingMode: 1
   chainContinueMode: 0
   chainContinueNormalizedTime: 1
-  radius: 50
-  duration: 3
-  requireLineOfSight: 0
+  radius: 10
+  duration: 4
+  requireLineOfSight: 1
   targetLayers:
     serializedVersion: 2
     m_Bits: 512
@@ -38,12 +38,13 @@ MonoBehaviour:
   skillId: Aires.Skill.3
   tags: 0
   description: 
-  baseDamage: 10
-  baseStaggerPower: 10
-  baseManaCost: 10
+  baseDamage: 0
+  damageCoefficient: 0
+  baseStaggerPower: 0
+  baseManaCost: 25
   baseCastTime: 0.5
-  baseCooldown: 0
-  baseCritChance: 5
+  baseCooldown: 15
+  baseCritChance: 0
   baseProjectilesCount: 1
   projectileSpeed: 5
   AreaofEffec: 0

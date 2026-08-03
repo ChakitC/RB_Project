@@ -24,12 +24,13 @@ MonoBehaviour:
   itemType: 7
   stackable: 0
   maxStack: 1
-  baseBuyPrice: 0
-  baseSellPrice: 0
+  baseBuyPrice: 250
+  baseSellPrice: 75
   tags:
   - Ammo
   - Reserve
   - Feno
+  uniqueEquip: 1
   statModifiers:
   - statType: 21
     operation: 1

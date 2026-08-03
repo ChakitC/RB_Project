@@ -6,7 +6,8 @@ public enum WeaponType
     Rifle,
     Smg,
     Hmg,
-    Melee
+    Melee,
+    Spirit
 }
 
 public enum FiringMode

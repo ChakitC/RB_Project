@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public interface IInventorySlotUIOwner
 {
@@ -117,9 +118,23 @@ public class InventoryUI : InventorySlotOwnerBase
     [SerializeField] private DragItemUI dragItemUI;
     [SerializeField] private Canvas rootCanvas;
 
+    [Header("Scroll And Layout")]
+    [SerializeField] private ScrollRect scrollRect;
+    [SerializeField] private RectTransform viewport;
+    [SerializeField] private GridLayoutGroup gridLayout;
+    [SerializeField, Min(1)] private int columnCount = 9;
+    [SerializeField, Min(1)] private int visibleRowCount = 4;
+    [SerializeField, Min(0f)] private float slotSpacing = 8f;
+    [SerializeField, Min(0f)] private float autoScrollEdgeSize = 72f;
+    [SerializeField, Min(0f)] private float autoScrollSpeed = 0.8f;
+
     readonly List<InventorySlotUI> slotUIs = new();
 
     InventorySystem inventorySystem;
+    Vector2 lastViewportSize = new(float.NaN, float.NaN);
+    Vector2 dragPointerScreenPosition;
+    bool hasDragPointerPosition;
+    bool layoutDirty = true;
 
     protected override DragItemUI DragVisual => dragItemUI;
     protected override Canvas RootCanvas => rootCanvas;
@@ -137,7 +152,23 @@ public class InventoryUI : InventorySlotOwnerBase
         if (rootCanvas == null)
             rootCanvas = GetComponentInParent<Canvas>();
 
+        if (gridLayout == null && slotContainer != null)
+            gridLayout = slotContainer.GetComponent<GridLayoutGroup>();
+
+        EnsureScrollView();
+
         base.Awake();
+    }
+
+    void LateUpdate()
+    {
+        RefreshLayoutIfNeeded();
+        ApplyDragAutoScroll();
+    }
+
+    void OnRectTransformDimensionsChange()
+    {
+        layoutDirty = true;
     }
 
     void Start()
@@ -226,6 +257,28 @@ public class InventoryUI : InventorySlotOwnerBase
         inventorySystem.MoveOrSwap(DraggingSourceIndex, targetIndex);
     }
 
+    public override bool BeginDrag(int slotIndex, PointerEventData eventData)
+    {
+        bool beganDrag = base.BeginDrag(slotIndex, eventData);
+        if (!beganDrag)
+            return false;
+
+        CacheDragPointerPosition(eventData);
+        return true;
+    }
+
+    public override void UpdateDrag(PointerEventData eventData)
+    {
+        base.UpdateDrag(eventData);
+        CacheDragPointerPosition(eventData);
+    }
+
+    public override void EndDrag(PointerEventData eventData)
+    {
+        base.EndDrag(eventData);
+        hasDragPointerPosition = false;
+    }
+
     public override void HandleSlotClick(int slotIndex, PointerEventData eventData)
     {
         if (inventorySystem == null || !IsValidSlotIndex(slotIndex))
@@ -302,6 +355,234 @@ public class InventoryUI : InventorySlotOwnerBase
             else
                 DestroyImmediate(slotUI.gameObject);
         }
+
+        layoutDirty = true;
+    }
+
+    void EnsureScrollView()
+    {
+        if (scrollRect != null && viewport != null)
+            return;
+
+        if (slotContainer == null || slotContainer.parent is not RectTransform window)
+            return;
+
+        var scrollObject = new GameObject(
+            "InventoryScrollView",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(ScrollRect));
+        scrollObject.layer = gameObject.layer;
+        scrollObject.transform.SetParent(window, false);
+        scrollObject.transform.SetSiblingIndex(transform.GetSiblingIndex());
+
+        var scrollTransform = scrollObject.GetComponent<RectTransform>();
+        scrollTransform.anchorMin = new Vector2(0f, 1f);
+        scrollTransform.anchorMax = Vector2.one;
+        scrollTransform.pivot = new Vector2(0.5f, 1f);
+        scrollTransform.anchoredPosition = new Vector2(0f, -165f);
+        scrollTransform.sizeDelta = new Vector2(-290f, 599f);
+
+        var scrollBackground = scrollObject.GetComponent<Image>();
+        scrollBackground.color = new Color(0.055f, 0.065f, 0.075f, 0.92f);
+
+        viewport = CreateViewport(scrollTransform);
+        Scrollbar scrollbar = CreateVerticalScrollbar(scrollTransform);
+
+        slotContainer.SetParent(viewport, false);
+        slotContainer.anchorMin = new Vector2(0f, 1f);
+        slotContainer.anchorMax = new Vector2(1f, 1f);
+        slotContainer.pivot = new Vector2(0.5f, 1f);
+        slotContainer.anchoredPosition = Vector2.zero;
+
+        scrollRect = scrollObject.GetComponent<ScrollRect>();
+        scrollRect.content = slotContainer;
+        scrollRect.viewport = viewport;
+        scrollRect.horizontal = false;
+        scrollRect.vertical = true;
+        scrollRect.movementType = ScrollRect.MovementType.Clamped;
+        scrollRect.inertia = true;
+        scrollRect.scrollSensitivity = 36f;
+        scrollRect.verticalScrollbar = scrollbar;
+        scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
+        scrollRect.verticalScrollbarSpacing = 8f;
+
+        layoutDirty = true;
+    }
+
+    RectTransform CreateViewport(RectTransform parent)
+    {
+        var viewportObject = new GameObject(
+            "Viewport",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(RectMask2D));
+        viewportObject.layer = gameObject.layer;
+        viewportObject.transform.SetParent(parent, false);
+
+        var viewportTransform = viewportObject.GetComponent<RectTransform>();
+        viewportTransform.anchorMin = Vector2.zero;
+        viewportTransform.anchorMax = Vector2.one;
+        viewportTransform.offsetMin = new Vector2(12f, 12f);
+        viewportTransform.offsetMax = new Vector2(-12f, -12f);
+
+        var viewportImage = viewportObject.GetComponent<Image>();
+        viewportImage.color = Color.clear;
+        return viewportTransform;
+    }
+
+    Scrollbar CreateVerticalScrollbar(RectTransform parent)
+    {
+        var scrollbarObject = new GameObject(
+            "Scrollbar Vertical",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Scrollbar));
+        scrollbarObject.layer = gameObject.layer;
+        scrollbarObject.transform.SetParent(parent, false);
+
+        var scrollbarTransform = scrollbarObject.GetComponent<RectTransform>();
+        scrollbarTransform.anchorMin = new Vector2(1f, 0f);
+        scrollbarTransform.anchorMax = Vector2.one;
+        scrollbarTransform.pivot = new Vector2(1f, 1f);
+        scrollbarTransform.offsetMin = new Vector2(-16f, 4f);
+        scrollbarTransform.offsetMax = new Vector2(-6f, -4f);
+
+        var trackImage = scrollbarObject.GetComponent<Image>();
+        trackImage.color = new Color(0.11f, 0.13f, 0.15f, 0.55f);
+
+        var handleObject = new GameObject(
+            "Handle",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image));
+        handleObject.layer = gameObject.layer;
+        handleObject.transform.SetParent(scrollbarTransform, false);
+
+        var handleTransform = handleObject.GetComponent<RectTransform>();
+        handleTransform.anchorMin = Vector2.zero;
+        handleTransform.anchorMax = Vector2.one;
+        handleTransform.offsetMin = new Vector2(2f, 2f);
+        handleTransform.offsetMax = new Vector2(-2f, -2f);
+
+        var handleImage = handleObject.GetComponent<Image>();
+        handleImage.color = new Color(0.72f, 0.48f, 0.14f, 0.9f);
+
+        var scrollbar = scrollbarObject.GetComponent<Scrollbar>();
+        scrollbar.handleRect = handleTransform;
+        scrollbar.targetGraphic = handleImage;
+        scrollbar.direction = Scrollbar.Direction.BottomToTop;
+        return scrollbar;
+    }
+
+    void RefreshLayoutIfNeeded()
+    {
+        if (viewport == null || slotContainer == null || gridLayout == null)
+            return;
+
+        Vector2 viewportSize = viewport.rect.size;
+        if (!layoutDirty && Approximately(viewportSize, lastViewportSize))
+            return;
+
+        layoutDirty = false;
+        lastViewportSize = viewportSize;
+
+        int columns = Mathf.Max(1, columnCount);
+        int visibleRows = Mathf.Max(1, visibleRowCount);
+        float spacing = Mathf.Max(0f, slotSpacing);
+        bool requiresScrollbar = slotUIs.Count > columns * visibleRows;
+        float scrollbarGutter = 0f;
+        if (requiresScrollbar &&
+            scrollRect != null &&
+            scrollRect.verticalScrollbar != null &&
+            scrollRect.verticalScrollbar.transform is RectTransform scrollbarTransform)
+        {
+            scrollbarGutter = Mathf.Max(0f, scrollbarTransform.rect.width + scrollRect.verticalScrollbarSpacing);
+        }
+
+        float availableWidth = viewportSize.x - scrollbarGutter - spacing * (columns - 1);
+        float cellSize = Mathf.Floor(availableWidth / columns);
+        if (cellSize <= 0f)
+            return;
+
+        float gridWidth = cellSize * columns + spacing * (columns - 1);
+        float remainingWidth = Mathf.Max(0f, viewportSize.x - scrollbarGutter - gridWidth);
+        int leftPadding = Mathf.FloorToInt(remainingWidth * 0.5f + scrollbarGutter);
+        int rightPadding = Mathf.FloorToInt(remainingWidth * 0.5f);
+        float visibleContentHeight = visibleRows * cellSize + Mathf.Max(0, visibleRows - 1) * spacing;
+        int rowCount = Mathf.CeilToInt(slotUIs.Count / (float)columns);
+        float contentHeight = rowCount > 0
+            ? rowCount * cellSize + Mathf.Max(0, rowCount - 1) * spacing
+            : 0f;
+
+        gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        gridLayout.constraintCount = columns;
+        gridLayout.cellSize = new Vector2(cellSize, cellSize);
+        gridLayout.spacing = new Vector2(spacing, spacing);
+        gridLayout.padding.left = leftPadding;
+        gridLayout.padding.right = rightPadding;
+        gridLayout.padding.top = 0;
+        gridLayout.padding.bottom = 0;
+
+        if (scrollRect != null && scrollRect.transform is RectTransform scrollTransform)
+        {
+            float viewportVerticalPadding = Mathf.Max(0f, viewport.offsetMin.y - viewport.offsetMax.y);
+            scrollTransform.SetSizeWithCurrentAnchors(
+                RectTransform.Axis.Vertical,
+                visibleContentHeight + viewportVerticalPadding);
+        }
+
+        slotContainer.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, contentHeight);
+        LayoutRebuilder.ForceRebuildLayoutImmediate(slotContainer);
+    }
+
+    void CacheDragPointerPosition(PointerEventData eventData)
+    {
+        if (eventData == null)
+        {
+            hasDragPointerPosition = false;
+            return;
+        }
+
+        dragPointerScreenPosition = eventData.position;
+        hasDragPointerPosition = true;
+    }
+
+    void ApplyDragAutoScroll()
+    {
+        if (!IsDragging || !hasDragPointerPosition || scrollRect == null || viewport == null)
+            return;
+
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                viewport,
+                dragPointerScreenPosition,
+                ResolveEventCamera(),
+                out Vector2 localPointer))
+        {
+            return;
+        }
+
+        float edgeSize = Mathf.Min(Mathf.Max(1f, autoScrollEdgeSize), viewport.rect.height * 0.5f);
+        float scrollDirection = 0f;
+
+        if (localPointer.y > viewport.rect.yMax - edgeSize)
+            scrollDirection = Mathf.InverseLerp(viewport.rect.yMax - edgeSize, viewport.rect.yMax, localPointer.y);
+        else if (localPointer.y < viewport.rect.yMin + edgeSize)
+            scrollDirection = -Mathf.InverseLerp(viewport.rect.yMin + edgeSize, viewport.rect.yMin, localPointer.y);
+
+        if (Mathf.Approximately(scrollDirection, 0f))
+            return;
+
+        scrollRect.verticalNormalizedPosition = Mathf.Clamp01(
+            scrollRect.verticalNormalizedPosition + scrollDirection * autoScrollSpeed * Time.unscaledDeltaTime);
+    }
+
+    static bool Approximately(Vector2 left, Vector2 right)
+    {
+        return Mathf.Approximately(left.x, right.x) && Mathf.Approximately(left.y, right.y);
     }
 
     void UnbindCurrentSystem()

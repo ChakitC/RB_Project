@@ -1,0 +1,20 @@
+{
+    "entries": [
+        {
+            "ownerId": "character:ID.Feno",
+            "equippedWeaponInstanceId": "e0b68ca73d0b429090df38a89cff7322"
+        },
+        {
+            "ownerId": "character:ID.Roma",
+            "equippedWeaponInstanceId": "0588d841bfb045abaf15aa48a2e34a70"
+        },
+        {
+            "ownerId": "character:ID.Aires",
+            "equippedWeaponInstanceId": "9d469f383db3478da770199ab40cf855"
+        },
+        {
+            "ownerId": "character:ID.Milano",
+            "equippedWeaponInstanceId": "a62b6d77389c43aa8d7f7f90c5f013b3"
+        }
+    ]
+}

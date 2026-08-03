@@ -596,3 +596,36 @@ immediately before the skill animation starts. Skills using
 `KeepCurrentFacing` retain their existing facing. `Aires_Skill_3` enables this
 behavior so its animation and world-space VFX align with the current Aim
 Target.
+
+## Test Stage Damage And Energy Contract
+
+`SkillGemDefinition.damageCoefficient` scales a skill from the caster's final
+character Damage stat without coupling it to weapon damage. Final authored
+damage starts from:
+
+`level-resolved base damage + StatsHub.GetSkillBaseDamage() * damageCoefficient`
+
+Upgrade-tree and support modifiers then modify that result. Skill critical
+chance comes from the character through `StatsHub`; tuned Test Stage skills use
+0 authored base critical chance.
+
+`SkillUserSystem` uses 100 maximum Energy, regenerates 3 Energy per second, and
+waits 2 seconds after spending before regeneration resumes. The rule is shared
+by player-controlled and AI-controlled party actors. Room travel does not
+restore Energy.
+
+Current tuned skills are:
+
+| Skill | Damage formula | Cost | Cooldown | Notes |
+| --- | --- | ---: | ---: | --- |
+| Roma Ultimate | `100 + Damage * 20` | 60 | 50s | 80 stagger |
+| Aires Skill 1 | `100 + Damage * 12` | 25 | 10s | 60 stagger |
+| Aires Taunt | 0 | 25 | 15s | radius 10, duration 4s, line of sight required |
+| Elite Knockback | `20 + Damage * 0.9` | 0 | 10s | existing hit step remains 2x |
+| Boss Heavy Combo | `55 + Damage * 0.55` per hit | 0 | 18s | three existing hits |
+| Boss Projectile | `90 + Damage * 1` | 0 | 6s | existing projectile payload |
+
+Boss Skill 2 remains the existing self-buff with zero skill damage and a
+25-second cooldown. `Aires.Skill.2.Morph` remains an unequipped placeholder;
+do not add gameplay effects or put it back into the default loadout until its
+design is complete.

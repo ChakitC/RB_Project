@@ -11,6 +11,7 @@ public class CharacterDatabase : ScriptableObject
     Dictionary<string, CharacterStats> _lookup;
     Dictionary<string, CharacterUnlockEntry> _unlockLookup;
 
+    public IReadOnlyList<CharacterStats> Characters => characters;
     public IReadOnlyList<CharacterUnlockEntry> UnlockEntries => unlockEntries;
 
     void OnEnable() => BuildLookup();
@@ -41,10 +42,8 @@ public class CharacterDatabase : ScriptableObject
             _lookup.Add(c.characterId, c);
         }
 
-        if (unlockEntries == null)
-            return;
-
-        for (int i = 0; i < unlockEntries.Count; i++)
+        int unlockEntryCount = unlockEntries != null ? unlockEntries.Count : 0;
+        for (int i = 0; i < unlockEntryCount; i++)
         {
             CharacterUnlockEntry entry = unlockEntries[i];
             if (entry == null)
@@ -61,6 +60,21 @@ public class CharacterDatabase : ScriptableObject
             }
 
             _unlockLookup.Add(id, entry);
+        }
+
+        foreach (var c in characters)
+        {
+            if (c == null || string.IsNullOrWhiteSpace(c.characterId))
+                continue;
+
+            string id = c.characterId.Trim();
+            if (!_unlockLookup.ContainsKey(id))
+            {
+                Debug.LogWarning(
+                    $"[CharacterDatabase] Missing unlock configuration for {c.name} ({id}). " +
+                    "The character will remain locked and unavailable for purchase.",
+                    this);
+            }
         }
     }
 
@@ -142,7 +156,11 @@ public static class CharacterUnlockService
         characterId = characterId.Trim();
 
         if (!TryResolveEntry(characterId, out CharacterUnlockEntry entry))
-            return true;
+        {
+            // Preserve legacy ids that are not authored in a character database, while
+            // preventing newly authored playable characters from becoming free by accident.
+            return !TryResolveCharacter(characterId, out _);
+        }
 
         if (entry.UnlockedByDefault)
             return true;

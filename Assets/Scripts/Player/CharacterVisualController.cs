@@ -666,7 +666,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         _overheadBarsView = _healthBarInstance.GetComponent<CharacterOverheadBarsView>();
         if (_overheadBarsView != null)
         {
-            _overheadBarsView.Bind(_healthSystem, ResolveStaggerMeter());
+            _overheadBarsView.Bind(_healthSystem, ResolveStaggerMeter(), _ctx);
             return;
         }
 

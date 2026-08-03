@@ -36,15 +36,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   icon: {fileID: 21300000, guid: 622b3ff651b5e9a40a1e45bed2acbd9b, type: 3}
   displayName: 
-  skillId: Roma.Ultimate.01
+  skillId: Aires.Skill.2.Morph
   tags: 18
   description: 
-  baseDamage: 10.02
-  baseStaggerPower: 10
+  baseDamage: 0
+  damageCoefficient: 0
+  baseStaggerPower: 0
   baseManaCost: 10
   baseCastTime: 0.5
   baseCooldown: 0
-  baseCritChance: 5
+  baseCritChance: 0
   baseProjectilesCount: 1
   projectileSpeed: 5
   AreaofEffec: 0

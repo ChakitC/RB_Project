@@ -31,6 +31,9 @@ public class ShopPanelStarterAutoBuilder : MonoBehaviour
 
         PrepareRoot();
         BuildLayout(panel, service);
+
+        if (GetComponent<CharacterShopPageUI>() == null)
+            gameObject.AddComponent<CharacterShopPageUI>();
     }
 
     void PrepareRoot()

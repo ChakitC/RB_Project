@@ -20,6 +20,7 @@ public class SceneLoaderSystem : MonoBehaviour
     public PlayerInventory playerInventory;
     public ItemDatabase itemDatabase;
     [SerializeField] private string _mapSelect;
+    [SerializeField] private MapRunConfigSO selectedMapRunConfig;
     [SerializeField] private List<SceneAudioEntry> sceneAudio = new();
     
     
@@ -60,6 +61,26 @@ public class SceneLoaderSystem : MonoBehaviour
         }
 
         ApplySceneAudio(scene.name);
+    }
+
+    public void LoadStage(MapRunConfigSO config)
+    {
+        if (config == null)
+        {
+            Debug.LogWarning("[SceneLoaderSystem] Cannot load a stage without a MapRunConfigSO.", this);
+            return;
+        }
+
+        selectedMapRunConfig = config;
+        _mapSelect = "MapRun";
+        LoadGame();
+    }
+
+    public MapRunConfigSO ConsumeSelectedMapRunConfig()
+    {
+        MapRunConfigSO selected = selectedMapRunConfig;
+        selectedMapRunConfig = null;
+        return selected;
     }
 
     public void LoadGame()

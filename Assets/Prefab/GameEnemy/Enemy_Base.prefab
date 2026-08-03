@@ -1188,7 +1188,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseStats: {fileID: 11400000, guid: cf68c469f9aa3154582681d0318e66b7, type: 2}
-  currentWeapon: {fileID: 11400000, guid: 6efa75999c21ad64a9a7c53c8fb76a32, type: 2}
+  currentWeapon: {fileID: 11400000, guid: b0010000000000000000000000000001, type: 2}
   stateHub: {fileID: 6926906578778700563}
   StatsHub: {fileID: 7553791555562528323}
   CombatEventBus: {fileID: 905179928187237650}

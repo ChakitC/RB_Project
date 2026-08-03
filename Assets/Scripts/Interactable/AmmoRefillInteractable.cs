@@ -34,6 +34,14 @@ public class AmmoRefillInteractable : MonoBehaviour, IInteractable
 
     public int Priority => priority;
 
+    public void ConfigurePartyReserveRefill(bool oneUse = true)
+    {
+        fillToMax = true;
+        restoreTarget = AmmoRestoreTarget.ReserveAmmo;
+        recipientMode = AmmoRecipientMode.InteractorAndAllies;
+        deactivateAfterUse = oneUse;
+    }
+
     public string GetPrompt(Interactor interactor)
     {
         return prompt;

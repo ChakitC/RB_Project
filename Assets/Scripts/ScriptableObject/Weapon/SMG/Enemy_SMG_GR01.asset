@@ -1,0 +1,80 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4eeda43b528416d4e8d8f8353d25da93, type: 3}
+  m_Name: Enemy_SMG_GR01
+  m_EditorClassIdentifier: 
+  itemId: Enemy_SMG_GR01
+  displayName: Enemy SMG GR01
+  description: Test Stage enemy-only rifle.
+  icon: {fileID: 21300000, guid: 72e7306472887494c9e7dc530e9d5fcf, type: 3}
+  pickupVisualPrefab: {fileID: 3491401369918143333, guid: ac96f38a10dcca647b07513064f22f1b, type: 3}
+  pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
+  pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
+  pickupVisualScale: {x: 2.5, y: 2.5, z: 2.5}
+  itemType: 1
+  stackable: 0
+  maxStack: 1
+  baseBuyPrice: 0
+  baseSellPrice: 0
+  BulletPrefab: {fileID: 1401322386234506, guid: 2e7cf060ea43be14986bea7326d77e1c, type: 3}
+  WeaponPrefab: {fileID: 3491401369918143333, guid: ac96f38a10dcca647b07513064f22f1b, type: 3}
+  upgradeCurve: {fileID: 0}
+  overrideWeaponModelMountOffset: 1
+  rightHandWeaponModelMount:
+    localPosition: {x: -0.195, y: 0.183, z: -0.036}
+    localRotationEuler: {x: -0, y: 180, z: 90}
+    localScale: {x: 1.2, y: 1.2, z: 1.2}
+  leftHandWeaponModelMount:
+    localPosition: {x: 0.195, y: 0.183, z: -0.036}
+    localRotationEuler: {x: -0.000005008957, y: 0.0000050089566, z: 90}
+    localScale: {x: 1.2, y: 1.2, z: 1.2}
+  fireCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
+  hitCue: {fileID: 11400000, guid: f553b85156097ad4091b995baff05cb9, type: 2}
+  emptyCue: {fileID: 11400000, guid: 86252ae28322830499f1116974f2ea2a, type: 2}
+  reloadCue: {fileID: 11400000, guid: b26324c5bf932c64e97ceb5e5c0423b2, type: 2}
+  equipCue: {fileID: 11400000, guid: 86252ae28322830499f1116974f2ea2a, type: 2}
+  WeaponType: 3
+  firingModes: 0
+  damage: 4
+  fireRate: 0.2
+  magazine: 30
+  maxMagazine: 30
+  critRate: 0
+  critMultiplier: 1
+  stability: 50
+  BulletSpeed: 25
+  infiniteReserveAmmo: 1
+  maxReserveAmmo: 0
+  overrideStartingReserveAmmo: 0
+  startingReserveAmmo: 0
+  staggerPower: 10
+  autoloader: 0
+  magazineReload: 1
+  reloadTime: 1.8
+  reloadPerBullet: 0
+  startInsertDelay: 0
+  perBulletInsertTime: 0
+  endInsertDelay: 0
+  shootInterruptsReload: 0
+  baseSwaySpeed: 20
+  baseMaxSwayAngle: 5
+  baseReturnSpeed: 1
+  hipSpreadDegrees: 2.2
+  aimSpreadDegrees: 0.35
+  moveSpreadPenaltyDegrees: 1
+  spreadPerShotDegrees: 0.45
+  maximumSpreadBloomDegrees: 3
+  spreadRecoveryDegreesPerSecond: 3.5
+  cameraRecoilPitch: 1.1
+  cameraRecoilYaw: 0.45
+  burstCount: 0
+  burstInterval: 0

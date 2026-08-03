@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5926bca3bea0db947beaac30968d09be, type: 3}
-  m_Name: Test.Rarity Table
+  m_Name: TestStage.Rarity.Normal.Stage01
   m_EditorClassIdentifier: 
   entries:
-  - rarity: 2
-    weight: 0.05
-  - rarity: 1
-    weight: 0.15
   - rarity: 0
-    weight: 0.8
+    weight: 90
+  - rarity: 1
+    weight: 9
+  - rarity: 2
+    weight: 1

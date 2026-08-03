@@ -41,6 +41,7 @@ public class RandomShopCatalog : ShopCatalogBase
     [NonSerialized] private WeaponUpgradeCurve runtimeFallbackUpgradeCurve;
     [NonSerialized] private int runtimeGeneration;
     [NonSerialized] private int lastPrepareFrame = -1;
+    [NonSerialized] private int testStageIndex;
 
     public override int EntryCount => RuntimeEntries.Count;
     public int RuntimeGeneration => runtimeGeneration;
@@ -68,6 +69,17 @@ public class RandomShopCatalog : ShopCatalogBase
     {
         runtimeWeaponAffixDatabase = affixDatabase;
         runtimeFallbackUpgradeCurve = upgradeCurve;
+    }
+
+    public void ConfigureForTestStage(MapRunConfigSO config)
+    {
+        int resolvedStageIndex = ResolveTestStageIndex(config);
+        if (testStageIndex == resolvedStageIndex)
+            return;
+
+        testStageIndex = resolvedStageIndex;
+        RuntimeEntries.Clear();
+        runtimeGeneration = 0;
     }
 
     void OnValidate()
@@ -205,7 +217,10 @@ public class RandomShopCatalog : ShopCatalogBase
         var affixDatabase = ResolveWeaponAffixDatabase();
         var upgradeCurve = ResolveFallbackUpgradeCurve();
         WeaponRarity rarity = RollRandomWeaponRarity();
-        int upgradeLevel = RollInclusive(minWeaponUpgradeLevel, maxWeaponUpgradeLevel);
+        int rarityCap = upgradeCurve != null ? upgradeCurve.GetMaxLevel(rarity) : int.MaxValue;
+        int minimumLevel = Mathf.Min(ResolveMinimumWeaponLevel(), rarityCap);
+        int maximumLevel = Mathf.Min(ResolveMaximumWeaponLevel(), rarityCap);
+        int upgradeLevel = RollInclusive(minimumLevel, maximumLevel);
 
         entry.weaponRarity = rarity;
         entry.weaponUpgradeLevel = upgradeLevel;
@@ -219,10 +234,23 @@ public class RandomShopCatalog : ShopCatalogBase
 
         string affixSummary = WeaponAffixDisplayUtility.BuildSummary(instance, affixDatabase);
         entry.SetWeaponInstanceTemplate(instance, affixSummary);
+        entry.buyPrice = ResolveWeaponBuyPrice(gun, rarity, upgradeLevel, upgradeCurve);
+        entry.sellPrice = Mathf.RoundToInt(entry.buyPrice * 0.3f);
     }
 
     WeaponRarity RollRandomWeaponRarity()
     {
+        if (testStageIndex > 0)
+        {
+            float roll = UnityEngine.Random.value;
+            return testStageIndex switch
+            {
+                1 => roll < 0.8f ? WeaponRarity.Common : WeaponRarity.Rare,
+                2 => roll < 0.45f ? WeaponRarity.Common : roll < 0.9f ? WeaponRarity.Rare : WeaponRarity.Epic,
+                _ => roll < 0.2f ? WeaponRarity.Common : roll < 0.7f ? WeaponRarity.Rare : WeaponRarity.Epic,
+            };
+        }
+
         if (weaponRarityTable == null ||
             weaponRarityTable.entries == null ||
             weaponRarityTable.entries.Count == 0)
@@ -235,6 +263,64 @@ public class RandomShopCatalog : ShopCatalogBase
             : ItemRarity.Common;
 
         return WeaponRarityUtility.FromItemRarity(itemRarity);
+    }
+
+    int ResolveMinimumWeaponLevel()
+    {
+        return testStageIndex switch
+        {
+            1 => 0,
+            2 => 5,
+            3 => 10,
+            _ => minWeaponUpgradeLevel,
+        };
+    }
+
+    int ResolveMaximumWeaponLevel()
+    {
+        return testStageIndex switch
+        {
+            1 => 5,
+            2 => 15,
+            3 => 25,
+            _ => maxWeaponUpgradeLevel,
+        };
+    }
+
+    static int ResolveTestStageIndex(MapRunConfigSO config)
+    {
+        if (config == null || !config.IsTestStage)
+            return 0;
+
+        if (config.StartLevel <= 1)
+            return 1;
+        if (config.StartLevel <= 11)
+            return 2;
+        return 3;
+    }
+
+    static int ResolveWeaponBuyPrice(
+        GunConfig weapon,
+        WeaponRarity rarity,
+        int upgradeLevel,
+        WeaponUpgradeCurve upgradeCurve)
+    {
+        int basePrice = weapon != null && weapon.baseBuyPrice > 0 ? weapon.baseBuyPrice : 300;
+        int rarityPremium = rarity switch
+        {
+            WeaponRarity.Rare => 150,
+            WeaponRarity.Epic => 350,
+            _ => 0,
+        };
+
+        int upgradeGold = 0;
+        if (upgradeCurve != null)
+        {
+            for (int level = 1; level <= Mathf.Max(0, upgradeLevel); level++)
+                upgradeGold += upgradeCurve.GetCostForTargetLevel(level).goldCost;
+        }
+
+        return Mathf.Max(0, basePrice + rarityPremium + Mathf.RoundToInt(upgradeGold * 0.5f));
     }
 
     WeaponAffixDatabase ResolveWeaponAffixDatabase()

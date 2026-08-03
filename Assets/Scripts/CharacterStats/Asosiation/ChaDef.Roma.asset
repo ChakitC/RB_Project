@@ -60,23 +60,23 @@ MonoBehaviour:
       maxSupportSlots: 3
       upgradeTreeOverride: {fileID: 0}
   activeSkillPointsPerLevel: 1
-  maxHP: 100000
-  maxStamina: 50
-  Damage: 50
-  armor: 1
-  critMultiplier: 1.2
+  maxHP: 900
+  maxStamina: 80
+  Damage: 14
+  armor: 6
+  critMultiplier: 1.6
   critRate: 10
   Enagy: 100
-  speed: 4.5
+  speed: 4.7
   speedDown: 1
-  DamageScaling: 5
-  ArmorScaling: 0.5
-  MAXHPScaling: 5
-  StaminaScaling: 2.5
-  CritrateScaling: 0.05
-  CritDamageScaling: 0.05
-  EnagyScaling: 5
-  SpeedScaling: 0.05
+  DamageScaling: 0.55
+  ArmorScaling: 0.25
+  MAXHPScaling: 32
+  StaminaScaling: 0
+  CritrateScaling: 0
+  CritDamageScaling: 0
+  EnagyScaling: 0
+  SpeedScaling: 0
   passives: []
   dashCue: {fileID: 0}
   voiceProfile:

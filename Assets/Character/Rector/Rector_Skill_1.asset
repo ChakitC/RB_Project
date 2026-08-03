@@ -19,12 +19,13 @@ MonoBehaviour:
   description: 'Rector_Chach
 
 '
-  baseDamage: 100
+  baseDamage: 55
+  damageCoefficient: 0.55
   baseStaggerPower: 10
   baseManaCost: 0
   baseCastTime: 0.5
-  baseCooldown: 10
-  baseCritChance: 5
+  baseCooldown: 18
+  baseCritChance: 0
   baseProjectilesCount: 1
   projectileSpeed: 5
   AreaofEffec: 0

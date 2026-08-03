@@ -71,7 +71,7 @@ public class EncounterDirector : MonoBehaviour
 
             for (int i = 0; i < wave.SpawnCount; i++)
             {
-                SpawnEnemy(wave, spawnIndex);
+                SpawnEnemy(wave, spawnIndex, encounter.BossEncounter);
                 spawnIndex++;
 
                 if (wave.SpawnInterval > 0f && i < wave.SpawnCount - 1)
@@ -86,7 +86,7 @@ public class EncounterDirector : MonoBehaviour
         CompleteEncounter();
     }
 
-    void SpawnEnemy(EncounterWave wave, int spawnIndex)
+    void SpawnEnemy(EncounterWave wave, int spawnIndex, bool bossEncounter)
     {
         if (activeRoom == null)
             return;
@@ -105,6 +105,8 @@ public class EncounterDirector : MonoBehaviour
         GameObject enemyObject = Instantiate(prefab, spawnPoint.position, spawnPoint.rotation);
         if (spawnParent != null)
             enemyObject.transform.SetParent(spawnParent, true);
+
+        activeRoom.RunController?.ConfigureStageEnemy(enemyObject, bossEncounter);
 
         TrackEnemyObject(enemyObject);
     }

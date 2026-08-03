@@ -15,6 +15,18 @@ public sealed class WeightedMapNodeType
 [CreateAssetMenu(menuName = "Game/Map/Run Config")]
 public class MapRunConfigSO : ScriptableObject
 {
+    [Header("Test Stage")]
+    [SerializeField] private string stageId;
+    [SerializeField] private string stageDisplayName;
+    [SerializeField] private LevelTableSO levelTable;
+    [SerializeField, Min(1)] private int startLevel = 1;
+    [SerializeField, Min(2)] private int targetLevel = 11;
+    [SerializeField, Min(1)] private int targetRunCount = 2;
+    [SerializeField] private int[] enemyLevelTiers;
+    [SerializeField, Range(0f, 1f)] private float regularEnemyXpShare = 0.6f;
+    [SerializeField, Range(0f, 1f)] private float bossXpShare = 0.2f;
+    [SerializeField] private GameObject stageExitPrefab;
+
     [Header("Seed")]
     [Tooltip("ถ้าเปิด จะสุ่ม seed ใหม่ทุกครั้งที่เริ่ม run")]
     [SerializeField] private bool randomizeSeed = true;
@@ -87,6 +99,38 @@ public class MapRunConfigSO : ScriptableObject
     public WeightedMapNodeType[] BranchDeadEndWeights => branchDeadEndWeights;
     public RoomDefinitionSO[] RoomDefinitions => roomDefinitions;
     public EncounterDefinitionSO[] EncounterDefinitions => encounterDefinitions;
+    public string StageId => stageId != null ? stageId.Trim() : string.Empty;
+    public string StageDisplayName => string.IsNullOrWhiteSpace(stageDisplayName) ? name : stageDisplayName;
+    public bool IsTestStage => !string.IsNullOrWhiteSpace(StageId);
+    public LevelTableSO LevelTable => levelTable;
+    public int StartLevel => Mathf.Max(1, startLevel);
+    public int TargetLevel => Mathf.Max(StartLevel + 1, targetLevel);
+    public int TargetRunCount => Mathf.Max(1, targetRunCount);
+    public int[] EnemyLevelTiers => enemyLevelTiers;
+    public float RegularEnemyXpShare => Mathf.Clamp01(regularEnemyXpShare);
+    public float BossXpShare => Mathf.Clamp(bossXpShare, 0f, 1f - RegularEnemyXpShare);
+    public float CompletionXpShare => Mathf.Max(0f, 1f - RegularEnemyXpShare - BossXpShare);
+    public GameObject StageExitPrefab => stageExitPrefab;
+
+    public int GetEnemyLevel(int stageProgressCount)
+    {
+        if (enemyLevelTiers == null || enemyLevelTiers.Length == 0)
+            return StartLevel;
+
+        int index = Mathf.Clamp(stageProgressCount, 0, enemyLevelTiers.Length - 1);
+        return Mathf.Max(1, enemyLevelTiers[index]);
+    }
+
+    public int GetXpBudgetPerRun()
+    {
+        if (levelTable == null)
+            return 0;
+
+        long startXp = levelTable.GetTotalXpToReach(StartLevel);
+        long targetXp = levelTable.GetTotalXpToReach(TargetLevel);
+        long rangeXp = Math.Max(0L, targetXp - startXp);
+        return Mathf.Max(0, Mathf.RoundToInt((float)rangeXp / TargetRunCount));
+    }
 }
 
 public static class MapRunConfigValidator
@@ -101,6 +145,7 @@ public static class MapRunConfigValidator
         }
 
         var errors = new List<string>();
+        ValidateStageProgression(config, errors);
         ValidateRoomDefinitions(config, errors);
         ValidateRequiredRoomType(config, MapNodeType.Start, "Start node", 1, errors);
         ValidateRequiredRoomType(config, MapNodeType.Boss, "Boss node", 1, errors);
@@ -120,6 +165,21 @@ public static class MapRunConfigValidator
 
         error = string.Join("\n", errors);
         return false;
+    }
+
+    static void ValidateStageProgression(MapRunConfigSO config, List<string> errors)
+    {
+        if (!config.IsTestStage)
+            return;
+
+        if (config.LevelTable == null)
+            errors.Add("Test Stage requires a LevelTable.");
+        if (config.TargetLevel > (config.LevelTable != null ? config.LevelTable.MaxLevel : int.MaxValue))
+            errors.Add($"TargetLevel {config.TargetLevel} exceeds the LevelTable max level.");
+        if (config.EnemyLevelTiers == null || config.EnemyLevelTiers.Length != config.TargetRunCount)
+            errors.Add($"EnemyLevelTiers must contain exactly TargetRunCount ({config.TargetRunCount}) entries.");
+        if (config.StageExitPrefab == null)
+            errors.Add("Test Stage requires a StageExitPrefab.");
     }
 
     static void ValidateRoomDefinitions(MapRunConfigSO config, List<string> errors)

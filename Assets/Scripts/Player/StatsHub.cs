@@ -538,22 +538,22 @@ public class StatsHub : MonoBehaviour
 
     float GetCharacterDamageBase()
     {
-        return ctx != null && ctx.baseStats != null ? ctx.baseDamage + ctx.baseStats.DamageScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.baseDamage + ctx.baseStats.DamageScaling * GetLevelOffset() : 0f;
     }
 
     float GetCharacterArmorBase()
     {
-        return ctx != null && ctx.baseStats != null ? ctx.basearmor + ctx.baseStats.ArmorScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.basearmor + ctx.baseStats.ArmorScaling * GetLevelOffset() : 0f;
     }
 
     float GetCharacterMoveSpeedBase()
     {
-        return ctx != null && ctx.baseStats != null ? ctx.baseSpeed + ctx.baseStats.SpeedScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.baseSpeed + ctx.baseStats.SpeedScaling * GetLevelOffset() : 0f;
     }
 
     float GetCharacterCritRateBase()
     {
-        return ctx != null && ctx.baseStats != null ? ctx.basecritRate + ctx.baseStats.CritrateScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.basecritRate + ctx.baseStats.CritrateScaling * GetLevelOffset() : 0f;
     }
 
     float GetCharacterCritMultiplierBase()
@@ -561,27 +561,35 @@ public class StatsHub : MonoBehaviour
         if (ctx == null || ctx.baseStats == null)
             return BASE_CRIT_MULT;
 
-        return Mathf.Max(1f, ctx.basecritMultiplier + ctx.baseStats.CritDamageScaling * GetLevel());
+        return Mathf.Max(1f, ctx.basecritMultiplier + ctx.baseStats.CritDamageScaling * GetLevelOffset());
     }
 
     float GetCharacterMaxHealthBase()
     {
-        return ctx != null && ctx.baseStats != null ? ctx.basemaxHealth + ctx.baseStats.MAXHPScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.basemaxHealth + ctx.baseStats.MAXHPScaling * GetLevelOffset() : 0f;
     }
 
     float GetCharacterMaxStaminaBase()
     {
-        return ctx != null && ctx.baseStats != null ? ctx.baseStamina + ctx.baseStats.StaminaScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.baseStamina + ctx.baseStats.StaminaScaling * GetLevelOffset() : 0f;
     }
 
     float GetCharacterMaxEnergyBase()
     {
-        return ctx != null && ctx.baseStats != null ? ctx.baseEnagy + ctx.baseStats.EnagyScaling * GetLevel() : 0f;
+        return ctx != null && ctx.baseStats != null ? ctx.baseEnagy + ctx.baseStats.EnagyScaling * GetLevelOffset() : 0f;
     }
 
     float GetLevel()
     {
-        return ctx != null && ctx.levelSystem != null ? ctx.levelSystem.Level : 0f;
+        if (ctx is EnemyContext enemyContext && enemyContext.EnemyLevelSystem != null)
+            return enemyContext.EnemyLevelSystem.Level;
+
+        return ctx != null && ctx.levelSystem != null ? ctx.levelSystem.Level : 1f;
+    }
+
+    float GetLevelOffset()
+    {
+        return Mathf.Max(0f, GetLevel() - 1f);
     }
 
     GunConfig GetCurrentWeapon()
@@ -727,6 +735,15 @@ public class StatsHub : MonoBehaviour
         }
 
         return GetReloadTimeInternal(w);
+    }
+
+    public float GetReloadDuration(float baseDuration)
+    {
+        EnsureCacheFresh(GetCurrentWeapon());
+        return Mathf.Max(0f, ApplyStatusModifiers(
+            _modifierBuffer,
+            StatType.ReloadTime,
+            Mathf.Max(0f, baseDuration)));
     }
 
     public float GetStability(GunConfig w)

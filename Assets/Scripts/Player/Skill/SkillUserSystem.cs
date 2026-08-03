@@ -18,12 +18,17 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
     [SerializeField] private float maximumEnergy;
     [SerializeField] private float currentEnergy;
 
+    [Header("Energy Regeneration")]
+    [SerializeField, Min(0f)] private float energyRegenPerSecond = 3f;
+    [SerializeField, Min(0f)] private float regenDelayAfterSpend = 2f;
+
     [Header("Hub Sync")]
     [SerializeField] private bool autoRefreshFromHub = true;
     [SerializeField] private bool keepEnergyPercentWhenMaxChanges = true;
     [SerializeField] private float refreshIntervalSeconds = 0.2f;
 
     float refreshTimer;
+    float lastEnergySpendTime = float.NegativeInfinity;
     bool initialized;
 
     public event Action<float, float> EnergyChanged;
@@ -63,9 +68,6 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
         }
     }
 
-    public float BaseDamage => statsHub ? statsHub.GetSkillBaseDamage()
-        : (characteContext ? characteContext.baseDamage : 0f);
-
     public float FinalCriticalPercent => statsHub ? statsHub.CritRatePercent
         : (characteContext ? characteContext.basecritRate : 0f);
 
@@ -78,6 +80,8 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
     {
         EnsureInitialized();
 
+        RegenerateEnergy();
+
         if (!autoRefreshFromHub || statsHub == null)
             return;
 
@@ -87,6 +91,20 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
 
         refreshTimer = 0f;
         RefreshMaximumEnergy(resetCurrentToMax: false);
+    }
+
+    void RegenerateEnergy()
+    {
+        if (energyRegenPerSecond <= 0f || currentEnergy >= maximumEnergy)
+            return;
+
+        if (Time.time < lastEnergySpendTime + regenDelayAfterSpend)
+            return;
+
+        float previous = currentEnergy;
+        currentEnergy = Mathf.Min(maximumEnergy, currentEnergy + energyRegenPerSecond * Time.deltaTime);
+        if (currentEnergy > previous)
+            NotifyEnergyChanged();
     }
 
     float GetMaximumEnergyFromHubOrFallback()
@@ -136,6 +154,7 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
         RefreshMaximumEnergy(resetCurrentToMax: false);
 
         currentEnergy = Mathf.Max(0f, currentEnergy - amount);
+        lastEnergySpendTime = Time.time;
         NotifyEnergyChanged();
     }
 

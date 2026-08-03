@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e7be07086842a54aa7cfb6ea9b06bb8, type: 3}
+  m_Name: TestStage.DropProfile.Boss
+  m_EditorClassIdentifier:
+  goldItem: {fileID: 11400000, guid: 2835846abd2c7a94eadc3f9065613e14, type: 2}
+  minimumGold: 150
+  maximumGold: 150
+  scrapItem: {fileID: 11400000, guid: 9d4ed1d350564e74b851fe0fb8a49a2a, type: 2}
+  minimumScrap: 5
+  maximumScrap: 5
+  dropChance: 1
+  rarityTable: {fileID: 11400000, guid: d1060000000000000000000000000000, type: 2}
+  rarityByLevel:
+  - minimumLevel: 11
+    rarityTable: {fileID: 11400000, guid: d1070000000000000000000000000000, type: 2}
+  - minimumLevel: 21
+    rarityTable: {fileID: 11400000, guid: d1080000000000000000000000000000, type: 2}
+  commonPool: {fileID: 11400000, guid: 1af82bfc0aece9f49aa1221f46a14c85, type: 2}
+  rarePool: {fileID: 11400000, guid: fe80b3c558d76e74c8002d687e52a712, type: 2}
+  epicPool: {fileID: 11400000, guid: c3fed8a4ddee99c42aca7016ccaa8a33, type: 2}

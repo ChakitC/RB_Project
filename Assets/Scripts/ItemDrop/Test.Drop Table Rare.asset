@@ -13,13 +13,15 @@ MonoBehaviour:
   m_Name: Test.Drop Table Rare
   m_EditorClassIdentifier: 
   entries:
-  - contentType: 0
-    item: {fileID: 11400000, guid: 2835846abd2c7a94eadc3f9065613e14, type: 2}
+  - contentType: 2
+    item: {fileID: 0}
     gunTable: {fileID: 0}
-    amount: 5
+    accessoryTable: {fileID: 11400000, guid: 81bfa78d559ed4047a10e6a37f3a19ff, type: 2}
+    amount: 1
     weight: 1
-  - contentType: 0
-    item: {fileID: 11400000, guid: 2835846abd2c7a94eadc3f9065613e14, type: 2}
-    gunTable: {fileID: 0}
-    amount: 10
+  - contentType: 1
+    item: {fileID: 0}
+    gunTable: {fileID: 11400000, guid: 228e527f31236cb4698ef70ab5087ca7, type: 2}
+    accessoryTable: {fileID: 0}
+    amount: 1
     weight: 1

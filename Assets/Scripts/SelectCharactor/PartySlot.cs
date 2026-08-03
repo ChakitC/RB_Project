@@ -21,7 +21,7 @@ public class PartySlot : MonoBehaviour
     [SerializeField] private CharacterStats selected;
 
     public int LoadOrder => -100;
-    public int CurrentSlot => currentSlot;
+    public int CurrentSlot => SaveManager.Instance != null ? SaveManager.Instance.currentSlot : currentSlot;
     public int PartyIndex => partyIndex;
     public CharacterStats Selected => selected;
 
@@ -49,7 +49,7 @@ public class PartySlot : MonoBehaviour
             return;
         }
 
-        var id = SaveManager.Instance.LoadPartyMemberId(currentSlot, partyIndex);
+        var id = SaveManager.Instance.LoadPartyMemberId(CurrentSlot, partyIndex);
         if (string.IsNullOrEmpty(id))
             id = fallbackId;
 
@@ -173,6 +173,6 @@ public class PartySlot : MonoBehaviour
         if (!visualPreview)
             visualPreview = gameObject.AddComponent<PartySlotVisualPreview>();
 
-        visualPreview.SetPartyContext(currentSlot, partyIndex);
+        visualPreview.SetPartyContext(CurrentSlot, partyIndex);
     }
 }

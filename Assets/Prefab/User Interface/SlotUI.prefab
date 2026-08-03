@@ -34,8 +34,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.17359924, y: 0.004600525}
-  m_SizeDelta: {x: 12.301903, y: 13.318901}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: -4, y: -4}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3502448571465695370
 CanvasRenderer:
@@ -58,8 +58,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.6301887, g: 0.030676976, b: 0, a: 1}
-  m_RaycastTarget: 1
+  m_Color: {r: 1, g: 0.68, b: 0.2, a: 0.3}
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -110,7 +110,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: -12, y: -12}
+  m_SizeDelta: {x: -18, y: -18}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1179987484895813812
 CanvasRenderer:
@@ -142,7 +142,7 @@ MonoBehaviour:
       m_Calls: []
   m_Sprite: {fileID: 0}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -213,7 +213,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.23018861, g: 0.23018861, b: 0.23018861, a: 1}
+  m_Color: {r: 0.09, g: 0.105, b: 0.12, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -254,13 +254,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d221844da26757f4382b0085aad6fa49, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  backgroundImage: {fileID: 5698498048690348133}
   iconImage: {fileID: 8529273403610069239}
   equippedCharacterIconImage: {fileID: 0}
   amountText: {fileID: 8429552999724495576}
   hoverHighlight: {fileID: 2725469252399604966}
+  borderOutline: {fileID: 0}
   hoverDetailDelay: 0.1
   equippedCharacterIconSize: 28
   equippedCharacterIconOffset: {x: -4, y: 4}
+  emptyBackgroundColor: {r: 0.055, g: 0.065, b: 0.075, a: 0.72}
+  filledBackgroundColor: {r: 0.09, g: 0.105, b: 0.12, a: 1}
+  emptyBorderColor: {r: 0.2, g: 0.22, b: 0.24, a: 0.7}
+  commonBorderColor: {r: 0.45, g: 0.48, b: 0.52, a: 1}
+  rareBorderColor: {r: 0.2, g: 0.55, b: 0.95, a: 1}
+  epicBorderColor: {r: 0.7, g: 0.35, b: 0.95, a: 1}
+  hoverBorderColor: {r: 1, g: 0.68, b: 0.2, a: 1}
 --- !u!1 &7453057852598485624
 GameObject:
   m_ObjectHideFlags: 0
@@ -293,11 +302,11 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 4044396526094729765}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 100, y: 10.2975}
-  m_SizeDelta: {x: 200, y: 20.5949}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 1, y: 0}
+  m_AnchorMax: {x: 1, y: 0}
+  m_AnchoredPosition: {x: -8, y: 8}
+  m_SizeDelta: {x: 52, y: 28}
+  m_Pivot: {x: 1, y: 0}
 --- !u!222 &761554360866784448
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -320,7 +329,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -353,15 +362,15 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 18
-  m_fontSizeBase: 18
-  m_fontWeight: 400
+  m_fontSize: 22
+  m_fontSizeBase: 22
+  m_fontWeight: 700
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0
-  m_HorizontalAlignment: 1
-  m_VerticalAlignment: 256
+  m_HorizontalAlignment: 4
+  m_VerticalAlignment: 1024
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_wordSpacing: 0

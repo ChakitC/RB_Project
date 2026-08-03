@@ -26,8 +26,75 @@ public static class SaveSystem
     static string EquipmentPath(int slot) => Path.Combine(Dir, $"slot_{slot}_equipment.json");
     static string AccessoriesPath(int slot) => Path.Combine(Dir, $"slot_{slot}_accessories.json");
     static string PartyPath(int slot) => Path.Combine(Dir, $"slot_{slot}_party.json");
+    static string StageProgressPath(int slot) => Path.Combine(Dir, $"slot_{slot}_stage_progress.json");
     
     static string CharacterPath(int slot) => Path.Combine(Dir, $"slot_{slot}_character.json");
+
+    static IEnumerable<string> GetSlotPaths(int slot)
+    {
+        yield return GamePath(slot);
+        yield return InventoryPath(slot);
+        yield return EquipmentPath(slot);
+        yield return AccessoriesPath(slot);
+        yield return PartyPath(slot);
+        yield return CharacterPath(slot);
+        yield return StageProgressPath(slot);
+    }
+
+    public static bool HasAnyData(int slot)
+    {
+        if (slot < 0) slot = 0;
+
+        foreach (string path in GetSlotPaths(slot))
+        {
+            if (File.Exists(path))
+                return true;
+
+#if UNITY_EDITOR
+            string legacyPath = Path.Combine(Application.persistentDataPath, Path.GetFileName(path));
+            if (File.Exists(legacyPath))
+                return true;
+#endif
+        }
+
+        return false;
+    }
+
+    public static bool DeleteSlot(int slot)
+    {
+        if (slot < 0) slot = 0;
+        bool succeeded = true;
+
+        foreach (string path in GetSlotPaths(slot))
+        {
+            succeeded &= TryDelete(path);
+            succeeded &= TryDelete(path + ".tmp");
+
+#if UNITY_EDITOR
+            string legacyPath = Path.Combine(Application.persistentDataPath, Path.GetFileName(path));
+            succeeded &= TryDelete(legacyPath);
+            succeeded &= TryDelete(legacyPath + ".tmp");
+#endif
+        }
+
+        return succeeded;
+    }
+
+    static bool TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+
+            return true;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[SaveSystem] Failed to delete save file '{path}': {ex.Message}");
+            return false;
+        }
+    }
     
 
     // ---------- GAME ----------
@@ -221,6 +288,31 @@ public static class SaveSystem
             return null;
 
         return party.partyIds[index];
+    }
+
+    public static int LoadStageProgress(int slot, string stageId)
+    {
+        if (slot < 0) slot = 0;
+        string path = ResolveReadPath(StageProgressPath(slot));
+        StageProgressSaveFile file = ReadJson<StageProgressSaveFile>(path) ?? new StageProgressSaveFile();
+        return file.GetProgress(stageId);
+    }
+
+    public static void SaveStageProgress(int slot, string stageId, int progressCount)
+    {
+        if (string.IsNullOrWhiteSpace(stageId)) return;
+        if (slot < 0) slot = 0;
+
+        string path = StageProgressPath(slot);
+        StageProgressSaveFile file = ReadJson<StageProgressSaveFile>(ResolveReadPath(path)) ?? new StageProgressSaveFile();
+        file.SetProgress(stageId, progressCount);
+        WriteJson(path, file);
+    }
+
+    public static void ResetStageProgress(int slot)
+    {
+        if (slot < 0) slot = 0;
+        WriteJson(StageProgressPath(slot), new StageProgressSaveFile());
     }
 
 

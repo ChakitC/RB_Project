@@ -169,6 +169,7 @@ public class WeaponUpgradeCurve : ScriptableObject
     [Min(0)] public int goldCostPerLevel = 25;
     [Min(0)] public int baseScrapCost = 10;
     [Min(0)] public int scrapCostPerLevel = 5;
+    [Min(0)] public int scrapCostPerTenLevels;
 
     [Header("Explicit Cost Overrides")]
     public List<WeaponUpgradeLevelCost> levelCosts = new();
@@ -208,7 +209,10 @@ public class WeaponUpgradeCurve : ScriptableObject
         {
             targetLevel = targetLevel,
             goldCost = Mathf.Max(0, baseGoldCost + goldCostPerLevel * Mathf.Max(0, targetLevel - 1)),
-            scrapCost = Mathf.Max(0, baseScrapCost + scrapCostPerLevel * Mathf.Max(0, targetLevel - 1))
+            scrapCost = Mathf.Max(0,
+                baseScrapCost +
+                scrapCostPerLevel * Mathf.Max(0, targetLevel - 1) +
+                scrapCostPerTenLevels * Mathf.Max(0, (targetLevel - 1) / 10))
         };
 
         var explicitCost = FindExplicitCost(targetLevel);

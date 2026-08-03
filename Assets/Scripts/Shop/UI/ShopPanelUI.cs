@@ -18,6 +18,7 @@ public class ShopPanelUI : MonoBehaviour
     [SerializeField] private TMP_Text messageText;
     [SerializeField] private GameObject emptyState;
     [SerializeField] private Button closeButton;
+    [SerializeField] private CharacterShopPageUI characterShopPage;
 
     readonly List<ShopItemRowUI> rows = new();
 
@@ -111,6 +112,7 @@ public class ShopPanelUI : MonoBehaviour
 
         PrepareCatalogForOpen();
         gameObject.SetActive(true);
+        characterShopPage?.ShowItemsPage();
         Refresh();
     }
 
@@ -139,6 +141,7 @@ public class ShopPanelUI : MonoBehaviour
         if (boundInventorySource == inventory)
         {
             inventorySource = inventory;
+            characterShopPage?.BindSource(inventorySource);
             RefreshGold();
             return;
         }
@@ -148,6 +151,9 @@ public class ShopPanelUI : MonoBehaviour
 
         inventorySource = inventory;
         boundInventorySource = inventory;
+
+        if (characterShopPage != null)
+            characterShopPage.BindSource(inventorySource);
 
         if (boundInventorySource != null)
             boundInventorySource.OnGoldChanged += HandleGoldChanged;
@@ -162,18 +168,18 @@ public class ShopPanelUI : MonoBehaviour
 
         if (boundService == null)
         {
-            SetMessage("Missing shop service.");
+            SetStatusMessage("Missing shop service.");
             return;
         }
 
         if (!boundService.TryBuy(inventorySource, catalog, entryIndex, out string reason))
         {
-            SetMessage(reason);
+            SetStatusMessage(reason);
             Refresh();
             return;
         }
 
-        SetMessage(string.Empty);
+        SetStatusMessage(string.Empty);
         Refresh();
     }
 
@@ -200,6 +206,8 @@ public class ShopPanelUI : MonoBehaviour
             bool canBuy = boundService != null && boundService.CanBuy(inventorySource, catalog, i, out reason);
             row.Bind(this, i, entry, stock, canBuy, reason);
         }
+
+        characterShopPage?.Refresh();
     }
 
     void ResolveReferences()
@@ -224,6 +232,12 @@ public class ShopPanelUI : MonoBehaviour
 
         if (inventorySource == null)
             inventorySource = ResolveInventorySource();
+
+        if (characterShopPage == null)
+            characterShopPage = GetComponent<CharacterShopPageUI>();
+
+        if (characterShopPage != null)
+            characterShopPage.BindSource(inventorySource);
     }
 
     void BindService(ShopService service)
@@ -273,7 +287,7 @@ public class ShopPanelUI : MonoBehaviour
             goldText.text = inventorySource != null ? inventorySource.Gold.ToString("N0") : "0";
     }
 
-    void SetMessage(string message)
+    public void SetStatusMessage(string message)
     {
         if (messageText != null)
             messageText.text = message ?? string.Empty;

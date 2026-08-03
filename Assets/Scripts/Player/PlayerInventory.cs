@@ -16,7 +16,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
     [SerializeField] private WeaponSystem weaponSystem;
 
     [Header("Currency")]
-    [SerializeField] private int gold;
+    [SerializeField] private int gold = 100;
     [SerializeField] private int scrap;
     public int Gold => gold;
     public int Scrap => scrap;

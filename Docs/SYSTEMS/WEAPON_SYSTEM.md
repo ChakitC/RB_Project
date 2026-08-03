@@ -113,6 +113,49 @@ refresh only when needed:
 Do not force `WeaponSystem` to recalculate all derived stats or run unthrottled
 signature probes every frame.
 
+### Test Stage Weapon Baseline
+
+The five complete player/drop weapons use this baseline. Critical identity
+comes from the character, so every weapon has 0 added critical chance and a
+neutral `1x` critical multiplier.
+
+| Weapon | Damage | Interval | Magazine / Reserve | Reload | Stability | Stagger | Bullet Speed |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Roma SMG `SMG_RB01` | 12 | 0.10s | 30 / 240 | 1.6s | 45 | 8 | 50 |
+| Aires rifle `SMG_RB02` | 14 | 0.10s | 36 / 288 | 1.4s | 65 | 10 | 55 |
+| Feno HMG `HMG.RB.01` | 19 | 0.15s | 100 / 200 | 3.0s | 35 | 18 | 45 |
+| Milano sniper `SR_RB_01` | 180 | 0.70s | 5 / 40 | 0.35 + 0.45/round + 0.25s | 80 | 35 | 100 |
+| General rifle `SMG_GR01` | 18 | 0.12s | 30 / 240 | 1.8s | 55 | 10 | 50 |
+
+All five have base buy/sell prices of 300/90. Direct weapon headshots use the
+shared 1.5x head hit-zone multiplier. `Enemy_SMG_GR01` is not in item, shop, or
+drop databases and must remain separate from the player rifle.
+
+### Test Stage Upgrade Curve
+
+Rarity caps remain Common +10, Rare +20, and Epic +30. Each upgrade level adds
+0.2% Damage, reduces Fire Interval by 0.1%, reduces all reload durations by
+0.2%, and adds 0.5 Stability. Levels +10, +20, and +30 each add 5% magazine
+capacity. Reload modifiers apply to full-magazine reload and to sniper start,
+per-round insert, and end delays.
+
+Milestones are:
+
+- +10: 3% chance for one ammo-free extra projectile.
+- +20: every 20th shot fires one ammo-free extra projectile.
+- +30: completing a reload reduces Fire Interval by 8% for 2 seconds.
+
+The gold cost to reach target level `L` is `20 + 5 * (L - 1)`. Scrap cost is 1
+for +1 through +10, 2 for +11 through +20, and 3 for +21 through +30. Cumulative
+costs are +5 150/5, +10 425/10, +15 825/20, +20 1,350/30, +25 2,000/45, and
++30 2,775/60 (gold/scrap).
+
+The current affix pool contains only:
+
+- Damage sub-affix: +2% to +4% Damage.
+- Critical sub-affix: +1 to +3 critical rate.
+- Stability main-affix: +10 to +20 Stability for 3 seconds after reload.
+
 ### Stability Percentage
 
 `Stability` is authored and exposed as a percentage from `0` to `100`:

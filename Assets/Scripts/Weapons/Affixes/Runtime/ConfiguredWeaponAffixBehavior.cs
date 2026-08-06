@@ -25,6 +25,22 @@ public sealed class ConfiguredWeaponAffixBehavior : WeaponAffixBehavior
     public ProjectileConfig projectileConfig;
     public GameObject projectilePrefab;
 
+    // Kinds whose runtime arms the expiry timer (see ActivateTimer/TrackTarget/BrokenGuard below).
+    // Every other kind is permanent-while-equipped or charge based, so a duration is meaningless for it.
+    public override bool HasTimedEffect => kind is
+        WeaponAffixRuntimeKind.ReloadBuff or WeaponAffixRuntimeKind.KillClip or
+        WeaponAffixRuntimeKind.HeadHunter or WeaponAffixRuntimeKind.HotStreak or
+        WeaponAffixRuntimeKind.PressurePoint or WeaponAffixRuntimeKind.MarkedQuarry or
+        WeaponAffixRuntimeKind.BloodMagazine or WeaponAffixRuntimeKind.BrokenGuard;
+
+    // Kinds where AppendStatModifiers feeds the roll straight into a RuntimeStatModifier using modifierOp.
+    // Only those can have their unit derived; the rest spell their own unit out in the tooltip text.
+    public override ModifierOp? RolledValueModifierOp => kind is
+        WeaponAffixRuntimeKind.StaticStat or WeaponAffixRuntimeKind.ImpactCore or
+        WeaponAffixRuntimeKind.ReloadBuff or WeaponAffixRuntimeKind.KillClip
+        ? modifierOp
+        : null;
+
     public override bool IsEligible(GunConfig weapon)
     {
         return base.IsEligible(weapon) && (minimumBaseMagazine <= 0 ||

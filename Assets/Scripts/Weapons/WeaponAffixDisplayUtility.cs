@@ -62,7 +62,7 @@ public static class WeaponAffixDisplayUtility
         return "Unknown Affix";
     }
 
-    static string BuildValueSummary(WeaponAffixDefinition definition, RolledAffixData rolledAffix)
+    public static string BuildValueSummary(WeaponAffixDefinition definition, RolledAffixData rolledAffix)
     {
         if (definition == null)
         {
@@ -71,21 +71,64 @@ public static class WeaponAffixDisplayUtility
                 : string.Empty;
         }
 
-        if (definition.rootBehavior != null)
+        WeaponAffixBehavior behavior = definition.rootBehavior;
+        if (behavior == null)
+            return BuildStatSummary(definition, rolledAffix);
+
+        WeaponAffixTooltipData tooltip = behavior.Tooltip;
+        string template = string.IsNullOrWhiteSpace(tooltip.trigger) ? tooltip.effect : $"{tooltip.trigger}: {tooltip.effect}";
+        string summary = SubstituteValue(template, behavior, rolledAffix != null ? rolledAffix.primaryValue : 0f);
+
+        // Assets default duration to 4s, so only trust it for kinds that really expire.
+        if (tooltip.duration > 0f && behavior.HasTimedEffect) summary += $" for {FormatNumber(tooltip.duration)}s";
+        if (tooltip.cap > 0) summary += $" (cap {tooltip.cap})";
+        if (!string.IsNullOrWhiteSpace(tooltip.restriction)) summary += $"; {tooltip.restriction}";
+        return summary;
+    }
+
+    const string ValueToken = "{value}";
+
+    /// <summary>
+    /// Replaces {value} in a tooltip template, supplying the sign and unit the template does not already spell out.
+    /// </summary>
+    static string SubstituteValue(string template, WeaponAffixBehavior behavior, float value)
+    {
+        if (string.IsNullOrEmpty(template))
+            return string.Empty;
+
+        int index = template.IndexOf(ValueToken, System.StringComparison.Ordinal);
+        if (index < 0)
+            return template;
+
+        int afterToken = index + ValueToken.Length;
+        bool templateHasSign = index > 0 && (template[index - 1] == '+' || template[index - 1] == '-');
+        bool templateHasUnit = afterToken < template.Length && (template[afterToken] == '%' || template[afterToken] == 'x');
+
+        ModifierOp? op = behavior.RolledValueModifierOp;
+        string replacement;
+
+        if (templateHasSign)
         {
-            WeaponAffixTooltipData tooltip = definition.rootBehavior.Tooltip;
-            string value = FormatNumber(rolledAffix != null ? rolledAffix.primaryValue : 0f);
-            string summary = string.IsNullOrWhiteSpace(tooltip.trigger) ? tooltip.effect : $"{tooltip.trigger}: {tooltip.effect}";
-            summary = (summary ?? string.Empty).Replace("{value}", value);
-            if (tooltip.duration > 0f) summary += $" for {FormatNumber(tooltip.duration)}s";
-            if (tooltip.cap > 0) summary += $" (cap {tooltip.cap})";
-            if (!string.IsNullOrWhiteSpace(tooltip.restriction)) summary += $"; {tooltip.restriction}";
-            return summary;
+            replacement = FormatNumber(Mathf.Abs(value));
+        }
+        else if (op == ModifierOp.Multiply)
+        {
+            replacement = "x" + FormatNumber(value);
+        }
+        else if (op.HasValue)
+        {
+            replacement = FormatSignedNumber(value);
+        }
+        else
+        {
+            // Not a stat delta (a hit count, a magazine percentage, ...) — a leading "+" would misread.
+            replacement = FormatNumber(value);
         }
 
-        return rolledAffix != null && rolledAffix.hasPrimaryValue
-            ? FormatSignedNumber(rolledAffix.primaryValue)
-            : string.Empty;
+        if (!templateHasUnit && op == ModifierOp.AddPercent)
+            replacement += "%";
+
+        return template.Replace(ValueToken, replacement);
     }
 
     static string BuildStatSummary(WeaponAffixDefinition definition, RolledAffixData rolledAffix)

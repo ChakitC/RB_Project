@@ -322,10 +322,16 @@ public class InventorySlotTooltipUI : MonoBehaviour
 
         if (item is GunConfig gunConfig)
         {
-            builder.Append("Damage: ").AppendLine(FormatNumber(gunConfig.damage));
-            builder.Append("Fire Rate: ").AppendLine(FormatNumber(gunConfig.fireRate));
-            builder.Append("Magazine: ").AppendLine(ResolveMagazineText(slotData, gunConfig));
-            builder.Append("Reserve Ammo: ").AppendLine(ResolveReserveAmmoText(slotData, gunConfig));
+            // Effective values, so upgrades and always-on affixes show up in the numbers instead of
+            // only in the lists below. Weapon-only: no character or status-effect contribution.
+            CharacterStatTotals stats = WeaponStatPreview.Build(gunConfig, slotData.weaponInstance);
+
+            AppendStatLine(builder, "Damage", stats.Damage, gunConfig.damage);
+            // gunConfig.fireRate is the delay between shots (see WeaponStatSnapshotBuilder.ResolveFireInterval),
+            // so labelling it "Fire Rate" reads backwards — lower is faster.
+            AppendStatLine(builder, "Fire Interval", stats.FireInterval, gunConfig.fireRate, "s");
+            builder.Append("Magazine: ").AppendLine(ResolveMagazineText(slotData, gunConfig, stats.MaxMagazine));
+            builder.Append("Reserve Ammo: ").AppendLine(ResolveReserveAmmoText(slotData, gunConfig, stats.MaxReserveAmmo));
         }
 
         AppendAccessorySummary(builder, slotData, item as AccessoryDefinition);
@@ -471,26 +477,46 @@ public class InventorySlotTooltipUI : MonoBehaviour
         return builder.ToString();
     }
 
-    static string ResolveMagazineText(InventorySlotData slotData, GunConfig gunConfig)
+    /// <summary>
+    /// Prints the effective value, trailing the authored one only when a modifier moved it, so the
+    /// player can tell an upgraded weapon apart from a plain one at a glance.
+    /// </summary>
+    static void AppendStatLine(StringBuilder builder, string label, float value, float baseValue, string unit = "")
     {
-        int maxMagazine = Mathf.Max(gunConfig.maxMagazine, gunConfig.magazine);
-        if (slotData != null && slotData.weaponInstance != null && slotData.weaponInstance.currentMagazine >= 0)
-            return $"{slotData.weaponInstance.currentMagazine}/{maxMagazine}";
+        builder.Append(label).Append(": ").Append(FormatNumber(value)).Append(unit);
 
-        return maxMagazine.ToString();
+        if (!Mathf.Approximately(value, baseValue))
+            builder.Append("  (base ").Append(FormatNumber(baseValue)).Append(unit).Append(')');
+
+        builder.AppendLine();
     }
 
-    static string ResolveReserveAmmoText(InventorySlotData slotData, GunConfig gunConfig)
+    static string ResolveMagazineText(InventorySlotData slotData, GunConfig gunConfig, int effectiveMaxMagazine)
+    {
+        int baseMagazine = Mathf.Max(gunConfig.maxMagazine, gunConfig.magazine);
+        int maxMagazine = Mathf.Max(effectiveMaxMagazine, gunConfig.magazine);
+        string suffix = maxMagazine != baseMagazine ? $"  (base {baseMagazine})" : string.Empty;
+
+        if (slotData != null && slotData.weaponInstance != null && slotData.weaponInstance.currentMagazine >= 0)
+            return $"{slotData.weaponInstance.currentMagazine}/{maxMagazine}{suffix}";
+
+        return maxMagazine + suffix;
+    }
+
+    static string ResolveReserveAmmoText(InventorySlotData slotData, GunConfig gunConfig, int effectiveMaxReserveAmmo)
     {
         if (!WeaponInstanceFactory.UsesFiniteReserveAmmo(gunConfig))
             return "INF";
 
-        int maxReserveAmmo = WeaponInstanceFactory.ResolveMaxReserveAmmo(gunConfig);
+        int baseReserveAmmo = WeaponInstanceFactory.ResolveMaxReserveAmmo(gunConfig);
+        int maxReserveAmmo = effectiveMaxReserveAmmo;
+        string suffix = maxReserveAmmo != baseReserveAmmo ? $"  (base {baseReserveAmmo})" : string.Empty;
+
         if (slotData != null && slotData.weaponInstance != null && slotData.weaponInstance.currentReserveAmmo >= 0)
-            return $"{slotData.weaponInstance.currentReserveAmmo}/{maxReserveAmmo}";
+            return $"{slotData.weaponInstance.currentReserveAmmo}/{maxReserveAmmo}{suffix}";
 
         int defaultReserveAmmo = WeaponInstanceFactory.ResolveDefaultReserveAmmo(gunConfig);
-        return $"{defaultReserveAmmo}/{maxReserveAmmo}";
+        return $"{defaultReserveAmmo}/{maxReserveAmmo}{suffix}";
     }
 
     static string FormatNumber(float value)
@@ -748,53 +774,9 @@ public class InventorySlotTooltipUI : MonoBehaviour
 
     static string BuildAffixSummary(WeaponAffixDefinition definition, RolledAffixData rolledAffix)
     {
-        if (rolledAffix == null)
-            return string.Empty;
-
-        if (definition == null)
-        {
-            if (rolledAffix.hasPrimaryValue)
-                return FormatSignedNumber(rolledAffix.primaryValue);
-
-            return string.Empty;
-        }
-
-        if (definition.rootBehavior != null)
-        {
-            WeaponAffixTooltipData tooltip = definition.rootBehavior.Tooltip;
-            string value = FormatNumber(rolledAffix.primaryValue);
-            string summary = string.IsNullOrWhiteSpace(tooltip.trigger) ? tooltip.effect : $"{tooltip.trigger}: {tooltip.effect}";
-            summary = (summary ?? string.Empty).Replace("{value}", value);
-            if (tooltip.duration > 0f) summary += $" for {FormatNumber(tooltip.duration)}s";
-            if (tooltip.cap > 0) summary += $" (cap {tooltip.cap})";
-            if (!string.IsNullOrWhiteSpace(tooltip.restriction)) summary += $"; {tooltip.restriction}";
-            return summary;
-        }
-
-        return rolledAffix.hasPrimaryValue ? FormatSignedNumber(rolledAffix.primaryValue) : string.Empty;
-    }
-
-    static string BuildStatModifierSummary(WeaponAffixDefinition definition, RolledAffixData rolledAffix)
-    {
-        float value = definition.ResolvePrimaryValue(rolledAffix);
-        string statName = MakeReadable(definition.statType.ToString());
-
-        return definition.modifierOp switch
-        {
-            ModifierOp.Flat => $"{FormatSignedNumber(value)} {statName}",
-            ModifierOp.AddPercent => $"{FormatSignedNumber(value)}% {statName}",
-            ModifierOp.Multiply => $"x{FormatNumber(value)} {statName}",
-            _ => $"{FormatSignedNumber(value)} {statName}"
-        };
-    }
-
-    static string BuildSpecialProjectileSummary(WeaponAffixDefinition definition)
-    {
-        string summary = $"Every {Mathf.Max(1, definition.requiredShots)} shots";
-        if (definition.procChance > 0f)
-            summary += $" ({FormatNumber(definition.procChance * 100f)}% proc)";
-
-        return summary;
+        return rolledAffix != null
+            ? WeaponAffixDisplayUtility.BuildValueSummary(definition, rolledAffix)
+            : string.Empty;
     }
 
     static string FormatSignedNumber(float value)

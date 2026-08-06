@@ -56,8 +56,8 @@ public static class LobbyCharacterStatPreview
         ModifierBuffer.Clear();
         PassiveBuffer.Clear();
 
-        AppendWeaponUpgradeModifiers(ModifierBuffer, weapon, weaponInstance);
-        AppendStaticWeaponAffixModifiers(ModifierBuffer, weaponInstance, affixDatabase);
+        WeaponStatPreview.AppendWeaponUpgradeModifiers(ModifierBuffer, weapon, weaponInstance);
+        WeaponStatPreview.AppendStaticAffixModifiers(ModifierBuffer, weaponInstance, affixDatabase);
         AppendAccessoryModifiers(ModifierBuffer, PassiveBuffer, inventory, ownerId);
         AppendPassiveList(PassiveBuffer, stats.passives);
         AppendPassiveModifiers(ModifierBuffer, PassiveBuffer);
@@ -67,81 +67,6 @@ public static class LobbyCharacterStatPreview
         ModifierBuffer.Clear();
         PassiveBuffer.Clear();
         return totals;
-    }
-
-    static void AppendWeaponUpgradeModifiers(
-        List<RuntimeStatModifier> buffer,
-        GunConfig weapon,
-        WeaponInstanceData instance)
-    {
-        if (!weapon || instance == null)
-            return;
-
-        WeaponUpgradeCurve curve = WeaponUpgradeService.ResolveUpgradeCurve(weapon, null);
-        if (curve == null)
-            return;
-
-        // Same key shape as WeaponUpgradeRuntimeController.BuildModifierKey.
-        string modifierKey = string.IsNullOrWhiteSpace(instance.instanceId)
-            ? "weapon-upgrade:unknown"
-            : $"weapon-upgrade:{instance.instanceId}";
-
-        curve.AppendStatModifiers(buffer, weapon, instance, modifierKey);
-    }
-
-    /// <summary>
-    /// Reads static affix stats straight off the authored data. Never builds an affix runtime:
-    /// CreateRuntime / OnEquip / GetOrCreateAffixState all have side effects.
-    ///
-    /// Only the unconditional kinds are included. Timed and stacking kinds (ReloadBuff, KillClip,
-    /// HeadHunter, HotStreak, BloodMagazine) evaluate to zero outside combat anyway.
-    ///
-    /// <see cref="ConfiguredWeaponAffixBehavior"/> is currently the only
-    /// <see cref="WeaponAffixBehavior"/> subclass. If another one is added with static stats, it
-    /// must be handled here too or the lobby will silently under-report.
-    /// </summary>
-    static void AppendStaticWeaponAffixModifiers(
-        List<RuntimeStatModifier> buffer,
-        WeaponInstanceData instance,
-        WeaponAffixDatabase affixDatabase)
-    {
-        if (instance == null)
-            return;
-
-        AppendStaticWeaponAffixModifier(buffer, instance, instance.mainAffix, affixDatabase);
-
-        if (instance.subAffixes == null)
-            return;
-
-        for (int i = 0; i < instance.subAffixes.Count; i++)
-            AppendStaticWeaponAffixModifier(buffer, instance, instance.subAffixes[i], affixDatabase);
-    }
-
-    static void AppendStaticWeaponAffixModifier(
-        List<RuntimeStatModifier> buffer,
-        WeaponInstanceData instance,
-        RolledAffixData rolledAffix,
-        WeaponAffixDatabase affixDatabase)
-    {
-        if (rolledAffix == null || string.IsNullOrWhiteSpace(rolledAffix.affixId))
-            return;
-
-        WeaponAffixDefinition definition = affixDatabase != null
-            ? affixDatabase.GetById(rolledAffix.affixId)
-            : WeaponAffixDatabase.GetLoadedAffixById(rolledAffix.affixId);
-
-        if (definition == null || definition.rootBehavior is not ConfiguredWeaponAffixBehavior behavior)
-            return;
-
-        if (behavior.kind != WeaponAffixRuntimeKind.StaticStat &&
-            behavior.kind != WeaponAffixRuntimeKind.ImpactCore)
-        {
-            return;
-        }
-
-        float roll = rolledAffix.hasPrimaryValue ? rolledAffix.primaryValue : 0f;
-        string modifierKey = $"weapon:{instance.instanceId}:affix:{definition.affixId}";
-        buffer.Add(new RuntimeStatModifier(behavior.statType, behavior.modifierOp, roll, modifierKey));
     }
 
     static void AppendAccessoryModifiers(

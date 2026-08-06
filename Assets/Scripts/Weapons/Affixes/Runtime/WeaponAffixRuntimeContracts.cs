@@ -105,6 +105,19 @@ public abstract class WeaponAffixBehavior : ScriptableObject
 
     public WeaponAffixRollSpec RollSpec => roll;
     public WeaponAffixTooltipData Tooltip => tooltip;
+
+    /// <summary>
+    /// True when the runtime actually expires after <see cref="WeaponAffixTooltipData.duration"/> seconds.
+    /// Tooltips must not print "for Xs" when this is false, even if the asset left a duration behind.
+    /// </summary>
+    public virtual bool HasTimedEffect => false;
+
+    /// <summary>
+    /// The operation the rolled value is applied with, when that value is a plain stat modifier.
+    /// Null means the tooltip text already carries its own unit and must be left alone.
+    /// </summary>
+    public virtual ModifierOp? RolledValueModifierOp => null;
+
     public virtual bool IsEligible(GunConfig weapon) => weapon != null;
     public virtual float RollPrimaryValue() => roll.Roll();
     public virtual float RollPrimaryValue(IWeaponAffixRollSource source) => roll.Roll(source);

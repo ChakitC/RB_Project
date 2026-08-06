@@ -119,15 +119,32 @@ public sealed class TauntSkillRuntime : MonoBehaviour
             {
                 Vector3 hitPoint = hit.bounds.center;
                 Vector3 direction = hitPoint - origin;
-                if (Physics.Raycast(origin, direction.normalized, direction.magnitude, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                float distance = direction.magnitude;
+                // Stop short of the target's own bounds so the raycast doesn't clip the target
+                // itself and report a false "blocked" result.
+                float checkDistance = Mathf.Max(0f, distance - hit.bounds.extents.magnitude);
+                if (Physics.Raycast(origin, direction.normalized, checkDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
                     continue;
             }
 
+            // AITargetSensor commonly lives under a child branch (e.g. "AI_System") that is a
+            // descendant of the hit collider's root, not an ancestor, so GetComponentInParent
+            // alone would miss it. Fall back to searching within the owning character's
+            // CharacteContext specifically (NOT hit.transform.root) — in gameplay scenes,
+            // multiple characters are commonly parented under a shared room root, so scoping
+            // to scene-root would grab the first sensor found under that root, not the one
+            // belonging to the character that was actually hit.
             AITargetSensor sensor = hit.GetComponentInParent<AITargetSensor>();
+            if (sensor == null)
+            {
+                CharacteContext targetContext = hit.GetComponentInParent<CharacteContext>();
+                if (targetContext != null)
+                    sensor = targetContext.GetComponentInChildren<AITargetSensor>(true);
+            }
             if (sensor == null)
                 continue;
 
-            sensor.ApplyTaunt(sensor.transform, tauntDuration);
+            sensor.ApplyTaunt(casterRoot, tauntDuration);
         }
     }
 

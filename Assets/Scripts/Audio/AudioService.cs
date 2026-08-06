@@ -95,7 +95,7 @@ public class AudioService : MonoBehaviour
         }
 
         _instance = this;
-        DontDestroyOnLoad(gameObject);
+        DontDestroyOnLoad(transform.root.gameObject);
 
         EnsurePoolRoot();
         EnsureDefaultCategoryOutputs();
@@ -220,7 +220,7 @@ public class AudioService : MonoBehaviour
         if (!TryPickVariation(cue, out var variation, out int variationIndex) || variation.clip == null)
             return default;
 
-        var source = AcquireSource();
+        var source = AcquireSource(cue);
         if (source == null)
             return default;
 
@@ -407,7 +407,7 @@ public class AudioService : MonoBehaviour
             _availableSources.Enqueue(CreateSource());
     }
 
-    AudioSource AcquireSource()
+    AudioSource AcquireSource(AudioCue requestedCue)
     {
         while (_availableSources.Count > 0)
         {
@@ -422,10 +422,43 @@ public class AudioService : MonoBehaviour
         if (_activePlaybacks.Count == 0)
             return null;
 
-        var oldest = _activePlaybacks[0];
-        var recycledSource = oldest.source;
-        RecyclePlayback(oldest, false);
+        var playbackToRecycle = FindPlaybackToRecycle(requestedCue);
+        if (playbackToRecycle == null)
+            return null;
+
+        var recycledSource = playbackToRecycle.source;
+        RecyclePlayback(playbackToRecycle, false);
         return recycledSource;
+    }
+
+    ActivePlayback FindPlaybackToRecycle(AudioCue requestedCue)
+    {
+        if (requestedCue == null)
+            return null;
+
+        ActivePlayback bestCandidate = null;
+
+        for (int i = 0; i < _activePlaybacks.Count; i++)
+        {
+            var candidate = _activePlaybacks[i];
+            if (candidate == null || candidate.source == null || candidate.cue == null)
+                continue;
+
+            if (candidate.cue.category == AudioCategory.Music || candidate.source.loop)
+                continue;
+
+            if (candidate.cue.priority < requestedCue.priority)
+                continue;
+
+            if (bestCandidate == null ||
+                candidate.cue.priority > bestCandidate.cue.priority ||
+                (candidate.cue.priority == bestCandidate.cue.priority && candidate.startedAt < bestCandidate.startedAt))
+            {
+                bestCandidate = candidate;
+            }
+        }
+
+        return bestCandidate;
     }
 
     AudioSource CreateSource()

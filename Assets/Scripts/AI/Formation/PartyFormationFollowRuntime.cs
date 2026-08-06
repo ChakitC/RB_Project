@@ -183,7 +183,7 @@ internal sealed class PartyFormationFollowRuntime
                 SharedVariable.SharingScope.GameObject);
         }
 
-        if (_formation == null && playerObject != null)
+        if (_formation == null && _allyContext != null && playerObject != null)
         {
             PlayerContext playerContext = playerObject.GetComponentInParent<PlayerContext>();
             if (playerContext == null)

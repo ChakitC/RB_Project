@@ -451,18 +451,19 @@ Accessories are equippable items that directly contribute **stat modifiers** and
 accessories are always active — no activation required.
 
 **Modifier roll** — when an accessory instance is created (from a drop or shop), it
-may roll one **Modifier** from the accessory's modifier pool. The modifier adds an
-extra set of stats and passives on top of the base definition. Each modifier has a
-weight that controls how often it is rolled; the pool also includes a configurable
-no-modifier weight for plain base-only drops.
+always rolls one **Modifier** from a single shared **Global Modifier Pool**
+(`AccessoryReforgeSettings`), never a per-accessory pool, and never comes out
+with no modifier. The modifier adds an extra set of stats and passives on top of
+the base definition. Each modifier has a weight that controls how often it is
+rolled. Later, the modifier can be re-rolled for Gold at the Upgrade screen's
+**Reforge** button — see `Docs/SYSTEMS/INVENTORY_AND_ITEMS.md` for the full flow.
 
 **Accessory instance data:**
 
 | Field | Meaning |
 |-------|---------|
 | `accessoryId` | which base definition this instance uses |
-| `modifierId` | which modifier was rolled (empty = no modifier) |
-| `upgradeLevel` | how many times the accessory has been upgraded |
+| `modifierId` | which modifier is currently rolled (empty only for pre-Reforge legacy saves) |
 
 **Slots** — each character has an **Accessory Loadout** with a fixed number of slots
 (default 5). Slots are shared across the party's inventory save, so the same physical
@@ -474,6 +475,9 @@ dismantled for **Scrap**. The scrap reward scales with the instance:
 ```
 Scrap = base (10) + modifier bonus (5, if a modifier was rolled) + upgradeLevel × 3
 ```
+
+(`upgradeLevel` stays serialized for save compatibility but is never written for
+accessories, so it is always `0` in practice.)
 
 ### Drop and Shop Flow
 
@@ -491,3 +495,11 @@ does not merely alter users physically — it is the catalyst for opening a dime
 gate. With demonic energy threatening to pour into Rabbit Town, the player must
 investigate, disrupt SerpentTown operations from within, and ultimately close the rift
 before the town falls.
+# Weapon affixes
+
+Weapon instances can roll one Main affix plus rarity-based Sub affixes. Main
+affixes include kill/reload buffs, ammo recovery, last-round and overkill
+explosions, head-hit and same-target stacking, chamber charges, ChainReady
+payoffs, and persistent hit counters. Sub affixes provide weapon-specific stat
+bonuses, including Impact Core stagger power. Inventory tooltips show the rolled
+value, trigger, duration, cap, and restrictions authored by each behavior asset.

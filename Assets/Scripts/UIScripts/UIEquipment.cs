@@ -59,6 +59,10 @@ public class UIEquipment : InventorySlotOwnerBase
     public event Action<int, InventorySlotData> OnRightClick;
     public event Action<int, InventorySlotData> OnPointerEnterSlot;
     public event Action<int, InventorySlotData> OnPointerExitSlot;
+
+    /// <summary>Raised after a successful equip or unequip so stat displays can recalculate.</summary>
+    public event Action EquipmentChanged;
+
     public EquipmentItemKind EquipmentKind => equipmentKind;
 
     protected override void Awake()
@@ -304,6 +308,8 @@ public class UIEquipment : InventorySlotOwnerBase
         RefreshAll();
         if (binding.ItemKind == EquipmentItemKind.Weapon)
             RefreshBoundPartySlotPreview();
+
+        EquipmentChanged?.Invoke();
     }
 
     public override void HandlePointerEnter(int slotIndex)
@@ -368,6 +374,8 @@ public class UIEquipment : InventorySlotOwnerBase
             RefreshAll();
             if (binding.ItemKind == EquipmentItemKind.Weapon)
                 RefreshBoundPartySlotPreview(instanceId);
+
+            EquipmentChanged?.Invoke();
             return;
         }
 

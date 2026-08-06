@@ -32,25 +32,61 @@ public readonly struct DamageResult
         bool wasPrevented,
         bool wasAliveBefore,
         bool isAliveAfter)
+        : this(target, attacker, requestedDamage, requestedDamage, appliedDamage, wasPrevented,
+            wasAliveBefore, isAliveAfter, 0f, 0f, 0f, false)
+    {
+    }
+
+    public DamageResult(
+        IDamageable target,
+        GameObject attacker,
+        float requestedDamage,
+        float resolvedDamage,
+        float appliedDamage,
+        bool wasPrevented,
+        bool wasAliveBefore,
+        bool isAliveAfter,
+        float healthBeforeHit,
+        float maxHealth,
+        float staggerApplied,
+        bool enteredChainReady)
     {
         Target = target;
         Attacker = attacker;
         RequestedDamage = SanitizeNonNegative(requestedDamage);
+        ResolvedDamage = SanitizeNonNegative(resolvedDamage);
         AppliedDamage = SanitizeNonNegative(appliedDamage);
         WasPrevented = wasPrevented;
         WasAliveBefore = wasAliveBefore;
         IsAliveAfter = isAliveAfter;
+        HealthBeforeHit = SanitizeNonNegative(healthBeforeHit);
+        MaxHealth = SanitizeNonNegative(maxHealth);
+        StaggerApplied = SanitizeNonNegative(staggerApplied);
+        EnteredChainReady = enteredChainReady;
     }
 
     public IDamageable Target { get; }
     public GameObject Attacker { get; }
     public float RequestedDamage { get; }
+    public float ResolvedDamage { get; }
     public float AppliedDamage { get; }
     public bool WasPrevented { get; }
     public bool WasAliveBefore { get; }
     public bool IsAliveAfter { get; }
+    public float HealthBeforeHit { get; }
+    public float MaxHealth { get; }
+    public float OverkillAmount => Mathf.Max(0f, ResolvedDamage - HealthBeforeHit);
+    public float StaggerApplied { get; }
+    public bool EnteredChainReady { get; }
     public bool Applied => AppliedDamage > 0f;
     public bool Killed => WasAliveBefore && Applied && !IsAliveAfter;
+
+    public DamageResult WithStagger(float staggerApplied, bool enteredChainReady)
+    {
+        return new DamageResult(Target, Attacker, RequestedDamage, ResolvedDamage, AppliedDamage,
+            WasPrevented, WasAliveBefore, IsAliveAfter, HealthBeforeHit, MaxHealth,
+            staggerApplied, enteredChainReady);
+    }
 
     static float SanitizeNonNegative(float value)
     {

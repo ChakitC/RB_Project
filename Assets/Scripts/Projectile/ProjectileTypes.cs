@@ -59,4 +59,7 @@ public struct ProjectileContext
     public string originRuleId;
     public Projectile projectilePrefab;
     public bool useHitZones;
+    public CombatEventMetadata combatMetadata;
+    public IWeaponAffixPreDamageRuntime preDamageRuntime;
+    public WeaponAffixImpactPayload affixImpactPayload;
 }

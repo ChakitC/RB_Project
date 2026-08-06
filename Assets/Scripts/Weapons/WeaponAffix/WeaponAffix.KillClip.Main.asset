@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
+  m_Name: WeaponAffix.KillClip.Main
+  m_EditorClassIdentifier: 
+  affixId: weapon.main.kill_clip.v1
+  displayName: Kill Clip
+  description: Kill Clip
+  slot: 1
+  behaviorType: 1
+  weight: 1
+  allowedWeaponTypes: 000000000100000002000000030000000400000005000000
+  rootBehavior: {fileID: 418426184125233964}
+  feedbackProfile: {fileID: 0}
+  minRollValue: 0
+  maxRollValue: 0
+  statType: 9
+  modifierOp: 0
+  buffDurationSeconds: 4
+  requiredShots: 10
+  procChance: 0.25
+  specialProjectileConfig: {fileID: 0}
+  specialProjectilePrefab: {fileID: 0}
+  specialProjectileDamageMultiplier: 1
+  specialProjectileSpeedMultiplier: 1
+--- !u!114 &418426184125233964
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0037323df9fdc4945870bfd07b829bf6, type: 3}
+  m_Name: WeaponAffix.KillClip.Main.Behavior
+  m_EditorClassIdentifier: 
+  roll:
+    valueKind: 0
+    minimum: 12
+    maximum: 18
+    displayPrecision: 0
+    lowerIsBetter: 0
+  tooltip:
+    trigger: Direct kill
+    effect: Damage +{value}%
+    restriction: 
+    duration: 4
+    cap: 0
+  kind: 5
+  statType: 0
+  modifierOp: 1
+  duration: 4
+  cap: 0
+  threshold: 0
+  fixedValue: 0
+  secondaryValue: 0
+  minimumBaseMagazine: 0
+  procChance: 1
+  projectileConfig: {fileID: 0}
+  projectilePrefab: {fileID: 0}

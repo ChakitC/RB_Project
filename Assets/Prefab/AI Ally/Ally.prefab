@@ -93,6 +93,7 @@ GameObject:
   - component: {fileID: 2530378002022042090}
   - component: {fileID: 3415565528960947510}
   - component: {fileID: 1684288506866008098}
+  - component: {fileID: 4934772837026848325}
   m_Layer: 10
   m_Name: Ally
   m_TagString: Ally
@@ -608,18 +609,22 @@ MonoBehaviour:
   prefabweapone: {fileID: 0}
   IsSlot: 0
   modelRoot: {fileID: 3370914879605166807}
+  buildModelAutomatically: 1
   animancer: {fileID: 2115705383022822444}
   rightHandName: Hand_R
   leftHandName: Hand_L
   animator: {fileID: 8117628729420697856}
-  useRightHand: 1
-  useLeftHand: 0
   rightLocalPos: {x: 0, y: 0, z: 0}
   rightLocalRotEuler: {x: 0, y: 0, z: 0}
   rightLocalScale: {x: 1, y: 1, z: 1}
   leftLocalPos: {x: 0, y: 0, z: 0}
   leftLocalRotEuler: {x: 0, y: 0, z: 0}
   leftLocalScale: {x: 1, y: 1, z: 1}
+  firePointName: FirePoint
+  firePointBoneName: c_traj
+  firePointLocalPos: {x: 0, y: 0, z: 0}
+  firePointLocalRotEuler: {x: 0, y: 0, z: 0}
+  firePointLocalScale: {x: 1, y: 1, z: 1}
   healthBarPrefab: {fileID: 3196080228300109906, guid: b6b91f21e65c3634eb2a54a84bd884bd, type: 3}
   healthBarHight: 3
   healthBarBoneName: c_traj
@@ -645,24 +650,38 @@ MonoBehaviour:
   CombatEventBus: {fileID: 0}
   rb: {fileID: 4350538248076557126}
   cc: {fileID: 8852702040775598704}
+  TargetInfo: {fileID: 0}
+  Equipment: {fileID: 0}
+  AccessoryLoadout: {fileID: 0}
   WeaponSystem: {fileID: 6545127892607564730}
   AnimBrain: {fileID: 6959280806721539224}
   AnimDriver: {fileID: 5253043693578173858}
+  PairOffsetApplier: {fileID: 0}
+  MeleeController: {fileID: 0}
+  AimRig: {fileID: 0}
   CharacterLoad: {fileID: 0}
   Visual: {fileID: 0}
   UIManager: {fileID: 0}
+  ColliderRefs: {fileID: 0}
+  StatusEffects: {fileID: 0}
   levelSystem: {fileID: 2530378002022042090}
   HealthSystem: {fileID: 3083277886511934061}
   StaminaSystem: {fileID: 2075258610026899133}
   DashSystem: {fileID: 1265096000482281794}
+  KnockbackMotor: {fileID: 0}
   PassiveController: {fileID: 0}
+  PassiveProgress: {fileID: 0}
+  ActiveSkillProgress: {fileID: 0}
   EnegySystem: {fileID: 7588643314132077050}
   Interactor: {fileID: 0}
+  SkillManager: {fileID: 0}
   moveInput: {x: 0, y: 0}
   lookInput: {x: 0, y: 0}
   AITargetSensor: {fileID: 0}
   agent: {fileID: 0}
   AgentMoveDriver: {fileID: 0}
+  BehaviorTree: {fileID: 0}
+  AimTargetDriver: {fileID: 0}
 --- !u!114 &-5721701501610040133
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -753,12 +772,22 @@ MonoBehaviour:
     subAffixes: []
     shotCounter: 0
     currentMagazine: -1
+    currentReserveAmmo: -1
+    reserveAmmoInitialized: 0
+    upgradeLevel: 0
+    upgradeTier: 0
+    upgradeExp: 0
+    unlockedUpgradeMilestoneIds: []
+    affixRuntimeStates: []
   firePoint: {fileID: 2138009005646833687}
   gunType: 0
   damage: 0
   fireRate: 0
   magazine: 0
   maxMagazine: 0
+  reserveAmmo: 0
+  maxReserveAmmo: 0
+  infiniteReserveAmmo: 0
   reloadTime: 0
   critRate: 0
   critMultiplier: 0
@@ -766,6 +795,7 @@ MonoBehaviour:
   stability: 0
   autoloader: 0
   bulletSpeed: 20
+  staggerPower: 0
   isAiming: 0
   burstCount: 0
   burstInterval: 0
@@ -786,6 +816,7 @@ MonoBehaviour:
   statsHub: {fileID: 6627478436231136315}
   statusEffectController: {fileID: 0}
   combatEventBus: {fileID: 0}
+  hitZoneDamageProfile: {fileID: 0}
   reviveTime: 2
   maximumHealth: 0
   currentHealth: 0
@@ -829,6 +860,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e0aba9aba7547f4f8bc58b820c1b99a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  actorRoot: {fileID: 0}
   dashDistance: 5
   dashDuration: 0.15
   dashCooldown: 0.5
@@ -841,6 +873,19 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   combatEventBus: {fileID: 0}
+  perfectDashSlowScale: 0.2
+  perfectDashSlowDuration: 0.35
+  perfectDashSlowShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  perfectDashFreeAmmoDuration: 0.35
+  perfectDodgeThreatLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  perfectDodgeThreatScanPadding: 0.25
 --- !u!114 &7588643314132077050
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -859,6 +904,8 @@ MonoBehaviour:
   aimTransform: {fileID: 2138009005646833687}
   maximumEnergy: 0
   currentEnergy: 0
+  energyRegenPerSecond: 3
+  regenDelayAfterSpend: 2
   autoRefreshFromHub: 1
   keepEnergyPercentWhenMaxChanges: 1
   refreshIntervalSeconds: 0.2
@@ -915,6 +962,7 @@ MonoBehaviour:
   dbgWeaponStability: 0
   dbgWeaponBulletSpeed: 0
   dbgWeaponMaxMagazine: 0
+  dbgWeaponMaxReserveAmmo: 0
   dbgFinalDamage: 0
   dbgFinalArmor: 0
   dbgFinalMoveSpeed: 0
@@ -926,8 +974,10 @@ MonoBehaviour:
   dbgFinalStability: 0
   dbgFinalBulletSpeed: 0
   dbgFinalMaxMagazine: 0
+  dbgFinalMaxReserveAmmo: 0
   dbgFinalMaxHP: 0
   dbgFinalMaxStamina: 0
+  dbgFinalStaminaRegen: 0
   dbgFinalMaxEnergy: 0
 --- !u!114 &6220504416829843911
 MonoBehaviour:
@@ -953,6 +1003,10 @@ MonoBehaviour:
   screenPos: {x: 10, y: 10}
   statusEffectControlBlocks: 0
   statusEffectStunned: 0
+  externalControlBlocks: 0
+  externalStunned: 0
+  staggerControlBlocks: 0
+  staggerStunned: 0
 --- !u!95 &8117628729420697856
 Animator:
   serializedVersion: 7
@@ -1022,6 +1076,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animancer: {fileID: 2115705383022822444}
   ctx: {fileID: 4358677403141846059}
+  chainPlaybackWatchdogGraceSeconds: 0.15
+  useRootMotionForChainPlayback: 0
   locomotionLayerIndex: 0
   actionLayerIndex: 1
 --- !u!114 &2530378002022042090
@@ -1072,6 +1128,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sensorOrigin: {fileID: 0}
   forwardReference: {fileID: 0}
+  targetingProfile: {fileID: 0}
   radius: 15
   scanInterval: 0.1
   targetLayers:
@@ -1091,11 +1148,56 @@ MonoBehaviour:
   requireAliveIfAvailable: 1
   gracePeriod: 1.25
   keepLastSeenTarget: 1
+  distanceScoreWeight: 12
+  playerPriorityBonus: 16
+  companionPriorityBonus: 0
+  tankPriorityBonus: 6
+  healerPriorityBonus: 9
+  supportPriorityBonus: 6
+  sniperPriorityBonus: 7
+  assaultPriorityBonus: 0
+  currentTargetStickiness: 5
+  lineOfSightPenalty: 6
+  retargetIntervalRange: {x: 0.75, y: 1.1}
+  minTargetLockDuration: 0.9
+  switchScoreThreshold: 2.5
+  switchScoreThresholdRatio: 0.2
+  lostTargetHoldDuration: 0.35
+  useThreatMemory: 1
+  damageThreatMultiplier: 1
+  threatScoreWeight: 1
+  threatDecayPerSecond: 8
+  maxThreatPerTarget: 100
+  tauntedEffectDef: {fileID: 11400000, guid: 6a38b0785dbe69c4a87d55d2c21f15f1, type: 2}
+  tauntScoreBonus: 1000
   originHeightOffset: 0.5
   fallbackTargetHeightOffset: 0.6
   currentTarget: {fileID: 0}
+  visibleTarget: {fileID: 0}
   lastSeenTarget: {fileID: 0}
   lastSeenPosition: {x: 0, y: 0, z: 0}
   hasLineOfSight: 0
   targetDistance: 0
+  visibleTargetDistance: 0
   lastSeenTime: -Infinity
+  currentTargetScore: -Infinity
+  visibleBestScore: -Infinity
+  currentTargetAcquiredTime: -Infinity
+  nextRetargetEvaluationTime: 0
+--- !u!114 &4934772837026848325
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8623998836521745381}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7dfc967edea74f59b763c50d23d87e9d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  weaponSystem: {fileID: 0}
+  statsHub: {fileID: 0}
+  statusEffectController: {fileID: 0}
+  upgradeCurveOverride: {fileID: 0}

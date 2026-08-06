@@ -90,6 +90,16 @@ public class WeaponAffixDatabase : ScriptableObject
 
     public void GetCandidates(List<WeaponAffixDefinition> buffer, WeaponAffixSlot slot, WeaponType weaponType, ISet<string> excludedIds = null)
     {
+        GetCandidates(buffer, slot, null, weaponType, excludedIds);
+    }
+
+    public void GetCandidates(List<WeaponAffixDefinition> buffer, WeaponAffixSlot slot, GunConfig weapon, ISet<string> excludedIds = null)
+    {
+        GetCandidates(buffer, slot, weapon, weapon != null ? weapon.WeaponType : default, excludedIds);
+    }
+
+    void GetCandidates(List<WeaponAffixDefinition> buffer, WeaponAffixSlot slot, GunConfig weapon, WeaponType weaponType, ISet<string> excludedIds)
+    {
         if (buffer == null)
             return;
 
@@ -101,7 +111,7 @@ public class WeaponAffixDatabase : ScriptableObject
         for (int i = 0; i < affixes.Count; i++)
         {
             var affix = affixes[i];
-            if (!affix || affix.slot != slot || !affix.SupportsWeaponType(weaponType))
+            if (!affix || affix.slot != slot || (weapon != null ? !affix.SupportsWeapon(weapon) : !affix.SupportsWeaponType(weaponType)))
                 continue;
 
             if (excludedIds != null && !string.IsNullOrWhiteSpace(affix.affixId) && excludedIds.Contains(affix.affixId))

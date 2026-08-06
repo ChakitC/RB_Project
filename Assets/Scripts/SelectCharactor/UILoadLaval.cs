@@ -8,6 +8,10 @@ public class UILoadLaval : MonoBehaviour
     [SerializeField] private GameObject weaponEquipmentObject;
     [SerializeField] private GameObject accessoryEquipmentObject;
 
+    [Tooltip("Optional. Used to resolve static weapon affix stat bonuses for the status preview. " +
+             "When empty, any loaded WeaponAffixDatabase is used instead.")]
+    [SerializeField] private WeaponAffixDatabase affixDatabase;
+
     [Header("Active Skill Tree")]
     [SerializeField] private ActiveSkillScreenController activeSkillScreenPrefab;
     private UIEquipment weaponEquipmentUI;
@@ -72,7 +76,10 @@ public class UILoadLaval : MonoBehaviour
             levelSystem.LevelChanged += OnLevelChanged;
 
         if (_slot != null)
+        {
             SendEquipmentData();
+            RefreshStats();
+        }
 
     }
 
@@ -84,6 +91,8 @@ public class UILoadLaval : MonoBehaviour
 
     private void OnDestroy()
     {
+        UnsubscribeEquipmentChanged();
+
         if (activeSkillScreenInstance != null)
             Destroy(activeSkillScreenInstance.gameObject);
     }
@@ -249,6 +258,8 @@ public class UILoadLaval : MonoBehaviour
 
         if (accessoryEquipmentObject != null && accessoryEquipmentObject != weaponEquipmentObject)
             accessoryEquipmentObject.SetActive(false);
+
+        RefreshStats();
     }
 
     public void CloseAccessoryEquipment()
@@ -258,6 +269,8 @@ public class UILoadLaval : MonoBehaviour
 
         if (accessoryEquipmentObject != null)
             accessoryEquipmentObject.SetActive(false);
+
+        RefreshStats();
     }
 
     private void ClearWeaponEquipmentData()
@@ -340,16 +353,43 @@ public class UILoadLaval : MonoBehaviour
 
     private void ResolveWeaponEquipmentUI()
     {
+        UIEquipment previous = weaponEquipmentUI;
         weaponEquipmentUI = ResolveEquipmentUI(weaponEquipmentObject, EquipmentItemKind.Weapon, null);
+        RebindEquipmentChanged(previous, weaponEquipmentUI);
+
         if (weaponEquipmentUI != null && weaponEquipmentObject == null)
             weaponEquipmentObject = weaponEquipmentUI.gameObject;
     }
 
     private void ResolveAccessoryEquipmentUI()
     {
+        UIEquipment previous = accessoryEquipmentUI;
         accessoryEquipmentUI = ResolveEquipmentUI(accessoryEquipmentObject, EquipmentItemKind.Accessory, weaponEquipmentUI);
+        RebindEquipmentChanged(previous, accessoryEquipmentUI);
+
         if (accessoryEquipmentUI != null && accessoryEquipmentObject == null)
             accessoryEquipmentObject = accessoryEquipmentUI.gameObject;
+    }
+
+    private void RebindEquipmentChanged(UIEquipment previous, UIEquipment next)
+    {
+        if (previous == next)
+            return;
+
+        if (previous != null)
+            previous.EquipmentChanged -= HandleEquipmentChanged;
+
+        if (next != null)
+            next.EquipmentChanged += HandleEquipmentChanged;
+    }
+
+    private void UnsubscribeEquipmentChanged()
+    {
+        if (weaponEquipmentUI != null)
+            weaponEquipmentUI.EquipmentChanged -= HandleEquipmentChanged;
+
+        if (accessoryEquipmentUI != null)
+            accessoryEquipmentUI.EquipmentChanged -= HandleEquipmentChanged;
     }
 
     private UIEquipment ResolveEquipmentUI(GameObject equipmentObject, EquipmentItemKind itemKind, UIEquipment excludedUI)
@@ -457,20 +497,40 @@ public class UILoadLaval : MonoBehaviour
             return;
         }
 
-        int startLevel = 1;
-        int lv = Mathf.Max(0, levelCurrent - startLevel);
-
         Name = s.characterName;
 
-        // Linear: base + (perLevel * lv)
-        Damage     = s.Damage          + s.DamageScaling     * lv;
-        Armor      = s.armor           + s.ArmorScaling      * lv;
-        MAXHP      = s.maxHP           + s.MAXHPScaling      * lv;
-        Stamina    = s.maxStamina      + s.StaminaScaling    * lv;
-        Enagy      = s.Enagy           + s.EnagyScaling      * lv;
-        Critrate   = s.critRate        + s.CritrateScaling   * lv;
-        CritDamage = s.critMultiplier  + s.CritDamageScaling * lv;
-        Speed      = s.speed           + s.SpeedScaling      * lv;
+        // Final combined stats: base + level + weapon + accessories + passives,
+        // computed through the same formula StatsHub uses in combat.
+        CharacterStatTotals totals = LobbyCharacterStatPreview.Build(
+            s,
+            levelCurrent,
+            ResolveBoundCharacterId(),
+            CTX != null ? CTX.playerInventory : null,
+            affixDatabase);
+
+        Damage     = totals.Damage;
+        Armor      = totals.Armor;
+        MAXHP      = totals.MaxHealth;
+        Stamina    = totals.MaxStamina;
+        Enagy      = totals.MaxEnergy;
+        Critrate   = totals.CritRatePercent;
+        CritDamage = totals.CritMultiplier;
+        Speed      = totals.MoveSpeed;
+    }
+
+    /// <summary>Recalculates and redraws the stat block. Safe to call while the panel is open.</summary>
+    public void RefreshStats()
+    {
+        if (_slot == null || _slot.Selected == null)
+            return;
+
+        Calculatestatusfromslot();
+        UpdateStatTexts();
+    }
+
+    private void HandleEquipmentChanged()
+    {
+        RefreshStats();
     }
 
     private void UpdateStatTexts()

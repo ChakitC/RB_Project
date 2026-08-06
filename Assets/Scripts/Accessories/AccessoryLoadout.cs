@@ -12,8 +12,10 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
     [SerializeField] private PassiveController passiveController;
     [SerializeField] private ItemDatabase itemDatabase;
 
+    public const int DefaultSlotCount = 5;
+
     [Header("Slots")]
-    [SerializeField, Min(0)] private int slotCount = 5;
+    [SerializeField, Min(0)] private int slotCount = DefaultSlotCount;
     [SerializeField] private List<AccessoryInstanceData> equippedAccessories = new();
 
     [Header("Shared Inventory Save")]
@@ -218,12 +220,62 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
             if (definition == null || instance == null)
                 continue;
 
-            AppendStatModifiers(buffer, definition.statModifiers, BuildModifierKey(instance, "base"));
-
-            AccessoryModifierDefinition modifier = definition.GetModifierById(instance.modifierId);
-            if (modifier != null)
-                AppendStatModifiers(buffer, modifier.statModifiers, BuildModifierKey(instance, modifier.RuntimeId));
+            AppendInstanceStatModifiers(buffer, definition, instance);
         }
+    }
+
+    /// <summary>
+    /// Data-only equivalent of one <see cref="AppendStatModifiers(List{RuntimeStatModifier})"/> loop
+    /// iteration. Lets callers without a live loadout component (the Basement status preview)
+    /// build the same modifiers from a definition plus instance.
+    /// </summary>
+    public static void AppendInstanceStatModifiers(
+        List<RuntimeStatModifier> buffer,
+        AccessoryDefinition definition,
+        AccessoryInstanceData instance)
+    {
+        if (buffer == null || definition == null || instance == null)
+            return;
+
+        AppendStatModifiers(buffer, definition.statModifiers, BuildModifierKey(instance, "base"));
+
+        AccessoryModifierDefinition modifier = definition.GetModifierById(instance.modifierId);
+        if (modifier != null)
+            AppendStatModifiers(buffer, modifier.statModifiers, BuildModifierKey(instance, modifier.RuntimeId));
+    }
+
+    /// <summary>
+    /// Data-only equivalent of one <see cref="AppendPassiveDefinitions"/> loop iteration.
+    /// </summary>
+    public static void AppendInstancePassiveDefinitions(
+        List<PassiveDefinition> buffer,
+        AccessoryDefinition definition,
+        AccessoryInstanceData instance)
+    {
+        if (buffer == null || definition == null || instance == null)
+            return;
+
+        AppendPassives(buffer, definition.passives);
+
+        AccessoryModifierDefinition modifier = definition.GetModifierById(instance.modifierId);
+        if (modifier != null)
+            AppendPassives(buffer, modifier.passives);
+    }
+
+    /// <summary>
+    /// Accessory slot count for an owner, resolved from a live scene loadout when one exists and
+    /// otherwise from the persisted loadout entry. Falls back to <see cref="DefaultSlotCount"/>.
+    /// </summary>
+    public static int ResolveOwnerSlotCount(string ownerId)
+    {
+        if (string.IsNullOrWhiteSpace(ownerId))
+            return DefaultSlotCount;
+
+        if (TryFindSceneLoadoutByOwner(ownerId, out AccessoryLoadout loadout) && loadout != null)
+            return Mathf.Max(DefaultSlotCount, loadout.SlotCount);
+
+        CharacterAccessoryLoadoutSaveData entry = FindLoadoutEntry(LoadPersistedAccessoryData(), ownerId);
+        return entry != null ? Mathf.Max(DefaultSlotCount, entry.slotCount) : DefaultSlotCount;
     }
 
     public void AppendPassiveDefinitions(List<PassiveDefinition> buffer)
@@ -238,11 +290,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
             if (definition == null || instance == null)
                 continue;
 
-            AppendPassives(buffer, definition.passives);
-
-            AccessoryModifierDefinition modifier = definition.GetModifierById(instance.modifierId);
-            if (modifier != null)
-                AppendPassives(buffer, modifier.passives);
+            AppendInstancePassiveDefinitions(buffer, definition, instance);
         }
     }
 
@@ -313,6 +361,68 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
             if (loadout.UnequipInstance(instanceId))
                 loadout.RefreshRuntime();
         }
+    }
+
+    public static bool SyncSceneLoadoutsWithInventoryInstance(PlayerInventory inventory, string instanceId)
+    {
+        if (string.IsNullOrWhiteSpace(instanceId))
+            return false;
+
+        var loadouts = new List<AccessoryLoadout>();
+        GatherSceneLoadouts(loadouts);
+
+        bool changedAny = false;
+        for (int i = 0; i < loadouts.Count; i++)
+        {
+            AccessoryLoadout loadout = loadouts[i];
+            if (loadout == null)
+                continue;
+
+            if (loadout.SyncEquippedInstanceFromInventory(inventory, instanceId))
+                changedAny = true;
+        }
+
+        return changedAny;
+    }
+
+    public static bool SyncPersistedInstanceModifier(string instanceId, string modifierId)
+    {
+        if (string.IsNullOrWhiteSpace(instanceId))
+            return false;
+
+        int saveSlot = SaveManager.Instance != null ? SaveManager.Instance.currentSlot : 0;
+        AccessoryLoadoutSaveData data = SaveSystem.LoadAccessories(saveSlot);
+        if (data == null || data.entries == null)
+            return false;
+
+        bool changed = false;
+        for (int i = 0; i < data.entries.Count; i++)
+        {
+            CharacterAccessoryLoadoutSaveData entry = data.entries[i];
+            if (entry?.equippedAccessories == null)
+                continue;
+
+            for (int j = 0; j < entry.equippedAccessories.Count; j++)
+            {
+                AccessoryInstanceData instance = entry.equippedAccessories[j];
+                if (instance == null || !string.Equals(instance.instanceId, instanceId, StringComparison.Ordinal))
+                    continue;
+
+                if (!string.Equals(instance.modifierId, modifierId, StringComparison.Ordinal))
+                {
+                    instance.modifierId = modifierId;
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed)
+        {
+            SaveSystem.SaveAccessories(data, saveSlot);
+            SaveManager.Instance?.RefreshLoadedCacheFromDisk();
+        }
+
+        return changed;
     }
 
     public static bool IsAccessoryInstanceUnavailable(string instanceId, string requesterOwnerId, AccessoryLoadout requester)
@@ -638,6 +748,24 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
             return false;
 
         equippedAccessories[index] = null;
+        return true;
+    }
+
+    public bool SyncEquippedInstanceFromInventory(PlayerInventory inventory, string instanceId)
+    {
+        int index = FindEquippedIndex(instanceId);
+        if (index < 0)
+            return false;
+
+        if (inventory == null ||
+            !inventory.TryGetAccessoryInstanceWithDefinition(instanceId, out _, out AccessoryInstanceData inventoryInstance) ||
+            inventoryInstance == null)
+        {
+            return false;
+        }
+
+        equippedAccessories[index] = inventoryInstance.DeepClone();
+        RefreshRuntime();
         return true;
     }
 

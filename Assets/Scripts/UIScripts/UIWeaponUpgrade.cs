@@ -22,12 +22,14 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
     [SerializeField] private PlayerInventory inventorySource;
     [SerializeField] private WeaponUpgradeService upgradeService;
     [SerializeField] private AccessoryDismantleService accessoryDismantleService;
+    [SerializeField] private AccessoryReforgeService accessoryReforgeService;
     [SerializeField] private WeaponUpgradeCurve fallbackUpgradeCurve;
     [SerializeField] private CharacterDatabase characterDatabase;
 
     [Header("Inventory List")]
     [SerializeField] private RectTransform slotContainer;
     [SerializeField] private InventorySlotUI slotPrefab;
+    [SerializeField] private ScrollRect inventoryScrollRect;
     [SerializeField] private InventorySlotUI upgradeSlotUI;
     [SerializeField] private DragItemUI dragItemUI;
     [SerializeField] private Canvas rootCanvas;
@@ -41,6 +43,7 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
     [SerializeField] private TMP_Text previewText;
     [SerializeField] private TMP_Text reasonText;
     [SerializeField] private Button upgradeButton;
+    [SerializeField] private TMP_Text upgradeButtonLabel;
     [SerializeField] private Button dismantleButton;
 
     readonly List<InventorySlotUI> slotUIs = new();
@@ -50,6 +53,7 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
     InventorySystem inventorySystem;
     string selectedInstanceId;
     SelectedItemKind selectedItemKind;
+    bool reforgeInProgress;
 
     protected override DragItemUI DragVisual => dragItemUI;
     protected override Canvas RootCanvas => rootCanvas;
@@ -67,6 +71,8 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
         if (rootCanvas == null)
             rootCanvas = GetComponentInParent<Canvas>();
 
+        ConfigureInventoryScroll();
+
         if (!inventorySource)
             inventorySource = ResolveInventorySource();
 
@@ -82,6 +88,15 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
         if (!accessoryDismantleService)
             accessoryDismantleService = GetComponentInParent<AccessoryDismantleService>(true);
 
+        if (!accessoryReforgeService)
+            accessoryReforgeService = GetComponent<AccessoryReforgeService>();
+
+        if (!accessoryReforgeService)
+            accessoryReforgeService = GetComponentInParent<AccessoryReforgeService>(true);
+
+        if (!upgradeButtonLabel && upgradeButton != null)
+            upgradeButtonLabel = upgradeButton.GetComponentInChildren<TMP_Text>(true);
+
         if (characterDatabase == null)
             characterDatabase = ResolveCharacterDatabase();
 
@@ -94,6 +109,16 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
             dismantleButton.onClick.AddListener(HandleDismantleClicked);
 
         BindSource(inventorySource);
+    }
+
+    void OnEnable()
+    {
+        if (inventoryScrollRect == null)
+            return;
+
+        Canvas.ForceUpdateCanvases();
+        inventoryScrollRect.StopMovement();
+        inventoryScrollRect.verticalNormalizedPosition = 1f;
     }
 
     void OnDestroy()
@@ -274,6 +299,12 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
 
     void HandleUpgradeClicked()
     {
+        if (selectedItemKind == SelectedItemKind.Accessory)
+        {
+            HandleReforgeClicked();
+            return;
+        }
+
         if (inventorySource == null ||
             selectedItemKind != SelectedItemKind.Weapon ||
             string.IsNullOrWhiteSpace(selectedInstanceId))
@@ -286,6 +317,40 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
 
         if (!upgraded && reasonText != null)
             reasonText.text = reason ?? string.Empty;
+
+        RefreshAll();
+    }
+
+    void HandleReforgeClicked()
+    {
+        if (reforgeInProgress ||
+            inventorySource == null ||
+            string.IsNullOrWhiteSpace(selectedInstanceId))
+            return;
+
+        reforgeInProgress = true;
+        if (upgradeButton != null)
+            upgradeButton.interactable = false;
+
+        try
+        {
+            AccessoryReforgeResult result;
+            string reason;
+            bool reforged = accessoryReforgeService != null
+                ? accessoryReforgeService.TryReforge(inventorySource, selectedInstanceId, out result, out reason)
+                : AccessoryReforgeService.TryReforgeWithDefaults(inventorySource, selectedInstanceId, out result, out reason);
+
+            if (reasonText != null)
+            {
+                reasonText.text = reforged && result != null
+                    ? $"{ResolveAccessoryModifierTitle(result.oldModifier, result.oldModifierId)} → {ResolveAccessoryModifierTitle(result.newModifier, result.newModifierId)}"
+                    : reason ?? string.Empty;
+            }
+        }
+        finally
+        {
+            reforgeInProgress = false;
+        }
 
         RefreshAll();
     }
@@ -380,6 +445,9 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
         if (upgradeButton != null)
             upgradeButton.interactable = canUpgrade;
 
+        if (upgradeButtonLabel != null)
+            upgradeButtonLabel.text = "Upgrade";
+
         if (dismantleButton != null)
             dismantleButton.interactable = canDismantle;
     }
@@ -400,26 +468,41 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
 
         AccessoryModifierDefinition modifier = accessory.GetModifierById(instance.modifierId);
 
+        int reforgeCost = 0;
+        string reforgeReason;
+        bool canReforge = accessoryReforgeService != null
+            ? accessoryReforgeService.CanReforge(inventorySource, selectedInstanceId, out reforgeCost, out reforgeReason)
+            : AccessoryReforgeService.CanReforgeWithDefaults(inventorySource, selectedInstanceId, out reforgeCost, out reforgeReason);
+
         if (titleText != null)
-            titleText.text = ResolveItemTitle(accessory);
+            titleText.text = AccessoryDisplayNameResolver.ResolveName(accessory, instance);
 
         if (levelText != null)
-            levelText.text = $"+{Mathf.Max(0, instance.upgradeLevel)}";
+            levelText.text = string.Empty;
 
         if (tierText != null)
-            tierText.text = ResolveAccessoryModifierTitle(modifier, instance.modifierId);
+        {
+            string effectSummary = modifier != null ? AccessoryDisplayNameResolver.BuildModifierEffectSummary(modifier) : string.Empty;
+            tierText.text = !string.IsNullOrEmpty(effectSummary) ? effectSummary : "No Modifier";
+        }
 
         if (costText != null)
-            costText.text = string.Empty;
+            costText.text = reforgeCost > 0 ? $"Reforge: {reforgeCost} Gold" : "Reforge: Free";
 
         if (previewText != null)
-            previewText.text = $"Dismantle: +{dismantleReward} Scrap";
+        {
+            previewText.text = "Rerolls into a different modifier. The current modifier is replaced." +
+                (dismantleReward > 0 || canDismantle ? $"\nDismantle: +{dismantleReward} Scrap" : string.Empty);
+        }
 
         if (reasonText != null)
-            reasonText.text = canDismantle ? string.Empty : dismantleReason ?? string.Empty;
+            reasonText.text = !canReforge ? reforgeReason ?? string.Empty : (canDismantle ? string.Empty : dismantleReason ?? string.Empty);
 
         if (upgradeButton != null)
-            upgradeButton.interactable = false;
+            upgradeButton.interactable = canReforge && !reforgeInProgress;
+
+        if (upgradeButtonLabel != null)
+            upgradeButtonLabel.text = "Reforge";
 
         if (dismantleButton != null)
             dismantleButton.interactable = canDismantle;
@@ -471,6 +554,9 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
 
         if (upgradeButton != null)
             upgradeButton.interactable = false;
+
+        if (upgradeButtonLabel != null)
+            upgradeButtonLabel.text = "Upgrade";
 
         if (dismantleButton != null)
             dismantleButton.interactable = false;
@@ -655,6 +741,19 @@ public class UIWeaponUpgrade : InventorySlotOwnerBase
             else
                 DestroyImmediate(slotUI.gameObject);
         }
+    }
+
+    void ConfigureInventoryScroll()
+    {
+        if (inventoryScrollRect == null && slotContainer != null)
+            inventoryScrollRect = slotContainer.GetComponentInParent<ScrollRect>();
+
+        if (inventoryScrollRect == null || slotContainer == null)
+            return;
+
+        GridLayoutGroup gridLayout = slotContainer.GetComponent<GridLayoutGroup>();
+        if (gridLayout != null)
+            inventoryScrollRect.scrollSensitivity = gridLayout.cellSize.y + gridLayout.spacing.y;
     }
 
     bool TryGetInventorySlotIndex(int displaySlotIndex, out int inventorySlotIndex)

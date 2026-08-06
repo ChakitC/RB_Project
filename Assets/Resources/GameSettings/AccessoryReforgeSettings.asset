@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f581c6a4c9eb8c41893c2c019a5ca41, type: 3}
+  m_Name: AccessoryReforgeSettings
+  m_EditorClassIdentifier: 
+  modifierPool:
+  - {fileID: 11400000, guid: 11ef6aded00cd6e4c98978f0275eb927, type: 2}
+  - {fileID: 11400000, guid: c7f8c8af7d0b6dd46863114192e2973e, type: 2}
+  - {fileID: 11400000, guid: 49668448ebe002b4181b23e0f1c0197d, type: 2}
+  - {fileID: 11400000, guid: b9e70d7823f8b174a9f5a5c14952ccf0, type: 2}
+  - {fileID: 11400000, guid: cf5285316c17c874b9779e78e5c698ce, type: 2}
+  - {fileID: 11400000, guid: 70bd99ee2417eed40875edb07e19d8f2, type: 2}
+  costDivisor: 3
+  costRoundUpUnit: 5

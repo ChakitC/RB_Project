@@ -150,11 +150,56 @@ for +1 through +10, 2 for +11 through +20, and 3 for +21 through +30. Cumulative
 costs are +5 150/5, +10 425/10, +15 825/20, +20 1,350/30, +25 2,000/45, and
 +30 2,775/60 (gold/scrap).
 
-The current affix pool contains only:
+### Test Stage Weapon Affix Pool
 
-- Damage sub-affix: +2% to +4% Damage.
-- Critical sub-affix: +1 to +3 critical rate.
-- Stability main-affix: +10 to +20 Stability for 3 seconds after reload.
+Weapon affixes use stable, namespaced ids. The test-stage pool intentionally
+supports firearm weapon types only: Sniper, Shotgun, Pistol, Rifle, Smg, and
+Hmg. Melee and Spirit require their own affix pools.
+
+Sub-affixes are permanent stat modifiers while the weapon is equipped:
+
+| Id | Display Name | Modifier | Roll | Weight | Weapon Types |
+| --- | --- | --- | ---: | ---: | --- |
+| `weapon.sub.damage.v1` | Sharpened Rounds | Damage, AddPercent | +2% to +4% | 1.0 | All firearms |
+| `weapon.sub.crit_rate.v1` | Calibrated Sights | CritRate, Flat | +1 to +3 | 1.0 | All firearms |
+| `weapon.sub.fire_interval.v1` | Fleet Trigger | FireInterval, AddPercent | -6% to -3% | 1.0 | All firearms |
+| `weapon.sub.reload_time.v1` | Rapid Loader | ReloadTime, AddPercent | -9% to -5% | 1.0 | All firearms |
+| `weapon.sub.bullet_speed.v1` | Velocity Bore | BulletSpeed, AddPercent | +10% to +18% | 0.85 | All firearms |
+| `weapon.sub.max_magazine.v1` | Extended Magazine | MaxMagazine, AddPercent | +8% to +12% | 0.85 | Rifle, Smg, Hmg |
+| `weapon.sub.crit_multiplier.v1` | Precision Bore | CritMultiplier, Flat | +0.08 to +0.15 | 1.0 | All firearms |
+| `weapon.sub.stability.v1` | Balanced Frame | Stability, Flat | +6 to +10 | 0.85 | All firearms |
+| `weapon.sub.max_reserve_ammo.v1` | Ammo Harness | MaxReserveAmmo, AddPercent | +15% to +25% | 0.65 | All firearms |
+
+Main-affixes add conditional weapon behavior:
+
+| Id | Display Name | Behavior | Weight | Weapon Types |
+| --- | --- | --- | ---: | --- |
+| `weapon.main.reload_stability.v1` | Steady Reload | Reload grants +10 to +20 Stability for 3 seconds | 1.0 | Pistol, Rifle, Smg, Hmg |
+| `weapon.main.reload_damage.v1` | Combat Loading | Reload grants +8% to +12% Damage for 3 seconds | 1.0 | All firearms |
+| `weapon.main.reload_crit_rate.v1` | Deadeye Chamber | Reload grants +6 to +10 CritRate for 3 seconds | 1.0 | Sniper, Shotgun, Pistol, Rifle |
+| `weapon.main.echo_chamber.v1` | Echo Chamber | Every 10th shot fires an ammo-free projectile at 70% damage | 1.0 | Rifle, Smg, Hmg |
+| `weapon.main.breach_chamber.v1` | Breach Chamber | Every 4th shot fires an ammo-free projectile at 45% damage and 90% speed with 1.75x stagger and a 0.75-unit, 0.12-second MiniStun knockback | 1.0 | Sniper, Shotgun, Pistol |
+
+Echo Chamber and Breach Chamber use a deterministic `procChance` of 1. Echo
+falls back to the equipped weapon's projectile config and prefab. Breach uses
+`WeaponAffix.BreachProjectile`, falls back to the equipped weapon's projectile
+prefab, and does not add explosion modules or separate VFX.
+
+Different affix ids may intentionally modify the same stat. A reload main-affix
+can therefore combine with a permanent sub-affix for the same stat. Exact affix
+ids remain unique on a weapon instance.
+
+Known asset-only limitations:
+
+- Timed reload buffs can remain active for their remaining duration after the
+  actor swaps weapons.
+- The affix shot counter persists on the weapon instance across reloads and
+  weapon swaps.
+- MaxMagazine and MaxReserveAmmo affixes increase capacity without granting
+  the additional ammo immediately.
+- The namespaced affix ids replace the earlier test ids. Existing test saves
+  using `Damge.1`, `Crit.1`, or `Stabiity.1` must be reset; there is no runtime
+  migration for those ids.
 
 ### Stability Percentage
 
@@ -328,3 +373,9 @@ They can contribute stat modifiers and react to equip/shot events.
 - Raise `IStatModifierProvider.StatModifiersChanged` whenever a provider's stat
   output changes.
 - Do not edit generated project files to make a new script compile.
+# Affix runtime pipeline
+
+Shots capture ammo-before/after, consumption, last-round state, and weapon
+instance id before spawn. Equipped behavior assets own plain C# runtimes with
+stat, pre-shot, pre-damage, combat-event, and timer hooks. Persistent counters
+live in versioned records on `WeaponInstanceData`.

@@ -72,4 +72,16 @@ If validation fails:
 4. Keep new Unity classes in their intended `.cs` files.
 5. If the generated `.csproj` is stale, refresh Unity/reimport/regenerate project
    files instead of changing file ownership.
+# Weapon affix validation
+
+Run **Tools > Weapons > Affixes > Validate (Dry Run)** before builds. The build
+preprocessor blocks missing behavior assets, duplicate ids, and invalid roll
+ranges. `WeaponAffixFrameworkTests` verifies all 27 registered definitions,
+endpoint rolls, structured tooltip data, Last Round eligibility, persistent-state
+cloning, typed overkill metadata, and the recursion guard.
+
+On 2026-08-03 the focused EditMode suite passed 6/6 and
+`CheckAssemblyBuild.ps1` passed with 0 errors. The full EditMode run was blocked
+by the pre-existing `PartySpawnUnityTests` scene-open error for
+`Assets/Scenes/Map_Play_Pototype/State_1.unity`.
 

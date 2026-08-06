@@ -4346,6 +4346,7 @@ MonoBehaviour:
   CTX: {fileID: 0}
   weaponEquipmentObject: {fileID: 0}
   accessoryEquipmentObject: {fileID: 0}
+  affixDatabase: {fileID: 11400000, guid: d951cbf91c99476428d7c7928e413832, type: 2}
   activeSkillScreenPrefab: {fileID: 4300598609109931388, guid: 5d154c3d6fe27114d829b4ff6b19963f, type: 3}
   NameText: {fileID: 8288621750425518656}
   levelCurrentText: {fileID: 8597325520025544115}

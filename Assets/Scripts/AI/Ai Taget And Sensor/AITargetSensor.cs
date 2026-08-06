@@ -63,6 +63,8 @@ public class AITargetSensor : MonoBehaviour
     [SerializeField, Min(0f)] private float maxThreatPerTarget = 100f;
 
     [Header("Taunt")]
+    [Tooltip("Status effect applied to this character while it is taunted. Required for taunt to work.")]
+    [SerializeField] private StatusEffectDef tauntedEffectDef;
     [SerializeField, Min(0f)] private float tauntScoreBonus = 1000f;
 
     [Header("Offsets")]
@@ -89,8 +91,8 @@ public class AITargetSensor : MonoBehaviour
     Collider[] overlapBuffer;
     CharacteContext ownerContext;
     HealthSystem healthSystem;
-    Transform tauntTarget;
-    float tauntUntilTime = float.NegativeInfinity;
+    StatusEffectController statusEffects;
+    Transform cachedTauntSource;      // derived cache only — source of truth is statusEffects
     float nextScanTime;
 
     public AITargetingProfileDef TargetingProfile => targetingProfile;
@@ -167,6 +169,39 @@ public class AITargetSensor : MonoBehaviour
             TryGetComponent(out healthSystem);
         if (!healthSystem && ownerContext != null)
             healthSystem = ownerContext.GetComponentInChildren<HealthSystem>(true);
+
+        if (!statusEffects && ownerContext != null)
+            statusEffects = ownerContext.StatusEffects;
+        if (!statusEffects)
+            statusEffects = GetComponentInParent<StatusEffectController>();
+        if (!statusEffects && ownerContext != null)
+            statusEffects = ownerContext.GetComponentInChildren<StatusEffectController>(true);
+    }
+
+    StatusEffectController ResolveStatusEffects()
+    {
+        if (statusEffects)
+            return statusEffects;
+
+        if (ownerContext != null)
+        {
+            statusEffects = ownerContext.StatusEffects;
+            if (!statusEffects)
+                statusEffects = ownerContext.GetComponentInChildren<StatusEffectController>(true);
+        }
+
+        if (!statusEffects)
+            statusEffects = GetComponentInParent<StatusEffectController>();
+
+        // Assets/Prefab/AI Ally/Ally.prefab has an AITargetSensor but no StatusEffectController.
+        // Same auto-provision pattern CharacteContext.ResolveReferences() already uses.
+        if (!statusEffects && Application.isPlaying && ownerContext != null)
+        {
+            statusEffects = ownerContext.gameObject.AddComponent<StatusEffectController>();
+            ownerContext.StatusEffects = statusEffects;
+        }
+
+        return statusEffects;
     }
 
     void Update()
@@ -202,8 +237,9 @@ public class AITargetSensor : MonoBehaviour
         currentTargetScore = float.NegativeInfinity;
         visibleBestScore = float.NegativeInfinity;
         currentTargetAcquiredTime = float.NegativeInfinity;
-        tauntTarget = null;
-        tauntUntilTime = float.NegativeInfinity;
+        cachedTauntSource = null;
+        if (tauntedEffectDef != null)
+            ResolveStatusEffects()?.RemoveEffect(tauntedEffectDef);
         ScheduleNextRetargetEvaluation();
     }
 
@@ -268,8 +304,20 @@ public class AITargetSensor : MonoBehaviour
         if (!IsTrackedTargetStillValid(targetRoot))
             return false;
 
-        tauntTarget = targetRoot;
-        tauntUntilTime = WorldNow + duration;
+        StatusEffectController controller = ResolveStatusEffects();
+        if (controller == null || tauntedEffectDef == null)
+        {
+            Debug.LogWarning(
+                $"{nameof(AITargetSensor)} on '{name}' cannot apply taunt: " +
+                $"{(tauntedEffectDef == null ? "tauntedEffectDef is not assigned" : "no StatusEffectController")}.",
+                this);
+            return false;
+        }
+
+        // Source == who taunted us. The status instance is the source of truth for taunt state.
+        controller.ApplyEffect(tauntedEffectDef, targetRoot.gameObject, 1, duration);
+
+        UpdateTauntState();
         RegisterThreatInternal(targetRoot, targetable, GetMaxThreatPerTargetValue());
         ForceScan();
         return true;
@@ -1067,22 +1115,31 @@ public class AITargetSensor : MonoBehaviour
 
     bool IsTauntedTarget(Transform target)
     {
-        return tauntTarget != null &&
-               WorldNow <= tauntUntilTime &&
-               target != null &&
-               tauntTarget == target;
+        return cachedTauntSource != null && target != null && cachedTauntSource == target;
     }
 
     void UpdateTauntState()
     {
-        if (tauntTarget == null)
+        cachedTauntSource = null;
+
+        if (tauntedEffectDef == null)
             return;
 
-        if (WorldNow <= tauntUntilTime && IsTrackedTargetStillValid(tauntTarget))
+        StatusEffectController controller = ResolveStatusEffects();
+        if (controller == null)
             return;
 
-        tauntTarget = null;
-        tauntUntilTime = float.NegativeInfinity;
+        StatusEffectInstance instance = controller.FindActiveEffect(tauntedEffectDef);
+        if (instance == null || instance.CurrentStacks <= 0 || instance.Source == null)
+            return;
+
+        if (!TryResolveTrackedTarget(instance.Source.transform, out Transform sourceRoot, out _))
+            return;
+
+        if (!IsTrackedTargetStillValid(sourceRoot))
+            return;
+
+        cachedTauntSource = sourceRoot;
     }
 
     struct Candidate

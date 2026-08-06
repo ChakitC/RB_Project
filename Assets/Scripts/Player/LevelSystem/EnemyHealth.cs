@@ -45,7 +45,15 @@ public class EnemyHealth : HealthSystem
         DamageResult result = ApplyDamage(in resolvedContext);
 
         if (meter != null && result.Applied && result.IsAliveAfter && damageContext.HasStagger)
-            meter.ApplyStagger(damageContext.Stagger, damageContext.Attacker);
+        {
+            float before = meter.CurrentStagger;
+            bool wasChainReady = meter.IsChainReady;
+            if (meter.ApplyStagger(damageContext.Stagger, damageContext.Attacker))
+            {
+                float applied = Mathf.Max(0f, meter.CurrentStagger - before);
+                result = result.WithStagger(applied, !wasChainReady && meter.IsChainReady);
+            }
+        }
 
         return result;
     }

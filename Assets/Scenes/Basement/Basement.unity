@@ -502,10 +502,6 @@ PrefabInstance:
       propertyPath: m_ActiveFontFeatures.Array.size
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 120001, guid: 558d6d1ba11c42108a2d87e2ece3b042, type: 3}
-      propertyPath: m_AnchoredPosition.x
-      value: 18
-      objectReference: {fileID: 0}
     - target: {fileID: 120002, guid: 558d6d1ba11c42108a2d87e2ece3b042, type: 3}
       propertyPath: m_CellSize.x
       value: 144
@@ -1088,13 +1084,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d221844da26757f4382b0085aad6fa49, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  backgroundImage: {fileID: 0}
   iconImage: {fileID: 1018190145}
   equippedCharacterIconImage: {fileID: 0}
   amountText: {fileID: 1564967828}
   hoverHighlight: {fileID: 330140701}
+  borderOutline: {fileID: 0}
   hoverDetailDelay: 3
   equippedCharacterIconSize: 28
   equippedCharacterIconOffset: {x: -4, y: 4}
+  emptyBackgroundColor: {r: 0.055, g: 0.065, b: 0.075, a: 0.72}
+  filledBackgroundColor: {r: 0.09, g: 0.105, b: 0.12, a: 1}
+  emptyBorderColor: {r: 0.2, g: 0.22, b: 0.24, a: 0.7}
+  commonBorderColor: {r: 0.45, g: 0.48, b: 0.52, a: 1}
+  rareBorderColor: {r: 0.2, g: 0.55, b: 0.95, a: 1}
+  epicBorderColor: {r: 0.7, g: 0.35, b: 0.95, a: 1}
+  hoverBorderColor: {r: 1, g: 0.68, b: 0.2, a: 1}
 --- !u!224 &37269118
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4188,7 +4193,7 @@ PrefabInstance:
     - target: {fileID: 3000000000000000001, guid: 5987270e7bb34f2a96c76a24efb78618, type: 3}
       propertyPath: catalog
       value: 
-      objectReference: {fileID: 11400000, guid: 5ba6201dc4b9ff341a654bad43ac1e13, type: 2}
+      objectReference: {fileID: 11400000, guid: 7760efe0f45f6ac4abe0cd913fcef9c8, type: 2}
     - target: {fileID: 3423090458998610761, guid: 5987270e7bb34f2a96c76a24efb78618, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -4483,13 +4488,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d221844da26757f4382b0085aad6fa49, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  backgroundImage: {fileID: 0}
   iconImage: {fileID: 61622083}
   equippedCharacterIconImage: {fileID: 0}
   amountText: {fileID: 535443907}
   hoverHighlight: {fileID: 1749707716}
+  borderOutline: {fileID: 0}
   hoverDetailDelay: 3
   equippedCharacterIconSize: 28
   equippedCharacterIconOffset: {x: -4, y: 4}
+  emptyBackgroundColor: {r: 0.055, g: 0.065, b: 0.075, a: 0.72}
+  filledBackgroundColor: {r: 0.09, g: 0.105, b: 0.12, a: 1}
+  emptyBorderColor: {r: 0.2, g: 0.22, b: 0.24, a: 0.7}
+  commonBorderColor: {r: 0.45, g: 0.48, b: 0.52, a: 1}
+  rareBorderColor: {r: 0.2, g: 0.55, b: 0.95, a: 1}
+  epicBorderColor: {r: 0.7, g: 0.35, b: 0.95, a: 1}
+  hoverBorderColor: {r: 1, g: 0.68, b: 0.2, a: 1}
 --- !u!224 &671274644
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4861,13 +4875,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d221844da26757f4382b0085aad6fa49, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  backgroundImage: {fileID: 0}
   iconImage: {fileID: 32189777}
   equippedCharacterIconImage: {fileID: 0}
   amountText: {fileID: 6347080}
   hoverHighlight: {fileID: 213878874}
+  borderOutline: {fileID: 0}
   hoverDetailDelay: 3
   equippedCharacterIconSize: 28
   equippedCharacterIconOffset: {x: -4, y: 4}
+  emptyBackgroundColor: {r: 0.055, g: 0.065, b: 0.075, a: 0.72}
+  filledBackgroundColor: {r: 0.09, g: 0.105, b: 0.12, a: 1}
+  emptyBorderColor: {r: 0.2, g: 0.22, b: 0.24, a: 0.7}
+  commonBorderColor: {r: 0.45, g: 0.48, b: 0.52, a: 1}
+  rareBorderColor: {r: 0.2, g: 0.55, b: 0.95, a: 1}
+  epicBorderColor: {r: 0.7, g: 0.35, b: 0.95, a: 1}
+  hoverBorderColor: {r: 1, g: 0.68, b: 0.2, a: 1}
 --- !u!224 &756702879
 RectTransform:
   m_ObjectHideFlags: 0
@@ -7825,7 +7848,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4278190080
   m_fontColor: {r: 0, g: 0, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -7838,7 +7861,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -8725,13 +8748,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d221844da26757f4382b0085aad6fa49, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  backgroundImage: {fileID: 0}
   iconImage: {fileID: 586648427}
   equippedCharacterIconImage: {fileID: 0}
   amountText: {fileID: 472926332}
   hoverHighlight: {fileID: 2097809218}
+  borderOutline: {fileID: 0}
   hoverDetailDelay: 3
   equippedCharacterIconSize: 28
   equippedCharacterIconOffset: {x: -4, y: 4}
+  emptyBackgroundColor: {r: 0.055, g: 0.065, b: 0.075, a: 0.72}
+  filledBackgroundColor: {r: 0.09, g: 0.105, b: 0.12, a: 1}
+  emptyBorderColor: {r: 0.2, g: 0.22, b: 0.24, a: 0.7}
+  commonBorderColor: {r: 0.45, g: 0.48, b: 0.52, a: 1}
+  rareBorderColor: {r: 0.2, g: 0.55, b: 0.95, a: 1}
+  epicBorderColor: {r: 0.7, g: 0.35, b: 0.95, a: 1}
+  hoverBorderColor: {r: 1, g: 0.68, b: 0.2, a: 1}
 --- !u!224 &1702595078
 RectTransform:
   m_ObjectHideFlags: 0
@@ -9680,7 +9712,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4278190080
   m_fontColor: {r: 0, g: 0, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -9693,7 +9725,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -9985,13 +10017,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d221844da26757f4382b0085aad6fa49, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  backgroundImage: {fileID: 0}
   iconImage: {fileID: 1220093548}
   equippedCharacterIconImage: {fileID: 0}
   amountText: {fileID: 1451969310}
   hoverHighlight: {fileID: 1223078398}
+  borderOutline: {fileID: 0}
   hoverDetailDelay: 3
   equippedCharacterIconSize: 28
   equippedCharacterIconOffset: {x: -4, y: 4}
+  emptyBackgroundColor: {r: 0.055, g: 0.065, b: 0.075, a: 0.72}
+  filledBackgroundColor: {r: 0.09, g: 0.105, b: 0.12, a: 1}
+  emptyBorderColor: {r: 0.2, g: 0.22, b: 0.24, a: 0.7}
+  commonBorderColor: {r: 0.45, g: 0.48, b: 0.52, a: 1}
+  rareBorderColor: {r: 0.2, g: 0.55, b: 0.95, a: 1}
+  epicBorderColor: {r: 0.7, g: 0.35, b: 0.95, a: 1}
+  hoverBorderColor: {r: 1, g: 0.68, b: 0.2, a: 1}
 --- !u!224 &1907080914
 RectTransform:
   m_ObjectHideFlags: 0

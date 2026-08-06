@@ -138,7 +138,7 @@ public static class WeaponInstanceFactory
 
         if (mainCount > 0)
         {
-            var mainDefinition = RollDefinition(affixDatabase, WeaponAffixSlot.Main, baseWeapon.WeaponType, excludedIds);
+            var mainDefinition = RollDefinition(affixDatabase, WeaponAffixSlot.Main, baseWeapon, excludedIds);
             if (mainDefinition != null)
             {
                 instance.mainAffix = CreateRolledAffix(mainDefinition);
@@ -148,7 +148,7 @@ public static class WeaponInstanceFactory
 
         for (int i = 0; i < subCount; i++)
         {
-            var subDefinition = RollDefinition(affixDatabase, WeaponAffixSlot.Sub, baseWeapon.WeaponType, excludedIds);
+            var subDefinition = RollDefinition(affixDatabase, WeaponAffixSlot.Sub, baseWeapon, excludedIds);
             if (subDefinition == null)
                 break;
 
@@ -181,10 +181,10 @@ public static class WeaponInstanceFactory
     static WeaponAffixDefinition RollDefinition(
         WeaponAffixDatabase affixDatabase,
         WeaponAffixSlot slot,
-        WeaponType weaponType,
+        GunConfig weapon,
         HashSet<string> excludedIds)
     {
-        affixDatabase.GetCandidates(CandidateBuffer, slot, weaponType, excludedIds);
+        affixDatabase.GetCandidates(CandidateBuffer, slot, weapon, excludedIds);
         if (CandidateBuffer.Count == 0)
             return null;
 
@@ -213,6 +213,9 @@ public static class WeaponInstanceFactory
     {
         if (!definition)
             return null;
+
+        if (definition.rootBehavior != null)
+            return new RolledAffixData { affixId = definition.affixId, hasPrimaryValue = true, primaryValue = definition.rootBehavior.RollPrimaryValue() };
 
         bool needsPrimaryRoll = definition.behaviorType == WeaponAffixBehaviorType.StatModifier ||
                                 definition.behaviorType == WeaponAffixBehaviorType.TimedBuffOnReload;

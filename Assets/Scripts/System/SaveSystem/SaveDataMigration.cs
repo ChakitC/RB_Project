@@ -96,6 +96,51 @@ public static class SaveDataMigration
         if (MigrateAccessoryOwners(data, party))
             changed = true;
 
+        if (MigrateWeaponAffixRuntimeState(data.inventory))
+            changed = true;
+
+        return changed;
+    }
+
+    static bool MigrateWeaponAffixRuntimeState(PlayerInventoryData inventory)
+    {
+        if (inventory?.slots == null)
+            return false;
+
+        bool changed = false;
+        for (int i = 0; i < inventory.slots.Count; i++)
+        {
+            WeaponInstanceData weapon = inventory.slots[i]?.weaponInstance;
+            if (weapon == null || weapon.shotCounter <= 0 || weapon.mainAffix == null)
+                continue;
+
+            string affixId = weapon.mainAffix.affixId;
+            if (!string.Equals(affixId, "weapon.main.echo_chamber.v1", StringComparison.Ordinal) &&
+                !string.Equals(affixId, "weapon.main.breach_chamber.v1", StringComparison.Ordinal))
+                continue;
+
+            WeaponAffixRuntimeStateData state = weapon.GetOrCreateAffixState(affixId);
+            WeaponAffixRuntimeStateEntry progress = null;
+            for (int entryIndex = 0; entryIndex < state.entries.Count; entryIndex++)
+            {
+                if (state.entries[entryIndex] != null && state.entries[entryIndex].key == "progress")
+                {
+                    progress = state.entries[entryIndex];
+                    break;
+                }
+            }
+
+            if (progress == null)
+            {
+                progress = new WeaponAffixRuntimeStateEntry { key = "progress" };
+                state.entries.Add(progress);
+            }
+
+            progress.intValue = Mathf.Max(progress.intValue, weapon.shotCounter);
+            weapon.shotCounter = 0;
+            changed = true;
+        }
+
         return changed;
     }
 

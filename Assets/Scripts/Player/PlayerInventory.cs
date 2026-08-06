@@ -667,6 +667,7 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
         accessoryLoadout?.ResolveReferences();
         ctx?.StatsHub?.MarkDirty();
         ctx?.PassiveController?.RefreshPassiveLoadout();
+        AccessoryLoadout.SyncSceneLoadoutsWithInventoryInstance(this, instanceId);
 
         return true;
     }

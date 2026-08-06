@@ -516,19 +516,22 @@ public class Projectile : MonoBehaviour
         return false;
     }
 
+    bool _lastDamageWasCritical;
+
     float CalcFinalDamage(IDamageable target)
     {
         float armor = 0f;
         if (target is IHasArmor a) armor = a.Armor;
 
-        return DamageCalculator.CalculateFinalDamage(
+        DamageCalculationResult calculation = DamageCalculator.CalculateDamage(
             gunType,
             DistanceFromSpawn(),
             _ctx.stats.damage,
             critRate,
             critMult,
-            armor
-        );
+            armor);
+        _lastDamageWasCritical = calculation.WasCritical;
+        return calculation.Damage;
     }
 
     void ApplyAreaDamage()
@@ -782,9 +785,9 @@ public class Projectile : MonoBehaviour
         return Mathf.Max(0.01f, Mathf.Min(e.x, e.y, e.z));
     }
 
-    void NotifyOwnerCombatTriggers(IDamageable target, float appliedDamage, bool wasAliveBeforeDamage, bool killed)
+    void NotifyOwnerCombatTriggers(IDamageable target, in DamageResult result, CharacterHitZone hitZone)
     {
-        if (target == null || !wasAliveBeforeDamage)
+        if (target == null || !result.WasAliveBefore || !result.Applied)
             return;
 
         var ownerStatusController = ResolveOwnerStatusEffectController();
@@ -793,19 +796,26 @@ public class Projectile : MonoBehaviour
         ownerStatusController?.NotifyTrigger(EffectTriggerType.OnHit, targetObject);
 
         var ownerEventBus = ResolveOwnerCombatEventBus();
+        var shot = _ctx.combatMetadata;
+        var metadata = new CombatEventMetadata(
+            result.RequestedDamage, result.ResolvedDamage, result.AppliedDamage,
+            result.HealthBeforeHit, result.MaxHealth, _lastDamageWasCritical, hitZone,
+            result.StaggerApplied, result.EnteredChainReady, shot.WeaponInstanceId,
+            shot.AmmoBefore, shot.AmmoAfter, shot.MaxMagazine, shot.AmmoConsumed,
+            shot.IsLastRound, shot.SourceKind, shot.WeaponAffixId);
         if (ownerEventBus != null)
         {
-            var hitContext = CreateOwnerEventContext(ownerEventBus, PassiveEventType.Hit, targetObject, appliedDamage);
+            var hitContext = CreateOwnerEventContext(ownerEventBus, PassiveEventType.Hit, targetObject, result.AppliedDamage, metadata);
             ownerEventBus.Publish(hitContext);
         }
 
-        if (killed)
+        if (result.Killed)
         {
             ownerStatusController?.NotifyTrigger(EffectTriggerType.OnKill, targetObject);
 
             if (ownerEventBus != null)
             {
-                var killContext = CreateOwnerEventContext(ownerEventBus, PassiveEventType.Kill, targetObject, appliedDamage);
+                var killContext = CreateOwnerEventContext(ownerEventBus, PassiveEventType.Kill, targetObject, result.AppliedDamage, metadata);
                 ownerEventBus.Publish(killContext);
             }
         }
@@ -985,8 +995,18 @@ public class Projectile : MonoBehaviour
         KnockbackData knockback,
         CharacterHitZone hitZone)
     {
+        var build = new WeaponDamageBuildContext
+        {
+            WeaponInstanceId = _ctx.combatMetadata.WeaponInstanceId,
+            Target = (target as Component) != null ? ((Component)target).gameObject : null,
+            AttackId = _ctx.attackId,
+            Damage = finalDamage,
+            StaggerPower = _ctx.stats.staggerPower
+        };
+        _ctx.preDamageRuntime?.ModifyDamage(ref build);
+        StaggerPayload configuredStagger = BuildStaggerPayload();
         var damageContext = new DamageContext(
-            finalDamage,
+            build.Damage,
             attackerGO,
             _ctx.damageSourceId,
             _ctx.attackId,
@@ -996,7 +1016,7 @@ public class Projectile : MonoBehaviour
             _ctx.originPassiveId,
             _ctx.originRuleId,
             knockback,
-            BuildStaggerPayload(),
+            new StaggerPayload(build.StaggerPower, configuredStagger.Multiplier, _ctx.damageSourceId),
             hitZone);
 
         return target.TakeDamage(in damageContext);
@@ -1061,10 +1081,30 @@ public class Projectile : MonoBehaviour
             SpawnDamageNumber(hit.ResolvePoint(transform.position), result.AppliedDamage, target);
 
         NotifyDamageApplied(hit, target);
-        NotifyOwnerCombatTriggers(target, result.AppliedDamage, wasAliveBeforeDamage, result.Killed);
+        NotifyOwnerCombatTriggers(target, result, hitZone);
+        if (_ctx.affixImpactPayload.IsValid)
+        {
+            WeaponAffixAreaDamage.Apply(
+                _ctx.sourceActor != null ? _ctx.sourceActor.GetComponentInParent<CharacteContext>() : null,
+                ResolveOwnerCombatEventBus(),
+                hit.ResolvePoint(transform.position),
+                _ctx.affixImpactPayload.Radius,
+                _ctx.affixImpactPayload.Damage,
+                _ctx.combatMetadata.WeaponInstanceId,
+                _ctx.affixImpactPayload.AffixId,
+                _ctx.attackId,
+                _ctx.chainId,
+                _ctx.depth);
+            _ctx.affixImpactPayload = default;
+        }
     }
 
-    PassiveEventContext CreateOwnerEventContext(CombatEventBus ownerEventBus, PassiveEventType type, GameObject targetObject, float value)
+    PassiveEventContext CreateOwnerEventContext(
+        CombatEventBus ownerEventBus,
+        PassiveEventType type,
+        GameObject targetObject,
+        float value,
+        in CombatEventMetadata metadata)
     {
         GameObject sourceObject = ResolveSourceObject();
 
@@ -1083,7 +1123,8 @@ public class Projectile : MonoBehaviour
                 _ctx.depth,
                 _ctx.origin,
                 _ctx.originPassiveId,
-                _ctx.originRuleId);
+                _ctx.originRuleId,
+                metadata);
 
             return ownerEventBus.CreateChildContext(
                 parent,
@@ -1095,7 +1136,8 @@ public class Projectile : MonoBehaviour
                 value,
                 _ctx.origin,
                 _ctx.originPassiveId,
-                _ctx.originRuleId);
+                _ctx.originRuleId,
+                metadata);
         }
 
         return ownerEventBus.CreateExternalContext(
@@ -1107,7 +1149,8 @@ public class Projectile : MonoBehaviour
             value,
             _ctx.origin,
             _ctx.originPassiveId,
-            _ctx.originRuleId);
+            _ctx.originRuleId,
+            metadata);
     }
 
     GameObject ResolveSourceObject()

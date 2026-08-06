@@ -140,16 +140,49 @@ Important concepts:
 - `AccessoryInstanceData`: per-instance data
 - `AccessoryLoadout`: equipped accessory slots on a character
 - `AccessoryDismantleService`: validates dismantling and grants scrap
+- `AccessoryReforgeSettings`: the Global Modifier Pool and reforge cost formula
+- `AccessoryReforgeService`: validates and performs a Reforge
+- `AccessoryDisplayNameResolver`: shared "{Modifier} {Accessory}" naming and modifier-effect-summary formatting, used by the tooltip and the Upgrade screen
 - accessory modifier definitions and providers
 
 Accessory loadouts should resolve through `CharacteContext.AccessoryLoadout`
 when possible.
 
-The weapon upgrade UI lists both weapon and accessory instances. Accessories
-cannot be upgraded there, but they can be dismantled when they are not assigned
-to any player or companion loadout. The default reward is `10` scrap, plus `5`
-when the instance has a modifier, plus `3` per accessory upgrade level. These
-values and the save/assignment rules are serialized on
+### Reforge
+
+Accessories have no level system. Instead, the Upgrade screen offers **Reforge**:
+spending Gold to re-roll the accessory instance's single `modifierId`. The
+modifier pool is one shared **Global Modifier Pool**
+(`Assets/Resources/GameSettings/AccessoryReforgeSettings.asset`), not a
+per-accessory pool — the old per-`AccessoryDefinition` `modifierPool` field and
+`rollModifierOnCreate` flag survive only to resolve legacy modifier ids;
+`AccessoryDefinition.GetModifierById` checks the legacy pool first, then falls
+back to the Global Pool.
+
+- **Cost**: `ceilTo5(baseBuyPrice / 3)` Gold, computed by
+  `AccessoryReforgeSettings.CalculateReforgeCost`.
+- **Roll**: never empty, never repeats the accessory's current modifier. New
+  accessory instances (drop/shop/`AddItem`) always roll a modifier on creation
+  via `AccessoryInstanceFactory.CreateInstance`.
+- **Runtime refresh**: a successful Reforge mutates the live inventory
+  instance, then `AccessoryLoadout.SyncSceneLoadoutsWithInventoryInstance`
+  re-clones the new modifier into any equipped copy in the current scene
+  (equipped slots hold `DeepClone()`s, so the inventory mutation alone would
+  not otherwise reach them) and refreshes stats/passives.
+- **Off-scene owners**: `AccessoryLoadout.SyncPersistedInstanceModifier` patches
+  the accessory's `modifierId` directly in `accessories.json` for any owner not
+  currently spawned in the scene, before the subsequent
+  `SaveInventoryAndAccessories()` call — otherwise that save would re-seed from
+  disk and keep the stale modifier for the off-scene owner.
+- No confirmation dialog, no audio/VFX, and Reforge Gold is never refunded.
+
+The weapon upgrade UI lists both weapon and accessory instances. Weapons use
+the Upgrade button as before. Accessory selections show cost/effect preview and
+use the same button for **Reforge** instead; they can also be dismantled when
+not assigned to any player or companion loadout. The dismantle reward is `10`
+scrap, plus `5` when the instance has a modifier, plus `3` per accessory upgrade
+level (`upgradeLevel` is a legacy field, never written for accessories anymore).
+These values and the save/assignment rules are serialized on
 `AccessoryDismantleService`. A successful dismantle removes the inventory
 instance first, grants scrap, and then saves the game.
 

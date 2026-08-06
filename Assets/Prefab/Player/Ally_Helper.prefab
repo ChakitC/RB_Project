@@ -155,6 +155,7 @@ MonoBehaviour:
     upgradeTier: 0
     upgradeExp: 0
     unlockedUpgradeMilestoneIds: []
+    affixRuntimeStates: []
   equippedWeaponInstanceId: 
 --- !u!114 &2362201806535484381
 MonoBehaviour:
@@ -631,6 +632,7 @@ MonoBehaviour:
     upgradeTier: 0
     upgradeExp: 0
     unlockedUpgradeMilestoneIds: []
+    affixRuntimeStates: []
   firePoint: {fileID: 8546357093210846358}
   gunType: 0
   damage: 0
@@ -1909,6 +1911,8 @@ MonoBehaviour:
   aimTransform: {fileID: 8546357093210846358}
   maximumEnergy: 0
   currentEnergy: 0
+  energyRegenPerSecond: 3
+  regenDelayAfterSpend: 2
   autoRefreshFromHub: 1
   keepEnergyPercentWhenMaxChanges: 1
   refreshIntervalSeconds: 0.2
@@ -2109,6 +2113,7 @@ MonoBehaviour:
   threatScoreWeight: 1
   threatDecayPerSecond: 8
   maxThreatPerTarget: 100
+  tauntedEffectDef: {fileID: 11400000, guid: 6a38b0785dbe69c4a87d55d2c21f15f1, type: 2}
   tauntScoreBonus: 1000
   originHeightOffset: 0.5
   fallbackTargetHeightOffset: 0.6

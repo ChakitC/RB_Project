@@ -55,7 +55,8 @@ public sealed class CombatEventBus : MonoBehaviour
         float value = 0f,
         PassiveEventOrigin origin = PassiveEventOrigin.External,
         string originPassiveId = null,
-        string originRuleId = null)
+        string originRuleId = null,
+        CombatEventMetadata metadata = default)
     {
         return new PassiveEventContext(
             type,
@@ -70,7 +71,8 @@ public sealed class CombatEventBus : MonoBehaviour
             0,
             origin,
             originPassiveId,
-            originRuleId);
+            originRuleId,
+            metadata);
     }
 
     public PassiveEventContext CreateChildContext(
@@ -83,7 +85,8 @@ public sealed class CombatEventBus : MonoBehaviour
         float value = 0f,
         PassiveEventOrigin origin = PassiveEventOrigin.Passive,
         string originPassiveId = null,
-        string originRuleId = null)
+        string originRuleId = null,
+        CombatEventMetadata metadata = default)
     {
         return new PassiveEventContext(
             type,
@@ -98,7 +101,8 @@ public sealed class CombatEventBus : MonoBehaviour
             Mathf.Max(0, parent.Depth) + 1,
             origin,
             originPassiveId,
-            originRuleId);
+            originRuleId,
+            metadata);
     }
 
     public void Publish(in PassiveEventContext context)

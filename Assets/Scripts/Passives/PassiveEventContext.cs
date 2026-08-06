@@ -16,6 +16,26 @@ public readonly struct PassiveEventContext
         PassiveEventOrigin origin,
         string originPassiveId,
         string originRuleId)
+        : this(type, actor, source, target, eventSourceId, attackId, value, time, chainId, depth,
+            origin, originPassiveId, originRuleId, default)
+    {
+    }
+
+    public PassiveEventContext(
+        PassiveEventType type,
+        GameObject actor,
+        GameObject source,
+        GameObject target,
+        string eventSourceId,
+        string attackId,
+        float value,
+        double time,
+        ulong chainId,
+        int depth,
+        PassiveEventOrigin origin,
+        string originPassiveId,
+        string originRuleId,
+        in CombatEventMetadata metadata)
     {
         Type = type;
         Actor = actor;
@@ -30,6 +50,7 @@ public readonly struct PassiveEventContext
         Origin = origin;
         OriginPassiveId = originPassiveId;
         OriginRuleId = originRuleId;
+        Metadata = metadata;
     }
 
     public PassiveEventType Type { get; }
@@ -45,6 +66,7 @@ public readonly struct PassiveEventContext
     public PassiveEventOrigin Origin { get; }
     public string OriginPassiveId { get; }
     public string OriginRuleId { get; }
+    public CombatEventMetadata Metadata { get; }
 
     public int TargetInstanceId => Target != null ? Target.GetInstanceID() : 0;
 }

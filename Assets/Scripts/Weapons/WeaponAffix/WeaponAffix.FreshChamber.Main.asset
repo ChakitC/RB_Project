@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
+  m_Name: WeaponAffix.FreshChamber.Main
+  m_EditorClassIdentifier: 
+  affixId: weapon.main.fresh_chamber.v1
+  displayName: Fresh Chamber
+  description: Fresh Chamber
+  slot: 1
+  behaviorType: 1
+  weight: 1
+  allowedWeaponTypes: 000000000100000002000000030000000400000005000000
+  rootBehavior: {fileID: 1984301198254426095}
+  feedbackProfile: {fileID: 0}
+  minRollValue: 0
+  maxRollValue: 0
+  statType: 9
+  modifierOp: 0
+  buffDurationSeconds: 4
+  requiredShots: 10
+  procChance: 0.25
+  specialProjectileConfig: {fileID: 0}
+  specialProjectilePrefab: {fileID: 0}
+  specialProjectileDamageMultiplier: 1
+  specialProjectileSpeedMultiplier: 1
+--- !u!114 &1984301198254426095
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0037323df9fdc4945870bfd07b829bf6, type: 3}
+  m_Name: WeaponAffix.FreshChamber.Main.Behavior
+  m_EditorClassIdentifier: 
+  roll:
+    valueKind: 0
+    minimum: 15
+    maximum: 25
+    displayPrecision: 0
+    lowerIsBetter: 0
+  tooltip:
+    trigger: Reload inserted ammo
+    effect: Next 3 shots deal +{value}% damage
+    restriction: Consumed-ammo shots only
+    duration: 0
+    cap: 3
+  kind: 9
+  statType: 0
+  modifierOp: 1
+  duration: 0
+  cap: 3
+  threshold: 0
+  fixedValue: 0
+  secondaryValue: 0
+  minimumBaseMagazine: 0
+  procChance: 1
+  projectileConfig: {fileID: 0}
+  projectilePrefab: {fileID: 0}

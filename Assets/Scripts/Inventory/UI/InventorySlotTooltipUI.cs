@@ -234,7 +234,9 @@ public class InventorySlotTooltipUI : MonoBehaviour
 
     void ApplySlot(InventorySlotData slotData)
     {
-        titleText.text = ResolveItemTitle(slotData.item);
+        titleText.text = slotData != null && slotData.HasAccessoryInstance
+            ? AccessoryDisplayNameResolver.ResolveName(slotData.item as AccessoryDefinition, slotData.accessoryInstance)
+            : ResolveItemTitle(slotData.item);
         bodyText.text = BuildBody(slotData);
     }
 
@@ -366,9 +368,6 @@ public class InventorySlotTooltipUI : MonoBehaviour
             ? accessory.GetModifierById(instance.modifierId)
             : null;
 
-        if (instance != null && instance.upgradeLevel > 0)
-            builder.Append("Upgrade: +").AppendLine(instance.upgradeLevel.ToString());
-
         if (modifier != null)
             builder.Append("Modifier: ").AppendLine(ResolveAccessoryModifierName(modifier));
 
@@ -402,7 +401,7 @@ public class InventorySlotTooltipUI : MonoBehaviour
                     continue;
 
                 AppendAccessoryEffectHeader(builder, header, ref hasHeader);
-                builder.Append("- ").AppendLine(BuildPassiveStatModifierSummary(modifier));
+                builder.Append("- ").AppendLine(AccessoryDisplayNameResolver.FormatStatModifierLine(modifier));
             }
         }
 
@@ -470,33 +469,6 @@ public class InventorySlotTooltipUI : MonoBehaviour
         }
 
         return builder.ToString();
-    }
-
-    static string BuildPassiveStatModifierSummary(PassiveStatModifier modifier)
-    {
-        if (modifier == null)
-            return string.Empty;
-
-        if (modifier.statType == StatType.Stability)
-        {
-            return modifier.operation switch
-            {
-                ModifierOp.Flat => $"{FormatSignedNumber(modifier.value)}% Weapon Stability",
-                ModifierOp.AddPercent => $"{FormatSignedNumber(modifier.value)}% increased Weapon Stability",
-                ModifierOp.Multiply => $"x{FormatNumber(modifier.value)} Weapon Stability",
-                _ => $"{FormatSignedNumber(modifier.value)}% Weapon Stability"
-            };
-        }
-
-        string statName = MakeReadable(modifier.statType.ToString());
-
-        return modifier.operation switch
-        {
-            ModifierOp.Flat => $"{FormatSignedNumber(modifier.value)} {statName}",
-            ModifierOp.AddPercent => $"{FormatSignedNumber(modifier.value)}% {statName}",
-            ModifierOp.Multiply => $"x{FormatNumber(modifier.value)} {statName}",
-            _ => $"{FormatSignedNumber(modifier.value)} {statName}"
-        };
     }
 
     static string ResolveMagazineText(InventorySlotData slotData, GunConfig gunConfig)
@@ -787,13 +759,19 @@ public class InventorySlotTooltipUI : MonoBehaviour
             return string.Empty;
         }
 
-        return definition.behaviorType switch
+        if (definition.rootBehavior != null)
         {
-            WeaponAffixBehaviorType.StatModifier => BuildStatModifierSummary(definition, rolledAffix),
-            WeaponAffixBehaviorType.TimedBuffOnReload => $"On reload: {BuildStatModifierSummary(definition, rolledAffix)} for {FormatNumber(definition.buffDurationSeconds)}s",
-            WeaponAffixBehaviorType.SpecialProjectileEveryNthShot => BuildSpecialProjectileSummary(definition),
-            _ => rolledAffix.hasPrimaryValue ? FormatSignedNumber(rolledAffix.primaryValue) : string.Empty
-        };
+            WeaponAffixTooltipData tooltip = definition.rootBehavior.Tooltip;
+            string value = FormatNumber(rolledAffix.primaryValue);
+            string summary = string.IsNullOrWhiteSpace(tooltip.trigger) ? tooltip.effect : $"{tooltip.trigger}: {tooltip.effect}";
+            summary = (summary ?? string.Empty).Replace("{value}", value);
+            if (tooltip.duration > 0f) summary += $" for {FormatNumber(tooltip.duration)}s";
+            if (tooltip.cap > 0) summary += $" (cap {tooltip.cap})";
+            if (!string.IsNullOrWhiteSpace(tooltip.restriction)) summary += $"; {tooltip.restriction}";
+            return summary;
+        }
+
+        return rolledAffix.hasPrimaryValue ? FormatSignedNumber(rolledAffix.primaryValue) : string.Empty;
     }
 
     static string BuildStatModifierSummary(WeaponAffixDefinition definition, RolledAffixData rolledAffix)

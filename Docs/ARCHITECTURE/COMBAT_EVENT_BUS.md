@@ -1,5 +1,14 @@
 # Combat Event Bus
 
+## Typed combat metadata
+
+`PassiveEventContext.Metadata` carries optional structured combat facts while
+`Value` keeps its existing meaning. Weapon events can identify the weapon
+instance and ammo transition; resolved Hit/Kill events can carry requested,
+resolved, and applied damage, health, overkill, critical, hit-zone, stagger, and
+ChainReady facts. Child contexts do not inherit metadata automatically. Affix
+provenance lets runtime handlers reject recursive procs.
+
 `CombatEventBus` is the local event bus used by combat and passive systems on a
 character actor. It publishes `PassiveEventContext` values and lets
 `PassiveController` evaluate triggered and custom passives without direct

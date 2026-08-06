@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
+  m_Name: WeaponAffix.ReloadDamage.Main
+  m_EditorClassIdentifier: 
+  affixId: weapon.main.reload_damage.v1
+  displayName: Combat Loading
+  description: Completing a reload temporarily increases weapon damage.
+  slot: 1
+  behaviorType: 2
+  weight: 1
+  allowedWeaponTypes: 000000000100000002000000030000000400000005000000
+  rootBehavior: {fileID: 8040117859520412942}
+  feedbackProfile: {fileID: 0}
+  minRollValue: 8
+  maxRollValue: 12
+  statType: 0
+  modifierOp: 1
+  buffDurationSeconds: 3
+  requiredShots: 10
+  procChance: 1
+  specialProjectileConfig: {fileID: 0}
+  specialProjectilePrefab: {fileID: 0}
+  specialProjectileDamageMultiplier: 1
+  specialProjectileSpeedMultiplier: 1
+--- !u!114 &8040117859520412942
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0037323df9fdc4945870bfd07b829bf6, type: 3}
+  m_Name: WeaponAffix.ReloadDamage.Main.Behavior
+  m_EditorClassIdentifier: 
+  roll:
+    valueKind: 0
+    minimum: 8
+    maximum: 12
+    displayPrecision: 0
+    lowerIsBetter: 0
+  tooltip:
+    trigger: After reloading ammo
+    effect: Damage {value}
+    restriction: 
+    duration: 3
+    cap: 0
+  kind: 1
+  statType: 0
+  modifierOp: 1
+  duration: 3
+  cap: 0
+  threshold: 10
+  fixedValue: 1
+  secondaryValue: 1
+  minimumBaseMagazine: 0
+  procChance: 1
+  projectileConfig: {fileID: 0}
+  projectilePrefab: {fileID: 0}

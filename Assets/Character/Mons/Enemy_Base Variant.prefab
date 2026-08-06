@@ -320,6 +320,30 @@ PrefabInstance:
       propertyPath: hitboxR
       value: 
       objectReference: {fileID: 1801451694241323044}
+    - target: {fileID: 5202998419483767966, guid: b564562d7f55a5641a5fc807e52bbccc, type: 3}
+      propertyPath: heavyHitboxes.colliders.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 5202998419483767966, guid: b564562d7f55a5641a5fc807e52bbccc, type: 3}
+      propertyPath: lightHitboxes.colliders.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 5202998419483767966, guid: b564562d7f55a5641a5fc807e52bbccc, type: 3}
+      propertyPath: 'heavyHitboxes.colliders.Array.data[0]'
+      value: 
+      objectReference: {fileID: 1801451694241323044}
+    - target: {fileID: 5202998419483767966, guid: b564562d7f55a5641a5fc807e52bbccc, type: 3}
+      propertyPath: 'heavyHitboxes.colliders.Array.data[1]'
+      value: 
+      objectReference: {fileID: 8254577685898893669}
+    - target: {fileID: 5202998419483767966, guid: b564562d7f55a5641a5fc807e52bbccc, type: 3}
+      propertyPath: 'lightHitboxes.colliders.Array.data[0]'
+      value: 
+      objectReference: {fileID: 1801451694241323044}
+    - target: {fileID: 5202998419483767966, guid: b564562d7f55a5641a5fc807e52bbccc, type: 3}
+      propertyPath: 'lightHitboxes.colliders.Array.data[1]'
+      value: 
+      objectReference: {fileID: 8254577685898893669}
     - target: {fileID: 6024350460124657169, guid: b564562d7f55a5641a5fc807e52bbccc, type: 3}
       propertyPath: m_Subtree
       value: 
@@ -996,12 +1020,20 @@ MonoBehaviour:
   agent: {fileID: 5860493858277310560}
   stateHub: {fileID: 4224436313382703804}
   ctx: {fileID: 1547000020916824090}
+  characterController: {fileID: 0}
   rampUpTime: 0.12
   rampDownTime: 0.18
   move01Start: 0.1
   move01Stop: 0.05
   enterDelay: 0.06
   exitDelay: 0.1
+  separateCompanionFromPlayer: 1
+  playerKeepoutRadius: 0.65
+  separationMargin: 0.1
+  separationSpeed: 12
+  separationPauseDuration: 0.1
+  separationNavMeshSampleRadius: 0.75
+  playerResolveInterval: 0.5
   agentismoving: 0
 --- !u!114 &2361307025137879979
 MonoBehaviour:
@@ -1015,6 +1047,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e0aba9aba7547f4f8bc58b820c1b99a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  actorRoot: {fileID: 0}
   dashDistance: 5
   dashDuration: 0.15
   dashCooldown: 0.5
@@ -1027,6 +1060,19 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   combatEventBus: {fileID: 0}
+  perfectDashSlowScale: 0.2
+  perfectDashSlowDuration: 0.35
+  perfectDashSlowShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  perfectDashFreeAmmoDuration: 0.35
+  perfectDodgeThreatLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  perfectDodgeThreatScanPadding: 0.25
 --- !u!114 &8190403258902757678
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1041,6 +1087,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sensorOrigin: {fileID: 0}
   forwardReference: {fileID: 0}
+  targetingProfile: {fileID: 0}
   radius: 15
   scanInterval: 0.1
   targetLayers:
@@ -1060,14 +1107,42 @@ MonoBehaviour:
   requireAliveIfAvailable: 1
   gracePeriod: 1.25
   keepLastSeenTarget: 1
+  distanceScoreWeight: 12
+  playerPriorityBonus: 16
+  companionPriorityBonus: 0
+  tankPriorityBonus: 6
+  healerPriorityBonus: 9
+  supportPriorityBonus: 6
+  sniperPriorityBonus: 7
+  assaultPriorityBonus: 0
+  currentTargetStickiness: 5
+  lineOfSightPenalty: 6
+  retargetIntervalRange: {x: 0.75, y: 1.1}
+  minTargetLockDuration: 0.9
+  switchScoreThreshold: 2.5
+  switchScoreThresholdRatio: 0.2
+  lostTargetHoldDuration: 0.35
+  useThreatMemory: 1
+  damageThreatMultiplier: 1
+  threatScoreWeight: 1
+  threatDecayPerSecond: 8
+  maxThreatPerTarget: 100
+  tauntedEffectDef: {fileID: 11400000, guid: 6a38b0785dbe69c4a87d55d2c21f15f1, type: 2}
+  tauntScoreBonus: 1000
   originHeightOffset: 0.5
   fallbackTargetHeightOffset: 0.6
   currentTarget: {fileID: 0}
+  visibleTarget: {fileID: 0}
   lastSeenTarget: {fileID: 0}
   lastSeenPosition: {x: 0, y: 0, z: 0}
   hasLineOfSight: 0
   targetDistance: 0
+  visibleTargetDistance: 0
   lastSeenTime: -Infinity
+  currentTargetScore: -Infinity
+  visibleBestScore: -Infinity
+  currentTargetAcquiredTime: -Infinity
+  nextRetargetEvaluationTime: 0
 --- !u!114 &447448504580054133
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1083,6 +1158,12 @@ MonoBehaviour:
   aimPoint: {fileID: 0}
   chainAttackPoint: {fileID: 0}
   teamId: 0
+  targetRole: 0
+  targetIdentity: 0
+  overrideCombatRole: 0
+  combatRoleOverride: 0
+  baseTargetPriority: 0
+  threatMultiplier: 1
   isAlive: 1
   isTargetable: 1
 --- !u!114 &7739727450382058642
@@ -1126,6 +1207,9 @@ MonoBehaviour:
   ctx: {fileID: 1547000020916824090}
   statsHub: {fileID: 3220408457924561511}
   stateHub: {fileID: 4224436313382703804}
+  autoCreateVfxPresenter: 1
+  vfxPresenterHost: {fileID: 0}
+  vfxPresenterHostName: CharacterVisual_System
   debugInInspector: 1
   dbgActiveEffectCount: 0
   dbgBuffs: 

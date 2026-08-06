@@ -78,7 +78,14 @@ Important sensor concepts:
 - current target stickiness
 - retarget interval and lock duration
 - threat memory
-- taunt target
+- taunt target — stored as the `Taunted` status effect on the character's `StatusEffectController`
+  (`AITargetSensor.tauntedEffectDef`), not as local sensor fields. The sensor resolves the current
+  taunter each scan via `FindActiveEffect(tauntedEffectDef)` and uses `instance.Source` as the
+  taunter, caching it in a non-serialized field for the per-candidate scoring loop. Duration comes
+  from the caller through `StatusEffectController.ApplyEffect`'s duration-override parameter, so it
+  now ticks in the `Time.time` domain (via `StatusEffectController.Tick`) instead of the
+  HitLag/slow-immune `TimeSlowManager.WorldTime` domain the rest of the sensor uses. The sensor
+  requires a `tauntedEffectDef` reference to be assigned or taunt silently no-ops with a warning.
 
 `AITargetingProfileDef` can override scoring and policy values. Local sensor
 fields are fallback settings when no profile is assigned.

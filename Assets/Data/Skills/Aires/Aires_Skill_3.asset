@@ -15,9 +15,9 @@ MonoBehaviour:
   helperFacingMode: 1
   chainContinueMode: 0
   chainContinueNormalizedTime: 1
-  radius: 10
-  duration: 4
-  requireLineOfSight: 1
+  radius: 30
+  duration: 10
+  requireLineOfSight: 0
   targetLayers:
     serializedVersion: 2
     m_Bits: 512
@@ -41,7 +41,7 @@ MonoBehaviour:
   baseDamage: 0
   damageCoefficient: 0
   baseStaggerPower: 0
-  baseManaCost: 25
+  baseManaCost: 0
   baseCastTime: 0.5
   baseCooldown: 15
   baseCritChance: 0

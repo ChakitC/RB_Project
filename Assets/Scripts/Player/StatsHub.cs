@@ -5,9 +5,9 @@ using UnityEngine;
 [DefaultExecutionOrder(-110)]
 public class StatsHub : MonoBehaviour
 {
-    const float BASE_CRIT_MULT = 1f;
-    const float MIN_STABILITY_PERCENT = 0f;
-    const float MAX_STABILITY_PERCENT = 100f;
+    const float BASE_CRIT_MULT = CharacterStatFormula.BaseCritMultiplier;
+    const float MIN_STABILITY_PERCENT = CharacterStatFormula.MinStabilityPercent;
+    const float MAX_STABILITY_PERCENT = CharacterStatFormula.MaxStabilityPercent;
 
     [Header("Refs")]
     [SerializeField] private CharacteContext ctx;
@@ -338,45 +338,23 @@ public class StatsHub : MonoBehaviour
         bool signatureChanged = !_hasCachedInputSignature || inputSignature != _cachedInputSignature || w != _cachedWeapon;
         _cachedWeapon = w;
 
-        float characterDamage = GetCharacterDamageBase();
-        float characterArmor = GetCharacterArmorBase();
-        float characterMoveSpeed = GetCharacterMoveSpeedBase();
-        float characterCritRate = GetCharacterCritRateBase();
-        float characterCritMult = GetCharacterCritMultiplierBase();
-        float characterMaxHealth = GetCharacterMaxHealthBase();
-        float characterMaxStamina = GetCharacterMaxStaminaBase();
-        float characterMaxEnergy = GetCharacterMaxEnergyBase();
+        CharacterStatTotals totals = CharacterStatFormula.Compute(BuildStatInputs(w), _modifierBuffer);
 
-        float weaponDamage = w ? w.damage : 0f;
-        float weaponCritRate = w ? w.critRate : 0f;
-        float weaponCritMult = w ? Mathf.Max(1f, w.critMultiplier) : BASE_CRIT_MULT;
-        float weaponFireInterval = w ? w.fireRate : 0f;
-        float weaponReloadTime = w ? w.reloadTime : 0f;
-        float weaponStability = w ? w.stability : 0f;
-        float weaponBulletSpeed = w ? w.BulletSpeed : 0f;
-        float weaponMagazine = w ? w.maxMagazine : 0f;
-
-        _cachedDamage = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.Damage, weaponDamage + characterDamage));
-        _cachedArmor = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.Armor, characterArmor));
-        _cachedMoveSpeed = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.MoveSpeed, characterMoveSpeed));
-        _cachedCritRatePercent = Mathf.Clamp(ApplyStatusModifiers(_modifierBuffer, StatType.CritRate, weaponCritRate + characterCritRate), 0f, 100f);
-        _cachedCritMultiplier = Mathf.Max(1f, ApplyStatusModifiers(_modifierBuffer, StatType.CritMultiplier, weaponCritMult + (characterCritMult - BASE_CRIT_MULT)));
-        _cachedFireInterval = Mathf.Max(0.01f, ApplyStatusModifiers(_modifierBuffer, StatType.FireInterval, weaponFireInterval));
-        _cachedReloadTime = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.ReloadTime, weaponReloadTime));
-        _cachedStability = Mathf.Clamp(
-            ApplyStatusModifiers(_modifierBuffer, StatType.Stability, weaponStability),
-            MIN_STABILITY_PERCENT,
-            MAX_STABILITY_PERCENT);
-        _cachedBulletSpeed = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.BulletSpeed, weaponBulletSpeed));
-        _cachedMaxMagazine = Mathf.Max(0, Mathf.RoundToInt(ApplyStatusModifiers(_modifierBuffer, StatType.MaxMagazine, weaponMagazine)));
-        int weaponReserveAmmo = w ? WeaponInstanceFactory.ResolveMaxReserveAmmo(w, _cachedMaxMagazine) : 0;
-        _cachedMaxReserveAmmo = w && !w.infiniteReserveAmmo
-            ? Mathf.Max(0, Mathf.RoundToInt(ApplyStatusModifiers(_modifierBuffer, StatType.MaxReserveAmmo, weaponReserveAmmo)))
-            : 0;
-        _cachedMaxHealth = Mathf.Max(1f, ApplyStatusModifiers(_modifierBuffer, StatType.MaxHP, characterMaxHealth));
-        _cachedMaxStamina = Mathf.Max(1f, ApplyStatusModifiers(_modifierBuffer, StatType.MaxStamina, characterMaxStamina));
-        _cachedMaxEnergy = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.MaxEnergy, characterMaxEnergy));
-        _cachedSkillBaseDamage = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.Damage, characterDamage));
+        _cachedDamage = totals.Damage;
+        _cachedArmor = totals.Armor;
+        _cachedMoveSpeed = totals.MoveSpeed;
+        _cachedCritRatePercent = totals.CritRatePercent;
+        _cachedCritMultiplier = totals.CritMultiplier;
+        _cachedFireInterval = totals.FireInterval;
+        _cachedReloadTime = totals.ReloadTime;
+        _cachedStability = totals.Stability;
+        _cachedBulletSpeed = totals.BulletSpeed;
+        _cachedMaxMagazine = totals.MaxMagazine;
+        _cachedMaxReserveAmmo = totals.MaxReserveAmmo;
+        _cachedMaxHealth = totals.MaxHealth;
+        _cachedMaxStamina = totals.MaxStamina;
+        _cachedMaxEnergy = totals.MaxEnergy;
+        _cachedSkillBaseDamage = totals.SkillBaseDamage;
 
         _cachedInputSignature = inputSignature;
         _hasCachedInputSignature = true;
@@ -503,37 +481,25 @@ public class StatsHub : MonoBehaviour
         unchecked { return hash * 31 + (value != null ? StringComparer.Ordinal.GetHashCode(value) : 0); }
     }
 
-    float ApplyStatusModifiers(List<RuntimeStatModifier> modifiers, StatType statType, float baseValue)
+    CharacterStatInputs BuildStatInputs(GunConfig w)
     {
-        // Authoring contract: AddPercent uses whole percentages (10 => +10%),
-        // Multiply uses direct factors (1.2 => x1.2).
-        float flat = 0f;
-        float addPercent01 = 0f;
-        float multiply = 1f;
-
-        for (int i = 0; i < modifiers.Count; i++)
+        return new CharacterStatInputs
         {
-            var modifier = modifiers[i];
-            if (modifier.StatType != statType)
-                continue;
+            CharacterDamage = GetCharacterDamageBase(),
+            CharacterArmor = GetCharacterArmorBase(),
+            CharacterMoveSpeed = GetCharacterMoveSpeedBase(),
+            CharacterCritRate = GetCharacterCritRateBase(),
+            CharacterCritMultiplier = GetCharacterCritMultiplierBase(),
+            CharacterMaxHealth = GetCharacterMaxHealthBase(),
+            CharacterMaxStamina = GetCharacterMaxStaminaBase(),
+            CharacterMaxEnergy = GetCharacterMaxEnergyBase(),
+            Weapon = w
+        };
+    }
 
-            switch (modifier.Operation)
-            {
-                case ModifierOp.Flat:
-                    flat += modifier.Value;
-                    break;
-
-                case ModifierOp.AddPercent:
-                    addPercent01 += modifier.Value * 0.01f;
-                    break;
-
-                case ModifierOp.Multiply:
-                    multiply *= Mathf.Max(0f, modifier.Value);
-                    break;
-            }
-        }
-
-        return (baseValue + flat) * (1f + addPercent01) * multiply;
+    static float ApplyStatusModifiers(List<RuntimeStatModifier> modifiers, StatType statType, float baseValue)
+    {
+        return CharacterStatFormula.ApplyModifiers(modifiers, statType, baseValue);
     }
 
     float GetCharacterDamageBase()

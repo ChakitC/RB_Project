@@ -71,6 +71,16 @@ public class WeaponSystem : MonoBehaviour
 
     public event Action<int, int, int, bool> AmmoChanged;
 
+    public bool RestoreMagazineFromAffix(int amount)
+    {
+        SyncAmmoStateFromMirrors();
+        if (!ammoState.RestoreMagazine(Mathf.Max(0, amount), false)) return false;
+        SyncAmmoMirrorsFromState();
+        SyncWeaponInstanceState();
+        UpdateAmmoUI();
+        return true;
+    }
+
     bool _isFiringHeld;
     readonly WeaponAmmoState ammoState = new();
     readonly WeaponProjectileSpawner projectileSpawner = new();
@@ -668,9 +678,11 @@ public class WeaponSystem : MonoBehaviour
             return false;
 
         nextFireTime = GetWeaponTime() + fireRate;
+        int ammoBefore = magazine;
+        bool ammoConsumed = !IsFreeAmmoActive;
         ConsumeAmmoForShotIfNeeded();
 
-        WeaponShotContext shot = CreateWeaponShotContext();
+        WeaponShotContext shot = CreateWeaponShotContext(ammoBefore, magazine, ammoConsumed);
         SpawnProjectile(shot);
         ApplyThirdPersonShotFeedback();
 
@@ -716,24 +728,39 @@ public class WeaponSystem : MonoBehaviour
         UpdateAmmoUI();
     }
 
-    WeaponShotContext CreateWeaponShotContext()
+    WeaponShotContext CreateWeaponShotContext(int ammoBefore, int ammoAfter, bool ammoConsumed)
     {
         string weaponSourceId = GetWeaponSourceId();
         string attackId = combatEventBus != null ? combatEventBus.CreateAttackId(weaponSourceId) : null;
-        PassiveEventContext passiveContext = CreateShotContext(weaponSourceId, attackId);
+        string weaponInstanceId = currentWeaponInstance != null ? currentWeaponInstance.instanceId : null;
+        bool isLastRound = ammoConsumed && ammoBefore == 1 && ammoAfter == 0;
+        var metadata = new CombatEventMetadata(
+            weaponInstanceId: weaponInstanceId,
+            ammoBefore: ammoBefore,
+            ammoAfter: ammoAfter,
+            maxMagazine: MaxMagazine,
+            ammoConsumed: ammoConsumed,
+            isLastRound: isLastRound,
+            sourceKind: CombatSourceKind.Weapon);
+        PassiveEventContext passiveContext = CreateShotContext(weaponSourceId, attackId, metadata);
 
         Vector3 direction = ResolveProjectileDirection(CurrentSpreadDegrees);
 
-        return new WeaponShotContext(
-            projectileConfig,
-            projectilePrefab,
-            firePoint,
-            damage,
-            bulletSpeed,
-            direction,
-            weaponSourceId,
-            attackId,
-            passiveContext);
+        var build = new WeaponShotBuildContext
+        {
+            ProjectileConfig = projectileConfig, ProjectilePrefab = projectilePrefab, FirePoint = firePoint,
+            Damage = damage, Speed = bulletSpeed, CritRate = critRate, CritMultiplier = critMultiplier,
+            StaggerPower = staggerPower, Direction = direction, WeaponSourceId = weaponSourceId,
+            WeaponInstanceId = weaponInstanceId, AttackId = attackId, AmmoBefore = ammoBefore,
+            AmmoAfter = ammoAfter, MaxMagazine = MaxMagazine, AmmoConsumed = ammoConsumed,
+            IsLastRound = isLastRound, PassiveContext = passiveContext
+        };
+        affixRuntimeController?.ModifyShot(ref build);
+        return new WeaponShotContext(build.ProjectileConfig, build.ProjectilePrefab, build.FirePoint,
+            build.Damage, build.Speed, build.Direction, build.WeaponSourceId, build.AttackId,
+            build.PassiveContext, build.CritRate, build.CritMultiplier, build.StaggerPower,
+            build.WeaponInstanceId, build.AmmoBefore, build.AmmoAfter, build.MaxMagazine,
+            build.AmmoConsumed, build.IsLastRound, build.ImpactPayload);
     }
 
     void DispatchShotNotifications(WeaponShotContext shot)
@@ -1139,18 +1166,25 @@ public class WeaponSystem : MonoBehaviour
         if (combatEventBus == null)
             return;
 
+        var metadata = new CombatEventMetadata(
+            weaponInstanceId: currentWeaponInstance != null ? currentWeaponInstance.instanceId : null,
+            ammoBefore: magazine,
+            ammoAfter: magazine,
+            maxMagazine: MaxMagazine,
+            sourceKind: CombatSourceKind.Weapon);
         var reloadContext = combatEventBus.CreateExternalContext(
             PassiveEventType.Reload,
             gameObject,
             null,
             GetWeaponSourceId(),
             null,
-            magazine);
+            magazine,
+            metadata: metadata);
 
         combatEventBus.Publish(reloadContext);
     }
 
-    PassiveEventContext CreateShotContext(string weaponSourceId, string attackId)
+    PassiveEventContext CreateShotContext(string weaponSourceId, string attackId, CombatEventMetadata metadata)
     {
         if (combatEventBus == null)
             return default;
@@ -1161,7 +1195,8 @@ public class WeaponSystem : MonoBehaviour
             null,
             weaponSourceId,
             attackId,
-            damage);
+            damage,
+            metadata: metadata);
     }
 
     void SpawnProjectile(
@@ -1175,7 +1210,13 @@ public class WeaponSystem : MonoBehaviour
             shot.Direction,
             shot.WeaponSourceId,
             shot.AttackId,
-            shot.PassiveContext);
+            shot.PassiveContext,
+            shot.CritRate,
+            shot.CritMultiplier,
+            shot.StaggerPower,
+            shot.PassiveContext.Metadata,
+            affixRuntimeController?.PreDamageRuntime,
+            shot.ImpactPayload);
     }
 
     void SpawnProjectile(
@@ -1186,7 +1227,13 @@ public class WeaponSystem : MonoBehaviour
         Vector3 projectileDirection,
         string weaponSourceId,
         string attackId,
-        PassiveEventContext shotContext)
+        PassiveEventContext shotContext,
+        float projectileCritRate = -1f,
+        float projectileCritMultiplier = -1f,
+        float projectileStaggerPower = -1f,
+        CombatEventMetadata combatMetadata = default,
+        IWeaponAffixPreDamageRuntime preDamageRuntime = null,
+        WeaponAffixImpactPayload impactPayload = default)
     {
         projectileSpawner.Spawn(new WeaponProjectileSpawnContext(
             config,
@@ -1198,16 +1245,19 @@ public class WeaponSystem : MonoBehaviour
             combatEventBus,
             statusEffectController,
             gunType,
-            critRate,
-            critMultiplier,
+            projectileCritRate >= 0f ? projectileCritRate : critRate,
+            projectileCritMultiplier >= 0f ? projectileCritMultiplier : critMultiplier,
             projectileDamage,
             projectileSpeed,
             projectileDirection,
-            staggerPower,
+            projectileStaggerPower >= 0f ? projectileStaggerPower : staggerPower,
             currentWeapon != null ? currentWeapon.hitCue : null,
             weaponSourceId,
             attackId,
-            shotContext));
+            shotContext,
+            combatMetadata,
+            preDamageRuntime,
+            impactPayload));
     }
 
     bool TryResolveProjectilePrefab(GameObject prefab, out Projectile projectileComponent)

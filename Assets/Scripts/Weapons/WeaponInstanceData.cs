@@ -17,6 +17,7 @@ public class WeaponInstanceData
     public int upgradeTier;
     public int upgradeExp;
     public List<string> unlockedUpgradeMilestoneIds = new();
+    public List<WeaponAffixRuntimeStateData> affixRuntimeStates = new();
 
     public bool IsEmpty => string.IsNullOrWhiteSpace(baseWeaponId);
     public bool HasMainAffix => mainAffix != null && !mainAffix.IsEmpty;
@@ -51,6 +52,21 @@ public class WeaponInstanceData
             }
         }
 
+        if (affixRuntimeStates != null)
+            for (int i = 0; i < affixRuntimeStates.Count; i++)
+                if (affixRuntimeStates[i] != null) clone.affixRuntimeStates.Add(affixRuntimeStates[i].DeepClone());
+
         return clone;
+    }
+
+    public WeaponAffixRuntimeStateData GetOrCreateAffixState(string affixId, int schemaVersion = 1)
+    {
+        affixRuntimeStates ??= new List<WeaponAffixRuntimeStateData>();
+        for (int i = 0; i < affixRuntimeStates.Count; i++)
+            if (affixRuntimeStates[i] != null && string.Equals(affixRuntimeStates[i].affixId, affixId, StringComparison.Ordinal))
+                return affixRuntimeStates[i];
+        var state = new WeaponAffixRuntimeStateData { affixId = affixId, schemaVersion = schemaVersion };
+        affixRuntimeStates.Add(state);
+        return state;
     }
 }

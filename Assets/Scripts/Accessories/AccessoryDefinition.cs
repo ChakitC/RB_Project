@@ -51,7 +51,7 @@ public class AccessoryDefinition : ItemDefinition
                 return modifier;
         }
 
-        return null;
+        return AccessoryReforgeSettings.FindModifier(modifierId);
     }
 }
 

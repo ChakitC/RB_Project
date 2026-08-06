@@ -338,12 +338,31 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         if (currentHealth <= 0f)
             Down();
 
-        return BuildDamageResult(attacker, damage, appliedDamage, false, wasAliveBefore);
+        return BuildDamageResult(attacker, damage, appliedDamage, false, wasAliveBefore, healthBefore);
     }
 
-    DamageResult BuildDamageResult(GameObject attacker, float requestedDamage, float appliedDamage, bool wasPrevented, bool wasAliveBefore)
+    DamageResult BuildDamageResult(
+        GameObject attacker,
+        float requestedDamage,
+        float appliedDamage,
+        bool wasPrevented,
+        bool wasAliveBefore,
+        float healthBeforeHit = -1f)
     {
-        return new DamageResult(this, attacker, requestedDamage, appliedDamage, wasPrevented, wasAliveBefore, IsAlive);
+        float healthBefore = healthBeforeHit >= 0f ? healthBeforeHit : currentHealth;
+        return new DamageResult(
+            this,
+            attacker,
+            requestedDamage,
+            requestedDamage,
+            appliedDamage,
+            wasPrevented,
+            wasAliveBefore,
+            IsAlive,
+            healthBefore,
+            maximumHealth,
+            0f,
+            false);
     }
 
     CharacterKnockbackMotor ResolveKnockbackMotor()

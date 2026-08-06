@@ -15,7 +15,8 @@ public sealed class StatusEffectInstance
         int depth,
         PassiveEventOrigin origin,
         string originPassiveId,
-        string originRuleId)
+        string originRuleId,
+        float durationOverride = 0f)
     {
         Definition = definition;
         Source = source;
@@ -26,7 +27,8 @@ public sealed class StatusEffectInstance
         OriginPassiveId = originPassiveId;
         OriginRuleId = originRuleId;
         CurrentStacks = Mathf.Max(0, initialStacks);
-        TimeLeft = definition != null && !definition.IsPermanent ? definition.duration : float.PositiveInfinity;
+        EffectiveDuration = ResolveEffectiveDuration(definition, durationOverride);
+        TimeLeft = !IsPermanent ? EffectiveDuration : float.PositiveInfinity;
         NextTickTime = definition != null && definition.tickInterval > 0f
             ? now + definition.tickInterval
             : float.PositiveInfinity;
@@ -47,7 +49,8 @@ public sealed class StatusEffectInstance
     public int CurrentStacks { get; private set; }
     public float TimeLeft { get; private set; }
     public float NextTickTime { get; private set; }
-    public bool IsPermanent => Definition == null || Definition.IsPermanent;
+    public float EffectiveDuration { get; private set; }
+    public bool IsPermanent => Definition == null || EffectiveDuration <= 0f;
 
     public void UpdateSource(GameObject source)
     {
@@ -79,12 +82,25 @@ public sealed class StatusEffectInstance
             OriginRuleId = originRuleId;
     }
 
+    public void SetDurationOverride(float durationOverride)
+    {
+        EffectiveDuration = ResolveEffectiveDuration(Definition, durationOverride);
+    }
+
     public void RefreshDuration()
     {
-        if (Definition == null || Definition.IsPermanent)
+        if (Definition == null || IsPermanent)
             return;
 
-        TimeLeft = Definition.duration;
+        TimeLeft = EffectiveDuration;
+    }
+
+    static float ResolveEffectiveDuration(StatusEffectDef definition, float durationOverride)
+    {
+        if (durationOverride > 0f)
+            return durationOverride;
+
+        return definition != null ? definition.duration : 0f;
     }
 
     public void AddStacks(int amount, int maxStacks)

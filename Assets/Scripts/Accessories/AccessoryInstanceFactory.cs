@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public static class AccessoryInstanceFactory
@@ -17,19 +18,27 @@ public static class AccessoryInstanceFactory
         };
     }
 
+    // The Global Modifier Pool (AccessoryReforgeSettings) is the source of truth for new-instance
+    // rolls; `rollModifierOnCreate` and the per-accessory `modifierPool` survive only to resolve
+    // legacy modifier ids (see AccessoryDefinition.GetModifierById).
     public static AccessoryInstanceData CreateInstance(AccessoryDefinition accessory)
     {
         AccessoryInstanceData instance = CreatePlainInstance(accessory);
         if (instance == null)
             return null;
 
-        if (accessory.rollModifierOnCreate)
+        AccessoryReforgeSettings settings = AccessoryReforgeSettings.Resolve();
+        List<AccessoryModifierDefinition> candidates = new();
+        settings?.BuildCandidates(accessory, excludeModifierId: null, candidates);
+
+        AccessoryModifierDefinition modifier = settings != null ? settings.RollFromCandidates(candidates) : null;
+        if (modifier == null)
         {
-            AccessoryModifierDefinition modifier = RollModifier(accessory);
-            if (modifier != null)
-                instance.modifierId = modifier.RuntimeId;
+            Debug.LogError($"[AccessoryInstanceFactory] No reforge modifier candidates for '{accessory.name}'. Check Resources/GameSettings/AccessoryReforgeSettings.");
+            return instance;
         }
 
+        instance.modifierId = modifier.RuntimeId;
         return instance;
     }
 
@@ -46,44 +55,6 @@ public static class AccessoryInstanceFactory
         return !string.IsNullOrWhiteSpace(accessory.itemId)
             ? accessory.itemId
             : accessory.name;
-    }
-
-    static AccessoryModifierDefinition RollModifier(AccessoryDefinition accessory)
-    {
-        if (!accessory || accessory.modifierPool == null || accessory.modifierPool.Count == 0)
-            return null;
-
-        float totalWeight = Mathf.Max(0f, accessory.noModifierWeight);
-        for (int i = 0; i < accessory.modifierPool.Count; i++)
-        {
-            AccessoryModifierDefinition modifier = accessory.modifierPool[i];
-            if (modifier == null)
-                continue;
-
-            totalWeight += Mathf.Max(0f, modifier.weight);
-        }
-
-        if (totalWeight <= 0f)
-            return null;
-
-        float roll = UnityEngine.Random.Range(0f, totalWeight);
-        if (roll < Mathf.Max(0f, accessory.noModifierWeight))
-            return null;
-
-        roll -= Mathf.Max(0f, accessory.noModifierWeight);
-
-        for (int i = 0; i < accessory.modifierPool.Count; i++)
-        {
-            AccessoryModifierDefinition modifier = accessory.modifierPool[i];
-            if (modifier == null)
-                continue;
-
-            roll -= Mathf.Max(0f, modifier.weight);
-            if (roll <= 0f)
-                return modifier;
-        }
-
-        return null;
     }
 }
 

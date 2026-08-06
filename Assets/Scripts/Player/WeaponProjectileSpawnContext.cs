@@ -21,6 +21,9 @@ public readonly struct WeaponProjectileSpawnContext
     public readonly string DamageSourceId;
     public readonly string AttackId;
     public readonly PassiveEventContext PassiveContext;
+    public readonly CombatEventMetadata CombatMetadata;
+    public readonly IWeaponAffixPreDamageRuntime PreDamageRuntime;
+    public readonly WeaponAffixImpactPayload ImpactPayload;
 
     public WeaponProjectileSpawnContext(
         ProjectileConfig config,
@@ -41,7 +44,10 @@ public readonly struct WeaponProjectileSpawnContext
         AudioCue hitCue,
         string damageSourceId,
         string attackId,
-        PassiveEventContext passiveContext)
+        PassiveEventContext passiveContext,
+        CombatEventMetadata combatMetadata = default,
+        IWeaponAffixPreDamageRuntime preDamageRuntime = null,
+        WeaponAffixImpactPayload impactPayload = default)
     {
         Config = config;
         ProjectilePrefab = projectilePrefab;
@@ -62,5 +68,8 @@ public readonly struct WeaponProjectileSpawnContext
         DamageSourceId = damageSourceId;
         AttackId = attackId;
         PassiveContext = passiveContext;
+        CombatMetadata = combatMetadata;
+        PreDamageRuntime = preDamageRuntime;
+        ImpactPayload = impactPayload;
     }
 }

@@ -71,22 +71,21 @@ public static class WeaponAffixDisplayUtility
                 : string.Empty;
         }
 
-        switch (definition.behaviorType)
+        if (definition.rootBehavior != null)
         {
-            case WeaponAffixBehaviorType.StatModifier:
-                return BuildStatSummary(definition, rolledAffix);
-
-            case WeaponAffixBehaviorType.TimedBuffOnReload:
-                return $"On reload {BuildStatSummary(definition, rolledAffix)}";
-
-            case WeaponAffixBehaviorType.SpecialProjectileEveryNthShot:
-                return $"Every {Mathf.Max(1, definition.requiredShots)} shots";
-
-            default:
-                return rolledAffix != null && rolledAffix.hasPrimaryValue
-                    ? FormatSignedNumber(rolledAffix.primaryValue)
-                    : string.Empty;
+            WeaponAffixTooltipData tooltip = definition.rootBehavior.Tooltip;
+            string value = FormatNumber(rolledAffix != null ? rolledAffix.primaryValue : 0f);
+            string summary = string.IsNullOrWhiteSpace(tooltip.trigger) ? tooltip.effect : $"{tooltip.trigger}: {tooltip.effect}";
+            summary = (summary ?? string.Empty).Replace("{value}", value);
+            if (tooltip.duration > 0f) summary += $" for {FormatNumber(tooltip.duration)}s";
+            if (tooltip.cap > 0) summary += $" (cap {tooltip.cap})";
+            if (!string.IsNullOrWhiteSpace(tooltip.restriction)) summary += $"; {tooltip.restriction}";
+            return summary;
         }
+
+        return rolledAffix != null && rolledAffix.hasPrimaryValue
+            ? FormatSignedNumber(rolledAffix.primaryValue)
+            : string.Empty;
     }
 
     static string BuildStatSummary(WeaponAffixDefinition definition, RolledAffixData rolledAffix)

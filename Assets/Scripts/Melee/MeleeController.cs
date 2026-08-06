@@ -216,7 +216,7 @@ public sealed class MeleeController : MonoBehaviour
         if (!_hitTargetIds.Add(targetKey))
             return;
 
-        float finalDamage = CalculateDamage(target, other);
+        float finalDamage = CalculateDamage(target, other, out bool wasCritical);
         if (finalDamage <= 0f)
             return;
 
@@ -224,7 +224,7 @@ public sealed class MeleeController : MonoBehaviour
         if (!result.Applied)
             return;
 
-        NotifyOwnerCombatTriggers(target, result.AppliedDamage, result.Killed);
+        NotifyOwnerCombatTriggers(target, result, wasCritical);
         SpawnDamageNumber(other, target, result.AppliedDamage);
     }
 
@@ -329,7 +329,7 @@ public sealed class MeleeController : MonoBehaviour
         return profile == null || profile.meleeCanInterruptReload;
     }
 
-    float CalculateDamage(IDamageable target, Collider other)
+    float CalculateDamage(IDamageable target, Collider other, out bool wasCritical)
     {
         var activeWeapon = weaponSystem != null ? weaponSystem.CurrentWeapon : (ctx != null ? ctx.currentWeapon : null);
 
@@ -345,13 +345,15 @@ public sealed class MeleeController : MonoBehaviour
             distance = Vector3.Distance(transform.position, hitPoint);
         }
 
-        return DamageCalculator.CalculateFinalDamage(
+        DamageCalculationResult calculation = DamageCalculator.CalculateDamage(
             WeaponType.Melee,
             distance,
             baseDamage,
             critRate,
             critMult,
             armor);
+        wasCritical = calculation.WasCritical;
+        return calculation.Damage;
     }
 
     DamageResult ApplyDamageToTarget(IDamageable target, float finalDamage, KnockbackData knockback)
@@ -399,7 +401,7 @@ public sealed class MeleeController : MonoBehaviour
             : default;
     }
 
-    void NotifyOwnerCombatTriggers(IDamageable target, float appliedDamage, bool killed)
+    void NotifyOwnerCombatTriggers(IDamageable target, in DamageResult result, bool wasCritical)
     {
         if (target == null)
             return;
@@ -411,25 +413,30 @@ public sealed class MeleeController : MonoBehaviour
 
         if (combatEventBus != null)
         {
-            var hitContext = CreateOwnerEventContext(PassiveEventType.Hit, targetObject, appliedDamage);
+            var hitContext = CreateOwnerEventContext(PassiveEventType.Hit, targetObject, result.AppliedDamage, result, wasCritical);
             combatEventBus.Publish(hitContext);
         }
 
-        if (killed)
+        if (result.Killed)
         {
             statusEffectController?.NotifyTrigger(EffectTriggerType.OnKill, targetObject);
 
             if (combatEventBus != null)
             {
-                var killContext = CreateOwnerEventContext(PassiveEventType.Kill, targetObject, appliedDamage);
+                var killContext = CreateOwnerEventContext(PassiveEventType.Kill, targetObject, result.AppliedDamage, result, wasCritical);
                 combatEventBus.Publish(killContext);
             }
         }
     }
 
-    PassiveEventContext CreateOwnerEventContext(PassiveEventType type, GameObject targetObject, float value)
+    PassiveEventContext CreateOwnerEventContext(PassiveEventType type, GameObject targetObject, float value, in DamageResult result, bool wasCritical)
     {
         GameObject sourceObject = ctx != null ? ctx.gameObject : gameObject;
+        var metadata = new CombatEventMetadata(
+            result.RequestedDamage, result.ResolvedDamage, result.AppliedDamage,
+            result.HealthBeforeHit, result.MaxHealth, wasCritical,
+            staggerApplied: result.StaggerApplied, enteredChainReady: result.EnteredChainReady,
+            sourceKind: CombatSourceKind.Melee);
 
         if (_activeChainId != 0)
         {
@@ -446,7 +453,8 @@ public sealed class MeleeController : MonoBehaviour
                 0,
                 PassiveEventOrigin.External,
                 null,
-                null);
+                null,
+                metadata);
 
             return combatEventBus.CreateChildContext(
                 parent,
@@ -456,7 +464,8 @@ public sealed class MeleeController : MonoBehaviour
                 _activeDamageSourceId,
                 _activeAttackId,
                 value,
-                PassiveEventOrigin.External);
+                PassiveEventOrigin.External,
+                metadata: metadata);
         }
 
         return combatEventBus.CreateExternalContext(
@@ -466,7 +475,8 @@ public sealed class MeleeController : MonoBehaviour
             _activeDamageSourceId,
             _activeAttackId,
             value,
-            PassiveEventOrigin.External);
+            PassiveEventOrigin.External,
+            metadata: metadata);
     }
 
     void SpawnDamageNumber(Collider other, IDamageable target, float finalDamage)

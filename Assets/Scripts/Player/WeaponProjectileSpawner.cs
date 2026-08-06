@@ -49,7 +49,10 @@ public sealed class WeaponProjectileSpawner
             originPassiveId = context.PassiveContext.OriginPassiveId,
             originRuleId = context.PassiveContext.OriginRuleId,
             projectilePrefab = prefabComp,
-            useHitZones = true
+            useHitZones = true,
+            combatMetadata = context.CombatMetadata,
+            preDamageRuntime = context.PreDamageRuntime,
+            affixImpactPayload = context.ImpactPayload
         });
     }
 

@@ -341,24 +341,48 @@ the icon, amount label, or hover overlay.
 
 ## Equipment Upgrade UI
 
-`Assets/UI/UIWeaponUpgrade.prefab` is the shared weapon upgrade and equipment
-dismantle panel. Its root should include both `WeaponUpgradeService` and
-`AccessoryDismantleService`.
+`Assets/Prefab/User Interface/UIWeaponUpgrade.prefab` is the shared weapon upgrade and equipment
+dismantle panel. Its root should include `WeaponUpgradeService`,
+`AccessoryDismantleService`, and `AccessoryReforgeService`.
+
+Keep the equipment grid under `WeaponListScrollView/Viewport/WeaponListContent`.
+The viewport clips extra rows, while the clamped vertical `ScrollRect` supports
+mouse-wheel and background dragging. Its auto-hiding scrollbar uses the dark
+track and muted-orange handle authored in the prefab. Opening the panel resets
+the list to the top; inventory refreshes while it remains open preserve the
+current scroll position. Keep slot drag/drop on the slots themselves.
 
 On `UIWeaponUpgrade`, bind:
 
 - `upgradeService`
 - `accessoryDismantleService`
+- `accessoryReforgeService`
 - `upgradeButton`
+- `upgradeButtonLabel` (the `TMP_Text` under `upgradeButton`; falls back to
+  `GetComponentInChildren<TMP_Text>` if left unassigned)
 - `dismantleButton`
 - the inventory list, selected slot, detail text, and drag visual references
 
 The inventory list accepts weapon and accessory instances. Weapon selections
-can upgrade or dismantle. Accessory selections disable Upgrade and allow
-Dismantle only when `EquipmentAssignmentService` reports that the instance is
-not equipped by any character. Inventory slots and the selected-item slot show
-the assigned character portrait when the instance is equipped, matching the
-portrait marker used by `UIEquipment`.
+can Upgrade or Dismantle as before. Accessory selections repurpose the same
+button as **Reforge** (re-rolls the instance's modifier for Gold, drawn from the
+Global Modifier Pool) and allow Dismantle only when `EquipmentAssignmentService`
+reports that the instance is not equipped by any character. Inventory slots and
+the selected-item slot show the assigned character portrait when the instance is
+equipped, matching the portrait marker used by `UIEquipment`.
+
+### Accessory Reforge Settings
+
+The Global Modifier Pool lives at
+`Assets/Resources/GameSettings/AccessoryReforgeSettings.asset`
+(`AccessoryReforgeSettings`, `Game/Accessories/Reforge Settings` in the Create
+menu), loaded via `Resources.Load` the same way `InventorySettings` is. To add a
+new modifier: create an `AccessoryModifierDefinition` asset
+(`Game/Accessories/Modifier`) under `Assets/Data/Items/AccessoryModifiers/`,
+fill in `modifierId`/`displayName`/`statModifiers`/`passives`/`weight`, and
+register it in the settings asset's `modifierPool`. `requiredAnyTags` /
+`excludedTags` on the modifier can restrict which accessories it can roll on by
+matching `AccessoryDefinition.tags`; leave both empty to allow it everywhere.
 
 ## Menu Bar Save Slots
 
@@ -878,6 +902,25 @@ empty only when the prefab-authored behavior should remain as the fallback.
 Ally-only systems may depend on `AllyContext` when they need ally-specific
 fields such as `AITargetSensor`, `NavMeshAgent`, or `AgentMoveDriver`.
 
+### AITargetSensor.tauntedEffectDef (required)
+
+`AITargetSensor` requires a `[Header("Taunt")] tauntedEffectDef` reference
+(`StatusEffectDef`) to apply taunt. Without it, `ApplyTaunt` no-ops and logs a
+warning. Assign the `Taunted` status effect asset
+(`Assets/Scripts/StatusEffects/Taunted.asset`) on every prefab that has an
+`AITargetSensor`:
+
+- `Assets/Character/Mons/Enemy_Base Variant.prefab`
+- `Assets/Prefab/GameEnemy/Enemy_Base.prefab`
+- `Assets/Prefab/AI Ally/Ally.prefab`
+- `Assets/Prefab/Player/Ally_Helper.prefab`
+- `Assets/Prefab/Player/Ally_Stryker.prefab`
+
+`Ally.prefab` has no `StatusEffectController`; `AITargetSensor` lazily
+`AddComponent`s one at runtime when needed, matching the auto-provision
+pattern already used by `CharacteContext.ResolveReferences()` for components
+like `AccessoryLoadout` and `ThirdPersonAimRigController`.
+
 ## Root Motion Trajectory Authoring
 
 No additional prefab, skill asset, or FBX importer fields are required for
@@ -1120,6 +1163,34 @@ modal screens cover the cards without adding per-screen hide/show events.
 Decorative images and text inside `CharactorInfo.prefab` must keep `Raycast
 Target` disabled; only the `Edid` button's target image should receive raycasts.
 
+## Basement Status Panel
+
+`Assets/Prefab/User Interface/UpgradUI.prefab` owns `UILoadLaval`, the character
+Status page. It shows **final combined stats** — character base plus level
+scaling, equipped weapon, weapon upgrade level, static weapon affixes, equipped
+accessories including their reforge modifier, and always-on passives — matching
+what `StatsHub` produces in combat. See
+`Docs/ARCHITECTURE/CHARACTER_STAT_FORMULA.md` for the shared formula and for the
+sources that are deliberately excluded.
+
+`UILoadLaval` has an optional `Affix Database` field. Assign the project's
+`WeaponAffixDatabase` asset when the Basement should resolve static weapon affix
+bonuses without relying on the database happening to be loaded; when the field is
+empty the panel falls back to `WeaponAffixDatabase.GetLoadedAffixById`. Leaving it
+unassigned only risks under-reporting affix bonuses, never an error.
+
+Displayed numbers are single values with no breakdown. Keep the existing text
+formatting: most stats use `0`, CritRate uses `0.#` plus `%` and is stored as
+`0..100`, CritDamage uses `x` plus `0.##` and is stored as a multiplier. Do not
+rename `UILoadLaval` or its serialized fields, including the `Enagy` spelling —
+the prefab binds them by name.
+
+The panel recalculates immediately when equipment changes. `UIEquipment` raises
+`EquipmentChanged` after a successful equip or unequip, and `UILoadLaval`
+subscribes to the weapon and accessory `UIEquipment` instances it resolves. Keep
+those two `UIEquipment` components as separate instances; the resolver rejects a
+shared one.
+
 ## Basement Character Shop
 
 `Assets/Prefab/User Interface/Shop/ShopPanel_Starter.prefab` contains
@@ -1243,6 +1314,19 @@ task.
 - Keep `logPreCastFlow` disabled for normal play. Enable it on the test scene
   instance to trace the cast window and block reservation lifecycle.
 
+## Persistent Audio System
+
+Keep `AudioService` on the `AudioSystem` child of
+`Assets/Prefab/System/GamePlaySystem.prefab`. The service persists the prefab's
+root GameObject so its pooled sources and active music survive scene changes.
+Do not place that prefab root beneath a scene-owned parent that is expected to
+be destroyed during a transition.
+
+Set `AudioCue.priority` using Unity's convention: lower numbers are more
+important. Music and looping cues are protected from pool replacement; use
+per-cue `cooldown` and `maxInstances` to control high-frequency one-shot cues.
+See `Docs/SYSTEMS/AUDIO_SYSTEM.md` for the complete replacement policy.
+
 ## Active Skill Screen
 
 Generate the placeholder uGUI/TMP assets with **Tools > RB > Skills > Build
@@ -1322,3 +1406,8 @@ Assign **Important Node Frame** to style nodes whose Visual Scale is above
 currently selected `PartySlot.Selected` character through the lobby session
 before opening it. Keep the screen prefab root scale at one and its Canvas
 sorting order above the lobby UI; the prefab builder enforces both values.
+# Weapon affix behavior assets
+
+Every registered `WeaponAffixDefinition` must reference one root behavior. Use
+**Tools > Weapons > Affixes > Migrate And Generate**, then run **Validate (Dry
+Run)**. Missing behaviors, duplicate ids, and invalid roll ranges block builds.

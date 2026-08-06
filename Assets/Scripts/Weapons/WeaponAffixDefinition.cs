@@ -15,6 +15,8 @@ public class WeaponAffixDefinition : ScriptableObject
     public WeaponAffixBehaviorType behaviorType = WeaponAffixBehaviorType.StatModifier;
     [Min(0.01f)] public float weight = 1f;
     public List<WeaponType> allowedWeaponTypes = new();
+    public WeaponAffixBehavior rootBehavior;
+    public WeaponAffixFeedbackProfile feedbackProfile;
 
     [Header("Roll")]
     [Tooltip("For a Flat Stability affix, values are percentage points.")]
@@ -41,6 +43,12 @@ public class WeaponAffixDefinition : ScriptableObject
     public bool SupportsWeaponType(WeaponType weaponType)
     {
         return allowedWeaponTypes == null || allowedWeaponTypes.Count == 0 || allowedWeaponTypes.Contains(weaponType);
+    }
+
+    public bool SupportsWeapon(GunConfig weapon)
+    {
+        return weapon != null && SupportsWeaponType(weapon.WeaponType) &&
+               (rootBehavior == null || rootBehavior.IsEligible(weapon));
     }
 
     public float RollPrimaryValue()

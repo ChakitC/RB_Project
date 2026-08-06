@@ -249,7 +249,7 @@ Material:
     m_Colors:
     - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: 0.72, g: 0.00010061264, b: -13.71, a: 0}
+    - _CharacterCenterWS: {r: -6.23, g: 0.00010061264, b: -4.35, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DepthRimLightColor: {r: 0.93962264, g: 0.026592933, b: 0.026592933, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}

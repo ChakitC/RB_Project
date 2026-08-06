@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-4302426551770382312
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0037323df9fdc4945870bfd07b829bf6, type: 3}
+  m_Name: WeaponAffix.MaxReserveAmmo.Sub.Behavior
+  m_EditorClassIdentifier: 
+  roll:
+    valueKind: 0
+    minimum: 15
+    maximum: 25
+    displayPrecision: 0
+    lowerIsBetter: 0
+  tooltip:
+    trigger: Always
+    effect: MaxReserveAmmo {value}
+    restriction: 
+    duration: 4
+    cap: 0
+  kind: 0
+  statType: 21
+  modifierOp: 1
+  duration: 4
+  cap: 0
+  threshold: 10
+  fixedValue: 1
+  secondaryValue: 1
+  minimumBaseMagazine: 0
+  procChance: 1
+  projectileConfig: {fileID: 0}
+  projectilePrefab: {fileID: 0}
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
+  m_Name: WeaponAffix.MaxReserveAmmo.Sub
+  m_EditorClassIdentifier: 
+  affixId: weapon.sub.max_reserve_ammo.v1
+  displayName: Ammo Harness
+  description: Increases maximum reserve ammo capacity.
+  slot: 2
+  behaviorType: 1
+  weight: 0.65
+  allowedWeaponTypes: 000000000100000002000000030000000400000005000000
+  rootBehavior: {fileID: -4302426551770382312}
+  feedbackProfile: {fileID: 0}
+  minRollValue: 15
+  maxRollValue: 25
+  statType: 21
+  modifierOp: 1
+  buffDurationSeconds: 4
+  requiredShots: 10
+  procChance: 1
+  specialProjectileConfig: {fileID: 0}
+  specialProjectilePrefab: {fileID: 0}
+  specialProjectileDamageMultiplier: 1
+  specialProjectileSpeedMultiplier: 1

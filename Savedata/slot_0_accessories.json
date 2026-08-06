@@ -23,14 +23,14 @@
                     "upgradeLevel": 0
                 },
                 {
-                    "instanceId": "acc_4552a1ea2a75420e881d2fe3f5073649",
-                    "accessoryId": "Accessory.RabbitLag",
+                    "instanceId": "acc_0aea413397db476fbad45c08b81b15ad",
+                    "accessoryId": "Accessory.FenosFieldPack",
                     "modifierId": "",
                     "upgradeLevel": 0
                 },
                 {
-                    "instanceId": "acc_b0fd05b5a5914aa8a523ae44d7f94001",
-                    "accessoryId": "Accessory.RabbitLag",
+                    "instanceId": "acc_56c1f169f89b4e5dbdaff0474e8de9b8",
+                    "accessoryId": "Accessory.PointedLeatherShoes",
                     "modifierId": "",
                     "upgradeLevel": 0
                 }
@@ -151,31 +151,31 @@
                 {
                     "instanceId": "acc_d7950dfb72a749bea2e7c5cc61f0bf01",
                     "accessoryId": "Accessory.CarrotleafHeavyWeaveArmor",
-                    "modifierId": "",
+                    "modifierId": "Modifier.Vital",
                     "upgradeLevel": 0
                 },
                 {
                     "instanceId": "acc_48d80ae398834f0d981f7682f562a77e",
                     "accessoryId": "Accessory.RabbitLag",
-                    "modifierId": "",
+                    "modifierId": "Modifier.Vital",
                     "upgradeLevel": 0
                 },
                 {
                     "instanceId": "acc_37a37e2e9e274ce5a27af988a0698976",
                     "accessoryId": "Accessory.RabbitHat",
-                    "modifierId": "",
+                    "modifierId": "Modifier.Vital",
                     "upgradeLevel": 0
                 },
                 {
                     "instanceId": "acc_49f09b1f37a94bfaa0adc5873505f2cc",
                     "accessoryId": "Accessory.RabbitCharm",
-                    "modifierId": "",
+                    "modifierId": "Modifier.Vital",
                     "upgradeLevel": 0
                 },
                 {
                     "instanceId": "acc_ee7816d71f8744fba80f67eda768d73b",
                     "accessoryId": "Accessory.RabbitGlove",
-                    "modifierId": "",
+                    "modifierId": "Modifier.Vital",
                     "upgradeLevel": 0
                 }
             ]
@@ -191,14 +191,14 @@
                     "upgradeLevel": 0
                 },
                 {
-                    "instanceId": "acc_97a89f30a5f24b48b6081bd784fbbb38",
-                    "accessoryId": "Accessory.FenosFieldPack",
+                    "instanceId": "acc_09af98ca502f467d9134c45a8930e898",
+                    "accessoryId": "Accessory.CarrotleafHeavyWeaveArmor",
                     "modifierId": "",
                     "upgradeLevel": 0
                 },
                 {
-                    "instanceId": "acc_455e2409871143e2af1e53ca578c1566",
-                    "accessoryId": "Accessory.FenosFieldPack",
+                    "instanceId": "acc_97a033e638494e209d00a9afa67da0c0",
+                    "accessoryId": "Accessory.RabbitLag",
                     "modifierId": "",
                     "upgradeLevel": 0
                 },
@@ -209,8 +209,8 @@
                     "upgradeLevel": 0
                 },
                 {
-                    "instanceId": "acc_0aea413397db476fbad45c08b81b15ad",
-                    "accessoryId": "Accessory.FenosFieldPack",
+                    "instanceId": "acc_033a0c263d414cc8b4c89838766ac134",
+                    "accessoryId": "Accessory.GangSignetRing",
                     "modifierId": "",
                     "upgradeLevel": 0
                 }

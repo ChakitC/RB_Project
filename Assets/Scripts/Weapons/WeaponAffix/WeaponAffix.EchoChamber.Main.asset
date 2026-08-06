@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
+  m_Name: WeaponAffix.EchoChamber.Main
+  m_EditorClassIdentifier: 
+  affixId: weapon.main.echo_chamber.v1
+  displayName: Echo Chamber
+  description: Every tenth shot fires an ammo-free echo projectile.
+  slot: 1
+  behaviorType: 3
+  weight: 1
+  allowedWeaponTypes: 030000000400000005000000
+  rootBehavior: {fileID: 317094192003166773}
+  feedbackProfile: {fileID: 0}
+  minRollValue: 0
+  maxRollValue: 0
+  statType: 9
+  modifierOp: 0
+  buffDurationSeconds: 4
+  requiredShots: 10
+  procChance: 1
+  specialProjectileConfig: {fileID: 0}
+  specialProjectilePrefab: {fileID: 0}
+  specialProjectileDamageMultiplier: 0.7
+  specialProjectileSpeedMultiplier: 1
+--- !u!114 &317094192003166773
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0037323df9fdc4945870bfd07b829bf6, type: 3}
+  m_Name: WeaponAffix.EchoChamber.Main.Behavior
+  m_EditorClassIdentifier: 
+  roll:
+    valueKind: 0
+    minimum: 0
+    maximum: 0
+    displayPrecision: 0
+    lowerIsBetter: 0
+  tooltip:
+    trigger: Every 10 consumed-ammo shots
+    effect: Fires the configured bonus projectile
+    restriction: 
+    duration: 4
+    cap: 0
+  kind: 2
+  statType: 9
+  modifierOp: 0
+  duration: 4
+  cap: 0
+  threshold: 10
+  fixedValue: 0.7
+  secondaryValue: 1
+  minimumBaseMagazine: 0
+  procChance: 1
+  projectileConfig: {fileID: 0}
+  projectilePrefab: {fileID: 0}

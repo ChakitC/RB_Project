@@ -12,21 +12,34 @@ public static class DamageCalculator
         float criticalDamageMultiplier,
         float targetArmor)
     {
+        return CalculateDamage(gunType, distance, baseDamage, criticalRate,
+            criticalDamageMultiplier, targetArmor).Damage;
+    }
+
+    public static DamageCalculationResult CalculateDamage(
+        WeaponType gunType,
+        float distance,
+        float baseDamage,
+        float criticalRate,
+        float criticalDamageMultiplier,
+        float targetArmor)
+    {
         distance = SanitizeNonNegative(distance);
         baseDamage = SanitizeNonNegative(baseDamage);
 
         float finalDamage = ApplyRangeFalloff(gunType, distance, baseDamage);
 
         float critChance01 = NormalizeCritChance01(criticalRate);
-        if (critChance01 > 0f && Random.value < critChance01)
+        bool wasCritical = critChance01 > 0f && Random.value < critChance01;
+        if (wasCritical)
             finalDamage *= NormalizeCritMultiplier(criticalDamageMultiplier);
 
         finalDamage *= GetArmorFactor(targetArmor);
 
         if (!float.IsFinite(finalDamage))
-            return 0f;
+            return new DamageCalculationResult(0f, wasCritical);
 
-        return Mathf.Max(0f, finalDamage);
+        return new DamageCalculationResult(Mathf.Max(0f, finalDamage), wasCritical);
     }
 
     public static float NormalizeCritChance01(float criticalRate)
@@ -120,4 +133,16 @@ public static class DamageCalculator
 
         return Mathf.Max(0f, value);
     }
+}
+
+public readonly struct DamageCalculationResult
+{
+    public DamageCalculationResult(float damage, bool wasCritical)
+    {
+        Damage = Mathf.Max(0f, damage);
+        WasCritical = wasCritical;
+    }
+
+    public float Damage { get; }
+    public bool WasCritical { get; }
 }

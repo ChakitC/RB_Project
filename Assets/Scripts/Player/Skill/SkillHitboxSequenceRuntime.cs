@@ -454,7 +454,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             if (!TryRegisterHit(step, targetKey))
                 continue;
 
-            float finalDamage = CalculateFinalDamage(step, target);
+            float finalDamage = CalculateFinalDamage(step, target, out bool wasCritical);
             if (finalDamage <= 0f)
             {
                 UnregisterHit(step, targetKey);
@@ -462,7 +462,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             }
 
             KnockbackData knockback = BuildKnockback(step, hitPoint);
-            DamageResult result = ApplyResolvedDamage(step, target, finalDamage, hitPoint, knockback);
+            DamageResult result = ApplyResolvedDamage(step, target, finalDamage, hitPoint, knockback, wasCritical);
             if (!result.Applied)
             {
                 if (!result.WasPrevented)
@@ -575,7 +575,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         }
     }
 
-    float CalculateFinalDamage(StepRuntimeState step, IDamageable target)
+    float CalculateFinalDamage(StepRuntimeState step, IDamageable target, out bool wasCritical)
     {
         FinalSkillStats skillStats = _context != null ? _context.SkillStats : null;
         float baseDamage = skillStats != null ? skillStats.damage : 0f;
@@ -584,13 +584,15 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         float critMultiplier = skillStats != null ? skillStats.critMultiplier : 1f;
         float armor = target is IHasArmor armorHolder ? armorHolder.Armor : 0f;
 
-        return DamageCalculator.CalculateFinalDamage(
+        DamageCalculationResult calculation = DamageCalculator.CalculateDamage(
             WeaponType.Melee,
             0f,
             scaledDamage,
             critChance,
             critMultiplier,
             armor);
+        wasCritical = calculation.WasCritical;
+        return calculation.Damage;
     }
 
     KnockbackData BuildKnockback(StepRuntimeState step, Vector3 hitPoint)
@@ -610,7 +612,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             : default;
     }
 
-    DamageResult ApplyResolvedDamage(StepRuntimeState step, IDamageable target, float finalDamage, Vector3 hitPoint, KnockbackData knockback)
+    DamageResult ApplyResolvedDamage(StepRuntimeState step, IDamageable target, float finalDamage, Vector3 hitPoint, KnockbackData knockback, bool wasCritical)
     {
         if (target == null || finalDamage <= 0f || !target.IsAlive)
             return default;
@@ -635,7 +637,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         if (_payload != null && _payload.ShowDamageNumbers && VfxSpawner.Instance != null)
             VfxSpawner.Instance.SpawnDamageNumber(hitPoint, result.AppliedDamage, target);
 
-        NotifyOwnerCombatTriggers(target, result.AppliedDamage, wasAliveBeforeDamage, result.Killed);
+        NotifyOwnerCombatTriggers(target, result, wasAliveBeforeDamage, wasCritical);
         return result;
     }
 
@@ -650,7 +652,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         return new StaggerPayload(staggerPower, 1f, _damageSourceId);
     }
 
-    void NotifyOwnerCombatTriggers(IDamageable target, float appliedDamage, bool wasAliveBeforeDamage, bool killed)
+    void NotifyOwnerCombatTriggers(IDamageable target, in DamageResult result, bool wasAliveBeforeDamage, bool wasCritical)
     {
         if (target == null || !wasAliveBeforeDamage)
             return;
@@ -662,25 +664,30 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
         if (_combatEventBus != null)
         {
-            PassiveEventContext hitContext = CreateOwnerEventContext(PassiveEventType.Hit, targetObject, appliedDamage);
+            PassiveEventContext hitContext = CreateOwnerEventContext(PassiveEventType.Hit, targetObject, result.AppliedDamage, result, wasCritical);
             _combatEventBus.Publish(hitContext);
         }
 
-        if (killed)
+        if (result.Killed)
         {
             _statusEffectController?.NotifyTrigger(EffectTriggerType.OnKill, targetObject);
 
             if (_combatEventBus != null)
             {
-                PassiveEventContext killContext = CreateOwnerEventContext(PassiveEventType.Kill, targetObject, appliedDamage);
+                PassiveEventContext killContext = CreateOwnerEventContext(PassiveEventType.Kill, targetObject, result.AppliedDamage, result, wasCritical);
                 _combatEventBus.Publish(killContext);
             }
         }
     }
 
-    PassiveEventContext CreateOwnerEventContext(PassiveEventType type, GameObject targetObject, float value)
+    PassiveEventContext CreateOwnerEventContext(PassiveEventType type, GameObject targetObject, float value, in DamageResult result, bool wasCritical)
     {
         GameObject source = _sourceObject != null ? _sourceObject : gameObject;
+        var metadata = new CombatEventMetadata(
+            result.RequestedDamage, result.ResolvedDamage, result.AppliedDamage,
+            result.HealthBeforeHit, result.MaxHealth, wasCritical,
+            staggerApplied: result.StaggerApplied, enteredChainReady: result.EnteredChainReady,
+            sourceKind: CombatSourceKind.Skill);
 
         if (_chainId != 0)
         {
@@ -697,7 +704,8 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
                 0,
                 PassiveEventOrigin.External,
                 null,
-                null);
+                null,
+                metadata);
 
             return _combatEventBus.CreateChildContext(
                 parent,
@@ -707,7 +715,8 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
                 _damageSourceId,
                 _attackId,
                 value,
-                PassiveEventOrigin.External);
+                PassiveEventOrigin.External,
+                metadata: metadata);
         }
 
         return _combatEventBus.CreateExternalContext(
@@ -717,7 +726,8 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             _damageSourceId,
             _attackId,
             value,
-            PassiveEventOrigin.External);
+            PassiveEventOrigin.External,
+            metadata: metadata);
     }
 
     bool IsTargetLayerAllowed(Collider other)

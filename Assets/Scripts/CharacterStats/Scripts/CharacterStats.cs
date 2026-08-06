@@ -171,7 +171,7 @@ public class CharacterStats : ScriptableObject
     [FoldoutGroup("Character Detail", Expanded = true), LabelText("Character Name")]
     public string characterName;
 
-    [PropertyOrder(-158)] [FoldoutGroup("Character Detail", Expanded = true), LabelText("Character Name")]
+    [PropertyOrder(-158)] [FoldoutGroup("Character Detail", Expanded = true), LabelText("WeaponType")]
     public WeaponType CharacterWeaponType;
 
     [PropertyOrder(-157)]

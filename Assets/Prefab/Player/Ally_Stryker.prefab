@@ -847,7 +847,6 @@ MonoBehaviour:
     m_Bits: 0
   triggerInteraction: 1
   maxHits: 64
-  requiredTag: 
   useFieldOfView: 0
   fieldOfView: 180
   requireLineOfSight: 1

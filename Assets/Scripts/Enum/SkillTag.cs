@@ -43,6 +43,8 @@ public enum StatType
     StaggerPower,
     StaminaRegenRate,
     MaxReserveAmmo,
+    EffectDuration,
+    HealPower,
 }
 
 // โมดิฟายค่า Stat แบบ generic

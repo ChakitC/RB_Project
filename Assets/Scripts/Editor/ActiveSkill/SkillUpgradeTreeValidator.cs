@@ -47,6 +47,19 @@ public static class SkillUpgradeTreeValidator
             return issues;
         }
 
+        IReadOnlyList<SkillGemDefinition> owners = FindOwningSkills(tree);
+        bool hasOwner = owners.Count > 0;
+        var declaredUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
+        if (hasOwner)
+        {
+            var collectedIds = new List<string>();
+            for (int ownerIndex = 0; ownerIndex < owners.Count; ownerIndex++)
+                owners[ownerIndex]?.CollectUpgradeIds(collectedIds);
+            for (int collectedIndex = 0; collectedIndex < collectedIds.Count; collectedIndex++)
+                declaredUpgradeIds.Add(collectedIds[collectedIndex]);
+        }
+        var grantedUpgradeIdsInTree = new HashSet<string>(StringComparer.Ordinal);
+
         for (int i = 0; i < tree.nodes.Count; i++)
         {
             SkillUpgradeNodeData node = tree.nodes[i];
@@ -98,36 +111,123 @@ public static class SkillUpgradeTreeValidator
                 }
             }
 
-            if (node.skillLevelDelta == 0 && !hasSupportedModifier)
+            bool grantsUpgrade = false;
+            if (node.grantedUpgradeIds != null)
+            {
+                var localGrantedIds = new HashSet<string>(StringComparer.Ordinal);
+                for (int grantIndex = 0; grantIndex < node.grantedUpgradeIds.Count; grantIndex++)
+                {
+                    string rawId = node.grantedUpgradeIds[grantIndex];
+                    if (string.IsNullOrWhiteSpace(rawId))
+                    {
+                        issues.Add(Error($"Node '{nodeId}' has a blank granted upgrade id."));
+                        continue;
+                    }
+
+                    string trimmedId = rawId.Trim();
+                    grantsUpgrade = true;
+                    if (!localGrantedIds.Add(trimmedId))
+                        issues.Add(Warning($"Node '{nodeId}' grants upgrade id '{trimmedId}' more than once."));
+
+                    if (hasOwner && !declaredUpgradeIds.Contains(trimmedId))
+                        issues.Add(Error($"Node '{nodeId}' grants upgrade id '{trimmedId}' that no owning skill declares."));
+
+                    grantedUpgradeIdsInTree.Add(trimmedId);
+                }
+            }
+
+            if (node.skillLevelDelta == 0 && !hasSupportedModifier && !grantsUpgrade)
                 issues.Add(Warning($"Node '{nodeId}' has no gameplay effect."));
         }
+
+        if (!hasOwner)
+        {
+            if (grantedUpgradeIdsInTree.Count > 0)
+                issues.Add(Warning("Tree has no owning skill; granted upgrade ids cannot be cross-checked."));
+        }
+        else
+        {
+            foreach (string declaredId in declaredUpgradeIds)
+            {
+                if (!grantedUpgradeIdsInTree.Contains(declaredId))
+                    issues.Add(Warning($"Owning skill declares upgrade id '{declaredId}' that no node in this tree grants."));
+            }
+        }
+
+        var exclusionsByNode = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
 
         foreach (KeyValuePair<string, SkillUpgradeNodeData> pair in nodesById)
         {
             SkillUpgradeNodeData node = pair.Value;
-            if (node.requiredNodeIds == null)
-                continue;
 
             var localDependencies = new HashSet<string>(StringComparer.Ordinal);
-            for (int i = 0; i < node.requiredNodeIds.Count; i++)
+            if (node.requiredNodeIds != null)
             {
-                string requiredId = string.IsNullOrWhiteSpace(node.requiredNodeIds[i])
-                    ? string.Empty
-                    : node.requiredNodeIds[i].Trim();
-
-                if (string.IsNullOrWhiteSpace(requiredId))
+                for (int i = 0; i < node.requiredNodeIds.Count; i++)
                 {
-                    issues.Add(Error($"Node '{pair.Key}' has an empty prerequisite ID."));
-                    continue;
+                    string requiredId = string.IsNullOrWhiteSpace(node.requiredNodeIds[i])
+                        ? string.Empty
+                        : node.requiredNodeIds[i].Trim();
+
+                    if (string.IsNullOrWhiteSpace(requiredId))
+                    {
+                        issues.Add(Error($"Node '{pair.Key}' has an empty prerequisite ID."));
+                        continue;
+                    }
+
+                    if (string.Equals(requiredId, pair.Key, StringComparison.Ordinal))
+                        issues.Add(Error($"Node '{pair.Key}' cannot require itself."));
+                    else if (!nodesById.ContainsKey(requiredId))
+                        issues.Add(Error($"Node '{pair.Key}' requires missing node '{requiredId}'."));
+
+                    if (!localDependencies.Add(requiredId))
+                        issues.Add(Error($"Node '{pair.Key}' repeats prerequisite '{requiredId}'."));
                 }
+            }
 
-                if (string.Equals(requiredId, pair.Key, StringComparison.Ordinal))
-                    issues.Add(Error($"Node '{pair.Key}' cannot require itself."));
-                else if (!nodesById.ContainsKey(requiredId))
-                    issues.Add(Error($"Node '{pair.Key}' requires missing node '{requiredId}'."));
+            var localExclusions = new HashSet<string>(StringComparer.Ordinal);
+            if (node.mutuallyExclusiveNodeIds != null)
+            {
+                for (int i = 0; i < node.mutuallyExclusiveNodeIds.Count; i++)
+                {
+                    string excludedId = string.IsNullOrWhiteSpace(node.mutuallyExclusiveNodeIds[i])
+                        ? string.Empty
+                        : node.mutuallyExclusiveNodeIds[i].Trim();
 
-                if (!localDependencies.Add(requiredId))
-                    issues.Add(Error($"Node '{pair.Key}' repeats prerequisite '{requiredId}'."));
+                    if (string.IsNullOrWhiteSpace(excludedId))
+                    {
+                        issues.Add(Error($"Node '{pair.Key}' has an empty mutually-exclusive ID."));
+                        continue;
+                    }
+
+                    if (string.Equals(excludedId, pair.Key, StringComparison.Ordinal))
+                    {
+                        issues.Add(Error($"Node '{pair.Key}' cannot exclude itself."));
+                        continue;
+                    }
+
+                    if (!nodesById.ContainsKey(excludedId))
+                    {
+                        issues.Add(Error($"Node '{pair.Key}' excludes missing node '{excludedId}'."));
+                        continue;
+                    }
+
+                    if (localDependencies.Contains(excludedId))
+                        issues.Add(Error($"Node '{pair.Key}' both requires and excludes node '{excludedId}'."));
+
+                    localExclusions.Add(excludedId);
+                }
+            }
+
+            exclusionsByNode[pair.Key] = localExclusions;
+        }
+
+        foreach (KeyValuePair<string, HashSet<string>> entry in exclusionsByNode)
+        {
+            foreach (string excludedId in entry.Value)
+            {
+                if (!exclusionsByNode.TryGetValue(excludedId, out HashSet<string> reciprocal) || !reciprocal.Contains(entry.Key))
+                    issues.Add(Error($"Node '{entry.Key}' excludes '{excludedId}' but '{excludedId}' does not exclude it back."));
             }
         }
 
@@ -167,6 +267,50 @@ public static class SkillUpgradeTreeValidator
 
         ValidateCharacterLoadoutIds(ref errorCount, ref warningCount);
         Debug.Log($"[ActiveSkillTree] Validation complete: {treeGuids.Length} trees, {errorCount} errors, {warningCount} warnings.");
+    }
+
+    public static IReadOnlyList<SkillGemDefinition> FindOwningSkills(SkillUpgradeTreeDefinition tree)
+    {
+        var owners = new List<SkillGemDefinition>();
+        if (tree == null)
+            return owners;
+
+        string[] skillGuids = AssetDatabase.FindAssets("t:SkillGemDefinition");
+        for (int i = 0; i < skillGuids.Length; i++)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(skillGuids[i]);
+            SkillGemDefinition skill = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>(path);
+            if (skill != null && skill.upgradeTree == tree && !owners.Contains(skill))
+                owners.Add(skill);
+        }
+
+        string[] statGuids = AssetDatabase.FindAssets("t:CharacterStats");
+        for (int i = 0; i < statGuids.Length; i++)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(statGuids[i]);
+            CharacterStats stats = AssetDatabase.LoadAssetAtPath<CharacterStats>(path);
+            if (stats == null || stats.skillSlots == null)
+                continue;
+
+            for (int slotIndex = 0; slotIndex < stats.skillSlots.Count; slotIndex++)
+            {
+                CharacterSkillLoadoutSlot slot = stats.skillSlots[slotIndex];
+                if (slot?.Options == null)
+                    continue;
+
+                for (int optionIndex = 0; optionIndex < slot.Options.Count; optionIndex++)
+                {
+                    CharacterSkillLoadoutOption option = slot.Options[optionIndex];
+                    if (option != null && option.upgradeTreeOverride == tree &&
+                        option.skillAsset != null && !owners.Contains(option.skillAsset))
+                    {
+                        owners.Add(option.skillAsset);
+                    }
+                }
+            }
+        }
+
+        return owners;
     }
 
     static void ValidateCharacterLoadoutIds(ref int errorCount, ref int warningCount)

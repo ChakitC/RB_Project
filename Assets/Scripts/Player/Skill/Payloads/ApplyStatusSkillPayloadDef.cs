@@ -29,6 +29,20 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
     [LabelText("Prefer Caster Root")]
     private bool preferCasterRoot = true;
 
+    [Serializable]
+    public sealed class ConditionalStatus
+    {
+        public string requiredUpgradeId;
+        public StatusEffectDef effect;
+        [Min(1)] public int stacks = 1;
+    }
+
+    [PropertyOrder(-10)]
+    [SerializeField, BoxGroup("Upgrades")]
+    [LabelText("Conditional Status Effects")]
+    [ListDrawerSettings(DefaultExpandedState = true, DraggableItems = true, ShowFoldout = true)]
+    private List<ConditionalStatus> conditionalApplications = new();
+
     public override void Execute(SkillCastContext context)
     {
         if (context == null)
@@ -49,6 +63,11 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
             ? context.CasterObject
             : controller.gameObject;
 
+        float durationOverride = 0f;
+        FinalSkillStats stats = context.SkillStats;
+        if (stats != null && stats.effectDuration > 0f)
+            durationOverride = stats.effectDuration;
+
         bool appliedAny = false;
 
         if (applications != null && applications.Count > 0)
@@ -59,12 +78,39 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
                 if (application == null || application.effect == null)
                     continue;
 
-                controller.ApplyEffect(application.effect, source, Mathf.Max(1, application.stacks));
+                controller.ApplyEffect(application.effect, source, Mathf.Max(1, application.stacks), durationOverride);
                 appliedAny = true;
             }
         }
+
+        if (conditionalApplications != null && conditionalApplications.Count > 0)
+        {
+            for (int i = 0; i < conditionalApplications.Count; i++)
+            {
+                ConditionalStatus conditional = conditionalApplications[i];
+                if (conditional == null || conditional.effect == null || !context.HasUpgrade(conditional.requiredUpgradeId))
+                    continue;
+
+                controller.ApplyEffect(conditional.effect, source, Mathf.Max(1, conditional.stacks), durationOverride);
+                appliedAny = true;
+            }
+        }
+
         if (!appliedAny)
             Debug.LogError($"Skill payload '{name}' is missing its status effect configuration.", this);
+    }
+
+    public override void CollectUpgradeIds(List<string> ids)
+    {
+        if (conditionalApplications == null)
+            return;
+
+        for (int i = 0; i < conditionalApplications.Count; i++)
+        {
+            ConditionalStatus conditional = conditionalApplications[i];
+            if (conditional != null)
+                SkillUpgradeIdCollection.AddUnique(ids, conditional.requiredUpgradeId);
+        }
     }
 
     public override void CollectValidationIssues(List<string> issues)
@@ -78,6 +124,18 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
             for (int i = 0; i < applications.Count; i++)
             {
                 if (applications[i] != null && applications[i].effect != null)
+                {
+                    hasConfiguredApplication = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasConfiguredApplication && conditionalApplications != null)
+        {
+            for (int i = 0; i < conditionalApplications.Count; i++)
+            {
+                if (conditionalApplications[i] != null && conditionalApplications[i].effect != null)
                 {
                     hasConfiguredApplication = true;
                     break;

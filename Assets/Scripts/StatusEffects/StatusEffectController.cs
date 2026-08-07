@@ -427,6 +427,13 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             return;
 
         float damage = definition.tickDamage * stacks;
+        if (damage < 0f)
+        {
+            ApplyTickHeal(-damage);
+            PublishStatusEffectEvent(StatusEffectEventType.Ticked, instance, stacks, stacks);
+            return;
+        }
+
         if (damage <= 0f)
             return;
 
@@ -449,6 +456,15 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         if (result.Applied)
             PublishStatusDamageCombatEvents(instance, definition, targetDamageable, result, damageContext);
         PublishStatusEffectEvent(StatusEffectEventType.Ticked, instance, stacks, stacks);
+    }
+
+    void ApplyTickHeal(float amount)
+    {
+        if (amount <= 0f)
+            return;
+
+        HealthSystem health = ctx != null ? ctx.HealthSystem : GetComponentInParent<HealthSystem>();
+        health?.Heal(amount);
     }
 
     void PublishStatusDamageCombatEvents(

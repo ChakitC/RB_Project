@@ -17,6 +17,8 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
     SkillUpgradeNodeData _selectedNode;
     SerializedObject _serializedTree;
     bool _dirty;
+    List<SkillUpgradeValidationIssue> _cachedIssues = new();
+    bool _issuesDirty = true;
 
     [MenuItem("Tools/RB/Skills/Active Skill Tree Editor")]
     public static ActiveSkillTreeEditorWindow Open()
@@ -106,6 +108,7 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         _selectedNode = null;
         _serializedTree = _tree != null ? new SerializedObject(_tree) : null;
         _dirty = false;
+        _issuesDirty = true;
         if (_assetField != null)
             _assetField.SetValueWithoutNotify(_tree);
         _graph?.Load(_tree);
@@ -195,6 +198,7 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
                 Undo.RecordObject(_tree, "Edit Active Skill Tree");
                 _serializedTree.ApplyModifiedProperties();
                 MarkDirty();
+                _issuesDirty = true;
             }
             return;
         }
@@ -212,8 +216,44 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
             Undo.RecordObject(_tree, "Edit Active Skill Node");
             _serializedTree.ApplyModifiedProperties();
             MarkDirty();
+            _issuesDirty = true;
             _graph.RefreshTitles();
         }
+
+        DrawNodeIssues();
+    }
+
+    void DrawNodeIssues()
+    {
+        if (_issuesDirty)
+        {
+            _cachedIssues = SkillUpgradeTreeValidator.Validate(_tree);
+            _issuesDirty = false;
+        }
+
+        if (_cachedIssues.Count == 0)
+            return;
+
+        string marker = $"'{_selectedNode.RuntimeNodeId}'";
+        int otherCount = 0;
+        EditorGUILayout.Space();
+        for (int i = 0; i < _cachedIssues.Count; i++)
+        {
+            SkillUpgradeValidationIssue issue = _cachedIssues[i];
+            if (!issue.Message.Contains(marker))
+            {
+                otherCount++;
+                continue;
+            }
+
+            MessageType messageType = issue.Severity == SkillUpgradeValidationSeverity.Error
+                ? MessageType.Error
+                : MessageType.Warning;
+            EditorGUILayout.HelpBox(issue.Message, messageType);
+        }
+
+        if (otherCount > 0)
+            EditorGUILayout.HelpBox($"{otherCount} other issue(s) in this tree.", MessageType.None);
     }
 
     void ValidateTree()
@@ -274,6 +314,7 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
             return;
 
         _serializedTree = new SerializedObject(_tree);
+        _issuesDirty = true;
         _graph?.Load(_tree);
         _inspector?.MarkDirtyRepaint();
     }

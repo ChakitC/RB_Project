@@ -85,7 +85,7 @@
                 "passiveProgressInitialized": true,
                 "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
-                "activeSkillPoints": 25,
+                "activeSkillPoints": 15,
                 "activeSkillProgressInitialized": true,
                 "activeSkillTrees": [
                     {
@@ -107,6 +107,53 @@
                             },
                             {
                                 "nodeId": "node_4",
+                                "paidCost": 1
+                            }
+                        ]
+                    },
+                    {
+                        "slotId": "2",
+                        "optionId": "Aires.Skill.3",
+                        "treeId": "Aires_Skill_3_Tree",
+                        "unlockedNodes": [
+                            {
+                                "nodeId": "trunk_cast_speed",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "trunk_cooldown_1",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "trunk_radius_1",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "trunk_duration_1",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "trunk_stagger",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "trunk_gate",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "b_gate",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "b_weakpoint",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "b_thorns",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "b_gather",
                                 "paidCost": 1
                             }
                         ]

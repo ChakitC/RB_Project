@@ -1,7 +1,7 @@
 {
     "maxSlotCount": 0,
-    "gold": 952783,
-    "scrap": 2453,
+    "gold": 952988,
+    "scrap": 2534,
     "slots": [
         {
             "itemId": "SMG_GR01",
@@ -315,11 +315,11 @@
             }
         },
         {
-            "itemId": "SMG_RB02",
+            "itemId": "SMG_RB01",
             "amount": 1,
             "weaponInstance": {
-                "instanceId": "1a5391133fc44acba453df156c0f3d92",
-                "baseWeaponId": "SMG_RB02",
+                "instanceId": "e901a9cdb42b4609a6aa9788b32b51a9",
+                "baseWeaponId": "SMG_RB01",
                 "rarity": 0,
                 "mainAffix": {
                     "affixId": "",
@@ -328,10 +328,18 @@
                     "hasSecondaryValue": false,
                     "secondaryValue": 0.0
                 },
-                "subAffixes": [],
-                "shotCounter": 29808,
-                "currentMagazine": 0,
-                "currentReserveAmmo": 216,
+                "subAffixes": [
+                    {
+                        "affixId": "weapon.sub.fire_interval.v1",
+                        "hasPrimaryValue": true,
+                        "primaryValue": -3.901395797729492,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    }
+                ],
+                "shotCounter": 0,
+                "currentMagazine": 30,
+                "currentReserveAmmo": 240,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -543,7 +551,7 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 73,
+                "currentMagazine": 83,
                 "currentReserveAmmo": 250,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 9,
@@ -642,12 +650,16 @@
                 ],
                 "shotCounter": 0,
                 "currentMagazine": 39,
-                "currentReserveAmmo": 275,
+                "currentReserveAmmo": 254,
                 "reserveAmmoInitialized": true,
-                "upgradeLevel": 6,
-                "upgradeTier": 0,
+                "upgradeLevel": 30,
+                "upgradeTier": 3,
                 "upgradeExp": 0,
-                "unlockedUpgradeMilestoneIds": [],
+                "unlockedUpgradeMilestoneIds": [
+                    "upgrade-tier-10",
+                    "upgrade-tier-20",
+                    "upgrade-tier-30"
+                ],
                 "affixRuntimeStates": [
                     {
                         "affixId": "weapon.main.blood_magazine.v1",
@@ -674,12 +686,12 @@
             }
         },
         {
-            "itemId": "SP_RB_01",
+            "itemId": "Accessory.CasinoLuckyCoin",
             "amount": 1,
             "weaponInstance": {
-                "instanceId": "85b1b92b4b7d481f9789392240f283c5",
-                "baseWeaponId": "SP_RB_01",
-                "rarity": 2,
+                "instanceId": "",
+                "baseWeaponId": "",
+                "rarity": 0,
                 "mainAffix": {
                     "affixId": "",
                     "hasPrimaryValue": false,
@@ -687,26 +699,11 @@
                     "hasSecondaryValue": false,
                     "secondaryValue": 0.0
                 },
-                "subAffixes": [
-                    {
-                        "affixId": "Crit.1",
-                        "hasPrimaryValue": true,
-                        "primaryValue": 0.5082419514656067,
-                        "hasSecondaryValue": false,
-                        "secondaryValue": 0.0
-                    },
-                    {
-                        "affixId": "Damge.1",
-                        "hasPrimaryValue": true,
-                        "primaryValue": 12.622550010681153,
-                        "hasSecondaryValue": false,
-                        "secondaryValue": 0.0
-                    }
-                ],
-                "shotCounter": 97,
-                "currentMagazine": 5,
-                "currentReserveAmmo": 40,
-                "reserveAmmoInitialized": true,
+                "subAffixes": [],
+                "shotCounter": 0,
+                "currentMagazine": -1,
+                "currentReserveAmmo": -1,
+                "reserveAmmoInitialized": false,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
                 "upgradeExp": 0,
@@ -714,9 +711,9 @@
                 "affixRuntimeStates": []
             },
             "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
-                "modifierId": "",
+                "instanceId": "acc_7361796132da442db4dbac8b12ce0082",
+                "accessoryId": "Accessory.CasinoLuckyCoin",
+                "modifierId": "Modifier.Fleet",
                 "upgradeLevel": 0
             }
         },
@@ -1440,7 +1437,7 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 21,
+                "currentMagazine": 27,
                 "currentReserveAmmo": 240,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 7,

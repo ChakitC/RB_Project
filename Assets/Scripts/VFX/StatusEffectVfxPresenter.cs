@@ -258,8 +258,9 @@ public sealed class StatusEffectVfxPresenter : MonoBehaviour
         Vector3 position = ResolvePosition(anchor, fallbackOffset, cue);
         Quaternion rotation = ResolveRotation(anchor, cue);
         float scale = Mathf.Max(0f, cue.scale);
+        Transform parent = cue.parentToAnchor ? anchor : null;
 
-        SpawnOneShot(cue.prefab, position, rotation, cue.extraLife, scale);
+        SpawnOneShot(cue.prefab, position, rotation, cue.extraLife, scale, parent);
     }
 
     bool CanPlayCue(StatusEffectVfxProfile profile, StatusEffectVfxCue cue, StatusEffectInstance instance, string cueName)
@@ -278,18 +279,18 @@ public sealed class StatusEffectVfxPresenter : MonoBehaviour
         return true;
     }
 
-    GameObject SpawnOneShot(GameObject prefab, Vector3 position, Quaternion rotation, float extraLife, float scale)
+    GameObject SpawnOneShot(GameObject prefab, Vector3 position, Quaternion rotation, float extraLife, float scale, Transform parent)
     {
         if (!prefab)
             return null;
 
         if (VfxSpawner.Instance != null)
-            return VfxSpawner.Instance.SpawnVfx(prefab, position, rotation, extraLife, scale);
+            return VfxSpawner.Instance.SpawnVfx(prefab, position, rotation, extraLife, scale, parent: parent);
 
         if (warnWhenSpawnerMissing)
             Debug.LogWarning($"{nameof(StatusEffectVfxPresenter)} could not find {nameof(VfxSpawner)}. Falling back to local VFX spawn.", this);
 
-        GameObject vfx = Instantiate(prefab, position, rotation);
+        GameObject vfx = Instantiate(prefab, position, rotation, parent);
         vfx.transform.localScale *= scale;
         Destroy(vfx, 2f + Mathf.Max(0f, extraLife));
         return vfx;

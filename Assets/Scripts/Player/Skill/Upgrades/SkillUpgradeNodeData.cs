@@ -2,6 +2,10 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+public sealed class UpgradeIdPickerAttribute : PropertyAttribute
+{
+}
+
 [Serializable]
 public sealed class SkillUpgradeNodeData
 {
@@ -24,10 +28,15 @@ public sealed class SkillUpgradeNodeData
     [Min(1)] public int cost = 1;
     [Min(1)] public int requiredCharacterLevel = 1;
     public List<string> requiredNodeIds = new();
+    public List<string> mutuallyExclusiveNodeIds = new();
 
     [Header("Skill Effects")]
     public int skillLevelDelta;
     public List<StatModifier> statModifiers = new();
+
+    [Tooltip("Behavior flags this node grants. Steps and payloads query these through SkillCastContext.")]
+    [UpgradeIdPicker]
+    public List<string> grantedUpgradeIds = new();
 
     public string RuntimeNodeId => string.IsNullOrWhiteSpace(nodeId)
         ? string.Empty

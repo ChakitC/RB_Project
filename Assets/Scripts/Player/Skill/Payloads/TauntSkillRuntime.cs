@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public sealed class TauntSkillRuntime : MonoBehaviour
@@ -17,7 +18,16 @@ public sealed class TauntSkillRuntime : MonoBehaviour
         payload = payloadDef;
         animBrain = castContext != null ? castContext.AnimBrain : null;
         requestId = castContext != null ? castContext.RequestId : 0;
-        expireAt = Time.time + (payloadDef != null ? payloadDef.Duration + 5f : 10f);
+
+        if (payloadDef != null)
+        {
+            ResolveTauntParams(out _, out float duration);
+            expireAt = Time.time + duration + 5f;
+        }
+        else
+        {
+            expireAt = Time.time + 10f;
+        }
 
         if (animBrain == null || payloadDef == null)
         {
@@ -91,6 +101,19 @@ public sealed class TauntSkillRuntime : MonoBehaviour
         Shutdown();
     }
 
+    void ResolveTauntParams(out float radius, out float duration)
+    {
+        radius = payload.Radius;
+        duration = payload.Duration;
+        FinalSkillStats stats = context != null ? context.SkillStats : null;
+        if (!payload.UseSkillStats || stats == null)
+            return;
+        if (stats.areaRadius > 0f)
+            radius = stats.areaRadius;
+        if (stats.effectDuration > 0f)
+            duration = stats.effectDuration;
+    }
+
     void PerformTaunt()
     {
         if (payload == null || context == null)
@@ -98,9 +121,8 @@ public sealed class TauntSkillRuntime : MonoBehaviour
 
         Transform casterRoot = context.CasterRoot;
         Vector3 origin = casterRoot != null ? casterRoot.position : transform.position;
-        float searchRadius = payload.Radius;
+        ResolveTauntParams(out float searchRadius, out float tauntDuration);
         LayerMask targetMask = payload.TargetLayers;
-        float tauntDuration = payload.Duration;
 
         Collider[] hits = Physics.OverlapSphere(origin, searchRadius, targetMask);
         if (hits == null || hits.Length == 0)
@@ -134,17 +156,40 @@ public sealed class TauntSkillRuntime : MonoBehaviour
             // multiple characters are commonly parented under a shared room root, so scoping
             // to scene-root would grab the first sensor found under that root, not the one
             // belonging to the character that was actually hit.
+            CharacteContext targetContext = hit.GetComponentInParent<CharacteContext>();
+
             AITargetSensor sensor = hit.GetComponentInParent<AITargetSensor>();
-            if (sensor == null)
-            {
-                CharacteContext targetContext = hit.GetComponentInParent<CharacteContext>();
-                if (targetContext != null)
-                    sensor = targetContext.GetComponentInChildren<AITargetSensor>(true);
-            }
+            if (sensor == null && targetContext != null)
+                sensor = targetContext.GetComponentInChildren<AITargetSensor>(true);
+
             if (sensor == null)
                 continue;
 
             sensor.ApplyTaunt(casterRoot, tauntDuration);
+            ApplyConditionalStatuses(hit, targetContext, tauntDuration);
+        }
+    }
+
+    void ApplyConditionalStatuses(Collider hit, CharacteContext targetContext, float tauntDuration)
+    {
+        IReadOnlyList<TauntSkillPayloadDef.ConditionalStatus> conditionals = payload.ConditionalApplications;
+        if (conditionals == null || conditionals.Count == 0 || context == null)
+            return;
+
+        StatusEffectController controller = hit.GetComponentInParent<StatusEffectController>();
+        if (controller == null && targetContext != null)
+            controller = targetContext.GetComponentInChildren<StatusEffectController>(true);
+        if (controller == null)
+            return;
+
+        GameObject source = context.CasterObject;
+        for (int i = 0; i < conditionals.Count; i++)
+        {
+            TauntSkillPayloadDef.ConditionalStatus conditional = conditionals[i];
+            if (conditional == null || conditional.effect == null || !context.HasUpgrade(conditional.requiredUpgradeId))
+                continue;
+
+            controller.ApplyEffect(conditional.effect, source, Mathf.Max(1, conditional.stacks), tauntDuration);
         }
     }
 

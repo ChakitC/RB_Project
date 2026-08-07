@@ -94,6 +94,7 @@ GameObject:
   - component: {fileID: 3415565528960947510}
   - component: {fileID: 1684288506866008098}
   - component: {fileID: 4934772837026848325}
+  - component: {fileID: 5074562390204054118}
   m_Layer: 10
   m_Name: Ally
   m_TagString: Ally
@@ -1201,3 +1202,26 @@ MonoBehaviour:
   statsHub: {fileID: 0}
   statusEffectController: {fileID: 0}
   upgradeCurveOverride: {fileID: 0}
+--- !u!114 &5074562390204054118
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8623998836521745381}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bba607860f448d046bd391e6bda4b677, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  statsHub: {fileID: 0}
+  stateHub: {fileID: 0}
+  autoCreateVfxPresenter: 1
+  vfxPresenterHost: {fileID: 0}
+  vfxPresenterHostName: CharacterVisual_System
+  debugInInspector: 1
+  dbgActiveEffectCount: 0
+  dbgBuffs: 
+  dbgDebuffs: 
+  dbgNeutralEffects: 

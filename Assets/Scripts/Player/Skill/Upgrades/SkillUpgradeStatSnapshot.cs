@@ -11,9 +11,11 @@ public sealed class SkillUpgradeStatSnapshot
     }
 
     readonly Dictionary<StatType, Aggregate> _modifiers = new();
+    readonly HashSet<string> _upgradeIds = new(StringComparer.Ordinal);
 
     public int SkillLevelDelta { get; private set; }
-    public bool IsEmpty => SkillLevelDelta == 0 && _modifiers.Count == 0;
+    public bool IsEmpty => SkillLevelDelta == 0 && _modifiers.Count == 0 && _upgradeIds.Count == 0;
+    public IReadOnlyCollection<string> UpgradeIds => _upgradeIds;
 
     public void AddNode(SkillUpgradeNodeData node)
     {
@@ -21,6 +23,17 @@ public sealed class SkillUpgradeStatSnapshot
             return;
 
         SkillLevelDelta += node.skillLevelDelta;
+
+        if (node.grantedUpgradeIds != null)
+        {
+            for (int i = 0; i < node.grantedUpgradeIds.Count; i++)
+            {
+                string id = node.grantedUpgradeIds[i];
+                if (!string.IsNullOrWhiteSpace(id))
+                    _upgradeIds.Add(id.Trim());
+            }
+        }
+
         if (node.statModifiers == null)
             return;
 
@@ -38,6 +51,8 @@ public sealed class SkillUpgradeStatSnapshot
             _modifiers[modifier.stat] = aggregate;
         }
     }
+
+    public bool HasUpgrade(string id) => !string.IsNullOrWhiteSpace(id) && _upgradeIds.Contains(id.Trim());
 
     public void Apply(FinalSkillStats stats)
     {
@@ -73,6 +88,12 @@ public sealed class SkillUpgradeStatSnapshot
                 case StatType.StaggerPower:
                     stats.staggerPower = Apply(stats.staggerPower, aggregate);
                     break;
+                case StatType.EffectDuration:
+                    stats.effectDuration = Apply(stats.effectDuration, aggregate);
+                    break;
+                case StatType.HealPower:
+                    stats.healPower = Apply(stats.healPower, aggregate);
+                    break;
             }
         }
     }
@@ -86,7 +107,9 @@ public sealed class SkillUpgradeStatSnapshot
                stat == StatType.CastTime ||
                stat == StatType.Cooldown ||
                stat == StatType.CritChance ||
-               stat == StatType.StaggerPower;
+               stat == StatType.StaggerPower ||
+               stat == StatType.EffectDuration ||
+               stat == StatType.HealPower;
     }
 
     static float Apply(float value, Aggregate aggregate)

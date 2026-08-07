@@ -6,6 +6,7 @@ public sealed class SkillCastContext
     public SkillGemDefinition SkillDef { get; }
     public SkillPayloadDef Execution { get; }
     public FinalSkillStats SkillStats { get; }
+    public SkillUpgradeStatSnapshot Upgrades { get; }
     public CharacterAnimBrain AnimBrain { get; }
     public int RequestId { get; }
     public Transform CastOrigin { get; }
@@ -16,17 +17,21 @@ public sealed class SkillCastContext
 
     public Vector3 CastPosition => CastOrigin != null ? CastOrigin.position : Vector3.zero;
 
+    public bool HasUpgrade(string id) => Upgrades != null && Upgrades.HasUpgrade(id);
+
     public SkillCastContext(
         ISkillUser user,
         SkillGemDefinition skillDef,
         FinalSkillStats skillStats,
         CharacterAnimBrain animBrain = null,
-        int requestId = 0)
+        int requestId = 0,
+        SkillUpgradeStatSnapshot upgrades = null)
     {
         User = user;
         SkillDef = skillDef;
         Execution = skillDef != null ? skillDef.payload : null;
         SkillStats = skillStats;
+        Upgrades = upgrades;
         AnimBrain = animBrain;
         RequestId = requestId;
         CastOrigin = user != null ? user.CastOrigin : null;

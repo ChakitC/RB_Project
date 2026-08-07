@@ -72,6 +72,36 @@ If validation fails:
 4. Keep new Unity classes in their intended `.cs` files.
 5. If the generated `.csproj` is stale, refresh Unity/reimport/regenerate project
    files instead of changing file ownership.
+# Active Skill Tree validation
+
+`SkillUpgradeTreeValidator` (`Assets/Scripts/Editor/ActiveSkill/SkillUpgradeTreeValidator.cs`)
+checks `SkillUpgradeTreeDefinition` assets. Beyond blank/duplicate node ids, cost/level ranges,
+unsupported `StatType` stat modifiers, prerequisite cycles, and node overlap, it also validates:
+
+- `grantedUpgradeIds`: blank entries, duplicates within one node, and (when the tree has an
+  owning `SkillGemDefinition`, resolved via an `AssetDatabase` scan for `upgradeTree`/
+  `upgradeTreeOverride` references) ids that don't match anything the owning skill's payload
+  declares through `CollectUpgradeIds`. It also warns when the payload declares an id that no
+  node in the tree grants (a dead branch), and warns instead of erroring when a tree has no
+  owning skill yet, since ids can't be cross-checked in that case.
+- `mutuallyExclusiveNodeIds`: blank entries, self-exclusion, missing node ids, a node that both
+  requires and excludes the same node, and asymmetric pairs (node A excludes B but B does not
+  exclude A back) — the last one is an Error because a one-way lock only misbehaves for players
+  who unlock in a specific order.
+- The "no gameplay effect" warning no longer fires for a node whose only effect is granting an
+  upgrade id (it used to fire on every pure-behavior node once `grantedUpgradeIds` shipped).
+
+Two entry points: `ActiveSkillTreeEditorWindow.ValidateTree()` (open tree, logs to console) and
+the project-wide `Tools/RB/Skills/Validate Active Skill Trees` menu. The tree editor window
+(`Tools > RB > Skills > Active Skill Tree Editor`) also shows validation issues inline: selecting
+a node displays that node's issues as `HelpBox`es below its inspector fields, with a compact count
+of remaining issues elsewhere in the tree. This inline pass is cached and only recomputes when the
+tree or the selected node's data changes, so it does not re-run every repaint.
+
+`SkillUpgradeTreeValidator.cs` and `ActiveSkillTreeEditorWindow.cs` live under `Editor/`, so
+`CheckAssemblyBuild.ps1` does not compile them. Verify changes to either file by opening Unity and
+running the validate menu / editor window, not by trusting a green `CheckAssemblyBuild.ps1` run.
+
 # Weapon affix validation
 
 Run **Tools > Weapons > Affixes > Validate (Dry Run)** before builds. The build

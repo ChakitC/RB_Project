@@ -27,6 +27,9 @@ public static class ActiveSkillFeatureSmokeTests
             TestResetUsesPaidCost(assets);
             TestTreeMismatchRefundsRemovedNodes(assets);
             TestDeterministicStatStacking(assets);
+            TestGrantedUpgradeIdsSnapshotAggregation(assets);
+            TestMutuallyExclusiveNodesRejectCanUnlock(assets);
+            TestEffectDurationAndHealPowerStatStacking();
             TestSkillTreeDefaultAndVariantOverride(assets);
             TestVisualScaleMetrics();
             TestRuntimeNodeVisualScaleAndFrameFallback();
@@ -137,6 +140,61 @@ public static class ActiveSkillFeatureSmokeTests
         snapshot.Apply(stats);
         Equal(3, snapshot.SkillLevelDelta, "Skill level deltas must sum.");
         Approximately(345f, stats.damage, "Stat stacking must be (base + sum(add)) * product(mul).");
+    }
+
+    static void TestGrantedUpgradeIdsSnapshotAggregation(List<ScriptableObject> assets)
+    {
+        SkillUpgradeNodeData first = Node("granter.first", 1);
+        first.grantedUpgradeIds.Add("aires3.self_guard");
+        SkillUpgradeNodeData second = Node("granter.second", 1, "granter.first");
+        second.grantedUpgradeIds.Add("aires3.unshaken");
+        SkillUpgradeTreeDefinition tree = CreateTree(assets, "tree.granted-ids", first, second);
+        var data = InitializedData(2);
+        var model = new ActiveSkillProgressModel(null, data, 10);
+        Expect(model.TryUnlock("slot", "variant", tree, "granter.first", out string firstReason), firstReason);
+        Expect(model.TryUnlock("slot", "variant", tree, "granter.second", out string secondReason), secondReason);
+
+        SkillUpgradeStatSnapshot snapshot = model.BuildSnapshot("slot", "variant", tree, out _);
+        Expect(snapshot.HasUpgrade("aires3.self_guard"),
+            "Snapshot must aggregate upgrade ids granted by an unlocked node.");
+        Expect(snapshot.HasUpgrade("aires3.unshaken"),
+            "Snapshot must aggregate upgrade ids from every unlocked node, not just the first.");
+        Expect(!snapshot.HasUpgrade("aires3.ally_support"),
+            "Snapshot must not report an upgrade id that was never granted.");
+    }
+
+    static void TestMutuallyExclusiveNodesRejectCanUnlock(List<ScriptableObject> assets)
+    {
+        SkillUpgradeNodeData gate = Node("gate", 1);
+        SkillUpgradeNodeData branchA = Node("branch.a", 1, "gate");
+        branchA.mutuallyExclusiveNodeIds.Add("branch.b");
+        SkillUpgradeNodeData branchB = Node("branch.b", 1, "gate");
+        branchB.mutuallyExclusiveNodeIds.Add("branch.a");
+        SkillUpgradeTreeDefinition tree = CreateTree(assets, "tree.exclusive", gate, branchA, branchB);
+        var data = InitializedData(3);
+        var model = new ActiveSkillProgressModel(null, data, 10);
+        Expect(model.TryUnlock("slot", "variant", tree, "gate", out string gateReason), gateReason);
+        Expect(model.TryUnlock("slot", "variant", tree, "branch.a", out string branchAReason), branchAReason);
+
+        Expect(!model.CanUnlock("slot", "variant", tree, "branch.b", out string reason, out _),
+            "A node must be rejected once a mutually exclusive sibling is already unlocked.");
+        Expect(!string.IsNullOrEmpty(reason), "Rejection must surface a readable reason for the detail panel.");
+    }
+
+    static void TestEffectDurationAndHealPowerStatStacking()
+    {
+        var snapshot = new SkillUpgradeStatSnapshot();
+        SkillUpgradeNodeData durationNode = Node("duration", 1);
+        durationNode.statModifiers.Add(new StatModifier { stat = StatType.EffectDuration, add = 2f, mul = 1.3f });
+        SkillUpgradeNodeData healNode = Node("heal", 1);
+        healNode.statModifiers.Add(new StatModifier { stat = StatType.HealPower, add = 5f, mul = 1.4f });
+        snapshot.AddNode(durationNode);
+        snapshot.AddNode(healNode);
+
+        var stats = new FinalSkillStats { effectDuration = 10f, healPower = 20f };
+        snapshot.Apply(stats);
+        Approximately(15.6f, stats.effectDuration, "EffectDuration must apply as (base + add) * mul.");
+        Approximately(35f, stats.healPower, "HealPower must apply as (base + add) * mul.");
     }
 
     static void TestSkillTreeDefaultAndVariantOverride(List<ScriptableObject> assets)

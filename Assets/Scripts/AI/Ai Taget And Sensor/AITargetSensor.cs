@@ -22,7 +22,6 @@ public class AITargetSensor : MonoBehaviour
     [SerializeField] private int maxHits = 64;
 
     [Header("Filter")]
-    [SerializeField] private string requiredTag = "";
     [SerializeField] private bool useFieldOfView = false;
     [SerializeField, Range(0f, 360f)] private float fieldOfView = 180f;
     [SerializeField] private bool requireLineOfSight = true;
@@ -92,6 +91,7 @@ public class AITargetSensor : MonoBehaviour
     CharacteContext ownerContext;
     HealthSystem healthSystem;
     StatusEffectController statusEffects;
+    AIAimTargetDriver aimTargetDriver;
     Transform cachedTauntSource;      // derived cache only — source of truth is statusEffects
     float nextScanTime;
 
@@ -320,7 +320,26 @@ public class AITargetSensor : MonoBehaviour
         UpdateTauntState();
         RegisterThreatInternal(targetRoot, targetable, GetMaxThreatPerTargetValue());
         ForceScan();
+
+        // A taunt should interrupt whatever the behavior tree is currently aiming/attacking —
+        // otherwise the enemy keeps facing its old target until that action finishes on its own,
+        // even though CurrentTarget already switched to the taunter.
+        ResolveAimTargetDriver()?.ClearOverride();
         return true;
+    }
+
+    AIAimTargetDriver ResolveAimTargetDriver()
+    {
+        if (aimTargetDriver)
+            return aimTargetDriver;
+
+        aimTargetDriver = GetComponent<AIAimTargetDriver>();
+        if (!aimTargetDriver)
+            aimTargetDriver = GetComponentInParent<AIAimTargetDriver>();
+        if (!aimTargetDriver && ownerContext != null)
+            aimTargetDriver = ownerContext.GetComponentInChildren<AIAimTargetDriver>(true);
+
+        return aimTargetDriver;
     }
 
     void Scan(bool ignoreRetargetTimers)
@@ -365,6 +384,26 @@ public class AITargetSensor : MonoBehaviour
             if (!hasBestVisible || candidate.Score > bestVisible.Score)
             {
                 bestVisible = candidate;
+                hasBestVisible = true;
+            }
+        }
+
+        // A taunted character unconditionally knows where the taunter is — otherwise a
+        // wide-radius taunt skill silently does nothing against anything outside this
+        // sensor's own (usually much smaller) radius/FOV/line-of-sight range.
+        if (cachedTauntSource != null &&
+            candidateInstanceIds.Add(cachedTauntSource.GetInstanceID()) &&
+            TryBuildTauntCandidate(origin, out Candidate tauntCandidate))
+        {
+            if (currentTarget != null && tauntCandidate.TargetRoot == currentTarget)
+            {
+                currentVisible = tauntCandidate;
+                hasCurrentVisible = true;
+            }
+
+            if (!hasBestVisible || tauntCandidate.Score > bestVisible.Score)
+            {
+                bestVisible = tauntCandidate;
                 hasBestVisible = true;
             }
         }
@@ -455,7 +494,7 @@ public class AITargetSensor : MonoBehaviour
     {
         candidate = default(Candidate);
 
-        if (!IsValidTarget(hit, targetRoot, targetable))
+        if (!IsValidTarget(targetRoot, targetable))
             return false;
 
         Vector3 targetPoint = GetTargetPoint(hit, targetRoot, targetable);
@@ -476,6 +515,30 @@ public class AITargetSensor : MonoBehaviour
             Distance = distance,
             HasLineOfSight = lineOfSight,
             Score = EvaluateCandidateScore(targetRoot, targetable, distance, lineOfSight)
+        };
+        return true;
+    }
+
+    bool TryBuildTauntCandidate(Vector3 origin, out Candidate candidate)
+    {
+        candidate = default(Candidate);
+        if (cachedTauntSource == null)
+            return false;
+
+        TryResolveTrackedTarget(cachedTauntSource, out Transform targetRoot, out IAITargetable targetable);
+        if (targetRoot == null)
+            targetRoot = cachedTauntSource;
+
+        Vector3 targetPoint = GetTargetPoint(null, targetRoot, targetable);
+        float distance = Vector3.Distance(origin, targetPoint);
+
+        candidate = new Candidate
+        {
+            TargetRoot = targetRoot,
+            TargetPoint = targetPoint,
+            Distance = distance,
+            HasLineOfSight = true,
+            Score = EvaluateCandidateScore(targetRoot, targetable, distance, true)
         };
         return true;
     }
@@ -698,21 +761,13 @@ public class AITargetSensor : MonoBehaviour
         return targetRoot != null;
     }
 
-    bool IsValidTarget(Collider hit, Transform targetRoot, IAITargetable targetable)
+    bool IsValidTarget(Transform targetRoot, IAITargetable targetable)
     {
         if (targetRoot == null)
             return false;
 
         if (targetRoot == transform || targetRoot.root == transform.root)
             return false;
-
-        if (!string.IsNullOrEmpty(requiredTag))
-        {
-            bool rootMatch = targetRoot.CompareTag(requiredTag);
-            bool hitMatch = hit.CompareTag(requiredTag);
-            if (!rootMatch && !hitMatch)
-                return false;
-        }
 
         if (targetable != null && !IsTargetAllowedByTargetable(targetable))
             return false;

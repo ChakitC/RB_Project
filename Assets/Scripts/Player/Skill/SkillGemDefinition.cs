@@ -22,7 +22,7 @@ public class SkillGemDefinition : ScriptableObject
         Error,
     }
 
-    private ProjectileSkillPayloadDef ProjectilePayload => payload as ProjectileSkillPayloadDef;
+    private ProjectileSkillPayloadDef ProjectilePayload => TryFindPayload(out ProjectileSkillPayloadDef found) ? found : null;
     private bool HasProjectilePayload => ProjectilePayload != null;
     private bool HasProjectileExecutionIntent => HasProjectilePayload;
     private bool HasAnyRadiusConfigured => baseRadius > 0f || HasRadiusOverride();
@@ -136,6 +136,14 @@ public class SkillGemDefinition : ScriptableObject
     [PropertyOrder(-71)]
     [FoldoutGroup("Gameplay", Expanded = true), LabelText("Max Level"), MinValue(1)]
     public int maxLevel = 20;
+
+    [PropertyOrder(-70)]
+    [FoldoutGroup("Gameplay", Expanded = true), LabelText("Effect Duration"), MinValue(0f), SuffixLabel("s")]
+    public float baseEffectDuration = 0f;
+
+    [PropertyOrder(-70)]
+    [FoldoutGroup("Gameplay", Expanded = true), LabelText("Heal Power"), MinValue(0f)]
+    public float baseHealPower = 0f;
 
     [PropertyOrder(-65)]
     [FoldoutGroup("Active Skill Tree", Expanded = false), AssetsOnly, LabelText("Upgrade Tree")]
@@ -396,6 +404,11 @@ public class SkillGemDefinition : ScriptableObject
             CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.HitLag);
     }
 
+    public void CollectUpgradeIds(List<string> ids)
+    {
+        payload?.CollectUpgradeIds(ids);
+    }
+
     bool HasShakeCameraMarker()
     {
         AnimancerEvent.Sequence events = skillClip?.Events;
@@ -592,9 +605,9 @@ public class SkillGemDefinition : ScriptableObject
                 issues.Add("Execution payload must be embedded in the same asset as this skill.");
             else if (payload != null)
             {
-                int embeddedPayloadCount = GetEmbeddedPayloadCount();
-                if (embeddedPayloadCount != 1)
-                    issues.Add($"Skill asset must contain exactly one embedded payload, but found {embeddedPayloadCount}.");
+                int orphanedPayloadCount = GetOrphanedEmbeddedPayloadCount();
+                if (orphanedPayloadCount > 0)
+                    issues.Add($"Skill asset has {orphanedPayloadCount} embedded payload(s) not referenced by the root payload or any composite step.");
             }
 #endif
 
@@ -731,6 +744,8 @@ public class SkillGemDefinition : ScriptableObject
             castTime = baseCastTime,
             cooldown = baseCooldown,
             staggerPower = baseStaggerPower,
+            effectDuration = baseEffectDuration,
+            healPower = baseHealPower,
             critChance = baseCritChance,
             critMultiplier = 2f,
         };
@@ -741,6 +756,8 @@ public class SkillGemDefinition : ScriptableObject
         stats.manaCost = Mathf.Max(0f, stats.manaCost);
         stats.castTime = Mathf.Max(0f, stats.castTime);
         stats.cooldown = Mathf.Max(0f, stats.cooldown);
+        stats.effectDuration = Mathf.Max(0f, stats.effectDuration);
+        stats.healPower = Mathf.Max(0f, stats.healPower);
         stats.critChance = Mathf.Clamp(stats.critChance, 0f, 100f);
         return stats;
     }
@@ -822,21 +839,40 @@ public class SkillGemDefinition : ScriptableObject
                string.Equals(skillPath, AssetDatabase.GetAssetPath(payload), StringComparison.OrdinalIgnoreCase);
     }
 
-    private int GetEmbeddedPayloadCount()
+    private int GetOrphanedEmbeddedPayloadCount()
     {
         string skillPath = AssetDatabase.GetAssetPath(this);
         if (string.IsNullOrEmpty(skillPath))
             return 0;
 
-        int count = 0;
+        var referenced = new HashSet<SkillPayloadDef>();
+        CollectReferencedPayloads(payload, referenced);
+
+        int orphanCount = 0;
         UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(skillPath);
         for (int i = 0; i < assets.Length; i++)
         {
-            if (assets[i] is SkillPayloadDef)
-                count++;
+            if (assets[i] is SkillPayloadDef embedded && !referenced.Contains(embedded))
+                orphanCount++;
         }
 
-        return count;
+        return orphanCount;
+    }
+
+    static void CollectReferencedPayloads(SkillPayloadDef candidate, HashSet<SkillPayloadDef> referenced)
+    {
+        if (candidate == null || !referenced.Add(candidate))
+            return;
+
+        if (candidate is CompositeSkillPayloadDef composite)
+        {
+            IReadOnlyList<SkillEffectStep> steps = composite.Steps;
+            for (int i = 0; i < steps.Count; i++)
+            {
+                if (steps[i] is PayloadStep payloadStep)
+                    CollectReferencedPayloads(payloadStep.Payload, referenced);
+            }
+        }
     }
 #endif
 
@@ -981,6 +1017,37 @@ public class SkillGemDefinition : ScriptableObject
         return payload != null
             ? payload.GetChainContinueNormalizedTime()
             : 1f;
+    }
+
+    public bool TryFindPayload<T>(out T found) where T : SkillPayloadDef
+    {
+        found = FindPayloadRecursive<T>(payload);
+        return found != null;
+    }
+
+    static T FindPayloadRecursive<T>(SkillPayloadDef candidate) where T : SkillPayloadDef
+    {
+        if (candidate == null)
+            return null;
+
+        if (candidate is T match)
+            return match;
+
+        if (candidate is CompositeSkillPayloadDef composite)
+        {
+            IReadOnlyList<SkillEffectStep> steps = composite.Steps;
+            for (int i = 0; i < steps.Count; i++)
+            {
+                if (steps[i] is PayloadStep payloadStep)
+                {
+                    T nested = FindPayloadRecursive<T>(payloadStep.Payload);
+                    if (nested != null)
+                        return nested;
+                }
+            }
+        }
+
+        return null;
     }
 
 }

@@ -11,6 +11,8 @@ public class FinalSkillStats
     public float castTime;
     public float cooldown;
     public float staggerPower;
+    public float effectDuration;
+    public float healPower;
 
     // 0..100 (%)
     public float critChance;
@@ -45,6 +47,8 @@ public class SkillInstance
                 castTime = 0f,
                 cooldown = 0f,
                 staggerPower = 0f,
+                effectDuration = 0f,
+                healPower = 0f,
                 critChance = 0f,
                 critMultiplier = 2f
             };
@@ -59,6 +63,8 @@ public class SkillInstance
             castTime = def.baseCastTime,
             cooldown = def.baseCooldown,
             staggerPower = def.baseStaggerPower,
+            effectDuration = def.baseEffectDuration,
+            healPower = def.baseHealPower,
             critChance = def.baseCritChance,
             critMultiplier = 2f
         };
@@ -86,6 +92,8 @@ public class SkillInstance
         stats.castTime = Mathf.Max(0f, stats.castTime);
         stats.cooldown = Mathf.Max(0f, stats.cooldown);
         stats.staggerPower = Mathf.Max(0f, stats.staggerPower);
+        stats.effectDuration = Mathf.Max(0f, stats.effectDuration);
+        stats.healPower = Mathf.Max(0f, stats.healPower);
         stats.critMultiplier = Mathf.Max(1f, stats.critMultiplier);
 
         return stats;
@@ -179,7 +187,7 @@ public class SkillInstance
             support.OnCast(this, stats);
         }
 
-        var castContext = new SkillCastContext(user, def, stats, animBrain, requestId);
+        var castContext = new SkillCastContext(user, def, stats, animBrain, requestId, upgradeSnapshot);
         bool executed = TryExecutePayload(castContext);
         if (executed && stampCooldown)
             _lastCastTime = Time.time;

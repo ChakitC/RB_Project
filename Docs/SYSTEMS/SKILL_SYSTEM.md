@@ -3,9 +3,11 @@
 ## Asset Ownership
 
 Each active skill is authored through one visible `SkillGemDefinition` asset.
-The skill owns exactly one `SkillPayloadDef` sub-asset stored in the same `.asset`
-file. Standalone or shared skill payload assets are not part of the supported
-authoring workflow.
+The skill owns exactly one root `SkillPayloadDef` sub-asset stored in the same
+`.asset` file — either a single-effect payload, or a `CompositeSkillPayloadDef`
+whose steps wrap any number of additional embedded payload sub-assets (see
+**Composite Payloads And Steps** below). Standalone or shared skill payload
+assets are not part of the supported authoring workflow.
 
 `SkillGemDefinition` owns:
 
@@ -79,10 +81,92 @@ Current payload implementations are:
 - `ApplyStatusSkillPayloadDef`
 - `SpawnPickupSkillPayloadDef`
 - `MorphSkillPayloadDef`
+- `TauntSkillPayloadDef`
+- `CompositeSkillPayloadDef`
 
 Reusable dependencies remain normal asset references. Examples include
 projectile prefabs, `ProjectileConfig`, `StatusEffectDef`, audio cues, VFX
 prefabs, and pickup prefabs.
+
+### Composite Payloads And Steps
+
+`CompositeSkillPayloadDef` is the payload to use when one skill must do more
+than one thing (e.g. taunt **and** heal **and** buff). It holds an authored
+`[SerializeReference] List<SkillEffectStep>` and is itself the skill's single
+root payload — it uniquely owns `helperFacingMode`, `chainContinueMode`, and
+`chainContinueNormalizedTime`, since those fields describe the skill, not any
+one effect.
+
+`SkillEffectStep` is a plain `[Serializable]` class (not a `ScriptableObject`),
+gated by an optional `requiredUpgradeId` read from `SkillCastContext.HasUpgrade`.
+Two step types exist:
+
+- `PayloadStep` wraps any existing `SkillPayloadDef` (embedded as its own
+  sub-asset in the same skill file) and executes it unchanged. This is how an
+  existing single-effect payload (e.g. `TauntSkillPayloadDef`) gets reused
+  inside a composite without being ported to a new type.
+- `HealAreaStep` heals and optionally applies `StatusEffectDef`s to either
+  `Self` (the caster) or `Allies`. Ally targeting enumerates active
+  `CharacteContext` instances, filters to `AITargetIdentity.Player` /
+  `Companion`, and checks distance from the caster without querying physics
+  colliders. Healing and status references are resolved through each target's
+  context and scaled by `FinalSkillStats.healPower`.
+
+A step that needs to act at a specific animation moment (not at the cast-point
+`Execute` call) spawns its own runtime `MonoBehaviour` and subscribes to
+`CharacterAnimBrain.SkillTimelineEventRaised`, the same pattern
+`TauntSkillRuntime` already uses — steps do not get a shared timeline/event
+channel or scratchpad.
+
+`SkillGemDefinition.TryFindPayload<T>` walks the composite's steps
+(`PayloadStep.Payload`, recursively) to find a wrapped payload of a given type;
+use it instead of `payload as T` when a system needs to know whether a skill
+has, for example, a `ProjectileSkillPayloadDef` anywhere in its execution.
+
+Author a composite through the skill inspector's **Execution Authoring**
+section: pick `Composite` as the Execution Type, then use the **Composite Step
+Payloads** panel to create/replace/remove each `PayloadStep`'s wrapped payload
+(embedded the same way the root payload is) and edit its nested inspector
+inline. `HealAreaStep` entries have no payload to author — their fields are
+edited directly in the Odin-drawn step list.
+
+`CompositeSkillPayloadDef.CollectValidationIssues` reports an error when two
+wrapped payloads compete for the same stat channel (two
+projectile/hitbox payloads, or two `MorphSkillPayloadDef`s), when a
+`PayloadStep` has no payload assigned, when a `PayloadStep` wraps another
+composite (no nesting), and a warning when a wrapped payload's
+`helperFacingMode`/`chainContinue*` are non-default — copy those values up to
+the composite root instead, since the composite is the unique owner. The
+skill's own embedded-payload count check now allows any number of embedded
+`SkillPayloadDef` sub-assets; it only flags one that is not referenced by the
+root payload or any composite step (an orphan).
+
+### Conditional Status On Payloads
+
+`ApplyStatusSkillPayloadDef` and `TauntSkillPayloadDef` both support a
+`Conditional Status Effects` list in addition to their unconditional one: each
+entry pairs a `requiredUpgradeId` with a `StatusEffectDef` (and stack count),
+applied only when `SkillCastContext.HasUpgrade(requiredUpgradeId)` is true.
+`ApplyStatusSkillPayloadDef` applies conditional entries to the caster;
+`TauntSkillPayloadDef` applies them to each taunted enemy. `HealAreaStep` has
+the same `conditionalApplications` list for the target it heals. This is how
+an Active Skill Tree node changes a skill's *behavior* (see **Active Skill
+Loadout and Upgrade Trees** below) rather than only its numbers.
+
+Every status application that can receive a skill-driven duration (the
+unconditional and conditional lists on `ApplyStatusSkillPayloadDef`,
+`TauntSkillPayloadDef`, and `HealAreaStep`) passes
+`FinalSkillStats.effectDuration` as `durationOverride` to
+`StatusEffectController.ApplyEffect` whenever `effectDuration > 0`; otherwise
+the status asset's own authored `duration` applies. **Author every
+`StatusEffectDef` with a non-zero `duration`** — `duration <= 0` means
+permanent (`StatusEffectDef.IsPermanent`), not "use the override."
+
+`StatusEffectController.ApplyTick` now treats a negative `tickDamage` as a
+heal (routed through `HealthSystem.Heal` via `CharacteContext.HealthSystem`)
+instead of silently no-op'ing. A regen-style `StatusEffectDef` (positive
+`tickInterval`, negative `tickDamage`) heals the effect's target once per
+tick.
 
 `SpawnPickupSkillPayloadDef` ground-snaps every spawned pickup after applying
 its lateral spread. Configure **Ground Layers** with world-floor layers only;
@@ -172,6 +256,13 @@ shared `AnimationVfxPresenter`; the shared presenter does not depend on
 when that request ends or is interrupted.
 Request completion and interruption clear remaining loop groups immediately.
 Graceful particle completion is reserved for explicit `StopLoop` cues.
+
+Payload runtimes created when the cast point is reached can only receive named
+timeline events that occur after `castPointNormalized`. When such a runtime
+subscribes to `SkillTimelineEventRaised` (for example `TauntSkillRuntime` waiting
+for `TauntApply`), author the cast point before the required event. A timeline
+event placed before or at the cast point may fire before the runtime listener
+exists and must not be used to trigger that payload.
 
 Use the same Animancer event name, `Vfx`, at every VFX time in the clip. Runtime
 maps occurrences to cue indices in chronological order: the first `Vfx` event is
@@ -299,7 +390,8 @@ A valid skill must satisfy all of the following:
 
 - `payload` is assigned
 - the payload is a sub-asset of the same `SkillGemDefinition` asset
-- the skill asset contains exactly one `SkillPayloadDef`
+- every embedded `SkillPayloadDef` sub-asset in the file is referenced by the
+  root payload or by a `CompositeSkillPayloadDef` step (no orphaned payloads)
 - payload-specific required references and timeline configuration are valid
 - timeline VFX entries have valid cue indices, required prefabs, anchors, and
   matching loop keys
@@ -545,6 +637,11 @@ The default grant is one point for each character level after level 1, controlle
 by `CharacterStats.activeSkillPointsPerLevel`. Old saves are caught up once by
 the `activeSkillProgressInitialized` flag.
 
+When `CharacterContextPartyLoader` assigns a party member's `baseStats`, it
+reloads `CharacterActiveSkillProgress` for that character ID. A full progress
+reload rebuilds every resolved command slot so field allies receive the same
+unlocked upgrade IDs as the corresponding lobby character.
+
 Progress is saved by `{slotId, optionId, treeId}`. Each unlocked node stores its
 paid cost. Resetting the current Variant clears its whole tree and refunds those
 saved costs, even when the authored costs have since changed. If a Variant is
@@ -552,12 +649,33 @@ assigned a different `treeId`, the old paid costs are refunded and the new tree
 starts empty. A saved node missing from the current asset has no gameplay effect,
 but its paid cost remains refundable.
 
-All prerequisite IDs on a node use AND semantics; branches are not exclusive.
+All prerequisite IDs on a node use AND semantics. A node may additionally list
+`mutuallyExclusiveNodeIds`; `ActiveSkillProgressModel.CanUnlock` rejects it once
+any listed node is already unlocked, and the reason string surfaces in the node
+detail panel (the node itself renders as its normal Locked state — no special
+UI is required). This is how a shared trunk fans out into exclusive branches;
+use `CharacterActiveSkillProgress.ResetTree`/the in-UI respec action to switch
+branches, since it fully refunds the paid points.
+
+A node may also list `grantedUpgradeIds` — free-form strings such as
+`"aires3.self_guard"` with no stat effect of their own. Every id granted by an
+unlocked node is aggregated into `SkillUpgradeStatSnapshot.UpgradeIds` and
+exposed at cast time as `SkillCastContext.HasUpgrade(id)`. This is the channel
+`SkillEffectStep.requiredUpgradeId` and payload conditional-status lists (see
+**Composite Payloads And Steps** above) read to gate *behavior*, separate from
+the numeric `statModifiers` a node also carries. Use
+`"<skillslug>.<feature>"`, lowercase and dot-separated, as the naming
+convention.
+
 Clicking a node only selects it and shows requirements plus a before/after stat
-preview. Points are spent only after the separate Unlock confirmation. The v1
-tree can change Skill Level and the supported skill stats: Damage, Area Radius,
-Projectile Count, Mana Cost, Cast Time, Cooldown, Crit Chance, and Stagger Power.
-Tree modifiers are deterministic:
+preview. Points are spent only after the separate Unlock confirmation. The tree
+can change Skill Level and the supported skill stats: Damage, Area Radius,
+Projectile Count, Mana Cost, Cast Time, Cooldown, Crit Chance, Stagger Power,
+Effect Duration, and Heal Power. `AreaRadius` and `EffectDuration` are single
+values for the whole skill — a node that raises either affects every effect
+that reads them, not just one. `StatType` is serialized by enum index; new
+members must always be appended at the end, never inserted. Tree modifiers are
+deterministic:
 
 `Skill Level -> (base + sum(tree additions)) * product(tree multipliers) -> Support modifiers -> Character stats`
 
@@ -585,8 +703,10 @@ A node with no effect, overlapping runtime node bounds, and a graph that
 auto-fits below the readable scale are warnings. Visual Scale outside `1.0` to
 `2.0` is an error. **Tools > RB > Skills > Run Active Skill Core Smoke Tests**
 checks catch-up, shared points, prerequisites, Variant isolation, refunds, tree
-replacement, default/override Tree resolution, stat stacking, scaled-node
-layout, frame fallback, and validation.
+replacement, default/override Tree resolution, stat stacking, granted
+upgrade-id aggregation, mutually-exclusive rejection, Effect
+Duration/Heal Power stacking, scaled-node layout, frame fallback, and
+validation.
 
 ## Command Skill Cast Facing
 

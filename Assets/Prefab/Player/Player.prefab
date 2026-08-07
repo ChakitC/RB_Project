@@ -43,8 +43,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b5955a1fd4c6d504b83d74ede059593e, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   ctx: {fileID: 1638387977988830713}
   _Debug: 1
   maxDistance: 3
@@ -139,6 +139,7 @@ MonoBehaviour:
     upgradeTier: 0
     upgradeExp: 0
     unlockedUpgradeMilestoneIds: []
+    affixRuntimeStates: []
   equippedWeaponInstanceId: 
 --- !u!114 &2723905703233099677
 MonoBehaviour:
@@ -518,6 +519,7 @@ GameObject:
   - component: {fileID: 7759154630619611733}
   - component: {fileID: 3900802803091656922}
   - component: {fileID: 6098239142180533381}
+  - component: {fileID: -6960602465302522877}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -663,7 +665,7 @@ MonoBehaviour:
   KnockbackMotor: {fileID: 3729042986192515201}
   PassiveController: {fileID: 2601669138343315329}
   PassiveProgress: {fileID: 4875677148233401779}
-  ActiveSkillProgress: {fileID: 0}
+  ActiveSkillProgress: {fileID: -6960602465302522877}
   EnegySystem: {fileID: 3693568544021270016}
   Interactor: {fileID: 7938086370648664434}
   SkillManager: {fileID: 2048828252462802381}
@@ -698,8 +700,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 54fa0c20ce2c4d8491c517207b98e6d1, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   playerContext: {fileID: 1638387977988830713}
   leftSlot: {x: -1.5, y: 0, z: -1.8}
   rightSlot: {x: 1.5, y: 0, z: -1.8}
@@ -1054,6 +1056,8 @@ MonoBehaviour:
   aimTransform: {fileID: 37773055136607646}
   maximumEnergy: 0
   currentEnergy: 0
+  energyRegenPerSecond: 3
+  regenDelayAfterSpend: 2
   autoRefreshFromHub: 1
   keepEnergyPercentWhenMaxChanges: 1
   refreshIntervalSeconds: 0.2
@@ -1334,6 +1338,20 @@ MonoBehaviour:
     m_Bits: 1048575
   maximumAimDistance: 250
   muzzleProbeRadius: 0.045
+--- !u!114 &-6960602465302522877
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2311559804654788738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88ef01dd98428b34fa0ca9f4f548b1bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 0}
+  levelSystem: {fileID: 0}
 --- !u!1 &2390375286862288330
 GameObject:
   m_ObjectHideFlags: 0
@@ -1969,6 +1987,7 @@ MonoBehaviour:
     upgradeTier: 0
     upgradeExp: 0
     unlockedUpgradeMilestoneIds: []
+    affixRuntimeStates: []
   firePoint: {fileID: 7934880346290344753}
   gunType: 0
   damage: 0

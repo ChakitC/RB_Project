@@ -967,6 +967,12 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     private void HandleActiveSkillTreeChanged(string slotId, string optionId)
     {
+        if (string.IsNullOrWhiteSpace(slotId) || string.IsNullOrWhiteSpace(optionId))
+        {
+            RebuildResolvedCommandSlots();
+            return;
+        }
+
         if (!TryGetCommandSlotState(slotId, out ResolvedCommandSlotState state) ||
             state.selectedOption == null ||
             !string.Equals(

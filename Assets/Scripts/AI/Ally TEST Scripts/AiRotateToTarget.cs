@@ -37,6 +37,7 @@ public class AiRotateToTarget : Action
     private bool _cachedUpdateRotation;
     private bool _cachedIsStopped;
     private CharacteContext _ctx;
+    private AITargetSensor _sensor;
 
     public override void OnAwake()
     {
@@ -47,6 +48,10 @@ public class AiRotateToTarget : Action
     public override void OnStart()
     {
         _ctx = gameObject.GetComponentInParent<CharacteContext>();
+        _sensor = _ctx != null ? _ctx.GetComponent<AITargetSensor>() : null;
+        if (_sensor == null && _ctx != null)
+            _sensor = _ctx.GetComponentInChildren<AITargetSensor>(true);
+
         _rotateTransform =
             (rotateRoot != null && rotateRoot.Value != null)
             ? rotateRoot.Value.transform
@@ -69,6 +74,20 @@ public class AiRotateToTarget : Action
     {
         if (target == null || target.Value == null)
             return failWhenTargetLost ? TaskStatus.Failure : TaskStatus.Success;
+
+        // The shared variable this task rotates toward is only refreshed when the tree
+        // re-evaluates the branch that set it — it does not react to a mid-task retarget
+        // (e.g. taunt updating AITargetSensor.CurrentTarget). Bail out so the tree re-selects
+        // with the fresh target instead of continuing to face a stale one indefinitely.
+        if (_sensor != null)
+        {
+            Transform sensorTarget = _sensor.CurrentTarget;
+            if (sensorTarget != null && sensorTarget.gameObject != target.Value &&
+                !sensorTarget.IsChildOf(target.Value.transform) && !target.Value.transform.IsChildOf(sensorTarget))
+            {
+                return TaskStatus.Failure;
+            }
+        }
 
         if (!_ctx.stateHub.CanRotate()) { return TaskStatus.Failure; }
 

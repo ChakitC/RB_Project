@@ -108,13 +108,14 @@ public class VfxSpawner : MonoBehaviour
         Vector3 normal,
         float extraLife = 0f,
         float scale = 1f,
-        float minimumLifetime = 0f)
+        float minimumLifetime = 0f,
+        Transform parent = null)
     {
         Quaternion rot = normal.sqrMagnitude > 0.0001f
             ? Quaternion.LookRotation(normal.normalized)
             : Quaternion.identity;
 
-        return SpawnVfx(prefab, pos, rot, extraLife, scale, minimumLifetime);
+        return SpawnVfx(prefab, pos, rot, extraLife, scale, minimumLifetime, parent);
     }
 
     public GameObject SpawnVfx(
@@ -123,12 +124,13 @@ public class VfxSpawner : MonoBehaviour
         Quaternion rotation,
         float extraLife = 0f,
         float scale = 1f,
-        float minimumLifetime = 0f)
+        float minimumLifetime = 0f,
+        Transform parent = null)
     {
         if (!spawnVfx) return null;
         if (prefab == null) return null;
 
-        GameObject vfx = InstantiateVfx(prefab, pos, rotation, null, scale);
+        GameObject vfx = InstantiateVfx(prefab, pos, rotation, parent, scale);
 
         PooledVfxHandle handle = vfx.GetComponent<PooledVfxHandle>();
         float duration = handle != null

@@ -255,6 +255,24 @@ empty, runtime save/load uses the skill definition's `skillId`.
 `CharacterStats` does not define that index. New character prefabs should leave
 active-skill choices in `CharacterStats`.
 
+## Active Skill Tree Upgrade-Id Authoring
+
+`SkillUpgradeNodeData.grantedUpgradeIds` marks the behavior flags a tree node grants; steps and
+payloads query them at runtime through `SkillCastContext.HasUpgrade`. The ids themselves are never
+typed on the tree first — they originate on the payload's own fields (a `SkillEffectStep`'s
+`requiredUpgradeId` gate, or a payload's `conditionalApplications[].requiredUpgradeId` list, such
+as on `TauntSkillPayloadDef`, `ApplyStatusSkillPayloadDef`, or `HealAreaStep`). The tree only picks
+from what the payload already declares — that is the single source of truth for a given id.
+
+In the Active Skill Tree Editor (or the plain Inspector on a `SkillUpgradeTreeDefinition` asset),
+each entry in `Granted Upgrade Ids` is a dropdown listing every id declared by the tree's owning
+skill(s) (resolved from `SkillGemDefinition.upgradeTree` / `CharacterSkillLoadoutOption
+.upgradeTreeOverride` references), plus a `Custom…` entry that switches that element to free text
+for the rest of the session. Use `Custom…` when authoring a tree before its owning skill's payload
+exists yet, or when typing an id that hasn't been added to the payload. An authored id that no
+longer matches the payload is shown with a warning tint instead of being silently cleared —
+`SkillUpgradeTreeValidator` will also flag it as an error once an owning skill is resolvable.
+
 ## Direct Serialized References
 
 Direct serialized references are appropriate for:
@@ -916,10 +934,15 @@ warning. Assign the `Taunted` status effect asset
 - `Assets/Prefab/Player/Ally_Helper.prefab`
 - `Assets/Prefab/Player/Ally_Stryker.prefab`
 
-`Ally.prefab` has no `StatusEffectController`; `AITargetSensor` lazily
-`AddComponent`s one at runtime when needed, matching the auto-provision
-pattern already used by `CharacteContext.ResolveReferences()` for components
-like `AccessoryLoadout` and `ThirdPersonAimRigController`.
+`Ally.prefab` has an authored `StatusEffectController` on its root object
+(added so status-effect payloads — e.g. `Aires_Skill_3`'s ally-heal branch —
+can apply buffs to allies; previously `AITargetSensor` lazily `AddComponent`d
+one at runtime when needed, matching the auto-provision pattern already used by
+`CharacteContext.ResolveReferences()` for components like `AccessoryLoadout`
+and `ThirdPersonAimRigController`). Any other ally-type prefab that needs to
+receive status effects (buffs, heals, debuffs) must carry its own
+`StatusEffectController` the same way — the lazy `AddComponent` fallback in
+`AITargetSensor` only covers the taunt-debuff path.
 
 ## Root Motion Trajectory Authoring
 

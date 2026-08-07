@@ -12,15 +12,80 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d999bcd05b94a04482516e82de86278, type: 3}
   m_Name: Taunt Execution
   m_EditorClassIdentifier: 
-  helperFacingMode: 1
+  helperFacingMode: 0
   chainContinueMode: 0
   chainContinueNormalizedTime: 1
   radius: 30
   duration: 10
+  useSkillStats: 1
   requireLineOfSight: 0
   targetLayers:
     serializedVersion: 2
     m_Bits: 512
+  conditionalApplications:
+  - requiredUpgradeId: aires3.def_shred
+    effect: {fileID: 11400000, guid: 5709009c55624b6cadd36410f6fe6259, type: 2}
+    stacks: 1
+  - requiredUpgradeId: aires3.weakpoint
+    effect: {fileID: 11400000, guid: c982ee00f1dc4d8c8e20baf4a75f32c7, type: 2}
+    stacks: 1
+  - requiredUpgradeId: aires3.gather
+    effect: {fileID: 11400000, guid: b11a483f1f7d4243bf09473512a3db50, type: 2}
+    stacks: 1
+--- !u!114 &-1399037589978097692
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1efc9a3026324a84da09f79a740fc6cf, type: 3}
+  m_Name: Aires Skill 3 Composite
+  m_EditorClassIdentifier: 
+  helperFacingMode: 1
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  steps:
+  - rid: 764560941601521803
+  - rid: 764560941601521804
+  - rid: 764560941601521805
+  - rid: 764560941601521806
+  references:
+    version: 2
+    RefIds:
+    - rid: 764560941601521803
+      type: {class: PayloadStep, ns: , asm: Assembly-CSharp}
+      data:
+        requiredUpgradeId: 
+        payload: {fileID: -7446067993122877699}
+    - rid: 764560941601521804
+      type: {class: HealAreaStep, ns: , asm: Assembly-CSharp}
+      data:
+        requiredUpgradeId: 
+        target: 0
+        statusApplications: []
+        conditionalApplications: []
+    - rid: 764560941601521805
+      type: {class: PayloadStep, ns: , asm: Assembly-CSharp}
+      data:
+        requiredUpgradeId: 
+        payload: {fileID: 9122281289257134125}
+    - rid: 764560941601521806
+      type: {class: HealAreaStep, ns: , asm: Assembly-CSharp}
+      data:
+        requiredUpgradeId: aires3.ally_support
+        target: 1
+        statusApplications:
+        - {fileID: 11400000, guid: b60436665da34715adedde52854f7854, type: 2}
+        conditionalApplications:
+        - requiredUpgradeId: aires3.ally_regen
+          effect: {fileID: 11400000, guid: 06f43c92361341dcb48eeca03e44ecbc, type: 2}
+          stacks: 1
+        - requiredUpgradeId: aires3.strong_guard
+          effect: {fileID: 11400000, guid: 713c540d75cd4c04aa84034a0ae37587, type: 2}
+          stacks: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -47,11 +112,13 @@ MonoBehaviour:
   baseCritChance: 0
   baseProjectilesCount: 1
   projectileSpeed: 5
-  AreaofEffec: 0
-  baseRadius: 0
+  AreaofEffec: 1
+  baseRadius: 30
   maxLevel: 20
-  upgradeTree: {fileID: 0}
-  payload: {fileID: -7446067993122877699}
+  baseEffectDuration: 10
+  baseHealPower: 25
+  upgradeTree: {fileID: 11400000, guid: b8e9bc77eeb540059e8260af1b2c4bae, type: 2}
+  payload: {fileID: -1399037589978097692}
   castCue: {fileID: 0}
   skillClip:
     _FadeDuration: 0.25
@@ -59,20 +126,20 @@ MonoBehaviour:
     _Events:
       _NormalizedTimes:
       - 0
-      - 0.30411687
       - 0.3774215
+      - 0.44642857
       - 0.46492985
       - NaN
       _Callbacks: []
       _Names:
       - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
-      - {fileID: 11400000, guid: 74278b3794beb9a4c9fdf911427eb18a, type: 2}
       - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
+      - {fileID: 11400000, guid: 74278b3794beb9a4c9fdf911427eb18a, type: 2}
       - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
     _Clip: {fileID: 8720029984051212183, guid: e72832d5dba903a4997d701bfe93da7f, type: 3}
     _NormalizedStartTime: NaN
   ignoreCharacterCollisionDuringRootMotion: 1
-  castPointNormalized: 0.07968128
+  castPointNormalized: 0.4017857
   skillVfxEvents:
   - cueIndex: 0
     action: 0
@@ -155,3 +222,33 @@ MonoBehaviour:
   references:
     version: 2
     RefIds: []
+--- !u!114 &9122281289257134125
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7db3ed7615674e54a9eb8c2965ae7b35, type: 3}
+  m_Name: Tea Buff Status
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  applications: []
+  preferCasterRoot: 1
+  conditionalApplications:
+  - requiredUpgradeId: aires3.self_guard
+    effect: {fileID: 11400000, guid: 7d01584e2f6847a5a55c777f89c267cf, type: 2}
+    stacks: 1
+  - requiredUpgradeId: aires3.self_guard
+    effect: {fileID: 11400000, guid: 06f43c92361341dcb48eeca03e44ecbc, type: 2}
+    stacks: 1
+  - requiredUpgradeId: aires3.unshaken
+    effect: {fileID: 11400000, guid: da315366b39342e7a7c11647242502e6, type: 2}
+    stacks: 1
+  - requiredUpgradeId: aires3.thorns
+    effect: {fileID: 11400000, guid: 63c79074e4c24347b0ffb4d998994bc7, type: 2}
+    stacks: 1

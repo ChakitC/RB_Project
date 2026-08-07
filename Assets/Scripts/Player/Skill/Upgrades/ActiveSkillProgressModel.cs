@@ -101,20 +101,37 @@ public sealed class ActiveSkillProgressModel
             return false;
         }
 
-        if (node.requiredNodeIds == null)
-            return true;
-
-        for (int i = 0; i < node.requiredNodeIds.Count; i++)
+        if (node.requiredNodeIds != null)
         {
-            string requiredNodeId = node.requiredNodeIds[i];
-            if (string.IsNullOrWhiteSpace(requiredNodeId))
-                continue;
+            for (int i = 0; i < node.requiredNodeIds.Count; i++)
+            {
+                string requiredNodeId = node.requiredNodeIds[i];
+                if (string.IsNullOrWhiteSpace(requiredNodeId))
+                    continue;
 
-            if (FindUnlockedNode(progress, requiredNodeId.Trim()) != null)
-                continue;
+                if (FindUnlockedNode(progress, requiredNodeId.Trim()) != null)
+                    continue;
 
-            reason = $"Requires node {requiredNodeId.Trim()}.";
-            return false;
+                reason = $"Requires node {requiredNodeId.Trim()}.";
+                return false;
+            }
+        }
+
+        if (node.mutuallyExclusiveNodeIds != null)
+        {
+            for (int i = 0; i < node.mutuallyExclusiveNodeIds.Count; i++)
+            {
+                string exclusiveNodeId = node.mutuallyExclusiveNodeIds[i];
+                if (string.IsNullOrWhiteSpace(exclusiveNodeId))
+                    continue;
+
+                CharacterSkillUpgradeNodeSaveData unlockedExclusive = FindUnlockedNode(progress, exclusiveNodeId.Trim());
+                if (unlockedExclusive == null)
+                    continue;
+
+                reason = $"Excludes node {exclusiveNodeId.Trim()}. Respec to switch branches.";
+                return false;
+            }
         }
 
         return true;

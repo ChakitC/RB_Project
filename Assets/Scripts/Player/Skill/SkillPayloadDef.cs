@@ -22,6 +22,10 @@ public abstract class SkillPayloadDef : ScriptableObject
     {
     }
 
+    public virtual void CollectUpgradeIds(List<string> ids)
+    {
+    }
+
     public virtual void CollectValidationIssues(List<string> issues)
     {
     }
@@ -40,4 +44,17 @@ public abstract class SkillPayloadDef : ScriptableObject
     }
 
     public abstract void Execute(SkillCastContext context);
+}
+
+public static class SkillUpgradeIdCollection
+{
+    public static void AddUnique(List<string> ids, string id)
+    {
+        if (ids == null || string.IsNullOrWhiteSpace(id))
+            return;
+
+        string trimmed = id.Trim();
+        if (!ids.Contains(trimmed))
+            ids.Add(trimmed);
+    }
 }

@@ -69,7 +69,11 @@ and maintains current/visible/last-seen target state.
 Important sensor concepts:
 
 - scan interval
-- target layers and obstacle layers
+- target layers and obstacle layers — target layers are the only coarse membership
+  filter. There is no tag filter: the sensor resolves a candidate's root through
+  `CharacteContext`/`AITargetInfo`, and that root is often a child object (the
+  `AI System` node) whose tag does not match the character's own tag, so tag
+  matching was unreliable by construction.
 - field of view
 - line of sight
 - team filtering
@@ -329,8 +333,8 @@ Its repeating selector gives combat higher priority than patrol:
 1. `HasEnemyFromSensor` writes the sensor's retained target to the graph-scoped
    `CurrentTarget` variable. Brief line-of-sight interruptions use the targeting
    profile's grace period instead of dropping combat immediately. This
-   variant's sensor requires the `Player` tag, so companions are not selected
-   by this tree.
+   variant's sensor scans the `Player` and `Ally` layers, so companions are
+   valid targets and compete with the player through normal scoring.
 2. `TargetOrbitNavMesh` moves into a 5-7 m radial band and orbits for 2.5
    active-world seconds while facing the target. It replans every 0.25 seconds,
    keeps a valid current path when a periodic probe misses, and uses a 3-second

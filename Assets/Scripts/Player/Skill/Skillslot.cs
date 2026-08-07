@@ -38,11 +38,3 @@ public sealed class HelperProcSlot
         return helperProc;
     }
 }
-
-[System.Serializable]
-public sealed class PassiveSkillSlot
-{
-    public PassiveDefinition passiveAsset;
-
-    public bool IsConfigured => passiveAsset != null;
-}

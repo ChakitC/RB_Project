@@ -12,7 +12,8 @@ public sealed class RestoreMagazineOnDashPassiveBehavior : PassiveCustomBehavior
     public override void OnPassiveEvent(
         PassiveController controller,
         CustomPassiveDef definition,
-        in PassiveEventContext context)
+        in PassiveEventContext context,
+        SkillUpgradeStatSnapshot upgrades)
     {
         if (context.Type != PassiveEventType.DashStarted || controller == null)
             return;

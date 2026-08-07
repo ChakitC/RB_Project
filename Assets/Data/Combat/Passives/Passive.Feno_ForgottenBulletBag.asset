@@ -13,6 +13,9 @@ MonoBehaviour:
   m_Name: Passive.Feno_ForgottenBulletBag
   m_EditorClassIdentifier: 
   passiveId: Passive.Feno.ForgottenBulletBag
-  description: Feno forgot to close her trusted bag. During combat, shots can shake loose ammo pickups for allies to collect.
+  icon: {fileID: 21300000, guid: 28e7cb120529af14f862ecb36d8ff881, type: 3}
+  description: Feno forgot to close her trusted bag. During combat, shots can shake
+    loose ammo pickups for allies to collect.
+  upgradeTree: {fileID: 11400000, guid: 97515d464df3c904080f767838307f30, type: 2}
   behaviors:
   - {fileID: 11400000, guid: b2b3aa66b8c34fdc8b851d8b85a42a12, type: 2}

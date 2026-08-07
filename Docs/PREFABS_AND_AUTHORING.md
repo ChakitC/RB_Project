@@ -240,10 +240,12 @@ validator is available to batch mode through
 
 ## Character Skill Loadout Authoring
 
-Author character-default active skills on the `CharacterStats` asset under
-`Skill Loadout`. A slot represents one command slot and should have a stable
-`slotId`, hotkey, default option index, and one or more options. An option points
-at the actual `SkillGemDefinition`, level, and support gems to use when selected.
+Author character-default active skills, and any character-owned passive with
+its own upgrade tree, on the `CharacterStats` asset under `Skill Loadout`. A
+slot represents one command slot and should have a stable `slotId`, hotkey,
+default option index, and one or more options. An option's `skillAsset` field
+accepts either a `SkillGemDefinition` (active) or a `PassiveDefinition`
+(passive) — the asset kind decides the slot's execution mode.
 
 Use explicit `optionId` values when multiple options in the same slot could
 reference skills with missing or duplicate `skillId` values. If `optionId` is
@@ -253,7 +255,30 @@ empty, runtime save/load uses the skill definition's `skillId`.
 `CharacterStats` is authoritative for every slot index it defines. Prefab-authored
 `autonomousSlots` are still supported only as legacy fallback slots when
 `CharacterStats` does not define that index. New character prefabs should leave
-active-skill choices in `CharacterStats`.
+active-skill choices in `CharacterStats`. There is no separate `passiveSlots`
+field on `CharacterSkillManager` anymore — it was removed (was always
+empty in every prefab, so nothing authored is lost).
+
+### Authoring A Passive-Kind Slot
+
+- Give it `hotkey: None` — passives are never castable, and the validator
+  warns on a passive slot with any other hotkey.
+- Put it **last** in `skillSlots`. `CharacterSkillManager` resolves the
+  runtime slot index 1:1 with the authored index, so a passive slot before an
+  active one would shift every active slot's index; the validator errors on
+  this.
+- Do not mix an active and a passive option in the same slot — the validator
+  errors on it. A slot's options must all be the same kind.
+- If the passive is migrating off `CharacterStats.passives` (the flat list),
+  clear that list in the same change — `PassiveController` uses configured
+  passive slots *instead of* `passives` the moment any slot is passive-kind,
+  not in addition to it.
+- An `AlwaysOnPassiveDef` option cannot resolve an upgrade tree in Phase 1 (no
+  gate mechanism exists for its unconditional modifiers) — the validator
+  errors if `upgradeTreeOverride` or the definition's own `upgradeTree` is set
+  on one.
+
+See `RB_Project\Docs\SYSTEMS\PASSIVES.md` for the runtime model.
 
 ## Active Skill Tree Upgrade-Id Authoring
 

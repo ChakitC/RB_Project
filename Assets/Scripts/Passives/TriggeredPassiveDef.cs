@@ -9,12 +9,29 @@ public sealed class TriggeredPassiveDef : PassiveDefinition
     public List<TriggeredPassiveRule> rules = new();
 
     public override PassiveKind Kind => PassiveKind.Triggered;
+
+    public override void CollectUpgradeIds(List<string> ids)
+    {
+        if (ids == null || rules == null)
+            return;
+
+        for (int i = 0; i < rules.Count; i++)
+        {
+            string id = rules[i]?.requiredUpgradeId;
+            if (!string.IsNullOrWhiteSpace(id))
+                ids.Add(id.Trim());
+        }
+    }
 }
 
 [Serializable]
 public sealed class TriggeredPassiveRule
 {
     public string ruleId = "rule";
+
+    [Tooltip("Optional. Rule stays inert unless the owning slot's snapshot grants this id.")]
+    [UpgradeIdPicker] public string requiredUpgradeId;
+
     public PassiveEventType trigger = PassiveEventType.None;
     public PassiveOriginFilter originFilter = PassiveOriginFilter.ExternalOnly;
     [Min(1)] public int requiredCount = 1;

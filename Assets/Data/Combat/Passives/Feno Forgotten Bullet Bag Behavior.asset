@@ -46,3 +46,4 @@ MonoBehaviour:
   applyRigidbodyImpulse: 0
   horizontalImpulse: 1.6
   upwardImpulse: 2.2
+  extraDropUpgradeId: passive.feno.bulletbag.extra_drop

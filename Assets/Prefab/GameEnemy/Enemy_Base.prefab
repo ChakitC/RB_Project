@@ -681,7 +681,6 @@ MonoBehaviour:
     m_Bits: 0
   triggerInteraction: 1
   maxHits: 64
-  requiredTag: 
   useFieldOfView: 0
   fieldOfView: 180
   requireLineOfSight: 1
@@ -1401,24 +1400,13 @@ MonoBehaviour:
   autonomousSlots: []
   playerCommandSkill:
     skillAsset: {fileID: 0}
-    skillLevel: 1
-    supportAssets: []
     runtimeSkill:
       def: {fileID: 0}
-      level: 1
-      supports: []
-    maxSupportSlots: 3
   chainAttackSkill:
     skillAsset: {fileID: 0}
-    skillLevel: 1
-    supportAssets: []
     runtimeSkill:
       def: {fileID: 0}
-      level: 1
-      supports: []
-    maxSupportSlots: 3
   helperProcLoadout: []
-  passiveSlots: []
 --- !u!114 &1695257887938755810
 MonoBehaviour:
   m_ObjectHideFlags: 0

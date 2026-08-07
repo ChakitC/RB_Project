@@ -1580,8 +1580,6 @@ MonoBehaviour:
   defaultChainSkill: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
   useRuntimeChainSkillOverride: 0
   runtimeChainSkill: {fileID: 0}
-  overrideRuntimeChainSkillLevel: 1
-  runtimeChainSkillLevel: 1
   useDirectSkillUserForChainCastDebug: 0
   directSkillUserSource: {fileID: 0}
   utilityRecoveryTimeoutSeconds: 1.25
@@ -1931,27 +1929,16 @@ MonoBehaviour:
   autonomousSlots: []
   playerCommandSkill:
     skillAsset: {fileID: 0}
-    skillLevel: 1
-    supportAssets: []
     runtimeSkill:
       def: {fileID: 0}
-      level: 1
-      supports: []
-    maxSupportSlots: 3
   chainAttackSkill:
     skillAsset: {fileID: 0}
-    skillLevel: 1
-    supportAssets: []
     runtimeSkill:
       def: {fileID: 0}
-      level: 1
-      supports: []
-    maxSupportSlots: 3
   helperProcLoadout:
   - helperProc: {fileID: 11400000, guid: ee9a73ae9a17aa24a8d64b929173f63d, type: 2}
   - helperProc: {fileID: 11400000, guid: ad6da32b25db43148aa75f021e358549, type: 2}
   - helperProc: {fileID: 11400000, guid: 61266ad809f609e40ae69b87f64da449, type: 2}
-  passiveSlots: []
 --- !u!1 &8793336297671156958
 GameObject:
   m_ObjectHideFlags: 0
@@ -2084,7 +2071,6 @@ MonoBehaviour:
     m_Bits: 0
   triggerInteraction: 1
   maxHits: 64
-  requiredTag: 
   useFieldOfView: 0
   fieldOfView: 180
   requireLineOfSight: 1

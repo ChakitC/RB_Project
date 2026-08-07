@@ -1252,24 +1252,13 @@ MonoBehaviour:
   autonomousSlots: []
   playerCommandSkill:
     skillAsset: {fileID: 0}
-    skillLevel: 1
-    supportAssets: []
     runtimeSkill:
       def: {fileID: 0}
-      level: 1
-      supports: []
-    maxSupportSlots: 3
   chainAttackSkill:
     skillAsset: {fileID: 11400000, guid: 67674e00df0c63a47ae012332803a083, type: 2}
-    skillLevel: 1
-    supportAssets: []
     runtimeSkill:
       def: {fileID: 0}
-      level: 1
-      supports: []
-    maxSupportSlots: 3
   helperProcLoadout: []
-  passiveSlots: []
 --- !u!114 &3091736426749422193
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1427,8 +1416,6 @@ MonoBehaviour:
   defaultChainSkill: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
   useRuntimeChainSkillOverride: 0
   runtimeChainSkill: {fileID: 0}
-  overrideRuntimeChainSkillLevel: 1
-  runtimeChainSkillLevel: 1
   useDirectSkillUserForChainCastDebug: 0
   directSkillUserSource: {fileID: 0}
   utilityRecoveryTimeoutSeconds: 1.25
@@ -1463,13 +1450,8 @@ MonoBehaviour:
   fieldAllyMember: {fileID: 1692569504618657093}
   interruptionSkill:
     skillAsset: {fileID: 11400000, guid: 762b42e521970fa45a8d258e7d1a3a65, type: 2}
-    skillLevel: 1
-    supportAssets: []
     runtimeSkill:
       def: {fileID: 0}
-      level: 1
-      supports: []
-    maxSupportSlots: 3
   teleportProfile: {fileID: 11400000, guid: 67b40f9eb19a474fb266e3e7e25852fb, type: 2}
   motionBoneName: root.x
   rebaseSettleTimeoutSeconds: 0.75

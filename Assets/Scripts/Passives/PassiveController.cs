@@ -22,7 +22,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
     readonly List<RuntimeStatModifier> _alwaysOnModifiers = new();
     readonly List<ActivePassiveModifier> _activeModifiers = new();
     readonly List<TriggeredPassiveRuntime> _triggeredPassives = new();
-    readonly List<CustomPassiveDef> _customPassives = new();
+    readonly List<EquippedPassive> _customPassives = new();
     readonly List<IPassiveDefinitionProvider> _passiveProviders = new();
     readonly List<PassiveDefinition> _providerPassiveBuffer = new();
     readonly Dictionary<ulong, HashSet<RuleExecutionKey>> _executionsByChain = new();
@@ -39,6 +39,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
     long _nextIndependentModifierId;
     bool _subscribed;
+    CharacterSkillManager _subscribedSkillManager;
 
     void Awake()
     {
@@ -89,6 +90,28 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             statusEffectController = ctx.GetComponentInChildren<StatusEffectController>(true);
         if (!statusEffectController)
             TryGetComponent(out statusEffectController);
+
+        SubscribeToSkillManager(ctx != null ? ctx.SkillManager : null);
+    }
+
+    void SubscribeToSkillManager(CharacterSkillManager skillManager)
+    {
+        if (ReferenceEquals(_subscribedSkillManager, skillManager))
+            return;
+
+        if (_subscribedSkillManager != null)
+            _subscribedSkillManager.PassiveLoadoutChanged -= HandlePassiveLoadoutChanged;
+
+        _subscribedSkillManager = skillManager;
+
+        if (_subscribedSkillManager != null)
+            _subscribedSkillManager.PassiveLoadoutChanged += HandlePassiveLoadoutChanged;
+    }
+
+    void HandlePassiveLoadoutChanged()
+    {
+        if (isActiveAndEnabled)
+            RefreshPassiveLoadout();
     }
 
     void OnDisable()
@@ -100,6 +123,11 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         _executionsByChain.Clear();
         _chainLastSeenTime.Clear();
         NotifyStatModifiersChanged();
+    }
+
+    void OnDestroy()
+    {
+        SubscribeToSkillManager(null);
     }
 
     void Update()
@@ -123,7 +151,9 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
     public void RefreshPassiveLoadout()
     {
-        UnloadCustomPassives();
+        List<ActivePassiveModifier> preservedModifiers = new(_activeModifiers);
+        Dictionary<RuleStateKey, TriggeredRuleState> preservedRuleStates = CaptureTriggeredRuleStates();
+        HashSet<CustomPassiveDef> previousCustomDefinitions = CaptureCustomDefinitions();
 
         _alwaysOnModifiers.Clear();
         _activeModifiers.Clear();
@@ -137,15 +167,9 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         AddPassivesFromProviders();
         AddPassivesFromList(extraPassives);
 
-        for (int i = 0; i < _customPassives.Count; i++)
-        {
-            var definition = _customPassives[i];
-            if (definition == null || definition.behaviors == null)
-                continue;
-
-            for (int j = 0; j < definition.behaviors.Count; j++)
-                definition.behaviors[j]?.OnEquipped(this, definition);
-        }
+        RestoreTriggeredRuleStates(preservedRuleStates);
+        _activeModifiers.AddRange(preservedModifiers);
+        NotifyCustomPassiveLifecycleDelta(previousCustomDefinitions);
 
         RefreshOptionalEventSources();
         statsHub?.RebuildModifierProviders();
@@ -158,13 +182,102 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         if (skillManager == null || !skillManager.HasConfiguredPassiveSlots)
             return false;
 
-        List<PassiveDefinition> equippedPassives = new();
+        List<EquippedPassive> equippedPassives = new();
         skillManager.AppendConfiguredPassiveDefinitions(equippedPassives);
         if (equippedPassives.Count == 0)
             return false;
 
         AddPassivesFromList(equippedPassives);
         return true;
+    }
+
+    HashSet<CustomPassiveDef> CaptureCustomDefinitions()
+    {
+        var set = new HashSet<CustomPassiveDef>();
+        for (int i = 0; i < _customPassives.Count; i++)
+        {
+            if (_customPassives[i].Definition is CustomPassiveDef definition)
+                set.Add(definition);
+        }
+
+        return set;
+    }
+
+    void NotifyCustomPassiveLifecycleDelta(HashSet<CustomPassiveDef> previousDefinitions)
+    {
+        var currentDefinitions = new HashSet<CustomPassiveDef>();
+
+        for (int i = 0; i < _customPassives.Count; i++)
+        {
+            EquippedPassive equipped = _customPassives[i];
+            if (equipped.Definition is not CustomPassiveDef definition || definition.behaviors == null)
+                continue;
+
+            currentDefinitions.Add(definition);
+
+            if (previousDefinitions.Contains(definition))
+                continue;
+
+            for (int j = 0; j < definition.behaviors.Count; j++)
+                definition.behaviors[j]?.OnEquipped(this, definition, equipped.Upgrades);
+        }
+
+        foreach (CustomPassiveDef definition in previousDefinitions)
+        {
+            if (definition == null || definition.behaviors == null || currentDefinitions.Contains(definition))
+                continue;
+
+            for (int j = 0; j < definition.behaviors.Count; j++)
+                definition.behaviors[j]?.OnUnequipped(this, definition);
+        }
+    }
+
+    Dictionary<RuleStateKey, TriggeredRuleState> CaptureTriggeredRuleStates()
+    {
+        var map = new Dictionary<RuleStateKey, TriggeredRuleState>();
+
+        for (int i = 0; i < _triggeredPassives.Count; i++)
+        {
+            TriggeredPassiveRuntime runtime = _triggeredPassives[i];
+            if (runtime?.Definition == null || runtime.RuleStates == null)
+                continue;
+
+            string passiveId = runtime.Definition.RuntimeId;
+            for (int j = 0; j < runtime.RuleStates.Count; j++)
+            {
+                TriggeredRuleState state = runtime.RuleStates[j];
+                if (state?.Rule == null)
+                    continue;
+
+                map[new RuleStateKey(passiveId, state.Rule.RuntimeRuleId)] = state;
+            }
+        }
+
+        return map;
+    }
+
+    void RestoreTriggeredRuleStates(Dictionary<RuleStateKey, TriggeredRuleState> preserved)
+    {
+        if (preserved == null || preserved.Count == 0)
+            return;
+
+        for (int i = 0; i < _triggeredPassives.Count; i++)
+        {
+            TriggeredPassiveRuntime runtime = _triggeredPassives[i];
+            if (runtime?.Definition == null || runtime.RuleStates == null)
+                continue;
+
+            string passiveId = runtime.Definition.RuntimeId;
+            for (int j = 0; j < runtime.RuleStates.Count; j++)
+            {
+                TriggeredRuleState state = runtime.RuleStates[j];
+                if (state?.Rule == null)
+                    continue;
+
+                if (preserved.TryGetValue(new RuleStateKey(passiveId, state.Rule.RuntimeRuleId), out TriggeredRuleState previous))
+                    state.CopyStateFrom(previous);
+            }
+        }
     }
 
     public void SetRuntimePassives(IReadOnlyList<PassiveDefinition> passives)
@@ -359,12 +472,12 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
         for (int i = 0; i < _customPassives.Count; i++)
         {
-            var definition = _customPassives[i];
-            if (definition == null || definition.behaviors == null)
+            EquippedPassive equipped = _customPassives[i];
+            if (equipped.Definition is not CustomPassiveDef definition || definition.behaviors == null)
                 continue;
 
             for (int j = 0; j < definition.behaviors.Count; j++)
-                definition.behaviors[j]?.OnPassiveEvent(this, definition, context);
+                definition.behaviors[j]?.OnPassiveEvent(this, definition, context, equipped.Upgrades);
         }
     }
 
@@ -380,6 +493,9 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             var state = runtime.RuleStates[i];
             var rule = state.Rule;
             if (rule == null || rule.trigger != context.Type)
+                continue;
+
+            if (!PassiveUpgradeGate.IsRuleEnabled(rule, runtime.Upgrades))
                 continue;
 
             if (!MatchesOriginFilter(rule.originFilter, context.Origin))
@@ -531,6 +647,9 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 if (rule == null || rule.eventSourceKind == PassiveEventSourceKind.None)
                     continue;
 
+                if (!PassiveUpgradeGate.IsRuleEnabled(rule, runtime.Upgrades))
+                    continue;
+
                 var request = new PassiveEventSourceRequest(
                     rule.eventSourceKind,
                     rule.trigger,
@@ -651,6 +770,15 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             return;
 
         for (int i = 0; i < passives.Count; i++)
+            AddPassive(new EquippedPassive(passives[i]));
+    }
+
+    void AddPassivesFromList(List<EquippedPassive> passives)
+    {
+        if (passives == null)
+            return;
+
+        for (int i = 0; i < passives.Count; i++)
             AddPassive(passives[i]);
     }
 
@@ -688,8 +816,9 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         }
     }
 
-    void AddPassive(PassiveDefinition definition)
+    void AddPassive(in EquippedPassive equipped)
     {
+        PassiveDefinition definition = equipped.Definition;
         if (definition == null)
             return;
 
@@ -700,11 +829,11 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 break;
 
             case TriggeredPassiveDef triggered:
-                AddTriggeredPassive(triggered);
+                AddTriggeredPassive(triggered, equipped.Upgrades);
                 break;
 
-            case CustomPassiveDef custom:
-                _customPassives.Add(custom);
+            case CustomPassiveDef:
+                _customPassives.Add(equipped);
                 break;
         }
     }
@@ -729,12 +858,12 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         }
     }
 
-    void AddTriggeredPassive(TriggeredPassiveDef definition)
+    void AddTriggeredPassive(TriggeredPassiveDef definition, SkillUpgradeStatSnapshot upgrades)
     {
         if (definition == null)
             return;
 
-        var runtime = new TriggeredPassiveRuntime(definition);
+        var runtime = new TriggeredPassiveRuntime(definition, upgrades);
         _triggeredPassives.Add(runtime);
     }
 
@@ -742,8 +871,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
     {
         for (int i = 0; i < _customPassives.Count; i++)
         {
-            var definition = _customPassives[i];
-            if (definition == null || definition.behaviors == null)
+            if (_customPassives[i].Definition is not CustomPassiveDef definition || definition.behaviors == null)
                 continue;
 
             for (int j = 0; j < definition.behaviors.Count; j++)
@@ -911,9 +1039,10 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
     sealed class TriggeredPassiveRuntime
     {
-        public TriggeredPassiveRuntime(TriggeredPassiveDef definition)
+        public TriggeredPassiveRuntime(TriggeredPassiveDef definition, SkillUpgradeStatSnapshot upgrades)
         {
             Definition = definition;
+            Upgrades = upgrades;
             RuleStates = new List<TriggeredRuleState>();
 
             if (definition == null || definition.rules == null)
@@ -924,6 +1053,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         }
 
         public TriggeredPassiveDef Definition { get; }
+        public SkillUpgradeStatSnapshot Upgrades { get; }
         public List<TriggeredRuleState> RuleStates { get; }
     }
 
@@ -977,6 +1107,44 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 WindowExpiresAt = 0d;
             else if (Rule.countWindowSeconds > 0f)
                 WindowExpiresAt = time + Rule.countWindowSeconds;
+        }
+
+        public void CopyStateFrom(TriggeredRuleState other)
+        {
+            if (other == null)
+                return;
+
+            Counter = other.Counter;
+            WindowExpiresAt = other.WindowExpiresAt;
+            CooldownReadyAt = other.CooldownReadyAt;
+        }
+    }
+
+    readonly struct RuleStateKey : IEquatable<RuleStateKey>
+    {
+        public RuleStateKey(string passiveId, string ruleId)
+        {
+            PassiveId = passiveId ?? string.Empty;
+            RuleId = ruleId ?? string.Empty;
+        }
+
+        public string PassiveId { get; }
+        public string RuleId { get; }
+
+        public bool Equals(RuleStateKey other)
+        {
+            return string.Equals(PassiveId, other.PassiveId, StringComparison.Ordinal) &&
+                   string.Equals(RuleId, other.RuleId, StringComparison.Ordinal);
+        }
+
+        public override bool Equals(object obj) => obj is RuleStateKey other && Equals(other);
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return (PassiveId.GetHashCode() * 397) ^ RuleId.GetHashCode();
+            }
         }
     }
 

@@ -991,53 +991,25 @@ MonoBehaviour:
   autonomousSlots:
   - hotkey: 282
     skillAsset: {fileID: 11400000, guid: 2c0a137f622f7914d9c826d8d75120e0, type: 2}
-    skillLevel: 1
-    supportAssets:
-    - {fileID: 11400000, guid: 2fbd342265f1e87469d082ac1477e9f0, type: 2}
-    - {fileID: 11400000, guid: 8cfe3f7f282fc464ca6d5a23ada9bdf2, type: 2}
     runtimeSkill:
       def: {fileID: 0}
-      level: 1
-      supports: []
-    maxSupportSlots: 3
   - hotkey: 283
     skillAsset: {fileID: 11400000, guid: 2061a725c719dcc42ba1126f0446f7fe, type: 2}
-    skillLevel: 1
-    supportAssets: []
     runtimeSkill:
       def: {fileID: 0}
-      level: 1
-      supports: []
-    maxSupportSlots: 3
   - hotkey: 284
     skillAsset: {fileID: 11400000, guid: 937de0c45b9d0a846b62b6be6e46ae4e, type: 2}
-    skillLevel: 1
-    supportAssets: []
     runtimeSkill:
       def: {fileID: 0}
-      level: 1
-      supports: []
-    maxSupportSlots: 3
   playerCommandSkill:
     skillAsset: {fileID: 0}
-    skillLevel: 1
-    supportAssets: []
     runtimeSkill:
       def: {fileID: 0}
-      level: 1
-      supports: []
-    maxSupportSlots: 3
   chainAttackSkill:
     skillAsset: {fileID: 0}
-    skillLevel: 1
-    supportAssets: []
     runtimeSkill:
       def: {fileID: 0}
-      level: 1
-      supports: []
-    maxSupportSlots: 3
   helperProcLoadout: []
-  passiveSlots: []
 --- !u!114 &3693568544021270016
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1286,13 +1258,8 @@ MonoBehaviour:
   playerContext: {fileID: 1638387977988830713}
   interruptionSkill:
     skillAsset: {fileID: 11400000, guid: f6a8de83801770146923403b369c8797, type: 2}
-    skillLevel: 1
-    supportAssets: []
     runtimeSkill:
       def: {fileID: 0}
-      level: 1
-      supports: []
-    maxSupportSlots: 3
   teleportProfile: {fileID: 11400000, guid: 67b40f9eb19a474fb266e3e7e25852fb, type: 2}
   knockbackDistance: 2
   knockbackDuration: 0.4
@@ -1599,8 +1566,6 @@ MonoBehaviour:
   defaultChainSkill: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
   useRuntimeChainSkillOverride: 0
   runtimeChainSkill: {fileID: 0}
-  overrideRuntimeChainSkillLevel: 1
-  runtimeChainSkillLevel: 1
   useDirectSkillUserForChainCastDebug: 0
   directSkillUserSource: {fileID: 0}
   utilityRecoveryTimeoutSeconds: 1.25
@@ -2175,7 +2140,6 @@ MonoBehaviour:
     requireOwnerAlive: 1
     executionKind: 1
     helperSkill: {fileID: 0}
-    helperSkillLevel: 1
     helperHideOnComplete: 1
     helperCommandSlotIndex: 0
     helperChainAttackSequence: {fileID: 0}

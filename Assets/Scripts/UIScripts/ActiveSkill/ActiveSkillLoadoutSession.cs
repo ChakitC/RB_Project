@@ -186,7 +186,7 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
 
     public FinalSkillStats BuildStatsPreview(int slotIndex, int optionIndex, SkillUpgradeNodeData proposedNode = null)
     {
-        if (!TryGetOption(slotIndex, optionIndex, out CharacterSkillLoadoutOption option) || option.skillAsset == null)
+        if (!TryGetOption(slotIndex, optionIndex, out CharacterSkillLoadoutOption option) || option.ActiveSkillAsset == null)
             return null;
 
         TryResolveTree(slotIndex, optionIndex, out string slotId, out string optionId, out SkillUpgradeTreeDefinition tree);
@@ -199,7 +199,7 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
 
         var instance = new SkillInstance
         {
-            def = option.skillAsset,
+            def = option.ActiveSkillAsset,
             upgradeSnapshot = snapshot,
         };
 

@@ -47,7 +47,7 @@ public static class SkillUpgradeTreeValidator
             return issues;
         }
 
-        IReadOnlyList<SkillGemDefinition> owners = FindOwningSkills(tree);
+        IReadOnlyList<SkillDefinitionBase> owners = FindOwningAssets(tree);
         bool hasOwner = owners.Count > 0;
         var declaredUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         if (hasOwner)
@@ -269,19 +269,19 @@ public static class SkillUpgradeTreeValidator
         Debug.Log($"[ActiveSkillTree] Validation complete: {treeGuids.Length} trees, {errorCount} errors, {warningCount} warnings.");
     }
 
-    public static IReadOnlyList<SkillGemDefinition> FindOwningSkills(SkillUpgradeTreeDefinition tree)
+    public static IReadOnlyList<SkillDefinitionBase> FindOwningAssets(SkillUpgradeTreeDefinition tree)
     {
-        var owners = new List<SkillGemDefinition>();
+        var owners = new List<SkillDefinitionBase>();
         if (tree == null)
             return owners;
 
-        string[] skillGuids = AssetDatabase.FindAssets("t:SkillGemDefinition");
-        for (int i = 0; i < skillGuids.Length; i++)
+        string[] assetGuids = AssetDatabase.FindAssets("t:SkillDefinitionBase");
+        for (int i = 0; i < assetGuids.Length; i++)
         {
-            string path = AssetDatabase.GUIDToAssetPath(skillGuids[i]);
-            SkillGemDefinition skill = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>(path);
-            if (skill != null && skill.upgradeTree == tree && !owners.Contains(skill))
-                owners.Add(skill);
+            string path = AssetDatabase.GUIDToAssetPath(assetGuids[i]);
+            SkillDefinitionBase asset = AssetDatabase.LoadAssetAtPath<SkillDefinitionBase>(path);
+            if (asset != null && asset.UpgradeTree == tree && !owners.Contains(asset))
+                owners.Add(asset);
         }
 
         string[] statGuids = AssetDatabase.FindAssets("t:CharacterStats");
@@ -313,6 +313,19 @@ public static class SkillUpgradeTreeValidator
         return owners;
     }
 
+    public static IReadOnlyList<SkillGemDefinition> FindOwningSkills(SkillUpgradeTreeDefinition tree)
+    {
+        IReadOnlyList<SkillDefinitionBase> assets = FindOwningAssets(tree);
+        var owners = new List<SkillGemDefinition>();
+        for (int i = 0; i < assets.Count; i++)
+        {
+            if (assets[i] is SkillGemDefinition skill)
+                owners.Add(skill);
+        }
+
+        return owners;
+    }
+
     static void ValidateCharacterLoadoutIds(ref int errorCount, ref int warningCount)
     {
         string[] statGuids = AssetDatabase.FindAssets("t:CharacterStats");
@@ -320,48 +333,96 @@ public static class SkillUpgradeTreeValidator
         {
             string path = AssetDatabase.GUIDToAssetPath(statGuids[i]);
             CharacterStats stats = AssetDatabase.LoadAssetAtPath<CharacterStats>(path);
-            if (stats == null || stats.skillSlots == null)
+            if (stats == null)
                 continue;
 
-            var slotIds = new HashSet<string>(StringComparer.Ordinal);
-            for (int slotIndex = 0; slotIndex < stats.skillSlots.Count; slotIndex++)
+            List<SkillUpgradeValidationIssue> issues = ValidateCharacterLoadout(stats);
+            for (int issueIndex = 0; issueIndex < issues.Count; issueIndex++)
             {
-                CharacterSkillLoadoutSlot slot = stats.skillSlots[slotIndex];
-                if (slot == null)
-                    continue;
-
-                if (string.IsNullOrWhiteSpace(slot.ResolvedSlotId))
+                SkillUpgradeValidationIssue issue = issues[issueIndex];
+                string message = $"[ActiveSkillTree] {path}: {issue.Message}";
+                if (issue.Severity == SkillUpgradeValidationSeverity.Error)
                 {
                     errorCount++;
-                    Debug.LogError($"[ActiveSkillTree] {path}: slot {slotIndex} needs an explicit stable slotId.", stats);
+                    Debug.LogError(message, stats);
                 }
-                else if (!slotIds.Add(slot.ResolvedSlotId))
+                else
                 {
-                    errorCount++;
-                    Debug.LogError($"[ActiveSkillTree] {path}: duplicate slot ID '{slot.ResolvedSlotId}'.", stats);
-                }
-
-                var optionIds = new HashSet<string>(StringComparer.Ordinal);
-                for (int optionIndex = 0; optionIndex < slot.Options.Count; optionIndex++)
-                {
-                    CharacterSkillLoadoutOption option = slot.Options[optionIndex];
-                    if (option == null)
-                        continue;
-
-                    if (string.IsNullOrWhiteSpace(option.optionId))
-                    {
-                        errorCount++;
-                        Debug.LogError($"[ActiveSkillTree] {path}: slot {slotIndex}, option {optionIndex} needs an explicit stable optionId.", stats);
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(option.ResolvedOptionId) && !optionIds.Add(option.ResolvedOptionId))
-                    {
-                        errorCount++;
-                        Debug.LogError($"[ActiveSkillTree] {path}: duplicate option ID '{option.ResolvedOptionId}' in slot '{slot.ResolvedSlotId}'.", stats);
-                    }
+                    warningCount++;
+                    Debug.LogWarning(message, stats);
                 }
             }
         }
+    }
+
+    public static List<SkillUpgradeValidationIssue> ValidateCharacterLoadout(CharacterStats stats)
+    {
+        var issues = new List<SkillUpgradeValidationIssue>();
+        if (stats == null || stats.skillSlots == null)
+            return issues;
+
+        var slotIds = new HashSet<string>(StringComparer.Ordinal);
+        bool seenPassiveSlot = false;
+        for (int slotIndex = 0; slotIndex < stats.skillSlots.Count; slotIndex++)
+        {
+            CharacterSkillLoadoutSlot slot = stats.skillSlots[slotIndex];
+            if (slot == null)
+                continue;
+
+            if (string.IsNullOrWhiteSpace(slot.ResolvedSlotId))
+                issues.Add(Error($"slot {slotIndex} needs an explicit stable slotId."));
+            else if (!slotIds.Add(slot.ResolvedSlotId))
+                issues.Add(Error($"duplicate slot ID '{slot.ResolvedSlotId}'."));
+
+            bool slotHasActiveOption = false;
+            bool slotHasPassiveOption = false;
+
+            var optionIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int optionIndex = 0; optionIndex < slot.Options.Count; optionIndex++)
+            {
+                CharacterSkillLoadoutOption option = slot.Options[optionIndex];
+                if (option == null)
+                    continue;
+
+                if (string.IsNullOrWhiteSpace(option.optionId))
+                    issues.Add(Error($"slot {slotIndex}, option {optionIndex} needs an explicit stable optionId."));
+
+                if (!string.IsNullOrWhiteSpace(option.ResolvedOptionId) && !optionIds.Add(option.ResolvedOptionId))
+                    issues.Add(Error($"duplicate option ID '{option.ResolvedOptionId}' in slot '{slot.ResolvedSlotId}'."));
+
+                if (!option.IsConfigured)
+                    continue;
+
+                if (option.IsPassive)
+                    slotHasPassiveOption = true;
+                else
+                    slotHasActiveOption = true;
+
+                if (option.PassiveAsset is AlwaysOnPassiveDef && option.ResolvedUpgradeTree != null)
+                {
+                    issues.Add(Error(
+                        $"slot '{slot.ResolvedSlotId}', option {optionIndex} resolves an upgrade tree " +
+                        "on an AlwaysOnPassiveDef, which has no gate mechanism (unsupported in Phase 1)."));
+                }
+            }
+
+            if (slotHasActiveOption && slotHasPassiveOption)
+                issues.Add(Error($"slot '{slot.ResolvedSlotId}' mixes active and passive options."));
+
+            if (slotHasPassiveOption)
+            {
+                seenPassiveSlot = true;
+
+                if (slot.hotkey != KeyCode.None)
+                    issues.Add(Warning($"passive slot '{slot.ResolvedSlotId}' has a non-None hotkey."));
+            }
+            else if (slotHasActiveOption && seenPassiveSlot)
+            {
+                issues.Add(Error($"slot '{slot.ResolvedSlotId}' is active but appears after a passive slot; passive slots must be last."));
+            }
+        }
+
+        return issues;
     }
 
     static void DetectCycles(

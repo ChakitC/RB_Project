@@ -57,24 +57,11 @@ MonoBehaviour:
     - optionId: 
       displayName: 
       skillAsset: {fileID: 11400000, guid: 561595d896a27e041a2839938b3e6202, type: 2}
-      skillLevel: 1
-      supportAssets: []
-      maxSupportSlots: 3
       upgradeTreeOverride: {fileID: 11400000, guid: 0e0c5a48ecedd994083b1cf170d0681a, type: 2}
     - optionId: 
       displayName: 
       skillAsset: {fileID: 0}
-      skillLevel: 1
-      supportAssets: []
-      maxSupportSlots: 3
       upgradeTreeOverride: {fileID: 11400000, guid: 0e0c5a48ecedd994083b1cf170d0681a, type: 2}
-    - optionId: 
-      displayName: 
-      skillAsset: {fileID: 0}
-      skillLevel: 1
-      supportAssets: []
-      maxSupportSlots: 3
-      upgradeTreeOverride: {fileID: 0}
   - slotId: 1
     displayName: 
     hotkey: 258
@@ -83,9 +70,6 @@ MonoBehaviour:
     - optionId: Test.Aires.Ultimate
       displayName: Aires.2
       skillAsset: {fileID: 0}
-      skillLevel: 1
-      supportAssets: []
-      maxSupportSlots: 3
       upgradeTreeOverride: {fileID: 0}
   - slotId: 2
     displayName: 
@@ -95,9 +79,6 @@ MonoBehaviour:
     - optionId: 
       displayName: 
       skillAsset: {fileID: 11400000, guid: 017e7afd0b669134396b5761021a3c2b, type: 2}
-      skillLevel: 1
-      supportAssets: []
-      maxSupportSlots: 3
       upgradeTreeOverride: {fileID: 0}
   activeSkillPointsPerLevel: 1
   maxHP: 1250

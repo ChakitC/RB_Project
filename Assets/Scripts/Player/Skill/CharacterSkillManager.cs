@@ -8,7 +8,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 {
     static readonly SkillSlot[] EmptyAutonomousSlots = Array.Empty<SkillSlot>();
     static readonly HelperProcSlot[] EmptyHelperProcSlots = Array.Empty<HelperProcSlot>();
-    static readonly PassiveSkillSlot[] EmptyPassiveSlots = Array.Empty<PassiveSkillSlot>();
     static readonly CharacterSkillLoadoutOption[] EmptySkillOptions = Array.Empty<CharacterSkillLoadoutOption>();
 
     sealed class ResolvedCommandSlotState
@@ -19,6 +18,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         public int selectedOptionIndex = -1;
         public string slotId;
         public bool usesPrefabOverride;
+        public SkillUpgradeStatSnapshot upgradeSnapshot;
+        public bool IsPassive;
     }
 
     private CharacteContext ctx;
@@ -38,6 +39,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     public event Action<ActiveSkillCastInfo> CastStarted;
     public event Action<ActiveSkillCastInfo> CastReleased;
     public event Action<ActiveSkillCastInfo, SkillCastCancelReason> CastCancelled;
+    public event Action PassiveLoadoutChanged;
 
     [Header("Autonomous Loadout")]
     public ISkillUser skillUser;
@@ -53,10 +55,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     [Header("Helper Proc Loadout")]
     [SerializeField] private HelperProcSlot[] helperProcLoadout = EmptyHelperProcSlots;
 
-    [Header("Passive Loadout")]
-    [FormerlySerializedAs("passiveSlots")]
-    [SerializeField] private PassiveSkillSlot[] passiveSlots = EmptyPassiveSlots;
-
     public int LoadOrder => -90;
     public IReadOnlyList<SkillSlot> AutonomousSlots
     {
@@ -70,10 +68,25 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     public CharacterSkillEntry PlayerCommandSkill => playerCommandSkill;
     public CharacterSkillEntry ChainAttackSkill => chainAttackSkill;
     public IReadOnlyList<HelperProcSlot> HelperProcSlots => helperProcLoadout ?? EmptyHelperProcSlots;
-    public IReadOnlyList<PassiveSkillSlot> PassiveSlots => passiveSlots ?? EmptyPassiveSlots;
     public bool HasConfiguredPlayerCommandSkill => IsSkillEntryConfigured(playerCommandSkill);
     public bool HasConfiguredChainAttackSkill => IsSkillEntryConfigured(chainAttackSkill);
-    public bool HasConfiguredPassiveSlots => CountConfiguredPassiveSlots() > 0;
+
+    public bool HasConfiguredPassiveSlots
+    {
+        get
+        {
+            CacheReferences();
+            RefreshResolvedCommandSlotsIfNeeded();
+
+            for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
+            {
+                if (resolvedCommandSlotStates[i]?.IsPassive == true)
+                    return true;
+            }
+
+            return false;
+        }
+    }
 
     private void Awake()
     {
@@ -142,16 +155,17 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
 
         pendingSlot = null;
-        if (resolvedCommandSlots.Count == 0)
+        if (resolvedCommandSlotStates.Count == 0)
             return;
 
-        foreach (SkillSlot slot in resolvedCommandSlots)
+        for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
         {
-            if (slot == null)
+            ResolvedCommandSlotState state = resolvedCommandSlotStates[i];
+            if (state == null || state.IsPassive || state.slot == null)
                 continue;
 
-            if (Input.GetKeyDown(slot.hotkey))
-                TryBeginCast(slot);
+            if (Input.GetKeyDown(state.slot.hotkey))
+                TryBeginCast(state.slot);
         }
     }
 
@@ -387,16 +401,23 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
     }
 
-    public void AppendConfiguredPassiveDefinitions(List<PassiveDefinition> buffer)
+    public void AppendConfiguredPassiveDefinitions(List<EquippedPassive> buffer)
     {
-        if (buffer == null || passiveSlots == null)
+        if (buffer == null)
             return;
 
-        for (int i = 0; i < passiveSlots.Length; i++)
+        CacheReferences();
+        RefreshResolvedCommandSlotsIfNeeded();
+
+        for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
         {
-            PassiveDefinition definition = passiveSlots[i]?.passiveAsset;
+            ResolvedCommandSlotState state = resolvedCommandSlotStates[i];
+            if (state == null || !state.IsPassive)
+                continue;
+
+            PassiveDefinition definition = state.selectedOption != null ? state.selectedOption.PassiveAsset : null;
             if (definition != null)
-                buffer.Add(definition);
+                buffer.Add(new EquippedPassive(definition, state.upgradeSnapshot));
         }
     }
 
@@ -434,6 +455,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     private SkillCastStartResult TryBeginCast(SkillSlot slot)
     {
         CacheReferences();
+
+        if (IsPassiveSlot(slot))
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+
         EnsureCommandRuntimeSkill(slot);
 
         if (CutsceneDirector.IsCinematicPlaying)
@@ -751,6 +776,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
             AddPassthroughSerializedSlot(i, serializedSlot);
         }
+
+        PassiveLoadoutChanged?.Invoke();
     }
 
     private void AddPrefabOverrideSlot(int slotIndex, SkillSlot slot)
@@ -854,12 +881,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         state.selectedOption = option;
         state.selectedOptionIndex = optionIndex;
-        ApplySkillOptionToSlot(
-            state.slot,
-            state.statsSlot,
-            option,
-            state.slotId,
-            ResolveOptionId(option, optionIndex));
+        ApplySkillOptionToSlot(state, option, ResolveOptionId(option, optionIndex));
+
+        if (state.IsPassive)
+            PassiveLoadoutChanged?.Invoke();
     }
 
     private static bool IsCurrentSelectedSkillOption(
@@ -867,41 +892,57 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         int optionIndex,
         CharacterSkillLoadoutOption option)
     {
-        return state != null &&
-               state.slot != null &&
-               state.selectedOptionIndex == optionIndex &&
-               ReferenceEquals(state.selectedOption, option) &&
-               option != null &&
-               option.skillAsset != null &&
-               state.slot.skillAsset == option.skillAsset &&
+        if (state == null || state.slot == null || option == null)
+            return false;
+
+        if (state.selectedOptionIndex != optionIndex || !ReferenceEquals(state.selectedOption, option))
+            return false;
+
+        if (option.IsPassive)
+            return state.IsPassive;
+
+        SkillGemDefinition activeAsset = option.ActiveSkillAsset;
+        return activeAsset != null &&
+               state.slot.skillAsset == activeAsset &&
                state.slot.runtimeSkill != null &&
-               state.slot.runtimeSkill.def == option.skillAsset;
+               state.slot.runtimeSkill.def == activeAsset;
     }
 
     private void ApplySkillOptionToSlot(
-        SkillSlot slot,
-        CharacterSkillLoadoutSlot statsSlot,
+        ResolvedCommandSlotState state,
         CharacterSkillLoadoutOption option,
-        string slotId,
         string optionId)
     {
+        SkillSlot slot = state != null ? state.slot : null;
         if (slot == null)
             return;
 
+        CharacterSkillLoadoutSlot statsSlot = state.statsSlot;
         slot.hotkey = statsSlot != null ? statsSlot.hotkey : slot.hotkey;
 
         if (option == null || option.skillAsset == null)
         {
             ClearRuntimeSlot(slot);
+            state.upgradeSnapshot = null;
+            state.IsPassive = false;
             return;
         }
 
-        slot.skillAsset = option.skillAsset;
         SkillUpgradeTreeDefinition upgradeTree = option.ResolvedUpgradeTree;
         SkillUpgradeStatSnapshot upgradeSnapshot = activeSkillProgress != null && upgradeTree != null
-            ? activeSkillProgress.BuildSnapshot(slotId, optionId, upgradeTree)
+            ? activeSkillProgress.BuildSnapshot(state.slotId, optionId, upgradeTree)
             : null;
+        state.upgradeSnapshot = upgradeSnapshot;
 
+        if (option.IsPassive)
+        {
+            ClearRuntimeSlot(slot);
+            state.IsPassive = true;
+            return;
+        }
+
+        state.IsPassive = false;
+        slot.skillAsset = option.ActiveSkillAsset;
         slot.runtimeSkill = CreateRuntimeSkill(slot.skillAsset, upgradeSnapshot);
     }
 
@@ -938,12 +979,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             return;
         }
 
-        ApplySkillOptionToSlot(
-            state.slot,
-            state.statsSlot,
-            state.selectedOption,
-            state.slotId,
-            optionId);
+        ApplySkillOptionToSlot(state, state.selectedOption, optionId);
+
+        if (state.IsPassive)
+            PassiveLoadoutChanged?.Invoke();
     }
 
     private static void ClearRuntimeSlot(SkillSlot slot)
@@ -1060,6 +1099,18 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return $"option:{Mathf.Max(0, optionIndex)}";
     }
 
+    private bool IsPassiveSlot(SkillSlot slot)
+    {
+        for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
+        {
+            ResolvedCommandSlotState state = resolvedCommandSlotStates[i];
+            if (state != null && ReferenceEquals(state.slot, slot))
+                return state.IsPassive;
+        }
+
+        return false;
+    }
+
     private string BuildSlotDebugSource(SkillSlot slot)
     {
         for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
@@ -1138,21 +1189,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             return resolved;
 
         return GetComponentInParent<CharacterAnimDriver>();
-    }
-
-    private int CountConfiguredPassiveSlots()
-    {
-        if (passiveSlots == null)
-            return 0;
-
-        int count = 0;
-        for (int i = 0; i < passiveSlots.Length; i++)
-        {
-            if (passiveSlots[i] != null && passiveSlots[i].passiveAsset != null)
-                count++;
-        }
-
-        return count;
     }
 
     private bool IsSlotCastStillValid(SkillSlot slot, SkillInstance runtimeSkill)

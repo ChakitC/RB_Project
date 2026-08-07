@@ -31,7 +31,17 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
     [SerializeField, Min(0f)] private float horizontalImpulse = 1.6f;
     [SerializeField, Min(0f)] private float upwardImpulse = 2.2f;
 
+    [Header("Progression")]
+    [Tooltip("Optional. Second pickup drops only when the owning slot's snapshot grants this id.")]
+    [UpgradeIdPicker] [SerializeField] private string extraDropUpgradeId;
+
     readonly Dictionary<int, float> nextReadyTimeByController = new();
+
+    public override void CollectUpgradeIds(List<string> ids)
+    {
+        if (!string.IsNullOrWhiteSpace(extraDropUpgradeId))
+            ids.Add(extraDropUpgradeId.Trim());
+    }
 
     float WorldNow
     {
@@ -45,7 +55,8 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
     public override void OnPassiveEvent(
         PassiveController controller,
         CustomPassiveDef definition,
-        in PassiveEventContext context)
+        in PassiveEventContext context,
+        SkillUpgradeStatSnapshot upgrades)
     {
         if (controller == null || context.Type != PassiveEventType.ShotFired)
             return;
@@ -68,7 +79,9 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
         if (!TryResolveDropSource(controller, out CharacteContext ctx, out Transform sourceRoot))
             return;
 
-        SpawnDrops(controller, ctx, sourceRoot);
+        bool grantExtraDrop = !string.IsNullOrWhiteSpace(extraDropUpgradeId) &&
+                              upgrades != null && upgrades.HasUpgrade(extraDropUpgradeId);
+        SpawnDrops(controller, ctx, sourceRoot, grantExtraDrop ? dropCount + 1 : dropCount);
         StampCooldown(controllerId, now);
     }
 
@@ -78,9 +91,9 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
             nextReadyTimeByController.Remove(controller.GetInstanceID());
     }
 
-    void SpawnDrops(PassiveController controller, CharacteContext ctx, Transform sourceRoot)
+    void SpawnDrops(PassiveController controller, CharacteContext ctx, Transform sourceRoot, int requestedCount)
     {
-        int count = Mathf.Max(1, dropCount);
+        int count = Mathf.Max(1, requestedCount);
         Vector3 origin = ResolveSpawnOrigin(sourceRoot);
         bool useDropArc = ShouldUseDropArcMotion();
         float burstAngleOffset = useDropArc ? dropArcSettings.CreateBurstAngleOffset() : 0f;

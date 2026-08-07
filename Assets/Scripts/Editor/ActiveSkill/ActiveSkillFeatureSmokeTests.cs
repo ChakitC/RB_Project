@@ -23,6 +23,11 @@ public static class ActiveSkillFeatureSmokeTests
         try
         {
             TestCatchUpAndPassiveIsolation();
+            TestPassiveOptionSharesSkillPool(assets);
+            TestRequiredUpgradeIdGatesRule();
+            TestMixedKindSlotFailsValidation(assets);
+            TestPassiveSlotMustBeLast(assets);
+            TestPassiveDefinitionDeclaresTreeGrantedIds();
             TestPrerequisitesSharedPoolAndVariantIsolation(assets);
             TestResetUsesPaidCost(assets);
             TestTreeMismatchRefundsRemovedNodes(assets);
@@ -62,6 +67,135 @@ public static class ActiveSkillFeatureSmokeTests
         Equal(9, data.skillPoints, "Active Skill Points must not change Passive Points.");
         Expect(!model.EnsureInitialized(), "Catch-up must not run twice.");
         Equal(5, model.AvailablePoints, "Repeated initialization must not duplicate points.");
+    }
+
+    static void TestPassiveOptionSharesSkillPool(List<ScriptableObject> assets)
+    {
+        SkillUpgradeTreeDefinition tree = CreateTree(assets, "tree.passive-shared", Node("extra_drop", 2));
+        var data = InitializedData(5);
+        var model = new ActiveSkillProgressModel(null, data, 10);
+
+        Expect(model.TryUnlock("passive.feno.bag", "passive.feno.bulletbag", tree, "extra_drop", out string reason), reason);
+        Equal(3, model.AvailablePoints,
+            "Unlocking a node in a passive-owned tree must drain the same shared activeSkillPoints pool a skill tree uses.");
+    }
+
+    static void TestRequiredUpgradeIdGatesRule()
+    {
+        var gatedRule = new TriggeredPassiveRule { requiredUpgradeId = "passive.feno.bulletbag.extra_drop" };
+        var emptySnapshot = new SkillUpgradeStatSnapshot();
+        Expect(!PassiveUpgradeGate.IsRuleEnabled(gatedRule, emptySnapshot),
+            "A rule with a required upgrade id must stay disabled until the snapshot grants it.");
+        Expect(!PassiveUpgradeGate.IsRuleEnabled(gatedRule, null),
+            "A rule with a required upgrade id must stay disabled against a null snapshot.");
+
+        SkillUpgradeNodeData node = Node("extra_drop", 1);
+        node.grantedUpgradeIds.Add("passive.feno.bulletbag.extra_drop");
+        var grantingSnapshot = new SkillUpgradeStatSnapshot();
+        grantingSnapshot.AddNode(node);
+        Expect(PassiveUpgradeGate.IsRuleEnabled(gatedRule, grantingSnapshot),
+            "A rule must be enabled once the snapshot grants its required upgrade id.");
+
+        var blankRule = new TriggeredPassiveRule { requiredUpgradeId = "" };
+        Expect(PassiveUpgradeGate.IsRuleEnabled(blankRule, null),
+            "A rule with no required upgrade id must always be enabled, even against a null snapshot.");
+    }
+
+    static void TestMixedKindSlotFailsValidation(List<ScriptableObject> assets)
+    {
+        CharacterStats stats = ScriptableObject.CreateInstance<CharacterStats>();
+        assets.Add(stats);
+        SkillGemDefinition activeSkill = ScriptableObject.CreateInstance<SkillGemDefinition>();
+        assets.Add(activeSkill);
+        PassiveDefinition passive = ScriptableObject.CreateInstance<AlwaysOnPassiveDef>();
+        assets.Add(passive);
+
+        stats.skillSlots = new List<CharacterSkillLoadoutSlot>
+        {
+            new()
+            {
+                slotId = "slot.mixed",
+                options = new List<CharacterSkillLoadoutOption>
+                {
+                    new() { optionId = "active", skillAsset = activeSkill },
+                    new() { optionId = "passive", skillAsset = passive },
+                },
+            },
+        };
+
+        List<SkillUpgradeValidationIssue> issues = SkillUpgradeTreeValidator.ValidateCharacterLoadout(stats);
+        Expect(issues.Any(issue =>
+                issue.Severity == SkillUpgradeValidationSeverity.Error &&
+                issue.Message.Contains("mixes active and passive", StringComparison.OrdinalIgnoreCase)),
+            "Validator must reject a slot that mixes active and passive options.");
+    }
+
+    static void TestPassiveSlotMustBeLast(List<ScriptableObject> assets)
+    {
+        CharacterStats stats = ScriptableObject.CreateInstance<CharacterStats>();
+        assets.Add(stats);
+        SkillGemDefinition activeSkill = ScriptableObject.CreateInstance<SkillGemDefinition>();
+        assets.Add(activeSkill);
+        PassiveDefinition passive = ScriptableObject.CreateInstance<AlwaysOnPassiveDef>();
+        assets.Add(passive);
+
+        stats.skillSlots = new List<CharacterSkillLoadoutSlot>
+        {
+            new()
+            {
+                slotId = "slot.passive",
+                options = new List<CharacterSkillLoadoutOption> { new() { optionId = "passive", skillAsset = passive } },
+            },
+            new()
+            {
+                slotId = "slot.active",
+                options = new List<CharacterSkillLoadoutOption> { new() { optionId = "active", skillAsset = activeSkill } },
+            },
+        };
+
+        List<SkillUpgradeValidationIssue> issues = SkillUpgradeTreeValidator.ValidateCharacterLoadout(stats);
+        Expect(issues.Any(issue =>
+                issue.Severity == SkillUpgradeValidationSeverity.Error &&
+                issue.Message.Contains("must be last", StringComparison.OrdinalIgnoreCase)),
+            "Validator must reject an active slot that appears after a passive slot.");
+    }
+
+    static void TestPassiveDefinitionDeclaresTreeGrantedIds()
+    {
+        const string passivePath = "Assets/Data/Combat/Passives/Passive.Feno_ForgottenBulletBag.asset";
+        var passive = AssetDatabase.LoadAssetAtPath<PassiveDefinition>(passivePath);
+        Expect(passive != null, "Feno's ForgottenBulletBag passive asset must exist.");
+
+        var declaredIds = new List<string>();
+        passive.CollectUpgradeIds(declaredIds);
+        Expect(declaredIds.Count > 0,
+            "CustomPassiveDef.CollectUpgradeIds must forward the DropAmmoOnShotPassiveBehavior's declared upgrade id.");
+
+        SkillUpgradeTreeDefinition tree = passive.UpgradeTree;
+        Expect(tree != null, "Feno's ForgottenBulletBag passive must have an upgrade tree assigned.");
+
+        var grantedIds = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < tree.nodes.Count; i++)
+        {
+            List<string> nodeGrants = tree.nodes[i]?.grantedUpgradeIds;
+            if (nodeGrants == null)
+                continue;
+
+            for (int j = 0; j < nodeGrants.Count; j++)
+                grantedIds.Add(nodeGrants[j]);
+        }
+
+        foreach (string id in declaredIds)
+        {
+            Expect(grantedIds.Contains(id),
+                $"Declared upgrade id '{id}' must be granted by a node in the passive's tree.");
+        }
+
+        foreach (string id in grantedIds)
+        {
+            Expect(declaredIds.Contains(id),
+                $"Tree-granted upgrade id '{id}' must be declared by the passive definition's CollectUpgradeIds.");
+        }
     }
 
     static void TestPrerequisitesSharedPoolAndVariantIsolation(List<ScriptableObject> assets)

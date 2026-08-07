@@ -57,7 +57,14 @@
                 "selectedSkillOptions": [],
                 "activeSkillPoints": 29,
                 "activeSkillProgressInitialized": true,
-                "activeSkillTrees": []
+                "activeSkillTrees": [
+                    {
+                        "slotId": "passive.feno.bag",
+                        "optionId": "passive.feno.bulletbag",
+                        "treeId": "passive.feno.bulletbag.tree",
+                        "unlockedNodes": []
+                    }
+                ]
             }
         },
         {

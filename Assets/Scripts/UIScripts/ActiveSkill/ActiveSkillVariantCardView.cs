@@ -36,7 +36,7 @@ public sealed class ActiveSkillVariantCardView : MonoBehaviour
         _optionIndex = optionIndex;
         _clicked = clicked;
 
-        Sprite sprite = option != null && option.skillAsset != null ? option.skillAsset.icon : null;
+        Sprite sprite = option != null && option.skillAsset != null ? option.skillAsset.SkillDefinitionIcon : null;
         if (icon != null)
         {
             icon.sprite = sprite;

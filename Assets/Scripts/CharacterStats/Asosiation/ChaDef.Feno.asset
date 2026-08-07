@@ -62,9 +62,15 @@ MonoBehaviour:
     - optionId: 
       displayName: 
       skillAsset: {fileID: 0}
-      skillLevel: 1
-      supportAssets: []
-      maxSupportSlots: 3
+      upgradeTreeOverride: {fileID: 0}
+  - slotId: passive.feno.bag
+    displayName: Forgotten Bullet Bag
+    hotkey: 0
+    defaultOptionIndex: 0
+    options:
+    - optionId: passive.feno.bulletbag
+      displayName: Forgotten Bullet Bag
+      skillAsset: {fileID: 11400000, guid: 8d2b0f0e7a7a4f3c9ad6cfe8bd48c181, type: 2}
       upgradeTreeOverride: {fileID: 0}
   activeSkillPointsPerLevel: 1
   maxHP: 1100
@@ -84,8 +90,7 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
-  passives:
-  - {fileID: 11400000, guid: 8d2b0f0e7a7a4f3c9ad6cfe8bd48c181, type: 2}
+  passives: []
   dashCue: {fileID: 0}
   voiceProfile:
     defaultSkillVoiceCue: {fileID: 0}

@@ -9,8 +9,13 @@ using UnityEditor;
 #endif
 
 [HideMonoScript]
-public class SkillGemDefinition : ScriptableObject
+public class SkillGemDefinition : SkillDefinitionBase
 {
+    public override SkillUpgradeTreeDefinition UpgradeTree => upgradeTree;
+    public override string SkillDefinitionId => skillId;
+    public override string SkillDefinitionDisplayName => displayName;
+    public override Sprite SkillDefinitionIcon => icon;
+
     private const float DefaultCastPointNormalized = 0.35f;
     private const float WarningCastPointMin = 0.05f;
     private const float WarningCastPointMax = 0.95f;
@@ -329,7 +334,7 @@ public class SkillGemDefinition : ScriptableObject
             CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.HitLag);
     }
 
-    public void CollectUpgradeIds(List<string> ids)
+    public override void CollectUpgradeIds(List<string> ids)
     {
         payload?.CollectUpgradeIds(ids);
     }

@@ -48,7 +48,24 @@ MonoBehaviour:
   combatRole: 3
   chainAttackSkill: {fileID: 0}
   introChainCutscene: {fileID: 0}
-  skillSlots: []
+  skillSlots:
+  - slotId: 1
+    displayName: 1
+    hotkey: 0
+    defaultOptionIndex: 0
+    options: []
+  - slotId: 2
+    displayName: 2
+    hotkey: 0
+    defaultOptionIndex: 0
+    options:
+    - optionId: 
+      displayName: 
+      skillAsset: {fileID: 0}
+      skillLevel: 1
+      supportAssets: []
+      maxSupportSlots: 3
+      upgradeTreeOverride: {fileID: 0}
   activeSkillPointsPerLevel: 1
   maxHP: 1100
   maxStamina: 90

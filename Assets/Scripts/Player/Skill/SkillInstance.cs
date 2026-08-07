@@ -25,9 +25,6 @@ public class FinalSkillStats
 public class SkillInstance
 {
     public SkillGemDefinition def;
-    public int level = 1;
-
-    public List<SupportInstance> supports = new List<SupportInstance>();
 
     [System.NonSerialized]
     public SkillUpgradeStatSnapshot upgradeSnapshot;
@@ -69,19 +66,10 @@ public class SkillInstance
             critMultiplier = 2f
         };
 
-        def.ApplyLevelData(stats, def.ClampLevel(level));
         if (user?.StatsHub != null && def.damageCoefficient > 0f)
             stats.damage += Mathf.Max(0f, user.StatsHub.GetSkillBaseDamage()) * def.damageCoefficient;
 
         upgradeSnapshot?.Apply(stats);
-
-        foreach (var support in supports)
-        {
-            if (support == null || !support.CanSupport(def))
-                continue;
-
-            support.Apply(stats);
-        }
 
         ApplyCasterStats(user, stats);
 
@@ -149,7 +137,7 @@ public class SkillInstance
     }
 
     /// <summary>
-    /// Stamps ONLY the per-instance cooldown (no energy spend, no support OnCast, no payload).
+    /// Stamps ONLY the per-instance cooldown (no energy spend, no payload).
     /// Used when a pre-cast cast is blocked/interrupted before cast point but should still
     /// consume its cooldown. Returns the computed stats so the caller can also stamp any
     /// shared (per-definition) cooldown.
@@ -178,14 +166,6 @@ public class SkillInstance
 
         if (spendEnergy)
             user.SpendEnagy(stats.manaCost);
-
-        foreach (var support in supports)
-        {
-            if (support == null)
-                continue;
-
-            support.OnCast(this, stats);
-        }
 
         var castContext = new SkillCastContext(user, def, stats, animBrain, requestId, upgradeSnapshot);
         bool executed = TryExecutePayload(castContext);

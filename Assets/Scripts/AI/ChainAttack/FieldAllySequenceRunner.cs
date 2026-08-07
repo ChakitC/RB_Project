@@ -133,8 +133,7 @@ internal sealed class FieldAllySequenceRunner
         if (!skillCastBridge.TryResolveAttackSkill(
                 step,
                 out SkillInstance resolvedRuntimeSkill,
-                out SkillGemDefinition resolvedSkillDef,
-                out int resolvedSkillLevel))
+                out SkillGemDefinition resolvedSkillDef))
         {
             owner.LogExecution($"Step '{step.RuntimeId}' cannot start because no chain skill is configured for actor '{owner.ActorName}'.");
             autonomyScope.Restore();
@@ -157,7 +156,6 @@ internal sealed class FieldAllySequenceRunner
             lockedTargetAnchor = resolvedTargetAnchor,
             attackRuntimeSkill = resolvedRuntimeSkill,
             attackSkillDef = resolvedSkillDef,
-            attackSkillLevel = resolvedSkillLevel,
             ignoreResourceCosts = step.ignoreResourceCosts,
             recordedOriginPosition = owner.TransformRef.position,
             recordedOriginRotation = owner.TransformRef.rotation,

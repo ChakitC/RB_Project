@@ -25,7 +25,7 @@ public class SkillGemDefinition : ScriptableObject
     private ProjectileSkillPayloadDef ProjectilePayload => TryFindPayload(out ProjectileSkillPayloadDef found) ? found : null;
     private bool HasProjectilePayload => ProjectilePayload != null;
     private bool HasProjectileExecutionIntent => HasProjectilePayload;
-    private bool HasAnyRadiusConfigured => baseRadius > 0f || HasRadiusOverride();
+    private bool HasAnyRadiusConfigured => baseRadius > 0f;
     private bool HasProjectilePresentationAssets => ProjectilePayload != null && ProjectilePayload.HasProjectilePresentationAssets;
     private bool HasAnimationPresentationAssets => castCue != null || skillClip != null || HasSkillVfxEvents;
     private bool HasAnyPresentationAssets => HasProjectilePresentationAssets || HasAnimationPresentationAssets;
@@ -57,11 +57,6 @@ public class SkillGemDefinition : ScriptableObject
     [ShowInInspector, ReadOnly, FoldoutGroup("Authoring Summary", Expanded = true), HorizontalGroup("Authoring Summary/StatusStrip")]
     [LabelText("Execution Mode")]
     private string ExecutionStatusLabel => GetResolvedRuntimeModeLabel();
-
-    [PropertyOrder(-125)]
-    [ShowInInspector, ReadOnly, FoldoutGroup("Authoring Summary", Expanded = true), HorizontalGroup("Authoring Summary/StatusStrip")]
-    [LabelText("Level Data")]
-    private string LevelDataStatusLabel => $"{LevelRowCount} rows / {DuplicateLevelRowCount} duplicate / {EmptyOverrideRowCount} empty";
 
     [PropertyOrder(-124)]
     [ShowInInspector, ReadOnly, FoldoutGroup("Authoring Summary", Expanded = true), HorizontalGroup("Authoring Summary/StatusStrip")]
@@ -132,10 +127,6 @@ public class SkillGemDefinition : ScriptableObject
     [PropertyOrder(-72)]
     [FoldoutGroup("Gameplay", Expanded = true), LabelText("Radius"), MinValue(0f), SuffixLabel("m")]
     public float baseRadius = 0f;
-
-    [PropertyOrder(-71)]
-    [FoldoutGroup("Gameplay", Expanded = true), LabelText("Max Level"), MinValue(1)]
-    public int maxLevel = 20;
 
     [PropertyOrder(-70)]
     [FoldoutGroup("Gameplay", Expanded = true), LabelText("Effect Duration"), MinValue(0f), SuffixLabel("s")]
@@ -253,72 +244,6 @@ public class SkillGemDefinition : ScriptableObject
     [PropertyOrder(-26)]
     [FoldoutGroup("Pre-Cast Block", Expanded = false), LabelText("Cancel On Stagger"), ToggleLeft]
     [SerializeField] private bool cancelPreCastOnStagger = true;
-
-    [Serializable]
-    public class LevelData
-    {
-        [HorizontalGroup("Row", Width = 70), LabelText("Req Lv"), MinValue(1)]
-        public int requiredLevel = 1;
-
-        [HorizontalGroup("Row"), LabelText("Has Override"), ReadOnly]
-        [ShowInInspector]
-        private bool HasOverride => HasAnyOverride();
-
-        [HorizontalGroup("Row"), LabelText("Override Count"), ReadOnly]
-        [ShowInInspector]
-        private int OverrideCount => GetOverrideCount();
-
-        [LabelText("Damage")]
-        public float damage;
-
-        [LabelText("Mana")]
-        public float manaCost;
-
-        [LabelText("Cast"), SuffixLabel("s")]
-        public float castTime;
-
-        [LabelText("Cooldown"), SuffixLabel("s")]
-        public float cooldown;
-
-        [LabelText("Radius"), SuffixLabel("m")]
-        public float radius;
-
-        [LabelText("Projectiles")]
-        public int projectiles;
-
-        [LabelText("Crit"), SuffixLabel("%")]
-        public float critChance;
-
-        public bool HasAnyOverride()
-        {
-            return !Mathf.Approximately(damage, 0f) ||
-                   !Mathf.Approximately(manaCost, 0f) ||
-                   !Mathf.Approximately(castTime, 0f) ||
-                   !Mathf.Approximately(cooldown, 0f) ||
-                   !Mathf.Approximately(radius, 0f) ||
-                   projectiles != 0 ||
-                   !Mathf.Approximately(critChance, 0f);
-        }
-
-        public int GetOverrideCount()
-        {
-            int count = 0;
-            if (!Mathf.Approximately(damage, 0f)) count++;
-            if (!Mathf.Approximately(manaCost, 0f)) count++;
-            if (!Mathf.Approximately(castTime, 0f)) count++;
-            if (!Mathf.Approximately(cooldown, 0f)) count++;
-            if (!Mathf.Approximately(radius, 0f)) count++;
-            if (projectiles != 0) count++;
-            if (!Mathf.Approximately(critChance, 0f)) count++;
-            return count;
-        }
-    }
-
-    [PropertyOrder(-20)]
-    [FoldoutGroup("Level Scaling", Expanded = true), TableList(AlwaysExpanded = true)]
-    [LabelText("Per-Level Overrides")]
-    [Tooltip("Runtime uses the highest required level with a real override. Rows with no override values still act as base-stat fallback markers.")]
-    public List<LevelData> perLevelData = new();
 
     public IReadOnlyList<SkillVfxEvent> SkillVfxEvents => skillVfxEvents ?? (skillVfxEvents = new List<SkillVfxEvent>());
     public bool HasSkillVfxEvents => skillVfxEvents != null && skillVfxEvents.Count > 0;
@@ -467,54 +392,10 @@ public class SkillGemDefinition : ScriptableObject
             issues);
     }
 
-    [PropertyOrder(-19)]
-    [SerializeField, FoldoutGroup("Level Scaling", Expanded = true), BoxGroup("Level Scaling/Effective Preview"), LabelText("Selected Level"), MinValue(1)]
-    private int previewLevel = 1;
-
-    [PropertyOrder(-18)]
-    [ShowInInspector, ReadOnly, FoldoutGroup("Level Scaling", Expanded = true), BoxGroup("Level Scaling/Effective Preview"), LabelText("Effective At Selected Level")]
-    private string EffectivePreviewLabel => BuildEffectivePreview(previewLevel);
-
-    [PropertyOrder(-17)]
-    [ShowInInspector, ReadOnly, FoldoutGroup("Level Scaling", Expanded = true), BoxGroup("Level Scaling/Effective Preview"), LabelText("Delta From Base")]
-    private string DeltaPreviewLabel => BuildDeltaPreview(previewLevel);
-
     [PropertyOrder(200)]
     [ShowInInspector, ReadOnly, FoldoutGroup("Tools", Expanded = true), LabelText("Authoring")]
     private string ToolingSummary =>
-        "Use these helpers to sort level rows and normalize cast timing. Execution data is owned by the embedded payload.";
-
-    [PropertyOrder(201)]
-    [FoldoutGroup("Tools", Expanded = true), Button("Sort Level Rows")]
-    private void SortLevelRows()
-    {
-        if (perLevelData == null || perLevelData.Count <= 1)
-            return;
-
-        perLevelData.Sort((left, right) =>
-        {
-            if (ReferenceEquals(left, right))
-                return 0;
-            if (left == null)
-                return 1;
-            if (right == null)
-                return -1;
-            return left.requiredLevel.CompareTo(right.requiredLevel);
-        });
-
-        MarkDirty(this);
-    }
-
-    [PropertyOrder(202)]
-    [FoldoutGroup("Tools", Expanded = true), Button("Remove Empty Level Rows"), ShowIf(nameof(HasEmptyOverrideRows))]
-    private void RemoveEmptyLevelRows()
-    {
-        if (perLevelData == null || perLevelData.Count == 0)
-            return;
-
-        perLevelData.RemoveAll(entry => entry == null || !entry.HasAnyOverride());
-        MarkDirty(this);
-    }
+        "Use these helpers to normalize cast timing. Execution data is owned by the embedded payload.";
 
     [PropertyOrder(203)]
     [FoldoutGroup("Tools", Expanded = true), Button("Normalize Cast Point")]
@@ -527,61 +408,6 @@ public class SkillGemDefinition : ScriptableObject
     private bool HasSkillId()
     {
         return !string.IsNullOrWhiteSpace(skillId);
-    }
-
-    private bool HasEmptyOverrideRows => EmptyOverrideRowCount > 0;
-    private int LevelRowCount => perLevelData != null ? perLevelData.Count : 0;
-
-    private int DuplicateLevelRowCount
-    {
-        get
-        {
-            if (perLevelData == null || perLevelData.Count == 0)
-                return 0;
-
-            var counts = new Dictionary<int, int>();
-            int duplicates = 0;
-
-            for (int i = 0; i < perLevelData.Count; i++)
-            {
-                LevelData entry = perLevelData[i];
-                if (entry == null)
-                    continue;
-
-                int requiredLevel = Mathf.Max(1, entry.requiredLevel);
-                if (!counts.TryGetValue(requiredLevel, out int count))
-                {
-                    counts.Add(requiredLevel, 1);
-                    continue;
-                }
-
-                count++;
-                counts[requiredLevel] = count;
-                if (count > 1)
-                    duplicates++;
-            }
-
-            return duplicates;
-        }
-    }
-
-    private int EmptyOverrideRowCount
-    {
-        get
-        {
-            if (perLevelData == null || perLevelData.Count == 0)
-                return 0;
-
-            int count = 0;
-            for (int i = 0; i < perLevelData.Count; i++)
-            {
-                LevelData entry = perLevelData[i];
-                if (entry == null || !entry.HasAnyOverride())
-                    count++;
-            }
-
-            return count;
-        }
     }
 
     private string BlockingErrorSummary
@@ -622,16 +448,13 @@ public class SkillGemDefinition : ScriptableObject
             var warnings = new List<string>();
 
             if (AreaofEffec && !HasAnyRadiusConfigured)
-                warnings.Add("Area Of Effect is enabled, but base radius and all level overrides currently resolve to 0.");
+                warnings.Add("Area Of Effect is enabled, but base radius currently resolves to 0.");
 
             if (skillClip != null && (castPointNormalized < WarningCastPointMin || castPointNormalized > WarningCastPointMax))
                 warnings.Add("Cast Point is technically valid, but sits in an extreme range that is easy to mistime in animation-driven skills.");
 
             if (ProjectilePayload != null && ProjectilePayload.HasHitVfxScaleWithoutHitVfx)
                 warnings.Add("Hit VFX Scale is set, but there is no projectile hit VFX assigned.");
-
-            if (DuplicateLevelRowCount > 0)
-                warnings.Add($"Per-level data has {DuplicateLevelRowCount} duplicate required level entries.");
 
             return string.Join("\n", warnings);
         }
@@ -642,9 +465,6 @@ public class SkillGemDefinition : ScriptableObject
         get
         {
             var notes = new List<string>();
-
-            if (EmptyOverrideRowCount > 0)
-                notes.Add($"{EmptyOverrideRowCount} per-level rows have no override values and only serve as base-stat fallback markers.");
 
 #if UNITY_EDITOR
             if (payload != null && IsPayloadEmbedded())
@@ -671,7 +491,7 @@ public class SkillGemDefinition : ScriptableObject
         string execLabel = GetResolvedRuntimeModeLabel();
         string presentationLabel = GetPresentationStatusLabel();
 
-        return $"{projectileLabel} / {aoeLabel} / Max Lv {Mathf.Max(1, maxLevel)} / Exec: {execLabel} / Presentation: {presentationLabel}";
+        return $"{projectileLabel} / {aoeLabel} / Exec: {execLabel} / Presentation: {presentationLabel}";
     }
 
     private string GetResolvedRuntimeModeLabel()
@@ -715,74 +535,6 @@ public class SkillGemDefinition : ScriptableObject
             return "Configured";
 
         return "Partial";
-    }
-
-    private bool HasRadiusOverride()
-    {
-        if (perLevelData == null || perLevelData.Count == 0)
-            return false;
-
-        for (int i = 0; i < perLevelData.Count; i++)
-        {
-            LevelData entry = perLevelData[i];
-            if (entry != null && entry.radius > 0f)
-                return true;
-        }
-
-        return false;
-    }
-
-    private FinalSkillStats BuildPreviewStats(int level)
-    {
-        int clampedLevel = ClampLevel(level);
-        var stats = new FinalSkillStats
-        {
-            damage = baseDamage,
-            areaRadius = baseRadius,
-            projectileCount = baseProjectilesCount,
-            manaCost = baseManaCost,
-            castTime = baseCastTime,
-            cooldown = baseCooldown,
-            staggerPower = baseStaggerPower,
-            effectDuration = baseEffectDuration,
-            healPower = baseHealPower,
-            critChance = baseCritChance,
-            critMultiplier = 2f,
-        };
-
-        ApplyLevelData(stats, clampedLevel);
-        stats.projectileCount = Mathf.Max(1, stats.projectileCount);
-        stats.areaRadius = Mathf.Max(0f, stats.areaRadius);
-        stats.manaCost = Mathf.Max(0f, stats.manaCost);
-        stats.castTime = Mathf.Max(0f, stats.castTime);
-        stats.cooldown = Mathf.Max(0f, stats.cooldown);
-        stats.effectDuration = Mathf.Max(0f, stats.effectDuration);
-        stats.healPower = Mathf.Max(0f, stats.healPower);
-        stats.critChance = Mathf.Clamp(stats.critChance, 0f, 100f);
-        return stats;
-    }
-
-    private string BuildEffectivePreview(int level)
-    {
-        FinalSkillStats stats = BuildPreviewStats(level);
-        int clampedLevel = ClampLevel(level);
-        return $"Lv {clampedLevel}: Damage {stats.damage:0.##}, Mana {stats.manaCost:0.##}, Cast {stats.castTime:0.##}s, Cooldown {stats.cooldown:0.##}s, Radius {stats.areaRadius:0.##}m, Projectiles {stats.projectileCount}, Crit {stats.critChance:0.##}%";
-    }
-
-    private string BuildDeltaPreview(int level)
-    {
-        FinalSkillStats stats = BuildPreviewStats(level);
-        return $"Damage {FormatSigned(stats.damage - baseDamage)}, Mana {FormatSigned(stats.manaCost - baseManaCost)}, Cast {FormatSigned(stats.castTime - baseCastTime)}s, Cooldown {FormatSigned(stats.cooldown - baseCooldown)}s, Radius {FormatSigned(stats.areaRadius - baseRadius)}m, Projectiles {FormatSigned(stats.projectileCount - baseProjectilesCount)}, Crit {FormatSigned(stats.critChance - baseCritChance)}%";
-    }
-
-    private static string FormatSigned(float value)
-    {
-        return value >= 0f ? $"+{value:0.##}" : value.ToString("0.##");
-    }
-
-    private static string FormatSigned(int value)
-    {
-        return value >= 0 ? $"+{value}" : value.ToString();
     }
 
     private static string FormatSkillId(string value)
@@ -882,65 +634,6 @@ public class SkillGemDefinition : ScriptableObject
         if (target != null)
             EditorUtility.SetDirty(target);
 #endif
-    }
-
-    public int ClampLevel(int level)
-    {
-        return Mathf.Clamp(level, 1, Mathf.Max(1, maxLevel));
-    }
-
-    public LevelData GetLevelData(int level)
-    {
-        if (perLevelData == null || perLevelData.Count == 0)
-            return null;
-
-        int clampedLevel = ClampLevel(level);
-        LevelData bestMatch = null;
-        int bestRequiredLevel = int.MinValue;
-
-        for (int i = 0; i < perLevelData.Count; i++)
-        {
-            LevelData entry = perLevelData[i];
-            if (entry == null)
-                continue;
-
-            if (!entry.HasAnyOverride())
-                continue;
-
-            int requiredLevel = Mathf.Max(1, entry.requiredLevel);
-            if (requiredLevel > clampedLevel)
-                continue;
-
-            if (bestMatch != null && requiredLevel <= bestRequiredLevel)
-                continue;
-
-            bestMatch = entry;
-            bestRequiredLevel = requiredLevel;
-        }
-
-        if (bestMatch != null)
-            return bestMatch;
-
-        int index = Mathf.Clamp(clampedLevel - 1, 0, perLevelData.Count - 1);
-        return perLevelData[index];
-    }
-
-    public void ApplyLevelData(FinalSkillStats stats, int level)
-    {
-        if (stats == null)
-            return;
-
-        LevelData levelData = GetLevelData(level);
-        if (levelData == null)
-            return;
-
-        stats.damage = levelData.damage;
-        stats.manaCost = levelData.manaCost;
-        stats.castTime = levelData.castTime;
-        stats.cooldown = levelData.cooldown;
-        stats.areaRadius = levelData.radius;
-        stats.projectileCount = levelData.projectiles;
-        stats.critChance = levelData.critChance;
     }
 
     public float GetCastPointNormalized()

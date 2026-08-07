@@ -136,7 +136,7 @@ public static class SkillUpgradeTreeValidator
                 }
             }
 
-            if (node.skillLevelDelta == 0 && !hasSupportedModifier && !grantsUpgrade)
+            if (!hasSupportedModifier && !grantsUpgrade)
                 issues.Add(Warning($"Node '{nodeId}' has no gameplay effect."));
         }
 

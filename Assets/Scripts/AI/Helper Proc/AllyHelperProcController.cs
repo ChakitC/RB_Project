@@ -226,13 +226,11 @@ public sealed class AllyHelperProcController : MonoBehaviour
             return allyHelperManager.TryStartChainAttackHelper(
                 helperDef.chainAttackSequence,
                 helperDef.executionSkill,
-                helperDef.ClampedSkillLevel,
                 helperDef.hideHelperOnSkillComplete);
         }
 
         return allyHelperManager.TrySummonAllyHelper(
             helperDef.executionSkill,
-            helperDef.ClampedSkillLevel,
             helperDef.hideHelperOnSkillComplete);
     }
 

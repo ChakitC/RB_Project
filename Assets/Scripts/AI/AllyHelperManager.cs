@@ -22,7 +22,6 @@ public class AllyHelperManager : MonoBehaviour
     sealed class PendingHelperSkill
     {
         public int requestId;
-        public int skillLevel;
         public SkillGemDefinition skillDef;
     }
 
@@ -34,8 +33,6 @@ public class AllyHelperManager : MonoBehaviour
         public GameObject targetObject;
         public Transform targetTransform;
         public Transform anchorTransform;
-        public int requestedSkillLevel;
-        public int chainAttackSkillLevel;
         public ChainStepContinueMode continueMode;
         public float continueNormalizedTime;
         public bool continueReleased;
@@ -290,7 +287,6 @@ public class AllyHelperManager : MonoBehaviour
 
     public bool TrySummonAllyHelper(
         SkillGemDefinition skillDef,
-        int skillLevel = 1,
         bool hideOnSkillComplete = true)
     {
         if (!TryPrepareHelperForSummon(out bool activatedNow))
@@ -322,7 +318,6 @@ public class AllyHelperManager : MonoBehaviour
         {
             requestId = requestId,
             skillDef = skillDef,
-            skillLevel = Mathf.Max(1, skillLevel),
         };
 
         if (logHelperExecution)
@@ -353,7 +348,6 @@ public class AllyHelperManager : MonoBehaviour
     public bool TryStartChainAttackHelper(
         HelperChainAttackSequenceDef sequenceDef,
         SkillGemDefinition chainAttackSkillDef,
-        int requestedSkillLevel = 1,
         bool hideOnSkillComplete = true,
         ChainStepContinueMode continueMode = ChainStepContinueMode.OnStepComplete,
         float continueNormalizedTime = 1f)
@@ -376,7 +370,6 @@ public class AllyHelperManager : MonoBehaviour
             targetObject,
             targetTransform,
             anchorTransform,
-            requestedSkillLevel,
             hideOnSkillComplete,
             continueMode,
             continueNormalizedTime);
@@ -386,7 +379,6 @@ public class AllyHelperManager : MonoBehaviour
         HelperChainAttackSequenceDef sequenceDef,
         SkillGemDefinition chainAttackSkillDef,
         Transform explicitTargetTransform,
-        int requestedSkillLevel = 1,
         bool hideOnSkillComplete = true,
         ChainStepContinueMode continueMode = ChainStepContinueMode.OnStepComplete,
         float continueNormalizedTime = 1f)
@@ -409,7 +401,6 @@ public class AllyHelperManager : MonoBehaviour
             targetObject,
             targetTransform,
             anchorTransform,
-            requestedSkillLevel,
             hideOnSkillComplete,
             continueMode,
             continueNormalizedTime);
@@ -421,7 +412,6 @@ public class AllyHelperManager : MonoBehaviour
         GameObject targetObject,
         Transform targetTransform,
         Transform anchorTransform,
-        int requestedSkillLevel,
         bool hideOnSkillComplete,
         ChainStepContinueMode continueMode,
         float continueNormalizedTime)
@@ -448,8 +438,6 @@ public class AllyHelperManager : MonoBehaviour
             targetObject = targetObject,
             targetTransform = targetTransform,
             anchorTransform = anchorTransform,
-            requestedSkillLevel = Mathf.Max(1, requestedSkillLevel),
-            chainAttackSkillLevel = Mathf.Max(1, requestedSkillLevel),
             continueMode = continueMode,
             continueNormalizedTime = Mathf.Clamp(continueNormalizedTime, 0f, 0.999f),
             warpRequestId = NextHelperSkillRequestId(),
@@ -746,7 +734,7 @@ public class AllyHelperManager : MonoBehaviour
         if (helperSkill.skillDef == null)
             return;
 
-        if (!ExecuteHelperSkill(helperSkill.skillDef, helperSkill.skillLevel, applyFacing: true, requestId))
+        if (!ExecuteHelperSkill(helperSkill.skillDef, applyFacing: true, requestId))
             LastExecutionSucceeded = false;
     }
 
@@ -957,7 +945,6 @@ public class AllyHelperManager : MonoBehaviour
 
             if (!ExecuteHelperSkill(
                     pendingChainAttackSequence.chainAttackSkillDef,
-                    pendingChainAttackSequence.chainAttackSkillLevel,
                     applyFacing: false,
                     requestId))
             {
@@ -1184,7 +1171,7 @@ public class AllyHelperManager : MonoBehaviour
             allyAgent.nextPosition = allyHelper.transform.position;
     }
 
-    bool ExecuteHelperSkill(SkillGemDefinition skillDef, int skillLevel, bool applyFacing, int requestId = 0)
+    bool ExecuteHelperSkill(SkillGemDefinition skillDef, bool applyFacing, int requestId = 0)
     {
         if (skillDef == null)
             return false;
@@ -1202,11 +1189,7 @@ public class AllyHelperManager : MonoBehaviour
             return false;
         }
 
-        var runtimeSkill = new SkillInstance
-        {
-            def = skillDef,
-            level = Mathf.Max(1, skillLevel),
-        };
+        var runtimeSkill = new SkillInstance { def = skillDef };
 
         if (applyFacing)
             ApplyHelperSkillFacing(skillDef);

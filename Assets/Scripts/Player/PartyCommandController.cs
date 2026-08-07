@@ -432,7 +432,6 @@ public sealed class PartyCommandController : MonoBehaviour
             PartyCommandExecutionKind.HelperSkill => helperManager != null &&
                                                      helperManager.TrySummonAllyHelper(
                                                          command.helperSkill,
-                                                         command.ClampedHelperSkillLevel,
                                                          command.helperHideOnComplete),
             PartyCommandExecutionKind.HelperCommandSlot => helperManager != null &&
                                                            helperManager.TryExecuteCommandSlot(
@@ -442,7 +441,6 @@ public sealed class PartyCommandController : MonoBehaviour
                                                            helperManager.TryStartChainAttackHelper(
                                                                command.helperChainAttackSequence,
                                                                command.helperSkill,
-                                                               command.ClampedHelperSkillLevel,
                                                                command.helperHideOnComplete,
                                                                command.helperChainContinueMode,
                                                                command.ClampedHelperChainContinueNormalizedTime),
@@ -980,7 +978,6 @@ public sealed class PartyCommandDefinition
     [Header("Execution")]
     public PartyCommandExecutionKind executionKind = PartyCommandExecutionKind.HelperSkill;
     public SkillGemDefinition helperSkill;
-    [Min(1)] public int helperSkillLevel = 1;
     public bool helperHideOnComplete = true;
     [Min(0)] public int helperCommandSlotIndex;
     public HelperChainAttackSequenceDef helperChainAttackSequence;
@@ -992,7 +989,6 @@ public sealed class PartyCommandDefinition
 
     public float ClampedCommandPointCost => Mathf.Max(0f, commandPointCost);
     public float ClampedCooldownSeconds => Mathf.Max(0f, cooldownSeconds);
-    public int ClampedHelperSkillLevel => Mathf.Max(1, helperSkillLevel);
     public int ClampedHelperCommandSlotIndex => Mathf.Max(0, helperCommandSlotIndex);
     public float ClampedHelperChainContinueNormalizedTime => Mathf.Clamp(helperChainContinueNormalizedTime, 0f, 0.999f);
     public int ClampedAllyCommandSlotIndex => Mathf.Max(0, allyCommandSlotIndex);

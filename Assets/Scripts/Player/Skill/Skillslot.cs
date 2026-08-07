@@ -6,15 +6,9 @@ public class CharacterSkillEntry
 {
     [Header("Active Gems")]
     public SkillGemDefinition skillAsset;
-    [Min(1)] public int skillLevel = 1;
-
-    [Header("Support Gems")]
-    public SupportGemDefinition[] supportAssets;
 
     [HideInInspector]
     public SkillInstance runtimeSkill;
-
-    public int maxSupportSlots = 3;
 
     public bool IsConfigured => skillAsset != null;
 }
@@ -26,15 +20,9 @@ public class SkillSlot
 
     [Header("Active Gems")]
     public SkillGemDefinition skillAsset;
-    [Min(1)] public int skillLevel = 1;
-
-    [Header("Support Gems")]
-    public SupportGemDefinition[] supportAssets;
 
     [HideInInspector]
     public SkillInstance runtimeSkill;
-
-    public int maxSupportSlots = 3;
 }
 
 [System.Serializable]

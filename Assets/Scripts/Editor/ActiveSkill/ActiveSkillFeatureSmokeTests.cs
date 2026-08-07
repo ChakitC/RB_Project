@@ -124,10 +124,8 @@ public static class ActiveSkillFeatureSmokeTests
     static void TestDeterministicStatStacking(List<ScriptableObject> assets)
     {
         SkillUpgradeNodeData first = Node("first", 1);
-        first.skillLevelDelta = 1;
         first.statModifiers.Add(new StatModifier { stat = StatType.Damage, add = 10f, mul = 1.5f });
         SkillUpgradeNodeData second = Node("second", 1);
-        second.skillLevelDelta = 2;
         second.statModifiers.Add(new StatModifier { stat = StatType.Damage, add = 5f, mul = 2f });
         SkillUpgradeTreeDefinition tree = CreateTree(assets, "tree.stats", first, second);
         var data = InitializedData(2);
@@ -138,7 +136,6 @@ public static class ActiveSkillFeatureSmokeTests
         SkillUpgradeStatSnapshot snapshot = model.BuildSnapshot("slot", "variant", tree, out _);
         var stats = new FinalSkillStats { damage = 100f };
         snapshot.Apply(stats);
-        Equal(3, snapshot.SkillLevelDelta, "Skill level deltas must sum.");
         Approximately(345f, stats.damage, "Stat stacking must be (base + sum(add)) * product(mul).");
     }
 

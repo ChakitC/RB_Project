@@ -79,7 +79,6 @@ public sealed class ChainAttackStepDef
     [Header("Execution")]
     public ChainStepSkillSource skillSource = ChainStepSkillSource.ExplicitOverride;
     public SkillGemDefinition skillDef;
-    [Min(1)] public int skillLevel = 1;
     public bool ignoreResourceCosts = true;
     public bool faceLockedTargetOnStart;
     public bool faceLockedTargetOnCast = true;
@@ -110,7 +109,6 @@ public sealed class ChainAttackStepDef
     public bool helperHideOnComplete = true;
 
     public string RuntimeId => string.IsNullOrWhiteSpace(stepId) ? actorRole.ToString() : stepId;
-    public int ClampedSkillLevel => Mathf.Max(1, skillLevel);
     public float ClampedContinueNormalizedTime => Mathf.Clamp01(continueNormalizedTime);
     public bool HasSkillConfigured => skillSource == ChainStepSkillSource.ActorDefault || skillDef != null;
     public bool UsesActorDefaultSkill => skillSource == ChainStepSkillSource.ActorDefault;

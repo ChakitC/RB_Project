@@ -31,7 +31,6 @@ public sealed class SkillUpgradeNodeData
     public List<string> mutuallyExclusiveNodeIds = new();
 
     [Header("Skill Effects")]
-    public int skillLevelDelta;
     public List<StatModifier> statModifiers = new();
 
     [Tooltip("Behavior flags this node grants. Steps and payloads query these through SkillCastContext.")]

@@ -357,16 +357,14 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return runtimeSkill != null && runtimeSkill.def != null;
     }
 
-    public bool TryGetChainAttackSkillDefinition(out SkillGemDefinition skillDef, out int skillLevel, out SkillInstance runtimeSkill)
+    public bool TryGetChainAttackSkillDefinition(out SkillGemDefinition skillDef, out SkillInstance runtimeSkill)
     {
         skillDef = null;
-        skillLevel = 1;
 
         if (!TryGetChainAttackRuntimeSkill(out runtimeSkill))
             return false;
 
         skillDef = runtimeSkill.def;
-        skillLevel = Mathf.Max(1, runtimeSkill.level);
         return true;
     }
 
@@ -417,7 +415,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
     }
 
-    public void AssignSkillToSlot(int index, SkillGemDefinition asset, int level = 1)
+    public void AssignSkillToSlot(int index, SkillGemDefinition asset)
     {
         if (!TryGetCommandSlot(index, out SkillSlot slot))
             return;
@@ -425,8 +423,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         CancelPendingSlotIfNeeded(slot);
 
         slot.skillAsset = asset;
-        slot.skillLevel = level;
-        slot.runtimeSkill = BuildRuntimeSkill(slot, asset, level);
+        slot.runtimeSkill = BuildRuntimeSkill(slot, asset);
         if (TryGetCommandSlotState(index, out ResolvedCommandSlotState state))
         {
             state.selectedOption = null;
@@ -529,57 +526,31 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             debugSource: debugSource));
     }
 
-    private SkillInstance BuildRuntimeSkill(SkillSlot slot, SkillGemDefinition asset, int level)
+    private SkillInstance BuildRuntimeSkill(SkillSlot slot, SkillGemDefinition asset)
     {
         if (slot == null || asset == null)
             return null;
 
-        int resolvedSkillLevel = asset.ClampLevel(level);
-        slot.skillLevel = resolvedSkillLevel;
-
-        return CreateRuntimeSkill(asset, slot.supportAssets, resolvedSkillLevel);
+        return CreateRuntimeSkill(asset);
     }
 
-    private SkillInstance BuildRuntimeSkill(CharacterSkillEntry entry, SkillGemDefinition asset, int level)
+    private SkillInstance BuildRuntimeSkill(CharacterSkillEntry entry, SkillGemDefinition asset)
     {
         if (entry == null || asset == null)
             return null;
 
-        int resolvedSkillLevel = asset.ClampLevel(level);
-        entry.skillLevel = resolvedSkillLevel;
-
-        return CreateRuntimeSkill(asset, entry.supportAssets, resolvedSkillLevel);
+        return CreateRuntimeSkill(asset);
     }
 
     private static SkillInstance CreateRuntimeSkill(
         SkillGemDefinition asset,
-        SupportGemDefinition[] supportAssets,
-        int resolvedSkillLevel,
         SkillUpgradeStatSnapshot upgradeSnapshot = null)
     {
-        var instance = new SkillInstance
+        return new SkillInstance
         {
             def = asset,
-            level = resolvedSkillLevel,
             upgradeSnapshot = upgradeSnapshot,
         };
-
-        if (supportAssets == null)
-            return instance;
-
-        foreach (SupportGemDefinition supportAsset in supportAssets)
-        {
-            if (supportAsset == null)
-                continue;
-
-            instance.supports.Add(new SupportInstance
-            {
-                def = supportAsset,
-                level = Mathf.Clamp(resolvedSkillLevel, 1, Mathf.Max(1, supportAsset.maxLevel)),
-            });
-        }
-
-        return instance;
     }
 
     private bool TryGetCommandSlot(int slotIndex, out SkillSlot slot)
@@ -649,14 +620,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             return;
         }
 
-        if (slot.runtimeSkill != null &&
-            slot.runtimeSkill.def == slot.skillAsset &&
-            slot.runtimeSkill.level == slot.skillLevel)
-        {
+        if (slot.runtimeSkill != null && slot.runtimeSkill.def == slot.skillAsset)
             return;
-        }
 
-        slot.runtimeSkill = BuildRuntimeSkill(slot, slot.skillAsset, slot.skillLevel);
+        slot.runtimeSkill = BuildRuntimeSkill(slot, slot.skillAsset);
     }
 
     private void EnsureRuntimeSkill(CharacterSkillEntry entry)
@@ -670,14 +637,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             return;
         }
 
-        if (entry.runtimeSkill != null &&
-            entry.runtimeSkill.def == entry.skillAsset &&
-            entry.runtimeSkill.level == entry.skillLevel)
-        {
+        if (entry.runtimeSkill != null && entry.runtimeSkill.def == entry.skillAsset)
             return;
-        }
 
-        entry.runtimeSkill = BuildRuntimeSkill(entry, entry.skillAsset, entry.skillLevel);
+        entry.runtimeSkill = BuildRuntimeSkill(entry, entry.skillAsset);
     }
 
     private void CacheReferences()
@@ -939,15 +902,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             ? activeSkillProgress.BuildSnapshot(slotId, optionId, upgradeTree)
             : null;
 
-        int levelDelta = upgradeSnapshot != null ? upgradeSnapshot.SkillLevelDelta : 0;
-        slot.skillLevel = option.skillAsset.ClampLevel(Mathf.Max(1, option.skillLevel) + levelDelta);
-        slot.supportAssets = option.supportAssets;
-        slot.maxSupportSlots = Mathf.Max(0, option.maxSupportSlots);
-        slot.runtimeSkill = CreateRuntimeSkill(
-            slot.skillAsset,
-            slot.supportAssets,
-            slot.skillLevel,
-            upgradeSnapshot);
+        slot.runtimeSkill = CreateRuntimeSkill(slot.skillAsset, upgradeSnapshot);
     }
 
     private void SubscribeToActiveSkillProgress()
@@ -997,7 +952,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             return;
 
         slot.skillAsset = null;
-        slot.supportAssets = null;
         slot.runtimeSkill = null;
     }
 

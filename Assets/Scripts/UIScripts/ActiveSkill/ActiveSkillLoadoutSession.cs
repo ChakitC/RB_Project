@@ -197,29 +197,11 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
         if (proposedNode != null)
             snapshot.AddNode(proposedNode);
 
-        int level = option.skillAsset.ClampLevel(Mathf.Max(1, option.skillLevel) + snapshot.SkillLevelDelta);
         var instance = new SkillInstance
         {
             def = option.skillAsset,
-            level = level,
             upgradeSnapshot = snapshot,
         };
-
-        if (option.supportAssets != null)
-        {
-            for (int i = 0; i < option.supportAssets.Length; i++)
-            {
-                SupportGemDefinition support = option.supportAssets[i];
-                if (support == null)
-                    continue;
-
-                instance.supports.Add(new SupportInstance
-                {
-                    def = support,
-                    level = Mathf.Clamp(level, 1, Mathf.Max(1, support.maxLevel)),
-                });
-            }
-        }
 
         return instance.GetFinalStats(null);
     }

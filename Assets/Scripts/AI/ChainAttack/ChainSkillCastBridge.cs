@@ -6,7 +6,6 @@ internal sealed class ChainSkillCastBridge
 
     ISkillUser _directSkillUser;
     SkillGemDefinition _lastResolvedAttackSkill;
-    int _lastResolvedAttackLevel = 1;
     SkillCastOrchestrator _skillCastOrchestrator;
 
     public ChainSkillCastBridge(FieldAllyMember owner)
@@ -15,7 +14,6 @@ internal sealed class ChainSkillCastBridge
     }
 
     public SkillGemDefinition LastResolvedAttackSkill => _lastResolvedAttackSkill;
-    public int LastResolvedAttackLevel => Mathf.Max(1, _lastResolvedAttackLevel);
     public string ChainCastPathLabel => owner.UseDirectSkillUserForChainCastDebug
         ? "Direct ISkillUser"
         : "ChainSkillUserProxy";
@@ -63,23 +61,20 @@ internal sealed class ChainSkillCastBridge
     public bool TryResolveAttackSkill(
         ChainAttackStepDef step,
         out SkillInstance runtimeSkill,
-        out SkillGemDefinition skillDef,
-        out int skillLevel)
+        out SkillGemDefinition skillDef)
     {
         runtimeSkill = null;
         skillDef = null;
-        skillLevel = 1;
 
         if (step == null)
             return false;
 
         if (step.skillSource == ChainStepSkillSource.ActorDefault)
         {
-            if (!TryResolveActorDefaultSkill(step, out runtimeSkill, out skillDef, out skillLevel))
+            if (!TryResolveActorDefaultSkill(out runtimeSkill, out skillDef))
                 return false;
 
             _lastResolvedAttackSkill = skillDef;
-            _lastResolvedAttackLevel = skillLevel;
             return true;
         }
 
@@ -87,10 +82,8 @@ internal sealed class ChainSkillCastBridge
         if (skillDef == null)
             return false;
 
-        skillLevel = skillDef.ClampLevel(step.ClampedSkillLevel);
-        runtimeSkill = CreateTransientRuntimeSkill(skillDef, skillLevel);
+        runtimeSkill = CreateTransientRuntimeSkill(skillDef);
         _lastResolvedAttackSkill = skillDef;
-        _lastResolvedAttackLevel = skillLevel;
         return true;
     }
 
@@ -136,9 +129,7 @@ internal sealed class ChainSkillCastBridge
             return false;
 
         SkillInstance runtimeSkill = execution.attackRuntimeSkill ??
-                                     CreateTransientRuntimeSkill(
-                                         execution.attackSkillDef,
-                                         Mathf.Max(1, execution.attackSkillLevel));
+                                     CreateTransientRuntimeSkill(execution.attackSkillDef);
 
         ISkillUser attackSkillUser = execution.attackSkillUser;
         if (attackSkillUser == null && !TryResolveAttackSkillUser(execution, out attackSkillUser))
@@ -174,33 +165,17 @@ internal sealed class ChainSkillCastBridge
         return skillUser.GetType().Name;
     }
 
-    int ResolveActorDefaultSkillLevel(ChainAttackStepDef step)
-    {
-        if (owner.UseRuntimeChainSkillOverride &&
-            owner.RuntimeChainSkillRef != null &&
-            owner.OverrideRuntimeChainSkillLevel)
-        {
-            return Mathf.Max(1, owner.RuntimeChainSkillLevel);
-        }
-
-        return step != null ? step.ClampedSkillLevel : 1;
-    }
-
     bool TryResolveActorDefaultSkill(
-        ChainAttackStepDef step,
         out SkillInstance runtimeSkill,
-        out SkillGemDefinition skillDef,
-        out int skillLevel)
+        out SkillGemDefinition skillDef)
     {
         runtimeSkill = null;
         skillDef = null;
-        skillLevel = 1;
 
         if (owner.UseRuntimeChainSkillOverride && owner.RuntimeChainSkillRef != null)
         {
             skillDef = owner.RuntimeChainSkillRef;
-            skillLevel = skillDef.ClampLevel(ResolveActorDefaultSkillLevel(step));
-            runtimeSkill = CreateTransientRuntimeSkill(skillDef, skillLevel);
+            runtimeSkill = CreateTransientRuntimeSkill(skillDef);
             return true;
         }
 
@@ -209,7 +184,6 @@ internal sealed class ChainSkillCastBridge
             runtimeSkill.def != null)
         {
             skillDef = runtimeSkill.def;
-            skillLevel = Mathf.Max(1, runtimeSkill.level);
             return true;
         }
 
@@ -217,21 +191,16 @@ internal sealed class ChainSkillCastBridge
         if (skillDef == null)
             return false;
 
-        skillLevel = skillDef.ClampLevel(ResolveActorDefaultSkillLevel(step));
-        runtimeSkill = CreateTransientRuntimeSkill(skillDef, skillLevel);
+        runtimeSkill = CreateTransientRuntimeSkill(skillDef);
         return true;
     }
 
-    static SkillInstance CreateTransientRuntimeSkill(SkillGemDefinition skillDef, int skillLevel)
+    static SkillInstance CreateTransientRuntimeSkill(SkillGemDefinition skillDef)
     {
         if (skillDef == null)
             return null;
 
-        return new SkillInstance
-        {
-            def = skillDef,
-            level = Mathf.Max(1, skillLevel),
-        };
+        return new SkillInstance { def = skillDef };
     }
 
     static Transform ResolveAimTarget(PendingSequenceExecution execution)

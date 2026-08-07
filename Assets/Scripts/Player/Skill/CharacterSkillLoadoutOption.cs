@@ -10,12 +10,6 @@ public sealed class CharacterSkillLoadoutOption
 
     [Header("Active Gem")]
     public SkillGemDefinition skillAsset;
-    [Min(1)] public int skillLevel = 1;
-
-    [Header("Support Gems")]
-    public SupportGemDefinition[] supportAssets;
-
-    public int maxSupportSlots = 3;
 
     [Header("Active Skill Tree")]
     [Tooltip("Optional. Leave empty to use the Upgrade Tree assigned to the Skill Asset.")]

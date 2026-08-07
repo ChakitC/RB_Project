@@ -13,16 +13,13 @@ public sealed class SkillUpgradeStatSnapshot
     readonly Dictionary<StatType, Aggregate> _modifiers = new();
     readonly HashSet<string> _upgradeIds = new(StringComparer.Ordinal);
 
-    public int SkillLevelDelta { get; private set; }
-    public bool IsEmpty => SkillLevelDelta == 0 && _modifiers.Count == 0 && _upgradeIds.Count == 0;
+    public bool IsEmpty => _modifiers.Count == 0 && _upgradeIds.Count == 0;
     public IReadOnlyCollection<string> UpgradeIds => _upgradeIds;
 
     public void AddNode(SkillUpgradeNodeData node)
     {
         if (node == null)
             return;
-
-        SkillLevelDelta += node.skillLevelDelta;
 
         if (node.grantedUpgradeIds != null)
         {

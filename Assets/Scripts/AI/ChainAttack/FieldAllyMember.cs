@@ -31,10 +31,6 @@ public sealed class FieldAllyMember : MonoBehaviour
     [SerializeField] private bool useRuntimeChainSkillOverride;
     [FoldoutGroup("Chain Attack/Runtime Prototype"), ShowIf(nameof(useRuntimeChainSkillOverride)), LabelText("Runtime Chain Skill"), AssetsOnly]
     [SerializeField] private SkillGemDefinition runtimeChainSkill;
-    [FoldoutGroup("Chain Attack/Runtime Prototype"), ShowIf(nameof(useRuntimeChainSkillOverride)), LabelText("Override Skill Level")]
-    [SerializeField] private bool overrideRuntimeChainSkillLevel = true;
-    [FoldoutGroup("Chain Attack/Runtime Prototype"), ShowIf("@useRuntimeChainSkillOverride && overrideRuntimeChainSkillLevel"), LabelText("Runtime Skill Level"), MinValue(1)]
-    [SerializeField] private int runtimeChainSkillLevel = 1;
     [FoldoutGroup("Chain Attack/Debug"), LabelText("Use Direct Skill User For Chain Cast")]
     [SerializeField] private bool useDirectSkillUserForChainCastDebug;
     [FoldoutGroup("Chain Attack/Debug"), ShowIf(nameof(useDirectSkillUserForChainCastDebug)), LabelText("Direct Skill User Source")]
@@ -128,7 +124,7 @@ public sealed class FieldAllyMember : MonoBehaviour
         }
     }
     public SkillGemDefinition DefaultChainSkill =>
-        SkillManager != null && SkillManager.TryGetChainAttackSkillDefinition(out SkillGemDefinition configuredSkill, out _, out _)
+        SkillManager != null && SkillManager.TryGetChainAttackSkillDefinition(out SkillGemDefinition configuredSkill, out _)
             ? configuredSkill
             : defaultChainSkill != null
                 ? defaultChainSkill
@@ -173,16 +169,6 @@ public sealed class FieldAllyMember : MonoBehaviour
         {
             EnsureModules();
             return _skillCastBridge.LastResolvedAttackSkill;
-        }
-    }
-
-    [ShowInInspector, ReadOnly, FoldoutGroup("Chain Attack/Runtime Prototype"), PropertyOrder(13), LabelText("Last Resolved Attack Level")]
-    int InspectorLastResolvedAttackLevel
-    {
-        get
-        {
-            EnsureModules();
-            return _skillCastBridge.LastResolvedAttackLevel;
         }
     }
 
@@ -278,11 +264,9 @@ public sealed class FieldAllyMember : MonoBehaviour
         return _sequenceRunner.TryStartSequenceStep(step, lockedTarget, lockedTargetAnchor);
     }
 
-    public void SetRuntimeChainSkillOverride(SkillGemDefinition skill, int level = 1, bool overrideSkillLevel = true)
+    public void SetRuntimeChainSkillOverride(SkillGemDefinition skill)
     {
         runtimeChainSkill = skill;
-        runtimeChainSkillLevel = Mathf.Max(1, level);
-        this.overrideRuntimeChainSkillLevel = overrideSkillLevel;
         useRuntimeChainSkillOverride = skill != null;
     }
 
@@ -290,8 +274,6 @@ public sealed class FieldAllyMember : MonoBehaviour
     {
         useRuntimeChainSkillOverride = false;
         runtimeChainSkill = null;
-        runtimeChainSkillLevel = 1;
-        overrideRuntimeChainSkillLevel = true;
     }
 
     public void FinalizeSequenceParticipation(object owner, bool interrupted)
@@ -445,16 +427,13 @@ public sealed class FieldAllyMember : MonoBehaviour
     {
         if (useRuntimeChainSkillOverride && runtimeChainSkill != null)
         {
-            string levelLabel = overrideRuntimeChainSkillLevel
-                ? $"Lv {Mathf.Max(1, runtimeChainSkillLevel)}"
-                : "Step Level";
-            return $"Runtime Override ({runtimeChainSkill.name}, {levelLabel})";
+            return $"Runtime Override ({runtimeChainSkill.name})";
         }
 
         if (SkillManager != null &&
-            SkillManager.TryGetChainAttackSkillDefinition(out SkillGemDefinition configuredSkill, out int configuredLevel, out _))
+            SkillManager.TryGetChainAttackSkillDefinition(out SkillGemDefinition configuredSkill, out _))
         {
-            return $"Skill Manager ({configuredSkill.name}, Lv {Mathf.Max(1, configuredLevel)})";
+            return $"Skill Manager ({configuredSkill.name})";
         }
 
         if (defaultChainSkill != null)
@@ -498,8 +477,6 @@ public sealed class FieldAllyMember : MonoBehaviour
     internal bool IgnoreCollisionDuringSequence => ignoreCollisionDuringSequence;
     internal bool UseRuntimeChainSkillOverride => useRuntimeChainSkillOverride;
     internal SkillGemDefinition RuntimeChainSkillRef => runtimeChainSkill;
-    internal bool OverrideRuntimeChainSkillLevel => overrideRuntimeChainSkillLevel;
-    internal int RuntimeChainSkillLevel => runtimeChainSkillLevel;
     internal bool UseDirectSkillUserForChainCastDebug => useDirectSkillUserForChainCastDebug;
     internal MonoBehaviour DirectSkillUserSourceRef => directSkillUserSource;
     internal float UtilityRecoveryTimeoutSeconds => utilityRecoveryTimeoutSeconds;

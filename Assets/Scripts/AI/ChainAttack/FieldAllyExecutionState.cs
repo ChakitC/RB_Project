@@ -23,7 +23,6 @@ internal sealed class PendingSequenceExecution
     public ISkillUser attackSkillUser;
     public SkillInstance attackRuntimeSkill;
     public SkillGemDefinition attackSkillDef;
-    public int attackSkillLevel;
     public bool ignoreResourceCosts;
     public bool entrySnapApplied;
     public TargetedSkillPlacementResult placementResult;

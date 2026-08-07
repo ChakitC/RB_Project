@@ -403,13 +403,11 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
                 step.helperChainAttackSequence,
                 step.skillDef,
                 runtime.targetAnchor != null ? runtime.targetAnchor : runtime.targetTransform,
-                step.ClampedSkillLevel,
                 step.helperHideOnComplete,
                 helperContinueMode,
                 helperContinueNormalizedTime)
             : allyHelperManager.TrySummonAllyHelper(
                 step.skillDef,
-                step.ClampedSkillLevel,
                 step.helperHideOnComplete);
 
         if (!started)

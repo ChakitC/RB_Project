@@ -22,7 +22,7 @@ public static class ActiveSkillFeatureSmokeTests
         var assets = new List<ScriptableObject>();
         try
         {
-            TestCatchUpAndPassiveIsolation();
+            TestCatchUpGrantsPointsOnce();
             TestPassiveOptionSharesSkillPool(assets);
             TestRequiredUpgradeIdGatesRule();
             TestMixedKindSlotFailsValidation(assets);
@@ -33,6 +33,7 @@ public static class ActiveSkillFeatureSmokeTests
             TestTreeMismatchRefundsRemovedNodes(assets);
             TestDeterministicStatStacking(assets);
             TestGrantedUpgradeIdsSnapshotAggregation(assets);
+            TestUnsupportedStatAggregatesWithoutAffectingActiveSkillOutput();
             TestMutuallyExclusiveNodesRejectCanUnlock(assets);
             TestEffectDurationAndHealPowerStatStacking();
             TestSkillTreeDefaultAndVariantOverride(assets);
@@ -53,18 +54,16 @@ public static class ActiveSkillFeatureSmokeTests
         }
     }
 
-    static void TestCatchUpAndPassiveIsolation()
+    static void TestCatchUpGrantsPointsOnce()
     {
         var data = new CharacterProgressData
         {
             level = 6,
-            skillPoints = 9,
         };
         var model = new ActiveSkillProgressModel(null, data, data.level);
 
         Expect(model.EnsureInitialized(), "Old progress must be initialized once.");
         Equal(5, model.AvailablePoints, "Catch-up must grant one point for levels after level 1.");
-        Equal(9, data.skillPoints, "Active Skill Points must not change Passive Points.");
         Expect(!model.EnsureInitialized(), "Catch-up must not run twice.");
         Equal(5, model.AvailablePoints, "Repeated initialization must not duplicate points.");
     }
@@ -292,6 +291,24 @@ public static class ActiveSkillFeatureSmokeTests
             "Snapshot must aggregate upgrade ids from every unlocked node, not just the first.");
         Expect(!snapshot.HasUpgrade("aires3.ally_support"),
             "Snapshot must not report an upgrade id that was never granted.");
+    }
+
+    static void TestUnsupportedStatAggregatesWithoutAffectingActiveSkillOutput()
+    {
+        var snapshot = new SkillUpgradeStatSnapshot();
+        SkillUpgradeNodeData node = Node("armor_node", 1);
+        node.statModifiers.Add(new StatModifier { stat = StatType.Armor, add = 50f, mul = 2f });
+        snapshot.AddNode(node);
+
+        Expect(snapshot.TryGetAggregate(StatType.Armor, out float add, out float multiply),
+            "AddNode must aggregate a stat outside the FinalSkillStats whitelist so passive rules/behaviors can read it.");
+        Approximately(50f, add, "Aggregate add must match the node's authored value.");
+        Approximately(2f, multiply, "Aggregate multiply must match the node's authored value.");
+
+        var stats = new FinalSkillStats { damage = 100f };
+        snapshot.Apply(stats);
+        Approximately(100f, stats.damage,
+            "A stat outside Apply(FinalSkillStats)'s whitelist must remain a no-op for active-skill output.");
     }
 
     static void TestMutuallyExclusiveNodesRejectCanUnlock(List<ScriptableObject> assets)

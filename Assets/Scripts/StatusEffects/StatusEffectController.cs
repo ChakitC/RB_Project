@@ -9,6 +9,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
     [SerializeField] private CharacteContext ctx;
     [SerializeField] private StatsHub statsHub;
     [SerializeField] private StateHub stateHub;
+    [SerializeField] private HealthSystem healthSystem;
 
     [Header("Visual")]
     [SerializeField] private bool autoCreateVfxPresenter = true;
@@ -65,6 +66,13 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             TryGetComponent(out stateHub);
         if (!stateHub && ctx != null)
             stateHub = ctx.GetComponentInChildren<StateHub>(true);
+
+        if (!healthSystem && ctx != null)
+            healthSystem = ctx.HealthSystem;
+        if (!healthSystem)
+            TryGetComponent(out healthSystem);
+        if (!healthSystem && ctx != null)
+            healthSystem = ctx.GetComponentInChildren<HealthSystem>(true);
     }
 
     void EnsureVfxPresenter()
@@ -145,14 +153,25 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         NotifyStatModifiersChanged();
         SyncControlState();
         RefreshDebugSnapshot();
+
+        if (healthSystem != null)
+            healthSystem.CharacterDead += HandleCharacterDead;
     }
 
     void OnDisable()
     {
+        if (healthSystem != null)
+            healthSystem.CharacterDead -= HandleCharacterDead;
+
         NotifyStatModifiersChanged();
         if (stateHub != null)
             stateHub.SetStatusEffectControlState(ControlBlockFlags.None, false);
         RefreshDebugSnapshot();
+    }
+
+    void HandleCharacterDead()
+    {
+        ClearAllEffects();
     }
 
     void Update()
@@ -192,47 +211,129 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         string originRuleId = null,
         float durationOverride = 0f)
     {
+        return ApplyEffectCore(
+            definition,
+            null,
+            source,
+            initialStacks,
+            appliedById,
+            chainId,
+            depth,
+            origin,
+            originPassiveId,
+            originRuleId,
+            durationOverride);
+    }
+
+    /// <summary>Apply site ที่ authored ค่าบาลานซ์เอง (StatusApplicationSpec) แทนที่จะใช้ค่าจาก StatusEffectDef ตรงๆ</summary>
+    public StatusEffectInstance ApplyEffect(StatusApplicationSpec spec, GameObject source = null)
+    {
+        if (spec == null || spec.effect == null)
+            return null;
+
+        string appliedById = source != null ? $"actor:{source.GetInstanceID()}" : "system";
+
+        return ApplyEffect(spec, source, appliedById, 0, 0, PassiveEventOrigin.External, null, null);
+    }
+
+    public StatusEffectInstance ApplyEffect(
+        StatusApplicationSpec spec,
+        GameObject source,
+        string appliedById,
+        ulong chainId,
+        int depth,
+        PassiveEventOrigin origin,
+        string originPassiveId = null,
+        string originRuleId = null)
+    {
+        if (spec == null || spec.effect == null)
+            return null;
+
+        return ApplyEffectCore(
+            spec.effect,
+            spec,
+            source,
+            Mathf.Max(1, spec.stacks),
+            appliedById,
+            chainId,
+            depth,
+            origin,
+            originPassiveId,
+            originRuleId,
+            spec.durationOverride);
+    }
+
+    StatusEffectInstance ApplyEffectCore(
+        StatusEffectDef definition,
+        StatusApplicationSpec spec,
+        GameObject source,
+        int initialStacks,
+        string appliedById,
+        ulong chainId,
+        int depth,
+        PassiveEventOrigin origin,
+        string originPassiveId,
+        string originRuleId,
+        float durationOverride)
+    {
         if (definition == null)
             return null;
 
         float now = Time.time;
         int clampedStacks = Mathf.Max(0, initialStacks);
+        string sourceKey = definition.separatePerSource ? appliedById : null;
 
         if (definition.stackMode == StackMode.IndependentInstances)
         {
-            var instance = CreateInstance(definition, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, durationOverride);
+            var instance = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, durationOverride);
             _activeEffects.Add(instance);
-            NotifyEffectsChanged(StatusEffectEventType.AppliedNew, instance, 0, instance.CurrentStacks);
+
+            List<StatusEffectEvent> newLifecycleEvents = null;
+            AddStatusEffectEvent(ref newLifecycleEvents, StatusEffectEventType.AppliedNew, instance, 0, instance.CurrentStacks);
+            EnforceInstanceCap(definition, ref newLifecycleEvents);
+            NotifyEffectsChanged(newLifecycleEvents);
             return instance;
         }
 
-        var existing = FindActiveEffect(definition);
+        var existing = FindActiveEffect(definition, sourceKey);
         if (existing == null)
         {
-            existing = CreateInstance(definition, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, durationOverride);
+            existing = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, durationOverride);
             _activeEffects.Add(existing);
-            NotifyEffectsChanged(StatusEffectEventType.AppliedNew, existing, 0, existing.CurrentStacks);
+
+            List<StatusEffectEvent> newLifecycleEvents = null;
+            AddStatusEffectEvent(ref newLifecycleEvents, StatusEffectEventType.AppliedNew, existing, 0, existing.CurrentStacks);
+            EnforceInstanceCap(definition, ref newLifecycleEvents);
+            NotifyEffectsChanged(newLifecycleEvents);
             return existing;
         }
 
         existing.UpdateSource(source);
         existing.UpdateContext(appliedById, chainId, depth, origin, originPassiveId, originRuleId);
-        existing.SetDurationOverride(durationOverride);
         int oldStacks = existing.CurrentStacks;
 
         switch (definition.stackMode)
         {
             case StackMode.RefreshDuration:
+                existing.SetDurationOverride(durationOverride);
                 existing.RefreshDuration();
+                if (spec != null)
+                    existing.AdoptMagnitude(spec);
                 break;
 
             case StackMode.AddStackAndRefresh:
+                existing.SetDurationOverride(durationOverride);
                 existing.AddStacks(clampedStacks, definition.ClampedMaxStacks);
                 existing.RefreshDuration();
+                if (spec != null)
+                    existing.AdoptMagnitude(spec);
                 break;
 
             case StackMode.StrongestOnly:
-                existing.RefreshDuration();
+                existing.SetDurationOverride(durationOverride);
+                existing.RefreshDurationNoShorten();
+                if (spec != null)
+                    ApplyStrongestOnlyMagnitude(existing, spec);
                 break;
         }
 
@@ -242,6 +343,59 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
         NotifyEffectsChanged(eventType, existing, oldStacks, existing.CurrentStacks);
         return existing;
+    }
+
+    /// <summary>
+    /// StackMode.StrongestOnly: ถ้า incoming shape ต่างจาก existing (คนละ stat/op) เทียบ score กันไม่ได้จริง — ตัวหลังชนะ.
+    /// ถ้า shape เดียวกัน เทียบ StrengthScore แล้วให้ตัวแรงกว่าชนะ.
+    /// </summary>
+    static void ApplyStrongestOnlyMagnitude(StatusEffectInstance existing, StatusApplicationSpec spec)
+    {
+        List<StatusEffectModifier> incomingModifiers = StatusEffectInstance.ResolveModifiers(spec, existing.Definition);
+        bool sameShape = StatusEffectInstance.HasSameModifierShape(existing.ResolvedModifiers, incomingModifiers);
+
+        if (!sameShape)
+        {
+            existing.AdoptMagnitude(spec);
+            return;
+        }
+
+        float incomingScore = StatusEffectInstance.ComputeStrengthScore(incomingModifiers);
+        if (incomingScore > existing.StrengthScore)
+            existing.AdoptMagnitude(spec);
+    }
+
+    const int MaxInstancesPerEffect = 8;
+
+    /// <summary>กันโตไม่มีเพดานเมื่อหลายแหล่ง/IndependentInstances สร้าง instance ใหม่เรื่อยๆ — evict ตัวที่ TimeLeft น้อยสุดเมื่อเกิน cap</summary>
+    void EnforceInstanceCap(StatusEffectDef definition, ref List<StatusEffectEvent> lifecycleEvents)
+    {
+        if (definition == null)
+            return;
+
+        int count = 0;
+        int weakestIndex = -1;
+        float weakestTimeLeft = float.PositiveInfinity;
+
+        for (int i = 0; i < _activeEffects.Count; i++)
+        {
+            if (!MatchesDefinition(_activeEffects[i], definition))
+                continue;
+
+            count++;
+            if (_activeEffects[i].TimeLeft < weakestTimeLeft)
+            {
+                weakestTimeLeft = _activeEffects[i].TimeLeft;
+                weakestIndex = i;
+            }
+        }
+
+        if (count <= MaxInstancesPerEffect || weakestIndex < 0)
+            return;
+
+        var evicted = _activeEffects[weakestIndex];
+        AddStatusEffectEvent(ref lifecycleEvents, StatusEffectEventType.Removed, evicted, evicted.CurrentStacks, 0);
+        _activeEffects.RemoveAt(weakestIndex);
     }
 
     public void RemoveEffect(StatusEffectDef definition)
@@ -276,6 +430,23 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             if (definition == null || !string.Equals(definition.effectId, effectId, StringComparison.Ordinal))
                 continue;
 
+            var removedInstance = _activeEffects[i];
+            AddStatusEffectEvent(ref lifecycleEvents, StatusEffectEventType.Removed, removedInstance, removedInstance.CurrentStacks, 0);
+            _activeEffects.RemoveAt(i);
+        }
+
+        if (lifecycleEvents != null)
+            NotifyEffectsChanged(lifecycleEvents);
+    }
+
+    public void ClearAllEffects()
+    {
+        if (_activeEffects.Count == 0)
+            return;
+
+        List<StatusEffectEvent> lifecycleEvents = null;
+        for (int i = _activeEffects.Count - 1; i >= 0; i--)
+        {
             var removedInstance = _activeEffects[i];
             AddStatusEffectEvent(ref lifecycleEvents, StatusEffectEventType.Removed, removedInstance, removedInstance.CurrentStacks, 0);
             _activeEffects.RemoveAt(i);
@@ -362,14 +533,14 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         return FindActiveEffect(definition) != null;
     }
 
-    public StatusEffectInstance FindActiveEffect(StatusEffectDef definition)
+    public StatusEffectInstance FindActiveEffect(StatusEffectDef definition, string sourceKey = null)
     {
         if (definition == null)
             return null;
 
         for (int i = 0; i < _activeEffects.Count; i++)
         {
-            if (MatchesDefinition(_activeEffects[i], definition))
+            if (MatchesDefinition(_activeEffects[i], definition, sourceKey))
                 return _activeEffects[i];
         }
 
@@ -419,27 +590,29 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
     void ApplyTick(StatusEffectInstance instance)
     {
         var definition = instance?.Definition;
-        if (definition == null || Mathf.Approximately(definition.tickDamage, 0f))
+        if (definition == null || Mathf.Approximately(instance.ResolvedTickDamage, 0f))
             return;
 
         int stacks = Mathf.Max(0, instance.CurrentStacks);
         if (stacks <= 0)
             return;
 
-        float damage = definition.tickDamage * stacks;
+        float damage = instance.ResolvedTickDamage * stacks;
+        if (Mathf.Approximately(damage, 0f))
+            return;
+
+        // ทั้งฝั่ง damage และ heal ต้องหยุด tick เมื่อเป้าหมายล้ม/ตาย ไม่งั้น VFX ของ tick
+        // จะเล่นค้างบนตัวที่ล้มอยู่ทั้งที่เลือดไม่ขยับ (Heal ถูกบล็อกที่ CanHeal อยู่แล้ว)
+        var targetDamageable = GetComponentInParent<IDamageable>();
+        if (targetDamageable == null || !targetDamageable.IsAlive)
+            return;
+
         if (damage < 0f)
         {
             ApplyTickHeal(-damage);
             PublishStatusEffectEvent(StatusEffectEventType.Ticked, instance, stacks, stacks);
             return;
         }
-
-        if (damage <= 0f)
-            return;
-
-        var targetDamageable = GetComponentInParent<IDamageable>();
-        if (targetDamageable == null || !targetDamageable.IsAlive)
-            return;
 
         var damageContext = new DamageContext(
             damage,
@@ -527,6 +700,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
     StatusEffectInstance CreateInstance(
         StatusEffectDef definition,
+        StatusApplicationSpec spec,
         GameObject source,
         int initialStacks,
         float now,
@@ -554,7 +728,8 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             origin,
             originPassiveId,
             originRuleId,
-            durationOverride);
+            durationOverride,
+            spec);
     }
 
     int ResolveRuleMaxStacks(StatusEffectDef definition, StatusEffectTriggerRule rule)
@@ -566,19 +741,28 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         return Mathf.Min(effectMaxStacks, rule.maxStacks);
     }
 
-    bool MatchesDefinition(StatusEffectInstance instance, StatusEffectDef definition)
+    bool MatchesDefinition(StatusEffectInstance instance, StatusEffectDef definition, string sourceKey = null)
     {
         if (instance == null || definition == null || instance.Definition == null)
             return false;
 
-        if (instance.Definition == definition)
-            return true;
+        bool defMatches = instance.Definition == definition;
+        if (!defMatches)
+        {
+            if (string.IsNullOrWhiteSpace(definition.effectId) ||
+                string.IsNullOrWhiteSpace(instance.Definition.effectId))
+                return false;
 
-        if (string.IsNullOrWhiteSpace(definition.effectId) ||
-            string.IsNullOrWhiteSpace(instance.Definition.effectId))
+            defMatches = string.Equals(instance.Definition.effectId, definition.effectId, StringComparison.Ordinal);
+        }
+
+        if (!defMatches)
             return false;
 
-        return string.Equals(instance.Definition.effectId, definition.effectId, StringComparison.Ordinal);
+        if (string.IsNullOrEmpty(sourceKey))
+            return true;
+
+        return string.Equals(instance.AppliedById, sourceKey, StringComparison.Ordinal);
     }
 
     void NotifyEffectsChanged()
@@ -673,21 +857,29 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         {
             var instance = _activeEffects[i];
             var definition = instance?.Definition;
-            if (definition == null || instance.CurrentStacks <= 0 || definition.modifiers == null)
+            if (definition == null || instance.CurrentStacks <= 0)
+                continue;
+
+            var modifiers = instance.ResolvedModifiers;
+            if (modifiers == null || modifiers.Count == 0)
                 continue;
 
             string modifierKey = BuildStatusEffectIdentity(definition);
 
-            for (int j = 0; j < definition.modifiers.Count; j++)
+            for (int j = 0; j < modifiers.Count; j++)
             {
-                var modifier = definition.modifiers[j];
+                var modifier = modifiers[j];
                 if (modifier == null)
                     continue;
+
+                float stackedValue = modifier.operation == ModifierOp.Multiply
+                    ? Mathf.Pow(modifier.value, instance.CurrentStacks)
+                    : modifier.value * instance.CurrentStacks;
 
                 buffer.Add(new RuntimeStatModifier(
                     modifier.statType,
                     modifier.operation,
-                    modifier.value * instance.CurrentStacks,
+                    stackedValue,
                     modifierKey));
             }
         }

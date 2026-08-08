@@ -6,6 +6,13 @@ using UnityEngine;
     menuName = "Combat/Passives/Behaviors/Drop Ammo On Shot")]
 public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
 {
+    [System.Serializable]
+    public sealed class UpgradeGatedPickupEffect
+    {
+        [UpgradeIdPicker] public string requiredUpgradeId;
+        public PickupEffectDef effect;
+    }
+
     [Header("Trigger")]
     [SerializeField, Range(0f, 1f)] private float procChance = 0.08f;
     [SerializeField, Min(0f)] private float internalCooldownSeconds = 1.5f;
@@ -35,12 +42,38 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
     [Tooltip("Optional. Second pickup drops only when the owning slot's snapshot grants this id.")]
     [UpgradeIdPicker] [SerializeField] private string extraDropUpgradeId;
 
+    [Tooltip("Optional. Adds procChanceBonus to the proc chance when the owning slot's snapshot grants this id.")]
+    [UpgradeIdPicker] [SerializeField] private string procChanceBoostUpgradeId;
+    [SerializeField, Range(0f, 1f)] private float procChanceBonus = 0.05f;
+
+    [Tooltip("Optional. Subtracts cooldownReductionSeconds from the internal cooldown when the owning slot's snapshot grants this id.")]
+    [UpgradeIdPicker] [SerializeField] private string cooldownReductionUpgradeId;
+    [SerializeField, Min(0f)] private float cooldownReductionSeconds = 0.5f;
+
+    [Tooltip("Optional. Each entry's effect is added to a spawned pickup only when the owning slot's snapshot grants its requiredUpgradeId.")]
+    [SerializeField] private List<UpgradeGatedPickupEffect> upgradeEffects = new();
+
     readonly Dictionary<int, float> nextReadyTimeByController = new();
+    readonly List<PickupEffectDef> grantedUpgradeEffectsBuffer = new();
 
     public override void CollectUpgradeIds(List<string> ids)
     {
         if (!string.IsNullOrWhiteSpace(extraDropUpgradeId))
             ids.Add(extraDropUpgradeId.Trim());
+        if (!string.IsNullOrWhiteSpace(procChanceBoostUpgradeId))
+            ids.Add(procChanceBoostUpgradeId.Trim());
+        if (!string.IsNullOrWhiteSpace(cooldownReductionUpgradeId))
+            ids.Add(cooldownReductionUpgradeId.Trim());
+
+        if (upgradeEffects == null)
+            return;
+
+        for (int i = 0; i < upgradeEffects.Count; i++)
+        {
+            string id = upgradeEffects[i]?.requiredUpgradeId;
+            if (!string.IsNullOrWhiteSpace(id))
+                ids.Add(id.Trim());
+        }
     }
 
     float WorldNow
@@ -72,7 +105,7 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
         if (IsCooldownActive(controllerId, now))
             return;
 
-        float chance = Mathf.Clamp01(procChance);
+        float chance = Mathf.Clamp01(ResolveProcChance(upgrades));
         if (chance <= 0f || Random.value > chance)
             return;
 
@@ -81,8 +114,33 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
 
         bool grantExtraDrop = !string.IsNullOrWhiteSpace(extraDropUpgradeId) &&
                               upgrades != null && upgrades.HasUpgrade(extraDropUpgradeId);
-        SpawnDrops(controller, ctx, sourceRoot, grantExtraDrop ? dropCount + 1 : dropCount);
-        StampCooldown(controllerId, now);
+        ResolveGrantedUpgradeEffects(upgrades, grantedUpgradeEffectsBuffer);
+        SpawnDrops(controller, ctx, sourceRoot, grantExtraDrop ? dropCount + 1 : dropCount, grantedUpgradeEffectsBuffer);
+        StampCooldown(controllerId, now, ResolveCooldownSeconds(upgrades));
+    }
+
+    float ResolveProcChance(SkillUpgradeStatSnapshot upgrades)
+    {
+        float chance = procChance;
+        if (!string.IsNullOrWhiteSpace(procChanceBoostUpgradeId) &&
+            upgrades != null && upgrades.HasUpgrade(procChanceBoostUpgradeId))
+        {
+            chance += procChanceBonus;
+        }
+
+        return chance;
+    }
+
+    float ResolveCooldownSeconds(SkillUpgradeStatSnapshot upgrades)
+    {
+        float cooldown = internalCooldownSeconds;
+        if (!string.IsNullOrWhiteSpace(cooldownReductionUpgradeId) &&
+            upgrades != null && upgrades.HasUpgrade(cooldownReductionUpgradeId))
+        {
+            cooldown = Mathf.Max(0f, cooldown - cooldownReductionSeconds);
+        }
+
+        return cooldown;
     }
 
     public override void OnUnequipped(PassiveController controller, CustomPassiveDef definition)
@@ -91,7 +149,24 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
             nextReadyTimeByController.Remove(controller.GetInstanceID());
     }
 
-    void SpawnDrops(PassiveController controller, CharacteContext ctx, Transform sourceRoot, int requestedCount)
+    void ResolveGrantedUpgradeEffects(SkillUpgradeStatSnapshot upgrades, List<PickupEffectDef> buffer)
+    {
+        buffer.Clear();
+        if (upgradeEffects == null || upgrades == null)
+            return;
+
+        for (int i = 0; i < upgradeEffects.Count; i++)
+        {
+            UpgradeGatedPickupEffect entry = upgradeEffects[i];
+            if (entry == null || entry.effect == null)
+                continue;
+
+            if (string.IsNullOrWhiteSpace(entry.requiredUpgradeId) || upgrades.HasUpgrade(entry.requiredUpgradeId))
+                buffer.Add(entry.effect);
+        }
+    }
+
+    void SpawnDrops(PassiveController controller, CharacteContext ctx, Transform sourceRoot, int requestedCount, List<PickupEffectDef> grantedEffects)
     {
         int count = Mathf.Max(1, requestedCount);
         Vector3 origin = ResolveSpawnOrigin(sourceRoot);
@@ -127,6 +202,12 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
                 null,
                 null));
 
+            if (grantedEffects != null)
+            {
+                for (int e = 0; e < grantedEffects.Count; e++)
+                    pickup.AddEffect(grantedEffects[e]);
+            }
+
             if (useDropArc)
                 PlayDropArc(pickupObject, origin, i, count, burstAngleOffset);
             else
@@ -146,9 +227,9 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
         return false;
     }
 
-    void StampCooldown(int controllerId, float now)
+    void StampCooldown(int controllerId, float now, float cooldownSeconds)
     {
-        float cooldown = Mathf.Max(0f, internalCooldownSeconds);
+        float cooldown = Mathf.Max(0f, cooldownSeconds);
         if (cooldown <= 0f)
         {
             nextReadyTimeByController.Remove(controllerId);

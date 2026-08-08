@@ -19,7 +19,7 @@ When moving existing assets, move them through Unity's Project window or move th
 - `ChainAttack/TeleportProfiles`: `ChainAttackTeleportProfileDef`
 - `Combat/Cover`: `CoverConfig`
 - `Combat/MeleeCombos`: `MeleeComboSO`
-- `Combat/Passives`: `AlwaysOnPassiveDef`, `TriggeredPassiveDef`, `CustomPassiveDef`, `PassiveTreeDefinition`, `PassiveCustomBehavior`
+- `Combat/Passives`: `AlwaysOnPassiveDef`, `TriggeredPassiveDef`, `CustomPassiveDef`, `PassiveCustomBehavior`
 - `Combat/Projectiles/Configs`: `ProjectileConfig`
 - `Combat/Projectiles/Modules`: `ProjectileModule` assets such as pierce, split, arc, curve, grenade, status-on-hit
 - `Combat/Stagger`: `StaggerProfileSO`
@@ -38,6 +38,16 @@ When moving existing assets, move them through Unity's Project window or move th
 - `Weapons/Databases`: `WeaponDatabase`, `WeaponAffixDatabase`
 - `Weapons/Upgrade`: `WeaponUpgradeCurve`
 - `Legacy/TestAbility`: old test ability SO assets (`AbilityDef`, `TargetingDef`, `EffectDef`)
+
+## Status Effect Authoring
+
+`Combat/StatusEffects/Definitions` (`StatusEffectDef`) assets are identity only —
+`effectId`, icon, VFX, `stackMode`, `controlBlocks`, `triggerRules`. Their
+`modifiers` / `duration` / `tickDamage` are fallback values, not the only place a
+skill/passive/projectile can author a status's numbers. See "Magnitude at apply
+site" in `RB_Project/Docs/SYSTEMS/SKILL_SYSTEM.md` before creating a new
+`StatusEffectDef` that differs from an existing one only by its numbers — override
+the numbers at the apply site instead of cloning the asset.
 
 ## Current Upgrade Data
 

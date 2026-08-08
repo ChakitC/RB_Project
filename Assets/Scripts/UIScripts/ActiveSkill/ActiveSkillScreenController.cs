@@ -183,7 +183,8 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
             string label = slot != null && !string.IsNullOrWhiteSpace(slot.displayName)
                 ? slot.displayName.Trim()
                 : BuildSlotLabel(i);
-            _slotTabs[i].Bind(i, label, i == _selectedSlotIndex, theme, SelectSlot);
+            bool isPassiveSlot = slot != null && slot.IsPassiveSlot;
+            _slotTabs[i].Bind(i, label, i == _selectedSlotIndex, isPassiveSlot, theme, SelectSlot);
         }
     }
 
@@ -275,6 +276,8 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
             ? before
             : _session.BuildStatsPreview(_selectedSlotIndex, _selectedOptionIndex, node);
 
+        _session.TryGetOption(_selectedSlotIndex, _selectedOptionIndex, out CharacterSkillLoadoutOption option);
+
         detailPanel?.Show(
             node,
             unlocked,
@@ -282,7 +285,8 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
             reason,
             before,
             after,
-            () => RequestUnlockNode(node.RuntimeNodeId));
+            () => RequestUnlockNode(node.RuntimeNodeId),
+            option?.PassiveAsset);
         treeView?.Refresh(_selectedNodeId);
     }
 

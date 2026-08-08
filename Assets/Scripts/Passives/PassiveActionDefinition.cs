@@ -21,9 +21,33 @@ public sealed class PassiveActionDefinition
     [Min(0f)] public float durationSeconds = 1f;
     public PassiveModifierStackPolicy stackPolicy = PassiveModifierStackPolicy.Replace;
 
+    // Legacy-field fallback (lazy resolve, NOT ISerializationCallbackReceiver — see the "Legacy Migration"
+    // block at the bottom of StatusEffects/StatusApplicationSpec.cs for why) — several Passive.*.asset files
+    // have real `statusEffect`/`statusInitialStacks` data serialized flat here.
     [Header("Status Effect")]
-    public StatusEffectDef statusEffect;
-    [Min(1)] public int statusInitialStacks = 1;
+    [SerializeField, HideInInspector] StatusEffectDef statusEffect;
+    [SerializeField, HideInInspector] int statusInitialStacks;
+
+    public StatusApplicationSpec statusSpec = new();
+
+    /// <summary>Call from PassiveController at apply time only — never during deserialization.</summary>
+    public StatusApplicationSpec ResolvedStatusSpec()
+    {
+        if (statusSpec != null && statusSpec.effect != null)
+            return statusSpec;
+
+        if (statusEffect == null)
+            return statusSpec;
+
+        return new StatusApplicationSpec
+        {
+            effect = statusEffect,
+            stacks = statusInitialStacks > 0 ? statusInitialStacks : 1,
+            modifiers = statusSpec?.modifiers,
+            durationOverride = statusSpec?.durationOverride ?? 0f,
+            tickDamageOverride = statusSpec?.tickDamageOverride ?? 0f,
+        };
+    }
 
     [Header("Child Event")]
     public PassiveEventType emittedEventType = PassiveEventType.None;

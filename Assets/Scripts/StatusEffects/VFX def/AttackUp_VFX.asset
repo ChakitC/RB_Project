@@ -24,7 +24,7 @@ MonoBehaviour:
     parentToAnchor: 0
     useAnchorRotation: 0
   activeLoop:
-    prefab: {fileID: 7090135493917942404, guid: f3e180887cc53164fa0da5d6db5d30f9, type: 3}
+    prefab: {fileID: 5697101180579792178, guid: 579dcb89001e14742ae7dc930ac2e32a, type: 3}
     anchor: 1
     customAnchorName: 
     localOffset: {x: 0, y: 0, z: 0}

@@ -80,10 +80,6 @@ PrefabInstance:
       propertyPath: m_SizeDelta.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7382460997085798324, guid: 2bc0b7b51164a6b4cb5086ee4978c781, type: 3}
-      propertyPath: passiveProgress
-      value: 
-      objectReference: {fileID: 2984784160002964095}
     - target: {fileID: 8159698931407963683, guid: 2bc0b7b51164a6b4cb5086ee4978c781, type: 3}
       propertyPath: m_SizeDelta.y
       value: 0
@@ -785,17 +781,6 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d8522e4f64e2c6e4fbd68aaed9cd8089, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &2984784160002964095 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 4875677148233401779, guid: c4f54a6f4687b2c4b99f61bc3baec840, type: 3}
-  m_PrefabInstance: {fileID: 7693828120943624140}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5391293143163625294}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3292dd23900d4479b67a34db40bd5988, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &5391293143163625294 stripped

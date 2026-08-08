@@ -16,7 +16,6 @@ GameObject:
   - component: {fileID: 5779990549465913024}
   - component: {fileID: 2362201806535484381}
   - component: {fileID: 7146810742816155018}
-  - component: {fileID: 6555781975922311043}
   m_Layer: 0
   m_Name: GamePlayStats_System
   m_TagString: Untagged
@@ -217,26 +216,6 @@ MonoBehaviour:
   extraPassives: []
   maxEventDepth: 8
   chainStateTtlSeconds: 10
---- !u!114 &6555781975922311043
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 512232045649630411}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3292dd23900d4479b67a34db40bd5988, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ctx: {fileID: 0}
-  levelSystem: {fileID: 0}
-  passiveController: {fileID: 0}
-  passiveTree: {fileID: 0}
-  pointsPerLevel: 1
-  grantCatchUpPointsFromCurrentLevel: 1
-  availablePoints: 0
-  unlockedNodeIds: []
 --- !u!1 &602880269784607860
 GameObject:
   m_ObjectHideFlags: 0
@@ -1275,7 +1254,7 @@ MonoBehaviour:
   DashSystem: {fileID: 5038378700834558391}
   KnockbackMotor: {fileID: 4947922598450173769}
   PassiveController: {fileID: 7146810742816155018}
-  PassiveProgress: {fileID: 6555781975922311043}
+  PassiveProgress: {fileID: 0}
   ActiveSkillProgress: {fileID: 723459649131664530}
   EnegySystem: {fileID: 3101511230285474531}
   Interactor: {fileID: 5990405013486080644}

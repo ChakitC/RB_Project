@@ -235,7 +235,7 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
         return tree != null;
     }
 
-    bool TryGetOption(int slotIndex, int optionIndex, out CharacterSkillLoadoutOption option)
+    public bool TryGetOption(int slotIndex, int optionIndex, out CharacterSkillLoadoutOption option)
     {
         option = null;
         return TryGetSlot(slotIndex, out CharacterSkillLoadoutSlot slot) &&

@@ -59,7 +59,6 @@ public static class LobbyCharacterStatPreview
         WeaponStatPreview.AppendWeaponUpgradeModifiers(ModifierBuffer, weapon, weaponInstance);
         WeaponStatPreview.AppendStaticAffixModifiers(ModifierBuffer, weaponInstance, affixDatabase);
         AppendAccessoryModifiers(ModifierBuffer, PassiveBuffer, inventory, ownerId);
-        AppendPassiveList(PassiveBuffer, stats.passives);
         AppendPassiveModifiers(ModifierBuffer, PassiveBuffer);
 
         CharacterStatTotals totals = CharacterStatFormula.Compute(inputs, ModifierBuffer);
@@ -93,18 +92,6 @@ public static class LobbyCharacterStatPreview
 
             AccessoryLoadout.AppendInstanceStatModifiers(modifierBuffer, definition, slotData.accessoryInstance);
             AccessoryLoadout.AppendInstancePassiveDefinitions(passiveBuffer, definition, slotData.accessoryInstance);
-        }
-    }
-
-    static void AppendPassiveList(List<PassiveDefinition> buffer, List<PassiveDefinition> passives)
-    {
-        if (passives == null)
-            return;
-
-        for (int i = 0; i < passives.Count; i++)
-        {
-            if (passives[i] != null)
-                buffer.Add(passives[i]);
         }
     }
 

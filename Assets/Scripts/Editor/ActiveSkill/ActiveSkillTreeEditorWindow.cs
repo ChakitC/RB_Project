@@ -189,14 +189,13 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         _serializedTree.Update();
         if (_selectedNode == null)
         {
-            EditorGUI.BeginChangeCheck();
             EditorGUILayout.PropertyField(_serializedTree.FindProperty("treeId"));
             EditorGUILayout.PropertyField(_serializedTree.FindProperty("displayName"));
             EditorGUILayout.PropertyField(_serializedTree.FindProperty("description"));
-            if (EditorGUI.EndChangeCheck())
+            // ApplyModifiedProperties returns true only when a value actually changed, so
+            // foldout toggles (which set GUI.changed) no longer count as edits.
+            if (_serializedTree.ApplyModifiedProperties())
             {
-                Undo.RecordObject(_tree, "Edit Active Skill Tree");
-                _serializedTree.ApplyModifiedProperties();
                 MarkDirty();
                 _issuesDirty = true;
             }
@@ -209,12 +208,9 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
             return;
 
         SerializedProperty nodeProperty = nodesProperty.GetArrayElementAtIndex(nodeIndex);
-        EditorGUI.BeginChangeCheck();
         EditorGUILayout.PropertyField(nodeProperty, true);
-        if (EditorGUI.EndChangeCheck())
+        if (_serializedTree.ApplyModifiedProperties())
         {
-            Undo.RecordObject(_tree, "Edit Active Skill Node");
-            _serializedTree.ApplyModifiedProperties();
             MarkDirty();
             _issuesDirty = true;
             _graph.RefreshTitles();
@@ -456,7 +452,7 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
                 for (int i = 0; i < change.movedElements.Count; i++)
                 {
                     if (change.movedElements[i] is SkillGraphNode node)
-                        node.Data.uiPosition = node.AuthoredPosition.center;
+                        node.WritePositionBack();
                 }
                 mutated = true;
             }
@@ -540,13 +536,21 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         public SkillUpgradeNodeData Data { get; }
         public Port Input { get; }
         public Port Output { get; }
-        public Rect AuthoredPosition { get; private set; }
+
+        // uiPosition is authored as a centre point, converted to a top-left corner with this
+        // size. GetPosition() reports the *resolved* node size instead, so both directions must
+        // use AuthoredSize or every relayout nudges the node by half the size difference.
+        Vector2 AuthoredSize => BaseSize * Data.ResolvedVisualScale;
 
         public override void SetPosition(Rect newPos)
         {
-            AuthoredPosition = newPos;
             userData = newPos;
             base.SetPosition(newPos);
+        }
+
+        public void WritePositionBack()
+        {
+            Data.uiPosition = GetPosition().position + AuthoredSize * 0.5f;
         }
 
         public void RefreshTitle()
@@ -565,9 +569,8 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         public void RefreshLayout()
         {
             float scale = Data.ResolvedVisualScale;
-            Vector2 size = BaseSize * scale;
-            Rect authoredRect = new(Data.uiPosition - size * 0.5f, size);
-            SetPosition(authoredRect);
+            Vector2 size = AuthoredSize;
+            SetPosition(new Rect(Data.uiPosition - size * 0.5f, size));
             _icon.style.width = BaseIconSize * scale;
             _icon.style.height = BaseIconSize * scale;
         }

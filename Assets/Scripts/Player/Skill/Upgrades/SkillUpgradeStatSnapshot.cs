@@ -37,7 +37,7 @@ public sealed class SkillUpgradeStatSnapshot
         for (int i = 0; i < node.statModifiers.Count; i++)
         {
             StatModifier modifier = node.statModifiers[i];
-            if (modifier == null || !Supports(modifier.stat))
+            if (modifier == null)
                 continue;
 
             if (!_modifiers.TryGetValue(modifier.stat, out Aggregate aggregate))
@@ -50,6 +50,20 @@ public sealed class SkillUpgradeStatSnapshot
     }
 
     public bool HasUpgrade(string id) => !string.IsNullOrWhiteSpace(id) && _upgradeIds.Contains(id.Trim());
+
+    public bool TryGetAggregate(StatType stat, out float add, out float multiply)
+    {
+        if (_modifiers.TryGetValue(stat, out Aggregate aggregate))
+        {
+            add = float.IsFinite(aggregate.add) ? aggregate.add : 0f;
+            multiply = float.IsFinite(aggregate.multiply) ? aggregate.multiply : 1f;
+            return true;
+        }
+
+        add = 0f;
+        multiply = 1f;
+        return false;
+    }
 
     public void Apply(FinalSkillStats stats)
     {
@@ -95,6 +109,9 @@ public sealed class SkillUpgradeStatSnapshot
         }
     }
 
+    // Stats Apply(FinalSkillStats) can write. AddNode no longer filters by this -- a stat outside
+    // this list still aggregates into _modifiers and is readable via TryGetAggregate/HasUpgrade by
+    // passive rules and custom behaviors; it's simply a no-op for FinalSkillStats.
     public static bool Supports(StatType stat)
     {
         return stat == StatType.Damage ||

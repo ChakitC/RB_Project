@@ -394,8 +394,6 @@ public class SaveManager : MonoBehaviour
             return;
 
         var data = progress != null ? progress.DeepClone() : new CharacterProgressData();
-        if (data.unlockedPassiveNodeIds == null)
-            data.unlockedPassiveNodeIds = new List<string>();
         if (data.activeSkillTrees == null)
             data.activeSkillTrees = new List<CharacterSkillTreeProgressSaveData>();
         if (data.selectedSkillOptions == null)
@@ -420,9 +418,6 @@ public class SaveManager : MonoBehaviour
 
         var data = SaveSystem.LoadCharacterProgress(currentSlot, characterId) ?? new CharacterProgressData();
         data.unlocked = unlocked;
-
-        if (data.unlockedPassiveNodeIds == null)
-            data.unlockedPassiveNodeIds = new List<string>();
 
         SaveSystem.SaveCharacterProgress(currentSlot, characterId, data);
     }

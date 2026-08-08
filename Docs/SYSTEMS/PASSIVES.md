@@ -33,11 +33,14 @@ Current passive kinds:
 `PassiveController.RefreshPassiveLoadout()` gathers passives from:
 
 1. configured passive-kind options in `CharacterStats.skillSlots` (via
-   `CharacterSkillManager`), when present
-2. `ctx.baseStats.passives`, when no slot in `skillSlots` is passive-kind
-3. `runtimePassives`
-4. `IPassiveDefinitionProvider` components
-5. `extraPassives`
+   `CharacterSkillManager`)
+2. `runtimePassives`
+3. `IPassiveDefinitionProvider` components
+4. `extraPassives`
+
+`CharacterStats.passives` and the either/or fallback onto it were removed in
+Phase 2 (hard cut, no save-compat shim) now that every passive is authored as
+a skill slot — see "Passives Are Skills" below.
 
 After loadout refresh, the controller rebuilds stat modifier providers, raises
 `StatModifiersChanged`, and refreshes optional event sources.
@@ -93,11 +96,10 @@ passive's upgrade tree unlocks and refunds exactly like an active skill's.
   slot, or an active slot after a passive one), plus a warning if a passive
   slot keeps a non-`None` hotkey.
 
-### Flag-Gated Scaling (Phase 1)
+### Flag-Gated Rules
 
-Phase 1 has **no numeric scaling** for passives — a node can only grant
-upgrade-id flags (`grantedUpgradeIds`), never `statModifiers`. Two mechanisms
-consume those flags:
+Two mechanisms consume upgrade-id flags (`grantedUpgradeIds`) regardless of
+whether a node also carries numeric `statModifiers`:
 
 - `TriggeredPassiveRule.requiredUpgradeId` — the rule stays inert unless the
   owning slot's upgrade snapshot grants that id. Checked through the shared
@@ -110,28 +112,65 @@ consume those flags:
 
 Every `PassiveDefinition` subclass overrides `CollectUpgradeIds` so the
 validator can cross-check declared vs. granted ids: `TriggeredPassiveDef`
-collects its rules' `requiredUpgradeId`s, `CustomPassiveDef` forwards to its
-behaviors, and `AlwaysOnPassiveDef` collects nothing — it has no gate
-mechanism, so **an upgrade tree on an `AlwaysOnPassiveDef` is unsupported in
-Phase 1** and the validator errors on it.
+collects its rules' `requiredUpgradeId`s and its rules' `upgradeOverrides[].upgradeId`s
+(see below), `CustomPassiveDef` forwards to its behaviors, and
+`AlwaysOnPassiveDef` collects nothing — it has no gate mechanism, so **an
+upgrade tree on an `AlwaysOnPassiveDef` is unsupported** and the validator
+errors on it.
 
-### The Either/Or Migration Trap
+### Numeric Scaling (Phase 2)
 
-`RefreshPassiveLoadout()` uses configured passive-kind slots **instead of**
-`ctx.baseStats.passives` the moment any slot is passive-kind — it is either/or,
-not additive. Configuring one passive slot silently drops every entry in
-`passives:`. Migrating a character's passive onto a skill slot must therefore
-move the whole `passives:` list to the new slot in the same change, or the
-leftover list entries become dead, misleading data. See "Ammo Drop On Shot"
-below for the migrated example.
+Passive nodes can carry numeric `statModifiers` like active-skill nodes.
+`SkillUpgradeStatSnapshot.AddNode` no longer filters by
+`SkillUpgradeStatSnapshot.Supports(StatType)` — every `StatType` on a node
+aggregates into the snapshot. `Supports()` still exists, scoped to exactly the
+stats `Apply(FinalSkillStats)` can write; only `SkillUpgradeTreeValidator`
+still uses it, and only to flag an out-of-whitelist stat as an error on an
+**active**-skill-owned tree (it's expected and untouched on a passive-owned
+tree, since custom behaviors and always-on/triggered modifiers read those
+stats through the mechanisms below, not through `Apply`).
+
+Two ways a passive reads an aggregated value:
+
+- `SkillUpgradeStatSnapshot.TryGetAggregate(StatType, out float add, out float multiply)`
+  — for a genuinely continuous knob when an existing `StatType` honestly means
+  that thing. `PassiveActionDefinition.modifiers` (`AppendStatModifiers`,
+  `AddAlwaysOnPassive`) scale this way: `(value + add) * multiply * stackCount`
+  — the snapshot aggregate scales the authored value first, stack count
+  multiplies the already-scaled result. Always-on modifiers scale once at
+  loadout-rebuild time (`AddAlwaysOnPassive`, static per loadout); active
+  triggered modifiers scale per call where `RuntimeStatModifier` is
+  constructed (`AppendStatModifiers`), since the snapshot travels with the
+  `ActivePassiveModifier`.
+- `SkillUpgradeStatSnapshot.HasUpgrade(id)` — for a discrete step, e.g.
+  `DropAmmoOnShotPassiveBehavior.procChanceBoostUpgradeId` /
+  `cooldownReductionUpgradeId` add a fixed bonus/reduction when granted. This
+  is the recommended default; reach for `TryGetAggregate` only when a
+  continuous stat genuinely applies. Never add passive-only entries to
+  `StatType` to make a custom behavior's knob work.
+
+`TriggeredPassiveRule.upgradeOverrides` (`List<PassiveRuleFieldOverride>`)
+gives `requiredCount`/`countWindowSeconds`/`cooldownSeconds` — none of which
+are `StatType`s — their own per-upgrade-id override list, keyed by
+`PassiveRuleField` and reusing `ModifierOp` (`Flat`/`AddPercent`/`Multiply`,
+same semantics as `CharacterStatFormula.ApplyModifiers`). These resolve once
+per loadout rebuild, not per event: `PassiveController`'s internal
+`TriggeredRuleState` caches `ResolvedRequiredCount` /
+`ResolvedCountWindowSeconds` / `ResolvedCooldownSeconds` from
+`(rule, runtime.Upgrades)` when the runtime is (re)built, and
+`RecordEvent`/`IsReady`/`Consume` read the cache. If a rebuild shortens
+`cooldownSeconds`, the carried-over `CooldownReadyAt` is re-clamped to
+`min(carried, now + newCooldownSeconds)` in `CopyStateFrom` — an upgrade must
+never leave the player worse off than it promises.
 
 ### Known Limitation: Lobby Stat Preview
 
-`LobbyCharacterStatPreview` still reads `stats.passives` directly and has no
-path into `skillSlots`, so a slotted passive does not appear in the lobby stat
-preview. This is invisible today because `ForgottenBulletBag` (Custom, below)
-contributes no stat modifiers, but it will be wrong the moment a stat-bearing
-passive is authored onto a skill slot. Not fixed in Phase 1.
+`LobbyCharacterStatPreview` has no path into `skillSlots`, so a slotted
+passive does not contribute to the lobby stat preview (only equipped
+weapon/accessory bonuses and accessory-sourced passives do). This is invisible
+today because `ForgottenBulletBag` (Custom, below) contributes no stat
+modifiers, but it will be wrong the moment a stat-bearing passive is authored
+onto a skill slot. Not fixed in Phase 2.
 
 ## Triggered Passive Rules
 
@@ -190,9 +229,10 @@ authored as the last, `hotkey: None` skill slot on `ChaDef.Feno` rather than
 in `passives:` — the first character migrated onto the passive-as-skill model.
 Its behavior's `extraDropUpgradeId` (`passive.feno.bulletbag.extra_drop`) is
 granted by the one node in `Passive.Feno_ForgottenBulletBag_Tree`; unlocking
-that node doubles the pickup drop count for that proc. The base 8% chance,
-1.5s cooldown, and single-drop baseline stay fixed until numeric scaling
-lands in Phase 2.
+that node doubles the pickup drop count for that proc. The base 8% chance and
+1.5s cooldown are the same `HasUpgrade`-flag convention's two other knobs
+(`procChanceBoostUpgradeId`, `cooldownReductionUpgradeId`) — inert until a
+tree node is authored to grant one of those ids.
 
 ## Core Events
 

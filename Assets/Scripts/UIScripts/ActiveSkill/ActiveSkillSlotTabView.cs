@@ -9,6 +9,7 @@ public sealed class ActiveSkillSlotTabView : MonoBehaviour
     [SerializeField] Image background;
     [SerializeField] TMP_Text label;
     [SerializeField] GameObject selectedMarker;
+    [SerializeField] GameObject passiveBadge;
 
     int _slotIndex;
     Action<int> _clicked;
@@ -25,7 +26,7 @@ public sealed class ActiveSkillSlotTabView : MonoBehaviour
             button.onClick.RemoveListener(HandleClick);
     }
 
-    public void Bind(int slotIndex, string text, bool selected, SkillScreenTheme theme, Action<int> clicked)
+    public void Bind(int slotIndex, string text, bool selected, bool isPassive, SkillScreenTheme theme, Action<int> clicked)
     {
         _slotIndex = slotIndex;
         _clicked = clicked;
@@ -33,6 +34,8 @@ public sealed class ActiveSkillSlotTabView : MonoBehaviour
             label.text = text;
         if (selectedMarker != null)
             selectedMarker.SetActive(selected);
+        if (passiveBadge != null)
+            passiveBadge.SetActive(isPassive);
         if (background != null && theme != null)
             background.color = selected ? theme.selectedColor : theme.inactiveCardColor;
         if (button != null)

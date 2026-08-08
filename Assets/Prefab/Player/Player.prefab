@@ -515,7 +515,6 @@ GameObject:
   - component: {fileID: 8620874944121039693}
   - component: {fileID: 2601669138343315329}
   - component: {fileID: 7825177702547226700}
-  - component: {fileID: 4875677148233401779}
   - component: {fileID: 7759154630619611733}
   - component: {fileID: 3900802803091656922}
   - component: {fileID: 6098239142180533381}
@@ -664,7 +663,7 @@ MonoBehaviour:
   DashSystem: {fileID: 4787416841881350600}
   KnockbackMotor: {fileID: 3729042986192515201}
   PassiveController: {fileID: 2601669138343315329}
-  PassiveProgress: {fileID: 4875677148233401779}
+  PassiveProgress: {fileID: 0}
   ActiveSkillProgress: {fileID: -6960602465302522877}
   EnegySystem: {fileID: 3693568544021270016}
   Interactor: {fileID: 7938086370648664434}
@@ -923,22 +922,6 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: d68c2544-7593-433a-8d78-40d2dad5a3af
     m_ActionName: 'Player/OpenInventory[/Keyboard/i]'
-  - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 4051215997299661844}
-        m_TargetAssemblyTypeName: PlayerInputHandler, Assembly-CSharp
-        m_MethodName: OpenPassiveTree
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-    m_ActionId: 4fcaeec2-0b0d-4fcc-9e49-456bbea159e9
-    m_ActionName: 'Player/OpenPassiveTree[/Keyboard/k]'
   - m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 4051215997299661844}
@@ -1223,26 +1206,6 @@ AudioListener:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2311559804654788738}
   m_Enabled: 1
---- !u!114 &4875677148233401779
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2311559804654788738}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3292dd23900d4479b67a34db40bd5988, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ctx: {fileID: 1638387977988830713}
-  levelSystem: {fileID: 7448423437953034685}
-  passiveController: {fileID: 2601669138343315329}
-  passiveTree: {fileID: 0}
-  pointsPerLevel: 1
-  grantCatchUpPointsFromCurrentLevel: 1
-  availablePoints: 0
-  unlockedNodeIds: []
 --- !u!114 &7759154630619611733
 MonoBehaviour:
   m_ObjectHideFlags: 0

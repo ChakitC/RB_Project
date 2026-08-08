@@ -15,6 +15,23 @@ public sealed class CharacterSkillLoadoutSlot
 
     public string ResolvedSlotId => string.IsNullOrWhiteSpace(slotId) ? string.Empty : slotId.Trim();
 
+    public bool IsPassiveSlot
+    {
+        get
+        {
+            if (options == null)
+                return false;
+
+            for (int i = 0; i < options.Count; i++)
+            {
+                if (options[i] != null && options[i].IsConfigured && options[i].IsPassive)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
     public bool TryGetOption(int optionIndex, out CharacterSkillLoadoutOption option)
     {
         option = null;

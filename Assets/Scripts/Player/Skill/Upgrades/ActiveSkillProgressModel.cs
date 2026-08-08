@@ -288,7 +288,6 @@ public sealed class ActiveSkillProgressModel
     {
         _data.activeSkillTrees ??= new List<CharacterSkillTreeProgressSaveData>();
         _data.selectedSkillOptions ??= new List<CharacterSkillSelectionSaveData>();
-        _data.unlockedPassiveNodeIds ??= new List<string>();
     }
 
     static bool ValidateTreeKey(

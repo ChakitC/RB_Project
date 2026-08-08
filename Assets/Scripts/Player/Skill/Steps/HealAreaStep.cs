@@ -11,12 +11,42 @@ public enum HealTargetMode
 [Serializable]
 public sealed class HealAreaStep : SkillEffectStep
 {
+    // Legacy-field fallback (lazy resolve, NOT ISerializationCallbackReceiver — see the "Legacy Migration"
+    // block at the bottom of StatusEffects/StatusApplicationSpec.cs for why) — Aires_Skill_3.asset has real
+    // `effect`/`stacks` data serialized flat under this class.
+    //
+    // `statusApplications` below (a plain List<StatusEffectDef>) is intentionally left untouched instead of
+    // gaining per-item overrides — Unity serializes List<StatusEffectDef> as a flat list of asset references;
+    // turning it into a list of a wrapper class would need the same kind of care as this class, and the
+    // entries there don't currently need per-item overrides.
     [Serializable]
     public sealed class ConditionalStatus
     {
         public string requiredUpgradeId;
-        public StatusEffectDef effect;
-        [Min(1)] public int stacks = 1;
+
+        [SerializeField, HideInInspector] StatusEffectDef effect;
+        [SerializeField, HideInInspector] int stacks;
+
+        public StatusApplicationSpec spec = new();
+
+        /// <summary>Call from ApplyStatuses() only — never during deserialization.</summary>
+        public StatusApplicationSpec ResolvedSpec()
+        {
+            if (spec != null && spec.effect != null)
+                return spec;
+
+            if (effect == null)
+                return spec;
+
+            return new StatusApplicationSpec
+            {
+                effect = effect,
+                stacks = stacks > 0 ? stacks : 1,
+                modifiers = spec?.modifiers,
+                durationOverride = spec?.durationOverride ?? 0f,
+                tickDamageOverride = spec?.tickDamageOverride ?? 0f,
+            };
+        }
     }
 
     [SerializeField] private HealTargetMode target = HealTargetMode.Self;
@@ -123,10 +153,14 @@ public sealed class HealAreaStep : SkillEffectStep
             for (int i = 0; i < conditionalApplications.Count; i++)
             {
                 ConditionalStatus conditional = conditionalApplications[i];
-                if (conditional == null || conditional.effect == null || !ctx.HasUpgrade(conditional.requiredUpgradeId))
+                if (conditional == null || !ctx.HasUpgrade(conditional.requiredUpgradeId))
                     continue;
 
-                controller.ApplyEffect(conditional.effect, source, Mathf.Max(1, conditional.stacks), durationOverride);
+                StatusApplicationSpec resolvedSpec = conditional.ResolvedSpec();
+                if (resolvedSpec?.effect == null)
+                    continue;
+
+                controller.ApplyEffect(resolvedSpec.ResolveWithDurationFallback(durationOverride), source);
             }
         }
     }

@@ -17,6 +17,11 @@ public sealed class StatusEffectDef : ScriptableObject
     [Min(0)] public int maxStacks = 1;
     public StackMode stackMode = StackMode.RefreshDuration;
 
+    [Tooltip("true = แยก instance ต่อผู้ลง (แต่ละแหล่งมีอายุ+ค่าของตัวเองและรวมกันแบบ multiplicative). " +
+        "false = พฤติกรรมเดิม (instance เดียวต่อ effect ไม่ว่าใครลง). " +
+        "ห้ามเปิดกับ effect ที่ removeEffect-by-def ใช้ถอด (เช่น Morph) หรือที่ผูก state เดี่ยวไว้ (เช่น Taunted) หรือที่ source ไม่ใช่ actor จริง (เช่น pickup).")]
+    public bool separatePerSource;
+
     [Header("Tick")]
     [Min(0f)] public float tickInterval;
     public float tickDamage;

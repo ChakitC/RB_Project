@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public sealed class StatusEffectInstance
@@ -16,7 +17,8 @@ public sealed class StatusEffectInstance
         PassiveEventOrigin origin,
         string originPassiveId,
         string originRuleId,
-        float durationOverride = 0f)
+        float durationOverride = 0f,
+        StatusApplicationSpec spec = null)
     {
         Definition = definition;
         Source = source;
@@ -36,6 +38,10 @@ public sealed class StatusEffectInstance
         _triggerCounters = definition != null && definition.triggerRules != null
             ? new int[definition.triggerRules.Count]
             : Array.Empty<int>();
+
+        ResolvedModifiers = ResolveModifiers(spec, definition);
+        ResolvedTickDamage = ResolveTickDamage(spec, definition);
+        StrengthScore = ComputeStrengthScore(ResolvedModifiers);
     }
 
     public StatusEffectDef Definition { get; }
@@ -51,6 +57,11 @@ public sealed class StatusEffectInstance
     public float NextTickTime { get; private set; }
     public float EffectiveDuration { get; private set; }
     public bool IsPermanent => Definition == null || EffectiveDuration <= 0f;
+
+    /// <summary>ค่าบาลานซ์จริงของ instance นี้ — resolve ครั้งเดียวตอนสร้าง (หรือเมื่อ AdoptMagnitude) จาก spec หรือ fallback ไป Definition. เป็น copy เสมอ ไม่ alias asset.</summary>
+    public IReadOnlyList<StatusEffectModifier> ResolvedModifiers { get; private set; }
+    public float ResolvedTickDamage { get; private set; }
+    public float StrengthScore { get; private set; }
 
     public void UpdateSource(GameObject source)
     {
@@ -93,6 +104,23 @@ public sealed class StatusEffectInstance
             return;
 
         TimeLeft = EffectiveDuration;
+    }
+
+    /// <summary>เหมือน RefreshDuration แต่ไม่ยอมให้ TimeLeft ที่เหลืออยู่สั้นลง — ใช้กับ StackMode.StrongestOnly เพื่อไม่ให้ application ที่อ่อนกว่าตัด duration ของตัวแรงทิ้ง</summary>
+    public void RefreshDurationNoShorten()
+    {
+        if (Definition == null || IsPermanent)
+            return;
+
+        TimeLeft = Mathf.Max(TimeLeft, EffectiveDuration);
+    }
+
+    /// <summary>เปลี่ยนค่าบาลานซ์ของ instance นี้เป็นของ spec ที่ระบุ (ใช้ตอน StrongestOnly ตัดสินว่า incoming แรงกว่า หรือ RefreshDuration/AddStackAndRefresh ที่ยอมรับค่าล่าสุดเสมอ)</summary>
+    public void AdoptMagnitude(StatusApplicationSpec spec)
+    {
+        ResolvedModifiers = ResolveModifiers(spec, Definition);
+        ResolvedTickDamage = ResolveTickDamage(spec, Definition);
+        StrengthScore = ComputeStrengthScore(ResolvedModifiers);
     }
 
     static float ResolveEffectiveDuration(StatusEffectDef definition, float durationOverride)
@@ -167,5 +195,101 @@ public sealed class StatusEffectInstance
             return;
 
         _triggerCounters[ruleIndex] = Mathf.Max(0, value);
+    }
+
+    // ---- magnitude resolution (static — shared between instance construction and StrongestOnly comparison in the controller) ----
+
+    public static List<StatusEffectModifier> ResolveModifiers(StatusApplicationSpec spec, StatusEffectDef definition)
+    {
+        List<StatusEffectModifier> source = spec != null && spec.HasModifierOverride
+            ? spec.modifiers
+            : definition != null ? definition.modifiers : null;
+
+        return CopyModifiers(source);
+    }
+
+    public static float ResolveTickDamage(StatusApplicationSpec spec, StatusEffectDef definition)
+    {
+        if (spec != null && !Mathf.Approximately(spec.tickDamageOverride, 0f))
+            return spec.tickDamageOverride;
+
+        return definition != null ? definition.tickDamage : 0f;
+    }
+
+    static List<StatusEffectModifier> CopyModifiers(List<StatusEffectModifier> source)
+    {
+        var copy = new List<StatusEffectModifier>(source?.Count ?? 0);
+        if (source == null)
+            return copy;
+
+        for (int i = 0; i < source.Count; i++)
+        {
+            var m = source[i];
+            if (m == null)
+                continue;
+
+            copy.Add(new StatusEffectModifier { statType = m.statType, operation = m.operation, value = m.value });
+        }
+
+        return copy;
+    }
+
+    public static float ComputeStrengthScore(IReadOnlyList<StatusEffectModifier> modifiers)
+    {
+        if (modifiers == null)
+            return 0f;
+
+        float score = 0f;
+        for (int i = 0; i < modifiers.Count; i++)
+            score += ScoreModifier(modifiers[i]);
+
+        return score;
+    }
+
+    static float ScoreModifier(StatusEffectModifier m)
+    {
+        if (m == null)
+            return 0f;
+
+        return m.operation switch
+        {
+            ModifierOp.Multiply => Mathf.Abs(1f - m.value),
+            ModifierOp.AddPercent => Mathf.Abs(m.value) * 0.01f,
+            _ => Mathf.Abs(m.value),
+        };
+    }
+
+    /// <summary>เทียบว่า modifier สองชุดมี shape เดียวกันไหม (multiset ของ statType+operation, ไม่สนใจ value) — StrengthScore เทียบกันตรงๆ ได้ก็ต่อเมื่อ shape เหมือนกัน</summary>
+    public static bool HasSameModifierShape(IReadOnlyList<StatusEffectModifier> a, IReadOnlyList<StatusEffectModifier> b)
+    {
+        a ??= Array.Empty<StatusEffectModifier>();
+        b ??= Array.Empty<StatusEffectModifier>();
+
+        if (a.Count != b.Count)
+            return false;
+
+        var remaining = new List<StatusEffectModifier>(b);
+        for (int i = 0; i < a.Count; i++)
+        {
+            var m = a[i];
+            int matchIndex = -1;
+            for (int j = 0; j < remaining.Count; j++)
+            {
+                var candidate = remaining[j];
+                if (candidate != null && m != null &&
+                    candidate.statType == m.statType && candidate.operation == m.operation)
+                {
+                    matchIndex = j;
+                    break;
+                }
+            }
+
+            if (matchIndex < 0)
+                return false;
+
+            remaining.RemoveAt(matchIndex);
+        }
+
+        return true;
     }
 }

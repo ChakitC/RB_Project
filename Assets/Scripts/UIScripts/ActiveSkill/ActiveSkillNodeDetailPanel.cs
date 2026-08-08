@@ -77,7 +77,8 @@ public sealed class ActiveSkillNodeDetailPanel : MonoBehaviour
         string reason,
         FinalSkillStats before,
         FinalSkillStats after,
-        Action unlock)
+        Action unlock,
+        PassiveDefinition passiveAsset = null)
     {
         if (node == null)
         {
@@ -91,7 +92,7 @@ public sealed class ActiveSkillNodeDetailPanel : MonoBehaviour
         if (titleText != null)
             titleText.text = node.ResolvedDisplayName;
         if (descriptionText != null)
-            descriptionText.text = node.description;
+            descriptionText.text = BuildDescription(node, passiveAsset);
         if (requirementText != null)
             requirementText.text = BuildRequirementText(node, unlocked, reason);
         if (statPreviewText != null)
@@ -215,6 +216,16 @@ public sealed class ActiveSkillNodeDetailPanel : MonoBehaviour
     float ViewportRight(bool open)
     {
         return open ? -(drawerWidth + viewportEdgeInset) : -viewportEdgeInset;
+    }
+
+    static string BuildDescription(SkillUpgradeNodeData node, PassiveDefinition passiveAsset)
+    {
+        if (passiveAsset == null || string.IsNullOrWhiteSpace(passiveAsset.description))
+            return node.description;
+
+        return string.IsNullOrWhiteSpace(node.description)
+            ? passiveAsset.description
+            : $"{passiveAsset.description}\n\n{node.description}";
     }
 
     static string BuildRequirementText(SkillUpgradeNodeData node, bool unlocked, string reason)

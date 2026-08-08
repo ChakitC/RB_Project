@@ -14,6 +14,19 @@ public static class CharacterStatFormula
     public const float MaxStabilityPercent = 100f;
 
     /// <summary>
+    /// Floor เป็นสัดส่วนของ baseValue กันไม่ให้ debuff จากหลายแหล่งคูณสะสม (Multiply) จนสถิติเป็น 0 ทั้งที่ไม่มีใครตั้งใจ.
+    /// อยู่จุดเดียวใน ApplyModifiers เพราะรับ baseValue อยู่แล้ว — LobbyCharacterStatPreview/WeaponStatPreview
+    /// ที่เรียก Compute ตัวเดียวกันจะได้ค่าตรงกับตัวจริงในเกมโดยอัตโนมัติ ไม่ต้องเดินสาย config แยก.
+    /// </summary>
+    static readonly Dictionary<StatType, float> MinFractionOfBase = new()
+    {
+        { StatType.Damage, 0.2f },
+        { StatType.MoveSpeed, 0.2f },
+        { StatType.MaxHP, 0.2f },
+        { StatType.MaxStamina, 0.2f },
+    };
+
+    /// <summary>
     /// Authoring contract: AddPercent uses whole percentages (10 => +10%),
     /// Multiply uses direct factors (1.2 => x1.2).
     /// </summary>
@@ -48,7 +61,12 @@ public static class CharacterStatFormula
             }
         }
 
-        return (baseValue + flat) * (1f + addPercent01) * multiply;
+        float result = (baseValue + flat) * (1f + addPercent01) * multiply;
+
+        if (MinFractionOfBase.TryGetValue(statType, out float minFraction))
+            result = Mathf.Max(result, baseValue * minFraction);
+
+        return result;
     }
 
     public static CharacterStatTotals Compute(in CharacterStatInputs inputs, List<RuntimeStatModifier> modifiers)

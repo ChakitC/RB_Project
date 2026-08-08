@@ -38,7 +38,8 @@ public sealed class InteractionIndicatorPresenter : MonoBehaviour
 
         EnsureIndicator();
         Subscribe();
-        OnFocusChanged(interactor != null ? interactor.FocusedInteractable : null);
+        if (isActiveAndEnabled)
+            OnFocusChanged(interactor != null ? interactor.FocusedInteractable : null);
     }
 
     void LateUpdate()
@@ -86,7 +87,6 @@ public sealed class InteractionIndicatorPresenter : MonoBehaviour
         indicator = Instantiate(indicatorPrefab, transform);
         indicator.name = indicatorPrefab.name;
         baseScale = indicator.transform.localScale;
-        indicator.HideImmediate();
     }
 
     void Subscribe()

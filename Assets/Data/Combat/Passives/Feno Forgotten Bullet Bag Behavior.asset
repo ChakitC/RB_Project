@@ -47,3 +47,14 @@ MonoBehaviour:
   horizontalImpulse: 1.6
   upwardImpulse: 2.2
   extraDropUpgradeId: passive.feno.bulletbag.extra_drop
+  procChanceBoostUpgradeId: passive.feno.bulletbag.drop_chance
+  procChanceBonus: 0.05
+  cooldownReductionUpgradeId: passive.feno.bulletbag.main
+  cooldownReductionSeconds: 0.5
+  upgradeEffects:
+  - requiredUpgradeId: passive.feno.bulletbag.reserve_ammo
+    effect: {fileID: 11400000, guid: 3845f472fe2b4407a7a70ddc3775036b, type: 2}
+  - requiredUpgradeId: passive.feno.bulletbag.atk_up
+    effect: {fileID: 11400000, guid: 8817929fda691d247a20a6d6cb4b6a56, type: 2}
+  - requiredUpgradeId: passive.feno.bulletbag.speed_up
+    effect: {fileID: 11400000, guid: debd93cb2d634db4964546a80fabc276, type: 2}

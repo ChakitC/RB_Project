@@ -27,9 +27,9 @@ MonoBehaviour:
     prefab: {fileID: 1703367692747339382, guid: 3c7f2d7e4b488bc459945dc2dfdab296, type: 3}
     anchor: 1
     customAnchorName: 
-    localOffset: {x: 0, y: 0.8, z: -0.059}
+    localOffset: {x: 0, y: 0, z: 0}
     rotationEuler: {x: 0, y: 0, z: 0}
-    scale: 1.7
+    scale: 1
     extraLife: 0
     minInterval: 0
     parentToAnchor: 1

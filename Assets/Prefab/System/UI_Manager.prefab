@@ -212,10 +212,6 @@ MonoBehaviour:
     m_ActionName: 'Player/OpenInventory[/Keyboard/i]'
   - m_PersistentCalls:
       m_Calls: []
-    m_ActionId: 4fcaeec2-0b0d-4fcc-9e49-456bbea159e9
-    m_ActionName: 'Player/OpenPassiveTree[/Keyboard/k]'
-  - m_PersistentCalls:
-      m_Calls: []
     m_ActionId: 49786a61-7128-44cf-b321-bea08ecf34ec
     m_ActionName: 'Player/ChainAttackOpen[/Keyboard/q]'
   - m_PersistentCalls:

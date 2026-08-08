@@ -6,9 +6,6 @@
                 "level": 30,
                 "xp": 0,
                 "unlocked": false,
-                "skillPoints": 29,
-                "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
                 "activeSkillPoints": 29,
                 "activeSkillProgressInitialized": true,
@@ -21,9 +18,6 @@
                 "level": 30,
                 "xp": 0,
                 "unlocked": true,
-                "skillPoints": 29,
-                "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
                 "activeSkillPoints": 0,
                 "activeSkillProgressInitialized": false,
@@ -36,9 +30,6 @@
                 "level": 30,
                 "xp": 0,
                 "unlocked": true,
-                "skillPoints": 29,
-                "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
                 "activeSkillPoints": 0,
                 "activeSkillProgressInitialized": false,
@@ -51,18 +42,36 @@
                 "level": 30,
                 "xp": 0,
                 "unlocked": false,
-                "skillPoints": 21,
-                "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
-                "activeSkillPoints": 29,
+                "activeSkillPoints": 24,
                 "activeSkillProgressInitialized": true,
                 "activeSkillTrees": [
                     {
                         "slotId": "passive.feno.bag",
                         "optionId": "passive.feno.bulletbag",
                         "treeId": "passive.feno.bulletbag.tree",
-                        "unlockedNodes": []
+                        "unlockedNodes": [
+                            {
+                                "nodeId": "main",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "drop_chance",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "extra_drop",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "reserve_ammo",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "atk_up",
+                                "paidCost": 1
+                            }
+                        ]
                     }
                 ]
             }
@@ -73,9 +82,6 @@
                 "level": 30,
                 "xp": 0,
                 "unlocked": true,
-                "skillPoints": 29,
-                "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
                 "activeSkillPoints": 0,
                 "activeSkillProgressInitialized": false,
@@ -88,9 +94,6 @@
                 "level": 30,
                 "xp": 0,
                 "unlocked": false,
-                "skillPoints": 29,
-                "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
                 "activeSkillPoints": 15,
                 "activeSkillProgressInitialized": true,
@@ -174,9 +177,6 @@
                 "level": 30,
                 "xp": 0,
                 "unlocked": false,
-                "skillPoints": 29,
-                "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
                 "activeSkillPoints": 29,
                 "activeSkillProgressInitialized": true,
@@ -189,9 +189,6 @@
                 "level": 30,
                 "xp": 0,
                 "unlocked": true,
-                "skillPoints": 9,
-                "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
                 "activeSkillPoints": 29,
                 "activeSkillProgressInitialized": true,

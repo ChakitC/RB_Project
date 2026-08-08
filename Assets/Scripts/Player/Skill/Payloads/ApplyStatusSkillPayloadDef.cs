@@ -6,16 +6,36 @@ using UnityEngine;
 [HideMonoScript]
 public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
 {
+    // Legacy-field fallback (lazy resolve, NOT ISerializationCallbackReceiver — see the "Legacy Migration"
+    // block at the bottom of StatusEffects/StatusApplicationSpec.cs for why) — Aires_Skill_3.asset /
+    // Rector_Skill_2.asset have real `effect`/`stacks` data serialized flat under this class.
     [Serializable]
     public sealed class StatusApplication
     {
-        [SerializeField, AssetsOnly, Required, InlineEditor]
-        [LabelText("Status Effect")]
-        public StatusEffectDef effect;
+        [SerializeField, HideInInspector] StatusEffectDef effect;
+        [SerializeField, HideInInspector] int stacks;
 
-        [SerializeField, Min(1)]
-        [LabelText("Stacks")]
-        public int stacks = 1;
+        [LabelText("Status Effect")]
+        public StatusApplicationSpec spec = new();
+
+        /// <summary>Call from Execute()/CollectValidationIssues() only — never during deserialization.</summary>
+        public StatusApplicationSpec ResolvedSpec()
+        {
+            if (spec != null && spec.effect != null)
+                return spec;
+
+            if (effect == null)
+                return spec;
+
+            return new StatusApplicationSpec
+            {
+                effect = effect,
+                stacks = stacks > 0 ? stacks : 1,
+                modifiers = spec?.modifiers,
+                durationOverride = spec?.durationOverride ?? 0f,
+                tickDamageOverride = spec?.tickDamageOverride ?? 0f,
+            };
+        }
     }
 
     [PropertyOrder(-20)]
@@ -29,12 +49,35 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
     [LabelText("Prefer Caster Root")]
     private bool preferCasterRoot = true;
 
+    // See StatusApplication above — same legacy-field fallback reason (Aires_Skill_3.asset has real data).
     [Serializable]
     public sealed class ConditionalStatus
     {
         public string requiredUpgradeId;
-        public StatusEffectDef effect;
-        [Min(1)] public int stacks = 1;
+
+        [SerializeField, HideInInspector] StatusEffectDef effect;
+        [SerializeField, HideInInspector] int stacks;
+
+        public StatusApplicationSpec spec = new();
+
+        /// <summary>Call from Execute()/CollectValidationIssues() only — never during deserialization.</summary>
+        public StatusApplicationSpec ResolvedSpec()
+        {
+            if (spec != null && spec.effect != null)
+                return spec;
+
+            if (effect == null)
+                return spec;
+
+            return new StatusApplicationSpec
+            {
+                effect = effect,
+                stacks = stacks > 0 ? stacks : 1,
+                modifiers = spec?.modifiers,
+                durationOverride = spec?.durationOverride ?? 0f,
+                tickDamageOverride = spec?.tickDamageOverride ?? 0f,
+            };
+        }
     }
 
     [PropertyOrder(-10)]
@@ -63,10 +106,10 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
             ? context.CasterObject
             : controller.gameObject;
 
-        float durationOverride = 0f;
+        float skillDurationOverride = 0f;
         FinalSkillStats stats = context.SkillStats;
         if (stats != null && stats.effectDuration > 0f)
-            durationOverride = stats.effectDuration;
+            skillDurationOverride = stats.effectDuration;
 
         bool appliedAny = false;
 
@@ -75,10 +118,11 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
             for (int i = 0; i < applications.Count; i++)
             {
                 StatusApplication application = applications[i];
-                if (application == null || application.effect == null)
+                StatusApplicationSpec resolvedSpec = application?.ResolvedSpec();
+                if (resolvedSpec?.effect == null)
                     continue;
 
-                controller.ApplyEffect(application.effect, source, Mathf.Max(1, application.stacks), durationOverride);
+                controller.ApplyEffect(resolvedSpec.ResolveWithDurationFallback(skillDurationOverride), source);
                 appliedAny = true;
             }
         }
@@ -88,10 +132,14 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
             for (int i = 0; i < conditionalApplications.Count; i++)
             {
                 ConditionalStatus conditional = conditionalApplications[i];
-                if (conditional == null || conditional.effect == null || !context.HasUpgrade(conditional.requiredUpgradeId))
+                if (conditional == null || !context.HasUpgrade(conditional.requiredUpgradeId))
                     continue;
 
-                controller.ApplyEffect(conditional.effect, source, Mathf.Max(1, conditional.stacks), durationOverride);
+                StatusApplicationSpec resolvedSpec = conditional.ResolvedSpec();
+                if (resolvedSpec?.effect == null)
+                    continue;
+
+                controller.ApplyEffect(resolvedSpec.ResolveWithDurationFallback(skillDurationOverride), source);
                 appliedAny = true;
             }
         }
@@ -123,22 +171,24 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
         {
             for (int i = 0; i < applications.Count; i++)
             {
-                if (applications[i] != null && applications[i].effect != null)
+                StatusApplicationSpec resolvedSpec = applications[i]?.ResolvedSpec();
+                if (resolvedSpec?.effect != null)
                 {
                     hasConfiguredApplication = true;
-                    break;
+                    resolvedSpec.CollectValidationIssues(issues, $"applications[{i}]");
                 }
             }
         }
 
-        if (!hasConfiguredApplication && conditionalApplications != null)
+        if (conditionalApplications != null)
         {
             for (int i = 0; i < conditionalApplications.Count; i++)
             {
-                if (conditionalApplications[i] != null && conditionalApplications[i].effect != null)
+                StatusApplicationSpec resolvedSpec = conditionalApplications[i]?.ResolvedSpec();
+                if (resolvedSpec?.effect != null)
                 {
                     hasConfiguredApplication = true;
-                    break;
+                    resolvedSpec.CollectValidationIssues(issues, $"conditionalApplications[{i}]");
                 }
             }
         }

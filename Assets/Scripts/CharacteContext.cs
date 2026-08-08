@@ -41,7 +41,6 @@ public abstract class CharacteContext : MonoBehaviour
     public DashSystem DashSystem;
     public CharacterKnockbackMotor KnockbackMotor;
     public PassiveController PassiveController;
-    public PlayerPassiveProgress PassiveProgress;
     public CharacterActiveSkillProgress ActiveSkillProgress;
     public SkillUserSystem EnegySystem;
     public Interactor Interactor;
@@ -134,7 +133,6 @@ public abstract class CharacteContext : MonoBehaviour
         DashSystem = ResolveActorComponent(DashSystem);
         KnockbackMotor = ResolveActorComponent(KnockbackMotor);
         PassiveController = ResolveActorComponent(PassiveController);
-        PassiveProgress = ResolveActorComponent(PassiveProgress);
         ActiveSkillProgress = ResolveActorComponent(ActiveSkillProgress);
         if (ActiveSkillProgress == null &&
             Application.isPlaying &&

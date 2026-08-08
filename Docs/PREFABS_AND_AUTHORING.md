@@ -959,6 +959,11 @@ warning. Assign the `Taunted` status effect asset
 - `Assets/Prefab/Player/Ally_Helper.prefab`
 - `Assets/Prefab/Player/Ally_Stryker.prefab`
 
+`Taunted.asset` must keep `separatePerSource` **off**. `AITargetSensor` treats the
+single live `Taunted` instance as the source of truth for taunt state
+(`UpdateTauntState`); enabling per-source instances would let multiple tauntable
+actors produce multiple simultaneous instances with no rule for which one wins.
+
 `Ally.prefab` has an authored `StatusEffectController` on its root object
 (added so status-effect payloads — e.g. `Aires_Skill_3`'s ally-heal branch —
 can apply buffs to allies; previously `AITargetSensor` lazily `AddComponent`d

@@ -31,8 +31,7 @@ types, including:
 - gameplay modules: `StatusEffectController` (`StatusEffects`),
   `LevelSystem`, `HealthSystem`, `StaminaSystem`,
   `DashSystem`, `CharacterKnockbackMotor`, `PassiveController`,
-  `PlayerPassiveProgress`, `SkillUserSystem`, `Interactor`,
-  `CharacterSkillManager`
+  `SkillUserSystem`, `Interactor`, `CharacterSkillManager`
 
 Common systems should primarily depend on `CharacteContext` and read peer
 modules through `ctx`.

@@ -225,40 +225,52 @@ public class WeaponUpgradeRuntimeController : MonoBehaviour, IStatModifierProvid
         if (!PassesProcChance(effect))
             return false;
 
-        var statusEffect = GetOrCreateReloadBuffEffect(effect, instanceId, milestoneId, effectIndex);
+        var statusEffect = GetOrCreateReloadBuffEffect(instanceId, milestoneId, effectIndex, effect);
         if (statusEffect == null)
             return false;
 
-        statusEffectController.ApplyEffect(statusEffect, gameObject, 1);
+        // ค่า/duration มาจาก spec สดทุกครั้ง ไม่ใช่จาก statusEffect asset — ถ้า WeaponUpgradeEffect
+        // ถูก tune ค่าใหม่ระหว่าง session, reload buff รอบถัดไปจะได้ค่าล่าสุดทันที (AdoptMagnitude บน reapply)
+        var spec = new StatusApplicationSpec
+        {
+            effect = statusEffect,
+            stacks = 1,
+            modifiers = new List<StatusEffectModifier>
+            {
+                new StatusEffectModifier
+                {
+                    statType = effect.statType,
+                    operation = effect.modifierOp,
+                    value = effect.value
+                }
+            },
+            durationOverride = Mathf.Max(0f, effect.buffDurationSeconds),
+        };
+
+        statusEffectController.ApplyEffect(spec, gameObject);
         return true;
     }
 
+    /// <summary>
+    /// Identity เท่านั้น (effectId คงที่ต่อ instance+milestone+effect) — ไม่ผูกกับ value/duration
+    /// เพื่อไม่ให้การ tune ตัวเลขมินต์ SO ใหม่ทุกครั้งจนกลายเป็นหลาย effectId ที่จริงคือ buff เดียวกัน.
+    /// </summary>
     StatusEffectDef GetOrCreateReloadBuffEffect(
-        WeaponUpgradeEffect effect,
         string instanceId,
         string milestoneId,
-        int effectIndex)
+        int effectIndex,
+        WeaponUpgradeEffect effect)
     {
         string effectId = effect.ResolveId(milestoneId, effectIndex);
-        string cacheKey = $"{instanceId}:{milestoneId}:{effectId}:{effect.value:0.###}:{effect.buffDurationSeconds:0.###}";
+        string cacheKey = $"{instanceId}:{milestoneId}:{effectId}";
         if (_reloadBuffCache.TryGetValue(cacheKey, out var existing) && existing != null)
             return existing;
 
         var statusEffect = ScriptableObject.CreateInstance<StatusEffectDef>();
         statusEffect.effectId = $"{BuildModifierKey(instanceId)}:{milestoneId}:{effectId}:reload-buff";
         statusEffect.category = StatusEffectCategory.Buff;
-        statusEffect.duration = Mathf.Max(0f, effect.buffDurationSeconds);
         statusEffect.maxStacks = 1;
         statusEffect.stackMode = StackMode.RefreshDuration;
-        statusEffect.modifiers = new List<StatusEffectModifier>
-        {
-            new StatusEffectModifier
-            {
-                statType = effect.statType,
-                operation = effect.modifierOp,
-                value = effect.value
-            }
-        };
 
         _reloadBuffCache[cacheKey] = statusEffect;
         return statusEffect;

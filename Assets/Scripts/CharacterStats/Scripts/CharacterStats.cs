@@ -112,7 +112,6 @@ public sealed class CharacterSkillVoiceLine
 [CreateAssetMenu(menuName = "Character Stats")]
 public class CharacterStats : ScriptableObject
 {
-    private int PassiveCount => passives?.Count ?? 0;
     private string DisplayName => string.IsNullOrWhiteSpace(characterName) ? name : characterName;
 
     [PropertyOrder(-200)]
@@ -142,10 +141,6 @@ public class CharacterStats : ScriptableObject
     [ShowInInspector, ReadOnly, FoldoutGroup("Overview", Expanded = true), LabelText("Preview Combat")]
     private string OverviewPreviewStatsSecondary =>
         $"STA {GetPreviewStat(maxStamina, StaminaScaling):0.##} | ENG {GetPreviewStat(Enagy, EnagyScaling):0.##} | CR {GetPreviewStat(critRate, CritrateScaling):0.##} | CD {GetPreviewCritDamage():0.##}";
-
-    [PropertyOrder(-194)]
-    [ShowInInspector, ReadOnly, FoldoutGroup("Overview", Expanded = true), LabelText("Passive Count")]
-    private int OverviewPassiveCount => PassiveCount;
 
     private int PreviewLevelOffset => Mathf.Max(0, overviewPreviewLevel - 1);
 
@@ -301,11 +296,6 @@ public class CharacterStats : ScriptableObject
     [PropertyOrder(-73)]
     [FoldoutGroup("Level Scaling", Expanded = false), HorizontalGroup("Level Scaling/Row 04"), LabelText("Move Speed"), SuffixLabel("/ Lv")]
     public float SpeedScaling;
-
-    [PropertyOrder(-40)]
-    [FoldoutGroup("Passives", Expanded = false), LabelText("Passive List"), AssetsOnly]
-    [ListDrawerSettings(ShowFoldout = true, DefaultExpandedState = true, DraggableItems = true, ShowPaging = false, NumberOfItemsPerPage = 0)]
-    public List<PassiveDefinition> passives = new();
 
     [PropertyOrder(-20)]
     [FoldoutGroup("Audio", Expanded = false), LabelText("Dash Cue"), AssetsOnly]

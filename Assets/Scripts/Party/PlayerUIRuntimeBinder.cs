@@ -29,12 +29,6 @@ public sealed class PlayerUIRuntimeBinder : MonoBehaviour
             return false;
         }
 
-        if (player.PassiveProgress == null)
-        {
-            error = "PlayerContext is missing PlayerPassiveProgress.";
-            return false;
-        }
-
         player.playerUIContext = uiContext;
 
         InventoryUI[] inventoryViews = GetComponentsInChildren<InventoryUI>(true);
@@ -48,10 +42,6 @@ public sealed class PlayerUIRuntimeBinder : MonoBehaviour
         UIWeaponUpgrade[] upgradeViews = GetComponentsInChildren<UIWeaponUpgrade>(true);
         for (int i = 0; i < upgradeViews.Length; i++)
             upgradeViews[i].BindSource(player.inventory);
-
-        UIPassiveTreePanel[] passiveViews = GetComponentsInChildren<UIPassiveTreePanel>(true);
-        for (int i = 0; i < passiveViews.Length; i++)
-            passiveViews[i].Bind(player.PassiveProgress);
 
         UIManager[] uiManagers = GetComponentsInChildren<UIManager>(true);
         for (int i = 0; i < uiManagers.Length; i++)

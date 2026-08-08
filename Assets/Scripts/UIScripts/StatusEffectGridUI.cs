@@ -20,6 +20,8 @@ public sealed class StatusEffectGridUI : MonoBehaviour
 
     readonly List<StatusEffectIconUI> _icons = new();
     readonly List<StatusEffectInstance> _filteredEffects = new();
+    readonly List<int> _filteredStackCounts = new();
+    readonly Dictionary<object, int> _groupIndex = new();
 
     GridLayoutGroup _gridLayout;
     ContentSizeFitter _sizeFitter;
@@ -115,7 +117,7 @@ public sealed class StatusEffectGridUI : MonoBehaviour
                 continue;
 
             icon.gameObject.SetActive(true);
-            icon.Bind(_filteredEffects[i]);
+            icon.Bind(_filteredEffects[i], _filteredStackCounts[i]);
         }
 
         for (int i = _filteredEffects.Count; i < _icons.Count; i++)
@@ -130,9 +132,16 @@ public sealed class StatusEffectGridUI : MonoBehaviour
         LayoutRebuilder.MarkLayoutForRebuild(contentRoot);
     }
 
+    /// <summary>
+    /// Group instance หลายตัวที่ effectId เดียวกันเป็นไอคอนเดียว (เกิดเมื่อ StatusEffectDef.separatePerSource เปิดและ
+    /// มีหลายแหล่งลง effect เดียวกัน) — representative = instance ที่ TimeLeft เหลือนานสุด, stacks = ผลรวม.
+    /// ค่ารวมของ modifiers (multiplicative) แสดงผ่าน RuntimeStatModifier ที่ StatsHub รวมอยู่แล้ว ไม่ต้องคำนวณซ้ำที่ UI.
+    /// </summary>
     void CollectEffects()
     {
         _filteredEffects.Clear();
+        _filteredStackCounts.Clear();
+        _groupIndex.Clear();
 
         var activeEffects = controller != null ? controller.ActiveEffects : null;
         if (activeEffects == null)
@@ -148,7 +157,26 @@ public sealed class StatusEffectGridUI : MonoBehaviour
             if (definition.category != category)
                 continue;
 
-            _filteredEffects.Add(instance);
+            object groupKey = !string.IsNullOrWhiteSpace(definition.effectId)
+                ? definition.effectId
+                : (object)definition;
+
+            if (!_groupIndex.TryGetValue(groupKey, out int index))
+            {
+                _groupIndex[groupKey] = _filteredEffects.Count;
+                _filteredEffects.Add(instance);
+                _filteredStackCounts.Add(instance.CurrentStacks);
+                continue;
+            }
+
+            _filteredStackCounts[index] += instance.CurrentStacks;
+
+            var current = _filteredEffects[index];
+            bool candidateWins = instance.IsPermanent && !current.IsPermanent ||
+                (!current.IsPermanent && instance.TimeLeft > current.TimeLeft);
+
+            if (candidateWins)
+                _filteredEffects[index] = instance;
         }
     }
 

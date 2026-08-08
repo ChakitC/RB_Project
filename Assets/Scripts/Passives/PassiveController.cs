@@ -160,8 +160,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         _triggeredPassives.Clear();
         _customPassives.Clear();
 
-        if (!TryAddPassivesFromSkillManager())
-            AddPassivesFromList(ctx != null && ctx.baseStats != null ? ctx.baseStats.passives : null);
+        TryAddPassivesFromSkillManager();
 
         AddPassivesFromList(runtimePassives);
         AddPassivesFromProviders();
@@ -261,6 +260,8 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         if (preserved == null || preserved.Count == 0)
             return;
 
+        double now = Time.timeAsDouble;
+
         for (int i = 0; i < _triggeredPassives.Count; i++)
         {
             TriggeredPassiveRuntime runtime = _triggeredPassives[i];
@@ -275,7 +276,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                     continue;
 
                 if (preserved.TryGetValue(new RuleStateKey(passiveId, state.Rule.RuntimeRuleId), out TriggeredRuleState previous))
-                    state.CopyStateFrom(previous);
+                    state.CopyStateFrom(previous, now);
             }
         }
     }
@@ -322,16 +323,25 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 if (statModifier == null)
                     continue;
 
+                // (value + add) * multiply * stackCount -- snapshot aggregate scales the base
+                // value first, stacking multiplies the already-scaled result.
+                float scaledValue = statModifier.value;
+                if (modifier.Upgrades != null &&
+                    modifier.Upgrades.TryGetAggregate(statModifier.statType, out float add, out float multiply))
+                {
+                    scaledValue = (scaledValue + add) * multiply;
+                }
+
                 buffer.Add(new RuntimeStatModifier(
                     statModifier.statType,
                     statModifier.operation,
-                    statModifier.value * stackCount,
+                    scaledValue * stackCount,
                     modifier.ModifierKey));
             }
         }
     }
 
-    public bool TryApplyRuntimeModifier(PassiveActionDefinition action, string modifierKey, double now)
+    public bool TryApplyRuntimeModifier(PassiveActionDefinition action, string modifierKey, double now, SkillUpgradeStatSnapshot upgrades = null)
     {
         if (action == null || action.modifiers == null || action.modifiers.Count == 0)
             return false;
@@ -347,7 +357,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         switch (action.stackPolicy)
         {
             case PassiveModifierStackPolicy.Independent:
-                _activeModifiers.Add(CreateActiveModifier(action, $"{resolvedModifierKey}:inst:{++_nextIndependentModifierId}", grantedStacks, maxStacks, now));
+                _activeModifiers.Add(CreateActiveModifier(action, $"{resolvedModifierKey}:inst:{++_nextIndependentModifierId}", grantedStacks, maxStacks, now, upgrades));
                 return true;
 
             case PassiveModifierStackPolicy.IgnoreWhileActive:
@@ -356,7 +366,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 if (existing != null)
                     return false;
 
-                _activeModifiers.Add(CreateActiveModifier(action, resolvedModifierKey, grantedStacks, maxStacks, now));
+                _activeModifiers.Add(CreateActiveModifier(action, resolvedModifierKey, grantedStacks, maxStacks, now, upgrades));
                 return true;
             }
 
@@ -365,7 +375,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 var existing = FindActiveModifier(resolvedModifierKey, now);
                 if (existing == null)
                 {
-                    _activeModifiers.Add(CreateActiveModifier(action, resolvedModifierKey, grantedStacks, maxStacks, now));
+                    _activeModifiers.Add(CreateActiveModifier(action, resolvedModifierKey, grantedStacks, maxStacks, now, upgrades));
                     return true;
                 }
 
@@ -373,6 +383,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 existing.MaxStacks = maxStacks;
                 existing.ExpiresAt = ResolveExpiry(action.durationSeconds, now);
                 existing.Modifiers = action.modifiers;
+                existing.Upgrades = upgrades;
                 return true;
             }
 
@@ -381,7 +392,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 var existing = FindActiveModifier(resolvedModifierKey, now);
                 if (existing == null)
                 {
-                    _activeModifiers.Add(CreateActiveModifier(action, resolvedModifierKey, grantedStacks, maxStacks, now));
+                    _activeModifiers.Add(CreateActiveModifier(action, resolvedModifierKey, grantedStacks, maxStacks, now, upgrades));
                     return true;
                 }
 
@@ -389,6 +400,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 existing.MaxStacks = maxStacks;
                 existing.ExpiresAt = ResolveExpiry(action.durationSeconds, now);
                 existing.Modifiers = action.modifiers;
+                existing.Upgrades = upgrades;
                 return true;
             }
 
@@ -398,7 +410,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 var existing = FindActiveModifier(resolvedModifierKey, now);
                 if (existing == null)
                 {
-                    _activeModifiers.Add(CreateActiveModifier(action, resolvedModifierKey, grantedStacks, maxStacks, now));
+                    _activeModifiers.Add(CreateActiveModifier(action, resolvedModifierKey, grantedStacks, maxStacks, now, upgrades));
                     return true;
                 }
 
@@ -406,6 +418,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 existing.MaxStacks = maxStacks;
                 existing.ExpiresAt = ResolveExpiry(action.durationSeconds, now);
                 existing.Modifiers = action.modifiers;
+                existing.Upgrades = upgrades;
                 return true;
             }
         }
@@ -517,12 +530,12 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             if (!RegisterRuleExecution(context, passiveId, rule))
                 continue;
 
-            ExecuteRuleActions(runtime.Definition, rule, context);
+            ExecuteRuleActions(runtime.Definition, rule, context, runtime.Upgrades);
             state.Consume(context.Time);
         }
     }
 
-    void ExecuteRuleActions(TriggeredPassiveDef definition, TriggeredPassiveRule rule, PassiveEventContext context)
+    void ExecuteRuleActions(TriggeredPassiveDef definition, TriggeredPassiveRule rule, PassiveEventContext context, SkillUpgradeStatSnapshot upgrades)
     {
         if (definition == null || rule == null || rule.actions == null)
             return;
@@ -541,7 +554,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             switch (action.actionType)
             {
                 case PassiveActionType.GrantModifier:
-                    ApplyModifierAction(action, targetObject, ResolveModifierKey(passiveId, ruleId, action), context.Time);
+                    ApplyModifierAction(action, targetObject, ResolveModifierKey(passiveId, ruleId, action), context.Time, upgrades);
                     break;
 
                 case PassiveActionType.ApplyStatusEffect:
@@ -555,7 +568,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         }
     }
 
-    void ApplyModifierAction(PassiveActionDefinition action, GameObject targetObject, string modifierKey, double now)
+    void ApplyModifierAction(PassiveActionDefinition action, GameObject targetObject, string modifierKey, double now, SkillUpgradeStatSnapshot upgrades)
     {
         if (action == null || targetObject == null)
             return;
@@ -564,7 +577,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         if (targetController == null)
             return;
 
-        if (targetController.TryApplyRuntimeModifier(action, modifierKey, now))
+        if (targetController.TryApplyRuntimeModifier(action, modifierKey, now, upgrades))
             targetController.NotifyStatModifiersChanged();
     }
 
@@ -576,7 +589,11 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         string passiveId,
         string ruleId)
     {
-        if (action == null || action.statusEffect == null || targetObject == null)
+        if (action == null || targetObject == null)
+            return;
+
+        StatusApplicationSpec resolvedSpec = action.ResolvedStatusSpec();
+        if (resolvedSpec?.effect == null)
             return;
 
         var targetStatusController = targetObject.GetComponentInParent<StatusEffectController>();
@@ -584,9 +601,8 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             return;
 
         targetStatusController.ApplyEffect(
-            action.statusEffect,
+            resolvedSpec,
             gameObject,
-            action.statusInitialStacks,
             appliedById,
             context.ChainId,
             context.Depth + 1,
@@ -825,7 +841,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         switch (definition)
         {
             case AlwaysOnPassiveDef alwaysOn:
-                AddAlwaysOnPassive(alwaysOn);
+                AddAlwaysOnPassive(alwaysOn, equipped.Upgrades);
                 break;
 
             case TriggeredPassiveDef triggered:
@@ -838,7 +854,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         }
     }
 
-    void AddAlwaysOnPassive(AlwaysOnPassiveDef definition)
+    void AddAlwaysOnPassive(AlwaysOnPassiveDef definition, SkillUpgradeStatSnapshot upgrades)
     {
         if (definition == null || definition.modifiers == null)
             return;
@@ -850,10 +866,16 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             if (modifier == null)
                 continue;
 
+            // Always-on modifiers are static per loadout, so scale once here at rebuild time
+            // rather than per-frame in AppendStatModifiers.
+            float scaledValue = modifier.value;
+            if (upgrades != null && upgrades.TryGetAggregate(modifier.statType, out float add, out float multiply))
+                scaledValue = (scaledValue + add) * multiply;
+
             _alwaysOnModifiers.Add(new RuntimeStatModifier(
                 modifier.statType,
                 modifier.operation,
-                modifier.value,
+                scaledValue,
                 modifierKey));
         }
     }
@@ -1020,7 +1042,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         return null;
     }
 
-    ActivePassiveModifier CreateActiveModifier(PassiveActionDefinition action, string modifierKey, int stacks, int maxStacks, double now)
+    ActivePassiveModifier CreateActiveModifier(PassiveActionDefinition action, string modifierKey, int stacks, int maxStacks, double now, SkillUpgradeStatSnapshot upgrades)
     {
         return new ActivePassiveModifier
         {
@@ -1028,7 +1050,8 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             Modifiers = action.modifiers,
             Stacks = stacks,
             MaxStacks = maxStacks,
-            ExpiresAt = ResolveExpiry(action.durationSeconds, now)
+            ExpiresAt = ResolveExpiry(action.durationSeconds, now),
+            Upgrades = upgrades
         };
     }
 
@@ -1049,7 +1072,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                 return;
 
             for (int i = 0; i < definition.rules.Count; i++)
-                RuleStates.Add(new TriggeredRuleState(definition.rules[i]));
+                RuleStates.Add(new TriggeredRuleState(definition.rules[i], upgrades));
         }
 
         public TriggeredPassiveDef Definition { get; }
@@ -1059,9 +1082,10 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
     sealed class TriggeredRuleState
     {
-        public TriggeredRuleState(TriggeredPassiveRule rule)
+        public TriggeredRuleState(TriggeredPassiveRule rule, SkillUpgradeStatSnapshot upgrades)
         {
             Rule = rule;
+            ResolveFields(upgrades);
         }
 
         public TriggeredPassiveRule Rule { get; }
@@ -1069,16 +1093,38 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         public double WindowExpiresAt { get; private set; }
         public double CooldownReadyAt { get; private set; }
 
+        // Resolved once per loadout rebuild from (Rule, upgrades) rather than read from Rule.*
+        // per-event, so a node unlock's numeric override takes effect on the next rebuild without
+        // per-call resolution cost.
+        public int ResolvedRequiredCount { get; private set; }
+        public float ResolvedCountWindowSeconds { get; private set; }
+        public float ResolvedCooldownSeconds { get; private set; }
+
+        void ResolveFields(SkillUpgradeStatSnapshot upgrades)
+        {
+            if (Rule == null)
+            {
+                ResolvedRequiredCount = 1;
+                ResolvedCountWindowSeconds = 0f;
+                ResolvedCooldownSeconds = 0f;
+                return;
+            }
+
+            ResolvedRequiredCount = Rule.ResolveRequiredCount(upgrades);
+            ResolvedCountWindowSeconds = Rule.ResolveCountWindowSeconds(upgrades);
+            ResolvedCooldownSeconds = Rule.ResolveCooldownSeconds(upgrades);
+        }
+
         public void RecordEvent(double time)
         {
             if (Rule == null)
                 return;
 
-            if (Rule.countWindowSeconds > 0f && Counter > 0 && time > WindowExpiresAt)
+            if (ResolvedCountWindowSeconds > 0f && Counter > 0 && time > WindowExpiresAt)
                 Counter = 0;
 
-            if (Counter == 0 && Rule.countWindowSeconds > 0f)
-                WindowExpiresAt = time + Rule.countWindowSeconds;
+            if (Counter == 0 && ResolvedCountWindowSeconds > 0f)
+                WindowExpiresAt = time + ResolvedCountWindowSeconds;
 
             Counter++;
         }
@@ -1088,7 +1134,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             if (Rule == null)
                 return false;
 
-            return Counter >= Mathf.Max(1, Rule.requiredCount) && time >= CooldownReadyAt;
+            return Counter >= Mathf.Max(1, ResolvedRequiredCount) && time >= CooldownReadyAt;
         }
 
         public void Consume(double time)
@@ -1096,20 +1142,20 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             if (Rule == null)
                 return;
 
-            CooldownReadyAt = time + Rule.cooldownSeconds;
+            CooldownReadyAt = time + ResolvedCooldownSeconds;
 
             if (Rule.counterConsumeMode == PassiveCounterConsumeMode.CarryOver)
-                Counter = Mathf.Max(0, Counter - Mathf.Max(1, Rule.requiredCount));
+                Counter = Mathf.Max(0, Counter - Mathf.Max(1, ResolvedRequiredCount));
             else
                 Counter = 0;
 
             if (Counter == 0)
                 WindowExpiresAt = 0d;
-            else if (Rule.countWindowSeconds > 0f)
-                WindowExpiresAt = time + Rule.countWindowSeconds;
+            else if (ResolvedCountWindowSeconds > 0f)
+                WindowExpiresAt = time + ResolvedCountWindowSeconds;
         }
 
-        public void CopyStateFrom(TriggeredRuleState other)
+        public void CopyStateFrom(TriggeredRuleState other, double now)
         {
             if (other == null)
                 return;
@@ -1117,6 +1163,13 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             Counter = other.Counter;
             WindowExpiresAt = other.WindowExpiresAt;
             CooldownReadyAt = other.CooldownReadyAt;
+
+            // An upgrade must never leave the player worse off than it promises: if this rebuild
+            // shortened the cooldown, a carried-over CooldownReadyAt computed under the old (longer)
+            // cooldown must not stay further in the future than the new cooldown allows.
+            double maxCooldownReadyAt = now + ResolvedCooldownSeconds;
+            if (CooldownReadyAt > maxCooldownReadyAt)
+                CooldownReadyAt = maxCooldownReadyAt;
         }
     }
 
@@ -1155,6 +1208,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         public int Stacks;
         public int MaxStacks;
         public double ExpiresAt;
+        public SkillUpgradeStatSnapshot Upgrades;
 
         public bool IsExpired(double now)
         {

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public enum PickupCollectorRule
@@ -25,6 +26,7 @@ public class SkillPickup : MonoBehaviour
     Collider _pickupCollider;
     PickupVisualMotion _pickupVisualMotion;
     bool _collecting;
+    readonly List<PickupEffectDef> _runtimeEffects = new();
 
     void Reset()
     {
@@ -57,6 +59,12 @@ public class SkillPickup : MonoBehaviour
         collectorRule = rule;
     }
 
+    public void AddEffect(PickupEffectDef effect)
+    {
+        if (effect != null)
+            _runtimeEffects.Add(effect);
+    }
+
     void OnTriggerEnter(Collider other)
     {
         if (_collecting)
@@ -65,7 +73,9 @@ public class SkillPickup : MonoBehaviour
         if (Time.time < _spawnTime + pickupDelaySeconds)
             return;
 
-        if (effects == null || effects.Length == 0)
+        bool hasSerializedEffects = effects != null && effects.Length > 0;
+        bool hasRuntimeEffects = _runtimeEffects.Count > 0;
+        if (!hasSerializedEffects && !hasRuntimeEffects)
             return;
 
         var targetObject = ResolveTargetObject(other);
@@ -73,9 +83,22 @@ public class SkillPickup : MonoBehaviour
             return;
 
         bool appliedAnyEffect = false;
-        for (int i = 0; i < effects.Length; i++)
+        if (hasSerializedEffects)
         {
-            var effect = effects[i];
+            for (int i = 0; i < effects.Length; i++)
+            {
+                var effect = effects[i];
+                if (effect == null || !effect.CanApply(targetObject, _context))
+                    continue;
+
+                if (effect.Apply(targetObject, _context))
+                    appliedAnyEffect = true;
+            }
+        }
+
+        for (int i = 0; i < _runtimeEffects.Count; i++)
+        {
+            var effect = _runtimeEffects[i];
             if (effect == null || !effect.CanApply(targetObject, _context))
                 continue;
 

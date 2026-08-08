@@ -16,11 +16,12 @@ MonoBehaviour:
   displayName: Forgotten Bullet Bag
   description: 
   nodes:
-  - nodeId: extra_drop
-    displayName: Extra Drop
-    description: The bullet bag shakes loose a second ammo pickup per proc.
-    icon: {fileID: 0}
-    uiPosition: {x: 0, y: 0}
+  - nodeId: main
+    displayName: "\u0E2B\u0E25\u0E31\u0E01"
+    description: The bag's clasp wears looser -- the internal cooldown between drops
+      shortens.
+    icon: {fileID: 21300000, guid: d911e0833a3d1e84b8d853f712b598fe, type: 3}
+    uiPosition: {x: -116.40002, y: 37.20002}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -28,4 +29,76 @@ MonoBehaviour:
     mutuallyExclusiveNodeIds: []
     statModifiers: []
     grantedUpgradeIds:
+    - passive.feno.bulletbag.main
+  - nodeId: drop_chance
+    displayName: "\u0E40\u0E1E\u0E34\u0E48\u0E21\u0E42\u0E2D\u0E01\u0E32\u0E2A\u0E14\u0E23\u0E2D\u0E1B"
+    description: Raises the chance a shot shakes an ammo pickup loose.
+    icon: {fileID: 21300000, guid: c40099e88b173e94795fa6c140af613a, type: 3}
+    uiPosition: {x: 85.19999, y: 37.20002}
+    visualScale: 1
+    cost: 1
+    requiredCharacterLevel: 1
+    requiredNodeIds:
+    - main
+    mutuallyExclusiveNodeIds: []
+    statModifiers: []
+    grantedUpgradeIds:
+    - passive.feno.bulletbag.drop_chance
+  - nodeId: extra_drop
+    displayName: Extra Drop
+    description: The bullet bag shakes loose a second ammo pickup per proc.
+    icon: {fileID: 21300000, guid: 34d2bfe6139c67c42853f26af603a567, type: 3}
+    uiPosition: {x: 278, y: 37.20002}
+    visualScale: 1
+    cost: 1
+    requiredCharacterLevel: 1
+    requiredNodeIds:
+    - drop_chance
+    mutuallyExclusiveNodeIds: []
+    statModifiers: []
+    grantedUpgradeIds:
     - passive.feno.bulletbag.extra_drop
+  - nodeId: reserve_ammo
+    displayName: "\u0E43\u0E2A\u0E48\u0E01\u0E23\u0E30\u0E2A\u0E38\u0E19\u0E2A\u0E33\u0E23\u0E2D\u0E07\u0E44\u0E14\u0E49"
+    description: Picking up ammo also tops off reserve ammo, not just the magazine.
+    icon: {fileID: 21300000, guid: 20443bf3ec9f7f54889edb92e7653b18, type: 3}
+    uiPosition: {x: 489.99994, y: 37.20002}
+    visualScale: 1
+    cost: 1
+    requiredCharacterLevel: 1
+    requiredNodeIds:
+    - extra_drop
+    mutuallyExclusiveNodeIds: []
+    statModifiers: []
+    grantedUpgradeIds:
+    - passive.feno.bulletbag.reserve_ammo
+  - nodeId: atk_up
+    displayName: "\u0E40\u0E01\u0E47\u0E1A\u0E41\u0E25\u0E49\u0E27 Atk Up"
+    description: Collecting a bullet grants a temporary attack boost.
+    icon: {fileID: 21300000, guid: 1cc7081bbb4a4894abea9320a39333c4, type: 3}
+    uiPosition: {x: 673.19995, y: 175.15}
+    visualScale: 1
+    cost: 1
+    requiredCharacterLevel: 1
+    requiredNodeIds:
+    - reserve_ammo
+    mutuallyExclusiveNodeIds:
+    - speed_up
+    statModifiers: []
+    grantedUpgradeIds:
+    - passive.feno.bulletbag.atk_up
+  - nodeId: speed_up
+    displayName: "\u0E40\u0E01\u0E47\u0E1A\u0E41\u0E25\u0E49\u0E27 \u0E27\u0E34\u0E48\u0E07\u0E40\u0E23\u0E47\u0E27\u0E02\u0E36\u0E49\u0E19"
+    description: Collecting a bullet grants a temporary movement speed boost.
+    icon: {fileID: 21300000, guid: 9f75dcbc3ee13a448a51bdfcdee87569, type: 3}
+    uiPosition: {x: 702.80005, y: -51.59999}
+    visualScale: 1
+    cost: 1
+    requiredCharacterLevel: 1
+    requiredNodeIds:
+    - reserve_ammo
+    mutuallyExclusiveNodeIds:
+    - atk_up
+    statModifiers: []
+    grantedUpgradeIds:
+    - passive.feno.bulletbag.speed_up

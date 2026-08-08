@@ -201,18 +201,6 @@ public class PlayerInputHandler : MonoBehaviour
     
     }
 
-    public void OpenPassiveTree(InputAction.CallbackContext c)
-    {
-        
-        if (!c.performed) return;
-        ResolveReferences();
-        if (ctx?.playerUIContext?.passiveTree == null)
-            return;
-
-        bool isOpen = ctx.playerUIContext.passiveTree.activeSelf;
-        ctx.playerUIContext.passiveTree.SetActive(!isOpen);
-    }
-
     public void OpenChainSkill(InputAction.CallbackContext c)
     {
         if (!c.performed)

@@ -186,10 +186,14 @@ public sealed class TauntSkillRuntime : MonoBehaviour
         for (int i = 0; i < conditionals.Count; i++)
         {
             TauntSkillPayloadDef.ConditionalStatus conditional = conditionals[i];
-            if (conditional == null || conditional.effect == null || !context.HasUpgrade(conditional.requiredUpgradeId))
+            if (conditional == null || !context.HasUpgrade(conditional.requiredUpgradeId))
                 continue;
 
-            controller.ApplyEffect(conditional.effect, source, Mathf.Max(1, conditional.stacks), tauntDuration);
+            StatusApplicationSpec resolvedSpec = conditional.ResolvedSpec();
+            if (resolvedSpec?.effect == null)
+                continue;
+
+            controller.ApplyEffect(resolvedSpec.ResolveWithDurationFallback(tauntDuration), source);
         }
     }
 

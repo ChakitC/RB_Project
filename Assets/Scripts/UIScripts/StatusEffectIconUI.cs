@@ -24,6 +24,7 @@ public sealed class StatusEffectIconUI : MonoBehaviour
     [SerializeField] private string permanentText = "INF";
 
     StatusEffectInstance _instance;
+    int? _stackCountOverride;
 
     void Awake()
     {
@@ -39,9 +40,14 @@ public sealed class StatusEffectIconUI : MonoBehaviour
         RefreshDynamicTexts();
     }
 
-    public void Bind(StatusEffectInstance instance)
+    /// <summary>
+    /// Bind แสดง instance เดียว (ค่า default) หรือแบบ group หลาย instance ที่ effectId เดียวกัน (StatusEffectDef.separatePerSource)
+    /// — representative คือ instance ที่ TimeLeft เหลือนานสุด, stackCountOverride คือผลรวม stacks ของทุก instance ในกลุ่ม
+    /// </summary>
+    public void Bind(StatusEffectInstance representative, int? stackCountOverride = null)
     {
-        _instance = instance;
+        _instance = representative;
+        _stackCountOverride = stackCountOverride;
 
         if (!EnsureRuntimeVisualTree())
             return;
@@ -53,6 +59,7 @@ public sealed class StatusEffectIconUI : MonoBehaviour
     public void Clear()
     {
         _instance = null;
+        _stackCountOverride = null;
 
         if (iconImage)
         {
@@ -107,12 +114,13 @@ public sealed class StatusEffectIconUI : MonoBehaviour
         if (_instance == null || _instance.Definition == null)
             return;
 
+        int displayStacks = _stackCountOverride ?? _instance.CurrentStacks;
         if (stackText)
-            stackText.text = _instance.CurrentStacks > 1 ? _instance.CurrentStacks.ToString() : string.Empty;
+            stackText.text = displayStacks > 1 ? displayStacks.ToString() : string.Empty;
 
         if (durationText)
         {
-            durationText.text = _instance.Definition.IsPermanent
+            durationText.text = _instance.IsPermanent
                 ? permanentText
                 : Mathf.Max(0f, _instance.TimeLeft).ToString("0.0");
         }

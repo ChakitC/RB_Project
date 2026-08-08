@@ -91,15 +91,18 @@ public sealed class StatusEffectVfxPresenter : MonoBehaviour
         if (!controller)
             controller = GetComponentInChildren<StatusEffectController>(true);
 
-        if (!controller)
-        {
-            var ownerContext = GetComponentInParent<CharacteContext>();
-            if (ownerContext)
-                controller = ownerContext.GetComponentInChildren<StatusEffectController>(true);
-        }
+        CharacteContext ownerContext = GetComponentInParent<CharacteContext>();
+
+        if (!controller && ownerContext)
+            controller = ownerContext.GetComponentInChildren<StatusEffectController>(true);
+
+        Transform contextTransform = ownerContext ? ownerContext.transform : null;
 
         if (!rootAnchor)
-            rootAnchor = transform;
+            rootAnchor = contextTransform ? contextTransform : transform;
+
+        if (!centerAnchor)
+            centerAnchor = contextTransform ? contextTransform : rootAnchor;
 
         if (!animator)
             animator = GetComponentInChildren<Animator>(true);

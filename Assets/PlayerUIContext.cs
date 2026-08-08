@@ -9,7 +9,6 @@ public interface IPlayerFullscreenEffectController
 public class PlayerUIContext : MonoBehaviour
 {
     public GameObject inventoryUI;
-    public GameObject passiveTree;
     public ActiveSkillScreenController activeSkillScreen;
     public MonoBehaviour fullscreenEffects;
 

@@ -396,8 +396,6 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
             PlayerUIContext ui = playerContext.playerUIContext;
             if (ui.inventoryUI != null && ui.inventoryUI.activeInHierarchy)
                 return true;
-            if (ui.passiveTree != null && ui.passiveTree.activeInHierarchy)
-                return true;
             if (ui.activeSkillScreen != null && ui.activeSkillScreen.gameObject.activeInHierarchy)
                 return true;
         }

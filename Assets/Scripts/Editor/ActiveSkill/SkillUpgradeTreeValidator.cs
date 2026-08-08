@@ -49,6 +49,15 @@ public static class SkillUpgradeTreeValidator
 
         IReadOnlyList<SkillDefinitionBase> owners = FindOwningAssets(tree);
         bool hasOwner = owners.Count > 0;
+        bool ownedByPassive = false;
+        for (int ownerIndex = 0; ownerIndex < owners.Count; ownerIndex++)
+        {
+            if (owners[ownerIndex] is PassiveDefinition)
+            {
+                ownedByPassive = true;
+                break;
+            }
+        }
         var declaredUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         if (hasOwner)
         {
@@ -101,7 +110,7 @@ public static class SkillUpgradeTreeValidator
                     if (modifier == null)
                         continue;
 
-                    if (!SkillUpgradeStatSnapshot.Supports(modifier.stat))
+                    if (!SkillUpgradeStatSnapshot.Supports(modifier.stat) && !ownedByPassive)
                         issues.Add(Error($"Node '{nodeId}' uses unsupported skill stat '{modifier.stat}'."));
                     else
                         hasSupportedModifier = true;

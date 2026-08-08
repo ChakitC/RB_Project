@@ -1921,7 +1921,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private void InterruptActiveSkillRequest()
     {
         int requestId = _skillChannel.Request.RequestId;
-        bool shouldNotify = _skillChannel.Request.ReleaseRequested && !_skillChannel.Request.Released && requestId > 0;
+        bool shouldNotify = _skillChannel.Request.ReleaseRequested && requestId > 0;
 
         ClearActiveSkillRequest();
 

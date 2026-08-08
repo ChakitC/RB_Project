@@ -156,11 +156,44 @@ Loadout and Upgrade Trees** below) rather than only its numbers.
 Every status application that can receive a skill-driven duration (the
 unconditional and conditional lists on `ApplyStatusSkillPayloadDef`,
 `TauntSkillPayloadDef`, and `HealAreaStep`) passes
-`FinalSkillStats.effectDuration` as `durationOverride` to
+`FinalSkillStats.effectDuration` as a fallback `durationOverride` to
 `StatusEffectController.ApplyEffect` whenever `effectDuration > 0`; otherwise
 the status asset's own authored `duration` applies. **Author every
 `StatusEffectDef` with a non-zero `duration`** — `duration <= 0` means
 permanent (`StatusEffectDef.IsPermanent`), not "use the override."
+
+#### Magnitude at apply site (StatusApplicationSpec)
+
+`StatusEffectDef` no longer has to hold the only copy of a status's numbers.
+Each `StatusApplication` / `ConditionalStatus` entry on `ApplyStatusSkillPayloadDef`,
+`ApplyStatusOnHitModule`, `PassiveActionDefinition`, `TauntSkillPayloadDef`, and
+`HealAreaStep`'s conditional list carries its own optional **Modifiers (Override)**,
+**Duration Override**, and (where relevant) **Tick Damage Override** fields. Leave
+them empty to fall back to the `StatusEffectDef`'s own `modifiers` / `duration` /
+`tickDamage` — existing assets behave identically until a designer opts into an
+override. A per-application `durationOverride` wins over the skill-level
+`FinalSkillStats.effectDuration` fallback when both are set.
+
+This means the same `AtkDown.asset` can be authored once (identity, icon, VFX,
+`stackMode`, `controlBlocks`) and reused by a weak skill (`-10% ATK`) and a strong
+one (`-40% ATK`) without cloning the asset. **Debuff modifiers must use
+`ModifierOp.Multiply`** (e.g. `0.75` for -25%) — it stacks multiplicatively and
+diminishes toward but never reaches 0. `ModifierOp.AddPercent` sums linearly across
+sources and can drive a stat negative before the engine's `Mathf.Max(0f, ...)` floor
+kicks in.
+
+`StatusEffectDef.separatePerSource` (default `false`) controls whether multiple
+actors applying the *same* effect share one instance (existing behavior) or each get
+their own instance with independent duration and magnitude, combined automatically
+through `StatsHub`'s modifier aggregation. Only enable it on effects where every
+applying source is a genuine, distinct actor — **do not enable it** on `Taunted` (the
+taunter is tracked as the single source of truth for taunt state), on morph-granted
+effects (`MorphSkillRuntime` removes by definition on revert, which would also strip
+other sources' instances), or on pickup-granted effects (the pickup `GameObject`
+itself is the "source", not the collecting actor, so per-source keys would defeat
+stacking). `StackMode.StrongestOnly` compares applications with the same modifier
+shape (same stat + operation) and keeps the stronger one; it never lets a weaker or
+shorter reapplication shrink the remaining duration.
 
 `StatusEffectController.ApplyTick` now treats a negative `tickDamage` as a
 heal (routed through `HealthSystem.Heal` via `CharacteContext.HealthSystem`)

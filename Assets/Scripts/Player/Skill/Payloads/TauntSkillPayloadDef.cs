@@ -6,12 +6,39 @@ using UnityEngine;
 [HideMonoScript]
 public sealed class TauntSkillPayloadDef : SkillPayloadDef
 {
+    // Legacy-field fallback (lazy resolve, NOT ISerializationCallbackReceiver — see the "Legacy Migration"
+    // block at the bottom of StatusEffects/StatusApplicationSpec.cs for why) — Aires_Skill_3.asset /
+    // Aires_Active.asset have real `effect`/`stacks` data serialized flat under this class.
+    // Duration has no field of its own on the spec here — tauntDuration (the taunt's own duration) is passed
+    // as the fallback via ResolveWithDurationFallback at the call site, same as before.
     [Serializable]
     public sealed class ConditionalStatus
     {
         public string requiredUpgradeId;
-        public StatusEffectDef effect;
-        [Min(1)] public int stacks = 1;
+
+        [SerializeField, HideInInspector] StatusEffectDef effect;
+        [SerializeField, HideInInspector] int stacks;
+
+        public StatusApplicationSpec spec = new();
+
+        /// <summary>Call from TauntSkillRuntime at trigger time only — never during deserialization.</summary>
+        public StatusApplicationSpec ResolvedSpec()
+        {
+            if (spec != null && spec.effect != null)
+                return spec;
+
+            if (effect == null)
+                return spec;
+
+            return new StatusApplicationSpec
+            {
+                effect = effect,
+                stacks = stacks > 0 ? stacks : 1,
+                modifiers = spec?.modifiers,
+                durationOverride = spec?.durationOverride ?? 0f,
+                tickDamageOverride = spec?.tickDamageOverride ?? 0f,
+            };
+        }
     }
 
     [PropertyOrder(-20)]

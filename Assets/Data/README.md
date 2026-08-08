@@ -31,8 +31,11 @@ When moving existing assets, move them through Unity's Project window or move th
 - `Pickups/Effects`: `PickupEffectDef` assets
 - `Progression/Levels`: `LevelTableSO`
 - `Shops/Catalogs`: `ShopCatalog`
-- `Skills/Definitions`: `SkillGemDefinition` assets with one embedded `SkillPayloadDef`
-- `Skills/SupportGems`: `SupportGemDefinition`
+- `Skills/<Character>`: `SkillGemDefinition` and `SkillUpgradeTreeDefinition` assets
+  for that character's skills, each `SkillGemDefinition` with its `SkillPayloadDef`
+  embedded as a sub-asset
+- `Skills/Enemies/<Character>`: `SkillGemDefinition` assets for enemy/ally NPC skills
+- `Skills/_Test`: test/helper skill assets still referenced by test scenes or prefabs
 - `Weapons/Definitions`: `GunConfig`
 - `Weapons/Affixes`: `WeaponAffixDefinition`
 - `Weapons/Databases`: `WeaponDatabase`, `WeaponAffixDatabase`

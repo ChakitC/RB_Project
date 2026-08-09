@@ -13,9 +13,12 @@ MonoBehaviour:
   m_Name: Passive.Roma_MoveTree.01
   m_EditorClassIdentifier: 
   passiveId: Passive.Roma_MoveTree.01
+  icon: {fileID: 0}
   description: 
+  upgradeTree: {fileID: 0}
   rules:
   - ruleId: rule
+    requiredUpgradeId: 
     trigger: 8
     originFilter: 0
     requiredCount: 1
@@ -25,10 +28,18 @@ MonoBehaviour:
     requireTarget: 0
     requireAttackId: 0
     oncePerTargetPerChain: 1
+    upgradeOverrides: []
+    eventSourceKind: 0
+    eventSourceId: 
+    eventSourceFloatValue: 2
+    eventSourceIntValue: 0
     actions:
     - actionId: action
       actionType: 1
       targetSelector: 0
+      modifierKeyOverride: 
+      appliedByIdOverride: 
+      emittedEventSourceIdOverride: 
       modifiers: []
       grantedStacks: 1
       maxStacks: 1
@@ -36,5 +47,11 @@ MonoBehaviour:
       stackPolicy: 1
       statusEffect: {fileID: 11400000, guid: 367b42281fd00e0419b2b3e45da9b175, type: 2}
       statusInitialStacks: 1
+      statusSpec:
+        effect: {fileID: 11400000, guid: 367b42281fd00e0419b2b3e45da9b175, type: 2}
+        stacks: 1
+        modifiers: []
+        durationOverride: 0
+        tickDamageOverride: 0
       emittedEventType: 0
       emittedValue: 0

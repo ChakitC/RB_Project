@@ -33,6 +33,7 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
     Type _pendingStepPayloadType;
     static List<Type> _cachedStepTypes;
     readonly HashSet<SkillEffectStep> _expandedSteps = new();
+    Vector2 _skillStepsScrollPosition;
 
     [MenuItem("Tools/RB/Skills/Active Skill Tree Editor")]
     public static ActiveSkillTreeEditorWindow Open()
@@ -258,7 +259,9 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
 
         if (_showSkillSteps)
         {
+            _skillStepsScrollPosition = EditorGUILayout.BeginScrollView(_skillStepsScrollPosition);
             DrawSkillStepsPanel();
+            EditorGUILayout.EndScrollView();
             return;
         }
 

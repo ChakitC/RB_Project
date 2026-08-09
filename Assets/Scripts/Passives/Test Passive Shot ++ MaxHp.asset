@@ -13,9 +13,12 @@ MonoBehaviour:
   m_Name: Test Passive Shot ++ MaxHp
   m_EditorClassIdentifier: 
   passiveId: 
+  icon: {fileID: 0}
   description: 
+  upgradeTree: {fileID: 0}
   rules:
   - ruleId: rule
+    requiredUpgradeId: 
     trigger: 1
     originFilter: 3
     requiredCount: 1
@@ -25,10 +28,18 @@ MonoBehaviour:
     requireTarget: 0
     requireAttackId: 0
     oncePerTargetPerChain: 1
+    upgradeOverrides: []
+    eventSourceKind: 0
+    eventSourceId: 
+    eventSourceFloatValue: 2
+    eventSourceIntValue: 0
     actions:
     - actionId: action
       actionType: 0
       targetSelector: 0
+      modifierKeyOverride: 
+      appliedByIdOverride: 
+      emittedEventSourceIdOverride: 
       modifiers:
       - statType: 11
         operation: 0
@@ -39,5 +50,11 @@ MonoBehaviour:
       stackPolicy: 2
       statusEffect: {fileID: 11400000, guid: 2aa450eaf970ef7499f587bee7a8936a, type: 2}
       statusInitialStacks: 10
+      statusSpec:
+        effect: {fileID: 11400000, guid: 2aa450eaf970ef7499f587bee7a8936a, type: 2}
+        stacks: 10
+        modifiers: []
+        durationOverride: 0
+        tickDamageOverride: 0
       emittedEventType: 1
       emittedValue: 1

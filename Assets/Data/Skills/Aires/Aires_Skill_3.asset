@@ -27,7 +27,7 @@ MonoBehaviour:
     effect: {fileID: 11400000, guid: 5709009c55624b6cadd36410f6fe6259, type: 2}
     stacks: 1
     spec:
-      effect: {fileID: 0}
+      effect: {fileID: 11400000, guid: 5709009c55624b6cadd36410f6fe6259, type: 2}
       stacks: 1
       modifiers: []
       durationOverride: 0
@@ -36,7 +36,7 @@ MonoBehaviour:
     effect: {fileID: 11400000, guid: c982ee00f1dc4d8c8e20baf4a75f32c7, type: 2}
     stacks: 1
     spec:
-      effect: {fileID: 0}
+      effect: {fileID: 11400000, guid: c982ee00f1dc4d8c8e20baf4a75f32c7, type: 2}
       stacks: 1
       modifiers: []
       durationOverride: 0
@@ -45,7 +45,7 @@ MonoBehaviour:
     effect: {fileID: 11400000, guid: b11a483f1f7d4243bf09473512a3db50, type: 2}
     stacks: 1
     spec:
-      effect: {fileID: 0}
+      effect: {fileID: 11400000, guid: b11a483f1f7d4243bf09473512a3db50, type: 2}
       stacks: 1
       modifiers: []
       durationOverride: 0
@@ -102,7 +102,7 @@ MonoBehaviour:
           effect: {fileID: 11400000, guid: 06f43c92361341dcb48eeca03e44ecbc, type: 2}
           stacks: 1
           spec:
-            effect: {fileID: 0}
+            effect: {fileID: 11400000, guid: 06f43c92361341dcb48eeca03e44ecbc, type: 2}
             stacks: 1
             modifiers: []
             durationOverride: 0
@@ -111,7 +111,7 @@ MonoBehaviour:
           effect: {fileID: 11400000, guid: 713c540d75cd4c04aa84034a0ae37587, type: 2}
           stacks: 1
           spec:
-            effect: {fileID: 0}
+            effect: {fileID: 11400000, guid: 713c540d75cd4c04aa84034a0ae37587, type: 2}
             stacks: 1
             modifiers: []
             durationOverride: 0
@@ -271,7 +271,7 @@ MonoBehaviour:
     effect: {fileID: 11400000, guid: 7d01584e2f6847a5a55c777f89c267cf, type: 2}
     stacks: 1
     spec:
-      effect: {fileID: 0}
+      effect: {fileID: 11400000, guid: 7d01584e2f6847a5a55c777f89c267cf, type: 2}
       stacks: 1
       modifiers: []
       durationOverride: 0
@@ -280,7 +280,7 @@ MonoBehaviour:
     effect: {fileID: 11400000, guid: 06f43c92361341dcb48eeca03e44ecbc, type: 2}
     stacks: 1
     spec:
-      effect: {fileID: 0}
+      effect: {fileID: 11400000, guid: 06f43c92361341dcb48eeca03e44ecbc, type: 2}
       stacks: 1
       modifiers: []
       durationOverride: 0
@@ -289,7 +289,7 @@ MonoBehaviour:
     effect: {fileID: 11400000, guid: da315366b39342e7a7c11647242502e6, type: 2}
     stacks: 1
     spec:
-      effect: {fileID: 0}
+      effect: {fileID: 11400000, guid: da315366b39342e7a7c11647242502e6, type: 2}
       stacks: 1
       modifiers: []
       durationOverride: 0
@@ -298,7 +298,7 @@ MonoBehaviour:
     effect: {fileID: 11400000, guid: 63c79074e4c24347b0ffb4d998994bc7, type: 2}
     stacks: 1
     spec:
-      effect: {fileID: 0}
+      effect: {fileID: 11400000, guid: 63c79074e4c24347b0ffb4d998994bc7, type: 2}
       stacks: 1
       modifiers: []
       durationOverride: 0

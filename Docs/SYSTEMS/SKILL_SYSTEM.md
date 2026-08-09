@@ -214,6 +214,21 @@ them empty to fall back to the `StatusEffectDef`'s own `modifiers` / `duration` 
 override. A per-application `durationOverride` wins over the skill-level
 `FinalSkillStats.effectDuration` fallback when both are set.
 
+The `StatusApplicationSpec` Inspector always shows the effective modifier list.
+While it reports **Using Status Effect Def Modifiers**, the displayed values
+track the selected definition. The first edit, add, remove, or reorder operation
+copies the full list into this application and switches it to **Using Application
+Override** without mutating the `StatusEffectDef`. An explicit override may be
+empty, meaning this application intentionally applies no stat modifiers. Use
+**Reset To Status Effect Def** to discard the application override and resume
+tracking the definition. Changing the Effect while an override exists asks
+whether to reset to the new definition or retain the existing override.
+
+Use **Tools > RB > Status Effects > Migrate Legacy Status Specs (Dry Run)** to
+preview legacy flat-field migration before running the write command. The tool
+scans each managed-reference object once and provides cancellable progress so a
+cyclic serialized graph cannot keep the Editor traversing indefinitely.
+
 This means the same `AtkDown.asset` can be authored once (identity, icon, VFX,
 `stackMode`, `controlBlocks`) and reused by a weak skill (`-10% ATK`) and a strong
 one (`-40% ATK`) without cloning the asset. **Debuff modifiers must use

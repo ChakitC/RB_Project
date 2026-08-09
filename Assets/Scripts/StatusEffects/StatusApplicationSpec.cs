@@ -17,8 +17,11 @@ public sealed class StatusApplicationSpec
     [Min(1)]
     public int stacks = 1;
 
-    [Tooltip("ว่าง = ใช้ modifiers ของ StatusEffectDef. Debuff ต้องใช้ ModifierOp.Multiply เพื่อให้ diminishing เมื่อรวมกับแหล่งอื่น.")]
+    [Tooltip("Uses StatusEffectDef modifiers until edited. An explicit empty override applies no stat modifiers. Debuffs should use ModifierOp.Multiply for diminishing stacking.")]
     public List<StatusEffectModifier> modifiers = new();
+
+    [SerializeField, HideInInspector]
+    bool modifiersOverrideEnabled;
 
     [Tooltip("0 = ใช้ duration ของ StatusEffectDef")]
     [Min(0f)]
@@ -27,7 +30,8 @@ public sealed class StatusApplicationSpec
     [Tooltip("0 = ใช้ tickDamage ของ StatusEffectDef. ติดลบ = heal")]
     public float tickDamageOverride;
 
-    public bool HasModifierOverride => modifiers != null && modifiers.Count > 0;
+    public bool HasModifierOverride =>
+        modifiersOverrideEnabled || (modifiers != null && modifiers.Count > 0);
 
     /// <summary>
     /// ใช้ตอน apply site มี "skill-level duration fallback" ของตัวเอง (เช่น FinalSkillStats.effectDuration)
@@ -44,6 +48,7 @@ public sealed class StatusApplicationSpec
             effect = effect,
             stacks = stacks,
             modifiers = modifiers,
+            modifiersOverrideEnabled = modifiersOverrideEnabled,
             durationOverride = fallbackDuration,
             tickDamageOverride = tickDamageOverride,
         };

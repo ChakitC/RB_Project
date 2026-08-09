@@ -14,3 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   effect: {fileID: 11400000, guid: 0cc77d9beb17ec9419e50d42a5a9c3fb, type: 2}
   stacks: 1
+  spec:
+    effect: {fileID: 11400000, guid: 0cc77d9beb17ec9419e50d42a5a9c3fb, type: 2}
+    stacks: 1
+    modifiers: []
+    durationOverride: 0
+    tickDamageOverride: 0

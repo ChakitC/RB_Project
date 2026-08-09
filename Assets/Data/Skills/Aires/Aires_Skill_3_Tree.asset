@@ -52,7 +52,7 @@ MonoBehaviour:
     displayName: Wider Area
     description: AreaRadius x 1.25
     icon: {fileID: 21300000, guid: e55d30b61481aa648bcd1e2638d84901, type: 3}
-    uiPosition: {x: -108.40003, y: 403.25018}
+    uiPosition: {x: -107.599976, y: 402.40002}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -68,7 +68,7 @@ MonoBehaviour:
     displayName: Longer Duration
     description: EffectDuration x 1.3
     icon: {fileID: 21300000, guid: f56f556a4d4547f459ab02c0327fcb3e, type: 3}
-    uiPosition: {x: -108, y: 245}
+    uiPosition: {x: -107.599976, y: 244.80003}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -218,7 +218,7 @@ MonoBehaviour:
     displayName: Herd Together
     description: Taunted enemies also get Aires3_Gathered (MoveSpeed down).
     icon: {fileID: 21300000, guid: 8149cdf957d609644a2e72f38a24f410, type: 3}
-    uiPosition: {x: 213.66594, y: -956.144}
+    uiPosition: {x: 213.08002, y: -956}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -262,7 +262,7 @@ MonoBehaviour:
     displayName: Strong Brew
     description: Ally buff also gets Aires3_AllyGuard_Plus.
     icon: {fileID: 21300000, guid: 8dc83045d0cc5c24b9552550de2c7287, type: 3}
-    uiPosition: {x: 683, y: -620}
+    uiPosition: {x: 680.9602, y: -620.0002}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1

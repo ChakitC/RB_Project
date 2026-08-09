@@ -6,6 +6,12 @@ public sealed class StatusEffectInstance
 {
     readonly int[] _triggerCounters;
 
+    /// <summary>
+    /// ลำดับ application ทั่วทั้งเกม — ใช้ตัดสิน "ตัวล่าสุดชนะ" แบบ deterministic (เช่น multi-Taunt)
+    /// แทนการอาศัยลำดับใน list ซึ่งเปลี่ยนได้เมื่อ instance ถูก evict/หมดอายุ.
+    /// </summary>
+    static ulong _nextApplicationSequence = 1;
+
     public StatusEffectInstance(
         StatusEffectDef definition,
         GameObject source,
@@ -17,8 +23,8 @@ public sealed class StatusEffectInstance
         PassiveEventOrigin origin,
         string originPassiveId,
         string originRuleId,
-        float durationOverride = 0f,
-        StatusApplicationSpec spec = null)
+        StatusApplicationSpec spec = null,
+        float fallbackDuration = 0f)
     {
         Definition = definition;
         Source = source;
@@ -29,11 +35,9 @@ public sealed class StatusEffectInstance
         OriginPassiveId = originPassiveId;
         OriginRuleId = originRuleId;
         CurrentStacks = Mathf.Max(0, initialStacks);
-        EffectiveDuration = ResolveEffectiveDuration(definition, durationOverride);
+        ApplicationSequence = _nextApplicationSequence++;
+        EffectiveDuration = ResolveDuration(spec, definition, fallbackDuration);
         TimeLeft = !IsPermanent ? EffectiveDuration : float.PositiveInfinity;
-        NextTickTime = definition != null && definition.tickInterval > 0f
-            ? now + definition.tickInterval
-            : float.PositiveInfinity;
 
         _triggerCounters = definition != null && definition.triggerRules != null
             ? new int[definition.triggerRules.Count]
@@ -41,7 +45,9 @@ public sealed class StatusEffectInstance
 
         ResolvedModifiers = ResolveModifiers(spec, definition);
         ResolvedTickDamage = ResolveTickDamage(spec, definition);
+        ResolvedTickInterval = ResolveTickInterval(spec, definition);
         StrengthScore = ComputeStrengthScore(ResolvedModifiers);
+        ScheduleFirstTick(now);
     }
 
     public StatusEffectDef Definition { get; }
@@ -58,10 +64,20 @@ public sealed class StatusEffectInstance
     public float EffectiveDuration { get; private set; }
     public bool IsPermanent => Definition == null || EffectiveDuration <= 0f;
 
+    /// <summary>เลขลำดับ application ที่เพิ่มขึ้นเรื่อยๆ — instance ที่ค่ามากกว่าคือตัวที่ถูก apply/refresh ทีหลัง.</summary>
+    public ulong ApplicationSequence { get; private set; }
+
     /// <summary>ค่าบาลานซ์จริงของ instance นี้ — resolve ครั้งเดียวตอนสร้าง (หรือเมื่อ AdoptMagnitude) จาก spec หรือ fallback ไป Definition. เป็น copy เสมอ ไม่ alias asset.</summary>
     public IReadOnlyList<StatusEffectModifier> ResolvedModifiers { get; private set; }
     public float ResolvedTickDamage { get; private set; }
+    public float ResolvedTickInterval { get; private set; }
     public float StrengthScore { get; private set; }
+
+    /// <summary>เรียกเมื่อ instance เดิมถูก apply ซ้ำ (refresh/stack) — ทำให้ถือว่าเป็น application ล่าสุด.</summary>
+    public void MarkReapplied()
+    {
+        ApplicationSequence = _nextApplicationSequence++;
+    }
 
     public void UpdateSource(GameObject source)
     {
@@ -93,9 +109,10 @@ public sealed class StatusEffectInstance
             OriginRuleId = originRuleId;
     }
 
-    public void SetDurationOverride(float durationOverride)
+    /// <summary>ตั้ง EffectiveDuration ใหม่จาก spec ของ application ล่าสุด (ยังไม่แตะ TimeLeft — ให้ RefreshDuration* เป็นคนทำ).</summary>
+    public void AdoptDuration(StatusApplicationSpec spec, float fallbackDuration)
     {
-        EffectiveDuration = ResolveEffectiveDuration(Definition, durationOverride);
+        EffectiveDuration = ResolveDuration(spec, Definition, fallbackDuration);
     }
 
     public void RefreshDuration()
@@ -116,19 +133,25 @@ public sealed class StatusEffectInstance
     }
 
     /// <summary>เปลี่ยนค่าบาลานซ์ของ instance นี้เป็นของ spec ที่ระบุ (ใช้ตอน StrongestOnly ตัดสินว่า incoming แรงกว่า หรือ RefreshDuration/AddStackAndRefresh ที่ยอมรับค่าล่าสุดเสมอ)</summary>
-    public void AdoptMagnitude(StatusApplicationSpec spec)
+    public void AdoptMagnitude(StatusApplicationSpec spec, float now)
     {
         ResolvedModifiers = ResolveModifiers(spec, Definition);
         ResolvedTickDamage = ResolveTickDamage(spec, Definition);
         StrengthScore = ComputeStrengthScore(ResolvedModifiers);
+
+        float nextInterval = ResolveTickInterval(spec, Definition);
+        if (!Mathf.Approximately(nextInterval, ResolvedTickInterval))
+        {
+            ResolvedTickInterval = nextInterval;
+            ScheduleFirstTick(now);
+        }
     }
 
-    static float ResolveEffectiveDuration(StatusEffectDef definition, float durationOverride)
+    void ScheduleFirstTick(float now)
     {
-        if (durationOverride > 0f)
-            return durationOverride;
-
-        return definition != null ? definition.duration : 0f;
+        NextTickTime = ResolvedTickInterval > 0f
+            ? now + ResolvedTickInterval
+            : float.PositiveInfinity;
     }
 
     public void AddStacks(int amount, int maxStacks)
@@ -155,21 +178,21 @@ public sealed class StatusEffectInstance
     public bool ShouldTick(float now)
     {
         return Definition != null &&
-               Definition.tickInterval > 0f &&
+               ResolvedTickInterval > 0f &&
                now >= NextTickTime;
     }
 
     public void AdvanceTick(float now)
     {
-        if (Definition == null || Definition.tickInterval <= 0f)
+        if (Definition == null || ResolvedTickInterval <= 0f)
         {
             NextTickTime = float.PositiveInfinity;
             return;
         }
 
-        NextTickTime += Definition.tickInterval;
+        NextTickTime += ResolvedTickInterval;
         if (NextTickTime <= now)
-            NextTickTime = now + Definition.tickInterval;
+            NextTickTime = now + ResolvedTickInterval;
     }
 
     public int IncrementTriggerCounter(int ruleIndex)
@@ -210,10 +233,33 @@ public sealed class StatusEffectInstance
 
     public static float ResolveTickDamage(StatusApplicationSpec spec, StatusEffectDef definition)
     {
-        if (spec != null && !Mathf.Approximately(spec.tickDamageOverride, 0f))
+        if (spec != null && spec.HasTickDamageOverride)
             return spec.tickDamageOverride;
 
         return definition != null ? definition.tickDamage : 0f;
+    }
+
+    public static float ResolveTickInterval(StatusApplicationSpec spec, StatusEffectDef definition)
+    {
+        if (spec != null && spec.HasTickIntervalOverride)
+            return Mathf.Max(0f, spec.tickIntervalOverride);
+
+        return definition != null ? Mathf.Max(0f, definition.tickInterval) : 0f;
+    }
+
+    /// <summary>
+    /// ลำดับความสำคัญของ duration: application override (รวมค่า 0 = permanent) > fallback ของ apply site
+    /// (เช่น FinalSkillStats.effectDuration หรือ taunt duration) > StatusEffectDef.duration.
+    /// </summary>
+    public static float ResolveDuration(StatusApplicationSpec spec, StatusEffectDef definition, float fallbackDuration)
+    {
+        if (spec != null && spec.HasDurationOverride)
+            return Mathf.Max(0f, spec.durationOverride);
+
+        if (fallbackDuration > 0f)
+            return fallbackDuration;
+
+        return definition != null ? definition.duration : 0f;
     }
 
     static List<StatusEffectModifier> CopyModifiers(List<StatusEffectModifier> source)

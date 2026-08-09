@@ -592,7 +592,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         if (action == null || targetObject == null)
             return;
 
-        StatusApplicationSpec resolvedSpec = action.ResolvedStatusSpec();
+        StatusApplicationSpec resolvedSpec = action.statusSpec;
         if (resolvedSpec?.effect == null)
             return;
 

@@ -21,7 +21,7 @@ MonoBehaviour:
     displayName: Quick Sip
     description: CastTime x 0.85
     icon: {fileID: 21300000, guid: 776300975d7e66e499e9f18138d7e07c, type: 3}
-    uiPosition: {x: -93, y: 781}
+    uiPosition: {x: -92, y: 783.64514}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -36,7 +36,7 @@ MonoBehaviour:
     displayName: Cooldown Reduction
     description: Cooldown x 0.9
     icon: {fileID: 21300000, guid: d911e0833a3d1e84b8d853f712b598fe, type: 3}
-    uiPosition: {x: -96, y: 596}
+    uiPosition: {x: -95.000015, y: 601.4979}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -52,7 +52,7 @@ MonoBehaviour:
     displayName: Wider Area
     description: AreaRadius x 1.25
     icon: {fileID: 21300000, guid: e55d30b61481aa648bcd1e2638d84901, type: 3}
-    uiPosition: {x: -107.599976, y: 402.40002}
+    uiPosition: {x: -92, y: 418}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -68,7 +68,7 @@ MonoBehaviour:
     displayName: Longer Duration
     description: EffectDuration x 1.3
     icon: {fileID: 21300000, guid: f56f556a4d4547f459ab02c0327fcb3e, type: 3}
-    uiPosition: {x: -107.599976, y: 244.80003}
+    uiPosition: {x: -108.000046, y: 243.99992}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -84,7 +84,7 @@ MonoBehaviour:
     displayName: Stagger Power
     description: StaggerPower + 15
     icon: {fileID: 21300000, guid: 1cc7081bbb4a4894abea9320a39333c4, type: 3}
-    uiPosition: {x: -108, y: 70}
+    uiPosition: {x: -108.000046, y: 68.25097}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -100,7 +100,7 @@ MonoBehaviour:
     displayName: Invite to Tea Table
     description: Branch gate. Unlocks access to one of the three exclusive branches.
     icon: {fileID: 21300000, guid: 20443bf3ec9f7f54889edb92e7653b18, type: 3}
-    uiPosition: {x: -64, y: -129}
+    uiPosition: {x: -53.00003, y: -127.00003}
     visualScale: 1.5
     cost: 1
     requiredCharacterLevel: 1
@@ -114,8 +114,8 @@ MonoBehaviour:
     description: Applies Aires3_TeaGuard (Armor) and Aires3_TeaRegen (regen over
       time) to self.
     icon: {fileID: 21300000, guid: c5a67ecd655ba6048acc2c589c88f1ee, type: 3}
-    uiPosition: {x: -818.8, y: -386}
-    visualScale: 1.5
+    uiPosition: {x: -753.0973, y: -326.99997}
+    visualScale: 2
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
@@ -130,7 +130,7 @@ MonoBehaviour:
     displayName: Greater Self Heal
     description: HealPower x 1.4 - scales the base self-heal burst.
     icon: {fileID: 21300000, guid: 9c732ca0d9059a94ba620c24162171e8, type: 3}
-    uiPosition: {x: -1123, y: -581}
+    uiPosition: {x: -1130.1504, y: -574}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -146,7 +146,7 @@ MonoBehaviour:
     displayName: Unshaken Brew
     description: Adds Aires3_Unshaken (Stability) alongside the self buff.
     icon: {fileID: 21300000, guid: 34d2bfe6139c67c42853f26af603a567, type: 3}
-    uiPosition: {x: -825, y: -620}
+    uiPosition: {x: -848.1308, y: -620.0002}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -160,7 +160,7 @@ MonoBehaviour:
     displayName: Strength in Numbers
     description: Self buff gains +1 stack per enemy in radius at cast point, capped.
     icon: {fileID: 21300000, guid: d7af538e37c23024dbd450cf105f2ab1, type: 3}
-    uiPosition: {x: -534, y: -573.6}
+    uiPosition: {x: -534.0001, y: -574.0001}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -174,8 +174,8 @@ MonoBehaviour:
     displayName: 'On Use: Enemy Def Down'
     description: Taunted enemies also get Aires3_ArmorShred.
     icon: {fileID: 21300000, guid: 4721a803f62d26f468b3374c00edaf22, type: 3}
-    uiPosition: {x: -39.80002, y: -625.9999}
-    visualScale: 1.5
+    uiPosition: {x: 47.000015, y: -586}
+    visualScale: 2
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
@@ -190,7 +190,7 @@ MonoBehaviour:
     displayName: Expose Weakness
     description: Taunted enemies also get Aires3_Weakpoint (+% damage taken).
     icon: {fileID: 21300000, guid: 0cbfb537e3ff09748a52950b3447f601, type: 3}
-    uiPosition: {x: -331.13403, y: -916.944}
+    uiPosition: {x: -332.0001, y: -919.15}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -204,7 +204,7 @@ MonoBehaviour:
     displayName: Scalding Tea
     description: Self buff gains Aires3_Thorns (reflect via OnTakeDamage triggerRule).
     icon: {fileID: 21300000, guid: 92affbcce5d4c5743863b750381d0162, type: 3}
-    uiPosition: {x: -63.134018, y: -1010.54395}
+    uiPosition: {x: -62.999985, y: -1013.3225}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -232,8 +232,8 @@ MonoBehaviour:
     displayName: 'On Use: Heal Ally & Ally Def Up'
     description: HealAreaStep heals allies and applies Aires3_AllyGuard.
     icon: {fileID: 21300000, guid: fb2fed350ab6fea449a72304ef5682d1, type: 3}
-    uiPosition: {x: 719.20123, y: -314}
-    visualScale: 1.5
+    uiPosition: {x: 814.70526, y: -283}
+    visualScale: 2
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
@@ -276,7 +276,7 @@ MonoBehaviour:
     displayName: Fragrant Tea
     description: HealPower x 1.35
     icon: {fileID: 21300000, guid: efbacefcb87c5074e9c3d8bc6a11b02c, type: 3}
-    uiPosition: {x: 988.4, y: -501.2}
+    uiPosition: {x: 989.15015, y: -501.00012}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1

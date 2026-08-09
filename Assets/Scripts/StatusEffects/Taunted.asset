@@ -19,11 +19,13 @@ MonoBehaviour:
   duration: 3
   maxStacks: 1
   stackMode: 0
+  separatePerSource: 1
   tickInterval: 0
   tickDamage: 0
   locomotionPose: 0
   controlBlocks: 0
   pushStunnedState: 0
-  tags: []
+  tags:
+  - Taunt
   modifiers: []
   triggerRules: []

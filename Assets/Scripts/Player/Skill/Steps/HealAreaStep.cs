@@ -11,46 +11,23 @@ public enum HealTargetMode
 [Serializable]
 public sealed class HealAreaStep : SkillEffectStep
 {
-    // Legacy-field fallback (lazy resolve, NOT ISerializationCallbackReceiver — see the "Legacy Migration"
-    // block at the bottom of StatusEffects/StatusApplicationSpec.cs for why) — Aires_Skill_3.asset has real
-    // `effect`/`stacks` data serialized flat under this class.
-    //
-    // `statusApplications` below (a plain List<StatusEffectDef>) is intentionally left untouched instead of
-    // gaining per-item overrides — Unity serializes List<StatusEffectDef> as a flat list of asset references;
-    // turning it into a list of a wrapper class would need the same kind of care as this class, and the
-    // entries there don't currently need per-item overrides.
     [Serializable]
     public sealed class ConditionalStatus
     {
         public string requiredUpgradeId;
 
-        [SerializeField, HideInInspector] StatusEffectDef effect;
-        [SerializeField, HideInInspector] int stacks;
-
         public StatusApplicationSpec spec = new();
+    }
 
-        /// <summary>Call from ApplyStatuses() only — never during deserialization.</summary>
-        public StatusApplicationSpec ResolvedSpec()
-        {
-            if (spec != null && spec.effect != null)
-                return spec;
-
-            if (effect == null)
-                return spec;
-
-            return new StatusApplicationSpec
-            {
-                effect = effect,
-                stacks = stacks > 0 ? stacks : 1,
-                modifiers = spec?.modifiers,
-                durationOverride = spec?.durationOverride ?? 0f,
-                tickDamageOverride = spec?.tickDamageOverride ?? 0f,
-            };
-        }
+    /// <summary>Wrapper ของ unconditional status — โครงเดียวกับ ConditionalStatus แต่ไม่มี upgrade gate.</summary>
+    [Serializable]
+    public sealed class StatusApplication
+    {
+        public StatusApplicationSpec spec = new();
     }
 
     [SerializeField] private HealTargetMode target = HealTargetMode.Self;
-    [SerializeField] private List<StatusEffectDef> statusApplications = new();
+    [SerializeField] private List<StatusApplication> statusSpecApplications = new();
     [SerializeField] private List<ConditionalStatus> conditionalApplications = new();
 
     public override void CollectUpgradeIds(List<string> ids)
@@ -74,15 +51,15 @@ public sealed class HealAreaStep : SkillEffectStep
 
         FinalSkillStats stats = ctx.SkillStats;
         float healPower = stats != null ? stats.healPower : 0f;
-        float durationOverride = stats != null && stats.effectDuration > 0f ? stats.effectDuration : 0f;
+        float fallbackDuration = stats != null && stats.effectDuration > 0f ? stats.effectDuration : 0f;
 
         if (target == HealTargetMode.Self)
-            ExecuteSelf(ctx, healPower, durationOverride);
+            ExecuteSelf(ctx, healPower, fallbackDuration);
         else
-            ExecuteAllies(ctx, healPower, durationOverride);
+            ExecuteAllies(ctx, healPower, fallbackDuration);
     }
 
-    void ExecuteSelf(SkillCastContext ctx, float healPower, float durationOverride)
+    void ExecuteSelf(SkillCastContext ctx, float healPower, float fallbackDuration)
     {
         CharacteContext casterContext = ctx.CasterRoot.GetComponent<CharacteContext>();
         if (casterContext == null)
@@ -93,10 +70,10 @@ public sealed class HealAreaStep : SkillEffectStep
         if (healPower > 0f)
             casterContext.HealthSystem?.Heal(healPower);
 
-        ApplyStatuses(ctx, casterContext.StatusEffects, ctx.CasterObject, durationOverride);
+        ApplyStatuses(ctx, casterContext.StatusEffects, ctx.CasterObject, fallbackDuration);
     }
 
-    void ExecuteAllies(SkillCastContext ctx, float healPower, float durationOverride)
+    void ExecuteAllies(SkillCastContext ctx, float healPower, float fallbackDuration)
     {
         Transform casterRoot = ctx.CasterRoot;
         FinalSkillStats stats = ctx.SkillStats;
@@ -127,24 +104,26 @@ public sealed class HealAreaStep : SkillEffectStep
             if (healPower > 0f)
                 targetContext.HealthSystem?.Heal(healPower);
 
-            ApplyStatuses(ctx, targetContext.StatusEffects, ctx.CasterObject, durationOverride);
+            ApplyStatuses(ctx, targetContext.StatusEffects, ctx.CasterObject, fallbackDuration);
         }
     }
 
-    void ApplyStatuses(SkillCastContext ctx, StatusEffectController controller, GameObject source, float durationOverride)
+    void ApplyStatuses(SkillCastContext ctx, StatusEffectController controller, GameObject source, float fallbackDuration)
     {
         if (controller == null)
             return;
 
-        if (statusApplications != null)
+        // ทั้ง unconditional และ conditional ใช้ duration precedence เดียวกัน:
+        // spec override > skill effectDuration > StatusEffectDef.duration
+        if (statusSpecApplications != null)
         {
-            for (int i = 0; i < statusApplications.Count; i++)
+            for (int i = 0; i < statusSpecApplications.Count; i++)
             {
-                StatusEffectDef effect = statusApplications[i];
-                if (effect == null)
+                StatusApplicationSpec spec = statusSpecApplications[i]?.spec;
+                if (spec?.effect == null)
                     continue;
 
-                controller.ApplyEffect(effect, source, 1, durationOverride);
+                controller.ApplyEffect(spec, source, fallbackDuration);
             }
         }
 
@@ -156,11 +135,11 @@ public sealed class HealAreaStep : SkillEffectStep
                 if (conditional == null || !ctx.HasUpgrade(conditional.requiredUpgradeId))
                     continue;
 
-                StatusApplicationSpec resolvedSpec = conditional.ResolvedSpec();
+                StatusApplicationSpec resolvedSpec = conditional.spec;
                 if (resolvedSpec?.effect == null)
                     continue;
 
-                controller.ApplyEffect(resolvedSpec.ResolveWithDurationFallback(durationOverride), source);
+                controller.ApplyEffect(resolvedSpec, source, fallbackDuration);
             }
         }
     }

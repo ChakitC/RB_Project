@@ -193,41 +193,76 @@ the same `conditionalApplications` list for the target it heals. This is how
 an Active Skill Tree node changes a skill's *behavior* (see **Active Skill
 Loadout and Upgrade Trees** below) rather than only its numbers.
 
-Every status application that can receive a skill-driven duration (the
-unconditional and conditional lists on `ApplyStatusSkillPayloadDef`,
-`TauntSkillPayloadDef`, and `HealAreaStep`) passes
-`FinalSkillStats.effectDuration` as a fallback `durationOverride` to
-`StatusEffectController.ApplyEffect` whenever `effectDuration > 0`; otherwise
-the status asset's own authored `duration` applies. **Author every
-`StatusEffectDef` with a non-zero `duration`** — `duration <= 0` means
-permanent (`StatusEffectDef.IsPermanent`), not "use the override."
+#### Application ownership (StatusEffectDef vs StatusApplicationSpec)
 
-#### Magnitude at apply site (StatusApplicationSpec)
+Every authored status application — skill payloads, `HealAreaStep`,
+`MorphSkillPayloadDef`, `ApplyStatusOnHitModule`, `PassiveActionDefinition`,
+`ApplyStatusPickupEffectDef` — holds a `StatusApplicationSpec` and calls the
+`StatusEffectController.ApplyEffect(spec, source, fallbackDuration)` overload.
+The `StatusEffectDef`-only overload exists solely for systems that have no
+authored application (currently `StatusEffectPickUp`); **skill, passive, pickup
+effect, and projectile code must not call it.**
 
-`StatusEffectDef` no longer has to hold the only copy of a status's numbers.
-Each `StatusApplication` / `ConditionalStatus` entry on `ApplyStatusSkillPayloadDef`,
-`ApplyStatusOnHitModule`, `PassiveActionDefinition`, `TauntSkillPayloadDef`, and
-`HealAreaStep`'s conditional list carries its own optional **Modifiers (Override)**,
-**Duration Override**, and (where relevant) **Tick Damage Override** fields. Leave
-them empty to fall back to the `StatusEffectDef`'s own `modifiers` / `duration` /
-`tickDamage` — existing assets behave identically until a designer opts into an
-override. A per-application `durationOverride` wins over the skill-level
-`FinalSkillStats.effectDuration` fallback when both are set.
+The split of ownership is fixed:
 
-The `StatusApplicationSpec` Inspector always shows the effective modifier list.
-While it reports **Using Status Effect Def Modifiers**, the displayed values
-track the selected definition. The first edit, add, remove, or reorder operation
-copies the full list into this application and switches it to **Using Application
-Override** without mutating the `StatusEffectDef`. An explicit override may be
-empty, meaning this application intentionally applies no stat modifiers. Use
-**Reset To Status Effect Def** to discard the application override and resume
-tracking the definition. Changing the Effect while an override exists asks
-whether to reset to the new definition or retain the existing override.
+| Owned by `StatusEffectDef` | Owned by `StatusApplicationSpec` |
+| --- | --- |
+| `effectId`, icon, category, VFX profile | initial `stacks` |
+| `stackMode`, `maxStacks`, `separatePerSource` | `modifiers` |
+| control blocks, locomotion pose, stunned state | `duration` |
+| `tags`, trigger rules | tick damage / heal |
+| default values for every channel below | tick interval |
 
-Use **Tools > RB > Status Effects > Migrate Legacy Status Specs (Dry Run)** to
-preview legacy flat-field migration before running the write command. The tool
-scans each managed-reference object once and provides cancellable progress so a
-cyclic serialized graph cannot keep the Editor traversing indefinitely.
+Never express a difference in `stackMode`, `maxStacks`, control behavior, tags,
+trigger rules, or presentation from an application — if those must differ, author
+a separate `StatusEffectDef`. Two applications sharing a Def are the *same status
+identity*; differing magnitude alone is never a reason to clone the asset.
+
+**Duration precedence**, in order:
+
+1. the application's own duration override (including an explicit `0` = permanent)
+2. `FinalSkillStats.effectDuration` from the skill / upgrade tree, when `> 0`
+3. `StatusEffectDef.duration`
+
+The skill-level value is passed to `ApplyEffect` as `fallbackDuration`; it is
+never merged into the serialized spec.
+
+#### Override channels
+
+`StatusApplicationSpec` has four independent override channels — **modifiers**,
+**duration**, **tick damage**, and **tick interval** — each with its own
+serialized enable flag. Overriding is optional: an entry that is never edited
+keeps tracking its `StatusEffectDef`, and existing assets behave identically
+until a designer opts in.
+
+Because each channel has an explicit enable flag, `0` is a real value once the
+override is on — it is not a "use the default" sentinel:
+
+- duration `0` = permanent
+- tick damage `0` = damage/heal disabled for this application
+- tick interval `0` = ticking disabled for this application
+
+The modifiers channel additionally supports an **explicit empty override**,
+meaning this application intentionally applies no stat modifiers.
+
+The Inspector shows each relevant channel's effective value plus its source
+(**From Status Effect Def** or **Application Override**). Duration is always
+visible. Tick damage and tick interval stay hidden when the Def has no active
+tick and the application has no tick override; **Add Tick Override** reveals and
+enables both fields, while **Reset Tick To Status Effect Def** clears the group
+and hides it again when the Def still has no tick. While a visible channel tracks
+the Def, the displayed value is the Def's. The first edit copies the value the
+designer is looking at into the application, turns the enable flag on, and stores
+what they typed — without ever mutating the `StatusEffectDef`. Modifiers work the
+same way: the first edit, add, remove, or reorder clones the whole list. Each
+override has a Reset control that returns it to tracking the Def.
+Changing the Effect while any channel is overridden asks whether to reset every
+override to the new Def, keep them all, or cancel.
+
+There is no legacy status schema left: the flat `effect`/`stacks` fields, the
+`ResolvedSpec()`/`ResolvedStatusSpec()` fallbacks, `HealAreaStep`'s plain
+`List<StatusEffectDef>`, and the one-off migration tool have all been removed.
+`StatusApplicationSpec` is the only shape an authored application has.
 
 This means the same `AtkDown.asset` can be authored once (identity, icon, VFX,
 `stackMode`, `controlBlocks`) and reused by a weak skill (`-10% ATK`) and a strong
@@ -241,8 +276,9 @@ kicks in.
 actors applying the *same* effect share one instance (existing behavior) or each get
 their own instance with independent duration and magnitude, combined automatically
 through `StatsHub`'s modifier aggregation. Only enable it on effects where every
-applying source is a genuine, distinct actor — **do not enable it** on `Taunted` (the
-taunter is tracked as the single source of truth for taunt state), on morph-granted
+applying source is a genuine, distinct actor. **Taunt Defs must enable it** so each
+taunter keeps its own instance and expiry can fall back to the previous taunter (see
+`Docs/SYSTEMS/AI_AND_TARGETING.md`). **Do not enable it** on morph-granted
 effects (`MorphSkillRuntime` removes by definition on revert, which would also strip
 other sources' instances), or on pickup-granted effects (the pickup `GameObject`
 itself is the "source", not the collecting actor, so per-source keys would defeat

@@ -19,7 +19,8 @@ public sealed class StatusEffectDef : ScriptableObject
 
     [Tooltip("true = แยก instance ต่อผู้ลง (แต่ละแหล่งมีอายุ+ค่าของตัวเองและรวมกันแบบ multiplicative). " +
         "false = พฤติกรรมเดิม (instance เดียวต่อ effect ไม่ว่าใครลง). " +
-        "ห้ามเปิดกับ effect ที่ removeEffect-by-def ใช้ถอด (เช่น Morph) หรือที่ผูก state เดี่ยวไว้ (เช่น Taunted) หรือที่ source ไม่ใช่ actor จริง (เช่น pickup).")]
+        "ห้ามเปิดกับ effect ที่ removeEffect-by-def ใช้ถอด (เช่น Morph) หรือที่ source ไม่ใช่ actor จริง (เช่น pickup). " +
+        "Taunt Def ต้องเปิด — แต่ละผู้ยั่วต้องมี instance ของตัวเองเพื่อให้ fallback กลับผู้ยั่วคนก่อนหน้าได้.")]
     public bool separatePerSource;
 
     [Header("Tick")]

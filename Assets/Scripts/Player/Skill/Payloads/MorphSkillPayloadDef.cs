@@ -16,11 +16,8 @@ public sealed class MorphSkillPayloadDef : SkillPayloadDef
     [System.Serializable]
     public sealed class MorphStatusApplication
     {
-        [AssetsOnly, Required, InlineEditor, LabelText("Status Effect")]
-        public StatusEffectDef effect;
-
-        [Min(1), LabelText("Stacks")]
-        public int stacks = 1;
+        [LabelText("Status Effect")]
+        public StatusApplicationSpec spec = new();
     }
 
     [SerializeField, BoxGroup("Morph")]
@@ -70,7 +67,7 @@ public sealed class MorphSkillPayloadDef : SkillPayloadDef
                 return false;
 
             for (int i = 0; i < statusApplications.Count; i++)
-                if (statusApplications[i] != null && statusApplications[i].effect != null)
+                if (statusApplications[i]?.spec?.effect != null)
                     return true;
 
             return false;
@@ -95,9 +92,19 @@ public sealed class MorphSkillPayloadDef : SkillPayloadDef
             issues.Add("Morph payload does nothing: configure a visual change and/or at least one status effect.");
 
         if (statusApplications != null)
+        {
             for (int i = 0; i < statusApplications.Count; i++)
-                if (statusApplications[i] != null && statusApplications[i].effect == null)
+            {
+                StatusApplicationSpec resolvedSpec = statusApplications[i]?.spec;
+                if (resolvedSpec == null || resolvedSpec.effect == null)
+                {
                     issues.Add($"Morph payload status entry #{i} has no Status Effect assigned.");
+                    continue;
+                }
+
+                resolvedSpec.CollectValidationIssues(issues, $"Morph status entry #{i}");
+            }
+        }
     }
 
     public override void Execute(SkillCastContext context)

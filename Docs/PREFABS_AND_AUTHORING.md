@@ -945,24 +945,28 @@ empty only when the prefab-authored behavior should remain as the fallback.
 Ally-only systems may depend on `AllyContext` when they need ally-specific
 fields such as `AITargetSensor`, `NavMeshAgent`, or `AgentMoveDriver`.
 
-### AITargetSensor.tauntedEffectDef (required)
+### Taunt authoring (no prefab field)
 
-`AITargetSensor` requires a `[Header("Taunt")] tauntedEffectDef` reference
-(`StatusEffectDef`) to apply taunt. Without it, `ApplyTaunt` no-ops and logs a
-warning. Assign the `Taunted` status effect asset
-(`Assets/Scripts/StatusEffects/Taunted.asset`) on every prefab that has an
-`AITargetSensor`:
+`AITargetSensor` no longer carries a taunt `StatusEffectDef`. Nothing about taunt
+is authored on the prefab: the taunt status is authored on the skill, at
+`TauntSkillPayloadDef.tauntStatus`, and `TauntSkillRuntime` applies it to each
+target before notifying the sensor. The sensor derives its taunt state from any
+active status instance whose Def carries the `Taunt` tag.
 
-- `Assets/Character/Mons/Enemy_Base Variant.prefab`
-- `Assets/Prefab/GameEnemy/Enemy_Base.prefab`
-- `Assets/Prefab/AI Ally/Ally.prefab`
-- `Assets/Prefab/Player/Ally_Helper.prefab`
-- `Assets/Prefab/Player/Ally_Stryker.prefab`
+The `StatusEffectDef` used as a taunt status must be authored as:
 
-`Taunted.asset` must keep `separatePerSource` **off**. `AITargetSensor` treats the
-single live `Taunted` instance as the source of truth for taunt state
-(`UpdateTauntState`); enabling per-source instances would let multiple tauntable
-actors produce multiple simultaneous instances with no rule for which one wins.
+- `tags` contains `Taunt` (`StatusEffectTags.Taunt`) — without it the sensor
+  never sees the taunt
+- `separatePerSource` **on** — each taunter needs its own instance so expiry can
+  fall back to the previous taunter
+- `stackMode` = `RefreshDuration` — re-taunting from the same source refreshes
+  instead of stacking
+
+`TauntSkillPayloadDef.CollectValidationIssues` reports an error for each of these,
+so `SkillPayloadValidationTool` catches a mis-authored Taunt Def before play.
+
+Prefabs that receive taunt still need a `StatusEffectController` (see below) —
+that is now the only taunt-related prefab requirement.
 
 `Ally.prefab` has an authored `StatusEffectController` on its root object
 (added so status-effect payloads — e.g. `Aires_Skill_3`'s ally-heal branch —
@@ -970,9 +974,8 @@ can apply buffs to allies; previously `AITargetSensor` lazily `AddComponent`d
 one at runtime when needed, matching the auto-provision pattern already used by
 `CharacteContext.ResolveReferences()` for components like `AccessoryLoadout`
 and `ThirdPersonAimRigController`). Any other ally-type prefab that needs to
-receive status effects (buffs, heals, debuffs) must carry its own
-`StatusEffectController` the same way — the lazy `AddComponent` fallback in
-`AITargetSensor` only covers the taunt-debuff path.
+receive status effects (buffs, heals, debuffs) — including taunt — must carry its
+own `StatusEffectController` the same way.
 
 ## Root Motion Trajectory Authoring
 

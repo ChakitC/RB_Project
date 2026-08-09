@@ -182,12 +182,17 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             RefreshDebugSnapshot();
     }
 
-    public StatusEffectInstance ApplyEffect(StatusEffectDef definition, GameObject source = null, int initialStacks = 1, float durationOverride = 0f)
+    /// <summary>
+    /// Overload สำหรับระบบที่ไม่ใช่ authored application (ไม่มี StatusApplicationSpec ให้ถือ) — ใช้ค่าบาลานซ์
+    /// ของ StatusEffectDef ทั้งหมด. Skill/Passive/Pickup effect/Projectile ต้องใช้ Spec overload ด้านล่างแทน.
+    /// </summary>
+    public StatusEffectInstance ApplyEffect(StatusEffectDef definition, GameObject source = null, int initialStacks = 1)
     {
         string appliedById = source != null ? $"actor:{source.GetInstanceID()}" : "system";
 
-        return ApplyEffect(
+        return ApplyEffectCore(
             definition,
+            null,
             source,
             initialStacks,
             appliedById,
@@ -196,44 +201,23 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             PassiveEventOrigin.External,
             null,
             null,
-            durationOverride);
+            0f);
     }
 
-    public StatusEffectInstance ApplyEffect(
-        StatusEffectDef definition,
-        GameObject source,
-        int initialStacks,
-        string appliedById,
-        ulong chainId,
-        int depth,
-        PassiveEventOrigin origin,
-        string originPassiveId = null,
-        string originRuleId = null,
-        float durationOverride = 0f)
-    {
-        return ApplyEffectCore(
-            definition,
-            null,
-            source,
-            initialStacks,
-            appliedById,
-            chainId,
-            depth,
-            origin,
-            originPassiveId,
-            originRuleId,
-            durationOverride);
-    }
-
-    /// <summary>Apply site ที่ authored ค่าบาลานซ์เอง (StatusApplicationSpec) แทนที่จะใช้ค่าจาก StatusEffectDef ตรงๆ</summary>
-    public StatusEffectInstance ApplyEffect(StatusApplicationSpec spec, GameObject source = null)
+    /// <summary>
+    /// Apply site ที่ authored ค่าบาลานซ์เอง (StatusApplicationSpec) แทนที่จะใช้ค่าจาก StatusEffectDef ตรงๆ.
+    /// <paramref name="fallbackDuration"/> คือ duration ระดับ apply site (เช่น FinalSkillStats.effectDuration
+    /// หรือ taunt duration) ที่ใช้เมื่อ spec ไม่ได้ override duration ไว้เอง — ส่งมาเป็นพารามิเตอร์ตรงๆ
+    /// ไม่ต้อง merge ลง spec ที่ serialize อยู่ใน asset.
+    /// </summary>
+    public StatusEffectInstance ApplyEffect(StatusApplicationSpec spec, GameObject source = null, float fallbackDuration = 0f)
     {
         if (spec == null || spec.effect == null)
             return null;
 
         string appliedById = source != null ? $"actor:{source.GetInstanceID()}" : "system";
 
-        return ApplyEffect(spec, source, appliedById, 0, 0, PassiveEventOrigin.External, null, null);
+        return ApplyEffect(spec, source, appliedById, 0, 0, PassiveEventOrigin.External, null, null, fallbackDuration);
     }
 
     public StatusEffectInstance ApplyEffect(
@@ -244,7 +228,8 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         int depth,
         PassiveEventOrigin origin,
         string originPassiveId = null,
-        string originRuleId = null)
+        string originRuleId = null,
+        float fallbackDuration = 0f)
     {
         if (spec == null || spec.effect == null)
             return null;
@@ -260,7 +245,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             origin,
             originPassiveId,
             originRuleId,
-            spec.durationOverride);
+            fallbackDuration);
     }
 
     StatusEffectInstance ApplyEffectCore(
@@ -274,7 +259,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         PassiveEventOrigin origin,
         string originPassiveId,
         string originRuleId,
-        float durationOverride)
+        float fallbackDuration)
     {
         if (definition == null)
             return null;
@@ -285,7 +270,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
         if (definition.stackMode == StackMode.IndependentInstances)
         {
-            var instance = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, durationOverride);
+            var instance = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, fallbackDuration);
             _activeEffects.Add(instance);
 
             List<StatusEffectEvent> newLifecycleEvents = null;
@@ -298,7 +283,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         var existing = FindActiveEffect(definition, sourceKey);
         if (existing == null)
         {
-            existing = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, durationOverride);
+            existing = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, fallbackDuration);
             _activeEffects.Add(existing);
 
             List<StatusEffectEvent> newLifecycleEvents = null;
@@ -310,30 +295,33 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
         existing.UpdateSource(source);
         existing.UpdateContext(appliedById, chainId, depth, origin, originPassiveId, originRuleId);
+        // instance เดิมที่ถูก apply ซ้ำนับเป็น application ล่าสุด — ระบบที่ใช้ latest-wins (เช่น multi-Taunt)
+        // ต้องเห็นว่ามันใหม่กว่า instance ที่ไม่ได้ถูกแตะ
+        existing.MarkReapplied();
         int oldStacks = existing.CurrentStacks;
 
         switch (definition.stackMode)
         {
             case StackMode.RefreshDuration:
-                existing.SetDurationOverride(durationOverride);
+                existing.AdoptDuration(spec, fallbackDuration);
                 existing.RefreshDuration();
                 if (spec != null)
-                    existing.AdoptMagnitude(spec);
+                    existing.AdoptMagnitude(spec, now);
                 break;
 
             case StackMode.AddStackAndRefresh:
-                existing.SetDurationOverride(durationOverride);
+                existing.AdoptDuration(spec, fallbackDuration);
                 existing.AddStacks(clampedStacks, definition.ClampedMaxStacks);
                 existing.RefreshDuration();
                 if (spec != null)
-                    existing.AdoptMagnitude(spec);
+                    existing.AdoptMagnitude(spec, now);
                 break;
 
             case StackMode.StrongestOnly:
-                existing.SetDurationOverride(durationOverride);
+                existing.AdoptDuration(spec, fallbackDuration);
                 existing.RefreshDurationNoShorten();
                 if (spec != null)
-                    ApplyStrongestOnlyMagnitude(existing, spec);
+                    ApplyStrongestOnlyMagnitude(existing, spec, now);
                 break;
         }
 
@@ -349,20 +337,20 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
     /// StackMode.StrongestOnly: ถ้า incoming shape ต่างจาก existing (คนละ stat/op) เทียบ score กันไม่ได้จริง — ตัวหลังชนะ.
     /// ถ้า shape เดียวกัน เทียบ StrengthScore แล้วให้ตัวแรงกว่าชนะ.
     /// </summary>
-    static void ApplyStrongestOnlyMagnitude(StatusEffectInstance existing, StatusApplicationSpec spec)
+    static void ApplyStrongestOnlyMagnitude(StatusEffectInstance existing, StatusApplicationSpec spec, float now)
     {
         List<StatusEffectModifier> incomingModifiers = StatusEffectInstance.ResolveModifiers(spec, existing.Definition);
         bool sameShape = StatusEffectInstance.HasSameModifierShape(existing.ResolvedModifiers, incomingModifiers);
 
         if (!sameShape)
         {
-            existing.AdoptMagnitude(spec);
+            existing.AdoptMagnitude(spec, now);
             return;
         }
 
         float incomingScore = StatusEffectInstance.ComputeStrengthScore(incomingModifiers);
         if (incomingScore > existing.StrengthScore)
-            existing.AdoptMagnitude(spec);
+            existing.AdoptMagnitude(spec, now);
     }
 
     const int MaxInstancesPerEffect = 8;
@@ -710,7 +698,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         PassiveEventOrigin origin,
         string originPassiveId,
         string originRuleId,
-        float durationOverride = 0f)
+        float fallbackDuration)
     {
         int startingStacks = definition.stackMode == StackMode.RefreshDuration ||
                              definition.stackMode == StackMode.StrongestOnly
@@ -728,8 +716,29 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             origin,
             originPassiveId,
             originRuleId,
-            durationOverride,
-            spec);
+            spec,
+            fallbackDuration);
+    }
+
+    /// <summary>ถอด instance ทุกตัวของ effect ที่ติด tag นี้ (เช่น ล้าง taunt ตอน sensor reset).</summary>
+    public void RemoveEffectsWithTag(string tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag))
+            return;
+
+        List<StatusEffectEvent> lifecycleEvents = null;
+        for (int i = _activeEffects.Count - 1; i >= 0; i--)
+        {
+            if (!StatusEffectTags.Has(_activeEffects[i]?.Definition, tag))
+                continue;
+
+            var removedInstance = _activeEffects[i];
+            AddStatusEffectEvent(ref lifecycleEvents, StatusEffectEventType.Removed, removedInstance, removedInstance.CurrentStacks, 0);
+            _activeEffects.RemoveAt(i);
+        }
+
+        if (lifecycleEvents != null)
+            NotifyEffectsChanged(lifecycleEvents);
     }
 
     int ResolveRuleMaxStacks(StatusEffectDef definition, StatusEffectTriggerRule rule)
@@ -958,7 +967,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             ? definition.effectId
             : definition.name;
 
-        string durationText = definition.IsPermanent
+        string durationText = instance.IsPermanent
             ? "perm"
             : $"{Mathf.Max(0f, instance.TimeLeft):0.0}s";
 

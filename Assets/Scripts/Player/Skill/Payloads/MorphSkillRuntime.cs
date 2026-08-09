@@ -104,12 +104,14 @@ public sealed class MorphSkillRuntime : MonoBehaviour
             var apps = payload.StatusApplications;
             for (int i = 0; i < apps.Count; i++)
             {
-                var app = apps[i];
-                if (app == null || app.effect == null)
+                StatusApplicationSpec spec = apps[i]?.spec;
+                if (spec?.effect == null)
                     continue;
 
-                statusController.ApplyEffect(app.effect, statusSource, Mathf.Max(1, app.stacks));
-                appliedStatusDefs.Add(app.effect);   // จำไว้ถอดตอน revert
+                // จำ Def จาก instance ที่ apply สำเร็จจริงเท่านั้น — ห้าม derive จากการแก้ Def
+                StatusEffectInstance instance = statusController.ApplyEffect(spec, statusSource);
+                if (instance?.Definition != null && !appliedStatusDefs.Contains(instance.Definition))
+                    appliedStatusDefs.Add(instance.Definition);   // จำไว้ถอดตอน revert
             }
         }
 

@@ -17,10 +17,23 @@ MonoBehaviour:
   chainContinueNormalizedTime: 1
   radius: 10
   duration: 3
+  useSkillStats: 1
   requireLineOfSight: 0
   targetLayers:
     serializedVersion: 2
     m_Bits: 1046527
+  tauntStatus:
+    effect: {fileID: 11400000, guid: 6a38b0785dbe69c4a87d55d2c21f15f1, type: 2}
+    stacks: 1
+    modifiers: []
+    modifiersOverrideEnabled: 0
+    durationOverride: 0
+    durationOverrideEnabled: 0
+    tickDamageOverride: 0
+    tickDamageOverrideEnabled: 0
+    tickIntervalOverride: 0
+    tickIntervalOverrideEnabled: 0
+  conditionalApplications: []
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -39,6 +52,7 @@ MonoBehaviour:
   tags: 32
   description: Feno.Skill_Ulatimate
   baseDamage: 10
+  damageCoefficient: 0
   baseStaggerPower: 10
   baseManaCost: 10
   baseCastTime: 0.5
@@ -48,7 +62,9 @@ MonoBehaviour:
   projectileSpeed: 5
   AreaofEffec: 0
   baseRadius: 0
-  maxLevel: 20
+  baseEffectDuration: 0
+  baseHealPower: 0
+  upgradeTree: {fileID: 0}
   payload: {fileID: -3967520494979852979}
   castCue: {fileID: 0}
   skillClip:
@@ -60,8 +76,17 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: -4876317453393239407, guid: cff60580c39c3b74581f8a13f7e37daa, type: 3}
     _NormalizedStartTime: NaN
+  ignoreCharacterCollisionDuringRootMotion: 1
   castPointNormalized: 0.35
   skillVfxEvents: []
+  hitLagDuration: 0.06
+  hitLagTimeScale: 0.05
+  hitLagShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   isCutsceneSkill: 1
   cutsceneDef:
     characterCutsceneClip:
@@ -177,8 +202,6 @@ MonoBehaviour:
   preCastIndicatorPrefab: {fileID: 0}
   cancelPreCastOnStun: 1
   cancelPreCastOnStagger: 1
-  perLevelData: []
-  previewLevel: 1
   references:
     version: 2
     RefIds: []

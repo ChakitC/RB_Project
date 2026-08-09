@@ -61,9 +61,9 @@ public class AITargetSensor : MonoBehaviour
     [SerializeField, Min(0f)] private float threatDecayPerSecond = 8f;
     [SerializeField, Min(0f)] private float maxThreatPerTarget = 100f;
 
+    // Taunt ownership อยู่ที่ TauntSkillPayloadDef.tauntStatus — sensor ไม่ถือ Taunt Def เอง และ derive
+    // taunt state จาก StatusEffectInstance ที่ติด tag StatusEffectTags.Taunt (ดู UpdateTauntState)
     [Header("Taunt")]
-    [Tooltip("Status effect applied to this character while it is taunted. Required for taunt to work.")]
-    [SerializeField] private StatusEffectDef tauntedEffectDef;
     [SerializeField, Min(0f)] private float tauntScoreBonus = 1000f;
 
     [Header("Offsets")]
@@ -238,8 +238,7 @@ public class AITargetSensor : MonoBehaviour
         visibleBestScore = float.NegativeInfinity;
         currentTargetAcquiredTime = float.NegativeInfinity;
         cachedTauntSource = null;
-        if (tauntedEffectDef != null)
-            ResolveStatusEffects()?.RemoveEffect(tauntedEffectDef);
+        ResolveStatusEffects()?.RemoveEffectsWithTag(StatusEffectTags.Taunt);
         ScheduleNextRetargetEvaluation();
     }
 
@@ -293,29 +292,21 @@ public class AITargetSensor : MonoBehaviour
         RegisterThreatInternal(targetRoot, targetable, amount);
     }
 
-    public bool ApplyTaunt(Transform target, float duration)
+    /// <summary>
+    /// เรียกโดยระบบที่ลง Taunt status ให้ตัวนี้แล้ว (เช่น TauntSkillRuntime) เพื่อให้ sensor re-resolve
+    /// taunt state ทันทีและตัดสิ่งที่กำลังเล็ง/โจมตีอยู่ทิ้ง. sensor ไม่ได้เป็นคนลง status เอง — source of truth
+    /// คือ StatusEffectInstance ที่ติด tag <see cref="StatusEffectTags.Taunt"/> บน StatusEffectController ของตัวนี้.
+    /// </summary>
+    public bool OnTauntApplied(Transform tauntSource)
     {
-        if (target == null || duration <= 0f)
+        if (tauntSource == null)
             return false;
 
-        if (!TryResolveTrackedTarget(target, out Transform targetRoot, out IAITargetable targetable))
+        if (!TryResolveTrackedTarget(tauntSource, out Transform targetRoot, out IAITargetable targetable))
             return false;
 
         if (!IsTrackedTargetStillValid(targetRoot))
             return false;
-
-        StatusEffectController controller = ResolveStatusEffects();
-        if (controller == null || tauntedEffectDef == null)
-        {
-            Debug.LogWarning(
-                $"{nameof(AITargetSensor)} on '{name}' cannot apply taunt: " +
-                $"{(tauntedEffectDef == null ? "tauntedEffectDef is not assigned" : "no StatusEffectController")}.",
-                this);
-            return false;
-        }
-
-        // Source == who taunted us. The status instance is the source of truth for taunt state.
-        controller.ApplyEffect(tauntedEffectDef, targetRoot.gameObject, 1, duration);
 
         UpdateTauntState();
         RegisterThreatInternal(targetRoot, targetable, GetMaxThreatPerTargetValue());
@@ -1173,28 +1164,46 @@ public class AITargetSensor : MonoBehaviour
         return cachedTauntSource != null && target != null && cachedTauntSource == target;
     }
 
+    /// <summary>
+    /// Taunt state ถูก derive ใหม่ทุกครั้งที่ resolve/cache invalidate — ไม่มีการเก็บ Taunt Def เฉพาะตัวไว้ที่
+    /// sensor. กติกา: instance ที่ติด tag Taunt และ ApplicationSequence สูงสุด (apply/refresh ล่าสุด) ชนะ;
+    /// ถ้าตัวล่าสุดหมดอายุหรือ source ถูก destroy/resolve ไม่ได้ ก็ไล่ลงไปหา instance ถัดไปที่ยัง active อยู่.
+    /// </summary>
     void UpdateTauntState()
     {
         cachedTauntSource = null;
-
-        if (tauntedEffectDef == null)
-            return;
 
         StatusEffectController controller = ResolveStatusEffects();
         if (controller == null)
             return;
 
-        StatusEffectInstance instance = controller.FindActiveEffect(tauntedEffectDef);
-        if (instance == null || instance.CurrentStacks <= 0 || instance.Source == null)
-            return;
+        IReadOnlyList<StatusEffectInstance> activeEffects = controller.ActiveEffects;
+        Transform bestSource = null;
+        ulong bestSequence = 0;
 
-        if (!TryResolveTrackedTarget(instance.Source.transform, out Transform sourceRoot, out _))
-            return;
+        for (int i = 0; i < activeEffects.Count; i++)
+        {
+            StatusEffectInstance instance = activeEffects[i];
+            if (instance == null || instance.CurrentStacks <= 0 || instance.Source == null)
+                continue;
 
-        if (!IsTrackedTargetStillValid(sourceRoot))
-            return;
+            if (!StatusEffectTags.Has(instance.Definition, StatusEffectTags.Taunt))
+                continue;
 
-        cachedTauntSource = sourceRoot;
+            if (bestSource != null && instance.ApplicationSequence <= bestSequence)
+                continue;
+
+            if (!TryResolveTrackedTarget(instance.Source.transform, out Transform sourceRoot, out _))
+                continue;
+
+            if (!IsTrackedTargetStillValid(sourceRoot))
+                continue;
+
+            bestSource = sourceRoot;
+            bestSequence = instance.ApplicationSequence;
+        }
+
+        cachedTauntSource = bestSource;
     }
 
     struct Candidate

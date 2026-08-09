@@ -50,7 +50,8 @@ MonoBehaviour:
   projectileSpeed: 5
   AreaofEffec: 0
   baseRadius: 0
-  maxLevel: 20
+  baseEffectDuration: 0
+  baseHealPower: 0
   upgradeTree: {fileID: 0}
   payload: {fileID: -4640737377914395889}
   castCue: {fileID: 0}
@@ -150,8 +151,6 @@ MonoBehaviour:
   preCastIndicatorPrefab: {fileID: 0}
   cancelPreCastOnStun: 1
   cancelPreCastOnStagger: 1
-  perLevelData: []
-  previewLevel: 1
   references:
     version: 2
     RefIds: []

@@ -82,14 +82,43 @@ Important sensor concepts:
 - current target stickiness
 - retarget interval and lock duration
 - threat memory
-- taunt target — stored as the `Taunted` status effect on the character's `StatusEffectController`
-  (`AITargetSensor.tauntedEffectDef`), not as local sensor fields. The sensor resolves the current
-  taunter each scan via `FindActiveEffect(tauntedEffectDef)` and uses `instance.Source` as the
-  taunter, caching it in a non-serialized field for the per-candidate scoring loop. Duration comes
-  from the caller through `StatusEffectController.ApplyEffect`'s duration-override parameter, so it
-  now ticks in the `Time.time` domain (via `StatusEffectController.Tick`) instead of the
-  HitLag/slow-immune `TimeSlowManager.WorldTime` domain the rest of the sensor uses. The sensor
-  requires a `tauntedEffectDef` reference to be assigned or taunt silently no-ops with a warning.
+- taunt target — see **Taunt resolution** below.
+
+## Taunt resolution
+
+Taunt state lives entirely in status effects on the character's own
+`StatusEffectController`. The sensor holds **no** taunt `StatusEffectDef` of its own and never
+applies the status itself: `TauntSkillPayloadDef.tauntStatus` is authored on the skill, and
+`TauntSkillRuntime` applies that spec to each target and then calls
+`AITargetSensor.OnTauntApplied(casterRoot)` so the sensor re-resolves, re-registers threat,
+force-scans, and clears the aim-target override.
+
+Any `StatusEffectDef` tagged `StatusEffectTags.Taunt` ("Taunt") counts as a taunt — there can be
+several Taunt Defs with different VFX or modifiers, and they still compete as one taunt state.
+`TauntSkillPayloadDef` validation errors if its Def is missing the tag, has `separatePerSource`
+off, or does not use `StackMode.RefreshDuration`.
+
+`UpdateTauntState` re-derives the taunter from scratch on every resolve / cache invalidation:
+
+- **Latest wins.** Each `StatusEffectInstance` carries a monotonic `ApplicationSequence`; the
+  tagged instance with the highest sequence wins. Re-applying an existing instance bumps its
+  sequence (`MarkReapplied`), so a refresh counts as the newest taunt. List order is never used.
+- **Fallback on expiry.** When the newest taunt expires, the next-highest still-active tagged
+  instance takes over.
+- **Same caster refreshes.** Re-taunting from the same source refreshes that source's instance
+  (`StackMode.RefreshDuration`).
+- **Different casters keep separate instances** via `separatePerSource`, which is what makes the
+  fallback above possible.
+- **Dead or unresolvable sources are skipped.** If `instance.Source` was destroyed or does not
+  resolve to a valid tracked `CharacteContext`, the sensor moves on to the next instance.
+
+Taunt duration comes from the skill (`fallbackDuration`) unless the application overrides it, so it
+ticks in the `Time.time` domain (via `StatusEffectController.Tick`) rather than the
+HitLag/slow-immune `TimeSlowManager.WorldTime` domain the rest of the sensor uses.
+
+`TauntSkillRuntime` discovers targets through active `CharacteContext` instances and checks range
+from the context transform; physics is used only for the layer filter and the optional
+line-of-sight raycast.
 
 `AITargetingProfileDef` can override scoring and policy values. Local sensor
 fields are fallback settings when no profile is assigned.

@@ -1254,7 +1254,6 @@ MonoBehaviour:
   DashSystem: {fileID: 5038378700834558391}
   KnockbackMotor: {fileID: 4947922598450173769}
   PassiveController: {fileID: 7146810742816155018}
-  PassiveProgress: {fileID: 0}
   ActiveSkillProgress: {fileID: 723459649131664530}
   EnegySystem: {fileID: 3101511230285474531}
   Interactor: {fileID: 5990405013486080644}
@@ -1463,6 +1462,7 @@ MonoBehaviour:
   ctx: {fileID: 8723794045760714937}
   statsHub: {fileID: 7820936986505595733}
   stateHub: {fileID: 8066545536225098251}
+  healthSystem: {fileID: 0}
   autoCreateVfxPresenter: 1
   vfxPresenterHost: {fileID: 0}
   vfxPresenterHostName: CharacterVisual_System
@@ -2078,7 +2078,6 @@ MonoBehaviour:
   threatScoreWeight: 1
   threatDecayPerSecond: 8
   maxThreatPerTarget: 100
-  tauntedEffectDef: {fileID: 11400000, guid: 6a38b0785dbe69c4a87d55d2c21f15f1, type: 2}
   tauntScoreBonus: 1000
   originHeightOffset: 0.5
   fallbackTargetHeightOffset: 0.6

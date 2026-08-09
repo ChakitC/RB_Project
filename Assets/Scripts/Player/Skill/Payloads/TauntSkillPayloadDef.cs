@@ -6,39 +6,14 @@ using UnityEngine;
 [HideMonoScript]
 public sealed class TauntSkillPayloadDef : SkillPayloadDef
 {
-    // Legacy-field fallback (lazy resolve, NOT ISerializationCallbackReceiver — see the "Legacy Migration"
-    // block at the bottom of StatusEffects/StatusApplicationSpec.cs for why) — Aires_Skill_3.asset /
-    // Aires_Active.asset have real `effect`/`stacks` data serialized flat under this class.
-    // Duration has no field of its own on the spec here — tauntDuration (the taunt's own duration) is passed
-    // as the fallback via ResolveWithDurationFallback at the call site, same as before.
+    // tauntDuration (the taunt's own duration) is passed as the `fallbackDuration` argument of
+    // StatusEffectController.ApplyEffect, so a per-application duration override still wins over it.
     [Serializable]
     public sealed class ConditionalStatus
     {
         public string requiredUpgradeId;
 
-        [SerializeField, HideInInspector] StatusEffectDef effect;
-        [SerializeField, HideInInspector] int stacks;
-
         public StatusApplicationSpec spec = new();
-
-        /// <summary>Call from TauntSkillRuntime at trigger time only — never during deserialization.</summary>
-        public StatusApplicationSpec ResolvedSpec()
-        {
-            if (spec != null && spec.effect != null)
-                return spec;
-
-            if (effect == null)
-                return spec;
-
-            return new StatusApplicationSpec
-            {
-                effect = effect,
-                stacks = stacks > 0 ? stacks : 1,
-                modifiers = spec?.modifiers,
-                durationOverride = spec?.durationOverride ?? 0f,
-                tickDamageOverride = spec?.tickDamageOverride ?? 0f,
-            };
-        }
     }
 
     [PropertyOrder(-20)]
@@ -64,6 +39,14 @@ public sealed class TauntSkillPayloadDef : SkillPayloadDef
     [LabelText("Target Layers")]
     private LayerMask targetLayers = ~0;
 
+    // Taunt state เป็นของสกิล ไม่ใช่ของ AITargetSensor อีกแล้ว — sensor derive สถานะ taunt จาก
+    // StatusEffectInstance ที่ติด tag StatusEffectTags.Taunt แทนการถือ Def เฉพาะตัว
+    [SerializeField, BoxGroup("Setup")]
+    [LabelText("Taunt Status")]
+    [Tooltip("Status applied to every taunted enemy. Its StatusEffectDef must carry the \"Taunt\" tag, " +
+        "use separatePerSource = true and StackMode.RefreshDuration.")]
+    private StatusApplicationSpec tauntStatus = new();
+
     [SerializeField, BoxGroup("Upgrades")]
     [LabelText("Conditional Status Effects (on taunted enemies)")]
     [ListDrawerSettings(DefaultExpandedState = true, DraggableItems = true, ShowFoldout = true)]
@@ -74,6 +57,7 @@ public sealed class TauntSkillPayloadDef : SkillPayloadDef
     public bool UseSkillStats => useSkillStats;
     public bool RequireLineOfSight => requireLineOfSight;
     public LayerMask TargetLayers => targetLayers;
+    public StatusApplicationSpec TauntStatus => tauntStatus;
     public IReadOnlyList<ConditionalStatus> ConditionalApplications => conditionalApplications;
 
     public override bool RequiresSkillTimelineEvents => true;
@@ -109,6 +93,48 @@ public sealed class TauntSkillPayloadDef : SkillPayloadDef
 
         if (targetLayers.value == 0)
             issues.Add("Taunt payload has no target layers configured.");
+
+        CollectTauntStatusIssues(issues);
+    }
+
+    /// <summary>
+    /// Taunt Def ที่ author ผิดจะทำให้ AITargetSensor มองไม่เห็น taunt (ไม่มี tag) หรือทำให้ผู้ใช้สกิลหลายคน
+    /// ทับ instance เดียวกันจน fallback กลับหาคนก่อนหน้าไม่ได้ — จับตั้งแต่ตอน validate ไม่ใช่ตอนเล่น
+    /// </summary>
+    void CollectTauntStatusIssues(List<string> issues)
+    {
+        if (tauntStatus == null || tauntStatus.effect == null)
+        {
+            issues.Add(
+                $"Taunt payload has no Taunt Status configured (needs a StatusEffectDef tagged " +
+                $"\"{StatusEffectTags.Taunt}\").");
+            return;
+        }
+
+        tauntStatus.CollectValidationIssues(issues, "tauntStatus");
+
+        StatusEffectDef definition = tauntStatus.effect;
+
+        if (!StatusEffectTags.Has(definition, StatusEffectTags.Taunt))
+        {
+            issues.Add(
+                $"Taunt Status '{definition.name}' is missing the \"{StatusEffectTags.Taunt}\" tag — " +
+                "AITargetSensor resolves taunt state by tag and will ignore it.");
+        }
+
+        if (!definition.separatePerSource)
+        {
+            issues.Add(
+                $"Taunt Status '{definition.name}' must set separatePerSource = true so each taunter keeps " +
+                "its own instance (otherwise expiry cannot fall back to the previous taunter).");
+        }
+
+        if (definition.stackMode != StackMode.RefreshDuration)
+        {
+            issues.Add(
+                $"Taunt Status '{definition.name}' must use StackMode.RefreshDuration (found " +
+                $"{definition.stackMode}) so re-taunting from the same source refreshes instead of stacking.");
+        }
     }
 
     public override void Execute(SkillCastContext context)

@@ -6,16 +6,12 @@ using UnityEngine;
 
 public static class SkillPayloadValidationTool
 {
+    // ไม่ใช้ EditorUtility.DisplayDialog — modal dialog บล็อก editor ทั้งตัวจน automation/MCP เรียก menu item
+    // นี้แล้วค้างรอจนกว่าจะมีคนกด OK. ValidateAllSkills log ผลลัพธ์เต็มลง Console อยู่แล้ว.
     [MenuItem("Tools/RB/Skills/Validate Embedded Payloads")]
     private static void ValidateMenu()
     {
-        int issueCount = ValidateAllSkills(logResult: true);
-        EditorUtility.DisplayDialog(
-            "Skill Payload Validation",
-            issueCount == 0
-                ? "All skill payloads are valid and embedded."
-                : $"Found {issueCount} validation issues. See Console for details.",
-            "OK");
+        ValidateAllSkills(logResult: true);
     }
 
     public static int ValidateAllSkills(bool logResult)

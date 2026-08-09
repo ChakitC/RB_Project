@@ -4,10 +4,19 @@ using UnityEngine;
 
 /// <summary>
 /// ค่าบาลานซ์ของการลง status หนึ่งครั้ง — authored ที่ apply site (สกิล/กระสุน/passive/pickup).
-/// ฟิลด์ที่เว้นว่างจะ fallback ไปใช้ค่าใน StatusEffectDef. นี่คือ shape เดียวที่ทุก apply-site ถืออยู่จริง
-/// (ผ่าน field ชื่อ spec/statusSpec) — ไม่มี field ซ้ำที่ apply-site ไหนอีกแล้ว.
 ///
-/// อ่านต่อถ้าจะเพิ่ม apply-site ใหม่ที่ต้องรองรับ asset เดิมที่มีข้อมูลอยู่แล้ว (ดูหัวข้อ Legacy Migration ด้านล่าง).
+/// เจ้าของค่า:
+/// - <see cref="StatusEffectDef"/> เป็นเจ้าของ identity/stackMode/maxStacks/control/tags/trigger rules/presentation
+///   และค่าบาลานซ์ตั้งต้น
+/// - spec นี้เป็นเจ้าของค่าราย application: stacks, modifiers, duration, tick damage, tick interval
+///
+/// ทุก channel ที่ override ได้มี enable flag ของตัวเอง — ไม่ใช้ `0` เป็น sentinel. เมื่อ override เปิด ค่า `0`
+/// คือค่าจริง (duration 0 = permanent, tick damage 0 = ปิด damage/heal, tick interval 0 = ปิด tick).
+/// channel ที่ไม่ได้เปิด override จะติดตามค่าใน Def เสมอ.
+///
+/// ห้าม express ความต่างของ stackMode, maxStacks, control behavior, tags, trigger rules หรือ presentation
+/// จาก apply site — ถ้าต้องต่างให้สร้าง <see cref="StatusEffectDef"/> คนละตัว. สอง application ที่ใช้ Def
+/// เดียวกันคือ status identity เดียวกัน; ความแรงต่างกันอย่างเดียวไม่ใช่เหตุผลให้ clone asset.
 /// </summary>
 [Serializable]
 public sealed class StatusApplicationSpec
@@ -23,34 +32,46 @@ public sealed class StatusApplicationSpec
     [SerializeField, HideInInspector]
     bool modifiersOverrideEnabled;
 
-    [Tooltip("0 = ใช้ duration ของ StatusEffectDef")]
+    [Tooltip("Application duration. 0 with the override enabled = permanent.")]
     [Min(0f)]
     public float durationOverride;
 
-    [Tooltip("0 = ใช้ tickDamage ของ StatusEffectDef. ติดลบ = heal")]
+    [SerializeField, HideInInspector]
+    bool durationOverrideEnabled;
+
+    [Tooltip("Per-tick damage for this application. Negative = heal. 0 with the override enabled = no tick damage/heal.")]
     public float tickDamageOverride;
 
-    public bool HasModifierOverride =>
-        modifiersOverrideEnabled || (modifiers != null && modifiers.Count > 0);
+    [SerializeField, HideInInspector]
+    bool tickDamageOverrideEnabled;
 
-    /// <summary>
-    /// ใช้ตอน apply site มี "skill-level duration fallback" ของตัวเอง (เช่น FinalSkillStats.effectDuration)
-    /// ที่ต้องมาเป็นอันดับรองจาก durationOverride ของ spec เอง — คืน spec เดิมถ้าไม่ต้อง merge (ไม่ mutate ของเดิม,
-    /// สร้าง instance ใหม่เฉพาะตอนต้อง merge จริงๆ เพื่อไม่ให้ค่า runtime-only เขียนทับ spec ที่ serialize อยู่ใน asset).
-    /// </summary>
-    public StatusApplicationSpec ResolveWithDurationFallback(float fallbackDuration)
+    [Tooltip("Seconds between ticks for this application. 0 with the override enabled = ticking disabled.")]
+    [Min(0f)]
+    public float tickIntervalOverride;
+
+    [SerializeField, HideInInspector]
+    bool tickIntervalOverrideEnabled;
+
+    public bool HasModifierOverride => modifiersOverrideEnabled;
+    public bool HasDurationOverride => durationOverrideEnabled;
+    public bool HasTickDamageOverride => tickDamageOverrideEnabled;
+    public bool HasTickIntervalOverride => tickIntervalOverrideEnabled;
+
+    /// <summary>คัดลอกทุก channel (รวม enable flag) — ใช้ตอนต้องสร้าง spec ชั่วคราวโดยไม่แตะ spec ที่ serialize อยู่ใน asset</summary>
+    public StatusApplicationSpec Clone()
     {
-        if (durationOverride > 0f || fallbackDuration <= 0f)
-            return this;
-
         return new StatusApplicationSpec
         {
             effect = effect,
             stacks = stacks,
             modifiers = modifiers,
             modifiersOverrideEnabled = modifiersOverrideEnabled,
-            durationOverride = fallbackDuration,
+            durationOverride = durationOverride,
+            durationOverrideEnabled = durationOverrideEnabled,
             tickDamageOverride = tickDamageOverride,
+            tickDamageOverrideEnabled = tickDamageOverrideEnabled,
+            tickIntervalOverride = tickIntervalOverride,
+            tickIntervalOverrideEnabled = tickIntervalOverrideEnabled,
         };
     }
 
@@ -68,7 +89,7 @@ public sealed class StatusApplicationSpec
             return;
         }
 
-        if (modifiers == null)
+        if (modifiers == null || !HasModifierOverride)
             return;
 
         for (int i = 0; i < modifiers.Count; i++)
@@ -86,66 +107,3 @@ public sealed class StatusApplicationSpec
         }
     }
 }
-
-// ---------------------------------------------------------------------------------------------
-// Legacy Migration — lazy resolve at use time, NOT ISerializationCallbackReceiver
-// ---------------------------------------------------------------------------------------------
-// เมื่อ apply-site เดิมมี flat field (effect/stacks) ที่ asset จริงอ้างอิงอยู่แล้ว ห้าม nest
-// StatusApplicationSpec ทับตำแหน่งเดิมตรงๆ — Unity serialize ตามชื่อ field ตรงๆ ไม่ได้ auto-migrate ข้าม
-// shape ให้ ถ้าเปลี่ยนจาก `effect`/`stacks` แบบแบนเป็น `spec.effect`/`spec.stacks` ข้อมูลเดิมจะหาย
-// เงียบๆ ตอนเปิด asset ครั้งแรก (ไม่มี error).
-//
-// ⚠️ ลองใช้ ISerializationCallbackReceiver.OnAfterDeserialize() มาก่อนแล้วพบว่าใช้ไม่ได้จริง: Unity ไม่
-// การันตีว่า UnityEngine.Object reference (เช่น field `effect` ที่ชี้ไป StatusEffectDef asset คนละไฟล์)
-// resolve เสร็จแล้วตอน OnAfterDeserialize รัน โดยเฉพาะ cross-asset reference ที่ยังไม่เคยถูกโหลดเข้าหน่วยความจำ
-// มาก่อน — ทดสอบจริงพบว่า asset ที่ reference ของมันบังเอิญโหลดอยู่แล้ว migrate ผ่าน แต่ asset ที่ reference ยัง
-// ไม่เคยโหลด จะได้ `effect` เป็น null ตอนอ่านใน OnAfterDeserialize (ทั้งที่ field มีค่าจริงถ้าอ่านทีหลัง) —
-// เป็นบั๊กที่ไม่คงที่ ขึ้นกับ asset load order ของ session นั้นๆ ห้ามใช้แพทเทิร์นนี้กับ field ที่เป็น
-// UnityEngine.Object reference.
-//
-// แพทเทิร์นที่ใช้จริง — เก็บ legacy field ไว้เฉยๆ ไม่ migrate/มิวเทตอะไรตอน deserialize เลย แล้ว resolve แบบ
-// lazy ตอนถูกใช้งานจริง (Execute()/Apply()) ซึ่งรันหลัง Awake/OnEnable เสมอ — จุดที่ Unity การันตีว่า object
-// reference ทุกตัว resolve ครบแล้ว (ตัวอย่างจาก ApplyStatusSkillPayloadDef.StatusApplication):
-//
-//   [Serializable]
-//   public sealed class StatusApplication
-//   {
-//       // เก็บค่าเก่าไว้เฉยๆ ห้ามอ่าน/เขียนที่อื่นนอกจาก ResolvedSpec()
-//       [SerializeField, HideInInspector] StatusEffectDef effect;
-//       [SerializeField, HideInInspector] int stacks;
-//
-//       public StatusApplicationSpec spec = new();
-//
-//       // เรียกจาก Execute()/Apply() เท่านั้น ห้ามเรียกจาก OnAfterDeserialize/constructor
-//       public StatusApplicationSpec ResolvedSpec()
-//       {
-//           if (spec != null && spec.effect != null)
-//               return spec;
-//
-//           if (effect == null)
-//               return spec;
-//
-//           return new StatusApplicationSpec
-//           {
-//               effect = effect,
-//               stacks = stacks > 0 ? stacks : 1,
-//               modifiers = spec?.modifiers,
-//               durationOverride = spec?.durationOverride ?? 0f,
-//               tickDamageOverride = spec?.tickDamageOverride ?? 0f,
-//           };
-//       }
-//   }
-//
-// ไม่ mutate `spec`/asset เลย (สร้าง instance ใหม่เฉพาะตอนต้อง fallback จริง) — designer ที่ authored
-// spec.effect ใหม่แล้วจะ override legacy field ให้เองทันทีเพราะเช็ค `spec.effect != null` ก่อนเสมอ
-// legacy field ที่ไม่เคยใช้อีกเลยหลัง author ใหม่ก็แค่เป็น dead data นอนอยู่เฉยๆ ปลอดภัย.
-//
-// ใช้แพทเทิร์นนี้ที่:
-// - ApplyStatusSkillPayloadDef.StatusApplication / .ConditionalStatus
-// - TauntSkillPayloadDef.ConditionalStatus
-// - HealAreaStep.ConditionalStatus
-// - PassiveActionDefinition (statusEffect/statusInitialStacks → statusSpec, method ชื่อ ResolvedStatusSpec())
-// - ApplyStatusPickupEffectDef (effect/stacks → spec, บน ScriptableObject ตรงๆ ไม่ใช่ nested class)
-//
-// ApplyStatusOnHitModule.StatusApplication ไม่ต้องทำ — ไม่มี asset ไหนอ้างอิง GUID ของไฟล์นี้เลย (เช็คแล้ว)
-// เลย nest StatusApplicationSpec ตรงๆ ได้โดยไม่มีความเสี่ยงข้อมูลหาย.

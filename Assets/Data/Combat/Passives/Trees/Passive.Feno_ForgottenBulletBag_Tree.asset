@@ -62,7 +62,7 @@ MonoBehaviour:
     displayName: "\u0E43\u0E2A\u0E48\u0E01\u0E23\u0E30\u0E2A\u0E38\u0E19\u0E2A\u0E33\u0E23\u0E2D\u0E07\u0E44\u0E14\u0E49"
     description: Picking up ammo also tops off reserve ammo, not just the magazine.
     icon: {fileID: 21300000, guid: 20443bf3ec9f7f54889edb92e7653b18, type: 3}
-    uiPosition: {x: 489.99994, y: 37.20002}
+    uiPosition: {x: 490, y: 37}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
@@ -76,7 +76,7 @@ MonoBehaviour:
     displayName: "\u0E40\u0E01\u0E47\u0E1A\u0E41\u0E25\u0E49\u0E27 Atk Up"
     description: Collecting a bullet grants a temporary attack boost.
     icon: {fileID: 21300000, guid: 1cc7081bbb4a4894abea9320a39333c4, type: 3}
-    uiPosition: {x: 673.19995, y: 175.15}
+    uiPosition: {x: 673, y: 176}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1

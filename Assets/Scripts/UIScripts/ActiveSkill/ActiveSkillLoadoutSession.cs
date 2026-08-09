@@ -151,8 +151,11 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
             result = _runtimeProgress.TryUnlock(slotId, optionId, tree, nodeId, out reason);
         else
         {
-            result = _model.TryUnlock(slotId, optionId, tree, nodeId, out reason);
-            if (result)
+            // CanUnlock can reconcile stale progress (refund a removed node, merge duplicate
+            // entries) before rejecting the unlock. Persist that even on failure, or the
+            // refunded points shown in memory vanish next time this state is loaded.
+            result = _model.TryUnlock(slotId, optionId, tree, nodeId, out reason, out bool changed);
+            if (changed)
                 SaveLobbyState();
         }
 
@@ -174,8 +177,8 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
             result = _runtimeProgress.ResetTree(slotId, optionId, tree, out refundedPoints);
         else
         {
-            result = _model.ResetTree(slotId, optionId, tree, out refundedPoints);
-            if (result)
+            result = _model.ResetTree(slotId, optionId, tree, out refundedPoints, out bool changed);
+            if (changed)
                 SaveLobbyState();
         }
 

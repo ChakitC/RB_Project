@@ -71,10 +71,17 @@ public sealed class CompositeSkillPayloadDef : SkillPayloadDef
 
         bool sawProjectileOrHitboxPayload = false;
         bool sawAnimationOwningPayload = false;
+        var ownedPayloads = new HashSet<SkillPayloadDef>();
 
         for (int i = 0; i < steps.Count; i++)
         {
             SkillEffectStep step = steps[i];
+            if (step == null)
+            {
+                issues.Add($"Composite step {i} has no step data assigned.");
+                continue;
+            }
+
             if (step is not PayloadStep payloadStep)
                 continue;
 
@@ -82,6 +89,12 @@ public sealed class CompositeSkillPayloadDef : SkillPayloadDef
             if (wrapped == null)
             {
                 issues.Add($"Composite step {i} is a PayloadStep with no payload assigned.");
+                continue;
+            }
+
+            if (!ownedPayloads.Add(wrapped))
+            {
+                issues.Add($"Composite step {i} reuses a payload already owned by another PayloadStep. Each PayloadStep must own a unique embedded payload.");
                 continue;
             }
 

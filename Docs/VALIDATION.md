@@ -102,6 +102,31 @@ tree or the selected node's data changes, so it does not re-run every repaint.
 `CheckAssemblyBuild.ps1` does not compile them. Verify changes to either file by opening Unity and
 running the validate menu / editor window, not by trusting a green `CheckAssemblyBuild.ps1` run.
 
+The tree editor's **Skill Steps** panel edits the owning skill's
+`CompositeSkillPayloadDef.steps` directly (add/reorder/remove/`requiredUpgradeId` only; deep
+payload fields still go through the skill Inspector). It is gated behind
+`SkillUpgradeTreeValidator.FindOwningAssets` resolving to exactly one `SkillGemDefinition` owner
+with an embedded composite root, and shares `SkillPayloadAssetUtility.CreateEmbeddedStepPayload` /
+`RemoveEmbeddedStepPayload` with the skill's own inspector so a step never ends up unassigned or
+orphaned. It tracks its own dirty/save state, separate from the tree asset's — closing the window
+or switching trees prompts to save/discard skill step changes independently of tree changes. The
+shared payload utility never calls global `AssetDatabase.SaveAssets()`; the invoking window owns
+the save boundary, so editing skill steps does not persist unrelated dirty assets.
+
+`Tools/RB/Skills/Validate Embedded Payloads` validates a payload ownership graph, not a fixed
+sub-asset count. A composite may own its embedded root plus one unique embedded payload per
+`PayloadStep`. Null/nested/external/duplicate child references and embedded payloads that are not
+reachable from the root are errors. Validation reports existing orphans without deleting them.
+Replacing or removing a Composite root deletes its reachable embedded descendants children-first
+with Undo support. The same validation pass reports a missing payload-required timeline marker
+(for example `TauntApply` or hitbox start/end) as an authoring error; direct `SkillEffectStep`
+implementations require no marker because they execute at the cast point.
+
+`CompositeSkillPayloadEditorTests` covers valid multi-payload graphs, orphan/external/duplicate
+ownership, recursive replacement/removal and Undo, scoped save behavior, Composite hitbox timeline
+authoring, and missing required timeline events. Run it in EditMode after changing Composite
+payload authoring or validation.
+
 # Weapon affix validation
 
 Run **Tools > Weapons > Affixes > Validate (Dry Run)** before builds. The build
@@ -114,4 +139,3 @@ On 2026-08-03 the focused EditMode suite passed 6/6 and
 `CheckAssemblyBuild.ps1` passed with 0 errors. The full EditMode run was blocked
 by the pre-existing `PartySpawnUnityTests` scene-open error for
 `Assets/Scenes/Map_Play_Pototype/State_1.unity`.
-

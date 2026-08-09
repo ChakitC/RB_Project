@@ -82,7 +82,11 @@ public sealed class SkillUpgradeStatSnapshot
                     stats.areaRadius = Apply(stats.areaRadius, aggregate);
                     break;
                 case StatType.ProjectileCount:
-                    stats.projectileCount = Mathf.RoundToInt(Apply(stats.projectileCount, aggregate));
+                    // Mathf.RoundToInt uses banker's rounding (2.5 -> 2), so a x1.5 modifier
+                    // would add a projectile to a 1-count skill but nothing to a 2-count skill.
+                    // Round .5 up consistently instead, and never go negative.
+                    stats.projectileCount = Mathf.Max(0,
+                        Mathf.FloorToInt(Apply(stats.projectileCount, aggregate) + 0.5f));
                     break;
                 case StatType.ManaCost:
                     stats.manaCost = Apply(stats.manaCost, aggregate);

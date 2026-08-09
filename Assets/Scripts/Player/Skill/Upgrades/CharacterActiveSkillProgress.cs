@@ -63,8 +63,15 @@ public sealed class CharacterActiveSkillProgress : MonoBehaviour
         out string reason)
     {
         EnsureModel();
-        if (!_model.TryUnlock(slotId, optionId, tree, nodeId, out reason))
+        if (!_model.TryUnlock(slotId, optionId, tree, nodeId, out reason, out bool changed))
+        {
+            // CanUnlock can reconcile stale progress (refund a removed node, merge duplicate
+            // entries) before rejecting the unlock itself. Persist that reconciliation even
+            // though the unlock failed, or the refunded points shown in memory vanish on reload.
+            if (changed)
+                SaveAndNotify();
             return false;
+        }
 
         SaveState();
         NotifyChanged(slotId, optionId);
@@ -78,8 +85,12 @@ public sealed class CharacterActiveSkillProgress : MonoBehaviour
         out int refundedPoints)
     {
         EnsureModel();
-        if (!_model.ResetTree(slotId, optionId, tree, out refundedPoints))
+        if (!_model.ResetTree(slotId, optionId, tree, out refundedPoints, out bool changed))
+        {
+            if (changed)
+                SaveAndNotify();
             return false;
+        }
 
         SaveState();
         NotifyChanged(slotId, optionId);

@@ -21,13 +21,12 @@ MonoBehaviour:
     displayName: Quick Sip
     description: CastTime x 0.85
     icon: {fileID: 21300000, guid: 776300975d7e66e499e9f18138d7e07c, type: 3}
-    uiPosition: {x: -96.40003, y: 780.7181}
+    uiPosition: {x: -93, y: 781}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds: []
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers:
     - stat: 4
       add: 0
@@ -37,14 +36,13 @@ MonoBehaviour:
     displayName: Cooldown Reduction
     description: Cooldown x 0.9
     icon: {fileID: 21300000, guid: d911e0833a3d1e84b8d853f712b598fe, type: 3}
-    uiPosition: {x: -96.40003, y: 595.6844}
+    uiPosition: {x: -96, y: 596}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
     - trunk_cast_speed
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers:
     - stat: 5
       add: 0
@@ -61,7 +59,6 @@ MonoBehaviour:
     requiredNodeIds:
     - trunk_cooldown_1
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers:
     - stat: 1
       add: 0
@@ -71,14 +68,13 @@ MonoBehaviour:
     displayName: Longer Duration
     description: EffectDuration x 1.3
     icon: {fileID: 21300000, guid: f56f556a4d4547f459ab02c0327fcb3e, type: 3}
-    uiPosition: {x: -107.99994, y: 237.54991}
+    uiPosition: {x: -108, y: 245}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
     - trunk_radius_1
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers:
     - stat: 22
       add: 0
@@ -88,14 +84,13 @@ MonoBehaviour:
     displayName: Stagger Power
     description: StaggerPower + 15
     icon: {fileID: 21300000, guid: 1cc7081bbb4a4894abea9320a39333c4, type: 3}
-    uiPosition: {x: -112.39994, y: 69.61687}
+    uiPosition: {x: -108, y: 70}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
     - trunk_duration_1
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers:
     - stat: 19
       add: 15
@@ -105,14 +100,13 @@ MonoBehaviour:
     displayName: Invite to Tea Table
     description: Branch gate. Unlocks access to one of the three exclusive branches.
     icon: {fileID: 21300000, guid: 20443bf3ec9f7f54889edb92e7653b18, type: 3}
-    uiPosition: {x: -120.39994, y: -124.4668}
+    uiPosition: {x: -64, y: -129}
     visualScale: 1.5
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
     - trunk_stagger
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers: []
     grantedUpgradeIds: []
   - nodeId: a_gate
@@ -129,7 +123,6 @@ MonoBehaviour:
     mutuallyExclusiveNodeIds:
     - b_gate
     - c_gate
-    skillLevelDelta: 0
     statModifiers: []
     grantedUpgradeIds:
     - aires3.self_guard
@@ -137,14 +130,13 @@ MonoBehaviour:
     displayName: Greater Self Heal
     description: HealPower x 1.4 - scales the base self-heal burst.
     icon: {fileID: 21300000, guid: 9c732ca0d9059a94ba620c24162171e8, type: 3}
-    uiPosition: {x: -1122.8, y: -585.2}
+    uiPosition: {x: -1123, y: -581}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
     - a_gate
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers:
     - stat: 23
       add: 0
@@ -154,14 +146,13 @@ MonoBehaviour:
     displayName: Unshaken Brew
     description: Adds Aires3_Unshaken (Stability) alongside the self buff.
     icon: {fileID: 21300000, guid: 34d2bfe6139c67c42853f26af603a567, type: 3}
-    uiPosition: {x: -829.2001, y: -619.6}
+    uiPosition: {x: -825, y: -620}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
     - a_gate
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers: []
     grantedUpgradeIds:
     - aires3.unshaken
@@ -169,14 +160,13 @@ MonoBehaviour:
     displayName: Strength in Numbers
     description: Self buff gains +1 stack per enemy in radius at cast point, capped.
     icon: {fileID: 21300000, guid: d7af538e37c23024dbd450cf105f2ab1, type: 3}
-    uiPosition: {x: -536.4, y: -580.8}
+    uiPosition: {x: -534, y: -573.6}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
     - a_gate
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers: []
     grantedUpgradeIds:
     - aires3.crowd_scaling
@@ -184,7 +174,7 @@ MonoBehaviour:
     displayName: 'On Use: Enemy Def Down'
     description: Taunted enemies also get Aires3_ArmorShred.
     icon: {fileID: 21300000, guid: 4721a803f62d26f468b3374c00edaf22, type: 3}
-    uiPosition: {x: -103.6, y: -578.80005}
+    uiPosition: {x: -39.80002, y: -625.9999}
     visualScale: 1.5
     cost: 1
     requiredCharacterLevel: 1
@@ -193,7 +183,6 @@ MonoBehaviour:
     mutuallyExclusiveNodeIds:
     - a_gate
     - c_gate
-    skillLevelDelta: 0
     statModifiers: []
     grantedUpgradeIds:
     - aires3.def_shred
@@ -201,14 +190,13 @@ MonoBehaviour:
     displayName: Expose Weakness
     description: Taunted enemies also get Aires3_Weakpoint (+% damage taken).
     icon: {fileID: 21300000, guid: 0cbfb537e3ff09748a52950b3447f601, type: 3}
-    uiPosition: {x: -308.4, y: -739.19995}
+    uiPosition: {x: -331.13403, y: -916.944}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
     - b_gate
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers: []
     grantedUpgradeIds:
     - aires3.weakpoint
@@ -216,14 +204,13 @@ MonoBehaviour:
     displayName: Scalding Tea
     description: Self buff gains Aires3_Thorns (reflect via OnTakeDamage triggerRule).
     icon: {fileID: 21300000, guid: 92affbcce5d4c5743863b750381d0162, type: 3}
-    uiPosition: {x: -38.79995, y: -831.6}
+    uiPosition: {x: -63.134018, y: -1010.54395}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
     - b_gate
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers: []
     grantedUpgradeIds:
     - aires3.thorns
@@ -231,14 +218,13 @@ MonoBehaviour:
     displayName: Herd Together
     description: Taunted enemies also get Aires3_Gathered (MoveSpeed down).
     icon: {fileID: 21300000, guid: 8149cdf957d609644a2e72f38a24f410, type: 3}
-    uiPosition: {x: 237.99997, y: -778}
+    uiPosition: {x: 213.66594, y: -956.144}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
     - b_gate
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers: []
     grantedUpgradeIds:
     - aires3.gather
@@ -246,7 +232,7 @@ MonoBehaviour:
     displayName: 'On Use: Heal Ally & Ally Def Up'
     description: HealAreaStep heals allies and applies Aires3_AllyGuard.
     icon: {fileID: 21300000, guid: fb2fed350ab6fea449a72304ef5682d1, type: 3}
-    uiPosition: {x: 694.8, y: -254.80005}
+    uiPosition: {x: 719.20123, y: -314}
     visualScale: 1.5
     cost: 1
     requiredCharacterLevel: 1
@@ -255,7 +241,6 @@ MonoBehaviour:
     mutuallyExclusiveNodeIds:
     - a_gate
     - b_gate
-    skillLevelDelta: 0
     statModifiers: []
     grantedUpgradeIds:
     - aires3.ally_support
@@ -270,7 +255,6 @@ MonoBehaviour:
     requiredNodeIds:
     - c_gate
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers: []
     grantedUpgradeIds:
     - aires3.ally_regen
@@ -278,14 +262,13 @@ MonoBehaviour:
     displayName: Strong Brew
     description: Ally buff also gets Aires3_AllyGuard_Plus.
     icon: {fileID: 21300000, guid: 8dc83045d0cc5c24b9552550de2c7287, type: 3}
-    uiPosition: {x: 682, y: -617.6001}
+    uiPosition: {x: 683, y: -620}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1
     requiredNodeIds:
     - c_gate
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers: []
     grantedUpgradeIds:
     - aires3.strong_guard
@@ -300,7 +283,6 @@ MonoBehaviour:
     requiredNodeIds:
     - c_gate
     mutuallyExclusiveNodeIds: []
-    skillLevelDelta: 0
     statModifiers:
     - stat: 23
       add: 0

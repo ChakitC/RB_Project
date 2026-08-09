@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEditor.Experimental.GraphView;
 using UnityEditor.UIElements;
+using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -19,6 +20,19 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
     bool _dirty;
     List<SkillUpgradeValidationIssue> _cachedIssues = new();
     bool _issuesDirty = true;
+    List<SkillDefinitionBase> _cachedOwners;
+
+    // Composite step panel state. Kept separate from the tree's own _dirty/save lifecycle
+    // because it edits a different asset (the owning skill), on its own save/revert path.
+    bool _showSkillSteps;
+    CompositeSkillPayloadDef _stepsComposite;
+    SerializedObject _serializedComposite;
+    bool _skillDirty;
+    SkillGemDefinition _skillDirtyTarget;
+    Type _pendingStepType;
+    Type _pendingStepPayloadType;
+    static List<Type> _cachedStepTypes;
+    readonly HashSet<SkillEffectStep> _expandedSteps = new();
 
     [MenuItem("Tools/RB/Skills/Active Skill Tree Editor")]
     public static ActiveSkillTreeEditorWindow Open()
@@ -56,6 +70,40 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
             else
                 RevertTreeFromDisk();
         }
+
+        PromptSaveSkillSteps();
+    }
+
+    void PromptSaveSkillSteps()
+    {
+        if (!_skillDirty || _skillDirtyTarget == null)
+            return;
+
+        if (EditorUtility.DisplayDialog(
+                "Unsaved Skill Steps",
+                $"Save composite step changes to '{_skillDirtyTarget.name}' before closing?",
+                "Save",
+                "Discard"))
+            AssetDatabase.SaveAssetIfDirty(_skillDirtyTarget);
+        else
+            RevertSkillFromDisk();
+
+        _skillDirty = false;
+        _skillDirtyTarget = null;
+    }
+
+    void RevertSkillFromDisk()
+    {
+        if (_skillDirtyTarget == null)
+            return;
+
+        string path = AssetDatabase.GetAssetPath(_skillDirtyTarget);
+        if (!string.IsNullOrWhiteSpace(path))
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+
+        // The revert-by-reimport above can replace the composite's in-memory instance; drop the
+        // cached SerializedObject so the panel re-resolves everything from skill.payload.
+        ClearStepsCache();
     }
 
     void BuildUi()
@@ -77,12 +125,22 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         toolbar.Add(new ToolbarButton(() => _graph?.FrameAll()) { text = "Frame All" });
         toolbar.Add(new ToolbarButton(ValidateTree) { text = "Validate" });
         toolbar.Add(new ToolbarButton(SaveTree) { text = "Save" });
+
+        _showSkillSteps = false;
+        var skillStepsToggle = new ToolbarToggle { text = "Skill Steps" };
+        skillStepsToggle.RegisterValueChangedCallback(evt =>
+        {
+            _showSkillSteps = evt.newValue;
+            _inspector?.MarkDirtyRepaint();
+        });
+        toolbar.Add(skillStepsToggle);
         rootVisualElement.Add(toolbar);
 
         var split = new TwoPaneSplitView(0, 680f, TwoPaneSplitViewOrientation.Horizontal);
         _graph = new SkillTreeGraphView();
         _graph.NodeSelected = SelectNode;
         _graph.GraphMutated = MarkDirty;
+        _graph.AddNodeRequested = AddNode;
         split.Add(_graph);
 
         _inspector = new IMGUIContainer(DrawInspector);
@@ -104,11 +162,18 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
                 RevertTreeFromDisk();
         }
 
+        if (tree != _tree)
+            PromptSaveSkillSteps();
+
         _tree = tree;
         _selectedNode = null;
         _serializedTree = _tree != null ? new SerializedObject(_tree) : null;
         _dirty = false;
         _issuesDirty = true;
+        _cachedOwners = null;
+        ClearStepsCache();
+        _pendingStepType = null;
+        _pendingStepPayloadType = null;
         if (_assetField != null)
             _assetField.SetValueWithoutNotify(_tree);
         _graph?.Load(_tree);
@@ -133,19 +198,24 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         SetTree(tree);
     }
 
-    void AddNode()
+    void AddNode() => AddNode(_graph != null ? _graph.GetViewCenter() : Vector2.zero, null);
+
+    void AddNode(Vector2 position, string grantedUpgradeId)
     {
         if (_tree == null)
             return;
 
         Undo.RecordObject(_tree, "Add Active Skill Node");
         _tree.nodes ??= new List<SkillUpgradeNodeData>();
+        string seed = string.IsNullOrWhiteSpace(grantedUpgradeId) ? "node" : grantedUpgradeId;
         var node = new SkillUpgradeNodeData
         {
-            nodeId = CreateUniqueNodeId("node"),
-            displayName = "Upgrade Node",
-            uiPosition = _graph != null ? _graph.GetViewCenter() : Vector2.zero,
+            nodeId = CreateUniqueNodeId(seed),
+            displayName = string.IsNullOrWhiteSpace(grantedUpgradeId) ? "Upgrade Node" : grantedUpgradeId,
+            uiPosition = position,
         };
+        if (!string.IsNullOrWhiteSpace(grantedUpgradeId))
+            node.grantedUpgradeIds.Add(grantedUpgradeId);
         _tree.nodes.Add(node);
         MarkDirty();
         _graph.Load(_tree);
@@ -186,6 +256,12 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
             return;
         }
 
+        if (_showSkillSteps)
+        {
+            DrawSkillStepsPanel();
+            return;
+        }
+
         _serializedTree.Update();
         if (_selectedNode == null)
         {
@@ -219,11 +295,21 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         DrawNodeIssues();
     }
 
+    // FindOwningAssets scans every SkillDefinitionBase/CharacterStats asset in the project, so
+    // callers that recompute per repaint/keystroke (validation cache, the steps panel) must share
+    // this cache instead of re-scanning each time.
+    List<SkillDefinitionBase> ResolveOwners()
+    {
+        if (_cachedOwners == null && _tree != null)
+            _cachedOwners = new List<SkillDefinitionBase>(SkillUpgradeTreeValidator.FindOwningAssets(_tree));
+        return _cachedOwners ?? new List<SkillDefinitionBase>();
+    }
+
     void DrawNodeIssues()
     {
         if (_issuesDirty)
         {
-            _cachedIssues = SkillUpgradeTreeValidator.Validate(_tree);
+            _cachedIssues = SkillUpgradeTreeValidator.Validate(_tree, ResolveOwners());
             _issuesDirty = false;
         }
 
@@ -257,7 +343,11 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         if (_tree == null)
             return;
 
-        List<SkillUpgradeValidationIssue> issues = SkillUpgradeTreeValidator.Validate(_tree);
+        // Explicit Validate click: refresh the owner cache so renamed/added skill assets are seen.
+        _cachedOwners = new List<SkillDefinitionBase>(SkillUpgradeTreeValidator.FindOwningAssets(_tree));
+        List<SkillUpgradeValidationIssue> issues = SkillUpgradeTreeValidator.Validate(_tree, _cachedOwners);
+        _cachedIssues = issues;
+        _issuesDirty = false;
         if (issues.Count == 0)
         {
             Debug.Log($"[ActiveSkillTree] '{_tree.name}' is valid.", _tree);
@@ -276,12 +366,19 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
 
     void SaveTree()
     {
-        if (_tree == null)
-            return;
+        if (_tree != null)
+        {
+            EditorUtility.SetDirty(_tree);
+            AssetDatabase.SaveAssetIfDirty(_tree);
+            _dirty = false;
+        }
 
-        EditorUtility.SetDirty(_tree);
-        AssetDatabase.SaveAssetIfDirty(_tree);
-        _dirty = false;
+        if (_skillDirty && _skillDirtyTarget != null)
+        {
+            AssetDatabase.SaveAssetIfDirty(_skillDirtyTarget);
+            _skillDirty = false;
+            _skillDirtyTarget = null;
+        }
     }
 
     void RevertTreeFromDisk()
@@ -312,6 +409,11 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         _serializedTree = new SerializedObject(_tree);
         _issuesDirty = true;
         _graph?.Load(_tree);
+
+        // An undo/redo can destroy or replace the composite the steps panel was targeting;
+        // drop the cache so DrawSkillStepsPanel re-resolves it from the owning skill's payload.
+        ClearStepsCache();
+
         _inspector?.MarkDirtyRepaint();
     }
 
@@ -328,6 +430,469 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         return candidate;
     }
 
+    #region Skill Steps Panel
+
+    void DrawSkillStepsPanel()
+    {
+        List<SkillDefinitionBase> owners = ResolveOwners();
+        if (owners.Count == 0)
+        {
+            EditorGUILayout.HelpBox(
+                "No skill or passive currently points its Upgrade Tree at this asset.",
+                MessageType.Warning);
+            return;
+        }
+
+        if (owners.Count > 1)
+        {
+            string names = string.Join(", ", owners.Select(o => o.name));
+            EditorGUILayout.HelpBox(
+                $"This tree is shared by {owners.Count} skills/passives ({names}). Composite step " +
+                "editing is disabled here to avoid editing the wrong owner's steps -- open the " +
+                "skill asset directly instead.",
+                MessageType.Warning);
+            return;
+        }
+
+        if (owners[0] is not SkillGemDefinition skill)
+        {
+            EditorGUILayout.HelpBox(
+                $"This tree is owned by '{owners[0].name}', a Passive definition. Passives have " +
+                "no execution steps to author.",
+                MessageType.Info);
+            return;
+        }
+
+        if (skill.payload == null)
+        {
+            DrawSkillStepsBlocked(skill, "This skill has no execution payload yet. Create one in the skill Inspector.");
+            return;
+        }
+
+        if (!SkillPayloadAssetUtility.IsEmbedded(skill, skill.payload))
+        {
+            DrawSkillStepsBlocked(skill, "This skill's execution payload is not embedded correctly. Fix it in the skill Inspector.");
+            return;
+        }
+
+        if (skill.payload is not CompositeSkillPayloadDef composite)
+        {
+            DrawSkillStepsBlocked(skill,
+                $"This skill's execution is a single {SkillPayloadAssetUtility.GetPayloadDisplayName(skill.payload.GetType())}. " +
+                "Change its Execution Type to Composite in the skill Inspector to author steps.");
+            return;
+        }
+
+        DrawCompositeSteps(skill, composite);
+    }
+
+    void DrawSkillStepsBlocked(SkillGemDefinition skill, string message)
+    {
+        EditorGUILayout.HelpBox(message, MessageType.Info);
+        if (GUILayout.Button("Select Skill Asset"))
+        {
+            Selection.activeObject = skill;
+            EditorGUIUtility.PingObject(skill);
+        }
+    }
+
+    void EnsureStepsSerializedObject(CompositeSkillPayloadDef composite)
+    {
+        if (_stepsComposite == composite && _serializedComposite != null)
+            return;
+
+        _stepsComposite = composite;
+        _serializedComposite = composite != null ? new SerializedObject(composite) : null;
+
+        // A freshly constructed SerializedObject's first Update() can pull in load-time schema
+        // normalization (e.g. legacy managed-reference data upgrading to the current class
+        // shape -- the same phenomenon that silently added ConditionalStatus.spec blocks to
+        // Aires_Skill_3.asset on an earlier resave). ApplyModifiedProperties() then reports that
+        // as a real change even though nothing was edited. Absorb it once here, right after
+        // acquiring the SerializedObject, so merely opening/viewing the panel after a domain
+        // reload doesn't spuriously mark the skill dirty and trigger the save-on-close prompt.
+        if (_serializedComposite != null)
+        {
+            _serializedComposite.Update();
+            _serializedComposite.ApplyModifiedProperties();
+        }
+    }
+
+    // Mutations can invalidate the SerializedObject's managed-reference view, so every structural
+    // change drops the cache rather than trying to track step identity churn.
+    void ClearStepsCache()
+    {
+        _stepsComposite = null;
+        _serializedComposite = null;
+        _expandedSteps.Clear();
+    }
+
+    void DrawCompositeSteps(SkillGemDefinition skill, CompositeSkillPayloadDef composite)
+    {
+        EnsureStepsSerializedObject(composite);
+        _serializedComposite.Update();
+        SerializedProperty stepsProp = _serializedComposite.FindProperty("steps");
+
+        EditorGUILayout.LabelField($"Composite Steps ({stepsProp.arraySize})", EditorStyles.boldLabel);
+        EditorGUILayout.HelpBox(
+            "Add, reorder, remove, and gate steps here. Expand a step to edit its own fields " +
+            "(e.g. HealArea's target/status lists). A PayloadStep's wrapped payload fields " +
+            "(prefabs, numbers) are edited on the skill asset -- use the buttons below to jump " +
+            "straight to it.",
+            MessageType.None);
+
+        if (GUILayout.Button("Select Skill Asset"))
+        {
+            Selection.activeObject = skill;
+            EditorGUIUtility.PingObject(skill);
+        }
+
+        EditorGUILayout.Space(4f);
+
+        int stepCount = stepsProp.arraySize;
+        for (int i = 0; i < stepCount; i++)
+            DrawStepRow(skill, composite, stepsProp, i, stepCount);
+
+        if (_serializedComposite.ApplyModifiedProperties())
+        {
+            EditorUtility.SetDirty(composite);
+            EditorUtility.SetDirty(skill);
+            _skillDirty = true;
+            _skillDirtyTarget = skill;
+        }
+
+        EditorGUILayout.Space(8f);
+        DrawAddStepRow(skill, composite);
+    }
+
+    void DrawStepRow(
+        SkillGemDefinition skill,
+        CompositeSkillPayloadDef composite,
+        SerializedProperty stepsProp,
+        int index,
+        int count)
+    {
+        SerializedProperty stepProp = stepsProp.GetArrayElementAtIndex(index);
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+        var stepInstance = stepProp.managedReferenceValue as SkillEffectStep;
+        if (stepInstance == null)
+        {
+            EditorGUILayout.HelpBox(
+                $"Step {index} has no data (missing type or an aborted add). Remove it.",
+                MessageType.Error);
+        }
+        else
+        {
+            string typeLabel = GetStepDisplayName(stepInstance.GetType());
+            var payloadStep = stepInstance as PayloadStep;
+            string extra = string.Empty;
+            if (payloadStep != null)
+            {
+                extra = payloadStep.Payload != null
+                    ? $" -> {SkillPayloadAssetUtility.GetPayloadDisplayName(payloadStep.Payload.GetType())}"
+                    : " -> <no payload assigned>";
+            }
+            else if (stepInstance is HealAreaStep)
+            {
+                // Two HealAreaStep entries with the same collapsed label ("HealArea") are
+                // otherwise indistinguishable without expanding both -- show which target they
+                // heal right in the header, same as PayloadStep shows its wrapped payload type.
+                SerializedProperty targetProp = stepProp.FindPropertyRelative("target");
+                if (targetProp != null)
+                    extra = $" ({(HealTargetMode)targetProp.enumValueIndex})";
+            }
+
+            bool expanded = _expandedSteps.Contains(stepInstance);
+            bool nextExpanded = EditorGUILayout.Foldout(expanded, $"Step {index}: {typeLabel}{extra}", true);
+            if (nextExpanded != expanded)
+            {
+                if (nextExpanded)
+                    _expandedSteps.Add(stepInstance);
+                else
+                    _expandedSteps.Remove(stepInstance);
+                expanded = nextExpanded;
+                // Nudge IMGUIContainer to re-measure promptly on the frame the content height
+                // actually changes, rather than waiting for whatever next triggers a repaint.
+                _inspector?.MarkDirtyRepaint();
+            }
+
+            if (!expanded)
+            {
+                SerializedProperty idProp = stepProp.FindPropertyRelative("requiredUpgradeId");
+                if (idProp != null)
+                    EditorGUILayout.PropertyField(idProp, new GUIContent("Required Upgrade Id"));
+            }
+            else
+            {
+                // Draws every visible field on the step, including requiredUpgradeId -- the
+                // HideInInspector legacy fields on HealAreaStep.ConditionalStatus stay hidden
+                // because PropertyField already honors that attribute.
+                EditorGUI.indentLevel++;
+                EditorGUILayout.PropertyField(stepProp, true);
+                EditorGUI.indentLevel--;
+
+                if (payloadStep != null)
+                {
+                    EditorGUILayout.Space(2f);
+                    if (payloadStep.Payload == null)
+                    {
+                        EditorGUILayout.HelpBox("No payload assigned to this step.", MessageType.Warning);
+                    }
+                    else
+                    {
+                        var issues = new List<string>();
+                        payloadStep.Payload.CollectValidationIssues(issues);
+                        if (issues.Count > 0)
+                            EditorGUILayout.HelpBox(string.Join("\n", issues), MessageType.Error);
+
+                        // Deep payload fields (prefabs, numbers, status lists) are edited on the
+                        // skill asset, not inline here -- a nested Editor.OnInspectorGUI() call
+                        // drawn through an IMGUIContainer trips a still-open Unity engine bug
+                        // (ScrollView resets its scroll offset when a sibling IMGUIContainer's
+                        // measured height changes, which happens on every repaint while the
+                        // window has focus). Point at the payload instead of embedding it.
+                        SkillPayloadDef payload = payloadStep.Payload;
+                        if (GUILayout.Button($"Select '{SkillPayloadAssetUtility.GetPayloadDisplayName(payload.GetType())}' Payload"))
+                        {
+                            Selection.activeObject = payload;
+                            EditorGUIUtility.PingObject(payload);
+                        }
+                    }
+                }
+            }
+        }
+
+        using (new EditorGUILayout.HorizontalScope())
+        {
+            using (new EditorGUI.DisabledScope(index == 0))
+            {
+                if (GUILayout.Button("Up", GUILayout.Width(40f)))
+                {
+                    SkillGemDefinition capturedSkill = skill;
+                    CompositeSkillPayloadDef capturedComposite = composite;
+                    int capturedIndex = index;
+                    EditorApplication.delayCall += () => MoveStep(capturedSkill, capturedComposite, capturedIndex, -1);
+                }
+            }
+            using (new EditorGUI.DisabledScope(index == count - 1))
+            {
+                if (GUILayout.Button("Down", GUILayout.Width(50f)))
+                {
+                    SkillGemDefinition capturedSkill = skill;
+                    CompositeSkillPayloadDef capturedComposite = composite;
+                    int capturedIndex = index;
+                    EditorApplication.delayCall += () => MoveStep(capturedSkill, capturedComposite, capturedIndex, 1);
+                }
+            }
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Remove", GUILayout.Width(70f)))
+            {
+                SkillGemDefinition capturedSkill = skill;
+                CompositeSkillPayloadDef capturedComposite = composite;
+                int capturedIndex = index;
+                EditorApplication.delayCall += () => RemoveStep(capturedSkill, capturedComposite, capturedIndex);
+            }
+        }
+
+        EditorGUILayout.EndVertical();
+    }
+
+    void DrawAddStepRow(SkillGemDefinition skill, CompositeSkillPayloadDef composite)
+    {
+        List<Type> stepTypes = GetStepTypes();
+        if (stepTypes.Count == 0)
+        {
+            EditorGUILayout.HelpBox("No concrete SkillEffectStep types were found.", MessageType.Error);
+            return;
+        }
+
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        EditorGUILayout.LabelField("Add Step", EditorStyles.boldLabel);
+
+        _pendingStepType ??= stepTypes[0];
+        int stepIndex = Mathf.Max(0, stepTypes.IndexOf(_pendingStepType));
+        string[] stepNames = stepTypes.Select(GetStepDisplayName).ToArray();
+        int nextStepIndex = EditorGUILayout.Popup("Step Type", stepIndex, stepNames);
+        _pendingStepType = stepTypes[nextStepIndex];
+
+        Type payloadTypeToCreate = null;
+        bool needsPayload = typeof(PayloadStep).IsAssignableFrom(_pendingStepType);
+        if (needsPayload)
+        {
+            List<Type> payloadTypes = SkillPayloadAssetUtility.GetPayloadTypes()
+                .Where(t => t != typeof(CompositeSkillPayloadDef))
+                .ToList();
+            if (payloadTypes.Count == 0)
+            {
+                EditorGUILayout.HelpBox("No concrete SkillPayloadDef types were found.", MessageType.Error);
+            }
+            else
+            {
+                _pendingStepPayloadType ??= payloadTypes[0];
+                int payloadIndex = Mathf.Max(0, payloadTypes.IndexOf(_pendingStepPayloadType));
+                string[] payloadNames = payloadTypes.Select(SkillPayloadAssetUtility.GetPayloadDisplayName).ToArray();
+                int nextPayloadIndex = EditorGUILayout.Popup("Payload Type", payloadIndex, payloadNames);
+                _pendingStepPayloadType = payloadTypes[nextPayloadIndex];
+                payloadTypeToCreate = _pendingStepPayloadType;
+            }
+        }
+
+        using (new EditorGUI.DisabledScope(needsPayload && payloadTypeToCreate == null))
+        {
+            if (GUILayout.Button("Add"))
+            {
+                SkillGemDefinition capturedSkill = skill;
+                Type capturedStepType = _pendingStepType;
+                Type capturedPayloadType = payloadTypeToCreate;
+                EditorApplication.delayCall += () => AddStep(capturedSkill, capturedStepType, capturedPayloadType);
+            }
+        }
+
+        EditorGUILayout.EndVertical();
+    }
+
+    void AddStep(SkillGemDefinition skill, Type stepType, Type payloadType)
+    {
+        if (skill == null || skill.payload is not CompositeSkillPayloadDef composite || stepType == null)
+            return;
+
+        var so = new SerializedObject(composite);
+        so.Update();
+        SerializedProperty stepsProp = so.FindProperty("steps");
+        int index = stepsProp.arraySize;
+        stepsProp.InsertArrayElementAtIndex(index);
+        // InsertArrayElementAtIndex on a managed-reference array aliases the previous element's
+        // reference (or leaves null on an empty array) -- it does NOT create a fresh instance.
+        // Overwriting managedReferenceValue is mandatory, not defensive.
+        stepsProp.GetArrayElementAtIndex(index).managedReferenceValue = Activator.CreateInstance(stepType);
+        so.ApplyModifiedProperties();
+
+        if (payloadType != null)
+        {
+            SkillPayloadDef newPayload = SkillPayloadAssetUtility.CreateEmbeddedStepPayload(skill, composite, index, payloadType, null);
+            if (newPayload == null)
+                Debug.LogError($"[ActiveSkillTree] Failed to create embedded payload '{payloadType.FullName}' for the new step.", skill);
+
+            EditorUtility.SetDirty(composite);
+            EditorUtility.SetDirty(skill);
+            _skillDirty = true;
+            _skillDirtyTarget = skill;
+        }
+        else
+        {
+            EditorUtility.SetDirty(composite);
+            EditorUtility.SetDirty(skill);
+            _skillDirty = true;
+            _skillDirtyTarget = skill;
+        }
+
+        InternalEditorUtility.RepaintAllViews();
+        ClearStepsCache();
+        _inspector?.MarkDirtyRepaint();
+    }
+
+    void RemoveStep(SkillGemDefinition skill, CompositeSkillPayloadDef composite, int index)
+    {
+        if (skill == null || composite == null)
+            return;
+
+        IReadOnlyList<SkillEffectStep> steps = composite.Steps;
+        if (index < 0 || index >= steps.Count)
+            return;
+
+        SkillPayloadDef wrapped = steps[index] is PayloadStep payloadStep ? payloadStep.Payload : null;
+
+        Undo.IncrementCurrentGroup();
+        Undo.SetCurrentGroupName("Remove Composite Step");
+        int group = Undo.GetCurrentGroup();
+
+        var so = new SerializedObject(composite);
+        so.Update();
+        SerializedProperty stepsProp = so.FindProperty("steps");
+        // Order matters: delete the array element BEFORE destroying the wrapped payload object.
+        // Destroying first would leave the managed reference pointing at a destroyed object, and
+        // if the array delete then failed, the composite would carry a PayloadStep with a
+        // {fileID: 0} payload -- a blocking validation error.
+        int before = stepsProp.arraySize;
+        stepsProp.DeleteArrayElementAtIndex(index);
+        if (stepsProp.arraySize == before)
+            stepsProp.DeleteArrayElementAtIndex(index);
+        so.ApplyModifiedProperties();
+
+        if (wrapped != null &&
+            SkillPayloadAssetUtility.IsEmbedded(skill, wrapped) &&
+            !SkillPayloadAssetUtility.IsReferencedByComposite(composite, wrapped))
+        {
+            Undo.DestroyObjectImmediate(wrapped);
+        }
+
+        EditorUtility.SetDirty(composite);
+        EditorUtility.SetDirty(skill);
+        _skillDirty = true;
+        _skillDirtyTarget = skill;
+
+        Undo.CollapseUndoOperations(group);
+        InternalEditorUtility.RepaintAllViews();
+
+        ClearStepsCache();
+        _inspector?.MarkDirtyRepaint();
+    }
+
+    void MoveStep(SkillGemDefinition skill, CompositeSkillPayloadDef composite, int index, int delta)
+    {
+        if (skill == null || composite == null)
+            return;
+
+        IReadOnlyList<SkillEffectStep> steps = composite.Steps;
+        int target = index + delta;
+        if (index < 0 || index >= steps.Count || target < 0 || target >= steps.Count)
+            return;
+
+        var so = new SerializedObject(composite);
+        so.Update();
+        SerializedProperty stepsProp = so.FindProperty("steps");
+        stepsProp.MoveArrayElement(index, target);
+        so.ApplyModifiedProperties();
+
+        EditorUtility.SetDirty(composite);
+        EditorUtility.SetDirty(skill);
+        _skillDirty = true;
+        _skillDirtyTarget = skill;
+
+        InternalEditorUtility.RepaintAllViews();
+        ClearStepsCache();
+        _inspector?.MarkDirtyRepaint();
+    }
+
+    static List<Type> GetStepTypes()
+    {
+        if (_cachedStepTypes != null)
+            return _cachedStepTypes;
+
+        _cachedStepTypes = TypeCache.GetTypesDerivedFrom<SkillEffectStep>()
+            .Where(type => type != null && !type.IsAbstract && !type.IsGenericTypeDefinition)
+            .OrderBy(GetStepDisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return _cachedStepTypes;
+    }
+
+    static string GetStepDisplayName(Type stepType)
+    {
+        if (stepType == null)
+            return "None";
+
+        string name = stepType.Name;
+        const string suffix = "Step";
+        if (name.Length > suffix.Length && name.EndsWith(suffix, StringComparison.Ordinal))
+            name = name.Substring(0, name.Length - suffix.Length);
+
+        return name;
+    }
+
+    #endregion
+
     internal sealed class SkillTreeGraphView : GraphView
     {
         readonly Dictionary<string, SkillGraphNode> _nodes = new(StringComparer.Ordinal);
@@ -336,6 +901,9 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
 
         public Action<SkillUpgradeNodeData> NodeSelected;
         public Action GraphMutated;
+
+        // (position, grantedUpgradeId) -- grantedUpgradeId is null/blank for a blank node.
+        public Action<Vector2, string> AddNodeRequested;
 
         public SkillTreeGraphView()
         {
@@ -346,6 +914,33 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
             this.AddManipulator(new RectangleSelector());
             Insert(0, new GridBackground());
             graphViewChanged = HandleGraphChange;
+            RegisterCallback<ContextualMenuPopulateEvent>(BuildAddNodeMenu);
+        }
+
+        void BuildAddNodeMenu(ContextualMenuPopulateEvent evt)
+        {
+            if (_tree == null || AddNodeRequested == null)
+                return;
+
+            // Skip when right-clicking an existing node/port so its own default menu (Cut,
+            // Copy, Delete, ...) isn't cluttered with node-creation entries.
+            if (evt.target is VisualElement target && target.GetFirstAncestorOfType<Node>() != null)
+                return;
+
+            Vector2 graphPosition = contentViewContainer.WorldToLocal(evt.mousePosition);
+
+            evt.menu.AppendAction("Add Node/Blank", _ => AddNodeRequested(graphPosition, null));
+
+            List<string> ungranted = SkillUpgradeTreeValidator.GetUngrantedUpgradeIds(_tree);
+            if (ungranted.Count > 0)
+            {
+                evt.menu.AppendSeparator("Add Node/");
+                for (int i = 0; i < ungranted.Count; i++)
+                {
+                    string upgradeId = ungranted[i];
+                    evt.menu.AppendAction($"Add Node/Grants {upgradeId}", _ => AddNodeRequested(graphPosition, upgradeId));
+                }
+            }
         }
 
         public void Load(SkillUpgradeTreeDefinition tree)
@@ -537,20 +1132,24 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         public Port Input { get; }
         public Port Output { get; }
 
-        // uiPosition is authored as a centre point, converted to a top-left corner with this
-        // size. GetPosition() reports the *resolved* node size instead, so both directions must
-        // use AuthoredSize or every relayout nudges the node by half the size difference.
+        public Rect AuthoredPosition { get; private set; }
+
+        // uiPosition is authored as a centre point, converted to a top-left corner using this
+        // size. The rect a drag hands to SetPosition carries the node's *resolved* size instead,
+        // so the write-back must re-derive the centre from AuthoredSize -- otherwise every
+        // relayout nudges the node by half the difference between the two sizes.
         Vector2 AuthoredSize => BaseSize * Data.ResolvedVisualScale;
 
         public override void SetPosition(Rect newPos)
         {
+            AuthoredPosition = newPos;
             userData = newPos;
             base.SetPosition(newPos);
         }
 
         public void WritePositionBack()
         {
-            Data.uiPosition = GetPosition().position + AuthoredSize * 0.5f;
+            Data.uiPosition = AuthoredPosition.position + AuthoredSize * 0.5f;
         }
 
         public void RefreshTitle()

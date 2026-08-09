@@ -29,6 +29,13 @@ public static class SkillUpgradeTreeValidator
     const float ReadableScaleWarning = 0.65f;
 
     public static List<SkillUpgradeValidationIssue> Validate(SkillUpgradeTreeDefinition tree)
+        => Validate(tree, FindOwningAssets(tree));
+
+    // Owner discovery scans every SkillDefinitionBase and CharacterStats asset in the project
+    // (see FindOwningAssets), so callers that re-validate on every keystroke (the editor window)
+    // should compute owners once and pass them in here instead of using the 1-arg overload.
+    public static List<SkillUpgradeValidationIssue> Validate(
+        SkillUpgradeTreeDefinition tree, IReadOnlyList<SkillDefinitionBase> owners)
     {
         var issues = new List<SkillUpgradeValidationIssue>();
         if (tree == null)
@@ -47,7 +54,7 @@ public static class SkillUpgradeTreeValidator
             return issues;
         }
 
-        IReadOnlyList<SkillDefinitionBase> owners = FindOwningAssets(tree);
+        owners ??= FindOwningAssets(tree);
         bool hasOwner = owners.Count > 0;
         bool ownedByPassive = false;
         for (int ownerIndex = 0; ownerIndex < owners.Count; ownerIndex++)
@@ -320,6 +327,51 @@ public static class SkillUpgradeTreeValidator
         }
 
         return owners;
+    }
+
+    // Upgrade ids the owning skill(s) declare but that no node in this tree grants yet -- the
+    // same gap Validate() reports as a warning. Used by the graph's "Add Node" context menu so
+    // authoring a node for one of these ids is a single click instead of hunting the dropdown.
+    public static List<string> GetUngrantedUpgradeIds(SkillUpgradeTreeDefinition tree)
+    {
+        var result = new List<string>();
+        if (tree == null)
+            return result;
+
+        IReadOnlyList<SkillDefinitionBase> owners = FindOwningAssets(tree);
+        var declared = new List<string>();
+        for (int i = 0; i < owners.Count; i++)
+            owners[i]?.CollectUpgradeIds(declared);
+
+        var granted = new HashSet<string>(StringComparer.Ordinal);
+        if (tree.nodes != null)
+        {
+            for (int i = 0; i < tree.nodes.Count; i++)
+            {
+                List<string> grantedIds = tree.nodes[i]?.grantedUpgradeIds;
+                if (grantedIds == null)
+                    continue;
+
+                for (int j = 0; j < grantedIds.Count; j++)
+                {
+                    if (!string.IsNullOrWhiteSpace(grantedIds[j]))
+                        granted.Add(grantedIds[j].Trim());
+                }
+            }
+        }
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < declared.Count; i++)
+        {
+            string id = string.IsNullOrWhiteSpace(declared[i]) ? null : declared[i].Trim();
+            if (id == null || granted.Contains(id) || !seen.Add(id))
+                continue;
+
+            result.Add(id);
+        }
+
+        result.Sort(StringComparer.Ordinal);
+        return result;
     }
 
     public static IReadOnlyList<SkillGemDefinition> FindOwningSkills(SkillUpgradeTreeDefinition tree)

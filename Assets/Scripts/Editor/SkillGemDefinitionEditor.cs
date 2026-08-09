@@ -232,7 +232,7 @@ public sealed class SkillGemDefinitionEditor : OdinEditor
                 Type nextType = stepPayloadTypes[nextIndex];
                 if (wrapped == null || ConfirmPayloadReplacement(wrapped, nextType))
                 {
-                    SkillPayloadDef newWrapped = CreateEmbeddedStepPayload(skill, composite, i, nextType, wrapped);
+                    SkillPayloadDef newWrapped = SkillPayloadAssetUtility.CreateEmbeddedStepPayload(skill, composite, i, nextType, wrapped);
                     RefreshStepPayloadEditor(newWrapped);
                     GUIUtility.ExitGUI();
                 }
@@ -245,7 +245,7 @@ public sealed class SkillGemDefinitionEditor : OdinEditor
                     if (GUILayout.Button("Create Step Payload"))
                     {
                         Type createType = stepPayloadTypes[Mathf.Max(selectedIndex, 0)];
-                        SkillPayloadDef newWrapped = CreateEmbeddedStepPayload(skill, composite, i, createType, null);
+                        SkillPayloadDef newWrapped = SkillPayloadAssetUtility.CreateEmbeddedStepPayload(skill, composite, i, createType, null);
                         RefreshStepPayloadEditor(newWrapped);
                         GUIUtility.ExitGUI();
                     }
@@ -261,7 +261,7 @@ public sealed class SkillGemDefinitionEditor : OdinEditor
                                 "Remove",
                                 "Cancel"))
                         {
-                            RemoveEmbeddedStepPayload(skill, composite, i, wrapped);
+                            SkillPayloadAssetUtility.RemoveEmbeddedStepPayload(skill, composite, i, wrapped);
                             GUIUtility.ExitGUI();
                         }
                     }
@@ -291,64 +291,6 @@ public sealed class SkillGemDefinitionEditor : OdinEditor
         }
 
         PruneStepPayloadEditors(liveWrappedPayloads);
-    }
-
-    private SkillPayloadDef CreateEmbeddedStepPayload(
-        SkillGemDefinition skill,
-        CompositeSkillPayloadDef composite,
-        int stepIndex,
-        Type payloadType,
-        SkillPayloadDef previousWrapped)
-    {
-        string skillPath = AssetDatabase.GetAssetPath(skill);
-        if (string.IsNullOrEmpty(skillPath))
-            return null;
-
-        Undo.RecordObject(composite, "Replace Composite Step Payload");
-
-        var newPayload = ScriptableObject.CreateInstance(payloadType) as SkillPayloadDef;
-        if (newPayload == null)
-            return null;
-
-        newPayload.name = $"{SkillPayloadAssetUtility.GetPayloadDisplayName(payloadType)} Step Execution";
-        newPayload.hideFlags = HideFlags.None;
-
-        Undo.RegisterCreatedObjectUndo(newPayload, "Create Composite Step Payload");
-        AssetDatabase.AddObjectToAsset(newPayload, skill);
-        composite.SetStepPayload(stepIndex, newPayload);
-        EditorUtility.SetDirty(newPayload);
-        EditorUtility.SetDirty(composite);
-
-        if (previousWrapped != null &&
-            previousWrapped != newPayload &&
-            SkillPayloadAssetUtility.IsEmbedded(skill, previousWrapped))
-        {
-            Undo.DestroyObjectImmediate(previousWrapped);
-        }
-
-        AssetDatabase.SaveAssets();
-        AssetDatabase.ImportAsset(skillPath, ImportAssetOptions.ForceUpdate);
-        return newPayload;
-    }
-
-    private void RemoveEmbeddedStepPayload(
-        SkillGemDefinition skill,
-        CompositeSkillPayloadDef composite,
-        int stepIndex,
-        SkillPayloadDef wrapped)
-    {
-        string skillPath = AssetDatabase.GetAssetPath(skill);
-
-        Undo.RecordObject(composite, "Remove Composite Step Payload");
-        composite.SetStepPayload(stepIndex, null);
-        EditorUtility.SetDirty(composite);
-
-        if (wrapped != null && SkillPayloadAssetUtility.IsEmbedded(skill, wrapped))
-            Undo.DestroyObjectImmediate(wrapped);
-
-        AssetDatabase.SaveAssets();
-        if (!string.IsNullOrEmpty(skillPath))
-            AssetDatabase.ImportAsset(skillPath, ImportAssetOptions.ForceUpdate);
     }
 
     private UnityEditor.Editor RefreshStepPayloadEditor(SkillPayloadDef payload)

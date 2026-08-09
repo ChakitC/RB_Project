@@ -28,7 +28,11 @@ public sealed class ActiveSkillProgressModel
 
         _data.activeSkillProgressInitialized = true;
         int pointsPerLevel = _stats != null ? Mathf.Max(0, _stats.activeSkillPointsPerLevel) : 1;
-        int catchUpPoints = Mathf.Max(0, _characterLevel - 1) * pointsPerLevel;
+        int lifetimeGrant = Mathf.Max(0, _characterLevel - 1) * pointsPerLevel;
+        // Points already sunk into nodes are part of the lifetime grant; without subtracting
+        // them, catch-up would hand them out a second time on any save missing this flag.
+        int alreadySpent = SumAllPaidCost();
+        int catchUpPoints = Mathf.Max(0, lifetimeGrant - alreadySpent);
         _data.activeSkillPoints = Mathf.Max(_data.activeSkillPoints, catchUpPoints);
         return true;
     }
@@ -134,6 +138,32 @@ public sealed class ActiveSkillProgressModel
             }
         }
 
+        // Authoring is expected to keep exclusions reciprocal (the validator errors otherwise),
+        // but the runtime must not depend on that -- a one-way list would make the outcome
+        // depend on which of the two nodes the player unlocked first.
+        for (int i = 0; i < progress.unlockedNodes.Count; i++)
+        {
+            CharacterSkillUpgradeNodeSaveData saved = progress.unlockedNodes[i];
+            if (saved == null || !tree.TryGetNode(saved.nodeId, out SkillUpgradeNodeData unlocked) ||
+                unlocked.mutuallyExclusiveNodeIds == null)
+            {
+                continue;
+            }
+
+            for (int j = 0; j < unlocked.mutuallyExclusiveNodeIds.Count; j++)
+            {
+                string excludedByUnlocked = unlocked.mutuallyExclusiveNodeIds[j];
+                if (string.IsNullOrWhiteSpace(excludedByUnlocked) ||
+                    !string.Equals(excludedByUnlocked.Trim(), node.RuntimeNodeId, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                reason = $"Excludes node {saved.nodeId}. Respec to switch branches.";
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -143,8 +173,17 @@ public sealed class ActiveSkillProgressModel
         SkillUpgradeTreeDefinition tree,
         string nodeId,
         out string reason)
+        => TryUnlock(slotId, optionId, tree, nodeId, out reason, out _);
+
+    public bool TryUnlock(
+        string slotId,
+        string optionId,
+        SkillUpgradeTreeDefinition tree,
+        string nodeId,
+        out string reason,
+        out bool progressChanged)
     {
-        if (!CanUnlock(slotId, optionId, tree, nodeId, out reason, out _))
+        if (!CanUnlock(slotId, optionId, tree, nodeId, out reason, out progressChanged))
             return false;
 
         tree.TryGetNode(nodeId, out SkillUpgradeNodeData node);
@@ -158,6 +197,7 @@ public sealed class ActiveSkillProgressModel
         });
 
         _data.activeSkillPoints = Mathf.Max(0, AvailablePoints - paidCost);
+        progressChanged = true;
         return true;
     }
 
@@ -166,15 +206,24 @@ public sealed class ActiveSkillProgressModel
         string optionId,
         SkillUpgradeTreeDefinition tree,
         out int refundedPoints)
+        => ResetTree(slotId, optionId, tree, out refundedPoints, out _);
+
+    public bool ResetTree(
+        string slotId,
+        string optionId,
+        SkillUpgradeTreeDefinition tree,
+        out int refundedPoints,
+        out bool progressChanged)
     {
         refundedPoints = 0;
-        CharacterSkillTreeProgressSaveData progress = GetTreeProgress(slotId, optionId, tree, false, out _);
+        CharacterSkillTreeProgressSaveData progress = GetTreeProgress(slotId, optionId, tree, false, out progressChanged);
         if (progress == null || progress.unlockedNodes == null || progress.unlockedNodes.Count == 0)
             return false;
 
         refundedPoints = SumPaidCost(progress);
         progress.unlockedNodes.Clear();
         _data.activeSkillPoints = AvailablePoints + refundedPoints;
+        progressChanged = true;
         return true;
     }
 
@@ -267,6 +316,24 @@ public sealed class ActiveSkillProgressModel
         if (progress != null)
         {
             progress.unlockedNodes ??= new List<CharacterSkillUpgradeNodeSaveData>();
+
+            // A node removed from the tree asset while treeId stayed the same would otherwise
+            // keep its paidCost spent forever with no runtime effect (BuildSnapshot silently
+            // skips nodes TryGetNode can't find). Refund it the same way a tree replacement
+            // does. Dangling requiredNodeIds left behind by this are an authoring error the
+            // validator already catches -- dependents are deliberately not cascade-refunded.
+            for (int i = progress.unlockedNodes.Count - 1; i >= 0; i--)
+            {
+                CharacterSkillUpgradeNodeSaveData saved = progress.unlockedNodes[i];
+                if (saved != null && tree.TryGetNode(saved.nodeId, out _))
+                    continue;
+
+                if (saved != null)
+                    _data.activeSkillPoints = Mathf.Max(0, _data.activeSkillPoints) + Mathf.Max(0, saved.paidCost);
+                progress.unlockedNodes.RemoveAt(i);
+                changed = true;
+            }
+
             return progress;
         }
 
@@ -282,6 +349,14 @@ public sealed class ActiveSkillProgressModel
         _data.activeSkillTrees.Add(progress);
         changed = true;
         return progress;
+    }
+
+    int SumAllPaidCost()
+    {
+        int total = 0;
+        for (int i = 0; i < _data.activeSkillTrees.Count; i++)
+            total += SumPaidCost(_data.activeSkillTrees[i]);
+        return total;
     }
 
     void EnsureCollections()

@@ -11,11 +11,7 @@ using UnityEngine.UIElements;
 public static class ActiveSkillFeatureSmokeTests
 {
     [MenuItem("Tools/RB/Skills/Run Active Skill Core Smoke Tests")]
-    public static void RunFromMenu()
-    {
-        RunFromCommandLine();
-        EditorUtility.DisplayDialog("Active Skill Tests", "All core smoke tests passed.", "OK");
-    }
+    public static void RunFromMenu() => RunFromCommandLine();
 
     public static void RunFromCommandLine()
     {
@@ -23,6 +19,7 @@ public static class ActiveSkillFeatureSmokeTests
         try
         {
             TestCatchUpGrantsPointsOnce();
+            TestCatchUpSubtractsSpentPoints();
             TestPassiveOptionSharesSkillPool(assets);
             TestRequiredUpgradeIdGatesRule();
             TestMixedKindSlotFailsValidation(assets);
@@ -31,11 +28,15 @@ public static class ActiveSkillFeatureSmokeTests
             TestPrerequisitesSharedPoolAndVariantIsolation(assets);
             TestResetUsesPaidCost(assets);
             TestTreeMismatchRefundsRemovedNodes(assets);
+            TestRemovedNodeRefundsWithoutTreeIdChange(assets);
+            TestFailedUnlockStillReportsReconciliation(assets);
             TestDeterministicStatStacking(assets);
             TestGrantedUpgradeIdsSnapshotAggregation(assets);
             TestUnsupportedStatAggregatesWithoutAffectingActiveSkillOutput();
             TestMutuallyExclusiveNodesRejectCanUnlock(assets);
+            TestOneWayExclusionStillBlocksBothOrders(assets);
             TestEffectDurationAndHealPowerStatStacking();
+            TestProjectileCountRoundingIsConsistent();
             TestSkillTreeDefaultAndVariantOverride(assets);
             TestVisualScaleMetrics();
             TestRuntimeNodeVisualScaleAndFrameFallback();
@@ -77,6 +78,26 @@ public static class ActiveSkillFeatureSmokeTests
         Expect(model.TryUnlock("passive.feno.bag", "passive.feno.bulletbag", tree, "extra_drop", out string reason), reason);
         Equal(3, model.AvailablePoints,
             "Unlocking a node in a passive-owned tree must drain the same shared activeSkillPoints pool a skill tree uses.");
+    }
+
+    static void TestCatchUpSubtractsSpentPoints()
+    {
+        var data = new CharacterProgressData { level = 10 };
+        data.activeSkillTrees.Add(new CharacterSkillTreeProgressSaveData
+        {
+            slotId = "slot",
+            optionId = "variant",
+            treeId = "tree.spent",
+            unlockedNodes = new List<CharacterSkillUpgradeNodeSaveData>
+            {
+                new() { nodeId = "root", paidCost = 4 },
+            },
+        });
+        var model = new ActiveSkillProgressModel(null, data, data.level);
+
+        Expect(model.EnsureInitialized(), "Uninitialized progress with points already spent must still initialize once.");
+        Equal(5, model.AvailablePoints,
+            "Catch-up must grant (levels earned - already spent), not the full lifetime grant a second time.");
     }
 
     static void TestRequiredUpgradeIdGatesRule()
@@ -254,6 +275,64 @@ public static class ActiveSkillFeatureSmokeTests
         Equal(0, data.activeSkillTrees[0].unlockedNodes.Count, "Replacement tree must start empty.");
     }
 
+    static void TestRemovedNodeRefundsWithoutTreeIdChange(List<ScriptableObject> assets)
+    {
+        SkillUpgradeNodeData keptNode = Node("kept", 1);
+        keptNode.statModifiers.Add(new StatModifier { stat = StatType.Damage, add = 5f, mul = 1f });
+        SkillUpgradeTreeDefinition tree = CreateTree(assets, "tree.pruned", keptNode);
+        var data = InitializedData(2);
+        data.activeSkillTrees.Add(new CharacterSkillTreeProgressSaveData
+        {
+            slotId = "slot",
+            optionId = "variant",
+            treeId = "tree.pruned",
+            unlockedNodes = new List<CharacterSkillUpgradeNodeSaveData>
+            {
+                new() { nodeId = "kept", paidCost = 1 },
+                new() { nodeId = "deleted", paidCost = 4 },
+            },
+        });
+        var model = new ActiveSkillProgressModel(null, data, 10);
+
+        SkillUpgradeStatSnapshot snapshot = model.BuildSnapshot("slot", "variant", tree, out bool changed);
+        Expect(changed,
+            "A node absent from the asset (same treeId) must be pruned and reported as a change.");
+        Expect(!snapshot.IsEmpty, "The surviving node must still contribute to the snapshot.");
+        Equal(6, model.AvailablePoints,
+            "The deleted node's paid cost must be refunded even though treeId did not change.");
+        Equal(1, data.activeSkillTrees[0].unlockedNodes.Count,
+            "Only the node still present in the asset should remain unlocked.");
+        Equal("kept", data.activeSkillTrees[0].unlockedNodes[0].nodeId,
+            "The remaining unlocked entry must be the node that still exists in the tree.");
+    }
+
+    static void TestFailedUnlockStillReportsReconciliation(List<ScriptableObject> assets)
+    {
+        SkillUpgradeNodeData gatedNode = Node("gated", 1);
+        gatedNode.requiredCharacterLevel = 99;
+        SkillUpgradeTreeDefinition replacement = CreateTree(assets, "tree.new", gatedNode);
+        var data = InitializedData(0);
+        data.activeSkillTrees.Add(new CharacterSkillTreeProgressSaveData
+        {
+            slotId = "slot",
+            optionId = "variant",
+            treeId = "tree.old",
+            unlockedNodes = new List<CharacterSkillUpgradeNodeSaveData>
+            {
+                new() { nodeId = "stale", paidCost = 3 },
+            },
+        });
+        var model = new ActiveSkillProgressModel(null, data, 1);
+
+        bool result = model.TryUnlock("slot", "variant", replacement, "gated", out string reason, out bool changed);
+        Expect(!result, "Unlock must fail once the reconciled progress still doesn't meet the level requirement.");
+        Expect(changed,
+            "CanUnlock reconciling stale tree progress (refunding the old tree's paid cost) must be reported " +
+            "even though the unlock itself was rejected, so the caller persists the refund.");
+        Equal(3, model.AvailablePoints, "The stale tree's paid cost must be refunded despite the failed unlock.");
+        Expect(!string.IsNullOrEmpty(reason), "A failed unlock must still surface a readable reason.");
+    }
+
     static void TestDeterministicStatStacking(List<ScriptableObject> assets)
     {
         SkillUpgradeNodeData first = Node("first", 1);
@@ -329,6 +408,33 @@ public static class ActiveSkillFeatureSmokeTests
         Expect(!string.IsNullOrEmpty(reason), "Rejection must surface a readable reason for the detail panel.");
     }
 
+    static void TestOneWayExclusionStillBlocksBothOrders(List<ScriptableObject> assets)
+    {
+        // branch.a declares the exclusion; branch.b does not declare it back. The validator
+        // would flag this as an authoring error, but CanUnlock must not depend on authors
+        // remembering to mirror the list -- the outcome must not depend on unlock order.
+        SkillUpgradeNodeData gate = Node("gate", 1);
+        SkillUpgradeNodeData branchA = Node("branch.a", 1, "gate");
+        branchA.mutuallyExclusiveNodeIds.Add("branch.b");
+        SkillUpgradeNodeData branchB = Node("branch.b", 1, "gate");
+        SkillUpgradeTreeDefinition tree = CreateTree(assets, "tree.one-way-exclusive", gate, branchA, branchB);
+
+        var dataAFirst = InitializedData(3);
+        var modelAFirst = new ActiveSkillProgressModel(null, dataAFirst, 10);
+        Expect(modelAFirst.TryUnlock("slot", "variant", tree, "gate", out string gateReasonA), gateReasonA);
+        Expect(modelAFirst.TryUnlock("slot", "variant", tree, "branch.a", out string branchAReason), branchAReason);
+        Expect(!modelAFirst.CanUnlock("slot", "variant", tree, "branch.b", out _, out _),
+            "The declaring node's own list must still block the reverse pick.");
+
+        var dataBFirst = InitializedData(3);
+        var modelBFirst = new ActiveSkillProgressModel(null, dataBFirst, 10);
+        Expect(modelBFirst.TryUnlock("slot", "variant", tree, "gate", out string gateReasonB), gateReasonB);
+        Expect(modelBFirst.TryUnlock("slot", "variant", tree, "branch.b", out string branchBReason), branchBReason);
+        Expect(!modelBFirst.CanUnlock("slot", "variant", tree, "branch.a", out _, out _),
+            "Unlocking the node whose exclusion list is empty first must not bypass a one-way exclusion " +
+            "declared on the other node.");
+    }
+
     static void TestEffectDurationAndHealPowerStatStacking()
     {
         var snapshot = new SkillUpgradeStatSnapshot();
@@ -343,6 +449,24 @@ public static class ActiveSkillFeatureSmokeTests
         snapshot.Apply(stats);
         Approximately(15.6f, stats.effectDuration, "EffectDuration must apply as (base + add) * mul.");
         Approximately(35f, stats.healPower, "HealPower must apply as (base + add) * mul.");
+    }
+
+    static void TestProjectileCountRoundingIsConsistent()
+    {
+        // Mathf.RoundToInt is banker's rounding: 1.5 -> 2 but 2.5 -> 2. A x1.5 modifier must not
+        // grant a projectile on an odd base count while granting nothing on an even one.
+        SkillUpgradeNodeData node = Node("projectiles", 1);
+        node.statModifiers.Add(new StatModifier { stat = StatType.ProjectileCount, add = 0f, mul = 1.5f });
+        var snapshot = new SkillUpgradeStatSnapshot();
+        snapshot.AddNode(node);
+
+        var oneProjectile = new FinalSkillStats { projectileCount = 1 };
+        snapshot.Apply(oneProjectile);
+        Equal(2, oneProjectile.projectileCount, "1 projectile at x1.5 must round up to 2, not stay at 1.");
+
+        var twoProjectiles = new FinalSkillStats { projectileCount = 2 };
+        snapshot.Apply(twoProjectiles);
+        Equal(3, twoProjectiles.projectileCount, "2 projectiles at x1.5 must round up to 3, not stay at 2.");
     }
 
     static void TestSkillTreeDefaultAndVariantOverride(List<ScriptableObject> assets)
@@ -508,6 +632,23 @@ public static class ActiveSkillFeatureSmokeTests
         });
         Equal(GetAuthoredRect(graphNode).center, node.uiPosition,
             "Moving a graph node must save its center position.");
+
+        // A real drag hands SetPosition a rect sized from the node's *resolved* UIToolkit
+        // layout (title length, icon, ports), not the authored BaseSize * visualScale. Feeding
+        // a mismatched size here reproduces that and must not corrupt uiPosition.
+        var resolvedSizeRect = new Rect(new Vector2(100f, 120f), new Vector2(311f, 148f));
+        graphNode.SetPosition(resolvedSizeRect);
+        graph.HandleGraphChange(new GraphViewChange
+        {
+            movedElements = new List<GraphElement> { graphNode },
+        });
+        Vector2 expectedCenter = resolvedSizeRect.position + new Vector2(440f, 240f) * 0.5f;
+        Equal(expectedCenter, node.uiPosition,
+            "Write-back must re-derive the center using the authored size, not the rect's own resolved size.");
+
+        graph.RefreshTitles();
+        Equal(resolvedSizeRect.position, GetAuthoredRect(graphNode).position,
+            "Refreshing layout right after a move must not shift the node again.");
     }
 
     static Port FindPort(List<Port> ports, string nodeTitle, Direction direction)

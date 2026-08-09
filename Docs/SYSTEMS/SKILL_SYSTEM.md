@@ -112,11 +112,13 @@ Two step types exist:
   colliders. Healing and status references are resolved through each target's
   context and scaled by `FinalSkillStats.healPower`.
 
-A step that needs to act at a specific animation moment (not at the cast-point
-`Execute` call) spawns its own runtime `MonoBehaviour` and subscribes to
-`CharacterAnimBrain.SkillTimelineEventRaised`, the same pattern
-`TauntSkillRuntime` already uses — steps do not get a shared timeline/event
-channel or scratchpad.
+Direct `SkillEffectStep` implementations are immediate-only: every enabled
+direct step runs when the skill reaches its configured cast point. An effect
+that must act at another animation moment is authored as a `SkillPayloadDef`,
+wrapped by a `PayloadStep`, and may spawn a request-scoped runtime listener such
+as `TauntSkillRuntime`. Payloads declare their required timeline event names;
+the skill Inspector treats a missing marker on `skillClip` as a blocking error,
+while the runtime warning remains as a final safeguard.
 
 `SkillGemDefinition.TryFindPayload<T>` walks the composite's steps
 (`PayloadStep.Payload`, recursively) to find a wrapped payload of a given type;
@@ -130,16 +132,54 @@ Payloads** panel to create/replace/remove each `PayloadStep`'s wrapped payload
 inline. `HealAreaStep` entries have no payload to author — their fields are
 edited directly in the Odin-drawn step list.
 
+Step *structure* — add, reorder, remove, and set `requiredUpgradeId` — can
+also be authored from **Tools > RB > Skills > Active Skill Tree Editor**'s
+**Skill Steps** toolbar toggle, without leaving the tree window. It edits the
+owning skill's composite in place. Each step row is a foldout: collapsed shows
+just the step type and its `requiredUpgradeId`; expanded draws every field
+`SerializedProperty` exposes on the step (still respecting `[HideInInspector]`
+on the legacy `HealAreaStep.ConditionalStatus` fields), so `HealAreaStep`'s own
+target/status lists are editable inline. A `PayloadStep`'s wrapped payload is
+**not** editable from this panel — it shows a "Select '\<Type\>' Payload"
+button that pings the payload sub-asset instead. This is a deliberate scope
+limit, not a missing feature: rendering the wrapped payload's own
+`Editor.OnInspectorGUI()` inline (directly, or via
+`UnityEditor.UIElements.InspectorElement`, which falls back to an internal
+`IMGUIContainer` for any editor — Odin's included — that doesn't implement
+`CreateInspectorGUI()`) hits a still-open Unity engine bug where a `ScrollView`
+resets its scroll offset whenever a sibling/descendant `IMGUIContainer`'s
+measured height changes, which happens on essentially every repaint while the
+window has focus (confirmed reproducing through at least Unity 6000.0.8f1;
+this project is on 6000.0.58f2). Deep payload fields (prefabs, numbers, status
+lists) stay in the skill Inspector's existing Composite Step Payloads section.
+The panel is only enabled when the open tree resolves to exactly one owner and
+that owner is a `SkillGemDefinition` with an embedded `CompositeSkillPayloadDef`
+root — a tree shared by multiple skill Variants, a tree owned by a
+`PassiveDefinition`, or a skill whose root payload is not yet a composite all
+show a disabled explanation instead. Converting a single-payload skill to a
+composite is not offered from this panel; do that from the skill inspector
+first. The panel tracks its own dirty/save state separate from the tree's,
+since it edits a different asset. `SkillPayloadAssetUtility` only performs the
+Undo-aware sub-asset mutation and marks the owner dirty; it never calls the
+global `AssetDatabase.SaveAssets()`. The invoking Inspector/window owns the
+Save or Discard decision, so editing a skill cannot silently save dirty tree or
+project assets.
+
 `CompositeSkillPayloadDef.CollectValidationIssues` reports an error when two
 wrapped payloads compete for the same stat channel (two
 projectile/hitbox payloads, or two `MorphSkillPayloadDef`s), when a
 `PayloadStep` has no payload assigned, when a `PayloadStep` wraps another
-composite (no nesting), and a warning when a wrapped payload's
+composite (no nesting), when two steps reference the same child payload, and
+when a wrapped payload's
 `helperFacingMode`/`chainContinue*` are non-default — copy those values up to
-the composite root instead, since the composite is the unique owner. The
-skill's own embedded-payload count check now allows any number of embedded
-`SkillPayloadDef` sub-assets; it only flags one that is not referenced by the
-root payload or any composite step (an orphan).
+the composite root instead, since the composite is the unique owner. These are
+blocking authoring errors, not warnings. The embedded-payload validator allows
+any number of `SkillPayloadDef` sub-assets when every one is reachable from the
+embedded root and each `PayloadStep` uniquely owns its child. External/shared
+children and unreachable embedded payloads (orphans) are errors. Existing
+orphans are reported for manual recovery; they are never deleted by validation.
+Replacing or removing an embedded Composite root deletes only its reachable
+embedded descendants, children first, through the same Undo transaction.
 
 ### Conditional Status On Payloads
 
@@ -668,7 +708,9 @@ through `CharacteContext.ActiveSkillProgress`. Active Skill Points are separate
 from Passive Points and are shared by every Slot and Variant on that character.
 The default grant is one point for each character level after level 1, controlled
 by `CharacterStats.activeSkillPointsPerLevel`. Old saves are caught up once by
-the `activeSkillProgressInitialized` flag.
+the `activeSkillProgressInitialized` flag; the catch-up grant subtracts points
+already spent across every tree before topping up, so a save whose flag is
+missing or reset does not receive its lifetime grant twice.
 
 When `CharacterContextPartyLoader` assigns a party member's `baseStats`, it
 reloads `CharacterActiveSkillProgress` for that character ID. A full progress
@@ -679,15 +721,25 @@ Progress is saved by `{slotId, optionId, treeId}`. Each unlocked node stores its
 paid cost. Resetting the current Variant clears its whole tree and refunds those
 saved costs, even when the authored costs have since changed. If a Variant is
 assigned a different `treeId`, the old paid costs are refunded and the new tree
-starts empty. A saved node missing from the current asset has no gameplay effect,
-but its paid cost remains refundable.
+starts empty. A saved node missing from the current asset — whether because the
+node was deleted from the tree or the tree was reassigned — has no gameplay
+effect and is pruned from the save with its paid cost refunded the next time
+that Variant's progress is read, regardless of whether `treeId` changed. A
+prerequisite ID left dangling by a deleted node is an authoring error caught by
+**Validate Active Skill Trees**; the surviving nodes that required it are not
+cascade-refunded.
 
 All prerequisite IDs on a node use AND semantics. A node may additionally list
 `mutuallyExclusiveNodeIds`; `ActiveSkillProgressModel.CanUnlock` rejects it once
 any listed node is already unlocked, and the reason string surfaces in the node
 detail panel (the node itself renders as its normal Locked state — no special
-UI is required). This is how a shared trunk fans out into exclusive branches;
-use `CharacterActiveSkillProgress.ResetTree`/the in-UI respec action to switch
+UI is required). Exclusion is enforced bidirectionally at runtime: `CanUnlock`
+also rejects a node if an already-unlocked node lists it as excluded, even if
+this node's own list does not list that node back. Authors should still keep
+`mutuallyExclusiveNodeIds` reciprocal on both sides — **Validate Active Skill
+Trees** errors otherwise — but the runtime does not depend on that being done
+correctly. This is how a shared trunk fans out into exclusive branches; use
+`CharacterActiveSkillProgress.ResetTree`/the in-UI respec action to switch
 branches, since it fully refunds the paid points.
 
 A node may also list `grantedUpgradeIds` — free-form strings such as
@@ -706,7 +758,10 @@ can change Skill Level and the supported skill stats: Damage, Area Radius,
 Projectile Count, Mana Cost, Cast Time, Cooldown, Crit Chance, Stagger Power,
 Effect Duration, and Heal Power. `AreaRadius` and `EffectDuration` are single
 values for the whole skill — a node that raises either affects every effect
-that reads them, not just one. `StatType` is serialized by enum index; new
+that reads them, not just one. `ProjectileCount` rounds its aggregated
+`(base + add) * mul` result to the nearest integer, rounding a `.5` result up
+rather than using banker's rounding, so a `x1.5` modifier behaves the same on
+both odd and even base counts. `StatType` is serialized by enum index; new
 members must always be appended at the end, never inserted. Tree modifiers are
 deterministic:
 
@@ -727,7 +782,19 @@ does not depend on GraphView. A node displays its assigned `icon` Sprite directl
 in the graph and refreshes the preview when the Inspector value changes.
 `uiPosition` is the node center in both authoring and runtime layouts. Set
 `visualScale` from `1.0` to `2.0` to enlarge a node for visual emphasis without
-changing its gameplay rules or saved progress.
+changing its gameplay rules or saved progress. Right-click empty graph space to
+add a node; if the owning skill declares an upgrade id no node grants yet, the
+context menu offers "Grants \<id\>" entries that create the node pre-wired with
+that `grantedUpgradeIds` entry. The **Skill Steps** toolbar toggle switches the
+right pane to the composite step panel described in **Composite Payloads And
+Steps** above.
+
+Use **Tools > RB > Skills > Validate Embedded Payloads** before committing
+skill assets. It validates the complete root-to-child ownership graph rather
+than requiring exactly one sub-asset: every referenced payload must be embedded
+in the owning skill, every embedded payload must be reachable, and a child may
+belong to only one `PayloadStep`. It also reports missing required payload
+timeline markers on the skill clip.
 
 Use **Tools > RB > Skills > Validate Active Skill Trees** before committing
 content. Errors include missing/duplicate stable IDs, missing/self/cyclic
@@ -735,11 +802,14 @@ prerequisites, invalid cost/level, unsupported stats, and unstable loadout IDs.
 A node with no effect, overlapping runtime node bounds, and a graph that
 auto-fits below the readable scale are warnings. Visual Scale outside `1.0` to
 `2.0` is an error. **Tools > RB > Skills > Run Active Skill Core Smoke Tests**
-checks catch-up, shared points, prerequisites, Variant isolation, refunds, tree
-replacement, default/override Tree resolution, stat stacking, granted
-upgrade-id aggregation, mutually-exclusive rejection, Effect
-Duration/Heal Power stacking, scaled-node layout, frame fallback, and
-validation.
+checks catch-up (including the already-spent deduction), shared points,
+prerequisites, Variant isolation, refunds, tree replacement, pruning a node
+removed from the asset without a `treeId` change, a failed unlock still
+persisting reconciliation, default/override Tree resolution, stat stacking,
+granted upgrade-id aggregation, mutually-exclusive rejection (both declared
+and one-way), Effect Duration/Heal Power stacking, Projectile Count rounding,
+scaled-node layout including the authored-vs-resolved size write-back, frame
+fallback, and validation.
 
 ## Command Skill Cast Facing
 

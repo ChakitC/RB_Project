@@ -538,8 +538,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
             return false;
         }
 
-        payload = skill.payload as PrefabHitboxSkillPayloadDef;
-        if (payload != null)
+        if (skill.TryFindPayload(out payload))
             return true;
 
         Debug.LogWarning(

@@ -39,7 +39,7 @@ public static class SkillPayloadValidationTool
         if (logResult)
         {
             if (issueCount == 0)
-                Debug.Log("All SkillGemDefinition assets have exactly one valid embedded payload.");
+                Debug.Log("All SkillGemDefinition assets have valid embedded payload ownership graphs.");
             else
                 Debug.LogError($"Skill payload validation found {issueCount} issues.\n{report}");
         }
@@ -47,7 +47,7 @@ public static class SkillPayloadValidationTool
         return issueCount;
     }
 
-    private static void ValidateSkill(SkillGemDefinition skill, List<string> issues)
+    internal static void ValidateSkill(SkillGemDefinition skill, List<string> issues)
     {
         if (skill == null)
         {
@@ -67,10 +67,28 @@ public static class SkillPayloadValidationTool
         List<SkillPayloadDef> embeddedPayloads = SkillPayloadAssetUtility.GetEmbeddedPayloads(skill);
         if (embeddedPayloads.Count == 0)
             issues.Add("The skill asset contains no embedded payload object.");
-        else if (embeddedPayloads.Count > 1)
-            issues.Add($"The skill asset contains {embeddedPayloads.Count} embedded payload objects; exactly one is allowed.");
+
+        HashSet<SkillPayloadDef> reachable =
+            SkillPayloadAssetUtility.GetReachablePayloads(skill.payload);
+
+        foreach (SkillPayloadDef referenced in reachable)
+        {
+            if (referenced != null && !SkillPayloadAssetUtility.IsEmbedded(skill, referenced))
+            {
+                issues.Add(
+                    $"Referenced payload '{referenced.name}' is not embedded in the same asset as this skill.");
+            }
+        }
+
+        for (int i = 0; i < embeddedPayloads.Count; i++)
+        {
+            SkillPayloadDef embedded = embeddedPayloads[i];
+            if (embedded != null && !reachable.Contains(embedded))
+                issues.Add($"Embedded payload '{embedded.name}' is not referenced by the root payload or any composite step.");
+        }
 
         skill.payload.CollectValidationIssues(issues);
+        skill.CollectRequiredTimelineValidationIssues(issues);
         skill.CollectSkillVfxValidationIssues(issues);
     }
 

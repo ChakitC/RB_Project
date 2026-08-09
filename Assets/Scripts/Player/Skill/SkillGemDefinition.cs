@@ -334,6 +334,44 @@ public class SkillGemDefinition : SkillDefinitionBase
             CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.HitLag);
     }
 
+    public void CollectRequiredTimelineValidationIssues(List<string> issues)
+    {
+        if (issues == null || payload == null)
+            return;
+
+        var requiredEventNames = new List<CombatTimelineEventName>();
+        payload.CollectTimelineEventNames(requiredEventNames);
+        if (requiredEventNames.Count == 0)
+            return;
+
+        AnimancerEvent.Sequence events = skillClip?.Events;
+        if (events == null || events.Count == 0)
+        {
+            issues.Add(
+                $"Execution payload requires timeline event(s) [{string.Join(", ", requiredEventNames)}], but Skill Clip has no authored events.");
+            return;
+        }
+
+        for (int requiredIndex = 0; requiredIndex < requiredEventNames.Count; requiredIndex++)
+        {
+            CombatTimelineEventName requiredEventName = requiredEventNames[requiredIndex];
+            StringReference markerName = CombatTimelineEventNames.ToStringReference(requiredEventName);
+            bool found = false;
+
+            for (int eventIndex = 0; eventIndex < events.Count; eventIndex++)
+            {
+                if (events.GetName(eventIndex) != markerName)
+                    continue;
+
+                found = true;
+                break;
+            }
+
+            if (!found)
+                issues.Add($"Skill Clip is missing required timeline event '{requiredEventName}'.");
+        }
+    }
+
     public override void CollectUpgradeIds(List<string> ids)
     {
         payload?.CollectUpgradeIds(ids);
@@ -427,7 +465,10 @@ public class SkillGemDefinition : SkillDefinitionBase
             if (payload == null)
                 issues.Add("Execution payload is required.");
             else
+            {
                 payload.CollectValidationIssues(issues);
+                CollectRequiredTimelineValidationIssues(issues);
+            }
 
             CollectSkillVfxValidationIssues(issues);
 

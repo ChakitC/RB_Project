@@ -37,7 +37,7 @@ public sealed class SkillVfxTimelineSource : IAnimationVfxTimelineSource
                 AnimationVfxTimelineLaneKind.Events,
                 new[] { skill.PreCastOpenEventName, skill.PreCastCloseEventName }));
         }
-        if (skill != null && skill.payload is PrefabHitboxSkillPayloadDef hitbox)
+        if (skill != null && skill.TryFindPayload(out PrefabHitboxSkillPayloadDef hitbox))
         {
             lanes.Add(new AnimationVfxTimelineLane(
                 "Hitbox",

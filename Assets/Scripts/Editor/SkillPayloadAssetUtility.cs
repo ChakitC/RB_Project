@@ -84,6 +84,108 @@ internal static class SkillPayloadAssetUtility
         return result;
     }
 
+    public static HashSet<SkillPayloadDef> GetReachablePayloads(
+        SkillPayloadDef root,
+        List<SkillPayloadDef> duplicateReferences = null)
+    {
+        var reachable = new HashSet<SkillPayloadDef>();
+        CollectReachablePayloads(root, reachable, duplicateReferences);
+        return reachable;
+    }
+
+    private static void CollectReachablePayloads(
+        SkillPayloadDef candidate,
+        HashSet<SkillPayloadDef> reachable,
+        List<SkillPayloadDef> duplicateReferences)
+    {
+        if (candidate == null)
+            return;
+
+        if (!reachable.Add(candidate))
+        {
+            if (duplicateReferences != null && !duplicateReferences.Contains(candidate))
+                duplicateReferences.Add(candidate);
+            return;
+        }
+
+        if (candidate is not CompositeSkillPayloadDef composite)
+            return;
+
+        IReadOnlyList<SkillEffectStep> steps = composite.Steps;
+        for (int i = 0; i < steps.Count; i++)
+        {
+            if (steps[i] is PayloadStep payloadStep)
+                CollectReachablePayloads(payloadStep.Payload, reachable, duplicateReferences);
+        }
+    }
+
+    private static List<SkillPayloadDef> GetEmbeddedPayloadGraphPostOrder(
+        SkillGemDefinition skill,
+        SkillPayloadDef root)
+    {
+        var ordered = new List<SkillPayloadDef>();
+        if (!IsEmbedded(skill, root))
+            return ordered;
+
+        CollectPayloadGraphPostOrder(skill, root, new HashSet<SkillPayloadDef>(), ordered);
+        return ordered;
+    }
+
+    private static void CollectPayloadGraphPostOrder(
+        SkillGemDefinition skill,
+        SkillPayloadDef candidate,
+        HashSet<SkillPayloadDef> visited,
+        List<SkillPayloadDef> ordered)
+    {
+        if (candidate == null || !visited.Add(candidate))
+            return;
+
+        if (candidate is CompositeSkillPayloadDef composite)
+        {
+            IReadOnlyList<SkillEffectStep> steps = composite.Steps;
+            for (int i = 0; i < steps.Count; i++)
+            {
+                if (steps[i] is PayloadStep payloadStep)
+                    CollectPayloadGraphPostOrder(skill, payloadStep.Payload, visited, ordered);
+            }
+        }
+
+        if (IsEmbedded(skill, candidate))
+            ordered.Add(candidate);
+    }
+
+    public static bool IsReferencedByComposite(
+        CompositeSkillPayloadDef composite,
+        SkillPayloadDef payload)
+    {
+        if (composite == null || payload == null)
+            return false;
+
+        IReadOnlyList<SkillEffectStep> steps = composite.Steps;
+        for (int i = 0; i < steps.Count; i++)
+        {
+            if (steps[i] is PayloadStep payloadStep && payloadStep.Payload == payload)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static void DestroyEmbeddedPayloads(List<SkillPayloadDef> payloads, bool recordUndo)
+    {
+        for (int i = 0; i < payloads.Count; i++)
+        {
+            SkillPayloadDef payload = payloads[i];
+            if (payload == null)
+                continue;
+
+            if (recordUndo)
+                Undo.DestroyObjectImmediate(payload);
+            else
+                UnityEngine.Object.DestroyImmediate(payload, true);
+        }
+    }
+
     public static SkillPayloadDef ReplaceWithEmbedded(
         SkillGemDefinition skill,
         Type payloadType,
@@ -99,8 +201,10 @@ internal static class SkillPayloadAssetUtility
             throw new InvalidOperationException("Save the SkillGemDefinition as an asset before creating its execution payload.");
 
         SkillPayloadDef previousPayload = skill.payload;
+        List<SkillPayloadDef> previousPayloadGraph =
+            GetEmbeddedPayloadGraphPostOrder(skill, previousPayload);
         if (recordUndo)
-            Undo.RecordObject(skill, "Replace Skill Execution");
+            Undo.RegisterCompleteObjectUndo(skill, "Replace Skill Execution");
 
         var newPayload = ScriptableObject.CreateInstance(payloadType) as SkillPayloadDef;
         if (newPayload == null)
@@ -117,18 +221,9 @@ internal static class SkillPayloadAssetUtility
         EditorUtility.SetDirty(newPayload);
         EditorUtility.SetDirty(skill);
 
-        if (previousPayload != null &&
-            previousPayload != newPayload &&
-            IsEmbedded(skill, previousPayload))
-        {
-            if (recordUndo)
-                Undo.DestroyObjectImmediate(previousPayload);
-            else
-                UnityEngine.Object.DestroyImmediate(previousPayload, true);
-        }
+        if (previousPayload != newPayload)
+            DestroyEmbeddedPayloads(previousPayloadGraph, recordUndo);
 
-        AssetDatabase.SaveAssets();
-        AssetDatabase.ImportAsset(skillPath, ImportAssetOptions.ForceUpdate);
         return newPayload;
     }
 
@@ -138,24 +233,82 @@ internal static class SkillPayloadAssetUtility
             return;
 
         SkillPayloadDef previousPayload = skill.payload;
-        bool wasEmbedded = IsEmbedded(skill, previousPayload);
+        List<SkillPayloadDef> previousPayloadGraph =
+            GetEmbeddedPayloadGraphPostOrder(skill, previousPayload);
 
         if (recordUndo)
-            Undo.RecordObject(skill, "Remove Skill Execution");
+            Undo.RegisterCompleteObjectUndo(skill, "Remove Skill Execution");
 
         skill.payload = null;
         EditorUtility.SetDirty(skill);
 
-        if (wasEmbedded)
+        DestroyEmbeddedPayloads(previousPayloadGraph, recordUndo);
+    }
+
+    // Moved from SkillGemDefinitionEditor so the skill Inspector and Active Skill Tree Editor can
+    // share the same ownership mutation. Callers own Save/Discard; this utility only records Undo
+    // and marks the affected skill asset dirty.
+    public static SkillPayloadDef CreateEmbeddedStepPayload(
+        SkillGemDefinition skill,
+        CompositeSkillPayloadDef composite,
+        int stepIndex,
+        Type payloadType,
+        SkillPayloadDef previousWrapped)
+    {
+        if (skill == null || composite == null || payloadType == null)
+            return null;
+
+        string skillPath = AssetDatabase.GetAssetPath(skill);
+        if (string.IsNullOrEmpty(skillPath))
+            return null;
+
+        Undo.RecordObject(composite, "Replace Composite Step Payload");
+
+        var newPayload = ScriptableObject.CreateInstance(payloadType) as SkillPayloadDef;
+        if (newPayload == null)
+            return null;
+
+        newPayload.name = $"{GetPayloadDisplayName(payloadType)} Step Execution";
+        newPayload.hideFlags = HideFlags.None;
+
+        Undo.RegisterCreatedObjectUndo(newPayload, "Create Composite Step Payload");
+        AssetDatabase.AddObjectToAsset(newPayload, skill);
+        composite.SetStepPayload(stepIndex, newPayload);
+        EditorUtility.SetDirty(newPayload);
+        EditorUtility.SetDirty(composite);
+        EditorUtility.SetDirty(skill);
+
+        if (previousWrapped != null &&
+            previousWrapped != newPayload &&
+            IsEmbedded(skill, previousWrapped) &&
+            !IsReferencedByComposite(composite, previousWrapped))
         {
-            if (recordUndo)
-                Undo.DestroyObjectImmediate(previousPayload);
-            else
-                UnityEngine.Object.DestroyImmediate(previousPayload, true);
+            Undo.DestroyObjectImmediate(previousWrapped);
         }
 
-        AssetDatabase.SaveAssets();
-        AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(skill), ImportAssetOptions.ForceUpdate);
+        return newPayload;
+    }
+
+    public static void RemoveEmbeddedStepPayload(
+        SkillGemDefinition skill,
+        CompositeSkillPayloadDef composite,
+        int stepIndex,
+        SkillPayloadDef wrapped)
+    {
+        if (skill == null || composite == null)
+            return;
+
+        Undo.RecordObject(composite, "Remove Composite Step Payload");
+        composite.SetStepPayload(stepIndex, null);
+        EditorUtility.SetDirty(composite);
+        EditorUtility.SetDirty(skill);
+
+        if (wrapped != null &&
+            IsEmbedded(skill, wrapped) &&
+            !IsReferencedByComposite(composite, wrapped))
+        {
+            Undo.DestroyObjectImmediate(wrapped);
+        }
     }
 
     private static int GetPayloadTypePriority(Type payloadType)

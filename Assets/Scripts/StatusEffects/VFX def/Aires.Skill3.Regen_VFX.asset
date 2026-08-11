@@ -68,7 +68,7 @@ MonoBehaviour:
     parentToAnchor: 0
     useAnchorRotation: 0
   tickBurst:
-    prefab: {fileID: 6816406262456432491, guid: 0bc1abd017feb4c45a38d77b0785b699, type: 3}
+    prefab: {fileID: 6816406262456432491, guid: f711a346107645c4a8b7f47cb10fe792, type: 3}
     anchor: 1
     customAnchorName: 
     localOffset: {x: 0, y: 0, z: 0}

@@ -12,13 +12,27 @@ public enum SkillUpgradeValidationSeverity
 public readonly struct SkillUpgradeValidationIssue
 {
     public SkillUpgradeValidationIssue(SkillUpgradeValidationSeverity severity, string message)
+        : this(severity, message, null)
+    {
+    }
+
+    public SkillUpgradeValidationIssue(SkillUpgradeValidationSeverity severity, string message, string nodeId)
     {
         Severity = severity;
         Message = message;
+        NodeId = nodeId;
     }
 
     public SkillUpgradeValidationSeverity Severity { get; }
     public string Message { get; }
+
+    // Node this issue belongs to, or null for a tree-level issue. Consumers (inspector help boxes,
+    // graph badges) must match on this rather than searching Message for a quoted id -- a message
+    // like "Node 'a' requires missing node 'b'" names two ids but belongs only to 'a'.
+    public string NodeId { get; }
+
+    public bool BelongsTo(string nodeId) =>
+        NodeId != null && string.Equals(NodeId, nodeId, StringComparison.Ordinal);
 }
 
 public static class SkillUpgradeTreeValidator
@@ -68,6 +82,8 @@ public static class SkillUpgradeTreeValidator
         var declaredUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         if (hasOwner)
         {
+            CollectStatusRouteIssues(owners, issues);
+
             var collectedIds = new List<string>();
             for (int ownerIndex = 0; ownerIndex < owners.Count; ownerIndex++)
                 owners[ownerIndex]?.CollectUpgradeIds(collectedIds);
@@ -75,6 +91,7 @@ public static class SkillUpgradeTreeValidator
                 declaredUpgradeIds.Add(collectedIds[collectedIndex]);
         }
         var grantedUpgradeIdsInTree = new HashSet<string>(StringComparer.Ordinal);
+        var grantingNodesByUpgradeId = new Dictionary<string, List<string>>(StringComparer.Ordinal);
 
         for (int i = 0; i < tree.nodes.Count; i++)
         {
@@ -93,17 +110,17 @@ public static class SkillUpgradeTreeValidator
             }
 
             if (!nodesById.TryAdd(nodeId, node))
-                issues.Add(Error($"Duplicate node ID '{nodeId}'."));
+                issues.Add(NodeError(nodeId, $"Duplicate node ID '{nodeId}'."));
 
             if (node.cost < 1)
-                issues.Add(Error($"Node '{nodeId}' cost must be at least 1."));
+                issues.Add(NodeError(nodeId, $"Node '{nodeId}' cost must be at least 1."));
             if (node.requiredCharacterLevel < 1)
-                issues.Add(Error($"Node '{nodeId}' required character level must be at least 1."));
+                issues.Add(NodeError(nodeId, $"Node '{nodeId}' required character level must be at least 1."));
             if (!float.IsFinite(node.visualScale) ||
                 node.visualScale < SkillUpgradeNodeData.MinVisualScale ||
                 node.visualScale > SkillUpgradeNodeData.MaxVisualScale)
             {
-                issues.Add(Error(
+                issues.Add(NodeError(nodeId,
                     $"Node '{nodeId}' visual scale must be between " +
                     $"{SkillUpgradeNodeData.MinVisualScale:0.##} and {SkillUpgradeNodeData.MaxVisualScale:0.##}."));
             }
@@ -118,12 +135,12 @@ public static class SkillUpgradeTreeValidator
                         continue;
 
                     if (!SkillUpgradeStatSnapshot.Supports(modifier.stat) && !ownedByPassive)
-                        issues.Add(Error($"Node '{nodeId}' uses unsupported skill stat '{modifier.stat}'."));
+                        issues.Add(NodeError(nodeId, $"Node '{nodeId}' uses unsupported skill stat '{modifier.stat}'."));
                     else
                         hasSupportedModifier = true;
 
                     if (!float.IsFinite(modifier.add) || !float.IsFinite(modifier.mul))
-                        issues.Add(Error($"Node '{nodeId}' contains a non-finite stat modifier."));
+                        issues.Add(NodeError(nodeId, $"Node '{nodeId}' contains a non-finite stat modifier."));
                 }
             }
 
@@ -136,24 +153,34 @@ public static class SkillUpgradeTreeValidator
                     string rawId = node.grantedUpgradeIds[grantIndex];
                     if (string.IsNullOrWhiteSpace(rawId))
                     {
-                        issues.Add(Error($"Node '{nodeId}' has a blank granted upgrade id."));
+                        issues.Add(NodeError(nodeId, $"Node '{nodeId}' has a blank granted upgrade id."));
                         continue;
                     }
 
                     string trimmedId = rawId.Trim();
                     grantsUpgrade = true;
                     if (!localGrantedIds.Add(trimmedId))
-                        issues.Add(Warning($"Node '{nodeId}' grants upgrade id '{trimmedId}' more than once."));
+                        issues.Add(NodeWarning(nodeId, $"Node '{nodeId}' grants upgrade id '{trimmedId}' more than once."));
 
+                    // Warning, not error: an id nothing consumes yet is the normal state while the
+                    // tree is authored ahead of the payload. The reverse gap (a payload waiting on
+                    // an id no node grants) is the error, because that feature is unreachable.
                     if (hasOwner && !declaredUpgradeIds.Contains(trimmedId))
-                        issues.Add(Error($"Node '{nodeId}' grants upgrade id '{trimmedId}' that no owning skill declares."));
+                        issues.Add(NodeWarning(nodeId, $"Node '{nodeId}' grants upgrade id '{trimmedId}' that no owning skill declares."));
 
                     grantedUpgradeIdsInTree.Add(trimmedId);
+                    if (!grantingNodesByUpgradeId.TryGetValue(trimmedId, out List<string> grantingNodes))
+                    {
+                        grantingNodes = new List<string>();
+                        grantingNodesByUpgradeId[trimmedId] = grantingNodes;
+                    }
+                    if (!grantingNodes.Contains(nodeId))
+                        grantingNodes.Add(nodeId);
                 }
             }
 
             if (!hasSupportedModifier && !grantsUpgrade)
-                issues.Add(Warning($"Node '{nodeId}' has no gameplay effect."));
+                issues.Add(NodeWarning(nodeId, $"Node '{nodeId}' has no gameplay effect."));
         }
 
         if (!hasOwner)
@@ -166,7 +193,7 @@ public static class SkillUpgradeTreeValidator
             foreach (string declaredId in declaredUpgradeIds)
             {
                 if (!grantedUpgradeIdsInTree.Contains(declaredId))
-                    issues.Add(Warning($"Owning skill declares upgrade id '{declaredId}' that no node in this tree grants."));
+                    issues.Add(Error($"Owning skill declares upgrade id '{declaredId}' that no node in this tree grants."));
             }
         }
 
@@ -187,17 +214,17 @@ public static class SkillUpgradeTreeValidator
 
                     if (string.IsNullOrWhiteSpace(requiredId))
                     {
-                        issues.Add(Error($"Node '{pair.Key}' has an empty prerequisite ID."));
+                        issues.Add(NodeError(pair.Key, $"Node '{pair.Key}' has an empty prerequisite ID."));
                         continue;
                     }
 
                     if (string.Equals(requiredId, pair.Key, StringComparison.Ordinal))
-                        issues.Add(Error($"Node '{pair.Key}' cannot require itself."));
+                        issues.Add(NodeError(pair.Key, $"Node '{pair.Key}' cannot require itself."));
                     else if (!nodesById.ContainsKey(requiredId))
-                        issues.Add(Error($"Node '{pair.Key}' requires missing node '{requiredId}'."));
+                        issues.Add(NodeError(pair.Key, $"Node '{pair.Key}' requires missing node '{requiredId}'."));
 
                     if (!localDependencies.Add(requiredId))
-                        issues.Add(Error($"Node '{pair.Key}' repeats prerequisite '{requiredId}'."));
+                        issues.Add(NodeError(pair.Key, $"Node '{pair.Key}' repeats prerequisite '{requiredId}'."));
                 }
             }
 
@@ -212,24 +239,24 @@ public static class SkillUpgradeTreeValidator
 
                     if (string.IsNullOrWhiteSpace(excludedId))
                     {
-                        issues.Add(Error($"Node '{pair.Key}' has an empty mutually-exclusive ID."));
+                        issues.Add(NodeError(pair.Key, $"Node '{pair.Key}' has an empty mutually-exclusive ID."));
                         continue;
                     }
 
                     if (string.Equals(excludedId, pair.Key, StringComparison.Ordinal))
                     {
-                        issues.Add(Error($"Node '{pair.Key}' cannot exclude itself."));
+                        issues.Add(NodeError(pair.Key, $"Node '{pair.Key}' cannot exclude itself."));
                         continue;
                     }
 
                     if (!nodesById.ContainsKey(excludedId))
                     {
-                        issues.Add(Error($"Node '{pair.Key}' excludes missing node '{excludedId}'."));
+                        issues.Add(NodeError(pair.Key, $"Node '{pair.Key}' excludes missing node '{excludedId}'."));
                         continue;
                     }
 
                     if (localDependencies.Contains(excludedId))
-                        issues.Add(Error($"Node '{pair.Key}' both requires and excludes node '{excludedId}'."));
+                        issues.Add(NodeError(pair.Key, $"Node '{pair.Key}' both requires and excludes node '{excludedId}'."));
 
                     localExclusions.Add(excludedId);
                 }
@@ -242,15 +269,45 @@ public static class SkillUpgradeTreeValidator
         {
             foreach (string excludedId in entry.Value)
             {
-                if (!exclusionsByNode.TryGetValue(excludedId, out HashSet<string> reciprocal) || !reciprocal.Contains(entry.Key))
-                    issues.Add(Error($"Node '{entry.Key}' excludes '{excludedId}' but '{excludedId}' does not exclude it back."));
+                if (exclusionsByNode.TryGetValue(excludedId, out HashSet<string> reciprocal) && reciprocal.Contains(entry.Key))
+                    continue;
+
+                // Both halves of a one-way pair get their own issue so the graph badges and the
+                // node inspector show the problem from whichever node the author is looking at.
+                issues.Add(NodeError(entry.Key,
+                    $"Node '{entry.Key}' excludes '{excludedId}' but '{excludedId}' does not exclude it back."));
+                issues.Add(NodeError(excludedId,
+                    $"Node '{excludedId}' is excluded by '{entry.Key}' but does not exclude it back."));
             }
         }
 
+        ValidateCrossNodeGrantDuplicates(grantingNodesByUpgradeId, exclusionsByNode, issues);
         DetectCycles(nodesById, issues);
         ValidateNodeOverlaps(nodesById, issues);
         ValidateReadableBounds(nodesById.Values, issues);
         return issues;
+    }
+
+    static void CollectStatusRouteIssues(
+        IReadOnlyList<SkillDefinitionBase> owners,
+        List<SkillUpgradeValidationIssue> issues)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (int ownerIndex = 0; ownerIndex < owners.Count; ownerIndex++)
+        {
+            if (owners[ownerIndex] is not SkillGemDefinition skill)
+                continue;
+
+            SkillStatusRouteResolutionResult resolution = SkillStatusRouteResolver.ResolveDetailed(skill);
+            for (int issueIndex = 0; issueIndex < resolution.Issues.Count; issueIndex++)
+            {
+                string skillName = string.IsNullOrEmpty(skill.name) ? "<unnamed skill>" : skill.name;
+                string message = $"Skill '{skillName}' has invalid conditional status route metadata: " +
+                                 resolution.Issues[issueIndex];
+                if (seen.Add(message))
+                    issues.Add(Error(message));
+            }
+        }
     }
 
     [MenuItem("Tools/RB/Skills/Validate Active Skill Trees")]
@@ -486,6 +543,48 @@ public static class SkillUpgradeTreeValidator
         return issues;
     }
 
+    // Two nodes granting the same upgrade id normally means a copy-paste slip: the second node
+    // costs a point and changes nothing, because HasUpgrade is a set membership test. It is
+    // legitimate when the nodes are mutually exclusive -- that is how a branch choice offers the
+    // same unlock down two paths -- so only an unexcluded pair is reported.
+    static void ValidateCrossNodeGrantDuplicates(
+        Dictionary<string, List<string>> grantingNodesByUpgradeId,
+        Dictionary<string, HashSet<string>> exclusionsByNode,
+        List<SkillUpgradeValidationIssue> issues)
+    {
+        foreach (KeyValuePair<string, List<string>> entry in grantingNodesByUpgradeId)
+        {
+            List<string> nodeIds = entry.Value;
+            if (nodeIds.Count < 2)
+                continue;
+
+            for (int first = 0; first < nodeIds.Count; first++)
+            {
+                for (int second = first + 1; second < nodeIds.Count; second++)
+                {
+                    if (AreMutuallyExclusive(exclusionsByNode, nodeIds[first], nodeIds[second]))
+                        continue;
+
+                    issues.Add(NodeWarning(nodeIds[first],
+                        $"Node '{nodeIds[first]}' grants upgrade id '{entry.Key}', which node " +
+                        $"'{nodeIds[second]}' also grants and is not mutually exclusive with."));
+                    issues.Add(NodeWarning(nodeIds[second],
+                        $"Node '{nodeIds[second]}' grants upgrade id '{entry.Key}', which node " +
+                        $"'{nodeIds[first]}' also grants and is not mutually exclusive with."));
+                }
+            }
+        }
+    }
+
+    static bool AreMutuallyExclusive(
+        Dictionary<string, HashSet<string>> exclusionsByNode,
+        string first,
+        string second)
+    {
+        return exclusionsByNode.TryGetValue(first, out HashSet<string> exclusions) &&
+               exclusions.Contains(second);
+    }
+
     static void DetectCycles(
         Dictionary<string, SkillUpgradeNodeData> nodesById,
         List<SkillUpgradeValidationIssue> issues)
@@ -494,7 +593,7 @@ public static class SkillUpgradeTreeValidator
         foreach (string nodeId in nodesById.Keys)
         {
             if (Visit(nodeId, nodesById, state))
-                issues.Add(Error($"Prerequisite cycle detected from node '{nodeId}'."));
+                issues.Add(NodeError(nodeId, $"Prerequisite cycle detected from node '{nodeId}'."));
         }
     }
 
@@ -573,8 +672,10 @@ public static class SkillUpgradeTreeValidator
                 KeyValuePair<string, SkillUpgradeNodeData> second = nodes[secondIndex];
                 if (first.Value.RuntimeUiBounds.Overlaps(second.Value.RuntimeUiBounds))
                 {
-                    issues.Add(Warning(
-                        $"Nodes '{first.Key}' and '{second.Key}' overlap at runtime."));
+                    issues.Add(NodeWarning(first.Key,
+                        $"Node '{first.Key}' overlaps node '{second.Key}' at runtime."));
+                    issues.Add(NodeWarning(second.Key,
+                        $"Node '{second.Key}' overlaps node '{first.Key}' at runtime."));
                 }
             }
         }
@@ -585,4 +686,10 @@ public static class SkillUpgradeTreeValidator
 
     static SkillUpgradeValidationIssue Warning(string message)
         => new(SkillUpgradeValidationSeverity.Warning, message);
+
+    static SkillUpgradeValidationIssue NodeError(string nodeId, string message)
+        => new(SkillUpgradeValidationSeverity.Error, message, nodeId);
+
+    static SkillUpgradeValidationIssue NodeWarning(string nodeId, string message)
+        => new(SkillUpgradeValidationSeverity.Warning, message, nodeId);
 }

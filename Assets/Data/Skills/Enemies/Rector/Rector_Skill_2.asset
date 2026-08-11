@@ -130,21 +130,28 @@ MonoBehaviour:
   chainContinueMode: 0
   chainContinueNormalizedTime: 1
   applications:
-  - effect: {fileID: 11400000, guid: 0cc77d9beb17ec9419e50d42a5a9c3fb, type: 2}
-    stacks: 1
-    spec:
+  - spec:
       effect: {fileID: 11400000, guid: 0cc77d9beb17ec9419e50d42a5a9c3fb, type: 2}
       stacks: 1
       modifiers: []
+      modifiersOverrideEnabled: 0
       durationOverride: 0
+      durationOverrideEnabled: 0
       tickDamageOverride: 0
-  - effect: {fileID: 11400000, guid: 367b42281fd00e0419b2b3e45da9b175, type: 2}
-    stacks: 1
-    spec:
+      tickDamageOverrideEnabled: 0
+      tickIntervalOverride: 0
+      tickIntervalOverrideEnabled: 0
+  - spec:
       effect: {fileID: 11400000, guid: 367b42281fd00e0419b2b3e45da9b175, type: 2}
       stacks: 1
       modifiers: []
+      modifiersOverrideEnabled: 0
       durationOverride: 0
+      durationOverrideEnabled: 0
       tickDamageOverride: 0
+      tickDamageOverrideEnabled: 0
+      tickIntervalOverride: 0
+      tickIntervalOverrideEnabled: 0
   preferCasterRoot: 0
-  conditionalApplications: []
+  conditionalStatuses:
+    applications: []

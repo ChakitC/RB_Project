@@ -33,7 +33,8 @@ MonoBehaviour:
     tickDamageOverrideEnabled: 0
     tickIntervalOverride: 0
     tickIntervalOverrideEnabled: 0
-  conditionalApplications: []
+  conditionalStatuses:
+    applications: []
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0

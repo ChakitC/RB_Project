@@ -44,6 +44,15 @@ public static class ActiveSkillFeatureSmokeTests
             TestGraphVisualScaleUsesCenteredPosition(assets);
             TestGraphAllowsOneUnlocksPortToReachMultipleRequiresPorts(assets);
             TestVisualScaleValidationAndBounds(assets);
+            TestValidationIssuesCarryOwningNodeId(assets);
+            TestGrantSeveritiesAndCrossNodeDuplicates(assets);
+            TestUsageScannerReadsPassiveRuleSites(assets);
+            TestUsageScannerResolvesSkillStatusSites();
+            TestRequiredPathPreviewAggregatesPrerequisiteChain(assets);
+            TestRequiredPathPreviewZeroMultiplierZeroesLaterAdds(assets);
+            TestRequiredPathPreviewExcludesOptionalNodes(assets);
+            TestRequiredPathPreviewIsSafeAgainstCyclesAndMissingPrerequisites(assets);
+            TestUnlockedAbilitiesHidesUsagesAlreadyOnStatusEffectsCard();
             TestTreeNavigationMath();
             TestUpgradeUiSkillTreeButtonWiring();
             Debug.Log("[ActiveSkillTests] All core smoke tests passed.");
@@ -809,6 +818,285 @@ public static class ActiveSkillFeatureSmokeTests
                 issue.Severity == SkillUpgradeValidationSeverity.Warning &&
                 issue.Message.Contains("auto-fit scale", StringComparison.OrdinalIgnoreCase)),
             "Readable bounds validation must include scaled node extents.");
+    }
+
+    static void TestValidationIssuesCarryOwningNodeId(List<ScriptableObject> assets)
+    {
+        SkillUpgradeNodeData child = Node("issue.child", 1, "issue.ghost");
+        child.statModifiers.Add(new StatModifier { stat = StatType.Armor, add = 1f });
+        child.grantedUpgradeIds.Add("   ");
+        SkillUpgradeTreeDefinition tree = CreateTree(assets, "tree.node-ids", child);
+
+        List<SkillUpgradeValidationIssue> issues = SkillUpgradeTreeValidator.Validate(
+            tree, new List<SkillDefinitionBase>());
+
+        Expect(issues.Any(issue =>
+                issue.Severity == SkillUpgradeValidationSeverity.Error &&
+                issue.BelongsTo("issue.child")),
+            "A missing prerequisite must be reported against the node that declares it.");
+        Expect(!issues.Any(issue => issue.BelongsTo("issue.ghost")),
+            "The missing prerequisite id must not receive issues of its own -- it is not a node.");
+        Expect(issues.Any(issue =>
+                issue.BelongsTo("issue.child") && issue.Message.Contains("blank granted upgrade id")),
+            "A blank granted upgrade id must be attributed to its node, not left tree-level.");
+
+        // Both directions: a node-scoped issue names its own node, and an issue that opens with
+        // "Node '<id>'" is never left unattributed -- that is how the badge loses a real error.
+        Expect(issues.All(issue => issue.NodeId == null || issue.Message.Contains($"'{issue.NodeId}'")),
+            "Every node-scoped issue must name its own node in the message.");
+        Expect(issues.All(issue => !issue.Message.StartsWith("Node '", StringComparison.Ordinal) ||
+                                   issue.NodeId != null),
+            "An issue that opens by naming a node must carry that node's id.");
+    }
+
+    static void TestGrantSeveritiesAndCrossNodeDuplicates(List<ScriptableObject> assets)
+    {
+        var owner = ScriptableObject.CreateInstance<TriggeredPassiveDef>();
+        owner.rules.Add(new TriggeredPassiveRule { requiredUpgradeId = "grant.declared" });
+        assets.Add(owner);
+        var owners = new List<SkillDefinitionBase> { owner };
+
+        SkillUpgradeNodeData first = Node("grant.first", 1);
+        first.grantedUpgradeIds.Add("grant.extra");
+        SkillUpgradeNodeData second = Node("grant.second", 1);
+        second.grantedUpgradeIds.Add("grant.extra");
+        first.uiPosition = new Vector2(0f, -400f);
+        second.uiPosition = new Vector2(0f, 400f);
+        SkillUpgradeTreeDefinition tree = CreateTree(assets, "tree.grant-severity", first, second);
+
+        List<SkillUpgradeValidationIssue> issues = SkillUpgradeTreeValidator.Validate(tree, owners);
+
+        Expect(issues.Any(issue =>
+                issue.Severity == SkillUpgradeValidationSeverity.Warning &&
+                issue.BelongsTo("grant.first") &&
+                issue.Message.Contains("no owning skill declares")),
+            "An id nothing consumes must be a warning, not an error -- it is the normal WIP state.");
+        Expect(issues.Any(issue =>
+                issue.Severity == SkillUpgradeValidationSeverity.Error &&
+                issue.NodeId == null &&
+                issue.Message.Contains("grant.declared")),
+            "A declared id no node grants must be a tree-level error -- that feature is unreachable.");
+        Expect(issues.Count(issue => issue.Message.Contains("also grants")) == 2,
+            "A duplicated grant must be reported once against each of the two granting nodes.");
+
+        first.mutuallyExclusiveNodeIds.Add("grant.second");
+        second.mutuallyExclusiveNodeIds.Add("grant.first");
+        issues = SkillUpgradeTreeValidator.Validate(tree, owners);
+        Expect(!issues.Any(issue => issue.Message.Contains("also grants")),
+            "Mutually exclusive nodes may grant the same id -- that is how a branch choice works.");
+    }
+
+    static void TestUsageScannerReadsPassiveRuleSites(List<ScriptableObject> assets)
+    {
+        var passive = ScriptableObject.CreateInstance<TriggeredPassiveDef>();
+        var rule = new TriggeredPassiveRule { requiredUpgradeId = "scan.gate" };
+        rule.upgradeOverrides.Add(new PassiveRuleFieldOverride { upgradeId = "scan.tuning" });
+        passive.rules.Add(rule);
+        assets.Add(passive);
+
+        Dictionary<string, List<UpgradeIdUsage>> usages =
+            UpgradeIdUsageScanner.Scan(new List<SkillDefinitionBase> { passive });
+
+        Expect(usages.ContainsKey("scan.gate"), "The scanner must find a passive rule's requiredUpgradeId.");
+        Expect(usages.ContainsKey("scan.tuning"),
+            "The scanner must find a numeric override's upgradeId inside upgradeOverrides.");
+        Equal(-1, usages["scan.gate"][0].StepIndex, "A passive rule site belongs to no composite step.");
+        Expect(usages["scan.gate"][0].PropertyPath.EndsWith("requiredUpgradeId", StringComparison.Ordinal),
+            "The usage must record the exact property path so navigation can reach it.");
+    }
+
+    // Runs against the real skill because the interesting cases -- embedded payload sub-assets and
+    // a step gate sitting beside a conditional application -- only exist once the asset is saved,
+    // and an in-memory SkillGemDefinition has no sub-assets to walk.
+    static void TestUsageScannerResolvesSkillStatusSites()
+    {
+        const string skillPath = "Assets/Data/Skills/Aires/Aires_Skill_3.asset";
+        var skill = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>(skillPath);
+        Expect(skill != null, $"'{skillPath}' must exist for the usage scanner smoke test.");
+
+        Dictionary<string, List<UpgradeIdUsage>> usages =
+            UpgradeIdUsageScanner.Scan(new List<SkillDefinitionBase> { skill });
+
+        Expect(usages.TryGetValue("aires3.self_guard", out List<UpgradeIdUsage> selfGuard),
+            "The scanner must reach conditional applications inside an embedded payload sub-asset.");
+        Equal(2, selfGuard.Count,
+            "One upgrade id used by two conditional applications must produce two separate usages.");
+        for (int i = 0; i < selfGuard.Count; i++)
+        {
+            Expect(selfGuard[i].Summary.EndsWith(" to Self", StringComparison.Ordinal),
+                "An Apply Status payload must identify Self as its application target.");
+            Expect(selfGuard[i].Details.Count > 0,
+                "A status application must resolve at least a duration line.");
+            Expect(selfGuard[i].StepIndex >= 0,
+                "A payload wrapped by a PayloadStep must resolve back to that step for navigation.");
+            Expect(selfGuard[i].Owner is ApplyStatusSkillPayloadDef,
+                "A conditional status inside Apply Status must keep the embedded payload as its edit owner.");
+            Equal($"Configured In: Apply Status Payload (Step {selfGuard[i].StepIndex})", selfGuard[i].SourceLabel,
+                "A payload usage source must name the payload first and put the step index in parentheses.");
+            Expect(!ActiveSkillTreeEditorWindow.CanEditUsageInSkillSteps(selfGuard[i]),
+                "An Apply Status payload usage must open its payload Inspector, not the wrapper Skill Step.");
+        }
+
+        Expect(usages.TryGetValue("aires3.ally_support", out List<UpgradeIdUsage> allySupport),
+            "The scanner must find a step's own requiredUpgradeId gate.");
+        Equal(1, allySupport.Count, "A bare step gate must resolve to exactly one usage.");
+        Equal("Heal nearby Allies", allySupport[0].Summary,
+            "A HealAreaStep gate must describe its actual target mode instead of a generic 'Enable' fallback.");
+        Expect(allySupport[0].ReadsHealPowerStat,
+            "A HealAreaStep gate must flag that it reads the skill's Heal Power stat.");
+        Expect(allySupport[0].ReadsAreaRadiusStat,
+            "An Allies-mode HealAreaStep gate must flag that it reads the skill's Area Radius stat.");
+        Expect(allySupport[0].Details.Any(detail => detail.Contains("Aires3_AllyGuard")),
+            "A HealAreaStep gate must report the unconditional status it always applies once unlocked.");
+        Expect(allySupport[0].Details.Any(detail => detail.Contains("Armor") && detail.Contains("+20")),
+            "A HealAreaStep gate must report its unconditional status' modifiers.");
+        Expect(allySupport[0].StepIndex >= 0, "A step gate must resolve its composite step index.");
+        Expect(ActiveSkillTreeEditorWindow.CanEditUsageInSkillSteps(allySupport[0]),
+            "A gate stored on the composite step itself must remain editable in Skill Steps.");
+
+        Expect(usages.TryGetValue("aires3.thorns", out List<UpgradeIdUsage> thorns),
+            "The scanner must find the conditional Aires3_Thorns application inside Apply Status.");
+        Expect(thorns.Any(usage => usage.Details.Any(detail =>
+                detail.Contains("On Take Damage") &&
+                detail.Contains("+1 Stack") &&
+                detail.Contains("Max 5"))),
+            "A triggered status summary must show its trigger, granted stacks, and stack cap.");
+
+        Expect(usages.TryGetValue("aires3.def_shred", out List<UpgradeIdUsage> defenseShred) &&
+               defenseShred.All(usage => usage.Summary.EndsWith(" to Taunted Enemies", StringComparison.Ordinal)),
+            "A Taunt payload conditional status must identify Taunted Enemies as its target.");
+        Expect(defenseShred.All(usage =>
+                usage.SourceLabel == $"Configured In: Taunt Payload (Step {usage.StepIndex})"),
+            "A Taunt usage source must read as a configured location, not another gameplay effect.");
+        Expect(usages.TryGetValue("aires3.ally_regen", out List<UpgradeIdUsage> allyRegen) &&
+               allyRegen.All(usage => usage.Summary.EndsWith(" to Allies", StringComparison.Ordinal)),
+            "A HealArea conditional status must identify the authored HealArea target.");
+        Equal(1, allyRegen.Count,
+            "A conditional status inside HealAreaStep must remain a separate usage from the step's own gate.");
+    }
+
+    static void TestRequiredPathPreviewAggregatesPrerequisiteChain(List<ScriptableObject> assets)
+    {
+        var owner = ScriptableObject.CreateInstance<SkillGemDefinition>();
+        owner.baseHealPower = 25f;
+        owner.baseRadius = 30f;
+        assets.Add(owner);
+
+        SkillUpgradeNodeData root = Node("chain.root", 1);
+        root.statModifiers.Add(new StatModifier { stat = StatType.HealPower, add = 10f, mul = 1f });
+
+        SkillUpgradeNodeData mid = Node("chain.mid", 1, "chain.root");
+        mid.statModifiers.Add(new StatModifier { stat = StatType.HealPower, add = 5f, mul = 1.2f });
+        mid.statModifiers.Add(new StatModifier { stat = StatType.AreaRadius, add = 0f, mul = 1.25f });
+
+        SkillUpgradeNodeData selected = Node("chain.selected", 1, "chain.mid");
+
+        SkillUpgradeTreeDefinition tree = CreateTree(assets, "tree.chain", root, mid, selected);
+
+        FinalSkillStats preview = RequiredPathPreviewResolver.Resolve(tree, selected, owner);
+        Expect(preview != null, "A node reachable from the tree root must resolve a preview.");
+        // (25 + 10 + 5) * (1 * 1.2) = 48
+        Approximately(48f, preview.healPower,
+            "The preview must fold every prerequisite layer's Heal Power modifier, not just the direct parent.");
+        Approximately(37.5f, preview.areaRadius,
+            "The preview must fold a prerequisite layer's Area Radius multiplier too.");
+    }
+
+    static void TestRequiredPathPreviewZeroMultiplierZeroesLaterAdds(List<ScriptableObject> assets)
+    {
+        // Mirrors a real authoring bug: a trunk node with `mul: 0` silently zeroes every Heal Power
+        // add from every node above it, because the runtime formula is (base + sum(add)) * product(mul).
+        var owner = ScriptableObject.CreateInstance<SkillGemDefinition>();
+        owner.baseHealPower = 25f;
+        assets.Add(owner);
+
+        SkillUpgradeNodeData trunkGate = Node("zero.trunk", 1);
+        trunkGate.statModifiers.Add(new StatModifier { stat = StatType.HealPower, add = 100f, mul = 0f });
+
+        SkillUpgradeNodeData selected = Node("zero.selected", 1, "zero.trunk");
+
+        SkillUpgradeTreeDefinition tree = CreateTree(assets, "tree.zero-mul", trunkGate, selected);
+
+        FinalSkillStats preview = RequiredPathPreviewResolver.Resolve(tree, selected, owner);
+        Approximately(0f, preview.healPower,
+            "A prerequisite with mul: 0 must zero Heal Power in the preview, exactly like it does at runtime.");
+    }
+
+    static void TestRequiredPathPreviewExcludesOptionalNodes(List<ScriptableObject> assets)
+    {
+        var owner = ScriptableObject.CreateInstance<SkillGemDefinition>();
+        owner.baseHealPower = 25f;
+        assets.Add(owner);
+
+        SkillUpgradeNodeData root = Node("optional.root", 1);
+        SkillUpgradeNodeData selected = Node("optional.selected", 1, "optional.root");
+        SkillUpgradeNodeData optionalSibling = Node("optional.sibling", 1, "optional.root");
+        optionalSibling.statModifiers.Add(new StatModifier { stat = StatType.HealPower, add = 500f, mul = 1f });
+
+        SkillUpgradeTreeDefinition tree = CreateTree(assets, "tree.optional", root, selected, optionalSibling);
+
+        FinalSkillStats preview = RequiredPathPreviewResolver.Resolve(tree, selected, owner);
+        Approximately(25f, preview.healPower,
+            "A sibling node that is not a prerequisite of the selected node must not affect its preview, " +
+            "even though both share the same parent.");
+    }
+
+    static void TestRequiredPathPreviewIsSafeAgainstCyclesAndMissingPrerequisites(List<ScriptableObject> assets)
+    {
+        SkillUpgradeNodeData nodeA = Node("cycle.a", 1, "cycle.b", "cycle.missing");
+        SkillUpgradeNodeData nodeB = Node("cycle.b", 1, "cycle.a");
+        SkillUpgradeTreeDefinition tree = CreateTree(assets, "tree.cycle", nodeA, nodeB);
+
+        var owner = ScriptableObject.CreateInstance<SkillGemDefinition>();
+        owner.baseHealPower = 10f;
+        assets.Add(owner);
+
+        FinalSkillStats preview = RequiredPathPreviewResolver.Resolve(tree, nodeA, owner);
+        Expect(preview != null,
+            "A prerequisite cycle and a dangling prerequisite id must not stop the preview from resolving.");
+    }
+
+    // Runs against the real skill for the same reason TestUsageScannerResolvesSkillStatusSites does:
+    // a route application only exists once the asset is saved.
+    static void TestUnlockedAbilitiesHidesUsagesAlreadyOnStatusEffectsCard()
+    {
+        const string skillPath = "Assets/Data/Skills/Aires/Aires_Skill_3.asset";
+        var skill = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>(skillPath);
+        Expect(skill != null, $"'{skillPath}' must exist for this smoke test.");
+
+        Dictionary<string, List<UpgradeIdUsage>> usages =
+            UpgradeIdUsageScanner.Scan(new List<SkillDefinitionBase> { skill });
+
+        Expect(usages.TryGetValue("aires3.self_guard", out List<UpgradeIdUsage> selfGuardUsages),
+            "The scanner must still find the conditional applications gated by aires3.self_guard.");
+        List<StatusEffectApplicationHandle> selfGuardHandles =
+            ActiveSkillStatusEffectAuthoringService.Collect(skill, new List<string> { "aires3.self_guard" });
+        Equal(2, selfGuardHandles.Count,
+            "Both conditional applications gated by aires3.self_guard must resolve as status route handles.");
+        for (int i = 0; i < selfGuardHandles.Count; i++)
+        {
+            Expect(selfGuardHandles[i].Details.Count > 0,
+                "A status route handle must resolve the same modifier/duration lines the scanner reports.");
+        }
+
+        List<UpgradeIdUsage> remaining =
+            ActiveSkillTreeEditorWindow.FilterNonStatusUsages(selfGuardUsages, selfGuardHandles);
+        Equal(0, remaining.Count,
+            "A granted id whose only usages are status route applications must have nothing left to " +
+            "show under Unlocked Abilities once the Status Effects card already covers it.");
+
+        Expect(usages.TryGetValue("aires3.ally_support", out List<UpgradeIdUsage> allySupportUsages),
+            "The scanner must still find the HealAreaStep's own gate.");
+        List<StatusEffectApplicationHandle> allySupportHandles =
+            ActiveSkillStatusEffectAuthoringService.Collect(skill, new List<string> { "aires3.ally_support" });
+        Equal(0, allySupportHandles.Count,
+            "A bare step gate is not a status route application, so Collect must not resolve a handle for it.");
+
+        List<UpgradeIdUsage> remainingAllySupport =
+            ActiveSkillTreeEditorWindow.FilterNonStatusUsages(allySupportUsages, allySupportHandles);
+        Equal(1, remainingAllySupport.Count,
+            "A non-status behavior (a HealAreaStep gate) must stay visible in Unlocked Abilities even " +
+            "though a different id on the same node might be a pure status gate.");
     }
 
     static CharacterProgressData InitializedData(int points)

@@ -11,6 +11,9 @@ using UnityEngine.UIElements;
 
 public sealed class ActiveSkillTreeEditorWindow : EditorWindow
 {
+    const double FocusHighlightSeconds = 2.5d;
+    static readonly Color FocusHighlightColor = new(1f, 0.85f, 0.35f);
+
     SkillTreeGraphView _graph;
     IMGUIContainer _inspector;
     ObjectField _assetField;
@@ -34,6 +37,26 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
     static List<Type> _cachedStepTypes;
     readonly HashSet<SkillEffectStep> _expandedSteps = new();
     Vector2 _skillStepsScrollPosition;
+    ToolbarToggle _skillStepsToggle;
+
+    // Gameplay Effects panel: which upgrade ids the selected node grants, and where each one is
+    // actually consumed. Rebuilt from UpgradeIdUsageScanner, which scans the AssetDatabase, so it
+    // is cached exactly like _cachedIssues rather than recomputed per repaint.
+    Dictionary<string, List<UpgradeIdUsage>> _cachedUsages;
+    readonly HashSet<string> _expandedUpgradeIds = new();
+
+    // Status Effect authoring: which owning skill the wizard writes to (only ambiguous on a shared
+    // tree) and the applications already attached to the selected node's granted ids.
+    SkillGemDefinition _statusOwner;
+    List<StatusEffectApplicationHandle> _cachedStatusApplications;
+    SkillUpgradeNodeData _statusApplicationsNode;
+    SkillGemDefinition _statusApplicationsOwner;
+
+    // "Edit" navigation state: the step to reveal in the Skill Steps panel, and how long its
+    // highlight stays up after the jump.
+    int _focusStepIndex = -1;
+    bool _focusStepNeedsScroll;
+    double _focusHighlightUntil;
 
     [MenuItem("Tools/RB/Skills/Active Skill Tree Editor")]
     public static ActiveSkillTreeEditorWindow Open()
@@ -128,13 +151,13 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         toolbar.Add(new ToolbarButton(SaveTree) { text = "Save" });
 
         _showSkillSteps = false;
-        var skillStepsToggle = new ToolbarToggle { text = "Skill Steps" };
-        skillStepsToggle.RegisterValueChangedCallback(evt =>
+        _skillStepsToggle = new ToolbarToggle { text = "Skill Steps" };
+        _skillStepsToggle.RegisterValueChangedCallback(evt =>
         {
             _showSkillSteps = evt.newValue;
             _inspector?.MarkDirtyRepaint();
         });
-        toolbar.Add(skillStepsToggle);
+        toolbar.Add(_skillStepsToggle);
         rootVisualElement.Add(toolbar);
 
         var split = new TwoPaneSplitView(0, 680f, TwoPaneSplitViewOrientation.Horizontal);
@@ -172,6 +195,8 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         _dirty = false;
         _issuesDirty = true;
         _cachedOwners = null;
+        _statusOwner = null;
+        _statusApplicationsNode = null;
         ClearStepsCache();
         _pendingStepType = null;
         _pendingStepPayloadType = null;
@@ -266,6 +291,10 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         }
 
         _serializedTree.Update();
+
+        // Runs before the node branch so the graph badges refresh even while no node is selected.
+        EnsureIssues();
+
         if (_selectedNode == null)
         {
             EditorGUILayout.PropertyField(_serializedTree.FindProperty("treeId"));
@@ -292,10 +321,510 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         {
             MarkDirty();
             _issuesDirty = true;
+            // grantedUpgradeIds is edited right here, and it is what the status cards key off.
+            _cachedStatusApplications = null;
             _graph.RefreshTitles();
         }
 
+        DrawGameplayEffects(_selectedNode);
         DrawNodeIssues();
+    }
+
+    Dictionary<string, List<UpgradeIdUsage>> ResolveUsages()
+    {
+        _cachedUsages ??= UpgradeIdUsageScanner.Scan(ResolveOwners());
+        return _cachedUsages;
+    }
+
+    // Everything the player gets from this node, spelled out: stat modifiers straight off the node
+    // plus, for each granted upgrade id, every site in the owning skill that actually reacts to it.
+    void DrawGameplayEffects(SkillUpgradeNodeData node)
+    {
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("Gameplay Effects", EditorStyles.boldLabel);
+
+        DrawNodeStatEffects(node);
+
+        // Unlocked Abilities' dedup against Additional Gated Status Effects needs _statusOwner
+        // resolved before it draws, even though the owner picker UI itself still lives in the
+        // (now second) Additional Gated Status Effects section below.
+        EnsureStatusOwnerResolved(ResolveSkillOwners());
+
+        DrawNodeUnlockedAbilities(node);
+        DrawNodeStatusEffects(node);
+    }
+
+    void EnsureStatusOwnerResolved(List<SkillGemDefinition> skillOwners)
+    {
+        if (skillOwners.Count == 0)
+            return;
+
+        if (!skillOwners.Contains(_statusOwner))
+            _statusOwner = skillOwners[0];
+    }
+
+    // The one-window path for "give this node a buff" that is not already bundled inside an
+    // unlocked ability -- the wizard owns identity/target/numbers, and every card below is a
+    // conditional application gated directly by one of this node's granted ids. A status embedded in
+    // a step's own unconditional list (for example HealAreaStep.statusSpecApplications) is not gated
+    // by its own id, so it never appears here -- it stays part of the Unlocked Abilities card above,
+    // where editing it means editing the step, not this wizard.
+    void DrawNodeStatusEffects(SkillUpgradeNodeData node)
+    {
+        EditorGUILayout.Space(2f);
+        EditorGUILayout.LabelField("Additional Gated Status Effects", EditorStyles.miniBoldLabel);
+
+        List<SkillGemDefinition> skillOwners = ResolveSkillOwners();
+        if (skillOwners.Count == 0)
+        {
+            EditorGUILayout.HelpBox(
+                "No skill points its Upgrade Tree at this asset yet, so there is nowhere to attach a " +
+                "status effect.",
+                MessageType.Info);
+            return;
+        }
+
+        if (skillOwners.Count > 1)
+        {
+            // Shared tree: the wizard must be told which owner it is authoring for before it can
+            // resolve routes, because each owner has its own steps.
+            int selected = Mathf.Max(0, skillOwners.IndexOf(_statusOwner));
+            string[] names = skillOwners.Select(owner => owner.name).ToArray();
+            int next = EditorGUILayout.Popup("Owning Skill", selected, names);
+            _statusOwner = skillOwners[next];
+        }
+        else
+        {
+            _statusOwner = skillOwners[0];
+        }
+
+        if (GUILayout.Button("+ Add Additional Status Effect"))
+        {
+            SkillUpgradeNodeData capturedNode = node;
+            List<SkillGemDefinition> capturedOwners = skillOwners;
+            EditorApplication.delayCall += () => OpenStatusWizard(capturedNode, capturedOwners, null);
+        }
+
+        List<StatusEffectApplicationHandle> applications = ResolveStatusApplications(node);
+        if (applications.Count == 0)
+        {
+            EditorGUILayout.HelpBox(
+                "No additional status effect is directly gated by this node.\n" +
+                "Status effects bundled with the unlocked ability are shown above.",
+                MessageType.None);
+            return;
+        }
+
+        for (int i = 0; i < applications.Count; i++)
+            DrawStatusApplicationCard(node, skillOwners, applications[i]);
+    }
+
+    void DrawStatusApplicationCard(
+        SkillUpgradeNodeData node,
+        List<SkillGemDefinition> skillOwners,
+        StatusEffectApplicationHandle handle)
+    {
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        EditorGUILayout.LabelField(handle.Summary, EditorStyles.wordWrappedLabel);
+
+        if (handle.Details.Count > 0)
+        {
+            EditorGUI.indentLevel++;
+            for (int i = 0; i < handle.Details.Count; i++)
+                EditorGUILayout.LabelField(handle.Details[i], EditorStyles.miniLabel);
+            EditorGUI.indentLevel--;
+        }
+
+        EditorGUILayout.LabelField($"Gate: {handle.UpgradeId}", EditorStyles.miniLabel);
+        EditorGUILayout.LabelField(
+            handle.Route != null
+                ? $"Source: {handle.Route.FieldLabel} — {handle.Route.LocationLabel}"
+                : "Source: <unresolved destination>",
+            EditorStyles.miniLabel);
+        if (handle.Effect != null)
+        {
+            EditorGUILayout.LabelField(
+                $"Scope: {StatusEffectScopeUtility.DescribeScope(handle.Effect)}",
+                EditorStyles.miniLabel);
+        }
+
+        using (new EditorGUILayout.HorizontalScope())
+        {
+            if (GUILayout.Button("Edit", GUILayout.Width(48f)))
+            {
+                StatusEffectApplicationHandle captured = handle;
+                SkillUpgradeNodeData capturedNode = node;
+                List<SkillGemDefinition> capturedOwners = skillOwners;
+                EditorApplication.delayCall += () => OpenStatusWizard(capturedNode, capturedOwners, captured);
+            }
+
+            if (GUILayout.Button("Open Source", GUILayout.Width(94f)))
+            {
+                UnityEngine.Object container = handle.Route?.Container;
+                if (container != null)
+                {
+                    Selection.activeObject = container;
+                    EditorGUIUtility.PingObject(container);
+                }
+            }
+
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Remove", GUILayout.Width(70f)))
+            {
+                StatusEffectApplicationHandle captured = handle;
+                SkillUpgradeNodeData capturedNode = node;
+                EditorApplication.delayCall += () => RemoveStatusApplication(capturedNode, captured);
+            }
+        }
+
+        EditorGUILayout.EndVertical();
+    }
+
+    void OpenStatusWizard(
+        SkillUpgradeNodeData node,
+        List<SkillGemDefinition> skillOwners,
+        StatusEffectApplicationHandle existing)
+    {
+        if (_tree == null || node == null)
+            return;
+
+        SkillGemDefinition owner = _statusOwner != null ? _statusOwner : skillOwners.FirstOrDefault();
+        if (owner == null)
+            return;
+
+        ActiveSkillStatusEffectWizardWindow.Open(
+            owner,
+            skillOwners,
+            _tree,
+            node,
+            existing,
+            OnStatusAuthoringApplied);
+    }
+
+    void OnStatusAuthoringApplied()
+    {
+        MarkDirty();
+        _issuesDirty = true;
+        InvalidateGameplayEffectCaches();
+        ClearStepsCache();
+        _graph?.RefreshTitles();
+        InternalEditorUtility.RepaintAllViews();
+        _inspector?.MarkDirtyRepaint();
+    }
+
+    // Removing the application never deletes the Status Effect Def asset -- another skill may still
+    // use it. The granted id is different: once nothing listens for it, keeping it on the node just
+    // costs the player a point for nothing, so offer to drop it.
+    void RemoveStatusApplication(SkillUpgradeNodeData node, StatusEffectApplicationHandle handle)
+    {
+        if (handle?.Route == null || _statusOwner == null)
+            return;
+
+        if (!EditorUtility.DisplayDialog(
+                "Remove Status Effect",
+                $"Remove '{handle.Summary}' from {handle.SourceLabel}?\n\n" +
+                "The Status Effect Def asset itself is kept.",
+                "Remove",
+                "Cancel"))
+        {
+            return;
+        }
+
+        ActiveSkillStatusEffectAuthoringService.Remove(handle, _statusOwner);
+
+        List<SkillDefinitionBase> treeOwners = ResolveOwners();
+        if (!ActiveSkillStatusEffectAuthoringService.IsUpgradeIdStillUsed(treeOwners, handle.UpgradeId) &&
+            EditorUtility.DisplayDialog(
+                "Unused Upgrade Id",
+                $"Nothing in any owner of this tree listens for '{handle.UpgradeId}' any more.\n\n" +
+                $"Remove it from node '{node?.RuntimeNodeId}'?",
+                "Remove Id",
+                "Keep Id"))
+        {
+            ActiveSkillStatusEffectAuthoringService.RemoveGrantedUpgradeId(_tree, node, handle.UpgradeId);
+        }
+
+        _skillDirty = true;
+        _skillDirtyTarget = _statusOwner;
+        OnStatusAuthoringApplied();
+    }
+
+    List<SkillGemDefinition> ResolveSkillOwners()
+    {
+        return ResolveOwners().OfType<SkillGemDefinition>().ToList();
+    }
+
+    List<StatusEffectApplicationHandle> ResolveStatusApplications(SkillUpgradeNodeData node)
+    {
+        if (_cachedStatusApplications != null &&
+            ReferenceEquals(_statusApplicationsNode, node) &&
+            ReferenceEquals(_statusApplicationsOwner, _statusOwner))
+        {
+            return _cachedStatusApplications;
+        }
+
+        _statusApplicationsNode = node;
+        _statusApplicationsOwner = _statusOwner;
+        _cachedStatusApplications = ActiveSkillStatusEffectAuthoringService.Collect(
+            _statusOwner, node?.grantedUpgradeIds);
+        return _cachedStatusApplications;
+    }
+
+    void InvalidateGameplayEffectCaches()
+    {
+        _cachedUsages = null;
+        _cachedStatusApplications = null;
+        _statusApplicationsNode = null;
+        _statusApplicationsOwner = null;
+    }
+
+    void DrawNodeStatEffects(SkillUpgradeNodeData node)
+    {
+        var lines = new List<string>();
+        if (node.statModifiers != null)
+        {
+            for (int i = 0; i < node.statModifiers.Count; i++)
+            {
+                StatModifier modifier = node.statModifiers[i];
+                if (modifier == null)
+                    continue;
+
+                if (!Mathf.Approximately(modifier.add, 0f))
+                    lines.Add($"{modifier.stat} {(modifier.add >= 0f ? "+" : string.Empty)}{modifier.add:0.###}");
+                if (!Mathf.Approximately(modifier.mul, 1f))
+                    lines.Add($"{modifier.stat} x{modifier.mul:0.###}");
+            }
+        }
+
+        if (lines.Count == 0)
+            return;
+
+        EditorGUILayout.LabelField("Stats", EditorStyles.miniBoldLabel);
+        EditorGUI.indentLevel++;
+        for (int i = 0; i < lines.Count; i++)
+            EditorGUILayout.LabelField($"- {lines[i]}");
+        EditorGUI.indentLevel--;
+    }
+
+    void DrawNodeUnlockedAbilities(SkillUpgradeNodeData node)
+    {
+        List<string> grantedIds = node.grantedUpgradeIds;
+        if (grantedIds == null || grantedIds.Count == 0)
+            return;
+
+        Dictionary<string, List<UpgradeIdUsage>> usagesById = ResolveUsages();
+        List<StatusEffectApplicationHandle> statusApplications = ResolveStatusApplications(node);
+        bool headerDrawn = false;
+
+        for (int i = 0; i < grantedIds.Count; i++)
+        {
+            string upgradeId = string.IsNullOrWhiteSpace(grantedIds[i]) ? null : grantedIds[i].Trim();
+            if (upgradeId == null)
+                continue;
+
+            usagesById.TryGetValue(upgradeId, out List<UpgradeIdUsage> rawUsages);
+            List<UpgradeIdUsage> usages = FilterNonStatusUsages(rawUsages, statusApplications);
+            int usageCount = usages.Count;
+
+            // A pure status gate is already a full card in Status Effects above (summary, resolved
+            // numbers, gate, source, scope) -- repeating it here as "id (1)" would just be noise. An id
+            // that resolves to nothing at all still gets the row below, so the "unused id" warning stays.
+            if (rawUsages != null && rawUsages.Count > 0 && usageCount == 0)
+                continue;
+
+            if (!headerDrawn)
+            {
+                EditorGUILayout.LabelField("Unlocked Abilities", EditorStyles.miniBoldLabel);
+                headerDrawn = true;
+            }
+
+            bool expanded = _expandedUpgradeIds.Contains(upgradeId);
+            bool nextExpanded = EditorGUILayout.Foldout(expanded, $"{upgradeId} ({usageCount})", true);
+            if (nextExpanded != expanded)
+            {
+                if (nextExpanded)
+                    _expandedUpgradeIds.Add(upgradeId);
+                else
+                    _expandedUpgradeIds.Remove(upgradeId);
+                _inspector?.MarkDirtyRepaint();
+            }
+
+            if (!nextExpanded)
+                continue;
+
+            EditorGUI.indentLevel++;
+            if (usageCount == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "No step, payload, or passive rule in the owning asset listens for this id.",
+                    MessageType.Warning);
+            }
+            else
+            {
+                for (int usageIndex = 0; usageIndex < usageCount; usageIndex++)
+                    DrawUsage(node, usages[usageIndex]);
+            }
+            EditorGUI.indentLevel--;
+        }
+    }
+
+    // A status route application shows up in both scans -- UpgradeIdUsageScanner finds every
+    // requiredUpgradeId field including route entries, and ActiveSkillStatusEffectAuthoringService
+    // finds the same entries because it also walks routes. Match on the exact property the two scans
+    // agree on (the entry's own requiredUpgradeId path) instead of comparing summary text, so this
+    // never depends on wording staying in sync between the two describers.
+    internal static List<UpgradeIdUsage> FilterNonStatusUsages(
+        List<UpgradeIdUsage> usages,
+        List<StatusEffectApplicationHandle> statusApplications)
+    {
+        var result = new List<UpgradeIdUsage>();
+        if (usages == null)
+            return result;
+
+        for (int i = 0; i < usages.Count; i++)
+        {
+            if (!IsShownInStatusEffects(usages[i], statusApplications))
+                result.Add(usages[i]);
+        }
+
+        return result;
+    }
+
+    static bool IsShownInStatusEffects(UpgradeIdUsage usage, List<StatusEffectApplicationHandle> statusApplications)
+    {
+        if (usage?.Owner == null || statusApplications == null)
+            return false;
+
+        for (int i = 0; i < statusApplications.Count; i++)
+        {
+            SkillStatusRoute route = statusApplications[i]?.Route;
+            if (route == null || !ReferenceEquals(route.Container, usage.Owner))
+                continue;
+
+            string appliedPath =
+                $"{route.ListPropertyPath}.Array.data[{statusApplications[i].ElementIndex}].requiredUpgradeId";
+            if (string.Equals(appliedPath, usage.PropertyPath, StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
+    }
+
+    void DrawUsage(SkillUpgradeNodeData node, UpgradeIdUsage usage)
+    {
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        EditorGUILayout.LabelField(usage.Summary, EditorStyles.wordWrappedLabel);
+
+        if (usage.ReadsHealPowerStat || usage.ReadsAreaRadiusStat)
+            DrawRequiredPathPreview(node, usage);
+
+        if (usage.Details.Count > 0)
+        {
+            EditorGUI.indentLevel++;
+            for (int i = 0; i < usage.Details.Count; i++)
+                EditorGUILayout.LabelField(usage.Details[i], EditorStyles.miniLabel);
+            EditorGUI.indentLevel--;
+        }
+
+        for (int i = 0; i < usage.Warnings.Count; i++)
+            EditorGUILayout.HelpBox(usage.Warnings[i], MessageType.Warning);
+
+        using (new EditorGUILayout.HorizontalScope())
+        {
+            EditorGUILayout.LabelField(usage.SourceLabel, EditorStyles.miniLabel);
+            if (GUILayout.Button("Edit", GUILayout.Width(48f)))
+            {
+                UpgradeIdUsage capturedUsage = usage;
+                EditorApplication.delayCall += () => OpenUsage(capturedUsage);
+            }
+        }
+
+        EditorGUILayout.EndVertical();
+    }
+
+    // Resolves FinalSkillStats along exactly the prerequisite chain leading to this node -- not the
+    // player's eventual totals, since an optional sibling node can still add more later. Multiple
+    // owning skills can have different base stats, so the owner is named whenever the tree is shared.
+    void DrawRequiredPathPreview(SkillUpgradeNodeData node, UpgradeIdUsage usage)
+    {
+        var owner = usage.OwningSkill as SkillGemDefinition;
+        if (owner == null || _tree == null)
+            return;
+
+        FinalSkillStats preview = RequiredPathPreviewResolver.Resolve(_tree, node, owner);
+        if (preview == null)
+            return;
+
+        EditorGUI.indentLevel++;
+        EditorGUILayout.LabelField("Required Path Preview", EditorStyles.miniBoldLabel);
+
+        if (ResolveSkillOwners().Count > 1)
+            EditorGUILayout.LabelField(owner.name, EditorStyles.miniLabel);
+
+        if (usage.ReadsHealPowerStat)
+        {
+            EditorGUILayout.LabelField(
+                $"Heal: {UpgradeIdUsageScanner.Format(preview.healPower)} " +
+                $"(Base {UpgradeIdUsageScanner.Format(owner.baseHealPower)})",
+                EditorStyles.miniLabel);
+            if (preview.healPower <= 0f)
+            {
+                EditorGUILayout.HelpBox(
+                    "Heal Power resolves to 0 or less along this path.", MessageType.Warning);
+            }
+        }
+
+        if (usage.ReadsAreaRadiusStat)
+        {
+            EditorGUILayout.LabelField(
+                $"Radius: {UpgradeIdUsageScanner.Format(preview.areaRadius)}m " +
+                $"(Base {UpgradeIdUsageScanner.Format(owner.baseRadius)}m)",
+                EditorStyles.miniLabel);
+            if (preview.areaRadius <= 0f)
+            {
+                EditorGUILayout.HelpBox(
+                    "Allies mode needs Area Radius above 0 to reach anyone.", MessageType.Warning);
+            }
+        }
+
+        EditorGUI.indentLevel--;
+    }
+
+    // Composite steps are editable inside this window, so jump there and reveal the step. Anything
+    // else (passive rules, a payload's own fields) lives on another asset -- select and ping it
+    // instead of pretending this window can edit it.
+    void OpenUsage(UpgradeIdUsage usage)
+    {
+        if (usage == null)
+            return;
+
+        if (CanEditUsageInSkillSteps(usage))
+        {
+            _showSkillSteps = true;
+            _skillStepsToggle?.SetValueWithoutNotify(true);
+            _focusStepIndex = usage.StepIndex;
+            _focusStepNeedsScroll = true;
+            _focusHighlightUntil = EditorApplication.timeSinceStartup + FocusHighlightSeconds;
+            _inspector?.MarkDirtyRepaint();
+            return;
+        }
+
+        if (usage.Owner != null)
+        {
+            Selection.activeObject = usage.Owner;
+            EditorGUIUtility.PingObject(usage.Owner);
+        }
+    }
+
+    // A wrapped payload can resolve back to its PayloadStep for a useful source label, but its
+    // serialized fields still live on the embedded payload sub-asset. The Skill Steps panel only
+    // edits fields stored on the composite's managed-reference steps, so route payload-owned
+    // usages to their own Inspector instead of opening a wrapper that cannot show the target spec.
+    internal static bool CanEditUsageInSkillSteps(UpgradeIdUsage usage)
+    {
+        return usage != null &&
+               usage.StepIndex >= 0 &&
+               usage.Owner is CompositeSkillPayloadDef;
     }
 
     // FindOwningAssets scans every SkillDefinitionBase/CharacterStats asset in the project, so
@@ -308,24 +837,32 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         return _cachedOwners ?? new List<SkillDefinitionBase>();
     }
 
+    // Recomputes at most once per change, and pushes the result to the graph so every node carries
+    // its own status badge without the graph having to run validation itself.
+    List<SkillUpgradeValidationIssue> EnsureIssues()
+    {
+        if (!_issuesDirty)
+            return _cachedIssues;
+
+        _cachedIssues = SkillUpgradeTreeValidator.Validate(_tree, ResolveOwners());
+        _issuesDirty = false;
+        _graph?.ApplyIssueBadges(_cachedIssues);
+        return _cachedIssues;
+    }
+
     void DrawNodeIssues()
     {
-        if (_issuesDirty)
-        {
-            _cachedIssues = SkillUpgradeTreeValidator.Validate(_tree, ResolveOwners());
-            _issuesDirty = false;
-        }
-
+        EnsureIssues();
         if (_cachedIssues.Count == 0)
             return;
 
-        string marker = $"'{_selectedNode.RuntimeNodeId}'";
+        string selectedNodeId = _selectedNode.RuntimeNodeId;
         int otherCount = 0;
         EditorGUILayout.Space();
         for (int i = 0; i < _cachedIssues.Count; i++)
         {
             SkillUpgradeValidationIssue issue = _cachedIssues[i];
-            if (!issue.Message.Contains(marker))
+            if (!issue.BelongsTo(selectedNodeId))
             {
                 otherCount++;
                 continue;
@@ -348,9 +885,11 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
 
         // Explicit Validate click: refresh the owner cache so renamed/added skill assets are seen.
         _cachedOwners = new List<SkillDefinitionBase>(SkillUpgradeTreeValidator.FindOwningAssets(_tree));
+        InvalidateGameplayEffectCaches();
         List<SkillUpgradeValidationIssue> issues = SkillUpgradeTreeValidator.Validate(_tree, _cachedOwners);
         _cachedIssues = issues;
         _issuesDirty = false;
+        _graph?.ApplyIssueBadges(issues);
         if (issues.Count == 0)
         {
             Debug.Log($"[ActiveSkillTree] '{_tree.name}' is valid.", _tree);
@@ -411,6 +950,7 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
 
         _serializedTree = new SerializedObject(_tree);
         _issuesDirty = true;
+        InvalidateGameplayEffectCaches();
         _graph?.Load(_tree);
 
         // An undo/redo can destroy or replace the composite the steps panel was targeting;
@@ -509,7 +1049,7 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
 
         // A freshly constructed SerializedObject's first Update() can pull in load-time schema
         // normalization (e.g. legacy managed-reference data upgrading to the current class
-        // shape -- the same phenomenon that silently added ConditionalStatus.spec blocks to
+        // shape -- the same phenomenon that silently added conditional status spec blocks to
         // Aires_Skill_3.asset on an earlier resave). ApplyModifiedProperties() then reports that
         // as a real change even though nothing was edited. Absorb it once here, right after
         // acquiring the SerializedObject, so merely opening/viewing the panel after a domain
@@ -528,6 +1068,11 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         _stepsComposite = null;
         _serializedComposite = null;
         _expandedSteps.Clear();
+
+        // Usages are read out of the same composite/payload assets, so any structural change that
+        // invalidates the step cache invalidates the Gameplay Effects summary too.
+        _cachedUsages = null;
+        _cachedStatusApplications = null;
     }
 
     void DrawCompositeSteps(SkillGemDefinition skill, CompositeSkillPayloadDef composite)
@@ -562,6 +1107,11 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
             EditorUtility.SetDirty(skill);
             _skillDirty = true;
             _skillDirtyTarget = skill;
+
+            // Editing a requiredUpgradeId or a status spec here changes what the Gameplay Effects
+            // summary should say, so drop it without touching the step SerializedObject cache.
+            _cachedUsages = null;
+            _cachedStatusApplications = null;
         }
 
         EditorGUILayout.Space(8f);
@@ -576,9 +1126,23 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         int count)
     {
         SerializedProperty stepProp = stepsProp.GetArrayElementAtIndex(index);
+
+        bool focused = index == _focusStepIndex;
+        if (focused && EditorApplication.timeSinceStartup >= _focusHighlightUntil)
+        {
+            _focusStepIndex = -1;
+            focused = false;
+        }
+
+        Color previousBackground = GUI.backgroundColor;
+        if (focused)
+            GUI.backgroundColor = FocusHighlightColor;
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        GUI.backgroundColor = previousBackground;
 
         var stepInstance = stepProp.managedReferenceValue as SkillEffectStep;
+        if (focused && stepInstance != null)
+            _expandedSteps.Add(stepInstance);
         if (stepInstance == null)
         {
             EditorGUILayout.HelpBox(
@@ -628,9 +1192,8 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
             }
             else
             {
-                // Draws every visible field on the step, including requiredUpgradeId -- the
-                // HideInInspector legacy fields on HealAreaStep.ConditionalStatus stay hidden
-                // because PropertyField already honors that attribute.
+                // Draws every visible field on the step, including requiredUpgradeId and the
+                // step's ConditionalStatusRoute blocks (through ConditionalStatusRouteDrawer).
                 EditorGUI.indentLevel++;
                 EditorGUILayout.PropertyField(stepProp, true);
                 EditorGUI.indentLevel--;
@@ -699,6 +1262,20 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         }
 
         EditorGUILayout.EndVertical();
+
+        if (!focused)
+            return;
+
+        // Layout rects are only meaningful during Repaint, so the scroll jump waits for one.
+        if (_focusStepNeedsScroll && Event.current.type == EventType.Repaint)
+        {
+            _skillStepsScrollPosition.y = Mathf.Max(0f, GUILayoutUtility.GetLastRect().y);
+            _focusStepNeedsScroll = false;
+        }
+
+        // Keep repainting so the highlight actually expires instead of freezing until the next
+        // unrelated event reaches the container.
+        _inspector?.MarkDirtyRepaint();
     }
 
     void DrawAddStepRow(SkillGemDefinition skill, CompositeSkillPayloadDef composite)
@@ -881,7 +1458,7 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         return _cachedStepTypes;
     }
 
-    static string GetStepDisplayName(Type stepType)
+    internal static string GetStepDisplayName(Type stepType)
     {
         if (stepType == null)
             return "None";
@@ -1008,6 +1585,34 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
             }
         }
 
+        // Errors win over warnings on the same node; a node with neither shows the clean badge.
+        public void ApplyIssueBadges(IReadOnlyList<SkillUpgradeValidationIssue> issues)
+        {
+            var severityByNodeId = new Dictionary<string, SkillUpgradeValidationSeverity>(StringComparer.Ordinal);
+            for (int i = 0; issues != null && i < issues.Count; i++)
+            {
+                SkillUpgradeValidationIssue issue = issues[i];
+                if (issue.NodeId == null)
+                    continue;
+
+                if (severityByNodeId.TryGetValue(issue.NodeId, out SkillUpgradeValidationSeverity existing) &&
+                    existing == SkillUpgradeValidationSeverity.Error)
+                {
+                    continue;
+                }
+
+                severityByNodeId[issue.NodeId] = issue.Severity;
+            }
+
+            foreach (KeyValuePair<string, SkillGraphNode> entry in _nodes)
+            {
+                entry.Value.SetStatusBadge(
+                    severityByNodeId.TryGetValue(entry.Key, out SkillUpgradeValidationSeverity severity)
+                        ? severity
+                        : null);
+            }
+        }
+
         public void RefreshTitles()
         {
             foreach (SkillGraphNode node in _nodes.Values)
@@ -1104,10 +1709,16 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         const float BaseIconSize = 72f;
 
         readonly Image _icon;
+        readonly Label _statusBadge;
 
         public SkillGraphNode(SkillUpgradeNodeData data)
         {
             Data = data;
+            _statusBadge = new Label { name = "skill-node-status" };
+            _statusBadge.style.marginRight = 4f;
+            _statusBadge.style.unityFontStyleAndWeight = FontStyle.Bold;
+            titleContainer.Insert(0, _statusBadge);
+            SetStatusBadge(null);
             Input = InstantiatePort(Orientation.Horizontal, Direction.Input, Port.Capacity.Multi, typeof(bool));
             Input.portName = "Requires";
             inputContainer.Add(Input);
@@ -1160,6 +1771,27 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
             title = string.IsNullOrWhiteSpace(Data.ResolvedDisplayName)
                 ? Data.RuntimeNodeId
                 : Data.ResolvedDisplayName;
+        }
+
+        // Only the marker lives on the graph -- the message stays in the inspector so a large tree
+        // does not turn into a wall of text.
+        public void SetStatusBadge(SkillUpgradeValidationSeverity? severity)
+        {
+            switch (severity)
+            {
+                case SkillUpgradeValidationSeverity.Error:
+                    _statusBadge.text = "✕";
+                    _statusBadge.style.color = new Color(1f, 0.4f, 0.4f);
+                    break;
+                case SkillUpgradeValidationSeverity.Warning:
+                    _statusBadge.text = "!";
+                    _statusBadge.style.color = new Color(1f, 0.78f, 0.25f);
+                    break;
+                default:
+                    _statusBadge.text = "✓";
+                    _statusBadge.style.color = new Color(0.45f, 0.85f, 0.5f);
+                    break;
+            }
         }
 
         public void RefreshIcon()

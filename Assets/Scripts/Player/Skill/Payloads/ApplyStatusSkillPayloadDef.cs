@@ -24,19 +24,11 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
     [LabelText("Prefer Caster Root")]
     private bool preferCasterRoot = true;
 
-    [Serializable]
-    public sealed class ConditionalStatus
-    {
-        public string requiredUpgradeId;
-
-        public StatusApplicationSpec spec = new();
-    }
-
     [PropertyOrder(-10)]
     [SerializeField, BoxGroup("Upgrades")]
     [LabelText("Conditional Status Effects")]
-    [ListDrawerSettings(DefaultExpandedState = true, DraggableItems = true, ShowFoldout = true)]
-    private List<ConditionalStatus> conditionalApplications = new();
+    [SkillStatusRouteTarget(SkillStatusTarget.Self, "Apply Status")]
+    private ConditionalStatusRoute conditionalStatuses = new();
 
     public override void Execute(SkillCastContext context)
     {
@@ -79,21 +71,10 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
             }
         }
 
-        if (conditionalApplications != null && conditionalApplications.Count > 0)
+        if (conditionalStatuses != null &&
+            conditionalStatuses.ApplyUnlocked(context, controller, source, skillFallbackDuration))
         {
-            for (int i = 0; i < conditionalApplications.Count; i++)
-            {
-                ConditionalStatus conditional = conditionalApplications[i];
-                if (conditional == null || !context.HasUpgrade(conditional.requiredUpgradeId))
-                    continue;
-
-                StatusApplicationSpec resolvedSpec = conditional.spec;
-                if (resolvedSpec?.effect == null)
-                    continue;
-
-                controller.ApplyEffect(resolvedSpec, source, skillFallbackDuration);
-                appliedAny = true;
-            }
+            appliedAny = true;
         }
 
         if (!appliedAny)
@@ -102,15 +83,7 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
 
     public override void CollectUpgradeIds(List<string> ids)
     {
-        if (conditionalApplications == null)
-            return;
-
-        for (int i = 0; i < conditionalApplications.Count; i++)
-        {
-            ConditionalStatus conditional = conditionalApplications[i];
-            if (conditional != null)
-                SkillUpgradeIdCollection.AddUnique(ids, conditional.requiredUpgradeId);
-        }
+        conditionalStatuses?.CollectUpgradeIds(ids);
     }
 
     public override void CollectValidationIssues(List<string> issues)
@@ -132,17 +105,10 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
             }
         }
 
-        if (conditionalApplications != null)
+        if (conditionalStatuses != null && conditionalStatuses.HasConfiguredApplication)
         {
-            for (int i = 0; i < conditionalApplications.Count; i++)
-            {
-                StatusApplicationSpec resolvedSpec = conditionalApplications[i]?.spec;
-                if (resolvedSpec?.effect != null)
-                {
-                    hasConfiguredApplication = true;
-                    resolvedSpec.CollectValidationIssues(issues, $"conditionalApplications[{i}]");
-                }
-            }
+            hasConfiguredApplication = true;
+            conditionalStatuses.CollectValidationIssues(issues, "conditionalStatuses");
         }
 
         if (!hasConfiguredApplication)

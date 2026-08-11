@@ -591,7 +591,12 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
         // ทั้งฝั่ง damage และ heal ต้องหยุด tick เมื่อเป้าหมายล้ม/ตาย ไม่งั้น VFX ของ tick
         // จะเล่นค้างบนตัวที่ล้มอยู่ทั้งที่เลือดไม่ขยับ (Heal ถูกบล็อกที่ CanHeal อยู่แล้ว)
-        var targetDamageable = GetComponentInParent<IDamageable>();
+        IDamageable targetDamageable = healthSystem;
+        if (targetDamageable == null && ctx != null)
+            targetDamageable = ctx.HealthSystem;
+        if (targetDamageable == null)
+            targetDamageable = GetComponentInParent<IDamageable>();
+
         if (targetDamageable == null || !targetDamageable.IsAlive)
             return;
 

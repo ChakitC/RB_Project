@@ -21,7 +21,18 @@ MonoBehaviour:
   morphController: {fileID: 0}
   morphAvatar: {fileID: 0}
   morphAnimProfile: {fileID: 11400000, guid: 041856afdf417ac4e99bbff0ee27d157, type: 2}
-  statusApplications: []
+  statusApplications:
+  - spec:
+      effect: {fileID: 0}
+      stacks: 1
+      modifiers: []
+      modifiersOverrideEnabled: 0
+      durationOverride: 0
+      durationOverrideEnabled: 0
+      tickDamageOverride: 0
+      tickDamageOverrideEnabled: 0
+      tickIntervalOverride: 0
+      tickIntervalOverrideEnabled: 0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0

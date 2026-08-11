@@ -285,9 +285,42 @@ See `RB_Project\Docs\SYSTEMS\PASSIVES.md` for the runtime model.
 `SkillUpgradeNodeData.grantedUpgradeIds` marks the behavior flags a tree node grants; steps and
 payloads query them at runtime through `SkillCastContext.HasUpgrade`. The ids themselves are never
 typed on the tree first — they originate on the payload's own fields (a `SkillEffectStep`'s
-`requiredUpgradeId` gate, or a payload's `conditionalApplications[].requiredUpgradeId` list, such
-as on `TauntSkillPayloadDef`, `ApplyStatusSkillPayloadDef`, or `HealAreaStep`). The tree only picks
-from what the payload already declares — that is the single source of truth for a given id.
+`requiredUpgradeId` gate, or a `ConditionalStatusRoute`'s
+`conditionalStatuses.applications[].requiredUpgradeId` list, such as on `TauntSkillPayloadDef`,
+`ApplyStatusSkillPayloadDef`, or `HealAreaStep`). The tree only picks from what the payload already
+declares — that is the single source of truth for a given id.
+
+### Adding a conditional status route to a new payload or step
+
+Editor tooling (wizard, tree summary, `UpgradeIdUsageScanner`) discovers routes by declaration, so
+a new payload/step needs no change to any editor file. Add:
+
+```csharp
+[SerializeField]
+[LabelText("Conditional Status Effects")]
+[SkillStatusRouteTarget(SkillStatusTarget.Self, "My Payload")]
+private ConditionalStatusRoute conditionalStatuses = new();
+```
+
+Use the string overload when the target depends on authored behavior — the named member must be on
+the same type and return a `SkillStatusTarget`:
+
+```csharp
+[SkillStatusRouteTarget(nameof(ResolvedConditionalStatusTarget), "Heal Area")]
+```
+
+Then wire the three call sites in the owning behavior, which is the part tooling cannot do for you
+because only the behavior knows *when* and *on whom* the status should land:
+
+- `route.ApplyUnlocked(context, controller, source, fallbackDuration)` after the behavior has
+  resolved its real targets,
+- `route.CollectUpgradeIds(ids)` in `CollectUpgradeIds`,
+- `route.CollectValidationIssues(issues, "conditionalStatuses")` in `CollectValidationIssues`.
+
+A route with no `[SkillStatusRouteTarget]`, or one pointing at a member that does not exist or does
+not return a `SkillStatusTarget`, is a blocking authoring error — it is reported in the wizard and
+in the inspector's `Target` line instead of defaulting to `Self`. More than one route per
+payload/step is allowed, including several with the same target.
 
 In the Active Skill Tree Editor (or the plain Inspector on a `SkillUpgradeTreeDefinition` asset),
 each entry in `Granted Upgrade Ids` is a dropdown listing every id declared by the tree's owning

@@ -8,14 +8,6 @@ public sealed class TauntSkillPayloadDef : SkillPayloadDef
 {
     // tauntDuration (the taunt's own duration) is passed as the `fallbackDuration` argument of
     // StatusEffectController.ApplyEffect, so a per-application duration override still wins over it.
-    [Serializable]
-    public sealed class ConditionalStatus
-    {
-        public string requiredUpgradeId;
-
-        public StatusApplicationSpec spec = new();
-    }
-
     [PropertyOrder(-20)]
     [InfoBox("Spawns a runtime listener that applies taunt to enemies in range when the TauntApply timeline event fires.")]
     [SerializeField, BoxGroup("Setup"), Min(0f)]
@@ -48,9 +40,9 @@ public sealed class TauntSkillPayloadDef : SkillPayloadDef
     private StatusApplicationSpec tauntStatus = new();
 
     [SerializeField, BoxGroup("Upgrades")]
-    [LabelText("Conditional Status Effects (on taunted enemies)")]
-    [ListDrawerSettings(DefaultExpandedState = true, DraggableItems = true, ShowFoldout = true)]
-    private List<ConditionalStatus> conditionalApplications = new();
+    [LabelText("Conditional Status Effects")]
+    [SkillStatusRouteTarget(SkillStatusTarget.TauntedEnemies, "After Taunt")]
+    private ConditionalStatusRoute conditionalStatuses = new();
 
     public float Radius => radius;
     public float Duration => duration;
@@ -58,7 +50,7 @@ public sealed class TauntSkillPayloadDef : SkillPayloadDef
     public bool RequireLineOfSight => requireLineOfSight;
     public LayerMask TargetLayers => targetLayers;
     public StatusApplicationSpec TauntStatus => tauntStatus;
-    public IReadOnlyList<ConditionalStatus> ConditionalApplications => conditionalApplications;
+    public ConditionalStatusRoute ConditionalStatuses => conditionalStatuses;
 
     public override bool RequiresSkillTimelineEvents => true;
 
@@ -69,15 +61,7 @@ public sealed class TauntSkillPayloadDef : SkillPayloadDef
 
     public override void CollectUpgradeIds(List<string> ids)
     {
-        if (conditionalApplications == null)
-            return;
-
-        for (int i = 0; i < conditionalApplications.Count; i++)
-        {
-            ConditionalStatus conditional = conditionalApplications[i];
-            if (conditional != null)
-                SkillUpgradeIdCollection.AddUnique(ids, conditional.requiredUpgradeId);
-        }
+        conditionalStatuses?.CollectUpgradeIds(ids);
     }
 
     public override void CollectValidationIssues(List<string> issues)
@@ -95,6 +79,7 @@ public sealed class TauntSkillPayloadDef : SkillPayloadDef
             issues.Add("Taunt payload has no target layers configured.");
 
         CollectTauntStatusIssues(issues);
+        conditionalStatuses?.CollectValidationIssues(issues, "conditionalStatuses");
     }
 
     /// <summary>

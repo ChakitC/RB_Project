@@ -221,23 +221,11 @@ public sealed class TauntSkillRuntime : MonoBehaviour
 
     void ApplyConditionalStatuses(StatusEffectController controller, float tauntDuration)
     {
-        IReadOnlyList<TauntSkillPayloadDef.ConditionalStatus> conditionals = payload.ConditionalApplications;
-        if (conditionals == null || conditionals.Count == 0 || context == null || controller == null)
+        if (payload == null || context == null || controller == null)
             return;
 
-        GameObject source = context.CasterObject;
-        for (int i = 0; i < conditionals.Count; i++)
-        {
-            TauntSkillPayloadDef.ConditionalStatus conditional = conditionals[i];
-            if (conditional == null || !context.HasUpgrade(conditional.requiredUpgradeId))
-                continue;
-
-            StatusApplicationSpec resolvedSpec = conditional.spec;
-            if (resolvedSpec?.effect == null)
-                continue;
-
-            controller.ApplyEffect(resolvedSpec, source, tauntDuration);
-        }
+        payload.ConditionalStatuses?.ApplyUnlocked(
+            context, controller, context.CasterObject, tauntDuration);
     }
 
     bool BelongsToCaster(Transform other)

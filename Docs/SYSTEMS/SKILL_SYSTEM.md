@@ -840,6 +840,189 @@ that `grantedUpgradeIds` entry. The **Skill Steps** toolbar toggle switches the
 right pane to the composite step panel described in **Composite Payloads And
 Steps** above.
 
+Selecting a node shows a **Gameplay Effects** section, in reading order —
+gameplay first, authoring tools last: the node's stat modifiers, then
+**Unlocked Abilities** listing everything the player actually receives, then
+**Additional Gated Status Effects** (the status wizard) at the bottom.
+**Unlocked Abilities** shows every site in the owning skill/passive that
+reacts to each `grantedUpgradeIds` entry. One id used by several sites lists
+all of them. Sites are found by `UpgradeIdUsageScanner`, which walks the
+owning asset's `SerializedObject`s — including embedded payload sub-assets,
+which a single `SerializedObject` never follows into — looking for
+`requiredUpgradeId` (and `upgradeId` inside a `TriggeredPassiveDef`'s
+`upgradeOverrides`). Nothing is added to the runtime types for this, so a
+newly authored gated field is picked up automatically instead of disappearing
+from the report when someone forgets to override a collector.
+
+**Unlocked Abilities** never repeats a conditional status application that an
+**Additional Gated Status Effects** card (below) already covers — the two
+panels resolve overlapping data (a route application is both a
+`requiredUpgradeId` site the scanner finds and a route entry the wizard
+collects), and showing it twice just doubles the reading without adding
+information. The match is exact — same owning asset, same application's own
+property path — never a text comparison, so it cannot misfire on similar
+wording. An id whose only usage is a directly-gated status application skips
+its **Unlocked Abilities** row entirely; an id that also gates a non-status
+behavior (a step, a payload, a passive rule) still lists that remaining
+behavior. An id nothing reacts to at all still shows its row with the
+"nothing listens for this id" warning, since that is an authoring problem, not
+a duplicate. A status embedded in a step's own unconditional list — for
+example `HealAreaStep.statusSpecApplications`, gated only by the step's own
+`requiredUpgradeId` rather than by an id of its own — is never collected by
+**Additional Gated Status Effects**, so it is never a candidate for this
+dedup: it stays reported on the **Unlocked Abilities** card for the step's
+gate, because editing it means editing the step, not the wizard.
+
+Status applications are summarised with their resolved numbers — `Apply
+Aires3_TeaGuard to Self`, then modifier/duration/stack/tick/trigger-rule lines each
+marked `From Status Effect Def` or `Override` so it is clear which channel owns
+the value (see **Override channels** above). Every status summary names its target
+(`Self`, `Allies`, or `Taunted Enemies`); an unknown future application site is
+shown as `<unresolved target>` rather than silently omitting the target. Trigger
+rules report their actual runtime stack/refresh behavior; the summary does not
+infer unimplemented behavior
+from a status or node name. A recognized step type can also describe its own
+bare gate instead of the generic `Enable <Step>` fallback: a `HealAreaStep`
+gate reports its target mode (`Heal Self` or `Heal nearby Allies`), which
+`FinalSkillStats` channel each of Heal Power and Area Radius reads from, and
+any unconditional status it applies once unlocked, with the same
+modifier/duration/stack/tick lines as a conditional application. An
+unrecognized step type still falls back to `Enable <Step>` rather than
+guessing behavior from its class name. Selecting a node whose granted id gates
+one of these sites also shows a **Required Path Preview**: it walks that
+node's `requiredNodeIds` back to the tree root, folds every prerequisite plus
+the selected node into a `SkillUpgradeStatSnapshot` with the same formula
+`SkillInstance.GetFinalStats` uses, and previews the resulting Heal Power
+and/or Area Radius against the owning skill's base values. It is labelled
+"Required Path Preview", not "Final", because an optional sibling node picked
+up later can still change the eventual totals; a shared tree also names the
+owning skill next to the preview since base stats can differ per skill. A
+value that resolves to 0 or less (or an Allies-mode gate with 0 Area Radius,
+or a status application missing its Status Effect Def) shows as a warning on
+the card without changing any runtime rule. The location line uses
+`Configured In: Taunt Payload (Step N)` so it cannot be mistaken for another
+effect. Each site's **Edit** button
+opens the Skill Steps panel, expands and highlights the owning step; sites that
+live outside a composite step (passive rules, a payload's own fields) select and
+ping their source asset instead.
+
+#### Status Effect Wizard
+
+**Gameplay Effects** also contains an **Additional Gated Status Effects**
+block, below **Unlocked Abilities**: a `+ Add Additional Status Effect` button
+plus one card per conditional status application already gated directly by
+one of the node's granted ids. "Additional" distinguishes these from a status
+bundled inside an unlocked ability's own step, which the card above already
+reports. When no application is directly gated yet, the block reads "No
+additional status effect is directly gated by this node. Status effects
+bundled with the unlocked ability are shown above." instead of an empty list,
+so a designer who only sees a HealArea-style bundled status is not left
+wondering why this block is blank. Each card reads top to bottom in the order
+a designer needs — what it does, the resolved numbers, then where it comes
+from: the resolved application (`Apply MaxHPBuff to Self`), its
+modifier/duration/stack/tick lines (the same `From Status Effect Def`/`Override`
+lines **Unlocked Abilities** uses, so the two panels never disagree), `Gate:
+<upgrade id>`, `Source: <route field label> — Step N` (or `Skill payload` for a
+route on the skill's root payload), the status' scope, and three buttons —
+**Edit** (reopen the wizard on that application), **Open Source** (select/ping
+the payload or composite that stores it), and **Remove**.
+
+The wizard (`ActiveSkillStatusEffectWizardWindow`) is the single window a designer
+needs to add a buff from a node. It has four sections:
+
+- **Context** — owning skill (a picker only when the tree is shared by several
+  skills), the selected node, and the upgrade gate. The gate is either an id the
+  node already grants or a new one; a new id is added to `grantedUpgradeIds`
+  as part of the same operation, so the id is never typed twice.
+- **Status Identity** — *Use Existing* (any `StatusEffectDef` the skill is allowed
+  to use) or *Create New*. **Create New authors a numeric status only** — stat
+  modifiers, duration, ticking, stacking. Control blocks, taunt tags, and
+  triggered stacking need a hand-authored Def, so those cases must pick an
+  existing status.
+- **Application** — target, destination, stacks, modifiers, duration, tick. Only
+  the channels the designer actually edits get their override flag enabled; the
+  rest keep following their runtime source (duration uses the skill/taunt
+  fallback before the `StatusEffectDef`; tick damage and tick interval each keep
+  an independent override flag; see **Override channels** above).
+- **Preview** — every asset and field the commit will write, plus blocking errors
+  and warnings. Scope repairs such as **Promote To Global**, **Label As Unique**,
+  and **Duplicate As Unique** are staged in the preview and are not executed until
+  the commit button. Therefore **Cancel leaves the project untouched**, and a
+  commit collapses into a single undo group (including a status asset it created).
+
+All writes go through `ActiveSkillStatusEffectAuthoringService`, never through the
+window, and use `SerializedObject`/`SerializedProperty` — the route lists are
+private on their payloads/steps and embedded payloads are separate sub-assets, so
+no runtime API is widened for authoring.
+
+#### Status Targets And Routes
+
+A destination is one `ConditionalStatusRoute` field
+(`Assets/Scripts/Player/Skill/Status/`). The route owns the list of
+`ConditionalStatusApplication` (`requiredUpgradeId` + `StatusApplicationSpec`),
+applying the unlocked ones through `ApplyUnlocked`; it never discovers actors
+itself — the owning behavior resolves the `StatusEffectController`, the source
+object and the fallback duration first.
+
+**Who the status lands on is declared next to the field**, with
+`[SkillStatusRouteTarget]`, either as a fixed target or as the name of a member
+that returns one:
+
+| Target | Declared on |
+| --- | --- |
+| `Self` | `ApplyStatusSkillPayloadDef.conditionalStatuses`, and `HealAreaStep` when its mode is `Self` |
+| `Allies` | `HealAreaStep.conditionalStatuses` when its mode is `Allies` |
+| `Taunted Enemies` | `TauntSkillPayloadDef.conditionalStatuses` |
+
+`SkillStatusRouteResolver` walks only the *skill structure* — root payload,
+`CompositeSkillPayloadDef` and `PayloadStep` — and finds routes by reflection
+(`SkillStatusRouteMetadata`, cached per `Type`). It knows no concrete payload
+type, so a new payload or step that carries a `ConditionalStatusRoute` is picked
+up by the wizard, the tree summary and `UpgradeIdUsageScanner` without any change
+to those files. A route whose target metadata is missing or broken is reported as
+a **blocking issue** (`SkillStatusRouteResolutionResult.Issues`) — it never falls
+back to `Self`. Each route's `RouteKey` combines the container type, the step
+index and the list's property path, so one payload may hold several routes with
+the same target without their keys colliding.
+
+A target with no route is disabled in the wizard. **The wizard never creates a
+step or payload to make a target available** — inserting a step changes the
+skill's execution order, which is a design decision, not a side effect of adding a
+buff. When a skill has more than one route for the same target (for example two
+Apply Status steps), a **Destination** selector appears, labelled with the step
+number. Changing the destination of an existing application moves it: the old
+entry is deleted and the new one written in one undo group. Removing an
+application deletes only that entry — the `StatusEffectDef` asset is always kept,
+because other skills may still use it — and if nothing else in any owner of the
+tree (active skill or passive) listens for its gate id, the window offers to drop
+the id from the node.
+
+#### Status Effect Scope
+
+A `StatusEffectDef`'s reuse policy is carried by **asset labels**, not by a
+serialized field (it is authoring-only data, and a new field would force every
+existing status asset to re-serialize):
+
+| Label | Meaning |
+| --- | --- |
+| `StatusScope.Global` | any skill may use it |
+| `StatusScope.Unique` | only the owning skill may use it |
+| `StatusOwner.<Skill GUID>` | names that owner |
+| *(no label)* | legacy — still usable, reported as a warning |
+
+New statuses are created under `Assets/Data/StatusEffects/Buffs`, `.../Debuffs`,
+or `.../Control` when Global, and `Assets/Data/StatusEffects/Unique/<SkillName>`
+when Unique. Using a unique status from a skill that does not own it is a
+blocking error; the wizard offers **Promote To Global**, **Duplicate As Unique**,
+or **Choose Another Status**. Reducing a Global status to Unique is refused while
+more than one skill still references it. `effectId` must be unique across the
+project.
+
+Labels live in the asset's `.meta` file, which Unity's Undo does not cover — a
+scope change alone cannot be undone with Ctrl+Z; press the opposite scope button
+to revert it. Everything else the wizard writes (the application, the granted id,
+a newly created status asset) is inside the single undo group.
+
 Use **Tools > RB > Skills > Validate Embedded Payloads** before committing
 skill assets. It validates the complete root-to-child ownership graph rather
 than requiring exactly one sub-asset: every referenced payload must be embedded
@@ -849,10 +1032,12 @@ timeline markers on the skill clip.
 
 Use **Tools > RB > Skills > Validate Active Skill Trees** before committing
 content. Errors include missing/duplicate stable IDs, missing/self/cyclic
-prerequisites, invalid cost/level, unsupported stats, and unstable loadout IDs.
-A node with no effect, overlapping runtime node bounds, and a graph that
-auto-fits below the readable scale are warnings. Visual Scale outside `1.0` to
-`2.0` is an error. **Tools > RB > Skills > Run Active Skill Core Smoke Tests**
+prerequisites, invalid cost/level, unsupported stats, unstable loadout IDs, and
+an upgrade id the payload declares that no node grants. A node with no effect,
+overlapping runtime node bounds, a graph that auto-fits below the readable scale,
+a granted id nothing consumes, and the same id granted by two nodes that are not
+mutually exclusive are warnings. Visual Scale outside `1.0` to `2.0` is an error.
+**Tools > RB > Skills > Run Active Skill Core Smoke Tests**
 checks catch-up (including the already-spent deduction), shared points,
 prerequisites, Variant isolation, refunds, tree replacement, pruning a node
 removed from the asset without a `treeId` change, a failed unlock still
@@ -860,7 +1045,33 @@ persisting reconciliation, default/override Tree resolution, stat stacking,
 granted upgrade-id aggregation, mutually-exclusive rejection (both declared
 and one-way), Effect Duration/Heal Power stacking, Projectile Count rounding,
 scaled-node layout including the authored-vs-resolved size write-back, frame
-fallback, and validation.
+fallback, validation, per-issue `NodeId` attribution, grant severities and the
+cross-node duplicate rule, `UpgradeIdUsageScanner` resolving both passive rule
+sites and the real skill's embedded status applications (including a
+`HealAreaStep` gate reading as `Heal nearby Allies` with its unconditional
+`Aires3_AllyGuard`/Armor `+20%` reported and the nested conditional
+`aires3.ally_regen` application staying a separate, non-duplicated usage), and
+`RequiredPathPreviewResolver` folding a multi-level prerequisite chain
+(including a `mul: 0` trunk node zeroing every later add, matching the
+runtime formula), excluding a sibling node that is not on the required path,
+resolving safely against a prerequisite cycle and a dangling prerequisite
+id instead of hanging, and **Unlocked Abilities** hiding a granted id whose
+only usages are status route applications already shown on a Status Effects
+card while keeping a non-status gate (a `HealAreaStep`'s own gate) visible on
+the same node.
+
+Use **Tools > RB > Skills > Validate Status Effect Scopes** to check the whole
+project's status ⇄ skill relationships: unlabelled (legacy) statuses are warnings,
+a unique status used by a non-owner and a duplicated `effectId` are errors.
+**Tools > RB > Skills > Run Status Effect Authoring Smoke Tests** covers scope
+classification, cross-skill unique rejection, duplicate `effectId`, route
+resolution for Self/Allies/Taunted Enemies, multiple destinations on one target,
+validate/preview and staged scope repairs writing nothing, creating a status asset
+with a new gate id, independent tick-channel override flags, reusing an existing gate id, duplicate-application
+blocking, source navigation, moving an application between targets, a destination
+whose step was deleted, the shared-tree owner requirement, shared-owner gate usage,
+undo/redo cache invalidation, and remove freeing its gate id. It builds and deletes its own assets under a
+temporary folder without calling global `AssetDatabase.SaveAssets()`.
 
 ## Command Skill Cast Facing
 

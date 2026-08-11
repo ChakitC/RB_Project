@@ -81,9 +81,15 @@ unsupported `StatType` stat modifiers, prerequisite cycles, and node overlap, it
 - `grantedUpgradeIds`: blank entries, duplicates within one node, and (when the tree has an
   owning `SkillGemDefinition`, resolved via an `AssetDatabase` scan for `upgradeTree`/
   `upgradeTreeOverride` references) ids that don't match anything the owning skill's payload
-  declares through `CollectUpgradeIds`. It also warns when the payload declares an id that no
-  node in the tree grants (a dead branch), and warns instead of erroring when a tree has no
-  owning skill yet, since ids can't be cross-checked in that case.
+  declares through `CollectUpgradeIds`. The two directions carry different severities:
+  a node granting an id nothing consumes is a **Warning** (the normal state while a tree is
+  authored ahead of its payload), while an id the payload declares that no node grants is an
+  **Error** (that feature is unreachable in game). A tree with no owning skill yet warns instead
+  of erroring, since ids can't be cross-checked in that case.
+- The same upgrade id granted by two different nodes is a Warning, because `HasUpgrade` is a set
+  membership test and the second node costs a point without changing anything. It is suppressed
+  when the two nodes are mutually exclusive — that is how a branch choice offers the same unlock
+  down either path.
 - `mutuallyExclusiveNodeIds`: blank entries, self-exclusion, missing node ids, a node that both
   requires and excludes the same node, and asymmetric pairs (node A excludes B but B does not
   exclude A back) — the last one is an Error because a one-way lock only misbehaves for players
@@ -91,12 +97,18 @@ unsupported `StatType` stat modifiers, prerequisite cycles, and node overlap, it
 - The "no gameplay effect" warning no longer fires for a node whose only effect is granting an
   upgrade id (it used to fire on every pure-behavior node once `grantedUpgradeIds` shipped).
 
+Every issue carries a `NodeId` (`null` for tree-level issues). Issues that concern two nodes —
+overlap, one-way exclusion, duplicate grants — are emitted once per node with node-specific
+wording, so consumers never have to search the message text to work out who an issue belongs to.
+
 Two entry points: `ActiveSkillTreeEditorWindow.ValidateTree()` (open tree, logs to console) and
 the project-wide `Tools/RB/Skills/Validate Active Skill Trees` menu. The tree editor window
 (`Tools > RB > Skills > Active Skill Tree Editor`) also shows validation issues inline: selecting
 a node displays that node's issues as `HelpBox`es below its inspector fields, with a compact count
-of remaining issues elsewhere in the tree. This inline pass is cached and only recomputes when the
-tree or the selected node's data changes, so it does not re-run every repaint.
+of remaining issues elsewhere in the tree. Each graph node additionally shows a status badge in its
+title bar (`✓` clean, `!` warning, `✕` error) driven by the same `NodeId`. This inline pass is
+cached and only recomputes when the tree or the selected node's data changes, so it does not re-run
+every repaint.
 
 `SkillUpgradeTreeValidator.cs` and `ActiveSkillTreeEditorWindow.cs` live under `Editor/`, so
 `CheckAssemblyBuild.ps1` does not compile them. Verify changes to either file by opening Unity and
@@ -112,6 +124,81 @@ orphaned. It tracks its own dirty/save state, separate from the tree asset's —
 or switching trees prompts to save/discard skill step changes independently of tree changes. The
 shared payload utility never calls global `AssetDatabase.SaveAssets()`; the invoking window owns
 the save boundary, so editing skill steps does not persist unrelated dirty assets.
+
+## Conditional status route regression checks
+
+Conditional status applications live in `ConditionalStatusRoute` fields, and every editor consumer
+resolves "who does this land on?" from `[SkillStatusRouteTarget]` via `SkillStatusRouteMetadata`.
+`Tools/RB/Skills/Run Status Effect Authoring Smoke Tests` covers the regressions that matter here:
+
+- Routes are discovered from the declaration alone — probe types the resolver has never heard of
+  are found, including two routes with the same target on one owner (their route keys must stay
+  distinct).
+- A behavior-driven target is read from the owning instance, so a `HealAreaStep` retargeted between
+  `Self` and `Allies` moves its route with it.
+- A route with no attribute, a target member that does not exist, or one of the wrong type is a
+  **blocking** metadata error — never a silent fallback to `Self`.
+- `Validate Active Skill Trees` reports those metadata failures as tree-level errors, and route
+  resolution also blocks a field whose applications list is not present in its `SerializedObject`
+  (for example, a private route field that forgot `[SerializeField]`).
+- `UpgradeIdUsageScanner` labels the target from route metadata, so the tree's Gameplay Effects
+  summary and the wizard's destination list cannot disagree.
+- A recognized step's own bare gate (no sibling `spec`) can describe itself instead of falling back
+  to `Enable <Step>`. `HealAreaStep` is the first case: target mode, the `FinalSkillStats` channel
+  behind Heal Power/Area Radius, and any unconditional status it applies. An unrecognized step type
+  still falls back to `Enable <Step>` rather than guessing from its class name.
+  `RequiredPathPreviewResolver` (`Assets/Scripts/Editor/ActiveSkill/RequiredPathPreviewResolver.cs`)
+  backs the node inspector's **Required Path Preview**: it walks `requiredNodeIds` back to the tree
+  root (cycle- and missing-id-safe), builds a `SkillUpgradeStatSnapshot` with the runtime formula,
+  and calls `SkillInstance.GetFinalStats(null)` so the preview matches gameplay exactly for that one
+  path — never labelled "Final", since an optional sibling node can still add more later. `Run
+  Active Skill Core Smoke Tests` (see `Docs/SYSTEMS/SKILL_SYSTEM.md`) covers both the scanner
+  summary and the resolver's chain aggregation, `mul: 0` zeroing, optional-node exclusion, and
+  cycle/missing-prerequisite safety.
+
+The one-off migration from the old per-type `conditionalApplications` schema ran through
+`Tools/RB/Skills/Migrate Conditional Status Routes` (with a dry-run counterpart). It copied every
+channel field-by-field — upgrade id, effect reference, stacks, modifier override and its list,
+duration/tick damage/tick interval overrides and their enable flags — and both the tool and the
+legacy fields were deleted once the entry counts matched. No `conditionalApplications` schema
+remains in the project; a reappearance means an asset was restored from an old revision.
+
+## Status effect scope validation
+
+`StatusEffectScopeValidator` (`Assets/Scripts/Editor/ActiveSkill/StatusEffectScopeValidator.cs`)
+is a separate pass from the tree validator, because the relationships it checks span the whole
+project rather than one tree: a unique status leaking into a second skill is invisible from inside
+either tree on its own. Run it from `Tools/RB/Skills/Validate Status Effect Scopes`.
+
+- A `StatusEffectDef` with no `StatusScope.*` label is a **Warning** (legacy asset — still usable).
+- A `StatusScope.Unique` status referenced by a skill that is not its `StatusOwner.<guid>` is an
+  **Error**, as is a `StatusScope.Unique` status with no owner label at all.
+- The same `effectId` on two `StatusEffectDef` assets is an **Error**.
+
+Label integrity is checked for every `StatusEffectDef` asset, including statuses that are not
+referenced yet, so an orphaned Unique-without-owner or unlabelled legacy asset cannot disappear
+from the report merely because no skill uses it.
+
+Usage is discovered by walking every `SkillDefinitionBase` asset *and its sub-assets* for object
+references to `StatusEffectDef`, rather than by enumerating known payload fields — a new apply site
+is picked up automatically instead of silently escaping the check.
+
+The wizard's own validation (`ActiveSkillStatusEffectAuthoringService.Validate`) runs the same
+scope rules plus: a missing owning skill on a shared tree, a blank gate id, a target with no route
+in the skill, a destination whose step has been deleted, a duplicate
+status + gate id + target + destination, a duplicate `effectId` on a status about to be created,
+and a `Multiply` modifier at or below zero (warning). Scope-repair buttons only stage their action
+in the request; `Apply` refuses to write while any error is present and performs no writes before
+commit, which is what makes **Cancel** safe.
+
+`Tools/RB/Skills/Run Status Effect Authoring Smoke Tests` exercises the flow end to end against
+real assets in a temporary folder (`Assets/_StatusAuthoringSmokeTests`, deleted afterwards),
+because the interesting cases — asset labels, embedded payload sub-assets, and writing to private
+`conditionalApplications` lists — do not exist for in-memory `ScriptableObject`s.
+
+All of these files live under `Editor/`, so `CheckAssemblyBuild.ps1` does not compile them. Verify
+changes by running the two menu items above in Unity, not by trusting a green
+`CheckAssemblyBuild.ps1` run.
 
 `Tools/RB/Skills/Validate Embedded Payloads` validates a payload ownership graph, not a fixed
 sub-asset count. A composite may own its embedded root plus one unique embedded payload per

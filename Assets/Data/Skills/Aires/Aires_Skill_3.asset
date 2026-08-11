@@ -33,43 +33,44 @@ MonoBehaviour:
     tickDamageOverrideEnabled: 0
     tickIntervalOverride: 0
     tickIntervalOverrideEnabled: 0
-  conditionalApplications:
-  - requiredUpgradeId: aires3.def_shred
-    spec:
-      effect: {fileID: 11400000, guid: 5709009c55624b6cadd36410f6fe6259, type: 2}
-      stacks: 1
-      modifiers: []
-      modifiersOverrideEnabled: 0
-      durationOverride: 0
-      durationOverrideEnabled: 0
-      tickDamageOverride: 0
-      tickDamageOverrideEnabled: 0
-      tickIntervalOverride: 0
-      tickIntervalOverrideEnabled: 0
-  - requiredUpgradeId: aires3.weakpoint
-    spec:
-      effect: {fileID: 11400000, guid: c982ee00f1dc4d8c8e20baf4a75f32c7, type: 2}
-      stacks: 1
-      modifiers: []
-      modifiersOverrideEnabled: 0
-      durationOverride: 0
-      durationOverrideEnabled: 0
-      tickDamageOverride: 0
-      tickDamageOverrideEnabled: 0
-      tickIntervalOverride: 0
-      tickIntervalOverrideEnabled: 0
-  - requiredUpgradeId: aires3.gather
-    spec:
-      effect: {fileID: 11400000, guid: b11a483f1f7d4243bf09473512a3db50, type: 2}
-      stacks: 1
-      modifiers: []
-      modifiersOverrideEnabled: 0
-      durationOverride: 0
-      durationOverrideEnabled: 0
-      tickDamageOverride: 0
-      tickDamageOverrideEnabled: 0
-      tickIntervalOverride: 0
-      tickIntervalOverrideEnabled: 0
+  conditionalStatuses:
+    applications:
+    - requiredUpgradeId: aires3.def_shred
+      spec:
+        effect: {fileID: 11400000, guid: 5709009c55624b6cadd36410f6fe6259, type: 2}
+        stacks: 1
+        modifiers: []
+        modifiersOverrideEnabled: 0
+        durationOverride: 0
+        durationOverrideEnabled: 0
+        tickDamageOverride: 0
+        tickDamageOverrideEnabled: 0
+        tickIntervalOverride: 0
+        tickIntervalOverrideEnabled: 0
+    - requiredUpgradeId: aires3.weakpoint
+      spec:
+        effect: {fileID: 11400000, guid: c982ee00f1dc4d8c8e20baf4a75f32c7, type: 2}
+        stacks: 1
+        modifiers: []
+        modifiersOverrideEnabled: 0
+        durationOverride: 0
+        durationOverrideEnabled: 0
+        tickDamageOverride: 0
+        tickDamageOverrideEnabled: 0
+        tickIntervalOverride: 0
+        tickIntervalOverrideEnabled: 0
+    - requiredUpgradeId: aires3.gather
+      spec:
+        effect: {fileID: 11400000, guid: b11a483f1f7d4243bf09473512a3db50, type: 2}
+        stacks: 1
+        modifiers: []
+        modifiersOverrideEnabled: 0
+        durationOverride: 0
+        durationOverrideEnabled: 0
+        tickDamageOverride: 0
+        tickDamageOverrideEnabled: 0
+        tickIntervalOverride: 0
+        tickIntervalOverrideEnabled: 0
 --- !u!114 &-1399037589978097692
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -104,7 +105,8 @@ MonoBehaviour:
         requiredUpgradeId: 
         target: 0
         statusSpecApplications: []
-        conditionalApplications: []
+        conditionalStatuses:
+          applications: []
     - rid: 764560941601521805
       type: {class: PayloadStep, ns: , asm: Assembly-CSharp}
       data:
@@ -127,31 +129,32 @@ MonoBehaviour:
             tickDamageOverrideEnabled: 0
             tickIntervalOverride: 0
             tickIntervalOverrideEnabled: 0
-        conditionalApplications:
-        - requiredUpgradeId: aires3.ally_regen
-          spec:
-            effect: {fileID: 11400000, guid: 06f43c92361341dcb48eeca03e44ecbc, type: 2}
-            stacks: 1
-            modifiers: []
-            modifiersOverrideEnabled: 0
-            durationOverride: 0
-            durationOverrideEnabled: 0
-            tickDamageOverride: 0
-            tickDamageOverrideEnabled: 0
-            tickIntervalOverride: 0
-            tickIntervalOverrideEnabled: 0
-        - requiredUpgradeId: aires3.strong_guard
-          spec:
-            effect: {fileID: 11400000, guid: 713c540d75cd4c04aa84034a0ae37587, type: 2}
-            stacks: 1
-            modifiers: []
-            modifiersOverrideEnabled: 0
-            durationOverride: 0
-            durationOverrideEnabled: 0
-            tickDamageOverride: 0
-            tickDamageOverrideEnabled: 0
-            tickIntervalOverride: 0
-            tickIntervalOverrideEnabled: 0
+        conditionalStatuses:
+          applications:
+          - requiredUpgradeId: aires3.ally_regen
+            spec:
+              effect: {fileID: 11400000, guid: 06f43c92361341dcb48eeca03e44ecbc, type: 2}
+              stacks: 1
+              modifiers: []
+              modifiersOverrideEnabled: 0
+              durationOverride: 0
+              durationOverrideEnabled: 0
+              tickDamageOverride: 0
+              tickDamageOverrideEnabled: 0
+              tickIntervalOverride: 0
+              tickIntervalOverrideEnabled: 0
+          - requiredUpgradeId: aires3.strong_guard
+            spec:
+              effect: {fileID: 11400000, guid: 713c540d75cd4c04aa84034a0ae37587, type: 2}
+              stacks: 1
+              modifiers: []
+              modifiersOverrideEnabled: 0
+              durationOverride: 0
+              durationOverrideEnabled: 0
+              tickDamageOverride: 0
+              tickDamageOverrideEnabled: 0
+              tickIntervalOverride: 0
+              tickIntervalOverrideEnabled: 0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -302,52 +305,68 @@ MonoBehaviour:
   chainContinueNormalizedTime: 1
   applications: []
   preferCasterRoot: 1
-  conditionalApplications:
-  - requiredUpgradeId: aires3.self_guard
-    spec:
-      effect: {fileID: 11400000, guid: 7d01584e2f6847a5a55c777f89c267cf, type: 2}
-      stacks: 1
-      modifiers: []
-      modifiersOverrideEnabled: 0
-      durationOverride: 0
-      durationOverrideEnabled: 0
-      tickDamageOverride: 0
-      tickDamageOverrideEnabled: 0
-      tickIntervalOverride: 0
-      tickIntervalOverrideEnabled: 0
-  - requiredUpgradeId: aires3.self_guard
-    spec:
-      effect: {fileID: 11400000, guid: 06f43c92361341dcb48eeca03e44ecbc, type: 2}
-      stacks: 1
-      modifiers: []
-      modifiersOverrideEnabled: 0
-      durationOverride: 0
-      durationOverrideEnabled: 0
-      tickDamageOverride: 0
-      tickDamageOverrideEnabled: 0
-      tickIntervalOverride: 0
-      tickIntervalOverrideEnabled: 0
-  - requiredUpgradeId: aires3.unshaken
-    spec:
-      effect: {fileID: 11400000, guid: da315366b39342e7a7c11647242502e6, type: 2}
-      stacks: 1
-      modifiers: []
-      modifiersOverrideEnabled: 0
-      durationOverride: 0
-      durationOverrideEnabled: 0
-      tickDamageOverride: 0
-      tickDamageOverrideEnabled: 0
-      tickIntervalOverride: 0
-      tickIntervalOverrideEnabled: 0
-  - requiredUpgradeId: aires3.thorns
-    spec:
-      effect: {fileID: 11400000, guid: 63c79074e4c24347b0ffb4d998994bc7, type: 2}
-      stacks: 1
-      modifiers: []
-      modifiersOverrideEnabled: 0
-      durationOverride: 0
-      durationOverrideEnabled: 0
-      tickDamageOverride: 0
-      tickDamageOverrideEnabled: 0
-      tickIntervalOverride: 0
-      tickIntervalOverrideEnabled: 0
+  conditionalStatuses:
+    applications:
+    - requiredUpgradeId: aires3.self_guard
+      spec:
+        effect: {fileID: 11400000, guid: 7d01584e2f6847a5a55c777f89c267cf, type: 2}
+        stacks: 1
+        modifiers: []
+        modifiersOverrideEnabled: 0
+        durationOverride: 0
+        durationOverrideEnabled: 0
+        tickDamageOverride: 0
+        tickDamageOverrideEnabled: 0
+        tickIntervalOverride: 0
+        tickIntervalOverrideEnabled: 0
+    - requiredUpgradeId: aires3.self_guard
+      spec:
+        effect: {fileID: 11400000, guid: 06f43c92361341dcb48eeca03e44ecbc, type: 2}
+        stacks: 1
+        modifiers: []
+        modifiersOverrideEnabled: 0
+        durationOverride: 0
+        durationOverrideEnabled: 0
+        tickDamageOverride: 0
+        tickDamageOverrideEnabled: 0
+        tickIntervalOverride: 0
+        tickIntervalOverrideEnabled: 0
+    - requiredUpgradeId: aires3.unshaken
+      spec:
+        effect: {fileID: 11400000, guid: da315366b39342e7a7c11647242502e6, type: 2}
+        stacks: 1
+        modifiers: []
+        modifiersOverrideEnabled: 0
+        durationOverride: 0
+        durationOverrideEnabled: 0
+        tickDamageOverride: 0
+        tickDamageOverrideEnabled: 0
+        tickIntervalOverride: 0
+        tickIntervalOverrideEnabled: 0
+    - requiredUpgradeId: aires3.thorns
+      spec:
+        effect: {fileID: 11400000, guid: 63c79074e4c24347b0ffb4d998994bc7, type: 2}
+        stacks: 1
+        modifiers: []
+        modifiersOverrideEnabled: 0
+        durationOverride: 0
+        durationOverrideEnabled: 0
+        tickDamageOverride: 0
+        tickDamageOverrideEnabled: 0
+        tickIntervalOverride: 0
+        tickIntervalOverrideEnabled: 0
+    - requiredUpgradeId: aires.skill.3.a_crowd_scaling
+      spec:
+        effect: {fileID: 11400000, guid: 956617c5f81aa754eb7cab6d592e7b4d, type: 2}
+        stacks: 1
+        modifiers:
+        - statType: 7
+          operation: 0
+          value: 100
+        modifiersOverrideEnabled: 1
+        durationOverride: 10
+        durationOverrideEnabled: 1
+        tickDamageOverride: 0
+        tickDamageOverrideEnabled: 0
+        tickIntervalOverride: 0
+        tickIntervalOverrideEnabled: 0

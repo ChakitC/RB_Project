@@ -11,15 +11,7 @@ public enum HealTargetMode
 [Serializable]
 public sealed class HealAreaStep : SkillEffectStep
 {
-    [Serializable]
-    public sealed class ConditionalStatus
-    {
-        public string requiredUpgradeId;
-
-        public StatusApplicationSpec spec = new();
-    }
-
-    /// <summary>Wrapper ของ unconditional status — โครงเดียวกับ ConditionalStatus แต่ไม่มี upgrade gate.</summary>
+    /// <summary>Wrapper ของ unconditional status — ไม่มี upgrade gate ต่างจาก conditional route.</summary>
     [Serializable]
     public sealed class StatusApplication
     {
@@ -28,20 +20,21 @@ public sealed class HealAreaStep : SkillEffectStep
 
     [SerializeField] private HealTargetMode target = HealTargetMode.Self;
     [SerializeField] private List<StatusApplication> statusSpecApplications = new();
-    [SerializeField] private List<ConditionalStatus> conditionalApplications = new();
+
+    [SerializeField]
+    [SkillStatusRouteTarget(nameof(ResolvedConditionalStatusTarget), "Heal Area")]
+    private ConditionalStatusRoute conditionalStatuses = new();
+
+    /// <summary>Target ของ route ตามโหมด heal ที่ step นี้ถูก author ไว้.</summary>
+    private SkillStatusTarget ResolvedConditionalStatusTarget =>
+        target == HealTargetMode.Allies
+            ? SkillStatusTarget.Allies
+            : SkillStatusTarget.Self;
 
     public override void CollectUpgradeIds(List<string> ids)
     {
         base.CollectUpgradeIds(ids);
-        if (conditionalApplications == null)
-            return;
-
-        for (int i = 0; i < conditionalApplications.Count; i++)
-        {
-            ConditionalStatus conditional = conditionalApplications[i];
-            if (conditional != null)
-                SkillUpgradeIdCollection.AddUnique(ids, conditional.requiredUpgradeId);
-        }
+        conditionalStatuses?.CollectUpgradeIds(ids);
     }
 
     public override void Execute(SkillCastContext ctx)
@@ -127,20 +120,6 @@ public sealed class HealAreaStep : SkillEffectStep
             }
         }
 
-        if (conditionalApplications != null)
-        {
-            for (int i = 0; i < conditionalApplications.Count; i++)
-            {
-                ConditionalStatus conditional = conditionalApplications[i];
-                if (conditional == null || !ctx.HasUpgrade(conditional.requiredUpgradeId))
-                    continue;
-
-                StatusApplicationSpec resolvedSpec = conditional.spec;
-                if (resolvedSpec?.effect == null)
-                    continue;
-
-                controller.ApplyEffect(resolvedSpec, source, fallbackDuration);
-            }
-        }
+        conditionalStatuses?.ApplyUnlocked(ctx, controller, source, fallbackDuration);
     }
 }

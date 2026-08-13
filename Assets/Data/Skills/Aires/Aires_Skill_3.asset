@@ -71,6 +71,25 @@ MonoBehaviour:
         tickDamageOverrideEnabled: 0
         tickIntervalOverride: 0
         tickIntervalOverrideEnabled: 0
+--- !u!114 &-5490938110080280541
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce6eeebc05c3a24590f33b9715c53d0, type: 3}
+  m_Name: Heal Area Execution
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  target: 0
+  statusSpecApplications: []
+  conditionalStatuses:
+    applications: []
 --- !u!114 &-1399037589978097692
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -88,9 +107,9 @@ MonoBehaviour:
   chainContinueNormalizedTime: 1
   steps:
   - rid: 764560941601521803
-  - rid: 764560941601521804
+  - rid: 764561012647264923
   - rid: 764560941601521805
-  - rid: 764560941601521806
+  - rid: 764561012647264924
   references:
     version: 2
     RefIds:
@@ -99,62 +118,21 @@ MonoBehaviour:
       data:
         requiredUpgradeId: 
         payload: {fileID: -7446067993122877699}
-    - rid: 764560941601521804
-      type: {class: HealAreaStep, ns: , asm: Assembly-CSharp}
-      data:
-        requiredUpgradeId: 
-        target: 0
-        statusSpecApplications: []
-        conditionalStatuses:
-          applications: []
     - rid: 764560941601521805
       type: {class: PayloadStep, ns: , asm: Assembly-CSharp}
       data:
         requiredUpgradeId: 
         payload: {fileID: 9122281289257134125}
-    - rid: 764560941601521806
-      type: {class: HealAreaStep, ns: , asm: Assembly-CSharp}
+    - rid: 764561012647264923
+      type: {class: PayloadStep, ns: , asm: Assembly-CSharp}
+      data:
+        requiredUpgradeId: 
+        payload: {fileID: -5490938110080280541}
+    - rid: 764561012647264924
+      type: {class: PayloadStep, ns: , asm: Assembly-CSharp}
       data:
         requiredUpgradeId: aires3.ally_support
-        target: 1
-        statusSpecApplications:
-        - spec:
-            effect: {fileID: 11400000, guid: b60436665da34715adedde52854f7854, type: 2}
-            stacks: 1
-            modifiers: []
-            modifiersOverrideEnabled: 0
-            durationOverride: 0
-            durationOverrideEnabled: 0
-            tickDamageOverride: 0
-            tickDamageOverrideEnabled: 0
-            tickIntervalOverride: 0
-            tickIntervalOverrideEnabled: 0
-        conditionalStatuses:
-          applications:
-          - requiredUpgradeId: aires3.ally_regen
-            spec:
-              effect: {fileID: 11400000, guid: 06f43c92361341dcb48eeca03e44ecbc, type: 2}
-              stacks: 1
-              modifiers: []
-              modifiersOverrideEnabled: 0
-              durationOverride: 0
-              durationOverrideEnabled: 0
-              tickDamageOverride: 0
-              tickDamageOverrideEnabled: 0
-              tickIntervalOverride: 0
-              tickIntervalOverrideEnabled: 0
-          - requiredUpgradeId: aires3.strong_guard
-            spec:
-              effect: {fileID: 11400000, guid: 713c540d75cd4c04aa84034a0ae37587, type: 2}
-              stacks: 1
-              modifiers: []
-              modifiersOverrideEnabled: 0
-              durationOverride: 0
-              durationOverrideEnabled: 0
-              tickDamageOverride: 0
-              tickDamageOverrideEnabled: 0
-              tickIntervalOverride: 0
-              tickIntervalOverrideEnabled: 0
+        payload: {fileID: 3828600764256093375}
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -288,6 +266,60 @@ MonoBehaviour:
   references:
     version: 2
     RefIds: []
+--- !u!114 &3828600764256093375
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce6eeebc05c3a24590f33b9715c53d0, type: 3}
+  m_Name: Heal Area Execution
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  target: 1
+  statusSpecApplications:
+  - spec:
+      effect: {fileID: 11400000, guid: b60436665da34715adedde52854f7854, type: 2}
+      stacks: 1
+      modifiers: []
+      modifiersOverrideEnabled: 0
+      durationOverride: 0
+      durationOverrideEnabled: 0
+      tickDamageOverride: 0
+      tickDamageOverrideEnabled: 0
+      tickIntervalOverride: 0
+      tickIntervalOverrideEnabled: 0
+  conditionalStatuses:
+    applications:
+    - requiredUpgradeId: aires3.ally_regen
+      spec:
+        effect: {fileID: 11400000, guid: 06f43c92361341dcb48eeca03e44ecbc, type: 2}
+        stacks: 1
+        modifiers: []
+        modifiersOverrideEnabled: 0
+        durationOverride: 0
+        durationOverrideEnabled: 0
+        tickDamageOverride: 0
+        tickDamageOverrideEnabled: 0
+        tickIntervalOverride: 0
+        tickIntervalOverrideEnabled: 0
+    - requiredUpgradeId: aires3.strong_guard
+      spec:
+        effect: {fileID: 11400000, guid: 713c540d75cd4c04aa84034a0ae37587, type: 2}
+        stacks: 1
+        modifiers: []
+        modifiersOverrideEnabled: 0
+        durationOverride: 0
+        durationOverrideEnabled: 0
+        tickDamageOverride: 0
+        tickDamageOverrideEnabled: 0
+        tickIntervalOverride: 0
+        tickIntervalOverrideEnabled: 0
 --- !u!114 &9122281289257134125
 MonoBehaviour:
   m_ObjectHideFlags: 0

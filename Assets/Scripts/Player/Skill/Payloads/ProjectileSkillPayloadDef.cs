@@ -62,6 +62,7 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
     private float projectileHitVfxScale = 1f;
 
     public bool HasExplicitProjectilePrefab => projectilePrefab != null;
+    public float SpreadAngle => spreadAngle;
     public override bool HasExecutionPresentationAssets => projectileTrailVfxPrefab != null || projectileHitVfxPrefab != null;
     public bool HasProjectilePresentationAssets => HasExecutionPresentationAssets;
     public bool HasHitVfxScaleWithoutHitVfx => projectileHitVfxPrefab == null && !Mathf.Approximately(projectileHitVfxScale, 1f);

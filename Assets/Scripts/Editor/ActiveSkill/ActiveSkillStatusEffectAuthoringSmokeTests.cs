@@ -207,10 +207,12 @@ public static class ActiveSkillStatusEffectAuthoringSmokeTests
         SkillStatusRoute allies = SkillStatusRouteResolver
             .FilterByTarget(routes, SkillStatusTarget.Allies)
             .Single();
-        Expect(ReferenceEquals(allies.Container, fixture.Skill.payload),
-            "A HealArea route stores its list on the composite, not on a payload sub-asset.");
-        Expect(allies.ListPropertyPath.StartsWith("steps.Array.data[", StringComparison.Ordinal),
-            "A HealArea route must address the list through its composite step path.");
+        var alliesComposite = (CompositeSkillPayloadDef)fixture.Skill.payload;
+        var healAreaPayload = (HealAreaSkillPayloadDef)((PayloadStep)alliesComposite.Steps[1]).Payload;
+        Expect(ReferenceEquals(allies.Container, healAreaPayload),
+            "A Heal Area route stores its list on the embedded HealAreaSkillPayloadDef sub-asset, not the composite.");
+        Expect(!allies.ListPropertyPath.StartsWith("steps.Array.data[", StringComparison.Ordinal),
+            "A Heal Area route now addresses the list on its own payload object, not a composite step path.");
 
         // A skill with no status site must offer nothing rather than inventing a step.
         Equal(0, SkillStatusRouteResolver.Resolve(fixture.EmptySkill).Count,
@@ -819,8 +821,10 @@ public static class ActiveSkillStatusEffectAuthoringSmokeTests
 
             if (includeAllRoutes)
             {
-                AddStep(composite, typeof(HealAreaStep));
-                SetHealAreaTarget(composite, 1, HealTargetMode.Allies);
+                AddStep(composite, typeof(PayloadStep));
+                var healAreaPayload = (HealAreaSkillPayloadDef)SkillPayloadAssetUtility.CreateEmbeddedStepPayload(
+                    skill, composite, 1, typeof(HealAreaSkillPayloadDef), null);
+                SetHealAreaTarget(healAreaPayload, HealTargetMode.Allies);
 
                 AddStep(composite, typeof(PayloadStep));
                 SkillPayloadAssetUtility.CreateEmbeddedStepPayload(
@@ -846,11 +850,11 @@ public static class ActiveSkillStatusEffectAuthoringSmokeTests
             serialized.ApplyModifiedProperties();
         }
 
-        static void SetHealAreaTarget(CompositeSkillPayloadDef composite, int stepIndex, HealTargetMode mode)
+        static void SetHealAreaTarget(HealAreaSkillPayloadDef payload, HealTargetMode mode)
         {
-            var serialized = new SerializedObject(composite);
+            var serialized = new SerializedObject(payload);
             serialized.Update();
-            serialized.FindProperty($"steps.Array.data[{stepIndex}].target").enumValueIndex = (int)mode;
+            serialized.FindProperty("target").enumValueIndex = (int)mode;
             serialized.ApplyModifiedProperties();
         }
 

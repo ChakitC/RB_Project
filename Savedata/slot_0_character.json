@@ -151,19 +151,19 @@
                                 "paidCost": 1
                             },
                             {
-                                "nodeId": "b_gate",
+                                "nodeId": "c_gate",
                                 "paidCost": 1
                             },
                             {
-                                "nodeId": "b_weakpoint",
+                                "nodeId": "c_regen",
                                 "paidCost": 1
                             },
                             {
-                                "nodeId": "b_thorns",
+                                "nodeId": "c_strong_guard",
                                 "paidCost": 1
                             },
                             {
-                                "nodeId": "b_gather",
+                                "nodeId": "c_heal_power",
                                 "paidCost": 1
                             }
                         ]

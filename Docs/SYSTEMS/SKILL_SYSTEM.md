@@ -82,6 +82,7 @@ Current payload implementations are:
 - `SpawnPickupSkillPayloadDef`
 - `MorphSkillPayloadDef`
 - `TauntSkillPayloadDef`
+- `HealAreaSkillPayloadDef`
 - `CompositeSkillPayloadDef`
 
 Reusable dependencies remain normal asset references. Examples include
@@ -99,26 +100,26 @@ one effect.
 
 `SkillEffectStep` is a plain `[Serializable]` class (not a `ScriptableObject`),
 gated by an optional `requiredUpgradeId` read from `SkillCastContext.HasUpgrade`.
-Two step types exist:
+`PayloadStep` is the only orchestration step type: it wraps any existing
+`SkillPayloadDef` (embedded as its own sub-asset in the same skill file) and
+executes it unchanged. This is how an existing single-effect payload (e.g.
+`TauntSkillPayloadDef`) gets reused inside a composite without being ported to
+a new type. Step owns orchestration (order, gate); payload owns gameplay
+behavior — a direct-gameplay step type that fuses the two (the retired
+`HealAreaStep` was the last one) is a blocking authoring error (see
+**Node-Centric Ability Authoring** below). `HealAreaSkillPayloadDef` heals and
+optionally applies `StatusEffectDef`s to either `Self` (the caster) or
+`Allies`. Ally targeting enumerates active `CharacteContext` instances, filters
+to `AITargetIdentity.Player` / `Companion`, and checks distance from the caster
+without querying physics colliders. Healing and status references are resolved
+through each target's context and scaled by `FinalSkillStats.healPower`.
 
-- `PayloadStep` wraps any existing `SkillPayloadDef` (embedded as its own
-  sub-asset in the same skill file) and executes it unchanged. This is how an
-  existing single-effect payload (e.g. `TauntSkillPayloadDef`) gets reused
-  inside a composite without being ported to a new type.
-- `HealAreaStep` heals and optionally applies `StatusEffectDef`s to either
-  `Self` (the caster) or `Allies`. Ally targeting enumerates active
-  `CharacteContext` instances, filters to `AITargetIdentity.Player` /
-  `Companion`, and checks distance from the caster without querying physics
-  colliders. Healing and status references are resolved through each target's
-  context and scaled by `FinalSkillStats.healPower`.
-
-Direct `SkillEffectStep` implementations are immediate-only: every enabled
-direct step runs when the skill reaches its configured cast point. An effect
-that must act at another animation moment is authored as a `SkillPayloadDef`,
-wrapped by a `PayloadStep`, and may spawn a request-scoped runtime listener such
-as `TauntSkillRuntime`. Payloads declare their required timeline event names;
-the skill Inspector treats a missing marker on `skillClip` as a blocking error,
-while the runtime warning remains as a final safeguard.
+Every payload runs at the skill's configured cast point unless it explicitly
+defers itself. An effect that must act at another animation moment spawns a
+request-scoped runtime listener such as `TauntSkillRuntime`. Payloads declare
+their required timeline event names; the skill Inspector treats a missing
+marker on `skillClip` as a blocking error, while the runtime warning remains as
+a final safeguard.
 
 `SkillGemDefinition.TryFindPayload<T>` walks the composite's steps
 (`PayloadStep.Payload`, recursively) to find a wrapped payload of a given type;
@@ -129,18 +130,19 @@ Author a composite through the skill inspector's **Execution Authoring**
 section: pick `Composite` as the Execution Type, then use the **Composite Step
 Payloads** panel to create/replace/remove each `PayloadStep`'s wrapped payload
 (embedded the same way the root payload is) and edit its nested inspector
-inline. `HealAreaStep` entries have no payload to author — their fields are
-edited directly in the Odin-drawn step list.
+inline. This raw panel remains available, but the normal designer path for a
+node-owned ability is the **Ability Cards** workflow described in
+**Node-Centric Ability Authoring** below, which never requires opening this
+Inspector.
 
 Step *structure* — add, reorder, remove, and set `requiredUpgradeId` — can
 also be authored from **Tools > RB > Skills > Active Skill Tree Editor**'s
 **Skill Steps** toolbar toggle, without leaving the tree window. It edits the
 owning skill's composite in place. Each step row is a foldout: collapsed shows
-just the step type and its `requiredUpgradeId`; expanded draws every field
-`SerializedProperty` exposes on the step (still respecting `[HideInInspector]`
-on the legacy `HealAreaStep.ConditionalStatus` fields), so `HealAreaStep`'s own
-target/status lists are editable inline. A `PayloadStep`'s wrapped payload is
-**not** editable from this panel — it shows a "Select '\<Type\>' Payload"
+the step type, its `requiredUpgradeId`, and — for a `PayloadStep` wrapping a
+`HealAreaSkillPayloadDef` — the target mode in the header, the same
+reasoning a wrapped payload type is already shown for. A `PayloadStep`'s
+wrapped payload is **not** editable from this panel — it shows a "Select '\<Type\>' Payload"
 button that pings the payload sub-asset instead. This is a deliberate scope
 limit, not a missing feature: rendering the wrapped payload's own
 `Editor.OnInspectorGUI()` inline (directly, or via
@@ -181,6 +183,110 @@ orphans are reported for manual recovery; they are never deleted by validation.
 Replacing or removing an embedded Composite root deletes only its reachable
 embedded descendants, children first, through the same Undo transaction.
 
+### Node-Centric Ability Authoring
+
+A designer adds, edits, duplicates, or removes a node-owned ability from the
+selected node in **Tools > RB > Skills > Active Skill Tree Editor** without
+opening the skill Inspector or the raw **Skill Steps** panel. All of this lives
+under `Assets/Scripts/Editor/ActiveSkill/AbilityAuthoring/`.
+
+**Descriptors.** Every payload type available to the normal designer picker
+must have exactly one registered `IPayloadDesignerDescriptor` (concrete
+descriptors extend `PayloadDesignerDescriptorBase<TPayload>`, which derives
+`PayloadType` from the generic parameter so a descriptor cannot map to the
+wrong or an abstract type). A descriptor owns:
+
+- `DisplayName` / `Description` / `Category` — designer-facing labels, never
+  the C# type name.
+- `ApplySafeDefaults(payload, context)` — initializes a freshly created draft
+  to a state that is either valid immediately, or valid once the designer
+  supplies a clearly required asset reference. Safe defaults must never
+  fabricate a reference or silently pick an arbitrary project asset.
+- `DrawWizard(draft, context)` — curated `SerializedObject`-based fields, not
+  every serialized property.
+- `BuildSummary(payload, context)` — a `PayloadGameplaySummary` (a headline
+  sentence plus detail/warning lines) in gameplay language, never a dump of
+  field names and values.
+- `CollectAuthoringIssues(payload, context, issues)` — usually a thin wrapper
+  around the payload's own `CollectValidationIssues`, reported as
+  `PayloadAuthoringIssue` (`Error`/`Warning`/`Info`; see **Validation** below).
+
+`PayloadDesignerDescriptorRegistry` discovers descriptors through `TypeCache`,
+same lazy-static-field-per-domain-reload pattern as
+`SkillPayloadAssetUtility.GetPayloadTypes` — no `[InitializeOnLoad]`. It
+reports a duplicate-descriptor or invalid-payload-type mapping as a registry
+diagnostic, and excludes `CompositeSkillPayloadDef` from the normal picker
+unconditionally. A concrete `SkillPayloadDef` type with no registered
+descriptor never appears in the normal wizard picker.
+
+**Wizard.** `ActiveSkillAbilityWizardWindow` is a dedicated `EditorWindow`
+(`OpenCreate`/`OpenEdit`), not embedded inside the tree window's
+`IMGUIContainer`/`ScrollView`, so its optional Advanced foldout can safely
+show a full nested payload inspector without tripping the scroll-reset bug
+documented above. Create mode shows a type picker, then builds a transient
+`HideAndDontSave` draft and calls `ApplySafeDefaults` exactly once. Edit mode
+copies the real payload's serialized values into a transient draft instead.
+Validation recomputes on every field change; **Create/Apply is disabled while
+any Error exists**, and a Warning shows one confirmation dialog before commit.
+The draft is destroyed on every exit path — Cancel, a successful commit, the
+window being closed, or an exception — never left as an orphaned
+`HideAndDontSave` object. Duplicate has no wizard step: it clones a source
+step's payload and mints a new id server-side with nothing to review, so the
+node card's **Duplicate** button calls it directly.
+
+**Node ability cards.** The selected node's **Gameplay Effects** section
+(see **Active Skill Tree Authoring** below) shows one card per node-owned
+ability, resolved live from `node.grantedUpgradeIds` matched against the
+owning skill's composite steps — never a separate serialized card list. A
+granted id with no matching `PayloadStep`, or a step whose payload has no
+descriptor, is not shown as a card (the former already reports as an "unused
+id" warning in **Unlocked Abilities**; the latter cannot have been authored
+through the normal flow and is an Advanced/Developer-mode concern). Each card
+shows the descriptor's display name and gameplay summary, warnings/errors from
+`CollectAuthoringIssues`, and **Edit** / **Duplicate** / **Remove** buttons.
+The stable internal id is shown only inside an **Advanced** foldout on the
+card, never in the normal card body. This section is blocked entirely (with an
+Error) when the tree resolves to more than one owning skill — node-centric
+mutation requires an unambiguous owner.
+
+**Stable binding ids.** `AbilityBindingIdGenerator` creates
+`<skillId>.<nodeId>.<payloadSlug>`, normalized lowercase/dot-separated, with a
+deterministic `.2`, `.3`, ... suffix on collision within the owning skill/tree
+pair. Once created, an id is stable: renaming the node, editing the payload's
+configuration, or replacing its type never rewrites an existing binding.
+Duplicating an ability always mints a new id.
+
+**Atomic authoring service.** `NodeAbilityAuthoringService` is the only writer
+— the wizard and node cards never touch the skill or tree assets directly.
+Every operation is one Undo group and either fully succeeds or rolls back to
+the group's start with no orphaned sub-asset:
+
+- `ConvertToCompositePreservingExecution` — the first `+ Add Ability` on a
+  single-payload skill converts it to a `CompositeSkillPayloadDef`
+  automatically, reusing the existing root payload object (never cloned or
+  destroyed) as the new always-active `PayloadStep` at index 0. The three
+  root-owned execution fields (`helperFacingMode`, `chainContinueMode`,
+  `chainContinueNormalizedTime`, all private on `SkillPayloadDef`) are copied
+  to the new composite through `SerializedObject` and reset to their
+  composite-child defaults on the child, matching the invariant
+  `CompositeSkillPayloadDef.CollectValidationIssues` already enforces.
+- `CreateNodeAbility` — auto-converts if needed, generates the id, embeds a
+  fresh copy of the wizard's configured draft (never the draft object itself),
+  and binds the id to both `node.grantedUpgradeIds` and the new step's
+  `requiredUpgradeId` as one transaction.
+- `ApplyEditedAbility` — commits the draft's values onto the real payload
+  in place; no new object is created.
+- `DuplicateNodeAbility` — clones the source payload's configuration into a
+  new embedded object with a new id; no two steps ever reference the same
+  child payload object.
+- `RemoveNodeAbility` — reference-safe: never destroys a payload another step
+  in the same composite still references, and never revokes a node's grant
+  while any remaining step still gates on that id.
+
+None of these call `AssetDatabase.SaveAssets()`; the tree window owns
+Save/Discard, same convention as the Skill Steps panel and the Status Effect
+Wizard.
+
 ### Conditional Status On Payloads
 
 `ApplyStatusSkillPayloadDef` and `TauntSkillPayloadDef` both support a
@@ -188,14 +294,15 @@ embedded descendants, children first, through the same Undo transaction.
 entry pairs a `requiredUpgradeId` with a `StatusEffectDef` (and stack count),
 applied only when `SkillCastContext.HasUpgrade(requiredUpgradeId)` is true.
 `ApplyStatusSkillPayloadDef` applies conditional entries to the caster;
-`TauntSkillPayloadDef` applies them to each taunted enemy. `HealAreaStep` has
-the same `conditionalApplications` list for the target it heals. This is how
+`TauntSkillPayloadDef` applies them to each taunted enemy.
+`HealAreaSkillPayloadDef` has the same conditional list for the target it
+heals. This is how
 an Active Skill Tree node changes a skill's *behavior* (see **Active Skill
 Loadout and Upgrade Trees** below) rather than only its numbers.
 
 #### Application ownership (StatusEffectDef vs StatusApplicationSpec)
 
-Every authored status application — skill payloads, `HealAreaStep`,
+Every authored status application — skill payloads, `HealAreaSkillPayloadDef`,
 `MorphSkillPayloadDef`, `ApplyStatusOnHitModule`, `PassiveActionDefinition`,
 `ApplyStatusPickupEffectDef` — holds a `StatusApplicationSpec` and calls the
 `StatusEffectController.ApplyEffect(spec, source, fallbackDuration)` overload.
@@ -521,6 +628,16 @@ A valid skill must satisfy all of the following:
   matching loop keys
 - prefab-hitbox payloads contain a valid inline layout and every step group key
   resolves to a group in that layout
+- no direct-gameplay `SkillEffectStep` remains in a composite — `PayloadStep`
+  is the only supported step type (see **Node-Centric Ability Authoring**
+  above)
+
+`NodeCentricPayloadValidator` folds descriptor registry health and per-payload
+authoring issues into the same `SkillUpgradeValidationIssue` list
+`SkillUpgradeTreeValidator` already produces, so the Active Skill Tree
+Editor's Save action, node badges, and inline issue list all see one
+consolidated result — see **Unified Authoring Validation** in
+`Docs/VALIDATION.md` for the full severity model.
 
 For C# validation, run only `Assets/Scripts/CheckAssemblyBuild.ps1` as described
 in `Docs/VALIDATION.md`.
@@ -842,8 +959,46 @@ Steps** above.
 
 Selecting a node shows a **Gameplay Effects** section, in reading order —
 gameplay first, authoring tools last: the node's stat modifiers, then
-**Unlocked Abilities** listing everything the player actually receives, then
-**Additional Gated Status Effects** (the status wizard) at the bottom.
+**Unlocked Abilities** (a raw diagnostic listing every site that reacts to a
+granted id, described below), then the node-owned **Ability Cards** plus
+**+ Add Ability** (see **Node-Centric Ability Authoring** above), then a
+collapsed **Advanced / Developer** foldout.
+
+**`+ Add Ability` is the only authoring entry point in the normal designer
+flow.** Everything that can author the same gameplay a second way lives inside
+the Advanced / Developer foldout — currently the **Additional Gated Status
+Effects** wizard (see **Status Effect Wizard** below), which used to sit in the
+normal flow and overlapped `+ Add Ability` for the "add a status effect" case.
+The toggle is persisted per user in `EditorPrefs`, defaults to off, and is
+loaded in `OnEnable` (reading `EditorPrefs` from a `ScriptableObject` field
+initializer throws).
+
+A status effect is now edited wherever it actually lives:
+
+| Where the status lives | Where the designer edits it |
+| --- | --- |
+| Bundled inside a node-owned ability's payload | that ability's card → **Edit** |
+| Gated onto an always-active payload | skill-level **Always Active Skill Effects** → **Edit** |
+| A standalone status ability of its own | `+ Add Ability > Apply Status to Self` |
+
+### Always Active Skill Effects
+
+A blank-gated `PayloadStep` runs unconditionally, so it is owned by the skill,
+not by any node (plan section 14.4) — attaching it to whichever node happens to
+be selected would be a lie. It therefore gets its own skill-level section,
+shown in the tree editor **when no node is selected**, listing every
+blank-gated step with its descriptor summary, authoring issues, and an
+**Edit** button that opens the ability wizard in always-active mode (null node,
+titled "Edit Always-Active Effect").
+
+This section is also the supported home for a pattern Ability Cards
+structurally cannot represent: a conditional status that a node's granted id
+gates *inside* a payload that itself always runs (for example
+`Aires_Skill_3`'s Taunt and Tea Buff payloads, where 8 of the skill's 10
+conditional status entries live). Ability Cards only resolve steps whose own
+`requiredUpgradeId` a node grants, so those entries have no card — the card
+counts them and points the designer at the owning payload instead.
+
 **Unlocked Abilities** shows every site in the owning skill/passive that
 reacts to each `grantedUpgradeIds` entry. One id used by several sites lists
 all of them. Sites are found by `UpgradeIdUsageScanner`, which walks the
@@ -867,7 +1022,7 @@ behavior (a step, a payload, a passive rule) still lists that remaining
 behavior. An id nothing reacts to at all still shows its row with the
 "nothing listens for this id" warning, since that is an authoring problem, not
 a duplicate. A status embedded in a step's own unconditional list — for
-example `HealAreaStep.statusSpecApplications`, gated only by the step's own
+example `HealAreaSkillPayloadDef.statusSpecApplications`, gated only by the step's own
 `requiredUpgradeId` rather than by an id of its own — is never collected by
 **Additional Gated Status Effects**, so it is never a candidate for this
 dedup: it stays reported on the **Unlocked Abilities** card for the step's
@@ -882,7 +1037,7 @@ shown as `<unresolved target>` rather than silently omitting the target. Trigger
 rules report their actual runtime stack/refresh behavior; the summary does not
 infer unimplemented behavior
 from a status or node name. A recognized step type can also describe its own
-bare gate instead of the generic `Enable <Step>` fallback: a `HealAreaStep`
+bare gate instead of the generic `Enable <Step>` fallback: a `PayloadStep` wrapping `HealAreaSkillPayloadDef`
 gate reports its target mode (`Heal Self` or `Heal nearby Allies`), which
 `FinalSkillStats` channel each of Heal Power and Area Radius reads from, and
 any unconditional status it applies once unlocked, with the same
@@ -908,8 +1063,19 @@ ping their source asset instead.
 
 #### Status Effect Wizard
 
-**Gameplay Effects** also contains an **Additional Gated Status Effects**
-block, below **Unlocked Abilities**: a `+ Add Additional Status Effect` button
+> **Advanced / Developer only.** This block used to sit in the normal node
+> flow, where it was a second way to author the same gameplay `+ Add Ability`
+> covers. It now lives inside the **Advanced / Developer** foldout. It is kept
+> rather than deleted because it still owns capabilities no descriptor's raw
+> `conditionalStatuses` field provides: creating a new `StatusEffectDef` asset
+> inline, the scope repairs (**Promote To Global** / **Label As Unique** /
+> **Duplicate As Unique**), duplicate-`effectId` detection, cross-skill unique
+> validation, and the destination selector when one target has several routes.
+> Reach for it when repairing legacy/unlabelled status data or when a route
+> needs a status asset that does not exist yet.
+
+**Advanced / Developer** contains the **Additional Gated Status Effects**
+block: a `+ Add Additional Status Effect` button
 plus one card per conditional status application already gated directly by
 one of the node's granted ids. "Additional" distinguishes these from a status
 bundled inside an unlocked ability's own step, which the card above already
@@ -970,8 +1136,8 @@ that returns one:
 
 | Target | Declared on |
 | --- | --- |
-| `Self` | `ApplyStatusSkillPayloadDef.conditionalStatuses`, and `HealAreaStep` when its mode is `Self` |
-| `Allies` | `HealAreaStep.conditionalStatuses` when its mode is `Allies` |
+| `Self` | `ApplyStatusSkillPayloadDef.conditionalStatuses`, and `HealAreaSkillPayloadDef` when its mode is `Self` |
+| `Allies` | `HealAreaSkillPayloadDef.conditionalStatuses` when its mode is `Allies` |
 | `Taunted Enemies` | `TauntSkillPayloadDef.conditionalStatuses` |
 
 `SkillStatusRouteResolver` walks only the *skill structure* — root payload,
@@ -1048,7 +1214,7 @@ scaled-node layout including the authored-vs-resolved size write-back, frame
 fallback, validation, per-issue `NodeId` attribution, grant severities and the
 cross-node duplicate rule, `UpgradeIdUsageScanner` resolving both passive rule
 sites and the real skill's embedded status applications (including a
-`HealAreaStep` gate reading as `Heal nearby Allies` with its unconditional
+`HealAreaSkillPayloadDef` gate reading as `Heal nearby Allies` with its unconditional
 `Aires3_AllyGuard`/Armor `+20%` reported and the nested conditional
 `aires3.ally_regen` application staying a separate, non-duplicated usage), and
 `RequiredPathPreviewResolver` folding a multi-level prerequisite chain
@@ -1057,7 +1223,7 @@ runtime formula), excluding a sibling node that is not on the required path,
 resolving safely against a prerequisite cycle and a dangling prerequisite
 id instead of hanging, and **Unlocked Abilities** hiding a granted id whose
 only usages are status route applications already shown on a Status Effects
-card while keeping a non-status gate (a `HealAreaStep`'s own gate) visible on
+card while keeping a non-status gate (a `HealAreaSkillPayloadDef`'s own gate) visible on
 the same node.
 
 Use **Tools > RB > Skills > Validate Status Effect Scopes** to check the whole

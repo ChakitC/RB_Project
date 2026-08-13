@@ -156,9 +156,16 @@ public static class UpgradeIdUsageScanner
             usage.Summary = $"Apply {effectName} to {target}";
             DescribeSpec(spec, effect, usage.Details);
         }
-        else if (step is HealAreaStep && stepIndex >= 0)
+        else if (step is PayloadStep payloadStep && payloadStep.Payload is HealAreaSkillPayloadDef && stepIndex >= 0)
         {
-            DescribeHealAreaStepGate(serialized, path, usage);
+            // Migrated form: target/statusSpecApplications now live on the embedded
+            // HealAreaSkillPayloadDef sub-asset, a separate UnityEngine.Object from the composite,
+            // so it needs its own SerializedObject rather than a composite-relative path.
+            var payloadSerialized = new SerializedObject(payloadStep.Payload);
+            DescribeHealAreaFields(
+                payloadSerialized.FindProperty("target"),
+                payloadSerialized.FindProperty("statusSpecApplications"),
+                usage);
         }
         else
         {
@@ -168,18 +175,15 @@ public static class UpgradeIdUsageScanner
         return usage;
     }
 
-    // HealAreaStep's own gate has no sibling spec -- it gates the whole step, not one status
-    // application -- so without this it falls back to "Enable HealArea Step" and hides exactly the
-    // numbers a designer needs: which target mode, which FinalSkillStats channel feeds it, and any
-    // status it always applies once unlocked. Everything here comes straight off the step's
-    // SerializedObject, so an unrecognized future step type still falls back to BuildBehaviorLabel
-    // instead of guessing behavior from its class name.
-    static void DescribeHealAreaStepGate(SerializedObject serialized, string gatePropertyPath, UpgradeIdUsage usage)
+    // HealAreaSkillPayloadDef's gate has no sibling spec (the gate covers the whole payload, not
+    // one status application), so without this it falls back to "Enable Heal Area Payload" and
+    // hides exactly the numbers a designer needs: which target mode, which FinalSkillStats channel
+    // feeds it, and any status it always applies once unlocked. targetProperty/applications are
+    // passed in rather than resolved here so the caller decides where they live (a standalone
+    // SerializedObject rooted on the embedded payload sub-asset, in the current single caller).
+    static void DescribeHealAreaFields(
+        SerializedProperty targetProperty, SerializedProperty applications, UpgradeIdUsage usage)
     {
-        int lastDot = gatePropertyPath.LastIndexOf('.');
-        string stepPath = lastDot >= 0 ? gatePropertyPath.Substring(0, lastDot) : gatePropertyPath;
-
-        SerializedProperty targetProperty = serialized.FindProperty($"{stepPath}.target");
         bool alliesMode = targetProperty != null && targetProperty.enumValueIndex == (int)HealTargetMode.Allies;
 
         usage.Summary = alliesMode ? "Heal nearby Allies" : "Heal Self";
@@ -190,7 +194,6 @@ public static class UpgradeIdUsageScanner
         if (alliesMode)
             usage.Details.Add("Area Radius channel: FinalSkillStats.areaRadius");
 
-        SerializedProperty applications = serialized.FindProperty($"{stepPath}.statusSpecApplications");
         if (applications == null || !applications.isArray)
             return;
 

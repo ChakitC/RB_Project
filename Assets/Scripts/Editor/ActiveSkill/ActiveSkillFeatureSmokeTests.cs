@@ -941,15 +941,15 @@ public static class ActiveSkillFeatureSmokeTests
             "The scanner must find a step's own requiredUpgradeId gate.");
         Equal(1, allySupport.Count, "A bare step gate must resolve to exactly one usage.");
         Equal("Heal nearby Allies", allySupport[0].Summary,
-            "A HealAreaStep gate must describe its actual target mode instead of a generic 'Enable' fallback.");
+            "A Heal Area gate must describe its actual target mode instead of a generic 'Enable' fallback.");
         Expect(allySupport[0].ReadsHealPowerStat,
-            "A HealAreaStep gate must flag that it reads the skill's Heal Power stat.");
+            "A Heal Area gate must flag that it reads the skill's Heal Power stat.");
         Expect(allySupport[0].ReadsAreaRadiusStat,
-            "An Allies-mode HealAreaStep gate must flag that it reads the skill's Area Radius stat.");
+            "An Allies-mode Heal Area gate must flag that it reads the skill's Area Radius stat.");
         Expect(allySupport[0].Details.Any(detail => detail.Contains("Aires3_AllyGuard")),
-            "A HealAreaStep gate must report the unconditional status it always applies once unlocked.");
+            "A Heal Area gate must report the unconditional status it always applies once unlocked.");
         Expect(allySupport[0].Details.Any(detail => detail.Contains("Armor") && detail.Contains("+20")),
-            "A HealAreaStep gate must report its unconditional status' modifiers.");
+            "A Heal Area gate must report its unconditional status' modifiers.");
         Expect(allySupport[0].StepIndex >= 0, "A step gate must resolve its composite step index.");
         Expect(ActiveSkillTreeEditorWindow.CanEditUsageInSkillSteps(allySupport[0]),
             "A gate stored on the composite step itself must remain editable in Skill Steps.");
@@ -972,7 +972,7 @@ public static class ActiveSkillFeatureSmokeTests
                allyRegen.All(usage => usage.Summary.EndsWith(" to Allies", StringComparison.Ordinal)),
             "A HealArea conditional status must identify the authored HealArea target.");
         Equal(1, allyRegen.Count,
-            "A conditional status inside HealAreaStep must remain a separate usage from the step's own gate.");
+            "A conditional status inside the Heal Area payload must remain a separate usage from the step's own gate.");
     }
 
     static void TestRequiredPathPreviewAggregatesPrerequisiteChain(List<ScriptableObject> assets)
@@ -1086,7 +1086,7 @@ public static class ActiveSkillFeatureSmokeTests
             "show under Unlocked Abilities once the Status Effects card already covers it.");
 
         Expect(usages.TryGetValue("aires3.ally_support", out List<UpgradeIdUsage> allySupportUsages),
-            "The scanner must still find the HealAreaStep's own gate.");
+            "The scanner must still find the Heal Area payload's own gate.");
         List<StatusEffectApplicationHandle> allySupportHandles =
             ActiveSkillStatusEffectAuthoringService.Collect(skill, new List<string> { "aires3.ally_support" });
         Equal(0, allySupportHandles.Count,
@@ -1095,7 +1095,7 @@ public static class ActiveSkillFeatureSmokeTests
         List<UpgradeIdUsage> remainingAllySupport =
             ActiveSkillTreeEditorWindow.FilterNonStatusUsages(allySupportUsages, allySupportHandles);
         Equal(1, remainingAllySupport.Count,
-            "A non-status behavior (a HealAreaStep gate) must stay visible in Unlocked Abilities even " +
+            "A non-status behavior (a Heal Area gate) must stay visible in Unlocked Abilities even " +
             "though a different id on the same node might be a pure status gate.");
     }
 

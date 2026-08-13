@@ -238,6 +238,30 @@ player prefab, camera prefab, input actions, or Build Settings scenes. The same
 validator is available to batch mode through
 `ThirdPersonAuthoringValidator.ValidateBatchMode`.
 
+## Axis Rotation Driver
+
+Add `AxisRotationDriver` to the Target GameObject and assign `Source` to the
+transform whose rotation should drive it. Pick `Source Axis` / `Target Axis`
+from the dropdowns to remap rotation across axes (for example Source Y drives
+Target Z). After wiring `Source`, run **Capture Rest Pose** so `Maintain
+Offset` preserves the authored pose instead of snapping to an absolute angle;
+the rest pose auto-captures the first time `Source` is assigned, but re-run
+the button any time the authored pose changes.
+
+`Preview In Edit Mode` drives the target continuously outside Play Mode and
+marks the scene dirty while it runs. Leave it on only while authoring the
+rig; disable it or save the scene once the setup is confirmed.
+
+Only one `AxisRotationDriver` is allowed per GameObject
+(`DisallowMultipleComponent`). For chained rigs, such as a two-stage gear
+train, add a second driver to the intermediate GameObject and point the next
+driver's `Source` at it — each driver pulls its upstream driver's `Evaluate()`
+recursively so the whole chain updates in the same frame.
+
+Prefab boundary: if `Source` lives in a different prefab than the Target, the
+reference can only be saved as a scene override, and the captured
+`sourceRest`/`targetRest` become per-instance overrides as well.
+
 ## Character Skill Loadout Authoring
 
 Author character-default active skills, and any character-owned passive with
@@ -280,6 +304,77 @@ empty in every prefab, so nothing authored is lost).
 
 See `RB_Project\Docs\SYSTEMS\PASSIVES.md` for the runtime model.
 
+## Node-Centric Ability Authoring Workflow
+
+The normal way to give a skill-tree node a new ability is entirely inside
+**Tools > RB > Skills > Active Skill Tree Editor** — no Skill Inspector, no
+raw upgrade-id typing:
+
+1. Select the node.
+2. In **Gameplay Effects**, click **+ Add Ability**.
+3. Pick a payload type from the picker (grouped by category — only
+   descriptor-backed types appear; see `Docs/SYSTEMS/SKILL_SYSTEM.md` **Node-
+   Centric Ability Authoring** for what makes a type eligible).
+4. Fill in the curated fields the descriptor draws. Required asset references
+   (a Taunt Status, a Morph model prefab, a Pickup prefab, ...) are never
+   pre-filled with a guessed value — leave one empty and **Create Ability**
+   stays disabled with the missing requirement shown as an Error.
+5. Review the **Gameplay Summary** (plain-language sentence plus detail lines)
+   and any Errors/Warnings. A Warning still lets you continue after one
+   confirmation; an Error blocks Create until fixed.
+6. Click **Create Ability**. The card appears on the node immediately. If this
+   was the skill's first additional ability, the skill's existing single
+   payload is automatically converted to a composite first, with its data and
+   execution settings preserved (nothing is destroyed or reconfigured by
+   hand).
+7. Save the tree from the toolbar when ready — Save now runs the same unified
+   validation (see `Docs/VALIDATION.md`) and stops on any Error.
+
+**Editing** an ability: click **Edit** on its card, change fields, review the
+same summary/validation, click **Apply Changes**. **Duplicating**: click
+**Duplicate** — this is a one-click action with no wizard step, since there
+are no new fields to review; it clones the configuration and mints a new
+binding id immediately. **Removing**: click **Remove**, confirm; the payload
+is deleted only if no other step still references it, and the node's granted
+id is revoked only if nothing else still gates on it.
+
+**Where a status effect is edited.** `+ Add Ability` is the only authoring
+entry point in the normal flow, so a status effect is edited wherever it
+actually lives:
+
+| Where the status lives | Where you edit it |
+| --- | --- |
+| Bundled inside a node-owned ability | that ability's card → **Edit** |
+| Gated onto an always-active payload | select **no node** → **Always Active Skill Effects** → **Edit** |
+| A standalone status ability | `+ Add Ability > Apply Status to Self` |
+
+**Always-active effects.** A step with a blank gate runs unconditionally and is
+owned by the skill, not a node, so it is not shown on any node. Deselect the
+node to see the skill-level **Always Active Skill Effects** list. Note that a
+node's granted id can still gate a *conditional status inside* an always-active
+payload — that is a normal, supported pattern (most of `Aires_Skill_3`'s status
+effects work this way), and those entries are edited from this section, not
+from a node card.
+
+**Advanced/Developer mode.** The node inspector's collapsed **Advanced /
+Developer** foldout holds the older **Additional Gated Status Effects** wizard
+(kept for creating status assets inline, scope repairs, and duplicate-effectId
+checks — see `Docs/SYSTEMS/SKILL_SYSTEM.md`). The ability wizard's own
+**Advanced** section, and the tree window's raw **Skill Steps** panel, can show
+every serialized field on a payload including ones the curated wizard fields
+don't expose. None of these let ownership, embedding, or upgrade-id bindings
+change outside `NodeAbilityAuthoringService` — there is no raw `PayloadStep`
+creation, no direct `requiredUpgradeId` typing, and no direct
+`grantedUpgradeIds` typing in the normal flow.
+
+**Legacy migration (completed).** The project's only direct-gameplay step
+(`HealAreaStep`, used by `Aires_Skill_3.asset`) was migrated to
+`HealAreaSkillPayloadDef` + `PayloadStep` and the legacy type was then
+deleted — see `Docs/VALIDATION.md` **Unified Authoring Validation** for the
+retirement gate that was checked before removal. There is nothing left to
+migrate; a `HealAreaStep` reference reappearing in an asset means it was
+restored from an old revision.
+
 ## Active Skill Tree Upgrade-Id Authoring
 
 `SkillUpgradeNodeData.grantedUpgradeIds` marks the behavior flags a tree node grants; steps and
@@ -287,8 +382,10 @@ payloads query them at runtime through `SkillCastContext.HasUpgrade`. The ids th
 typed on the tree first — they originate on the payload's own fields (a `SkillEffectStep`'s
 `requiredUpgradeId` gate, or a `ConditionalStatusRoute`'s
 `conditionalStatuses.applications[].requiredUpgradeId` list, such as on `TauntSkillPayloadDef`,
-`ApplyStatusSkillPayloadDef`, or `HealAreaStep`). The tree only picks from what the payload already
-declares — that is the single source of truth for a given id.
+`ApplyStatusSkillPayloadDef`, or `HealAreaSkillPayloadDef`). The tree only picks from what the payload already
+declares — that is the single source of truth for a given id. Node-owned ability ids should be
+authored through the **Node-Centric Ability Authoring Workflow** above rather than typed here
+directly; this raw picker remains for status-route gates and Advanced/Developer authoring.
 
 ### Adding a conditional status route to a new payload or step
 

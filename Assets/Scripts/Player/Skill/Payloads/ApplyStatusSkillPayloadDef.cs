@@ -30,6 +30,10 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
     [SkillStatusRouteTarget(SkillStatusTarget.Self, "Apply Status")]
     private ConditionalStatusRoute conditionalStatuses = new();
 
+    public IReadOnlyList<StatusApplication> Applications => applications;
+    public bool PreferCasterRoot => preferCasterRoot;
+    public ConditionalStatusRoute ConditionalStatuses => conditionalStatuses;
+
     public override void Execute(SkillCastContext context)
     {
         if (context == null)

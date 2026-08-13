@@ -48,7 +48,7 @@ MonoBehaviour:
     displayName: Extra Drop
     description: The bullet bag shakes loose a second ammo pickup per proc.
     icon: {fileID: 21300000, guid: 34d2bfe6139c67c42853f26af603a567, type: 3}
-    uiPosition: {x: 278, y: 37.20002}
+    uiPosition: {x: 281.96753, y: 37.000008}
     visualScale: 1
     cost: 1
     requiredCharacterLevel: 1

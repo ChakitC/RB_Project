@@ -11,6 +11,26 @@ public sealed class CompositeSkillPayloadDef : SkillPayloadDef
 
     public IReadOnlyList<SkillEffectStep> Steps => steps;
 
+    // Authoring-only mutators. Normal designer flows must go through NodeAbilityAuthoringService,
+    // which wraps these in an Undo group alongside the embedded child payload and binding id.
+    public void AddStep(SkillEffectStep step)
+    {
+        if (step == null)
+            return;
+
+        steps.Add(step);
+    }
+
+    public bool RemoveStep(SkillEffectStep step)
+    {
+        return step != null && steps.Remove(step);
+    }
+
+    public int IndexOfStep(SkillEffectStep step)
+    {
+        return step == null ? -1 : steps.IndexOf(step);
+    }
+
     public void SetStepPayload(int index, SkillPayloadDef payload)
     {
         if (steps == null || index < 0 || index >= steps.Count)

@@ -52,6 +52,19 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
     SkillUpgradeNodeData _statusApplicationsNode;
     SkillGemDefinition _statusApplicationsOwner;
 
+    // Node-centric ability cards (Docs/ARCHITECTURE/NODE_CENTRIC_PAYLOAD_AUTHORING_PLAN.md section 14).
+    // Cards are a live projection of node.grantedUpgradeIds + the owning skill's composite steps --
+    // never a separate serialized list. Owner discovery still shares _cachedOwners because scanning
+    // the AssetDatabase from this IMGUI repaint path makes graph panning and node dragging stutter.
+    readonly HashSet<string> _expandedAbilityAdvanced = new();
+
+    // Advanced/Developer authoring toggle. Persisted so a programmer who works in raw mode does not
+    // have to re-open it every domain reload, while designers never see it by default. Loaded in
+    // OnEnable, not here -- EditorPrefs.GetBool throws if called from a ScriptableObject field
+    // initializer.
+    const string AdvancedNodeAuthoringPrefKey = "RB.ActiveSkillTree.ShowAdvancedNodeAuthoring";
+    bool _showAdvancedNodeAuthoring;
+
     // "Edit" navigation state: the step to reveal in the Skill Steps panel, and how long its
     // highlight stays up after the jump.
     int _focusStepIndex = -1;
@@ -76,6 +89,7 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
 
     void OnEnable()
     {
+        _showAdvancedNodeAuthoring = EditorPrefs.GetBool(AdvancedNodeAuthoringPrefKey, false);
         BuildUi();
         Undo.undoRedoPerformed += ReloadGraph;
     }
@@ -307,6 +321,8 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
                 MarkDirty();
                 _issuesDirty = true;
             }
+
+            DrawAlwaysActiveSkillEffects();
             return;
         }
 
@@ -346,12 +362,42 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         DrawNodeStatEffects(node);
 
         // Unlocked Abilities' dedup against Additional Gated Status Effects needs _statusOwner
-        // resolved before it draws, even though the owner picker UI itself still lives in the
-        // (now second) Additional Gated Status Effects section below.
+        // resolved before it draws, even though the owner picker UI itself now lives inside the
+        // Advanced/Developer section below.
         EnsureStatusOwnerResolved(ResolveSkillOwners());
 
         DrawNodeUnlockedAbilities(node);
+        DrawNodeAbilityCards(node);
+        DrawAdvancedNodeAuthoring(node);
+    }
+
+    // `+ Add Ability` is the designer entry point; everything that can author the same gameplay a
+    // second way lives behind this toggle so the normal flow has exactly one path. The old status
+    // wizard stays reachable here because it is still the only way to author a conditional status
+    // onto a payload that has no route yet exposed through a descriptor's curated fields, and for
+    // repairing legacy/unlabelled data.
+    void DrawAdvancedNodeAuthoring(SkillUpgradeNodeData node)
+    {
+        EditorGUILayout.Space();
+        bool nextAdvanced = EditorGUILayout.Foldout(_showAdvancedNodeAuthoring, "Advanced / Developer", true);
+        if (nextAdvanced != _showAdvancedNodeAuthoring)
+        {
+            _showAdvancedNodeAuthoring = nextAdvanced;
+            EditorPrefs.SetBool(AdvancedNodeAuthoringPrefKey, nextAdvanced);
+            _inspector?.MarkDirtyRepaint();
+        }
+
+        if (!_showAdvancedNodeAuthoring)
+            return;
+
+        EditorGUI.indentLevel++;
+        EditorGUILayout.HelpBox(
+            "Raw authoring. A status effect bundled with an ability is edited inside that ability's " +
+            "card; a status gated onto an always-active effect is edited from the skill-level " +
+            "\"Always Active Skill Effects\" section (select no node to see it).",
+            MessageType.Info);
         DrawNodeStatusEffects(node);
+        EditorGUI.indentLevel--;
     }
 
     void EnsureStatusOwnerResolved(List<SkillGemDefinition> skillOwners)
@@ -366,7 +412,7 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
     // The one-window path for "give this node a buff" that is not already bundled inside an
     // unlocked ability -- the wizard owns identity/target/numbers, and every card below is a
     // conditional application gated directly by one of this node's granted ids. A status embedded in
-    // a step's own unconditional list (for example HealAreaStep.statusSpecApplications) is not gated
+    // a step's own unconditional list (for example HealAreaSkillPayloadDef.statusSpecApplications) is not gated
     // by its own id, so it never appears here -- it stays part of the Unlocked Abilities card above,
     // where editing it means editing the step, not this wizard.
     void DrawNodeStatusEffects(SkillUpgradeNodeData node)
@@ -827,6 +873,403 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
                usage.Owner is CompositeSkillPayloadDef;
     }
 
+    #region Node-Centric Ability Cards (plan section 14)
+
+    readonly struct AbilityCardInfo
+    {
+        public AbilityCardInfo(string abilityId, PayloadStep step, SkillPayloadDef payload, IPayloadDesignerDescriptor descriptor)
+        {
+            AbilityId = abilityId;
+            Step = step;
+            Payload = payload;
+            Descriptor = descriptor;
+        }
+
+        public string AbilityId { get; }
+        public PayloadStep Step { get; }
+        public SkillPayloadDef Payload { get; }
+        public IPayloadDesignerDescriptor Descriptor { get; }
+    }
+
+    // "+ Add Ability" plus one card per node-owned ability. Blocked entirely on a shared tree
+    // (more than one owning skill) -- node-centric mutation requires an unambiguous owner (plan
+    // section 3 decision 23), same guard NodeAbilityAuthoringService enforces on every write.
+    void DrawNodeAbilityCards(SkillUpgradeNodeData node)
+    {
+        EditorGUILayout.Space(2f);
+        EditorGUILayout.LabelField("Abilities", EditorStyles.miniBoldLabel);
+
+        var ownerIssues = new List<PayloadAuthoringIssue>();
+        if (!NodeAbilityAuthoringService.TryResolveSingleOwner(
+                ResolveSkillOwners(), out SkillGemDefinition owner, ownerIssues))
+        {
+            for (int i = 0; i < ownerIssues.Count; i++)
+                EditorGUILayout.HelpBox(ownerIssues[i].Message, MessageType.Error);
+            return;
+        }
+
+        List<AbilityCardInfo> cards = ResolveAbilityCards(owner, node);
+        for (int i = 0; i < cards.Count; i++)
+            DrawAbilityCard(owner, node, cards[i]);
+
+        if (GUILayout.Button("+ Add Ability"))
+        {
+            SkillGemDefinition capturedOwner = owner;
+            SkillUpgradeNodeData capturedNode = node;
+            EditorApplication.delayCall += () => OpenAbilityWizardCreate(capturedOwner, capturedNode);
+        }
+    }
+
+    // Resolves cards from the real node/step/payload graph -- never a separate serialized list
+    // (plan section 14.2). A granted id with no matching PayloadStep, or a step whose payload has
+    // no registered descriptor, is intentionally skipped here: the former already surfaces as an
+    // "unused id" warning in Unlocked Abilities above, and the latter is an Advanced/Developer
+    // diagnostic (payload types without a descriptor cannot appear in the normal wizard picker
+    // either, so nothing normal-flow authored this).
+    List<AbilityCardInfo> ResolveAbilityCards(SkillGemDefinition owner, SkillUpgradeNodeData node)
+    {
+        var result = new List<AbilityCardInfo>();
+        if (owner?.payload is not CompositeSkillPayloadDef composite || node?.grantedUpgradeIds == null)
+            return result;
+
+        IReadOnlyList<SkillEffectStep> steps = composite.Steps;
+        var seenIds = new HashSet<string>(StringComparer.Ordinal);
+
+        for (int i = 0; i < node.grantedUpgradeIds.Count; i++)
+        {
+            string abilityId = node.grantedUpgradeIds[i]?.Trim();
+            if (string.IsNullOrEmpty(abilityId) || !seenIds.Add(abilityId))
+                continue;
+
+            PayloadStep matchedStep = null;
+            for (int s = 0; s < steps.Count; s++)
+            {
+                if (steps[s] is PayloadStep payloadStep &&
+                    string.Equals(payloadStep.RequiredUpgradeId?.Trim(), abilityId, StringComparison.Ordinal))
+                {
+                    matchedStep = payloadStep;
+                    break;
+                }
+            }
+
+            if (matchedStep?.Payload == null)
+                continue;
+
+            PayloadDesignerDescriptorRegistry.TryGetDescriptor(matchedStep.Payload.GetType(), out IPayloadDesignerDescriptor descriptor);
+            if (descriptor == null)
+                continue;
+
+            result.Add(new AbilityCardInfo(abilityId, matchedStep, matchedStep.Payload, descriptor));
+        }
+
+        return result;
+    }
+
+    void DrawAbilityCard(SkillGemDefinition owner, SkillUpgradeNodeData node, AbilityCardInfo card)
+    {
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+        var context = new PayloadDesignerContext(_tree, owner, node);
+        PayloadGameplaySummary summary = card.Descriptor.BuildSummary(card.Payload, context);
+
+        EditorGUILayout.LabelField(card.Descriptor.DisplayName, EditorStyles.boldLabel);
+        EditorGUILayout.LabelField(summary.Headline, EditorStyles.wordWrappedLabel);
+
+        if (summary.Details.Count > 0)
+        {
+            EditorGUI.indentLevel++;
+            for (int i = 0; i < summary.Details.Count; i++)
+                EditorGUILayout.LabelField("- " + summary.Details[i], EditorStyles.miniLabel);
+            EditorGUI.indentLevel--;
+        }
+
+        for (int i = 0; i < summary.Warnings.Count; i++)
+            EditorGUILayout.HelpBox(summary.Warnings[i], MessageType.Warning);
+
+        var authoringIssues = new List<PayloadAuthoringIssue>();
+        card.Descriptor.CollectAuthoringIssues(card.Payload, context, authoringIssues);
+        for (int i = 0; i < authoringIssues.Count; i++)
+        {
+            PayloadAuthoringIssue issue = authoringIssues[i];
+            MessageType messageType = issue.Severity switch
+            {
+                PayloadAuthoringSeverity.Error => MessageType.Error,
+                PayloadAuthoringSeverity.Warning => MessageType.Warning,
+                _ => MessageType.Info,
+            };
+            EditorGUILayout.HelpBox(issue.Message, messageType);
+        }
+
+        // Stable internal id lives here only -- never in the normal card body (plan section 14.3).
+        bool expanded = _expandedAbilityAdvanced.Contains(card.AbilityId);
+        bool nextExpanded = EditorGUILayout.Foldout(expanded, "Advanced", true);
+        if (nextExpanded != expanded)
+        {
+            if (nextExpanded)
+                _expandedAbilityAdvanced.Add(card.AbilityId);
+            else
+                _expandedAbilityAdvanced.Remove(card.AbilityId);
+            _inspector?.MarkDirtyRepaint();
+        }
+
+        if (nextExpanded)
+        {
+            EditorGUI.indentLevel++;
+            EditorGUILayout.LabelField($"Ability Id: {card.AbilityId}", EditorStyles.miniLabel);
+            EditorGUILayout.ObjectField("Payload Asset", card.Payload, typeof(SkillPayloadDef), false);
+            EditorGUI.indentLevel--;
+        }
+
+        using (new EditorGUILayout.HorizontalScope())
+        {
+            if (GUILayout.Button("Edit", GUILayout.Width(48f)))
+            {
+                SkillGemDefinition capturedOwner = owner;
+                SkillUpgradeNodeData capturedNode = node;
+                PayloadStep capturedStep = card.Step;
+                EditorApplication.delayCall += () => OpenAbilityWizardEdit(capturedOwner, capturedNode, capturedStep);
+            }
+
+            if (GUILayout.Button("Duplicate", GUILayout.Width(70f)))
+            {
+                SkillGemDefinition capturedOwner = owner;
+                SkillUpgradeNodeData capturedNode = node;
+                PayloadStep capturedStep = card.Step;
+                EditorApplication.delayCall += () => DuplicateAbility(capturedOwner, capturedNode, capturedStep);
+            }
+
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Remove", GUILayout.Width(70f)))
+            {
+                SkillGemDefinition capturedOwner = owner;
+                SkillUpgradeNodeData capturedNode = node;
+                PayloadStep capturedStep = card.Step;
+                string capturedDisplayName = card.Descriptor.DisplayName;
+                EditorApplication.delayCall += () => RemoveAbility(capturedOwner, capturedNode, capturedStep, capturedDisplayName);
+            }
+        }
+
+        EditorGUILayout.EndVertical();
+    }
+
+    void OpenAbilityWizardCreate(SkillGemDefinition owner, SkillUpgradeNodeData node)
+    {
+        if (_tree == null || owner == null || node == null)
+            return;
+
+        ActiveSkillAbilityWizardWindow.OpenCreate(_tree, owner, node, () => OnAbilityAuthoringApplied(owner));
+    }
+
+    void OpenAbilityWizardEdit(SkillGemDefinition owner, SkillUpgradeNodeData node, PayloadStep step)
+    {
+        if (_tree == null || owner == null || node == null || step == null)
+            return;
+
+        ActiveSkillAbilityWizardWindow.OpenEdit(_tree, owner, node, step, () => OnAbilityAuthoringApplied(owner));
+    }
+
+    void DuplicateAbility(SkillGemDefinition owner, SkillUpgradeNodeData node, PayloadStep step)
+    {
+        var issues = new List<PayloadAuthoringIssue>();
+        NodeAbilityAuthoringService.AbilityResult result =
+            NodeAbilityAuthoringService.DuplicateNodeAbility(_tree, owner, node, step, issues);
+
+        if (!result.Success)
+        {
+            EditorUtility.DisplayDialog(
+                "Duplicate Ability Failed", string.Join("\n", issues.Select(issue => issue.Message)), "OK");
+            return;
+        }
+
+        OnAbilityAuthoringApplied(owner);
+    }
+
+    // Removal itself is reference-safe and Undoable at the service layer (plan section 12.5); this
+    // dialog is only the designer-facing confirmation the plan asks for before an irreversible-
+    // feeling click.
+    void RemoveAbility(SkillGemDefinition owner, SkillUpgradeNodeData node, PayloadStep step, string displayName)
+    {
+        if (!EditorUtility.DisplayDialog(
+                "Remove Ability",
+                $"Remove '{displayName}' from node '{node.RuntimeNodeId}'?",
+                "Remove",
+                "Cancel"))
+        {
+            return;
+        }
+
+        var issues = new List<PayloadAuthoringIssue>();
+        bool success = NodeAbilityAuthoringService.RemoveNodeAbility(_tree, owner, node, step, issues);
+        if (!success)
+        {
+            EditorUtility.DisplayDialog(
+                "Remove Ability Failed", string.Join("\n", issues.Select(issue => issue.Message)), "OK");
+            return;
+        }
+
+        OnAbilityAuthoringApplied(owner);
+    }
+
+    void OnAbilityAuthoringApplied(SkillGemDefinition owner)
+    {
+        _skillDirty = true;
+        _skillDirtyTarget = owner;
+        MarkDirty();
+        _issuesDirty = true;
+        InvalidateGameplayEffectCaches();
+        ClearStepsCache();
+        _graph?.RefreshTitles();
+        InternalEditorUtility.RepaintAllViews();
+        _inspector?.MarkDirtyRepaint();
+    }
+
+    // Skill-level, deliberately NOT part of any node's Gameplay Effects (plan section 14.4): a
+    // blank-gated step runs unconditionally, so it belongs to the skill, not to whichever node the
+    // designer happens to have selected. Shown when no node is selected.
+    //
+    // This is also the supported place to author a conditional status that a node's granted id
+    // gates *inside* an always-active payload — a pattern Ability Cards structurally cannot cover,
+    // since they only resolve steps whose own requiredUpgradeId a node grants. Editing the payload
+    // here opens its descriptor wizard, whose conditionalStatuses field owns those entries.
+    void DrawAlwaysActiveSkillEffects()
+    {
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("Always Active Skill Effects", EditorStyles.boldLabel);
+
+        var ownerIssues = new List<PayloadAuthoringIssue>();
+        if (!NodeAbilityAuthoringService.TryResolveSingleOwner(
+                ResolveSkillOwners(), out SkillGemDefinition owner, ownerIssues))
+        {
+            for (int i = 0; i < ownerIssues.Count; i++)
+                EditorGUILayout.HelpBox(ownerIssues[i].Message, MessageType.Info);
+            return;
+        }
+
+        if (owner.payload is not CompositeSkillPayloadDef composite)
+        {
+            EditorGUILayout.HelpBox(
+                $"'{owner.name}' runs a single execution payload, which always runs. It becomes an " +
+                "always-active step automatically the first time a node adds an ability.",
+                MessageType.None);
+            return;
+        }
+
+        IReadOnlyList<SkillEffectStep> steps = composite.Steps;
+        bool drewAny = false;
+        for (int i = 0; i < steps.Count; i++)
+        {
+            if (steps[i] is not PayloadStep payloadStep ||
+                !string.IsNullOrWhiteSpace(payloadStep.RequiredUpgradeId) ||
+                payloadStep.Payload == null)
+            {
+                continue;
+            }
+
+            drewAny = true;
+            DrawAlwaysActiveCard(owner, payloadStep, i);
+        }
+
+        if (!drewAny)
+        {
+            EditorGUILayout.HelpBox(
+                "Every step in this skill is gated by a node. Nothing runs unconditionally.",
+                MessageType.None);
+        }
+    }
+
+    void DrawAlwaysActiveCard(SkillGemDefinition owner, PayloadStep step, int stepIndex)
+    {
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+        PayloadDesignerDescriptorRegistry.TryGetDescriptor(step.Payload.GetType(), out IPayloadDesignerDescriptor descriptor);
+        if (descriptor == null)
+        {
+            EditorGUILayout.LabelField($"Step {stepIndex}: {step.Payload.GetType().Name}", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "This payload type has no designer descriptor, so it cannot be edited here. Use the " +
+                "Skill Steps panel or the skill Inspector.",
+                MessageType.Warning);
+            EditorGUILayout.EndVertical();
+            return;
+        }
+
+        // Null node: an always-active effect is owned by the skill, never by a node.
+        var context = new PayloadDesignerContext(_tree, owner, null);
+        PayloadGameplaySummary summary = descriptor.BuildSummary(step.Payload, context);
+
+        EditorGUILayout.LabelField($"{descriptor.DisplayName}  (Step {stepIndex})", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField(summary.Headline, EditorStyles.wordWrappedLabel);
+
+        if (summary.Details.Count > 0)
+        {
+            EditorGUI.indentLevel++;
+            for (int i = 0; i < summary.Details.Count; i++)
+                EditorGUILayout.LabelField("- " + summary.Details[i], EditorStyles.miniLabel);
+            EditorGUI.indentLevel--;
+        }
+
+        for (int i = 0; i < summary.Warnings.Count; i++)
+            EditorGUILayout.HelpBox(summary.Warnings[i], MessageType.Warning);
+
+        var issues = new List<PayloadAuthoringIssue>();
+        descriptor.CollectAuthoringIssues(step.Payload, context, issues);
+        for (int i = 0; i < issues.Count; i++)
+        {
+            PayloadAuthoringIssue issue = issues[i];
+            MessageType messageType = issue.Severity switch
+            {
+                PayloadAuthoringSeverity.Error => MessageType.Error,
+                PayloadAuthoringSeverity.Warning => MessageType.Warning,
+                _ => MessageType.Info,
+            };
+            EditorGUILayout.HelpBox(issue.Message, messageType);
+        }
+
+        int gatedStatusCount = CountGatedStatusApplications(step.Payload);
+        if (gatedStatusCount > 0)
+        {
+            EditorGUILayout.LabelField(
+                $"{gatedStatusCount} status effect(s) here are gated by node upgrade ids — edit them in this payload.",
+                EditorStyles.miniLabel);
+        }
+
+        if (GUILayout.Button("Edit", GUILayout.Width(48f)))
+        {
+            SkillGemDefinition capturedOwner = owner;
+            PayloadStep capturedStep = step;
+            EditorApplication.delayCall += () =>
+                ActiveSkillAbilityWizardWindow.OpenEditAlwaysActive(
+                    _tree, capturedOwner, capturedStep, () => OnAbilityAuthoringApplied(capturedOwner));
+        }
+
+        EditorGUILayout.EndVertical();
+    }
+
+    // Counts conditional status applications reachable on this payload, so an always-active card
+    // says out loud that node-gated behavior lives inside it. Uses the same route metadata the
+    // status wizard and UpgradeIdUsageScanner resolve from, so it cannot disagree with them.
+    static int CountGatedStatusApplications(SkillPayloadDef payload)
+    {
+        int count = 0;
+        IReadOnlyList<SkillStatusRouteFieldInfo> routeFields = SkillStatusRouteMetadata.GetRouteFields(payload.GetType());
+        for (int i = 0; i < routeFields.Count; i++)
+        {
+            var route = routeFields[i].Field?.GetValue(payload) as ConditionalStatusRoute;
+            if (route?.Applications == null)
+                continue;
+
+            for (int j = 0; j < route.Applications.Count; j++)
+            {
+                if (!string.IsNullOrWhiteSpace(route.Applications[j]?.requiredUpgradeId))
+                    count++;
+            }
+        }
+
+        return count;
+    }
+
+    #endregion
+
     // FindOwningAssets scans every SkillDefinitionBase/CharacterStats asset in the project, so
     // callers that recompute per repaint/keystroke (validation cache, the steps panel) must share
     // this cache instead of re-scanning each time.
@@ -844,10 +1287,21 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         if (!_issuesDirty)
             return _cachedIssues;
 
-        _cachedIssues = SkillUpgradeTreeValidator.Validate(_tree, ResolveOwners());
+        _cachedIssues = ComputeUnifiedIssues(ResolveOwners());
         _issuesDirty = false;
         _graph?.ApplyIssueBadges(_cachedIssues);
         return _cachedIssues;
+    }
+
+    // Single unified issue list (plan section 15): the tree/binding rules SkillUpgradeTreeValidator
+    // already owns, plus descriptor registry health and per-payload authoring issues that only
+    // NodeCentricPayloadValidator can see. Every caller that used to call SkillUpgradeTreeValidator
+    // directly (Save, the Validate button, node badges) goes through this instead.
+    List<SkillUpgradeValidationIssue> ComputeUnifiedIssues(IReadOnlyList<SkillDefinitionBase> owners)
+    {
+        var issues = SkillUpgradeTreeValidator.Validate(_tree, owners);
+        issues.AddRange(NodeCentricPayloadValidator.Validate(_tree, owners));
+        return issues;
     }
 
     void DrawNodeIssues()
@@ -886,7 +1340,7 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         // Explicit Validate click: refresh the owner cache so renamed/added skill assets are seen.
         _cachedOwners = new List<SkillDefinitionBase>(SkillUpgradeTreeValidator.FindOwningAssets(_tree));
         InvalidateGameplayEffectCaches();
-        List<SkillUpgradeValidationIssue> issues = SkillUpgradeTreeValidator.Validate(_tree, _cachedOwners);
+        List<SkillUpgradeValidationIssue> issues = ComputeUnifiedIssues(_cachedOwners);
         _cachedIssues = issues;
         _issuesDirty = false;
         _graph?.ApplyIssueBadges(issues);
@@ -906,8 +1360,59 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
         }
     }
 
+    // Plan section 15.5: Save must run unified validation first. Errors cancel the save outright;
+    // warnings need one consolidated confirmation; information never blocks (it is not even
+    // collected here -- PayloadAuthoringSeverity.Info already folds into Warning upstream in
+    // NodeCentricPayloadValidator, so "no issues at all" is the only silent-pass case).
+    bool ConfirmSaveAgainstValidationIssues()
+    {
+        if (_tree == null)
+            return true;
+
+        List<SkillUpgradeValidationIssue> issues = ComputeUnifiedIssues(ResolveOwners());
+        _cachedIssues = issues;
+        _issuesDirty = false;
+        _graph?.ApplyIssueBadges(issues);
+
+        var errors = new List<SkillUpgradeValidationIssue>();
+        var warnings = new List<SkillUpgradeValidationIssue>();
+        for (int i = 0; i < issues.Count; i++)
+        {
+            if (issues[i].Severity == SkillUpgradeValidationSeverity.Error)
+                errors.Add(issues[i]);
+            else
+                warnings.Add(issues[i]);
+        }
+
+        if (errors.Count > 0)
+        {
+            EditorUtility.DisplayDialog(
+                "Cannot Save",
+                $"{errors.Count} error(s) must be fixed before saving:\n\n" +
+                string.Join("\n", errors.ConvertAll(issue => "- " + issue.Message)),
+                "OK");
+            return false;
+        }
+
+        if (warnings.Count > 0)
+        {
+            return EditorUtility.DisplayDialog(
+                "Save With Warnings?",
+                $"{warnings.Count} warning(s) found:\n\n" +
+                string.Join("\n", warnings.ConvertAll(issue => "- " + issue.Message)) +
+                "\n\nSave anyway?",
+                "Save",
+                "Cancel");
+        }
+
+        return true;
+    }
+
     void SaveTree()
     {
+        if (!ConfirmSaveAgainstValidationIssues())
+            return;
+
         if (_tree != null)
         {
             EditorUtility.SetDirty(_tree);
@@ -1159,15 +1664,12 @@ public sealed class ActiveSkillTreeEditorWindow : EditorWindow
                 extra = payloadStep.Payload != null
                     ? $" -> {SkillPayloadAssetUtility.GetPayloadDisplayName(payloadStep.Payload.GetType())}"
                     : " -> <no payload assigned>";
-            }
-            else if (stepInstance is HealAreaStep)
-            {
-                // Two HealAreaStep entries with the same collapsed label ("HealArea") are
-                // otherwise indistinguishable without expanding both -- show which target they
-                // heal right in the header, same as PayloadStep shows its wrapped payload type.
-                SerializedProperty targetProp = stepProp.FindPropertyRelative("target");
-                if (targetProp != null)
-                    extra = $" ({(HealTargetMode)targetProp.enumValueIndex})";
+
+                // Two Heal Area steps with the same collapsed label are otherwise
+                // indistinguishable without expanding both -- show which target they heal right
+                // in the header, same reasoning PayloadStep already shows its wrapped payload type.
+                if (payloadStep.Payload is HealAreaSkillPayloadDef healAreaPayload)
+                    extra += $" ({healAreaPayload.Target})";
             }
 
             bool expanded = _expandedSteps.Contains(stepInstance);

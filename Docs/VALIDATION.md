@@ -134,7 +134,7 @@ resolves "who does this land on?" from `[SkillStatusRouteTarget]` via `SkillStat
 - Routes are discovered from the declaration alone — probe types the resolver has never heard of
   are found, including two routes with the same target on one owner (their route keys must stay
   distinct).
-- A behavior-driven target is read from the owning instance, so a `HealAreaStep` retargeted between
+- A behavior-driven target is read from the owning instance, so a `HealAreaSkillPayloadDef` retargeted between
   `Self` and `Allies` moves its route with it.
 - A route with no attribute, a target member that does not exist, or one of the wrong type is a
   **blocking** metadata error — never a silent fallback to `Self`.
@@ -144,7 +144,7 @@ resolves "who does this land on?" from `[SkillStatusRouteTarget]` via `SkillStat
 - `UpgradeIdUsageScanner` labels the target from route metadata, so the tree's Gameplay Effects
   summary and the wizard's destination list cannot disagree.
 - A recognized step's own bare gate (no sibling `spec`) can describe itself instead of falling back
-  to `Enable <Step>`. `HealAreaStep` is the first case: target mode, the `FinalSkillStats` channel
+  to `Enable <Step>`. `HealAreaSkillPayloadDef` is the first case: target mode, the `FinalSkillStats` channel
   behind Heal Power/Area Radius, and any unconditional status it applies. An unrecognized step type
   still falls back to `Enable <Step>` rather than guessing from its class name.
   `RequiredPathPreviewResolver` (`Assets/Scripts/Editor/ActiveSkill/RequiredPathPreviewResolver.cs`)
@@ -213,6 +213,110 @@ implementations require no marker because they execute at the cast point.
 ownership, recursive replacement/removal and Undo, scoped save behavior, Composite hitbox timeline
 authoring, and missing required timeline events. Run it in EditMode after changing Composite
 payload authoring or validation.
+
+# Unified Authoring Validation
+
+Node-centric ability authoring (`Assets/Scripts/Editor/ActiveSkill/AbilityAuthoring/`, see
+`Docs/SYSTEMS/SKILL_SYSTEM.md` **Node-Centric Ability Authoring**) uses a 3-level severity model —
+`PayloadAuthoringSeverity.Error`/`Warning`/`Info` — for descriptor and per-payload authoring issues,
+distinct from `SkillUpgradeTreeValidator`'s existing 2-level `SkillUpgradeValidationSeverity`. Error
+blocks Create and Save; Warning allows Save only after one explicit confirmation; Info is guidance
+only. `NodeCentricPayloadValidator.Validate` bridges the two: an `Error` maps to `Error`, and both
+`Warning` and `Info` map to `Warning` — the safe direction, since folding Info into Warning can only
+ask for one extra confirmation, never hide something that should have blocked.
+
+## What NodeCentricPayloadValidator checks
+
+Everything here is *in addition to* `SkillUpgradeTreeValidator`'s existing tree/binding rules
+(duplicate grants, an id nothing declares, a declared id no node grants — see **Active Skill Tree
+validation** above), which already cover most of "every node-owned id resolves to exactly one step
+usage." This file adds what that validator cannot see:
+
+- **Registry health** — `PayloadDesignerDescriptorRegistry.GetDiagnostics()` (duplicate descriptors,
+  a descriptor mapped to an invalid/abstract type or to `CompositeSkillPayloadDef`) surfaces as
+  tree-level errors.
+- **Per-payload authoring issues** — for every node-owned `PayloadStep` with a registered descriptor,
+  `descriptor.CollectAuthoringIssues` runs and its result is attributed to the exact node that grants
+  that step's id (resolved by scanning `grantedUpgradeIds`, not by whichever node happens to be
+  selected in the editor).
+- **Missing descriptor on a node-owned step** — a payload type with no registered descriptor cannot
+  have been authored through the normal wizard; if one is found gated by a real id anyway (Advanced
+  mode, or a hand-edited asset), it is a blocking Error.
+- **Direct gameplay step** — any `SkillEffectStep` that is not a `PayloadStep` is a blocking Error.
+  `PayloadStep` is the only supported orchestration type; a direct-gameplay step type fuses
+  orchestration and behavior, which is no longer allowed (the retired `HealAreaStep` was the last
+  one — see **Legacy migration** below).
+- **Non-normalized granted id** — a Warning, not an Error, since a hand-edited or pre-generator id
+  still works at runtime; `AbilityBindingIdGenerator.Normalize` defines the canonical form.
+- **Always-active steps are never attributed to a node** — a blank-gated `PayloadStep` is not owned
+  by any node (plan section 14.4); its own authoring issues are not surfaced by this validator today
+  (no Advanced/skill-level "Always Active Skill Effects" panel exists yet). The Skill Inspector's own
+  `SkillGemDefinition`/`CompositeSkillPayloadDef.CollectValidationIssues` still covers it separately.
+
+## Save integration
+
+`ActiveSkillTreeEditorWindow.ComputeUnifiedIssues` merges `SkillUpgradeTreeValidator.Validate` and
+`NodeCentricPayloadValidator.Validate` into the one list used by `EnsureIssues` (node badges, inline
+issue list), the **Validate** toolbar button, and — new — the **Save** toolbar button.
+`ConfirmSaveAgainstValidationIssues` runs before every save: any Error shows a blocking "Cannot Save"
+dialog listing them and aborts; any Warning (no Errors) shows one consolidated "Save With Warnings?"
+confirmation; a clean tree saves without a prompt. Previously **Save** had no validation gate at all
+— this closes that gap.
+
+## Smoke tests
+
+Each menu item is `Tools/RB/Skills/Run <Name> Smoke Tests`, follows the same real-temp-asset pattern
+as the Status Effect Authoring smoke tests (own temp folder, deleted on completion, no
+`AssetDatabase.SaveAssets()`), and lives under `Editor/`, so `CheckAssemblyBuild.ps1` does not
+compile it — verify by running the menu item in Unity, not by trusting a green
+`CheckAssemblyBuild.ps1` run:
+
+- **Payload Descriptor** — registry discovery/diagnostics, safe defaults and summary/issue
+  generation not throwing on a fresh incomplete draft, and a missing required reference always
+  reporting at least one Error.
+- **Node Ability Authoring Service** — single-to-composite conversion preserving the original
+  payload object and its values, root-owned execution field transfer and child reset, Create's
+  auto-convert path, stable-id binding and dedup, a validation-failing draft leaving no side
+  effects, Edit committing in place, Duplicate producing a unique object/id, Remove's reference-
+  safety guards, and Undo restoring an entire Create in one step.
+- **Ability Wizard** — draft construction/safe-defaults for Create, draft population for Edit,
+  cleanup on every exit path, and an end-to-end Commit, all driven through reflection since
+  `OnGUI`/button clicks cannot be simulated headlessly.
+- **Node Ability Cards** — card resolution against a real node/step/payload graph (found, skipped
+  when orphaned, deduped), the Duplicate action, and resolution reflecting a removal done through
+  the service. (Remove's own confirmation dialog cannot be driven headlessly; its underlying
+  mutation is covered by the service test above.)
+- **Unified Validation** — a clean ability reporting no issues, a missing required reference
+  reported as an Error on the exact granting node, a non-normalized id as a Warning, an
+  always-active step never attributed to a node, and the Save gate returning immediately on a
+  clean tree (built against an isolated skill/tree, not a shared fixture another test in the same
+  run may have deliberately made invalid — see the caution below).
+
+**Caution:** any test that calls a method reachable from `ConfirmSaveAgainstValidationIssues` or
+otherwise capable of popping a real `EditorUtility.DisplayDialog` must not run against a fixture a
+different test in the same suite has left in an Error state, and must never be exercised through
+automated tooling without a human able to dismiss the dialog — a stuck modal blocks the entire Unity
+process, not just the test run.
+
+## Legacy migration (completed, tooling removed)
+
+The project's only direct-gameplay step, `HealAreaStep`, was migrated to `HealAreaSkillPayloadDef` +
+`PayloadStep` in `Aires_Skill_3.asset` (the only asset that used it) through a one-time
+Dry-Run/Apply migration tool, then the tool and the legacy type were both deleted — the same pattern
+already used for the earlier Conditional Status Route migration (see **Conditional status route
+regression checks** above). Before deletion, every one of these held:
+
+- a project-wide Dry Run reported zero remaining `HealAreaStep` usages
+- `Validate Embedded Payloads` and `Validate Active Skill Trees` both passed
+- the Active Skill smoke tests passed
+- the migrated skill validated cleanly (`SkillUpgradeTreeValidator`: 0 errors;
+  `NodeCentricPayloadValidator`: 0 issues; `CompositeSkillPayloadDef.CollectValidationIssues`: 0
+  issues) and reloaded from disk with no missing-type warning
+- a project-wide text search for `class: HealAreaStep` across `Assets/Data` returned nothing
+
+A `HealAreaStep` reference reappearing in any asset means it was restored from an old revision, not
+that migration is still in progress — there is nothing left to migrate, and the type no longer
+exists to deserialize into.
 
 # Weapon affix validation
 

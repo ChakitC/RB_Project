@@ -53,6 +53,12 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
     [ShowInInspector, ReadOnly, BoxGroup("Placement"), LabelText("Placement Preview")]
     private string PlacementPreviewLabel => $"{forwardOffset:0.##}m forward, {spreadWidth:0.##}m spread, {verticalOffset:0.##}m height";
 
+    public GameObject PickupPrefab => pickupPrefab;
+    public bool UsesSkillProjectileCount => useSkillProjectileCount;
+    public int SpawnCount => spawnCount;
+    public bool PickupPrefabMissingSkillPickupComponent =>
+        pickupPrefab != null && pickupPrefab.GetComponent<SkillPickup>() == null;
+
     public override void Execute(SkillCastContext context)
     {
         if (context == null || pickupPrefab == null)

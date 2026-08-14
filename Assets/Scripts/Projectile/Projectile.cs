@@ -36,6 +36,7 @@ public class Projectile : MonoBehaviour
     public ProjectileSkillPayloadDef SourceSkillExecution { get; private set; }
     public FinalSkillStats SourceSkillStats { get; private set; }
     public Projectile SourcePrefab { get; private set; }
+    public CombatAttributionSnapshot Attribution => _attribution;
 
     ProjectilePool _pool;
     GameObject _ballVfxInstance;
@@ -58,6 +59,7 @@ public class Projectile : MonoBehaviour
     // modules
     ProjectileContext _ctx;
     IProjectileModuleState[] _states;
+    CombatAttributionSnapshot _attribution;
 
     // lifetime
     float _age;
@@ -116,6 +118,20 @@ public class Projectile : MonoBehaviour
 
         config = cfg;
         _ctx = ctx;
+        _attribution = ctx.attribution.HasPhysicalActor || ctx.attribution.HasCredit
+            ? ctx.attribution
+            : CombatAttributionSnapshot.FromPhysicalActor(
+                ctx.sourceActor != null ? ctx.sourceActor.gameObject : null);
+
+        if (_attribution.HasCredit)
+        {
+            if (_attribution.PhysicalActor != null)
+                _ctx.sourceActor = _attribution.PhysicalActor.transform;
+            if (_attribution.CreditedEventBus != null)
+                _ctx.combatEventBus = _attribution.CreditedEventBus;
+            if (_attribution.CreditedStatusOwner != null)
+                _ctx.statusEffectController = _attribution.CreditedStatusOwner;
+        }
 
         _ignoredRootIds.Clear();
         _requestedDespawnThisHit = false;
@@ -189,6 +205,15 @@ public class Projectile : MonoBehaviour
                 collisionIgnoreRoot = uc.transform.root;
                 ownerCombatEventBus = uc.GetComponent<CombatEventBus>();
                 ownerStatusController = uc.GetComponent<StatusEffectController>();
+                _attribution = CombatAttributionSnapshot.FromPhysicalActor(uc.gameObject);
+                if (_attribution.HasCredit)
+                {
+                    sourceActor = _attribution.PhysicalActor != null
+                        ? _attribution.PhysicalActor.transform
+                        : sourceActor;
+                    ownerCombatEventBus = _attribution.CreditedEventBus;
+                    ownerStatusController = _attribution.CreditedStatusOwner;
+                }
             }
 
             if (collisionIgnoreRoot == null && user.CastOrigin != null)
@@ -215,7 +240,8 @@ public class Projectile : MonoBehaviour
             damageSourceId = def != null ? $"skill:{def.name}" : "skill",
             chainId = CombatEventBus.NextChainId(),
             origin = PassiveEventOrigin.External,
-            projectilePrefab = prefabProjectileForChildren != null ? prefabProjectileForChildren : this
+            projectilePrefab = prefabProjectileForChildren != null ? prefabProjectileForChildren : this,
+            attribution = _attribution
         };
 
         Init(cfg != null ? cfg : config, ctx, preserveSkillSource: true);
@@ -1017,7 +1043,8 @@ public class Projectile : MonoBehaviour
             _ctx.originRuleId,
             knockback,
             new StaggerPayload(build.StaggerPower, configuredStagger.Multiplier, _ctx.damageSourceId),
-            hitZone);
+            hitZone,
+            _attribution);
 
         return target.TakeDamage(in damageContext);
     }
@@ -1137,7 +1164,8 @@ public class Projectile : MonoBehaviour
                 _ctx.origin,
                 _ctx.originPassiveId,
                 _ctx.originRuleId,
-                metadata);
+                metadata,
+                _attribution.CreditedActor);
         }
 
         return ownerEventBus.CreateExternalContext(
@@ -1150,7 +1178,8 @@ public class Projectile : MonoBehaviour
             _ctx.origin,
             _ctx.originPassiveId,
             _ctx.originRuleId,
-            metadata);
+            metadata,
+            _attribution.CreditedActor);
     }
 
     GameObject ResolveSourceObject()
@@ -1163,6 +1192,9 @@ public class Projectile : MonoBehaviour
         if (_ctx.combatEventBus != null)
             return _ctx.combatEventBus;
 
+        if (_attribution.CreditedEventBus != null)
+            return _attribution.CreditedEventBus;
+
         return _ctx.sourceActor != null ? _ctx.sourceActor.GetComponent<CombatEventBus>() : null;
     }
 
@@ -1170,6 +1202,9 @@ public class Projectile : MonoBehaviour
     {
         if (_ctx.statusEffectController != null)
             return _ctx.statusEffectController;
+
+        if (_attribution.CreditedStatusOwner != null)
+            return _attribution.CreditedStatusOwner;
 
         return _ctx.sourceActor != null ? _ctx.sourceActor.GetComponent<StatusEffectController>() : null;
     }

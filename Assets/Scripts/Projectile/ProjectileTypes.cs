@@ -60,6 +60,7 @@ public struct ProjectileContext
     public Projectile projectilePrefab;
     public bool useHitZones;
     public CombatEventMetadata combatMetadata;
+    public CombatAttributionSnapshot attribution;
     public IWeaponAffixPreDamageRuntime preDamageRuntime;
     public WeaponAffixImpactPayload affixImpactPayload;
 }

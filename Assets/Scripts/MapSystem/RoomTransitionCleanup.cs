@@ -66,7 +66,6 @@ public static class RoomTransitionCleanup
         if (context == null)
             return false;
 
-        return context.TargetIdentity == AITargetIdentity.Player ||
-               context.TargetIdentity == AITargetIdentity.Companion;
+        return context.PreservesOwnedVfxDuringRoomTransition;
     }
 }

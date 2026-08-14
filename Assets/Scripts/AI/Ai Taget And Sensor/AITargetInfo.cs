@@ -26,16 +26,30 @@ public class AITargetInfo : MonoBehaviour, IAITargetable
     CharacteContext _characterContext;
     Transform _fallbackAimPoint;
     bool _hasResolvedFallbackAimPoint;
+    bool _hasRuntimeTeamId;
+    int _runtimeTeamId;
 
     public Transform AimPoint => aimPoint != null ? aimPoint : ResolveFallbackAimPoint();
     public Transform ChainAttackPoint => chainAttackPoint != null ? chainAttackPoint : AimPoint;
     public bool IsAlive => isAlive;
     public bool IsTargetable => isTargetable && _untargetableTokens.Count == 0;
-    public int TeamId => teamId;
+    public int TeamId => _hasRuntimeTeamId ? _runtimeTeamId : teamId;
     public AITargetIdentity TargetIdentity => ResolveIdentity();
     public CharacterCombatRole CombatRole => ResolveCombatRole();
     public float BaseTargetPriority => baseTargetPriority;
     public float ThreatMultiplier => Mathf.Max(0f, threatMultiplier);
+
+    public void SetRuntimeTeamId(int value)
+    {
+        _runtimeTeamId = value;
+        _hasRuntimeTeamId = true;
+    }
+
+    public void ClearRuntimeTeamId()
+    {
+        _hasRuntimeTeamId = false;
+        _runtimeTeamId = 0;
+    }
 
     void Awake()
     {

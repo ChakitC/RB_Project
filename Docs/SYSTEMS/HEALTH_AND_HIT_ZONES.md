@@ -116,3 +116,11 @@ After changing Hit Zone code or prefab mappings:
 4. Confirm an unmapped limb does not play impact feedback or consume the
    projectile on configured enemies.
 5. Confirm skill, melee, area, and status damage remain unchanged.
+
+## Summon Health
+
+Summon prefabs use `SummonHealthSystem`. Health depletion requests the summon
+runtime lifecycle directly, entering despawn without the normal character
+`Down` or `Revive` flow. Summon damage keeps the physical summon as the hit
+actor while `CombatAttributionSnapshot` credits the caster's event bus and
+status owner, including delayed status ticks after the summon has been removed.

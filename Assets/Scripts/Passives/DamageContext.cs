@@ -111,7 +111,8 @@ public readonly struct DamageContext
         string originRuleId = null,
         KnockbackData knockback = default,
         StaggerPayload stagger = default,
-        CharacterHitZone hitZone = CharacterHitZone.None)
+        CharacterHitZone hitZone = CharacterHitZone.None,
+        CombatAttributionSnapshot attribution = default)
     {
         Damage = damage;
         Attacker = attacker;
@@ -125,6 +126,9 @@ public readonly struct DamageContext
         Knockback = knockback;
         Stagger = stagger;
         HitZone = hitZone;
+        Attribution = attribution.HasCredit
+            ? attribution
+            : CombatAttributionSnapshot.FromPhysicalActor(attacker);
     }
 
     public float Damage { get; }
@@ -139,6 +143,7 @@ public readonly struct DamageContext
     public KnockbackData Knockback { get; }
     public StaggerPayload Stagger { get; }
     public CharacterHitZone HitZone { get; }
+    public CombatAttributionSnapshot Attribution { get; }
     public bool HasKnockback => Knockback.IsValid;
     public bool HasStagger => Stagger.HasValue;
 
@@ -156,6 +161,7 @@ public readonly struct DamageContext
             OriginRuleId,
             Knockback,
             Stagger,
-            HitZone);
+            HitZone,
+            Attribution);
     }
 }

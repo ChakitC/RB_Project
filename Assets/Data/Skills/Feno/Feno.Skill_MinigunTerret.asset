@@ -1,0 +1,130 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-648239105734612893
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 718a781a32ba4b07af0dfb3c09c7ce3e, type: 3}
+  m_Name: MinigunTerret Summon Execution
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  summonPrefab: {fileID: 3904815324446576792, guid: 6f3e8c0a0b6a4ce5b8d1e2f3a4b5c6d7, type: 3}
+  mobility: 1
+  fixedCount: 1
+  useSkillProjectileCount: 0
+  fixedLifetime: 10
+  useSkillEffectDuration: 0
+  perSkillCap: 1
+  damageInheritance: 1
+  despawnDelay: 0.25
+  inheritHealPower: 1
+  inheritAreaRadius: 1
+  inheritEffectDuration: 1
+  fixedHealPower: 0
+  fixedAreaRadius: 0
+  fixedEffectDuration: 0
+  spawnOffsets:
+  - {x: 0, y: 0, z: 2}
+  layoutOrientation: 0
+  facingMode: 0
+  resolveGround: 1
+  requireNavMesh: 0
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 1048575
+  clearanceMask:
+    serializedVersion: 2
+    m_Bits: 1048575
+  groundRaycastHeight: 2
+  groundRaycastDistance: 8
+  navMeshSampleRadius: 2
+  placementPadding: 0.05
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
+  m_Name: Feno.Skill_MinigunTerret
+  m_EditorClassIdentifier: 
+  icon: {fileID: 21300000, guid: 1aaa0728882cff44ea3e2767302f110f, type: 3}
+  displayName: Minigun Terret
+  skillId: feno.skill.minigunterret
+  tags: 34
+  description: Summon a stationary Minigun Terret.
+  baseDamage: 0
+  damageCoefficient: 1
+  baseStaggerPower: 0
+  baseManaCost: 25
+  baseCastTime: 0.35
+  baseCooldown: 12
+  baseCritChance: 0
+  baseProjectilesCount: 1
+  projectileSpeed: 0
+  AreaofEffec: 0
+  baseRadius: 0
+  baseEffectDuration: 0
+  baseHealPower: 0
+  upgradeTree: {fileID: 0}
+  payload: {fileID: -648239105734612893}
+  castCue: {fileID: 0}
+  skillClip:
+    _FadeDuration: 0
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: NaN
+  ignoreCharacterCollisionDuringRootMotion: 1
+  castPointNormalized: 0.35
+  skillVfxEvents: []
+  hitLagDuration: 0
+  hitLagTimeScale: 1
+  hitLagShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  isCutsceneSkill: 0
+  cutsceneDef:
+    characterCutsceneClip:
+      _FadeDuration: 0
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    cameraCutsceneClip: {fileID: 0}
+    worldSlowScale: 0.05
+    fadeInDuration: 0.08
+    fadeOutDuration: 0.12
+    barThickness: 0.08
+    cutsceneVfxEvents: []
+  blockablePreCast: 0
+  preCastOpenTimelineEvent: 200
+  preCastCloseTimelineEvent: 201
+  useFallbackPreCastWindow: 1
+  fallbackPreCastOpenNormalized: 0
+  fallbackPreCastCloseNormalized: 0.35
+  preCastIndicatorPrefab: {fileID: 0}
+  cancelPreCastOnStun: 1
+  cancelPreCastOnStagger: 1
+  references:
+    version: 2
+    RefIds: []

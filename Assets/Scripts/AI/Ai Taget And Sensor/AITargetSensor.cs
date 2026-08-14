@@ -901,10 +901,18 @@ public class AITargetSensor : MonoBehaviour
         if (!targetable.IsTargetable)
             return false;
 
-        if (useTeamFilter && targetable.TeamId == ownerTeamId)
+        if (useTeamFilter && targetable.TeamId == ResolveOwnerTeamId())
             return false;
 
         return true;
+    }
+
+    int ResolveOwnerTeamId()
+    {
+        if (ownerContext != null && ownerContext.TargetInfo != null)
+            return ownerContext.TargetInfo.TeamId;
+
+        return ownerTeamId;
     }
 
     bool IsTargetAllowedByLifeState(Transform targetRoot)

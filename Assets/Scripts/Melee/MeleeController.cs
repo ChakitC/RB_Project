@@ -14,6 +14,7 @@ public sealed class MeleeController : MonoBehaviour
     [SerializeField] private StatusEffectController statusEffectController;
     [SerializeField] private CombatEventBus combatEventBus;
     [SerializeField] private MeleeHitboxTrigger hitboxTrigger;
+    CombatAttributionSnapshot _attribution;
 
     readonly HashSet<int> _hitTargetIds = new();
     IDamageable _selfDamageable;
@@ -279,6 +280,13 @@ public sealed class MeleeController : MonoBehaviour
         if (!combatEventBus && ctx != null)
             combatEventBus = ctx.GetComponentInChildren<CombatEventBus>(true);
 
+        _attribution = CombatAttributionSnapshot.FromPhysicalActor(ctx != null ? ctx.gameObject : null);
+        if (_attribution.HasCredit)
+        {
+            combatEventBus = _attribution.CreditedEventBus;
+            statusEffectController = _attribution.CreditedStatusOwner;
+        }
+
         if (!hitboxTrigger)
             hitboxTrigger = GetComponentInChildren<MeleeHitboxTrigger>(true);
 
@@ -368,7 +376,8 @@ public sealed class MeleeController : MonoBehaviour
             0,
             PassiveEventOrigin.External,
             knockback: knockback,
-            stagger: BuildStaggerPayload());
+            stagger: BuildStaggerPayload(),
+            attribution: _attribution);
 
         return target.TakeDamage(in damageContext);
     }
@@ -465,7 +474,8 @@ public sealed class MeleeController : MonoBehaviour
                 _activeAttackId,
                 value,
                 PassiveEventOrigin.External,
-                metadata: metadata);
+                metadata: metadata,
+                actor: _attribution.CreditedActor);
         }
 
         return combatEventBus.CreateExternalContext(
@@ -476,7 +486,8 @@ public sealed class MeleeController : MonoBehaviour
             _activeAttackId,
             value,
             PassiveEventOrigin.External,
-            metadata: metadata);
+            metadata: metadata,
+            actor: _attribution.CreditedActor);
     }
 
     void SpawnDamageNumber(Collider other, IDamageable target, float finalDamage)

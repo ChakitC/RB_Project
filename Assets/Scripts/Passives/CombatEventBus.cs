@@ -56,11 +56,12 @@ public sealed class CombatEventBus : MonoBehaviour
         PassiveEventOrigin origin = PassiveEventOrigin.External,
         string originPassiveId = null,
         string originRuleId = null,
-        CombatEventMetadata metadata = default)
+        CombatEventMetadata metadata = default,
+        GameObject actor = null)
     {
         return new PassiveEventContext(
             type,
-            ctx ? ctx.gameObject : gameObject,
+            actor ? actor : (ctx ? ctx.gameObject : gameObject),
             source ? source : gameObject,
             target,
             eventSourceId,
@@ -86,11 +87,12 @@ public sealed class CombatEventBus : MonoBehaviour
         PassiveEventOrigin origin = PassiveEventOrigin.Passive,
         string originPassiveId = null,
         string originRuleId = null,
-        CombatEventMetadata metadata = default)
+        CombatEventMetadata metadata = default,
+        GameObject actor = null)
     {
         return new PassiveEventContext(
             type,
-            ctx ? ctx.gameObject : gameObject,
+            actor ? actor : (ctx ? ctx.gameObject : gameObject),
             source ? source : parent.Source,
             target,
             string.IsNullOrWhiteSpace(eventSourceId) ? parent.EventSourceId : eventSourceId,

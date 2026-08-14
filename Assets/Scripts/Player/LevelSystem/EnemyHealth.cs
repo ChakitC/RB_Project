@@ -26,8 +26,9 @@ public class EnemyHealth : HealthSystem
         if (!IsAlive)
             return new DamageResult(this, damageContext.Attacker, damageContext.Damage, 0f, false, false, IsAlive);
 
-        if (damageContext.Attacker != null)
-            _lastAttacker = damageContext.Attacker;
+        GameObject killCredit = ResolveKillCredit(damageContext);
+        if (killCredit != null)
+            _lastAttacker = killCredit;
 
         StaggerMeter meter = ResolveStaggerMeter();
         DamageContext resolvedContext = ResolveHitZoneDamage(damageContext);
@@ -109,9 +110,25 @@ public class EnemyHealth : HealthSystem
         if (XpManager.Instance == null || attacker == null || xpReward <= 0)
             return;
 
-        var level = attacker.GetComponentInParent<LevelSystem>();
+        LevelSystem level = attacker.GetComponentInParent<LevelSystem>();
+        if (level == null)
+        {
+            CharacteContext context = attacker.GetComponent<CharacteContext>() ??
+                attacker.GetComponentInParent<CharacteContext>();
+            if (context != null)
+            {
+                context.ResolveReferences();
+                level = context.levelSystem;
+            }
+        }
+
         if (level != null)
             XpManager.Instance.GrantXp(level, xpReward);
+    }
+
+    public static GameObject ResolveKillCredit(in DamageContext damageContext)
+    {
+        return damageContext.Attribution.CreditedActor ?? damageContext.Attacker;
     }
 
     StaggerMeter ResolveStaggerMeter()

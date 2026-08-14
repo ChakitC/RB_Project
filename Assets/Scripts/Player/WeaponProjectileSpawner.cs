@@ -27,12 +27,25 @@ public sealed class WeaponProjectileSpawner
         projectile.critRate = context.CritRate;
         projectile.critMult = context.CritMultiplier;
 
+        CombatAttributionSnapshot attribution = CombatAttributionSnapshot.FromPhysicalActor(
+            context.SourceActor != null ? context.SourceActor.gameObject : null);
+        Transform sourceActor = context.SourceActor;
+        CombatEventBus combatEventBus = context.CombatEventBus;
+        StatusEffectController statusEffectController = context.StatusEffectController;
+        if (attribution.HasCredit)
+        {
+            if (attribution.PhysicalActor != null)
+                sourceActor = attribution.PhysicalActor.transform;
+            combatEventBus = attribution.CreditedEventBus ?? combatEventBus;
+            statusEffectController = attribution.CreditedStatusOwner ?? statusEffectController;
+        }
+
         projectile.Init(context.Config, new ProjectileContext
         {
-            sourceActor = context.SourceActor,
+            sourceActor = sourceActor,
             collisionIgnoreRoot = context.CollisionIgnoreRoot,
-            combatEventBus = context.CombatEventBus,
-            statusEffectController = context.StatusEffectController,
+            combatEventBus = combatEventBus,
+            statusEffectController = statusEffectController,
             dir = direction,
             stats = new ProjectileStats
             {
@@ -51,6 +64,7 @@ public sealed class WeaponProjectileSpawner
             projectilePrefab = prefabComp,
             useHitZones = true,
             combatMetadata = context.CombatMetadata,
+            attribution = attribution,
             preDamageRuntime = context.PreDamageRuntime,
             affixImpactPayload = context.ImpactPayload
         });

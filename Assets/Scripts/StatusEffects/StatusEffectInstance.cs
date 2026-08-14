@@ -47,6 +47,7 @@ public sealed class StatusEffectInstance
         ResolvedTickDamage = ResolveTickDamage(spec, definition);
         ResolvedTickInterval = ResolveTickInterval(spec, definition);
         StrengthScore = ComputeStrengthScore(ResolvedModifiers);
+        Attribution = CombatAttributionSnapshot.FromPhysicalActor(source);
         ScheduleFirstTick(now);
     }
 
@@ -72,6 +73,7 @@ public sealed class StatusEffectInstance
     public float ResolvedTickDamage { get; private set; }
     public float ResolvedTickInterval { get; private set; }
     public float StrengthScore { get; private set; }
+    public CombatAttributionSnapshot Attribution { get; private set; }
 
     /// <summary>เรียกเมื่อ instance เดิมถูก apply ซ้ำ (refresh/stack) — ทำให้ถือว่าเป็น application ล่าสุด.</summary>
     public void MarkReapplied()
@@ -82,7 +84,12 @@ public sealed class StatusEffectInstance
     public void UpdateSource(GameObject source)
     {
         if (source != null)
+        {
             Source = source;
+            CombatAttributionSnapshot snapshot = CombatAttributionSnapshot.FromPhysicalActor(source);
+            if (snapshot.HasPhysicalActor || snapshot.HasCredit)
+                Attribution = snapshot;
+        }
     }
 
     public void UpdateContext(

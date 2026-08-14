@@ -267,14 +267,14 @@ public class CharacterEquipment : MonoBehaviour
         if (!usePlayerInventorySave || ctx == null)
             return false;
 
-        return ctx.TargetIdentity == AITargetIdentity.Player ||
-               ctx.TargetIdentity == AITargetIdentity.Companion;
+        return ctx.UsesPersistentLoadouts;
     }
 
     bool IsPlayerInventoryOwner()
     {
         ResolveReferences();
-        return ctx != null && ctx.TargetIdentity == AITargetIdentity.Player;
+        return ctx != null && ctx.UsesPersistentLoadouts &&
+               ctx.TargetIdentity == AITargetIdentity.Player;
     }
 
     public static void WriteSceneEquipmentToSave(GameSaveData data, PlayerInventory inventory = null)

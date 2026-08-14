@@ -22,6 +22,7 @@ public static class PayloadDesignerDescriptorSmokeTests
         typeof(PrefabHitboxSkillPayloadDef),
         typeof(ProjectileSkillPayloadDef),
         typeof(HealAreaSkillPayloadDef),
+        typeof(SummonSkillPayloadDef),
     };
 
     [MenuItem("Tools/RB/Skills/Run Payload Descriptor Smoke Tests")]

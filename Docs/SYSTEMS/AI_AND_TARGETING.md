@@ -629,3 +629,16 @@ which transitions seamlessly from ChainReady lock to Stun lock without
 restoring the agent in between.
 The safety-hold invariant remains an unconditional error because a cast must
 never release while its pre-cast hold reservation is active.
+
+## Summon Targeting
+
+Summons use `SummonContext` with `AITargetIdentity.Companion`, but they do not
+participate in party runtime, party formation, pickup collection, or persistent
+progression. Their runtime team id is copied from the caster's resolved
+`AITargetInfo`, so normal team filtering continues to work without treating a
+summon as a party slot.
+
+Mobile summons are warped by `MapRunController` on a committed room transition;
+stationary summons despawn at that boundary. Character targeting remains
+context-based, while placement clearance uses the summon footprint and explicit
+physics overlap checks.

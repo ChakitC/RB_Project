@@ -39,6 +39,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     Transform _anchor;
     Transform _casterRoot;
     GameObject _sourceObject;
+    CombatAttributionSnapshot _attribution;
     Quaternion _localRotationOffset;
     string _damageSourceId;
     string _attackId;
@@ -158,6 +159,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     void ResolveContextState()
     {
         _sourceObject = _context != null ? _context.CasterObject : null;
+        _attribution = CombatAttributionSnapshot.FromPhysicalActor(_sourceObject);
         _casterRoot = _context != null ? _context.CasterRoot : null;
         _anchor = _payload != null ? _payload.ResolveAnchor(_context) : null;
         _localRotationOffset = Quaternion.Euler(_payload != null ? _payload.LocalEulerOffset : Vector3.zero);
@@ -166,6 +168,14 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         {
             _combatEventBus = _sourceObject.GetComponent<CombatEventBus>();
             _statusEffectController = _sourceObject.GetComponent<StatusEffectController>();
+            if (_attribution.HasCredit)
+            {
+                _sourceObject = _attribution.PhysicalActor != null
+                    ? _attribution.PhysicalActor
+                    : _sourceObject;
+                _combatEventBus = _attribution.CreditedEventBus;
+                _statusEffectController = _attribution.CreditedStatusOwner;
+            }
         }
         else
         {
@@ -628,7 +638,8 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             1,
             PassiveEventOrigin.External,
             knockback: knockback,
-            stagger: BuildStaggerPayload(step));
+            stagger: BuildStaggerPayload(step),
+            attribution: _attribution);
 
         DamageResult result = target.TakeDamage(in damageContext);
         if (!result.Applied)
@@ -716,7 +727,8 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
                 _attackId,
                 value,
                 PassiveEventOrigin.External,
-                metadata: metadata);
+                metadata: metadata,
+                actor: _attribution.CreditedActor);
         }
 
         return _combatEventBus.CreateExternalContext(
@@ -727,7 +739,8 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             _attackId,
             value,
             PassiveEventOrigin.External,
-            metadata: metadata);
+            metadata: metadata,
+            actor: _attribution.CreditedActor);
     }
 
     bool IsTargetLayerAllowed(Collider other)

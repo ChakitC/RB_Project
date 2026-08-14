@@ -1280,3 +1280,28 @@ Boss Skill 2 remains the existing self-buff with zero skill damage and a
 25-second cooldown. `Aires.Skill.2.Morph` remains an unequipped placeholder;
 do not add gameplay effects or put it back into the default loadout until its
 design is complete.
+
+## Summon Skill Payload
+
+`SummonSkillPayloadDef` is the runtime entry point for summon skills. It requires
+an active `MapRunController`, resolves a `SummonController` on the caster, and
+places spawned instances below the map's transient `SummonWorldRoot`. It does
+not use `SummonRegistry` or `PartyRuntimeBinder`.
+
+The payload snapshots count, lifetime, damage inheritance, healing power, area
+radius, and effect duration into `SummonSpawnContext`. The controller enforces
+the per-skill cap and a total active cap of 12, evicting the oldest eligible
+instance first. When no active map exists, the payload itself becomes a no-op
+while the cast still spends energy and
+stamps cooldown. In a composite payload, sibling payloads still execute even
+when the summon step has no active map.
+Placement layout orientation is configured independently from facing: caster
+forward, aim direction, or world axes can drive the spawn-offset layout.
+
+The Feno Minigun Terret example uses this payload as a stationary presentation
+summon only. `Feno.Skill_MinigunTerret` points to the
+`MinigunTerret_Summon` prefab variant and is assigned to Feno skill slot 2. Its
+current authoring values are one summon, one per-skill active instance, a
+10-second lifetime, 12-second cooldown, 25 energy, and a caster-forward
+`(0, 0, 2)` spawn offset. Turret targeting, firing, and `Row` rotation are not
+implemented by this skill; those systems remain separate follow-up authoring.

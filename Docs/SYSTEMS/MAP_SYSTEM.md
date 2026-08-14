@@ -191,3 +191,18 @@ kept until the run ends. Profile both PC and mobile after visiting every node:
 - only one room and one set of baked NavMesh data may be active;
 - memory should stabilize after all reachable rooms have been visited;
 - repeated backtracking should not produce growing GC allocations.
+
+## Transient Summon World
+
+`MapRunController.GetOrCreateSummonWorldRoot()` owns the transient hierarchy for
+summons. A committed room transition despawns stationary summons and warps
+mobile summons around their caster. Failed party movement rolls back without
+committing the transition. `ResetRoomCache()` cleans the summon hierarchy with
+`RunEnded` lifecycle notifications before destroying it, so summons never become
+part of the persistent party roster or room cache.
+
+Summon-owned pooled VFX are protected by the context capability
+`PreservesOwnedVfxDuringRoomTransition`. Rollback leaves summon state and VFX
+untouched; commit applies the normal stationary despawn or mobile warp policy.
+Cap eviction enters the configured despawn delay and does not hard-destroy the
+presentation hierarchy.

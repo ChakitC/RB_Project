@@ -663,7 +663,6 @@ MonoBehaviour:
   DashSystem: {fileID: 4787416841881350600}
   KnockbackMotor: {fileID: 3729042986192515201}
   PassiveController: {fileID: 2601669138343315329}
-  PassiveProgress: {fileID: 0}
   ActiveSkillProgress: {fileID: -6960602465302522877}
   EnegySystem: {fileID: 3693568544021270016}
   Interactor: {fileID: 7938086370648664434}
@@ -973,15 +972,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   autonomousSlots:
   - hotkey: 282
-    skillAsset: {fileID: 11400000, guid: 2c0a137f622f7914d9c826d8d75120e0, type: 2}
+    skillAsset: {fileID: 0}
     runtimeSkill:
       def: {fileID: 0}
   - hotkey: 283
-    skillAsset: {fileID: 11400000, guid: 2061a725c719dcc42ba1126f0446f7fe, type: 2}
+    skillAsset: {fileID: 0}
     runtimeSkill:
       def: {fileID: 0}
   - hotkey: 284
-    skillAsset: {fileID: 11400000, guid: 937de0c45b9d0a846b62b6be6e46ae4e, type: 2}
+    skillAsset: {fileID: 0}
     runtimeSkill:
       def: {fileID: 0}
   playerCommandSkill:
@@ -1170,6 +1169,7 @@ MonoBehaviour:
   ctx: {fileID: 1638387977988830713}
   statsHub: {fileID: 5818043391274991836}
   stateHub: {fileID: 9126503440091188613}
+  healthSystem: {fileID: 0}
   autoCreateVfxPresenter: 0
   vfxPresenterHost: {fileID: 1781496498836893735}
   vfxPresenterHostName: CharacterVisual_System

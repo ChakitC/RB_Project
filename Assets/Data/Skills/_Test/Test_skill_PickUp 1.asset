@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   icon: {fileID: 21300000, guid: 862ea79153b03744a8e079af72bbe3fb, type: 3}
   displayName: PickUp
-  skillId: 04
+  skillId: test.pickup.1
   tags: 4
   description: DropThis
   baseDamage: 20

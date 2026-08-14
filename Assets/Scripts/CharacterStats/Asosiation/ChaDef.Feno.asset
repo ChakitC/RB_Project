@@ -56,12 +56,12 @@ MonoBehaviour:
     options: []
   - slotId: 2
     displayName: 2
-    hotkey: 0
+    hotkey: 283
     defaultOptionIndex: 0
     options:
-    - optionId: 
-      displayName: 
-      skillAsset: {fileID: 0}
+    - optionId: feno.skill.minigunterret
+      displayName: Minigun Terret
+      skillAsset: {fileID: 11400000, guid: badfe42aa895b7c448985f2bd9c59bed, type: 2}
       upgradeTreeOverride: {fileID: 0}
   - slotId: passive.feno.bag
     displayName: Forgotten Bullet Bag

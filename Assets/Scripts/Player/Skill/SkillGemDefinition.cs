@@ -12,7 +12,7 @@ using UnityEditor;
 public class SkillGemDefinition : SkillDefinitionBase
 {
     public override SkillUpgradeTreeDefinition UpgradeTree => upgradeTree;
-    public override string SkillDefinitionId => skillId;
+    public override string SkillDefinitionId => NormalizeSkillId(skillId);
     public override string SkillDefinitionDisplayName => displayName;
     public override Sprite SkillDefinitionIcon => icon;
 
@@ -372,6 +372,31 @@ public class SkillGemDefinition : SkillDefinitionBase
         }
     }
 
+#if UNITY_EDITOR
+    void OnValidate()
+    {
+        skillId = NormalizeSkillId(skillId);
+        if (string.IsNullOrEmpty(skillId))
+            return;
+
+        string[] guids = AssetDatabase.FindAssets("t:SkillGemDefinition");
+        string ownPath = AssetDatabase.GetAssetPath(this);
+        for (int i = 0; i < guids.Length; i++)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+            if (string.Equals(path, ownPath, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            SkillGemDefinition other = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>(path);
+            if (other != null && NormalizeSkillId(other.skillId) == skillId)
+            {
+                Debug.LogError($"Skill ID '{skillId}' is duplicated by '{path}'.", this);
+                break;
+            }
+        }
+    }
+#endif
+
     public override void CollectUpgradeIds(List<string> ids)
     {
         payload?.CollectUpgradeIds(ids);
@@ -450,7 +475,14 @@ public class SkillGemDefinition : SkillDefinitionBase
 
     private bool HasSkillId()
     {
-        return !string.IsNullOrWhiteSpace(skillId);
+        return !string.IsNullOrWhiteSpace(NormalizeSkillId(skillId));
+    }
+
+    public static string NormalizeSkillId(string value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : value.Trim().ToLowerInvariant();
     }
 
     private string BlockingErrorSummary

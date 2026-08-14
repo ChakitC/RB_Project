@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   icon: {fileID: 0}
   displayName: Aires.Skill.1
-  skillId: Aires.Skill.1
+  skillId: aires.block
   tags: 17
   description: 
   baseDamage: 10

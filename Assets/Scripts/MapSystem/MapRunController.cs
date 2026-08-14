@@ -94,6 +94,8 @@ public class MapRunController : MonoBehaviour
     private readonly Dictionary<string, CachedRoomEntry> roomCache = new();
     private bool isTransitioning;
     private bool warnedMissingWarpCollisionLayer;
+    private Transform summonWorldRoot;
+    private Transform summonStagingRoot;
     private PartySpawnPoint partySpawnPoint;
     private int stageProgressCount;
     private int stageEnemyLevel;
@@ -107,6 +109,8 @@ public class MapRunController : MonoBehaviour
     private GameObject stageExitInstance;
 
     public event Action<MapGraph, MapNode> MapChanged;
+    public event Action RoomTransitionCommitted;
+    public event Action RoomTransitionRolledBack;
     public MapGraph CurrentGraph => graph;
     public MapNode CurrentNode => currentNode;
     public RoomController CurrentRoom => currentRoom;
@@ -115,6 +119,29 @@ public class MapRunController : MonoBehaviour
     public MapRunConfigSO RunConfig => runConfig;
     public bool CanCompleteStageRun => runConfig != null && runConfig.IsTestStage && bossCleared && !stageCompletionCommitted;
     public int StageEnemyLevel => stageEnemyLevel;
+
+    public Transform GetOrCreateSummonWorldRoot()
+    {
+        if (summonWorldRoot != null)
+            return summonWorldRoot;
+
+        var rootObject = new GameObject("SummonWorldRoot");
+        summonWorldRoot = rootObject.transform;
+        summonWorldRoot.SetParent(transform, false);
+        return summonWorldRoot;
+    }
+
+    public Transform GetOrCreateSummonStagingRoot()
+    {
+        if (summonStagingRoot != null)
+            return summonStagingRoot;
+
+        var rootObject = new GameObject("SummonStagingRoot");
+        summonStagingRoot = rootObject.transform;
+        summonStagingRoot.SetParent(transform, false);
+        rootObject.SetActive(false);
+        return summonStagingRoot;
+    }
 
     void Start()
     {
@@ -492,6 +519,7 @@ public class MapRunController : MonoBehaviour
         {
             Debug.LogError($"[MapRunController] Failed to move the party into node {nextNode.Id}. Rolling back the room transition.", this);
             RollbackTransition(previousEntry, previousNode, previousPartyPose, nextEntry);
+            RoomTransitionRolledBack?.Invoke();
             isTransitioning = false;
             return;
         }
@@ -503,6 +531,7 @@ public class MapRunController : MonoBehaviour
         currentNode.Visit();
         graph.RevealOutgoing(currentNode);
 
+        RoomTransitionCommitted?.Invoke();
         currentRoom.BeginRoom(encounterDirector);
 
         isTransitioning = false;
@@ -602,6 +631,7 @@ public class MapRunController : MonoBehaviour
     {
         encounterDirector?.StopEncounter();
         RoomTransitionCleanup.ClearTransientWorldObjects();
+        CleanupSummonWorldRoot();
         BindItemDropParent(null);
 
         foreach (CachedRoomEntry entry in roomCache.Values)
@@ -620,6 +650,40 @@ public class MapRunController : MonoBehaviour
         currentRoom = null;
         currentNode = null;
         isTransitioning = false;
+    }
+
+    void CleanupSummonWorldRoot()
+    {
+        if (summonWorldRoot != null)
+        {
+            SummonedEntityRuntime[] summons = summonWorldRoot.GetComponentsInChildren<SummonedEntityRuntime>(true);
+            for (int i = 0; i < summons.Length; i++)
+            {
+                SummonedEntityRuntime summon = summons[i];
+                if (summon == null)
+                    continue;
+
+                summon.BeginDespawn(SummonDespawnReason.RunEnded);
+                summon.ForceDestroy(SummonDespawnReason.RunEnded);
+            }
+
+            if (Application.isPlaying)
+                Destroy(summonWorldRoot.gameObject);
+            else
+                DestroyImmediate(summonWorldRoot.gameObject);
+
+            summonWorldRoot = null;
+        }
+
+        if (summonStagingRoot != null)
+        {
+            if (Application.isPlaying)
+                Destroy(summonStagingRoot.gameObject);
+            else
+                DestroyImmediate(summonStagingRoot.gameObject);
+
+            summonStagingRoot = null;
+        }
     }
 
     void OnDestroy()
@@ -659,7 +723,9 @@ public class MapRunController : MonoBehaviour
                 continue;
 
             AITargetIdentity identity = context.TargetIdentity;
-            if (context == player || identity == AITargetIdentity.Player || identity == AITargetIdentity.Companion)
+            if (context == player ||
+                (context.ParticipatesInPartyRuntime &&
+                 (identity == AITargetIdentity.Player || identity == AITargetIdentity.Companion)))
                 snapshot.ActorPoses.Add(new TransformPose(context.transform));
         }
 
@@ -765,6 +831,7 @@ public class MapRunController : MonoBehaviour
             CharacteContext ctx = contexts[i];
             if (ctx == null ||
                 ctx == player ||
+                !ctx.ParticipatesInPartyRuntime ||
                 ctx.TargetIdentity != AITargetIdentity.Companion ||
                 !ctx.gameObject.activeInHierarchy)
                 continue;
@@ -818,9 +885,9 @@ public class MapRunController : MonoBehaviour
                 continue;
 
             AITargetIdentity identity = ctx.TargetIdentity;
-            if (ctx == player || identity == AITargetIdentity.Player)
+            if (ctx == player || (ctx.ParticipatesInPartyRuntime && identity == AITargetIdentity.Player))
                 hasPlayer = true;
-            else if (identity == AITargetIdentity.Companion)
+            else if (ctx.ParticipatesInPartyRuntime && identity == AITargetIdentity.Companion)
                 hasCompanion = true;
             else if (identity == AITargetIdentity.Enemy)
                 hasEnemy = true;
@@ -978,7 +1045,7 @@ public class MapRunController : MonoBehaviour
         for (int i = 0; i < contexts.Length; i++)
         {
             CharacteContext ctx = contexts[i];
-            if (ctx != null && ctx.TargetIdentity == AITargetIdentity.Player)
+            if (ctx != null && ctx.ParticipatesInPartyRuntime && ctx.TargetIdentity == AITargetIdentity.Player)
             {
                 playerContext = ctx;
                 return playerContext;
@@ -1055,6 +1122,31 @@ public class MapRunController : MonoBehaviour
             controller.enabled = true;
 
         Physics.SyncTransforms();
+        return true;
+    }
+
+    public bool TryWarpTransientActor(
+        CharacteContext actor,
+        CharacteContext anchor,
+        int formationIndex,
+        out Vector3 resolvedPosition)
+    {
+        resolvedPosition = Vector3.zero;
+        if (actor == null || anchor == null || actor == anchor)
+            return false;
+
+        int row = Mathf.Max(0, formationIndex) / 2;
+        float side = Mathf.Max(0, formationIndex) % 2 == 0 ? -1f : 1f;
+        Vector3 position = anchor.transform.position +
+                           anchor.transform.forward * (CompanionWarpForwardOffset + row * CompanionWarpRowSpacing) +
+                           anchor.transform.right * (CompanionWarpLateralOffset * side);
+
+        bool requireActiveAgent = actor is SummonContext summonContext &&
+                                   summonContext.Mobility == SummonMobility.Mobile;
+        if (!WarpCharacter(actor, position, anchor.transform.rotation, requireActiveAgent))
+            return false;
+
+        resolvedPosition = actor.transform.position;
         return true;
     }
 

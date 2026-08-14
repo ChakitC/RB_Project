@@ -868,8 +868,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
         if (!usePlayerInventorySave || ctx == null)
             return false;
 
-        return ctx.TargetIdentity == AITargetIdentity.Player ||
-               ctx.TargetIdentity == AITargetIdentity.Companion;
+        return ctx.UsesPersistentLoadouts;
     }
 
     CharacterAccessoryLoadoutSaveData FindSavedEntry(AccessoryLoadoutSaveData data)

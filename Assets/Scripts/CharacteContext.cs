@@ -68,6 +68,18 @@ public abstract class CharacteContext : MonoBehaviour
     }
     public virtual AITargetIdentity TargetIdentity => AITargetIdentity.Generic;
     public virtual bool ForceInfiniteReserveAmmo => false;
+    public virtual bool UsesPersistentProgression =>
+        TargetIdentity == AITargetIdentity.Player || TargetIdentity == AITargetIdentity.Companion;
+    public virtual bool UsesPersistentLoadouts =>
+        TargetIdentity == AITargetIdentity.Player || TargetIdentity == AITargetIdentity.Companion;
+    public virtual bool ParticipatesInPartyRuntime =>
+        TargetIdentity == AITargetIdentity.Player || TargetIdentity == AITargetIdentity.Companion;
+    public virtual bool PreservesOwnedVfxDuringRoomTransition => ParticipatesInPartyRuntime;
+    public virtual bool CanCollectPickups =>
+        TargetIdentity == AITargetIdentity.Player || TargetIdentity == AITargetIdentity.Companion;
+    public virtual bool AutoCreatesAimRig =>
+        TargetIdentity == AITargetIdentity.Player || TargetIdentity == AITargetIdentity.Companion;
+    public virtual bool AutoCreatesRuntimeEquipment => true;
     
     public float baseDamage => baseStats != null ? baseStats.Damage : 0f;
     public float basearmor => baseStats != null ? baseStats.armor : 0f;
@@ -93,12 +105,13 @@ public abstract class CharacteContext : MonoBehaviour
         AccessoryLoadout = ResolveActorComponent(AccessoryLoadout);
         if (AccessoryLoadout == null &&
             Application.isPlaying &&
-            (TargetIdentity == AITargetIdentity.Player || TargetIdentity == AITargetIdentity.Companion))
+            UsesPersistentLoadouts)
         {
             AccessoryLoadout = gameObject.AddComponent<AccessoryLoadout>();
         }
         WeaponSystem = ResolveActorComponent(WeaponSystem);
-        if (Equipment == null && Application.isPlaying && (currentWeapon != null || WeaponSystem != null))
+        if (Equipment == null && Application.isPlaying && AutoCreatesRuntimeEquipment &&
+            (currentWeapon != null || WeaponSystem != null))
             Equipment = gameObject.AddComponent<CharacterEquipment>();
         AnimBrain = ResolveActorComponent(AnimBrain);
         AnimDriver = ResolveActorComponent(AnimDriver);
@@ -115,8 +128,7 @@ public abstract class CharacteContext : MonoBehaviour
         AimRig = ResolveActorComponent(AimRig);
         if (AimRig == null &&
             Application.isPlaying &&
-            (TargetIdentity == AITargetIdentity.Player ||
-             TargetIdentity == AITargetIdentity.Companion))
+            AutoCreatesAimRig)
         {
             AimRig = gameObject.AddComponent<ThirdPersonAimRigController>();
         }
@@ -136,7 +148,7 @@ public abstract class CharacteContext : MonoBehaviour
         ActiveSkillProgress = ResolveActorComponent(ActiveSkillProgress);
         if (ActiveSkillProgress == null &&
             Application.isPlaying &&
-            (TargetIdentity == AITargetIdentity.Player || TargetIdentity == AITargetIdentity.Companion))
+            UsesPersistentProgression)
         {
             ActiveSkillProgress = gameObject.AddComponent<CharacterActiveSkillProgress>();
         }

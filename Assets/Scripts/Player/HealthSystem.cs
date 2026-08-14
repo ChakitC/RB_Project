@@ -336,7 +336,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         RaiseHealthChanged();
 
         if (currentHealth <= 0f)
-            Down();
+            HandleHealthDepleted();
 
         return BuildDamageResult(attacker, damage, appliedDamage, false, wasAliveBefore, healthBefore);
     }
@@ -522,6 +522,11 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
             CTX.cc.enabled = false;
 
         dieRoutine = StartCoroutine(DieCoroutine());
+    }
+
+    protected virtual void HandleHealthDepleted()
+    {
+        Down();
     }
 
     IEnumerator DieCoroutine()

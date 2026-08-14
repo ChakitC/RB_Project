@@ -330,3 +330,16 @@ On 2026-08-03 the focused EditMode suite passed 6/6 and
 `CheckAssemblyBuild.ps1` passed with 0 errors. The full EditMode run was blocked
 by the pre-existing `PartySpawnUnityTests` scene-open error for
 `Assets/Scenes/Map_Play_Pototype/State_1.unity`.
+
+# Summon regression validation
+
+`SummonContractSmokeTests` covers summon/owner attribution across sibling
+hierarchies, normal-actor fallback, delayed despawn and presentation isolation,
+inactive staging, no-map composite cast semantics, room-transition VFX ownership,
+ground/clearance mask overlap, nested oriented-box placement, and horizontal
+capsule clearance. Run it with the Unity Test Framework before checking the
+Assembly-CSharp build. The focused
+PlayMode pass should additionally cover melee kill, weapon projectile kill, DoT
+kill after summon destruction, cap eviction with presentation delay, room commit,
+rollback, mobile warp failure, and placement/NavMesh failure without consuming a
+cap slot.

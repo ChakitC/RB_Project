@@ -104,7 +104,8 @@ public class CharacterContextPartyLoader : MonoBehaviour, IGameSaveAble, ISaveOr
         if (ctx != null)
         {
             ctx.baseStats = def;
-            ctx.ActiveSkillProgress?.ReloadFromSave();
+            if (ctx.UsesPersistentProgression)
+                ctx.ActiveSkillProgress?.ReloadFromSave();
             ApplyBehaviorSubtree(def);
         }
         else if (IsPlayAble)

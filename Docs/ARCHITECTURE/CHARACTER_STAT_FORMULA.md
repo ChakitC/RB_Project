@@ -90,3 +90,10 @@ under-report.
 The Basement panel and a character's in-combat `StatsHub` should match exactly at
 rest. They are expected to differ once a buff affix, status effect, or other
 timed source is active - the in-combat value is then higher by design.
+
+## Summon Damage Inheritance
+
+Summon damage inheritance is captured at spawn and exposed through the summon
+runtime as a `StatsHub` flat `Damage` modifier. The modifier is scoped to the
+summon instance, so it does not alter the caster's persistent or lobby stats and
+is removed with the transient actor.

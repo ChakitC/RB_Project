@@ -1597,3 +1597,53 @@ sorting order above the lobby UI; the prefab builder enforces both values.
 Every registered `WeaponAffixDefinition` must reference one root behavior. Use
 **Tools > Weapons > Affixes > Migrate And Generate**, then run **Validate (Dry
 Run)**. Missing behaviors, duplicate ids, and invalid roll ranges block builds.
+
+# Summon prefab authoring
+
+Use `Assets/Prefab/Player/SummonBase.prefab` as the starting template for a
+mobile summon. It is derived from `Ally_Stryker.prefab`, but uses `SummonContext`,
+`SummonHealthSystem`, and `SummonedEntityRuntime` instead of Ally party and
+persistent-progression components. Duplicate the template before assigning a
+summon-specific model, stats, weapons, skills, AI tree, or effects.
+
+A summon prefab requires `SummonContext` on the prefab root, plus `SummonedEntityRuntime`,
+`SummonHealthSystem`, `StateHub`, `StatsHub`, `AITargetInfo`, and
+`CombatEventBus`. Assign separate Gameplay Root and Presentation Root
+references on `SummonedEntityRuntime`. During despawn, gameplay behaviours and
+colliders anywhere under the summon root but outside Presentation Root are
+disabled; Gameplay Root is also deactivated when it does not contain the runtime.
+Presentation receivers can therefore finish VFX or callback work.
+
+Mobile prefabs require `NavMeshAgent` and `AgentMoveDriver`. Stationary prefabs
+require `CharacterColliderRefs.CharacterPositionCollider` with a supported
+Box, Capsule, or Sphere collider. Do not add player/ally/enemy party modules,
+persistent progression, inventory, input, or helper-command components.
+
+Use **Tools > RB > Summoning > Validate All Summon Prefabs** after authoring.
+The validator also rejects nested summon-skill references that would create
+recursive summon trees.
+
+Summon placement exposes separate layout-orientation and facing controls. Use
+caster forward, aim direction, or world axes for offset layout, then choose the
+actor facing mode independently when the prefab is spawned. Ground resolution
+excludes the collider that supplied the accepted ground hit from the clearance
+check, so the default ground and clearance masks can safely overlap.
+
+Runtime spawning stages a clone below an inactive `SummonStagingRoot`, validates
+and injects owner/team/attribution before activation, then reparents it under
+`SummonWorldRoot`. Keep gameplay modules under the Gameplay Root and presentation
+callbacks/VFX under the separate Presentation Root.
+
+`Assets/Prefab/Player/MinigunTerret_Summon.prefab` is the stationary Feno turret
+variant. It inherits `SummonBase`, nests `MinigunTerret 1` under the
+Presentation Root, and uses the inherited stationary footprint collider from
+`SummonBase`. The variant disables navigation and mobile AI components and intentionally
+does not bind weapon, targeting, firing, or turret-rotation control logic; this
+first version only makes the turret visual spawnable. Rotation authored on the
+turret asset remains owned by the turret authoring workflow.
+
+`Assets/Data/Skills/Feno/Feno.Skill_MinigunTerret.asset` is assigned to Feno's
+slot 2. It requests one stationary summon at the caster-forward offset
+`(0, 0, 2)`, with a 10-second lifetime, 12-second cooldown, 25 energy cost, and
+per-skill cap of one. Keep the payload prefab reference pointed at the variant,
+not at `SummonBase` or the source turret prefab.

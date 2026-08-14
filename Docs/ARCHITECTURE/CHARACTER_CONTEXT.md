@@ -159,3 +159,13 @@ It is safe to read every frame; null-check before use.
   and prefab usage.
 - Moving newly created Unity classes into unrelated files to work around stale
   `.csproj` generation.
+
+## Transient Summon Context
+
+`SummonContext` is a `CharacteContext` subtype for transient spawned actors. It
+uses companion targeting identity but overrides the capability flags for
+persistent progression, persistent loadouts, party runtime participation,
+pickup collection, aim-rig creation, and runtime equipment creation to false.
+Shared modules should continue to consume the resolved `CharacteContext` seams;
+summon-specific ownership and lifetime belong to `SummonedEntityRuntime` and
+`SummonController`.

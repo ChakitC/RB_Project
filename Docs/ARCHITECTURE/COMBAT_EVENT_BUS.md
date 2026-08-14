@@ -126,3 +126,15 @@ When adding a new event:
 3. Update passive authoring docs and any editor tooling that lists event types.
 4. If the event requires monitoring/polling, add an optional event source instead
    of ticking every passive directly.
+
+## Summon Attribution
+
+`CombatAttributionSnapshot` separates the physical hit actor from the credited
+actor, event bus, and status owner. Projectile, melee, hitbox, and status-tick
+paths preserve the summon as the physical source while publishing credited
+combat events through the caster's resolved bus. `CombatEventBus` supports an
+optional credited actor when creating external or child contexts; existing
+normal-actor call sites retain their current behavior. Weapon projectile
+contexts carry the snapshot through child/split projectiles, and enemy kill
+credit resolves as `CreditedActor ?? Attacker` so XP and Kill events remain
+owned by the caster after the summon is destroyed.

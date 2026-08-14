@@ -158,8 +158,7 @@ public class SkillPickup : MonoBehaviour
         CharacteContext collectorContext = ResolveCollectorContext(targetObject);
         if (collectorContext != null)
         {
-            return collectorContext.TargetIdentity == AITargetIdentity.Player ||
-                   collectorContext.TargetIdentity == AITargetIdentity.Companion;
+            return collectorContext.CanCollectPickups;
         }
 
         return targetObject != null && targetObject.CompareTag("Player");
@@ -168,7 +167,8 @@ public class SkillPickup : MonoBehaviour
     bool IsCompanionCollector(GameObject targetObject)
     {
         CharacteContext collectorContext = ResolveCollectorContext(targetObject);
-        return collectorContext != null && collectorContext.TargetIdentity == AITargetIdentity.Companion;
+        return collectorContext != null && collectorContext.CanCollectPickups &&
+               collectorContext.TargetIdentity == AITargetIdentity.Companion;
     }
 
     CharacteContext ResolveCollectorContext(GameObject targetObject)

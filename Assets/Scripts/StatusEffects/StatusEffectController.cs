@@ -607,16 +607,18 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             return;
         }
 
+        GameObject physicalSource = instance.Attribution.PhysicalActor;
         var damageContext = new DamageContext(
             damage,
-            instance.Source,
+            physicalSource,
             BuildStatusEffectIdentity(definition),
             definition.effectId,
             instance.ChainId == 0 ? CombatEventBus.NextChainId() : instance.ChainId,
             instance.Depth + 1,
             PassiveEventOrigin.StatusEffect,
             instance.OriginPassiveId,
-            instance.OriginRuleId);
+            instance.OriginRuleId,
+            attribution: instance.Attribution);
 
         DamageResult result = targetDamageable.TakeDamage(in damageContext);
         if (result.Applied)
@@ -640,15 +642,16 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         in DamageResult result,
         in DamageContext damageContext)
     {
-        if (instance.Source == null)
-            return;
-
-        CombatEventBus sourceBus = instance.Source.GetComponentInParent<CombatEventBus>();
+        CombatEventBus sourceBus = instance.Attribution.CreditedEventBus;
+        if (sourceBus == null && instance.Source != null)
+            sourceBus = instance.Source.GetComponentInParent<CombatEventBus>();
         if (sourceBus == null)
             return;
 
         Component targetComponent = target as Component;
         GameObject targetObject = targetComponent != null ? targetComponent.gameObject : gameObject;
+        GameObject sourceObject = instance.Attribution.PhysicalActor;
+        GameObject creditedActor = instance.Attribution.CreditedActor;
         var metadata = new CombatEventMetadata(
             result.RequestedDamage,
             result.ResolvedDamage,
@@ -656,10 +659,10 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             result.HealthBeforeHit,
             result.MaxHealth,
             sourceKind: CombatSourceKind.Status);
-        PublishStatusDamageEvent(sourceBus, PassiveEventType.Hit, instance.Source, targetObject,
+        PublishStatusDamageEvent(sourceBus, PassiveEventType.Hit, sourceObject, creditedActor, targetObject,
             definition, result.AppliedDamage, damageContext, metadata);
         if (result.Killed)
-            PublishStatusDamageEvent(sourceBus, PassiveEventType.Kill, instance.Source, targetObject,
+            PublishStatusDamageEvent(sourceBus, PassiveEventType.Kill, sourceObject, creditedActor, targetObject,
                 definition, result.AppliedDamage, damageContext, metadata);
     }
 
@@ -667,6 +670,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         CombatEventBus bus,
         PassiveEventType type,
         GameObject source,
+        GameObject actor,
         GameObject target,
         StatusEffectDef definition,
         float value,
@@ -675,7 +679,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
     {
         var context = new PassiveEventContext(
             type,
-            source,
+            actor != null ? actor : source,
             source,
             target,
             BuildStatusEffectIdentity(definition),

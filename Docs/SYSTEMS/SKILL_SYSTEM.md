@@ -83,6 +83,8 @@ Current payload implementations are:
 - `MorphSkillPayloadDef`
 - `TauntSkillPayloadDef`
 - `HealAreaSkillPayloadDef`
+- `SummonSkillPayloadDef`
+- `BarrierSkillPayloadDef`
 - `CompositeSkillPayloadDef`
 
 Reusable dependencies remain normal asset references. Examples include
@@ -404,6 +406,64 @@ its lateral spread. Configure **Ground Layers** with world-floor layers only;
 the default is the project's `Ground` layer. Keeping character layers out of
 this mask makes a pickup aimed at a character land on the floor beneath them
 instead of spawning on top of their controller.
+
+### Barrier Payload
+
+`BarrierSkillPayloadDef` deploys one or more `BarrierRuntime` shells that absorb
+hostile projectiles. It lives in `Assets/Scripts/Combat/Barrier/` and is reusable
+across skills — nothing in it is specific to any one character.
+
+`BarrierAnchorMode` decides what a barrier attaches to:
+
+| Mode | Anchors on |
+| --- | --- |
+| `Caster` | the caster |
+| `SpawnedEntitiesFromCurrentCast` | one barrier per entity spawned earlier in this same cast |
+| `CastPosition` | the cast origin, pinned in world space |
+
+`SpawnedEntitiesFromCurrentCast` reads `SkillCastExecutionState.SpawnedSummons`,
+so a spawning step must run **earlier in the same composite**. It never searches
+the scene.
+
+Radius comes from `FinalSkillStats.areaRadius` (or a fixed fallback), lifetime
+from `FinalSkillStats.effectDuration`, and HP from
+`baseHealth + anchorMaxHealth * anchorMaxHealthShare`.
+
+Barrier behavior:
+
+- Lifetime ticks on `WorldDeltaTime`, so it slows with world-slow exactly like
+  the summon it protects. `Update` delegates to `TickLifetime(worldDeltaTime)`,
+  which keeps the time source injectable.
+- **A broken barrier never regenerates.** Recovering one needs a fresh cast.
+- There is no HP bar. Feedback is presentation-only, driven by the `Damaged`
+  and `Ended` events.
+
+A barrier ends on HP zero (`Broken`), lifetime expiry (`Expired`), or a lost
+anchor (`AnchorLost`). Anchor liveness is decided **per mode**, not inferred from
+which references happen to be null:
+
+| Anchor mode | Stays alive while |
+| --- | --- |
+| `Caster` | the owner resolves and its `HealthSystem.IsAlive` (an owner with no HealthSystem is never judged dead) |
+| `SpawnedEntitiesFromCurrentCast` | the anchor summon is still `IsActive` |
+| `CastPosition` | always — there is no anchor to lose, so only HP and lifetime end it |
+
+Health is read through `CharacteContext.HealthSystem`, per the project's
+reference-resolution rules.
+
+#### Faction rule
+
+Blocking asks **"are these two known to be on opposing sides?"**
+(`BarrierFactionUtility.AreHostile`), never "are they not friendly". A negated
+friendliness test would treat every unknown actor as hostile.
+
+`AITargetIdentity.Auto`, `Generic`, and `Neutral` have no side, so projectiles
+from them always pass through — as does anything whose `CharacteContext` cannot
+be resolved. `AreFriendly` is likewise a positive test and is **not** the inverse
+of `AreHostile`.
+
+See [Projectile Barriers](WEAPON_SYSTEM.md#projectile-barriers) for the blocking
+rules and the physics-layer setup.
 
 ### Morph / Awakening Payload
 
@@ -1289,19 +1349,192 @@ places spawned instances below the map's transient `SummonWorldRoot`. It does
 not use `SummonRegistry` or `PartyRuntimeBinder`.
 
 The payload snapshots count, lifetime, damage inheritance, healing power, area
-radius, and effect duration into `SummonSpawnContext`. The controller enforces
-the per-skill cap and a total active cap of 12, evicting the oldest eligible
-instance first. When no active map exists, the payload itself becomes a no-op
-while the cast still spends energy and
-stamps cooldown. In a composite payload, sibling payloads still execute even
-when the summon step has no active map.
+radius, effect duration, max HP, and inherited upgrade IDs into
+`SummonSpawnContext`. The controller enforces the per-skill cap and a total
+active cap of 12, evicting the oldest eligible instance first. When no active
+map exists, or when no spawn offset resolves to a valid placement, the payload
+reports failure and the cast commits nothing — see
+[Cast Execution Transaction](#cast-execution-transaction). In a composite
+payload, sibling payloads still execute even when the summon step fails.
 Placement layout orientation is configured independently from facing: caster
 forward, aim direction, or world axes can drive the spawn-offset layout.
 
-The Feno Minigun Terret example uses this payload as a stationary presentation
-summon only. `Feno.Skill_MinigunTerret` points to the
-`MinigunTerret_Summon` prefab variant and is assigned to Feno skill slot 2. Its
-current authoring values are one summon, one per-skill active instance, a
-10-second lifetime, 12-second cooldown, 25 energy, and a caster-forward
-`(0, 0, 2)` spawn offset. Turret targeting, firing, and `Row` rotation are not
-implemented by this skill; those systems remain separate follow-up authoring.
+### Summon max HP
+
+With `overrideMaxHealth` enabled the payload resolves
+
+```
+maxHealth = (baseMaxHealth + ownerMaxHealth * ownerMaxHealthShare)
+```
+
+then applies any `StatType.SummonMaxHP` aggregate from the Active Skill tree.
+The result reaches the summon as a **flat `StatType.MaxHP` modifier** supplied
+by `SummonedEntityRuntime` (an `IStatModifierProvider`).
+
+> **Authoring requirement:** because the value is applied as a flat modifier on
+> top of the prefab's own stats, the summon prefab's base max HP must be
+> authored to `0` for the formula to land exactly. A non-zero prefab base HP is
+> added on top.
+
+### Summon cap
+
+The effective per-skill cap is `perSkillCap` plus any `StatType.SummonCap`
+aggregate from the tree, floored at 1.
+
+### Inherited upgrade IDs
+
+`inheritedUpgradeIds` lists upgrade IDs the summon should carry. At cast time
+only the IDs the caster actually owns are copied onto `SummonedEntityRuntime`,
+readable through `SummonedEntityRuntime.HasUpgrade(string)`. Summon-side modules
+gate on this snapshot rather than reaching back into the owner's live selection,
+so a summon keeps the build it was deployed with.
+
+`SummonSkillPayloadDef.CollectUpgradeIds` declares these IDs, so the upgrade-ID
+scanner and tree validation see them as used.
+
+### Feno Minigun Terret
+
+`Feno.Skill_MinigunTerret` points to the `MinigunTerret_Summon` prefab variant
+and is assigned to Feno skill slot 2. Its root payload is a
+`CompositeSkillPayloadDef` with two steps:
+
+| Step | Gate | Payload |
+| --- | --- | --- |
+| Summon | always active | `SummonSkillPayloadDef` |
+| Barrier | `feno.skill.minigunterret.part_c.barrier` | `BarrierSkillPayloadDef` |
+
+Skill-level values: 25 energy, 12-second cooldown, 1 base charge, base radius 3,
+base effect duration 10, caster-forward `(0, 0, 2)` spawn offset, one summon,
+per-skill cap 1. Summon max HP is `200 + ownerMaxHP * 0.25` (475 for Feno at
+level 1).
+
+`MinigunTerret_Summon` runs a dedicated Behavior Designer subtree,
+`Assets/Scripts/AI/MinigunTerretAI.asset` (overridden on the prefab's `AI
+System/BehaviorTree` component in place of the generic `AllyAI.asset`). It
+reuses the same Dead/Down gating and `HasEnemyFromSensor` target-acquisition
+conditional as the generic ally tree, then runs `AiRotateToTarget` to yaw the
+`Row` bone (yaw-only, unclamped, ~220°/sec) toward the acquired target. The
+tree's `RotateRoot` shared variable is bound per-instance (not in the shared
+asset) to the `Row` transform via a `SharedVariable` override on that
+component. `CharacterVisualController.firePointBoneName` is overridden to
+`Row` (with a zeroed local offset) so `FirePoint` follows the turret's
+rotation and stays aim-aligned.
+
+Actual weapon firing (ammo, fire-rate, projectile spawn) is still **not**
+implemented; only targeting and rotation are wired up. Part B therefore has
+its data and runtime contract in place but no shooting effect yet — see
+[Upgrade-Gated Status On Hit](WEAPON_SYSTEM.md#upgrade-gated-status-on-hit).
+
+Its Active Skill tree is `Feno.Skill_MinigunTerret_Tree`:
+
+| Node | Effect |
+| --- | --- |
+| `reinforced_chassis` | `SummonMaxHP` x1.30 |
+| `calibrated_weapon` | `Damage` x1.25 |
+| `extended_deployment` | `EffectDuration` +5s |
+| `part_a` | `MaxCharges` +1, `SummonCap` +1 |
+| `part_b` | grants `feno.skill.minigunterret.part_b.armor_piercing_rounds` |
+| `part_c` | grants `feno.skill.minigunterret.part_c.barrier` |
+
+The three trunk nodes have no prerequisites and can be bought in parallel. Each
+Part requires all three and is mutually exclusive with the other two Parts, so a
+full build spends 4 points.
+
+## Cast Execution Transaction
+
+A cast is a transaction. `SkillPayloadDef.ExecuteWithResult` returns a
+`SkillExecutionResult`, and **only a successful execution commits energy, a
+charge, and the cooldown**. A payload that runs but produces no gameplay effect
+costs the player nothing.
+
+Payloads that cannot fail keep overriding `Execute` alone; the base
+`ExecuteWithResult` runs them and reports success, so every existing payload is
+unaffected.
+
+Failure reasons are `NoEffect`, `PlacementBlocked`, `MissingAuthoringData`,
+`MissingRuntimeContext`, and `Rejected`. `SkillExecutionResult.PublicMessage`
+maps them to a short player-facing line (`PlacementBlocked` →
+`"Cannot deploy here"`); `DebugMessage` carries the verbose reason and is never
+shown to the player.
+
+`CompositeSkillPayloadDef` treats sibling steps as independent: a failing step
+never stops the ones after it, and the composite succeeds as soon as **one**
+enabled step succeeds. A composite whose enabled steps all fail — or that has no
+enabled step at all for the current upgrade selection — fails as a whole and
+commits nothing.
+
+`SkillCastOrchestrator` raises `CastExecutionFailed`, re-exposed by
+`CharacterSkillManager`, which `SkillCastFeedbackPresenter` renders.
+
+### Blocked pre-cast, and the summon exemption
+
+Blocked pre-cast still consumes its cooldown — that rule is deliberate and
+unchanged for ordinary skills.
+
+**Skills tagged `SkillTag.Minion` are exempt.** A summon skill interrupted before
+its cast point deployed nothing into the world, so it must cost nothing:
+`StampCooldownForBlockedPreCast` returns early for Minion-tagged skills without
+touching energy, charge, or cooldown. Every other skill keeps the existing rule.
+
+### Cast execution state
+
+`SkillCastContext.ExecutionState` (`SkillCastExecutionState`) is scratch space
+shared by every payload in one cast. `SummonSkillPayloadDef` registers what it
+spawned; `BarrierSkillPayloadDef` reads that list directly instead of searching
+the scene.
+
+## Active Skill Charges
+
+`SkillGemDefinition.baseMaxCharges` (modified by `StatType.MaxCharges`) resolves
+into `FinalSkillStats.maxCharges`. A skill with one charge behaves exactly like
+the plain cooldown this replaced.
+
+`SkillChargeState` holds the pool. Recharge is **sequential, not parallel**:
+spending two charges at `t=0` with a 12s cooldown returns them at `t=12` and
+`t=24`, never both at `t=12`.
+
+- Unlocking a charge makes it available immediately.
+- Losing one clamps the pool but keeps the oldest recharge segment running —
+  no timer is ever restarted.
+- A cooldown of 0 never actually spends a charge.
+
+### One pool per skill
+
+There is exactly **one** `SkillChargeState` per `SkillGemDefinition` per character.
+`SkillCastOrchestrator` owns the dictionary; `CharacterSkillManager` binds every
+`SkillInstance` it builds to the matching pool via `SkillInstance.BindCharges`.
+
+Two loadout slots holding the same skill therefore draw from — and display — the
+same charges: casting from slot A immediately makes slot B unavailable.
+
+`SkillInstance` is the **only** place a charge is ever spent. The orchestrator
+reads readiness through `CanCast` and never deducts a second time.
+
+Everything reads that one pool:
+
+| Caller | Path |
+| --- | --- |
+| Command slot | `CanStartCastSlot` → `SkillInstance.CanCast` |
+| Player command / external cast | `CanStartPlayerCommandSkill`, `CanStartExternalSkill` |
+| HUD | `CharacterSkillManager.TryGetSlotChargeStatus` |
+
+`SkillSlot.runtimeSkill` is Unity-serialized, so a prefab can supply an instance
+that never went through the factory. `EnsureCommandRuntimeSkill` /
+`EnsureRuntimeSkill` re-bind any instance reporting `HasBoundCharges == false`.
+
+Querying a skill that has never been cast returns a **full** pool (`1/1`, `2/2`),
+not a failure — the pool is created on demand.
+
+### Time base and persistence
+
+Charges use `Time.time`, so they keep ticking through the custom world-slow used
+by hitlag and skill cutscenes and only stop on a real pause. State lives in
+`CharacterSkillManager`, so it survives room transitions.
+
+Charges are **not** written to save data. `CharacterSkillManager.OnLoad` calls
+`ResetAllChargesToFull()` before rebuilding runtime skills, so a loaded run
+always starts with full pools.
+
+`SkillInstance.TryGetChargeStatus` returns a `SkillChargeStatus` for UI.
+`ignoreResourceCosts` and `stampCooldown: false` paths keep their existing
+behavior.

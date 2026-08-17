@@ -317,12 +317,12 @@ GameObject:
   - component: {fileID: 1585247101988985248}
   - component: {fileID: 7154190368743996575}
   - component: {fileID: 755043487724053691}
+  - component: {fileID: 326389343436592710}
   - component: {fileID: 4606287451783796443}
   - component: {fileID: 4366097613187803013}
   - component: {fileID: 5879616477380449198}
   - component: {fileID: 1083789899064408605}
   - component: {fileID: 3831703666553802021}
-  - component: {fileID: 326389343436592710}
   - component: {fileID: 3342626190752721586}
   - component: {fileID: 3000000000000000012}
   - component: {fileID: 8931517866212768726}
@@ -424,6 +424,57 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &326389343436592710
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2275044329717223576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a90341c7b794bac8477ef907fb25717, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  baseStats: {fileID: 0}
+  currentWeapon: {fileID: 11400000, guid: bb67bf88d3f3a1f429b7e329d23582ca, type: 2}
+  stateHub: {fileID: 4366097613187803013}
+  StatsHub: {fileID: 4606287451783796443}
+  CombatEventBus: {fileID: 2948696378916355059}
+  rb: {fileID: 755043487724053691}
+  cc: {fileID: 7154190368743996575}
+  TargetInfo: {fileID: 4934957585661581971}
+  Equipment: {fileID: 0}
+  AccessoryLoadout: {fileID: 0}
+  WeaponSystem: {fileID: 6987636084120509540}
+  AnimBrain: {fileID: 6756038978356485017}
+  AnimDriver: {fileID: 2705162881607156007}
+  PairOffsetApplier: {fileID: 6927647070226357498}
+  MeleeController: {fileID: 3848525355350381702}
+  AimRig: {fileID: 3831703666553802021}
+  CharacterLoad: {fileID: 0}
+  Visual: {fileID: 5135303409400166651}
+  UIManager: {fileID: 0}
+  ColliderRefs: {fileID: 0}
+  StatusEffects: {fileID: 1083789899064408605}
+  levelSystem: {fileID: 0}
+  HealthSystem: {fileID: 6287199331293476412}
+  StaminaSystem: {fileID: 4917278530332384066}
+  DashSystem: {fileID: 6582203035813745574}
+  KnockbackMotor: {fileID: 5866700442643536325}
+  PassiveController: {fileID: 0}
+  ActiveSkillProgress: {fileID: 0}
+  EnegySystem: {fileID: 3091736426749422193}
+  Interactor: {fileID: 0}
+  SkillManager: {fileID: 3385807349592701744}
+  moveInput: {x: 0, y: 0}
+  lookInput: {x: 0, y: 0}
+  mobility: 0
+  summonedRuntime: {fileID: 3342626190752721586}
+  AITargetSensor: {fileID: 4555766906707524166}
+  Agent: {fileID: 1585247101988985248}
+  AgentMoveDriver: {fileID: 4358868359549360660}
+  BehaviorTree: {fileID: 5606255429377701377}
 --- !u!114 &4606287451783796443
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -561,57 +612,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterContext: {fileID: 326389343436592710}
   blendSpeed: 12
---- !u!114 &326389343436592710
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2275044329717223576}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5a90341c7b794bac8477ef907fb25717, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  baseStats: {fileID: 0}
-  currentWeapon: {fileID: 11400000, guid: bb67bf88d3f3a1f429b7e329d23582ca, type: 2}
-  stateHub: {fileID: 4366097613187803013}
-  StatsHub: {fileID: 4606287451783796443}
-  CombatEventBus: {fileID: 2948696378916355059}
-  rb: {fileID: 755043487724053691}
-  cc: {fileID: 7154190368743996575}
-  TargetInfo: {fileID: 4934957585661581971}
-  Equipment: {fileID: 0}
-  AccessoryLoadout: {fileID: 0}
-  WeaponSystem: {fileID: 6987636084120509540}
-  AnimBrain: {fileID: 6756038978356485017}
-  AnimDriver: {fileID: 2705162881607156007}
-  PairOffsetApplier: {fileID: 6927647070226357498}
-  MeleeController: {fileID: 3848525355350381702}
-  AimRig: {fileID: 3831703666553802021}
-  CharacterLoad: {fileID: 0}
-  Visual: {fileID: 5135303409400166651}
-  UIManager: {fileID: 0}
-  ColliderRefs: {fileID: 0}
-  StatusEffects: {fileID: 1083789899064408605}
-  levelSystem: {fileID: 0}
-  HealthSystem: {fileID: 6287199331293476412}
-  StaminaSystem: {fileID: 4917278530332384066}
-  DashSystem: {fileID: 6582203035813745574}
-  KnockbackMotor: {fileID: 5866700442643536325}
-  PassiveController: {fileID: 0}
-  ActiveSkillProgress: {fileID: 0}
-  EnegySystem: {fileID: 3091736426749422193}
-  Interactor: {fileID: 0}
-  SkillManager: {fileID: 3385807349592701744}
-  moveInput: {x: 0, y: 0}
-  lookInput: {x: 0, y: 0}
-  mobility: 0
-  summonedRuntime: {fileID: 3342626190752721586}
-  AITargetSensor: {fileID: 4555766906707524166}
-  Agent: {fileID: 1585247101988985248}
-  AgentMoveDriver: {fileID: 4358868359549360660}
-  BehaviorTree: {fileID: 5606255429377701377}
 --- !u!114 &3342626190752721586
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -637,6 +637,8 @@ MonoBehaviour:
   healPower: 0
   areaRadius: 0
   effectDuration: 0
+  maxHealth: 0
+  upgradeIds: []
 --- !u!114 &3000000000000000012
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -922,7 +924,7 @@ MonoBehaviour:
       m_ValueHashes: 
       m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278927dafeacd28e0b00
       m_ValuePositions: 00000000060000000600000007000000
-      m_Values: 706c6179657202ffffffff
+      m_Values: 706c6179657202ffffff00
       m_UnityObjects: []
       m_Version: 3.4
     - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Single,
@@ -933,14 +935,13 @@ MonoBehaviour:
       m_Values: 666f6c6c6f77204d6178020000a040
       m_UnityObjects: []
       m_Version: 3.4
-    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Boolean,
-        mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
+    - m_ObjectType: 
       m_ValueHashes: 
-      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427894886ea0b921c56fa
-      m_ValuePositions: 00000000080000000800000009000000
-      m_Values: 496e436f6d6261740200
+      m_LongValueHashes: 
+      m_ValuePositions: 
+      m_Values: 
       m_UnityObjects: []
-      m_Version: 3.4
+      m_Version: 
     m_DisabledEventNodesData: []
     m_DisabledLogicNodesData: []
     m_UniqueID: -1013523439
@@ -1358,7 +1359,7 @@ MonoBehaviour:
     shotCounter: 0
     currentMagazine: -1
     currentReserveAmmo: -1
-    reserveAmmoInitialized: 0
+    reserveAmmoInitialized: 1
     upgradeLevel: 0
     upgradeTier: 0
     upgradeExp: 0

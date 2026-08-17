@@ -583,6 +583,67 @@ payload. Use the component controls to create a template, load the inline layout
 save the edited hierarchy back into the skill, and validate group keys and
 shape values.
 
+## Barrier Prefab Authoring
+
+`Assets/Prefab/Combat/BarrierRuntime.prefab` is the project-owned barrier
+prefab referenced by `BarrierSkillPayloadDef`.
+
+Required structure:
+
+- **Root** — on the `Barrier` physics layer (index 20), carrying:
+  - `SphereCollider` with `isTrigger = true`. Its radius is driven at runtime,
+    so the authored value only matters in the Scene view.
+  - `BarrierRuntime`, with `barrierCollider` and `presentationRoot` assigned.
+- **`Presentation`** child — scaled at runtime to match the barrier diameter,
+  carrying:
+  - `BarrierVfxPresenter` — hit pulse and end animation. It finds its barrier in
+    `Awake` via `GetComponentInParent`; call `Bind(BarrierRuntime)` explicitly if
+    you construct the hierarchy yourself (Edit Mode never runs `Awake`).
+  - `WorldTimeScaledVfx` — keeps the particles on the world clock so the shield
+    slows with the barrier under world-slow.
+  - The shield VFX (`Shield_gold.prefab`) nested as a **prefab instance**; the
+    third-party asset is never edited in place.
+
+When the barrier ends, the gameplay collider is disabled and the runtime root is
+destroyed in the same frame. `BarrierVfxPresenter` reparents itself to the scene
+root first so the break or fade can finish, then destroys itself — a broken
+barrier plays a short scale-up with emission stopped, an expired or anchor-lost
+one collapses instead. Nothing is left orphaned, because the presenter owns its
+own teardown and the shield instance is its child.
+
+If the prefab is not on the `Barrier` layer, projectiles will pass straight
+through it. The Barrier payload's designer descriptor reports this as a blocking
+authoring error.
+
+> `Barrier` must stay at layer index 20 with a collision matrix that allows it to
+> collide only with `PlayerBullet` and `EnemyBullet`. See
+> [Projectile Barriers](SYSTEMS/WEAPON_SYSTEM.md#projectile-barriers).
+
+## Summon Prefab Max HP
+
+When a summon payload has `overrideMaxHealth` enabled, the resolved max HP
+reaches the summon as a **flat `StatType.MaxHP` modifier**. The summon prefab's
+own base max HP must therefore be authored to `0`, or it will be added on top of
+the intended value.
+
+## Skill Charge HUD Authoring
+
+`UI_Manager.prefab` → `PlayerHUD` carries two widget groups, both bound
+automatically by `PlayerUIRuntimeBinder`:
+
+- **`SkillChargeHud`** — one `Slot{n}` child per command slot, each with an
+  `ActiveSkillChargePresenter`. Set `commandSlotIndex` to the index into
+  `CharacterSkillManager.CommandSlots`. Assign `root` to the child `View` object
+  (never the presenter's own GameObject, or it would disable itself), plus
+  `chargeLabel`, `cooldownFill`, and `availabilityGroup`. The label is hidden
+  automatically while the skill only has one charge.
+- **`SkillCastFeedback`** — a `SkillCastFeedbackPresenter` that shows the
+  player-facing line from `CastExecutionFailed` (for example
+  `"Cannot deploy here"`). Assign `root`, `messageLabel`, and `fadeGroup`.
+
+To add a new presenter of either kind, drop it anywhere under the player UI root
+— the binder finds them with `GetComponentsInChildren`, including inactive ones.
+
 ## Morph Skill Authoring
 
 Morph / Awakening skills use `MorphSkillPayloadDef` as the embedded execution
@@ -1616,8 +1677,10 @@ Presentation receivers can therefore finish VFX or callback work.
 
 Mobile prefabs require `NavMeshAgent` and `AgentMoveDriver`. Stationary prefabs
 require `CharacterColliderRefs.CharacterPositionCollider` with a supported
-Box, Capsule, or Sphere collider. Do not add player/ally/enemy party modules,
-persistent progression, inventory, input, or helper-command components.
+Box, Capsule, or Sphere collider. A stationary prefab with a solid collider must
+use a kinematic `Rigidbody` (or no `Rigidbody`) so moving actors cannot push it.
+Do not add player/ally/enemy party modules, persistent progression, inventory,
+input, or helper-command components.
 
 Use **Tools > RB > Summoning > Validate All Summon Prefabs** after authoring.
 The validator also rejects nested summon-skill references that would create
@@ -1637,10 +1700,40 @@ callbacks/VFX under the separate Presentation Root.
 `Assets/Prefab/Player/MinigunTerret_Summon.prefab` is the stationary Feno turret
 variant. It inherits `SummonBase`, nests `MinigunTerret 1` under the
 Presentation Root, and uses the inherited stationary footprint collider from
-`SummonBase`. The variant disables navigation and mobile AI components and intentionally
-does not bind weapon, targeting, firing, or turret-rotation control logic; this
-first version only makes the turret visual spawnable. Rotation authored on the
-turret asset remains owned by the turret authoring workflow.
+`SummonBase`. The variant disables navigation and mobile AI components.
+
+Targeting and rotation ARE wired up: the `AI System/BehaviorTree` component's
+`Subtree` is overridden to `Assets/Scripts/AI/MinigunTerretAI.asset` (a
+turret-only tree derived from `AllyAI.asset`, with the navigation/follow
+branches removed and `AiRotateToTarget` driving the `Row` bone instead of
+`TargetOrbitNavMesh`/`AiShoot`). Because `Row` lives inside the nested
+`MinigunTerret_Visual` prefab instance, its `RotateRoot` binding is set as a
+`SharedVariable` override directly on the `BehaviorTree` component's data
+(not in the shared subtree asset — Unity does not allow reparenting an
+existing object across a nested-prefab-instance boundary in Prefab Mode, so
+this is the override point instead). `CharacterVisualController.firePointBoneName`
+is overridden to `Row` (offset zeroed) so `FirePoint` is reparented onto the
+turret bone at runtime and stays aligned with the barrel's rotation.
+
+`CharacterVisualController.buildModelAutomatically` is overridden to `false`
+on this prefab. `SummonBase` defaults it to `true`, which tries to build the
+visual model at runtime from `baseStats.CharacterPrefab` — this summon has no
+such stats entry, so that path silently no-ops (`Awake`/`Start` call it with
+`silent: true`) and `_currentModel` never gets set. Since `AttachFirePointToModelBone`
+and `CreateHealthBarOnModelBone` both bail out early when `_currentModel` is
+null, leaving `buildModelAutomatically` at its inherited `true` value means
+`firePointBoneName`/`healthBarBoneName` never take effect and `FirePoint`
+stays parented wherever `ThirdPersonAimRigController` first wraps it
+(typically `GameplayRoot`, not the turret bone) — the turret visually rotates
+but the fire point silently doesn't follow. With it `false`, the controller
+instead resolves the already-authored `MinigunTerret_Visual` via
+`SetupExistingModel`/`ResolveExistingModelObject`, which is what actually
+lets the bone-name overrides take effect. Any other prefab that authors its
+visual model directly in the prefab (rather than spawning it from
+`baseStats.CharacterPrefab`) needs this same override.
+
+Actual weapon firing (ammo, fire-rate, projectile spawn) remains unimplemented
+— only targeting and rotation are authored here.
 
 `Assets/Data/Skills/Feno/Feno.Skill_MinigunTerret.asset` is assigned to Feno's
 slot 2. It requests one stationary summon at the caster-forward offset

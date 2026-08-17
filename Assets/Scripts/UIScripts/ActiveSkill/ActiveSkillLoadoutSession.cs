@@ -209,6 +209,60 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
         return instance.GetFinalStats(null);
     }
 
+    /// <summary>
+    /// Summon-side preview for the node detail panel. These values are not part of
+    /// <see cref="FinalSkillStats"/> — the summon payload resolves them at cast time from the
+    /// upgrade snapshot — so they are recomputed here with the same formulas.
+    /// </summary>
+    public SkillSummonPreview BuildSummonPreview(int slotIndex, int optionIndex, SkillUpgradeNodeData proposedNode = null)
+    {
+        if (!TryGetOption(slotIndex, optionIndex, out CharacterSkillLoadoutOption option) ||
+            option.ActiveSkillAsset == null ||
+            !option.ActiveSkillAsset.TryFindPayload(out SummonSkillPayloadDef summon))
+        {
+            return default;
+        }
+
+        TryResolveTree(slotIndex, optionIndex, out string slotId, out string optionId, out SkillUpgradeTreeDefinition tree);
+        SkillUpgradeStatSnapshot snapshot = tree != null
+            ? _model.BuildSnapshot(slotId, optionId, tree, out _)
+            : new SkillUpgradeStatSnapshot();
+
+        if (proposedNode != null)
+            snapshot.AddNode(proposedNode);
+
+        int cap = summon.PerSkillCap;
+        if (snapshot.TryGetAggregate(StatType.SummonCap, out float capAdd, out float capMul))
+            cap = Mathf.FloorToInt((cap + capAdd) * capMul + 0.5f);
+        cap = Mathf.Max(1, cap);
+
+        if (!summon.OverrideMaxHealth)
+            return new SkillSummonPreview(true, false, 0f, cap);
+
+        // Owner max HP is only knowable at runtime, so the lobby shows the cap alone rather than
+        // a health number that would be wrong once the character is in a run.
+        float ownerMaxHealth = ResolveOwnerMaxHealth();
+        if (ownerMaxHealth <= 0f)
+            return new SkillSummonPreview(true, false, 0f, cap);
+
+        float health = summon.BaseMaxHealth + ownerMaxHealth * summon.OwnerMaxHealthShare;
+        if (snapshot.TryGetAggregate(StatType.SummonMaxHP, out float hpAdd, out float hpMul))
+            health = (health + hpAdd) * hpMul;
+
+        return new SkillSummonPreview(true, true, Mathf.Max(1f, health), cap);
+    }
+
+    float ResolveOwnerMaxHealth()
+    {
+        if (_runtimeContext == null)
+            return 0f;
+
+        _runtimeContext.ResolveReferences();
+        return _runtimeContext.StatsHub != null
+            ? Mathf.Max(0f, _runtimeContext.StatsHub.GetMaximumHealth())
+            : 0f;
+    }
+
     public void Dispose()
     {
         if (_runtimeProgress != null)

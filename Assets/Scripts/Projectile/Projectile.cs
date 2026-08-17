@@ -6,7 +6,7 @@ using VHierarchy.Libs;
  //todo funtion destoy opgject ของ parjectile class กับ model ทำงานทับกันอยู่
 
 [RequireComponent(typeof(Rigidbody), typeof(Collider))]
-public class Projectile : MonoBehaviour
+public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
 {
     [Header("Config")]
     public ProjectileConfig config;
@@ -75,6 +75,12 @@ public class Projectile : MonoBehaviour
 
     // prevent multiple AoE explosions
     bool _areaExploded;
+
+    /// <summary>
+    /// True once this projectile has burst. Modules use it to tell an area-damage callback apart
+    /// from a direct hit, since both arrive through OnDamageApplied.
+    /// </summary>
+    public bool AreaExploded => _areaExploded;
 
     public Vector3 Direction => _ctx.dir;
 
@@ -350,6 +356,12 @@ public class Projectile : MonoBehaviour
             if (sweepDist > 0.001f)
             {
                 Vector3 sweepDir = sweepVel.normalized;
+
+                // Barrier before wall: a fast projectile must not tunnel past the barrier trigger
+                // and only get caught by the geometry behind it.
+                if (ProjectileBarrierGate.TrySweepBlock(this, _rb.position, GetSweepRadius(), sweepDir, sweepDist))
+                    return;
+
                 if (TrySweepWallHit(sweepDir, sweepDist))
                     return;
             }
@@ -366,9 +378,44 @@ public class Projectile : MonoBehaviour
         SetRbVelocity(vel);
     }
 
+    // ===== Barrier =====
+
+    GameObject IBarrierBlockableProjectile.BarrierSourceActor =>
+        _ctx.sourceActor != null ? _ctx.sourceActor.gameObject : null;
+
+    Vector3 IBarrierBlockableProjectile.BarrierSpawnPosition => _spawnPos;
+
+    Vector3 IBarrierBlockableProjectile.BarrierTravelDirection => _ctx.dir;
+
+    float IBarrierBlockableProjectile.GetBarrierImpactDamage()
+    {
+        // Range falloff and crit apply; the barrier has no armor and no hit zones.
+        DamageCalculationResult calculation = DamageCalculator.CalculateDamage(
+            gunType,
+            DistanceFromSpawn(),
+            _ctx.stats.damage,
+            critRate,
+            critMult,
+            targetArmor: 0f);
+
+        return calculation.Damage;
+    }
+
+    void IBarrierBlockableProjectile.OnBlockedByBarrier(in BarrierBlockContext context)
+    {
+        // A blocked shot is consumed silently: no OnHit, no status, no explosion, no split/chain,
+        // and no gameplay hit VFX. The barrier owns the feedback for this impact.
+        _areaExploded = true;
+        Despawn();
+    }
+
     void OnTriggerEnter(Collider other)
     {
         if (_isDespawning || _requestedExpire || _requestedDespawnThisHit)
+            return;
+
+        // Checked before walls, AoE, damage, and module callbacks.
+        if (ProjectileBarrierGate.TryBlock(this, other))
             return;
 
         if (MeleeController.IsCombatOnlyHitbox(other))
@@ -376,7 +423,7 @@ public class Projectile : MonoBehaviour
 
         if (IsFriendlyCollider(other))
             return;
-        
+
         if (_ignoredRootIds.Contains(other.transform.root.GetInstanceID()))
             return;
 

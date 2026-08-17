@@ -43,7 +43,7 @@
                 "xp": 0,
                 "unlocked": false,
                 "selectedSkillOptions": [],
-                "activeSkillPoints": 24,
+                "activeSkillPoints": 20,
                 "activeSkillProgressInitialized": true,
                 "activeSkillTrees": [
                     {
@@ -69,6 +69,29 @@
                             },
                             {
                                 "nodeId": "atk_up",
+                                "paidCost": 1
+                            }
+                        ]
+                    },
+                    {
+                        "slotId": "2",
+                        "optionId": "feno.skill.minigunterret",
+                        "treeId": "Feno.Skill_MinigunTerret_Tree",
+                        "unlockedNodes": [
+                            {
+                                "nodeId": "calibrated_weapon",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "extended_deployment",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "reinforced_chassis",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "part_c",
                                 "paidCost": 1
                             }
                         ]

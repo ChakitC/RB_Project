@@ -39,6 +39,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     public event Action<ActiveSkillCastInfo> CastStarted;
     public event Action<ActiveSkillCastInfo> CastReleased;
     public event Action<ActiveSkillCastInfo, SkillCastCancelReason> CastCancelled;
+
+    /// <summary>Raised when a payload ran but produced nothing, so the cast cost nothing.</summary>
+    public event Action<ActiveSkillCastInfo, SkillExecutionResult> CastExecutionFailed;
     public event Action PassiveLoadoutChanged;
 
     [Header("Autonomous Loadout")]
@@ -138,6 +141,11 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     public void OnLoad(GameSaveData data)
     {
         CacheReferences();
+
+        // Charges are deliberately not persisted, so a loaded run always starts with full pools.
+        EnsureCastOrchestrator();
+        castOrchestrator.ResetAllChargesToFull();
+
         RebuildResolvedCommandSlots();
     }
 
@@ -206,6 +214,23 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
                !IsSkillStartBlockedByAnimation() &&
                !IsSkillUseBlocked() &&
                slot.runtimeSkill.CanCast(skillUser);
+    }
+
+    /// <summary>
+    /// Charge readout for a command slot, taken from the same shared pool the cast path spends
+    /// from. A slot whose skill has never been cast reports a full pool, not "unknown".
+    /// </summary>
+    public bool TryGetSlotChargeStatus(int slotIndex, out SkillChargeStatus status)
+    {
+        status = default;
+        CacheReferences();
+
+        if (!TryGetCommandSlot(slotIndex, out SkillSlot slot) || skillUser == null)
+            return false;
+
+        EnsureCommandRuntimeSkill(slot);
+        return slot.runtimeSkill != null &&
+               slot.runtimeSkill.TryGetChargeStatus(skillUser, out status);
     }
 
     public bool TrySelectSkillOption(int slotIndex, int optionIndex, bool persist = true)
@@ -567,15 +592,31 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return CreateRuntimeSkill(asset);
     }
 
-    private static SkillInstance CreateRuntimeSkill(
+    private SkillInstance CreateRuntimeSkill(
         SkillGemDefinition asset,
         SkillUpgradeStatSnapshot upgradeSnapshot = null)
     {
-        return new SkillInstance
+        var instance = new SkillInstance
         {
             def = asset,
             upgradeSnapshot = upgradeSnapshot,
         };
+
+        BindSharedCharges(instance);
+        return instance;
+    }
+
+    /// <summary>
+    /// Every runtime skill for the same definition shares one charge pool, so two loadout slots
+    /// holding the same skill draw from — and display — the same charges.
+    /// </summary>
+    private void BindSharedCharges(SkillInstance instance)
+    {
+        if (instance == null || instance.def == null)
+            return;
+
+        EnsureCastOrchestrator();
+        instance.BindCharges(castOrchestrator.GetOrCreateCharges(instance.def));
     }
 
     private bool TryGetCommandSlot(int slotIndex, out SkillSlot slot)
@@ -646,7 +687,13 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
 
         if (slot.runtimeSkill != null && slot.runtimeSkill.def == slot.skillAsset)
+        {
+            // SkillSlot.runtimeSkill is Unity-serialized, so a prefab can hand us an instance that
+            // never went through CreateRuntimeSkill and therefore has no shared pool yet.
+            if (!slot.runtimeSkill.HasBoundCharges)
+                BindSharedCharges(slot.runtimeSkill);
             return;
+        }
 
         slot.runtimeSkill = BuildRuntimeSkill(slot, slot.skillAsset);
     }
@@ -663,7 +710,11 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
 
         if (entry.runtimeSkill != null && entry.runtimeSkill.def == entry.skillAsset)
+        {
+            if (!entry.runtimeSkill.HasBoundCharges)
+                BindSharedCharges(entry.runtimeSkill);
             return;
+        }
 
         entry.runtimeSkill = BuildRuntimeSkill(entry, entry.skillAsset);
     }
@@ -1136,6 +1187,12 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         castOrchestrator.CastStarted += OnCastStarted;
         castOrchestrator.CastReleased += OnCastReleased;
         castOrchestrator.CastCancelled += OnCastCancelled;
+        castOrchestrator.CastExecutionFailed += OnCastExecutionFailed;
+    }
+
+    private void OnCastExecutionFailed(ActiveSkillCastInfo castInfo, SkillExecutionResult result)
+    {
+        CastExecutionFailed?.Invoke(castInfo, result);
     }
 
     private void OnCastStarted(ActiveSkillCastInfo castInfo)
@@ -1408,7 +1465,11 @@ public sealed class SkillCastOrchestrator
     }
 
     private readonly Component owner;
-    private readonly Dictionary<SkillGemDefinition, float> sharedCooldownReadyAt = new Dictionary<SkillGemDefinition, float>();
+
+    // Charge pool shared by every slot that points at the same skill definition. A skill with
+    // baseMaxCharges = 1 behaves exactly like the single shared cooldown this replaced.
+    private readonly Dictionary<SkillGemDefinition, SkillChargeState> sharedCharges =
+        new Dictionary<SkillGemDefinition, SkillChargeState>();
 
     private PendingCastContext pendingCast;
     private int nextCastRequestId = 1;
@@ -1424,6 +1485,12 @@ public sealed class SkillCastOrchestrator
     public event Action<ActiveSkillCastInfo> CastStarted;
     public event Action<ActiveSkillCastInfo> CastReleased;
     public event Action<ActiveSkillCastInfo, SkillCastCancelReason> CastCancelled;
+
+    /// <summary>
+    /// The payload ran but produced no gameplay effect, so nothing was committed: no energy,
+    /// no charge, no cooldown. Presenters use this to explain the refusal to the player.
+    /// </summary>
+    public event Action<ActiveSkillCastInfo, SkillExecutionResult> CastExecutionFailed;
 
     public void Tick()
     {
@@ -1585,10 +1652,7 @@ public sealed class SkillCastOrchestrator
         if (request.IgnoreResourceCosts)
             return true;
 
-        if (!runtimeSkill.CanCast(skillUser, out FinalSkillStats castStats))
-            return false;
-
-        return IsSharedCooldownReady(runtimeSkill, castStats);
+        return runtimeSkill.CanCast(skillUser, out _);
     }
 
     private bool TryReleaseCast(
@@ -1614,26 +1678,64 @@ public sealed class SkillCastOrchestrator
                 skillUser,
                 executionAnimBrain,
                 requestId,
-                request.StampCooldown);
+                request.StampCooldown,
+                out SkillExecutionResult freeCastResult);
 
             if (executedIgnoringCosts)
                 PlayCastCue(runtimeSkill, skillUser);
+            else
+                RaiseExecutionFailed(request, requestId, runtimeSkill, skillUser, executionAnimDriver, freeCastResult);
 
             return executedIgnoringCosts;
         }
 
-        if (!runtimeSkill.CanCast(skillUser, out FinalSkillStats castStats))
+        // CanCast already reads the shared pool this instance is bound to, so there is no second
+        // readiness check and no second deduction — SkillInstance is the only place a charge is
+        // ever spent.
+        if (!runtimeSkill.CanCast(skillUser, out _))
             return false;
 
-        if (!IsSharedCooldownReady(runtimeSkill, castStats))
+        if (!runtimeSkill.Cast(skillUser, executionAnimBrain, requestId, out SkillExecutionResult castResult))
+        {
+            RaiseExecutionFailed(request, requestId, runtimeSkill, skillUser, executionAnimDriver, castResult);
             return false;
+        }
 
-        if (!runtimeSkill.Cast(skillUser, executionAnimBrain, requestId))
-            return false;
-
-        StampSharedCooldown(runtimeSkill, castStats);
         PlayCastCue(runtimeSkill, skillUser);
         return true;
+    }
+
+    private void RaiseExecutionFailed(
+        in SkillCastRequest request,
+        int requestId,
+        SkillInstance runtimeSkill,
+        ISkillUser skillUser,
+        CharacterAnimDriver animationDriver,
+        SkillExecutionResult result)
+    {
+        if (result.Success)
+            return;
+
+        SkillGemDefinition skillDef = runtimeSkill != null ? runtimeSkill.def : null;
+        if (!string.IsNullOrEmpty(result.DebugMessage))
+        {
+            Debug.Log(
+                $"[SkillCast] '{(skillDef != null ? skillDef.name : "<unknown>")}' produced no effect ({result.Reason}): {result.DebugMessage}",
+                owner);
+        }
+
+        CastExecutionFailed?.Invoke(
+            new ActiveSkillCastInfo(
+                requestId,
+                runtimeSkill,
+                skillDef,
+                skillUser,
+                animationDriver,
+                skillDef != null ? skillDef.GetCastPointNormalized() : 0f,
+                released: true,
+                requiresTimelineEvents: false,
+                request.DebugSource),
+            result);
     }
 
     private bool ReleasePendingCast(int requestId)
@@ -1715,21 +1817,30 @@ public sealed class SkillCastOrchestrator
         return request.CanProceed == null || request.CanProceed();
     }
 
-    private bool IsSharedCooldownReady(SkillInstance skill, FinalSkillStats stats)
+    /// <summary>
+    /// The one charge pool for this definition on this character. Created on demand and always
+    /// non-null for a real definition, so a skill that has never been cast reads as full rather
+    /// than as "unknown".
+    /// </summary>
+    public SkillChargeState GetOrCreateCharges(SkillGemDefinition skillDef)
     {
-        if (skill == null || skill.def == null)
-            return true;
+        if (skillDef == null)
+            return null;
 
-        if (!sharedCooldownReadyAt.TryGetValue(skill.def, out float readyAt))
-            return true;
-
-        if (Time.time >= readyAt)
+        if (!sharedCharges.TryGetValue(skillDef, out SkillChargeState charges))
         {
-            sharedCooldownReadyAt.Remove(skill.def);
-            return true;
+            charges = new SkillChargeState();
+            sharedCharges[skillDef] = charges;
         }
 
-        return false;
+        return charges;
+    }
+
+    /// <summary>Refills every pool. Used on load, where charges are deliberately not persisted.</summary>
+    public void ResetAllChargesToFull()
+    {
+        foreach (KeyValuePair<SkillGemDefinition, SkillChargeState> pair in sharedCharges)
+            pair.Value?.ResetToFull();
     }
 
     private void StampCooldownForBlockedPreCast(PendingCastContext context, SkillCastCancelReason reason)
@@ -1746,23 +1857,19 @@ public sealed class SkillCastOrchestrator
             return;
         }
 
-        if (context.RuntimeSkill.TryStampCooldownOnly(context.SkillUser, out FinalSkillStats stats))
-            StampSharedCooldown(context.RuntimeSkill, stats);
+        // Summon-style skills deploy something into the world. Being interrupted before the cast
+        // point means nothing was deployed, so the cast must cost nothing at all. Every other
+        // skill keeps the existing rule where a blocked pre-cast still burns its cooldown.
+        if (IsSummonSkill(context.SkillDef))
+            return;
+
+        // Consumes the shared pool through the instance — the single deduction site.
+        context.RuntimeSkill.TryStampCooldownOnly(context.SkillUser, out _);
     }
 
-    private void StampSharedCooldown(SkillInstance skill, FinalSkillStats stats)
+    private static bool IsSummonSkill(SkillGemDefinition skillDef)
     {
-        if (skill == null || skill.def == null)
-            return;
-
-        float cooldown = stats != null ? Mathf.Max(0f, stats.cooldown) : 0f;
-        if (cooldown <= 0f)
-        {
-            sharedCooldownReadyAt.Remove(skill.def);
-            return;
-        }
-
-        sharedCooldownReadyAt[skill.def] = Time.time + cooldown;
+        return skillDef != null && (skillDef.tags & SkillTag.Minion) != 0;
     }
 
     private int ResolveRequestId(int requestedId)

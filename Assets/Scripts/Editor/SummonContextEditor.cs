@@ -7,7 +7,7 @@ public sealed class SummonContextEditor : Editor
 {
     static readonly string[] HiddenInheritedFields =
     {
-        "baseStats", "currentWeapon", "CharacterLoad", "Equipment", "AccessoryLoadout",
+        "currentWeapon", "CharacterLoad", "Equipment", "AccessoryLoadout",
         "WeaponSystem", "AnimBrain", "AnimDriver", "PairOffsetApplier", "MeleeController",
         "AimRig", "UIManager", "StatusEffects", "levelSystem", "StaminaSystem", "DashSystem",
         "KnockbackMotor", "PassiveController", "ActiveSkillProgress", "EnegySystem", "Interactor",

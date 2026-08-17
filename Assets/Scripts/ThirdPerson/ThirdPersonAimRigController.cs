@@ -10,8 +10,8 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
     [SerializeField, Min(0f)] private float blendSpeed = 12f;
 
     Animator animator;
-    Transform spine;
-    Transform chest;
+    [SerializeField] Transform spine;
+    [SerializeField] Transform chest;
     Transform upperChest;
     Transform firePoint;
     Transform firePointSourceParent;

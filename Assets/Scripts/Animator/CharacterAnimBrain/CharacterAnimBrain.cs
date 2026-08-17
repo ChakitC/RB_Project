@@ -23,6 +23,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     [Header("Core")]
     [SerializeField] private AnimancerComponent animancer;
     [SerializeField] private CharacteContext ctx;
+    [Tooltip("ใช้แทน baseStats.animProfile สำหรับตัวละครที่ไม่มี CharacterStats เช่น summon/turret")]
+    [SerializeField] private CharacterAnimProfileSO inspectorAnimProfile;
     [Header("Chain")]
     [SerializeField, Min(0.05f)] private float chainPlaybackWatchdogGraceSeconds = 0.15f;
     [SerializeField] private bool useRootMotionForChainPlayback;
@@ -442,6 +444,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private void Awake()
     {
         ResolveReferences();
+
+        if (inspectorAnimProfile != null)
+            SetAnimProfileOverride(inspectorAnimProfile);
     }
 
     private void ResolveReferences()

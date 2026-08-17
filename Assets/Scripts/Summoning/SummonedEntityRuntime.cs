@@ -21,6 +21,8 @@ public sealed class SummonedEntityRuntime : MonoBehaviour, IStatModifierProvider
     [SerializeField] private float healPower;
     [SerializeField] private float areaRadius;
     [SerializeField] private float effectDuration;
+    [SerializeField] private float maxHealth;
+    [SerializeField] private List<string> upgradeIds = new();
 
     SummonController controller;
     SummonDespawnReason despawnReason;
@@ -41,7 +43,30 @@ public sealed class SummonedEntityRuntime : MonoBehaviour, IStatModifierProvider
     public float HealPower => healPower;
     public float AreaRadius => areaRadius;
     public float EffectDuration => effectDuration;
+
+    /// <summary>Snapshotted max HP from the summoning payload, or 0 when the prefab keeps its own.</summary>
+    public float MaxHealth => maxHealth;
+
     public CombatAttributionSnapshot Attribution { get; private set; }
+
+    /// <summary>
+    /// Upgrade IDs the owner held at cast time. Summon-side modules gate on these instead of
+    /// reaching back into the owner's live Active Skill selection.
+    /// </summary>
+    public bool HasUpgrade(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id) || upgradeIds == null)
+            return false;
+
+        string trimmed = id.Trim();
+        for (int i = 0; i < upgradeIds.Count; i++)
+        {
+            if (string.Equals(upgradeIds[i], trimmed, StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
+    }
     public SummonLifecycleState LifecycleState => lifecycleState;
     public bool IsActive => lifecycleState == SummonLifecycleState.Active;
 
@@ -85,6 +110,8 @@ public sealed class SummonedEntityRuntime : MonoBehaviour, IStatModifierProvider
         healPower = Mathf.Max(0f, spawnContext.HealPower);
         areaRadius = Mathf.Max(0f, spawnContext.AreaRadius);
         effectDuration = Mathf.Max(0f, spawnContext.EffectDuration);
+        maxHealth = Mathf.Max(0f, spawnContext.MaxHealth);
+        CaptureUpgradeIds(spawnContext.UpgradeIds);
         lifecycleState = SummonLifecycleState.Active;
         initialized = true;
 
@@ -231,16 +258,47 @@ public sealed class SummonedEntityRuntime : MonoBehaviour, IStatModifierProvider
         controller?.NotifySummonDestroyed(this);
     }
 
-    public void AppendStatModifiers(List<RuntimeStatModifier> buffer)
+    void CaptureUpgradeIds(IReadOnlyList<string> ids)
     {
-        if (buffer == null || !initialized || lifecycleState == SummonLifecycleState.Destroyed ||
-            Mathf.Approximately(inheritedDamage, 0f))
+        upgradeIds ??= new List<string>();
+        upgradeIds.Clear();
+
+        if (ids == null)
             return;
 
-        buffer.Add(new RuntimeStatModifier(
-            StatType.Damage,
-            ModifierOp.Flat,
-            inheritedDamage,
-            $"summon:{GetInstanceID()}:damage"));
+        for (int i = 0; i < ids.Count; i++)
+        {
+            string id = ids[i];
+            if (string.IsNullOrWhiteSpace(id))
+                continue;
+
+            string trimmed = id.Trim();
+            if (!upgradeIds.Contains(trimmed))
+                upgradeIds.Add(trimmed);
+        }
+    }
+
+    public void AppendStatModifiers(List<RuntimeStatModifier> buffer)
+    {
+        if (buffer == null || !initialized || lifecycleState == SummonLifecycleState.Destroyed)
+            return;
+
+        if (!Mathf.Approximately(inheritedDamage, 0f))
+        {
+            buffer.Add(new RuntimeStatModifier(
+                StatType.Damage,
+                ModifierOp.Flat,
+                inheritedDamage,
+                $"summon:{GetInstanceID()}:damage"));
+        }
+
+        if (maxHealth > 0f)
+        {
+            buffer.Add(new RuntimeStatModifier(
+                StatType.MaxHP,
+                ModifierOp.Flat,
+                maxHealth,
+                $"summon:{GetInstanceID()}:maxhp"));
+        }
     }
 }

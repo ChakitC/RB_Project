@@ -45,6 +45,12 @@ public enum StatType
     MaxReserveAmmo,
     EffectDuration,
     HealPower,
+
+    // Appended only. Serialized skill/passive assets store these by index, so never reorder
+    // or insert above this line.
+    MaxCharges,
+    SummonMaxHP,
+    SummonCap,
 }
 
 // โมดิฟายค่า Stat แบบ generic

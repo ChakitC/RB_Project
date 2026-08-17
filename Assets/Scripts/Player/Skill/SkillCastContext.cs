@@ -15,6 +15,12 @@ public sealed class SkillCastContext
     public GameObject CasterObject { get; }
     public Transform CasterRoot { get; }
 
+    /// <summary>
+    /// Scratch space shared by every payload in this one cast. Later steps read what earlier
+    /// steps produced from here instead of searching the scene.
+    /// </summary>
+    public SkillCastExecutionState ExecutionState { get; } = new SkillCastExecutionState();
+
     public Vector3 CastPosition => CastOrigin != null ? CastOrigin.position : Vector3.zero;
 
     public bool HasUpgrade(string id) => Upgrades != null && Upgrades.HasUpgrade(id);

@@ -78,7 +78,9 @@ public sealed class ActiveSkillNodeDetailPanel : MonoBehaviour
         FinalSkillStats before,
         FinalSkillStats after,
         Action unlock,
-        PassiveDefinition passiveAsset = null)
+        PassiveDefinition passiveAsset = null,
+        SkillSummonPreview summonBefore = default,
+        SkillSummonPreview summonAfter = default)
     {
         if (node == null)
         {
@@ -96,7 +98,7 @@ public sealed class ActiveSkillNodeDetailPanel : MonoBehaviour
         if (requirementText != null)
             requirementText.text = BuildRequirementText(node, unlocked, reason);
         if (statPreviewText != null)
-            statPreviewText.text = BuildStatPreview(before, after);
+            statPreviewText.text = BuildStatPreview(before, after, summonBefore, summonAfter);
         if (unlockButton != null)
             unlockButton.interactable = canUnlock;
         if (unlockButtonText != null)
@@ -242,19 +244,35 @@ public sealed class ActiveSkillNodeDetailPanel : MonoBehaviour
         return builder.ToString();
     }
 
-    static string BuildStatPreview(FinalSkillStats before, FinalSkillStats after)
+    static string BuildStatPreview(
+        FinalSkillStats before,
+        FinalSkillStats after,
+        SkillSummonPreview summonBefore,
+        SkillSummonPreview summonAfter)
     {
         if (before == null || after == null)
             return string.Empty;
 
-        return
-            $"Damage {before.damage:0.##} > {after.damage:0.##}\n" +
-            $"Cooldown {before.cooldown:0.##}s > {after.cooldown:0.##}s\n" +
-            $"Cost {before.manaCost:0.##} > {after.manaCost:0.##}\n" +
-            $"Cast Time {before.castTime:0.##}s > {after.castTime:0.##}s\n" +
-            $"Radius {before.areaRadius:0.##} > {after.areaRadius:0.##}\n" +
-            $"Projectiles {before.projectileCount} > {after.projectileCount}\n" +
-            $"Crit {before.critChance:0.##}% > {after.critChance:0.##}%\n" +
-            $"Stagger {before.staggerPower:0.##} > {after.staggerPower:0.##}";
+        var builder = new StringBuilder();
+        builder.Append($"Damage {before.damage:0.##} > {after.damage:0.##}\n");
+        builder.Append($"Cooldown {before.cooldown:0.##}s > {after.cooldown:0.##}s\n");
+        builder.Append($"Charges {before.maxCharges} > {after.maxCharges}\n");
+        builder.Append($"Cost {before.manaCost:0.##} > {after.manaCost:0.##}\n");
+        builder.Append($"Cast Time {before.castTime:0.##}s > {after.castTime:0.##}s\n");
+        builder.Append($"Duration {before.effectDuration:0.##}s > {after.effectDuration:0.##}s\n");
+        builder.Append($"Radius {before.areaRadius:0.##} > {after.areaRadius:0.##}\n");
+        builder.Append($"Projectiles {before.projectileCount} > {after.projectileCount}\n");
+        builder.Append($"Crit {before.critChance:0.##}% > {after.critChance:0.##}%\n");
+        builder.Append($"Stagger {before.staggerPower:0.##} > {after.staggerPower:0.##}");
+
+        if (summonAfter.HasSummon)
+        {
+            if (summonBefore.HasMaxHealth && summonAfter.HasMaxHealth)
+                builder.Append($"\nSummon HP {summonBefore.MaxHealth:0.##} > {summonAfter.MaxHealth:0.##}");
+
+            builder.Append($"\nSummon Cap {summonBefore.Cap} > {summonAfter.Cap}");
+        }
+
+        return builder.ToString();
     }
 }

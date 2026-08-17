@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 9cceb6a6e314a92489ff2d040c0b7a1e
+guid: 740fcfa0691137349a5be6bda36fffe3
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -7,7 +7,7 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: M_HeavyMachineGun_01
+      name: WP_1
     second: {fileID: 2100000, guid: 06d30b5c2ea4fb84295e142c615bac2e, type: 2}
   materials:
     materialImportMode: 2

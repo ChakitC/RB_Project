@@ -1,5 +1,59 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7986071846455476544
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbae37aa949ca224d9e0fe8ea2f4e53d, type: 3}
+  m_Name: Barrier Execution
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  barrierPrefab: {fileID: 4774987225030075836, guid: ad9a25e74e814ce4aa4a39dae366f998, type: 3}
+  anchorMode: 1
+  useSkillAreaRadius: 1
+  fixedRadius: 2
+  useSkillEffectDuration: 1
+  fixedLifetime: 10
+  baseHealth: 0
+  anchorMaxHealthShare: 0.75
+--- !u!114 &-1258634666557999225
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1efc9a3026324a84da09f79a740fc6cf, type: 3}
+  m_Name: Composite Execution
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  steps:
+  - rid: 764561127316127858
+  - rid: 764561127316127859
+  references:
+    version: 2
+    RefIds:
+    - rid: 764561127316127858
+      type: {class: PayloadStep, ns: , asm: Assembly-CSharp}
+      data:
+        requiredUpgradeId: 
+        payload: {fileID: -648239105734612893}
+    - rid: 764561127316127859
+      type: {class: PayloadStep, ns: , asm: Assembly-CSharp}
+      data:
+        requiredUpgradeId: feno.skill.minigunterret.part_c.barrier
+        payload: {fileID: -7986071846455476544}
 --- !u!114 &-648239105734612893
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20,10 +74,15 @@ MonoBehaviour:
   fixedCount: 1
   useSkillProjectileCount: 0
   fixedLifetime: 10
-  useSkillEffectDuration: 0
+  useSkillEffectDuration: 1
   perSkillCap: 1
   damageInheritance: 1
   despawnDelay: 0.25
+  overrideMaxHealth: 1
+  baseMaxHealth: 200
+  ownerMaxHealthShare: 0.25
+  inheritedUpgradeIds:
+  - feno.skill.minigunterret.part_b.armor_piercing_rounds
   inheritHealPower: 1
   inheritAreaRadius: 1
   inheritEffectDuration: 1
@@ -69,15 +128,16 @@ MonoBehaviour:
   baseManaCost: 25
   baseCastTime: 0.35
   baseCooldown: 12
+  baseMaxCharges: 1
   baseCritChance: 0
   baseProjectilesCount: 1
   projectileSpeed: 0
   AreaofEffec: 0
-  baseRadius: 0
-  baseEffectDuration: 0
+  baseRadius: 3
+  baseEffectDuration: 10
   baseHealPower: 0
-  upgradeTree: {fileID: 0}
-  payload: {fileID: -648239105734612893}
+  upgradeTree: {fileID: 11400000, guid: ed5ab1776eb2450458c0127dd1ddb5d2, type: 2}
+  payload: {fileID: -1258634666557999225}
   castCue: {fileID: 0}
   skillClip:
     _FadeDuration: 0

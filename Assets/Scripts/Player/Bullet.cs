@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using SingularityGroup.HotReload;
 
 [RequireComponent(typeof(Rigidbody), typeof(Collider))]
-public class Bullet : MonoBehaviour
+public class Bullet : MonoBehaviour, IBarrierBlockableProjectile
 {
     [Header("VFX Hit")]
     public GameObject hitVfxPrefab;
@@ -92,8 +92,39 @@ public class Bullet : MonoBehaviour
 
     float DistanceFromSpawn() => Vector3.Distance(spawnPos, transform.position);
 
+    // ===== Barrier =====
+
+    GameObject IBarrierBlockableProjectile.BarrierSourceActor =>
+        shooterRoot != null ? shooterRoot.gameObject : null;
+
+    Vector3 IBarrierBlockableProjectile.BarrierSpawnPosition => spawnPos;
+
+    Vector3 IBarrierBlockableProjectile.BarrierTravelDirection => moveDirection;
+
+    float IBarrierBlockableProjectile.GetBarrierImpactDamage()
+    {
+        // Range falloff and crit apply; the barrier has no armor.
+        return DamageCalculator.CalculateFinalDamage(
+            gunType,
+            DistanceFromSpawn(),
+            baseDamage,
+            critRate,
+            critMult,
+            targetArmor: 0f);
+    }
+
+    void IBarrierBlockableProjectile.OnBlockedByBarrier(in BarrierBlockContext context)
+    {
+        // Consumed by the barrier: no damage, no stagger, no hit VFX.
+        Destroy(gameObject);
+    }
+
     void OnTriggerEnter(Collider other)
     {
+        // Checked before walls and damage.
+        if (ProjectileBarrierGate.TryBlock(this, other))
+            return;
+
         if (MeleeController.IsCombatOnlyHitbox(other))
             return;
         // กันโดนตัวเอง

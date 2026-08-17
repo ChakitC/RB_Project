@@ -57,6 +57,16 @@ public sealed class PlayerUIRuntimeBinder : MonoBehaviour
         for (int i = 0; i < interactionPresenters.Length; i++)
             interactionPresenters[i].Bind(player);
 
+        ActiveSkillChargePresenter[] chargePresenters =
+            GetComponentsInChildren<ActiveSkillChargePresenter>(true);
+        for (int i = 0; i < chargePresenters.Length; i++)
+            chargePresenters[i].Bind(player);
+
+        SkillCastFeedbackPresenter[] castFeedbackPresenters =
+            GetComponentsInChildren<SkillCastFeedbackPresenter>(true);
+        for (int i = 0; i < castFeedbackPresenters.Length; i++)
+            castFeedbackPresenters[i].Bind(player);
+
         if (uiContext.activeSkillScreen != null)
             uiContext.activeSkillScreen.BindRuntime(player);
 

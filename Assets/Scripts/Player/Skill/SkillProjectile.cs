@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody), typeof(Collider))]
-public class SkillProjectile : MonoBehaviour
+public class SkillProjectile : MonoBehaviour, IBarrierBlockableProjectile
 {
     GameObject hitVfxPrefab;
     GameObject BallVfxPrefab;
@@ -108,8 +108,41 @@ public class SkillProjectile : MonoBehaviour
         rb.linearVelocity = moveDirection * speed * TimeSlowManager.Instance.WorldTimeScale;
     }
 
+    // ===== Barrier =====
+
+    GameObject IBarrierBlockableProjectile.BarrierSourceActor =>
+        caster is Component casterComponent ? casterComponent.gameObject : null;
+
+    Vector3 IBarrierBlockableProjectile.BarrierSpawnPosition => spawnPos;
+
+    Vector3 IBarrierBlockableProjectile.BarrierTravelDirection => moveDirection;
+
+    float IBarrierBlockableProjectile.GetBarrierImpactDamage()
+    {
+        if (stats == null)
+            return 0f;
+
+        // Crit applies; the barrier has no armor.
+        float damage = stats.damage;
+        float critChance01 = Mathf.Clamp01(stats.critChance / 100f);
+        if (critChance01 > 0f && Random.value < critChance01)
+            damage *= Mathf.Max(1f, stats.critMultiplier);
+
+        return damage;
+    }
+
+    void IBarrierBlockableProjectile.OnBlockedByBarrier(in BarrierBlockContext context)
+    {
+        // Consumed by the barrier: no area damage, no single-target damage, no hit VFX.
+        Destroy(gameObject);
+    }
+
     void OnTriggerEnter(Collider other)
     {
+        // Checked before area damage, single-target damage, and walls.
+        if (ProjectileBarrierGate.TryBlock(this, other))
+            return;
+
         if (casterRoot && other.transform.root == casterRoot) return;
 
         bool didHit = false;

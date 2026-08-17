@@ -16,6 +16,9 @@ public sealed class SummonContext : CharacteContext
     public AgentMoveDriver AgentMoveDriver;
     public BehaviorTree BehaviorTree;
 
+    [Header("Summon Ammo")]
+    [SerializeField] private bool forceInfiniteReserveAmmo;
+
     public SummonMobility Mobility => mobility;
     public SummonedEntityRuntime SummonedRuntime => summonedRuntime;
     public override AITargetIdentity TargetIdentity => AITargetIdentity.Companion;
@@ -26,6 +29,7 @@ public sealed class SummonContext : CharacteContext
     public override bool CanCollectPickups => false;
     public override bool AutoCreatesAimRig => false;
     public override bool AutoCreatesRuntimeEquipment => false;
+    public override bool ForceInfiniteReserveAmmo => forceInfiniteReserveAmmo;
 
     void Awake()
     {

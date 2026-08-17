@@ -24,4 +24,14 @@ public abstract class SkillEffectStep
     }
 
     public abstract void Execute(SkillCastContext ctx);
+
+    /// <summary>
+    /// Runs the step and reports whether it produced a gameplay effect. See
+    /// <see cref="SkillPayloadDef.ExecuteWithResult"/>.
+    /// </summary>
+    public virtual SkillExecutionResult ExecuteWithResult(SkillCastContext ctx)
+    {
+        Execute(ctx);
+        return SkillExecutionResult.Succeeded;
+    }
 }

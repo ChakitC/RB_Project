@@ -24,7 +24,7 @@ MonoBehaviour:
   behaviorSubtree: {fileID: 0}
   thirdPersonProfile:
     pivotOffset: {x: 0, y: 1.55, z: 0}
-    shoulderOffset: {x: 0.48, y: -0.2, z: 0}
+    shoulderOffset: {x: 1.02, y: -0.2, z: 0}
     verticalArmLength: 0.25
     cameraDistance: 3.2
     aimCameraDistance: 2.7
@@ -90,7 +90,6 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
-  passives: []
   dashCue: {fileID: 0}
   voiceProfile:
     defaultSkillVoiceCue: {fileID: 0}

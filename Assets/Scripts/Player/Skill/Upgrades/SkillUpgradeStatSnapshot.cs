@@ -109,6 +109,10 @@ public sealed class SkillUpgradeStatSnapshot
                 case StatType.HealPower:
                     stats.healPower = Apply(stats.healPower, aggregate);
                     break;
+                case StatType.MaxCharges:
+                    stats.maxCharges = Mathf.Max(1,
+                        Mathf.FloorToInt(Apply(stats.maxCharges, aggregate) + 0.5f));
+                    break;
             }
         }
     }
@@ -127,7 +131,8 @@ public sealed class SkillUpgradeStatSnapshot
                stat == StatType.CritChance ||
                stat == StatType.StaggerPower ||
                stat == StatType.EffectDuration ||
-               stat == StatType.HealPower;
+               stat == StatType.HealPower ||
+               stat == StatType.MaxCharges;
     }
 
     static float Apply(float value, Aggregate aggregate)

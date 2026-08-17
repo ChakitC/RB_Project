@@ -113,6 +113,11 @@ public class SkillGemDefinition : SkillDefinitionBase
     [FoldoutGroup("Gameplay", Expanded = true), LabelText("Cooldown"), MinValue(0f), SuffixLabel("s")]
     public float baseCooldown = 0f;
 
+    [PropertyOrder(-77)]
+    [FoldoutGroup("Gameplay", Expanded = true), LabelText("Max Charges"), MinValue(1)]
+    [Tooltip("How many casts can be banked. Charges recharge one after another, each taking Cooldown seconds.")]
+    public int baseMaxCharges = 1;
+
     [PropertyOrder(-76)]
     [FoldoutGroup("Gameplay", Expanded = true), LabelText("Crit Chance"), MinValue(0f), SuffixLabel("%")]
     public float baseCritChance = 5f;

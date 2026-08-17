@@ -282,6 +282,75 @@ Projectiles are managed through `ProjectilePool` (singleton, `DontDestroyOnLoad`
 
 **Prewarm** — call `ProjectilePool.Instance.Prewarm(prefab, count)` to fill the pool before a scene starts. Not wired to any automatic trigger (phase 2).
 
+## Projectile Barriers
+
+A `BarrierRuntime` (see [Barrier Payload](SKILL_SYSTEM.md#barrier-payload)) can
+swallow hostile projectiles before they reach whatever is behind it.
+
+**Physics setup** — barriers live on the `Barrier` layer (index 20). The
+collision matrix allows `Barrier` to collide **only** with `PlayerBullet` and
+`EnemyBullet`. A barrier prefab that is not on this layer will never be hit; the
+Barrier payload's designer descriptor reports this as an authoring error.
+
+**Blocking rules** — `ProjectileBarrierGate` is the single decision point. All
+three projectile paths call it, and it runs **before** wall handling, area
+damage, damage application, and module callbacks:
+
+- `Projectile` (modern pooled path)
+- `Bullet` (legacy weapon path)
+- `SkillProjectile` (legacy skill path)
+
+A shot is blocked only when all of these hold:
+
+1. The projectile implements `IBarrierBlockableProjectile`.
+2. Its source actor is hostile to the barrier's owner. Friendly fire passes
+   through; an unknown or unresolvable faction also passes through, with a
+   development-build warning.
+3. It is travelling **inward from outside**. A projectile whose spawn position
+   was inside the barrier — including the protected turret's own fire — always
+   leaves freely, as does anything already moving outward.
+
+**Damage charged to the barrier** is the shot's damage after range falloff,
+crit, and damage multipliers, but **before** the target's armor and hit-zone
+scaling.
+
+**A blocked shot is consumed silently.** It despawns without running `OnHit`,
+status application, explosions, split/chain spawns, or gameplay hit VFX. The
+shot that breaks a barrier is absorbed in full — there is no damage overflow
+onto whatever was behind it.
+
+**Fast projectiles** — `Projectile` sweeps for barriers *before* its wall sweep,
+so a projectile fast enough to tunnel past the trigger in one physics step still
+gets caught by the barrier rather than only by the geometry behind it.
+
+Hitscan and beam weapons are out of scope; they do not currently consult the
+gate.
+
+## Upgrade-Gated Status On Hit
+
+`UpgradeGatedStatusOnHitModule` is a `ProjectileModule` that applies a
+`StatusApplicationSpec` on hit, but only when the **firing summon** carries a
+given `requiredUpgradeId` (via `SummonedEntityRuntime.HasUpgrade`).
+
+It is deliberately narrow:
+
+- It runs on the direct-damage hook alone. Area bursts are excluded via
+  `Projectile.AreaExploded`, chained/split descendants via `ctx.depth > 0`, and
+  damage-over-time never reaches a projectile hook at all. The debuff therefore
+  tracks aimed shots that landed, not blast radius.
+- The status is credited to the summon's **owner**, not the summon, so
+  attribution and owner-side scaling stay with the character who deployed it.
+- A blank `requiredUpgradeId` applies unconditionally. A projectile with no
+  `SummonedEntityRuntime` on its source actor never applies it.
+
+`Feno_MinigunTerret_ArmorShred` (`Assets/Data/StatusEffects/`) is the Part B
+status: Armor `-15%`, 3s, max 1 stack, `RefreshDuration`,
+`separatePerSource = false`.
+
+> The module is **not yet assigned to any projectile**. The Minigun Terret has no
+> Behavior Tree or firing behavior in this milestone, so Part B ships as data and
+> a runtime contract with no in-game shooting effect until the turret can fire.
+
 ## Shoot Flow
 
 `TryShoot()`:

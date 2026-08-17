@@ -51,6 +51,25 @@ public sealed class SummonSkillPayloadDef : SkillPayloadDef
     private float despawnDelay = 0.25f;
 
     [SerializeField, BoxGroup("Snapshot"), ToggleLeft]
+    [Tooltip("Drive the summon's max HP from this payload instead of the prefab's own base stats. " +
+             "The result is applied as a flat MaxHP modifier, so the summon prefab's own base max HP " +
+             "should be authored to 0 for the formula to land exactly.")]
+    private bool overrideMaxHealth;
+
+    [SerializeField, BoxGroup("Snapshot"), MinValue(0f), ShowIf(nameof(overrideMaxHealth))]
+    [Tooltip("Flat part of the summon's max HP.")]
+    private float baseMaxHealth = 200f;
+
+    [SerializeField, BoxGroup("Snapshot"), MinValue(0f), ShowIf(nameof(overrideMaxHealth))]
+    [Tooltip("Share of the owner's max HP added on top of Base Max Health. 0.25 = +25% of owner max HP.")]
+    private float ownerMaxHealthShare = 0.25f;
+
+    [SerializeField, BoxGroup("Snapshot")]
+    [Tooltip("Upgrade IDs copied onto the spawned summon when the caster owns them. " +
+             "Summon-side modules read these through SummonedEntityRuntime.HasUpgrade.")]
+    private List<string> inheritedUpgradeIds = new();
+
+    [SerializeField, BoxGroup("Snapshot"), ToggleLeft]
     private bool inheritHealPower = true;
 
     [SerializeField, BoxGroup("Snapshot"), ToggleLeft]
@@ -121,6 +140,19 @@ public sealed class SummonSkillPayloadDef : SkillPayloadDef
     public float GroundRaycastDistance => Mathf.Max(0.1f, groundRaycastDistance);
     public float NavMeshSampleRadius => Mathf.Max(0.1f, navMeshSampleRadius);
     public float PlacementPadding => Mathf.Max(0f, placementPadding);
+    public bool OverrideMaxHealth => overrideMaxHealth;
+    public float BaseMaxHealth => Mathf.Max(0f, baseMaxHealth);
+    public float OwnerMaxHealthShare => Mathf.Max(0f, ownerMaxHealthShare);
+    public IReadOnlyList<string> InheritedUpgradeIds => inheritedUpgradeIds;
+
+    public override void CollectUpgradeIds(List<string> ids)
+    {
+        if (inheritedUpgradeIds == null)
+            return;
+
+        for (int i = 0; i < inheritedUpgradeIds.Count; i++)
+            SkillUpgradeIdCollection.AddUnique(ids, inheritedUpgradeIds[i]);
+    }
 
     public override void CollectValidationIssues(List<string> issues)
     {
@@ -194,54 +226,93 @@ public sealed class SummonSkillPayloadDef : SkillPayloadDef
 
     public override void Execute(SkillCastContext context)
     {
-        if (context == null || context.CasterRoot == null || summonPrefab == null)
-            return;
+        ExecuteWithResult(context);
+    }
+
+    public override SkillExecutionResult ExecuteWithResult(SkillCastContext context)
+    {
+        if (context == null || context.CasterRoot == null)
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Summon payload executed without a caster root.");
+        }
+
+        if (summonPrefab == null)
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingAuthoringData,
+                "Summon payload has no summon prefab configured.");
+        }
 
         if (context.CasterRoot.GetComponent<SummonContext>() != null)
         {
             Debug.LogWarning(
                 $"[SummonSkillPayloadDef] Recursive summon rejected for skill '{context.SkillDef?.SkillDefinitionId}'.",
                 this);
-            return;
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.Rejected,
+                "A summon cannot summon.");
         }
 
         CharacteContext caster = context.CasterRoot.GetComponent<CharacteContext>();
         if (caster == null ||
             (caster.TargetIdentity != AITargetIdentity.Player && caster.TargetIdentity != AITargetIdentity.Companion))
-            return;
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.Rejected,
+                "Only players and companions can summon.");
+        }
 
         caster.ResolveReferences();
         if (caster.TargetInfo == null)
         {
             Debug.LogWarning($"[SummonSkillPayloadDef] Caster '{caster.name}' has no AITargetInfo. Summon rejected.", this);
-            return;
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                $"Caster '{caster.name}' has no AITargetInfo.");
         }
 
         string skillId = context.SkillDef != null ? context.SkillDef.SkillDefinitionId : null;
         if (string.IsNullOrWhiteSpace(skillId))
         {
             Debug.LogError("[SummonSkillPayloadDef] Summon skill requires a non-empty Skill ID.", this);
-            return;
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingAuthoringData,
+                "Summon skill requires a non-empty Skill ID.");
         }
 
         MapRunController map = UnityEngine.Object.FindFirstObjectByType<MapRunController>();
         if (map == null || !map.isActiveAndEnabled)
-            return;
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "No active MapRunController to host the summon.");
+        }
 
         if (!SummonController.TryEnsure(caster, map, out SummonController controller))
-            return;
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "SummonController could not be initialized for this caster.");
+        }
 
         FinalSkillStats stats = context.SkillStats;
+        int perSkillCap = ResolvePerSkillCap(context);
         int requestedCount = useSkillProjectileCount && stats != null
             ? Mathf.Max(1, stats.projectileCount)
             : FixedCount;
-        requestedCount = Mathf.Min(requestedCount, PerSkillCap);
+        requestedCount = Mathf.Min(requestedCount, perSkillCap);
 
         float lifetime = useSkillEffectDuration && stats != null && stats.effectDuration > 0f
             ? stats.effectDuration
             : (fixedEffectDuration > 0f ? fixedEffectDuration : FixedLifetime);
         if (lifetime <= 0f)
-            return;
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingAuthoringData,
+                "Summon lifetime resolved to zero.");
+        }
 
         float healPower = inheritHealPower && stats != null ? Mathf.Max(0f, stats.healPower) : fixedHealPower;
         float areaRadius = inheritAreaRadius && stats != null ? Mathf.Max(0f, stats.areaRadius) : fixedAreaRadius;
@@ -261,9 +332,14 @@ public sealed class SummonSkillPayloadDef : SkillPayloadDef
             Padding = PlacementPadding,
         };
 
+        float maxHealth = ResolveMaxHealth(context, caster);
+        List<string> inheritedUpgradeIds = ResolveInheritedUpgradeIds(context);
+
         var reserved = new List<SummonPlacementCandidate>(requestedCount);
         Vector3 placementOrigin = context.CastOrigin != null ? context.CastOrigin.position : caster.transform.position;
         Quaternion layoutRotation = ResolveLayoutRotation(context, caster);
+        int spawnedCount = 0;
+        bool sawPlacementFailure = false;
         for (int i = 0; i < requestedCount; i++)
         {
             Vector3 offset = ResolveOffset(i);
@@ -282,9 +358,11 @@ public sealed class SummonSkillPayloadDef : SkillPayloadDef
                 HealPower = healPower,
                 AreaRadius = areaRadius,
                 EffectDuration = effectDuration,
+                MaxHealth = maxHealth,
+                UpgradeIds = inheritedUpgradeIds,
                 Position = placementOrigin,
                 Rotation = rotation,
-                PerSkillCap = PerSkillCap,
+                PerSkillCap = perSkillCap,
             };
 
             if (!SummonPlacementResolver.TryResolve(
@@ -297,16 +375,92 @@ public sealed class SummonSkillPayloadDef : SkillPayloadDef
                     out SummonPlacementCandidate candidate,
                     out _))
             {
+                sawPlacementFailure = true;
                 continue;
             }
 
             request.Position = candidate.Position;
             request.Rotation = candidate.Rotation;
-            if (!controller.TrySpawn(request, out _))
+            if (!controller.TrySpawn(request, out SummonedEntityRuntime spawned))
+            {
+                sawPlacementFailure = true;
                 continue;
+            }
 
             reserved.Add(candidate);
+            spawnedCount++;
+            context.ExecutionState?.RegisterSpawnedSummon(spawned);
         }
+
+        if (spawnedCount > 0)
+            return SkillExecutionResult.Succeeded;
+
+        return SkillExecutionResult.Failed(
+            sawPlacementFailure
+                ? SkillExecutionFailureReason.PlacementBlocked
+                : SkillExecutionFailureReason.NoEffect,
+            sawPlacementFailure
+                ? $"No valid placement for '{skillId}' at the requested spawn offsets."
+                : $"Summon '{skillId}' requested zero spawns.");
+    }
+
+    /// <summary>
+    /// Authored cap plus any <see cref="StatType.SummonCap"/> granted by the Active Skill tree.
+    /// </summary>
+    int ResolvePerSkillCap(SkillCastContext context)
+    {
+        int cap = PerSkillCap;
+        if (context?.Upgrades != null &&
+            context.Upgrades.TryGetAggregate(StatType.SummonCap, out float add, out float multiply))
+        {
+            cap = Mathf.FloorToInt((cap + add) * multiply + 0.5f);
+        }
+
+        return Mathf.Max(1, cap);
+    }
+
+    /// <summary>
+    /// Summon max HP is a flat base plus a share of the owner's max HP, then scaled by any
+    /// <see cref="StatType.SummonMaxHP"/> modifier. Returns 0 when the prefab should keep its
+    /// own authored health.
+    /// </summary>
+    float ResolveMaxHealth(SkillCastContext context, CharacteContext caster)
+    {
+        if (!overrideMaxHealth)
+            return 0f;
+
+        float ownerMaxHealth = caster != null && caster.StatsHub != null
+            ? Mathf.Max(0f, caster.StatsHub.GetMaximumHealth())
+            : 0f;
+
+        float health = Mathf.Max(0f, baseMaxHealth) + ownerMaxHealth * Mathf.Max(0f, ownerMaxHealthShare);
+
+        if (context?.Upgrades != null &&
+            context.Upgrades.TryGetAggregate(StatType.SummonMaxHP, out float add, out float multiply))
+        {
+            health = (health + add) * multiply;
+        }
+
+        return Mathf.Max(1f, health);
+    }
+
+    List<string> ResolveInheritedUpgradeIds(SkillCastContext context)
+    {
+        if (inheritedUpgradeIds == null || inheritedUpgradeIds.Count == 0 || context == null)
+            return null;
+
+        List<string> granted = null;
+        for (int i = 0; i < inheritedUpgradeIds.Count; i++)
+        {
+            string id = inheritedUpgradeIds[i];
+            if (string.IsNullOrWhiteSpace(id) || !context.HasUpgrade(id))
+                continue;
+
+            granted ??= new List<string>(inheritedUpgradeIds.Count);
+            granted.Add(id.Trim());
+        }
+
+        return granted;
     }
 
     Vector3 ResolveOffset(int index)

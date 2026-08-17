@@ -1,0 +1,80 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4eeda43b528416d4e8d8f8353d25da93, type: 3}
+  m_Name: HMG.RB.MiniGunTerret
+  m_EditorClassIdentifier: 
+  itemId: RB.HMG.01
+  displayName: FenoGun
+  description: FenoGun
+  icon: {fileID: 21300000, guid: 83a554e316042c64c9757f0eb6bfe2ac, type: 3}
+  pickupVisualPrefab: {fileID: 1991939279194961263, guid: 9001473d1df37e24293d9cd4edc08eb0, type: 3}
+  pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
+  pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
+  pickupVisualScale: {x: 1, y: 1, z: 1}
+  itemType: 1
+  stackable: 0
+  maxStack: 1
+  baseBuyPrice: 300
+  baseSellPrice: 90
+  BulletPrefab: {fileID: 7234640618046847812, guid: de907b0f2086f5a49b659333a92a81d8, type: 3}
+  WeaponPrefab: {fileID: 1991939279194961263, guid: 9001473d1df37e24293d9cd4edc08eb0, type: 3}
+  upgradeCurve: {fileID: 0}
+  overrideWeaponModelMountOffset: 1
+  rightHandWeaponModelMount:
+    localPosition: {x: 0, y: 0.443, z: 0}
+    localRotationEuler: {x: -0, y: 180, z: 90}
+    localScale: {x: 1.1681985, y: 1.1681985, z: 1.1681985}
+  leftHandWeaponModelMount:
+    localPosition: {x: 0, y: 0, z: 0}
+    localRotationEuler: {x: 0, y: 0, z: 0}
+    localScale: {x: 1, y: 1, z: 1}
+  fireCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
+  hitCue: {fileID: 11400000, guid: f553b85156097ad4091b995baff05cb9, type: 2}
+  emptyCue: {fileID: 11400000, guid: 86252ae28322830499f1116974f2ea2a, type: 2}
+  reloadCue: {fileID: 11400000, guid: b26324c5bf932c64e97ceb5e5c0423b2, type: 2}
+  equipCue: {fileID: 11400000, guid: cef935508e94a2a47a1fee44288b94b9, type: 2}
+  WeaponType: 5
+  firingModes: 0
+  damage: 19
+  fireRate: 0.15
+  magazine: 100
+  maxMagazine: 100
+  critRate: 0
+  critMultiplier: 1
+  stability: 35
+  BulletSpeed: 45
+  infiniteReserveAmmo: 1
+  maxReserveAmmo: 200
+  overrideStartingReserveAmmo: 0
+  startingReserveAmmo: 0
+  staggerPower: 18
+  autoloader: 0
+  magazineReload: 1
+  reloadTime: 3
+  reloadPerBullet: 0
+  startInsertDelay: 0
+  perBulletInsertTime: 0
+  endInsertDelay: 0
+  shootInterruptsReload: 0
+  baseSwaySpeed: 20
+  baseMaxSwayAngle: 5
+  baseReturnSpeed: 1
+  hipSpreadDegrees: 2.2
+  aimSpreadDegrees: 0.35
+  moveSpreadPenaltyDegrees: 1
+  spreadPerShotDegrees: 0.45
+  maximumSpreadBloomDegrees: 3
+  spreadRecoveryDegreesPerSecond: 3.5
+  cameraRecoilPitch: 1.1
+  cameraRecoilYaw: 0.45
+  burstCount: 3
+  burstInterval: 0.08

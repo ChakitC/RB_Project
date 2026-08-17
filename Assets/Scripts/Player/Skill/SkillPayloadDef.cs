@@ -44,6 +44,17 @@ public abstract class SkillPayloadDef : ScriptableObject
     }
 
     public abstract void Execute(SkillCastContext context);
+
+    /// <summary>
+    /// Runs the payload and reports whether it produced a gameplay effect.
+    /// Only a successful execution commits the cast transaction (energy, charge, cooldown).
+    /// Payloads that cannot fail keep overriding <see cref="Execute"/> alone and stay successful.
+    /// </summary>
+    public virtual SkillExecutionResult ExecuteWithResult(SkillCastContext context)
+    {
+        Execute(context);
+        return SkillExecutionResult.Succeeded;
+    }
 }
 
 public static class SkillUpgradeIdCollection

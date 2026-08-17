@@ -24,6 +24,12 @@ public class AiShoot : Action
     [Tooltip("Horizontal turn speed while this task is active (degrees per second).")]
     public float turnSpeed = 720f;
 
+    [Tooltip("ถ้าใส่ จะหมุน transform นี้แทนตัว actor หลัก เช่น model/pivot (เช่น Row bone ของเทอร์เรท)")]
+    public SharedVariable<GameObject> rotateRoot;
+
+    [Tooltip("ปกติ NPC ยิงกันในระนาบพื้น เลยควรไม่สนแกน Y")]
+    public bool ignoreYAxis = true;
+
     [Header("Fire Solution")]
     [Tooltip("Stop firing and leave this task when the sensor loses line of sight.")]
     public bool requireLineOfSight = true;
@@ -49,6 +55,7 @@ public class AiShoot : Action
     private ShootPhase phase;
     private float stateEndTime;
     private Transform actorTransform;
+    private Transform _rotateTransform;
     private NavMeshAgent agent;
     private AITargetSensor targetSensor;
     private bool agentRotationCaptured;
@@ -67,6 +74,10 @@ public class AiShoot : Action
         }
 
         actorTransform = CTX != null ? CTX.transform : transform;
+        _rotateTransform =
+            (rotateRoot != null && rotateRoot.Value != null)
+            ? rotateRoot.Value.transform
+            : actorTransform;
         targetSensor = ResolveTargetSensor();
         agentRotationCaptured = false;
         agent = actorTransform != null
@@ -194,6 +205,8 @@ public class AiShoot : Action
         returnSuccessWhenTargetLost = true;
         faceTarget = false;
         turnSpeed = 720f;
+        rotateRoot = null;
+        ignoreYAxis = true;
         requireLineOfSight = true;
         minFireRange = 0.5f;
         maxFireRange = 10f;
@@ -305,15 +318,15 @@ public class AiShoot : Action
 
     private bool IsAimAligned(Vector3 aimPoint)
     {
-        if (!faceTarget || aimToleranceDegrees <= 0f || actorTransform == null)
+        if (!faceTarget || aimToleranceDegrees <= 0f || _rotateTransform == null)
             return true;
 
-        Vector3 direction = aimPoint - actorTransform.position;
-        direction.y = 0f;
+        Vector3 direction = aimPoint - _rotateTransform.position;
+        if (ignoreYAxis) direction.y = 0f;
         if (direction.sqrMagnitude <= 0.0001f)
             return true;
 
-        return Vector3.Angle(actorTransform.forward, direction) <= aimToleranceDegrees;
+        return Vector3.Angle(_rotateTransform.forward, direction) <= aimToleranceDegrees;
     }
 
     private TaskStatus WaitForFiringSolutionOrFail()
@@ -349,14 +362,14 @@ public class AiShoot : Action
     {
         if (!faceTarget ||
             turnSpeed <= 0f ||
-            actorTransform == null ||
+            _rotateTransform == null ||
             !CTX.stateHub.CanRotate())
         {
             return;
         }
 
-        Vector3 direction = aimPoint - actorTransform.position;
-        direction.y = 0f;
+        Vector3 direction = aimPoint - _rotateTransform.position;
+        if (ignoreYAxis) direction.y = 0f;
         if (direction.sqrMagnitude <= 0.0001f)
             return;
 
@@ -367,8 +380,8 @@ public class AiShoot : Action
 
         Quaternion targetRotation =
             Quaternion.LookRotation(direction.normalized, Vector3.up);
-        actorTransform.rotation = Quaternion.RotateTowards(
-            actorTransform.rotation,
+        _rotateTransform.rotation = Quaternion.RotateTowards(
+            _rotateTransform.rotation,
             targetRotation,
             turnSpeed * deltaTime);
     }

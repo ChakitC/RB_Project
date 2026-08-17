@@ -19,6 +19,9 @@ public class FinalSkillStats
 
     // 2.0 = 200%
     public float critMultiplier;
+
+    // How many casts can be banked at once. 1 = classic single-cooldown behavior.
+    public int maxCharges;
 }
 
 [System.Serializable]
@@ -29,7 +32,26 @@ public class SkillInstance
     [System.NonSerialized]
     public SkillUpgradeStatSnapshot upgradeSnapshot;
 
-    private float _lastCastTime = -999f;
+    [System.NonSerialized]
+    private SkillChargeState _charges;
+
+    /// <summary>
+    /// Charge pool for this skill. Every slot pointing at the same
+    /// <see cref="SkillGemDefinition"/> is bound to one shared pool by
+    /// <see cref="CharacterSkillManager"/>, so spending a charge in one slot is immediately
+    /// visible in the other. The lazy fallback only exists for instances created outside the
+    /// manager (tests, tooling).
+    /// </summary>
+    private SkillChargeState Charges => _charges ??= new SkillChargeState();
+
+    /// <summary>Binds this instance to the shared pool for its definition.</summary>
+    public void BindCharges(SkillChargeState shared)
+    {
+        if (shared != null)
+            _charges = shared;
+    }
+
+    public bool HasBoundCharges => _charges != null;
 
     public FinalSkillStats GetFinalStats(ISkillUser user)
     {
@@ -47,7 +69,8 @@ public class SkillInstance
                 effectDuration = 0f,
                 healPower = 0f,
                 critChance = 0f,
-                critMultiplier = 2f
+                critMultiplier = 2f,
+                maxCharges = 1
             };
         }
 
@@ -63,7 +86,8 @@ public class SkillInstance
             effectDuration = def.baseEffectDuration,
             healPower = def.baseHealPower,
             critChance = def.baseCritChance,
-            critMultiplier = 2f
+            critMultiplier = 2f,
+            maxCharges = Mathf.Max(1, def.baseMaxCharges)
         };
 
         if (user?.StatsHub != null && def.damageCoefficient > 0f)
@@ -83,6 +107,7 @@ public class SkillInstance
         stats.effectDuration = Mathf.Max(0f, stats.effectDuration);
         stats.healPower = Mathf.Max(0f, stats.healPower);
         stats.critMultiplier = Mathf.Max(1f, stats.critMultiplier);
+        stats.maxCharges = Mathf.Max(1, stats.maxCharges);
 
         return stats;
     }
@@ -108,7 +133,8 @@ public class SkillInstance
 
         stats = GetFinalStats(user);
 
-        if (Time.time < _lastCastTime + stats.cooldown)
+        Charges.Refresh(stats.maxCharges, Time.time);
+        if (!Charges.HasCharge)
             return false;
 
         if (user.currentEnagy < stats.manaCost)
@@ -121,26 +147,55 @@ public class SkillInstance
 
     public bool Cast(ISkillUser user, CharacterAnimBrain animBrain = null, int requestId = 0)
     {
-        if (!CanCast(user, out var stats))
-            return false;
+        return Cast(user, animBrain, requestId, out _);
+    }
 
-        return ExecuteCast(user, stats, spendEnergy: true, animBrain, requestId);
+    public bool Cast(
+        ISkillUser user,
+        CharacterAnimBrain animBrain,
+        int requestId,
+        out SkillExecutionResult result)
+    {
+        if (!CanCast(user, out var stats))
+        {
+            result = SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.Rejected,
+                "Skill is on cooldown, out of energy, or has no payload.");
+            return false;
+        }
+
+        return ExecuteCast(user, stats, spendEnergy: true, animBrain, requestId, true, out result);
     }
 
     public bool TryCastIgnoringResourceCosts(ISkillUser user, CharacterAnimBrain animBrain = null, int requestId = 0, bool stampCooldown = true)
     {
+        return TryCastIgnoringResourceCosts(user, animBrain, requestId, stampCooldown, out _);
+    }
+
+    public bool TryCastIgnoringResourceCosts(
+        ISkillUser user,
+        CharacterAnimBrain animBrain,
+        int requestId,
+        bool stampCooldown,
+        out SkillExecutionResult result)
+    {
         if (def == null || user == null)
+        {
+            result = SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Skill instance has no definition or caster.");
             return false;
+        }
 
         var stats = GetFinalStats(user);
-        return ExecuteCast(user, stats, spendEnergy: false, animBrain, requestId, stampCooldown);
+        return ExecuteCast(user, stats, spendEnergy: false, animBrain, requestId, stampCooldown, out result);
     }
 
     /// <summary>
-    /// Stamps ONLY the per-instance cooldown (no energy spend, no payload).
+    /// Consumes ONLY the per-instance charge (no energy spend, no payload).
     /// Used when a pre-cast cast is blocked/interrupted before cast point but should still
-    /// consume its cooldown. Returns the computed stats so the caller can also stamp any
-    /// shared (per-definition) cooldown.
+    /// consume its cooldown. Returns the computed stats so the caller can also consume the
+    /// shared (per-definition) charge.
     /// </summary>
     public bool TryStampCooldownOnly(ISkillUser user, out FinalSkillStats stats)
     {
@@ -149,7 +204,30 @@ public class SkillInstance
             return false;
 
         stats = GetFinalStats(user);
-        _lastCastTime = Time.time;
+        Charges.Refresh(stats.maxCharges, Time.time);
+        Charges.TryConsume(Time.time, stats.cooldown);
+        return true;
+    }
+
+    /// <summary>
+    /// Current charge readout for HUD and tooltips. Keeps the pool in sync with the caster's
+    /// live upgrade selection before reporting.
+    /// </summary>
+    public bool TryGetChargeStatus(ISkillUser user, out SkillChargeStatus status)
+    {
+        status = default;
+        if (def == null || user == null)
+            return false;
+
+        FinalSkillStats stats = GetFinalStats(user);
+        float now = Time.time;
+        Charges.Refresh(stats.maxCharges, now);
+
+        status = new SkillChargeStatus(
+            Charges.AvailableCharges,
+            Charges.MaxCharges,
+            Charges.GetNextChargeRemaining(now),
+            Charges.GetNextChargeDuration(now, stats.cooldown));
         return true;
     }
 
@@ -157,29 +235,64 @@ public class SkillInstance
         ISkillUser user,
         FinalSkillStats stats,
         bool spendEnergy,
-        CharacterAnimBrain animBrain = null,
-        int requestId = 0,
-        bool stampCooldown = true)
+        CharacterAnimBrain animBrain,
+        int requestId,
+        bool stampCooldown,
+        out SkillExecutionResult result)
     {
         if (def == null || def.payload == null || user == null || stats == null)
+        {
+            result = SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingAuthoringData,
+                "Skill has no execution payload.");
+            return false;
+        }
+
+        // A cast is a transaction: run the payload first, and only commit energy and charge
+        // once it reports that it actually produced a gameplay effect.
+        var castContext = new SkillCastContext(user, def, stats, animBrain, requestId, upgradeSnapshot);
+        result = castContext.Execution.ExecuteWithResult(castContext);
+        if (!result.Success)
             return false;
 
         if (spendEnergy)
             user.SpendEnagy(stats.manaCost);
 
-        var castContext = new SkillCastContext(user, def, stats, animBrain, requestId, upgradeSnapshot);
-        bool executed = TryExecutePayload(castContext);
-        if (executed && stampCooldown)
-            _lastCastTime = Time.time;
-        return executed;
-    }
+        if (stampCooldown)
+        {
+            Charges.Refresh(stats.maxCharges, Time.time);
+            Charges.TryConsume(Time.time, stats.cooldown);
+        }
 
-    bool TryExecutePayload(SkillCastContext castContext)
-    {
-        if (castContext == null || castContext.Execution == null)
-            return false;
-
-        castContext.Execution.Execute(castContext);
         return true;
+    }
+}
+
+/// <summary>Read-only charge snapshot for UI.</summary>
+public readonly struct SkillChargeStatus
+{
+    public readonly int Available;
+    public readonly int Max;
+
+    /// <summary>Seconds until the next charge returns. 0 when the pool is full.</summary>
+    public readonly float NextChargeRemaining;
+
+    /// <summary>Length of the recharge segment in flight, for fill-amount math. 0 when full.</summary>
+    public readonly float NextChargeDuration;
+
+    public bool HasCharge => Available > 0;
+    public bool IsRecharging => NextChargeDuration > 0f;
+
+    /// <summary>0 at the start of the current recharge, 1 the moment the charge returns.</summary>
+    public float NextChargeProgress01 => NextChargeDuration > 0f
+        ? Mathf.Clamp01(1f - NextChargeRemaining / NextChargeDuration)
+        : 1f;
+
+    public SkillChargeStatus(int available, int max, float nextChargeRemaining, float nextChargeDuration)
+    {
+        Available = available;
+        Max = max;
+        NextChargeRemaining = nextChargeRemaining;
+        NextChargeDuration = nextChargeDuration;
     }
 }

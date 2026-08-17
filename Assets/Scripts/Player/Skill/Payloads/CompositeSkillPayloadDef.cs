@@ -153,8 +153,26 @@ public sealed class CompositeSkillPayloadDef : SkillPayloadDef
 
     public override void Execute(SkillCastContext context)
     {
+        ExecuteWithResult(context);
+    }
+
+    /// <summary>
+    /// Sibling steps are independent: a failing step never stops the ones after it, and the
+    /// composite counts as successful as soon as one enabled step produced a gameplay effect.
+    /// </summary>
+    public override SkillExecutionResult ExecuteWithResult(SkillCastContext context)
+    {
         if (context == null)
-            return;
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Composite payload executed without a cast context.");
+        }
+
+        bool anySucceeded = false;
+        bool anyEnabled = false;
+        bool hasFailure = false;
+        SkillExecutionResult firstFailure = default;
 
         for (int i = 0; i < steps.Count; i++)
         {
@@ -162,15 +180,45 @@ public sealed class CompositeSkillPayloadDef : SkillPayloadDef
             if (step == null || !step.IsEnabled(context))
                 continue;
 
+            anyEnabled = true;
+
+            SkillExecutionResult stepResult;
             try
             {
-                step.Execute(context);
+                stepResult = step.ExecuteWithResult(context);
             }
             catch (Exception e)
             {
                 Debug.LogException(e);
+                stepResult = SkillExecutionResult.Failed(
+                    SkillExecutionFailureReason.Rejected,
+                    $"Composite step {i} threw: {e.Message}");
+            }
+
+            if (stepResult.Success)
+            {
+                anySucceeded = true;
+                continue;
+            }
+
+            if (!hasFailure)
+            {
+                hasFailure = true;
+                firstFailure = stepResult;
             }
         }
+
+        if (anySucceeded)
+            return SkillExecutionResult.Succeeded;
+
+        if (hasFailure)
+            return firstFailure;
+
+        return SkillExecutionResult.Failed(
+            SkillExecutionFailureReason.NoEffect,
+            anyEnabled
+                ? "Composite payload has no gameplay step that reported a result."
+                : "Composite payload has no enabled step for this upgrade selection.");
     }
 
     static SkillPayloadDef GetStepPayload(SkillEffectStep step)

@@ -276,6 +276,11 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
             ? before
             : _session.BuildStatsPreview(_selectedSlotIndex, _selectedOptionIndex, node);
 
+        SkillSummonPreview summonBefore = _session.BuildSummonPreview(_selectedSlotIndex, _selectedOptionIndex);
+        SkillSummonPreview summonAfter = unlocked
+            ? summonBefore
+            : _session.BuildSummonPreview(_selectedSlotIndex, _selectedOptionIndex, node);
+
         _session.TryGetOption(_selectedSlotIndex, _selectedOptionIndex, out CharacterSkillLoadoutOption option);
 
         detailPanel?.Show(
@@ -286,7 +291,9 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
             before,
             after,
             () => RequestUnlockNode(node.RuntimeNodeId),
-            option?.PassiveAsset);
+            option?.PassiveAsset,
+            summonBefore,
+            summonAfter);
         treeView?.Refresh(_selectedNodeId);
     }
 

@@ -113,8 +113,11 @@ off, or does not use `StackMode.RefreshDuration`.
   resolve to a valid tracked `CharacteContext`, the sensor moves on to the next instance.
 
 Taunt duration comes from the skill (`fallbackDuration`) unless the application overrides it, so it
-ticks in the `Time.time` domain (via `StatusEffectController.Tick`) rather than the
-HitLag/slow-immune `TimeSlowManager.WorldTime` domain the rest of the sensor uses.
+ticks in the taunted actor's own **owner-local status clock** (`StatusEffectController.Tick`) rather
+than the HitLag-immune `TimeSlowManager.WorldTime` domain the rest of the sensor uses. That clock
+follows `WorldDeltaTime` for actors under world slow and `Time.deltaTime` for actors holding a
+world-slow exemption, so a taunt on a slowed enemy drains slowly while HitLag and pause freeze it
+either way. See **Status duration and tick time semantics** in `SKILL_SYSTEM.md`.
 
 `TauntSkillRuntime` discovers targets through active `CharacteContext` instances and checks range
 from the context transform; physics is used only for the layer filter and the optional

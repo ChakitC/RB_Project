@@ -50,8 +50,8 @@ MonoBehaviour:
   introChainCutscene: {fileID: 0}
   skillSlots:
   - slotId: 0
-    displayName: 
-    hotkey: 257
+    displayName:
+    hotkey: 0
     defaultOptionIndex: 0
     options:
     - optionId: 
@@ -63,8 +63,8 @@ MonoBehaviour:
       skillAsset: {fileID: 0}
       upgradeTreeOverride: {fileID: 11400000, guid: 0e0c5a48ecedd994083b1cf170d0681a, type: 2}
   - slotId: 1
-    displayName: 
-    hotkey: 258
+    displayName:
+    hotkey: 0
     defaultOptionIndex: 0
     options:
     - optionId: Test.Aires.Ultimate
@@ -72,8 +72,8 @@ MonoBehaviour:
       skillAsset: {fileID: 0}
       upgradeTreeOverride: {fileID: 0}
   - slotId: 2
-    displayName: 
-    hotkey: 259
+    displayName:
+    hotkey: 0
     defaultOptionIndex: 0
     options:
     - optionId: 

@@ -3,13 +3,21 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Combat HUD readout for one command slot's charges: "available/max" plus a fill showing the
-/// recharge in flight. A skill with a single charge shows a plain cooldown, which is why this can
-/// sit on every slot rather than only on multi-charge skills.
+/// Combat HUD readout for one command slot: the assigned skill's icon, the charges still in the
+/// pool, and a radial overlay for the recharge in flight. A skill with a single charge shows a
+/// plain cooldown, which is why this can sit on every slot rather than only on multi-charge ones.
+///
+/// Everything shown here is a read of the shared charge pool the cast path spends from — the HUD
+/// never runs a timer of its own. It reports cooldown and charges only: energy, animation locks,
+/// and cutscene locks deliberately do not darken the slot, because those clear on their own and
+/// would make the overlay mean two different things.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class ActiveSkillChargePresenter : MonoBehaviour
 {
+    /// <summary>Charge counts are single digits in practice; avoid an int.ToString() per update.</summary>
+    static readonly string[] ChargeTexts = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+
     [Header("Slot")]
     [SerializeField, Min(0)]
     [Tooltip("Index into CharacterSkillManager.CommandSlots.")]
@@ -17,32 +25,55 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
 
     [Header("View")]
     [SerializeField] private GameObject root;
+    [SerializeField] private Image skillIcon;
+
+    [SerializeField, Tooltip("Stand-in shown when the slot's skill has no icon authored.")]
+    private TMP_Text fallbackLabel;
+
     [SerializeField] private TMP_Text chargeLabel;
     [SerializeField] private Image cooldownFill;
-    [SerializeField] private CanvasGroup availabilityGroup;
+
+    [SerializeField, Tooltip("White overlay pulsed when the slot becomes usable again.")]
+    private Graphic readyFlash;
 
     [Header("Display")]
-    [SerializeField, Tooltip("Hide the label entirely while the skill only has one charge.")]
-    private bool hideLabelForSingleCharge = true;
+    [SerializeField, Range(0f, 1f)]
+    [Tooltip("Overlay alpha while a charge is recharging but the slot is still usable.")]
+    private float rechargingOverlayAlpha = 0.35f;
 
     [SerializeField, Range(0f, 1f)]
-    private float unavailableAlpha = 0.4f;
+    [Tooltip("Overlay alpha once the pool is empty and the slot cannot be used.")]
+    private float emptyOverlayAlpha = 0.65f;
+
+    [SerializeField, Min(0f)]
+    [Tooltip("Length of the white flash played when the pool goes from empty to usable.")]
+    private float readyFlashSeconds = 0.18f;
 
     [SerializeField, Min(0f)]
     [Tooltip("Seconds between charge re-reads. Resolving charge status rebuilds the skill's final " +
-             "stats, which is far too expensive to do every frame on every slot.")]
+             "stats, which is far too expensive to do every frame on every slot. The overlay is " +
+             "extrapolated between reads so the sweep still runs at frame rate.")]
     private float refreshInterval = 0.1f;
 
     CharacterSkillManager skillManager;
 
     float nextRefreshTime;
+    bool hasStatus;
+
+    // Recharge sampled at sampleTime and extrapolated per frame. Time.time is the pool's own clock,
+    // so the sweep stops exactly when the cooldown does — including while the game is paused.
+    float sampleTime;
+    float sampledRemaining;
+    float sampledDuration;
+
     int lastAvailable = -1;
-    int lastMax = -1;
+    SkillGemDefinition lastSkillDef;
+    bool hasSkillDef;
     float lastFillAmount = -1f;
-    float lastAlpha = -1f;
-    bool lastLabelVisible;
+    float lastOverlayAlpha = -1f;
     bool lastFillVisible;
-    bool hasState;
+    float flashEndTime = -1f;
+    float lastFlashAlpha = -1f;
 
     public void Bind(CharacteContext context)
     {
@@ -66,23 +97,42 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
 
     void LateUpdate()
     {
-        // Throttled: TryGetChargeStatus rebuilds FinalSkillStats, so running it per slot per
-        // frame is pure waste. A charge readout does not need frame-rate resolution.
-        if (Time.unscaledTime < nextRefreshTime)
+        // Throttled: TryGetSlotChargeStatus rebuilds FinalSkillStats, so running it per slot per
+        // frame is pure waste. A read is pulled forward the moment the sampled recharge is due, so
+        // the charge count and the ready flash still land on time rather than up to a tick late.
+        if (Time.unscaledTime >= nextRefreshTime || IsSampledRechargeDue())
+        {
+            nextRefreshTime = Time.unscaledTime + Mathf.Max(0f, refreshInterval);
+            Refresh();
+        }
+
+        if (!hasStatus)
             return;
 
-        nextRefreshTime = Time.unscaledTime + Mathf.Max(0f, refreshInterval);
-        Refresh();
+        UpdateCooldownFill();
+        UpdateReadyFlash();
     }
 
     void ResetCachedState()
     {
         nextRefreshTime = 0f;
+        hasStatus = false;
+
+        sampleTime = 0f;
+        sampledRemaining = 0f;
+        sampledDuration = 0f;
+
         lastAvailable = -1;
-        lastMax = -1;
+        lastSkillDef = null;
+        hasSkillDef = false;
         lastFillAmount = -1f;
-        lastAlpha = -1f;
-        hasState = false;
+        lastOverlayAlpha = -1f;
+        lastFillVisible = false;
+
+        flashEndTime = -1f;
+        lastFlashAlpha = -1f;
+        if (readyFlash != null)
+            SetActiveIfNeeded(readyFlash.gameObject, false);
     }
 
     void Refresh()
@@ -93,58 +143,153 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
             !skillManager.TryGetSlotChargeStatus(commandSlotIndex, out SkillChargeStatus status))
         {
             ApplyVisibility(false);
+            hasStatus = false;
             return;
         }
 
         ApplyVisibility(true);
 
+        ApplyIcon();
+        ApplyCharges(status);
+
+        sampleTime = Time.time;
+        sampledRemaining = status.NextChargeRemaining;
+        sampledDuration = status.NextChargeDuration;
+
+        hasStatus = true;
+    }
+
+    /// <summary>
+    /// The icon only changes when the loadout does, so this compares the resolved definition and
+    /// leaves the Image alone otherwise.
+    /// </summary>
+    void ApplyIcon()
+    {
+        if (skillIcon == null && fallbackLabel == null)
+            return;
+
+        skillManager.TryGetSlotSkillDefinition(commandSlotIndex, out SkillGemDefinition skillDef);
+
+        if (hasSkillDef && skillDef == lastSkillDef)
+            return;
+
+        lastSkillDef = skillDef;
+        hasSkillDef = true;
+
+        Sprite sprite = skillDef != null ? skillDef.SkillDefinitionIcon : null;
+
+        if (skillIcon != null)
+        {
+            skillIcon.sprite = sprite;
+            SetActiveIfNeeded(skillIcon.gameObject, sprite != null);
+        }
+
+        if (fallbackLabel != null)
+            SetActiveIfNeeded(fallbackLabel.gameObject, sprite == null);
+    }
+
+    void ApplyCharges(SkillChargeStatus status)
+    {
         if (chargeLabel != null)
         {
-            bool showLabel = !hideLabelForSingleCharge || status.Max > 1;
-            if (!hasState || showLabel != lastLabelVisible)
-            {
-                chargeLabel.gameObject.SetActive(showLabel);
-                lastLabelVisible = showLabel;
-            }
+            // A usable slot always shows its count, "1" included: the number is what tells the
+            // player a second press is available, so hiding it at 1 would hide the useful case.
+            bool showLabel = status.Available > 0;
+            SetActiveIfNeeded(chargeLabel.gameObject, showLabel);
 
-            if (showLabel && (status.Available != lastAvailable || status.Max != lastMax))
-                chargeLabel.text = $"{status.Available}/{status.Max}";
+            if (showLabel && status.Available != lastAvailable)
+                chargeLabel.text = GetChargeText(status.Available);
         }
+
+        // The flash marks the slot turning usable again, so it fires only on the empty -> usable
+        // edge. Banking a spare charge on top of a usable one is not a state change worth a cue.
+        if (hasStatus && lastAvailable == 0 && status.Available > 0)
+            StartReadyFlash();
 
         lastAvailable = status.Available;
-        lastMax = status.Max;
+    }
 
-        if (cooldownFill != null)
+    bool IsSampledRechargeDue()
+    {
+        return hasStatus && sampledDuration > 0f && Time.time - sampleTime >= sampledRemaining;
+    }
+
+    void UpdateCooldownFill()
+    {
+        if (cooldownFill == null)
+            return;
+
+        float remaining = sampledDuration > 0f
+            ? Mathf.Clamp(sampledRemaining - (Time.time - sampleTime), 0f, sampledDuration)
+            : 0f;
+
+        // A full pool has nothing owed, so the overlay disappears entirely rather than sitting at
+        // zero fill and dimming the icon.
+        bool visible = remaining > 0f;
+        if (visible != lastFillVisible)
         {
-            if (!hasState || status.IsRecharging != lastFillVisible)
-            {
-                cooldownFill.gameObject.SetActive(status.IsRecharging);
-                lastFillVisible = status.IsRecharging;
-            }
-
-            // The fill tracks only the charge currently recharging, so a partially spent pool
-            // still shows meaningful progress rather than sitting empty.
-            // Writing fillAmount dirties the Graphic and forces a canvas rebuild, so only write
-            // it when the value actually moved.
-            float fill = status.IsRecharging ? 1f - status.NextChargeProgress01 : 0f;
-            if (!Mathf.Approximately(fill, lastFillAmount))
-            {
-                cooldownFill.fillAmount = fill;
-                lastFillAmount = fill;
-            }
+            cooldownFill.gameObject.SetActive(visible);
+            lastFillVisible = visible;
         }
 
-        if (availabilityGroup != null)
+        if (!visible)
+            return;
+
+        // Radial 360 from 12 o'clock, filled counter-clockwise: the overlay holds the time still
+        // owed, so the cleared wedge is the one that sweeps clockwise as the recharge runs.
+        // Writing fillAmount dirties the Graphic and forces a canvas rebuild, so only write it
+        // when the value actually moved.
+        float fill = remaining / sampledDuration;
+        if (!Mathf.Approximately(fill, lastFillAmount))
         {
-            float alpha = status.HasCharge ? 1f : unavailableAlpha;
-            if (!Mathf.Approximately(alpha, lastAlpha))
-            {
-                availabilityGroup.alpha = alpha;
-                lastAlpha = alpha;
-            }
+            cooldownFill.fillAmount = fill;
+            lastFillAmount = fill;
         }
 
-        hasState = true;
+        float alpha = lastAvailable > 0 ? rechargingOverlayAlpha : emptyOverlayAlpha;
+        if (!Mathf.Approximately(alpha, lastOverlayAlpha))
+        {
+            Color color = cooldownFill.color;
+            color.a = alpha;
+            cooldownFill.color = color;
+            lastOverlayAlpha = alpha;
+        }
+    }
+
+    void StartReadyFlash()
+    {
+        if (readyFlash == null || readyFlashSeconds <= 0f)
+            return;
+
+        // Unscaled: the flash is a one-off cue, not part of the cooldown it announces, so it should
+        // not stretch under hitlag or a skill cutscene's world slow.
+        flashEndTime = Time.unscaledTime + readyFlashSeconds;
+        lastFlashAlpha = -1f;
+        SetActiveIfNeeded(readyFlash.gameObject, true);
+    }
+
+    void UpdateReadyFlash()
+    {
+        if (readyFlash == null || flashEndTime < 0f)
+            return;
+
+        float remaining = flashEndTime - Time.unscaledTime;
+        if (remaining <= 0f)
+        {
+            flashEndTime = -1f;
+            lastFlashAlpha = -1f;
+            SetActiveIfNeeded(readyFlash.gameObject, false);
+            return;
+        }
+
+        float alpha = Mathf.Clamp01(remaining / readyFlashSeconds);
+        if (!Mathf.Approximately(alpha, lastFlashAlpha))
+        {
+            Color color = readyFlash.color;
+            color.a = alpha;
+            readyFlash.color = color;
+            lastFlashAlpha = alpha;
+        }
     }
 
     void ApplyVisibility(bool visible)
@@ -155,5 +300,18 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
         // dirties the canvas and forces a rebuild.
         if (target != gameObject && target.activeSelf != visible)
             target.SetActive(visible);
+    }
+
+    static void SetActiveIfNeeded(GameObject target, bool active)
+    {
+        if (target != null && target.activeSelf != active)
+            target.SetActive(active);
+    }
+
+    static string GetChargeText(int available)
+    {
+        return (uint)available < (uint)ChargeTexts.Length
+            ? ChargeTexts[available]
+            : available.ToString();
     }
 }

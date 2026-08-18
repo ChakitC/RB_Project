@@ -736,6 +736,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ctx: {fileID: 1638387977988830713}
   chainAttackDefinition: {fileID: 11400000, guid: 76fce4e87d6149799ec70e9d71b7a7d2, type: 2}
+  meleeSearchDistance: 4
+  meleeSearchRadius: 1.2
+  meleeTargetMask:
+    serializedVersion: 2
+    m_Bits: 2097151
 --- !u!114 &4443219407110611579
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -953,6 +958,54 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: b3ad637f-eee0-4da7-8ab5-43186a5ad4f1
     m_ActionName: 'Player/Block[/Keyboard/g]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 4051215997299661844}
+        m_TargetAssemblyTypeName: PlayerInputHandler, Assembly-CSharp
+        m_MethodName: OnSkillSlot1
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 6954475a-37f4-4e09-8214-5223c77c6ea0
+    m_ActionName: Player/SkillSlot1
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 4051215997299661844}
+        m_TargetAssemblyTypeName: PlayerInputHandler, Assembly-CSharp
+        m_MethodName: OnSkillSlot2
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 65b5bd68-82ae-43cd-9902-90e157eca8a0
+    m_ActionName: Player/SkillSlot2
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 4051215997299661844}
+        m_TargetAssemblyTypeName: PlayerInputHandler, Assembly-CSharp
+        m_MethodName: OnSkillSlot3
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 27d83f37-7611-4604-a3e4-927daeda8d3b
+    m_ActionName: Player/SkillSlot3
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player
@@ -1250,6 +1303,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterContext: {fileID: 1638387977988830713}
   blendSpeed: 12
+  spine: {fileID: 0}
+  chest: {fileID: 0}
 --- !u!114 &6098239142180533381
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1384,6 +1439,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animancer: {fileID: 7383821111389677251}
   ctx: {fileID: 1638387977988830713}
+  inspectorAnimProfile: {fileID: 0}
   chainPlaybackWatchdogGraceSeconds: 0.15
   useRootMotionForChainPlayback: 0
   locomotionLayerIndex: 0

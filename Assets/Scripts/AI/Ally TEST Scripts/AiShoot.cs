@@ -21,10 +21,16 @@ public class AiShoot : Action
     [Header("Aiming")]
     public bool faceTarget;
 
+    [Tooltip("ถ้าเปิด จะไม่หมุนเอง แต่ส่งเป้าให้ AimAxisDriver หมุนใน LateUpdate แทน " +
+             "(จำเป็นเมื่อ bone ที่จะหมุนถูก Animator/Animancer เขียนทับ) — " +
+             "ตัวเช็ค aimToleranceDegrees ยังทำงานปกติโดยถามค่าจาก driver")]
+    public bool delegateRotation;
+
     [Tooltip("Horizontal turn speed while this task is active (degrees per second).")]
     public float turnSpeed = 720f;
 
-    [Tooltip("ถ้าใส่ จะหมุน transform นี้แทนตัว actor หลัก เช่น model/pivot (เช่น Row bone ของเทอร์เรท)")]
+    [Tooltip("ถ้าใส่ จะหมุน transform นี้แทนตัว actor หลัก เช่น model/pivot (เช่น Row bone ของเทอร์เรท)\n" +
+             "หมายเหตุ: field นี้ถูกเมินเมื่อ delegateRotation = true — ตัวที่จะหมุนกำหนดบน AimAxisDriver.yawTarget แทน")]
     public SharedVariable<GameObject> rotateRoot;
 
     [Tooltip("ปกติ NPC ยิงกันในระนาบพื้น เลยควรไม่สนแกน Y")]
@@ -65,6 +71,7 @@ public class AiShoot : Action
     private Transform cachedTarget;
     private IAITargetable cachedTargetable;
     private Transform cachedAimPoint;
+    private AimAxisDriver _aimDriver;
 
     public override void OnStart()
     {
@@ -78,6 +85,9 @@ public class AiShoot : Action
             (rotateRoot != null && rotateRoot.Value != null)
             ? rotateRoot.Value.transform
             : actorTransform;
+        _aimDriver = (CTX != null && delegateRotation)
+            ? CTX.GetComponent<AimAxisDriver>()
+            : null;
         targetSensor = ResolveTargetSensor();
         agentRotationCaptured = false;
         agent = actorTransform != null
@@ -193,6 +203,9 @@ public class AiShoot : Action
 
         agentRotationCaptured = false;
 
+        if (delegateRotation && _aimDriver != null)
+            _aimDriver.ClearAimPoint();
+
         if (CTX != null && CTX.stateHub != null)
             StopFire(CTX);
     }
@@ -204,6 +217,7 @@ public class AiShoot : Action
         waitDuration = 5f;
         returnSuccessWhenTargetLost = true;
         faceTarget = false;
+        delegateRotation = false;
         turnSpeed = 720f;
         rotateRoot = null;
         ignoreYAxis = true;
@@ -318,6 +332,14 @@ public class AiShoot : Action
 
     private bool IsAimAligned(Vector3 aimPoint)
     {
+        if (delegateRotation)
+        {
+            if (_aimDriver == null || aimToleranceDegrees <= 0f)
+                return true;
+
+            return _aimDriver.AngleTo(aimPoint) <= aimToleranceDegrees;
+        }
+
         if (!faceTarget || aimToleranceDegrees <= 0f || _rotateTransform == null)
             return true;
 
@@ -360,6 +382,13 @@ public class AiShoot : Action
 
     private void RotateTowardTarget(Vector3 aimPoint)
     {
+        if (delegateRotation)
+        {
+            if (_aimDriver != null)
+                _aimDriver.SetAimPoint(aimPoint);
+            return;
+        }
+
         if (!faceTarget ||
             turnSpeed <= 0f ||
             _rotateTransform == null ||

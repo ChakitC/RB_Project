@@ -52,6 +52,24 @@ When `optionId` is empty, runtime lookup falls back to the selected
 selections can be restored after reload. Invalid saved selections fall back to
 the slot's default configured option.
 
+## Player Skill Input
+
+`CharacterSkillManager` sits on the player, every ally, every enemy, and every
+summon prefab, so it never reads keyboard/gamepad input directly — a shared
+`Update()` polling actual keys would fire the same hotkey on every character in
+the scene at once. Player-initiated skill casts come only from the input layer:
+`PlayerInputHandler.OnSkillSlot1/2/3` (bound to the New Input System actions
+`SkillSlot1/2/3` on `Inputmaneger.inputactions`, keys `1`/`2`/`3`) call
+`CharacterSkillManager.TryStartCastSlot(slotIndex)` on the player's own
+`SkillManager`. This is a direct self-cast that does not spend CP; commanding
+an ally's skill goes through `PartyCommandController` instead, which does
+spend CP.
+
+`CharacterSkillLoadoutSlot.hotkey` (`CharacterStats.skillSlots[].hotkey`) is
+legacy data with no runtime effect — it is not read by input or by
+`CharacterSkillManager`. Leave it at `None` when authoring new slots; do not
+use it to drive HUD hotkey labels.
+
 ## Creating And Editing Skills
 
 Create skills through `Assets > Create > Game > Skill Gem`. The command creates
@@ -301,6 +319,33 @@ applied only when `SkillCastContext.HasUpgrade(requiredUpgradeId)` is true.
 heals. This is how
 an Active Skill Tree node changes a skill's *behavior* (see **Active Skill
 Loadout and Upgrade Trees** below) rather than only its numbers.
+
+#### Status duration and tick time semantics
+
+Status duration and periodic ticks run on a **single owner-local clock** accumulated by each
+`StatusEffectController` (`_statusClock`), not on `Time.time`. Every frame the controller picks its
+delta the same way the rest of the codebase does — `ctx.UsesWorldSlow` (never a context subtype
+check):
+
+- `UsesWorldSlow == true` (enemies, allies) → `TimeSlowManager.WorldDeltaTime`, so the status drains
+  at the world's slowed rate. A 5s status on an enemy under `0.1x` slow loses ~0.3s over 3 real
+  seconds.
+- `UsesWorldSlow == false` (player, or anyone holding a `PushWorldSlowExemption()`) →
+  `Time.deltaTime`, i.e. real rate — ~3s lost over 3 real seconds.
+
+Because the clock is *accumulated* rather than sampled, `PushWorldSlowExemption()` /
+`PopWorldSlowExemption()` mid-effect only changes the rate from that frame on: no clock
+discontinuity, no burst of catch-up ticks, no stalled tick. `TimeSlowManager.WorldTime` is never
+used for status scheduling for exactly this reason.
+
+Both branches are still scaled by `Time.timeScale`, so HitLag and pause freeze duration *and*
+periodic ticks together. At `WorldTimeScale == 1` behavior is identical to the old `Time.time`
+scheduling. Permanent statuses (`EffectiveDuration <= 0`) are unaffected; duration refresh, stacking,
+and tick-interval changes all resolve against this same clock, and `StatusEffectInstance.TimeLeft` —
+what the status UI reads — therefore counts down in the owner's time automatically.
+
+Disabling a `StatusEffectController` stops its `Update`, so the clock stops with it; re-enabling
+resumes from where it left off without firing ticks for the skipped wall-clock time.
 
 #### Application ownership (StatusEffectDef vs StatusApplicationSpec)
 
@@ -1538,3 +1583,34 @@ always starts with full pools.
 `SkillInstance.TryGetChargeStatus` returns a `SkillChargeStatus` for UI.
 `ignoreResourceCosts` and `stampCooldown: false` paths keep their existing
 behavior.
+
+### HUD readout
+
+`ActiveSkillChargePresenter` is the combat HUD readout for one command slot. It
+owns no timer of its own: `CharacterSkillManager.TryGetSlotChargeStatus` is its
+single source for cooldown state, and `TryGetSlotSkillDefinition` supplies the
+icon. Two slots holding the same skill therefore always agree.
+
+What it shows:
+
+| Pool state | Icon | Charge number | Radial overlay |
+| --- | --- | --- | --- |
+| Full | Skill icon, or `?` when none is authored | Shown, `1` included | Hidden |
+| Recharging, charge left | Same | Shown | Alpha `0.35` |
+| Recharging, empty | Same | Hidden | Alpha `0.65` |
+
+The overlay holds the fraction of the running recharge still owed, so the wedge
+it clears sweeps clockwise from 12 o'clock. A white flash plays only on the
+empty → usable edge; banking a spare charge on top of a usable one is not a
+state change worth a cue.
+
+This readout means **cooldown and charges only**. Energy, animation locks, and
+cutscene locks are deliberately excluded, which is why the presenter must not
+call `CanStartCastSlot` — that method folds all of them together, and a slot
+greyed out for missing energy would read as if it were on cooldown.
+
+Charge status resolution rebuilds `FinalSkillStats`, so the presenter re-reads it
+on a `0.1s` interval and extrapolates the overlay per frame from the last sample.
+Extrapolation uses `Time.time`, the pool's own clock, so the sweep stops exactly
+when the cooldown does. A re-read is pulled forward the moment the sampled
+recharge comes due, so the charge count and the flash still land on time.

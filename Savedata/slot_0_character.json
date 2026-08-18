@@ -79,15 +79,15 @@
                         "treeId": "Feno.Skill_MinigunTerret_Tree",
                         "unlockedNodes": [
                             {
+                                "nodeId": "reinforced_chassis",
+                                "paidCost": 1
+                            },
+                            {
                                 "nodeId": "calibrated_weapon",
                                 "paidCost": 1
                             },
                             {
                                 "nodeId": "extended_deployment",
-                                "paidCost": 1
-                            },
-                            {
-                                "nodeId": "reinforced_chassis",
                                 "paidCost": 1
                             },
                             {
@@ -190,6 +190,18 @@
                                 "paidCost": 1
                             }
                         ]
+                    },
+                    {
+                        "slotId": "0",
+                        "optionId": "aires.skill.1",
+                        "treeId": "Aires_Skill_1.1_Tree",
+                        "unlockedNodes": []
+                    },
+                    {
+                        "slotId": "2",
+                        "optionId": "aires.skill.3",
+                        "treeId": "Aires_Skill_3_Tree",
+                        "unlockedNodes": []
                     }
                 ]
             }

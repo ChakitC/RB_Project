@@ -359,6 +359,8 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         Avatar avatarOverride = null)
     {
         var stats = GetCurrentCharacterStats();
+        if (!_ctx.baseStats)
+            return;
         if (!animator)
             return;
 

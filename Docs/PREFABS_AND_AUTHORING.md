@@ -635,8 +635,29 @@ automatically by `PlayerUIRuntimeBinder`:
   `ActiveSkillChargePresenter`. Set `commandSlotIndex` to the index into
   `CharacterSkillManager.CommandSlots`. Assign `root` to the child `View` object
   (never the presenter's own GameObject, or it would disable itself), plus
-  `chargeLabel`, `cooldownFill`, and `availabilityGroup`. The label is hidden
-  automatically while the skill only has one charge.
+  `skillIcon`, `fallbackLabel`, `chargeLabel`, `cooldownFill`, and `readyFlash`.
+
+  Each `View` holds its children in this render order, back to front:
+
+  | Child | Type | Purpose |
+  | --- | --- | --- |
+  | `SkillIcon` | `Image` | The slot skill's `SkillGemDefinition.icon`. |
+  | `CooldownFill` | `Image` | Dark radial overlay for the recharge in flight. |
+  | `ReadyFlash` | `Image` | White pulse when the slot becomes usable again. |
+  | `FallbackLabel` | `TMP_Text` | `?`, shown when the skill has no icon. |
+  | `ChargeLabel` | `TMP_Text` | Charge count, bottom-right. |
+
+  `CooldownFill` must stay **Filled / Radial 360 / Origin Top / clockwise off**
+  and must have a sprite assigned — a `Filled` Image with no sprite silently
+  falls back to a plain quad and never sweeps. Counter-clockwise is correct here
+  and is not a typo: the overlay holds the time still *owed*, so the wedge it
+  clears is the one that sweeps clockwise from 12 o'clock. The presenter drives
+  the overlay's alpha (`0.35` while a charge is still usable, `0.65` once the
+  pool is empty) and hides the object entirely on a full pool.
+
+  Leave the `View` `CanvasGroup` at alpha `1`. The presenter no longer dims it;
+  dimming there would multiply with the overlay's own alpha and make a
+  half-recharged slot read as unusable.
 - **`SkillCastFeedback`** — a `SkillCastFeedbackPresenter` that shows the
   player-facing line from `CastExecutionFailed` (for example
   `"Cannot deploy here"`). Assign `root`, `messageLabel`, and `fadeGroup`.
@@ -1463,6 +1484,42 @@ and save both the unlock and inventory balance to the active save slot.
 the starter shop prefabs. Keep the `CharacterDatabase` reference on
 `CharacterShopPageUI` and the `characterShopPage` reference on `ShopPanelUI`
 when creating prefab variants.
+
+## Player Skill Input — Prefab / Input Asset Wiring
+
+Player skill casts (slots 1/2/3) come from the New Input System, not from a
+keyboard poll on `CharacterSkillManager` (that component also lives on ally,
+enemy, and summon prefabs, so it never reads keys directly — see
+`Docs/SYSTEMS/SKILL_SYSTEM.md` § Player Skill Input).
+
+`RB_Project/Assets/Input/Inputmaneger.inputactions`, map `Player`:
+
+| Action | Binding |
+|---|---|
+| `SkillSlot1` | `<Keyboard>/1` |
+| `SkillSlot2` | `<Keyboard>/2` |
+| `SkillSlot3` | `<Keyboard>/3` |
+| `CallHalper` | `<Keyboard>/tab` (moved off `1` to make room for `SkillSlot1`) |
+
+`Player.prefab`, `PlayerInput` component Events → Player:
+
+| Action | Object | Function |
+|---|---|---|
+| `SkillSlot1` | `PlayerInputHandler` | `OnSkillSlot1` |
+| `SkillSlot2` | `PlayerInputHandler` | `OnSkillSlot2` |
+| `SkillSlot3` | `PlayerInputHandler` | `OnSkillSlot3` |
+
+`m_CallState` must be `2` (RuntimeOnly), matching every other entry in the
+list. Edit action bindings through the Input Actions editor in Unity, not by
+hand-editing the `.inputactions` JSON or the prefab YAML — action ids are
+GUIDs that the prefab's `PlayerInput.m_ActionEvents` reference by id, and the
+cached `m_ActionName` label shown per entry can go stale (it does not affect
+behavior; only the actual GUID binding does — do not trust the label when
+reviewing).
+
+`CharacterStats.skillSlots[].hotkey` (the legacy per-character hotkey field on
+`ChaDef.*` assets) is no longer read by any runtime code. It exists only as
+old data; leave it at `None` on new slots.
 
 ## Before Removing A Serialized Field
 

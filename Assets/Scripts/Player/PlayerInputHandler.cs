@@ -6,12 +6,21 @@ public class PlayerInputHandler : MonoBehaviour
     [SerializeField] PlayerContext ctx;
     [Header("Chain Attack")]
     [SerializeField] SkillChainDef chainAttackDefinition;
+    [Header("Melee Soft Target")]
+    [SerializeField] float meleeSearchDistance = 4f;
+    [SerializeField] float meleeSearchRadius = 1.2f;
+    [SerializeField] LayerMask meleeTargetMask = ~0;
 
     bool _chainConsumedInteractPress;
 
     void Awake()
     {
         ResolveReferences();
+    }
+
+    void OnDisable()
+    {
+        _chainConsumedInteractPress = false;
     }
 
     void ResolveReferences()
@@ -24,15 +33,13 @@ public class PlayerInputHandler : MonoBehaviour
    
     public void OnMove(InputAction.CallbackContext c)
     {
-        ResolveReferences();
         if (ctx == null) return;
 
         ctx.moveInput = c.ReadValue<Vector2>();
-       
+
     }
     public void OnLook(InputAction.CallbackContext c)
     {
-        ResolveReferences();
         if (ctx == null) return;
 
         ctx.lookInput = c.ReadValue<Vector2>();
@@ -60,9 +67,9 @@ public class PlayerInputHandler : MonoBehaviour
 
         ThirdPersonTargetingUtility.FacePlayerTowardSoftTarget(
             ctx,
-            searchDistance: 4f,
-            searchRadius: 1.2f,
-            targetMask: ~0);
+            searchDistance: meleeSearchDistance,
+            searchRadius: meleeSearchRadius,
+            targetMask: meleeTargetMask);
         ctx?.stateHub?.RequestOnMelee();
     }
 
@@ -121,7 +128,7 @@ public class PlayerInputHandler : MonoBehaviour
         if (ctx == null)
             return;
 
-        if (ctx != null && ctx.partyCommand != null && ctx.partyCommand.HasPartyCommands)
+        if (ctx.partyCommand != null && ctx.partyCommand.HasPartyCommands)
         {
             ctx.partyCommand.TryExecuteSelectedPartyCommand();
             return;
@@ -170,6 +177,19 @@ public class PlayerInputHandler : MonoBehaviour
         ResolveReferences();
         if (c.performed && ctx?.partyCommand != null)
             ctx.partyCommand.TrySelectPartyCommandSlot(3);
+    }
+
+    public void OnSkillSlot1(InputAction.CallbackContext c) => TryCastSkillSlot(c, 0);
+    public void OnSkillSlot2(InputAction.CallbackContext c) => TryCastSkillSlot(c, 1);
+    public void OnSkillSlot3(InputAction.CallbackContext c) => TryCastSkillSlot(c, 2);
+
+    void TryCastSkillSlot(InputAction.CallbackContext c, int slotIndex)
+    {
+        if (!c.performed)
+            return;
+
+        ResolveReferences();
+        ctx?.SkillManager?.TryStartCastSlot(slotIndex);
     }
 
     public void OnInterruptionCommand(InputAction.CallbackContext c)

@@ -402,6 +402,17 @@ MonoBehaviour:
   m_DefaultActionMap: UI
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 0}
+--- !u!114 &270913928 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3253205841908520518, guid: 6f3e8c0a0b6a4ce5b8d1e2f3a4b5c6d7, type: 3}
+  m_PrefabInstance: {fileID: 1989054375}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a90341c7b794bac8477ef907fb25717, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &281267927
 GameObject:
   m_ObjectHideFlags: 0
@@ -1721,6 +1732,56 @@ MonoBehaviour:
   m_MinRegionArea: 2
   m_NavMeshData: {fileID: 23800000, guid: 1aa822632e5b50c4081d1cb177b20674, type: 2}
   m_BuildHeightMesh: 0
+--- !u!1 &1687575539
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1687575541}
+  - component: {fileID: 1687575540}
+  m_Layer: 0
+  m_Name: TimeSlowManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1687575540
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1687575539}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6c14bc73ce22324698a5228a8b25f8f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _defaultSlowShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!4 &1687575541
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1687575539}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1695203509
 GameObject:
   m_ObjectHideFlags: 0
@@ -2407,6 +2468,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 876107718998901031, guid: 6f3e8c0a0b6a4ce5b8d1e2f3a4b5c6d7, type: 3}
+      propertyPath: CTX
+      value: 
+      objectReference: {fileID: 270913928}
     - target: {fileID: 3904815324446576792, guid: 6f3e8c0a0b6a4ce5b8d1e2f3a4b5c6d7, type: 3}
       propertyPath: m_Name
       value: MinigunTerret_Summon
@@ -2451,6 +2516,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7991187996840442107, guid: 6f3e8c0a0b6a4ce5b8d1e2f3a4b5c6d7, type: 3}
+      propertyPath: healthBarLocalRotEuler.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8663443619432600494, guid: 6f3e8c0a0b6a4ce5b8d1e2f3a4b5c6d7, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 89da9905833ce7c4792a5559aaa09caf, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -2667,3 +2740,4 @@ SceneRoots:
   - {fileID: 1307120230}
   - {fileID: 1989054375}
   - {fileID: 811800446}
+  - {fileID: 1687575541}

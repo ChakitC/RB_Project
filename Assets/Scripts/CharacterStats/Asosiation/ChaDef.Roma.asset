@@ -51,7 +51,7 @@ MonoBehaviour:
   skillSlots:
   - slotId: 0
     displayName: Roma.Ualtimeat
-    hotkey: 282
+    hotkey: 0
     defaultOptionIndex: 0
     options:
     - optionId: Roma.Ualtimeat.1

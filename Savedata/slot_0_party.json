@@ -1,8 +1,8 @@
 {
     "partyIds": [
-        "ID.Feno",
-        "ID.Roma",
         "ID.Aires",
+        "ID.Roma",
+        "ID.Feno",
         "ID.Milano"
     ]
 }

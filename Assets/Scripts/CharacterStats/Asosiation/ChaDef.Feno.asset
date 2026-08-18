@@ -56,7 +56,7 @@ MonoBehaviour:
     options: []
   - slotId: 2
     displayName: 2
-    hotkey: 283
+    hotkey: 0
     defaultOptionIndex: 0
     options:
     - optionId: feno.skill.minigunterret

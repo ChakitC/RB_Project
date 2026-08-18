@@ -61,6 +61,11 @@ public sealed class StatusEffectInstance
     public string OriginRuleId { get; private set; }
     public int CurrentStacks { get; private set; }
     public float TimeLeft { get; private set; }
+
+    /// <summary>
+    /// เวลาที่ควร tick ครั้งถัดไป — อยู่ใน owner-local status clock ของ <c>StatusEffectController</c>
+    /// (ไม่ใช่ <c>Time.time</c>). ทุก <c>now</c> ที่คลาสนี้รับมาต้องมาจาก clock ตัวเดียวกันนั้น.
+    /// </summary>
     public float NextTickTime { get; private set; }
     public float EffectiveDuration { get; private set; }
     public bool IsPermanent => Definition == null || EffectiveDuration <= 0f;

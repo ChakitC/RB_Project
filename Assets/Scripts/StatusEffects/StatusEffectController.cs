@@ -28,6 +28,14 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
     readonly List<StatusEffectInstance> _activeEffects = new();
 
+    /// <summary>
+    /// นาฬิกาสะสมของ controller นี้ — เป็น time domain เดียวที่ Status ใช้ทั้ง duration และ periodic tick
+    /// ("owner-local status clock"). สะสมทีละเฟรมจาก <see cref="ResolveStatusDeltaTime"/> แทนการอ่าน
+    /// <c>Time.time</c> ตรงๆ เพื่อให้สลับ world-slow exemption กลางเอฟเฟกต์ได้โดยนาฬิกาไม่กระโดด
+    /// (ไม่มี tick รัวและไม่มี tick ค้าง).
+    /// </summary>
+    float _statusClock;
+
     public IReadOnlyList<StatusEffectInstance> ActiveEffects => _activeEffects;
 
     public event Action StatModifiersChanged;
@@ -176,10 +184,30 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
     void Update()
     {
-        Tick(Time.deltaTime);
+        // เดินนาฬิกาทุกเฟรมแม้ไม่มี effect อยู่ เพื่อให้ timeline ของ controller เป็น monotonic
+        // (instance ที่ถูก apply ทีหลังจะ schedule tick จากนาฬิกาเดียวกันนี้เสมอ)
+        float dt = ResolveStatusDeltaTime();
+        _statusClock += dt;
+        Tick(dt, _statusClock);
 
         if (debugInInspector)
             RefreshDebugSnapshot();
+    }
+
+    /// <summary>
+    /// เลือก delta time ตาม convention ของระบบ: actor ที่อยู่ใต้ world slow (<c>ctx.UsesWorldSlow</c>)
+    /// เดินตาม <see cref="TimeSlowManager.WorldDeltaTime"/>, actor ที่ push exemption ไว้เดินตาม
+    /// <c>Time.deltaTime</c>. ทั้งสองทางยังอยู่ใต้ <c>Time.timeScale</c> อยู่แล้ว → HitLag และ pause
+    /// หยุด/ชะลอทั้ง duration และ periodic tick เหมือนเดิม.
+    /// </summary>
+    float ResolveStatusDeltaTime()
+    {
+        bool usesWorldSlow = ctx == null || ctx.UsesWorldSlow;
+        if (!usesWorldSlow)
+            return Time.deltaTime;
+
+        TimeSlowManager timeSlow = TimeSlowManager.Instance;
+        return timeSlow != null ? timeSlow.WorldDeltaTime : Time.deltaTime;
     }
 
     /// <summary>
@@ -264,7 +292,9 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         if (definition == null)
             return null;
 
-        float now = Time.time;
+        // ใช้ owner-local status clock ตัวเดียวกับที่ Tick ใช้ — constructor/ScheduleFirstTick/AdoptMagnitude
+        // ต้องอยู่ใน clock domain เดียวกัน ไม่งั้น NextTickTime จะเทียบกับ now คนละแกน
+        float now = _statusClock;
         int clampedStacks = Mathf.Max(0, initialStacks);
         string sourceKey = definition.separatePerSource ? appliedById : null;
 
@@ -535,14 +565,15 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         return null;
     }
 
-    void Tick(float dt)
+    /// <param name="dt">delta time ของเจ้าของ status ในเฟรมนี้ (world-slow หรือ exempt)</param>
+    /// <param name="now">ค่า <see cref="_statusClock"/> หลังบวก <paramref name="dt"/> แล้ว</param>
+    void Tick(float dt, float now)
     {
         if (_activeEffects.Count == 0)
             return;
 
         bool changed = false;
         List<StatusEffectEvent> lifecycleEvents = null;
-        float now = Time.time;
 
         for (int i = _activeEffects.Count - 1; i >= 0; i--)
         {

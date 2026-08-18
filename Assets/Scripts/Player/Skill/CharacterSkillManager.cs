@@ -156,25 +156,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (castOrchestrator != null && castOrchestrator.HasPendingCast)
             return;
 
-        if (IsSkillStartBlockedByAnimation())
-        {
-            pendingSlot = null;
-            return;
-        }
-
+        // No cast pending: release any reserved slot so CancelPendingSlotIfNeeded doesn't touch a stale one.
         pendingSlot = null;
-        if (resolvedCommandSlotStates.Count == 0)
-            return;
-
-        for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
-        {
-            ResolvedCommandSlotState state = resolvedCommandSlotStates[i];
-            if (state == null || state.IsPassive || state.slot == null)
-                continue;
-
-            if (Input.GetKeyDown(state.slot.hotkey))
-                TryBeginCast(state.slot);
-        }
     }
 
     public bool TryCastSlot(int slotIndex)
@@ -197,6 +180,22 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return TryGetCommandSlot(slotIndex, out SkillSlot slot) &&
                slot != null &&
                slot.skillAsset != null;
+    }
+
+    /// <summary>
+    /// Skill currently assigned to a command slot, for HUD icons and tooltips. This is a plain
+    /// read of the resolved loadout: it does not build a runtime skill or touch the charge pool,
+    /// so a HUD can poll it alongside <see cref="TryGetSlotChargeStatus"/> without paying twice.
+    /// </summary>
+    public bool TryGetSlotSkillDefinition(int slotIndex, out SkillGemDefinition skillDef)
+    {
+        skillDef = null;
+
+        if (!TryGetCommandSlot(slotIndex, out SkillSlot slot))
+            return false;
+
+        skillDef = slot.skillAsset;
+        return skillDef != null;
     }
 
     public bool CanStartCastSlot(int slotIndex)

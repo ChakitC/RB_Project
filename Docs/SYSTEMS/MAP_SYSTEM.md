@@ -50,6 +50,52 @@ Starting a new run destroys every cached room and clears all runtime ownership.
 The cache is in-memory only; saving and loading a run across application
 sessions is outside the current map runtime contract.
 
+## Stage Intro
+
+The Start node of a run can play a group-shot intro before gameplay begins.
+The order inside `MapRunController.EnterNode` is:
+
+1. activate the destination room and warp the party to its room spawn;
+2. commit the graph state and raise `RoomTransitionCommitted`;
+3. if this is the Start node and the intro has not been attempted yet, look for
+   a `StageIntroRig` under the room instance and call `StageIntroRig.TryPlay`;
+4. `RoomController.BeginRoom` and `NotifyMapChanged` run only after the intro
+   reports completion.
+
+`isTransitioning` stays true for the whole intro, so the party cannot travel out
+of the Start room while it plays and no encounter can begin behind it.
+
+The intro is attempted at most once per `StartRun()`. Walking back into the
+Start room later in the same run does not replay it. `StartRun()` resets the
+attempt flag for the next run.
+
+Everything about the intro is fail-open. A missing rig, a missing or zero-length
+Camera Clip, a missing/duplicated actor marker, a missing camera rig, a busy
+`CutsceneDirector`, or a missing `PartyRuntime` all make `TryPlay` return false,
+and the room starts immediately with no intro. Production intros therefore stay
+disabled until an author supplies a real camera AnimationClip.
+
+While the intro runs the rig:
+
+- hides the HUD, opens a full-black overlay, and shows letterbox bars;
+- warps `Player`, `PartySlot1`, `PartySlot2`, and `Helper` onto their markers;
+- plays each character's `CharacterAnimProfileSO.stageIntroClip` as an exclusive,
+  root-motion-free locomotion state (locomotion idle when no clip is authored);
+  characters sharing an anim profile share the pose;
+- runs the Camera Clip on the rig's camera rig — that clip's length is the
+  master duration, so a shorter character clip holds its last frame;
+- deactivates the player's `PlayerInput` and offers a hold-to-skip on the
+  `Player/Interract` binding (0.75s, unscaled). A button that was already held
+  when the intro started is ignored until it is released once;
+- disables companion `BehaviorTree`, `NavMeshAgent`, and `AgentMoveDriver`, and
+  takes an owner-scoped `StateHub` control-block token so releasing it can never
+  clear another system's external block.
+
+`Time.timeScale` is never changed. On completion, skip, disable, scene unload,
+or an exception, the rig restores every captured pose and component state,
+returns the camera, re-shows the HUD, and invokes its completion callback
+exactly once.
+
 ## Test Stages
 
 The Basement Mobiliz board contains a bounded second page with three Stage

@@ -60,6 +60,15 @@ system does not automatically respawn a party member after death. Scene changes
 destroy the scene-local party normally; the destination scene creates its own
 party from its marker.
 
+## Stage Intro Relationship
+
+The MapRun stage intro is not part of `PartySpawnPoint`. It runs later, inside
+`MapRunController.EnterNode`, after party binding and after the Start-room warp,
+and only for the Start node of a run. It reads the already-bound `PartyRuntime`
+through `PartySpawnPoint.CurrentParty` and looks up actors by `ChainActorRole`.
+See `Docs/SYSTEMS/MAP_SYSTEM.md` for the sequence and
+`Docs/PREFABS_AND_AUTHORING.md` for the rig contract.
+
 ## Scene Contract
 
 A gameplay scene either has exactly one active `PartySpawnPoint` or intentionally

@@ -598,6 +598,21 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         ApplyFirePointOffset();
     }
 
+    /// <summary>
+    /// Shows or hides the overhead health bar without destroying it. The bar is world-space, so it is
+    /// not covered by <see cref="UIManager.SetHudVisible"/> and cinematics have to hide it themselves.
+    /// Returns the state the bar was in, so a caller can restore exactly what it found.
+    /// </summary>
+    public bool SetOverheadBarVisible(bool visible)
+    {
+        if (!_healthBarInstance)
+            return false;
+
+        bool previous = _healthBarInstance.activeSelf;
+        _healthBarInstance.SetActive(visible);
+        return previous;
+    }
+
     private void CreateHealthBarOnModelBone()
     {
         EnsureReferences();

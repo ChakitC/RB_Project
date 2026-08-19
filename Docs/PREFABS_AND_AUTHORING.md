@@ -175,6 +175,161 @@ rewriting that room asset. Keep the definition enabled, assigned to a prefab,
 and at two or more exits; the pre-Boss blue-node validator requires a usable
 multi-exit Heal definition.
 
+## Stage Intro Rig Authoring
+
+The MapRun stage intro lives on a shared `StageIntroRig.prefab`, nested under the
+Start room prefab (`Assets/Prefab/MAP/Start/Start.DeadEnd.Up.prefab`) so its
+markers and camera follow the room instance transform. Create the rig with
+**Tools > RB > Map > Create Stage Intro Rig Prefab**; it writes
+`Assets/Prefab/MAP/StageIntro/StageIntroRig.prefab` with the contract wired.
+
+Required contents:
+
+| Object | Component | Notes |
+| --- | --- | --- |
+| Rig root | `StageIntroRig` | discovered with `GetComponentInChildren` under the room instance |
+| `Markers/Marker_<Role>` | `StageIntroActorMarker` | exactly one per role: `Player`, `PartySlot1`, `PartySlot2`, `Helper` |
+| `CameraAnimationRoot` | `Animator` + `AnimancerComponent` | driven by the Camera Clip |
+| `CameraAnimationRoot/IntroCamera` | `CinemachineCamera` | the rig enables it and raises its priority for the intro, then forces it back off |
+
+The rig always switches the intro camera off when the intro ends, rather than
+restoring whatever state the prefab shipped. An intro camera left enabled would sit
+at the same Cinemachine priority as the gameplay camera, and the brain keeps
+whichever activated last — so gameplay would never get its camera back.
+
+The rig also cancels any scale inherited from the room instance (`Start.DeadEnd.Up`
+carries a root scale of 1.33), so marker offsets and the camera rig play back at
+exactly the size they were blocked out at in Prefab Mode. It still inherits the
+room's position and rotation, which it needs: `MapRunController` instantiates rooms
+with a per-node yaw, so a rig outside the room hierarchy would face the wrong way.
+That is why the rig must stay nested under the room and cannot be its own scene root.
+
+Overhead health bars are world-space and are not covered by
+`UIManager.SetHudVisible`, so each actor's `CharacterVisualController` bar is hidden
+for the duration of the intro and restored to its previous state afterwards.
+
+The Helper is a summon: `AllyHelperManager.Start` deactivates it, and every command
+hides it again once the skill finishes, so it would otherwise be missing from its
+marker. The intro holds it on screen through
+`AllyHelperManager.BeginCinematicAppearance` / `EndCinematicAppearance`. The hold is
+a flag the manager checks before hiding, which also settles an ordering hazard:
+`MapRunController` runs at the default execution order while `AllyHelperManager` is
+at 100, so the intro starts first and the manager's own `Start` would otherwise pull
+the helper off screen mid-shot. Positioning deliberately does not go through the
+summon path, which randomises a spot around the player.
+
+`Camera Clip` on the rig is the group-shot camera animation and the **master
+duration** of the intro. Until an author assigns a real clip the rig fails
+validation and the intro is skipped, so the stage still starts normally. Do not
+generate placeholder camera motion to satisfy the field.
+
+Presentation defaults on the rig: 0.2s fades, 8% letterbox per side, 0.75s
+hold-to-skip. The screen-space overlay (black fade, letterbox bars, skip label,
+hold progress) is built at runtime; nothing has to be assembled by hand.
+
+### Character Intro Poses
+
+The intro pose is `CharacterAnimProfileSO.stageIntroClip` (`Stage Intro` header),
+alongside every other clip the profile owns. It is deliberately **per profile, not
+per character**: characters that share an anim profile share the intro pose, which
+is the same rule as their locomotion, dash, and status poses.
+
+Clips must be **in place** — planar root motion is never applied, and the runtime
+state forces `applyRootMotion` off. A clip shorter than the Camera Clip holds its
+last frame. An empty field falls back to the profile's locomotion idle blend.
+`CharacterAnimBrain` reads the clip through its bound profile, so
+`SetAnimProfileOverride` swaps the intro pose along with everything else.
+
+Assignments:
+
+| Anim profile | Stage Intro Clip | Characters using it |
+| --- | --- | --- |
+| `Roma_AnimProfile` | `Roma_Intro_Sit` | Roma, Milano, Dorothy, Noemi, Roger, Abbygail |
+| `Feno_AnimProfile` | `Feno_Intro_Sit` | Feno |
+| `Aires_AnimProfile` | `Aires_Intro.Stand` | Aires |
+
+Run **Tools > RB > Map > Assign Stage Intro Clips** to (re)apply them. The tool
+exists because these intro FBX files have no `clipAnimations` entry in their meta,
+so their AnimationClip is the importer-generated default take and its fileID cannot
+be written into an asset by hand — the tool resolves it through the AssetDatabase,
+which also makes it safe to re-run after a reimport.
+
+Six of the eight characters share `Roma_AnimProfile`, so they all strike Roma's
+pose until they are given their own profile. `Milano_Intro_Stand` therefore has no
+profile to live on and is currently unused; the tool reports this rather than
+silently dropping it. Give a character its own intro pose by giving it its own
+`CharacterAnimProfileSO`.
+
+### Editor Preview
+
+The `StageIntroRig` inspector works in Prefab Mode without entering Play Mode:
+
+- **Preview Roster** gives each of the four roles a **Character** dropdown fed by
+  the project's single `CharacterDatabase` (all entries, unfiltered — unlock state
+  belongs to a save slot and has nothing to do with blocking a shot) and an
+  optional **Intro Clip (Preview)** override;
+- **Spawn Preview Party** clones each selected character's
+  `CharacterStats.CharacterPrefab` and places it on that role's marker;
+- **Clear Preview** removes them;
+- **Play / Pause / Stop** and the **Time** slider (`0..cameraClip.length`) sample
+  the Camera Clip and each character clip at the same time through Unity's
+  Animation Mode;
+- **Look Through Intro Camera** / **Frame Now** drive the Scene view camera to
+  the intro camera's sampled pose and lens FOV. A `CinemachineCamera` does not
+  render on its own without a `CinemachineBrain`, which Prefab Mode has none of,
+  so this is how the framing is checked inside Prefab Mode;
+- **Preview In Game View (Solo)** is enabled whenever the open scene has a game
+  `Camera`. It sets `CinemachineCore.SoloCamera` to the intro camera so the Game
+  view renders the real shot at the real aspect ratio while scrubbing.
+
+`GameplayCameraController` only adds its `CinemachineBrain` in `EnsureRuntimeRig`
+at runtime, so an Edit Mode scene normally has a camera and no brain. The preview
+therefore adds a `HideFlags.DontSaveInEditor` brain to the resolved camera itself.
+Switching the toggle off — and clearing the preview, disabling the inspector, or
+an assembly reload — destroys that brain, restores the camera's authored pose, and
+restores the intro camera's enabled state. Do not save the scene while the toggle
+is on. To use it, drag the Start room prefab into a gameplay scene, preview there,
+then remove it without saving.
+
+The preview clones the **character prefab**, not the party actor prefab.
+`Player.prefab` and `Ally_Stryker.prefab` carry no model at all: their
+`modelRoot` is empty until `CharacterVisualController` instantiates
+`CharacterStats.CharacterPrefab` into it at runtime. The preview therefore
+instantiates that prefab directly and copies `CharacterStats.characterAvatar` onto
+its `Animator`, mirroring `ConfigureAnimatorRuntime` so shared clips retarget the
+same way they do in game. `modelRoot` sits at local origin on both actor prefabs,
+so placing the clone straight on the marker matches runtime placement. Weapons are
+not built — that would mean running equipment logic in Edit Mode, and a group shot
+does not depend on it.
+
+Clip resolution per slot: the **Intro Clip (Preview)** override first, then the
+character's `CharacterAnimProfileSO.stageIntroClip`, then the locomotion idle — the
+same fallback chain as the runtime state, so leaving every override empty previews
+exactly what ships. Because `AnimationMode.SampleAnimationClip` applies a clip's
+root curves while the runtime state forces root motion off, each actor is snapped
+back onto its marker after every sample.
+
+The override is a scratch value and is **not** persisted; only the character
+selection is, in `EditorPrefs` keyed by the rig's prefab GUID, so nothing about the
+preview reaches the prefab or the build. An override that differs from
+`stageIntroClip` is not flagged — committing a pose means editing the character's
+`CharacterAnimProfileSO`.
+
+Preview actors are owned by `StageIntroPreviewSession`, not by the inspector, so
+selecting and dragging a marker does not destroy them and they follow markers live.
+They use `HideFlags.DontSaveInEditor` and are removed by **Clear Preview**, closing
+the prefab stage or scene, an assembly reload, and entering Play Mode — that last
+one matters because `DontSaveInEditor` objects otherwise survive the edit-to-play
+scene reload and would stack four ghost actors on the real party. Sampling runs
+through Animation Mode and the scene's dirty flag is restored, so previewing never
+dirties the prefab or scene. With no Camera Clip assigned, playback and scrubbing
+are disabled but spawning the preview party still works so markers can be blocked
+out.
+
+The inspector also lists validation problems: missing or duplicated marker roles,
+a missing marker reference, a missing `CinemachineCamera` or camera animation
+root, and an empty or zero-length Camera Clip.
+
 ## Third-Person Character Calibration
 
 Each `CharacterStats` asset owns a `Third Person/TPS Profile`. Use it to

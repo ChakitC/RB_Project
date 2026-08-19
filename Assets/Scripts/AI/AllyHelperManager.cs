@@ -79,6 +79,7 @@ public class AllyHelperManager : MonoBehaviour
     bool _helperProtectionApplied;
     int _helperInvincibilityToken;
     int _helperUntargetableToken;
+    bool _cinematicHold;
 
     public event Action<CharacterAnimBrain, CharacterAnimBrain> HelperAnimBrainChanged;
 
@@ -248,6 +249,13 @@ public class AllyHelperManager : MonoBehaviour
         }
 
         CacheHelperReferences();
+
+        // A cinematic (e.g. the MapRun stage intro) can start before this Start runs — MapRunController
+        // has the default execution order while this manager is at 100 — so respect an active hold
+        // instead of yanking the helper off screen mid-shot.
+        if (_cinematicHold)
+            return;
+
         allyHelperFader?.SetHiddenImmediate(preserveWhileDisabled: true);
 
         if (allyHelper.activeSelf)
@@ -689,12 +697,49 @@ public class AllyHelperManager : MonoBehaviour
     void HideHelperImmediate()
     {
         RestoreHelperSkillAutonomy();
+
+        // While a cinematic holds the helper on screen, nothing else may hide it.
+        if (_cinematicHold)
+            return;
+
         allyHelperFader?.SetHiddenImmediate(preserveWhileDisabled: true);
 
         if (allyHelper != null && allyHelper.activeSelf)
             allyHelper.SetActive(false);
 
         RestoreHelperProtection();
+    }
+
+    /// <summary>
+    /// Keeps the helper visible for a cinematic that wants the full party on screen. The helper is
+    /// normally a summon: it is deactivated in <c>Start</c> and hidden again after each command, so a
+    /// cinematic has to hold it explicitly. Positioning stays with the caller — this deliberately does
+    /// not reuse the summon path, which randomises a spot around the player.
+    /// Always pair with <see cref="EndCinematicAppearance"/>.
+    /// </summary>
+    public void BeginCinematicAppearance()
+    {
+        if (allyHelper == null)
+            return;
+
+        CacheHelperReferences();
+        _cinematicHold = true;
+
+        if (!allyHelper.activeSelf)
+            allyHelper.SetActive(true);
+
+        // false = fade in and stay; true would arm the auto-hide monitor meant for skill playback.
+        allyHelperFader?.BeginAnimationLifecycle(false);
+    }
+
+    /// <summary>Releases the cinematic hold and returns the helper to its normal hidden state.</summary>
+    public void EndCinematicAppearance()
+    {
+        if (!_cinematicHold)
+            return;
+
+        _cinematicHold = false;
+        HideHelperImmediate();
     }
 
     Vector3 ResolveSummonPosition(Vector3 playerPos)

@@ -42,6 +42,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private Locomotion_Dead deadState;
     private Action onDeadEndCache;
 
+    private Locomotion_StageIntro stageIntroState;
+    private Action onStageIntroEndCache;
+
     private float _reloadDuration = 0f;
     private readonly List<PairOffsetBasePoseWeight> _activePairBasePoseWeights = new List<PairOffsetBasePoseWeight>(3);
     private PairOffsetBasePose _activePairBasePose = PairOffsetBasePose.None;
@@ -60,6 +63,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         Dead = 8,
         StatusEffect = 9,
         ChainCutscene = 10,
+        StageIntro = 11,
     }
 
     public enum PlaybackPhase
@@ -241,7 +245,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
          locomotionSM.CurrentState == fullBodyReloadState ||
          locomotionSM.CurrentState == knockbackState ||
          locomotionSM.CurrentState == deadState ||
-         locomotionSM.CurrentState == statusEffectState);
+         locomotionSM.CurrentState == statusEffectState ||
+         locomotionSM.CurrentState == stageIntroState);
     public PlaybackKind CurrentPlaybackKind => ResolveCurrentPlaybackKind();
 
     private bool ExternalCommandBlockedByChain() => IsChainPlaybackActive;
@@ -391,6 +396,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         utility = new Locomotion_Utility(this);
         chain = new Locomotion_Chain(this);
         statusEffectState = new Locomotion_StatusEffect(this);
+        stageIntroState = new Locomotion_StageIntro(this);
 
         locomotionSM.ForceSetState(locomotion);
         actionSM.ForceSetState(empty);
@@ -788,6 +794,47 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         meleeCombo.EndVfxSession();
         MeleeComboEnded?.Invoke();
         EmitPlaybackSignal(PlaybackKind.Melee, PlaybackPhase.Completed, 0);
+
+        bool exited = locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
+        if (!exited)
+            ExitExclusiveLocomotion(false);
+    }
+
+    /// <summary>True while the MapRun stage intro pose owns locomotion.</summary>
+    public bool IsStageIntroPlaybackActive =>
+        _initialized && locomotionSM.CurrentState == stageIntroState;
+
+    private ClipTransition StageIntroClip => AnimProfile != null ? AnimProfile.stageIntroClip : null;
+
+    /// <summary>
+    /// Enters the exclusive, root-motion-free stage intro pose. Falls back to the locomotion idle
+    /// blend when the profile has no authored <see cref="CharacterAnimProfileSO.stageIntroClip"/>.
+    /// </summary>
+    public bool TryPlayStageIntro()
+    {
+        AbortActiveChainPlaybackForExternalState();
+        InterruptActiveSkillRequest();
+        InterruptActiveUtilityRequest();
+
+        if (!TryInitialize())
+            return false;
+
+        StopReloadAction();
+
+        if (locomotionSM.CurrentState == stageIntroState)
+            return locomotionSM.TryResetState(stageIntroState);
+
+        return locomotionSM.TrySetState(stageIntroState);
+    }
+
+    /// <summary>Leaves the stage intro pose and returns to the normal locomotion/crawl state.</summary>
+    public void StopStageIntro()
+    {
+        if (!_initialized)
+            return;
+
+        if (locomotionSM.CurrentState != stageIntroState)
+            return;
 
         bool exited = locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
         if (!exited)
@@ -1425,6 +1472,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         if (_initialized && locomotionSM.CurrentState == statusEffectState)
             return PlaybackKind.StatusEffect;
+
+        if (_initialized && locomotionSM.CurrentState == stageIntroState)
+            return PlaybackKind.StageIntro;
 
         return PlaybackKind.None;
     }

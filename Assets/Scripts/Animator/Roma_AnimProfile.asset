@@ -29,6 +29,15 @@ MonoBehaviour:
   snapTo8Directions: 1
   locomotionFadeDuration: 0.25
   locomotionPlaybackSpeed: 1
+  stageIntroClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -7178895758330835300, guid: d60f6d5e4ff81d247a91cab3cfe760c5, type: 3}
+    _NormalizedStartTime: NaN
   miniStune:
     _FadeDuration: 0.25
     _Speed: 1
@@ -66,6 +75,15 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: -6872203247307310684, guid: c36420492fe95f642b8d87ab669217a5, type: 3}
     _NormalizedStartTime: NaN
+  chainReady:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: NaN
   knockback:
     _FadeDuration: 0.056666676
     _Speed: 1
@@ -84,6 +102,8 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: -4318181112641634211, guid: 6d4cacf853de87b4c968c8571e243b6d, type: 3}
     _NormalizedStartTime: NaN
+  dashForwardVfxTrack:
+    cues: []
   dashB:
     _FadeDuration: 0.017
     _Speed: 1
@@ -93,6 +113,8 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 5497984355698264363, guid: 89321007994bd7949b41972c701a8a4b, type: 3}
     _NormalizedStartTime: NaN
+  dashBackwardVfxTrack:
+    cues: []
   dashL:
     _FadeDuration: 0.25
     _Speed: 1
@@ -149,6 +171,8 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 3744762482871154653, guid: c3112324236f1cb4295770ec4e8c8276, type: 3}
     _NormalizedStartTime: NaN
+  reloadVfxTrack:
+    cues: []
   reloadBodyMode: 0
   meleeCombo: {fileID: 11400000, guid: aad74cd29d1adde448ce0f8716aed4b2, type: 2}
   meleeCanInterruptReload: 1

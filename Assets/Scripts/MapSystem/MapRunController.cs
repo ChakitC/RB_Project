@@ -107,6 +107,7 @@ public class MapRunController : MonoBehaviour
     private bool bossCleared;
     private bool stageCompletionCommitted;
     private GameObject stageExitInstance;
+    private bool stageIntroAttempted;
 
     public event Action<MapGraph, MapNode> MapChanged;
     public event Action RoomTransitionCommitted;
@@ -183,6 +184,7 @@ public class MapRunController : MonoBehaviour
         }
 
         ResetRoomCache();
+        stageIntroAttempted = false;
 
         graph = MapGenerator.Generate(runConfig);
         if (graph == null)
@@ -395,9 +397,7 @@ public class MapRunController : MonoBehaviour
         if (amount <= 0)
             return;
 
-        if (partySpawnPoint == null)
-            partySpawnPoint = FindFirstObjectByType<PartySpawnPoint>();
-        PartyRuntime party = partySpawnPoint != null ? partySpawnPoint.CurrentParty : null;
+        PartyRuntime party = ResolvePartyRuntime();
         if (party == null)
         {
             Debug.LogWarning("[MapRunController] No deployed PartyRuntime was found for Stage XP.", this);
@@ -532,10 +532,63 @@ public class MapRunController : MonoBehaviour
         graph.RevealOutgoing(currentNode);
 
         RoomTransitionCommitted?.Invoke();
-        currentRoom.BeginRoom(encounterDirector);
+
+        // The stage intro owns the frame between the room warp and BeginRoom. `isTransitioning`
+        // stays true for its whole duration so the party cannot travel out mid-intro.
+        if (TryPlayStageIntro(nextEntry, nextNode))
+            return;
+
+        BeginRoomAndFinishTransition();
+    }
+
+    bool TryPlayStageIntro(CachedRoomEntry entry, MapNode node)
+    {
+        if (stageIntroAttempted)
+            return false;
+
+        if (graph == null || node == null ||
+            !string.Equals(node.Id, graph.StartNodeId, StringComparison.Ordinal))
+            return false;
+
+        // Once per StartRun, even if the player walks back into the Start room later in the run.
+        stageIntroAttempted = true;
+
+        StageIntroRig rig = entry != null && entry.Instance != null
+            ? entry.Instance.GetComponentInChildren<StageIntroRig>(true)
+            : null;
+        if (rig == null)
+        {
+            Log("Start room has no StageIntroRig. Starting gameplay without the stage intro.");
+            return false;
+        }
+
+        PartyRuntime party = ResolvePartyRuntime();
+        if (party == null)
+        {
+            Log("No deployed PartyRuntime was found for the stage intro. Starting gameplay without it.");
+            return false;
+        }
+
+        return rig.TryPlay(party, BeginRoomAndFinishTransition);
+    }
+
+    void BeginRoomAndFinishTransition()
+    {
+        if (this == null)
+            return;
+
+        currentRoom?.BeginRoom(encounterDirector);
 
         isTransitioning = false;
         NotifyMapChanged();
+    }
+
+    PartyRuntime ResolvePartyRuntime()
+    {
+        if (partySpawnPoint == null)
+            partySpawnPoint = FindFirstObjectByType<PartySpawnPoint>();
+
+        return partySpawnPoint != null ? partySpawnPoint.CurrentParty : null;
     }
 
     CachedRoomEntry GetOrCreateCachedRoom(MapNode node, RoomDefinitionSO roomDefinition)

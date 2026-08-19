@@ -185,7 +185,15 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     [Min(0f)] public float locomotionPlaybackSpeed = DefaultLocomotionPlaybackSpeed;
 
 
-    [Header("StatusEffec (Layer 0)")] 
+    [Header("Stage Intro (Layer 0)")]
+    [Tooltip("In-place pose played during the MapRun stage intro. Leave empty to fall back to the " +
+             "locomotion idle. Planar root motion is never applied. Characters that share this profile " +
+             "intentionally share the same intro pose.")]
+    public ClipTransition stageIntroClip;
+
+    public bool HasStageIntroClip => stageIntroClip != null && stageIntroClip.IsValid;
+
+    [Header("StatusEffec (Layer 0)")]
     public ClipTransition miniStune;
     public ClipTransition stune;
     public ClipTransition root;

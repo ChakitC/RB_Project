@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public sealed class StateHub : MonoBehaviour
@@ -52,7 +53,17 @@ public sealed class StateHub : MonoBehaviour
     public bool IsAlive => LifeSM.CurrentId == LifeStateId.Alive;
     public bool Isdown => LifeSM.CurrentId == LifeStateId.Down;
 
-    ControlBlockFlags ActiveControlBlocks => statusEffectControlBlocks | externalControlBlocks | staggerControlBlocks;
+    // Scoped external blocks are owned by a token, so one system releasing its own hold can never
+    // clear the legacy `externalControlBlocks` mask another system is still relying on.
+    readonly Dictionary<int, ControlBlockFlags> scopedExternalControlBlocks = new();
+    ControlBlockFlags scopedExternalControlMask = ControlBlockFlags.None;
+    int nextExternalControlToken = 1;
+
+    ControlBlockFlags ActiveControlBlocks =>
+        statusEffectControlBlocks | externalControlBlocks | scopedExternalControlMask | staggerControlBlocks;
+
+    /// <summary>Every control block currently applied, from status effects, stagger, and external holds.</summary>
+    public ControlBlockFlags ActiveControlBlockFlags => ActiveControlBlocks;
 
     bool HasStunOverride => statusEffectStunned || externalStunned || staggerStunned;
 
@@ -465,6 +476,38 @@ public sealed class StateHub : MonoBehaviour
     public void RemoveExternalControlBlock(ControlBlockFlags flag)
     {
         externalControlBlocks &= ~flag;
+        CancelHeldFireIfShootBlocked();
+    }
+
+    /// <summary>
+    /// Adds an owner-scoped external control block. The returned token is the only way to release it,
+    /// so callers can never clear blocks owned by another system.
+    /// Returns 0 when <paramref name="flags"/> is <see cref="ControlBlockFlags.None"/>.
+    /// </summary>
+    public int AcquireExternalControlBlockToken(ControlBlockFlags flags)
+    {
+        if (flags == ControlBlockFlags.None)
+            return 0;
+
+        int token = nextExternalControlToken++;
+        scopedExternalControlBlocks.Add(token, flags);
+        scopedExternalControlMask |= flags;
+        SyncStatusDrivenMoveState();
+        CancelHeldFireIfShootBlocked();
+        return token;
+    }
+
+    /// <summary>Releases a block previously acquired with <see cref="AcquireExternalControlBlockToken"/>.</summary>
+    public void ReleaseExternalControlBlockToken(int token)
+    {
+        if (token == 0 || !scopedExternalControlBlocks.Remove(token))
+            return;
+
+        scopedExternalControlMask = ControlBlockFlags.None;
+        foreach (ControlBlockFlags flags in scopedExternalControlBlocks.Values)
+            scopedExternalControlMask |= flags;
+
+        SyncStatusDrivenMoveState();
         CancelHeldFireIfShootBlocked();
     }
 

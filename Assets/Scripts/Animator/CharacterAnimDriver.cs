@@ -266,6 +266,17 @@ public sealed class CharacterAnimDriver : MonoBehaviour
         brain.SetStatusLocomotionIntent(intent);
     }
 
+    public bool TryPlayStageIntro()
+    {
+        return CanIssueCommand(nameof(TryPlayStageIntro)) && brain.TryPlayStageIntro();
+    }
+
+    public void StopStageIntro()
+    {
+        if (CanIssueCommand(nameof(StopStageIntro)))
+            brain.StopStageIntro();
+    }
+
     public void InterruptActivePlaybackForExternalControlLoss()
     {
         if (CanIssueCommand(nameof(InterruptActivePlaybackForExternalControlLoss)))

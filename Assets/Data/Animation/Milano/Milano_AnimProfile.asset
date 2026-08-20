@@ -1,0 +1,249 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4908a749936f00646bc80d640180d618, type: 3}
+  m_Name: Milano_AnimProfile
+  m_EditorClassIdentifier: 
+  upperBodyMask: {fileID: 31900000, guid: 3ff359338d40c5f40a861f9c3afbd210, type: 2}
+  actionFadeIn: 0.06
+  actionFadeOut: 0.08
+  locomotionDirectionalClips:
+    idle: {fileID: 5487989288048153974, guid: 0fe0a7dc98bb2fa4a9ff7d5be7eb0ab6, type: 3}
+    forward: {fileID: 1606450360269762143, guid: 58a826f5004c5a54893b807d6696dc4e, type: 3}
+    backward: {fileID: 3630704421837926502, guid: f802650346e12374780da059cd43d325, type: 3}
+    left: {fileID: 583729431000011259, guid: 0404bea5c3932cc438487112ccc8bb28, type: 3}
+    right: {fileID: 4506590830449897675, guid: 3d62fd3d33a5f894fbb72ce5a71bbc78, type: 3}
+    forwardLeft: {fileID: -7521650866325861691, guid: 2f7eebb131feaaa4bbf82ad500e7b5f7, type: 3}
+    forwardRight: {fileID: 3417370728480570267, guid: 36884d3b49f8382478ae7bcd52068933, type: 3}
+    backwardLeft: {fileID: -596120106417223001, guid: 954ede865601d5d47836d4fa3bf822e8, type: 3}
+    backwardRight: {fileID: -8557995361944161523, guid: b1110dabcc4788949b033d3cd4190a53, type: 3}
+  locomotionParamLerp: 14
+  snapTo8Directions: 1
+  locomotionFadeDuration: 0.25
+  locomotionPlaybackSpeed: 1
+  stageIntroClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 3480618312002360226, guid: f0667af7fb3a0cb4cadedb94c400b7d4, type: 3}
+    _NormalizedStartTime: NaN
+  miniStune:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 4416735731402809383, guid: 1dc3e7f8dbc8a284bb8820b6b4bc209e, type: 3}
+    _NormalizedStartTime: NaN
+  stune:
+    _FadeDuration: 0.26666668
+    _Speed: 1
+    _Events:
+      _NormalizedTimes:
+      - 0.62
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -6872203247307310684, guid: c36420492fe95f642b8d87ab669217a5, type: 3}
+    _NormalizedStartTime: NaN
+  root:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: NaN
+  freez:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -6872203247307310684, guid: c36420492fe95f642b8d87ab669217a5, type: 3}
+    _NormalizedStartTime: NaN
+  chainReady:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: NaN
+  knockback:
+    _FadeDuration: 0.056666676
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -1394427322518207577, guid: f657920fa56763f40a1898ba624cc555, type: 3}
+    _NormalizedStartTime: NaN
+  dashF:
+    _FadeDuration: 0.017
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -4318181112641634211, guid: 6d4cacf853de87b4c968c8571e243b6d, type: 3}
+    _NormalizedStartTime: NaN
+  dashForwardVfxTrack:
+    cues: []
+  dashB:
+    _FadeDuration: 0.017
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 5497984355698264363, guid: 89321007994bd7949b41972c701a8a4b, type: 3}
+    _NormalizedStartTime: NaN
+  dashBackwardVfxTrack:
+    cues: []
+  dashL:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 2995302168209469170, guid: db37db8629092ce4795aacb0debf12e1, type: 3}
+    _NormalizedStartTime: NaN
+  dashR:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 3365210341760494689, guid: b7596e261e5917740abf55d162815c11, type: 3}
+    _NormalizedStartTime: NaN
+  dead:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 8354638251797088515, guid: 252d4fb362435ff49bb2fa0b3f592932, type: 3}
+    _NormalizedStartTime: NaN
+  shootPulse:
+    _FadeDuration: 0.080000006
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
+    _NormalizedStartTime: NaN
+  shootHoldLoop:
+    _FadeDuration: 0.080000006
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
+    _NormalizedStartTime: NaN
+  holdPulseMinInterval: 0.08
+  pairOffsetProfiles: {fileID: 11400000, guid: 8f769e332ea88a74e822f45d54a648dd, type: 2}
+  reload:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 3744762482871154653, guid: c3112324236f1cb4295770ec4e8c8276, type: 3}
+    _NormalizedStartTime: NaN
+  reloadVfxTrack:
+    cues: []
+  reloadBodyMode: 0
+  meleeCombo: {fileID: 11400000, guid: aad74cd29d1adde448ce0f8716aed4b2, type: 2}
+  meleeCanInterruptReload: 1
+  lightCombo: {fileID: 11400000, guid: d16447a5b5fa9274b8bf020390af7750, type: 2}
+  heavyCombo: {fileID: 11400000, guid: aad74cd29d1adde448ce0f8716aed4b2, type: 2}
+  crawling:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 4853811506057843666, guid: 8800c18f377c3044f9bd08d310b91205, type: 3}
+    _NormalizedStartTime: NaN
+  crawlMixer:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Animations:
+    - {fileID: -5108874112516170377, guid: aae20cb189c84434b8af6bddd860dde6, type: 3}
+    - {fileID: 8706233961271216418, guid: e30bdc35299abd04a9b2b476c44d278b, type: 3}
+    - {fileID: -4703732091659865656, guid: db4ef795ecb96db49b9f0f37216be8ef, type: 3}
+    - {fileID: 8706233961271216418, guid: e30bdc35299abd04a9b2b476c44d278b, type: 3}
+    - {fileID: 8706233961271216418, guid: e30bdc35299abd04a9b2b476c44d278b, type: 3}
+    _Speeds: []
+    _SynchronizeChildren: 
+    _Thresholds:
+    - {x: 0, y: 0}
+    - {x: 1, y: 0}
+    - {x: -1, y: 0}
+    - {x: 0, y: 1}
+    - {x: 0, y: -1}
+    _DefaultParameter: {x: 0, y: 0}
+    _Type: 0
+    _ParameterNameX: {fileID: 0}
+    _ParameterNameY: {fileID: 0}
+  crawlParamLerp: 10
+  crawlSpeedMultiplier01: 1
+  utilityWarpOutClip:
+    _FadeDuration: 0
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 2548037273130504702, guid: 4f569030b89d30644aafd5e41f7017fb, type: 3}
+    _NormalizedStartTime: NaN
+  utilityWarpOutCastPointNormalized: 0.95
+  utilityWarpInClip:
+    _FadeDuration: 0
+    _Speed: 1
+    _Events:
+      _NormalizedTimes:
+      - 1
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -8821902106451663880, guid: e791be750e102ee4883a2b8987f3c7aa, type: 3}
+    _NormalizedStartTime: NaN
+  utilityWarpInCastPointNormalized: 0.95
+  skillClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -8374479895102863559, guid: 875bf0d7944892c47a1c8eb164dc64c2, type: 3}
+    _NormalizedStartTime: NaN
+  references:
+    version: 2
+    RefIds: []

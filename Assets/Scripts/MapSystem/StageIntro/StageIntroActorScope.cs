@@ -106,6 +106,17 @@ internal sealed class StageIntroActorScope
         ctx.AnimDriver?.InterruptActivePlaybackForExternalControlLoss();
 
         Teleport(position, rotation);
+    }
+
+    /// <summary>
+    /// Starts the intro pose. Kept separate from <see cref="Apply"/> so the rig can lock and place the
+    /// actors while the screen is still black, then begin the performance on the same frame the fade
+    /// starts — otherwise the intro is already partway through by the time anyone can see it.
+    /// </summary>
+    public void BeginIntroPose()
+    {
+        if (!applied || !IsValid)
+            return;
 
         ctx.AnimDriver?.TryPlayStageIntro();
     }

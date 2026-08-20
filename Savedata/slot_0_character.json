@@ -19,8 +19,8 @@
                 "xp": 0,
                 "unlocked": true,
                 "selectedSkillOptions": [],
-                "activeSkillPoints": 0,
-                "activeSkillProgressInitialized": false,
+                "activeSkillPoints": 29,
+                "activeSkillProgressInitialized": true,
                 "activeSkillTrees": []
             }
         },
@@ -106,8 +106,8 @@
                 "xp": 0,
                 "unlocked": true,
                 "selectedSkillOptions": [],
-                "activeSkillPoints": 0,
-                "activeSkillProgressInitialized": false,
+                "activeSkillPoints": 29,
+                "activeSkillProgressInitialized": true,
                 "activeSkillTrees": []
             }
         },

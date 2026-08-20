@@ -24,7 +24,7 @@ MonoBehaviour:
   behaviorSubtree: {fileID: 11400000, guid: 224b81e7f00d0194ab44ec4f269ccaa1, type: 2}
   thirdPersonProfile:
     pivotOffset: {x: 0, y: 1.55, z: 0}
-    shoulderOffset: {x: 0.48, y: -0.2, z: 0}
+    shoulderOffset: {x: 1.11, y: -0.33, z: 0}
     verticalArmLength: 0.25
     cameraDistance: 3.2
     aimCameraDistance: 2.7
@@ -50,7 +50,7 @@ MonoBehaviour:
   introChainCutscene: {fileID: 0}
   skillSlots:
   - slotId: 0
-    displayName:
+    displayName: 
     hotkey: 0
     defaultOptionIndex: 0
     options:
@@ -63,7 +63,7 @@ MonoBehaviour:
       skillAsset: {fileID: 0}
       upgradeTreeOverride: {fileID: 11400000, guid: 0e0c5a48ecedd994083b1cf170d0681a, type: 2}
   - slotId: 1
-    displayName:
+    displayName: 
     hotkey: 0
     defaultOptionIndex: 0
     options:
@@ -72,7 +72,7 @@ MonoBehaviour:
       skillAsset: {fileID: 0}
       upgradeTreeOverride: {fileID: 0}
   - slotId: 2
-    displayName:
+    displayName: 
     hotkey: 0
     defaultOptionIndex: 0
     options:
@@ -98,7 +98,6 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
-  passives: []
   dashCue: {fileID: 0}
   voiceProfile:
     defaultSkillVoiceCue: {fileID: 11400000, guid: 6ac81127608e8d84cba006c631e1f389, type: 2}

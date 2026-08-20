@@ -15,14 +15,41 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: e6802d661d9907f4aabec2bd00ec240d, type: 3}
   characterId: ID.Milano
   characterName: Milano
+  CharacterWeaponType: 0
   CharacterPrefab: {fileID: 8110434242060674094, guid: 01aa34cc79aac4b46b16fa5d16afe69c, type: 3}
   CharacterPrefabBasement: {fileID: 6957377695244800489, guid: 55d5e2de30de1084cbf841c3c208a4cb, type: 3}
   characterAvatar: {fileID: 9000000, guid: ef38f6af2a6e2fe45a5743a4c01a14d3, type: 3}
   controller: {fileID: 9100000, guid: fce933fc6f421e0499ea7ba70a7cade0, type: 2}
-  animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
+  animProfile: {fileID: 11400000, guid: 233f73693cf31484f8a4602e9335efe0, type: 2}
+  behaviorSubtree: {fileID: 0}
+  thirdPersonProfile:
+    pivotOffset: {x: 0, y: 1.55, z: 0}
+    shoulderOffset: {x: 0.48, y: -0.2, z: 0}
+    verticalArmLength: 0.25
+    cameraDistance: 3.2
+    aimCameraDistance: 2.7
+    cameraSide: 1
+    followDamping: {x: 0.08, y: 0.12, z: 0.08}
+    minimumPitch: -55
+    maximumPitch: 72
+    freeLookFov: 60
+    shoulderAimFov: 48
+    yawSensitivityMultiplier: 1
+    pitchSensitivityMultiplier: 1
+    chestAimWeight: 0.55
+    upperChestAimWeight: 0.7
+    spineAimWeight: 0.35
+    maximumUpperBodyPitch: 55
+    maximumUpperBodyYaw: 65
+    collisionRadius: 0.22
+    fadeStartDistance: 1.05
+    fadeFullyHiddenDistance: 0.5
   weaponHandMode: 0
   combatRole: 3
   chainAttackSkill: {fileID: 0}
+  introChainCutscene: {fileID: 0}
+  skillSlots: []
+  activeSkillPointsPerLevel: 1
   maxHP: 950
   maxStamina: 80
   Damage: 11
@@ -40,7 +67,6 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
-  passives: []
   dashCue: {fileID: 0}
   voiceProfile:
     defaultSkillVoiceCue: {fileID: 11400000, guid: 23129b248915d554fb9c79ce82807e1b, type: 2}

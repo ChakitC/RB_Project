@@ -1,7 +1,7 @@
 {
     "maxSlotCount": 0,
-    "gold": 955333,
-    "scrap": 2584,
+    "gold": 955728,
+    "scrap": 2593,
     "slots": [
         {
             "itemId": "SMG_GR01",
@@ -299,7 +299,7 @@
                 "subAffixes": [],
                 "shotCounter": 81,
                 "currentMagazine": 16,
-                "currentReserveAmmo": 270,
+                "currentReserveAmmo": 240,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -379,7 +379,7 @@
                 ],
                 "shotCounter": 2034,
                 "currentMagazine": 30,
-                "currentReserveAmmo": 300,
+                "currentReserveAmmo": 240,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 20,
                 "upgradeTier": 2,
@@ -551,7 +551,7 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 37,
+                "currentMagazine": 100,
                 "currentReserveAmmo": 250,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 9,
@@ -649,7 +649,7 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 5,
+                "currentMagazine": 38,
                 "currentReserveAmmo": 431,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 30,
@@ -1437,8 +1437,8 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 28,
-                "currentReserveAmmo": 225,
+                "currentMagazine": 29,
+                "currentReserveAmmo": 217,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 7,
                 "upgradeTier": 0,
@@ -1548,7 +1548,26 @@
                 "upgradeTier": 0,
                 "upgradeExp": 0,
                 "unlockedUpgradeMilestoneIds": [],
-                "affixRuntimeStates": []
+                "affixRuntimeStates": [
+                    {
+                        "affixId": "weapon.main.conservation_round.v1",
+                        "schemaVersion": 1,
+                        "entries": [
+                            {
+                                "key": "progress",
+                                "intValue": 0,
+                                "floatValue": 0.0,
+                                "boolValue": false,
+                                "stringValue": ""
+                            }
+                        ]
+                    },
+                    {
+                        "affixId": "weapon.sub.crit_rate.v1",
+                        "schemaVersion": 1,
+                        "entries": []
+                    }
+                ]
             },
             "accessoryInstance": {
                 "instanceId": "",

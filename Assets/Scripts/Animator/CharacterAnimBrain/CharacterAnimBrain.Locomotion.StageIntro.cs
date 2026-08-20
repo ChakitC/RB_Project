@@ -31,7 +31,12 @@ public sealed partial class CharacterAnimBrain
                 return;
             }
 
-            state = owner.LocoLayer.Play(clip);
+            // Cut, never cross-fade. Blending out of the locomotion mixer interpolates the root and
+            // hip rotation between two unrelated poses, so the character visibly swings around into
+            // the intro pose. The intro always begins under a fully black overlay, so a hard cut is
+            // invisible — and the transition's own fade (0.25s) outlasts the 0.2s fade-in, which is
+            // exactly why the tail of that swing was showing on screen.
+            state = owner.LocoLayer.Play(clip, 0f, FadeMode.FromStart);
 
             owner.onStageIntroEndCache ??= () =>
             {

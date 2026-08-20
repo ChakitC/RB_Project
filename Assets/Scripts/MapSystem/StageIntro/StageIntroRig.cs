@@ -43,7 +43,15 @@ public sealed class StageIntroRig : MonoBehaviour
     private int introCameraPriority = 100;
 
     [Header("Presentation")]
-    [SerializeField, Min(0f)] private float fadeInDuration = 0.2f;
+    [SerializeField, Min(0f)]
+    [Tooltip("Seconds the screen stays fully black before the fade starts. The party is already " +
+             "placed and locked during this hold; the performance begins when the fade begins.")]
+    private float blackHoldSeconds = 0.35f;
+
+    [SerializeField, Min(0f)]
+    [Tooltip("Seconds to fade from black. The intro plays underneath, so this overlaps the opening " +
+             "of the camera clip rather than delaying it.")]
+    private float fadeInDuration = 0.6f;
     [SerializeField, Min(0f)] private float fadeOutDuration = 0.2f;
     [SerializeField, Range(0f, 0.45f)] private float letterboxThickness = 0.08f;
     [SerializeField, Min(0.05f)] private float skipHoldSeconds = 0.75f;
@@ -248,29 +256,57 @@ public sealed class StageIntroRig : MonoBehaviour
             skipInput = new StageIntroSkipInput(skipHoldSeconds);
             skipInput.Bind(party.Player);
 
+            // Place and lock the party while the screen is still black.
             ApplyActorScopes(party);
             EnableIntroCamera();
+
+            // Absorb the startup frame before timing anything. The frame that instantiates the room
+            // and spawns the party measures around a full second, which would otherwise consume the
+            // entire hold and fade in one step and turn the opening into a hard cut.
+            yield return null;
+
+            // Hold on black so the cut into the intro reads as a deliberate opening rather than a warp.
+            float held = 0f;
+            while (held < blackHoldSeconds)
+            {
+                held += StepTime();
+                overlay.Tick();
+                yield return null;
+            }
+
+            // Performance and fade start together, so the reveal happens over the opening of the shot
+            // instead of after it.
+            BeginActorIntroPoses();
             PlayCameraClip();
+
+            // Let the first pose and camera frame land while still fully black.
+            yield return null;
 
             overlay.SetLetterbox(letterboxThickness, true);
             overlay.SetSkipPromptVisible(skipInput.IsAvailable);
             overlay.SetSkipPrompt(skipInput.BindingLabel, 0f);
 
-            yield return FadeOverlay(1f, 0f, fadeInDuration);
-
             float duration = IntroDuration;
+            float fadeIn = Mathf.Max(fadeInDuration, 0.0001f);
             float elapsed = 0f;
+            float alpha = 1f;
+
             while (elapsed < duration && !skipInput.Completed)
             {
-                float delta = Time.unscaledDeltaTime;
+                float delta = StepTime();
                 elapsed += delta;
+
+                alpha = 1f - Mathf.Clamp01(elapsed / fadeIn);
+                overlay.SetFadeAlpha(alpha);
+
                 skipInput.Tick(delta);
                 overlay.SetSkipPrompt(skipInput.BindingLabel, skipInput.Progress01);
                 overlay.Tick();
                 yield return null;
             }
 
-            yield return FadeOverlay(0f, 1f, fadeOutDuration);
+            // Skipping mid-fade must not pop back to clear before fading out.
+            yield return FadeOverlay(alpha, 1f, fadeOutDuration);
 
             StopCameraClip();
             RestoreIntroCamera();
@@ -289,6 +325,13 @@ public sealed class StageIntroRig : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Unscaled frame step, clamped so one hitch cannot skip a whole beat of the opening. Loading and
+    /// spawning routinely produce frames near a second long, and a fade measured in tenths must not be
+    /// swallowed whole by one of them.
+    /// </summary>
+    static float StepTime() => Mathf.Min(Time.unscaledDeltaTime, 1f / 30f);
+
     IEnumerator FadeOverlay(float from, float to, float duration)
     {
         overlay.SetFadeAlpha(from);
@@ -297,7 +340,7 @@ public sealed class StageIntroRig : MonoBehaviour
         float elapsed = 0f;
         while (elapsed < safeDuration)
         {
-            elapsed += Time.unscaledDeltaTime;
+            elapsed += StepTime();
             overlay.SetFadeAlpha(Mathf.Lerp(from, to, elapsed / safeDuration));
             overlay.Tick();
             yield return null;
@@ -394,6 +437,12 @@ public sealed class StageIntroRig : MonoBehaviour
             scope.Apply(marker.Position, marker.Rotation);
             activeScopes.Add(scope);
         }
+    }
+
+    void BeginActorIntroPoses()
+    {
+        for (int i = 0; i < activeScopes.Count; i++)
+            activeScopes[i].BeginIntroPose();
     }
 
     void RestoreActorScopes()

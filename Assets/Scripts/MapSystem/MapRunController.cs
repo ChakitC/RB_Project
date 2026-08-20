@@ -524,6 +524,10 @@ public class MapRunController : MonoBehaviour
             return;
         }
 
+        // The warp faces the party into the new room, and each room carries its own yaw, so the
+        // camera has to be re-aligned or it keeps pointing the way the previous room faced.
+        GameplayCameraController.Instance?.SnapYawToPlayer();
+
         currentRoomEntry = nextEntry;
         currentRoomInstance = nextEntry.Instance;
         currentRoom = nextEntry.Controller;

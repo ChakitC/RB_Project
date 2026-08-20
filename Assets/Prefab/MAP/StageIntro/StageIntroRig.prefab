@@ -340,7 +340,8 @@ MonoBehaviour:
   cameraAnimationRoot: {fileID: 233147143390229646}
   cameraClip: {fileID: -4635203214591382726, guid: f3a7f0a8b323e2e45bc50e883c47f725, type: 3}
   introCameraPriority: 100
-  fadeInDuration: 0.2
+  blackHoldSeconds: 0.35
+  fadeInDuration: 0.6
   fadeOutDuration: 0.2
   letterboxThickness: 0.08
   skipHoldSeconds: 0.75

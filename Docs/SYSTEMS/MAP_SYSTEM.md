@@ -40,6 +40,13 @@ Rooms whose definition requires clearing cannot be left while their current
 `RoomController` is uncleared. `MapRunController` enforces this independently
 of exit visuals and interaction locks.
 
+Every committed warp re-aligns the gameplay camera behind the player through
+`GameplayCameraController.SnapYawToPlayer()`. The controller samples its yaw from
+the player only when the player reference changes, which happens at party spawn —
+before the party has been warped and turned to face into the room. Rooms are also
+instantiated with a per-node yaw, so without this call the camera keeps pointing
+the way the previous room faced.
+
 A transition keeps the previous cached room and party pose until destination
 placement succeeds. If any required party member cannot be placed on the new
 room NavMesh, the destination is disabled, the previous room is re-enabled,

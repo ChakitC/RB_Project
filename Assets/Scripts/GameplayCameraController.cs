@@ -328,6 +328,24 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
         recoilYaw = Mathf.Lerp(recoilYaw, 0f, recovery);
     }
 
+    /// <summary>
+    /// Re-aligns the camera behind the player after something teleported or re-oriented them.
+    /// <see cref="yaw"/> is otherwise only sampled from the player when the player reference itself
+    /// changes, so a room warp — which faces the party into the new room, and every room carries its
+    /// own yaw — would leave the camera pointing the way the previous room faced.
+    /// </summary>
+    public void SnapYawToPlayer()
+    {
+        if (playerContext == null)
+            return;
+
+        yaw = playerContext.transform.eulerAngles.y;
+
+        // Apply immediately so the corrected angle is not one frame late behind the warp.
+        if (taget != null && cameraTarget != null && virtualCamera != null)
+            TickCameraTarget();
+    }
+
     void TickCameraTarget()
     {
         Vector3 pivotPosition = taget.TransformPoint(profile.pivotOffset);

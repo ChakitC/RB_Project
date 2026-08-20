@@ -223,7 +223,15 @@ duration** of the intro. Until an author assigns a real clip the rig fails
 validation and the intro is skipped, so the stage still starts normally. Do not
 generate placeholder camera motion to satisfy the field.
 
-Presentation defaults on the rig: 0.2s fades, 8% letterbox per side, 0.75s
+Opening beat on the rig: the screen goes fully black, the party is placed and
+locked while nothing is visible, the rig holds on black for `blackHoldSeconds`
+(0.35s), and then the performance and the fade start on the same frame — the
+camera clip and the character poses play *underneath* the `fadeInDuration` (0.6s)
+fade rather than after it, so the shot is already moving as it is revealed. The
+intro's on-screen length equals the camera clip length exactly, because the fade no
+longer runs as a separate step before the timeline starts.
+
+Remaining presentation defaults: 0.2s fade out, 8% letterbox per side, 0.75s
 hold-to-skip. The screen-space overlay (black fade, letterbox bars, skip label,
 hold progress) is built at runtime; nothing has to be assembled by hand.
 
@@ -301,6 +309,12 @@ same way they do in game. `modelRoot` sits at local origin on both actor prefabs
 so placing the clone straight on the marker matches runtime placement. Weapons are
 not built — that would mean running equipment logic in Edit Mode, and a group shot
 does not depend on it.
+
+The intro pose is cut in with a zero fade, not cross-faded. Blending out of the
+locomotion mixer interpolates root and hip rotation between two unrelated poses, so
+the character visibly swings around into place; the cut happens under the fully
+black overlay instead. A `ClipTransition`'s authored fade duration is therefore
+ignored for the stage intro — its speed, events, and start time still apply.
 
 Clip resolution per slot: the **Intro Clip (Preview)** override first, then the
 character's `CharacterAnimProfileSO.stageIntroClip`, then the locomotion idle — the

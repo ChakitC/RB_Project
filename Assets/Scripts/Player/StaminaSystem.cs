@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 
 
@@ -131,10 +131,16 @@ public class StaminaSystem : MonoBehaviour
         Notify();
     }
 
-    public bool Spend(float cost)
+    public bool CanSpend(float cost)
     {
         if (!float.IsFinite(cost) || cost <= 0f) return true;
-        if (currentStamina + 0.0001f < cost) return false;
+        return currentStamina + 0.0001f >= cost;
+    }
+
+    public bool Spend(float cost)
+    {
+        if (!CanSpend(cost)) return false;
+        if (!float.IsFinite(cost) || cost <= 0f) return true;
 
         SetCurrent(currentStamina - cost);
         unblockRegenerationAtTime = Time.time + regenerationDelay;

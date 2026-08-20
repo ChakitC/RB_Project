@@ -18,6 +18,7 @@ public sealed class CharacterOverheadBarsView : MonoBehaviour
     StaggerMeter staggerMeter;
     CanvasGroup canvasGroup;
     Transform ownerRoot;
+    bool subscribed;
     float nextVisibilityCheck;
 
     void Awake()
@@ -25,6 +26,12 @@ public sealed class CharacterOverheadBarsView : MonoBehaviour
         canvasGroup = GetComponent<CanvasGroup>();
         if (canvasGroup == null)
             canvasGroup = gameObject.AddComponent<CanvasGroup>();
+    }
+
+    void OnEnable()
+    {
+        Subscribe();
+        RefreshAll();
     }
 
     void LateUpdate()
@@ -46,18 +53,12 @@ public sealed class CharacterOverheadBarsView : MonoBehaviour
 
         healthSystem = health;
         ownerRoot = healthSystem != null ? healthSystem.transform.root : transform.root;
-        if (healthSystem != null)
-        {
-            healthSystem.HealthChanged += OnHealthChanged;
-            OnHealthChanged(healthSystem.currentHealth, healthSystem.maximumHealth);
-        }
-        else
-        {
-            SetSliderValue(healthSlider, 0f, 1f);
-        }
 
-        BindLevel(context);
-        BindStagger(stagger);
+        ResolveLevelSource(context);
+        staggerMeter = stagger;
+
+        Subscribe();
+        RefreshAll();
     }
 
     public void Bind(ChainAttackTestTarget target, StaggerMeter stagger)
@@ -66,64 +67,58 @@ public sealed class CharacterOverheadBarsView : MonoBehaviour
 
         testTarget = target;
         ownerRoot = testTarget != null ? testTarget.transform.root : transform.root;
-        if (testTarget != null)
-        {
-            testTarget.HealthChanged += OnHealthChanged;
-            OnHealthChanged(testTarget.CurrentHealth, testTarget.MaxHealth);
-        }
-        else
-        {
-            SetSliderValue(healthSlider, 0f, 1f);
-        }
 
-        BindLevel(null);
-        BindStagger(stagger);
+        ResolveLevelSource(null);
+        staggerMeter = stagger;
+
+        Subscribe();
+        RefreshAll();
     }
 
-    void BindLevel(CharacteContext context)
+    void ResolveLevelSource(CharacteContext context)
     {
         if (context is EnemyContext enemyContext && enemyContext.EnemyLevelSystem != null)
         {
             enemyLevelSystem = enemyContext.EnemyLevelSystem;
-            enemyLevelSystem.LevelChanged += OnLevelChanged;
-            OnLevelChanged(enemyLevelSystem.Level);
             return;
         }
 
         if (context != null && context.levelSystem != null)
-        {
             levelSystem = context.levelSystem;
-            levelSystem.LevelChanged += OnLevelChanged;
-            OnLevelChanged(levelSystem.Level);
-            return;
-        }
-
-        if (levelText != null)
-            levelText.gameObject.SetActive(false);
     }
 
-    void BindStagger(StaggerMeter stagger)
+    /// <summary>
+    /// Subscribes to whatever sources <see cref="Bind"/> resolved. Kept separate from binding so the
+    /// view can be hidden and shown again (stage intros, cinematics) without losing its sources.
+    /// </summary>
+    void Subscribe()
     {
-        staggerMeter = stagger;
+        if (subscribed || !isActiveAndEnabled)
+            return;
 
-        if (staggerRoot != null)
-            staggerRoot.SetActive(staggerMeter != null);
+        if (healthSystem != null)
+            healthSystem.HealthChanged += OnHealthChanged;
+
+        if (testTarget != null)
+            testTarget.HealthChanged += OnHealthChanged;
+
+        if (levelSystem != null)
+            levelSystem.LevelChanged += OnLevelChanged;
+
+        if (enemyLevelSystem != null)
+            enemyLevelSystem.LevelChanged += OnLevelChanged;
 
         if (staggerMeter != null)
-        {
             staggerMeter.MeterChanged += OnStaggerChanged;
-            OnStaggerChanged(staggerMeter.CurrentStagger, staggerMeter.MaxStagger);
-        }
-        else
-        {
-            SetSliderValue(staggerSlider, 0f, 1f);
-        }
 
-        chainReadyPrompt?.Bind(staggerMeter);
+        subscribed = true;
     }
 
-    public void Unbind()
+    void Unsubscribe()
     {
+        if (!subscribed)
+            return;
+
         if (healthSystem != null)
             healthSystem.HealthChanged -= OnHealthChanged;
 
@@ -139,6 +134,40 @@ public sealed class CharacterOverheadBarsView : MonoBehaviour
         if (staggerMeter != null)
             staggerMeter.MeterChanged -= OnStaggerChanged;
 
+        subscribed = false;
+    }
+
+    void RefreshAll()
+    {
+        if (healthSystem != null)
+            OnHealthChanged(healthSystem.currentHealth, healthSystem.maximumHealth);
+        else if (testTarget != null)
+            OnHealthChanged(testTarget.CurrentHealth, testTarget.MaxHealth);
+        else
+            SetSliderValue(healthSlider, 0f, 1f);
+
+        if (enemyLevelSystem != null)
+            OnLevelChanged(enemyLevelSystem.Level);
+        else if (levelSystem != null)
+            OnLevelChanged(levelSystem.Level);
+        else if (levelText != null)
+            levelText.gameObject.SetActive(false);
+
+        if (staggerRoot != null)
+            staggerRoot.SetActive(staggerMeter != null);
+
+        if (staggerMeter != null)
+            OnStaggerChanged(staggerMeter.CurrentStagger, staggerMeter.MaxStagger);
+        else
+            SetSliderValue(staggerSlider, 0f, 1f);
+
+        chainReadyPrompt?.Bind(staggerMeter);
+    }
+
+    public void Unbind()
+    {
+        Unsubscribe();
+
         chainReadyPrompt?.Bind(null);
         healthSystem = null;
         levelSystem = null;
@@ -150,7 +179,7 @@ public sealed class CharacterOverheadBarsView : MonoBehaviour
 
     void OnDisable()
     {
-        Unbind();
+        Unsubscribe();
     }
 
     void OnHealthChanged(float current, float maximum)

@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1594250829804686381}
   - component: {fileID: 6184570337724307912}
+  - component: {fileID: 1234500000000000001}
   m_Layer: 0
   m_Name: CameraHolder
   m_TagString: Untagged
@@ -431,3 +432,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sourceCamera: {fileID: 5478141767642294992}
+--- !u!114 &1234500000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 378653225776893448}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da550000000000000000000000000003, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  postExposure: -1.2
+  saturation: -25
+  vignetteIntensity: 0.35
+  vignetteSmoothness: 0.45
+  vignetteColor: {r: 0, g: 0, b: 0, a: 1}
+  bloomIntensity: 0.7
+  bloomThreshold: 0.95
+  bloomScatter: 0.75
+  bloomTint: {r: 1, g: 1, b: 1, a: 1}
+  volumePriority: 100

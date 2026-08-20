@@ -1797,31 +1797,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   actorRoot: {fileID: 0}
-  dashDistance: 5
-  dashDuration: 0.15
-  dashCooldown: 0.5
-  dashInvincibleTime: 0.15
-  dashCost: 10
-  obstacleMask:
-    serializedVersion: 2
-    m_Bits: 16383
-  dashIFrameExclude:
-    serializedVersion: 2
-    m_Bits: 0
+  dashSetting: {fileID: 0}
   combatEventBus: {fileID: 1499039619125665064}
-  perfectDashSlowScale: 0.2
-  perfectDashSlowDuration: 0.35
-  perfectDashSlowShape:
-    serializedVersion: 2
-    m_Curve: []
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  perfectDashFreeAmmoDuration: 0.35
-  perfectDodgeThreatLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  perfectDodgeThreatScanPadding: 0.25
 --- !u!114 &4947922598450173769
 MonoBehaviour:
   m_ObjectHideFlags: 0

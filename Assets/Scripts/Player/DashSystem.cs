@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,26 +7,11 @@ public class DashSystem : MonoBehaviour
 {
     [Header("Ref")]
     [SerializeField] private Transform actorRoot;
-
-    [Header("Dash")]
-    public float dashDistance = 5f;
-    public float dashDuration = 0.15f;
-    [HideInInspector] public float dashCooldown = 0f;
-    public float dashInvincibleTime = 0.15f;
-    public float dashCost = 10f;
-    public LayerMask obstacleMask = ~0;
-
-    [Header("IFrame")]
-    [SerializeField] private LayerMask dashIFrameExclude;
     [SerializeField] private CombatEventBus combatEventBus;
 
-    [Header("Perfect Dodge")]
-    [SerializeField, Range(0.05f, 1f)] private float perfectDashSlowScale = 0.2f;
-    [SerializeField, Min(0f)] private float perfectDashSlowDuration = 0.35f;
-    [SerializeField] private AnimationCurve perfectDashSlowShape;
-    [SerializeField, Min(0f)] private float perfectDashFreeAmmoDuration = 0.35f;
-    [SerializeField] private LayerMask perfectDodgeThreatLayers;
-    [SerializeField, Min(0f)] private float perfectDodgeThreatScanPadding = 0.25f;
+    [Header("Config")]
+    [Tooltip("ค่าจูน dash ทั้งหมด จำเป็นต้องมี ไม่งั้น dash จะไม่ทำงาน")]
+    [SerializeField] private DashSetting dashSetting;
 
     LayerMask _origCCExclude;
     LayerMask _origRBExclude;
@@ -36,7 +21,9 @@ public class DashSystem : MonoBehaviour
     CharacteContext ctx;
     Vector3 lastMoveDir = Vector3.forward;
     bool isDashing;
-    float _perfectDodgeWindowUntil;
+    float _perfectDodgeWindowRemaining;
+    int _dashInvincibilityToken;
+    int _perfectDodgeSlowHandle;
     bool _perfectDodgeTriggeredThisDash;
     readonly HashSet<string> _consumedPerfectDodgeAttackIds = new();
     readonly Collider[] _perfectDodgeThreatHits = new Collider[24];
@@ -48,7 +35,8 @@ public class DashSystem : MonoBehaviour
     int _nextExternalCollisionIgnoreToken = 1;
 
     public bool IsDashing => isDashing;
-    public bool IsPerfectDodgeWindowActive => isDashing && Time.unscaledTime <= _perfectDodgeWindowUntil;
+    public bool IsPerfectDodgeWindowActive =>
+        isDashing && _dashInvincibilityToken != 0 && _perfectDodgeWindowRemaining > 0f;
     public Func<Vector3, float, float, bool> PerfectDodgeHandler;
     Transform ActorRoot => actorRoot ? actorRoot : transform;
 
@@ -107,12 +95,12 @@ public class DashSystem : MonoBehaviour
             _invincibleRoutine = null;
         }
 
+        StopPerfectDodgeSlow();
         ResetPerfectDodgeWindow();
 
         ClearCollisionIgnoreRequests();
 
-        if (ctx != null && ctx.HealthSystem != null)
-            ctx.HealthSystem.SetInvincible(false);
+        ReleaseDashInvincibility();
 
         isDashing = false;
     }
@@ -155,7 +143,7 @@ public class DashSystem : MonoBehaviour
             RefreshCollisionIgnoreState();
     }
 
-    public void CancelDash(bool keepCooldown = true)
+    public void CancelDash()
     {
         if (_dashRoutine != null)
         {
@@ -170,13 +158,11 @@ public class DashSystem : MonoBehaviour
         }
 
         EndDashIframe();
+        StopPerfectDodgeSlow();
         ResetPerfectDodgeWindow();
-
-        if (ctx != null && ctx.HealthSystem != null)
-            ctx.HealthSystem.SetInvincible(false);
+        ReleaseDashInvincibility();
 
         isDashing = false;
-
     }
 
     public bool TryDash()
@@ -184,7 +170,13 @@ public class DashSystem : MonoBehaviour
         if (ctx == null || ctx.stateHub == null || ctx.cc == null || ctx.StaminaSystem == null || isDashing || ctx.stateHub.Isdown)
             return false;
 
-        if (!ctx.StaminaSystem.Spend(dashCost))
+        if (dashSetting == null)
+        {
+            Debug.LogError($"[DashSystem] {name} ไม่ได้ assign DashSetting จึง dash ไม่ได้", this);
+            return false;
+        }
+
+        if (!ctx.StaminaSystem.CanSpend(dashSetting.dashCost))
         {
             Debug.Log("Not enough staminaSystem");
             return false;
@@ -225,11 +217,14 @@ public class DashSystem : MonoBehaviour
         Vector3 p1 = center + Vector3.up * capsuleHalfLine;
         Vector3 p2 = center - Vector3.up * capsuleHalfLine;
 
-        float maxDist = dashDistance;
-        if (Physics.CapsuleCast(p1, p2, radius, dashDir, out var hit, dashDistance, obstacleMask, QueryTriggerInteraction.Ignore))
+        float maxDist = dashSetting.dashDistance;
+        if (Physics.CapsuleCast(p1, p2, radius, dashDir, out var hit, dashSetting.dashDistance, dashSetting.obstacleMask, QueryTriggerInteraction.Ignore))
             maxDist = Mathf.Max(0f, hit.distance - 0.05f);
 
         if (maxDist <= 0.01f)
+            return false;
+
+        if (!ctx.StaminaSystem.Spend(dashSetting.dashCost))
             return false;
 
         if (!ShouldUseBackwardDashAnimation(dashDirLocalBeforeTurn))
@@ -237,10 +232,10 @@ public class DashSystem : MonoBehaviour
         StartDashIframe();
         _consumedPerfectDodgeAttackIds.Clear();
         _perfectDodgeTriggeredThisDash = false;
-        _perfectDodgeWindowUntil = Time.unscaledTime + dashInvincibleTime;
+        _perfectDodgeWindowRemaining = ResolvePerfectDodgeWindow();
 
-        ctx.stateHub?.ReportDashStarted(dashDuration, dashDir);
-        PublishDashEvent(PassiveEventType.DashStarted, dashDuration);
+        ctx.stateHub?.ReportDashStarted(dashSetting.dashDuration, dashDir);
+        PublishDashEvent(PassiveEventType.DashStarted, dashSetting.dashDuration);
 
         _dashRoutine = StartCoroutine(DashRoutine(dashDir, maxDist));
         return true;
@@ -248,7 +243,7 @@ public class DashSystem : MonoBehaviour
 
     public bool TryRegisterPerfectDodge(in PassiveEventContext preventedContext)
     {
-        if (combatEventBus == null || preventedContext.Type != PassiveEventType.DamagePrevented)
+        if (preventedContext.Type != PassiveEventType.DamagePrevented)
             return false;
 
         if (!IsPerfectDodgeWindowActive)
@@ -258,19 +253,23 @@ public class DashSystem : MonoBehaviour
             !_consumedPerfectDodgeAttackIds.Add(preventedContext.AttackId))
             return false;
 
-        var dodgeContext = combatEventBus.CreateChildContext(
-            preventedContext,
-            PassiveEventType.PerfectDodge,
-            preventedContext.Source,
-            ResolveActorGameObject(),
-            preventedContext.EventSourceId,
-            preventedContext.AttackId,
-            preventedContext.Value,
-            preventedContext.Origin,
-            preventedContext.OriginPassiveId,
-            preventedContext.OriginRuleId);
+        if (combatEventBus != null)
+        {
+            var dodgeContext = combatEventBus.CreateChildContext(
+                preventedContext,
+                PassiveEventType.PerfectDodge,
+                preventedContext.Source,
+                ResolveActorGameObject(),
+                preventedContext.EventSourceId,
+                preventedContext.AttackId,
+                preventedContext.Value,
+                preventedContext.Origin,
+                preventedContext.OriginPassiveId,
+                preventedContext.OriginRuleId);
 
-        combatEventBus.Publish(dodgeContext);
+            combatEventBus.Publish(dodgeContext);
+        }
+
         TriggerPerfectDodgeSlow();
         return true;
     }
@@ -279,15 +278,19 @@ public class DashSystem : MonoBehaviour
     {
         isDashing = true;
 
+        float dashDuration = Mathf.Max(0.01f, dashSetting.dashDuration);
         float speed = dist <= 0f ? 0f : dist / dashDuration;
-        _invincibleRoutine = StartCoroutine(InvincibleTimer(dashInvincibleTime));
+        _invincibleRoutine = StartCoroutine(InvincibleTimer(dashSetting.dashInvincibleTime));
 
         float t = 0f;
         while (t < dashDuration)
         {
             TryDetectPerfectDodgeThreat();
 
-            float dt = Time.unscaledDeltaTime;
+            float dt = ActorDeltaTime;
+            if (_perfectDodgeWindowRemaining > 0f)
+                _perfectDodgeWindowRemaining = Mathf.Max(0f, _perfectDodgeWindowRemaining - dt);
+
             ctx.cc.Move(dir * speed * dt);
             t += dt;
             yield return null;
@@ -302,11 +305,16 @@ public class DashSystem : MonoBehaviour
 
     IEnumerator InvincibleTimer(float time)
     {
-        if (ctx != null && ctx.HealthSystem != null)
-            ctx.HealthSystem.SetInvincible(true);
-        yield return new WaitForSecondsRealtime(time);
-        if (ctx != null && ctx.HealthSystem != null)
-            ctx.HealthSystem.SetInvincible(false);
+        AcquireDashInvincibility();
+
+        float remaining = time;
+        while (remaining > 0f)
+        {
+            yield return null;
+            remaining -= ActorDeltaTime;
+        }
+
+        ReleaseDashInvincibility();
         _invincibleRoutine = null;
     }
 
@@ -315,10 +323,10 @@ public class DashSystem : MonoBehaviour
         if (_perfectDodgeTriggeredThisDash || !IsPerfectDodgeWindowActive || ctx == null || ctx.cc == null)
             return;
 
-        if (perfectDodgeThreatLayers.value == 0)
+        if (dashSetting == null || dashSetting.perfectDodgeThreatLayers.value == 0)
             return;
 
-        float radius = ctx.cc.radius + perfectDodgeThreatScanPadding;
+        float radius = ctx.cc.radius + dashSetting.perfectDodgeThreatScanPadding;
         float height = ctx.cc.height;
         Vector3 center = ctx.cc.transform.TransformPoint(ctx.cc.center);
         float capsuleHalfLine = Mathf.Max(0f, height * 0.5f - ctx.cc.radius);
@@ -330,7 +338,7 @@ public class DashSystem : MonoBehaviour
             p2,
             radius,
             _perfectDodgeThreatHits,
-            perfectDodgeThreatLayers,
+            dashSetting.perfectDodgeThreatLayers,
             QueryTriggerInteraction.Collide);
 
         Transform actorRootTransform = ActorRoot.root;
@@ -348,20 +356,35 @@ public class DashSystem : MonoBehaviour
             if (hitRoot == null || hitRoot == actorRootTransform)
                 continue;
 
-            PublishExternalPerfectDodge(hitRoot.gameObject);
+            if (!IsValidPerfectDodgeThreat(hitRoot))
+                continue;
+
+            if (!TryPublishExternalPerfectDodge(hitRoot.gameObject))
+                continue;
+
             TriggerPerfectDodgeSlow();
             return;
         }
     }
 
-    void PublishExternalPerfectDodge(GameObject source)
+    static bool IsValidPerfectDodgeThreat(Transform threatRoot)
     {
-        if (combatEventBus == null)
-            return;
+        var threatContext = threatRoot.GetComponentInChildren<CharacteContext>(true);
+        if (threatContext == null)
+            return true;
 
+        HealthSystem threatHealth = threatContext.HealthSystem;
+        return threatHealth == null || threatHealth.IsAlive;
+    }
+
+    bool TryPublishExternalPerfectDodge(GameObject source)
+    {
         string attackId = source != null ? $"dash-threat:{source.GetInstanceID()}" : null;
         if (!string.IsNullOrWhiteSpace(attackId) && !_consumedPerfectDodgeAttackIds.Add(attackId))
-            return;
+            return false;
+
+        if (combatEventBus == null)
+            return true;
 
         var dodgeContext = combatEventBus.CreateExternalContext(
             PassiveEventType.PerfectDodge,
@@ -372,22 +395,28 @@ public class DashSystem : MonoBehaviour
             0f);
 
         combatEventBus.Publish(dodgeContext);
+        return true;
     }
 
     void TriggerPerfectDodgeSlow()
     {
-        if (_perfectDodgeTriggeredThisDash)
+        if (_perfectDodgeTriggeredThisDash || dashSetting == null)
             return;
 
         _perfectDodgeTriggeredThisDash = true;
-        ctx?.WeaponSystem?.GrantFreeAmmo(perfectDashFreeAmmoDuration);
-        TimeSlowManager.Instance.StartSlow(perfectDashSlowScale, perfectDashSlowDuration, perfectDashSlowShape);
+
+        float slowScale = dashSetting.perfectDashSlowScale;
+        float slowDuration = dashSetting.perfectDashSlowDuration;
+
+        ctx?.WeaponSystem?.GrantFreeAmmo(dashSetting.perfectDashFreeAmmoDuration);
+        _perfectDodgeSlowHandle = TimeSlowManager.Instance.StartSlow(
+            slowScale, slowDuration, dashSetting.perfectDashSlowShape);
 
         bool handled = PerfectDodgeHandler != null &&
-            PerfectDodgeHandler(_lastDashDirection, perfectDashSlowDuration, perfectDashSlowScale);
+            PerfectDodgeHandler(_lastDashDirection, slowDuration, slowScale);
 
         if (!handled)
-            PerfectDashScreenFx.Instance?.Play(_lastDashDirection, perfectDashSlowDuration, perfectDashSlowScale);
+            PerfectDashScreenFx.Instance?.Play(_lastDashDirection, slowDuration, slowScale);
     }
 
     void RefreshCollisionIgnoreState()
@@ -435,7 +464,7 @@ public class DashSystem : MonoBehaviour
 
     int ResolveActiveCollisionIgnoreMaskBits()
     {
-        int bits = _dashIframeActive ? dashIFrameExclude.value : 0;
+        int bits = _dashIframeActive && dashSetting != null ? dashSetting.dashIFrameExclude.value : 0;
 
         foreach (var pair in _externalCollisionIgnoreMasks)
             bits |= pair.Value;
@@ -495,8 +524,52 @@ public class DashSystem : MonoBehaviour
 
     void ResetPerfectDodgeWindow()
     {
-        _perfectDodgeWindowUntil = 0f;
+        _perfectDodgeWindowRemaining = 0f;
+        _perfectDodgeSlowHandle = 0;
         _perfectDodgeTriggeredThisDash = false;
         _consumedPerfectDodgeAttackIds.Clear();
+    }
+
+    float ResolvePerfectDodgeWindow()
+    {
+        if (dashSetting == null)
+            return 0f;
+
+        float iframe = dashSetting.dashInvincibleTime;
+        float window = dashSetting.perfectDodgeWindow > 0f ? dashSetting.perfectDodgeWindow : iframe;
+        return Mathf.Min(window, iframe);
+    }
+
+    float ActorDeltaTime =>
+        ctx == null || ctx.UsesWorldSlow
+            ? TimeSlowManager.Instance.WorldDeltaTime
+            : Time.deltaTime;
+
+    void AcquireDashInvincibility()
+    {
+        if (_dashInvincibilityToken != 0 || ctx == null || ctx.HealthSystem == null)
+            return;
+
+        _dashInvincibilityToken = ctx.HealthSystem.AcquireInvincibilityToken();
+    }
+
+    void ReleaseDashInvincibility()
+    {
+        if (_dashInvincibilityToken == 0)
+            return;
+
+        if (ctx != null && ctx.HealthSystem != null)
+            ctx.HealthSystem.ReleaseInvincibilityToken(_dashInvincibilityToken);
+
+        _dashInvincibilityToken = 0;
+    }
+
+    void StopPerfectDodgeSlow()
+    {
+        if (_perfectDodgeSlowHandle == 0)
+            return;
+
+        TimeSlowManager.Instance.StopSlow(_perfectDodgeSlowHandle);
+        _perfectDodgeSlowHandle = 0;
     }
 }

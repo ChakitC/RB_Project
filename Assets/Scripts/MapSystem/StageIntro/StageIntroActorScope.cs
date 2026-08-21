@@ -53,6 +53,11 @@ internal sealed class StageIntroActorScope
     bool savedAgentMoveDriverEnabled;
     bool agentMoveDriverCaptured;
 
+    // Gravity. Disabling the CharacterController does not stop the vertical motor — it makes it fall
+    // back to writing the transform directly — so the actor has to be held with the motor's own token.
+    CharacterVerticalMotor verticalMotor;
+    int gravitySuspendToken;
+
     // Overhead bar (world-space, so SetHudVisible does not reach it)
     CharacterVisualController visual;
     bool savedOverheadBarVisible;
@@ -163,6 +168,11 @@ internal sealed class StageIntroActorScope
             visual.SetOverheadBarVisible(savedOverheadBarVisible);
         overheadBarCaptured = false;
 
+        // Released after the pose is restored, so the actor resumes falling from where it belongs.
+        if (gravitySuspendToken != 0 && verticalMotor != null)
+            verticalMotor.ReleaseGravitySuspendToken(gravitySuspendToken);
+        gravitySuspendToken = 0;
+
         CancelActiveIntent();
 
         if (controlBlockToken != 0)
@@ -224,6 +234,12 @@ internal sealed class StageIntroActorScope
             agent.updateRotation = false;
             agent.enabled = false;
         }
+
+        verticalMotor = ctx.VerticalMotor != null
+            ? ctx.VerticalMotor
+            : ctx.GetComponentInChildren<CharacterVerticalMotor>(true);
+        if (verticalMotor != null)
+            gravitySuspendToken = verticalMotor.AcquireGravitySuspendToken();
 
         visual = ctx.Visual != null ? ctx.Visual : ctx.GetComponentInChildren<CharacterVisualController>(true);
         if (visual != null)

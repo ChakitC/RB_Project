@@ -95,6 +95,7 @@ GameObject:
   - component: {fileID: 1684288506866008098}
   - component: {fileID: 4934772837026848325}
   - component: {fileID: 5074562390204054118}
+  - component: {fileID: 7001572653248173523}
   m_Layer: 10
   m_Name: Ally
   m_TagString: Ally
@@ -670,6 +671,7 @@ MonoBehaviour:
   StaminaSystem: {fileID: 2075258610026899133}
   DashSystem: {fileID: 1265096000482281794}
   KnockbackMotor: {fileID: 0}
+  VerticalMotor: {fileID: 7001572653248173523}
   PassiveController: {fileID: 0}
   ActiveSkillProgress: {fileID: 0}
   EnegySystem: {fileID: 7588643314132077050}
@@ -861,8 +863,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   actorRoot: {fileID: 0}
-  dashSetting: {fileID: 0}
   combatEventBus: {fileID: 0}
+  dashSetting: {fileID: 0}
 --- !u!114 &7588643314132077050
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1053,6 +1055,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animancer: {fileID: 2115705383022822444}
   ctx: {fileID: 4358677403141846059}
+  inspectorAnimProfile: {fileID: 0}
   chainPlaybackWatchdogGraceSeconds: 0.15
   useRootMotionForChainPlayback: 0
   locomotionLayerIndex: 0
@@ -1200,3 +1203,38 @@ MonoBehaviour:
   dbgBuffs: 
   dbgDebuffs: 
   dbgNeutralEffects: 
+--- !u!114 &7001572653248173523
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8623998836521745381}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81d2d29cf184cfc41b07807ee6d385da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 4358677403141846059}
+  characterController: {fileID: 8852702040775598704}
+  capsuleCollider: {fileID: 0}
+  navMeshAgent: {fileID: 6379894457590227970}
+  agentMoveDriver: {fileID: 0}
+  animBrain: {fileID: 6959280806721539224}
+  rootMotionCCDriver: {fileID: 0}
+  rootMotionNavMeshDriver: {fileID: 0}
+  mode: 1
+  gravity: -25
+  terminalVelocity: -50
+  groundedStickSpeed: -2
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 151553
+  groundProbeDistance: 0.15
+  collisionMask:
+    serializedVersion: 2
+    m_Bits: 151553
+  queryTriggers: 1
+  collisionPadding: 0.02
+  navMeshLandSampleRadius: 1.5
+  navMeshLandRecoveryTimeout: 1

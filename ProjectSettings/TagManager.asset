@@ -10,6 +10,7 @@ TagManager:
   - Bullet
   - Ally
   - SlotsRoot
+  - FxTemporaire
   layers:
   - Default
   - TransparentFX
@@ -49,10 +50,10 @@ TagManager:
     locked: 0
   m_RenderingLayers:
   - Default
-  - Light Layer 1
-  - Light Layer 2
-  - Light Layer 3
-  - Light Layer 4
+  - Light Layer 1 - DepthOffsetShadowPass
+  - Light Layer 2 - Outline
+  - Light Layer 3 - EffectAdditionalLight
+  - Light Layer 4 - CharacterDecal
   - Light Layer 5
   - Light Layer 6
   - Light Layer 7

@@ -40,6 +40,11 @@ public class AgentMoveDriver : MonoBehaviour
     int _nextMoveSpeedOverrideToken;
     int _activeMoveSpeedOverrideToken;
     float _activeMoveSpeedOverride;
+    readonly HashSet<int> _agentTransformSuspendTokens = new();
+    int _nextAgentTransformSuspendToken;
+    bool _hasCachedAgentTransformState;
+    bool _cachedAgentIsStopped;
+    bool _cachedAgentUpdatePosition;
     Transform ActorTransform => ctx != null ? ctx.transform : transform;
 
     public bool agentismoving;
@@ -106,6 +111,82 @@ public class AgentMoveDriver : MonoBehaviour
             ResolveLatestMoveSpeedOverride();
 
         ApplyResolvedMoveSpeed();
+    }
+
+    /// <summary>
+    /// True while some owner has taken the transform away from the NavMeshAgent.
+    /// </summary>
+    public bool IsAgentTransformSuspended => _agentTransformSuspendTokens.Count > 0;
+
+    /// <summary>
+    /// Takes the transform away from the NavMeshAgent so another system can drive it directly.
+    /// Reference counted: the agent is only restored once every token has been released, which is
+    /// what keeps overlapping owners (airborne + knockback) from restoring each other's state.
+    /// </summary>
+    public int AcquireAgentTransformSuspendToken()
+    {
+        int token = NextAgentTransformSuspendToken();
+        _agentTransformSuspendTokens.Add(token);
+
+        if (_agentTransformSuspendTokens.Count == 1)
+            SuspendAgentTransform();
+
+        return token;
+    }
+
+    public void ReleaseAgentTransformSuspendToken(int token)
+    {
+        if (token == 0 || !_agentTransformSuspendTokens.Remove(token))
+            return;
+
+        if (_agentTransformSuspendTokens.Count == 0)
+            RestoreAgentTransform();
+    }
+
+    void SuspendAgentTransform()
+    {
+        if (agent == null || !agent.enabled)
+            return;
+
+        _cachedAgentIsStopped = agent.isStopped;
+        _cachedAgentUpdatePosition = agent.updatePosition;
+        _hasCachedAgentTransformState = true;
+
+        agent.isStopped = true;
+        agent.updatePosition = false;
+        agent.nextPosition = ActorTransform.position;
+    }
+
+    void RestoreAgentTransform()
+    {
+        if (agent == null || !agent.enabled)
+        {
+            _hasCachedAgentTransformState = false;
+            return;
+        }
+
+        SyncAgentToTransform();
+
+        if (_hasCachedAgentTransformState)
+        {
+            agent.updatePosition = _cachedAgentUpdatePosition;
+            agent.isStopped = _cachedAgentIsStopped;
+        }
+
+        _hasCachedAgentTransformState = false;
+    }
+
+    int NextAgentTransformSuspendToken()
+    {
+        do
+        {
+            _nextAgentTransformSuspendToken++;
+            if (_nextAgentTransformSuspendToken <= 0)
+                _nextAgentTransformSuspendToken = 1;
+        }
+        while (_agentTransformSuspendTokens.Contains(_nextAgentTransformSuspendToken));
+
+        return _nextAgentTransformSuspendToken;
     }
 
     void UpdateAIMoveAnimFromNavMesh(NavMeshAgent agent)
@@ -257,6 +338,8 @@ public class AgentMoveDriver : MonoBehaviour
         if (!separateCompanionFromPlayer || ctx == null || ctx.TargetIdentity != AITargetIdentity.Companion)
             return;
         if (ctx.AnimBrain != null && ctx.AnimBrain.RootMotionActive)
+            return;
+        if (IsAgentTransformSuspended)
             return;
 
         CharacteContext player = ResolvePlayerContext();

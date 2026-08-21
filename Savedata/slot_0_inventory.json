@@ -1,7 +1,7 @@
 {
     "maxSlotCount": 0,
-    "gold": 955728,
-    "scrap": 2593,
+    "gold": 956813,
+    "scrap": 2610,
     "slots": [
         {
             "itemId": "SMG_GR01",
@@ -428,8 +428,8 @@
                     }
                 ],
                 "shotCounter": 3815,
-                "currentMagazine": 30,
-                "currentReserveAmmo": 240,
+                "currentMagazine": 23,
+                "currentReserveAmmo": 224,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -551,8 +551,8 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 100,
-                "currentReserveAmmo": 250,
+                "currentMagazine": 88,
+                "currentReserveAmmo": 249,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 9,
                 "upgradeTier": 0,
@@ -649,7 +649,7 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 38,
+                "currentMagazine": 36,
                 "currentReserveAmmo": 431,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 30,
@@ -1243,14 +1243,30 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 100,
-                "currentReserveAmmo": 200,
+                "currentMagazine": 98,
+                "currentReserveAmmo": 216,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
                 "upgradeExp": 0,
                 "unlockedUpgradeMilestoneIds": [],
-                "affixRuntimeStates": []
+                "affixRuntimeStates": [
+                    {
+                        "affixId": "weapon.main.kill_clip.v1",
+                        "schemaVersion": 1,
+                        "entries": []
+                    },
+                    {
+                        "affixId": "weapon.sub.reload_time.v1",
+                        "schemaVersion": 1,
+                        "entries": []
+                    },
+                    {
+                        "affixId": "weapon.sub.fire_interval.v1",
+                        "schemaVersion": 1,
+                        "entries": []
+                    }
+                ]
             },
             "accessoryInstance": {
                 "instanceId": "",

@@ -15,6 +15,8 @@ public class RootMotionCCDriver : MonoBehaviour
     private bool _directCollisionOverrideActive;
     private LayerMask _cachedExcludeLayers;
 
+    public bool ZeroY => zeroY;
+
     void Awake()
     {
         ResolveReferences();

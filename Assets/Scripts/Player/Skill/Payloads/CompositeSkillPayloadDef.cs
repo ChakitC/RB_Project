@@ -151,11 +151,6 @@ public sealed class CompositeSkillPayloadDef : SkillPayloadDef
         }
     }
 
-    public override void Execute(SkillCastContext context)
-    {
-        ExecuteWithResult(context);
-    }
-
     /// <summary>
     /// Sibling steps are independent: a failing step never stops the ones after it, and the
     /// composite counts as successful as soon as one enabled step produced a gameplay effect.

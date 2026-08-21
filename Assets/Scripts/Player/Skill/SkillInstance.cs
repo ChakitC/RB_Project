@@ -156,7 +156,7 @@ public class SkillInstance
         int requestId,
         out SkillExecutionResult result)
     {
-        if (!CanCast(user, out var stats))
+        if (!TryReserveCast(user, ignoreResourceCosts: false, stampCooldown: true, out SkillCastReservation reservation))
         {
             result = SkillExecutionResult.Failed(
                 SkillExecutionFailureReason.Rejected,
@@ -164,7 +164,7 @@ public class SkillInstance
             return false;
         }
 
-        return ExecuteCast(user, stats, spendEnergy: true, animBrain, requestId, true, out result);
+        return ExecuteAndSettle(reservation, animBrain, requestId, out result);
     }
 
     public bool TryCastIgnoringResourceCosts(ISkillUser user, CharacterAnimBrain animBrain = null, int requestId = 0, bool stampCooldown = true)
@@ -179,16 +179,130 @@ public class SkillInstance
         bool stampCooldown,
         out SkillExecutionResult result)
     {
-        if (def == null || user == null)
+        if (!TryReserveCast(user, ignoreResourceCosts: true, stampCooldown, out SkillCastReservation reservation))
         {
             result = SkillExecutionResult.Failed(
                 SkillExecutionFailureReason.MissingRuntimeContext,
-                "Skill instance has no definition or caster.");
+                "Skill instance has no definition, payload, or caster.");
             return false;
         }
 
-        var stats = GetFinalStats(user);
-        return ExecuteCast(user, stats, spendEnergy: false, animBrain, requestId, stampCooldown, out result);
+        return ExecuteAndSettle(reservation, animBrain, requestId, out result);
+    }
+
+    /// <summary>
+    /// Takes this cast's charge and energy out of the pools up front and freezes the stats it was
+    /// priced with. Everything after this point — animation, wind-up, cast point, payload — runs
+    /// against that one snapshot, so a buff landing mid-wind-up cannot change what this cast costs
+    /// or what it does, and a second press cannot spend the charge this one is holding.
+    ///
+    /// The caller owns the returned reservation and must settle it exactly once with
+    /// <see cref="SkillCastReservation.Commit"/>, <see cref="SkillCastReservation.CommitChargeOnly"/>,
+    /// or <see cref="SkillCastReservation.Release"/>.
+    /// </summary>
+    public bool TryReserveCast(
+        ISkillUser user,
+        bool ignoreResourceCosts,
+        bool stampCooldown,
+        out SkillCastReservation reservation)
+    {
+        reservation = null;
+
+        if (def == null || def.payload == null || user == null)
+            return false;
+
+        FinalSkillStats stats = GetFinalStats(user);
+        float now = Time.time;
+        Charges.Refresh(stats.maxCharges, now);
+
+        int token = SkillCastReservation.NextToken();
+        SkillUserSystem energyOwner = user as SkillUserSystem;
+
+        // A free cast still tries for a charge so it can stamp a cooldown, but an empty pool never
+        // stops it — that is what "ignores resource costs" means.
+        bool chargeReserved = Charges.TryReserve(token, now);
+        if (!ignoreResourceCosts && !chargeReserved)
+            return false;
+
+        float energyAmount = ignoreResourceCosts ? 0f : stats.manaCost;
+        bool energyReserved = false;
+
+        if (energyAmount > 0f)
+        {
+            if (energyOwner != null)
+            {
+                energyReserved = energyOwner.TryReserveEnergy(token, energyAmount);
+                if (!energyReserved)
+                {
+                    if (chargeReserved)
+                        Charges.ReleaseReservation(token);
+
+                    return false;
+                }
+            }
+            else if (user.currentEnagy < energyAmount)
+            {
+                // ISkillUser implementations that are not a SkillUserSystem cannot hold energy, so
+                // they keep the old check-now / spend-at-commit behaviour.
+                if (chargeReserved)
+                    Charges.ReleaseReservation(token);
+
+                return false;
+            }
+        }
+
+        reservation = new SkillCastReservation(
+            token,
+            stats,
+            Charges,
+            chargeReserved,
+            user,
+            energyOwner,
+            energyAmount,
+            energyReserved,
+            stampCooldown);
+        return true;
+    }
+
+    /// <summary>
+    /// Runs the payload against a reservation's frozen stats and reports what it produced. Does not
+    /// settle the reservation: the caller decides whether this cast commits or rolls back.
+    /// </summary>
+    public bool ExecuteReserved(
+        SkillCastReservation reservation,
+        CharacterAnimBrain animBrain,
+        int requestId,
+        out SkillExecutionResult result)
+    {
+        if (reservation == null || def == null || def.payload == null || reservation.User == null)
+        {
+            result = SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingAuthoringData,
+                "Skill has no execution payload or no reserved caster.");
+            return false;
+        }
+
+        var castContext = new SkillCastContext(
+            reservation.User, def, reservation.Stats, animBrain, requestId, upgradeSnapshot);
+
+        result = def.payload.ExecuteWithResult(castContext);
+        return result.Success;
+    }
+
+    bool ExecuteAndSettle(
+        SkillCastReservation reservation,
+        CharacterAnimBrain animBrain,
+        int requestId,
+        out SkillExecutionResult result)
+    {
+        if (!ExecuteReserved(reservation, animBrain, requestId, out result))
+        {
+            reservation.Release();
+            return false;
+        }
+
+        reservation.Commit();
+        return true;
     }
 
     /// <summary>
@@ -228,42 +342,6 @@ public class SkillInstance
             Charges.MaxCharges,
             Charges.GetNextChargeRemaining(now),
             Charges.GetNextChargeDuration(now, stats.cooldown));
-        return true;
-    }
-
-    bool ExecuteCast(
-        ISkillUser user,
-        FinalSkillStats stats,
-        bool spendEnergy,
-        CharacterAnimBrain animBrain,
-        int requestId,
-        bool stampCooldown,
-        out SkillExecutionResult result)
-    {
-        if (def == null || def.payload == null || user == null || stats == null)
-        {
-            result = SkillExecutionResult.Failed(
-                SkillExecutionFailureReason.MissingAuthoringData,
-                "Skill has no execution payload.");
-            return false;
-        }
-
-        // A cast is a transaction: run the payload first, and only commit energy and charge
-        // once it reports that it actually produced a gameplay effect.
-        var castContext = new SkillCastContext(user, def, stats, animBrain, requestId, upgradeSnapshot);
-        result = castContext.Execution.ExecuteWithResult(castContext);
-        if (!result.Success)
-            return false;
-
-        if (spendEnergy)
-            user.SpendEnagy(stats.manaCost);
-
-        if (stampCooldown)
-        {
-            Charges.Refresh(stats.maxCharges, Time.time);
-            Charges.TryConsume(Time.time, stats.cooldown);
-        }
-
         return true;
     }
 }

@@ -209,8 +209,14 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
             {
                 sourceActor = uc.transform;
                 collisionIgnoreRoot = uc.transform.root;
-                ownerCombatEventBus = uc.GetComponent<CombatEventBus>();
-                ownerStatusController = uc.GetComponent<StatusEffectController>();
+
+                // Peer modules come from the caster's CharacteContext first. A plain
+                // GetComponent on the skill user only matches prefabs that keep the bus on the
+                // same object, and on the others the projectile would fire without ever raising
+                // an OnHit or OnKill event.
+                CharacteContext ownerContext = CharacterContextModuleLookup.ResolveContext(uc.gameObject);
+                ownerCombatEventBus = CharacterContextModuleLookup.ResolveCombatEventBus(uc.gameObject, ownerContext);
+                ownerStatusController = CharacterContextModuleLookup.ResolveStatusEffects(uc.gameObject, ownerContext);
                 _attribution = CombatAttributionSnapshot.FromPhysicalActor(uc.gameObject);
                 if (_attribution.HasCredit)
                 {
@@ -1242,7 +1248,9 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         if (_attribution.CreditedEventBus != null)
             return _attribution.CreditedEventBus;
 
-        return _ctx.sourceActor != null ? _ctx.sourceActor.GetComponent<CombatEventBus>() : null;
+        return _ctx.sourceActor != null
+            ? CharacterContextModuleLookup.ResolveCombatEventBus(_ctx.sourceActor.gameObject)
+            : null;
     }
 
     StatusEffectController ResolveOwnerStatusEffectController()
@@ -1253,6 +1261,8 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         if (_attribution.CreditedStatusOwner != null)
             return _attribution.CreditedStatusOwner;
 
-        return _ctx.sourceActor != null ? _ctx.sourceActor.GetComponent<StatusEffectController>() : null;
+        return _ctx.sourceActor != null
+            ? CharacterContextModuleLookup.ResolveStatusEffects(_ctx.sourceActor.gameObject)
+            : null;
     }
 }

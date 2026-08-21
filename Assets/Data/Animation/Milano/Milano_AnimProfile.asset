@@ -36,7 +36,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 3480618312002360226, guid: f0667af7fb3a0cb4cadedb94c400b7d4, type: 3}
+    _Clip: {fileID: -1089004114184665151, guid: f0667af7fb3a0cb4cadedb94c400b7d4, type: 3}
     _NormalizedStartTime: NaN
   miniStune:
     _FadeDuration: 0.25

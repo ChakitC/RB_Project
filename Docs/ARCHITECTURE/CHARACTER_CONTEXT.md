@@ -30,8 +30,8 @@ types, including:
   `CharacterVisualController`, `UIManager`, `CharacterColliderRefs`
 - gameplay modules: `StatusEffectController` (`StatusEffects`),
   `LevelSystem`, `HealthSystem`, `StaminaSystem`,
-  `DashSystem`, `CharacterKnockbackMotor`, `PassiveController`,
-  `SkillUserSystem`, `Interactor`, `CharacterSkillManager`
+  `DashSystem`, `CharacterKnockbackMotor`, `CharacterVerticalMotor`,
+  `PassiveController`, `SkillUserSystem`, `Interactor`, `CharacterSkillManager`
 
 Common systems should primarily depend on `CharacteContext` and read peer
 modules through `ctx`.

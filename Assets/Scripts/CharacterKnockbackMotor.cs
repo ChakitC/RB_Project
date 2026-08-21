@@ -371,6 +371,10 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         FaceTowardKnockbackPoint(knockback);
         animDriver?.PlayKnockback(knockback);
 
+        // This motor stays planar-only. Vertical launch is handed to the component that owns Y.
+        if (knockback.VerticalImpulse > 0f && ctx != null && ctx.VerticalMotor != null)
+            ctx.VerticalMotor.Launch(knockback.VerticalImpulse);
+
         if (stateHub != null && stateHub.MoveSM != null)
             stateHub.MoveSM.TryChange(MoveStateId.Knockback);
 

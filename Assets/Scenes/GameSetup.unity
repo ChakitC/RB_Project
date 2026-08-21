@@ -6219,6 +6219,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 1.5543585
       objectReference: {fileID: 0}
+    - target: {fileID: 5026556471010845577, guid: 6fc8435470cea994d843648ad902acba, type: 3}
+      propertyPath: UseSimpleAABBCutOffForCharacterShadow
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5032209918242089793, guid: 6fc8435470cea994d843648ad902acba, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: -3.6553648
@@ -9797,6 +9801,8 @@ MonoBehaviour:
   _mainLightStrengthOverrideValue: 0
   _overrideLightAngle: {x: 0, y: 0, z: 0}
   HeadBoneTransform: {fileID: 0}
+  _CharacterCenterCubeSize: 1
+  UseSimpleAABBCutOffForCharacterShadow: 0
   CreateMaterialInstanceOnPlay: 0
 --- !u!1001 &2664551721804548108
 PrefabInstance:

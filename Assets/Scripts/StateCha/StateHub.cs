@@ -53,6 +53,12 @@ public sealed class StateHub : MonoBehaviour
     public bool IsAlive => LifeSM.CurrentId == LifeStateId.Alive;
     public bool Isdown => LifeSM.CurrentId == LifeStateId.Down;
 
+    // Vertical state is owned by CharacterVerticalMotor. Prefabs without that component report
+    // grounded, which is exactly how they behaved before the motor existed.
+    public bool IsGrounded => ctx == null || ctx.VerticalMotor == null || ctx.VerticalMotor.IsGrounded;
+    public bool IsAirborne => ctx != null && ctx.VerticalMotor != null && ctx.VerticalMotor.IsAirborne;
+    public float AirTime => ctx != null && ctx.VerticalMotor != null ? ctx.VerticalMotor.AirTime : 0f;
+
     // Scoped external blocks are owned by a token, so one system releasing its own hold can never
     // clear the legacy `externalControlBlocks` mask another system is still relying on.
     readonly Dictionary<int, ControlBlockFlags> scopedExternalControlBlocks = new();

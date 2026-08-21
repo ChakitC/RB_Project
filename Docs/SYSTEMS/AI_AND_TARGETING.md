@@ -119,9 +119,27 @@ follows `WorldDeltaTime` for actors under world slow and `Time.deltaTime` for ac
 world-slow exemption, so a taunt on a slowed enemy drains slowly while HitLag and pause freeze it
 either way. See **Status duration and tick time semantics** in `SKILL_SYSTEM.md`.
 
+### Who can be taunted
+
+Faction is checked **first**, before the LayerMask, the range check, and the line-of-sight
+raycast. `CharacterFactionUtility.AreHostile(caster, target)` is the single shared team rule —
+`BarrierFactionUtility` is now a thin wrapper over it, so barriers and taunt cannot drift apart on
+who counts as an enemy. `Auto`, `Generic`, `Neutral`, and same-side actors are never taunted, no
+matter what the LayerMask includes. The mask stays as a **secondary** filter so an author can still
+narrow a taunt further; it is not the faction rule and no serialized relation policy was added.
+
+Then the sensor is asked first: `AITargetSensor.CanAcceptTaunt(casterRoot)` is a non-mutating
+preflight of the same checks `OnTauntApplied` performs. If the sensor could never track this
+caster, the taunt status is not applied at all — otherwise it would sit on an enemy that keeps
+ignoring it. Conditional follow-up statuses (`ConditionalStatusRoute`) only fire when the Taunt
+status was applied **and** `OnTauntApplied` accepted the source, so an upgrade cannot pay off a
+taunt that never happened.
+
 `TauntSkillRuntime` discovers targets through active `CharacteContext` instances and checks range
 from the context transform; physics is used only for the layer filter and the optional
-line-of-sight raycast.
+line-of-sight raycast. The caster's own context comes from `SkillCastContext.CasterContext`, and
+each target's `StatusEffectController` through `CharacterContextModuleLookup`, so prefabs that keep
+the controller on a child branch are handled the same as those that keep it on the root.
 
 `AITargetingProfileDef` can override scoring and policy values. Local sensor
 fields are fallback settings when no profile is assigned.
@@ -147,6 +165,26 @@ movement and writes normalized speed plus local direction into `StateHub`.
 
 It also supports companion separation from the player by resolving the player
 through `CharacteContext.TargetIdentity == Player`.
+
+### Agent Transform Suspension
+
+`NavMeshAgent.updatePosition` makes the agent rewrite the transform from its own
+NavMesh-projected position every frame. Any system that needs to drive the actor
+directly — root motion, knockback, or an airborne launch — must take the agent off
+transform duty first, or its motion is silently erased on the next frame. Syncing
+`agent.nextPosition` alone is not sufficient.
+
+`AgentMoveDriver.AcquireAgentTransformSuspendToken()` /
+`ReleaseAgentTransformSuspendToken(token)` provide the reference-counted way to do
+this. The agent is restored only when the last token is released, which is what
+prevents two overlapping owners from restoring each other's cached state and
+leaving the agent permanently suspended. `IsAgentTransformSuspended` reports the
+current state, and companion separation skips itself while suspended.
+
+`CharacterVerticalMotor` uses these tokens for its airborne window and re-`Warp`s
+the agent on landing, since an actor launched over a ledge can come down somewhere
+the agent has no valid mesh position for. See
+`Docs/PREFABS_AND_AUTHORING.md` for the authoring side.
 
 ### Ally Burst Shooting
 
@@ -542,9 +580,9 @@ the next animation lifecycle begins.
    displace the sampled root-motion trajectory, optionally hides via
    `ASPHelperDitherFader`, snaps to the start pose, and starts the interruption
    skill via `TryStartExternalSkill` with
-   `ignoreResourceCosts: true` and `stampCooldown: false` — the interrupt does
-   not spend energy, does not write `_lastCastTime`, and does not affect the
-   main skill's cooldown.
+   `ignoreResourceCosts: true` and `stampCooldown: false` — the interrupt
+   reserves no energy and its reservation refunds the charge even on commit, so
+   it does not affect the main skill's cooldown.
 4. `RootMotionCCDriver` moves the player via root motion during the skill.
    After completion the player **stays at the end-of-animation position** — no
    snap-back, no visible-root rebase.

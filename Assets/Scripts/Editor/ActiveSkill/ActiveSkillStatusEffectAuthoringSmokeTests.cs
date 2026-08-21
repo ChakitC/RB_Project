@@ -407,9 +407,8 @@ public static class ActiveSkillStatusEffectAuthoringSmokeTests
     {
         [SerializeField] private ConditionalStatusRoute route = new();
 
-        public override void Execute(SkillCastContext context)
-        {
-        }
+        public override SkillExecutionResult ExecuteWithResult(SkillCastContext context) =>
+            SkillExecutionResult.Succeeded;
     }
 
     sealed class ProbePayloadWithNonSerializedRoute : SkillPayloadDef
@@ -417,9 +416,8 @@ public static class ActiveSkillStatusEffectAuthoringSmokeTests
         [SkillStatusRouteTarget(SkillStatusTarget.Self, "Non Serialized")]
         private ConditionalStatusRoute route = new();
 
-        public override void Execute(SkillCastContext context)
-        {
-        }
+        public override SkillExecutionResult ExecuteWithResult(SkillCastContext context) =>
+            SkillExecutionResult.Succeeded;
     }
 
     #endregion

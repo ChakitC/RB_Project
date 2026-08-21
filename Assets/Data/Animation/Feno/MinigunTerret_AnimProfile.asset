@@ -29,6 +29,15 @@ MonoBehaviour:
   snapTo8Directions: 1
   locomotionFadeDuration: 0.25
   locomotionPlaybackSpeed: 1
+  stageIntroClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -1089004114184665151, guid: f0667af7fb3a0cb4cadedb94c400b7d4, type: 3}
+    _NormalizedStartTime: NaN
   miniStune:
     _FadeDuration: 0.25
     _Speed: 1

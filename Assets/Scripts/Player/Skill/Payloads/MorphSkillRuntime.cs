@@ -26,9 +26,10 @@ public sealed class MorphSkillRuntime : MonoBehaviour
         requestId = castContext != null ? castContext.RequestId : 0;
         casterRoot = castContext != null ? castContext.CasterRoot : null;
 
-        CharacteContext ctx = casterRoot != null
-            ? casterRoot.GetComponentInParent<CharacteContext>()
-            : null;
+        // The cast already resolved and bound the caster's hub once; reuse it.
+        CharacteContext ctx = castContext != null ? castContext.CasterContext : null;
+        if (ctx == null && casterRoot != null)
+            ctx = CharacterContextModuleLookup.ResolveContext(casterRoot.gameObject);
 
         if (ctx != null)
         {
@@ -41,10 +42,12 @@ public sealed class MorphSkillRuntime : MonoBehaviour
         if (animBrain == null && ctx != null)
             animBrain = ctx.AnimBrain;
 
-        // resolve StatusEffectController จาก caster root (แนวเดียวกับ ApplyStatusSkillPayloadDef)
-        if (casterRoot != null)
-            statusController = casterRoot.GetComponentInChildren<StatusEffectController>(true)
-                            ?? casterRoot.GetComponentInParent<StatusEffectController>();
+        // StatusEffectController ผ่าน context ก่อน แล้วค่อย fallback หา hierarchy — prefab บางตัววาง
+        // controller ไว้บน child branch ไม่ใช่ root
+        statusController = castContext != null && castContext.CasterStatusEffects != null
+            ? castContext.CasterStatusEffects
+            : CharacterContextModuleLookup.ResolveStatusEffects(
+                casterRoot != null ? casterRoot.gameObject : null, ctx);
         statusSource = castContext != null ? castContext.CasterObject : null;
 
         if (payload == null ||

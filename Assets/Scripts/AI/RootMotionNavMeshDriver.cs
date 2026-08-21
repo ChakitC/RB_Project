@@ -21,6 +21,8 @@ public class RootMotionNavMeshDriver : MonoBehaviour
     private bool _hasCachedAgentState;
     private Transform _actorRoot;
 
+    public bool ZeroY => zeroY;
+
     Transform ActorRoot => _actorRoot != null
         ? _actorRoot
         : ctx != null

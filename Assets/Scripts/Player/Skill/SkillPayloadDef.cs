@@ -43,17 +43,26 @@ public abstract class SkillPayloadDef : ScriptableObject
         return Mathf.Clamp(chainContinueNormalizedTime, 0f, 0.999f);
     }
 
-    public abstract void Execute(SkillCastContext context);
-
     /// <summary>
     /// Runs the payload and reports whether it produced a gameplay effect.
-    /// Only a successful execution commits the cast transaction (energy, charge, cooldown).
-    /// Payloads that cannot fail keep overriding <see cref="Execute"/> alone and stay successful.
+    ///
+    /// A cast is a transaction, and this result is what decides whether it commits: energy, charge,
+    /// and cooldown are only spent for a payload that says it did something. Every payload must
+    /// answer for itself - there is no "assume it worked" default, because a payload that silently
+    /// returns early would otherwise charge the player for nothing.
+    ///
+    /// A valid cast that simply found no target still counts as a success and still costs: missing
+    /// is a gameplay outcome, not a refusal.
     /// </summary>
-    public virtual SkillExecutionResult ExecuteWithResult(SkillCastContext context)
+    public abstract SkillExecutionResult ExecuteWithResult(SkillCastContext context);
+
+    /// <summary>
+    /// Fire-and-forget wrapper for callers that do not inspect the result. Not virtual: the result
+    /// is the contract, so overriding this instead would let a payload skip reporting.
+    /// </summary>
+    public void Execute(SkillCastContext context)
     {
-        Execute(context);
-        return SkillExecutionResult.Succeeded;
+        ExecuteWithResult(context);
     }
 }
 

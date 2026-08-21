@@ -23,15 +23,15 @@ public abstract class SkillEffectStep
         SkillUpgradeIdCollection.AddUnique(ids, requiredUpgradeId);
     }
 
-    public abstract void Execute(SkillCastContext ctx);
-
     /// <summary>
     /// Runs the step and reports whether it produced a gameplay effect. See
     /// <see cref="SkillPayloadDef.ExecuteWithResult"/>.
     /// </summary>
-    public virtual SkillExecutionResult ExecuteWithResult(SkillCastContext ctx)
+    public abstract SkillExecutionResult ExecuteWithResult(SkillCastContext ctx);
+
+    /// <summary>Fire-and-forget wrapper. See <see cref="SkillPayloadDef.Execute"/>.</summary>
+    public void Execute(SkillCastContext ctx)
     {
-        Execute(ctx);
-        return SkillExecutionResult.Succeeded;
+        ExecuteWithResult(ctx);
     }
 }

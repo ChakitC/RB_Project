@@ -15,7 +15,7 @@ MonoBehaviour:
   icon: {fileID: 0}
   characterId: GR_NM01
   characterName: GRNM01
-  CharacterPrefab: {fileID: 6565795838908271222, guid: 33c0e4aa99816184c8173146dd7f8928, type: 3}
+  CharacterPrefab: {fileID: 2674987616401726930, guid: 56706bf9c93bf494e9e39755db49cdf6, type: 3}
   CharacterPrefabBasement: {fileID: 0}
   characterAvatar: {fileID: 9000000, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}
   controller: {fileID: 9100000, guid: 5bff3db2195f8944e8403ede2c0ccb2c, type: 2}

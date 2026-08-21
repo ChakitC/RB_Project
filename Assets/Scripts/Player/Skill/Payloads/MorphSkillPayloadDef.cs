@@ -107,15 +107,32 @@ public sealed class MorphSkillPayloadDef : SkillPayloadDef
         }
     }
 
-    public override void Execute(SkillCastContext context)
+    /// <summary>
+    /// Succeeds once the runtime listener exists and is armed. What the morph then does depends on
+    /// timeline events that fire after the cast point, so the cast cannot wait for them.
+    /// </summary>
+    public override SkillExecutionResult ExecuteWithResult(SkillCastContext context)
     {
         if (context == null || context.CasterObject == null)
-            return;
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Morph payload executed without a caster object.");
+        }
 
         GameObject host = new GameObject("MorphSkillRuntime");
         host.transform.SetParent(null);
 
         MorphSkillRuntime runtime = host.AddComponent<MorphSkillRuntime>();
+        if (runtime == null)
+        {
+            Destroy(host);
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Morph payload could not create its runtime host.");
+        }
+
         runtime.Initialize(context, this);
+        return SkillExecutionResult.Succeeded;
     }
 }

@@ -166,8 +166,17 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
         if (_sourceObject != null)
         {
-            _combatEventBus = _sourceObject.GetComponent<CombatEventBus>();
-            _statusEffectController = _sourceObject.GetComponent<StatusEffectController>();
+            // Through the caster's context, not a one-direction GetComponent: on several prefabs
+            // the bus lives on a child branch, and missing it silently drops every OnHit/OnKill
+            // this skill would have raised.
+            _combatEventBus = _context != null && _context.CasterEventBus != null
+                ? _context.CasterEventBus
+                : CharacterContextModuleLookup.ResolveCombatEventBus(
+                    _sourceObject, _context != null ? _context.CasterContext : null);
+            _statusEffectController = _context != null && _context.CasterStatusEffects != null
+                ? _context.CasterStatusEffects
+                : CharacterContextModuleLookup.ResolveStatusEffects(
+                    _sourceObject, _context != null ? _context.CasterContext : null);
             if (_attribution.HasCredit)
             {
                 _sourceObject = _attribution.PhysicalActor != null

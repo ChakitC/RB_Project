@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -31,6 +32,14 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
     float lastEnergySpendTime = float.NegativeInfinity;
     bool initialized;
 
+    /// <summary>
+    /// Energy held for casts that have started but not reached their cast point, keyed by
+    /// reservation token. Reserved energy is already gone from <see cref="CurrentEnergy"/>, so two
+    /// casts winding up at the same time cannot both spend the same points.
+    /// </summary>
+    readonly Dictionary<int, float> energyReservations = new Dictionary<int, float>();
+    float reservedEnergy;
+
     public event Action<float, float> EnergyChanged;
 
     public Transform CastOrigin => castOrigin ? castOrigin : transform;
@@ -40,10 +49,22 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
         get
         {
             EnsureInitialized();
-            return currentEnergy;
+            return SpendableEnergy;
         }
     }
+
+    /// <summary>Energy a new cast may spend: the pool minus everything already reserved.</summary>
     public float CurrentEnergy
+    {
+        get
+        {
+            EnsureInitialized();
+            return SpendableEnergy;
+        }
+    }
+
+    /// <summary>Raw pool before reservations. Used by regeneration and by the commit path.</summary>
+    public float StoredEnergy
     {
         get
         {
@@ -51,6 +72,17 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
             return currentEnergy;
         }
     }
+
+    public float ReservedEnergy
+    {
+        get
+        {
+            EnsureInitialized();
+            return reservedEnergy;
+        }
+    }
+
+    float SpendableEnergy => Mathf.Max(0f, currentEnergy - reservedEnergy);
     public float MaximumEnergy
     {
         get
@@ -158,6 +190,77 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
         NotifyEnergyChanged();
     }
 
+    /// <summary>
+    /// Holds <paramref name="amount"/> for a cast that has started but not yet reached its cast
+    /// point. Idempotent: reserving again with the same token keeps the original hold and reports
+    /// success rather than doubling it.
+    /// </summary>
+    public bool TryReserveEnergy(int token, float amount)
+    {
+        EnsureInitialized();
+
+        if (energyReservations.ContainsKey(token))
+            return true;
+
+        if (!float.IsFinite(amount) || amount <= 0f)
+        {
+            // A free cast still takes a token so commit/release stay symmetric for every caller.
+            energyReservations[token] = 0f;
+            return true;
+        }
+
+        RefreshMaximumEnergy(resetCurrentToMax: false);
+
+        if (SpendableEnergy < amount)
+            return false;
+
+        energyReservations[token] = amount;
+        reservedEnergy += amount;
+        NotifyEnergyChanged();
+        return true;
+    }
+
+    /// <summary>
+    /// Spends a held amount for real. Idempotent: committing an unknown or already-settled token
+    /// does nothing.
+    /// </summary>
+    public bool CommitEnergyReservation(int token)
+    {
+        EnsureInitialized();
+
+        if (!energyReservations.TryGetValue(token, out float amount))
+            return false;
+
+        energyReservations.Remove(token);
+        reservedEnergy = Mathf.Max(0f, reservedEnergy - amount);
+
+        if (amount > 0f)
+        {
+            currentEnergy = Mathf.Max(0f, currentEnergy - amount);
+            lastEnergySpendTime = Time.time;
+        }
+
+        NotifyEnergyChanged();
+        return true;
+    }
+
+    /// <summary>
+    /// Gives a held amount back. Idempotent: releasing an unknown or already-settled token does
+    /// nothing.
+    /// </summary>
+    public bool ReleaseEnergyReservation(int token)
+    {
+        EnsureInitialized();
+
+        if (!energyReservations.TryGetValue(token, out float amount))
+            return false;
+
+        energyReservations.Remove(token);
+        reservedEnergy = Mathf.Max(0f, reservedEnergy - amount);
+        NotifyEnergyChanged();
+        return true;
+    }
+
     public bool CanRestoreEnergy(float amount)
     {
         EnsureInitialized();
@@ -187,7 +290,7 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
 
     void NotifyEnergyChanged()
     {
-        EnergyChanged?.Invoke(currentEnergy, maximumEnergy);
+        EnergyChanged?.Invoke(SpendableEnergy, maximumEnergy);
     }
 
     void EnsureInitialized()

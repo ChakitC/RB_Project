@@ -78,11 +78,6 @@ public sealed class BarrierSkillPayloadDef : SkillPayloadDef
             issues.Add("Barrier lifetime must be greater than zero.");
     }
 
-    public override void Execute(SkillCastContext context)
-    {
-        ExecuteWithResult(context);
-    }
-
     public override SkillExecutionResult ExecuteWithResult(SkillCastContext context)
     {
         if (context == null || context.CasterRoot == null)

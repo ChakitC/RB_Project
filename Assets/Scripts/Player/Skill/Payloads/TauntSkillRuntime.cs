@@ -12,7 +12,11 @@ public sealed class TauntSkillRuntime : MonoBehaviour
     private bool initialized;
     private bool shuttingDown;
 
-    public void Initialize(SkillCastContext castContext, TauntSkillPayloadDef payloadDef)
+    /// <summary>
+    /// Arms the listener. Returns false when there is nothing to listen to, so the payload can
+    /// report a failed cast instead of leaving the player charged for a taunt that can never fire.
+    /// </summary>
+    public bool Initialize(SkillCastContext castContext, TauntSkillPayloadDef payloadDef)
     {
         context = castContext;
         payload = payloadDef;
@@ -32,12 +36,13 @@ public sealed class TauntSkillRuntime : MonoBehaviour
         if (animBrain == null || payloadDef == null)
         {
             Shutdown();
-            return;
+            return false;
         }
 
         animBrain.SkillTimelineEventRaised += OnSkillTimelineEventRaised;
         animBrain.SkillCastInterrupted += OnSkillCastInterrupted;
         initialized = true;
+        return true;
     }
 
     void Update()
@@ -119,6 +124,11 @@ public sealed class TauntSkillRuntime : MonoBehaviour
         if (payload == null || context == null)
             return;
 
+        StatusApplicationSpec tauntSpec = payload.TauntStatus;
+        if (tauntSpec?.effect == null)
+            return;
+
+        CharacteContext casterContext = context.CasterContext;
         Transform casterRoot = context.CasterRoot;
         Vector3 origin = casterRoot != null ? casterRoot.position : transform.position;
         ResolveTauntParams(out float searchRadius, out float tauntDuration);
@@ -141,6 +151,13 @@ public sealed class TauntSkillRuntime : MonoBehaviour
             if (BelongsToCaster(targetRoot))
                 continue;
 
+            // Faction first. A taunt is "make my enemies come at me", so who counts as an enemy is
+            // decided by the shared team rule, not by whatever the LayerMask happens to include.
+            // Auto/Generic/Neutral and same-side actors are never taunted, no matter the mask.
+            if (!CharacterFactionUtility.AreHostile(casterContext, targetContext))
+                continue;
+
+            // The mask stays as a secondary filter so an author can still narrow a taunt further.
             if (!IsInTargetLayers(targetContext, targetMask))
                 continue;
 
@@ -158,19 +175,23 @@ public sealed class TauntSkillRuntime : MonoBehaviour
             if (sensor == null)
                 continue;
 
-            StatusEffectController controller = targetContext.StatusEffects != null
-                ? targetContext.StatusEffects
-                : targetContext.GetComponentInChildren<StatusEffectController>(true);
+            // Preflight: if the sensor could never track this caster, applying the status would
+            // leave a taunt sitting on an enemy that keeps ignoring it, and the conditional
+            // follow-up statuses would fire off a taunt that never happened.
+            if (!sensor.CanAcceptTaunt(casterRoot))
+                continue;
+
+            StatusEffectController controller = CharacterContextModuleLookup.ResolveStatusEffects(
+                targetContext.gameObject, targetContext);
             if (controller == null)
                 continue;
 
             // สกิลเป็นคนลง Taunt status เอง แล้วค่อยบอก sensor ให้ re-resolve — sensor ไม่ถือ Taunt Def เอง
-            StatusApplicationSpec tauntSpec = payload.TauntStatus;
-            if (tauntSpec?.effect == null)
+            controller.ApplyEffect(tauntSpec, context.CasterObject, tauntDuration);
+
+            if (!sensor.OnTauntApplied(casterRoot))
                 continue;
 
-            controller.ApplyEffect(tauntSpec, context.CasterObject, tauntDuration);
-            sensor.OnTauntApplied(casterRoot);
             ApplyConditionalStatuses(controller, tauntDuration);
         }
     }

@@ -297,6 +297,22 @@ public class AITargetSensor : MonoBehaviour
     /// taunt state ทันทีและตัดสิ่งที่กำลังเล็ง/โจมตีอยู่ทิ้ง. sensor ไม่ได้เป็นคนลง status เอง — source of truth
     /// คือ StatusEffectInstance ที่ติด tag <see cref="StatusEffectTags.Taunt"/> บน StatusEffectController ของตัวนี้.
     /// </summary>
+    /// <summary>
+    /// Would <see cref="OnTauntApplied"/> accept this source? Asked before the taunt status is
+    /// applied, so a source this sensor can never track does not leave a taunt status sitting on an
+    /// enemy that will keep ignoring it. Changes nothing.
+    /// </summary>
+    public bool CanAcceptTaunt(Transform tauntSource)
+    {
+        if (tauntSource == null)
+            return false;
+
+        if (!TryResolveTrackedTarget(tauntSource, out Transform targetRoot, out _))
+            return false;
+
+        return IsTrackedTargetStillValid(targetRoot);
+    }
+
     public bool OnTauntApplied(Transform tauntSource)
     {
         if (tauntSource == null)

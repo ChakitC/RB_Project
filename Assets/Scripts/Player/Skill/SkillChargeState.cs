@@ -17,6 +17,13 @@ public sealed class SkillChargeState
     /// <summary>Absolute times at which a spent charge returns, kept sorted ascending.</summary>
     readonly List<float> pendingReadyAt = new();
 
+    /// <summary>
+    /// Tokens of charges held for casts that have started but not reached their cast point.
+    /// A reserved charge is already gone from <see cref="AvailableCharges"/>, so a second cast
+    /// cannot spend it while the first one is still winding up.
+    /// </summary>
+    readonly List<int> reservedTokens = new();
+
     int maxCharges = 1;
     int availableCharges = 1;
 
@@ -24,6 +31,9 @@ public sealed class SkillChargeState
     public int AvailableCharges => availableCharges;
     public bool HasCharge => availableCharges > 0;
     public int RechargingCount => pendingReadyAt.Count;
+    public int ReservedCount => reservedTokens.Count;
+
+    public bool IsReserved(int token) => reservedTokens.Contains(token);
 
     /// <summary>
     /// Applies the current max from <see cref="FinalSkillStats"/> and refills any charge whose
@@ -59,6 +69,66 @@ public sealed class SkillChargeState
         return true;
     }
 
+    /// <summary>
+    /// Holds one charge for a cast that has started but not yet reached its cast point. The charge
+    /// leaves <see cref="AvailableCharges"/> immediately, so a second press cannot spend the same
+    /// charge during the wind-up. Idempotent: reserving with a token that already holds a charge
+    /// succeeds without taking a second one.
+    /// </summary>
+    public bool TryReserve(int token, float now)
+    {
+        Tick(now);
+
+        if (reservedTokens.Contains(token))
+            return true;
+
+        if (availableCharges <= 0)
+            return false;
+
+        availableCharges--;
+        reservedTokens.Add(token);
+        return true;
+    }
+
+    /// <summary>
+    /// Turns a held charge into a real recharge segment. A non-positive duration means "no
+    /// cooldown", so the charge comes straight back exactly like <see cref="TryConsume"/> does.
+    /// Idempotent: committing an unknown or already-settled token does nothing.
+    /// </summary>
+    public bool CommitReservation(int token, float now, float rechargeDuration)
+    {
+        Tick(now);
+
+        if (!reservedTokens.Remove(token))
+            return false;
+
+        if (!(rechargeDuration > 0f))
+        {
+            availableCharges = Mathf.Min(maxCharges, availableCharges + 1);
+            return true;
+        }
+
+        float segmentStart = pendingReadyAt.Count > 0
+            ? Mathf.Max(now, pendingReadyAt[pendingReadyAt.Count - 1])
+            : now;
+
+        pendingReadyAt.Add(segmentStart + rechargeDuration);
+        return true;
+    }
+
+    /// <summary>
+    /// Gives a held charge back without starting any cooldown. Idempotent: releasing an unknown or
+    /// already-settled token does nothing.
+    /// </summary>
+    public bool ReleaseReservation(int token)
+    {
+        if (!reservedTokens.Remove(token))
+            return false;
+
+        availableCharges = Mathf.Min(maxCharges, availableCharges + 1);
+        return true;
+    }
+
     /// <summary>Seconds until the next charge returns, or 0 when the pool is already full.</summary>
     public float GetNextChargeRemaining(float now)
     {
@@ -83,6 +153,10 @@ public sealed class SkillChargeState
     public void ResetToFull()
     {
         pendingReadyAt.Clear();
+
+        // Outstanding reservations are dropped rather than kept: their commit/release becomes a
+        // no-op, so an in-flight cast can never push the refilled pool above its maximum.
+        reservedTokens.Clear();
         availableCharges = Mathf.Max(1, maxCharges);
     }
 

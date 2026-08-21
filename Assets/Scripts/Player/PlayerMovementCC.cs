@@ -252,7 +252,10 @@ public class PlayerMovementCC : MonoBehaviour
         if (stateHub.Isdown && currentSpeed > targetSpeed)
             currentSpeed = targetSpeed;
 
-        _characterController.SimpleMove(moveWorld * currentSpeed);
+        // Planar only. Vertical motion is owned by CharacterVerticalMotor, so this must not use
+        // SimpleMove: SimpleMove applies its own gravity, and this call sits behind early-returns
+        // that would silently disable gravity while stunned, dashing, or dead.
+        _characterController.Move(moveWorld * (currentSpeed * Time.deltaTime));
 
         float input01 = Mathf.Clamp01(moveInput.magnitude);
         float target01 = input01;

@@ -686,6 +686,7 @@ GameObject:
   - component: {fileID: 1626903556438485816}
   - component: {fileID: 723459649131664530}
   - component: {fileID: 8400816988707940924}
+  - component: {fileID: 7573685306884060457}
   m_Layer: 10
   m_Name: Ally_Helper
   m_TagString: Ally
@@ -1269,6 +1270,7 @@ MonoBehaviour:
   StaminaSystem: {fileID: 5952653430675107378}
   DashSystem: {fileID: 5038378700834558391}
   KnockbackMotor: {fileID: 4947922598450173769}
+  VerticalMotor: {fileID: 7573685306884060457}
   PassiveController: {fileID: 7146810742816155018}
   ActiveSkillProgress: {fileID: 723459649131664530}
   EnegySystem: {fileID: 3101511230285474531}
@@ -1515,6 +1517,43 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterContext: {fileID: 0}
   blendSpeed: 12
+  spine: {fileID: 0}
+  chest: {fileID: 0}
+--- !u!114 &7573685306884060457
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5546123616510741782}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81d2d29cf184cfc41b07807ee6d385da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 8723794045760714937}
+  characterController: {fileID: 3471594666334970129}
+  capsuleCollider: {fileID: 0}
+  navMeshAgent: {fileID: 5087575678296884270}
+  agentMoveDriver: {fileID: 6817894532092306520}
+  animBrain: {fileID: 5728039111650578654}
+  rootMotionCCDriver: {fileID: 0}
+  rootMotionNavMeshDriver: {fileID: 60278018290152249}
+  mode: 1
+  gravity: -25
+  terminalVelocity: -50
+  groundedStickSpeed: -2
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 151553
+  groundProbeDistance: 0.15
+  collisionMask:
+    serializedVersion: 2
+    m_Bits: 151553
+  queryTriggers: 1
+  collisionPadding: 0.02
+  navMeshLandSampleRadius: 1.5
+  navMeshLandRecoveryTimeout: 1
 --- !u!1 &5742793755352266359
 GameObject:
   m_ObjectHideFlags: 0
@@ -1676,6 +1715,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animancer: {fileID: 4395463672058274139}
   ctx: {fileID: 8723794045760714937}
+  inspectorAnimProfile: {fileID: 0}
   chainPlaybackWatchdogGraceSeconds: 0.15
   useRootMotionForChainPlayback: 0
   locomotionLayerIndex: 0
@@ -1797,8 +1837,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   actorRoot: {fileID: 0}
-  dashSetting: {fileID: 0}
   combatEventBus: {fileID: 1499039619125665064}
+  dashSetting: {fileID: 0}
 --- !u!114 &4947922598450173769
 MonoBehaviour:
   m_ObjectHideFlags: 0

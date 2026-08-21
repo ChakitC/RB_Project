@@ -89,10 +89,18 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
             issues.Add("Projectile payload has no projectile prefab configured.");
     }
 
-    public override void Execute(SkillCastContext context)
+    /// <summary>
+    /// Succeeds once at least one projectile is live. Whether it goes on to hit anything is not
+    /// this payload's business - a valid shot that misses still costs the player.
+    /// </summary>
+    public override SkillExecutionResult ExecuteWithResult(SkillCastContext context)
     {
         if (context == null || context.User == null || context.CastOrigin == null)
-            return;
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Projectile payload executed without a caster or cast origin.");
+        }
 
         Projectile prefab = GetResolvedProjectilePrefab();
         if (prefab == null)
@@ -100,18 +108,28 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
             Debug.LogError(
                 $"Skill '{context.SkillDef?.name ?? name}' has no projectile prefab configured on its payload.",
                 this);
-            return;
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingAuthoringData,
+                "Projectile payload has no projectile prefab configured.");
+        }
+
+        var pool = ProjectilePool.Instance;
+        if (pool == null)
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "No ProjectilePool in the scene to spawn from.");
         }
 
         int projectileCount = context.SkillStats != null
             ? Mathf.Max(1, context.SkillStats.projectileCount)
             : 1;
 
+        int spawned = 0;
+
         for (int i = 0; i < projectileCount; i++)
         {
             Vector3 dir = ComputeDirection(context.AimDirection, i, projectileCount);
-            var pool = ProjectilePool.Instance;
-            if (pool == null) continue;
             Projectile projectileInstance = pool.Get(
                 prefab,
                 context.CastOrigin.position,
@@ -127,7 +145,15 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
                 context.SkillStats,
                 dir,
                 prefab);
+            spawned++;
         }
+
+        if (spawned > 0)
+            return SkillExecutionResult.Succeeded;
+
+        return SkillExecutionResult.Failed(
+            SkillExecutionFailureReason.NoEffect,
+            "Projectile payload could not spawn a single projectile.");
     }
 
     private Vector3 ComputeDirection(Vector3 baseDirection, int projectileIndex, int projectileCount)

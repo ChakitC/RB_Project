@@ -704,9 +704,10 @@ configuration inside the same visible skill asset.
 ## Adding A Payload Type
 
 Add each payload class in its own `.cs` file and inherit `SkillPayloadDef`.
-Implement `Execute(SkillCastContext)` and override
-`CollectValidationIssues(List<string>)` when the type has required authoring
-data. Override timeline and presentation properties only when the execution
+Implement `ExecuteWithResult(SkillCastContext)` — it is abstract, so the payload
+must say whether it produced a gameplay effect (see **Cast Execution
+Transaction**) — and override `CollectValidationIssues(List<string>)` when the
+type has required authoring data. Override timeline and presentation properties only when the execution
 requires them.
 
 The editor discovers concrete payload subclasses through Unity `TypeCache`, so
@@ -934,19 +935,19 @@ behalf of a character without going through the loadout/slot path:
 - `TryStartExternalSkill(CharacterSkillEntry, debugSource, requiredTimelineEvent, usePlanarRootMotion, ignoreResourceCosts, stampCooldown)`:
   delegates to the existing `TryBeginEntryCast` internal method. The timeline
   event and planar root-motion flags are optional. When `ignoreResourceCosts`
-  is `true`, the cast bypasses energy checks and shared cooldown. When
-  `stampCooldown` is `false`, `SkillInstance` does not write `_lastCastTime`
-  after a successful cast, so the skill's personal cooldown is not consumed
-  (used by player interruption to avoid affecting the main skill cooldown).
-  Both parameters default to the backward-compatible values (`false` / `true`).
+  is `true`, the cast reserves no energy and an empty charge pool does not stop
+  it. When `stampCooldown` is `false`, the reservation refunds its charge even on
+  commit, so the skill's cooldown is not consumed (used by player interruption to
+  avoid affecting the main skill cooldown). Both parameters default to the
+  backward-compatible values (`false` / `true`).
   A pending cast cancelled with `SkillCastCancelReason.Blocked` (enemy pre-cast
-  block, see Two-Phase Reservation Block above) also stamps cooldown at the
-  moment of the block, unless `stampCooldown` is `false` for that request.
-  Energy and the skill payload are not spent/executed in this case, since cast
-  point was never reached — only the per-instance and shared cooldowns are
-  consumed, exactly as if the cast had completed at the block moment. Other
+  block, see Two-Phase Reservation Block above) settles with
+  `SkillCastReservation.CommitChargeOnly()` at the moment of the block, unless
+  `stampCooldown` is `false` for that request: the cooldown burns, the energy is
+  refunded, and the payload never ran because cast point was never reached. Other
   cancel reasons (`Stunned`, `Staggered`, `AnimationInterrupted`, `Disabled`,
-  `CharacterDown`, `CharacterDead`, `InvalidState`) never stamp cooldown.
+  `CharacterDown`, `CharacterDead`, `InvalidState`) refund everything. See
+  **Cast Execution Transaction** for the full settlement table.
   Planar translation and yaw are scoped to that animation request and are
   cleared on normal completion, interruption, disable, or destruction.
 
@@ -1487,14 +1488,83 @@ full build spends 4 points.
 
 ## Cast Execution Transaction
 
-A cast is a transaction. `SkillPayloadDef.ExecuteWithResult` returns a
-`SkillExecutionResult`, and **only a successful execution commits energy, a
-charge, and the cooldown**. A payload that runs but produces no gameplay effect
-costs the player nothing.
+A cast is a transaction that spans the **whole** wind-up, not a single instant.
+Resources are reserved when the cast starts and settled exactly once when it
+ends, whichever way it ends.
 
-Payloads that cannot fail keep overriding `Execute` alone; the base
-`ExecuteWithResult` runs them and reports success, so every existing payload is
-unaffected.
+### Reservation lifecycle
+
+`SkillInstance.TryReserveCast` takes the cast's charge out of the pool and its
+energy out of the caster up front, and freezes the `FinalSkillStats` snapshot it
+was priced with. It returns a `SkillCastReservation`, which the caller must
+settle exactly once:
+
+| Settle | Charge | Energy | Used by |
+| --- | --- | --- | --- |
+| `Commit()` | onto its cooldown | spent | payload reported success |
+| `CommitChargeOnly()` | onto its cooldown | refunded | blocked pre-cast |
+| `Release()` | refunded | refunded | everything else |
+
+Every settle operation — and every reserve — is **idempotent**, so a cast that is
+cancelled and then torn down again never refunds twice.
+
+Two consequences are deliberate:
+
+- **A reserved charge is gone immediately.** `SkillInstance.CanCast`,
+  `TryGetChargeStatus`, and therefore the HUD all report the skill as
+  unavailable while it winds up, so a second press cannot spend the charge the
+  first cast is holding.
+- **The stats snapshot is frozen.** A buff or debuff that lands mid-wind-up
+  changes nothing about the cost, damage, radius, effect duration, or cooldown of
+  a cast that was already priced. It applies to the next cast.
+
+`SkillUserSystem` owns the energy side. `CurrentEnergy` / `currentEnagy` report
+**spendable** energy (pool minus reservations); `StoredEnergy` is the raw pool
+before reservations. `ISkillUser` was not extended — implementations that are not
+a `SkillUserSystem` (for example `ChainSkillUserProxy`) keep the old
+check-now / spend-at-commit behaviour.
+
+### Event order
+
+For an animated cast:
+
+```
+precheck → reserve → animation driver accepts → OnStarted → CastStarted
+        → cast point → CastReleased → payload → Commit | Release + CastExecutionFailed
+```
+
+- If the animation driver refuses and there is no immediate fallback, the
+  reservation is released and **neither `OnStarted` nor any cast event fires**.
+  `OnStarted` has side effects on the caster (weapon stow, facing snap), so it
+  must never run for a cast nothing accepted.
+- `CastReleased` always means "reached the cast point", nothing more. A payload
+  that then produces nothing is reported separately through
+  `CastExecutionFailed`, and its reservation is rolled back.
+- The immediate (no wind-up) path follows the same order; its cast point is now.
+
+### Payload result contract
+
+`SkillPayloadDef.ExecuteWithResult` is **abstract**. Every payload — production
+code and test probes alike — answers for itself, because a payload that silently
+returned early would otherwise charge the player for nothing. `Execute` remains
+as a non-virtual fire-and-forget wrapper for callers that do not read the result.
+`SkillEffectStep` follows the same shape.
+
+What counts as success:
+
+| Payload | Succeeds when |
+| --- | --- |
+| Projectile | at least one projectile is live |
+| Prefab hitbox | the hitbox sequence is built and armed on its timeline events |
+| Morph / Taunt | the runtime listener exists and is armed |
+| Heal / area effects | the effect ran, **even over empty ground** |
+| Summon / Barrier | at least one entity was actually deployed |
+
+A valid cast that simply found no target still **succeeds and still costs**:
+missing is a gameplay outcome the player owns, not a refusal the game refunds.
+What does refund is missing configuration or context (`MissingAuthoringData`,
+`MissingRuntimeContext`), a spawn/init failure, and a gameplay refusal such as
+blocked placement (`PlacementBlocked`).
 
 Failure reasons are `NoEffect`, `PlacementBlocked`, `MissingAuthoringData`,
 `MissingRuntimeContext`, and `Rejected`. `SkillExecutionResult.PublicMessage`
@@ -1503,23 +1573,42 @@ maps them to a short player-facing line (`PlacementBlocked` →
 shown to the player.
 
 `CompositeSkillPayloadDef` treats sibling steps as independent: a failing step
-never stops the ones after it, and the composite succeeds as soon as **one**
-enabled step succeeds. A composite whose enabled steps all fail — or that has no
-enabled step at all for the current upgrade selection — fails as a whole and
-commits nothing.
+never stops the ones after it, and the composite commits as soon as **one**
+enabled step succeeded. Steps that fail after that are logged with their index
+and reason, but the effects that did land are never made free. A composite whose
+enabled steps all fail — or that has no enabled step at all for the current
+upgrade selection — fails as a whole and commits nothing.
 
 `SkillCastOrchestrator` raises `CastExecutionFailed`, re-exposed by
 `CharacterSkillManager`, which `SkillCastFeedbackPresenter` renders.
 
+### Caster context
+
+`SkillCastContext.CasterContext` resolves the caster's `CharacteContext` and
+calls `ResolveReferences()` **once per cast**; `CasterEventBus` and
+`CasterStatusEffects` come from it. Payloads and the runtimes they spawn —
+projectiles, hitbox sequences, morph, taunt — read peer modules from there rather
+than running their own `GetComponent*` search.
+
+This matters because character prefabs are not uniform: a module may sit on the
+context root, above it, or on a child branch such as `GamePlayStats_System`. A
+one-direction lookup matches some layouts and silently drops every `OnHit` /
+`OnKill` for the rest. `CharacterContextModuleLookup` is the shared fallback when
+no context is available, and sweeps the actor tree from its root as a last
+resort so sibling layouts still resolve.
+
 ### Blocked pre-cast, and the summon exemption
 
 Blocked pre-cast still consumes its cooldown — that rule is deliberate and
-unchanged for ordinary skills.
+unchanged for ordinary skills. `SkillCastOrchestrator.SettleCancelledCast` calls
+`CommitChargeOnly()`, so the cooldown burns and the **energy is refunded**.
 
 **Skills tagged `SkillTag.Minion` are exempt.** A summon skill interrupted before
-its cast point deployed nothing into the world, so it must cost nothing:
-`StampCooldownForBlockedPreCast` returns early for Minion-tagged skills without
-touching energy, charge, or cooldown. Every other skill keeps the existing rule.
+its cast point deployed nothing into the world, so it must cost nothing: the
+reservation is released in full. Every other cancel reason (`Stunned`,
+`Staggered`, `AnimationInterrupted`, `Disabled`, `CharacterDown`,
+`CharacterDead`, `InvalidState`) also releases in full, and a request with
+`stampCooldown: false` never burns a cooldown on any path.
 
 ### Cast execution state
 
@@ -1552,8 +1641,13 @@ There is exactly **one** `SkillChargeState` per `SkillGemDefinition` per charact
 Two loadout slots holding the same skill therefore draw from — and display — the
 same charges: casting from slot A immediately makes slot B unavailable.
 
-`SkillInstance` is the **only** place a charge is ever spent. The orchestrator
-reads readiness through `CanCast` and never deducts a second time.
+`SkillInstance` is the **only** place a charge is ever taken. The orchestrator
+reserves through `SkillInstance.TryReserveCast` and settles through the returned
+`SkillCastReservation`; it never deducts a second time.
+
+A charge held by a cast that is still winding up is already out of the pool, so
+`CanCast` and the HUD both report the skill as unavailable from the moment the
+cast starts — not from its cast point.
 
 Everything reads that one pool:
 
@@ -1603,6 +1697,10 @@ The overlay holds the fraction of the running recharge still owed, so the wedge
 it clears sweeps clockwise from 12 o'clock. A white flash plays only on the
 empty → usable edge; banking a spare charge on top of a usable one is not a
 state change worth a cue.
+
+A cast that is winding up already holds its charge, so the readout shows it as
+spent from the start of the cast rather than at the cast point. If that cast is
+then interrupted, the charge comes straight back.
 
 This readout means **cooldown and charges only**. Energy, animation locks, and
 cutscene locks are deliberately excluded, which is why the presenter must not

@@ -228,8 +228,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   actorRoot: {fileID: 3749669808023046127}
-  dashSetting: {fileID: 11400000, guid: da550000000000000000000000000002, type: 2}
   combatEventBus: {fileID: 1666845100770680886}
+  dashSetting: {fileID: 11400000, guid: da550000000000000000000000000002, type: 2}
 --- !u!114 &3077095089375782856
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -496,6 +496,7 @@ GameObject:
   - component: {fileID: 3900802803091656922}
   - component: {fileID: 6098239142180533381}
   - component: {fileID: -6960602465302522877}
+  - component: {fileID: 5207922814277253925}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -639,6 +640,7 @@ MonoBehaviour:
   StaminaSystem: {fileID: 4770091200891185323}
   DashSystem: {fileID: 4787416841881350600}
   KnockbackMotor: {fileID: 3729042986192515201}
+  VerticalMotor: {fileID: 5207922814277253925}
   PassiveController: {fileID: 2601669138343315329}
   ActiveSkillProgress: {fileID: -6960602465302522877}
   EnegySystem: {fileID: 3693568544021270016}
@@ -1314,6 +1316,41 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ctx: {fileID: 0}
   levelSystem: {fileID: 0}
+--- !u!114 &5207922814277253925
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2311559804654788738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81d2d29cf184cfc41b07807ee6d385da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ctx: {fileID: 1638387977988830713}
+  characterController: {fileID: 7373962052237540882}
+  capsuleCollider: {fileID: 5466108279682062405}
+  navMeshAgent: {fileID: 0}
+  agentMoveDriver: {fileID: 0}
+  animBrain: {fileID: 7895287034516787951}
+  rootMotionCCDriver: {fileID: 0}
+  rootMotionNavMeshDriver: {fileID: 0}
+  mode: 0
+  gravity: -25
+  terminalVelocity: -50
+  groundedStickSpeed: -2
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 151553
+  groundProbeDistance: 0.15
+  collisionMask:
+    serializedVersion: 2
+    m_Bits: 151553
+  queryTriggers: 1
+  collisionPadding: 0.02
+  navMeshLandSampleRadius: 1.5
+  navMeshLandRecoveryTimeout: 1
 --- !u!1 &2390375286862288330
 GameObject:
   m_ObjectHideFlags: 0
@@ -2231,6 +2268,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+--- !u!136 &5466108279682062405 stripped
+CapsuleCollider:
+  m_CorrespondingSourceObject: {fileID: 3015843475735682044, guid: b07ee821af6ad75499da139780801d3c, type: 3}
+  m_PrefabInstance: {fileID: 7062182068417119161}
+  m_PrefabAsset: {fileID: 0}
 --- !u!114 &6238810295164373960 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 3789037758961436785, guid: b07ee821af6ad75499da139780801d3c, type: 3}

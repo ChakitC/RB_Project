@@ -34,11 +34,13 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
     public bool PreferCasterRoot => preferCasterRoot;
     public ConditionalStatusRoute ConditionalStatuses => conditionalStatuses;
 
-    public override void Execute(SkillCastContext context)
+    public override SkillExecutionResult ExecuteWithResult(SkillCastContext context)
     {
         if (context == null)
         {
-            return;
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Apply Status payload executed without a cast context.");
         }
 
         StatusEffectController controller = ResolveController(context);
@@ -47,7 +49,9 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
             Debug.LogWarning(
                 $"Skill '{context.SkillDef?.name ?? name}' could not find a {nameof(StatusEffectController)} on the caster.",
                 this);
-            return;
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Caster has no StatusEffectController.");
         }
 
         GameObject source = context.CasterObject != null
@@ -81,8 +85,13 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
             appliedAny = true;
         }
 
-        if (!appliedAny)
-            Debug.LogError($"Skill payload '{name}' is missing its status effect configuration.", this);
+        if (appliedAny)
+            return SkillExecutionResult.Succeeded;
+
+        Debug.LogError($"Skill payload '{name}' is missing its status effect configuration.", this);
+        return SkillExecutionResult.Failed(
+            SkillExecutionFailureReason.MissingAuthoringData,
+            "Apply Status payload has no status effect it could apply.");
     }
 
     public override void CollectUpgradeIds(List<string> ids)
@@ -123,6 +132,11 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
     {
         if (context == null)
             return null;
+
+        // The cast already resolved the caster's hub once; reuse it rather than repeating a
+        // self/parent/child sweep that only matches some prefab layouts.
+        if (context.CasterStatusEffects != null)
+            return context.CasterStatusEffects;
 
         if (preferCasterRoot && context.CasterRoot != null)
         {

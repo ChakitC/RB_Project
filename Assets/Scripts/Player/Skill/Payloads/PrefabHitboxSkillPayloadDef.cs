@@ -144,17 +144,27 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         CombatTimelineEventNames.AddUnique(eventNames, HitboxEndEventName);
     }
 
-    public override void Execute(SkillCastContext context)
+    /// <summary>
+    /// Succeeds once the hitbox sequence is built and armed on its timeline events. Whether those
+    /// boxes then overlap anything is a gameplay outcome, not a refusal.
+    /// </summary>
+    public override SkillExecutionResult ExecuteWithResult(SkillCastContext context)
     {
         if (context == null)
-            return;
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Prefab hitbox payload executed without a cast context.");
+        }
 
         if (!HasInlineHitboxLayout)
         {
             Debug.LogError(
                 $"Skill payload '{name}' requires an inline hitbox layout.",
                 this);
-            return;
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingAuthoringData,
+                "Prefab hitbox payload has no inline hitbox layout.");
         }
 
         if (context.AnimBrain == null || context.RequestId <= 0)
@@ -162,18 +172,20 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
             Debug.LogError(
                 $"Skill '{context.SkillDef?.name ?? name}' requires a valid Animancer skill request to drive prefab hitbox events.",
                 this);
-            return;
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Prefab hitbox payload has no active skill animation request to drive its events.");
         }
 
         if (!TryValidateRuntimeConfiguration(out string validationError))
         {
             Debug.LogError(validationError, this);
-            return;
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingAuthoringData,
+                validationError);
         }
 
-        PlayerContext player = context.CasterRoot != null
-            ? context.CasterRoot.GetComponent<PlayerContext>()
-            : null;
+        PlayerContext player = context.CasterContext as PlayerContext;
         if (player != null)
         {
             ThirdPersonTargetingUtility.FacePlayerTowardSoftTarget(
@@ -196,7 +208,10 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         if (runtime == null)
         {
             Debug.LogError($"Failed to create a runtime hitbox host for skill payload '{name}'.", this);
-            return;
+            UnityEngine.Object.Destroy(runtimeObject);
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Could not create the runtime hitbox host.");
         }
 
         if (!SkillHitboxRuntimeBuilder.TryBuild(
@@ -208,11 +223,14 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         {
             Debug.LogError(buildError, this);
             UnityEngine.Object.Destroy(runtimeObject);
-            return;
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingAuthoringData,
+                buildError);
         }
 
         runtime.AssignGroups(runtimeGroups);
         runtime.Initialize(context, this);
+        return SkillExecutionResult.Succeeded;
     }
 
     public override void CollectValidationIssues(List<string> issues)

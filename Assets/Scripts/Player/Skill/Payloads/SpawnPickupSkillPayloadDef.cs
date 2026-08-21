@@ -59,12 +59,21 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
     public bool PickupPrefabMissingSkillPickupComponent =>
         pickupPrefab != null && pickupPrefab.GetComponent<SkillPickup>() == null;
 
-    public override void Execute(SkillCastContext context)
+    public override SkillExecutionResult ExecuteWithResult(SkillCastContext context)
     {
-        if (context == null || pickupPrefab == null)
+        if (context == null)
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Pickup payload executed without a cast context.");
+        }
+
+        if (pickupPrefab == null)
         {
             Debug.LogError($"Pickup payload '{name}' is missing its pickup prefab.", this);
-            return;
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingAuthoringData,
+                "Pickup payload has no pickup prefab configured.");
         }
 
         int count = useSkillProjectileCount && context.SkillStats != null
@@ -97,6 +106,7 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
         }
 
         Quaternion rotation = Quaternion.LookRotation(forward, Vector3.up);
+        int spawned = 0;
 
         for (int i = 0; i < count; i++)
         {
@@ -124,7 +134,15 @@ public class SpawnPickupSkillPayloadDef : SkillPayloadDef
                 context.User,
                 context.SkillDef,
                 context.SkillStats));
+            spawned++;
         }
+
+        if (spawned > 0)
+            return SkillExecutionResult.Succeeded;
+
+        return SkillExecutionResult.Failed(
+            SkillExecutionFailureReason.NoEffect,
+            "Pickup payload spawned nothing usable.");
     }
 
     bool TryResolveGroundPosition(Vector3 position, out Vector3 groundedPosition)

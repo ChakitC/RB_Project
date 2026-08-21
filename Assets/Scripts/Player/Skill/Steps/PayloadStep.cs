@@ -17,8 +17,6 @@ public sealed class PayloadStep : SkillEffectStep
         payload?.CollectUpgradeIds(ids);
     }
 
-    public override void Execute(SkillCastContext ctx) => payload?.Execute(ctx);
-
     public override SkillExecutionResult ExecuteWithResult(SkillCastContext ctx)
     {
         if (payload == null)

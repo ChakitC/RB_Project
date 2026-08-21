@@ -122,15 +122,46 @@ public sealed class TauntSkillPayloadDef : SkillPayloadDef
         }
     }
 
-    public override void Execute(SkillCastContext context)
+    /// <summary>
+    /// Succeeds once the runtime listener exists and is armed. The taunt itself lands on the
+    /// TauntApply timeline event, well after the cast point, and a taunt that reaches nobody is
+    /// still a cast the player spent - so target count is deliberately not part of this result.
+    /// </summary>
+    public override SkillExecutionResult ExecuteWithResult(SkillCastContext context)
     {
         if (context == null || context.CasterObject == null)
-            return;
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Taunt payload executed without a caster object.");
+        }
+
+        if (tauntStatus == null || tauntStatus.effect == null)
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingAuthoringData,
+                "Taunt payload has no Taunt Status configured.");
+        }
 
         GameObject host = new GameObject("TauntSkillRuntime");
         host.transform.SetParent(null);
 
         TauntSkillRuntime runtime = host.AddComponent<TauntSkillRuntime>();
-        runtime.Initialize(context, this);
+        if (runtime == null)
+        {
+            Destroy(host);
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Taunt payload could not create its runtime host.");
+        }
+
+        if (!runtime.Initialize(context, this))
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Taunt runtime could not arm: no animation brain to raise TauntApply.");
+        }
+
+        return SkillExecutionResult.Succeeded;
     }
 }

@@ -85,8 +85,11 @@ public sealed class SummonController : MonoBehaviour
             return false;
 
         instance.SetActive(false);
-        if (!TryValidatePrefab(instance, request.Mobility, out _))
+        if (!TryValidatePrefab(instance, request.Mobility, out string validationError))
         {
+            Debug.LogWarning(
+                $"[SummonController] Summon prefab '{request.Prefab.name}' failed validation: {validationError}",
+                request.Prefab);
             Object.Destroy(instance);
             return false;
         }

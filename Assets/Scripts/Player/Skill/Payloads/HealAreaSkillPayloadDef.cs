@@ -70,26 +70,33 @@ public sealed class HealAreaSkillPayloadDef : SkillPayloadDef
         conditionalStatuses?.CollectValidationIssues(issues, "conditionalStatuses");
     }
 
-    public override void Execute(SkillCastContext context)
+    public override SkillExecutionResult ExecuteWithResult(SkillCastContext context)
     {
         if (context == null || context.CasterRoot == null)
-            return;
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Heal payload executed without a caster root.");
+        }
 
         FinalSkillStats stats = context.SkillStats;
         float healPower = stats != null ? stats.healPower : 0f;
         float fallbackDuration = stats != null && stats.effectDuration > 0f ? stats.effectDuration : 0f;
 
-        if (target == HealTargetMode.Self)
-            ExecuteSelf(context, healPower, fallbackDuration);
-        else
-            ExecuteAllies(context, healPower, fallbackDuration);
+        return target == HealTargetMode.Self
+            ? ExecuteSelf(context, healPower, fallbackDuration)
+            : ExecuteAllies(context, healPower, fallbackDuration);
     }
 
-    void ExecuteSelf(SkillCastContext context, float healPower, float fallbackDuration)
+    SkillExecutionResult ExecuteSelf(SkillCastContext context, float healPower, float fallbackDuration)
     {
-        CharacteContext casterContext = context.CasterRoot.GetComponent<CharacteContext>();
+        CharacteContext casterContext = context.CasterContext;
         if (casterContext == null)
-            return;
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingRuntimeContext,
+                "Heal payload could not resolve the caster context.");
+        }
 
         casterContext.ResolveReferences();
 
@@ -97,15 +104,25 @@ public sealed class HealAreaSkillPayloadDef : SkillPayloadDef
             casterContext.HealthSystem?.Heal(healPower);
 
         ApplyStatuses(context, casterContext.StatusEffects, context.CasterObject, fallbackDuration);
+        return SkillExecutionResult.Succeeded;
     }
 
-    void ExecuteAllies(SkillCastContext context, float healPower, float fallbackDuration)
+    /// <summary>
+    /// An area heal that lands on an empty spot still succeeds and still costs. Healing nobody is a
+    /// gameplay outcome the player owns, the same way a missed projectile is - only a broken setup
+    /// (no radius at all) refunds the cast.
+    /// </summary>
+    SkillExecutionResult ExecuteAllies(SkillCastContext context, float healPower, float fallbackDuration)
     {
         Transform casterRoot = context.CasterRoot;
         FinalSkillStats stats = context.SkillStats;
         float radius = stats != null ? stats.areaRadius : 0f;
         if (radius <= 0f)
-            return;
+        {
+            return SkillExecutionResult.Failed(
+                SkillExecutionFailureReason.MissingAuthoringData,
+                "Heal payload resolved to a zero area radius.");
+        }
 
         float radiusSqr = radius * radius;
         CharacteContext[] targetContexts = UnityEngine.Object.FindObjectsByType<CharacteContext>(
@@ -132,6 +149,8 @@ public sealed class HealAreaSkillPayloadDef : SkillPayloadDef
 
             ApplyStatuses(context, targetContext.StatusEffects, context.CasterObject, fallbackDuration);
         }
+
+        return SkillExecutionResult.Succeeded;
     }
 
     void ApplyStatuses(SkillCastContext context, StatusEffectController controller, GameObject source, float fallbackDuration)

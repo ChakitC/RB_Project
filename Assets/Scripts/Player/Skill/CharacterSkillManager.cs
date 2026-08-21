@@ -1438,6 +1438,13 @@ public sealed class SkillCastOrchestrator
     {
         public SkillCastRequest Request;
         public SkillInstance RuntimeSkill;
+
+        /// <summary>
+        /// Charge, energy, and the stats snapshot this cast was priced with, taken out of the
+        /// pools the moment the cast started. Settled exactly once: committed at the cast point,
+        /// rolled back on cancellation.
+        /// </summary>
+        public SkillCastReservation Reservation;
         public SkillGemDefinition SkillDef;
         public ISkillUser SkillUser;
         public CharacterAnimDriver AnimationDriver;
@@ -1514,7 +1521,7 @@ public sealed class SkillCastOrchestrator
         pendingCast = null;
         Unsubscribe(context.AnimationDriver);
         CancelPendingCastRequest(context, stopAnimation: reason != SkillCastCancelReason.AnimationInterrupted);
-        StampCooldownForBlockedPreCast(context, reason);
+        SettleCancelledCast(context, reason);
         CastCancelled?.Invoke(context.ToInfo(), reason);
     }
 
@@ -1562,13 +1569,25 @@ public sealed class SkillCastOrchestrator
             return Rejected();
         }
 
-        request.OnStarted?.Invoke();
+        // Resources leave the pools here, before a single animation frame plays. Holding them for
+        // the whole wind-up is what stops a second press from spending the same charge, and the
+        // stats snapshot taken with them is what this cast keeps being priced by even if a buff
+        // lands halfway through.
+        if (!runtimeSkill.TryReserveCast(
+                skillUser,
+                request.IgnoreResourceCosts,
+                request.StampCooldown,
+                out SkillCastReservation reservation))
+        {
+            return Rejected();
+        }
 
         if (request.UseAnimationDriver && executionAnimDriver != null)
         {
             var context = new PendingCastContext
             {
                 Request = request,
+                Reservation = reservation,
                 RuntimeSkill = runtimeSkill,
                 SkillDef = skillDef,
                 SkillUser = skillUser,
@@ -1594,6 +1613,10 @@ public sealed class SkillCastOrchestrator
             {
                 Subscribe(context.AnimationDriver);
                 pendingCast = context;
+
+                // OnStarted has side effects on the caster (weapon stow, facing snap), so it only
+                // runs once the animation driver has actually accepted the cast.
+                request.OnStarted?.Invoke();
                 CastStarted?.Invoke(context.ToInfo());
                 return new SkillCastStartResult(SkillCastStartKind.WaitingForAnimation, context.RequestId);
             }
@@ -1601,23 +1624,27 @@ public sealed class SkillCastOrchestrator
 
         if (requiresTimelineEvents)
         {
+            reservation.Release();
             WarnMissingTimelineDriver(skillDef, request.DebugSource);
             return Rejected();
         }
 
         if (request.UseAnimationDriver && !request.AllowImmediateFallback)
+        {
+            reservation.Release();
             return Rejected();
+        }
 
-        bool released = TryReleaseCast(
-            request,
-            requestId,
-            runtimeSkill,
-            skillUser,
-            executionAnimDriver);
-
-        if (!released)
+        if (!CanProceed(request))
+        {
+            reservation.Release();
             return Rejected();
+        }
 
+        request.OnStarted?.Invoke();
+
+        // No wind-up on this path, so the cast point is now. CastReleased always means "reached the
+        // cast point"; whether the payload then produced anything is reported separately.
         CastReleased?.Invoke(new ActiveSkillCastInfo(
             requestId,
             runtimeSkill,
@@ -1628,6 +1655,17 @@ public sealed class SkillCastOrchestrator
             released: true,
             requiresTimelineEvents: false,
             request.DebugSource));
+
+        if (!ExecuteReservedCast(
+                request,
+                requestId,
+                runtimeSkill,
+                reservation,
+                skillUser,
+                executionAnimDriver))
+        {
+            return Rejected();
+        }
 
         return new SkillCastStartResult(SkillCastStartKind.ImmediateSuccess, requestId);
     }
@@ -1654,52 +1692,37 @@ public sealed class SkillCastOrchestrator
         return runtimeSkill.CanCast(skillUser, out _);
     }
 
-    private bool TryReleaseCast(
+    /// <summary>
+    /// Runs the payload for a cast that has reached its cast point, then settles its reservation:
+    /// commit when the payload produced a gameplay effect, roll everything back when it did not.
+    /// </summary>
+    private bool ExecuteReservedCast(
         in SkillCastRequest request,
         int requestId,
         SkillInstance runtimeSkill,
+        SkillCastReservation reservation,
         ISkillUser skillUser,
         CharacterAnimDriver executionAnimDriver)
     {
-        if (runtimeSkill == null || skillUser == null || runtimeSkill.def == null || runtimeSkill.def.payload == null)
-            return false;
-
-        if (!CanProceed(request))
+        if (runtimeSkill == null || reservation == null || reservation.IsSettled)
             return false;
 
         CharacterAnimBrain executionAnimBrain = executionAnimDriver != null
             ? executionAnimDriver.Brain
             : null;
 
-        if (request.IgnoreResourceCosts)
-        {
-            bool executedIgnoringCosts = runtimeSkill.TryCastIgnoringResourceCosts(
-                skillUser,
+        if (!runtimeSkill.ExecuteReserved(
+                reservation,
                 executionAnimBrain,
                 requestId,
-                request.StampCooldown,
-                out SkillExecutionResult freeCastResult);
-
-            if (executedIgnoringCosts)
-                PlayCastCue(runtimeSkill, skillUser);
-            else
-                RaiseExecutionFailed(request, requestId, runtimeSkill, skillUser, executionAnimDriver, freeCastResult);
-
-            return executedIgnoringCosts;
-        }
-
-        // CanCast already reads the shared pool this instance is bound to, so there is no second
-        // readiness check and no second deduction — SkillInstance is the only place a charge is
-        // ever spent.
-        if (!runtimeSkill.CanCast(skillUser, out _))
-            return false;
-
-        if (!runtimeSkill.Cast(skillUser, executionAnimBrain, requestId, out SkillExecutionResult castResult))
+                out SkillExecutionResult result))
         {
-            RaiseExecutionFailed(request, requestId, runtimeSkill, skillUser, executionAnimDriver, castResult);
+            reservation.Release();
+            RaiseExecutionFailed(request, requestId, runtimeSkill, skillUser, executionAnimDriver, result);
             return false;
         }
 
+        reservation.Commit();
         PlayCastCue(runtimeSkill, skillUser);
         return true;
     }
@@ -1754,16 +1777,18 @@ public sealed class SkillCastOrchestrator
         if (!CanProceed(context.Request))
         {
             CancelPendingCastRequest(context, stopAnimation: false);
+            SettleCancelledCast(context, SkillCastCancelReason.InvalidState);
             CastCancelled?.Invoke(context.ToInfo(), SkillCastCancelReason.InvalidState);
             return false;
         }
 
         context.Released = true;
         CastReleased?.Invoke(context.ToInfo());
-        return TryReleaseCast(
+        return ExecuteReservedCast(
             context.Request,
             context.RequestId,
             context.RuntimeSkill,
+            context.Reservation,
             context.SkillUser,
             context.AnimationDriver);
     }
@@ -1842,28 +1867,33 @@ public sealed class SkillCastOrchestrator
             pair.Value?.ResetToFull();
     }
 
-    private void StampCooldownForBlockedPreCast(PendingCastContext context, SkillCastCancelReason reason)
+    /// <summary>
+    /// Rolls back a cast that never reached its cast point.
+    ///
+    /// Interrupted, stunned, and invalid-state casts cost nothing at all. A Blocked cast still
+    /// burns its cooldown but keeps its energy - except for summon-style skills, which deploy
+    /// something into the world: being blocked before the cast point means nothing was deployed,
+    /// so that cast must be free.
+    /// </summary>
+    private void SettleCancelledCast(PendingCastContext context, SkillCastCancelReason reason)
     {
-        if (reason != SkillCastCancelReason.Blocked)
+        SkillCastReservation reservation = context != null ? context.Reservation : null;
+        if (reservation == null || reservation.IsSettled)
             return;
 
-        if (context == null ||
-            context.Released ||                 // defensive: block path already guards this
-            !context.Request.StampCooldown ||   // respects stampCooldown:false interruption paths
-            context.RuntimeSkill == null ||
-            context.SkillUser == null)
-        {
-            return;
-        }
-
-        // Summon-style skills deploy something into the world. Being interrupted before the cast
-        // point means nothing was deployed, so the cast must cost nothing at all. Every other
-        // skill keeps the existing rule where a blocked pre-cast still burns its cooldown.
-        if (IsSummonSkill(context.SkillDef))
+        // Defensive: past the cast point the execution path owns the settle.
+        if (context.Released)
             return;
 
-        // Consumes the shared pool through the instance — the single deduction site.
-        context.RuntimeSkill.TryStampCooldownOnly(context.SkillUser, out _);
+        bool burnsCooldown =
+            reason == SkillCastCancelReason.Blocked &&
+            context.Request.StampCooldown &&
+            !IsSummonSkill(context.SkillDef);
+
+        if (burnsCooldown)
+            reservation.CommitChargeOnly();
+        else
+            reservation.Release();
     }
 
     private static bool IsSummonSkill(SkillGemDefinition skillDef)

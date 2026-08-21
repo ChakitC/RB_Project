@@ -35,6 +35,46 @@ Common references should be assigned on the context when possible:
 Runtime code can resolve missing references, but important prefab context fields
 should still be bound when authoring stable production prefabs.
 
+## Character Vertical Motor
+
+`CharacterVerticalMotor` is the single owner of a character's Y axis. Every planar
+mover in the project (`PlayerMovementCC`, `DashSystem`, `CharacterKnockbackMotor`,
+`AgentMoveDriver`) is deliberately planar-only, so without this component nothing
+brings an actor back down once it leaves the ground.
+
+Put it on the same GameObject as the context component and pick the mode that
+matches how the actor is moved:
+
+- `Always` — for actors held up only by a `CharacterController`, such as the
+  player. Gravity integrates every frame.
+- `AgentDriven` — for `NavMeshAgent` actors (ally, enemy, summon). The motor stays
+  dormant while the actor is grounded, because the agent already holds it on the
+  NavMesh surface, and only takes over once something calls `Launch()`.
+
+Fields to bind:
+
+- `ctx`, `characterController`, `capsuleCollider`, `animBrain`
+- `navMeshAgent` and `agentMoveDriver` on `AgentDriven` actors. If a prefab has an
+  agent but no `AgentMoveDriver`, the motor suspends the agent directly instead;
+  binding the driver is still preferred because its token API reference-counts
+  against other systems that suspend the same agent.
+- `rootMotionCCDriver` / `rootMotionNavMeshDriver`, so the motor can stand down on
+  frames where a root motion clip is writing its own Y.
+- `groundMask` and `collisionMask` — production prefabs use
+  `Default | Ground | Ground Y | Terrain`, because scene ground geometry is not
+  consistently on the `Ground` layer.
+
+A prefab without the component behaves exactly as it did before the motor existed:
+`StateHub.IsGrounded` reports grounded, and nothing applies gravity. The
+`Assets/Test/Summoning` fixtures are intentionally left without it.
+
+Do not add a second system that writes Y. Anything that needs to move a character
+vertically should call `Launch` / `AddVerticalVelocity`, or hold a gravity-suspend
+token via `AcquireGravitySuspendToken` for levitate-style effects.
+
+`KnockbackData.VerticalImpulse` (default `0`) is the authoring hook for launching
+knockbacks: leave it at zero for a purely planar knockback, exactly as before.
+
 ## Runtime Party Spawn Authoring
 
 Gameplay scenes no longer place or instantiate `PlayerSquad.prefab`. Each scene
@@ -207,6 +247,12 @@ That is why the rig must stay nested under the room and cannot be its own scene 
 Overhead health bars are world-space and are not covered by
 `UIManager.SetHudVisible`, so each actor's `CharacterVisualController` bar is hidden
 for the duration of the intro and restored to its previous state afterwards.
+
+Each actor also holds a `CharacterVerticalMotor` gravity-suspend token for the whole
+intro. Disabling the `CharacterController` is not enough on its own: the motor falls
+back to writing the transform directly when the controller is off, so an actor
+parked on a marker would keep sinking through the floor for the length of the shot.
+The token is released after the pose is restored.
 
 The Helper is a summon: `AllyHelperManager.Start` deactivates it, and every command
 hides it again once the skill finishes, so it would otherwise be missing from its

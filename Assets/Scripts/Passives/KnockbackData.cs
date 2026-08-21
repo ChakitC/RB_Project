@@ -18,7 +18,8 @@ public readonly struct KnockbackData
         ImpactReactionKind reaction = ImpactReactionKind.None,
         bool interruptActions = true,
         AnimationCurve progressCurve = null,
-        bool flattenToGround = true)
+        bool flattenToGround = true,
+        float verticalImpulse = 0f)
     {
         if (flattenToGround)
             direction = Vector3.ProjectOnPlane(direction, Vector3.up);
@@ -31,6 +32,7 @@ public readonly struct KnockbackData
         InterruptActions = interruptActions;
         ProgressCurve = progressCurve;
         FlattenToGround = flattenToGround;
+        VerticalImpulse = Mathf.Max(0f, verticalImpulse);
     }
 
     public Vector3 Direction { get; }
@@ -41,6 +43,12 @@ public readonly struct KnockbackData
     public bool InterruptActions { get; }
     public AnimationCurve ProgressCurve { get; }
     public bool FlattenToGround { get; }
+
+    /// <summary>
+    /// Upward launch speed in m/s handed to CharacterVerticalMotor when the knockback starts.
+    /// Zero (the default) leaves the knockback purely planar, exactly as before.
+    /// </summary>
+    public float VerticalImpulse { get; }
 
     public bool IsValid =>
         Direction.sqrMagnitude > 0.0001f &&
@@ -72,7 +80,8 @@ public readonly struct KnockbackData
         ImpactReactionKind reaction = ImpactReactionKind.None,
         bool interruptActions = true,
         AnimationCurve progressCurve = null,
-        bool flattenToGround = true)
+        bool flattenToGround = true,
+        float verticalImpulse = 0f)
     {
         return new KnockbackData(
             targetPoint - origin,
@@ -82,6 +91,7 @@ public readonly struct KnockbackData
             reaction,
             interruptActions,
             progressCurve,
-            flattenToGround);
+            flattenToGround,
+            verticalImpulse);
     }
 }

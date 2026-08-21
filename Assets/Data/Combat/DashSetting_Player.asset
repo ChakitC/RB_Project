@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: da550000000000000000000000000001, type: 3}
   m_Name: DashSetting_Player
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   dashDistance: 5
   dashDuration: 0.5
   dashInvincibleTime: 0.4
@@ -24,7 +24,7 @@ MonoBehaviour:
     m_Bits: 34815
   perfectDodgeWindow: 0.15
   perfectDashSlowScale: 0.2
-  perfectDashSlowDuration: 0.35
+  perfectDashSlowDuration: 1
   perfectDashSlowShape:
     serializedVersion: 2
     m_Curve:
@@ -38,14 +38,14 @@ MonoBehaviour:
       inWeight: 0.33333334
       outWeight: 0.33333334
     - serializedVersion: 3
-      time: 0.7
-      value: 1
-      inSlope: 0
-      outSlope: 0
+      time: 0.49583206
+      value: 0.80599505
+      inSlope: -1.167402
+      outSlope: -1.167402
       tangentMode: 0
       weightedMode: 0
       inWeight: 0.33333334
-      outWeight: 0.33333334
+      outWeight: 0.10007238
     - serializedVersion: 3
       time: 1
       value: 0

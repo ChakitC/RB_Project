@@ -224,11 +224,6 @@ public sealed class SummonSkillPayloadDef : SkillPayloadDef
             issues.Add("Damage inheritance must be finite and non-negative.");
     }
 
-    public override void Execute(SkillCastContext context)
-    {
-        ExecuteWithResult(context);
-    }
-
     public override SkillExecutionResult ExecuteWithResult(SkillCastContext context)
     {
         if (context == null || context.CasterRoot == null)
@@ -340,6 +335,7 @@ public sealed class SummonSkillPayloadDef : SkillPayloadDef
         Quaternion layoutRotation = ResolveLayoutRotation(context, caster);
         int spawnedCount = 0;
         bool sawPlacementFailure = false;
+        string firstPlacementError = null;
         for (int i = 0; i < requestedCount; i++)
         {
             Vector3 offset = ResolveOffset(i);
@@ -373,9 +369,10 @@ public sealed class SummonSkillPayloadDef : SkillPayloadDef
                     settings,
                     reserved,
                     out SummonPlacementCandidate candidate,
-                    out _))
+                    out string placementError))
             {
                 sawPlacementFailure = true;
+                firstPlacementError ??= placementError;
                 continue;
             }
 
@@ -384,6 +381,7 @@ public sealed class SummonSkillPayloadDef : SkillPayloadDef
             if (!controller.TrySpawn(request, out SummonedEntityRuntime spawned))
             {
                 sawPlacementFailure = true;
+                firstPlacementError ??= "SummonController rejected the spawn request.";
                 continue;
             }
 
@@ -400,7 +398,7 @@ public sealed class SummonSkillPayloadDef : SkillPayloadDef
                 ? SkillExecutionFailureReason.PlacementBlocked
                 : SkillExecutionFailureReason.NoEffect,
             sawPlacementFailure
-                ? $"No valid placement for '{skillId}' at the requested spawn offsets."
+                ? $"No valid placement for '{skillId}' at the requested spawn offsets. {firstPlacementError}"
                 : $"Summon '{skillId}' requested zero spawns.");
     }
 

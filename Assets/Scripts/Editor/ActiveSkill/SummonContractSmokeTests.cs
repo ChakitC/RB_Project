@@ -465,9 +465,10 @@ public sealed class SummonRegressionProbePayload : SkillPayloadDef
 {
     public static int ExecutionCount;
 
-    public override void Execute(SkillCastContext context)
+    public override SkillExecutionResult ExecuteWithResult(SkillCastContext context)
     {
         ExecutionCount++;
+        return SkillExecutionResult.Succeeded;
     }
 }
 

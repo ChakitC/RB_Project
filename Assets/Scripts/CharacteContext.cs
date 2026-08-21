@@ -40,6 +40,7 @@ public abstract class CharacteContext : MonoBehaviour
     public StaminaSystem StaminaSystem;
     public DashSystem DashSystem;
     public CharacterKnockbackMotor KnockbackMotor;
+    public CharacterVerticalMotor VerticalMotor;
     public PassiveController PassiveController;
     public CharacterActiveSkillProgress ActiveSkillProgress;
     public SkillUserSystem EnegySystem;
@@ -144,6 +145,7 @@ public abstract class CharacteContext : MonoBehaviour
         StaminaSystem = ResolveActorComponent(StaminaSystem);
         DashSystem = ResolveActorComponent(DashSystem);
         KnockbackMotor = ResolveActorComponent(KnockbackMotor);
+        VerticalMotor = ResolveActorComponent(VerticalMotor);
         PassiveController = ResolveActorComponent(PassiveController);
         ActiveSkillProgress = ResolveActorComponent(ActiveSkillProgress);
         if (ActiveSkillProgress == null &&

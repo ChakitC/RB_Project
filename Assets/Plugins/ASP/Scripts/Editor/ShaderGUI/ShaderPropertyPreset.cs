@@ -105,31 +105,37 @@ namespace LWGUI
 			public void CopyFromMaterialProperty(MaterialProperty prop)
 			{
 				propertyName = prop.name;
-				switch (prop.type)
+				if (prop.IsColor())
 				{
-					case MaterialProperty.PropType.Color:
-						propertyType = PropertyType.Color;
-						colorValue = prop.colorValue;
-						break;
-					case MaterialProperty.PropType.Vector:
-						propertyType = PropertyType.Vector;
-						vectorValue = prop.vectorValue;
-						break;
+					propertyType = PropertyType.Color;
+					colorValue = prop.colorValue;
+				}
+				else if (prop.IsVector())
+				{
+					propertyType = PropertyType.Vector;
+					vectorValue = prop.vectorValue;
+				}
 #if UNITY_2021_1_OR_NEWER
-					case MaterialProperty.PropType.Int:   
+				else if (prop.IsInt())
+				{
+					propertyType = PropertyType.Float;
+					floatValue = prop.floatValue;
+				}
 #endif
-					case MaterialProperty.PropType.Float:   
-						propertyType = PropertyType.Float;
-						floatValue = prop.floatValue;
-						break;
-					case MaterialProperty.PropType.Range:   
-						propertyType = PropertyType.Range;
-						floatValue = prop.floatValue;
-						break;
-					case MaterialProperty.PropType.Texture: 
-						propertyType = PropertyType.Texture;
-						textureValue = prop.textureValue;
-						break;
+				else if (prop.IsFloat())
+				{
+					propertyType = PropertyType.Float;
+					floatValue = prop.floatValue;
+				}
+				else if (prop.IsRange())
+				{
+					propertyType = PropertyType.Range;
+					floatValue = prop.floatValue;
+				}
+				else if (prop.IsTexture())
+				{
+					propertyType = PropertyType.Texture;
+					textureValue = prop.textureValue;
 				}
 			}
 

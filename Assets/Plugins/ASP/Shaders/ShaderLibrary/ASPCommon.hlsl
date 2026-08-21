@@ -27,18 +27,15 @@ void SetupSurround8UVs(float2 uvCenter, inout float2 uvs[8], float2 uvStep)
 
 void SetupSurroundCrossUVs(float2 uvCenter, inout float2 uvs[4], float2 uvStep)
 {
-    uvs[0] = uvCenter + uvStep * float2(-1, 1);
-    uvs[1] = uvCenter + uvStep * float2(-1, -1);
-    uvs[2] = uvCenter + uvStep * float2(1, 1);
-    uvs[3] = uvCenter + uvStep * float2(1, -1);
-}
-
-void SetupSurroundLRTDUVs(float2 uvCenter, inout float2 uvs[4], float2 uvStep)
-{
     uvs[0] = uvCenter + uvStep * float2(-1, 0);
     uvs[1] = uvCenter + uvStep * float2(1, 0);
     uvs[2] = uvCenter + uvStep * float2(0, 1);
     uvs[3] = uvCenter + uvStep * float2(0, -1);
+}
+
+void SetupSurroundLRTDUVs(float2 uvCenter, inout float2 uvs[4], float2 uvStep)
+{
+    SetupSurroundCrossUVs(uvCenter, uvs, uvStep);
 }
 
 void Unity_Dither(float In, float2 ScreenPosition, float2 _ScreenParamsXY, half ditherPixelSize, out float Out)
@@ -58,14 +55,11 @@ void Unity_Dither(float In, float2 ScreenPosition, float2 _ScreenParamsXY, half 
 float2 RotateUVDeg(float2 UV, float2 Center, float Rotation)
 {
     float2 uv = UV;
-    Rotation = Rotation * (3.1415926f/180.0f);
+    Rotation = Rotation * (3.1415926f / 180.0f);
     uv -= Center;
     float s = sin(Rotation);
     float c = cos(Rotation);
     float2x2 rMatrix = float2x2(c, -s, s, c);
-    rMatrix *= 0.5;
-    rMatrix += 0.5;
-    rMatrix = rMatrix * 2 - 1;
     uv.xy = mul(uv.xy, rMatrix);
     uv += Center;
     return uv;

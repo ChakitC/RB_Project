@@ -55,18 +55,12 @@ namespace LWGUI
 			EditorGUIUtility.labelWidth = RevertableHelper.labelWidth;
 		}
 
-		public static void FixGUIWidthMismatch(MaterialProperty.PropType propType, MaterialEditor materialEditor)
+		public static void FixGUIWidthMismatch(MaterialProperty prop, MaterialEditor materialEditor)
 		{
-			switch (propType)
-			{
-				case MaterialProperty.PropType.Texture:
-				case MaterialProperty.PropType.Range:
-					materialEditor.SetDefaultGUIWidths();
-					break;
-				default:
-					RevertableHelper.SetRevertableGUIWidths();
-					break;
-			}
+			if (prop.IsTexture() || prop.IsRange())
+				materialEditor.SetDefaultGUIWidths();
+			else
+				RevertableHelper.SetRevertableGUIWidths();
 		}
 
 		#endregion
@@ -88,27 +82,18 @@ namespace LWGUI
 		public static string GetPropertyDefaultValueText(MaterialProperty defaultProp)
 		{
 			string defaultText = String.Empty;
-			switch (defaultProp.type)
-			{
-				case MaterialProperty.PropType.Color:
-					defaultText += defaultProp.colorValue;
-					break;
-				case MaterialProperty.PropType.Float:
-				case MaterialProperty.PropType.Range:
-					defaultText += defaultProp.floatValue;
-					break;
+			if (defaultProp.IsColor())
+				defaultText += defaultProp.colorValue;
+			else if (defaultProp.IsFloat() || defaultProp.IsRange())
+				defaultText += defaultProp.floatValue;
 #if UNITY_2021_1_OR_NEWER
-				case MaterialProperty.PropType.Int:
-					defaultText += defaultProp.intValue;
-					break;
+			else if (defaultProp.IsInt())
+				defaultText += defaultProp.intValue;
 #endif
-				case MaterialProperty.PropType.Texture:
-					defaultText += defaultProp.textureValue != null ? defaultProp.textureValue.name : "None";
-					break;
-				case MaterialProperty.PropType.Vector:
-					defaultText += defaultProp.vectorValue;
-					break;
-			}
+			else if (defaultProp.IsTexture())
+				defaultText += defaultProp.textureValue != null ? defaultProp.textureValue.name : "None";
+			else if (defaultProp.IsVector())
+				defaultText += defaultProp.vectorValue;
 			return defaultText;
 		}
 

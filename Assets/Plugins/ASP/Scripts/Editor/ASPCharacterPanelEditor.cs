@@ -11,9 +11,6 @@ using UnityEngine.UIElements;
 using Color = UnityEngine.Color;
 using FontStyle = UnityEngine.FontStyle;
 
-// Creates a custom Label on the inspector for all the scripts named ScriptName
-// Make sure you have a ScriptName script in your
-// project, else this will not work.
 namespace ASP.Scripts.Editor
 {
     [CanEditMultipleObjects]
@@ -39,6 +36,8 @@ namespace ASP.Scripts.Editor
         partial void DrawBuiltInShadowCastInfo(VisualElement root, ASPCharacterPanel characterPanel);
         partial void DrawBuiltInShadowReceivedInfo(VisualElement root, ASPCharacterPanel characterPanel);
         partial void DrawASPExtraShadowReceivedInfo(VisualElement root, ASPCharacterPanel characterPanel);
+        partial void DrawSimpleShadowSetupEditor(VisualElement root, ASPCharacterPanel characterPanel);
+        
         partial void DrawMeshOutlineParam(VisualElement root, ASPCharacterPanel characterPanel,
             SerializedObject serializedObject);
         partial void DrawLightingDirectionOverrideProperty(VisualElement root, ASPCharacterPanel characterPanel,
@@ -67,13 +66,34 @@ namespace ASP.Scripts.Editor
 
         private void SetPropertyFloat(Material material, string propName, bool state)
         {
-            if (state)
+            material.SetFloat(propName, state ? 1f : 0f);
+        }
+
+        private bool HasFeature<T>() where T : ScriptableRendererFeature =>
+            m_rendererFeatures.Any(e => e is T);
+
+        private T GetFeature<T>() where T : ScriptableRendererFeature =>
+            m_rendererFeatures.Find(e => e is T) as T;
+
+        private static VisualElement CreateRowContainer()
+        {
+            var item = new VisualElement();
+            item.style.justifyContent = Justify.SpaceBetween;
+            item.style.alignSelf = Align.Stretch;
+            item.style.alignItems = Align.Auto;
+            item.style.flexDirection = FlexDirection.Row;
+            return item;
+        }
+
+        private static void OpenURPDataAsset()
+        {
+            var urpAsset = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+            var propInfo = typeof(UniversalRenderPipelineAsset).GetProperty(
+                "scriptableRendererData", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (propInfo != null)
             {
-                material.SetFloat(propName, 1f);
-            }
-            else
-            {
-                material.SetFloat(propName, 0f);
+                Selection.activeObject = (ScriptableRendererData)propInfo.GetValue(urpAsset);
+                GUIUtility.ExitGUI();
             }
         }
 
@@ -127,20 +147,8 @@ namespace ASP.Scripts.Editor
                     using (new EditorGUILayout.HorizontalScope())
                     {
                         GUILayout.FlexibleSpace();
-
                         if (GUILayout.Button("Open URP Data", GUILayout.Width(130)))
-                        {
-                            var urpAsset = (GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset);
-                            PropertyInfo propertyInfo = typeof(UniversalRenderPipelineAsset).GetProperty("scriptableRendererData", BindingFlags.NonPublic | BindingFlags.Instance);
-                            if (propertyInfo != null)
-                            {
-                                // Get the value of m_RendererDataList
-                                ScriptableRendererData rendererData = (ScriptableRendererData)propertyInfo.GetValue(urpAsset);
-                                Selection.activeObject = rendererData;
-                                GUIUtility.ExitGUI();
-                            }
-                        }
-
+                            OpenURPDataAsset();
                         GUILayout.Space(8);
                     }
                     GUILayout.Space(11);
@@ -170,6 +178,10 @@ namespace ASP.Scripts.Editor
             shadowInfoContainer.Add(new Label());
 
             DrawASPExtraShadowReceivedInfo(shadowInfoContainer, characterPanel);
+            
+            shadowInfoContainer.Add(new Label());
+
+            DrawSimpleShadowSetupEditor(shadowInfoContainer, characterPanel);
 
             container.Add(shadowInfoContainer);
 
@@ -260,46 +272,22 @@ namespace ASP.Scripts.Editor
             container.style.alignItems = Align.Auto;
 
             var isExist = features.Any(e => e.GetType() == type);
-            var isActive = false;
-            if (isExist)
-            {
-                isActive = features.Find(e => e.GetType() == type).isActive;
-            }
+            var isActive = isExist && features.Find(e => e.GetType() == type).isActive;
 
-            Label featureTitleLabel = new Label("Title");
-            featureTitleLabel.name = "Title";
-            featureTitleLabel.text = displayName;
+            var featureTitleLabel = new Label(displayName) { name = "Title" };
 
-            Label featureStatusIcon = new Label("   ");
-            featureStatusIcon.name = "StatusIcon";
-            featureStatusIcon.style.width = 20;
-            featureStatusIcon.style.justifyContent = Justify.FlexEnd;
-            featureStatusIcon.style.alignItems = Align.Auto;
-            featureStatusIcon.style.alignSelf = Align.Auto;
-            featureStatusIcon.style.backgroundImage =
-                new StyleBackground(EditorGUIUtility.TrIconContent("console.warnicon").image as Texture2D);
-
-            Label featureStatusLabel = new Label("Status");
-            featureStatusLabel.name = "Status";
-
-            var fontColor = isExist ? (isActive ? Color.green : Color.yellow) : Color.red;
+            var featureStatusLabel = new Label("Status") { name = "Status" };
             featureStatusLabel.text = isExist ? (isActive ? "Active" : "Not Active") : "Missing";
-            featureStatusLabel.style.color = fontColor;
+            featureStatusLabel.style.color = isExist ? (isActive ? Color.green : Color.yellow) : Color.red;
             featureStatusLabel.style.justifyContent = Justify.FlexEnd;
             featureStatusLabel.style.paddingLeft = 9 * featureStatusLabel.text.Length;
             featureStatusLabel.style.unityBackgroundScaleMode = new StyleEnum<ScaleMode>(ScaleMode.ScaleToFit);
 
-            var iconImage = isExist
-                ? EditorGUIUtility.TrIconContent("P4_CheckOutRemote@2x").image
-                : EditorGUIUtility.TrIconContent("console.erroricon.inactive.sml@2x").image;
-            if (isExist)
-            {
-                iconImage = isActive
-                    ? EditorGUIUtility.TrIconContent("P4_CheckOutRemote@2x").image
-                    : EditorGUIUtility.TrIconContent("console.warnicon@2x").image;
-            }
-
-            featureStatusLabel.style.backgroundImage = new StyleBackground(iconImage as Texture2D);
+            var iconName = !isExist ? "console.erroricon.inactive.sml@2x"
+                : isActive ? "P4_CheckOutRemote@2x"
+                : "console.warnicon@2x";
+            featureStatusLabel.style.backgroundImage =
+                new StyleBackground(EditorGUIUtility.TrIconContent(iconName).image as Texture2D);
 
             container.Add(featureTitleLabel);
             container.Add(featureStatusLabel);
@@ -309,36 +297,23 @@ namespace ASP.Scripts.Editor
         }
 
         private void UpdateRendererFeatureCheckerElement(List<ScriptableRendererFeature> features, Type type,
-            string displayName,
-            VisualElement rendererFeatureElement)
+            string displayName, VisualElement rendererFeatureElement)
         {
             var isExist = features.Any(e => e.GetType() == type);
-            var isActive = false;
-            if (isExist)
-            {
-                isActive = features.Find(e => e.GetType() == type).isActive;
-            }
+            var isActive = isExist && features.Find(e => e.GetType() == type).isActive;
 
-            Label featureTitleLabel = rendererFeatureElement.Q<Label>("Title");
-            featureTitleLabel.text = displayName;
+            rendererFeatureElement.Q<Label>("Title").text = displayName;
 
-            Label featureStatusLabel = rendererFeatureElement.Q<Label>("Status");
-            var fontColor = isExist ? (isActive ? Color.green : Color.yellow) : Color.red;
+            var featureStatusLabel = rendererFeatureElement.Q<Label>("Status");
             featureStatusLabel.text = isExist ? (isActive ? "Active" : "Not Active") : "Missing";
             featureStatusLabel.style.paddingLeft = 9 * featureStatusLabel.text.Length;
-            featureStatusLabel.style.color = fontColor;
+            featureStatusLabel.style.color = isExist ? (isActive ? Color.green : Color.yellow) : Color.red;
 
-            var iconImage = isExist
-                ? EditorGUIUtility.TrIconContent("P4_CheckOutRemote@2x").image
-                : EditorGUIUtility.TrIconContent("console.erroricon.inactive.sml@2x").image;
-            if (isExist)
-            {
-                iconImage = isActive
-                    ? EditorGUIUtility.TrIconContent("P4_CheckOutRemote@2x").image
-                    : EditorGUIUtility.TrIconContent("console.warnicon@2x").image;
-            }
-
-            featureStatusLabel.style.backgroundImage = new StyleBackground(iconImage as Texture2D);
+            var iconName = !isExist ? "console.erroricon.inactive.sml@2x"
+                : isActive ? "P4_CheckOutRemote@2x"
+                : "console.warnicon@2x";
+            featureStatusLabel.style.backgroundImage =
+                new StyleBackground(EditorGUIUtility.TrIconContent(iconName).image as Texture2D);
         }
 
         private void DrawBakeSmoothNormalFieldIMGUI(ASPCharacterPanel characterPanel)

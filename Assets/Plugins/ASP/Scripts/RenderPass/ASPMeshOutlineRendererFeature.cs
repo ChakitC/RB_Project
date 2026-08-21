@@ -19,45 +19,48 @@ namespace ASP
     [DisallowMultipleRendererFeature("ASP Mesh Outline")]
     public class ASPMeshOutlineRendererFeature : ScriptableRendererFeature
     {
-        [SingleLayerMask] public int m_layer;
-        [RenderingLayerMask] public int m_renderingLayerMask;
+        [FormerlySerializedAs("m_layer")]
+        [SingleLayerMask] public int Layer;
+        [FormerlySerializedAs("m_renderingLayerMask")]
+        [RenderingLayerMask] public int RenderingLayerMask;
         public RenderPassEvent InjectPoint = RenderPassEvent.AfterRenderingSkybox;
-        private RenderQueueRange Range = RenderQueueRange.opaque;
+        private RenderQueueRange _range = RenderQueueRange.opaque;
 
         [FormerlySerializedAs("InjectPassLightModeTag")]
-        private string lightModeTag = "ASPOutlineObject";
+        [FormerlySerializedAs("lightModeTag")]
+        private string _lightModeTag = "ASPOutlineObject";
 
-        private MeshOutlinePass m_meshOutlinePass;
+        private MeshOutlinePass _meshOutlinePass;
 
         public override void Create()
         {
-            m_meshOutlinePass = new MeshOutlinePass(name, lightModeTag, InjectPoint, Range, (uint)m_renderingLayerMask,
-                1 << m_layer, StencilState.defaultValue, 0);
+            _meshOutlinePass = new MeshOutlinePass(name, _lightModeTag, InjectPoint, _range, (uint)RenderingLayerMask,
+                1 << Layer, StencilState.defaultValue, 0);
         }
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
-            renderer.EnqueuePass(m_meshOutlinePass);
+            renderer.EnqueuePass(_meshOutlinePass);
         }
 
         public class MeshOutlinePass : ScriptableRenderPass
         {
-            private FilteringSettings m_filteringSettings;
-            private RenderStateBlock m_renderStateBlock;
-            private ShaderTagId m_shaderTagId;
-            private string m_profilerTag;
+            private FilteringSettings _filteringSettings;
+            private RenderStateBlock _renderStateBlock;
+            private ShaderTagId _shaderTagId;
+            private string _profilerTag;
 
             public MeshOutlinePass(string profilerTag, string shaderTagId, RenderPassEvent evt,
                 RenderQueueRange renderQueueRange, uint renderingLayerMask, int layerMask, StencilState stencilState,
                 int stencilReference)
             {
-                m_profilerTag = profilerTag;
+                _profilerTag = profilerTag;
                 renderPassEvent = evt;
-                m_filteringSettings = new FilteringSettings(renderQueueRange);
-                m_filteringSettings.layerMask = layerMask;
-                m_filteringSettings.renderingLayerMask = renderingLayerMask;
-                m_renderStateBlock = new RenderStateBlock(RenderStateMask.Nothing);
-                m_shaderTagId = new ShaderTagId(shaderTagId);
+                _filteringSettings = new FilteringSettings(renderQueueRange);
+                _filteringSettings.layerMask = layerMask;
+                _filteringSettings.renderingLayerMask = renderingLayerMask;
+                _renderStateBlock = new RenderStateBlock(RenderStateMask.Nothing);
+                _shaderTagId = new ShaderTagId(shaderTagId);
             }
 
 #if UNITY_6000_0_OR_NEWER
@@ -75,11 +78,11 @@ namespace ASP
                     var sortFlags = SortingCriteria.CommonOpaque;
                     var sortingSettings = new SortingSettings(renderingData.cameraData.camera);
                     sortingSettings.criteria = sortFlags;
-                    var drawSettings = new DrawingSettings(m_shaderTagId, sortingSettings);
+                    var drawSettings = new DrawingSettings(_shaderTagId, sortingSettings);
                     drawSettings.perObjectData = PerObjectData.None;
 
                     context.DrawRenderers(renderingData.cullResults, ref drawSettings,
-                        ref m_filteringSettings, ref m_renderStateBlock);
+                        ref _filteringSettings, ref _renderStateBlock);
                 }
 
                 context.ExecuteCommandBuffer(cmd);
@@ -106,10 +109,10 @@ namespace ASP
                     
                     var sortFlags = SortingCriteria.CommonOpaque;
                     DrawingSettings drawSettings =
- RenderingUtils.CreateDrawingSettings(m_shaderTagId, universalRenderingData, cameraData, lightData, sortFlags);
+ RenderingUtils.CreateDrawingSettings(_shaderTagId, universalRenderingData, cameraData, lightData, sortFlags);
 
                     var param =
- new RendererListParams(universalRenderingData.cullResults, drawSettings, m_filteringSettings);
+ new RendererListParams(universalRenderingData.cullResults, drawSettings, _filteringSettings);
                     passData.RendererListHandle = renderGraph.CreateRendererList(param);
                     
                     passData.Destination = resourceData.activeColorTexture;

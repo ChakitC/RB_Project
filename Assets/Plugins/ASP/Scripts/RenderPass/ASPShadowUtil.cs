@@ -324,7 +324,7 @@ namespace ASP
             var invShadowAtlasHeight = 1.0f / renderTargetHeight;
             var invHalfShadowAtlasWidth = 0.5f * invShadowAtlasWidth;
             var invHalfShadowAtlasHeight = 0.5f * invShadowAtlasHeight;
-            cmd.SetGlobalMatrixArray(ASPMainLightShadowConstantBuffer._WorldToShadow, worldToShadowMatrix);
+            cmd.SetGlobalMatrixArray(ASPMainLightShadowConstantBuffer.s_WorldToShadow, worldToShadowMatrix);
 
             var softShadows = shadowLight.light.shadows == LightShadows.Soft &&
                               renderingData.shadowData.supportsSoftShadows;
@@ -338,36 +338,36 @@ namespace ASP
                 out float shadowFadeScale,
                 out float shadowFadeBias);
 
-            cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._ShadowParams,
+            cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_ShadowParams,
                 new Vector4(shadowLight.light.shadowStrength, softShadowsProp, shadowFadeScale, shadowFadeBias));
 
             if (renderingData.shadowData.supportsSoftShadows)
             {
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._ShadowOffset0,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_ShadowOffset0,
                     new Vector4(-invHalfShadowAtlasWidth, -invHalfShadowAtlasHeight,
                         invHalfShadowAtlasWidth, -invHalfShadowAtlasHeight));
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._ShadowOffset1,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_ShadowOffset1,
                     new Vector4(-invHalfShadowAtlasWidth, invHalfShadowAtlasHeight,
                         invHalfShadowAtlasWidth, invHalfShadowAtlasHeight));
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._ShadowmapSize, new Vector4(invShadowAtlasWidth,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_ShadowmapSize, new Vector4(invShadowAtlasWidth,
                     invShadowAtlasHeight,
                     renderTargetWidth, renderTargetHeight));
             }
 
-            cmd.SetGlobalFloat(ASPMainLightShadowConstantBuffer._CascadeCount,
+            cmd.SetGlobalFloat(ASPMainLightShadowConstantBuffer.s_CascadeCount,
                 aspShadowData.mainLightShadowCascadesCount > 1 ? aspShadowData.mainLightShadowCascadesCount : 0);
 
             if (aspShadowData.mainLightShadowCascadesCount > 1)
             {
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._CascadeShadowSplitSpheres0,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_CascadeShadowSplitSpheres0,
                     cascadeSplitDistances[0]);
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._CascadeShadowSplitSpheres1,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_CascadeShadowSplitSpheres1,
                     cascadeSplitDistances[1]);
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._CascadeShadowSplitSpheres2,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_CascadeShadowSplitSpheres2,
                     cascadeSplitDistances[2]);
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._CascadeShadowSplitSpheres3,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_CascadeShadowSplitSpheres3,
                     cascadeSplitDistances[3]);
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._CascadeShadowSplitSphereRadii, new Vector4(
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_CascadeShadowSplitSphereRadii, new Vector4(
                     cascadeSplitDistances[0].w * cascadeSplitDistances[0].w,
                     cascadeSplitDistances[1].w * cascadeSplitDistances[1].w,
                     cascadeSplitDistances[2].w * cascadeSplitDistances[2].w,
@@ -394,7 +394,7 @@ namespace ASP
             var invShadowAtlasHeight = 1.0f / renderTargetHeight;
             var invHalfShadowAtlasWidth = 0.5f * invShadowAtlasWidth;
             var invHalfShadowAtlasHeight = 0.5f * invShadowAtlasHeight;
-            cmd.SetGlobalMatrixArray(ASPMainLightShadowConstantBuffer._WorldToShadow, worldToShadowMatrix);
+            cmd.SetGlobalMatrixArray(ASPMainLightShadowConstantBuffer.s_WorldToShadow, worldToShadowMatrix);
 
             var softShadows = shadowLight.light.shadows == LightShadows.Soft &&
                               shadowData.supportsSoftShadows;
@@ -408,36 +408,36 @@ namespace ASP
                 out float shadowFadeScale,
                 out float shadowFadeBias);
 
-            cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._ShadowParams,
+            cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_ShadowParams,
                 new Vector4(shadowLight.light.shadowStrength, softShadowsProp, shadowFadeScale, shadowFadeBias));
 
             if (shadowData.supportsSoftShadows)
             {
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._ShadowOffset0,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_ShadowOffset0,
                     new Vector4(-invHalfShadowAtlasWidth, -invHalfShadowAtlasHeight,
                         invHalfShadowAtlasWidth, -invHalfShadowAtlasHeight));
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._ShadowOffset1,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_ShadowOffset1,
                     new Vector4(-invHalfShadowAtlasWidth, invHalfShadowAtlasHeight,
                         invHalfShadowAtlasWidth, invHalfShadowAtlasHeight));
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._ShadowmapSize, new Vector4(invShadowAtlasWidth,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_ShadowmapSize, new Vector4(invShadowAtlasWidth,
                     invShadowAtlasHeight,
                     renderTargetWidth, renderTargetHeight));
             }
 
-            cmd.SetGlobalFloat(ASPMainLightShadowConstantBuffer._CascadeCount,
+            cmd.SetGlobalFloat(ASPMainLightShadowConstantBuffer.s_CascadeCount,
                 aspShadowData.mainLightShadowCascadesCount > 1 ? aspShadowData.mainLightShadowCascadesCount : 0);
 
             if (aspShadowData.mainLightShadowCascadesCount > 1)
             {
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._CascadeShadowSplitSpheres0,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_CascadeShadowSplitSpheres0,
                     cascadeSplitDistances[0]);
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._CascadeShadowSplitSpheres1,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_CascadeShadowSplitSpheres1,
                     cascadeSplitDistances[1]);
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._CascadeShadowSplitSpheres2,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_CascadeShadowSplitSpheres2,
                     cascadeSplitDistances[2]);
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._CascadeShadowSplitSpheres3,
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_CascadeShadowSplitSpheres3,
                     cascadeSplitDistances[3]);
-                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer._CascadeShadowSplitSphereRadii, new Vector4(
+                cmd.SetGlobalVector(ASPMainLightShadowConstantBuffer.s_CascadeShadowSplitSphereRadii, new Vector4(
                     cascadeSplitDistances[0].w * cascadeSplitDistances[0].w,
                     cascadeSplitDistances[1].w * cascadeSplitDistances[1].w,
                     cascadeSplitDistances[2].w * cascadeSplitDistances[2].w,

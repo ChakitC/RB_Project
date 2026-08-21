@@ -13,59 +13,44 @@ namespace ASP
             AlbedoEdge = 1,
             DepthEdge = 2,
             NormalsEdge = 3,
-            OuterEdge = 4,
-            VertexColorMask = 5,
-            CombinedResultAndVertexColorMask = 6,
-            CombinedResult = 7,
+            VertexColorMask = 4,
+            CombinedResultAndVertexColorMask = 5,
+            CombinedResult = 6,
     }
-//[Enum(Material, 0, Luma, 1, Depth, 2, Normals, 3, OuterLine, 4, VertexColorMask, 5 , Result, 6)]
     [Serializable, VolumeComponentMenu("Post-processing/ASP Screen Space Outline")]
     public class ASPSreenSpaceOutline : VolumeComponent, IPostProcessComponent
     {
-        [Header("General")] 
+        [Header("General")]
         [FormerlySerializedAs("EnableOutlineEffect")] public BoolParameter EnableOutline = new BoolParameter(false, false);
-        [FormerlySerializedAs("EnableOutlineFXAA")] public BoolParameter ApplyFXAA = new BoolParameter(false);
         public ClampedFloatParameter OutlineWidth = new ClampedFloatParameter(1f, 0.5f, 5f);
         public ColorParameter OutlineColor = new ColorParameter(Color.black);
+        [Tooltip("Apply outline on non-character pixels that have valid scene depth and normals.")]
+        public BoolParameter EnableSceneObjectOutline = new BoolParameter(false);
+
         [Header("----------------------------------------------------------------------------------------------------------------")]
-        [Header("Outer Edge")] 
-        public BoolParameter EnableOuterline = new BoolParameter(true);
-        [Header("Material Edge")] 
+        [Header("Material Edge")]
         public BoolParameter EnableMaterialEdge = new BoolParameter(true);
         [Space(10)]
         public ClampedFloatParameter MaterialEdgeThreshold = new ClampedFloatParameter(1.0f, 0.05f, 1.0f);
-        public ClampedFloatParameter MaterialEdgeWeight = new ClampedFloatParameter(5.0f, 0f, 15f);
-        public MinIntParameter MaterialEdgeBias = new MinIntParameter(2, 1);
-        
-        [Header("Albedo Edge")] 
+
+        [Header("Albedo Edge")]
         public BoolParameter EnableAlbedoEdge = new BoolParameter(true);
         [Space(10)]
         public ClampedFloatParameter AlbedoEdgeThreshold = new ClampedFloatParameter(1.0f, 0.05f, 1.0f);
-        public ClampedFloatParameter AlbedoEdgeWeight = new ClampedFloatParameter(5.0f, 0f, 10f);
-        public MinIntParameter AlbedoEdgeBias = new MinIntParameter(2, 1);
 
-        [Header("Depth Edge")] 
+        [Header("Depth Edge")]
         public BoolParameter EnableDepthEdge = new BoolParameter(true);
         [Space(10)]
         public ClampedFloatParameter DepthEdgeThreshold = new ClampedFloatParameter(1.0f, 0.05f, 1.0f);
-        public ClampedFloatParameter DepthEdgeWeight = new ClampedFloatParameter(20.0f, 0f, 50f);
-        public MinIntParameter DepthEdgeBias = new MinIntParameter(2, 2);
 
-        [Header("Normals Edge")] 
+        [Header("Normals Edge")]
         public BoolParameter EnableNormalsEdge = new BoolParameter(true);
         [Space(10)]
         public ClampedFloatParameter NormalsEdgeThreshold = new ClampedFloatParameter(1.0f, 0.05f, 1.0f);
-        public ClampedFloatParameter NormalsEdgeWeight = new ClampedFloatParameter(1.0f, 0f, 8.0f);
-        public MinIntParameter NormalsEdgeBias = new MinIntParameter(3, 2);
         [Header("----------------------------------------------------------------------------------------------------------------")]
-        [Header("Color & Weight Distance Fade")]
-        public BoolParameter FadingWeghtByDistance = new BoolParameter(true);
-        public BoolParameter FadingColorByDistance = new BoolParameter(true);
-        public FloatRangeParameter ColorWeightFadingStartEndDistance = new FloatRangeParameter(new Vector2(2f,15f), 0.0f, 50f);
-        
-        [Header("Outline Width Distance Fade")]
-        public BoolParameter FadingWidthByDistance = new BoolParameter(false);
-        public FloatRangeParameter WidthFadingStartEndDistance = new FloatRangeParameter(new Vector2(2f,15f), 0.0f, 50f);
+        [Header("Distance Falloff")]
+        public BoolParameter EnableDistanceFalloff = new BoolParameter(true);
+        public FloatRangeParameter DistanceFalloffStartEnd = new FloatRangeParameter(new Vector2(2f,15f), 0.0f, 50f);
         [Header("----------------------------------------------------------------------------------------------------------------")]
         [Header("Debug")]
         public BoolParameter EnableDebugMode = new BoolParameter(false);

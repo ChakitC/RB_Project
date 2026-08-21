@@ -1,12 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
-using ASP;
-using NUnit.Framework;
 using UnityEditor;
-using UnityEngine.Rendering;
 using UnityEditor.UIElements;
-using UnityEngine.UI;
+using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 using Button = UnityEngine.UIElements.Button;
 
@@ -25,8 +22,6 @@ namespace ASP.Scripts.Editor
                 return evt;
             }
         }
-
-        private RefreshColorEvent m_refreshButtonColorEvent;
 
         partial void DrawBuiltInShadowCastInfo(VisualElement root, ASPCharacterPanel characterPanel)
         {

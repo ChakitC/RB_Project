@@ -1,16 +1,9 @@
 fileFormatVersion: 2
 guid: 71a8be6308c0b584fa30e19db4254adf
-AssetOrigin:
-  serializedVersion: 1
-  productId: 281737
-  packageName: Anime Shading Plus
-  packageVersion: 1.23
-  assetPath: Assets/ASP/Textures/Resources/Textures/DefaultRampMap.png
-  uploadId: 731001
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
-  serializedVersion: 13
+  serializedVersion: 12
   mipmaps:
     mipMapMode: 0
     enableMipMap: 0
@@ -74,7 +67,7 @@ TextureImporter:
   swizzle: 50462976
   cookieLightType: 0
   platformSettings:
-  - serializedVersion: 4
+  - serializedVersion: 3
     buildTarget: DefaultTexturePlatform
     maxTextureSize: 2048
     resizeAlgorithm: 0
@@ -87,7 +80,7 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 4
+  - serializedVersion: 3
     buildTarget: Standalone
     maxTextureSize: 2048
     resizeAlgorithm: 0
@@ -100,7 +93,7 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 4
+  - serializedVersion: 3
     buildTarget: Server
     maxTextureSize: 2048
     resizeAlgorithm: 0
@@ -117,7 +110,6 @@ TextureImporter:
     serializedVersion: 2
     sprites: []
     outline: []
-    customData: 
     physicsShape: []
     bones: []
     spriteID: 
@@ -127,11 +119,16 @@ TextureImporter:
     edges: []
     weights: []
     secondaryTextures: []
-    spriteCustomMetadata:
-      entries: []
     nameFileIdTable: {}
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
-  userData: '{"MonoBehaviour":{"m_Enabled":true,"m_EditorHideFlags":0,"m_Name":"","m_EditorClassIdentifier":"","gradient":{"serializedVersion":"2","key0":{"r":0.0,"g":0.0,"b":0.0,"a":1.0},"key1":{"r":1.0,"g":1.0,"b":1.0,"a":1.0},"key2":{"r":1.0,"g":0.9749511480331421,"b":0.9473973512649536,"a":0.0},"key3":{"r":1.0,"g":0.9756843447685242,"b":0.9489371180534363,"a":0.0},"key4":{"r":1.0,"g":1.0,"b":1.0,"a":0.0},"key5":{"r":1.0,"g":1.0,"b":1.0,"a":0.0},"key6":{"r":0.0,"g":0.0,"b":0.0,"a":0.0},"key7":{"r":0.0,"g":0.0,"b":0.0,"a":0.0},"ctime0":0,"ctime1":65535,"ctime2":26046,"ctime3":53268,"ctime4":65535,"ctime5":65535,"ctime6":0,"ctime7":0,"atime0":0,"atime1":65535,"atime2":0,"atime3":0,"atime4":0,"atime5":0,"atime6":0,"atime7":0,"m_Mode":0,"m_ColorSpace":0,"m_NumColorKeys":2,"m_NumAlphaKeys":2}}}#{"MonoBehaviour":{"m_Enabled":true,"m_EditorHideFlags":0,"m_Name":"","m_EditorClassIdentifier":"","gradient":{"serializedVersion":"2","key0":{"r":0.41886788606643679,"g":0.31217512488365176,"b":0.31217512488365176,"a":1.0},"key1":{"r":1.0,"g":1.0,"b":1.0,"a":1.0},"key2":{"r":1.0,"g":1.0,"b":1.0,"a":0.0},"key3":{"r":1.0,"g":0.9756843447685242,"b":0.9489371180534363,"a":0.0},"key4":{"r":1.0,"g":1.0,"b":1.0,"a":0.0},"key5":{"r":1.0,"g":1.0,"b":1.0,"a":0.0},"key6":{"r":0.0,"g":0.0,"b":0.0,"a":0.0},"key7":{"r":0.0,"g":0.0,"b":0.0,"a":0.0},"ctime0":540,"ctime1":36623,"ctime2":36623,"ctime3":53268,"ctime4":65535,"ctime5":65535,"ctime6":0,"ctime7":0,"atime0":0,"atime1":65535,"atime2":0,"atime3":0,"atime4":0,"atime5":0,"atime6":0,"atime7":0,"m_Mode":0,"m_ColorSpace":0,"m_NumColorKeys":2,"m_NumAlphaKeys":2}}}'
+  userData: '{"MonoBehaviour":{"m_Enabled":true,"m_EditorHideFlags":0,"m_Name":"","m_EditorClassIdentifier":"","gradient":{"serializedVersion":"2","key0":{"r":0.0,"g":0.0,"b":0.0,"a":1.0},"key1":{"r":1.0,"g":1.0,"b":1.0,"a":1.0},"key2":{"r":1.0,"g":0.9749511480331421,"b":0.9473973512649536,"a":0.0},"key3":{"r":1.0,"g":0.9756843447685242,"b":0.9489371180534363,"a":0.0},"key4":{"r":1.0,"g":1.0,"b":1.0,"a":0.0},"key5":{"r":1.0,"g":1.0,"b":1.0,"a":0.0},"key6":{"r":0.0,"g":0.0,"b":0.0,"a":0.0},"key7":{"r":0.0,"g":0.0,"b":0.0,"a":0.0},"ctime0":0,"ctime1":65535,"ctime2":26046,"ctime3":53268,"ctime4":65535,"ctime5":65535,"ctime6":0,"ctime7":0,"atime0":0,"atime1":65535,"atime2":0,"atime3":0,"atime4":0,"atime5":0,"atime6":0,"atime7":0,"m_Mode":0,"m_ColorSpace":0,"m_NumColorKeys":2,"m_NumAlphaKeys":2}}}#{"MonoBehaviour":{"m_Enabled":true,"m_EditorHideFlags":0,"m_Name":"","m_EditorClassIdentifier":"","gradient":{"serializedVersion":"2","key0":{"r":0.0,"g":0.0,"b":0.0,"a":1.0},"key1":{"r":1.0,"g":1.0,"b":1.0,"a":1.0},"key2":{"r":1.0,"g":0.9749511480331421,"b":0.9473973512649536,"a":0.0},"key3":{"r":1.0,"g":0.9756843447685242,"b":0.9489371180534363,"a":0.0},"key4":{"r":1.0,"g":1.0,"b":1.0,"a":0.0},"key5":{"r":1.0,"g":1.0,"b":1.0,"a":0.0},"key6":{"r":0.0,"g":0.0,"b":0.0,"a":0.0},"key7":{"r":0.0,"g":0.0,"b":0.0,"a":0.0},"ctime0":0,"ctime1":65535,"ctime2":26046,"ctime3":53268,"ctime4":65535,"ctime5":65535,"ctime6":0,"ctime7":0,"atime0":0,"atime1":65535,"atime2":0,"atime3":0,"atime4":0,"atime5":0,"atime6":0,"atime7":0,"m_Mode":0,"m_ColorSpace":0,"m_NumColorKeys":2,"m_NumAlphaKeys":2}}}'
   assetBundleName: 
   assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 281737
+  packageName: Anime Shading Plus
+  packageVersion: 1.23
+  assetPath: Assets/ASP/Textures/Resources/Textures/DefaultRampMap.png
+  uploadId: 731001

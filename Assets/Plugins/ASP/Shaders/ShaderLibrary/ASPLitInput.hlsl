@@ -59,6 +59,7 @@ CBUFFER_START(UnityPerMaterial)
     half3 _FaceFrontDirection;
     half3 _FaceRightDirection;
     float3 _CharacterCenterWS;
+    half _CharacterCenterCubeSize;
     half _FOVShiftX;
 
     //texture uv channel selector
@@ -158,7 +159,7 @@ CBUFFER_START(UnityPerMaterial)
 
     //Debug
     half _DebugGI;
-
+    int _UseSimpleAABBCutOffForCharacterShadow;
 CBUFFER_END
 
 struct ASPInputData

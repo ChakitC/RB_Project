@@ -1,9 +1,7 @@
 ﻿// Copyright (c) Jason Ma
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -115,58 +113,12 @@ namespace LWGUI
 		public List<string>                           favoriteproperties = new List<string>();
 		public DisplayModeData                        displayModeData    = new DisplayModeData();
 		public int                                    preferLanguageIndex = 0;
-		public Dictionary<string, List<string>> localizedNamePair        = new Dictionary<string, List<string>>();
-		public Dictionary<string, List<string>> localizedTooltipPair     = new Dictionary<string, List<string>>();
-		
-		private string[] ParseCsvLine(string line)
-		{
-			var fields = new List<string>();
-			var regex = new Regex(@"(?:^|,)(?:""(?<val>(?:[^""]|"""")*)""|(?<val>[^,]*))");
-			var matches = regex.Matches(line);
+		public ASPLocalizationData                    localizationData;
 
-			foreach (Match match in matches)
-			{
-				fields.Add(match.Groups["val"].Value.Replace("\"\"", "\""));
-			}
-			
-			return fields.ToArray();
-		}
-		private void LoadLocalizedCSV(ref Dictionary<string, List<string>> localizedDatas, string path)
-		{
-			if (File.Exists(path) && localizedDatas.Keys.Count == 0)
-			{
-				try
-				{
-					// Read the entire file as a single string
-					var fileContent = File.ReadAllText(path);
-					var data = fileContent.Split('\n'); 
-					foreach (string line in data)
-					{
-						string[] row = ParseCsvLine(line);
-						if (row.Length > 0)
-						{
-							localizedDatas.TryAdd(row[0], new List<string>());
-							for (int i = 1; i < row.Length; i++)
-							{
-								localizedDatas[row[0]].Add(row[i]);
-							}
-						}
-					}
-				}
-				catch (IOException e)
-				{
-					Debug.LogWarning("reading localize file " + path + " went wrong " + e.Message);
-				}
-			}
-		}
-		
 		public void BuildPropertyStaticData(Shader shader, MaterialProperty[] props, int languageIndex)
 		{
 			preferLanguageIndex = languageIndex;
-			var localizeNameFilePath = Application.dataPath + "/Editor Default Resources" + "/aspLocalized.csv";
-			LoadLocalizedCSV(ref localizedNamePair, localizeNameFilePath);
-			var localizeToolTipFilePath = Application.dataPath + "/Editor Default Resources" + "/aspLocalizeToolTip.csv";
-			LoadLocalizedCSV(ref localizedTooltipPair, localizeToolTipFilePath);
+			localizationData = ASPLocalizationData.Load();
 
 			// Get Property Static Data
 			foreach (var prop in props)
@@ -447,20 +399,8 @@ namespace LWGUI
 		public List<PersetDynamicData>                 activePresets    = new List<PersetDynamicData>();
 
 		public int modifiedCount = 0;
-		// csv format :
-		// property_name, en, zh, jp
-		//
-
 		public void BuildPerFrameData(Shader shader, Material material, MaterialProperty[] props, PerShaderData perShaderData, int languageIndex)
 		{
-			//var localizedCSV  = File.ReadAllText(filePath);
-			//var localizeNameFilePath = Application.dataPath + "/Editor Default Resources" + "/aspLocalized.csv";
-			//LoadLocalizedCSV(ref localizedNamePair, localizeNameFilePath);
-		//	var localizeToolTipFilePath = Application.dataPath + "/Editor Default Resources" + "/aspLocalizeToolTip.csv";
-		//	LoadLocalizedCSV(ref localizedTooltipPair, localizeToolTipFilePath);
-
-			//Debug.Log(localizedPair.Keys.Count );
-
 			// Get active presets
 			foreach (var prop in props)
 			{
@@ -521,24 +461,17 @@ namespace LWGUI
 				}
 			}
 
+			var locData = perShaderData.localizationData;
 			foreach (var prop in props)
 			{
 				var propStaticData = perShaderData.propertyDatas[prop.name];
 				var propDynamicData = propertyDatas[prop.name];
-				if (perShaderData.localizedNamePair.ContainsKey(prop.name))
+				if (locData != null)
 				{
-					if ( languageIndex < perShaderData.localizedNamePair[prop.name].Count)
-					{
-						propertyDatas[prop.name].overrideLocalizedName = perShaderData.localizedNamePair[prop.name][languageIndex];
-					}
-				}
-				
-				if (perShaderData.localizedTooltipPair.ContainsKey(prop.name))
-				{
-					if (languageIndex < perShaderData.localizedTooltipPair[prop.name].Count)
-					{
-						propertyDatas[prop.name].overrideLocalizedTooltip = perShaderData.localizedTooltipPair[prop.name][languageIndex];
-					}
+					if (locData.TryGetLocalizedName(prop.name, languageIndex, out var localizedName))
+						propDynamicData.overrideLocalizedName = localizedName;
+					if (locData.TryGetLocalizedTooltip(prop.name, languageIndex, out var localizedTooltip))
+						propDynamicData.overrideLocalizedTooltip = localizedTooltip;
 				}
 				
 				// Override parent hasModified
@@ -734,6 +667,7 @@ namespace LWGUI
 		{
 			if (shader && _shaderDataDic.ContainsKey(shader))
 				_shaderDataDic.Remove(shader);
+			ASPLocalizationData.ClearCache();
 		}
 
 		public static PerFrameData BuildPerFrameData(Shader shader, Material material, MaterialProperty[] props, int languageIndex)

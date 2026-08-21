@@ -45,6 +45,7 @@ struct Varyings
     float3 vertexColor     : TEXCOORD10;
     float4 faceHairUV      : TEXCOORD11;
     float4 specRimUV       : TEXCOORD12;
+    float4 probeOcclusion  : TEXCOORD13;
     //TODO handle VR
     UNITY_VERTEX_OUTPUT_STEREO
     
@@ -96,8 +97,15 @@ Varyings ASPLitVert(Attributes IN)
                               IN.uv3 * _FaceUVCtrl.w;
     OUT.faceHairUV = float4(faceShadowMapUV, hairHightlightUV);
     OUT.positionNDC = vertexInput.positionNDC;
-    //vertex sh (will use in sampling pixel sh)
-    OUTPUT_SH(OUT.normalWS.xyz, OUT.vertexSH);
+    OUT.probeOcclusion = 1.0;
+    half3 giNormalWS = lerp(OUT.normalWS.xyz, float3(0, 1, 0), saturate(_BakeGISource));
+    #if UNITY_VERSION >= 60000001
+        // Unity 6 packs APV probe occlusion alongside the vertex SH sample.
+        OUTPUT_SH4(GetAbsolutePositionWS(vertexInput.positionWS), giNormalWS, viewDirectionWS, OUT.vertexSH,
+                   OUT.probeOcclusion);
+    #else
+        OUTPUT_SH(giNormalWS, OUT.vertexSH);
+    #endif
 
     return OUT;
 }
@@ -140,10 +148,12 @@ void InitializeInputData(Varyings IN, out ASPInputData inputData, float isFacing
     //ASP shadow map does not use screen space shader
     inputData.aspShadowCoord = TransformASPWorldToShadowCoord(IN.positionWS);
 
-    //select GI color based on _BakeGISource, 0 == sh9, 1 == flatten sh9, 2 = custom GI color
-    half3 normalSH9 = lerp(inputData.normalWS.xyz, float3(0, 1, 0), saturate(_BakeGISource));
-    half3 sh9Color = SampleSH(normalSH9);
-    half3 giColor = step(2, _BakeGISource) * _OverrideGIColor + (1 - step(2, _BakeGISource)) * sh9Color;
+    // Select GI color based on _BakeGISource, 0 == sample GI, 1 == flatten sampled GI, 2 = custom GI color.
+    half3 giNormalWS = lerp(inputData.normalWS.xyz, float3(0, 1, 0), saturate(_BakeGISource));
+    half4 shadowMask;
+    half3 sampledGI = SampleASPBakedGI(inputData.positionWS, giNormalWS, inputData.viewDirectionWS, IN.positionHCS,
+                                       IN.vertexSH, IN.probeOcclusion, shadowMask);
+    half3 giColor = step(2, _BakeGISource) * _OverrideGIColor + (1 - step(2, _BakeGISource)) * sampledGI;
     inputData.bakedGI = giColor;
     inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(IN.positionHCS);
 
@@ -203,11 +213,6 @@ void InitializeInputData(Varyings IN, out ASPInputData inputData, float isFacing
     inputData.rimLightOverShadow = _RimLightOverShadow;
 
     //shadow mask
-    #if defined(SHADOWS_SHADOWMASK) && defined(LIGHTMAP_ON)
-    half4 shadowMask = half4(1, 1, 1, 1);
-    #elif !defined(LIGHTMAP_ON)
-    half4 shadowMask = unity_ProbesOcclusion;
-    #endif
     inputData.shadowMask = shadowMask;
 
     // face shadow map related datas

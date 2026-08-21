@@ -18,29 +18,6 @@ namespace ASP.Scripts.Editor
             foldout.Q<Foldout>().style.fontSize = 15;
             foldout.Q<Foldout>().value = true;
             root.Add(foldout);
-            
-            /*var toggleMaterialInstanceOnPlay = new Toggle("Create Material Instance On Play");
-            toggleMaterialInstanceOnPlay.tooltip =
-                "Toggle this if you will instantiate multiple asp character via prefab or copy object on scene";
-            var createMaterialInstanceOnPlayProperty = serializedObject.FindProperty("CreateMaterialInstanceOnPlay");
-            toggleMaterialInstanceOnPlay.value = createMaterialInstanceOnPlayProperty.boolValue;
-            toggleMaterialInstanceOnPlay.RegisterCallback<ChangeEvent<bool>>(e =>
-            {
-                createMaterialInstanceOnPlayProperty.boolValue =
-                    e.newValue;
-                serializedObject.ApplyModifiedProperties();
-                
-            });
-            foldout.Add(toggleMaterialInstanceOnPlay);
-            
-            var createMaterialInstanceNow = new Button();
-            createMaterialInstanceNow.text = "Create Material Instances Now";
-            createMaterialInstanceNow.RegisterCallback<ClickEvent>(e =>
-            {
-               characterPanel.CreateMaterialInstance();
-
-            });
-            foldout.Add(createMaterialInstanceNow);*/
         
             var categoryContainer = new VisualElement();
             categoryContainer.style.justifyContent = Justify.SpaceBetween;
@@ -51,18 +28,15 @@ namespace ASP.Scripts.Editor
         
             var categoryMatLabel = new Label("Material");
             categoryContainer.Add(categoryMatLabel);
-        
+
             var categoryTypeLabel = new Label("Type");
             categoryContainer.Add(categoryTypeLabel);
-        
+
             var categoryAlphaClipLabel = new Label("AlphaClip");
             categoryContainer.Add(categoryAlphaClipLabel);
-        
+
             var categoryRenderFaceLabel = new Label("RenderFace");
             categoryContainer.Add(categoryRenderFaceLabel);
-        
-            /*var categoryFovAdjustLabel = new Label("FOV Adjustment");
-            categoryContainer.Add(categoryFovAdjustLabel);*/
         
         
             var totalWidthPercent = 100.0f;
@@ -99,7 +73,6 @@ namespace ASP.Scripts.Editor
                     var nameField = new ObjectField();
                     nameField.style.width = new StyleLength(new Length(perChildWidthPercent, LengthUnit.Percent));
                     nameField.value = mat;
-                    nameField.SetEnabled(true);
                     item.Add(nameField);
 
                     var isTransparent = mat.IsKeywordEnabled("_SURFACE_TYPE_TRANSPARENT");
@@ -129,17 +102,6 @@ namespace ASP.Scripts.Editor
                     var renderFaceLabel = new Label(renderFaceStr);
                     renderFaceLabel.style.width = new StyleLength(new Length(perChildWidthPercent, LengthUnit.Percent));
                     item.Add(renderFaceLabel);
-                
-                    /*var fovAdjustLabel = new Slider(0, 1);
-                    fovAdjustLabel.value = mat.GetFloat("_FOVShiftX");
-                    fovAdjustLabel.showInputField = true;
-                    fovAdjustLabel.name = "INDIVIDUAL_FOV_SLIDER";
-                    fovAdjustLabel.style.width = new StyleLength(new Length(perChildWidthPercent, LengthUnit.Percent));
-                    fovAdjustLabel.RegisterCallback<ChangeEvent<float>>(e =>
-                    {
-                        mat.SetFloat("_FOVShiftX", e.newValue);
-                    });
-                    item.Add(fovAdjustLabel);*/
                     foldout.Add(item);
                 }
             }
@@ -203,10 +165,6 @@ namespace ASP.Scripts.Editor
             fovAdjustAllSlider.RegisterCallback<ChangeEvent<float>>(e =>
             {
                 characterPanel.SetFOVAdjustValueToAllMaterials(e.newValue);
-                foreach (var children in foldout.Query<Slider>("INDIVIDUAL_FOV_SLIDER").ToList())
-                {
-                    children.value = (e.newValue);
-                }
                 if (!Application.isPlaying)
                 {
                     UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
@@ -234,7 +192,7 @@ namespace ASP.Scripts.Editor
                 characterCenterInfo.text = "Character World Position Center : "+ (characterPanel.transform.position + characterPanel.CenterPositionOffset);
             });
             foldout.Add(characterCenterOffsetField);
-            
+
             var DebugLabel = new Label("====Debug Options===");
             DebugLabel.style.marginTop = 25;
             DebugLabel.style.alignSelf = Align.Center;

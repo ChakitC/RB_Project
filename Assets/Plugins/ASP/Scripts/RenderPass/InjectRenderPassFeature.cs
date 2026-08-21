@@ -8,44 +8,46 @@ namespace ASP
 {
     public class InjectRenderPassFeature : ScriptableRendererFeature
     {
-        [FormerlySerializedAs("mask")] public LayerMask m_mask;
+        [FormerlySerializedAs("mask")]
+        [FormerlySerializedAs("m_mask")]
+        public LayerMask Mask;
 
         // [RenderingLayerMask]
-        private int m_renderingLayerMask;
+        private int _renderingLayerMask;
         public RenderPassEvent Event;
         public RenderQueueRange Range = RenderQueueRange.opaque;
         public string InjectPassLightModeTag = "MyCustomLightModeTag";
-        private InjectCustomPass m_injectPass;
+        private InjectCustomPass _injectPass;
 
         public override void Create()
         {
-            m_injectPass = new InjectCustomPass(name, InjectPassLightModeTag, Event, Range, (uint)m_renderingLayerMask,
-                m_mask, StencilState.defaultValue, 0);
+            _injectPass = new InjectCustomPass(name, InjectPassLightModeTag, Event, Range, (uint)_renderingLayerMask,
+                Mask, StencilState.defaultValue, 0);
         }
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
-            renderer.EnqueuePass(m_injectPass);
+            renderer.EnqueuePass(_injectPass);
         }
 
         public class InjectCustomPass : ScriptableRenderPass
         {
-            private FilteringSettings m_filteringSettings;
-            private RenderStateBlock m_renderStateBlock;
-            private ShaderTagId m_shaderTagId;
-            private string m_profilerTag;
+            private FilteringSettings _filteringSettings;
+            private RenderStateBlock _renderStateBlock;
+            private ShaderTagId _shaderTagId;
+            private string _profilerTag;
 
             public InjectCustomPass(string profilerTag, string shaderTagId, RenderPassEvent evt,
                 RenderQueueRange renderQueueRange, uint renderingLayerMask, LayerMask layerMask,
                 StencilState stencilState, int stencilReference)
             {
-                m_profilerTag = profilerTag;
+                _profilerTag = profilerTag;
                 renderPassEvent = evt;
-                m_filteringSettings = new FilteringSettings(renderQueueRange);
-                m_filteringSettings.layerMask = layerMask.value;
-                //m_filteringSettings.renderingLayerMask = renderingLayerMask;
-                m_renderStateBlock = new RenderStateBlock(RenderStateMask.Nothing);
-                m_shaderTagId = new ShaderTagId(shaderTagId);
+                _filteringSettings = new FilteringSettings(renderQueueRange);
+                _filteringSettings.layerMask = layerMask.value;
+                //_filteringSettings.renderingLayerMask = renderingLayerMask;
+                _renderStateBlock = new RenderStateBlock(RenderStateMask.Nothing);
+                _shaderTagId = new ShaderTagId(shaderTagId);
             }
 
 #if UNITY_6000_0_OR_NEWER
@@ -63,11 +65,11 @@ namespace ASP
                     var sortFlags = SortingCriteria.CommonOpaque;
                     var sortingSettings = new SortingSettings(renderingData.cameraData.camera);
                     sortingSettings.criteria = sortFlags;
-                    var drawSettings = new DrawingSettings(m_shaderTagId, sortingSettings);
+                    var drawSettings = new DrawingSettings(_shaderTagId, sortingSettings);
                     drawSettings.perObjectData = PerObjectData.None;
 
                     context.DrawRenderers(renderingData.cullResults, ref drawSettings,
-                        ref m_filteringSettings, ref m_renderStateBlock);
+                        ref _filteringSettings, ref _renderStateBlock);
                 }
 
                 context.ExecuteCommandBuffer(cmd);

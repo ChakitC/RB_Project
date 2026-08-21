@@ -50,6 +50,9 @@ namespace ASP
         {
             get { return transform.position + CenterPositionOffset; }
         }
+        
+        public float _CharacterCenterCubeSize = 1;
+        public bool UseSimpleAABBCutOffForCharacterShadow = false;
 
         public void ForGizmo(Vector3 pos, Vector3 direction, float arrowHeadLength = 0.25f,
             float arrowHeadAngle = 20.0f)
@@ -84,6 +87,7 @@ namespace ASP
             Gizmos.color = Color.cyan;
 
             ForGizmo(transform.position, transform.forward, 0.35f, 20f);
+            Gizmos.DrawWireCube(transform.position + CenterPositionOffset , _CharacterCenterCubeSize * Vector3.one);
         }
 
         public void CreateMaterialInstance()
@@ -186,12 +190,14 @@ namespace ASP
                     mat.SetVector("_FaceFrontDirection", HeadBoneTransform != null ? HeadBoneTransform.forward : transform.forward);
                     mat.SetVector("_FaceRightDirection", HeadBoneTransform != null ? HeadBoneTransform.right : transform.right);
                     mat.SetVector("_CharacterCenterWS", CharacterCenterWS);
+                    mat.SetFloat("_CharacterCenterCubeSize", _CharacterCenterCubeSize);
                     mat.SetFloat("_OverrideLightDirToggle", _overrideMode != OverrideMode.NO_OVERRIDE ? 1 : 0);
                     mat.SetFloat("_OverrideLightColorIntensityToggle", _mainLightColorOverride ? 1 : 0);
                     mat.SetColor("_FakeLightColor", _mainLightColorOverrideValue);
                     mat.SetFloat("_FakeLightIntensity", _mainLightStrengthOverrideValue);
                     mat.SetVector("_FakeLightEuler",
                         new Vector3(180 + _overrideLightAngle.x, _overrideLightAngle.y, _overrideLightAngle.z));
+                    mat.SetInt("_UseSimpleAABBCutOffForCharacterShadow", UseSimpleAABBCutOffForCharacterShadow ? 1 : 0);
                     subMaterialIndex++;
                 }
             }
@@ -312,16 +318,12 @@ namespace ASP
         {
             SetupMaterialID();
             //CreateMaterialInstance();
-            // TryCreateDummyShadowCaster();
+            //TryCreateDummyShadowCaster();
         }
 
         // Update is called once per frame
         void Update()
         {
-            
-#if UNITY_EDITOR
-          //  TryCreateDummyShadowCaster();
-#endif
             UpdateLightDirectionOverrideParam();
         }
     }

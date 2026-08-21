@@ -43,7 +43,7 @@ namespace LWGUI
 
 		public static bool IsPropertyHideInInspector(MaterialProperty prop)
 		{
-			return (prop.flags & MaterialProperty.PropFlags.HideInInspector) != 0;
+			return prop.IsHideInInspector();
 		}
 
 		public static string GetKeyWord(string keyWord, string propName)

@@ -30,9 +30,8 @@ namespace ASP.Scripts.Editor
         {
             layerValueString = "missing";
             renderingLayerMaskString = "unexpected value, check renderer feature";
-            if (m_rendererFeatures.Where(e => e.GetType() == typeof(ASPDepthOffsetShadowFeature)).Count() > 0)
+            if (HasFeature<ASPDepthOffsetShadowFeature>())
             {
-                var depthOffsetFeature = m_rendererFeatures.Find(e => e.GetType() == typeof(ASPDepthOffsetShadowFeature));
                 layerValueString = LayerMask.LayerToName(layer);
 
                 int maskCount = (int)Mathf.Log(renderingLayerMask, 2);
@@ -75,7 +74,6 @@ namespace ASP.Scripts.Editor
             rendererFeatureHintLabel.style.alignSelf = Align.Stretch;
             rendererFeatureHintLabel.style.alignItems = Align.Auto;
             rendererFeatureHintLabel.style.flexDirection = FlexDirection.Row;
-            rendererFeatureHintLabel.style.marginTop = 10;
             rendererFeatureHintLabel.style.marginTop = 5;
             var rendererFeatureTitleHintLabel = new Label("Feature");
             var rendererFeatureLayerHintLabel = new Label("Layer");
@@ -101,69 +99,47 @@ namespace ASP.Scripts.Editor
 
             // -- Depth Offset Feature Start --
 
-            var depthOffsetFeatureContainer = new VisualElement();
-            depthOffsetFeatureContainer.style.justifyContent = Justify.SpaceBetween;
-            depthOffsetFeatureContainer.style.alignSelf = Align.Stretch;
-            depthOffsetFeatureContainer.style.alignItems = Align.Auto;
-            depthOffsetFeatureContainer.style.flexDirection = FlexDirection.Row;
+            var depthOffsetFeatureContainer = CreateRowContainer();
         
             var layerValueString = "Missing";
             var renderingLayerMaskString = "Unexpected Value, Check renderer feature";
-            var hasDepthOffsetShadowFeature = 
-                m_rendererFeatures.Where(e => e.GetType() == typeof(ASPDepthOffsetShadowFeature)).Count() > 0;
-            if (hasDepthOffsetShadowFeature)
-            {
-                var feature =
-                    m_rendererFeatures.Find(e => e.GetType() == typeof(ASPDepthOffsetShadowFeature)) as
-                        ASPDepthOffsetShadowFeature;
-                GetRendererFeatureLayerAndMaskString(renderingLayerMaskNames, feature.m_layer,
-                    (int)feature.m_renderingLayerMask, out layerValueString, out renderingLayerMaskString);
-            }
 
-            if (hasDepthOffsetShadowFeature)
+            var depthOffsetFeature = GetFeature<ASPDepthOffsetShadowFeature>();
+            if (depthOffsetFeature != null)
             {
+                GetRendererFeatureLayerAndMaskString(renderingLayerMaskNames, depthOffsetFeature.Layer,
+                    (int)depthOffsetFeature.RenderingLayerMask, out layerValueString, out renderingLayerMaskString);
+
                 var depthOffsetExpectedLayerPrefix = new Label("Depth Offset Shadow");
                 depthOffsetExpectedLayerPrefix.style.width = new StyleLength(new Length(30, LengthUnit.Percent));
                 depthOffsetExpectedLayerPrefix.style.overflow = new StyleEnum<Overflow>(Overflow.Hidden);
                 var depthOffsetExpectedLayer = new Label(layerValueString);
                 depthOffsetExpectedLayer.style.width = new StyleLength(new Length(25, LengthUnit.Percent));
-
                 var depthOffsetExpectedRenderingLayerMask = new Label(renderingLayerMaskString);
                 depthOffsetExpectedRenderingLayerMask.style.width = new StyleLength(new Length(35, LengthUnit.Percent));
                 depthOffsetFeatureContainer.Add(depthOffsetExpectedLayerPrefix);
                 depthOffsetFeatureContainer.Add(depthOffsetExpectedLayer);
                 depthOffsetFeatureContainer.Add(depthOffsetExpectedRenderingLayerMask);
-                rendererLayerMaskFoldoutGroup.Add(depthOffsetFeatureContainer);   
+                rendererLayerMaskFoldoutGroup.Add(depthOffsetFeatureContainer);
             }
 
             // -- Depth Offset Feature End --
 
             // -- Mesh Outline Feature Start --
 
-            var meshOutlineFeatureContainer = new VisualElement();
-            meshOutlineFeatureContainer.style.justifyContent = Justify.SpaceBetween;
-            meshOutlineFeatureContainer.style.alignSelf = Align.Stretch;
-            meshOutlineFeatureContainer.style.alignItems = Align.Auto;
-            meshOutlineFeatureContainer.style.flexDirection = FlexDirection.Row;
-            var hasMeshOutlineFeature =
-                m_rendererFeatures.Where(e => e.GetType() == typeof(ASPMeshOutlineRendererFeature)).Count() > 0;
-            if (hasMeshOutlineFeature)
-            {
-                var feature =
-                    m_rendererFeatures.Find(e => e.GetType() == typeof(ASPMeshOutlineRendererFeature)) as
-                        ASPMeshOutlineRendererFeature;
-                GetRendererFeatureLayerAndMaskString(renderingLayerMaskNames, feature.m_layer,
-                    (int)feature.m_renderingLayerMask, out layerValueString, out renderingLayerMaskString);
-            }
+            var meshOutlineFeatureContainer = CreateRowContainer();
 
-            if (hasMeshOutlineFeature)
+            var meshOutlineFeature = GetFeature<ASPMeshOutlineRendererFeature>();
+            if (meshOutlineFeature != null)
             {
+                GetRendererFeatureLayerAndMaskString(renderingLayerMaskNames, meshOutlineFeature.Layer,
+                    (int)meshOutlineFeature.RenderingLayerMask, out layerValueString, out renderingLayerMaskString);
+
                 var meshOutlineFeatureName = new Label("Mesh Outline Feature");
                 meshOutlineFeatureName.style.width = new StyleLength(new Length(30, LengthUnit.Percent));
                 meshOutlineFeatureName.style.overflow = new StyleEnum<Overflow>(Overflow.Hidden);
                 var meshOutlineFeatureLayerLabel = new Label(layerValueString);
                 meshOutlineFeatureLayerLabel.style.width = new StyleLength(new Length(25, LengthUnit.Percent));
-
                 var meshOutlineFeatureRenderingLayerMaskLabel = new Label(renderingLayerMaskString);
                 meshOutlineFeatureRenderingLayerMaskLabel.style.width = new StyleLength(new Length(35, LengthUnit.Percent));
                 meshOutlineFeatureContainer.Add(meshOutlineFeatureName);
@@ -185,7 +161,6 @@ namespace ASP.Scripts.Editor
             var layerMaskRendererLabel = new Label("Renderer");
             var layerMaskValueLabel = new Label("Layer");
             var renderingLayerMaskLabel = new Label("Rendering Layer Mask");
-            layerMaskRendererLabel.text = "Renderer";
             layerMaskRendererLabel.style.width = new StyleLength(new Length(30, LengthUnit.Percent));
             layerMaskRendererLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
             layerMaskRendererLabel.style.whiteSpace = WhiteSpace.Normal;
@@ -203,10 +178,13 @@ namespace ASP.Scripts.Editor
             categoryHintLabel.Add(renderingLayerMaskLabel);
             rendererLayerMaskFoldoutGroup.Add(categoryHintLabel);
 
+            var layers = Enumerable.Range(0, 31)
+                .Select(index => LayerMask.LayerToName(index))
+                .Where(l => !string.IsNullOrEmpty(l))
+                .ToList();
+
             foreach (var renderer in characterPanel.GetComponentsInChildren<Renderer>())
             {
-                var layers = Enumerable.Range(0, 31).Select(index => LayerMask.LayerToName(index))
-                    .Where(l => !string.IsNullOrEmpty(l)).ToList();
                 if (!layers.Contains(LayerMask.LayerToName(renderer.gameObject.layer)))
                 {
                     continue;

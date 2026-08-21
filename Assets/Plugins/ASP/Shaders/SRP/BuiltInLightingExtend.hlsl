@@ -82,7 +82,7 @@ half4 UniversalFragmentPBRExtended(InputData inputData, SurfaceData surfaceData,
     uint pixelLightCount = GetAdditionalLightsCount();
 
     #if USE_FORWARD_PLUS
-    for (uint lightIndex = 0; lightIndex < min(URP_FP_DIRECTIONAL_LIGHTS_COUNT, MAX_VISIBLE_LIGHTS); lightIndex++)
+    [loop] for (uint lightIndex = 0; lightIndex < min(URP_FP_DIRECTIONAL_LIGHTS_COUNT, MAX_VISIBLE_LIGHTS); lightIndex++)
     {
         FORWARD_PLUS_SUBTRACTIVE_LIGHT_CHECK
 

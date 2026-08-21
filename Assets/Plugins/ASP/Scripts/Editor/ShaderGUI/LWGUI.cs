@@ -65,8 +65,10 @@ namespace LWGUI
 			{
 				currentLanguageIndex = perShaderData.preferLanguageIndex;
 			}
+			var locData = ASPLocalizationData.Load();
+			var languageOptions = locData != null ? locData.languages : new[] { "EN" };
 			EditorGUI.BeginChangeCheck();
-			currentLanguageIndex = EditorGUILayout.Popup(content, currentLanguageIndex, new string[] {"EN", "ZH"});
+			currentLanguageIndex = EditorGUILayout.Popup(content, currentLanguageIndex, languageOptions);
 			if (EditorGUI.EndChangeCheck())
 			{
 				perShaderData.preferLanguageIndex = currentLanguageIndex;
@@ -201,7 +203,7 @@ namespace LWGUI
 
 			Helper.BeginProperty(rect, prop, this);
 			Helper.DoPropertyContextMenus(rect, prop, this);
-			RevertableHelper.FixGUIWidthMismatch(prop.type, materialEditor);
+			RevertableHelper.FixGUIWidthMismatch(prop, materialEditor);
 			if (propStaticData.isAdvancedHeaderProperty)
 				propStaticData.isExpanding = EditorGUI.Foldout(rect, propStaticData.isExpanding, string.Empty);
 			RevertableHelper.DrawRevertableProperty(revertButtonRect, prop, this, propStaticData.isMain || propStaticData.isAdvancedHeaderProperty);

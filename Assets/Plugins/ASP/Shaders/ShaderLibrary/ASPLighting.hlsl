@@ -6,6 +6,7 @@
  * Proprietary and confidential
  * Written by Eric Hu (Shu Yuan, Hu) March, 2024
 */
+
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 #include "ASPLitInput.hlsl"
 #include "Quaternion.hlsl"
@@ -13,6 +14,7 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 #include "ASPShadows.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DBuffer.hlsl"
+
 void RemapFloat(float In, half2 InMinMax, half2 OutMinMax, out float Out)
 {
     Out = OutMinMax.x + (In - InMinMax.x) * (OutMinMax.y - OutMinMax.x) / (InMinMax.y - InMinMax.x);
@@ -118,6 +120,19 @@ half3 ToonEyeLighting(Light light, ASPInputData inputData, BRDFData brdfData)
     outColor.rgb *= light.color;
 
     return outColor;
+}
+
+half3 SampleASPBakedGI(float3 positionWS, half3 normalWS, half3 viewDirectionWS, float4 positionCS, half3 vertexGI,
+                       float4 vertexProbeOcclusion, out half4 shadowMask)
+{
+    shadowMask = unity_ProbesOcclusion;
+
+    #if defined(PROBE_VOLUMES_L1) || defined(PROBE_VOLUMES_L2)
+    return SAMPLE_GI(vertexGI, GetAbsolutePositionWS(positionWS), normalWS, viewDirectionWS, positionCS.xy,
+                     vertexProbeOcclusion, shadowMask);
+    #else
+    return SampleSHPixel(vertexGI, normalWS);
+    #endif
 }
 
 half3 ToonLighting(Light light, ASPInputData inputData, BRDFData brdfData)
@@ -348,6 +363,8 @@ void HandleASPShadowMap(inout ASPInputData inputData, inout Light mainLight)
 
 void HandleCustomLightDirection(inout ASPInputData inputData, inout Light mainLight)
 {
+    if (inputData.overrideLightDir < 0.5)
+        return;
     float fakeLightCtrl = step(0.5, inputData.overrideLightDir);
     float4 fakeLightPitch = rotate_angle_axis(DegToRad(inputData.fakeLightEuler.x), float3(1, 0, 0));
     float4 fakeLightYaw = rotate_angle_axis(DegToRad(inputData.fakeLightEuler.y), float3(0, 1, 0));
@@ -360,9 +377,47 @@ void HandleCustomLightDirection(inout ASPInputData inputData, inout Light mainLi
 
 void HandleCustomLightColor(inout ASPInputData inputData, inout Light mainLight)
 {
+    if (inputData.overrideLightColorIntensity < 0.5)
+        return;
     float fakeLightColorToggle = step(0.5, inputData.overrideLightColorIntensity);
     real3 fakeLightColor = lerp(mainLight.color, inputData.fakeLightColor, fakeLightColorToggle);
     mainLight.color =  fakeLightColor;
+}
+
+half3 AccumulateASPAdditionalLights(ASPInputData inputData, BRDFData brdfData, uint meshRenderingLayers)
+{
+    half3 additionalLightsColor = 0;
+
+    #if defined(_ADDITIONAL_LIGHTS)
+    uint pixelLightCount = GetAdditionalLightsCount();
+
+    #if USE_FORWARD_PLUS
+    [loop] for (uint lightIndex = 0; lightIndex < min(URP_FP_DIRECTIONAL_LIGHTS_COUNT, MAX_VISIBLE_LIGHTS); lightIndex++)
+    {
+        FORWARD_PLUS_SUBTRACTIVE_LIGHT_CHECK
+
+        Light light = GetAdditionalLight(lightIndex, inputData.positionWS, inputData.shadowMask);
+        #ifdef _LIGHT_LAYERS
+        if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
+        #endif
+        {
+            additionalLightsColor += ToonAdditionalLighting(light, inputData, brdfData);
+        }
+    }
+    #endif
+
+    LIGHT_LOOP_BEGIN(pixelLightCount)
+        Light light = GetAdditionalLight(lightIndex, inputData.positionWS, inputData.shadowMask);
+        #ifdef _LIGHT_LAYERS
+        if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
+        #endif
+        {
+            additionalLightsColor += ToonAdditionalLighting(light, inputData, brdfData);
+        }
+    LIGHT_LOOP_END
+    #endif
+
+    return additionalLightsColor;
 }
 
 uint GetMeshRenderingLayerCompatible()
@@ -374,20 +429,60 @@ uint GetMeshRenderingLayerCompatible()
     #endif
 }
 
+bool IsPointInsideCube(float3 pointWS, float3 cubeCenter, float cubeSize)
+{
+    float3 halfSize = float3(cubeSize * 0.5, cubeSize * 0.5, cubeSize * 0.5);
+    float3 minBound = cubeCenter - halfSize;
+    float3 maxBound = cubeCenter + halfSize;
+
+    return (pointWS.x >= minBound.x && pointWS.x <= maxBound.x) &&
+        (pointWS.y >= minBound.y && pointWS.y <= maxBound.y) &&
+        (pointWS.z >= minBound.z && pointWS.z <= maxBound.z);
+}
+
+bool IntersectRayWithAABB(float3 rayOrigin, float3 rayDir, float3 boxMin, float3 boxMax, out float3 hitPoint)
+{
+    float3 tMin = (boxMin - rayOrigin) / rayDir;
+    float3 tMax = (boxMax - rayOrigin) / rayDir;
+    float3 t1 = min(tMin, tMax);
+    float3 t2 = max(tMin, tMax);
+    float tNear = max(max(t1.x, t1.y), t1.z);
+    float tFar = min(min(t2.x, t2.y), t2.z);
+
+    if (tNear > tFar || tFar < 0)
+        return false;
+
+    hitPoint = rayOrigin + rayDir * tNear;
+    return true;
+}
+
+float SampleShadowFromAABB(float3 pixelWS, float3 lightDir)
+{
+    float halfExtents = _CharacterCenterCubeSize * 0.5f;
+    float3 aabbMin = _CharacterCenterWS - float3(halfExtents,halfExtents,halfExtents);
+    float3 aabbMax = _CharacterCenterWS + float3(halfExtents,halfExtents,halfExtents);
+
+    float3 hitPoint;
+    bool intersected = IntersectRayWithAABB(pixelWS, -lightDir, aabbMin, aabbMax, hitPoint);
+
+    if (!intersected)
+        return 1.0; // No intersection, treat as fully lit
+    float4 shadowCoord = TransformWorldToShadowCoord(hitPoint);
+    // Sample the shadow map
+    float shadow = real(SAMPLE_TEXTURE2D_SHADOW(_MainLightShadowmapTexture, sampler_LinearClampCompare, shadowCoord.xyz));
+    return shadow;
+}
+
 real4 UniversalFragmentToonLit(ASPInputData inputData, bool overrideGIColor)
 {
     Light mainLight = GetMainLight(inputData.shadowCoord, inputData.positionWS, inputData.shadowMask);
+    if (_UseSimpleAABBCutOffForCharacterShadow > 0)
+    {
+        // simple self shadow cut out trick 
+        mainLight.shadowAttenuation = SampleShadowFromAABB(inputData.positionWS, mainLight.direction);
+        // simple self shadow cut out trick end   
+    }
 
-    // TODO handle no main light(directional light count = 0)
-    /*
-     *
-     *if(dot(mainLight.color, mainLight.color) <= 0 && GetAdditionalLightsCount() > 0)
-      {
-         mainLight =  GetAdditionalLight(0, inputData.positionWS, inputData.shadowMask);
-         return mainLight.shadowAttenuation;
-      }
-    */
-    //TODO use shader feature to prevent unnecessary calculate
     HandleCustomLightDirection(inputData, mainLight);
     HandleCustomLightColor(inputData, mainLight);
     
@@ -430,35 +525,7 @@ real4 UniversalFragmentToonLit(ASPInputData inputData, bool overrideGIColor)
     {
         finalColor += ToonLighting(mainLight, inputData, brdfData);
     }
-    #if defined(_ADDITIONAL_LIGHTS)
-    uint pixelLightCount = GetAdditionalLightsCount();
-
-    #if USE_FORWARD_PLUS
-    for (uint lightIndex = 0; lightIndex < min(URP_FP_DIRECTIONAL_LIGHTS_COUNT, MAX_VISIBLE_LIGHTS); lightIndex++)
-    {
-        FORWARD_PLUS_SUBTRACTIVE_LIGHT_CHECK
-        //handle extra directional light
-        Light light = GetAdditionalLight(lightIndex, inputData.positionWS, inputData.shadowMask);
-        #ifdef _LIGHT_LAYERS
-        if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
-        #endif
-        {
-            finalColor += ToonAdditionalLighting(light, inputData, brdfData);
-        }
-    }
-    #endif
-
-    LIGHT_LOOP_BEGIN(pixelLightCount)
-        //additional light
-        Light light = GetAdditionalLight(lightIndex, inputData.positionWS, inputData.shadowMask);
-        #ifdef _LIGHT_LAYERS
-        if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
-        #endif
-        {
-            finalColor += ToonAdditionalLighting(light, inputData, brdfData);
-        }
-    LIGHT_LOOP_END
-    #endif
+    finalColor += AccumulateASPAdditionalLights(inputData, brdfData, meshRenderingLayers);
 
     #ifdef _RIMLIGHTING_ON
     real rimClip = SAMPLE_TEXTURE2D_X(_RimLightMaskMap, sampler_RimLightMaskMap, inputData.rimUV * float2(20, 1)).r;
@@ -544,36 +611,7 @@ real4 UniversalFragmentToonEyeLit(ASPInputData inputData, bool overrideGIColor)
     {
         finalColor += ToonEyeLighting(mainLight, inputData, brdfData);
     }
-
-    #if defined(_ADDITIONAL_LIGHTS)
-    uint pixelLightCount = GetAdditionalLightsCount();
-
-    #if USE_FORWARD_PLUS
-    for (uint lightIndex = 0; lightIndex < min(URP_FP_DIRECTIONAL_LIGHTS_COUNT, MAX_VISIBLE_LIGHTS); lightIndex++)
-    {
-        FORWARD_PLUS_SUBTRACTIVE_LIGHT_CHECK
-        //handle extra directional light
-        Light light = GetAdditionalLight(lightIndex, inputData.positionWS, inputData.shadowMask);
-        #ifdef _LIGHT_LAYERS
-        if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
-        #endif
-        {
-            finalColor += ToonAdditionalLighting(light, inputData, brdfData);
-        }
-    }
-    #endif
-
-    LIGHT_LOOP_BEGIN(pixelLightCount)
-        //additional light
-        Light light = GetAdditionalLight(lightIndex, inputData.positionWS, inputData.shadowMask);
-        #ifdef _LIGHT_LAYERS
-        if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
-        #endif
-        {
-            finalColor += ToonAdditionalLighting(light, inputData, brdfData);
-        }
-    LIGHT_LOOP_END
-    #endif
+    finalColor += AccumulateASPAdditionalLights(inputData, brdfData, meshRenderingLayers);
 
     finalColor += inputData.emission;
 

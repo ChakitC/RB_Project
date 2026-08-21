@@ -158,6 +158,8 @@ Shader "ASP/Character"
         [SubToggle(Advance, _OverrideZTest)] _OverrideZTest("Override ZTest", Float) = 0
         [ActiveIf(_OverrideZTest, Equal, 1)][SubEnum(Advance, UnityEngine.Rendering.CompareFunction)] _ZTest("ZTest", Float) = 4
         
+        [HideInInspector] _CharacterCenterCubeSize("_CharacterCenterCubeSize", Float) = 1.0
+        [HideInInspector] _UseSimpleAABBCutOffForCharacterShadow("_UseSimpleAABBCutOffForCharacterShadow", float) = 1.0
         [HideInInspector]_MaterialID("_MaterialID", float) = 0
         [HideInInspector]_FaceFrontDirection("_FaceFrontDirection", Vector) = (1,0,0)
         [HideInInspector]_FaceRightDirection("_FaceRightDirection", Vector) = (0,0,1)
@@ -251,13 +253,16 @@ Shader "ASP/Character"
             #endif
             
             #pragma multi_compile _ _ADDITIONAL_LIGHTS
+            #pragma multi_compile _ EVALUATE_SH_MIXED EVALUATE_SH_VERTEX
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
             #pragma multi_compile_fragment _ _REFLECTION_PROBE_BLENDING
-            //   we don't really need box projection for anime character in real world use case...
-            //#pragma multi_compile_fragment _ _REFLECTION_PROBE_BOX_PROJECTION
+            // we don't really need box projection for anime character in real world use case...
+            // #pragma multi_compile_fragment _ _REFLECTION_PROBE_BOX_PROJECTION
+
+            // no light cookies & decal buffer on characters
+            // #pragma multi_compile_fragment _ _LIGHT_COOKIES
+            // #pragma multi_compile_fragment _ _DBUFFER_MRT1 _DBUFFER_MRT2 _DBUFFER_MRT3
             #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
-            //#pragma multi_compile_fragment _ _LIGHT_COOKIES
-            //#pragma multi_compile_fragment _ _DBUFFER_MRT1 _DBUFFER_MRT2 _DBUFFER_MRT3
             #pragma multi_compile _ _LIGHT_LAYERS
             #pragma multi_compile _ _FORWARD_PLUS
 
@@ -269,6 +274,9 @@ Shader "ASP/Character"
             #include_with_pragmas "Packages/com.unity.render-pipelines.core/ShaderLibrary/FoveatedRenderingKeywords.hlsl"
             #else
             #include "SRP/FoveatedRenderingKeywords.hlsl"
+            #endif
+            #if UNITY_VERSION >= 60000001
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ProbeVolumeVariants.hlsl"
             #endif
 
             // -------------------------------------
@@ -582,7 +590,7 @@ Shader "ASP/Character"
             ENDHLSL
         }
 
-        /*Pass
+        Pass
         {
             Name "MotionVectors"
             Tags { "LightMode" = "MotionVectors" }
@@ -593,10 +601,35 @@ Shader "ASP/Character"
             #pragma multi_compile _ LOD_FADE_CROSSFADE
             #pragma shader_feature_local_vertex _ADD_PRECOMPUTED_VELOCITY
 
-            #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ObjectMotionVectors.hlsl"
+            #include_with_pragmas "ShaderLibrary/ASPMotionVectors.hlsl"
             ENDHLSL
-        }*/
+        }
+
+        Pass
+        {
+            Name "XRMotionVectors"
+            Tags { "LightMode" = "XRMotionVectors" }
+            ColorMask RGBA
+
+            Stencil
+            {
+                WriteMask 1
+                Ref 1
+                Comp Always
+                Pass Replace
+            }
+
+            HLSLPROGRAM
+            #pragma shader_feature_local _ALPHATEST_ON
+            #pragma multi_compile _ LOD_FADE_CROSSFADE
+            #pragma shader_feature_local_vertex _ADD_PRECOMPUTED_VELOCITY
+            #if UNITY_VERSION >= 60000001
+                #define APPLICATION_SPACE_WARP_MOTION 1
+            #endif
+
+            #include_with_pragmas "ShaderLibrary/ASPMotionVectors.hlsl"
+            ENDHLSL
+        }
     }
 
     FallBack "Hidden/Universal Render Pipeline/FallbackError"

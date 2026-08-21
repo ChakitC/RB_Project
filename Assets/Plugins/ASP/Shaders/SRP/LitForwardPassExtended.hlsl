@@ -666,7 +666,11 @@
             #ifdef DYNAMICLIGHTMAP_ON
                 output.dynamicLightmapUV = input.dynamicLightmapUV.xy * unity_DynamicLightmapST.xy + unity_DynamicLightmapST.zw;
             #endif
+            #if UNITY_VERSION >= 60000001
                 OUTPUT_SH4(vertexInput.positionWS, output.normalWS.xyz, GetWorldSpaceNormalizeViewDir(vertexInput.positionWS), output.vertexSH, output.probeOcclusion);
+            #else
+                OUTPUT_SH(output.normalWS.xyz, output.vertexSH);
+            #endif
             #ifdef _ADDITIONAL_LIGHTS_VERTEX
                 output.fogFactorAndVertexLight = half4(fogFactor, vertexLight);
             #else

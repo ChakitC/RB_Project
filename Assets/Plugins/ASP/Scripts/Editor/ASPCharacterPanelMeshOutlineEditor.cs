@@ -34,7 +34,7 @@ namespace ASP.Scripts.Editor
 
         partial void DrawMeshOutlineParam(VisualElement root, ASPCharacterPanel characterPanel, SerializedObject serializedObject)
         {
-            var hasFeature = m_rendererFeatures.Where(e => e.GetType() == typeof(ASPMeshOutlineRendererFeature)).Count() > 0;
+            var hasFeature = HasFeature<ASPMeshOutlineRendererFeature>();
             if (!hasFeature)
             {
                 root.Add(new IMGUIContainer(() =>
@@ -49,20 +49,10 @@ namespace ASP.Scripts.Editor
             var foldout = new Foldout();
  
             foldout.text = "Expand MeshOutline Params";
-            foldout.RegisterCallback<ChangeEvent<bool>>((e) =>
+            foldout.RegisterCallback<ChangeEvent<bool>>(e =>
             {
-                if (e.newValue == true)
-                {
-                    foldout.text = "Collapse MeshOutline Params";
-                }
-                else
-                {
-                    foldout.text = "Expand MeshOutline Params";
-                }
+                foldout.text = e.newValue ? "Collapse MeshOutline Params" : "Expand MeshOutline Params";
             });
-            //  foldout.style.justifyContent = Justify.FlexStart;
-            //   foldout.style.alignItems = Align.FlexStart;
-            //   foldout.style.flexDirection = FlexDirection.Row;
             root.Add(foldout);
 
             var currentOutlineExtrudeMethodLabel =
@@ -130,11 +120,10 @@ namespace ASP.Scripts.Editor
             fadeOutStartEndPicker.RegisterCallback<ChangeEvent<Vector2>>(e =>
             {
                 fadeOutStartEndProperty.vector2Value = e.newValue;
-                new SerializedObject(characterPanel).ApplyModifiedProperties();
                 serializedObject.ApplyModifiedProperties();
                 UpdateMaterialOutlineProperty(characterPanel);
             });
-            
+
             var scaleWidthAsScreenSpaceOutline = serializedObject.FindProperty("ScaleWidthAsScreenSpaceOutline");
             var scaleWidthAsScreenSpaceOutlineToggle = new Toggle("Make mesh-based outline scale behave as screen-space outline");
             scaleWidthAsScreenSpaceOutlineToggle.value = scaleWidthAsScreenSpaceOutline.floatValue > 0;
@@ -142,7 +131,6 @@ namespace ASP.Scripts.Editor
             scaleWidthAsScreenSpaceOutlineToggle.RegisterCallback<ChangeEvent<bool>>(e =>
             {
                 scaleWidthAsScreenSpaceOutline.floatValue = e.newValue ? 1.0f : 0.0f;
-                new SerializedObject(characterPanel).ApplyModifiedProperties();
                 serializedObject.ApplyModifiedProperties();
                 UpdateMaterialOutlineProperty(characterPanel);
             });

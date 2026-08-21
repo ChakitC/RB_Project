@@ -42,6 +42,7 @@ struct Varyings
     float3 viewDirectionWS : TEXCOORD8;
     float4 shadowCoord     : TEXCOORD9;
     float3 vertexColor     : TEXCOORD10;
+    float4 probeOcclusion  : TEXCOORD11;
     
     //TODO handle VR
     UNITY_VERTEX_OUTPUT_STEREO
@@ -78,7 +79,14 @@ Varyings ASPEyeLitVert(Attributes IN)
         
     OUT.vertexColor = IN.color;
     OUT.positionNDC = vertexInput.positionNDC;
-    OUTPUT_SH(OUT.normalWS.xyz, OUT.vertexSH);
+    OUT.probeOcclusion = 1.0;
+    half3 giNormalWS = lerp(OUT.normalWS.xyz, float3(0,1,0), saturate(_BakeGISource));
+    #if UNITY_VERSION >= 60000001
+        OUTPUT_SH4(GetAbsolutePositionWS(vertexInput.positionWS), giNormalWS, viewDirectionWS, OUT.vertexSH,
+                   OUT.probeOcclusion);
+    #else
+        OUTPUT_SH(giNormalWS, OUT.vertexSH);
+    #endif
 
     return OUT;
 }
@@ -111,12 +119,14 @@ void InitializeEyeInputData(Varyings IN, out ASPInputData inputData, float isFac
     //ASP shadow map does not use screen space shader
     inputData.aspShadowCoord = TransformASPWorldToShadowCoord(IN.positionWS);
     
-    //select GI color based on _BakeGISource, 0 == sh9, 1 == flatten sh9, 2 = custom GI color
-    half3 normalSH9 = lerp(inputData.normalWS.xyz, float3(0,1,0), saturate(_BakeGISource));
-    half3 sh9Color = SampleSHPixel(IN.vertexSH, normalSH9);
-    half3 giColor = step(2, _BakeGISource) * _OverrideGIColor + (1 - step(2, _BakeGISource)) * sh9Color;
+    // Select GI color based on _BakeGISource, 0 == sample GI, 1 == flatten sampled GI, 2 = custom GI color.
+    half3 giNormalWS = lerp(inputData.normalWS.xyz, float3(0,1,0), saturate(_BakeGISource));
+    half4 shadowMask;
+    half3 sampledGI = SampleASPBakedGI(inputData.positionWS, giNormalWS, inputData.viewDirectionWS, IN.positionHCS,
+                                       IN.vertexSH, IN.probeOcclusion, shadowMask);
+    half3 giColor = step(2, _BakeGISource) * _OverrideGIColor + (1 - step(2, _BakeGISource)) * sampledGI;
     inputData.bakedGI = giColor;
-    inputData.normalizedScreenSpaceUV =  GetNormalizedScreenSpaceUV(IN.positionHCS);
+    inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(IN.positionHCS);
     inputData.occlusion = 1.0;
   
     // PBR
@@ -133,11 +143,6 @@ void InitializeEyeInputData(Varyings IN, out ASPInputData inputData, float isFac
     #endif
     // Emission
     
-    #if defined(SHADOWS_SHADOWMASK) && defined(LIGHTMAP_ON)
-    half4 shadowMask = half4(1, 1, 1, 1);
-    #elif !defined(LIGHTMAP_ON)
-    half4 shadowMask = unity_ProbesOcclusion;
-    #endif
     inputData.shadowMask = shadowMask;
 
     inputData.frontDirectionWS = half3(0,0,1);

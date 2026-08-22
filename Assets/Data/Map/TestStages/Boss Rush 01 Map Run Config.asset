@@ -12,7 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 351903b7dde783b4c9fc7af84c44e233, type: 3}
   m_Name: Boss Rush 01 Map Run Config
   m_EditorClassIdentifier: 
+  generationProfile: {fileID: 11400000, guid: 9b6c3cd553a542e448b2dc8b1e60a31f, type: 2}
+  contentPool: {fileID: 11400000, guid: d4d76e7397b91f74f901b01c856b3a89, type: 2}
+  progressionProfile: {fileID: 11400000, guid: 8cc219cb51ac3b940aaa04cbe1c0bc77, type: 2}
   stageId: boss_rush_01
+  legacyStageIds: []
   stageDisplayName: BOSS RUSH 01
   levelTable: {fileID: 11400000, guid: 82901514653acdd459e15f27bba38071, type: 2}
   startLevel: 1

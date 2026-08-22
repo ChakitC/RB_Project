@@ -203,6 +203,12 @@ public class SaveManager : MonoBehaviour
         return SaveSystem.LoadStageProgress(currentSlot, stageId);
     }
 
+    /// <summary>Stage progress, adopting anything saved under an earlier id for the same stage.</summary>
+    public int LoadStageProgress(string stageId, IReadOnlyList<string> legacyStageIds)
+    {
+        return SaveSystem.LoadStageProgress(currentSlot, stageId, legacyStageIds);
+    }
+
     public void SaveStageProgress(string stageId, int progressCount)
     {
         SaveSystem.SaveStageProgress(currentSlot, stageId, progressCount);

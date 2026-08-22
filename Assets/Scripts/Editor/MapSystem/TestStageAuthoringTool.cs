@@ -1,11 +1,13 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using System.IO;
 using TMPro;
 using UnityEditor;
 using UnityEditor.Events;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -14,10 +16,17 @@ public static class TestStageAuthoringTool
     const string BaseConfigPath = "Assets/Data/Map/Test_Map Run Config SO.asset";
     const string LevelTablePath = "Assets/Scripts/Player/LevelSystem/Level Character Table SO.asset";
     const string OutputFolder = "Assets/Data/Map/TestStages";
+    const string ProfileFolder = "Assets/Data/Map/Profiles";
     const string StatsFolder = "Assets/Data/EnemyStats/TestStage";
     const string PortalPath = "Assets/Prefab/MAP/TestStage/Stage Exit Cyan.prefab";
     const string HealRoomDefinitionPath = "Assets/Data/Map/RoomDefinition.Heal.asset";
     const string BasementPath = "Assets/Scenes/Basement/Basement.unity";
+    const string UndoName = "Apply Test Stage Content";
+    const string TestStagePaginationName = "TestStagePagination";
+    const string ExistingMapsPageName = "ExistingMapsPage";
+    const string TestStagePageName = "TestStagePage";
+    const string PreviousPageButtonName = "PreviousPage";
+    const string NextPageButtonName = "NextPage";
 
     static readonly string[] CombatRoomPaths =
     {
@@ -28,10 +37,19 @@ public static class TestStageAuthoringTool
         "Assets/Prefab/MAP/Combat/Combat.Tjunction.Left.Right.Up.prefab",
     };
 
+    [MenuItem("Tools/RB Project/Map/Validate Basement Board (Dry Run)")]
+    public static void ValidateBasementBoard()
+    {
+        var report = new List<string>();
+        ConfigureBasement(true, report, StageConfigPath(1), StageConfigPath(2), StageConfigPath(3));
+        Debug.Log($"[TestStageAuthoringTool] Basement board dry run:\n{string.Join("\n", report)}");
+    }
+
     [MenuItem("Tools/RB Project/Map/Apply Test Stage Content")]
     public static void ApplyAll()
     {
         EnsureFolder(OutputFolder);
+        EnsureFolder(ProfileFolder);
         EnsureFolder(StatsFolder);
         EnsureFolder("Assets/Prefab/MAP/TestStage");
 
@@ -84,21 +102,26 @@ public static class TestStageAuthoringTool
         EncounterDefinitionSO stage3Boss = CreateEncounter("Test Stage 03 Boss", true,
             new[] { new[] { boss } }, new[] { 1 });
 
-        MapRunConfigSO stage1 = CreateStageConfig(1, "test_stage_01", "TEST STAGE 01", 1, 11, 2,
+        CreateStageConfig(1, "test_stage_01", "TEST STAGE 01", 1, 11, 2,
             new[] { 5, 10 }, portal, healRoom, stage1Combat, stage1Boss);
-        MapRunConfigSO stage2 = CreateStageConfig(2, "test_stage_02", "TEST STAGE 02", 11, 20, 3,
+        CreateStageConfig(2, "test_stage_02", "TEST STAGE 02", 11, 20, 3,
             new[] { 13, 17, 20 }, portal, healRoom, stage2Combat, stage2Boss);
-        MapRunConfigSO stage3 = CreateStageConfig(3, "test_stage_03", "TEST STAGE 03", 20, 30, 5,
+        CreateStageConfig(3, "test_stage_03", "TEST STAGE 03", 20, 30, 5,
             new[] { 22, 24, 26, 28, 30 }, portal, healRoom, stage3Combat, stage3Boss);
 
         for (int i = 0; i < CombatRoomPaths.Length; i++)
             ConfigureCombatRoom(CombatRoomPaths[i]);
         ConfigureBossRoom("Assets/Prefab/MAP/Boss/BossTest.DeadEnd.Up.prefab");
-        ConfigureBasement(stage1, stage2, stage3);
+        // Saved before the Basement scene opens: opening a scene in Single mode unloads
+        // unreferenced assets, and unsaved edits on the freshly created configs would be lost.
+        AssetDatabase.SaveAssets();
+
+        var report = new List<string>();
+        ConfigureBasement(false, report, StageConfigPath(1), StageConfigPath(2), StageConfigPath(3));
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("[TestStageAuthoringTool] Test Stage content authoring completed.");
+        Debug.Log($"[TestStageAuthoringTool] Test Stage content authoring completed. Basement board:\n{string.Join("\n", report)}");
     }
 
     static CharacterStats CreateEnemyStats(
@@ -256,7 +279,7 @@ public static class TestStageAuthoringTool
         int runCount, int[] enemyLevels, GameObject portal, RoomDefinitionSO healRoom,
         EncounterDefinitionSO combat, EncounterDefinitionSO boss)
     {
-        string path = $"{OutputFolder}/Test Stage {number:00} Map Run Config.asset";
+        string path = StageConfigPath(number);
         MapRunConfigSO config = AssetDatabase.LoadAssetAtPath<MapRunConfigSO>(path);
         if (config == null)
         {
@@ -265,10 +288,131 @@ public static class TestStageAuthoringTool
             config = AssetDatabase.LoadAssetAtPath<MapRunConfigSO>(path);
         }
 
+        // The config is a copy of the base one, so it starts out pointing at the base stage's
+        // profiles. Each stage gets its own, or all three would overwrite each other's tuning.
+        MapRunConfigSO baseConfig = AssetDatabase.LoadAssetAtPath<MapRunConfigSO>(BaseConfigPath);
+        if (baseConfig == null)
+            throw new InvalidOperationException($"Base run config is missing at '{BaseConfigPath}'.");
+
+        ClearInheritedBaseProfiles(config, baseConfig);
+
+        // Reuse whatever the config already points at. Creating a second profile beside an
+        // existing one would repoint the config and orphan the first.
+        MapGenerationProfileSO generation = CreateStageGenerationProfile(number, config);
+        MapContentPoolSO pool = CreateStageContentPool(number, displayName, config, baseConfig, healRoom, combat, boss);
+        StageProgressionProfileSO progression = CreateStageProgressionProfile(
+            number, config, startLevel, targetLevel, runCount, enemyLevels, portal);
+
         SerializedObject serialized = new SerializedObject(config);
         serialized.FindProperty("stageId").stringValue = id;
         serialized.FindProperty("stageDisplayName").stringValue = displayName;
-        serialized.FindProperty("levelTable").objectReferenceValue = AssetDatabase.LoadAssetAtPath<LevelTableSO>(LevelTablePath);
+        serialized.FindProperty("generationProfile").objectReferenceValue = generation;
+        serialized.FindProperty("contentPool").objectReferenceValue = pool;
+        serialized.FindProperty("progressionProfile").objectReferenceValue = progression;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(config);
+        return config;
+    }
+
+    /// <summary>
+    /// A config copied from the base asset starts out pointing at the base stage's profiles. Those
+    /// belong to the base stage, so the reference is dropped and this stage authors its own.
+    /// </summary>
+    static void ClearInheritedBaseProfiles(MapRunConfigSO config, MapRunConfigSO baseConfig)
+    {
+        SerializedObject serialized = new SerializedObject(config);
+        bool changed = false;
+        changed |= ClearIfSameAsBase(serialized, "generationProfile", baseConfig.GenerationProfile);
+        changed |= ClearIfSameAsBase(serialized, "contentPool", baseConfig.ContentPool);
+        changed |= ClearIfSameAsBase(serialized, "progressionProfile", baseConfig.ProgressionProfile);
+        if (changed)
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    static bool ClearIfSameAsBase(SerializedObject serialized, string propertyPath, UnityEngine.Object baseValue)
+    {
+        SerializedProperty property = serialized.FindProperty(propertyPath);
+        if (baseValue == null || property.objectReferenceValue != baseValue)
+            return false;
+
+        property.objectReferenceValue = null;
+        return true;
+    }
+
+    /// <summary>
+    /// The Test Stage map shape: a six-node critical path that always offers a Heal room before the
+    /// Boss, and rolls nothing but Combat in between.
+    /// </summary>
+    static MapGenerationProfileSO CreateStageGenerationProfile(int number, MapRunConfigSO config)
+    {
+        MapGenerationProfileSO profile = config.GenerationProfile ?? CreateOrLoadAsset<MapGenerationProfileSO>(
+            $"{ProfileFolder}/Test Stage {number:00} Generation Profile.asset");
+
+        SerializedObject serialized = new SerializedObject(profile);
+        serialized.FindProperty("randomizeSeed").boolValue = true;
+        serialized.FindProperty("seed").intValue = 0;
+        serialized.FindProperty("criticalPathNodeCount").intValue = 6;
+        serialized.FindProperty("minBranchCount").intValue = 1;
+        serialized.FindProperty("maxBranchCount").intValue = 3;
+        serialized.FindProperty("maxOutgoingPerNode").intValue = 3;
+        serialized.FindProperty("forceBlueBeforeBoss").boolValue = true;
+        serialized.FindProperty("pitySystem").FindPropertyRelative("forcedBlueType").enumValueIndex = (int)MapNodeType.Heal;
+        SetSingleWeight(serialized.FindProperty("mainPathWeights"), MapNodeType.Combat);
+        SetSingleWeight(serialized.FindProperty("blueWeights"), MapNodeType.Heal);
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(profile);
+        return profile;
+    }
+
+    static MapContentPoolSO CreateStageContentPool(
+        int number,
+        string displayName,
+        MapRunConfigSO config,
+        MapRunConfigSO baseConfig,
+        RoomDefinitionSO healRoom,
+        EncounterDefinitionSO combat,
+        EncounterDefinitionSO boss)
+    {
+        MapContentPoolSO pool = config.ContentPool ?? CreateOrLoadAsset<MapContentPoolSO>(
+            $"{ProfileFolder}/Test Stage {number:00} Content Pool.asset");
+
+        SerializedObject serialized = new SerializedObject(pool);
+        serialized.FindProperty("displayName").stringValue = displayName;
+
+        // Rooms come from the base stage's pool so every Test Stage shares the same room set, plus
+        // the Heal room the pre-Boss blue node needs.
+        SerializedProperty rooms = serialized.FindProperty("roomDefinitions");
+        RoomDefinitionSO[] baseRooms = baseConfig.RoomDefinitions;
+        rooms.arraySize = baseRooms != null ? baseRooms.Length : 0;
+        for (int i = 0; i < rooms.arraySize; i++)
+            rooms.GetArrayElementAtIndex(i).objectReferenceValue = baseRooms[i];
+        EnsureArrayContainsObjectReference(rooms, healRoom);
+
+        SerializedProperty encounters = serialized.FindProperty("encounterDefinitions");
+        encounters.arraySize = 2;
+        encounters.GetArrayElementAtIndex(0).objectReferenceValue = combat;
+        encounters.GetArrayElementAtIndex(1).objectReferenceValue = boss;
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(pool);
+        return pool;
+    }
+
+    static StageProgressionProfileSO CreateStageProgressionProfile(
+        int number,
+        MapRunConfigSO config,
+        int startLevel,
+        int targetLevel,
+        int runCount,
+        int[] enemyLevels,
+        GameObject portal)
+    {
+        StageProgressionProfileSO profile = config.ProgressionProfile ?? CreateOrLoadAsset<StageProgressionProfileSO>(
+            $"{ProfileFolder}/Test Stage {number:00} Progression Profile.asset");
+
+        SerializedObject serialized = new SerializedObject(profile);
+        serialized.FindProperty("levelTable").objectReferenceValue =
+            AssetDatabase.LoadAssetAtPath<LevelTableSO>(LevelTablePath);
         serialized.FindProperty("startLevel").intValue = startLevel;
         serialized.FindProperty("targetLevel").intValue = targetLevel;
         serialized.FindProperty("targetRunCount").intValue = runCount;
@@ -279,27 +423,33 @@ public static class TestStageAuthoringTool
         serialized.FindProperty("regularEnemyXpShare").floatValue = 0.6f;
         serialized.FindProperty("bossXpShare").floatValue = 0.2f;
         serialized.FindProperty("stageExitPrefab").objectReferenceValue = portal;
-        serialized.FindProperty("randomizeSeed").boolValue = true;
-        serialized.FindProperty("criticalPathNodeCount").intValue = 6;
-        serialized.FindProperty("forceBlueBeforeBoss").boolValue = true;
-        SerializedProperty pitySystem = serialized.FindProperty("pitySystem");
-        pitySystem.FindPropertyRelative("forcedBlueType").enumValueIndex = (int)MapNodeType.Heal;
-        SerializedProperty mainWeights = serialized.FindProperty("mainPathWeights");
-        mainWeights.arraySize = 1;
-        mainWeights.GetArrayElementAtIndex(0).FindPropertyRelative("type").enumValueIndex = (int)MapNodeType.Combat;
-        mainWeights.GetArrayElementAtIndex(0).FindPropertyRelative("weight").floatValue = 1f;
-        SerializedProperty blueWeights = serialized.FindProperty("blueWeights");
-        blueWeights.arraySize = 1;
-        blueWeights.GetArrayElementAtIndex(0).FindPropertyRelative("type").enumValueIndex = (int)MapNodeType.Heal;
-        blueWeights.GetArrayElementAtIndex(0).FindPropertyRelative("weight").floatValue = 1f;
-        EnsureArrayContainsObjectReference(serialized.FindProperty("roomDefinitions"), healRoom);
-        SerializedProperty encounters = serialized.FindProperty("encounterDefinitions");
-        encounters.arraySize = 2;
-        encounters.GetArrayElementAtIndex(0).objectReferenceValue = combat;
-        encounters.GetArrayElementAtIndex(1).objectReferenceValue = boss;
         serialized.ApplyModifiedPropertiesWithoutUndo();
-        EditorUtility.SetDirty(config);
-        return config;
+        EditorUtility.SetDirty(profile);
+        return profile;
+    }
+
+    static void SetSingleWeight(SerializedProperty weights, MapNodeType type)
+    {
+        weights.arraySize = 1;
+        SerializedProperty entry = weights.GetArrayElementAtIndex(0);
+        entry.FindPropertyRelative("type").enumValueIndex = (int)type;
+        entry.FindPropertyRelative("weight").floatValue = 1f;
+    }
+
+    static T CreateOrLoadAsset<T>(string assetPath) where T : ScriptableObject
+    {
+        var existing = AssetDatabase.LoadAssetAtPath<T>(assetPath);
+        if (existing != null)
+            return existing;
+
+        var created = ScriptableObject.CreateInstance<T>();
+        AssetDatabase.CreateAsset(created, assetPath);
+        return created;
+    }
+
+    static string StageConfigPath(int number)
+    {
+        return $"{OutputFolder}/Test Stage {number:00} Map Run Config.asset";
     }
 
     static void EnsureArrayContainsObjectReference(SerializedProperty array, UnityEngine.Object value)
@@ -422,7 +572,7 @@ public static class TestStageAuthoringTool
         }
     }
 
-    static void ConfigureBasement(params MapRunConfigSO[] stages)
+    static void ConfigureBasement(bool dryRun, List<string> report, params string[] stageConfigPaths)
     {
         SceneSetup[] previousSetup = EditorSceneManager.GetSceneManagerSetup();
         Scene scene = EditorSceneManager.OpenScene(BasementPath, OpenSceneMode.Single);
@@ -432,54 +582,77 @@ public static class TestStageAuthoringTool
             if (mapUi == null)
                 throw new InvalidOperationException("Basement scene has no GameObject named 'MapUI'.");
 
-            Transform oldRoot = mapUi.transform.Find("TestStagePagination");
-            if (oldRoot != null)
+            // Stage configs are resolved after the scene is open. Opening a scene in Single mode
+            // unloads unreferenced assets, so a reference resolved earlier becomes a destroyed
+            // object and assigning it silently writes null.
+            List<MapRunConfigSO> stages = LoadStageConfigs(stageConfigPaths, report);
+
+            Transform pagination = mapUi.transform.Find(TestStagePaginationName);
+            if (pagination == null && dryRun)
             {
-                UIButtonHoverOutline[] previousPagePlacards = oldRoot.GetComponentsInChildren<UIButtonHoverOutline>(true);
-                for (int i = 0; i < previousPagePlacards.Length; i++)
-                    previousPagePlacards[i].transform.SetParent(mapUi.transform, true);
-                UnityEngine.Object.DestroyImmediate(oldRoot.gameObject);
+                report.Add($"CREATE   MapUI/{TestStagePaginationName} and every object the tool owns under it.");
+                return;
             }
 
-            GameObject pagination = CreateUiObject("TestStagePagination", mapUi.transform);
-            Stretch((RectTransform)pagination.transform);
-
-            GameObject existingPage = CreateUiObject("ExistingMapsPage", pagination.transform);
-            Stretch((RectTransform)existingPage.transform);
-            UIButtonHoverOutline[] existingPlacards = mapUi.GetComponentsInChildren<UIButtonHoverOutline>(true);
-            for (int i = 0; i < existingPlacards.Length; i++)
+            if (pagination == null)
             {
-                UIButtonHoverOutline placard = existingPlacards[i];
-                if (placard != null && !placard.transform.IsChildOf(pagination.transform))
-                    placard.transform.SetParent(existingPage.transform, true);
+                pagination = CreateOwnedUiObject(TestStagePaginationName, mapUi.transform);
+                report.Add($"CREATE   MapUI/{TestStagePaginationName}");
+            }
+            else
+            {
+                report.Add($"KEEP     MapUI/{TestStagePaginationName} and every page it already holds");
             }
 
-            GameObject page = CreateUiObject("TestStagePage", pagination.transform);
-            RectTransform pageRect = (RectTransform)page.transform;
-            pageRect.anchorMin = new Vector2(0.12f, 0.10f);
-            pageRect.anchorMax = new Vector2(0.88f, 0.86f);
-            pageRect.offsetMin = Vector2.zero;
-            pageRect.offsetMax = Vector2.zero;
+            Stretch(Record((RectTransform)pagination));
+
+            Transform existingPage = EnsureOwnedPage(pagination, ExistingMapsPageName, dryRun, report);
+            if (existingPage != null && !dryRun)
+                Stretch(Record((RectTransform)existingPage));
+
+            // Placards authored directly under MapUI belong to the original board and are adopted
+            // once into ExistingMapsPage. Placards that already sit inside a pagination page --
+            // including hand-authored pages such as BossRushPage -- are never touched.
+            AdoptLooseExistingPlacards(mapUi.transform, pagination, existingPage, dryRun, report);
+
+            Transform testStagePage = EnsureOwnedPage(pagination, TestStagePageName, dryRun, report);
+            if (testStagePage != null && !dryRun)
+            {
+                RectTransform pageRect = Record((RectTransform)testStagePage);
+                pageRect.anchorMin = new Vector2(0.12f, 0.10f);
+                pageRect.anchorMax = new Vector2(0.88f, 0.86f);
+                pageRect.offsetMin = Vector2.zero;
+                pageRect.offsetMax = Vector2.zero;
+            }
 
             Vector2[] positions = { new(0.20f, 0.52f), new(0.50f, 0.52f), new(0.80f, 0.52f) };
-            for (int i = 0; i < stages.Length; i++)
-                CreateStagePlacard(page.transform, stages[i], positions[i]);
+            var ownedPlacards = new List<Transform>();
+            for (int i = 0; i < stages.Count && i < positions.Length; i++)
+            {
+                Transform placard = EnsureStagePlacard(testStagePage, stages[i], positions[i], dryRun, report);
+                if (placard != null)
+                    ownedPlacards.Add(placard);
+            }
 
-            Button previous = CreateArrow(pagination.transform, "PreviousPage", "<", new Vector2(0.07f, 0.48f));
-            Button next = CreateArrow(pagination.transform, "NextPage", ">", new Vector2(0.93f, 0.48f));
-            MobilizBoardPager pager = pagination.AddComponent<MobilizBoardPager>();
-            SerializedObject pagerSerialized = new SerializedObject(pager);
-            SerializedProperty pages = pagerSerialized.FindProperty("pages");
-            pages.arraySize = 2;
-            pages.GetArrayElementAtIndex(0).objectReferenceValue = existingPage;
-            pages.GetArrayElementAtIndex(1).objectReferenceValue = page;
-            pagerSerialized.FindProperty("previousButton").objectReferenceValue = previous;
-            pagerSerialized.FindProperty("nextButton").objectReferenceValue = next;
-            pagerSerialized.FindProperty("initialPage").intValue = 0;
-            pagerSerialized.ApplyModifiedPropertiesWithoutUndo();
-            UnityEventTools.AddPersistentListener(previous.onClick, pager.ShowPreviousPage);
-            UnityEventTools.AddPersistentListener(next.onClick, pager.ShowNextPage);
-            page.SetActive(false);
+            if (stages.Count > positions.Length)
+            {
+                report.Add(
+                    $"SKIP     {stages.Count - positions.Length} stage config(s). {TestStagePageName} " +
+                    $"has room for exactly {positions.Length} placards; author the rest as their own page.");
+            }
+
+            RemoveStaleStagePlacards(testStagePage, ownedPlacards, dryRun, report);
+
+            Button previous = EnsureArrow(pagination, PreviousPageButtonName, "<", new Vector2(0.07f, 0.48f), dryRun, report);
+            Button next = EnsureArrow(pagination, NextPageButtonName, ">", new Vector2(0.93f, 0.48f), dryRun, report);
+
+            ConfigurePager(pagination, existingPage, testStagePage, previous, next, dryRun, report);
+
+            if (dryRun)
+                return;
+
+            if (testStagePage != null)
+                testStagePage.gameObject.SetActive(false);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
@@ -491,51 +664,342 @@ public static class TestStageAuthoringTool
         }
     }
 
-    static void CreateStagePlacard(Transform parent, MapRunConfigSO stage, Vector2 anchor)
+    static List<MapRunConfigSO> LoadStageConfigs(string[] stageConfigPaths, List<string> report)
     {
-        GameObject placard = CreateUiObject(stage.StageDisplayName, parent);
-        RectTransform rect = (RectTransform)placard.transform;
+        var stages = new List<MapRunConfigSO>();
+        if (stageConfigPaths == null)
+            return stages;
+
+        for (int i = 0; i < stageConfigPaths.Length; i++)
+        {
+            MapRunConfigSO stage = AssetDatabase.LoadAssetAtPath<MapRunConfigSO>(stageConfigPaths[i]);
+            if (stage == null)
+                report.Add($"MISSING  stage config at {stageConfigPaths[i]}. Its placard is skipped.");
+            else
+                stages.Add(stage);
+        }
+
+        return stages;
+    }
+
+    static Transform EnsureOwnedPage(Transform pagination, string pageName, bool dryRun, List<string> report)
+    {
+        Transform page = pagination != null ? pagination.Find(pageName) : null;
+        if (page != null)
+        {
+            report.Add($"UPDATE   {TestStagePaginationName}/{pageName}");
+            return page;
+        }
+
+        report.Add($"CREATE   {TestStagePaginationName}/{pageName}");
+        if (dryRun || pagination == null)
+            return null;
+
+        return CreateOwnedUiObject(pageName, pagination);
+    }
+
+    static void AdoptLooseExistingPlacards(
+        Transform mapUi,
+        Transform pagination,
+        Transform existingPage,
+        bool dryRun,
+        List<string> report)
+    {
+        if (mapUi == null || pagination == null)
+            return;
+
+        UIButtonHoverOutline[] placards = mapUi.GetComponentsInChildren<UIButtonHoverOutline>(true);
+        for (int i = 0; i < placards.Length; i++)
+        {
+            UIButtonHoverOutline placard = placards[i];
+            if (placard == null || placard.transform.IsChildOf(pagination))
+                continue;
+
+            report.Add($"ADOPT    MapUI/{placard.name} into {ExistingMapsPageName}");
+            if (dryRun || existingPage == null)
+                continue;
+
+            Undo.SetTransformParent(placard.transform, existingPage, UndoName);
+        }
+    }
+
+    static Transform EnsureStagePlacard(
+        Transform page,
+        MapRunConfigSO stage,
+        Vector2 anchor,
+        bool dryRun,
+        List<string> report)
+    {
+        string placardName = stage.StageDisplayName;
+        Transform placard = page != null ? page.Find(placardName) : null;
+        if (placard == null)
+        {
+            report.Add($"CREATE   {TestStagePageName}/{placardName}");
+            if (dryRun || page == null)
+                return null;
+
+            placard = CreateOwnedUiObject(placardName, page);
+        }
+        else
+        {
+            report.Add($"UPDATE   {TestStagePageName}/{placardName}");
+            if (dryRun)
+                return placard;
+        }
+
+        RectTransform rect = Record((RectTransform)placard);
         rect.anchorMin = rect.anchorMax = anchor;
         rect.sizeDelta = new Vector2(220f, 150f);
         rect.anchoredPosition = Vector2.zero;
-        Image image = placard.AddComponent<Image>();
+
+        Image image = Record(EnsureComponent<Image>(placard.gameObject));
         image.color = new Color(0.72f, 0.73f, 0.76f, 1f);
-        Shadow shadow = placard.AddComponent<Shadow>();
+        Shadow shadow = Record(EnsureComponent<Shadow>(placard.gameObject));
         shadow.effectColor = new Color(0.18f, 0.17f, 0.20f, 0.8f);
         shadow.effectDistance = new Vector2(8f, -12f);
-        Button button = placard.AddComponent<Button>();
+        Button button = Record(EnsureComponent<Button>(placard.gameObject));
         button.targetGraphic = image;
-        StagePlacardButton stageButton = placard.AddComponent<StagePlacardButton>();
+
+        StagePlacardButton stageButton = EnsureComponent<StagePlacardButton>(placard.gameObject);
         SerializedObject stageSerialized = new SerializedObject(stageButton);
         stageSerialized.FindProperty("runConfig").objectReferenceValue = stage;
         stageSerialized.ApplyModifiedPropertiesWithoutUndo();
-        UnityEventTools.AddPersistentListener(button.onClick, stageButton.EnterStage);
+        EnsurePersistentListener(
+            button.onClick,
+            stageButton,
+            stageButton.EnterStage,
+            nameof(StagePlacardButton.EnterStage));
 
-        TMP_Text label = CreateLabel(placard.transform, $"{stage.StageDisplayName}\nLV.{stage.StartLevel}\u2013{stage.TargetLevel}", 26f);
+        TMP_Text label = EnsureLabel(
+            placard,
+            $"{stage.StageDisplayName}\nLV.{stage.StartLevel}–{stage.TargetLevel}",
+            26f);
         label.color = Color.black;
+        return placard;
     }
 
-    static Button CreateArrow(Transform parent, string name, string text, Vector2 anchor)
+    static void RemoveStaleStagePlacards(
+        Transform page,
+        List<Transform> ownedPlacards,
+        bool dryRun,
+        List<string> report)
     {
-        GameObject arrow = CreateUiObject(name, parent);
-        RectTransform rect = (RectTransform)arrow.transform;
+        if (page == null)
+            return;
+
+        var stale = new List<GameObject>();
+        for (int i = 0; i < page.childCount; i++)
+        {
+            Transform child = page.GetChild(i);
+            if (child.GetComponent<StagePlacardButton>() == null || ownedPlacards.Contains(child))
+                continue;
+
+            stale.Add(child.gameObject);
+        }
+
+        for (int i = 0; i < stale.Count; i++)
+        {
+            report.Add($"REMOVE   stale placard {TestStagePageName}/{stale[i].name}");
+            if (!dryRun)
+                Undo.DestroyObjectImmediate(stale[i]);
+        }
+    }
+
+    static Button EnsureArrow(
+        Transform pagination,
+        string name,
+        string text,
+        Vector2 anchor,
+        bool dryRun,
+        List<string> report)
+    {
+        Transform arrow = pagination != null ? pagination.Find(name) : null;
+        if (arrow == null)
+        {
+            report.Add($"CREATE   {TestStagePaginationName}/{name}");
+            if (dryRun || pagination == null)
+                return null;
+
+            arrow = CreateOwnedUiObject(name, pagination);
+        }
+        else
+        {
+            report.Add($"UPDATE   {TestStagePaginationName}/{name}");
+            if (dryRun)
+                return arrow.GetComponent<Button>();
+        }
+
+        RectTransform rect = Record((RectTransform)arrow);
         rect.anchorMin = rect.anchorMax = anchor;
         rect.sizeDelta = new Vector2(90f, 90f);
         rect.anchoredPosition = Vector2.zero;
-        Image image = arrow.AddComponent<Image>();
+
+        Image image = Record(EnsureComponent<Image>(arrow.gameObject));
         image.color = new Color(0.68f, 0.55f, 0.22f, 1f);
-        Button button = arrow.AddComponent<Button>();
+        Button button = Record(EnsureComponent<Button>(arrow.gameObject));
         button.targetGraphic = image;
-        TMP_Text label = CreateLabel(arrow.transform, text, 54f);
+
+        TMP_Text label = EnsureLabel(arrow, text, 54f);
         label.color = Color.black;
         return button;
     }
 
-    static TMP_Text CreateLabel(Transform parent, string text, float size)
+    static void ConfigurePager(
+        Transform pagination,
+        Transform existingPage,
+        Transform testStagePage,
+        Button previous,
+        Button next,
+        bool dryRun,
+        List<string> report)
     {
-        GameObject labelObject = CreateUiObject("Label", parent);
-        Stretch((RectTransform)labelObject.transform);
-        TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
+        if (pagination == null)
+            return;
+
+        MobilizBoardPager pager = pagination.GetComponent<MobilizBoardPager>();
+        if (pager == null)
+        {
+            report.Add($"CREATE   MobilizBoardPager on {TestStagePaginationName}");
+            if (dryRun)
+                return;
+
+            pager = Undo.AddComponent<MobilizBoardPager>(pagination.gameObject);
+        }
+        else
+        {
+            report.Add($"UPDATE   MobilizBoardPager on {TestStagePaginationName}");
+        }
+
+        SerializedObject pagerSerialized = new SerializedObject(pager);
+        SerializedProperty pagesProperty = pagerSerialized.FindProperty("pages");
+
+        var registeredPages = new List<GameObject>();
+        for (int i = 0; i < pagesProperty.arraySize; i++)
+            registeredPages.Add(pagesProperty.GetArrayElementAtIndex(i).objectReferenceValue as GameObject);
+
+        List<GameObject> pages = BuildPagerPageOrder(
+            existingPage != null ? existingPage.gameObject : null,
+            testStagePage != null ? testStagePage.gameObject : null,
+            registeredPages);
+
+        for (int i = 0; i < pages.Count; i++)
+            report.Add($"PAGE[{i}]  {pages[i].name}");
+
+        if (dryRun)
+            return;
+
+        pagesProperty.arraySize = pages.Count;
+        for (int i = 0; i < pages.Count; i++)
+            pagesProperty.GetArrayElementAtIndex(i).objectReferenceValue = pages[i];
+
+        if (previous != null)
+            pagerSerialized.FindProperty("previousButton").objectReferenceValue = previous;
+        if (next != null)
+            pagerSerialized.FindProperty("nextButton").objectReferenceValue = next;
+        pagerSerialized.ApplyModifiedPropertiesWithoutUndo();
+
+        if (previous != null)
+        {
+            EnsurePersistentListener(
+                previous.onClick,
+                pager,
+                pager.ShowPreviousPage,
+                nameof(MobilizBoardPager.ShowPreviousPage));
+        }
+
+        if (next != null)
+        {
+            EnsurePersistentListener(
+                next.onClick,
+                pager,
+                pager.ShowNextPage,
+                nameof(MobilizBoardPager.ShowNextPage));
+        }
+    }
+
+    /// <summary>
+    /// The tool owns page index 0 and index 1 only. Every other registered page is hand authored,
+    /// so it keeps both its identity and its relative order, and empty slots are dropped.
+    /// </summary>
+    public static List<GameObject> BuildPagerPageOrder(
+        GameObject existingPage,
+        GameObject testStagePage,
+        IReadOnlyList<GameObject> registeredPages)
+    {
+        var pages = new List<GameObject>();
+        if (existingPage != null)
+            pages.Add(existingPage);
+        if (testStagePage != null)
+            pages.Add(testStagePage);
+
+        if (registeredPages == null)
+            return pages;
+
+        for (int i = 0; i < registeredPages.Count; i++)
+        {
+            GameObject page = registeredPages[i];
+            if (page == null || pages.Contains(page))
+                continue;
+
+            pages.Add(page);
+        }
+
+        return pages;
+    }
+
+    static void EnsurePersistentListener(
+        UnityEvent target,
+        UnityEngine.Object listenerTarget,
+        UnityAction call,
+        string methodName)
+    {
+        if (target == null || listenerTarget == null)
+            return;
+
+        for (int i = 0; i < target.GetPersistentEventCount(); i++)
+        {
+            if (target.GetPersistentTarget(i) == listenerTarget &&
+                string.Equals(target.GetPersistentMethodName(i), methodName, StringComparison.Ordinal))
+            {
+                return;
+            }
+        }
+
+        UnityEventTools.AddPersistentListener(target, call);
+    }
+
+    static T EnsureComponent<T>(GameObject target) where T : Component
+    {
+        T component = target.GetComponent<T>();
+        if (component == null)
+            component = Undo.AddComponent<T>(target);
+
+        return component;
+    }
+
+    static T Record<T>(T target) where T : UnityEngine.Object
+    {
+        if (target != null)
+            Undo.RecordObject(target, UndoName);
+
+        return target;
+    }
+
+    static Transform CreateOwnedUiObject(string name, Transform parent)
+    {
+        GameObject created = CreateUiObject(name, parent);
+        Undo.RegisterCreatedObjectUndo(created, UndoName);
+        return created.transform;
+    }
+
+    static TMP_Text EnsureLabel(Transform parent, string text, float size)
+    {
+        Transform labelTransform = parent.Find("Label");
+        if (labelTransform == null)
+            labelTransform = CreateOwnedUiObject("Label", parent);
+
+        Stretch(Record((RectTransform)labelTransform));
+        TextMeshProUGUI label = Record(EnsureComponent<TextMeshProUGUI>(labelTransform.gameObject));
         label.text = text;
         label.fontSize = size;
         label.alignment = TextAlignmentOptions.Center;

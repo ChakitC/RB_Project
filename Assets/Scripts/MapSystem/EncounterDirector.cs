@@ -13,6 +13,7 @@ public class EncounterDirector : MonoBehaviour
 
     private readonly HashSet<HealthSystem> trackedEnemies = new();
     private RoomController activeRoom;
+    private EncounterDefinitionSO activeEncounter;
     private Coroutine activeRoutine;
     private int aliveCount;
     private bool running;
@@ -25,6 +26,7 @@ public class EncounterDirector : MonoBehaviour
         StopEncounter();
 
         activeRoom = room;
+        activeEncounter = encounter;
         running = true;
         activeRoutine = StartCoroutine(RunEncounter(encounter));
     }
@@ -47,15 +49,22 @@ public class EncounterDirector : MonoBehaviour
         aliveCount = 0;
         running = false;
         activeRoom = null;
+        activeEncounter = null;
     }
 
     IEnumerator RunEncounter(EncounterDefinitionSO encounter)
     {
         if (encounter == null || encounter.Waves == null || encounter.Waves.Length == 0)
         {
-            if (encounter == null || encounter.CompleteWhenNoEnemies)
-                CompleteEncounter();
-
+            // A room that asks for an encounter and gets none is a content defect. The room is
+            // completed anyway so the run cannot soft-lock behind exits that never unlock, and
+            // the director never stays in the running state with nothing to run.
+            LogEncounterContentError(
+                encounter,
+                encounter == null
+                    ? "no encounter is assigned"
+                    : "it has no waves");
+            CompleteEncounter();
             yield break;
         }
 
@@ -71,7 +80,7 @@ public class EncounterDirector : MonoBehaviour
 
             for (int i = 0; i < wave.SpawnCount; i++)
             {
-                SpawnEnemy(wave, spawnIndex, encounter.BossEncounter);
+                SpawnEnemy(wave, waveIndex, spawnIndex, encounter.BossEncounter);
                 spawnIndex++;
 
                 if (wave.SpawnInterval > 0f && i < wave.SpawnCount - 1)
@@ -86,15 +95,20 @@ public class EncounterDirector : MonoBehaviour
         CompleteEncounter();
     }
 
-    void SpawnEnemy(EncounterWave wave, int spawnIndex, bool bossEncounter)
+    void SpawnEnemy(EncounterWave wave, int waveIndex, int spawnIndex, bool bossEncounter)
     {
         if (activeRoom == null)
+        {
+            Warn($"Spawn {spawnIndex} of wave {waveIndex} was dropped because the encounter has no active room.");
             return;
+        }
 
         GameObject prefab = wave.GetRandomEnemyPrefab();
         if (prefab == null)
         {
-            Warn("Encounter wave has no enemy prefab.");
+            LogEncounterContentError(
+                activeEncounter,
+                $"wave {waveIndex} has no usable enemy prefab, so spawn {spawnIndex} was skipped");
             return;
         }
 
@@ -182,6 +196,7 @@ public class EncounterDirector : MonoBehaviour
 
         RoomController completedRoom = activeRoom;
         activeRoom = null;
+        activeEncounter = null;
         trackedEnemies.Clear();
         aliveCount = 0;
 
@@ -192,5 +207,22 @@ public class EncounterDirector : MonoBehaviour
     {
         if (logWarnings)
             Debug.LogWarning($"[EncounterDirector] {message}", this);
+    }
+
+    /// <summary>
+    /// Content defects are reported with the offending asset and the map node that pulled it in,
+    /// because the encounter asset name alone does not say which room broke.
+    /// </summary>
+    void LogEncounterContentError(EncounterDefinitionSO encounter, string problem)
+    {
+        string encounterName = encounter != null ? encounter.name : "<none>";
+        string nodeId = activeRoom != null && activeRoom.Node != null ? activeRoom.Node.Id : "<no node>";
+        string nodeType = activeRoom != null && activeRoom.Node != null
+            ? activeRoom.Node.Type.ToString()
+            : "<unknown>";
+        string roomName = activeRoom != null ? activeRoom.name : "<no room>";
+        Debug.LogError(
+            $"[EncounterDirector] Encounter '{encounterName}' on node '{nodeId}' ({nodeType}, room '{roomName}'): {problem}.",
+            activeRoom != null ? activeRoom : this);
     }
 }

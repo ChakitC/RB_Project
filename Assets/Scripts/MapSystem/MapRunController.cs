@@ -1,54 +1,24 @@
 using System;
 using System.Collections.Generic;
-using Unity.AI.Navigation;
 using UnityEngine;
-using UnityEngine.AI;
 
+/// <summary>
+/// The scene-facing entry point for a map run. It owns the serialized setup and the run lifecycle,
+/// and delegates the work to four collaborators:
+///
+/// <list type="bullet">
+/// <item><see cref="MapRunSession"/> — run state and travel rules.</item>
+/// <item><see cref="RoomRuntimeCache"/> — room instances and their activation.</item>
+/// <item><see cref="PartyRoomTransitionService"/> — moving the party and putting it back.</item>
+/// <item><see cref="StageRunProgressionService"/> — Test Stage progress, XP, and completion.</item>
+/// </list>
+///
+/// Everything the shop, summon, room, and enemy systems already call still lives here, so prefabs
+/// and scenes keep the same contract.
+/// </summary>
 [DisallowMultipleComponent]
 public class MapRunController : MonoBehaviour
 {
-    sealed class CachedRoomEntry
-    {
-        public readonly MapNode Node;
-        public readonly GameObject Instance;
-        public readonly RoomController Controller;
-
-        public CachedRoomEntry(MapNode node, GameObject instance, RoomController controller)
-        {
-            Node = node;
-            Instance = instance;
-            Controller = controller;
-        }
-
-        public RoomRuntimeContent RuntimeContent => Controller != null ? Controller.RuntimeContent : null;
-    }
-
-    readonly struct TransformPose
-    {
-        public readonly Transform Transform;
-        public readonly Vector3 Position;
-        public readonly Quaternion Rotation;
-
-        public TransformPose(Transform transform)
-        {
-            Transform = transform;
-            Position = transform != null ? transform.position : Vector3.zero;
-            Rotation = transform != null ? transform.rotation : Quaternion.identity;
-        }
-    }
-
-    sealed class PartyPoseSnapshot
-    {
-        public TransformPose RootPose;
-        public readonly List<TransformPose> ActorPoses = new();
-    }
-
-    private const string DefaultWarpCollisionLayerName = "Terrain";
-    private const float CompanionWarpForwardOffset = 1.5f;
-    private const float CompanionWarpLateralOffset = 0.9f;
-    private const float CompanionWarpRowSpacing = 1.25f;
-    private static readonly Collider[] WarpCollisionHits = new Collider[32];
-
     [Header("Config")]
     [Tooltip("config หลักสำหรับสร้าง graph, เลือก room และเลือก encounter ของ run นี้")]
     [SerializeField] private MapRunConfigSO runConfig;
@@ -63,7 +33,7 @@ public class MapRunController : MonoBehaviour
     [Tooltip("ตำแหน่งอ้างอิงสำหรับ spawn room prefab")]
     [SerializeField] private Transform roomSpawnAnchor;
 
-    [Tooltip("context ของผู้เล่น ถ้าไม่ใส่ ระบบจะหา object ที่ TargetIdentity เป็น Player")]
+    [Tooltip("context ของผู้เล่น ถ้าไม่ใส่ ระบบจะใช้ player actor ของ PartyRuntime")]
     [SerializeField] private CharacteContext playerContext;
 
     [Tooltip("ตัวคุมการ spawn enemy encounter ในห้อง")]
@@ -86,40 +56,68 @@ public class MapRunController : MonoBehaviour
     [Header("Debug")]
     [SerializeField] private bool logLifecycle = true;
 
-    private MapGraph graph;
-    private MapNode currentNode;
-    private GameObject currentRoomInstance;
-    private RoomController currentRoom;
-    private CachedRoomEntry currentRoomEntry;
-    private readonly Dictionary<string, CachedRoomEntry> roomCache = new();
-    private bool isTransitioning;
-    private bool warnedMissingWarpCollisionLayer;
+    private MapRunSession session;
+    private RoomRuntimeCache roomCache;
+    private PartyRoomTransitionService partyTransitions;
+    private StageRunProgressionService stageProgression;
+
     private Transform summonWorldRoot;
     private Transform summonStagingRoot;
-    private PartySpawnPoint partySpawnPoint;
-    private int stageProgressCount;
-    private int stageEnemyLevel;
-    private int regularXpRemaining;
-    private int bossXpRemaining;
-    private int regularEnemiesRemaining;
-    private int bossEnemiesRemaining;
-    private int completionXpReward;
-    private bool bossCleared;
-    private bool stageCompletionCommitted;
-    private GameObject stageExitInstance;
     private bool stageIntroAttempted;
+    private readonly List<Transform> cleanupRoomRoots = new();
 
     public event Action<MapGraph, MapNode> MapChanged;
     public event Action RoomTransitionCommitted;
     public event Action RoomTransitionRolledBack;
-    public MapGraph CurrentGraph => graph;
-    public MapNode CurrentNode => currentNode;
-    public RoomController CurrentRoom => currentRoom;
-    public bool IsTransitioning => isTransitioning;
-    public int CachedRoomCount => roomCache.Count;
+
+    public MapGraph CurrentGraph => Session.Graph;
+    public MapNode CurrentNode => Session.CurrentNode;
+    public RoomController CurrentRoom => Session.CurrentRoom;
+    public bool IsTransitioning => Session.IsTransitioning;
+    public bool HasActiveRoom => Session.HasActiveRoom;
+    public int CachedRoomCount => RoomCache.Count;
     public MapRunConfigSO RunConfig => runConfig;
-    public bool CanCompleteStageRun => runConfig != null && runConfig.IsTestStage && bossCleared && !stageCompletionCommitted;
-    public int StageEnemyLevel => stageEnemyLevel;
+    public bool CanCompleteStageRun => StageProgression.CanCompleteStageRun;
+    public int StageEnemyLevel => StageProgression.StageEnemyLevel;
+
+    /// <summary>
+    /// Test seam. When set, it replaces the party warp step so the commit and rollback halves of
+    /// a room transition can be exercised without a live party, NavMesh, or physics scene.
+    /// Always null during normal play.
+    /// </summary>
+    public Func<RoomController, RoomExitDirection?, bool> PartyWarpOverride { get; set; }
+
+    MapRunSession Session => session ??= new MapRunSession();
+
+    RoomRuntimeCache RoomCache => roomCache ??= new RoomRuntimeCache(Log);
+
+    PartyRoomTransitionService PartyTransitions
+    {
+        get
+        {
+            if (partyTransitions == null)
+                partyTransitions = new PartyRoomTransitionService(this);
+
+            partyTransitions.Configure(BuildWarpSettings(), playerContext);
+            return partyTransitions;
+        }
+    }
+
+    StageRunProgressionService StageProgression =>
+        stageProgression ??= new StageRunProgressionService(this, () => PartyTransitions.ResolveParty(), Log);
+
+    PartyWarpSettings BuildWarpSettings()
+    {
+        return new PartyWarpSettings(
+            partyWarpNavMeshSampleRadius,
+            partyWarpCollisionMask,
+            partyWarpCollisionPadding,
+            partyWarpGroundClearance,
+            partyWarpSafeSearchRadius,
+            partyWarpSafeSearchSteps);
+    }
+
+    // ------------------------------------------------------------------ summon hosting
 
     public Transform GetOrCreateSummonWorldRoot()
     {
@@ -143,6 +141,17 @@ public class MapRunController : MonoBehaviour
         rootObject.SetActive(false);
         return summonStagingRoot;
     }
+
+    public bool TryWarpTransientActor(
+        CharacteContext actor,
+        CharacteContext anchor,
+        int formationIndex,
+        out Vector3 resolvedPosition)
+    {
+        return PartyTransitions.TryWarpTransientActor(actor, anchor, formationIndex, out resolvedPosition);
+    }
+
+    // ------------------------------------------------------------------ run lifecycle
 
     void Start()
     {
@@ -186,14 +195,15 @@ public class MapRunController : MonoBehaviour
         ResetRoomCache();
         stageIntroAttempted = false;
 
-        graph = MapGenerator.Generate(runConfig);
+        MapGraph graph = MapGenerator.Generate(runConfig);
         if (graph == null)
         {
             Debug.LogError("[MapRunController] MapGenerator returned null.", this);
             return;
         }
 
-        ConfigureStageRun();
+        Session.SetGraph(graph);
+        StageProgression.BeginRun(runConfig, graph);
         Log($"Generated map with {graph.Nodes.Count} nodes. Start='{graph.StartNodeId}', Boss='{graph.BossNodeId}', Seed={graph.ResolvedSeed}.");
 
         if (!MapPathValidator.Validate(graph, runConfig, out string error))
@@ -202,357 +212,189 @@ public class MapRunController : MonoBehaviour
             return;
         }
 
-        EnterNode(graph.StartNodeId);
+        if (!TryEnterNode(graph.StartNodeId, null))
+        {
+            Debug.LogError(
+                "[MapRunController] The party could not be moved into the Start room. " +
+                "The run has no current room; call TryEnterStartRoom to retry or AbortRun to end it.",
+                this);
+        }
     }
+
+    /// <summary>
+    /// Retries the Start room after a failed first entry. Returns false when there is nothing to
+    /// retry, either because no map is generated or because a room is already committed.
+    /// </summary>
+    public bool TryEnterStartRoom()
+    {
+        if (Session.Graph == null || Session.IsTransitioning || Session.CurrentNode != null)
+            return false;
+
+        return TryEnterNode(Session.Graph.StartNodeId, null);
+    }
+
+    /// <summary>
+    /// Ends the run and releases every cached room. Use it when the Start room cannot be entered.
+    /// </summary>
+    public void AbortRun()
+    {
+        ResetRoomCache();
+        Session.ClearRun();
+        NotifyMapChanged();
+    }
+
+    // ------------------------------------------------------------------ travel
 
     public MapNode GetNode(string nodeId)
     {
-        return graph != null ? graph.GetNode(nodeId) : null;
+        return Session.GetNode(nodeId);
     }
 
     public bool CanTravelTo(string targetNodeId)
     {
-        if (isTransitioning || graph == null || currentNode == null || string.IsNullOrWhiteSpace(targetNodeId))
-            return false;
-
-        if (currentRoom != null)
-        {
-            if (currentRoom.ExitsLocked)
-                return false;
-
-            RoomDefinitionSO definition = currentNode.RoomDefinition;
-            if (definition != null && definition.RequiresClearBeforeExit && !currentRoom.RoomCleared)
-                return false;
-        }
-
-        return IsOutgoingTravelTarget(targetNodeId) || IsReturnTravelTarget(targetNodeId);
+        return Session.CanTravelTo(targetNodeId);
     }
 
     public bool CanTravelTo(string targetNodeId, RoomExitDirection exitDirection)
     {
-        if (!CanTravelTo(targetNodeId))
-            return false;
-
-        return IsOutgoingTravelTarget(targetNodeId, exitDirection) || IsReturnTravelTarget(targetNodeId, exitDirection);
+        return Session.CanTravelTo(targetNodeId, exitDirection);
     }
 
     public void RequestTravelTo(string targetNodeId)
     {
-        if (!CanTravelTo(targetNodeId))
+        if (!Session.CanTravelTo(targetNodeId))
             return;
 
         RoomExitDirection? entranceDirection = null;
-        if (TryResolveTravelExitDirection(targetNodeId, out RoomExitDirection exitDirection))
+        if (Session.TryResolveTravelExitDirection(targetNodeId, out RoomExitDirection exitDirection))
             entranceDirection = RoomExitDirectionUtility.Opposite(exitDirection);
 
-        EnterNode(targetNodeId, entranceDirection);
+        TryEnterNode(targetNodeId, entranceDirection);
     }
 
     public void RequestTravelTo(string targetNodeId, RoomExitDirection exitDirection)
     {
-        if (!CanTravelTo(targetNodeId, exitDirection))
+        if (!Session.CanTravelTo(targetNodeId, exitDirection))
             return;
 
-        EnterNode(targetNodeId, RoomExitDirectionUtility.Opposite(exitDirection));
+        TryEnterNode(targetNodeId, RoomExitDirectionUtility.Opposite(exitDirection));
     }
 
-    public void NotifyRoomCleared(RoomController room)
+    /// <summary>
+    /// Runs a room transition as a transaction. Nothing about the previous room is torn down and
+    /// no map state is advanced until the party is known to stand in the destination room.
+    /// </summary>
+    bool TryEnterNode(string nodeId, RoomExitDirection? entranceDirection)
     {
-        if (room == null || room != currentRoom || currentNode == null)
-            return;
-
-        graph.RevealOutgoing(currentNode);
-        if (runConfig != null && runConfig.IsTestStage && currentNode.Type == MapNodeType.Boss)
-        {
-            bossCleared = true;
-            SpawnStageExit(room);
-        }
-        NotifyMapChanged();
-    }
-
-    public void ConfigureStageEnemy(GameObject enemyObject, bool isBoss)
-    {
-        if (enemyObject == null || runConfig == null || !runConfig.IsTestStage)
-            return;
-
-        EnemyContext enemyContext = enemyObject.GetComponentInChildren<EnemyContext>(true);
-        if (enemyContext == null)
-        {
-            Debug.LogWarning($"[MapRunController] Stage enemy '{enemyObject.name}' has no EnemyContext.", enemyObject);
-            return;
-        }
-
-        EnemyLevelSystem enemyLevel = enemyContext.EnemyLevelSystem;
-        if (enemyLevel == null)
-            enemyLevel = enemyContext.GetComponent<EnemyLevelSystem>();
-        if (enemyLevel == null)
-            enemyLevel = enemyContext.gameObject.AddComponent<EnemyLevelSystem>();
-        enemyContext.EnemyLevelSystem = enemyLevel;
-        enemyLevel.SetLevel(stageEnemyLevel);
-
-        EnemyHealth health = enemyContext.GetComponentInChildren<EnemyHealth>(true);
-        if (health != null)
-            health.ConfigureStageXp(this, AllocateEnemyXp(isBoss));
-    }
-
-    public void GrantStageEnemyXp(int amount)
-    {
-        if (runConfig == null || !runConfig.IsTestStage || amount <= 0)
-            return;
-
-        GrantXpToDeployedParty(amount);
-    }
-
-    public void CompleteStageRunAndReturn()
-    {
-        if (!CanCompleteStageRun)
-            return;
-
-        stageCompletionCommitted = true;
-        GrantXpToDeployedParty(completionXpReward);
-
-        int nextProgress = Mathf.Min(runConfig.TargetRunCount, stageProgressCount + 1);
-        if (SaveManager.Instance != null)
-            SaveManager.Instance.SaveStageProgress(runConfig.StageId, nextProgress);
-        else
-            Debug.LogWarning("[MapRunController] SaveManager is missing; Stage Progress could not be saved.", this);
-
-        Log($"Completed '{runConfig.StageId}'. Progress {nextProgress}/{runConfig.TargetRunCount}.");
-        if (SceneLoaderSystem.Instance != null)
-            SceneLoaderSystem.Instance.LoadBasement();
-        else
-            Debug.LogError("[MapRunController] SceneLoaderSystem is missing; cannot return to Basement.", this);
-    }
-
-    void ConfigureStageRun()
-    {
-        stageProgressCount = 0;
-        stageEnemyLevel = 1;
-        regularXpRemaining = 0;
-        bossXpRemaining = 0;
-        regularEnemiesRemaining = 0;
-        bossEnemiesRemaining = 0;
-        completionXpReward = 0;
-        bossCleared = false;
-        stageCompletionCommitted = false;
-        stageExitInstance = null;
-
-        if (runConfig == null || !runConfig.IsTestStage || graph == null)
-            return;
-
-        if (SaveManager.Instance != null)
-            stageProgressCount = Mathf.Clamp(SaveManager.Instance.LoadStageProgress(runConfig.StageId), 0, runConfig.TargetRunCount);
-
-        stageEnemyLevel = runConfig.GetEnemyLevel(stageProgressCount);
-        int regularSpawnCount = 0;
-        int bossSpawnCount = 0;
-        for (int i = 0; i < graph.Nodes.Count; i++)
-        {
-            EncounterDefinitionSO encounter = graph.Nodes[i]?.EncounterDefinition;
-            if (encounter == null)
-                continue;
-
-            if (encounter.BossEncounter)
-                bossSpawnCount += encounter.TotalSpawnCount;
-            else
-                regularSpawnCount += encounter.TotalSpawnCount;
-        }
-
-        int budget = runConfig.GetXpBudgetPerRun();
-        int regularPool = Mathf.RoundToInt(budget * runConfig.RegularEnemyXpShare);
-        int bossPool = Mathf.RoundToInt(budget * runConfig.BossXpShare);
-        regularXpRemaining = regularPool;
-        bossXpRemaining = bossPool;
-        regularEnemiesRemaining = regularSpawnCount;
-        bossEnemiesRemaining = bossSpawnCount;
-        completionXpReward = Mathf.Max(0, budget - regularPool - bossPool);
-
-        Log($"Stage '{runConfig.StageId}' progress={stageProgressCount}/{runConfig.TargetRunCount}, enemyLv={stageEnemyLevel}, XP budget={budget} (regular pool {regularPool}/{regularSpawnCount}, boss pool {bossPool}/{bossSpawnCount}, completion {completionXpReward}).");
-    }
-
-    int AllocateEnemyXp(bool boss)
-    {
-        int enemiesRemaining = boss ? bossEnemiesRemaining : regularEnemiesRemaining;
-        int xpRemaining = boss ? bossXpRemaining : regularXpRemaining;
-        if (enemiesRemaining <= 0 || xpRemaining <= 0)
-            return 0;
-
-        int reward = Mathf.CeilToInt((float)xpRemaining / enemiesRemaining);
-        if (boss)
-        {
-            bossXpRemaining = Mathf.Max(0, bossXpRemaining - reward);
-            bossEnemiesRemaining = Mathf.Max(0, bossEnemiesRemaining - 1);
-        }
-        else
-        {
-            regularXpRemaining = Mathf.Max(0, regularXpRemaining - reward);
-            regularEnemiesRemaining = Mathf.Max(0, regularEnemiesRemaining - 1);
-        }
-
-        return reward;
-    }
-
-    void GrantXpToDeployedParty(int amount)
-    {
-        if (amount <= 0)
-            return;
-
-        PartyRuntime party = ResolvePartyRuntime();
-        if (party == null)
-        {
-            Debug.LogWarning("[MapRunController] No deployed PartyRuntime was found for Stage XP.", this);
-            return;
-        }
-
-        for (int i = 0; i < party.Actors.Count; i++)
-        {
-            PartyRuntimeActor actor = party.Actors[i];
-            LevelSystem levelSystem = actor?.Context != null
-                ? actor.Context.GetComponentInChildren<LevelSystem>(true)
-                : null;
-            if (levelSystem != null)
-                levelSystem.AddXp(amount);
-        }
-    }
-
-    void SpawnStageExit(RoomController room)
-    {
-        if (stageExitInstance != null || room == null || runConfig.StageExitPrefab == null)
-            return;
-
-        Transform spawnPoint = room.GetStageExitSpawnPoint();
-        Transform parent = room.RuntimeContent != null ? room.RuntimeContent.PersistentRoot : room.transform;
-        stageExitInstance = Instantiate(runConfig.StageExitPrefab, spawnPoint.position, spawnPoint.rotation, parent);
-        StageExitInteractable stageExit = stageExitInstance.GetComponentInChildren<StageExitInteractable>(true);
-        if (stageExit == null)
-            stageExit = stageExitInstance.AddComponent<StageExitInteractable>();
-        stageExit.Configure(this);
-    }
-
-    bool IsOutgoingTravelTarget(string targetNodeId)
-    {
-        for (int i = 0; i < currentNode.OutgoingIds.Count; i++)
-        {
-            if (currentNode.OutgoingIds[i] == targetNodeId)
-                return true;
-        }
-
-        return false;
-    }
-
-    bool IsOutgoingTravelTarget(string targetNodeId, RoomExitDirection exitDirection)
-    {
-        return graph != null &&
-               currentNode != null &&
-               graph.TryGetOutgoingExit(currentNode.Id, targetNodeId, out MapNodeExit exit) &&
-               exit.Direction == exitDirection;
-    }
-
-    bool IsReturnTravelTarget(string targetNodeId)
-    {
-        if (graph == null || currentNode == null || !graph.ShouldCreateReturnExit(currentNode))
-            return false;
-
-        MapNode target = graph.GetNode(targetNodeId);
-        if (target == null || !target.IsVisited)
-            return false;
-
-        return graph.TryGetReturnExitDirection(currentNode, targetNodeId, out _);
-    }
-
-    bool IsReturnTravelTarget(string targetNodeId, RoomExitDirection exitDirection)
-    {
-        return IsReturnTravelTarget(targetNodeId) &&
-               graph.TryGetReturnExitDirection(currentNode, targetNodeId, out RoomExitDirection returnDirection) &&
-               returnDirection == exitDirection;
-    }
-
-    bool TryResolveTravelExitDirection(string targetNodeId, out RoomExitDirection exitDirection)
-    {
-        exitDirection = RoomExitDirection.Up;
-
-        if (graph == null || currentNode == null)
-            return false;
-
-        if (graph.TryGetOutgoingExit(currentNode.Id, targetNodeId, out MapNodeExit outgoingExit))
-        {
-            exitDirection = outgoingExit.Direction;
-            return true;
-        }
-
-        return graph.TryGetReturnExitDirection(currentNode, targetNodeId, out exitDirection);
-    }
-
-    void EnterNode(string nodeId, RoomExitDirection? entranceDirection = null)
-    {
-        MapNode nextNode = graph != null ? graph.GetNode(nodeId) : null;
+        MapNode nextNode = Session.GetNode(nodeId);
         if (nextNode == null)
         {
             Debug.LogError($"[MapRunController] Cannot enter missing node {nodeId}.", this);
-            return;
+            return false;
         }
 
         RoomDefinitionSO roomDefinition = nextNode.RoomDefinition;
         if (roomDefinition == null || roomDefinition.RoomPrefab == null)
         {
             Debug.LogError($"[MapRunController] Node {nextNode.Id} has no room prefab.", this);
-            return;
+            return false;
         }
 
-        isTransitioning = true;
+        Session.IsTransitioning = true;
 
-        CachedRoomEntry previousEntry = currentRoomEntry;
-        MapNode previousNode = currentNode;
-        PartyPoseSnapshot previousPartyPose = CapturePartyPose();
+        RoomRuntimeCache.Entry previousEntry = Session.CurrentEntry;
+        MapNode previousNode = Session.CurrentNode;
+        PartyRoomTransitionService.PartyPoseSnapshot previousPartyPose = PartyTransitions.CapturePartyPose();
 
-        encounterDirector?.StopEncounter();
-        CleanupOutgoingRoom(previousEntry);
-        BindItemDropParent(null);
-        DeactivateCachedRoom(previousEntry);
+        // The previous room is only hidden here. Its encounter, its spawned enemies, and the
+        // transient world objects all stay alive until the warp succeeds, so a rollback can put
+        // the party back into the exact state it left.
+        RoomCache.Deactivate(previousEntry);
 
-        CachedRoomEntry nextEntry = GetOrCreateCachedRoom(nextNode, roomDefinition);
-        ActivateCachedRoom(nextEntry);
+        Transform anchor = roomSpawnAnchor != null ? roomSpawnAnchor : transform;
+        RoomRuntimeCache.Entry nextEntry = RoomCache.GetOrCreate(nextNode, roomDefinition, anchor, roomParent);
+        RoomCache.Activate(nextEntry);
         nextEntry.Controller.Initialize(this, nextNode);
-        BindItemDropParent(nextEntry.RuntimeContent.PersistentRoot);
 
-        if (!MovePartyToRoomSpawn(nextEntry.Controller, entranceDirection))
+        if (!TryMovePartyToRoomSpawn(nextEntry.Controller, entranceDirection))
         {
             Debug.LogError($"[MapRunController] Failed to move the party into node {nextNode.Id}. Rolling back the room transition.", this);
             RollbackTransition(previousEntry, previousNode, previousPartyPose, nextEntry);
+            Session.IsTransitioning = false;
             RoomTransitionRolledBack?.Invoke();
-            isTransitioning = false;
-            return;
+            return false;
         }
+
+        // Commit. Only now may the previous room lose its encounter and its content.
+        encounterDirector?.StopEncounter();
+        ClearTransientWorldObjects();
+        RoomCache.ClearTransientContent(previousEntry);
+        BindItemDropParent(nextEntry.PersistentRoot);
 
         // The warp faces the party into the new room, and each room carries its own yaw, so the
         // camera has to be re-aligned or it keeps pointing the way the previous room faced.
         GameplayCameraController.Instance?.SnapYawToPlayer();
 
-        currentRoomEntry = nextEntry;
-        currentRoomInstance = nextEntry.Instance;
-        currentRoom = nextEntry.Controller;
-        currentNode = nextNode;
-        currentNode.Visit();
-        graph.RevealOutgoing(currentNode);
+        Session.Commit(nextEntry, nextNode);
+        nextNode.Visit();
+        Session.Graph.RevealOutgoing(nextNode);
 
         RoomTransitionCommitted?.Invoke();
 
-        // The stage intro owns the frame between the room warp and BeginRoom. `isTransitioning`
+        // The stage intro owns the frame between the room warp and BeginRoom. `IsTransitioning`
         // stays true for its whole duration so the party cannot travel out mid-intro.
         if (TryPlayStageIntro(nextEntry, nextNode))
-            return;
+            return true;
 
         BeginRoomAndFinishTransition();
+        return true;
     }
 
-    bool TryPlayStageIntro(CachedRoomEntry entry, MapNode node)
+    bool TryMovePartyToRoomSpawn(RoomController room, RoomExitDirection? entranceDirection)
+    {
+        Func<RoomController, RoomExitDirection?, bool> warpOverride = PartyWarpOverride;
+        return warpOverride != null
+            ? warpOverride(room, entranceDirection)
+            : PartyTransitions.MovePartyToRoomSpawn(room, entranceDirection);
+    }
+
+    void RollbackTransition(
+        RoomRuntimeCache.Entry previousEntry,
+        MapNode previousNode,
+        PartyRoomTransitionService.PartyPoseSnapshot previousPartyPose,
+        RoomRuntimeCache.Entry failedEntry)
+    {
+        RoomCache.Deactivate(failedEntry);
+
+        if (previousEntry == null || previousEntry.Instance == null)
+        {
+            // First room of the run. There is nothing to return to, so the controller stays
+            // roomless rather than committing a room the party never reached.
+            BindItemDropParent(null);
+            Session.ClearCurrentRoom(previousNode);
+            return;
+        }
+
+        // The previous room is restored, not re-initialized: Initialize would unlock a room that
+        // was locked down for a running encounter and would rebuild its exit wiring.
+        RoomCache.Activate(previousEntry);
+        PartyTransitions.RestorePartyPose(previousPartyPose);
+        BindItemDropParent(previousEntry.PersistentRoot);
+
+        Session.Commit(previousEntry, previousNode);
+    }
+
+    bool TryPlayStageIntro(RoomRuntimeCache.Entry entry, MapNode node)
     {
         if (stageIntroAttempted)
             return false;
 
+        MapGraph graph = Session.Graph;
         if (graph == null || node == null ||
             !string.Equals(node.Id, graph.StartNodeId, StringComparison.Ordinal))
+        {
             return false;
+        }
 
         // Once per StartRun, even if the player walks back into the Start room later in the run.
         stageIntroAttempted = true;
@@ -566,7 +408,7 @@ public class MapRunController : MonoBehaviour
             return false;
         }
 
-        PartyRuntime party = ResolvePartyRuntime();
+        PartyRuntime party = PartyTransitions.ResolveParty();
         if (party == null)
         {
             Log("No deployed PartyRuntime was found for the stage intro. Starting gameplay without it.");
@@ -581,132 +423,71 @@ public class MapRunController : MonoBehaviour
         if (this == null)
             return;
 
-        currentRoom?.BeginRoom(encounterDirector);
+        Session.CurrentRoom?.BeginRoom(encounterDirector);
 
-        isTransitioning = false;
+        Session.IsTransitioning = false;
         NotifyMapChanged();
     }
 
-    PartyRuntime ResolvePartyRuntime()
+    // ------------------------------------------------------------------ room and stage callbacks
+
+    public void NotifyRoomCleared(RoomController room)
     {
-        if (partySpawnPoint == null)
-            partySpawnPoint = FindFirstObjectByType<PartySpawnPoint>();
-
-        return partySpawnPoint != null ? partySpawnPoint.CurrentParty : null;
-    }
-
-    CachedRoomEntry GetOrCreateCachedRoom(MapNode node, RoomDefinitionSO roomDefinition)
-    {
-        if (roomCache.TryGetValue(node.Id, out CachedRoomEntry cachedEntry) && cachedEntry.Instance != null)
-        {
-            Log($"Reusing cached room for node '{node.Id}' (instance {cachedEntry.Instance.GetInstanceID()}).");
-            return cachedEntry;
-        }
-
-        Transform anchor = roomSpawnAnchor != null ? roomSpawnAnchor : transform;
-        Quaternion roomRotation = anchor.rotation * Quaternion.Euler(0f, node.RoomYawDegrees, 0f);
-        Log($"Creating room for node '{node.Id}' ({node.Type}) with '{roomDefinition.name}', yaw={node.RoomYawDegrees:0}.");
-
-        GameObject instance = Instantiate(roomDefinition.RoomPrefab, anchor.position, roomRotation, roomParent);
-        RoomController controller = instance.GetComponentInChildren<RoomController>(true);
-        if (controller == null)
-        {
-            Debug.LogWarning($"[MapRunController] Spawned room '{roomDefinition.RoomPrefab.name}' has no RoomController. Adding one at runtime.", instance);
-            controller = instance.AddComponent<RoomController>();
-        }
-
-        var entry = new CachedRoomEntry(node, instance, controller);
-        roomCache[node.Id] = entry;
-        Log($"Cached room for node '{node.Id}' (instance {instance.GetInstanceID()}).");
-        return entry;
-    }
-
-    void ActivateCachedRoom(CachedRoomEntry entry)
-    {
-        if (entry == null || entry.Instance == null)
+        if (room == null || room != Session.CurrentRoom || Session.CurrentNode == null)
             return;
 
-        if (!entry.Instance.activeSelf)
-            entry.Instance.SetActive(true);
-
-        Physics.SyncTransforms();
+        Session.Graph.RevealOutgoing(Session.CurrentNode);
+        StageProgression.NotifyRoomCleared(this, room, Session.CurrentNode);
+        NotifyMapChanged();
     }
 
-    void DeactivateCachedRoom(CachedRoomEntry entry)
+    public void ConfigureStageEnemy(GameObject enemyObject, bool isBoss)
     {
-        if (entry == null || entry.Instance == null)
-            return;
-
-        RemoveRoomNavMeshData(entry.Instance);
-        entry.Instance.SetActive(false);
-        Log($"Deactivated cached room for node '{entry.Node.Id}'.");
+        StageProgression.ConfigureStageEnemy(this, enemyObject, isBoss);
     }
 
-    void CleanupOutgoingRoom(CachedRoomEntry entry)
+    public void GrantStageEnemyXp(int amount)
     {
-        RoomTransitionCleanup.ClearTransientWorldObjects();
-        if (entry == null || entry.RuntimeContent == null)
-            return;
-
-        entry.RuntimeContent.ClearTemporaryContent();
-        entry.RuntimeContent.ClearEncounterContent();
+        StageProgression.GrantStageEnemyXp(amount);
     }
 
-    void RollbackTransition(
-        CachedRoomEntry previousEntry,
-        MapNode previousNode,
-        PartyPoseSnapshot previousPartyPose,
-        CachedRoomEntry failedEntry)
+    public void CompleteStageRunAndReturn()
     {
-        BindItemDropParent(null);
-        DeactivateCachedRoom(failedEntry);
-
-        if (previousEntry == null || previousEntry.Instance == null)
-        {
-            ActivateCachedRoom(failedEntry);
-            currentRoomEntry = failedEntry;
-            currentRoomInstance = failedEntry != null ? failedEntry.Instance : null;
-            currentRoom = failedEntry != null ? failedEntry.Controller : null;
-            currentNode = failedEntry != null ? failedEntry.Node : previousNode;
-            if (failedEntry != null && failedEntry.RuntimeContent != null)
-                BindItemDropParent(failedEntry.RuntimeContent.PersistentRoot);
-            return;
-        }
-
-        ActivateCachedRoom(previousEntry);
-        previousEntry.Controller.Initialize(this, previousNode);
-        RestorePartyPose(previousPartyPose);
-        BindItemDropParent(previousEntry.RuntimeContent.PersistentRoot);
-
-        currentRoomEntry = previousEntry;
-        currentRoomInstance = previousEntry.Instance;
-        currentRoom = previousEntry.Controller;
-        currentNode = previousNode;
+        TryCompleteStageRunAndReturn();
     }
+
+    /// <summary>
+    /// Commits the stage completion only when both the save and the scene-load dependency are
+    /// available. When either is missing nothing is granted, spent, or locked, so the Stage Exit
+    /// stays interactable and the player can try again.
+    /// </summary>
+    public bool TryCompleteStageRunAndReturn()
+    {
+        return StageProgression.TryCompleteStageRunAndReturn();
+    }
+
+    // ------------------------------------------------------------------ teardown and plumbing
 
     void ResetRoomCache()
     {
         encounterDirector?.StopEncounter();
-        RoomTransitionCleanup.ClearTransientWorldObjects();
+        ClearTransientWorldObjects();
         CleanupSummonWorldRoot();
         BindItemDropParent(null);
 
-        foreach (CachedRoomEntry entry in roomCache.Values)
-        {
-            if (entry == null || entry.Instance == null)
-                continue;
+        RoomCache.DestroyAll();
+        Session.ClearRun();
+    }
 
-            RemoveRoomNavMeshData(entry.Instance);
-            entry.Instance.SetActive(false);
-            Destroy(entry.Instance);
-        }
+    void ClearTransientWorldObjects()
+    {
+        cleanupRoomRoots.Clear();
+        foreach (Transform roomRoot in RoomCache.RoomRoots())
+            cleanupRoomRoots.Add(roomRoot);
 
-        roomCache.Clear();
-        currentRoomEntry = null;
-        currentRoomInstance = null;
-        currentRoom = null;
-        currentNode = null;
-        isTransitioning = false;
+        CharacteContext player = PartyTransitions.ResolvePlayerContext();
+        Transform partyRoot = PartyTransitions.ResolvePartyRoot(player);
+        RoomTransitionCleanup.ClearTransientWorldObjects(new RoomTransitionCleanupScope(partyRoot, cleanupRoomRoots));
     }
 
     void CleanupSummonWorldRoot()
@@ -760,693 +541,6 @@ public class MapRunController : MonoBehaviour
             ItemDropManager.Instance.ClearSpawnParent();
     }
 
-    PartyPoseSnapshot CapturePartyPose()
-    {
-        var snapshot = new PartyPoseSnapshot();
-        CharacteContext player = ResolvePlayerContext();
-        if (player == null)
-            return snapshot;
-
-        Transform partyRoot = ResolvePartyWarpRoot(player);
-        snapshot.RootPose = new TransformPose(partyRoot != null ? partyRoot : player.transform);
-
-        CharacteContext[] contexts = FindObjectsByType<CharacteContext>(
-            FindObjectsInactive.Exclude,
-            FindObjectsSortMode.None);
-        for (int i = 0; i < contexts.Length; i++)
-        {
-            CharacteContext context = contexts[i];
-            if (context == null)
-                continue;
-
-            AITargetIdentity identity = context.TargetIdentity;
-            if (context == player ||
-                (context.ParticipatesInPartyRuntime &&
-                 (identity == AITargetIdentity.Player || identity == AITargetIdentity.Companion)))
-                snapshot.ActorPoses.Add(new TransformPose(context.transform));
-        }
-
-        return snapshot;
-    }
-
-    void RestorePartyPose(PartyPoseSnapshot snapshot)
-    {
-        if (snapshot == null)
-            return;
-
-        Transform root = snapshot.RootPose.Transform;
-        if (root != null)
-        {
-            CharacterController[] controllers = root.GetComponentsInChildren<CharacterController>(true);
-            bool[] controllerStates = DisableControllers(controllers);
-            root.SetPositionAndRotation(snapshot.RootPose.Position, snapshot.RootPose.Rotation);
-            RestoreControllers(controllers, controllerStates);
-            SyncWarpedAgentsUnderRoot(root);
-        }
-
-        for (int i = 0; i < snapshot.ActorPoses.Count; i++)
-            RestoreActorPose(snapshot.ActorPoses[i]);
-
-        Physics.SyncTransforms();
-    }
-
-    void RestoreActorPose(TransformPose pose)
-    {
-        Transform actor = pose.Transform;
-        if (actor == null)
-            return;
-
-        CharacterController controller = actor.GetComponent<CharacterController>();
-        if (controller == null)
-            controller = actor.GetComponentInChildren<CharacterController>(true);
-
-        bool controllerWasEnabled = controller != null && controller.enabled;
-        if (controllerWasEnabled)
-            controller.enabled = false;
-
-        NavMeshAgent agent = actor.GetComponent<NavMeshAgent>();
-        if (agent == null)
-            agent = actor.GetComponentInChildren<NavMeshAgent>(true);
-
-        if (agent != null && agent.isActiveAndEnabled)
-        {
-            if (!agent.Warp(pose.Position))
-                actor.position = pose.Position;
-            else
-                SyncWarpedAgent(agent);
-        }
-        else
-        {
-            actor.position = pose.Position;
-        }
-
-        actor.rotation = pose.Rotation;
-        if (controllerWasEnabled)
-            controller.enabled = true;
-    }
-
-    void RemoveRoomNavMeshData(GameObject roomInstance)
-    {
-        if (roomInstance == null)
-            return;
-
-        NavMeshSurface[] surfaces = roomInstance.GetComponentsInChildren<NavMeshSurface>(true);
-        for (int i = 0; i < surfaces.Length; i++)
-        {
-            NavMeshSurface surface = surfaces[i];
-            if (surface != null)
-                surface.RemoveData();
-        }
-    }
-
-    bool MovePartyToRoomSpawn(RoomController room, RoomExitDirection? entranceDirection)
-    {
-        if (room == null)
-            return false;
-
-        CharacteContext player = ResolvePlayerContext();
-        if (player == null)
-            return true;
-
-        Transform spawn = room.GetPlayerSpawnPoint(entranceDirection);
-        Transform partyRoot = ResolvePartyWarpRoot(player);
-        if (partyRoot != null && partyRoot != player.transform)
-        {
-            if (!WarpPartyRootToPlayerSpawn(player, partyRoot, spawn.position, spawn.rotation))
-                return false;
-        }
-        else
-        {
-            if (!WarpCharacter(player, spawn.position, spawn.rotation))
-                return false;
-        }
-
-        CharacteContext[] contexts = FindObjectsByType<CharacteContext>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        int companionIndex = 0;
-        for (int i = 0; i < contexts.Length; i++)
-        {
-            CharacteContext ctx = contexts[i];
-            if (ctx == null ||
-                ctx == player ||
-                !ctx.ParticipatesInPartyRuntime ||
-                ctx.TargetIdentity != AITargetIdentity.Companion ||
-                !ctx.gameObject.activeInHierarchy)
-                continue;
-
-            if (!WarpCompanionToRoomSpawn(ctx, player.transform, companionIndex))
-                return false;
-
-            companionIndex++;
-        }
-
-        return true;
-    }
-
-    Transform ResolvePartyWarpRoot(CharacteContext player)
-    {
-        if (player == null)
-            return null;
-
-        Transform current = player.transform.parent;
-        while (current != null)
-        {
-            if (IsPartyWarpRootCandidate(current, player))
-                return current;
-
-            current = current.parent;
-        }
-
-        return player.transform;
-    }
-
-    bool IsPartyWarpRootCandidate(Transform candidate, CharacteContext player)
-    {
-        if (candidate == null || player == null)
-            return false;
-
-        if (ContainsIgnoreCase(candidate.name, "Squad") ||
-            ContainsIgnoreCase(candidate.name, "Party"))
-        {
-            return true;
-        }
-
-        CharacteContext[] contexts = candidate.GetComponentsInChildren<CharacteContext>(true);
-        bool hasPlayer = false;
-        bool hasCompanion = false;
-        bool hasEnemy = false;
-
-        for (int i = 0; i < contexts.Length; i++)
-        {
-            CharacteContext ctx = contexts[i];
-            if (ctx == null)
-                continue;
-
-            AITargetIdentity identity = ctx.TargetIdentity;
-            if (ctx == player || (ctx.ParticipatesInPartyRuntime && identity == AITargetIdentity.Player))
-                hasPlayer = true;
-            else if (ctx.ParticipatesInPartyRuntime && identity == AITargetIdentity.Companion)
-                hasCompanion = true;
-            else if (identity == AITargetIdentity.Enemy)
-                hasEnemy = true;
-        }
-
-        return hasPlayer && hasCompanion && !hasEnemy;
-    }
-
-    static bool ContainsIgnoreCase(string value, string search)
-    {
-        return !string.IsNullOrEmpty(value) &&
-               !string.IsNullOrEmpty(search) &&
-               value.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
-    }
-
-    bool WarpPartyRootToPlayerSpawn(
-        CharacteContext player,
-        Transform partyRoot,
-        Vector3 position,
-        Quaternion rotation)
-    {
-        if (player == null || partyRoot == null)
-            return false;
-
-        player.ResolveReferences();
-
-        NavMeshAgent playerAgent = player.GetComponent<NavMeshAgent>();
-        if (playerAgent == null)
-            playerAgent = player.GetComponentInChildren<NavMeshAgent>(true);
-
-        if (!TryResolveSafeWarpPosition(player, playerAgent, position, rotation, out Vector3 safePosition, out Collider blocker))
-        {
-            WarnWarpBlocked(player, position, blocker);
-            Physics.SyncTransforms();
-            return false;
-        }
-
-        CharacterController[] controllers = partyRoot.GetComponentsInChildren<CharacterController>(true);
-        bool[] controllerEnabledStates = DisableControllers(controllers);
-
-        try
-        {
-            SetRootPoseForChildPose(partyRoot, player.transform, safePosition, rotation);
-            SyncWarpedAgentsUnderRoot(partyRoot);
-        }
-        finally
-        {
-            RestoreControllers(controllers, controllerEnabledStates);
-            Physics.SyncTransforms();
-        }
-
-        return true;
-    }
-
-    bool WarpCompanionToRoomSpawn(CharacteContext companion, Transform player, int companionIndex)
-    {
-        if (companion == null || player == null)
-            return false;
-
-        int row = companionIndex / 2;
-        float side = companionIndex % 2 == 0 ? -1f : 1f;
-        Vector3 formationPosition =
-            player.position +
-            player.forward * (CompanionWarpForwardOffset + row * CompanionWarpRowSpacing) +
-            player.right * (CompanionWarpLateralOffset * side);
-
-        if (WarpCharacter(companion, formationPosition, player.rotation, requireActiveAgentNavMesh: true))
-            return true;
-
-        Vector3 centerFallback =
-            player.position +
-            player.forward * (CompanionWarpForwardOffset + companionIndex * CompanionWarpRowSpacing);
-
-        if (WarpCharacter(companion, centerFallback, player.rotation, requireActiveAgentNavMesh: true))
-        {
-            Debug.LogWarning(
-                $"[MapRunController] Companion '{companion.name}' used the center room-entry fallback at {centerFallback}.",
-                this);
-            return true;
-        }
-
-        Debug.LogError(
-            $"[MapRunController] Companion '{companion.name}' could not be placed on the new room NavMesh.",
-            this);
-        return false;
-    }
-
-    static void SetRootPoseForChildPose(
-        Transform root,
-        Transform child,
-        Vector3 childWorldPosition,
-        Quaternion childWorldRotation)
-    {
-        if (root == null || child == null)
-            return;
-
-        Quaternion childLocalRotationToRoot = Quaternion.Inverse(root.rotation) * child.rotation;
-        root.rotation = childWorldRotation * Quaternion.Inverse(childLocalRotationToRoot);
-        root.position += childWorldPosition - child.position;
-    }
-
-    bool[] DisableControllers(CharacterController[] controllers)
-    {
-        if (controllers == null)
-            return Array.Empty<bool>();
-
-        bool[] enabledStates = new bool[controllers.Length];
-        for (int i = 0; i < controllers.Length; i++)
-        {
-            CharacterController controller = controllers[i];
-            if (controller == null)
-                continue;
-
-            enabledStates[i] = controller.enabled;
-            if (controller.enabled)
-                controller.enabled = false;
-        }
-
-        return enabledStates;
-    }
-
-    static void RestoreControllers(CharacterController[] controllers, bool[] enabledStates)
-    {
-        if (controllers == null || enabledStates == null)
-            return;
-
-        int count = Mathf.Min(controllers.Length, enabledStates.Length);
-        for (int i = 0; i < count; i++)
-        {
-            if (controllers[i] != null)
-                controllers[i].enabled = enabledStates[i];
-        }
-    }
-
-    void SyncWarpedAgentsUnderRoot(Transform root)
-    {
-        if (root == null)
-            return;
-
-        NavMeshAgent[] agents = root.GetComponentsInChildren<NavMeshAgent>(true);
-        for (int i = 0; i < agents.Length; i++)
-        {
-            NavMeshAgent agent = agents[i];
-            if (agent != null && agent.enabled)
-                TryWarpAgent(agent, agent.transform.position);
-        }
-    }
-
-    CharacteContext ResolvePlayerContext()
-    {
-        if (playerContext != null)
-            return playerContext;
-
-        CharacteContext[] contexts = FindObjectsByType<CharacteContext>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-        for (int i = 0; i < contexts.Length; i++)
-        {
-            CharacteContext ctx = contexts[i];
-            if (ctx != null && ctx.ParticipatesInPartyRuntime && ctx.TargetIdentity == AITargetIdentity.Player)
-            {
-                playerContext = ctx;
-                return playerContext;
-            }
-        }
-
-        return null;
-    }
-
-    bool WarpCharacter(
-        CharacteContext ctx,
-        Vector3 position,
-        Quaternion rotation,
-        bool requireActiveAgentNavMesh = false)
-    {
-        if (ctx == null)
-            return false;
-
-        ctx.ResolveReferences();
-
-        CharacterController controller = ctx.cc;
-        bool controllerWasEnabled = controller != null && controller.enabled;
-        if (controllerWasEnabled)
-            controller.enabled = false;
-
-        NavMeshAgent agent = ctx.GetComponent<NavMeshAgent>();
-        if (agent == null)
-            agent = ctx.GetComponentInChildren<NavMeshAgent>(true);
-
-        bool hasActiveAgent = agent != null && agent.isActiveAndEnabled;
-        if (requireActiveAgentNavMesh && !hasActiveAgent)
-        {
-            if (controllerWasEnabled)
-                controller.enabled = true;
-
-            Debug.LogWarning(
-                $"[MapRunController] Warp for '{ctx.name}' requires an active NavMeshAgent, but none was available.",
-                this);
-            return false;
-        }
-
-        if (!TryResolveSafeWarpPosition(ctx, agent, position, rotation, out Vector3 safePosition, out Collider blocker))
-        {
-            if (controllerWasEnabled)
-                controller.enabled = true;
-
-            WarnWarpBlocked(ctx, position, blocker);
-            Physics.SyncTransforms();
-            return false;
-        }
-
-        if (hasActiveAgent)
-        {
-            if (!TryWarpAgent(agent, safePosition))
-            {
-                if (controllerWasEnabled)
-                    controller.enabled = true;
-
-                Debug.LogWarning(
-                    $"[MapRunController] NavMesh warp for '{ctx.name}' failed near {safePosition}.",
-                    this);
-                Physics.SyncTransforms();
-                return false;
-            }
-        }
-        else
-        {
-            ctx.transform.position = safePosition;
-        }
-
-        ctx.transform.rotation = rotation;
-
-        if (controllerWasEnabled)
-            controller.enabled = true;
-
-        Physics.SyncTransforms();
-        return true;
-    }
-
-    public bool TryWarpTransientActor(
-        CharacteContext actor,
-        CharacteContext anchor,
-        int formationIndex,
-        out Vector3 resolvedPosition)
-    {
-        resolvedPosition = Vector3.zero;
-        if (actor == null || anchor == null || actor == anchor)
-            return false;
-
-        int row = Mathf.Max(0, formationIndex) / 2;
-        float side = Mathf.Max(0, formationIndex) % 2 == 0 ? -1f : 1f;
-        Vector3 position = anchor.transform.position +
-                           anchor.transform.forward * (CompanionWarpForwardOffset + row * CompanionWarpRowSpacing) +
-                           anchor.transform.right * (CompanionWarpLateralOffset * side);
-
-        bool requireActiveAgent = actor is SummonContext summonContext &&
-                                   summonContext.Mobility == SummonMobility.Mobile;
-        if (!WarpCharacter(actor, position, anchor.transform.rotation, requireActiveAgent))
-            return false;
-
-        resolvedPosition = actor.transform.position;
-        return true;
-    }
-
-    bool TryWarpAgent(NavMeshAgent agent, Vector3 position, bool allowNavMeshSample = true)
-    {
-        if (agent == null || !agent.isActiveAndEnabled)
-            return false;
-
-        if (agent.Warp(position))
-        {
-            SyncWarpedAgent(agent);
-            return true;
-        }
-
-        if (!allowNavMeshSample)
-            return false;
-
-        if (TrySampleAgentNavMeshPosition(agent, position, out Vector3 navMeshPosition) &&
-            agent.Warp(navMeshPosition))
-        {
-            SyncWarpedAgent(agent);
-            return true;
-        }
-
-        return false;
-    }
-
-    bool TryResolveSafeWarpPosition(
-        CharacteContext ctx,
-        NavMeshAgent agent,
-        Vector3 position,
-        Quaternion rotation,
-        out Vector3 safePosition,
-        out Collider blocker)
-    {
-        safePosition = position;
-        blocker = null;
-        Physics.SyncTransforms();
-
-        if (TryResolveSafeWarpCandidate(ctx, agent, position, rotation, out safePosition, out blocker))
-            return true;
-
-        float searchRadius = Mathf.Max(partyWarpSafeSearchRadius, partyWarpNavMeshSampleRadius, 0f);
-        if (searchRadius <= 0f)
-            return false;
-
-        int steps = Mathf.Max(4, partyWarpSafeSearchSteps);
-        const int ringCount = 3;
-        for (int ring = 1; ring <= ringCount; ring++)
-        {
-            float radius = searchRadius * ring / ringCount;
-            float angleOffset = ring % 2 == 0 ? Mathf.PI / steps : 0f;
-
-            for (int i = 0; i < steps; i++)
-            {
-                float angle = angleOffset + Mathf.PI * 2f * i / steps;
-                Vector3 candidate = position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
-                if (TryResolveSafeWarpCandidate(ctx, agent, candidate, rotation, out safePosition, out blocker))
-                    return true;
-            }
-        }
-
-        return false;
-    }
-
-    bool TryResolveSafeWarpCandidate(
-        CharacteContext ctx,
-        NavMeshAgent agent,
-        Vector3 candidate,
-        Quaternion rotation,
-        out Vector3 safePosition,
-        out Collider blocker)
-    {
-        safePosition = candidate;
-        blocker = null;
-
-        if (agent != null && agent.enabled &&
-            TrySampleAgentNavMeshPosition(agent, candidate, out Vector3 navMeshPosition))
-        {
-            if (IsWarpPositionClear(ctx, agent, navMeshPosition, rotation, out blocker))
-            {
-                safePosition = navMeshPosition;
-                return true;
-            }
-        }
-
-        if (IsWarpPositionClear(ctx, agent, candidate, rotation, out blocker))
-        {
-            safePosition = candidate;
-            return true;
-        }
-
-        return false;
-    }
-
-    bool IsWarpPositionClear(
-        CharacteContext ctx,
-        NavMeshAgent agent,
-        Vector3 position,
-        Quaternion rotation,
-        out Collider blocker)
-    {
-        blocker = null;
-
-        int collisionMask = ResolveWarpCollisionMask();
-        if (collisionMask == 0)
-            return true;
-
-        GetWarpProbeCapsule(ctx, agent, position, rotation, out Vector3 pointA, out Vector3 pointB, out float radius);
-        int hitCount = Physics.OverlapCapsuleNonAlloc(
-            pointA,
-            pointB,
-            radius,
-            WarpCollisionHits,
-            collisionMask,
-            QueryTriggerInteraction.Ignore);
-
-        for (int i = 0; i < hitCount; i++)
-        {
-            Collider hit = WarpCollisionHits[i];
-            WarpCollisionHits[i] = null;
-
-            if (hit == null || IsOwnCollider(ctx, hit))
-                continue;
-
-            blocker = hit;
-            return false;
-        }
-
-        return true;
-    }
-
-    void GetWarpProbeCapsule(
-        CharacteContext ctx,
-        NavMeshAgent agent,
-        Vector3 position,
-        Quaternion rotation,
-        out Vector3 pointA,
-        out Vector3 pointB,
-        out float radius)
-    {
-        Vector3 up = rotation * Vector3.up;
-        float height;
-        Vector3 center;
-
-        CharacterController controller = ctx != null ? ctx.cc : null;
-        if (controller != null)
-        {
-            Vector3 scale = controller.transform.lossyScale;
-            Vector3 scaledCenter = Vector3.Scale(controller.center, Abs(scale));
-            center = position + rotation * scaledCenter;
-            radius = Mathf.Max(0.05f, controller.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z)) + partyWarpCollisionPadding);
-            height = Mathf.Max(controller.height * Mathf.Abs(scale.y), radius * 2f);
-        }
-        else if (agent != null)
-        {
-            radius = Mathf.Max(0.05f, agent.radius + partyWarpCollisionPadding);
-            height = Mathf.Max(agent.height, radius * 2f);
-            center = position + up * (height * 0.5f);
-        }
-        else
-        {
-            radius = Mathf.Max(0.05f, 0.35f + partyWarpCollisionPadding);
-            height = Mathf.Max(1.8f, radius * 2f);
-            center = position + up * (height * 0.5f);
-        }
-
-        float halfLine = Mathf.Max(0f, height * 0.5f - radius);
-        float groundClearance = Mathf.Min(Mathf.Max(0f, partyWarpGroundClearance), height * 0.25f);
-        pointA = center + up * halfLine;
-        pointB = center - up * halfLine + up * groundClearance;
-    }
-
-    int ResolveWarpCollisionMask()
-    {
-        if (partyWarpCollisionMask.value != 0)
-            return partyWarpCollisionMask.value;
-
-        int terrainLayer = LayerMask.NameToLayer(DefaultWarpCollisionLayerName);
-        if (terrainLayer >= 0)
-            return 1 << terrainLayer;
-
-        if (!warnedMissingWarpCollisionLayer)
-        {
-            warnedMissingWarpCollisionLayer = true;
-            Debug.LogWarning($"[MapRunController] Layer '{DefaultWarpCollisionLayerName}' was not found. Warp collision checks are disabled.", this);
-        }
-
-        return 0;
-    }
-
-    static Vector3 Abs(Vector3 value)
-    {
-        return new Vector3(Mathf.Abs(value.x), Mathf.Abs(value.y), Mathf.Abs(value.z));
-    }
-
-    static bool IsOwnCollider(CharacteContext ctx, Collider hit)
-    {
-        return ctx != null &&
-               hit != null &&
-               (hit.transform == ctx.transform || hit.transform.IsChildOf(ctx.transform));
-    }
-
-    void WarnWarpBlocked(CharacteContext ctx, Vector3 position, Collider blocker)
-    {
-        string actorName = ctx != null ? ctx.name : "Unknown";
-        string blockerName = blocker != null ? $"{blocker.name} ({LayerMask.LayerToName(blocker.gameObject.layer)})" : "unknown Terrain collider";
-        Debug.LogWarning($"[MapRunController] Warp for '{actorName}' was blocked near {position} by {blockerName}.", this);
-    }
-
-    bool TrySampleAgentNavMeshPosition(NavMeshAgent agent, Vector3 position, out Vector3 navMeshPosition)
-    {
-        navMeshPosition = position;
-        if (agent == null)
-            return false;
-
-        float sampleRadius = Mathf.Max(partyWarpNavMeshSampleRadius, agent.radius * 2f, 0.25f);
-        int areaMask = agent.areaMask;
-        if (NavMesh.SamplePosition(position, out NavMeshHit hit, sampleRadius, areaMask))
-        {
-            navMeshPosition = hit.position;
-            return true;
-        }
-
-        if (areaMask != NavMesh.AllAreas &&
-            NavMesh.SamplePosition(position, out hit, sampleRadius, NavMesh.AllAreas))
-        {
-            navMeshPosition = hit.position;
-            return true;
-        }
-
-        return false;
-    }
-
-    static void SyncWarpedAgent(NavMeshAgent agent)
-    {
-        if (agent == null || !agent.enabled || !agent.isOnNavMesh)
-            return;
-
-        agent.ResetPath();
-        agent.nextPosition = agent.transform.position;
-    }
-
     void ResolveReferences()
     {
         if (encounterDirector == null)
@@ -1465,7 +559,7 @@ public class MapRunController : MonoBehaviour
 
     void NotifyMapChanged()
     {
-        MapChanged?.Invoke(graph, currentNode);
+        MapChanged?.Invoke(Session.Graph, Session.CurrentNode);
         mapView?.Refresh(this);
     }
 

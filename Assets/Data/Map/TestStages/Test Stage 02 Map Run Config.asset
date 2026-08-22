@@ -12,7 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 351903b7dde783b4c9fc7af84c44e233, type: 3}
   m_Name: Test Stage 02 Map Run Config
   m_EditorClassIdentifier: 
+  generationProfile: {fileID: 11400000, guid: 3e34a608400fae148850c7e1d0a8910b, type: 2}
+  contentPool: {fileID: 11400000, guid: ab2ec96beb65dc347a67123d35ea8c9e, type: 2}
+  progressionProfile: {fileID: 11400000, guid: 1882e89c7ca03c241816aec95c67e5f4, type: 2}
   stageId: test_stage_02
+  legacyStageIds: []
   stageDisplayName: TEST STAGE 02
   levelTable: {fileID: 11400000, guid: 82901514653acdd459e15f27bba38071, type: 2}
   startLevel: 11

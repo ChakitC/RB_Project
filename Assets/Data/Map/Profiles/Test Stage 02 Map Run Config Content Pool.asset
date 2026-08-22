@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec505d6868a9d33439a472065ad11632, type: 3}
+  m_Name: Test Stage 02 Map Run Config Content Pool
+  m_EditorClassIdentifier: 
+  displayName: TEST STAGE 02
+  roomDefinitions:
+  - {fileID: 11400000, guid: 358a9da960b94735a284e3ff5df2b9b6, type: 2}
+  - {fileID: 11400000, guid: d24a8b4637d940189f73b57e3bba39ef, type: 2}
+  - {fileID: 11400000, guid: fd29d88aa3596c74bb0c4457c9675a16, type: 2}
+  - {fileID: 11400000, guid: 77033f30cb434e8dbeb4954514680a9d, type: 2}
+  - {fileID: 11400000, guid: 141e12a3e6bf4307b4681a7f74c1090b, type: 2}
+  - {fileID: 11400000, guid: 6cecae8ac1664951b80318e4a10d1636, type: 2}
+  - {fileID: 11400000, guid: 06b6c3ee1a594ed3b83a6a6fcb8f7034, type: 2}
+  - {fileID: 11400000, guid: 098c7f6845e04eaaa05bd5cb487d29bd, type: 2}
+  - {fileID: 11400000, guid: 6f6b54f2b6ee4b5f8880661b2ea47294, type: 2}
+  - {fileID: 11400000, guid: 1a5d86a2c1b84cfd91ea7564379d5a46, type: 2}
+  encounterDefinitions:
+  - {fileID: 11400000, guid: 70ea34ec93388d0448da80fb654d6cdb, type: 2}
+  - {fileID: 11400000, guid: 9c08976f3a07f7148b9f6d8f53ef7e63, type: 2}

@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ee8d4898e06a3941954465cd190de82, type: 3}
+  m_Name: Test Stage 03 Map Run Config Progression Profile
+  m_EditorClassIdentifier: 
+  levelTable: {fileID: 11400000, guid: 82901514653acdd459e15f27bba38071, type: 2}
+  startLevel: 20
+  targetLevel: 30
+  targetRunCount: 5
+  enemyLevelTiers: 16000000180000001a0000001c0000001e000000
+  regularEnemyXpShare: 0.6
+  bossXpShare: 0.2
+  stageExitPrefab: {fileID: 8425246888555300814, guid: 0b1bcabff73e66f4e82a082480ae1deb, type: 3}

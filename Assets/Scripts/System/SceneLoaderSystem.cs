@@ -97,9 +97,12 @@ public class SceneLoaderSystem : MonoBehaviour
 
     public void LoadBasement()
     {
-        SaveManager.Instance.Save();
+        if (SaveManager.Instance != null)
+            SaveManager.Instance.Save();
+        else
+            Debug.LogWarning("[SceneLoaderSystem] SaveManager is missing; returning to Basement without saving.", this);
+
         SceneManager.LoadScene("Basement");
-        
     }
 
     void ApplySceneAudio(string sceneName)

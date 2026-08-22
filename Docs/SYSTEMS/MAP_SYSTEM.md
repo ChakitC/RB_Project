@@ -17,6 +17,69 @@ the surface lifecycle; enabling the destination room adds that baked data
 again before the party is warped. Room transitions never rebuild NavMesh data
 at runtime.
 
+## Stage Data Layout
+
+A `MapRunConfigSO` owns stage identity and nothing else. All of its tuning lives on profile
+assets it points at:
+
+| Asset | Serves |
+| --- | --- |
+| `MapGenerationProfileSO` | seed policy, critical path length, branch limits, exits per node, pity rule, node weights |
+| `MapContentPoolSO` | the room and encounter definitions a stage draws from — a biome |
+| `StageProgressionProfileSO` | level band, runs to clear, enemy level tiers, XP split, Stage Exit prefab |
+| `StageDefinitionSO` | one stage as the player meets it: id, display name, run config, board order |
+| `StageCatalogSO` | the ordered list of stages the Basement board offers |
+
+Profiles are **required**, not optional. A config needs a generation profile and a content pool,
+and a Test Stage additionally needs a progression profile; `MapRunConfigValidator` rejects a config
+that is missing one, and `StartRun` refuses to generate. The properties still return safe defaults
+rather than throwing, so the error can be reported without a crash first.
+
+There is deliberately no inline fallback. A value has exactly one home, which means editing a number
+always has an effect — the earlier arrangement, where a config kept inline fields that a profile
+silently overrode, made Inspector edits look like they worked when they did nothing.
+
+`Stage Id` deliberately stays on the config rather than moving into a shared profile: it is the key
+progress is saved under, so it is per-stage identity and must never be shared. It must also be
+unique and, once a build has shipped, immutable. When a stage has to be renamed, put the old id in
+`Legacy Stage Ids` — on the config, and on the `StageDefinitionSO` if one exists. Loading the stage
+then adopts and rewrites the old entry instead of starting the player from zero.
+
+`slot_<n>_stage_progress.json` carries a `schemaVersion`. A file written before the field existed
+reads back as version `0`, which is how an old save is recognised; it is normalised on the next
+load.
+
+## Controller Structure
+
+`MapRunController` is the scene-facing facade. It owns the serialized setup and the run lifecycle
+and delegates the work to four collaborators:
+
+| Collaborator | Owns |
+| --- | --- |
+| `MapRunSession` | the generated graph, the current node and room, and whether travel is legal |
+| `RoomRuntimeCache` | room instances, their activation, and their NavMesh data |
+| `PartyRoomTransitionService` | moving the party into a room and putting it back |
+| `StageRunProgressionService` | Test Stage progress, enemy level, XP pools, and completion |
+
+Every method the shop, summon, room, exit, and enemy systems call still lives on the controller, and
+every serialized field keeps its name, so scenes and prefabs are unaffected.
+
+`PartyRoomTransitionService` takes the party from `PartyRuntime`: its `Root` is the warp root and
+its `Actors` are the members to move. Nothing searches the scene for characters or matches object
+names any more, so an object called "Party" in a scene has no effect on where the party warps.
+
+## Room Lifecycle Hook
+
+Behaviour that belongs to one kind of room rather than to rooms in general is authored as a
+component on the room prefab implementing `IRoomLifecycleListener`. `RoomController` discovers those
+components and calls `OnRoomInitialized`, `OnRoomBegan`, and `OnRoomCleared` at the matching points,
+so the generic controller never branches on stage or node type. A listener that throws is logged and
+skipped rather than taking the room down with it.
+
+`TestStageRecoveryStations` is the first listener: it configures a Heal room's authored heal and
+ammo stations into the Test Stage recovery contract. It lives on the Heal room prefab, not inside
+`RoomController`.
+
 ## Runtime Room Ownership
 
 `RoomController` creates a `RuntimeContent` hierarchy automatically. Room
@@ -34,6 +97,13 @@ Collected item pickups are destroyed normally and therefore do not return.
 VFX are cleared during travel. VFX parented under a player or companion context
 is preserved so status presentation can survive the transition.
 
+The transition sweep has to be scene-wide, because pooled projectiles live under a
+`DontDestroyOnLoad` root rather than inside the room. What keeps it safe is
+`RoomTransitionCleanupScope`: anything under the party root or under **any** cached room instance is
+left alone. Without that scope the sweep also destroys the uncollected drops waiting inside a cached
+room, which is the whole point of caching it. Clearing the outgoing room's own encounter and
+temporary content is a separate, explicit step.
+
 ## Travel And Rollback
 
 Rooms whose definition requires clearing cannot be left while their current
@@ -47,11 +117,27 @@ before the party has been warped and turned to face into the room. Rooms are als
 instantiated with a per-node yaw, so without this call the camera keeps pointing
 the way the previous room faced.
 
-A transition keeps the previous cached room and party pose until destination
-placement succeeds. If any required party member cannot be placed on the new
-room NavMesh, the destination is disabled, the previous room is re-enabled,
-and the previous party pose and item-drop ownership are restored. Graph state
-is committed only after a successful party warp.
+A transition is a transaction. The previous room is only hidden while the warp
+is attempted: its encounter keeps running, its spawned enemies and its temporary
+content stay alive, and world projectiles and VFX are left alone. Nothing is torn
+down until the party is known to stand in the destination room.
+
+On a successful warp the controller commits in one step: the previous encounter
+is stopped, the previous room's encounter and temporary content are cleared,
+transient world objects are swept, item-drop ownership moves to the destination,
+the node is marked visited, and `RoomTransitionCommitted` is raised.
+
+If any required party member cannot be placed on the new room NavMesh, the
+destination is disabled, the previous room is re-enabled, and the previous party
+pose and item-drop ownership are restored. The previous room is restored rather
+than re-initialized, so a locked-down room stays locked. Node reveal and visit
+state are untouched, and `RoomTransitionRolledBack` is raised.
+
+When the *first* room of a run cannot be entered there is nothing to roll back
+to. The controller then stays roomless — `CurrentNode`, `CurrentRoom`, and
+`HasActiveRoom` all report nothing, `BeginRoom` is never called, and no commit
+event fires — so the run can be resumed with `TryEnterStartRoom()` or ended with
+`AbortRun()`.
 
 Starting a new run destroys every cached room and clears all runtime ownership.
 The cache is in-memory only; saving and loading a run across application
@@ -253,6 +339,26 @@ Boss spawn point and a dedicated `StageExitSpawnPoint`. Clearing the Boss
 reveals the cyan `Stage Exit Cyan` portal; returning is manual rather than
 automatic. If a room lacks the dedicated exit socket, runtime falls back to
 its first loot spawn point.
+
+Taking the portal calls `MapRunController.TryCompleteStageRunAndReturn()`, which
+returns whether the completion was accepted. It is refused — granting nothing,
+saving nothing, and consuming nothing — when `SaveManager` or `SceneLoaderSystem`
+is unavailable, and `StageExitInteractable` only marks itself used on an accepted
+completion, so a refused portal can be used again. An accepted completion runs
+exactly once per run: completion XP, stage progress, and the return to Basement
+all happen behind the same commit flag. `CompleteStageRunAndReturn()` is kept as
+a void wrapper for existing callers.
+
+Before shipping a stage, run **Tools > RB Project > Map > Validate Map Content**.
+It walks every run config in the project down to enemy prefabs, room prefabs,
+and the portal prefab; `Docs/VALIDATION.md` lists the rules and their severities.
+
+A wave whose enemy pool is entirely empty slots, and an encounter with no waves
+at all, are content defects. `EncounterDirector` reports them as errors naming
+the encounter asset and the map node, and completes the room anyway so the run
+cannot soft-lock behind exits that never unlock. Wave prefab selection skips
+empty slots, so a pool holding one usable prefab among many empty ones always
+spawns that prefab.
 
 ## Performance Validation
 

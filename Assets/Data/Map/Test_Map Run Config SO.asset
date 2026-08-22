@@ -12,6 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 351903b7dde783b4c9fc7af84c44e233, type: 3}
   m_Name: Test_Map Run Config SO
   m_EditorClassIdentifier: 
+  generationProfile: {fileID: 11400000, guid: f45b250c1e7a6dd499f54bed58cd3141, type: 2}
+  contentPool: {fileID: 11400000, guid: 273fa8e13d2cbc946bd2bedcbd8e8e5c, type: 2}
+  progressionProfile: {fileID: 0}
+  stageId: 
+  legacyStageIds: []
+  stageDisplayName: 
+  levelTable: {fileID: 0}
+  startLevel: 1
+  targetLevel: 11
+  targetRunCount: 2
+  enemyLevelTiers: 
+  regularEnemyXpShare: 0.6
+  bossXpShare: 0.2
+  stageExitPrefab: {fileID: 0}
   randomizeSeed: 1
   seed: 0
   criticalPathNodeCount: 6

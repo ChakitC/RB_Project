@@ -471,3 +471,133 @@ why the break has not been visible in play.
 **Not covered by these suites** — trigger collisions, hit/area VFX, real prefab physics, and
 lifetime expiry under a running physics loop remain Play Mode checks. Editor scripts are also not
 covered by `CheckAssemblyBuild.ps1`; compile them through a Unity script refresh.
+
+# Map system validation
+
+`CheckAssemblyBuild.ps1` does not compile `Assets/Scripts/Editor`, so map
+tooling and map tests are validated by letting Unity compile and then running
+the Edit Mode suites in the Test Runner.
+
+Edit Mode suites under `Assets/Scripts/Editor/MapSystem`:
+
+| Suite | Covers |
+| --- | --- |
+| `MapGeneratorTests` | generator output is a valid graph across seeds |
+| `RoomRuntimeContentTests` | the runtime content hierarchy and its clearing rules |
+| `MapRunTransitionTests` | the room-transition transaction: commit, rollback, first-entry failure, retry, revisit caching |
+| `StageCompletionTests` | the Stage Exit refusal path and the single-commit guarantee |
+| `EncounterContentTests` | wave prefab selection over pools with empty slots |
+| `BasementBoardPageTests` | Basement board page ownership and the preservation of hand-authored pages |
+| `RoomTransitionCleanupTests` | the transition sweep spares party-owned and cached-room content |
+| `RoomLifecycleListenerTests` | `IRoomLifecycleListener` drives room-specific behaviour, and only where it applies |
+| `MapContentValidationTests` | every run config in the project has no error-level content defect |
+| `MapContentValidatorDetectionTests` | each content rule actually fires on broken content |
+| `StageProfileTests` | tuning is read from profiles, and a config missing one is rejected |
+| `StageProgressSchemaTests` | the save schema version and the Stage Id alias migration |
+| `MapGeneratorSweepTests` | 256 seeds per run config, plus an explicit 10,000-seed soak |
+| `MapGraphStructureValidatorDetectionTests` | each graph invariant actually fires on a broken graph |
+| `StageIntroSmokeTests` | stage intro rig contract |
+
+`MapRunTransitionTests` and `StageCompletionTests` drive `MapRunController`
+through `MapRunTestFixture`, which builds an in-memory run config, room
+definitions, and room templates, and replaces the party warp with
+`MapRunController.PartyWarpOverride`. That seam exists only for tests and is
+null during play.
+
+Edit Mode has no `SaveManager` and no `SceneLoaderSystem` singleton, so
+`StageCompletionTests` can only cover the refused half of stage completion.
+Verify the accepted half in Play Mode: clear the Boss, take the portal once, and
+confirm XP and Stage Progress each advance exactly once.
+
+Before touching the Basement board, run **Tools > RB Project > Map > Validate
+Basement Board (Dry Run)** and read the report. After applying, re-run
+`Apply Test Stage Content` a second time: the scene must show no further diff.
+
+## Map content validation
+
+**Tools > RB Project > Map > Validate Map Content** runs `MapContentValidator`
+over every `MapRunConfigSO` in the project. New configs are discovered by asset
+type, so a stage added without content cannot slip through unvalidated.
+
+Two severities, and the difference matters:
+
+- **Error** — the run would break, soft-lock, or silently produce wrong content.
+  `MapContentValidationTests` fails on any error.
+- **Warning** — authoring is degraded but runtime has a working fallback.
+  Reported, never fatal.
+
+What it checks, per config:
+
+| Area | Rule | Severity |
+| --- | --- | --- |
+| Stage identity | two configs share a `Stage Id` | Error |
+| Stage identity | `Stage Id` is empty, so the config is not a Test Stage | Warning |
+| Config | `MapRunConfigValidator` rejects the config | Error |
+| Coverage | a generatable node type has no usable room definition | Error |
+| Coverage | a Combat/Elite/Ambush/Trap/Boss type has no usable encounter | Error |
+| Encounter | `Boss Encounter` disagrees with `Node Type` | Error |
+| Encounter | no waves, or a wave with no usable enemy prefab | Error |
+| Encounter | an empty enemy prefab slot inside an otherwise usable wave | Warning |
+| Enemy prefab | no `EnemyContext`, no base stats, or no `HealthSystem` | Error |
+| Room prefab | no `RoomController` — runtime adds one, but with no authored sockets | Error |
+| Room prefab | no `NavMeshSurface`, or a surface with no baked `NavMeshData` | Error |
+| Room prefab | a direction in `Exit Mask` has no `RoomExitInteractable` | Error |
+| Room prefab | two exit sockets authored in the same direction | Error |
+| Room prefab | an exit socket outside the `Exit Mask` | Warning |
+| Room prefab | a Combat/Elite/Ambush/Trap/Boss room with no enemy spawn points | Error |
+| Room prefab | a masked direction with no entrance spawn point | Warning |
+| Room prefab | a Boss room with no Stage Exit spawn point | Warning |
+| Room prefab | a Heal room a Test Stage can use, with no `TestStageRecoveryStations` | Error |
+| Stage Exit | prefab missing `StageExitInteractable`, `InteractableLink`, a trigger collider, or the `Interactable` layer | Error |
+
+Rooms in this project author their entrance spawn as a `SpawnPoint`-named child
+under each exit socket rather than filling `Player Spawn Points By Direction`.
+Both satisfy the entrance-spawn rule; the generic `Player Spawn Point` is only
+reported when neither exists.
+
+### Generator sweep
+
+`MapGeneratorSweepTests` generates every run config across 256 seeds and runs
+both `MapPathValidator` (the runtime gate) and `MapGraphStructureValidator` on
+each graph. The structure validator covers what the runtime gate does not:
+unique node ids, incoming/outgoing edge symmetry, critical-path endpoints and
+adjacency, and the branch-count range.
+
+`MinBranchCount` is a guarantee here, not a preference. `MapGenerator` only logs
+a warning when it runs out of branch parents, so a shortfall is caught by the
+sweep instead of shipping silently.
+
+`SoakEveryRunConfigAcrossTenThousandSeeds` is marked `Explicit` so it stays out
+of the normal run, but it is cheap — about 1.5 s for 50,000 graphs on the
+current configs. Run it from the Test Runner after changing the generator, the
+room definitions, or the branch limits.
+
+## Stage catalog validation
+
+`StageCatalogValidator` runs as part of **Tools > RB Project > Map > Validate Map Content**.
+
+| Rule | Severity |
+| --- | --- |
+| a `StageDefinitionSO` with no run config | Error |
+| its `Stage Id` disagrees with its run config's `Stage Id` | Error |
+| a stage resolves to an empty `Stage Id` | Error |
+| two stages share a `Stage Id` | Error |
+| a `Legacy Stage Id` is another stage's current id | Error |
+| a `Legacy Stage Id` is empty, duplicated, or repeats the current id | Warning |
+| a catalog lists an empty slot, or the same stage twice | Error |
+| a catalog lists no stages | Warning |
+
+The legacy-id rule is the one worth understanding: a legacy id is adopted on load, so pointing it at
+a stage that is still live would silently hand that stage's saved progress to another stage.
+
+## Profiles are required
+
+Every `MapRunConfigSO` must reference a `MapGenerationProfileSO` and a `MapContentPoolSO`, and a
+Test Stage must also reference a `StageProgressionProfileSO`. `MapRunConfigValidator` reports a
+missing one as an error, so `StartRun` refuses the run and
+`MapContentValidationTests` fails the suite.
+
+The one-off migration that moved inline tuning onto profiles has been applied and its tool removed;
+the run configs no longer carry inline tuning fields at all. `Tools > RB Project > Map > Apply Test
+Stage Content` authors the Test Stage profiles directly, reusing whatever profile a config already
+references rather than creating a second one beside it.

@@ -292,10 +292,26 @@ public static class SaveSystem
 
     public static int LoadStageProgress(int slot, string stageId)
     {
+        return LoadStageProgress(slot, stageId, null);
+    }
+
+    /// <summary>
+    /// Reads stage progress, adopting anything saved under an earlier id for the same stage. The
+    /// file is rewritten only when the migration actually changed something, so a normal load stays
+    /// read-only.
+    /// </summary>
+    public static int LoadStageProgress(int slot, string stageId, IReadOnlyList<string> legacyStageIds)
+    {
         if (slot < 0) slot = 0;
-        string path = ResolveReadPath(StageProgressPath(slot));
-        StageProgressSaveFile file = ReadJson<StageProgressSaveFile>(path) ?? new StageProgressSaveFile();
-        return file.GetProgress(stageId);
+        string path = StageProgressPath(slot);
+        StageProgressSaveFile file = ReadJson<StageProgressSaveFile>(ResolveReadPath(path)) ?? new StageProgressSaveFile();
+
+        bool migrated = file.MigrateStageId(stageId, legacyStageIds);
+        migrated |= file.NormalizeSchemaVersion();
+        if (migrated)
+            WriteJson(path, file);
+
+        return file.GetProgress(stageId, legacyStageIds);
     }
 
     public static void SaveStageProgress(int slot, string stageId, int progressCount)

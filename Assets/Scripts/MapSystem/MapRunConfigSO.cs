@@ -15,119 +15,115 @@ public sealed class WeightedMapNodeType
 [CreateAssetMenu(menuName = "Game/Map/Run Config")]
 public class MapRunConfigSO : ScriptableObject
 {
-    [Header("Test Stage")]
+    [Header("Profiles")]
+    [Tooltip("รูปร่างแผนที่และน้ำหนักสุ่มของด่านนี้ ต้องใส่เสมอ")]
+    [SerializeField] private MapGenerationProfileSO generationProfile;
+
+    [Tooltip("ชุด room และ encounter ที่ด่านนี้ใช้ ต้องใส่เสมอ")]
+    [SerializeField] private MapContentPoolSO contentPool;
+
+    [Tooltip("ความคืบหน้าและ XP ของด่าน ต้องใส่เมื่อเป็น Test Stage")]
+    [SerializeField] private StageProgressionProfileSO progressionProfile;
+
+    [Header("Stage Identity")]
+    [Tooltip("รหัสด่านที่ใช้เก็บ save progress ห้ามเปลี่ยนหลังปล่อยบิลด์แล้ว")]
     [SerializeField] private string stageId;
+
+    [Tooltip("รหัสเดิมของด่านนี้ ใช้ย้าย save progress เมื่อเปลี่ยน Stage Id")]
+    [SerializeField] private string[] legacyStageIds;
+
+    [Tooltip("ชื่อด่านที่แสดงบนบอร์ด")]
     [SerializeField] private string stageDisplayName;
-    [SerializeField] private LevelTableSO levelTable;
-    [SerializeField, Min(1)] private int startLevel = 1;
-    [SerializeField, Min(2)] private int targetLevel = 11;
-    [SerializeField, Min(1)] private int targetRunCount = 2;
-    [SerializeField] private int[] enemyLevelTiers;
-    [SerializeField, Range(0f, 1f)] private float regularEnemyXpShare = 0.6f;
-    [SerializeField, Range(0f, 1f)] private float bossXpShare = 0.2f;
-    [SerializeField] private GameObject stageExitPrefab;
 
-    [Header("Seed")]
-    [Tooltip("ถ้าเปิด จะสุ่ม seed ใหม่ทุกครั้งที่เริ่ม run")]
-    [SerializeField] private bool randomizeSeed = true;
+    // Identity is the only tuning this asset owns. Everything else lives on a profile, so two
+    // stages set in the same place can share one, and a value has exactly one home.
+    //
+    // A missing profile is a content error, not a runtime fallback: MapRunConfigValidator refuses
+    // the config and StartRun bails before generating. The defaults below only keep the properties
+    // safe to read while that error is being reported.
 
-    [Tooltip("seed คงที่สำหรับทดสอบ map เดิมซ้ำ ใช้เมื่อปิด Randomize Seed")]
-    [SerializeField] private int seed;
+    public MapGenerationProfileSO GenerationProfile => generationProfile;
+    public MapContentPoolSO ContentPool => contentPool;
+    public StageProgressionProfileSO ProgressionProfile => progressionProfile;
 
-    [Header("Shape")]
-    [Tooltip("จำนวน node บนเส้นหลักตั้งแต่ Start ถึง Boss")]
-    [SerializeField, Min(2)] private int criticalPathNodeCount = 6;
+    // --- Shape ---------------------------------------------------------------------------
 
-    [Tooltip("จำนวนทางแยกเสริมขั้นต่ำต่อ run")]
-    [SerializeField, Min(0)] private int minBranchCount = 1;
+    public bool RandomizeSeed => generationProfile == null || generationProfile.RandomizeSeed;
+    public int Seed => generationProfile != null ? generationProfile.Seed : 0;
+    public int CriticalPathNodeCount => generationProfile != null ? generationProfile.CriticalPathNodeCount : 2;
+    public int MinBranchCount => generationProfile != null ? generationProfile.MinBranchCount : 0;
+    public int MaxBranchCount => generationProfile != null ? generationProfile.MaxBranchCount : 0;
+    public int MaxOutgoingPerNode => generationProfile != null ? generationProfile.MaxOutgoingPerNode : 1;
+    public bool ForceBlueBeforeBoss => generationProfile != null && generationProfile.ForceBlueBeforeBoss;
+    public MapPitySystem PitySystem => generationProfile != null ? generationProfile.PitySystem : new MapPitySystem();
 
-    [Tooltip("จำนวนทางแยกเสริมสูงสุดต่อ run")]
-    [SerializeField, Min(0)] private int maxBranchCount = 3;
+    public WeightedMapNodeType[] MainPathWeights => generationProfile != null
+        ? generationProfile.MainPathWeights
+        : Array.Empty<WeightedMapNodeType>();
 
-    [Tooltip("จำนวนประตูออกสูงสุดที่ node หนึ่ง node มีได้")]
-    [SerializeField, Range(1, 4)] private int maxOutgoingPerNode = 3;
+    public WeightedMapNodeType[] BlueWeights => generationProfile != null
+        ? generationProfile.BlueWeights
+        : Array.Empty<WeightedMapNodeType>();
 
-    [Tooltip("บังคับให้มีห้องน้ำเงินก่อนถึง Boss บนเส้นหลัก")]
-    [SerializeField] private bool forceBlueBeforeBoss = true;
+    public WeightedMapNodeType[] BranchDeadEndWeights => generationProfile != null
+        ? generationProfile.BranchDeadEndWeights
+        : Array.Empty<WeightedMapNodeType>();
 
-    [Tooltip("กฎช่วยลดการเจอห้องแดงติดกันนานเกินไป")]
-    [SerializeField] private MapPitySystem pitySystem = new();
+    // --- Content -------------------------------------------------------------------------
 
-    [Header("Node Weights")]
-    [Tooltip("น้ำหนักสุ่มชนิดห้องบนเส้นหลักช่วงกลาง run")]
-    [SerializeField] private WeightedMapNodeType[] mainPathWeights =
-    {
-        new() { type = MapNodeType.Combat, weight = 6f },
-        new() { type = MapNodeType.Elite, weight = 1f },
-        new() { type = MapNodeType.Ambush, weight = 1f }
-    };
+    public RoomDefinitionSO[] RoomDefinitions => contentPool != null
+        ? contentPool.RoomDefinitions
+        : Array.Empty<RoomDefinitionSO>();
 
-    [Tooltip("น้ำหนักสุ่มชนิดห้องน้ำเงิน เช่น Reward, Shop, Heal, Upgrade")]
-    [SerializeField] private WeightedMapNodeType[] blueWeights =
-    {
-        new() { type = MapNodeType.Reward, weight = 4f },
-        new() { type = MapNodeType.Shop, weight = 1f },
-        new() { type = MapNodeType.Heal, weight = 1f },
-        new() { type = MapNodeType.Upgrade, weight = 1f }
-    };
+    public EncounterDefinitionSO[] EncounterDefinitions => contentPool != null
+        ? contentPool.EncounterDefinitions
+        : Array.Empty<EncounterDefinitionSO>();
 
-    [Tooltip("น้ำหนักสุ่มชนิดห้องปลายทางตัน ทางตันควรมีรางวัลหรือความคุ้มค่าเสมอ")]
-    [SerializeField] private WeightedMapNodeType[] branchDeadEndWeights =
-    {
-        new() { type = MapNodeType.Reward, weight = 5f },
-        new() { type = MapNodeType.Elite, weight = 2f },
-        new() { type = MapNodeType.Event, weight = 1f }
-    };
+    // --- Stage identity and progression ---------------------------------------------------
 
-    [Header("Content Pools")]
-    [Tooltip("รายการ room definition ที่ generator ใช้เลือก prefab ห้องตามชนิด node")]
-    [SerializeField] private RoomDefinitionSO[] roomDefinitions;
-
-    [Tooltip("รายการ encounter definition ที่ generator ใช้เลือกศัตรูและ wave ตามชนิด node")]
-    [SerializeField] private EncounterDefinitionSO[] encounterDefinitions;
-
-    public bool RandomizeSeed => randomizeSeed;
-    public int Seed => seed;
-    public int CriticalPathNodeCount => Mathf.Max(2, criticalPathNodeCount);
-    public int MinBranchCount => Mathf.Max(0, minBranchCount);
-    public int MaxBranchCount => Mathf.Max(MinBranchCount, maxBranchCount);
-    public int MaxOutgoingPerNode => Mathf.Clamp(maxOutgoingPerNode, 1, 4);
-    public bool ForceBlueBeforeBoss => forceBlueBeforeBoss;
-    public MapPitySystem PitySystem => pitySystem ?? new MapPitySystem();
-    public WeightedMapNodeType[] MainPathWeights => mainPathWeights;
-    public WeightedMapNodeType[] BlueWeights => blueWeights;
-    public WeightedMapNodeType[] BranchDeadEndWeights => branchDeadEndWeights;
-    public RoomDefinitionSO[] RoomDefinitions => roomDefinitions;
-    public EncounterDefinitionSO[] EncounterDefinitions => encounterDefinitions;
+    /// <summary>
+    /// The key stage progress is saved under. It stays on the config rather than on a shared
+    /// profile because it is per-stage identity, and it must be unique and immutable once shipped.
+    /// </summary>
     public string StageId => stageId != null ? stageId.Trim() : string.Empty;
+
+    /// <summary>
+    /// Ids this stage was saved under before. When Stage Id has to change, the old id belongs here
+    /// so saved progress is adopted rather than lost.
+    /// </summary>
+    public string[] LegacyStageIds => legacyStageIds;
+
     public string StageDisplayName => string.IsNullOrWhiteSpace(stageDisplayName) ? name : stageDisplayName;
     public bool IsTestStage => !string.IsNullOrWhiteSpace(StageId);
-    public LevelTableSO LevelTable => levelTable;
-    public int StartLevel => Mathf.Max(1, startLevel);
-    public int TargetLevel => Mathf.Max(StartLevel + 1, targetLevel);
-    public int TargetRunCount => Mathf.Max(1, targetRunCount);
-    public int[] EnemyLevelTiers => enemyLevelTiers;
-    public float RegularEnemyXpShare => Mathf.Clamp01(regularEnemyXpShare);
-    public float BossXpShare => Mathf.Clamp(bossXpShare, 0f, 1f - RegularEnemyXpShare);
+
+    public LevelTableSO LevelTable => progressionProfile != null ? progressionProfile.LevelTable : null;
+    public int StartLevel => progressionProfile != null ? progressionProfile.StartLevel : 1;
+    public int TargetLevel => progressionProfile != null ? progressionProfile.TargetLevel : StartLevel + 1;
+    public int TargetRunCount => progressionProfile != null ? progressionProfile.TargetRunCount : 1;
+    public int[] EnemyLevelTiers => progressionProfile != null ? progressionProfile.EnemyLevelTiers : null;
+    public float RegularEnemyXpShare => progressionProfile != null ? progressionProfile.RegularEnemyXpShare : 0f;
+    public float BossXpShare => progressionProfile != null ? progressionProfile.BossXpShare : 0f;
     public float CompletionXpShare => Mathf.Max(0f, 1f - RegularEnemyXpShare - BossXpShare);
-    public GameObject StageExitPrefab => stageExitPrefab;
+    public GameObject StageExitPrefab => progressionProfile != null ? progressionProfile.StageExitPrefab : null;
 
     public int GetEnemyLevel(int stageProgressCount)
     {
-        if (enemyLevelTiers == null || enemyLevelTiers.Length == 0)
+        int[] tiers = EnemyLevelTiers;
+        if (tiers == null || tiers.Length == 0)
             return StartLevel;
 
-        int index = Mathf.Clamp(stageProgressCount, 0, enemyLevelTiers.Length - 1);
-        return Mathf.Max(1, enemyLevelTiers[index]);
+        int index = Mathf.Clamp(stageProgressCount, 0, tiers.Length - 1);
+        return Mathf.Max(1, tiers[index]);
     }
 
     public int GetXpBudgetPerRun()
     {
-        if (levelTable == null)
+        LevelTableSO table = LevelTable;
+        if (table == null)
             return 0;
 
-        long startXp = levelTable.GetTotalXpToReach(StartLevel);
-        long targetXp = levelTable.GetTotalXpToReach(TargetLevel);
+        long startXp = table.GetTotalXpToReach(StartLevel);
+        long targetXp = table.GetTotalXpToReach(TargetLevel);
         long rangeXp = Math.Max(0L, targetXp - startXp);
         return Mathf.Max(0, Mathf.RoundToInt((float)rangeXp / TargetRunCount));
     }
@@ -145,6 +141,7 @@ public static class MapRunConfigValidator
         }
 
         var errors = new List<string>();
+        ValidateProfiles(config, errors);
         ValidateStageProgression(config, errors);
         ValidateRoomDefinitions(config, errors);
         ValidateRequiredRoomType(config, MapNodeType.Start, "Start node", 1, errors);
@@ -165,6 +162,22 @@ public static class MapRunConfigValidator
 
         error = string.Join("\n", errors);
         return false;
+    }
+
+    /// <summary>
+    /// Tuning lives on profiles, so a missing profile means the config has no shape or no content
+    /// at all. Reporting it first keeps the rest of the errors from being noise about empty lists.
+    /// </summary>
+    static void ValidateProfiles(MapRunConfigSO config, List<string> errors)
+    {
+        if (config.GenerationProfile == null)
+            errors.Add("Generation Profile is missing, so the run has no map shape or node weights.");
+
+        if (config.ContentPool == null)
+            errors.Add("Content Pool is missing, so the run has no rooms or encounters.");
+
+        if (config.IsTestStage && config.ProgressionProfile == null)
+            errors.Add("A Test Stage requires a Stage Progression Profile for its levels, run count, XP split, and Stage Exit prefab.");
     }
 
     static void ValidateStageProgression(MapRunConfigSO config, List<string> errors)

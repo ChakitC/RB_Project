@@ -46,6 +46,7 @@ public class RoomController : MonoBehaviour
     private bool roomCleared;
     private bool exitsLocked;
     private RoomRuntimeContent runtimeContent;
+    private IRoomLifecycleListener[] lifecycleListeners;
 
     public Transform PlayerSpawnPoint => playerSpawnPoint != null ? playerSpawnPoint : transform;
     public Transform[] EnemySpawnPoints => enemySpawnPoints;
@@ -62,89 +63,11 @@ public class RoomController : MonoBehaviour
         node = currentNode;
         roomCleared = currentNode != null && currentNode.IsCleared;
         ResolveRuntimeContent().EnsureRoots();
-        EnsureTestStageRecoveryStations();
+        NotifyLifecycle(listener => listener.OnRoomInitialized(this, node));
 
         ResolveExits();
         ConfigureExits();
         SetExitsLocked(false);
-    }
-
-    void EnsureTestStageRecoveryStations()
-    {
-        if (runController == null ||
-            runController.RunConfig == null ||
-            !runController.RunConfig.IsTestStage ||
-            node == null ||
-            node.Type != MapNodeType.Heal)
-        {
-            return;
-        }
-
-        Transform fallbackParent = RuntimeContent.PersistentRoot;
-        HealInteractable healStation = GetComponentInChildren<HealInteractable>(true);
-        if (healStation != null)
-        {
-            healStation.ConfigurePartyPercentHeal(0.5f);
-            healStation.GetComponent<InteractableLink>().RefreshTargets();
-        }
-        else
-        {
-            CreateHealStation(fallbackParent, new Vector3(-1.5f, 0.25f, 0f));
-        }
-
-        AmmoRefillInteractable ammoStation = GetComponentInChildren<AmmoRefillInteractable>(true);
-        if (ammoStation != null)
-        {
-            ammoStation.ConfigurePartyReserveRefill();
-            ammoStation.GetComponent<InteractableLink>().RefreshTargets();
-        }
-        else
-        {
-            CreateAmmoStation(fallbackParent, new Vector3(1.5f, 0.25f, 0f));
-        }
-    }
-
-    static void CreateHealStation(Transform parent, Vector3 localPosition)
-    {
-        Transform wrapper = new GameObject("HealStation").transform;
-        wrapper.SetParent(parent, false);
-
-        GameObject station = CreateRecoveryStationVisual(wrapper, "Heal Point", localPosition, new Color(0.2f, 0.85f, 0.35f));
-        station.AddComponent<HealInteractable>().ConfigurePartyPercentHeal(0.5f);
-        station.GetComponent<InteractableLink>().RefreshTargets();
-    }
-
-    static void CreateAmmoStation(Transform parent, Vector3 localPosition)
-    {
-        Transform wrapper = new GameObject("AmmoStation").transform;
-        wrapper.SetParent(parent, false);
-
-        GameObject station = CreateRecoveryStationVisual(wrapper, "Ammo Point", localPosition, new Color(0.2f, 0.55f, 1f));
-        station.AddComponent<AmmoRefillInteractable>().ConfigurePartyReserveRefill();
-        station.GetComponent<InteractableLink>().RefreshTargets();
-    }
-
-    static GameObject CreateRecoveryStationVisual(Transform parent, string name, Vector3 localPosition, Color color)
-    {
-        GameObject station = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        station.name = name;
-        station.transform.SetParent(parent, false);
-        station.transform.localPosition = localPosition;
-        station.transform.localScale = new Vector3(0.75f, 0.25f, 0.75f);
-
-        int interactableLayer = LayerMask.NameToLayer("Interactable");
-        if (interactableLayer >= 0)
-            station.layer = interactableLayer;
-
-        Collider stationCollider = station.GetComponent<Collider>();
-        if (stationCollider != null)
-            stationCollider.isTrigger = true;
-
-        Renderer stationRenderer = station.GetComponent<Renderer>();
-        if (stationRenderer != null)
-            stationRenderer.material.color = color;
-
-        return station;
     }
 
     RoomRuntimeContent ResolveRuntimeContent()
@@ -172,6 +95,8 @@ public class RoomController : MonoBehaviour
             return;
         }
 
+        NotifyLifecycle(listener => listener.OnRoomBegan(this, node));
+
         bool shouldRunEncounter = ShouldRunEncounter();
         if (shouldRunEncounter)
         {
@@ -196,9 +121,36 @@ public class RoomController : MonoBehaviour
 
         roomCleared = true;
         node?.Clear();
+        NotifyLifecycle(listener => listener.OnRoomCleared(this, node));
         SpawnClearRewards();
         SetExitsLocked(false);
         runController?.NotifyRoomCleared(this);
+    }
+
+    /// <summary>
+    /// Room-specific behaviour is authored as components on the room prefab, so the generic
+    /// controller never branches on stage or node type. A listener that throws must not take the
+    /// rest of the room down with it.
+    /// </summary>
+    void NotifyLifecycle(System.Action<IRoomLifecycleListener> notify)
+    {
+        lifecycleListeners ??= GetComponentsInChildren<IRoomLifecycleListener>(true);
+
+        for (int i = 0; i < lifecycleListeners.Length; i++)
+        {
+            IRoomLifecycleListener listener = lifecycleListeners[i];
+            if (listener == null)
+                continue;
+
+            try
+            {
+                notify(listener);
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogException(exception, this);
+            }
+        }
     }
 
     public void SetExitsLocked(bool locked)

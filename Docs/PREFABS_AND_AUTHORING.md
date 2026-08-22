@@ -207,21 +207,52 @@ bindings, or Basement board must be regenerated. The authoring tool is
 idempotent but deliberately rewrites those owned assets. The Test Stage Heal
 room prefab should author one `HealInteractable` station and one
 `AmmoRefillInteractable` station, each with an `InteractableLink`, collider, and
-the `Interactable` layer. `RoomController` configures them as a one-use 50%
-party Heal Point and a reserve-only party Ammo Point; simple runtime fallbacks
-are created only when an authored station is missing. The authoring tool binds
+the `Interactable` layer.
+
+The Heal room prefab must also carry a `TestStageRecoveryStations` component next to its
+`RoomController`. That component is what configures the stations as a one-use 50% party Heal Point
+and a reserve-only party Ammo Point, and it creates simple runtime fallbacks only when an authored
+station is missing. `RoomController` no longer contains this behaviour: it only drives
+`IRoomLifecycleListener` components, so a Heal room prefab without the component silently gets no
+recovery stations. **Tools > RB Project > Map > Validate Map Content** reports that as an error for
+any Heal room a Test Stage can route through. The authoring tool binds
 the existing `RoomDefinition.Heal` into all three Test Stage configs without
 rewriting that room asset. Keep the definition enabled, assigned to a prefab,
 and at two or more exits; the pre-Boss blue-node validator requires a usable
 multi-exit Heal definition.
 
+### Catalog-driven board pages
+
+`StageCatalogBoardPage` fills a page from a `StageCatalogSO` at runtime: it clones a disabled
+`StagePlacardButton` template once per catalog stage and binds each clone's run config. Adding a
+stage then means editing the catalog asset instead of authoring another placard in the scene.
+
+It is opt-in. A page without the component keeps exactly what was authored into it, which is how
+`ExistingMapsPage`, `TestStagePage`, and `BossRushPage` still work today. Use it for new pages; the
+existing pages are not migrated automatically, because doing so would hand the tool ownership of
+placards it does not own.
+
 ### Basement board pages the authoring tool does not own
 
 **Tools > RB Project > Map > Apply Test Stage Content** owns only
-`ExistingMapsPage` and `TestStagePage`, and its placard layout has room for
+`ExistingMapsPage`, `TestStagePage`, the placards it puts inside `TestStagePage`,
+and the `PreviousPage` / `NextPage` arrows. Its placard layout has room for
 exactly three stages. Stages beyond those three are authored by hand as
 additional pages under `MapUI/TestStagePagination`, and the tool neither creates
 nor rewrites them.
+
+The tool never destroys `TestStagePagination` and never moves a placard that
+already sits inside one of its pages. It reuses the objects it owns instead of
+rebuilding them, so re-running it produces no new object ids, no duplicate
+components, and no duplicate `onClick` listeners. In the `MobilizBoardPager`
+`pages` array it writes index `0` and index `1` only; every other registered page
+keeps its identity and its relative order, and `initialPage` is left as authored.
+Scene mutations go through the Unity `Undo` API.
+
+Run **Tools > RB Project > Map > Validate Basement Board (Dry Run)** first. It
+opens the Basement scene read-only and logs exactly what the apply step would
+create, update, adopt, or remove, plus the resulting page order — without writing
+anything. `Apply Test Stage Content` logs the same report after it runs.
 
 `BossRushPage` is the first such page. It holds one placard for BOSS RUSH 01 and
 is registered as index `2` in the `MobilizBoardPager` `pages` array. To add
@@ -236,8 +267,8 @@ another hand-authored page:
    set the new page inactive; the pager toggles visibility on `Awake`.
 
 Do not renumber or reorder the first two pages. Re-running the authoring tool
-destroys and rebuilds `TestStagePage`, which would drop hand-authored placards
-placed there.
+removes any `StagePlacardButton` inside `TestStagePage` that it does not own, so
+hand-authored placards belong on their own page, never inside `TestStagePage`.
 
 When scripting this through the Unity Editor API, load the `MapRunConfigSO`
 **after** opening the Basement scene. Opening a scene in `Single` mode unloads

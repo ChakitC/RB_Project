@@ -47,16 +47,36 @@ public sealed class EncounterWave
     public float SpawnInterval => Mathf.Max(0f, spawnInterval);
     public bool WaitForWaveClear => waitForWaveClear;
 
+    /// <summary>
+    /// Picks uniformly among the assigned prefabs, skipping empty slots. Random sampling over the
+    /// raw array could miss the single valid prefab in a mostly empty pool, so the non-null
+    /// candidates are counted first and then indexed. Neither pass allocates.
+    /// </summary>
     public GameObject GetRandomEnemyPrefab()
     {
         if (enemyPrefabs == null || enemyPrefabs.Length == 0)
             return null;
 
-        for (int guard = 0; guard < enemyPrefabs.Length; guard++)
+        int candidateCount = 0;
+        for (int i = 0; i < enemyPrefabs.Length; i++)
         {
-            GameObject candidate = enemyPrefabs[UnityEngine.Random.Range(0, enemyPrefabs.Length)];
-            if (candidate != null)
-                return candidate;
+            if (enemyPrefabs[i] != null)
+                candidateCount++;
+        }
+
+        if (candidateCount == 0)
+            return null;
+
+        int pick = UnityEngine.Random.Range(0, candidateCount);
+        for (int i = 0; i < enemyPrefabs.Length; i++)
+        {
+            if (enemyPrefabs[i] == null)
+                continue;
+
+            if (pick == 0)
+                return enemyPrefabs[i];
+
+            pick--;
         }
 
         return null;

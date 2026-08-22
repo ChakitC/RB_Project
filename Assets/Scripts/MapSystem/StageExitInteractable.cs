@@ -32,7 +32,8 @@ public sealed class StageExitInteractable : MonoBehaviour, IInteractable
         if (!CanInteract(interactor))
             return;
 
-        used = true;
-        runController.CompleteStageRunAndReturn();
+        // The portal is only consumed once the run controller has accepted the completion. A
+        // refused completion (missing save or scene loader) leaves the portal interactable.
+        used = runController.TryCompleteStageRunAndReturn();
     }
 }

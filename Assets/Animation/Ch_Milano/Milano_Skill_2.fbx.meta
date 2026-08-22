@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: f0667af7fb3a0cb4cadedb94c400b7d4
+guid: 7210b36e4c36c6e47a46eeeeef5b4a06
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -31,18 +31,18 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Milano_Intro_Stand
-      takeName: Milano_Intro_Stand
-      internalID: -1089004114184665151
+      name: Milano_Skill_2
+      takeName: Milano_Skill_2
+      internalID: -7596052776336071796
       firstFrame: 0
-      lastFrame: 119
+      lastFrame: 70
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
-      loopTime: 1
+      loopTime: 0
       loopBlend: 0
       loopBlendOrientation: 0
       loopBlendPositionY: 0

@@ -24,6 +24,11 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: Milano_Hair
     second: {fileID: 2100000, guid: e7c4506f33185084c8bfeed81994e4c5, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Milano_Pop
+    second: {fileID: 2100000, guid: 3348784485940db478007ef93c7894e2, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

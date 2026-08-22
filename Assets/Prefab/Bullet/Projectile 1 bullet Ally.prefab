@@ -43,12 +43,12 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8894977902055405770}
-  - component: {fileID: 7501414200122845028}
   - component: {fileID: 8547484312053192128}
   - component: {fileID: 4937409727773074319}
   - component: {fileID: 7384557288778966816}
   - component: {fileID: 5208125626766269621}
   - component: {fileID: 6231329079839032576}
+  - component: {fileID: 5512884190233871402}
   m_Layer: 0
   m_Name: Projectile 1 bullet Ally
   m_TagString: Untagged
@@ -72,31 +72,6 @@ Transform:
   - {fileID: 8349246941751809701}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &7501414200122845028
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7234640618046847812}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 605a456cfc02f6b499a64717539a27e8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  speed: 35
-  hitOffset: 0.05
-  UseFirePointRotation: 0
-  rotationOffset: {x: 0, y: 0, z: 0}
-  hit: {fileID: 2946403313239334806}
-  hitPS: {fileID: 3035588883579196360}
-  flash: {fileID: 0}
-  rb: {fileID: 4937409727773074319}
-  col: {fileID: 7384557288778966816}
-  lightSourse: {fileID: 8547484312053192128}
-  Detached: []
-  projectilePS: {fileID: 4648816623437097509}
-  notDestroy: 0
 --- !u!108 &8547484312053192128
 Light:
   m_ObjectHideFlags: 0
@@ -261,6 +236,22 @@ MonoBehaviour:
   areaQuery: 1
   despawnOnHitDamageable: 1
   despawnOnHitWall: 1
+--- !u!114 &5512884190233871402
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7234640618046847812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d442ee2da4f3412da5c8530fa6b9956f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  particleSystems:
+  - {fileID: 4648816623437097509}
+  lights:
+  - {fileID: 8547484312053192128}
 --- !u!1 &7880976616311713015
 GameObject:
   m_ObjectHideFlags: 0

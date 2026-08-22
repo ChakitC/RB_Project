@@ -19,7 +19,8 @@ public sealed class WeaponProjectileSpawner
             ? context.Direction.normalized
             : context.FirePoint.forward;
         Quaternion rotation = Quaternion.LookRotation(direction, context.FirePoint.up);
-        var projectile = pool.Get(prefabComp, context.FirePoint.position, rotation);
+        // Atomic spawn: the instance stays inactive until every runtime field below is written.
+        var projectile = pool.AcquireInactive(prefabComp, context.FirePoint.position, rotation);
         if (projectile == null) return;
         ProjectileLayerUtility.ApplyForContext(projectile.gameObject, context.OwnerContext);
 
@@ -68,6 +69,8 @@ public sealed class WeaponProjectileSpawner
             preDamageRuntime = context.PreDamageRuntime,
             affixImpactPayload = context.ImpactPayload
         });
+
+        pool.ActivateForSpawn(projectile);
     }
 
     public bool TryResolveProjectilePrefab(GameObject prefab, out Projectile projectileComponent)

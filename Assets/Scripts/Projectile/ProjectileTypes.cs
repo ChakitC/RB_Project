@@ -53,7 +53,22 @@ public struct ProjectileContext
     public string damageSourceId;
     public string attackId;
     public ulong chainId;
+
+    /// <summary>Combat / passive event chain depth. Carries gameplay meaning; not a spawn budget.</summary>
     public int depth;
+
+    /// <summary>
+    /// How many split hops this projectile is from the shot that was fired. Purely a spawn budget,
+    /// kept separate from <see cref="depth"/> so capping splits cannot distort event chains.
+    /// </summary>
+    public int splitGeneration;
+
+    /// <summary>
+    /// Effective split budget inherited down the chain, as <c>min</c> of every budget authored so
+    /// far. Zero means nothing has been inherited yet. Carried in the context rather than read
+    /// per-module so a permissive child config cannot widen a limit its ancestor already set.
+    /// </summary>
+    public int splitBudget;
     public PassiveEventOrigin origin;
     public string originPassiveId;
     public string originRuleId;

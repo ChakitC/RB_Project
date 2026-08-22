@@ -40,6 +40,7 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
 
     ProjectilePool _pool;
     GameObject _ballVfxInstance;
+    bool _deferredSpawnSetupPending;
 
     bool _overrideVelThisFrame;
     Vector3 _overrideVel;
@@ -101,12 +102,32 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         _ctx.dir = (Quaternion.AngleAxis(degrees, Vector3.up) * _ctx.dir).normalized;
     }
 
-    void Awake()
-    {
-        _rb = GetComponent<Rigidbody>();
-        _col = GetComponent<Collider>();
+    void Awake() => ApplyPhysicsDefaults();
 
-        _col.isTrigger = true;
+    /// <summary>
+    /// Idempotent on purpose. A pooled instance is created underneath the pool's inactive root, so
+    /// Unity only runs its Awake on the first activation - which happens after BeginSpawn has
+    /// already written the Rigidbody pose. The pool therefore primes the cache itself.
+    /// </summary>
+    void CacheComponents()
+    {
+        if (_rb == null) _rb = GetComponent<Rigidbody>();
+        if (_col == null) _col = GetComponent<Collider>();
+    }
+
+    /// <summary>
+    /// Re-asserted on every spawn rather than only in Awake: a pooled instance must not inherit
+    /// physics settings that some other component (or an earlier life) left behind.
+    /// </summary>
+    void ApplyPhysicsDefaults()
+    {
+        CacheComponents();
+
+        if (_col != null)
+            _col.isTrigger = true;
+
+        if (_rb == null) return;
+
         _rb.useGravity = false;
         _rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
         _rb.constraints = RigidbodyConstraints.FreezeRotation;
@@ -140,6 +161,7 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         }
 
         _ignoredRootIds.Clear();
+        _lastDamageWasCritical = false;
         _requestedDespawnThisHit = false;
         _requestedExpire = false;
         _isDespawning = false;
@@ -153,13 +175,20 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         _age = 0f;
         _spawnPos = transform.position;
 
-        SetupIgnoreCollisionFromCollisionRoot();
+        ResolveShooterRoot();
 
         if (_ctx.sourceActor != null)
             ProjectileLayerUtility.ApplyForSource(gameObject, _ctx.sourceActor);
 
         SetupModules();
-        SpawnBallVfx();
+
+        // Physics.IgnoreCollision needs both colliders active, and a looping trail parented to a
+        // disabled transform never plays. Both are deferred to CompleteSpawn so initialization can
+        // finish while the projectile is still switched off. Callers that initialize an already
+        // active projectile (tests, non-pooled fallbacks) get them immediately.
+        _deferredSpawnSetupPending = true;
+        if (gameObject.activeInHierarchy)
+            FlushDeferredSpawnSetup();
     }
     
     public void InitFromSkillExecution(
@@ -259,23 +288,35 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         Init(cfg != null ? cfg : config, ctx, preserveSkillSource: true);
     }
 
-    void SetupIgnoreCollisionFromCollisionRoot()
+    void ResolveShooterRoot()
     {
         RestoreIgnoredCollisions();
 
-        if (_ctx.collisionIgnoreRoot == null) return;
+        // Assigned unconditionally. The old code returned early when the new context had no
+        // collision-ignore root, so a reused instance kept ignoring the previous shooter and
+        // silently refused to hit that actor.
+        _shooterRoot = _ctx.collisionIgnoreRoot != null ? _ctx.collisionIgnoreRoot.root : null;
+    }
 
-        _shooterRoot = _ctx.collisionIgnoreRoot.root;
-        if (_shooterRoot == null) return;
+    void ApplyIgnoredCollisions()
+    {
+        if (_shooterRoot == null || _col == null) return;
 
         foreach (var c in _shooterRoot.GetComponentsInChildren<Collider>())
         {
-            if (c && _col)
-            {
-                Physics.IgnoreCollision(_col, c, true);
-                _ignoredCols.Add(c);
-            }
+            if (c == null) continue;
+            Physics.IgnoreCollision(_col, c, true);
+            _ignoredCols.Add(c);
         }
+    }
+
+    void FlushDeferredSpawnSetup()
+    {
+        if (!_deferredSpawnSetupPending) return;
+        _deferredSpawnSetupPending = false;
+
+        ApplyIgnoredCollisions();
+        SpawnBallVfx();
     }
 
     void SetupModules()
@@ -753,15 +794,26 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         _ignoredCols.Clear();
     }
 
-    public void PrepareForSpawn(ProjectilePool pool, Projectile sourcePrefab, Vector3 pos, Quaternion rot)
+    /// <summary>
+    /// Step 1 of the atomic spawn lifecycle, called by <see cref="ProjectilePool.AcquireInactive"/>.
+    /// Places and fully resets the instance while it is still inactive; the caller then applies
+    /// runtime state and finishes with <see cref="CompleteSpawn"/>.
+    /// </summary>
+    public void BeginSpawn(ProjectilePool pool, Projectile sourcePrefab, Vector3 pos, Quaternion rot)
     {
         _pool = pool;
         SourcePrefab = sourcePrefab;
+
+        ApplyPhysicsDefaults();
+        ResetRuntimeStateFromPrefab(sourcePrefab);
+
         if (sourcePrefab != null)
             ProjectileLayerUtility.InheritLayer(gameObject, sourcePrefab.gameObject);
+
         transform.SetParent(null, false);
-        // Set rb.position/rotation before SetActive so the interpolation buffer starts
-        // from the correct location — otherwise PhysX interpolates from the despawn
+
+        // Set rb.position/rotation before the activation in CompleteSpawn so the interpolation
+        // buffer starts from the correct location — otherwise PhysX interpolates from the despawn
         // position for one frame, making the spawn point appear to jitter.
         if (_rb != null)
         {
@@ -770,12 +822,61 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
             SetRbVelocity(Vector3.zero);
             _rb.detectCollisions = true;
         }
+
         transform.SetPositionAndRotation(pos, rot);
         _isDespawning = false;
+        _deferredSpawnSetupPending = false;
         if (_col != null) _col.enabled = true;
-        gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Step 2 of the atomic spawn lifecycle. Everything that needs an active GameObject — the
+    /// collision-ignore pass, the looping trail, and the spawn flash — happens here, after the
+    /// caller has finished writing context, stats, and layer.
+    /// </summary>
+    public void CompleteSpawn()
+    {
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
+
+        FlushDeferredSpawnSetup();
+
         if (spawnFlashPrefab != null && VfxSpawner.Instance != null)
-            VfxSpawner.Instance.SpawnVfx(spawnFlashPrefab, pos, rot);
+            VfxSpawner.Instance.SpawnVfx(spawnFlashPrefab, transform.position, transform.rotation);
+    }
+
+    /// <summary>
+    /// Restores every authoring-facing runtime field from the prefab the instance came from.
+    /// Without this a projectile that last flew as an area-damage skill shot keeps its AoE radius,
+    /// crit numbers, and VFX overrides when the pool hands it back out as a plain weapon bullet.
+    /// </summary>
+    void ResetRuntimeStateFromPrefab(Projectile prefabSource)
+    {
+        if (prefabSource == null || ReferenceEquals(prefabSource, this))
+            return;
+
+        config = prefabSource.config;
+
+        ballVfxPrefab = prefabSource.ballVfxPrefab;
+        hitVfxPrefab = prefabSource.hitVfxPrefab;
+        spawnFlashPrefab = prefabSource.spawnFlashPrefab;
+        vfxScale = prefabSource.vfxScale;
+
+        gunType = prefabSource.gunType;
+        critRate = prefabSource.critRate;
+        critMult = prefabSource.critMult;
+
+        useAreaDamage = prefabSource.useAreaDamage;
+        areaRadius = prefabSource.areaRadius;
+        areaDamageMask = prefabSource.areaDamageMask;
+        areaQuery = prefabSource.areaQuery;
+
+        despawnOnHitDamageable = prefabSource.despawnOnHitDamageable;
+        despawnOnHitWall = prefabSource.despawnOnHitWall;
+
+        SourceSkillDef = null;
+        SourceSkillExecution = null;
+        SourceSkillStats = null;
     }
 
     public void MarkPooledSource(ProjectilePool pool, Projectile sourcePrefab)
@@ -900,14 +1001,98 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         }
     }
 
+    /// <summary>
+    /// Hard ceiling on split chain length, independent of authoring. A childConfig graph that
+    /// loops back on itself would otherwise spawn generations without end.
+    /// </summary>
+    public const int AbsoluteMaxSplitGeneration = 8;
+
+    /// <summary>Combat/passive event chain depth this projectile was spawned at.</summary>
+    public int ChainDepth => _ctx.depth;
+
+    /// <summary>
+    /// How many split hops separate this projectile from the shot that was actually fired.
+    /// Tracked separately from <see cref="ChainDepth"/>: depth carries combat and passive
+    /// event-chain meaning, so it must not double as a spawn budget.
+    /// </summary>
+    public int SplitGeneration => _ctx.splitGeneration;
+
+    /// <summary>Effective split budget for this projectile, as inherited down the chain. 0 = unset.</summary>
+    public int SplitBudget => _ctx.splitBudget;
+
+    /// <summary>
+    /// True when this projectile may still produce a split child. The effective budget is the
+    /// <c>min</c> of what this module authors and what the chain already inherited, so a child
+    /// config authoring a larger budget cannot widen a limit an ancestor set. The absolute ceiling
+    /// always applies on top.
+    /// </summary>
+    public bool CanSpawnSplitChild(int maxSplitGenerations)
+    {
+        int authored = Mathf.Clamp(maxSplitGenerations, 0, AbsoluteMaxSplitGeneration);
+        int inherited = _ctx.splitBudget;
+
+        // authored 0 means "never split" and is honoured as-is; inherited 0 means "nothing
+        // inherited yet", which is why the two zeroes are not treated the same way.
+        int effective = inherited > 0 ? Mathf.Min(inherited, authored) : authored;
+        return _ctx.splitGeneration < effective;
+    }
+
+    /// <summary>
+    /// Narrows the inherited budget by the budget this spawn authors. A non-positive
+    /// <paramref name="authoredMaxSplitGenerations"/> means the caller supplied none, so whatever
+    /// the chain already carries passes through untouched.
+    /// </summary>
+    int ResolveInheritedSplitBudget(int authoredMaxSplitGenerations)
+    {
+        int authored = Mathf.Clamp(authoredMaxSplitGenerations, 0, AbsoluteMaxSplitGeneration);
+        int inherited = _ctx.splitBudget;
+
+        if (authored <= 0)
+            return inherited;
+
+        return inherited > 0 ? Mathf.Min(inherited, authored) : authored;
+    }
+
     public Projectile SpawnChild(ProjectileConfig childCfg, Vector3 pos, Vector3 dir, float dmgMul, float spdMul)
     {
+        return SpawnChild(childCfg, pos, dir, dmgMul, spdMul, authoredMaxSplitGenerations: 0);
+    }
+
+    /// <param name="authoredMaxSplitGenerations">
+    /// Budget authored by the module doing the split. It narrows the budget carried by the chain;
+    /// it can never widen it. Pass 0 when the caller has no budget of its own.
+    /// </param>
+    public Projectile SpawnChild(
+        ProjectileConfig childCfg,
+        Vector3 pos,
+        Vector3 dir,
+        float dmgMul,
+        float spdMul,
+        int authoredMaxSplitGenerations)
+    {
+        if (_ctx.splitGeneration >= AbsoluteMaxSplitGeneration)
+            return null;
+
+        int inheritedBudget = ResolveInheritedSplitBudget(authoredMaxSplitGenerations);
+
         var prefab = _ctx.projectilePrefab != null ? _ctx.projectilePrefab : this;
+        Quaternion rot = Quaternion.LookRotation(dir);
 
         var spawnPool = ProjectilePool.Instance;
-        var p = spawnPool != null
-            ? spawnPool.Get(prefab, pos, Quaternion.LookRotation(dir))
-            : Instantiate(prefab, pos, Quaternion.LookRotation(dir));
+        Projectile p;
+        if (spawnPool != null)
+        {
+            p = spawnPool.AcquireInactive(prefab, pos, rot);
+        }
+        else
+        {
+            // No pool in the scene: the instance is already active by the time Instantiate
+            // returns, so the atomic guarantee does not hold on this fallback path. State reset
+            // and the deferred spawn setup still run through BeginSpawn/CompleteSpawn.
+            p = Instantiate(prefab, pos, rot);
+            if (p != null) p.BeginSpawn(null, prefab, pos, rot);
+        }
+
         if (p == null) return null;
         ProjectileLayerUtility.InheritLayer(p.gameObject, gameObject);
 
@@ -916,6 +1101,9 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         childCtx.stats.damage *= dmgMul;
         childCtx.stats.staggerPower *= dmgMul;
         childCtx.stats.speed *= spdMul;
+        childCtx.depth = _ctx.depth + 1;
+        childCtx.splitGeneration = _ctx.splitGeneration + 1;
+        childCtx.splitBudget = inheritedBudget;
 
         // copy unified params
         p.gunType = gunType;
@@ -940,6 +1128,12 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         }
 
         p.Init(childCfg != null ? childCfg : p.config, childCtx, preserveSkillSource);
+
+        if (spawnPool != null)
+            spawnPool.ActivateForSpawn(p);
+        else
+            p.CompleteSpawn();
+
         return p;
     }
 

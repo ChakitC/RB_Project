@@ -130,7 +130,9 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
         for (int i = 0; i < projectileCount; i++)
         {
             Vector3 dir = ComputeDirection(context.AimDirection, i, projectileCount);
-            Projectile projectileInstance = pool.Get(
+            // Atomic spawn: AcquireInactive hands back a reset-but-inactive instance, so the
+            // skill's context, stats, layer, and VFX are all in place before anything runs.
+            Projectile projectileInstance = pool.AcquireInactive(
                 prefab,
                 context.CastOrigin.position,
                 Quaternion.LookRotation(dir, Vector3.up));
@@ -145,6 +147,8 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
                 context.SkillStats,
                 dir,
                 prefab);
+
+            pool.ActivateForSpawn(projectileInstance);
             spawned++;
         }
 

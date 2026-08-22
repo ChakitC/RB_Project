@@ -260,11 +260,42 @@ upgrades, and any custom dynamic modifier provider.
 
 Projectiles are managed through `ProjectilePool` (singleton, `DontDestroyOnLoad`), which reuses instances instead of calling `Instantiate`/`Destroy` on every shot.
 
+**Atomic spawn lifecycle** — spawning is a two-step transaction. A projectile is never active
+while its runtime state is incomplete:
+
+```
+AcquireInactive  ->  reset from prefab  ->  write context/stats/layer  ->  ActivateForSpawn
+   (inactive)                                                                (SetActive true)
+```
+
+- `ProjectilePool.AcquireInactive(prefab, pos, rot)` pops an idle instance (or creates one) and
+  calls `Projectile.BeginSpawn`, which restores every authoring field from the source prefab,
+  places the Rigidbody, and leaves the object **switched off**.
+- The caller applies its layer, its `ProjectileContext`, and its stats.
+- `ProjectilePool.ActivateForSpawn(instance)` calls `Projectile.CompleteSpawn`, which activates the
+  object and only then runs the work that needs an active GameObject: the collision-ignore pass
+  (`Physics.IgnoreCollision` requires both colliders active), the looping trail VFX, and the spawn
+  flash.
+
+There is no callback or delegate in this API, so a spawn allocates nothing.
+
+Fresh instances are created underneath a permanently deactivated `ProjectileInactiveRoot` child of
+the pool. An object parented to an inactive transform is not active in the hierarchy, so Unity does
+not run `Awake`/`OnEnable` on it. That is what makes the guarantee hold on the very first
+`Instantiate` and not only on reuse. `Projectile` therefore caches its Rigidbody and Collider
+through an idempotent path rather than relying on `Awake` having run.
+
 **Spawn paths** — all three routes go through the pool:
 
-- Normal fire: `WeaponProjectileSpawner.Spawn` → `ProjectilePool.Instance.Get(prefab, pos, rot)`
-- Skill projectiles: `ProjectileSkillPayloadDef.Execute` → `ProjectilePool.Instance.Get(prefab, pos, rot)`
-- Child/split projectiles: `Projectile.SpawnChild` → `ProjectilePool.Instance.Get(prefab, pos, rot)`
+- Normal fire: `WeaponProjectileSpawner.Spawn`
+- Skill projectiles: `ProjectileSkillPayloadDef.ExecuteWithResult`
+- Child/split projectiles: `Projectile.SpawnChild`
+
+**State reset on reuse** — `BeginSpawn` restores `config`, the VFX prefabs and `vfxScale`,
+`gunType`, `critRate`/`critMult`, the whole area-damage block, the despawn rules, and the skill
+source from the prefab the instance came from, and `Init` clears the collision-ignore root. Without
+this an instance that last flew as an area-damage skill shot would keep its AoE radius, crit
+numbers, and presentation overrides when the pool handed it back out as a plain weapon bullet.
 
 **Despawn** — `Projectile.Despawn` routes to `ProjectilePool.Return`, which reparents to the pool transform and calls `SetActive(false)`. If the projectile has no pool reference (spawned before pool existed), it falls back to `Destroy`.
 
@@ -274,13 +305,58 @@ Projectiles are managed through `ProjectilePool` (singleton, `DontDestroyOnLoad`
 
 **Ball/trail VFX** — routed through `VfxSpawner.SpawnLoopingVfx` / `StopLoopingVfx`, sharing the existing `VfxPool`. VFX is detached from the projectile before it is returned to the pool, so trails do not teleport or linger on reused instances.
 
-**Spawn flash VFX** — assign `spawnFlashPrefab` on `Projectile` to play a one-shot muzzle flash at the spawn position. `PrepareForSpawn` calls `VfxSpawner.SpawnVfx(spawnFlashPrefab, pos, rot)` immediately after each pool reuse, covering all spawn paths (normal fire, skill, child/split). Leave the field null if the projectile has no flash effect.
+**Spawn flash VFX** — assign `spawnFlashPrefab` on `Projectile` to play a one-shot muzzle flash at the spawn position. `CompleteSpawn` plays it *after* initialization, covering all spawn paths (normal fire, skill, child/split). Leave the field null if the projectile has no flash effect.
 
-**Hovl Studio `HS_ProjectileMover` compatibility** — prefabs that carry `HS_ProjectileMover` on a child VFX object must have their `Flash` Inspector field set to a Project asset prefab (not a scene-hierarchy child instance). `HS_ProjectileMover` now routes flash through `VfxSpawner.SpawnVfx` on every `OnEnable`, and `OnDisable` stops all coroutines so the lifetime timer does not outlive pool tenure. The pool-aware `notDestroy` path is selected automatically when `ProjectilePool.Instance` is present.
+**One movement/lifetime owner** — on a gameplay projectile prefab, `Projectile` is the only
+component allowed to write the root Rigidbody, time a lifetime, toggle the root GameObject, or
+return the instance to the pool. Vendor movers such as Hovl Studio's `HS_ProjectileMover` must not
+sit on a gameplay projectile root: it writes `rb.linearVelocity` every `FixedUpdate`, clears the
+`FreezeRotation` constraint in `OnEnable`, and runs its own five-second disable timer that bypasses
+the pool entirely. Particle and light resetting belongs to `ProjectilePresentationResetter`, which
+touches presentation only. See
+[Prefabs And Authoring — Projectile Movement And Lifetime Ownership](../PREFABS_AND_AUTHORING.md#projectile-movement-and-lifetime-ownership).
 
 **Debug VFX kill-switch** — untick `Spawn Vfx` on the `VfxSpawner` Inspector to suppress all VFX and damage numbers without affecting gameplay (projectiles, hitboxes, and damage calculations still run normally). Useful for isolating perf/pooling issues caused by VFX prefabs.
 
 **Prewarm** — call `ProjectilePool.Instance.Prewarm(prefab, count)` to fill the pool before a scene starts. Not wired to any automatic trigger (phase 2).
+
+### Split Depth And Generations
+
+A split child tracks two separate counters, because they answer two different questions.
+
+| Field | Meaning | Who reads it |
+| --- | --- | --- |
+| `ProjectileContext.depth` (`Projectile.ChainDepth`) | Position in the combat / passive event chain | `DamageContext`, passive event contexts, `UpgradeGatedStatusOnHitModule`'s "direct hits only" gate |
+| `ProjectileContext.splitGeneration` (`Projectile.SplitGeneration`) | How many split hops from the shot that was fired | The split spawn budget, nothing else |
+| `ProjectileContext.splitBudget` (`Projectile.SplitBudget`) | Effective generation budget inherited down the chain | `Projectile.CanSpawnSplitChild` |
+
+`Projectile.SpawnChild` sets `child.depth = parent.depth + 1` and
+`child.splitGeneration = parent.splitGeneration + 1`. Depth is **not** used as the spawn budget:
+capping splits by depth would distort passive chains and event attribution.
+
+**Budget** — `SplitOnHitModule.maxSplitGenerations` (default `1`) decides how many hops an
+authored split chain may take. `1` means a shot splits once and its children never split again.
+`SplitOnHitModule.childCount` is clamped to `1..32`.
+
+**Budget inheritance** — the budget is carried in `ProjectileContext.splitBudget` and narrowed at
+every hop by `min(inherited, authored)`. A module can only ever *tighten* the limit, never widen it,
+so a permissive `childConfig` deeper in the chain cannot grant itself more generations than its
+ancestor allowed:
+
+```
+parent config: maxSplitGenerations = 1   ->  children spawn, budget = 1
+child config:  maxSplitGenerations = 8   ->  min(1, 8) = 1, generation 1 has spent it: no grandchildren
+```
+
+`0` means "never split" and is honoured literally; a budget of `0` in the context means "nothing
+inherited yet", which is why `Projectile.SpawnChild` takes the authored budget explicitly. The
+five-argument `SpawnChild` overload is the "caller has no budget of its own" path and passes the
+inherited value through unchanged.
+
+**Safety ceiling** — `Projectile.AbsoluteMaxSplitGeneration` (8) is enforced inside `SpawnChild`
+regardless of authoring, so a `childConfig` graph that loops back on itself terminates instead of
+spawning generations without end. `ProjectileSplitGraphAnalyzer` reports such loops as an authoring
+issue; the ceiling is the net, not the design.
 
 ## Projectile Barriers
 

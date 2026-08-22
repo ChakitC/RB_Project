@@ -52,7 +52,7 @@ public sealed partial class CharacterAnimBrain
             var skillClip = owner.SkillClip;
             if (skillClip == null || !skillClip.IsValid)
             {
-                owner.locomotionSM.TrySetState(owner.locomotion);
+                owner.TrySetLocomotionState(owner.locomotion);
                 return;
             }
 
@@ -120,7 +120,7 @@ public sealed partial class CharacterAnimBrain
             if (skillClip == null || !skillClip.IsValid)
             {
                 _completedNormally = true;
-                owner.locomotionSM.TrySetState(owner.IsDowned ? owner.crawlState : owner.locomotion);
+                owner.TrySetLocomotionState(owner.IsDowned ? owner.crawlState : owner.locomotion);
                 return;
             }
 
@@ -187,9 +187,9 @@ public sealed partial class CharacterAnimBrain
             _completedNormally = true;
 
             if (owner.IsDowned)
-                owner.locomotionSM.TrySetState(owner.crawlState);
+                owner.TrySetLocomotionState(owner.crawlState);
             else
-                owner.locomotionSM.TrySetState(owner.locomotion);
+                owner.TrySetLocomotionState(owner.locomotion);
         }
 
         public override void Update()

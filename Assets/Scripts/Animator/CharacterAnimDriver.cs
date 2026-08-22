@@ -305,6 +305,12 @@ public sealed class CharacterAnimDriver : MonoBehaviour
             brain.StopReloadAction();
     }
 
+    public void InvalidateAnimationBinding()
+    {
+        if (CanIssueCommand(nameof(InvalidateAnimationBinding)))
+            brain.InvalidateAnimationBinding();
+    }
+
     public void SetAnimProfileOverride(CharacterAnimProfileSO profile)
     {
         if (CanIssueCommand(nameof(SetAnimProfileOverride)))
@@ -438,6 +444,18 @@ public sealed class CharacterAnimDriver : MonoBehaviour
                    requestAdvanceMoment,
                    advancePointNormalized,
                    usePlanarRootMotion);
+    }
+
+    public bool TryPlayChainCutscene(int requestId, CutsceneDef cutsceneDef)
+    {
+        return CanIssueCommand(nameof(TryPlayChainCutscene)) &&
+               brain.TryPlayChainCutscene(requestId, cutsceneDef);
+    }
+
+    public bool TryPlayChainCutscene(int requestId, Animancer.ClipTransition clip)
+    {
+        return CanIssueCommand(nameof(TryPlayChainCutscene)) &&
+               brain.TryPlayChainCutscene(requestId, clip);
     }
 
     public bool TryPlayChainUtilityWarpOut(int requestId)

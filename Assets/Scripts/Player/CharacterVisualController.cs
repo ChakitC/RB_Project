@@ -377,6 +377,11 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         
         if (animancer) animancer.Animator = animator;
 
+        // The Brain caches its Animator/profile binding instead of re-resolving it every frame,
+        // so a rebuilt model has to say so. It also detects a changed Animator instance on its
+        // own; this covers the case where the same Animator comes back with a new controller.
+        _ctx?.AnimDriver?.InvalidateAnimationBinding();
+
         EnsureRootMotionDriverOnAnimator();
     }
 

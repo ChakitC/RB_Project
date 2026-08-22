@@ -16,9 +16,6 @@ public sealed partial class CharacterAnimBrain
 
     private Locomotion_Chain chain;
     private readonly PlaybackChannel _chainChannel = new();
-    private float _activeChainAdvancePointNormalized = 1f;
-    private bool _activeChainAdvanceRequested;
-    private bool _activeChainAdvanceReleased;
     private bool _activeChainUsesRootMotion;
     private ChainPlaybackKind _activeChainKind;
     private bool _chainStateCanExit = true;
@@ -31,8 +28,6 @@ public sealed partial class CharacterAnimBrain
     internal bool CanExitChainState => _chainStateCanExit;
     internal bool ActiveChainUsesRootMotion => _activeChainUsesRootMotion;
     internal bool ActiveChainUsesPlanarRootMotion => _chainChannel.Request.UsesPlanarRootMotion;
-    public bool RootMotionPlanarOnly { get; private set; }
-    public bool RootMotionYawActive { get; private set; }
 
     public bool IsChainPlaybackActive =>
         _chainChannel.IsActive ||
@@ -164,7 +159,7 @@ public sealed partial class CharacterAnimBrain
         AllowChainStateExit();
 
         if (locomotionSM.CurrentState == chain)
-            locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
+            TrySetLocomotionState(IsDowned ? crawlState : locomotion);
         else
             InterruptActiveChainRequest();
     }
@@ -176,80 +171,52 @@ public sealed partial class CharacterAnimBrain
             return;
         }
 
-        if (_chainChannel.Request.ReleaseRequested &&
-            !_chainChannel.Request.Released &&
-            state.NormalizedTime >= _chainChannel.Request.CastPointNormalized)
+        if (state.NormalizedTime >= _chainChannel.Request.CastPointNormalized &&
+            _chainChannel.Request.TryReleaseCast())
         {
             int requestId = _chainChannel.Request.RequestId;
-            _chainChannel.Request.Released = true;
             EmitPlaybackSignal(ResolveActiveChainPlaybackKind(), PlaybackPhase.CastMoment, requestId);
-            ChainCastMomentReached?.Invoke(requestId);
 
             if (requestId != _chainChannel.Request.RequestId)
                 return;
         }
 
-        if (_activeChainAdvanceRequested &&
-            !_activeChainAdvanceReleased &&
-            state.NormalizedTime >= _activeChainAdvancePointNormalized)
+        if (state.NormalizedTime >= _chainChannel.Request.AdvancePointNormalized &&
+            _chainChannel.Request.TryReleaseAdvance())
         {
-            int requestId = _chainChannel.Request.RequestId;
-            _activeChainAdvanceReleased = true;
-            EmitPlaybackSignal(ResolveActiveChainPlaybackKind(), PlaybackPhase.AdvanceMoment, requestId);
-            ChainAdvanceMomentReached?.Invoke(requestId);
+            EmitPlaybackSignal(
+                ResolveActiveChainPlaybackKind(),
+                PlaybackPhase.AdvanceMoment,
+                _chainChannel.Request.RequestId);
         }
     }
 
     internal void NotifyChainPlaybackStateExited(bool completedNormally)
     {
-        int requestId = _chainChannel.Request.RequestId;
         PlaybackKind playbackKind = ResolveActiveChainPlaybackKind();
-        bool shouldReleaseOnComplete =
+
+        // Order matters and is part of the contract: any beat the clip did not reach is delivered
+        // before the terminal, so a completed request has always seen its cast and advance moments.
+        bool advanceOnComplete =
             completedNormally &&
-            _chainChannel.Request.ReleaseRequested &&
-            !_chainChannel.Request.Released &&
-            requestId > 0;
-        bool interrupted =
-            !completedNormally &&
-            _chainChannel.Request.ReleaseRequested &&
-            requestId > 0;
+            _chainChannel.Request.RequestId > 0 &&
+            _chainChannel.Request.TryReleaseAdvance();
 
-        if (shouldReleaseOnComplete)
-        {
-            _chainChannel.Request.Released = true;
-            EmitPlaybackSignal(playbackKind, PlaybackPhase.CastMoment, requestId);
-            ChainCastMomentReached?.Invoke(requestId);
-        }
+        PlaybackSessionClose close = _chainChannel.Request.Close(completedNormally);
 
-        bool shouldAdvanceOnComplete =
-            completedNormally &&
-            _activeChainAdvanceRequested &&
-            !_activeChainAdvanceReleased &&
-            requestId > 0;
+        if (close.OwesCastMoment)
+            EmitPlaybackSignal(playbackKind, PlaybackPhase.CastMoment, close.RequestId);
 
-        if (shouldAdvanceOnComplete)
-        {
-            _activeChainAdvanceReleased = true;
-            EmitPlaybackSignal(playbackKind, PlaybackPhase.AdvanceMoment, requestId);
-            ChainAdvanceMomentReached?.Invoke(requestId);
-        }
+        if (advanceOnComplete)
+            EmitPlaybackSignal(playbackKind, PlaybackPhase.AdvanceMoment, close.RequestId);
 
         ClearActiveChainRequest();
 
-        if (completedNormally && requestId > 0)
-        {
-            EmitPlaybackSignal(playbackKind, PlaybackPhase.Completed, requestId);
-            ChainPlaybackCompleted?.Invoke(requestId);
-        }
+        if (completedNormally && close.RequestId > 0)
+            EmitPlaybackSignal(playbackKind, PlaybackPhase.Completed, close.RequestId);
 
-        if (interrupted)
-        {
-            EmitPlaybackSignal(playbackKind, PlaybackPhase.Interrupted, requestId);
-            ChainPlaybackInterrupted?.Invoke(requestId);
-
-            if (playbackKind == PlaybackKind.ChainSkill)
-                SkillCastInterrupted?.Invoke(requestId);
-        }
+        if (close.OwesInterrupted)
+            EmitPlaybackSignal(playbackKind, PlaybackPhase.Interrupted, close.RequestId);
     }
 
     internal void CompleteActiveChainPlayback()
@@ -257,7 +224,7 @@ public sealed partial class CharacterAnimBrain
         AllowChainStateExit();
 
         if (locomotionSM.CurrentState == chain)
-            locomotionSM.TrySetState(IsDowned ? crawlState : locomotion);
+            TrySetLocomotionState(IsDowned ? crawlState : locomotion);
     }
 
     internal void AllowChainStateExit()
@@ -283,10 +250,13 @@ public sealed partial class CharacterAnimBrain
         bool usesRootMotion,
         bool usesPlanarRootMotion)
     {
-        if (requestId <= 0 || IsChainPlaybackActive)
+        if (requestId <= 0)
             return false;
 
         if (!TryInitialize())
+            return false;
+
+        if (!CanStartAnimation(CharacterAnimationMode.Chain, CharacterAnimationTransitionReason.NormalCommand))
             return false;
 
         InterruptActiveSkillRequest();
@@ -304,7 +274,7 @@ public sealed partial class CharacterAnimBrain
 
         try
         {
-            if (locomotionSM.TryResetState(chain))
+            if (TryResetLocomotionState(chain))
                 return true;
         }
         catch (ArgumentException ex)
@@ -328,15 +298,9 @@ public sealed partial class CharacterAnimBrain
     {
         _activeChainKind = kind;
         _chainChannel.Request.Definition = skillDef;
-        _chainChannel.Request.RequestId = requestId;
-        _chainChannel.Request.CastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
-        _activeChainAdvanceRequested = requestAdvanceMoment;
-        _activeChainAdvancePointNormalized = requestAdvanceMoment
-            ? Mathf.Clamp(Mathf.Max(_chainChannel.Request.CastPointNormalized, advancePointNormalized), 0f, 0.999f)
-            : 1f;
-        _chainChannel.Request.ReleaseRequested = true;
-        _chainChannel.Request.Released = false;
-        _activeChainAdvanceReleased = false;
+        _chainChannel.Request.Begin(requestId, castPointNormalized);
+        if (requestAdvanceMoment)
+            _chainChannel.Request.RequestAdvanceMoment(advancePointNormalized);
         _activeChainUsesRootMotion = usesRootMotion;
         _chainChannel.Request.UsesPlanarRootMotion = usesRootMotion && usesPlanarRootMotion;
         _chainChannel.Request.IgnoresCharacterCollisionDuringRootMotion =
@@ -355,25 +319,19 @@ public sealed partial class CharacterAnimBrain
         _activeChainKind = ChainPlaybackKind.None;
         _activeChainCutsceneClip = null;
         _activeChainCutsceneDef = null;
-        _activeChainAdvancePointNormalized = 1f;
-        _activeChainAdvanceRequested = false;
-        _activeChainAdvanceReleased = false;
         _activeChainUsesRootMotion = false;
         _chainStateCanExit = true;
     }
 
     private void InterruptActiveChainRequest()
     {
-        int requestId = _chainChannel.Request.RequestId;
         PlaybackKind playbackKind = ResolveActiveChainPlaybackKind();
-        bool shouldNotify =
-            (_chainChannel.Request.ReleaseRequested || _activeChainAdvanceRequested) &&
-            requestId > 0;
+        PlaybackSessionClose close = _chainChannel.Request.Close(completedNormally: false);
 
         ClearActiveChainRequest();
 
-        if (shouldNotify)
-            NotifyInterrupted(playbackKind, requestId, true, playbackKind == PlaybackKind.ChainSkill);
+        if (close.OwesInterrupted)
+            EmitPlaybackSignal(playbackKind, PlaybackPhase.Interrupted, close.RequestId);
     }
 
     internal bool TryGetAnimationSamplingRoot(out GameObject sampleRoot)
@@ -398,7 +356,7 @@ public sealed partial class CharacterAnimBrain
         return true;
     }
 
-    internal void ApplyActiveChainRootMotionPolicy() => SetRootMotionPolicy(
+    internal void ApplyActiveChainRootMotionPolicy() => SetRootMotionShape(
         _chainChannel.Request.UsesPlanarRootMotion,
         _chainChannel.Request.IgnoresCharacterCollisionDuringRootMotion);
 
@@ -407,7 +365,7 @@ public sealed partial class CharacterAnimBrain
         ClearActiveRootMotionPolicy();
     }
 
-    internal void ClearActiveRootMotionPolicy() => SetRootMotionPolicy(false, false);
+    internal void ClearActiveRootMotionPolicy() => SetRootMotionShape(false, false);
 
     internal bool TryResolveChainSkillAnimationClip(SkillGemDefinition skillDef, out AnimationClip clip)
     {

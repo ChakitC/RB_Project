@@ -4,7 +4,7 @@ internal sealed class PlaybackChannel
     public CharacterAnimBrain.PlaybackKind Kind;
 
     public int RequestId => Request.RequestId;
-    public bool IsActive => Request.ReleaseRequested || Request.RequestId != 0;
+    public bool IsActive => Request.IsOpen;
 
     public void Clear()
     {

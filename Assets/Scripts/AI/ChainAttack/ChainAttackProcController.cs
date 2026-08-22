@@ -27,11 +27,10 @@ public sealed class ChainAttackProcController : MonoBehaviour
     SkillChainDef _pendingIntroDef;
     Transform _pendingIntroTargetTransform;
     CharacterAnimBrain _animBrain;
+    CharacterAnimBrain _subscribedIntroBrain;
+    CharacterAnimDriver _animDriver;
     CutsceneSkillPresenter _cutscenePresenter;
     bool _introGateActive;
-    bool _deferredChainStartPending;
-    SkillChainDef _deferredChainStartDef;
-    Transform _deferredChainStartTarget;
 
     float WorldNow => TimeSlowManager.Instance.WorldTime;
     public bool IsSequenceActive => chainAttackCoordinator != null && chainAttackCoordinator.IsSequenceActive;
@@ -57,13 +56,6 @@ public sealed class ChainAttackProcController : MonoBehaviour
         ResolveAnimBrainAndPresenter();
     }
 
-    void Update()
-    {
-        if (!_deferredChainStartPending) return;
-        _deferredChainStartPending = false;
-        ExecuteDeferredChainStart();
-    }
-
     void OnEnable()
     {
         Subscribe();
@@ -71,10 +63,6 @@ public sealed class ChainAttackProcController : MonoBehaviour
 
     void OnDisable()
     {
-        _deferredChainStartPending = false;
-        _deferredChainStartDef = null;
-        _deferredChainStartTarget = null;
-
         if (_introGateActive)
         {
             if (_cutscenePresenter != null)
@@ -257,7 +245,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
         StaggerMeter meter)
     {
         ResolveAnimBrainAndPresenter();
-        if (_animBrain == null) return false;
+        if (_animBrain == null || _animDriver == null) return false;
 
         CutsceneDef introDef = ResolveIntroCutsceneDef();
         if (introDef == null) return false;
@@ -269,7 +257,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
         if (!stageStarted)
             return false;
 
-        if (!_animBrain.TryPlayChainCutscene(introId, introDef))
+        if (!_animDriver.TryPlayChainCutscene(introId, introDef))
         {
             _cutscenePresenter.EndChainIntro(introId);
             return false;
@@ -284,8 +272,9 @@ public sealed class ChainAttackProcController : MonoBehaviour
         _pendingIntroDef = chainDef;
         _pendingIntroTargetTransform = targetTransform;
         _introGateActive = true;
-        _animBrain.ChainPlaybackCompleted += OnIntroChainPlaybackCompleted;
-        _animBrain.ChainPlaybackInterrupted += OnIntroChainPlaybackInterrupted;
+        _subscribedIntroBrain = _animBrain;
+        _subscribedIntroBrain.ChainPlaybackCompleted += OnIntroChainPlaybackCompleted;
+        _subscribedIntroBrain.ChainPlaybackInterrupted += OnIntroChainPlaybackInterrupted;
         return true;
     }
 
@@ -300,11 +289,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
         if (_cutscenePresenter != null)
             _cutscenePresenter.EndChainIntro(id);
 
-        // Defer chain start by one frame: the chain locomotion state is still exiting
-        // during this callback, so IsChainPlaybackActive would reject a new playback.
-        _deferredChainStartDef = def;
-        _deferredChainStartTarget = target;
-        _deferredChainStartPending = true;
+        StartChainAfterIntro(def, target);
     }
 
     void OnIntroChainPlaybackInterrupted(int id)
@@ -318,13 +303,8 @@ public sealed class ChainAttackProcController : MonoBehaviour
         AbortPendingChainReady();
     }
 
-    void ExecuteDeferredChainStart()
+    void StartChainAfterIntro(SkillChainDef def, Transform target)
     {
-        SkillChainDef def = _deferredChainStartDef;
-        Transform target = _deferredChainStartTarget;
-        _deferredChainStartDef = null;
-        _deferredChainStartTarget = null;
-
         if (def == null || _pendingChainReadyTarget == null || target == null)
         {
             AbortPendingChainReady();
@@ -342,10 +322,12 @@ public sealed class ChainAttackProcController : MonoBehaviour
         _pendingIntroDef = null;
         _pendingIntroTargetTransform = null;
 
-        if (_animBrain != null)
+        // Unsubscribe from whichever Brain was subscribed, not whichever is resolved now.
+        if (_subscribedIntroBrain != null)
         {
-            _animBrain.ChainPlaybackCompleted -= OnIntroChainPlaybackCompleted;
-            _animBrain.ChainPlaybackInterrupted -= OnIntroChainPlaybackInterrupted;
+            _subscribedIntroBrain.ChainPlaybackCompleted -= OnIntroChainPlaybackCompleted;
+            _subscribedIntroBrain.ChainPlaybackInterrupted -= OnIntroChainPlaybackInterrupted;
+            _subscribedIntroBrain = null;
         }
     }
 
@@ -361,6 +343,16 @@ public sealed class ChainAttackProcController : MonoBehaviour
 
     void ResolveAnimBrainAndPresenter()
     {
+        if (_animDriver == null && playerContext != null)
+            _animDriver = playerContext.AnimDriver;
+        if (_animDriver == null)
+            _animDriver = GetComponentInChildren<CharacterAnimDriver>(true);
+
+        // The event source must be the Brain the command actually reaches. Resolving the two
+        // independently lets a prefab with a stale or duplicated component subscribe to one Brain
+        // while commanding another, and then the completion callback never arrives and the
+        // ChainReady gate hangs with the meter still held.
+        _animBrain = _animDriver != null ? _animDriver.Brain : null;
         if (_animBrain == null && playerContext != null)
             _animBrain = playerContext.AnimBrain;
         if (_animBrain == null)

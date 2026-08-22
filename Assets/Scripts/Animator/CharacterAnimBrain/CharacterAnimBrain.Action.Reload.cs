@@ -176,7 +176,7 @@ public sealed partial class CharacterAnimBrain
                 return;
 
             _lockExit = false;
-            owner.locomotionSM.TrySetState(owner.IsDowned ? owner.crawlState : owner.locomotion);
+            owner.TrySetLocomotionState(owner.IsDowned ? owner.crawlState : owner.locomotion);
         }
 
         private void ClearStateEvents()

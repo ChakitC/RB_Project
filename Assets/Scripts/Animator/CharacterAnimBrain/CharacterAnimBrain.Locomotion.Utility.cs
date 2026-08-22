@@ -37,7 +37,7 @@ public sealed partial class CharacterAnimBrain
 
             if (utilityClip == null || !utilityClip.IsValid)
             {
-                owner.locomotionSM.TrySetState(owner.locomotion);
+                owner.TrySetLocomotionState(owner.locomotion);
                 return;
             }
 
@@ -88,9 +88,9 @@ public sealed partial class CharacterAnimBrain
             _completedNormally = true;
 
             if (owner.IsDowned)
-                owner.locomotionSM.TrySetState(owner.crawlState);
+                owner.TrySetLocomotionState(owner.crawlState);
             else
-                owner.locomotionSM.TrySetState(owner.locomotion);
+                owner.TrySetLocomotionState(owner.locomotion);
         }
     }
 }

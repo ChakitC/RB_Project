@@ -37,7 +37,7 @@ public sealed partial class CharacterAnimBrain
             if (clip == null || !clip.IsValid || !activeKnockback.IsValid)
             {
                 activeKnockback = default(KnockbackData);
-                owner.locomotionSM.TrySetState(owner.IsDowned ? owner.crawlState : owner.locomotion);
+                owner.TrySetLocomotionState(owner.IsDowned ? owner.crawlState : owner.locomotion);
                 return;
             }
 

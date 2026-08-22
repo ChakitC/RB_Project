@@ -14,6 +14,10 @@ public class RootMotionNavMeshDriver : MonoBehaviour
     [SerializeField] private CharacteContext ctx;
     [SerializeField] private LayerMask pushLayers;
 
+    private System.Action<RootMotionPolicy> _onPolicyChanged;
+    private CharacterAnimBrain _subscribedBrain;
+    private RootMotionPolicy _policy;
+
     private bool _prevRM;
     private bool _cachedAgentIsStopped;
     private bool _cachedAgentUpdatePosition;
@@ -41,7 +45,74 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         if (animator)
             animator.applyRootMotion = false;
 
-        _prevRM = brain && brain.RootMotionActive;
+        SubscribeToBrain();
+        _prevRM = _policy.Active;
+    }
+
+    void OnEnable()
+    {
+        SubscribeToBrain();
+    }
+
+    void OnDisable()
+    {
+        ReleaseRootMotionOwnership();
+    }
+
+    void OnDestroy()
+    {
+        ReleaseRootMotionOwnership();
+    }
+
+    /// <summary>
+    /// Hands the agent back before dropping the subscription. Skipping this leaves the agent with
+    /// isStopped/updatePosition/updateRotation still overridden, which freezes the actor — and a
+    /// replacement driver would then cache those broken values as the state to restore later.
+    /// A model rebuild disables the old driver exactly this way.
+    /// </summary>
+    void ReleaseRootMotionOwnership()
+    {
+        ApplyRootMotionTransition(false);
+        UnsubscribeFromBrain();
+    }
+
+    /// <summary>
+    /// This driver owns <see cref="Animator.applyRootMotion"/> and the agent's motion flags for its
+    /// actor. Reacting to the policy event instead of polling closes the one-frame window where
+    /// root motion was already active but the agent was still driving the transform too.
+    /// </summary>
+    void SubscribeToBrain()
+    {
+        _onPolicyChanged ??= OnRootMotionPolicyChanged;
+
+        if (_subscribedBrain == brain)
+            return;
+
+        UnsubscribeFromBrain();
+
+        if (!brain)
+            return;
+
+        _subscribedBrain = brain;
+        brain.RegisterRootMotionAdapter(_onPolicyChanged);
+    }
+
+    void UnsubscribeFromBrain()
+    {
+        if (!_subscribedBrain)
+        {
+            _subscribedBrain = null;
+            return;
+        }
+
+        _subscribedBrain.UnregisterRootMotionAdapter(_onPolicyChanged);
+        _subscribedBrain = null;
+    }
+
+    void OnRootMotionPolicyChanged(RootMotionPolicy policy)
+    {
+        _policy = policy;
+        ApplyRootMotionTransition(policy.Active);
     }
 
     public void Configure(
@@ -59,6 +130,13 @@ public class RootMotionNavMeshDriver : MonoBehaviour
             pushLayers = settingsSource.pushLayers;
         }
 
+        // Hand the previous agent back BEFORE rebinding. Re-entering root motion without an
+        // intervening exit would cache the overrides this driver already applied
+        // (isStopped/updatePosition/updateRotation) as if they were the agent's own settings, and
+        // the eventual restore would then re-apply them instead of undoing them. Rebinding first
+        // would also strand the old agent with no one left to restore it.
+        ApplyRootMotionTransition(false);
+
         brain = animBrain;
         agent = navMeshAgent;
         animator = sourceAnimator;
@@ -71,21 +149,33 @@ public class RootMotionNavMeshDriver : MonoBehaviour
 
         if (animator)
             animator.applyRootMotion = false;
+
+        // Re-subscribing to the same Brain is a no-op, so re-apply the policy explicitly or a
+        // rebuilt model keeps the flag we just cleared while root motion is still running.
+        SubscribeToBrain();
+        ApplyRootMotionTransition(_policy.Active);
     }
 
     void Update()
     {
-        bool rm = brain && brain.RootMotionActive;
-
-        if (rm != _prevRM)
-        {
-            if (rm) EnterRootMotion();
-            else ExitRootMotion();
-            _prevRM = rm;
-        }
+        // The policy event already drives the transition. This stays as a safety net for the case
+        // where the driver is attached to a Brain that is already mid-playback.
+        bool rm = _policy.Active;
+        ApplyRootMotionTransition(rm);
 
         if (rm && agent && agent.enabled)
             agent.nextPosition = ActorRoot.position;
+    }
+
+    private void ApplyRootMotionTransition(bool rootMotionActive)
+    {
+        if (rootMotionActive == _prevRM)
+            return;
+
+        if (rootMotionActive) EnterRootMotion();
+        else ExitRootMotion();
+
+        _prevRM = rootMotionActive;
     }
 
     private void EnterRootMotion()
@@ -99,10 +189,16 @@ public class RootMotionNavMeshDriver : MonoBehaviour
             return;
         }
 
-        _cachedAgentIsStopped = agent.isStopped;
-        _cachedAgentUpdatePosition = agent.updatePosition;
-        _cachedAgentUpdateRotation = agent.updateRotation;
-        _hasCachedAgentState = true;
+        // Only ever cache the agent's own settings. Entering twice without an intervening exit
+        // would otherwise capture this driver's own overrides as the state to restore, which turns
+        // the restore into a no-op and leaves the actor frozen.
+        if (!_hasCachedAgentState)
+        {
+            _cachedAgentIsStopped = agent.isStopped;
+            _cachedAgentUpdatePosition = agent.updatePosition;
+            _cachedAgentUpdateRotation = agent.updateRotation;
+            _hasCachedAgentState = true;
+        }
 
         agent.isStopped = true;
         agent.updatePosition = false;
@@ -130,12 +226,12 @@ public class RootMotionNavMeshDriver : MonoBehaviour
 
     void OnAnimatorMove()
     {
-        if (!brain || !brain.RootMotionActive) return;
+        if (!_policy.Active) return;
         if (!animator) return;
 
         Vector3 delta = RootMotionDeltaUtility.GetPositionDelta(
             animator,
-            zeroY || brain.RootMotionPlanarOnly);
+            zeroY || _policy.PlanarOnly);
 
         Transform actorRoot = ActorRoot;
         actorRoot.position += delta;
@@ -143,7 +239,7 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         if (agent && agent.enabled)
             agent.nextPosition = actorRoot.position;
 
-        if (applyRootRotation || brain.RootMotionYawActive)
+        if (applyRootRotation || _policy.ApplyYaw)
         {
             float yawDelta = RootMotionDeltaUtility.GetYawDelta(animator);
             actorRoot.rotation *= Quaternion.AngleAxis(yawDelta, Vector3.up);

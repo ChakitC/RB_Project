@@ -444,13 +444,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: da550000000000000000000000000003, type: 3}
   m_Name:
   m_EditorClassIdentifier:
-  postExposure: -1.2
-  saturation: -25
-  vignetteIntensity: 0.35
-  vignetteSmoothness: 0.45
-  vignetteColor: {r: 0, g: 0, b: 0, a: 1}
-  bloomIntensity: 0.7
-  bloomThreshold: 0.95
-  bloomScatter: 0.75
-  bloomTint: {r: 1, g: 1, b: 1, a: 1}
-  volumePriority: 100

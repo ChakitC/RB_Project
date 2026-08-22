@@ -40,6 +40,13 @@ public sealed class TimeSlowManager : MonoBehaviour
     /// <summary>Handle ของ slow ที่กำลังทำงานอยู่ (0 = ไม่มี) ใช้กันไม่ให้ผู้เรียกคนหนึ่งไปหยุด slow ของอีกคน</summary>
     public int ActiveSlowHandle { get; private set; }
 
+    /// <summary>
+    /// หน้าตาของจอสำหรับ slow ที่กำลังทำงานอยู่ null = สโลว์เฉยๆ ไม่มีเอฟเฟคจอ
+    /// คนสั่งสโลว์เป็นคนตัดสิน ไม่ใช่จอ เพราะคัตซีนต้องการหยุดเวลาเพื่อรอคัตซีนจบเท่านั้น
+    /// ส่วน AI ที่ dash ก็ไม่ควรทำให้จอผู้เล่นมืด
+    /// </summary>
+    public WorldSlowPostFxSetting ActiveVisual { get; private set; }
+
     /// <summary>ความเข้มของสโลว์ตาม curve ณ ตอนนี้ 0 = ปกติ, 1 = สโลว์เต็ม
     /// ให้ภาพ (tint/vignette) เกาะค่านี้แทนการนับเวลาเอง จะได้ไม่มีทางหลุด sync กับ curve</summary>
     public float SlowBlend01 { get; private set; }
@@ -84,9 +91,12 @@ public sealed class TimeSlowManager : MonoBehaviour
     }
 
     public int StartSlow(float scale, float duration)
-        => StartSlow(scale, duration, null);
+        => StartSlow(scale, duration, null, null);
 
     public int StartSlow(float scale, float duration, AnimationCurve shape)
+        => StartSlow(scale, duration, shape, null);
+
+    public int StartSlow(float scale, float duration, AnimationCurve shape, WorldSlowPostFxSetting visual)
     {
         scale = Mathf.Clamp(scale, 0.05f, 1f);
         duration = Mathf.Max(0f, duration);
@@ -104,6 +114,7 @@ public sealed class TimeSlowManager : MonoBehaviour
         _active = true;
         IsSlowing = true;
         ActiveSlowHandle = _nextSlowHandle++;
+        ActiveVisual = visual;
 
         float blend = _activeShape != null ? _activeShape.Evaluate(0f) : 1f;
         blend = Mathf.Clamp01(blend);
@@ -130,6 +141,7 @@ public sealed class TimeSlowManager : MonoBehaviour
         _duration = 0f;
         _activeShape = null;
         ActiveSlowHandle = 0;
+        ActiveVisual = null;
         SlowBlend01 = 0f;
         WorldTimeScale = 1f;
         IsSlowing = false;

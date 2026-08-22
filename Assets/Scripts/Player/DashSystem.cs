@@ -405,12 +405,22 @@ public class DashSystem : MonoBehaviour
 
         _perfectDodgeTriggeredThisDash = true;
 
+        // กระสุนฟรีเป็นรางวัลเฉพาะตัว ไม่ได้ไปยุ่งกับจอ ใครหลบได้ก็ได้ไป
+        ctx?.WeaponSystem?.GrantFreeAmmo(dashSetting.perfectDashFreeAmmoDuration);
+
+        // ส่วนที่เหลือกระทบจอของผู้เล่นทั้งจอ จึงเปิดเฉพาะตัวที่ตั้งใจให้เปิด
+        if (!dashSetting.playsPerfectDodgeFeedback)
+            return;
+
         float slowScale = dashSetting.perfectDashSlowScale;
         float slowDuration = dashSetting.perfectDashSlowDuration;
 
-        ctx?.WeaponSystem?.GrantFreeAmmo(dashSetting.perfectDashFreeAmmoDuration);
-        _perfectDodgeSlowHandle = TimeSlowManager.Instance.StartSlow(
-            slowScale, slowDuration, dashSetting.perfectDashSlowShape);
+        // ห้ามเรียก StartSlow ด้วย duration <= 0 เพราะมันจะไปสั่ง StopSlow ดับสโลว์ของคนอื่นทิ้ง
+        if (slowDuration > 0f)
+        {
+            _perfectDodgeSlowHandle = TimeSlowManager.Instance.StartSlow(
+                slowScale, slowDuration, dashSetting.perfectDashSlowShape, dashSetting.worldSlowVisual);
+        }
 
         bool handled = PerfectDodgeHandler != null &&
             PerfectDodgeHandler(_lastDashDirection, slowDuration, slowScale);

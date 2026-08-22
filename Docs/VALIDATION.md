@@ -318,6 +318,89 @@ A `HealAreaStep` reference reappearing in any asset means it was restored from a
 that migration is still in progress — there is nothing left to migrate, and the type no longer
 exists to deserialize into.
 
+# Character animation validation
+
+`CharacterAnimBrainSmokeTests`
+(`Assets/Scripts/Editor/Animator/CharacterAnimBrainSmokeTests.cs`) is the
+EditMode safety net for `CharacterAnimBrain` playback lifecycle and command
+admission. Run it before and after any change to the Brain, its partial state
+files, or `CharacterAnimDriver`.
+
+It builds a real Animancer graph — the graph does initialise outside Play Mode —
+but **the graph never advances time**. Every assertion is therefore driven by a
+cast point of `0` (which the chain poll satisfies on the first tick) or by
+invoking the state's own end-of-clip callback the way Animancer would. Coverage:
+
+- skill / utility / chain-cutscene / chain-skill lifecycles and their signal order
+- exactly one terminal per request, and none for a caller-requested cancel
+- a completion handler starting the next chain in the same frame
+- chain playback rejecting every external animation command
+- root-motion policy flags for skill playback
+- stage intro and hard status handing `applyRootMotion` back on exit
+- animator/profile rebind interrupting active playback exactly once
+- missing clip / missing profile failing safely with no events
+- teardown not replaying terminal events
+- the binding fast path: a steady-state tick not re-resolving the hierarchy,
+  `InvalidateAnimationBinding()` forcing exactly one full resolve, and an
+  Animator or `baseStats.animProfile` swap rebinding on its own
+- session lifecycle: two teardown paths racing one request still emitting a
+  single terminal, a request never seeing both `Completed` and `Interrupted`, and
+  a completed chain being delivered every beat it skipped before its terminal
+- root motion: one coherent published policy, the façade never disagreeing with
+  it, the policy clearing when playback ends or the Brain is disabled, adapters
+  receiving the current policy on registration, and a registered adapter taking
+  `Animator.applyRootMotion` over from the Brain
+
+`CharacterAnimationTransitionPolicyTests`
+(`Assets/Scripts/Editor/Animator/CharacterAnimationTransitionPolicyTests.cs`)
+guards animation priority. Its `ObservedTransitionMatrixMatchesTheAuthoredTable`
+test drives a real Brain through every (current mode, requested mode) pair and
+compares against a literal table that was captured from the implementation
+**before** `CharacterAnimationTransitionPolicy` existed. That table is the
+contract, not a restatement of the policy: if a cell changes, gameplay priority
+changed. Update the table in the same commit as the policy so the new priority is
+the reviewed artefact — never to make a red test go green.
+
+Three cells are asymmetries rather than obvious rules, and are deliberate:
+
+- `FullBodyReload -> Chain` is blocked while `FullBodyReload -> Skill` is allowed.
+  A skill calls `StopReloadAction()` first, which clears the reload's exit lock;
+  chain playback does not.
+- `Skill -> Skill` is blocked but `Skill -> Utility` is allowed. Only skill
+  admission consults `IsShootBlockingPlaybackActive`.
+- Knockback blocks hard status poses too, not just soft ones.
+
+These files live under `Editor/`, so `CheckAssemblyBuild.ps1` does not compile
+them. A green build says nothing about these suites — run them in Unity.
+
+`CheckAssemblyBuild.ps1` also cannot catch a name collision with a `UnityEditor`
+type, because it never compiles the editor assembly. A new global-namespace type
+shadows a same-named `UnityEditor` type for every editor script that has
+`using UnityEditor;` — this is why the transition mode enum is called
+`CharacterAnimationMode` and not `AnimationMode`. After adding a top-level type
+with a generic name, reimport in Unity and check the Console, not just the build.
+
+Play Mode still owns everything that needs real clip time: skill cast-point
+events (they are Animancer events, not polled), the chain playback watchdog,
+fade weights, root-motion delta, and prefab wiring. The prefab matrix to exercise
+by hand is Player, Ally (NavMesh), an Enemy with a different hierarchy, and a
+Summon/turret that uses `inspectorAnimProfile` instead of `baseStats.animProfile`.
+
+## Animation hot-path baseline
+
+`CharacterAnimBrain.Update` calls `TryInitialize()` every frame, which calls
+`ResolveReferences()` and `ctx.ResolveReferences()`. Before changing that, record
+a baseline so the change can be proved rather than assumed. This is a manual
+Unity Profiler pass; no script captures it:
+
+1. Open a MapRun stage and enter Play Mode with the Profiler recording (CPU
+   Usage, Hierarchy view, Deep Profile off).
+2. Capture at 1, 25, and 100 live actors.
+3. Record, per frame: `CharacterAnimBrain.Update`, `TryInitialize`,
+   `CharacteContext.ResolveReferences`, `GetComponentInChildren`, and GC Alloc.
+4. Repeat the identical capture after the change and compare the same five
+   numbers at the same three actor counts.
+
 # Weapon affix validation
 
 Run **Tools > Weapons > Affixes > Validate (Dry Run)** before builds. The build

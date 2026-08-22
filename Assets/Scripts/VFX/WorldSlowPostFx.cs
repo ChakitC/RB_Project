@@ -1,66 +1,54 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 /// <summary>
-/// หรี่จอตอน world slow โดยเกาะ <see cref="TimeSlowManager.SlowBlend01"/> ตรงๆ
-/// ไม่ได้ผูกกับ perfect dodge โดยเฉพาะ ดังนั้นสโลว์จาก cutscene ก็ได้ภาพนี้ด้วย
+/// วาดเอฟเฟคจอตอน world slow ตาม profile ที่ "คนสั่งสโลว์" ส่งมาให้
+/// (<see cref="TimeSlowManager.ActiveVisual"/>) ถ้าไม่มีใครส่ง profile มา = ไม่ทำอะไรเลย
+///
+/// ตัวนี้ไม่ตัดสินใจเองว่าสโลว์ไหนควรมีเอฟเฟค เพราะเจตนาไม่เหมือนกัน
+///   perfect dodge ของผู้เล่น -> อยากได้จอมืด
+///   คัตซีน                    -> แค่หยุดเวลารอคัตซีนจบ ไม่อยากให้จอมืด
+///   AI ที่ dash               -> ไม่ควรไปทำให้จอผู้เล่นมืด
 ///
 /// ใช้ Volume ที่สร้างตอนรันไทม์ซ้อนทับ profile เดิมของโปรเจกต์ (weight = ความเข้มสโลว์)
 /// จึงไม่แตะ DefaultVolumeProfile และไม่ต้องเพิ่มกล้อง/เลเยอร์
 ///
-/// VFX ยังสว่างอยู่เพราะ post exposure หรี่ทุกอย่างเป็นสัดส่วน แต่ VFX เป็นสี HDR (ค่า > 1)
-/// หรี่แล้วยังเกิน 1 อยู่ดีเลย clip เป็นขาวเหมือนเดิม ส่วนฉากที่ค่าราวๆ 1 จะมืดลงชัดเจน
+/// VFX ยังสว่างอยู่เพราะความมืดเป็นตัวคูณความสว่างทั้งจอ แต่ VFX เป็นสี HDR (ค่า > 1)
+/// คูณแล้วยังเกิน 1 อยู่ดีเลย clip เป็นขาวเหมือนเดิม ส่วนฉากที่ค่าราวๆ 1 จะมืดลงชัดเจน
 ///
-/// Bloom อยู่ใน Volume ตัวนี้ด้วย ไม่ได้ไปดันค่าใน DefaultVolumeProfile
-/// จึงฟุ้งเฉพาะตอนสโลว์ และตอน weight = 0 ค่า intensity จะเป็น 0 ทำให้ URP ข้าม bloom pass ไปเลย
+/// ความมืดไม่ได้เท่ากับ SlowBlend01 ตรงๆ แต่ไล่เข้าหามันด้วย dimFadeInTime/dimFadeOutTime
+/// เพื่อให้ "เวลาช้าทันที แต่จอค่อยๆ มืด" ได้ โดยไม่ต้องไปแก้ curve ซึ่งจะทำให้เวลาช้าแบบค่อยเป็นค่อยไปตามไปด้วย
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class WorldSlowPostFx : MonoBehaviour
 {
-    [Header("ค่าที่ระดับสโลว์เต็ม")]
-    [Tooltip("EV ที่หรี่ลง ยิ่งติดลบยิ่งมืด -1.2 ประมาณครึ่งสตอป")]
-    [SerializeField, Range(-4f, 0f)] private float postExposure = -1.2f;
-
-    [Tooltip("ลดความอิ่มสีของฉาก ให้ VFX สีจัดเด่นขึ้น")]
-    [SerializeField, Range(-100f, 0f)] private float saturation = -25f;
-
-    [Tooltip("ความเข้มขอบมืด ไม่ควรเกิน 0.4 เพราะช่วงนี้ผู้เล่นกำลังเล็งยิงสวน")]
-    [SerializeField, Range(0f, 1f)] private float vignetteIntensity = 0.35f;
-
-    [SerializeField, Range(0.01f, 1f)] private float vignetteSmoothness = 0.45f;
-    [SerializeField] private Color vignetteColor = Color.black;
-
-    [Header("Bloom (ทำงานเฉพาะตอนสโลว์)")]
-    [Tooltip("ความฟุ้งตอนสโลว์เต็ม 0 = ปิด base profile ของโปรเจกต์ตั้งไว้ 0 อยู่แล้วจึงไม่ฟุ้งตอนเล่นปกติ")]
-    [SerializeField, Range(0f, 3f)] private float bloomIntensity = 0.7f;
-
-    [Tooltip("ค่าความสว่างที่เริ่มฟุ้ง ยิ่งต่ำยิ่งฟุ้งลามไปโดนฉากด้วย ควรอยู่เหนือ 1 ถ้าอยากให้เฉพาะ HDR VFX ฟุ้ง")]
-    [SerializeField, Range(0f, 3f)] private float bloomThreshold = 0.95f;
-
-    [SerializeField, Range(0f, 1f)] private float bloomScatter = 0.75f;
-    [SerializeField] private Color bloomTint = Color.white;
-
-    [Header("Volume")]
-    [Tooltip("ต้องสูงกว่า Volume อื่นในฉาก ไม่งั้นจะโดนทับ")]
-    [SerializeField] private int volumePriority = 100;
-
     Volume _volume;
     VolumeProfile _profile;
     ColorAdjustments _colorAdjustments;
     Vignette _vignette;
     Bloom _bloom;
+
+    // ถือ profile ที่ใช้อยู่ต่อจนกว่าจะ fade กลับจนสุด ไม่งั้นพอสโลว์จบจอจะดีดกลับทันทีแทนที่จะค่อยๆ คลาย
+    WorldSlowPostFxSetting _activeVisual;
     float _appliedWeight = -1f;
 
     void OnEnable()
     {
         EnsureVolume();
         ApplyWeight(0f);
+#if UNITY_EDITOR
+        WorldSlowPostFxSetting.Changed += OnSettingChanged;
+#endif
     }
 
     void OnDisable()
     {
         ApplyWeight(0f);
+        _activeVisual = null;
+#if UNITY_EDITOR
+        WorldSlowPostFxSetting.Changed -= OnSettingChanged;
+#endif
     }
 
     void OnDestroy()
@@ -78,13 +66,42 @@ public sealed class WorldSlowPostFx : MonoBehaviour
 
     void LateUpdate()
     {
-        float blend = TimeSlowManager.Instance.SlowBlend01;
+        var manager = TimeSlowManager.Instance;
+        WorldSlowPostFxSetting requested = manager.ActiveVisual;
 
-        // ปกติทั้งเกมจะอยู่ที่ 0 ตลอด ไม่ต้องเขียน Volume ซ้ำทุกเฟรม
-        if (blend == _appliedWeight)
-            return;
+        if (requested != null && requested != _activeVisual)
+        {
+            _activeVisual = requested;
+            PushTuning();
+        }
 
-        ApplyWeight(blend);
+        // ไม่มีใครขอเอฟเฟค = เป้าหมายคือ 0 แต่ยังใช้ profile เดิมไล่ลงมาให้จบก่อน
+        float target = requested != null ? manager.SlowBlend01 : 0f;
+        float current = _appliedWeight < 0f ? 0f : _appliedWeight;
+
+        if (_activeVisual != null)
+        {
+            // ใช้ unscaled ให้ตรงกับ TimeSlowManager ที่นับ _elapsed ด้วย unscaledDeltaTime เหมือนกัน
+            float dt = Time.unscaledDeltaTime;
+
+            if (target > current && _activeVisual.dimFadeInTime > 0f)
+                current = Mathf.MoveTowards(current, target, dt / _activeVisual.dimFadeInTime);
+            else if (target < current && _activeVisual.dimFadeOutTime > 0f)
+                current = Mathf.MoveTowards(current, target, dt / _activeVisual.dimFadeOutTime);
+            else
+                current = target;
+        }
+        else
+        {
+            current = target;
+        }
+
+        if (current != _appliedWeight)
+            ApplyWeight(current);
+
+        // คลายจนสุดแล้วค่อยปล่อย profile ทิ้ง
+        if (_activeVisual != null && requested == null && _appliedWeight <= 0f)
+            _activeVisual = null;
     }
 
     void ApplyWeight(float weight)
@@ -99,10 +116,7 @@ public sealed class WorldSlowPostFx : MonoBehaviour
     void EnsureVolume()
     {
         if (_volume != null)
-        {
-            PushTuning();
             return;
-        }
 
         _profile = ScriptableObject.CreateInstance<VolumeProfile>();
         _profile.name = "WorldSlowPostFx Profile (Runtime)";
@@ -116,53 +130,60 @@ public sealed class WorldSlowPostFx : MonoBehaviour
             _volume = gameObject.AddComponent<Volume>();
 
         _volume.isGlobal = true;
-        _volume.priority = volumePriority;
         _volume.profile = _profile;
         _volume.weight = 0f;
-
-        PushTuning();
     }
 
     void PushTuning()
     {
+        if (_activeVisual == null || _volume == null)
+            return;
+
         if (_colorAdjustments != null)
         {
-            _colorAdjustments.postExposure.overrideState = true;
-            _colorAdjustments.postExposure.value = postExposure;
+            // colorFilter คือตัวคูณความสว่าง จึงแปลงเปอร์เซ็นต์ความมืดมาตรงๆ ได้
+            // 35% -> คูณ 0.65 ทั้งจอ ส่วน HDR VFX ที่ 8.0 เหลือ 5.2 ซึ่งยัง clip ขาวอยู่
+            float k = _activeVisual.DimMultiplier;
+            _colorAdjustments.colorFilter.overrideState = true;
+            _colorAdjustments.colorFilter.value = new Color(k, k, k, 1f);
             _colorAdjustments.saturation.overrideState = true;
-            _colorAdjustments.saturation.value = saturation;
+            _colorAdjustments.saturation.value = _activeVisual.saturation;
         }
 
         if (_vignette != null)
         {
             _vignette.intensity.overrideState = true;
-            _vignette.intensity.value = vignetteIntensity;
+            _vignette.intensity.value = _activeVisual.VignetteIntensity01;
             _vignette.smoothness.overrideState = true;
-            _vignette.smoothness.value = vignetteSmoothness;
+            _vignette.smoothness.value = _activeVisual.vignetteSmoothness;
             _vignette.color.overrideState = true;
-            _vignette.color.value = vignetteColor;
+            _vignette.color.value = _activeVisual.vignetteColor;
+            _vignette.rounded.overrideState = true;
+            _vignette.rounded.value = _activeVisual.vignetteRounded;
+            _vignette.center.overrideState = true;
+            _vignette.center.value = _activeVisual.vignetteCenter;
         }
 
         if (_bloom != null)
         {
             _bloom.intensity.overrideState = true;
-            _bloom.intensity.value = bloomIntensity;
+            _bloom.intensity.value = _activeVisual.bloomIntensity;
             _bloom.threshold.overrideState = true;
-            _bloom.threshold.value = bloomThreshold;
+            _bloom.threshold.value = _activeVisual.bloomThreshold;
             _bloom.scatter.overrideState = true;
-            _bloom.scatter.value = bloomScatter;
+            _bloom.scatter.value = _activeVisual.bloomScatter;
             _bloom.tint.overrideState = true;
-            _bloom.tint.value = bloomTint;
+            _bloom.tint.value = _activeVisual.bloomTint;
         }
 
-        if (_volume != null)
-            _volume.priority = volumePriority;
+        _volume.priority = _activeVisual.volumePriority;
     }
 
 #if UNITY_EDITOR
-    void OnValidate()
+    // แก้ค่าบน asset -> เห็นผลทันทีโดยไม่ต้องออกจาก Play Mode
+    void OnSettingChanged(WorldSlowPostFxSetting changed)
     {
-        if (_volume != null)
+        if (changed == _activeVisual)
             PushTuning();
     }
 #endif

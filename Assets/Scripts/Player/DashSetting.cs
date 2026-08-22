@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// ค่าจูนทั้งหมดของ dash + perfect dodge ตัว <see cref="DashSystem"/> ไม่เก็บค่าพวกนี้เองแล้ว
@@ -32,6 +32,13 @@ public sealed class DashSetting : ScriptableObject
 
     [Tooltip("ยิงไม่กินกระสุนกี่วินาทีหลังหลบสำเร็จ")]
     [Min(0f)] public float perfectDashFreeAmmoDuration = 0.35f;
+
+    [Tooltip("ตัวละครนี้ได้ world slow + เอฟเฟคจอตอนหลบสำเร็จมั้ย " +
+             "เปิดเฉพาะผู้เล่น AI ที่ dash ได้ควรปิด ไม่งั้นจอผู้เล่นจะมืดตอน AI หลบ")]
+    public bool playsPerfectDodgeFeedback = true;
+
+    [Tooltip("หน้าตาของจอตอนสโลว์ ปล่อยว่าง = สโลว์อย่างเดียวไม่มีเอฟเฟคจอ")]
+    public WorldSlowPostFxSetting worldSlowVisual;
 
     [Tooltip("เลเยอร์ที่ถือว่าเป็นภัยคุกคามตอนสแกนรอบตัว ปล่อยว่าง (Nothing) = ปิดการสแกน")]
     public LayerMask perfectDodgeThreatLayers;

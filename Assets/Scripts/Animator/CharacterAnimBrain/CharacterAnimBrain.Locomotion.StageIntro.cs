@@ -10,12 +10,13 @@ public sealed partial class CharacterAnimBrain
     {
         private readonly CharacterAnimBrain owner;
         private AnimancerState state;
+        private bool _prevApplyRootMotion;
 
         public Locomotion_StageIntro(CharacterAnimBrain owner) => this.owner = owner;
 
         public override void OnEnterState()
         {
-            owner.EnterExclusiveLocomotion(
+            _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
                 usesRootMotion: false,
                 preserveFireHoldIntent: false);
             owner.EmitPlaybackSignal(PlaybackKind.StageIntro, PlaybackPhase.Started, 0);
@@ -51,6 +52,10 @@ public sealed partial class CharacterAnimBrain
         public override void OnExitState()
         {
             state = null;
+
+            // The intro forces root motion off while it owns locomotion; hand it back to whoever
+            // had it (NavMesh root-motion drivers, an interrupted skill) instead of leaking off.
+            owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
         }
     }
 }

@@ -42,7 +42,7 @@ public sealed partial class CharacterAnimBrain
             {
                 owner.AllowChainStateExit();
                 owner.InterruptActiveChainRequest();
-                owner.locomotionSM.TrySetState(owner.locomotion);
+                owner.TrySetLocomotionState(owner.locomotion);
                 return;
             }
 

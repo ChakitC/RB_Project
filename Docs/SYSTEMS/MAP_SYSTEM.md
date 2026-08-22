@@ -106,9 +106,10 @@ exactly once.
 ## Test Stages
 
 The Basement Mobiliz board contains a bounded second page with three Stage
-Placards. Selecting one immediately passes its `MapRunConfigSO` through the
-persistent `SceneLoaderSystem` and loads the shared `MapRun` scene. There are
-no character-level entrance gates, and every Test Stage remains replayable.
+Placards, and a third page holding BOSS RUSH 01. Selecting one immediately
+passes its `MapRunConfigSO` through the persistent `SceneLoaderSystem` and loads
+the shared `MapRun` scene. There are no character-level entrance gates, and
+every Test Stage remains replayable.
 
 The authored Test Stage configs are under `Assets/Data/Map/TestStages`:
 
@@ -117,6 +118,24 @@ The authored Test Stage configs are under `Assets/Data/Map/TestStages`:
 | TEST STAGE 01 | Lv1-11 | 2 | 5, 10 | 1,625 |
 | TEST STAGE 02 | Lv11-20 | 3 | 13, 17, 20 | 2,900 |
 | TEST STAGE 03 | Lv20-30 | 5 | 22, 24, 26, 28, 30 | 5,940 |
+| BOSS RUSH 01 | Lv1-11 | 1 | 10 | 3,250 |
+
+### Direct-to-Boss stages
+
+`criticalPathNodeCount` accepts a minimum of `2`, which produces a critical path
+of exactly `Start -> Boss` with no intermediate room. BOSS RUSH 01 uses that
+shape. A direct-to-boss config must also set `minBranchCount` and
+`maxBranchCount` to `0`, because a two-node path has no node that is eligible to
+parent a branch, and `MapRunConfigValidator.ValidateBranchCapacity` rejects any
+non-zero minimum.
+
+`MapPathValidator` enforces the "blue room before the Boss" rule only when the
+config sets `forceBlueBeforeBoss`. `MapPathValidator.Validate` therefore takes
+the `MapRunConfigSO` alongside the graph; passing `null` keeps the rule enforced.
+A direct-to-boss config must clear `forceBlueBeforeBoss`, but it still has to
+keep a blue room definition with at least two exits in `roomDefinitions`, because
+`MapRunConfigValidator` checks `PitySystem.ForcedBlueType` unconditionally even
+when no blue node can ever be generated.
 
 The Test Stage balance assumes the following fixed encounter composition:
 

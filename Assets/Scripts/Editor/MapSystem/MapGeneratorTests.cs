@@ -16,7 +16,7 @@ public sealed class MapGeneratorTests
         for (int seed = 0; seed < 256; seed++)
         {
             MapGraph graph = MapGenerator.Generate(config, seed);
-            Assert.That(MapPathValidator.Validate(graph, out string error), Is.True, $"Seed {seed}: {error}");
+            Assert.That(MapPathValidator.Validate(graph, config, out string error), Is.True, $"Seed {seed}: {error}");
         }
     }
 
@@ -27,7 +27,7 @@ public sealed class MapGeneratorTests
         Assert.That(config, Is.Not.Null, $"Missing Stage One config at '{StageOneConfigPath}'.");
 
         MapGraph graph = MapGenerator.Generate(config, ReportedStageOneSeed);
-        Assert.That(MapPathValidator.Validate(graph, out string error), Is.True, error);
+        Assert.That(MapPathValidator.Validate(graph, config, out string error), Is.True, error);
     }
 
     [Test]
@@ -39,7 +39,7 @@ public sealed class MapGeneratorTests
         for (int seed = 0; seed < 256; seed++)
         {
             MapGraph graph = MapGenerator.Generate(config, seed);
-            Assert.That(MapPathValidator.Validate(graph, out string error), Is.True, $"Seed {seed}: {error}");
+            Assert.That(MapPathValidator.Validate(graph, config, out string error), Is.True, $"Seed {seed}: {error}");
         }
     }
 }

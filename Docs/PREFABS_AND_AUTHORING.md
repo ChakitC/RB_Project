@@ -215,6 +215,35 @@ rewriting that room asset. Keep the definition enabled, assigned to a prefab,
 and at two or more exits; the pre-Boss blue-node validator requires a usable
 multi-exit Heal definition.
 
+### Basement board pages the authoring tool does not own
+
+**Tools > RB Project > Map > Apply Test Stage Content** owns only
+`ExistingMapsPage` and `TestStagePage`, and its placard layout has room for
+exactly three stages. Stages beyond those three are authored by hand as
+additional pages under `MapUI/TestStagePagination`, and the tool neither creates
+nor rewrites them.
+
+`BossRushPage` is the first such page. It holds one placard for BOSS RUSH 01 and
+is registered as index `2` in the `MobilizBoardPager` `pages` array. To add
+another hand-authored page:
+
+1. Create a `RectTransform` child of `TestStagePagination` with anchors
+   `(0.12, 0.10)`-`(0.88, 0.86)`, matching `TestStagePage`.
+2. Add a placard child with `Image`, `Shadow`, `Button`, `StagePlacardButton`,
+   and a TMP label, then assign the `MapRunConfigSO` to the button's `runConfig`
+   and wire `Button.onClick` to `StagePlacardButton.EnterStage`.
+3. Append the page to `MobilizBoardPager.pages`. Leave `initialPage` at `0` and
+   set the new page inactive; the pager toggles visibility on `Awake`.
+
+Do not renumber or reorder the first two pages. Re-running the authoring tool
+destroys and rebuilds `TestStagePage`, which would drop hand-authored placards
+placed there.
+
+When scripting this through the Unity Editor API, load the `MapRunConfigSO`
+**after** opening the Basement scene. Opening a scene in `Single` mode unloads
+unreferenced assets, so a reference loaded beforehand becomes a destroyed object
+and assigning it silently writes `null`.
+
 ## Stage Intro Rig Authoring
 
 The MapRun stage intro lives on a shared `StageIntroRig.prefab`, nested under the
@@ -1440,6 +1469,38 @@ the same way. The current prefab reference is used for start, impact,
 full-trajectory, target-overlap, sweep, and NavMesh-footprint validation. A clip
 with no extracted XZ displacement or yaw uses the existing teleport behavior.
 Helper chain attacks are not changed by this feature.
+
+## Projectile Movement And Lifetime Ownership
+
+A gameplay projectile prefab has **exactly one** component that owns its movement, its lifetime,
+and its root activation, and that component is `Projectile`. Nothing else on the root may:
+
+- write the root `Rigidbody` (velocity, constraints, `detectCollisions`, `isKinematic`),
+- run its own lifetime timer or coroutine,
+- call `SetActive` on the root,
+- `Destroy` the instance or return it to `ProjectilePool`.
+
+Two owners on one Rigidbody produce bugs that look like tuning problems: the projectile travels at
+the wrong speed, tumbles because a `FreezeRotation` constraint was cleared, or disappears on a timer
+that has nothing to do with `ProjectileConfig.lifeTime` while never returning to the pool.
+
+**Vendor movers** — `HS_ProjectileMover` (Hovl Studio) is a second owner and must not sit on a
+gameplay projectile root. The vendor script is left untouched on purpose: dozens of demo prefabs
+under `Assets/VFX/` rely on it, and editing it would change those. Remove the component from the
+gameplay prefab instead.
+
+**Presentation instead** — use `ProjectilePresentationResetter` for particle and light handling
+across pool reuse. It restarts the assigned `ParticleSystem`s and restores the assigned `Light`s on
+enable, clears them on disable, and does nothing else. Leave both arrays empty to auto-collect every
+particle system and light in the hierarchy, or assign them explicitly when the prefab has child VFX
+instances that should keep their own behavior (`Projectile 1 bullet Ally` assigns only its trail
+particle and its root light, so the authored `Flash`/`Hit` child instances are untouched).
+
+**Validation** — `ProjectileAuthoringValidator` enforces this. Run **Tools > Validation >
+Projectile Authoring Report**, or rely on `ProjectileAuthoringValidationTests`. The rule is
+reflective, not a blocklist: a root component trips it when it declares its own `FixedUpdate` or
+holds a serialized reference to the root's `Rigidbody`/`Collider`. Vendor and demo folders are
+excluded from the sweep.
 
 ## Enemy Prefab Expectations
 

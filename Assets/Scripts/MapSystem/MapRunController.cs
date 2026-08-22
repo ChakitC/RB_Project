@@ -196,7 +196,7 @@ public class MapRunController : MonoBehaviour
         ConfigureStageRun();
         Log($"Generated map with {graph.Nodes.Count} nodes. Start='{graph.StartNodeId}', Boss='{graph.BossNodeId}', Seed={graph.ResolvedSeed}.");
 
-        if (!MapPathValidator.Validate(graph, out string error))
+        if (!MapPathValidator.Validate(graph, runConfig, out string error))
         {
             Debug.LogError($"[MapRunController] Generated map is invalid: {error}", this);
             return;

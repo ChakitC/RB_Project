@@ -36,7 +36,7 @@ public class MapRunConfigSO : ScriptableObject
 
     [Header("Shape")]
     [Tooltip("จำนวน node บนเส้นหลักตั้งแต่ Start ถึง Boss")]
-    [SerializeField, Min(4)] private int criticalPathNodeCount = 6;
+    [SerializeField, Min(2)] private int criticalPathNodeCount = 6;
 
     [Tooltip("จำนวนทางแยกเสริมขั้นต่ำต่อ run")]
     [SerializeField, Min(0)] private int minBranchCount = 1;
@@ -88,7 +88,7 @@ public class MapRunConfigSO : ScriptableObject
 
     public bool RandomizeSeed => randomizeSeed;
     public int Seed => seed;
-    public int CriticalPathNodeCount => Mathf.Max(4, criticalPathNodeCount);
+    public int CriticalPathNodeCount => Mathf.Max(2, criticalPathNodeCount);
     public int MinBranchCount => Mathf.Max(0, minBranchCount);
     public int MaxBranchCount => Mathf.Max(MinBranchCount, maxBranchCount);
     public int MaxOutgoingPerNode => Mathf.Clamp(maxOutgoingPerNode, 1, 4);

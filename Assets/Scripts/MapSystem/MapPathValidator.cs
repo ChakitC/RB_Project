@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 public static class MapPathValidator
 {
-    public static bool Validate(MapGraph graph, out string error)
+    public static bool Validate(MapGraph graph, MapRunConfigSO config, out string error)
     {
         error = string.Empty;
 
@@ -32,7 +32,7 @@ public static class MapPathValidator
         if (!ValidateReachability(graph, out error))
             return false;
 
-        if (!ValidateCriticalPath(graph, out error))
+        if (!ValidateCriticalPath(graph, config, out error))
             return false;
 
         if (!ValidateRoomExitCapacity(graph, out error))
@@ -107,7 +107,7 @@ public static class MapPathValidator
         return true;
     }
 
-    static bool ValidateCriticalPath(MapGraph graph, out string error)
+    static bool ValidateCriticalPath(MapGraph graph, MapRunConfigSO config, out string error)
     {
         if (graph.CriticalPathIds == null || graph.CriticalPathIds.Count < 2)
         {
@@ -115,6 +115,7 @@ public static class MapPathValidator
             return false;
         }
 
+        bool requireBlueBeforeBoss = config == null || config.ForceBlueBeforeBoss;
         bool hasBlueBeforeBoss = false;
         for (int i = 0; i < graph.CriticalPathIds.Count; i++)
         {
@@ -132,7 +133,7 @@ public static class MapPathValidator
                 hasBlueBeforeBoss = true;
         }
 
-        if (!hasBlueBeforeBoss)
+        if (requireBlueBeforeBoss && !hasBlueBeforeBoss)
         {
             error = "Critical path has no blue room before boss.";
             return false;

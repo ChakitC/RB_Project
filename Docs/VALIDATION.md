@@ -426,3 +426,48 @@ PlayMode pass should additionally cover melee kill, weapon projectile kill, DoT
 kill after summon destruction, cap eviction with presentation delay, room commit,
 rollback, mobile warp failure, and placement/NavMesh failure without consuming a
 cap slot.
+
+# Projectile lifecycle validation
+
+Two EditMode suites cover the pooled projectile, plus one Editor menu item.
+
+**`ProjectileLifecycleSmokeTests`** — the runtime contract:
+
+- an acquired projectile stays inactive and its `OnEnable` has not run yet, on reuse **and** on the
+  very first `Instantiate`,
+- at activation, `OnEnable` observes the final layer, context, direction, depth, split generation,
+  and config,
+- a despawned projectile goes inactive and is handed back out by the pool,
+- reuse as a weapon bullet clears the previous life's AoE, crit, presentation assets, skill source,
+  and collision-ignore root,
+- world slow scales both travel speed and lifetime accrual (0 = frozen, 0.5 = half),
+- a split child is `parent.depth + 1` and `parent.splitGeneration + 1`,
+- `SplitOnHitModule` clamps `childCount` and `maxSplitGenerations`,
+- a runaway split chain terminates at `Projectile.AbsoluteMaxSplitGeneration`,
+- an inherited split budget cannot be widened by a permissive child config, keeps narrowing by
+  `min` down the chain, treats `0` as "never split", and survives a spawn that authors no budget,
+- `ProjectileSplitGraphAnalyzer` detects a cyclic `childConfig` graph and leaves acyclic ones alone.
+
+**`ProjectileAuthoringValidationTests`** — the authoring contract:
+
+- a second component driving the root Rigidbody is rejected, a presentation-only component is not,
+- every gameplay projectile prefab has a single movement/lifetime owner,
+- the prefab sweep actually finds prefabs and never reaches vendor folders,
+- no shipped split configuration loops back on itself,
+- no **new** broken projectile/bullet prefab reference. Known blockers are listed in
+  `KnownBrokenProjectileReferences` as a full `path|property|guid` triple, so a second, unrelated
+  break in an already-listed prefab is still reported. The test fails both on a new break and on a
+  stale entry, so repairing one forces the list to be trimmed.
+
+**Menu item** — **Tools > Validation > Projectile Authoring Report** runs all three authoring
+checks and prints the result to the console.
+
+**Known blocker** — `Assets/Prefab/GameEnemy/Enemy_Base.prefab` has `projectilePrefab` pointing at
+guid `522002f7fd0905a44ad43b9329339bca`, which no longer exists in the project. Every other
+character prefab points at `BulletPlayer_Test_ModulesVer.prefab`. The intended replacement was not
+guessed; `WeaponSystem` overwrites the field from `currentWeapon.BulletPrefab` on equip, which is
+why the break has not been visible in play.
+
+**Not covered by these suites** — trigger collisions, hit/area VFX, real prefab physics, and
+lifetime expiry under a running physics loop remain Play Mode checks. Editor scripts are also not
+covered by `CheckAssemblyBuild.ps1`; compile them through a Unity script refresh.

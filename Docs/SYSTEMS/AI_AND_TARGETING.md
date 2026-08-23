@@ -677,7 +677,7 @@ never release while its pre-cast hold reservation is active.
 character asset, reached as
 
 ```
-AllyHelperManager.HelperSkillManager -> ctx.baseStats.helperProcs
+AllyHelperManager.HelperSkillManager -> ctx.baseStats.helperProcSlots
 ```
 
 `Ally_Helper.prefab` and every party-slot rig are shared, so the previous prefab-authored

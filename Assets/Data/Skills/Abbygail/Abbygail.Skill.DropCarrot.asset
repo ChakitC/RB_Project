@@ -1,60 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &11400000
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
-  m_Name: Test_skill_PickUp 1
-  m_EditorClassIdentifier: 
-  icon: {fileID: 21300000, guid: 862ea79153b03744a8e079af72bbe3fb, type: 3}
-  displayName: PickUp
-  skillId: test.pickup.1
-  tags: 4
-  description: DropThis
-  baseDamage: 20
-  baseStaggerPower: 10
-  baseManaCost: 0
-  baseCastTime: 0.5
-  baseCooldown: 0
-  baseCritChance: 5
-  baseProjectilesCount: 1
-  projectileSpeed: 20
-  AreaofEffec: 0
-  baseRadius: 0
-  maxLevel: 20
-  payload: {fileID: 758225176658077734}
-  castCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
-  skillClip:
-    _FadeDuration: 0
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: -4998367185726637814, guid: 867b0aac164726b4c813731fb9a97fe8, type: 3}
-    _NormalizedStartTime: NaN
-  castPointNormalized: 0.5385356
-  blockablePreCast: 0
-  preCastOpenTimelineEvent: 200
-  preCastCloseTimelineEvent: 201
-  useFallbackPreCastWindow: 1
-  fallbackPreCastOpenNormalized: 0
-  fallbackPreCastCloseNormalized: 0.35
-  preCastIndicatorPrefab: {fileID: 0}
-  cancelPreCastOnStun: 1
-  cancelPreCastOnStagger: 1
-  perLevelData: []
-  previewLevel: 1
-  references:
-    version: 2
-    RefIds: []
---- !u!114 &758225176658077734
+--- !u!114 &-3779552073509085609
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -69,7 +15,7 @@ MonoBehaviour:
   helperFacingMode: 0
   chainContinueMode: 0
   chainContinueNormalizedTime: 1
-  pickupPrefab: {fileID: 5905325361012273201, guid: 9d0a8b351d0849c4a8f8b698f2f34b4f, type: 3}
+  pickupPrefab: {fileID: 3294297038163849742, guid: f6fe5eaf8e2031344aceb135977c0cc0, type: 3}
   useSkillProjectileCount: 0
   spawnCount: 1
   forwardOffset: 0
@@ -78,3 +24,57 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 4096
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
+  m_Name: Abbygail.Skill.DropCarrot
+  m_EditorClassIdentifier: 
+  icon: {fileID: 0}
+  displayName: PickUp
+  skillId: abbygail.skill.drop_carrot
+  tags: 4
+  description: DropThis
+  baseDamage: 20
+  baseStaggerPower: 10
+  baseManaCost: 0
+  baseCastTime: 0.5
+  baseCooldown: 0
+  baseCritChance: 5
+  baseProjectilesCount: 1
+  projectileSpeed: 20
+  AreaofEffec: 1
+  baseRadius: 0
+  maxLevel: 20
+  payload: {fileID: -3779552073509085609}
+  castCue: {fileID: 11400000, guid: f545ac3362f002345a1ef4fb78fb0a3a, type: 2}
+  skillClip:
+    _FadeDuration: 0
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -4024483227394934224, guid: d9452ce0df1ec044ea7c44b5f7c1e8e2, type: 3}
+    _NormalizedStartTime: NaN
+  castPointNormalized: 0.6064421
+  blockablePreCast: 0
+  preCastOpenTimelineEvent: 200
+  preCastCloseTimelineEvent: 201
+  useFallbackPreCastWindow: 1
+  fallbackPreCastOpenNormalized: 0
+  fallbackPreCastCloseNormalized: 0.35
+  preCastIndicatorPrefab: {fileID: 0}
+  cancelPreCastOnStun: 1
+  cancelPreCastOnStagger: 1
+  perLevelData: []
+  previewLevel: 1
+  references:
+    version: 2
+    RefIds: []

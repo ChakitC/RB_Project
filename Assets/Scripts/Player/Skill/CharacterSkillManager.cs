@@ -21,6 +21,19 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         public bool IsPassive;
     }
 
+    /// <summary>
+    /// One resolved Helper proc slot: the variant this character currently has equipped, and the
+    /// upgrade snapshot its execution skill must run with.
+    /// </summary>
+    sealed class ResolvedHelperProcState
+    {
+        public HelperProcLoadoutSlot statsSlot;
+        public HelperProcLoadoutOption selectedOption;
+        public int selectedOptionIndex = -1;
+        public string slotId;
+        public SkillUpgradeStatSnapshot upgradeSnapshot;
+    }
+
     private CharacteContext ctx;
     private CharacterActiveSkillProgress activeSkillProgress;
     private CharacterAnimBrain animBrain;
@@ -33,18 +46,30 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     private bool commandSlotsBuilt;
 
     /// <summary>
-    /// The manual command assist, rebuilt from <see cref="CharacterStats.helperCommandSkill"/>.
+    /// The manual command assist, rebuilt from <see cref="CharacterStats.helperCommandSlot"/>.
     ///
     /// Runtime-only on purpose: the helper actor is a shared rig, so a prefab-authored entry would
     /// belong to whoever is currently loaded into it instead of to the character that owns the
-    /// skill. <see cref="observedHelperCommandSkill"/> is what tells us the character changed.
+    /// skill.
     /// </summary>
     private readonly CharacterSkillEntry helperCommandSkillEntry = new();
-    private SkillGemDefinition observedHelperCommandSkill;
-    private bool helperCommandSkillResolved;
+    private readonly ResolvedCommandSlotState helperCommandState = new();
+    private CharacterStats observedHelperLoadoutStats;
+    private bool helperLoadoutResolved;
 
     readonly List<SkillSlot> resolvedCommandSlots = new();
     readonly List<ResolvedCommandSlotState> resolvedCommandSlotStates = new();
+    readonly List<ResolvedHelperProcState> resolvedHelperProcStates = new();
+
+    /// <summary>
+    /// Upgrade snapshot each Helper execution skill must be cast with, keyed by definition.
+    ///
+    /// Helper assists never run through a command slot - <see cref="AllyHelperManager"/> starts
+    /// them as external skills - so this is where the selected proc variant's Skill Tree reaches
+    /// the cast. Summon, targeted delivery and chain attack all funnel through the same external
+    /// entry, so one lookup covers every execution path.
+    /// </summary>
+    readonly Dictionary<SkillGemDefinition, SkillUpgradeStatSnapshot> helperExecutionSnapshots = new();
 
     public event Action<ActiveSkillCastInfo> CastStarted;
     public event Action<ActiveSkillCastInfo> CastReleased;
@@ -53,6 +78,12 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     /// <summary>Raised when a payload ran but produced nothing, so the cast cost nothing.</summary>
     public event Action<ActiveSkillCastInfo, SkillExecutionResult> CastExecutionFailed;
     public event Action PassiveLoadoutChanged;
+
+    /// <summary>
+    /// Raised when the Helper half of this character's loadout is rebuilt or a proc variant is
+    /// switched, so the proc controller drops the definitions that are no longer equipped.
+    /// </summary>
+    public event Action HelperProcLoadoutChanged;
 
     [Header("Autonomous Loadout")]
     public ISkillUser skillUser;
@@ -363,6 +394,139 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return option != null;
     }
 
+    /// <summary>
+    /// Selects a variant in any slot this character owns, Stryker or Helper.
+    ///
+    /// Slot ids are namespaced by <see cref="CharacterSkillLoadoutKeys"/>, so one call resolves
+    /// the right half of the loadout without the caller knowing which role it is looking at.
+    /// </summary>
+    public bool TrySelectLoadoutOption(string slotId, string optionId, bool persist = true)
+    {
+        CacheReferences();
+
+        if (TrySelectSkillOption(slotId, optionId, persist))
+            return true;
+
+        return TrySelectHelperOption(slotId, optionId, persist);
+    }
+
+    /// <summary>Option id currently equipped in <paramref name="slotId"/>, across both roles.</summary>
+    public bool TryGetSelectedLoadoutOptionId(string slotId, out string optionId)
+    {
+        CacheReferences();
+        optionId = null;
+
+        if (string.IsNullOrWhiteSpace(slotId))
+            return false;
+
+        if (TryGetCommandSlotState(slotId, out ResolvedCommandSlotState commandState) &&
+            commandState.selectedOption != null)
+        {
+            optionId = ResolveOptionId(commandState.selectedOption, commandState.selectedOptionIndex);
+            return true;
+        }
+
+        RefreshResolvedCommandSlotsIfNeeded();
+        string resolvedSlotId = slotId.Trim();
+
+        if (helperCommandState.statsSlot != null &&
+            string.Equals(helperCommandState.slotId, resolvedSlotId, StringComparison.Ordinal) &&
+            helperCommandState.selectedOption != null)
+        {
+            optionId = ResolveOptionId(helperCommandState.selectedOption, helperCommandState.selectedOptionIndex);
+            return true;
+        }
+
+        if (!TryGetHelperProcState(resolvedSlotId, out ResolvedHelperProcState procState) ||
+            procState.selectedOption == null)
+        {
+            return false;
+        }
+
+        optionId = CharacterSkillLoadoutKeys.OptionKey(procState.selectedOption, procState.selectedOptionIndex);
+        return true;
+    }
+
+    bool TrySelectHelperOption(string slotId, string optionId, bool persist)
+    {
+        RefreshResolvedCommandSlotsIfNeeded();
+
+        if (string.IsNullOrWhiteSpace(slotId) || string.IsNullOrWhiteSpace(optionId))
+            return false;
+
+        string resolvedSlotId = slotId.Trim();
+
+        if (helperCommandState.statsSlot != null &&
+            string.Equals(helperCommandState.slotId, resolvedSlotId, StringComparison.Ordinal))
+        {
+            if (!helperCommandState.statsSlot.TryGetOptionById(
+                    optionId,
+                    out int commandOptionIndex,
+                    out CharacterSkillLoadoutOption commandOption))
+            {
+                return false;
+            }
+
+            if (commandOptionIndex != helperCommandState.selectedOptionIndex)
+                ApplyHelperCommandOption(commandOption, commandOptionIndex);
+
+            if (persist)
+                PersistSkillSelection(resolvedSlotId, ResolveOptionId(commandOption, commandOptionIndex));
+
+            HelperProcLoadoutChanged?.Invoke();
+            return true;
+        }
+
+        if (!TryGetHelperProcState(resolvedSlotId, out ResolvedHelperProcState state))
+            return false;
+
+        if (!state.statsSlot.TryGetOptionById(optionId, out int optionIndex, out HelperProcLoadoutOption option))
+            return false;
+
+        if (optionIndex != state.selectedOptionIndex)
+        {
+            // The variant being unequipped may be mid-cast. Its charge pool is keyed by definition
+            // and deliberately left alone, so switching back does not hand the player a free reset.
+            SkillGemDefinition previousExecution = state.selectedOption?.ExecutionSkill;
+            if (previousExecution != null &&
+                previousExecution != option?.ExecutionSkill &&
+                externalSkillEntries.TryGetValue(previousExecution, out CharacterSkillEntry previousEntry))
+            {
+                CancelActiveCastFor(previousEntry?.runtimeSkill);
+            }
+
+            ApplyHelperProcOption(state, option, optionIndex);
+        }
+
+        if (persist)
+            PersistSkillSelection(resolvedSlotId, CharacterSkillLoadoutKeys.OptionKey(option, optionIndex));
+
+        HelperProcLoadoutChanged?.Invoke();
+        return true;
+    }
+
+    bool TryGetHelperProcState(string slotId, out ResolvedHelperProcState state)
+    {
+        state = null;
+        if (string.IsNullOrWhiteSpace(slotId))
+            return false;
+
+        for (int i = 0; i < resolvedHelperProcStates.Count; i++)
+        {
+            ResolvedHelperProcState candidate = resolvedHelperProcStates[i];
+            if (candidate?.statsSlot == null || candidate.slotId == null)
+                continue;
+
+            if (!string.Equals(candidate.slotId, slotId, StringComparison.Ordinal))
+                continue;
+
+            state = candidate;
+            return true;
+        }
+
+        return false;
+    }
+
     public bool CanStartPlayerCommandSkill()
     {
         CacheReferences();
@@ -413,7 +577,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         bool ignoreResourceCosts = false,
         bool stampCooldown = true,
         SkillTargetHandle primaryTarget = null,
-        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal)
+        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal,
+        int externalAnimationRequestId = 0)
     {
         CacheReferences();
         return TryBeginEntryCast(
@@ -424,7 +589,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             ignoreResourceCosts,
             stampCooldown,
             primaryTarget,
-            costPolicy);
+            costPolicy,
+            externalAnimationRequestId);
     }
 
     /// <summary>
@@ -435,6 +601,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     /// what binds it to this character's shared charge pool for that definition. Building a
     /// <c>new SkillInstance</c> by hand instead leaves it on a private throwaway pool, which
     /// silently gives the skill no cooldown at all.
+    ///
+    /// Pass <paramref name="externalAnimationRequestId"/> when the caller is already playing this
+    /// skill's animation and only wants the metered cast bolted onto it - see
+    /// <see cref="TryBeginEntryCast"/> for what that changes.
     /// </summary>
     public SkillCastStartResult TryStartExternalSkill(
         SkillGemDefinition skillDef,
@@ -443,7 +613,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         bool usePlanarRootMotion = false,
         bool stampCooldown = true,
         SkillTargetHandle primaryTarget = null,
-        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal)
+        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal,
+        int externalAnimationRequestId = 0)
     {
         CharacterSkillEntry entry = GetOrCreateExternalEntry(skillDef);
         if (entry == null)
@@ -457,7 +628,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             ignoreResourceCosts: false,
             stampCooldown: stampCooldown,
             primaryTarget: primaryTarget,
-            costPolicy: costPolicy);
+            costPolicy: costPolicy,
+            externalAnimationRequestId: externalAnimationRequestId);
     }
 
     /// <summary>Affordability check for the definition-based external cast path.</summary>
@@ -535,12 +707,13 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     }
 
     /// <summary>
-    /// Helper procs this actor contributes, sourced only from <see cref="CharacterStats.helperProcs"/>.
+    /// Helper procs this actor contributes: one selected variant per slot, and nothing else.
     ///
     /// Every party-slot rig and the helper actor itself are shared prefabs, so a prefab-authored
     /// proc would belong to whoever is currently loaded into that rig. Reading from
     /// <c>ctx.baseStats</c> - the same place command slots come from - keeps the proc tied to the
-    /// character and drops it the moment that character leaves the party.
+    /// character and drops it the moment that character leaves the party. Unselected variants are
+    /// authored but not equipped, so they never reach the proc controller.
     /// </summary>
     public void AppendConfiguredHelperChainDefinitions(List<SkillHelperDef> buffer, HashSet<SkillHelperDef> dedupe = null)
     {
@@ -548,26 +721,13 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             return;
 
         CacheReferences();
-        CharacterStats stats = ctx != null ? ctx.baseStats : null;
+        RefreshResolvedCommandSlotsIfNeeded();
 
         // Only a character authored as a Helper contributes assists. A Stryker fights in the field
-        // and casts from command slots; anything sitting in its Helper Procs list is leftover
-        // authoring, and firing it would summon the helper for a character that never asked to.
-        if (stats != null && stats.IsHelperRole && stats.helperProcs != null)
-            AppendHelperProcSlots(stats.helperProcs, buffer, dedupe);
-    }
-
-    private static void AppendHelperProcSlots(
-        IReadOnlyList<HelperProcSlot> slots,
-        List<SkillHelperDef> buffer,
-        HashSet<SkillHelperDef> dedupe)
-    {
-        if (slots == null)
-            return;
-
-        for (int i = 0; i < slots.Count; i++)
+        // and casts from command slots; RefreshHelperLoadout leaves the proc list empty for it.
+        for (int i = 0; i < resolvedHelperProcStates.Count; i++)
         {
-            SkillHelperDef definition = slots[i]?.ResolveHelperProc();
+            SkillHelperDef definition = resolvedHelperProcStates[i]?.selectedOption?.helperProc;
             if (definition == null)
                 continue;
 
@@ -699,7 +859,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         bool ignoreResourceCosts = false,
         bool stampCooldown = true,
         SkillTargetHandle primaryTarget = null,
-        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal)
+        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal,
+        int externalAnimationRequestId = 0)
     {
         CacheReferences();
         EnsureRuntimeSkill(entry);
@@ -710,7 +871,13 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (entry == null || entry.runtimeSkill == null || skillUser == null)
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
-        if (IsSkillStartBlockedByAnimation())
+        // A caller that already drives this skill's animation (the helper summon path) asks to be
+        // bolted onto that request rather than starting a second one. Starting our own playback
+        // would be refused anyway, and the blocking playback we would be refused for is the very
+        // animation this cast belongs to - so the guard has to stand down for that case only.
+        bool attachToExternalAnimation = externalAnimationRequestId > 0;
+
+        if (!attachToExternalAnimation && IsSkillStartBlockedByAnimation())
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         EnsureCastOrchestrator();
@@ -721,7 +888,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             animationDriver: animDriver,
             canProceed: () => IsSkillEntryCastStillValid(entry, runtimeSkill),
             onStarted: StopWeaponActivityForSkillCast,
-            useAnimationDriver: true,
+            requestedId: externalAnimationRequestId,
+            useAnimationDriver: !attachToExternalAnimation,
             allowImmediateFallback: true,
             requiredTimelineEvent: requiredTimelineEvent,
             usePlanarRootMotion: usePlanarRootMotion,
@@ -745,7 +913,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (entry == null || asset == null)
             return null;
 
-        return CreateRuntimeSkill(asset);
+        // A Helper proc's execution skill is cast as an external skill, so this is where the
+        // selected variant's Skill Tree has to be attached; anything else casts unmodified.
+        helperExecutionSnapshots.TryGetValue(asset, out SkillUpgradeStatSnapshot snapshot);
+        return CreateRuntimeSkill(asset, snapshot);
     }
 
     private SkillInstance CreateRuntimeSkill(
@@ -827,7 +998,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     private void RebuildAllRuntimeSkills()
     {
         RebuildResolvedCommandSlots();
-        RefreshHelperCommandSkill(force: true);
+        RefreshHelperLoadout(force: true);
         EnsureRuntimeSkill(chainAttackSkill);
     }
 
@@ -959,7 +1130,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     private void RefreshResolvedCommandSlotsIfNeeded()
     {
-        RefreshHelperCommandSkill(force: false);
+        RefreshHelperLoadout(force: false);
 
         CharacterStats currentBaseStats = ctx != null ? ctx.baseStats : null;
         int currentAutonomousSlotCount = autonomousSlots != null ? autonomousSlots.Length : 0;
@@ -975,35 +1146,178 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     }
 
     /// <summary>
-    /// Rebuilds the manual command entry from the character currently loaded into this actor.
+    /// Rebuilds the Helper half of the loadout from the character currently loaded into this actor.
     ///
-    /// A Stryker never owns one, and a Helper with an empty slot deliberately owns none - neither
-    /// case falls back to anything. Swapping the definition drops the old runtime instance, so a
-    /// cast still running against it is cancelled rather than left pointing at a skill this
-    /// character no longer has.
+    /// A Stryker never owns one, and a Helper whose command slot has no configured option
+    /// deliberately owns none - neither case falls back to anything. Each proc slot resolves the
+    /// variant the player selected, so nothing that is merely authored but unequipped can fire.
     /// </summary>
-    private void RefreshHelperCommandSkill(bool force)
+    private void RefreshHelperLoadout(bool force)
     {
         CharacterStats stats = ctx != null ? ctx.baseStats : null;
-        SkillGemDefinition definition = stats != null && stats.IsHelperRole
-            ? stats.helperCommandSkill
-            : null;
 
-        if (!force && helperCommandSkillResolved && observedHelperCommandSkill == definition)
+        if (!force && helperLoadoutResolved && observedHelperLoadoutStats == stats)
             return;
 
-        SkillInstance previousRuntimeSkill = helperCommandSkillEntry.runtimeSkill;
-        observedHelperCommandSkill = definition;
-        helperCommandSkillResolved = true;
+        observedHelperLoadoutStats = stats;
+        helperLoadoutResolved = true;
 
+        List<CharacterSkillSelectionSaveData> savedSelections = LoadSavedSkillSelections();
+        helperExecutionSnapshots.Clear();
+
+        RebuildHelperCommandSlot(stats, savedSelections);
+        RebuildHelperProcSlots(stats, savedSelections);
+
+        HelperProcLoadoutChanged?.Invoke();
+    }
+
+    private void RebuildHelperCommandSlot(
+        CharacterStats stats,
+        List<CharacterSkillSelectionSaveData> savedSelections)
+    {
+        CharacterSkillLoadoutSlot statsSlot = stats != null && stats.IsHelperRole
+            ? stats.helperCommandSlot
+            : null;
+
+        helperCommandState.statsSlot = statsSlot;
+        helperCommandState.slotId = statsSlot != null
+            ? CharacterSkillLoadoutKeys.HelperCommandSlotKey(statsSlot)
+            : null;
+        helperCommandState.selectedOption = null;
+        helperCommandState.selectedOptionIndex = -1;
+        helperCommandState.upgradeSnapshot = null;
+
+        CharacterSkillLoadoutOption option = null;
+        int optionIndex = -1;
+        if (statsSlot != null)
+        {
+            string savedOptionId = FindSavedOptionId(savedSelections, helperCommandState.slotId);
+            if (string.IsNullOrWhiteSpace(savedOptionId) ||
+                !statsSlot.TryGetOptionById(savedOptionId, out optionIndex, out option))
+            {
+                statsSlot.TryGetDefaultOption(out optionIndex, out option);
+            }
+        }
+
+        ApplyHelperCommandOption(option, optionIndex);
+    }
+
+    private void ApplyHelperCommandOption(CharacterSkillLoadoutOption option, int optionIndex)
+    {
+        helperCommandState.selectedOption = option;
+        helperCommandState.selectedOptionIndex = optionIndex;
+
+        // A passive can be authored into a loadout slot, but a manual command has to be castable;
+        // treating a passive as "the command" would leave the party command button doing nothing.
+        SkillGemDefinition definition = option != null ? option.ActiveSkillAsset : null;
+
+        SkillUpgradeStatSnapshot snapshot = null;
+        if (definition != null)
+        {
+            SkillUpgradeTreeDefinition tree = option.ResolvedUpgradeTree;
+            snapshot = activeSkillProgress != null && tree != null
+                ? activeSkillProgress.BuildSnapshot(
+                    helperCommandState.slotId,
+                    CharacterSkillLoadoutKeys.OptionKey(option, optionIndex),
+                    tree)
+                : null;
+        }
+
+        helperCommandState.upgradeSnapshot = snapshot;
+
+        SkillInstance previousRuntimeSkill = helperCommandSkillEntry.runtimeSkill;
         if (previousRuntimeSkill != null && previousRuntimeSkill.def != definition)
             CancelActiveCastFor(previousRuntimeSkill);
 
         helperCommandSkillEntry.skillAsset = definition;
-        if (previousRuntimeSkill == null || previousRuntimeSkill.def != definition)
-            helperCommandSkillEntry.runtimeSkill = null;
+        helperCommandSkillEntry.runtimeSkill = definition != null
+            ? CreateRuntimeSkill(definition, snapshot)
+            : null;
+    }
 
-        EnsureRuntimeSkill(helperCommandSkillEntry);
+    private void RebuildHelperProcSlots(
+        CharacterStats stats,
+        List<CharacterSkillSelectionSaveData> savedSelections)
+    {
+        resolvedHelperProcStates.Clear();
+
+        List<HelperProcLoadoutSlot> statsSlots = stats != null && stats.IsHelperRole
+            ? stats.helperProcSlots
+            : null;
+        if (statsSlots == null)
+            return;
+
+        for (int i = 0; i < statsSlots.Count; i++)
+        {
+            HelperProcLoadoutSlot statsSlot = statsSlots[i];
+            if (statsSlot == null)
+                continue;
+
+            var state = new ResolvedHelperProcState
+            {
+                statsSlot = statsSlot,
+                slotId = CharacterSkillLoadoutKeys.HelperProcSlotKey(statsSlot, i),
+            };
+
+            string savedOptionId = FindSavedOptionId(savedSelections, state.slotId);
+            if (string.IsNullOrWhiteSpace(savedOptionId) ||
+                !statsSlot.TryGetOptionById(savedOptionId, out int optionIndex, out HelperProcLoadoutOption option))
+            {
+                statsSlot.TryGetDefaultOption(out optionIndex, out option);
+            }
+
+            ApplyHelperProcOption(state, option, optionIndex);
+            resolvedHelperProcStates.Add(state);
+        }
+    }
+
+    private void ApplyHelperProcOption(
+        ResolvedHelperProcState state,
+        HelperProcLoadoutOption option,
+        int optionIndex)
+    {
+        if (state == null)
+            return;
+
+        state.selectedOption = option;
+        state.selectedOptionIndex = optionIndex;
+        state.upgradeSnapshot = null;
+
+        SkillGemDefinition execution = option != null ? option.ExecutionSkill : null;
+        if (execution == null)
+            return;
+
+        SkillUpgradeTreeDefinition tree = option.ResolvedUpgradeTree;
+        if (activeSkillProgress != null && tree != null)
+        {
+            state.upgradeSnapshot = activeSkillProgress.BuildSnapshot(
+                state.slotId,
+                CharacterSkillLoadoutKeys.OptionKey(option, optionIndex),
+                tree);
+        }
+
+        helperExecutionSnapshots[execution] = state.upgradeSnapshot;
+        ApplyHelperExecutionSnapshot(execution, state.upgradeSnapshot);
+    }
+
+    /// <summary>
+    /// Pushes a proc variant's snapshot onto the cached external entry for its execution skill.
+    ///
+    /// The entry is kept for the component's lifetime so the skill keeps one shared charge pool;
+    /// re-creating it on a variant switch would hand the player a free reset of that cooldown.
+    /// </summary>
+    private void ApplyHelperExecutionSnapshot(
+        SkillGemDefinition execution,
+        SkillUpgradeStatSnapshot snapshot)
+    {
+        if (execution == null)
+            return;
+
+        if (externalSkillEntries.TryGetValue(execution, out CharacterSkillEntry entry) &&
+            entry?.runtimeSkill != null)
+        {
+            entry.runtimeSkill.upgradeSnapshot = snapshot;
+        }
     }
 
     /// <summary>Cancels an in-flight cast, but only when it is the one running <paramref name="runtimeSkill"/>.</summary>
@@ -1242,9 +1556,13 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     {
         if (string.IsNullOrWhiteSpace(slotId) || string.IsNullOrWhiteSpace(optionId))
         {
+            RefreshHelperLoadout(force: true);
             RebuildResolvedCommandSlots();
             return;
         }
+
+        if (HandleHelperTreeChanged(slotId, optionId))
+            return;
 
         if (!TryGetCommandSlotState(slotId, out ResolvedCommandSlotState state) ||
             state.selectedOption == null ||
@@ -1260,6 +1578,53 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         if (state.IsPassive)
             PassiveLoadoutChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Re-applies a Helper variant after its Skill Tree changed, so a node unlocked in the lobby
+    /// reaches the next cast. Returns true when the key belonged to the Helper half.
+    /// </summary>
+    private bool HandleHelperTreeChanged(string slotId, string optionId)
+    {
+        if (!slotId.StartsWith(CharacterSkillLoadoutKeys.HelperCommandPrefix, StringComparison.Ordinal) &&
+            !slotId.StartsWith(CharacterSkillLoadoutKeys.HelperProcPrefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        RefreshResolvedCommandSlotsIfNeeded();
+        string resolvedSlotId = slotId.Trim();
+
+        if (helperCommandState.statsSlot != null &&
+            string.Equals(helperCommandState.slotId, resolvedSlotId, StringComparison.Ordinal))
+        {
+            if (helperCommandState.selectedOption != null &&
+                string.Equals(
+                    ResolveOptionId(helperCommandState.selectedOption, helperCommandState.selectedOptionIndex),
+                    optionId,
+                    StringComparison.Ordinal))
+            {
+                ApplyHelperCommandOption(
+                    helperCommandState.selectedOption,
+                    helperCommandState.selectedOptionIndex);
+            }
+
+            return true;
+        }
+
+        if (!TryGetHelperProcState(resolvedSlotId, out ResolvedHelperProcState state))
+            return true;
+
+        if (state.selectedOption != null &&
+            string.Equals(
+                CharacterSkillLoadoutKeys.OptionKey(state.selectedOption, state.selectedOptionIndex),
+                optionId,
+                StringComparison.Ordinal))
+        {
+            ApplyHelperProcOption(state, state.selectedOption, state.selectedOptionIndex);
+        }
+
+        return true;
     }
 
     private static void ClearRuntimeSlot(SkillSlot slot)
@@ -1362,18 +1727,12 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     private static string ResolveSlotId(CharacterSkillLoadoutSlot slot, int slotIndex)
     {
-        if (slot != null && !string.IsNullOrWhiteSpace(slot.ResolvedSlotId))
-            return slot.ResolvedSlotId;
-
-        return $"slot:{Mathf.Max(0, slotIndex)}";
+        return CharacterSkillLoadoutKeys.StrykerSlotKey(slot, slotIndex);
     }
 
     private static string ResolveOptionId(CharacterSkillLoadoutOption option, int optionIndex)
     {
-        if (option != null && !string.IsNullOrWhiteSpace(option.ResolvedOptionId))
-            return option.ResolvedOptionId;
-
-        return $"option:{Mathf.Max(0, optionIndex)}";
+        return CharacterSkillLoadoutKeys.OptionKey(option, optionIndex);
     }
 
     private bool IsPassiveSlot(SkillSlot slot)
@@ -1868,7 +2227,10 @@ public sealed class SkillCastOrchestrator
             }
         }
 
-        if (requiresTimelineEvents)
+        // Reaching here means no animation of our own will raise the timeline events - fatal for a
+        // payload that needs them, unless someone else is already playing this exact request and
+        // will raise them for us. That is the whole point of the external-execution-context path.
+        if (requiresTimelineEvents && !hasExternalSkillExecutionContext)
         {
             reservation.Release();
             WarnMissingTimelineDriver(skillDef, request.DebugSource);

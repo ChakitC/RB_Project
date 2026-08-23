@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -86,7 +86,7 @@ public static class ActiveSkillFeatureSmokeTests
 
         Expect(model.TryUnlock("passive.feno.bag", "passive.feno.bulletbag", tree, "extra_drop", out string reason), reason);
         Equal(3, model.AvailablePoints,
-            "Unlocking a node in a passive-owned tree must drain the same shared activeSkillPoints pool a skill tree uses.");
+            "Unlocking a node in a passive-owned tree must drain the same shared skillPoints pool a skill tree uses.");
     }
 
     static void TestCatchUpSubtractsSpentPoints()
@@ -1104,8 +1104,8 @@ public static class ActiveSkillFeatureSmokeTests
         return new CharacterProgressData
         {
             level = 10,
-            activeSkillPoints = points,
-            activeSkillProgressInitialized = true,
+            skillPoints = points,
+            skillProgressInitialized = true,
         };
     }
 

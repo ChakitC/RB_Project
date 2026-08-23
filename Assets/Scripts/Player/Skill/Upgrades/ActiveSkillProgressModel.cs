@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -18,22 +18,22 @@ public sealed class ActiveSkillProgressModel
     }
 
     public CharacterProgressData Data => _data;
-    public int AvailablePoints => Mathf.Max(0, _data.activeSkillPoints);
+    public int AvailablePoints => Mathf.Max(0, _data.skillPoints);
     public int CharacterLevel => _characterLevel;
 
     public bool EnsureInitialized()
     {
-        if (_data.activeSkillProgressInitialized)
+        if (_data.skillProgressInitialized)
             return false;
 
-        _data.activeSkillProgressInitialized = true;
-        int pointsPerLevel = _stats != null ? Mathf.Max(0, _stats.activeSkillPointsPerLevel) : 1;
+        _data.skillProgressInitialized = true;
+        int pointsPerLevel = _stats != null ? Mathf.Max(0, _stats.skillPointsPerLevel) : 1;
         int lifetimeGrant = Mathf.Max(0, _characterLevel - 1) * pointsPerLevel;
         // Points already sunk into nodes are part of the lifetime grant; without subtracting
         // them, catch-up would hand them out a second time on any save missing this flag.
         int alreadySpent = SumAllPaidCost();
         int catchUpPoints = Mathf.Max(0, lifetimeGrant - alreadySpent);
-        _data.activeSkillPoints = Mathf.Max(_data.activeSkillPoints, catchUpPoints);
+        _data.skillPoints = Mathf.Max(_data.skillPoints, catchUpPoints);
         return true;
     }
 
@@ -48,7 +48,7 @@ public sealed class ActiveSkillProgressModel
         if (amount <= 0)
             return false;
 
-        _data.activeSkillPoints = Mathf.Max(0, _data.activeSkillPoints) + amount;
+        _data.skillPoints = Mathf.Max(0, _data.skillPoints) + amount;
         return true;
     }
 
@@ -196,7 +196,7 @@ public sealed class ActiveSkillProgressModel
             paidCost = paidCost,
         });
 
-        _data.activeSkillPoints = Mathf.Max(0, AvailablePoints - paidCost);
+        _data.skillPoints = Mathf.Max(0, AvailablePoints - paidCost);
         progressChanged = true;
         return true;
     }
@@ -222,7 +222,7 @@ public sealed class ActiveSkillProgressModel
 
         refundedPoints = SumPaidCost(progress);
         progress.unlockedNodes.Clear();
-        _data.activeSkillPoints = AvailablePoints + refundedPoints;
+        _data.skillPoints = AvailablePoints + refundedPoints;
         progressChanged = true;
         return true;
     }
@@ -299,7 +299,7 @@ public sealed class ActiveSkillProgressModel
                 continue;
             }
 
-            _data.activeSkillPoints += SumPaidCost(candidate);
+            _data.skillPoints += SumPaidCost(candidate);
             _data.activeSkillTrees.RemoveAt(i);
             changed = true;
         }
@@ -307,7 +307,7 @@ public sealed class ActiveSkillProgressModel
         string resolvedTreeId = tree.RuntimeTreeId;
         if (progress != null && !string.Equals(progress.treeId, resolvedTreeId, StringComparison.Ordinal))
         {
-            _data.activeSkillPoints += SumPaidCost(progress);
+            _data.skillPoints += SumPaidCost(progress);
             progress.treeId = resolvedTreeId;
             progress.unlockedNodes = new List<CharacterSkillUpgradeNodeSaveData>();
             changed = true;
@@ -329,7 +329,7 @@ public sealed class ActiveSkillProgressModel
                     continue;
 
                 if (saved != null)
-                    _data.activeSkillPoints = Mathf.Max(0, _data.activeSkillPoints) + Mathf.Max(0, saved.paidCost);
+                    _data.skillPoints = Mathf.Max(0, _data.skillPoints) + Mathf.Max(0, saved.paidCost);
                 progress.unlockedNodes.RemoveAt(i);
                 changed = true;
             }

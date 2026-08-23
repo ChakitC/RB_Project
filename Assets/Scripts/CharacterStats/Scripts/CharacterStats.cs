@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Opsive.BehaviorDesigner.Runtime;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -234,36 +234,38 @@ public class CharacterStats : ScriptableObject
     public List<CharacterSkillLoadoutSlot> skillSlots = new();
 
     [PropertyOrder(-135)]
-    [FoldoutGroup("Skill Loadout", Expanded = false), LabelText("Active Skill Points Per Level"), MinValue(0)]
-    [ShowIf(nameof(partyRole), CharacterPartyRole.Stryker)]
-    public int activeSkillPointsPerLevel = 1;
+    [FoldoutGroup("Skill Loadout", Expanded = false), LabelText("Skill Points Per Level"), MinValue(0)]
+    public int skillPointsPerLevel = 1;
 
     /// <summary>
-    /// Helper assists this character brings to the party.
+    /// Helper assist slots this character brings to the party.
     ///
     /// These belong here, not on a prefab: every party-slot rig and the helper actor itself are
     /// shared components that any character can be loaded into, so a proc authored on one of them
     /// would fire for whoever happens to occupy that slot. Authoring it on the character asset is
     /// the same rule <see cref="skillSlots"/> already follows.
+    ///
+    /// Each slot holds its own variants, and every variant keeps separate Skill Tree progress
+    /// while drawing from the one shared <see cref="skillPointsPerLevel"/> pool.
     /// </summary>
     [PropertyOrder(-134)]
-    [FoldoutGroup("Skill Loadout", Expanded = false), LabelText("Helper Procs")]
+    [FoldoutGroup("Skill Loadout", Expanded = false), LabelText("Helper Proc Slots")]
     [ShowIf(nameof(partyRole), CharacterPartyRole.Helper)]
     [ListDrawerSettings(ShowFoldout = true, DefaultExpandedState = true, DraggableItems = true, ShowPaging = false, NumberOfItemsPerPage = 0)]
-    public List<HelperProcSlot> helperProcs = new();
+    public List<HelperProcLoadoutSlot> helperProcSlots = new();
 
     /// <summary>
     /// The assist this character performs when the player issues a manual party command.
     ///
-    /// Same ownership rule as <see cref="helperProcs"/>: the helper actor is a shared rig, so the
-    /// skill has to travel with the character asset rather than sit on the prefab. Leaving this
-    /// empty is a valid authoring choice - it means this helper has no manual command, and nothing
-    /// falls back to a prefab-authored skill.
+    /// Same ownership rule as <see cref="helperProcSlots"/>: the helper actor is a shared rig, so
+    /// the skill has to travel with the character asset rather than sit on the prefab. A slot with
+    /// no configured option is a valid authoring choice - it means this helper has no manual
+    /// command, and nothing falls back to a prefab-authored skill.
     /// </summary>
     [PropertyOrder(-133)]
-    [FoldoutGroup("Skill Loadout", Expanded = false), LabelText("Helper Command Skill"), AssetsOnly]
+    [FoldoutGroup("Skill Loadout", Expanded = false), LabelText("Helper Command Slot")]
     [ShowIf(nameof(partyRole), CharacterPartyRole.Helper)]
-    public SkillGemDefinition helperCommandSkill;
+    public CharacterSkillLoadoutSlot helperCommandSlot = new();
 
     /// <summary>True when this character contributes helper assists rather than command slots.</summary>
     public bool IsHelperRole => partyRole == CharacterPartyRole.Helper;

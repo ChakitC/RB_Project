@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
@@ -294,13 +294,21 @@ public sealed class HelperBaseStatsLoadoutSmokeTests
 
         Assert.That(abbygail, Is.Not.Null, "Abbygail's character asset must exist.");
         Assert.That(abbygail.partyRole, Is.EqualTo(CharacterPartyRole.Helper));
-        Assert.That(abbygail.helperCommandSkill, Is.Not.Null,
+        Assert.That(abbygail.helperCommandSlot, Is.Not.Null,
             "Abbygail's manual command must live on her character asset.");
-        Assert.That(abbygail.helperProcs.Count, Is.EqualTo(3));
-        for (int i = 0; i < abbygail.helperProcs.Count; i++)
+        Assert.That(abbygail.helperCommandSlot.TryGetDefaultOption(out _, out CharacterSkillLoadoutOption command), Is.True,
+            "Abbygail's command slot must resolve a default option.");
+        Assert.That(command.ActiveSkillAsset, Is.Not.Null,
+            "The manual command option must reference a castable gem.");
+        Assert.That(abbygail.helperProcSlots.Count, Is.EqualTo(3));
+        for (int i = 0; i < abbygail.helperProcSlots.Count; i++)
         {
-            Assert.That(abbygail.helperProcs[i].ResolveHelperProc(), Is.Not.Null,
-                $"Helper proc {i} must resolve to a definition.");
+            Assert.That(abbygail.helperProcSlots[i].TryGetDefaultOption(out _, out HelperProcLoadoutOption option), Is.True,
+                $"Helper proc slot {i} must resolve a default option.");
+            Assert.That(option.helperProc, Is.Not.Null,
+                $"Helper proc slot {i} must reference a definition.");
+            Assert.That(option.ExecutionSkill, Is.Not.Null,
+                $"Helper proc slot {i} must reference a proc with an execution skill.");
         }
     }
 
@@ -311,13 +319,30 @@ public sealed class HelperBaseStatsLoadoutSmokeTests
         var stats = ScriptableObject.CreateInstance<CharacterStats>();
         stats.name = "TestHelperStats";
         stats.partyRole = CharacterPartyRole.Helper;
-        stats.helperCommandSkill = manualCommand;
-        stats.helperProcs = new List<HelperProcSlot>();
+        stats.helperCommandSlot = new CharacterSkillLoadoutSlot { slotId = "command" };
+        if (manualCommand != null)
+        {
+            stats.helperCommandSlot.options.Add(new CharacterSkillLoadoutOption
+            {
+                optionId = "command.default",
+                skillAsset = manualCommand,
+            });
+        }
+
+        stats.helperProcSlots = new List<HelperProcLoadoutSlot>();
 
         if (procs != null)
         {
             for (int i = 0; i < procs.Length; i++)
-                stats.helperProcs.Add(new HelperProcSlot { helperProc = procs[i] });
+            {
+                var slot = new HelperProcLoadoutSlot { slotId = $"proc.{i}" };
+                slot.options.Add(new HelperProcLoadoutOption
+                {
+                    optionId = $"proc.{i}.default",
+                    helperProc = procs[i],
+                });
+                stats.helperProcSlots.Add(slot);
+            }
         }
 
         createdObjects.Add(stats);
@@ -336,6 +361,10 @@ public sealed class HelperBaseStatsLoadoutSmokeTests
     {
         var proc = ScriptableObject.CreateInstance<SkillHelperDef>();
         proc.name = procName;
+
+        // A proc with no execution skill is not a configurable variant, so every fixture proc
+        // gets one - otherwise the loadout would drop it before the test could observe anything.
+        proc.executionSkill = CreateSkill($"{procName} Execution");
         createdObjects.Add(proc);
         return proc;
     }

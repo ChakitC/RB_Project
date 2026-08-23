@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -28,6 +28,9 @@ public sealed class AllyHelperProcController : MonoBehaviour
 
     /// <summary>Skill manager the cached proc list was built from. Null until the first build.</summary>
     CharacterSkillManager _builtFromSkillManager;
+
+    /// <summary>Skill manager we last subscribed to for proc variant switches.</summary>
+    CharacterSkillManager _procLoadoutSubscribedSkillManager;
     bool _helperDefinitionsDirty = true;
 
     bool _subscribed;
@@ -67,6 +70,7 @@ public sealed class AllyHelperProcController : MonoBehaviour
         Unsubscribe();
         UnsubscribeParty();
         SubscribeHelperLoadout(null);
+        SubscribeProcLoadout(null);
         StopQueueDrain();
         StopChargeWakeup();
         _queuedThresholdDefs.Clear();
@@ -170,7 +174,8 @@ public sealed class AllyHelperProcController : MonoBehaviour
     ///
     /// Ally_Helper.prefab and every party-slot rig are shared, so a proc authored on one of them
     /// would fire for whoever happened to be loaded into it. The single source is the helper's
-    /// <c>ctx.baseStats.helperProcs</c>, reached through its CharacterSkillManager.
+    /// <c>ctx.baseStats.helperProcSlots</c>, reached through its CharacterSkillManager, and only the
+    /// variant selected in each slot.
     ///
     /// Cached between character swaps: this runs on every combat event, and the answer only
     /// changes when the helper rig is loaded with a different character.
@@ -188,6 +193,8 @@ public sealed class AllyHelperProcController : MonoBehaviour
         CharacterSkillManager helperSkillManager =
             allyHelperManager != null ? allyHelperManager.HelperSkillManager : null;
 
+        SubscribeProcLoadout(helperSkillManager);
+
         if (!_helperDefinitionsDirty && ReferenceEquals(helperSkillManager, _builtFromSkillManager))
             return;
 
@@ -200,6 +207,36 @@ public sealed class AllyHelperProcController : MonoBehaviour
         helperSkillManager?.AppendConfiguredHelperChainDefinitions(
             _resolvedHelperDefinitions,
             _resolvedHelperDefinitionSet);
+
+        DropQueuedRequestsForUnequippedProcs();
+    }
+
+    void SubscribeProcLoadout(CharacterSkillManager skillManager)
+    {
+        if (_procLoadoutSubscribedSkillManager == skillManager)
+            return;
+
+        if (_procLoadoutSubscribedSkillManager != null)
+            _procLoadoutSubscribedSkillManager.HelperProcLoadoutChanged -= OnHelperLoadoutChanged;
+
+        _procLoadoutSubscribedSkillManager = skillManager;
+
+        if (_procLoadoutSubscribedSkillManager != null)
+            _procLoadoutSubscribedSkillManager.HelperProcLoadoutChanged += OnHelperLoadoutChanged;
+    }
+
+    /// <summary>
+    /// Forgets threshold requests held for a variant that is no longer equipped.
+    ///
+    /// Internal cooldowns are deliberately left in <see cref="_nextReadyTimeByDef"/>: they are
+    /// keyed by definition, so switching a variant out and back must not clear the wait.
+    /// </summary>
+    void DropQueuedRequestsForUnequippedProcs()
+    {
+        if (_queuedThresholdDefs.Count == 0)
+            return;
+
+        _queuedThresholdDefs.RemoveWhere(def => def == null || !_resolvedHelperDefinitionSet.Contains(def));
     }
 
     // ---------------------------------------------------------------------------------------

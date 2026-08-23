@@ -3,30 +3,24 @@
         {
             "characterId": "ID.Feno",
             "progress": {
-                "level": 9,
-                "xp": 165,
+                "level": 11,
+                "xp": 17,
                 "unlocked": false,
-                "skillPoints": 8,
-                "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
-                "activeSkillPoints": 8,
-                "activeSkillProgressInitialized": true,
+                "skillPoints": 10,
+                "skillProgressInitialized": true,
                 "activeSkillTrees": []
             }
         },
         {
             "characterId": "ID.Aires",
             "progress": {
-                "level": 9,
-                "xp": 165,
+                "level": 11,
+                "xp": 17,
                 "unlocked": false,
-                "skillPoints": 8,
-                "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
-                "activeSkillPoints": 8,
-                "activeSkillProgressInitialized": true,
+                "skillPoints": 10,
+                "skillProgressInitialized": true,
                 "activeSkillTrees": [
                     {
                         "slotId": "0",
@@ -40,30 +34,24 @@
         {
             "characterId": "ID.Milano",
             "progress": {
-                "level": 9,
-                "xp": 165,
+                "level": 11,
+                "xp": 17,
                 "unlocked": false,
-                "skillPoints": 8,
-                "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
-                "activeSkillPoints": 8,
-                "activeSkillProgressInitialized": true,
+                "skillPoints": 8,
+                "skillProgressInitialized": true,
                 "activeSkillTrees": []
             }
         },
         {
             "characterId": "ID.Roma",
             "progress": {
-                "level": 9,
-                "xp": 165,
+                "level": 11,
+                "xp": 17,
                 "unlocked": false,
-                "skillPoints": 8,
-                "passiveProgressInitialized": true,
-                "unlockedPassiveNodeIds": [],
                 "selectedSkillOptions": [],
-                "activeSkillPoints": 8,
-                "activeSkillProgressInitialized": true,
+                "skillPoints": 10,
+                "skillProgressInitialized": true,
                 "activeSkillTrees": []
             }
         }

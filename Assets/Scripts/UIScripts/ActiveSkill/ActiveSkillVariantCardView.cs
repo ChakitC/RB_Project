@@ -9,6 +9,7 @@ public sealed class ActiveSkillVariantCardView : MonoBehaviour
     [SerializeField] Image icon;
     [SerializeField] Image frame;
     [SerializeField] TMP_Text title;
+    [SerializeField] TMP_Text subtitle;
     [SerializeField] GameObject selectedMarker;
 
     int _optionIndex;
@@ -27,7 +28,7 @@ public sealed class ActiveSkillVariantCardView : MonoBehaviour
     }
 
     public void Bind(
-        CharacterSkillLoadoutOption option,
+        SkillLoadoutOptionDescriptor option,
         int optionIndex,
         bool selected,
         SkillScreenTheme theme,
@@ -36,7 +37,7 @@ public sealed class ActiveSkillVariantCardView : MonoBehaviour
         _optionIndex = optionIndex;
         _clicked = clicked;
 
-        Sprite sprite = option != null && option.skillAsset != null ? option.skillAsset.SkillDefinitionIcon : null;
+        Sprite sprite = option != null ? option.Icon : null;
         if (icon != null)
         {
             icon.sprite = sprite;
@@ -44,7 +45,17 @@ public sealed class ActiveSkillVariantCardView : MonoBehaviour
         }
 
         if (title != null)
-            title.text = option != null ? option.ResolvedDisplayName : "Missing Variant";
+            title.text = option != null ? option.DisplayName : "Missing Variant";
+
+        // Only a proc has a trigger to describe; a skill the player casts leaves this blank rather
+        // than showing an empty line where the card expects text.
+        if (subtitle != null)
+        {
+            string caption = BuildCaption(option);
+            bool hasCaption = !string.IsNullOrWhiteSpace(caption);
+            subtitle.text = hasCaption ? caption : string.Empty;
+            subtitle.gameObject.SetActive(hasCaption);
+        }
 
         if (selectedMarker != null)
             selectedMarker.SetActive(selected);
@@ -57,7 +68,28 @@ public sealed class ActiveSkillVariantCardView : MonoBehaviour
         }
 
         if (button != null)
-            button.interactable = !selected && option != null && option.IsConfigured;
+            button.interactable = !selected && option != null;
+    }
+
+    /// <summary>
+    /// Trigger line plus the proc's own description. Only a proc fills either in, so a Stryker
+    /// variant returns empty and the caption is hidden rather than reserving blank space.
+    /// </summary>
+    static string BuildCaption(SkillLoadoutOptionDescriptor option)
+    {
+        if (option == null || option.HelperProc == null)
+            return string.Empty;
+
+        bool hasTrigger = !string.IsNullOrWhiteSpace(option.TriggerSummary);
+        bool hasDescription = !string.IsNullOrWhiteSpace(option.Description);
+
+        if (hasTrigger && hasDescription)
+            return $"{option.TriggerSummary}\n{option.Description.Trim()}";
+
+        if (hasTrigger)
+            return option.TriggerSummary;
+
+        return hasDescription ? option.Description.Trim() : string.Empty;
     }
 
     void HandleClick()

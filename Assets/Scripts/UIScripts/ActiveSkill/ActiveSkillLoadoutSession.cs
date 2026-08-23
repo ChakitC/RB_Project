@@ -2,13 +2,23 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Backing model for the Skill screen.
+///
+/// The screen addresses slots and variants by descriptor index. Which serialized list a slot came
+/// from - Stryker command slots, the Helper's manual command, or a Helper proc slot - is resolved
+/// once here through <see cref="SkillLoadoutDescriptorFactory"/> and never leaks into the views.
+/// </summary>
 public sealed class ActiveSkillLoadoutSession : IDisposable
 {
+    static readonly List<SkillLoadoutSlotDescriptor> EmptySlots = new();
+
     readonly CharacteContext _runtimeContext;
     readonly CharacterSkillManager _skillManager;
     readonly CharacterActiveSkillProgress _runtimeProgress;
     readonly string _characterId;
 
+    List<SkillLoadoutSlotDescriptor> _slots = EmptySlots;
     CharacterProgressData _data;
     ActiveSkillProgressModel _model;
 
@@ -39,11 +49,27 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
             if (_model.EnsureInitialized())
                 SaveLobbyState();
         }
+
+        _slots = SkillLoadoutDescriptorFactory.Build(Stats);
     }
 
     public CharacterStats Stats { get; }
     public CharacteContext RuntimeContext => _runtimeContext;
     public bool IsRuntime => _runtimeContext != null;
+
+    /// <summary>Slot tabs, in authored order. Helper sessions list the manual command slot first.</summary>
+    public IReadOnlyList<SkillLoadoutSlotDescriptor> Slots => _slots;
+
+    public bool IsHelperLoadout => Stats != null && Stats.IsHelperRole;
+
+    /// <summary>Header for the screen. Helpers never cast from command slots, so they get their own name.</summary>
+    public string ScreenTitle => IsHelperLoadout ? "Helper Skills" : "Active Skills";
+
+    /// <summary>Message for a character with no usable slots in its own half of the loadout.</summary>
+    public string EmptyLoadoutMessage => IsHelperLoadout
+        ? "No Helper skills configured."
+        : "No skill slots configured.";
+
     public int AvailablePoints => _runtimeProgress != null
         ? _runtimeProgress.AvailablePoints
         : _model != null ? _model.AvailablePoints : 0;
@@ -64,47 +90,59 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
         return stats != null ? new ActiveSkillLoadoutSession(null, stats) : null;
     }
 
+    public bool TryGetSlot(int slotIndex, out SkillLoadoutSlotDescriptor slot)
+    {
+        slot = null;
+        if (_slots == null || slotIndex < 0 || slotIndex >= _slots.Count)
+            return false;
+
+        slot = _slots[slotIndex];
+        return slot != null;
+    }
+
+    public bool TryGetOption(int slotIndex, int optionIndex, out SkillLoadoutOptionDescriptor option)
+    {
+        option = null;
+        return TryGetSlot(slotIndex, out SkillLoadoutSlotDescriptor slot) &&
+               slot.TryGetOption(optionIndex, out option);
+    }
+
     public int GetSelectedOptionIndex(int slotIndex)
     {
-        if (!TryGetSlot(slotIndex, out CharacterSkillLoadoutSlot slot))
+        if (!TryGetSlot(slotIndex, out SkillLoadoutSlotDescriptor slot) || slot.Options.Count == 0)
             return -1;
 
-        if (_skillManager != null && _skillManager.TryGetSelectedSkillOption(slotIndex, out CharacterSkillLoadoutOption selected))
+        if (_skillManager != null &&
+            _skillManager.TryGetSelectedLoadoutOptionId(slot.SlotId, out string runtimeOptionId) &&
+            slot.TryGetOptionById(runtimeOptionId, out int runtimeIndex))
         {
-            for (int i = 0; i < slot.Options.Count; i++)
-            {
-                if (ReferenceEquals(slot.Options[i], selected))
-                    return i;
-            }
+            return runtimeIndex;
         }
 
         CharacterProgressData progress = GetProgressData();
-        string savedOptionId = CharacterSkillSelectionStore.FindOptionId(progress, ResolveSlotId(slot, slotIndex));
-        if (!string.IsNullOrWhiteSpace(savedOptionId) && slot.TryGetOptionById(savedOptionId, out int savedIndex, out _))
+        string savedOptionId = CharacterSkillSelectionStore.FindOptionId(progress, slot.SlotId);
+        if (!string.IsNullOrWhiteSpace(savedOptionId) && slot.TryGetOptionById(savedOptionId, out int savedIndex))
             return savedIndex;
 
-        return slot.TryGetDefaultOption(out int defaultIndex, out _) ? defaultIndex : -1;
+        return Mathf.Clamp(slot.DefaultOptionIndex, 0, slot.Options.Count - 1);
     }
 
     public bool SelectOption(int slotIndex, int optionIndex)
     {
-        if (!TryGetSlot(slotIndex, out CharacterSkillLoadoutSlot slot) ||
-            !slot.TryGetOption(optionIndex, out CharacterSkillLoadoutOption option))
+        if (!TryGetSlot(slotIndex, out SkillLoadoutSlotDescriptor slot) ||
+            !slot.TryGetOption(optionIndex, out SkillLoadoutOptionDescriptor option))
         {
             return false;
         }
 
-        if (_skillManager != null && _skillManager.TrySelectSkillOption(slotIndex, optionIndex, true))
+        if (_skillManager != null && _skillManager.TrySelectLoadoutOption(slot.SlotId, option.OptionId, true))
         {
             Changed?.Invoke();
             return true;
         }
 
         CharacterProgressData progress = GetProgressData();
-        CharacterSkillSelectionStore.SetOption(
-            progress,
-            ResolveSlotId(slot, slotIndex),
-            ResolveOptionId(option, optionIndex));
+        CharacterSkillSelectionStore.SetOption(progress, slot.SlotId, option.OptionId);
         SaveLobbyState();
         Changed?.Invoke();
         return true;
@@ -125,7 +163,7 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
     {
         if (!TryResolveTree(slotIndex, optionIndex, out string slotId, out string optionId, out SkillUpgradeTreeDefinition tree))
         {
-            reason = "Missing Active Skill Tree.";
+            reason = "No Skill Tree assigned.";
             return false;
         }
 
@@ -142,7 +180,7 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
     {
         if (!TryResolveTree(slotIndex, optionIndex, out string slotId, out string optionId, out SkillUpgradeTreeDefinition tree))
         {
-            reason = "Missing Active Skill Tree.";
+            reason = "No Skill Tree assigned.";
             return false;
         }
 
@@ -189,21 +227,13 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
 
     public FinalSkillStats BuildStatsPreview(int slotIndex, int optionIndex, SkillUpgradeNodeData proposedNode = null)
     {
-        if (!TryGetOption(slotIndex, optionIndex, out CharacterSkillLoadoutOption option) || option.ActiveSkillAsset == null)
+        if (!TryGetOption(slotIndex, optionIndex, out SkillLoadoutOptionDescriptor option) || option.SkillAsset == null)
             return null;
-
-        TryResolveTree(slotIndex, optionIndex, out string slotId, out string optionId, out SkillUpgradeTreeDefinition tree);
-        SkillUpgradeStatSnapshot snapshot = tree != null
-            ? _model.BuildSnapshot(slotId, optionId, tree, out _)
-            : new SkillUpgradeStatSnapshot();
-
-        if (proposedNode != null)
-            snapshot.AddNode(proposedNode);
 
         var instance = new SkillInstance
         {
-            def = option.ActiveSkillAsset,
-            upgradeSnapshot = snapshot,
+            def = option.SkillAsset,
+            upgradeSnapshot = BuildSnapshot(slotIndex, optionIndex, proposedNode),
         };
 
         return instance.GetFinalStats(null);
@@ -216,20 +246,14 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
     /// </summary>
     public SkillSummonPreview BuildSummonPreview(int slotIndex, int optionIndex, SkillUpgradeNodeData proposedNode = null)
     {
-        if (!TryGetOption(slotIndex, optionIndex, out CharacterSkillLoadoutOption option) ||
-            option.ActiveSkillAsset == null ||
-            !option.ActiveSkillAsset.TryFindPayload(out SummonSkillPayloadDef summon))
+        if (!TryGetOption(slotIndex, optionIndex, out SkillLoadoutOptionDescriptor option) ||
+            option.SkillAsset == null ||
+            !option.SkillAsset.TryFindPayload(out SummonSkillPayloadDef summon))
         {
             return default;
         }
 
-        TryResolveTree(slotIndex, optionIndex, out string slotId, out string optionId, out SkillUpgradeTreeDefinition tree);
-        SkillUpgradeStatSnapshot snapshot = tree != null
-            ? _model.BuildSnapshot(slotId, optionId, tree, out _)
-            : new SkillUpgradeStatSnapshot();
-
-        if (proposedNode != null)
-            snapshot.AddNode(proposedNode);
+        SkillUpgradeStatSnapshot snapshot = BuildSnapshot(slotIndex, optionIndex, proposedNode);
 
         int cap = summon.PerSkillCap;
         if (snapshot.TryGetAggregate(StatType.SummonCap, out float capAdd, out float capMul))
@@ -250,6 +274,19 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
             health = (health + hpAdd) * hpMul;
 
         return new SkillSummonPreview(true, true, Mathf.Max(1f, health), cap);
+    }
+
+    SkillUpgradeStatSnapshot BuildSnapshot(int slotIndex, int optionIndex, SkillUpgradeNodeData proposedNode)
+    {
+        TryResolveTree(slotIndex, optionIndex, out string slotId, out string optionId, out SkillUpgradeTreeDefinition tree);
+        SkillUpgradeStatSnapshot snapshot = tree != null
+            ? _model.BuildSnapshot(slotId, optionId, tree, out _)
+            : new SkillUpgradeStatSnapshot();
+
+        if (proposedNode != null)
+            snapshot.AddNode(proposedNode);
+
+        return snapshot;
     }
 
     float ResolveOwnerMaxHealth()
@@ -280,33 +317,16 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
         optionId = string.Empty;
         tree = null;
 
-        if (!TryGetSlot(slotIndex, out CharacterSkillLoadoutSlot slot) ||
-            !slot.TryGetOption(optionIndex, out CharacterSkillLoadoutOption option))
+        if (!TryGetSlot(slotIndex, out SkillLoadoutSlotDescriptor slot) ||
+            !slot.TryGetOption(optionIndex, out SkillLoadoutOptionDescriptor option))
         {
             return false;
         }
 
-        slotId = ResolveSlotId(slot, slotIndex);
-        optionId = ResolveOptionId(option, optionIndex);
-        tree = option.ResolvedUpgradeTree;
+        slotId = slot.SlotId;
+        optionId = option.OptionId;
+        tree = option.UpgradeTree;
         return tree != null;
-    }
-
-    public bool TryGetOption(int slotIndex, int optionIndex, out CharacterSkillLoadoutOption option)
-    {
-        option = null;
-        return TryGetSlot(slotIndex, out CharacterSkillLoadoutSlot slot) &&
-               slot.TryGetOption(optionIndex, out option);
-    }
-
-    bool TryGetSlot(int slotIndex, out CharacterSkillLoadoutSlot slot)
-    {
-        slot = null;
-        if (Stats == null || Stats.skillSlots == null || slotIndex < 0 || slotIndex >= Stats.skillSlots.Count)
-            return false;
-
-        slot = Stats.skillSlots[slotIndex];
-        return slot != null;
     }
 
     CharacterProgressData GetProgressData()
@@ -329,19 +349,5 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
     {
         _model = _runtimeProgress.Model;
         ProgressChanged?.Invoke();
-    }
-
-    static string ResolveSlotId(CharacterSkillLoadoutSlot slot, int slotIndex)
-    {
-        return slot != null && !string.IsNullOrWhiteSpace(slot.ResolvedSlotId)
-            ? slot.ResolvedSlotId
-            : $"slot:{Mathf.Max(0, slotIndex)}";
-    }
-
-    static string ResolveOptionId(CharacterSkillLoadoutOption option, int optionIndex)
-    {
-        return option != null && !string.IsNullOrWhiteSpace(option.ResolvedOptionId)
-            ? option.ResolvedOptionId
-            : $"option:{Mathf.Max(0, optionIndex)}";
     }
 }

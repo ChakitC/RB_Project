@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 [Serializable]
@@ -47,8 +47,8 @@ public class CharacterProgressData
     public int xp = 0;
     public bool unlocked = false;
     public List<CharacterSkillSelectionSaveData> selectedSkillOptions = new();
-    public int activeSkillPoints = 0;
-    public bool activeSkillProgressInitialized = false;
+    public int skillPoints = 0;
+    public bool skillProgressInitialized = false;
     public List<CharacterSkillTreeProgressSaveData> activeSkillTrees = new();
 
     public CharacterProgressData DeepClone()
@@ -59,8 +59,8 @@ public class CharacterProgressData
             xp = xp,
             unlocked = unlocked,
             selectedSkillOptions = CloneSkillSelections(selectedSkillOptions),
-            activeSkillPoints = activeSkillPoints,
-            activeSkillProgressInitialized = activeSkillProgressInitialized,
+            skillPoints = skillPoints,
+            skillProgressInitialized = skillProgressInitialized,
             activeSkillTrees = CloneActiveSkillTrees(activeSkillTrees),
         };
     }

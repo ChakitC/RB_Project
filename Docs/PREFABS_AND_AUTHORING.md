@@ -1057,27 +1057,44 @@ the cooldown is already spent, because the cast committed at its cast point.
 
 | Party Role | Authors | Hidden |
 |---|---|---|
-| `Stryker` (default) | `Skill Slots`, `Active Skill Points Per Level` | `Helper Procs`, `Helper Command Skill` |
-| `Helper` | `Helper Procs`, `Helper Command Skill` | `Skill Slots`, `Active Skill Points Per Level` |
+| `Stryker` (default) | `Skill Slots` | `Helper Proc Slots`, `Helper Command Slot` |
+| `Helper` | `Helper Proc Slots`, `Helper Command Slot` | `Skill Slots` |
+
+`Skill Points Per Level` applies to both roles - a Helper spends the same pool a Stryker does.
 
 A party slot is a shared rig that any character can be loaded into, so the role belongs to the
 character asset, not to a prefab. The inspector hides the half that does not apply, and
 `CharacterSkillManager` only reads the Helper half from a character whose role is `Helper` -
-leftover data in the wrong section never fires.
+leftover data in the wrong section never fires, and `SkillUpgradeTreeValidator.ValidateCharacterLoadout`
+warns about it.
 
 Author a character's helper assists on its `CharacterStats` asset:
 
-- **Skill Loadout > Helper Procs** - the triggered assists this character contributes.
-- **Skill Loadout > Helper Command Skill** - the single assist the player's manual party command
-  casts while this character is the party helper.
+- **Skill Loadout > Helper Proc Slots** (`List<HelperProcLoadoutSlot>`) - one slot per triggered
+  assist. Each slot carries `slotId`, `displayName`, `defaultOptionIndex`, and a list of
+  `HelperProcLoadoutOption` variants (`optionId`, `displayName`, `helperProc`).
+- **Skill Loadout > Helper Command Slot** (`CharacterSkillLoadoutSlot`) - the manual party command,
+  authored exactly like a Stryker command slot. Its options must reference a `SkillGemDefinition`;
+  a passive here is a validation error, because the party command has to be castable.
 
-Both are read from the runtime helper's `ctx.baseStats` and from nowhere else. There is no prefab
-fallback and no second source: `CharacterSkillManager.playerCommandSkill`,
-`CharacterSkillManager.helperProcLoadout`, and `AllyHelperProcController.helperDefinitions` have all
-been removed, and procs are no longer collected from the other party members' skill managers.
+`slotId` and `optionId` are save keys: give every slot and option an explicit, stable, unique id.
+The runtime namespaces them as `helper:command:<slotId>` and `helper:proc:<slotId>` so a proc slot
+can never collide with the command slot or with a Stryker slot.
 
-**An empty slot means "no skill", not "look elsewhere."** A Helper with no Helper Command Skill has
-no manual command, and the party command is reported as `SkillUnavailable`.
+A Helper proc's Skill Tree comes from `SkillHelperDef.executionSkill.upgradeTree`; there is no
+separate tree field on the proc option. A proc option with no `SkillHelperDef`, or whose proc has
+no Execution Skill, is not a configurable variant and is dropped before it reaches runtime.
+
+Both halves are read from the runtime helper's `ctx.baseStats` and from nowhere else. There is no
+prefab fallback and no second source, and procs are not collected from the other party members'
+skill managers.
+
+**An empty slot means "no skill", not "look elsewhere."** A Helper whose command slot has no
+configured option has no manual command, the party command is reported as `SkillUnavailable`, and
+the Skill screen does not offer a Command tab at all.
+
+**Only the selected variant is equipped.** Authoring three variants in a proc slot arms exactly
+one of them; the other two never reach `AllyHelperProcController`.
 
 Do **not** put helper procs in `skillSlots`. A helper proc is never cast by the player: it fires
 from a trigger and is performed by the helper actor. A command slot would give the character a
@@ -1090,13 +1107,13 @@ whoever happens to occupy that slot.
 Helper Chain Attack is unchanged and is still its own system: it reads
 `CharacterStats.chainAttackSkill` through `FieldAllyMember`, not the fields above.
 
-`CharacterSkillManager.AppendConfiguredHelperChainDefinitions` reads only the loaded Helper's
-`CharacterStats.helperProcs`. `AllyHelperProcController` does not collect definitions from the
-player or other registered party members.
+`CharacterSkillManager.AppendConfiguredHelperChainDefinitions` returns the selected variant of each
+of the loaded Helper's `helperProcSlots`. `AllyHelperProcController` does not collect definitions
+from the player or other registered party members.
 
-`ActiveSkillScreen` remains a Stryker `skillSlots` editor. It does not display or edit
-`helperCommandSkill` or `helperProcs`; those fields are authored directly on the Helper's
-`CharacterStats` asset in this feature.
+`ActiveSkillScreen` edits both roles. It shows `Active Skills` (Stryker `skillSlots`) or
+`Helper Skills` (the Helper command slot followed by the proc slots in authored order), driven by
+`SkillLoadoutDescriptorFactory`.
 
 The persistent charge pool still works with a shared prefab because it is keyed by
 `SkillGemDefinition` inside the helper's own orchestrator, and the helper GameObject is only ever

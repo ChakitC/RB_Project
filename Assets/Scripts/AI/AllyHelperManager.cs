@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
@@ -77,6 +77,14 @@ public class AllyHelperManager : MonoBehaviour
     SkillCastOrchestrator helperSkillCastOrchestrator;
     Component helperSkillCastOwner;
     PendingHelperSkill pendingHelperSkill;
+
+    /// <summary>
+    /// Set for the duration of <see cref="TrySummonAllyHelper"/>. Activating the helper actor runs
+    /// other systems' OnEnable and registration callbacks synchronously, and those can reach a
+    /// trigger that summons again before this call has recorded its own pending skill - at which
+    /// point the outer call overwrites the inner one's dispatch and then cancels everything.
+    /// </summary>
+    bool summonInProgress;
     PendingChainAttackSequence pendingChainAttackSequence;
     bool hideHelperOnSkillComplete;
     int nextHelperSkillRequestId = 1;
@@ -424,6 +432,38 @@ public class AllyHelperManager : MonoBehaviour
     }
 
     bool TrySummonAllyHelper(
+        SkillGemDefinition skillDef,
+        bool hideOnSkillComplete,
+        SkillTargetHandle target,
+        SkillCastCostPolicy? costPolicy,
+        Vector3? preferredPosition)
+    {
+        // Re-entrant summons destroy each other. Activating the helper actor below runs other
+        // systems synchronously - party registration above all - and those reach triggers that
+        // summon again while this call has not yet recorded its pending skill. The inner call then
+        // gets the earlier request id and starts the animation, and the outer call's
+        // CancelPendingHelperSkill() wipes that dispatch before its own TryPlaySkill is refused
+        // (the brain will not start a second skill over the first). Result: the helper is hidden
+        // again, nothing was cast, and the trigger asks once more next frame - forever.
+        if (summonInProgress)
+            return false;
+
+        // A skill already dispatched owns the actor until its cast moment, for the same reason.
+        if (pendingHelperSkill != null)
+            return false;
+
+        summonInProgress = true;
+        try
+        {
+            return TrySummonAllyHelperCore(skillDef, hideOnSkillComplete, target, costPolicy, preferredPosition);
+        }
+        finally
+        {
+            summonInProgress = false;
+        }
+    }
+
+    bool TrySummonAllyHelperCore(
         SkillGemDefinition skillDef,
         bool hideOnSkillComplete,
         SkillTargetHandle target,
@@ -1459,6 +1499,10 @@ public class AllyHelperManager : MonoBehaviour
         if (logHelperExecution)
             Debug.Log($"[AllyHelperManager] Executing metered helper skill '{skillDef.name}'.", this);
 
+        // This runs at the cast moment of the animation this manager already started, so the cast
+        // attaches to that request instead of asking for playback of its own. Same contract as the
+        // legacy path above (requestedId + useAnimationDriver: false); without it the payload would
+        // bind to a request id no clip ever raises, and every timeline marker would go unheard.
         SkillCastStartResult result = skillManager.TryStartExternalSkill(
             skillDef,
             debugSource: $"helper:{skillDef.name}",
@@ -1466,7 +1510,8 @@ public class AllyHelperManager : MonoBehaviour
             usePlanarRootMotion: false,
             stampCooldown: true,
             primaryTarget: target,
-            costPolicy: costPolicy);
+            costPolicy: costPolicy,
+            externalAnimationRequestId: requestId);
 
         if (result.Started)
         {

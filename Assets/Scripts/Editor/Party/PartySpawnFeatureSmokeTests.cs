@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
@@ -85,13 +85,18 @@ public static class PartySpawnFeatureSmokeTests
         Expect(abbygail != null, "Abbygail's character asset must exist.");
         Expect(abbygail.partyRole == CharacterPartyRole.Helper,
             "Abbygail must be authored as a Helper to contribute assists.");
-        Expect(abbygail.helperCommandSkill != null,
+        Expect(
+            abbygail.helperCommandSlot != null &&
+            abbygail.helperCommandSlot.TryGetDefaultOption(out _, out CharacterSkillLoadoutOption command) &&
+            command.ActiveSkillAsset != null,
             "Abbygail's manual command must be authored on her character asset.");
-        Equal(3, abbygail.helperProcs.Count, "Abbygail must own three helper procs.");
-        for (int i = 0; i < abbygail.helperProcs.Count; i++)
+        Equal(3, abbygail.helperProcSlots.Count, "Abbygail must own three helper proc slots.");
+        for (int i = 0; i < abbygail.helperProcSlots.Count; i++)
         {
-            Expect(abbygail.helperProcs[i].ResolveHelperProc() != null,
-                $"Abbygail helper proc {i} must resolve to a definition.");
+            Expect(
+                abbygail.helperProcSlots[i].TryGetDefaultOption(out _, out HelperProcLoadoutOption option) &&
+                option.helperProc != null,
+                $"Abbygail helper proc slot {i} must resolve to a definition.");
         }
 
         ExpectNoLegacyHelperLoadout("Assets/Prefab/Player/Ally_Helper.prefab");

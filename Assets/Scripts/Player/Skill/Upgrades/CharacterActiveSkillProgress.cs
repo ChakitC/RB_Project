@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -183,8 +183,8 @@ public sealed class CharacterActiveSkillProgress : MonoBehaviour
         // Passive progress and loadout selection can be owned by other live modules.
         // Merge only this module's fields into a fresh repository snapshot.
         CharacterProgressData latest = SaveManager.Instance.LoadCharacterProgressData(characterId);
-        latest.activeSkillPoints = Mathf.Max(0, _model.Data.activeSkillPoints);
-        latest.activeSkillProgressInitialized = _model.Data.activeSkillProgressInitialized;
+        latest.skillPoints = Mathf.Max(0, _model.Data.skillPoints);
+        latest.skillProgressInitialized = _model.Data.skillProgressInitialized;
         latest.activeSkillTrees = CloneTrees(_model.Data.activeSkillTrees);
         SaveManager.Instance.SaveCharacterProgressData(characterId, latest);
     }
@@ -231,7 +231,7 @@ public sealed class CharacterActiveSkillProgress : MonoBehaviour
         EnsureModel();
         int gainedLevels = Mathf.Max(0, newLevel - oldLevel);
         int pointsPerLevel = ctx != null && ctx.baseStats != null
-            ? Mathf.Max(0, ctx.baseStats.activeSkillPointsPerLevel)
+            ? Mathf.Max(0, ctx.baseStats.skillPointsPerLevel)
             : 1;
 
         _model.SetCharacterLevel(newLevel);

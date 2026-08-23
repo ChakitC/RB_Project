@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using TMPro;
 using UnityEditor;
 using UnityEditor.Events;
@@ -8,7 +8,7 @@ using UnityEngine.UI;
 
 public static class ActiveSkillScreenPrefabBuilder
 {
-    const int PlaceholderLayoutVersion = 4;
+    const int PlaceholderLayoutVersion = 6;
     const string PrefabFolder = "Assets/Prefab/User Interface/Active Skill";
     const string ThemeFolder = "Assets/UI/Active Skill";
     const string ThemePath = ThemeFolder + "/SkillScreenTheme.asset";
@@ -115,15 +115,23 @@ public static class ActiveSkillScreenPrefabBuilder
         Button button = root.AddComponent<Button>();
 
         Image icon = CreateImage("Icon", root.transform, Color.white);
-        SetAnchors(icon.rectTransform, new Vector2(0.08f, 0.22f), new Vector2(0.92f, 0.95f));
+        SetAnchors(icon.rectTransform, new Vector2(0.08f, 0.4f), new Vector2(0.92f, 0.95f));
         icon.rectTransform.offsetMin = icon.rectTransform.offsetMax = Vector2.zero;
         icon.preserveAspect = true;
 
         Image titleBackground = CreateImage("TitleBackground", root.transform, new Color(0.05f, 0.05f, 0.05f, 0.9f));
-        SetAnchors(titleBackground.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0.22f));
+        SetAnchors(titleBackground.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0.38f));
         titleBackground.rectTransform.offsetMin = titleBackground.rectTransform.offsetMax = Vector2.zero;
         TMP_Text title = CreateText("Title", titleBackground.transform, "Skill Variant", 22f, TextAlignmentOptions.Center);
-        Stretch(title.rectTransform);
+        SetAnchors(title.rectTransform, new Vector2(0f, 0.5f), new Vector2(1f, 1f));
+        title.rectTransform.offsetMin = title.rectTransform.offsetMax = Vector2.zero;
+
+        // Only a Helper proc fills this in; a skill the player casts hides it, so the card keeps
+        // the same footprint either way.
+        TMP_Text subtitle = CreateText("Subtitle", titleBackground.transform, string.Empty, 16f, TextAlignmentOptions.Center);
+        SetAnchors(subtitle.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0.5f));
+        subtitle.rectTransform.offsetMin = subtitle.rectTransform.offsetMax = Vector2.zero;
+        subtitle.gameObject.SetActive(false);
 
         Image selected = CreateImage("Selected", root.transform, new Color(0f, 0.85f, 1f, 0.35f));
         Stretch(selected.rectTransform, 5f);
@@ -134,6 +142,7 @@ public static class ActiveSkillScreenPrefabBuilder
         SetObject(view, "icon", icon);
         SetObject(view, "frame", frame);
         SetObject(view, "title", title);
+        SetObject(view, "subtitle", subtitle);
         SetObject(view, "selectedMarker", selected.gameObject);
 
         GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, VariantCardPath);
@@ -232,7 +241,12 @@ public static class ActiveSkillScreenPrefabBuilder
         SetSize(backButton.gameObject, 240f, 90f);
         backButton.GetComponent<RectTransform>().anchoredPosition = new Vector2(145f, -65f);
 
-        TMP_Text points = CreateText("Points", root.transform, "Active Skill Points: 0", 28f, TextAlignmentOptions.Right);
+        TMP_Text screenTitle = CreateText("Title", root.transform, "Active Skills", 40f, TextAlignmentOptions.Left);
+        SetAnchors(screenTitle.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f));
+        screenTitle.rectTransform.sizeDelta = new Vector2(620f, 70f);
+        screenTitle.rectTransform.anchoredPosition = new Vector2(595f, -65f);
+
+        TMP_Text points = CreateText("Points", root.transform, "Skill Points: 0", 28f, TextAlignmentOptions.Right);
         SetAnchors(points.rectTransform, new Vector2(1f, 1f), new Vector2(1f, 1f));
         points.rectTransform.sizeDelta = new Vector2(420f, 60f);
         points.rectTransform.anchoredPosition = new Vector2(-250f, -55f);
@@ -346,6 +360,7 @@ public static class ActiveSkillScreenPrefabBuilder
         SetInt(controller, "placeholderLayoutVersion", PlaceholderLayoutVersion);
         SetObject(controller, "screenGroup", root.GetComponent<CanvasGroup>());
         SetObject(controller, "backButton", backButton);
+        SetObject(controller, "titleText", screenTitle);
         SetObject(controller, "pointsText", points);
         SetObject(controller, "emptyStateText", emptyState);
         SetObject(controller, "resetTreeButton", resetButton);

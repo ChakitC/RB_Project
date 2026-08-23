@@ -1,5 +1,4 @@
-using UnityEngine;
-using UnityEngine.Serialization;
+﻿using UnityEngine;
 
 [System.Serializable]
 public class CharacterSkillEntry
@@ -23,18 +22,4 @@ public class SkillSlot
 
     [HideInInspector]
     public SkillInstance runtimeSkill;
-}
-
-[System.Serializable]
-public sealed class HelperProcSlot
-{
-    [FormerlySerializedAs("helperChainSkill")]
-    public SkillHelperDef helperProc;
-
-    public bool IsConfigured => helperProc != null;
-
-    public SkillHelperDef ResolveHelperProc()
-    {
-        return helperProc;
-    }
 }

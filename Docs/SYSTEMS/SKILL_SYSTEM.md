@@ -1076,13 +1076,20 @@ Asset default). Tree and node IDs are persistent save keys and must not be
 renamed after release without a save migration.
 
 `CharacterActiveSkillProgress` is the shared runtime owner and is resolved
-through `CharacteContext.ActiveSkillProgress`. Active Skill Points are separate
-from Passive Points and are shared by every Slot and Variant on that character.
+through `CharacteContext.ActiveSkillProgress`. Skill Points are shared by every
+Slot and Variant on that character, in both roles - a Helper's command slot and
+proc slots draw from the same pool a Stryker's command slots do.
 The default grant is one point for each character level after level 1, controlled
-by `CharacterStats.activeSkillPointsPerLevel`. Old saves are caught up once by
-the `activeSkillProgressInitialized` flag; the catch-up grant subtracts points
+by `CharacterStats.skillPointsPerLevel`. Old saves are caught up once by
+the `skillProgressInitialized` flag; the catch-up grant subtracts points
 already spent across every tree before topping up, so a save whose flag is
 missing or reset does not receive its lifetime grant twice.
+
+Progress is keyed by `slotId` + `optionId`. Stryker slots use their authored
+`slotId` unchanged; Helper slots are namespaced by `CharacterSkillLoadoutKeys` as
+`helper:command:<slotId>` and `helper:proc:<slotId>`. Every Variant keeps its own
+unlocked nodes, switching Variants never refunds, and Reset refunds only the tree
+it was asked for, by each node's recorded `paidCost`.
 
 When `CharacterContextPartyLoader` assigns a party member's `baseStats`, it
 reloads `CharacterActiveSkillProgress` for that character ID. A full progress
@@ -1762,13 +1769,15 @@ that never went through the factory. `EnsureCommandRuntimeSkill` /
 ### The helper manual command is character-owned
 
 Despite the legacy `PlayerCommandSkill` name, this entry is **not** prefab-authored and does not
-belong to the player. It is built at runtime from
-`ctx.baseStats.helperCommandSkill`, and only when that character's
+belong to the player. It is built at runtime from the Variant selected in
+`ctx.baseStats.helperCommandSlot`, and only when that character's
 `partyRole` is `Helper`. `CharacterStats.skillSlots` is authoritative for command slots the same
-way, so both halves of a character's loadout now come from the same asset.
+way, so both halves of a character's loadout come from the same asset with the same slot/variant
+shape.
 
 - The serialized `CharacterSkillManager.playerCommandSkill` field has been removed. There is no
-  prefab fallback: an empty `Helper Command Skill` means the character has no manual command.
+  prefab fallback: a command slot with no configured option means the character has no manual
+  command.
 - The runtime entry goes through `CreateRuntimeSkill` / `BindSharedCharges` like any other, so it
   draws from the same shared charge pool as a command slot holding the same skill.
 - Swapping `ctx.baseStats` rebuilds the entry. A cast still running against the previous
@@ -1778,6 +1787,34 @@ way, so both halves of a character's loadout now come from the same asset.
   outside. The helper actor is deactivated between summons, so its own `Update` cannot notice.
 
 `chainAttackSkill` is untouched by all of this and remains prefab-authored.
+
+### Helper proc slots and Skill Trees
+
+`CharacterStats.helperProcSlots` is a list of `HelperProcLoadoutSlot`. Each slot holds
+`HelperProcLoadoutOption` variants, and exactly one variant per slot is equipped at a time —
+selected by the player on the Skill screen, persisted through `CharacterSkillSelectionStore`, and
+resolved by `CharacterSkillManager.RefreshHelperLoadout`.
+
+- `AppendConfiguredHelperChainDefinitions` returns only the selected variant of each slot. An
+  authored-but-unselected variant never reaches `AllyHelperProcController`.
+- A proc's Skill Tree is `SkillHelperDef.executionSkill.upgradeTree`. The resolved
+  `SkillUpgradeStatSnapshot` is cached per execution definition in `helperExecutionSnapshots` and
+  applied to the external `CharacterSkillEntry` for that definition. Every helper execution path —
+  plain summon, targeted delivery, chain attack — starts through
+  `CharacterSkillManager.TryStartExternalSkill`, so one lookup covers all three.
+- `CharacterActiveSkillProgress.TreeChanged` for a `helper:` key re-applies the affected variant, so
+  a node unlocked in the lobby reaches the next assist without a rebuild of the whole loadout.
+
+**Switching a variant never resets a cooldown.** Charges live in the orchestrator keyed by
+`SkillGemDefinition`, and the external entry for that definition is cached for the component's
+lifetime; a switch swaps the snapshot on the existing `SkillInstance` rather than replacing it.
+`AllyHelperProcController._nextReadyTimeByDef` (the proc's internal cooldown) is likewise keyed by
+`SkillHelperDef` and is deliberately not cleared when a variant is unequipped. Queued party-health
+requests for an unequipped variant *are* dropped, because they would otherwise fire for a proc the
+player no longer has.
+
+A cast still running against the variant being unequipped is cancelled with
+`SkillCastCancelReason.InvalidState`.
 
 Querying a skill that has never been cast returns a **full** pool (`1/1`, `2/2`),
 not a failure — the pool is created on demand.

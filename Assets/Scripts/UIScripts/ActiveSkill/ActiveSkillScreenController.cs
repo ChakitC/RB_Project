@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -12,6 +12,7 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
     [Header("Screen")]
     [SerializeField] CanvasGroup screenGroup;
     [SerializeField] Button backButton;
+    [SerializeField] TMP_Text titleText;
     [SerializeField] TMP_Text pointsText;
     [SerializeField] TMP_Text emptyStateText;
     [SerializeField] Button resetTreeButton;
@@ -141,23 +142,22 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
 
     void RebuildScreen()
     {
-        CharacterStats stats = _session != null ? _session.Stats : null;
-        int slotCount = stats != null && stats.skillSlots != null ? stats.skillSlots.Count : 0;
+        int slotCount = _session != null ? _session.Slots.Count : 0;
         _selectedSlotIndex = slotCount > 0 ? Mathf.Clamp(_selectedSlotIndex, 0, slotCount - 1) : 0;
 
+        RefreshTitle();
         RebuildSlots(slotCount);
         RefreshPoints();
 
-        if (slotCount == 0 || stats.skillSlots[_selectedSlotIndex] == null)
+        if (!_session.TryGetSlot(_selectedSlotIndex, out SkillLoadoutSlotDescriptor slot))
         {
-            ShowEmpty("No skill slots configured.");
+            ShowEmpty(_session.EmptyLoadoutMessage);
             ClearVariantsAndTree();
             return;
         }
 
-        CharacterSkillLoadoutSlot slot = stats.skillSlots[_selectedSlotIndex];
         _selectedOptionIndex = _session.GetSelectedOptionIndex(_selectedSlotIndex);
-        if (_selectedOptionIndex < 0 || !slot.TryGetOption(_selectedOptionIndex, out CharacterSkillLoadoutOption selectedOption))
+        if (_selectedOptionIndex < 0 || !slot.TryGetOption(_selectedOptionIndex, out SkillLoadoutOptionDescriptor selectedOption))
         {
             ShowEmpty("No skill variants configured for this slot.");
             ClearVariantsAndTree();
@@ -179,16 +179,12 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
             if (!active)
                 continue;
 
-            CharacterSkillLoadoutSlot slot = _session.Stats.skillSlots[i];
-            string label = slot != null && !string.IsNullOrWhiteSpace(slot.displayName)
-                ? slot.displayName.Trim()
-                : BuildSlotLabel(i);
-            bool isPassiveSlot = slot != null && slot.IsPassiveSlot;
-            _slotTabs[i].Bind(i, label, i == _selectedSlotIndex, isPassiveSlot, theme, SelectSlot);
+            SkillLoadoutSlotDescriptor slot = _session.Slots[i];
+            _slotTabs[i].Bind(i, slot.DisplayName, i == _selectedSlotIndex, slot.IsPassiveSlot, theme, SelectSlot);
         }
     }
 
-    void RebuildVariants(CharacterSkillLoadoutSlot slot, CharacterSkillLoadoutOption selectedOption)
+    void RebuildVariants(SkillLoadoutSlotDescriptor slot, SkillLoadoutOptionDescriptor selectedOption)
     {
         if (selectedVariantCard != null)
             selectedVariantCard.gameObject.SetActive(true);
@@ -202,7 +198,7 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
             if (optionIndex == _selectedOptionIndex)
                 continue;
 
-            CharacterSkillLoadoutOption option = slot.Options[optionIndex];
+            SkillLoadoutOptionDescriptor option = slot.Options[optionIndex];
             ActiveSkillVariantCardView view = _variantCards[viewIndex++];
             view.gameObject.SetActive(true);
             view.Bind(option, optionIndex, false, theme, SelectVariant);
@@ -212,12 +208,12 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
             _variantCards[i].gameObject.SetActive(false);
     }
 
-    void RebuildTree(CharacterSkillLoadoutOption option)
+    void RebuildTree(SkillLoadoutOptionDescriptor option)
     {
         _selectedNodeId = null;
         detailPanel?.Hide();
 
-        SkillUpgradeTreeDefinition tree = option != null ? option.ResolvedUpgradeTree : null;
+        SkillUpgradeTreeDefinition tree = option != null ? option.UpgradeTree : null;
         bool hasTree = tree != null;
         if (resetTreeButton != null)
             resetTreeButton.interactable = hasTree;
@@ -226,7 +222,9 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
 
         if (!hasTree)
         {
-            ShowEmpty("No Active Skill Tree assigned to this variant.");
+            // An unassigned tree is a valid authoring state, not an error: the variant still
+            // works, there is simply nothing to spend points on yet.
+            ShowEmpty("No Skill Tree assigned.");
             treeView?.Bind(_session, _selectedSlotIndex, _selectedOptionIndex, null, null, SelectNode);
             return;
         }
@@ -281,7 +279,7 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
             ? summonBefore
             : _session.BuildSummonPreview(_selectedSlotIndex, _selectedOptionIndex, node);
 
-        _session.TryGetOption(_selectedSlotIndex, _selectedOptionIndex, out CharacterSkillLoadoutOption option);
+        _session.TryGetOption(_selectedSlotIndex, _selectedOptionIndex, out SkillLoadoutOptionDescriptor option);
 
         detailPanel?.Show(
             node,
@@ -316,7 +314,7 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
         }
 
         confirmationDialog.Show(
-            $"Unlock '{node.ResolvedDisplayName}' for {Mathf.Max(1, node.cost)} Active Skill Point" +
+            $"Unlock '{node.ResolvedDisplayName}' for {Mathf.Max(1, node.cost)} Skill Point" +
             (Mathf.Max(1, node.cost) == 1 ? "?" : "s?"),
             () => UnlockSelectedNode(node.RuntimeNodeId));
     }
@@ -343,7 +341,7 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
         if (confirmationDialog != null)
         {
             confirmationDialog.Show(
-                "Reset this variant's entire Active Skill Tree and refund all spent points?",
+                "Reset this variant's entire Skill Tree and refund all spent points?",
                 ResetSelectedTree);
         }
         else
@@ -436,23 +434,22 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
     bool TryGetSelectedNode(string nodeId, out SkillUpgradeNodeData node)
     {
         node = null;
-        if (_session == null || _session.Stats == null || _session.Stats.skillSlots == null ||
-            _selectedSlotIndex < 0 || _selectedSlotIndex >= _session.Stats.skillSlots.Count)
-        {
-            return false;
-        }
+        return _session != null &&
+               _session.TryGetOption(_selectedSlotIndex, _selectedOptionIndex, out SkillLoadoutOptionDescriptor option) &&
+               option.UpgradeTree != null &&
+               option.UpgradeTree.TryGetNode(nodeId, out node);
+    }
 
-        CharacterSkillLoadoutSlot slot = _session.Stats.skillSlots[_selectedSlotIndex];
-        return slot != null &&
-               slot.TryGetOption(_selectedOptionIndex, out CharacterSkillLoadoutOption option) &&
-               option.ResolvedUpgradeTree != null &&
-               option.ResolvedUpgradeTree.TryGetNode(nodeId, out node);
+    void RefreshTitle()
+    {
+        if (titleText != null && _session != null)
+            titleText.text = _session.ScreenTitle;
     }
 
     void RefreshPoints()
     {
         if (pointsText != null)
-            pointsText.text = $"Active Skill Points: {_session?.AvailablePoints ?? 0}";
+            pointsText.text = $"Skill Points: {_session?.AvailablePoints ?? 0}";
     }
 
     void ClearVariantsAndTree()
@@ -503,16 +500,5 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
 
         while (pool.Count < count)
             pool.Add(Instantiate(prefab, parent));
-    }
-
-    static string BuildSlotLabel(int index)
-    {
-        return index switch
-        {
-            0 => "SKILL I",
-            1 => "SKILL II",
-            2 => "SKILL III",
-            _ => $"SKILL {index + 1}",
-        };
     }
 }

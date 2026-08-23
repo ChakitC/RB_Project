@@ -76,7 +76,7 @@ A passive **is** a skill that executes in passive form instead of cast form.
 `SkillDefinitionBase` (`Assets\Scripts\Player\Skill\SkillDefinitionBase.cs`),
 and `CharacterSkillLoadoutOption.skillAsset` is typed as `SkillDefinitionBase`.
 There is one `CharacterStats.skillSlots` list, one loadout option type, and one
-shared `activeSkillPoints` point pool / upgrade-tree progress system
+shared `skillPoints` point pool / upgrade-tree progress system
 (`CharacterActiveSkillProgress`) for both active gems and passives — a
 passive's upgrade tree unlocks and refunds exactly like an active skill's.
 

@@ -362,28 +362,57 @@ public static class SkillUpgradeTreeValidator
         {
             string path = AssetDatabase.GUIDToAssetPath(statGuids[i]);
             CharacterStats stats = AssetDatabase.LoadAssetAtPath<CharacterStats>(path);
-            if (stats == null || stats.skillSlots == null)
+            if (stats == null)
                 continue;
 
-            for (int slotIndex = 0; slotIndex < stats.skillSlots.Count; slotIndex++)
+            if (stats.skillSlots != null)
             {
-                CharacterSkillLoadoutSlot slot = stats.skillSlots[slotIndex];
-                if (slot?.Options == null)
+                for (int slotIndex = 0; slotIndex < stats.skillSlots.Count; slotIndex++)
+                    AppendSlotOverrideOwners(stats.skillSlots[slotIndex], tree, owners);
+            }
+
+            AppendSlotOverrideOwners(stats.helperCommandSlot, tree, owners);
+
+            // A Helper proc points at its tree through the proc's execution skill, so the
+            // execution gem is the owner the tree editor and upgrade-id scan must see.
+            if (stats.helperProcSlots == null)
+                continue;
+
+            for (int slotIndex = 0; slotIndex < stats.helperProcSlots.Count; slotIndex++)
+            {
+                HelperProcLoadoutSlot procSlot = stats.helperProcSlots[slotIndex];
+                if (procSlot?.Options == null)
                     continue;
 
-                for (int optionIndex = 0; optionIndex < slot.Options.Count; optionIndex++)
+                for (int optionIndex = 0; optionIndex < procSlot.Options.Count; optionIndex++)
                 {
-                    CharacterSkillLoadoutOption option = slot.Options[optionIndex];
-                    if (option != null && option.upgradeTreeOverride == tree &&
-                        option.skillAsset != null && !owners.Contains(option.skillAsset))
-                    {
-                        owners.Add(option.skillAsset);
-                    }
+                    SkillGemDefinition execution = procSlot.Options[optionIndex]?.ExecutionSkill;
+                    if (execution != null && execution.UpgradeTree == tree && !owners.Contains(execution))
+                        owners.Add(execution);
                 }
             }
         }
 
         return owners;
+    }
+
+    static void AppendSlotOverrideOwners(
+        CharacterSkillLoadoutSlot slot,
+        SkillUpgradeTreeDefinition tree,
+        List<SkillDefinitionBase> owners)
+    {
+        if (slot?.Options == null)
+            return;
+
+        for (int optionIndex = 0; optionIndex < slot.Options.Count; optionIndex++)
+        {
+            CharacterSkillLoadoutOption option = slot.Options[optionIndex];
+            if (option != null && option.upgradeTreeOverride == tree &&
+                option.skillAsset != null && !owners.Contains(option.skillAsset))
+            {
+                owners.Add(option.skillAsset);
+            }
+        }
     }
 
     // Upgrade ids the owning skill(s) declare but that no node in this tree grants yet -- the
@@ -476,7 +505,18 @@ public static class SkillUpgradeTreeValidator
     public static List<SkillUpgradeValidationIssue> ValidateCharacterLoadout(CharacterStats stats)
     {
         var issues = new List<SkillUpgradeValidationIssue>();
-        if (stats == null || stats.skillSlots == null)
+        if (stats == null)
+            return issues;
+
+        ValidateOffRoleAuthoring(stats, issues);
+
+        if (stats.IsHelperRole)
+        {
+            ValidateHelperLoadout(stats, issues);
+            return issues;
+        }
+
+        if (stats.skillSlots == null)
             return issues;
 
         var slotIds = new HashSet<string>(StringComparer.Ordinal);
@@ -541,6 +581,116 @@ public static class SkillUpgradeTreeValidator
         }
 
         return issues;
+    }
+
+    /// <summary>
+    /// Data authored into the half of the loadout this character's role never reads.
+    ///
+    /// Runtime deliberately ignores it, so this can only ever be a silent no-op for the author -
+    /// a proc that never fires, or a command slot the Helper screen never shows.
+    /// </summary>
+    static void ValidateOffRoleAuthoring(CharacterStats stats, List<SkillUpgradeValidationIssue> issues)
+    {
+        if (stats.IsHelperRole)
+        {
+            if (stats.skillSlots != null && stats.skillSlots.Count > 0)
+                issues.Add(Warning("Helper role: authored Skill Slots are ignored at runtime."));
+
+            return;
+        }
+
+        if (stats.helperProcSlots != null && stats.helperProcSlots.Count > 0)
+            issues.Add(Warning("Stryker role: authored Helper Proc Slots are ignored at runtime."));
+
+        if (stats.helperCommandSlot != null && stats.helperCommandSlot.Options.Count > 0)
+            issues.Add(Warning("Stryker role: the authored Helper Command Slot is ignored at runtime."));
+    }
+
+    static void ValidateHelperLoadout(CharacterStats stats, List<SkillUpgradeValidationIssue> issues)
+    {
+        var slotIds = new HashSet<string>(StringComparer.Ordinal);
+
+        CharacterSkillLoadoutSlot commandSlot = stats.helperCommandSlot;
+        if (commandSlot != null && commandSlot.Options.Count > 0)
+        {
+            if (string.IsNullOrWhiteSpace(commandSlot.ResolvedSlotId))
+                issues.Add(Error("helper command slot needs an explicit stable slotId."));
+            else
+                slotIds.Add(CharacterSkillLoadoutKeys.HelperCommandSlotKey(commandSlot));
+
+            var commandOptionIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int optionIndex = 0; optionIndex < commandSlot.Options.Count; optionIndex++)
+            {
+                CharacterSkillLoadoutOption option = commandSlot.Options[optionIndex];
+                if (option == null)
+                    continue;
+
+                if (string.IsNullOrWhiteSpace(option.optionId))
+                    issues.Add(Error($"helper command slot, option {optionIndex} needs an explicit stable optionId."));
+
+                if (!string.IsNullOrWhiteSpace(option.ResolvedOptionId) && !commandOptionIds.Add(option.ResolvedOptionId))
+                    issues.Add(Error($"duplicate option ID '{option.ResolvedOptionId}' in the helper command slot."));
+
+                // The party command has to be castable. A passive here would leave the command
+                // button wired to something that can never run.
+                if (option.IsConfigured && option.ActiveSkillAsset == null)
+                {
+                    issues.Add(Error(
+                        $"helper command slot, option {optionIndex} must reference a SkillGemDefinition, not a passive."));
+                }
+            }
+        }
+
+        List<HelperProcLoadoutSlot> procSlots = stats.helperProcSlots;
+        if (procSlots == null)
+            return;
+
+        for (int slotIndex = 0; slotIndex < procSlots.Count; slotIndex++)
+        {
+            HelperProcLoadoutSlot slot = procSlots[slotIndex];
+            if (slot == null)
+                continue;
+
+            if (string.IsNullOrWhiteSpace(slot.ResolvedSlotId))
+                issues.Add(Error($"helper proc slot {slotIndex} needs an explicit stable slotId."));
+            else if (!slotIds.Add(CharacterSkillLoadoutKeys.HelperProcSlotKey(slot, slotIndex)))
+                issues.Add(Error($"duplicate slot ID '{slot.ResolvedSlotId}' in helper proc slots."));
+
+            var optionIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int optionIndex = 0; optionIndex < slot.Options.Count; optionIndex++)
+            {
+                HelperProcLoadoutOption option = slot.Options[optionIndex];
+                if (option == null)
+                    continue;
+
+                if (string.IsNullOrWhiteSpace(option.optionId))
+                {
+                    issues.Add(Error(
+                        $"helper proc slot {slotIndex}, option {optionIndex} needs an explicit stable optionId."));
+                }
+
+                if (!string.IsNullOrWhiteSpace(option.ResolvedOptionId) && !optionIds.Add(option.ResolvedOptionId))
+                {
+                    issues.Add(Error(
+                        $"duplicate option ID '{option.ResolvedOptionId}' in helper proc slot '{slot.ResolvedSlotId}'."));
+                }
+
+                if (option.helperProc == null)
+                {
+                    issues.Add(Error(
+                        $"helper proc slot {slotIndex}, option {optionIndex} has no SkillHelperDef."));
+                    continue;
+                }
+
+                // Without an execution skill the proc has nothing to run and no Skill Tree to
+                // spend points in, so it would occupy a tab that does nothing.
+                if (option.helperProc.executionSkill == null)
+                {
+                    issues.Add(Error(
+                        $"helper proc '{option.helperProc.RuntimeId}' in slot {slotIndex} has no Execution Skill."));
+                }
+            }
+        }
     }
 
     // Two nodes granting the same upgrade id normally means a copy-paste slip: the second node

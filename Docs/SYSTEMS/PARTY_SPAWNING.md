@@ -97,8 +97,8 @@ loadout live on the character asset loaded into the helper slot (party index 3):
 
 | Data | Source |
 |---|---|
-| Helper procs | `helperContext.baseStats.helperProcs` |
-| Manual party command | `helperContext.baseStats.helperCommandSkill` |
+| Helper procs | `helperContext.baseStats.helperProcSlots` (selected variant per slot) |
+| Manual party command | `helperContext.baseStats.helperCommandSlot` (selected variant) |
 
 `CharacterSkillManager` resolves both from `ctx.baseStats`, and `AllyHelperProcController` reads its
 proc list only from `AllyHelperManager.HelperSkillManager`. There is no prefab-authored fallback and

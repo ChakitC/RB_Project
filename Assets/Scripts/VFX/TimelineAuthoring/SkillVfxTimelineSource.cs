@@ -45,6 +45,16 @@ public sealed class SkillVfxTimelineSource : IAnimationVfxTimelineSource
                 new[] { hitbox.HitboxStartEventName, hitbox.HitboxEndEventName },
                 allowDuplicateEvents: true));
         }
+        if (skill != null && skill.TryFindPayload(out TargetedDeliverySkillPayloadDef _))
+        {
+            // Without its own lane the release marker lands in the generic "Other Events" row,
+            // where it reads as an unrelated stray event rather than the one marker this skill
+            // cannot work without.
+            lanes.Add(new AnimationVfxTimelineLane(
+                "Delivery",
+                AnimationVfxTimelineLaneKind.Events,
+                new[] { CombatTimelineEventName.DeliveryRelease }));
+        }
     }
 
     public ScriptableObject SourceAsset => skill;

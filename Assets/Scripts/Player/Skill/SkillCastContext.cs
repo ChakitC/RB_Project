@@ -23,6 +23,26 @@ public sealed class SkillCastContext
     /// </summary>
     public CharacteContext CasterContext { get; }
 
+    /// <summary>
+    /// The character this cast was aimed at, locked when the cast started. Never null - a cast
+    /// with no target carries <see cref="SkillTargetHandle.None"/>, so a payload can tell
+    /// "nobody supplied a target" (broken authoring, refund) apart from "the target died"
+    /// (a gameplay outcome, still costs).
+    /// </summary>
+    public SkillTargetHandle PrimaryTarget { get; }
+
+    /// <summary>
+    /// Convenience read of the locked target while it is still alive. Resolved on every access
+    /// and never cached by callers, because the target can be destroyed mid-cast.
+    /// </summary>
+    public CharacteContext PrimaryTargetContext =>
+        PrimaryTarget != null && PrimaryTarget.TryResolveLiveContext(out CharacteContext target)
+            ? target
+            : null;
+
+    /// <summary>True when a caller locked a target onto this cast.</summary>
+    public bool HasPrimaryTarget => SkillTargetHandle.IsAssigned(PrimaryTarget);
+
     /// <summary>Caster's combat event bus, resolved through <see cref="CasterContext"/>.</summary>
     public CombatEventBus CasterEventBus { get; }
 
@@ -45,9 +65,11 @@ public sealed class SkillCastContext
         FinalSkillStats skillStats,
         CharacterAnimBrain animBrain = null,
         int requestId = 0,
-        SkillUpgradeStatSnapshot upgrades = null)
+        SkillUpgradeStatSnapshot upgrades = null,
+        SkillTargetHandle primaryTarget = null)
     {
         User = user;
+        PrimaryTarget = primaryTarget ?? SkillTargetHandle.None;
         SkillDef = skillDef;
         Execution = skillDef != null ? skillDef.payload : null;
         SkillStats = skillStats;

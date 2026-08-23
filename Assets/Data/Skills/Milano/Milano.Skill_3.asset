@@ -1,0 +1,135 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-2599374323665338623
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d6e678f496323bb4e9dc72f7bc29916c, type: 3}
+  m_Name: Targeted Delivery Execution
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  deliveryPrefab: {fileID: 5145004463855992653, guid: 5a0d626bdef5e874c953df43b0c0302f, type: 3}
+  launchAnchorMode: 2
+  launchAnchorChildPath: 
+  launchAnchorBone: 18
+  speed: 12
+  minFlightDuration: 0.15
+  maxFlightDuration: 1.5
+  arcHeight: 1.5
+  arrivalClearance: 0.35
+  spinDegreesPerSecond: {x: 0, y: 360, z: 180}
+  targetInvalidPolicy: 0
+  healMode: 2
+  healFlatAmount: 0
+  healMaxHealthFraction: 0.25
+  statusSpecApplications:
+  - spec:
+      effect: {fileID: 11400000, guid: 3f25dcf2ca671014685425c012e20d0c, type: 2}
+      stacks: 1
+      modifiers: []
+      modifiersOverrideEnabled: 0
+      durationOverride: 0
+      durationOverrideEnabled: 0
+      tickDamageOverride: 0
+      tickDamageOverrideEnabled: 0
+      tickIntervalOverride: 0
+      tickIntervalOverrideEnabled: 0
+  conditionalStatuses:
+    applications: []
+  impactVfxPrefab: {fileID: 0}
+  impactVfxLifetime: 3
+  impactAudio: {fileID: 0}
+  impactAudioVolume: 1
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
+  m_Name: Milano.Skill_3
+  m_EditorClassIdentifier: 
+  icon: {fileID: 21300000, guid: 7155d9be53c76ea48b7b555f8a375d4e, type: 3}
+  displayName: 
+  skillId: milano.skill_3
+  tags: 2
+  description: 
+  baseDamage: 10
+  damageCoefficient: 0
+  baseStaggerPower: 10
+  baseManaCost: 0
+  baseCastTime: 0.5
+  baseCooldown: 30
+  baseMaxCharges: 1
+  baseCritChance: 5
+  baseProjectilesCount: 1
+  projectileSpeed: 5
+  AreaofEffec: 0
+  baseRadius: 0
+  baseEffectDuration: 10
+  baseHealPower: 0
+  upgradeTree: {fileID: 0}
+  payload: {fileID: -2599374323665338623}
+  castCue: {fileID: 0}
+  skillClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes:
+      - 0.4348811
+      - NaN
+      _Callbacks: []
+      _Names:
+      - {fileID: 11400000, guid: bc6a07ea7f58059488700b7b95dddcda, type: 2}
+    _Clip: {fileID: 7618202197648928347, guid: bd4f3c585c3f7934983164565c4f2a24, type: 3}
+    _NormalizedStartTime: NaN
+  ignoreCharacterCollisionDuringRootMotion: 1
+  castPointNormalized: 0.21744055
+  skillVfxEvents: []
+  hitLagDuration: 0.06
+  hitLagTimeScale: 0.05
+  hitLagShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  isCutsceneSkill: 0
+  cutsceneDef:
+    characterCutsceneClip:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    cameraCutsceneClip: {fileID: 0}
+    worldSlowScale: 0.05
+    fadeInDuration: 0.08
+    fadeOutDuration: 0.12
+    barThickness: 0.08
+    cutsceneVfxEvents: []
+  blockablePreCast: 0
+  preCastOpenTimelineEvent: 200
+  preCastCloseTimelineEvent: 201
+  useFallbackPreCastWindow: 1
+  fallbackPreCastOpenNormalized: 0
+  fallbackPreCastCloseNormalized: 0.35
+  preCastIndicatorPrefab: {fileID: 0}
+  cancelPreCastOnStun: 1
+  cancelPreCastOnStagger: 1
+  references:
+    version: 2
+    RefIds: []

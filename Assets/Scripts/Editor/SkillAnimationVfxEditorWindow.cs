@@ -1489,6 +1489,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         if (name == CombatTimelineEventName.HitEnd) return new Color(0.95f, 0.35f, 0.3f);
         if (name == CombatTimelineEventName.Vfx) return new Color(0.65f, 0.35f, 1f);
         if (name == CombatTimelineEventName.HitLag) return new Color(0.95f, 0.85f, 0.25f);
+        if (name == CombatTimelineEventName.DeliveryRelease) return new Color(0.4f, 0.95f, 0.8f);
         return new Color(0.35f, 0.75f, 0.95f);
     }
 

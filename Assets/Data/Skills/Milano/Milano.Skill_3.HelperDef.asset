@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c44d6e64e3da49d5b28dbd7970f4d6b8, type: 3}
+  m_Name: Milano.Skill_3.HelperDef
+  m_EditorClassIdentifier: 
+  helperId: Milano.Skill_3
+  displayName: Milano Supply Drop
+  description: 
+  triggerMode: 1
+  triggerEvent: 2
+  originFilter: 0
+  procChance: 0
+  internalCooldownSeconds: 0
+  requireTarget: 0
+  requireAttackId: 0
+  oncePerAttackId: 0
+  requireOwnerAlive: 1
+  partyHealthThreshold: 0.35
+  queueWhileHelperBusy: 1
+  eligibleRoles: 040000000100000002000000
+  executionSkill: {fileID: 11400000, guid: a310ea9a2e4fe894aa9f5b26d7e36225, type: 2}
+  chainAttackSequence: {fileID: 0}
+  hideHelperOnSkillComplete: 1
+  blockWhileHelperBusy: 1
+  debugLogging: 0

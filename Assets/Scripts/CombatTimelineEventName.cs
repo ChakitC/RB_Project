@@ -13,6 +13,9 @@ public enum CombatTimelineEventName
 
     TauntApply = 30,
 
+    /// <summary>The frame a carried object leaves the caster's hand and starts travelling.</summary>
+    DeliveryRelease = 31,
+
     Vfx = 20,
 
     PreCastOpen = 200,
@@ -55,6 +58,8 @@ public static class CombatTimelineEventNames
                 return "HitLag";
             case CombatTimelineEventName.TauntApply:
                 return "TauntApply";
+            case CombatTimelineEventName.DeliveryRelease:
+                return "DeliveryRelease";
             case CombatTimelineEventName.Vfx:
                 return "Vfx";
             case CombatTimelineEventName.PreCastOpen:

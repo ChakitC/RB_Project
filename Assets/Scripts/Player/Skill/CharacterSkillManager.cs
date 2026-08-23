@@ -7,7 +7,6 @@ using UnityEngine.Serialization;
 public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 {
     static readonly SkillSlot[] EmptyAutonomousSlots = Array.Empty<SkillSlot>();
-    static readonly HelperProcSlot[] EmptyHelperProcSlots = Array.Empty<HelperProcSlot>();
     static readonly CharacterSkillLoadoutOption[] EmptySkillOptions = Array.Empty<CharacterSkillLoadoutOption>();
 
     sealed class ResolvedCommandSlotState
@@ -33,6 +32,17 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     private int observedAutonomousSlotCount = -1;
     private bool commandSlotsBuilt;
 
+    /// <summary>
+    /// The manual command assist, rebuilt from <see cref="CharacterStats.helperCommandSkill"/>.
+    ///
+    /// Runtime-only on purpose: the helper actor is a shared rig, so a prefab-authored entry would
+    /// belong to whoever is currently loaded into it instead of to the character that owns the
+    /// skill. <see cref="observedHelperCommandSkill"/> is what tells us the character changed.
+    /// </summary>
+    private readonly CharacterSkillEntry helperCommandSkillEntry = new();
+    private SkillGemDefinition observedHelperCommandSkill;
+    private bool helperCommandSkillResolved;
+
     readonly List<SkillSlot> resolvedCommandSlots = new();
     readonly List<ResolvedCommandSlotState> resolvedCommandSlotStates = new();
 
@@ -49,14 +59,15 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     [FormerlySerializedAs("slots")]
     [SerializeField] private SkillSlot[] autonomousSlots;
 
-    [Header("Player Command")]
-    [SerializeField] private CharacterSkillEntry playerCommandSkill;
-
     [Header("Chain Attack")]
     [SerializeField] private CharacterSkillEntry chainAttackSkill;
 
-    [Header("Helper Proc Loadout")]
-    [SerializeField] private HelperProcSlot[] helperProcLoadout = EmptyHelperProcSlots;
+    /// <summary>
+    /// Entries for skills driven from outside the serialized loadout (helper assists, scripted
+    /// casts). Kept for the component's lifetime so each definition keeps one runtime instance.
+    /// </summary>
+    private readonly Dictionary<SkillGemDefinition, CharacterSkillEntry> externalSkillEntries =
+        new Dictionary<SkillGemDefinition, CharacterSkillEntry>();
 
     public int LoadOrder => -90;
     public IReadOnlyList<SkillSlot> AutonomousSlots
@@ -68,10 +79,32 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
     }
     public IReadOnlyList<SkillSlot> CommandSlots => AutonomousSlots;
-    public CharacterSkillEntry PlayerCommandSkill => playerCommandSkill;
+    /// <summary>
+    /// The manual command this character performs as a helper, or <c>null</c> when it owns none.
+    ///
+    /// Resolved from <c>ctx.baseStats</c>, never from the prefab: an empty slot on a Helper-role
+    /// character means "no manual command" and must not fall back to anything.
+    /// </summary>
+    public CharacterSkillEntry PlayerCommandSkill
+    {
+        get
+        {
+            CacheReferences();
+            return IsSkillEntryConfigured(helperCommandSkillEntry) ? helperCommandSkillEntry : null;
+        }
+    }
+
     public CharacterSkillEntry ChainAttackSkill => chainAttackSkill;
-    public IReadOnlyList<HelperProcSlot> HelperProcSlots => helperProcLoadout ?? EmptyHelperProcSlots;
-    public bool HasConfiguredPlayerCommandSkill => IsSkillEntryConfigured(playerCommandSkill);
+
+    public bool HasConfiguredPlayerCommandSkill
+    {
+        get
+        {
+            CacheReferences();
+            return IsSkillEntryConfigured(helperCommandSkillEntry);
+        }
+    }
+
     public bool HasConfiguredChainAttackSkill => IsSkillEntryConfigured(chainAttackSkill);
 
     public bool HasConfiguredPassiveSlots
@@ -333,14 +366,12 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     public bool CanStartPlayerCommandSkill()
     {
         CacheReferences();
-        EnsureRuntimeSkill(playerCommandSkill);
-        return playerCommandSkill != null &&
-               playerCommandSkill.runtimeSkill != null &&
+        return helperCommandSkillEntry.runtimeSkill != null &&
                skillUser != null &&
                !CutsceneDirector.IsCinematicPlaying &&
                !IsSkillStartBlockedByAnimation() &&
                !IsSkillUseBlocked() &&
-               playerCommandSkill.runtimeSkill.CanCast(skillUser);
+               helperCommandSkillEntry.runtimeSkill.CanCast(skillUser);
     }
 
     public bool TryGetActiveCast(out ActiveSkillCastInfo castInfo)
@@ -358,7 +389,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     public SkillCastStartResult TryStartPlayerCommandSkill()
     {
         CacheReferences();
-        return TryBeginEntryCast(playerCommandSkill, "player-command");
+        return TryBeginEntryCast(helperCommandSkillEntry, "player-command");
     }
 
     public bool CanStartExternalSkill(CharacterSkillEntry entry, bool ignoreResourceCosts = false)
@@ -380,10 +411,107 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None,
         bool usePlanarRootMotion = false,
         bool ignoreResourceCosts = false,
-        bool stampCooldown = true)
+        bool stampCooldown = true,
+        SkillTargetHandle primaryTarget = null,
+        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal)
     {
         CacheReferences();
-        return TryBeginEntryCast(entry, debugSource, requiredTimelineEvent, usePlanarRootMotion, ignoreResourceCosts, stampCooldown);
+        return TryBeginEntryCast(
+            entry,
+            debugSource,
+            requiredTimelineEvent,
+            usePlanarRootMotion,
+            ignoreResourceCosts,
+            stampCooldown,
+            primaryTarget,
+            costPolicy);
+    }
+
+    /// <summary>
+    /// Starts a skill this character owns at runtime rather than through a serialized slot.
+    ///
+    /// Everything an external caster needs to get right lives on this path: the entry is cached,
+    /// so its <see cref="SkillInstance"/> is created once, and creating it through the manager is
+    /// what binds it to this character's shared charge pool for that definition. Building a
+    /// <c>new SkillInstance</c> by hand instead leaves it on a private throwaway pool, which
+    /// silently gives the skill no cooldown at all.
+    /// </summary>
+    public SkillCastStartResult TryStartExternalSkill(
+        SkillGemDefinition skillDef,
+        string debugSource,
+        CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None,
+        bool usePlanarRootMotion = false,
+        bool stampCooldown = true,
+        SkillTargetHandle primaryTarget = null,
+        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal)
+    {
+        CharacterSkillEntry entry = GetOrCreateExternalEntry(skillDef);
+        if (entry == null)
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+
+        return TryStartExternalSkill(
+            entry,
+            debugSource,
+            requiredTimelineEvent,
+            usePlanarRootMotion,
+            ignoreResourceCosts: false,
+            stampCooldown: stampCooldown,
+            primaryTarget: primaryTarget,
+            costPolicy: costPolicy);
+    }
+
+    /// <summary>Affordability check for the definition-based external cast path.</summary>
+    public bool CanStartExternalSkill(SkillGemDefinition skillDef, SkillCastCostPolicy costPolicy)
+    {
+        CharacterSkillEntry entry = GetOrCreateExternalEntry(skillDef);
+        if (entry == null)
+            return false;
+
+        CacheReferences();
+        EnsureRuntimeSkill(entry);
+
+        if (entry.runtimeSkill == null || skillUser == null)
+            return false;
+
+        if (CutsceneDirector.IsCinematicPlaying || IsSkillStartBlockedByAnimation() || IsSkillUseBlocked())
+            return false;
+
+        return entry.runtimeSkill.CanCast(skillUser, costPolicy, out _);
+    }
+
+    /// <summary>Charge readout for an externally driven skill, for cooldown scheduling and HUD.</summary>
+    public bool TryGetExternalSkillChargeStatus(SkillGemDefinition skillDef, out SkillChargeStatus status)
+    {
+        status = default;
+
+        CharacterSkillEntry entry = GetOrCreateExternalEntry(skillDef);
+        if (entry == null)
+            return false;
+
+        CacheReferences();
+        EnsureRuntimeSkill(entry);
+
+        return entry.runtimeSkill != null &&
+               skillUser != null &&
+               entry.runtimeSkill.TryGetChargeStatus(skillUser, out status);
+    }
+
+    /// <summary>
+    /// One entry per definition, kept for the lifetime of this component. The charge pool itself
+    /// lives in the orchestrator and is keyed by definition, so it would survive a rebuilt entry
+    /// anyway - caching keeps allocation and cast diagnostics stable.
+    /// </summary>
+    private CharacterSkillEntry GetOrCreateExternalEntry(SkillGemDefinition skillDef)
+    {
+        if (skillDef == null)
+            return null;
+
+        if (externalSkillEntries.TryGetValue(skillDef, out CharacterSkillEntry entry) && entry != null)
+            return entry;
+
+        entry = new CharacterSkillEntry { skillAsset = skillDef };
+        externalSkillEntries[skillDef] = entry;
+        return entry;
     }
 
     public bool TryGetChainAttackRuntimeSkill(out SkillInstance runtimeSkill)
@@ -406,15 +534,40 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return true;
     }
 
+    /// <summary>
+    /// Helper procs this actor contributes, sourced only from <see cref="CharacterStats.helperProcs"/>.
+    ///
+    /// Every party-slot rig and the helper actor itself are shared prefabs, so a prefab-authored
+    /// proc would belong to whoever is currently loaded into that rig. Reading from
+    /// <c>ctx.baseStats</c> - the same place command slots come from - keeps the proc tied to the
+    /// character and drops it the moment that character leaves the party.
+    /// </summary>
     public void AppendConfiguredHelperChainDefinitions(List<SkillHelperDef> buffer, HashSet<SkillHelperDef> dedupe = null)
     {
-        if (buffer == null || helperProcLoadout == null)
+        if (buffer == null)
             return;
 
-        for (int i = 0; i < helperProcLoadout.Length; i++)
+        CacheReferences();
+        CharacterStats stats = ctx != null ? ctx.baseStats : null;
+
+        // Only a character authored as a Helper contributes assists. A Stryker fights in the field
+        // and casts from command slots; anything sitting in its Helper Procs list is leftover
+        // authoring, and firing it would summon the helper for a character that never asked to.
+        if (stats != null && stats.IsHelperRole && stats.helperProcs != null)
+            AppendHelperProcSlots(stats.helperProcs, buffer, dedupe);
+    }
+
+    private static void AppendHelperProcSlots(
+        IReadOnlyList<HelperProcSlot> slots,
+        List<SkillHelperDef> buffer,
+        HashSet<SkillHelperDef> dedupe)
+    {
+        if (slots == null)
+            return;
+
+        for (int i = 0; i < slots.Count; i++)
         {
-            HelperProcSlot slot = helperProcLoadout[i];
-            SkillHelperDef definition = slot?.ResolveHelperProc();
+            SkillHelperDef definition = slots[i]?.ResolveHelperProc();
             if (definition == null)
                 continue;
 
@@ -544,7 +697,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None,
         bool usePlanarRootMotion = false,
         bool ignoreResourceCosts = false,
-        bool stampCooldown = true)
+        bool stampCooldown = true,
+        SkillTargetHandle primaryTarget = null,
+        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal)
     {
         CacheReferences();
         EnsureRuntimeSkill(entry);
@@ -572,7 +727,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             usePlanarRootMotion: usePlanarRootMotion,
             ignoreResourceCosts: ignoreResourceCosts,
             stampCooldown: stampCooldown,
-            debugSource: debugSource));
+            debugSource: debugSource,
+            primaryTarget: primaryTarget,
+            costPolicy: costPolicy));
     }
 
     private SkillInstance BuildRuntimeSkill(SkillSlot slot, SkillGemDefinition asset)
@@ -670,7 +827,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     private void RebuildAllRuntimeSkills()
     {
         RebuildResolvedCommandSlots();
-        EnsureRuntimeSkill(playerCommandSkill);
+        RefreshHelperCommandSkill(force: true);
         EnsureRuntimeSkill(chainAttackSkill);
     }
 
@@ -723,8 +880,18 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (ctx == null)
         {
             TryGetComponent(out ctx);
+
+            // includeInactive matters: this manager is routinely asked about a helper actor that
+            // is deactivated between summons, and the default overload skips inactive objects.
+            // Walking ancestors is also what keeps the answer correct - several actors share one
+            // squad root, and a wider search from an inactive actor can surface a sibling
+            // character's context instead of this one's.
             if (ctx == null)
-                ctx = GetComponentInParent<CharacteContext>();
+                ctx = GetComponentInParent<CharacteContext>(true);
+
+            // Last resort for prefabs that host the context below this component.
+            if (ctx == null)
+                ctx = CharacterContextModuleLookup.ResolveContext(this);
         }
 
         ctx?.ResolveReferences();
@@ -777,8 +944,23 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         RefreshResolvedCommandSlotsIfNeeded();
     }
 
+    /// <summary>
+    /// Re-resolves everything this actor takes from its character asset.
+    ///
+    /// Call this when <c>ctx.baseStats</c> is swapped from outside - a helper is loaded with a new
+    /// character while its GameObject is deactivated between summons, so it cannot notice the
+    /// change from its own <c>Update</c>.
+    /// </summary>
+    public void RefreshCharacterOwnedLoadout()
+    {
+        CacheReferences();
+        RefreshResolvedCommandSlotsIfNeeded();
+    }
+
     private void RefreshResolvedCommandSlotsIfNeeded()
     {
+        RefreshHelperCommandSkill(force: false);
+
         CharacterStats currentBaseStats = ctx != null ? ctx.baseStats : null;
         int currentAutonomousSlotCount = autonomousSlots != null ? autonomousSlots.Length : 0;
 
@@ -790,6 +972,51 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
 
         RebuildResolvedCommandSlots();
+    }
+
+    /// <summary>
+    /// Rebuilds the manual command entry from the character currently loaded into this actor.
+    ///
+    /// A Stryker never owns one, and a Helper with an empty slot deliberately owns none - neither
+    /// case falls back to anything. Swapping the definition drops the old runtime instance, so a
+    /// cast still running against it is cancelled rather than left pointing at a skill this
+    /// character no longer has.
+    /// </summary>
+    private void RefreshHelperCommandSkill(bool force)
+    {
+        CharacterStats stats = ctx != null ? ctx.baseStats : null;
+        SkillGemDefinition definition = stats != null && stats.IsHelperRole
+            ? stats.helperCommandSkill
+            : null;
+
+        if (!force && helperCommandSkillResolved && observedHelperCommandSkill == definition)
+            return;
+
+        SkillInstance previousRuntimeSkill = helperCommandSkillEntry.runtimeSkill;
+        observedHelperCommandSkill = definition;
+        helperCommandSkillResolved = true;
+
+        if (previousRuntimeSkill != null && previousRuntimeSkill.def != definition)
+            CancelActiveCastFor(previousRuntimeSkill);
+
+        helperCommandSkillEntry.skillAsset = definition;
+        if (previousRuntimeSkill == null || previousRuntimeSkill.def != definition)
+            helperCommandSkillEntry.runtimeSkill = null;
+
+        EnsureRuntimeSkill(helperCommandSkillEntry);
+    }
+
+    /// <summary>Cancels an in-flight cast, but only when it is the one running <paramref name="runtimeSkill"/>.</summary>
+    private void CancelActiveCastFor(SkillInstance runtimeSkill)
+    {
+        if (runtimeSkill == null || castOrchestrator == null)
+            return;
+
+        if (castOrchestrator.TryGetActiveCast(out ActiveSkillCastInfo castInfo) &&
+            ReferenceEquals(castInfo.RuntimeSkill, runtimeSkill))
+        {
+            castOrchestrator.TryCancelActiveCast(SkillCastCancelReason.InvalidState);
+        }
     }
 
     private void RebuildResolvedCommandSlots()
@@ -1344,8 +1571,17 @@ public readonly struct SkillCastRequest
     public readonly Func<bool> CanProceed;
     public readonly Action OnStarted;
     public readonly int RequestedId;
-    public readonly bool IgnoreResourceCosts;
+    public readonly SkillCastCostPolicy CostPolicy;
     public readonly bool StampCooldown;
+
+    /// <summary>
+    /// Character this cast is aimed at, locked before the animation starts. Never null: a cast
+    /// with no target carries <see cref="SkillTargetHandle.None"/>.
+    /// </summary>
+    public readonly SkillTargetHandle PrimaryTarget;
+
+    /// <summary>Legacy read of <see cref="CostPolicy"/>. True only for the "free of everything" policy.</summary>
+    public bool IgnoreResourceCosts => CostPolicy.IgnoresCharge();
     public readonly bool UseAnimationDriver;
     public readonly bool AllowImmediateFallback;
     public readonly CombatTimelineEventName RequiredTimelineEvent;
@@ -1365,7 +1601,9 @@ public readonly struct SkillCastRequest
         bool allowImmediateFallback = true,
         CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None,
         bool usePlanarRootMotion = false,
-        string debugSource = null)
+        string debugSource = null,
+        SkillTargetHandle primaryTarget = null,
+        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal)
     {
         RuntimeSkill = runtimeSkill;
         SkillUser = skillUser;
@@ -1373,8 +1611,16 @@ public readonly struct SkillCastRequest
         CanProceed = canProceed;
         OnStarted = onStarted;
         RequestedId = requestedId;
-        IgnoreResourceCosts = ignoreResourceCosts;
+
+        // Two ways in, one field. The bool is the original API and stays authoritative for every
+        // caller that never heard of the enum; an explicitly non-Normal policy wins because the
+        // only way to ask for it is to pass it.
+        CostPolicy = costPolicy != SkillCastCostPolicy.Normal
+            ? costPolicy
+            : SkillCastCostPolicies.FromLegacyFlag(ignoreResourceCosts);
+
         StampCooldown = stampCooldown;
+        PrimaryTarget = primaryTarget ?? SkillTargetHandle.None;
         UseAnimationDriver = useAnimationDriver;
         AllowImmediateFallback = allowImmediateFallback;
         RequiredTimelineEvent = requiredTimelineEvent;
@@ -1575,7 +1821,7 @@ public sealed class SkillCastOrchestrator
         // lands halfway through.
         if (!runtimeSkill.TryReserveCast(
                 skillUser,
-                request.IgnoreResourceCosts,
+                request.CostPolicy,
                 request.StampCooldown,
                 out SkillCastReservation reservation))
         {
@@ -1686,10 +1932,7 @@ public sealed class SkillCastOrchestrator
         if (!CanProceed(request))
             return false;
 
-        if (request.IgnoreResourceCosts)
-            return true;
-
-        return runtimeSkill.CanCast(skillUser, out _);
+        return runtimeSkill.CanCast(skillUser, request.CostPolicy, out _);
     }
 
     /// <summary>
@@ -1715,7 +1958,8 @@ public sealed class SkillCastOrchestrator
                 reservation,
                 executionAnimBrain,
                 requestId,
-                out SkillExecutionResult result))
+                out SkillExecutionResult result,
+                request.PrimaryTarget))
         {
             reservation.Release();
             RaiseExecutionFailed(request, requestId, runtimeSkill, skillUser, executionAnimDriver, result);

@@ -48,8 +48,11 @@ MonoBehaviour:
   combatRole: 3
   chainAttackSkill: {fileID: 0}
   introChainCutscene: {fileID: 0}
+  partyRole: 1
   skillSlots: []
   activeSkillPointsPerLevel: 1
+  helperProcs:
+  - helperProc: {fileID: 11400000, guid: 533f2077f349db9479b3f9d25d5d6d0f, type: 2}
   maxHP: 950
   maxStamina: 80
   Damage: 11

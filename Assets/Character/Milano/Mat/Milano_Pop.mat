@@ -46,7 +46,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: bf475fbadd698914b889e808b0c8aec5, type: 3}
+        m_Texture: {fileID: 2800000, guid: 75c5f53dac22f1f4e9e7153330c666cb, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
@@ -59,19 +59,24 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _CharacterCenterCubeSize: 1
     - _Cutoff: 0.531
     - _DepthRimLightOn: 1
     - _DepthRimLightStrength: 0
     - _DitherTexelSize: 20
     - _HairLightFresnelMaskPower: 0.65
-    - _MaterialID: 4
+    - _MaterialID: 1
     - _OffsetShadowDistance: 14.16
     - _RimLightAlign: -0.082
     - _RimLightOverShadow: 0
     - _RimLightSmoothness: 0
     - _RimLightStrength: 0.107
     - _SpecularSize: 0.278
+    - _UseSimpleAABBCutOffForCharacterShadow: 1
     m_Colors:
+    - _CharacterCenterWS: {r: 1.3450351, g: 0.5200007, b: 4.089813, a: 0}
+    - _FaceFrontDirection: {r: 0, g: 0, b: 1, a: 0}
+    - _FaceRightDirection: {r: 1, g: 0, b: 0, a: 0}
     - _RimLightColor: {r: 0.21960786, g: 0.21960786, b: 0.21960786, a: 1}
     - _SpecularColor: {r: 0.95258605, g: 1, b: 0.57169807, a: 1}
   m_BuildTextureStacks: []

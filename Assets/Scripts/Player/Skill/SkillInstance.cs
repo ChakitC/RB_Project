@@ -145,6 +145,33 @@ public class SkillInstance
 
     public bool CanCast(ISkillUser user) => CanCast(user, out _);
 
+    /// <summary>
+    /// Affordability check under a cost policy. <see cref="SkillCastCostPolicy.IgnoreEnergyRespectCharge"/>
+    /// is the reason this exists: plain <see cref="CanCast(ISkillUser, out FinalSkillStats)"/> would
+    /// refuse a free assist whose caster simply has no energy, and the legacy "ignore everything"
+    /// flag would let it fire straight through its own cooldown.
+    /// </summary>
+    public bool CanCast(ISkillUser user, SkillCastCostPolicy costPolicy, out FinalSkillStats stats)
+    {
+        stats = null;
+        if (def == null || def.payload == null || user == null)
+            return false;
+
+        if (costPolicy.IgnoresCharge())
+            return true;
+
+        stats = GetFinalStats(user);
+
+        Charges.Refresh(stats.maxCharges, Time.time);
+        if (!Charges.HasCharge)
+            return false;
+
+        if (!costPolicy.IgnoresEnergy() && user.currentEnagy < stats.manaCost)
+            return false;
+
+        return true;
+    }
+
     public bool Cast(ISkillUser user, CharacterAnimBrain animBrain = null, int requestId = 0)
     {
         return Cast(user, animBrain, requestId, out _);
@@ -206,6 +233,19 @@ public class SkillInstance
         bool stampCooldown,
         out SkillCastReservation reservation)
     {
+        return TryReserveCast(
+            user,
+            SkillCastCostPolicies.FromLegacyFlag(ignoreResourceCosts),
+            stampCooldown,
+            out reservation);
+    }
+
+    public bool TryReserveCast(
+        ISkillUser user,
+        SkillCastCostPolicy costPolicy,
+        bool stampCooldown,
+        out SkillCastReservation reservation)
+    {
         reservation = null;
 
         if (def == null || def.payload == null || user == null)
@@ -221,10 +261,10 @@ public class SkillInstance
         // A free cast still tries for a charge so it can stamp a cooldown, but an empty pool never
         // stops it — that is what "ignores resource costs" means.
         bool chargeReserved = Charges.TryReserve(token, now);
-        if (!ignoreResourceCosts && !chargeReserved)
+        if (!costPolicy.IgnoresCharge() && !chargeReserved)
             return false;
 
-        float energyAmount = ignoreResourceCosts ? 0f : stats.manaCost;
+        float energyAmount = costPolicy.IgnoresEnergy() ? 0f : stats.manaCost;
         bool energyReserved = false;
 
         if (energyAmount > 0f)
@@ -272,7 +312,8 @@ public class SkillInstance
         SkillCastReservation reservation,
         CharacterAnimBrain animBrain,
         int requestId,
-        out SkillExecutionResult result)
+        out SkillExecutionResult result,
+        SkillTargetHandle primaryTarget = null)
     {
         if (reservation == null || def == null || def.payload == null || reservation.User == null)
         {
@@ -283,7 +324,7 @@ public class SkillInstance
         }
 
         var castContext = new SkillCastContext(
-            reservation.User, def, reservation.Stats, animBrain, requestId, upgradeSnapshot);
+            reservation.User, def, reservation.Stats, animBrain, requestId, upgradeSnapshot, primaryTarget);
 
         result = def.payload.ExecuteWithResult(castContext);
         return result.Success;
@@ -293,9 +334,10 @@ public class SkillInstance
         SkillCastReservation reservation,
         CharacterAnimBrain animBrain,
         int requestId,
-        out SkillExecutionResult result)
+        out SkillExecutionResult result,
+        SkillTargetHandle primaryTarget = null)
     {
-        if (!ExecuteReserved(reservation, animBrain, requestId, out result))
+        if (!ExecuteReserved(reservation, animBrain, requestId, out result, primaryTarget))
         {
             reservation.Release();
             return false;

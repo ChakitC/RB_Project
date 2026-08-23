@@ -81,6 +81,40 @@ Rules:
 3. child component when allowed
 4. parent component
 
+## Actor Boundary Invariant
+
+**A character module is always at or below its actor's `CharacteContext`.**
+A context is therefore always **self or an ancestor** of the module asking for it.
+
+This is enforced, not assumed. `CharacterContextModuleLookup.ResolveContext` walks self then
+ancestors (with `includeInactive: true`) and returns `null` if it finds nothing. It never searches
+downwards and never sweeps the scene tree.
+
+Why it has to be that way: party members live side by side under one `PartyRuntimeRoot`, created by
+`PartySpawnPoint.TrySpawnNow`. A downward or root-level search from one actor reaches its
+neighbours, and returning "the first match" there means silently handing back a different
+character's context, bus, or status controller. That is worse than returning nothing, because the
+caller has no way to tell.
+
+`includeInactive` is required throughout for the same reason it is easy to forget: actors are
+routinely inactive. The helper is hidden between summons, and the entire party is built under a
+root that is activated only after binding finishes. A hidden actor is still that actor.
+
+Consequences for authoring:
+
+- A prefab that places a `CombatEventBus` or `StatusEffectController` outside its own context's
+  subtree is an **authoring error**. Every production actor prefab currently satisfies the
+  invariant. Do not "fix" such a prefab by widening the lookup.
+- Sibling branches *within* one actor are fine and supported — the combat bus lives on
+  `GamePlayStats_System`, a child branch, and resolves through
+  `context.GetComponentInChildren<T>(true)`.
+- An object that merely *contains* an actor — a spawn point, a formation node, a pooling container,
+  the party root — is not that actor and resolves to `null`.
+
+History: see `CharacterContextCrossBind_Handoff.md` at the repo root for the bug that produced this
+rule and the evidence behind it.
+
+
 ## Adding A Shared Module
 
 When adding a component/reference used by multiple character types:

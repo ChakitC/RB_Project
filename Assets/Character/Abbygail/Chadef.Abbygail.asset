@@ -50,12 +50,39 @@ MonoBehaviour:
   introChainCutscene: {fileID: 0}
   partyRole: 1
   skillSlots: []
-  activeSkillPointsPerLevel: 1
-  helperProcs:
-  - helperProc: {fileID: 11400000, guid: ee9a73ae9a17aa24a8d64b929173f63d, type: 2}
-  - helperProc: {fileID: 11400000, guid: ad6da32b25db43148aa75f021e358549, type: 2}
-  - helperProc: {fileID: 11400000, guid: 61266ad809f609e40ae69b87f64da449, type: 2}
-  helperCommandSkill: {fileID: 11400000, guid: f287e25a11731234cb79759727212eb8, type: 2}
+  skillPointsPerLevel: 1
+  helperProcSlots:
+  - slotId: abbygail.proc.drop
+    displayName: DROP
+    defaultOptionIndex: 0
+    options:
+    - optionId: abbygail.proc.drop.carrot
+      displayName: 
+      helperProc: {fileID: 11400000, guid: ee9a73ae9a17aa24a8d64b929173f63d, type: 2}
+  - slotId: abbygail.proc.assist
+    displayName: ASSIST
+    defaultOptionIndex: 0
+    options:
+    - optionId: abbygail.proc.assist.pickup
+      displayName: 
+      helperProc: {fileID: 11400000, guid: ad6da32b25db43148aa75f021e358549, type: 2}
+  - slotId: abbygail.proc.chain_attack
+    displayName: CHAIN
+    defaultOptionIndex: 0
+    options:
+    - optionId: abbygail.proc.chain_attack.assault
+      displayName: 
+      helperProc: {fileID: 11400000, guid: 61266ad809f609e40ae69b87f64da449, type: 2}
+  helperCommandSlot:
+    slotId: abbygail.command
+    displayName: COMMAND
+    hotkey: 0
+    defaultOptionIndex: 0
+    options:
+    - optionId: abbygail.command.pickup
+      displayName: 
+      skillAsset: {fileID: 11400000, guid: f287e25a11731234cb79759727212eb8, type: 2}
+      upgradeTreeOverride: {fileID: 0}
   maxHP: 1000
   maxStamina: 80
   Damage: 10

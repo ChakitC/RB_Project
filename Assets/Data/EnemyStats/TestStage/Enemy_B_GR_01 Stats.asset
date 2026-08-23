@@ -48,7 +48,7 @@ MonoBehaviour:
   chainAttackSkill: {fileID: 0}
   introChainCutscene: {fileID: 0}
   skillSlots: []
-  activeSkillPointsPerLevel: 1
+  skillPointsPerLevel: 1
   maxHP: 6330
   maxStamina: 80
   Damage: 80

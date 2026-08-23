@@ -80,7 +80,7 @@ MonoBehaviour:
       displayName: 
       skillAsset: {fileID: 11400000, guid: 017e7afd0b669134396b5761021a3c2b, type: 2}
       upgradeTreeOverride: {fileID: 0}
-  activeSkillPointsPerLevel: 1
+  skillPointsPerLevel: 1
   maxHP: 1250
   maxStamina: 100
   Damage: 8

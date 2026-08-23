@@ -50,9 +50,21 @@ MonoBehaviour:
   introChainCutscene: {fileID: 0}
   partyRole: 1
   skillSlots: []
-  activeSkillPointsPerLevel: 1
-  helperProcs:
-  - helperProc: {fileID: 11400000, guid: 533f2077f349db9479b3f9d25d5d6d0f, type: 2}
+  skillPointsPerLevel: 1
+  helperProcSlots:
+  - slotId: milano.proc.supply_drop
+    displayName: SUPPLY
+    defaultOptionIndex: 0
+    options:
+    - optionId: milano.proc.supply_drop.default
+      displayName: 
+      helperProc: {fileID: 11400000, guid: 533f2077f349db9479b3f9d25d5d6d0f, type: 2}
+  helperCommandSlot:
+    slotId: milano.command
+    displayName: COMMAND
+    hotkey: 0
+    defaultOptionIndex: 0
+    options: []
   maxHP: 950
   maxStamina: 80
   Damage: 11

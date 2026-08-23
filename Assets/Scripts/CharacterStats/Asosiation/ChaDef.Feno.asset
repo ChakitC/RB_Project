@@ -72,7 +72,7 @@ MonoBehaviour:
       displayName: Forgotten Bullet Bag
       skillAsset: {fileID: 11400000, guid: 8d2b0f0e7a7a4f3c9ad6cfe8bd48c181, type: 2}
       upgradeTreeOverride: {fileID: 0}
-  activeSkillPointsPerLevel: 1
+  skillPointsPerLevel: 1
   maxHP: 1100
   maxStamina: 90
   Damage: 9

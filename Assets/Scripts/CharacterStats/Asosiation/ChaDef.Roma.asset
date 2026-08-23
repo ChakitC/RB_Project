@@ -61,7 +61,7 @@ MonoBehaviour:
       supportAssets: []
       maxSupportSlots: 3
       upgradeTreeOverride: {fileID: 0}
-  activeSkillPointsPerLevel: 1
+  skillPointsPerLevel: 1
   maxHP: 900
   maxStamina: 80
   Damage: 14

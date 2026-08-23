@@ -671,6 +671,103 @@ restoring the agent in between.
 The safety-hold invariant remains an unconditional error because a cast must
 never release while its pre-cast hold reservation is active.
 
+## Where Helper Procs Come From
+
+`AllyHelperProcController` builds its proc list from exactly one source: the runtime helper's own
+character asset, reached as
+
+```
+AllyHelperManager.HelperSkillManager -> ctx.baseStats.helperProcs
+```
+
+`Ally_Helper.prefab` and every party-slot rig are shared, so the previous prefab-authored
+`helperDefinitions` array and the collection pass over the other party members' skill managers have
+both been removed. A proc that is not on the loaded helper character does not exist.
+
+The list is cached and rebuilt only when `AllyHelperManager.HelperLoadoutChanged` fires - the helper
+rig being loaded with a different character - or when the helper's `CharacterSkillManager` reference
+itself changes. The combat-bus handler runs on every published event, so it must not re-resolve the
+list each time.
+
+`FieldAllyManager` registration and the per-member `HealthSystem` subscriptions are unrelated to
+this and stay: they are how the threshold trigger finds a recipient.
+
+## Party Health Threshold Helper Proc
+
+`SkillHelperDef.triggerMode` chooses what makes a helper proc fire:
+
+- `CombatEventProc` (default) - the original behaviour: matches a `PassiveEventType` on the combat
+  bus, rolls `procChance`, and honours `internalCooldownSeconds`.
+- `PartyHealthThreshold` - fires deterministically when an eligible party member's health ratio
+  drops to or below `partyHealthThreshold`. **No proc roll**: an assist the player relies on to
+  survive must not be a coin flip.
+
+The two modes never overlap. A threshold def is skipped by the combat-bus path entirely, so the
+same situation cannot fire it twice.
+
+### Eligibility and selection
+
+- `eligibleRoles` defaults to Player / PartySlot1 / PartySlot2. An empty list falls back to that
+  default rather than silently disabling the trigger.
+- The Helper role is **never** eligible: it is the actor performing the assist, so it cannot also
+  be the recipient.
+- Down and dead members are excluded - healing a downed ally would bypass the revive rules.
+- Selection is the lowest health ratio at or below the threshold. Ties go to whoever is closer to
+  the player, so repeated evaluations of the same situation always pick the same recipient.
+
+### Evaluation is event-driven
+
+`AllyHelperProcController` never polls per frame. It re-evaluates on:
+
+- `HealthSystem.HealthChanged` for every registered `FieldAllyMember`
+- `FieldAllyManager.MemberRegistered` / `MemberUnregistered`
+- a **one-shot charge wakeup** - after a cast commits, the charge pool already knows exactly when
+  the next charge lands (`SkillChargeStatus.NextChargeRemaining`), so the controller sleeps that
+  long and re-queries once. It re-queries rather than assuming, because max charges and cooldown
+  both come from stats that could have changed while it waited.
+- a queue drain that runs **only** while a request is waiting for a busy helper, since there is no
+  event for "the helper stopped being busy". A queued request is fully re-validated on release,
+  never replayed blindly - if nobody is hurt any more, it is dropped.
+
+### Cooldown ownership
+
+A threshold proc does **not** stamp `internalCooldownSeconds`. Its cooldown is the execution
+skill's own charge pool, stamped when the cast transaction commits at its cast point. Two timers
+for one assist would put it on two different clocks.
+
+Note that these are genuinely different clocks: `AllyHelperProcController`'s legacy cooldowns run
+on `TimeSlowManager.WorldTime`, while `SkillChargeState` runs on `Time.time`. A threshold proc
+therefore obeys `Time.time`, matching every other skill cooldown in the game.
+
+`internalCooldownSeconds` is untouched and still authoritative for `CombatEventProc` defs.
+
+### Target lock and helper placement
+
+`AllyHelperManager.TrySummonAllyHelperToTarget` locks the target **before** the helper is even
+placed, and never re-resolves it afterwards. An assist that re-picked its recipient halfway through
+the animation would heal whoever happened to be worst off at the moment of impact rather than the
+one the player watched it fly toward.
+
+Placement sweeps eight bearings on a ring around the target, starting on the far side relative to
+the player so the helper does not spawn between the player and whoever they are watching. A single
+random sample that landed in a wall would send the helper back to the player even though the target
+was perfectly reachable from another angle.
+
+If no bearing produces a NavMesh position, placement falls back to the usual ring around the
+player. This is not a failure: the delivery travels to the target regardless of where the helper
+stands. Placement is preflight - failing it entirely leaves no cast, no reservation, and above all
+no cooldown, because nothing was deployed.
+
+### Metered vs legacy helper casts
+
+`AllyHelperManager.ExecuteHelperSkill` routes a cast through the helper's own
+`CharacterSkillManager` only when a `SkillCastCostPolicy` was supplied. That path is the only one
+that binds the runtime skill to a persistent per-definition charge pool.
+
+Legacy helper procs and chain-attack steps deliberately keep the old private-orchestrator path with
+`ignoreResourceCosts: true`. They have always been free and uncapped, and putting every existing
+proc on a cooldown is a separate decision, not a side effect of this feature.
+
 ## Summon Targeting
 
 Summons use `SummonContext` with `AITargetIdentity.Companion`, but they do not

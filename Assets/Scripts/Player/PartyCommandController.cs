@@ -29,6 +29,8 @@ public sealed class PartyCommandController : MonoBehaviour
     public int SelectedPartyCommandIndex => NormalizeSelectedPartyCommandSelection();
     public PartyCommandDefinition[] PartyCommands => partyCommands;
 
+    AllyHelperManager _loadoutSubscribedHelperManager;
+
     void Awake()
     {
         ResolveReferences();
@@ -37,7 +39,42 @@ public sealed class PartyCommandController : MonoBehaviour
 
     void Start()
     {
+        SubscribeHelperLoadout();
         NotifyCommandPointsChanged();
+        RaisePartyCommandLabel();
+    }
+
+    void OnDestroy()
+    {
+        SubscribeHelperLoadout(null);
+    }
+
+    /// <summary>
+    /// The helper command's name and icon come from whatever character is loaded into the helper
+    /// rig, so a party change has to repaint the HUD label even though no command was pressed.
+    /// </summary>
+    void SubscribeHelperLoadout()
+    {
+        ResolveReferences();
+        SubscribeHelperLoadout(playerContext != null ? playerContext.allyHelper : null);
+    }
+
+    void SubscribeHelperLoadout(AllyHelperManager manager)
+    {
+        if (_loadoutSubscribedHelperManager == manager)
+            return;
+
+        if (_loadoutSubscribedHelperManager != null)
+            _loadoutSubscribedHelperManager.HelperLoadoutChanged -= OnHelperLoadoutChanged;
+
+        _loadoutSubscribedHelperManager = manager;
+
+        if (_loadoutSubscribedHelperManager != null)
+            _loadoutSubscribedHelperManager.HelperLoadoutChanged += OnHelperLoadoutChanged;
+    }
+
+    void OnHelperLoadoutChanged()
+    {
         RaisePartyCommandLabel();
     }
 
@@ -653,17 +690,14 @@ public sealed class PartyCommandController : MonoBehaviour
 
         CharacterSkillManager helperSkillManager = helperManager.HelperSkillManager;
         bool hasHelperManualSkill = helperSkillManager != null &&
-                                    (helperSkillManager.HasConfiguredPlayerCommandSkill ||
-                                     helperSkillManager.HasConfiguredCommandSlot(slotIndex));
+                                    helperSkillManager.HasConfiguredPlayerCommandSkill;
         if (!hasHelperManualSkill)
         {
             reason = PartyCommandBlockReason.SkillUnavailable;
             return true;
         }
 
-        bool canStartHelperManualSkill = helperSkillManager.HasConfiguredPlayerCommandSkill
-            ? helperSkillManager.CanStartPlayerCommandSkill()
-            : helperSkillManager.CanStartCastSlot(slotIndex);
+        bool canStartHelperManualSkill = helperSkillManager.CanStartPlayerCommandSkill();
         if (!canStartHelperManualSkill)
         {
             reason = PartyCommandBlockReason.SkillBlocked;
@@ -817,7 +851,7 @@ public sealed class PartyCommandController : MonoBehaviour
         if (!TryGetConfiguredPartyCommand(index, out PartyCommandDefinition command))
             return "Party Command: none";
 
-        string label = $"{command.ResolvedDisplayName} | {command.ClampedCommandPointCost:0.##} CP";
+        string label = $"{ResolveCommandDisplayName(command)} | {command.ClampedCommandPointCost:0.##} CP";
 
         if (TryGetPartyCommandBlockReason(index, command, out PartyCommandBlockReason blockReason))
             return $"{label} [{BuildPartyCommandBlockReasonLabel(index, blockReason)}]";
@@ -887,11 +921,11 @@ public sealed class PartyCommandController : MonoBehaviour
         return $"Cooldown {remainingSeconds:0.0}s";
     }
 
-    PartyCommandLabelData BuildPartyCommandLabelData()
+    public PartyCommandLabelData BuildPartyCommandLabelData()
     {
         int index = NormalizeSelectedPartyCommandSelection();
         if (!TryGetConfiguredPartyCommand(index, out PartyCommandDefinition command))
-            return new PartyCommandLabelData("none", 0f, PartyCommandBlockReason.MissingConfig, 0f);
+            return new PartyCommandLabelData("none", null, 0f, PartyCommandBlockReason.MissingConfig, 0f);
 
         TryGetPartyCommandBlockReason(index, command, out PartyCommandBlockReason blockReason);
 
@@ -899,7 +933,75 @@ public sealed class PartyCommandController : MonoBehaviour
         if (blockReason == PartyCommandBlockReason.Cooldown && _partyCommandReadyAt.TryGetValue(index, out float readyAt))
             cooldownReadyTime = readyAt;
 
-        return new PartyCommandLabelData(command.ResolvedDisplayName, command.ClampedCommandPointCost, blockReason, cooldownReadyTime);
+        return new PartyCommandLabelData(
+            ResolveCommandDisplayName(command),
+            ResolveCommandIcon(command),
+            command.ClampedCommandPointCost,
+            blockReason,
+            cooldownReadyTime);
+    }
+
+    /// <summary>
+    /// Name shown for a command. An explicit <c>displayName</c> always wins; otherwise a helper
+    /// command slot borrows the name of whatever skill the loaded helper character actually owns,
+    /// so swapping the helper renames the command with it.
+    /// </summary>
+    public string ResolveCommandDisplayName(PartyCommandDefinition command)
+    {
+        if (command == null)
+            return "none";
+
+        if (!string.IsNullOrWhiteSpace(command.displayName))
+            return command.displayName.Trim();
+
+        if (command.executionKind == PartyCommandExecutionKind.HelperCommandSlot &&
+            TryGetHelperCommandSkillDefinition(out SkillGemDefinition skillDef))
+        {
+            if (!string.IsNullOrWhiteSpace(skillDef.displayName))
+                return skillDef.displayName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(skillDef.name))
+                return skillDef.name;
+        }
+
+        return command.ResolvedDisplayName;
+    }
+
+    /// <summary>Same precedence as the name: authored icon first, then the resolved helper skill's.</summary>
+    public Sprite ResolveCommandIcon(PartyCommandDefinition command)
+    {
+        if (command == null)
+            return null;
+
+        if (command.icon != null)
+            return command.icon;
+
+        if (command.executionKind == PartyCommandExecutionKind.HelperCommandSlot &&
+            TryGetHelperCommandSkillDefinition(out SkillGemDefinition skillDef))
+        {
+            return skillDef.icon;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The character-owned manual command a helper command slot would actually cast. An empty
+    /// Helper Command Skill deliberately resolves to no skill; command slots are Stryker data and
+    /// are never a fallback for the runtime helper.
+    /// </summary>
+    bool TryGetHelperCommandSkillDefinition(out SkillGemDefinition skillDef)
+    {
+        skillDef = null;
+
+        AllyHelperManager helperManager = playerContext != null ? playerContext.allyHelper : null;
+        CharacterSkillManager helperSkillManager = helperManager != null ? helperManager.HelperSkillManager : null;
+        if (helperSkillManager == null)
+            return false;
+
+        CharacterSkillEntry manualCommand = helperSkillManager.PlayerCommandSkill;
+        skillDef = manualCommand != null ? manualCommand.skillAsset : null;
+        return skillDef != null;
     }
 
     void RaisePartyCommandLabel()
@@ -948,13 +1050,25 @@ public enum PartyCommandBlockReason
 public readonly struct PartyCommandLabelData
 {
     public readonly string CommandName;
+
+    /// <summary>
+    /// Icon to show for the command, or null when neither the command nor the resolved skill has
+    /// one. Carried as data so the HUD can adopt it without this controller knowing about the UI.
+    /// </summary>
+    public readonly Sprite CommandIcon;
     public readonly float CommandPointCost;
     public readonly PartyCommandBlockReason BlockReason;
     public readonly float CooldownReadyTime;
 
-    public PartyCommandLabelData(string commandName, float commandPointCost, PartyCommandBlockReason blockReason, float cooldownReadyTime)
+    public PartyCommandLabelData(
+        string commandName,
+        Sprite commandIcon,
+        float commandPointCost,
+        PartyCommandBlockReason blockReason,
+        float cooldownReadyTime)
     {
         CommandName = commandName;
+        CommandIcon = commandIcon;
         CommandPointCost = commandPointCost;
         BlockReason = blockReason;
         CooldownReadyTime = cooldownReadyTime;

@@ -1268,15 +1268,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   autonomousSlots: []
-  playerCommandSkill:
-    skillAsset: {fileID: 0}
-    runtimeSkill:
-      def: {fileID: 0}
   chainAttackSkill:
     skillAsset: {fileID: 11400000, guid: 67674e00df0c63a47ae012332803a083, type: 2}
     runtimeSkill:
       def: {fileID: 0}
-  helperProcLoadout: []
 --- !u!114 &3091736426749422193
 MonoBehaviour:
   m_ObjectHideFlags: 0

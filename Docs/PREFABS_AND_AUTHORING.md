@@ -975,8 +975,9 @@ by number.
 
 Current supported event keys include common hitbox events (`HitStart`, `HitEnd`),
 pre-cast block events (`PreCastOpen`, `PreCastClose`), the repeatable skill
-presentation event (`Vfx`), the camera shake marker (`ShakeCamera`), and the
-HitLag feedback marker (`HitLag`).
+presentation event (`Vfx`), the camera shake marker (`ShakeCamera`), the
+HitLag feedback marker (`HitLag`), and the carried-object release marker
+(`DeliveryRelease`, see **Targeted Delivery Authoring**).
 
 `GlobalTimeScaleManager` is the single owner of `Time.timeScale`. Pause
 (`UI_Pause`) and HitLag requests are composed through it — pause always wins,
@@ -1011,6 +1012,96 @@ Timeline event authoring is enum-only. New authoring should select enum values
 from the inspector dropdown. Do not add `StringAsset` timeline-event fields back
 for gameplay hitbox or pre-cast flow, and do not reorder existing enum values;
 append new values with explicit numbers.
+
+## Targeted Delivery Authoring
+
+### Delivery prefab
+
+A delivery object (thrown item, food can, dropped supply) is **presentation only**:
+
+- No `Rigidbody`, no `Collider`. `TargetedDeliverySkillPayloadDef` validation reports either as an
+  error. The runtime moves the object itself and it must not collide with, push, or be blocked by
+  anything on the way to its target.
+- Model, renderers, particles, and a trail are all fine.
+- Impact VFX and audio are separate optional references on the payload, not children of the
+  delivery prefab.
+
+### Launch anchor
+
+The payload picks where the object sits before release:
+
+| Mode | Resolves to | Fallback |
+|---|---|---|
+| `CastOrigin` | `ISkillUser.CastOrigin` | caster root |
+| `ChildPath` | `casterRoot.Find(path)` | cast origin, with a warning |
+| `HumanoidBone` | `Animator.GetBoneTransform(bone)` on a humanoid rig | cast origin, with a warning |
+
+A missing anchor is a warning rather than a dropped cast, because character prefabs in this project
+are not uniformly shaped.
+
+### `DeliveryRelease` timeline event
+
+The clip must raise `DeliveryRelease` (see **Combat Timeline Event Authoring**) and it must sit
+**after** `castPointNormalized`:
+
+- at the cast point the payload spawns the object and parents it to the launch anchor
+- at `DeliveryRelease` the object detaches and starts travelling
+
+Authoring the marker at or before the cast point means the object is thrown before it exists. If
+the marker never fires, the runtime cleans up the object and logs an authoring warning once - but
+the cooldown is already spent, because the cast committed at its cast point.
+
+### Character-owned helper loadout
+
+`CharacterStats` declares what a character is used as, under **Skill Loadout > Party Role**:
+
+| Party Role | Authors | Hidden |
+|---|---|---|
+| `Stryker` (default) | `Skill Slots`, `Active Skill Points Per Level` | `Helper Procs`, `Helper Command Skill` |
+| `Helper` | `Helper Procs`, `Helper Command Skill` | `Skill Slots`, `Active Skill Points Per Level` |
+
+A party slot is a shared rig that any character can be loaded into, so the role belongs to the
+character asset, not to a prefab. The inspector hides the half that does not apply, and
+`CharacterSkillManager` only reads the Helper half from a character whose role is `Helper` -
+leftover data in the wrong section never fires.
+
+Author a character's helper assists on its `CharacterStats` asset:
+
+- **Skill Loadout > Helper Procs** - the triggered assists this character contributes.
+- **Skill Loadout > Helper Command Skill** - the single assist the player's manual party command
+  casts while this character is the party helper.
+
+Both are read from the runtime helper's `ctx.baseStats` and from nowhere else. There is no prefab
+fallback and no second source: `CharacterSkillManager.playerCommandSkill`,
+`CharacterSkillManager.helperProcLoadout`, and `AllyHelperProcController.helperDefinitions` have all
+been removed, and procs are no longer collected from the other party members' skill managers.
+
+**An empty slot means "no skill", not "look elsewhere."** A Helper with no Helper Command Skill has
+no manual command, and the party command is reported as `SkillUnavailable`.
+
+Do **not** put helper procs in `skillSlots`. A helper proc is never cast by the player: it fires
+from a trigger and is performed by the helper actor. A command slot would give the character a
+castable hotkey for something they cannot cast.
+
+Do **not** put either on a prefab. `Ally_Helper.prefab` and every party-slot rig are shared
+components that any character is loaded into at runtime, so anything serialized there applies to
+whoever happens to occupy that slot.
+
+Helper Chain Attack is unchanged and is still its own system: it reads
+`CharacterStats.chainAttackSkill` through `FieldAllyMember`, not the fields above.
+
+`CharacterSkillManager.AppendConfiguredHelperChainDefinitions` reads only the loaded Helper's
+`CharacterStats.helperProcs`. `AllyHelperProcController` does not collect definitions from the
+player or other registered party members.
+
+`ActiveSkillScreen` remains a Stryker `skillSlots` editor. It does not display or edit
+`helperCommandSkill` or `helperProcs`; those fields are authored directly on the Helper's
+`CharacterStats` asset in this feature.
+
+The persistent charge pool still works with a shared prefab because it is keyed by
+`SkillGemDefinition` inside the helper's own orchestrator, and the helper GameObject is only ever
+`SetActive`-toggled between summons, never destroyed. Charges recharge on timestamps, so a cooldown
+keeps running while the helper is hidden.
 
 ## Skill Timeline VFX Authoring
 

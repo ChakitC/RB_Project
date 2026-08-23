@@ -86,6 +86,54 @@ The migrated gameplay scenes are:
 - `State_1`
 - `BoosTest`
 
+## Character-Owned Helper Loadout
+
+`Ally_Helper.prefab` is a single shared actor: `PartyRuntimeBinder` binds it once via
+`AllyHelperManager.BindHelper`, and from then on it is only ever `SetActive`-toggled, never
+re-instantiated per summon.
+
+Because it is shared, nothing character-specific may be serialized on it. Both halves of the helper
+loadout live on the character asset loaded into the helper slot (party index 3):
+
+| Data | Source |
+|---|---|
+| Helper procs | `helperContext.baseStats.helperProcs` |
+| Manual party command | `helperContext.baseStats.helperCommandSkill` |
+
+`CharacterSkillManager` resolves both from `ctx.baseStats`, and `AllyHelperProcController` reads its
+proc list only from `AllyHelperManager.HelperSkillManager`. There is no prefab-authored fallback and
+no collection from the other party members. An empty slot means the character has no such skill.
+
+Helper Chain Attack is unaffected: it still comes from `CharacterStats.chainAttackSkill` through
+`FieldAllyMember`.
+
+### Swapping the loaded character at runtime
+
+The helper GameObject is deactivated between summons, so it cannot notice a party change from its
+own `Update`. The refresh is event-driven instead:
+
+`CharacterContextPartyLoader.BaseStatsChanged` → `AllyHelperManager.OnHelperCharacterChanged` →
+`CharacterSkillManager.RefreshCharacterOwnedLoadout()` + `AllyHelperManager.HelperLoadoutChanged`
+
+`AllyHelperProcController` and `PartyCommandController` subscribe to `HelperLoadoutChanged` and
+rebuild their proc list and HUD label from it. Swapping the character cancels any cast still running
+against the previous character's skill.
+
+If the helper rig is loaded with a character that has no stats, or one authored as `Stryker`,
+`AllyHelperManager` logs one warning per invalid state and the helper contributes nothing.
+
+Runtime state has the opposite ownership. `CharacterStats` and the skill/helper ScriptableObjects
+hold configuration only - definitions, payloads, trigger settings, presentation. Cooldown remaining,
+charge state, the locked target, and any active delivery runtime are runtime state and live with the
+party actor and its managers.
+
+The charge pool for a helper assist lives in the helper's own `CharacterSkillManager` orchestrator,
+keyed by `SkillGemDefinition`. That survives the helper being hidden between summons, and because
+`SkillChargeState` recharges on timestamps rather than ticks, the cooldown keeps running while the
+helper GameObject is inactive. Charges are not persisted across a scene load - they reset to full,
+matching every other skill in the game.
+
+
 ## Validation
 
 Run **Tools > RB > Party > Run Party Spawn Smoke Tests**. The tests validate the

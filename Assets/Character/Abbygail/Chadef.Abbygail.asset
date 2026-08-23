@@ -48,8 +48,14 @@ MonoBehaviour:
   combatRole: 0
   chainAttackSkill: {fileID: 0}
   introChainCutscene: {fileID: 0}
+  partyRole: 1
   skillSlots: []
   activeSkillPointsPerLevel: 1
+  helperProcs:
+  - helperProc: {fileID: 11400000, guid: ee9a73ae9a17aa24a8d64b929173f63d, type: 2}
+  - helperProc: {fileID: 11400000, guid: ad6da32b25db43148aa75f021e358549, type: 2}
+  - helperProc: {fileID: 11400000, guid: 61266ad809f609e40ae69b87f64da449, type: 2}
+  helperCommandSkill: {fileID: 11400000, guid: f287e25a11731234cb79759727212eb8, type: 2}
   maxHP: 1000
   maxStamina: 80
   Damage: 10
@@ -67,7 +73,6 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
-  passives: []
   dashCue: {fileID: 0}
   voiceProfile:
     defaultSkillVoiceCue: {fileID: 11400000, guid: c8879417815035e46b25d699e3bdb92c, type: 2}

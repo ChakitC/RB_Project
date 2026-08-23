@@ -550,6 +550,104 @@ duration at least as long as the morph) and give it an `effectId` that does not
 collide with normally applied buffs, because `RemoveEffect` matches by definition
 reference and then by `effectId`.
 
+## Cast Target Contract
+
+A cast can be aimed at one specific character. That character travels with the cast as a
+`SkillTargetHandle` (`Assets/Scripts/Player/Skill/Targeting/SkillTargetHandle.cs`), never as a raw
+`CharacteContext` reference.
+
+The reason is that a destroyed Unity object reads as fake-null, which is indistinguishable from
+"the caller never supplied a target" - and those two cases have to settle the cast transaction in
+opposite directions:
+
+| State | `WasAssigned` | Meaning | Transaction |
+|---|---|---|---|
+| No target ever supplied | `false` | Broken wiring | Payload returns `Failed(MissingRuntimeContext)`, everything refunds |
+| Target locked, still alive | `true` | Normal | Effects land on arrival |
+| Target locked, then destroyed | `true` | Gameplay outcome | Cast still costs, no effects land |
+
+API:
+
+- `TryResolveLiveContext(out CharacteContext)` - owns the fake-null check and clears its own cached
+  reference. Callers must never write `context == null` themselves.
+- `TryResolveEffectTarget(out CharacteContext)` - additionally requires the target be active and
+  alive. Existence and eligibility are separate questions: a downed ally still has a live
+  reference, so a delivery still flies to them, but nothing lands.
+- `ResolveDeliveryPoint(float clearance)` - world point above the target's head, resolved lazily.
+  While the target lives it recomputes from bounds and refreshes its cache; once the target is gone
+  the cached point is returned. That cached point is the last one the system successfully resolved,
+  **not** the position at the exact frame of destruction - without a per-frame ticker that frame is
+  not observable.
+- `OriginalInstanceId` is diagnostics only. Never look an object back up by instance id and
+  substitute it for the original target: a cast locks one actor and must not silently retarget.
+
+The handle rides on `SkillCastRequest.PrimaryTarget` and arrives at the payload as
+`SkillCastContext.PrimaryTarget`. It is deliberately **not** stored in `SkillCastExecutionState`,
+which is scratch space for passing output between payloads inside one cast, not cast input.
+
+## Cast Cost Policy
+
+`SkillCastCostPolicy` (`Assets/Scripts/Player/Skill/SkillCastCostPolicy.cs`) replaces the two-state
+`ignoreResourceCosts` boolean with three:
+
+| Policy | Energy | Charge |
+|---|---|---|
+| `Normal` | paid | required |
+| `IgnoreEnergyAndCharge` | free | empty pool does not block |
+| `IgnoreEnergyRespectCharge` | free | required |
+
+`IgnoreEnergyAndCharge` is exactly what `ignoreResourceCosts: true` has always meant, and the
+boolean still maps to it, so guaranteed interruptions and chain-attack steps are unchanged.
+
+`IgnoreEnergyRespectCharge` exists for assists that cost the party nothing but must stay on their
+own cooldown. It is the policy used by helper assists driven through
+`CharacterSkillManager.TryStartExternalSkill`.
+
+Both the boolean and the enum are accepted by `SkillCastRequest`; an explicitly non-`Normal` policy
+wins, because the only way to ask for one is to pass it.
+
+### Targeted Delivery Payload
+
+`TargetedDeliverySkillPayloadDef` carries an object from the caster's hand to the cast's locked
+target, then heals and buffs them on arrival. It contains no reference to any particular caster, so
+a player, a companion, or a summoned helper can all drive the same asset.
+
+Authoring:
+
+| Group | Field | Notes |
+|---|---|---|
+| Delivery | Delivery Prefab | Presentation only. A Rigidbody or Collider on it is a validation error. |
+| Delivery | Launch Anchor | `CastOrigin`, `ChildPath`, or `HumanoidBone`. Falls back to the cast origin with a warning. |
+| Flight | Speed / Min / Max Duration | `duration = Clamp(distance / speed, min, max)` |
+| Flight | Arc Height | Sine hump: zero lift at both ends, full height at the midpoint. |
+| Flight | Arrival Clearance | Extra height above the target's bounds. |
+| Flight | If Target Is Lost | `PresentAtLastKnownPoint` (default) or `DespawnImmediately`. |
+| Arrival | Heal Mode | `None`, `Flat`, or `PercentMaxHealth`. A flat amount of 0 falls back to the skill's Heal Power stat. |
+| Arrival | Status Effects | Standard `StatusApplicationSpec` list plus a conditional route. |
+| Feedback | Impact VFX / Audio | Optional. |
+
+Runtime (`TargetedDeliveryRuntime`) lives on its own root GameObject, not on the caster - a helper
+is deactivated the moment its animation ends, and a delivery parented to it would freeze or vanish.
+
+```
+Attached --DeliveryRelease--> InFlight --> Finished
+        \--interrupt/timeout--> Finished (nothing lands)
+```
+
+- The payload returns `Succeeded` only once the object exists and every subscription is live. The
+  cast transaction commits on that result, so returning earlier would stamp a cooldown for a
+  delivery that could never arrive.
+- Interrupt **before** release: the object is destroyed, nothing lands, and the cooldown is **not**
+  refunded - the cast already passed its cast point and committed.
+- Interrupt **after** release: the object belongs to the world and finishes its flight regardless.
+- The release marker is accepted exactly once, so a duplicate marker cannot relaunch a delivery.
+- Two backstops: an attached timeout (animation ended with no marker - logs an authoring warning
+  once) and an in-flight timeout (`maxFlightDuration` plus a margin).
+- No Rigidbody, no Collider, no physics query anywhere in the flight.
+
+Requires a `DeliveryRelease` timeline event on the clip, authored **after** `castPointNormalized` so
+the object is in hand before it detaches.
+
 ## Timeline VFX
 
 Skill-level animation VFX are authored in the scene or Prefab Mode through
@@ -1654,12 +1752,32 @@ Everything reads that one pool:
 | Caller | Path |
 | --- | --- |
 | Command slot | `CanStartCastSlot` → `SkillInstance.CanCast` |
-| Player command / external cast | `CanStartPlayerCommandSkill`, `CanStartExternalSkill` |
+| Helper manual command / external cast | `CanStartPlayerCommandSkill`, `CanStartExternalSkill` |
 | HUD | `CharacterSkillManager.TryGetSlotChargeStatus` |
 
 `SkillSlot.runtimeSkill` is Unity-serialized, so a prefab can supply an instance
 that never went through the factory. `EnsureCommandRuntimeSkill` /
 `EnsureRuntimeSkill` re-bind any instance reporting `HasBoundCharges == false`.
+
+### The helper manual command is character-owned
+
+Despite the legacy `PlayerCommandSkill` name, this entry is **not** prefab-authored and does not
+belong to the player. It is built at runtime from
+`ctx.baseStats.helperCommandSkill`, and only when that character's
+`partyRole` is `Helper`. `CharacterStats.skillSlots` is authoritative for command slots the same
+way, so both halves of a character's loadout now come from the same asset.
+
+- The serialized `CharacterSkillManager.playerCommandSkill` field has been removed. There is no
+  prefab fallback: an empty `Helper Command Skill` means the character has no manual command.
+- The runtime entry goes through `CreateRuntimeSkill` / `BindSharedCharges` like any other, so it
+  draws from the same shared charge pool as a command slot holding the same skill.
+- Swapping `ctx.baseStats` rebuilds the entry. A cast still running against the previous
+  character's instance is cancelled with `SkillCastCancelReason.InvalidState`; the same swap also
+  invalidates it through `IsSkillEntryCastStillValid`.
+- Call `CharacterSkillManager.RefreshCharacterOwnedLoadout()` after changing `ctx.baseStats` from
+  outside. The helper actor is deactivated between summons, so its own `Update` cannot notice.
+
+`chainAttackSkill` is untouched by all of this and remains prefab-authored.
 
 Querying a skill that has never been cast returns a **full** pool (`1/1`, `2/2`),
 not a failure — the pool is created on demand.

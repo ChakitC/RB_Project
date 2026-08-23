@@ -23,6 +23,15 @@ public class AllyHelperManager : MonoBehaviour
     {
         public int requestId;
         public SkillGemDefinition skillDef;
+
+        /// <summary>Target locked before the animation started. Never retargeted mid-cast.</summary>
+        public SkillTargetHandle target = SkillTargetHandle.None;
+
+        /// <summary>
+        /// Non-null only for the targeted path, which routes through the helper's own
+        /// <see cref="CharacterSkillManager"/> so the skill keeps a real charge pool.
+        /// </summary>
+        public SkillCastCostPolicy? costPolicy;
     }
 
     sealed class PendingChainAttackSequence
@@ -76,12 +85,20 @@ public class AllyHelperManager : MonoBehaviour
     bool lastCompletedChainAttackExecutionSucceeded;
     readonly Collider[] _chainTargetBuffer = new Collider[MaxChainTargetColliders];
     readonly HashSet<int> _chainTargetIds = new();
+    CharacterContextPartyLoader allyPartyLoader;
+    bool _warnedInvalidHelperCharacter;
     bool _helperProtectionApplied;
     int _helperInvincibilityToken;
     int _helperUntargetableToken;
     bool _cinematicHold;
 
     public event Action<CharacterAnimBrain, CharacterAnimBrain> HelperAnimBrainChanged;
+
+    /// <summary>
+    /// Raised when the character loaded into the helper rig changes, so its manual command and
+    /// helper procs now come from a different character asset.
+    /// </summary>
+    public event Action HelperLoadoutChanged;
 
     public bool IsHelperActive => allyHelper != null && allyHelper.activeSelf;
     public GameObject HelperObject => allyHelper;
@@ -112,12 +129,20 @@ public class AllyHelperManager : MonoBehaviour
         if (helperContext == null)
             throw new ArgumentNullException(nameof(helperContext));
 
+        bool changed = allyContext != helperContext;
+
         if (playerContext == null)
             playerContext = GetComponent<PlayerContext>();
 
         allyContext = helperContext;
         allyHelper = helperContext.gameObject;
+        _warnedInvalidHelperCharacter = false;
         CacheHelperReferences();
+        HelperSkillManager?.RefreshCharacterOwnedLoadout();
+        ValidateHelperCharacter();
+
+        if (changed)
+            HelperLoadoutChanged?.Invoke();
     }
 
     public bool IsChainAttackExecutionReadyToContinue(int executionId)
@@ -170,8 +195,7 @@ public class AllyHelperManager : MonoBehaviour
     public bool HasConfiguredCommandSlot(int slotIndex = 0)
     {
         CharacterSkillManager skillManager = HelperSkillManager;
-        return skillManager != null &&
-               (skillManager.HasConfiguredPlayerCommandSkill || skillManager.HasConfiguredCommandSlot(slotIndex));
+        return skillManager != null && skillManager.HasConfiguredPlayerCommandSkill;
     }
 
     public bool TryExecuteCommandSlot(int slotIndex = 0, bool hideOnSkillComplete = true)
@@ -180,11 +204,12 @@ public class AllyHelperManager : MonoBehaviour
             return false;
 
         CharacterSkillManager skillManager = HelperSkillManager;
-        bool hasManualSkill = skillManager != null &&
-                              (skillManager.HasConfiguredPlayerCommandSkill ||
-                               skillManager.HasConfiguredCommandSlot(slotIndex));
+        bool hasManualSkill = skillManager != null && skillManager.HasConfiguredPlayerCommandSkill;
         if (!hasManualSkill)
         {
+            // Player-initiated, so this is the right moment to say why nothing happened.
+            ValidateHelperCharacter();
+
             if (activatedNow)
                 HideHelperImmediate();
 
@@ -199,9 +224,7 @@ public class AllyHelperManager : MonoBehaviour
         ApplyTemporaryHelperSkillAutonomy();
         allyHelperFader?.BeginAnimationLifecycle(hideOnSkillComplete);
 
-        SkillCastStartResult result = skillManager.HasConfiguredPlayerCommandSkill
-            ? skillManager.TryStartPlayerCommandSkill()
-            : skillManager.TryStartCastSlot(slotIndex);
+        SkillCastStartResult result = skillManager.TryStartPlayerCommandSkill();
         if (!result.Started)
         {
             RestoreHelperSkillAutonomy();
@@ -268,6 +291,81 @@ public class AllyHelperManager : MonoBehaviour
         RestoreHelperProtection();
         SubscribeToHelperFader(null);
         SubscribeToAnimBrain(null);
+        SubscribeToHelperPartyLoader(null);
+    }
+
+    CharacterContextPartyLoader ResolveHelperPartyLoader()
+    {
+        if (allyHelper == null)
+            return null;
+
+        CharacterContextPartyLoader loader = allyContext != null ? allyContext.CharacterLoad : null;
+        if (loader == null)
+            loader = allyHelper.GetComponent<CharacterContextPartyLoader>();
+
+        return loader;
+    }
+
+    void SubscribeToHelperPartyLoader(CharacterContextPartyLoader loader)
+    {
+        if (allyPartyLoader == loader)
+            return;
+
+        if (allyPartyLoader != null)
+            allyPartyLoader.BaseStatsChanged -= OnHelperCharacterChanged;
+
+        allyPartyLoader = loader;
+
+        if (allyPartyLoader != null)
+            allyPartyLoader.BaseStatsChanged += OnHelperCharacterChanged;
+    }
+
+    /// <summary>
+    /// The helper rig is shared, so loading a different character into it replaces both the manual
+    /// command and the helper procs. Anything already running belonged to the previous character
+    /// and is dropped rather than finished with the new one's skill.
+    /// </summary>
+    void OnHelperCharacterChanged(CharacterStats previous, CharacterStats current)
+    {
+        _warnedInvalidHelperCharacter = false;
+
+        CancelPendingHelperSkill();
+        CompletePendingChainAttackSequence(false);
+
+        HelperSkillManager?.RefreshCharacterOwnedLoadout();
+        ValidateHelperCharacter();
+
+        HelperLoadoutChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// A helper rig loaded with a character that is not authored as a Helper contributes nothing -
+    /// no manual command, no procs. That is an authoring mistake worth one line in the console, but
+    /// only one: the check runs again on every character swap. An empty skill slot on a valid
+    /// Helper is silent, because "this helper has no manual command" is a real authoring choice.
+    /// </summary>
+    void ValidateHelperCharacter()
+    {
+        if (_warnedInvalidHelperCharacter)
+            return;
+
+        CharacterStats stats = allyContext != null ? allyContext.baseStats : null;
+        if (stats == null)
+        {
+            _warnedInvalidHelperCharacter = true;
+            Debug.LogWarning(
+                "[AllyHelperManager] Helper rig has no character stats loaded; helper procs and the manual command are unavailable.",
+                this);
+            return;
+        }
+
+        if (!stats.IsHelperRole)
+        {
+            _warnedInvalidHelperCharacter = true;
+            Debug.LogWarning(
+                $"[AllyHelperManager] Character '{stats.name}' is loaded into the helper rig but is authored as {stats.partyRole}; helper procs and the manual command are unavailable.",
+                this);
+        }
     }
 
     void OnDisable()
@@ -293,11 +391,46 @@ public class AllyHelperManager : MonoBehaviour
         TrySummonAllyHelper(null);
     }
 
+    /// <summary>
+    /// Summons the helper next to <paramref name="targetContext"/> and casts an assist aimed at it.
+    ///
+    /// The target is locked before the helper is even placed, and never re-resolved afterwards: an
+    /// assist that re-picked its recipient halfway through the animation would heal whoever happened
+    /// to be worst off at the moment of impact rather than the one the player watched it fly toward.
+    /// </summary>
+    public bool TrySummonAllyHelperToTarget(
+        SkillGemDefinition skillDef,
+        CharacteContext targetContext,
+        bool hideOnSkillComplete = true,
+        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.IgnoreEnergyRespectCharge)
+    {
+        if (skillDef == null || targetContext == null)
+            return false;
+
+        SkillTargetHandle target = SkillTargetHandle.For(targetContext);
+
+        // Placement is preflight. Failing here must leave no trace: no cast, no reservation, and
+        // above all no cooldown, because nothing was deployed.
+        Vector3? preferredPosition = ResolvePositionNearTarget(targetContext);
+
+        return TrySummonAllyHelper(skillDef, hideOnSkillComplete, target, costPolicy, preferredPosition);
+    }
+
     public bool TrySummonAllyHelper(
         SkillGemDefinition skillDef,
         bool hideOnSkillComplete = true)
     {
-        if (!TryPrepareHelperForSummon(out bool activatedNow))
+        return TrySummonAllyHelper(skillDef, hideOnSkillComplete, SkillTargetHandle.None, null, null);
+    }
+
+    bool TrySummonAllyHelper(
+        SkillGemDefinition skillDef,
+        bool hideOnSkillComplete,
+        SkillTargetHandle target,
+        SkillCastCostPolicy? costPolicy,
+        Vector3? preferredPosition)
+    {
+        if (!TryPrepareHelperForSummon(out bool activatedNow, preferredPosition))
             return false;
 
         LastExecutionSucceeded = false;
@@ -326,7 +459,15 @@ public class AllyHelperManager : MonoBehaviour
         {
             requestId = requestId,
             skillDef = skillDef,
+            target = target ?? SkillTargetHandle.None,
+            costPolicy = costPolicy,
         };
+
+        if (SkillTargetHandle.IsAssigned(pendingHelperSkill.target) &&
+            pendingHelperSkill.target.TryResolveLiveContext(out CharacteContext lockedTarget))
+        {
+            FaceHelperAt(lockedTarget.transform.position);
+        }
 
         if (logHelperExecution)
             Debug.Log($"[AllyHelperManager] Starting helper skill '{skillDef.name}' with request {requestId}.", this);
@@ -511,6 +652,8 @@ public class AllyHelperManager : MonoBehaviour
         allyContext?.ResolveReferences();
         allyBehaviorTree = allyHelper.GetComponent<BehaviorTree>();
 
+        SubscribeToHelperPartyLoader(ResolveHelperPartyLoader());
+
         if (allyContext != null && allyContext.AITargetSensor == null)
             allyContext.AITargetSensor = allyHelper.GetComponent<AITargetSensor>();
 
@@ -654,7 +797,7 @@ public class AllyHelperManager : MonoBehaviour
             allyHelperFader.Deactivated += OnHelperFaderDeactivated;
     }
 
-    bool TryPrepareHelperForSummon(out bool activatedNow)
+    bool TryPrepareHelperForSummon(out bool activatedNow, Vector3? preferredPosition = null)
     {
         activatedNow = false;
 
@@ -675,7 +818,11 @@ public class AllyHelperManager : MonoBehaviour
         }
 
         Vector3 playerPos = playerContext.transform.position;
-        Vector3 finalSpawnPos = ResolveSummonPosition(playerPos);
+
+        // A targeted assist wants to arrive next to its recipient, but a spot that no longer fits
+        // is not worth failing the whole cast over - the ring around the player is always valid,
+        // and the delivery itself travels to the target regardless of where the helper stands.
+        Vector3 finalSpawnPos = preferredPosition ?? ResolveSummonPosition(playerPos);
 
         allyHelper.transform.position = finalSpawnPos;
         
@@ -779,8 +926,15 @@ public class AllyHelperManager : MonoBehaviour
         if (helperSkill.skillDef == null)
             return;
 
-        if (!ExecuteHelperSkill(helperSkill.skillDef, applyFacing: true, requestId))
+        if (!ExecuteHelperSkill(
+                helperSkill.skillDef,
+                applyFacing: true,
+                requestId,
+                helperSkill.target,
+                helperSkill.costPolicy))
+        {
             LastExecutionSucceeded = false;
+        }
     }
 
     void CancelPendingHelperSkill()
@@ -1216,7 +1370,12 @@ public class AllyHelperManager : MonoBehaviour
             allyAgent.nextPosition = allyHelper.transform.position;
     }
 
-    bool ExecuteHelperSkill(SkillGemDefinition skillDef, bool applyFacing, int requestId = 0)
+    bool ExecuteHelperSkill(
+        SkillGemDefinition skillDef,
+        bool applyFacing,
+        int requestId = 0,
+        SkillTargetHandle target = null,
+        SkillCastCostPolicy? costPolicy = null)
     {
         if (skillDef == null)
             return false;
@@ -1225,6 +1384,17 @@ public class AllyHelperManager : MonoBehaviour
         {
             Debug.LogWarning($"Helper skill '{skillDef.name}' requires an ISkillUser on the helper actor.", this);
             return false;
+        }
+
+        // A cast that declared a cost policy is asking to be metered, so it has to go through the
+        // helper's own CharacterSkillManager - that is the only path that binds the runtime skill
+        // to a charge pool which survives the helper being hidden between summons. Legacy helper
+        // procs deliberately keep the old private-orchestrator path: they have always been free and
+        // uncapped, and quietly putting every existing proc on a cooldown is not this change's job.
+        if (costPolicy.HasValue)
+        {
+            return ExecuteMeteredHelperSkill(
+                skillDef, applyFacing, requestId, target, costPolicy.Value);
         }
 
         EnsureHelperSkillCastOrchestrator();
@@ -1259,6 +1429,119 @@ public class AllyHelperManager : MonoBehaviour
 
         Debug.LogWarning($"Helper skill '{skillDef.name}' could not execute. Check helper payload or legacy projectile setup.", this);
         return false;
+    }
+
+    /// <summary>
+    /// Runs a helper skill through the helper's own <see cref="CharacterSkillManager"/>, which
+    /// binds it to a persistent per-definition charge pool. The helper GameObject is only ever
+    /// deactivated between summons, never destroyed, and charges recharge on timestamps, so a
+    /// cooldown started here keeps running while the helper is hidden.
+    /// </summary>
+    bool ExecuteMeteredHelperSkill(
+        SkillGemDefinition skillDef,
+        bool applyFacing,
+        int requestId,
+        SkillTargetHandle target,
+        SkillCastCostPolicy costPolicy)
+    {
+        CharacterSkillManager skillManager = HelperSkillManager;
+        if (skillManager == null)
+        {
+            Debug.LogWarning(
+                $"Helper skill '{skillDef.name}' needs a CharacterSkillManager on the helper actor to run metered.",
+                this);
+            return false;
+        }
+
+        if (applyFacing)
+            ApplyHelperSkillFacing(skillDef);
+
+        if (logHelperExecution)
+            Debug.Log($"[AllyHelperManager] Executing metered helper skill '{skillDef.name}'.", this);
+
+        SkillCastStartResult result = skillManager.TryStartExternalSkill(
+            skillDef,
+            debugSource: $"helper:{skillDef.name}",
+            requiredTimelineEvent: CombatTimelineEventName.None,
+            usePlanarRootMotion: false,
+            stampCooldown: true,
+            primaryTarget: target,
+            costPolicy: costPolicy);
+
+        if (result.Started)
+        {
+            TryPlayHelperSkillVoice(skillDef);
+            return true;
+        }
+
+        Debug.LogWarning(
+            $"Helper skill '{skillDef.name}' could not execute through the helper skill manager.",
+            this);
+        return false;
+    }
+
+    /// <summary>
+    /// NavMesh spot beside <paramref name="targetContext"/>, or null when nothing around it is
+    /// usable and the caller should fall back to the ring around the player.
+    /// </summary>
+    Vector3? ResolvePositionNearTarget(CharacteContext targetContext)
+    {
+        if (targetContext == null)
+            return null;
+
+        Vector3 targetPos = targetContext.transform.position;
+        float radius = Mathf.Max(minSummonRadius, 0.1f);
+
+        // Sweep several bearings rather than one random spot: a single sample that lands in a wall
+        // would send the helper back to the player even though the target was perfectly reachable
+        // from the other side.
+        const int CandidateCount = 8;
+        float bearingStep = 360f / CandidateCount;
+
+        // Start behind the target relative to the player so the helper does not spawn between the
+        // player and whoever they are watching.
+        float startBearing = 0f;
+        if (playerContext != null)
+        {
+            Vector3 fromPlayer = targetPos - playerContext.transform.position;
+            fromPlayer.y = 0f;
+            if (fromPlayer.sqrMagnitude > 0.0001f)
+                startBearing = Quaternion.LookRotation(fromPlayer.normalized, Vector3.up).eulerAngles.y;
+        }
+
+        for (int i = 0; i < CandidateCount; i++)
+        {
+            float bearing = startBearing + (i * bearingStep);
+            Vector3 offset = Quaternion.Euler(0f, bearing, 0f) * (Vector3.forward * radius);
+            Vector3 candidate = targetPos + offset;
+
+            if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, navMeshSampleDistance, NavMesh.AllAreas))
+                return hit.position;
+        }
+
+        return null;
+    }
+
+    /// <summary>Turns the helper to face a world point, keeping its NavMeshAgent in sync.</summary>
+    void FaceHelperAt(Vector3 worldPoint)
+    {
+        if (allyHelper == null)
+            return;
+
+        Transform facingOrigin = allySkillUser != null && allySkillUser.CastOrigin != null
+            ? allySkillUser.CastOrigin
+            : allyHelper.transform;
+
+        Vector3 lookDir = worldPoint - facingOrigin.position;
+        lookDir.y = 0f;
+
+        if (lookDir.sqrMagnitude <= 0.001f)
+            return;
+
+        allyHelper.transform.rotation = Quaternion.LookRotation(lookDir.normalized, Vector3.up);
+
+        if (allyAgent != null && allyAgent.enabled && allyAgent.isOnNavMesh)
+            allyAgent.nextPosition = allyHelper.transform.position;
     }
 
     void TryPlayHelperSkillVoice(SkillGemDefinition skillDef)

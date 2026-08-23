@@ -34,6 +34,7 @@ public static class PartySpawnFeatureSmokeTests
 
         TestRoleContract(config);
         TestPlayerUIPrefab(config);
+        TestHelperCharacterOwnedLoadout(config);
         TestRuntimeComposition(config);
         TestMigratedScenes();
 
@@ -67,6 +68,64 @@ public static class PartySpawnFeatureSmokeTests
             "Assets/Prefab/User Interface/InteractionIndicator.prefab");
         Expect(indicatorPrefab != null && indicatorPrefab.GetComponent<InteractionIndicatorView>() != null,
             "InteractionIndicator prefab must exist and contain InteractionIndicatorView.");
+    }
+
+    /// <summary>
+    /// Helper skills are character-owned. The helper rig is shared by every character, so the
+    /// procs and the manual command have to sit on the character asset the rig is loaded with -
+    /// nothing about them may survive on the prefab.
+    /// </summary>
+    static void TestHelperCharacterOwnedLoadout(PartySpawnConfigSO config)
+    {
+        PartySpawnEntry helper = config.GetMember(ChainActorRole.Helper);
+        Expect(helper != null && helper.PartyIndex == 3, "Helper must still load from party index 3.");
+
+        CharacterStats abbygail = AssetDatabase.LoadAssetAtPath<CharacterStats>(
+            "Assets/Character/Abbygail/Chadef.Abbygail.asset");
+        Expect(abbygail != null, "Abbygail's character asset must exist.");
+        Expect(abbygail.partyRole == CharacterPartyRole.Helper,
+            "Abbygail must be authored as a Helper to contribute assists.");
+        Expect(abbygail.helperCommandSkill != null,
+            "Abbygail's manual command must be authored on her character asset.");
+        Equal(3, abbygail.helperProcs.Count, "Abbygail must own three helper procs.");
+        for (int i = 0; i < abbygail.helperProcs.Count; i++)
+        {
+            Expect(abbygail.helperProcs[i].ResolveHelperProc() != null,
+                $"Abbygail helper proc {i} must resolve to a definition.");
+        }
+
+        ExpectNoLegacyHelperLoadout("Assets/Prefab/Player/Ally_Helper.prefab");
+        ExpectNoLegacyHelperLoadout("Assets/Prefab/Player/Ally_Stryker.prefab");
+        ExpectNoLegacyHelperLoadout("Assets/Prefab/Player/Player.prefab");
+        ExpectNoLegacyHelperLoadout("Assets/Prefab/Player/SummonBase.prefab");
+        ExpectNoLegacyHelperLoadout("Assets/Prefab/GameEnemy/Enemy_Base.prefab");
+
+        GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefab/Player/Player.prefab");
+        Expect(playerPrefab != null, "Player prefab must exist.");
+
+        PartyCommandController partyCommand = playerPrefab.GetComponentInChildren<PartyCommandController>(true);
+        Expect(partyCommand != null, "Player prefab must contain PartyCommandController.");
+        Expect(partyCommand.PartyCommands != null && partyCommand.PartyCommands.Length > 0,
+            "Player prefab must author at least one party command.");
+        Equal(PartyCommandExecutionKind.HelperCommandSlot, partyCommand.PartyCommands[0].executionKind,
+            "The manual party command must route through the helper command slot.");
+        Expect(partyCommand.PartyCommands[0].helperSkill == null,
+            "A helper command slot resolves its skill from the loaded character, not from the prefab.");
+    }
+
+    /// <summary>
+    /// The removed fields would still be readable as stale YAML if a prefab was never re-saved, so
+    /// this asserts on the serialized text rather than on the component.
+    /// </summary>
+    static void ExpectNoLegacyHelperLoadout(string prefabPath)
+    {
+        string text = System.IO.File.ReadAllText(prefabPath);
+        Expect(!text.Contains("playerCommandSkill:"),
+            $"'{prefabPath}' still carries the legacy prefab-authored player command skill.");
+        Expect(!text.Contains("helperProcLoadout:"),
+            $"'{prefabPath}' still carries the legacy prefab-authored helper proc loadout.");
+        Expect(!text.Contains("helperDefinitions:"),
+            $"'{prefabPath}' still carries the legacy prefab-authored helper proc definitions.");
     }
 
     static void TestRuntimeComposition(PartySpawnConfigSO config)

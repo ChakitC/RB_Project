@@ -1,3 +1,4 @@
+using System;
 using Opsive.BehaviorDesigner.Runtime;
 using UnityEngine;
 
@@ -17,6 +18,14 @@ public class CharacterContextPartyLoader : MonoBehaviour, IGameSaveAble, ISaveOr
     // ให้ทำก่อน PlayerVisual
     public int LoadOrder => -100;
     public int PartyIndex => partyIndex;
+
+    /// <summary>
+    /// Raised with (previous, current) after this loader swaps the character on its context.
+    ///
+    /// Actors that own character-sourced data cannot poll for this: the helper is deactivated
+    /// between summons, so its own <c>Update</c> never runs while the party changes underneath it.
+    /// </summary>
+    public event Action<CharacterStats, CharacterStats> BaseStatsChanged;
 
     public void ConfigurePartyIndex(int index)
     {
@@ -103,10 +112,16 @@ public class CharacterContextPartyLoader : MonoBehaviour, IGameSaveAble, ISaveOr
 
         if (ctx != null)
         {
+            CharacterStats previous = ctx.baseStats;
             ctx.baseStats = def;
             if (ctx.UsesPersistentProgression)
                 ctx.ActiveSkillProgress?.ReloadFromSave();
             ApplyBehaviorSubtree(def);
+
+            // Reloading the same character is a no-op for anything downstream, so do not make
+            // listeners cancel casts and rebuild loadouts over it.
+            if (previous != def)
+                BaseStatsChanged?.Invoke(previous, def);
         }
         else if (IsPlayAble)
             Debug.LogWarning("[CharacterContextPartyLoader] Playable loader is missing CharacteContext.", this);

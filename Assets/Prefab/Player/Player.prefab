@@ -1015,15 +1015,10 @@ MonoBehaviour:
     skillAsset: {fileID: 0}
     runtimeSkill:
       def: {fileID: 0}
-  playerCommandSkill:
-    skillAsset: {fileID: 0}
-    runtimeSkill:
-      def: {fileID: 0}
   chainAttackSkill:
     skillAsset: {fileID: 0}
     runtimeSkill:
       def: {fileID: 0}
-  helperProcLoadout: []
 --- !u!114 &3693568544021270016
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2109,7 +2104,6 @@ MonoBehaviour:
   playerContext: {fileID: 1638387977988830713}
   combatEventBus: {fileID: 1666845100770680886}
   allyHelperManager: {fileID: 1822283862806056950}
-  helperDefinitions: []
   attackIdLockTtlSeconds: 10
   logProcController: 0
 --- !u!1 &8967953885467585272
@@ -2171,7 +2165,7 @@ MonoBehaviour:
     commandPointCost: 1
     cooldownSeconds: 0
     requireOwnerAlive: 1
-    executionKind: 1
+    executionKind: 4
     helperSkill: {fileID: 0}
     helperHideOnComplete: 1
     helperCommandSlotIndex: 0

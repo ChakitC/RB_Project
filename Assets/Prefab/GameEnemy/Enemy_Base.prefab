@@ -1377,15 +1377,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   autonomousSlots: []
-  playerCommandSkill:
-    skillAsset: {fileID: 0}
-    runtimeSkill:
-      def: {fileID: 0}
   chainAttackSkill:
     skillAsset: {fileID: 0}
     runtimeSkill:
       def: {fileID: 0}
-  helperProcLoadout: []
 --- !u!114 &1695257887938755810
 MonoBehaviour:
   m_ObjectHideFlags: 0

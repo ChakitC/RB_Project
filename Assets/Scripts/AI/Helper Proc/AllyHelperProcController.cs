@@ -22,6 +22,7 @@ public sealed class AllyHelperProcController : MonoBehaviour
     FieldAllyManager _fieldAllyManager;
     Coroutine _queueDrain;
     Coroutine _chargeWakeup;
+    float _chargeWakeupAt = float.PositiveInfinity;
 
     /// <summary>Manager we last subscribed to, so a late-resolved reference still gets hooked up.</summary>
     AllyHelperManager _loadoutSubscribedManager;
@@ -136,6 +137,8 @@ public sealed class AllyHelperProcController : MonoBehaviour
     void OnHelperLoadoutChanged()
     {
         _helperDefinitionsDirty = true;
+        StopChargeWakeup();
+        EvaluatePartyHealthTriggers();
     }
 
     void OnCombatEventPublished(PassiveEventContext context)
@@ -392,11 +395,12 @@ public sealed class AllyHelperProcController : MonoBehaviour
 
         _queuedThresholdDefs.Remove(helperDef);
 
-        bool started = allyHelperManager.TrySummonAllyHelperToTarget(
-            helperDef.executionSkill,
+        bool started = allyHelperManager.TrySummonAllyHelperProcToTarget(
+            helperDef,
             target,
             helperDef.hideHelperOnSkillComplete,
-            SkillCastCostPolicy.IgnoreEnergyRespectCharge);
+            SkillCastCostPolicy.IgnoreEnergyRespectCharge,
+            stampCooldown: true);
 
         if (!started)
         {
@@ -472,7 +476,7 @@ public sealed class AllyHelperProcController : MonoBehaviour
         if (skillManager == null)
             return false;
 
-        if (!skillManager.TryGetExternalSkillChargeStatus(helperDef.executionSkill, out SkillChargeStatus status))
+        if (!skillManager.TryGetHelperProcChargeStatus(helperDef, out SkillChargeStatus status))
             return false;
 
         if (status.HasCharge)
@@ -517,13 +521,18 @@ public sealed class AllyHelperProcController : MonoBehaviour
 
     void ScheduleChargeWakeup(float remainingSeconds)
     {
-        if (_chargeWakeup != null || !isActiveAndEnabled)
+        if (!isActiveAndEnabled ||
+            remainingSeconds <= 0f ||
+            !float.IsFinite(remainingSeconds))
             return;
 
-        if (remainingSeconds <= 0f || !float.IsFinite(remainingSeconds))
+        float requestedAt = Time.time + remainingSeconds;
+        if (_chargeWakeup != null && requestedAt >= _chargeWakeupAt - 0.001f)
             return;
 
-        _chargeWakeup = StartCoroutine(WakeOnChargeReady(remainingSeconds));
+        StopChargeWakeup();
+        _chargeWakeupAt = requestedAt;
+        _chargeWakeup = StartCoroutine(WakeOnChargeReady(requestedAt));
     }
 
     void StopChargeWakeup()
@@ -533,14 +542,16 @@ public sealed class AllyHelperProcController : MonoBehaviour
 
         StopCoroutine(_chargeWakeup);
         _chargeWakeup = null;
+        _chargeWakeupAt = float.PositiveInfinity;
     }
 
-    IEnumerator WakeOnChargeReady(float remainingSeconds)
+    IEnumerator WakeOnChargeReady(float wakeupAt)
     {
         // Small overshoot so the pool has definitely ticked over by the time we look.
-        yield return new WaitForSeconds(remainingSeconds + 0.05f);
+        yield return new WaitForSeconds(Mathf.Max(0f, wakeupAt - Time.time) + 0.05f);
 
         _chargeWakeup = null;
+        _chargeWakeupAt = float.PositiveInfinity;
 
         // Re-queries rather than assuming: max charges and cooldown both come from stats that
         // could have changed while we waited, so "ready" has to be asked again, not remembered.
@@ -631,15 +642,18 @@ public sealed class AllyHelperProcController : MonoBehaviour
 
         if (helperDef.chainAttackSequence != null)
         {
-            return allyHelperManager.TryStartChainAttackHelper(
-                helperDef.chainAttackSequence,
-                helperDef.executionSkill,
-                helperDef.hideHelperOnSkillComplete);
+            return allyHelperManager.TryStartChainAttackHelperProc(
+                helperDef,
+                helperDef.hideHelperOnSkillComplete,
+                costPolicy: SkillCastCostPolicy.IgnoreEnergyAndCharge,
+                stampCooldown: false);
         }
 
-        return allyHelperManager.TrySummonAllyHelper(
-            helperDef.executionSkill,
-            helperDef.hideHelperOnSkillComplete);
+        return allyHelperManager.TrySummonAllyHelperProc(
+            helperDef,
+            helperDef.hideHelperOnSkillComplete,
+            SkillCastCostPolicy.IgnoreEnergyAndCharge,
+            stampCooldown: false);
     }
 
     bool RollProc(SkillHelperDef helperDef)

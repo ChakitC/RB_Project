@@ -59,6 +59,114 @@ public static class SaveDataMigration
         return false;
     }
 
+    /// <summary>
+    /// Reads and upgrades the character-progress envelope before callers consume any values.
+    /// Version zero files used the names <c>activeSkillPoints</c> and
+    /// <c>activeSkillProgressInitialized</c>; those fields are parsed through a legacy DTO so the
+    /// current model never needs to serialize compatibility fields back into new saves.
+    /// </summary>
+    public static CharacterProgressSaveFile LoadAndMigrateCharacterProgressSaveFile(
+        string json,
+        out bool migrated)
+    {
+        migrated = false;
+        if (string.IsNullOrWhiteSpace(json))
+            return new CharacterProgressSaveFile();
+
+        CharacterProgressSaveFile file =
+            JsonUtility.FromJson<CharacterProgressSaveFile>(json) ?? new CharacterProgressSaveFile();
+        LegacyCharacterProgressSaveFile legacy =
+            JsonUtility.FromJson<LegacyCharacterProgressSaveFile>(json);
+
+        if (file.schemaVersion != CharacterProgressSaveFile.CurrentVersion)
+        {
+            file.schemaVersion = CharacterProgressSaveFile.CurrentVersion;
+            migrated = true;
+        }
+
+        if (file.entries == null)
+        {
+            file.entries = new List<CharacterProgressEntry>();
+            migrated = true;
+        }
+
+        if (legacy?.entries != null)
+        {
+            for (int i = 0; i < file.entries.Count; i++)
+            {
+                CharacterProgressEntry currentEntry = file.entries[i];
+                if (currentEntry == null || currentEntry.progress == null)
+                    continue;
+
+                LegacyCharacterProgressEntry legacyEntry = FindLegacyEntry(
+                    legacy.entries,
+                    currentEntry.characterId);
+                if (legacyEntry?.progress == null)
+                    continue;
+
+                // JsonUtility gives current-only entries the legacy DTO defaults (0/false). Merge
+                // per character instead of using a file-wide field-presence flag: a save can
+                // legitimately contain one old entry and another entry already written in the
+                // current schema. Never let the compatibility defaults erase newer progress.
+                int mergedSkillPoints = Math.Max(
+                    currentEntry.progress.skillPoints,
+                    legacyEntry.progress.activeSkillPoints);
+                if (currentEntry.progress.skillPoints != mergedSkillPoints)
+                {
+                    currentEntry.progress.skillPoints = mergedSkillPoints;
+                    migrated = true;
+                }
+
+                bool mergedInitialized = currentEntry.progress.skillProgressInitialized ||
+                    legacyEntry.progress.activeSkillProgressInitialized;
+                if (currentEntry.progress.skillProgressInitialized != mergedInitialized)
+                {
+                    currentEntry.progress.skillProgressInitialized = mergedInitialized;
+                    migrated = true;
+                }
+            }
+        }
+
+        return file;
+    }
+
+    static LegacyCharacterProgressEntry FindLegacyEntry(
+        List<LegacyCharacterProgressEntry> entries,
+        string characterId)
+    {
+        if (entries == null)
+            return null;
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            LegacyCharacterProgressEntry entry = entries[i];
+            if (entry != null && string.Equals(entry.characterId, characterId, StringComparison.Ordinal))
+                return entry;
+        }
+
+        return null;
+    }
+
+    [Serializable]
+    sealed class LegacyCharacterProgressSaveFile
+    {
+        public List<LegacyCharacterProgressEntry> entries;
+    }
+
+    [Serializable]
+    sealed class LegacyCharacterProgressEntry
+    {
+        public string characterId;
+        public LegacyCharacterProgressData progress;
+    }
+
+    [Serializable]
+    sealed class LegacyCharacterProgressData
+    {
+        public int activeSkillPoints;
+        public bool activeSkillProgressInitialized;
+    }
+
     public static bool RemoveNonPersistentCharacterProgressEntries(CharacterProgressSaveFile file)
     {
         if (file?.entries == null)

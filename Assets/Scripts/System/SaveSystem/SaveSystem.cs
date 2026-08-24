@@ -378,6 +378,8 @@ public static class SaveSystem
             entry.progress = data; // หรือคัดลอกทีละ field ก็ได้
         }
 
+        file.schemaVersion = CharacterProgressSaveFile.CurrentVersion;
+
         var json = JsonUtility.ToJson(file, true);
         WriteAtomic(CharacterPath(slot), json);
     }
@@ -405,8 +407,13 @@ public static class SaveSystem
         var json = File.ReadAllText(path);
         if (string.IsNullOrWhiteSpace(json)) return new CharacterProgressSaveFile();
 
-        var file = JsonUtility.FromJson<CharacterProgressSaveFile>(json) ?? new CharacterProgressSaveFile();
+        CharacterProgressSaveFile file = SaveDataMigration.LoadAndMigrateCharacterProgressSaveFile(
+            json,
+            out bool migrated);
         if (SaveDataMigration.RemoveNonPersistentCharacterProgressEntries(file))
+            migrated = true;
+
+        if (migrated)
         {
             var migratedJson = JsonUtility.ToJson(file, true);
             WriteAtomic(CharacterPath(slot), migratedJson);

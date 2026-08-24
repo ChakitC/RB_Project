@@ -32,6 +32,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         public int selectedOptionIndex = -1;
         public string slotId;
         public SkillUpgradeStatSnapshot upgradeSnapshot;
+        public CharacterSkillEntry runtimeEntry;
     }
 
     private CharacteContext ctx;
@@ -62,14 +63,18 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     readonly List<ResolvedHelperProcState> resolvedHelperProcStates = new();
 
     /// <summary>
-    /// Upgrade snapshot each Helper execution skill must be cast with, keyed by definition.
-    ///
-    /// Helper assists never run through a command slot - <see cref="AllyHelperManager"/> starts
-    /// them as external skills - so this is where the selected proc variant's Skill Tree reaches
-    /// the cast. Summon, targeted delivery and chain attack all funnel through the same external
-    /// entry, so one lookup covers every execution path.
+    /// Legacy external-entry snapshots keyed by execution definition. The dedicated Helper proc
+    /// path below keeps the selected variant snapshot on a proc-keyed runtime entry; this map is
+    /// retained for other external skill callers and compatibility with the older entry builder.
     /// </summary>
     readonly Dictionary<SkillGemDefinition, SkillUpgradeStatSnapshot> helperExecutionSnapshots = new();
+
+    /// <summary>
+    /// Runtime entries are keyed by proc variant, not only by execution skill. Variants can then
+    /// keep their own slot/option snapshot while still sharing the charge pool bound by the
+    /// execution skill definition.
+    /// </summary>
+    readonly Dictionary<SkillHelperDef, CharacterSkillEntry> helperProcRuntimeEntries = new();
 
     public event Action<ActiveSkillCastInfo> CastStarted;
     public event Action<ActiveSkillCastInfo> CastReleased;
@@ -487,10 +492,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         {
             // The variant being unequipped may be mid-cast. Its charge pool is keyed by definition
             // and deliberately left alone, so switching back does not hand the player a free reset.
-            SkillGemDefinition previousExecution = state.selectedOption?.ExecutionSkill;
-            if (previousExecution != null &&
-                previousExecution != option?.ExecutionSkill &&
-                externalSkillEntries.TryGetValue(previousExecution, out CharacterSkillEntry previousEntry))
+            SkillHelperDef previousProc = state.selectedOption?.helperProc;
+            if (previousProc != null &&
+                helperProcRuntimeEntries.TryGetValue(previousProc, out CharacterSkillEntry previousEntry))
             {
                 CancelActiveCastFor(previousEntry?.runtimeSkill);
             }
@@ -632,6 +636,77 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             externalAnimationRequestId: externalAnimationRequestId);
     }
 
+    /// <summary>
+    /// Starts the selected runtime entry for one Helper proc. Resolving by proc definition keeps
+    /// the selected slot/option snapshot attached even when another proc variant uses the same
+    /// execution skill. The runtime skill still binds to the shared charge pool for that skill.
+    /// </summary>
+    public SkillCastStartResult TryStartHelperProcSkill(
+        SkillHelperDef helperProc,
+        string debugSource,
+        CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None,
+        bool usePlanarRootMotion = false,
+        bool stampCooldown = true,
+        SkillTargetHandle primaryTarget = null,
+        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal,
+        int externalAnimationRequestId = 0)
+    {
+        CacheReferences();
+        RefreshResolvedCommandSlotsIfNeeded();
+
+        if (!TryGetSelectedHelperProcState(helperProc, out ResolvedHelperProcState state))
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+
+        CharacterSkillEntry entry = state.runtimeEntry ?? GetOrCreateHelperProcEntry(helperProc);
+        if (entry == null)
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+
+        return TryStartExternalSkill(
+            entry,
+            debugSource,
+            requiredTimelineEvent,
+            usePlanarRootMotion,
+            ignoreResourceCosts: false,
+            stampCooldown: stampCooldown,
+            primaryTarget: primaryTarget,
+            costPolicy: costPolicy,
+            externalAnimationRequestId: externalAnimationRequestId);
+    }
+
+    /// <summary>Returns the live runtime entry for the currently selected proc variant.</summary>
+    public bool TryGetHelperProcRuntimeSkill(SkillHelperDef helperProc, out SkillInstance runtimeSkill)
+    {
+        runtimeSkill = null;
+        if (helperProc == null)
+            return false;
+
+        CacheReferences();
+        RefreshResolvedCommandSlotsIfNeeded();
+
+        if (!TryGetSelectedHelperProcState(helperProc, out ResolvedHelperProcState state) ||
+            state.runtimeEntry == null)
+        {
+            return false;
+        }
+
+        EnsureRuntimeSkill(state.runtimeEntry);
+        runtimeSkill = state.runtimeEntry.runtimeSkill;
+        return runtimeSkill != null && runtimeSkill.def == helperProc.executionSkill;
+    }
+
+    /// <summary>Charge readout for a selected Helper proc, using its variant snapshot.</summary>
+    public bool TryGetHelperProcChargeStatus(SkillHelperDef helperProc, out SkillChargeStatus status)
+    {
+        status = default;
+        if (!TryGetHelperProcRuntimeSkill(helperProc, out SkillInstance runtimeSkill) ||
+            skillUser == null)
+        {
+            return false;
+        }
+
+        return runtimeSkill.TryGetChargeStatus(skillUser, out status);
+    }
+
     /// <summary>Affordability check for the definition-based external cast path.</summary>
     public bool CanStartExternalSkill(SkillGemDefinition skillDef, SkillCastCostPolicy costPolicy)
     {
@@ -684,6 +759,38 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         entry = new CharacterSkillEntry { skillAsset = skillDef };
         externalSkillEntries[skillDef] = entry;
         return entry;
+    }
+
+    private CharacterSkillEntry GetOrCreateHelperProcEntry(SkillHelperDef helperProc)
+    {
+        if (helperProc == null || helperProc.executionSkill == null)
+            return null;
+
+        if (helperProcRuntimeEntries.TryGetValue(helperProc, out CharacterSkillEntry entry) && entry != null)
+            return entry;
+
+        entry = new CharacterSkillEntry { skillAsset = helperProc.executionSkill };
+        helperProcRuntimeEntries[helperProc] = entry;
+        return entry;
+    }
+
+    bool TryGetSelectedHelperProcState(SkillHelperDef helperProc, out ResolvedHelperProcState state)
+    {
+        state = null;
+        if (helperProc == null)
+            return false;
+
+        for (int i = 0; i < resolvedHelperProcStates.Count; i++)
+        {
+            ResolvedHelperProcState candidate = resolvedHelperProcStates[i];
+            if (candidate?.selectedOption?.helperProc != helperProc)
+                continue;
+
+            state = candidate;
+            return true;
+        }
+
+        return false;
     }
 
     public bool TryGetChainAttackRuntimeSkill(out SkillInstance runtimeSkill)
@@ -1282,8 +1389,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         state.selectedOption = option;
         state.selectedOptionIndex = optionIndex;
         state.upgradeSnapshot = null;
+        state.runtimeEntry = null;
 
-        SkillGemDefinition execution = option != null ? option.ExecutionSkill : null;
+        SkillHelperDef helperProc = option != null ? option.helperProc : null;
+        SkillGemDefinition execution = helperProc != null ? helperProc.executionSkill : null;
         if (execution == null)
             return;
 
@@ -1297,6 +1406,15 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         }
 
         helperExecutionSnapshots[execution] = state.upgradeSnapshot;
+
+        CharacterSkillEntry entry = GetOrCreateHelperProcEntry(helperProc);
+        entry.skillAsset = execution;
+        if (entry.runtimeSkill == null || entry.runtimeSkill.def != execution)
+            entry.runtimeSkill = CreateRuntimeSkill(execution, state.upgradeSnapshot);
+        else
+            entry.runtimeSkill.upgradeSnapshot = state.upgradeSnapshot;
+
+        state.runtimeEntry = entry;
         ApplyHelperExecutionSnapshot(execution, state.upgradeSnapshot);
     }
 

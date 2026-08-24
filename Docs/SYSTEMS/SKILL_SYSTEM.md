@@ -1798,10 +1798,13 @@ resolved by `CharacterSkillManager.RefreshHelperLoadout`.
 - `AppendConfiguredHelperChainDefinitions` returns only the selected variant of each slot. An
   authored-but-unselected variant never reaches `AllyHelperProcController`.
 - A proc's Skill Tree is `SkillHelperDef.executionSkill.upgradeTree`. The resolved
-  `SkillUpgradeStatSnapshot` is cached per execution definition in `helperExecutionSnapshots` and
-  applied to the external `CharacterSkillEntry` for that definition. Every helper execution path —
-  plain summon, targeted delivery, chain attack — starts through
-  `CharacterSkillManager.TryStartExternalSkill`, so one lookup covers all three.
+  `SkillUpgradeStatSnapshot` is cached on a runtime `CharacterSkillEntry` keyed by
+  `SkillHelperDef`, so each selected proc variant keeps its own slot/option snapshot. Plain summon,
+  party-health delivery, and Helper Chain Attack all start through
+  `CharacterSkillManager.TryStartHelperProcSkill`.
+- Proc entries still bind to the same shared `SkillChargeState` keyed by
+  `SkillGemDefinition`. This separates snapshot identity from charge identity: two variants can
+  carry different upgrade ids without creating independent cooldown pools.
 - `CharacterActiveSkillProgress.TreeChanged` for a `helper:` key re-applies the affected variant, so
   a node unlocked in the lobby reaches the next assist without a rebuild of the whole loadout.
 
@@ -1813,8 +1816,9 @@ lifetime; a switch swaps the snapshot on the existing `SkillInstance` rather tha
 requests for an unequipped variant *are* dropped, because they would otherwise fire for a proc the
 player no longer has.
 
-A cast still running against the variant being unequipped is cancelled with
-`SkillCastCancelReason.InvalidState`.
+A cast or animation request still running against the variant being unequipped is cancelled with
+`SkillCastCancelReason.InvalidState`, and the Helper manager clears its pending request before the
+new variant can execute.
 
 Querying a skill that has never been cast returns a **full** pool (`1/1`, `2/2`),
 not a failure — the pool is created on demand.

@@ -60,6 +60,20 @@ Run the validation command after editing C# source when the change touches:
 
 Markdown-only documentation changes do not require C# validation.
 
+## Helper proc and rig validation
+
+Run **Tools > RB > Skills > Validate Active Skill Trees** after editing a Helper loadout. The pass
+reports missing execution skills, missing stable slot/option ids, duplicate Helper proc ids, and
+unresolvable proc variants. Run **Tools > RB > AI > Validate Helper Rig** after editing
+`Assets/Prefab/Player/Ally_Helper.prefab`; it checks the context, skill progress, skill manager,
+animation driver/brain, and their context bindings.
+
+The EditMode smoke tests cover selected proc resolution, variant snapshot/upgrade-id replacement,
+legacy character-progress migration (including mixed legacy/current entries without destructive
+default overwrites), and idempotent reload. PlayMode coverage is still required for
+animation wind-up switching, activation callbacks, party-health queueing, chain attack interruption,
+room transitions, and cinematic holds.
+
 ## Failure Handling
 
 If validation fails:

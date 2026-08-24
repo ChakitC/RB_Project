@@ -645,6 +645,8 @@ public static class SkillUpgradeTreeValidator
         if (procSlots == null)
             return;
 
+        var helperIds = new HashSet<string>(StringComparer.Ordinal);
+
         for (int slotIndex = 0; slotIndex < procSlots.Count; slotIndex++)
         {
             HelperProcLoadoutSlot slot = procSlots[slotIndex];
@@ -680,6 +682,13 @@ public static class SkillUpgradeTreeValidator
                     issues.Add(Error(
                         $"helper proc slot {slotIndex}, option {optionIndex} has no SkillHelperDef."));
                     continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(option.helperProc.RuntimeId) &&
+                    !helperIds.Add(option.helperProc.RuntimeId))
+                {
+                    issues.Add(Error(
+                        $"duplicate Helper proc ID '{option.helperProc.RuntimeId}' in helper proc loadout."));
                 }
 
                 // Without an execution skill the proc has nothing to run and no Skill Tree to

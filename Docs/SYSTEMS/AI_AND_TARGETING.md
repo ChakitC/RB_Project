@@ -684,10 +684,10 @@ AllyHelperManager.HelperSkillManager -> ctx.baseStats.helperProcSlots
 `helperDefinitions` array and the collection pass over the other party members' skill managers have
 both been removed. A proc that is not on the loaded helper character does not exist.
 
-The list is cached and rebuilt only when `AllyHelperManager.HelperLoadoutChanged` fires - the helper
-rig being loaded with a different character - or when the helper's `CharacterSkillManager` reference
-itself changes. The combat-bus handler runs on every published event, so it must not re-resolve the
-list each time.
+The list is cached and rebuilt only when `AllyHelperManager.HelperLoadoutChanged` or
+`CharacterSkillManager.HelperProcLoadoutChanged` fires - the helper rig or its selected variant
+changed - or when the helper's `CharacterSkillManager` reference itself changes. The combat-bus
+handler runs on every published event, so it must not re-resolve the list each time.
 
 `FieldAllyManager` registration and the per-member `HealthSystem` subscriptions are unrelated to
 this and stay: they are how the threshold trigger finds a recipient.
@@ -721,10 +721,11 @@ same situation cannot fire it twice.
 
 - `HealthSystem.HealthChanged` for every registered `FieldAllyMember`
 - `FieldAllyManager.MemberRegistered` / `MemberUnregistered`
-- a **one-shot charge wakeup** - after a cast commits, the charge pool already knows exactly when
-  the next charge lands (`SkillChargeStatus.NextChargeRemaining`), so the controller sleeps that
-  long and re-queries once. It re-queries rather than assuming, because max charges and cooldown
-  both come from stats that could have changed while it waited.
+- an **earliest-deadline charge wakeup** - after a cast commits, the charge pool already knows
+  exactly when the next charge lands (`SkillChargeStatus.NextChargeRemaining`). If several threshold
+  procs are waiting, the scheduler keeps the earliest deadline and replaces a later timer when a
+  sooner charge becomes available. It re-queries rather than assuming, because max charges and
+  cooldown both come from stats that could have changed while it waited.
 - a queue drain that runs **only** while a request is waiting for a busy helper, since there is no
   event for "the helper stopped being busy". A queued request is fully re-validated on release,
   never replayed blindly - if nobody is hurt any more, it is dropped.
@@ -760,13 +761,19 @@ no cooldown, because nothing was deployed.
 
 ### Metered vs legacy helper casts
 
-`AllyHelperManager.ExecuteHelperSkill` routes a cast through the helper's own
-`CharacterSkillManager` only when a `SkillCastCostPolicy` was supplied. That path is the only one
-that binds the runtime skill to a persistent per-definition charge pool.
+`AllyHelperManager` routes configured Helper procs through
+`CharacterSkillManager.TryStartHelperProcSkill` at the existing animation request id. Plain combat
+procs use `IgnoreEnergyAndCharge` with `stampCooldown: false`, preserving their free/uncapped
+behavior while still carrying the selected snapshot. Party-health procs use
+`IgnoreEnergyRespectCharge` with `stampCooldown: true`, so they remain free to party energy but
+respect the execution skill's charge pool. Helper Chain Attack proc steps use the same proc entry
+and policy as the trigger that started them.
 
-Legacy helper procs and chain-attack steps deliberately keep the old private-orchestrator path with
-`ignoreResourceCosts: true`. They have always been free and uncapped, and putting every existing
-proc on a cooldown is a separate decision, not a side effect of this feature.
+All public Helper execution entry points acquire one `helperExecutionStartInProgress` guard before
+activating the rig. Registration callbacks therefore observe the Helper as busy: threshold requests
+may queue when configured, while combat-event requests that cannot queue are rejected safely. The
+guard is released in `finally`, and character swap, disable, death, interruption, and variant
+switches clear pending casts and restore autonomy/protection through the same abort ownership.
 
 ## Summon Targeting
 

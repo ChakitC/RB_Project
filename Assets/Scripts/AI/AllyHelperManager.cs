@@ -23,6 +23,7 @@ public class AllyHelperManager : MonoBehaviour
     {
         public int requestId;
         public SkillGemDefinition skillDef;
+        public SkillHelperDef helperProc;
 
         /// <summary>Target locked before the animation started. Never retargeted mid-cast.</summary>
         public SkillTargetHandle target = SkillTargetHandle.None;
@@ -32,6 +33,7 @@ public class AllyHelperManager : MonoBehaviour
         /// <see cref="CharacterSkillManager"/> so the skill keeps a real charge pool.
         /// </summary>
         public SkillCastCostPolicy? costPolicy;
+        public bool stampCooldown = true;
     }
 
     sealed class PendingChainAttackSequence
@@ -39,6 +41,9 @@ public class AllyHelperManager : MonoBehaviour
         public int executionId;
         public HelperChainAttackSequenceDef sequenceDef;
         public SkillGemDefinition chainAttackSkillDef;
+        public SkillHelperDef helperProc;
+        public SkillCastCostPolicy? costPolicy;
+        public bool stampCooldown = true;
         public GameObject targetObject;
         public Transform targetTransform;
         public Transform anchorTransform;
@@ -84,7 +89,7 @@ public class AllyHelperManager : MonoBehaviour
     /// trigger that summons again before this call has recorded its own pending skill - at which
     /// point the outer call overwrites the inner one's dispatch and then cancels everything.
     /// </summary>
-    bool summonInProgress;
+    bool helperExecutionStartInProgress;
     PendingChainAttackSequence pendingChainAttackSequence;
     bool hideHelperOnSkillComplete;
     int nextHelperSkillRequestId = 1;
@@ -99,6 +104,7 @@ public class AllyHelperManager : MonoBehaviour
     int _helperInvincibilityToken;
     int _helperUntargetableToken;
     bool _cinematicHold;
+    CharacterSkillManager _helperProcLoadoutSubscribedSkillManager;
 
     public event Action<CharacterAnimBrain, CharacterAnimBrain> HelperAnimBrainChanged;
 
@@ -128,9 +134,17 @@ public class AllyHelperManager : MonoBehaviour
     public bool LastExecutionSucceeded { get; private set; } = true;
     public int ActiveChainAttackExecutionId => pendingChainAttackSequence != null ? pendingChainAttackSequence.executionId : 0;
     public bool IsHelperBusy =>
+        helperExecutionStartInProgress ||
         pendingHelperSkill != null ||
         pendingChainAttackSequence != null ||
+        HasHelperRuntimeCast() ||
         (allyAnimBrain != null && allyAnimBrain.IsExclusiveLocomotionActive);
+
+    bool HasHelperRuntimeCast()
+    {
+        CharacterSkillManager skillManager = HelperSkillManager;
+        return skillManager != null && skillManager.TryGetActiveCast(out _);
+    }
 
     public void BindHelper(AllyContext helperContext)
     {
@@ -206,7 +220,44 @@ public class AllyHelperManager : MonoBehaviour
         return skillManager != null && skillManager.HasConfiguredPlayerCommandSkill;
     }
 
+    bool TryBeginHelperExecutionStart()
+    {
+        // The helper actor can run registration callbacks synchronously when it is activated. A
+        // single guard across every entry point makes the outer request the only owner of that
+        // activation transaction and prevents a callback from cancelling its pending dispatch.
+        if (helperExecutionStartInProgress ||
+            pendingHelperSkill != null ||
+            pendingChainAttackSequence != null ||
+            HasHelperRuntimeCast())
+        {
+            return false;
+        }
+
+        helperExecutionStartInProgress = true;
+        return true;
+    }
+
+    void EndHelperExecutionStart()
+    {
+        helperExecutionStartInProgress = false;
+    }
+
     public bool TryExecuteCommandSlot(int slotIndex = 0, bool hideOnSkillComplete = true)
+    {
+        if (!TryBeginHelperExecutionStart())
+            return false;
+
+        try
+        {
+            return TryExecuteCommandSlotCore(slotIndex, hideOnSkillComplete);
+        }
+        finally
+        {
+            EndHelperExecutionStart();
+        }
+    }
+
+    bool TryExecuteCommandSlotCore(int slotIndex, bool hideOnSkillComplete)
     {
         if (!TryPrepareHelperForSummon(out bool activatedNow))
             return false;
@@ -297,6 +348,7 @@ public class AllyHelperManager : MonoBehaviour
     {
         RestoreHelperSkillAutonomy();
         RestoreHelperProtection();
+        SubscribeToHelperProcLoadout(null);
         SubscribeToHelperFader(null);
         SubscribeToAnimBrain(null);
         SubscribeToHelperPartyLoader(null);
@@ -328,6 +380,41 @@ public class AllyHelperManager : MonoBehaviour
             allyPartyLoader.BaseStatsChanged += OnHelperCharacterChanged;
     }
 
+    void SubscribeToHelperProcLoadout(CharacterSkillManager nextSkillManager)
+    {
+        if (_helperProcLoadoutSubscribedSkillManager == nextSkillManager)
+            return;
+
+        if (_helperProcLoadoutSubscribedSkillManager != null)
+            _helperProcLoadoutSubscribedSkillManager.HelperProcLoadoutChanged -= OnHelperProcLoadoutChanged;
+
+        _helperProcLoadoutSubscribedSkillManager = nextSkillManager;
+
+        if (_helperProcLoadoutSubscribedSkillManager != null)
+            _helperProcLoadoutSubscribedSkillManager.HelperProcLoadoutChanged += OnHelperProcLoadoutChanged;
+    }
+
+    void OnHelperProcLoadoutChanged()
+    {
+        // A proc variant can change while its wind-up is still owned by this manager. Drop both
+        // the animation-side pending request and the runtime-side cast so the old snapshot can
+        // never execute after the loadout switch.
+        bool cancelledProcSkill = pendingHelperSkill != null && pendingHelperSkill.helperProc != null;
+        bool cancelledProcChain = pendingChainAttackSequence != null && pendingChainAttackSequence.helperProc != null;
+
+        if (cancelledProcSkill)
+            CancelPendingHelperSkill();
+
+        if (cancelledProcChain)
+            CompletePendingChainAttackSequence(false);
+
+        if (cancelledProcSkill || cancelledProcChain)
+        {
+            RestoreHelperSkillAutonomy();
+            hideHelperOnSkillComplete = false;
+        }
+    }
+
     /// <summary>
     /// The helper rig is shared, so loading a different character into it replaces both the manual
     /// command and the helper procs. Anything already running belonged to the previous character
@@ -339,6 +426,10 @@ public class AllyHelperManager : MonoBehaviour
 
         CancelPendingHelperSkill();
         CompletePendingChainAttackSequence(false);
+        RestoreHelperSkillAutonomy();
+        RestoreHelperProtection();
+        helperExecutionStartInProgress = false;
+        hideHelperOnSkillComplete = false;
 
         HelperSkillManager?.RefreshCharacterOwnedLoadout();
         ValidateHelperCharacter();
@@ -378,6 +469,7 @@ public class AllyHelperManager : MonoBehaviour
 
     void OnDisable()
     {
+        helperExecutionStartInProgress = false;
         RestoreHelperSkillAutonomy();
         RestoreHelperProtection();
         CancelPendingHelperSkill();
@@ -445,21 +537,87 @@ public class AllyHelperManager : MonoBehaviour
         // CancelPendingHelperSkill() wipes that dispatch before its own TryPlaySkill is refused
         // (the brain will not start a second skill over the first). Result: the helper is hidden
         // again, nothing was cast, and the trigger asks once more next frame - forever.
-        if (summonInProgress)
+        if (!TryBeginHelperExecutionStart())
             return false;
 
-        // A skill already dispatched owns the actor until its cast moment, for the same reason.
-        if (pendingHelperSkill != null)
-            return false;
-
-        summonInProgress = true;
         try
         {
-            return TrySummonAllyHelperCore(skillDef, hideOnSkillComplete, target, costPolicy, preferredPosition);
+            return TrySummonAllyHelperCore(
+                skillDef,
+                hideOnSkillComplete,
+                target,
+                costPolicy,
+                preferredPosition,
+                helperProc: null,
+                stampCooldown: costPolicy.HasValue);
         }
         finally
         {
-            summonInProgress = false;
+            EndHelperExecutionStart();
+        }
+    }
+
+    /// <summary>Starts a selected Helper proc while preserving its proc-specific runtime entry.</summary>
+    public bool TrySummonAllyHelperProc(
+        SkillHelperDef helperProc,
+        bool hideOnSkillComplete = true,
+        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.IgnoreEnergyAndCharge,
+        bool stampCooldown = false)
+    {
+        if (helperProc == null || helperProc.executionSkill == null)
+            return false;
+
+        if (!TryBeginHelperExecutionStart())
+            return false;
+
+        try
+        {
+            return TrySummonAllyHelperCore(
+                helperProc.executionSkill,
+                hideOnSkillComplete,
+                SkillTargetHandle.None,
+                costPolicy,
+                preferredPosition: null,
+                helperProc,
+                stampCooldown);
+        }
+        finally
+        {
+            EndHelperExecutionStart();
+        }
+    }
+
+    /// <summary>Starts a targeted Helper proc with the selected recipient locked up front.</summary>
+    public bool TrySummonAllyHelperProcToTarget(
+        SkillHelperDef helperProc,
+        CharacteContext targetContext,
+        bool hideOnSkillComplete = true,
+        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.IgnoreEnergyRespectCharge,
+        bool stampCooldown = true)
+    {
+        if (helperProc == null || helperProc.executionSkill == null || targetContext == null)
+            return false;
+
+        SkillTargetHandle target = SkillTargetHandle.For(targetContext);
+        Vector3? preferredPosition = ResolvePositionNearTarget(targetContext);
+
+        if (!TryBeginHelperExecutionStart())
+            return false;
+
+        try
+        {
+            return TrySummonAllyHelperCore(
+                helperProc.executionSkill,
+                hideOnSkillComplete,
+                target,
+                costPolicy,
+                preferredPosition,
+                helperProc,
+                stampCooldown);
+        }
+        finally
+        {
+            EndHelperExecutionStart();
         }
     }
 
@@ -468,7 +626,9 @@ public class AllyHelperManager : MonoBehaviour
         bool hideOnSkillComplete,
         SkillTargetHandle target,
         SkillCastCostPolicy? costPolicy,
-        Vector3? preferredPosition)
+        Vector3? preferredPosition,
+        SkillHelperDef helperProc,
+        bool stampCooldown)
     {
         if (!TryPrepareHelperForSummon(out bool activatedNow, preferredPosition))
             return false;
@@ -499,8 +659,10 @@ public class AllyHelperManager : MonoBehaviour
         {
             requestId = requestId,
             skillDef = skillDef,
+            helperProc = helperProc,
             target = target ?? SkillTargetHandle.None,
             costPolicy = costPolicy,
+            stampCooldown = stampCooldown,
         };
 
         if (SkillTargetHandle.IsAssigned(pendingHelperSkill.target) &&
@@ -564,6 +726,46 @@ public class AllyHelperManager : MonoBehaviour
             continueNormalizedTime);
     }
 
+    /// <summary>Starts a chain proc using the selected Helper proc runtime entry.</summary>
+    public bool TryStartChainAttackHelperProc(
+        SkillHelperDef helperProc,
+        bool hideOnSkillComplete = true,
+        ChainStepContinueMode continueMode = ChainStepContinueMode.OnStepComplete,
+        float continueNormalizedTime = 1f,
+        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.IgnoreEnergyAndCharge,
+        bool stampCooldown = false)
+    {
+        if (helperProc == null || helperProc.executionSkill == null || helperProc.chainAttackSequence == null)
+        {
+            Log(helperProc != null ? helperProc.chainAttackSequence : null,
+                "Chain proc start failed: proc config is incomplete.");
+            return false;
+        }
+
+        if (!TryResolveChainAttackTarget(
+                helperProc.chainAttackSequence,
+                out GameObject targetObject,
+                out Transform targetTransform,
+                out Transform anchorTransform))
+        {
+            Log(helperProc.chainAttackSequence, "Chain proc start failed: no valid target near the player's aim target.");
+            return false;
+        }
+
+        return TryStartChainAttackHelperInternal(
+            helperProc.chainAttackSequence,
+            helperProc.executionSkill,
+            targetObject,
+            targetTransform,
+            anchorTransform,
+            hideOnSkillComplete,
+            continueMode,
+            continueNormalizedTime,
+            helperProc,
+            costPolicy,
+            stampCooldown);
+    }
+
     public bool TryStartChainAttackHelperToTarget(
         HelperChainAttackSequenceDef sequenceDef,
         SkillGemDefinition chainAttackSkillDef,
@@ -603,7 +805,10 @@ public class AllyHelperManager : MonoBehaviour
         Transform anchorTransform,
         bool hideOnSkillComplete,
         ChainStepContinueMode continueMode,
-        float continueNormalizedTime)
+        float continueNormalizedTime,
+        SkillHelperDef helperProc = null,
+        SkillCastCostPolicy? costPolicy = null,
+        bool stampCooldown = true)
     {
         if (sequenceDef == null || chainAttackSkillDef == null || targetObject == null || targetTransform == null || anchorTransform == null)
         {
@@ -611,6 +816,43 @@ public class AllyHelperManager : MonoBehaviour
             return false;
         }
 
+        if (!TryBeginHelperExecutionStart())
+            return false;
+
+        try
+        {
+            return TryStartChainAttackHelperInternalCore(
+                sequenceDef,
+                chainAttackSkillDef,
+                targetObject,
+                targetTransform,
+                anchorTransform,
+                hideOnSkillComplete,
+                continueMode,
+                continueNormalizedTime,
+                helperProc,
+                costPolicy,
+                stampCooldown);
+        }
+        finally
+        {
+            EndHelperExecutionStart();
+        }
+    }
+
+    bool TryStartChainAttackHelperInternalCore(
+        HelperChainAttackSequenceDef sequenceDef,
+        SkillGemDefinition chainAttackSkillDef,
+        GameObject targetObject,
+        Transform targetTransform,
+        Transform anchorTransform,
+        bool hideOnSkillComplete,
+        ChainStepContinueMode continueMode,
+        float continueNormalizedTime,
+        SkillHelperDef helperProc,
+        SkillCastCostPolicy? costPolicy,
+        bool stampCooldown)
+    {
         if (!TryPrepareHelperForSummon(out bool activatedNow))
             return false;
 
@@ -624,6 +866,9 @@ public class AllyHelperManager : MonoBehaviour
             executionId = NextHelperExecutionId(),
             sequenceDef = sequenceDef,
             chainAttackSkillDef = chainAttackSkillDef,
+            helperProc = helperProc,
+            costPolicy = costPolicy,
+            stampCooldown = stampCooldown,
             targetObject = targetObject,
             targetTransform = targetTransform,
             anchorTransform = anchorTransform,
@@ -690,6 +935,12 @@ public class AllyHelperManager : MonoBehaviour
 
         allyContext = allyHelper.GetComponent<AllyContext>();
         allyContext?.ResolveReferences();
+        CharacterSkillManager helperSkillManager = allyContext != null
+            ? allyContext.SkillManager
+            : allyHelper.GetComponent<CharacterSkillManager>();
+        if (helperSkillManager == null)
+            helperSkillManager = allyHelper.GetComponent<CharacterSkillManager>();
+        SubscribeToHelperProcLoadout(helperSkillManager);
         allyBehaviorTree = allyHelper.GetComponent<BehaviorTree>();
 
         SubscribeToHelperPartyLoader(ResolveHelperPartyLoader());
@@ -966,12 +1217,23 @@ public class AllyHelperManager : MonoBehaviour
         if (helperSkill.skillDef == null)
             return;
 
-        if (!ExecuteHelperSkill(
+        bool executed = helperSkill.helperProc != null
+            ? ExecuteHelperProcSkill(
+                helperSkill.helperProc,
+                applyFacing: true,
+                requestId,
+                helperSkill.target,
+                helperSkill.costPolicy ?? SkillCastCostPolicy.Normal,
+                helperSkill.stampCooldown)
+            : ExecuteHelperSkill(
                 helperSkill.skillDef,
                 applyFacing: true,
                 requestId,
                 helperSkill.target,
-                helperSkill.costPolicy))
+                helperSkill.costPolicy,
+                helperSkill.stampCooldown);
+
+        if (!executed)
         {
             LastExecutionSucceeded = false;
         }
@@ -979,6 +1241,9 @@ public class AllyHelperManager : MonoBehaviour
 
     void CancelPendingHelperSkill()
     {
+        if (pendingHelperSkill != null && pendingHelperSkill.requestId > 0 && allyAnimDriver != null)
+            allyAnimDriver.CancelSkillCastRequest(pendingHelperSkill.requestId);
+
         pendingHelperSkill = null;
     }
 
@@ -991,6 +1256,15 @@ public class AllyHelperManager : MonoBehaviour
     {
         if (pendingChainAttackSequence != null)
         {
+            if (!success && allyAnimDriver != null)
+            {
+                if (pendingChainAttackSequence.warpRequestId > 0)
+                    allyAnimDriver.CancelSkillCastRequest(pendingChainAttackSequence.warpRequestId);
+
+                if (pendingChainAttackSequence.chainAttackRequestId > 0)
+                    allyAnimDriver.CancelSkillCastRequest(pendingChainAttackSequence.chainAttackRequestId);
+            }
+
             lastCompletedChainAttackExecutionId = pendingChainAttackSequence.executionId;
             lastCompletedChainAttackExecutionSucceeded = success;
         }
@@ -1182,10 +1456,23 @@ public class AllyHelperManager : MonoBehaviour
             if (pendingChainAttackSequence.phase != ChainAttackPhase.WaitingForChainCastMoment)
                 return true;
 
-            if (!ExecuteHelperSkill(
+            bool executed = pendingChainAttackSequence.helperProc != null
+                ? ExecuteHelperProcSkill(
+                    pendingChainAttackSequence.helperProc,
+                    applyFacing: false,
+                    requestId,
+                    SkillTargetHandle.None,
+                    pendingChainAttackSequence.costPolicy ?? SkillCastCostPolicy.Normal,
+                    pendingChainAttackSequence.stampCooldown)
+                : ExecuteHelperSkill(
                     pendingChainAttackSequence.chainAttackSkillDef,
                     applyFacing: false,
-                    requestId))
+                    requestId,
+                    target: null,
+                    costPolicy: pendingChainAttackSequence.costPolicy,
+                    stampCooldown: pendingChainAttackSequence.stampCooldown);
+
+            if (!executed)
             {
                 Log(pendingChainAttackSequence.sequenceDef, "Chain attack cancelled: follow-up skill payload failed.");
                 CancelActiveChainAttackSequence(interrupted: false);
@@ -1415,7 +1702,8 @@ public class AllyHelperManager : MonoBehaviour
         bool applyFacing,
         int requestId = 0,
         SkillTargetHandle target = null,
-        SkillCastCostPolicy? costPolicy = null)
+        SkillCastCostPolicy? costPolicy = null,
+        bool stampCooldown = true)
     {
         if (skillDef == null)
             return false;
@@ -1434,7 +1722,7 @@ public class AllyHelperManager : MonoBehaviour
         if (costPolicy.HasValue)
         {
             return ExecuteMeteredHelperSkill(
-                skillDef, applyFacing, requestId, target, costPolicy.Value);
+                skillDef, applyFacing, requestId, target, costPolicy.Value, stampCooldown);
         }
 
         EnsureHelperSkillCastOrchestrator();
@@ -1471,6 +1759,58 @@ public class AllyHelperManager : MonoBehaviour
         return false;
     }
 
+    bool ExecuteHelperProcSkill(
+        SkillHelperDef helperProc,
+        bool applyFacing,
+        int requestId,
+        SkillTargetHandle target,
+        SkillCastCostPolicy costPolicy,
+        bool stampCooldown)
+    {
+        if (helperProc == null || helperProc.executionSkill == null)
+            return false;
+
+        CharacterSkillManager skillManager = HelperSkillManager;
+        if (skillManager == null)
+        {
+            Debug.LogWarning(
+                $"Helper proc '{helperProc.RuntimeId}' needs a CharacterSkillManager on the helper actor.",
+                this);
+            return false;
+        }
+
+        if (applyFacing)
+            ApplyHelperSkillFacing(helperProc.executionSkill);
+
+        if (logHelperExecution)
+        {
+            Debug.Log(
+                $"[AllyHelperManager] Executing helper proc '{helperProc.RuntimeId}' using '{helperProc.executionSkill.name}'.",
+                this);
+        }
+
+        SkillCastStartResult result = skillManager.TryStartHelperProcSkill(
+            helperProc,
+            debugSource: $"helper-proc:{helperProc.RuntimeId}",
+            requiredTimelineEvent: CombatTimelineEventName.None,
+            usePlanarRootMotion: false,
+            stampCooldown: stampCooldown,
+            primaryTarget: target,
+            costPolicy: costPolicy,
+            externalAnimationRequestId: requestId);
+
+        if (result.Started)
+        {
+            TryPlayHelperSkillVoice(helperProc.executionSkill);
+            return true;
+        }
+
+        Debug.LogWarning(
+            $"Helper proc '{helperProc.RuntimeId}' could not execute through the helper skill manager.",
+            this);
+        return false;
+    }
+
     /// <summary>
     /// Runs a helper skill through the helper's own <see cref="CharacterSkillManager"/>, which
     /// binds it to a persistent per-definition charge pool. The helper GameObject is only ever
@@ -1482,7 +1822,8 @@ public class AllyHelperManager : MonoBehaviour
         bool applyFacing,
         int requestId,
         SkillTargetHandle target,
-        SkillCastCostPolicy costPolicy)
+        SkillCastCostPolicy costPolicy,
+        bool stampCooldown)
     {
         CharacterSkillManager skillManager = HelperSkillManager;
         if (skillManager == null)
@@ -1508,7 +1849,7 @@ public class AllyHelperManager : MonoBehaviour
             debugSource: $"helper:{skillDef.name}",
             requiredTimelineEvent: CombatTimelineEventName.None,
             usePlanarRootMotion: false,
-            stampCooldown: true,
+            stampCooldown: stampCooldown,
             primaryTarget: target,
             costPolicy: costPolicy,
             externalAnimationRequestId: requestId);

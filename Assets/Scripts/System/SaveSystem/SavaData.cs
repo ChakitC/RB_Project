@@ -115,6 +115,9 @@ public class CharacterProgressEntry
 [Serializable]
 public class CharacterProgressSaveFile
 {
+    public const int CurrentVersion = 1;
+
+    public int schemaVersion = CurrentVersion;
     public List<CharacterProgressEntry> entries = new();
 }
 

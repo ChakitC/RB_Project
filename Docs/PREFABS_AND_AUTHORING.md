@@ -35,6 +35,22 @@ Common references should be assigned on the context when possible:
 Runtime code can resolve missing references, but important prefab context fields
 should still be bound when authoring stable production prefabs.
 
+### Shared Helper rig contract
+
+`Assets/Prefab/Player/Ally_Helper.prefab` is a shared rig created with the party and hidden between
+executions. It is not a `SummonController` object and must remain on the existing Helper rig
+architecture. Validate it with **Tools > RB > AI > Validate Helper Rig**. The rig must contain and
+bind:
+
+- `AllyContext`
+- `CharacterSkillManager`
+- `CharacterActiveSkillProgress`
+- `CharacterAnimDriver` and `CharacterAnimBrain`
+
+The loaded character's `CharacterStats` supplies the manual command and selected Helper proc
+variants at runtime. Keep local authoring references such as animation, model, hitbox, fader, and
+teleport-probe fields on the rig; they are not replaceable by context lookup.
+
 ## Character Vertical Motor
 
 `CharacterVerticalMotor` is the single owner of a character's Y axis. Every planar
@@ -557,6 +573,10 @@ empty, runtime save/load uses the skill definition's `skillId`.
 active-skill choices in `CharacterStats`. There is no separate `passiveSlots`
 field on `CharacterSkillManager` anymore — it was removed (was always
 empty in every prefab, so nothing authored is lost).
+
+Helper proc options also require an explicit stable `slotId`, `optionId`, unique Helper proc id,
+and a `SkillHelperDef.executionSkill`. The selected option is resolved into a runtime proc entry;
+unselected options are authoring data only.
 
 ### Authoring A Passive-Kind Slot
 

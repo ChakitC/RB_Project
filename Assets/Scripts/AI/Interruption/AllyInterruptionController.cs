@@ -218,7 +218,8 @@ public sealed class AllyInterruptionController : MonoBehaviour
             out result,
             preferredActorPosition: _actorTransform != null ? _actorTransform.position : (Vector3?)null,
             noWarpStartDistance: noWarpStartDistance,
-            noWarpTargetDistance: noWarpTargetDistance);
+            noWarpTargetDistance: noWarpTargetDistance,
+            reservations: CharacterPlacementReservationRegistry.Shared);
 
         if (resolved)
         {
@@ -554,6 +555,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
         RestoreVisibleState();
         RestoreAutonomy();
         ReleaseAllyReservation();
+        CharacterPlacementReservationRegistry.Shared.ReleaseOwner(_actorTransform);
 
         _target = default;
         _blockReservation = default;

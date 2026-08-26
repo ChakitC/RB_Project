@@ -68,6 +68,19 @@ public sealed class CompositeSkillPayloadDef : SkillPayloadDef
         }
     }
 
+    public override bool TryGetTargetPlacement(out SkillTargetPlacementSpec placement)
+    {
+        for (int i = 0; i < steps.Count; i++)
+        {
+            SkillPayloadDef payload = GetStepPayload(steps[i]);
+            if (payload != null && payload.TryGetTargetPlacement(out placement))
+                return true;
+        }
+
+        placement = default;
+        return false;
+    }
+
     public override void CollectTimelineEventNames(List<CombatTimelineEventName> eventNames)
     {
         for (int i = 0; i < steps.Count; i++)

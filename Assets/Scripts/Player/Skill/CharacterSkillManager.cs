@@ -557,7 +557,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     public SkillCastStartResult TryStartPlayerCommandSkill()
     {
         CacheReferences();
-        return TryBeginEntryCast(helperCommandSkillEntry, "player-command");
+        return TryBeginEntryCast(
+            helperCommandSkillEntry,
+            "player-command",
+            usePlanarRootMotion: true);
     }
 
     public bool CanStartExternalSkill(CharacterSkillEntry entry, bool ignoreResourceCosts = false)

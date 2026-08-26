@@ -212,6 +212,15 @@ internal sealed class FieldAllyTransitionController
             execution.step.faceLockedTargetOnStart ||
             execution.step.faceLockedTargetOnCast;
 
+        AnimationClip utilityWarpOutClip = null;
+        float utilityCastPointNormalized = 0f;
+        if (ShouldValidateUtilityWarpOutTail(execution))
+        {
+            owner.AnimBrainRef.TryResolveChainUtilityWarpOutAnimationClip(
+                out utilityWarpOutClip,
+                out utilityCastPointNormalized);
+        }
+
         if (!TargetedSkillPlacementResolver.TryResolve(
                 execution.step.teleportProfile,
                 targetAnchor,
@@ -225,7 +234,10 @@ internal sealed class FieldAllyTransitionController
                 owner.ChainTeleportProbeColliderRef,
                 owner.TransformRef,
                 execution.lockedTarget,
-                out TargetedSkillPlacementResult placementResult))
+                out TargetedSkillPlacementResult placementResult,
+                reservations: owner.PlacementReservations,
+                leadInClip: utilityWarpOutClip,
+                leadInStartNormalized: utilityCastPointNormalized))
         {
             owner.LogExecution(
                 $"Step '{execution.step.RuntimeId}' targeted placement failed: " +
@@ -274,11 +286,12 @@ internal sealed class FieldAllyTransitionController
                 owner.TransformRef.rotation,
                 out teleportPosition,
                 out teleportRotation,
-                step.requireNavMeshAtWarpPoint,
-                step.warpNavMeshSampleDistance,
-                owner.ChainTeleportProbeColliderRef,
-                owner.TransformRef,
-                poseValidator);
+                requireNavMeshAtAnchorOverride: true,
+                navMeshSampleDistanceOverride: step.warpNavMeshSampleDistance,
+                probeCollider: owner.ChainTeleportProbeColliderRef,
+                probeRoot: owner.TransformRef,
+                poseValidator: poseValidator,
+                reservations: owner.PlacementReservations);
         }
 
         return TryResolveLegacyWarpPose(step, lockedTarget, out teleportPosition, out teleportRotation);

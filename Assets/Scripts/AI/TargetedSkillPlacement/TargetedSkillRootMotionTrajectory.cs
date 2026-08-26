@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 
-internal readonly struct TargetedSkillRootMotionSample
+public readonly struct TargetedSkillRootMotionSample
 {
     public readonly float normalizedTime;
     public readonly Vector3 localPosition;
@@ -18,21 +18,47 @@ internal readonly struct TargetedSkillRootMotionSample
     }
 }
 
-internal sealed class TargetedSkillRootMotionTrajectory
+public sealed class TargetedSkillRootMotionTrajectory
 {
     const float PositionEpsilon = 0.01f;
     const float YawEpsilon = 0.5f;
 
     readonly TargetedSkillRootMotionSample[] samples;
+    readonly CharacterPlacementAnimationInput placementInput;
 
-    public TargetedSkillRootMotionTrajectory(AnimationClip clip, TargetedSkillRootMotionSample[] samples)
+    public TargetedSkillRootMotionTrajectory(
+        AnimationClip clip,
+        TargetedSkillRootMotionSample[] samples,
+        Avatar avatar = null,
+        CharacterPlacementAnimationInput.Segment[] segments = null)
     {
         Clip = clip;
+        Avatar = avatar;
         this.samples = samples ?? Array.Empty<TargetedSkillRootMotionSample>();
+
+        CharacterPlacementAnimationInput.Sample[] placementSamples =
+            new CharacterPlacementAnimationInput.Sample[this.samples.Length];
+        for (int i = 0; i < this.samples.Length; i++)
+        {
+            TargetedSkillRootMotionSample sample = this.samples[i];
+            placementSamples[i] = new CharacterPlacementAnimationInput.Sample(
+                sample.normalizedTime,
+                sample.localPosition,
+                sample.localYaw);
+        }
+
+        placementInput = new CharacterPlacementAnimationInput(
+            clip,
+            avatar,
+            planarRootMotionEnabled: true,
+            placementSamples,
+            segments);
     }
 
     public AnimationClip Clip { get; }
+    public Avatar Avatar { get; }
     public IReadOnlyList<TargetedSkillRootMotionSample> Samples => samples;
+    public CharacterPlacementAnimationInput PlacementInput => placementInput;
     public bool HasSamples => samples.Length > 1;
     public bool HasMeaningfulMotion
     {
@@ -92,6 +118,125 @@ internal sealed class TargetedSkillRootMotionTrajectory
         }
 
         sample = samples[lastIndex];
+        return true;
+    }
+
+    public static bool TryComposeLeadIn(
+        TargetedSkillRootMotionTrajectory leadInTrajectory,
+        float leadInStartNormalized,
+        TargetedSkillRootMotionTrajectory attackTrajectory,
+        out TargetedSkillRootMotionTrajectory composite,
+        out float attackStartNormalized,
+        out string failureReason)
+    {
+        composite = null;
+        attackStartNormalized = 0f;
+        failureReason = null;
+
+        if (leadInTrajectory == null || !leadInTrajectory.HasSamples || leadInTrajectory.Clip == null)
+        {
+            failureReason = "Lead-in animation trajectory is missing.";
+            return false;
+        }
+
+        if (attackTrajectory == null || !attackTrajectory.HasSamples || attackTrajectory.Clip == null)
+        {
+            failureReason = "Attack animation trajectory is missing.";
+            return false;
+        }
+
+        float leadInStart = Mathf.Clamp01(leadInStartNormalized);
+        float leadInDuration = leadInTrajectory.Clip.length * (1f - leadInStart);
+        float attackDuration = attackTrajectory.Clip.length;
+        float totalDuration = leadInDuration + attackDuration;
+        if (leadInDuration <= 0.0001f || attackDuration <= 0.0001f || totalDuration <= 0.0001f)
+        {
+            failureReason = "Lead-in and attack animation durations are invalid.";
+            return false;
+        }
+
+        if (!leadInTrajectory.TrySample(leadInStart, out TargetedSkillRootMotionSample leadInStartSample) ||
+            !leadInTrajectory.TrySample(1f, out TargetedSkillRootMotionSample leadInEndSample) ||
+            !attackTrajectory.TrySample(0f, out TargetedSkillRootMotionSample attackStartSample))
+        {
+            failureReason = "Lead-in or attack trajectory samples are invalid.";
+            return false;
+        }
+
+        attackStartNormalized = leadInDuration / totalDuration;
+        int sampleCount = Mathf.Clamp(
+            Mathf.CeilToInt(totalDuration * 30f) + 1,
+            2,
+            240);
+        TargetedSkillRootMotionSample[] compositeSamples =
+            new TargetedSkillRootMotionSample[sampleCount];
+
+        Vector3 leadInDelta = leadInEndSample.localPosition - leadInStartSample.localPosition;
+        float leadInYawDelta = leadInEndSample.localYaw - leadInStartSample.localYaw;
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float normalized = i / (sampleCount - 1f);
+            Vector3 localPosition;
+            float localYaw;
+
+            if (normalized <= attackStartNormalized)
+            {
+                float leadInTime = attackStartNormalized > 0.0001f
+                    ? normalized / attackStartNormalized
+                    : 1f;
+                float leadInNormalized = Mathf.Lerp(leadInStart, 1f, leadInTime);
+                leadInTrajectory.TrySample(leadInNormalized, out TargetedSkillRootMotionSample sample);
+                localPosition = sample.localPosition - leadInStartSample.localPosition;
+                localYaw = sample.localYaw - leadInStartSample.localYaw;
+            }
+            else
+            {
+                float attackTime = (normalized - attackStartNormalized) /
+                                   (1f - attackStartNormalized);
+                attackTrajectory.TrySample(attackTime, out TargetedSkillRootMotionSample sample);
+                Vector3 attackDelta = sample.localPosition - attackStartSample.localPosition;
+                localPosition = leadInDelta +
+                                Quaternion.AngleAxis(leadInYawDelta, Vector3.up) * attackDelta;
+                localYaw = leadInYawDelta + sample.localYaw - attackStartSample.localYaw;
+            }
+
+            compositeSamples[i] = new TargetedSkillRootMotionSample(
+                normalized,
+                localPosition,
+                localYaw);
+        }
+
+        CharacterPlacementAnimationInput.Sample[] placementSamples =
+            new CharacterPlacementAnimationInput.Sample[compositeSamples.Length];
+        for (int i = 0; i < compositeSamples.Length; i++)
+        {
+            TargetedSkillRootMotionSample sample = compositeSamples[i];
+            placementSamples[i] = new CharacterPlacementAnimationInput.Sample(
+                sample.normalizedTime,
+                sample.localPosition,
+                sample.localYaw);
+        }
+
+        CharacterPlacementAnimationInput.Segment[] segments =
+        {
+            new CharacterPlacementAnimationInput.Segment(
+                "UtilityWarpOutTail",
+                0f,
+                attackStartNormalized,
+                placementSamples),
+            new CharacterPlacementAnimationInput.Segment(
+                "Attack",
+                attackStartNormalized,
+                1f,
+                placementSamples),
+        };
+
+        composite = new TargetedSkillRootMotionTrajectory(
+            attackTrajectory.Clip,
+            compositeSamples,
+            attackTrajectory.Avatar,
+            segments);
         return true;
     }
 }
@@ -334,7 +479,7 @@ internal static class TargetedSkillRootMotionTrajectoryCache
                     return false;
                 }
 
-                trajectory = new TargetedSkillRootMotionTrajectory(clip, samples);
+                trajectory = new TargetedSkillRootMotionTrajectory(clip, samples, animator.avatar);
                 return true;
             }
             catch (Exception ex)

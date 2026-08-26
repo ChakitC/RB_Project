@@ -195,6 +195,7 @@ public sealed class SummonContractSmokeTests
         {
             ResolveGround = false,
             ClearanceMask = ~0,
+            CandidateSearchCount = 1,
         };
         var reserved = new List<SummonPlacementCandidate>();
 
@@ -216,6 +217,121 @@ public sealed class SummonContractSmokeTests
                 reserved,
                 out _,
                 out string secondError), Is.True, secondError);
+    }
+
+    [Test]
+    public void CentralFootprintUtilityPreservesBoxCapsuleAndSphereGeometry()
+    {
+        GameObject root = Track(new GameObject("FootprintUtilityRoot"));
+
+        GameObject boxObject = Track(new GameObject("FootprintBox"));
+        boxObject.transform.SetParent(root.transform, false);
+        boxObject.transform.localPosition = new Vector3(1f, 2f, 3f);
+        boxObject.transform.localRotation = Quaternion.Euler(0f, 35f, 0f);
+        boxObject.transform.localScale = new Vector3(2f, 3f, 4f);
+        BoxCollider box = boxObject.AddComponent<BoxCollider>();
+        box.size = new Vector3(1f, 2f, 3f);
+        box.center = new Vector3(0.1f, 0.2f, -0.3f);
+
+        Assert.That(CharacterPlacementFootprintUtility.TryGetColliderFootprint(
+                box,
+                root.transform,
+                out CharacterPlacementFootprint boxFootprint,
+                out string boxError), Is.True, boxError);
+        Assert.That(boxFootprint.Shape, Is.EqualTo(CharacterPlacementShape.Box));
+        Assert.That(Vector3.Distance(
+                boxFootprint.HalfExtents,
+                Vector3.Scale(box.size * 0.5f, new Vector3(2f, 3f, 4f))),
+            Is.LessThan(0.001f));
+        Assert.That(Vector3.Distance(
+                boxFootprint.CenterOffset,
+                root.transform.InverseTransformPoint(box.transform.TransformPoint(box.center))),
+            Is.LessThan(0.001f));
+
+        GameObject capsuleObject = Track(new GameObject("FootprintCapsule"));
+        capsuleObject.transform.SetParent(root.transform, false);
+        capsuleObject.transform.localScale = new Vector3(2f, 1f, 3f);
+        CapsuleCollider capsule = capsuleObject.AddComponent<CapsuleCollider>();
+        capsule.direction = 2;
+        capsule.height = 4f;
+        capsule.radius = 0.5f;
+
+        Assert.That(CharacterPlacementFootprintUtility.TryGetColliderFootprint(
+                capsule,
+                root.transform,
+                out CharacterPlacementFootprint capsuleFootprint,
+                out string capsuleError), Is.True, capsuleError);
+        Assert.That(capsuleFootprint.Shape, Is.EqualTo(CharacterPlacementShape.Circle));
+        Assert.That(capsuleFootprint.Radius, Is.EqualTo(1f).Within(0.001f));
+        Assert.That(capsuleFootprint.Height, Is.EqualTo(12f).Within(0.001f));
+        Assert.That(capsuleFootprint.Axis, Is.EqualTo(Vector3.forward));
+
+        GameObject sphereObject = Track(new GameObject("FootprintSphere"));
+        sphereObject.transform.SetParent(root.transform, false);
+        sphereObject.transform.localScale = new Vector3(2f, 3f, 4f);
+        SphereCollider sphere = sphereObject.AddComponent<SphereCollider>();
+        sphere.radius = 0.5f;
+
+        Assert.That(CharacterPlacementFootprintUtility.TryGetColliderFootprint(
+                sphere,
+                root.transform,
+                out CharacterPlacementFootprint sphereFootprint,
+                out string sphereError), Is.True, sphereError);
+        Assert.That(sphereFootprint.Radius, Is.EqualTo(2f).Within(0.001f));
+        Assert.That(sphereFootprint.Height, Is.EqualTo(4f).Within(0.001f));
+    }
+
+    [Test]
+    public void SummonProbeOwnsMobileDiscoveryAndUsesCentralCapsuleGeometry()
+    {
+        GameObject prefab = Track(new GameObject("MobileProbePrefab"));
+        CharacterController controller = prefab.AddComponent<CharacterController>();
+        controller.radius = 0.5f;
+        controller.height = 2f;
+        controller.center = new Vector3(0f, 1f, 0f);
+
+        Assert.That(CharacterPlacementProbeUtility.TryGetFootprint(
+                prefab,
+                SummonMobility.Mobile,
+                out CharacterPlacementFootprint footprint,
+                out string error), Is.True, error);
+        Assert.That(footprint.Shape, Is.EqualTo(CharacterPlacementShape.Circle));
+        Assert.That(footprint.Radius, Is.EqualTo(0.5f).Within(0.001f));
+        Assert.That(footprint.Height, Is.EqualTo(2f).Within(0.001f));
+        Assert.That(Vector3.Distance(
+                footprint.CenterOffset,
+                new Vector3(0f, 1f, 0f)),
+            Is.LessThan(0.001f));
+
+        GameObject invalidPrefab = Track(new GameObject("InvalidMobileProbePrefab"));
+        Assert.That(CharacterPlacementProbeUtility.TryGetFootprint(
+                invalidPrefab,
+                SummonMobility.Mobile,
+                out _,
+                out error), Is.False);
+        Assert.That(error, Is.EqualTo(
+            "Mobile summon requires CharacterController or NavMeshAgent footprint."));
+    }
+
+    [Test]
+    public void CentralFootprintUtilityProvidesFallbackAndRejectsUnsupportedCollider()
+    {
+        GameObject root = Track(new GameObject("UnsupportedFootprintRoot"));
+        MeshCollider unsupported = root.AddComponent<MeshCollider>();
+
+        Assert.That(CharacterPlacementFootprintUtility.TryGetColliderFootprint(
+                unsupported,
+                root.transform,
+                out _,
+                out string error), Is.False);
+        Assert.That(error, Does.Contain("Unsupported"));
+
+        CharacterPlacementFootprint fallback = CharacterPlacementFootprintUtility.CreateFallbackBox(
+            Vector3.one,
+            new Vector3(-2f, 0f, -3f));
+        Assert.That(fallback.Shape, Is.EqualTo(CharacterPlacementShape.Box));
+        Assert.That(fallback.CenterOffset, Is.EqualTo(Vector3.one));
+        Assert.That(fallback.HalfExtents, Is.EqualTo(new Vector3(2f, 0.01f, 3f)));
     }
 
     [Test]
@@ -292,6 +408,7 @@ public sealed class SummonContractSmokeTests
         {
             ResolveGround = false,
             ClearanceMask = ~0,
+            CandidateSearchCount = 1,
         };
 
         Physics.SyncTransforms();
@@ -302,8 +419,50 @@ public sealed class SummonContractSmokeTests
                 settings,
                 null,
                 out _,
-                out string error), Is.False);
-        Assert.That(error, Is.EqualTo("Summon placement clearance is blocked."));
+                out string error), Is.True, error);
+    }
+
+    [Test]
+    public void SummonSearchChoosesLeastBlockedCandidateInsteadOfRejectingBaseOverlap()
+    {
+        GameObject blocker = Track(GameObject.CreatePrimitive(PrimitiveType.Cube));
+        blocker.name = "SummonBaseOverlap";
+        blocker.transform.position = Vector3.zero;
+        blocker.transform.localScale = Vector3.one;
+
+        GameObject prefab = Track(new GameObject("SummonSearchPrefab"));
+        prefab.transform.position = new Vector3(100f, 0f, 100f);
+        BoxCollider collider = prefab.AddComponent<BoxCollider>();
+        collider.size = Vector3.one;
+        CharacterColliderRefs refs = prefab.AddComponent<CharacterColliderRefs>();
+        refs.CharacterPositionCollider = collider;
+
+        PlayerContext owner = CreateOwner();
+        var request = new SummonSpawnContext
+        {
+            Caster = owner,
+            Prefab = prefab,
+            Mobility = SummonMobility.Stationary,
+            Position = Vector3.zero,
+        };
+        var settings = new SummonPlacementSettings
+        {
+            ResolveGround = false,
+            ClearanceMask = ~0,
+            CandidateSearchCount = 8,
+            CandidateSearchRadius = 1.5f,
+        };
+
+        Physics.SyncTransforms();
+        Assert.That(SummonPlacementResolver.TryResolve(
+                request,
+                Vector3.zero,
+                Quaternion.identity,
+                settings,
+                null,
+                out SummonPlacementCandidate candidate,
+                out string error), Is.True, error);
+        Assert.That(candidate.Position.sqrMagnitude, Is.GreaterThan(0.25f));
     }
 
     [Test]

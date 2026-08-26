@@ -170,7 +170,8 @@ public sealed class PlayerInterruptionController : MonoBehaviour
             out result,
             preferredActorPosition: _actorTransform != null ? _actorTransform.position : (Vector3?)null,
             noWarpStartDistance: noWarpStartDistance,
-            noWarpTargetDistance: noWarpTargetDistance);
+            noWarpTargetDistance: noWarpTargetDistance,
+            reservations: CharacterPlacementReservationRegistry.Shared);
 
         if (resolved)
         {
@@ -496,6 +497,7 @@ public sealed class PlayerInterruptionController : MonoBehaviour
         UnsubscribeSkillEvents();
         RestoreVisibleState();
         RestorePlayerMovement();
+        CharacterPlacementReservationRegistry.Shared.ReleaseOwner(_actorTransform);
 
         _target = default;
         _blockReservation = default;

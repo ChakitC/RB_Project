@@ -1,13 +1,14 @@
 {
+    "schemaVersion": 1,
     "entries": [
         {
             "characterId": "ID.Feno",
             "progress": {
-                "level": 11,
-                "xp": 17,
+                "level": 15,
+                "xp": 692,
                 "unlocked": false,
                 "selectedSkillOptions": [],
-                "skillPoints": 10,
+                "skillPoints": 14,
                 "skillProgressInitialized": true,
                 "activeSkillTrees": []
             }
@@ -15,17 +16,29 @@
         {
             "characterId": "ID.Aires",
             "progress": {
-                "level": 11,
-                "xp": 17,
+                "level": 15,
+                "xp": 595,
                 "unlocked": false,
                 "selectedSkillOptions": [],
-                "skillPoints": 10,
+                "skillPoints": 14,
                 "skillProgressInitialized": true,
                 "activeSkillTrees": [
                     {
                         "slotId": "0",
                         "optionId": "Aires.Skill.1",
                         "treeId": "Aires_Skill_1.1_Tree",
+                        "unlockedNodes": []
+                    },
+                    {
+                        "slotId": "0",
+                        "optionId": "aires.skill.1",
+                        "treeId": "Aires_Skill_1.1_Tree",
+                        "unlockedNodes": []
+                    },
+                    {
+                        "slotId": "2",
+                        "optionId": "aires.skill.3",
+                        "treeId": "Aires_Skill_3_Tree",
                         "unlockedNodes": []
                     }
                 ]
@@ -34,8 +47,8 @@
         {
             "characterId": "ID.Milano",
             "progress": {
-                "level": 11,
-                "xp": 17,
+                "level": 15,
+                "xp": 692,
                 "unlocked": false,
                 "selectedSkillOptions": [],
                 "skillPoints": 8,
@@ -46,11 +59,11 @@
         {
             "characterId": "ID.Roma",
             "progress": {
-                "level": 11,
-                "xp": 17,
+                "level": 15,
+                "xp": 692,
                 "unlocked": false,
                 "selectedSkillOptions": [],
-                "skillPoints": 10,
+                "skillPoints": 14,
                 "skillProgressInitialized": true,
                 "activeSkillTrees": []
             }

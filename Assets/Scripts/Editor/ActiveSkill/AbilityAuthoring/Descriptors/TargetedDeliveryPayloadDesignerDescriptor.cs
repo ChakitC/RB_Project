@@ -33,6 +33,13 @@ internal sealed class TargetedDeliveryPayloadDesignerDescriptor
             "a cast with no target fails and refunds instead of burning a cooldown.",
             MessageType.Info);
 
+        EditorGUILayout.LabelField("Caster Placement", EditorStyles.boldLabel);
+        EditorGUILayout.PropertyField(serialized.FindProperty("targetStandOffDistanceAtCastPoint"));
+        EditorGUILayout.HelpBox(
+            "This is the caster-to-target distance at the skill cast point. Root motion determines " +
+            "where the animation must start; this value does not scale the clip.",
+            MessageType.None);
+
         EditorGUILayout.LabelField("Delivery Object", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(serialized.FindProperty("deliveryPrefab"));
         EditorGUILayout.HelpBox(
@@ -113,6 +120,8 @@ internal sealed class TargetedDeliveryPayloadDesignerDescriptor
         summary.AddDetail(
             $"Flight time is clamped to {payload.MinFlightDuration:0.##}s - {payload.MaxFlightDuration:0.##}s " +
             $"at {payload.Speed:0.#} units/sec.");
+        summary.AddDetail(
+            $"Caster stands {payload.TargetStandOffDistanceAtCastPoint:0.##}m from the target at the cast point.");
 
         if (payload.DeliveryPrefab == null)
             summary.AddWarning("No delivery prefab assigned yet -- nothing will be thrown.");

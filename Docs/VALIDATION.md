@@ -441,6 +441,37 @@ kill after summon destruction, cap eviction with presentation delay, room commit
 rollback, mobile warp failure, and placement/NavMesh failure without consuming a
 cap slot.
 
+`CharacterPlacementBaselineTests` captures the pre-migration legacy Chain teleport
+contract: the resolver stops at the first accepted candidate and preserves the
+authored sweep order (`0`, `+15`, `-15` degrees). This is a baseline only; the
+future central resolver may choose a different candidate after its scored result
+is explicitly adopted. There is currently no direct EditMode integration coverage
+for Chain Attack or Interruption controller placement, so those paths remain a
+Phase 3 PlayMode test gap.
+
+`CharacterPlacementResolverTests` covers the Phase 1 core contract without
+activating gameplay adapters: wall penetration outranks actor penetration,
+disabled planar root motion is evaluated as a static trajectory, the target is
+ignored only inside the configured contact window, reservations contribute actor
+overlap, required animation fails closed, the trajectory sweep catches a thin
+world blocker between samples, a NavMesh start adjustment cannot move the
+predicted target impact, Utility-tail/Attack composition keeps one continuous
+impact timeline with accumulated yaw, authored order breaks equal scores,
+null-safe anchor capture, runtime-policy defaults, and transient summon
+reservation deduplication against a physical collider on a sibling of
+`SummonedEntityRuntime`.
+Run both placement suites in EditMode after the Unity instance holding the project
+has been closed or after using the active Editor's Test Runner.
+
+The focused summon regression pass also runs `SummonContractSmokeTests` after
+the central summon-clearance delegation. It protects Box/Capsule/Sphere
+footprint parity, unsupported-collider fallback, ground-collider exclusion,
+nested/rotated footprints, horizontal capsules, least-overlap candidate search,
+and the existing owner/runtime contracts. Chain and Interruption controller
+scenarios that require live animation playback, utility-tail sequencing, or
+PlayMode reservation timing remain integration coverage rather than EditMode
+unit coverage.
+
 # Projectile lifecycle validation
 
 Two EditMode suites cover the pooled projectile, plus one Editor menu item.

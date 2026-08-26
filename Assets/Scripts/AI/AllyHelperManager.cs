@@ -8,6 +8,8 @@ using Opsive.BehaviorDesigner.Runtime;
 public class AllyHelperManager : MonoBehaviour
 {
     const int MaxChainTargetColliders = 64;
+    static CharacterPlacementReservationService SharedPlacementReservations =>
+        CharacterPlacementReservationRegistry.Shared;
 
     enum ChainAttackPhase
     {
@@ -53,6 +55,18 @@ public class AllyHelperManager : MonoBehaviour
         public int warpRequestId;
         public int chainAttackRequestId;
         public ChainAttackPhase phase;
+    }
+
+    readonly struct HelperPlacementPose
+    {
+        public HelperPlacementPose(Vector3 position, Quaternion rotation)
+        {
+            Position = position;
+            Rotation = rotation;
+        }
+
+        public Vector3 Position { get; }
+        public Quaternion Rotation { get; }
     }
 
     [SerializeField] private PlayerContext playerContext;
@@ -259,11 +273,16 @@ public class AllyHelperManager : MonoBehaviour
 
     bool TryExecuteCommandSlotCore(int slotIndex, bool hideOnSkillComplete)
     {
-        if (!TryPrepareHelperForSummon(out bool activatedNow))
+        CharacterSkillManager skillManager = HelperSkillManager;
+        SkillGemDefinition placementSkill = skillManager != null
+            ? skillManager.PlayerCommandSkill?.skillAsset
+            : null;
+        if (!TryPrepareHelperForSummon(
+                out bool activatedNow,
+                placementSkill: placementSkill))
             return false;
 
-        CharacterSkillManager skillManager = HelperSkillManager;
-        bool hasManualSkill = skillManager != null && skillManager.HasConfiguredPlayerCommandSkill;
+        bool hasManualSkill = placementSkill != null;
         if (!hasManualSkill)
         {
             // Player-initiated, so this is the right moment to say why nothing happened.
@@ -271,6 +290,8 @@ public class AllyHelperManager : MonoBehaviour
 
             if (activatedNow)
                 HideHelperImmediate();
+            else
+                ReleaseHelperPlacementReservation();
 
             return false;
         }
@@ -291,6 +312,8 @@ public class AllyHelperManager : MonoBehaviour
 
             if (activatedNow)
                 HideHelperImmediate();
+            else
+                ReleaseHelperPlacementReservation();
 
             return false;
         }
@@ -346,6 +369,7 @@ public class AllyHelperManager : MonoBehaviour
 
     void OnDestroy()
     {
+        SharedPlacementReservations.ReleaseOwner(allyHelper != null ? allyHelper.transform : null);
         RestoreHelperSkillAutonomy();
         RestoreHelperProtection();
         SubscribeToHelperProcLoadout(null);
@@ -469,6 +493,7 @@ public class AllyHelperManager : MonoBehaviour
 
     void OnDisable()
     {
+        SharedPlacementReservations.ReleaseOwner(allyHelper != null ? allyHelper.transform : null);
         helperExecutionStartInProgress = false;
         RestoreHelperSkillAutonomy();
         RestoreHelperProtection();
@@ -511,16 +536,24 @@ public class AllyHelperManager : MonoBehaviour
 
         // Placement is preflight. Failing here must leave no trace: no cast, no reservation, and
         // above all no cooldown, because nothing was deployed.
-        Vector3? preferredPosition = ResolvePositionNearTarget(targetContext);
+        HelperPlacementPose? preferredPlacement = ResolvePositionNearTarget(targetContext, skillDef);
+        bool started = TrySummonAllyHelper(skillDef, hideOnSkillComplete, target, costPolicy, preferredPlacement);
 
-        return TrySummonAllyHelper(skillDef, hideOnSkillComplete, target, costPolicy, preferredPosition);
+        if (!started)
+            ReleaseHelperPlacementReservation();
+
+        return started;
     }
 
     public bool TrySummonAllyHelper(
         SkillGemDefinition skillDef,
         bool hideOnSkillComplete = true)
     {
-        return TrySummonAllyHelper(skillDef, hideOnSkillComplete, SkillTargetHandle.None, null, null);
+        bool started = TrySummonAllyHelper(skillDef, hideOnSkillComplete, SkillTargetHandle.None, null, null);
+        if (!started)
+            ReleaseHelperPlacementReservation();
+
+        return started;
     }
 
     bool TrySummonAllyHelper(
@@ -528,7 +561,7 @@ public class AllyHelperManager : MonoBehaviour
         bool hideOnSkillComplete,
         SkillTargetHandle target,
         SkillCastCostPolicy? costPolicy,
-        Vector3? preferredPosition)
+        HelperPlacementPose? preferredPlacement)
     {
         // Re-entrant summons destroy each other. Activating the helper actor below runs other
         // systems synchronously - party registration above all - and those reach triggers that
@@ -547,7 +580,7 @@ public class AllyHelperManager : MonoBehaviour
                 hideOnSkillComplete,
                 target,
                 costPolicy,
-                preferredPosition,
+                preferredPlacement,
                 helperProc: null,
                 stampCooldown: costPolicy.HasValue);
         }
@@ -572,14 +605,19 @@ public class AllyHelperManager : MonoBehaviour
 
         try
         {
-            return TrySummonAllyHelperCore(
+            bool started = TrySummonAllyHelperCore(
                 helperProc.executionSkill,
                 hideOnSkillComplete,
                 SkillTargetHandle.None,
                 costPolicy,
-                preferredPosition: null,
+                preferredPlacement: null,
                 helperProc,
                 stampCooldown);
+
+            if (!started)
+                ReleaseHelperPlacementReservation();
+
+            return started;
         }
         finally
         {
@@ -599,21 +637,30 @@ public class AllyHelperManager : MonoBehaviour
             return false;
 
         SkillTargetHandle target = SkillTargetHandle.For(targetContext);
-        Vector3? preferredPosition = ResolvePositionNearTarget(targetContext);
+        HelperPlacementPose? preferredPlacement =
+            ResolvePositionNearTarget(targetContext, helperProc.executionSkill);
 
         if (!TryBeginHelperExecutionStart())
+        {
+            ReleaseHelperPlacementReservation();
             return false;
+        }
 
         try
         {
-            return TrySummonAllyHelperCore(
+            bool started = TrySummonAllyHelperCore(
                 helperProc.executionSkill,
                 hideOnSkillComplete,
                 target,
                 costPolicy,
-                preferredPosition,
+                preferredPlacement,
                 helperProc,
                 stampCooldown);
+
+            if (!started)
+                ReleaseHelperPlacementReservation();
+
+            return started;
         }
         finally
         {
@@ -626,11 +673,11 @@ public class AllyHelperManager : MonoBehaviour
         bool hideOnSkillComplete,
         SkillTargetHandle target,
         SkillCastCostPolicy? costPolicy,
-        Vector3? preferredPosition,
+        HelperPlacementPose? preferredPlacement,
         SkillHelperDef helperProc,
         bool stampCooldown)
     {
-        if (!TryPrepareHelperForSummon(out bool activatedNow, preferredPosition))
+        if (!TryPrepareHelperForSummon(out bool activatedNow, preferredPlacement, skillDef))
             return false;
 
         LastExecutionSucceeded = false;
@@ -678,7 +725,9 @@ public class AllyHelperManager : MonoBehaviour
         bool started = allyAnimDriver.TryPlaySkill(
             requestId,
             skillDef,
-            skillDef.GetCastPointNormalized());
+            skillDef.GetCastPointNormalized(),
+            timelineEventNames: null,
+            usePlanarRootMotion: true);
 
         if (started)
         {
@@ -821,7 +870,7 @@ public class AllyHelperManager : MonoBehaviour
 
         try
         {
-            return TryStartChainAttackHelperInternalCore(
+            bool started = TryStartChainAttackHelperInternalCore(
                 sequenceDef,
                 chainAttackSkillDef,
                 targetObject,
@@ -833,6 +882,11 @@ public class AllyHelperManager : MonoBehaviour
                 helperProc,
                 costPolicy,
                 stampCooldown);
+
+            if (!started)
+                ReleaseHelperPlacementReservation();
+
+            return started;
         }
         finally
         {
@@ -912,6 +966,7 @@ public class AllyHelperManager : MonoBehaviour
         CancelPendingHelperSkill();
         CompletePendingChainAttackSequence(false);
         hideHelperOnSkillComplete = false;
+        ReleaseHelperPlacementReservation();
 
         if (allyHelper == null || !allyHelper.activeSelf)
         {
@@ -1088,7 +1143,10 @@ public class AllyHelperManager : MonoBehaviour
             allyHelperFader.Deactivated += OnHelperFaderDeactivated;
     }
 
-    bool TryPrepareHelperForSummon(out bool activatedNow, Vector3? preferredPosition = null)
+    bool TryPrepareHelperForSummon(
+        out bool activatedNow,
+        HelperPlacementPose? preferredPlacement = null,
+        SkillGemDefinition placementSkill = null)
     {
         activatedNow = false;
 
@@ -1110,15 +1168,21 @@ public class AllyHelperManager : MonoBehaviour
 
         Vector3 playerPos = playerContext.transform.position;
 
-        // A targeted assist wants to arrive next to its recipient, but a spot that no longer fits
-        // is not worth failing the whole cast over - the ring around the player is always valid,
-        // and the delivery itself travels to the target regardless of where the helper stands.
-        Vector3 finalSpawnPos = preferredPosition ?? ResolveSummonPosition(playerPos);
+        // A targeted assist prefers its recipient ring, while an untargeted summon uses the same
+        // central resolver around the player. No valid NavMesh candidate means no activation or
+        // cast; the helper must never fall back to an unvalidated world position.
+        HelperPlacementPose? resolvedPlacement = preferredPlacement ??
+            ResolveSummonPosition(playerPos, placementSkill);
+        if (!resolvedPlacement.HasValue)
+        {
+            Debug.LogWarning("Summon failed: no valid NavMesh placement candidate was found.", this);
+            return false;
+        }
 
-        allyHelper.transform.position = finalSpawnPos;
-        
-     
-        ApplySummonRotation(finalSpawnPos, playerPos);
+        HelperPlacementPose finalPlacement = resolvedPlacement.Value;
+        allyHelper.transform.SetPositionAndRotation(
+            finalPlacement.Position,
+            finalPlacement.Rotation);
 
         if (!allyHelper.activeSelf)
         {
@@ -1139,6 +1203,8 @@ public class AllyHelperManager : MonoBehaviour
         // While a cinematic holds the helper on screen, nothing else may hide it.
         if (_cinematicHold)
             return;
+
+        SharedPlacementReservations.ReleaseOwner(allyHelper != null ? allyHelper.transform : null);
 
         allyHelperFader?.SetHiddenImmediate(preserveWhileDisabled: true);
 
@@ -1180,30 +1246,23 @@ public class AllyHelperManager : MonoBehaviour
         HideHelperImmediate();
     }
 
-    Vector3 ResolveSummonPosition(Vector3 playerPos)
+    HelperPlacementPose? ResolveSummonPosition(
+        Vector3 playerPos,
+        SkillGemDefinition placementSkill = null)
     {
-        Vector2 random2D = UnityEngine.Random.insideUnitCircle.normalized * UnityEngine.Random.Range(minSummonRadius, summonRadius);
-        Vector3 rawSpawnPos = playerPos + new Vector3(random2D.x, 0f, random2D.y);
+        float radius = Mathf.Lerp(
+            Mathf.Max(minSummonRadius, 0.1f),
+            Mathf.Max(summonRadius, minSummonRadius),
+            0.5f);
 
-        if (NavMesh.SamplePosition(rawSpawnPos, out NavMeshHit hit, navMeshSampleDistance, NavMesh.AllAreas))
-            return hit.position;
+        HelperPlacementPose? resolvedPlacement = TryResolveHelperPlacement(
+            playerPos,
+            radius,
+            playerContext != null ? playerContext.transform.rotation.eulerAngles.y : 0f,
+            targetContext: null,
+            placementSkill);
 
-        return rawSpawnPos;
-    }
-
-    void ApplySummonRotation(Vector3 spawnPos, Vector3 playerPos)
-    {
-        if (facePlayerForward)
-        {
-            allyHelper.transform.rotation = playerContext.transform.rotation;
-            return;
-        }
-
-        Vector3 lookDir = playerPos - spawnPos;
-        lookDir.y = 0f;
-
-        if (lookDir.sqrMagnitude > 0.001f)
-            allyHelper.transform.rotation = Quaternion.LookRotation(lookDir);
+        return resolvedPlacement;
     }
 
     void ExecutePendingHelperSkill(int requestId)
@@ -1378,6 +1437,7 @@ public class AllyHelperManager : MonoBehaviour
         RestoreHelperSkillAutonomy();
         CancelPendingHelperSkill();
         LastExecutionSucceeded = false;
+        ReleaseHelperPlacementReservation();
 
         if (hideHelperOnSkillComplete)
             AllyHelperOut();
@@ -1391,6 +1451,7 @@ public class AllyHelperManager : MonoBehaviour
         RestoreHelperSkillAutonomy();
         CancelPendingHelperSkill();
         LastExecutionSucceeded = true;
+        ReleaseHelperPlacementReservation();
 
         if (!hideHelperOnSkillComplete)
             return;
@@ -1420,28 +1481,18 @@ public class AllyHelperManager : MonoBehaviour
                 return true;
             }
 
-            Vector3 originalHelperPosition = allyHelper != null ? allyHelper.transform.position : Vector3.zero;
-            Quaternion originalHelperRotation = allyHelper != null ? allyHelper.transform.rotation : Quaternion.identity;
-
             if (!TryResolveChainAttackTeleportPose(
                     pendingChainAttackSequence.sequenceDef,
                     pendingChainAttackSequence.anchorTransform,
                     out Vector3 teleportPosition,
-                    out _,
-                    (candidatePosition, candidateRotation) =>
-                    {
-                        TeleportHelperTo(candidatePosition, candidateRotation);
-                        if (IsCurrentHelperChainTeleportProbeClear(pendingChainAttackSequence.sequenceDef))
-                            return true;
-
-                        TeleportHelperTo(originalHelperPosition, originalHelperRotation);
-                        return false;
-                    }))
+                    out Quaternion teleportRotation))
             {
                 Log(pendingChainAttackSequence.sequenceDef, "Chain attack cancelled: no safe teleport pose was found.");
                 CancelActiveChainAttackSequence(interrupted: false);
                 return true;
             }
+
+            TeleportHelperTo(teleportPosition, teleportRotation);
 
             if (pendingChainAttackSequence.sequenceDef.hideHelperAtWarpCastMoment)
                 allyHelperFader?.SetHiddenImmediate();
@@ -1541,6 +1592,7 @@ public class AllyHelperManager : MonoBehaviour
             RestoreHelperSkillAutonomy();
             CompletePendingChainAttackSequence(true);
             LastExecutionSucceeded = true;
+            ReleaseHelperPlacementReservation();
 
             if (!hideHelperOnSkillComplete)
                 return true;
@@ -1563,6 +1615,7 @@ public class AllyHelperManager : MonoBehaviour
         RestoreHelperSkillAutonomy();
         CompletePendingChainAttackSequence(false);
         LastExecutionSucceeded = false;
+        ReleaseHelperPlacementReservation();
 
         if (!hideHelperOnSkillComplete)
             return;
@@ -1747,6 +1800,7 @@ public class AllyHelperManager : MonoBehaviour
             requestedId: requestId,
             ignoreResourceCosts: true,
             useAnimationDriver: false,
+            usePlanarRootMotion: true,
             debugSource: $"helper:{skillDef.name}"));
 
         if (result.Started)
@@ -1793,7 +1847,7 @@ public class AllyHelperManager : MonoBehaviour
             helperProc,
             debugSource: $"helper-proc:{helperProc.RuntimeId}",
             requiredTimelineEvent: CombatTimelineEventName.None,
-            usePlanarRootMotion: false,
+            usePlanarRootMotion: true,
             stampCooldown: stampCooldown,
             primaryTarget: target,
             costPolicy: costPolicy,
@@ -1848,7 +1902,7 @@ public class AllyHelperManager : MonoBehaviour
             skillDef,
             debugSource: $"helper:{skillDef.name}",
             requiredTimelineEvent: CombatTimelineEventName.None,
-            usePlanarRootMotion: false,
+            usePlanarRootMotion: true,
             stampCooldown: stampCooldown,
             primaryTarget: target,
             costPolicy: costPolicy,
@@ -1870,20 +1924,28 @@ public class AllyHelperManager : MonoBehaviour
     /// NavMesh spot beside <paramref name="targetContext"/>, or null when nothing around it is
     /// usable and the caller should fall back to the ring around the player.
     /// </summary>
-    Vector3? ResolvePositionNearTarget(CharacteContext targetContext)
+    HelperPlacementPose? ResolvePositionNearTarget(
+        CharacteContext targetContext,
+        SkillGemDefinition placementSkill = null)
     {
-        if (targetContext == null)
+        CacheHelperReferences();
+        if (targetContext == null || allyHelper == null)
             return null;
 
+        SkillPayloadDef payload = placementSkill != null ? placementSkill.payload : null;
+        if (payload == null ||
+            !payload.TryGetTargetPlacement(out SkillTargetPlacementSpec targetPlacement) ||
+            targetPlacement.TargetStandOffDistanceAtCastPoint <= 0f)
+        {
+            return null;
+        }
+
         Vector3 targetPos = targetContext.transform.position;
-        float radius = Mathf.Max(minSummonRadius, 0.1f);
+        float radius = targetPlacement.TargetStandOffDistanceAtCastPoint;
 
         // Sweep several bearings rather than one random spot: a single sample that lands in a wall
         // would send the helper back to the player even though the target was perfectly reachable
         // from the other side.
-        const int CandidateCount = 8;
-        float bearingStep = 360f / CandidateCount;
-
         // Start behind the target relative to the player so the helper does not spawn between the
         // player and whoever they are watching.
         float startBearing = 0f;
@@ -1895,17 +1957,157 @@ public class AllyHelperManager : MonoBehaviour
                 startBearing = Quaternion.LookRotation(fromPlayer.normalized, Vector3.up).eulerAngles.y;
         }
 
+        return TryResolveHelperPlacement(
+            targetPos,
+            radius,
+            startBearing,
+            targetContext,
+            placementSkill,
+            alignRadiusAtImpact: true);
+    }
+
+    HelperPlacementPose? TryResolveHelperPlacement(
+        Vector3 center,
+        float radius,
+        float startBearing,
+        CharacteContext targetContext,
+        SkillGemDefinition placementSkill = null,
+        bool alignRadiusAtImpact = false)
+    {
+        if (allyHelper == null)
+            return null;
+
+        const int CandidateCount = 8;
+        float bearingStep = 360f / CandidateCount;
+        if (!CharacterPlacementFootprintUtility.TryGetColliderFootprint(
+                ResolveHelperTeleportProbeCollider(),
+                allyHelper.transform,
+                out CharacterPlacementFootprint footprint,
+                out _))
+        {
+            footprint = CharacterPlacementFootprintUtility.CreateFallbackBox(
+                Vector3.zero,
+                new Vector3(0.35f, 0.9f, 0.75f));
+        }
+
+        CharacterPlacementAnimationInput placementAnimation = null;
+        bool animationRequired = false;
+        float impactNormalized = 0.5f;
+        if (placementSkill != null)
+        {
+            if (allyAnimBrain == null ||
+                !allyAnimBrain.TryResolveSkillAnimationClip(
+                    placementSkill,
+                    out AnimationClip placementClip) ||
+                placementClip == null ||
+                !allyAnimBrain.TryGetRootMotionSamplingAnimator(
+                    out Animator samplingAnimator) ||
+                !TargetedSkillRootMotionTrajectoryCache.TryGet(
+                    placementClip,
+                    samplingAnimator,
+                    out TargetedSkillRootMotionTrajectory placementTrajectory,
+                    out _))
+            {
+                return null;
+            }
+
+            placementAnimation = placementTrajectory.PlacementInput;
+            animationRequired = true;
+            impactNormalized = placementSkill.GetCastPointNormalized();
+        }
+
+        CharacterPlacementAnimationInput.Sample impactSample = default;
+        bool deriveStartFromImpact = alignRadiusAtImpact && placementAnimation != null;
+        if (deriveStartFromImpact &&
+            !placementAnimation.TrySample(impactNormalized, out impactSample))
+        {
+            return null;
+        }
+
+        CharacterPlacementRequest.Candidate[] candidates =
+            new CharacterPlacementRequest.Candidate[CandidateCount];
         for (int i = 0; i < CandidateCount; i++)
         {
             float bearing = startBearing + (i * bearingStep);
             Vector3 offset = Quaternion.Euler(0f, bearing, 0f) * (Vector3.forward * radius);
-            Vector3 candidate = targetPos + offset;
+            Vector3 impactPosition = center + offset;
+            Vector3 lookDirection = center - impactPosition;
+            lookDirection.y = 0f;
+            Quaternion impactRotation;
+            if (targetContext == null && facePlayerForward && playerContext != null)
+            {
+                impactRotation = Quaternion.Euler(
+                    0f,
+                    playerContext.transform.rotation.eulerAngles.y,
+                    0f);
+            }
+            else
+            {
+                impactRotation = lookDirection.sqrMagnitude > 0.0001f
+                    ? Quaternion.LookRotation(lookDirection.normalized, Vector3.up)
+                    : Quaternion.identity;
+            }
 
-            if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, navMeshSampleDistance, NavMesh.AllAreas))
-                return hit.position;
+            Quaternion startRotation = impactRotation;
+            Vector3 startPosition = impactPosition;
+            if (deriveStartFromImpact)
+            {
+                startRotation =
+                    impactRotation * Quaternion.Inverse(
+                        Quaternion.Euler(0f, impactSample.LocalYaw, 0f));
+                startPosition =
+                    impactPosition - startRotation * impactSample.LocalPosition;
+            }
+
+            candidates[i] = new CharacterPlacementRequest.Candidate(
+                startPosition,
+                startRotation,
+                preferredAngleError: 0f,
+                authoredOrder: i,
+                desiredImpactPosition: alignRadiusAtImpact ? impactPosition : null);
         }
 
-        return null;
+        CharacterPlacementRequest request = new(
+            actorRoot: allyHelper.transform,
+            positionCollider: ResolveHelperTeleportProbeCollider(),
+            footprint: footprint,
+            targetIdentity: AITargetIdentity.Generic,
+            targetRoot: targetContext != null ? targetContext.transform : null,
+            targetAnchor: targetContext != null
+                ? CharacterPlacementRequest.AnchorSnapshot.Capture(targetContext.transform)
+                : default,
+            candidates: candidates,
+            animation: placementAnimation,
+            impactNormalizedTime: impactNormalized,
+            policy: null,
+            worldCollisionLayers: Physics.DefaultRaycastLayers,
+            actorCollisionLayers: ~0,
+            ignoreRoot: allyHelper.transform,
+            reservationOwner: allyHelper.transform,
+            effectivePlanarRootMotion: placementAnimation != null,
+            animationRequired: animationRequired,
+            mobileActor: true,
+            runtimePolicy: CharacterPlacementRuntimePolicy.CreateDefault(
+                requireNavMesh: true,
+                navMeshSampleDistance: navMeshSampleDistance,
+                collisionTriggerInteraction: QueryTriggerInteraction.Ignore));
+
+        if (!CharacterPlacementResolver.TryResolve(
+                request,
+                SharedPlacementReservations,
+                out CharacterPlacementResult result))
+            return null;
+
+        ReleaseHelperPlacementReservation();
+        if (!SharedPlacementReservations.TryReserve(request, result, out _))
+            return null;
+
+        return new HelperPlacementPose(result.StartPosition, result.StartRotation);
+    }
+
+    void ReleaseHelperPlacementReservation()
+    {
+        SharedPlacementReservations.ReleaseOwner(allyHelper != null ? allyHelper.transform : null);
     }
 
     /// <summary>Turns the helper to face a world point, keeping its NavMeshAgent in sync.</summary>
@@ -1993,7 +2195,9 @@ public class AllyHelperManager : MonoBehaviour
         bool started = allyAnimDriver.TryPlaySkill(
             pendingChainAttackSequence.chainAttackRequestId,
             pendingChainAttackSequence.chainAttackSkillDef,
-            pendingChainAttackSequence.chainAttackSkillDef.GetCastPointNormalized());
+            pendingChainAttackSequence.chainAttackSkillDef.GetCastPointNormalized(),
+            timelineEventNames: null,
+            usePlanarRootMotion: true);
 
         if (!started)
         {
@@ -2224,7 +2428,9 @@ public class AllyHelperManager : MonoBehaviour
             out teleportRotation,
             probeCollider,
             allyHelper != null ? allyHelper.transform : null,
-            poseValidator);
+            poseValidator: poseValidator,
+            reservations: SharedPlacementReservations,
+            requireNavMeshAtAnchorOverride: true);
     }
 
     void TeleportHelperTo(Vector3 worldPosition, Quaternion worldRotation)

@@ -330,76 +330,114 @@ public sealed class SummonSkillPayloadDef : SkillPayloadDef
         float maxHealth = ResolveMaxHealth(context, caster);
         List<string> inheritedUpgradeIds = ResolveInheritedUpgradeIds(context);
 
-        var reserved = new List<SummonPlacementCandidate>(requestedCount);
+        var transientReservations =
+            new List<CharacterPlacementReservationService.Handle>(requestedCount);
         Vector3 placementOrigin = context.CastOrigin != null ? context.CastOrigin.position : caster.transform.position;
         Quaternion layoutRotation = ResolveLayoutRotation(context, caster);
         int spawnedCount = 0;
         bool sawPlacementFailure = false;
         string firstPlacementError = null;
-        for (int i = 0; i < requestedCount; i++)
+        try
         {
-            Vector3 offset = ResolveOffset(i);
-            Quaternion rotation = ResolveRotation(context, caster, layoutRotation, offset);
-            var request = new SummonSpawnContext
+            for (int i = 0; i < requestedCount; i++)
             {
-                Caster = caster,
-                Map = map,
-                Definition = this,
-                Prefab = summonPrefab,
-                SkillId = skillId,
-                Mobility = mobility,
-                Lifetime = lifetime,
-                DespawnDelay = DespawnDelay,
-                InheritedDamage = stats != null ? Mathf.Max(0f, stats.damage) * DamageInheritance : 0f,
-                HealPower = healPower,
-                AreaRadius = areaRadius,
-                EffectDuration = effectDuration,
-                MaxHealth = maxHealth,
-                UpgradeIds = inheritedUpgradeIds,
-                Position = placementOrigin,
-                Rotation = rotation,
-                PerSkillCap = perSkillCap,
-            };
+                Vector3 offset = ResolveOffset(i);
+                Quaternion rotation = ResolveRotation(context, caster, layoutRotation, offset);
+                var request = new SummonSpawnContext
+                {
+                    Caster = caster,
+                    Map = map,
+                    Definition = this,
+                    Prefab = summonPrefab,
+                    SkillId = skillId,
+                    Mobility = mobility,
+                    Lifetime = lifetime,
+                    DespawnDelay = DespawnDelay,
+                    InheritedDamage = stats != null ? Mathf.Max(0f, stats.damage) * DamageInheritance : 0f,
+                    HealPower = healPower,
+                    AreaRadius = areaRadius,
+                    EffectDuration = effectDuration,
+                    MaxHealth = maxHealth,
+                    UpgradeIds = inheritedUpgradeIds,
+                    Position = placementOrigin,
+                    Rotation = rotation,
+                    PerSkillCap = perSkillCap,
+                };
 
-            if (!SummonPlacementResolver.TryResolve(
-                    request,
-                    offset,
-                    layoutRotation,
-                    rotation,
-                    settings,
-                    reserved,
-                    out SummonPlacementCandidate candidate,
-                    out string placementError))
-            {
-                sawPlacementFailure = true;
-                firstPlacementError ??= placementError;
-                continue;
+                if (!SummonPlacementResolver.TryResolve(
+                        request,
+                        offset,
+                        layoutRotation,
+                        rotation,
+                        settings,
+                        null,
+                        out SummonPlacementCandidate candidate,
+                        out string placementError))
+                {
+                    sawPlacementFailure = true;
+                    firstPlacementError ??= placementError;
+                    continue;
+                }
+
+                request.Position = candidate.Position;
+                request.Rotation = candidate.Rotation;
+                if (!controller.TrySpawn(request, out SummonedEntityRuntime spawned))
+                {
+                    sawPlacementFailure = true;
+                    firstPlacementError ??= "SummonController rejected the spawn request.";
+                    continue;
+                }
+
+                Transform reservationOwner = SummonPlacementResolver.ResolveReservationOwner(spawned);
+                if (SummonPlacementResolver.TryReserve(
+                        candidate,
+                        settings,
+                        reservationOwner,
+                        out CharacterPlacementReservationService.Handle handle))
+                {
+                    transientReservations.Add(handle);
+                }
+                else
+                {
+                    // The real collider becomes authoritative if the shared registry is full.
+                    Physics.SyncTransforms();
+                    ReleasePlacementReservations(transientReservations);
+                }
+
+                spawnedCount++;
+                context.ExecutionState?.RegisterSpawnedSummon(spawned);
             }
 
-            request.Position = candidate.Position;
-            request.Rotation = candidate.Rotation;
-            if (!controller.TrySpawn(request, out SummonedEntityRuntime spawned))
-            {
-                sawPlacementFailure = true;
-                firstPlacementError ??= "SummonController rejected the spawn request.";
-                continue;
-            }
+            if (spawnedCount > 0)
+                return SkillExecutionResult.Succeeded;
 
-            reserved.Add(candidate);
-            spawnedCount++;
-            context.ExecutionState?.RegisterSpawnedSummon(spawned);
+            return SkillExecutionResult.Failed(
+                sawPlacementFailure
+                    ? SkillExecutionFailureReason.PlacementBlocked
+                    : SkillExecutionFailureReason.NoEffect,
+                sawPlacementFailure
+                    ? $"No valid placement for '{skillId}' at the requested spawn offsets. {firstPlacementError}"
+                    : $"Summon '{skillId}' requested zero spawns.");
         }
+        finally
+        {
+            Physics.SyncTransforms();
+            ReleasePlacementReservations(transientReservations);
+        }
+    }
 
-        if (spawnedCount > 0)
-            return SkillExecutionResult.Succeeded;
+    static void ReleasePlacementReservations(
+        List<CharacterPlacementReservationService.Handle> reservations)
+    {
+        if (reservations == null)
+            return;
 
-        return SkillExecutionResult.Failed(
-            sawPlacementFailure
-                ? SkillExecutionFailureReason.PlacementBlocked
-                : SkillExecutionFailureReason.NoEffect,
-            sawPlacementFailure
-                ? $"No valid placement for '{skillId}' at the requested spawn offsets. {firstPlacementError}"
-                : $"Summon '{skillId}' requested zero spawns.");
+        CharacterPlacementReservationService registry =
+            CharacterPlacementReservationRegistry.Shared;
+        for (int i = 0; i < reservations.Count; i++)
+            registry.Release(reservations[i]);
+
+        reservations.Clear();
     }
 
     /// <summary>

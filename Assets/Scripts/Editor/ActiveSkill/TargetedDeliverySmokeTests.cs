@@ -106,6 +106,36 @@ public sealed class TargetedDeliverySmokeTests
         Assert.That(lifted - bare, Is.EqualTo(1.25f).Within(0.001f));
     }
 
+    [Test]
+    public void TargetedDeliveryPayloadOwnsCasterStandOffPlacement()
+    {
+        TargetedDeliverySkillPayloadDef payload = CreateDeliveryPayload();
+        SetPrivate(payload, "targetStandOffDistanceAtCastPoint", 2.4f);
+
+        Assert.That(payload.TryGetTargetPlacement(out SkillTargetPlacementSpec placement), Is.True);
+        Assert.That(
+            placement.TargetStandOffDistanceAtCastPoint,
+            Is.EqualTo(2.4f).Within(0.001f));
+    }
+
+    [Test]
+    public void CompositePayloadForwardsTargetPlacementFromItsChild()
+    {
+        TargetedDeliverySkillPayloadDef delivery = CreateDeliveryPayload();
+        SetPrivate(delivery, "targetStandOffDistanceAtCastPoint", 1.75f);
+
+        CompositeSkillPayloadDef composite =
+            Track(ScriptableObject.CreateInstance<CompositeSkillPayloadDef>());
+        var step = new PayloadStep();
+        step.SetPayload(delivery);
+        composite.AddStep(step);
+
+        Assert.That(composite.TryGetTargetPlacement(out SkillTargetPlacementSpec placement), Is.True);
+        Assert.That(
+            placement.TargetStandOffDistanceAtCastPoint,
+            Is.EqualTo(1.75f).Within(0.001f));
+    }
+
     // ---- Cost policy -----------------------------------------------------------------------------
 
     [Test]

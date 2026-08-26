@@ -18,13 +18,34 @@ public static class ChainAttackTeleportUtility
         Collider probeCollider = null,
         Transform probeRoot = null,
         System.Func<Vector3, Quaternion, bool> poseValidator = null,
-        Vector3? preferredActorPosition = null)
+        Vector3? preferredActorPosition = null,
+        CharacterPlacementReservationService reservations = null)
     {
         teleportPosition = Vector3.zero;
         teleportRotation = Quaternion.identity;
 
         if (profile == null)
             return false;
+
+        if (poseValidator == null &&
+            TryResolveChainTeleportPose(
+                anchorTransform,
+                fallbackBaseRotation,
+                profile.useAnchorRotationAsBase,
+                profile.anchorPositionOffset,
+                requireNavMeshAtAnchorOverride ?? profile.requireNavMeshAtAnchor,
+                navMeshSampleDistanceOverride ?? profile.navMeshSampleDistance,
+                profile.obstacleLayers,
+                profile.obstacleTriggerInteraction,
+                probeCollider,
+                probeRoot,
+                preferredActorPosition,
+                profile.clearanceCenterOffset,
+                profile.clearanceHalfExtents,
+                reservations,
+                out teleportPosition,
+                out teleportRotation))
+            return true;
 
         ChainAttackTeleportRuntimeConfig config = new(
             profile.useAnchorRotationAsBase,
@@ -54,7 +75,9 @@ public static class ChainAttackTeleportUtility
         Collider probeCollider = null,
         Transform probeRoot = null,
         System.Func<Vector3, Quaternion, bool> poseValidator = null,
-        Vector3? preferredActorPosition = null)
+        Vector3? preferredActorPosition = null,
+        CharacterPlacementReservationService reservations = null,
+        bool? requireNavMeshAtAnchorOverride = null)
     {
         teleportPosition = Vector3.zero;
         teleportRotation = Quaternion.identity;
@@ -62,9 +85,29 @@ public static class ChainAttackTeleportUtility
         if (profile == null)
             return false;
 
+        if (poseValidator == null &&
+            TryResolveChainTeleportPose(
+                anchorTransform,
+                fallbackBaseRotation,
+                profile.useAnchorRotationAsBase,
+                profile.anchorPositionOffset,
+                requireNavMeshAtAnchorOverride ?? profile.requireNavMeshAtAnchor,
+                profile.navMeshSampleDistance,
+                profile.obstacleLayers,
+                profile.obstacleTriggerInteraction,
+                probeCollider,
+                probeRoot,
+                preferredActorPosition,
+                profile.clearanceCenterOffset,
+                profile.clearanceHalfExtents,
+                reservations,
+                out teleportPosition,
+                out teleportRotation))
+            return true;
+
         ChainAttackTeleportRuntimeConfig config = new(
             profile.useAnchorRotationAsBase,
-            profile.requireNavMeshAtAnchor,
+            requireNavMeshAtAnchorOverride ?? profile.requireNavMeshAtAnchor,
             profile.navMeshSampleDistance,
             profile.anchorPositionOffset,
             profile.clearanceCenterOffset,
@@ -79,6 +122,101 @@ public static class ChainAttackTeleportUtility
             profile.name);
 
         return TryResolveTeleportPose(config, anchorTransform, fallbackBaseRotation, poseValidator, preferredActorPosition, out teleportPosition, out teleportRotation);
+    }
+
+    static bool TryResolveChainTeleportPose(
+        Transform anchor,
+        Quaternion fallbackBaseRotation,
+        bool useAnchorRotationAsBase,
+        Vector3 anchorPositionOffset,
+        bool requireNavMesh,
+        float navMeshSampleDistance,
+        LayerMask obstacleLayers,
+        QueryTriggerInteraction triggerInteraction,
+        Collider positionCollider,
+        Transform actorRoot,
+        Vector3? preferredActorPosition,
+        Vector3 clearanceCenterOffset,
+        Vector3 clearanceHalfExtents,
+        CharacterPlacementReservationService reservations,
+        out Vector3 position,
+        out Quaternion rotation)
+    {
+        position = Vector3.zero;
+        rotation = Quaternion.identity;
+        if (anchor == null)
+            return false;
+
+        CharacterPlacementFootprint footprint;
+        if (positionCollider == null ||
+            !CharacterPlacementFootprintUtility.TryGetColliderFootprint(
+                positionCollider,
+                actorRoot != null ? actorRoot : positionCollider.transform,
+                out footprint,
+                out _))
+        {
+            footprint = CharacterPlacementFootprintUtility.CreateFallbackBox(
+                positionCollider == null ? clearanceCenterOffset : Vector3.zero,
+                clearanceHalfExtents);
+        }
+
+        Quaternion baseRotation = useAnchorRotationAsBase
+            ? anchor.rotation
+            : fallbackBaseRotation;
+        float baseYaw = TargetedSkillSnapSidePriority.ResolveBaseYaw(
+            anchor,
+            anchorPositionOffset,
+            preferredActorPosition);
+        float[] offsets = TargetedSkillSnapSidePriority.CandidateYawOffsets;
+        CharacterPlacementRequest.Candidate[] candidates =
+            new CharacterPlacementRequest.Candidate[offsets.Length];
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            float yaw = baseYaw + offsets[i];
+            Quaternion yawRotation = Quaternion.AngleAxis(yaw, Vector3.up);
+            candidates[i] = new CharacterPlacementRequest.Candidate(
+                anchor.TransformPoint(yawRotation * anchorPositionOffset),
+                yawRotation * baseRotation,
+                Mathf.Abs(offsets[i]),
+                i);
+        }
+
+        CharacterPlacementRequest request = new(
+            actorRoot,
+            positionCollider,
+            footprint,
+            AITargetIdentity.Generic,
+            targetRoot: null,
+            CharacterPlacementRequest.AnchorSnapshot.Capture(anchor),
+            candidates,
+            animation: null,
+            impactNormalizedTime: 0.5f,
+            policy: null,
+            worldCollisionLayers: obstacleLayers,
+            actorCollisionLayers: ~0,
+            ignoreRoot: actorRoot,
+            reservationOwner: actorRoot,
+            effectivePlanarRootMotion: false,
+            animationRequired: false,
+            mobileActor: false,
+            runtimePolicy: CharacterPlacementRuntimePolicy.CreateDefault(
+                requireNavMesh,
+                navMeshSampleDistance,
+                triggerInteraction));
+
+        if (!CharacterPlacementResolver.TryResolve(request, reservations, out CharacterPlacementResult result))
+            return false;
+
+        if (reservations != null && actorRoot != null)
+            reservations.ReleaseOwner(actorRoot);
+
+        if (reservations != null &&
+            !reservations.TryReserve(request, result, out _))
+            return false;
+
+        position = result.StartPosition;
+        rotation = result.StartRotation;
+        return true;
     }
 
     public static bool IsCurrentProbeColliderClear(

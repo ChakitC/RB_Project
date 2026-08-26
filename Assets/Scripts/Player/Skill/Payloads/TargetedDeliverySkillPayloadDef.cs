@@ -47,6 +47,12 @@ public sealed class TargetedDeliverySkillPayloadDef : SkillPayloadDef
         public StatusApplicationSpec spec = new();
     }
 
+    [SerializeField, BoxGroup("Caster Placement")]
+    [LabelText("Target Stand-Off At Cast Point"), MinValue(0.01f), SuffixLabel("m")]
+    [Tooltip("Horizontal distance between the caster and locked target at the skill cast point. " +
+             "Root motion is preserved; placement derives the animation start pose from this distance.")]
+    private float targetStandOffDistanceAtCastPoint = 1.2f;
+
     [PropertyOrder(-20)]
     [InfoBox("Throws a carried object at the cast's locked target, then heals and buffs them on arrival. " +
              "The clip must raise a DeliveryRelease event after the cast point.")]
@@ -142,6 +148,7 @@ public sealed class TargetedDeliverySkillPayloadDef : SkillPayloadDef
     private float impactAudioVolume = 1f;
 
     public GameObject DeliveryPrefab => deliveryPrefab;
+    public float TargetStandOffDistanceAtCastPoint => targetStandOffDistanceAtCastPoint;
     public DeliveryLaunchAnchorMode LaunchAnchorMode => launchAnchorMode;
     public string LaunchAnchorChildPath => launchAnchorChildPath;
     public HumanBodyBones LaunchAnchorBone => launchAnchorBone;
@@ -166,6 +173,12 @@ public sealed class TargetedDeliverySkillPayloadDef : SkillPayloadDef
     // The whole point of this payload is that the object is in hand first and leaves later, so a
     // clip without the release marker would strand it there.
     public override bool RequiresSkillTimelineEvents => true;
+
+    public override bool TryGetTargetPlacement(out SkillTargetPlacementSpec placement)
+    {
+        placement = new SkillTargetPlacementSpec(targetStandOffDistanceAtCastPoint);
+        return targetStandOffDistanceAtCastPoint > 0f;
+    }
 
     public override void CollectTimelineEventNames(List<CombatTimelineEventName> eventNames)
     {
@@ -196,6 +209,9 @@ public sealed class TargetedDeliverySkillPayloadDef : SkillPayloadDef
             if (deliveryPrefab.GetComponentInChildren<Collider>(true) != null)
                 issues.Add("Delivery Prefab has a Collider. Deliveries must not collide with anything in flight.");
         }
+
+        if (targetStandOffDistanceAtCastPoint <= 0f)
+            issues.Add("Targeted Delivery target stand-off distance at cast point must be greater than zero.");
 
         if (speed <= 0f)
             issues.Add("Targeted Delivery speed must be greater than zero.");

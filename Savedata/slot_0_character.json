@@ -1,4 +1,5 @@
 {
+    "schemaVersion": 1,
     "entries": [
         {
             "characterId": "ID.Roma",
@@ -7,8 +8,8 @@
                 "xp": 0,
                 "unlocked": false,
                 "selectedSkillOptions": [],
-                "skillPoints": 0,
-                "skillProgressInitialized": false,
+                "skillPoints": 29,
+                "skillProgressInitialized": true,
                 "activeSkillTrees": []
             }
         },
@@ -118,8 +119,8 @@
                 "xp": 0,
                 "unlocked": false,
                 "selectedSkillOptions": [],
-                "skillPoints": 0,
-                "skillProgressInitialized": false,
+                "skillPoints": 15,
+                "skillProgressInitialized": true,
                 "activeSkillTrees": [
                     {
                         "slotId": "0",

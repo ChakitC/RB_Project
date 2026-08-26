@@ -7,6 +7,16 @@ public enum SkillHelperFacingMode
     FaceDetectedTargetOnCast = 1,
 }
 
+public readonly struct SkillTargetPlacementSpec
+{
+    public SkillTargetPlacementSpec(float targetStandOffDistanceAtCastPoint)
+    {
+        TargetStandOffDistanceAtCastPoint = Mathf.Max(0f, targetStandOffDistanceAtCastPoint);
+    }
+
+    public float TargetStandOffDistanceAtCastPoint { get; }
+}
+
 public abstract class SkillPayloadDef : ScriptableObject
 {
     [Header("Execution Behavior")]
@@ -17,6 +27,12 @@ public abstract class SkillPayloadDef : ScriptableObject
     public SkillHelperFacingMode HelperFacingMode => helperFacingMode;
     public virtual bool RequiresSkillTimelineEvents => false;
     public virtual bool HasExecutionPresentationAssets => false;
+
+    public virtual bool TryGetTargetPlacement(out SkillTargetPlacementSpec placement)
+    {
+        placement = default;
+        return false;
+    }
 
     public virtual void CollectTimelineEventNames(List<CombatTimelineEventName> eventNames)
     {

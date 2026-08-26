@@ -257,6 +257,33 @@ context's own world-slow application. Common systems should not branch on
 
 ## Root Motion Trajectory Placement
 
+All character relocation now has a central placement boundary under
+`Assets/Scripts/Combat/Placement`. `CharacterPlacementRequest` carries the
+actor footprint, target-anchor snapshot, candidate poses, collision masks,
+root-motion policy, and optional reservation owner. `CharacterPlacementResolver`
+evaluates static or sampled trajectories with deterministic lexicographic
+scoring: wall penetration, actor penetration, collision sample count, preferred
+angle, NavMesh snap distance, then authored candidate order. The resolver uses
+the existing character-position collider first and does not include arms,
+weapons, or skinned meshes in the placement footprint.
+
+When every candidate intersects something, the resolver still returns the
+least-penetrating valid candidate instead of treating collision as an automatic
+failure. Detailed penetration is sampled across swept motion, and rotation-only
+segments receive intermediate footprint checks as well; segments that translate
+and rotate use the same interpolated pose sweep. Summon placement holds a
+transient registry reservation only while its spawn batch commits, syncs the
+new colliders, and then releases it so the live collider becomes authoritative.
+
+`ChainAttackTeleportUtility`, `TargetedSkillPlacementResolver`, and
+`SummonPlacementResolver` keep their feature-specific public contracts while
+building requests directly for the central resolver. Shared footprint
+conversion, null-safe anchor snapshots, and resolver defaults live in the
+placement module; legacy pose-validator callbacks remain supported because
+those callbacks intentionally mutate the actor while probing a candidate.
+Existing profile fields and public methods remain valid; no migration of
+serialized assets is required.
+
 Chain Attack and Guaranteed Interruption share placement code under
 `Assets\Scripts\AI\TargetedSkillPlacement`. Their execution lifecycles remain
 separate. Placement is represented by one immutable
@@ -269,7 +296,21 @@ re-snap or re-resolve the actor.
 
 The resolver samples the attack clip through a hidden clone of the active
 Animator rig and a manual `PlayableGraph` at approximately 30 Hz. Accumulated
-planar `Animator.deltaPosition` and yaw are cached by clip and Avatar.
+planar `Animator.deltaPosition` and yaw are cached by clip and Avatar. When a
+Chain Attack begins from Utility Warp-Out, the remaining Utility tail and the
+Attack clip are composed into one ordered transaction, with the attack impact
+time remapped into the composed timeline. If the effective playback policy
+disables planar root motion, placement uses a static trajectory instead of
+predicting motion that playback will not apply.
+
+Targeted Helper casts receive their target stand-off distance from the
+execution payload through `SkillPayloadDef.TryGetTargetPlacement`. For
+`TargetedDeliverySkillPayloadDef`, the authored distance describes the Helper
+pose at the skill cast point. `AllyHelperManager` subtracts the sampled
+root-motion transform at that point to derive each animation start candidate,
+then sends the full trajectory to the central resolver. The Player prefab's
+`minSummonRadius` remains only part of the generic fallback ring around the
+Player and does not define targeted-skill spacing.
 
 The existing teleport profile `anchorPositionOffset` defines the actor pose at
 the impact point. Chain attacks use the skill cast point. Guaranteed
@@ -302,8 +343,9 @@ obstacle mask and must keep the sampled full-clip trajectory clear. The
 designated target collider may be ignored only for the impact pose and the
 sample segment that reaches it; all other obstacles remain blocking throughout
 the trajectory. Every sample and sweep between adjacent samples is checked.
-When the step requires NavMesh placement, the actor footprint is checked on the
-NavMesh across the full trajectory.
+The actor footprint is checked on the NavMesh across the full trajectory for
+mobile Player, Ally, and Helper actors. Older profile flags remain readable for
+asset compatibility but cannot place a mobile actor off NavMesh.
 
 Accepted attacks snap to the derived start pose and enable request-scoped
 planar root motion. Player movement is applied through `RootMotionCCDriver`;
@@ -322,8 +364,15 @@ impact pose. A planar error above `0.05m` or yaw error above 2 degrees emits a
 warning for clip/Avatar validation.
 
 This flow does not read a motion bone, alter an FBX importer, bake a trajectory
-asset, or require new Inspector fields. Helper chain attacks remain on their
-existing flow.
+asset, or require new Inspector fields. Field Ally and Ally Interruption
+placements pass the shared `CharacterPlacementReservationService` when their
+central path is active. The reservation is committed only after no-warp or
+in-place fallback chooses the final returned pose, so the registry describes
+the pose actually used by playback; it is released on completion, interrupt,
+cancel, or disable. The registry resets at subsystem startup and prunes
+destroyed Unity-object owners. Helper chain attacks still use the existing
+helper command lifecycle, while their static teleport path now
+benefits from the central scored clearance resolver.
 
 ## Time Rules
 
@@ -749,15 +798,27 @@ placed, and never re-resolves it afterwards. An assist that re-picked its recipi
 the animation would heal whoever happened to be worst off at the moment of impact rather than the
 one the player watched it fly toward.
 
-Placement sweeps eight bearings on a ring around the target, starting on the far side relative to
-the player so the helper does not spawn between the player and whoever they are watching. A single
-random sample that landed in a wall would send the helper back to the player even though the target
-was perfectly reachable from another angle.
+Placement evaluates eight deterministic bearings on a ring around the target, starting on the far
+side relative to the player so the helper does not spawn between the player and whoever they are
+watching. When the execution skill has an animation clip, the cached planar root-motion trajectory
+and cast-point impact are part of the same preflight; the actual Helper skill request also enables
+planar root motion. The central resolver sweeps between trajectory samples and rejects a NavMesh
+snap that would move the predicted impact away from the locked target.
+
+A single candidate landing in a wall therefore does not reject an otherwise reachable target: the
+resolver scores the ring and chooses the best valid/least-penetrating result. Character colliders
+are treated as actor overlap even when the broad world and actor layer masks overlap.
 
 If no bearing produces a NavMesh position, placement falls back to the usual ring around the
-player. This is not a failure: the delivery travels to the target regardless of where the helper
-stands. Placement is preflight - failing it entirely leaves no cast, no reservation, and above all
-no cooldown, because nothing was deployed.
+player. If the animation-aware preflight still has no safe candidate, it is a failure: no cast, no
+reservation, and above all no cooldown are consumed because nothing was deployed.
+
+Helper, Field Ally, Summon, and Interruption placement all read the shared
+`CharacterPlacementReservationRegistry`. Summon reservations are transaction-scoped:
+the batch syncs Physics and releases its handles before returning, while the
+longer-lived Field Ally/Interruption reservations release on completion,
+cancellation, disable, or interruption. Transient summon reservations are
+deduplicated against their actor colliders while the batch is still resolving.
 
 ### Metered vs legacy helper casts
 

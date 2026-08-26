@@ -48,6 +48,8 @@ public sealed class FieldAllyMember : MonoBehaviour
     CharacterAnimBrain _subscribedAnimBrain;
 
     public ChainActorRole ActorRole => actorRole;
+    internal CharacterPlacementReservationService PlacementReservations =>
+        CharacterPlacementReservationRegistry.Shared;
     public bool IsReserved
     {
         get
@@ -213,6 +215,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     void OnDisable()
     {
         manager?.Unregister(this);
+        PlacementReservations.ReleaseOwner(ResolveActorTransform());
         _sequenceRunner?.ResetOnDisable();
         SubscribeToAnimBrain(null);
     }

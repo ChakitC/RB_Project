@@ -140,6 +140,26 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
             ctx.VerticalMotor = this;
     }
 
+    /// <summary>
+    /// Binds the runtime root-motion driver created for the active character model. The visual
+    /// controller owns model rebuilds, so it can update this reference without a hierarchy lookup.
+    /// </summary>
+    public void BindRuntimeRootMotionDriver(RootMotionCCDriver driver)
+    {
+        rootMotionCCDriver = driver;
+        rootMotionNavMeshDriver = null;
+    }
+
+    /// <summary>
+    /// Binds the runtime root-motion driver created for the active character model. The visual
+    /// controller owns model rebuilds, so it can update this reference without a hierarchy lookup.
+    /// </summary>
+    public void BindRuntimeRootMotionDriver(RootMotionNavMeshDriver driver)
+    {
+        rootMotionNavMeshDriver = driver;
+        rootMotionCCDriver = null;
+    }
+
     T ResolveActorComponent<T>(T current) where T : Component
     {
         if (current != null)

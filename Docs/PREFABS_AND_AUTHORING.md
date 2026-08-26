@@ -51,6 +51,14 @@ The loaded character's `CharacterStats` supplies the manual command and selected
 variants at runtime. Keep local authoring references such as animation, model, hitbox, fader, and
 teleport-probe fields on the rig; they are not replaceable by context lookup.
 
+Runtime Helper placement uses deterministic candidate rings through
+`CharacterPlacementResolver`, including the targeted delivery ring and the fallback ring around
+the player. For a targeted skill, the cached animation trajectory and cast-point target impact are
+part of that preflight, and the eventual Helper skill playback must enable planar root motion. The
+resolver sweeps between animation samples and treats actor-context colliders as actor overlap even
+when masks overlap. The Helper is mobile, so a valid NavMesh footprint is required; if no candidate
+passes, the summon is rejected before activation or cast rather than using an unvalidated position.
+
 ## Character Vertical Motor
 
 `CharacterVerticalMotor` is the single owner of a character's Y axis. Every planar
@@ -75,7 +83,10 @@ Fields to bind:
   binding the driver is still preferred because its token API reference-counts
   against other systems that suspend the same agent.
 - `rootMotionCCDriver` / `rootMotionNavMeshDriver`, so the motor can stand down on
-  frames where a root motion clip is writing its own Y.
+  frames where a root motion clip is writing its own Y. When `CharacterVisualController`
+  creates or replaces a model's runtime driver, it explicitly rebinds the active driver to
+  `CharacterVerticalMotor` immediately after configuration; the inactive driver reference is
+  cleared, so model rebuilds do not depend on a later hierarchy lookup.
 - `groundMask` and `collisionMask` — production prefabs use
   `Default | Ground | Ground Y | Terrain`, because scene ground geometry is not
   consistently on the `Ground` layer.
@@ -338,7 +349,8 @@ a flag the manager checks before hiding, which also settles an ordering hazard:
 `MapRunController` runs at the default execution order while `AllyHelperManager` is
 at 100, so the intro starts first and the manager's own `Start` would otherwise pull
 the helper off screen mid-shot. Positioning deliberately does not go through the
-summon path, which randomises a spot around the player.
+summon path; normal Helper placement now uses deterministic candidate rings and the central
+placement resolver, while the intro still owns its exact marker pose.
 
 `Camera Clip` on the rig is the group-shot camera animation and the **master
 duration** of the intro. Until an author assigns a real clip the rig fails
@@ -1600,6 +1612,16 @@ ally placement. The attack `AnimationClip` remains the source of truth: Unity
 must already extract the clip's root motion so `Animator.deltaPosition` and
 `Animator.deltaRotation` produce the intended movement during playback.
 
+Targeted Helper delivery skills are the exception because their payload owns a
+gameplay stand-off. Author **Targeted Delivery > Caster Placement > Target
+Stand-Off At Cast Point** on `TargetedDeliverySkillPayloadDef`; this is the
+horizontal Helper-to-target distance at the skill cast point. The runtime
+derives the Animation start pose from the sampled root motion and never scales
+the clip to fit this value. `AllyHelperManager.minSummonRadius` on the Player
+prefab is only for the generic fallback ring around the Player and must not be
+used to tune a targeted skill. Milano Skill 3 currently authors this payload
+value as `1.2m`.
+
 `SkillGemDefinition > Presentation > Ignore Character Collision During Root
 Motion` defaults to enabled. Keep it enabled for jumping, lunging, and other
 clips with Y root motion so Player, Enemy, and Ally bodies cannot become ground
@@ -1619,15 +1641,32 @@ Do not assign a motion-bone name, add a trajectory component, bake an asset, or
 change the clip to use `c_traj`/`root` for this flow. Runtime code creates and
 destroys hidden sampling objects, caches trajectories per clip and Avatar, and
 adds the appropriate root-motion driver to the active Animator model. Existing
-teleport-profile collision masks, probe collider, anchor offset, and optional
-NavMesh requirement are reused.
+teleport-profile collision masks, probe collider, and anchor offset are reused.
+The serialized NavMesh flag remains compatible with older assets, but Player,
+Ally, and Helper placement consumers always require a valid NavMesh footprint.
 
 The chain attack probe collider must continue to represent the actor footprint.
 Guaranteed Interruption uses the ally context's character-position collider in
 the same way. The current prefab reference is used for start, impact,
 full-trajectory, target-overlap, sweep, and NavMesh-footprint validation. A clip
 with no extracted XZ displacement or yaw uses the existing teleport behavior.
-Helper chain attacks are not changed by this feature.
+The central placement boundary preserves this contract and scores the sampled
+trajectory without warping its root-motion distance. If all sampled candidates
+are obstructed, it selects the candidate with the least measured penetration;
+rotation-only animation segments are swept as well, including segments that
+translate and rotate together. `CharacterPlacementFootprintUtility` converts
+Box, Capsule, and Sphere position colliders for Chain, Targeted Skill, Helper,
+and Summon requests; callers use its conservative fallback box when a supported
+position collider is unavailable. Summon placement uses a transient registry
+reservation while the spawn batch commits, then syncs Physics and releases the
+handles; the live summon collider is authoritative for the rest of the summon
+lifetime. If a character-position
+collider is not available during compatibility migration, the existing profile
+clearance box is used as a conservative fallback; authoring a real
+`CharacterPositionCollider` is still preferred. Helper chain teleport uses the
+same boundary for its side-effect-free placement path, while the legacy
+pose-validator callback remains available for helper code that must temporarily
+apply a candidate pose.
 
 ## Projectile Movement And Lifetime Ownership
 
@@ -2178,6 +2217,16 @@ Use **Tools > RB > Summoning > Validate All Summon Prefabs** after authoring.
 The validator also rejects nested summon-skill references that would create
 recursive summon trees.
 
+`SummonPlacementResolver` reads the prefab footprint from
+`CharacterColliderRefs.CharacterPositionCollider` (or the mobile
+`CharacterController`/`NavMeshAgent` footprint), ignores the ground collider
+that supplied ground resolution, and delegates clearance scoring to
+`CharacterPlacementResolver`. Mobile summons always require a valid NavMesh
+footprint; stationary summons retain their authored ground and clearance
+rules. The resolver evaluates a deterministic candidate set and can select the
+least-overlapping candidate when every candidate is imperfect; it does not
+reject solely because the first candidate overlaps an actor.
+
 Summon placement exposes separate layout-orientation and facing controls. Use
 caster forward, aim direction, or world axes for offset layout, then choose the
 actor facing mode independently when the prefab is spawned. Ground resolution
@@ -2188,6 +2237,12 @@ Runtime spawning stages a clone below an inactive `SummonStagingRoot`, validates
 and injects owner/team/attribution before activation, then reparents it under
 `SummonWorldRoot`. Keep gameplay modules under the Gameplay Root and presentation
 callbacks/VFX under the separate Presentation Root.
+
+During a same-frame summon batch, the transient placement reservation is owned by
+the `SummonContext` root (`SummonContext.transform`), not necessarily by the
+`SummonedEntityRuntime` component object. This keeps sibling runtime and physical
+collider objects under one ownership boundary and prevents the shared resolver
+from counting the live collider and its temporary reservation twice.
 
 `Assets/Prefab/Player/MinigunTerret_Summon.prefab` is the stationary Feno turret
 variant. It inherits `SummonBase`, nests `MinigunTerret 1` under the

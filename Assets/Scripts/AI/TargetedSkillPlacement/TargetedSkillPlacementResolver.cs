@@ -20,7 +20,10 @@ internal static class TargetedSkillPlacementResolver
         out TargetedSkillPlacementResult result,
         Vector3? preferredActorPosition = null,
         float noWarpStartDistance = 0f,
-        float noWarpTargetDistance = 0f)
+        float noWarpTargetDistance = 0f,
+        CharacterPlacementReservationService reservations = null,
+        AnimationClip leadInClip = null,
+        float leadInStartNormalized = 0f)
     {
         if (profile == null)
         {
@@ -40,6 +43,11 @@ internal static class TargetedSkillPlacementResolver
             return false;
         }
 
+        // Every current consumer of this adapter is a mobile player or ally. Keep the authored
+        // profile flag for compatibility at the call boundary, but never allow a mobile actor to
+        // resolve a pose outside NavMesh.
+        bool effectiveRequireNavMesh = true;
+
         if (samplingAnimator == null)
         {
             result = TargetedSkillPlacementResult.Failed("Root-motion sampling Animator is missing.");
@@ -57,7 +65,93 @@ internal static class TargetedSkillPlacementResolver
             return false;
         }
 
-        if (trajectory == null || !trajectory.HasMeaningfulMotion)
+        TargetedSkillRootMotionTrajectory placementTrajectory = trajectory;
+        float placementImpactNormalized = Mathf.Clamp(impactNormalized, 0f, 1f);
+        if (leadInClip != null)
+        {
+            if (!TargetedSkillRootMotionTrajectoryCache.TryGet(
+                    leadInClip,
+                    samplingAnimator,
+                    out TargetedSkillRootMotionTrajectory leadInTrajectory,
+                    out string leadInFailureReason))
+            {
+                result = TargetedSkillPlacementResult.Failed(
+                    $"Lead-in root-motion sampling failed for clip '{leadInClip.name}': {leadInFailureReason}");
+                return false;
+            }
+
+            if (!TargetedSkillRootMotionTrajectory.TryComposeLeadIn(
+                    leadInTrajectory,
+                    leadInStartNormalized,
+                    trajectory,
+                    out placementTrajectory,
+                    out float attackStartNormalized,
+                    out string compositionFailureReason))
+            {
+                result = TargetedSkillPlacementResult.Failed(
+                    $"Lead-in/attack trajectory composition failed: {compositionFailureReason}");
+                return false;
+            }
+
+            placementImpactNormalized = attackStartNormalized +
+                                        (1f - attackStartNormalized) * placementImpactNormalized;
+        }
+
+        if (placementTrajectory != null &&
+            placementTrajectory.HasMeaningfulMotion &&
+            TryResolveCentralPlacement(
+                profile,
+                targetAnchor,
+                fallbackBaseRotation,
+                placementTrajectory,
+                placementImpactNormalized,
+                faceTarget,
+                effectiveRequireNavMesh,
+                navMeshSampleDistance,
+                probeCollider,
+                probeRoot,
+                targetRoot,
+                preferredActorPosition,
+                reservations,
+                out TargetedSkillPlacementResult centralResult,
+                out CharacterPlacementRequest centralRequest,
+                out CharacterPlacementResult centralPlacementResult))
+        {
+            result = centralResult;
+            if (TryBuildNoWarpRootMotion(
+                    profile, placementTrajectory, Mathf.Clamp(placementImpactNormalized, 0f, 0.999f),
+                    result.StartPosition, result.StartRotation, result.AcceptedYaw,
+                    preferredActorPosition, noWarpStartDistance, effectiveRequireNavMesh,
+                    navMeshSampleDistance, probeCollider, probeRoot, targetRoot,
+                    out TargetedSkillPlacementResult centralNoWarpRoot))
+            {
+                result = centralNoWarpRoot;
+            }
+            else if (TryBuildNoWarpInPlace(
+                    profile, targetAnchor, preferredActorPosition, noWarpTargetDistance,
+                    effectiveRequireNavMesh, navMeshSampleDistance, probeCollider, probeRoot,
+                    targetRoot, out TargetedSkillPlacementResult inPlaceRoot))
+            {
+                result = inPlaceRoot;
+            }
+
+            if (!TryReserveCentralPlacement(
+                    profile,
+                    reservations,
+                    probeRoot,
+                    centralRequest,
+                    centralPlacementResult,
+                    result))
+            {
+                result = TargetedSkillPlacementResult.Failed(
+                    "Central placement reservation capacity is full.");
+                return false;
+            }
+
+            return true;
+        }
+
+        if (placementTrajectory == null || !placementTrajectory.HasMeaningfulMotion)
         {
             if (!ChainAttackTeleportUtility.TryResolveTeleportPose(
                     profile,
@@ -65,7 +159,7 @@ internal static class TargetedSkillPlacementResolver
                     fallbackBaseRotation,
                     out Vector3 legacyPosition,
                     out Quaternion legacyRotation,
-                    requireNavMesh,
+                    effectiveRequireNavMesh,
                     navMeshSampleDistance,
                     probeCollider,
                     probeRoot,
@@ -79,14 +173,14 @@ internal static class TargetedSkillPlacementResolver
             result = TargetedSkillPlacementResult.Legacy(legacyPosition, legacyRotation);
             if (TryBuildNoWarpLegacy(
                     profile, legacyPosition, legacyRotation, preferredActorPosition,
-                    noWarpStartDistance, requireNavMesh, navMeshSampleDistance,
+                     noWarpStartDistance, effectiveRequireNavMesh, navMeshSampleDistance,
                     probeCollider, probeRoot, out TargetedSkillPlacementResult noWarpLegacy))
             {
                 result = noWarpLegacy;
             }
             else if (TryBuildNoWarpInPlace(
                     profile, targetAnchor, preferredActorPosition, noWarpTargetDistance,
-                    requireNavMesh, navMeshSampleDistance, probeCollider, probeRoot, targetRoot,
+                     effectiveRequireNavMesh, navMeshSampleDistance, probeCollider, probeRoot, targetRoot,
                     out TargetedSkillPlacementResult inPlaceLegacy))
             {
                 result = inPlaceLegacy;
@@ -98,10 +192,10 @@ internal static class TargetedSkillPlacementResolver
                 profile,
                 targetAnchor,
                 fallbackBaseRotation,
-                trajectory,
-                Mathf.Clamp(impactNormalized, 0f, 0.999f),
+                placementTrajectory,
+                Mathf.Clamp(placementImpactNormalized, 0f, 0.999f),
                 faceTarget,
-                requireNavMesh,
+                effectiveRequireNavMesh,
                 navMeshSampleDistance,
                 probeCollider,
                 probeRoot,
@@ -126,9 +220,9 @@ internal static class TargetedSkillPlacementResolver
             impactRotation,
             acceptedYaw);
         if (TryBuildNoWarpRootMotion(
-                profile, trajectory, Mathf.Clamp(impactNormalized, 0f, 0.999f),
+                profile, placementTrajectory, Mathf.Clamp(placementImpactNormalized, 0f, 0.999f),
                 startPosition, startRotation, acceptedYaw, preferredActorPosition,
-                noWarpStartDistance, requireNavMesh, navMeshSampleDistance,
+                noWarpStartDistance, effectiveRequireNavMesh, navMeshSampleDistance,
                 probeCollider, probeRoot, targetRoot,
                 out TargetedSkillPlacementResult noWarpRoot))
         {
@@ -136,12 +230,199 @@ internal static class TargetedSkillPlacementResolver
         }
         else if (TryBuildNoWarpInPlace(
                 profile, targetAnchor, preferredActorPosition, noWarpTargetDistance,
-                requireNavMesh, navMeshSampleDistance, probeCollider, probeRoot, targetRoot,
+                 effectiveRequireNavMesh, navMeshSampleDistance, probeCollider, probeRoot, targetRoot,
                 out TargetedSkillPlacementResult inPlaceRoot))
         {
             result = inPlaceRoot;
         }
         return true;
+    }
+
+    static bool TryResolveCentralPlacement(
+        ChainAttackTeleportProfileDef profile,
+        Transform targetAnchor,
+        Quaternion fallbackBaseRotation,
+        TargetedSkillRootMotionTrajectory trajectory,
+        float impactNormalized,
+        bool faceTarget,
+        bool requireNavMesh,
+        float navMeshSampleDistance,
+        Collider probeCollider,
+        Transform probeRoot,
+        Transform targetRoot,
+        Vector3? preferredActorPosition,
+        CharacterPlacementReservationService reservations,
+        out TargetedSkillPlacementResult result,
+        out CharacterPlacementRequest reservationRequest,
+        out CharacterPlacementResult placementResult)
+    {
+        result = default;
+        reservationRequest = null;
+        placementResult = default;
+        if (profile == null || targetAnchor == null || trajectory == null ||
+            !trajectory.TrySample(impactNormalized, out TargetedSkillRootMotionSample impactSample))
+            return false;
+
+        if (!CharacterPlacementFootprintUtility.TryGetColliderFootprint(
+                probeCollider,
+                probeRoot,
+                out CharacterPlacementFootprint footprint,
+                out _))
+        {
+            footprint = CharacterPlacementFootprintUtility.CreateFallbackBox(
+                profile.clearanceCenterOffset,
+                profile.clearanceHalfExtents);
+        }
+
+        Quaternion baseRotation = profile.useAnchorRotationAsBase
+            ? PlanarRotation(targetAnchor.rotation)
+            : PlanarRotation(fallbackBaseRotation);
+        float baseYaw = TargetedSkillSnapSidePriority.ResolveBaseYaw(
+            targetAnchor,
+            profile.anchorPositionOffset,
+            preferredActorPosition);
+        float[] offsets = TargetedSkillSnapSidePriority.CandidateYawOffsets;
+        CharacterPlacementRequest.Candidate[] candidates =
+            new CharacterPlacementRequest.Candidate[offsets.Length];
+
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            float yaw = baseYaw + offsets[i];
+            Quaternion candidateYaw = Quaternion.AngleAxis(yaw, Vector3.up);
+            Quaternion impactRotation = candidateYaw * baseRotation;
+            Vector3 impactPosition = targetAnchor.TransformPoint(
+                candidateYaw * profile.anchorPositionOffset);
+
+            if (faceTarget)
+            {
+                Vector3 lookDirection = targetAnchor.position - impactPosition;
+                lookDirection.y = 0f;
+                if (lookDirection.sqrMagnitude > 0.0001f)
+                    impactRotation = Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
+            }
+
+            Quaternion startRotation =
+                impactRotation * Quaternion.Inverse(
+                    Quaternion.Euler(0f, impactSample.localYaw, 0f));
+            Vector3 startPosition =
+                impactPosition - startRotation * impactSample.localPosition;
+
+            candidates[i] = new CharacterPlacementRequest.Candidate(
+                startPosition,
+                startRotation,
+                Mathf.Abs(offsets[i]),
+                i,
+                impactPosition);
+        }
+
+        CharacterPlacementRequest request = new(
+            probeRoot,
+            probeCollider,
+            footprint,
+            AITargetIdentity.Generic,
+            targetRoot,
+            CharacterPlacementRequest.AnchorSnapshot.Capture(targetAnchor),
+            candidates,
+            trajectory.PlacementInput,
+            impactNormalized,
+            policy: null,
+            worldCollisionLayers: profile.obstacleLayers,
+            actorCollisionLayers: ~0,
+            ignoreRoot: probeRoot,
+            reservationOwner: probeRoot,
+            effectivePlanarRootMotion: true,
+            animationRequired: true,
+            mobileActor: true,
+            CharacterPlacementRuntimePolicy.CreateDefault(
+                requireNavMesh,
+                navMeshSampleDistance,
+                profile.obstacleTriggerInteraction));
+
+        if (!CharacterPlacementResolver.TryResolve(
+                request,
+                reservations,
+                out placementResult))
+        {
+            Log(profile, $"Central placement failed: {placementResult.FailureReason}.");
+            return false;
+        }
+
+        reservationRequest = request;
+
+        float acceptedYaw = baseYaw + offsets[placementResult.CandidateIndex];
+        result = TargetedSkillPlacementResult.RootMotion(
+            placementResult.StartPosition,
+            placementResult.StartRotation,
+            placementResult.ImpactPosition,
+            placementResult.ImpactRotation,
+            acceptedYaw);
+        Log(
+            profile,
+            $"Central placement accepted candidate={placementResult.CandidateIndex} " +
+            $"yaw={acceptedYaw:0.###} score={placementResult.Score}.");
+        return true;
+    }
+
+    static bool TryReserveCentralPlacement(
+        ChainAttackTeleportProfileDef profile,
+        CharacterPlacementReservationService reservations,
+        Transform probeRoot,
+        CharacterPlacementRequest centralRequest,
+        CharacterPlacementResult centralPlacementResult,
+        TargetedSkillPlacementResult finalResult)
+    {
+        if (reservations == null)
+            return true;
+
+        if (probeRoot != null)
+            reservations.ReleaseOwner(probeRoot);
+
+        CharacterPlacementRequest reservationRequest = finalResult.UsesRootMotion
+            ? centralRequest
+            : CreateStaticReservationRequest(centralRequest);
+        CharacterPlacementResult reservationResult = CharacterPlacementResult.Success(
+            finalResult.StartPosition,
+            finalResult.StartRotation,
+            finalResult.ImpactPosition,
+            finalResult.ImpactRotation,
+            centralPlacementResult.CandidateIndex,
+            centralPlacementResult.Score);
+
+        if (!reservations.TryReserve(reservationRequest, reservationResult, out _))
+        {
+            Log(profile, "Central placement failed: reservation capacity is full.");
+            return false;
+        }
+
+        return true;
+    }
+
+    static CharacterPlacementRequest CreateStaticReservationRequest(
+        CharacterPlacementRequest source)
+    {
+        return new CharacterPlacementRequest(
+            source.ActorRoot,
+            source.PositionCollider,
+            source.Footprint,
+            source.TargetIdentity,
+            source.TargetRoot,
+            source.TargetAnchor,
+            source.Candidates,
+            animation: null,
+            impactNormalizedTime: source.ImpactNormalizedTime,
+            policy: source.Policy,
+            worldCollisionLayers: source.WorldCollisionLayers,
+            actorCollisionLayers: source.ActorCollisionLayers,
+            ignoreRoot: source.IgnoreRoot,
+            reservationOwner: source.ReservationOwner,
+            effectivePlanarRootMotion: false,
+            animationRequired: false,
+            mobileActor: source.MobileActor,
+            runtimePolicy: source.RuntimePolicy,
+            poseValidator: source.PoseValidator,
+            ignoredCollider: source.IgnoredCollider,
+            additionalReservations: source.AdditionalReservations,
+            transientReservation: source.TransientReservation);
     }
 
     static bool TryResolveRootMotion(

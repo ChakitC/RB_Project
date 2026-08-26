@@ -52,6 +52,7 @@ internal sealed class FieldAllySequenceRunner
     {
         CancelDeferredSequenceCleanup();
         CleanupActiveExecution(success: false);
+        owner.PlacementReservations.ReleaseOwner(owner.TransformRef);
         _reservationOwner = null;
         transitionController.ClearVisualState();
     }
@@ -934,6 +935,8 @@ internal sealed class FieldAllySequenceRunner
 
         if (ownerToRelease != null)
             ReleaseReservation(ownerToRelease);
+
+        owner.PlacementReservations.ReleaseOwner(owner.TransformRef);
     }
 
     void ReleaseContinueSignalIfNeeded(PendingSequenceExecution execution, string reason)

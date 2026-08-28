@@ -52,9 +52,9 @@ CapsuleCollider:
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 0.64
-  m_Height: 2.53
+  m_Height: 2.459488
   m_Direction: 2
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: 1.230458e-23, y: 1.5195665e-17, z: 0.030180693}
 --- !u!1001 &8992242283508790738
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2508,6 +2508,8 @@ MonoBehaviour:
   _mainLightStrengthOverrideValue: 0
   _overrideLightAngle: {x: 0, y: 0, z: 0}
   HeadBoneTransform: {fileID: 0}
+  _CharacterCenterCubeSize: 1
+  UseSimpleAABBCutOffForCharacterShadow: 0
   CreateMaterialInstanceOnPlay: 0
 --- !u!114 &6443343105886235426
 MonoBehaviour:
@@ -2522,6 +2524,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CharacterPositionCollider: {fileID: 7357354613642086230}
+  hitZones: []
 --- !u!114 &6205589083117802749
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2532,8 +2535,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bab361da65b03c5439d01bf3c29eff89, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   spine: {fileID: 1109229822447006666}
   chest: {fileID: 4688929635969402934}
   upperChest: {fileID: 0}

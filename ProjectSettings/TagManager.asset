@@ -33,7 +33,7 @@ TagManager:
   - Interactable
   - Cutscene
   - Barrier
-  - 
+  - DialogueActor
   - 
   - 
   - 
@@ -54,6 +54,6 @@ TagManager:
   - Light Layer 2 - Outline
   - Light Layer 3 - EffectAdditionalLight
   - Light Layer 4 - CharacterDecal
-  - Light Layer 5
+  - Dialogue
   - Light Layer 6
   - Light Layer 7

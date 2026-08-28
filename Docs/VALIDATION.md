@@ -646,3 +646,24 @@ The one-off migration that moved inline tuning onto profiles has been applied an
 the run configs no longer carry inline tuning fields at all. `Tools > RB Project > Map > Apply Test
 Stage Content` authors the Test Stage profiles directly, reusing whatever profile a config already
 references rather than creating a second one beside it.
+
+## Dialogue authoring
+
+`Tools/Dialogue/Validate Dialogue Authoring` scans every `DialogueSequenceSO`,
+`CharacterDialogueAnimationProfileSO`, and `DialogueProfileDatabaseSO` in the project, plus the
+`DialogueStage`, `DialogueDirector`, and every `DialogueTrigger` in the open scenes.
+
+| Reported | Why it matters |
+|---|---|
+| two sequences share a `dialogueId` | they share play-once completion, so finishing one silently locks the other out |
+| a play-once trigger whose sequence has no `dialogueId` | completion cannot be persisted, so it replays forever |
+| a line spoken by someone outside the cast | that line emphasises nobody |
+| two cast entries in the same slot, or more than three entries | the stage has exactly three slots |
+| a cast member with no registered pose profile | the actor stands un-posed |
+| a profile with no `idlePose` | every unmapped pose leaves the actor un-posed |
+| a slot missing its actor anchor, portrait camera, or RawImage; other stage/UI wiring gaps; an active `CloneStaging` root | the slot cannot render, or stripped gameplay components would wake up on the clone |
+| a missing `DialogueActor` layer, or `DialoguePresentation` not enabled in Build Settings | the stage cannot render or cannot load |
+
+Run it before committing dialogue content. `CheckAssemblyBuild.ps1` covers the runtime dialogue
+scripts but, as always, **not** the editor tooling — the two `Tools/Dialogue/…` menu items have to be
+run in Unity to verify.

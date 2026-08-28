@@ -4671,7 +4671,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 4292870143
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -7469,6 +7469,26 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8733075554098439753, guid: 80bcab744c838fc4eb5e48346757b847, type: 3}
   m_PrefabInstance: {fileID: 1893991854}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1579101422 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5737818566388694091, guid: 99aa46e3257a0684781d9893aa6cbf6f, type: 3}
+  m_PrefabInstance: {fileID: 5784479154729755671}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1579101434
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1579101422}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47b50afc51102154698d74f19a1bf707, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  loadOnAwake: 1
+  reloadAfterSceneChange: 1
+  unloadOnDestroy: 0
 --- !u!1 &1583013946
 GameObject:
   m_ObjectHideFlags: 0
@@ -9989,7 +10009,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5737818566388694091, guid: 99aa46e3257a0684781d9893aa6cbf6f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1579101434}
   m_SourcePrefab: {fileID: 100100000, guid: 99aa46e3257a0684781d9893aa6cbf6f, type: 3}
 --- !u!1001 &7647814111192536082
 PrefabInstance:

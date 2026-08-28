@@ -60,6 +60,18 @@ MonoBehaviour:
   combatAlignmentDuration: 0.3
   shakeImpulsePerMarker: 0.55
   aimShakeMultiplier: 0.45
+--- !u!114 &1234500000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 378653225776893448}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da550000000000000000000000000003, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2151110332578885825
 GameObject:
   m_ObjectHideFlags: 0
@@ -136,7 +148,7 @@ Camera:
   m_Depth: 0.26
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 4294965247
+    m_Bits: 4292868095
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -432,15 +444,3 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sourceCamera: {fileID: 5478141767642294992}
---- !u!114 &1234500000000000001
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 378653225776893448}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: da550000000000000000000000000003, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:

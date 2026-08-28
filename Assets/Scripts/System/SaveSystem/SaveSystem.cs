@@ -27,6 +27,7 @@ public static class SaveSystem
     static string AccessoriesPath(int slot) => Path.Combine(Dir, $"slot_{slot}_accessories.json");
     static string PartyPath(int slot) => Path.Combine(Dir, $"slot_{slot}_party.json");
     static string StageProgressPath(int slot) => Path.Combine(Dir, $"slot_{slot}_stage_progress.json");
+    static string DialogueProgressPath(int slot) => Path.Combine(Dir, $"slot_{slot}_dialogue.json");
     
     static string CharacterPath(int slot) => Path.Combine(Dir, $"slot_{slot}_character.json");
 
@@ -39,6 +40,7 @@ public static class SaveSystem
         yield return PartyPath(slot);
         yield return CharacterPath(slot);
         yield return StageProgressPath(slot);
+        yield return DialogueProgressPath(slot);
     }
 
     public static bool HasAnyData(int slot)
@@ -329,6 +331,40 @@ public static class SaveSystem
     {
         if (slot < 0) slot = 0;
         WriteJson(StageProgressPath(slot), new StageProgressSaveFile());
+    }
+
+    // ---------- DIALOGUE PROGRESS ----------
+
+    /// <summary>True once the play-once dialogue with this id has been completed on this slot.</summary>
+    public static bool IsDialogueCompleted(int slot, string dialogueId)
+    {
+        if (string.IsNullOrWhiteSpace(dialogueId)) return false;
+        if (slot < 0) slot = 0;
+
+        DialogueProgressSaveFile file = ReadDialogueProgress(slot);
+        return file.IsCompleted(dialogueId);
+    }
+
+    public static void MarkDialogueCompleted(int slot, string dialogueId)
+    {
+        if (string.IsNullOrWhiteSpace(dialogueId)) return;
+        if (slot < 0) slot = 0;
+
+        DialogueProgressSaveFile file = ReadDialogueProgress(slot);
+        file.MarkCompleted(dialogueId);
+        WriteJson(DialogueProgressPath(slot), file);
+    }
+
+    public static void ResetDialogueProgress(int slot)
+    {
+        if (slot < 0) slot = 0;
+        WriteJson(DialogueProgressPath(slot), new DialogueProgressSaveFile());
+    }
+
+    static DialogueProgressSaveFile ReadDialogueProgress(int slot)
+    {
+        return ReadJson<DialogueProgressSaveFile>(ResolveReadPath(DialogueProgressPath(slot)))
+               ?? new DialogueProgressSaveFile();
     }
 
 

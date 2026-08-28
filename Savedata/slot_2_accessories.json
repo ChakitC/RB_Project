@@ -1,0 +1,148 @@
+{
+    "entries": [
+        {
+            "ownerId": "character:ID.Feno",
+            "slotCount": 5,
+            "equippedAccessories": [
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            ]
+        },
+        {
+            "ownerId": "character:ID.Aires",
+            "slotCount": 5,
+            "equippedAccessories": [
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            ]
+        },
+        {
+            "ownerId": "character:ID.Milano",
+            "slotCount": 5,
+            "equippedAccessories": [
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            ]
+        },
+        {
+            "ownerId": "character:ID.Roma",
+            "slotCount": 5,
+            "equippedAccessories": [
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            ]
+        }
+    ]
+}

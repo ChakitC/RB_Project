@@ -74,9 +74,9 @@ Material:
     - _SpecularSize: 0.278
     - _UseSimpleAABBCutOffForCharacterShadow: 0
     m_Colors:
-    - _CharacterCenterWS: {r: 12.769528, g: 0.000099897385, b: 3.0500288, a: 0}
-    - _FaceFrontDirection: {r: 0.029860664, g: 0, b: -0.99955416, a: 0}
-    - _FaceRightDirection: {r: -0.99955416, g: 0, b: -0.029860664, a: 0}
+    - _CharacterCenterWS: {r: 0, g: 0.1, b: 0, a: 0}
+    - _FaceFrontDirection: {r: 0, g: 0, b: 1, a: 0}
+    - _FaceRightDirection: {r: 1, g: 0, b: 0, a: 0}
     - _RimLightColor: {r: 0.21960786, g: 0.21960786, b: 0.21960786, a: 1}
     - _SpecularColor: {r: 0.95258605, g: 1, b: 0.57169807, a: 1}
   m_BuildTextureStacks: []

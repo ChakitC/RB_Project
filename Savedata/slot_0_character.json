@@ -20,8 +20,8 @@
                 "xp": 0,
                 "unlocked": true,
                 "selectedSkillOptions": [],
-                "skillPoints": 0,
-                "skillProgressInitialized": false,
+                "skillPoints": 29,
+                "skillProgressInitialized": true,
                 "activeSkillTrees": []
             }
         },
@@ -32,8 +32,8 @@
                 "xp": 0,
                 "unlocked": true,
                 "selectedSkillOptions": [],
-                "skillPoints": 0,
-                "skillProgressInitialized": false,
+                "skillPoints": 29,
+                "skillProgressInitialized": true,
                 "activeSkillTrees": []
             }
         },
@@ -107,8 +107,8 @@
                 "xp": 0,
                 "unlocked": true,
                 "selectedSkillOptions": [],
-                "skillPoints": 0,
-                "skillProgressInitialized": false,
+                "skillPoints": 29,
+                "skillProgressInitialized": true,
                 "activeSkillTrees": []
             }
         },

@@ -214,6 +214,24 @@ public class SaveManager : MonoBehaviour
         SaveSystem.SaveStageProgress(currentSlot, stageId, progressCount);
     }
 
+    /// <summary>True once the play-once dialogue with this id was completed on the current slot.</summary>
+    public bool IsDialogueCompleted(string dialogueId)
+    {
+        return SaveSystem.IsDialogueCompleted(currentSlot, dialogueId);
+    }
+
+    public void MarkDialogueCompleted(string dialogueId)
+    {
+        SaveSystem.MarkDialogueCompleted(currentSlot, dialogueId);
+    }
+
+    [ContextMenu("Reset Dialogue Progress")]
+    public void ResetDialogueProgress()
+    {
+        SaveSystem.ResetDialogueProgress(currentSlot);
+        Debug.Log($"[SaveManager] Reset dialogue progress for slot {currentSlot}.", this);
+    }
+
     [ContextMenu("Reset Test Stage Progress")]
     public void ResetTestStageProgress()
     {

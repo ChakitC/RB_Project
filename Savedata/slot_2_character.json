@@ -1,0 +1,53 @@
+{
+    "schemaVersion": 1,
+    "entries": [
+        {
+            "characterId": "ID.Roma",
+            "progress": {
+                "level": 1,
+                "xp": 0,
+                "unlocked": false,
+                "selectedSkillOptions": [],
+                "skillPoints": 0,
+                "skillProgressInitialized": true,
+                "activeSkillTrees": []
+            }
+        },
+        {
+            "characterId": "ID.Feno",
+            "progress": {
+                "level": 1,
+                "xp": 0,
+                "unlocked": false,
+                "selectedSkillOptions": [],
+                "skillPoints": 0,
+                "skillProgressInitialized": true,
+                "activeSkillTrees": []
+            }
+        },
+        {
+            "characterId": "ID.Aires",
+            "progress": {
+                "level": 1,
+                "xp": 0,
+                "unlocked": false,
+                "selectedSkillOptions": [],
+                "skillPoints": 0,
+                "skillProgressInitialized": true,
+                "activeSkillTrees": []
+            }
+        },
+        {
+            "characterId": "ID.Milano",
+            "progress": {
+                "level": 1,
+                "xp": 0,
+                "unlocked": false,
+                "selectedSkillOptions": [],
+                "skillPoints": 0,
+                "skillProgressInitialized": true,
+                "activeSkillTrees": []
+            }
+        }
+    ]
+}

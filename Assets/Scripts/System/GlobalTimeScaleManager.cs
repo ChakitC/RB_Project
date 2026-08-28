@@ -10,7 +10,15 @@ public sealed class GlobalTimeScaleManager : MonoBehaviour
     [SerializeField] AnimationCurve _defaultHitLagShape;
 
     readonly List<HitLagRequest> _requests = new List<HitLagRequest>();
-    bool _paused;
+
+    // Pause is reference-counted by token so two systems can hold the world frozen at once and
+    // neither one's release can thaw the world while the other is still holding it.
+    readonly HashSet<int> _pauseTokens = new HashSet<int>();
+    int _nextPauseToken = 1;
+
+    // Backing token for the legacy boolean SetPaused(bool) API. Kept separate from the token pool so
+    // an old caller flipping it off cannot clear a scoped hold, and vice versa.
+    int _legacyPauseToken;
 
     public static GlobalTimeScaleManager Instance
     {
@@ -91,22 +99,61 @@ public sealed class GlobalTimeScaleManager : MonoBehaviour
         ApplyComposedScale();
     }
 
+    /// <summary>
+    /// Freezes the world until the returned token is released. Reference-counted: the world stays
+    /// frozen while any token is outstanding, so overlapping holders never thaw each other.
+    /// </summary>
+    public int AcquirePauseToken()
+    {
+        int token = _nextPauseToken++;
+        _pauseTokens.Add(token);
+        ApplyComposedScale();
+        return token;
+    }
+
+    /// <summary>Releases a hold taken with <see cref="AcquirePauseToken"/>. Safe to call twice.</summary>
+    public void ReleasePauseToken(int token)
+    {
+        if (token == 0 || !_pauseTokens.Remove(token))
+            return;
+
+        ApplyComposedScale();
+    }
+
+    public bool IsPaused => _pauseTokens.Count > 0;
+
+    /// <summary>
+    /// Legacy single-slot pause. Backed by its own token, so it composes with
+    /// <see cref="AcquirePauseToken"/> instead of overriding it.
+    /// </summary>
     public void SetPaused(bool paused)
     {
-        _paused = paused;
-        ApplyComposedScale();
+        if (paused)
+        {
+            if (_legacyPauseToken == 0)
+                _legacyPauseToken = AcquirePauseToken();
+            return;
+        }
+
+        if (_legacyPauseToken == 0)
+            return;
+
+        int token = _legacyPauseToken;
+        _legacyPauseToken = 0;
+        ReleasePauseToken(token);
     }
 
     public void ForceReset()
     {
         _requests.Clear();
-        _paused = false;
+        _pauseTokens.Clear();
+        _legacyPauseToken = 0;
         Time.timeScale = 1f;
     }
 
     void ApplyComposedScale()
     {
-        if (_paused)
+        if (_pauseTokens.Count > 0)
         {
             Time.timeScale = 0f;
             return;

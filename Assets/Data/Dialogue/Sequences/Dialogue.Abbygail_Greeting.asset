@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b430837668bfc5f408bf05e3d28fbdf0, type: 3}
+  m_Name: Dialogue.Abbygail_Greeting
+  m_EditorClassIdentifier: 
+  dialogueId: dlg.abbygail.greeting
+  cast:
+  - characterId: role.PartySlot1
+    slot: 0
+    idlePoseId: 
+    optional: 1
+  - characterId: role.Player
+    slot: 1
+    idlePoseId: 
+    optional: 1
+  - characterId: npc.abbygail
+    slot: 2
+    idlePoseId: 
+    optional: 1
+  lines:
+  - speakerCharacterId: npc.abbygail
+    speakerNameOverride: 
+    poseId: 
+    text: Hold it. You're going up there with that squad?
+    stageChanges: []
+    voice: {fileID: 0}
+    typewriterCharactersPerSecond: 0
+  - speakerCharacterId: role.Player
+    speakerNameOverride: 
+    poseId: 
+    text: That's the plan.
+    stageChanges: []
+    voice: {fileID: 0}
+    typewriterCharactersPerSecond: 0
+  - speakerCharacterId: npc.abbygail
+    speakerNameOverride: 
+    poseId: 
+    text: Then take a crate before you go. Second floor is worse than this one.
+    stageChanges: []
+    voice: {fileID: 0}
+    typewriterCharactersPerSecond: 0
+  - speakerCharacterId: role.PartySlot2
+    speakerNameOverride: 
+    poseId: 
+    text: How much worse? We're already light on ammo.
+    stageChanges:
+    - characterId: role.PartySlot2
+      slot: 0
+      idlePoseId: 
+    voice: {fileID: 0}
+    typewriterCharactersPerSecond: 0
+  - speakerCharacterId: npc.abbygail
+    speakerNameOverride: 
+    poseId: 
+    text: You'll know when the lights go out.
+    stageChanges: []
+    voice: {fileID: 0}
+    typewriterCharactersPerSecond: 0
+  - speakerCharacterId: role.Player
+    speakerNameOverride: 
+    poseId: 
+    text: We'll take the crate. Let's move.
+    stageChanges: []
+    voice: {fileID: 0}
+    typewriterCharactersPerSecond: 0
+  lightRig: {fileID: 0}
+  typewriterCharactersPerSecond: 40
+  allowHoldToSkip: 1
+  holdToSkipSeconds: 0.75

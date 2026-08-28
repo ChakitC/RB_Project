@@ -1,0 +1,154 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &6984830166453866931
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      propertyPath: m_Name
+      value: Abbygail_NPC
+      objectReference: {fileID: 0}
+    - target: {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      propertyPath: m_Layer
+      value: 18
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435957238560230040, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 20.291315
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435957238560230040, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.00010108948
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435957238560230040, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -15.246671
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435957238560230040, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435957238560230040, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435957238560230040, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435957238560230040, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435957238560230040, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435957238560230040, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435957238560230040, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1890453876354151884}
+    - targetCorrespondingSourceObject: {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1860999453195258263}
+    - targetCorrespondingSourceObject: {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9065736147348954014}
+    - targetCorrespondingSourceObject: {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7359455580880825529}
+  m_SourcePrefab: {fileID: 100100000, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+--- !u!1 &3672078194399674769 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+  m_PrefabInstance: {fileID: 6984830166453866931}
+  m_PrefabAsset: {fileID: 0}
+--- !u!136 &1890453876354151884
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3672078194399674769}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.45
+  m_Height: 1.8
+  m_Direction: 1
+  m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &1860999453195258263
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3672078194399674769}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 178a2184b1e078e4f972383d8e0efd3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targets: []
+--- !u!114 &9065736147348954014
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3672078194399674769}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 96a19086fca1e31439a0717ab46a4a4b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  priority: 0
+  prompt: Talk
+  sequence: {fileID: 11400000, guid: 47628100e97831e47b03ac2fc96ea4f0, type: 2}
+  repeatMode: 1
+  stageActors:
+  - {fileID: 7359455580880825529}
+  onCompleted:
+    m_PersistentCalls:
+      m_Calls: []
+  deactivateAfterCompleted: 0
+  objectToDeactivate: {fileID: 0}
+--- !u!114 &7359455580880825529
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3672078194399674769}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 64f1fe686d9b85b4dbe4f0be90dd0a4e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterId: npc.abbygail
+  displayName: Abbygail
+  modelRoot: {fileID: 0}

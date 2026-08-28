@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ba6f09f62e6a374e8d2b685af98cf8e, type: 3}
+  m_Name: DialoguePose.Enemy_B_GR_01
+  m_EditorClassIdentifier: 
+  characterId: Enemy_B_GR_01
+  idlePose:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 5842118489928674393, guid: 379ab45fcbed4b24aafeaba89a306a17, type: 3}
+    _NormalizedStartTime: NaN
+  poses: []
+  references:
+    version: 2
+    RefIds: []

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -33,7 +33,6 @@ public static class DialoguePresentationScene
     {
         if (IsLoaded)
         {
-            StripActorLayerFromGameplayCameras();
             onReady?.Invoke();
             return;
         }
@@ -76,37 +75,7 @@ public static class DialoguePresentationScene
     static void OnLoadCompleted(Action onReady)
     {
         loadOperation = null;
-        StripActorLayerFromGameplayCameras();
         onReady?.Invoke();
     }
 
-    /// <summary>
-    /// Takes the DialogueActor layer out of every camera except the stage's own portrait camera, so
-    /// actor clones are never drawn into the gameplay view. Runs once per load rather than per frame.
-    /// </summary>
-    static void StripActorLayerFromGameplayCameras()
-    {
-        int actorMask = DialogueLayers.ActorLayerMask;
-        if (actorMask == 0)
-            return;
-
-        DialogueStage stage = UnityEngine.Object.FindFirstObjectByType<DialogueStage>(
-            FindObjectsInactive.Include);
-
-        Camera[] cameras = UnityEngine.Object.FindObjectsByType<Camera>(
-            FindObjectsInactive.Include, FindObjectsSortMode.None);
-
-        for (int i = 0; i < cameras.Length; i++)
-        {
-            Camera camera = cameras[i];
-            if (camera == null || (camera.cullingMask & actorMask) == 0)
-                continue;
-
-            // The stage's own portrait camera is the one camera that must keep the actor layer.
-            if (stage != null && camera.transform.IsChildOf(stage.transform))
-                continue;
-
-            camera.cullingMask &= ~actorMask;
-        }
-    }
 }

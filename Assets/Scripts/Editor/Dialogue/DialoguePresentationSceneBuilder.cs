@@ -89,9 +89,12 @@ public static class DialoguePresentationSceneBuilder
         var rootObject = new GameObject("DialogueStageRoot");
         var stage = rootObject.AddComponent<DialogueStage>();
 
-        // The stage sits far from any gameplay geometry: nothing on the DialogueActor layer should
-        // ever be near enough to the world to be caught by a stray query or a world light.
-        rootObject.transform.position = new Vector3(0f, -5000f, 0f);
+        // Distance IS the isolation. Clones share layer 0 with the rest of the game (see
+        // DialogueLayers), so nothing but this gap stops a gameplay camera from drawing the stage.
+        // -5000 was not enough: measured against the live gameplay camera, the nearest clone sat
+        // 5000.0 units away against a 5000 far plane — inside it, and saved only by the camera
+        // happening to look horizontally rather than down. -20000 leaves a 15000-unit margin.
+        rootObject.transform.position = new Vector3(0f, -20000f, 0f);
 
         var slotsRoot = new GameObject("Slots");
         slotsRoot.transform.SetParent(rootObject.transform, false);
@@ -138,9 +141,11 @@ public static class DialoguePresentationSceneBuilder
         var cameraObject = new GameObject("PortraitCamera");
         cameraObject.transform.SetParent(slotObject.transform, false);
         // This height is THE height for every character — framing no longer equalises it — so it has
-        // to frame the whole cast on its own. orthographicSize 1.2 shows +/-1.2m, so 1.65 covers
-        // 0.45 (mid-shin) up to 2.85, above every hat in the cast.
-        cameraObject.transform.SetLocalPositionAndRotation(new Vector3(0f, 1.65f, -4f), Quaternion.identity);
+        // to frame the whole cast on its own. orthographicSize 1.2 shows +/-1.2m, so 1.39 covers
+        // 0.19 up to 2.59: the tallest hat in the cast still clears the top, and the crop lands just
+        // above the feet, which sit behind the dialogue box anyway. Tuned in Play Mode against the
+        // live cast; raising it wastes the top of every cell on empty sky.
+        cameraObject.transform.SetLocalPositionAndRotation(new Vector3(0f, 1.39f, -4f), Quaternion.identity);
 
         var portraitCamera = cameraObject.AddComponent<Camera>();
         portraitCamera.clearFlags = CameraClearFlags.SolidColor;
@@ -275,6 +280,9 @@ public static class DialoguePresentationSceneBuilder
         SetSerialized(ui, "offStageOffset", new Vector2(0f, -90f));
         SetSerialized(ui, "exitSeconds", 0.16f);
         SetSerialized(ui, "enterSeconds", 0.22f);
+        // Must match DialogueStage.emphasisBlendSeconds below: the portrait and its 3D lights are
+        // two halves of one speaker change and drift apart if they run on different durations.
+        SetSerialized(ui, "emphasisBlendSeconds", 0.25f);
         return ui;
     }
 
@@ -424,6 +432,7 @@ public static class DialoguePresentationSceneBuilder
         serialized.FindProperty("defaultLightRig").objectReferenceValue = lightRig;
         // Framing is head-anchored; these are the values a rebuilt scene should carry.
         serialized.FindProperty("framingViewHeight").floatValue = 2.4f;
+        serialized.FindProperty("emphasisBlendSeconds").floatValue = 0.25f;
         serialized.FindProperty("cloneStagingRoot").objectReferenceValue = cloneStaging;
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }

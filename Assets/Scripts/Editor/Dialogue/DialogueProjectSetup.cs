@@ -1,12 +1,14 @@
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// Creates the project-level channels the dialogue stage needs: the <c>DialogueActor</c> layer that
-/// separates dialogue clones from the gameplay view, and the named rendering layer that keeps world
-/// lights off the clones and dialogue lights off the world.
+/// Names the rendering layer the dialogue stage runs its lights on, so an author looking at a light
+/// or a renderer can see which channel is which.
 ///
-/// Editor-only, idempotent, and safe to run on a project that already has them.
+/// The stage used to need a dedicated Unity layer as well; it does not any more — see
+/// <see cref="DialogueLayers"/> for why clones sit on layer 0 with everything else.
+///
+/// Editor-only, idempotent, and safe to run on a project that already has this.
 /// </summary>
 public static class DialogueProjectSetup
 {
@@ -16,47 +18,12 @@ public static class DialogueProjectSetup
     [MenuItem("Tools/Dialogue/Set Up Project Layers")]
     public static void SetUpLayers()
     {
-        bool changed = EnsureActorLayer(out int layerIndex);
-        changed |= EnsureRenderingLayerName();
-
-        if (changed)
+        if (EnsureRenderingLayerName())
             AssetDatabase.SaveAssets();
 
-        Debug.Log(layerIndex >= 0
-            ? $"[Dialogue] Layer '{DialogueLayers.ActorLayerName}' is at index {layerIndex}. " +
-              $"Rendering layer {DialogueLayers.DialogueRenderingLayerIndex} is '{DialogueRenderingLayerName}'."
-            : "[Dialogue] No free user layer slot; add 'DialogueActor' manually in Tags & Layers.");
-    }
-
-    /// <summary>Adds the DialogueActor layer to the first free user slot. Returns true when it wrote.</summary>
-    public static bool EnsureActorLayer(out int layerIndex)
-    {
-        layerIndex = LayerMask.NameToLayer(DialogueLayers.ActorLayerName);
-        if (layerIndex >= 0)
-            return false;
-
-        SerializedObject tagManager = LoadTagManager();
-        if (tagManager == null)
-            return false;
-
-        SerializedProperty layers = tagManager.FindProperty("layers");
-        if (layers == null)
-            return false;
-
-        // Slots 0-7 are Unity's built-ins; user layers start at 8.
-        for (int i = 8; i < layers.arraySize; i++)
-        {
-            SerializedProperty slot = layers.GetArrayElementAtIndex(i);
-            if (!string.IsNullOrEmpty(slot.stringValue))
-                continue;
-
-            slot.stringValue = DialogueLayers.ActorLayerName;
-            tagManager.ApplyModifiedProperties();
-            layerIndex = i;
-            return true;
-        }
-
-        return false;
+        Debug.Log(
+            $"[Dialogue] Rendering layer {DialogueLayers.DialogueRenderingLayerIndex} is " +
+            $"'{DialogueRenderingLayerName}'.");
     }
 
     /// <summary>Names the reserved rendering layer so authors can see which channel dialogue uses.</summary>

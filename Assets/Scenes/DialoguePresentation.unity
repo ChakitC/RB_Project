@@ -1035,7 +1035,7 @@ Transform:
   m_GameObject: {fileID: 673214484}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.65, z: -4}
+  m_LocalPosition: {x: 0, y: 1.39, z: -4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1080,7 +1080,7 @@ Camera:
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 2097152
+    m_Bits: 1
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -1163,7 +1163,7 @@ Transform:
   m_GameObject: {fileID: 682784941}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.65, z: -4}
+  m_LocalPosition: {x: 0, y: 1.39, z: -4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1208,7 +1208,7 @@ Camera:
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 2097152
+    m_Bits: 1
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -2199,7 +2199,7 @@ MonoBehaviour:
   speakingOffset: {x: 0, y: 0}
   speakingTint: {r: 1, g: 1, b: 1, a: 1}
   listeningTint: {r: 0.78, g: 0.78, b: 0.78, a: 1}
-  emphasisBlendSeconds: 0.18
+  emphasisBlendSeconds: 0.25
   offStageOffset: {x: 0, y: -90}
   exitSeconds: 0.16
   enterSeconds: 0.22
@@ -2338,7 +2338,7 @@ Transform:
   m_GameObject: {fileID: 1347590670}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -5000, z: 0}
+  m_LocalPosition: {x: 0, y: -20000, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2385,7 +2385,7 @@ MonoBehaviour:
   defaultLightRig: {fileID: 11400000, guid: 1575f94b920f0774bb36945b7393c5a9, type: 2}
   cloneStagingRoot: {fileID: 1410860996}
   framingViewHeight: 2.4
-  framingHeadScreenY: 0.55
+  emphasisBlendSeconds: 0.25
 --- !u!1 &1410860995
 GameObject:
   m_ObjectHideFlags: 0
@@ -2482,7 +2482,7 @@ Transform:
   m_GameObject: {fileID: 1558069926}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.65, z: -4}
+  m_LocalPosition: {x: 0, y: 1.39, z: -4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2527,7 +2527,7 @@ Camera:
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 2097152
+    m_Bits: 1
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0

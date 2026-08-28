@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -51,7 +51,31 @@ public sealed class DialogueTrigger : MonoBehaviour, IInteractable
     public int Priority => priority;
     public DialogueSequenceSO Sequence => sequence;
     public RepeatMode Repeat => repeatMode;
-    public IReadOnlyList<DialogueStageActorSource> StageActors => stageActors;
+    public IReadOnlyList<DialogueStageActorSource> StageActors => ResolveStageActors();
+
+    /// <summary>
+    /// The scene actors this trigger actually supplies, resolved the same way at runtime and in the
+    /// editor.
+    ///
+    /// The explicit list wins when it has entries; otherwise the hierarchy is searched, because an
+    /// NPC almost always casts itself and should need no wiring. This used to be an `Awake` mutation
+    /// of the serialized list, which meant Edit Mode validation saw an empty list and could not check
+    /// a self-casting NPC at all — the one arrangement authors actually use.
+    /// </summary>
+    public IReadOnlyList<DialogueStageActorSource> ResolveStageActors()
+    {
+        if (stageActors != null && stageActors.Count > 0)
+            return stageActors;
+
+        resolvedStageActors ??= new List<DialogueStageActorSource>();
+        resolvedStageActors.Clear();
+        GetComponentsInChildren(true, resolvedStageActors);
+        return resolvedStageActors;
+    }
+
+    // Scratch list for the discovery path. Never the serialized list: overwriting that would make a
+    // hierarchy change look like an authoring change and dirty the scene.
+    List<DialogueStageActorSource> resolvedStageActors;
 
     /// <summary>True when a play-once dialogue has already been completed on the current save slot.</summary>
     public bool IsCompleted
@@ -67,13 +91,6 @@ public sealed class DialogueTrigger : MonoBehaviour, IInteractable
 
             return SaveManager.Instance != null && SaveManager.Instance.IsDialogueCompleted(dialogueId);
         }
-    }
-
-    void Awake()
-    {
-        // An NPC almost always casts itself, so the common case needs no wiring.
-        if (stageActors == null || stageActors.Count == 0)
-            stageActors = new List<DialogueStageActorSource>(GetComponentsInChildren<DialogueStageActorSource>(true));
     }
 
     void Start()
@@ -115,7 +132,7 @@ public sealed class DialogueTrigger : MonoBehaviour, IInteractable
             return;
         }
 
-        director.TryPlay(sequence, interactor.OwnerContext, HandleCompleted, stageActors);
+        director.TryPlay(sequence, interactor.OwnerContext, HandleCompleted, ResolveStageActors());
     }
 
     void HandleCompleted()

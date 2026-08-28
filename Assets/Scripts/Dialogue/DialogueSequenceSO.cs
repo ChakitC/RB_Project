@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -66,6 +66,44 @@ public sealed class DialogueSequenceSO : ScriptableObject
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Every cast key that can end up on stage: the opening cast plus everyone brought on by a
+    /// `stageChanges` entry.
+    ///
+    /// Validation has to use this rather than the opening cast alone. A character who only ever
+    /// appears mid-conversation is still a character who needs a source and a pose profile, and
+    /// checking `FindCastEntry` on its own reported those as unused while leaving the real gap
+    /// unreported.
+    /// </summary>
+    public void CollectAppearingCastKeys(ICollection<string> keys)
+    {
+        if (keys == null)
+            throw new ArgumentNullException(nameof(keys));
+
+        for (int i = 0; cast != null && i < cast.Count; i++)
+        {
+            DialogueCastEntry entry = cast[i];
+            if (entry != null && entry.IsValid)
+                keys.Add(entry.characterId);
+        }
+
+        for (int l = 0; lines != null && l < lines.Count; l++)
+        {
+            DialogueLine line = lines[l];
+            if (line == null || !line.HasStageChanges)
+                continue;
+
+            for (int c = 0; c < line.stageChanges.Count; c++)
+            {
+                DialogueStageChange change = line.stageChanges[c];
+
+                // A clear has no characterId by definition; it empties a slot.
+                if (change != null && !change.IsClear)
+                    keys.Add(change.characterId);
+            }
+        }
     }
 
     /// <summary>Every authoring problem that would stop this sequence from playing correctly.</summary>

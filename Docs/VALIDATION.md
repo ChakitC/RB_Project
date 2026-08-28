@@ -662,7 +662,10 @@ references rather than creating a second one beside it.
 | a cast member with no registered pose profile | the actor stands un-posed |
 | a profile with no `idlePose` | every unmapped pose leaves the actor un-posed |
 | a slot missing its actor anchor, portrait camera, or RawImage; other stage/UI wiring gaps; an active `CloneStaging` root | the slot cannot render, or stripped gameplay components would wake up on the clone |
-| a missing `DialogueActor` layer, or `DialoguePresentation` not enabled in Build Settings | the stage cannot render or cannot load |
+| `DialoguePresentation` not enabled in Build Settings | the stage cannot load |
+| a scene actor with no id or model root, two actors sharing an id, an actor the sequence never stages, or an `npc.` key with no supplying actor | the NPC silently never appears |
+| a required (non-optional) cast entry on a party role | the conversation refuses to start whenever that party slot is empty |
+| `DialogueLayers.AspFeatureRenderingLayerMask` no longer matching the URP renderer | portraits render flatter than the same character in gameplay |
 
 Run it before committing dialogue content. `CheckAssemblyBuild.ps1` covers the runtime dialogue
 scripts but, as always, **not** the editor tooling — the two `Tools/Dialogue/…` menu items have to be

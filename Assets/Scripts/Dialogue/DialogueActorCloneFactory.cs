@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Animancer;
 using UnityEngine;
 
@@ -10,19 +10,18 @@ using UnityEngine;
 /// the actor on stage always reflects the player's real appearance and equipment without the
 /// dialogue system knowing anything about equipment.
 ///
-/// Everything that is not a renderer or an <see cref="Animator"/> is destroyed: the clone carries no
+/// Everything that is not part of drawing or animating the model is destroyed: the clone carries no
 /// <see cref="CharacteContext"/>, AI, collider, rigidbody, agent, VFX, or combat state. Cloning
 /// happens under an inactive staging root so no stripped component's Awake ever runs.
+///
+/// "Part of drawing" is wider than renderers alone — a shader that is fed by a script needs that
+/// script to survive, or the clone renders with values computed for wherever the original character
+/// is standing. See <see cref="IsPresentationComponent"/>.
 /// </summary>
 public static class DialogueActorCloneFactory
 {
     static readonly List<Component> ComponentBuffer = new();
 
-    /// <summary>
-    /// Clones <paramref name="source"/>'s visual under <paramref name="stagingRoot"/> (which must be
-    /// inactive) and returns the stripped actor. Returns null when the character has no visual to
-    /// clone; the caller leaves that slot empty rather than failing the sequence.
-    /// </summary>
     /// <summary>
     /// Clones <paramref name="source"/>'s visual under <paramref name="stagingRoot"/> (which must be
     /// inactive) and returns the stripped actor. Returns null when the source has no visual to clone;
@@ -181,12 +180,34 @@ public static class DialogueActorCloneFactory
             || component is Animator
             || component is SkinnedMeshRenderer
             || component is MeshRenderer
-            || component is MeshFilter;
+            || component is MeshFilter
+
+            // ASP's character panel is presentation, not gameplay: every frame it feeds the toon
+            // shader the values it cannot derive on its own — face direction taken from the head
+            // bone, and the character's world centre, which drives the character-shadow AABB.
+            //
+            // Stripping it does not reset those values, it freezes them: the clone's materials keep
+            // whatever the live character last wrote, which is a position out in the gameplay world
+            // thousands of units from the stage, so the shading is computed for somewhere the actor
+            // is not. Measured on a live conversation, the Roma clone stood at (0, -5000, 0) while
+            // its materials still read _CharacterCenterWS = (-0.5, 0.1, -1.6).
+            //
+            // Keeping it is safe on both sides. Update() is driven by the engine frame, not by
+            // timeScale, so it keeps working while the world is frozen at 0; and its Start() calls
+            // SetupMaterialID, which goes through `renderer.materials` and therefore gives the clone
+            // its own material instances — it cannot write back into the live character.
+            || component is ASP.ASPCharacterPanel;
     }
 
     /// <summary>
-    /// Moves the clone onto the dialogue rendering channels: the DialogueActor layer (so only the
-    /// portrait camera draws it) and the dialogue light layer (so only the stage rig lights it).
+    /// Moves the clone onto the dialogue rendering channels.
+    ///
+    /// The Unity layer is 0 — the same layer as everything else — because ASP's layer-filtered
+    /// renderer features only draw layer 0, and a clone on a layer of its own renders without the
+    /// mesh outline and depth-offset shadow the character has in gameplay. Keeping the clone out of
+    /// the gameplay view is left to the distance the stage sits at. The rendering layer mask is what
+    /// does the real separation: it claims the dialogue light channel and ASP's feature channels,
+    /// and pointedly not the channel the world's sun uses. See <see cref="DialogueLayers"/>.
     /// </summary>
     static void ApplyDialogueLayers(GameObject clone)
     {
@@ -208,7 +229,7 @@ public static class DialogueActorCloneFactory
             if (renderer == null)
                 continue;
 
-            renderer.renderingLayerMask = DialogueLayers.DialogueRenderingLayerMask;
+            renderer.renderingLayerMask = DialogueLayers.ActorRenderingLayerMask;
 
             // Skinned bounds are only recomputed while a renderer is on screen, so a character that
             // was cloned from a hidden source — the ally helper is kept switched off between

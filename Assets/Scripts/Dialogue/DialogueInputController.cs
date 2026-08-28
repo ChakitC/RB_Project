@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
@@ -45,34 +45,66 @@ internal sealed class DialogueInputController
     /// <summary>0..1 progress of the current hold, for the skip prompt's fill.</summary>
     public float SkipProgress01 { get; private set; }
 
-    public void Bind(CharacteContext playerContext)
+    /// <summary>
+    /// Takes over input for the conversation, or reports failure having changed nothing.
+    ///
+    /// Everything is resolved — the <see cref="PlayerInput"/>, the source action, and at least one
+    /// usable binding — **before** gameplay input is deactivated. The old order deactivated first and
+    /// tolerated a null action afterwards, which left the player frozen in a conversation that could
+    /// never be advanced because nothing was listening for the key. Failing here is recoverable;
+    /// failing after `DeactivateInput` is not.
+    ///
+    /// There is deliberately no hard-coded fallback key. One would paper over a broken Input Actions
+    /// asset and ignore whatever the player rebound the interact key to.
+    /// </summary>
+    public bool TryBind(CharacteContext playerContext)
     {
         if (playerContext == null)
-            return;
+            return false;
 
-        playerInput = playerContext.GetComponentInChildren<PlayerInput>(true);
-        if (playerInput == null)
-            return;
+        PlayerInput resolvedInput = playerContext.GetComponentInChildren<PlayerInput>(true);
+        if (resolvedInput == null)
+        {
+            Debug.LogWarning(
+                $"[Dialogue] '{playerContext.name}' has no PlayerInput, so the conversation would " +
+                "have no way to advance. Start refused.", playerContext);
+            return false;
+        }
 
-        InputAction source = playerInput.actions != null
-            ? playerInput.actions.FindAction(InteractActionName, false)
+        InputAction source = resolvedInput.actions != null
+            ? resolvedInput.actions.FindAction(InteractActionName, false)
             : null;
 
-        if (source != null)
+        if (source == null)
         {
-            BindingLabel = ResolveBindingLabel(source);
-            dialogueAction = BuildStandaloneAction(source);
+            Debug.LogWarning(
+                $"[Dialogue] Input action '{InteractActionName}' was not found on " +
+                $"'{playerContext.name}'. Start refused.", playerContext);
+            return false;
         }
+
+        InputAction standalone = BuildStandaloneAction(source);
+        if (standalone == null)
+        {
+            Debug.LogWarning(
+                $"[Dialogue] Input action '{InteractActionName}' has no usable non-composite " +
+                "binding, so nothing could advance the conversation. Start refused.", playerContext);
+            return false;
+        }
+
+        // Past this point the takeover is committed, and every step below cannot fail.
+        playerInput = resolvedInput;
+        dialogueAction = standalone;
+        BindingLabel = ResolveBindingLabel(source);
 
         playerInputWasActive = playerInput.inputIsActive;
         playerInputCaptured = true;
         playerInput.DeactivateInput();
 
-        dialogueAction?.Enable();
-
         // The interact press that opened the conversation must not also advance its first line.
-        armed = dialogueAction == null || !dialogueAction.IsPressed();
-        wasPressed = dialogueAction != null && dialogueAction.IsPressed();
+        armed = !dialogueAction.IsPressed();
+        wasPressed = dialogueAction.IsPressed();
+        return true;
     }
 
     public void Tick(float unscaledDeltaTime)
@@ -144,10 +176,20 @@ internal sealed class DialogueInputController
         holdConsumed = false;
     }
 
+    /// <summary>
+    /// Mirrors the interact action's effective bindings onto a standalone action, or returns null if
+    /// nothing usable came of it.
+    ///
+    /// "Usable" means the action actually resolves to a control on a present device, not merely that
+    /// a binding string exists. Counting binding strings was not enough: a path that resolves to
+    /// nothing — a rebind to a key that does not exist, or a device that is not connected — passes a
+    /// string check and then silently never fires, which is the exact hang this class exists to
+    /// prevent. Controls only resolve once the action is enabled, so it is enabled here and handed
+    /// over already running.
+    /// </summary>
     static InputAction BuildStandaloneAction(InputAction source)
     {
         var action = new InputAction("DialogueAdvance", InputActionType.Button);
-        int added = 0;
 
         var bindings = source.bindings;
         for (int i = 0; i < bindings.Count; i++)
@@ -161,12 +203,13 @@ internal sealed class DialogueInputController
                 continue;
 
             action.AddBinding(path, groups: binding.groups, processors: binding.processors);
-            added++;
         }
 
-        if (added != 0)
+        action.Enable();
+        if (action.controls.Count > 0)
             return action;
 
+        action.Disable();
         action.Dispose();
         return null;
     }

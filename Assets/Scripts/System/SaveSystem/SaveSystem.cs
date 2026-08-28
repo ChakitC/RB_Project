@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -335,36 +335,50 @@ public static class SaveSystem
 
     // ---------- DIALOGUE PROGRESS ----------
 
+    /// <summary>
+    /// Reads a slot's whole dialogue progress file. Never null — a slot that has never completed a
+    /// conversation reads back as an empty file rather than as an error.
+    ///
+    /// Callers that ask repeatedly should hold the result: <see cref="SaveManager"/> caches it,
+    /// because `IsDialogueCompleted` is reached from interact-target evaluation, which runs every
+    /// frame, and this parses JSON off disk.
+    /// </summary>
+    public static DialogueProgressSaveFile LoadDialogueProgress(int slot)
+    {
+        if (slot < 0) slot = 0;
+
+        return ReadJson<DialogueProgressSaveFile>(ResolveReadPath(DialogueProgressPath(slot)))
+               ?? new DialogueProgressSaveFile();
+    }
+
+    /// <summary>Writes a slot's whole dialogue progress file through the usual atomic write.</summary>
+    public static void SaveDialogueProgress(int slot, DialogueProgressSaveFile file)
+    {
+        if (slot < 0) slot = 0;
+
+        WriteJson(DialogueProgressPath(slot), file ?? new DialogueProgressSaveFile());
+    }
+
     /// <summary>True once the play-once dialogue with this id has been completed on this slot.</summary>
     public static bool IsDialogueCompleted(int slot, string dialogueId)
     {
         if (string.IsNullOrWhiteSpace(dialogueId)) return false;
-        if (slot < 0) slot = 0;
 
-        DialogueProgressSaveFile file = ReadDialogueProgress(slot);
-        return file.IsCompleted(dialogueId);
+        return LoadDialogueProgress(slot).IsCompleted(dialogueId);
     }
 
     public static void MarkDialogueCompleted(int slot, string dialogueId)
     {
         if (string.IsNullOrWhiteSpace(dialogueId)) return;
-        if (slot < 0) slot = 0;
 
-        DialogueProgressSaveFile file = ReadDialogueProgress(slot);
+        DialogueProgressSaveFile file = LoadDialogueProgress(slot);
         file.MarkCompleted(dialogueId);
-        WriteJson(DialogueProgressPath(slot), file);
+        SaveDialogueProgress(slot, file);
     }
 
     public static void ResetDialogueProgress(int slot)
     {
-        if (slot < 0) slot = 0;
-        WriteJson(DialogueProgressPath(slot), new DialogueProgressSaveFile());
-    }
-
-    static DialogueProgressSaveFile ReadDialogueProgress(int slot)
-    {
-        return ReadJson<DialogueProgressSaveFile>(ResolveReadPath(DialogueProgressPath(slot)))
-               ?? new DialogueProgressSaveFile();
+        SaveDialogueProgress(slot, new DialogueProgressSaveFile());
     }
 
 

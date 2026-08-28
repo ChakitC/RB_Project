@@ -49,8 +49,12 @@ public sealed class DialogueUI : MonoBehaviour
     private Vector2 speakingOffset = Vector2.zero;
     [SerializeField] private Color speakingTint = Color.white;
     [SerializeField] private Color listeningTint = new(0.78f, 0.78f, 0.78f, 1f);
-    [SerializeField, Min(0f), Tooltip("Unscaled seconds to blend UI emphasis when the speaker changes.")]
-    private float emphasisBlendSeconds = 0.18f;
+    [SerializeField, Min(0f), Tooltip("Unscaled seconds to blend UI emphasis when the speaker " +
+                                      "changes. This is a real duration: the blend is eased over " +
+                                      "this long and then lands exactly. Keep it matched with " +
+                                      "DialogueStage.emphasisBlendSeconds so the portrait and its " +
+                                      "3D lights change together.")]
+    private float emphasisBlendSeconds = 0.25f;
 
     [Header("Actor entrance / exit")]
     [SerializeField, Tooltip("Where a portrait sits while it is off stage. It slides from here on the " +
@@ -94,6 +98,13 @@ public sealed class DialogueUI : MonoBehaviour
 
     Vector3[] emphasisScales;
     Color[] emphasisTints;
+
+    // Where the current blend started. Emphasis eases from here to the target over
+    // `emphasisBlendSeconds` and then stops, instead of chasing the target forever.
+    Vector2[] emphasisFromPositions;
+    Vector3[] emphasisFromScales;
+    Color[] emphasisFromTints;
+    float emphasisProgress = 1f;
     float[] portraitOnStage;
     Vector2[] authoredAnchorMin;
     Vector2[] authoredAnchorMax;
@@ -234,6 +245,18 @@ public sealed class DialogueUI : MonoBehaviour
     {
         emphasizedSlot = speaking;
 
+        // Restart the blend from wherever the portraits currently sit, so changing speaker mid-blend
+        // eases on from the visible state instead of snapping back to the last authored one.
+        CapturePortraitLayout();
+        for (int i = 0; i < actorSlots.Count; i++)
+        {
+            emphasisFromPositions[i] = emphasisPositions[i];
+            emphasisFromScales[i] = emphasisScales[i];
+            emphasisFromTints[i] = emphasisTints[i];
+        }
+
+        emphasisProgress = 0f;
+
         for (int i = 0; i < actorSlots.Count; i++)
         {
             DialogueStageSlot stageSlot = actorSlots[i];
@@ -259,7 +282,10 @@ public sealed class DialogueUI : MonoBehaviour
         }
 
         if (immediate)
-            ApplyPortraitEmphasis(1f);
+        {
+            emphasisProgress = 1f;
+            ApplyPortraitEmphasis();
+        }
     }
 
     /// <summary>
@@ -341,6 +367,9 @@ public sealed class DialogueUI : MonoBehaviour
             IsSized(emphasisPositions) &&
             IsSized(emphasisScales) &&
             IsSized(emphasisTints) &&
+            IsSized(emphasisFromPositions) &&
+            IsSized(emphasisFromScales) &&
+            IsSized(emphasisFromTints) &&
             IsSized(portraitOnStage))
         {
             return;
@@ -353,6 +382,9 @@ public sealed class DialogueUI : MonoBehaviour
         emphasisPositions = new Vector2[actorSlots.Count];
         emphasisScales = new Vector3[actorSlots.Count];
         emphasisTints = new Color[actorSlots.Count];
+        emphasisFromPositions = new Vector2[actorSlots.Count];
+        emphasisFromScales = new Vector3[actorSlots.Count];
+        emphasisFromTints = new Color[actorSlots.Count];
         portraitOnStage = new float[actorSlots.Count];
 
         for (int i = 0; i < actorSlots.Count; i++)
@@ -378,21 +410,38 @@ public sealed class DialogueUI : MonoBehaviour
             emphasisPositions[i] = image.rectTransform.anchoredPosition;
             emphasisScales[i] = image.rectTransform.localScale;
             emphasisTints[i] = image.color;
+            emphasisFromPositions[i] = emphasisPositions[i];
+            emphasisFromScales[i] = emphasisScales[i];
+            emphasisFromTints[i] = emphasisTints[i];
             portraitOnStage[i] = stageSlot.Occupant != null ? 1f : 0f;
         }
     }
 
     void TickPortraitEmphasis(float unscaledDeltaTime)
     {
-        float blend = emphasisBlendSeconds <= 0f
-            ? 1f
-            : Mathf.Clamp01(unscaledDeltaTime / emphasisBlendSeconds);
+        if (emphasisProgress >= 1f)
+            return;
 
-        ApplyPortraitEmphasis(blend);
+        emphasisProgress = emphasisBlendSeconds <= 0f
+            ? 1f
+            : Mathf.Clamp01(emphasisProgress + unscaledDeltaTime / emphasisBlendSeconds);
+
+        ApplyPortraitEmphasis();
     }
 
-    void ApplyPortraitEmphasis(float blend)
+    /// <summary>
+    /// Eases every portrait from where the blend started to its current target.
+    ///
+    /// This used to lerp from the *current* value toward the target by `dt / duration` every frame,
+    /// which is exponential decay rather than a transition: it is fastest on the very first frame,
+    /// asymptotes instead of landing, and at 60fps took roughly 0.5s to look finished for an authored
+    /// 0.18s. The result read as a jerk followed by a long crawl. Easing a clamped 0..1 clock with
+    /// SmoothStep gives a real duration, a soft start, and an exact landing.
+    /// </summary>
+    void ApplyPortraitEmphasis()
     {
+        float blend = Mathf.SmoothStep(0f, 1f, emphasisProgress);
+
         for (int i = 0; i < actorSlots.Count; i++)
         {
             DialogueStageSlot stageSlot = actorSlots[i];
@@ -408,9 +457,9 @@ public sealed class DialogueUI : MonoBehaviour
             Vector2 targetPosition = basePosition + (isSpeaking ? speakingOffset : Vector2.zero);
             Color targetTint = isSpeaking ? speakingTint : listeningTint;
 
-            emphasisPositions[i] = Vector2.Lerp(emphasisPositions[i], targetPosition, blend);
-            emphasisScales[i] = Vector3.Lerp(emphasisScales[i], Vector3.one * targetScale, blend);
-            emphasisTints[i] = Color.Lerp(emphasisTints[i], targetTint, blend);
+            emphasisPositions[i] = Vector2.Lerp(emphasisFromPositions[i], targetPosition, blend);
+            emphasisScales[i] = Vector3.Lerp(emphasisFromScales[i], Vector3.one * targetScale, blend);
+            emphasisTints[i] = Color.Lerp(emphasisFromTints[i], targetTint, blend);
 
             WritePortrait(i);
         }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -32,8 +32,29 @@ public sealed class DialogueStage : MonoBehaviour
                                         "longer zooms that character out.")]
     private float framingViewHeight = 2.4f;
 
+    [SerializeField, Min(0f), Tooltip("Unscaled seconds to blend the 3D key/rim lights when the " +
+                                      "speaker changes. Keep it matched with " +
+                                      "DialogueUI.emphasisBlendSeconds so the portrait and its lights " +
+                                      "change together.")]
+    private float emphasisBlendSeconds = 0.25f;
+
     readonly List<DialogueActorVisual> activeActors = new();
     readonly Dictionary<DialogueSlot, DialogueStageSlot> slotLookup = new();
+
+    /// <summary>Start and end intensity of the light blend that is currently running for one slot.</summary>
+    struct LightBlend
+    {
+        public float KeyFrom;
+        public float KeyTo;
+        public float RimFrom;
+        public float RimTo;
+    }
+
+    readonly Dictionary<DialogueSlot, LightBlend> lightBlends = new();
+    float lightProgress = 1f;
+
+    // Slots whose camera still needs the confirming fit described in ResolvePendingFraming.
+    readonly List<DialogueSlot> pendingFraming = new();
 
     DialogueLightRigSO activeRig;
 
@@ -130,10 +151,13 @@ public sealed class DialogueStage : MonoBehaviour
                 actor.PlayIdlePose();
             }
 
-            if (slotLookup.TryGetValue(actor.Slot, out DialogueStageSlot stageSlot) && stageSlot != null)
-                FitCameraToActor(actor, stageSlot, stageSlot.OutputTexture);
         }
 
+        // The camera is deliberately NOT refitted here. Framing is settled once, when the actor takes
+        // the slot, and then held for the rest of the conversation. Refitting per line re-measured the
+        // head bone mid-animation, so every slot — including the slots of characters who were not
+        // even involved — jumped sideways by however far the idle loop had swayed. Emphasis is the
+        // portrait's job, not the camera's.
         ApplyLighting(speaking);
     }
 
@@ -255,6 +279,9 @@ public sealed class DialogueStage : MonoBehaviour
         }
 
         activeActors.Clear();
+        lightBlends.Clear();
+        lightProgress = 1f;
+        pendingFraming.Clear();
 
         foreach (KeyValuePair<DialogueSlot, DialogueStageSlot> pair in slotLookup)
         {
@@ -279,25 +306,15 @@ public sealed class DialogueStage : MonoBehaviour
         int height = Mathf.Max(2, Screen.height);
         RenderTexture texture = stageSlot.EnsureOutputTexture(width, height);
         FitCameraToActor(actor, stageSlot, texture);
+
+        // Fit again on the next tick. This one runs the frame the actor is placed, and a clone built
+        // under the inactive staging root has not necessarily had its animator applied yet, so the
+        // head bone can still be reading its bind position. Since the camera is never refitted
+        // afterwards, a bad first measurement would stick for the whole conversation.
+        if (!pendingFraming.Contains(stageSlot.Slot))
+            pendingFraming.Add(stageSlot.Slot);
     }
 
-    /// <summary>
-    /// Keeps the actor at its authored cell origin and fits only that cell's camera to the evaluated
-    /// actor bounds. This absorbs model-pivot and body-size differences without using 3D transforms
-    /// as dialogue layout controls.
-    /// </summary>
-    /// <summary>
-    /// Frames one cell's camera on its actor. The actor never moves off its authored cell origin.
-    ///
-    /// Framing is anchored on the **head bone**, not on renderer bounds. Bounds are the wrong
-    /// reference for a portrait: hats and ears add roughly a metre above the head, and by different
-    /// amounts per character, so a bounds-centred camera puts every face at a different height and
-    /// shrinks the characters with the tallest headgear. Anchoring on the head puts every face on the
-    /// same line and keeps everyone the same size.
-    ///
-    /// Bounds are still used for two things they are right for: keeping a wide actor (a parasol, a
-    /// slung rifle) inside the frame, and the near/far clip planes.
-    /// </summary>
     /// <summary>
     /// Frames one cell's camera on its actor. The actor never moves off its authored cell origin.
     ///
@@ -412,24 +429,106 @@ public sealed class DialogueStage : MonoBehaviour
             if (stageSlot.Occupant == null)
             {
                 stageSlot.SetLightsEnabled(false);
+                lightBlends.Remove(stageSlot.Slot);
                 continue;
             }
 
             bool isSpeaking = speaking.HasValue && speaking.Value == stageSlot.Slot;
             stageSlot.SetLightsEnabled(true);
-            ApplyLight(stageSlot.KeyLight, isSpeaking, listenerScale, true);
-            ApplyLight(stageSlot.RimLight, isSpeaking, listenerScale, false);
+
+            float weight = isSpeaking ? 1f : listenerScale;
+            var blend = new LightBlend
+            {
+                KeyFrom = stageSlot.KeyLight != null ? stageSlot.KeyLight.intensity : 0f,
+                KeyTo = activeRig != null ? activeRig.KeyIntensity * weight : 0f,
+                RimFrom = stageSlot.RimLight != null ? stageSlot.RimLight.intensity : 0f,
+                RimTo = activeRig != null ? activeRig.RimIntensity * weight : 0f,
+            };
+
+            lightBlends[stageSlot.Slot] = blend;
+            ApplyLightConstants(stageSlot.KeyLight, true);
+            ApplyLightConstants(stageSlot.RimLight, false);
+        }
+
+        // Restart the blend from whatever the lights are showing now, so a speaker change that lands
+        // mid-blend carries on from the visible brightness instead of snapping back.
+        lightProgress = 0f;
+        ApplyLightBlend();
+    }
+
+    /// <summary>
+    /// Eases the key/rim intensities toward the brightness the current speaker calls for.
+    ///
+    /// Dropping a listener straight from full to `ListenerIntensityScale` in one frame was the
+    /// loudest cut in the whole speaker change — a brightness step reads far more sharply than the
+    /// portrait scale it was supposed to accompany. Same clock and same curve as the UI emphasis.
+    /// </summary>
+    public void Tick(float unscaledDeltaTime)
+    {
+        if (!HasSession)
+            return;
+
+        ResolvePendingFraming();
+
+        if (lightProgress >= 1f)
+            return;
+
+        lightProgress = emphasisBlendSeconds <= 0f
+            ? 1f
+            : Mathf.Clamp01(lightProgress + unscaledDeltaTime / emphasisBlendSeconds);
+
+        ApplyLightBlend();
+    }
+
+    /// <summary>
+    /// Re-fits a camera one tick after its actor was placed, then leaves it alone for good.
+    ///
+    /// The fit in <see cref="PrepareOccupiedSlot"/> happens on the frame the clone is parented in,
+    /// when its animator may not have run yet. One tick later the pose is genuinely on the bones, so
+    /// this second measurement is the one that lands. It is not a per-frame correction: each slot
+    /// appears in the queue once, when it is filled.
+    /// </summary>
+    void ResolvePendingFraming()
+    {
+        for (int i = pendingFraming.Count - 1; i >= 0; i--)
+        {
+            if (!slotLookup.TryGetValue(pendingFraming[i], out DialogueStageSlot stageSlot) ||
+                stageSlot == null ||
+                stageSlot.Occupant == null)
+            {
+                pendingFraming.RemoveAt(i);
+                continue;
+            }
+
+            FitCameraToActor(stageSlot.Occupant, stageSlot, stageSlot.OutputTexture);
+            pendingFraming.RemoveAt(i);
         }
     }
 
-    void ApplyLight(Light light, bool isSpeaking, float listenerScale, bool isKey)
+    void ApplyLightBlend()
+    {
+        float blend = Mathf.SmoothStep(0f, 1f, lightProgress);
+
+        foreach (KeyValuePair<DialogueSlot, LightBlend> pair in lightBlends)
+        {
+            if (!slotLookup.TryGetValue(pair.Key, out DialogueStageSlot stageSlot) || stageSlot == null)
+                continue;
+
+            LightBlend value = pair.Value;
+            if (stageSlot.KeyLight != null)
+                stageSlot.KeyLight.intensity = Mathf.Lerp(value.KeyFrom, value.KeyTo, blend);
+
+            if (stageSlot.RimLight != null)
+                stageSlot.RimLight.intensity = Mathf.Lerp(value.RimFrom, value.RimTo, blend);
+        }
+    }
+
+    void ApplyLightConstants(Light light, bool isKey)
     {
         if (light == null || activeRig == null)
             return;
 
         light.color = isKey ? activeRig.KeyColor : activeRig.RimColor;
-        float baseIntensity = isKey ? activeRig.KeyIntensity : activeRig.RimIntensity;
-        light.intensity = isSpeaking ? baseIntensity : baseIntensity * listenerScale;
         light.renderingLayerMask = (int)DialogueLayers.DialogueRenderingLayerMask;
     }
 
@@ -472,7 +571,5 @@ public sealed class DialogueStage : MonoBehaviour
                 issues.Add($"Stage slot '{required}' is missing.");
         }
 
-        if (DialogueLayers.ActorLayer < 0)
-            issues.Add($"Layer '{DialogueLayers.ActorLayerName}' is not defined in Tags & Layers.");
     }
 }

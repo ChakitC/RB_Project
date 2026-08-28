@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -214,21 +214,64 @@ public class SaveManager : MonoBehaviour
         SaveSystem.SaveStageProgress(currentSlot, stageId, progressCount);
     }
 
+    // Dialogue progress for the ACTIVE SLOT ONLY, held in memory.
+    //
+    // IsDialogueCompleted is reached from Interactor's per-frame evaluation of candidate targets, so
+    // the old straight-to-disk implementation opened and parsed a JSON file every frame for every
+    // play-once DialogueTrigger in range. The cache is deliberately single-slot and slot-stamped
+    // rather than a dictionary of every slot: a multi-slot cache has to be invalidated correctly on
+    // external reload and deletion, whereas this one self-invalidates the moment currentSlot moves.
+    private DialogueProgressSaveFile _dialogueProgress;
+    private int _dialogueProgressSlot = -1;
+
+    private DialogueProgressSaveFile DialogueProgress
+    {
+        get
+        {
+            if (_dialogueProgress == null || _dialogueProgressSlot != currentSlot)
+            {
+                _dialogueProgress = SaveSystem.LoadDialogueProgress(currentSlot);
+                _dialogueProgressSlot = currentSlot;
+            }
+
+            return _dialogueProgress;
+        }
+    }
+
+    /// <summary>Drops the cached dialogue progress so the next read comes from disk.</summary>
+    public void InvalidateDialogueProgressCache()
+    {
+        _dialogueProgress = null;
+        _dialogueProgressSlot = -1;
+    }
+
     /// <summary>True once the play-once dialogue with this id was completed on the current slot.</summary>
     public bool IsDialogueCompleted(string dialogueId)
     {
-        return SaveSystem.IsDialogueCompleted(currentSlot, dialogueId);
+        if (string.IsNullOrWhiteSpace(dialogueId))
+            return false;
+
+        return DialogueProgress.IsCompleted(dialogueId);
     }
 
     public void MarkDialogueCompleted(string dialogueId)
     {
-        SaveSystem.MarkDialogueCompleted(currentSlot, dialogueId);
+        if (string.IsNullOrWhiteSpace(dialogueId))
+            return;
+
+        // The cached object is updated first and then written, so every trigger sees the completion
+        // on the next frame without anyone rereading the file.
+        DialogueProgressSaveFile file = DialogueProgress;
+        file.MarkCompleted(dialogueId);
+        SaveSystem.SaveDialogueProgress(currentSlot, file);
     }
 
     [ContextMenu("Reset Dialogue Progress")]
     public void ResetDialogueProgress()
     {
-        SaveSystem.ResetDialogueProgress(currentSlot);
+        _dialogueProgress = new DialogueProgressSaveFile();
+        _dialogueProgressSlot = currentSlot;
+        SaveSystem.SaveDialogueProgress(currentSlot, _dialogueProgress);
         Debug.Log($"[SaveManager] Reset dialogue progress for slot {currentSlot}.", this);
     }
 
@@ -253,6 +296,7 @@ public class SaveManager : MonoBehaviour
         PlayerPrefs.SetInt(CurrentSlotPrefsKey, currentSlot);
         PlayerPrefs.Save();
         _loaded = null;
+        InvalidateDialogueProgressCache();
         SceneManager.LoadScene(BasementSceneName);
         return true;
     }
@@ -263,6 +307,7 @@ public class SaveManager : MonoBehaviour
             return false;
 
         _loaded = null;
+        InvalidateDialogueProgressCache();
         SceneManager.LoadScene(BasementSceneName);
         return true;
     }
@@ -319,6 +364,8 @@ public class SaveManager : MonoBehaviour
 
     public void Load()
     {
+        InvalidateDialogueProgressCache();
+
         var data = LoadCurrentSlotDataForCache();
 
         // ถ้าไม่มี game.json แต่มี party.json -> ยังโหลดได้
@@ -345,6 +392,7 @@ public class SaveManager : MonoBehaviour
     public void RefreshLoadedCacheFromDisk()
     {
         _loaded = LoadCurrentSlotDataForCache();
+        InvalidateDialogueProgressCache();
     }
 
     private GameSaveData LoadCurrentSlotDataForCache()

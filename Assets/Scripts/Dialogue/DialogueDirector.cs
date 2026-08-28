@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -150,6 +150,29 @@ public sealed class DialogueDirector : MonoBehaviour
         activeSequence = sequence;
         activeInitiator = initiator;
         pendingExtraActors = extraActors;
+
+        // Everything from here to `IsPlaying = true` is the start transaction: it may still fail, and
+        // nothing it touches is world state. Casting and input are resolved here rather than in the
+        // coroutine precisely so a failure can hand the game back untouched — once the coroutine has
+        // paused the world, taken control tokens and hidden the HUD, "refuse to start" is no longer
+        // an option, only "abort", which the player sees as a visible flicker.
+        ResolveCastSources();
+
+        if (!TryResolveRequiredCast(out string castError))
+        {
+            Debug.LogWarning($"[Dialogue] {castError}", sequence);
+            AbandonStart();
+            return false;
+        }
+
+        var pendingInput = new DialogueInputController(sequence.HoldToSkipSeconds, sequence.AllowHoldToSkip);
+        if (!pendingInput.TryBind(initiator))
+        {
+            AbandonStart();
+            return false;
+        }
+
+        input = pendingInput;
         completedCallback = onCompleted;
         completionInvoked = false;
         abortRequested = false;
@@ -157,6 +180,58 @@ public sealed class DialogueDirector : MonoBehaviour
 
         playRoutine = StartCoroutine(PlayRoutine());
         return true;
+    }
+
+    /// <summary>
+    /// Every opening cast entry marked non-optional must have resolved to a real visual.
+    ///
+    /// An optional entry that cannot resolve simply leaves its slot empty and the remaining portraits
+    /// re-centre, which is what a conversation written for "whoever is deployed" wants. A required
+    /// entry that cannot resolve means the conversation would play without a character it is written
+    /// around, so the start is refused instead.
+    ///
+    /// Only the opening cast is covered. A `stageChanges` entry that cannot resolve mid-conversation
+    /// keeps whoever is already standing there and warns, because by then refusing is not available.
+    /// </summary>
+    bool TryResolveRequiredCast(out string error)
+    {
+        error = null;
+
+        IReadOnlyList<DialogueCastEntry> cast = activeSequence != null ? activeSequence.Cast : null;
+        for (int i = 0; cast != null && i < cast.Count; i++)
+        {
+            DialogueCastEntry entry = cast[i];
+            if (entry == null || !entry.IsValid || entry.optional)
+                continue;
+
+            if (castSources.ContainsKey(entry.characterId))
+                continue;
+
+            error =
+                $"'{activeSequence.name}' requires cast member '{entry.characterId}' for slot " +
+                $"{entry.slot}, but nothing in the live party or the trigger's scene actors resolves " +
+                "it. Mark the entry optional if the conversation can play without them.";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Unwinds a start that was refused after cinematic ownership was taken. Mirrors exactly what
+    /// <see cref="TryPlay"/> had set, and nothing else — no pause token, control token, HUD state or
+    /// stage exists yet at any point where this is reachable.
+    /// </summary>
+    void AbandonStart()
+    {
+        castSources.Clear();
+        frozenContexts.Clear();
+        activeSequence = null;
+        activeInitiator = null;
+        pendingExtraActors = null;
+        input = null;
+
+        CutsceneDirector.Instance.End(this);
     }
 
     /// <summary>
@@ -182,13 +257,10 @@ public sealed class DialogueDirector : MonoBehaviour
 
     IEnumerator PlayRoutine()
     {
-        ResolveCastSources();
-
+        // Casting and input were resolved and committed by TryPlay; this routine only owns world
+        // state, and every line below it is past the point of no return.
         pauseScope.Apply(frozenContexts);
         WatchInitiatorLife();
-
-        input = new DialogueInputController(activeSequence.HoldToSkipSeconds, activeSequence.AllowHoldToSkip);
-        input.Bind(activeInitiator);
 
         stage.BeginSession(activeSequence, castSources, ResolveProfile);
         ui.Open(activeSequence.AllowHoldToSkip && input.IsAvailable, input.BindingLabel);
@@ -216,6 +288,7 @@ public sealed class DialogueDirector : MonoBehaviour
             {
                 float dt = Time.unscaledDeltaTime;
                 input.Tick(dt);
+                stage.Tick(dt);
                 ui.Tick(dt);
                 ui.SetSkipProgress(input.SkipProgress01);
 

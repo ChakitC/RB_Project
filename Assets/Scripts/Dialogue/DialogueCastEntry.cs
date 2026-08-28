@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 
 /// <summary>
@@ -18,8 +18,12 @@ public sealed class DialogueCastEntry
     [Tooltip("Pose held whenever this actor is not the speaker. Empty uses the profile's idle pose.")]
     public string idlePoseId;
 
-    [Tooltip("Not yet wired: every cast entry currently behaves as optional. When the live party " +
-             "has no match the slot is simply left empty and the remaining actors re-centre.")]
+    [Tooltip("On (default): if nothing resolves this key the slot is left empty and the remaining " +
+             "portraits re-centre — what a conversation written for 'whoever is deployed' wants. " +
+             "Off: the conversation refuses to start at all when this key cannot be resolved, before " +
+             "the world is paused or the HUD hidden. Use Off only when the line makes no sense " +
+             "without that character. Applies to the opening cast only; a mid-conversation stage " +
+             "change that cannot resolve keeps the current occupant and warns.")]
     public bool optional = true;
 
     public bool IsValid => !string.IsNullOrWhiteSpace(characterId);

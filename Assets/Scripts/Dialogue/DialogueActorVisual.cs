@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Animancer;
 using UnityEngine;
 
@@ -90,13 +90,23 @@ public sealed class DialogueActorVisual : MonoBehaviour
     }
 
     /// <summary>
-    /// Forces the current pose to be sampled now. The stage needs real bone positions before it can
-    /// measure the actor's bounds, and Animancer would otherwise not evaluate until the next frame.
+    /// Puts the current pose on the bones immediately, with no fade still running, and samples it.
+    ///
+    /// Framing measures the head bone and the camera is fitted only once per actor, so sampling
+    /// while a crossfade is in flight measures a head somewhere between the bind pose and the real
+    /// one — and the character then sits off-centre for the entire conversation with nothing to
+    /// correct it. Snapping costs nothing where this is used: the actor has only just appeared, so
+    /// there is no visible transition to preserve.
     /// </summary>
     internal void EvaluatePose()
     {
-        if (animancer != null)
-            animancer.Evaluate();
+        if (animancer == null)
+            return;
+
+        if (currentPose != null && currentPose.IsValid)
+            animancer.Play(currentPose, 0f, FadeMode.FixedDuration);
+
+        animancer.Evaluate();
     }
 
     /// <summary>

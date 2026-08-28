@@ -35,6 +35,35 @@ any of these fails:
 - **`CutsceneDirector.TryBegin`** — exclusive ownership of the single cinematic stage. Busy means
   **reject**; nothing is queued.
 - **Sequence validity** — a sequence with no `dialogueId` or no lines is unplayable.
+- **Required cast** — every opening cast entry with `optional` off must resolve to a real visual.
+- **Interact input** — the initiator's `PlayerInput`, its `Interract` action, and at least one usable
+  non-composite binding must all exist.
+
+**These checks are a transaction, and they all run before any world state moves.** Casting and input
+are resolved inside `TryPlay`, not in the play coroutine, so a refusal hands the game back exactly as
+it was: time is not paused, control tokens are not taken, the HUD is not hidden, gameplay input is
+not deactivated, and cinematic ownership is released again. Once the coroutine starts, "refuse" is no
+longer available — only "abort", which the player sees as a visible flicker.
+
+The input check earns its place: the old code deactivated gameplay input *before* discovering whether
+it had anything to listen with, so a renamed action or an empty binding left the player frozen in a
+conversation that could never be advanced. There is deliberately no hard-coded fallback key — one
+would hide a broken Input Actions asset and ignore whatever the player rebound interact to.
+
+### `optional` on a cast entry
+
+| `optional` | unresolved key |
+|---|---|
+| on (default) | slot is left empty, remaining portraits re-centre |
+| off | `TryPlay` refuses, with a warning naming the sequence and the missing key |
+
+Use `off` only when the lines make no sense without that character. It applies to the **opening cast
+only**: a `stageChanges` entry that cannot resolve mid-conversation keeps whoever is already standing
+there and warns, because refusing is no longer possible by then.
+
+A required *party role* cannot be checked in the editor — whether `role.PartySlot2` resolves depends
+on the party the player deployed — so the validator flags required roles and explains that the
+conversation will refuse to start when that slot is empty.
 
 ## The freeze
 
@@ -68,10 +97,64 @@ The clone is **presentation only**:
 
 - It is instantiated under an **inactive** staging root, so no gameplay component ever gets an
   `Awake`.
-- Every component that is not `Transform`, `Animator`, `SkinnedMeshRenderer`, `MeshRenderer`, or
-  `MeshFilter` is destroyed — a whitelist, so a newly added gameplay component cannot ride along.
-  Scripts are removed first so `[RequireComponent]` dependencies do not block the built-ins.
+## Rendering channels
+
+The stage has **no Unity layer of its own**. Clones sit on layer 0 like every other character, and
+isolation is carried by rendering layers plus the distance the stage sits at.
+
+That is a deliberate reversal of the original design, forced by ASP. Two of its renderer features
+filter by Unity layer *as well as* by rendering layer — `ASPMeshOutlineRendererFeature` and
+`ASPDepthOffsetShadowFeature` — and both are authored for layer 0. Their `Layer` field holds a
+single layer, not a mask, so one renderer cannot serve both a gameplay layer and a dialogue layer.
+A second URP renderer is not a way out either: ASP's full-screen passes keep per-pipeline state, and
+two renderers drawing in the same frame produced a badly distorted portrait (characters smeared into
+vertical streaks). With clones on a dedicated layer they simply fell out of both passes and rendered
+flatter than the same character does in gameplay.
+
+| channel | value | why |
+|---|---|---|
+| clone Unity layer | 0 | the only layer ASP's layer-filtered features draw |
+| clone `renderingLayerMask` | 38 = bits 1, 2, 5 | bit 1 depth-offset shadow, bit 2 mesh outline, bit 5 dialogue lights |
+| dialogue light `renderingLayerMask` | 32 = bit 5 only | a world renderer answers to every bit, so a dialogue light claiming any other bit would light the whole level |
+| world directional light | bit 0 | the one bit clones deliberately do **not** claim — that omission is what keeps the sun off the stage |
+| stage position | `y = -20000` | see below |
+
+**Distance is load-bearing now, so it has margin.** The stage used to sit at `y = -5000`, which was
+fine while a layer kept it out of the gameplay camera. It is not fine on layer 0: measured against
+the live gameplay camera, the nearest clone was 5000.0 units away against a 5000 far plane — already
+inside it, and saved only by the camera happening to look horizontally rather than down. At
+`y = -20000` the margin is 15000 units. A portrait camera cannot reach the world in the other
+direction either; its far plane is under 11 units.
+
+The trade is honest: the clones used to be blocked from the gameplay view by two independent
+mechanisms (Unity layer and rendering layer) and now have one plus distance. A portrait camera also
+went from "draws only tagged actors" to "draws whatever layer-0 object is within ~10 units of the
+stage" — nothing is, but that is now a thing that could go wrong.
+
+`DialogueLayers.AspFeatureRenderingLayerMask` mirrors values authored on the URP renderer, so
+`DialogueAuthoringValidator` compares the two and reports drift. Retuning those features without it
+would silently flatten every portrait.
+
+- Every component that is not `Transform`, `Animator`, `SkinnedMeshRenderer`, `MeshRenderer`,
+  `MeshFilter`, or `ASP.ASPCharacterPanel` is destroyed — a whitelist, so a newly added gameplay
+  component cannot ride along. Scripts are removed first so `[RequireComponent]` dependencies do not
+  block the built-ins.
 - No `CharacteContext`, AI, collider, rigidbody, agent, VFX, or combat state survives.
+
+`ASPCharacterPanel` is on the whitelist because **a shader fed by a script needs that script**. Its
+`Update` writes `_CharacterCenterWS`, `_FaceFrontDirection` and `_FaceRightDirection` into the
+ASP/Character and ASP/Eye materials every frame. Stripping it does not reset those properties, it
+freezes them at whatever the live character last wrote — a position out in the gameplay world — so
+the clone renders its shadow and face lighting for somewhere it is not standing. It already lives
+inside every character's `ModelRoot`, so the clone carries one; the strip was simply killing it.
+
+Keeping it is safe in both directions: `Update` is driven by the engine frame rather than
+`timeScale`, so it keeps working while the world is frozen at 0, and `Start` → `SetupMaterialID`
+goes through `renderer.materials`, giving the clone its own material instances so it can never write
+back into the live character.
+
+**If another script-driven shader is added to the characters, it has to be whitelisted too** — the
+symptom is subtle (shading computed for the wrong world position), not a missing model.
 
 Real actors are never moved onto the stage. (`StageIntroActorScope` warps the real party; this system
 deliberately does not.)
@@ -137,8 +220,9 @@ dialogue.
 
 | Channel | Used by |
 |---|---|
-| Layer `DialogueActor` (21) | actor clones only; each slot's `PortraitCamera` renders **only** this layer, every other camera excludes it |
-| Rendering layer 5, named `Dialogue` | dialogue lights and clone renderers, so world lights never touch the clones and dialogue lights never touch the world |
+| Unity layer 0 (`Default`) | actor clones, like every other character — see **Rendering channels** for why the stage has no layer of its own |
+| Rendering layer 5, named `Dialogue` | dialogue lights, and claimed by clone renderers, so world lights never touch the clones and dialogue lights never touch the world |
+| Rendering layers 1 and 2 | claimed by clone renderers only, so ASP's layer-filtered features draw them |
 
 Each slot is an isolated cell 100 m from its neighbours. Its camera clears to transparent black into
 a runtime RenderTexture sized to one third of the current screen width by the full screen height.
@@ -202,6 +286,28 @@ exactly where it is; only the origin that `localScale` multiplies around changes
 pixel size, so `1` is a 1:1 blit; anything larger upsamples and makes the one portrait the player is
 actually looking at the blurriest thing on screen. To make a speaker read larger, take size away from
 the listeners rather than adding it to the speaker.
+
+**A speaker change blends; it does not cut.** Both halves run a clamped 0..1 clock through
+`Mathf.SmoothStep` over 0.25 unscaled seconds — `DialogueUI.emphasisBlendSeconds` for the portrait's
+scale and tint, `DialogueStage.emphasisBlendSeconds` for the 3D key/rim intensities. **Keep the two
+matched**; they are two halves of one change. Neither chases its target with
+`Lerp(current, target, dt / duration)`: that is exponential decay, which is fastest on the first
+frame and never lands, and it read as a jerk followed by a crawl. `SetSpeaker` re-snapshots the
+current values as the blend origin, so a change landing mid-blend continues from what is on screen.
+
+**The camera does not refit on a speaker change.** Framing is settled when an actor takes its slot
+and then held. Refitting per line re-measured the head bone while the idle loop was moving it, which
+jumped every cell sideways — including cells belonging to characters not involved in the change.
+
+Because that leaves exactly one measurement standing for the whole conversation, it has to be taken
+on a pose that actually exists, and two things conspire against that: pose transitions author a
+0.25s fade, and clones are built under the **inactive** staging root, so on the frame a slot is
+filled the animator may not have run. So `DialogueActorVisual.EvaluatePose` snaps the current pose to
+full weight before sampling, and `DialogueStage` queues the slot in `pendingFraming` and re-fits it
+once on the next `Tick`. Each slot enters that queue once, when it is filled.
+
+Draw order (`SetAsLastSibling`) is left as an instant change because it has no visible effect: bands
+are exactly one third wide and nothing scales above 1, so portraits never overlap.
 
 An actor keeps its slot for the whole sequence. When
 the speaker changes, the actor and camera remain fixed; `DialogueUI` blends the slot's `RawImage`
@@ -313,17 +419,25 @@ Every cell camera sits at the same authored height, so **a taller character read
 is the point. Measured with the cast standing:
 
 ```
-Left   ID.Roma       camLocalY=1.650  orthoSize=1.200  headVpY=0.395
-Center ID.Feno       camLocalY=1.650  orthoSize=1.200  headVpY=0.394
-Right  npc.abbygail  camLocalY=1.650  orthoSize=1.200  headVpY=0.533
+Left   ID.Aires      camLocalY=1.390  orthoSize=1.200  headVpY=0.487
+Center ID.Roma       camLocalY=1.390  orthoSize=1.200  headVpY=0.466
+Right  npc.abbygail  camLocalY=1.390  orthoSize=1.200  headVpY=0.602
 ```
 
-Abbygail's head bone sits at 1.73 against Roma's 1.47, and the portrait shows exactly that.
+Abbygail stands visibly taller than Roma, and the portraits show exactly that.
 
 The authored camera height is therefore **the** framing decision for the whole cast — there is no
-per-character correction behind it. `orthographicSize 1.2` shows ±1.2m, so `y = 1.65` covers 0.45
-(mid-shin) up to 2.85, above every hat in the current cast. Retune that one value in the scene, not
-in code.
+per-character correction behind it. `orthographicSize 1.2` shows ±1.2m, so `y = 1.39` covers 0.19 up
+to 2.59: the tallest hat still clears the top, and the bottom crop lands just above the feet, which
+sit behind the dialogue box regardless. It was tuned in Play Mode against the live cast; the earlier
+1.65 spent roughly the top half of every cell on empty sky.
+
+Retune that one value in the scene (all three `PortraitCamera` transforms) and in
+`DialoguePresentationSceneBuilder`, not in `DialogueStage` — `FitCameraToActor` reads the authored
+height back from `DialogueStageSlot.AuthoredCameraLocalPosition` and only overrides X and Z.
+
+Because the camera no longer refits on a speaker change, a height edited live in Play Mode now
+survives for the rest of the conversation, which makes tuning it by eye practical.
 
 ### Sideways still tracks the head
 
@@ -337,7 +451,7 @@ The camera is only re-fitted on a speaker change, so a character sways a few cen
 frame during the idle loop (measured up to 0.05 of the band). That is intentional; a camera tracking
 head sway every frame would read as jitter.
 
-## Poses## Poses## Poses
+## Poses
 
 `CharacterDialogueAnimationProfileSO` is a **separate** per-character asset keyed by
 `CharacterStats.characterId`; it never touches the gameplay `CharacterAnimProfileSO`.
@@ -373,6 +487,14 @@ dialogue for everyone.
 `SaveManager.IsDialogueCompleted(id)` / `MarkDialogueCompleted(id)`; a
 `Reset Dialogue Progress` context menu item clears the current slot.
 
+**`SaveManager` caches the active slot's progress file in memory.** `IsDialogueCompleted` is reached
+from `Interactor`'s per-frame evaluation of candidate targets, so reading it straight from disk meant
+opening and parsing JSON every frame for every play-once trigger in range. The cache holds one slot
+and is stamped with it, so it self-invalidates the moment `currentSlot` moves; it is also dropped
+explicitly on load, slot switch, `RefreshLoadedCacheFromDisk`, and slot reset. `MarkDialogueCompleted`
+updates the cached object first and writes that object once, so every other trigger sees the
+completion without anyone rereading the file.
+
 ## Abort
 
 Death, active scene change, director disable/destroy, and any explicit `Abort(reason)` all end the
@@ -384,8 +506,8 @@ The normal ending fades out over `fadeSeconds` (0.2–0.3 unscaled) and only the
 
 ## Authoring checklist
 
-1. `Tools/Dialogue/Set Up Project Layers` — creates the `DialogueActor` layer and names rendering
-   layer 5 `Dialogue`.
+1. `Tools/Dialogue/Set Up Project Layers` — names rendering layer 5 `Dialogue`. It no longer creates
+   a `DialogueActor` layer; clones share layer 0 with everything else.
 2. `Tools/Dialogue/Build DialoguePresentation Scene` — builds and wires the whole scene and adds it
    to Build Settings. **Re-running discards scene tuning.**
 3. Create a `CharacterDialogueAnimationProfile` per speaking character and add it to
@@ -400,8 +522,10 @@ The normal ending fades out over `fadeSeconds` (0.2–0.3 unscaled) and only the
 `Tools/Dialogue/Validate Dialogue Authoring` reports: duplicate `dialogueId`s (which would silently
 share play-once completion), lines spoken by someone outside the cast, slot collisions, cast members
 with no pose profile, missing idle poses, stage/UI wiring gaps, play-once triggers whose sequence has
-no id, a missing `DialogueActor` layer, and a presentation scene that is not enabled in Build
-Settings.
+no id, a presentation scene that is not enabled in Build Settings, scene-actor problems (a missing
+or duplicated `npc.` source, or a source the sequence never puts on stage), a required cast entry on
+a party role that runtime may not be able to fill, and drift between
+`DialogueLayers.AspFeatureRenderingLayerMask` and what the URP renderer actually filters on.
 
 `CheckAssemblyBuild.ps1` covers the runtime scripts. The editor tooling is **not** covered by it —
 run the two menu items in Unity to verify.

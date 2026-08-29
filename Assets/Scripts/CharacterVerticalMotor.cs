@@ -17,6 +17,10 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
     [Header("Refs")]
     [SerializeField] private CharacteContext ctx;
     [SerializeField] private CharacterController characterController;
+    [SerializeField] private CharacterColliderRefs colliderRefs;
+
+    [Tooltip("Optional explicit body shape override. Leave empty to use " +
+             "CharacterColliderRefs.CharacterPositionCollider.")]
     [SerializeField] private CapsuleCollider capsuleCollider;
     [SerializeField] private NavMeshAgent navMeshAgent;
     [SerializeField] private AgentMoveDriver agentMoveDriver;
@@ -116,8 +120,10 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
         if (!characterController)
             characterController = ResolveActorComponent(characterController);
 
-        if (!capsuleCollider)
-            capsuleCollider = ResolveActorComponent(capsuleCollider);
+        // The body shape is never discovered by hierarchy search: on several characters the first
+        // CapsuleCollider under the actor is a hit zone, not the body.
+        if (ctx != null && ctx.ColliderRefs != null)
+            colliderRefs = ctx.ColliderRefs;
 
         if (!animBrain)
             animBrain = ctx != null ? ctx.AnimBrain : null;
@@ -463,35 +469,17 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
 
         Vector3 direction = desiredDelta / desiredDistance;
 
-        if (!TryResolveCapsule(out Vector3 p1, out Vector3 p2, out float radius))
+        if (!TryResolveBodyShape(out CharacterBodySweepShape shape))
             return desiredDelta;
 
-        int count = Physics.CapsuleCastNonAlloc(
-            p1,
-            p2,
-            radius,
+        float allowedDistance = CharacterBodySweepUtility.ResolveAllowedDistance(
+            shape,
             direction,
-            _probeHits,
-            desiredDistance + collisionPadding,
+            desiredDistance,
+            collisionPadding,
             collisionMask,
-            queryTriggers);
-
-        float allowedDistance = desiredDistance;
-        Transform selfRoot = transform.root;
-
-        for (int i = 0; i < count; i++)
-        {
-            RaycastHit hit = _probeHits[i];
-            if (hit.collider == null)
-                continue;
-
-            if (hit.transform.root == selfRoot)
-                continue;
-
-            allowedDistance = Mathf.Min(
-                allowedDistance,
-                Mathf.Max(0f, hit.distance - collisionPadding));
-        }
+            queryTriggers,
+            ActorTransform);
 
         return direction * allowedDistance;
     }
@@ -516,7 +504,7 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
             groundMask,
             queryTriggers);
 
-        Transform selfRoot = transform.root;
+        Transform actorRoot = ActorTransform;
 
         for (int i = 0; i < count; i++)
         {
@@ -524,7 +512,7 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
             if (hit.collider == null)
                 continue;
 
-            if (hit.transform.root == selfRoot)
+            if (CharacterBodySweepUtility.IsOwnedByActor(hit.transform, actorRoot))
                 continue;
 
             return true;
@@ -545,7 +533,7 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
             groundMask,
             queryTriggers);
 
-        Transform selfRoot = transform.root;
+        Transform actorRoot = ActorTransform;
 
         for (int i = 0; i < count; i++)
         {
@@ -553,13 +541,34 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
             if (hit.collider == null)
                 continue;
 
-            if (hit.transform.root == selfRoot)
+            if (CharacterBodySweepUtility.IsOwnedByActor(hit.transform, actorRoot))
                 continue;
 
             return true;
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Resolves the authored body collider for actors with no CharacterController. Read live
+    /// because the visual controller rebinds ColliderRefs whenever the model is rebuilt.
+    /// </summary>
+    Collider ResolveBodyCollider()
+    {
+        Collider positionCollider = ctx != null && ctx.ColliderRefs != null
+            ? ctx.ColliderRefs.CharacterPositionCollider
+            : (colliderRefs != null ? colliderRefs.CharacterPositionCollider : null);
+
+        if (CharacterBodySweepUtility.IsUsableBody(positionCollider))
+            return positionCollider;
+
+        return CharacterBodySweepUtility.IsUsableBody(capsuleCollider) ? capsuleCollider : null;
+    }
+
+    bool TryResolveBodyShape(out CharacterBodySweepShape shape)
+    {
+        return CharacterBodySweepUtility.TryResolveShape(ResolveBodyCollider(), out shape);
     }
 
     bool TryResolveBounds(out Bounds bounds)
@@ -570,9 +579,10 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
             return true;
         }
 
-        if (capsuleCollider != null && capsuleCollider.enabled)
+        Collider body = ResolveBodyCollider();
+        if (body != null)
         {
-            bounds = capsuleCollider.bounds;
+            bounds = body.bounds;
             return true;
         }
 
@@ -591,24 +601,6 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
 
         radius = Mathf.Max(0.05f, Mathf.Min(bounds.extents.x, bounds.extents.z) - 0.01f);
         origin = new Vector3(bounds.center.x, bounds.min.y + radius, bounds.center.z);
-        return true;
-    }
-
-    bool TryResolveCapsule(out Vector3 p1, out Vector3 p2, out float radius)
-    {
-        if (!TryResolveBounds(out Bounds bounds))
-        {
-            p1 = default;
-            p2 = default;
-            radius = 0f;
-            return false;
-        }
-
-        radius = Mathf.Max(0.05f, Mathf.Min(bounds.extents.x, bounds.extents.z));
-        float half = Mathf.Max(0f, bounds.extents.y - radius);
-
-        p1 = bounds.center + Vector3.up * half;
-        p2 = bounds.center - Vector3.up * half;
         return true;
     }
 }

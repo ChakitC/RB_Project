@@ -59,10 +59,24 @@ damage while preserving chain protection.
 Mappings use exact collider references. `CharacterPositionCollider` must never
 be registered as a Hit Zone.
 
+`CharacterColliderRefs.SetCollidersEnabled(bool)` controls the authored
+position collider and all registered Hit Zone colliders as one set.
+`EnemyHealth.Die()` disables that set so a dead enemy no longer blocks
+positioning or accepts Head/Torso impacts. Enemy prefabs must therefore assign
+`CharacterPositionCollider` as well as their Hit Zone mappings.
+
+`CharacterPositionCollider` is the Enemy's *body*, not a hurtbox. Enemies carry no
+`CharacterController`, so this collider is also what `CharacterKnockbackMotor` and
+`CharacterVerticalMotor` sweep against, and `EnemyHealth.Die()` is the whole
+collision lifecycle for a dead enemy. It must be enabled, non-trigger, on the
+`Enemy` layer, and outside `hitZones`; the Hit Zones stay trigger colliders on the
+`Hit` layer. See `Docs/PREFABS_AND_AUTHORING.md` → *Enemy Body Collider*.
+
 When a target has at least one valid Hit Zone mapping, an opted-in weapon
-projectile accepts only mapped colliders. Unmapped actor colliders—including
-arms and legs in the current version—are ignored before impact VFX, module hit
-notification, or despawn, so the projectile passes through them.
+projectile accepts only mapped colliders. Unmapped actor colliders are ignored
+before impact VFX, module hit notification, or despawn, so the projectile passes
+through them. A limb collider may be mapped to `Torso` when it should receive
+normal body damage without introducing a separate limb multiplier.
 
 Backward-compatible fallback:
 
@@ -96,6 +110,12 @@ The following visual prefabs contain dedicated `HitZone_Head` and
 - `Assets/Prefab/Charactor/GRS_02.prefab`
 - `Assets/Prefab/Charactor/M_GR04.prefab`
 - `Assets/Prefab/Charactor/Rector.prefab`
+
+`Rector.prefab` additionally owns trigger colliders for both upper arms,
+forearms, thighs, and lower legs. These nine limb/body-section colliders are
+registered as `Torso`, so direct weapon hits on them deal normal body damage.
+They are authored on the visual prefab because the enemy model is rebuilt from
+that source at runtime; scene-only additions would be discarded.
 
 `Assets/Prefab/Enemy/Enemy_Base.prefab` binds the shared enemy profile, so its
 variants inherit the target-side multiplier data.

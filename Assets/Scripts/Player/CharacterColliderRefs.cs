@@ -59,4 +59,20 @@ public class CharacterColliderRefs : MonoBehaviour
 
         return false;
     }
+
+    public void SetCollidersEnabled(bool enabled)
+    {
+        if (CharacterPositionCollider != null)
+            CharacterPositionCollider.enabled = enabled;
+
+        if (hitZones == null)
+            return;
+
+        for (int i = 0; i < hitZones.Count; i++)
+        {
+            Collider collider = hitZones[i].Collider;
+            if (collider != null && collider != CharacterPositionCollider)
+                collider.enabled = enabled;
+        }
+    }
 }

@@ -86,8 +86,7 @@ public class EnemyHealth : HealthSystem
 
         if (EnemyContextCTX != null)
         {
-            if (EnemyContextCTX.Collider != null)
-                EnemyContextCTX.Collider.enabled = false;
+            EnemyContextCTX.ColliderRefs?.SetCollidersEnabled(false);
 
             if (EnemyContextCTX.dropper != null)
                 EnemyContextCTX.dropper.DropItem();

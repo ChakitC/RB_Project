@@ -13,6 +13,10 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     [SerializeField] private HealthSystem healthSystem;
     [SerializeField] private CharacterController characterController;
     [SerializeField] private NavMeshAgent navMeshAgent;
+    [SerializeField] private CharacterColliderRefs colliderRefs;
+
+    [Tooltip("Optional explicit body shape override. Leave empty to use " +
+             "CharacterColliderRefs.CharacterPositionCollider.")]
     [SerializeField] private CapsuleCollider capsuleCollider;
     [SerializeField] private CharacterAnimBrain animBrain;
     private CharacterAnimDriver animDriver;
@@ -179,8 +183,10 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
             characterController = ResolveActorComponent<CharacterController>(actorRoot);
         if (!navMeshAgent)
             navMeshAgent = ResolveActorComponent<NavMeshAgent>(actorRoot);
-        if (!capsuleCollider)
-            capsuleCollider = ResolveActorComponent<CapsuleCollider>(actorRoot);
+        // The body shape is never discovered by hierarchy search: on several characters the first
+        // CapsuleCollider under the actor is a hit zone, not the body.
+        if (ctx != null && ctx.ColliderRefs != null)
+            colliderRefs = ctx.ColliderRefs;
         if (!animBrain)
             animBrain = ctx != null ? ctx.AnimBrain : null;
         if (!animBrain)
@@ -476,70 +482,57 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
             return Vector3.zero;
 
         Vector3 direction = desiredDelta / desiredDistance;
-        if (!TryBuildCastCapsule(out var p1, out var p2, out float radius))
+
+        if (!TryResolveBodyShape(out CharacterBodySweepShape shape))
             return desiredDelta;
 
-        float allowedDistance = desiredDistance;
-        var hits = Physics.CapsuleCastAll(
-            p1,
-            p2,
-            radius,
+        float allowedDistance = CharacterBodySweepUtility.ResolveAllowedDistance(
+            shape,
             direction,
-            desiredDistance + collisionPadding,
+            desiredDistance,
+            collisionPadding,
             collisionMask,
-            queryTriggers);
-
-        for (int i = 0; i < hits.Length; i++)
-        {
-            var hit = hits[i];
-            if (hit.collider == null)
-                continue;
-
-            if (hit.transform.root == transform.root)
-                continue;
-
-            allowedDistance = Mathf.Min(
-                allowedDistance,
-                Mathf.Max(0f, hit.distance - collisionPadding));
-        }
+            queryTriggers,
+            ctx != null ? ctx.transform : transform);
 
         return direction * allowedDistance;
     }
 
-    bool TryBuildCastCapsule(out Vector3 p1, out Vector3 p2, out float radius)
+    /// <summary>
+    /// Resolves the authored body shape for actors with no CharacterController. The position
+    /// collider is read live because the visual controller rebinds ColliderRefs on model rebuilds.
+    /// </summary>
+    bool TryResolveBodyShape(out CharacterBodySweepShape shape)
     {
-        if (capsuleCollider != null && capsuleCollider.enabled)
-        {
-            Vector3 lossyScale = transform.lossyScale;
-            float scaleY = Mathf.Abs(lossyScale.y);
-            float scaleXZ = Mathf.Max(Mathf.Abs(lossyScale.x), Mathf.Abs(lossyScale.z));
+        Collider positionCollider = ctx != null && ctx.ColliderRefs != null
+            ? ctx.ColliderRefs.CharacterPositionCollider
+            : (colliderRefs != null ? colliderRefs.CharacterPositionCollider : null);
 
-            radius = Mathf.Max(0.001f, capsuleCollider.radius * scaleXZ);
-            float height = Mathf.Max(capsuleCollider.height * scaleY, radius * 2f + 0.001f);
-            Vector3 center = transform.TransformPoint(capsuleCollider.center);
-            Vector3 up = transform.up;
-            float half = Mathf.Max(0f, height * 0.5f - radius);
-
-            p1 = center + up * half;
-            p2 = center - up * half;
+        if (CharacterBodySweepUtility.TryResolveShape(positionCollider, out shape))
             return true;
-        }
 
+        if (CharacterBodySweepUtility.TryResolveShape(capsuleCollider, out shape))
+            return true;
+
+        // Last resort for actors that navigate but have no authored body: the agent cylinder.
         if (navMeshAgent != null && navMeshAgent.enabled)
         {
-            radius = Mathf.Max(0.001f, navMeshAgent.radius);
+            float radius = Mathf.Max(0.001f, navMeshAgent.radius);
             float height = Mathf.Max(navMeshAgent.height, radius * 2f + 0.001f);
             Vector3 center = transform.position + Vector3.up * (height * 0.5f);
             float half = Mathf.Max(0f, height * 0.5f - radius);
 
-            p1 = center + Vector3.up * half;
-            p2 = center - Vector3.up * half;
+            shape = new CharacterBodySweepShape(
+                CharacterBodySweepKind.Capsule,
+                center + Vector3.up * half,
+                center - Vector3.up * half,
+                radius,
+                Vector3.zero,
+                Quaternion.identity);
             return true;
         }
 
-        p1 = transform.position;
-        p2 = transform.position;
-        radius = 0f;
+        shape = default;
         return false;
     }
 

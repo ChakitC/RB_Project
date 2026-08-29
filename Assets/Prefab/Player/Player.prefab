@@ -276,6 +276,7 @@ MonoBehaviour:
   healthSystem: {fileID: 1629402543204886545}
   characterController: {fileID: 7373962052237540882}
   navMeshAgent: {fileID: 0}
+  colliderRefs: {fileID: 0}
   capsuleCollider: {fileID: 0}
   animBrain: {fileID: 7895287034516787951}
   fieldAllyMember: {fileID: 0}
@@ -1294,7 +1295,7 @@ MonoBehaviour:
   playerContext: {fileID: 0}
   aimCollisionMask:
     serializedVersion: 2
-    m_Bits: 1048575
+    m_Bits: 4194303
   maximumAimDistance: 250
   muzzleProbeRadius: 0.045
 --- !u!114 &-6960602465302522877
@@ -1325,6 +1326,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ctx: {fileID: 1638387977988830713}
   characterController: {fileID: 7373962052237540882}
+  colliderRefs: {fileID: 0}
   capsuleCollider: {fileID: 5466108279682062405}
   navMeshAgent: {fileID: 0}
   agentMoveDriver: {fileID: 0}

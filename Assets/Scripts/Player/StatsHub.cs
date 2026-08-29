@@ -210,7 +210,7 @@ public class StatsHub : MonoBehaviour
 
     void SubscribeModifierProvider(IStatModifierProvider provider)
     {
-        if (provider == null)
+        if (!IsModifierProviderAlive(provider))
             return;
 
         provider.StatModifiersChanged -= HandleModifierProviderChanged;
@@ -223,7 +223,7 @@ public class StatsHub : MonoBehaviour
         for (int i = 0; i < _subscribedModifierProviders.Count; i++)
         {
             var provider = _subscribedModifierProviders[i];
-            if (provider != null)
+            if (IsModifierProviderAlive(provider))
                 provider.StatModifiersChanged -= HandleModifierProviderChanged;
         }
 
@@ -392,13 +392,13 @@ public class StatsHub : MonoBehaviour
     {
         buffer.Clear();
 
-        if (_modifierProviders.Count == 0)
+        if (_modifierProviders.Count == 0 || HasDestroyedModifierProvider())
             RebuildModifierProviders();
 
         for (int i = 0; i < _modifierProviders.Count; i++)
         {
             var provider = _modifierProviders[i];
-            if (provider == null)
+            if (!IsModifierProviderAlive(provider))
                 continue;
 
             if (provider is Behaviour behaviour && !behaviour.isActiveAndEnabled)
@@ -406,6 +406,28 @@ public class StatsHub : MonoBehaviour
 
             provider.AppendStatModifiers(buffer);
         }
+    }
+
+    bool HasDestroyedModifierProvider()
+    {
+        for (int i = 0; i < _modifierProviders.Count; i++)
+        {
+            if (!IsModifierProviderAlive(_modifierProviders[i]))
+                return true;
+        }
+
+        return false;
+    }
+
+    static bool IsModifierProviderAlive(IStatModifierProvider provider)
+    {
+        if (provider == null)
+            return false;
+
+        if (provider is UnityEngine.Object unityObject)
+            return unityObject != null;
+
+        return true;
     }
 
     int CalculateInputSignature(GunConfig w, List<RuntimeStatModifier> modifiers)
@@ -441,7 +463,7 @@ public class StatsHub : MonoBehaviour
             for (int i = 0; i < _modifierProviders.Count; i++)
             {
                 var provider = _modifierProviders[i];
-                if (provider == null)
+                if (!IsModifierProviderAlive(provider))
                 {
                     hash = CombineHash(hash, 0);
                     hash = CombineHash(hash, 0);

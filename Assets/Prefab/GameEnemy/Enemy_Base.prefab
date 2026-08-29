@@ -394,7 +394,7 @@ MonoBehaviour:
   ctx: {fileID: 4463375380434640548}
   stateHub: {fileID: 6926906578778700563}
   healthSystem: {fileID: 4372935134327282892}
-  characterController: {fileID: 8333949894183582049}
+  characterController: {fileID: 0}
   navMeshAgent: {fileID: 3160894530039119532}
   capsuleCollider: {fileID: 0}
   animBrain: {fileID: 2022206065969024217}
@@ -468,7 +468,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   brain: {fileID: 2022206065969024217}
-  zeroY: 1
+  zeroY: 0
   applyRootRotation: 0
   agent: {fileID: 3160894530039119532}
   animator: {fileID: 1608284013549844060}
@@ -1041,7 +1041,6 @@ GameObject:
   - component: {fileID: 2482698924855760932}
   - component: {fileID: 3160894530039119532}
   - component: {fileID: 991524704810201650}
-  - component: {fileID: 8333949894183582049}
   - component: {fileID: 4463375380434640548}
   - component: {fileID: 7553791555562528323}
   - component: {fileID: 6926906578778700563}
@@ -1129,31 +1128,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!143 &8333949894183582049
-CharacterController:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7649753103391906527}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Height: 2
-  m_Radius: 0.5
-  m_SlopeLimit: 45
-  m_StepOffset: 0.3
-  m_SkinWidth: 0.08
-  m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 1, z: 0}
 --- !u!114 &4463375380434640548
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1172,7 +1146,7 @@ MonoBehaviour:
   StatsHub: {fileID: 7553791555562528323}
   CombatEventBus: {fileID: 905179928187237650}
   rb: {fileID: 991524704810201650}
-  cc: {fileID: 8333949894183582049}
+  cc: {fileID: 0}
   TargetInfo: {fileID: 2596423232265115448}
   Equipment: {fileID: -5386552744308611412}
   AccessoryLoadout: {fileID: 0}
@@ -1200,7 +1174,6 @@ MonoBehaviour:
   SkillManager: {fileID: 5993987419785758348}
   moveInput: {x: 0, y: 0}
   lookInput: {x: 0, y: 0}
-  Collider: {fileID: 0}
   AgentMoveDriver: {fileID: 860930448790366792}
   StaggerMeter: {fileID: 7180067156307174043}
   EnemyLevelSystem: {fileID: 0}
@@ -1480,7 +1453,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ctx: {fileID: 4463375380434640548}
-  characterController: {fileID: 8333949894183582049}
+  characterController: {fileID: 0}
   capsuleCollider: {fileID: 0}
   navMeshAgent: {fileID: 3160894530039119532}
   agentMoveDriver: {fileID: 860930448790366792}

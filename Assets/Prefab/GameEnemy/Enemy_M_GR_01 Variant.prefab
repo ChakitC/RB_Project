@@ -61,11 +61,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 183ab29bd8c2c274d870bf3d9197555a, type: 3}
---- !u!136 &2456048275901132840 stripped
-CapsuleCollider:
-  m_CorrespondingSourceObject: {fileID: 7810157930316382069, guid: 183ab29bd8c2c274d870bf3d9197555a, type: 3}
-  m_PrefabInstance: {fileID: 5653956680429932381}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &6798350118362260424 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1165997776544115861, guid: 183ab29bd8c2c274d870bf3d9197555a, type: 3}
@@ -171,10 +166,6 @@ PrefabInstance:
       propertyPath: requiredTag
       value: 
       objectReference: {fileID: 0}
-    - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
-      propertyPath: Collider
-      value: 
-      objectReference: {fileID: 2456048275901132840}
     - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: Equipment
       value: 

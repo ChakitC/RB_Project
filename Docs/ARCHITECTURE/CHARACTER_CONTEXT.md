@@ -22,7 +22,7 @@ until there is a dedicated rename task.
 types, including:
 
 - core state and stat systems: `StateHub`, `StatsHub`, `CombatEventBus`
-- movement bodies: `Rigidbody`, `CharacterController`
+- movement bodies: `Rigidbody`, `CharacterController` (`cc`)
 - common modules: `TargetInfo`, `CharacterEquipment`, `AccessoryLoadout`,
   `WeaponSystem`, `CharacterAnimBrain`, `CharacterAnimDriver`,
   `CharacterPairOffsetApplier`, `MeleeController`
@@ -35,6 +35,27 @@ types, including:
 
 Common systems should primarily depend on `CharacteContext` and read peer
 modules through `ctx`.
+
+### `cc` Is Optional
+
+`ctx.cc` is **required by the current Player movement stack only**.
+`PlayerMovementCC`, `DashSystem`, and `RootMotionCCDriver` all move the Player
+through `CharacterController.Move()`, so removing it from `Player.prefab` would
+be a locomotion rewrite. Ally prefabs still carry one as well.
+
+Enemy prefabs have **no `CharacterController`**. Their navigation is owned by
+`NavMeshAgent` / `AgentMoveDriver`, and collision-aware displacement resolves
+through `ctx.ColliderRefs.CharacterPositionCollider` instead (see
+`CharacterBodySweepUtility`). Their runtime animation movement is likewise owned
+by `RootMotionNavMeshDriver`; `CharacterVisualController` must not bind an Enemy
+model to `RootMotionCCDriver`.
+
+Shared character code must therefore treat `ctx.cc` as an optional, null-safe
+optimisation branch. A failed `ctx.cc` lookup must never gate gameplay: do not
+write `if (ctx.cc == null) return;` in code that also runs on enemies. Where a
+body shape is needed, read `ctx.ColliderRefs.CharacterPositionCollider` and fall
+back to `ctx.cc`, never the reverse, and never search the hierarchy for "some
+`CapsuleCollider`" — on several characters that returns a hit-zone capsule.
 
 Animation commands resolve through `ctx.AnimDriver`. Direct `ctx.AnimBrain`
 access is reserved for state queries, sampling, and event subscriptions. See

@@ -12,6 +12,11 @@ public sealed class ThirdPersonAimController : MonoBehaviour
 
     readonly RaycastHit[] raycastHits = new RaycastHit[64];
 
+    const string HurtboxLayerName = "Hit";
+    const int UnresolvedLayer = -2;
+    static int hurtboxLayer = UnresolvedLayer;
+    static bool warnedMissingHurtboxLayer;
+
     public Vector3 AimPoint { get; private set; }
     public Vector3 CameraRayOrigin { get; private set; }
     public Vector3 CameraRayDirection { get; private set; } = Vector3.forward;
@@ -72,7 +77,12 @@ public sealed class ThirdPersonAimController : MonoBehaviour
         CameraRayDirection = gameplayCamera.transform.forward;
 
         Ray ray = new(CameraRayOrigin, CameraRayDirection);
-        HasCameraHit = TryGetFirstValidHit(ray, maximumAimDistance, 0f, out RaycastHit cameraHit);
+        HasCameraHit = TryGetFirstValidHit(
+            ray,
+            maximumAimDistance,
+            0f,
+            includeHurtboxTriggers: true,
+            out RaycastHit cameraHit);
         AimPoint = HasCameraHit
             ? cameraHit.point
             : ray.GetPoint(maximumAimDistance);
@@ -102,15 +112,31 @@ public sealed class ThirdPersonAimController : MonoBehaviour
             return;
 
         Ray ray = new(muzzle.position, toAim / distance);
-        if (!TryGetFirstValidHit(ray, distance, muzzleProbeRadius, out RaycastHit hit))
+        if (!TryGetFirstValidHit(
+                ray,
+                distance,
+                muzzleProbeRadius,
+                includeHurtboxTriggers: false,
+                out RaycastHit hit))
+        {
             return;
+        }
 
         IsMuzzleBlocked = true;
         MuzzleHitPoint = hit.point;
     }
 
-    bool TryGetFirstValidHit(Ray ray, float distance, float radius, out RaycastHit result)
+    bool TryGetFirstValidHit(
+        Ray ray,
+        float distance,
+        float radius,
+        bool includeHurtboxTriggers,
+        out RaycastHit result)
     {
+        QueryTriggerInteraction triggerInteraction = includeHurtboxTriggers
+            ? QueryTriggerInteraction.Collide
+            : QueryTriggerInteraction.Ignore;
+
         int hitCount = radius > 0f
             ? Physics.SphereCastNonAlloc(
                 ray,
@@ -118,24 +144,32 @@ public sealed class ThirdPersonAimController : MonoBehaviour
                 raycastHits,
                 distance,
                 aimCollisionMask,
-                QueryTriggerInteraction.Ignore)
+                triggerInteraction)
             : Physics.RaycastNonAlloc(
                 ray,
                 raycastHits,
                 distance,
                 aimCollisionMask,
-                QueryTriggerInteraction.Ignore);
+                triggerInteraction);
 
         float nearestDistance = float.PositiveInfinity;
         result = default;
+        int acceptedTriggerLayer = includeHurtboxTriggers ? ResolveHurtboxLayer() : -1;
 
         for (int i = 0; i < hitCount; i++)
         {
             RaycastHit hit = raycastHits[i];
-            if (hit.collider == null || ShouldIgnore(hit.collider))
+            if (hit.distance >= nearestDistance)
                 continue;
 
-            if (hit.distance >= nearestDistance)
+            Collider collider = hit.collider;
+            if (collider == null)
+                continue;
+
+            if (collider.isTrigger && collider.gameObject.layer != acceptedTriggerLayer)
+                continue;
+
+            if (ShouldIgnore(collider))
                 continue;
 
             nearestDistance = hit.distance;
@@ -143,6 +177,22 @@ public sealed class ThirdPersonAimController : MonoBehaviour
         }
 
         return nearestDistance < float.PositiveInfinity;
+    }
+
+    static int ResolveHurtboxLayer()
+    {
+        if (hurtboxLayer != UnresolvedLayer)
+            return hurtboxLayer;
+
+        hurtboxLayer = LayerMask.NameToLayer(HurtboxLayerName);
+        if (hurtboxLayer < 0 && !warnedMissingHurtboxLayer)
+        {
+            warnedMissingHurtboxLayer = true;
+            Debug.LogWarning(
+                $"Layer '{HurtboxLayerName}' is missing. Aim points cannot land on hurtboxes.");
+        }
+
+        return hurtboxLayer;
     }
 
     bool ShouldIgnore(Collider candidate)

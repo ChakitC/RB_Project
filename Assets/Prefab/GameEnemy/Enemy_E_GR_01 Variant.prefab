@@ -36,6 +36,10 @@ PrefabInstance:
       propertyPath: behaviorTree
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 848695909115927668, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: profile
+      value: 
+      objectReference: {fileID: 11400000, guid: d2030000000000000000000000000000, type: 2}
     - target: {fileID: 1692327919204438350, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: m_LocalPosition.y
       value: 1
@@ -101,10 +105,6 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 6592221851503198351}
     - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
-      propertyPath: Collider
-      value: 
-      objectReference: {fileID: 5697420406442127243}
-    - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: Equipment
       value: 
       objectReference: {fileID: 1874052612295701136}
@@ -112,10 +112,6 @@ PrefabInstance:
       propertyPath: baseStats
       value: 
       objectReference: {fileID: 11400000, guid: 53c1781a924433c48abc403912372922, type: 2}
-    - target: {fileID: 848695909115927668, guid: 6e3801d708972a846aa41395176971c7, type: 3}
-      propertyPath: profile
-      value: 
-      objectReference: {fileID: 11400000, guid: d2030000000000000000000000000000, type: 2}
     - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: ColliderRefs
       value: 

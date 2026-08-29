@@ -5,8 +5,6 @@ using UnityEngine.AI;
 [DefaultExecutionOrder(-200)]
 public class EnemyContext : CharacteContext
 {
-    [Header("Collider")]
-    public CapsuleCollider Collider;
     public AgentMoveDriver AgentMoveDriver;
     public StaggerMeter StaggerMeter;
     public EnemyLevelSystem EnemyLevelSystem;
@@ -83,9 +81,6 @@ public class EnemyContext : CharacteContext
 
         if (!AnimBrain)
             AnimBrain = ResolveActorComponent(AnimBrain);
-
-        if (!Collider)
-            Collider = ResolveActorComponent(Collider);
 
         if (!dropper)
             dropper = ResolveActorComponent(dropper);

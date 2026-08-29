@@ -397,11 +397,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5178198946883449886, guid: fd5bd82682ecb9e46991bffb467d4857, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.26000005
+      value: -0.022
       objectReference: {fileID: 0}
     - target: {fileID: 5178198946883449886, guid: fd5bd82682ecb9e46991bffb467d4857, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0.034914017
+      value: 1.322
       objectReference: {fileID: 0}
     - target: {fileID: 5178198946883449886, guid: fd5bd82682ecb9e46991bffb467d4857, type: 3}
       propertyPath: m_LocalRotation.w
@@ -4716,7 +4716,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6435957238560230040, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.26
+      value: 0.031
       objectReference: {fileID: 0}
     - target: {fileID: 6435957238560230040, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
       propertyPath: m_LocalPosition.z
@@ -6075,6 +6075,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8537910891524798376}
+    - targetCorrespondingSourceObject: {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6867960844997696038}
   m_SourcePrefab: {fileID: 100100000, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
 --- !u!1 &1708752387990795096 stripped
 GameObject:
@@ -6127,6 +6130,24 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targets: []
+--- !u!114 &6867960844997696038
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1708752387990795096}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6363a0cd15f931749bc29630c46e84e8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  framingRoot: {fileID: 0}
+  cameraLocalOffset: {x: 0, y: 1.9, z: 5.8}
+  lookLocalOffset: {x: -1.53, y: 1.35, z: 0}
+  fieldOfView: 26
+  uiWidthRatio: 0.703
+  uiMargin: 24
 --- !u!4 &2088937483365181922 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6435957238560230040, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}

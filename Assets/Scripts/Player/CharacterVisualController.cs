@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.UI;
 using Animancer;
 
@@ -412,7 +413,13 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         if (!animBrain && _ctx)
             animBrain = _ctx.GetComponentInChildren<CharacterAnimBrain>(true);
 
-        if (_ctx is AllyContext allyContext && allyContext.agent != null)
+        NavMeshAgent navMeshAgent = null;
+        if (_ctx is AllyContext allyContext)
+            navMeshAgent = allyContext.agent;
+        else if (_ctx is EnemyContext enemyContext)
+            navMeshAgent = enemyContext.Agent;
+
+        if (navMeshAgent != null)
         {
             RootMotionCCDriver[] ccDrivers = _ctx.GetComponentsInChildren<RootMotionCCDriver>(true);
             for (int i = 0; i < ccDrivers.Length; i++)
@@ -438,7 +445,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
             navDriver.enabled = true;
             navDriver.Configure(
                 animBrain,
-                allyContext.agent,
+                navMeshAgent,
                 animator,
                 _ctx,
                 _ctx.transform,

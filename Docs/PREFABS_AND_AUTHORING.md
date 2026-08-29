@@ -77,7 +77,15 @@ matches how the actor is moved:
 
 Fields to bind:
 
-- `ctx`, `characterController`, `capsuleCollider`, `animBrain`
+- `ctx`, `characterController`, `colliderRefs`, `animBrain`. `characterController`
+  is optional and stays empty on actors that have none (all Enemy prefabs).
+  `colliderRefs` is normally resolved from `ctx` and rebound whenever
+  `CharacterVisualController` swaps the model.
+- `capsuleCollider` is an **optional explicit override** for the body shape. Leave
+  it empty unless an actor genuinely needs a body different from
+  `CharacterColliderRefs.CharacterPositionCollider`. It is never auto-filled by a
+  hierarchy search any more, because that returned a hit-zone capsule on several
+  characters.
 - `navMeshAgent` and `agentMoveDriver` on `AgentDriven` actors. If a prefab has an
   agent but no `AgentMoveDriver`, the motor suspends the agent directly instead;
   binding the driver is still preferred because its token API reference-counts
@@ -101,6 +109,28 @@ token via `AcquireGravitySuspendToken` for levitate-style effects.
 
 `KnockbackData.VerticalImpulse` (default `0`) is the authoring hook for launching
 knockbacks: leave it at zero for a purely planar knockback, exactly as before.
+
+### Displacement Without A CharacterController
+
+`CharacterKnockbackMotor` and `CharacterVerticalMotor` both branch on the same
+rule:
+
+```text
+enabled CharacterController -> CharacterController.Move()
+no CharacterController      -> position-collider sweep + actor Transform move
+```
+
+The no-controller path is used by every Enemy. It resolves the actor body from
+`ctx.ColliderRefs.CharacterPositionCollider` and probes it through the shared
+`CharacterBodySweepUtility`, which supports `CapsuleCollider`, `BoxCollider`, and
+`SphereCollider`, honours the collider's scale/centre/rotation, ignores only
+colliders owned by the actor context (not siblings under a shared room root), and
+allocates nothing per frame. The motor then moves
+only by the safe displacement and syncs `NavMeshAgent.nextPosition`.
+
+If no usable body is found the knockback motor falls back to the `NavMeshAgent`
+cylinder, and the vertical motor falls back to an unswept move. Both are last
+resorts: author the position collider.
 
 ## Runtime Party Spawn Authoring
 
@@ -178,6 +208,48 @@ and completion-pulse timing are exposed on `InteractionIndicatorView`; distance
 scaling and the action name are exposed on `InteractionIndicatorPresenter` in
 `PlayerUI.prefab`. Rebuild the generated prefab and restore its PlayerUI binding
 with **Tools > RB > UI > Build Interaction Indicator Prefab**.
+
+## NPC Station Presentation
+
+Add `NpcPresentationTarget` to the same NPC object that owns its
+`ShopInteractable` (or another station interactable). The component authors the
+camera relative to the real NPC in the map; it does not move, rotate, or clone
+the NPC. Use `Framing Root` only when the interactable transform is not a stable
+camera reference.
+
+The Abbygail shop defaults are calibrated for the station layout shown in Game
+View:
+
+- camera local offset `(0, 1.55, 5.8)`
+- look local offset `(-1.55, 1.35, 0)` and FOV `34`
+- NPC framed on the left, approximately head-to-knee
+- existing Shop UI anchored on the right at `72%` Safe Area width with a
+  `24`-pixel margin
+
+Keep the target on all three station prefabs:
+
+- `Assets/Prefab/Station/AbbyGail_Shop_Tire_1.prefab`
+- `Assets/Prefab/Station/AbbyGail_Shop_Tire_2.prefab`
+- `Assets/Prefab/Station/AbbyGail_Shop_Tire_3.prefab`
+
+To inspect the composition without entering Play Mode, select the NPC object
+with `NpcPresentationTarget` and click **Open Camera Preview** in its Inspector.
+The preview window uses a real Unity Camera and a 16:9 render texture with the
+authored position, rotation, and FOV. A dark guide marks the runtime Shop UI
+area, and inspector changes update the render live. Closing the window destroys
+the temporary preview camera and does not modify the scene or prefab.
+
+Runtime presentation resets the active Cinemachine brain while the screen is
+black, so it cuts directly to the authored pose instead of exposing an in-flight
+camera blend. Its lens also overrides physical-camera projection with standard
+perspective projection, matching the Camera Preview even when the gameplay
+camera uses a physical sensor or gate fit.
+
+`ShopInteractable` allows presentation when no map run is active, when the run
+has no current room, or when `MapRunController.CurrentRoom.RoomCleared` is true.
+An uncleared active room shows `Clear enemies first` and does not open the Shop.
+Keep purchase/catalog/inventory behavior in `ShopPanelUI`; presentation owns
+only the transition, camera, temporary layout, control lock, and restoration.
 
 ## Map Room Spawn And Party Warp
 
@@ -767,9 +839,55 @@ navigation, attack, and `CharacterPositionCollider` colliders. Do not use an
 enemy's main `CapsuleCollider` as a hurtbox.
 
 In `CharacterColliderRefs`, register the exact collider references in
-`hitZones` as `Head` and `Torso`. Do not register arms or legs yet; on a
-configured enemy, unmapped actor colliders intentionally allow direct weapon
-projectiles to pass through.
+`hitZones` as `Head` and `Torso`. Register limb colliders as `Torso` when they
+should receive normal body damage; leave a collider unmapped only when direct
+weapon projectiles are intentionally meant to pass through it.
+
+Author visual-model hurtboxes on the source visual prefab, not as Scene or Enemy
+Variant additions. `CharacterVisualController` rebuilds the model from that
+source at runtime. `Rector.prefab`, for example, owns its arm and leg triggers
+and maps all nine of them to `Torso`.
+
+Assign the enemy's main body/position collider to
+`CharacterPositionCollider`. `EnemyHealth.Die()` disables the position collider
+and every registered Hit Zone through this component.
+
+## Enemy Body Collider
+
+Enemy prefabs have **no `CharacterController`**. The authored
+`CharacterColliderRefs.CharacterPositionCollider` is the Enemy's only body shape:
+it is what knockback and vertical motion sweep against, what
+`RootMotionNavMeshDriver.PushOverlappingCharacters` pushes with, and what the
+interruption controllers probe.
+
+Every Enemy visual prefab owns a `CharacterPosition` child directly under the
+model root — not under an animated bone, or the body would swim with the rig:
+
+| Visual prefab | Used by | Capsule |
+|---|---|---|
+| `Assets/Prefab/Charactor/Rector.prefab` | `Enemy_B_GR_01 Variant` | r `1.13`, h `4.06`, y `2.01` |
+| `Assets/Prefab/Charactor/M_GR04.prefab` | `Enemy_E_GR_01 Variant` | r `0.86`, h `2.59`, y `1.26` |
+| `Assets/Prefab/EnemyVisual/GR_NM01.prefab` | `Enemy_M_GR_01 Variant` | r `0.5`, h `2`, y `1` |
+| `Assets/Prefab/EnemyVisual/GR_NM02.prefab` | `Enemy_M_GR_02 Variant` | r `0.5`, h `2`, y `1` |
+
+Each capsule reproduces the `CharacterController` it replaced, so the physical
+footprint is unchanged. Requirements for any new Enemy:
+
+- exactly one resolved `CharacterColliderRefs` on the actor;
+- `CharacterPositionCollider` non-null, **enabled**, **non-trigger**, and on the
+  `Enemy` layer (the layer the removed controller used — `Enemy` differs from
+  `Default` only in ignoring `EnemyBullet`);
+- shape is `CapsuleCollider`, `BoxCollider`, or `SphereCollider`; nothing else is
+  sweepable;
+- it is **not** registered in `hitZones`, and Head/Torso stay trigger colliders on
+  the `Hit` layer;
+- it is authored inside the visual model prefab, because
+  `CharacterVisualController.BindCurrentModelReferences()` rebinds
+  `ctx.ColliderRefs` to the model's own component on every rebuild. A Variant
+  override that repoints it survives only while `buildModelAutomatically` is off.
+
+Do not reuse a melee hitbox, a bone collider, or a Hit Zone as the position
+collider, and do not add a `CharacterController` back to an Enemy prefab.
 
 Bind
 `Assets/Data/Combat/Damage/DefaultEnemyHitZoneDamageProfile.asset` to
@@ -1631,10 +1749,10 @@ No prefab reference is required; the runtime root-motion driver resolves the
 character layers and restores the previous collision state when playback ends
 or is interrupted.
 
-Ally prefabs using `RootMotionNavMeshDriver` must leave **Zero Y** disabled.
+Ally and Enemy prefabs using `RootMotionNavMeshDriver` must leave **Zero Y** disabled.
 Per-request `RootMotionPlanarOnly` is responsible for suppressing Y on targeted
 placement flows such as Guaranteed Interruption. Enabling **Zero Y** on the
-prefab suppresses vertical root motion for every Ally skill and is only
+prefab suppresses vertical root motion for every Ally or Enemy skill and is only
 appropriate for actors that must remain permanently planar.
 
 Do not assign a motion-bone name, add a trajectory component, bake an asset, or

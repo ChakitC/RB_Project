@@ -58,6 +58,7 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
     public bool GameplayInputEnabled =>
         isActiveAndEnabled &&
         !CutsceneDirector.IsCinematicPlaying &&
+        !NpcPresentationController.IsActive &&
         !IsBlockingUiOpen();
 
     public float PlanarYaw => yaw;

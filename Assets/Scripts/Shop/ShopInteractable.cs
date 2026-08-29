@@ -14,12 +14,19 @@ public class ShopInteractable : MonoBehaviour, IInteractable
 
     public string GetPrompt(Interactor interactor)
     {
+        if (!IsCurrentRoomSafe())
+            return "Clear enemies first";
+
         return prompt;
     }
 
     public bool CanInteract(Interactor interactor)
     {
-        return ResolvePanel() != null && ResolveInventory(interactor) != null && ResolveCatalog() != null;
+        return IsCurrentRoomSafe() &&
+               !NpcPresentationController.IsActive &&
+               ResolvePanel() != null &&
+               ResolveInventory(interactor) != null &&
+               ResolveCatalog() != null;
     }
 
     public void Interact(Interactor interactor)
@@ -31,7 +38,18 @@ public class ShopInteractable : MonoBehaviour, IInteractable
         if (panel == null || inventory == null || activeCatalog == null)
             return;
 
-        panel.Open(activeCatalog, inventory);
+        NpcPresentationTarget presentationTarget = GetComponent<NpcPresentationTarget>();
+        if (presentationTarget == null)
+        {
+            panel.Open(activeCatalog, inventory);
+            return;
+        }
+
+        NpcPresentationController.TryOpen(
+            presentationTarget,
+            panel.gameObject,
+            () => panel.Open(activeCatalog, inventory),
+            panel.CloseImmediate);
     }
 
     ShopCatalogBase ResolveCatalog()
@@ -93,5 +111,13 @@ public class ShopInteractable : MonoBehaviour, IInteractable
         }
 
         return FindFirstObjectByType<PlayerInventory>(FindObjectsInactive.Include);
+    }
+
+    static bool IsCurrentRoomSafe()
+    {
+        MapRunController runController = FindFirstObjectByType<MapRunController>();
+        return runController == null ||
+               !runController.HasActiveRoom ||
+               (runController.CurrentRoom != null && runController.CurrentRoom.RoomCleared);
     }
 }

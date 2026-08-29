@@ -8,6 +8,10 @@
         {
             "stageId": "test_stage_02",
             "progressCount": 1
+        },
+        {
+            "stageId": "boss_rush_01",
+            "progressCount": 1
         }
     ]
 }

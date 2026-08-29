@@ -14549,14 +14549,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Enemy_M_GR_02 Variant
       objectReference: {fileID: 0}
-    - target: {fileID: 4367987773112270444, guid: 51f57ea8b52629a43a3fd3991fdf0c1c, type: 3}
-      propertyPath: m_Height
-      value: 2.6
-      objectReference: {fileID: 0}
-    - target: {fileID: 4367987773112270444, guid: 51f57ea8b52629a43a3fd3991fdf0c1c, type: 3}
-      propertyPath: m_Center.y
-      value: 1.39
-      objectReference: {fileID: 0}
     - target: {fileID: 7272141496350456225, guid: 51f57ea8b52629a43a3fd3991fdf0c1c, type: 3}
       propertyPath: m_Height
       value: 2.69

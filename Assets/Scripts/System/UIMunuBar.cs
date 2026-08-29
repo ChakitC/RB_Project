@@ -47,6 +47,9 @@ public class UIMunuBar : MonoBehaviour
     }
     void Update()
     {
+        if (NpcPresentationController.IsActive)
+            return;
+
         if (Input.GetKeyDown(key))
         {
             Debug.Log("Open Menu bar");

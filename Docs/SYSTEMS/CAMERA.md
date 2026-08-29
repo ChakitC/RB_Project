@@ -151,6 +151,27 @@ an isometric snap. World-space billboards and the camera-owned occlusion fader
 run after camera synchronization and late character pose adjustments, so they
 consume the final camera and renderer transforms after a cinematic handoff.
 
+## NPC Presentation Handoff
+
+`NpcPresentationController` owns the in-world NPC station/shop handoff. An
+interaction fades to black over `0.25` seconds, enables a high-priority
+Cinemachine camera authored by `NpcPresentationTarget`, lays out the station UI
+on the right side of the Safe Area, then fades back over `0.30` seconds. The
+current Abbygail framing reserves about 28% of the screen for the real map NPC
+on the left and 72% for the existing Shop UI on the right.
+
+The handoff does not change `Time.timeScale`, so the NPC's idle animation keeps
+playing. It disables Player input, planar movement, knockback, and gravity;
+hides the Player renderers, HUD, interaction prompt, and gameplay reticle; and
+restores each previous state when the shop closes. Escape, gamepad East, and
+the Shop close button all use the reverse fade. Pause input is consumed by the
+presentation before `UIMunuBar` can open a stacked menu.
+
+`GameplayCameraController.GameplayInputEnabled` treats an active NPC
+presentation like the other camera handoffs. Do not independently raise a shop
+camera's priority or disable the gameplay camera; route it through this owner so
+cursor, input, HUD, and restoration remain paired.
+
 ## Character Authoring
 
 Every `CharacterStats` asset contains a `Third Person/TPS Profile`. The default

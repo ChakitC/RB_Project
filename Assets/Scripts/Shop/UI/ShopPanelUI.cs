@@ -118,6 +118,14 @@ public class ShopPanelUI : MonoBehaviour
 
     public void Close()
     {
+        if (NpcPresentationController.TryClose(gameObject))
+            return;
+
+        CloseImmediate();
+    }
+
+    internal void CloseImmediate()
+    {
         gameObject.SetActive(false);
     }
 

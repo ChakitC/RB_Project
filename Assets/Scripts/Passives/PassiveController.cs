@@ -37,6 +37,13 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 
     public event Action StatModifiersChanged;
 
+    /// <summary>
+    /// Raised when a passive actually fired - a triggered rule ran its actions, or a custom
+    /// behavior completed a proc. Presentation-only: nothing in the passive pipeline reads it, so
+    /// a missing listener costs nothing and a listener can never change what the passive does.
+    /// </summary>
+    public event Action<PassiveDefinition> PassiveTriggered;
+
     long _nextIndependentModifierId;
     bool _subscribed;
     CharacterSkillManager _subscribedSkillManager;
@@ -566,6 +573,18 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
                     break;
             }
         }
+
+        NotifyPassiveTriggered(definition);
+    }
+
+    /// <summary>
+    /// Announces a passive that just did something, for HUD cues. Custom behaviors call this
+    /// themselves because only the behavior knows whether its proc roll actually landed.
+    /// </summary>
+    public void NotifyPassiveTriggered(PassiveDefinition definition)
+    {
+        if (definition != null)
+            PassiveTriggered?.Invoke(definition);
     }
 
     void ApplyModifierAction(PassiveActionDefinition action, GameObject targetObject, string modifierKey, double now, SkillUpgradeStatSnapshot upgrades)

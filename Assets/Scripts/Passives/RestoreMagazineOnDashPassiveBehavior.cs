@@ -37,6 +37,7 @@ public sealed class RestoreMagazineOnDashPassiveBehavior : PassiveCustomBehavior
             return;
 
         weaponSystem.RestoreMagazine(restoreAmount);
+        controller.NotifyPassiveTriggered(definition);
     }
 
     static WeaponSystem ResolveWeaponSystem(PassiveController controller)

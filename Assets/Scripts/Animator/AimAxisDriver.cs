@@ -1,10 +1,14 @@
 using UnityEngine;
 
 /// <summary>
-/// Drives a bone's world yaw toward an AI-supplied aim point in LateUpdate, after Animancer
+/// Drives a bone's yaw toward an AI-supplied aim point in LateUpdate, after Animancer
 /// has already written the clip pose for this frame. Needed because Opsive Behavior Designer
 /// tasks (e.g. AiShoot) tick in the Update phase and any rotation they write gets stomped by
 /// the animation clip before render. See TurretAimAxisDriver_ImplementationPlan.md §2 for why.
+///
+/// The yaw is applied around the bone's own local Y axis, matching how the clip animates it.
+/// Writing a world-space LookRotation instead leaks into the bone's local X/Z whenever the
+/// parent chain is not axis-aligned, which reads as a tilted model.
 /// </summary>
 [DefaultExecutionOrder(10150)]
 [DisallowMultipleComponent]
@@ -36,10 +40,15 @@ public sealed class AimAxisDriver : MonoBehaviour
     [SerializeField, Min(0f)] private float turnSpeed = 720f;
     [SerializeField, Min(0f)] private float turnSharpness = 14f;
 
-    [Header("Release")]
+    [Header("Blend")]
+    // Acquiring needs no easing: _drivenLocalYaw is seeded from the clip pose, so weight can snap in
+    // without a pop. Blending in slowly instead mixes the aim angle with the clip's own spinning yaw,
+    // which reads as the turret sweeping along with the idle before settling.
+    [SerializeField, Min(0f)] private float acquireBlendSpeed = 12f;
     [SerializeField, Min(0f)] private float releaseBlendSpeed = 2f;
 
-    private Quaternion _drivenRotation;
+    private float _drivenLocalYaw;
+    private Vector3 _drivenForward = Vector3.forward;
     private float _weight;
     private bool _hasTarget;
     private Vector3 _aimPoint;
@@ -82,13 +91,14 @@ public sealed class AimAxisDriver : MonoBehaviour
         if (yawTarget == null)
             return 0f;
 
-        Quaternion reference = _everAcquired ? _drivenRotation : yawTarget.rotation;
+        Vector3 reference = _everAcquired ? _drivenForward : yawTarget.forward;
+        reference.y = 0f;
         Vector3 direction = worldPoint - yawTarget.position;
         direction.y = 0f;
-        if (direction.sqrMagnitude <= 0.0001f)
+        if (direction.sqrMagnitude <= 0.0001f || reference.sqrMagnitude <= 0.0001f)
             return 0f;
 
-        return Vector3.Angle(reference * Vector3.forward, direction);
+        return Vector3.Angle(reference, direction);
     }
 
     private void LateUpdate()
@@ -96,7 +106,9 @@ public sealed class AimAxisDriver : MonoBehaviour
         if (yawTarget == null)
             return;
 
-        Quaternion clipPose = yawTarget.rotation;
+        // The clip pose Animancer just wrote. Only its Y is ours to override; X/Z are passed through
+        // so any authored tilt in the rig survives.
+        Vector3 clipEuler = yawTarget.localRotation.eulerAngles;
 
         StateHub stateHub = characterContext != null ? characterContext.stateHub : null;
         Mode mode;
@@ -119,8 +131,10 @@ public sealed class AimAxisDriver : MonoBehaviour
             ? TimeSlowManager.Instance.WorldDeltaTime
             : Time.deltaTime;
 
-        float targetWeight = mode == Mode.Releasing ? 0f : 1f;
-        _weight = Mathf.MoveTowards(_weight, targetWeight, releaseBlendSpeed * dt);
+        bool releasing = mode == Mode.Releasing;
+        float targetWeight = releasing ? 0f : 1f;
+        float blendSpeed = releasing ? releaseBlendSpeed : acquireBlendSpeed;
+        _weight = Mathf.MoveTowards(_weight, targetWeight, blendSpeed * dt);
 
         if (_weight <= 0.001f)
         {
@@ -132,25 +146,46 @@ public sealed class AimAxisDriver : MonoBehaviour
 
         if (!_everAcquired)
         {
-            _drivenRotation = clipPose;
+            _drivenLocalYaw = clipEuler.y;
             _everAcquired = true;
         }
 
-        if (mode == Mode.Tracking)
+        if (mode == Mode.Tracking && TryResolveDesiredLocalYaw(out float desiredYaw))
         {
-            Vector3 direction = _aimPoint - yawTarget.position;
-            direction.y = 0f;
-            if (direction.sqrMagnitude > 0.0001f)
-            {
-                Quaternion desired = Quaternion.LookRotation(direction.normalized, Vector3.up);
-                _drivenRotation = turnMode == TurnMode.ConstantSpeed
-                    ? Quaternion.RotateTowards(_drivenRotation, desired, turnSpeed * dt)
-                    : Quaternion.Slerp(_drivenRotation, desired, 1f - Mathf.Exp(-turnSharpness * dt));
-            }
+            _drivenLocalYaw = turnMode == TurnMode.ConstantSpeed
+                ? Mathf.MoveTowardsAngle(_drivenLocalYaw, desiredYaw, turnSpeed * dt)
+                : Mathf.LerpAngle(_drivenLocalYaw, desiredYaw, 1f - Mathf.Exp(-turnSharpness * dt));
         }
 
-        yawTarget.rotation = Quaternion.Slerp(clipPose, _drivenRotation, _weight);
+        float outYaw = Mathf.LerpAngle(clipEuler.y, _drivenLocalYaw, _weight);
+        yawTarget.localRotation = Quaternion.Euler(clipEuler.x, outYaw, clipEuler.z);
+        _drivenForward = yawTarget.forward;
 
         _hasTarget = false;
+    }
+
+    /// <summary>
+    /// Converts the aim point into the parent bone's space and returns the local Y angle that
+    /// points this bone's forward at it. Returns false when the aim point is degenerate.
+    /// </summary>
+    private bool TryResolveDesiredLocalYaw(out float yaw)
+    {
+        yaw = _drivenLocalYaw;
+
+        Vector3 direction = _aimPoint - yawTarget.position;
+        direction.y = 0f;
+        if (direction.sqrMagnitude <= 0.0001f)
+            return false;
+
+        Transform parent = yawTarget.parent;
+        Vector3 localDirection = parent != null
+            ? parent.InverseTransformDirection(direction.normalized)
+            : direction.normalized;
+
+        if (localDirection.sqrMagnitude <= 0.0001f)
+            return false;
+
+        yaw = Mathf.Atan2(localDirection.x, localDirection.z) * Mathf.Rad2Deg;
+        return true;
     }
 }

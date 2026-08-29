@@ -267,6 +267,23 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return skillDef != null;
     }
 
+    /// <summary>
+    /// Passive assigned to a command slot, for HUD icons. Returns false for an active slot, so a
+    /// HUD can ask this first and fall back to the charge readout only when it comes back empty.
+    /// A passive slot has no runtime skill and no charge pool, which is why it can never answer
+    /// <see cref="TryGetSlotChargeStatus"/>.
+    /// </summary>
+    public bool TryGetSlotPassiveDefinition(int slotIndex, out PassiveDefinition passiveDef)
+    {
+        passiveDef = null;
+
+        if (!TryGetCommandSlotState(slotIndex, out ResolvedCommandSlotState state) || !state.IsPassive)
+            return false;
+
+        passiveDef = state.selectedOption != null ? state.selectedOption.PassiveAsset : null;
+        return passiveDef != null;
+    }
+
     public bool CanStartCastSlot(int slotIndex)
     {
         CacheReferences();

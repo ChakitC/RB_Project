@@ -11,6 +11,9 @@ using UnityEngine.UI;
 /// never runs a timer of its own. It reports cooldown and charges only: energy, animation locks,
 /// and cutscene locks deliberately do not darken the slot, because those clear on their own and
 /// would make the overlay mean two different things.
+///
+/// A passive slot has no charge pool to read, so it takes a separate path: icon only, no charge
+/// count and no cooldown overlay, with the ready flash reused as the cue for a proc landing.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class ActiveSkillChargePresenter : MonoBehaviour
@@ -56,9 +59,17 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
     private float refreshInterval = 0.1f;
 
     CharacterSkillManager skillManager;
+    PassiveController passiveController;
 
     float nextRefreshTime;
     bool hasStatus;
+
+    // Passive slots keep their own icon cache: the active path caches a SkillGemDefinition, and
+    // the two can never be assigned to the same slot at once.
+    bool isPassiveSlot;
+    PassiveDefinition passiveDef;
+    PassiveDefinition lastPassiveDef;
+    bool hasPassiveDef;
 
     // Recharge sampled at sampleTime and extrapolated per frame. Time.time is the pool's own clock,
     // so the sweep stops exactly when the cooldown does — including while the game is paused.
@@ -78,11 +89,13 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
     public void Bind(CharacteContext context)
     {
         skillManager = null;
+        SubscribeToPassiveController(null);
 
         if (context != null)
         {
             context.ResolveReferences();
             skillManager = context.SkillManager;
+            SubscribeToPassiveController(context.PassiveController);
         }
 
         ResetCachedState();
@@ -95,6 +108,35 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
         ResetCachedState();
     }
 
+    void OnDestroy()
+    {
+        SubscribeToPassiveController(null);
+    }
+
+    void SubscribeToPassiveController(PassiveController controller)
+    {
+        if (ReferenceEquals(passiveController, controller))
+            return;
+
+        if (passiveController != null)
+            passiveController.PassiveTriggered -= HandlePassiveTriggered;
+
+        passiveController = controller;
+
+        if (passiveController != null)
+            passiveController.PassiveTriggered += HandlePassiveTriggered;
+    }
+
+    /// <summary>The proc cue. Every passive on the character reports here, so the slot filters to
+    /// the one definition it is showing.</summary>
+    void HandlePassiveTriggered(PassiveDefinition definition)
+    {
+        if (!isPassiveSlot || definition == null || definition != passiveDef)
+            return;
+
+        StartReadyFlash();
+    }
+
     void LateUpdate()
     {
         // Throttled: TryGetSlotChargeStatus rebuilds FinalSkillStats, so running it per slot per
@@ -104,6 +146,14 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
         {
             nextRefreshTime = Time.unscaledTime + Mathf.Max(0f, refreshInterval);
             Refresh();
+        }
+
+        // A passive slot never fills a cooldown, but it still animates the flash it was just told
+        // to start, so it runs its own short tail of the update.
+        if (isPassiveSlot)
+        {
+            UpdateReadyFlash();
+            return;
         }
 
         if (!hasStatus)
@@ -122,6 +172,11 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
         sampledRemaining = 0f;
         sampledDuration = 0f;
 
+        isPassiveSlot = false;
+        passiveDef = null;
+        lastPassiveDef = null;
+        hasPassiveDef = false;
+
         lastAvailable = -1;
         lastSkillDef = null;
         hasSkillDef = false;
@@ -139,6 +194,23 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
     {
         // Reads the manager's shared pool — the same one the cast path spends from — so two slots
         // holding the same skill always agree.
+        // Asked first because a passive slot can never answer the charge read below: it has no
+        // runtime skill and no pool, so falling through would hide the slot outright.
+        if (skillManager != null &&
+            skillManager.TryGetSlotPassiveDefinition(commandSlotIndex, out PassiveDefinition passive))
+        {
+            isPassiveSlot = true;
+            passiveDef = passive;
+            hasStatus = false;
+
+            ApplyVisibility(true);
+            ApplyPassiveIcon(passive);
+            return;
+        }
+
+        isPassiveSlot = false;
+        passiveDef = null;
+
         if (skillManager == null ||
             !skillManager.TryGetSlotChargeStatus(commandSlotIndex, out SkillChargeStatus status))
         {
@@ -186,6 +258,40 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
 
         if (fallbackLabel != null)
             SetActiveIfNeeded(fallbackLabel.gameObject, sprite == null);
+    }
+
+    /// <summary>
+    /// Icon-only readout for a passive: there is nothing to count down and nothing to spend, so
+    /// the charge label and the cooldown overlay are switched off rather than left showing a
+    /// stale value from a previous loadout.
+    /// </summary>
+    void ApplyPassiveIcon(PassiveDefinition definition)
+    {
+        if (hasPassiveDef && definition == lastPassiveDef)
+            return;
+
+        lastPassiveDef = definition;
+        hasPassiveDef = true;
+
+        Sprite sprite = definition != null ? definition.SkillDefinitionIcon : null;
+
+        if (skillIcon != null)
+        {
+            skillIcon.sprite = sprite;
+            SetActiveIfNeeded(skillIcon.gameObject, sprite != null);
+        }
+
+        if (fallbackLabel != null)
+            SetActiveIfNeeded(fallbackLabel.gameObject, sprite == null);
+
+        if (chargeLabel != null)
+            SetActiveIfNeeded(chargeLabel.gameObject, false);
+
+        if (cooldownFill != null)
+        {
+            SetActiveIfNeeded(cooldownFill.gameObject, false);
+            lastFillVisible = false;
+        }
     }
 
     void ApplyCharges(SkillChargeStatus status)

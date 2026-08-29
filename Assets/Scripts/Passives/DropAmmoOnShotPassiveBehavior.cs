@@ -117,6 +117,7 @@ public sealed class DropAmmoOnShotPassiveBehavior : PassiveCustomBehavior
         ResolveGrantedUpgradeEffects(upgrades, grantedUpgradeEffectsBuffer);
         SpawnDrops(controller, ctx, sourceRoot, grantExtraDrop ? dropCount + 1 : dropCount, grantedUpgradeEffectsBuffer);
         StampCooldown(controllerId, now, ResolveCooldownSeconds(upgrades));
+        controller.NotifyPassiveTriggered(definition);
     }
 
     float ResolveProcChance(SkillUpgradeStatSnapshot upgrades)

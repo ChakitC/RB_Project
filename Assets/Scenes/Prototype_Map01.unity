@@ -402,17 +402,6 @@ MonoBehaviour:
   m_DefaultActionMap: UI
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 0}
---- !u!114 &270913928 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 3253205841908520518, guid: 6f3e8c0a0b6a4ce5b8d1e2f3a4b5c6d7, type: 3}
-  m_PrefabInstance: {fileID: 1989054375}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5a90341c7b794bac8477ef907fb25717, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &281267927
 GameObject:
   m_ObjectHideFlags: 0
@@ -2468,10 +2457,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 876107718998901031, guid: 6f3e8c0a0b6a4ce5b8d1e2f3a4b5c6d7, type: 3}
-      propertyPath: CTX
-      value: 
-      objectReference: {fileID: 270913928}
     - target: {fileID: 3904815324446576792, guid: 6f3e8c0a0b6a4ce5b8d1e2f3a4b5c6d7, type: 3}
       propertyPath: m_Name
       value: MinigunTerret_Summon
@@ -2516,14 +2501,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7991187996840442107, guid: 6f3e8c0a0b6a4ce5b8d1e2f3a4b5c6d7, type: 3}
-      propertyPath: healthBarLocalRotEuler.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8663443619432600494, guid: 6f3e8c0a0b6a4ce5b8d1e2f3a4b5c6d7, type: 3}
-      propertyPath: m_Controller
-      value: 
-      objectReference: {fileID: 9100000, guid: 89da9905833ce7c4792a5559aaa09caf, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0835e36f57932444c9602743c684b3b3
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/FX_Settings/ZLZ_DitherSettings.asset
+  uploadId: 975774

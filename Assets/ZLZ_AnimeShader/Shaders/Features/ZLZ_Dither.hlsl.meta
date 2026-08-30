@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 624638c74ba71ee48b985f3c3477adf8
+ShaderIncludeImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Shaders/Features/ZLZ_Dither.hlsl
+  uploadId: 975774

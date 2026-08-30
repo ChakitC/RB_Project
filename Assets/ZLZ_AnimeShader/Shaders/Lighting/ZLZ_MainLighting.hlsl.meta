@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 33db7372dec82d0428249f0e6e9f4672
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  preprocessorOverride: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Shaders/Lighting/ZLZ_MainLighting.hlsl
+  uploadId: 975774

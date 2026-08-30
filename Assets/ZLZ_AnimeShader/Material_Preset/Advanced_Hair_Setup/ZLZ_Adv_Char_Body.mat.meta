@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 39ba020f5b9e2c84e97bb7eb79627723
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Material_Preset/Advanced_Hair_Setup/ZLZ_Adv_Char_Body.mat
+  uploadId: 975774

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: bc83725a1e086414fb1afc0eab75f222
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Editor/ZLZ_MaskPackerWindow.cs
+  uploadId: 975774

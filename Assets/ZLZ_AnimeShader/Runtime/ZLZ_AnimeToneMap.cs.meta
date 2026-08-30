@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 34d4051944b2e7347af03ea5ca344fcf
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Runtime/ZLZ_AnimeToneMap.cs
+  uploadId: 975774

@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: e28e625c332d0404fa43e031259caf0f
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Shaders/Core/ZLZ_SelectionOutline.shader
+  uploadId: 975774

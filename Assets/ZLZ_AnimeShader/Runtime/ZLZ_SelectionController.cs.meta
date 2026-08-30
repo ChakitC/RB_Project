@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 531c79c93eacb7f46b331667ec3680be
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Runtime/ZLZ_SelectionController.cs
+  uploadId: 975774

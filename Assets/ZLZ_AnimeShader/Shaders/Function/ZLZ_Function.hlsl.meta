@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: e37cff820f2446f49ad17f186995699e
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Shaders/Function/ZLZ_Function.hlsl
+  uploadId: 975774

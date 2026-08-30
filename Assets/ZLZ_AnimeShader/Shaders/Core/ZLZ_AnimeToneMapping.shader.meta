@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: f68ee12882358644ab261394f79a5809
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Shaders/Core/ZLZ_AnimeToneMapping.shader
+  uploadId: 975774

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: af7088ba795787a4f99e2836bf5e3cbf
+ShaderIncludeImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Shaders/Lighting/ZLZ_CharacterContactShadow.hlsl
+  uploadId: 975774

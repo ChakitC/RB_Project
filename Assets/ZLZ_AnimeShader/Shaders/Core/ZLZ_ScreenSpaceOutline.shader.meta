@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 36cd277155980c64db6b1327e5d66dc0
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Shaders/Core/ZLZ_ScreenSpaceOutline.shader
+  uploadId: 975774

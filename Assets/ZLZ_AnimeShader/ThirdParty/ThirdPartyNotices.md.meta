@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: d5e01d02817d89940987ce63fa56cf74
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/ThirdParty/ThirdPartyNotices.md
+  uploadId: 975774

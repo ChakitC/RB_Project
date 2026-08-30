@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: a9d3235bef6c8c1479738fc85949712d
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Runtime/ZLZ_HeadDirectionBinder.cs
+  uploadId: 975774

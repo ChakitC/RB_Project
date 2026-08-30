@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: a5ff54e125b451d4b9e3c6b31474a1ff
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Runtime/ZLZ_SmoothNormalBaker.cs
+  uploadId: 975774

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 437e9ffe2dda6294199f460227f43ee7
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Editor/ZLZAnimeToonGUI.cs
+  uploadId: 975774

@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 14c2002082fba1e4b9064d82d98ccc1f
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Shaders/Features/ZLZ_CharacterSurface.hlsl
+  uploadId: 975774

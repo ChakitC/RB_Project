@@ -1,0 +1,21 @@
+fileFormatVersion: 2
+guid: 45d8e17adb01bbb4bbc14e5857c9be4a
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures:
+  - _MainTex: {instanceID: 0}
+  - _RGB_Masking: {instanceID: 0}
+  - _GradientMetallic: {instanceID: 0}
+  - _MetalNormalMap: {instanceID: 0}
+  - _Texture2DDissolve: {instanceID: 0}
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Shaders/Core/ZLZ Anime Toon Shader.shader
+  uploadId: 975774

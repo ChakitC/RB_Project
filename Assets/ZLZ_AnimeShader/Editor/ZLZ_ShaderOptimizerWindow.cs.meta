@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 92a1bcee917ac544b87d7991fbf6e2fd
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Editor/ZLZ_ShaderOptimizerWindow.cs
+  uploadId: 975774

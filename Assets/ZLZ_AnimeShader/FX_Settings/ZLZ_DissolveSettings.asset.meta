@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 96ae7ef0d6972e54598d2e4045234734
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/FX_Settings/ZLZ_DissolveSettings.asset
+  uploadId: 975774

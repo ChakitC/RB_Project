@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: ce2d01de970afba4093e9c638294fadf
+ShaderIncludeImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.8.0
+  assetPath: Assets/ZLZ_AnimeShader/Shaders/Include/ZLZ_CharacterMaterialBuffer.hlsl
+  uploadId: 975774

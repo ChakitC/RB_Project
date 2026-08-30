@@ -46,6 +46,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private Locomotion_StageIntro stageIntroState;
     private Action onStageIntroEndCache;
 
+    private Locomotion_SpecialReaction specialReactionState;
+
     private float _reloadDuration = 0f;
     private readonly List<PairOffsetBasePoseWeight> _activePairBasePoseWeights = new List<PairOffsetBasePoseWeight>(3);
     private PairOffsetBasePose _activePairBasePose = PairOffsetBasePose.None;
@@ -65,6 +67,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         StatusEffect = 9,
         ChainCutscene = 10,
         StageIntro = 11,
+        SpecialReaction = 12,
     }
 
     public enum PlaybackPhase
@@ -245,7 +248,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
          locomotionSM.CurrentState == knockbackState ||
          locomotionSM.CurrentState == deadState ||
          locomotionSM.CurrentState == statusEffectState ||
-         locomotionSM.CurrentState == stageIntroState);
+         locomotionSM.CurrentState == stageIntroState ||
+         locomotionSM.CurrentState == specialReactionState);
     public PlaybackKind CurrentPlaybackKind => ResolveCurrentPlaybackKind();
 
     /// <summary>What owns locomotion right now, in the vocabulary <see cref="CharacterAnimationTransitionPolicy"/> speaks.</summary>
@@ -264,6 +268,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             if (IsChainPlaybackActive) return CharacterAnimationMode.Chain;
             if (IsUtilityPlaybackActive) return CharacterAnimationMode.Utility;
             if (IsSkillPlaybackActive) return CharacterAnimationMode.Skill;
+
+            // Above knockback and status: the Special Point reaction outranks every other combat
+            // reaction once it owns locomotion.
+            if (locomotionSM.CurrentState == specialReactionState) return CharacterAnimationMode.SpecialReaction;
 
             if (locomotionSM.CurrentState == knockbackState) return CharacterAnimationMode.Knockback;
             if (locomotionSM.CurrentState == stageIntroState) return CharacterAnimationMode.StageIntro;
@@ -498,6 +506,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         chain = new Locomotion_Chain(this);
         statusEffectState = new Locomotion_StatusEffect(this);
         stageIntroState = new Locomotion_StageIntro(this);
+        specialReactionState = new Locomotion_SpecialReaction(this);
 
         ForceSetLocomotionState(locomotion);
         actionSM.ForceSetState(empty);
@@ -1587,6 +1596,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         if (_initialized && locomotionSM.CurrentState == stageIntroState)
             return PlaybackKind.StageIntro;
+
+        if (_initialized && locomotionSM.CurrentState == specialReactionState)
+            return PlaybackKind.SpecialReaction;
 
         return PlaybackKind.None;
     }

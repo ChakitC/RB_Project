@@ -848,3 +848,43 @@ Mobile summons are warped by `MapRunController` on a committed room transition;
 stationary summons despawn at that boundary. Character targeting remains
 context-based, while placement clearance uses the summon footprint and explicit
 physics overlap checks.
+
+## Special Shoot Point Behavior Tree Tasks
+
+Category `Enemy/Special Shoot Point`, under
+`Assets/Scripts/AI/SpecialShootPoint/`. All three are thin adapters: the round
+state machine, timers, pool, and outcome live on `SpecialShootPointController`
+and are never mirrored into mutable graph variables.
+
+| Task | Kind | Behaviour |
+|---|---|---|
+| `TriggerSpecialShootPointRound` | Action | Optional `SharedVariable<int> pointCountOverride`, clamped to the profile maximum and the usable anchor count. `Success` only when the controller accepts and starts a round |
+| `IsSpecialShootPointRoundActive` | Conditional | `Success` while the round is Telegraph, Active, or Resolving |
+| `CompareSpecialShootPointRoundOutcome` | Conditional | Serialized `expectedOutcome` (`Succeeded`, `TimedOut`, `Cancelled`) compared against the latest resolved round |
+
+The trigger deliberately does **not** stay `Running` for the four-second
+challenge. It reports immediately, so the tree stays free to keep fighting while
+the round plays out, and the round's own state machine owns the timing.
+
+Both conditionals return the same pure result from `OnUpdate()` and
+`OnReevaluateUpdate()`, so they behave identically as a plain guard and under
+conditional abort. `SpecialShootPointTaskUtility.Resolve` looks the controller up
+through `EnemyContext` first, because enemy prefab hierarchies are not uniform
+and the tree is not guaranteed to sit on the same object as the controller.
+
+Outcomes are stamped with the round's request id, and
+`CompareSpecialShootPointRoundOutcome` records which round was in flight when its
+branch began, so a tree can never consume the result of an older activation.
+
+### Anchor selection has no visibility filter
+
+Anchors are chosen from a shuffle bag with no line-of-sight or front-facing
+filter: an occluded or back-facing anchor is a valid random result, and the
+player is expected to move. There is no aim assist and no projectile magnetism.
+
+### Cancellation and Chain priority
+
+A trigger is rejected outright while a Chain Attack is active, and an active
+chain is never interrupted by the Special Point Mini Stun. Death, down, a
+cinematic, or an unrelated stagger that fills the meter first cancels the round
+with no reward. See `Docs/SYSTEMS/SPECIAL_SHOOT_POINTS.md` for the full matrix.

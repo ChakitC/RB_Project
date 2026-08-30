@@ -14,6 +14,17 @@ public class RootMotionNavMeshDriver : MonoBehaviour
     [SerializeField] private CharacteContext ctx;
     [SerializeField] private LayerMask pushLayers;
 
+    [Header("Environment-Safe Root Motion")]
+    [Tooltip("Geometry an environment-safe playback may not pass through. Only consulted while " +
+             "RootMotionPolicy.EnvironmentSafe is set, so ordinary skill and chain clips are untouched.")]
+    [SerializeField] private LayerMask environmentCollisionMask = ~0;
+
+    [Tooltip("Skin width kept between the actor body and blocking geometry.")]
+    [Min(0f)][SerializeField] private float environmentCollisionPadding = 0.05f;
+
+    [Tooltip("Search radius used to recover the actor onto the NavMesh when a safe playback ends off-mesh.")]
+    [Min(0.1f)][SerializeField] private float navMeshRecoverySearchRadius = 2.5f;
+
     private System.Action<RootMotionPolicy> _onPolicyChanged;
     private CharacterAnimBrain _subscribedBrain;
     private RootMotionPolicy _policy;
@@ -23,6 +34,7 @@ public class RootMotionNavMeshDriver : MonoBehaviour
     private bool _cachedAgentUpdatePosition;
     private bool _cachedAgentUpdateRotation;
     private bool _hasCachedAgentState;
+    private bool _environmentSafeRun;
     private Transform _actorRoot;
 
     public bool ZeroY => zeroY;
@@ -112,7 +124,22 @@ public class RootMotionNavMeshDriver : MonoBehaviour
     void OnRootMotionPolicyChanged(RootMotionPolicy policy)
     {
         _policy = policy;
+        LatchEnvironmentSafeRun(policy);
         ApplyRootMotionTransition(policy.Active);
+    }
+
+    /// <summary>
+    /// Remembers that the running playback asked for environment safety.
+    ///
+    /// It cannot be read once at entry: the Brain publishes <c>Active</c> from
+    /// <c>EnterExclusiveLocomotion</c> and the shape flags a moment later, so the first publish of a
+    /// playback always still carries the previous shape. Latching on every active publish and
+    /// clearing it in <see cref="ExitRootMotion"/> is what makes the exit path see the real request.
+    /// </summary>
+    void LatchEnvironmentSafeRun(RootMotionPolicy policy)
+    {
+        if (policy.Active && policy.EnvironmentSafe)
+            _environmentSafeRun = true;
     }
 
     public void Configure(
@@ -161,6 +188,7 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         // The policy event already drives the transition. This stays as a safety net for the case
         // where the driver is attached to a Brain that is already mid-playback.
         bool rm = _policy.Active;
+        LatchEnvironmentSafeRun(_policy);
         ApplyRootMotionTransition(rm);
 
         if (rm && agent && agent.enabled)
@@ -222,6 +250,14 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         }
 
         _hasCachedAgentState = false;
+
+        // Recovery runs after the agent flags are restored, so the warp lands on an agent that is
+        // already driving itself again.
+        if (_environmentSafeRun)
+        {
+            _environmentSafeRun = false;
+            RecoverAgentToNavMesh();
+        }
     }
 
     void OnAnimatorMove()
@@ -234,6 +270,12 @@ public class RootMotionNavMeshDriver : MonoBehaviour
             zeroY || _policy.PlanarOnly);
 
         Transform actorRoot = ActorRoot;
+
+        // Only an environment-safe playback pays for the sweep. Constraining every clip would change
+        // authored motion across every existing skill and chain attack.
+        if (_policy.EnvironmentSafe)
+            delta = ResolveEnvironmentSafeDelta(actorRoot, delta);
+
         actorRoot.position += delta;
 
         if (agent && agent.enabled)
@@ -247,6 +289,70 @@ public class RootMotionNavMeshDriver : MonoBehaviour
 
         if (pushLayers != 0)
             PushOverlappingCharacters();
+    }
+
+    /// <summary>
+    /// Clamps one frame's animation delta to the distance the actor body may actually travel.
+    ///
+    /// The actor has no <see cref="CharacterController"/> to resolve this for it, so the authored
+    /// body capsule is swept the same way knockback and the vertical motor sweep it. Falling back to
+    /// the raw delta when no usable body is authored is deliberate: a missing collider must not
+    /// silently freeze a reaction in place.
+    /// </summary>
+    private Vector3 ResolveEnvironmentSafeDelta(Transform actorRoot, Vector3 desiredDelta)
+    {
+        if (desiredDelta.sqrMagnitude <= 0.0000001f)
+            return desiredDelta;
+
+        Collider body = ctx != null && ctx.ColliderRefs != null
+            ? ctx.ColliderRefs.CharacterPositionCollider
+            : null;
+
+        if (!CharacterBodySweepUtility.TryResolveShape(body, out CharacterBodySweepShape shape))
+            return desiredDelta;
+
+        return CharacterBodySweepUtility.ResolveSafeDelta(
+            shape,
+            desiredDelta,
+            environmentCollisionPadding,
+            environmentCollisionMask,
+            QueryTriggerInteraction.Ignore,
+            actorRoot);
+    }
+
+    /// <summary>
+    /// Puts the actor back on the NavMesh after an environment-safe playback.
+    ///
+    /// <see cref="ResyncAgent"/> only ever syncs or warps an agent that is <em>already</em> on the
+    /// mesh, so it cannot recover an actor that animation carried off it. This samples a nearby
+    /// valid position and warps only when the agent actually needs it.
+    /// </summary>
+    private void RecoverAgentToNavMesh()
+    {
+        if (!agent || !agent.enabled)
+            return;
+
+        Vector3 position = ActorRoot.position;
+
+        if (agent.isOnNavMesh)
+        {
+            ResyncAgent();
+            return;
+        }
+
+        if (NavMesh.SamplePosition(position, out NavMeshHit hit, navMeshRecoverySearchRadius, NavMesh.AllAreas))
+        {
+            agent.Warp(hit.position);
+            ActorRoot.position = hit.position;
+            return;
+        }
+
+        // Nothing valid nearby. Leaving the agent off-mesh is still better than teleporting the
+        // actor somewhere arbitrary, so only the warning is worth emitting.
+        Debug.LogWarning(
+            $"[{nameof(RootMotionNavMeshDriver)}] Environment-safe root motion ended off the NavMesh and no " +
+            $"valid position was found within {navMeshRecoverySearchRadius:0.##}m.",
+            this);
     }
 
     private void PushOverlappingCharacters()

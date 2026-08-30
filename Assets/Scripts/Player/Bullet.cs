@@ -161,11 +161,26 @@ public class Bullet : MonoBehaviour, IBarrierBlockableProjectile
             
             
             Debug.Log("Weapon =" + gunType);
-            damageable.TakeDamage(
-                finalDamage,
-                shooterRoot != null ? shooterRoot.gameObject : null,
-                damageSourceId: $"bullet:{gunType}",
-                stagger: new StaggerPayload(staggerPower, 1f, $"bullet:{gunType}"));
+
+            GameObject attacker = shooterRoot != null ? shooterRoot.gameObject : null;
+
+            // Legacy direct-fire path, held to the same one-result Special Shoot Point contract as
+            // Projectile: one TakeDamage, and the point is reduced by that same applied damage.
+            using (SpecialShootPointHitScope pointScope = SpecialShootPointHitScope.Begin(
+                other,
+                damageable,
+                attacker))
+            {
+                DamageResult result = damageable.TakeDamage(
+                    finalDamage,
+                    attacker,
+                    damageSourceId: $"bullet:{gunType}",
+                    stagger: new StaggerPayload(staggerPower, 1f, $"bullet:{gunType}"),
+                    hitZone: pointScope.HitZone);
+
+                pointScope.ApplyPointDamage(result);
+            }
+
             Destroy(gameObject);
         }
         else if (ProjectileLayerUtility.IsWall(other))

@@ -28,11 +28,21 @@ split projectiles inherit the same context.
 
 The following damage remains Hit Zone-neutral:
 
-- skill projectiles
+- skill projectiles, **except** a direct hit on a live Special Shoot Point
 - melee hits
 - built-in and module-driven area damage
 - status-effect ticks
-- legacy `Bullet` damage
+- legacy `Bullet` damage, **except** a direct hit on a live Special Shoot Point
+
+Special Shoot Points are the one case where a player Active Skill projectile and
+the legacy `Bullet` carry a hit zone. Both now run their direct hit through
+`SpecialShootPointHitScope`, and when the collider they struck is a live point
+they pass the zone that point's anchor authored — so a head anchor takes the
+normal Headshot multiplier regardless of which of the three delivery paths fired
+the shot. Their behaviour on ordinary body colliders is unchanged: still
+`CharacterHitZone.None`, still no headshot. `DamageableExtensions.TakeDamage`
+gained an optional trailing `hitZone` parameter for this; it defaults to `None`,
+so every existing caller is unaffected.
 
 An area projectile may require a mapped hurtbox to register its direct impact
 on a configured target, but every target damaged by the resulting area query
@@ -52,6 +62,13 @@ For a direct weapon-projectile hit:
 
 This makes Head damage multiplicative with the existing finalized projectile
 damage while preserving chain protection.
+
+When the hit lands on a live Special Shoot Point, the **same** resolved result
+also reduces that point's HP. The enemy's `TakeDamage` is still called exactly
+once and no second normal damage event is published, so the player sees one
+damage number; the point's own feedback is its ring/crack fill and hit flash. See
+`Docs/SYSTEMS/SPECIAL_SHOOT_POINTS.md` → *One damage result, never two enemy
+hits*.
 
 ## Collider Resolution
 
@@ -77,6 +94,25 @@ projectile accepts only mapped colliders. Unmapped actor colliders are ignored
 before impact VFX, module hit notification, or despawn, so the projectile passes
 through them. A limb collider may be mapped to `Torso` when it should receive
 normal body damage without introducing a separate limb multiplier.
+
+### Special Shoot Point colliders
+
+A live Special Shoot Point collider is deliberately **absent** from
+`CharacterColliderRefs.hitZones`. That list is exact-collider matched and is what
+keeps ordinary hit-zone validation honest; adding and removing pooled colliders
+from it across round reuse would weaken it. `SpecialShootPointRegistry` is a
+separate collider-to-point lookup instead, so the point carries the zone its
+selected anchor authored without touching the authored mappings.
+
+Registration is scoped to the window in which the collider is actually live:
+`SpecialShootPointInstance` registers on collider enable and unregisters on
+disable, on pool return, on `OnDisable`, and on `OnDestroy`. A destroyed
+component behind a surviving entry is pruned on lookup rather than returned, so a
+stale entry can never absorb a shot.
+
+`Projectile.TryResolveHitZoneImpact` consults the registry **before** the
+`useHitZones` early-out, so a point resolves its zone even for a projectile that
+opted out of hit zones entirely.
 
 Backward-compatible fallback:
 

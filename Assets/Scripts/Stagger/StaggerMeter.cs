@@ -50,6 +50,18 @@ public sealed class StaggerMeter : MonoBehaviour
 
     Slider staggerBarSlider;
     float timeSinceLastGain;
+
+    // ----- Special Shoot Point transaction -----
+    // A direct player hit that lands on a Special Shoot Point has to resolve as one atomic result:
+    // HP damage, that hit's ordinary stagger, the point damage, and — if the hit destroyed the last
+    // point — the Special Point reward, before anything is allowed to look at whether the meter is
+    // full. Without the deferral the outcome would depend on whether EnemyHealth, the projectile, or
+    // the point callback happened to run first.
+    int directHitDeferralDepth;
+    bool hasDeferredChainReady;
+    GameObject deferredChainReadySource;
+    bool pendingSpecialPointBreak;
+    bool specialPointReactionHold;
     bool agentOverrideActive;
     bool resumeAgentStopped;
     bool resumeAgentUpdatePosition;
@@ -109,6 +121,13 @@ public sealed class StaggerMeter : MonoBehaviour
     void Update()
     {
         float dt = Time.deltaTime;
+
+        // Re-asserted every frame for the same reason stagger and ChainReady do it: another system
+        // can hand the agent back underneath us, and the Special Point reaction owns the actor for
+        // its whole playback plus the ChainReady it may hand off to.
+        if (specialPointReactionHold)
+            SuspendAgent();
+
         TickImmunity(dt);
         TickChainReady(dt);
         TickStagger(dt);
@@ -137,9 +156,25 @@ public sealed class StaggerMeter : MonoBehaviour
         NotifyMeterChanged();
 
         if (currentStagger >= ResolveMaxStagger() && !isChainReady)
-            EnterChainReady(source);
+            RequestChainReady(source);
 
         return true;
+    }
+
+    /// <summary>
+    /// Routes a full meter either straight into ChainReady or into the open direct-hit transaction.
+    /// Every path that fills the meter goes through here so the deferral cannot be bypassed.
+    /// </summary>
+    void RequestChainReady(GameObject source)
+    {
+        if (directHitDeferralDepth > 0 || pendingSpecialPointBreak)
+        {
+            hasDeferredChainReady = true;
+            deferredChainReadySource = source;
+            return;
+        }
+
+        EnterChainReady(source);
     }
 
     internal void ResetRuntimeState()
@@ -218,6 +253,11 @@ public sealed class StaggerMeter : MonoBehaviour
         if (isChainReady)
             return false;
 
+        // The meter is pinned at max for a completed Special Point round. Further gain is rejected
+        // until the Mini Stun hands off to ChainReady.
+        if (pendingSpecialPointBreak)
+            return false;
+
         return !isStaggered || !ignoreStaggerGainWhileStaggered;
     }
 
@@ -260,6 +300,14 @@ public sealed class StaggerMeter : MonoBehaviour
     {
         CancelChainReady();
 
+        // A teardown must not leave the meter deferred or pinned: the Special Point controller may
+        // never get its completion callback once the actor is gone.
+        directHitDeferralDepth = 0;
+        pendingSpecialPointBreak = false;
+        hasDeferredChainReady = false;
+        deferredChainReadySource = null;
+        specialPointReactionHold = false;
+
         bool wasStaggered = isStaggered;
         isStaggered = false;
         staggerTimeRemaining = 0f;
@@ -294,7 +342,7 @@ public sealed class StaggerMeter : MonoBehaviour
 
     void TickDecay(float dt)
     {
-        if (isStaggered || isChainReady || currentStagger <= 0f || dt <= 0f)
+        if (isStaggered || isChainReady || pendingSpecialPointBreak || currentStagger <= 0f || dt <= 0f)
             return;
 
         timeSinceLastGain += dt;
@@ -509,6 +557,172 @@ public sealed class StaggerMeter : MonoBehaviour
         ClearControlState();
         RestoreAgent();
         ChainReadyEnded?.Invoke();
+    }
+
+    // ----- Special Shoot Point: deferred ChainReady transaction -----
+
+    /// <summary>True while the meter is pinned at max waiting for Special Point Mini Stun to finish.</summary>
+    public bool HasPendingSpecialPointBreak => pendingSpecialPointBreak;
+
+    /// <summary>True while a direct-hit transaction is open.</summary>
+    public bool IsDirectHitStaggerDeferred => directHitDeferralDepth > 0;
+
+    /// <summary>
+    /// True while the post-Stagger immunity window is open. Exposed so a system that would earn
+    /// stagger can decline to start rather than run and have its reward silently rejected.
+    /// </summary>
+    public bool IsInPostStaggerImmunity => immunityTimeRemaining > 0f;
+
+    /// <summary>
+    /// Opens a synchronous deferral around one direct hit. Must be called <em>before</em>
+    /// <see cref="EnemyHealth.TakeDamage"/> so the hit's own stagger cannot enter ChainReady before
+    /// the point damage and the Special Point reward have been applied.
+    ///
+    /// Always pair with <see cref="EndDirectHitStaggerDeferral"/> in a <c>finally</c> (or use
+    /// <see cref="SpecialShootPointHitScope"/>, which does it for you): an exception or early return
+    /// must never leave the meter permanently deferred.
+    /// </summary>
+    public void BeginDirectHitStaggerDeferral()
+    {
+        directHitDeferralDepth++;
+    }
+
+    /// <summary>
+    /// Closes the deferral opened by <see cref="BeginDirectHitStaggerDeferral"/> and commits.
+    ///
+    /// If the meter filled while deferred, this is where ChainReady finally happens — unless the
+    /// round completed, in which case <see cref="BeginPendingSpecialPointBreak"/> has pinned the
+    /// meter and ChainReady waits for the Mini Stun to finish instead.
+    /// </summary>
+    public void EndDirectHitStaggerDeferral()
+    {
+        if (directHitDeferralDepth <= 0)
+            return;
+
+        directHitDeferralDepth--;
+
+        if (directHitDeferralDepth > 0)
+            return;
+
+        if (!hasDeferredChainReady || pendingSpecialPointBreak || isChainReady)
+            return;
+
+        GameObject source = deferredChainReadySource;
+        hasDeferredChainReady = false;
+        deferredChainReadySource = null;
+        EnterChainReady(source);
+    }
+
+    /// <summary>
+    /// Adds the Special Point round reward. Deliberately routed through the ordinary
+    /// <see cref="CanGainStagger"/> gate: the reward does not bypass post-Stagger immunity, an
+    /// existing ChainReady, or death.
+    /// </summary>
+    /// <returns>True when the meter accepted the reward.</returns>
+    public bool ApplySpecialPointReward(float amount, GameObject source = null)
+    {
+        return ApplyStagger(amount, source);
+    }
+
+    /// <summary>
+    /// Pins a full meter for the Special Point break. Decay and further gain stop, and ChainReady is
+    /// held back until <see cref="ReleaseSpecialPointBreakAndEnterChainReady"/> runs on the Mini
+    /// Stun completion callback.
+    /// </summary>
+    /// <returns>False when the meter is not actually full, so the caller plays Mini Stun only.</returns>
+    public bool BeginPendingSpecialPointBreak(GameObject source = null)
+    {
+        if (pendingSpecialPointBreak)
+            return true;
+
+        if (isChainReady || isStaggered)
+            return false;
+
+        if (currentStagger < ResolveMaxStagger())
+            return false;
+
+        pendingSpecialPointBreak = true;
+        hasDeferredChainReady = true;
+        deferredChainReadySource = source ?? deferredChainReadySource;
+        return true;
+    }
+
+    /// <summary>
+    /// Hands ownership of the actor's Behavior Tree and NavMesh suspension to the Special Point
+    /// reaction. One owner for those flags is the point: the reaction and the ChainReady that may
+    /// follow it must never see a frame in which the AI resumes between them.
+    /// </summary>
+    public void BeginSpecialPointReactionHold()
+    {
+        specialPointReactionHold = true;
+        SuspendAgent();
+    }
+
+    /// <summary>
+    /// Ends the reaction hold. When the meter is pinned this enters ChainReady in the same call
+    /// stack — the suspension is never released and re-acquired, so no frame of AI movement can slip
+    /// between Mini Stun and ChainReady.
+    /// </summary>
+    /// <returns>True when the actor entered ChainReady.</returns>
+    public bool EndSpecialPointReactionHold()
+    {
+        specialPointReactionHold = false;
+
+        if (ReleaseSpecialPointBreakAndEnterChainReady())
+            return true;
+
+        RestoreAgent();
+        return false;
+    }
+
+    /// <summary>
+    /// Releases the pinned meter and enters ChainReady. Safe to call when nothing is pinned.
+    /// </summary>
+    /// <returns>True when this call entered ChainReady.</returns>
+    public bool ReleaseSpecialPointBreakAndEnterChainReady()
+    {
+        if (!pendingSpecialPointBreak)
+            return false;
+
+        pendingSpecialPointBreak = false;
+
+        if (isChainReady || isStaggered)
+        {
+            hasDeferredChainReady = false;
+            deferredChainReadySource = null;
+            return false;
+        }
+
+        if (healthSystem != null && !healthSystem.IsAlive)
+        {
+            hasDeferredChainReady = false;
+            deferredChainReadySource = null;
+            return false;
+        }
+
+        GameObject source = deferredChainReadySource;
+        hasDeferredChainReady = false;
+        deferredChainReadySource = null;
+
+        EnterChainReady(source);
+        return true;
+    }
+
+    /// <summary>
+    /// Drops a pending break without entering ChainReady, for death, down, a cinematic, or a disable.
+    /// Restores the reaction hold's suspension only if this component still owns it.
+    /// </summary>
+    public void CancelPendingSpecialPointBreak()
+    {
+        bool hadHold = specialPointReactionHold;
+
+        pendingSpecialPointBreak = false;
+        hasDeferredChainReady = false;
+        deferredChainReadySource = null;
+        specialPointReactionHold = false;
+
+        if (hadHold && !isStaggered && !isChainReady)
+            RestoreAgent();
     }
 
     float ResolveMaxStagger() => Mathf.Max(1f, profile != null ? profile.maxStagger : maxStagger);

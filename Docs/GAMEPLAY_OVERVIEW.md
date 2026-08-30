@@ -385,6 +385,44 @@ Each character's stagger behavior is configured through a **StaggerProfileSO** a
 
 ---
 
+## Special Shoot Points
+
+Some enemies can open a timed set of glowing **weak points** on their body. It is
+an opt-in, per-enemy challenge: an enemy's AI decides when to expose them, and
+enemies that do not author them never show any.
+
+- The points appear for a short **telegraph** (~0.6 s). They are visible but not
+  yet shootable, and shots during this window hit the enemy's body normally.
+- Then the challenge opens for about **4 seconds**, tracked by a single shared
+  HUD countdown. Every point shows its remaining HP as a ring, and all surviving
+  points flash faster in the final second.
+- Only **direct player ranged fire** counts — normal weapons and player Active
+  Skill projectiles. Explosions and other area damage, melee, ally and helper
+  attacks, and damage-over-time do nothing to a point. Crits, armor, and
+  headshots all still apply, and a point on the head takes the normal Headshot
+  multiplier. A shot that hits a point damages the enemy exactly once: one damage
+  number, and the point's ring drops by the same amount.
+- There is **no aim assist and no bullet magnetism**. A point that is behind the
+  enemy or facing away is a legitimate result and the player is expected to move;
+  only a point that is completely off-screen gets a small directional marker.
+
+**Destroy every point before the timer runs out** and the enemy is thrown into a
+**Special Point Mini Stun** — a full root-motion reaction — and takes a large
+chunk of stagger (initial tuning: 25 % of its Stagger Meter). If that reward
+fills the meter, the enemy flows into the ordinary **ChainReady** window as soon
+as the Mini Stun animation finishes, so a completed challenge can set up a Chain
+Attack.
+
+**Miss the timer** and nothing happens: the points simply extinguish with a
+different, clearly duller effect. There is no extra punishment, and no partial
+progress carries over — the next activation starts every point at full HP.
+
+The challenge yields to bigger events. It cannot interrupt a Chain Attack already
+in progress or a cutscene, and if the enemy dies, is downed, or is knocked into
+ChainReady by unrelated damage before the player finishes, the round is simply
+cancelled with no reward. After any resolution the enemy goes on cooldown
+(default 8 s) before it can open another one.
+
 ## Passive System
 
 Passives are always-active or conditionally-triggered modifiers equipped by characters.

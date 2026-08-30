@@ -182,6 +182,10 @@ PrefabInstance:
       propertyPath: EnemyLevelSystem
       value: 
       objectReference: {fileID: 5026471805205207567}
+    - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: SpecialShootPoints
+      value: 
+      objectReference: {fileID: 6843729684033992001}
     - target: {fileID: 6926906578778700563, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: logTransitions
       value: 0
@@ -204,6 +208,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 7649753103391906527, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5026471805205207567}
+    - targetCorrespondingSourceObject: {fileID: 7649753103391906527, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6843729684033992001}
     - targetCorrespondingSourceObject: {fileID: 4066815104232824939, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8384948826240427337}
@@ -231,6 +238,34 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   level: 1
+--- !u!114 &6843729684033992001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2674987616401726930}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 80941230a8174af4194ef7a4a6fb734b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  profile: {fileID: 11400000, guid: b4ca8893df0556a4b82aadc4653a6f3e, type: 2}
+  anchorSet: {fileID: 0}
+  anchors: []
+  ctx: {fileID: 8270595424514709929}
+  poolRoot: {fileID: 0}
+--- !u!114 &8270595424514709929 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+  m_PrefabInstance: {fileID: 5707774843507459853}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2674987616401726930}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1df90f5d9330d940824f7369eec314f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &8594605527643842406 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 4066815104232824939, guid: 6e3801d708972a846aa41395176971c7, type: 3}

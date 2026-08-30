@@ -15,6 +15,13 @@ public enum CharacterAnimationMode
     HardStatus = 11,
     StageIntro = 12,
     Dead = 13,
+
+    /// <summary>
+    /// A dedicated one-shot reaction that outranks every ordinary combat reaction — currently the
+    /// Special Point Mini Stun. Kept separate from <see cref="HardStatus"/> because it is
+    /// clip-driven with a terminal callback and full root motion, which status locomotion is not.
+    /// </summary>
+    SpecialReaction = 14,
 }
 
 /// <summary>
@@ -37,6 +44,12 @@ public enum CharacterAnimationTransitionReason
 
     /// <summary>A scripted sequence owns the character, such as the MapRun stage intro.</summary>
     CinematicOverride = 4,
+
+    /// <summary>
+    /// A dedicated one-shot reaction is claiming the character — the Special Point Mini Stun.
+    /// Ranks above ordinary gameplay and status, below life state, cinematics, and an active chain.
+    /// </summary>
+    SpecialReactionOverride = 5,
 }
 
 /// <summary>One admission question for <see cref="CharacterAnimationTransitionPolicy"/>.</summary>

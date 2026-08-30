@@ -535,13 +535,25 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
                 float finalDamage = CalcFinalDamage(target);
                 SpawnHitVfx(transform.position, -transform.forward);
                 PlayHitCue(transform.position);
-                ApplyResolvedDamage(
+
+                // One resolved damage result feeds both the enemy and the point. The scope opens the
+                // meter's deferral before TakeDamage runs and closes it on the way out, so a
+                // final-point shot cannot enter ChainReady between the HP damage and the reward.
+                using (SpecialShootPointHitScope pointScope = SpecialShootPointHitScope.Begin(
+                    other,
                     target,
-                    finalDamage,
-                    hit,
-                    BuildConfiguredKnockback(hit, useRadialDirection: false),
-                    showDamageNumber: true,
-                    hitZone: hitZone);
+                    ResolveSpecialShootPointCredit()))
+                {
+                    DamageResult damageResult = ApplyResolvedDamage(
+                        target,
+                        finalDamage,
+                        hit,
+                        BuildConfiguredKnockback(hit, useRadialDirection: false),
+                        showDamageNumber: true,
+                        hitZone: hitZone);
+
+                    pointScope.ApplyPointDamage(damageResult);
+                }
             }
         }
         else if (hitWall)
@@ -572,6 +584,15 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         out CharacterHitZone hitZone)
     {
         hitZone = CharacterHitZone.None;
+
+        // A live Special Shoot Point collider is deliberately absent from the actor's authored
+        // hit-zone list — that list is exact-collider matched and is what keeps ordinary hit-zone
+        // validation honest. The point carries the zone its selected anchor authored instead.
+        if (SpecialShootPointRegistry.TryResolve(hitCollider, out SpecialShootPointInstance specialPoint))
+        {
+            hitZone = specialPoint.HitZone;
+            return true;
+        }
 
         if (!_ctx.useHitZones || target == null)
             return true;
@@ -1331,7 +1352,12 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
             CharacterHitZone.None);
     }
 
-    void ApplyResolvedDamage(
+    /// <summary>
+    /// Applies one resolved hit and hands the caller the <see cref="DamageResult"/> it already
+    /// produced internally. The direct-hit path needs the actual applied damage so a Special Shoot
+    /// Point can be reduced by the same number the enemy took, without a second TakeDamage.
+    /// </summary>
+    DamageResult ApplyResolvedDamage(
         IDamageable target,
         float finalDamage,
         in ProjectileHitInfo hit,
@@ -1340,16 +1366,16 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         CharacterHitZone hitZone)
     {
         if (target == null || finalDamage <= 0f)
-            return;
+            return default;
 
         bool wasAliveBeforeDamage = target.IsAlive;
         if (!wasAliveBeforeDamage)
-            return;
+            return default;
 
         var attackerGO = ResolveSourceObject();
         DamageResult result = ApplyDamageToTarget(target, finalDamage, attackerGO, knockback, hitZone);
         if (!result.Applied)
-            return;
+            return result;
 
         if (showDamageNumber)
             SpawnDamageNumber(hit.ResolvePoint(transform.position), result.AppliedDamage, target);
@@ -1371,6 +1397,17 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
                 _ctx.depth);
             _ctx.affixImpactPayload = default;
         }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Who this shot is credited to for Special Shoot Point eligibility. Only the player may damage
+    /// a point, and credit — not the physical projectile owner — is what decides that.
+    /// </summary>
+    GameObject ResolveSpecialShootPointCredit()
+    {
+        return _attribution.CreditedActor != null ? _attribution.CreditedActor : ResolveSourceObject();
     }
 
     PassiveEventContext CreateOwnerEventContext(

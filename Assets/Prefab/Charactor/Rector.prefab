@@ -868,6 +868,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 923ac931b03d81b4aae7d5a66ec1d199, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8606278450057036864}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 923ac931b03d81b4aae7d5a66ec1d199, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4481820582419936725}
     - targetCorrespondingSourceObject: {fileID: -7224990625606753463, guid: 923ac931b03d81b4aae7d5a66ec1d199, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7120409763100226060}
@@ -977,6 +980,61 @@ MonoBehaviour:
     Collider: {fileID: 1969944864794155476}
   - HitZone: 1
     Collider: {fileID: 1063584593960134154}
+--- !u!114 &4481820582419936725
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2455486968630159720}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4e226efc1e0bd0438dab9cce126aa27, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  anchors:
+  - anchor: {fileID: 3094589510245632847}
+    enabled: 1
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    colliderRadius: 0.24699952
+    vfxScale: 1
+    hitZone: 2
+  - anchor: {fileID: 1372047220446849501}
+    enabled: 1
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    colliderRadius: 0.24699952
+    vfxScale: 1
+    hitZone: 1
+  - anchor: {fileID: 8613625420816653117}
+    enabled: 1
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    colliderRadius: 0.24699952
+    vfxScale: 1
+    hitZone: 1
+  - anchor: {fileID: 8106965827639800632}
+    enabled: 1
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    colliderRadius: 0.24699952
+    vfxScale: 1
+    hitZone: 1
+  - anchor: {fileID: 964397636436080278}
+    enabled: 1
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    colliderRadius: 0.24699952
+    vfxScale: 1
+    hitZone: 1
+  - anchor: {fileID: 2640244923070848764}
+    enabled: 1
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    colliderRadius: 0.24699952
+    vfxScale: 1
+    hitZone: 1
 --- !u!4 &2640244923070848764 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8469364937277666619, guid: 923ac931b03d81b4aae7d5a66ec1d199, type: 3}
@@ -1050,8 +1108,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -4495597852804112892, guid: 923ac931b03d81b4aae7d5a66ec1d199, type: 3}
   m_PrefabInstance: {fileID: 3373985237519307833}
   m_PrefabAsset: {fileID: 0}
+--- !u!4 &8106965827639800632 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -2426464085199329535, guid: 923ac931b03d81b4aae7d5a66ec1d199, type: 3}
+  m_PrefabInstance: {fileID: 3373985237519307833}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &8240901194478967242 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6669622466836614643, guid: 923ac931b03d81b4aae7d5a66ec1d199, type: 3}
+  m_PrefabInstance: {fileID: 3373985237519307833}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &8613625420816653117 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6438866658161135364, guid: 923ac931b03d81b4aae7d5a66ec1d199, type: 3}
   m_PrefabInstance: {fileID: 3373985237519307833}
   m_PrefabAsset: {fileID: 0}

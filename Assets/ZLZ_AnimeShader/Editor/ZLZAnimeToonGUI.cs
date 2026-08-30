@@ -1691,7 +1691,9 @@ namespace ZLZ.AnimeShader.Editor
                 if (prop == null) continue;
 
                 // HideInInspector check (Unity version compatible)
-#if UNITY_6000_0_OR_NEWER
+                // MaterialProperty.propertyFlags was added in 6000.1; 6000.0 still only has .flags,
+                // so the guard has to be 6000_1, not 6000_0.
+#if UNITY_6000_1_OR_NEWER
             if ((prop.propertyFlags & UnityEngine.Rendering.ShaderPropertyFlags.HideInInspector) != 0)
                 continue;
 #else

@@ -256,3 +256,79 @@ rebuilds the states, so a Morph mid-cast cannot leave a request stranded.
 
 The Driver emits one warning in Editor or Development builds when a facade
 command is called without a resolved Brain.
+
+## Special Point Reaction
+
+The Special Point Mini Stun is a dedicated one-shot playback
+(`CharacterAnimBrain.Locomotion_SpecialReaction`), not an extension of
+`Locomotion_StatusEffect`. Status locomotion is intent-driven: it holds a pose for
+as long as the intent says so, runs with `usesRootMotion: false`, and has no
+notion of a clip finishing. The reaction needs request identity, complete root
+motion, a terminal callback, and a watchdog, and widening the status state to
+cover both would have changed every generic Mini Stun in the game.
+
+Commands go through the Driver like every other playback:
+
+```text
+SpecialShootPointController
+    -> CharacterAnimDriver.TryPlaySpecialReaction(requestId, missingClipFallbackSeconds)
+    -> CharacterAnimBrain.TryPlaySpecialReaction
+    -> Locomotion_SpecialReaction
+    -> SpecialReactionCompleted(requestId) / SpecialReactionInterrupted(requestId, reason)
+```
+
+### Priority
+
+`CharacterAnimationMode.SpecialReaction` and
+`CharacterAnimationTransitionReason.SpecialReactionOverride` place the reaction in
+the table as:
+
+```text
+Death / Down > Cutscene > active Chain Attack > Special Point Mini Stun > every other reaction
+```
+
+The reaction starts over locomotion, crawl, dash, reload, melee, skill, utility,
+knockback, and both status modes. It is refused over `Dead`, `StageIntro`, a
+downed character, and — through `AllowsExternalCommand`, which does not admit
+`SpecialReactionOverride` — an active chain. Once it owns locomotion only
+`LifeStateOverride` and `CinematicOverride` may cut it short; `StatusOverride` and
+`ExternalControlLoss` deliberately may not, because the reaction *is* the stagger
+reaction. `SpecialPointReactionPrioritySmokeTests` asserts the whole table.
+
+`TryPlaySpecialReaction` returns `false` only for those refusals. A **missing clip
+is not a refusal**: the state holds the gameplay lock for the profile's
+`missingClipFallbackSeconds`, logs one warning, and then completes normally, so the
+ChainReady handoff still happens.
+
+### Root motion
+
+The reaction is the first playback to need full animation translation — Y
+included — *and* animation yaw. `RootMotionPolicy.WithShape` previously coupled
+yaw to `planarOnly`, so a four-argument overload now authors `planarOnly`,
+`applyYaw`, `ignoreCharacterCollision`, and `environmentSafe` independently. The
+two-argument overload is unchanged and still couples them, so no existing skill or
+chain playback moved.
+
+`RootMotionPolicy.EnvironmentSafe` is opt-in per playback. While it is set,
+`RootMotionNavMeshDriver` constrains each frame's delta with
+`CharacterBodySweepUtility` against the actor's authored
+`CharacterPositionCollider`, and recovers the actor to a nearby valid NavMesh
+position at the end of playback — `ResyncAgent` alone cannot, because it only
+syncs an agent that is *already* on the mesh. Sweeping every clip would have
+changed authored motion across the whole game, which is why the flag exists.
+
+The flag is latched on every *active* policy publish rather than read once at
+entry: the Brain publishes `Active` from `EnterExclusiveLocomotion` and the shape
+flags a moment later, so the first publish of a playback always still carries the
+previous shape.
+
+### Handoff to ChainReady
+
+`CompleteNow` leaves the state *before* the completion signal is raised. If the
+signal were raised from inside the state, the transition policy would still see
+`SpecialReaction` owning locomotion and refuse the ChainReady pose. Because the
+whole handoff runs in one call stack — completion → `EndSpecialPointReactionHold`
+→ `EnterChainReady` — no frame passes in which AI or NavMesh resumes between the
+two states. `StaggerMeter` is the single owner of that suspension across both.
+
+See `Docs/SYSTEMS/SPECIAL_SHOOT_POINTS.md` for the round and stagger contract.

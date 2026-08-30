@@ -87,6 +87,17 @@ public sealed partial class CharacterAnimBrain
     private void SetRootMotionShape(bool planarOnly, bool ignoreCharacterCollision) =>
         PublishRootMotionPolicy(_rootMotion.WithShape(planarOnly, ignoreCharacterCollision));
 
+    private void SetRootMotionShape(
+        bool planarOnly,
+        bool applyYaw,
+        bool ignoreCharacterCollision,
+        bool environmentSafe) =>
+        PublishRootMotionPolicy(_rootMotion.WithShape(
+            planarOnly,
+            applyYaw,
+            ignoreCharacterCollision,
+            environmentSafe));
+
     private void ClearRootMotionPolicy() =>
         PublishRootMotionPolicy(RootMotionPolicy.Inactive);
 

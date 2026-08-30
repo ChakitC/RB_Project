@@ -34,6 +34,204 @@ MonoBehaviour:
   UseScreenSpaceShadowPass: 0
   ScreenSpaceShadowColor: {r: 0, g: 0, b: 0, a: 0.3}
   _renderingLayerMask: -1
+--- !u!114 &-5957602611672466335
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7907eabbd8c16794f8e329746ad879d3, type: 3}
+  m_Name: ZLZ Selection Outline
+  m_EditorClassIdentifier: 
+  m_Active: 0
+  settings:
+    character:
+      outlineColor: {r: 0, g: 3.2931557, b: 8, a: 1}
+      outlineWidth: 5
+    enemy:
+      outlineColor: {r: 19.46857, g: 0, b: 0, a: 1}
+      outlineWidth: 5
+    item:
+      outlineColor: {r: 0, g: 8, b: 0.69755554, a: 1}
+      outlineWidth: 5
+    animation:
+      introDuration: 0.75
+      introWidthCurve:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 0
+          inSlope: 4.927862
+          outSlope: 4.927862
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 0.5
+          value: 2
+          inSlope: 0.3385504
+          outSlope: 0.3385504
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 1
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      introBrightnessCurve:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 0
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 1
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      loopPeriod: 1.5
+      loopWidthCurve:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 1
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 0.5
+          value: 0.25
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 1
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      loopBrightnessCurve:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 1
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 0.5
+          value: 0.75
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 1
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      outroDuration: 0.2
+      outroWidthCurve:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 1
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 0
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      outroBrightnessCurve:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 1
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 0
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
 --- !u!114 &-5937649586681630576
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -45,6 +243,33 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2b54cdbf82a94a968183752b77e5b673, type: 3}
   m_Name: ASPToneMappingFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  InjectionPoint: 600
+--- !u!114 &-5133086318156603540
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 94e33862f14147643a39d4cade600c98, type: 3}
+  m_Name: ZLZ Hull Outline
+  m_EditorClassIdentifier: 
+  m_Active: 1
+--- !u!114 &-3035972898035216726
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f102303c29ebff4dbfeaaec1f7ff632, type: 3}
+  m_Name: ZLZ_AnimeToneMappingFeature
   m_EditorClassIdentifier: 
   m_Active: 1
   InjectionPoint: 600
@@ -144,6 +369,11 @@ MonoBehaviour:
   - {fileID: -1508959099889046296}
   - {fileID: -805629644481558483}
   - {fileID: -464045259841773818}
+  - {fileID: -3035972898035216726}
+  - {fileID: -5133086318156603540}
+  - {fileID: 7286327832845230050}
+  - {fileID: 5327432696509856557}
+  - {fileID: -5957602611672466335}
   m_RendererFeatureMap: 9aa77b9d4d836871a04eb49a30794c62bcc84ae7a30ea3e5e82c8586b1190feb2d0827541bd4d1f4065f6d774b618ff9
   m_UseNativeRenderPass: 0
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
@@ -198,6 +428,36 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Active: 1
   InjectionPoint: 600
+--- !u!114 &5327432696509856557
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc77d9a615dab4046a4dc034886f821d, type: 3}
+  m_Name: ZLZ Screen Space Outline
+  m_EditorClassIdentifier: 
+  m_Active: 0
+  characterLayers:
+    serializedVersion: 2
+    m_Bits: 1
+  outlineColor: {r: 0, g: 0, b: 0, a: 1}
+  thickness: 0.5
+  intensity: 0.75
+  normalEdge: 1
+  normalSensitivity: 0.5
+  depthEdge: 1
+  depthSensitivity: 0.5
+  occlusionTest: 1
+  occlusionBias: 0.02
+  distanceFade: 1
+  fadeDistance: {x: 10, y: 30}
+  farIntensity: 0
+  debugView: 0
+  injectionPoint: 300
 --- !u!114 &7083169563607846560
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -211,6 +471,27 @@ MonoBehaviour:
   m_Name: ASPMaterialPassFeature
   m_EditorClassIdentifier: 
   m_Active: 1
+--- !u!114 &7286327832845230050
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31a1468f744cf744a8ac93412903e6dd, type: 3}
+  m_Name: ZLZ Character Contact Shadow
+  m_EditorClassIdentifier: 
+  m_Active: 0
+  casterLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  resolution: 1
+  offset: 0.0045
+  depthBias: 0.01
+  maxRange: 0.3
+  strength: 1
 --- !u!114 &8171925893241612186
 MonoBehaviour:
   m_ObjectHideFlags: 0

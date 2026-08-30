@@ -2475,3 +2475,128 @@ empty and waiting for that clip, so she currently stands in bind pose.
 
 **Boot.** `DialoguePresentationSceneLoader` sits on the `GameSetup` `System` object so the
 presentation scene is preloaded and re-loaded after every single-mode scene load.
+
+## Special Shoot Point Authoring
+
+Opt-in and enemy-only. An enemy participates when it carries a
+`SpecialShootPointController` with a profile and enough usable anchors; anything
+less makes the Behavior Tree trigger report `Failure` rather than run a degraded
+round. Prove the APIs first — do not start from a specific enemy prefab.
+
+### 1. Profile asset
+
+`Create → RB → Enemy → Special Shoot Point Profile` produces a
+`SpecialShootPointProfileSO`. Suggested home:
+`Assets/Data/Combat/SpecialShootPoint/`.
+
+| Field | Default | Notes |
+|---|---:|---|
+| `telegraphDuration` | `0.6` | Points visible, colliders disabled |
+| `activeDuration` | `4.0` | The shared HUD countdown |
+| `cooldown` | `8.0` | From challenge resolution, not from the end of the Mini Stun |
+| `lastSecondWarningThreshold` | `1.0` | Must not exceed `activeDuration` |
+| `defaultPointCount` / `maxPointCount` | `2` / `4` | A BT override is clamped to the maximum and the usable anchor count |
+| `pointHealthPercentOfMaxHp` | `3` | Percent of the enemy's current Max HP, shared by every point in a round |
+| `pointHealthMin` / `pointHealthMax` | tuning | Clamps on the resolved per-point HP |
+| `staggerRewardPercentOfMaxStagger` | `25` | Percent of the target's Max Stagger |
+| `missingClipFallbackSeconds` | `0.6` | Gameplay lock held when the Mini Stun clip is missing |
+| `runtimePointPrefab` | — | **Required.** Must carry `SpecialShootPointInstance` |
+| `pointColliderLayer` | `3` (`Hit`) | Applied to the pooled point and its collider |
+| `breakVfxPrefab` / `timeoutVfxPrefab` | — | Success and failure **must** read differently |
+| `resolveFadeSeconds` | `0.25` | Fade before the point returns to the pool |
+| `pointHitSfx` / `pointBreakSfx` | — | Optional |
+
+### 2. Runtime point prefab
+
+One small prefab, pooled and reused. Never instantiated per hit or per round.
+
+- Root carries `SpecialShootPointInstance`.
+- A **`SphereCollider`**, `isTrigger = true`. Its radius is overwritten per round
+  from the selected anchor, and the component enables and disables it as the round
+  phase changes — leave it disabled in the prefab.
+- A presentation root (assigned to `presentationRoot`) that is uniformly scaled by
+  the anchor's `vfxScale`.
+- A `Renderer` for the ring/crack (`ringRenderer`). The component drives
+  `_Fill` (remaining HP, 1→0), `_Flash` (hit and last-second warning), and
+  `_Alpha` (resolve fade) through a `MaterialPropertyBlock`. Property names are
+  serialized fields, so any shader that exposes equivalents works; a property the
+  shader does not have is simply ignored.
+- Nothing that renders through the enemy or the environment: there is no
+  through-model/X-ray point in this feature.
+
+### 3. Enemy prefab and anchors
+
+Add `SpecialShootPointController` to the object that owns `EnemyContext`, then:
+
+- assign `profile`,
+- leave `ctx` empty to auto-resolve, or bind the `EnemyContext` directly,
+- optionally assign `poolRoot` (defaults to the controller's own transform).
+
+**Anchors go on the visual model prefab, not on the controller.** Add a
+`SpecialShootPointAnchorSet` next to `CharacterColliderRefs` on the visual prefab
+and author the list there. Enemy models are rebuilt from that source at runtime
+(`CharacterVisualController.BindCurrentModelReferences`), so a bone Transform
+serialized on the context root points at the destroyed model instance after the
+first rebuild — exactly the reason `CharacterColliderRefs` lives on the model too.
+The controller resolves the set through its context and re-resolves it whenever
+the model is swapped; a round whose points are destroyed by a rebuild cancels
+itself rather than stranding an uncompletable challenge.
+
+The controller keeps a local `anchors` fallback list for actors whose model is
+never rebuilt, such as turrets. The authoring validator warns when it is used on
+anything else.
+
+Each anchor entry:
+
+| Field | Notes |
+|---|---|
+| `anchor` | The bone or transform the point rides. Required |
+| `enabled` | Uncheck to keep the entry but drop it from the shuffle bag |
+| `localPosition` / `localEulerAngles` | Offset from the bone |
+| `colliderRadius` | World radius of this point's hit collider |
+| `vfxScale` | Uniform scale for the point's presentation root |
+| `hitZone` | `Torso` or `Head`. A head anchor takes the normal Headshot multiplier |
+
+Author at least as many enabled anchors as `defaultPointCount`, and preferably
+several more — the shuffle bag only produces variety when there is a surplus.
+Do **not** place live point objects or colliders under candidate bones: anchors
+are data, and the pooled runtime points are reparented onto them at run time.
+
+`EnemyContext.SpecialShootPoints` resolves the controller automatically in
+`ResolveReferences()`. Leaving it `null` on every other enemy is the normal case
+and is not an error.
+
+### 4. Animation
+
+The reaction reuses the profile's existing **`CharacterAnimProfileSO.miniStune`**
+clip; there are no Light/Heavy variants in v1. The clip should carry real root
+motion — the reaction applies full animation translation *and* yaw. A missing or
+invalid clip is not fatal: the lock is held for `missingClipFallbackSeconds`, one
+warning is logged, and the round still completes and hands off to ChainReady.
+
+For enemies driven by `RootMotionNavMeshDriver`, check its **Environment-Safe Root
+Motion** block: `environmentCollisionMask` (geometry the reaction may not pass
+through), `environmentCollisionPadding`, and `navMeshRecoverySearchRadius`. These
+are consulted only while a playback asks for environment safety, so ordinary skill
+and chain clips are untouched. The actor must have an authored
+`CharacterColliderRefs.CharacterPositionCollider` for the sweep to have a body.
+
+### 5. HUD
+
+Two optional presenters, both bound through the controller's static round events
+so a single instance serves whichever enemy opens a round:
+
+- `SpecialShootPointHudView` — `root` (shown only during a round), `countdownFill`
+  (a **Filled** `Image`), optional `countdownLabel` and `pointsRemainingLabel`, and
+  the normal/warning fill colours.
+- `SpecialShootPointOffscreenIndicator` — `markerRoot` (a screen-space canvas
+  `RectTransform`), `markerPrefab`, optional `worldCamera` (falls back to
+  `Camera.main`), and `edgePadding`. Markers appear **only** for points outside the
+  camera frame; an in-frame occluded point deliberately gets none.
+
+### 6. Validate
+
+`Tools → RB → Validate Special Shoot Point Authoring` with the prefab or scene
+object selected reports a missing profile or point prefab, a point prefab with no
+`SphereCollider`, too few usable anchors for the configured count, duplicate
+anchor transforms, and inconsistent profile clamps.

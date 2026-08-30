@@ -250,6 +250,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2347339235356559315}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2253248425150063207}
   m_SourcePrefab: {fileID: 100100000, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}
 --- !u!4 &1165997776544115861 stripped
 Transform:
@@ -311,6 +314,69 @@ MonoBehaviour:
     Collider: {fileID: 8669717853367415943}
   - HitZone: 2
     Collider: {fileID: 7810157930316382069}
+--- !u!114 &2253248425150063207
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1974164745330030127}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4e226efc1e0bd0438dab9cce126aa27, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  anchors:
+  - anchor: {fileID: 1406302587881559048}
+    enabled: 1
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    colliderRadius: 0.27225077
+    vfxScale: 1
+    hitZone: 2
+  - anchor: {fileID: 3061460034114827930}
+    enabled: 1
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    colliderRadius: 0.27225077
+    vfxScale: 1
+    hitZone: 1
+  - anchor: {fileID: 5692478107928151162}
+    enabled: 1
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    colliderRadius: 0.27225077
+    vfxScale: 1
+    hitZone: 1
+  - anchor: {fileID: 5329933693744098431}
+    enabled: 1
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    colliderRadius: 0.27225077
+    vfxScale: 1
+    hitZone: 1
+  - anchor: {fileID: 7208811248480357734}
+    enabled: 1
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    colliderRadius: 0.27225077
+    vfxScale: 1
+    hitZone: 1
+--- !u!4 &3061460034114827930 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4456505482534452708, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}
+  m_PrefabInstance: {fileID: 1703712722122951550}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5329933693744098431 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -2426464085199329535, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}
+  m_PrefabInstance: {fileID: 1703712722122951550}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5692478107928151162 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6438866658161135364, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}
+  m_PrefabInstance: {fileID: 1703712722122951550}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &7208811248480357734 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8335628630423029272, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}

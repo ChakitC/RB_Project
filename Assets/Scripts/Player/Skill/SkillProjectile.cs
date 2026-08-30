@@ -157,7 +157,7 @@ public class SkillProjectile : MonoBehaviour, IBarrierBlockableProjectile
             var damageable = DamageableResolver.ResolveFrom(other);
             if (damageable != null)
             {
-                ApplyDamage(damageable);
+                ApplyDamage(damageable, other);
                 didHit = true;
             }
         }
@@ -172,7 +172,11 @@ public class SkillProjectile : MonoBehaviour, IBarrierBlockableProjectile
         }
     }
 
-    void ApplyDamage(IDamageable damageable)
+    /// <summary>
+    /// Applies one hit. <paramref name="hitCollider"/> is the direct collision that produced it, or
+    /// null for the area path — a Special Shoot Point is only ever reachable through a direct hit.
+    /// </summary>
+    void ApplyDamage(IDamageable damageable, Collider hitCollider)
     {
         GameObject attacker = caster is Component casterComponent ? casterComponent.gameObject : null;
         const string damageSourceId = "skill:legacy_projectile";
@@ -200,11 +204,23 @@ public class SkillProjectile : MonoBehaviour, IBarrierBlockableProjectile
             damage *= Mathf.Max(1f, stats.critMultiplier);
         }
 
-        damageable.TakeDamage(
-            damage,
-            attacker,
-            damageSourceId,
-            stagger: new StaggerPayload(stats.staggerPower, 1f, damageSourceId));
+        // A player Active Skill projectile that lands directly on a live Special Shoot Point runs
+        // through the same one-result contract as a weapon shot: one TakeDamage, whose applied
+        // damage is then fed to the point, with the anchor's hit zone honoured.
+        using (SpecialShootPointHitScope pointScope = SpecialShootPointHitScope.Begin(
+            hitCollider,
+            damageable,
+            attacker))
+        {
+            DamageResult result = damageable.TakeDamage(
+                damage,
+                attacker,
+                damageSourceId,
+                stagger: new StaggerPayload(stats.staggerPower, 1f, damageSourceId),
+                hitZone: pointScope.HitZone);
+
+            pointScope.ApplyPointDamage(result);
+        }
     }
 
     void DoAreaDamage()
@@ -219,7 +235,8 @@ public class SkillProjectile : MonoBehaviour, IBarrierBlockableProjectile
             var dmg = DamageableResolver.ResolveFrom(h);
             if (dmg == null) continue;
 
-            ApplyDamage(dmg);
+            // Null collider: area damage must never reach a Special Shoot Point.
+            ApplyDamage(dmg, null);
         }
     }
 

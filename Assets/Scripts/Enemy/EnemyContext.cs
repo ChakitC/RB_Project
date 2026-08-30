@@ -9,6 +9,9 @@ public class EnemyContext : CharacteContext
     public StaggerMeter StaggerMeter;
     public EnemyLevelSystem EnemyLevelSystem;
 
+    [Tooltip("Opt-in weak-point challenge. Null on every enemy that does not author Special Shoot Points.")]
+    public SpecialShootPointController SpecialShootPoints;
+
     [Header("NavMeshAgent")]
     public NavMeshAgent Agent;
 
@@ -72,6 +75,11 @@ public class EnemyContext : CharacteContext
 
         if (!StaggerMeter)
             StaggerMeter = ResolveActorComponent(StaggerMeter);
+
+        // Enemy-only and opt-in, so it lives here rather than on the shared CharacteContext base.
+        // Staying null is the normal case and is not an error.
+        if (!SpecialShootPoints)
+            SpecialShootPoints = ResolveActorComponent(SpecialShootPoints);
 
         if (!EnemyLevelSystem)
             EnemyLevelSystem = ResolveActorComponent(EnemyLevelSystem);

@@ -27,7 +27,8 @@ public static class DamageableExtensions
         string originPassiveId = null,
         string originRuleId = null,
         KnockbackData knockback = default,
-        StaggerPayload stagger = default)
+        StaggerPayload stagger = default,
+        CharacterHitZone hitZone = CharacterHitZone.None)
     {
         if (damageable == null)
             return default;
@@ -49,7 +50,8 @@ public static class DamageableExtensions
             originPassiveId,
             originRuleId,
             knockback,
-            stagger);
+            stagger,
+            hitZone);
 
         return damageable.TakeDamage(in damageContext);
     }

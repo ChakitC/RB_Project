@@ -670,3 +670,58 @@ references rather than creating a second one beside it.
 Run it before committing dialogue content. `CheckAssemblyBuild.ps1` covers the runtime dialogue
 scripts but, as always, **not** the editor tooling — the two `Tools/Dialogue/…` menu items have to be
 run in Unity to verify.
+
+## Special Shoot Point validation
+
+### Automated (Edit Mode)
+
+Three fixtures under `Assets/Scripts/Editor/SpecialShootPoint/`:
+
+| Suite | Covers |
+|---|---|
+| `SpecialShootPointSmokeTests` | Shuffle-bag rotation (every enabled anchor consumed before any repeat, no duplicates in one round, clean failure when anchors are insufficient, ineligible anchors never drawn), profile count/HP/reward clamping, registry register/unregister and stale-entry pruning, anchor usability |
+| `SpecialPointReactionPrioritySmokeTests` | The animation priority table — `Death/Down > Cutscene > Chain > Special Point Mini Stun > every other reaction` — plus the independent yaw/vertical/environment-safe root-motion shape and proof the legacy two-argument `WithShape` did not move |
+| `SpecialPointStaggerTransactionSmokeTests` | The deferred-ChainReady transaction: undeferred stagger unchanged, ChainReady held while a transaction is open, nested deferrals, reward below max → Mini Stun only, reward or regular stagger filling the meter → Mini Stun then ChainReady, pinned meter rejecting gain, cancellation, idempotent release |
+
+These live in `Assembly-CSharp-Editor`, so PlayMode-assembly tests of the
+gameplay types are not possible. Run them from the Unity Test Runner.
+
+### Authoring validator
+
+`Tools → RB → Validate Special Shoot Point Authoring` checks the selected
+prefabs/scene objects for a missing profile or runtime point prefab, a point
+prefab with no `SphereCollider`, fewer usable anchors than the configured default
+count, duplicate anchor transforms, non-positive collider radii, and inconsistent
+profile clamps.
+
+### Play Mode matrix
+
+Not reachable from Edit Mode; run these in Unity:
+
+- The enemy keeps fighting during Telegraph and Active, and points follow animated
+  bones.
+- Root, generic Mini Stun, Freeze, Full Stun, skill, melee, reload, and dash are
+  all replaced by a successful Special Point Mini Stun. An active Chain Attack is
+  **not**.
+- The Mini Stun cancels an enemy action that had not reached its release point,
+  but already spawned projectiles stay alive.
+- AI, Behavior Tree, and NavMesh stay suspended through the Mini Stun and the
+  optional ChainReady handoff with no one-frame movement or animation blip.
+- Full animation root motion and rotation are visible.
+- The reaction cannot pass through a wall, and the end position is recovered to a
+  nearby NavMesh point only when it needs to be.
+- World Slow stretches Telegraph, Active, cooldown, and the missing-clip fallback
+  consistently with gameplay and animation time.
+- An in-frame occluded point receives no helper; an off-screen point receives a
+  directional marker.
+- Success, timeout, and cancellation each have distinct, correct
+  presentation and cleanup.
+- Repeated rounds reuse pooled objects with no leaked colliders, subscriptions, or
+  stale HP.
+- Representative layouts with the enemy context and modules on the actor root and
+  nested below it both behave.
+- Damage routing: direct player weapon and Active Skill hits are accepted; melee,
+  AoE, status, ally, helper, and chain damage are rejected. One projectile
+  produces one point hit and one enemy-health result per enemy. A head anchor
+  takes the Headshot path. Death on the final-point shot produces no Special
+  reaction and no ChainReady.

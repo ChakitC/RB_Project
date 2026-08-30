@@ -266,6 +266,22 @@ public sealed class CharacterAnimDriver : MonoBehaviour
         brain.SetStatusLocomotionIntent(intent);
     }
 
+    /// <summary>
+    /// Starts the one-shot Special Point reaction. Like every other playback command, this goes
+    /// through the Driver: gameplay never talks to the Brain directly.
+    /// </summary>
+    public bool TryPlaySpecialReaction(int requestId, float missingClipFallbackSeconds)
+    {
+        return CanIssueCommand(nameof(TryPlaySpecialReaction)) &&
+               brain.TryPlaySpecialReaction(requestId, missingClipFallbackSeconds);
+    }
+
+    public void CancelSpecialReaction(int requestId)
+    {
+        if (CanIssueCommand(nameof(CancelSpecialReaction)))
+            brain.CancelSpecialReaction(requestId);
+    }
+
     public bool TryPlayStageIntro()
     {
         return CanIssueCommand(nameof(TryPlayStageIntro)) && brain.TryPlayStageIntro();

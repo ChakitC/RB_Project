@@ -45,6 +45,28 @@ public static class CharacterAnimationTransitionPolicy
         if (!AllowsExternalCommand(request.Current, request.Reason))
             return false;
 
+        // 2b. Special reaction ownership. The Special Point Mini Stun outranks every other combat
+        //     reaction, so only life state and a cinematic may cut it short. It is deliberately
+        //     below an active chain — that case is already refused by rule 2, because
+        //     SpecialReactionOverride is not an authority AllowsExternalCommand admits.
+        if (request.Current == CharacterAnimationMode.SpecialReaction &&
+            request.Requested != CharacterAnimationMode.SpecialReaction)
+        {
+            if (request.Reason != CharacterAnimationTransitionReason.LifeStateOverride &&
+                request.Reason != CharacterAnimationTransitionReason.CinematicOverride)
+            {
+                return false;
+            }
+        }
+
+        // 2c. Starting a special reaction. A cinematic already owning the character wins, and a
+        //     downed actor has no standing reaction to play.
+        if (request.Requested == CharacterAnimationMode.SpecialReaction)
+        {
+            if (request.Current == CharacterAnimationMode.StageIntro || request.IsDowned)
+                return false;
+        }
+
         // 3. One chain at a time.
         if (request.Requested == CharacterAnimationMode.Chain && request.Current == CharacterAnimationMode.Chain)
             return false;

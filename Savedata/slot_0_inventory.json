@@ -1,7 +1,7 @@
 {
     "maxSlotCount": 0,
-    "gold": 960193,
-    "scrap": 2677,
+    "gold": 961198,
+    "scrap": 2696,
     "slots": [
         {
             "itemId": "SMG_GR01",
@@ -649,7 +649,7 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 45,
+                "currentMagazine": 44,
                 "currentReserveAmmo": 431,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 30,
@@ -1243,7 +1243,7 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 100,
+                "currentMagazine": 99,
                 "currentReserveAmmo": 250,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,

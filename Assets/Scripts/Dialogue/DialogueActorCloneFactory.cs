@@ -49,6 +49,7 @@ public static class DialogueActorCloneFactory
         // collider, interactable link and trigger. The whitelist strip below removes all of it, the
         // same way it removes a party member's gameplay stack.
         StripGameplayComponents(clone);
+        RebindHeadDirectionToClone(clone);
         ApplyDialogueLayers(clone);
 
         Animator animator = clone.GetComponentInChildren<Animator>(true);
@@ -182,32 +183,80 @@ public static class DialogueActorCloneFactory
             || component is MeshRenderer
             || component is MeshFilter
 
-            // ASP's character panel is presentation, not gameplay: every frame it feeds the toon
-            // shader the values it cannot derive on its own — face direction taken from the head
-            // bone, and the character's world centre, which drives the character-shadow AABB.
+            // ZLZ's per-character shader writers are presentation, not gameplay: they feed the toon
+            // shader the values it cannot derive on its own — the head-bone direction that drives
+            // face shading, and the per-character anchor and FX alphas.
             //
-            // Stripping it does not reset those values, it freezes them: the clone's materials keep
-            // whatever the live character last wrote, which is a position out in the gameplay world
+            // Stripping them does not reset those values, it freezes them: the clone's materials
+            // keep whatever the live character last wrote, which is a pose out in the gameplay world
             // thousands of units from the stage, so the shading is computed for somewhere the actor
-            // is not. Measured on a live conversation, the Roma clone stood at (0, -5000, 0) while
-            // its materials still read _CharacterCenterWS = (-0.5, 0.1, -1.6).
+            // is not.
             //
-            // Keeping it is safe on both sides. Update() is driven by the engine frame, not by
-            // timeScale, so it keeps working while the world is frozen at 0; and its Start() calls
-            // SetupMaterialID, which goes through `renderer.materials` and therefore gives the clone
-            // its own material instances — it cannot write back into the live character.
-            || component is ASP.ASPCharacterPanel;
+            // Keeping them is safe on both sides. Both drive from LateUpdate on the engine frame,
+            // not timeScale, so they keep working while the world is frozen at 0; and both resolve
+            // their materials through `renderer.materials`, so the clone gets its own material
+            // instances — neither can write back into the live character.
+            || component is ZLZ.AnimeShader.ZLZ_CharacterVFX
+            || component is ZLZ.AnimeShader.ZLZ_HeadDirectionBinder;
+    }
+
+    /// <summary>
+    /// Makes sure the clone's head-direction binder points at the clone's own head bone.
+    ///
+    /// Instantiate remaps references that resolve inside the copied hierarchy, so a binder authored
+    /// on the model normally arrives already pointing at the clone's bone. A binder whose head bone
+    /// was assigned from outside the model root is not remapped, and would keep driving the clone's
+    /// face shading from the live character's head — which reads as a portrait whose face lighting
+    /// turns with the character out in the level.
+    /// </summary>
+    static void RebindHeadDirectionToClone(GameObject clone)
+    {
+        var binders = clone.GetComponentsInChildren<ZLZ.AnimeShader.ZLZ_HeadDirectionBinder>(true);
+        for (int i = 0; i < binders.Length; i++)
+        {
+            ZLZ.AnimeShader.ZLZ_HeadDirectionBinder binder = binders[i];
+            if (binder == null || binder.headBone == null)
+                continue;
+
+            if (binder.headBone.IsChildOf(clone.transform))
+                continue;
+
+            string boneName = binder.headBone.name;
+            Transform localBone = FindByName(clone.transform, boneName);
+            if (localBone != null)
+            {
+                binder.headBone = localBone;
+                continue;
+            }
+
+            // Better a clone with no head-direction data — the shader falls back to its defaults —
+            // than one whose face shading tracks the live character out in the level.
+            binder.headBone = null;
+            Debug.LogWarning(
+                $"[Dialogue] Clone '{clone.name}' has no bone named '{boneName}' to rebind its head direction to; face shading falls back to defaults.",
+                clone);
+        }
+    }
+
+    static Transform FindByName(Transform root, string boneName)
+    {
+        var transforms = root.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < transforms.Length; i++)
+            if (transforms[i] != null && transforms[i].name == boneName)
+                return transforms[i];
+
+        return null;
     }
 
     /// <summary>
     /// Moves the clone onto the dialogue rendering channels.
     ///
-    /// The Unity layer is 0 — the same layer as everything else — because ASP's layer-filtered
-    /// renderer features only draw layer 0, and a clone on a layer of its own renders without the
-    /// mesh outline and depth-offset shadow the character has in gameplay. Keeping the clone out of
-    /// the gameplay view is left to the distance the stage sits at. The rendering layer mask is what
-    /// does the real separation: it claims the dialogue light channel and ASP's feature channels,
-    /// and pointedly not the channel the world's sun uses. See <see cref="DialogueLayers"/>.
+    /// The Unity layer is 0 — the same layer as everything else — because ZLZ's character render
+    /// features filter by Unity layer, and a clone on a layer of its own renders without the contact
+    /// shadow and screen-space outline the character has in gameplay. Keeping the clone out of the
+    /// gameplay view is left to the distance the stage sits at. The rendering layer mask is what
+    /// does the real separation: it claims the dialogue light channel and pointedly not the channel
+    /// the world's sun uses. See <see cref="DialogueLayers"/>.
     /// </summary>
     static void ApplyDialogueLayers(GameObject clone)
     {

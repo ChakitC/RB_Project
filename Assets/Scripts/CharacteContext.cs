@@ -29,6 +29,7 @@ public abstract class CharacteContext : MonoBehaviour
     [Header("Visual")] 
     public CharacterContextPartyLoader CharacterLoad;
     public CharacterVisualController Visual;
+    public CharacterVisibilityController Visibility;
     public UIManager UIManager;
     public CharacterColliderRefs ColliderRefs;
     
@@ -136,6 +137,7 @@ public abstract class CharacteContext : MonoBehaviour
 
         CharacterLoad = ResolveActorComponent(CharacterLoad);
         Visual = ResolveActorComponent(Visual);
+        Visibility = ResolveActorComponent(Visibility);
         UIManager = ResolveActorComponent(UIManager);
         ColliderRefs = ResolveActorComponent(ColliderRefs);
 

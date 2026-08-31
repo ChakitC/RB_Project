@@ -27,7 +27,8 @@ types, including:
   `WeaponSystem`, `CharacterAnimBrain`, `CharacterAnimDriver`,
   `CharacterPairOffsetApplier`, `MeleeController`
 - visual and collider support: `CharacterContextPartyLoader`,
-  `CharacterVisualController`, `UIManager`, `CharacterColliderRefs`
+  `CharacterVisualController`, `CharacterVisibilityController` (`Visibility`),
+  `UIManager`, `CharacterColliderRefs`
 - gameplay modules: `StatusEffectController` (`StatusEffects`),
   `LevelSystem`, `HealthSystem`, `StaminaSystem`,
   `DashSystem`, `CharacterKnockbackMotor`, `CharacterVerticalMotor`,
@@ -56,6 +57,32 @@ write `if (ctx.cc == null) return;` in code that also runs on enemies. Where a
 body shape is needed, read `ctx.ColliderRefs.CharacterPositionCollider` and fall
 back to `ctx.cc`, never the reverse, and never search the hierarchy for "some
 `CapsuleCollider`" — on several characters that returns a hit-zone capsule.
+
+### `Visibility` Is Rebound Per Model
+
+`ctx.Visibility` (`CharacterVisibilityController`) lives on the character root and
+owns "is this character visible right now". Gameplay asks in gameplay words —
+`ConcealForTeleport` / `RevealAfterTeleport`, `Appear` / `Disappear`,
+`SetHiddenImmediate` / `SetVisibleImmediate` — and the controller animates the
+dither alpha on the model's `ZLZ_CharacterVFX`.
+
+Two rules follow from where the state actually lives:
+
+- **The renderer state belongs to the model, not the character.**
+  `CharacterVisualController` calls `Visibility.BindVisual(currentModel)` after
+  every model build, existing-model bind, form override, and form restore. A
+  controller left bound to a destroyed model writes into nothing, and the new
+  model comes up visible regardless of what gameplay believes.
+- **The controller never disables the actor.** It raises `Disappeared` when a
+  fade-out completes and the sequence owner (`AllyHelperManager`,
+  `FieldAllyTransitionController`) does the `SetActive(false)` and any protection
+  rollback from there.
+
+`ZLZ_CharacterVFX` resets its dither to visible in `Awake` and `OnDisable`, and
+`Dither.SetInstant` is a silent no-op while Dither is disabled on the component.
+The controller therefore re-pushes the desired value for a couple of `LateUpdate`s
+after a bind or re-activation, and warns once (never per frame) when the bound
+visual has no `ZLZ_CharacterVFX` or has Dither switched off.
 
 Animation commands resolve through `ctx.AnimDriver`. Direct `ctx.AnimBrain`
 access is reserved for state queries, sampling, and event subscriptions. See

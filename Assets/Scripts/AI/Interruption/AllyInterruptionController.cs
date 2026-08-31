@@ -56,7 +56,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
     NavMeshAgent _agent;
     AIAimTargetDriver _aimDriver;
     Transform _actorTransform;
-    ASPHelperDitherFader _actorFader;
+    CharacterVisibilityController _actorVisibility;
     CharacterVisualController _visualController;
     Transform _visualRoot;
     Vector3 _authoredVisualLocalPosition;
@@ -715,21 +715,21 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     void HideVisualForSnap()
     {
-        if (_actorFader == null || !_actorFader.gameObject.activeInHierarchy)
+        if (_actorVisibility == null || !_actorVisibility.gameObject.activeInHierarchy)
             return;
 
-        _actorFader.SetHiddenImmediate();
+        _actorVisibility.ConcealForTeleport();
         _visualHiddenForSnap = true;
         LogFlow("visual hidden for snap");
     }
 
     void BeginVisualFadeIn()
     {
-        if (!_visualHiddenForSnap || _actorFader == null)
+        if (!_visualHiddenForSnap || _actorVisibility == null)
             return;
 
         _visualHiddenForSnap = false;
-        _actorFader.BeginAnimationLifecycle(hideOnAnimationComplete: false);
+        _actorVisibility.Appear();
         LogFlow("fade-in started");
     }
 
@@ -738,10 +738,10 @@ public sealed class AllyInterruptionController : MonoBehaviour
         bool wasHiddenForSnap = _visualHiddenForSnap;
         _visualHiddenForSnap = false;
 
-        if (_actorFader == null || !_actorFader.gameObject.activeInHierarchy)
+        if (_actorVisibility == null || !_actorVisibility.gameObject.activeInHierarchy)
             return;
 
-        _actorFader.BeginAnimationLifecycle(hideOnAnimationComplete: false);
+        _actorVisibility.Appear();
 
         if (wasHiddenForSnap)
             LogFlow("visibility restored after hidden transition");
@@ -1008,7 +1008,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
             fieldAllyMember = GetComponent<FieldAllyMember>();
 
         if (fieldAllyMember != null)
-            _actorFader = fieldAllyMember.ActorFaderRef;
+            _actorVisibility = fieldAllyMember.VisibilityRef;
 
         if (_ctx == null)
             TryGetComponent(out _ctx);

@@ -353,6 +353,27 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         CharacterColliderRefs colliderRefs = _currentModel.GetComponentInChildren<CharacterColliderRefs>(true);
         if (colliderRefs != null)
             _ctx.ColliderRefs = colliderRefs;
+
+        BindVisibilityToCurrentModel();
+    }
+
+    /// <summary>
+    /// Re-points the character's visibility controller at the model that is live right now.
+    /// The controller writes onto the model's ZLZ_CharacterVFX material instances, so a rebuilt
+    /// model (build, existing-model bind, form override, form restore) has to hand it the new
+    /// visual or it keeps driving a destroyed one.
+    /// </summary>
+    void BindVisibilityToCurrentModel()
+    {
+        if (_ctx == null || _currentModel == null)
+            return;
+
+        // Hierarchy layout differs per prefab, so the self/parent/child search stays in
+        // CharacteContext.ResolveReferences() rather than being duplicated here.
+        if (_ctx.Visibility == null)
+            _ctx.ResolveReferences();
+
+        _ctx.Visibility?.BindVisual(_currentModel);
     }
 
     private void ConfigureAnimatorRuntime(

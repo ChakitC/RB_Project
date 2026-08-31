@@ -12,7 +12,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     [SerializeField] private Transform actorRoot;
     [SerializeField] private CharacteContext actorContext;
     [SerializeField] private ChainSkillUserProxy skillUserProxy;
-    [SerializeField] private ASPHelperDitherFader actorFader;
+    [SerializeField] private CharacterVisibilityController actorVisibility;
     [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Teleport Probe Collider")]
     [SerializeField] private Collider chainTeleportProbeCollider;
     [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Disable Components During Sequence")]
@@ -334,11 +334,8 @@ public sealed class FieldAllyMember : MonoBehaviour
         if (directSkillUserSource is not ISkillUser)
             directSkillUserSource = null;
 
-        if (actorFader == null)
-        {
-            if (context != null)
-                actorFader = context.GetComponentInChildren<ASPHelperDitherFader>(true);
-        }
+        if (actorVisibility == null && context != null)
+            actorVisibility = context.Visibility;
 
         _skillCastBridge.InvalidateDirectSkillUserCache();
         _skillCastBridge.EnsureInitialized();
@@ -466,7 +463,7 @@ public sealed class FieldAllyMember : MonoBehaviour
     internal CharacterAnimDriver AnimDriverRef => ActorContext != null ? ActorContext.AnimDriver : null;
     internal ChainSkillUserProxy SkillUserProxyRef => skillUserProxy;
     internal AIAimTargetDriver AimTargetDriverRef => ActorContext is AllyContext allyContext ? allyContext.AimTargetDriver : null;
-    internal ASPHelperDitherFader ActorFaderRef => actorFader;
+    internal CharacterVisibilityController VisibilityRef => actorVisibility;
     internal Collider ChainTeleportProbeColliderRef => ResolveChainTeleportProbeCollider();
     internal CharacteContext ActorContextRef => ActorContext;
     internal HealthSystem ActorHealthSystemRef => ActorContext != null ? ActorContext.HealthSystem : null;

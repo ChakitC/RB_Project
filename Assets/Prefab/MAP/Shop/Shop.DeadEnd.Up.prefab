@@ -14922,6 +14922,7 @@ MonoBehaviour:
   playerSpawnPointsByDirection: []
   enemySpawnPoints: []
   lootSpawnPoints: []
+  stageExitSpawnPoint: {fileID: 0}
   exits:
   - {fileID: 8759428669585245792}
   lockdownObjects: []

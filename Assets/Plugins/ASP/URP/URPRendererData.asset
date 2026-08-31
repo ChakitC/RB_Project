@@ -486,7 +486,7 @@ MonoBehaviour:
   m_Active: 0
   casterLayers:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 4194303
   resolution: 1
   offset: 0.0045
   depthBias: 0.01

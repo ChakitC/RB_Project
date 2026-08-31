@@ -21,58 +21,67 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Milano_Hair
-  m_Shader: {fileID: 4800000, guid: 55a54603fab88d940a3374f8ae9f78e8, type: 3}
+  m_Shader: {fileID: 4800000, guid: 45d8e17adb01bbb4bbc14e5857c9be4a, type: 3}
   m_Parent: {fileID: 2100000, guid: 5d54b020904b0284ba3c1de868c2641b, type: 2}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - _ALPHATEST_ON
-  - _DEPTH_RIMLIGHTING_ON
-  - _RECEIVE_ASP_SHADOW
-  - _RECEIVE_OFFSETED_SHADOW_ON
-  - _SPECULAR_LIGHTING_ON
-  - _STYLE_CELSHADING
+  - _ALPHACLIPPING_ON
+  - _CASTSHADOW_ON
+  - _DISSOLVE_OFF
+  - _EMISSIVEGLOW_OFF
+  - _EYE_BACKFACE_CLIP_OFF
+  - _GETHIT_OFF
+  - _HAIR_BACKFACE_FADE_OFF
+  - _HAIR_HIGHLIGHT_OFF
+  - _HEAD_BACK_HIDE_OFF
+  - _INDICATOR_OFF
+  - _LIGHTSWEEP_OFF
+  - _OUTLINEMASK_OFF
+  - _OUTLINE_ZMODE_LEGACY
+  - _RECEIVESHADOW_OFF
+  - _RIMCOLORMODE_CUSTOM
+  - _RIMLIGHT_OFF
+  - _SOFTLIGHT_ON
+  - _SPECULAR_OFF
+  - _SWITCH_TO_FACE_MODE_OFF
+  - _TARGETDARKEN_OFF
+  - _UPGRADE_OFF
+  - _USEMETALLIC_OFF
+  - _USENORMAL_OFF
+  - _USE_MASKTEX1_OFF
+  - _USE_MASKTEX2_OFF
   m_InvalidKeywords:
-  - _RECEIVESHADOWS
+  - _AIMINGMODE_ON
+  - _ALPHATEST_ON
+  - _COLORSELECT_FANG
+  - _Edge_Highlight
+  - _FACESTENCIL_OFF
+  - _HAIREYEFADEENABLE_OFF
+  - _HAIRSHADOW_OFF
+  - _HEADBACKHIDEENABLE_OFF
+  - _HEADHIDE_EYE_OFF
+  - _HEADHIDE_HAIR_OFF
+  - _MaskOutline
+  - _RimLight
+  - _USENORMALMAP_OFF
+  - _VERTEXTRANSFORM_OFF
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
   stringTagMap:
     RenderType: Opaque
-  disabledShaderPasses:
-  - MOTIONVECTORS
+  disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-    - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: bf475fbadd698914b889e808b0c8aec5, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
     - _MainTex:
         m_Texture: {fileID: 2800000, guid: bf475fbadd698914b889e808b0c8aec5, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _RampMap:
-        m_Texture: {fileID: 2800000, guid: 3b37c021e9976bd46a772cfd9e724861, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats:
-    - _Cutoff: 0.531
-    - _DepthRimLightOn: 1
-    - _DepthRimLightStrength: 0
-    - _DitherTexelSize: 20
-    - _HairLightFresnelMaskPower: 0.65
-    - _MaterialID: 5
-    - _OffsetShadowDistance: 14.16
-    - _RimLightAlign: -0.082
-    - _RimLightOverShadow: 0
-    - _RimLightSmoothness: 0
-    - _RimLightStrength: 0.107
-    - _SpecularSize: 0.278
-    m_Colors:
-    - _RimLightColor: {r: 0.21960786, g: 0.21960786, b: 0.21960786, a: 1}
-    - _SpecularColor: {r: 0.95258605, g: 1, b: 0.57169807, a: 1}
+    m_Floats: []
+    m_Colors: []
   m_BuildTextureStacks: []
   m_AllowLocking: 1

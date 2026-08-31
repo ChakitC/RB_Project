@@ -4224,6 +4224,7 @@ MonoBehaviour:
   playerSpawnPointsByDirection: []
   enemySpawnPoints: []
   lootSpawnPoints: []
+  stageExitSpawnPoint: {fileID: 0}
   exits:
   - {fileID: 7164032860966831707}
   - {fileID: 3834573501734762157}

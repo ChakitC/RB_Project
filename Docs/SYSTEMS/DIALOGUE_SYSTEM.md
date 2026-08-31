@@ -102,19 +102,18 @@ The clone is **presentation only**:
 The stage has **no Unity layer of its own**. Clones sit on layer 0 like every other character, and
 isolation is carried by rendering layers plus the distance the stage sits at.
 
-That is a deliberate reversal of the original design, forced by ASP. Two of its renderer features
-filter by Unity layer *as well as* by rendering layer — `ASPMeshOutlineRendererFeature` and
-`ASPDepthOffsetShadowFeature` — and both are authored for layer 0. Their `Layer` field holds a
-single layer, not a mask, so one renderer cannot serve both a gameplay layer and a dialogue layer.
-A second URP renderer is not a way out either: ASP's full-screen passes keep per-pipeline state, and
-two renderers drawing in the same frame produced a badly distorted portrait (characters smeared into
-vertical streaks). With clones on a dedicated layer they simply fell out of both passes and rendered
-flatter than the same character does in gameplay.
+That is a deliberate reversal of the original design, forced by the character render features.
+`ZLZ_CharacterContactShadowFeature.casterLayers` and `ZLZ_ScreenSpaceOutlineFeature.characterLayers`
+filter by **Unity layer**, and both are authored for the gameplay character layer. With clones on a
+dedicated layer they fall out of those passes and render flatter than the same character does in
+gameplay. A second URP renderer is not a way out either: the full-screen passes keep per-pipeline
+state, and two renderers drawing in the same frame produced a badly distorted portrait (characters
+smeared into vertical streaks).
 
 | channel | value | why |
 |---|---|---|
-| clone Unity layer | 0 | the only layer ASP's layer-filtered features draw |
-| clone `renderingLayerMask` | 38 = bits 1, 2, 5 | bit 1 depth-offset shadow, bit 2 mesh outline, bit 5 dialogue lights |
+| clone Unity layer | 0 | the layer ZLZ's Unity-layer-filtered character features draw |
+| clone `renderingLayerMask` | 32 = bit 5 only | the dialogue light channel; the low bits are what `ZLZ_SelectionOutlineFeature` filters selection types on, so claiming one would put a selection outline on the portrait |
 | dialogue light `renderingLayerMask` | 32 = bit 5 only | a world renderer answers to every bit, so a dialogue light claiming any other bit would light the whole level |
 | world directional light | bit 0 | the one bit clones deliberately do **not** claim — that omission is what keeps the sun off the stage |
 | stage position | `y = -20000` | see below |
@@ -131,22 +130,31 @@ mechanisms (Unity layer and rendering layer) and now have one plus distance. A p
 went from "draws only tagged actors" to "draws whatever layer-0 object is within ~10 units of the
 stage" — nothing is, but that is now a thing that could go wrong.
 
-`DialogueLayers.AspFeatureRenderingLayerMask` mirrors values authored on the URP renderer, so
-`DialogueAuthoringValidator` compares the two and reports drift. Retuning those features without it
-would silently flatten every portrait.
+`DialogueAuthoringValidator` checks that `ZLZ_CharacterContactShadowFeature.casterLayers` and
+`ZLZ_ScreenSpaceOutlineFeature.characterLayers` still include the Unity layer the clones sit on.
+Narrowing either mask without that check would silently flatten every portrait.
 
 - Every component that is not `Transform`, `Animator`, `SkinnedMeshRenderer`, `MeshRenderer`,
-  `MeshFilter`, or `ASP.ASPCharacterPanel` is destroyed — a whitelist, so a newly added gameplay
-  component cannot ride along. Scripts are removed first so `[RequireComponent]` dependencies do not
-  block the built-ins.
+  `MeshFilter`, `ZLZ_CharacterVFX`, or `ZLZ_HeadDirectionBinder` is destroyed — a whitelist, so a
+  newly added gameplay component cannot ride along. Scripts are removed first so `[RequireComponent]`
+  dependencies do not block the built-ins.
 - No `CharacteContext`, AI, collider, rigidbody, agent, VFX, or combat state survives.
+  `CharacterVisibilityController` lives on the character root, above `ModelRoot`, so it is never
+  cloned in the first place.
 
-`ASPCharacterPanel` is on the whitelist because **a shader fed by a script needs that script**. Its
-`Update` writes `_CharacterCenterWS`, `_FaceFrontDirection` and `_FaceRightDirection` into the
-ASP/Character and ASP/Eye materials every frame. Stripping it does not reset those properties, it
-freezes them at whatever the live character last wrote — a position out in the gameplay world — so
-the clone renders its shadow and face lighting for somewhere it is not standing. It already lives
-inside every character's `ModelRoot`, so the clone carries one; the strip was simply killing it.
+The two ZLZ components are on the whitelist because **a shader fed by a script needs that script**.
+`ZLZ_HeadDirectionBinder` writes `_HeadCenterWS`, `_HeadForwardWS` and `_HeadRightWS` every
+`LateUpdate`; `ZLZ_CharacterVFX` writes the per-character anchor and the FX alphas. Stripping them
+does not reset those properties, it freezes them at whatever the live character last wrote — a pose
+out in the gameplay world — so the clone renders its face lighting for somewhere it is not standing.
+Both drive off the engine frame rather than `timeScale`, so they keep working while the world is
+frozen at 0, and both resolve through `renderer.materials`, so the clone gets its own material
+instances and can never write back into the live character.
+
+`DialogueActorCloneFactory.RebindHeadDirectionToClone` re-points a binder whose `headBone` was
+assigned from outside `ModelRoot`; `Instantiate` only remaps references that resolve inside the
+copied hierarchy, and a binder left pointing at the live character's head would make the portrait's
+face lighting turn with the character out in the level.
 
 Keeping it is safe in both directions: `Update` is driven by the engine frame rather than
 `timeScale`, so it keeps working while the world is frozen at 0, and `Start` → `SetupMaterialID`
@@ -222,7 +230,7 @@ dialogue.
 |---|---|
 | Unity layer 0 (`Default`) | actor clones, like every other character — see **Rendering channels** for why the stage has no layer of its own |
 | Rendering layer 5, named `Dialogue` | dialogue lights, and claimed by clone renderers, so world lights never touch the clones and dialogue lights never touch the world |
-| Rendering layers 1 and 2 | claimed by clone renderers only, so ASP's layer-filtered features draw them |
+| Rendering layers 0–4 | claimed by nothing on the stage; bit 0 is the world sun, the low bits are `ZLZ_SelectionOutlineFeature` selection types |
 
 Each slot is an isolated cell 100 m from its neighbours. Its camera clears to transparent black into
 a runtime RenderTexture sized to one third of the current screen width by the full screen height.

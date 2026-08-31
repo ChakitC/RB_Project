@@ -3,15 +3,13 @@ using UnityEngine;
 /// <summary>
 /// The rendering/lighting channels the dialogue stage runs on.
 ///
-/// The stage no longer has a Unity layer of its own. It used to put its clones on a `DialogueActor`
-/// layer so the portrait cameras could see only them and the gameplay camera could exclude them, but
-/// two of ASP's renderer features filter by Unity layer as well as by rendering layer and are
-/// authored for layer 0 — `ASPMeshOutlineRendererFeature` and `ASPDepthOffsetShadowFeature`. Their
-/// `Layer` field holds a single layer, not a mask, so one renderer cannot serve both the gameplay
-/// layer and a dialogue layer, and a second URP renderer is not an option either: ASP's full-screen
-/// passes keep per-pipeline state and produce a badly distorted image when two renderers draw in the
-/// same frame. Clones therefore sit on layer 0 like every other character, and isolation is carried
-/// entirely by rendering layers plus the distance the stage sits at.
+/// The stage has no Unity layer of its own. It used to put its clones on a `DialogueActor` layer so
+/// the portrait cameras could see only them and the gameplay camera could exclude them, but the
+/// character render features filter by Unity layer: `ZLZ_CharacterContactShadowFeature.casterLayers`
+/// and `ZLZ_ScreenSpaceOutlineFeature.characterLayers` are authored for the gameplay character
+/// layer, and a clone on a layer of its own silently renders without them. Clones therefore sit on
+/// layer 0 like every other character, and isolation is carried by the dialogue light channel plus
+/// the distance the stage sits at.
 /// </summary>
 public static class DialogueLayers
 {
@@ -26,25 +24,19 @@ public static class DialogueLayers
     public static uint DialogueRenderingLayerMask => 1u << DialogueRenderingLayerIndex;
 
     /// <summary>
-    /// Rendering layers ASP's layer-filtered renderer features draw. Bit 1 is
-    /// `ASPDepthOffsetShadowFeature`, bit 2 is `ASPMeshOutlineRendererFeature`. Clones have to claim
-    /// these or they render without the mesh outline and depth-offset shadow that the same character
-    /// has in gameplay — which reads as the portrait being flatter than the game.
-    ///
-    /// These are values authored on the URP renderer, so they are mirrored here rather than derived.
-    /// `DialogueAuthoringValidator` checks the two against the renderer and reports any drift.
-    /// </summary>
-    public const uint AspFeatureRenderingLayerMask = (1u << 1) | (1u << 2);
-
-    /// <summary>
-    /// What a dialogue clone's renderers are set to: the stage's own light channel plus the channels
-    /// ASP's features filter on.
+    /// What a dialogue clone's renderers are set to: the stage's own light channel and nothing else.
     ///
     /// This deliberately does **not** include bit 0, which is the only bit the world's directional
     /// light claims. That single omission is what keeps the sun off the stage now that the clones
     /// share layer 0 with everything else.
+    ///
+    /// It also claims no other bit on purpose. The low rendering-layer bits are what
+    /// `ZLZ_SelectionOutlineFeature` filters its selection types on, so a clone that claimed one
+    /// would come onto the stage wearing a selection outline. ZLZ's character shading needs no
+    /// rendering-layer opt-in of its own — it is driven by the material and by Unity-layer-filtered
+    /// renderer features.
     /// </summary>
-    public static uint ActorRenderingLayerMask => DialogueRenderingLayerMask | AspFeatureRenderingLayerMask;
+    public static uint ActorRenderingLayerMask => DialogueRenderingLayerMask;
 
     /// <summary>
     /// Unity layer the clones live on, and the only layer a portrait camera draws.

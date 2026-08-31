@@ -1,7 +1,7 @@
 {
     "maxSlotCount": 0,
-    "gold": 100,
-    "scrap": 0,
+    "gold": 175,
+    "scrap": 1,
     "slots": [
         {
             "itemId": "SMG_RB01",
@@ -20,7 +20,7 @@
                 "subAffixes": [],
                 "shotCounter": 0,
                 "currentMagazine": 29,
-                "currentReserveAmmo": 240,
+                "currentReserveAmmo": 3,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,

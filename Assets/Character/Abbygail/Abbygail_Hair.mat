@@ -8,254 +8,334 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Abbygail_Hair
-  m_Shader: {fileID: 4800000, guid: 55a54603fab88d940a3374f8ae9f78e8, type: 3}
+  m_Shader: {fileID: 4800000, guid: 45d8e17adb01bbb4bbc14e5857c9be4a, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - _ALPHATEST_ON
-  - _RECEIVE_OFFSETED_SHADOW_ON
-  - _SPECULAR_LIGHTING_ON
-  - _STYLE_CELSHADING
+  - _ALPHACLIPPING_ON
+  - _CASTSHADOW_ON
+  - _DISSOLVE_OFF
+  - _EMISSIVEGLOW_OFF
+  - _EYE_BACKFACE_CLIP_OFF
+  - _GETHIT_OFF
+  - _HAIR_BACKFACE_FADE_OFF
+  - _HAIR_HIGHLIGHT_OFF
+  - _HEAD_BACK_HIDE_OFF
+  - _INDICATOR_OFF
+  - _LIGHTSWEEP_OFF
+  - _OUTLINEMASK_OFF
+  - _OUTLINE_ZMODE_LEGACY
+  - _RECEIVESHADOW_OFF
+  - _RIMCOLORMODE_CUSTOM
+  - _RIMLIGHT_OFF
+  - _SOFTLIGHT_ON
+  - _SPECULAR_OFF
+  - _SWITCH_TO_FACE_MODE_OFF
+  - _TARGETDARKEN_OFF
+  - _UPGRADE_OFF
+  - _USEMETALLIC_OFF
+  - _USENORMAL_OFF
+  - _USE_MASKTEX1_OFF
+  - _USE_MASKTEX2_OFF
   m_InvalidKeywords:
-  - _RECEIVESHADOWS
+  - _AIMINGMODE_ON
+  - _ALPHATEST_ON
+  - _COLORSELECT_FANG
+  - _Edge_Highlight
+  - _FACESTENCIL_OFF
+  - _HAIREYEFADEENABLE_OFF
+  - _HAIRSHADOW_OFF
+  - _HEADBACKHIDEENABLE_OFF
+  - _HEADHIDE_EYE_OFF
+  - _HEADHIDE_HAIR_OFF
+  - _MaskOutline
+  - _RimLight
+  - _USENORMALMAP_OFF
+  - _VERTEXTRANSFORM_OFF
   m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
+  m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: 2000
   stringTagMap:
     RenderType: Opaque
-  disabledShaderPasses:
-  - MOTIONVECTORS
+  disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-    - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: f69e41b9230a3de49b77bdfbe5ce606a, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _BumpMap:
+    - _FaceShadow:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _ClipMap:
+    - _FaceTex:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _DetailAlbedoMap:
-        m_Texture: {fileID: 0}
+    - _GradientMetallic:
+        m_Texture: {fileID: 2800000, guid: 5b8fc46ec3c12cd42bf2b7d984ec42ae, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _DetailMask:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _DetailNormalMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _EmissionMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _FaceShadowMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _HairHighlightMaskMap:
-        m_Texture: {fileID: 0}
+    - _GradientNormal:
+        m_Texture: {fileID: 2800000, guid: 5b8fc46ec3c12cd42bf2b7d984ec42ae, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
+        m_Texture: {fileID: 2800000, guid: f69e41b9230a3de49b77bdfbe5ce606a, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_Outline:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _MatCapReflectionMap:
+    - _MetalNormalMap:
+        m_Texture: {fileID: 2800000, guid: 815aa8a6331c76a4ab81c321b23d7e45, type: 3}
+        m_Scale: {x: 30, y: 30}
+        m_Offset: {x: 0, y: 0}
+    - _Metallic:
+        m_Texture: {fileID: 2800000, guid: 815aa8a6331c76a4ab81c321b23d7e45, type: 3}
+        m_Scale: {x: 30, y: 30}
+        m_Offset: {x: 0, y: 0}
+    - _NormalMap:
+        m_Texture: {fileID: 2800000, guid: 815aa8a6331c76a4ab81c321b23d7e45, type: 3}
+        m_Scale: {x: 30, y: 30}
+        m_Offset: {x: 0, y: 0}
+    - _RGBA_Masking:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _MatCapReflectionMaskMap:
+    - _RGBA_Masking2:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _MetallicGlossMap:
-        m_Texture: {fileID: 0}
+    - _RGB_Masking:
+        m_Texture: {fileID: 2800000, guid: 901ee20d44085664d9434f673927752a, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _OSMTexture:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _OcclusionMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _ParallaxMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _RampMap:
-        m_Texture: {fileID: 2800000, guid: 71a8be6308c0b584fa30e19db4254adf, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _RampOcclusionMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _RimLightMaskMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _SSSRampMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _SpecGlossMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _SpecularMaskMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _StandardBrdfLut:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - unity_Lightmaps:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - unity_LightmapsInd:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - unity_ShadowMasks:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
+    - _Texture2DDissolve:
+        m_Texture: {fileID: 2800000, guid: a24e5a1cb9cd9f641bcc7226a1a973bd, type: 3}
+        m_Scale: {x: 1, y: 0.5}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _AIMINGMODE: 1
     - _AddPrecomputedVelocity: 0
-    - _AdvanceGroup: 0
-    - _AlphaClip: 1
+    - _AdditionalLightIntensity: 1
+    - _AlphaClip: 0
+    - _AlphaClipping: 1
     - _AlphaToMask: 0
-    - _BakeGISource: 0
+    - _AlphaValue: 1
+    - _BlackValue: 0.1
     - _Blend: 0
-    - _BlendModePreserveSpecular: 1
-    - _BumpScale: 1
-    - _CharacterCenterCubeSize: 1
-    - _ClearCoatMask: 0
-    - _ClearCoatSmoothness: 0
+    - _BlendDst: 0
+    - _BlendOp: 0
+    - _BlendSrc: 1
+    - _BlendUpgrade: 1
+    - _BooleanLight: 0
+    - _CastShadow: 1
+    - _ColorSelect: 4
     - _Cull: 2
+    - _CullMode: 2
     - _Cutoff: 0.5
-    - _DebugGI: 0
-    - _DepthRimLightOn: 0
-    - _DepthRimLightStrength: 0.1
-    - _DetailAlbedoMapScale: 1
-    - _DetailNormalMapScale: 1
-    - _DitherTexelSize: 1
-    - _Dithering: 0
+    - _DISSOLVE: 0
+    - _DebugUvFace: 0
+    - _DefaultAimingLightValue: 0
+    - _Delay: 1
+    - _DepthSensitivity: 0.25
+    - _DissolveValue: 0
+    - _DitherAlpha: 0
+    - _DitherCameraEnable: 0
+    - _DitherCameraFar: 1.25
+    - _DitherCameraNear: 1
+    - _DitherOcclusionAlpha: 0
     - _DstBlend: 0
     - _DstBlendAlpha: 0
-    - _EmissionToggle: 0
-    - _EnableSSSRamp: 0
-    - _EnvironmentReflections: 1
-    - _FOVShiftX: 0
-    - _FaceShadowMapPow: 0.2
-    - _FaceShadowSmoothness: 0
-    - _FakeLightIntensity: 0
-    - _FlattenAdditionalLighting: 0
-    - _GlossMapScale: 0
-    - _Glossiness: 0
-    - _GlossyReflections: 0
-    - _Group0: 1
-    - _Group1: 0
-    - _Group2: 0
-    - _Group3: 0
-    - _Group4: 0
-    - _Group5: 0
-    - _Group6: 0
-    - _Group7: 0
-    - _GroupMatCap: 0
-    - _HairLightCameraRollInfluence: 0
-    - _HairLightFresnelMaskPower: 1
-    - _HairLightStrength: 1
-    - _HairUVSideCut: 0
-    - _IsUsingMatcapReflectMap: 0
-    - _IsUsingOSMTexture: 0
-    - _IsUsingRampOcclusionTexture: 0
-    - _MatCapReflectionStrength: 1
-    - _MatCapRollStabilize: 1
-    - _MaterialID: 5
-    - _Metallic: 0
-    - _OcclusionStrength: 1
-    - _OffsetShadowDistance: 15
-    - _OutlineWidth: 2.76
-    - _OverrideLightColorIntensityToggle: 0
-    - _OverrideLightDirToggle: 0
-    - _OverrideZTest: 0
-    - _PBRInfluenceDirectLighting: 0
-    - _PBRMetallic: 0
-    - _PBROcclusionStrength: 0
-    - _PBRSmoothness: 0
-    - _Parallax: 0.005
+    - _EYE_BACKFACE_CLIP: 0
+    - _Edge_Highlight: 1
+    - _Edge_Highlight_Volume: 4
+    - _EmissiveGlow: 0
+    - _EmissiveMaskCh: 2
+    - _Emissive_Intensity: 0
+    - _Emissive_Intensity_01: 0.5
+    - _Enable_Indicator: 0
+    - _EndDissolve: 0.8
+    - _FaceShadowUVOffsetX: 0
+    - _FaceShadowUVOffsetY: 0
+    - _FaceShadowUVScale: 1
+    - _FaceStencil: 0
+    - _FlipUvFace: 0
+    - _FresnelPowerHit: 2
+    - _FresnelPowerIndicator: 1
+    - _GetHit: 0
+    - _GetHitStrength: 0
+    - _HAIR_BACKFACE_FADE: 0
+    - _HEADHIDE_EYE: 0
+    - _HEADHIDE_HAIR: 0
+    - _HEAD_BACK_HIDE: 0
+    - _HLScale: 2
+    - _HairEyeFadeEnable: 0
+    - _HairEyeFadeRange: 0
+    - _HairFadeRange: 0
+    - _HairHighlightMaskCh: 1
+    - _HairShadow: 0
+    - _HairShadowFadePos: 0.05
+    - _HairShadowFadeSoft: 0.03
+    - _HairShadowOffsetX: 0
+    - _HairShadowOffsetY: 0
+    - _HairShadowOffsetZ: 0
+    - _HairShadowScaleOS: 0.95
+    - _Hair_Highlight: 0
+    - _Hair_HighlightValue: 1
+    - _HeadBackCutoff: 0
+    - _HeadBackHideCutoff: 0
+    - _HeadBackHideEnable: 0
+    - _HeadFadeRange: 0
+    - _HeadTopBias: 0
+    - _HeadTopCutoff: -0.1
+    - _Indicator: 0
+    - _IndicatorStrength: 0
+    - _IntensityLight: 4
+    - _IntensityMetal: 5
+    - _IntensityRimLight: 3
+    - _IntensityUpgrade: 5
+    - _LIGHTSWEEP: 0
+    - _Length: 1
+    - _LightSmooth: 0.1
+    - _LightSweepDelay: 0
+    - _LightSweepDirX: 0.5
+    - _LightSweepDirY: 0.5
+    - _LightSweepDirZ: 0
+    - _LightSweepDuration: 2.5
+    - _LightSweepEnd: 5
+    - _LightSweepIntensity: 50
+    - _LightSweepSoftness: 3
+    - _LightSweepSpeed: 2
+    - _LightSweepStart: 1
+    - _LightSweepWidth: 1
+    - _MaskOutline: 1
+    - _MetalIntensity: 1
+    - _MetallicMaskCh: 0
+    - _NormalStrength: 1
+    - _NormalsSensitivity: 0.01
+    - _OUTLINE_ZMODE: 0
+    - _Opacity_Highlight: 0.2
+    - _OutlineDistanceFade: 0
+    - _OutlineDistanceMax: -1.14
+    - _OutlineDistanceMaxRange: 11.93
+    - _OutlineDistanceMin: -0.75
+    - _OutlineIntensity: 0
+    - _OutlineMask: 0
+    - _OutlineMaskCh: 3
+    - _OutlineSmoothNormal: 0
+    - _OutlineThickness: 2
+    - _OutlineWidth: 1
+    - _OutlineZOffset: 0
+    - _OutlineZOffsetMaskRemapEnd: 1
+    - _OutlineZOffsetMaskRemapStart: 0
     - _QueueOffset: 0
-    - _RampOcclusionStrength: 0
-    - _ReceiveASPShadow: 0
-    - _ReceiveOffsetedDepthMap: 1
-    - _ReceiveShadows: 1
-    - _RimLightAlign: 0
-    - _RimLightOn: 0
-    - _RimLightOverShadow: 1
-    - _RimLightSmoothness: 0.2
-    - _RimLightStrength: 0.35
-    - _ScaleAsScreenSpaceOutline: 1
-    - _ShadowColorMode: 0
-    - _Smoothness: 0.5
-    - _SmoothnessTextureChannel: 0
-    - _SpecularFalloff: 0.5
-    - _SpecularHighlights: 1
-    - _SpecularSize: 0.25
+    - _ReceiveShadow: 0
+    - _RejectSelfShadow: 0
+    - _RenderQueue: 2000
+    - _RenderQueueSelector: 2000
+    - _RimColorMode: 1
+    - _RimLight: 0
+    - _RimWidth: 1
+    - _Rotate: 0
+    - _RotateAngleDissolve: 0
+    - _RotateLight: 180
+    - _SelectTraget: 0
+    - _SelfShadowRejectDist: 0.005
+    - _ShadowEdge: 0
+    - _ShadowEdgeIntensity: 0.45
+    - _ShadowEdgeSmooth: 0.5
+    - _ShadowEdgeWidth: 1
+    - _ShadowLinePower: 1.5
+    - _ShadowSoftness: 0.5
+    - _SizeGlowDissolve: 0.05
+    - _SoftLight: 1
+    - _SoftLightHighlight: 1
+    - _Specular: 0
+    - _SpecularIntensity: 1
+    - _SpecularMaskCh: 8
+    - _SpecularSharpness: 80
+    - _SpecularThreshold: 0.5
+    - _SpecularToonStep: 0.7
+    - _SpeedLight: 2.5
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
-    - _Stencil: 0
-    - _StencilComp: 4
-    - _StencilFailOp: 0
-    - _StencilOp: 0
+    - _StartDissolve: 0
+    - _StencilComp: 8
+    - _StencilFail: 0
+    - _StencilPass: 0
+    - _StencilRef: 0
+    - _StencilZFail: 0
+    - _StepReceiveShadow: 0.05
+    - _StepRim: 1.5
     - _Surface: 0
-    - _SurfaceType: 0
-    - _UseSimpleAABBCutOffForCharacterShadow: 0
-    - _WorkflowMode: 1
-    - _WorkflowSpace: 1
+    - _SwitchDissolve: 1
+    - _Switch_to_Face_Mode: 0
+    - _TargetDarken: 0
+    - _TargetDarkenIntensity: 0.1
+    - _TargetDarkenLocal: 1
+    - _Texture_Brightness: 1
+    - _ToonRampSmoothness: 0.1
+    - _UPGRADE: 0
+    - _USE_MASKTEX1: 0
+    - _USE_MASKTEX2: 0
+    - _UpgradeActive: 0
+    - _UpgradeIntensity: 5
+    - _UpgradeMinBrightness: 0.5
+    - _UseAiming: 1
+    - _UseContactShadow: 0
+    - _UseDissolve: 1
+    - _UseLightSweep: 1
+    - _UseMetallic: 0
+    - _UseNormal: 0
+    - _UseNormalMap: 0
+    - _UseUpgrade: 1
+    - _VertexScale: 1
+    - _VertexTransform: 0
+    - _WhiteValue: 0.5
+    - _XRMotionVectorsPass: 1
     - _ZTest: 4
     - _ZWrite: 1
-    - _style: 1
+    - _isSpecialMode: 0
+    - _isTarget: 0
     m_Colors:
-    - _AlphaClipUVCtrl: {r: 1, g: 0, b: 0, a: 0}
+    - _AlphaTexture: {r: 1, g: 0.25, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CharacterCenterWS: {r: 33.648, g: 0, b: 2.975, a: 0}
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _DepthRimLightColor: {r: 1, g: 1, b: 1, a: 1}
-    - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FaceFrontDirection: {r: 0.688115, g: 0, b: -0.7256017, a: 0}
-    - _FaceRightDirection: {r: -0.7256017, g: 0, b: -0.688115, a: 0}
-    - _FaceUVCtrl: {r: 0, g: 1, b: 0, a: 0}
-    - _FakeLightColor: {r: 0, g: 0, b: 0, a: 0}
-    - _FakeLightEuler: {r: 180, g: 0, b: 0, a: 0}
-    - _HairLightColor: {r: 1, g: 1, b: 1, a: 1}
-    - _HairUVCtrl: {r: 0, g: 0, b: 1, a: 0}
+    - _CharacterAnchorWS: {r: 0, g: 0, b: 0, a: 0}
+    - _ColorHair: {r: 0, g: 0.5639739, b: 1, a: 1}
+    - _ColorUpgrade: {r: 1, g: 0.75, b: 0.5, a: 0}
+    - _Color_A: {r: 0.4716981, g: 0.3009342, b: 0.14907439, a: 0}
+    - _Color_B: {r: 0.09077963, g: 0.20814136, b: 0.3773585, a: 0}
+    - _Color_G: {r: 0.4716981, g: 0.27951485, b: 0.12237452, a: 0}
+    - _Color_R: {r: 0.47058824, g: 0.2784314, b: 0.12156863, a: 0}
+    - _DissolveColor: {r: 5.656854, g: 2.189436, b: 0.6137154, a: 0}
+    - _Emissive_Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Emissive_Color_01: {r: 0, g: 0.93945026, b: 1, a: 1}
+    - _GetHitColor: {r: 4, g: 2.893609, b: 1.4150944, a: 0}
+    - _HLColor: {r: 1, g: 1, b: 1, a: 0}
+    - _HeadCenterWS: {r: 0, g: 0, b: 0, a: 0}
+    - _HeadForwardWS: {r: 0, g: 0, b: 0, a: 0}
+    - _HeadRightWS: {r: 0, g: 0, b: 0, a: 0}
+    - _HeadUpWS: {r: 0, g: 0, b: 0, a: 0}
+    - _IndicatorColor: {r: 0, g: 1.8323576, b: 2.9960783, a: 0}
+    - _Indicator_Color: {r: 1, g: 1, b: 1, a: 0}
+    - _LightSweepDirOS: {r: 1, g: 1, b: 0, a: 0}
+    - _LineShadow: {r: 1, g: 1, b: 1, a: 1}
     - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
-    - _OutlineDistancFade: {r: 50, g: 50, b: 0, a: 0}
-    - _OverrideGIColor: {r: 0, g: 0, b: 0, a: 1}
-    - _ReceivedShadowColor: {r: 0.8, g: 0.8, b: 0.8, a: 1}
-    - _RimLightColor: {r: 1, g: 1, b: 1, a: 1}
-    - _RimMaskUVCtrl: {r: 1, g: 0, b: 0, a: 0}
-    - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
-    - _SpecUVCtrl: {r: 1, g: 0, b: 0, a: 0}
-    - _SpecularColor: {r: 0.2, g: 0.2, b: 0.2, a: 1}
-    - _SpecularFallOffColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
-    - _SurfaceUVCtrl: {r: 1, g: 0, b: 0, a: 0}
+    - _RimColor: {r: 1, g: 0.7925292, b: 0.56078434, a: 1}
+    - _RotateAxis: {r: 0, g: 1, b: 0, a: 0}
+    - _Rotate_Axis: {r: 0, g: 0, b: 1, a: 0}
+    - _ScaleLight: {r: 0.975, g: 0.99, b: 0, a: 0}
+    - _ShadowEdgeColor: {r: 1, g: 0.7098, b: 0.49409992, a: 1}
+    - _ShadowOffset: {r: 0, g: 0, b: 0, a: 0}
+    - _Shadow_Color: {r: 1, g: 0.7882353, b: 0.6745098, a: 1}
+    - _Skin_Color: {r: 1, g: 0.9490196, b: 0.9490196, a: 1}
+    - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
+    - _StepDissolve: {r: 0.1, g: 0, b: 0, a: 0}
+    - _TilingDissolve: {r: 1, g: 1, b: 0, a: 0}
+    - _UpgradeColor: {r: 1, g: 0.75, b: 0.5, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &6705210044312071460

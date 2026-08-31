@@ -4,11 +4,11 @@
         {
             "characterId": "ID.Roma",
             "progress": {
-                "level": 1,
-                "xp": 0,
+                "level": 5,
+                "xp": 85,
                 "unlocked": false,
                 "selectedSkillOptions": [],
-                "skillPoints": 0,
+                "skillPoints": 4,
                 "skillProgressInitialized": true,
                 "activeSkillTrees": []
             }
@@ -16,11 +16,11 @@
         {
             "characterId": "ID.Feno",
             "progress": {
-                "level": 1,
-                "xp": 0,
+                "level": 5,
+                "xp": 85,
                 "unlocked": false,
                 "selectedSkillOptions": [],
-                "skillPoints": 0,
+                "skillPoints": 4,
                 "skillProgressInitialized": true,
                 "activeSkillTrees": []
             }
@@ -28,11 +28,11 @@
         {
             "characterId": "ID.Aires",
             "progress": {
-                "level": 1,
-                "xp": 0,
+                "level": 5,
+                "xp": 85,
                 "unlocked": false,
                 "selectedSkillOptions": [],
-                "skillPoints": 0,
+                "skillPoints": 4,
                 "skillProgressInitialized": true,
                 "activeSkillTrees": []
             }
@@ -40,8 +40,8 @@
         {
             "characterId": "ID.Milano",
             "progress": {
-                "level": 1,
-                "xp": 0,
+                "level": 5,
+                "xp": 85,
                 "unlocked": false,
                 "selectedSkillOptions": [],
                 "skillPoints": 0,

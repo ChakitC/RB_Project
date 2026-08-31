@@ -42,7 +42,7 @@ public sealed class PlayerInterruptionController : MonoBehaviour
     CharacterSkillManager _skillManager;
     PlayerMovementCC _movement;
     Transform _actorTransform;
-    ASPHelperDitherFader _actorFader;
+    CharacterVisibilityController _actorVisibility;
 
     bool _movementWasEnabled;
     bool _movementSuspended;
@@ -587,21 +587,21 @@ public sealed class PlayerInterruptionController : MonoBehaviour
 
     void HideVisualForSnap()
     {
-        if (_actorFader == null || !_actorFader.gameObject.activeInHierarchy)
+        if (_actorVisibility == null || !_actorVisibility.gameObject.activeInHierarchy)
             return;
 
-        _actorFader.SetHiddenImmediate();
+        _actorVisibility.ConcealForTeleport();
         _visualHiddenForSnap = true;
         LogFlow("visual hidden for snap");
     }
 
     void BeginVisualFadeIn()
     {
-        if (!_visualHiddenForSnap || _actorFader == null)
+        if (!_visualHiddenForSnap || _actorVisibility == null)
             return;
 
         _visualHiddenForSnap = false;
-        _actorFader.BeginAnimationLifecycle(hideOnAnimationComplete: false);
+        _actorVisibility.Appear();
         LogFlow("fade-in started");
     }
 
@@ -610,10 +610,10 @@ public sealed class PlayerInterruptionController : MonoBehaviour
         bool wasHiddenForSnap = _visualHiddenForSnap;
         _visualHiddenForSnap = false;
 
-        if (_actorFader == null || !_actorFader.gameObject.activeInHierarchy)
+        if (_actorVisibility == null || !_actorVisibility.gameObject.activeInHierarchy)
             return;
 
-        _actorFader.BeginAnimationLifecycle(hideOnAnimationComplete: false);
+        _actorVisibility.Appear();
 
         if (wasHiddenForSnap)
             LogFlow("visibility restored after hidden transition");
@@ -642,7 +642,7 @@ public sealed class PlayerInterruptionController : MonoBehaviour
             _animDriver = playerContext.AnimDriver;
             _skillManager = playerContext.SkillManager;
             _movement = playerContext.movement;
-            _actorFader = playerContext.GetComponentInChildren<ASPHelperDitherFader>(true);
+            _actorVisibility = playerContext.Visibility;
         }
 
         _actorTransform = playerContext != null ? playerContext.transform : transform;

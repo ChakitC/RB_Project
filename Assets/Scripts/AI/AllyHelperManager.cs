@@ -86,7 +86,7 @@ public class AllyHelperManager : MonoBehaviour
     CharacterAnimBrain allyAnimBrain;
     CharacterAnimDriver allyAnimDriver;
     ISkillUser allySkillUser;
-    ASPHelperDitherFader allyHelperFader;
+    CharacterVisibilityController allyHelperVisibility;
     HealthSystem allyHealthSystem;
     AITargetInfo allyTargetInfo;
     NavMeshAgent allyAgent;
@@ -302,7 +302,7 @@ public class AllyHelperManager : MonoBehaviour
         CompletePendingChainAttackSequence(false);
 
         ApplyTemporaryHelperSkillAutonomy();
-        allyHelperFader?.BeginAnimationLifecycle(hideOnSkillComplete);
+        allyHelperVisibility?.Appear();
 
         SkillCastStartResult result = skillManager.TryStartPlayerCommandSkill();
         if (!result.Started)
@@ -327,8 +327,8 @@ public class AllyHelperManager : MonoBehaviour
             {
                 hideHelperOnSkillComplete = false;
 
-                if (allyHelperFader != null && allyHelper != null && allyHelper.activeSelf)
-                    allyHelperFader.FinalizeAfterAnimation();
+                if (allyHelperVisibility != null && allyHelper != null && allyHelper.activeSelf)
+                    allyHelperVisibility.Disappear();
                 else
                     AllyHelperOut();
             }
@@ -361,7 +361,7 @@ public class AllyHelperManager : MonoBehaviour
         if (_cinematicHold)
             return;
 
-        allyHelperFader?.SetHiddenImmediate(preserveWhileDisabled: true);
+        allyHelperVisibility?.SetHiddenImmediate();
 
         if (allyHelper.activeSelf)
             allyHelper.SetActive(false);
@@ -373,7 +373,7 @@ public class AllyHelperManager : MonoBehaviour
         RestoreHelperSkillAutonomy();
         RestoreHelperProtection();
         SubscribeToHelperProcLoadout(null);
-        SubscribeToHelperFader(null);
+        SubscribeToHelperVisibility(null);
         SubscribeToAnimBrain(null);
         SubscribeToHelperPartyLoader(null);
     }
@@ -501,7 +501,7 @@ public class AllyHelperManager : MonoBehaviour
         CompletePendingChainAttackSequence(false);
         hideHelperOnSkillComplete = false;
         LastExecutionSucceeded = false;
-        SubscribeToHelperFader(null);
+        SubscribeToHelperVisibility(null);
     }
 
     void Update()
@@ -697,7 +697,7 @@ public class AllyHelperManager : MonoBehaviour
                 return false;
             }
 
-            allyHelperFader?.BeginAnimationLifecycle(hideOnSkillComplete);
+            allyHelperVisibility?.Appear();
             return true;
         }
 
@@ -731,7 +731,7 @@ public class AllyHelperManager : MonoBehaviour
 
         if (started)
         {
-            allyHelperFader?.BeginAnimationLifecycle(hideOnSkillComplete);
+            allyHelperVisibility?.Appear();
             return true;
         }
 
@@ -946,7 +946,7 @@ public class AllyHelperManager : MonoBehaviour
 
         if (started)
         {
-            allyHelperFader?.BeginAnimationLifecycle(sequenceDef.hideHelperAtWarpCastMoment);
+            allyHelperVisibility?.Appear();
             return true;
         }
 
@@ -974,8 +974,8 @@ public class AllyHelperManager : MonoBehaviour
             return;
         }
 
-        if (allyHelperFader != null)
-            allyHelperFader.FadeOutThenDeactivate();
+        if (allyHelperVisibility != null)
+            allyHelperVisibility.Disappear();
         else
         {
             allyHelper.SetActive(false);
@@ -1056,11 +1056,13 @@ public class AllyHelperManager : MonoBehaviour
         if (allyAudioEmitter == null)
             allyAudioEmitter = allyHelper.GetComponentInChildren<CharacterAudioEmitter>(true);
 
-        ASPHelperDitherFader nextHelperFader = allyHelper.GetComponent<ASPHelperDitherFader>();
-        if (nextHelperFader == null)
-            nextHelperFader = allyHelper.GetComponentInChildren<ASPHelperDitherFader>(true);
+        CharacterVisibilityController nextHelperVisibility = allyContext != null
+            ? allyContext.Visibility
+            : null;
+        if (nextHelperVisibility == null)
+            nextHelperVisibility = allyHelper.GetComponentInChildren<CharacterVisibilityController>(true);
 
-        SubscribeToHelperFader(nextHelperFader);
+        SubscribeToHelperVisibility(nextHelperVisibility);
         EnsureHelperSkillCastOrchestrator();
     }
 
@@ -1129,18 +1131,18 @@ public class AllyHelperManager : MonoBehaviour
         HelperAnimBrainChanged?.Invoke(prev, allyAnimBrain);
     }
 
-    void SubscribeToHelperFader(ASPHelperDitherFader nextHelperFader)
+    void SubscribeToHelperVisibility(CharacterVisibilityController nextHelperVisibility)
     {
-        if (allyHelperFader == nextHelperFader)
+        if (allyHelperVisibility == nextHelperVisibility)
             return;
 
-        if (allyHelperFader != null)
-            allyHelperFader.Deactivated -= OnHelperFaderDeactivated;
+        if (allyHelperVisibility != null)
+            allyHelperVisibility.Disappeared -= OnHelperVisibilityDisappeared;
 
-        allyHelperFader = nextHelperFader;
+        allyHelperVisibility = nextHelperVisibility;
 
-        if (allyHelperFader != null)
-            allyHelperFader.Deactivated += OnHelperFaderDeactivated;
+        if (allyHelperVisibility != null)
+            allyHelperVisibility.Disappeared += OnHelperVisibilityDisappeared;
     }
 
     bool TryPrepareHelperForSummon(
@@ -1188,7 +1190,7 @@ public class AllyHelperManager : MonoBehaviour
         {
             allyHelper.SetActive(true);
             activatedNow = true;
-            allyHelperFader?.SetHiddenImmediate();
+            allyHelperVisibility?.SetHiddenImmediate();
         }
 
         ApplyHelperProtection();
@@ -1206,7 +1208,7 @@ public class AllyHelperManager : MonoBehaviour
 
         SharedPlacementReservations.ReleaseOwner(allyHelper != null ? allyHelper.transform : null);
 
-        allyHelperFader?.SetHiddenImmediate(preserveWhileDisabled: true);
+        allyHelperVisibility?.SetHiddenImmediate();
 
         if (allyHelper != null && allyHelper.activeSelf)
             allyHelper.SetActive(false);
@@ -1232,8 +1234,7 @@ public class AllyHelperManager : MonoBehaviour
         if (!allyHelper.activeSelf)
             allyHelper.SetActive(true);
 
-        // false = fade in and stay; true would arm the auto-hide monitor meant for skill playback.
-        allyHelperFader?.BeginAnimationLifecycle(false);
+        allyHelperVisibility?.Appear();
     }
 
     /// <summary>Releases the cinematic hold and returns the helper to its normal hidden state.</summary>
@@ -1458,8 +1459,8 @@ public class AllyHelperManager : MonoBehaviour
 
         hideHelperOnSkillComplete = false;
 
-        if (allyHelperFader != null && allyHelper != null && allyHelper.activeSelf)
-            allyHelperFader.FinalizeAfterAnimation();
+        if (allyHelperVisibility != null && allyHelper != null && allyHelper.activeSelf)
+            allyHelperVisibility.Disappear();
         else
             AllyHelperOut();
     }
@@ -1495,7 +1496,7 @@ public class AllyHelperManager : MonoBehaviour
             TeleportHelperTo(teleportPosition, teleportRotation);
 
             if (pendingChainAttackSequence.sequenceDef.hideHelperAtWarpCastMoment)
-                allyHelperFader?.SetHiddenImmediate();
+                allyHelperVisibility?.ConcealForTeleport();
 
             pendingChainAttackSequence.phase = ChainAttackPhase.WaitingForWarpComplete;
             Log(pendingChainAttackSequence.sequenceDef, $"Teleported helper to chain attack pose at {teleportPosition}.");
@@ -1599,8 +1600,8 @@ public class AllyHelperManager : MonoBehaviour
 
             hideHelperOnSkillComplete = false;
 
-            if (allyHelperFader != null && allyHelper != null && allyHelper.activeSelf)
-                allyHelperFader.FinalizeAfterAnimation();
+            if (allyHelperVisibility != null && allyHelper != null && allyHelper.activeSelf)
+                allyHelperVisibility.Disappear();
             else
                 AllyHelperOut();
 
@@ -1624,8 +1625,8 @@ public class AllyHelperManager : MonoBehaviour
 
         if (interrupted)
             AllyHelperOut();
-        else if (allyHelperFader != null && allyHelper != null && allyHelper.activeSelf)
-            allyHelperFader.FinalizeAfterAnimation();
+        else if (allyHelperVisibility != null && allyHelper != null && allyHelper.activeSelf)
+            allyHelperVisibility.Disappear();
         else
             AllyHelperOut();
     }
@@ -2206,7 +2207,7 @@ public class AllyHelperManager : MonoBehaviour
             return;
         }
 
-        allyHelperFader?.BeginAnimationLifecycle(hideHelperOnSkillComplete);
+        allyHelperVisibility?.Appear();
         Log(
             pendingChainAttackSequence.sequenceDef,
             $"Started follow-up chain attack skill '{pendingChainAttackSequence.chainAttackSkillDef.name}'.");
@@ -2520,10 +2521,12 @@ public class AllyHelperManager : MonoBehaviour
         Debug.Log($"[AllyHelperManager] {message}", this);
     }
 
-    void OnHelperFaderDeactivated()
+    // The visibility controller never disables the actor - this manager owns that. Once the
+    // fade-out has actually finished, switch the helper off and hand back its protection.
+    void OnHelperVisibilityDisappeared()
     {
         if (allyHelper != null && allyHelper.activeSelf)
-            return;
+            allyHelper.SetActive(false);
 
         RestoreHelperProtection();
     }

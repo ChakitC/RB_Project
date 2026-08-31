@@ -21,34 +21,67 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dorothy Emotion
-  m_Shader: {fileID: 4800000, guid: 55a54603fab88d940a3374f8ae9f78e8, type: 3}
+  m_Shader: {fileID: 4800000, guid: 45d8e17adb01bbb4bbc14e5857c9be4a, type: 3}
   m_Parent: {fileID: 2100000, guid: adb8c070d81236845a7cee1a9a96a21c, type: 2}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - _ALPHATEST_ON
-  - _SPECULAR_LIGHTING_ON
-  - _STYLE_CELSHADING
+  - _ALPHACLIPPING_ON
+  - _CASTSHADOW_ON
+  - _DISSOLVE_OFF
+  - _EMISSIVEGLOW_OFF
+  - _EYE_BACKFACE_CLIP_OFF
+  - _GETHIT_OFF
+  - _HAIR_BACKFACE_FADE_OFF
+  - _HAIR_HIGHLIGHT_OFF
+  - _HEAD_BACK_HIDE_OFF
+  - _INDICATOR_OFF
+  - _LIGHTSWEEP_OFF
+  - _OUTLINEMASK_OFF
+  - _OUTLINE_ZMODE_LEGACY
+  - _RECEIVESHADOW_OFF
+  - _RIMCOLORMODE_CUSTOM
+  - _RIMLIGHT_OFF
+  - _SOFTLIGHT_ON
+  - _SPECULAR_OFF
+  - _SWITCH_TO_FACE_MODE_OFF
+  - _TARGETDARKEN_OFF
+  - _UPGRADE_OFF
+  - _USEMETALLIC_OFF
+  - _USENORMAL_OFF
+  - _USE_MASKTEX1_OFF
+  - _USE_MASKTEX2_OFF
   m_InvalidKeywords:
-  - _RECEIVESHADOWS
+  - _AIMINGMODE_ON
+  - _ALPHATEST_ON
+  - _COLORSELECT_FANG
+  - _Edge_Highlight
+  - _FACESTENCIL_OFF
+  - _HAIREYEFADEENABLE_OFF
+  - _HAIRSHADOW_OFF
+  - _HEADBACKHIDEENABLE_OFF
+  - _HEADHIDE_EYE_OFF
+  - _HEADHIDE_HAIR_OFF
+  - _MaskOutline
+  - _RimLight
+  - _USENORMALMAP_OFF
+  - _VERTEXTRANSFORM_OFF
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
   stringTagMap:
     RenderType: Opaque
-  disabledShaderPasses:
-  - MOTIONVECTORS
+  disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-    - _BaseMap:
+    - _MainTex:
         m_Texture: {fileID: 2800000, guid: 3eb72836ad51a0e45bd02bf8b0ab3170, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats:
-    - _MaterialID: 3
+    m_Floats: []
     m_Colors: []
   m_BuildTextureStacks: []
   m_AllowLocking: 1

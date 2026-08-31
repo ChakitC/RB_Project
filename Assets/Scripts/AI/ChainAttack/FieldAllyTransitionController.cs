@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -10,6 +11,7 @@ internal sealed class FieldAllyTransitionController
     readonly FieldAllyMember owner;
 
     bool _visualHiddenForChainTransition;
+    Action _pendingDeactivateOnDisappear;
 
     public FieldAllyTransitionController(FieldAllyMember owner)
     {
@@ -18,19 +20,19 @@ internal sealed class FieldAllyTransitionController
 
     public void StartChainVisualLifecycle(bool hideOnAnimationComplete)
     {
-        if (owner.ActorFaderRef == null || !owner.GameObjectRef.activeInHierarchy)
+        if (owner.VisibilityRef == null || !owner.GameObjectRef.activeInHierarchy)
             return;
 
-        owner.ActorFaderRef.BeginAnimationLifecycle(hideOnAnimationComplete);
+        owner.VisibilityRef.Appear();
         _visualHiddenForChainTransition = false;
     }
 
     public void HideVisualForTeleport()
     {
-        if (owner.ActorFaderRef == null || !owner.GameObjectRef.activeInHierarchy)
+        if (owner.VisibilityRef == null || !owner.GameObjectRef.activeInHierarchy)
             return;
 
-        owner.ActorFaderRef.SetHiddenImmediate();
+        owner.VisibilityRef.ConcealForTeleport();
         _visualHiddenForChainTransition = true;
     }
 
@@ -41,25 +43,27 @@ internal sealed class FieldAllyTransitionController
 
         _visualHiddenForChainTransition = false;
 
-        if (owner.ActorFaderRef == null || !owner.GameObjectRef.activeInHierarchy)
+        if (owner.VisibilityRef == null || !owner.GameObjectRef.activeInHierarchy)
             return;
 
-        owner.ActorFaderRef.BeginAnimationLifecycle(hideOnAnimationComplete: false);
+        owner.VisibilityRef.RevealAfterTeleport();
     }
 
     public void RecoverVisibleStateAfterInterruptedExecution()
     {
         _visualHiddenForChainTransition = false;
 
-        if (owner.ActorFaderRef == null || !owner.GameObjectRef.activeInHierarchy)
+        if (owner.VisibilityRef == null || !owner.GameObjectRef.activeInHierarchy)
             return;
 
-        owner.ActorFaderRef.BeginAnimationLifecycle(hideOnAnimationComplete: false);
+        ClearPendingDeactivate();
+        owner.VisibilityRef.SetVisibleImmediate();
     }
 
     public void ClearVisualState()
     {
         _visualHiddenForChainTransition = false;
+        ClearPendingDeactivate();
     }
 
     public void FadeOutAndDeactivate()
@@ -67,10 +71,45 @@ internal sealed class FieldAllyTransitionController
         if (owner.GameObjectRef == null || !owner.GameObjectRef.activeSelf)
             return;
 
-        if (owner.ActorFaderRef != null)
-            owner.ActorFaderRef.FadeOutThenDeactivate();
-        else
+        CharacterVisibilityController visibility = owner.VisibilityRef;
+        if (visibility == null)
+        {
             owner.GameObjectRef.SetActive(false);
+            return;
+        }
+
+        // CharacterVisibilityController never disables the actor itself - the sequence owner does,
+        // once the fade-out has actually reached full dither.
+        ClearPendingDeactivate();
+
+        GameObject actor = owner.GameObjectRef;
+        Action handler = null;
+        handler = () =>
+        {
+            visibility.Disappeared -= handler;
+            if (_pendingDeactivateOnDisappear == handler)
+                _pendingDeactivateOnDisappear = null;
+
+            if (actor != null && actor.activeSelf)
+                actor.SetActive(false);
+        };
+
+        _pendingDeactivateOnDisappear = handler;
+        visibility.Disappeared += handler;
+        visibility.Disappear();
+    }
+
+    // Drops a fade-out completion handler that is no longer wanted (interrupt, restart), so a later
+    // Disappear cannot deactivate the actor behind the sequence's back.
+    void ClearPendingDeactivate()
+    {
+        if (_pendingDeactivateOnDisappear == null)
+            return;
+
+        if (owner.VisibilityRef != null)
+            owner.VisibilityRef.Disappeared -= _pendingDeactivateOnDisappear;
+
+        _pendingDeactivateOnDisappear = null;
     }
 
     public bool TryApplyEntryMovement(PendingSequenceExecution execution)

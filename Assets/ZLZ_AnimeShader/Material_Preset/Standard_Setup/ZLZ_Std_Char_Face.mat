@@ -18,7 +18,6 @@ Material:
   - _EMISSIVEGLOW_OFF
   - _EYE_BACKFACE_CLIP_OFF
   - _GETHIT_OFF
-  - _HAIRSHADOW_OFF
   - _HAIR_BACKFACE_FADE_OFF
   - _HAIR_HIGHLIGHT_OFF
   - _HEAD_BACK_HIDE_OFF
@@ -30,11 +29,14 @@ Material:
   - _RIMCOLORMODE_CUSTOM
   - _RIMLIGHT_OFF
   - _SOFTLIGHT_ON
+  - _SPECULAR_OFF
   - _SWITCH_TO_FACE_MODE_ON
   - _TARGETDARKEN_OFF
   - _UPGRADE_OFF
   - _USEMETALLIC_OFF
   - _USENORMAL_OFF
+  - _USE_MASKTEX1_OFF
+  - _USE_MASKTEX2_OFF
   m_InvalidKeywords:
   - _AIMINGMODE_ON
   - _ALPHATEST_ON
@@ -42,6 +44,7 @@ Material:
   - _Edge_Highlight
   - _FACESTENCIL_OFF
   - _HAIREYEFADEENABLE_OFF
+  - _HAIRSHADOW_OFF
   - _HEADBACKHIDEENABLE_OFF
   - _HEADHIDE_EYE_OFF
   - _HEADHIDE_HAIR_OFF
@@ -100,6 +103,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _RGBA_Masking2:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _RGB_Masking:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -135,12 +142,18 @@ Material:
     - _Delay: 1
     - _DepthSensitivity: 0.25
     - _DissolveValue: 0
+    - _DitherAlpha: 0
+    - _DitherCameraEnable: 0
+    - _DitherCameraFar: 1.25
+    - _DitherCameraNear: 1
+    - _DitherOcclusionAlpha: 0
     - _DstBlend: 0
     - _DstBlendAlpha: 0
     - _EYE_BACKFACE_CLIP: 0
     - _Edge_Highlight: 1
     - _Edge_Highlight_Volume: 4
     - _EmissiveGlow: 0
+    - _EmissiveMaskCh: 2
     - _Emissive_Intensity: 0
     - _Emissive_Intensity_01: 0
     - _Enable_Indicator: 0
@@ -162,6 +175,7 @@ Material:
     - _HairEyeFadeEnable: 0
     - _HairEyeFadeRange: 0
     - _HairFadeRange: 0
+    - _HairHighlightMaskCh: 1
     - _HairShadow: 0
     - _HairShadowFadePos: 0.05
     - _HairShadowFadeSoft: 0.03
@@ -198,6 +212,7 @@ Material:
     - _LightSweepWidth: 0.3
     - _MaskOutline: 1
     - _MetalIntensity: 1
+    - _MetallicMaskCh: 0
     - _NormalStrength: 1
     - _NormalsSensitivity: 0.01
     - _OUTLINE_ZMODE: 0
@@ -208,6 +223,7 @@ Material:
     - _OutlineDistanceMin: 1
     - _OutlineIntensity: 0
     - _OutlineMask: 0
+    - _OutlineMaskCh: 3
     - _OutlineSmoothNormal: 0
     - _OutlineThickness: 2
     - _OutlineWidth: 1
@@ -216,6 +232,7 @@ Material:
     - _OutlineZOffsetMaskRemapStart: 0
     - _QueueOffset: 0
     - _ReceiveShadow: 0
+    - _RejectSelfShadow: 0
     - _RenderQueue: 2000
     - _RenderQueueSelector: 2000
     - _RimColorMode: 1
@@ -225,10 +242,22 @@ Material:
     - _RotateAngleDissolve: 0
     - _RotateLight: 180
     - _SelectTraget: 0
+    - _SelfShadowRejectDist: 0.005
+    - _ShadowEdge: 0
+    - _ShadowEdgeIntensity: 0.45
+    - _ShadowEdgeSmooth: 0.5
+    - _ShadowEdgeWidth: 1
     - _ShadowLinePower: 1.5
+    - _ShadowSoftness: 0.5
     - _SizeGlowDissolve: 0.05
     - _SoftLight: 1
     - _SoftLightHighlight: 1
+    - _Specular: 0
+    - _SpecularIntensity: 1
+    - _SpecularMaskCh: 8
+    - _SpecularSharpness: 80
+    - _SpecularThreshold: 0.5
+    - _SpecularToonStep: 0.7
     - _SpeedLight: 2.5
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
@@ -249,10 +278,13 @@ Material:
     - _Texture_Brightness: 1.2
     - _ToonRampSmoothness: 0.1
     - _UPGRADE: 0
+    - _USE_MASKTEX1: 0
+    - _USE_MASKTEX2: 0
     - _UpgradeActive: 0
     - _UpgradeIntensity: 5
     - _UpgradeMinBrightness: 0.5
     - _UseAiming: 1
+    - _UseContactShadow: 0
     - _UseDissolve: 1
     - _UseLightSweep: 1
     - _UseMetallic: 0
@@ -270,6 +302,7 @@ Material:
     m_Colors:
     - _AlphaTexture: {r: 1, g: 0.25, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 0.95686275, b: 0.8901961, a: 1}
+    - _CharacterAnchorWS: {r: 0, g: 0, b: 0, a: 0}
     - _ColorHair: {r: 0, g: 0.5639739, b: 1, a: 1}
     - _ColorUpgrade: {r: 1, g: 0.75, b: 0.5, a: 0}
     - _Color_A: {r: 0.4716981, g: 0.3009342, b: 0.14907439, a: 0}
@@ -294,10 +327,13 @@ Material:
     - _RotateAxis: {r: 0, g: 1, b: 0, a: 0}
     - _Rotate_Axis: {r: 0, g: 0, b: 1, a: 0}
     - _ScaleLight: {r: 0.975, g: 0.99, b: 0, a: 0}
+    - _ShadowEdgeColor: {r: 1, g: 0.7098, b: 0.49409992, a: 1}
     - _ShadowOffset: {r: 0, g: 0, b: 0, a: 0}
     - _Shadow_Color: {r: 1, g: 0.7882353, b: 0.6745098, a: 1}
     - _Skin_Color: {r: 1, g: 0.9481132, b: 0.9481132, a: 1}
+    - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _StepDissolve: {r: 0.1, g: 0, b: 0, a: 0}
     - _TilingDissolve: {r: 1, g: 1, b: 0, a: 0}
     - _UpgradeColor: {r: 1, g: 0.75, b: 0.5, a: 0}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1

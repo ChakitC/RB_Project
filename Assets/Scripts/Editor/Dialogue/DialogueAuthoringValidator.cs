@@ -34,7 +34,7 @@ public static class DialogueAuthoringValidator
         ValidateCastCoverage(sequences, databases, issues);
         ValidateOpenScenes(issues);
         ValidateProjectSetup(issues);
-        ValidateAspRenderingLayers(issues);
+        ValidateZlzCharacterRenderFeatures(issues);
 
         if (issues.Count == 0)
         {
@@ -310,15 +310,18 @@ public static class DialogueAuthoringValidator
     }
 
     /// <summary>
-    /// Checks that dialogue clones still claim the rendering layers ASP's layer-filtered features
-    /// draw.
+    /// Checks that the ZLZ character render features still draw the Unity layer dialogue clones sit
+    /// on.
     ///
-    /// `DialogueLayers.AspFeatureRenderingLayerMask` mirrors values authored on the URP renderer, so
-    /// retuning `ASPMeshOutlineRendererFeature` or `ASPDepthOffsetShadowFeature` silently drops the
-    /// clones out of those passes. The portraits then render flatter than the same character does in
-    /// gameplay, which is easy to miss by eye and impossible to guess the cause of.
+    /// `ZLZ_CharacterContactShadowFeature` and `ZLZ_ScreenSpaceOutlineFeature` filter by Unity
+    /// layer, so narrowing either mask on the URP renderer silently drops the clones out of those
+    /// passes. The portraits then render flatter than the same character does in gameplay, which is
+    /// easy to miss by eye and impossible to guess the cause of.
+    ///
+    /// A feature that is not present on the renderer is not an issue — both are optional per
+    /// platform.
     /// </summary>
-    static void ValidateAspRenderingLayers(List<string> issues)
+    static void ValidateZlzCharacterRenderFeatures(List<string> issues)
     {
         var pipeline = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline
             as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
@@ -344,28 +347,34 @@ public static class DialogueAuthoringValidator
                     continue;
 
                 string typeName = feature.GetType().Name;
-                if (typeName != "ASPMeshOutlineRendererFeature" && typeName != "ASPDepthOffsetShadowFeature")
+
+                string layerFieldName = typeName switch
+                {
+                    "ZLZ_CharacterContactShadowFeature" => "casterLayers",
+                    "ZLZ_ScreenSpaceOutlineFeature" => "characterLayers",
+                    _ => null,
+                };
+
+                if (layerFieldName == null)
                     continue;
 
                 var featureSerialized = new UnityEditor.SerializedObject(feature);
-                UnityEditor.SerializedProperty layer = featureSerialized.FindProperty("Layer");
-                UnityEditor.SerializedProperty mask = featureSerialized.FindProperty("RenderingLayerMask");
-                if (layer == null || mask == null)
+
+                // The mask lives on the feature's nested Settings object on some ZLZ versions and
+                // directly on the feature on others; check both rather than guessing.
+                UnityEditor.SerializedProperty mask =
+                    featureSerialized.FindProperty(layerFieldName) ??
+                    featureSerialized.FindProperty($"settings.{layerFieldName}");
+
+                if (mask == null)
                     continue;
 
-                if (layer.intValue != DialogueLayers.ActorLayer)
+                if ((mask.intValue & DialogueLayers.ActorLayerMask) == 0)
                 {
                     issues.Add(
-                        $"{typeName} draws Unity layer {layer.intValue}, but dialogue clones are on " +
-                        $"layer {DialogueLayers.ActorLayer}, so they will not be drawn by that pass.");
-                }
-
-                if ((DialogueLayers.ActorRenderingLayerMask & (uint)mask.intValue) == 0)
-                {
-                    issues.Add(
-                        $"{typeName} filters rendering layer mask {mask.intValue}, which dialogue " +
-                        $"clones ({DialogueLayers.ActorRenderingLayerMask}) do not claim. Update " +
-                        "DialogueLayers.AspFeatureRenderingLayerMask to match.");
+                        $"{typeName}.{layerFieldName} does not include Unity layer " +
+                        $"{DialogueLayers.ActorLayer}, which dialogue clones sit on, so the stage " +
+                        "renders without that pass while gameplay has it.");
                 }
             }
         }

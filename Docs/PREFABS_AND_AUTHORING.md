@@ -48,7 +48,7 @@ bind:
 - `CharacterAnimDriver` and `CharacterAnimBrain`
 
 The loaded character's `CharacterStats` supplies the manual command and selected Helper proc
-variants at runtime. Keep local authoring references such as animation, model, hitbox, fader, and
+variants at runtime. Keep local authoring references such as animation, model, hitbox, visibility, and
 teleport-probe fields on the rig; they are not replaceable by context lookup.
 
 Runtime Helper placement uses deterministic candidate rings through
@@ -58,6 +58,129 @@ part of that preflight, and the eventual Helper skill playback must enable plana
 resolver sweeps between animation samples and treats actor-context colliders as actor overlap even
 when masks overlap. The Helper is mobile, so a valid NavMesh footprint is required; if no candidate
 passes, the summon is rejected before activation or cast rather than using an unvalidated position.
+
+## Character Visibility Authoring
+
+Any character that is hidden, faded, or teleported by gameplay — the Helper, field
+allies in a chain attack, an interrupting ally or the Player — needs
+`CharacterVisibilityController` **on the character root**, next to its context, and
+a visual model that can actually be dithered.
+
+On the character root:
+
+- `CharacterVisibilityController`. Leave its `characterVfx` field empty:
+  `CharacterVisualController` rebinds it to the live model on every build, form
+  override, and form restore, so a value serialized here is stale the moment the
+  model changes. `ctx.Visibility` resolves it self/parent/child like every other
+  context reference.
+- Timing is authored per character: appear/disappear duration and curve, and
+  `useUnscaledTime` (on by default, so fades still run during hit-lag, world slow,
+  and dialogue pauses).
+- `disableShadowsWhileHidden` is off by default. Turn it on only if a fully hidden
+  character is still seen casting a shadow — the dither runs in the shadow pass, so
+  it should not be needed.
+
+### Face shadow (SDF) authoring
+
+A character's **face mesh only** takes the `ZLZ_Std_Char_Face` preset; every other mesh takes
+`ZLZ_Std_Char_Body`. The Face preset turns on face mode and reads `_FaceTex`, the SDF that decides
+which half of the face is in shadow for a given light angle.
+
+**`_FaceTex` must be two-channel.** `ZLZ_FaceShadow.hlsl` samples `.r` when the main light is on the
+head's left and `.g` when it is on the right, and ZLZ's own `T_FaceShadow` satisfies
+`G(x) == R(width-1-x)` exactly. A single-channel SDF — which is what ASP used, because ASP mirrored
+it in the shader — leaves `.g` at 0, so the whole face goes to shadow the moment the light crosses to
+one side. Convert one to the other by writing **R = horizontally mirrored source, G = source**
+(`Assets/Character/Roma/Roma_FaceSDF_ZLZ.png` is the worked example).
+
+Import the SDF **sRGB off** and **uncompressed**: the texel is an angle threshold compared against a
+linear 0–1 value, and block compression bands the shadow terminator.
+
+**Check the face UV layout before choosing where the SDF comes from.** ZLZ's documented workflow is
+to reuse the shipped `T_FaceShadow` on every character and align it with the UV controls — that
+assumes a face UV spanning the full 0–1 range, which is what their VRoid demo character has. Three of
+this project's characters (**Roma, Dorothy, Milano**) instead use a *mirrored* face UV: one island
+covering half the U range serves both halves of the face (measured — 215 of 225 mirrored vertex pairs
+on Roma share a UV). The shared texture cannot be fitted to those with a single uniform scale plus an
+XY offset, and the whole face renders shadowed at every setting. Those characters need their own
+two-channel SDF baked against their own UV. The remaining characters span the full U range and can
+take the shared-texture route.
+
+Where a character does have its own baked SDF, it already matches its UV, so `_FaceShadowUVScale`,
+`_FaceShadowUVOffsetX/Y`, and `_FlipUvFace` normally stay at their defaults.
+
+To align a shared texture, switch `_DebugUvFace` on. It renders `float3(step(0.5, FaceUV), 0)`, so a
+correctly aligned face shows **four quadrants meeting at the middle of the face** — green top-left,
+yellow top-right, black bottom-left, red bottom-right. The face UV transform is
+`FaceUV = (uv + offset - 0.5) * scale + 0.5`, so the quadrant cross sits wherever `uv = 0.5 - offset`:
+**scale does not move the cross** (it pivots on it), it only controls how far the SDF spreads over the
+face. Set the offsets first to centre the cross, then set scale. Switch the debug back off before
+committing.
+
+A character whose face is a single flat colour in this view has a mirrored face UV and cannot be
+aligned at all — see above.
+
+Face shadow needs `ZLZ_HeadDirectionBinder` with calibrated axes; without it the shader has no head
+direction and the shadow never moves.
+
+On the character **visual** prefab (under `ModelRoot`):
+
+- `ZLZ_CharacterVFX` with **Dither enabled** and a valid `ZLZ_DitherSettings`
+  asset. Dither disabled makes `SetInstant` a silent no-op: gameplay believes the
+  character is hidden while it is still fully drawn. The controller logs one
+  warning for this, not one per frame.
+- `ZLZ_HeadDirectionBinder` with its head bone assigned and forward/right axes
+  calibrated (Character Dashboard → Auto Detect). Every rig in this project names the
+  head bone `head.x`; do not pick up a `HitZone_Head` / `Head.HitZone` collider by mistake.
+- `ZLZ_CharacterDashboard` — the authoring panel that owns `headBone` (it syncs the value
+  down to the binder in `OnValidate`) and hosts the Smooth Normal Bake, Selection Outline,
+  Contact Shadow, and Tone Mapping setup sections. It is editor-only: no `Awake`, `Start`,
+  or `Update`, so it costs nothing at runtime. Every prefab under `Prefab/Charactor` has one.
+- ZLZ materials on every renderer that should take part; a renderer whose material
+  has no `_DitherAlpha` is skipped silently.
+
+The controller never disables the actor. Sequence owners subscribe to `Disappeared`
+and do the `SetActive(false)` themselves — that is where helper protection rollback
+and chain-attack cleanup hang off.
+
+## Character Rendering Pipeline
+
+Character shading is ZLZ (`ZLZ/AnimeToon/Character`). The render pipeline assets are
+**project-owned** — never the copies inside `Assets/Plugins/ASP`, which are read-only:
+
+| what | asset |
+|---|---|
+| Quality level `PC` | `Assets/Settings/PC_RPAsset.asset` |
+| Graphics Settings default | `Assets/Settings/PC_RPAsset.asset` |
+| PC renderer | `Assets/Settings/PC_Renderer.asset` |
+| Quality level `Mobile` | `Assets/Settings/Mobile_RPAsset.asset` |
+
+Renderer features on `PC_Renderer`: `ZLZ_AnimeToneMappingFeature` and `ZLZ Hull Outline` are on;
+`ZLZ Character Contact Shadow`, `ZLZ Screen Space Outline`, and `ZLZ Selection Outline` are present
+but off, and `ScreenSpaceAmbientOcclusion` is off.
+
+**Character renderers must claim rendering layer bit 0 only.** `ZLZ_SelectionOutlineFeature` filters
+on bits **1 (Character), 2 (Enemy), 3 (Item)**, and `ZLZ_SelectionController` is what sets those bits
+when something is actually selected. A renderer authored with `renderingLayerMask = 4294967295` (all
+32 bits) matches all three types permanently, so the outline is drawn on it constantly no matter what
+the controller does. Every prefab under `Prefab/Charactor`, `Prefab/EnemyVisual`, and `Prefab/Player`
+has been normalised to bit 0; keep new character prefabs that way.
+
+Bit 0 is what every gameplay light uses, and the dialogue stage's bit 5 is applied to clones at
+runtime by `DialogueActorCloneFactory`, so nothing else depends on those extra bits. The Hull Outline
+feature does not filter by rendering layer, so narrowing the mask does not affect it.
+
+Note that the Character Dashboard's **Setup Selection Outline** button switches the renderer feature
+on for the whole project, not just that character.
+
+**Only one tone-mapping feature may ever be active.** Running ASP Tone Mapping and
+`ZLZ_AnimeToneMappingFeature` on the same renderer crushes every ZLZ character to near-black with
+neon-saturated highlights — it looks like broken materials, but it is the double tone-map.
+
+Turning on `ZLZ Character Contact Shadow` or `ZLZ Screen Space Outline` means setting their
+`casterLayers` / `characterLayers` masks to the character Unity layer. Both filter by Unity layer,
+which is also why dialogue clones stay on layer 0 — see **Dialogue presentation**, and
+`DialogueAuthoringValidator` reports it if either mask stops covering that layer.
 
 ## Character Vertical Motor
 
@@ -2183,11 +2306,11 @@ task.
   the Animator blends back to locomotion. The default `0.75` seconds is a hard
   recovery timeout; normal completion occurs earlier when the motion-bone pose
   is stable.
-- `ASPHelperDitherFader` is optional. When present through
-  `FieldAllyMember.ActorFaderRef`, the ally is hidden before the snap and
-  fades in with the interruption animation. The fader is not used at the end of
-  the skill; visible root compensation handles the return to locomotion, so the
-  end-of-skill rebase also works when no fader is configured.
+- `CharacterVisibilityController` is optional. When present through
+  `FieldAllyMember.VisibilityRef`, the ally is concealed before the snap and
+  fades in with the interruption animation. It is not used at the end of the
+  skill; visible root compensation handles the return to locomotion, so the
+  end-of-skill rebase also works when no visibility controller is configured.
 - Configure knockback settings: `knockbackDistance` > 0, `knockbackDuration` > 0.
 - Allies without a configured `AllyInterruptionController` or missing
   skill/profile are simply never selected for interruption.
@@ -2413,8 +2536,9 @@ scenes:
 
 **Project settings.** Rendering layer 5 is named `Dialogue`, maintained by
 `Tools/Dialogue/Set Up Project Layers`. There is **no dialogue Unity layer**: clones sit on layer 0
-like every other character, because ASP's layer-filtered renderer features only draw layer 0 and a
-clone on its own layer renders without the mesh outline the same character has in gameplay. Keeping
+like every other character, because ZLZ's character render features filter by Unity layer and a
+clone on its own layer renders without the contact shadow and screen-space outline the same
+character has in gameplay. Keeping
 clones out of the gameplay view is done by parking the stage far below the level instead, so
 **that distance is load-bearing** — do not move the stage closer.
 

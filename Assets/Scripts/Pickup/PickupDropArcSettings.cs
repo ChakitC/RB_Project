@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -7,6 +7,14 @@ public class PickupDropArcSettings
 {
     const int DefaultTerrainLayer = 17;
     const int DefaultTerrainClearanceMask = 1 << DefaultTerrainLayer;
+    const float ExtendedGroundProbeDistance = 200f;
+
+    // Character bodies must never count as a landing surface. Pickup shells carry no
+    // Rigidbody, so anything that "lands" on a head stays welded to that spot once the
+    // character walks away or dies. Always stripped from the probe mask, whatever the
+    // authored groundMask happens to be.
+    static readonly string[] CharacterLayerNames = { "Player", "Enemy", "Ally", "Iframe", "EnemyHitbox" };
+    static int cachedCharacterLayerMask = -1;
 
     [SerializeField] private bool enabled = true;
     [SerializeField, Min(0f)] private float startHeight = 0.45f;
@@ -28,6 +36,17 @@ public class PickupDropArcSettings
     public float Duration => Mathf.Max(0.01f, duration);
     public float ArcHeight => Mathf.Max(0f, arcHeight);
 
+    static int CharacterLayerMask
+    {
+        get
+        {
+            if (cachedCharacterLayerMask < 0)
+                cachedCharacterLayerMask = LayerMask.GetMask(CharacterLayerNames);
+
+            return cachedCharacterLayerMask;
+        }
+    }
+
     public float CreateBurstAngleOffset()
     {
         return Random.Range(0f, Mathf.PI * 2f);
@@ -43,25 +62,30 @@ public class PickupDropArcSettings
         int safeCount = Mathf.Max(1, count);
         int safeIndex = Mathf.Max(0, index);
         int attempts = Mathf.Max(1, landingAttempts);
-        Vector3 fallbackPosition = origin;
+
+        // Ground the drop origin before scattering candidates around it. A kill that lands
+        // mid-air (launched enemy) would otherwise spread every candidate at the death
+        // height, where the downward probes have nothing in range to hit.
+        Vector3 groundedOrigin = ResolveGroundedPosition(origin, out bool originHitTerrainSurface, out bool originFoundGround);
+        Vector3 scatterOrigin = originFoundGround ? groundedOrigin : origin;
+        Vector3 fallbackPosition = scatterOrigin;
 
         for (int attempt = 0; attempt < attempts; attempt++)
         {
-            Vector3 landingPosition = CreateLandingCandidate(origin, safeIndex, safeCount, burstAngleOffset, attempt);
-            Vector3 groundedPosition = ResolveGroundedPosition(landingPosition, out bool hitTerrainSurface);
+            Vector3 landingPosition = CreateLandingCandidate(scatterOrigin, safeIndex, safeCount, burstAngleOffset, attempt);
+            Vector3 groundedPosition = ResolveGroundedPosition(landingPosition, out bool hitTerrainSurface, out bool foundGround);
 
-            if (hitTerrainSurface || !HasTerrainClearance(groundedPosition))
-                continue;
-
-            if (attempt == 0)
+            if (foundGround && attempt == 0)
                 fallbackPosition = groundedPosition;
+
+            if (!foundGround || hitTerrainSurface || !HasTerrainClearance(groundedPosition))
+                continue;
 
             return groundedPosition;
         }
 
-        Vector3 originFallback = ResolveGroundedPosition(origin, out bool originHitTerrainSurface);
-        if (!originHitTerrainSurface && HasTerrainClearance(originFallback))
-            return originFallback;
+        if (originFoundGround && !originHitTerrainSurface && HasTerrainClearance(groundedOrigin))
+            return groundedOrigin;
 
         return fallbackPosition;
     }
@@ -88,19 +112,28 @@ public class PickupDropArcSettings
         return landingPosition;
     }
 
-    Vector3 ResolveGroundedPosition(Vector3 landingPosition, out bool hitTerrainSurface)
+    Vector3 ResolveGroundedPosition(Vector3 landingPosition, out bool hitTerrainSurface, out bool foundGround)
     {
         hitTerrainSurface = false;
+        foundGround = false;
 
-        int groundProbeMask = groundMask.value & ~terrainClearanceMask.value;
+        int groundProbeMask = groundMask.value & ~terrainClearanceMask.value & ~CharacterLayerMask;
         if (groundProbeMask == 0 || groundProbeHeight <= 0f || groundProbeDistance <= 0f)
             return landingPosition;
 
         Vector3 rayOrigin = landingPosition + Vector3.up * groundProbeHeight;
-        float rayDistance = groundProbeHeight + groundProbeDistance;
-        if (!Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, rayDistance, groundProbeMask, QueryTriggerInteraction.Ignore))
+        bool hasGround = Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, groundProbeHeight + groundProbeDistance, groundProbeMask, QueryTriggerInteraction.Ignore);
+
+        // Last resort for kills that happen far above the floor. The authored probe distance
+        // keeps ordinary drops from sliding down a cliff, but an airborne drop still has to
+        // find a surface instead of hanging at the death height forever.
+        if (!hasGround)
+            hasGround = Physics.Raycast(rayOrigin, Vector3.down, out hit, groundProbeHeight + ExtendedGroundProbeDistance, groundProbeMask, QueryTriggerInteraction.Ignore);
+
+        if (!hasGround)
             return landingPosition;
 
+        foundGround = true;
         hitTerrainSurface = IsInMask(hit.collider.gameObject.layer, terrainClearanceMask);
         return hit.point + Vector3.up * Mathf.Max(0f, landingHeightOffset);
     }

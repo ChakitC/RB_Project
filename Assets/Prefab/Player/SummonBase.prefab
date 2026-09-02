@@ -10,7 +10,6 @@ GameObject:
   m_Component:
   - component: {fileID: 3268462214285986499}
   - component: {fileID: 5135303409400166651}
-  - component: {fileID: 2772596635337804382}
   - component: {fileID: 2254012503189899454}
   - component: {fileID: 898602719743778276}
   m_Layer: 10
@@ -73,29 +72,6 @@ MonoBehaviour:
   healthBarLocalOffset: {x: 0, y: 0, z: 0}
   healthBarLocalRotEuler: {x: -90, y: 0, z: 0}
   healthBarLocalScale: {x: 1, y: 1, z: 1}
---- !u!114 &2772596635337804382
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 547019438355007}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a2c96075af79d4748a8645c5fc390640, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  characterPanel: {fileID: 0}
-  characterPanelSearchRoot: {fileID: 7107260667182768185}
-  animancer: {fileID: 2912202768560880375}
-  deactivateTarget: {fileID: 0}
-  animancerLayerIndex: 0
-  fadeInDuration: 0.18
-  fadeOutDuration: 0.18
-  fadeOutLeadTime: 0.18
-  ditheringSize: 6
-  useUnscaledTime: 0
-  warnIfAlphaClipDisabled: 1
 --- !u!114 &2254012503189899454
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -327,6 +303,7 @@ GameObject:
   - component: {fileID: 3000000000000000012}
   - component: {fileID: 8931517866212768726}
   - component: {fileID: 4226233165371465348}
+  - component: {fileID: 5751350405767216527}
   m_Layer: 10
   m_Name: SummonBase
   m_TagString: Ally
@@ -455,6 +432,7 @@ MonoBehaviour:
   AimRig: {fileID: 3831703666553802021}
   CharacterLoad: {fileID: 0}
   Visual: {fileID: 5135303409400166651}
+  Visibility: {fileID: 5751350405767216527}
   UIManager: {fileID: 0}
   ColliderRefs: {fileID: 0}
   StatusEffects: {fileID: 1083789899064408605}
@@ -693,6 +671,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ctx: {fileID: 326389343436592710}
   characterController: {fileID: 7154190368743996575}
+  colliderRefs: {fileID: 0}
   capsuleCollider: {fileID: 0}
   navMeshAgent: {fileID: 1585247101988985248}
   agentMoveDriver: {fileID: 4358868359549360660}
@@ -714,6 +693,71 @@ MonoBehaviour:
   collisionPadding: 0.02
   navMeshLandSampleRadius: 1.5
   navMeshLandRecoveryTimeout: 1
+--- !u!114 &5751350405767216527
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2275044329717223576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a7100cce5124874794509fbfe64640b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterVfx: {fileID: 0}
+  appearDuration: 0.18
+  disappearDuration: 0.18
+  appearCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  disappearCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  useUnscaledTime: 1
+  disableShadowsWhileHidden: 0
 --- !u!1 &2357043900880950871
 GameObject:
   m_ObjectHideFlags: 0
@@ -1522,6 +1566,7 @@ MonoBehaviour:
   healthSystem: {fileID: 0}
   characterController: {fileID: 7154190368743996575}
   navMeshAgent: {fileID: 1585247101988985248}
+  colliderRefs: {fileID: 0}
   capsuleCollider: {fileID: 0}
   animBrain: {fileID: 6756038978356485017}
   fieldAllyMember: {fileID: 0}
@@ -1557,6 +1602,11 @@ MonoBehaviour:
   pushLayers:
     serializedVersion: 2
     m_Bits: 576
+  environmentCollisionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  environmentCollisionPadding: 0.05
+  navMeshRecoverySearchRadius: 2.5
 --- !u!114 &4358868359549360660
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -141,7 +141,49 @@ On the character **visual** prefab (under `ModelRoot`):
 
 The controller never disables the actor. Sequence owners subscribe to `Disappeared`
 and do the `SetActive(false)` themselves — that is where helper protection rollback
-and chain-attack cleanup hang off.
+and chain-attack cleanup hang off. Nothing carries a `deactivateTarget` any more.
+
+### Wired prefabs
+
+| prefab | controller sits on | appear | disappear |
+|---|---|---:|---:|
+| `Prefab/Player/Player.prefab` | root, same object as `PlayerContext` | 0.18s | 0.18s |
+| `Prefab/Player/Ally_Stryker.prefab` | root, same object as `AllyContext` | 0.18s | 0.18s |
+| `Prefab/Player/Ally_Helper.prefab` | root, same object as `AllyContext` | **0.40s** | **0.40s** |
+| `Prefab/Player/SummonBase.prefab` | root, same object as `SummonContext` | 0.18s | 0.18s |
+
+The Helper's 0.40s is deliberate — it preserves the fade speed it had before the ZLZ
+migration; the other three use the controller's 0.18s default.
+
+### Weapons fade with the body
+
+A mounted weapon is part of the character as far as visibility is concerned, so **every weapon
+material a character can hold must use a shader that has `_DitherAlpha`** — in practice
+`ZLZ/AnimeToon/Character`. `Toon/TC_CustomToonOutline` does not have it, so a weapon on that shader
+stays fully solid while its owner fades out. The materials behind every `GunConfig.WeaponPrefab`
+(`SubmachineGun_01/02`, `HeavyMachineGun_01`, `Sniper_01`, `Pistol_01`, `M_SMG_03`) are on the ZLZ
+shader for exactly this reason; keep new ones there too.
+
+`ZLZ_CharacterVFX` caches its renderer list, so a weapon mounted *after* the model was bound is
+invisible to the dither until the list is rebuilt. `CharacterVisualController.BuildModelFromWeaponDef`
+therefore calls `ctx.Visibility.RefreshVisualRenderers()` once after both hands are settled — on
+every path, including the ones that only destroy a weapon or fail to find a hand bone. The order that
+matters is:
+
+```
+build / bind character model → mount weapons → refresh the ZLZ renderer list → re-apply the alpha
+```
+
+`RefreshVisualRenderers()` re-applies the current alpha in the same call because
+`ZLZ_CharacterVFX.RefreshRenderers()` rebuilds its material instances and resets the dither to
+visible — without that, swapping a weapon while the character is hidden pops it on screen for a
+frame. Call it only when the weapon hierarchy actually changes, never per frame.
+
+`CharacteContext.Visibility` and `FieldAllyMember.actorVisibility` are **bound in the prefab**
+even though both resolve at runtime as a fallback. The serialized reference makes the prefab
+checkable by eye and stops the wiring depending on a hierarchy search — the visual stack lives
+under a `CharacterVisual_System` child while the controller sits on the root, so a one-direction
+lookup is not something to rely on.
 
 ## Character Rendering Pipeline
 
@@ -2626,9 +2668,11 @@ round. Prove the APIs first — do not start from a specific enemy prefab.
 | `missingClipFallbackSeconds` | `0.6` | Gameplay lock held when the Mini Stun clip is missing |
 | `runtimePointPrefab` | — | **Required.** Must carry `SpecialShootPointInstance` |
 | `pointColliderLayer` | `3` (`Hit`) | Applied to the pooled point and its collider |
+| `pointHitRedirectDistance` | `1.0` | How far past an outer hit-zone impact a shot may still be credited to a point on its trajectory. Keep below the enemy's body thickness |
 | `breakVfxPrefab` / `timeoutVfxPrefab` | — | Success and failure **must** read differently |
 | `resolveFadeSeconds` | `0.25` | Fade before the point returns to the pool |
 | `pointHitSfx` / `pointBreakSfx` | — | Optional |
+| `debugLogging` | off | Logs every direct hit on an enemy running a round. Turn on to diagnose "my shots are not landing"; leave off in builds |
 
 ### 2. Runtime point prefab
 
@@ -2680,6 +2724,11 @@ Each anchor entry:
 | `colliderRadius` | World radius of this point's hit collider |
 | `vfxScale` | Uniform scale for the point's presentation root |
 | `hitZone` | `Torso` or `Head`. A head anchor takes the normal Headshot multiplier |
+
+`localPosition` is a **visibility** setting, not a hit setting: nudge the point out until it reads
+on the model. Whether a shot can land is handled by the trajectory redirect (see
+`Docs/SYSTEMS/SPECIAL_SHOOT_POINTS.md`), so a point that sits inside the enemy's coarse body hitbox
+is still hittable. Placement is an art call — a solver cannot tell where the silhouette looks right.
 
 Author at least as many enabled anchors as `defaultPointCount`, and preferably
 several more — the shuffle bag only produces variety when there is a surplus.

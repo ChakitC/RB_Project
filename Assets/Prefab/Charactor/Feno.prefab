@@ -788,7 +788,23 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -3949678544564815182, guid: 593976350e751b340bc9e474264dda15, type: 3}
+      propertyPath: m_DynamicOccludee
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -3949678544564815182, guid: 593976350e751b340bc9e474264dda15, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -3949678544564815182, guid: 593976350e751b340bc9e474264dda15, type: 3}
       propertyPath: m_RenderingLayerMask
+      value: 4294967295
+      objectReference: {fileID: 0}
+    - target: {fileID: -3949678544564815182, guid: 593976350e751b340bc9e474264dda15, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3949678544564815182, guid: 593976350e751b340bc9e474264dda15, type: 3}
+      propertyPath: m_SkinnedMotionVectors
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -3752793972591062930, guid: 593976350e751b340bc9e474264dda15, type: 3}
@@ -1502,6 +1518,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 593976350e751b340bc9e474264dda15, type: 3}
       propertyPath: m_Name
       value: Feno
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 593976350e751b340bc9e474264dda15, type: 3}
+      propertyPath: m_TagString
+      value: Untagged
       objectReference: {fileID: 0}
     - target: {fileID: 921391927218321214, guid: 593976350e751b340bc9e474264dda15, type: 3}
       propertyPath: m_Layer
@@ -2469,6 +2489,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 593976350e751b340bc9e474264dda15, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7280249043585974154}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 593976350e751b340bc9e474264dda15, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 315217664389305740}
   m_SourcePrefab: {fileID: 100100000, guid: 593976350e751b340bc9e474264dda15, type: 3}
 --- !u!4 &1109229822447006666 stripped
 Transform:
@@ -2485,11 +2508,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6557261358173935261, guid: 593976350e751b340bc9e474264dda15, type: 3}
   m_PrefabInstance: {fileID: 8992242283508790738}
   m_PrefabAsset: {fileID: 0}
---- !u!137 &3883564116810567520 stripped
-SkinnedMeshRenderer:
-  m_CorrespondingSourceObject: {fileID: -3949678544564815182, guid: 593976350e751b340bc9e474264dda15, type: 3}
-  m_PrefabInstance: {fileID: 8992242283508790738}
-  m_PrefabAsset: {fileID: 0}
 --- !u!137 &4430476662667053358 stripped
 SkinnedMeshRenderer:
   m_CorrespondingSourceObject: {fileID: 4735231250059787516, guid: 593976350e751b340bc9e474264dda15, type: 3}
@@ -2498,6 +2516,11 @@ SkinnedMeshRenderer:
 --- !u!4 &4688929635969402934 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4456505482534452708, guid: 593976350e751b340bc9e474264dda15, type: 3}
+  m_PrefabInstance: {fileID: 8992242283508790738}
+  m_PrefabAsset: {fileID: 0}
+--- !u!137 &5553171104679179883 stripped
+SkinnedMeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -5631171872649100359, guid: 593976350e751b340bc9e474264dda15, type: 3}
   m_PrefabInstance: {fileID: 8992242283508790738}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &8073746211628435587 stripped
@@ -2548,16 +2571,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _targetRenderers:
   - {fileID: 1403050670928376894}
+  - {fileID: 5553171104679179883}
   - {fileID: 4430476662667053358}
-  - {fileID: 3883564116810567520}
   Upgrade:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: db1d1e9838805e44b8637a777a160287, type: 2}
   GetHit:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: 9d44a1eddaeb4fb4590ebfc79ae35e4b, type: 2}
   Indicator:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: 949a12f3c824db1409c89acf0703c84e, type: 2}
   Dissolve:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: 96ae7ef0d6972e54598d2e4045234734, type: 2}
   Dither:
     _enabled: 1
     _enableCameraNearFade: 0
@@ -2598,6 +2621,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   headBone: {fileID: 8712813571020335780}
+--- !u!114 &315217664389305740
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8073746211628435587}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 531c79c93eacb7f46b331667ec3680be, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  defaultType: 1
+  startSelected: 0
 --- !u!4 &8712813571020335780 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 297516237248225142, guid: 593976350e751b340bc9e474264dda15, type: 3}

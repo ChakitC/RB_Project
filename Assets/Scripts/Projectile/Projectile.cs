@@ -539,18 +539,25 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
                 // One resolved damage result feeds both the enemy and the point. The scope opens the
                 // meter's deferral before TakeDamage runs and closes it on the way out, so a
                 // final-point shot cannot enter ChainReady between the HP damage and the reward.
+                float shotBacktrack = ResolveShotBacktrack();
                 using (SpecialShootPointHitScope pointScope = SpecialShootPointHitScope.Begin(
                     other,
                     target,
-                    ResolveSpecialShootPointCredit()))
+                    ResolveSpecialShootPointCredit(),
+                    BuildShotRay(hit, shotBacktrack),
+                    shotBacktrack))
                 {
+                    // A redirected shot is credited to the point it was actually heading for, so it
+                    // takes that anchor's authored hit zone rather than the outer box's.
+                    CharacterHitZone resolvedZone = pointScope.HasPoint ? pointScope.HitZone : hitZone;
+
                     DamageResult damageResult = ApplyResolvedDamage(
                         target,
                         finalDamage,
                         hit,
                         BuildConfiguredKnockback(hit, useRadialDirection: false),
                         showDamageNumber: true,
-                        hitZone: hitZone);
+                        hitZone: resolvedZone);
 
                     pointScope.ApplyPointDamage(damageResult);
                 }
@@ -1408,6 +1415,34 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
     GameObject ResolveSpecialShootPointCredit()
     {
         return _attribution.CreditedActor != null ? _attribution.CreditedActor : ResolveSourceObject();
+    }
+
+    /// <summary>
+    /// How far to rewind the trajectory to get behind the real impact.
+    ///
+    /// This projectile uses continuous collision and moves by <c>MovePosition</c> once per physics
+    /// step, so by the time <c>OnTriggerEnter</c> runs the transform is already at the end of that
+    /// step — at typical bullet speeds, up to a metre past whatever it just entered. Casting forward
+    /// from there looks *past* a Special Shoot Point rather than at it.
+    /// </summary>
+    float ResolveShotBacktrack()
+    {
+        float perStep = Mathf.Max(0f, _ctx.stats.speed) * Time.fixedDeltaTime;
+        return Mathf.Max(0.25f, perStep) + GetSweepRadius();
+    }
+
+    /// <summary>
+    /// This shot's trajectory, rewound to just before the impact, used to decide whether an outer
+    /// hit zone stole an impact that was on its way to a Special Shoot Point.
+    /// </summary>
+    Ray BuildShotRay(in ProjectileHitInfo hit, float backtrack)
+    {
+        Vector3 dir = _ctx.dir.sqrMagnitude > 0.0001f ? _ctx.dir.normalized : transform.forward;
+
+        // The contact point on the struck collider is a far better anchor than the transform, which
+        // has already overshot. Fall back to the transform only when no contact point was resolved.
+        Vector3 anchor = hit.ResolvePoint(transform.position);
+        return new Ray(anchor - dir * backtrack, dir);
     }
 
     PassiveEventContext CreateOwnerEventContext(

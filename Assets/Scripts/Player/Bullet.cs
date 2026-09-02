@@ -169,7 +169,9 @@ public class Bullet : MonoBehaviour, IBarrierBlockableProjectile
             using (SpecialShootPointHitScope pointScope = SpecialShootPointHitScope.Begin(
                 other,
                 damageable,
-                attacker))
+                attacker,
+                new Ray(transform.position - transform.forward * 0.5f, transform.forward),
+                shotBacktrack: 0.5f))
             {
                 DamageResult result = damageable.TakeDamage(
                     finalDamage,

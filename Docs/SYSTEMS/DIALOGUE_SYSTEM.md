@@ -151,6 +151,14 @@ Both drive off the engine frame rather than `timeScale`, so they keep working wh
 frozen at 0, and both resolve through `renderer.materials`, so the clone gets its own material
 instances and can never write back into the live character.
 
+The clone therefore also carries **the weapon the character is actually holding** — weapons are
+mounted into hand bones underneath `ModelRoot`, so they come across with the rest of the model, and
+`ZLZ_CharacterVFX._targetRenderers` already includes them because
+`CharacterVisualController.BuildModelFromWeaponDef` refreshes that list when a weapon is mounted (see
+`WEAPON_SYSTEM.md`). Nothing dialogue-specific is needed for weapons, and no
+`CharacterVisibilityController` ends up on the clone — it lives on the character root, above
+`ModelRoot`.
+
 `DialogueActorCloneFactory.RebindHeadDirectionToClone` re-points a binder whose `headBone` was
 assigned from outside `ModelRoot`; `Instantiate` only remaps references that resolve inside the
 copied hierarchy, and a binder left pointing at the live character's head would make the portrait's

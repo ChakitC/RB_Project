@@ -79,6 +79,28 @@ current weapon into `ctx.currentWeapon`, and calls `WeaponSystem.Equip`.
 14. refreshes weapon visuals
 15. plays equip cue when the weapon changed
 
+### Weapon Visuals And Character Visibility
+
+Step 14 goes through `CharacterVisualController.BuildModelFromWeaponDef`, which mounts the weapon
+prefab into the hand bones and then calls `ctx.Visibility.RefreshVisualRenderers()` once, after both
+hands are settled.
+
+That call is not optional. A mounted weapon is a new renderer under the character model, and
+`ZLZ_CharacterVFX` caches its renderer list — without the refresh the weapon is not part of the
+character's dither, so it stays fully solid while its owner fades out, teleports, or is hidden for an
+interruption. The refresh also re-applies the current alpha immediately, because rebuilding the
+renderer list resets the dither to visible; that is what stops a weapon swap from popping on screen
+while the character is hidden.
+
+Consequences for weapon authoring:
+
+- A weapon material must use a shader that exposes `_DitherAlpha` (`ZLZ/AnimeToon/Character`).
+  A weapon on `Toon/TC_CustomToonOutline` cannot fade with its owner.
+- The mounted weapon gets its own material instance per character, so two characters holding the
+  same weapon fade independently and the shared `.mat` asset is never written at runtime.
+- Because the weapon lives under `ModelRoot`, a dialogue clone of the character carries the weapon
+  it is actually holding, with its own material instances.
+
 ## Derived Stats
 
 Weapon stats come from `WeaponStatSnapshotBuilder` and `StatsHub`.

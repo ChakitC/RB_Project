@@ -9,7 +9,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3096808973931747446}
-  - component: {fileID: 231360780603438391}
   m_Layer: 0
   m_Name: SMG_GR01
   m_TagString: Untagged
@@ -33,31 +32,6 @@ Transform:
   - {fileID: 515651482314838932}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &231360780603438391
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3491401369918143333}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4d1c549d247b7f0419a3188b7b78bda4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  CurrentBackFaceOutlineMethod: 0
-  BackfaceOutlineColor: {r: 0, g: 0, b: 0, a: 0}
-  BackFaceOutlineWidth: 0
-  BackFaceOutlineFadeStartEnd: {x: 50, y: 50}
-  ScaleWidthAsScreenSpaceOutline: 0
-  CenterPositionOffset: {x: 0, y: 0, z: 0}
-  _overrideMode: 0
-  _mainLightColorOverride: 0
-  _mainLightColorOverrideValue: {r: 0, g: 0, b: 0, a: 0}
-  _mainLightStrengthOverrideValue: 0
-  _overrideLightAngle: {x: 0, y: 0, z: 0}
-  HeadBoneTransform: {fileID: 0}
-  CreateMaterialInstanceOnPlay: 0
 --- !u!1001 &48782272806712447
 PrefabInstance:
   m_ObjectHideFlags: 0

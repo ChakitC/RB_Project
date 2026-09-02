@@ -37,10 +37,11 @@ Material:
   - _INDICATOR_OFF
   - _LIGHTSWEEP_OFF
   - _OUTLINEMASK_OFF
+  - _OUTLINESMOOTHNORMAL_ON
   - _OUTLINE_ZMODE_LEGACY
-  - _RECEIVESHADOW_OFF
+  - _RECEIVESHADOW_ON
   - _RIMCOLORMODE_CUSTOM
-  - _RIMLIGHT_OFF
+  - _RIMLIGHT_ON
   - _SOFTLIGHT_ON
   - _SPECULAR_OFF
   - _SWITCH_TO_FACE_MODE_OFF
@@ -50,6 +51,8 @@ Material:
   - _USENORMAL_OFF
   - _USE_MASKTEX1_OFF
   - _USE_MASKTEX2_OFF
+  - _ZLZ_CONTACTSHADOW_ON
+  - _ZLZ_REJECT_SELFSHADOW_ON
   m_InvalidKeywords:
   - _AIMINGMODE_ON
   - _ALPHATEST_ON
@@ -238,19 +241,19 @@ Material:
     - _OutlineIntensity: 0
     - _OutlineMask: 0
     - _OutlineMaskCh: 3
-    - _OutlineSmoothNormal: 0
+    - _OutlineSmoothNormal: 1
     - _OutlineThickness: 2
-    - _OutlineWidth: 1
+    - _OutlineWidth: 1.9
     - _OutlineZOffset: 0
     - _OutlineZOffsetMaskRemapEnd: 1
     - _OutlineZOffsetMaskRemapStart: 0
     - _QueueOffset: 0
-    - _ReceiveShadow: 0
-    - _RejectSelfShadow: 0
+    - _ReceiveShadow: 1
+    - _RejectSelfShadow: 1
     - _RenderQueue: 2000
     - _RenderQueueSelector: 2000
     - _RimColorMode: 1
-    - _RimLight: 0
+    - _RimLight: 1
     - _RimWidth: 1
     - _Rotate: 0
     - _RotateAngleDissolve: 0
@@ -262,7 +265,7 @@ Material:
     - _ShadowEdgeSmooth: 0.5
     - _ShadowEdgeWidth: 1
     - _ShadowLinePower: 1.5
-    - _ShadowSoftness: 0.5
+    - _ShadowSoftness: 0.496
     - _SizeGlowDissolve: 0.05
     - _SoftLight: 1
     - _SoftLightHighlight: 1
@@ -282,7 +285,7 @@ Material:
     - _StencilRef: 0
     - _StencilZFail: 0
     - _StepReceiveShadow: 0.05
-    - _StepRim: 1.5
+    - _StepRim: 1.4
     - _Surface: 0
     - _SwitchDissolve: 1
     - _Switch_to_Face_Mode: 0
@@ -290,7 +293,7 @@ Material:
     - _TargetDarkenIntensity: 0.1
     - _TargetDarkenLocal: 1
     - _Texture_Brightness: 1
-    - _ToonRampSmoothness: 0.1
+    - _ToonRampSmoothness: 0.781
     - _UPGRADE: 0
     - _USE_MASKTEX1: 0
     - _USE_MASKTEX2: 0
@@ -298,7 +301,7 @@ Material:
     - _UpgradeIntensity: 5
     - _UpgradeMinBrightness: 0.5
     - _UseAiming: 1
-    - _UseContactShadow: 0
+    - _UseContactShadow: 1
     - _UseDissolve: 1
     - _UseLightSweep: 1
     - _UseMetallic: 0
@@ -328,9 +331,9 @@ Material:
     - _Emissive_Color_01: {r: 0, g: 0.93945026, b: 1, a: 1}
     - _GetHitColor: {r: 4, g: 2.893609, b: 1.4150944, a: 0}
     - _HLColor: {r: 1, g: 1, b: 1, a: 0}
-    - _HeadCenterWS: {r: 2.944039, g: 1.4720744, b: 2.0833075, a: 1}
-    - _HeadForwardWS: {r: -0.26284653, g: 0.042060725, b: 0.9639204, a: 0}
-    - _HeadRightWS: {r: 0.9647742, g: 0.000001014676, b: 0.2630793, a: 0}
+    - _HeadCenterWS: {r: -0.7128252, g: 1.4720744, b: -3.4416938, a: 1}
+    - _HeadForwardWS: {r: 0.90486443, g: 0.042060725, b: -0.42361733, a: 0}
+    - _HeadRightWS: {r: -0.4239926, g: 0.0000010151416, b: -0.9056659, a: 0}
     - _HeadUpWS: {r: 0, g: 0, b: 0, a: 0}
     - _IndicatorColor: {r: 0, g: 1.8323576, b: 2.9960783, a: 0}
     - _Indicator_Color: {r: 1, g: 1, b: 1, a: 0}
@@ -343,7 +346,7 @@ Material:
     - _ScaleLight: {r: 0.975, g: 0.99, b: 0, a: 0}
     - _ShadowEdgeColor: {r: 1, g: 0.7098, b: 0.49409992, a: 1}
     - _ShadowOffset: {r: 0, g: 0, b: 0, a: 0}
-    - _Shadow_Color: {r: 1, g: 0.7882353, b: 0.6745098, a: 1}
+    - _Shadow_Color: {r: 0.754717, g: 0.7060782, b: 0.6799573, a: 1}
     - _Skin_Color: {r: 1, g: 0.9490196, b: 0.9490196, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _StepDissolve: {r: 0.1, g: 0, b: 0, a: 0}

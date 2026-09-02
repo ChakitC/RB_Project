@@ -37,10 +37,11 @@ Material:
   - _INDICATOR_OFF
   - _LIGHTSWEEP_OFF
   - _OUTLINEMASK_OFF
+  - _OUTLINESMOOTHNORMAL_ON
   - _OUTLINE_ZMODE_LEGACY
-  - _RECEIVESHADOW_OFF
+  - _RECEIVESHADOW_ON
   - _RIMCOLORMODE_CUSTOM
-  - _RIMLIGHT_OFF
+  - _RIMLIGHT_ON
   - _SOFTLIGHT_ON
   - _SPECULAR_OFF
   - _SWITCH_TO_FACE_MODE_OFF
@@ -50,6 +51,8 @@ Material:
   - _USENORMAL_OFF
   - _USE_MASKTEX1_OFF
   - _USE_MASKTEX2_OFF
+  - _ZLZ_CONTACTSHADOW_ON
+  - _ZLZ_REJECT_SELFSHADOW_ON
   m_InvalidKeywords:
   - _AIMINGMODE_ON
   - _ALPHATEST_ON
@@ -81,7 +84,20 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats: []
-    m_Colors: []
+    m_Floats:
+    - _OUTLINE_ZMODE: 0
+    - _OutlineIntensity: 0
+    - _OutlineWidth: 2.2
+    - _OutlineZOffset: 0
+    - _ReceiveShadow: 1
+    - _RejectSelfShadow: 1
+    - _RimLight: 1
+    - _SelfShadowRejectDist: 0.001
+    - _ShadowEdge: 0
+    - _ShadowEdgeSmooth: 0
+    - _Switch_to_Face_Mode: 0
+    - _UseContactShadow: 1
+    m_Colors:
+    - _Shadow_Color: {r: 0.8037735, g: 0.7142968, b: 0.7142968, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

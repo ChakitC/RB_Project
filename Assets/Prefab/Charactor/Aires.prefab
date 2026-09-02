@@ -1009,6 +1009,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 411cad361d9bf2c45b315ee7ff2425f0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8624142754455919077}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 411cad361d9bf2c45b315ee7ff2425f0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7793636552225515373}
   m_SourcePrefab: {fileID: 100100000, guid: 411cad361d9bf2c45b315ee7ff2425f0, type: 3}
 --- !u!137 &149884472078699220 stripped
 SkinnedMeshRenderer:
@@ -1098,13 +1101,13 @@ MonoBehaviour:
   - {fileID: 149884472078699220}
   - {fileID: 7137408321091159272}
   Upgrade:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: db1d1e9838805e44b8637a777a160287, type: 2}
   GetHit:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: 9d44a1eddaeb4fb4590ebfc79ae35e4b, type: 2}
   Indicator:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: 949a12f3c824db1409c89acf0703c84e, type: 2}
   Dissolve:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: 96ae7ef0d6972e54598d2e4045234734, type: 2}
   Dither:
     _enabled: 1
     _enableCameraNearFade: 0
@@ -1145,6 +1148,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   headBone: {fileID: 5943812080200192771}
+--- !u!114 &7793636552225515373
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6529442347700744484}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 531c79c93eacb7f46b331667ec3680be, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  defaultType: 1
+  startSelected: 0
 --- !u!137 &7137408321091159272 stripped
 SkinnedMeshRenderer:
   m_CorrespondingSourceObject: {fileID: -5381379462307051363, guid: 411cad361d9bf2c45b315ee7ff2425f0, type: 3}

@@ -331,9 +331,9 @@ Material:
     - _Emissive_Color_01: {r: 0, g: 0.93945026, b: 1, a: 1}
     - _GetHitColor: {r: 4, g: 2.893609, b: 1.4150944, a: 0}
     - _HLColor: {r: 1, g: 1, b: 1, a: 0}
-    - _HeadCenterWS: {r: -0.066688664, g: 1.4738452, b: -2.6806672, a: 1}
-    - _HeadForwardWS: {r: 0.97785914, g: 0.03721099, b: -0.20592858, a: 0}
-    - _HeadRightWS: {r: -0.20607133, g: 0.0000011492521, b: -0.97853684, a: 0}
+    - _HeadCenterWS: {r: -0.697883, g: 1.4738452, b: -6.3606176, a: 1}
+    - _HeadForwardWS: {r: 0.9466881, g: 0.03721099, b: -0.3199945, a: 0}
+    - _HeadRightWS: {r: -0.32021633, g: 0.0000011492521, b: -0.94734424, a: 0}
     - _HeadUpWS: {r: 0, g: 0, b: 0, a: 0}
     - _IndicatorColor: {r: 0, g: 1.8323576, b: 2.9960783, a: 0}
     - _Indicator_Color: {r: 1, g: 1, b: 1, a: 0}

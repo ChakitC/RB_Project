@@ -51,6 +51,12 @@ public sealed class SpecialShootPointInstance : MonoBehaviour
     float _fadeDuration;
     bool _fading;
     float _flashPhase;
+    int _occludedId;
+    float _occludedStrength;
+    float _reachProbeCooldown;
+    Vector3 _authoredPresentationScale = Vector3.one;
+    bool _authoredScaleCaptured;
+    SpecialShootPointTargetVisual _targetVisual;
 
     /// <summary>The controller that pooled this point. Null while the point sits idle in the pool.</summary>
     public SpecialShootPointController Owner => _owner;
@@ -74,6 +80,12 @@ public sealed class SpecialShootPointInstance : MonoBehaviour
     public float Health01 => _maxHealth > 0f ? Mathf.Clamp01(_health / _maxHealth) : 0f;
 
     public Vector3 WorldPosition => hitCollider != null ? hitCollider.bounds.center : transform.position;
+
+    /// <summary>
+    /// The point's own collider. Exposed so the direct-hit path can test one specific collider
+    /// rather than running a scene-wide physics query.
+    /// </summary>
+    public Collider HitCollider => hitCollider;
 
     void Awake()
     {
@@ -118,6 +130,8 @@ public sealed class SpecialShootPointInstance : MonoBehaviour
         _fading = false;
         _fadeRemaining = 0f;
         _flashPhase = 0f;
+        _occludedStrength = 0f;
+        _reachProbeCooldown = 0f;
 
         Transform anchorTransform = anchor != null ? anchor.anchor : null;
         transform.SetParent(anchorTransform, false);
@@ -127,8 +141,17 @@ public sealed class SpecialShootPointInstance : MonoBehaviour
 
         if (presentationRoot != null && presentationRoot != transform)
         {
+            // vfxScale is a MULTIPLIER on the size authored in the point prefab, not a replacement
+            // for it. Writing Vector3.one * vfxScale threw the prefab's own size away, so a marker
+            // authored at 2.4 silently collapsed to 1.0 the moment it was bound.
             float scale = anchor != null ? Mathf.Max(0.01f, anchor.vfxScale) : 1f;
-            presentationRoot.localScale = Vector3.one * scale;
+            presentationRoot.localScale = _authoredPresentationScale * scale;
+
+            // The animator owns localScale from LateUpdate onwards (spin/pulse/punch-in), so it has
+            // to be told the new base or it keeps re-applying the prefab value and vfxScale does
+            // nothing at all.
+            if (_targetVisual != null)
+                _targetVisual.SetBaseScale(presentationRoot.localScale);
         }
 
         if (profile != null)
@@ -196,7 +219,12 @@ public sealed class SpecialShootPointInstance : MonoBehaviour
         SetColliderEnabled(false);
         SpawnResolveVfx(_profile != null ? _profile.breakVfxPrefab : null);
         PlaySfx(_profile != null ? _profile.pointBreakSfx : null);
-        BeginFade();
+
+        float breakFade = _profile != null ? Mathf.Max(0.01f, _profile.breakFadeSeconds) : 0.15f;
+        if (_targetVisual != null)
+            _targetVisual.PlayBreakBurst(breakFade);
+
+        BeginFade(breakFade);
     }
 
     /// <summary>
@@ -208,7 +236,7 @@ public sealed class SpecialShootPointInstance : MonoBehaviour
         _hittable = false;
         SetColliderEnabled(false);
         SpawnResolveVfx(_profile != null ? _profile.timeoutVfxPrefab : null);
-        BeginFade();
+        BeginFade(_profile != null ? _profile.resolveFadeSeconds : 0.25f);
     }
 
     /// <summary>Silent teardown for death, cinematic, or disable. No success or failure feedback.</summary>
@@ -269,6 +297,8 @@ public sealed class SpecialShootPointInstance : MonoBehaviour
         if (!_bound)
             return;
 
+        TickReachProbe(deltaTime);
+
         float flash = _hitFlashRemaining > 0f ? 1f : 0f;
 
         if (flash <= 0f && _warningActive && warningFlashHz > 0f)
@@ -280,9 +310,55 @@ public sealed class SpecialShootPointInstance : MonoBehaviour
         ApplyMaterialState(Health01, flash, 1f);
     }
 
-    void BeginFade()
+    /// <summary>
+    /// Decides whether this marker may show through the body.
+    ///
+    /// It shows only while the player could still land a shot on it from where the camera is — the
+    /// same rule the hit path uses. A marker on the far side of the enemy stays hidden, so the
+    /// repositioning the design asks for survives; what goes away is the case where a leg happens
+    /// to cover a point you could already hit.
+    ///
+    /// Probed a few times a second rather than every frame: it drives nothing but a visual hint,
+    /// and each probe raycasts this enemy's hit zones.
+    /// </summary>
+    void TickReachProbe(float deltaTime)
     {
-        _fadeDuration = _profile != null ? Mathf.Max(0f, _profile.resolveFadeSeconds) : 0.25f;
+        const float probeInterval = 0.1f;
+
+        _reachProbeCooldown -= deltaTime;
+        if (_reachProbeCooldown > 0f)
+            return;
+
+        _reachProbeCooldown = probeInterval;
+
+        if (!IsHittable || _owner == null)
+        {
+            _occludedStrength = 0f;
+            return;
+        }
+
+        Camera cam = Camera.main;
+        if (cam == null)
+        {
+            _occludedStrength = 0f;
+            return;
+        }
+
+        Vector3 from = cam.transform.position;
+        Vector3 to = WorldPosition;
+        Vector3 dir = to - from;
+        if (dir.sqrMagnitude < 0.0001f)
+        {
+            _occludedStrength = 0f;
+            return;
+        }
+
+        _occludedStrength = _owner.IsPointReachableAlongRay(this, new Ray(from, dir.normalized)) ? 1f : 0f;
+    }
+
+    void BeginFade(float duration)
+    {
+        _fadeDuration = Mathf.Max(0f, duration);
 
         if (_fadeDuration <= 0f)
         {
@@ -320,6 +396,7 @@ public sealed class SpecialShootPointInstance : MonoBehaviour
         if (_fillId != 0) _block.SetFloat(_fillId, fill01);
         if (_flashId != 0) _block.SetFloat(_flashId, flash01);
         if (_alphaId != 0) _block.SetFloat(_alphaId, alpha01);
+        _block.SetFloat(_occludedId, _occludedStrength);
 
         ringRenderer.SetPropertyBlock(_block);
     }
@@ -329,6 +406,7 @@ public sealed class SpecialShootPointInstance : MonoBehaviour
         if (_propertyIdsResolved)
             return;
 
+        _occludedId = Shader.PropertyToID("_OccludedStrength");
         _fillId = string.IsNullOrEmpty(fillProperty) ? 0 : Shader.PropertyToID(fillProperty);
         _flashId = string.IsNullOrEmpty(flashProperty) ? 0 : Shader.PropertyToID(flashProperty);
         _alphaId = string.IsNullOrEmpty(alphaProperty) ? 0 : Shader.PropertyToID(alphaProperty);
@@ -358,6 +436,15 @@ public sealed class SpecialShootPointInstance : MonoBehaviour
 
         if (presentationRoot == null)
             presentationRoot = transform;
+
+        if (!_authoredScaleCaptured)
+        {
+            _authoredPresentationScale = presentationRoot.localScale;
+            _authoredScaleCaptured = true;
+        }
+
+        if (_targetVisual == null && presentationRoot != null)
+            _targetVisual = presentationRoot.GetComponent<SpecialShootPointTargetVisual>();
 
         if (ringRenderer == null)
             ringRenderer = GetComponentInChildren<Renderer>(true);

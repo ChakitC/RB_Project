@@ -130,6 +130,34 @@ using (var scope = SpecialShootPointHitScope.Begin(hitCollider, target, credited
 Entry points wired to this contract: `Projectile`, `SkillProjectile`, and the legacy `Bullet`. Any
 future direct-hit delivery must enter the same way. Overlap/AoE and melee paths must not.
 
+### Points sitting inside a coarse body hitbox
+
+An enemy's authored hit zones are coarse boxes approximating the whole body — Rector's
+`HitZone_Torso.2` is 1.5 m across — so a weak point placed on the body surface is still *inside*
+them. The projectile trigger enters the hit zone first, deals normal damage, despawns, and the point
+is never reachable. Pushing anchors far enough out to clear those boxes puts them outside the
+silhouette entirely, so offsets alone cannot solve it.
+
+`Begin` therefore takes the shot's `Ray`. When the collider struck is not itself a point, the owning
+enemy's live points are tested with `Collider.Raycast` — at most a handful of calls against those
+specific colliders, never a scene query — and the nearest one the trajectory actually intersects
+takes the hit.
+
+This is **not aim assist**: the projectile is never steered and the point is never widened. The
+trajectory must genuinely pass through the point's own collider. It only decides which of two
+overlapping colliders *on the same enemy* owns an impact.
+
+The search is bounded by `profile.pointHitRedirectDistance` (default 1 m). Keep it below the
+enemy's body thickness — otherwise a shot into the chest starts counting as a hit on a point on the
+far side, which removes the repositioning the design asks of the player. A point that is genuinely
+occluded by another body part (a leg in the line of fire) stays a miss, which is correct.
+
+A redirected shot is credited with the **point's** authored hit zone, not the outer box's, so a head
+anchor still takes the Headshot multiplier.
+
+Anchor `localPosition` is therefore a *visibility* setting: place points where they read on the
+model. It no longer determines whether a shot can land.
+
 ## ChainReady sequencing
 
 The final-point hit is one atomic gameplay result:
@@ -234,6 +262,58 @@ behave identically under conditional abort.
 stamped with the round's request id (`LastOutcomeRequestId`), and `CompareSpecialShootPointRoundOutcome`
 records which round was in flight when its branch began, so a tree cannot consume an older
 activation's result.
+
+## Seeing a marker through the enemy
+
+The original design forbade through-model rendering outright (*"Do not render the point VFX through
+the enemy or environment"*, and the *no X-ray* non-goal). That was **relaxed deliberately**: with the
+coarse body hit zones this project uses, a point is routinely covered by the enemy's own limb while
+still being perfectly hittable, which reads as a bug rather than as a prompt to reposition.
+
+`SpecialShootPointTarget.shader` therefore has a second pass at `ZTest Greater`, drawn at 45 %
+strength, scaled by the per-instance `_OccludedStrength`.
+
+That strength is **not** simply "on". `SpecialShootPointInstance` probes
+`SpecialShootPointController.IsPointReachableAlongRay` about ten times a second from the camera and
+only shows through when the shot could still land — the same rule the hit path uses:
+
+```text
+reachable  ⟺  no world geometry in the way
+           AND pointDistance ≤ firstMappedHitZoneDistance + pointHitRedirectDistance
+```
+
+So a point behind a leg shows through dimmed and can be shot; a point on the **far side of the
+body** stays hidden and still requires repositioning; and a point behind a **wall or the floor**
+stays hidden outright — `occlusionMask` on the profile lists that geometry, and colliders belonging
+to the enemy itself are excluded from it, since its own body is the thing the marker may show past.
+
+Showing an unreachable marker would be worse than hiding it: the player would keep firing at
+something that can never count.
+
+## Diagnosing missed shots
+
+Tick **`debugLogging`** on the profile asset. Every direct player hit on an enemy running a round
+then prints one line:
+
+```text
+[SSP-HIT] REDIRECT hit on 'shoulder.r' via collider 'HitZone_Torso.2' zone=Torso
+[SSP-HIT] NO POINT for hit on 'HitZone_Head' — phase=Active livePoints=2 credit=Weapone_System sameEnemy=True
+[SSP-HIT] rejected by AcceptsPointDamageFrom: phase=Telegraph hittable=False credit=Player
+```
+
+`DIRECT` means the shot struck the point's own collider; `REDIRECT` means an outer hit zone was
+struck and the trajectory was carried through to the point. Anything else names the gate that
+rejected the hit, which is the fastest way to tell "the player missed" apart from "the feature is
+misconfigured".
+
+The flag lives on the profile rather than on a static field or a component, matching
+`ChainAttackTeleportProfileDef.debugLogging`: the logging sites already hold the controller, so
+there is no static state to reset on every domain reload and no toggle that only code can reach.
+
+Counting `DIRECT`+`REDIRECT` against `NO POINT` over a play session is also the only honest measure
+of how reliably a player can actually land shots on a point — a scripted ray cannot reproduce the
+real aim pipeline, where shot direction is `muzzle → AimPoint` and `AimPoint` is wherever the camera
+ray first lands.
 
 ## Related documents
 

@@ -37,6 +37,8 @@ public sealed class SpecialShootPointController : MonoBehaviour
     [SerializeField] private Transform poolRoot;
 
     readonly SpecialShootPointShuffleBag _shuffleBag = new();
+    readonly List<Collider> _blockerCache = new();
+    bool _blockerCacheValid;
     readonly List<int> _drawnAnchorIndices = new();
     readonly List<SpecialShootPointInstance> _pool = new();
     readonly List<SpecialShootPointInstance> _activePoints = new();
@@ -213,6 +215,9 @@ public sealed class SpecialShootPointController : MonoBehaviour
         _currentRequestId = ++_requestIdCounter;
         _activePoints.Clear();
 
+        // A model rebuild between rounds replaces every hit-zone collider.
+        _blockerCacheValid = false;
+
         float pointHealth = profile.ResolvePointHealth(ResolveOwnerMaxHealth());
 
         for (int i = 0; i < _drawnAnchorIndices.Count; i++)
@@ -315,6 +320,186 @@ public sealed class SpecialShootPointController : MonoBehaviour
 
         return IsPlayerCredit(creditedActor);
     }
+
+    /// <summary>
+    /// Finds the live point a shot would have reached had an outer collider not stopped it first.
+    ///
+    /// An enemy's authored hit zones are coarse body boxes, so a weak point that sits on the body
+    /// surface is still <em>inside</em> them: the projectile trigger enters the hit zone and is
+    /// consumed before it ever reaches the point. This resolves that ordering deterministically —
+    /// it does not steer the projectile or widen the point. The trajectory must genuinely intersect
+    /// the point's own collider.
+    ///
+    /// The search is bounded by <see cref="SpecialShootPointProfileSO.pointHitRedirectDistance"/> so
+    /// a shot into the chest cannot be credited to a point on the far side of the body, which would
+    /// remove the repositioning the design asks of the player.
+    /// </summary>
+    /// <param name="additionalDistance">
+    /// How far the caller moved the ray origin back along the trajectory. A projectile using
+    /// continuous collision reports the trigger with its transform already at the end of the
+    /// physics step, so the caller rewinds to the real impact point; that rewind has to be added on
+    /// top of the profile's redirect distance or it eats the whole budget.
+    /// </param>
+    public bool TryResolvePointAlongShot(
+        Ray shot,
+        float additionalDistance,
+        GameObject creditedActor,
+        out SpecialShootPointInstance point)
+    {
+        point = null;
+
+        if (_phase != SpecialShootPointPhase.Active || _activePoints.Count == 0)
+            return false;
+
+        if (!IsPlayerCredit(creditedActor))
+            return false;
+
+        float maxDistance = profile != null ? Mathf.Max(0f, profile.pointHitRedirectDistance) : 1f;
+        maxDistance += Mathf.Max(0f, additionalDistance);
+        if (maxDistance <= 0f)
+            return false;
+
+        float nearest = float.MaxValue;
+
+        // Only this enemy's live points are tested — at most a handful of Collider.Raycast calls,
+        // never a scene query.
+        for (int i = 0; i < _activePoints.Count; i++)
+        {
+            SpecialShootPointInstance candidate = _activePoints[i];
+            if (candidate == null || !candidate.IsHittable)
+                continue;
+
+            Collider collider = candidate.HitCollider;
+            if (collider == null || !collider.enabled)
+                continue;
+
+            if (!collider.Raycast(shot, out RaycastHit hit, maxDistance))
+                continue;
+
+            if (hit.distance >= nearest)
+                continue;
+
+            nearest = hit.distance;
+            point = candidate;
+        }
+
+        return point != null;
+    }
+
+    /// <summary>
+    /// Whether a shot travelling along <paramref name="ray"/> could still be credited to
+    /// <paramref name="point"/>.
+    ///
+    /// Mirrors the rule the real hit path uses: a projectile is consumed by the first *mapped* hit
+    /// zone it meets, and the redirect then searches forward from that impact by
+    /// <see cref="SpecialShootPointProfileSO.pointHitRedirectDistance"/>. So the point is reachable
+    /// when it sits in front of that blocker, or behind it by no more than the redirect budget.
+    ///
+    /// Used to decide whether the marker may show through the body. Showing an unreachable marker
+    /// would be worse than hiding it: the player would keep firing at something that can never
+    /// count.
+    /// </summary>
+    public bool IsPointReachableAlongRay(SpecialShootPointInstance point, Ray ray)
+    {
+        if (point == null || point.HitCollider == null || !point.IsHittable)
+            return false;
+
+        if (!point.HitCollider.Raycast(ray, out RaycastHit pointHit, MaxReachProbeDistance))
+            return false;
+
+        float redirect = profile != null ? Mathf.Max(0f, profile.pointHitRedirectDistance) : 1f;
+        float nearestBlocker = float.MaxValue;
+
+        RefreshBlockerCache();
+        for (int i = 0; i < _blockerCache.Count; i++)
+        {
+            Collider blocker = _blockerCache[i];
+            if (blocker == null || !blocker.enabled)
+                continue;
+
+            if (blocker.Raycast(ray, out RaycastHit blockHit, MaxReachProbeDistance) &&
+                blockHit.distance < nearestBlocker)
+            {
+                nearestBlocker = blockHit.distance;
+            }
+        }
+
+        // Environment wins outright. Seeing a marker through a wall or the floor is exactly what the
+        // design forbids, and unlike the enemy's own body it is never something a shot can pass.
+        if (IsBlockedByEnvironment(ray, pointHit.distance))
+            return false;
+
+        // Nothing of this enemy's in the way at all: a clear shot.
+        if (nearestBlocker == float.MaxValue)
+            return true;
+
+        return pointHit.distance <= nearestBlocker + redirect;
+    }
+
+    /// <summary>
+    /// True when world geometry sits between the viewer and the point. Colliders belonging to this
+    /// enemy are skipped: its own body is the thing the marker is allowed to show through.
+    /// </summary>
+    bool IsBlockedByEnvironment(Ray ray, float pointDistance)
+    {
+        if (profile == null || pointDistance <= 0.01f)
+            return false;
+
+        int mask = profile.occlusionMask;
+        if (mask == 0)
+            return false;
+
+        Transform actorRoot = ctx != null ? ctx.transform : transform;
+        int count = Physics.RaycastNonAlloc(
+            ray, _occlusionHits, pointDistance - 0.01f, mask, QueryTriggerInteraction.Ignore);
+
+        for (int i = 0; i < count; i++)
+        {
+            Collider hit = _occlusionHits[i].collider;
+            if (hit == null)
+                continue;
+
+            if (CharacterBodySweepUtility.IsOwnedByActor(hit.transform, actorRoot))
+                continue;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    static readonly RaycastHit[] _occlusionHits = new RaycastHit[16];
+
+    /// <summary>
+    /// The colliders that actually consume a hit-zone-enabled projectile: only those mapped in
+    /// <see cref="CharacterColliderRefs"/>. The body capsule and the melee-only hitboxes are
+    /// skipped by the projectile itself, so counting them here would wrongly hide reachable points.
+    /// </summary>
+    void RefreshBlockerCache()
+    {
+        if (_blockerCacheValid && _blockerCache.Count > 0 && _blockerCache[0] != null)
+            return;
+
+        _blockerCache.Clear();
+        _blockerCacheValid = true;
+
+        CharacterColliderRefs refs = ctx != null ? ctx.ColliderRefs : null;
+        if (refs == null)
+            return;
+
+        Collider[] colliders = ctx.GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider c = colliders[i];
+            if (c == null || !c.enabled)
+                continue;
+
+            if (refs.TryResolveHitZone(c, out CharacterHitZone zone) && zone != CharacterHitZone.None)
+                _blockerCache.Add(c);
+        }
+    }
+
+    const float MaxReachProbeDistance = 60f;
 
     /// <summary>
     /// Applies one accepted direct-hit result to a point and, when it was the last one, resolves the

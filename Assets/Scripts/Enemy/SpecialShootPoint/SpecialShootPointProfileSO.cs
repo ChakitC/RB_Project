@@ -54,6 +54,12 @@ public class SpecialShootPointProfileSO : ScriptableObject
     [Tooltip("Layer the point collider lives on while the round is Active. Defaults to 'Hit'.")]
     public int pointColliderLayer = 3;
 
+    [Tooltip("How far past an outer hit-zone impact a shot may still be credited to a point that " +
+             "its trajectory would have reached. Covers a point sitting inside a coarse body " +
+             "hitbox. Keep it below the enemy's body thickness, or a shot from the front starts " +
+             "counting as a hit on a point on the far side.")]
+    [Min(0f)] public float pointHitRedirectDistance = 1f;
+
     [Header("Presentation")]
     [Tooltip("Played once per point when it breaks. Success feedback.")]
     public GameObject breakVfxPrefab;
@@ -61,14 +67,27 @@ public class SpecialShootPointProfileSO : ScriptableObject
     [Tooltip("Played once per surviving point when the round times out. Must read differently from a break.")]
     public GameObject timeoutVfxPrefab;
 
-    [Tooltip("Seconds a broken or extinguished point takes to fade out before it returns to the pool.")]
+    [Tooltip("Seconds a timed-out point takes to fade out before it returns to the pool.")]
     [Min(0f)] public float resolveFadeSeconds = 0.25f;
+
+    [Tooltip("Seconds a BROKEN point takes to fade. Deliberately shorter than the timeout fade: " +
+             "success has to read as a snappy burst, failure as a slower fizzle.")]
+    [Min(0f)] public float breakFadeSeconds = 0.15f;
 
     [Tooltip("Played on every accepted point hit.")]
     public AudioClip pointHitSfx;
 
     [Tooltip("Played when a point breaks.")]
     public AudioClip pointBreakSfx;
+
+    [Tooltip("World geometry that hides a marker outright. A point behind a wall or the floor must " +
+             "not show through it — only the enemy's own body may be seen past.")]
+    public LayerMask occlusionMask = (1 << 0) | (1 << 12) | (1 << 14) | (1 << 17) | (1 << 20);
+
+    [Header("Debug")]
+    [Tooltip("Logs every direct player hit on an enemy running a round: whether it was credited to " +
+             "a point (DIRECT or REDIRECT), or exactly which gate rejected it. Leave off in builds.")]
+    public bool debugLogging;
 
     /// <summary>Per-point HP for a round, from the owner's Max HP, clamped by the profile.</summary>
     public float ResolvePointHealth(float ownerMaxHealth)

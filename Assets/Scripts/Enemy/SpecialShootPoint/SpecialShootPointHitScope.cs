@@ -73,22 +73,145 @@ public readonly struct SpecialShootPointHitScope : IDisposable
         IDamageable target,
         GameObject creditedActor)
     {
-        if (!SpecialShootPointRegistry.TryResolve(hitCollider, out SpecialShootPointInstance point))
-            return None;
+        return Begin(hitCollider, target, creditedActor, default, 0f, false);
+    }
+
+    /// <summary>
+    /// Opens the transaction for one direct hit, and — when the collider struck was an outer body
+    /// hit zone rather than a point — credits the shot to a point its trajectory would have reached.
+    ///
+    /// An enemy's authored hit zones are coarse boxes, so a weak point sitting on the body surface
+    /// is still inside them and the projectile trigger is consumed before it can reach the point.
+    /// This resolves that ordering. It is not aim assist: the projectile is never steered and the
+    /// point is never widened — <paramref name="shot"/> must genuinely intersect the point's own
+    /// collider, within the profile's redirect distance.
+    /// </summary>
+    /// <param name="shot">The projectile's current position and travel direction.</param>
+    /// <param name="shotBacktrack">
+    /// How far <paramref name="shot"/>'s origin was rewound along the trajectory to reach the real
+    /// impact point. Added to the profile's redirect budget so the rewind does not consume it.
+    /// </param>
+    public static SpecialShootPointHitScope Begin(
+        Collider hitCollider,
+        IDamageable target,
+        GameObject creditedActor,
+        Ray shot,
+        float shotBacktrack = 0f,
+        bool allowTrajectoryRedirect = true)
+    {
+        bool direct = SpecialShootPointRegistry.TryResolve(hitCollider, out SpecialShootPointInstance point);
+
+        if (!direct)
+        {
+            if (!allowTrajectoryRedirect)
+                return None;
+
+            if (!TryRedirectToPointBehindHitZone(hitCollider, target, creditedActor, shot, shotBacktrack, out point))
+            {
+                TraceMiss(hitCollider, target, creditedActor);
+                return None;
+            }
+        }
 
         SpecialShootPointController controller = point.Owner;
-        if (controller == null || !controller.AcceptsPointDamageFrom(point, creditedActor))
+        if (controller == null)
             return None;
+
+        if (!controller.AcceptsPointDamageFrom(point, creditedActor))
+        {
+            Log(controller,
+                $"rejected by AcceptsPointDamageFrom: phase={controller.Phase} " +
+                $"hittable={point.IsHittable} credit={(creditedActor != null ? creditedActor.name : "null")}");
+            return None;
+        }
 
         // The projectile must have resolved this point's own enemy. A shot that resolved a different
         // actor has no business feeding this point, whatever collider it happened to overlap.
         if (target == null || !ReferenceEquals(target, controller.OwnerDamageable))
+        {
+            Log(controller, "target is not this point's own enemy");
             return None;
+        }
+
+        Log(controller,
+            $"{(direct ? "DIRECT" : "REDIRECT")} hit on '{point.transform.parent?.name}' " +
+            $"via collider '{hitCollider?.name}' zone={point.HitZone}");
 
         StaggerMeter meter = controller.Meter;
         meter?.BeginDirectHitStaggerDeferral();
 
         return new SpecialShootPointHitScope(controller, point, meter, creditedActor);
+    }
+
+    /// <summary>
+    /// Resolves the point a shot was heading for when an outer hit zone stopped it first.
+    /// Deliberately scoped to the enemy that was actually struck: a shot cannot be credited to a
+    /// point on some other actor that happens to lie along the same line.
+    /// </summary>
+    static bool TryRedirectToPointBehindHitZone(
+        Collider hitCollider,
+        IDamageable target,
+        GameObject creditedActor,
+        Ray shot,
+        float shotBacktrack,
+        out SpecialShootPointInstance point)
+    {
+        point = null;
+
+        if (hitCollider == null || target == null)
+            return false;
+
+        // A zero direction means the caller had no trajectory to offer.
+        if (shot.direction.sqrMagnitude < 0.0001f)
+            return false;
+
+        EnemyContext enemy = hitCollider.GetComponentInParent<EnemyContext>();
+        if (enemy == null)
+            return false;
+
+        SpecialShootPointController controller = enemy.SpecialShootPoints;
+        if (controller == null)
+            return false;
+
+        // The struck collider and the point must belong to the same enemy.
+        if (!ReferenceEquals(target, controller.OwnerDamageable))
+            return false;
+
+        return controller.TryResolvePointAlongShot(shot, shotBacktrack, creditedActor, out point);
+    }
+
+    /// <summary>
+    /// Explains why a shot on an enemy that has a live round was not credited to any point.
+    /// </summary>
+    static void TraceMiss(Collider hitCollider, IDamageable target, GameObject creditedActor)
+    {
+        if (hitCollider == null)
+            return;
+
+        EnemyContext enemy = hitCollider.GetComponentInParent<EnemyContext>();
+        SpecialShootPointController controller = enemy != null ? enemy.SpecialShootPoints : null;
+        if (controller == null || !controller.IsRoundActive)
+            return;
+
+        Log(controller,
+            $"NO POINT for hit on '{hitCollider.name}' — phase={controller.Phase} " +
+            $"livePoints={controller.PointsRemaining} " +
+            $"credit={(creditedActor != null ? creditedActor.name : "null")} " +
+            $"sameEnemy={ReferenceEquals(target, controller.OwnerDamageable)}");
+    }
+
+    /// <summary>
+    /// Traces the direct-hit path, gated on the owning profile's <c>debugLogging</c> — the same
+    /// place and shape as <c>ChainAttackTeleportProfileDef.debugLogging</c>. Reading the flag off
+    /// the controller that is already in hand means there is no static state to reset on every
+    /// domain reload, and no toggle that only code can reach.
+    /// </summary>
+    static void Log(SpecialShootPointController controller, string message)
+    {
+        if (controller == null || controller.Profile == null || !controller.Profile.debugLogging)
+            return;
+
+        Debug.Log($"[SSP-HIT] {message}", controller);
     }
 
     /// <summary>

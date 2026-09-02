@@ -13,20 +13,22 @@ MonoBehaviour:
   m_Name: DefaultSpecialShootPointProfile
   m_EditorClassIdentifier: 
   telegraphDuration: 0.6
-  activeDuration: 12
+  activeDuration: 30
   cooldown: 8
   lastSecondWarningThreshold: 1
   defaultPointCount: 2
   maxPointCount: 4
   pointHealthPercentOfMaxHp: 3
   pointHealthMin: 10
-  pointHealthMax: 5000
+  pointHealthMax: 200
   staggerRewardPercentOfMaxStagger: 25
   missingClipFallbackSeconds: 0.6
   runtimePointPrefab: {fileID: 6213753177463939622, guid: 5868d70bb76a57e4687bfc0ad8bcb165, type: 3}
   pointColliderLayer: 3
+  pointHitRedirectDistance: 1
   breakVfxPrefab: {fileID: 0}
   timeoutVfxPrefab: {fileID: 0}
   resolveFadeSeconds: 0.25
   pointHitSfx: {fileID: 0}
   pointBreakSfx: {fileID: 0}
+  debugLogging: 1

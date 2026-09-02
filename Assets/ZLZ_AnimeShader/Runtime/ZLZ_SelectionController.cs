@@ -59,6 +59,15 @@ namespace ZLZ.AnimeShader
             if (startSelected) Select();
         }
 
+        /// <summary>
+        /// Re-scan children for renderers. Call after child models are swapped or attached
+        /// later than Awake (weapon previews, equipment) so they take part in the outline.
+        /// </summary>
+        public void RefreshRenderers()
+        {
+            _renderers = GetComponentsInChildren<Renderer>(true);
+        }
+
         void OnDisable()
         {
             // Stop animation and detach from the global list so a disabled controller

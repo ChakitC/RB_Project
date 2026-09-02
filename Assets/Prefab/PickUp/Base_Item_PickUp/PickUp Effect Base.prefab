@@ -85,11 +85,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: f9b9d1c2af5f83445807570d769815c4, type: 3}
       propertyPath: m_RenderingLayerMask
-      value: 4294967295
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: f9b9d1c2af5f83445807570d769815c4, type: 3}
       propertyPath: m_Name
-      value: PickUp Effect
+      value: PickUp Effect Base
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -140,6 +140,8 @@ MonoBehaviour:
   _mainLightStrengthOverrideValue: 0
   _overrideLightAngle: {x: 0, y: 0, z: 0}
   HeadBoneTransform: {fileID: 0}
+  _CharacterCenterCubeSize: 1
+  UseSimpleAABBCutOffForCharacterShadow: 0
   CreateMaterialInstanceOnPlay: 0
 --- !u!136 &1858943617337750815
 CapsuleCollider:
@@ -199,6 +201,10 @@ MonoBehaviour:
   wobbleAngle: 5
   wobbleFrequency: 0.65
   randomizePhase: 1
+  collectDuration: 0.35
+  collectTargetOffset: {x: 0, y: 1.1, z: 0}
+  collectArcHeight: 0.6
+  collectEndScale: 0.15
 --- !u!4 &1103248400765835230 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: f9b9d1c2af5f83445807570d769815c4, type: 3}

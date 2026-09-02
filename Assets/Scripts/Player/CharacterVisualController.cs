@@ -512,6 +512,18 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
 
     public void BuildModelFromWeaponDef()
     {
+        BuildWeaponModels();
+
+        // ZLZ_CharacterVFX caches its renderer list, so a weapon that was just mounted, swapped or
+        // removed is invisible to the dither until the list is rebuilt — the body would fade while
+        // the gun stayed solid. Done once here, after both hands are settled, rather than per frame.
+        // Every exit path of BuildWeaponModels() runs through this, including the ones that only
+        // destroy a weapon or fail to find a hand bone.
+        _ctx?.Visibility?.RefreshVisualRenderers();
+    }
+
+    void BuildWeaponModels()
+    {
         if (!animator || _ctx == null || _ctx.currentWeapon == null)
             return;
 

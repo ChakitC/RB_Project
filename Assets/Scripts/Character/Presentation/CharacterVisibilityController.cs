@@ -174,6 +174,36 @@ public sealed class CharacterVisibilityController : MonoBehaviour
         ApplyAlpha();
     }
 
+    /// <summary>
+    /// Re-scans the bound model for renderers that appeared or disappeared underneath it — a weapon
+    /// being mounted, swapped, or removed — so the body and whatever it is holding keep fading as one
+    /// object. The model itself is unchanged, so this is not a rebind: call it only when the
+    /// hierarchy under the model actually changes, never per frame.
+    ///
+    /// <c>ZLZ_CharacterVFX.RefreshRenderers</c> rebuilds its material instances and resets the dither
+    /// to visible, so the desired alpha has to be written back in the same call or a hidden character
+    /// pops for a frame.
+    /// </summary>
+    public void RefreshVisualRenderers()
+    {
+        if (characterVfx == null)
+        {
+            WarnMissingVfxOnce();
+            return;
+        }
+
+        characterVfx.RefreshRenderers();
+
+        // The renderer set just changed, so the cached shadow-casting modes describe the old one.
+        _shadowRenderers = null;
+        _shadowModes = null;
+        _shadowsSuppressed = false;
+
+        _alphaDirty = true;
+        _reapplyFrames = ReapplyFrames;
+        ApplyAlpha();
+    }
+
     public void SetHiddenImmediate()
     {
         CancelTransition();

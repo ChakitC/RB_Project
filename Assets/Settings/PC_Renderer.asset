@@ -280,15 +280,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc77d9a615dab4046a4dc034886f821d, type: 3}
   m_Name: ZLZ Screen Space Outline
   m_EditorClassIdentifier: 
-  m_Active: 0
+  m_Active: 1
   characterLayers:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 1601
   outlineColor: {r: 0, g: 0, b: 0, a: 1}
-  thickness: 0.5
-  intensity: 0.113
+  thickness: 0.6
+  intensity: 0.592
   normalEdge: 1
-  normalSensitivity: 0.5
+  normalSensitivity: 0.029
   depthEdge: 1
   depthSensitivity: 0.5
   occlusionTest: 1

@@ -88,6 +88,7 @@ public class PartySlotVisualPreview : MonoBehaviour
         ResetPickedState(animator);
 
         RefreshWeapon(selected);
+        RefreshSelectionOutline();
     }
 
     public void RefreshWeapon(
@@ -124,6 +125,22 @@ public class PartySlotVisualPreview : MonoBehaviour
 
         if (useLeftHand)
             leftWeaponObj = SpawnWeaponOnHand(weapon, rightHand: false);
+
+        // The weapons just landed under the character, after its selection-outline controller
+        // cached its renderers. Re-sync so they follow the pick-up outline instead of keeping
+        // whatever rendering layers the weapon prefab was authored with.
+        RefreshSelectionOutline();
+    }
+
+    // The character model and its weapons are spawned after the selection-outline controller
+    // cached its renderers, and some of those prefabs are authored with Rendering Layers =
+    // "Everything" — which opts them into the selection-outline layer and would leave the
+    // outline drawn permanently. Re-sync so the outline only follows the pick-up gesture.
+    void RefreshSelectionOutline()
+    {
+        var selectable = GetComponentInParent<CharacterSelectable>(true);
+        if (selectable != null)
+            selectable.RefreshSelectionOutlineDeferred();
     }
 
     public void ClearPreview()

@@ -366,9 +366,9 @@ MonoBehaviour:
   - {fileID: 2515617998526283706}
   - {fileID: 2498861796885823669}
   - {fileID: -8808504382145131012}
-  - {fileID: 7628336021586640099}
   - {fileID: 345741348837433689}
   - {fileID: -3682433950645674895}
+  - {fileID: 775537240842701763}
 --- !u!114 &345741348837433689
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -387,13 +387,83 @@ MonoBehaviour:
     m_Value: 1
   Exposure:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 0.937
   IgnoreCharacterPixels:
     m_OverrideState: 1
     m_Value: 0
   CharacterPixelsToneMapStrength:
     m_OverrideState: 1
     m_Value: 0
+--- !u!114 &775537240842701763
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34d4051944b2e7347af03ea5ca344fcf, type: 3}
+  m_Name: ZLZ_AnimeToneMap
+  m_EditorClassIdentifier: 
+  active: 1
+  CurveMode:
+    m_OverrideState: 1
+    m_Value: 0
+  Exposure:
+    m_OverrideState: 1
+    m_Value: 1
+  ToneMapScale:
+    m_OverrideState: 1
+    m_Value: 1.6
+  HighlightRolloff:
+    m_OverrideState: 1
+    m_Value: 0.08
+  HighlightLift:
+    m_OverrideState: 1
+    m_Value: 0.937
+  WhiteClip:
+    m_OverrideState: 1
+    m_Value: 1
+  ShadowPedestal:
+    m_OverrideState: 1
+    m_Value: 0.01
+  MidContrast:
+    m_OverrideState: 1
+    m_Value: 0.45
+  SaturationRetention:
+    m_OverrideState: 1
+    m_Value: 0.22
+  ShoulderStrength:
+    m_OverrideState: 1
+    m_Value: 0.22
+  LinearStrength:
+    m_OverrideState: 1
+    m_Value: 0.3
+  LinearAngle:
+    m_OverrideState: 1
+    m_Value: 0.1
+  ToeStrength:
+    m_OverrideState: 1
+    m_Value: 0.2
+  BlackLevel:
+    m_OverrideState: 1
+    m_Value: 0.01
+  DenominatorBalance:
+    m_OverrideState: 1
+    m_Value: 0.3
+  WhitePoint:
+    m_OverrideState: 1
+    m_Value: 11.2
+  FilmicSaturation:
+    m_OverrideState: 1
+    m_Value: 1.15
+  FilmicExposure:
+    m_OverrideState: 1
+    m_Value: 1
+  FilmicToneMapScale:
+    m_OverrideState: 1
+    m_Value: 1.6
 --- !u!114 &1327412281204770712
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -885,73 +955,3 @@ MonoBehaviour:
         m_PreInfinity: 2
         m_PostInfinity: 2
         m_RotationOrder: 4
---- !u!114 &7628336021586640099
-MonoBehaviour:
-  m_ObjectHideFlags: 3
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 34d4051944b2e7347af03ea5ca344fcf, type: 3}
-  m_Name: ZLZ_AnimeToneMap
-  m_EditorClassIdentifier: 
-  active: 1
-  CurveMode:
-    m_OverrideState: 1
-    m_Value: 0
-  Exposure:
-    m_OverrideState: 1
-    m_Value: 1
-  ToneMapScale:
-    m_OverrideState: 1
-    m_Value: 1.6
-  HighlightRolloff:
-    m_OverrideState: 1
-    m_Value: 0.05
-  HighlightLift:
-    m_OverrideState: 1
-    m_Value: 1
-  WhiteClip:
-    m_OverrideState: 1
-    m_Value: 1
-  ShadowPedestal:
-    m_OverrideState: 1
-    m_Value: 0.01
-  MidContrast:
-    m_OverrideState: 1
-    m_Value: 0.45
-  SaturationRetention:
-    m_OverrideState: 1
-    m_Value: 0.243
-  ShoulderStrength:
-    m_OverrideState: 1
-    m_Value: 0.22
-  LinearStrength:
-    m_OverrideState: 1
-    m_Value: 0.3
-  LinearAngle:
-    m_OverrideState: 1
-    m_Value: 0.1
-  ToeStrength:
-    m_OverrideState: 1
-    m_Value: 0.2
-  BlackLevel:
-    m_OverrideState: 1
-    m_Value: 0.01
-  DenominatorBalance:
-    m_OverrideState: 1
-    m_Value: 0.3
-  WhitePoint:
-    m_OverrideState: 1
-    m_Value: 11.2
-  FilmicSaturation:
-    m_OverrideState: 1
-    m_Value: 1.15
-  FilmicExposure:
-    m_OverrideState: 1
-    m_Value: 1
-  FilmicToneMapScale:
-    m_OverrideState: 1
-    m_Value: 1.6

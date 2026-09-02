@@ -65,7 +65,7 @@ MonoBehaviour:
       showPlayNextAnimBtn: 1
       showPlayPrevAnimBtn: 1
   ultimateGameobjectPreviewSettings:
-    isEnable: 0
+    isEnable: 1
     disablePlayModeColorTint: 1
     isLightsEnable: 1
     ambientColor: {r: 0.5882353, g: 0.5882353, b: 0.5882353, a: 1}

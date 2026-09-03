@@ -300,6 +300,76 @@ public sealed class CharacterAnimBrainSmokeTests
         }));
     }
 
+    [Test]
+    public void ActiveChainPlaybackReportsRequestScopedTiming()
+    {
+        Rig rig = CreateRig();
+        Assert.That(rig.Brain.TryPlayChainCutscene(11, rig.CutsceneA), Is.True);
+
+        MethodInfo timingMethod = typeof(CharacterAnimBrain).GetMethod(
+            "TryGetActiveChainPlaybackTiming",
+            Hidden);
+        Assert.That(timingMethod, Is.Not.Null);
+
+        object[] matchingRequest = { 11, 0f, 0f };
+        Assert.That((bool)timingMethod.Invoke(rig.Brain, matchingRequest), Is.True);
+        Assert.That((float)matchingRequest[1], Is.GreaterThanOrEqualTo(0f));
+        Assert.That((float)matchingRequest[2], Is.GreaterThan(0f));
+
+        object[] staleRequest = { 12, 0f, 0f };
+        Assert.That((bool)timingMethod.Invoke(rig.Brain, staleRequest), Is.False,
+            "A previous Chain request must not drive visibility for the active playback.");
+    }
+
+    [Test]
+    public void ActiveSkillPlaybackReportsRequestScopedTiming()
+    {
+        Rig rig = CreateRig();
+        Assert.That(rig.Brain.TryPlaySkill(21, null, 0f), Is.True);
+
+        MethodInfo timingMethod = typeof(CharacterAnimBrain).GetMethod(
+            "TryGetActiveSkillPlaybackTiming",
+            Hidden);
+        Assert.That(timingMethod, Is.Not.Null);
+
+        object[] matchingRequest = { 21, 0f, 0f };
+        Assert.That((bool)timingMethod.Invoke(rig.Brain, matchingRequest), Is.True);
+        Assert.That((float)matchingRequest[1], Is.GreaterThanOrEqualTo(0f));
+        Assert.That((float)matchingRequest[2], Is.GreaterThan(0f));
+
+        object[] staleRequest = { 22, 0f, 0f };
+        Assert.That((bool)timingMethod.Invoke(rig.Brain, staleRequest), Is.False,
+            "A previous Helper skill request must not drive visibility for the active playback.");
+    }
+
+    [TestCase(0.17f, 0.18f, 0.10f, 0.18f, false)]
+    [TestCase(0.18f, 0.18f, 0.30f, 0.18f, false)]
+    [TestCase(0.18f, 0.18f, 0.18f, 0.18f, true)]
+    public void ChainAutoHideWaitsForVisibilityAndRemainingPlayback(
+        float elapsed,
+        float minimumVisibleDuration,
+        float remainingDuration,
+        float disappearDuration,
+        bool expected)
+    {
+        MethodInfo shouldBeginMethod = typeof(CharacterVisibilityController).GetMethod(
+            "ShouldBeginAutoHide",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.That(shouldBeginMethod, Is.Not.Null);
+        Assert.That(
+            (bool)shouldBeginMethod.Invoke(
+                null,
+                new object[]
+                {
+                    elapsed,
+                    minimumVisibleDuration,
+                    remainingDuration,
+                    disappearDuration,
+                }),
+            Is.EqualTo(expected));
+    }
+
     // ---- Exclusive-state invariants -------------------------------------------------------------
 
     [Test]

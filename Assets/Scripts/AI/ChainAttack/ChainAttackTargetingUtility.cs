@@ -9,7 +9,8 @@ public static class ChainAttackTargetingUtility
         GameObject helperObject,
         out GameObject targetObject,
         out Transform targetTransform,
-        out Transform anchorTransform)
+        out Transform anchorTransform,
+        bool preferChainReadyTargets = false)
     {
         targetObject = null;
         targetTransform = null;
@@ -39,7 +40,28 @@ public static class ChainAttackTargetingUtility
             helperObject,
             out targetObject,
             out targetTransform,
-            out anchorTransform);
+            out anchorTransform,
+            preferChainReadyTargets);
+    }
+
+    /// <summary>
+    /// The StaggerMeter that owns a resolved chain target. Callers get the same lookup the manual
+    /// ChainReady path uses, so a target picked here and a target checked there cannot disagree.
+    /// </summary>
+    public static StaggerMeter ResolveStaggerMeter(Transform targetTransform)
+    {
+        if (targetTransform == null)
+            return null;
+
+        StaggerMeter meter = targetTransform.GetComponentInParent<StaggerMeter>();
+        return meter != null ? meter : targetTransform.GetComponentInChildren<StaggerMeter>(true);
+    }
+
+    /// <summary>True when this target is sitting in an unclaimed ChainReady window.</summary>
+    public static bool IsChainReadyForManualChain(Transform targetTransform)
+    {
+        StaggerMeter meter = ResolveStaggerMeter(targetTransform);
+        return meter != null && meter.IsChainReady && !meter.IsChainExecutionActive;
     }
 
     public static bool TryResolveExplicitTarget(
@@ -149,7 +171,8 @@ public static class ChainAttackTargetingUtility
         GameObject helperObject,
         out GameObject targetObject,
         out Transform targetTransform,
-        out Transform anchorTransform)
+        out Transform anchorTransform,
+        bool preferChainReadyTargets)
     {
         targetObject = null;
         targetTransform = null;
@@ -170,7 +193,83 @@ public static class ChainAttackTargetingUtility
             sequenceDef.targetLayers,
             sequenceDef.targetTriggerInteraction);
 
-        float bestScore = float.PositiveInfinity;
+        var best = new CandidateSelection { Score = float.PositiveInfinity };
+
+        EvaluateCandidates(
+            hits,
+            playerContext,
+            sequenceDef,
+            helperObject,
+            gameplayCamera,
+            searchOrigin,
+            preferChainReadyTargets,
+            chainReadyOnly: false,
+            ref best);
+
+        // The aim capsule hangs off the camera, so a ChainReady enemy that is behind the player, or
+        // simply outside the aim cone, is invisible to it — the prompt says [F] and the press finds
+        // nothing. A second sweep centred on the player picks those up, and it only ever accepts
+        // ChainReady candidates so ordinary targeting keeps its existing reach.
+        if (preferChainReadyTargets && !best.IsChainReady)
+        {
+            float sweepRadius = sequenceDef.ResolvedChainReadySearchRadius;
+            if (sweepRadius > 0f)
+            {
+                Collider[] nearby = Physics.OverlapSphere(
+                    playerContext.transform.position,
+                    sweepRadius,
+                    sequenceDef.targetLayers,
+                    sequenceDef.targetTriggerInteraction);
+
+                EvaluateCandidates(
+                    nearby,
+                    playerContext,
+                    sequenceDef,
+                    helperObject,
+                    gameplayCamera,
+                    searchOrigin,
+                    preferChainReadyTargets: true,
+                    chainReadyOnly: true,
+                    ref best);
+            }
+        }
+
+        targetObject = best.Object;
+        targetTransform = best.Root;
+        anchorTransform = best.Anchor;
+        return targetObject != null && anchorTransform != null;
+    }
+
+    /// <summary>Best candidate found so far, carried across both sweeps.</summary>
+    struct CandidateSelection
+    {
+        public GameObject Object;
+        public Transform Root;
+        public Transform Anchor;
+        public float Score;
+        public bool IsChainReady;
+    }
+
+    // Reticle scores are normalised screen distances, so any constant well above 1 keeps every
+    // off-screen ChainReady candidate ranked below every on-screen one while still ordering them
+    // sensibly among themselves (by distance from the player).
+    const float OffScreenScoreBase = 1000f;
+
+    static void EvaluateCandidates(
+        Collider[] hits,
+        PlayerContext playerContext,
+        ChainAttackSequenceDef sequenceDef,
+        GameObject helperObject,
+        Camera gameplayCamera,
+        Vector3 searchOrigin,
+        bool preferChainReadyTargets,
+        bool chainReadyOnly,
+        ref CandidateSelection best)
+    {
+        if (hits == null)
+            return;
+
+        Vector3 playerPosition = playerContext.transform.position;
 
         for (int i = 0; i < hits.Length; i++)
         {
@@ -189,15 +288,36 @@ public static class ChainAttackTargetingUtility
                 continue;
             }
 
+            bool candidateIsChainReady =
+                preferChainReadyTargets && IsChainReadyForManualChain(candidateTransform);
+
+            if (chainReadyOnly && !candidateIsChainReady)
+                continue;
+
+            // Once a ChainReady candidate is held, nothing without ChainReady can take the slot.
+            if (best.IsChainReady && !candidateIsChainReady)
+                continue;
+
+            if (candidateObject == best.Object)
+                continue;
+
+            bool winsOnChainReady = candidateIsChainReady && !best.IsChainReady;
+
             Vector3 candidatePoint = candidateAnchor != null ? candidateAnchor.position : candidateTransform.position;
             if (!ThirdPersonTargetingUtility.TryGetReticleScore(
                     gameplayCamera,
                     candidatePoint,
-                    out float score) ||
-                score >= bestScore)
+                    out float score))
             {
-                continue;
+                // Ordinary targeting still requires the target to be on screen.
+                if (!candidateIsChainReady)
+                    continue;
+
+                score = OffScreenScoreBase + Vector3.Distance(playerPosition, candidatePoint);
             }
+
+            if (!winsOnChainReady && score >= best.Score)
+                continue;
 
             if (sequenceDef.requireAimLineOfSight &&
                 !ThirdPersonTargetingUtility.HasLineOfSight(
@@ -211,13 +331,12 @@ public static class ChainAttackTargetingUtility
                 continue;
             }
 
-            bestScore = score;
-            targetObject = candidateObject;
-            targetTransform = candidateTransform;
-            anchorTransform = candidateAnchor;
+            best.Score = score;
+            best.IsChainReady = candidateIsChainReady;
+            best.Object = candidateObject;
+            best.Root = candidateTransform;
+            best.Anchor = candidateAnchor;
         }
-
-        return targetObject != null && anchorTransform != null;
     }
 
     static bool TryResolveTargetCandidate(

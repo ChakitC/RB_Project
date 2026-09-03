@@ -106,6 +106,8 @@ public class AllyHelperManager : MonoBehaviour
     bool helperExecutionStartInProgress;
     PendingChainAttackSequence pendingChainAttackSequence;
     bool hideHelperOnSkillComplete;
+    bool deferHelperDeactivationUntilChainComplete;
+    readonly CharacterPlaybackAutoHideSchedule helperChainAutoHide = new();
     int nextHelperSkillRequestId = 1;
     int nextHelperExecutionId = 1;
     int lastCompletedChainAttackExecutionId;
@@ -145,6 +147,33 @@ public class AllyHelperManager : MonoBehaviour
             return allyContext.SkillManager;
         }
     }
+    /// <summary>
+    /// The chain-attack skill the loaded helper character owns, resolved the same way
+    /// <see cref="FieldAllyMember.DefaultChainSkill"/> resolves it for a party slot: the runtime
+    /// skill manager first, then the character's authored Default Chain Skill.
+    ///
+    /// Without this the helper had no notion of its own chain skill at all, so a chain step could
+    /// only ever name one explicitly — which meant whoever was loaded into the helper rig cast the
+    /// skill authored for somebody else.
+    /// </summary>
+    public SkillGemDefinition ResolvedHelperChainAttackSkill
+    {
+        get
+        {
+            CharacterSkillManager skillManager = HelperSkillManager;
+            if (skillManager != null &&
+                skillManager.TryGetChainAttackSkillDefinition(out SkillGemDefinition configuredSkill, out _) &&
+                configuredSkill != null)
+            {
+                return configuredSkill;
+            }
+
+            return allyContext != null && allyContext.baseStats != null
+                ? allyContext.baseStats.chainAttackSkill
+                : null;
+        }
+    }
+
     public bool LastExecutionSucceeded { get; private set; } = true;
     public int ActiveChainAttackExecutionId => pendingChainAttackSequence != null ? pendingChainAttackSequence.executionId : 0;
     public bool IsHelperBusy =>
@@ -508,7 +537,83 @@ public class AllyHelperManager : MonoBehaviour
     {
         TryRestoreProtectionIfHelperInactive();
         TryStartQueuedChainAttack();
+        TickHelperChainAutoHide();
         TryReleasePendingChainAttackContinueSignal();
+    }
+
+    void StartHelperChainVisualLifecycle(int requestId, bool hideNearPlaybackEnd)
+    {
+        ClearHelperChainAutoHideSchedule();
+        deferHelperDeactivationUntilChainComplete = false;
+
+        if (allyHelperVisibility == null || allyHelper == null || !allyHelper.activeInHierarchy)
+            return;
+
+        allyHelperVisibility.Appear();
+
+        if (!hideNearPlaybackEnd || requestId <= 0)
+            return;
+
+        deferHelperDeactivationUntilChainComplete = helperChainAutoHide.Start(requestId);
+    }
+
+    void TickHelperChainAutoHide()
+    {
+        if (!helperChainAutoHide.IsPending)
+            return;
+
+        if (allyHelperVisibility == null ||
+            allyAnimBrain == null ||
+            allyHelper == null ||
+            !allyHelper.activeInHierarchy)
+        {
+            ClearHelperChainAutoHideSchedule();
+            deferHelperDeactivationUntilChainComplete = false;
+            return;
+        }
+
+        helperChainAutoHide.Advance(allyHelperVisibility);
+
+        if (!allyAnimBrain.TryGetActiveSkillPlaybackTiming(
+                helperChainAutoHide.RequestId,
+                out float remainingDuration,
+                out float totalDuration))
+        {
+            return;
+        }
+
+        helperChainAutoHide.TryBeginHide(
+            allyHelperVisibility,
+            remainingDuration,
+            totalDuration);
+    }
+
+    void BeginHelperFadeOutOrDeactivate()
+    {
+        ClearHelperChainAutoHideSchedule();
+        deferHelperDeactivationUntilChainComplete = false;
+
+        if (allyHelper == null || !allyHelper.activeSelf)
+        {
+            RestoreHelperProtection();
+            return;
+        }
+
+        if (allyHelperVisibility == null || allyHelperVisibility.IsHidden)
+        {
+            DeactivateHelperAfterFade();
+            return;
+        }
+
+        // The request-scoped auto-hide may already be running. Do not restart it at the skill
+        // completion callback or the helper visibly lingers for a second fade duration.
+        if (!allyHelperVisibility.IsDisappearing)
+            allyHelperVisibility.Disappear();
+    }
+
+    void ClearHelperChainAutoHideSchedule()
+    {
+        helperChainAutoHide.Cancel();
     }
 
     public void SummonAllyHelper()
@@ -975,7 +1080,7 @@ public class AllyHelperManager : MonoBehaviour
         }
 
         if (allyHelperVisibility != null)
-            allyHelperVisibility.Disappear();
+            BeginHelperFadeOutOrDeactivate();
         else
         {
             allyHelper.SetActive(false);
@@ -1330,6 +1435,8 @@ public class AllyHelperManager : MonoBehaviour
         }
 
         pendingChainAttackSequence = null;
+        ClearHelperChainAutoHideSchedule();
+        deferHelperDeactivationUntilChainComplete = false;
     }
 
     int NextHelperSkillRequestId()
@@ -1460,7 +1567,7 @@ public class AllyHelperManager : MonoBehaviour
         hideHelperOnSkillComplete = false;
 
         if (allyHelperVisibility != null && allyHelper != null && allyHelper.activeSelf)
-            allyHelperVisibility.Disappear();
+            BeginHelperFadeOutOrDeactivate();
         else
             AllyHelperOut();
     }
@@ -1601,7 +1708,7 @@ public class AllyHelperManager : MonoBehaviour
             hideHelperOnSkillComplete = false;
 
             if (allyHelperVisibility != null && allyHelper != null && allyHelper.activeSelf)
-                allyHelperVisibility.Disappear();
+                BeginHelperFadeOutOrDeactivate();
             else
                 AllyHelperOut();
 
@@ -1626,7 +1733,7 @@ public class AllyHelperManager : MonoBehaviour
         if (interrupted)
             AllyHelperOut();
         else if (allyHelperVisibility != null && allyHelper != null && allyHelper.activeSelf)
-            allyHelperVisibility.Disappear();
+            BeginHelperFadeOutOrDeactivate();
         else
             AllyHelperOut();
     }
@@ -2207,7 +2314,9 @@ public class AllyHelperManager : MonoBehaviour
             return;
         }
 
-        allyHelperVisibility?.Appear();
+        StartHelperChainVisualLifecycle(
+            pendingChainAttackSequence.chainAttackRequestId,
+            hideHelperOnSkillComplete);
         Log(
             pendingChainAttackSequence.sequenceDef,
             $"Started follow-up chain attack skill '{pendingChainAttackSequence.chainAttackSkillDef.name}'.");
@@ -2431,7 +2540,13 @@ public class AllyHelperManager : MonoBehaviour
             allyHelper != null ? allyHelper.transform : null,
             poseValidator: poseValidator,
             reservations: SharedPlacementReservations,
-            requireNavMeshAtAnchorOverride: true);
+            // Deliberately no override: this used to force requireNavMeshAtAnchor on, which silently
+            // discarded the value authored on the sequence asset. That also switched on the probe
+            // footprint test, which demands the helper's whole capsule sit on NavMesh — strict
+            // enough that a target standing anywhere near a mesh edge rejected every yaw candidate
+            // and the chain aborted with "no safe teleport pose was found". Authors who want the
+            // strict placement can tick requireNavMeshAtAnchor on the sequence itself.
+            requireNavMeshAtAnchorOverride: null);
     }
 
     void TeleportHelperTo(Vector3 worldPosition, Quaternion worldRotation)
@@ -2524,6 +2639,17 @@ public class AllyHelperManager : MonoBehaviour
     // The visibility controller never disables the actor - this manager owns that. Once the
     // fade-out has actually finished, switch the helper off and hand back its protection.
     void OnHelperVisibilityDisappeared()
+    {
+        // An unscaled visibility transition can finish while a slowed skill still owns the actor.
+        // Keep the fully hidden helper active until the matching playback completion arrives, so
+        // deactivation cannot turn a successful Chain request into an interruption.
+        if (deferHelperDeactivationUntilChainComplete)
+            return;
+
+        DeactivateHelperAfterFade();
+    }
+
+    void DeactivateHelperAfterFade()
     {
         if (allyHelper != null && allyHelper.activeSelf)
             allyHelper.SetActive(false);

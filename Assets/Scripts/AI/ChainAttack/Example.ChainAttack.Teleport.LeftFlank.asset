@@ -17,7 +17,7 @@ MonoBehaviour:
   navMeshSampleDistance: 1.2
   anchorPositionOffset: {x: 0, y: 0, z: -1.35}
   clearanceCenterOffset: {x: 1.76, y: 1.76, z: 1.76}
-  clearanceHalfExtents: {x: 0, y: 0, z: -1}
+  clearanceHalfExtents: {x: 0.35, y: 0.9, z: 0.8}
   obstacleLayers:
     serializedVersion: 2
     m_Bits: 131072

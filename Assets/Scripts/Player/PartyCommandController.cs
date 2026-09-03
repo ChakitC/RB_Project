@@ -30,6 +30,7 @@ public sealed class PartyCommandController : MonoBehaviour
     public PartyCommandDefinition[] PartyCommands => partyCommands;
 
     AllyHelperManager _loadoutSubscribedHelperManager;
+    ChainAttackProcController _abortSubscribedProcController;
 
     void Awake()
     {
@@ -40,6 +41,7 @@ public sealed class PartyCommandController : MonoBehaviour
     void Start()
     {
         SubscribeHelperLoadout();
+        SubscribeChainReadyAbort();
         NotifyCommandPointsChanged();
         RaisePartyCommandLabel();
     }
@@ -47,6 +49,47 @@ public sealed class PartyCommandController : MonoBehaviour
     void OnDestroy()
     {
         SubscribeHelperLoadout(null);
+        UnsubscribeChainReadyAbort();
+    }
+
+    void SubscribeChainReadyAbort()
+    {
+        ResolveReferences();
+
+        if (_abortSubscribedProcController == chainAttackProcController)
+            return;
+
+        UnsubscribeChainReadyAbort();
+
+        if (chainAttackProcController == null)
+            return;
+
+        chainAttackProcController.ChainReadyChainAborted += OnChainReadyChainAborted;
+        _abortSubscribedProcController = chainAttackProcController;
+    }
+
+    void UnsubscribeChainReadyAbort()
+    {
+        if (_abortSubscribedProcController == null)
+            return;
+
+        _abortSubscribedProcController.ChainReadyChainAborted -= OnChainReadyChainAborted;
+        _abortSubscribedProcController = null;
+    }
+
+    /// <summary>
+    /// A ChainReady chain charges its command points the moment it is committed, which is before the
+    /// intro cutscene has finished and before the coordinator has accepted the sequence. When that
+    /// commitment falls through the player gets the points back — otherwise an interrupted cutscene
+    /// silently costs CP and delivers nothing.
+    /// </summary>
+    void OnChainReadyChainAborted(SkillChainDef chainDef)
+    {
+        float refund = chainDef != null ? chainDef.ClampedCommandPointCost : 0f;
+        if (refund > 0f)
+            RestoreCommandPoints(refund);
+
+        RaisePartyCommandLabel();
     }
 
     /// <summary>
@@ -356,19 +399,28 @@ public sealed class PartyCommandController : MonoBehaviour
                 helperManager != null ? helperManager.HelperObject : null,
                 out GameObject target,
                 out Transform targetTransform,
-                out _))
+                out _,
+                preferChainReadyTargets: true))
         {
             return ChainReadyInputResult.NoReadyTarget;
         }
 
-        StaggerMeter meter = target.GetComponentInParent<StaggerMeter>();
-        if (meter == null)
-            meter = target.GetComponentInChildren<StaggerMeter>();
+        StaggerMeter meter = ChainAttackTargetingUtility.ResolveStaggerMeter(targetTransform);
         if (meter == null || !meter.IsChainReady || meter.IsChainExecutionActive)
             return ChainReadyInputResult.NoReadyTarget;
 
-        if (TryGetChainAttackBlockReason(chainDef, out _))
+        // Both failures below swallow the press: the prompt stays up, no chain runs, and nothing
+        // tells the player why. Until that gets real feedback, at least make it diagnosable.
+        if (TryGetChainAttackBlockReason(chainDef, targetTransform, out PartyCommandBlockReason blockReason))
         {
+            if (logPartyCommandExecution)
+            {
+                Debug.Log(
+                    $"[PartyCommandController] ChainReady chain '{ResolveChainAttackLabel(chainDef)}' " +
+                    $"blocked: {BuildChainAttackBlockReasonLabel(chainDef, blockReason)}.",
+                    this);
+            }
+
             RaisePartyCommandLabel();
             return ChainReadyInputResult.Consumed;
         }
@@ -378,9 +430,75 @@ public sealed class PartyCommandController : MonoBehaviour
         {
             TrySpendCommandPoints(chainDef.ClampedCommandPointCost);
         }
+        else if (logPartyCommandExecution)
+        {
+            Debug.LogWarning(
+                $"[PartyCommandController] ChainReady chain '{ResolveChainAttackLabel(chainDef)}' " +
+                "failed to start after passing validation.",
+                this);
+        }
 
         RaisePartyCommandLabel();
         return ChainReadyInputResult.Consumed;
+    }
+
+    /// <summary>
+    /// Why a ChainReady [F] press would be refused right now, for the on-screen prompt.
+    ///
+    /// Deliberately skips the target-resolution gate that <see cref="TryGetChainAttackBlockReason"/>
+    /// ends with: this is polled while a prompt is on screen, and that gate runs physics sweeps.
+    /// The prompt is drawn by the enemy that is already ChainReady, so the question it needs
+    /// answered is "may I, and can I afford it", not "am I aimed at something".
+    /// </summary>
+    public bool TryGetChainReadyPromptBlockReason(
+        SkillChainDef chainDef,
+        out PartyCommandBlockReason reason,
+        out float missingCommandPoints)
+    {
+        reason = PartyCommandBlockReason.None;
+        missingCommandPoints = 0f;
+
+        if (chainDef == null || !chainDef.HasExecutionConfigured)
+        {
+            reason = PartyCommandBlockReason.MissingConfig;
+            return true;
+        }
+
+        if (chainDef.requireOwnerAlive && !IsPartyCommandOwnerAvailable())
+        {
+            reason = PartyCommandBlockReason.OwnerUnavailable;
+            return true;
+        }
+
+        if (chainAttackProcController == null)
+        {
+            reason = PartyCommandBlockReason.SequenceUnavailable;
+            return true;
+        }
+
+        if (chainDef.blockWhileChainBusy &&
+            (chainAttackProcController.IsSequenceActive ||
+             chainAttackProcController.IsChainReadyIntroActive))
+        {
+            reason = PartyCommandBlockReason.SequenceBusy;
+            return true;
+        }
+
+        if (chainAttackProcController.IsSequenceCooldownActive(chainDef, out _))
+        {
+            reason = PartyCommandBlockReason.Cooldown;
+            return true;
+        }
+
+        float cost = chainDef.ClampedCommandPointCost;
+        if (!CanSpendCommandPoints(cost))
+        {
+            reason = PartyCommandBlockReason.NotEnoughCommandPoints;
+            missingCommandPoints = Mathf.Max(0f, cost - currentCommandPoints);
+            return true;
+        }
+
+        return false;
     }
 
     public bool TryExecuteChainAttack(SkillChainDef chainDef)
@@ -582,6 +700,19 @@ public sealed class PartyCommandController : MonoBehaviour
         SkillChainDef chainDef,
         out PartyCommandBlockReason reason)
     {
+        return TryGetChainAttackBlockReason(chainDef, null, out reason);
+    }
+
+    /// <summary>
+    /// <paramref name="resolvedTargetTransform"/> is the target the caller already locked. Passing it
+    /// keeps this check on the same target the press did — re-resolving here would apply ordinary
+    /// aim rules to a ChainReady press that is allowed to reach further.
+    /// </summary>
+    bool TryGetChainAttackBlockReason(
+        SkillChainDef chainDef,
+        Transform resolvedTargetTransform,
+        out PartyCommandBlockReason reason)
+    {
         reason = PartyCommandBlockReason.None;
 
         if (chainDef == null || !chainDef.HasExecutionConfigured)
@@ -602,7 +733,11 @@ public sealed class PartyCommandController : MonoBehaviour
             return true;
         }
 
-        if (chainDef.blockWhileChainBusy && chainAttackProcController.IsSequenceActive)
+        // An intro cutscene is a chain that is already committed and paid for, even though the
+        // coordinator has not started running steps yet.
+        if (chainDef.blockWhileChainBusy &&
+            (chainAttackProcController.IsSequenceActive ||
+             chainAttackProcController.IsChainReadyIntroActive))
         {
             reason = PartyCommandBlockReason.SequenceBusy;
             return true;
@@ -620,7 +755,7 @@ public sealed class PartyCommandController : MonoBehaviour
             return true;
         }
 
-        if (!chainAttackProcController.CanStartManualSequence(chainDef))
+        if (!chainAttackProcController.CanStartManualSequence(chainDef, resolvedTargetTransform))
         {
             reason = PartyCommandBlockReason.MissingTarget;
             return true;

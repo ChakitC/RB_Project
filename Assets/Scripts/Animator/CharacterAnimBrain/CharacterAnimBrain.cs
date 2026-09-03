@@ -343,6 +343,26 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         return false;
     }
 
+    internal bool TryGetActiveSkillPlaybackTiming(
+        int requestId,
+        out float remainingDuration,
+        out float totalDuration)
+    {
+        remainingDuration = 0f;
+        totalDuration = 0f;
+
+        if (!_initialized ||
+            requestId <= 0 ||
+            requestId != _skillChannel.Request.RequestId ||
+            locomotionSM.CurrentState != skill ||
+            skill == null)
+        {
+            return false;
+        }
+
+        return skill.TryGetPlaybackTiming(out remainingDuration, out totalDuration);
+    }
+
     internal bool TryAcquirePreCastHold(int requestId, float speedMultiplier, float safetyMarginNormalized, out SkillPreCastHoldHandle handle)
     {
         handle = default;

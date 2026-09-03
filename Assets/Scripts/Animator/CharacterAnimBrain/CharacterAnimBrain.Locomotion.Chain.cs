@@ -109,6 +109,23 @@ public sealed partial class CharacterAnimBrain
             return false;
         }
 
+        internal bool TryGetPlaybackTiming(out float remainingDuration, out float totalDuration)
+        {
+            remainingDuration = 0f;
+            totalDuration = 0f;
+
+            if (state == null || !state.IsPlaying)
+                return false;
+
+            float speed = Mathf.Abs(state.Speed);
+            if (speed < 0.0001f)
+                return false;
+
+            remainingDuration = state.RemainingDuration;
+            totalDuration = state.Length / speed;
+            return float.IsFinite(remainingDuration) && float.IsFinite(totalDuration);
+        }
+
         private void OnChainEnd()
         {
             if (owner.locomotionSM.CurrentState != this)

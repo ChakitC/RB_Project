@@ -9,6 +9,9 @@ public sealed class StaggerProfileSO : ScriptableObject
 
     [Header("Break State")]
     [Min(0.01f)] public float chainReadyDuration = 3f;
+    [Tooltip("เพดานเวลาที่ ChainReady ยอมค้างรอ chain sequence ที่เริ่มไปแล้ว เกินนี้จะปล่อยเข้า Stagger เอง " +
+             "กันเคสที่ผู้สั่ง chain หายไปกลางคันแล้วศัตรูค้าง ChainReady ถาวร")]
+    [Min(0.1f)] public float chainExecutionTimeoutSeconds = 15f;
     [Min(0.01f)] public float staggerDuration = 1.5f;
     [Min(1f)] public float damageTakenMultiplierWhileStaggered = 1.25f;
     [Min(0f)] public float postStaggerImmunity = 1f;

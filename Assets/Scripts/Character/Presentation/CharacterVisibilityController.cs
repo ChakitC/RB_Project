@@ -81,6 +81,57 @@ public sealed class CharacterVisibilityController : MonoBehaviour
 
     public bool IsTransitioning => _transition != TransitionKind.None;
 
+    internal bool IsDisappearing => _transition == TransitionKind.Disappear;
+    internal bool UsesUnscaledTime => useUnscaledTime;
+
+    internal bool ShouldBeginAutoHide(
+        float elapsed,
+        float remainingDuration,
+        float playbackDuration)
+    {
+        return ShouldBeginAutoHideForFade(elapsed, remainingDuration, playbackDuration, fadeDuration: -1f);
+    }
+
+    /// <summary>
+    /// Same gate, but for a caller supplying its own fade length. Named apart from the pair above
+    /// because a four-float overload would collide with the static helper.
+    /// </summary>
+    internal bool ShouldBeginAutoHideForFade(
+        float elapsed,
+        float remainingDuration,
+        float playbackDuration,
+        float fadeDuration)
+    {
+        float resolvedFade = fadeDuration >= 0f ? fadeDuration : disappearDuration;
+
+        float minimumVisibleDuration = Mathf.Max(0.05f, appearDuration);
+        if (float.IsFinite(playbackDuration) && playbackDuration > 0f)
+            minimumVisibleDuration = Mathf.Min(minimumVisibleDuration, playbackDuration * 0.5f);
+
+        // A fade sized from the window it has to fit in must not then be blocked by the
+        // minimum-visible gate, or a short window loses its fade entirely — which is the case the
+        // caller sized it for.
+        if (fadeDuration >= 0f)
+            minimumVisibleDuration = Mathf.Min(minimumVisibleDuration, Mathf.Max(0f, remainingDuration));
+
+        return ShouldBeginAutoHide(
+            elapsed,
+            minimumVisibleDuration,
+            remainingDuration,
+            resolvedFade);
+    }
+
+    internal static bool ShouldBeginAutoHide(
+        float elapsed,
+        float minimumVisibleDuration,
+        float remainingDuration,
+        float disappearDuration)
+    {
+        const float triggerEpsilon = 0.01f;
+        return elapsed + triggerEpsilon >= minimumVisibleDuration &&
+               remainingDuration <= Mathf.Max(0f, disappearDuration) + triggerEpsilon;
+    }
+
     void Awake()
     {
         if (characterVfx == null)
@@ -229,6 +280,17 @@ public sealed class CharacterVisibilityController : MonoBehaviour
 
     /// <summary>Fades out from the current dither value and raises <see cref="Disappeared"/>.</summary>
     public void Disappear() => BeginTransition(TransitionKind.Disappear, HiddenAlpha, disappearDuration, disappearCurve);
+
+    /// <summary>
+    /// Fades out over an explicit duration instead of the serialized one. Used where the time
+    /// available is dictated by something else — a warp fade has to be finished by the frame the
+    /// actor is teleported, and that budget comes from the animation, not from this component.
+    /// </summary>
+    public void Disappear(float duration) =>
+        BeginTransition(TransitionKind.Disappear, HiddenAlpha, Mathf.Max(0f, duration), disappearCurve);
+
+    /// <summary>The authored fade-out length, for callers that scale their own timing against it.</summary>
+    public float DisappearDuration => disappearDuration;
 
     /// <summary>Stops any running transition and holds the current value. No completion event is raised.</summary>
     public void CancelTransition()

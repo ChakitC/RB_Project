@@ -45,6 +45,7 @@ internal sealed class FieldAllySequenceRunner
 
     public void Tick()
     {
+        transitionController.Tick();
         ProcessDeferredExecutionPhase();
     }
 
@@ -367,7 +368,10 @@ internal sealed class FieldAllySequenceRunner
         bool started = owner.AnimDriverRef.TryPlayChainUtilityWarpOut(execution.enterRequestId);
         if (started)
         {
-            transitionController.StartChainVisualLifecycle(hideOnAnimationComplete: true);
+            transitionController.StartChainVisualLifecycle(
+                execution.enterRequestId,
+                hideOnAnimationComplete: true,
+                hideAtTeleportCastMoment: true);
             owner.LogExecution($"Started utility warp-out for step '{execution.step.RuntimeId}' (request {execution.enterRequestId}).");
             return true;
         }
@@ -442,6 +446,7 @@ internal sealed class FieldAllySequenceRunner
         if (started)
         {
             transitionController.StartChainVisualLifecycle(
+                execution.attackRequestId,
                 FieldAllyTransitionController.ShouldAutoHideNearAttackEnd(execution.step.exitMode));
             owner.LogExecution(
                 $"Started attack for step '{execution.step.RuntimeId}' with skill '{execution.attackSkillDef.name}' " +
@@ -488,7 +493,9 @@ internal sealed class FieldAllySequenceRunner
         if (_pendingExecution == null || _pendingExecution.phase != SequenceExecutionPhase.WaitingForAttackCastMoment)
             return;
 
-        if (_pendingExecution.step.faceLockedTargetOnCast &&
+        // An in-place fallback always re-aims at the cast moment: it has no warp pose holding it on
+        // target, so the target may have walked out of the firing line while the wind-up played.
+        if ((_pendingExecution.step.faceLockedTargetOnCast || _pendingExecution.usedInPlaceFallback) &&
             !_pendingExecution.placementResult.UsesRootMotion)
         {
             transitionController.FaceTarget(_pendingExecution);
@@ -824,7 +831,10 @@ internal sealed class FieldAllySequenceRunner
         bool started = owner.AnimDriverRef.TryPlayChainUtilityWarpOut(_pendingExecution.exitRequestId);
         if (started)
         {
-            transitionController.StartChainVisualLifecycle(hideOnAnimationComplete: true);
+            transitionController.StartChainVisualLifecycle(
+                _pendingExecution.exitRequestId,
+                hideOnAnimationComplete: true,
+                hideAtTeleportCastMoment: true);
             owner.LogExecution($"Started return utility for '{owner.ActorName}' (request {_pendingExecution.exitRequestId}).");
             return true;
         }
@@ -878,7 +888,9 @@ internal sealed class FieldAllySequenceRunner
         }
 
         SetExecutionPhase(_pendingExecution, SequenceExecutionPhase.WaitingForExitComplete);
-        transitionController.StartChainVisualLifecycle(hideOnAnimationComplete: false);
+        transitionController.StartChainVisualLifecycle(
+            _pendingExecution.exitRequestId,
+            hideOnAnimationComplete: false);
         owner.LogExecution($"Started return warp-in for '{owner.ActorName}' (request {_pendingExecution.exitRequestId}).");
         return true;
     }

@@ -46,7 +46,7 @@ MonoBehaviour:
     fadeFullyHiddenDistance: 0.5
   weaponHandMode: 0
   combatRole: 3
-  chainAttackSkill: {fileID: 0}
+  chainAttackSkill: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
   introChainCutscene: {fileID: 0}
   partyRole: 1
   skillSlots: []

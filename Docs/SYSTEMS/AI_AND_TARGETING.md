@@ -294,6 +294,22 @@ The target pose is sampled once before the attack animation starts. The result
 is retained for the whole execution; target movement after that point does not
 re-snap or re-resolve the actor.
 
+Chain actor visibility is driven through `CharacterVisibilityController`. A
+teleport conceals the actor immediately before the pose snap, then the active
+Chain animation fades it in. Exit modes that return, warp, or deactivate the
+actor schedule their fade-out from the request-scoped Chain playback timing so
+the fade finishes near the end of that animation. Starting another playback,
+teleporting, interrupting, or disabling the actor cancels the old schedule, so
+a stale Chain request cannot hide a later animation.
+
+The Helper role runs its follow-up through the skill playback channel rather
+than `FieldAllyTransitionController`. Both owners use
+`CharacterPlaybackAutoHideSchedule` for the request-scoped visibility timing,
+while each owner resolves the correct animation channel: Chain for field allies
+and Skill for the Helper. If an unscaled fade finishes during slowed gameplay,
+the hidden Helper remains active until that request completes; only then may the
+manager deactivate it.
+
 The resolver samples the attack clip through a hidden clone of the active
 Animator rig and a manual `PlayableGraph` at approximately 30 Hz. Accumulated
 planar `Animator.deltaPosition` and yaw are cached by clip and Avatar. When a

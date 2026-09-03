@@ -4,13 +4,24 @@ using UnityEngine.AI;
 
 internal sealed class FieldAllyTransitionController
 {
+    // Closest first: the authored flank offset is 1.35m, so these bracket it and then give ground.
+    static readonly float[] FallbackRadii = { 1.5f, 2f, 2.75f, 3.5f };
+    const int FallbackYawSamples = 12;
+
+    // Share of the pre-teleport window spent fading out. The rest is the actor still fully visible
+    // playing its wind-up, which is what makes the warp read as a departure rather than a blink.
+    const float WarpFadeWindowFraction = 0.7f;
+    const float MinimumWarpFadeSeconds = 0.06f;
+
     static readonly float[] AttackAnimationSampleFractions = { 0f, 0.1f, 0.25f, 0.5f, 0.75f, 0.98f };
     static readonly float[] UtilityPostTeleportSampleFractions = { 0f, 0.33f, 0.66f, 0.98f };
     const float DuplicateSampleTimeEpsilon = 0.0005f;
 
     readonly FieldAllyMember owner;
+    readonly CharacterPlaybackAutoHideSchedule _autoHide = new();
 
     bool _visualHiddenForChainTransition;
+    bool _autoHideTimedToCastMoment;
     Action _pendingDeactivateOnDisappear;
 
     public FieldAllyTransitionController(FieldAllyMember owner)
@@ -18,17 +29,94 @@ internal sealed class FieldAllyTransitionController
         this.owner = owner;
     }
 
-    public void StartChainVisualLifecycle(bool hideOnAnimationComplete)
+    public void StartChainVisualLifecycle(int requestId, bool hideOnAnimationComplete) =>
+        StartChainVisualLifecycle(requestId, hideOnAnimationComplete, hideAtTeleportCastMoment: false);
+
+    /// <summary>
+    /// <paramref name="hideAtTeleportCastMoment"/> says what the fade has to be finished by. A
+    /// warp-out teleports the actor at its cast moment, so the fade is timed to that. Every other
+    /// playback — the attack above all — fires something else at its cast moment and should keep
+    /// fading toward the end of the clip; timing an attack's fade to its cast moment would make the
+    /// actor vanish on the hit and play the rest of the swing invisible.
+    /// </summary>
+    public void StartChainVisualLifecycle(
+        int requestId,
+        bool hideOnAnimationComplete,
+        bool hideAtTeleportCastMoment)
     {
         if (owner.VisibilityRef == null || !owner.GameObjectRef.activeInHierarchy)
             return;
 
+        ClearPendingDeactivate();
+        ClearAutoHide();
         owner.VisibilityRef.Appear();
         _visualHiddenForChainTransition = false;
+        _autoHideTimedToCastMoment = hideAtTeleportCastMoment;
+
+        if (hideOnAnimationComplete && requestId > 0)
+            _autoHide.Start(requestId);
+    }
+
+    public void Tick()
+    {
+        if (!_autoHide.IsPending)
+            return;
+
+        CharacterVisibilityController visibility = owner.VisibilityRef;
+        CharacterAnimBrain animBrain = owner.AnimBrainRef;
+        if (visibility == null ||
+            animBrain == null ||
+            owner.GameObjectRef == null ||
+            !owner.GameObjectRef.activeInHierarchy)
+        {
+            ClearAutoHide();
+            return;
+        }
+
+        _autoHide.Advance(visibility);
+        int requestId = _autoHide.RequestId;
+
+        if (!animBrain.TryGetActiveChainPlaybackTiming(
+                requestId,
+                out float remainingDuration,
+                out float totalDuration))
+        {
+            return;
+        }
+
+        // The actor is teleported at the playback's cast moment, not at the end of the clip, so the
+        // fade has to be measured against that. Feeding the clip's remaining time straight in used
+        // to start the fade too late: with a warp-out cast point of 0.95 the character was still
+        // partly visible when it snapped away, which reads as a pop rather than a fade.
+        float timeUntilTeleport = remainingDuration;
+        float fadeDuration = -1f;
+
+        if (_autoHideTimedToCastMoment &&
+            animBrain.TryGetActiveChainCastPointNormalized(requestId, out float castPointNormalized) &&
+            float.IsFinite(totalDuration) &&
+            totalDuration > 0f)
+        {
+            timeUntilTeleport = Mathf.Max(0f, remainingDuration - (1f - castPointNormalized) * totalDuration);
+
+            // Size the fade to the animation rather than to a fixed number. The window is everything
+            // before the actor is teleported; spending a fixed slice of it means a warp-out that
+            // triggers early in its clip gets no visible fade at all, while a late one fades long
+            // before it needs to. WarpFadeWindowFraction of that window keeps the pacing the same
+            // whatever the clip length or cast point is.
+            float preWarpWindow = Mathf.Max(0f, castPointNormalized * totalDuration);
+            fadeDuration = Mathf.Clamp(
+                preWarpWindow * WarpFadeWindowFraction,
+                MinimumWarpFadeSeconds,
+                Mathf.Max(MinimumWarpFadeSeconds, preWarpWindow));
+        }
+
+        _autoHide.TryBeginHide(visibility, timeUntilTeleport, totalDuration, fadeDuration);
     }
 
     public void HideVisualForTeleport()
     {
+        ClearAutoHide();
+
         if (owner.VisibilityRef == null || !owner.GameObjectRef.activeInHierarchy)
             return;
 
@@ -46,23 +134,29 @@ internal sealed class FieldAllyTransitionController
         if (owner.VisibilityRef == null || !owner.GameObjectRef.activeInHierarchy)
             return;
 
-        owner.VisibilityRef.RevealAfterTeleport();
+        // The actor was concealed for the snap. Reveal through the visibility transition so the
+        // chain entry/return keeps the fade-in that the old chain fader provided.
+        owner.VisibilityRef.Appear();
     }
 
     public void RecoverVisibleStateAfterInterruptedExecution()
     {
         _visualHiddenForChainTransition = false;
+        ClearAutoHide();
 
         if (owner.VisibilityRef == null || !owner.GameObjectRef.activeInHierarchy)
             return;
 
         ClearPendingDeactivate();
-        owner.VisibilityRef.SetVisibleImmediate();
+        // Recovery can happen after a failed/aborted teleport. Continue from the current dither
+        // value instead of popping the actor fully visible in the same frame.
+        owner.VisibilityRef.Appear();
     }
 
     public void ClearVisualState()
     {
         _visualHiddenForChainTransition = false;
+        ClearAutoHide();
         ClearPendingDeactivate();
     }
 
@@ -71,6 +165,7 @@ internal sealed class FieldAllyTransitionController
         if (owner.GameObjectRef == null || !owner.GameObjectRef.activeSelf)
             return;
 
+        ClearAutoHide();
         CharacterVisibilityController visibility = owner.VisibilityRef;
         if (visibility == null)
         {
@@ -83,6 +178,12 @@ internal sealed class FieldAllyTransitionController
         ClearPendingDeactivate();
 
         GameObject actor = owner.GameObjectRef;
+        if (visibility.IsHidden)
+        {
+            actor.SetActive(false);
+            return;
+        }
+
         Action handler = null;
         handler = () =>
         {
@@ -96,7 +197,14 @@ internal sealed class FieldAllyTransitionController
 
         _pendingDeactivateOnDisappear = handler;
         visibility.Disappeared += handler;
-        visibility.Disappear();
+
+        if (!visibility.IsDisappearing)
+            visibility.Disappear();
+    }
+
+    void ClearAutoHide()
+    {
+        _autoHide.Cancel();
     }
 
     // Drops a fade-out completion handler that is no longer wanted (interrupt, restart), so a later
@@ -138,8 +246,11 @@ internal sealed class FieldAllyTransitionController
         if (execution == null || execution.step == null || targetAnchor == null)
             return false;
 
+        // Targeted placement is the path that actually runs for a step with a teleport profile, so it
+        // needs the in-place fallback too — it restores the actor to its origin before failing, which
+        // is exactly the state the fallback expects.
         if (!TryApplyTargetedPlacement(execution, targetAnchor, out bool placementHandled))
-            return false;
+            return AcceptInPlaceAttackFallback(execution);
 
         if (placementHandled)
             return true;
@@ -167,7 +278,7 @@ internal sealed class FieldAllyTransitionController
             {
                 TeleportActorTo(execution.recordedOriginPosition, execution.recordedOriginRotation);
                 RevealVisualAfterTeleportIfNeeded();
-                return false;
+                return AcceptInPlaceAttackFallback(execution);
             }
 
             return true;
@@ -179,7 +290,7 @@ internal sealed class FieldAllyTransitionController
                 out Vector3 teleportPosition,
                 out Quaternion teleportRotation))
         {
-            return false;
+            return AcceptInPlaceAttackFallback(execution);
         }
 
         HideVisualForTeleport();
@@ -188,9 +299,110 @@ internal sealed class FieldAllyTransitionController
         {
             TeleportActorTo(execution.recordedOriginPosition, execution.recordedOriginRotation);
             RevealVisualAfterTeleportIfNeeded();
-            return false;
+            return AcceptInPlaceAttackFallback(execution);
         }
 
+        return true;
+    }
+
+    /// <summary>
+    /// Sweeps a ring of positions around the target for somewhere legal to stand, closest radius
+    /// first. Uses the step's own teleport profile for the clearance rules, so it respects the same
+    /// obstacle layers as the authored pose — it only relaxes *where* the actor may stand, never
+    /// whether the spot is safe.
+    /// </summary>
+    bool TryTeleportNearTarget(PendingSequenceExecution execution)
+    {
+        ChainAttackTeleportProfileDef profile = execution.step.teleportProfile;
+        Transform anchor = ResolveExecutionTargetAnchor(execution);
+        if (profile == null || anchor == null)
+            return false;
+
+        Vector3 anchorPosition = anchor.position;
+
+        for (int radiusStep = 0; radiusStep < FallbackRadii.Length; radiusStep++)
+        {
+            float radius = FallbackRadii[radiusStep];
+
+            for (int i = 0; i < FallbackYawSamples; i++)
+            {
+                float yaw = i * (360f / FallbackYawSamples);
+                Vector3 offset = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward * radius;
+                Vector3 candidate = anchorPosition + offset;
+
+                if (!NavMesh.SamplePosition(candidate, out NavMeshHit navHit, 1f, NavMesh.AllAreas))
+                    continue;
+
+                candidate = navHit.position;
+
+                Vector3 toTarget = anchorPosition - candidate;
+                toTarget.y = 0f;
+                if (toTarget.sqrMagnitude < 0.0001f)
+                    continue;
+
+                Quaternion rotation = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
+
+                if (!ChainAttackTeleportUtility.IsProbePoseClear(
+                        profile,
+                        candidate,
+                        rotation,
+                        owner.ChainTeleportProbeColliderRef,
+                        owner.TransformRef,
+                        allowedOverlapRoot: execution.lockedTarget))
+                {
+                    continue;
+                }
+
+                // Conceal first: the caller already revealed the actor when the authored pose failed,
+                // so teleporting straight away would move it in full view.
+                HideVisualForTeleport();
+                TeleportActorTo(candidate, rotation);
+                RevealVisualAfterTeleportIfNeeded();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Last resort when no safe warp-in pose exists — the target is against a wall, in a corner, or
+    /// otherwise leaves nowhere legal to stand. The actor stays where it is and attacks from there.
+    ///
+    /// Failing the step instead is what made chains unreliable: with stopWhenAnyStepFails the whole
+    /// sequence aborted over map geometry, and the target got a free Stagger with nobody attacking.
+    /// A degraded attack from range beats losing the entire chain.
+    /// </summary>
+    bool AcceptInPlaceAttackFallback(PendingSequenceExecution execution)
+    {
+        if (execution?.step == null || !execution.step.allowInPlaceAttackIfEntryPoseBlocked)
+            return false;
+
+        // Measured: a chain step that lands next to the target does roughly an order of magnitude
+        // more damage than one fired from wherever the actor happened to be standing. So before
+        // settling for an in-place attack, look for any legal spot close to the target — the
+        // authored flank offset failing does not mean every nearby position is blocked.
+        if (TryTeleportNearTarget(execution))
+        {
+            execution.usedInPlaceFallback = true;
+            owner.LogExecution(
+                $"Step '{execution.step.RuntimeId}' could not use its authored flank pose; " +
+                $"'{owner.ActorName}' moved to a nearby fallback pose instead.");
+            return true;
+        }
+
+        RevealVisualAfterTeleportIfNeeded();
+        execution.usedInPlaceFallback = true;
+
+        // The warp pose is what aims the actor, and these steps commonly leave both facing flags off
+        // because of that. Skipping the warp therefore also skips the aiming, and a projectile chain
+        // skill fires along the actor's forward — straight past the target. Aim it here.
+        if (!execution.placementResult.UsesRootMotion)
+            FaceTarget(execution);
+
+        owner.LogExecution(
+            $"Step '{execution.step.RuntimeId}' found no safe warp-in pose; attacking in place from " +
+            $"'{owner.ActorName}'s current position instead (facing forced toward the target).");
         return true;
     }
 

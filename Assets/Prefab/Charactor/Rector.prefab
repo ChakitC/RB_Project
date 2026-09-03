@@ -984,42 +984,42 @@ MonoBehaviour:
     enabled: 1
     localPosition: {x: 0.0000008662836, y: 0.25778195, z: 0.23674577}
     localEulerAngles: {x: 0, y: 0, z: 0}
-    colliderRadius: 0.24699952
+    colliderRadius: 0.45
     vfxScale: 1
     hitZone: 2
   - anchor: {fileID: 1372047220446849501}
     enabled: 1
     localPosition: {x: 0.00000010888301, y: 0.08127671, z: 0.34043244}
     localEulerAngles: {x: 0, y: 0, z: 0}
-    colliderRadius: 0.24699952
+    colliderRadius: 0.45
     vfxScale: 1
     hitZone: 1
   - anchor: {fileID: 8613625420816653117}
     enabled: 1
     localPosition: {x: -0.26017427, y: 0.23395535, z: 0.00861586}
     localEulerAngles: {x: 0, y: 0, z: 0}
-    colliderRadius: 0.24699952
+    colliderRadius: 0.45
     vfxScale: 1
     hitZone: 1
   - anchor: {fileID: 8106965827639800632}
     enabled: 1
     localPosition: {x: 0.26017448, y: 0.23395523, z: 0.008615807}
     localEulerAngles: {x: 0, y: 0, z: 0}
-    colliderRadius: 0.24699952
+    colliderRadius: 0.45
     vfxScale: 1
     hitZone: 1
   - anchor: {fileID: 964397636436080278}
     enabled: 1
     localPosition: {x: 0.10774356, y: 0.01251987, z: 0.33276817}
     localEulerAngles: {x: 0, y: 0, z: 0}
-    colliderRadius: 0.24699952
+    colliderRadius: 0.45
     vfxScale: 1
     hitZone: 1
   - anchor: {fileID: 2640244923070848764}
     enabled: 1
     localPosition: {x: -0.10774349, y: 0.012519914, z: 0.33276808}
     localEulerAngles: {x: 0, y: 0, z: 0}
-    colliderRadius: 0.24699952
+    colliderRadius: 0.45
     vfxScale: 1
     hitZone: 1
 --- !u!114 &8131843431146941870

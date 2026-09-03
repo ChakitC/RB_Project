@@ -18,6 +18,7 @@ public sealed class StaggerMeter : MonoBehaviour
     [SerializeField, FoldoutGroup("Fallback Values"), Min(1f)] private float damageTakenMultiplierWhileStaggered = 1.25f;
     [SerializeField, FoldoutGroup("Fallback Values"), Min(0f)] private float postStaggerImmunity = 1f;
     [SerializeField, FoldoutGroup("Fallback Values"), Min(0.01f)] private float chainReadyDuration = 3f;
+    [SerializeField, FoldoutGroup("Fallback Values"), Min(0.1f)] private float chainExecutionTimeoutSeconds = 15f;
     [SerializeField, FoldoutGroup("Fallback Values"), Min(0f)] private float decayDelay = 1.5f;
     [SerializeField, FoldoutGroup("Fallback Values"), Min(0f)] private float decayPerSecond = 20f;
 
@@ -46,6 +47,11 @@ public sealed class StaggerMeter : MonoBehaviour
     [SerializeField] private bool isChainReady;
     [SerializeField] private bool isChainExecutionActive;
     [SerializeField] private float chainReadyTimeRemaining;
+    // Watchdog for an executing chain. The ChainReady countdown is deliberately frozen while a chain
+    // runs, so without this the meter has exactly one way out — the owner's completion callback. Any
+    // owner that dies, is disabled, or loses its subscription mid-chain would otherwise leave this
+    // actor ChainReady forever with its Behavior Tree off and its agent suspended.
+    [SerializeField] private float chainExecutionTimeRemaining;
     GameObject chainReadySource;
 
     Slider staggerBarSlider;
@@ -120,7 +126,10 @@ public sealed class StaggerMeter : MonoBehaviour
 
     void Update()
     {
-        float dt = Time.deltaTime;
+        // Every clock the chain system compares against (sequence duration, internal cooldowns,
+        // step delays) runs on TimeSlowManager's world clock. The meter has to share it, or a world
+        // slow stretches the ChainReady window against the sequence timeout it is racing.
+        float dt = TimeSlowManager.Instance.WorldDeltaTime;
 
         // Re-asserted every frame for the same reason stagger and ChainReady do it: another system
         // can hand the agent back underneath us, and the Special Point reaction owns the actor for
@@ -484,6 +493,7 @@ public sealed class StaggerMeter : MonoBehaviour
 
         isChainReady = true;
         isChainExecutionActive = false;
+        chainExecutionTimeRemaining = 0f;
         chainReadySource = source;
         chainReadyTimeRemaining = ResolveChainReadyDuration();
 
@@ -502,7 +512,20 @@ public sealed class StaggerMeter : MonoBehaviour
         SuspendAgent();
 
         if (isChainExecutionActive)
+        {
+            chainExecutionTimeRemaining = Mathf.Max(0f, chainExecutionTimeRemaining - dt);
+            if (chainExecutionTimeRemaining <= 0f)
+            {
+                Debug.LogWarning(
+                    $"[StaggerMeter] Chain execution on '{name}' exceeded " +
+                    $"{ResolveChainExecutionTimeout():0.##}s without a completion callback. " +
+                    "Releasing ChainReady into Stagger so the actor cannot stay frozen.",
+                    this);
+                CompleteChainReadyAndEnterStagger();
+            }
+
             return;
+        }
 
         chainReadyTimeRemaining = Mathf.Max(0f, chainReadyTimeRemaining - dt);
         ChainReadyTimeChanged?.Invoke(chainReadyTimeRemaining, ResolveChainReadyDuration());
@@ -527,6 +550,7 @@ public sealed class StaggerMeter : MonoBehaviour
             return;
 
         isChainExecutionActive = true;
+        chainExecutionTimeRemaining = ResolveChainExecutionTimeout();
     }
 
     public bool CompleteChainReadyAndEnterStagger()
@@ -536,6 +560,7 @@ public sealed class StaggerMeter : MonoBehaviour
 
         isChainReady = false;
         isChainExecutionActive = false;
+        chainExecutionTimeRemaining = 0f;
         chainReadyTimeRemaining = 0f;
         ChainReadyEnded?.Invoke();
 
@@ -551,6 +576,7 @@ public sealed class StaggerMeter : MonoBehaviour
 
         isChainReady = false;
         isChainExecutionActive = false;
+        chainExecutionTimeRemaining = 0f;
         chainReadyTimeRemaining = 0f;
         chainReadySource = null;
 
@@ -731,6 +757,7 @@ public sealed class StaggerMeter : MonoBehaviour
     float ResolveDamageTakenMultiplier() => Mathf.Max(1f, profile != null ? profile.damageTakenMultiplierWhileStaggered : damageTakenMultiplierWhileStaggered);
     float ResolvePostStaggerImmunity() => Mathf.Max(0f, profile != null ? profile.postStaggerImmunity : postStaggerImmunity);
     float ResolveChainReadyDuration() => Mathf.Max(0.01f, profile != null ? profile.chainReadyDuration : chainReadyDuration);
+    float ResolveChainExecutionTimeout() => Mathf.Max(0.1f, profile != null ? profile.chainExecutionTimeoutSeconds : chainExecutionTimeoutSeconds);
     float ResolveDecayDelay() => Mathf.Max(0f, profile != null ? profile.decayDelay : decayDelay);
     float ResolveDecayPerSecond() => Mathf.Max(0f, profile != null ? profile.decayPerSecond : decayPerSecond);
 }

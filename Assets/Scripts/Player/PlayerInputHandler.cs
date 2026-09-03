@@ -13,6 +13,12 @@ public class PlayerInputHandler : MonoBehaviour
 
     bool _chainConsumedInteractPress;
 
+    /// <summary>
+    /// The chain the ChainReady [F] press would run. Exposed so the on-enemy prompt can ask whether
+    /// that press would actually be accepted, instead of always advertising itself as available.
+    /// </summary>
+    public SkillChainDef ChainAttackDefinition => chainAttackDefinition;
+
     void Awake()
     {
         ResolveReferences();

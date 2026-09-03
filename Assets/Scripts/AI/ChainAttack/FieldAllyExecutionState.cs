@@ -25,6 +25,12 @@ internal sealed class PendingSequenceExecution
     public SkillGemDefinition attackSkillDef;
     public bool ignoreResourceCosts;
     public bool entrySnapApplied;
+    /// <summary>
+    /// Set when no safe warp-in pose existed and the actor is attacking from where it stands. The
+    /// teleport pose is what normally aims the actor, so this execution has to be turned toward the
+    /// target explicitly no matter what the step authored for facing.
+    /// </summary>
+    public bool usedInPlaceFallback;
     public TargetedSkillPlacementResult placementResult;
     public bool attackPayloadReleased;
     public bool continueReleased;

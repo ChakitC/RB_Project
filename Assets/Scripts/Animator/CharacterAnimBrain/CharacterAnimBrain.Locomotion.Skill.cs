@@ -180,6 +180,25 @@ public sealed partial class CharacterAnimBrain
             return false;
         }
 
+        internal bool TryGetPlaybackTiming(out float remainingDuration, out float totalDuration)
+        {
+            remainingDuration = 0f;
+            totalDuration = 0f;
+
+            // A cutscene skill continues into its main skill clip, so the cutscene phase alone is
+            // not a valid point from which to schedule the actor's final fade-out.
+            if (_inCutscenePhase || _state == null || !_state.IsPlaying)
+                return false;
+
+            float speed = Mathf.Abs(_state.Speed);
+            if (speed < 0.0001f)
+                return false;
+
+            remainingDuration = _state.RemainingDuration;
+            totalDuration = _state.Length / speed;
+            return float.IsFinite(remainingDuration) && float.IsFinite(totalDuration);
+        }
+
         private void OnSkillEnd()
         {
             if (owner.locomotionSM.CurrentState != this) return;

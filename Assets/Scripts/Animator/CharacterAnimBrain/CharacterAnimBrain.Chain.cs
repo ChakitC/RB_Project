@@ -29,6 +29,46 @@ public sealed partial class CharacterAnimBrain
     internal bool ActiveChainUsesRootMotion => _activeChainUsesRootMotion;
     internal bool ActiveChainUsesPlanarRootMotion => _chainChannel.Request.UsesPlanarRootMotion;
 
+    internal bool TryGetActiveChainPlaybackTiming(
+        int requestId,
+        out float remainingDuration,
+        out float totalDuration)
+    {
+        remainingDuration = 0f;
+        totalDuration = 0f;
+
+        if (!_initialized ||
+            requestId <= 0 ||
+            requestId != _chainChannel.RequestId ||
+            locomotionSM.CurrentState != chain ||
+            chain == null)
+        {
+            return false;
+        }
+
+        return chain.TryGetPlaybackTiming(out remainingDuration, out totalDuration);
+    }
+
+    /// <summary>
+    /// Normalized point in the active chain playback where its command fires — for a warp-out that
+    /// is the frame the actor is teleported. Presentation needs it because the fade has to be
+    /// finished by then, not by the end of the clip.
+    /// </summary>
+    internal bool TryGetActiveChainCastPointNormalized(int requestId, out float castPointNormalized)
+    {
+        castPointNormalized = 1f;
+
+        if (!_initialized ||
+            requestId <= 0 ||
+            requestId != _chainChannel.RequestId)
+        {
+            return false;
+        }
+
+        castPointNormalized = Mathf.Clamp01(_chainChannel.Request.CastPointNormalized);
+        return true;
+    }
+
     public bool IsChainPlaybackActive =>
         _chainChannel.IsActive ||
         (_initialized && locomotionSM.CurrentState == chain);

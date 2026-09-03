@@ -259,11 +259,14 @@ public sealed class SpecialShootPointInstance : MonoBehaviour
         _health = 0f;
         _profile = null;
 
-        if (_owner != null && _owner.PoolRoot != null)
-            transform.SetParent(_owner.PoolRoot, false);
-
-        transform.localPosition = Vector3.zero;
-        transform.localRotation = Quaternion.identity;
+        // Deliberately does NOT re-parent. Unity refuses to change a transform's parent while that
+        // parent is mid-activate/deactivate, and returning to the pool happens exactly then — the
+        // enemy being disabled or its model rebuilt is what deactivates the bone this point hangs
+        // from, producing "Cannot set the parent ... while activating or deactivating the parent".
+        //
+        // Leaving the pooled point under its old bone is harmless: Bind() re-parents it to the next
+        // anchor before it is ever shown again, and a model rebuild that destroys it is already
+        // handled by the pool pruning null entries on rent.
         gameObject.SetActive(false);
     }
 

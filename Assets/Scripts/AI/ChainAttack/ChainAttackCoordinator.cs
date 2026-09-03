@@ -27,6 +27,10 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
     [SerializeField] private LayerMask playerProtectionExcludeLayers;
     [SerializeField] private bool logCoordinator;
 
+    // Extra budget the cleanup waits get on top of maxSequenceDurationSeconds, so a sequence that
+    // ran right up to its limit still gets a moment to unwind before the watchdog cuts it off.
+    const float SequenceCleanupGraceSeconds = 2f;
+
     Coroutine _activeRoutine;
     ActiveChainRuntime _activeRuntime;
     int _playerInvincibilityToken;
@@ -212,8 +216,21 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
                 yield return WaitForWorldSeconds(interval);
         }
 
+        // Every wait past this point is bounded. maxSequenceDurationSeconds used to be checked only
+        // at the top of the step loop, so a step or a cleanup that never reported back left
+        // IsSequenceActive true forever — and blockWhileChainBusy then locked out every future chain
+        // in the run.
         while (runtime.pendingTrackedStepCompletions > 0)
+        {
+            if (HasExceededDuration(runtime, SequenceCleanupGraceSeconds))
+            {
+                LogTimeout(runtime, "waiting for tracked step completions");
+                completedSuccessfully = false;
+                break;
+            }
+
             yield return null;
+        }
 
         if (runtime.hadLateStepFailure)
             completedSuccessfully = false;
@@ -222,7 +239,16 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         {
             fieldAllyManager.FinalizeSequenceReservations(runtime, interrupted: !completedSuccessfully);
             while (fieldAllyManager.HasOwnedSequenceWork(runtime))
+            {
+                if (HasExceededDuration(runtime, SequenceCleanupGraceSeconds))
+                {
+                    LogTimeout(runtime, "waiting for field ally cleanup");
+                    completedSuccessfully = false;
+                    break;
+                }
+
                 yield return null;
+            }
         }
 
         Log(
@@ -271,6 +297,20 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             yield break;
         }
 
+        // A downed or dead party member is exactly what skipIfActorUnavailable describes, but it is
+        // registered and reservable, so it used to sail past both unavailability gates and fail deep
+        // inside TryStartSequenceStep instead — which the coordinator can only read as a hard step
+        // failure. With stopWhenAnyStepFails set, one member being down aborted the whole chain and
+        // the target went straight to Stagger with nobody having attacked.
+        if (step.requireActorAlive && !member.IsAlive)
+        {
+            Log(
+                runtime.sequenceDef,
+                $"Step '{step.RuntimeId}' treated as unavailable: actor '{member.name}' is down or dead.");
+            onFinished(step.skipIfActorUnavailable);
+            yield break;
+        }
+
         if (!member.TryReserve(runtime))
         {
             Log(runtime.sequenceDef, $"Step '{step.RuntimeId}' could not reserve actor '{member.name}'.");
@@ -314,6 +354,14 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
                 yield break;
             }
 
+            if (HasExceededDuration(runtime))
+            {
+                member.ReleaseReservation(runtime);
+                LogTimeout(runtime, $"waiting for step '{step.RuntimeId}' on actor '{member.name}'");
+                onFinished(false);
+                yield break;
+            }
+
             yield return null;
         }
     }
@@ -339,10 +387,18 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
     {
         bool success = false;
         bool hasDeferredCleanup = false;
+        bool timedOut = false;
 
         while (member != null &&
                !member.TryGetCompletedSequenceExecutionResult(executionId, out success, out hasDeferredCleanup))
         {
+            if (HasExceededDuration(runtime, SequenceCleanupGraceSeconds))
+            {
+                LogTimeout(runtime, $"waiting for tracked step '{step.RuntimeId}' on actor '{member.name}'");
+                timedOut = true;
+                break;
+            }
+
             yield return null;
         }
 
@@ -358,8 +414,14 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             yield break;
         }
 
-        if (!hasDeferredCleanup)
+        if (timedOut || !hasDeferredCleanup)
             member.ReleaseReservation(runtime);
+
+        if (timedOut)
+        {
+            runtime.hadLateStepFailure = true;
+            yield break;
+        }
 
         if (!success)
         {
@@ -396,31 +458,59 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             yield return null;
         }
 
-        ChainStepContinueMode helperContinueMode = ResolveHelperContinueMode(step);
-        float helperContinueNormalizedTime = ResolveHelperContinueNormalizedTime(step, helperContinueMode);
+        SkillGemDefinition helperSkillDef = ResolveHelperStepSkill(step);
+
+        // Continue timing is read off the skill that is actually cast, so an ActorDefault helper step
+        // takes its cast moment from the helper's own skill rather than from an unrelated one.
+        ChainStepContinueMode helperContinueMode = ResolveHelperContinueMode(step, helperSkillDef);
+        float helperContinueNormalizedTime =
+            ResolveHelperContinueNormalizedTime(step, helperSkillDef, helperContinueMode);
+
+        if (helperSkillDef == null)
+        {
+            Log(
+                runtime.sequenceDef,
+                $"Helper step '{step.RuntimeId}' has no chain skill: skillSource={step.skillSource} and the " +
+                "loaded helper character has no Default Chain Skill authored on its CharacterStats.");
+            onFinished(step.skipIfActorUnavailable);
+            yield break;
+        }
+
         bool started = step.helperChainAttackSequence != null
             ? allyHelperManager.TryStartChainAttackHelperToTarget(
                 step.helperChainAttackSequence,
-                step.skillDef,
+                helperSkillDef,
                 runtime.targetAnchor != null ? runtime.targetAnchor : runtime.targetTransform,
                 step.helperHideOnComplete,
                 helperContinueMode,
                 helperContinueNormalizedTime)
             : allyHelperManager.TrySummonAllyHelper(
-                step.skillDef,
+                helperSkillDef,
                 step.helperHideOnComplete);
 
         if (!started)
         {
+            // "The helper would not start" is an availability problem (not summoned, busy, no
+            // loadout), so it answers to the same flag the other actor roles use rather than
+            // hard-failing the sequence on its own.
             Log(runtime.sequenceDef, $"Helper step '{step.RuntimeId}' failed to start.");
-            onFinished(false);
+            onFinished(step.skipIfActorUnavailable);
             yield break;
         }
 
         if (step.helperChainAttackSequence == null || helperContinueMode == ChainStepContinueMode.OnStepComplete)
         {
             while (allyHelperManager.IsHelperBusy)
+            {
+                if (HasExceededDuration(runtime))
+                {
+                    LogTimeout(runtime, $"waiting for helper step '{step.RuntimeId}'");
+                    onFinished(false);
+                    yield break;
+                }
+
                 yield return null;
+            }
 
             onFinished(allyHelperManager.LastExecutionSucceeded);
             yield break;
@@ -430,7 +520,16 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         if (executionId <= 0)
         {
             while (allyHelperManager.IsHelperBusy)
+            {
+                if (HasExceededDuration(runtime))
+                {
+                    LogTimeout(runtime, $"waiting for helper step '{step.RuntimeId}'");
+                    onFinished(false);
+                    yield break;
+                }
+
                 yield return null;
+            }
 
             onFinished(allyHelperManager.LastExecutionSucceeded);
             yield break;
@@ -448,6 +547,13 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             {
                 TrackHelperStepCompletion(runtime, allyHelperManager, executionId, step);
                 onFinished(true);
+                yield break;
+            }
+
+            if (HasExceededDuration(runtime))
+            {
+                LogTimeout(runtime, $"waiting for helper step '{step.RuntimeId}'");
+                onFinished(false);
                 yield break;
             }
 
@@ -475,10 +581,18 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         ChainAttackStepDef step)
     {
         bool success = false;
+        bool timedOut = false;
 
         while (helperManager != null &&
                !helperManager.TryGetCompletedChainAttackExecutionResult(executionId, out success))
         {
+            if (HasExceededDuration(runtime, SequenceCleanupGraceSeconds))
+            {
+                LogTimeout(runtime, $"waiting for tracked helper step '{step.RuntimeId}'");
+                timedOut = true;
+                break;
+            }
+
             yield return null;
         }
 
@@ -488,7 +602,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         if (runtime == null)
             yield break;
 
-        if (helperManager == null)
+        if (helperManager == null || timedOut)
         {
             runtime.hadLateStepFailure = true;
             yield break;
@@ -501,7 +615,31 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         }
     }
 
-    static ChainStepContinueMode ResolveHelperContinueMode(ChainAttackStepDef step)
+    /// <summary>
+    /// Picks the skill a helper step casts. The helper path used to hand <c>step.skillDef</c> straight
+    /// through and never look at <see cref="ChainStepSkillSource"/>, so ActorDefault silently meant
+    /// "cast nothing" on a helper step, and an explicit skill was cast by whichever character happened
+    /// to be loaded into the helper rig. An explicit skill still wins; ActorDefault, or an empty
+    /// explicit slot, now falls back to the helper character's own Default Chain Skill.
+    /// </summary>
+    SkillGemDefinition ResolveHelperStepSkill(ChainAttackStepDef step)
+    {
+        if (step == null)
+            return null;
+
+        if (!step.UsesActorDefaultSkill && step.skillDef != null)
+            return step.skillDef;
+
+        SkillGemDefinition actorDefault = allyHelperManager != null
+            ? allyHelperManager.ResolvedHelperChainAttackSkill
+            : null;
+
+        return actorDefault != null ? actorDefault : step.skillDef;
+    }
+
+    static ChainStepContinueMode ResolveHelperContinueMode(
+        ChainAttackStepDef step,
+        SkillGemDefinition resolvedSkillDef)
     {
         if (step == null)
             return ChainStepContinueMode.OnStepComplete;
@@ -509,17 +647,20 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         if (step.UsesStepContinueOverride)
             return step.continueMode;
 
-        return step.skillDef != null && step.skillDef.payload != null
-            ? step.skillDef.payload.GetChainContinueMode()
+        return resolvedSkillDef != null && resolvedSkillDef.payload != null
+            ? resolvedSkillDef.payload.GetChainContinueMode()
             : ChainStepContinueMode.OnStepComplete;
     }
 
-    static float ResolveHelperContinueNormalizedTime(ChainAttackStepDef step, ChainStepContinueMode continueMode)
+    static float ResolveHelperContinueNormalizedTime(
+        ChainAttackStepDef step,
+        SkillGemDefinition resolvedSkillDef,
+        ChainStepContinueMode continueMode)
     {
         if (continueMode == ChainStepContinueMode.OnAttackCastMoment)
         {
-            return step?.skillDef != null
-                ? step.skillDef.GetCastPointNormalized()
+            return resolvedSkillDef != null
+                ? resolvedSkillDef.GetCastPointNormalized()
                 : step != null ? step.ClampedContinueNormalizedTime : 1f;
         }
 
@@ -528,12 +669,36 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             if (step != null && step.UsesStepContinueOverride)
                 return step.ClampedContinueNormalizedTime;
 
-            return step?.skillDef != null && step.skillDef.payload != null
-                ? step.skillDef.payload.GetChainContinueNormalizedTime()
+            return resolvedSkillDef != null && resolvedSkillDef.payload != null
+                ? resolvedSkillDef.payload.GetChainContinueNormalizedTime()
                 : 1f;
         }
 
         return 1f;
+    }
+
+    /// <summary>
+    /// The sequence's hard wall clock. Every wait in the coordinator is measured against this so a
+    /// step that never reports back cannot pin IsSequenceActive on forever.
+    /// </summary>
+    bool HasExceededDuration(ActiveChainRuntime runtime, float extraGraceSeconds = 0f)
+    {
+        if (runtime == null || runtime.sequenceDef == null)
+            return true;
+
+        float budget = runtime.sequenceDef.maxSequenceDurationSeconds + Mathf.Max(0f, extraGraceSeconds);
+        return WorldNow - runtime.startedAt > budget;
+    }
+
+    void LogTimeout(ActiveChainRuntime runtime, string what)
+    {
+        if (runtime == null || runtime.sequenceDef == null)
+            return;
+
+        Debug.LogWarning(
+            $"[ChainAttackCoordinator] Sequence '{runtime.sequenceDef.RuntimeId}' timed out {what}. " +
+            "Ending the sequence so it cannot block future chains.",
+            this);
     }
 
     bool IsRuntimeStillValid(ActiveChainRuntime runtime)

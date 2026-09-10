@@ -37,13 +37,14 @@ Material:
   - _INDICATOR_OFF
   - _LIGHTSWEEP_OFF
   - _OUTLINEMASK_OFF
+  - _OUTLINESMOOTHNORMAL_ON
   - _OUTLINE_ZMODE_LEGACY
   - _RECEIVESHADOW_OFF
   - _RIMCOLORMODE_CUSTOM
   - _RIMLIGHT_OFF
   - _SOFTLIGHT_ON
   - _SPECULAR_OFF
-  - _SWITCH_TO_FACE_MODE_OFF
+  - _SWITCH_TO_FACE_MODE_ON
   - _TARGETDARKEN_OFF
   - _UPGRADE_OFF
   - _USEMETALLIC_OFF
@@ -82,7 +83,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _FaceTex:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 3e67f634cbf584e47bff13ec46161885, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _GradientMetallic:
@@ -239,9 +240,9 @@ Material:
     - _OutlineIntensity: 0
     - _OutlineMask: 0
     - _OutlineMaskCh: 3
-    - _OutlineSmoothNormal: 0
+    - _OutlineSmoothNormal: 1
     - _OutlineThickness: 2
-    - _OutlineWidth: 1
+    - _OutlineWidth: 4.2
     - _OutlineZOffset: 0
     - _OutlineZOffsetMaskRemapEnd: 1
     - _OutlineZOffsetMaskRemapStart: 0
@@ -286,7 +287,7 @@ Material:
     - _StepRim: 1.5
     - _Surface: 0
     - _SwitchDissolve: 1
-    - _Switch_to_Face_Mode: 0
+    - _Switch_to_Face_Mode: 1
     - _TargetDarken: 0
     - _TargetDarkenIntensity: 0.1
     - _TargetDarkenLocal: 1
@@ -344,7 +345,7 @@ Material:
     - _ScaleLight: {r: 0.975, g: 0.99, b: 0, a: 0}
     - _ShadowEdgeColor: {r: 1, g: 0.7098, b: 0.49409992, a: 1}
     - _ShadowOffset: {r: 0, g: 0, b: 0, a: 0}
-    - _Shadow_Color: {r: 1, g: 0.7882353, b: 0.6745098, a: 1}
+    - _Shadow_Color: {r: 0.93962264, g: 0.87156993, b: 0.8350231, a: 1}
     - _Skin_Color: {r: 1, g: 0.9490196, b: 0.9490196, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _StepDissolve: {r: 0.1, g: 0, b: 0, a: 0}

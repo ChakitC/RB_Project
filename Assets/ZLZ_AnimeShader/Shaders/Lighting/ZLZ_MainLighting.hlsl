@@ -5,7 +5,7 @@
 // ZLZ Custom Lighting (Main Light + Additional Light)
 // ----------------------------------------------------------------------------------------------------------------------------------------------------------
 void ZLZ_MainLight(
-    float3 WorldPos,
+    float3 WorldPos, float2 NormalizedScreenSpaceUV,
     out half3 MainLightDir, out half3 MainLightColor,
     out half MainDistAtten, out half MainShadowAtten,
     out half3 AdditionalLightColor)
@@ -33,23 +33,38 @@ void ZLZ_MainLight(
     MainDistAtten        = (half) mainLight.distanceAttenuation;
     MainShadowAtten      = (half) mainLight.shadowAttenuation;
 
-    // Additional Lights (Per-Object)
+    // Additional Lights. LIGHT_LOOP_BEGIN expands to the per-object loop in
+    // Forward and to the clustered-light loop in Forward+. The latter cannot
+    // use GetAdditionalLightsCount() as its loop condition because URP
+    // intentionally returns zero for Forward+ before traversing the cluster.
     AdditionalLightColor = half3(0.0h, 0.0h, 0.0h);
 
     #ifdef _ADDITIONAL_LIGHTS
-        int additionalLightsCount = GetAdditionalLightsCount();
-        for (int i = 0; i < additionalLightsCount; ++i)
+        InputData inputData = (InputData)0;
+        inputData.positionWS = WorldPos;
+        inputData.normalizedScreenSpaceUV = NormalizedScreenSpaceUV;
+
+        uint additionalLightsCount = GetAdditionalLightsCount();
+        LIGHT_LOOP_BEGIN(additionalLightsCount)
         {
-            int perObjectLightIndex = GetPerObjectLightIndex(i);
-            Light addLight          = GetAdditionalPerObjectLight(perObjectLightIndex, WorldPos);
+            Light addLight = GetAdditionalLight(lightIndex, WorldPos);
+
+            // LIGHT_LOOP_BEGIN exposes the actual light index in Forward+ but
+            // a per-object loop index in Forward. Resolve the shadow index so
+            // existing Point/Spot shadow behavior remains correct in both.
+            int shadowLightIndex = (int)lightIndex;
+            #if !USE_FORWARD_PLUS
+                shadowLightIndex = GetPerObjectLightIndex(lightIndex);
+            #endif
 
             // Pass the light direction: point-light shadows live in a cubemap atlas and the
             // direction picks the face. The 2-arg overload hardcodes (1,0,0) — wrong face.
-            half  addShadowAtten    = (half)AdditionalLightRealtimeShadow(perObjectLightIndex, WorldPos, addLight.direction);
+            half  addShadowAtten    = (half)AdditionalLightRealtimeShadow(shadowLightIndex, WorldPos, addLight.direction);
             half3 finalAddColor     = (half3)(addLight.color * addLight.distanceAttenuation * addShadowAtten);
 
             AdditionalLightColor   += finalAddColor;
         }
+        LIGHT_LOOP_END
     #endif
 
 #endif // SHADERGRAPH_PREVIEW

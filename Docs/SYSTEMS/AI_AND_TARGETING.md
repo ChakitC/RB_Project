@@ -238,7 +238,14 @@ Formation movement yields to combat, active skill/root-motion playback,
 reserved or busy sequence actors, interruption, knockback, stun, down, and
 death. A companion more than 15 m from its slot, or without a complete path for
 2 seconds, may warp to a sampled slot only when none of those higher-priority
-states is active.
+states is active. Catch-up warp reuses the Chain Attack utility animation
+channel: the companion plays Utility Warp Out at its old position, moves to the
+sampled formation slot at the animation cast moment, then plays Utility Warp In
+before formation control resumes. The formation runtime holds a Field Ally
+reservation throughout the transition and cancels cleanly if combat or another
+higher-priority state begins. If either utility animation cannot start, the
+runtime falls back to the existing safe instant warp so the companion cannot
+remain stranded away from the party.
 
 ## Enemy Context
 

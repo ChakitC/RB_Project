@@ -17,15 +17,30 @@ namespace MK.Toon.Editor.InstallWizard
 {
     public sealed class InstallWizard : EditorWindow
     {
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         public static InstallWizard instance = null;
         #pragma warning disable CS0414
-        private static readonly string _version = "3.4.2";
+        private static readonly string _version = "3.5.0B";
         #pragma warning restore CS0414
         
         private static readonly Vector2Int _referenceResolution = new Vector2Int(2560, 1440);
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static float _sizeScale;
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static int _scaledWidth;
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static int _scaledHeight;
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static Vector2 _windowScrollPos;
 
         private static readonly int _rawWidth = 360;
@@ -34,10 +49,22 @@ namespace MK.Toon.Editor.InstallWizard
 
         private GUIStyle _flowTextStyle { get { return new GUIStyle(EditorStyles.label) { wordWrap = true }; } }
         private static readonly int _loadTimeInFrames = 72;
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static int _waitFramesTillReload = _loadTimeInFrames;
 
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static InstallWizard _window;
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static RenderPipeline _targetRenderPipeline = RenderPipeline.Built_in;
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static bool _showInstallerOnReload = true;
 
         [MenuItem("Window/MK/Toon/Install Wizard")]

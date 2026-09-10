@@ -18,25 +18,25 @@ MonoBehaviour:
     m_Value: 0
   Exposure:
     m_OverrideState: 1
-    m_Value: 8
+    m_Value: 2.19
   ToneMapScale:
     m_OverrideState: 1
-    m_Value: 0.28
+    m_Value: 2.15
   HighlightRolloff:
     m_OverrideState: 1
-    m_Value: 0.116
+    m_Value: 0
   HighlightLift:
     m_OverrideState: 1
-    m_Value: 0.563
+    m_Value: 0.683
   WhiteClip:
     m_OverrideState: 1
-    m_Value: 2.35
+    m_Value: 4
   ShadowPedestal:
     m_OverrideState: 1
     m_Value: 0
   MidContrast:
     m_OverrideState: 1
-    m_Value: 0
+    m_Value: 0.253
   SaturationRetention:
     m_OverrideState: 1
     m_Value: 0
@@ -103,13 +103,13 @@ MonoBehaviour:
     m_Value: 1
   threshold:
     m_OverrideState: 1
-    m_Value: 0.87
+    m_Value: 0.73
   intensity:
     m_OverrideState: 1
-    m_Value: 0.39
+    m_Value: 0.24
   scatter:
     m_OverrideState: 1
-    m_Value: 0.905
+    m_Value: 1
   clamp:
     m_OverrideState: 0
     m_Value: 65472

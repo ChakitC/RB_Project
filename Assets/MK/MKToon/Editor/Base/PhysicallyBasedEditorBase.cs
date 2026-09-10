@@ -119,6 +119,7 @@ namespace MK.Toon.Editor
             _specularAnisotrophy = FindProperty(Properties.anisotropy.uniform.name, props);
             _lightTransmissionIntensity = FindProperty(Properties.lightTransmissionIntensity.uniform.name, props);
             _fresnelHighlights = FindProperty(Properties.fresnelHighlights.uniform.name, props);
+            _screenSpaceReflections = FindProperty(Properties.screenSpaceReflections.uniform.name, props, false);
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////
@@ -507,6 +508,7 @@ namespace MK.Toon.Editor
 
         protected override void DrawAdvancedContent(MaterialEditor materialEditor, Material material)
         {
+            DrawScreenSpaceReflections(materialEditor, material);
             DrawAdvancedLighting(materialEditor);
 
             EditorHelper.Divider();

@@ -51,22 +51,55 @@ namespace MK.Toon.Editor
 
             internal static readonly GUIStyle preLabel = new GUIStyle("ShurikenLabel");
 
+            #if UNITY_6000_5_OR_NEWER
+            [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+            #endif
             internal static GUIContent VertexStreams = new GUIContent("Vertex Streams",
                 "The vertex streams needed for this Material to function properly.");
 
+            #if UNITY_6000_5_OR_NEWER
+            [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+            #endif
             internal static string streamPositionText = "Position (POSITION.xyz)";
+            #if UNITY_6000_5_OR_NEWER
+            [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+            #endif
             internal static string streamNormalText = "Normal (NORMAL.xyz)";
+            #if UNITY_6000_5_OR_NEWER
+            [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+            #endif
             internal static string streamColorText = "Color (COLOR.xyzw)";
+            #if UNITY_6000_5_OR_NEWER
+            [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+            #endif
             internal static string streamUVText = "UV (TEXCOORD0.xy)";
+            #if UNITY_6000_5_OR_NEWER
+            [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+            #endif
             internal static string streamUV2Text = "UV2 (TEXCOORD0.zw)";
+            #if UNITY_6000_5_OR_NEWER
+            [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+            #endif
             internal static string streamAnimBlendText = "AnimBlend (TEXCOORD3.x)";
+            #if UNITY_6000_5_OR_NEWER
+            [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+            #endif
             internal static string streamTangentText = "Tangent (TANGENT.xyzw)";
 
+            #if UNITY_6000_5_OR_NEWER
+            [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+            #endif
             internal static GUIContent streamApplyToAllSystemsText = new GUIContent("Fix Now",
                 "Apply the vertex stream layout to all Particle Systems using this material");
 
+            #if UNITY_6000_5_OR_NEWER
+            [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+            #endif
             internal static string undoApplyCustomVertexStreams = L10n.Tr("Apply custom vertex streams from material");
 
+            #if UNITY_6000_5_OR_NEWER
+            [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+            #endif
             internal static GUIStyle vertexStreamIcon = new GUIStyle();
 
             static EditorStyles()

@@ -85,6 +85,11 @@
 			LODFadeCrossFade(vertexOutput.svPositionClip);
 		#endif
 
+		#if _SCREENSPACEREFLECTIONSCONTRIBUTETRANSPARENT_OFF_KEYWORD_DECLARED
+			if (_SCREENSPACEREFLECTIONSCONTRIBUTETRANSPARENT_OFF)
+				discard;
+		#endif
+
 		MKSurfaceData surfaceData = ComputeSurfaceData
 		(
 			vertexOutput.svPositionClip,
@@ -116,6 +121,11 @@
 			#endif
 		#else
 			mkFragmentOutput.svTarget0 = half4(PackNormalOctRectEncode(MKSafeNormalize(mul((half3x3) MATRIX_V, surfaceData.normalWorld).xyz)), 0.0, 0.0);
+		#endif
+
+		#if defined(_WRITE_SMOOTHNESS) && !defined(_SCREENSPACEREFLECTIONS_OFF)
+			MKPBSData pbsData = ComputePBSData(surface, surfaceData);
+			mkFragmentOutput.svTarget0.a = pbsData.smoothness;
 		#endif
 
 		#ifdef MK_WRITE_RENDERING_LAYERS

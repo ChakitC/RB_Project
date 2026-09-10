@@ -315,9 +315,9 @@ Material:
     - _Emissive_Color_01: {r: 0, g: 0.93945026, b: 1, a: 1}
     - _GetHitColor: {r: 4, g: 2.893609, b: 1.4150944, a: 0}
     - _HLColor: {r: 1, g: 1, b: 1, a: 0}
-    - _HeadCenterWS: {r: 10.080735, g: 1.480858, b: -1.0468564, a: 1}
-    - _HeadForwardWS: {r: -0.1537249, g: 0.001818001, b: -0.9881133, a: 0}
-    - _HeadRightWS: {r: -0.98811495, g: 0.0000010949443, b: 0.15372516, a: 0}
+    - _HeadCenterWS: {r: 0, g: 0, b: 0, a: 0}
+    - _HeadForwardWS: {r: 0, g: 0, b: 0, a: 0}
+    - _HeadRightWS: {r: 0, g: 0, b: 0, a: 0}
     - _HeadUpWS: {r: 0, g: 0, b: 0, a: 0}
     - _IndicatorColor: {r: 0, g: 1.8323576, b: 2.9960783, a: 0}
     - _Indicator_Color: {r: 1, g: 1, b: 1, a: 0}
@@ -330,7 +330,7 @@ Material:
     - _ScaleLight: {r: 0.975, g: 0.99, b: 0, a: 0}
     - _ShadowEdgeColor: {r: 1, g: 0.7098, b: 0.49409992, a: 1}
     - _ShadowOffset: {r: 0, g: 0, b: 0, a: 0}
-    - _Shadow_Color: {r: 1, g: 0.7882353, b: 0.6745098, a: 1}
+    - _Shadow_Color: {r: 0.82641506, g: 0.82641506, b: 0.82641506, a: 1}
     - _Skin_Color: {r: 1, g: 0.9490196, b: 0.9490196, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _StepDissolve: {r: 0.1, g: 0, b: 0, a: 0}

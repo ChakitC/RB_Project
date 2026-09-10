@@ -18,31 +18,31 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.5530044
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.5530044
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.5530044
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -2.809
+      value: -0.177
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.000099939665
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0.67
+      value: -7.48
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.8897735
+      value: 0.3642784
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
       propertyPath: m_LocalRotation.x
@@ -50,7 +50,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.4564025
+      value: 0.93129015
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
       propertyPath: m_LocalRotation.z
@@ -62,7 +62,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 54.31
+      value: 137.274
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -546,6 +546,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2405459217004485184}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 890308088461570300}
   m_SourcePrefab: {fileID: 100100000, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}
 --- !u!137 &2604932948837623903 stripped
 SkinnedMeshRenderer:
@@ -647,13 +650,13 @@ MonoBehaviour:
   - {fileID: 7851587333667974675}
   - {fileID: 2604932948837623903}
   Upgrade:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: db1d1e9838805e44b8637a777a160287, type: 2}
   GetHit:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: 9d44a1eddaeb4fb4590ebfc79ae35e4b, type: 2}
   Indicator:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: 949a12f3c824db1409c89acf0703c84e, type: 2}
   Dissolve:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: 96ae7ef0d6972e54598d2e4045234734, type: 2}
   Dither:
     _enabled: 1
     _enableCameraNearFade: 0
@@ -694,6 +697,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   headBone: {fileID: 6741300977826261772}
+--- !u!114 &890308088461570300
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6155432390107433259}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 531c79c93eacb7f46b331667ec3680be, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  defaultType: 1
+  startSelected: 0
 --- !u!4 &6741300977826261772 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 297516237248225142, guid: 82ffb99f578eb3244a2f91d05b409dc2, type: 3}

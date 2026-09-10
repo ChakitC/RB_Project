@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: c6291a1c58c4fe745ba257de263eaf6d
+guid: 47d58e93bc6f54d43a96662b2077f031
 DefaultImporter:
   externalObjects: {}
   userData: 
@@ -7,8 +7,8 @@ DefaultImporter:
   assetBundleVariant: 
 AssetOrigin:
   serializedVersion: 1
-  productId: 212619
-  packageName: Unique Projectiles Vol. 3
-  packageVersion: 1.2.1
+  productId: 317685
+  packageName: Unique Markers & Pings Vol. 1
+  packageVersion: 1.1.1
   assetPath: Assets/GabrielAguiarProductions/Documentation.pdf
-  uploadId: 751269
+  uploadId: 911682

@@ -1,0 +1,454 @@
+{
+  "sourceBlend": "P:\\Run\\Pop\\New folder\\SewerMapProp.blend",
+  "models": [
+    {
+      "name": "SewerDoor_AccessHatch_90s",
+      "path": "SewerDoors_90s/SewerDoor_AccessHatch_90s.fbx",
+      "dimensions": [
+        1.61372,
+        1.50541,
+        0.41664
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "SewerDoor_BarredGate_90s",
+      "path": "SewerDoors_90s/SewerDoor_BarredGate_90s.fbx",
+      "dimensions": [
+        1.83982,
+        0.83508,
+        1.90743
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "SewerDoor_DoubleFlood_90s",
+      "path": "SewerDoors_90s/SewerDoor_DoubleFlood_90s.fbx",
+      "dimensions": [
+        2.54363,
+        1.07825,
+        3.24675
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "SewerDoor_ServiceTall_90s",
+      "path": "SewerDoors_90s/SewerDoor_ServiceTall_90s.fbx",
+      "dimensions": [
+        5.03175,
+        0.93763,
+        3.99444
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "electrical_cabinet_double_door",
+      "path": "electrical_cabinet_double_door.fbx",
+      "dimensions": [
+        1.64231,
+        0.5664,
+        1.57286
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "electrical_cabinet_tall",
+      "path": "electrical_cabinet_tall.fbx",
+      "dimensions": [
+        0.92435,
+        0.52008,
+        1.63603
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "electrical_control_box_meter",
+      "path": "electrical_control_box_meter.fbx",
+      "dimensions": [
+        0.62114,
+        0.39795,
+        1.12859
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "electrical_control_cabinet",
+      "path": "electrical_control_cabinet.fbx",
+      "dimensions": [
+        0.63588,
+        0.46744,
+        0.87381
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "electrical_control_panel_square",
+      "path": "electrical_control_panel_square.fbx",
+      "dimensions": [
+        0.87802,
+        0.46533,
+        1.12016
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "electrical_junction_box",
+      "path": "electrical_junction_box.fbx",
+      "dimensions": [
+        0.52008,
+        0.2653,
+        0.57693
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "pipe_90_degree_elbow",
+      "path": "pipe_90_degree_elbow.fbx",
+      "dimensions": [
+        0.72642,
+        0.46744,
+        0.80222
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "pipe_gate_valve",
+      "path": "pipe_gate_valve.fbx",
+      "dimensions": [
+        0.86118,
+        0.55269,
+        0.74213
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "pipe_rectangular_housing",
+      "path": "pipe_rectangular_housing.fbx",
+      "dimensions": [
+        0.61092,
+        0.62657,
+        0.66115
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "pipe_round_flange",
+      "path": "pipe_round_flange.fbx",
+      "dimensions": [
+        0.81275,
+        0.9454,
+        0.80643
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "pipe_round_grated_flange",
+      "path": "pipe_round_grated_flange.fbx",
+      "dimensions": [
+        0.68642,
+        0.9454,
+        0.68852
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "pipe_straight_duct_large",
+      "path": "pipe_straight_duct_large.fbx",
+      "dimensions": [
+        1.2107,
+        0.70958,
+        0.70747
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "pipe_straight_duct_small",
+      "path": "pipe_straight_duct_small.fbx",
+      "dimensions": [
+        0.73916,
+        0.43585,
+        0.44382
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "pipe_y_junction",
+      "path": "pipe_y_junction.fbx",
+      "dimensions": [
+        1.04647,
+        0.4906,
+        0.82117
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "safety_caged_work_light",
+      "path": "safety_caged_work_light.fbx",
+      "dimensions": [
+        0.50166,
+        0.80659,
+        1.00589
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "safety_danger_caution_sign",
+      "path": "safety_danger_caution_sign.fbx",
+      "dimensions": [
+        0.91254,
+        0.2799,
+        1.08858
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "safety_equipment_station",
+      "path": "safety_equipment_station.fbx",
+      "dimensions": [
+        0.91983,
+        0.62105,
+        1.54128
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "safety_first_aid_cabinet",
+      "path": "safety_first_aid_cabinet.fbx",
+      "dimensions": [
+        0.76278,
+        0.41709,
+        1.05489
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "safety_foldable_caution_sign",
+      "path": "safety_foldable_caution_sign.fbx",
+      "dimensions": [
+        0.68852,
+        0.85907,
+        1.04858
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "safety_hazard_equipment_box",
+      "path": "safety_hazard_equipment_box.fbx",
+      "dimensions": [
+        0.87982,
+        0.42848,
+        1.06542
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "safety_hose_reel",
+      "path": "safety_hose_reel.fbx",
+      "dimensions": [
+        0.75311,
+        0.71876,
+        1.10543
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "safety_push_broom",
+      "path": "safety_push_broom.fbx",
+      "dimensions": [
+        0.7912,
+        0.48684,
+        2.1474
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "safety_rusty_storage_tank",
+      "path": "safety_rusty_storage_tank.fbx",
+      "dimensions": [
+        0.62325,
+        0.62114,
+        0.92645
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "safety_warning_sign_panel",
+      "path": "safety_warning_sign_panel.fbx",
+      "dimensions": [
+        0.68642,
+        0.68642,
+        0.99172
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "sewer_cardboard_crates",
+      "path": "sewer_cardboard_crates.fbx",
+      "dimensions": [
+        0.93371,
+        1.07987,
+        0.89294
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "sewer_catwalk_grated_floor",
+      "path": "sewer_catwalk_grated_floor.fbx",
+      "dimensions": [
+        1.1812,
+        1.23487,
+        0.31965
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "sewer_drainage_channel",
+      "path": "sewer_drainage_channel.fbx",
+      "dimensions": [
+        1.33258,
+        0.78473,
+        0.52549
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "sewer_garbage_bags",
+      "path": "sewer_garbage_bags.fbx",
+      "dimensions": [
+        0.87322,
+        1.32357,
+        0.9184
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "sewer_maintenance_ladder",
+      "path": "sewer_maintenance_ladder.fbx",
+      "dimensions": [
+        0.34667,
+        0.65754,
+        1.77665
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "sewer_pipe_scraps",
+      "path": "sewer_pipe_scraps.fbx",
+      "dimensions": [
+        1.36201,
+        1.29885,
+        0.43661
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "sewer_safety_railing",
+      "path": "sewer_safety_railing.fbx",
+      "dimensions": [
+        1.44883,
+        0.22174,
+        1.17528
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "sewer_sewage_pump",
+      "path": "sewer_sewage_pump.fbx",
+      "dimensions": [
+        1.191,
+        1.11212,
+        1.29351
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    },
+    {
+      "name": "sewer_trash_pile",
+      "path": "sewer_trash_pile.fbx",
+      "dimensions": [
+        1.40595,
+        1.23062,
+        0.75568
+      ],
+      "origin": "bottom-center",
+      "uvCount": 1,
+      "materialSlots": 1
+    }
+  ],
+  "textures": [
+    "P:\\Game_RB_Project\\RB_Project\\Assets\\Model\\Prop\\SewerTunnels_01\\textures\\SewerTunnels_Atlas_2048.png",
+    "P:\\Game_RB_Project\\RB_Project\\Assets\\Model\\Prop\\SewerTunnels_01\\textures\\tripo_rgb_53e27024-0b81-4303-bdd4-86b98033f22d.jpg",
+    "P:\\Game_RB_Project\\RB_Project\\Assets\\Model\\Prop\\SewerTunnels_01\\SewerDoors_90s\\Textures\\SewerDoors_Atlas_2048.png"
+  ]
+}

@@ -288,6 +288,8 @@ Material:
     - _RimThresholdOffset: 0.25
     - _Roughness: 0.5
     - _Saturation: 1
+    - _ScreenSpaceReflections: 1
+    - _ScreenSpaceReflectionsContributeTransparent: 1
     - _SketchMapScale: 1
     - _Smoothness: 1
     - _SmoothnessTextureChannel: 0

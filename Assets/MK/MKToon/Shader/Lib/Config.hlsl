@@ -172,6 +172,12 @@
 		#endif
 	#endif
 
+	#ifndef _SCREENSPACEREFLECTIONS_OFF
+		#ifndef MK_SCREENSPACE_REFLECTIONS_ON
+			#define MK_SCREENSPACE_REFLECTIONS_ON
+		#endif
+	#endif
+
 	#if defined(MK_WORKFLOW_METALLIC) || defined(MK_WORKFLOW_SPECULAR) || defined(MK_WORKFLOW_ROUGHNESS)
 		#ifndef MK_WORKFLOW_PBS
 			#define MK_WORKFLOW_PBS
@@ -564,6 +570,10 @@
 				#endif
 			#endif
 
+			#if !defined(MK_ENVIRONMENT_REFLECTIONS_ADVANCED) && defined(MK_SCREENSPACE_REFLECTIONS_ON)
+				#define MK_ENVIRONMENT_REFLECTIONS_ADVANCED
+			#endif
+
 			#if defined(MK_ENVIRONMENT_REFLECTIONS_ADVANCED) || defined(MK_ENVIRONMENT_REFLECTIONS_AMBIENT)
 				#ifndef MK_ENVIRONMENT_REFLECTIONS
 					#define MK_ENVIRONMENT_REFLECTIONS
@@ -577,7 +587,7 @@
 			#endif
 		#endif
 
-		#if defined(MK_ENVIRONMENT_REFLECTIONS) || defined(MK_EMISSION) || defined(MK_FRESNEL_HIGHLIGHTS)
+		#if defined(MK_ENVIRONMENT_REFLECTIONS) || defined(MK_EMISSION) || defined(MK_FRESNEL_HIGHLIGHTS) || defined(MK_SCREENSPACE_REFLECTIONS_ON)
 			#ifndef MK_INDIRECT
 				#define MK_INDIRECT
 			#endif
@@ -821,7 +831,7 @@
 		#endif
 	#endif
 
-	#if defined(MK_PROBE_VOLUMES) || defined(MK_REFRACTION) || defined(MK_IRIDESCENCE) || defined(MK_LightTransmission) || defined(MK_RIM) || defined(MK_SPECULAR) || defined(LIGHTMAP_ON) || defined(UNITY_SHOULD_SAMPLE_SH) || defined(DYNAMICLIGHTMAP_ON) || defined(DIRLIGHTMAP_COMBINED) || defined(MK_RIM) || defined(MK_ENVIRONMENT_REFLECTIONS_ADVANCED) || defined(MK_FRESNEL_HIGHLIGHTS) || defined(MK_DIFFUSE_MINNAERT) || defined(MK_DIFFUSE_OREN_NAYAR)
+	#if defined(MK_PROBE_VOLUMES) || defined(MK_REFRACTION) || defined(MK_IRIDESCENCE) || defined(MK_LightTransmission) || defined(MK_RIM) || defined(MK_SPECULAR) || defined(LIGHTMAP_ON) || defined(UNITY_SHOULD_SAMPLE_SH) || defined(DYNAMICLIGHTMAP_ON) || defined(DIRLIGHTMAP_COMBINED) || defined(MK_RIM) || defined(MK_ENVIRONMENT_REFLECTIONS_ADVANCED) || defined(MK_FRESNEL_HIGHLIGHTS) || defined(MK_DIFFUSE_MINNAERT) || defined(MK_DIFFUSE_OREN_NAYAR) || defined(MK_SCREENSPACE_REFLECTIONS_ON)
 		#ifndef MK_VD
 			#define MK_VD
 		#endif
@@ -833,7 +843,7 @@
 		#endif
 	#endif
 	
-	#if	(UNITY_VERSION >= 202220 && defined(MK_INDIRECT)) || defined(_CLUSTER_LIGHT_LOOP) || defined(USE_CLUSTERED_LIGHTING) || USE_FORWARD_PLUS || USE_CLUSTER_LIGHT_LOOP || defined(MK_REFRACTION) || defined(MK_SOFT_FADE) || defined(MK_CAMERA_FADE) || defined(MK_NORMALIZED_SCREEN_UV) || defined(MK_SCREEN_SPACE_OCCLUSION)
+	#if	(UNITY_VERSION >= 202220 && defined(MK_INDIRECT)) || defined(_CLUSTER_LIGHT_LOOP) || defined(USE_CLUSTERED_LIGHTING) || USE_FORWARD_PLUS || USE_CLUSTER_LIGHT_LOOP || defined(MK_REFRACTION) || defined(MK_SOFT_FADE) || defined(MK_CAMERA_FADE) || defined(MK_NORMALIZED_SCREEN_UV) || defined(MK_SCREEN_SPACE_OCCLUSION) || defined(MK_SCREENSPACE_REFLECTIONS_ON)
 		#ifndef MK_SCREEN_UV
 			#define MK_SCREEN_UV
 		#endif
@@ -945,6 +955,9 @@
 	#if defined(MK_FORWARD_BASE_PASS) || defined(MK_OUTLINE_PASS)
 		#ifndef MK_FOG
 			#define MK_FOG
+		#endif
+		#ifndef MK_POS_WORLD
+			#define MK_POS_WORLD
 		#endif
 	#endif
 

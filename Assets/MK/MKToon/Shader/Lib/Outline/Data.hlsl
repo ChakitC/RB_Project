@@ -53,6 +53,7 @@
 		#endif
 		#ifdef MK_FOG
 			float fogFactor : TEXCOORD1;
+			float3 positionWorld : TEXCOORD5;
 		#endif
 
 		#if defined(MK_PARALLAX)

@@ -103,6 +103,7 @@ MonoBehaviour:
   damageTakenMultiplierWhileStaggered: 1.25
   postStaggerImmunity: 1
   chainReadyDuration: 3
+  chainExecutionTimeoutSeconds: 15
   decayDelay: 1.5
   decayPerSecond: 20
   resetMeterOnStagger: 1
@@ -121,6 +122,7 @@ MonoBehaviour:
   isChainReady: 0
   isChainExecutionActive: 0
   chainReadyTimeRemaining: 0
+  chainExecutionTimeRemaining: 0
 --- !u!114 &4879686477446644467
 MonoBehaviour:
   m_ObjectHideFlags: 0

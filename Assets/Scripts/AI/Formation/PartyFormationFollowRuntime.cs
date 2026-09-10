@@ -7,6 +7,19 @@ using UnityEngine.AI;
 
 internal sealed class PartyFormationFollowRuntime
 {
+    const float WarpFadeWindowFraction = 0.7f;
+    const float MinimumWarpFadeSeconds = 0.06f;
+
+    enum FormationWarpPhase
+    {
+        None,
+        WaitingForWarpOutCastMoment,
+        WaitingForWarpOutComplete,
+        WaitingForWarpInComplete,
+    }
+
+    static int _nextFormationWarpRequestId = 1;
+
     NavMeshAgent _agent;
     AllyContext _allyContext;
     CharacterContextPartyLoader _partyLoader;
@@ -15,6 +28,12 @@ internal sealed class PartyFormationFollowRuntime
     PartyFormationController _formation;
     BehaviorTree _behaviorTree;
     SharedVariable<bool> _inCombat;
+
+    readonly CharacterPlaybackAutoHideSchedule _warpOutAutoHide = new();
+    FormationWarpPhase _warpPhase;
+    int _warpRequestId;
+    Vector3 _pendingTeleportDestination;
+    bool _ownsFieldMemberReservation;
 
     bool _ownsAgent;
     bool _movingToSlot;
@@ -44,6 +63,13 @@ internal sealed class PartyFormationFollowRuntime
         if (_agent == null || !_agent.isActiveAndEnabled || _partyLoader == null)
         {
             status = TaskStatus.Failure;
+            return true;
+        }
+
+        if (_warpPhase != FormationWarpPhase.None)
+        {
+            TickFormationWarp();
+            status = TaskStatus.Running;
             return true;
         }
 
@@ -83,9 +109,20 @@ internal sealed class PartyFormationFollowRuntime
         float distance = PlanarDistance(actorPosition, destination);
 
         if (ShouldTeleport(distance) &&
-            _formation.TryGetTeleportDestination(partyIndex, _agent, out Vector3 teleportDestination) &&
-            _agent.Warp(teleportDestination))
+            _formation.TryGetTeleportDestination(partyIndex, _agent, out Vector3 teleportDestination))
         {
+            if (TryStartAnimatedTeleport(teleportDestination))
+            {
+                status = TaskStatus.Running;
+                return true;
+            }
+
+            if (!_agent.Warp(teleportDestination))
+            {
+                status = TaskStatus.Running;
+                return true;
+            }
+
             _agent.nextPosition = teleportDestination;
             _agent.ResetPath();
             _agent.isStopped = true;
@@ -130,6 +167,8 @@ internal sealed class PartyFormationFollowRuntime
 
     public void End()
     {
+        AbortFormationWarp(cancelPlayback: true);
+
         if (!IsExternallyControlled())
             StopOwnedAgent();
         else
@@ -151,6 +190,261 @@ internal sealed class PartyFormationFollowRuntime
         _formation = null;
         _behaviorTree = null;
         _inCombat = null;
+    }
+
+    bool TryStartAnimatedTeleport(Vector3 teleportDestination)
+    {
+        CharacterAnimBrain animBrain = _allyContext != null ? _allyContext.AnimBrain : null;
+        CharacterAnimDriver animDriver = _allyContext != null ? _allyContext.AnimDriver : null;
+        if (animBrain == null || animDriver == null)
+            return false;
+
+        if (_fieldMember != null)
+        {
+            if (!_fieldMember.TryReserve(this))
+                return false;
+
+            _ownsFieldMemberReservation = true;
+        }
+
+        _pendingTeleportDestination = teleportDestination;
+        _warpRequestId = NextFormationWarpRequestId();
+        _warpPhase = FormationWarpPhase.WaitingForWarpOutCastMoment;
+        SubscribeToWarpAnimation(animBrain);
+
+        if (!animDriver.TryPlayChainUtilityWarpOut(_warpRequestId))
+        {
+            ClearFormationWarpState(revealVisual: false);
+            return false;
+        }
+
+        StopOwnedAgent();
+
+        CharacterVisibilityController visibility = _allyContext.Visibility;
+        if (visibility != null)
+        {
+            visibility.Appear();
+            _warpOutAutoHide.Start(_warpRequestId);
+        }
+
+        return true;
+    }
+
+    void TickFormationWarp()
+    {
+        if (HasBlockingStateDuringFormationWarp())
+        {
+            AbortFormationWarp(cancelPlayback: true);
+            return;
+        }
+
+        CharacterAnimBrain animBrain = _allyContext != null ? _allyContext.AnimBrain : null;
+        if (animBrain == null || !animBrain.IsChainPlaybackActive)
+        {
+            ClearFormationWarpState(revealVisual: true);
+            return;
+        }
+
+        TickWarpOutAutoHide(animBrain);
+    }
+
+    void TickWarpOutAutoHide(CharacterAnimBrain animBrain)
+    {
+        if (_warpPhase != FormationWarpPhase.WaitingForWarpOutCastMoment ||
+            !_warpOutAutoHide.IsPending)
+        {
+            return;
+        }
+
+        CharacterVisibilityController visibility = _allyContext != null ? _allyContext.Visibility : null;
+        if (visibility == null)
+        {
+            _warpOutAutoHide.Cancel();
+            return;
+        }
+
+        _warpOutAutoHide.Advance(visibility);
+        if (!animBrain.TryGetActiveChainPlaybackTiming(
+                _warpRequestId,
+                out float remainingDuration,
+                out float totalDuration))
+        {
+            return;
+        }
+
+        float timeUntilTeleport = remainingDuration;
+        float fadeDuration = -1f;
+        if (animBrain.TryGetActiveChainCastPointNormalized(
+                _warpRequestId,
+                out float castPointNormalized) &&
+            float.IsFinite(totalDuration) &&
+            totalDuration > 0f)
+        {
+            timeUntilTeleport = Mathf.Max(
+                0f,
+                remainingDuration - (1f - castPointNormalized) * totalDuration);
+            float preWarpWindow = Mathf.Max(0f, castPointNormalized * totalDuration);
+            fadeDuration = Mathf.Clamp(
+                preWarpWindow * WarpFadeWindowFraction,
+                MinimumWarpFadeSeconds,
+                Mathf.Max(MinimumWarpFadeSeconds, preWarpWindow));
+        }
+
+        _warpOutAutoHide.TryBeginHide(
+            visibility,
+            timeUntilTeleport,
+            totalDuration,
+            fadeDuration);
+    }
+
+    void OnWarpCastMomentReached(int requestId)
+    {
+        if (requestId != _warpRequestId ||
+            _warpPhase != FormationWarpPhase.WaitingForWarpOutCastMoment)
+        {
+            return;
+        }
+
+        _warpOutAutoHide.Cancel();
+        _allyContext?.Visibility?.ConcealForTeleport();
+
+        if (_agent == null ||
+            !_agent.isActiveAndEnabled ||
+            !_agent.isOnNavMesh ||
+            !_agent.Warp(_pendingTeleportDestination))
+        {
+            AbortFormationWarp(cancelPlayback: true);
+            return;
+        }
+
+        _agent.nextPosition = _pendingTeleportDestination;
+        _agent.ResetPath();
+        _agent.isStopped = true;
+        _invalidPathSince = -1f;
+        _movingToSlot = false;
+        _ownsAgent = false;
+        _warpPhase = FormationWarpPhase.WaitingForWarpOutComplete;
+    }
+
+    void OnWarpPlaybackCompleted(int requestId)
+    {
+        if (requestId != _warpRequestId)
+            return;
+
+        if (_warpPhase == FormationWarpPhase.WaitingForWarpOutComplete)
+        {
+            StartWarpInOrComplete();
+            return;
+        }
+
+        if (_warpPhase == FormationWarpPhase.WaitingForWarpInComplete)
+            ClearFormationWarpState(revealVisual: false);
+        else
+            AbortFormationWarp(cancelPlayback: false);
+    }
+
+    void OnWarpPlaybackInterrupted(int requestId)
+    {
+        if (requestId == _warpRequestId)
+            ClearFormationWarpState(revealVisual: true);
+    }
+
+    void StartWarpInOrComplete()
+    {
+        CharacterAnimDriver animDriver = _allyContext != null ? _allyContext.AnimDriver : null;
+        if (animDriver == null)
+        {
+            ClearFormationWarpState(revealVisual: true);
+            return;
+        }
+
+        _warpRequestId = NextFormationWarpRequestId();
+        _warpPhase = FormationWarpPhase.WaitingForWarpInComplete;
+        if (!animDriver.TryPlayChainUtilityWarpIn(_warpRequestId))
+        {
+            ClearFormationWarpState(revealVisual: true);
+            return;
+        }
+
+        _allyContext?.Visibility?.Appear();
+    }
+
+    void AbortFormationWarp(bool cancelPlayback)
+    {
+        if (_warpPhase == FormationWarpPhase.None)
+            return;
+
+        int requestId = _warpRequestId;
+        CharacterAnimDriver animDriver = _allyContext != null ? _allyContext.AnimDriver : null;
+        ClearFormationWarpState(revealVisual: true);
+
+        if (cancelPlayback && requestId > 0)
+            animDriver?.CancelChainPlaybackRequest(requestId);
+    }
+
+    void ClearFormationWarpState(bool revealVisual)
+    {
+        CharacterAnimBrain animBrain = _allyContext != null ? _allyContext.AnimBrain : null;
+        UnsubscribeFromWarpAnimation(animBrain);
+        _warpOutAutoHide.Cancel();
+        _warpPhase = FormationWarpPhase.None;
+        _warpRequestId = 0;
+        _pendingTeleportDestination = Vector3.zero;
+
+        if (_ownsFieldMemberReservation)
+        {
+            _fieldMember?.ReleaseReservation(this);
+            _ownsFieldMemberReservation = false;
+        }
+
+        if (revealVisual)
+            _allyContext?.Visibility?.Appear();
+    }
+
+    void SubscribeToWarpAnimation(CharacterAnimBrain animBrain)
+    {
+        if (animBrain == null)
+            return;
+
+        animBrain.ChainCastMomentReached += OnWarpCastMomentReached;
+        animBrain.ChainPlaybackInterrupted += OnWarpPlaybackInterrupted;
+        animBrain.ChainPlaybackCompleted += OnWarpPlaybackCompleted;
+    }
+
+    void UnsubscribeFromWarpAnimation(CharacterAnimBrain animBrain)
+    {
+        if (animBrain == null)
+            return;
+
+        animBrain.ChainCastMomentReached -= OnWarpCastMomentReached;
+        animBrain.ChainPlaybackInterrupted -= OnWarpPlaybackInterrupted;
+        animBrain.ChainPlaybackCompleted -= OnWarpPlaybackCompleted;
+    }
+
+    bool HasBlockingStateDuringFormationWarp()
+    {
+        if (ReadInCombat() || HasLiveSensorTarget() || _allyContext == null)
+            return true;
+
+        StateHub stateHub = _allyContext.stateHub;
+        if (stateHub != null && (!stateHub.IsAlive || stateHub.Isdown || !stateHub.CanMove()))
+            return true;
+
+        if (_allyContext.SkillManager != null && _allyContext.SkillManager.TryGetActiveCast(out _))
+            return true;
+
+        if (_fieldMember != null && _fieldMember.IsInKnockback)
+            return true;
+
+        return _interruptionController != null && _interruptionController.IsExecuting;
+    }
+
+    static int NextFormationWarpRequestId()
+    {
+        if (_nextFormationWarpRequestId == int.MaxValue)
+            _nextFormationWarpRequestId = 1;
+
+        return _nextFormationWarpRequestId++;
     }
 
     void CacheReferences(GameObject ownerObject, GameObject playerObject)

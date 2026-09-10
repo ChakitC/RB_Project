@@ -167,6 +167,9 @@ namespace MK.Toon.Editor.InstallWizard
             return updated;
         }
         
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private readonly static List<GlobalShaderFeatureBase> _globalShaderFeaturesTemplate = new List<GlobalShaderFeatureBase>()
         {
             //keep features in sync with the shader files
@@ -265,6 +268,9 @@ namespace MK.Toon.Editor.InstallWizard
             //Debug.LogError("Could not find Install Wizard Configuration Asset, please try to import the package again, if this issue persists.");
         }
 
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static Configuration _instance = null;
         
         internal static Configuration TryGetInstance()
@@ -406,13 +412,21 @@ namespace MK.Toon.Editor.InstallWizard
                 switch(renderPipeline)
                 {
                     case RenderPipeline.Built_in:
+                        #if UNITY_6000_6_OR_NEWER
+                        UnityEditor.AssetPackage.Package.Import(AssetDatabase.GetAssetPath(_instance._basePackageBuiltin), false);
+                        #else
                         AssetDatabase.ImportPackage(AssetDatabase.GetAssetPath(_instance._basePackageBuiltin), false);
+                        #endif
                     break;
                     //case RenderPipeline.Lightweight:
                     //    AssetDatabase.ImportPackage(AssetDatabase.GetAssetPath(_instance._basePackageLWRP), false);
                     //break;
                     case RenderPipeline.Universal:
+                        #if UNITY_6000_6_OR_NEWER
+                        UnityEditor.AssetPackage.Package.Import(AssetDatabase.GetAssetPath(_instance._basePackageURP), false);
+                        #else
                         AssetDatabase.ImportPackage(AssetDatabase.GetAssetPath(_instance._basePackageURP), false);
+                        #endif
                     break;
                     default:
                     //All cases should be handled
@@ -426,14 +440,26 @@ namespace MK.Toon.Editor.InstallWizard
         {
             if(isReady)
             {
+                #if UNITY_6000_6_OR_NEWER
+                UnityEditor.AssetPackage.Package.Import(AssetDatabase.GetAssetPath(_instance._examplesPackageInc), false);  
+                #else
                 AssetDatabase.ImportPackage(AssetDatabase.GetAssetPath(_instance._examplesPackageInc), false);
+                #endif
                 switch(renderPipeline)
                 {
                     case RenderPipeline.Built_in:
+                        #if UNITY_6000_6_OR_NEWER
+                        UnityEditor.AssetPackage.Package.Import(AssetDatabase.GetAssetPath(_instance._examplesPackageBuiltin), false);
+                        #else
                         AssetDatabase.ImportPackage(AssetDatabase.GetAssetPath(_instance._examplesPackageBuiltin), false);
+                        #endif
                     break;
                     case RenderPipeline.Universal:
+                        #if UNITY_6000_6_OR_NEWER
+                        UnityEditor.AssetPackage.Package.Import(AssetDatabase.GetAssetPath(_instance._examplesPackageURP), false);
+                        #else
                         AssetDatabase.ImportPackage(AssetDatabase.GetAssetPath(_instance._examplesPackageURP), false);
+                        #endif
                     break;
                     default:
                     //All cases should be handled

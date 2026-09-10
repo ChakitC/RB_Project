@@ -73,7 +73,9 @@
 		#endif
     	vertexOutput.previousPositionCSNoJitter = mul(_PrevViewProjMatrix, mul(UNITY_PREV_MATRIX_M, prevPos));
     	#ifndef MK_URP_6000_1_0_OR_NEWER
-			ApplyMotionVectorZBias(vertexOutput.svPositionClip);
+			#if UNITY_VERSION < 60020000
+				ApplyMotionVectorZBias(vertexOutput.svPositionClip);
+			#endif
 		#endif
 
 		return vertexOutput;

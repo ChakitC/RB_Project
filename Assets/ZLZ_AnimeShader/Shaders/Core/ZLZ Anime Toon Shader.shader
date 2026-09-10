@@ -252,6 +252,7 @@ Shader "ZLZ/AnimeToon/Character"
             #pragma fragment frag
             #pragma multi_compile_fog
             #pragma multi_compile _ _ADDITIONAL_LIGHTS
+            #pragma multi_compile _ _FORWARD_PLUS
             // Without this keyword AdditionalLightRealtimeShadow() compiles to "return 1.0",
             // so Point/Spot lights shine straight through shadow-casting walls.
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
@@ -536,7 +537,7 @@ Shader "ZLZ/AnimeToon/Character"
                 half distAtten, shadowAtten;
 
                 //  Custom Function : Main Light
-                ZLZ_MainLight(i.positionWS, lightDir, lightColor, distAtten, shadowAtten, AdditionalLightColor);
+                ZLZ_MainLight(i.positionWS, GetNormalizedScreenSpaceUV(i.positionHCS), lightDir, lightColor, distAtten, shadowAtten, AdditionalLightColor);
                 AdditionalLightColor = saturate((AdditionalLightColor * _AdditionalLightIntensity) / 4);
 
                 // ----------------------------------------------------------------------------------------------------------------------------------------------------------

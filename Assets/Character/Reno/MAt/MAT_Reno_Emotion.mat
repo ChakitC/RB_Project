@@ -37,6 +37,7 @@ Material:
   - _INDICATOR_OFF
   - _LIGHTSWEEP_OFF
   - _OUTLINEMASK_OFF
+  - _OUTLINESMOOTHNORMAL_ON
   - _OUTLINE_ZMODE_LEGACY
   - _RECEIVESHADOW_OFF
   - _RIMCOLORMODE_CUSTOM
@@ -239,7 +240,7 @@ Material:
     - _OutlineIntensity: 0
     - _OutlineMask: 0
     - _OutlineMaskCh: 3
-    - _OutlineSmoothNormal: 0
+    - _OutlineSmoothNormal: 1
     - _OutlineThickness: 2
     - _OutlineWidth: 1
     - _OutlineZOffset: 0

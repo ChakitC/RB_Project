@@ -17,7 +17,7 @@ MonoBehaviour:
   characterName: Dorothy
   CharacterWeaponType: 6
   CharacterPrefab: {fileID: 2730962025402883017, guid: 53ae910d38386ed4d860521b07a5e2a0, type: 3}
-  CharacterPrefabBasement: {fileID: 4539090856356806067, guid: 9c66bd03fd3006e4188d86be6e62decc, type: 3}
+  CharacterPrefabBasement: {fileID: 6812684406776190323, guid: 44da99dcead47da4c9deef02ec04dc7a, type: 3}
   characterAvatar: {fileID: 9000000, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
   controller: {fileID: 9100000, guid: d905530534ed612438412882780459c3, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
@@ -48,8 +48,16 @@ MonoBehaviour:
   combatRole: 0
   chainAttackSkill: {fileID: 0}
   introChainCutscene: {fileID: 0}
+  partyRole: 0
   skillSlots: []
   skillPointsPerLevel: 1
+  helperProcSlots: []
+  helperCommandSlot:
+    slotId: 
+    displayName: 
+    hotkey: 0
+    defaultOptionIndex: 0
+    options: []
   maxHP: 1000
   maxStamina: 80
   Damage: 10
@@ -67,7 +75,6 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
-  passives: []
   dashCue: {fileID: 0}
   voiceProfile:
     defaultSkillVoiceCue: {fileID: 11400000, guid: 03210978ccbad22469f358a7afb4080e, type: 2}

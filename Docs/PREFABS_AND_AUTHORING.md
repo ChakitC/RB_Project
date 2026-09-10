@@ -434,6 +434,37 @@ Each room prefab used by `MapRunConfigSO` must carry baked `NavMeshData` on its
 `NavMeshSurface`. `MapRunController` loads that baked data with the spawned
 prefab and does not rebuild NavMesh at runtime during room transitions.
 
+### Base Map Room Topologies
+
+`Assets/Prefab/MAP/Base_Map` contains the 15 neutral topology prefabs used as
+the starting point for new map rooms: four dead ends, two straights, four turns,
+four T-junctions, and one cross. They are authoring assets only and are not
+automatically registered in a `MapRunConfigSO`; create or update the appropriate
+`RoomDefinitionSO` only after a room's gameplay type and encounter content are
+chosen.
+
+The Start role uses `Base_Map/Start/RoomPrefab.Base.Start.Up.prefab`. It is a
+Prefab Variant of `Base_Map/DeadEnd/RoomPrefab.Base.DeadEnd.Up.prefab`, rather
+than a copied sixteenth topology, so it inherits the one exit, all runtime
+references, and the same baked NavMeshData. Create the styled Start room as a
+Variant of this Start base. Runtime rotation supplies the other three Start
+orientations; do not add extra exits to this base.
+
+Every base prefab has exactly the exit sockets matching its topology, a bound
+`InteractableLink` and trigger collider on the `Interactable` layer for each
+exit, and an `EntranceSpawnPoint` facing inwards at every exit. Its
+`RoomController` has those exit and spawn references explicitly bound. Do not
+remove or rename these runtime objects when decorating the room.
+
+Base prefabs intentionally do not contain a `Navigation` child or baked
+`NavMeshData`: each room's final walkable shape is determined by its art and
+collision. Add environment art under the empty `Visual` child, then author a
+`Navigation`/`NavMeshSurface` on the finished room Variant and bake its data
+there before registering that room in `MapRunConfigSO`. To regenerate and
+verify the topology set, run **Tools > RB Project > Map > Generate Base Room
+Prefabs**. To regenerate or verify the Start role base, use **Tools > RB
+Project > Map > Generate Start Base Prefab** or **Validate Start Base Prefab**.
+
 Room instances are created lazily per `MapNode.Id` and cached until the run
 ends. All cached rooms use the same room spawn anchor, so only the current room
 may be active. Components inside a room must tolerate repeated
@@ -2773,3 +2804,48 @@ so a single instance serves whichever enemy opens a round:
 object selected reports a missing profile or point prefab, a point prefab with no
 `SphereCollider`, too few usable anchors for the configured count, duplicate
 anchor transforms, and inconsistent profile clamps.
+
+## Sewer Toon Waterfall and Ripple Shaders
+
+The URP unlit sewer-water effects live under `Assets/Shaders/Sewer_Toon/`:
+
+- `Waterfall.shader` generates animated Voronoi water streaks, noisy bottom foam,
+  separately adjustable HDR `Base Water Color`, `Ripple Color`, and
+  `Bottom Foam Color`, plus an `Erosion` cutoff. The base and ripple colours are
+  selected by the ripple mask rather than added together, so changing one does
+  not tint the other region. Enable `Invert Ripples` to reverse that mask for
+  colour, erosion, and vertex displacement together. Apply
+  `Assets/Materials/Sewer_Toon/Waterfall.mat` to a vertical waterfall mesh whose
+  UV G axis runs from bottom (`0`) to top (`1`). Duplicate the mesh and raise
+  `Erosion` and HDR brightness when a separate foreground foam layer is needed.
+  Use `Vertex Offset Amount` (about `0.05`-`0.1`) on that foam material to prevent
+  z-fighting, and lower `Vertical Cell Scale` when the source mesh needs longer
+  vertical streaks. `Bottom Fade Start`, `Bottom Fade End`, and `Bottom Fade Power`
+  fade the waterfall by UV G; the mesh bottom must map to the lower G values.
+  Keep `Cull Mode` at Back to hide the rear surface. Enable `Depth Write` on the
+  main layer: the shader treats that layer as a fully opaque water sheet and does
+  not let `Erosion` or the bottom fade expose geometry behind it. Disable
+  `Depth Write` on the offset foam layer so it retains the transparent animated
+  cutout and avoids self-overlap. The preview scene contains this setup as
+  `WaterFall` plus `WaterFall_Foam`.
+- `ScrollRipples.shader` scrolls an external ripple texture, fades it with an
+  edge mask, adds animated Voronoi distortion, and breaks the rings up with
+  dissolve. Apply `Assets/Materials/Sewer_Toon/Scroll Ripples.mat` to a horizontal
+  quad or particle. `Ripple Intensity` compensates for dim generated textures and
+  their mip levels. In the preview scene, `WaterFall_BaseRipples` is parented to
+  the active `WaterFall` and uses a looping Particle System rendered with Unity's
+  built-in Quad mesh, expanding Size over Lifetime, Color over Lifetime alpha
+  for fade-in/fade-out, and the ripple material. Keep the emitter rotated flat
+  against the water, Renderer `Render Mode` at `Mesh`, and Main `Scaling Mode`
+  at `Hierarchy`. The ripple then follows the emitter and prefab hierarchy's
+  Transform Scale instead of a billboard's screen-size clamp. GPU instancing is
+  disabled for this material setup.
+  Keep the emitter slightly above the water surface to avoid z-fighting, and
+  re-check its world position if the scene contains duplicated waterfall objects.
+
+Starter textures are provided at `Assets/Textures/Sewer_Toon/Ripple_Rings.asset`
+and `Ripple_EdgeMask.asset`. They can be replaced per material with authored
+textures while keeping the same shader controls. The ripple shader and the
+waterfall's foam layer are transparent; the depth-writing waterfall layer emits
+opaque alpha to hide geometry behind it. Both shaders intentionally contain no
+shadow-caster pass.

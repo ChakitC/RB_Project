@@ -24,8 +24,9 @@ Material:
   - _INDICATOR_OFF
   - _LIGHTSWEEP_OFF
   - _OUTLINEMASK_OFF
+  - _OUTLINESMOOTHNORMAL_ON
   - _OUTLINE_ZMODE_LEGACY
-  - _RECEIVESHADOW_OFF
+  - _RECEIVESHADOW_ON
   - _RIMCOLORMODE_CUSTOM
   - _RIMLIGHT_OFF
   - _SOFTLIGHT_ON
@@ -225,14 +226,14 @@ Material:
     - _OutlineIntensity: 0
     - _OutlineMask: 0
     - _OutlineMaskCh: 3
-    - _OutlineSmoothNormal: 0
+    - _OutlineSmoothNormal: 1
     - _OutlineThickness: 2
-    - _OutlineWidth: 1
+    - _OutlineWidth: 1.7
     - _OutlineZOffset: 0
     - _OutlineZOffsetMaskRemapEnd: 1
     - _OutlineZOffsetMaskRemapStart: 0
     - _QueueOffset: 0
-    - _ReceiveShadow: 0
+    - _ReceiveShadow: 1
     - _RejectSelfShadow: 0
     - _RenderQueue: 2000
     - _RenderQueueSelector: 2000
@@ -330,7 +331,7 @@ Material:
     - _ScaleLight: {r: 0.975, g: 0.99, b: 0, a: 0}
     - _ShadowEdgeColor: {r: 1, g: 0.7098, b: 0.49409992, a: 1}
     - _ShadowOffset: {r: 0, g: 0, b: 0, a: 0}
-    - _Shadow_Color: {r: 1, g: 0.7882353, b: 0.6745098, a: 1}
+    - _Shadow_Color: {r: 0.7924528, g: 0.7924528, b: 0.7924528, a: 1}
     - _Skin_Color: {r: 1, g: 0.9490196, b: 0.9490196, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _StepDissolve: {r: 0.1, g: 0, b: 0, a: 0}

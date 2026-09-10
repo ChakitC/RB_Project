@@ -150,6 +150,8 @@ Shader "MK/Toon/URP/Standard/Physically Based + Refraction"
 		/////////////////
 		// Advanced    //
 		/////////////////
+		[ToggleOff] _ScreenSpaceReflections("Screen Space Reflections", Float) = 1.0
+        [ToggleOff] _ScreenSpaceReflectionsContributeTransparent("Screen Space Reflections Contribute Transparent", Float) = 1.0
 		[HideInInspector] [Enum(MK.Toon.BlendFactor)] _BlendSrc ("", int) = 1
 		[HideInInspector] [Enum(MK.Toon.BlendFactor)] _BlendDst ("", int) = 0
 		[HideInInspector] [Enum(MK.Toon.BlendFactor)] _BlendSrcAlpha ("", int) = 1
@@ -263,7 +265,8 @@ Shader "MK/Toon/URP/Standard/Physically Based + Refraction"
 			#pragma shader_feature_local __ _MK_PBS_MAP_1
 			#pragma shader_feature_local __ _MK_ENVIRONMENT_REFLECTIONS_AMBIENT _MK_ENVIRONMENT_REFLECTIONS_ADVANCED
 			#if UNITY_VERSION >= 60060000
-				#pragma shader_feature_local_fragment _SCREENSPACEREFLECTIONS_OFF
+				#pragma shader_feature_local _SCREENSPACEREFLECTIONS_OFF
+				#pragma multi_compile_fragment _ _SCREEN_SPACE_REFLECTION
 			#endif
 			//#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_STUTTER
 			#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_SINE _MK_VERTEX_ANIMATION_PULSE _MK_VERTEX_ANIMATION_NOISE
@@ -436,7 +439,8 @@ Shader "MK/Toon/URP/Standard/Physically Based + Refraction"
 			#pragma shader_feature_local __ _MK_PBS_MAP_1
 			#pragma shader_feature_local __ _MK_ENVIRONMENT_REFLECTIONS_AMBIENT _MK_ENVIRONMENT_REFLECTIONS_ADVANCED
 			#if UNITY_VERSION >= 60060000
-				#pragma shader_feature_local_fragment _SCREENSPACEREFLECTIONS_OFF
+				#pragma shader_feature_local _SCREENSPACEREFLECTIONS_OFF
+				#pragma multi_compile_fragment _ _SCREEN_SPACE_REFLECTION
 			#endif
 			//#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_STUTTER
 			#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_SINE _MK_VERTEX_ANIMATION_PULSE _MK_VERTEX_ANIMATION_NOISE
@@ -770,6 +774,14 @@ Shader "MK/Toon/URP/Standard/Physically Based + Refraction"
             #pragma vertex DepthNormalsVert
             #pragma fragment DepthNormalsFrag
 
+			#if UNITY_VERSION >= 60060000
+				#pragma multi_compile _ _WRITE_SMOOTHNESS
+				#pragma shader_feature_local __ _MK_PBS_MAP_0
+				#pragma shader_feature_local _SCREENSPACEREFLECTIONS_OFF
+				#pragma multi_compile_fragment _ _SCREEN_SPACE_REFLECTION
+				#pragma shader_feature_local_fragment _SCREENSPACEREFLECTIONSCONTRIBUTETRANSPARENT_OFF
+			#endif
+
 			#pragma shader_feature_local __ _MK_DISSOLVE_DEFAULT _MK_DISSOLVE_BORDER_COLOR _MK_DISSOLVE_BORDER_RAMP
 			//#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_STUTTER
 			#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_SINE _MK_VERTEX_ANIMATION_PULSE _MK_VERTEX_ANIMATION_NOISE
@@ -825,6 +837,14 @@ Shader "MK/Toon/URP/Standard/Physically Based + Refraction"
 
             #pragma vertex DepthNormalsVert
             #pragma fragment DepthNormalsFrag
+
+			#if UNITY_VERSION >= 60060000
+				#pragma multi_compile _ _WRITE_SMOOTHNESS
+				#pragma shader_feature_local __ _MK_PBS_MAP_0
+				#pragma shader_feature_local _SCREENSPACEREFLECTIONS_OFF
+				#pragma multi_compile_fragment _ _SCREEN_SPACE_REFLECTION
+				#pragma shader_feature_local_fragment _SCREENSPACEREFLECTIONSCONTRIBUTETRANSPARENT_OFF
+			#endif
 
 			#pragma shader_feature_local __ _MK_DISSOLVE_DEFAULT _MK_DISSOLVE_BORDER_COLOR _MK_DISSOLVE_BORDER_RAMP
 			//#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_STUTTER
@@ -1078,7 +1098,8 @@ Shader "MK/Toon/URP/Standard/Physically Based + Refraction"
 			#pragma shader_feature_local __ _MK_PBS_MAP_1
 			#pragma shader_feature_local __ _MK_ENVIRONMENT_REFLECTIONS_AMBIENT _MK_ENVIRONMENT_REFLECTIONS_ADVANCED
 			#if UNITY_VERSION >= 60060000
-				#pragma shader_feature_local_fragment _SCREENSPACEREFLECTIONS_OFF
+				#pragma shader_feature_local _SCREENSPACEREFLECTIONS_OFF
+				#pragma multi_compile_fragment _ _SCREEN_SPACE_REFLECTION
 			#endif
 			//#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_STUTTER
 			#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_SINE _MK_VERTEX_ANIMATION_PULSE _MK_VERTEX_ANIMATION_NOISE
@@ -1251,7 +1272,8 @@ Shader "MK/Toon/URP/Standard/Physically Based + Refraction"
 			#pragma shader_feature_local __ _MK_PBS_MAP_1
 			#pragma shader_feature_local __ _MK_ENVIRONMENT_REFLECTIONS_AMBIENT _MK_ENVIRONMENT_REFLECTIONS_ADVANCED
 			#if UNITY_VERSION >= 60060000
-				#pragma shader_feature_local_fragment _SCREENSPACEREFLECTIONS_OFF
+				#pragma shader_feature_local _SCREENSPACEREFLECTIONS_OFF
+				#pragma multi_compile_fragment _ _SCREEN_SPACE_REFLECTION
 			#endif
 			//#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_STUTTER
 			#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_SINE _MK_VERTEX_ANIMATION_PULSE _MK_VERTEX_ANIMATION_NOISE
@@ -1585,6 +1607,14 @@ Shader "MK/Toon/URP/Standard/Physically Based + Refraction"
             #pragma vertex DepthNormalsVert
             #pragma fragment DepthNormalsFrag
 
+			#if UNITY_VERSION >= 60060000
+				#pragma multi_compile _ _WRITE_SMOOTHNESS
+				#pragma shader_feature_local __ _MK_PBS_MAP_0
+				#pragma shader_feature_local _SCREENSPACEREFLECTIONS_OFF
+				#pragma multi_compile_fragment _ _SCREEN_SPACE_REFLECTION
+				#pragma shader_feature_local_fragment _SCREENSPACEREFLECTIONSCONTRIBUTETRANSPARENT_OFF
+			#endif
+
 			#pragma shader_feature_local __ _MK_DISSOLVE_DEFAULT _MK_DISSOLVE_BORDER_COLOR _MK_DISSOLVE_BORDER_RAMP
 			//#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_STUTTER
 			#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_SINE _MK_VERTEX_ANIMATION_PULSE _MK_VERTEX_ANIMATION_NOISE
@@ -1640,6 +1670,14 @@ Shader "MK/Toon/URP/Standard/Physically Based + Refraction"
 
             #pragma vertex DepthNormalsVert
             #pragma fragment DepthNormalsFrag
+
+			#if UNITY_VERSION >= 60060000
+				#pragma multi_compile _ _WRITE_SMOOTHNESS
+				#pragma shader_feature_local __ _MK_PBS_MAP_0
+				#pragma shader_feature_local _SCREENSPACEREFLECTIONS_OFF
+				#pragma multi_compile_fragment _ _SCREEN_SPACE_REFLECTION
+				#pragma shader_feature_local_fragment _SCREENSPACEREFLECTIONSCONTRIBUTETRANSPARENT_OFF
+			#endif
 
 			#pragma shader_feature_local __ _MK_DISSOLVE_DEFAULT _MK_DISSOLVE_BORDER_COLOR _MK_DISSOLVE_BORDER_RAMP
 			//#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_STUTTER
@@ -1890,7 +1928,8 @@ Shader "MK/Toon/URP/Standard/Physically Based + Refraction"
 			#pragma shader_feature_local __ _MK_PBS_MAP_1
 			#pragma shader_feature_local __ _MK_ENVIRONMENT_REFLECTIONS_AMBIENT _MK_ENVIRONMENT_REFLECTIONS_ADVANCED
 			#if UNITY_VERSION >= 60060000
-				#pragma shader_feature_local_fragment _SCREENSPACEREFLECTIONS_OFF
+				#pragma shader_feature_local _SCREENSPACEREFLECTIONS_OFF
+				#pragma multi_compile_fragment _ _SCREEN_SPACE_REFLECTION
 			#endif
 			//#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_STUTTER
 			#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_SINE _MK_VERTEX_ANIMATION_PULSE _MK_VERTEX_ANIMATION_NOISE
@@ -2048,7 +2087,8 @@ Shader "MK/Toon/URP/Standard/Physically Based + Refraction"
 			#pragma shader_feature_local __ _MK_PBS_MAP_1
 			#pragma shader_feature_local __ _MK_ENVIRONMENT_REFLECTIONS_AMBIENT _MK_ENVIRONMENT_REFLECTIONS_ADVANCED
 			#if UNITY_VERSION >= 60060000
-				#pragma shader_feature_local_fragment _SCREENSPACEREFLECTIONS_OFF
+				#pragma shader_feature_local _SCREENSPACEREFLECTIONS_OFF
+				#pragma multi_compile_fragment _ _SCREEN_SPACE_REFLECTION
 			#endif
 			//#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_STUTTER
 			#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_SINE _MK_VERTEX_ANIMATION_PULSE _MK_VERTEX_ANIMATION_NOISE
@@ -2358,6 +2398,14 @@ Shader "MK/Toon/URP/Standard/Physically Based + Refraction"
             #pragma vertex DepthNormalsVert
             #pragma fragment DepthNormalsFrag
 
+			#if UNITY_VERSION >= 60060000
+				#pragma multi_compile _ _WRITE_SMOOTHNESS
+				#pragma shader_feature_local __ _MK_PBS_MAP_0
+				#pragma shader_feature_local _SCREENSPACEREFLECTIONS_OFF
+				#pragma multi_compile_fragment _ _SCREEN_SPACE_REFLECTION
+				#pragma shader_feature_local_fragment _SCREENSPACEREFLECTIONSCONTRIBUTETRANSPARENT_OFF
+			#endif
+
 			#pragma shader_feature_local __ _MK_DISSOLVE_DEFAULT _MK_DISSOLVE_BORDER_COLOR _MK_DISSOLVE_BORDER_RAMP
 			//#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_STUTTER
 			#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_SINE _MK_VERTEX_ANIMATION_PULSE _MK_VERTEX_ANIMATION_NOISE
@@ -2413,6 +2461,14 @@ Shader "MK/Toon/URP/Standard/Physically Based + Refraction"
 
             #pragma vertex DepthNormalsVert
             #pragma fragment DepthNormalsFrag
+
+			#if UNITY_VERSION >= 60060000
+				#pragma multi_compile _ _WRITE_SMOOTHNESS
+				#pragma shader_feature_local __ _MK_PBS_MAP_0
+				#pragma shader_feature_local _SCREENSPACEREFLECTIONS_OFF
+				#pragma multi_compile_fragment _ _SCREEN_SPACE_REFLECTION
+				#pragma shader_feature_local_fragment _SCREENSPACEREFLECTIONSCONTRIBUTETRANSPARENT_OFF
+			#endif
 
 			#pragma shader_feature_local __ _MK_DISSOLVE_DEFAULT _MK_DISSOLVE_BORDER_COLOR _MK_DISSOLVE_BORDER_RAMP
 			//#pragma shader_feature_local __ _MK_VERTEX_ANIMATION_STUTTER

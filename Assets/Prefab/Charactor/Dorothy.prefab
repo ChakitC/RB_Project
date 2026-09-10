@@ -69,19 +69,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
       propertyPath: m_LocalScale.x
-      value: 1.0849
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
       propertyPath: m_LocalScale.y
-      value: 1.0849
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
       propertyPath: m_LocalScale.z
-      value: 1.0849
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: -0.6875305
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
       propertyPath: m_LocalPosition.y
@@ -89,11 +89,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -7.5936966
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
       propertyPath: m_LocalRotation.x
@@ -101,7 +101,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
       propertyPath: m_LocalRotation.z
@@ -113,7 +113,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
+      value: 90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -228,6 +228,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7787538292991223164}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7004466519618393171}
   m_SourcePrefab: {fileID: 100100000, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}
 --- !u!4 &1513080489366166396 stripped
 Transform:
@@ -309,13 +312,13 @@ MonoBehaviour:
   - {fileID: 8535921768299610025}
   - {fileID: 4199933741778811863}
   Upgrade:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: db1d1e9838805e44b8637a777a160287, type: 2}
   GetHit:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: 9d44a1eddaeb4fb4590ebfc79ae35e4b, type: 2}
   Indicator:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: 949a12f3c824db1409c89acf0703c84e, type: 2}
   Dissolve:
-    _settings: {fileID: 0}
+    _settings: {fileID: 11400000, guid: 96ae7ef0d6972e54598d2e4045234734, type: 2}
   Dither:
     _enabled: 1
     _enableCameraNearFade: 0
@@ -356,6 +359,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   headBone: {fileID: 3244781816248416750}
+--- !u!114 &7004466519618393171
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2730962025402883017}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 531c79c93eacb7f46b331667ec3680be, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  defaultType: 1
+  startSelected: 0
 --- !u!4 &3244781816248416750 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 297516237248225142, guid: 3fd7d4e79bd8e8f48abaa34db61ade7f, type: 3}

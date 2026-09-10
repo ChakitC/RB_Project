@@ -102,6 +102,8 @@ namespace MK.Toon.Editor
         /////////////////
         // Advanced    //
         /////////////////
+        protected MaterialProperty _screenSpaceReflections;
+        protected MaterialProperty _screenSpaceReflectionsContributeTransparent;
         protected MaterialProperty _renderPriority;
         protected MaterialProperty _alembicMotionVectors;
 
@@ -187,6 +189,7 @@ namespace MK.Toon.Editor
             _dissolveBorderSize = FindProperty(Properties.dissolveBorderSize.uniform.name, props);
             _dissolveBorderColor = FindProperty(Properties.dissolveBorderColor.uniform.name, props);
             
+            _screenSpaceReflectionsContributeTransparent = FindProperty(Properties.screenSpaceReflectionsContributeTransparent.uniform.name, props, false);
             _renderPriority = FindProperty(Properties.renderPriority.uniform.name, props);
             _alembicMotionVectors = FindProperty(Properties.alembicMotionVectors.uniform.name, props, false);
 
@@ -683,12 +686,24 @@ namespace MK.Toon.Editor
             }
         }
 
+        protected void DrawScreenSpaceReflections(MaterialEditor materialEditor, Material material)
+        {
+            #if URP_SCREEN_SPACE_REFLECTION
+            bool isTransparent = material.renderQueue >= (int) UnityEngine.Rendering.RenderQueue.Transparent;
+            if(_screenSpaceReflections != null)
+                materialEditor.ShaderProperty(_screenSpaceReflections, UI.screenSpaceReflections);
+            if(_screenSpaceReflectionsContributeTransparent != null && isTransparent)
+                materialEditor.ShaderProperty(_screenSpaceReflectionsContributeTransparent, UI.screenSpaceReflectionsContributeTransparent);
+            #endif
+        }
+
         /// <summary>
         /// Draw Advanced Content
         /// </summary>
         /// <param name="materialEditor"></param>
         protected virtual void DrawAdvancedContent(MaterialEditor materialEditor, Material material)
         {            
+            DrawScreenSpaceReflections(materialEditor, material);
             DrawPipeline(materialEditor);
             EditorHelper.Divider();
             DrawStencil(materialEditor, material);
@@ -807,6 +822,17 @@ namespace MK.Toon.Editor
             //No Keyword = Vertex Animation Map Off
         }
 
+        private void ManageKeywordsScreenSpaceReflections(Material material)
+        {
+            #if URP_SCREEN_SPACE_REFLECTION
+            bool isTransparent = material.renderQueue >= (int) UnityEngine.Rendering.RenderQueue.Transparent;
+            if(_screenSpaceReflections != null)
+                EditorHelper.SetKeyword(Properties.screenSpaceReflections.GetValue(material) == false, "_SCREENSPACEREFLECTIONS_OFF", material);
+            if(_screenSpaceReflectionsContributeTransparent != null && isTransparent)
+                EditorHelper.SetKeyword(Properties.screenSpaceReflectionsContributeTransparent.GetValue(material) == false && material.renderQueue >= (int) UnityEngine.Rendering.RenderQueue.Transparent, "_SCREENSPACEREFLECTIONSCONTRIBUTETRANSPARENT_OFF", material);
+            #endif
+        }
+
         private void ManageKeywordsAlembicMotionVecotrs(Material material)
         {
             #if UNITY_2023_2_OR_NEWER
@@ -842,6 +868,7 @@ namespace MK.Toon.Editor
             ManageKeywordsVertexAnimationMap(material);
             ManageKeywordsVertexAnimationStutter(material);
             ManageKeywordsAlembicMotionVecotrs(material);
+            ManageKeywordsScreenSpaceReflections(material);
             _particles.UpdateKeywords(material);
             _outline.ManageKeywordsOutline(material);
             _outline.ManageKeywordsOutlineNoise(material);

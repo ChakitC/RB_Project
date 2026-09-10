@@ -198,6 +198,22 @@ MonoBehaviour:
         m_PreInfinity: 2
         m_PostInfinity: 2
         m_RotationOrder: 4
+--- !u!114 &-5503464535901345573
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 052a0051f28380a49905d797cf6fd45d, type: 3}
+  m_Name: MKToonPerObjectOutlines
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  _layerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -229,7 +245,8 @@ MonoBehaviour:
   - {fileID: 5984975801669151759}
   - {fileID: 5700362205455741887}
   - {fileID: -7723490617745731832}
-  m_RendererFeatureMap: ad6b866f10d7b46c31b76e3e8e1daa5ceb7219023cb2972f0f6ccc27c8e70e53bf73405b39c11b4f080f343734a6d094
+  - {fileID: -5503464535901345573}
+  m_RendererFeatureMap: ad6b866f10d7b46c31b76e3e8e1daa5ceb7219023cb2972f0f6ccc27c8e70e53bf73405b39c11b4f080f343734a6d094dbe8a3c729c49fb3
   m_UseNativeRenderPass: 0
   xrSystemData: {fileID: 0}
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
@@ -345,7 +362,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f62c9c65cf3354c93be831c8bc075510, type: 3}
   m_Name: ScreenSpaceAmbientOcclusion
   m_EditorClassIdentifier: 
-  m_Active: 0
+  m_Active: 1
   m_Settings:
     AOMethod: 0
     Downsample: 0

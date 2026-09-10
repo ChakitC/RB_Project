@@ -37,10 +37,12 @@ Material:
   - _INDICATOR_OFF
   - _LIGHTSWEEP_OFF
   - _OUTLINEMASK_OFF
+  - _OUTLINESMOOTHNORMAL_ON
   - _OUTLINE_ZMODE_LEGACY
-  - _RECEIVESHADOW_OFF
+  - _RECEIVESHADOW_ON
   - _RIMCOLORMODE_CUSTOM
   - _RIMLIGHT_OFF
+  - _SHADOWEDGE_ON
   - _SOFTLIGHT_ON
   - _SPECULAR_OFF
   - _SWITCH_TO_FACE_MODE_OFF
@@ -133,7 +135,7 @@ Material:
     m_Floats:
     - _AIMINGMODE: 1
     - _AddPrecomputedVelocity: 0
-    - _AdditionalLightIntensity: 1
+    - _AdditionalLightIntensity: 0
     - _AlphaClip: 0
     - _AlphaClipping: 1
     - _AlphaToMask: 0
@@ -239,14 +241,14 @@ Material:
     - _OutlineIntensity: 0
     - _OutlineMask: 0
     - _OutlineMaskCh: 3
-    - _OutlineSmoothNormal: 0
+    - _OutlineSmoothNormal: 1
     - _OutlineThickness: 2
-    - _OutlineWidth: 1
+    - _OutlineWidth: 1.4
     - _OutlineZOffset: 0
     - _OutlineZOffsetMaskRemapEnd: 1
     - _OutlineZOffsetMaskRemapStart: 0
     - _QueueOffset: 0
-    - _ReceiveShadow: 0
+    - _ReceiveShadow: 1
     - _RejectSelfShadow: 0
     - _RenderQueue: 2000
     - _RenderQueueSelector: 2000
@@ -258,10 +260,10 @@ Material:
     - _RotateLight: 180
     - _SelectTraget: 0
     - _SelfShadowRejectDist: 0.005
-    - _ShadowEdge: 0
-    - _ShadowEdgeIntensity: 0.45
+    - _ShadowEdge: 1
+    - _ShadowEdgeIntensity: 0.337
     - _ShadowEdgeSmooth: 0.5
-    - _ShadowEdgeWidth: 1
+    - _ShadowEdgeWidth: 0.515
     - _ShadowLinePower: 1.5
     - _ShadowSoftness: 0.5
     - _SizeGlowDissolve: 0.05
@@ -291,7 +293,7 @@ Material:
     - _TargetDarkenIntensity: 0.1
     - _TargetDarkenLocal: 1
     - _Texture_Brightness: 1
-    - _ToonRampSmoothness: 0.1
+    - _ToonRampSmoothness: 0.688
     - _UPGRADE: 0
     - _USE_MASKTEX1: 0
     - _USE_MASKTEX2: 0
@@ -342,9 +344,9 @@ Material:
     - _RotateAxis: {r: 0, g: 1, b: 0, a: 0}
     - _Rotate_Axis: {r: 0, g: 0, b: 1, a: 0}
     - _ScaleLight: {r: 0.975, g: 0.99, b: 0, a: 0}
-    - _ShadowEdgeColor: {r: 1, g: 0.7098, b: 0.49409992, a: 1}
+    - _ShadowEdgeColor: {r: 0.7665809, g: 0.8792453, b: 0.17087215, a: 1}
     - _ShadowOffset: {r: 0, g: 0, b: 0, a: 0}
-    - _Shadow_Color: {r: 1, g: 0.7882353, b: 0.6745098, a: 1}
+    - _Shadow_Color: {r: 0.83396226, g: 0.83396226, b: 0.83396226, a: 1}
     - _Skin_Color: {r: 1, g: 0.9490196, b: 0.9490196, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _StepDissolve: {r: 0.1, g: 0, b: 0, a: 0}

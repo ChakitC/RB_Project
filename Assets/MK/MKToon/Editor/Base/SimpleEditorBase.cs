@@ -635,6 +635,7 @@ namespace MK.Toon.Editor
 
         protected override void DrawAdvancedContent(MaterialEditor materialEditor, Material material)
         {
+            DrawScreenSpaceReflections(materialEditor, material);
             DrawAdvancedLighting(materialEditor);
             
             EditorHelper.Divider();

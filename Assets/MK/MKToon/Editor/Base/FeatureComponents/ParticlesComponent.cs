@@ -26,6 +26,9 @@ namespace MK.Toon.Editor
 		// Properties                                                                              //
 		/////////////////////////////////////////////////////////////////////////////////////////////
         //Unity source based particle properties
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static ReorderableList vertexStreamList;
         List<ParticleSystemRenderer> _renderersUsingThisMaterial = new List<ParticleSystemRenderer>();
 

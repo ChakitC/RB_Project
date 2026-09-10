@@ -728,6 +728,16 @@ namespace MK.Toon.Editor
             "Intensity/brightness of the transmitted light.\n\n" +
             "A physically correct value would be 1 (Built-in lighting style). However on some lighting styles you need to exposure your highlights."
         );
+        internal static readonly GUIContent screenSpaceReflections = new GUIContent
+        (
+            "Screen Space Reflections",
+            "When enabled, the Material samples screen space reflections."
+        );
+        internal static readonly GUIContent screenSpaceReflectionsContributeTransparent = new GUIContent
+        (
+            "Contribute Screen Space Reflections",
+            "When enabled, this Material will contribute to screen space reflections. This will include the object in the transparency-depth prepass."
+        );
         internal static readonly GUIContent environmentReflections = new GUIContent
         (
             "Environment Reflection", 

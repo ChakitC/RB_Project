@@ -24,10 +24,12 @@ Material:
   - _INDICATOR_OFF
   - _LIGHTSWEEP_OFF
   - _OUTLINEMASK_OFF
+  - _OUTLINESMOOTHNORMAL_ON
   - _OUTLINE_ZMODE_LEGACY
-  - _RECEIVESHADOW_OFF
+  - _RECEIVESHADOW_ON
   - _RIMCOLORMODE_CUSTOM
   - _RIMLIGHT_OFF
+  - _SHADOWEDGE_ON
   - _SOFTLIGHT_ON
   - _SPECULAR_OFF
   - _SWITCH_TO_FACE_MODE_OFF
@@ -37,6 +39,7 @@ Material:
   - _USENORMAL_OFF
   - _USE_MASKTEX1_OFF
   - _USE_MASKTEX2_OFF
+  - _ZLZ_CONTACTSHADOW_ON
   m_InvalidKeywords:
   - _AIMINGMODE_ON
   - _ALPHATEST_ON
@@ -225,14 +228,14 @@ Material:
     - _OutlineIntensity: 0
     - _OutlineMask: 0
     - _OutlineMaskCh: 3
-    - _OutlineSmoothNormal: 0
+    - _OutlineSmoothNormal: 1
     - _OutlineThickness: 2
-    - _OutlineWidth: 1
+    - _OutlineWidth: 2
     - _OutlineZOffset: 0
     - _OutlineZOffsetMaskRemapEnd: 1
     - _OutlineZOffsetMaskRemapStart: 0
     - _QueueOffset: 0
-    - _ReceiveShadow: 0
+    - _ReceiveShadow: 1
     - _RejectSelfShadow: 0
     - _RenderQueue: 2000
     - _RenderQueueSelector: 2000
@@ -244,7 +247,7 @@ Material:
     - _RotateLight: 180
     - _SelectTraget: 0
     - _SelfShadowRejectDist: 0.005
-    - _ShadowEdge: 0
+    - _ShadowEdge: 1
     - _ShadowEdgeIntensity: 0.45
     - _ShadowEdgeSmooth: 0.5
     - _ShadowEdgeWidth: 1
@@ -285,7 +288,7 @@ Material:
     - _UpgradeIntensity: 5
     - _UpgradeMinBrightness: 0.5
     - _UseAiming: 1
-    - _UseContactShadow: 0
+    - _UseContactShadow: 1
     - _UseDissolve: 1
     - _UseLightSweep: 1
     - _UseMetallic: 0
@@ -328,9 +331,9 @@ Material:
     - _RotateAxis: {r: 0, g: 1, b: 0, a: 0}
     - _Rotate_Axis: {r: 0, g: 0, b: 1, a: 0}
     - _ScaleLight: {r: 0.975, g: 0.99, b: 0, a: 0}
-    - _ShadowEdgeColor: {r: 1, g: 0.7098, b: 0.49409992, a: 1}
+    - _ShadowEdgeColor: {r: 0.83396226, g: 0.76893276, b: 0.65930223, a: 1}
     - _ShadowOffset: {r: 0, g: 0, b: 0, a: 0}
-    - _Shadow_Color: {r: 1, g: 0.7882353, b: 0.6745098, a: 1}
+    - _Shadow_Color: {r: 0.8037735, g: 0.8028219, b: 0.7992239, a: 1}
     - _Skin_Color: {r: 1, g: 0.9490196, b: 0.9490196, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _StepDissolve: {r: 0.1, g: 0, b: 0, a: 0}

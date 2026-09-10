@@ -102,8 +102,10 @@
 			);
 			float3 positionWorld = mul(scale, vertexInput.vertex.xyz);
 			positionWorld = mul(MATRIX_M, float4(positionWorld, 1.0)).xyz;
+			vertexOutput.positionWorld = positionWorld;
 		#elif defined(MK_OUTLINE_HULL_OBJECT)
 			float3 worldPos = mul(MATRIX_M, float4(vertexInput.vertex.xyz, 1.0)).xyz;
+			vertexOutput.positionWorld = worldPos;
 			float distHullObject = lerp(1, distance(_WorldSpaceCameraPos, worldPos), _OutlineConstantSize);
 
 			#if defined(MK_OUTLINE_DATA_UV7)
@@ -137,6 +139,7 @@
 				half3 normalClip = ComputeNormalObjectToClipSpace(vertexInput.normal.xyz) * lerp(1, vertexOutput.svPositionClip.w, _OutlineConstantSize);
 				vertexOutput.svPositionClip.xy += 2 * oScale * outlineSize * SafeDivide(normalClip.xy, _ScreenParams.xy) * scale;
 			#endif
+			vertexOutput.positionWorld = ComputeObjectToWorldSpace(vertexInput.vertex.xyz);
 		#else
 			vertexOutput.svPositionClip = ComputeObjectToClipSpace(vertexInput.vertex.xyz);
 		#endif

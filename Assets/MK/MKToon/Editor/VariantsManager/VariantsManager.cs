@@ -26,7 +26,9 @@ namespace MK.Toon.Editor
             return path;
             #endif
         }
-
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static StringBuilder _projectPath = new StringBuilder("");
         private static string projectPath
         {
@@ -44,19 +46,40 @@ namespace MK.Toon.Editor
             }
         }
 
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static bool _requiresUpdate = true;
 
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static VariantsManager _window;
         private static readonly Vector2Int _referenceResolution = new Vector2Int(2560, 1440);
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static float _sizeScale;
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static int _scaledWidth;
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static int _scaledHeight;
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static Vector2 _windowScrollPos;
 
         private static readonly int _rawWidth = 360;
         private static readonly int _rawHeight = 535;
         private static readonly string _title = "MK Toon Variants Manager";
 
+        #if UNITY_6000_5_OR_NEWER
+        [Unity.Scripting.LifecycleManagement.AutoStaticsCleanup]
+        #endif
         private static readonly VariantSet[] _variantSets = new VariantSet[]
         {
             new VariantSet("Albedo Map", "__ _MK_ALBEDO_MAP"),

@@ -16,7 +16,7 @@
 	{
 		float4 vertex : POSITION;
 		half3 normal : NORMAL;
-		#if defined(MK_TCM) || defined(MK_TCD)
+		#if defined(MK_TCM) || defined(MK_TCD) || defined(_WRITE_SMOOTHNESS)
 			#if defined(MK_SECONDARY_UV_SET)
 				float2 texcoord0 : TEXCOORD0;
 				float2 texcoord7 : TEXCOORD7;
@@ -38,7 +38,7 @@
 	struct VertexOutputDepthNormals
 	{
 		float4 svPositionClip : SV_POSITION;
-		#if defined(MK_TCM) || defined(MK_TCD)
+		#if defined(MK_TCM) || defined(MK_TCD) || defined(_WRITE_SMOOTHNESS)
 			float4 uv : TEXCOORD0;
 		#endif
 

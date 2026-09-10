@@ -401,7 +401,15 @@
 			surfaceData.positionWorld = positionWorld;
 		#endif
 		#ifdef MK_FOG
-			surfaceData.fogFactor = fogFactor;
+			#if UNITY_VERSION >= 202230
+				#ifdef MK_URP
+					surfaceData.fogFactor = InitializeInputDataFog(float4(positionWorld, 1.0), 0.0);
+				#else
+					surfaceData.fogFactor = fogFactor;
+				#endif
+			#else
+				surfaceData.fogFactor = fogFactor;
+			#endif
 		#endif
 
 		#if defined(MK_URP_2020_2_Or_Newer) && defined(MK_LIT)

@@ -1,0 +1,66 @@
+{
+  "sourceBlend": "P:\\Run\\Pop\\New folder\\Untitled.blend",
+  "texture": "Textures/SewerDoors_Atlas_2048.png",
+  "models": [
+    {
+      "name": "SewerDoor_ServiceTall_90s",
+      "fbx": "SewerDoor_ServiceTall_90s.fbx",
+      "sourceObject": "industrial door 3d model.001",
+      "dimensions": [
+        5.03175,
+        1.74981,
+        3.99444
+      ],
+      "origin": "bottom-center",
+      "minWorldZ": 0.0,
+      "materials": [
+        "SewerDoor_ServiceTall_90s_MAT"
+      ]
+    },
+    {
+      "name": "SewerDoor_BarredGate_90s",
+      "fbx": "SewerDoor_BarredGate_90s.fbx",
+      "sourceObject": "industrial door 3d model.002",
+      "dimensions": [
+        1.83982,
+        0.83508,
+        1.90743
+      ],
+      "origin": "bottom-center",
+      "minWorldZ": 0.0,
+      "materials": [
+        "SewerDoor_BarredGate_90s_MAT"
+      ]
+    },
+    {
+      "name": "SewerDoor_DoubleFlood_90s",
+      "fbx": "SewerDoor_DoubleFlood_90s.fbx",
+      "sourceObject": "industrial door 3d model.003",
+      "dimensions": [
+        2.54363,
+        1.18675,
+        3.24675
+      ],
+      "origin": "bottom-center",
+      "minWorldZ": 0.0,
+      "materials": [
+        "SewerDoor_DoubleFlood_90s_MAT"
+      ]
+    },
+    {
+      "name": "SewerDoor_AccessHatch_90s",
+      "fbx": "SewerDoor_AccessHatch_90s.fbx",
+      "sourceObject": "industrial door 3d model.004",
+      "dimensions": [
+        1.61372,
+        1.50541,
+        0.41664
+      ],
+      "origin": "bottom-center",
+      "minWorldZ": 0.0,
+      "materials": [
+        "SewerDoor_AccessHatch_90s_MAT"
+      ]
+    }
+  ]
+}

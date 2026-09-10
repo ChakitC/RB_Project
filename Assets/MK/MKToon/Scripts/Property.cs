@@ -76,6 +76,21 @@ namespace MK.Toon
             SetKeyword(material, value, 0);
         }
     }
+    public class FBoolProperty : Property<bool>
+    {
+        public FBoolProperty(Uniform uniform, string keyword) : base(uniform, keyword) {}
+        public FBoolProperty(Uniform uniform) : base(uniform) {}
+
+        public override bool GetValue(Material material)
+        {
+            return material.GetFloat(_uniform.id) > 0 ? true : false;
+        }
+        public override void SetValue(Material material, bool value)
+        {
+            material.SetFloat(_uniform.id, value ? 1 : 0);
+            SetKeyword(material, value, 0);
+        }
+    }
     public class IntProperty : Property<int>
     {
         private int _keywordDisabled = 0;

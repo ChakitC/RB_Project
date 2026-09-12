@@ -209,6 +209,10 @@ public class CharacterStats : ScriptableObject
     [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Default Chain Skill"), AssetsOnly]
     public SkillGemDefinition chainAttackSkill;
 
+    [PropertyOrder(-138)]
+    [FoldoutGroup("Party Combo Skill", Expanded = false), LabelText("Party Combo Skill"), AssetsOnly]
+    public PartyComboSkillDef partyComboSkill;
+
     [PropertyOrder(-137)]
     [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Intro Chain Cutscene"), AssetsOnly]
     public CutsceneDefSO introChainCutscene;

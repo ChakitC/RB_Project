@@ -109,7 +109,15 @@ public sealed class ChainAttackTestTarget : AITargetInfo, IDamageable
             IsAlive);
 
         if (staggerMeter != null && result.Applied && result.IsAliveAfter && damageContext.HasStagger)
-            staggerMeter.ApplyStagger(damageContext.Stagger, damageContext.Attacker);
+        {
+            float before = staggerMeter.CurrentStagger;
+            bool wasChainReady = staggerMeter.IsChainReady;
+            if (staggerMeter.ApplyStagger(damageContext.Stagger, damageContext.Attacker))
+            {
+                float applied = Mathf.Max(0f, staggerMeter.CurrentStagger - before);
+                result = result.WithStagger(applied, !wasChainReady && staggerMeter.IsChainReady);
+            }
+        }
 
         return result;
     }

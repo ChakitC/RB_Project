@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 90c14d8c06ff4564791d0cc8c9fb7619, type: 3}
+  m_Name: Test.Aires.ComboFollowUp
+  m_EditorClassIdentifier: 
+  comboId: aires.combo.follow-up
+  displayName: Shielded Follow-Up
+  description: A follow-up Combo Skill that becomes available after Feno commits
+    Suppressive Break.
+  iconOverride: {fileID: 0}
+  executionSkill: {fileID: 11400000, guid: 762b42e521970fa45a8d258e7d1a3a65, type: 2}
+  trigger:
+    kind: 1
+    sourceRelation: 2
+    originFilter: 3
+    requiredStatus: {fileID: 0}
+    requiredStatusTag: 
+    requiredStacks: 1
+    eventSourceId: party-combo:feno.combo.entered-break
+    allowSameComboSkill: 0
+  offerDurationSeconds: 3
+  maxOfferLifetimeSeconds: 6
+  targetPolicy: 0
+  refreshPolicy: 1
+  requireOwnerAlive: 1
+  requireTargetAlive: 1
+  ownerBusyPolicy: 1
+  priority: 5
+  executionProfile: {fileID: 11400000, guid: 93ceb939576abeb46b2f91b1311d7407, type: 2}

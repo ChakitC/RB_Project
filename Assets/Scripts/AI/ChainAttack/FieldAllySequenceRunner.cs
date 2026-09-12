@@ -45,6 +45,13 @@ internal sealed class FieldAllySequenceRunner
 
     public void Tick()
     {
+        if (_pendingExecution != null && !IsTargetLifeValid(_pendingExecution))
+        {
+            owner.LogExecution("Chain step cancelled because its target was despawned or pooled.");
+            CleanupActiveExecution(success: false);
+            return;
+        }
+
         transitionController.Tick();
         ProcessDeferredExecutionPhase();
     }
@@ -78,6 +85,11 @@ internal sealed class FieldAllySequenceRunner
         _reservationOwner = null;
     }
 
+    public bool OwnsReservation(object ownerToken)
+    {
+        return ownerToken != null && ReferenceEquals(_reservationOwner, ownerToken);
+    }
+
     public bool IsSequenceExecutionReadyToContinue(int executionId)
     {
         if (executionId <= 0)
@@ -103,7 +115,11 @@ internal sealed class FieldAllySequenceRunner
         return false;
     }
 
-    public bool TryStartSequenceStep(ChainAttackStepDef step, Transform lockedTarget, Transform lockedTargetAnchor = null)
+    public bool TryStartSequenceStep(
+        ChainAttackStepDef step,
+        Transform lockedTarget,
+        Transform lockedTargetAnchor = null,
+        SkillTargetHandle lockedTargetHandle = null)
     {
         if (step == null)
             return false;
@@ -127,6 +143,14 @@ internal sealed class FieldAllySequenceRunner
 
         if (lockedTarget == null && step.skipIfTargetMissing)
             return false;
+
+        lockedTargetHandle ??= ChainAttackTargetingUtility.CreateTargetHandle(lockedTarget);
+        if (lockedTargetHandle == null ||
+            !lockedTargetHandle.TryResolveAliveTarget(out Transform resolvedTarget, out _) ||
+            resolvedTarget != lockedTarget)
+        {
+            return false;
+        }
 
         LastExecutionSucceeded = false;
         autonomyScope.Apply();
@@ -156,6 +180,7 @@ internal sealed class FieldAllySequenceRunner
             step = step,
             lockedTarget = lockedTarget,
             lockedTargetAnchor = resolvedTargetAnchor,
+            lockedTargetHandle = lockedTargetHandle,
             attackRuntimeSkill = resolvedRuntimeSkill,
             attackSkillDef = resolvedSkillDef,
             ignoreResourceCosts = step.ignoreResourceCosts,
@@ -180,6 +205,14 @@ internal sealed class FieldAllySequenceRunner
             execution.entrySnapApplied = true;
 
         return TryStartAttack(execution);
+    }
+
+    static bool IsTargetLifeValid(PendingSequenceExecution execution)
+    {
+        return execution != null &&
+               execution.lockedTargetHandle != null &&
+               execution.lockedTargetHandle.TryResolveAliveTarget(out Transform resolved, out _) &&
+               resolved == execution.lockedTarget;
     }
 
     public void FinalizeSequenceParticipation(object ownerToken, bool interrupted)
@@ -284,6 +317,13 @@ internal sealed class FieldAllySequenceRunner
         if (_pendingExecution == null)
             return;
 
+        if (requestId != _pendingExecution.exitRequestId && !IsTargetLifeValid(_pendingExecution))
+        {
+            owner.LogExecution("Chain cast moment ignored because the locked target life changed.");
+            CleanupActiveExecution(success: false);
+            return;
+        }
+
         if (requestId == _pendingExecution.enterRequestId)
         {
             HandleEnterCastMoment(requestId);
@@ -310,6 +350,12 @@ internal sealed class FieldAllySequenceRunner
             return;
         }
 
+        if (!IsTargetLifeValid(_pendingExecution))
+        {
+            CleanupActiveExecution(success: false);
+            return;
+        }
+
         ReleaseContinueSignalIfNeeded(_pendingExecution, "attack normalized time");
     }
 
@@ -322,6 +368,13 @@ internal sealed class FieldAllySequenceRunner
             requestId != _pendingExecution.attackRequestId &&
             requestId != _pendingExecution.exitRequestId)
         {
+            return;
+        }
+
+        if (_pendingExecution.phase != SequenceExecutionPhase.WaitingForExitComplete &&
+            !IsTargetLifeValid(_pendingExecution))
+        {
+            CleanupActiveExecution(success: false);
             return;
         }
 
@@ -403,7 +456,8 @@ internal sealed class FieldAllySequenceRunner
         if (execution == null ||
             execution.step == null ||
             execution.attackSkillDef == null ||
-            owner.AnimBrainRef == null)
+            owner.AnimBrainRef == null ||
+            !IsTargetLifeValid(execution))
         {
             return false;
         }
@@ -463,6 +517,12 @@ internal sealed class FieldAllySequenceRunner
         if (_pendingExecution == null || _pendingExecution.phase != SequenceExecutionPhase.WaitingForEnterCastMoment)
             return;
 
+        if (!IsTargetLifeValid(_pendingExecution))
+        {
+            CleanupActiveExecution(success: false);
+            return;
+        }
+
         if (!transitionController.TryTeleportToEntryPose(_pendingExecution))
         {
             owner.LogExecution($"Step '{_pendingExecution.step.RuntimeId}' failed to resolve a warp-in pose.");
@@ -492,6 +552,12 @@ internal sealed class FieldAllySequenceRunner
     {
         if (_pendingExecution == null || _pendingExecution.phase != SequenceExecutionPhase.WaitingForAttackCastMoment)
             return;
+
+        if (!IsTargetLifeValid(_pendingExecution))
+        {
+            CleanupActiveExecution(success: false);
+            return;
+        }
 
         // An in-place fallback always re-aims at the cast moment: it has no warp pose holding it on
         // target, so the target may have walked out of the firing line while the wind-up played.

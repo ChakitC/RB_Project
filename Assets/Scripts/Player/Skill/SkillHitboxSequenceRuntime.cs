@@ -44,6 +44,8 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     string _damageSourceId;
     string _attackId;
     ulong _chainId;
+    int _depth;
+    ComboExecutionProvenance _comboProvenance;
     int _requestId;
     int _nextSequentialStepIndex;
     float _expireAt;
@@ -196,7 +198,11 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             ? $"skill:{_context.SkillDef.name}"
             : "skill:prefab_hitbox";
         _attackId = _combatEventBus != null ? _combatEventBus.CreateAttackId($"{_damageSourceId}:hitbox") : null;
-        _chainId = CombatEventBus.NextChainId();
+        _chainId = _context != null && _context.CombatChainId != 0
+            ? _context.CombatChainId
+            : CombatEventBus.NextChainId();
+        _depth = _context != null ? _context.CombatDepth : 0;
+        _comboProvenance = _context != null ? _context.ComboProvenance : default;
     }
 
     void BuildStepLookup()
@@ -644,7 +650,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             _damageSourceId,
             _attackId,
             _chainId == 0 ? CombatEventBus.NextChainId() : _chainId,
-            1,
+            _depth + 1,
             PassiveEventOrigin.External,
             knockback: knockback,
             stagger: BuildStaggerPayload(step),
@@ -721,11 +727,13 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
                 value,
                 Time.timeAsDouble,
                 _chainId,
-                0,
+                _depth,
                 PassiveEventOrigin.External,
                 null,
                 null,
-                metadata);
+                metadata,
+                CombatEventBus.NextFactId(),
+                _comboProvenance);
 
             return _combatEventBus.CreateChildContext(
                 parent,

@@ -24,10 +24,10 @@ MonoBehaviour:
     m_Value: 2.15
   HighlightRolloff:
     m_OverrideState: 1
-    m_Value: 0
+    m_Value: 0.08
   HighlightLift:
     m_OverrideState: 1
-    m_Value: 0.683
+    m_Value: 0
   WhiteClip:
     m_OverrideState: 1
     m_Value: 4
@@ -36,7 +36,7 @@ MonoBehaviour:
     m_Value: 0
   MidContrast:
     m_OverrideState: 1
-    m_Value: 0.253
+    m_Value: 0.04
   SaturationRetention:
     m_OverrideState: 1
     m_Value: 0

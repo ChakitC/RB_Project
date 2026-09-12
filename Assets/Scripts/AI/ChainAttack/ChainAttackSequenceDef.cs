@@ -2,15 +2,6 @@ using System;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
-public enum ChainActorRole
-{
-    None = 0,
-    PartySlot1 = 1,
-    PartySlot2 = 2,
-    Helper = 3,
-    Player = 4,
-}
-
 public enum ChainTargetSource
 {
     ExplicitTargetOnly = 0,
@@ -140,20 +131,8 @@ public sealed class ChainAttackSequenceDef : ScriptableObject
         "จะ resolve ไม่ได้ทุกครั้งแล้วปุ่มตกไปเป็น Interact แทน",
         InfoMessageType.Error,
         nameof(IsExplicitTargetOnly))]
-    [InfoBox(
-        "AimTargetOnly ทำให้ coordinator เมิน target ที่ปุ่ม [F] ล็อกไว้แล้วไป resolve จาก aim ใหม่ " +
-        "chain อาจไปตีคนละตัวกับตัวที่ ChainReady อยู่",
-        InfoMessageType.Warning,
-        nameof(IsAimTargetOnly))]
     public ChainTargetSource targetSource = ChainTargetSource.ExplicitTargetOrAimTarget;
-    [Min(0.1f)] public float aimSearchRadius = 3f;
-    [Tooltip("รัศมีรอบตัวผู้เล่นที่ใช้กวาดหาเป้า ChainReady โดยเฉพาะ ใช้เฉพาะตอนกด [F] เท่านั้น " +
-             "แยกจาก aimSearchRadius เพราะ capsule ของ aim ยึดกับกล้อง เป้าที่อยู่นอกจอจึงหลุดง่าย")]
-    [Min(0f)] public float chainReadySearchRadius = 12f;
     public LayerMask targetLayers = ~0;
-    public QueryTriggerInteraction targetTriggerInteraction = QueryTriggerInteraction.Ignore;
-    public bool requireAimLineOfSight;
-    public LayerMask aimObstacleLayers = 0;
     public bool cancelIfLockedTargetDies = true;
 
     [Header("Flow")]
@@ -196,10 +175,6 @@ public sealed class ChainAttackSequenceDef : ScriptableObject
     }
 
     bool IsExplicitTargetOnly => targetSource == ChainTargetSource.ExplicitTargetOnly;
-    bool IsAimTargetOnly => targetSource == ChainTargetSource.AimTargetOnly;
-
-    /// <summary>The ChainReady sweep never searches a smaller area than the ordinary aim search.</summary>
-    public float ResolvedChainReadySearchRadius => Mathf.Max(aimSearchRadius, chainReadySearchRadius);
 
 #if UNITY_EDITOR
     void OnValidate()

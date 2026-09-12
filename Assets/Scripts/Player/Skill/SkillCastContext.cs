@@ -14,6 +14,10 @@ public sealed class SkillCastContext
     public Vector3 AimDirection { get; }
     public GameObject CasterObject { get; }
     public Transform CasterRoot { get; }
+    public ulong CombatChainId { get; }
+    public int CombatDepth { get; }
+    public ComboExecutionProvenance ComboProvenance { get; }
+    public SkillFacingSnapshot FacingSnapshot { get; }
 
     /// <summary>
     /// The caster's reference hub, resolved and bound exactly once for this cast. Payloads and the
@@ -66,7 +70,11 @@ public sealed class SkillCastContext
         CharacterAnimBrain animBrain = null,
         int requestId = 0,
         SkillUpgradeStatSnapshot upgrades = null,
-        SkillTargetHandle primaryTarget = null)
+        SkillTargetHandle primaryTarget = null,
+        ulong combatChainId = 0,
+        int combatDepth = 0,
+        ComboExecutionProvenance comboProvenance = default,
+        SkillFacingSnapshot facingSnapshot = default)
     {
         User = user;
         PrimaryTarget = primaryTarget ?? SkillTargetHandle.None;
@@ -76,6 +84,10 @@ public sealed class SkillCastContext
         Upgrades = upgrades;
         AnimBrain = animBrain;
         RequestId = requestId;
+        CombatChainId = combatChainId;
+        CombatDepth = Mathf.Max(0, combatDepth);
+        ComboProvenance = comboProvenance;
+        FacingSnapshot = facingSnapshot;
         CastOrigin = user != null ? user.CastOrigin : null;
         AimTransform = user != null ? user.AimTransform : null;
         AimDirection = ResolveAimDirection(user);

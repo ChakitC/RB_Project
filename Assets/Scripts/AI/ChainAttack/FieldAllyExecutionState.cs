@@ -20,6 +20,7 @@ internal sealed class PendingSequenceExecution
     public ChainAttackStepDef step;
     public Transform lockedTarget;
     public Transform lockedTargetAnchor;
+    public SkillTargetHandle lockedTargetHandle;
     public ISkillUser attackSkillUser;
     public SkillInstance attackRuntimeSkill;
     public SkillGemDefinition attackSkillDef;

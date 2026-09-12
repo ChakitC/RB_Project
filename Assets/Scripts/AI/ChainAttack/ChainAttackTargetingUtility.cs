@@ -2,6 +2,34 @@ using UnityEngine;
 
 public static class ChainAttackTargetingUtility
 {
+    public static SkillTargetHandle CreateTargetHandle(Transform targetTransform)
+    {
+        if (targetTransform == null)
+            return SkillTargetHandle.None;
+
+        CharacteContext context = targetTransform.GetComponentInParent<CharacteContext>();
+        if (context == null)
+            context = targetTransform.GetComponentInChildren<CharacteContext>(true);
+        if (context != null)
+            return SkillTargetHandle.For(context);
+
+        MonoBehaviour[] behaviours = targetTransform.GetComponentsInParent<MonoBehaviour>(true);
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            if (behaviours[i] is IDamageable)
+                return SkillTargetHandle.ForNonCharacterDamageable(behaviours[i]);
+        }
+
+        behaviours = targetTransform.GetComponentsInChildren<MonoBehaviour>(true);
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            if (behaviours[i] is IDamageable)
+                return SkillTargetHandle.ForNonCharacterDamageable(behaviours[i]);
+        }
+
+        return SkillTargetHandle.None;
+    }
+
     public static bool TryResolveLockedTarget(
         PlayerContext playerContext,
         ChainAttackSequenceDef sequenceDef,
@@ -9,8 +37,7 @@ public static class ChainAttackTargetingUtility
         GameObject helperObject,
         out GameObject targetObject,
         out Transform targetTransform,
-        out Transform anchorTransform,
-        bool preferChainReadyTargets = false)
+        out Transform anchorTransform)
     {
         targetObject = null;
         targetTransform = null;
@@ -34,14 +61,13 @@ public static class ChainAttackTargetingUtility
         if (sequenceDef.targetSource == ChainTargetSource.ExplicitTargetOnly)
             return false;
 
-        return TryResolveTargetFromAim(
+        return TryResolveCommittedPlayerTarget(
             playerContext,
             sequenceDef,
             helperObject,
             out targetObject,
             out targetTransform,
-            out anchorTransform,
-            preferChainReadyTargets);
+            out anchorTransform);
     }
 
     /// <summary>
@@ -53,8 +79,18 @@ public static class ChainAttackTargetingUtility
         if (targetTransform == null)
             return null;
 
-        StaggerMeter meter = targetTransform.GetComponentInParent<StaggerMeter>();
-        return meter != null ? meter : targetTransform.GetComponentInChildren<StaggerMeter>(true);
+        CharacteContext context = targetTransform.GetComponentInParent<CharacteContext>();
+        if (context is EnemyContext enemy)
+        {
+            enemy.ResolveReferences();
+            if (enemy.StaggerMeter != null)
+                return enemy.StaggerMeter;
+        }
+
+        StaggerMeter meter = targetTransform.GetComponent<StaggerMeter>();
+        if (meter == null)
+            meter = targetTransform.GetComponentInChildren<StaggerMeter>(true);
+        return meter != null ? meter : targetTransform.GetComponentInParent<StaggerMeter>();
     }
 
     /// <summary>True when this target is sitting in an unclaimed ChainReady window.</summary>
@@ -153,8 +189,14 @@ public static class ChainAttackTargetingUtility
         IAITargetable aiTargetable = FindInterfaceInParents<IAITargetable>(rootTransform);
         IDamageable damageable = FindInterfaceInParents<IDamageable>(rootTransform);
 
-        if (targetContext != null && targetContext.stateHub != null)
-            return targetContext.stateHub.IsAlive && !targetContext.stateHub.Isdown;
+        if (targetContext != null)
+        {
+            targetContext.ResolveReferences();
+            if (targetContext.HealthSystem != null)
+                return targetContext.HealthSystem.IsAlive;
+            if (targetContext.stateHub != null)
+                return targetContext.stateHub.IsAlive && !targetContext.stateHub.Isdown;
+        }
 
         if (aiTargetable != null)
             return aiTargetable.IsAlive;
@@ -165,211 +207,49 @@ public static class ChainAttackTargetingUtility
         return true;
     }
 
-    static bool TryResolveTargetFromAim(
+    static bool TryResolveCommittedPlayerTarget(
         PlayerContext playerContext,
         ChainAttackSequenceDef sequenceDef,
         GameObject helperObject,
         out GameObject targetObject,
         out Transform targetTransform,
-        out Transform anchorTransform,
-        bool preferChainReadyTargets)
+        out Transform anchorTransform)
     {
         targetObject = null;
         targetTransform = null;
         anchorTransform = null;
 
-        if (playerContext == null || playerContext.aimTarget == null || sequenceDef == null)
+        if (playerContext == null || sequenceDef == null)
             return false;
 
-        Vector3 aimPoint = playerContext.aimTarget.position;
-        Camera gameplayCamera = Camera.main;
-        Vector3 searchOrigin = gameplayCamera != null
-            ? gameplayCamera.transform.position
-            : playerContext.transform.position + Vector3.up;
-        Collider[] hits = Physics.OverlapCapsule(
-            searchOrigin,
-            aimPoint,
-            Mathf.Max(0.1f, sequenceDef.aimSearchRadius),
-            sequenceDef.targetLayers,
-            sequenceDef.targetTriggerInteraction);
-
-        var best = new CandidateSelection { Score = float.PositiveInfinity };
-
-        EvaluateCandidates(
-            hits,
-            playerContext,
-            sequenceDef,
-            helperObject,
-            gameplayCamera,
-            searchOrigin,
-            preferChainReadyTargets,
-            chainReadyOnly: false,
-            ref best);
-
-        // The aim capsule hangs off the camera, so a ChainReady enemy that is behind the player, or
-        // simply outside the aim cone, is invisible to it — the prompt says [F] and the press finds
-        // nothing. A second sweep centred on the player picks those up, and it only ever accepts
-        // ChainReady candidates so ordinary targeting keeps its existing reach.
-        if (preferChainReadyTargets && !best.IsChainReady)
+        playerContext.ResolveReferences();
+        if (playerContext.Targeting == null ||
+            !playerContext.Targeting.TryGetTarget(out CharacteContext committedTarget) ||
+            !IsTargetAllowed(committedTarget.transform, playerContext, helperObject) ||
+            !IsTargetAlive(committedTarget.transform) ||
+            !IsLayerAllowed(committedTarget, sequenceDef.targetLayers) ||
+            !TryResolveTargetAnchor(committedTarget.transform, out anchorTransform))
         {
-            float sweepRadius = sequenceDef.ResolvedChainReadySearchRadius;
-            if (sweepRadius > 0f)
-            {
-                Collider[] nearby = Physics.OverlapSphere(
-                    playerContext.transform.position,
-                    sweepRadius,
-                    sequenceDef.targetLayers,
-                    sequenceDef.targetTriggerInteraction);
-
-                EvaluateCandidates(
-                    nearby,
-                    playerContext,
-                    sequenceDef,
-                    helperObject,
-                    gameplayCamera,
-                    searchOrigin,
-                    preferChainReadyTargets: true,
-                    chainReadyOnly: true,
-                    ref best);
-            }
+            return false;
         }
 
-        targetObject = best.Object;
-        targetTransform = best.Root;
-        anchorTransform = best.Anchor;
-        return targetObject != null && anchorTransform != null;
-    }
-
-    /// <summary>Best candidate found so far, carried across both sweeps.</summary>
-    struct CandidateSelection
-    {
-        public GameObject Object;
-        public Transform Root;
-        public Transform Anchor;
-        public float Score;
-        public bool IsChainReady;
-    }
-
-    // Reticle scores are normalised screen distances, so any constant well above 1 keeps every
-    // off-screen ChainReady candidate ranked below every on-screen one while still ordering them
-    // sensibly among themselves (by distance from the player).
-    const float OffScreenScoreBase = 1000f;
-
-    static void EvaluateCandidates(
-        Collider[] hits,
-        PlayerContext playerContext,
-        ChainAttackSequenceDef sequenceDef,
-        GameObject helperObject,
-        Camera gameplayCamera,
-        Vector3 searchOrigin,
-        bool preferChainReadyTargets,
-        bool chainReadyOnly,
-        ref CandidateSelection best)
-    {
-        if (hits == null)
-            return;
-
-        Vector3 playerPosition = playerContext.transform.position;
-
-        for (int i = 0; i < hits.Length; i++)
-        {
-            Collider hit = hits[i];
-            if (hit == null)
-                continue;
-
-            if (!TryResolveTargetCandidate(
-                    hit,
-                    playerContext,
-                    helperObject,
-                    out GameObject candidateObject,
-                    out Transform candidateTransform,
-                    out Transform candidateAnchor))
-            {
-                continue;
-            }
-
-            bool candidateIsChainReady =
-                preferChainReadyTargets && IsChainReadyForManualChain(candidateTransform);
-
-            if (chainReadyOnly && !candidateIsChainReady)
-                continue;
-
-            // Once a ChainReady candidate is held, nothing without ChainReady can take the slot.
-            if (best.IsChainReady && !candidateIsChainReady)
-                continue;
-
-            if (candidateObject == best.Object)
-                continue;
-
-            bool winsOnChainReady = candidateIsChainReady && !best.IsChainReady;
-
-            Vector3 candidatePoint = candidateAnchor != null ? candidateAnchor.position : candidateTransform.position;
-            if (!ThirdPersonTargetingUtility.TryGetReticleScore(
-                    gameplayCamera,
-                    candidatePoint,
-                    out float score))
-            {
-                // Ordinary targeting still requires the target to be on screen.
-                if (!candidateIsChainReady)
-                    continue;
-
-                score = OffScreenScoreBase + Vector3.Distance(playerPosition, candidatePoint);
-            }
-
-            if (!winsOnChainReady && score >= best.Score)
-                continue;
-
-            if (sequenceDef.requireAimLineOfSight &&
-                !ThirdPersonTargetingUtility.HasLineOfSight(
-                    searchOrigin,
-                    candidatePoint,
-                    candidateTransform,
-                    sequenceDef.aimObstacleLayers,
-                    sequenceDef.targetTriggerInteraction,
-                    playerContext.transform))
-            {
-                continue;
-            }
-
-            best.Score = score;
-            best.IsChainReady = candidateIsChainReady;
-            best.Object = candidateObject;
-            best.Root = candidateTransform;
-            best.Anchor = candidateAnchor;
-        }
-    }
-
-    static bool TryResolveTargetCandidate(
-        Collider hit,
-        PlayerContext playerContext,
-        GameObject helperObject,
-        out GameObject candidateObject,
-        out Transform candidateTransform,
-        out Transform candidateAnchor)
-    {
-        candidateObject = null;
-        candidateTransform = null;
-        candidateAnchor = null;
-
-        if (hit == null)
-            return false;
-
-        Transform rootTransform = ResolveTargetRoot(hit.transform);
-        if (rootTransform == null)
-            return false;
-
-        if (!IsTargetAllowed(rootTransform, playerContext, helperObject))
-            return false;
-
-        if (!IsTargetAlive(rootTransform))
-            return false;
-
-        if (!TryResolveTargetAnchor(rootTransform, out candidateAnchor))
-            return false;
-
-        candidateTransform = rootTransform;
-        candidateObject = rootTransform.gameObject;
+        targetTransform = committedTarget.transform;
+        targetObject = committedTarget.gameObject;
         return true;
+    }
+
+    static bool IsLayerAllowed(CharacteContext target, LayerMask allowedLayers)
+    {
+        if (target == null)
+            return false;
+        if (allowedLayers == ~0)
+            return true;
+
+        int rootLayerBit = 1 << target.gameObject.layer;
+        int targetInfoLayerBit = target.TargetInfo != null
+            ? 1 << target.TargetInfo.gameObject.layer
+            : 0;
+        return (allowedLayers.value & (rootLayerBit | targetInfoLayerBit)) != 0;
     }
 
     static bool IsTargetAllowed(Transform rootTransform, PlayerContext playerContext, GameObject helperObject)

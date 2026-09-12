@@ -313,7 +313,11 @@ public class SkillInstance
         CharacterAnimBrain animBrain,
         int requestId,
         out SkillExecutionResult result,
-        SkillTargetHandle primaryTarget = null)
+        SkillTargetHandle primaryTarget = null,
+        ulong combatChainId = 0,
+        int combatDepth = 0,
+        ComboExecutionProvenance comboProvenance = default,
+        SkillFacingSnapshot facingSnapshot = default)
     {
         if (reservation == null || def == null || def.payload == null || reservation.User == null)
         {
@@ -324,7 +328,17 @@ public class SkillInstance
         }
 
         var castContext = new SkillCastContext(
-            reservation.User, def, reservation.Stats, animBrain, requestId, upgradeSnapshot, primaryTarget);
+            reservation.User,
+            def,
+            reservation.Stats,
+            animBrain,
+            requestId,
+            upgradeSnapshot,
+            primaryTarget,
+            combatChainId,
+            combatDepth,
+            comboProvenance,
+            facingSnapshot);
 
         result = def.payload.ExecuteWithResult(castContext);
         return result.Success;

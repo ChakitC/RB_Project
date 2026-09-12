@@ -11,12 +11,16 @@
   party spawn/binding, character-owned skill runtime, Helper snapshot, pause clock,
   combat-fact identity, serialized enum values, save/load, target handle/pooling,
   feature rollback และข้อจำกัด test assembly แล้ว
+- ตรวจทานเพิ่มเติม **2026-09-10**: source audit เฉพาะ cast commit/projectile success,
+  synchronous bus dispatch, payload provenance, reservation ownership, party binding และ dedupe
+  retention; หลักฐานและ contracts ที่เพิ่มอยู่ §23 ยังไม่ได้รัน Unity/Play Mode และไม่ได้ยืนยัน
+  ทุกข้อของ audit วันที่ 2026-09-04 ซ้ำ การแก้ครั้งนี้เป็นเอกสารเท่านั้น
 
 ---
 
 ## 0. Blocking Contracts ก่อนเริ่มเขียนระบบ
 
-เจ็ดข้อนี้เป็น prerequisite ของ vertical slice ไม่ใช่งานเก็บท้าย:
+contracts ต่อไปนี้เป็น prerequisite ของ vertical slice ไม่ใช่งานเก็บท้าย:
 
 1. เพิ่ม request-scoped `OnCommitted` ใน `SkillCastRequest` และส่งผ่าน public
    `CharacterSkillManager.TryStartExternalSkill`; ห้ามใช้ `CastReleased` เป็นหลักฐานว่า cooldown
@@ -35,8 +39,12 @@
    `EnteredBreak` และ `ComboSkillCommitted` ที่ระบบนี้เป็นเจ้าของเอง; Final Strike, Arts Reaction
    และ tag `Infliction` ยังไม่มีในโปรเจกต์ อย่าวางแผน Phase ใดให้รอของสามอย่างนี้ และก่อน append
    Combo facts ต้องตรึง explicit numeric values ของ `PassiveEventType` ตาม Phase 0.5 (§3.7, §7.1)
+8. ปิด refresh identity, single commit publisher/atomic guards และ binding-version callback
+   contracts ตาม §23.2–§23.4 ก่อนต่อ executor; แยก cast success ออกจาก eventual hit ตาม §23.5
+9. ก่อนเปิด real combat adapter ต้อง thread Combo provenance เข้า payload ที่ slice ใช้ และกำหนด
+   bounded chain lifetime ตาม §23.6–§23.7; synthetic commit chain อย่างเดียวพิสูจน์ recursion ไม่ครบ
 
-ถ้ายังไม่ปิดเจ็ด contract นี้ การทำ HUD หรือ author content ก่อนจะทำให้ระบบดูเหมือนใช้ได้ แต่มีโอกาส
+ถ้ายังไม่ปิด contracts นี้ การทำ HUD หรือ author content ก่อนจะทำให้ระบบดูเหมือนใช้ได้ แต่มีโอกาส
 เปิด combo ต่อจาก payload ที่ fail, รับ Helper upgrade ผิดชุด, bind หลุดตอน spawn, chain สะดุด
 ระหว่าง actor recovery, asset ใหม่ติด dependency เก่า หรือ dedupe fact ผิดรายการ
 
@@ -94,6 +102,8 @@
 - สมาชิกต่างคนสามารถมี offer พร้อมกันได้
 - actor คนเดียวมี active offer ได้สูงสุดหนึ่งรายการใน MVP
 - trigger ใหม่ของ actor เดิมใช้ replacement policy ที่ระบุใน definition; ค่าเริ่มต้นคือ refresh เฉพาะ definition และ target เดิม มิฉะนั้นเก็บ offer เดิมไว้จนหมดอายุ
+- refresh เก็บ identity/provenance เดิมและทำได้เฉพาะ `Offered`; replacement ต้องออก OfferId ใหม่
+  และมีเพดานอายุรวมตาม §23.2 ห้ามเปลี่ยน ChainId ใต้ OfferId เดิม
 - หาก combat fact เดียว match definition candidates มากกว่าหนึ่งรายการของ actor เดียว ให้เลือก
   `priority` สูงสุด; ถ้าเท่ากัน definition ที่มาก่อนใน stable authoring order ชนะ ห้ามพึ่ง
   `Dictionary` iteration order โดย stable order คือ order ที่ character-definition resolver ส่งออก
@@ -186,6 +196,11 @@ implementation ต้องเพิ่ม request-scoped callback ที่ aut
 
 global `CastCommitted` event อาจมีเพื่อ diagnostics/presenter ได้ แต่ Combo execution correctness
 ต้องไม่พึ่ง global subscription เพียงอย่างเดียว
+
+controller เป็นเจ้าของ publish `ComboSkillCommitted` เพียงรายเดียว; executor ส่ง request-scoped
+commit result ให้ controller หลัง transaction commit แล้วเท่านั้น ก่อน publish ต้องบันทึก committed
+state, once-only flag และ chain-consumption guard ให้ครบตาม §23.3 ส่วน projectile spawn สำเร็จ
+ถือเป็น payload success แม้ยิงพลาดภายหลังตาม §23.5
 
 ### 2.5 ไม่มี global player protection ระหว่าง Combo Skill
 
@@ -518,6 +533,7 @@ public sealed class PartyComboSkillDef : ScriptableObject
     public PartyComboTriggerRule trigger;
 
     [Min(0.1f)] public float offerDurationSeconds = 3f;
+    [Min(0.1f)] public float maxOfferLifetimeSeconds = 6f;
     public PartyComboTargetPolicy targetPolicy = PartyComboTargetPolicy.EventTarget;
     public PartyComboOfferRefreshPolicy refreshPolicy = PartyComboOfferRefreshPolicy.RefreshSameTarget;
     public bool requireOwnerAlive = true;
@@ -623,6 +639,8 @@ rule fields ที่อาจใช้:
 
 - event เป็นตัวปลุก evaluator; ห้าม poll ศัตรูทุกตัวทุก frame
 - trigger ที่ต้องดู target state ให้ query `CharacteContext` ของ `event.Target` หลัง event เกิด
+- สำหรับ request ที่ยังไม่ settled ให้ประเมิน trigger ณ event แล้วพัก immutable candidate
+  ตาม §23.6; ตอน flush ตรวจ eligibility ปัจจุบัน แต่ไม่ query trigger state เดิมซ้ำ
 - ใช้ `targetContext.StatusEffects` ไม่ใช้ physics overlap เพื่อค้นหา actor/status
 - ถ้ากฎต้อง AND หลายเงื่อนไข ให้ event kind เป็น primary trigger และ filters อ่าน snapshot/state เพิ่ม ไม่ต้องสร้าง nested boolean graph ใน MVP
 
@@ -639,6 +657,9 @@ rule fields ที่อาจใช้:
 - `SkillTargetHandle Target`
 - `float OfferedAt` (อ่านจาก offer clock ของ controller ตาม §2.6)
 - `float ExpiresAt` (clock เดียวกัน)
+- `float ComboChainExpiresAt` (deadline เดิมตลอด lineage ตาม §23.7)
+- `ulong ComboWindowId` (identity ของช่วงเปิด Combo แยกจาก combat ChainId ตาม §23.7)
+- binding version และ execution identity สำหรับตรวจ callback ตาม §23.4
 - source `PassiveEventContext` หรือ snapshot ที่ไม่ถือ object เกินจำเป็น
 - `ulong FactId`
 - `ulong ChainId`
@@ -729,7 +750,7 @@ forward context เดิม
   - `Ticked` และ `Removed` -> ไม่ publish Combo combat fact โดยเด็ดขาด
   จากนั้นจึง publish ไปยัง `StatusEffectInstance.Attribution.CreditedEventBus`; fallback resolve bus
   จาก source `CharacteContext`
-- Combo Skill Committed: executor/controller publish child context จาก trigger context ที่ offer เก็บไว้
+- Combo Skill Committed: controller publish child context จาก trigger context ที่ offer เก็บไว้
   โดยสร้าง FactId ใหม่, รักษา ChainId และเพิ่ม Depth
 
 อย่า infer Final Strike จาก Kill และอย่า infer Arts Reaction จาก status สองชนิดใน Combo controller เพราะ owner system เท่านั้นที่รู้ semantics จริง
@@ -751,7 +772,9 @@ policy เริ่มต้น:
   ต่อ fact ที่สร้าง; router forward context เดิมโดยไม่สร้าง FactId ใหม่
 - same-fact dedupe ใช้ `(FactId, ComboSkillId, OwnerRole)` ห้ามเดาจาก frame, event type หรือ target
   เพราะ fact คนละรายการที่เกิดใน frame เดียวกันอาจถูกต้องทั้งคู่
-- offer definition เดิม consume ได้ไม่เกินหนึ่งครั้งต่อ `(ComboSkillId, ChainId, OwnerRole)`
+- candidate ถือสิทธิ์ key ตั้งแต่ enqueue ด้วยสถานะ Queued → Delivered/Discarded ตาม §23.6;
+  flush ตรวจเจ้าของสิทธิ์ ไม่เรียก admission dedupe ซ้ำจนปฏิเสธ candidate ของตัวเอง
+- offer definition เดิม consume ได้ไม่เกินหนึ่งครั้งต่อ `(ComboWindowId, ComboSkillId, OwnerRole)`
 - max combo depth ค่าเริ่มต้น 8
 - Combo Skill ห้าม trigger ตัวเองจาก `ComboSkillCommitted` เว้นแต่ definition opt-in อย่างชัดเจน
 - cooldown/charge เป็น guard เพิ่ม ไม่ใช่ guard เดียว
@@ -766,8 +789,9 @@ precedent ที่ต้องลอกรูปแบบ ownership/cleanup ค
 
 **กับดักของ `ChainId == 0`:** `CombatEventBus` ใช้กฎ `parent.ChainId == 0 ? NextChainId() :
 parent.ChainId` เมื่อสร้าง child context ถ้า publisher ตัวใดลืม thread parent context เข้าไป
-ทุก event จะได้ chain id ใหม่ ทำให้ dedupe key `(ComboSkillId, ChainId, OwnerRole)` ไม่เคย match
-recursion guard จะเงียบไปทั้งชุด และ Definition of Done ข้อ 9 จะผ่านแบบหลอก
+ทุก event จะได้ chain id ใหม่ ทำให้ external ingress จับกลุ่ม active window ผิด หาก Combo
+provenance หลุดไปพร้อมกัน descendants อาจถูกมองเป็น external root ใหม่ จึงต้องส่งทั้ง ChainId
+และ ComboWindowId เดิม ไม่ใช้ cooldown เป็นตัวป้องกันแทน lineage contract
 
 `CombatEventBus.Publish` ปัจจุบันไม่ได้ normalize context ดังนั้นให้ router เป็น boundary ที่ normalize
 `FactId == 0` และ `ChainId == 0` ครั้งเดียวก่อน evaluation; publisher ปกติยังต้องใช้ factory API
@@ -775,8 +799,9 @@ recursion guard จะเงียบไปทั้งชุด และ Defin
 
 ต้องมี test ตรง ๆ ว่า root fact ที่ `FactId/ChainId == 0` ถูก normalize หนึ่งชุดต่อ publish occurrence,
 definition หลายตัวเห็น IDs ชุดเดียวกัน และ child `ComboSkillCommitted` ได้ FactId ใหม่แต่รักษา
-ChainId เดิม การเรียก `Publish` ซ้ำถือเป็น fact occurrence ใหม่; recursion/offer refresh ใช้ policy
-คนละชั้น ไม่ใช่ FactId dedupe
+ChainId เดิม สำหรับ legacy context ที่ FactId เป็นศูนย์ การเรียก `Publish` แต่ละครั้งถือเป็น occurrence
+ใหม่ที่ router normalize หนึ่งชุด; ถ้า forward/re-publish context ที่มี non-zero FactId อยู่แล้วต้อง
+รักษา ID และ dedupe เป็น fact เดิม เหตุการณ์ใหม่จริงต้องสร้าง context ใหม่ผ่าน factory
 
 ---
 
@@ -791,12 +816,15 @@ NoOffer
 
 Offered
   -> Starting                ผู้เล่นกดและ validation ผ่าน; lock OfferId กันการกดซ้ำ
-  -> Failed                  reservation/placement/cast start ล้มเหลว
+  -> Failed                  placement/non-transient cast start ล้มเหลว
 
 Starting
+  -> Offered                 Busy/Paused ก่อน accept; คืน in-flight guard เก็บ OfferId/expiry เดิม
+  -> Expired                 transient reject แล้วพบว่า offer หมดเวลา
+  -> Cancelled               owner/target/session invalid; ห้ามคืน offer เข้า binding ใหม่
   -> Executing               animated external cast ถูก accept และได้ RequestId
   -> Committed               immediate cast commit ภายใน start call ผ่าน request-scoped callback
-  -> Failed                  immediate payload fail/reject หรือยกเลิกก่อน commit; ไม่ stamp cooldown
+  -> Failed                  immediate payload fail/non-transient reject หรือยกเลิกก่อน commit; ไม่ stamp cooldown
 
 Executing
   -> Committed               ได้ request-scoped post-reservation.Commit callback; publish ครั้งเดียว
@@ -900,8 +928,8 @@ executor ต้อง:
 5. resolve combo-owned runtime entry และ start ด้วย `IgnoreEnergyRespectCharge`
 6. ตั้ง request-scoped commit/failure callbacks และ offer state ก่อนเรียก start API
 7. รองรับ callback ที่เกิด synchronous ใน immediate path และผูก RequestId สำหรับ animated path
-8. รับ post-commit callback ตาม §2.4 แล้ว publish commit fact ครั้งเดียว
-9. สร้าง child fact ด้วย FactId ใหม่, ChainId เดิม และ Depth + 1
+8. รับ post-commit callback ตาม §2.4 แล้วส่ง commit result ให้ controller ครั้งเดียว
+9. controller บันทึก guards ก่อนสร้าง/publish child fact ด้วย FactId ใหม่, ChainId เดิม และ Depth + 1
 10. restore actor/AI/visibility/reservation ทุก exit path
 
 ภายใน executor adapter reuse `CharacterPlacementResolver`, `ChainAttackTeleportUtility` หรือ
@@ -975,6 +1003,8 @@ context architecture จากนั้นแก้ `PartyRuntimeBinder.TryBind`
 
 ทุก `BindParty` ต้อง unbind party เก่าก่อน, dedupe `CombatEventBus` instance และ unsubscribe ครบเมื่อ
 disable/scene teardown อย่าผูก first-time initialization กับ static `PartySpawnPoint.Spawned`
+เพิ่ม controller-owned binding version และ execution-owned cleanup token ตาม §23.4; unsubscribe
+อย่างเดียวไม่ทำให้ request callback ของทีมเก่าที่ถูก capture ไว้หายไป
 
 ต้องมี rollback/kill switches จาก `PartyComboFeatureFlags` reference เดียวที่ composition root:
 
@@ -1110,7 +1140,9 @@ Combo systemไม่ควรคำนวณเองว่าสถานะ�
 | กดตอนมี `GlobalTimeScaleManager` pause token (cutscene/menu) | reject ด้วยเหตุผล Paused; ไม่ consume offer; timer ไม่เดินระหว่าง pause ตาม §2.6 |
 | มีสอง offer แล้วกดทั้งคู่ใน frame เดียว | executor ต้องมี guard ของตัวเอง; event-level dedupe ไม่ครอบกรณีนี้ |
 | UI ส่ง role ถูกแต่ `expectedOfferId` เก่า | reject `StaleOffer`; ห้าม consume offer ใหม่ของ role เดิม |
-| Target ยังไม่ตายแต่ untargetable/invincible | ใช้ target eligibility policy; ค่าเริ่มต้นไม่ universal-reject และให้ payload ตัดสินผล ถ้า payload ไม่เกิดผล transaction ต้องไม่ commit |
+| Target ยังไม่ตายแต่ untargetable/invincible | ใช้ target eligibility policy; ค่าเริ่มต้นไม่ universal-reject; commit ตาม SkillExecutionResult ที่ cast point ไม่อนุมานจาก eventual damage (§23.5) |
+| Projectile spawn สำเร็จแล้วพลาด/เป้าตายหรือ invincible ตอน impact | commit/cooldown คงอยู่; ไม่ย้อนยกเลิก child offer ที่เปิดจาก commit |
+| Callback เก่ากลับมาหลัง rebind/disable | ไม่ publish fact หรือแก้ offer/HUD ของ binding ใหม่; cleanup เฉพาะ execution เดิมตาม §23.4 |
 | Owner กำลัง execute combo ก่อนหน้าอยู่ | re-entrancy guard ที่ executor; ไม่ซ้อน reservation (รูปแบบเดียวกับ summon re-entrancy guard ที่มีอยู่) |
 | Actor B commit แล้ว C ถูกกดระหว่าง B recovery | อนุญาตเมื่อเป็นคนละ actor; placement/reservation ต้องไม่ชนกันตาม §10.5 |
 | Combo offer กับ ChainReady prompt live พร้อมกัน | ทั้งสอง prompt อยู่ร่วมกันได้ แต่ input ต้องแยกคนละ action ตาม §11; ห้ามให้ปุ่มเดียว consume ทั้งสองระบบ |
@@ -1159,6 +1191,10 @@ Combo systemไม่ควรคำนวณเองว่าสถานะ�
 
 ### Phase 1 — Core data ownership, trigger and opportunity
 
+ทำ authoring validator ขั้นต่ำพร้อม assets ชุดแรก: empty/duplicate combo ID, unsupported trigger,
+missing execution/profile, duration ไม่ถูกต้อง และ execution definition ซ้ำ Battle/Helper ของ character
+เดียวกัน; Phase 5 ขยายเป็น production asset audit/migration ไม่ใช่จุดเริ่ม validation
+
 ก่อนอื่น: ย้าย `ChainActorRole` ไป `Assets/Scripts/Party/ChainActorRole.cs` ตาม §2.8 เพื่อไม่ให้
 โค้ดใหม่พึ่งไฟล์ในกลุ่ม retire
 
@@ -1183,7 +1219,7 @@ Phase 2 vertical slice resolve Combo definition ของ B/C จาก authorin
 - FactId/ChainId normalization และ same-fact dedupe
 - target/source relation
 - offer expiry
-- same-chain recursion guard
+- same-window recursion guard
 - same-target refresh
 - one offer per actor
 - simultaneous offers across actors
@@ -1238,6 +1274,27 @@ publish EnteredBreak on target X
 ตรวจทั้ง animated และ immediate path รวม target ตาย, actor down, placement fail, payload failure
 และ interrupt ก่อน/หลัง commit
 
+ก่อนเริ่ม Phase 3 ต้องผ่าน Phase 2b ด้านล่าง รวม tests §23 ไม่ใช้ synthetic facts เป็นหลักฐานว่า
+payload provenance หรือ real combat timing ถูกต้องแล้ว
+
+ลำดับ implementation ของ contracts ใหม่: provenance/session contract → consume transitions
+(รวม Busy/Paused return) → router-owned candidate buffering → real combat tests ใน Phase 2b;
+ยังไม่เปิด publisher ที่พึ่ง propagation path ซึ่ง tests ไม่ผ่าน
+
+### Phase 2b — Real EnteredBreak slice ก่อน HUD
+
+- ใช้ Player + field ally B/C และ Combo assets ทดสอบที่ผ่าน validator ตั้งแต่ Phase 1
+- นำ EnteredBreak adapter ส่วนหนึ่งของ Phase 4a มาทำตรงนี้ โดยอ่าน Hit metadata เดิม;
+  ไม่ publish Hit ซ้ำและไม่เพิ่ม EnteredBreak enum
+- ใช้ publisher gate เดียวกับ Phase 4a: gate ปิดต้องไม่แปลง Hit เป็น Combo trigger
+  แต่ legacy Hit/ChainReady ยังคง publish ตามเดิม
+- ต่อ provenance ของ payload ชนิดที่ B/C ใช้ตาม §23.6 และ chain lifetime ตาม §23.7
+- ตรวจจาก combat จริงว่า Player ทำให้ X เข้า ChainReady → B offer → กด B → commit → C offer
+  → กด C ระหว่าง B recovery → AI/placement คืนครบ ทั้ง prefab ที่ peer อยู่ root และอยู่ child
+- ตรวจ projectile miss หลัง commit และ delayed hit/status หลัง recovery หาก content slice ใช้ path นั้น
+- ใช้ test API/debug view ก่อน HUD; ผ่านแล้วจึงเริ่ม Phase 3 ส่วน Status publisher และ payload
+  ชนิดอื่นที่ยังไม่พร้อมต้องถูกจำกัดจาก Combo test content จน provenance tests ผ่าน
+
 ### Phase 3 — HUD and Input
 
 เพิ่ม:
@@ -1266,7 +1323,8 @@ Exit criteria:
 
 - Status Applied/StackChanged — เชื่อม `EffectLifecycleChanged` เข้า credited bus
   โดย early-filter lifecycle type ที่ source; ห้ามสร้าง context สำหรับ `Ticked`/`Removed`
-- Entered Break adapter — อ่าน `CombatEventMetadata.EnteredChainReady` ที่ publish อยู่แล้ว
+- Entered Break adapter — ทำ slice แรกแล้วใน Phase 2b; ขยาย regression/rollout จาก
+  `CombatEventMetadata.EnteredChainReady` ที่ publish อยู่แล้ว ไม่สร้าง adapter อีกตัว
 - ทั้งสอง publisher return ก่อนสร้าง context เมื่อ `phase4aPublishersEnabled == false`
 
 **4b — ต้องสร้าง owner system ก่อน (ไม่ใช่แค่ publisher):**
@@ -1275,7 +1333,8 @@ Exit criteria:
 - Arts Reaction — ยังไม่มีระบบ reaction เลย; เป็น workstream แยก ไม่ควรอยู่ใน migration นี้
 - tag `Infliction` — ต้องนิยาม tag และติดให้ status assets ก่อนจะนับได้
 
-4a ทำได้ทันทีหลัง Phase 3 ส่วน 4b ต้องมี product decision และแผนของตัวเอง Combo Skill ต้อง
+EnteredBreak slice ของ 4a ทำก่อน HUD ใน Phase 2b; Status publisher/ส่วนที่เหลือของ 4a ทำหลัง
+Phase 3 ส่วน 4b ต้องมี product decision และแผนของตัวเอง Combo Skill ต้อง
 ส่งมอบได้โดยไม่รอ 4b
 
 Exit criteria (ของ 4a):
@@ -1390,7 +1449,7 @@ Combo asset ห้าม serialize type จากไฟล์เหล่าน�
 - status publisher early-filter: AppliedNew/Refreshed/StackChanged map ถูกต้อง และ Ticked/Removed
   ไม่สร้างหรือ publish combat fact
 - same-fact dedupe ด้วย `(FactId, ComboSkillId, OwnerRole)`
-- same-chain recursion guard ด้วย `(ComboSkillId, ChainId, OwnerRole)`
+- same-window recursion guard ด้วย `(ComboWindowId, ComboSkillId, OwnerRole)`
 - recursion depth
 - refresh/replacement policy
 - expiry clock ไม่ถูก world slow ยืด และหยุดเดินระหว่าง pause
@@ -1579,6 +1638,8 @@ instruction conflict แทนการใช้ validation path อื่น
 26. same-owner multi-match เลือก priority/tie-break ได้ deterministic โดยไม่พึ่ง dictionary order
 27. HUD countdown อ่าน `ComboClockNow` และตรงกับ pause/hitlag/world-slow contract
 28. target despawn/recycle cancel stale offer แม้ pooled object เดิมถูก activate กลับมา
+29. refresh identity, atomic commit guards, stale binding callbacks, projectile success และ
+    bounded lineage/delayed-fact tests ตาม §23.8 ผ่าน รวม real EnteredBreak slice ก่อน HUD
 
 ---
 
@@ -1612,7 +1673,8 @@ PartyRuntime มี Player + PartySlot1 + PartySlot2
 7. single field-ally executor adapter + concurrency tests
 8. docs ของ contracts ที่ implement จริง
 
-เมื่อ vertical slice นี้ผ่าน จึงต่อ HUD และ Phase 4a Status/EnteredBreak publishers ส่วน Final Strike,
+เมื่อ synthetic vertical slice นี้ผ่าน ให้ต่อ real EnteredBreak slice ใน Phase 2b ก่อน HUD แล้วจึง
+ทำ Phase 4a Status publisher/rollout ที่เหลือ ส่วน Final Strike,
 Arts Reaction และ Infliction ทำเฉพาะเมื่อมี post-MVP workstream ที่เจ้าของโปรเจกต์อนุมัติ
 
 ---
@@ -1646,3 +1708,290 @@ Arts Reaction และ Infliction ทำเฉพาะเมื่อมี po
 
 หากยังไม่ได้คำตอบ ให้ใช้ vertical-slice defaults ใน Phase 0 โดยไม่ขยาย scope และรักษา architecture
 ให้เปลี่ยน policy ภายหลังได้โดยไม่แก้ execution core
+
+---
+
+## 23. Source audit และ contracts เพิ่มเติม — 2026-09-10
+
+### 23.1 หลักฐานจากโค้ดปัจจุบัน
+
+เส้นทางในตาราง relative ต่อ `Assets/Scripts/`; เป็นผลอ่าน source ไม่ใช่ผลรันเกม:
+
+| หลักฐาน | สิ่งที่ยืนยันได้ / ผลต่อแผน |
+|---|---|
+| `Player/Skill/CharacterSkillManager.cs`: `SkillCastRequest`, immediate path และ `ExecuteReservedCast` | ยังไม่มี `OnCommitted`; immediate เรียก `OnStarted` แล้ว `CastReleased` ก่อน execute และ `reservation.Commit()` ภายใน start call ส่วน `CastStarted` event อยู่ animated path จึงยังต้องทำ prerequisite §2.4 |
+| `Player/Skill/Payloads/ProjectileSkillPayloadDef.cs`: `ExecuteWithResult` | คืน success เมื่อ `spawned > 0`; ยิงพลาดภายหลังยังเสีย cost เป็น behavior ที่มีอยู่แล้ว ไม่ใช่ product policy ใหม่ |
+| `Passives/CombatEventBus.cs`: `Publish` | เรียก multicast delegate ตรง ๆ แบบ synchronous ไม่มี queue หรือ normalization จึงเกิด nested dispatch ได้จริง |
+| `Passives/PassiveTypes.cs`: `PassiveEventType` | ยังเป็น implicit enum จาก None ถึง MovementDistanceReached; ยังต้องทำ Phase 0.5 |
+| `Party/PartyRuntimeBinder.cs`: `TryBind` | configure actors/formation/helper แล้ว bind UI; ยังไม่มี Combo bind หรือ Combo binding version |
+| `AI/ChainAttack/FieldAllySequenceRunner.cs`: `TryReserve`, `ReleaseReservation` | มี owner token และ ReferenceEquals guard อยู่แล้ว ต้อง reuse ไม่สร้าง reservation ownership คู่ขนาน |
+| `AI/ChainAttack/FieldAllyAutonomyScope.cs`: `Restore` และ runner cleanup | Restore เขียน BT/NavMesh/visibility-related state; token ของ ReleaseReservation เพียงอย่างเดียวไม่ป้องกันการเรียก Restore เก่าทับ execution ใหม่ |
+| `Player/Skill/SkillCastContext.cs` และ `Projectile/Projectile.cs`: `InitFromSkillExecution` | cast context ยังไม่มี parent combat fact; skill projectile init สร้าง ChainId ใหม่และ External origin แม้ projectile event builder รองรับ child context อยู่แล้ว |
+| `Player/Skill/SkillHitboxSequenceRuntime.cs` | มีการตั้ง `_chainId = CombatEventBus.NextChainId()`; ต้อง audit/thread provenance หาก slice ใช้ hitbox ด้วย ไม่แก้เฉพาะ projectile แล้วถือว่าทุก payload ผ่าน |
+| `StatusEffects/StatusEffectInstance.cs`, `StatusEffectController.cs` | instance เก็บ ChainId/attribution และ lifecycle event มีอยู่แล้ว แต่ไม่ได้ทำให้ cast ต้นทางส่ง Combo chain เข้ามาโดยอัตโนมัติ |
+| `Passives/PassiveController.cs`: `CleanupOldChainState`, `TouchChain` | dedupe เดิมใช้ last-seen TTL ค่าเริ่มต้น 10 วินาทีบน Time.timeAsDouble; เป็นตัวอย่าง bounded cache ไม่ใช่หลักฐานว่า Combo delayed effects จะอยู่ในช่วงนี้เสมอ |
+
+ยังไม่พบไฟล์ `PartyCombo*` ใต้ `Assets/Scripts` ณ audit นี้ จึงถือ refresh/binding/lifetime
+contracts ต่อไปนี้เป็นงานใหม่ ไม่ใช่อ้างว่ามี implementation แล้ว
+
+### 23.2 Refresh identity และอายุรวม
+
+- refresh ทำได้เฉพาะ `Offered` และต้องตรง owner, definition และ target incarnation เดิม
+- เก็บ OfferId, OfferedAt, trigger snapshot, FactId, ChainId และ Depth เดิมทั้งหมด
+- เก็บ ComboWindowId และ window deadline เดิมด้วย; refresh ข้าม window ไม่เปลี่ยน provenance
+  ใต้ OfferId เดิม และ offer ของ window ที่หมดอายุแล้วต้อง expire ก่อนพิจารณา offer รอบใหม่
+- fact ที่ทำให้ refresh ไม่กลายเป็น parent ของ execution; consume ยังสืบทอด fact ที่เปิด offer
+- default สำหรับ slice: เพิ่ม `maxOfferLifetimeSeconds` ที่ไม่น้อยกว่า offerDurationSeconds;
+  ค่าเริ่มต้นที่เสนอคือสองเท่าของ offer duration เพื่อให้ refresh มีประโยชน์แต่ไม่ต่ออายุไม่สิ้นสุด
+- `ExpiresAt = min(now + offerDurationSeconds, OfferedAt + maxOfferLifetimeSeconds,
+  ComboChainExpiresAt)`; เวลาเหล่านี้ใช้ Combo clock เดียวกัน
+- fact เดิมที่มี non-zero FactId และเคยรับแล้วต้องถูก dedupe ก่อน refresh จึงยืดเวลาไม่ได้
+- ถ้าต้องการเปลี่ยน parent/target/definition ให้ใช้ replacement ที่ออก OfferId ใหม่;
+  MVP default ยังเก็บ offer เดิมเมื่อคนละ target ตาม §2.2
+- `Starting`/`Executing`/`Committed` ห้ามถูก refresh หรือ replace จน execution lifecycle จบ
+
+เพดานสองเท่าเป็น **ค่าเริ่มต้นสำหรับ playtest ที่เสนอในแผน** ไม่ใช่ค่าที่พบในโค้ด;
+การปรับเพดานเป็น content tuning โดยไม่เปลี่ยน identity contract
+
+### 23.3 Atomic consume และ commit publisher เพียงรายเดียว
+
+controller ถือ offer/chain state และเป็นผู้ publish `ComboSkillCommitted` เพียงรายเดียว;
+executor ดูแล actor execution และส่ง request-scoped result กลับมา
+
+1. ตอน consume: ตรวจ binding/OfferId/expiry แล้วเข้า Starting, จอง in-flight
+   `(ComboWindowId, ComboSkillId, OwnerRole)` และตั้ง callbacks ก่อนเรียก executor/start API
+2. executor รายงาน commit หลัง transaction commit; controller ตรวจ execution identity และ
+   binding version แล้ว mark Committed, commit-notified และ used-per-window ก่อนเรียก bus
+3. จึงสร้าง child fact ใหม่และ publish; การ dispatch ซ้อนต้องเห็น guards ที่ปิดครบแล้ว
+   หลัง publish จบจึงให้ router flush candidates ของ execution ตาม §23.6
+4. pre-commit failure ปล่อย in-flight guard และ cleanup ตาม failure policy; post-commit failure
+   ไม่ลบ used-per-window guard ไม่คืน cooldown และไม่เปลี่ยน settlement จาก Committed
+5. callback ซ้ำหรือ start API คืนภายหลัง synchronous callback ต้องไม่เปลี่ยน terminal/committed
+   state หรือ publish ซ้ำ; ไม่ต้องเพิ่ม global event queue เพียงเพื่อแก้ ownership นี้
+
+อย่า publish commit จาก executor แล้ว publish อีกครั้งจาก controller/global CastCommitted listener
+
+transaction settlement แยกจาก offer/execution outcome และเปลี่ยนได้เพียง:
+
+```text
+Pending → Committed
+Pending → Rejected
+```
+
+Committed/Rejected เป็น terminal settlement; interruption/timeout หลัง commit บันทึกเป็น execution
+outcome แยก (offer อาจเข้า Failed ตาม §8 ได้) แต่ห้ามเขียน settlement เป็น Rejected
+เฉพาะ pre-commit rejection จึงทิ้ง buffered candidates และปฏิเสธ delayed facts ของ execution นั้น
+ส่วน post-commit interruption cleanup actor โดยคงสิทธิ์ของ delayed projectile/status ภายใต้
+session, deadline และ target eligibility เดิม การ invalidate session ยังปิดสิทธิ์ Combo ทั้งหมดได้
+
+executor ต้องแยกผล start rejection ออกจาก failure ของ cast ที่ accept ไปแล้ว:
+
+| ผล | การจัดการ |
+|---|---|
+| Accepted | Executing หรือรับ synchronous commit/failure ที่เกิดก่อน start API คืนค่า |
+| Busy / Paused ก่อน accept | cleanup provisional reservation/scope และคืน in-flight guard; กลับ Offered เฉพาะเมื่อ session/owner/target ยัง valid และ offer ยังไม่หมดเวลา |
+| Owner/target/session invalid | Cancelled; ห้ามคืน offer เข้า binding ใหม่ |
+| Placement fail | Failed และปิด offer ตาม MVP เดิม |
+| Payload fail หลัง accept | Failed และ cleanup transaction; ไม่ใช้ transient retry path |
+
+การกลับ Offered เก็บ OfferId, trigger snapshot และ expiry เดิม ไม่ต่อเวลา; ถ้าหมดเวลาให้ Expired
+และถ้า binding เปลี่ยนให้ Cancelled ใช้ typed start result/reject reason จาก executor
+ไม่อนุมานจาก bool false หรือถือทุก failure ว่า Busy
+
+### 23.4 Binding version และ cleanup ownership
+
+- เพิ่ม controller-owned `PartyBindingVersion` ที่เปลี่ยนทุก unbind/rebind/disable invalidation;
+  request จับ version, owner context, OfferId และ execution token ก่อน start API
+- ใช้ `ComboExecutionProvenance.SessionId` เป็น authoritative identity ของ binding/clock session
+  นี้แทนการสร้าง counter อีกชุดที่ต้อง sync กัน; PartyBindingVersion เป็นชื่อแนวคิดเดิม
+  ทุก bind รอบใหม่ใช้ SessionId ใหม่ที่ไม่ซ้ำแม้เปลี่ยน controller instance
+- invalidation ต้องเกิดก่อน cancellation callbacks แล้วหยุดรับ input/events และ cleanup execution
+  เก่าให้ครบก่อน bind actor ใหม่หรืออนุญาต reservation ใหม่
+- callback ที่ version เก่าห้ามสร้าง offer, publish Combo fact หรือแก้ HUD ของ binding ใหม่
+- stale callback ยังจบ cleanup ของ execution เดิมได้ แต่ต้องผ่าน owner token/execution identity;
+  ห้ามปล่อย reservation ของ actor ใหม่หรือ Restore snapshot เดิมลง actor ที่ถูก reuse แล้ว
+- reuse `FieldAllyMember.TryReserve(owner)`/`ReleaseReservation(owner)` ที่มีอยู่;
+  Combo adapter ต้อง guard ทั้ง Restore/teleport/visibility/placement release ไม่ใช่ guard เฉพาะ
+  ReleaseReservation เพราะ utility เดิมบางตัวอ้าง actor transform หรือ scope ปัจจุบัน
+- OfferId ต้องไม่วนเริ่มใหม่ทุก bind ใน controller เดิม; HUD unbind และล้าง callbacks เก่า
+  หาก input ถูก buffer ข้าม controller instance ต้องพก binding identity เพิ่มด้วย
+- ตรวจ SessionId ของ delayed facts ก่อนเทียบ deadline หรือสร้าง chain bucket; facts จาก session
+  เก่ายังทำ damage/status ตาม owner system แต่เปิด Combo ใน session ใหม่ไม่ได้
+- unbind/disable invalidate session ก่อน callbacks และล้าง candidate buffer เก่า; clock local
+  เริ่มใหม่ได้เฉพาะ session ใหม่ จึงไม่เปรียบเทียบ timestamp จากคนละ time domain
+
+### 23.5 Cast success กับ eventual hit
+
+| เหตุการณ์ | Commit และ chain |
+|---|---|
+| projectile payload สร้างกระสุนไม่ได้เลย | คืน failure, release reservation, ไม่ publish commit |
+| สร้างอย่างน้อยหนึ่งลูกได้ แม้จำนวนไม่ครบ | success ตาม implementation ปัจจุบัน; commit หนึ่งครั้งต่อ cast |
+| กระสุนยิงพลาด เป้าตาย หรือ invincible เมื่อ impact | ไม่ย้อน commit/cooldown; C ที่เปิดจาก commit ยังคงใช้ policy ของตัวเอง |
+| ต้องการ C เมื่อ B โดนจริง | เป็น hit-trigger content แยก ไม่เปลี่ยนความหมาย ComboSkillCommitted |
+
+สำหรับ payload ชนิดอื่นใช้ `SkillExecutionResult` ของ payload/composite นั้น ห้ามเพิ่ม controller
+heuristic ว่าไม่มี damage แปลว่า cast fail และห้ามแก้ ordinary Battle Skill semantics ระหว่าง migration
+
+### 23.6 Payload provenance เป็นส่วนหนึ่งของ real slice
+
+การ publish child commit ที่ถูกต้องไม่พอ: projectile/hitbox/status ของ B อาจสร้าง EnteredBreak
+หรือ StatusApplied ที่ย้อนกลับเข้า Combo evaluator ต้องรักษา lineage ตลอด path ที่เปิดใช้จริง
+
+- เพิ่ม immutable optional `ComboExecutionProvenance` ในไฟล์ของตนเอง ประกอบด้วย SessionId,
+  ComboWindowId, ExecutionId, ComboSkillId และ ChainExpiresAt; ExecutionId ระบุ cast ภายใน session ไม่ใช้
+  RequestId จาก skill manager ตัวเดียวเป็น global key เมื่อหลาย actor รันพร้อมกัน
+- ChainId และ Depth ใช้ fields เดิมของ combat context ไม่ใส่สำเนาซ้ำใน provenance;
+  request/runtime ที่ยังไม่มี event envelope เก็บ lineage fields เหล่านี้ตาม contract เดิม
+- ส่งผ่าน start request → SkillInstance execution → SkillCastContext → projectile/hitbox →
+  PassiveEventContext → passive action → status application/instance → lifecycle event;
+  รวม child runtimes และ refresh/re-attribution ที่เปลี่ยนแหล่งของ status ต้องย้าย lineage
+  กับ provenance เป็นชุดเดียวกัน ห้ามผสม deadline ของผู้ยิงเก่ากับ ChainId ของผู้ยิงใหม่
+- `CombatEventBus.CreateChildContext` สืบทอด provenance อัตโนมัติจาก parent;
+  external root ใหม่ไม่มี provenance โดย default ส่วน adapter ที่ forward ผลเดิมต้องส่ง
+  snapshot เดิม ไม่สร้าง root เพื่อเลี่ยง propagation
+- แยกการสืบทอดผลภายใน cast เดิมออกจากการเริ่ม Combo cast ใหม่อย่างชัดเจน:
+  projectile → hit → passive → status ของ B สืบทอด provenance ของ B ทั้งชุด;
+  เมื่อผู้เล่นกด C ให้สร้าง provenance ของ C ใหม่ โดยรักษา SessionId, ChainId, ComboWindowId และ ChainExpiresAt
+  จาก offer แต่สร้าง ExecutionId ใหม่และตั้ง ComboSkillId เป็น C
+- ลงทะเบียน settlement ของ C เป็น Pending ก่อนเรียก start API และส่ง provenance ใหม่นี้เข้า
+  payload; commit fact ของ C ต้องใช้ execution provenance ของ C อย่าง explicit แม้สร้าง child
+  จาก trigger fact ของ B โดยยังรักษา ChainId และเพิ่ม Depth ตามเดิม
+- child factory ต้องรองรับการระบุ current execution provenance สำหรับจุดเริ่ม cast ใหม่;
+  ordinary descendants ใช้ default inheritance ห้ามให้ C lookup settlement ผ่าน ExecutionId ของ B
+- provenance แยกจาก PassiveEventOrigin: fact เป็นทั้ง Passive origin และสืบเนื่องจาก Combo ได้;
+  ไม่ใช้ origin filter แทนการตรวจ SessionId/ExecutionId
+- call sites ที่ไม่ใช่ Combo คง behavior เดิม; แต่ละ gameplay fact ใช้ FactId ใหม่
+  ไม่ reuse trigger FactId เป็น identity ของ Hit/Status fact
+- commit fact เป็น child ของ trigger ที่ Depth + 1; payload-origin facts ต้องเพิ่ม depth จาก
+  execution lineage อย่างกำหนดชัด ห้าม reset เป็น 0 หรือเรียก NextChainId เมื่อมี Combo parent
+- router เป็นเจ้าของ candidate buffer keyed ด้วย (SessionId, ExecutionId); controller แจ้ง
+  request settlement โดยลงทะเบียน Pending ก่อน start API เพื่อรองรับ immediate/nested dispatch
+- เมื่อ event เกิด evaluator ประเมิน trigger/filter รวม target status ณ จังหวะรับ event ทันที;
+  ถ้า request ยัง Pending ให้พัก immutable matching candidates พร้อม definition/owner/target handle,
+  trigger snapshot, FactId/lineage, session และลำดับรับ event โดยยังไม่เปิด offer
+- ตรวจ charge readiness ณ event และเก็บเวลา event เพื่อไม่ธนาคาร trigger ข้าม cooldown
+  หรือเพิ่มเวลาตอบสนองด้วยการ buffer; candidate ที่หมดอายุเมื่อ flush ถูกทิ้ง
+- commit success: controller บันทึก guards → publish ComboSkillCommitted → router flush candidates
+  ตามลำดับรับ event; แต่ละ fact group ผ่าน priority/tie-break และ refresh policy เดิม
+  ไม่สร้าง arbitration อีกชุด หาก publish ทำให้ session invalid ให้ทิ้ง buffer แทน flush
+- ตอน flush ตรวจ session, owner/target validity, charge, expiry, once-per-window guard และสิทธิ์
+  candidate ตามกติกาด้านล่าง แต่ไม่ประเมิน
+  trigger status เดิมใหม่ ตัวอย่าง: Burn apply แล้ว remove ภายใน cast ยังนับว่า trigger เคยเกิด;
+  ถ้า target ตายก่อน flush ต้องทิ้ง candidate
+- admission dedupe ใช้ key (FactId, ComboSkillId, OwnerRole): ครั้งแรกที่ enqueue บันทึก Queued
+  พร้อม candidate identity; fact ซ้ำห้าม enqueue อีก ไม่ว่า key จะ Queued/Delivered/Discarded
+- flush ตรวจว่า candidate ถือ key ที่ยัง Queued แล้วเท่านั้น; validity ไม่ผ่านให้ Discarded
+  ถ้าผ่านให้ mark Delivered ก่อนส่ง controller เพื่อกัน nested dispatch ไม่เรียก admission ซ้ำ
+- Delivered หมายถึงส่งให้ controller พิจารณาแล้ว ไม่รับประกันว่าเปิด offer; controller ยังใช้
+  priority/refresh และ once-per-window guard เดิม การส่ง fact group ต้อง claim candidates ที่ส่ง
+  ก่อน callback แรก และเก็บ terminal dedupe keys จนหมด chain window/session
+- cast fail/cancel ก่อน commit ให้ทิ้ง candidates ของ execution นั้น โดยไม่ suppress/rollback combat events
+  ที่ passive/damage subscribers เดิมได้รับ; ห้าม buffer global bus
+- settlement record ของ execution ที่อาจมี delayed facts เก็บ Committed/Rejected จน chain deadline
+  หรือ session invalidation; delayed fact จาก Rejected/unknown execution ห้ามเปิด Combo
+  ส่วน Committed ประเมินได้ทันที กฎนี้ครอบ passive/status descendants ที่รักษา ExecutionId เดิม
+- interruption/cleanup failure หลัง commit ไม่เปลี่ยน record และไม่ยกเลิก candidates เพียงเพราะ
+  execution outcome เป็น Failed; session/expiry/target checks ยังใช้ตามปกติ
+- delayed runtime ต้องเก็บ snapshot ของ lineage เอง ไม่พึ่ง active cast บน manager ซึ่งจบไปแล้ว
+- pooled projectile/runtime ต้องล้าง provenance เมื่อ reset และ copy เมื่อสร้างลูกตาม ownership เดิม
+- ก่อนรองรับ payload ชนิดใดใน Combo ให้มี focused test ของ provenance ชนิดนั้น;
+  validator ปฏิเสธชนิดที่ยังไม่รองรับใน slice อย่าขยายเป็นการ refactor ทุก payload พร้อมกัน
+
+ส่วน request provenance/Combo-only settlement buffering นี้ **ยังไม่มีใน source ที่ตรวจ**;
+นับเป็น dependency ของ Phase 2b และ Phase 4a ไม่ใช่งานแก้ enum/publisher อย่างเดียว
+
+### 23.7 Bounded chain lifetime และ delayed facts
+
+แยก Combo window ออกจาก combat chain: once-per-window ไม่ใช่ once-per-combat-ChainId ตลอดอายุ
+projectile/status อย่าคัดลอก passive TTL 10 วินาทีมาเป็น gameplay policy และอย่าลบ guard
+เพียงเพราะ actor recovery จบ
+
+กติกา MVP คือ **finite Combo eligibility window** โดยแต่ละ ID มีหน้าที่ต่างกัน:
+
+| ID | หน้าที่ |
+|---|---|
+| SessionId | ระบุ binding/clock session และกันข้อมูลจากทีมรอบเก่า |
+| ChainId | ติดตามสายเหตุการณ์ combat ตามระบบเดิม |
+| ComboWindowId | ระบุช่วง Combo หนึ่งรอบสำหรับจำกัดการใช้ซ้ำ |
+| ExecutionId | ระบุ settlement ของ cast หนึ่งครั้งภายใน session |
+| FactId | ระบุ fact occurrence และกันรับ event ซ้ำ |
+
+- composition config มี `maxComboChainLifetimeSeconds` (> 0); กำหนดค่าทดสอบร่วมกับอายุ
+  projectile/status ของ slice และบันทึกใน fixture ก่อนผ่าน Phase 2b ไม่เดาค่าจาก passive TTL
+- external fact ในที่นี้คือ fact ที่ไม่มี Combo provenance ไม่ใช่ตรวจ Origin == External;
+  passive/status จากการโจมตีปกติจึงเข้าทางนี้ได้เมื่อผ่าน trigger filters
+- router เก็บ active-window mapping ตาม (SessionId, ChainId); external fact แรกสร้าง
+  ComboWindowId ใหม่ที่ไม่ซ้ำภายใน session และ deadline บน Combo clock ส่วน external facts
+  ChainId เดียวกันที่เข้าระหว่าง window ยังเปิดอยู่ใช้ window เดิม
+- เมื่อ window หมดอายุ ลบ active mapping ของ window นั้น; external fact ใหม่ที่เกิดภายหลัง
+  สร้าง window ใหม่ได้แม้ ChainId เดิม เช่น hit ใหม่จาก projectile โจมตีปกติที่ยังอยู่
+- Combo cast และ descendants ทุกชนิดต้องส่ง ComboWindowId/deadline เดิม ไม่เข้าทางสร้าง
+  external window ใหม่; หมดอายุหรือ window/session ไม่ valid ให้ reject ก่อนสร้าง bucket
+- offer/execution/payload provenance ทุก link รักษา deadline เดิม ห้ามต่อ deadline ด้วย refresh
+- ComboChainExpiresAt ของ offer และ ChainExpiresAt ของ provenance เป็น deadline เดียวกัน;
+  ตรวจ SessionId ก่อนอ่านค่ากับ clock ปัจจุบัน ไม่ต้องเพิ่ม global clock สำหรับ MVP
+- ระหว่าง window เก็บ used-per-window guards แม้ไม่มี offer หรือ actor กำลัง recovery
+- in-flight/used key คือ (ComboWindowId, ComboSkillId, OwnerRole) ภายใน session;
+  ChainId ไม่ใช่ key ของการจำกัดจำนวนครั้งใช้ Combo อีกต่อไป
+- เมื่อ deadline ถึง: ปิด pending offers และไม่รับ Combo candidates ต่อ; cast ที่ accept แล้ว
+  จบ/cleanup ได้ตามเดิมและ commit ยังต้องชำระ cooldown แต่ไม่เปิด link หลังหมด window
+- delayed fact ที่มี Combo provenance และ deadline เก่าต้องถูก reject ก่อนสร้าง bucket;
+  ห้ามตีความเป็น root ใหม่หลัง bucket ถูกลบ ดังนั้นไม่ต้องเก็บ tombstone ทุก chain ตลอด session
+- actual damage/status events ยังทำงานตาม owner system; deadline จำกัดเพียงสิทธิ์เปิด Combo
+- เก็บ in-flight cleanup state แยกจน request จบ แล้วค่อยลบ; kill switch/teardown ล้างทั้งหมด
+- external fact ใหม่ต้องมี FactId ใหม่จาก publisher; re-publish context เดิมไม่ใช่เหตุการณ์ใหม่
+  MVP ใช้ live dispatch ไม่รองรับ replay external facts หลังลบ dedupe cache หากเพิ่ม replay
+  ภายหลังต้องมี event-age/ingress contract ก่อน ห้ามสร้าง FactId ใหม่ให้ replay เพื่อเปิด window
+
+ต้อง playtest window ที่ยาวที่สุดและความถี่ external hits หลังหมด window; ถ้าภายหลังต้องการ
+once-per-combat-ChainId ตลอดอายุจริง ต้องออกแบบ external-source lifetime tracking แยก
+ไม่อ้างว่า cache แบบจำกัด window รับประกันเงื่อนไขนั้นแล้ว
+
+### 23.8 Tests และ acceptance ที่เพิ่ม
+
+เพิ่มใน §16 และถือเป็นส่วนหนึ่งของ Definition of Done §20:
+
+- fact คนละ chain refresh offer เดียว: identity/parent เดิมคงอยู่, same FactId ไม่ยืด expiry,
+  refresh ถึงเพดานแล้วหมดอายุ และ replacement reject callback ของ OfferId เก่า
+- immediate commit มี listener dispatch ซ้อนกลับเข้า owner เดิม: used/in-flight guards ป้องกัน
+  re-entry; callback ซ้ำไม่ publish เพิ่ม และ failure ก่อน commit ปล่อยเฉพาะ reservation ของตน
+- rebind/disable ระหว่าง cast แล้ว callback เก่ากลับมา: ไม่แก้ทีมใหม่, ไม่ restore BT/NavMesh/
+  visibility/placement ของ execution ใหม่ และ token เดิม cleanup ได้เพียงครั้งเดียว
+- projectile spawn zero/partial-success/miss: charge และ commit ตรง §23.5
+- real EnteredBreak จาก Combo projectile/hitbox และ StatusApplied path ที่เปิดใช้รักษา ChainId,
+  เพิ่ม depth, FactId ไม่ซ้ำ และ pool reuse ไม่รับ provenance เก่าของผู้ยิงก่อนหน้า
+- payload publish ระหว่าง ExecuteReserved ก่อน commit: ประเมิน trigger ทันทีแต่พัก candidate
+  จน settlement; pre-commit rejection ไม่เปิดต่อ แต่ subscribers เดิมยังเห็น gameplay facts ตามเดิม
+- Combo hit → passive → status → lifecycle event รักษา provenance ครบแม้ origin เปลี่ยนเป็น Passive;
+  child factory, status refresh/re-attribution และ pooled child runtime ไม่ทำข้อมูลหายหรือผสมกัน
+- apply/remove Burn ใน cast เดียว: matching candidate เดิมยังอยู่เมื่อ commit; target ตายก่อน flush
+  ต้องทิ้ง candidate และ charge ไม่พร้อมตอน event ห้ามรอ charge พร้อมตอน flush
+- หลาย candidates flush ตามลำดับรับและใช้ priority/refresh เดิม; commit publish ที่ทำให้ rebind
+  ต้องไม่ flush buffer เก่าเข้าทีมใหม่ และ duplicate settlement ไม่ flush ซ้ำ
+- เปลี่ยน controller ขณะ projectile/status ยังอยู่: SessionId เก่าถูก reject ก่อนเทียบ deadline
+  แม้ clock ใหม่เริ่มศูนย์; ordinary damage/status behavior ไม่เปลี่ยน
+- Busy/Paused ก่อน accept คืน Starting → Offered โดย OfferId/expiry เดิมและไม่มี reservation รั่ว;
+  หากหมดอายุ/owner invalid/rebind ระหว่าง attempt ให้ Expired/Cancelled ตามเหตุผลจริง
+- cast ถูก reject ก่อน commit แล้วมี delayed descendant event: ไม่เปิด Combo และไม่สร้าง root ใหม่
+- B commit แล้วถูก interrupt ระหว่าง recovery: settlement ยังคง Committed; projectile ที่โดน
+  ภายหลังยังเปิด offer ได้หาก session/deadline/target ผ่าน และ cooldown ไม่ถูกคืน
+- fact เดิมเข้ามาสองครั้งก่อน commit: enqueue หนึ่ง candidate และส่ง controller เพียงครั้งเดียว;
+  flush ไม่ถูก dedupe ของตัวเองปฏิเสธ และ nested republish ระหว่าง delivery ไม่ enqueue ซ้ำ
+- B commit → C เริ่มและปล่อย event → C ถูก reject ก่อน commit: C ใช้ ExecutionId/ComboSkillId
+  ใหม่และ Pending ของตนเอง; candidates ของ C ถูกทิ้ง ไม่ผ่านด้วย settlement Committed ของ B
+- delayed fact ที่มี Combo provenance หลัง recovery แต่ก่อน window deadline ยังถูก dedupe;
+  หลัง deadline ไม่เปิด root ใหม่;
+  cleanup หลังหมด window ไม่ทำ cache โตตามจำนวน chain ตลอด session
+- external facts ไม่มี Combo provenance และ ChainId เดียวกันระหว่าง window เปิดอยู่ใช้
+  ComboWindowId เดียวกัน; actor ใช้ Combo เดิมซ้ำใน window นั้นไม่ได้
+- external hit ใหม่หลัง window หมดอายุใช้ FactId ใหม่และสร้าง ComboWindowId ใหม่ได้แม้
+  combat ChainId เดิม; offer ใหม่ยังต้องผ่าน charge และ eligibility เดิม
+- Combo projectile/passive/status จาก window เก่าส่ง fact ใหม่หลัง deadline ต้องถูก reject
+  ไม่สร้าง external window ใหม่; link B → C เปลี่ยน ExecutionId แต่คง ComboWindowId
+- Phase 2b combat จริงผ่านก่อน Phase 3 HUD และ validator ขั้นต่ำผ่านก่อนสร้าง test assets ใช้งาน
+
+ไฟล์ที่เพิ่มใน touch map §15 ตาม scope ที่ใช้จริง: `ComboExecutionProvenance.cs` (ไฟล์ใหม่),
+`PassiveEventContext.cs`, `CombatEventBus.cs`, `PassiveController.cs`, status application/instance
+และ lifecycle forwarding ที่เกี่ยวข้อง, `SkillCastContext.cs`, `SkillInstance.cs`,
+`ProjectileSkillPayloadDef.cs`, `Projectile.cs`, `SkillHitboxSequenceRuntime.cs` และ status apply
+entry point ที่ slice เรียก รวม reset/copy ของ runtime ที่เปลี่ยน; ไม่ต้องแก้ทุก payload ใน PR แรก

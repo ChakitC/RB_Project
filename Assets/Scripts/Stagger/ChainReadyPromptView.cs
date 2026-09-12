@@ -141,6 +141,7 @@ public sealed class ChainReadyPromptView : MonoBehaviour
 
         cachedBlocked = partyCommand.TryGetChainReadyPromptBlockReason(
             playerInput.ChainAttackDefinition,
+            staggerMeter,
             out cachedReason,
             out cachedMissingCommandPoints);
     }

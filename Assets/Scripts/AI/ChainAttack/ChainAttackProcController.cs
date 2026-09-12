@@ -20,6 +20,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
 
     StaggerMeter _pendingChainReadyMeter;
     GameObject _pendingChainReadyTarget;
+    SkillTargetHandle _pendingChainReadyTargetHandle = SkillTargetHandle.None;
     SkillChainDef _pendingChainReadyDef;
     bool _subscribed;
     CombatEventBus _subscribedCombatEventBus;
@@ -28,7 +29,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
     int _nextIntroRequestId = 900000;
     int _pendingIntroId;
     SkillChainDef _pendingIntroDef;
-    Transform _pendingIntroTargetTransform;
+    SkillTargetHandle _pendingIntroTargetHandle = SkillTargetHandle.None;
     CharacterAnimBrain _animBrain;
     CharacterAnimBrain _subscribedIntroBrain;
     CharacterAnimDriver _animDriver;
@@ -260,6 +261,13 @@ public sealed class ChainAttackProcController : MonoBehaviour
         if (chainDef == null || chainAttackCoordinator == null || meter == null)
             return false;
 
+        SkillTargetHandle targetHandle = ChainAttackTargetingUtility.CreateTargetHandle(targetTransform);
+        if (targetHandle == null || !targetHandle.TryResolveAliveTarget(out Transform resolvedTarget, out _) ||
+            resolvedTarget != targetTransform)
+        {
+            return false;
+        }
+
         // A chain is already committed and waiting on its intro. Starting another one here would
         // overwrite the pending intro state and strand the first target's meter.
         if (_introGateActive || _pendingChainReadyMeter != null)
@@ -267,17 +275,18 @@ public sealed class ChainAttackProcController : MonoBehaviour
 
         if (chainDef.enableChainReadyIntroCutscene &&
             ResolveIntroCutsceneDef() != null &&
-            TryStartIntroCutscene(chainDef, target, targetTransform, meter))
+            TryStartIntroCutscene(chainDef, target, targetHandle, meter))
         {
             return true;
         }
 
-        if (!chainAttackCoordinator.TryStartSequence(chainDef.chainSequence, targetTransform))
+        if (!chainAttackCoordinator.TryStartSequence(chainDef.chainSequence, targetHandle))
             return false;
 
         StampCooldown(chainDef);
         _pendingChainReadyDef = chainDef;
         _pendingChainReadyTarget = target;
+        _pendingChainReadyTargetHandle = targetHandle;
         _pendingChainReadyMeter = meter;
         meter.BeginChainExecution();
         return true;
@@ -295,7 +304,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
     bool TryStartIntroCutscene(
         SkillChainDef chainDef,
         GameObject target,
-        Transform targetTransform,
+        SkillTargetHandle targetHandle,
         StaggerMeter meter)
     {
         ResolveAnimBrainAndPresenter();
@@ -323,12 +332,13 @@ public sealed class ChainAttackProcController : MonoBehaviour
         StampCooldown(chainDef);
         _pendingChainReadyDef = chainDef;
         _pendingChainReadyTarget = target;
+        _pendingChainReadyTargetHandle = targetHandle;
         _pendingChainReadyMeter = meter;
         meter.BeginChainExecution();
 
         _pendingIntroId = introId;
         _pendingIntroDef = chainDef;
-        _pendingIntroTargetTransform = targetTransform;
+        _pendingIntroTargetHandle = targetHandle;
         _introGateActive = true;
         _subscribedIntroBrain = _animBrain;
         _subscribedIntroBrain.ChainPlaybackCompleted += OnIntroChainPlaybackCompleted;
@@ -341,7 +351,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
         if (!_introGateActive || id != _pendingIntroId) return;
 
         SkillChainDef def = _pendingIntroDef;
-        Transform target = _pendingIntroTargetTransform;
+        SkillTargetHandle target = _pendingIntroTargetHandle;
         ClearIntroGate();
 
         if (_cutscenePresenter != null)
@@ -361,9 +371,10 @@ public sealed class ChainAttackProcController : MonoBehaviour
         AbortPendingChainReady(refundReason: "intro cutscene interrupted");
     }
 
-    void StartChainAfterIntro(SkillChainDef def, Transform target)
+    void StartChainAfterIntro(SkillChainDef def, SkillTargetHandle target)
     {
-        if (def == null || _pendingChainReadyTarget == null || target == null)
+        if (def == null || _pendingChainReadyTarget == null || target == null ||
+            !target.TryResolveAliveTarget(out _, out _))
         {
             AbortPendingChainReady(refundReason: "chain target was lost during the intro cutscene");
             return;
@@ -378,7 +389,7 @@ public sealed class ChainAttackProcController : MonoBehaviour
         _introGateActive = false;
         _pendingIntroId = 0;
         _pendingIntroDef = null;
-        _pendingIntroTargetTransform = null;
+        _pendingIntroTargetHandle = SkillTargetHandle.None;
 
         // Unsubscribe from whichever Brain was subscribed, not whichever is resolved now.
         if (_subscribedIntroBrain != null)
@@ -397,12 +408,15 @@ public sealed class ChainAttackProcController : MonoBehaviour
     void AbortPendingChainReady(string refundReason)
     {
         StaggerMeter meter = _pendingChainReadyMeter;
+        SkillTargetHandle targetHandle = _pendingChainReadyTargetHandle;
         SkillChainDef abortedDef = _pendingChainReadyDef;
         _pendingChainReadyMeter = null;
         _pendingChainReadyTarget = null;
+        _pendingChainReadyTargetHandle = SkillTargetHandle.None;
         _pendingChainReadyDef = null;
 
-        if (meter != null && meter.IsChainReady)
+        if (meter != null && targetHandle != null &&
+            targetHandle.TryResolveAliveTarget(out _, out _) && meter.IsChainReady)
             meter.CompleteChainReadyAndEnterStagger();
 
         if (abortedDef == null)
@@ -441,29 +455,28 @@ public sealed class ChainAttackProcController : MonoBehaviour
         if (_pendingChainReadyMeter == null)
             return;
 
-        // The coordinator runs one sequence at a time, so the sequence that just finished is the one
-        // this pending chain started. Bailing out on a target mismatch would strand the pending
-        // state — and with it every later ChainReady press, which now refuses to start while one is
-        // pending. A mismatch means the coordinator locked a different target than the press did
-        // (an AimTargetOnly sequence re-resolves from aim and ignores the explicit target), so say
-        // so rather than hiding it.
+        // The coordinator runs one sequence at a time, so the sequence that just finished owns this
+        // pending transaction. Always release the transaction; a mismatch is diagnostic only and
+        // must not strand every later ChainReady press.
         if (target != _pendingChainReadyTarget)
         {
             Debug.LogWarning(
                 $"[ChainAttackProcController] Sequence '{seq?.RuntimeId}' finished on " +
                 $"'{(target != null ? target.name : "<null>")}' but the ChainReady press locked " +
                 $"'{(_pendingChainReadyTarget != null ? _pendingChainReadyTarget.name : "<null>")}'. " +
-                "Releasing the pending ChainReady anyway. Check the sequence's targetSource: " +
-                "AimTargetOnly ignores the target the press resolved.",
+                "Releasing the pending ChainReady transaction anyway.",
                 this);
         }
 
         StaggerMeter meter = _pendingChainReadyMeter;
+        SkillTargetHandle targetHandle = _pendingChainReadyTargetHandle;
         _pendingChainReadyMeter = null;
         _pendingChainReadyTarget = null;
+        _pendingChainReadyTargetHandle = SkillTargetHandle.None;
         _pendingChainReadyDef = null;
 
-        if (meter != null && meter.IsChainReady)
+        if (meter != null && targetHandle != null &&
+            targetHandle.TryResolveAliveTarget(out _, out _) && meter.IsChainReady)
             meter.CompleteChainReadyAndEnterStagger();
     }
 

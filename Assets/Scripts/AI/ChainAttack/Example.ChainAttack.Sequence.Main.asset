@@ -16,16 +16,9 @@ MonoBehaviour:
   description: Ally 01 and Ally 02 utility-warp in, hold position through the helper
     follow-up, then utility-return to origin.
   targetSource: 1
-  aimSearchRadius: 5
-  chainReadySearchRadius: 12
   targetLayers:
     serializedVersion: 2
     m_Bits: 512
-  targetTriggerInteraction: 1
-  requireAimLineOfSight: 0
-  aimObstacleLayers:
-    serializedVersion: 2
-    m_Bits: 0
   cancelIfLockedTargetDies: 1
   stopWhenAnyStepFails: 0
   defaultStepIntervalSeconds: 0.1

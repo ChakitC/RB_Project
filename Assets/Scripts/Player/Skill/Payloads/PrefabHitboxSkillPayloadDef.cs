@@ -185,14 +185,14 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
                 validationError);
         }
 
-        PlayerContext player = context.CasterContext as PlayerContext;
-        if (player != null)
+        if (context.FacingSnapshot.TryResolveDirection(
+                context.CasterRoot != null ? context.CasterRoot.position : context.CastPosition,
+                out Vector3 facingDirection))
         {
-            ThirdPersonTargetingUtility.FacePlayerTowardSoftTarget(
-                player,
-                searchDistance: 6f,
-                searchRadius: 1.5f,
-                targetMask: targetMask);
+            Transform facingRoot = context.CasterRoot;
+            facingDirection.y = 0f;
+            if (facingRoot != null && facingDirection.sqrMagnitude > 0.0001f)
+                facingRoot.rotation = Quaternion.LookRotation(facingDirection.normalized, Vector3.up);
         }
 
         ResolveSpawnPose(context, out _, out Vector3 spawnPosition, out Quaternion spawnRotation);

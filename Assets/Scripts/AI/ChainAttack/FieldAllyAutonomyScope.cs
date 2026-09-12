@@ -22,6 +22,7 @@ internal sealed class FieldAllyAutonomyScope
     bool _rigidbodyStateCaptured;
     int _actorInvincibilityToken;
     int _actorUntargetableToken;
+    bool _allowActorProtection = true;
     LayerMask _defaultRigidbodyExcludeLayers;
     LayerMask _defaultCharacterControllerExcludeLayers;
     bool _defaultRigidbodyIsKinematic;
@@ -40,11 +41,12 @@ internal sealed class FieldAllyAutonomyScope
 
     public bool IsApplied => _autonomyCaptured;
 
-    public void Apply()
+    public void Apply(bool allowActorProtection = true)
     {
         if (_autonomyCaptured)
             return;
 
+        _allowActorProtection = allowActorProtection;
         bool capturedAny = false;
 
         if (owner.BehaviorTreeRef != null)
@@ -151,7 +153,7 @@ internal sealed class FieldAllyAutonomyScope
 
     bool ApplyTemporaryActorProtection()
     {
-        if (IsPlayerActor || _actorProtectionApplied)
+        if (!_allowActorProtection || IsPlayerActor || _actorProtectionApplied)
             return false;
 
         if (!owner.MakeAllyInvincibleDuringSequence && !owner.MakeAllyUntargetableDuringSequence)
@@ -188,6 +190,7 @@ internal sealed class FieldAllyAutonomyScope
         _actorUntargetableToken = 0;
         _actorInvincibilityToken = 0;
         _actorProtectionApplied = false;
+        _allowActorProtection = true;
     }
 
     bool ApplyTemporaryNoCollision()

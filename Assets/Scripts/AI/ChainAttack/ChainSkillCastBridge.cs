@@ -145,7 +145,8 @@ internal sealed class ChainSkillCastBridge
             requestedId: requestId,
             ignoreResourceCosts: execution.ignoreResourceCosts,
             useAnimationDriver: false,
-            debugSource: $"chain:{execution.step.RuntimeId}"));
+            debugSource: $"chain:{execution.step.RuntimeId}",
+            primaryTarget: execution.lockedTargetHandle));
         execution.attackPayloadReleased = castResult.Started;
 
         if (castResult.Started)

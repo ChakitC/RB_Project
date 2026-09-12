@@ -74,7 +74,15 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
                 if (resolvedSpec?.effect == null)
                     continue;
 
-                controller.ApplyEffect(resolvedSpec, source, skillFallbackDuration);
+                controller.ApplyEffect(
+                    resolvedSpec,
+                    source,
+                    $"skill:{context.SkillDef.name}",
+                    context.CombatChainId,
+                    context.CombatDepth + 1,
+                    PassiveEventOrigin.External,
+                    fallbackDuration: skillFallbackDuration,
+                    comboProvenance: context.ComboProvenance);
                 appliedAny = true;
             }
         }

@@ -96,6 +96,15 @@ public static class PartyRuntimeBinder
 
         helperManager.BindHelper(helper);
 
+        PartyComboOpportunityController comboController = player.partyComboController;
+        if (comboController != null &&
+            comboController.RuntimeFeatureEnabled &&
+            !comboController.BindParty(party))
+        {
+            error = "Party Combo runtime is enabled but controller/executor binding failed.";
+            return false;
+        }
+
         if (party.PlayerUIRoot == null || party.PlayerUIContext == null)
         {
             error = "Party runtime is missing Player UI.";

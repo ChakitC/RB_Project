@@ -61,6 +61,27 @@ transform. An explicitly assigned `aimPoint` always takes priority.
 It also supports untargetable tokens. Systems can acquire and release tokens
 without fighting over one boolean field.
 
+## Player Soft Target
+
+`PlayerTargetingController` is the only selector for player commands that derive an enemy from
+the centre-screen Aim. It enumerates `CharacterContextRegistry.ActiveContexts` rather than
+colliders, keeps only active living hostile `CharacteContext` actors, and commits at most one
+`CurrentTarget` after Cinemachine finishes updating the gameplay camera. Repeated reads through
+`CurrentTarget` or `TryGetTarget` validate the committed actor but never scan or retarget.
+
+Selection uses distance from the centre reticle in screen pixels divided by screen height. World
+distance is a range gate and a tie-break only. The authored defaults are 30 m maximum range,
+0.15 acquire radius, 0.18 release radius, 0.015 switch advantage, and 0.10 seconds of unscaled
+switch stability. LOS uses a non-alloc raycast and fails closed if its buffer fills. Gameplay
+pause/menu/cinematic input gates clear selection; normal projectile direction continues to use
+`PlayerContext.aimTarget` and is not magnetized toward `CurrentTarget`.
+
+`PlayerTargetIndicatorView` listens to the same post-camera commit and renders one non-raycastable
+uGUI arrow above the selected actor's cached live bounds. Manual ChainReady, Guaranteed
+Interruption, melee facing, and player PrefabHitbox facing consume this shared target. If their own
+range/window/layer rule fails, they fail or use their documented camera-forward fallback; they do
+not choose a second enemy.
+
 ## Target Sensor
 
 `AITargetSensor` scans for target colliders, filters them, scores candidates,
@@ -583,9 +604,10 @@ resolver, so it keeps the defaults (`0`) and its behavior is unchanged.
 
 ### Flow — Ally Path
 
-1. `InterruptionCommandController` (on the player) searches near
-   `PlayerContext.aimTarget` for an enemy with an active blockable pre-cast
-   window (`PreCastBlockController.CanBlockActiveCast()`).
+1. `InterruptionCommandController` (on the player) snapshots the committed
+   `PlayerTargetingController.CurrentTarget` and requires that same enemy to have an active
+   blockable pre-cast window (`PreCastBlockController.CanBlockActiveCast()`). It never scans for
+   another open enemy when the selected target is ineligible.
 2. Scans qualifying allies once. Each candidate resolves one
    `TargetedSkillPlacementResult`; the selected ally and that same result are
    returned together. Placement is not resolved a second time.
@@ -640,6 +662,12 @@ disabling the actor or fader, the material is restored to fully visible. An
 explicit helper/chain fade-out-and-deactivate keeps the material hidden until
 the next animation lifecycle begins.
 
+`InterruptionTargetContext` carries a life-aware `SkillTargetHandle` captured before placement or
+animation delay. Both Player and Ally executors validate that exact enabled lifetime before facing,
+`HitStart`, knockback, and block completion. If the target was pooled, cleanup releases the
+executor/reservations without cancelling or completing the `PreCastBlockController` now belonging
+to the new life; fallback may change the executor but never the target snapshot.
+
 ### Flow — Player Path
 
 1. After target is found, `InterruptionCommandController` resolves placement
@@ -679,7 +707,7 @@ The interruption flow has opt-in Inspector logs on all three participating
 controllers:
 
 - `InterruptionCommandController.logInterruptionFlow` logs one command summary
-  under `[PreCast.Command]`, including `attemptId`, target scan counts, ally
+  under `[PreCast.Command]`, including `attemptId`, committed-target validation, ally
   scan counts, player readiness/distance, and the final command result.
 - `PreCastBlockController.logPreCastFlow` logs the enemy cast, pre-cast window,
   hold reservation, and block lifecycle under `[PreCast.Target]`.
@@ -706,9 +734,9 @@ on that explicit target.
 
 1. `PlayerInputHandler.OnInterrace` checks for a ChainReady target first via
    `PartyCommandController.TryExecuteChainReadyChainAttack`.
-2. `TryExecuteChainReadyChainAttack` resolves the aimed target through
-   `ChainAttackTargetingUtility.TryResolveLockedTarget`, then checks its
-   `StaggerMeter.IsChainReady`.
+2. `TryExecuteChainReadyChainAttack` snapshots the single committed player target through
+   `ChainAttackTargetingUtility.TryResolveLockedTarget`, then checks that actor's
+   `StaggerMeter.IsChainReady`. It never prefers a different ChainReady enemy.
 3. If no ChainReady target is aimed, `NoReadyTarget` is returned and F falls
    through to normal Interact/Revive.
 4. If a ChainReady target is aimed, F is **Consumed** regardless of whether
@@ -718,8 +746,9 @@ on that explicit target.
    If `SkillChainDef.HasChainReadyIntroCutscene` is true, an **intro cutscene**
    plays first (camera, world-slow, letterbox, VFX via `CutsceneSkillPresenter`).
    The chain's first step only starts after the cutscene completes. If the intro
-   is interrupted or the target dies mid-cutscene, the chain aborts but the enemy
-   still enters stagger. If the feature is off, the clip is unassigned, or the
+   is interrupted, the chain aborts and the original transaction follows its refund/stagger
+   policy. A life-generation handle prevents a pooled actor from inheriting that transaction.
+   If the feature is off, the clip is unassigned, or the
    `CutsceneDirector` is busy, the chain starts immediately (no cutscene).
 6. A second F press during the intro or chain is blocked by
    `meter.IsChainExecutionActive` (set at step 5).
@@ -730,8 +759,9 @@ on that explicit target.
 `context.Target` has a `StaggerMeter` in ChainReady state. This reserves
 the window for the player's manual F chain.
 
-**Limitation:** `AimTargetOnly` proc chains resolve their target inside
-`TryStartSequence` and are not covered by this block.
+Aim-derived chain starts use the same committed target for `CanStart` and `TryStart`. Event/proc
+paths that supply an explicit actor keep that actor, and autonomous helper combat continues to use
+its own `AITargetSensor`.
 
 ### Chain completion → Stagger handoff
 
@@ -911,3 +941,20 @@ A trigger is rejected outright while a Chain Attack is active, and an active
 chain is never interrupted by the Special Point Mini Stun. Death, down, a
 cinematic, or an unrelated stagger that fills the meter first cancels the round
 with no reward. See `Docs/SYSTEMS/SPECIAL_SHOOT_POINTS.md` for the full matrix.
+## Party Combo Ownership And Targeting
+
+Field allies continue choosing only their normal AI combat actions. Party Combo
+triggers create player-facing opportunities; AI never accepts those offers or
+auto-casts Combo Skills. On player acceptance, `PartyComboSkillExecutor`
+acquires the ally's shared hard reservation and applies a transient autonomy
+scope, then restores Behavior Tree/NavMesh/component state and releases the
+same reservation on every exit path.
+
+Each offer stores a `SkillTargetHandle` resolved from the triggering combat
+fact according to `PartyComboTargetPolicy`. Input does not re-read aim or
+lock-on, so a valid accepted offer executes against that snapshot. Actor
+discovery and status checks resolve `CharacteContext`; physics is used only by
+the placement/collision rules where geometry is part of the gameplay rule.
+
+See [Party Combo Skill System](PARTY_COMBO.md) for the full flow and authoring
+contract.

@@ -75,9 +75,11 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     /// execution skill definition.
     /// </summary>
     readonly Dictionary<SkillHelperDef, CharacterSkillEntry> helperProcRuntimeEntries = new();
+    readonly Dictionary<PartyComboSkillDef, CharacterSkillEntry> partyComboRuntimeEntries = new();
 
     public event Action<ActiveSkillCastInfo> CastStarted;
     public event Action<ActiveSkillCastInfo> CastReleased;
+    public event Action<ActiveSkillCastInfo> CastCommitted;
     public event Action<ActiveSkillCastInfo, SkillCastCancelReason> CastCancelled;
 
     /// <summary>Raised when a payload ran but produced nothing, so the cast cost nothing.</summary>
@@ -602,7 +604,13 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         bool stampCooldown = true,
         SkillTargetHandle primaryTarget = null,
         SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal,
-        int externalAnimationRequestId = 0)
+        int externalAnimationRequestId = 0,
+        Action<ActiveSkillCastInfo> onCommitted = null,
+        Action<ActiveSkillCastInfo, SkillExecutionResult> onExecutionFailed = null,
+        Action<ActiveSkillCastInfo, SkillCastCancelReason> onCancelled = null,
+        ulong combatChainId = 0,
+        int combatDepth = 0,
+        ComboExecutionProvenance comboProvenance = default)
     {
         CacheReferences();
         return TryBeginEntryCast(
@@ -614,7 +622,13 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             stampCooldown,
             primaryTarget,
             costPolicy,
-            externalAnimationRequestId);
+            externalAnimationRequestId,
+            onCommitted,
+            onExecutionFailed,
+            onCancelled,
+            combatChainId,
+            combatDepth,
+            comboProvenance);
     }
 
     /// <summary>
@@ -638,7 +652,13 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         bool stampCooldown = true,
         SkillTargetHandle primaryTarget = null,
         SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal,
-        int externalAnimationRequestId = 0)
+        int externalAnimationRequestId = 0,
+        Action<ActiveSkillCastInfo> onCommitted = null,
+        Action<ActiveSkillCastInfo, SkillExecutionResult> onExecutionFailed = null,
+        Action<ActiveSkillCastInfo, SkillCastCancelReason> onCancelled = null,
+        ulong combatChainId = 0,
+        int combatDepth = 0,
+        ComboExecutionProvenance comboProvenance = default)
     {
         CharacterSkillEntry entry = GetOrCreateExternalEntry(skillDef);
         if (entry == null)
@@ -653,7 +673,81 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             stampCooldown: stampCooldown,
             primaryTarget: primaryTarget,
             costPolicy: costPolicy,
-            externalAnimationRequestId: externalAnimationRequestId);
+            externalAnimationRequestId: externalAnimationRequestId,
+            onCommitted: onCommitted,
+            onExecutionFailed: onExecutionFailed,
+            onCancelled: onCancelled,
+            combatChainId: combatChainId,
+            combatDepth: combatDepth,
+            comboProvenance: comboProvenance);
+    }
+
+    public bool TryGetPartyComboRuntimeEntry(
+        PartyComboSkillDef combo,
+        out CharacterSkillEntry entry)
+    {
+        entry = null;
+        if (combo == null || combo.executionSkill == null)
+            return false;
+
+        CacheReferences();
+        if (!partyComboRuntimeEntries.TryGetValue(combo, out entry) || entry == null)
+        {
+            entry = new CharacterSkillEntry { skillAsset = combo.executionSkill };
+            entry.runtimeSkill = CreateRuntimeSkill(combo.executionSkill, null);
+            partyComboRuntimeEntries[combo] = entry;
+        }
+        else if (entry.skillAsset != combo.executionSkill ||
+                 entry.runtimeSkill == null ||
+                 entry.runtimeSkill.def != combo.executionSkill)
+        {
+            entry.skillAsset = combo.executionSkill;
+            entry.runtimeSkill = CreateRuntimeSkill(combo.executionSkill, null);
+        }
+        else
+        {
+            entry.runtimeSkill.upgradeSnapshot = null;
+        }
+
+        return entry.runtimeSkill != null;
+    }
+
+    public bool TryGetPartyComboChargeStatus(
+        PartyComboSkillDef combo,
+        out SkillChargeStatus status)
+    {
+        status = default;
+        return TryGetPartyComboRuntimeEntry(combo, out CharacterSkillEntry entry) &&
+               skillUser != null &&
+               entry.runtimeSkill.TryGetChargeStatus(skillUser, out status);
+    }
+
+    public SkillCastStartResult TryStartPartyComboSkill(
+        PartyComboSkillDef combo,
+        string debugSource,
+        SkillTargetHandle primaryTarget,
+        Action<ActiveSkillCastInfo> onCommitted,
+        Action<ActiveSkillCastInfo, SkillExecutionResult> onExecutionFailed,
+        Action<ActiveSkillCastInfo, SkillCastCancelReason> onCancelled,
+        ulong combatChainId,
+        int combatDepth,
+        ComboExecutionProvenance comboProvenance)
+    {
+        if (!TryGetPartyComboRuntimeEntry(combo, out CharacterSkillEntry entry))
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+
+        return TryStartExternalSkill(
+            entry,
+            debugSource,
+            stampCooldown: true,
+            primaryTarget: primaryTarget,
+            costPolicy: SkillCastCostPolicy.IgnoreEnergyRespectCharge,
+            onCommitted: onCommitted,
+            onExecutionFailed: onExecutionFailed,
+            onCancelled: onCancelled,
+            combatChainId: combatChainId,
+            combatDepth: combatDepth,
+            comboProvenance: comboProvenance);
     }
 
     /// <summary>
@@ -944,7 +1038,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             onStarted: () => OnCommandSkillCastStarted(runtimeSkill),
             useAnimationDriver: true,
             allowImmediateFallback: true,
-            debugSource: BuildSlotDebugSource(slot)));
+            debugSource: BuildSlotDebugSource(slot),
+            facingSnapshot: CapturePlayerFacingSnapshot(runtimeSkill)));
 
         pendingSlot = result.Kind == SkillCastStartKind.WaitingForAnimation
             ? slot
@@ -987,7 +1082,13 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         bool stampCooldown = true,
         SkillTargetHandle primaryTarget = null,
         SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal,
-        int externalAnimationRequestId = 0)
+        int externalAnimationRequestId = 0,
+        Action<ActiveSkillCastInfo> onCommitted = null,
+        Action<ActiveSkillCastInfo, SkillExecutionResult> onExecutionFailed = null,
+        Action<ActiveSkillCastInfo, SkillCastCancelReason> onCancelled = null,
+        ulong combatChainId = 0,
+        int combatDepth = 0,
+        ComboExecutionProvenance comboProvenance = default)
     {
         CacheReferences();
         EnsureRuntimeSkill(entry);
@@ -1024,7 +1125,29 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             stampCooldown: stampCooldown,
             debugSource: debugSource,
             primaryTarget: primaryTarget,
-            costPolicy: costPolicy));
+            costPolicy: costPolicy,
+            onCommitted: onCommitted,
+            onExecutionFailed: onExecutionFailed,
+            onCancelled: onCancelled,
+            combatChainId: combatChainId,
+            combatDepth: combatDepth,
+            comboProvenance: comboProvenance,
+            facingSnapshot: CapturePlayerFacingSnapshot(runtimeSkill, primaryTarget)));
+    }
+
+    SkillFacingSnapshot CapturePlayerFacingSnapshot(
+        SkillInstance runtimeSkill,
+        SkillTargetHandle preferredTarget = null)
+    {
+        if (ctx is not PlayerContext player ||
+            runtimeSkill == null ||
+            runtimeSkill.def == null ||
+            !runtimeSkill.def.TryFindPayload(out PrefabHitboxSkillPayloadDef _))
+        {
+            return default;
+        }
+
+        return SkillFacingSnapshot.Capture(player, 6f, preferredTarget);
     }
 
     private SkillInstance BuildRuntimeSkill(SkillSlot slot, SkillGemDefinition asset)
@@ -1909,6 +2032,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         castOrchestrator = new SkillCastOrchestrator(this);
         castOrchestrator.CastStarted += OnCastStarted;
         castOrchestrator.CastReleased += OnCastReleased;
+        castOrchestrator.CastCommitted += OnCastCommitted;
         castOrchestrator.CastCancelled += OnCastCancelled;
         castOrchestrator.CastExecutionFailed += OnCastExecutionFailed;
     }
@@ -1927,6 +2051,11 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     {
         pendingSlot = null;
         CastReleased?.Invoke(castInfo);
+    }
+
+    private void OnCastCommitted(ActiveSkillCastInfo castInfo)
+    {
+        CastCommitted?.Invoke(castInfo);
     }
 
     private void OnCastCancelled(ActiveSkillCastInfo castInfo, SkillCastCancelReason reason)
@@ -2067,6 +2196,9 @@ public readonly struct SkillCastRequest
     public readonly CharacterAnimDriver AnimationDriver;
     public readonly Func<bool> CanProceed;
     public readonly Action OnStarted;
+    public readonly Action<ActiveSkillCastInfo> OnCommitted;
+    public readonly Action<ActiveSkillCastInfo, SkillExecutionResult> OnExecutionFailed;
+    public readonly Action<ActiveSkillCastInfo, SkillCastCancelReason> OnCancelled;
     public readonly int RequestedId;
     public readonly SkillCastCostPolicy CostPolicy;
     public readonly bool StampCooldown;
@@ -2084,6 +2216,10 @@ public readonly struct SkillCastRequest
     public readonly CombatTimelineEventName RequiredTimelineEvent;
     public readonly bool UsePlanarRootMotion;
     public readonly string DebugSource;
+    public readonly ulong CombatChainId;
+    public readonly int CombatDepth;
+    public readonly ComboExecutionProvenance ComboProvenance;
+    public readonly SkillFacingSnapshot FacingSnapshot;
 
     public SkillCastRequest(
         SkillInstance runtimeSkill,
@@ -2100,13 +2236,23 @@ public readonly struct SkillCastRequest
         bool usePlanarRootMotion = false,
         string debugSource = null,
         SkillTargetHandle primaryTarget = null,
-        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal)
+        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal,
+        Action<ActiveSkillCastInfo> onCommitted = null,
+        Action<ActiveSkillCastInfo, SkillExecutionResult> onExecutionFailed = null,
+        Action<ActiveSkillCastInfo, SkillCastCancelReason> onCancelled = null,
+        ulong combatChainId = 0,
+        int combatDepth = 0,
+        ComboExecutionProvenance comboProvenance = default,
+        SkillFacingSnapshot facingSnapshot = default)
     {
         RuntimeSkill = runtimeSkill;
         SkillUser = skillUser;
         AnimationDriver = animationDriver;
         CanProceed = canProceed;
         OnStarted = onStarted;
+        OnCommitted = onCommitted;
+        OnExecutionFailed = onExecutionFailed;
+        OnCancelled = onCancelled;
         RequestedId = requestedId;
 
         // Two ways in, one field. The bool is the original API and stays authoritative for every
@@ -2123,6 +2269,10 @@ public readonly struct SkillCastRequest
         RequiredTimelineEvent = requiredTimelineEvent;
         UsePlanarRootMotion = usePlanarRootMotion;
         DebugSource = debugSource;
+        CombatChainId = combatChainId;
+        CombatDepth = Mathf.Max(0, combatDepth);
+        ComboProvenance = comboProvenance;
+        FacingSnapshot = facingSnapshot;
     }
 }
 
@@ -2233,6 +2383,7 @@ public sealed class SkillCastOrchestrator
 
     public event Action<ActiveSkillCastInfo> CastStarted;
     public event Action<ActiveSkillCastInfo> CastReleased;
+    public event Action<ActiveSkillCastInfo> CastCommitted;
     public event Action<ActiveSkillCastInfo, SkillCastCancelReason> CastCancelled;
 
     /// <summary>
@@ -2265,6 +2416,7 @@ public sealed class SkillCastOrchestrator
         Unsubscribe(context.AnimationDriver);
         CancelPendingCastRequest(context, stopAnimation: reason != SkillCastCancelReason.AnimationInterrupted);
         SettleCancelledCast(context, reason);
+        context.Request.OnCancelled?.Invoke(context.ToInfo(), reason);
         CastCancelled?.Invoke(context.ToInfo(), reason);
     }
 
@@ -2389,6 +2541,18 @@ public sealed class SkillCastOrchestrator
 
         request.OnStarted?.Invoke();
 
+        ActiveSkillCastInfo immediateInfo = new ActiveSkillCastInfo(
+            requestId,
+            runtimeSkill,
+            skillDef,
+            skillUser,
+            executionAnimDriver,
+            skillDef.GetCastPointNormalized(),
+            released: false,
+            requiresTimelineEvents: false,
+            request.DebugSource);
+        CastStarted?.Invoke(immediateInfo);
+
         // No wind-up on this path, so the cast point is now. CastReleased always means "reached the
         // cast point"; whether the payload then produced anything is reported separately.
         CastReleased?.Invoke(new ActiveSkillCastInfo(
@@ -2459,7 +2623,11 @@ public sealed class SkillCastOrchestrator
                 executionAnimBrain,
                 requestId,
                 out SkillExecutionResult result,
-                request.PrimaryTarget))
+                request.PrimaryTarget,
+                request.CombatChainId,
+                request.CombatDepth,
+                request.ComboProvenance,
+                request.FacingSnapshot))
         {
             reservation.Release();
             RaiseExecutionFailed(request, requestId, runtimeSkill, skillUser, executionAnimDriver, result);
@@ -2467,6 +2635,18 @@ public sealed class SkillCastOrchestrator
         }
 
         reservation.Commit();
+        var committedInfo = new ActiveSkillCastInfo(
+            requestId,
+            runtimeSkill,
+            runtimeSkill.def,
+            skillUser,
+            executionAnimDriver,
+            runtimeSkill.def != null ? runtimeSkill.def.GetCastPointNormalized() : 0f,
+            released: true,
+            requiresTimelineEvents: false,
+            request.DebugSource);
+        request.OnCommitted?.Invoke(committedInfo);
+        CastCommitted?.Invoke(committedInfo);
         PlayCastCue(runtimeSkill, skillUser);
         return true;
     }
@@ -2502,6 +2682,18 @@ public sealed class SkillCastOrchestrator
                 requiresTimelineEvents: false,
                 request.DebugSource),
             result);
+        request.OnExecutionFailed?.Invoke(
+            new ActiveSkillCastInfo(
+                requestId,
+                runtimeSkill,
+                skillDef,
+                skillUser,
+                animationDriver,
+                skillDef != null ? skillDef.GetCastPointNormalized() : 0f,
+                released: true,
+                requiresTimelineEvents: false,
+                request.DebugSource),
+            result);
     }
 
     private bool ReleasePendingCast(int requestId)
@@ -2522,6 +2714,7 @@ public sealed class SkillCastOrchestrator
         {
             CancelPendingCastRequest(context, stopAnimation: false);
             SettleCancelledCast(context, SkillCastCancelReason.InvalidState);
+            context.Request.OnCancelled?.Invoke(context.ToInfo(), SkillCastCancelReason.InvalidState);
             CastCancelled?.Invoke(context.ToInfo(), SkillCastCancelReason.InvalidState);
             return false;
         }

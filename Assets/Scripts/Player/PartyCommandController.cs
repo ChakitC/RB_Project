@@ -399,8 +399,7 @@ public sealed class PartyCommandController : MonoBehaviour
                 helperManager != null ? helperManager.HelperObject : null,
                 out GameObject target,
                 out Transform targetTransform,
-                out _,
-                preferChainReadyTargets: true))
+                out _))
         {
             return ChainReadyInputResult.NoReadyTarget;
         }
@@ -445,13 +444,13 @@ public sealed class PartyCommandController : MonoBehaviour
     /// <summary>
     /// Why a ChainReady [F] press would be refused right now, for the on-screen prompt.
     ///
-    /// Deliberately skips the target-resolution gate that <see cref="TryGetChainAttackBlockReason"/>
-    /// ends with: this is polled while a prompt is on screen, and that gate runs physics sweeps.
-    /// The prompt is drawn by the enemy that is already ChainReady, so the question it needs
-    /// answered is "may I, and can I afford it", not "am I aimed at something".
+    /// The prompt is drawn by a particular ChainReady enemy, so it is actionable only when that
+    /// enemy owns the player's committed soft target. This read never scans or changes selection;
+    /// resource and busy-state polling can still update while the identity stays the same.
     /// </summary>
     public bool TryGetChainReadyPromptBlockReason(
         SkillChainDef chainDef,
+        StaggerMeter promptOwner,
         out PartyCommandBlockReason reason,
         out float missingCommandPoints)
     {
@@ -461,6 +460,15 @@ public sealed class PartyCommandController : MonoBehaviour
         if (chainDef == null || !chainDef.HasExecutionConfigured)
         {
             reason = PartyCommandBlockReason.MissingConfig;
+            return true;
+        }
+
+        ResolveReferences();
+        if (promptOwner == null || playerContext == null || playerContext.Targeting == null ||
+            !playerContext.Targeting.TryGetTarget(out CharacteContext selectedTarget) ||
+            ChainAttackTargetingUtility.ResolveStaggerMeter(selectedTarget.transform) != promptOwner)
+        {
+            reason = PartyCommandBlockReason.MissingTarget;
             return true;
         }
 

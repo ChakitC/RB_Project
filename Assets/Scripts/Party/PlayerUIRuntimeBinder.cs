@@ -67,6 +67,11 @@ public sealed class PlayerUIRuntimeBinder : MonoBehaviour
         for (int i = 0; i < castFeedbackPresenters.Length; i++)
             castFeedbackPresenters[i].Bind(player);
 
+        PartyComboHudPresenter[] comboPresenters =
+            GetComponentsInChildren<PartyComboHudPresenter>(true);
+        for (int i = 0; i < comboPresenters.Length; i++)
+            comboPresenters[i].Bind(player.partyComboController);
+
         if (uiContext.activeSkillScreen != null)
             uiContext.activeSkillScreen.BindRuntime(player);
 

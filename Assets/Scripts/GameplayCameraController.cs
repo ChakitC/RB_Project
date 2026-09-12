@@ -77,6 +77,7 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
         ResolveMainCamera();
         EnsureRuntimeRig();
         ThirdPersonReticleView.EnsureExists();
+        PlayerTargetIndicatorView.EnsureExists();
     }
 
     void OnEnable()

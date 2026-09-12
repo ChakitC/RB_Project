@@ -19,6 +19,7 @@ public sealed class SkillTargetHandle
     public static readonly SkillTargetHandle None = new SkillTargetHandle();
 
     CharacteContext context;
+    Component nonCharacterDamageable;
     Vector3 lastKnownDeliveryPoint;
 
     /// <summary>
@@ -34,6 +35,9 @@ public sealed class SkillTargetHandle
     /// </summary>
     public int OriginalInstanceId { get; }
 
+    /// <summary>Enabled lifetime captured with the character reference.</summary>
+    public int OriginalLifeGeneration { get; }
+
     /// <summary>Extra height added above the target's bounds when resolving the delivery point.</summary>
     public float DeliveryClearance { get; }
 
@@ -41,6 +45,7 @@ public sealed class SkillTargetHandle
     {
         WasAssigned = false;
         OriginalInstanceId = 0;
+        OriginalLifeGeneration = 0;
         DeliveryClearance = 0f;
         lastKnownDeliveryPoint = Vector3.zero;
     }
@@ -53,6 +58,7 @@ public sealed class SkillTargetHandle
         {
             WasAssigned = false;
             OriginalInstanceId = 0;
+            OriginalLifeGeneration = 0;
             lastKnownDeliveryPoint = Vector3.zero;
             return;
         }
@@ -60,13 +66,47 @@ public sealed class SkillTargetHandle
         context = target;
         WasAssigned = true;
         OriginalInstanceId = target.GetInstanceID();
+        OriginalLifeGeneration = target.LifeGeneration;
         lastKnownDeliveryPoint = CharacterTargetHeightUtility.ResolveOverheadPoint(target, deliveryClearance);
+    }
+
+    SkillTargetHandle(Component target, float deliveryClearance)
+    {
+        DeliveryClearance = deliveryClearance;
+
+        if (target == null || !(target is IDamageable))
+        {
+            WasAssigned = false;
+            OriginalInstanceId = 0;
+            OriginalLifeGeneration = 0;
+            lastKnownDeliveryPoint = Vector3.zero;
+            return;
+        }
+
+        nonCharacterDamageable = target;
+        WasAssigned = true;
+        OriginalInstanceId = target.GetInstanceID();
+        OriginalLifeGeneration = 0;
+        lastKnownDeliveryPoint = ResolveNonCharacterDeliveryPoint(target, deliveryClearance);
     }
 
     /// <summary>Locks <paramref name="target"/>, or returns <see cref="None"/> when there is nothing to lock.</summary>
     public static SkillTargetHandle For(CharacteContext target, float deliveryClearance = 0f)
     {
         return target != null ? new SkillTargetHandle(target, deliveryClearance) : None;
+    }
+
+    /// <summary>
+    /// Locks an explicit non-character damageable. This is for authored combat targets such as
+    /// the Test AI chain dummy; character actors must continue to use <see cref="For(CharacteContext,float)"/>.
+    /// </summary>
+    public static SkillTargetHandle ForNonCharacterDamageable(
+        Component target,
+        float deliveryClearance = 0f)
+    {
+        return target != null && target is IDamageable
+            ? new SkillTargetHandle(target, deliveryClearance)
+            : None;
     }
 
     /// <summary>True when this cast was given a target, whether or not that target still exists.</summary>
@@ -98,7 +138,9 @@ public sealed class SkillTargetHandle
 
         // Instance ids are recycled. If this slot now holds a different object, the original
         // target is gone and this cast must not follow whatever took its place.
-        if (current.GetInstanceID() != OriginalInstanceId)
+        if (!current.isActiveAndEnabled || !current.gameObject.activeInHierarchy ||
+            current.GetInstanceID() != OriginalInstanceId ||
+            current.LifeGeneration != OriginalLifeGeneration)
         {
             context = null;
             return false;
@@ -118,12 +160,6 @@ public sealed class SkillTargetHandle
         if (!TryResolveLiveContext(out resolved))
             return false;
 
-        if (!resolved.isActiveAndEnabled)
-        {
-            resolved = null;
-            return false;
-        }
-
         resolved.ResolveReferences();
         HealthSystem health = resolved.HealthSystem;
 
@@ -133,6 +169,94 @@ public sealed class SkillTargetHandle
             return false;
         }
 
+        return true;
+    }
+
+    /// <summary>
+    /// Resolves either a live character effect target or the explicitly locked non-character
+    /// damageable. This does not promote the latter into a <see cref="CharacteContext"/> and is
+    /// intended only for systems, such as Combo placement, that need a living anchor rather than
+    /// character modules.
+    /// </summary>
+    public bool TryResolveAliveTarget(
+        out Transform targetTransform,
+        out AITargetIdentity targetIdentity)
+    {
+        targetTransform = null;
+        targetIdentity = AITargetIdentity.Generic;
+
+        if (TryResolveEffectTarget(out CharacteContext character))
+        {
+            targetTransform = character.transform;
+            targetIdentity = character.TargetIdentity;
+            return true;
+        }
+
+        if (!TryResolveLiveNonCharacterDamageable(out Component component, out IDamageable damageable) ||
+            !damageable.IsAlive)
+        {
+            return false;
+        }
+
+        targetTransform = component.transform;
+        if (component is IAITargetable targetable)
+            targetIdentity = targetable.TargetIdentity;
+        return true;
+    }
+
+    /// <summary>
+    /// Resolves the same enabled lifetime without applying alive/recipient rules. Cleanup paths
+    /// use this to distinguish a target killed by the cast from an object pooled into a new life.
+    /// </summary>
+    public bool TryResolveLiveTarget(
+        out Transform targetTransform,
+        out AITargetIdentity targetIdentity)
+    {
+        targetTransform = null;
+        targetIdentity = AITargetIdentity.Generic;
+
+        if (TryResolveLiveContext(out CharacteContext character))
+        {
+            targetTransform = character.transform;
+            targetIdentity = character.TargetIdentity;
+            return true;
+        }
+
+        if (!TryResolveLiveNonCharacterDamageable(out Component component, out _))
+            return false;
+
+        targetTransform = component.transform;
+        if (component is IAITargetable targetable)
+            targetIdentity = targetable.TargetIdentity;
+        return true;
+    }
+
+    bool TryResolveLiveNonCharacterDamageable(
+        out Component resolved,
+        out IDamageable damageable)
+    {
+        resolved = null;
+        damageable = null;
+
+        if (!WasAssigned || context != null)
+            return false;
+
+        Component current = nonCharacterDamageable;
+        if (current == null || current.GetInstanceID() != OriginalInstanceId)
+        {
+            nonCharacterDamageable = null;
+            return false;
+        }
+
+        if (!current.gameObject.activeInHierarchy ||
+            (current is Behaviour behaviour && !behaviour.isActiveAndEnabled) ||
+            !(current is IDamageable currentDamageable))
+        {
+            return false;
+        }
+
+        resolved = current;
+        damageable = currentDamageable;
         return true;
     }
 
@@ -159,8 +283,18 @@ public sealed class SkillTargetHandle
     {
         if (TryResolveLiveContext(out CharacteContext live))
             lastKnownDeliveryPoint = CharacterTargetHeightUtility.ResolveOverheadPoint(live, clearance);
+        else if (TryResolveLiveNonCharacterDamageable(out Component component, out _))
+            lastKnownDeliveryPoint = ResolveNonCharacterDeliveryPoint(component, clearance);
 
         return lastKnownDeliveryPoint;
+    }
+
+    static Vector3 ResolveNonCharacterDeliveryPoint(Component target, float clearance)
+    {
+        if (target is IAITargetable targetable && targetable.AimPoint != null)
+            return targetable.AimPoint.position + Vector3.up * Mathf.Max(0f, clearance);
+
+        return target.transform.position + Vector3.up * Mathf.Max(0f, clearance);
     }
 
     /// <summary>Last resolved delivery point without attempting a fresh resolve.</summary>

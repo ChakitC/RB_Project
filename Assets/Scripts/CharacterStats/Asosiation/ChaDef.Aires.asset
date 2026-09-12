@@ -47,7 +47,9 @@ MonoBehaviour:
   weaponHandMode: 0
   combatRole: 1
   chainAttackSkill: {fileID: 0}
+  partyComboSkill: {fileID: 11400000, guid: ed8cb7c2d4176eb43a38effedf0632ad, type: 2}
   introChainCutscene: {fileID: 0}
+  partyRole: 0
   skillSlots:
   - slotId: 0
     displayName: 
@@ -81,6 +83,13 @@ MonoBehaviour:
       skillAsset: {fileID: 11400000, guid: 017e7afd0b669134396b5761021a3c2b, type: 2}
       upgradeTreeOverride: {fileID: 0}
   skillPointsPerLevel: 1
+  helperProcSlots: []
+  helperCommandSlot:
+    slotId: 
+    displayName: 
+    hotkey: 0
+    defaultOptionIndex: 0
+    options: []
   maxHP: 1250
   maxStamina: 100
   Damage: 8

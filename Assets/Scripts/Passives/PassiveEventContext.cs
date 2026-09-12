@@ -17,7 +17,7 @@ public readonly struct PassiveEventContext
         string originPassiveId,
         string originRuleId)
         : this(type, actor, source, target, eventSourceId, attackId, value, time, chainId, depth,
-            origin, originPassiveId, originRuleId, default)
+            origin, originPassiveId, originRuleId, default, 0, default)
     {
     }
 
@@ -36,6 +36,28 @@ public readonly struct PassiveEventContext
         string originPassiveId,
         string originRuleId,
         in CombatEventMetadata metadata)
+        : this(type, actor, source, target, eventSourceId, attackId, value, time, chainId, depth,
+            origin, originPassiveId, originRuleId, metadata, 0, default)
+    {
+    }
+
+    public PassiveEventContext(
+        PassiveEventType type,
+        GameObject actor,
+        GameObject source,
+        GameObject target,
+        string eventSourceId,
+        string attackId,
+        float value,
+        double time,
+        ulong chainId,
+        int depth,
+        PassiveEventOrigin origin,
+        string originPassiveId,
+        string originRuleId,
+        in CombatEventMetadata metadata,
+        ulong factId,
+        in ComboExecutionProvenance comboProvenance)
     {
         Type = type;
         Actor = actor;
@@ -51,6 +73,8 @@ public readonly struct PassiveEventContext
         OriginPassiveId = originPassiveId;
         OriginRuleId = originRuleId;
         Metadata = metadata;
+        FactId = factId;
+        ComboProvenance = comboProvenance;
     }
 
     public PassiveEventType Type { get; }
@@ -67,6 +91,16 @@ public readonly struct PassiveEventContext
     public string OriginPassiveId { get; }
     public string OriginRuleId { get; }
     public CombatEventMetadata Metadata { get; }
+    public ulong FactId { get; }
+    public ComboExecutionProvenance ComboProvenance { get; }
 
     public int TargetInstanceId => Target != null ? Target.GetInstanceID() : 0;
+
+    public PassiveEventContext WithIdentity(ulong factId, ulong chainId)
+    {
+        return new PassiveEventContext(
+            Type, Actor, Source, Target, EventSourceId, AttackId, Value, Time,
+            chainId, Depth, Origin, OriginPassiveId, OriginRuleId, Metadata,
+            factId, ComboProvenance);
+    }
 }

@@ -627,7 +627,8 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             context.Depth + 1,
             PassiveEventOrigin.Passive,
             passiveId,
-            ruleId);
+            ruleId,
+            comboProvenance: context.ComboProvenance);
     }
 
     void RefreshOptionalEventSources()

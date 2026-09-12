@@ -11,6 +11,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         public GameObject targetObject;
         public Transform targetTransform;
         public Transform targetAnchor;
+        public SkillTargetHandle targetHandle;
         public float startedAt;
         public int pendingTrackedStepCompletions;
         public bool hadLateStepFailure;
@@ -120,12 +121,53 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             return false;
         }
 
+        return TryStartResolvedSequence(
+            sequenceDef,
+            targetObject,
+            targetTransform,
+            targetAnchor,
+            ChainAttackTargetingUtility.CreateTargetHandle(targetTransform));
+    }
+
+    public bool TryStartSequence(ChainAttackSequenceDef sequenceDef, SkillTargetHandle targetHandle)
+    {
+        if (_activeRoutine != null || sequenceDef == null || !sequenceDef.HasAnySteps ||
+            targetHandle == null ||
+            !targetHandle.TryResolveAliveTarget(out Transform targetTransform, out _) ||
+            !ChainAttackTargetingUtility.TryResolveTargetAnchor(targetTransform, out Transform targetAnchor))
+        {
+            return false;
+        }
+
+        return TryStartResolvedSequence(
+            sequenceDef,
+            targetTransform.gameObject,
+            targetTransform,
+            targetAnchor,
+            targetHandle);
+    }
+
+    bool TryStartResolvedSequence(
+        ChainAttackSequenceDef sequenceDef,
+        GameObject targetObject,
+        Transform targetTransform,
+        Transform targetAnchor,
+        SkillTargetHandle targetHandle)
+    {
+        if (targetObject == null || targetTransform == null || targetAnchor == null ||
+            targetHandle == null || !targetHandle.TryResolveAliveTarget(out Transform resolved, out _) ||
+            resolved != targetTransform)
+        {
+            return false;
+        }
+
         _activeRuntime = new ActiveChainRuntime
         {
             sequenceDef = sequenceDef,
             targetObject = targetObject,
             targetTransform = targetTransform,
             targetAnchor = targetAnchor,
+            targetHandle = targetHandle,
             startedAt = WorldNow,
         };
 
@@ -318,7 +360,11 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             yield break;
         }
 
-        bool started = member.TryStartSequenceStep(step, runtime.targetTransform, runtime.targetAnchor);
+        bool started = member.TryStartSequenceStep(
+            step,
+            runtime.targetTransform,
+            runtime.targetAnchor,
+            runtime.targetHandle);
         if (!started)
         {
             member.ReleaseReservation(runtime);
@@ -480,7 +526,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             ? allyHelperManager.TryStartChainAttackHelperToTarget(
                 step.helperChainAttackSequence,
                 helperSkillDef,
-                runtime.targetAnchor != null ? runtime.targetAnchor : runtime.targetTransform,
+                runtime.targetHandle,
                 step.helperHideOnComplete,
                 helperContinueMode,
                 helperContinueNormalizedTime)
@@ -715,10 +761,12 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         if (!runtime.sequenceDef.cancelIfLockedTargetDies)
             return true;
 
-        if (runtime.targetTransform == null)
+        if (runtime.targetHandle == null ||
+            !runtime.targetHandle.TryResolveAliveTarget(out Transform currentTarget, out _) ||
+            currentTarget != runtime.targetTransform)
             return false;
 
-        if (!ChainAttackTargetingUtility.IsTargetAlive(runtime.targetTransform))
+        if (!ChainAttackTargetingUtility.IsTargetAlive(currentTarget))
         {
             Log(runtime.sequenceDef, "Sequence cancelled because the locked target is no longer alive.");
             return false;

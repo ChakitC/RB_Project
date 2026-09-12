@@ -249,6 +249,39 @@ public sealed class FieldAllyMember : MonoBehaviour
         _sequenceRunner.ReleaseReservation(owner);
     }
 
+    public bool TryBeginTransientExecution(object owner, bool protectActor = true)
+    {
+        EnsureModules();
+        if (!_sequenceRunner.TryReserve(owner))
+            return false;
+
+        if (_sequenceRunner.HasActiveSequenceExecution)
+        {
+            _sequenceRunner.ReleaseReservation(owner);
+            return false;
+        }
+
+        CacheReferences();
+        if (!IsAliveActor || IsActorInKnockback())
+        {
+            _sequenceRunner.ReleaseReservation(owner);
+            return false;
+        }
+
+        _autonomyScope.Apply(protectActor);
+        return true;
+    }
+
+    public void EndTransientExecution(object owner)
+    {
+        EnsureModules();
+        if (!_sequenceRunner.OwnsReservation(owner))
+            return;
+
+        _autonomyScope.Restore();
+        _sequenceRunner.ReleaseReservation(owner);
+    }
+
     public bool IsSequenceExecutionReadyToContinue(int executionId)
     {
         EnsureModules();
@@ -261,10 +294,18 @@ public sealed class FieldAllyMember : MonoBehaviour
         return _sequenceRunner.TryGetCompletedSequenceExecutionResult(executionId, out success, out hasDeferredCleanup);
     }
 
-    public bool TryStartSequenceStep(ChainAttackStepDef step, Transform lockedTarget, Transform lockedTargetAnchor = null)
+    public bool TryStartSequenceStep(
+        ChainAttackStepDef step,
+        Transform lockedTarget,
+        Transform lockedTargetAnchor = null,
+        SkillTargetHandle lockedTargetHandle = null)
     {
         EnsureModules();
-        return _sequenceRunner.TryStartSequenceStep(step, lockedTarget, lockedTargetAnchor);
+        return _sequenceRunner.TryStartSequenceStep(
+            step,
+            lockedTarget,
+            lockedTargetAnchor,
+            lockedTargetHandle);
     }
 
     public void SetRuntimeChainSkillOverride(SkillGemDefinition skill)

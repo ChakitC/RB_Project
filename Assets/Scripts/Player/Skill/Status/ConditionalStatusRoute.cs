@@ -60,7 +60,15 @@ public sealed class ConditionalStatusRoute
             if (spec?.effect == null)
                 continue;
 
-            controller.ApplyEffect(spec, source, fallbackDuration);
+            controller.ApplyEffect(
+                spec,
+                source,
+                context.SkillDef != null ? $"skill:{context.SkillDef.name}" : "skill",
+                context.CombatChainId,
+                context.CombatDepth + 1,
+                PassiveEventOrigin.External,
+                fallbackDuration: fallbackDuration,
+                comboProvenance: context.ComboProvenance);
             appliedAny = true;
         }
 

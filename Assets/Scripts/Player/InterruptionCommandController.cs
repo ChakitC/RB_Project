@@ -28,11 +28,6 @@ public sealed class InterruptionCommandController : MonoBehaviour
     [SerializeField] private PlayerContext playerContext;
     [SerializeField] private PlayerInterruptionController playerInterruptionController;
 
-    [Header("Target Search")]
-    [SerializeField] private LayerMask targetSearchMask = ~0;
-    [SerializeField] private LayerMask targetObstacleMask = ~0;
-    [SerializeField, Min(0.5f)] private float targetSearchRadius = 4f;
-
     [Header("Player Interrupt")]
     [SerializeField, Min(0.5f)] private float playerInterruptRange = 4f;
 
@@ -47,7 +42,6 @@ public sealed class InterruptionCommandController : MonoBehaviour
     [Header("Debug")]
     [SerializeField] private bool logInterruptionFlow;
 
-    static readonly Collider[] _overlapBuffer = new Collider[32];
     int _attemptCounter;
 
     public event Action<InterruptionCommandExecution> CommandStarted;
@@ -69,14 +63,13 @@ public sealed class InterruptionCommandController : MonoBehaviour
     {
         int attemptId = ++_attemptCounter;
 
-        if (playerContext == null || playerContext.aimTarget == null)
-            return Finish(attemptId, InterruptionCommandResult.MissingConfiguration, "playerContext or aimTarget is missing");
+        if (playerContext == null || playerContext.Targeting == null)
+            return Finish(attemptId, InterruptionCommandResult.MissingConfiguration, "player targeting controller is missing");
 
         if (playerInterruptionController != null && playerInterruptionController.IsExecuting)
             return Finish(attemptId, InterruptionCommandResult.SkillRejected, "player interruption already executing");
 
-        LogCommand(attemptId,
-            $"started center={playerContext.aimTarget.position} radius={targetSearchRadius:0.##} mask={targetSearchMask.value}");
+        LogCommand(attemptId, "started from committed player target");
 
         if (!TryFindTarget(out var targetCtx, out bool windowExistButClosed, out string targetDiagnostics))
         {
@@ -136,6 +129,10 @@ public sealed class InterruptionCommandController : MonoBehaviour
         Transform targetAnchor,
         TargetedSkillPlacementResult placement)
     {
+        if (!targetCtx.IsCurrentLife)
+            return Finish(attemptId, InterruptionCommandResult.NoValidTarget,
+                "target life changed before player reservation");
+
         if (!targetCtx.Block.TryReserveBlock(gameObject, holdSpeedMultiplier, holdSafetyMargin, out PreCastBlockReservation reservation))
             return Finish(attemptId, InterruptionCommandResult.TargetWindowClosed,
                 $"target='{ResolveName(targetCtx.Transform)}' block reservation was rejected");
@@ -145,7 +142,8 @@ public sealed class InterruptionCommandController : MonoBehaviour
 
         if (!playerInterruptionController.BeginInterruption(targetCtx, reservation, placement))
         {
-            targetCtx.Block.CancelReservedBlock(reservation);
+            if (targetCtx.IsCurrentLife)
+                targetCtx.Block.CancelReservedBlock(reservation);
             return Finish(attemptId, InterruptionCommandResult.SkillRejected,
                 "player rejected interruption start");
         }
@@ -183,6 +181,14 @@ public sealed class InterruptionCommandController : MonoBehaviour
             return true;
         }
 
+        if (!targetCtx.IsCurrentLife)
+        {
+            allyMember.ReleaseReservation(allyCtrl);
+            result = Finish(attemptId, InterruptionCommandResult.NoValidTarget,
+                "target life changed before ally reservation");
+            return true;
+        }
+
         LogCommand(attemptId,
             $"ally selected name='{ResolveName(allyMember.TransformRef)}' mode={placement.Mode} " +
             $"startPosition={placement.StartPosition}; {allyDiagnostics}");
@@ -200,7 +206,8 @@ public sealed class InterruptionCommandController : MonoBehaviour
 
         if (!allyCtrl.BeginInterruption(targetCtx, reservation, placement))
         {
-            targetCtx.Block.CancelReservedBlock(reservation);
+            if (targetCtx.IsCurrentLife)
+                targetCtx.Block.CancelReservedBlock(reservation);
             allyMember.ReleaseReservation(allyCtrl);
             result = Finish(attemptId, InterruptionCommandResult.SkillRejected,
                 $"ally='{ResolveName(allyMember.TransformRef)}' rejected interruption start");
@@ -228,122 +235,57 @@ public sealed class InterruptionCommandController : MonoBehaviour
         windowExistButClosed = false;
         diagnostics = null;
 
-        Vector3 center = playerContext.aimTarget.position;
-        Camera gameplayCamera = Camera.main;
-        Vector3 searchOrigin = gameplayCamera != null
-            ? gameplayCamera.transform.position
-            : playerContext.transform.position + Vector3.up;
-        int count = Physics.OverlapCapsuleNonAlloc(
-            searchOrigin,
-            center,
-            targetSearchRadius,
-            _overlapBuffer,
-            targetSearchMask,
-            QueryTriggerInteraction.Ignore);
-
-        float bestDist = float.MaxValue;
-        InterruptionTargetContext bestCtx = default;
-        bool found = false;
-        bool foundOpenWindow = false;
-        int blockControllerCount = 0;
-        int closedWindowCount = 0;
-        int reservedCount = 0;
-        int unavailableHealthCount = 0;
-        int missingKnockbackCount = 0;
-        int candidateCount = 0;
-
-        for (int i = 0; i < count; i++)
+        if (!playerContext.Targeting.TryGetTarget(out CharacteContext targetContext))
         {
-            var col = _overlapBuffer[i];
-            var block = col.GetComponentInParent<PreCastBlockController>();
-            if (block == null) continue;
-
-            blockControllerCount++;
-
-            if (!block.CanBlockActiveCast())
-            {
-                closedWindowCount++;
-                continue;
-            }
-
-            foundOpenWindow = true;
-
-            if (block.HasActiveReservation)
-            {
-                reservedCount++;
-                continue;
-            }
-
-            CharacteContext targetContext = block.GetComponentInParent<CharacteContext>();
-            targetContext?.ResolveReferences();
-            Transform targetRoot = targetContext != null ? targetContext.transform : block.transform;
-
-            HealthSystem health = targetContext != null
-                ? targetContext.HealthSystem
-                : col.GetComponentInParent<HealthSystem>();
-            if (health == null || !health.IsAlive)
-            {
-                unavailableHealthCount++;
-                continue;
-            }
-
-            CharacterKnockbackMotor knockback = targetContext != null
-                ? targetContext.KnockbackMotor
-                : col.GetComponentInParent<CharacterKnockbackMotor>();
-            if (knockback == null)
-            {
-                missingKnockbackCount++;
-                continue;
-            }
-
-            Transform targetAnchor = ResolveTargetAnchor(targetRoot);
-            Vector3 targetPoint = targetAnchor != null
-                ? targetAnchor.position
-                : col.bounds.center;
-            if (!ThirdPersonTargetingUtility.TryGetReticleScore(
-                    gameplayCamera,
-                    targetPoint,
-                    out float score) ||
-                !ThirdPersonTargetingUtility.HasLineOfSight(
-                    searchOrigin,
-                    targetPoint,
-                    targetRoot,
-                    targetObstacleMask,
-                    QueryTriggerInteraction.Ignore,
-                    playerContext.transform))
-            {
-                continue;
-            }
-
-            candidateCount++;
-            if (score < bestDist)
-            {
-                bestDist = score;
-                bestCtx = new InterruptionTargetContext
-                {
-                    Transform = targetRoot,
-                    Anchor = targetAnchor,
-                    Block = block,
-                    Knockback = knockback,
-                    Health = health
-                };
-                found = true;
-            }
-        }
-
-        if (logInterruptionFlow)
-        {
-            diagnostics =
-                $"targetScan overlaps={count}/{_overlapBuffer.Length} blockControllers={blockControllerCount} closed={closedWindowCount} reserved={reservedCount} unavailableHealth={unavailableHealthCount} missingKnockback={missingKnockbackCount} candidates={candidateCount}";
-        }
-
-        if (!found)
-        {
-            windowExistButClosed = blockControllerCount > 0 && !foundOpenWindow;
+            diagnostics = "committed target is missing or invalid";
             return false;
         }
 
-        ctx = bestCtx;
+        targetContext.ResolveReferences();
+        PreCastBlockController block = targetContext.GetComponent<PreCastBlockController>();
+        if (block == null)
+            block = targetContext.GetComponentInChildren<PreCastBlockController>(true);
+        if (block == null)
+            block = targetContext.GetComponentInParent<PreCastBlockController>();
+
+        if (block == null)
+        {
+            diagnostics = $"target '{targetContext.name}' has no pre-cast block controller";
+            return false;
+        }
+
+        if (!block.CanBlockActiveCast())
+        {
+            windowExistButClosed = true;
+            diagnostics = $"target '{targetContext.name}' has no open interruption window";
+            return false;
+        }
+
+        if (block.HasActiveReservation)
+        {
+            diagnostics = $"target '{targetContext.name}' interruption window is already reserved";
+            return false;
+        }
+
+        HealthSystem health = targetContext.HealthSystem;
+        CharacterKnockbackMotor knockback = targetContext.KnockbackMotor;
+        if (health == null || !health.IsAlive || knockback == null)
+        {
+            diagnostics = $"target '{targetContext.name}' is missing live health or knockback";
+            return false;
+        }
+
+        ctx = new InterruptionTargetContext
+        {
+            Context = targetContext,
+            LifeHandle = SkillTargetHandle.For(targetContext),
+            Transform = targetContext.transform,
+            Anchor = ResolveTargetAnchor(targetContext.transform),
+            Block = block,
+            Knockback = knockback,
+            Health = health
+        };
+        diagnostics = $"committed target='{targetContext.name}' life={targetContext.LifeGeneration}";
         return true;
     }
 

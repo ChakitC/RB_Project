@@ -37,6 +37,21 @@ types, including:
 Common systems should primarily depend on `CharacteContext` and read peer
 modules through `ctx`.
 
+## Enabled-lifetime Identity And Registry
+
+Every `CharacteContext` increments `LifeGeneration` in the base `OnEnable` and registers with
+`CharacterContextRegistry`; base `OnDisable` unregisters it. `EnemyContext` overrides the disable
+hook only to call `base.OnDisable()` before restoring world-slow values. New subtype lifecycle
+overrides must do the same. The registry is cleared at subsystem registration and reconciled once
+after scene load, which supports pools, scene changes, and Enter Play Mode without domain reload;
+it is not a licence to run scene discovery every frame.
+
+Delayed combat work must pair a character reference with its `LifeGeneration` (normally through
+`SkillTargetHandle`). A Unity instance ID and Transform are insufficient because a pool can disable
+and re-enable the same object between two animation events. Code must validate the original life
+before warp, facing, impact, or reservation completion and must not mutate the modules belonging to
+the new life.
+
 ### `cc` Is Optional
 
 `ctx.cc` is **required by the current Player movement stack only**.
@@ -215,6 +230,10 @@ PlayerContext ctx = PlayerContext.Instance; // null if no player is alive
 
 `Instance` is set in `PlayerContext.Awake` and cleared in `PlayerContext.OnDestroy`.
 It is safe to read every frame; null-check before use.
+
+`PlayerContext.Targeting` is a player-only reference to `PlayerTargetingController`. Common
+character modules do not own or depend on it. Aim-derived player commands read this reference;
+AI actors continue to use `AllyContext.AITargetSensor` or their graph-provided explicit target.
 
 **When to use `PlayerContext.Instance`:**
 

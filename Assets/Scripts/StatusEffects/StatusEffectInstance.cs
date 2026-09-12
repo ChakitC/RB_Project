@@ -24,7 +24,8 @@ public sealed class StatusEffectInstance
         string originPassiveId,
         string originRuleId,
         StatusApplicationSpec spec = null,
-        float fallbackDuration = 0f)
+        float fallbackDuration = 0f,
+        ComboExecutionProvenance comboProvenance = default)
     {
         Definition = definition;
         Source = source;
@@ -34,6 +35,7 @@ public sealed class StatusEffectInstance
         Origin = origin;
         OriginPassiveId = originPassiveId;
         OriginRuleId = originRuleId;
+        ComboProvenance = comboProvenance;
         CurrentStacks = Mathf.Max(0, initialStacks);
         ApplicationSequence = _nextApplicationSequence++;
         EffectiveDuration = ResolveDuration(spec, definition, fallbackDuration);
@@ -59,6 +61,7 @@ public sealed class StatusEffectInstance
     public PassiveEventOrigin Origin { get; private set; }
     public string OriginPassiveId { get; private set; }
     public string OriginRuleId { get; private set; }
+    public ComboExecutionProvenance ComboProvenance { get; private set; }
     public int CurrentStacks { get; private set; }
     public float TimeLeft { get; private set; }
 
@@ -103,7 +106,8 @@ public sealed class StatusEffectInstance
         int depth,
         PassiveEventOrigin origin,
         string originPassiveId,
-        string originRuleId)
+        string originRuleId,
+        ComboExecutionProvenance comboProvenance = default)
     {
         if (!string.IsNullOrWhiteSpace(appliedById))
             AppliedById = appliedById;
@@ -113,6 +117,7 @@ public sealed class StatusEffectInstance
 
         Depth = Mathf.Max(0, depth);
         Origin = origin;
+        ComboProvenance = comboProvenance;
 
         if (!string.IsNullOrWhiteSpace(originPassiveId))
             OriginPassiveId = originPassiveId;

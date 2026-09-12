@@ -55,8 +55,32 @@ public abstract class CharacteContext : MonoBehaviour
     public Vector2 lookInput;
     
     int _worldSlowExemptionCount;
+    int _lifeGeneration;
+
+    /// <summary>
+    /// Identifies the current enabled lifetime of this actor. Object pools reuse the same Unity
+    /// object and instance id, so delayed combat work must pair its reference with this value.
+    /// </summary>
+    public int LifeGeneration => _lifeGeneration;
 
     public virtual bool UsesWorldSlow => _worldSlowExemptionCount <= 0;
+
+    protected virtual void OnEnable()
+    {
+        unchecked
+        {
+            _lifeGeneration++;
+            if (_lifeGeneration == 0)
+                _lifeGeneration = 1;
+        }
+
+        CharacterContextRegistry.Register(this);
+    }
+
+    protected virtual void OnDisable()
+    {
+        CharacterContextRegistry.Unregister(this);
+    }
 
     public void PushWorldSlowExemption()
     {

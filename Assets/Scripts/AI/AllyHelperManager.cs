@@ -7,7 +7,6 @@ using Opsive.BehaviorDesigner.Runtime;
 [DefaultExecutionOrder(100)]
 public class AllyHelperManager : MonoBehaviour
 {
-    const int MaxChainTargetColliders = 64;
     static CharacterPlacementReservationService SharedPlacementReservations =>
         CharacterPlacementReservationRegistry.Shared;
 
@@ -49,6 +48,7 @@ public class AllyHelperManager : MonoBehaviour
         public GameObject targetObject;
         public Transform targetTransform;
         public Transform anchorTransform;
+        public SkillTargetHandle targetHandle;
         public ChainStepContinueMode continueMode;
         public float continueNormalizedTime;
         public bool continueReleased;
@@ -112,8 +112,6 @@ public class AllyHelperManager : MonoBehaviour
     int nextHelperExecutionId = 1;
     int lastCompletedChainAttackExecutionId;
     bool lastCompletedChainAttackExecutionSucceeded;
-    readonly Collider[] _chainTargetBuffer = new Collider[MaxChainTargetColliders];
-    readonly HashSet<int> _chainTargetIds = new();
     CharacterContextPartyLoader allyPartyLoader;
     bool _warnedInvalidHelperCharacter;
     bool _helperProtectionApplied;
@@ -951,6 +949,40 @@ public class AllyHelperManager : MonoBehaviour
             continueNormalizedTime);
     }
 
+    public bool TryStartChainAttackHelperToTarget(
+        HelperChainAttackSequenceDef sequenceDef,
+        SkillGemDefinition chainAttackSkillDef,
+        SkillTargetHandle targetHandle,
+        bool hideOnSkillComplete = true,
+        ChainStepContinueMode continueMode = ChainStepContinueMode.OnStepComplete,
+        float continueNormalizedTime = 1f)
+    {
+        if (targetHandle == null ||
+            !targetHandle.TryResolveAliveTarget(out Transform targetTransform, out _) ||
+            !ChainAttackTargetingUtility.TryResolveExplicitTarget(
+                targetTransform,
+                playerContext,
+                allyHelper,
+                out GameObject targetObject,
+                out targetTransform,
+                out Transform anchorTransform))
+        {
+            Log(sequenceDef, "Chain attack start failed: locked target life is no longer valid.");
+            return false;
+        }
+
+        return TryStartChainAttackHelperInternal(
+            sequenceDef,
+            chainAttackSkillDef,
+            targetObject,
+            targetTransform,
+            anchorTransform,
+            hideOnSkillComplete,
+            continueMode,
+            continueNormalizedTime,
+            targetHandle: targetHandle);
+    }
+
     bool TryStartChainAttackHelperInternal(
         HelperChainAttackSequenceDef sequenceDef,
         SkillGemDefinition chainAttackSkillDef,
@@ -962,11 +994,19 @@ public class AllyHelperManager : MonoBehaviour
         float continueNormalizedTime,
         SkillHelperDef helperProc = null,
         SkillCastCostPolicy? costPolicy = null,
-        bool stampCooldown = true)
+        bool stampCooldown = true,
+        SkillTargetHandle targetHandle = null)
     {
         if (sequenceDef == null || chainAttackSkillDef == null || targetObject == null || targetTransform == null || anchorTransform == null)
         {
             Log(sequenceDef, "Chain attack start failed: target data is incomplete.");
+            return false;
+        }
+
+        targetHandle ??= ChainAttackTargetingUtility.CreateTargetHandle(targetTransform);
+        if (!targetHandle.TryResolveAliveTarget(out Transform lockedTarget, out _) || lockedTarget != targetTransform)
+        {
+            Log(sequenceDef, "Chain attack start failed: target life changed before execution began.");
             return false;
         }
 
@@ -986,7 +1026,8 @@ public class AllyHelperManager : MonoBehaviour
                 continueNormalizedTime,
                 helperProc,
                 costPolicy,
-                stampCooldown);
+                stampCooldown,
+                targetHandle);
 
             if (!started)
                 ReleaseHelperPlacementReservation();
@@ -1010,7 +1051,8 @@ public class AllyHelperManager : MonoBehaviour
         float continueNormalizedTime,
         SkillHelperDef helperProc,
         SkillCastCostPolicy? costPolicy,
-        bool stampCooldown)
+        bool stampCooldown,
+        SkillTargetHandle targetHandle)
     {
         if (!TryPrepareHelperForSummon(out bool activatedNow))
             return false;
@@ -1031,6 +1073,7 @@ public class AllyHelperManager : MonoBehaviour
             targetObject = targetObject,
             targetTransform = targetTransform,
             anchorTransform = anchorTransform,
+            targetHandle = targetHandle,
             continueMode = continueMode,
             continueNormalizedTime = Mathf.Clamp(continueNormalizedTime, 0f, 0.999f),
             warpRequestId = NextHelperSkillRequestId(),
@@ -1479,6 +1522,12 @@ public class AllyHelperManager : MonoBehaviour
             return;
         }
 
+        if (!IsPendingChainAttackTargetLifeValid())
+        {
+            CancelActiveChainAttackSequence(interrupted: false);
+            return;
+        }
+
         if (!allyAnimBrain.TryGetActiveSkillNormalizedTime(
                 pendingChainAttackSequence.chainAttackRequestId,
                 out float normalizedTime))
@@ -1582,7 +1631,7 @@ public class AllyHelperManager : MonoBehaviour
             if (pendingChainAttackSequence.phase != ChainAttackPhase.WaitingForWarpCastMoment)
                 return true;
 
-            if (!IsChainAttackTargetAlive(pendingChainAttackSequence.targetTransform))
+            if (!IsPendingChainAttackTargetAlive())
             {
                 Log(pendingChainAttackSequence.sequenceDef, "Chain attack cancelled: target died before teleport.");
                 CancelActiveChainAttackSequence(interrupted: false);
@@ -1615,19 +1664,26 @@ public class AllyHelperManager : MonoBehaviour
             if (pendingChainAttackSequence.phase != ChainAttackPhase.WaitingForChainCastMoment)
                 return true;
 
+            if (!IsPendingChainAttackTargetAlive())
+            {
+                Log(pendingChainAttackSequence.sequenceDef, "Chain attack cancelled: target life changed before the follow-up payload.");
+                CancelActiveChainAttackSequence(interrupted: false);
+                return true;
+            }
+
             bool executed = pendingChainAttackSequence.helperProc != null
                 ? ExecuteHelperProcSkill(
                     pendingChainAttackSequence.helperProc,
                     applyFacing: false,
                     requestId,
-                    SkillTargetHandle.None,
+                    pendingChainAttackSequence.targetHandle,
                     pendingChainAttackSequence.costPolicy ?? SkillCastCostPolicy.Normal,
                     pendingChainAttackSequence.stampCooldown)
                 : ExecuteHelperSkill(
                     pendingChainAttackSequence.chainAttackSkillDef,
                     applyFacing: false,
                     requestId,
-                    target: null,
+                    target: pendingChainAttackSequence.targetHandle,
                     costPolicy: pendingChainAttackSequence.costPolicy,
                     stampCooldown: pendingChainAttackSequence.stampCooldown);
 
@@ -1675,7 +1731,7 @@ public class AllyHelperManager : MonoBehaviour
 
         if (pendingChainAttackSequence.phase == ChainAttackPhase.WaitingForWarpComplete)
         {
-            if (!IsChainAttackTargetAlive(pendingChainAttackSequence.targetTransform))
+            if (!IsPendingChainAttackTargetAlive())
             {
                 Log(pendingChainAttackSequence.sequenceDef, "Chain attack cancelled: target died before the follow-up attack started.");
                 CancelActiveChainAttackSequence(interrupted: false);
@@ -1691,6 +1747,12 @@ public class AllyHelperManager : MonoBehaviour
 
         if (pendingChainAttackSequence.phase == ChainAttackPhase.WaitingForChainComplete)
         {
+            if (!IsPendingChainAttackTargetLifeValid())
+            {
+                CancelActiveChainAttackSequence(interrupted: false);
+                return true;
+            }
+
             if (!pendingChainAttackSequence.continueReleased &&
                 pendingChainAttackSequence.continueMode != ChainStepContinueMode.OnStepComplete)
             {
@@ -1909,6 +1971,7 @@ public class AllyHelperManager : MonoBehaviour
             ignoreResourceCosts: true,
             useAnimationDriver: false,
             usePlanarRootMotion: true,
+            primaryTarget: target,
             debugSource: $"helper:{skillDef.name}"));
 
         if (result.Started)
@@ -2290,7 +2353,7 @@ public class AllyHelperManager : MonoBehaviour
             return;
         }
 
-        if (!IsChainAttackTargetAlive(pendingChainAttackSequence.targetTransform))
+        if (!IsPendingChainAttackTargetAlive())
         {
             Log(pendingChainAttackSequence.sequenceDef, "Chain attack cancelled: target died before the follow-up attack could start.");
             CancelActiveChainAttackSequence(interrupted: false);
@@ -2364,156 +2427,47 @@ public class AllyHelperManager : MonoBehaviour
         if (playerContext == null)
             playerContext = GetComponent<PlayerContext>();
 
-        if (playerContext == null || playerContext.aimTarget == null)
-            return false;
-
-        Vector3 aimPoint = playerContext.aimTarget.position;
-        int hitCount = Physics.OverlapSphereNonAlloc(
-            aimPoint,
-            Mathf.Max(0.1f, sequenceDef.aimSearchRadius),
-            _chainTargetBuffer,
-            sequenceDef.targetLayers,
-            sequenceDef.targetTriggerInteraction);
-
-        _chainTargetIds.Clear();
-
-        float bestDistanceSqr = float.PositiveInfinity;
-
-        for (int i = 0; i < hitCount; i++)
+        playerContext.ResolveReferences();
+        if (playerContext.Targeting == null ||
+            !playerContext.Targeting.TryGetTarget(out CharacteContext targetContext))
         {
-            Collider hit = _chainTargetBuffer[i];
-            if (hit == null)
-                continue;
-
-            if (!TryResolveChainAttackCandidate(hit, out GameObject candidateObject, out Transform candidateTransform, out Transform candidateAnchor))
-                continue;
-
-            int targetId = candidateObject.GetInstanceID();
-            if (!_chainTargetIds.Add(targetId))
-                continue;
-
-            Vector3 candidatePoint = candidateAnchor != null ? candidateAnchor.position : candidateTransform.position;
-            if (sequenceDef.requireAimLineOfSight &&
-                !HasAimLineOfSight(aimPoint, candidatePoint, sequenceDef))
-            {
-                continue;
-            }
-
-            float distSqr = (candidatePoint - aimPoint).sqrMagnitude;
-            if (distSqr >= bestDistanceSqr)
-                continue;
-
-            bestDistanceSqr = distSqr;
-            targetObject = candidateObject;
-            targetTransform = candidateTransform;
-            anchorTransform = candidateAnchor;
+            return false;
         }
 
-        return targetObject != null && anchorTransform != null;
+        int layerBits = 1 << targetContext.gameObject.layer;
+        if (targetContext.TargetInfo != null)
+            layerBits |= 1 << targetContext.TargetInfo.gameObject.layer;
+        if (sequenceDef.targetLayers != ~0 && (sequenceDef.targetLayers.value & layerBits) == 0)
+            return false;
+
+        if (!ChainAttackTargetingUtility.TryResolveTargetAnchor(
+                targetContext.transform,
+                out anchorTransform))
+        {
+            return false;
+        }
+
+        targetObject = targetContext.gameObject;
+        targetTransform = targetContext.transform;
+        return true;
     }
 
-    bool TryResolveChainAttackCandidate(
-        Collider hit,
-        out GameObject candidateObject,
-        out Transform candidateTransform,
-        out Transform candidateAnchor)
+    bool IsPendingChainAttackTargetAlive()
     {
-        candidateObject = null;
-        candidateTransform = null;
-        candidateAnchor = null;
-
-        if (hit == null)
+        if (pendingChainAttackSequence == null || pendingChainAttackSequence.targetHandle == null)
             return false;
 
-        CharacteContext targetContext = hit.GetComponentInParent<CharacteContext>();
-        AITargetInfo targetInfo = hit.GetComponentInParent<AITargetInfo>();
-        IAITargetable aiTargetable = FindInterfaceInParents<IAITargetable>(hit.transform);
-        IDamageable damageable = FindInterfaceInParents<IDamageable>(hit.transform);
-
-        bool hasCombatIdentity =
-            targetContext != null ||
-            targetInfo != null ||
-            aiTargetable != null ||
-            damageable != null;
-
-        if (!hasCombatIdentity)
-            return false;
-
-        Transform rootTransform = targetContext != null
-            ? targetContext.transform
-            : hit.attachedRigidbody != null
-                ? hit.attachedRigidbody.transform
-                : hit.transform.root != null ? hit.transform.root : hit.transform;
-
-        if (rootTransform == null)
-            return false;
-
-        if (playerContext != null && rootTransform == playerContext.transform.root)
-            return false;
-
-        if (allyHelper != null && rootTransform == allyHelper.transform.root)
-            return false;
-
-        if (!IsResolvedTargetAlive(rootTransform, targetContext, aiTargetable, damageable))
-            return false;
-
-        candidateTransform = rootTransform;
-        candidateObject = rootTransform.gameObject;
-        candidateAnchor = targetInfo != null && targetInfo.ChainAttackPoint != null
-            ? targetInfo.ChainAttackPoint
-            : aiTargetable?.AimPoint != null
-                ? aiTargetable.AimPoint
-                : rootTransform;
-
-        return candidateAnchor != null;
+        return pendingChainAttackSequence.targetHandle.TryResolveAliveTarget(out Transform liveTarget, out _) &&
+               liveTarget == pendingChainAttackSequence.targetTransform;
     }
 
-    bool IsResolvedTargetAlive(
-        Transform rootTransform,
-        CharacteContext targetContext,
-        IAITargetable aiTargetable,
-        IDamageable damageable)
+    bool IsPendingChainAttackTargetLifeValid()
     {
-        if (targetContext != null && targetContext.stateHub != null)
-            return targetContext.stateHub.IsAlive && !targetContext.stateHub.Isdown;
-
-        if (aiTargetable != null)
-            return aiTargetable.IsAlive;
-
-        if (damageable != null)
-            return damageable.IsAlive;
-
-        return rootTransform != null;
-    }
-
-    bool IsChainAttackTargetAlive(Transform targetTransform)
-    {
-        if (targetTransform == null)
+        if (pendingChainAttackSequence == null || pendingChainAttackSequence.targetHandle == null)
             return false;
 
-        CharacteContext targetContext = targetTransform.GetComponentInParent<CharacteContext>();
-        IAITargetable aiTargetable = FindInterfaceInParents<IAITargetable>(targetTransform);
-        IDamageable damageable = FindInterfaceInParents<IDamageable>(targetTransform);
-
-        return IsResolvedTargetAlive(targetTransform.root != null ? targetTransform.root : targetTransform, targetContext, aiTargetable, damageable);
-    }
-
-    bool HasAimLineOfSight(Vector3 origin, Vector3 targetPoint, HelperChainAttackSequenceDef sequenceDef)
-    {
-        if (sequenceDef == null || sequenceDef.aimObstacleLayers == 0)
-            return true;
-
-        Vector3 dir = targetPoint - origin;
-        float dist = dir.magnitude;
-        if (dist <= 0.001f)
-            return true;
-
-        return !Physics.Raycast(
-            origin,
-            dir / dist,
-            dist,
-            sequenceDef.aimObstacleLayers,
-            sequenceDef.targetTriggerInteraction);
+        return pendingChainAttackSequence.targetHandle.TryResolveLiveTarget(out Transform liveTarget, out _) &&
+               liveTarget == pendingChainAttackSequence.targetTransform;
     }
 
     bool TryResolveChainAttackTeleportPose(

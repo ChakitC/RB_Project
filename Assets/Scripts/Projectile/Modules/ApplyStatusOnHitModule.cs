@@ -48,7 +48,8 @@ public sealed class ApplyStatusOnHitModule : ProjectileModule
                 ctx.depth + 1,
                 ctx.origin,
                 ctx.originPassiveId,
-                ctx.originRuleId);
+                ctx.originRuleId,
+                comboProvenance: ctx.comboProvenance);
         }
     }
 }

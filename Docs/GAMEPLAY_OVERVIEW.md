@@ -266,6 +266,12 @@ Each step in the sequence can teleport the actor to the target, warp them in wit
 a visual effect, or keep them in place. After the step the actor can return to their
 recorded origin, fade out and deactivate, or stay at the attack position.
 
+Party Combo Skills are the reactive counterpart to this scripted sequence.
+Combat events can open a short offer for a specific field ally; accepting it
+spends that combo skill's shared charge and executes against the snapshotted
+event target. Party Combo does not spend Energy and does not replace Chain
+Attack. See [Party Combo Skill System](SYSTEMS/PARTY_COMBO.md).
+
 ---
 
 ## Guaranteed Interruption Command

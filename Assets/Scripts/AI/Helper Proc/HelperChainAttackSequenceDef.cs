@@ -3,17 +3,9 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "HelperChainAttackSequence", menuName = "Game/Helper Proc/Chain Attack Sequence")]
 public sealed class HelperChainAttackSequenceDef : ScriptableObject
 {
-    [Header("Target Search")]
-    [Tooltip("รัศมีรอบ aim target ของผู้เล่นที่ใช้หา target สำหรับ chain attack ของ helper")]
-    [Min(0.1f)] public float aimSearchRadius = 3f;
-    [Tooltip("เลเยอร์ที่ค้นหา target ของ helper chain attack")]
+    [Header("Target Eligibility")]
+    [Tooltip("เลเยอร์ของเป้ากลางที่ helper chain attack ยอมรับ")]
     public LayerMask targetLayers = ~0;
-    [Tooltip("กำหนดว่าการค้นหา target จะรวม trigger collider หรือไม่")]
-    public QueryTriggerInteraction targetTriggerInteraction = QueryTriggerInteraction.Ignore;
-    [Tooltip("บังคับให้มีแนวเส้นโล่งจากจุด aim ของผู้เล่นถึง target anchor ที่เลือก ก่อนเริ่ม helper chain attack")]
-    public bool requireAimLineOfSight;
-    [Tooltip("เลเยอร์ที่บัง line of sight ของ target helper chain ใช้เฉพาะเมื่อเปิด Require Aim Line Of Sight")]
-    public LayerMask aimObstacleLayers = 0;
 
     [Header("Teleport")]
     [Tooltip("ซ่อน helper ตอนจังหวะ warp cast ก่อน teleport ไปยัง pose ของ chain attack ที่ resolve ได้")]

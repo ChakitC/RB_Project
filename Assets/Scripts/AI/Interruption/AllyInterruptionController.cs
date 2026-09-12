@@ -256,6 +256,8 @@ public sealed class AllyInterruptionController : MonoBehaviour
         TargetedSkillPlacementResult placementResult)
     {
         ResolveRefs();
+        if (!target.IsCurrentLife)
+            return false;
         if (_state != State.Idle)
         {
             LogFlow($"begin rejected reason=StateNotIdle state={_state}", warning: true);
@@ -339,6 +341,11 @@ public sealed class AllyInterruptionController : MonoBehaviour
     {
         if (_state != State.Casting && _state != State.Impact) return;
         if (requestId != _activeRequestId) return;
+        if (!_target.IsCurrentLife)
+        {
+            AbortForTargetLifeChange();
+            return;
+        }
 
         if (eventName == CombatTimelineEventName.HitStart && _state == State.Casting)
         {
@@ -418,7 +425,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     void ApplyImpactKnockback()
     {
-        bool targetAlive = _target.Health != null && _target.Health.IsAlive;
+        bool targetAlive = _target.IsCurrentLife && _target.Health != null && _target.Health.IsAlive;
         if (targetAlive && _target.Knockback != null && _actorTransform != null && _target.Transform != null)
         {
             var kb = KnockbackData.FromOrigin(
@@ -484,6 +491,13 @@ public sealed class AllyInterruptionController : MonoBehaviour
             return _blockCompletionResult;
 
         _blockCompletionAttempted = true;
+        if (!_target.IsCurrentLife)
+        {
+            _blockCompletionResult = ReservedBlockResult.InvalidReservation;
+            _blockCompletedSuccessfully = false;
+            return _blockCompletionResult;
+        }
+
         ReservedBlockResult result = _blockReservation.IsValid &&
                                      _blockReservation.Controller != null
             ? _blockReservation.Controller.CompleteReservedBlock(_blockReservation)
@@ -533,6 +547,15 @@ public sealed class AllyInterruptionController : MonoBehaviour
         UnsubscribeSkillEvents();
         StopActiveSkillPlayback();
         CompleteReservedBlockOnce(reason);
+        Cleanup();
+    }
+
+    void AbortForTargetLifeChange()
+    {
+        LogFlow("target life changed; cancelling without touching the recycled target", warning: true);
+        _state = State.Cancelled;
+        UnsubscribeSkillEvents();
+        StopActiveSkillPlayback();
         Cleanup();
     }
 
@@ -705,7 +728,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     void FaceTarget()
     {
-        if (_actorTransform == null || _target.Transform == null) return;
+        if (!_target.IsCurrentLife || _actorTransform == null || _target.Transform == null) return;
 
         Vector3 dir = _target.Transform.position - _actorTransform.position;
         dir.y = 0f;
@@ -972,7 +995,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     void LockAim()
     {
-        if (_aimDriver != null && _target.Anchor != null)
+        if (_target.IsCurrentLife && _aimDriver != null && _target.Anchor != null)
             _aimDriver.SetOverrideTarget(_target.Anchor, preferChainAttackPoint: true);
     }
 

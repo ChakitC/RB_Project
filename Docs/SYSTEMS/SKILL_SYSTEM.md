@@ -573,6 +573,10 @@ API:
 - `TryResolveEffectTarget(out CharacteContext)` - additionally requires the target be active and
   alive. Existence and eligibility are separate questions: a downed ally still has a live
   reference, so a delivery still flies to them, but nothing lands.
+- Character handles capture `CharacteContext.LifeGeneration`. Disabling and re-enabling a pooled
+  actor invalidates every handle from the previous enabled lifetime even when the Unity object and
+  instance ID are unchanged. `TryResolveLiveTarget` is for cleanup that must distinguish "killed
+  by this cast" from "pooled into a new life".
 - `ResolveDeliveryPoint(float clearance)` - world point above the target's head, resolved lazily.
   While the target lives it recomputes from bounds and refreshes its cache; once the target is gone
   the cached point is returned. That cached point is the last one the system successfully resolved,
@@ -1452,12 +1456,19 @@ temporary folder without calling global `AssetDatabase.SaveAssets()`.
 
 ## Command Skill Cast Facing
 
-Command-slot skills whose payload uses `FaceDetectedTargetOnCast` rotate the
-character root horizontally toward the skill user's current aim direction
-immediately before the skill animation starts. Skills using
-`KeepCurrentFacing` retain their existing facing. `Aires_Skill_3` enables this
-behavior so its animation and world-space VFX align with the current Aim
-Target.
+Player command-slot and entry casts whose payload uses `FaceDetectedTargetOnCast` capture a
+`SkillFacingSnapshot` when the request is accepted, before any animation wait. The snapshot holds
+either the explicit target already supplied by the command, the committed
+`PlayerTargetingController.CurrentTarget` (within the 6 m facing-assist range), or the planar
+camera-forward fallback from that same moment. It travels separately from
+`SkillCastRequest.PrimaryTarget`; ordinary self/ground/friendly skills are not assigned an enemy
+recipient merely to support facing.
+
+At payload execution, `PrefabHitboxSkillPayloadDef` resolves only that snapshot. A changed Aim or
+UI selection cannot redirect the wind-up; a dead, despawned, or pooled target falls back to the
+captured direction and no second actor is selected. Skills using `KeepCurrentFacing` retain their
+existing facing. `Aires_Skill_3` enables this behavior so its animation and world-space VFX align
+with the command-time decision.
 
 ## Test Stage Damage And Energy Contract
 
@@ -1871,3 +1882,12 @@ on a `0.1s` interval and extrapolates the overlay per frame from the last sample
 Extrapolation uses `Time.time`, the pool's own clock, so the sweep stops exactly
 when the cooldown does. A re-read is pulled forward the moment the sampled
 recharge comes due, so the charge count and the flash still land on time.
+
+## Party Combo Skill Entry
+
+Party Combo execution uses `CharacterSkillManager.TryStartPartyComboSkill` and
+a dedicated runtime entry keyed by `SkillGemDefinition`. The entry deliberately
+has no character loadout/upgrade snapshot, shares the skill's normal charge
+pool, ignores Energy, and still stamps cooldown on commit. Callers receive
+request-scoped commit, failure, and cancellation callbacks; `CastReleased` is
+not a commit signal. See [Party Combo Skill System](PARTY_COMBO.md).

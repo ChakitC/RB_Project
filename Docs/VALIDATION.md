@@ -725,3 +725,17 @@ Not reachable from Edit Mode; run these in Unity:
   produces one point hit and one enemy-health result per enemy. A head anchor
   takes the Headshot path. Death on the final-point shot produces no Special
   reaction and no ChainReady.
+
+# Party Combo validation
+
+Run **Tools > Validation > Validate Party Combo Skills** after editing
+`PartyComboSkillDef`, `PartyComboExecutionProfile`, or character loadouts. The
+validator reports empty/duplicate combo IDs, missing execution assets,
+unsupported MVP triggers, invalid offer durations, and reuse of battle, Helper,
+or legacy Chain Attack skills.
+
+`PartyComboCoreSmokeTests` covers the serialized `PassiveEventType` number
+contract, fact/chain/provenance propagation, supported trigger values, and the
+dedicated null-snapshot combo runtime entry. The broader runtime matrix and
+prefab wiring checklist live in
+[`Docs/SYSTEMS/PARTY_COMBO.md`](SYSTEMS/PARTY_COMBO.md).

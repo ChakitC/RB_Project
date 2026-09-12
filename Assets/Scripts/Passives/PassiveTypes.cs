@@ -10,17 +10,21 @@ public enum PassiveKind
 
 public enum PassiveEventType
 {
-    None,
-    ShotFired,
-    Hit,
-    Kill,
-    TakeDamage,
-    DamagePrevented,
-    PerfectDodge,
-    Reload,
-    DashStarted,
-    DashEnded,
-    MovementDistanceReached
+    // Serialized: append only. Never reorder, renumber, or reuse a retired value.
+    None = 0,
+    ShotFired = 1,
+    Hit = 2,
+    Kill = 3,
+    TakeDamage = 4,
+    DamagePrevented = 5,
+    PerfectDodge = 6,
+    Reload = 7,
+    DashStarted = 8,
+    DashEnded = 9,
+    MovementDistanceReached = 10,
+    StatusApplied = 11,
+    StatusStackChanged = 12,
+    ComboSkillCommitted = 13,
 }
 
 public enum PassiveEventOrigin

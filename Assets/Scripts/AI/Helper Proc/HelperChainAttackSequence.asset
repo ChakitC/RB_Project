@@ -12,15 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e2944bd127184dc6843ffdface62c1d7, type: 3}
   m_Name: HelperChainAttackSequence
   m_EditorClassIdentifier: 
-  aimSearchRadius: 3
   targetLayers:
     serializedVersion: 2
     m_Bits: 512
-  targetTriggerInteraction: 1
-  requireAimLineOfSight: 0
-  aimObstacleLayers:
-    serializedVersion: 2
-    m_Bits: 0
   hideHelperAtWarpCastMoment: 1
   useAnchorRotationAsBase: 1
   requireNavMeshAtAnchor: 0

@@ -198,7 +198,10 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         ProjectileSkillPayloadDef execution,
         FinalSkillStats skillStats,
         Vector3 dir,
-        Projectile prefabProjectileForChildren = null
+        Projectile prefabProjectileForChildren = null,
+        ulong combatChainId = 0,
+        int combatDepth = 0,
+        ComboExecutionProvenance comboProvenance = default
     )
     {
         // mark source
@@ -279,8 +282,10 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
                 staggerPower = (skillStats != null) ? skillStats.staggerPower : 0f
             },
             damageSourceId = def != null ? $"skill:{def.name}" : "skill",
-            chainId = CombatEventBus.NextChainId(),
+            chainId = combatChainId != 0 ? combatChainId : CombatEventBus.NextChainId(),
+            depth = Mathf.Max(0, combatDepth),
             origin = PassiveEventOrigin.External,
+            comboProvenance = comboProvenance,
             projectilePrefab = prefabProjectileForChildren != null ? prefabProjectileForChildren : this,
             attribution = _attribution
         };
@@ -1470,7 +1475,9 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
                 _ctx.origin,
                 _ctx.originPassiveId,
                 _ctx.originRuleId,
-                metadata);
+                metadata,
+                CombatEventBus.NextFactId(),
+                _ctx.comboProvenance);
 
             return ownerEventBus.CreateChildContext(
                 parent,

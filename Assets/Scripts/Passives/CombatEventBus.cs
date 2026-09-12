@@ -8,6 +8,7 @@ public sealed class CombatEventBus : MonoBehaviour
     [SerializeField] private CharacteContext ctx;
 
     static long _nextChainId;
+    static long _nextFactId;
     static long _nextAttackId;
 
     public event Action<PassiveEventContext> EventPublished;
@@ -35,6 +36,11 @@ public sealed class CombatEventBus : MonoBehaviour
     public static ulong NextChainId()
     {
         return unchecked((ulong)Interlocked.Increment(ref _nextChainId));
+    }
+
+    public static ulong NextFactId()
+    {
+        return unchecked((ulong)Interlocked.Increment(ref _nextFactId));
     }
 
     public string CreateAttackId(string prefix = null)
@@ -73,7 +79,9 @@ public sealed class CombatEventBus : MonoBehaviour
             origin,
             originPassiveId,
             originRuleId,
-            metadata);
+            metadata,
+            NextFactId(),
+            default);
     }
 
     public PassiveEventContext CreateChildContext(
@@ -88,8 +96,13 @@ public sealed class CombatEventBus : MonoBehaviour
         string originPassiveId = null,
         string originRuleId = null,
         CombatEventMetadata metadata = default,
-        GameObject actor = null)
+        GameObject actor = null,
+        ComboExecutionProvenance comboProvenance = default)
     {
+        ComboExecutionProvenance resolvedProvenance = comboProvenance.IsValid
+            ? comboProvenance
+            : parent.ComboProvenance;
+
         return new PassiveEventContext(
             type,
             actor ? actor : (ctx ? ctx.gameObject : gameObject),
@@ -104,7 +117,9 @@ public sealed class CombatEventBus : MonoBehaviour
             origin,
             originPassiveId,
             originRuleId,
-            metadata);
+            metadata,
+            NextFactId(),
+            resolvedProvenance);
     }
 
     public void Publish(in PassiveEventContext context)

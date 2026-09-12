@@ -12,11 +12,13 @@ and cinematic handoff.
 | `CinemachineThirdPersonFollow` | Shoulder geometry, damping, camera distance, and obstacle push-in |
 | `CinemachineThirdPersonAim` | Stable center-screen orientation |
 | `ThirdPersonAimController` | Camera Aim Point and muzzle-obstruction validation |
+| `PlayerTargetingController` | Post-Cinemachine centre-screen soft-target commit for player commands |
 | `ThirdPersonAimRigController` | Player/companion visual upper-body pitch toward the Aim Point |
 | `ThirdPersonAimBoneMap` | Generic-rig Spine, Chest, and optional UpperChest bindings |
 | `ThirdPersonCharacterProfile` | Per-character pivot, shoulder, distance, FOV, aim-rig, and fade calibration |
 | `ThirdPersonOcclusionFader` | Local-player close-camera fade |
 | `ThirdPersonReticleView` | Dynamic spread, Shoulder Aim contraction, hit marker, and muzzle-blocked marker |
+| `PlayerTargetIndicatorView` | One screen-space arrow above the committed player target |
 
 `GameplayCameraController` remains on `CameraHolder` so existing
 `CutsceneSkillPresenter` references remain valid. Cinemachine runtime components
@@ -60,6 +62,20 @@ block a shot even when the camera can see around them.
 
 Player and companion colliders are ignored by friendly projectiles. Wall
 collision remains active through `ProjectileLayerUtility`.
+
+## Post-camera Soft Target Contract
+
+`PlayerTargetingController` subscribes to Cinemachine's camera-updated event and commits exactly
+once per frame for `Camera.main`. Selection and `PlayerTargetIndicatorView` placement therefore
+use the same final camera transform and projection. Input callbacks read the last committed target
+that was already visible to the player; getters never perform a fresh scan during the button press.
+
+The target score is the pixel distance from screen centre divided by screen height, so the authored
+circle remains circular on 16:9 and ultrawide displays. Acquire/release hysteresis and an unscaled
+switch delay prevent flicker. When gameplay input is suppressed, the camera/owner is unavailable,
+or the committed actor becomes invalid, the target and arrow clear. This is command-facing soft
+lock only: `ThirdPersonAimController`, muzzle obstruction, spread, and projectile trajectory retain
+their existing Aim Point contract.
 
 ## Upper-body Aim
 

@@ -8,8 +8,6 @@ public class PlayerInputHandler : MonoBehaviour
     [SerializeField] SkillChainDef chainAttackDefinition;
     [Header("Melee Soft Target")]
     [SerializeField] float meleeSearchDistance = 4f;
-    [SerializeField] float meleeSearchRadius = 1.2f;
-    [SerializeField] LayerMask meleeTargetMask = ~0;
 
     bool _chainConsumedInteractPress;
 
@@ -73,9 +71,7 @@ public class PlayerInputHandler : MonoBehaviour
 
         ThirdPersonTargetingUtility.FacePlayerTowardSoftTarget(
             ctx,
-            searchDistance: meleeSearchDistance,
-            searchRadius: meleeSearchRadius,
-            targetMask: meleeTargetMask);
+            actionRange: meleeSearchDistance);
         ctx?.stateHub?.RequestOnMelee();
     }
 
@@ -183,6 +179,34 @@ public class PlayerInputHandler : MonoBehaviour
         ResolveReferences();
         if (c.performed && ctx?.partyCommand != null)
             ctx.partyCommand.TrySelectPartyCommandSlot(3);
+    }
+
+    public void OnPartyComboSlot1(InputAction.CallbackContext c)
+    {
+        TryConsumePartyCombo(c, ChainActorRole.PartySlot1);
+    }
+
+    public void OnPartyComboSlot2(InputAction.CallbackContext c)
+    {
+        TryConsumePartyCombo(c, ChainActorRole.PartySlot2);
+    }
+
+    public void OnPartyComboHelper(InputAction.CallbackContext c)
+    {
+        TryConsumePartyCombo(c, ChainActorRole.Helper);
+    }
+
+    void TryConsumePartyCombo(InputAction.CallbackContext context, ChainActorRole role)
+    {
+        if (!context.performed)
+            return;
+
+        ResolveReferences();
+        PartyComboOpportunityController controller = ctx?.partyComboController;
+        if (controller == null || !controller.TryGetOffer(role, out PartyComboOfferViewData offer))
+            return;
+
+        controller.TryConsumeOffer(role, offer.OfferId, out _);
     }
 
     public void OnSkillSlot1(InputAction.CallbackContext c) => TryCastSkillSlot(c, 0);

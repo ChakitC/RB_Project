@@ -2,6 +2,8 @@ using UnityEngine;
 
 public static class ThirdPersonTargetingUtility
 {
+    static readonly RaycastHit[] sharedLineOfSightHits = new RaycastHit[64];
+
     public static bool TryGetReticleScore(
         Camera camera,
         Vector3 targetPoint,
@@ -12,16 +14,20 @@ public static class ThirdPersonTargetingUtility
         if (camera == null)
             return false;
 
-        Vector3 viewport = camera.WorldToViewportPoint(targetPoint);
-        if (viewport.z <= 0f)
+        Vector3 screen = camera.WorldToScreenPoint(targetPoint);
+        if (screen.z <= 0f || Screen.height <= 0 ||
+            screen.x < 0f || screen.x > Screen.width ||
+            screen.y < 0f || screen.y > Screen.height)
             return false;
 
-        Vector2 offset = new(viewport.x - 0.5f, viewport.y - 0.5f);
-        float viewportDistance = offset.magnitude;
-        if (viewportDistance > maximumViewportRadius)
+        Vector2 reticle = new(Screen.width * 0.5f, Screen.height * 0.5f);
+        float normalizedScreenDistance = Vector2.Distance(
+            new Vector2(screen.x, screen.y),
+            reticle) / Screen.height;
+        if (normalizedScreenDistance > maximumViewportRadius)
             return false;
 
-        score = viewportDistance * 1000f + viewport.z * 0.001f;
+        score = normalizedScreenDistance;
         return true;
     }
 
@@ -36,22 +42,53 @@ public static class ThirdPersonTargetingUtility
         if (obstacleMask == 0)
             return true;
 
+        return HasLineOfSightNonAlloc(
+            origin,
+            targetPoint,
+            targetRoot,
+            obstacleMask,
+            sharedLineOfSightHits,
+            triggerInteraction,
+            ignoredRoot);
+    }
+
+    public static bool HasLineOfSightNonAlloc(
+        Vector3 origin,
+        Vector3 targetPoint,
+        Transform targetRoot,
+        LayerMask obstacleMask,
+        RaycastHit[] hitBuffer,
+        QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore,
+        Transform ignoredRoot = null)
+    {
+        if (obstacleMask == 0)
+            return true;
+
         Vector3 direction = targetPoint - origin;
         float distance = direction.magnitude;
         if (distance <= 0.001f)
             return true;
+        if (hitBuffer == null || hitBuffer.Length == 0)
+            return false;
 
-        RaycastHit[] hits = Physics.RaycastAll(
+        int hitCount = Physics.RaycastNonAlloc(
             origin,
             direction / distance,
+            hitBuffer,
             distance,
             obstacleMask,
             triggerInteraction);
-        RaycastHit nearestHit = default;
+
+        // A full NonAlloc buffer is incomplete. Failing closed prevents an omitted obstacle from
+        // turning into visibility through a wall.
+        if (hitCount >= hitBuffer.Length)
+            return false;
+
         float nearestDistance = float.PositiveInfinity;
-        for (int i = 0; i < hits.Length; i++)
+        Transform nearestTransform = null;
+        for (int i = 0; i < hitCount; i++)
         {
-            RaycastHit candidate = hits[i];
+            RaycastHit candidate = hitBuffer[i];
             if (candidate.collider == null)
                 continue;
             if (ignoredRoot != null &&
@@ -65,15 +102,42 @@ public static class ThirdPersonTargetingUtility
                 continue;
 
             nearestDistance = candidate.distance;
-            nearestHit = candidate;
+            nearestTransform = candidate.transform;
         }
 
         if (nearestDistance == float.PositiveInfinity)
             return true;
 
         return targetRoot != null &&
-               (nearestHit.transform == targetRoot ||
-                nearestHit.transform.IsChildOf(targetRoot));
+               (nearestTransform == targetRoot ||
+                nearestTransform.IsChildOf(targetRoot));
+    }
+
+    public static void FacePlayerTowardSoftTarget(PlayerContext playerContext, float actionRange)
+    {
+        if (playerContext == null)
+            return;
+
+        playerContext.ResolveReferences();
+        Vector3 fallbackForward = playerContext.thirdPersonAim != null
+            ? playerContext.thirdPersonAim.GetPlanarCameraForward()
+            : GameplayCameraController.Instance != null
+                ? GameplayCameraController.Instance.PlanarForward
+                : playerContext.transform.forward;
+
+        Vector3 facing = fallbackForward;
+        if (playerContext.Targeting != null &&
+            playerContext.Targeting.TryGetTarget(out CharacteContext target) &&
+            playerContext.Targeting.TryValidateForAction(target, actionRange))
+        {
+            facing = target.transform.position - playerContext.transform.position;
+        }
+
+        facing.y = 0f;
+        if (facing.sqrMagnitude > 0.0001f)
+            playerContext.transform.rotation = Quaternion.LookRotation(facing.normalized, Vector3.up);
+
+        GameplayCameraController.Instance?.RequestCombatAlignment();
     }
 
     public static void FacePlayerTowardSoftTarget(
@@ -82,64 +146,6 @@ public static class ThirdPersonTargetingUtility
         float searchRadius,
         LayerMask targetMask)
     {
-        if (playerContext == null)
-            return;
-
-        Camera camera = Camera.main;
-        Vector3 fallbackForward = GameplayCameraController.Instance != null
-            ? GameplayCameraController.Instance.PlanarForward
-            : playerContext.transform.forward;
-        Vector3 origin = playerContext.transform.position + Vector3.up;
-        Vector3 end = origin + fallbackForward * Mathf.Max(0.5f, searchDistance);
-
-        Collider[] candidates = Physics.OverlapCapsule(
-            origin,
-            end,
-            Mathf.Max(0.1f, searchRadius),
-            targetMask,
-            QueryTriggerInteraction.Ignore);
-
-        Transform bestTarget = null;
-        float bestScore = float.PositiveInfinity;
-        for (int i = 0; i < candidates.Length; i++)
-        {
-            Collider candidate = candidates[i];
-            if (candidate == null || candidate.transform.IsChildOf(playerContext.transform))
-                continue;
-
-            CharacteContext candidateContext =
-                candidate.GetComponentInParent<CharacteContext>();
-            if (candidateContext == null ||
-                candidateContext.TargetIdentity != AITargetIdentity.Enemy)
-            {
-                continue;
-            }
-
-            Vector3 point = candidate.bounds.center;
-            if (!TryGetReticleScore(camera, point, out float score, 0.28f) ||
-                score >= bestScore ||
-                !HasLineOfSight(
-                    camera != null ? camera.transform.position : origin,
-                    point,
-                    candidateContext.transform,
-                    ~0,
-                    QueryTriggerInteraction.Ignore,
-                    playerContext.transform))
-            {
-                continue;
-            }
-
-            bestScore = score;
-            bestTarget = candidateContext.transform;
-        }
-
-        Vector3 facing = bestTarget != null
-            ? bestTarget.position - playerContext.transform.position
-            : fallbackForward;
-        facing.y = 0f;
-        if (facing.sqrMagnitude > 0.0001f)
-            playerContext.transform.rotation = Quaternion.LookRotation(facing.normalized, Vector3.up);
-
-        GameplayCameraController.Instance?.RequestCombatAlignment();
+        FacePlayerTowardSoftTarget(playerContext, searchDistance);
     }
 }

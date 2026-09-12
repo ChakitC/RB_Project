@@ -29,7 +29,12 @@ public readonly struct CombatEventMetadata
         bool ammoConsumed = false,
         bool isLastRound = false,
         CombatSourceKind sourceKind = CombatSourceKind.None,
-        string weaponAffixId = null)
+        string weaponAffixId = null,
+        string statusEffectId = null,
+        int statusStacks = 0,
+        string reactionId = null,
+        string comboSkillId = null,
+        ChainActorRole comboOwnerRole = ChainActorRole.None)
     {
         RequestedDamage = Mathf.Max(0f, requestedDamage);
         ResolvedDamage = Mathf.Max(0f, resolvedDamage);
@@ -48,6 +53,11 @@ public readonly struct CombatEventMetadata
         IsLastRound = isLastRound;
         SourceKind = sourceKind;
         WeaponAffixId = weaponAffixId;
+        StatusEffectId = statusEffectId;
+        StatusStacks = Mathf.Max(0, statusStacks);
+        ReactionId = reactionId;
+        ComboSkillId = comboSkillId;
+        ComboOwnerRole = comboOwnerRole;
     }
 
     public float RequestedDamage { get; }
@@ -68,5 +78,10 @@ public readonly struct CombatEventMetadata
     public bool IsLastRound { get; }
     public CombatSourceKind SourceKind { get; }
     public string WeaponAffixId { get; }
+    public string StatusEffectId { get; }
+    public int StatusStacks { get; }
+    public string ReactionId { get; }
+    public string ComboSkillId { get; }
+    public ChainActorRole ComboOwnerRole { get; }
     public bool IsWeaponAffixGenerated => !string.IsNullOrWhiteSpace(WeaponAffixId);
 }

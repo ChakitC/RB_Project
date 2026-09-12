@@ -229,7 +229,8 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             PassiveEventOrigin.External,
             null,
             null,
-            0f);
+            0f,
+            default);
     }
 
     /// <summary>
@@ -257,7 +258,8 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         PassiveEventOrigin origin,
         string originPassiveId = null,
         string originRuleId = null,
-        float fallbackDuration = 0f)
+        float fallbackDuration = 0f,
+        ComboExecutionProvenance comboProvenance = default)
     {
         if (spec == null || spec.effect == null)
             return null;
@@ -273,7 +275,8 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             origin,
             originPassiveId,
             originRuleId,
-            fallbackDuration);
+            fallbackDuration,
+            comboProvenance);
     }
 
     StatusEffectInstance ApplyEffectCore(
@@ -287,7 +290,8 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         PassiveEventOrigin origin,
         string originPassiveId,
         string originRuleId,
-        float fallbackDuration)
+        float fallbackDuration,
+        ComboExecutionProvenance comboProvenance)
     {
         if (definition == null)
             return null;
@@ -300,7 +304,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
         if (definition.stackMode == StackMode.IndependentInstances)
         {
-            var instance = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, fallbackDuration);
+            var instance = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, fallbackDuration, comboProvenance);
             _activeEffects.Add(instance);
 
             List<StatusEffectEvent> newLifecycleEvents = null;
@@ -313,7 +317,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         var existing = FindActiveEffect(definition, sourceKey);
         if (existing == null)
         {
-            existing = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, fallbackDuration);
+            existing = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, fallbackDuration, comboProvenance);
             _activeEffects.Add(existing);
 
             List<StatusEffectEvent> newLifecycleEvents = null;
@@ -324,7 +328,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         }
 
         existing.UpdateSource(source);
-        existing.UpdateContext(appliedById, chainId, depth, origin, originPassiveId, originRuleId);
+        existing.UpdateContext(appliedById, chainId, depth, origin, originPassiveId, originRuleId, comboProvenance);
         // instance เดิมที่ถูก apply ซ้ำนับเป็น application ล่าสุด — ระบบที่ใช้ latest-wins (เช่น multi-Taunt)
         // ต้องเห็นว่ามันใหม่กว่า instance ที่ไม่ได้ถูกแตะ
         existing.MarkReapplied();
@@ -738,7 +742,8 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         PassiveEventOrigin origin,
         string originPassiveId,
         string originRuleId,
-        float fallbackDuration)
+        float fallbackDuration,
+        ComboExecutionProvenance comboProvenance)
     {
         int startingStacks = definition.stackMode == StackMode.RefreshDuration ||
                              definition.stackMode == StackMode.StrongestOnly
@@ -757,7 +762,8 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             originPassiveId,
             originRuleId,
             spec,
-            fallbackDuration);
+            fallbackDuration,
+            comboProvenance);
     }
 
     /// <summary>ถอด instance ทุกตัวของ effect ที่ติด tag นี้ (เช่น ล้าง taunt ตอน sensor reset).</summary>
@@ -886,6 +892,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             return;
 
         EffectLifecycleChanged?.Invoke(CreateStatusEffectEvent(eventType, instance, oldStacks, newStacks));
+        PublishPartyComboStatusFact(eventType, instance, newStacks);
     }
 
     void PublishStatusEffectEvents(List<StatusEffectEvent> lifecycleEvents)
@@ -894,7 +901,82 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             return;
 
         for (int i = 0; i < lifecycleEvents.Count; i++)
+        {
             EffectLifecycleChanged?.Invoke(lifecycleEvents[i]);
+            PublishPartyComboStatusFact(
+                lifecycleEvents[i].EventType,
+                lifecycleEvents[i].Instance,
+                lifecycleEvents[i].NewStacks);
+        }
+    }
+
+    void PublishPartyComboStatusFact(
+        StatusEffectEventType eventType,
+        StatusEffectInstance instance,
+        int newStacks)
+    {
+        if (!PartyComboFeatureGate.PublishersEnabled || instance == null || instance.Definition == null)
+            return;
+
+        PassiveEventType factType;
+        switch (eventType)
+        {
+            case StatusEffectEventType.AppliedNew:
+            case StatusEffectEventType.Refreshed:
+                factType = PassiveEventType.StatusApplied;
+                break;
+            case StatusEffectEventType.StackChanged:
+                factType = PassiveEventType.StatusStackChanged;
+                break;
+            default:
+                return;
+        }
+
+        CombatEventBus bus = instance.Attribution.CreditedEventBus;
+        if (bus == null && instance.Source != null)
+        {
+            CharacteContext sourceContext = CharacterContextModuleLookup.ResolveContext(instance.Source);
+            sourceContext?.ResolveReferences();
+            bus = sourceContext != null ? sourceContext.CombatEventBus : null;
+        }
+
+        if (bus == null)
+            return;
+
+        GameObject source = instance.Source;
+        GameObject target = ctx != null ? ctx.gameObject : gameObject;
+        var metadata = new CombatEventMetadata(
+            sourceKind: CombatSourceKind.Status,
+            statusEffectId: string.IsNullOrWhiteSpace(instance.Definition.effectId)
+                ? instance.Definition.name
+                : instance.Definition.effectId,
+            statusStacks: newStacks);
+        var parent = new PassiveEventContext(
+            PassiveEventType.None,
+            instance.Attribution.CreditedActor,
+            source,
+            target,
+            $"status:{instance.Definition.name}",
+            null,
+            newStacks,
+            Time.timeAsDouble,
+            instance.ChainId,
+            instance.Depth,
+            instance.Origin,
+            instance.OriginPassiveId,
+            instance.OriginRuleId,
+            metadata,
+            CombatEventBus.NextFactId(),
+            instance.ComboProvenance);
+
+        PassiveEventContext fact = bus.CreateChildContext(
+            parent,
+            factType,
+            source,
+            target,
+            metadata: metadata,
+            actor: instance.Attribution.CreditedActor);
+        bus.Publish(fact);
     }
 
     public void AppendStatModifiers(List<RuntimeStatModifier> buffer)

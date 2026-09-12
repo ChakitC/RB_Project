@@ -1850,6 +1850,7 @@ through `CharacteContext`; ally-only modules are resolved through `AllyContext`.
 Player prefabs commonly need:
 
 - `PlayerContext`
+- `PlayerTargetingController` on the same actor root, bound to `PlayerContext.Targeting`
 - movement/input system
 - `PlayerInventory`
 - `PlayerUIContext`
@@ -1861,6 +1862,27 @@ Player prefabs commonly need:
 - stats, health, stamina, dash, passive, and skill systems
 
 Player-only systems may depend on `PlayerContext`.
+
+### Player Soft-target Authoring
+
+`Assets/Prefab/Player/Player.prefab` owns one `PlayerTargetingController`. Keep its owner bound to
+the prefab's `PlayerContext`. Starting values are 30 m range, 0.15 acquire radius, 0.18 release
+radius, 0.015 switch advantage, 0.10 s switch delay, and all layers as LOS obstacles; tune these on
+the controller only after representative 16:9 and ultrawide playtests.
+
+`PlayerTargetIndicatorView` follows the runtime-overlay convention used by
+`ThirdPersonReticleView`: `GameplayCameraController` creates one persistent Screen Space Overlay
+instance. There is no marker prefab to place and it receives no raycasts. Its arrow uses live cached
+character bounds for the overhead point; `AITargetInfo.AimPoint` remains the separate score/aim
+point. Character prefabs should therefore keep their normal `CharacterController`, non-trigger
+body collider, or renderers available for height resolution.
+
+The former `PlayerInputHandler.meleeSearchRadius`/`meleeTargetMask`,
+`InterruptionCommandController.targetSearchMask`/`targetObstacleMask`/`targetSearchRadius`, and
+Chain/Helper sequence aim-search radius, trigger, LOS, obstacle, and ChainReady-preference fields
+have been removed. Acquisition belongs to `PlayerTargetingController`; consumer-specific action
+eligibility remains where it belongs (`meleeSearchDistance = 4 m`, interruption range/window,
+sequence target layers). Do not re-add the old fields as fallback selectors.
 
 Do not author inventory capacity on player or scene prefabs. The shared value is
 configured in `Assets\Resources\GameSettings\InventorySettings.asset`; prefab
@@ -2273,6 +2295,71 @@ the starter shop prefabs. Keep the `CharacterDatabase` reference on
 `CharacterShopPageUI` and the `characterShopPage` reference on `ShopPanelUI`
 when creating prefab variants.
 
+## Party Combo — Prefab / Input / HUD Wiring
+
+Add `PartyComboSkillExecutor` and `PartyComboOpportunityController` to the
+player/context hierarchy. Assign the controller's Executor and
+`PartyComboFeatureFlags` fields, then bind both components on `PlayerContext` or
+leave them discoverable within the same actor hierarchy. `PartyRuntimeBinder`
+binds the controller after the party and Helper are ready and before
+`PlayerUIRuntimeBinder` runs.
+
+The current authoring is complete on `Assets/Prefab/Player/Player.prefab`: both
+components are on the Player root, both `PlayerContext` references are bound,
+and the controller references
+`Assets/Data/PartyCombo/PartyComboFeatureFlags.asset`. Keep `runtimeEnabled`
+and `phase4aPublishersEnabled` off until the focused Play Mode rollout checks
+pass.
+
+Each participating field ally's `CharacterStats > Party Combo Skill` must point
+to a dedicated `PartyComboSkillDef`. Its execution skill must not also appear in
+normal battle slots, Helper slots, or the legacy Chain Attack field. Validate
+the assets with **Tools > Validation > Validate Party Combo Skills**.
+
+For the combat HUD, add `PartyComboHudPresenter` and assign a
+`PartyComboSlotView` for `PartySlot1` and `PartySlot2`. Bind the slot's root,
+icon, radial expiry fill, fallback label, and optional disabled-state label.
+The existing `PlayerUIRuntimeBinder` finds and binds presenters beneath the UI
+root.
+
+The concrete HUD subtree is
+`PlayerUI/UI_Manager/PlayerHUD/PartyComboHud` in
+`Assets/Prefab/User Interface/PlayerUI.prefab`. Its two slot components stay
+active for binding while their `View` children begin inactive and are toggled
+by `PartyComboSlotView`. The two views are stacked at the right-center edge and
+contain the opportunity icon, radial expiry overlay, combo name, `COMBO READY`
+tag, and input glyph. Keep decorative Images non-raycastable because the popup
+is an input prompt, not a mouse button.
+
+`PlayerVitalHud/Ally1VitalHud/ComboCooldown` and
+`PlayerVitalHud/Ally2VitalHud/ComboCooldown` are also bound by the corresponding
+slot views. Each indicator sits above the ally HP bar and contains the combo
+icon, a horizontal charge-recovery fill, and a `READY`/seconds label. Do not
+drive this fill from a local timer: `PartyComboSlotView` reads
+`CharacterSkillManager.TryGetPartyComboChargeStatus` through the bound combo
+controller so the HUD and execution use the same charge pool.
+
+`Assets/Input/Inputmaneger.inputactions` map `Player` contains:
+
+| Action | Keyboard | Gamepad | PlayerInput callback |
+|---|---|---|---|
+| `PartyComboSlot1` | `4` | D-pad Left | `OnPartyComboSlot1` |
+| `PartyComboSlot2` | `5` | D-pad Right | `OnPartyComboSlot2` |
+
+The `PlayerInput` Unity Events on `Player.prefab` are already wired to those
+callbacks. A reserved `OnPartyComboHelper` callback exists for later Helper
+support. Keep the input bindings and HUD glyphs synchronized, and edit the
+asset through Unity's Input Actions editor rather than hand-editing JSON.
+
+Default-off vertical-slice content is stored under
+`Assets/Data/PartyCombo/Test/`: Feno's Entered Break offer chains into Aires's
+`ComboSkillCommitted` follow-up through the shared
+`FieldAllyComboExecution.asset` profile. Run the Party Combo validator after
+changing either definition or its owning `CharacterStats` asset.
+
+Full data, runtime, and cleanup contracts are documented in
+[`Docs/SYSTEMS/PARTY_COMBO.md`](SYSTEMS/PARTY_COMBO.md).
+
 ## Player Skill Input — Prefab / Input Asset Wiring
 
 Player skill casts (slots 1/2/3) come from the New Input System, not from a
@@ -2332,7 +2419,9 @@ task.
 - In the Input Asset, add an `InterruptionCommand` action (Button) with
   binding `<Keyboard>/g`. Wire the `PlayerInput` event to
   `PlayerInputHandler.OnInterruptionCommand`.
-- Configure `targetSearchMask` and `targetSearchRadius` on the controller.
+- The command reads the already committed `PlayerContext.Targeting` actor. Configure soft-target
+  acquisition on `PlayerTargetingController`; this command keeps only its own range, placement,
+  block-window, and executor rules and never searches a second enemy.
 - Add `PlayerInterruptionController` component.
 - Assign `interruptionSkill`: a `CharacterSkillEntry` whose animation clip has
   a `HitStart` timeline event (same requirement as the ally skill).

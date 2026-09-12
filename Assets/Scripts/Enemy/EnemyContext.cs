@@ -53,8 +53,9 @@ public class EnemyContext : CharacteContext
         ApplyWorldSlow();
     }
 
-    private void OnDisable()
+    protected override void OnDisable()
     {
+        base.OnDisable();
         RestoreWorldSlowValues();
     }
 

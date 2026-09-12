@@ -14,9 +14,12 @@ public class PlayerContext : CharacteContext
     public FieldAllyManager fieldAllyManager;
     public PartyFormationController partyFormation;
     public ChainAttackCoordinator chainAttackCoordinator;
+    public PartyComboOpportunityController partyComboController;
+    public PartyComboSkillExecutor partyComboExecutor;
     public PartyCommandController partyCommand;
     public InterruptionCommandController interruptionCommand;
     public ThirdPersonAimController thirdPersonAim;
+    public PlayerTargetingController Targeting;
 
     [Header("Inventory")]
     public PlayerInventory inventory;
@@ -76,6 +79,12 @@ public class PlayerContext : CharacteContext
         if (chainAttackCoordinator == null)
             chainAttackCoordinator = ResolveActorComponent(chainAttackCoordinator);
 
+        if (partyComboController == null)
+            partyComboController = ResolveActorComponent(partyComboController);
+
+        if (partyComboExecutor == null)
+            partyComboExecutor = ResolveActorComponent(partyComboExecutor);
+
         if (partyCommand == null)
             partyCommand = ResolveActorComponent(partyCommand);
 
@@ -91,8 +100,14 @@ public class PlayerContext : CharacteContext
         if (thirdPersonAim == null)
             thirdPersonAim = ResolveActorComponent(thirdPersonAim);
 
+        if (Targeting == null)
+            Targeting = ResolveActorComponent(Targeting);
+
         if (Application.isPlaying && thirdPersonAim == null)
             thirdPersonAim = gameObject.AddComponent<ThirdPersonAimController>();
+
+        if (Application.isPlaying && Targeting == null)
+            Targeting = gameObject.AddComponent<PlayerTargetingController>();
     }
 
     void TryMigrateLegacyPartyCommandConfiguration()

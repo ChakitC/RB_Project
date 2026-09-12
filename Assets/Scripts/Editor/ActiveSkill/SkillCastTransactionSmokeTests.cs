@@ -285,7 +285,7 @@ public sealed class SkillCastTransactionSmokeTests
     // ---- Orchestrator ------------------------------------------------------------------------------
 
     [Test]
-    public void TheImmediateCastPathRaisesCastReleasedBeforeRunningThePayload()
+    public void TheImmediateCastPathRaisesStartedReleasedAndCommittedInOrder()
     {
         var owner = Track(new GameObject("orchestrator_owner"));
         var orchestrator = new SkillCastOrchestrator(owner.transform);
@@ -298,6 +298,7 @@ public sealed class SkillCastTransactionSmokeTests
         var order = new List<string>();
         orchestrator.CastStarted += _ => order.Add("started");
         orchestrator.CastReleased += _ => order.Add("released");
+        orchestrator.CastCommitted += _ => order.Add("committed");
         orchestrator.CastExecutionFailed += (_, __) => order.Add("failed");
 
         SkillCastStartResult result = orchestrator.TryStartCast(new SkillCastRequest(
@@ -306,11 +307,18 @@ public sealed class SkillCastTransactionSmokeTests
             animationDriver: null,
             onStarted: () => order.Add("onStarted"),
             useAnimationDriver: false,
-            debugSource: "test"));
+            debugSource: "test",
+            onCommitted: _ => order.Add("requestCommitted")));
 
         Assert.That(result.Kind, Is.EqualTo(SkillCastStartKind.ImmediateSuccess));
-        Assert.That(order, Is.EqualTo(new[] { "onStarted", "released" }),
-            "CastReleased means 'reached the cast point' and fires before the payload runs.");
+        Assert.That(order, Is.EqualTo(new[]
+        {
+            "onStarted",
+            "started",
+            "released",
+            "requestCommitted",
+            "committed",
+        }), "Immediate casts must expose the same start/commit lifecycle as animated casts.");
         Assert.That(SucceedingProbePayload.ExecutionCount, Is.EqualTo(1));
         Assert.That(instance.CanCast(user), Is.False, "A successful immediate cast commits its charge.");
     }

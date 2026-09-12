@@ -31,6 +31,8 @@ public sealed class PartyComboSkillDef : ScriptableObject
 
     [Header("Skill")]
     public SkillGemDefinition executionSkill;
+    [Tooltip("Upgrade tree owned by this Combo, independent of battle-slot upgrades.")]
+    public SkillUpgradeTreeDefinition upgradeTree;
     public PartyComboTriggerRule trigger = new PartyComboTriggerRule();
 
     [Header("Opportunity")]
@@ -47,6 +49,7 @@ public sealed class PartyComboSkillDef : ScriptableObject
     public PartyComboExecutionProfile executionProfile;
 
     public string RuntimeId => string.IsNullOrWhiteSpace(comboId) ? name : comboId.Trim();
+    public const string ProgressSlotId = "party-combo";
     public Sprite ResolvedIcon => iconOverride != null
         ? iconOverride
         : executionSkill != null ? executionSkill.icon : null;

@@ -2,11 +2,21 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum CharacterSkillSlotKind
+{
+    Legacy = 0,
+    Active = 1,
+    Ultimate = 2,
+    Passive = 3,
+}
+
 [Serializable]
 public sealed class CharacterSkillLoadoutSlot
 {
     public string slotId;
     public string displayName;
+    [Tooltip("Semantic role for player/ally loadouts. Legacy preserves existing assets until they are migrated.")]
+    public CharacterSkillSlotKind slotKind;
     public KeyCode hotkey;
     [Min(0)] public int defaultOptionIndex;
     public List<CharacterSkillLoadoutOption> options = new();
@@ -14,6 +24,10 @@ public sealed class CharacterSkillLoadoutSlot
     public IReadOnlyList<CharacterSkillLoadoutOption> Options => options ?? (options = new List<CharacterSkillLoadoutOption>());
 
     public string ResolvedSlotId => string.IsNullOrWhiteSpace(slotId) ? string.Empty : slotId.Trim();
+
+    public CharacterSkillSlotKind ResolvedSlotKind => slotKind != CharacterSkillSlotKind.Legacy
+        ? slotKind
+        : IsPassiveSlot ? CharacterSkillSlotKind.Passive : CharacterSkillSlotKind.Legacy;
 
     public bool IsPassiveSlot
     {

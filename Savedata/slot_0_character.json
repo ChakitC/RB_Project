@@ -10,7 +10,8 @@
                 "selectedSkillOptions": [],
                 "skillPoints": 29,
                 "skillProgressInitialized": true,
-                "activeSkillTrees": []
+                "activeSkillTrees": [],
+                "combatLoadoutMigrationVersion": 0
             }
         },
         {
@@ -22,7 +23,8 @@
                 "selectedSkillOptions": [],
                 "skillPoints": 29,
                 "skillProgressInitialized": true,
-                "activeSkillTrees": []
+                "activeSkillTrees": [],
+                "combatLoadoutMigrationVersion": 0
             }
         },
         {
@@ -34,7 +36,8 @@
                 "selectedSkillOptions": [],
                 "skillPoints": 29,
                 "skillProgressInitialized": true,
-                "activeSkillTrees": []
+                "activeSkillTrees": [],
+                "combatLoadoutMigrationVersion": 0
             }
         },
         {
@@ -43,7 +46,16 @@
                 "level": 30,
                 "xp": 0,
                 "unlocked": false,
-                "selectedSkillOptions": [],
+                "selectedSkillOptions": [
+                    {
+                        "slotId": "active",
+                        "optionId": "feno.skill.minigunterret"
+                    },
+                    {
+                        "slotId": "ultimate",
+                        "optionId": "Feno.Skill_Ulatimate01"
+                    }
+                ],
                 "skillPoints": 20,
                 "skillProgressInitialized": true,
                 "activeSkillTrees": [
@@ -75,7 +87,7 @@
                         ]
                     },
                     {
-                        "slotId": "2",
+                        "slotId": "active",
                         "optionId": "feno.skill.minigunterret",
                         "treeId": "Feno.Skill_MinigunTerret_Tree",
                         "unlockedNodes": [
@@ -97,7 +109,8 @@
                             }
                         ]
                     }
-                ]
+                ],
+                "combatLoadoutMigrationVersion": 1
             }
         },
         {
@@ -109,7 +122,8 @@
                 "selectedSkillOptions": [],
                 "skillPoints": 29,
                 "skillProgressInitialized": true,
-                "activeSkillTrees": []
+                "activeSkillTrees": [],
+                "combatLoadoutMigrationVersion": 0
             }
         },
         {
@@ -245,7 +259,8 @@
                             }
                         ]
                     }
-                ]
+                ],
+                "combatLoadoutMigrationVersion": 0
             }
         },
         {
@@ -257,7 +272,8 @@
                 "selectedSkillOptions": [],
                 "skillPoints": 29,
                 "skillProgressInitialized": true,
-                "activeSkillTrees": []
+                "activeSkillTrees": [],
+                "combatLoadoutMigrationVersion": 0
             }
         },
         {
@@ -269,7 +285,8 @@
                 "selectedSkillOptions": [],
                 "skillPoints": 29,
                 "skillProgressInitialized": true,
-                "activeSkillTrees": []
+                "activeSkillTrees": [],
+                "combatLoadoutMigrationVersion": 0
             }
         }
     ]

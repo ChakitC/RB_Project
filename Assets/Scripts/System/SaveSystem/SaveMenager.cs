@@ -471,6 +471,8 @@ public class SaveManager : MonoBehaviour
         if (data.selectedSkillOptions == null)
             data.selectedSkillOptions = new List<CharacterSkillSelectionSaveData>();
 
+        CharacterSkillLoadoutSaveMigration.Migrate(characterId, data);
+
         SaveSystem.SaveCharacterProgress(currentSlot, characterId, data);
     }
 

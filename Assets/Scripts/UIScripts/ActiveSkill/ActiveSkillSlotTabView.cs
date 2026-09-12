@@ -10,6 +10,9 @@ public sealed class ActiveSkillSlotTabView : MonoBehaviour
     [SerializeField] TMP_Text label;
     [SerializeField] GameObject selectedMarker;
     [SerializeField] GameObject passiveBadge;
+    [SerializeField] Image skillIcon;
+    [SerializeField] TMP_Text skillName;
+    [SerializeField] TMP_Text description;
 
     int _slotIndex;
     Action<int> _clicked;
@@ -45,5 +48,18 @@ public sealed class ActiveSkillSlotTabView : MonoBehaviour
     void HandleClick()
     {
         _clicked?.Invoke(_slotIndex);
+    }
+
+    public void SetEquippedSkill(SkillLoadoutOptionDescriptor option)
+    {
+        if (skillIcon != null)
+        {
+            skillIcon.sprite = option?.Icon;
+            skillIcon.enabled = option?.Icon != null;
+        }
+        if (skillName != null)
+            skillName.text = option != null ? option.DisplayName : "Not available yet";
+        if (description != null)
+            description.text = option != null ? option.Description : "Skill mapping is not ready.";
     }
 }

@@ -12,6 +12,7 @@ public enum SkillLoadoutKind
 
     /// <summary>A Helper proc slot, fired by a trigger rather than by input.</summary>
     HelperProc = 2,
+    PartyCombo = 3,
 }
 
 /// <summary>
@@ -57,6 +58,7 @@ public sealed class SkillLoadoutSlotDescriptor
 
     public string DisplayName;
     public SkillLoadoutKind Kind;
+    public CharacterSkillSlotKind SlotKind;
     public int DefaultOptionIndex;
     public bool IsPassiveSlot;
     public List<SkillLoadoutOptionDescriptor> Options = new();

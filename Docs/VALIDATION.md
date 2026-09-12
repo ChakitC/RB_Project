@@ -74,6 +74,22 @@ default overwrites), and idempotent reload. PlayMode coverage is still required 
 animation wind-up switching, activation callbacks, party-health queueing, chain attack interruption,
 room transitions, and cinematic holds.
 
+## Player / Ally combat loadout validation
+
+Run **Tools > RB > Validate Player Ally Skill Loadouts** after editing a Stryker
+`CharacterStats` loadout. A migrated character must have exactly one configured
+`Active` slot and one configured `Ultimate` slot. Passive slots are validated
+separately and do not count as cast slots. The validator also reports legacy
+slot semantics, duplicate stable IDs, missing skill assets, and Passive/cast
+type mismatches.
+
+`CharacterProgressMigrationTests` covers key remapping, paid-cost preservation,
+idempotence, collision recovery, and the per-character clone marker.
+`CombatLoadoutRunLockTests` covers snapshot stability and release between runs.
+The project compilation check does not replace a PlayMode pass for Basement
+selection, scene transition, respawn, Player/Ally role swap, party-command CP,
+or HUD/input wiring.
+
 ## Failure Handling
 
 If validation fails:

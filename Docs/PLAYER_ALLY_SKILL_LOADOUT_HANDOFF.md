@@ -1,6 +1,6 @@
 # แผนส่งต่อ: Player / Ally ใช้ 1 Active + 1 Ultimate
 
-สถานะ: ผู้ใช้ยืนยันขอบเขตแล้วเมื่อ 2026-09-12 พร้อมให้ดำเนินการตามแผนในเซสชันถัดไป เอกสารนี้เป็นแผน ยังไม่ได้แก้ระบบหรือย้ายข้อมูล
+สถานะ: เริ่ม implementation เมื่อ 2026-09-12 แล้ว ระบบรองรับ semantic slot, save migration, run snapshot/lock, validator และย้าย Feno สำเร็จในข้อมูล source ส่วน Aires/Roma ยังรอ mapping ที่ระบุท้ายเอกสาร
 
 ทบทวนกับโค้ดและ serialized assets เมื่อ 2026-09-12: แนวทางใช้ระบบเดิมถูกต้อง แต่ยังไม่พร้อมย้ายข้อมูลทุกตัวละครโดยอัตโนมัติ เพราะ Ultimate บางตัวไม่ผูก asset และรายการ skillSlots มี Passive จริง อ่านส่วนผลตรวจละเอียดท้ายแผนก่อน implementation การตรวจครั้งนี้เป็น static inspection ไม่ใช่ผลทดสอบ Unity Play Mode
 
@@ -181,3 +181,18 @@ powershell -ExecutionPolicy Bypass -File 'P:\Game_RB_Project\RB_Project\Assets\S
 ## ข้อความเริ่มงานสำหรับเซสชันถัดไป
 
 > อ่าน AGENTS.md และ `P:\Game_RB_Project\RB_Project\Docs\PLAYER_ALLY_SKILL_LOADOUT_HANDOFF.md` แล้วดำเนินการปรับระบบเดิมตามแผนที่ผู้ใช้ยืนยันแล้ว ให้ Player/Ally ใช้ 1 Active + 1 Ultimate เลือกเฉพาะ BaseMent รักษาเซฟและ tree progress รวมถึงคง Helper เดิม เริ่มจากตรวจข้อมูลจริงและตาราง migration ไม่ต้องถามยืนยันข้อตกลงเดิมซ้ำ หากระบุ Ultimate ของตัวละครไม่ได้ให้ถามเฉพาะรายชื่อที่ต้องตัดสินใจและทำงานส่วนที่ไม่ติดขัดต่อ ห้ามเดา mapping รักษางานอื่นใน working tree ตรวจ build ตามสคริปต์ที่กำหนด และรายงานผลทดสอบพร้อมเอกสารที่อัปเดต
+
+## สถานะ implementation ล่าสุด
+
+- Feno: ย้ายเป็น `active` = `Feno.Skill_MinigunTerret` และ `ultimate` =
+  `Feno.Skill_Ulatimate`; Passive Forgotten Bullet Bag ยังคงเป็นช่องแยก
+- Save migration ของ Feno ย้าย key เดิม `2` ไป `active`, เติม default
+  `ultimate`, รักษา tree/node/paidCost และมี per-character version marker
+- runtime ของรอบ snapshot selection ต่อ `characterId`; API เปลี่ยนช่องของ
+  Stryker ถูกปฏิเสธระหว่าง run โดย Helper Command/Proc ไม่ถูกล็อก
+- input/AI/party command/HUD ที่ใช้ index ผ่าน manager resolver เดียวกัน:
+  input 0 = Active, 1 = Ultimate, 2 ถูกปฏิเสธสำหรับ loadout ที่ migrate แล้ว
+- เพิ่ม validator และ EditMode tests สำหรับ migration กับ run snapshot
+- รอผู้ใช้ยืนยันสอง mapping โดยไม่เดา:
+  - `ID.Aires`: Ultimate จะใช้ asset ใด (`Aires_Active` เป็น candidate ที่พบ แต่ชื่อไม่ยืนยันบทบาท)
+  - `ID.Roma`: Active จะใช้ asset ใด (พบเฉพาะ `Skill.Def.Roma_Ultimate` ที่ยืนยันเป็น Ultimate)

@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Combat HUD readout for one command slot: the assigned skill's icon, the charges still in the
@@ -8,9 +9,8 @@ using UnityEngine.UI;
 /// plain cooldown, which is why this can sit on every slot rather than only on multi-charge ones.
 ///
 /// Everything shown here is a read of the shared charge pool the cast path spends from — the HUD
-/// never runs a timer of its own. It reports cooldown and charges only: energy, animation locks,
-/// and cutscene locks deliberately do not darken the slot, because those clear on their own and
-/// would make the overlay mean two different things.
+/// never runs a timer of its own. Readiness uses the manager's cast permission and is shown by
+/// dimming the view; the radial overlay continues to mean charge cooldown only.
 ///
 /// A passive slot has no charge pool to read, so it takes a separate path: icon only, no charge
 /// count and no cooldown overlay, with the ready flash reused as the cue for a proc landing.
@@ -23,8 +23,16 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
 
     [Header("Slot")]
     [SerializeField, Min(0)]
-    [Tooltip("Index into CharacterSkillManager.CommandSlots.")]
+    [Tooltip("Legacy input index. Semantic Active/Ultimate slots use the manager's 0/1 cast contract.")]
     private int commandSlotIndex;
+    [SerializeField] private CharacterSkillSlotKind slotKind;
+    [SerializeField] private TMP_Text inputBindingLabel;
+    [SerializeField] private TMP_Text slotKindLabel;
+    [SerializeField] private CanvasGroup readinessGroup;
+    [SerializeField] private UnityEngine.InputSystem.InputActionAsset inputActions;
+
+    int CastInputIndex => slotKind == CharacterSkillSlotKind.Active ? 0 :
+        slotKind == CharacterSkillSlotKind.Ultimate ? 1 : commandSlotIndex;
 
     [Header("View")]
     [SerializeField] private GameObject root;
@@ -55,7 +63,7 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
     [SerializeField, Min(0f)]
     [Tooltip("Seconds between charge re-reads. Resolving charge status rebuilds the skill's final " +
              "stats, which is far too expensive to do every frame on every slot. The overlay is " +
-             "extrapolated between reads so the sweep still runs at frame rate.")]
+             "read directly from the manager without a separate UI timer.")]
     private float refreshInterval = 0.1f;
 
     CharacterSkillManager skillManager;
@@ -71,9 +79,7 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
     PassiveDefinition lastPassiveDef;
     bool hasPassiveDef;
 
-    // Recharge sampled at sampleTime and extrapolated per frame. Time.time is the pool's own clock,
-    // so the sweep stops exactly when the cooldown does — including while the game is paused.
-    float sampleTime;
+    // Recharge values are a snapshot of the manager's pool, never a second countdown.
     float sampledRemaining;
     float sampledDuration;
 
@@ -96,9 +102,17 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
             context.ResolveReferences();
             skillManager = context.SkillManager;
             SubscribeToPassiveController(context.PassiveController);
+            PlayerInput actorInput = context.GetComponentInChildren<PlayerInput>(true);
+            if (actorInput != null && actorInput.actions != null)
+                inputActions = actorInput.actions;
         }
 
         ResetCachedState();
+        if (commandSlotIndex > 1 && slotKind == CharacterSkillSlotKind.Legacy)
+        {
+            gameObject.SetActive(false);
+            return;
+        }
         ApplyVisibility(skillManager != null);
         Refresh();
     }
@@ -139,10 +153,8 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
 
     void LateUpdate()
     {
-        // Throttled: TryGetSlotChargeStatus rebuilds FinalSkillStats, so running it per slot per
-        // frame is pure waste. A read is pulled forward the moment the sampled recharge is due, so
-        // the charge count and the ready flash still land on time rather than up to a tick late.
-        if (Time.unscaledTime >= nextRefreshTime || IsSampledRechargeDue())
+        // Read the manager at a bounded rate, including when the pool is full.
+        if (Time.unscaledTime >= nextRefreshTime)
         {
             nextRefreshTime = Time.unscaledTime + Mathf.Max(0f, refreshInterval);
             Refresh();
@@ -168,7 +180,6 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
         nextRefreshTime = 0f;
         hasStatus = false;
 
-        sampleTime = 0f;
         sampledRemaining = 0f;
         sampledDuration = 0f;
 
@@ -192,12 +203,35 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
 
     void Refresh()
     {
+        if (slotKindLabel != null)
+            slotKindLabel.text = slotKind == CharacterSkillSlotKind.Ultimate ? "ULTIMATE" : "ACTIVE";
+        if (inputBindingLabel != null && inputActions != null)
+        {
+            var action = inputActions.FindAction(CastInputIndex == 0 ? "SkillSlot1" : "SkillSlot2", false);
+            string binding = string.Empty;
+            if (action != null)
+            {
+                // Use the effective physical path so keyboard-layout characters do not require
+                // glyphs absent from the game's existing Latin HUD font. Overrides still apply.
+                foreach (InputBinding entry in action.bindings)
+                {
+                    if (entry.isComposite || entry.isPartOfComposite || string.IsNullOrEmpty(entry.effectivePath))
+                        continue;
+                    binding = InputControlPath.ToHumanReadableString(entry.effectivePath,
+                        InputControlPath.HumanReadableStringOptions.OmitDevice);
+                    break;
+                }
+            }
+            if (inputBindingLabel.text != binding)
+                inputBindingLabel.text = binding;
+        }
         // Reads the manager's shared pool — the same one the cast path spends from — so two slots
         // holding the same skill always agree.
         // Asked first because a passive slot can never answer the charge read below: it has no
         // runtime skill and no pool, so falling through would hide the slot outright.
         if (skillManager != null &&
-            skillManager.TryGetSlotPassiveDefinition(commandSlotIndex, out PassiveDefinition passive))
+            slotKind == CharacterSkillSlotKind.Legacy &&
+            skillManager.TryGetSlotPassiveDefinition(CastInputIndex, out PassiveDefinition passive))
         {
             isPassiveSlot = true;
             passiveDef = passive;
@@ -212,23 +246,36 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
         passiveDef = null;
 
         if (skillManager == null ||
-            !skillManager.TryGetSlotChargeStatus(commandSlotIndex, out SkillChargeStatus status))
+            !skillManager.TryGetSlotChargeStatus(CastInputIndex, out SkillChargeStatus status))
         {
-            ApplyVisibility(false);
+            ApplyVisibility(true);
+            if (skillIcon != null) skillIcon.gameObject.SetActive(false);
+            if (fallbackLabel != null)
+            {
+                fallbackLabel.text = "Not available";
+                fallbackLabel.gameObject.SetActive(true);
+            }
+            if (chargeLabel != null) chargeLabel.gameObject.SetActive(false);
+            if (cooldownFill != null) cooldownFill.gameObject.SetActive(false);
+            if (readyFlash != null) readyFlash.gameObject.SetActive(false);
+            if (readinessGroup != null) readinessGroup.alpha = 0.65f;
+            hasSkillDef = false;
             hasStatus = false;
             return;
         }
 
         ApplyVisibility(true);
+        if (readinessGroup != null)
+            readinessGroup.alpha = skillManager.CanStartCastSlot(CastInputIndex) ? 1f : 0.65f;
 
         ApplyIcon();
         ApplyCharges(status);
 
-        sampleTime = Time.time;
         sampledRemaining = status.NextChargeRemaining;
         sampledDuration = status.NextChargeDuration;
 
         hasStatus = true;
+        UpdateCooldownFill();
     }
 
     /// <summary>
@@ -240,7 +287,7 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
         if (skillIcon == null && fallbackLabel == null)
             return;
 
-        skillManager.TryGetSlotSkillDefinition(commandSlotIndex, out SkillGemDefinition skillDef);
+        skillManager.TryGetSlotSkillDefinition(CastInputIndex, out SkillGemDefinition skillDef);
 
         if (hasSkillDef && skillDef == lastSkillDef)
             return;
@@ -257,7 +304,10 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
         }
 
         if (fallbackLabel != null)
+        {
+            fallbackLabel.text = skillDef != null ? skillDef.displayName : "Not available";
             SetActiveIfNeeded(fallbackLabel.gameObject, sprite == null);
+        }
     }
 
     /// <summary>
@@ -315,18 +365,13 @@ public sealed class ActiveSkillChargePresenter : MonoBehaviour
         lastAvailable = status.Available;
     }
 
-    bool IsSampledRechargeDue()
-    {
-        return hasStatus && sampledDuration > 0f && Time.time - sampleTime >= sampledRemaining;
-    }
-
     void UpdateCooldownFill()
     {
         if (cooldownFill == null)
             return;
 
         float remaining = sampledDuration > 0f
-            ? Mathf.Clamp(sampledRemaining - (Time.time - sampleTime), 0f, sampledDuration)
+            ? Mathf.Clamp(sampledRemaining, 0f, sampledDuration)
             : 0f;
 
         // A full pool has nothing owed, so the overlay disappears entirely rather than sitting at

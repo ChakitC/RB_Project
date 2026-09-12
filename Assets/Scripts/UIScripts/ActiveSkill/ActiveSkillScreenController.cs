@@ -15,12 +15,15 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
     [SerializeField] TMP_Text titleText;
     [SerializeField] TMP_Text pointsText;
     [SerializeField] TMP_Text emptyStateText;
+    [SerializeField] TMP_Text loadoutLockText;
     [SerializeField] Button resetTreeButton;
     [SerializeField] SkillScreenTheme theme;
 
     [Header("Slots")]
     [SerializeField] RectTransform slotTabRoot;
     [SerializeField] ActiveSkillSlotTabView slotTabPrefab;
+    [SerializeField] RectTransform passiveTabRoot;
+    [SerializeField] GameObject passiveSection;
 
     [Header("Variants")]
     [SerializeField] ActiveSkillVariantCardView selectedVariantCard;
@@ -45,6 +48,8 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
     bool _changedUiState;
     bool _fallbackPaused;
     bool _isOpen;
+    bool _lastCanChangeLoadout;
+    float _nextAccessCheck;
 
     public event Action Closed;
     public int PlaceholderLayoutVersion => placeholderLayoutVersion;
@@ -142,6 +147,12 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
 
     void RebuildScreen()
     {
+        _lastCanChangeLoadout = _session != null && _session.CanChangeLoadout;
+        if (loadoutLockText != null)
+        {
+            loadoutLockText.text = "Change skills at Basement. Loadout is read-only here.";
+            loadoutLockText.gameObject.SetActive(!_lastCanChangeLoadout);
+        }
         int slotCount = _session != null ? _session.Slots.Count : 0;
         _selectedSlotIndex = slotCount > 0 ? Mathf.Clamp(_selectedSlotIndex, 0, slotCount - 1) : 0;
 
@@ -159,7 +170,7 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
         _selectedOptionIndex = _session.GetSelectedOptionIndex(_selectedSlotIndex);
         if (_selectedOptionIndex < 0 || !slot.TryGetOption(_selectedOptionIndex, out SkillLoadoutOptionDescriptor selectedOption))
         {
-            ShowEmpty("No skill variants configured for this slot.");
+            ShowEmpty("Not available yet. Skill mapping is not ready.");
             ClearVariantsAndTree();
             return;
         }
@@ -180,8 +191,23 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
                 continue;
 
             SkillLoadoutSlotDescriptor slot = _session.Slots[i];
+            if (_slotTabs[i].transform.parent != slotTabRoot)
+                _slotTabs[i].transform.SetParent(slotTabRoot, false);
             _slotTabs[i].Bind(i, slot.DisplayName, i == _selectedSlotIndex, slot.IsPassiveSlot, theme, SelectSlot);
+            slot.TryGetOption(_session.GetSelectedOptionIndex(i), out SkillLoadoutOptionDescriptor equipped);
+            _slotTabs[i].SetEquippedSkill(equipped);
         }
+        if (passiveSection != null)
+            passiveSection.SetActive(false);
+    }
+
+    void Update()
+    {
+        if (!_isOpen || _session == null || Time.unscaledTime < _nextAccessCheck)
+            return;
+        _nextAccessCheck = Time.unscaledTime + 0.25f;
+        if (_lastCanChangeLoadout != _session.CanChangeLoadout)
+            RebuildScreen();
     }
 
     void RebuildVariants(SkillLoadoutSlotDescriptor slot, SkillLoadoutOptionDescriptor selectedOption)
@@ -201,7 +227,8 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
             SkillLoadoutOptionDescriptor option = slot.Options[optionIndex];
             ActiveSkillVariantCardView view = _variantCards[viewIndex++];
             view.gameObject.SetActive(true);
-            view.Bind(option, optionIndex, false, theme, SelectVariant);
+            view.Bind(option, optionIndex, false, theme,
+                _session.CanSelectSlot(_selectedSlotIndex) ? SelectVariant : null);
         }
 
         for (int i = viewIndex; i < _variantCards.Count; i++)
@@ -248,11 +275,11 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
 
     void SelectVariant(int optionIndex)
     {
-        if (_session != null && _session.SelectOption(_selectedSlotIndex, optionIndex))
-        {
-            _selectedOptionIndex = optionIndex;
-            _selectedNodeId = null;
-        }
+        if (_session == null)
+            return;
+        _session.SelectOption(_selectedSlotIndex, optionIndex);
+        // Re-read the equipped option on success AND rejection. Never optimistically select it.
+        RebuildScreen();
     }
 
     void SelectNode(string nodeId)

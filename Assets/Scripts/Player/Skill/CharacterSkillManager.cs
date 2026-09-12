@@ -16,6 +16,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         public CharacterSkillLoadoutOption selectedOption;
         public int selectedOptionIndex = -1;
         public string slotId;
+        public CharacterSkillSlotKind slotKind;
         public bool usesPrefabOverride;
         public SkillUpgradeStatSnapshot upgradeSnapshot;
         public bool IsPassive;
@@ -240,6 +241,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     {
         CacheReferences();
 
+        if (!TryResolveCastSlotIndex(slotIndex, out slotIndex))
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+
         if (!TryGetCommandSlot(slotIndex, out SkillSlot slot))
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
@@ -248,6 +252,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     public bool HasConfiguredCommandSlot(int slotIndex)
     {
+        if (!TryResolveCastSlotIndex(slotIndex, out slotIndex))
+            return false;
+
         return TryGetCommandSlot(slotIndex, out SkillSlot slot) &&
                slot != null &&
                slot.skillAsset != null;
@@ -261,6 +268,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     public bool TryGetSlotSkillDefinition(int slotIndex, out SkillGemDefinition skillDef)
     {
         skillDef = null;
+
+        if (!TryResolveCastSlotIndex(slotIndex, out slotIndex))
+            return false;
 
         if (!TryGetCommandSlot(slotIndex, out SkillSlot slot))
             return false;
@@ -279,6 +289,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     {
         passiveDef = null;
 
+        if (!TryResolveCastSlotIndex(slotIndex, out slotIndex))
+            return false;
+
         if (!TryGetCommandSlotState(slotIndex, out ResolvedCommandSlotState state) || !state.IsPassive)
             return false;
 
@@ -289,6 +302,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     public bool CanStartCastSlot(int slotIndex)
     {
         CacheReferences();
+
+        if (!TryResolveCastSlotIndex(slotIndex, out slotIndex))
+            return false;
 
         if (!TryGetCommandSlot(slotIndex, out SkillSlot slot))
             return false;
@@ -312,6 +328,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         status = default;
         CacheReferences();
 
+        if (!TryResolveCastSlotIndex(slotIndex, out slotIndex))
+            return false;
+
         if (!TryGetCommandSlot(slotIndex, out SkillSlot slot) || skillUser == null)
             return false;
 
@@ -325,6 +344,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         CacheReferences();
 
         if (!TryGetCommandSlotState(slotIndex, out ResolvedCommandSlotState state))
+            return false;
+
+        if (IsRunLoadoutLocked(state))
             return false;
 
         if (state.usesPrefabOverride || state.statsSlot == null)
@@ -347,6 +369,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         CacheReferences();
 
         if (!TryGetCommandSlotState(slotId, out ResolvedCommandSlotState state))
+            return false;
+
+        if (IsRunLoadoutLocked(state))
             return false;
 
         if (state.usesPrefabOverride || state.statsSlot == null)
@@ -428,8 +453,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     {
         CacheReferences();
 
-        if (TrySelectSkillOption(slotId, optionId, persist))
-            return true;
+        if (TryGetCommandSlotState(slotId, out _))
+            return TrySelectSkillOption(slotId, optionId, persist);
 
         return TrySelectHelperOption(slotId, optionId, persist);
     }
@@ -704,10 +729,11 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             entry.skillAsset = combo.executionSkill;
             entry.runtimeSkill = CreateRuntimeSkill(combo.executionSkill, null);
         }
-        else
-        {
-            entry.runtimeSkill.upgradeSnapshot = null;
-        }
+
+        if (entry.runtimeSkill != null)
+            entry.runtimeSkill.upgradeSnapshot = activeSkillProgress != null && combo.upgradeTree != null
+                ? activeSkillProgress.BuildSnapshot(PartyComboSkillDef.ProgressSlotId, combo.RuntimeId, combo.upgradeTree)
+                : null;
 
         return entry.runtimeSkill != null;
     }
@@ -981,21 +1007,33 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     public void ClearSlot(int index)
     {
+        if (!TryResolveCastSlotIndex(index, out index) ||
+            (TryGetCommandSlotState(index, out ResolvedCommandSlotState state) && IsRunLoadoutLocked(state)))
+        {
+            return;
+        }
+
         if (!TryGetCommandSlot(index, out SkillSlot slot))
             return;
 
         CancelPendingSlotIfNeeded(slot);
 
         ClearRuntimeSlot(slot);
-        if (TryGetCommandSlotState(index, out ResolvedCommandSlotState state))
+        if (TryGetCommandSlotState(index, out ResolvedCommandSlotState updatedState))
         {
-            state.selectedOption = null;
-            state.selectedOptionIndex = -1;
+            updatedState.selectedOption = null;
+            updatedState.selectedOptionIndex = -1;
         }
     }
 
     public void AssignSkillToSlot(int index, SkillGemDefinition asset)
     {
+        if (!TryResolveCastSlotIndex(index, out index) ||
+            (TryGetCommandSlotState(index, out ResolvedCommandSlotState state) && IsRunLoadoutLocked(state)))
+        {
+            return;
+        }
+
         if (!TryGetCommandSlot(index, out SkillSlot slot))
             return;
 
@@ -1003,10 +1041,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         slot.skillAsset = asset;
         slot.runtimeSkill = BuildRuntimeSkill(slot, asset);
-        if (TryGetCommandSlotState(index, out ResolvedCommandSlotState state))
+        if (TryGetCommandSlotState(index, out ResolvedCommandSlotState updatedState))
         {
-            state.selectedOption = null;
-            state.selectedOptionIndex = -1;
+            updatedState.selectedOption = null;
+            updatedState.selectedOptionIndex = -1;
         }
     }
 
@@ -1206,6 +1244,67 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
         slot = resolvedCommandSlots[slotIndex];
         return slot != null;
+    }
+
+    /// <summary>
+    /// Player, AI, party-command, and HUD callers retain their 0/1 input contract while migrated
+    /// character assets resolve those inputs by slot meaning. A third cast input is unavailable.
+    /// Legacy and non-character loadouts retain their authored indices.
+    /// </summary>
+    private bool TryResolveCastSlotIndex(int requestedIndex, out int resolvedIndex)
+    {
+        resolvedIndex = requestedIndex;
+        RefreshResolvedCommandSlotsIfNeeded();
+
+        bool hasActive = false;
+        bool hasUltimate = false;
+        int activeIndex = -1;
+        int ultimateIndex = -1;
+
+        for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
+        {
+            CharacterSkillSlotKind kind = resolvedCommandSlotStates[i]?.slotKind ?? CharacterSkillSlotKind.Legacy;
+            if (kind == CharacterSkillSlotKind.Active)
+            {
+                hasActive = true;
+                activeIndex = i;
+            }
+            else if (kind == CharacterSkillSlotKind.Ultimate)
+            {
+                hasUltimate = true;
+                ultimateIndex = i;
+            }
+        }
+
+        bool playerOrAlly = ctx != null && ctx.baseStats != null && !ctx.baseStats.IsHelperRole &&
+            (ctx.TargetIdentity == AITargetIdentity.Player || ctx.TargetIdentity == AITargetIdentity.Companion);
+        if ((!hasActive || !hasUltimate) && !playerOrAlly)
+            return requestedIndex >= 0 && requestedIndex < resolvedCommandSlots.Count;
+
+        if (requestedIndex == 0)
+        {
+            resolvedIndex = activeIndex;
+            return hasActive;
+        }
+
+        if (requestedIndex == 1)
+        {
+            resolvedIndex = ultimateIndex;
+            return hasUltimate;
+        }
+
+        return false;
+    }
+
+    private bool IsRunLoadoutLocked(ResolvedCommandSlotState state)
+    {
+        if (state?.statsSlot == null || ctx?.baseStats == null || ctx.baseStats.IsHelperRole)
+            return false;
+
+        if (ctx.TargetIdentity != AITargetIdentity.Player && ctx.TargetIdentity != AITargetIdentity.Companion)
+            return false;
+
+        return !CharacterSkillLoadoutAccess.CanChange(ctx.baseStats);
     }
 
     private bool TryGetCommandSlotState(int slotIndex, out ResolvedCommandSlotState state)
@@ -1658,7 +1757,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         {
             slot = runtimeSlot,
             statsSlot = statsSlot,
-            slotId = ResolveSlotId(statsSlot, slotIndex)
+            slotId = ResolveSlotId(statsSlot, slotIndex),
+            slotKind = statsSlot.ResolvedSlotKind,
         };
 
         ApplySavedOrDefaultSelection(state, savedSelections);
@@ -1913,7 +2013,12 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             return null;
 
         CharacterProgressData progress = SaveManager.Instance.LoadCharacterProgressData(characterId);
-        return progress != null ? progress.selectedSkillOptions : null;
+        List<CharacterSkillSelectionSaveData> selections = progress != null ? progress.selectedSkillOptions : null;
+
+        MapRunController run = FindFirstObjectByType<MapRunController>();
+        return run != null && run.IsLoadoutLocked
+            ? run.GetOrCaptureRunLoadout(characterId, selections)
+            : selections;
     }
 
     private void PersistSkillSelection(string slotId, string optionId)

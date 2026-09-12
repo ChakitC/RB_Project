@@ -63,7 +63,17 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
     public bool IsHelperLoadout => Stats != null && Stats.IsHelperRole;
 
     /// <summary>Header for the screen. Helpers never cast from command slots, so they get their own name.</summary>
-    public string ScreenTitle => IsHelperLoadout ? "Helper Skills" : "Active Skills";
+    public string ScreenTitle => IsHelperLoadout ? "Helper Skills" : "Skill Loadout";
+
+    public bool CanChangeLoadout => CharacterSkillLoadoutAccess.CanChange(Stats);
+
+    public bool CanSelectSlot(int slotIndex)
+    {
+        return CanChangeLoadout && TryGetSlot(slotIndex, out SkillLoadoutSlotDescriptor slot) &&
+               slot.Kind != SkillLoadoutKind.PartyCombo &&
+               !string.IsNullOrWhiteSpace(slot.SlotId) &&
+               (IsHelperLoadout || slot.SlotKind != CharacterSkillSlotKind.Legacy);
+    }
 
     /// <summary>Message for a character with no usable slots in its own half of the loadout.</summary>
     public string EmptyLoadoutMessage => IsHelperLoadout
@@ -112,14 +122,28 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
         if (!TryGetSlot(slotIndex, out SkillLoadoutSlotDescriptor slot) || slot.Options.Count == 0)
             return -1;
 
-        if (_skillManager != null &&
-            _skillManager.TryGetSelectedLoadoutOptionId(slot.SlotId, out string runtimeOptionId) &&
-            slot.TryGetOptionById(runtimeOptionId, out int runtimeIndex))
+        // Combo is fixed authoring, not a selected battle slot or run-loadout entry.
+        if (slot.Kind == SkillLoadoutKind.PartyCombo)
+            return 0;
+
+        if (_skillManager != null)
         {
-            return runtimeIndex;
+            return _skillManager.TryGetSelectedLoadoutOptionId(slot.SlotId, out string runtimeOptionId) &&
+                   slot.TryGetOptionById(runtimeOptionId, out int runtimeIndex) ? runtimeIndex : -1;
         }
 
         CharacterProgressData progress = GetProgressData();
+        MapRunController run = UnityEngine.Object.FindFirstObjectByType<MapRunController>();
+        if (!IsHelperLoadout && run != null && run.IsLoadoutLocked)
+        {
+            var selections = run.GetOrCaptureRunLoadout(_characterId, progress.selectedSkillOptions);
+            foreach (CharacterSkillSelectionSaveData entry in selections)
+            {
+                if (entry.slotId == slot.SlotId && slot.TryGetOptionById(entry.optionId, out int runIndex))
+                    return runIndex;
+            }
+            return Mathf.Clamp(slot.DefaultOptionIndex, 0, slot.Options.Count - 1);
+        }
         string savedOptionId = CharacterSkillSelectionStore.FindOptionId(progress, slot.SlotId);
         if (!string.IsNullOrWhiteSpace(savedOptionId) && slot.TryGetOptionById(savedOptionId, out int savedIndex))
             return savedIndex;
@@ -129,16 +153,19 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
 
     public bool SelectOption(int slotIndex, int optionIndex)
     {
-        if (!TryGetSlot(slotIndex, out SkillLoadoutSlotDescriptor slot) ||
+        if (!CanSelectSlot(slotIndex) || (IsRuntime && _skillManager == null) ||
+            !TryGetSlot(slotIndex, out SkillLoadoutSlotDescriptor slot) ||
             !slot.TryGetOption(optionIndex, out SkillLoadoutOptionDescriptor option))
         {
             return false;
         }
 
-        if (_skillManager != null && _skillManager.TrySelectLoadoutOption(slot.SlotId, option.OptionId, true))
+        if (_skillManager != null)
         {
-            Changed?.Invoke();
-            return true;
+            bool selected = _skillManager.TrySelectLoadoutOption(slot.SlotId, option.OptionId, true);
+            if (selected)
+                Changed?.Invoke();
+            return selected;
         }
 
         CharacterProgressData progress = GetProgressData();

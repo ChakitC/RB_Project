@@ -52,5 +52,65 @@ public sealed class CharacterProgressMigrationTests
         Assert.That(file.entries[1].progress.skillPoints, Is.EqualTo(12));
         Assert.That(file.entries[1].progress.skillProgressInitialized, Is.True);
     }
+
+    [Test]
+    public void FenoCombatLoadoutMigrationPreservesTreeCostAndIsIdempotent()
+    {
+        const string json =
+            @"{""schemaVersion"":1,""entries"":[{""characterId"":""ID.Feno"",""progress"":{""skillPoints"":7,""selectedSkillOptions"":[{""slotId"":""2"",""optionId"":""feno.skill.minigunterret""}],""activeSkillTrees"":[{""slotId"":""2"",""optionId"":""feno.skill.minigunterret"",""treeId"":""tree.feno"",""unlockedNodes"":[{""nodeId"":""root"",""paidCost"":3}]}]}}]}";
+
+        CharacterProgressSaveFile first =
+            SaveDataMigration.LoadAndMigrateCharacterProgressSaveFile(json, out bool changed);
+
+        CharacterProgressData progress = first.entries[0].progress;
+        Assert.That(changed, Is.True);
+        Assert.That(progress.combatLoadoutMigrationVersion, Is.EqualTo(CharacterSkillLoadoutSaveMigration.CurrentVersion));
+        Assert.That(CharacterSkillSelectionStore.FindOptionId(progress, "active"), Is.EqualTo("feno.skill.minigunterret"));
+        Assert.That(CharacterSkillSelectionStore.FindOptionId(progress, "ultimate"), Is.EqualTo("Feno.Skill_Ulatimate01"));
+        Assert.That(progress.activeSkillTrees[0].slotId, Is.EqualTo("active"));
+        Assert.That(progress.activeSkillTrees[0].unlockedNodes[0].paidCost, Is.EqualTo(3));
+        Assert.That(progress.skillPoints, Is.EqualTo(7));
+
+        string migratedJson = JsonUtility.ToJson(first);
+        CharacterProgressSaveFile second =
+            SaveDataMigration.LoadAndMigrateCharacterProgressSaveFile(migratedJson, out bool changedAgain);
+
+        Assert.That(changedAgain, Is.False);
+        Assert.That(second.entries[0].progress.selectedSkillOptions.Count, Is.EqualTo(2));
+        Assert.That(second.entries[0].progress.activeSkillTrees.Count, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void CombatLoadoutMigrationMarkerSurvivesDeepClone()
+    {
+        var progress = new CharacterProgressData
+        {
+            combatLoadoutMigrationVersion = CharacterSkillLoadoutSaveMigration.CurrentVersion
+        };
+
+        Assert.That(progress.DeepClone().combatLoadoutMigrationVersion,
+            Is.EqualTo(CharacterSkillLoadoutSaveMigration.CurrentVersion));
+    }
+
+    [Test]
+    public void ConflictingDestinationTreeIsPreservedWithoutCompletingMigration()
+    {
+        var progress = new CharacterProgressData
+        {
+            activeSkillTrees = new System.Collections.Generic.List<CharacterSkillTreeProgressSaveData>
+            {
+                new CharacterSkillTreeProgressSaveData
+                    { slotId = "2", optionId = "feno.skill.minigunterret", treeId = "legacy" },
+                new CharacterSkillTreeProgressSaveData
+                    { slotId = "active", optionId = "feno.skill.minigunterret", treeId = "new" },
+            }
+        };
+
+        CharacterSkillLoadoutSaveMigration.Migrate("ID.Feno", progress);
+
+        Assert.That(progress.combatLoadoutMigrationVersion, Is.Zero);
+        Assert.That(progress.activeSkillTrees[0].slotId, Is.EqualTo("2"));
+        Assert.That(progress.activeSkillTrees[1].slotId, Is.EqualTo("active"));
+    }
 }
 #endif

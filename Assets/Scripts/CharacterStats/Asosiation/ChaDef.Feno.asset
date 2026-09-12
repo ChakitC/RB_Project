@@ -51,13 +51,9 @@ MonoBehaviour:
   introChainCutscene: {fileID: 0}
   partyRole: 0
   skillSlots:
-  - slotId: 1
-    displayName: 1
-    hotkey: 0
-    defaultOptionIndex: 0
-    options: []
-  - slotId: 2
-    displayName: 2
+  - slotId: active
+    displayName: ACTIVE
+    slotKind: 1
     hotkey: 0
     defaultOptionIndex: 0
     options:
@@ -65,8 +61,19 @@ MonoBehaviour:
       displayName: Minigun Terret
       skillAsset: {fileID: 11400000, guid: badfe42aa895b7c448985f2bd9c59bed, type: 2}
       upgradeTreeOverride: {fileID: 0}
+  - slotId: ultimate
+    displayName: ULTIMATE
+    slotKind: 2
+    hotkey: 0
+    defaultOptionIndex: 0
+    options:
+    - optionId: Feno.Skill_Ulatimate01
+      displayName: Feno Ultimate
+      skillAsset: {fileID: 11400000, guid: 36a444a906655f34286dca7c14243187, type: 2}
+      upgradeTreeOverride: {fileID: 0}
   - slotId: passive.feno.bag
     displayName: Forgotten Bullet Bag
+    slotKind: 3
     hotkey: 0
     defaultOptionIndex: 0
     options:

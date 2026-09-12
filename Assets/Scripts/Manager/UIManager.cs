@@ -352,6 +352,7 @@ public class UIManager : MonoBehaviour
                 playerCtx.partyCommand.PartyCommandLabelChanged -= OnPartyCommandLabelChanged;
                 playerCtx.partyCommand.PartyCommandLabelChanged += OnPartyCommandLabelChanged;
                 UpdateCommandPointText(playerCtx.partyCommand.CurrentCommandPoints, playerCtx.partyCommand.MaximumCommandPoints);
+                OnPartyCommandLabelChanged(playerCtx.partyCommand.BuildPartyCommandLabelData());
             }
 
             if (playerCtx.fieldAllyManager != null)
@@ -488,9 +489,23 @@ public class UIManager : MonoBehaviour
         return PlayPerfectDodgeFullscreenEffect(direction, duration, scale);
     }
 
-    void OnAllyRegistered(ChainActorRole role, FieldAllyMember member) => BindAllySlot(role, member);
+    void OnAllyRegistered(ChainActorRole role, FieldAllyMember member)
+    {
+        BindAllySlot(role, member);
+        RefreshPartyCommandLabel();
+    }
 
-    void OnAllyUnregistered(ChainActorRole role) => UnbindAllySlot(role);
+    void OnAllyUnregistered(ChainActorRole role)
+    {
+        UnbindAllySlot(role);
+        RefreshPartyCommandLabel();
+    }
+
+    void RefreshPartyCommandLabel()
+    {
+        if (ctx is PlayerContext player && player.partyCommand != null)
+            OnPartyCommandLabelChanged(player.partyCommand.BuildPartyCommandLabelData());
+    }
 
     void BindAllySlotFromManager(ChainActorRole role)
     {

@@ -14,10 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   comboId: feno.combo.entered-break
   displayName: Suppressive Break
-  description: Triggered follow-up when any active party member pushes a target
-    into Break.
+  description: Triggered follow-up when any active party member pushes a target into
+    Break.
   iconOverride: {fileID: 0}
   executionSkill: {fileID: 11400000, guid: b19a0f19919f87f41bcf2bb8c8d8e499, type: 2}
+  upgradeTree: {fileID: 11400000, guid: 8078c1b25c9859140a57407374c6c162, type: 2}
   trigger:
     kind: 3
     sourceRelation: 3

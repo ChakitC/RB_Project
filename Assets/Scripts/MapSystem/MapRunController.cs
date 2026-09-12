@@ -75,6 +75,7 @@ public class MapRunController : MonoBehaviour
     public RoomController CurrentRoom => Session.CurrentRoom;
     public bool IsTransitioning => Session.IsTransitioning;
     public bool HasActiveRoom => Session.HasActiveRoom;
+    public bool IsLoadoutLocked => Session.IsLoadoutLocked;
     public int CachedRoomCount => RoomCache.Count;
     public MapRunConfigSO RunConfig => runConfig;
     public bool CanCompleteStageRun => StageProgression.CanCompleteStageRun;
@@ -88,6 +89,13 @@ public class MapRunController : MonoBehaviour
     public Func<RoomController, RoomExitDirection?, bool> PartyWarpOverride { get; set; }
 
     MapRunSession Session => session ??= new MapRunSession();
+
+    public List<CharacterSkillSelectionSaveData> GetOrCaptureRunLoadout(
+        string characterId,
+        List<CharacterSkillSelectionSaveData> selections)
+    {
+        return Session.GetOrCaptureLoadout(characterId, selections);
+    }
 
     RoomRuntimeCache RoomCache => roomCache ??= new RoomRuntimeCache(Log);
 
@@ -202,15 +210,16 @@ public class MapRunController : MonoBehaviour
             return;
         }
 
-        Session.SetGraph(graph);
-        StageProgression.BeginRun(runConfig, graph);
-        Log($"Generated map with {graph.Nodes.Count} nodes. Start='{graph.StartNodeId}', Boss='{graph.BossNodeId}', Seed={graph.ResolvedSeed}.");
-
         if (!MapPathValidator.Validate(graph, runConfig, out string error))
         {
             Debug.LogError($"[MapRunController] Generated map is invalid: {error}", this);
             return;
         }
+
+        Session.SetGraph(graph);
+        CaptureDeployedLoadouts();
+        StageProgression.BeginRun(runConfig, graph);
+        Log($"Generated map with {graph.Nodes.Count} nodes. Start='{graph.StartNodeId}', Boss='{graph.BossNodeId}', Seed={graph.ResolvedSeed}.");
 
         if (!TryEnterNode(graph.StartNodeId, null))
         {
@@ -241,6 +250,23 @@ public class MapRunController : MonoBehaviour
         ResetRoomCache();
         Session.ClearRun();
         NotifyMapChanged();
+    }
+
+    void CaptureDeployedLoadouts()
+    {
+        SaveManager saveManager = SaveManager.Instance;
+        IReadOnlyList<CharacteContext> contexts = CharacterContextRegistry.ActiveContexts;
+        for (int i = 0; i < contexts.Count; i++)
+        {
+            CharacterStats stats = contexts[i] != null ? contexts[i].baseStats : null;
+            if (stats == null || stats.IsHelperRole || string.IsNullOrWhiteSpace(stats.characterId))
+                continue;
+
+            CharacterProgressData progress = saveManager != null
+                ? saveManager.LoadCharacterProgressData(stats.characterId)
+                : new CharacterProgressData();
+            Session.GetOrCaptureLoadout(stats.characterId, progress.selectedSkillOptions);
+        }
     }
 
     // ------------------------------------------------------------------ travel

@@ -50,6 +50,7 @@ public class CharacterProgressData
     public int skillPoints = 0;
     public bool skillProgressInitialized = false;
     public List<CharacterSkillTreeProgressSaveData> activeSkillTrees = new();
+    public int combatLoadoutMigrationVersion = 0;
 
     public CharacterProgressData DeepClone()
     {
@@ -62,6 +63,7 @@ public class CharacterProgressData
             skillPoints = skillPoints,
             skillProgressInitialized = skillProgressInitialized,
             activeSkillTrees = CloneActiveSkillTrees(activeSkillTrees),
+            combatLoadoutMigrationVersion = combatLoadoutMigrationVersion,
         };
     }
 

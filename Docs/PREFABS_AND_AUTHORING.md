@@ -1408,6 +1408,26 @@ the cooldown is already spent, because the cast committed at its cast point.
 
 `Skill Points Per Level` applies to both roles - a Helper spends the same pool a Stryker does.
 
+For a migrated Player/Ally Stryker, author `skillSlots` in any order but assign
+stable IDs and semantic kinds:
+
+- one `slotId: active` with `Slot Kind: Active`
+- one `slotId: ultimate` with `Slot Kind: Ultimate`
+- zero or more separate slots with `Slot Kind: Passive`
+
+Active/Ultimate options must reference castable `SkillGemDefinition` assets;
+Passive options must reference `PassiveDefinition`. Do not use list position as
+the contract. Run **Tools > RB > Validate Player Ally Skill Loadouts** after
+editing these assets. The validator reports legacy slots, duplicate IDs, missing
+configured assets, mixed Passive/cast options, and missing or duplicate
+Active/Ultimate slots.
+
+Do not author a third Player/Ally cast fallback on
+`CharacterSkillManager.autonomousSlots`. Migrated two-slot characters reject
+cast input 2 even if a stale prefab entry exists. Enemy, Summon, Chain Attack,
+Party Combo, and Helper data are separate systems and must not be moved into an
+Ultimate slot by inference.
+
 A party slot is a shared rig that any character can be loaded into, so the role belongs to the
 character asset, not to a prefab. The inspector hides the half that does not apply, and
 `CharacterSkillManager` only reads the Helper half from a character whose role is `Helper` -
@@ -1460,6 +1480,11 @@ from the player or other registered party members.
 `ActiveSkillScreen` edits both roles. It shows `Active Skills` (Stryker `skillSlots`) or
 `Helper Skills` (the Helper command slot followed by the proc slots in authored order), driven by
 `SkillLoadoutDescriptorFactory`.
+
+The Basement screen may change the selected option and inspect/upgrade every
+tree. In a map run, selection calls return false and do not fall back to writing
+the save; tree inspection and upgrades remain available. The run lock stores
+only selected IDs, not `SkillInstance` objects or upgrade snapshots.
 
 The persistent charge pool still works with a shared prefab because it is keyed by
 `SkillGemDefinition` inside the helper's own orchestrator, and the helper GameObject is only ever
@@ -2938,3 +2963,32 @@ textures while keeping the same shader controls. The ripple shader and the
 waterfall's foam layer are transparent; the depth-writing waterfall layer emits
 opaque alpha to hide geometry behind it. Both shaders intentionally contain no
 shadow-caster pass.
+## Skill Loadout UI authoring (2026-09-12)
+
+- Continue using `Assets/Prefab/User Interface/Active Skill/ActiveSkillScreen.prefab`.
+  `UILoadLaval.OpenActiveSkillTree` keeps its existing prefab reference.
+- `SlotTabs/Viewport/Content` holds Active, Ultimate, Passive, and Combo type cards in
+  one full-width bottom scroll region. The left panel selects variants for the
+  chosen type; the right panel shows that variant's upgrade tree.
+  `PassiveSlots` stays inactive for serialized compatibility; do not add an
+  Upgrades category. Keep `loadoutLockText` bound on the controller.
+- Assign `CharacterStats.partyComboSkill` for the Combo card and its dedicated
+  `PartyComboSkillDef.upgradeTree` for upgrade nodes. Combo is a fixed authored
+  skill, not a selectable cast slot. Its tree uses shared Skill Points with
+  progress isolated by `party-combo` / `comboId`; no additional HUD cast slot is needed.
+- The existing `ActiveSkillSlotTab.prefab` retains its Button, Label and Selected
+  objects, with `skillIcon`, `skillName`, and `description` references added.
+  These show the equipped option; clicking a tab opens that slot's options/tree.
+- `PlayerUI.prefab/UI_Manager/PlayerHUD/SkillChargeHud`: Slot0 has `slotKind=Active`,
+  Slot1 has `slotKind=Ultimate`; Slot2 is inactive. Keep its serialized objects for
+  compatibility. The Horizontal Layout Group width is 156 (72 + 12 + 72).
+- Assign HUD `inputActions`, `inputBindingLabel`, `slotKindLabel`, and
+  `readinessGroup`. Decorative graphics/text do not receive raycasts.
+- Loadout Canvas retains Scale With Screen Size at 1920×1080. It needs the gameplay
+  bootstrap's EventSystem and its own GraphicRaycaster. Basement scene itself
+  does not author an EventSystem; enter through the existing bootstrap flow.
+- `GameSetup.unity` keeps the configured `System/EventSystem` (InputSystemUIInputModule
+  with Point/Click actions). Its unconfigured root-level duplicate is inactive.
+- Missing skill icons use text; do not assign temporary artwork or invent an
+  Aires/Roma skill mapping. Unmapped legacy slots remain in authored data but
+  are not exposed as extra Upgrades tabs.

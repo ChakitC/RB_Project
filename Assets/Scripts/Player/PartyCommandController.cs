@@ -1094,6 +1094,10 @@ public sealed class PartyCommandController : MonoBehaviour
         if (command == null)
             return "none";
 
+        if (command.executionKind == PartyCommandExecutionKind.AllyCommandSlot)
+            return TryGetAllyCommandSkillDefinition(command, out SkillGemDefinition allySkill)
+                ? allySkill.SkillDefinitionDisplayName : "Not available yet";
+
         if (!string.IsNullOrWhiteSpace(command.displayName))
             return command.displayName.Trim();
 
@@ -1116,6 +1120,10 @@ public sealed class PartyCommandController : MonoBehaviour
         if (command == null)
             return null;
 
+        if (command.executionKind == PartyCommandExecutionKind.AllyCommandSlot)
+            return TryGetAllyCommandSkillDefinition(command, out SkillGemDefinition allySkill)
+                ? allySkill.SkillDefinitionIcon : null;
+
         if (command.icon != null)
             return command.icon;
 
@@ -1133,6 +1141,19 @@ public sealed class PartyCommandController : MonoBehaviour
     /// Helper Command Skill deliberately resolves to no skill; command slots are Stryker data and
     /// are never a fallback for the runtime helper.
     /// </summary>
+    bool TryGetAllyCommandSkillDefinition(PartyCommandDefinition command, out SkillGemDefinition skillDef)
+    {
+        skillDef = null;
+        if (!TryResolveAllyCommandTarget(command.allyCommandActorRole, out _, out CharacterSkillManager manager))
+            return false;
+        if (manager.HasConfiguredPlayerCommandSkill)
+        {
+            skillDef = manager.PlayerCommandSkill.skillAsset;
+            return skillDef != null;
+        }
+        return manager.TryGetSlotSkillDefinition(command.ClampedAllyCommandSlotIndex, out skillDef);
+    }
+
     bool TryGetHelperCommandSkillDefinition(out SkillGemDefinition skillDef)
     {
         skillDef = null;

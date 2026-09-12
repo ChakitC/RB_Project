@@ -127,6 +127,16 @@ public static class SaveDataMigration
             }
         }
 
+        for (int i = 0; i < file.entries.Count; i++)
+        {
+            CharacterProgressEntry entry = file.entries[i];
+            if (entry?.progress == null)
+                continue;
+
+            if (CharacterSkillLoadoutSaveMigration.Migrate(entry.characterId, entry.progress))
+                migrated = true;
+        }
+
         return file;
     }
 

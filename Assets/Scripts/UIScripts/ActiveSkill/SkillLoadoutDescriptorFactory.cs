@@ -24,7 +24,66 @@ public static class SkillLoadoutDescriptorFactory
         }
 
         AppendStrykerSlots(stats, slots);
+        var authored = new List<SkillLoadoutSlotDescriptor>(slots);
+        slots.Clear();
+        AppendCombatSlot(authored, slots, CharacterSkillSlotKind.Active, "ACTIVE");
+        AppendCombatSlot(authored, slots, CharacterSkillSlotKind.Ultimate, "ULTIMATE");
+        foreach (SkillLoadoutSlotDescriptor slot in authored)
+        {
+            if (!slot.IsPassiveSlot)
+                continue;
+            slot.DisplayName = "PASSIVE";
+            slots.Add(slot);
+        }
+        AppendComboSlot(stats, slots);
         return slots;
+    }
+
+    static void AppendComboSlot(CharacterStats stats, List<SkillLoadoutSlotDescriptor> slots)
+    {
+        var slot = new SkillLoadoutSlotDescriptor
+        {
+            SlotId = PartyComboSkillDef.ProgressSlotId,
+            DisplayName = "COMBO",
+            Kind = SkillLoadoutKind.PartyCombo,
+        };
+        PartyComboSkillDef combo = stats.partyComboSkill;
+        if (combo != null && combo.executionSkill != null)
+        {
+            slot.Options.Add(new SkillLoadoutOptionDescriptor
+            {
+                OptionId = combo.RuntimeId,
+                DisplayName = string.IsNullOrWhiteSpace(combo.displayName) ? combo.name : combo.displayName,
+                Description = combo.description,
+                TriggerSummary = $"Trigger: {combo.trigger.kind}",
+                Icon = combo.ResolvedIcon,
+                SkillAsset = combo.executionSkill,
+                UpgradeTree = combo.upgradeTree,
+            });
+        }
+        slots.Add(slot);
+    }
+
+    static void AppendCombatSlot(List<SkillLoadoutSlotDescriptor> source,
+        List<SkillLoadoutSlotDescriptor> target, CharacterSkillSlotKind kind, string label)
+    {
+        SkillLoadoutSlotDescriptor match = null;
+        foreach (SkillLoadoutSlotDescriptor slot in source)
+        {
+            if (slot.SlotKind != kind)
+                continue;
+            // Ambiguous authoring is unavailable, never silently pick one of two mappings.
+            if (match != null)
+            {
+                match = null;
+                break;
+            }
+            match = slot;
+        }
+        match ??= new SkillLoadoutSlotDescriptor { SlotKind = kind, Kind = SkillLoadoutKind.Stryker };
+        match.DisplayName = label;
+        match.Options.RemoveAll(option => option.SkillAsset == null || option.IsPassive);
+        target.Add(match);
     }
 
     static void AppendStrykerSlots(CharacterStats stats, List<SkillLoadoutSlotDescriptor> slots)
@@ -46,11 +105,15 @@ public static class SkillLoadoutDescriptorFactory
                     ? slot.displayName.Trim()
                     : BuildStrykerSlotLabel(i),
                 Kind = SkillLoadoutKind.Stryker,
+                SlotKind = slot.ResolvedSlotKind,
                 DefaultOptionIndex = Mathf.Max(0, slot.defaultOptionIndex),
                 IsPassiveSlot = slot.IsPassiveSlot,
             };
 
             AppendSkillOptions(slot, descriptor.Options);
+            if (slot.TryGetDefaultOption(out _, out CharacterSkillLoadoutOption defaultOption) &&
+                descriptor.TryGetOptionById(defaultOption.ResolvedOptionId, out int defaultIndex))
+                descriptor.DefaultOptionIndex = defaultIndex;
             slots.Add(descriptor);
         }
     }

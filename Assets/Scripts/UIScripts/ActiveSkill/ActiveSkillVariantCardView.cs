@@ -68,7 +68,7 @@ public sealed class ActiveSkillVariantCardView : MonoBehaviour
         }
 
         if (button != null)
-            button.interactable = !selected && option != null;
+            button.interactable = !selected && option != null && clicked != null;
     }
 
     /// <summary>
@@ -77,7 +77,7 @@ public sealed class ActiveSkillVariantCardView : MonoBehaviour
     /// </summary>
     static string BuildCaption(SkillLoadoutOptionDescriptor option)
     {
-        if (option == null || option.HelperProc == null)
+        if (option == null)
             return string.Empty;
 
         bool hasTrigger = !string.IsNullOrWhiteSpace(option.TriggerSummary);

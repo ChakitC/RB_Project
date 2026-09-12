@@ -28,11 +28,14 @@ events, normalized-time queries, timeline payloads, and interruption tracking.
 
 ## Character Skill Loadouts
 
-Character default active-skill loadouts are authored on `CharacterStats`.
-Each `CharacterSkillLoadoutSlot` defines a stable `slotId`, optional label,
-hotkey, default option index, and any number of selectable
-`CharacterSkillLoadoutOption` entries. Each option points at a
-`SkillGemDefinition`, level, support gems, and optional `optionId`.
+Player/Ally combat loadouts are authored on `CharacterStats`. A migrated
+Stryker owns one `Active` slot and one `Ultimate` slot, plus any separate
+`Passive` slots. Each `CharacterSkillLoadoutSlot` defines a stable `slotId`,
+`slotKind`, optional label, hotkey, default option index, and any number of
+selectable `CharacterSkillLoadoutOption` entries. Each option points at a
+`SkillDefinitionBase`, an optional stable `optionId`, and an optional Skill Tree
+override. Active and Ultimate options must resolve to `SkillGemDefinition`;
+Passive options must resolve to `PassiveDefinition`.
 
 `CharacterSkillManager` resolves command slots at runtime from
 `ctx.baseStats.skillSlots`. `CharacterStats` is authoritative for every slot it
@@ -47,6 +50,13 @@ that slot, and persists `{ slotId, optionId }` to the owning character progress
 when requested. It never writes the selected option back into the
 `CharacterStats` asset.
 
+Loadout selection is a Basement operation. `MapRunSession` snapshots selected
+option IDs per `characterId` when a run starts. While that snapshot is active,
+the manager rejects Stryker selection, `AssignSkillToSlot`, and `ClearSlot`;
+refresh, respawn, and role swaps continue to resolve the same snapshot. Helper
+Command/Proc selection remains on its existing path. Returning to the Basement
+or aborting the run releases the snapshot.
+
 When `optionId` is empty, runtime lookup falls back to the selected
 `SkillGemDefinition.skillId`. Keep option ids unique within one slot so saved
 selections can be restored after reload. Invalid saved selections fall back to
@@ -58,10 +68,13 @@ the slot's default configured option.
 summon prefab, so it never reads keyboard/gamepad input directly — a shared
 `Update()` polling actual keys would fire the same hotkey on every character in
 the scene at once. Player-initiated skill casts come only from the input layer:
-`PlayerInputHandler.OnSkillSlot1/2/3` (bound to the New Input System actions
-`SkillSlot1/2/3` on `Inputmaneger.inputactions`, keys `1`/`2`/`3`) call
-`CharacterSkillManager.TryStartCastSlot(slotIndex)` on the player's own
-`SkillManager`. This is a direct self-cast that does not spend CP; commanding
+`PlayerInputHandler.OnSkillSlot1/2/3` retains the existing New Input System
+callbacks. For a migrated loadout, manager input 0 resolves the `Active` slot,
+input 1 resolves the `Ultimate` slot, and input 2 is rejected. The same resolver
+is used by Player input, Ally AI, party commands, and the charge HUD, so Passive
+slots cannot become castable because their list position changed. Legacy,
+Enemy, and Summon loadouts retain their authored index behavior. A Player cast
+does not spend CP; commanding
 an ally's skill goes through `PartyCommandController` instead, which does
 spend CP.
 
@@ -1071,7 +1084,9 @@ request id instead of relying on the legacy parameterless completion event.
 ## Active Skill Loadout and Upgrade Trees
 
 Each `CharacterStats.skillSlots` entry is a stable Skill Slot. Author a unique,
-non-empty `slotId`; each configured `CharacterSkillLoadoutOption` in that slot
+non-empty `slotId` and set `slotKind`. Player/Ally Strykers require exactly one
+`Active` and one `Ultimate`; Passive slots remain additional entries and do not
+count toward that limit. Each configured `CharacterSkillLoadoutOption` in a slot
 is a Skill Variant and needs a unique, non-empty `optionId`. Assign the default
 `SkillUpgradeTreeDefinition` on `SkillGemDefinition.upgradeTree`. A Variant can
 optionally replace it with `CharacterSkillLoadoutOption.upgradeTreeOverride`;
@@ -1094,6 +1109,13 @@ Progress is keyed by `slotId` + `optionId`. Stryker slots use their authored
 `helper:command:<slotId>` and `helper:proc:<slotId>`. Every Variant keeps its own
 unlocked nodes, switching Variants never refunds, and Reset refunds only the tree
 it was asked for, by each node's recorded `paidCost`.
+
+`CharacterSkillLoadoutSaveMigration` remaps legacy keys before any progress model
+reads or reconciles tree data. Its per-character version is stored in
+`CharacterProgressData.combatLoadoutMigrationVersion` and copied by `DeepClone`.
+Conflicting destination tree keys are preserved under their legacy key and leave
+that character incomplete; migration never unions mutually exclusive nodes or
+silently discards a paid cost.
 
 When `CharacterContextPartyLoader` assigns a party member's `baseStats`, it
 reloads `CharacterActiveSkillProgress` for that character ID. A full progress
@@ -1859,7 +1881,7 @@ What it shows:
 
 | Pool state | Icon | Charge number | Radial overlay |
 | --- | --- | --- | --- |
-| Full | Skill icon, or `?` when none is authored | Shown, `1` included | Hidden |
+| Full | Skill icon, or skill name when none is authored | Shown, `1` included | Hidden |
 | Recharging, charge left | Same | Shown | Alpha `0.35` |
 | Recharging, empty | Same | Hidden | Alpha `0.65` |
 
@@ -1872,22 +1894,49 @@ A cast that is winding up already holds its charge, so the readout shows it as
 spent from the start of the cast rather than at the cast point. If that cast is
 then interrupted, the charge comes straight back.
 
-This readout means **cooldown and charges only**. Energy, animation locks, and
-cutscene locks are deliberately excluded, which is why the presenter must not
-call `CanStartCastSlot` — that method folds all of them together, and a slot
-greyed out for missing energy would read as if it were on cooldown.
+The radial overlay means **cooldown and charges only**. The separate view alpha
+uses `CanStartCastSlot` for readiness, including energy, animation and cutscene
+locks. The UI does not duplicate those rules.
 
 Charge status resolution rebuilds `FinalSkillStats`, so the presenter re-reads it
-on a `0.1s` interval and extrapolates the overlay per frame from the last sample.
-Extrapolation uses `Time.time`, the pool's own clock, so the sweep stops exactly
-when the cooldown does. A re-read is pulled forward the moment the sampled
-recharge comes due, so the charge count and the flash still land on time.
+on a `0.1s` interval and displays the returned remaining/duration directly.
+The UI does not extrapolate a second timer. Bind refreshes immediately when the
+controlled character changes; later readiness/charge changes appear within 0.1s.
+
+### Player / Ally loadout UI
+
+The existing uGUI Skill Loadout screen presents `Active`, `Ultimate`, `Passive`, and `Combo`
+in one bottom type selector. The left panel selects variants of the chosen type;
+the right panel shows upgrades in that variant's tree. There is no Upgrades tab
+or separate Passive/Upgrades region. Unmapped legacy entries preserve their
+authored data and tree keys but do not become extra UI tabs.
+Missing or ambiguous semantic mappings show **Not available yet**; the UI never
+guesses a skill from its old index or asset name. Feno is configured; Aires/Roma
+remain pending the mappings listed in the handoff.
+
+`CharacterSkillLoadoutAccess` checks the active run lock and an active
+`BasementContext`. Both session selection and Player/Ally manager mutation use
+this permission. Helper Command/Proc retains its previous permission behavior.
+Browsing trees and buying upgrades remain separate from changing the loadout.
+Rejected selections re-read the equipped value. A lobby view opened during a
+run reads the run snapshot, while runtime views read their character manager.
+
+HUD `slotKind` maps Active to input 0 and Ultimate to input 1 through the manager.
+Player/Ally with incomplete mapping cannot fall back to old cast indices. The
+third HUD slot is inactive and the layout has space for two. Input labels use
+the bound actor's Input System actions where present, with the authored action
+asset as fallback. Labels use effective physical binding paths (including rebind
+overrides), so keyboard layout changes do not introduce unsupported HUD glyphs.
+Ally Party Command names/icons resolve the same skill as
+its existing readiness and execution path. Helper and Party Combo UI are separate.
+`UIManager` requests a fresh command label on player binding and ally registration/
+unregistration, so the previous actor's label is not retained after a party change.
 
 ## Party Combo Skill Entry
 
 Party Combo execution uses `CharacterSkillManager.TryStartPartyComboSkill` and
-a dedicated runtime entry keyed by `SkillGemDefinition`. The entry deliberately
-has no character loadout/upgrade snapshot, shares the skill's normal charge
+a dedicated runtime entry keyed by `PartyComboSkillDef`. The entry deliberately
+uses its Combo-owned upgrade snapshot (`party-combo` / `comboId`), shares the skill's normal charge
 pool, ignores Energy, and still stamps cooldown on commit. Callers receive
 request-scoped commit, failure, and cancellation callbacks; `CastReleased` is
 not a commit signal. See [Party Combo Skill System](PARTY_COMBO.md).

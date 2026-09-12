@@ -89,7 +89,7 @@ public sealed class HelperSkillLoadoutSmokeTests
     }
 
     [Test]
-    public void StrykerDescriptorsStillComeFromSkillSlots()
+    public void UnmappedStrykerSlotsStayAuthoredWithoutUpgradeTabs()
     {
         SkillGemDefinition skill = CreateSkill("Stryker Skill");
         var stats = ScriptableObject.CreateInstance<CharacterStats>();
@@ -110,11 +110,12 @@ public sealed class HelperSkillLoadoutSmokeTests
 
         List<SkillLoadoutSlotDescriptor> slots = SkillLoadoutDescriptorFactory.Build(stats);
 
-        Assert.That(slots.Count, Is.EqualTo(1));
-        Assert.That(slots[0].Kind, Is.EqualTo(SkillLoadoutKind.Stryker));
-        Assert.That(slots[0].SlotId, Is.EqualTo("skill.1"),
+        Assert.That(slots.Count, Is.EqualTo(3));
+        Assert.That(slots[0].SlotKind, Is.EqualTo(CharacterSkillSlotKind.Active));
+        Assert.That(slots[1].SlotKind, Is.EqualTo(CharacterSkillSlotKind.Ultimate));
+        Assert.That(stats.skillSlots[0].slotId, Is.EqualTo("skill.1"),
             "Stryker slot keys must stay unprefixed so existing progress still resolves.");
-        Assert.That(slots[0].Options[0].SkillAsset, Is.SameAs(skill));
+        Assert.That(stats.skillSlots[0].options[0].skillAsset, Is.SameAs(skill));
     }
 
     // ---- Progress -------------------------------------------------------------------------------

@@ -1,4 +1,6 @@
 using UnityEngine;
+using System;
+using System.Collections.Generic;
 
 /// <summary>
 /// The state of one run: which map was generated, where the party stands, and whether a transition
@@ -7,10 +9,13 @@ using UnityEngine;
 /// </summary>
 public sealed class MapRunSession
 {
+    readonly Dictionary<string, List<CharacterSkillSelectionSaveData>> lockedLoadouts = new();
+
     public MapGraph Graph { get; private set; }
     public MapNode CurrentNode { get; private set; }
     public RoomRuntimeCache.Entry CurrentEntry { get; private set; }
     public bool IsTransitioning { get; set; }
+    public bool IsLoadoutLocked { get; private set; }
 
     public RoomController CurrentRoom => CurrentEntry != null ? CurrentEntry.Controller : null;
     public GameObject CurrentRoomInstance => CurrentEntry != null ? CurrentEntry.Instance : null;
@@ -18,6 +23,8 @@ public sealed class MapRunSession
 
     public void SetGraph(MapGraph graph)
     {
+        lockedLoadouts.Clear();
+        IsLoadoutLocked = graph != null;
         Graph = graph;
         CurrentNode = null;
         CurrentEntry = null;
@@ -29,6 +36,48 @@ public sealed class MapRunSession
         CurrentNode = null;
         CurrentEntry = null;
         IsTransitioning = false;
+        IsLoadoutLocked = false;
+        lockedLoadouts.Clear();
+    }
+
+    public List<CharacterSkillSelectionSaveData> GetOrCaptureLoadout(
+        string characterId,
+        List<CharacterSkillSelectionSaveData> selections)
+    {
+        if (!IsLoadoutLocked || string.IsNullOrWhiteSpace(characterId))
+            return CloneSelections(selections);
+
+        string resolvedId = characterId.Trim();
+        if (!lockedLoadouts.TryGetValue(resolvedId, out List<CharacterSkillSelectionSaveData> snapshot))
+        {
+            snapshot = CloneSelections(selections);
+            lockedLoadouts.Add(resolvedId, snapshot);
+        }
+
+        return CloneSelections(snapshot);
+    }
+
+    static List<CharacterSkillSelectionSaveData> CloneSelections(
+        List<CharacterSkillSelectionSaveData> source)
+    {
+        var clone = new List<CharacterSkillSelectionSaveData>();
+        if (source == null)
+            return clone;
+
+        for (int i = 0; i < source.Count; i++)
+        {
+            CharacterSkillSelectionSaveData entry = source[i];
+            if (entry == null)
+                continue;
+
+            clone.Add(new CharacterSkillSelectionSaveData
+            {
+                slotId = entry.slotId,
+                optionId = entry.optionId,
+            });
+        }
+
+        return clone;
     }
 
     /// <summary>Binds the party to a room. Only a committed transition may call this.</summary>

@@ -78,10 +78,22 @@ context-first target contract for gameplay actors.
 ## Cost, Charge, and Commit Contract
 
 Party Combo uses the execution skill's normal shared charge pool but ignores
-Energy. `CharacterSkillManager` maintains a dedicated runtime entry with a null
-loadout/upgrade snapshot, so battle-slot upgrades cannot leak into combo casts.
+Energy. `CharacterSkillManager` maintains a dedicated runtime entry and reads
+only the Combo definition's `upgradeTree`. Its snapshot uses slot key
+`party-combo` and option key `comboId`, isolating it from battle-slot upgrades.
+The Skill Loadout screen includes Combo in the bottom type selector, with the
+fixed Combo on the left and its upgrade tree on the right. Unlock/reset uses
+the existing shared Skill Points and `activeSkillTrees` save storage; Combo
+selection is never written to battle loadout or run snapshot selections.
+The manager refreshes the Combo snapshot when its runtime entry is requested,
+including before casting, so unlocks and resets affect subsequent casts.
 The fixed combo choice is not player-selectable save data, and its transient
 charge entry is rebuilt full after load under the current charge-pool contract.
+
+Assign a dedicated `upgradeTree` on `PartyComboSkillDef`; a missing tree leaves
+the Combo usable with no upgrades. Keep `comboId` and the tree ID stable after
+shipping. Feno/Aires test Combo definitions have starter trees with a one-point
+node reducing cooldown by 10%; these are editable test balance values.
 
 Commit means the cast reservation succeeded and was committed. It is not
 `CastReleased`, and cancellation before commit creates no combo fact. Immediate

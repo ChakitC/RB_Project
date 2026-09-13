@@ -33,4 +33,4 @@ MonoBehaviour:
     prefab: {fileID: 5546123616510741782, guid: 0a8e3a2acc4fe8d4e9f2c0e5eefdd976, type: 3}
     localPosition: {x: -4.94, y: 0, z: 0.02}
     localEulerAngles: {x: 0, y: 0, z: 0}
-  playerUIPrefab: {fileID: 2262640161921503855, guid: 2bc0b7b51164a6b4cb5086ee4978c781, type: 3}
+  playerUIPrefab: {fileID: 2262640161921503855, guid: 8ebbfb8db4c968d4eb48b98b8abc63d0, type: 3}

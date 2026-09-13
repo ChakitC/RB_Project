@@ -2965,6 +2965,9 @@ opaque alpha to hide geometry behind it. Both shaders intentionally contain no
 shadow-caster pass.
 ## Skill Loadout UI authoring (2026-09-12)
 
+For the separate reference-layout combat HUD, see [Separate Party HUD](SYSTEMS/PARTY_HUD.md).
+`DefaultPartySpawnConfig.asset` uses `PlayerUI_PartyHud.prefab` in game. The original PlayerUI prefab remains available as a separate asset.
+
 - Continue using `Assets/Prefab/User Interface/Active Skill/ActiveSkillScreen.prefab`.
   `UILoadLaval.OpenActiveSkillTree` keeps its existing prefab reference.
 - `SlotTabs/Viewport/Content` holds Active, Ultimate, Passive, and Combo type cards in

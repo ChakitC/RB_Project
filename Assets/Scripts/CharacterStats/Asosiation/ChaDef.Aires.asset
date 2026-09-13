@@ -53,6 +53,7 @@ MonoBehaviour:
   skillSlots:
   - slotId: 0
     displayName: 
+    slotKind: 1
     hotkey: 0
     defaultOptionIndex: 0
     options:
@@ -66,6 +67,7 @@ MonoBehaviour:
       upgradeTreeOverride: {fileID: 11400000, guid: 0e0c5a48ecedd994083b1cf170d0681a, type: 2}
   - slotId: 1
     displayName: 
+    slotKind: 3
     hotkey: 0
     defaultOptionIndex: 0
     options:
@@ -75,6 +77,7 @@ MonoBehaviour:
       upgradeTreeOverride: {fileID: 0}
   - slotId: 2
     displayName: 
+    slotKind: 2
     hotkey: 0
     defaultOptionIndex: 0
     options:
@@ -87,6 +90,7 @@ MonoBehaviour:
   helperCommandSlot:
     slotId: 
     displayName: 
+    slotKind: 0
     hotkey: 0
     defaultOptionIndex: 0
     options: []

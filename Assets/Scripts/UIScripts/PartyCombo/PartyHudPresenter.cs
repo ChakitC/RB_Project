@@ -69,7 +69,7 @@ public sealed class PartyHudPresenter : MonoBehaviour
         for (int i = 0; i < commandSegments.Length; i++)
             commandSegments[i].fillAmount = Mathf.Clamp01(ratio * commandSegments.Length - i);
         var weapon = Player?.WeaponSystem;
-        ammo.text = weapon != null ? $"<size=28>{weapon.CurrentAmmo}/{(weapon.HasInfiniteReserveAmmo ? "∞" : weapon.CurrentReserveAmmo.ToString())}</size>" : "<size=28>— / —</size>";
+        ammo.text = weapon != null ? $"{weapon.CurrentAmmo}/{(weapon.HasInfiniteReserveAmmo ? "∞" : weapon.CurrentReserveAmmo.ToString())}" : "— / —";
         for (int kind = 0; kind < 2; kind++) for (int slot = 0; slot < 4; slot++)
         {
             int index = kind * 4 + slot;

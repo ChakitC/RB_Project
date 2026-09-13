@@ -33,7 +33,10 @@ and the skill icon; ready skills restore both to white, while cooldown text rema
 Skill icons use circular masks and the `RB/UI/Party HUD Monochrome` material;
 the original skill sprites remain unchanged. Portraits retain their original colors.
 The BULLET caption is authored separately in the prefab. Runtime updates only
-the ammunition count and does not prepend a caption or newline. Keycaps and the Combo leading bracket/connecting links follow the visual
+the ammunition count and does not prepend a caption, newline, or font-size markup.
+Set the count's font size in its TMP Inspector and its spacing below BULLET through
+its RectTransform, rather than leading blank lines that runtime text updates replace.
+Keycaps and the Combo leading bracket/connecting links follow the visual
 reference. Each Combo card owns its trailing link so hidden cards leave no stray links.
 
 ## Keyboard contract

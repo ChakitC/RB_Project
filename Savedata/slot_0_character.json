@@ -108,6 +108,12 @@
                                 "paidCost": 1
                             }
                         ]
+                    },
+                    {
+                        "slotId": "party-combo",
+                        "optionId": "feno.combo.entered-break",
+                        "treeId": "feno.combo.entered-break.upgrades",
+                        "unlockedNodes": []
                     }
                 ],
                 "combatLoadoutMigrationVersion": 1
@@ -258,6 +264,12 @@
                                 "paidCost": 1
                             }
                         ]
+                    },
+                    {
+                        "slotId": "party-combo",
+                        "optionId": "aires.combo.follow-up",
+                        "treeId": "aires.combo.follow-up.upgrades",
+                        "unlockedNodes": []
                     }
                 ],
                 "combatLoadoutMigrationVersion": 0

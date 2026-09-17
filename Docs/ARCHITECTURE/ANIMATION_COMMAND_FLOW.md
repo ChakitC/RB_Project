@@ -332,3 +332,17 @@ whole handoff runs in one call stack — completion → `EndSpecialPointReaction
 two states. `StaggerMeter` is the single owner of that suspension across both.
 
 See `Docs/SYSTEMS/SPECIAL_SHOOT_POINTS.md` for the round and stagger contract.
+
+## Defensive Block prototype
+
+`CharacterAnimationMode.Block` runs Begin, held-pose Loop, Impact and Exit under
+one request. AnimDriver owns `TryBeginBlock`, `TryBlockImpact` and `EndBlock`;
+Brain exposes `BlockPhase` and terminal `PlaybackKind.Block` events. Gameplay
+contact decisions belong to the interruption controller, not the animation.
+After warp arrival, a frontal contact may transition Begin directly to Impact,
+skipping Loop. `TryBlockImpact` accepts Begin or Loop for the matching request;
+it rejects other phases and repeated impacts. Arrival and hit geometry remain
+controller-owned gates; this does not grant general damage immunity.
+Block excludes ordinary commands and yields to life/cinematic/control-loss
+transitions. Its recoil motor owns displacement, with animation root motion off.
+See [Rector Defensive Block Test](../SYSTEMS/DEFENSIVE_BLOCK_TEST.md).

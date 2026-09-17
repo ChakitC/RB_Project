@@ -71,6 +71,14 @@ public sealed class InterruptionCommandController : MonoBehaviour
 
         LogCommand(attemptId, "started from committed player target");
 
+        if (playerContext.Targeting.TryGetTarget(out CharacteContext defensiveTarget))
+        {
+            defensiveTarget.ResolveReferences();
+            var defensive = defensiveTarget.DefensiveBlockAttack;
+            if (defensive != null && defensive.OwnsCurrentSkill)
+                return Finish(attemptId, defensive.RequestBlock(playerContext), defensive.LastResult);
+        }
+
         if (!TryFindTarget(out var targetCtx, out bool windowExistButClosed, out string targetDiagnostics))
         {
             return Finish(attemptId, windowExistButClosed

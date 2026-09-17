@@ -54,6 +54,9 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     private bool _clearReactionOnKnockbackEnd;
 
     Vector3 RemainingDisplacement => _targetDisplacement - _appliedDisplacement;
+    Transform MovementRoot => characterController != null && characterController.enabled
+        ? characterController.transform
+        : ctx != null ? ctx.transform : navMeshAgent != null ? navMeshAgent.transform : transform;
 
     public bool IsActive =>
         _activeKnockback.IsValid &&
@@ -457,7 +460,11 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         if (desiredDelta.sqrMagnitude <= 0.0000001f)
             return Vector3.zero;
 
-        Vector3 before = transform.position;
+        // Motors may live on Movement_System below the context. The swept body and the
+        // displaced actor must share a root, or each frame probes an unmoving collider and
+        // the eventual agent resync can jump the actor through a wall.
+        Transform movementRoot = MovementRoot;
+        Vector3 before = movementRoot.position;
 
         if (characterController != null && characterController.enabled)
         {
@@ -466,13 +473,13 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         else
         {
             Vector3 resolvedDelta = ResolveManualDelta(desiredDelta);
-            transform.position += resolvedDelta;
+            movementRoot.position += resolvedDelta;
         }
 
         if (navMeshAgent != null && navMeshAgent.enabled)
-            navMeshAgent.nextPosition = transform.position;
+            navMeshAgent.nextPosition = movementRoot.position;
 
-        return transform.position - before;
+        return movementRoot.position - before;
     }
 
     Vector3 ResolveManualDelta(Vector3 desiredDelta)
@@ -519,7 +526,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         {
             float radius = Mathf.Max(0.001f, navMeshAgent.radius);
             float height = Mathf.Max(navMeshAgent.height, radius * 2f + 0.001f);
-            Vector3 center = transform.position + Vector3.up * (height * 0.5f);
+            Vector3 center = MovementRoot.position + Vector3.up * (height * 0.5f);
             float half = Mathf.Max(0f, height * 0.5f - radius);
 
             shape = new CharacterBodySweepShape(
@@ -589,7 +596,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
         if (_agentOverrideActive)
         {
-            navMeshAgent.nextPosition = transform.position;
+            navMeshAgent.nextPosition = MovementRoot.position;
             return;
         }
 
@@ -597,11 +604,11 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         _resumeAgentUpdatePosition = navMeshAgent.updatePosition;
         _resumeAgentUpdateRotation = navMeshAgent.updateRotation;
         _resumeAgentHadPath = navMeshAgent.hasPath || navMeshAgent.pathPending;
-        _resumeAgentDestination = navMeshAgent.isOnNavMesh ? navMeshAgent.destination : transform.position;
+        _resumeAgentDestination = navMeshAgent.isOnNavMesh ? navMeshAgent.destination : MovementRoot.position;
         navMeshAgent.isStopped = true;
         navMeshAgent.updatePosition = false;
         navMeshAgent.updateRotation = false;
-        navMeshAgent.nextPosition = transform.position;
+        navMeshAgent.nextPosition = MovementRoot.position;
         _agentOverrideActive = true;
     }
 
@@ -615,7 +622,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         if (navMeshAgent == null || !navMeshAgent.enabled)
             return;
 
-        Vector3 restorePosition = transform.position;
+        Vector3 restorePosition = MovementRoot.position;
         bool sampledRestorePosition = false;
 
         if (navMeshAgent.isOnNavMesh)
@@ -626,7 +633,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         {
             sampledRestorePosition = true;
             restorePosition = sampledPosition;
-            transform.position = sampledPosition;
+            MovementRoot.position = sampledPosition;
             navMeshAgent.Warp(sampledPosition);
             navMeshAgent.nextPosition = sampledPosition;
         }

@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89a0a9970472a8e4db43bcedd4997bf5, type: 3}
+  m_Name: BlockAnimation.Test
+  m_EditorClassIdentifier: 
+  beginClip: {fileID: -2639457781765362822, guid: 1dfe50ae56ca8c54f95a5fce4f6fb19d, type: 3}
+  impactClip: {fileID: -6348440289532276459, guid: 70d665413b9ae1e4bbb03661da9516db, type: 3}
+  guardPoseNormalized: 0.35
+  beginSeconds: 0.12
+  impactSeconds: 0.35
+  exitSeconds: 0.12
+  fadeSeconds: 0.06

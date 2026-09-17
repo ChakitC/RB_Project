@@ -51,6 +51,31 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     float _expireAt;
     bool _initialized;
     bool _isShuttingDown;
+    DefensiveBlockAttack _defensiveBlock;
+    public int ActiveStepIndex => _activeSequentialStep != null && _activeSequentialStep.IsActive ? _activeSequentialStep.StepIndex : -1;
+
+    public bool TryGetActiveBounds(out Bounds bounds)
+    {
+        bounds = default;
+        bool found = false;
+        if (_activeSequentialStep == null || !_activeSequentialStep.IsActive) return false;
+        UpdatePoseFromAnchor();
+        foreach (var group in _activeSequentialStep.Groups)
+            foreach (var collider in group.Colliders)
+            {
+                if (collider == null || !collider.enabled) continue;
+                if (!found) { bounds = collider.bounds; found = true; }
+                else bounds.Encapsulate(collider.bounds);
+            }
+        return found;
+    }
+
+    public bool StopExecution(int requestId)
+    {
+        if (!_initialized || _isShuttingDown || requestId != _requestId) return false;
+        ShutdownAndDestroy();
+        return true;
+    }
     StepRuntimeState _activeSequentialStep;
 
     void Awake()
@@ -138,6 +163,8 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         UpdatePoseFromAnchor(forceResolve: true);
         Subscribe();
         _initialized = true;
+        _defensiveBlock = context?.CasterContext != null ? context.CasterContext.DefensiveBlockAttack : null;
+        _defensiveBlock?.Bind(this, context);
     }
 
     void Subscribe()
@@ -401,6 +428,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             SetGroupActive(step.Groups[i], true);
 
         _sweepColliderIds.Clear();
+        if (_defensiveBlock != null && _defensiveBlock.TryIntercept(this)) return;
         for (int i = 0; i < step.Groups.Count; i++)
         {
             SkillHitboxGroup group = step.Groups[i];
@@ -448,6 +476,8 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
     void ProcessContact(Collider other)
     {
+        if (_isShuttingDown) return;
+        if (_defensiveBlock != null && _defensiveBlock.TryIntercept(this)) return;
         if (!_initialized || _activeSteps.Count == 0 || other == null)
             return;
 
@@ -828,6 +858,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             return;
 
         _isShuttingDown = true;
+        _initialized = false;
         Unsubscribe();
         DeactivateAllGroupsImmediate();
         Destroy(gameObject);

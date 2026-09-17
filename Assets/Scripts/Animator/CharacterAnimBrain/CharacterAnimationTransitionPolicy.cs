@@ -37,6 +37,13 @@ public static class CharacterAnimationTransitionPolicy
 
     public static bool CanStart(in CharacterAnimationTransitionRequest request)
     {
+        if (request.Current == CharacterAnimationMode.Block &&
+            request.Reason == CharacterAnimationTransitionReason.NormalCommand)
+            return false;
+        if (request.Requested == CharacterAnimationMode.Block &&
+            (request.IsDowned || (request.Current != CharacterAnimationMode.Locomotion &&
+             request.Current != CharacterAnimationMode.SoftStatus)))
+            return false;
         // 1. Death is absorbing. The death pose never yields, so nothing else can begin.
         if (request.Current == CharacterAnimationMode.Dead)
             return request.Requested == CharacterAnimationMode.Dead;

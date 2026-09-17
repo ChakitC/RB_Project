@@ -68,6 +68,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         ChainCutscene = 10,
         StageIntro = 11,
         SpecialReaction = 12,
+        Block = 13,
     }
 
     public enum PlaybackPhase
@@ -249,7 +250,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
          locomotionSM.CurrentState == deadState ||
          locomotionSM.CurrentState == statusEffectState ||
          locomotionSM.CurrentState == stageIntroState ||
-         locomotionSM.CurrentState == specialReactionState);
+         locomotionSM.CurrentState == specialReactionState ||
+         IsBlockPlaybackActive);
     public PlaybackKind CurrentPlaybackKind => ResolveCurrentPlaybackKind();
 
     /// <summary>What owns locomotion right now, in the vocabulary <see cref="CharacterAnimationTransitionPolicy"/> speaks.</summary>
@@ -261,6 +263,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
                 return CharacterAnimationMode.None;
 
             if (locomotionSM.CurrentState == deadState) return CharacterAnimationMode.Dead;
+            if (IsBlockPlaybackActive) return CharacterAnimationMode.Block;
 
             // Chain/skill/utility are read through their channels, not the FSM state, because a
             // request is armed just before its state is entered and the gates have always treated
@@ -1206,7 +1209,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (locomotionSM.CurrentState == skill ||
             locomotionSM.CurrentState == utility ||
             locomotionSM.CurrentState == meleeCombo ||
-            locomotionSM.CurrentState == dashState)
+            locomotionSM.CurrentState == dashState ||
+            locomotionSM.CurrentState == blockState)
         {
             TrySetLocomotionState(IsDowned ? crawlState : locomotion);
         }
@@ -1596,6 +1600,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private PlaybackKind ResolveCurrentPlaybackKind()
     {
+        if (IsBlockPlaybackActive) return PlaybackKind.Block;
         if (IsChainPlaybackActive)
             return ResolveActiveChainPlaybackKind();
 

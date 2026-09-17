@@ -41,6 +41,8 @@ public abstract class CharacteContext : MonoBehaviour
     public StaminaSystem StaminaSystem;
     public DashSystem DashSystem;
     public CharacterKnockbackMotor KnockbackMotor;
+    public DefensiveBlockAttack DefensiveBlockAttack;
+    public DefensiveBlockController DefensiveBlock;
     public CharacterVerticalMotor VerticalMotor;
     public PassiveController PassiveController;
     public CharacterActiveSkillProgress ActiveSkillProgress;
@@ -171,6 +173,8 @@ public abstract class CharacteContext : MonoBehaviour
         StaminaSystem = ResolveActorComponent(StaminaSystem);
         DashSystem = ResolveActorComponent(DashSystem);
         KnockbackMotor = ResolveActorComponent(KnockbackMotor);
+        DefensiveBlockAttack = ResolveActorComponent(DefensiveBlockAttack);
+        DefensiveBlock = ResolveActorComponent(DefensiveBlock);
         VerticalMotor = ResolveActorComponent(VerticalMotor);
         PassiveController = ResolveActorComponent(PassiveController);
         ActiveSkillProgress = ResolveActorComponent(ActiveSkillProgress);

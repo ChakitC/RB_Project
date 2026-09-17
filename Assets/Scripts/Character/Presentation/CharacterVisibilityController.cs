@@ -278,6 +278,10 @@ public sealed class CharacterVisibilityController : MonoBehaviour
     /// <summary>Fades in from the current dither value and raises <see cref="Appeared"/>.</summary>
     public void Appear() => BeginTransition(TransitionKind.Appear, VisibleAlpha, appearDuration, appearCurve);
 
+    /// <summary>Fades in over a sequence-owned duration without changing the authored default.</summary>
+    public void Appear(float duration) =>
+        BeginTransition(TransitionKind.Appear, VisibleAlpha, Mathf.Max(0f, duration), appearCurve);
+
     /// <summary>Fades out from the current dither value and raises <see cref="Disappeared"/>.</summary>
     public void Disappear() => BeginTransition(TransitionKind.Disappear, HiddenAlpha, disappearDuration, disappearCurve);
 

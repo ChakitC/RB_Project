@@ -755,3 +755,112 @@ contract, fact/chain/provenance propagation, supported trigger values, and the
 dedicated null-snapshot combo runtime entry. The broader runtime matrix and
 prefab wiring checklist live in
 [`Docs/SYSTEMS/PARTY_COMBO.md`](SYSTEMS/PARTY_COMBO.md).
+
+## Defensive Block validation
+
+Run `Tools > RB > Defensive Block > Run Smoke Tests` for guard sweep, rear/miss,
+transition ownership and hitbox request-isolation checks. In the isolated Rector
+test scene, `DefensiveBlockTestHarness.RunValidation()` exercises 4/6/8/10 m,
+no-block baseline and 15 FPS through the same interruption command route. Results
+are available in `ValidationReport`. The 28-case suite also checks a wall behind
+Rector and disable/death/down/control-loss/reset across Begin/Loop/Impact/Exit.
+Run it from the harness component's **Run Play Mode Validation** context menu.
+Manually focus Game View and check C then Space, plus recoil framing and VFX.
+Compile through `Assets/Scripts/CheckAssemblyBuild.ps1`, with artifacts outside Assets.
+See [test instructions](SYSTEMS/DEFENSIVE_BLOCK_TEST.md).
+
+Verified 2026-09-16: five focused smoke tests and all 28 Play Mode cases passed.
+The required C# build completed with 0 errors and 79 existing warnings. A focused
+Game View Space-input trial also blocked once with both HP values unchanged;
+Impact reset released ownership. Reports are in the workspace's
+`BuildArtifacts/DefensiveBlockPlayMode.txt` and `DefensiveBlockBuild.log`.
+The Editor still reports an unrelated AutodeskInteractive shadergraph import
+issue during refresh; the final Play Mode suite emitted no new errors.
+### Block-ready cue checks
+
+With auto-block off, focus Rector and press C: the gold flare should expand into
+view while Block is admissible. Check that `IsReady` becomes false immediately
+out of range, behind a wall, while Aires is reserved, or after accepting Block;
+`IsVisible` may remain true only for the short shrinking/fading exit (default
+0.12 s). The readiness query must leave Aires unreserved. Disable/reset removes
+the cue immediately. Check entry interrupted by exit and reopening during exit
+for smooth motion without a full-size flash.
+
+Appear/disappear animation was sampled on the live Play Mode component: entry
+at 0.045 s expands to 0.589 width / 0.207 height, hold reaches full size, and
+exit at 0.06 s contracts to 0.513 width with 0.25 intensity and `IsReady=false`.
+Reopening from the current width, immediate disable, and hiding at exit duration
+passed. See `BuildArtifacts/BlockReadyAnimationChecks.txt`; the animation C#
+build completed with 0 errors and 79 existing warnings.
+The 2026-09-16 Play Mode checks passed ready/hidden/restored/accepted-command
+cases; details are in `BuildArtifacts/BlockReadyCueChecks.txt` at workspace root.
+After adding the cue, the final regression run passed all 28 cases and five smoke
+tests; C# validation had 0 errors (79 existing warnings). The lifecycle probe now
+allows five seconds for Editor stalls and reports `reached` separately from
+`clean`, so a missed phase is distinguishable from a failed cleanup. The final
+report and image are `BuildArtifacts/BlockReadyCueRegression.txt` and
+`BuildArtifacts/BlockReadyCue.png` at workspace root.
+### Defensive Block warp fade checks
+
+Verify departure stays at the original position until `Visibility.Disappeared`,
+then arrival starts fully hidden at the reserved guard point and fades back in.
+Cancellation in either half must restore visibility and release both actor and
+placement reservations. Put an obstacle at the destination during departure:
+the landing must fail safely without moving Aires. Keep the 4/6/8 m and 15 FPS
+regressions to ensure presentation does not add an unintended guard startup.
+
+Verified 2026-09-17: all 28 Play Mode cases passed with warp fades, plus five
+smoke tests. Live visibility sampling confirmed half-faded departure at the old
+position, a fully hidden snap, and half-faded arrival at the reserved point.
+Cancel during either fade restored full visibility; inserting a wall during
+departure canceled the landing without moving the actor. The final static probe
+uses zero inflation and 0.005-unit contact tolerance, avoiding false floor
+penetration while still rejecting the wall. Reports:
+`BuildArtifacts/DefensiveBlockWarpFadeRegression.txt` and
+`BuildArtifacts/DefensiveBlockWarpFadeChecks.txt`. C# build: 0 errors, 79 existing
+warnings (`BuildArtifacts/DefensiveBlockWarpFadeBuild.log`).
+
+### Defensive Block camera checks
+
+The smoke runner now includes three camera tests: exact pose/lens return with
+entry/hold/exit blending, reset/disable and consecutive Blocks during return,
+and no camera acquisition before warp arrival. Play Mode validation also checks
+camera release after ordinary trials and the disable/death/down/control-loss/
+reset phase matrix. Visually check the low over-shoulder angle during Impact,
+then the smooth return to the pre-Block view. Inspector tuning lives on
+`Main Camera > DefensiveBlockCameraShot` in the test scene.
+
+Verified 2026-09-17: all eight smoke tests and all 28 Play Mode cases passed;
+camera release passed in the ordinary trials and all 20 phase/interruption
+combinations. The Impact view was inspected in Play Mode. Reports and preview:
+`BuildArtifacts/DefensiveBlockCameraRegression.txt` and
+`BuildArtifacts/DefensiveBlockCamera.png`. Required C# validation completed with
+0 errors and 79 existing warnings (`BuildArtifacts/DefensiveBlockCameraBuild.log`).
+
+Player framing correction, 2026-09-17: nine smoke tests passed, including the
+Player anchor and fixed guard heading after movement. Live 4 m and 8 m Impact
+views show Player behind Aires, with Aires between Player and Rector; both
+charges blocked once with no HP loss. The 8 m shot restored its original pose
+and FOV. See `BuildArtifacts/DefensiveBlockPlayerFraming.png`,
+`DefensiveBlockPlayerFramingChecks.txt` and `DefensiveBlockPlayerFramingBuild.log`
+(0 errors, 79 existing warnings). The full 28-case suite above predates this
+framing-only correction.
+
+### Begin-to-Impact interception
+
+The Play Mode runner now has 31 cases. Two additional 4/8 m trials request Block
+at charge normalized time 0.06, reproducing damage during the old post-warp Begin
+gap. They require contact during Begin after arrival, direct Impact, one Rector
+knockback/block success, no Aires knockback or HP loss, and normal cleanup/camera
+return. They also reject a different request ID and a repeated Impact command.
+A third case checks that Begin before warp arrival cannot intercept. Existing
+geometry smoke tests retain rear/miss/moving-away rejection.
+These two trials use a disposable runtime profile with Begin held for 0.4 s,
+so variable Editor frame timing cannot advance to Loop before the contact under
+test. Ordinary trials still use the authored 0.12 s profile; the asset is unchanged.
+
+Verified 2026-09-17: all 31 Play Mode cases and nine smoke tests passed. Both
+forced-Begin contacts reached Impact without Aires knockback, HP loss or duplicate
+success; pre-arrival interception was rejected. Build completed with 0 errors
+and 79 existing warnings. Reports: `BuildArtifacts/DefensiveBlockBeginImpactRegression.txt`
+and `BuildArtifacts/DefensiveBlockBeginImpactBuild.log`.

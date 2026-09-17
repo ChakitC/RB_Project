@@ -1,0 +1,147 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee0d6ef073118da4dbabdd47dabdedc7, type: 3}
+  m_Name: Aires.Test
+  m_EditorClassIdentifier: 
+  icon: {fileID: 21300000, guid: 1954205d1c06f07409309528f57711af, type: 3}
+  characterId: ID.Aires
+  characterName: Aires
+  CharacterWeaponType: 3
+  CharacterPrefab: {fileID: 6529442347700744484, guid: 6fc8435470cea994d843648ad902acba, type: 3}
+  CharacterPrefabBasement: {fileID: 4578862238211764230, guid: 56ba8f587cb37a94d8d4b223e45cf8cf, type: 3}
+  characterAvatar: {fileID: 9000000, guid: 411cad361d9bf2c45b315ee7ff2425f0, type: 3}
+  controller: {fileID: 9100000, guid: fc3e6424aee06f4498f1cedcc3b293ac, type: 2}
+  animProfile: {fileID: 11400000, guid: a616c757aab22224faaf2ff69aa02880, type: 2}
+  behaviorSubtree: {fileID: 11400000, guid: 224b81e7f00d0194ab44ec4f269ccaa1, type: 2}
+  thirdPersonProfile:
+    pivotOffset: {x: 0, y: 1.55, z: 0}
+    shoulderOffset: {x: 1.11, y: -0.33, z: 0}
+    verticalArmLength: 0.25
+    cameraDistance: 3.2
+    aimCameraDistance: 2.7
+    cameraSide: 1
+    followDamping: {x: 0.08, y: 0.12, z: 0.08}
+    minimumPitch: -55
+    maximumPitch: 72
+    freeLookFov: 60
+    shoulderAimFov: 48
+    yawSensitivityMultiplier: 1
+    pitchSensitivityMultiplier: 1
+    chestAimWeight: 0.55
+    upperChestAimWeight: 0.7
+    spineAimWeight: 0.35
+    maximumUpperBodyPitch: 55
+    maximumUpperBodyYaw: 65
+    collisionRadius: 0.22
+    fadeStartDistance: 1.05
+    fadeFullyHiddenDistance: 0.5
+  weaponHandMode: 0
+  combatRole: 1
+  chainAttackSkill: {fileID: 0}
+  partyComboSkill: {fileID: 11400000, guid: ed8cb7c2d4176eb43a38effedf0632ad, type: 2}
+  introChainCutscene: {fileID: 0}
+  partyRole: 0
+  skillSlots:
+  - slotId: 0
+    displayName: 
+    slotKind: 1
+    hotkey: 0
+    defaultOptionIndex: 0
+    options:
+    - optionId: 
+      displayName: 
+      skillAsset: {fileID: 11400000, guid: 561595d896a27e041a2839938b3e6202, type: 2}
+      upgradeTreeOverride: {fileID: 11400000, guid: 0e0c5a48ecedd994083b1cf170d0681a, type: 2}
+    - optionId: 
+      displayName: 
+      skillAsset: {fileID: 0}
+      upgradeTreeOverride: {fileID: 11400000, guid: 0e0c5a48ecedd994083b1cf170d0681a, type: 2}
+  - slotId: 1
+    displayName: 
+    slotKind: 3
+    hotkey: 0
+    defaultOptionIndex: 0
+    options:
+    - optionId: Test.Aires.Ultimate
+      displayName: Aires.2
+      skillAsset: {fileID: 0}
+      upgradeTreeOverride: {fileID: 0}
+  - slotId: 2
+    displayName: 
+    slotKind: 2
+    hotkey: 0
+    defaultOptionIndex: 0
+    options:
+    - optionId: 
+      displayName: 
+      skillAsset: {fileID: 11400000, guid: 017e7afd0b669134396b5761021a3c2b, type: 2}
+      upgradeTreeOverride: {fileID: 0}
+  skillPointsPerLevel: 1
+  helperProcSlots: []
+  helperCommandSlot:
+    slotId: 
+    displayName: 
+    slotKind: 0
+    hotkey: 0
+    defaultOptionIndex: 0
+    options: []
+  maxHP: 1250
+  maxStamina: 100
+  Damage: 8
+  armor: 22
+  critMultiplier: 1.5
+  critRate: 5
+  Enagy: 100
+  speed: 4.2
+  speedDown: 1
+  DamageScaling: 0.4
+  ArmorScaling: 0.55
+  MAXHPScaling: 42
+  StaminaScaling: 0
+  CritrateScaling: 0
+  CritDamageScaling: 0
+  EnagyScaling: 0
+  SpeedScaling: 0
+  dashCue: {fileID: 0}
+  voiceProfile:
+    defaultSkillVoiceCue: {fileID: 11400000, guid: 6ac81127608e8d84cba006c631e1f389, type: 2}
+    defaultSkillVoiceChance: 1
+    defaultSkillVoiceCooldown: 0
+    globalSkillVoiceCooldown: 0.25
+    skillCastLines: []
+    dashVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    knockbackVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    selectCharacterVoice:
+      cue: {fileID: 11400000, guid: e93ef83f38149544ab3c93c2b2c9845e, type: 2}
+      chance: 1
+      cooldown: 0
+    pickupCharacterVoice:
+      cue: {fileID: 11400000, guid: 0467e248830913148a03f22190772e85, type: 2}
+      chance: 1
+      cooldown: 0
+    lowHpVoice:
+      cue: {fileID: 11400000, guid: 9c84a4469c631e54abea46ef412db39b, type: 2}
+      chance: 1
+      cooldown: 0
+    lowHpThreshold: 0.3
+  meleeLightCue: {fileID: 0}
+  meleeHeavyCue: {fileID: 0}
+  damagedCue: {fileID: 0}
+  downCue: {fileID: 0}
+  deathCue: {fileID: 0}
+  reviveCue: {fileID: 0}

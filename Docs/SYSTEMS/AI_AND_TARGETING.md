@@ -958,3 +958,13 @@ the placement/collision rules where geometry is part of the gameplay rule.
 
 See [Party Combo Skill System](PARTY_COMBO.md) for the full flow and authoring
 contract.
+
+## Defensive charge interception prototype
+
+A test-only `DefensiveBlockAttack` routes the existing committed-target interruption
+command to Aires while the copied Rector charge animation is active. It supports
+already-released hitbox execution, without using the pre-cast reservation/hold.
+`SkillHitboxSequenceRuntime.StopExecution(requestId)` deactivates that execution
+synchronously before knockback; interception runs before target damage processing.
+See [Rector Defensive Block Test](DEFENSIVE_BLOCK_TEST.md) for range, placement,
+phase ownership, tuning and the isolated test scene.

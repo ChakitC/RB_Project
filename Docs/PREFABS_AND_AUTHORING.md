@@ -2995,3 +2995,49 @@ For the separate reference-layout combat HUD, see [Separate Party HUD](SYSTEMS/P
 - Missing skill icons use text; do not assign temporary artwork or invent an
   Aires/Roma skill mapping. Unmapped legacy slots remain in authored data but
   are not exposed as extra Upgrades tabs.
+
+## Rector Defensive Block test scene
+
+Open `Assets/Tests/DefensiveBlock/RectorDefensiveBlock.unity`; use C / Space / R
+for charge / block / reset. Test prefab copies opt in through `DefensiveBlockAttack`
+and `DefensiveBlockController`; production prefabs remain unchanged. Adjust guard,
+range, knockback and slide fields on the test prefabs, and presentation timing in
+`BlockAnimation.Test.asset`. The scene builder regenerates test prefabs and the
+scene, so preserve custom layouts separately before running it again.
+See [authoring details](SYSTEMS/DEFENSIVE_BLOCK_TEST.md).
+
+### Defensive Block ready flare
+
+The test Player prefab includes `DefensiveBlockReadyCue` and references
+`Assets/Tests/DefensiveBlock/BlockReadyFlare.prefab`. Its billboard uses
+`BlockReadyFlare.mat` / `RB/Defensive Block Ready Flare`; no collider, shadows or
+bloom setup is required. Tune `appearSeconds` (0.18 s), `disappearSeconds`
+(0.12 s), offset, viewport width/height and brightness on
+the component. `DefensiveBlockTestSceneBuilder` preserves this binding on rebuild.
+The component queries the selected target's shared Block eligibility without
+reserving Aires. See `Docs/SYSTEMS/DEFENSIVE_BLOCK_TEST.md` for the gating rules.
+
+### Defensive Block warp visibility
+
+The test Aires uses its context-resolved `CharacterVisibilityController` and the
+existing model dither setup. `DefensiveBlockController.warpFadeOutSeconds` (0.04 s)
+and `warpFadeInSeconds` (0.08 s) control departure/arrival. Guard Begin overlaps
+the fade-out; interception cannot occur before arrival. Keep the fade-out short
+for close charges. The destination is reserved and rechecked before the hidden
+snap; cancellation restores visibility and removes the fade callback.
+After arrival, frontal charge contact is accepted during Begin as well as Loop,
+and immediately plays Impact. `beginSeconds` remains presentation timing rather
+than an additional vulnerability period after landing.
+
+### Defensive Block camera
+
+In the test scene, select `Main Camera > DefensiveBlockCameraShot` to tune the
+over-shoulder shot: `localPosition`, `localEulerAngles`, `fieldOfView`,
+`blendInSeconds` (0.16), `holdAfterBlockSeconds` (0.12), and `blendOutSeconds`
+(0.4). The origin is Player's position at warp arrival; angles follow Aires's
+guard direction, keeping Aires ahead of Player in the shot. The harness's
+`blockCamera` field references this component and rebinds its actor after reset.
+Set `obstacleLayers` to world geometry only (Default in this arena). Keep the
+ordinary camera transform as the gameplay view; the shot captures and restores
+it at runtime. Disable the component to opt out. This adapter is for the test
+scene's free camera and yields to gameplay/Cinemachine/cinematic camera owners.

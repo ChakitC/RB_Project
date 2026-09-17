@@ -180,3 +180,12 @@ runtime lifecycle directly, entering despawn without the normal character
 `Down` or `Revive` flow. Summon damage keeps the physical summon as the hit
 actor while `CombatAttributionSnapshot` credits the caster's event bus and
 status owner, including delayed status ticks after the summon has been removed.
+
+### Knockback motor on a child module
+
+The knockback motor may live below the character context (for example on
+`Movement_System`). Manual displacement, fallback sweep geometry and NavMesh
+resync now use the context actor root, rather than moving the motor's child
+transform separately from the swept body. The CharacterController path continues
+to move its own controller transform. The Rector Defensive Block wall trial and
+`NestedKnockbackMotorMovesContextRoot` regression test cover this layout.

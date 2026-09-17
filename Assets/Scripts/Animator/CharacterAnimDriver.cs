@@ -492,6 +492,17 @@ public sealed class CharacterAnimDriver : MonoBehaviour
             brain.CancelChainPlaybackRequest(requestId);
     }
 
+    public bool TryBeginBlock(int requestId, BlockAnimationProfile profile) =>
+        CanIssueCommand(nameof(TryBeginBlock)) && brain.TryBeginBlock(requestId, profile);
+
+    public bool TryBlockImpact(int requestId, float minimumDuration = 0f) =>
+        CanIssueCommand(nameof(TryBlockImpact)) && brain.TryBlockImpact(requestId, minimumDuration);
+
+    public void EndBlock(int requestId, bool immediate = false)
+    {
+        if (CanIssueCommand(nameof(EndBlock))) brain.EndBlock(requestId, immediate);
+    }
+
     bool CanIssueCommand(string commandName)
     {
         if (brain != null)

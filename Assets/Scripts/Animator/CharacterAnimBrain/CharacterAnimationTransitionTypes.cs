@@ -22,6 +22,7 @@ public enum CharacterAnimationMode
     /// clip-driven with a terminal callback and full root motion, which status locomotion is not.
     /// </summary>
     SpecialReaction = 14,
+    Block = 15,
 }
 
 /// <summary>

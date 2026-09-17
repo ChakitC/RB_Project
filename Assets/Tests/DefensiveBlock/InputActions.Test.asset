@@ -1,0 +1,355 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 39fa3d8997a24136984ca6e2c99902bc, type: 3}
+  m_Name: InputActions.Test
+  m_EditorClassIdentifier: 
+  m_ActionMaps:
+  - m_Name: Player
+    m_Id: aa012e24-cf7c-4a4b-98a3-2890038090a3
+    m_Asset: {fileID: 11400000}
+    m_Actions:
+    - m_Name: Move
+      m_Type: 0
+      m_ExpectedControlType: Vector2
+      m_Id: 5721512d-9286-4fe5-9745-6b0fcc8211fb
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 1
+    - m_Name: MouseLook
+      m_Type: 2
+      m_ExpectedControlType: Vector2
+      m_Id: 4f0ecf02-50f0-4ab1-b254-282c44c9ed30
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 1
+    - m_Name: AimOn
+      m_Type: 1
+      m_ExpectedControlType: 
+      m_Id: e2bb2aba-e952-48b5-b8d4-57df914f755b
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: Shoot
+      m_Type: 1
+      m_ExpectedControlType: 
+      m_Id: 4d30abf9-6a96-45b1-aabe-8b2962ec9290
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: Relord
+      m_Type: 1
+      m_ExpectedControlType: 
+      m_Id: 4d1bead5-cd76-4136-9406-af42905f8d19
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: Dash
+      m_Type: 1
+      m_ExpectedControlType: 
+      m_Id: d2fc6541-3184-401c-afb6-eaea787ed989
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: Melee
+      m_Type: 1
+      m_ExpectedControlType: 
+      m_Id: b9204cc6-b39c-4b39-a105-c71856796fb3
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: Interract
+      m_Type: 1
+      m_ExpectedControlType: 
+      m_Id: 96f02cd0-e726-47ec-b417-4f331f1fa22d
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: CallHalper
+      m_Type: 1
+      m_ExpectedControlType: 
+      m_Id: 190aad8e-d88a-4002-85f5-07f9c632b5df
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: OpenInventory
+      m_Type: 1
+      m_ExpectedControlType: 
+      m_Id: d68c2544-7593-433a-8d78-40d2dad5a3af
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: ChainAttackOpen
+      m_Type: 1
+      m_ExpectedControlType: 
+      m_Id: 49786a61-7128-44cf-b321-bea08ecf34ec
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: Block
+      m_Type: 1
+      m_ExpectedControlType: 
+      m_Id: b3ad637f-eee0-4da7-8ab5-43186a5ad4f1
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: SkillSlot1
+      m_Type: 1
+      m_ExpectedControlType: 
+      m_Id: 6954475a-37f4-4e09-8214-5223c77c6ea0
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: SkillSlot2
+      m_Type: 1
+      m_ExpectedControlType: 
+      m_Id: 65b5bd68-82ae-43cd-9902-90e157eca8a0
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: SkillSlot3
+      m_Type: 1
+      m_ExpectedControlType: 
+      m_Id: 27d83f37-7611-4604-a3e4-927daeda8d3b
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: PartyComboSlot1
+      m_Type: 1
+      m_ExpectedControlType: Button
+      m_Id: b36760db-efe8-4bc4-948e-345db8d8021c
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    - m_Name: PartyComboSlot2
+      m_Type: 1
+      m_ExpectedControlType: Button
+      m_Id: a4569b4e-d485-40bb-9621-2fc3577e0a7e
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    m_Bindings:
+    - m_Name: 2D Vector
+      m_Id: 55d08ec4-6e30-4256-9323-865434d2624b
+      m_Path: 2DVector
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Move
+      m_Flags: 4
+    - m_Name: up
+      m_Id: 2bb344ff-dce6-4025-a886-37646411a18d
+      m_Path: <Keyboard>/w
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Move
+      m_Flags: 8
+    - m_Name: down
+      m_Id: 9b0954ba-4b2f-4e74-b065-6a387542be3d
+      m_Path: <Keyboard>/s
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Move
+      m_Flags: 8
+    - m_Name: left
+      m_Id: b98d1fec-b0d2-47a0-9887-79d2cbf451f7
+      m_Path: <Keyboard>/a
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Move
+      m_Flags: 8
+    - m_Name: right
+      m_Id: 8c5d2e86-a6d6-44f6-a12b-0c7426a3fe41
+      m_Path: <Keyboard>/d
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Move
+      m_Flags: 8
+    - m_Name: 
+      m_Id: 55c4733e-7fba-4725-9509-e5ca15d45426
+      m_Path: <Gamepad>/leftStick
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Move
+      m_Flags: 0
+    - m_Name: 
+      m_Id: dfb28fcf-2a2b-464e-9948-5d6650b940cb
+      m_Path: <Mouse>/delta
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: MouseLook
+      m_Flags: 0
+    - m_Name: 
+      m_Id: a01e9508-5021-44dc-aba4-b7732432f586
+      m_Path: <Mouse>/rightButton
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: AimOn
+      m_Flags: 0
+    - m_Name: 
+      m_Id: ac61e9c5-04d5-4489-aa2f-ed2cd2af963d
+      m_Path: <Mouse>/leftButton
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Shoot
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 0ce8c7af-2382-4871-a0b8-a920d7c7fe56
+      m_Path: <Keyboard>/t
+      m_Interactions: Press
+      m_Processors: 
+      m_Groups: 
+      m_Action: Relord
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 36541ca4-5004-444e-854d-10be9b57d99e
+      m_Path: <Keyboard>/leftShift
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Dash
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 182733e8-888a-490c-abf1-6858b0d8ae79
+      m_Path: <Keyboard>/e
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Melee
+      m_Flags: 0
+    - m_Name: 
+      m_Id: e2c0a891-07a0-4b3c-aa23-96c2f305fdb2
+      m_Path: <Keyboard>/f
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Interract
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 8c918d75-7cd0-4d40-8580-08a8ba366cc6
+      m_Path: <Keyboard>/tab
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: CallHalper
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 686665bb-6315-4bb5-a3f7-e0837c661967
+      m_Path: <Keyboard>/i
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: OpenInventory
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 05fec4db-e14d-4b15-964b-8f941b1e0d1d
+      m_Path: <Keyboard>/q
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: ChainAttackOpen
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 27dd5056-2a69-438d-be1a-27f854047dee
+      m_Path: <Keyboard>/space
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Block
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 0f47fd31-44a1-4a8c-bd3b-c9c746a0f0c3
+      m_Path: <Keyboard>/1
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: SkillSlot1
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 3c85a288-fba2-442a-87f5-8707fca11755
+      m_Path: <Keyboard>/2
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: SkillSlot2
+      m_Flags: 0
+    - m_Name: 
+      m_Id: bb586f07-3eb2-4397-8c21-826622a578c5
+      m_Path: <Keyboard>/3
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: SkillSlot3
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 4f097467-7d5e-47c4-9711-ba45609cd910
+      m_Path: <Keyboard>/4
+      m_Interactions: Press
+      m_Processors: 
+      m_Groups: Keyboard&Mouse
+      m_Action: PartyComboSlot1
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 4795560d-3432-4ec3-9030-0db1ef75d740
+      m_Path: <Gamepad>/dpad/left
+      m_Interactions: Press
+      m_Processors: 
+      m_Groups: Gamepad
+      m_Action: PartyComboSlot1
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 1f95f5a7-6103-466b-94dd-e02bf177145a
+      m_Path: <Keyboard>/5
+      m_Interactions: Press
+      m_Processors: 
+      m_Groups: Keyboard&Mouse
+      m_Action: PartyComboSlot2
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 76d53ee1-b5c0-4684-a229-5440eb9e8473
+      m_Path: <Gamepad>/dpad/right
+      m_Interactions: Press
+      m_Processors: 
+      m_Groups: Gamepad
+      m_Action: PartyComboSlot2
+      m_Flags: 0
+  - m_Name: UI
+    m_Id: ea003468-82c1-4ef6-bb15-fb54e80c90c1
+    m_Asset: {fileID: 11400000}
+    m_Actions: []
+    m_Bindings: []
+  m_ControlSchemes: []
+  m_IsProjectWide: 0

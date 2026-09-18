@@ -1,6 +1,6 @@
 # Defensive Block production integration plan
 
-Status: proposed; no production code/assets changed by this plan.
+Status: runtime integration and shared production test scene implemented; validation is recorded in Docs/VALIDATION.md. Campaign-wide release checks remain separate.
 Date: 2026-09-17
 
 ## First release scope

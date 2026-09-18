@@ -213,6 +213,9 @@ public class CharacterStats : ScriptableObject
     [FoldoutGroup("Party Combo Skill", Expanded = false), LabelText("Party Combo Skill"), AssetsOnly]
     public PartyComboSkillDef partyComboSkill;
 
+    [FoldoutGroup("Defensive Block"), AssetsOnly]
+    public DefensiveBlockActorProfile defensiveBlock;
+
     [PropertyOrder(-137)]
     [FoldoutGroup("Chain Attack", Expanded = false), LabelText("Intro Chain Cutscene"), AssetsOnly]
     public CutsceneDefSO introChainCutscene;

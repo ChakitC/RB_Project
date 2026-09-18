@@ -17,8 +17,8 @@ MonoBehaviour:
   description: A follow-up Combo Skill that becomes available after Feno commits
     Suppressive Break.
   iconOverride: {fileID: 0}
-  executionSkill: {fileID: 11400000, guid: 762b42e521970fa45a8d258e7d1a3a65, type: 2}
-  upgradeTree: {fileID: 11400000, guid: 9be41fc0b23f2c34082a0d46d680e2ba, type: 2}
+  executionSkill: {fileID: 11400000, guid: 561595d896a27e041a2839938b3e6202, type: 2}
+  upgradeTree: {fileID: 0}
   trigger:
     kind: 3
     sourceRelation: 3

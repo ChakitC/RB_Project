@@ -57,6 +57,13 @@ public static class CharacterPlacementFootprintUtility
             return true;
         }
 
+        if (collider is CharacterController controller)
+        {
+            footprint = CreateVerticalCapsuleFootprint(root, controller.transform,
+                controller.center, controller.radius, controller.height);
+            return true;
+        }
+
         if (collider is SphereCollider sphere)
         {
             float radius = sphere.radius * Mathf.Max(scale.x, Mathf.Max(scale.y, scale.z));

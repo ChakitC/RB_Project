@@ -18,7 +18,46 @@ MonoBehaviour:
   requireNavMesh: 1
   navMeshSampleDistance: 2
   requireUnobstructedPosition: 1
+  placementCandidateCount: 8
+  visibilityObstructionLayers:
+    serializedVersion: 2
+    m_Bits: 4194303
   startTimeoutSeconds: 2
   recoveryTimeoutSeconds: 4
   protectActorDuringExecution: 1
   exitPolicy: 1
+  presentation:
+    enabled: 1
+    initialWorldScale: 0.11
+    recoveryCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    cameraBlendInSeconds: 0.1
+    cameraHoldSeconds: 0.5
+    cameraBlendOutSeconds: 0.25
+    allyFocusWeight: 0.914
+    targetFocusWeight: 0.133
+    maximumFocusOffset: 4
+    maximumActorDistance: 12
+    fieldOfViewReduction: 4

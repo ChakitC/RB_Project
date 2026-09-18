@@ -274,7 +274,7 @@
                 {
                     "name": "",
                     "id": "36541ca4-5004-444e-854d-10be9b57d99e",
-                    "path": "<Keyboard>/space",
+                    "path": "<Keyboard>/shift",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -340,7 +340,7 @@
                 {
                     "name": "",
                     "id": "27dd5056-2a69-438d-be1a-27f854047dee",
-                    "path": "<Keyboard>/ctrl",
+                    "path": "<Keyboard>/space",
                     "interactions": "",
                     "processors": "",
                     "groups": "",

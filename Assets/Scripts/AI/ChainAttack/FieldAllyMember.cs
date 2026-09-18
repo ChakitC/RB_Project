@@ -250,6 +250,9 @@ public sealed class FieldAllyMember : MonoBehaviour
     }
 
     public bool TryBeginTransientExecution(object owner, bool protectActor = true)
+        => TryBeginTransientExecution(owner, protectActor, true);
+
+    public bool TryBeginTransientExecution(object owner, bool protectActor, bool allowCollisionOverride)
     {
         EnsureModules();
         if (!_sequenceRunner.TryReserve(owner))
@@ -268,7 +271,7 @@ public sealed class FieldAllyMember : MonoBehaviour
             return false;
         }
 
-        _autonomyScope.Apply(protectActor);
+        _autonomyScope.Apply(protectActor, allowCollisionOverride);
         return true;
     }
 

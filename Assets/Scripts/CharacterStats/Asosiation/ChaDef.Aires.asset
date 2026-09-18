@@ -48,6 +48,7 @@ MonoBehaviour:
   combatRole: 1
   chainAttackSkill: {fileID: 0}
   partyComboSkill: {fileID: 11400000, guid: ed8cb7c2d4176eb43a38effedf0632ad, type: 2}
+  defensiveBlock: {fileID: 11400000, guid: 26cd5a91f7fba784fb451277d017e6f3, type: 2}
   introChainCutscene: {fileID: 0}
   partyRole: 0
   skillSlots:

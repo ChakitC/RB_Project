@@ -187,6 +187,28 @@ lookup is not something to rely on.
 
 ## Character Rendering Pipeline
 
+ZLZ shaders now reside in `Assets/ZLZ/AnimeShader/Shaders`, alongside the shared
+`Assets/ZLZ/Common` folder. The remaining legacy `Shaders` folder was moved with
+its `.meta` file after closing Unity because the Editor move returned Access denied.
+All 39 contained files and the folder metadata were verified unchanged. This layout
+resolves the character shader's relative include of `Common/Shaders/ZLZ_Lighting.hlsl`.
+
+On Unity 6000.0, the ZLZ material Inspector uses `MaterialProperty.flags` and
+`MaterialProperty.PropFlags.HideInInspector`. The package's `propertyFlags` branch
+does not compile on 6000.0.58f2; retain this compatibility fix when updating ZLZ.
+
+`ZLZ_SelectionController.RefreshRenderers()` is a project integration method restored
+after the package update. It re-scans child renderers, including inactive children.
+`CharacterSelectable` calls it before updating selection so swapped models and weapon
+previews attached after `Awake` participate in the outline. Preserve this method when
+updating ZLZ; the stock package may not provide it.
+
+The local Forward+ patch from commit `95b3834e` was reverted in the character shader
+and `ZLZ_MainLighting.hlsl`. Both files now use their pre-patch versions. Additional
+lighting uses the original per-object loop; the project's custom Forward+ support
+is no longer present. Backups of the patched files are outside Assets in
+`P:/Game_RB_Project/ZLZ_Restore_Backup_20260915`.
+
 Character shading is ZLZ (`ZLZ/AnimeToon/Character`). The render pipeline assets are
 **project-owned** — never the copies inside `Assets/Plugins/ASP`, which are read-only:
 
@@ -2441,9 +2463,10 @@ task.
 - Add `InterruptionCommandController` component.
 - Set `PlayerContext.interruptionCommand` to the new component (or let
   `ResolveReferences` find it automatically).
-- In the Input Asset, add an `InterruptionCommand` action (Button) with
-  binding `<Keyboard>/g`. Wire the `PlayerInput` event to
+- In `Assets/Input/Inputmaneger.inputactions`, use the `Player/Block` action
+  (Button) bound to `<Keyboard>/space`. Wire the `PlayerInput` event to
   `PlayerInputHandler.OnInterruptionCommand`.
+- `Player/Dash` is bound to `<Keyboard>/shift` (left or right Shift).
 - The command reads the already committed `PlayerContext.Targeting` actor. Configure soft-target
   acquisition on `PlayerTargetingController`; this command keeps only its own range, placement,
   block-window, and executor rules and never searches a second enemy.
@@ -2992,52 +3015,63 @@ For the separate reference-layout combat HUD, see [Separate Party HUD](SYSTEMS/P
   does not author an EventSystem; enter through the existing bootstrap flow.
 - `GameSetup.unity` keeps the configured `System/EventSystem` (InputSystemUIInputModule
   with Point/Click actions). Its unconfigured root-level duplicate is inactive.
+- Keep the standalone root `TimeSlowManager` inactive in `GameSetup.unity`.
+  The shared `System` object already owns the active TimeSlowManager. Enabling both
+  makes singleton duplicate cleanup depend on Awake order and can destroy the
+  entire `System` object, including SaveManager and the configured EventSystem.
+  Do not restore bootstrap root activation from an older scene snapshot without
+  validating the GameSetup-to-Basement transition.
 - Missing skill icons use text; do not assign temporary artwork or invent an
   Aires/Roma skill mapping. Unmapped legacy slots remain in authored data but
   are not exposed as extra Upgrades tabs.
 
-## Rector Defensive Block test scene
+## Defensive Block production and test scene
 
-Open `Assets/Tests/DefensiveBlock/RectorDefensiveBlock.unity`; use C / Space / R
-for charge / block / reset. Test prefab copies opt in through `DefensiveBlockAttack`
-and `DefensiveBlockController`; production prefabs remain unchanged. Adjust guard,
-range, knockback and slide fields on the test prefabs, and presentation timing in
-`BlockAnimation.Test.asset`. The scene builder regenerates test prefabs and the
-scene, so preserve custom layouts separately before running it again.
-See [authoring details](SYSTEMS/DEFENSIVE_BLOCK_TEST.md).
+Production bindings use the original Rector Skill 1 and Aires character definition.
+Tune `Assets/Data/DefensiveBlock/RectorCharge.asset` for range, window, hitbox steps
+and Rector knockback. Its **Threat prediction** fields configure pre-hitbox lane
+half-width (1.5 m), forward reach (2.3 m) and estimated charge speed (8 m/s).
+Defensive Block selects incoming attacks automatically without aiming; actual
+hitbox geometry and observed speed replace the estimates when available. Tune
+`GuardSetting.asset` for placement, guard, recoil and warp fade;
+`AiresBlockAnimation.asset` for clips and phases. Companions need an opted-in
+character definition. `Player.prefab > DefensiveBlockController.defaultSettings`
+references the same GuardSetting as a fallback when Player's character definition
+does not supply one. Player and Aires have identical impact results for this prototype.
+Player guards in place; only companions use landing placement and warp fades.
 
-### Defensive Block ready flare
+`Player.prefab > InterruptionCommandController.defensiveBlockEnabled` gates the
+feature. `DefensiveBlockReadyCue` on that prefab controls light entry/exit (0.18/0.12 s),
+size, offset, brightness and `unavailableBrightness` (0.25). Unavailable incoming
+attacks retain a dim flare; actionable commands show the bright flare. There is no
+key prompt or overlay Canvas/TMP label. The flare prefab/material/shader are in the same
+production data folder. Warp fade defaults are 0.04 s out / 0.08 s in on GuardSetting.
+Begin may transition directly to Impact after arrival; fade-in is not immunity.
 
-The test Player prefab includes `DefensiveBlockReadyCue` and references
-`Assets/Tests/DefensiveBlock/BlockReadyFlare.prefab`. Its billboard uses
-`BlockReadyFlare.mat` / `RB/Defensive Block Ready Flare`; no collider, shadows or
-bloom setup is required. Tune `appearSeconds` (0.18 s), `disappearSeconds`
-(0.12 s), offset, viewport width/height and brightness on
-the component. `DefensiveBlockTestSceneBuilder` preserves this binding on rebuild.
-The component queries the selected target's shared Block eligibility without
-reserving Aires. See `Docs/SYSTEMS/DEFENSIVE_BLOCK_TEST.md` for the gating rules.
+Defender settings are authored only on `GuardSetting.asset`
+(`DefensiveBlockActorProfile`), referenced by `ChaDef.Aires > Defensive Block` and
+the Player controller's `defaultSettings`. A character-specific profile takes priority.
+Controller tuning copies are hidden to avoid editing values that the profile
+overwrites. The SO includes **Global HitLag** duration (0.06 real seconds), time
+scale (0.1), optional blend curve, guard center height and impact VFX lifetime.
+Duration zero disables HitLag. Tune before Play Mode, or respawn to reload an
+edited profile. The old serialized fields remain for prefab/API compatibility.
 
-### Defensive Block warp visibility
+On `GuardSetting.asset`, tune **Camera**: enabled, local position, Euler, FOV,
+entry 0.16 s, hold 0.12 s and exit 0.4 s. Each shot snapshots the SO at entry;
+these fields can be tuned for the next shot without respawning. The production
+Cinemachine extension still handles collision, priority and return to live follow.
+The camera controller's old settings are hidden compatibility fields.
+`Configure Production Assets` reuses the profile bound to Aires even if renamed;
+only an unbound character gets a new `GuardSetting.asset`.
 
-The test Aires uses its context-resolved `CharacterVisibilityController` and the
-existing model dither setup. `DefensiveBlockController.warpFadeOutSeconds` (0.04 s)
-and `warpFadeInSeconds` (0.08 s) control departure/arrival. Guard Begin overlaps
-the fade-out; interception cannot occur before arrival. Keep the fade-out short
-for close charges. The destination is reserved and rechecked before the hidden
-snap; cancellation restores visibility and removes the fade callback.
-After arrival, frontal charge contact is accepted during Begin as well as Loop,
-and immediately plays Impact. `beginSeconds` remains presentation timing rather
-than an additional vulnerability period after landing.
+Open `Assets/Tests/DefensiveBlock/RectorDefensiveBlock.unity`; C / Space / R are charge /
+Block / reset. Shift is Dash. The harness uses `PartySpawnPoint`, `DefaultPartySpawnConfig`, real
+prefabs/UI/input and the production skill. `definitionOverrides` on PartySpawnPoint
+supplies the scene roster by party index without modifying saves. Auto-block and
+pause-automatic-combat are test controls; disabling the latter resets into live AI.
 
-### Defensive Block camera
-
-In the test scene, select `Main Camera > DefensiveBlockCameraShot` to tune the
-over-shoulder shot: `localPosition`, `localEulerAngles`, `fieldOfView`,
-`blendInSeconds` (0.16), `holdAfterBlockSeconds` (0.12), and `blendOutSeconds`
-(0.4). The origin is Player's position at warp arrival; angles follow Aires's
-guard direction, keeping Aires ahead of Player in the shot. The harness's
-`blockCamera` field references this component and rebinds its actor after reset.
-Set `obstacleLayers` to world geometry only (Default in this arena). Keep the
-ordinary camera transform as the gameplay view; the shot captures and restores
-it at runtime. Disable the component to opt out. This adapter is for the test
-scene's free camera and yields to gameplay/Cinemachine/cinematic camera owners.
+`Tools > RB > Defensive Block > Create or Upgrade Test Scene` preserves the arena
+and updates bindings in place. `Configure Production Assets` sets up the production
+profiles/prefabs. Historical copied test assets are no longer runtime dependencies.
+See [Defensive Block](SYSTEMS/DEFENSIVE_BLOCK_TEST.md) for lifecycle and validation.

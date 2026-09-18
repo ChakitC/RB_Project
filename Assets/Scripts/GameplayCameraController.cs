@@ -4,7 +4,7 @@ using UnityEngine;
 
 [DefaultExecutionOrder(-50)]
 [DisallowMultipleComponent]
-public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
+public partial class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
 {
     const string AllyLayerName = "Ally";
 
@@ -51,6 +51,15 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
     bool cursorWasLocked;
     bool runtimeRigReady;
 
+    object comboFocusOwner;
+    Transform comboActor;
+    Transform comboTarget;
+    PartyComboPresentationProfile comboProfile;
+    Vector3 comboFocusOffset;
+    Vector3 comboFocusVelocity;
+    float comboFocusBlend;
+    float comboHoldRemaining = -1f;
+
     readonly List<CharacterAnimBrain> subscribedBrains = new();
     FieldAllyManager fieldAllyManager;
     AllyHelperManager allyHelperManager;
@@ -62,6 +71,7 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
         !IsBlockingUiOpen();
 
     public float PlanarYaw => yaw;
+    public Camera GameplayCamera => gameplayCamera;
     public float CompanionFadeRadius => Mathf.Max(0f, companionFadeRadius);
     public Vector3 PlanarForward =>
         Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
@@ -91,6 +101,8 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
 
     void OnDisable()
     {
+        ClearDefensiveBlockShot();
+        ClearComboFocus();
         UnsubscribeAll();
         SetRigEnabled(false);
         SetCursorLocked(false);
@@ -111,12 +123,17 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
         if (taget == null || cameraTarget == null || virtualCamera == null)
             return;
 
+        if ((comboProfile != null || IsDefensiveBlockShotActive) && GlobalTimeScaleManager.Instance.IsPaused)
+            return;
+
         bool inputEnabled = GameplayInputEnabled;
         SetCursorLocked(inputEnabled);
-        TickLookInput(inputEnabled);
+        TickLookInput(inputEnabled && !IsDefensiveBlockShotActive);
         TickRecoil();
+        TickComboFocus();
         TickCameraTarget();
         TickCameraProperties();
+        TickDefensiveBlockShot();
     }
 
     public void NotifyShotFired(float pitchKick, float yawKick)
@@ -163,6 +180,105 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
     public void SetFieldOfView(float value)
     {
         ThirdPersonCameraSettings.FieldOfView = value;
+    }
+
+    public bool BeginComboFocus(object owner, Transform actor, Transform target,
+        PartyComboPresentationProfile presentation)
+    {
+        if (owner == null || actor == null || presentation == null ||
+            !isActiveAndEnabled || taget == null ||
+            CutsceneDirector.IsCinematicPlaying || NpcPresentationController.IsActive ||
+            Vector3.Distance(taget.position, actor.position) > presentation.maximumActorDistance)
+            return false;
+
+        // Keep the current blend/offset when another ally takes over this shot.
+        ClearDefensiveBlockShot();
+        comboFocusOwner = owner;
+        comboActor = actor;
+        comboTarget = target;
+        comboProfile = presentation;
+        comboHoldRemaining = -1f;
+        return true;
+    }
+
+    public void EndComboFocus(object owner)
+    {
+        EndComboFocus(owner, false);
+    }
+
+    public void EndComboFocus(object owner, bool holdBeforeReturn)
+    {
+        if (!ReferenceEquals(comboFocusOwner, owner))
+            return;
+        if (holdBeforeReturn && comboProfile != null && comboProfile.cameraHoldSeconds > 0f)
+        {
+            // Repeated release notifications must not restart the hold timer.
+            if (comboHoldRemaining < 0f)
+                comboHoldRemaining = comboProfile.cameraHoldSeconds;
+            return;
+        }
+        comboHoldRemaining = -1f;
+        comboFocusOwner = null;
+        comboActor = null;
+        comboTarget = null;
+    }
+
+    void ClearComboFocus()
+    {
+        comboHoldRemaining = -1f;
+        comboFocusOwner = null;
+        comboActor = null;
+        comboTarget = null;
+        comboProfile = null;
+        comboFocusOffset = Vector3.zero;
+        comboFocusVelocity = Vector3.zero;
+        comboFocusBlend = 0f;
+    }
+
+    void TickComboFocus()
+    {
+        if (comboProfile == null)
+            return;
+        if (CutsceneDirector.IsCinematicPlaying || NpcPresentationController.IsActive)
+        {
+            ClearComboFocus();
+            return;
+        }
+
+        if (GlobalTimeScaleManager.Instance.IsPaused)
+            return;
+        if (comboFocusOwner != null && comboHoldRemaining >= 0f)
+        {
+            comboHoldRemaining = Mathf.Max(0f, comboHoldRemaining - Time.unscaledDeltaTime);
+            if (comboHoldRemaining <= 0f)
+                EndComboFocus(comboFocusOwner);
+        }
+
+        if (comboFocusOwner != null &&
+            (comboActor == null || !comboActor.gameObject.activeInHierarchy ||
+             Vector3.Distance(taget.position, comboActor.position) > comboProfile.maximumActorDistance))
+            EndComboFocus(comboFocusOwner);
+
+        bool focusing = comboFocusOwner != null;
+        float duration = Mathf.Max(0.01f, focusing
+            ? comboProfile.cameraBlendInSeconds : comboProfile.cameraBlendOutSeconds);
+        comboFocusBlend = Mathf.MoveTowards(comboFocusBlend, focusing ? 1f : 0f,
+            Time.unscaledDeltaTime / duration);
+        if (focusing)
+        {
+            Vector3 focus = comboActor.position;
+            if (comboTarget != null)
+                focus = Vector3.Lerp(focus, comboTarget.position, comboProfile.targetFocusWeight);
+            Vector3 desiredOffset = Vector3.ClampMagnitude(
+                (focus - taget.position) * comboProfile.allyFocusWeight,
+                comboProfile.maximumFocusOffset);
+            comboFocusOffset = Vector3.SmoothDamp(comboFocusOffset, desiredOffset,
+                ref comboFocusVelocity, duration, Mathf.Infinity, Time.unscaledDeltaTime);
+        }
+        else if (comboFocusBlend <= 0f)
+        {
+            ClearComboFocus();
+        }
     }
 
     public void PrepareParty(PartyRuntime party)
@@ -219,6 +335,7 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
         GameObject cameraObject = new("TPS Cinemachine Camera");
         cameraObject.transform.SetParent(transform, false);
         virtualCamera = cameraObject.AddComponent<CinemachineCamera>();
+        cameraObject.AddComponent<DefensiveBlockCameraExtension>().Owner = this;
         virtualCamera.Follow = cameraTarget;
 
         thirdPersonFollow = cameraObject.AddComponent<CinemachineThirdPersonFollow>();
@@ -283,6 +400,7 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
             return;
 
         bool changedPlayer = playerContext != nextPlayer;
+        if (changedPlayer) ClearDefensiveBlockShot();
         playerContext = nextPlayer;
         playerContext.ResolveReferences();
         taget = playerContext.transform;
@@ -293,6 +411,7 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
 
         if (changedPlayer)
         {
+            ClearComboFocus();
             yaw = playerContext.transform.eulerAngles.y;
             pitch = initialPitch;
             SubscribeAll();
@@ -351,6 +470,7 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
     void TickCameraTarget()
     {
         Vector3 pivotPosition = taget.TransformPoint(profile.pivotOffset);
+        pivotPosition += comboFocusOffset * Mathf.SmoothStep(0f, 1f, comboFocusBlend);
         cameraTarget.SetPositionAndRotation(
             pivotPosition,
             Quaternion.Euler(-(pitch + recoilPitch), yaw + recoilYaw, 0f));
@@ -394,6 +514,9 @@ public class GameplayCameraController : MonoBehaviour, IPartySpawnedReceiver
             baseFov);
         LensSettings lens = virtualCamera.Lens;
         lens.FieldOfView = Mathf.Lerp(baseFov, aimFov, aimBlend);
+        if (comboProfile != null)
+            lens.FieldOfView = Mathf.Max(20f, lens.FieldOfView -
+                comboProfile.fieldOfViewReduction * Mathf.SmoothStep(0f, 1f, comboFocusBlend));
         virtualCamera.Lens = lens;
 
         thirdPersonAim.AimCollisionFilter = cameraCollisionMask;

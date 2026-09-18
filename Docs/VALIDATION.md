@@ -2,6 +2,76 @@
 
 Use this document for local C# validation. These rules are project policy.
 
+## Player Defensive Block fallback and telegraph (2026-09-17)
+
+- Follow-up: removed the Space key label and its runtime overlay Canvas. Readiness
+  now uses only the existing bright/dim flare; Block input is unchanged. C# validation
+  passed with **0 errors, 80 warnings** (`DefensiveBlockRemovePromptBuild.log`).
+  Play Mode was not rerun for this presentation removal; the prompt screenshots below
+  describe the earlier version.
+- `CheckAssemblyBuild.ps1`: **0 errors, 80 warnings**. Existing production/contact
+  smoke checks passed **22/22** after generalizing the guard receiver.
+- Final self-guard Play Mode checks: **11/11 passed**, including 4/6/8 m, zero HP
+  loss, Rector knockback, measured Player recoil **1.501 m**, wall-limited recoil,
+  unavailable-receiver telegraph, timeout/disable/down/death/control-loss cleanup,
+  preservation of another owner's control token, and rejection after prior damage.
+- The first recoil probe exposed zero movement despite successful interception.
+  Self recoil now uses the locomotion CharacterController footprint and moves
+  through `CharacterController.Move`, avoiding the animated capsule's floor overlap
+  and the vertical motor overwriting raw Transform displacement. The final tests
+  explicitly assert both distance on clear ground and collision stopping.
+- Additional Roma/Feno and companion integration checks: **23/25 passed**. Both
+  Player models played Impact with zero damage and one successful interception.
+  Companion priority, Player fallback for reserved/unsupported companions, Begin
+  impact, previous-hit rejection and shared cleanup passed. The same two previously
+  recorded clock checks still failed (0.7 s exempt reaction deadline with 0.5 s
+  HitLag, and standalone Player knockback travel); they were not changed in this task.
+- Visually inspected ready and unavailable telegraphs: the ready prompt uses an
+  opaque dark panel for contrast; unavailable attacks retain the dim flare without
+  a Space prompt. Captured Roma/Feno self impact with the reused prototype clips.
+  Those clips and the shared close camera remain prototypes, not new per-character
+  animation authoring. No full Basement-to-Boss-Rush route was rerun.
+- Authored only the Player prefab binding through Unity's prefab API, reusing
+  GuardSetting. No settings asset or scene was saved; Play Mode roster overrides
+  and preview pause/control tokens were restored.
+
+Evidence in `../BuildArtifacts/`: `DefensiveBlockPlayerFallbackBuild.log`,
+`DefensiveBlockPlayerFallbackPlayMode.txt`, `DefensiveBlockFallbackRegression.txt`,
+`DefensiveBlockPlayerFallbackRecoilFinal.txt`, `BlockReadyPrompt.png`,
+`BlockUnavailableTelegraph.png`, `RomaSelfGuard.png`, and `FenoSelfGuard.png`.
+
+## Defensive Block contact ordering (2026-09-17)
+
+- `CheckAssemblyBuild.ps1`: **0 errors, 80 warnings**. Unity compilation and the
+  existing 17 smoke checks passed; **5 contact-order smoke tests** passed after
+  adding relative swept contact fractions, initial-overlap precedence and
+  execution/request/caster-life/victim-life isolation.
+- Final production-fixture Play Mode run: **48/51 passed**. All new contact-order
+  cases passed: Player damaged before command, damage during departure, and Player
+  moving ahead of an arrived guard. Commands cannot retroactively cancel damage
+  or produce a later successful Block. Range 4/6/8, Begin impact, 15 FPS, no-block
+  damage, request isolation and the wall test also passed.
+- The first implementation conservatively rejected every initial-overlap tie and
+  failed 4 m/Begin-4 m. The final rule lets a ready guard ahead of Player catch a
+  wide hitbox on activation; an earlier applied hit always vetoes it. Both cases
+  passed in the final run.
+- Three existing checks did not pass in the final aggregate run: camera return
+  after ControlLoss during Impact, exempt reaction completion at 0.7 s, and Player
+  knockback travelling over 0.9 m. Focused telemetry confirmed camera return in
+  0.474 s with its reservation released. With the authored 0.5 s HitLag, exempt
+  Rector knockback ended by 0.846 s and guard Exit by 0.956 s while World Slow stayed
+  at 0.25; the fixed 0.7 s expectation is too short for these settings. The Player
+  probe stopped by 0.106 s after only 0.079 m, with timeScale=1 and World Slow=0.1;
+  its early stop remains unisolated and is not claimed as passing clock coverage.
+- Ran the fixture through a runtime-only scene load from GameSetup, preserving
+  its unsaved Edit Mode state. No scene or settings asset was saved. This is not a
+  repeat of the full Basement-to-Boss-Rush acceptance route below.
+
+Evidence in `../BuildArtifacts/`: `DefensiveBlockContactOrderBuild.log`,
+`DefensiveBlockContactOrderPlayMode.txt` (first run),
+`DefensiveBlockContactOrderPlayModeFinal.txt`, `DefensiveBlockContactClockProbe.txt`,
+and `DefensiveBlockContactReactionProbe.txt`.
+
 ## Canonical Command
 
 Run C# validation only through:
@@ -744,6 +814,28 @@ Not reachable from Edit Mode; run these in Unity:
 
 # Party Combo validation
 
+`PartyComboCameraHoldTests` verifies post-release hold, zero-duration return,
+repeated/stale release ownership, cancellation, pause and hold expiry. Skill
+release timing and world slow remain independent of the camera hold.
+
+`PartyComboPlacementTests` exercises actual camera projection and physics sight
+queries: a target blocking the rear pose, partial-occlusion fallback, offscreen
+poses, ignoring the caster and sensor triggers, and selecting a visible ring
+pose on a temporary NavMesh. It also covers a CharacterController above an
+actual MeshCollider floor and rejects destinations embedded in a solid blocker.
+Run it with `CharacterPlacementResolverTests` and `CharacterPlacementBaselineTests`
+when changing the shared penetration check. Playtest large enemies, crowded actors and walls
+with the real body collider layers; adjust `visibilityObstructionLayers` when
+authoring custom layers. Inspect both the chosen warp pose and the following
+animation, since the static placement visibility score does not predict each
+animation frame.
+
+`PartyComboPresentationTests` covers slow ownership during overlapping combos,
+priority and cleanup against timed dash/cutscene slows, pause freezing the
+world clock and expiry, and curve recovery at the cast point. Run it with
+`PartyComboCoreSmokeTests` in Edit Mode. The camera framing/return and actual
+animation release still need the Play Mode matrix in the system document.
+
 Run **Tools > Validation > Validate Party Combo Skills** after editing
 `PartyComboSkillDef`, `PartyComboExecutionProfile`, or character loadouts. The
 validator reports empty/duplicate combo IDs, missing execution assets,
@@ -864,3 +956,199 @@ forced-Begin contacts reached Impact without Aires knockback, HP loss or duplica
 success; pre-arrival interception was rejected. Build completed with 0 errors
 and 79 existing warnings. Reports: `BuildArtifacts/DefensiveBlockBeginImpactRegression.txt`
 and `BuildArtifacts/DefensiveBlockBeginImpactBuild.log`.
+
+## Production Defensive Block integration (2026-09-17)
+
+The upgraded `RectorDefensiveBlock.unity` runs production prefabs, original Rector
+Skill 1, normal Ctrl Block input, party spawn/binding, HUD and Cinemachine. The
+older validation entries above describe historical prototype runs.
+
+Run `Tools > RB > Defensive Block > Run Production Smoke Tests` (17 checks), then
+the harness's `Run Play Mode Validation`. The expanded suite includes original
+range/contact/lifecycle checks plus party selection, reservation exclusion, unsupported
+character definitions, collision/vulnerability, feature disable, actual recoil,
+production camera entry/return, caster isolation, character replacement and AI restore.
+The no-aim extension checks planar threat prediction, lateral/departing rejection,
+contact-time priority and deterministic ties. Play Mode additionally disables targeting,
+clears the committed target, checks command/cue agreement and requires one successful
+impact without Player/Aires HP loss through the normal interruption command.
+Reaction-clock regression cases additionally exercise World Slow plus HitLag,
+pause during recoil/knockback, temporary actor exemptions and Player's World Slow
+exemption. They use owned slow/pause handles and release them in `finally` blocks.
+Lifecycle phase-isolation cases set departure fade to zero at runtime so Editor GC
+stalls cannot turn a cleanup test into a late-input test; main trials and Begin-contact
+checks retain authored fade timing. Temporary animation profiles are runtime clones.
+
+Reports: `../BuildArtifacts/DefensiveBlockProductionBuild.log`,
+`../BuildArtifacts/DefensiveBlockProductionPlayMode.txt` and save-file hashes in
+`../BuildArtifacts/DefensiveBlockSaveHashesBefore.json`. Production-asset smoke checks
+reject dependencies under `Assets/Tests/DefensiveBlock`; old copied assets are retained
+for compatibility but are not used by the upgraded scene.
+
+Existing production warnings/errors must be distinguished from Block results:
+`MeleeHitboxTrigger` logs missing Light/Heavy assignments while the ranged party
+prefabs spawn, and the project reports a missing AutodeskInteractive ShaderGraph.
+The harness preserves these real components instead of stripping them to hide logs.
+A player build/full campaign regression is separate from C# and Editor Play Mode
+validation of this integration.
+
+
+Verified production regression results (2026-09-17): **41/41 Play Mode checks**,
+**14/14 smoke checks**, and C# validation **0 errors / 79 existing warnings**.
+Actual constrained recoil in the 8 m fixture was 1.154 m, stopping before Player.
+Existing save files matched their pre-test hashes. The zero-thickness guard edge
+was reproduced in `BlockProductionExitProbe.txt` before fixing the guard volume.
+
+Development Player build attempt `build_3474b8afb3e6` finished **Failed**, with no
+player output. Standalone compilation reported missing `VHierarchy` references in
+`Castinrange.cs` and `Projectile.cs`, and missing `HandleOperationChanged` in
+`StatusEffectModifier.cs`. The report also contains the existing AutodeskInteractive
+ShaderGraph error and a tooling timeout recorded while BuildPipeline occupied the
+main thread. Editor regression results above remain valid; standalone validation
+has not passed. These unrelated source files were not changed for this integration.
+
+After the build, the test scene was saved and closed and GameSetup made active.
+Build processing changed instance IDs, so the temporary root-ID snapshot could not
+restore activation. The 16 originally enabled roots were restored in the Editor
+using the checkpoint scene's root states; EventSystem and CameraHolder stay disabled.
+The existing AudioListener edit was preserved. GameSetup was saved after explicit
+user approval, and temporary root activation overrides were removed. For future additive validation,
+store stable GlobalObjectIds and active states before Play Mode or building, and
+retain the snapshot until every expected root has been restored.
+
+### Dash / Block keyboard bindings (2026-09-17)
+
+The production `Inputmaneger.inputactions` now binds Dash to `<Keyboard>/shift`
+(left or right Shift) and Block to `<Keyboard>/space`, retaining action/binding IDs
+and prefab event wiring. The test HUD and authoring docs reflect these controls.
+Play Mode callback checks on a clone of the imported asset passed 5/5: each Shift
+triggered only Dash, Space only Block, and neither Ctrl triggered either action.
+The temporary virtual keyboard and focus settings were removed/restored afterward.
+These are binding-event checks, not a new full combat regression run.
+C# validation passed with 0 errors / 79 existing warnings. Reports:
+`../BuildArtifacts/BlockDashBindingsValidation.txt` and `BlockDashBindingsBuild.log`.
+
+### Defensive Block camera settings SO (2026-09-17)
+
+Camera tuning now lives on the bound defender profile, currently
+`Assets/Data/DefensiveBlock/GuardSetting.asset`. Production authoring follows the
+character's existing reference so renaming the asset does not create a replacement.
+C# validation passed with 0 errors / 79 existing warnings; smoke tests passed 17/17.
+Three focused Play Mode cases passed with automatic AI paused and runtime profile
+clones: a 45-degree FOV reached the rendered camera; disabling Camera still allowed
+one successful block without a shot; changing FOV/position/return timing on the SO
+after arrival did not alter the active snapshot or prevent return. All released
+the guard reservation. Existing asset tuning and unsaved scene edits were retained.
+The initial probe failed three assertions before a fresh controlled run; its report
+is retained and was not counted as passing validation.
+Evidence: `../BuildArtifacts/DefensiveBlockCameraSettingsBuild.log`,
+`DefensiveBlockCameraSettingsPlayMode.txt`, and
+`DefensiveBlockCameraSettingsPlayModeRepeat.txt` in the same directory.
+
+### Defensive Block reaction clocks (2026-09-17)
+
+Block recoil/timeout and the shared knockback motor's displacement/recovery now
+use the actor clock (`WorldDeltaTime` when `UsesWorldSlow`, otherwise scaled delta).
+C# validation passed with 0 errors / 79 existing warnings; smoke tests passed 17/17.
+The four new Play Mode checks passed: World Slow + HitLag kept the non-exempt
+actors in reaction together; pause held both positions/phases; temporarily exempt
+actors completed normally; Player knockback remained exempt from World Slow.
+
+The initial full run passed 46/48; the wall check and ControlLoss-during-Exit check
+failed (Exit was not reached). Focused repeats passed 3/3 for each without changing
+collision or cleanup code. Wall separation measured 0.020 m. The cause of these
+intermittent first-run failures is not established. Evidence is retained in
+`../BuildArtifacts/DefensiveBlockClockBuild.log`, `DefensiveBlockClockPlayMode.txt`
+and `DefensiveBlockClockFocused.txt` in the same directory.
+
+The final full repeat passed **48/48**, including all four clock checks, with both
+world and global scales restored to 1. Report:
+`../BuildArtifacts/DefensiveBlockClockPlayModeRepeat.txt`. This validates the
+production regression scene; it does not replace the separate live Boss Rush check.
+
+### Defensive Block settings SO (2026-09-17)
+
+`DefensiveBlockActorProfile` now owns impact HitLag, guard center height and VFX
+lifetime alongside the existing guard/placement/animation/recoil/fade settings.
+Controller tuning copies remain serialized for compatibility but are hidden.
+Verified the original Aires definition still references AiresGuard and that the
+asset retains HitLag defaults 0.06 s / 0.1 scale after Editor API serialization.
+C# validation passed with 0 errors / 79 existing warnings; smoke tests passed 17/17.
+Three focused Play Mode impacts used runtime profile/definition clones: scale 0.3,
+duration-zero disabled (scale 1), and a constant 0.5 blend curve (scale 0.65).
+All passed with one block, no Player/Aires HP loss, reservation released and time
+scale restored to 1. Persistent gameplay profiles were not changed by these probes.
+Evidence: `../BuildArtifacts/DefensiveBlockSettingsBuild.log` and
+`../BuildArtifacts/DefensiveBlockSettingsPlayMode.txt`.
+
+### Defensive Block without aiming (2026-09-17)
+
+The command and cue now select the incoming opted-in attack independently of
+Player targeting. C# validation passed with 0 errors / 79 existing warnings;
+production smoke tests passed 17/17. The expanded Play Mode suite passed **44/44**
+on the final run, including no committed target, cue/command agreement, lateral
+rejection, unchanged 4/6/8 m success, 10 m rejection and no-block damage.
+
+The first full run passed 42/44: Down-during-Impact did not reach Impact, and the
+active-AI restore assertion failed. Both cases passed three focused repeats each,
+then passed in the full rerun without changing lifecycle code. The intermittent
+first-run failures are retained as evidence; their cause is not established.
+Reports: `../BuildArtifacts/NoAimBlockBuild.log`, `NoAimBlockPlayMode.txt`,
+`NoAimBlockFocused.txt`, and `NoAimBlockPlayModeRepeat.txt` in that same directory.
+This run used the production regression scene; the full GameSetup/Basement/Boss Rush
+route was not rerun and the live-impact limitation recorded below remains separate.
+
+### Basement bootstrap recovery (2026-09-17)
+
+The root-state recovery above re-enabled the standalone TimeSlowManager alongside
+the one on System. Reproduced by entering Play Mode from GameSetup: Basement had
+no SaveManager, SceneLoaderSystem or EventSystem and all four PartySlot previews
+were empty. TimeSlowManager duplicate cleanup destroys its owning GameObject, so
+when the shared System instance loses initialization order it removes all services
+on that object. The standalone root is now inactive; the System-owned manager stays
+active. Basement itself and its slot/UI scripts were not changed.
+
+Verified the same GameSetup-to-Basement transition after the scene correction:
+SaveManager and SceneLoaderSystem remain alive, exactly one active EventSystem uses
+InputSystemUIInputModule, and all four slots have a selected definition and model
+Animator. An EventSystem raycast at Inventory Buttom resolved that button and a
+pointer-click event opened its previously closed panel. Exited Play Mode and saved
+GameSetup. This correction changes scene activation and docs only; no C# build was
+required.
+
+### Live Boss Rush route: Defensive Block (2026-09-17)
+
+**Result: route/bootstrap passed; live Block impact acceptance remains unverified.**
+This is a separate run from the isolated 41-case test suite and must not be reported
+as a successful production Block impact test.
+
+- Entered Play Mode from GameSetup, reached Basement with SaveManager/EventSystem
+  alive and all four saved roster previews: Roma, Aires, Feno and Abbygail.
+- Used UI pointer handlers for Mobiliz, NextPage twice, and BOSS RUSH 01. The actual
+  StagePlacardButton loaded MapRun with Boss Rush 01 Map Run Config and production
+  party actors. Walked with the Move input and pressed F at the door, reaching
+  BossTest.DeadEnd.Up through the real room transition.
+- Rector spawned from the production prefab with its DefensiveBlockAttack. Its AI
+  naturally cast Skills 1, 2 and 3; no skill, cooldown, HP or actor-position overrides
+  were used. Skill 1 alone opened the defensive window.
+- Test input used temporary paired virtual keyboard/mouse devices. Later probes
+  steered the gameplay camera yaw/pitch for target tracking; this is instrumented
+  Play Mode coverage, not a manual mouse-control usability test. InputSettings were
+  cloned for background input and restored, and test devices removed afterward.
+- The second probe pressed Ctrl three times while the ready cue reported both
+  ready and visible. All three commands were accepted; two reached arrival and
+  activated the Block camera. All finished without impact: **0 successful blocks**.
+  One cancelled before arrival. The exact cancellation cause was not captured;
+  late/off-axis approaches occurred and need a focused live-session trace.
+- Cleanup after these attempts returned the camera and released Aires's reservation.
+  No Rector knockback/zero-damage success assertion can be made from this run.
+- During a further movement probe, Player went beyond the arena floor and fell to
+  Y=-4825.99 while still Alive with HP=1553.306. This prevents further valid guard
+  testing and exposes missing arena-edge containment or fall recovery; the exact
+  edge and collision cause have not yet been isolated. Feno also died during the run.
+
+Evidence: `../BuildArtifacts/BossRushLiveBlock.txt`,
+`../BuildArtifacts/BossRushLiveBlockLane.txt`, and
+`../BuildArtifacts/BossRushLiveState.png`. All save-file hashes matched the pre-run
+snapshot. Play Mode was stopped; GameSetup is active and clean. No gameplay code or
+scene changes were made in this testing pass; no C# rebuild was needed.

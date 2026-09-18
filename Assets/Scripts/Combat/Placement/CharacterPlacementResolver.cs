@@ -872,6 +872,14 @@ public static class CharacterPlacementResolver
             return Mathf.Max(0f, distance);
         }
 
+        // Padding can touch the floor without the body penetrating it. Trust
+        // the narrow-phase miss only when the footprint is this body's shape;
+        // authored trajectory footprints may intentionally be larger.
+        if (CharacterPlacementFootprintUtility.TryGetColliderFootprint(
+                request.PositionCollider, request.ActorRoot, out var bodyFootprint, out _) &&
+            bodyFootprint.Equals(request.Footprint))
+            return 0f;
+
         return ResolveApproximatePenetration(request, actorPosition, actorRotation, hit);
     }
 
@@ -1063,6 +1071,8 @@ public static class CharacterPlacementResolver
     {
         CharacterPlacementFootprint footprint = request.Footprint;
         Vector3 center = position + rotation * footprint.CenterOffset;
+        // These are planar support samples, not samples at torso height.
+        center.y = position.y;
         Quaternion footprintRotation = rotation * footprint.Rotation;
         int areaMask = ResolveNavMeshAreaMask(request);
         float sampleDistance = ResolveNavMeshSampleDistance(request);

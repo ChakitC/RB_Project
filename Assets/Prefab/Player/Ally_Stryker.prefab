@@ -426,6 +426,7 @@ GameObject:
   - component: {fileID: 3535399184093177875}
   - component: {fileID: 2785288318504072516}
   - component: {fileID: 811612530271570391}
+  - component: {fileID: 3397687693481732196}
   m_Layer: 10
   m_Name: Ally_Stryker
   m_TagString: Ally
@@ -564,6 +565,9 @@ MonoBehaviour:
   StaminaSystem: {fileID: 4917278530332384066}
   DashSystem: {fileID: 6582203035813745574}
   KnockbackMotor: {fileID: 5866700442643536325}
+  DefensiveBlockAttack: {fileID: 0}
+  DefensiveBlock: {fileID: 3397687693481732196}
+  FieldAllyMember: {fileID: 1692569504618657093}
   VerticalMotor: {fileID: 2785288318504072516}
   PassiveController: {fileID: 6478615454785119033}
   ActiveSkillProgress: {fileID: 3535399184093177875}
@@ -848,6 +852,36 @@ MonoBehaviour:
     m_RotationOrder: 4
   useUnscaledTime: 1
   disableShadowsWhileHidden: 0
+--- !u!114 &3397687693481732196
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2275044329717223576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f70f5a6d688a8d40b71c5c52fc5eee7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animationProfile: {fileID: 0}
+  member: {fileID: 0}
+  worldLayers:
+    serializedVersion: 2
+    m_Bits: 1
+  standAhead: 2.5
+  minimumStandAhead: 0.8
+  approachClearance: 4.2
+  guardHalfWidth: 0.65
+  guardHalfHeight: 1.2
+  guardHalfDepth: 0.05
+  guardForwardOffset: 1.4
+  timeoutSeconds: 2
+  slideDistance: 1.5
+  slideSeconds: 0.35
+  impactVfx: {fileID: 0}
+  warpFadeOutSeconds: 0.04
+  warpFadeInSeconds: 0.08
 --- !u!1 &2357043900880950871
 GameObject:
   m_ObjectHideFlags: 0

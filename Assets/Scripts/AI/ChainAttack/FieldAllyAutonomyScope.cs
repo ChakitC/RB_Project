@@ -41,7 +41,7 @@ internal sealed class FieldAllyAutonomyScope
 
     public bool IsApplied => _autonomyCaptured;
 
-    public void Apply(bool allowActorProtection = true)
+    public void Apply(bool allowActorProtection = true, bool allowCollisionOverride = true)
     {
         if (_autonomyCaptured)
             return;
@@ -90,7 +90,7 @@ internal sealed class FieldAllyAutonomyScope
         if (ApplyTemporaryActorProtection())
             capturedAny = true;
 
-        if (ApplyTemporaryNoCollision())
+        if (allowCollisionOverride && ApplyTemporaryNoCollision())
             capturedAny = true;
 
         if (ApplyTemporaryRigidbodyTeleportControl())
@@ -348,6 +348,12 @@ internal sealed class FieldAllyAutonomyScope
             PlayerMovementCC playerMovement = owner.GetComponent<PlayerMovementCC>();
             if (playerMovement != null && !resolved.Contains(playerMovement))
                 resolved.Add(playerMovement);
+        }
+
+        if (owner.ActorContextRef is AllyContext ally && ally.AgentMoveDriver != null)
+        {
+            resolved ??= new List<MonoBehaviour>(1);
+            if (!resolved.Contains(ally.AgentMoveDriver)) resolved.Add(ally.AgentMoveDriver);
         }
 
         return resolved != null && resolved.Count > 0

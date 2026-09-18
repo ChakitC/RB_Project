@@ -47,6 +47,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     int _depth;
     ComboExecutionProvenance _comboProvenance;
     int _requestId;
+    int _casterLife;
     int _nextSequentialStepIndex;
     float _expireAt;
     bool _initialized;
@@ -147,6 +148,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         _payload = payload;
         _animBrain = context != null ? context.AnimBrain : null;
         _requestId = context != null ? context.RequestId : 0;
+        _casterLife = context?.CasterContext != null ? context.CasterContext.LifeGeneration : 0;
         _expireAt = Time.time + (payload != null ? payload.MaxSequenceLifetime : 1f);
 
         CacheGroups();
@@ -478,19 +480,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     {
         if (_isShuttingDown) return;
         if (_defensiveBlock != null && _defensiveBlock.TryIntercept(this)) return;
-        if (!_initialized || _activeSteps.Count == 0 || other == null)
-            return;
-
-        if (_ownedColliderIds.Contains(other.GetInstanceID()))
-            return;
-
-        if (!IsTargetLayerAllowed(other))
-            return;
-
-        if (MeleeController.IsCombatOnlyHitbox(other))
-            return;
-
-        if (BelongsToCaster(other.transform))
+        if (!_initialized || _activeSteps.Count == 0 || !CanDamageCollider(other))
             return;
 
         IDamageable target = DamageableResolver.ResolveFrom(other);
@@ -544,6 +534,11 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
         return other.root == _casterRoot;
     }
+
+    // Shared by normal contact processing and the defensive contact-order probe.
+    public bool CanDamageCollider(Collider other) => other != null && other.enabled &&
+        other.gameObject.activeInHierarchy && !_ownedColliderIds.Contains(other.GetInstanceID()) &&
+        IsTargetLayerAllowed(other) && !MeleeController.IsCombatOnlyHitbox(other) && !BelongsToCaster(other.transform);
 
     void TrySpawnStepStartVfx(StepRuntimeState step)
     {
@@ -689,6 +684,10 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         DamageResult result = target.TakeDamage(in damageContext);
         if (!result.Applied)
             return result;
+
+        var victim = target is HealthSystem health ? health.CTX :
+            (target as Component)?.GetComponentInParent<CharacteContext>();
+        _defensiveBlock?.NotifyDamageApplied(this, _requestId, _casterLife, victim);
 
         if (_payload != null && _payload.ShowDamageNumbers && VfxSpawner.Instance != null)
             VfxSpawner.Instance.SpawnDamageNumber(hitPoint, result.AppliedDamage, target);

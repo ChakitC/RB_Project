@@ -16,16 +16,34 @@ public enum PartyComboExitPolicy
 public sealed class PartyComboExecutionProfile : ScriptableObject
 {
     [Header("Placement")]
+    [Tooltip("วิธีวางตำแหน่งก่อนเล่น Combo: KeepCurrentPosition = อยู่ที่เดิม, PlaceNearEventTarget = หาจุดวาร์ปรอบเป้าหมาย โดยเลือกจุดที่เห็น Ally ชัดก่อน")]
     public PartyComboPlacementPolicy placementPolicy = PartyComboPlacementPolicy.KeepCurrentPosition;
+    [Tooltip("รัศมีของจุดวาร์ปรอบเป้าหมาย หน่วยระยะโลก ใช้เมื่อเลือก PlaceNearEventTarget ตำแหน่งสุดท้ายอาจขยับตาม Local Offset และ NavMesh")]
     [Min(0f)] public float desiredRange = 2f;
+    [Tooltip("ระยะเยื้องเพิ่มเติมจากจุดวาร์ป อิงแกนและสเกลของเป้าหมาย: X = ด้านข้าง, Y = ขึ้นลง, Z = หน้าหลัง")]
     public Vector3 localOffset;
+    [Tooltip("กำหนดให้หาจุดบน NavMesh ทั้งนี้ Combo ของตัวละครที่เคลื่อนที่ได้ยังบังคับใช้ NavMesh ตามกติกา placement กลาง แม้ปิดค่านี้")]
     public bool requireNavMesh = true;
+    [Tooltip("ระยะค้นหาจุด NavMesh ใกล้ตำแหน่งที่เสนอ หน่วยระยะโลก ค่าสูงยอมให้จุดวาร์ปขยับจากตำแหน่งเดิมได้ไกลขึ้น")]
     [Min(0.05f)] public float navMeshSampleDistance = 1f;
+    [Tooltip("ตรวจและตัดจุดวาร์ปที่ตัว Ally ทะลุสิ่งกีดขวางออก หากไม่มีจุดปลอดภัยจะไม่เริ่ม Combo ค่านี้ตรวจการชนของตำแหน่งยืน แยกจากการถูกบังในกล้อง")]
     public bool requireUnobstructedPosition = true;
+    [Tooltip("จำนวนจุดที่ลองรอบเป้าหมายต่อการวาร์ป (1–16) ค่ามากเพิ่มโอกาสเจอมุมที่เห็นชัด แต่เพิ่มการตรวจ NavMesh และแนวสายตา ค่าเริ่มต้น 8 จุด")]
+    [Range(1, 16)] public int placementCandidateCount = 8;
+    [Tooltip("เลเยอร์ของ collider ที่บังสายตากล้อง ควรรวมฉาก ตัวเป้าหมาย และตัวละครอื่น ระบบไม่นับ Trigger เช่นเซนเซอร์ และข้ามตัว Ally ผู้ร่ายที่ตำแหน่งเก่า")]
+    public LayerMask visibilityObstructionLayers = ~0;
 
     [Header("Execution")]
+    [Tooltip("เวลาสูงสุดที่รอให้การร่ายยืนยันการใช้สกิลสำเร็จ (commit) หน่วยวินาที ไม่นับช่วง Pause หากเกินเวลาจะยกเลิกการร่ายที่ยังไม่ปล่อยสกิล ควรยาวกว่าช่วงเตรียมร่าย")]
     [Min(0.1f)] public float startTimeoutSeconds = 2f;
+    [Tooltip("เวลาสูงสุดที่รอแอนิเมชันหลัง commit จบก่อนคืนการควบคุมให้ Ally หน่วยวินาที ไม่นับช่วง Pause ควรยาวพอสำหรับช่วงจบท่าสกิล")]
     [Min(0.1f)] public float recoveryTimeoutSeconds = 4f;
+    [Tooltip("อนุญาตการป้องกัน Ally ระหว่าง Combo เช่นอมตะหรือไม่ถูกเลือกเป็นเป้า โดยใช้ตัวเลือกการป้องกันที่ตั้งไว้ใน FieldAllyMember")]
     public bool protectActorDuringExecution = true;
+    [Tooltip("ตำแหน่งหลังจบหรือ cleanup: KeepAtCurrentPosition = อยู่ตำแหน่งปัจจุบัน, ReturnToRecordedOrigin = กลับตำแหน่งและทิศทางก่อนเริ่ม Combo")]
     public PartyComboExitPolicy exitPolicy = PartyComboExitPolicy.ReturnToRecordedOrigin;
+
+    [Header("Presentation")]
+    [Tooltip("ตั้งค่าโลกช้า การโฟกัส และการซูมกล้องของ Combo ทุกสกิลที่อ้างอิง Execution Profile นี้จะใช้ค่าชุดเดียวกัน")]
+    public PartyComboPresentationProfile presentation = new PartyComboPresentationProfile();
 }

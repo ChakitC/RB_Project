@@ -206,6 +206,17 @@ helpers and swapped character models. Generic character visual prefabs must
 also author `ThirdPersonAimBoneMap`; the third-person authoring validator checks
 every character registered in `CharacterDatabase`.
 
+## Defensive Block shot settings
+
+The defender's `DefensiveBlockActorProfile` owns the **Camera** settings (Aires uses
+`Assets/Data/DefensiveBlock/GuardSetting.asset`): enabled, local position/rotation,
+FOV and blend-in/hold/blend-out timings. The guard supplies this profile when it
+arrives; Player self guard supplies the same profile immediately without a warp.
+`GameplayCameraController` snapshots the values until return completes;
+editing the asset affects subsequent shots. Camera disabled does not cancel Block.
+Cinemachine, obstacle avoidance, presentation priority and owner-checked cleanup
+remain camera responsibilities. Timing remains unscaled for HitLag readability.
+
 ## Select Screen
 
 `Assets/Scripts/SelectCharactor/CameraManager.cs` continues to switch its own

@@ -4283,6 +4283,7 @@ MonoBehaviour:
   holdSpeedMultiplier: 0.1
   holdSafetyMargin: 0.08
   logInterruptionFlow: 0
+  defensiveBlockEnabled: 0
 --- !u!1 &3983359075264677734
 GameObject:
   m_ObjectHideFlags: 0
@@ -6529,6 +6530,7 @@ MonoBehaviour:
   KnockbackMotor: {fileID: 4712651075002478625}
   DefensiveBlockAttack: {fileID: 0}
   DefensiveBlock: {fileID: 0}
+  FieldAllyMember: {fileID: 0}
   VerticalMotor: {fileID: 265991289163836672}
   PassiveController: {fileID: 7652747380643676885}
   ActiveSkillProgress: {fileID: 5910928853809233979}

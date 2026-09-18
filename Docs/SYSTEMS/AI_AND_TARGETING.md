@@ -173,6 +173,28 @@ immediately.
 
 ## Ally Context And Movement
 
+### Face target before casting a skill
+
+Use `AiFaceTarget` (`Assets/Scripts/AI/Ally TEST Scripts/AiFaceTarget.cs`) in a
+Sequence: select target -> `AiFaceTarget` -> skill task. Bind `target` to the same
+shared GameObject variable consumed by the skill. It reads that variable each
+update; it does not independently select a target from the sensor.
+
+The task returns `Running` while turning and `Success` once the remaining angle
+is within `angleTolerance` (default 3 degrees), including when already facing
+the target. Coincident positions also succeed because there is no direction to
+correct. Missing target/context/StateHub, blocked `CanRotate()`, or a nonpositive
+`rotateSpeed` while still misaligned return `Failure`, preventing the next skill
+task in the Sequence from running.
+
+`rotateSpeed` defaults to 720 degrees/second; `ignoreYAxis` defaults to true.
+`rotateRoot` optionally selects a model/pivot; otherwise the task transform rotates.
+Rotation uses the owner's `UsesWorldSlow` clock. Optional NavMesh stopping and
+auto-rotation suppression default to enabled and restore their previous settings
+on task completion/abort (stopping requires an active agent on a NavMesh).
+The following skill task owns movement/facing during its cast; this task does not
+keep tracking after success. Existing `AiRotateToTarget` retains continuous tracking.
+
 `AllyContext` adds:
 
 - `AITargetSensor`
@@ -959,12 +981,34 @@ the placement/collision rules where geometry is part of the gameplay rule.
 See [Party Combo Skill System](PARTY_COMBO.md) for the full flow and authoring
 contract.
 
-## Defensive charge interception prototype
+## Defensive charge interception
 
-A test-only `DefensiveBlockAttack` routes the existing committed-target interruption
-command to Aires while the copied Rector charge animation is active. It supports
+`InterruptionCommandController.TrySelectDefensiveBlockAttack` selects an incoming
+opted-in charge from active enemy contexts without requiring aim or a committed
+target. Its projected charge lane must overlap Player, with the earliest estimated
+contact prioritized; distance and instance ID break ties. Range, world LOS, floor,
+party capability, reservation and safe placement still apply. The ready cue uses
+the same selector, including when normal targeting has no target. Legacy interruption
+retains committed-target selection. `DefensiveBlockAttack` routes the selected
+production Rector charge to an available Aires in the issuing Player's party, then
+to Player self guard if no companion can begin. Both receivers use the same impact
+rules and settings. The receiver stays fixed once accepted; a missed warp does not
+automatically invoke Player fallback. It supports
 already-released hitbox execution, without using the pre-cast reservation/hold.
 `SkillHitboxSequenceRuntime.StopExecution(requestId)` deactivates that execution
 synchronously before knockback; interception runs before target damage processing.
+Applied Player damage closes eligibility for that Player/life on the same request.
+A same-frame contact-order probe vetoes interception when Player's swept collider
+bounds contact first. Initial overlap on activation requires the ready guard to
+be ahead of Player; an already applied hit still vetoes it. This prevents a late success after
+damage without canceling the missed enemy attack or granting immunity.
 See [Rector Defensive Block Test](DEFENSIVE_BLOCK_TEST.md) for range, placement,
 phase ownership, tuning and the isolated test scene.
+
+The bright ready cue uses the same selection/placement query as input. Busy,
+reserved, inactive and unsupported companions cannot offer Block; a ready Player
+may self guard. A separate dim telegraph remains visible during the incoming attack
+window when no receiver is ready. Neither state displays a key prompt. Rejection never
+falls through to the legacy pre-cast interruption. The shared transient scope disables AI/movement but
+keeps collisions and vulnerability; its owner reservation excludes Chain/Combo/
+Helper execution. Profile or life changes invalidate the accepted guard session.

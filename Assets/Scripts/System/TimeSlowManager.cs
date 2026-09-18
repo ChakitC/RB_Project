@@ -13,6 +13,8 @@ public sealed class TimeSlowManager : MonoBehaviour
     AnimationCurve _activeShape;
     bool _active;
     int _nextSlowHandle = 1;
+    int _presentationHandle;
+    float _presentationScale = 1f;
 
     public static TimeSlowManager Instance
     {
@@ -68,6 +70,9 @@ public sealed class TimeSlowManager : MonoBehaviour
 
     void Update()
     {
+        if (GlobalTimeScaleManager.Instance.IsPaused)
+            return;
+
         if (_active)
         {
             _elapsed += Time.unscaledDeltaTime;
@@ -87,7 +92,47 @@ public sealed class TimeSlowManager : MonoBehaviour
             }
         }
 
+        if (!_active)
+            ApplyPresentationSlow();
         WorldTime += UnscaledWorldDeltaTime;
+    }
+
+    // Combo presentation is subordinate to existing dash/cutscene slows. The newest
+    // presentation owns this channel; a superseded execution cannot change or clear it.
+    public int BeginPresentationSlow(float scale)
+    {
+        _presentationHandle = _nextSlowHandle++;
+        _presentationScale = Mathf.Clamp(scale, 0.05f, 1f);
+        if (!_active)
+            ApplyPresentationSlow();
+        return _presentationHandle;
+    }
+
+    public void UpdatePresentationSlow(int handle, float scale)
+    {
+        if (handle == 0 || handle != _presentationHandle)
+            return;
+        _presentationScale = Mathf.Clamp(scale, 0.05f, 1f);
+        if (!_active)
+            ApplyPresentationSlow();
+    }
+
+    public void EndPresentationSlow(int handle)
+    {
+        if (handle == 0 || handle != _presentationHandle)
+            return;
+        _presentationHandle = 0;
+        _presentationScale = 1f;
+        if (!_active)
+            ApplyPresentationSlow();
+    }
+
+    void ApplyPresentationSlow()
+    {
+        WorldTimeScale = _presentationHandle != 0 ? _presentationScale : 1f;
+        IsSlowing = WorldTimeScale < 1f;
+        SlowBlend01 = 0f;
+        ActiveVisual = null;
     }
 
     public int StartSlow(float scale, float duration)
@@ -145,6 +190,7 @@ public sealed class TimeSlowManager : MonoBehaviour
         SlowBlend01 = 0f;
         WorldTimeScale = 1f;
         IsSlowing = false;
+        ApplyPresentationSlow();
     }
 
     AnimationCurve ResolveShape(AnimationCurve shape)

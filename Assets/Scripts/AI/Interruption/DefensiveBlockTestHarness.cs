@@ -5,7 +5,7 @@ using System.Collections;
 using System.Text;
 
 // Scene-local controls. Recreates actors on reset so cooldowns, life handles and AI locks reset too.
-public sealed class DefensiveBlockTestHarness : MonoBehaviour
+public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
 {
     public GameObject playerPrefab;
     public GameObject allyPrefab;
@@ -13,6 +13,8 @@ public sealed class DefensiveBlockTestHarness : MonoBehaviour
     public SkillGemDefinition chargeSkill;
     public Camera testCamera;
     public DefensiveBlockCameraShot blockCamera;
+    public PartySpawnPoint partySpawn;
+    public bool pauseAutomaticCombat = true;
     public float startDistance = 8f;
     public bool autoBlock;
     public PlayerContext Player { get; private set; }
@@ -27,6 +29,10 @@ public sealed class DefensiveBlockTestHarness : MonoBehaviour
     Coroutine validation;
     BlockAnimationProfile validationBlockProfile;
     int savedFrameRate, savedVSync;
+    Coroutine reset;
+    bool resetting;
+    GameplayCameraController LiveCamera => GameplayCameraController.Instance;
+    bool CameraReturned => LiveCamera != null && !LiveCamera.IsDefensiveBlockShotActive;
 
     [ContextMenu("Run Play Mode Validation")]
     public void RunValidation()
@@ -55,7 +61,7 @@ public sealed class DefensiveBlockTestHarness : MonoBehaviour
                 ? Rector.DefensiveBlockAttack.SuccessCount == 1 && Mathf.Approximately(Player.HealthSystem.currentHealth, playerHp) && Mathf.Approximately(Ally.HealthSystem.currentHealth, allyHp)
                 : Rector.DefensiveBlockAttack.SuccessCount == 0 && !Ally.DefensiveBlock.IsExecuting;
             if (trial == 4) passed &= Player.HealthSystem.currentHealth < playerHp;
-            bool cameraReturned = blockCamera == null || !blockCamera.IsPlaying;
+            bool cameraReturned = CameraReturned;
             passed &= cameraReturned;
             report.AppendLine($"{(passed ? "PASS" : "FAIL")} trial={trial} distance={startDistance} auto={autoBlock} successes={Rector.DefensiveBlockAttack.SuccessCount} playerLoss={playerHp - Player.HealthSystem.currentHealth:0.###} allyLoss={allyHp - Ally.HealthSystem.currentHealth:0.###} cameraReturned={cameraReturned} result={Rector.DefensiveBlockAttack.LastResult} damage={LastDamage}");
         }
@@ -97,6 +103,9 @@ public sealed class DefensiveBlockTestHarness : MonoBehaviour
             autoBlock = false; ResetTrial();
             yield return new WaitForSecondsRealtime(0.7f);
             while (Time.frameCount <= spawnFrame + 2) yield return null;
+            // Phase cleanup tests must reach the phase even when Editor GC stalls a frame.
+            // Normal trials above and Begin-contact tests retain the real fade timing.
+            Ally.DefensiveBlock.warpFadeOutSeconds = 0f;
             StartCharge();
             Rector.DefensiveBlockAttack.RequestBlock(Player);
             // A lateral miss leaves a real Loop available without freezing the enemy's cast.
@@ -114,14 +123,18 @@ public sealed class DefensiveBlockTestHarness : MonoBehaviour
                 case "Reset": ResetTrial(); break;
             }
             yield return null;
+            while (resetting) yield return null;
             bool clean = !Ally.DefensiveBlock.IsExecuting && !Ally.DefensiveBlock.member.IsReserved &&
                 Ally.AnimBrain.BlockPhase == BlockAnimationPhase.None;
-            if (blockCamera != null && blockCamera.IsPlaying)
-                yield return new WaitForSecondsRealtime(blockCamera.holdAfterBlockSeconds + blockCamera.blendOutSeconds + 0.15f);
-            bool cameraReturned = blockCamera == null || !blockCamera.IsPlaying;
-            report.AppendLine($"{(reached && clean && cameraReturned ? "PASS" : "FAIL")} {interruption} during {phase} releases reservation and animation ownership; reached={reached} clean={clean} cameraReturned={cameraReturned}");
+            if (LiveCamera != null && LiveCamera.IsDefensiveBlockShotActive)
+                yield return new WaitForSecondsRealtime(LiveCamera.blockHoldSeconds + LiveCamera.blockBlendOutSeconds + 0.15f);
+            bool cameraReturned = CameraReturned;
+            report.AppendLine($"{(reached && clean && cameraReturned ? "PASS" : "FAIL")} {interruption} during {phase} releases reservation and animation ownership; reached={reached} clean={clean} cameraReturned={cameraReturned} result={Rector.DefensiveBlockAttack.LastResult}");
         }
         yield return ValidateBeginContacts(report);
+        yield return ValidateContactOrder(report);
+        yield return ValidateProductionIntegration(report);
+        yield return ValidatePlayerFallback(report);
         ResetTrial();
         autoBlock = false;
         ValidationReport = report.ToString();
@@ -140,6 +153,7 @@ public sealed class DefensiveBlockTestHarness : MonoBehaviour
             BlockAnimationPhase contactPhase = BlockAnimationPhase.None;
             // Keep contact inside Begin despite variable Editor frame timing. Never edit
             // the shared profile asset: ordinary trials above use its authored duration.
+            Ally.DefensiveBlock.CanBegin(Player, Rector.DefensiveBlockAttack);
             validationBlockProfile = Instantiate(Ally.DefensiveBlock.animationProfile);
             validationBlockProfile.beginSeconds = 0.4f;
             Ally.DefensiveBlock.animationProfile = validationBlockProfile;
@@ -176,7 +190,7 @@ public sealed class DefensiveBlockTestHarness : MonoBehaviour
                 Rector.DefensiveBlockAttack.SuccessCount == 1 &&
                 Mathf.Approximately(Player.HealthSystem.currentHealth, playerHp) &&
                 Mathf.Approximately(Ally.HealthSystem.currentHealth, allyHp) &&
-                !Ally.DefensiveBlock.IsExecuting && (blockCamera == null || !blockCamera.IsPlaying);
+                !Ally.DefensiveBlock.IsExecuting && CameraReturned;
             report.AppendLine($"{(passed ? "PASS" : "FAIL")} Begin contact {distance} m skips Loop; contactPhase={contactPhase} arrived={arrivedAtContact} impact={impactSeen} allyKnockback={allyKnockedBack} successes={Rector.DefensiveBlockAttack.SuccessCount} wrongRequestRejected={wrongRequestRejected} repeatedImpactRejected={repeatedImpactRejected}");
             Ally.DefensiveBlock.Cancel();
             Destroy(validationBlockProfile);
@@ -185,6 +199,7 @@ public sealed class DefensiveBlockTestHarness : MonoBehaviour
         startDistance = 8f; ResetTrial();
         yield return new WaitForSecondsRealtime(0.7f);
         while (Time.frameCount <= spawnFrame + 2) yield return null;
+        Ally.DefensiveBlock.CanBegin(Player, Rector.DefensiveBlockAttack);
         Ally.DefensiveBlock.warpFadeOutSeconds = 0.5f;
         int pendingRequest = 0;
         Rector.SkillManager.CastStarted += cast => pendingRequest = cast.RequestId;
@@ -200,24 +215,52 @@ public sealed class DefensiveBlockTestHarness : MonoBehaviour
     void Start() { ResetTrial(); }
     public void ResetTrial()
     {
-        if (blockCamera == null && testCamera != null) blockCamera = testCamera.GetComponent<DefensiveBlockCameraShot>();
-        if (blockCamera != null) blockCamera.Bind(null);
+        if (reset != null) StopCoroutine(reset);
+        resetting = true;
+        reset = StartCoroutine(ResetActors());
+    }
+    IEnumerator ResetActors()
+    {
         if (Rector != null) Rector.DefensiveBlockAttack?.ResetExecution();
         if (Ally != null) Ally.DefensiveBlock?.Cancel();
         if (actors != null) { actors.gameObject.SetActive(false); Destroy(actors.gameObject); }
+        partySpawn.DespawnParty();
+        Player = null; Ally = null; Rector = null;
+        yield return null; // Allow deferred destruction before the spawn point validates the scene.
+        if (!partySpawn.TrySpawnNow(out string error))
+        { Status = error; Debug.LogError(error, this); resetting = false; reset = null; yield break; }
         actors = new GameObject("Trial Actors").transform;
-        Player = Instantiate(playerPrefab, Vector3.zero, Quaternion.identity, actors).GetComponent<PlayerContext>();
-        Ally = Instantiate(allyPrefab, new Vector3(-3f, 0f, 0f), Quaternion.identity, actors).GetComponent<AllyContext>();
+        Player = partySpawn.CurrentParty.Player;
+        Ally = partySpawn.CurrentParty.GetActor(ChainActorRole.PartySlot1).Context as AllyContext;
         Rector = Instantiate(rectorPrefab, new Vector3(0f, 0f, startDistance), Quaternion.Euler(0f, 180f, 0f), actors).GetComponent<EnemyContext>();
         Player.ResolveReferences(); Ally.ResolveReferences(); Rector.ResolveReferences();
-        if (blockCamera != null) blockCamera.Bind(Ally.DefensiveBlock, Player.transform);
-        Rector.DefensiveBlockAttack.ally = Ally;
-        Rector.DefensiveBlockAttack.skill = chargeSkill;
+        Rector.SkillManager.CastStarted += _ => autoRequested = false;
+        if (pauseAutomaticCombat)
+        {
+            PauseAI(Rector);
+            foreach (var actor in partySpawn.CurrentParty.Actors) PauseAI(actor.Context);
+        }
         LastDamage = "none";
         Ally.HealthSystem.DamageTaken += RecordAllyDamage;
         autoRequested = false;
         spawnFrame = Time.frameCount;
-        Status = "Ready: C charge / Space block / R reset";
+        Status = "Ready: C charge / Space block / Shift dash / R reset (production input)";
+        resetting = false; reset = null;
+    }
+    static void PauseAI(CharacteContext actor)
+    {
+        if (actor is AllyContext ally)
+        {
+            if (ally.BehaviorTree != null) ally.BehaviorTree.enabled = false;
+            if (ally.AgentMoveDriver != null) ally.AgentMoveDriver.enabled = false;
+            if (ally.agent != null && ally.agent.enabled && ally.agent.isOnNavMesh) ally.agent.isStopped = true;
+        }
+        if (actor is EnemyContext enemy)
+        {
+            foreach (var tree in enemy.GetComponentsInChildren<Opsive.BehaviorDesigner.Runtime.BehaviorTree>(true)) tree.enabled = false;
+            foreach (var driver in enemy.GetComponentsInChildren<AgentMoveDriver>(true)) driver.enabled = false;
+            if (enemy.Agent != null && enemy.Agent.enabled && enemy.Agent.isOnNavMesh) enemy.Agent.isStopped = true;
+        }
     }
     void RecordAllyDamage(float amount, GameObject source)
     {
@@ -225,7 +268,7 @@ public sealed class DefensiveBlockTestHarness : MonoBehaviour
     }
     public void StartCharge()
     {
-        if (Rector == null || Time.frameCount <= spawnFrame + 2) return;
+        if (resetting || Rector == null || Time.frameCount <= spawnFrame + 2) return;
         Vector3 direction = Player.transform.position - Rector.transform.position;
         direction.y = 0;
         Rector.transform.rotation = Quaternion.LookRotation(direction);
@@ -256,7 +299,7 @@ public sealed class DefensiveBlockTestHarness : MonoBehaviour
     {
         GUILayout.BeginArea(new Rect(15, 15, 410, 285), GUI.skin.box);
         GUILayout.Label("RECTOR / DEFENSIVE BLOCK TEST");
-        GUILayout.Label("C: Charge    Space: Block    R: Reset");
+        GUILayout.Label("C: Charge    Space: Block    Shift: Dash    R: Reset");
         GUILayout.BeginHorizontal();
         foreach (int distance in new[] { 4, 6, 8, 10 })
             if (GUILayout.Button($"{distance} m")) { startDistance = distance; ResetTrial(); }
@@ -267,6 +310,8 @@ public sealed class DefensiveBlockTestHarness : MonoBehaviour
         if (GUILayout.Button("Reset")) ResetTrial();
         GUILayout.EndHorizontal();
         autoBlock = GUILayout.Toggle(autoBlock, "Auto block (test assistance)");
+        bool paused = GUILayout.Toggle(pauseAutomaticCombat, "Pause automatic combat (reset to apply)");
+        if (paused != pauseAutomaticCombat) { pauseAutomaticCombat = paused; ResetTrial(); }
         GUILayout.Label(Status);
         if (Rector != null)
         {

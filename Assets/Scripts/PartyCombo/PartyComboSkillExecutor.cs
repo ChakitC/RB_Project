@@ -37,6 +37,7 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
         public Action<PartyComboRejectReason> OnFailed;
         public Coroutine StartRoutine;
         public Coroutine RecoveryRoutine;
+        public PartyComboPresentationScope Presentation;
     }
 
     readonly Dictionary<ChainActorRole, ActiveExecution> activeByRole =
@@ -141,7 +142,18 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
 
         execution.RequestId = startResult.RequestId;
         if (IsCurrent(execution) && !execution.Committed)
+        {
+            PartyComboPresentationProfile presentation = execution.Profile?.presentation;
+            if (presentation != null && presentation.enabled &&
+                !CutsceneDirector.IsCinematicPlaying && !NpcPresentationController.IsActive &&
+                manager.TryGetActiveCast(out ActiveSkillCastInfo cast) &&
+                cast.RequestId == execution.RequestId && !cast.Released && cast.CastPointNormalized > 0f)
+            {
+                execution.Presentation = new PartyComboPresentationScope(
+                    ownerContext, targetTransform, presentation, cast);
+            }
             execution.StartRoutine = StartCoroutine(WaitForCommit(execution));
+        }
 
         return PartyComboStartKind.Accepted;
     }
@@ -157,12 +169,18 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
             Cleanup(snapshot[i], restoreOrigin: true);
     }
 
+    void OnDisable()
+    {
+        CancelAll();
+    }
+
     void HandleCommitted(ActiveExecution execution, ActiveSkillCastInfo info)
     {
         if (!IsCurrent(execution) || execution.Committed)
             return;
 
         execution.Committed = true;
+        execution.Presentation?.Dispose();
         if (execution.StartRoutine != null)
         {
             StopCoroutine(execution.StartRoutine);
@@ -221,6 +239,7 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
 
         while (IsCurrent(execution) && !execution.Committed && elapsed < timeout)
         {
+            execution.Presentation?.Tick();
             if (!GlobalTimeScaleManager.Instance.IsPaused)
                 elapsed += Time.unscaledDeltaTime;
             yield return null;
@@ -247,20 +266,6 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
             return true;
 
         Transform actorTransform = execution.Actor.Context.transform;
-        Vector3 away = actorTransform.position - targetTransform.position;
-        away.y = 0f;
-        if (away.sqrMagnitude < 0.0001f)
-            away = -targetTransform.forward;
-        away.Normalize();
-
-        Vector3 position = targetTransform.position + away * profile.desiredRange;
-        position += targetTransform.TransformVector(profile.localOffset);
-        Vector3 facing = targetTransform.position - position;
-        facing.y = 0f;
-        Quaternion rotation = facing.sqrMagnitude > 0.0001f
-            ? Quaternion.LookRotation(facing.normalized, Vector3.up)
-            : actorTransform.rotation;
-
         Collider actorCollider = actorTransform.GetComponentInChildren<Collider>(true);
         CharacterPlacementFootprint footprint;
         if (!CharacterPlacementFootprintUtility.TryGetColliderFootprint(
@@ -274,37 +279,16 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
                 new Vector3(0.35f, 1f, 0.35f));
         }
 
-        var candidate = new CharacterPlacementRequest.Candidate(position, rotation, 0f, 0);
-        var request = new CharacterPlacementRequest(
-            actorTransform,
-            actorCollider,
-            footprint,
-            targetIdentity,
-            targetTransform,
-            CharacterPlacementRequest.AnchorSnapshot.Capture(targetTransform, targetIdentity),
-            new[] { candidate },
-            null,
-            0f,
-            null,
-            profile.requireUnobstructedPosition ? Physics.DefaultRaycastLayers : 0,
-            0,
-            actorTransform,
-            execution.Actor.Context,
-            effectivePlanarRootMotion: false,
-            animationRequired: false,
-            mobileActor: true,
-            runtimePolicy: CharacterPlacementRuntimePolicy.CreateDefault(
-                profile.requireNavMesh,
-                profile.navMeshSampleDistance,
-                QueryTriggerInteraction.Ignore));
-
+        Camera camera = GameplayCameraController.Instance != null
+            ? GameplayCameraController.Instance.GameplayCamera : Camera.main;
         CharacterPlacementReservationService reservations = CharacterPlacementReservationRegistry.Shared;
-        if (!CharacterPlacementResolver.TryResolve(request, reservations, out CharacterPlacementResult result) ||
+        if (!PartyComboPlacementResolver.TryResolve(execution.Actor.Context, actorCollider, footprint,
+                targetTransform, targetIdentity, profile, camera, reservations,
+                out CharacterPlacementRequest request, out CharacterPlacementResult result) ||
             !reservations.TryReserve(request, result, out execution.PlacementReservation))
         {
             return false;
         }
-
         execution.HasPlacementReservation = true;
         actorTransform.SetPositionAndRotation(result.StartPosition, result.StartRotation);
         return true;
@@ -325,6 +309,13 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
             return;
 
         execution.Cleaned = true;
+        execution.Presentation?.Dispose();
+        if (!execution.Committed && execution.SkillManager != null &&
+            execution.SkillManager.TryGetActiveCast(out ActiveSkillCastInfo activeCast) &&
+            activeCast.RequestId == execution.RequestId)
+        {
+            execution.SkillManager.TryCancelActiveCast(SkillCastCancelReason.InvalidState);
+        }
         if (execution.StartRoutine != null)
             StopCoroutine(execution.StartRoutine);
         if (execution.RecoveryRoutine != null)

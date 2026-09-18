@@ -11,6 +11,8 @@ using UnityEditor;
 [HideMonoScript]
 public class SkillGemDefinition : SkillDefinitionBase
 {
+    [FoldoutGroup("Defensive Block"), AssetsOnly]
+    public DefensiveBlockAttackProfile defensiveBlock;
     public override SkillUpgradeTreeDefinition UpgradeTree => upgradeTree;
     public override string SkillDefinitionId => NormalizeSkillId(skillId);
     public override string SkillDefinitionDisplayName => displayName;

@@ -10,6 +10,7 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
     [Range(0.1f, 2f)] public float screenWidth = 1.2f;
     [Range(0.1f, 2f)] public float screenHeight = 0.85f;
     [Min(0f)] public float brightness = 1.3f;
+    [Range(0.05f, 1f)] public float unavailableBrightness = 0.25f;
     [Min(0.01f)] public float appearSeconds = 0.18f;
     [Min(0.01f)] public float disappearSeconds = 0.12f;
     PlayerContext ctx;
@@ -17,6 +18,7 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
     Transform cue;
     Renderer cueRenderer;
     MaterialPropertyBlock properties;
+    float readyWeight;
     enum Phase { Hidden, Appearing, Holding, Disappearing }
     Phase phase;
     CharacteContext displayedTarget;
@@ -26,6 +28,10 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
     public bool IsVisible => cue != null && cue.gameObject.activeSelf;
     // Eligibility ends immediately; the disappearing tail is presentation only.
     public bool IsReady { get; private set; }
+    public DefensiveBlockAttack ReadyAttack { get; private set; }
+    public DefensiveBlockAttack ThreatAttack { get; private set; }
+    // Retained for callers; readiness is presented only through the flare.
+    public bool IsPromptVisible => false;
 
     void Awake()
     {
@@ -37,20 +43,26 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
     void LateUpdate()
     {
         if (viewCamera == null || !viewCamera.isActiveAndEnabled) viewCamera = Camera.main;
-        if (ctx == null || ctx.Targeting == null || viewCamera == null || cuePrefab == null ||
+        if (ctx == null || ctx.interruptionCommand == null || viewCamera == null || cuePrefab == null ||
             ctx.HealthSystem == null || !ctx.HealthSystem.IsAlive)
         { HideImmediately(); return; }
 
-        bool eligible = ctx.Targeting.TryGetTarget(out CharacteContext target) && target != null &&
-            target.DefensiveBlockAttack != null && target.DefensiveBlockAttack.CanRequestBlock(ctx);
+        bool eligible = ctx.interruptionCommand.TrySelectDefensiveBlockAttack(out var attack);
+        var threat = attack;
+        bool hasThreat = eligible || ctx.interruptionCommand.TrySelectDefensiveBlockThreat(out threat);
+        CharacteContext target = hasThreat ? threat.CasterContext : null;
+        ReadyAttack = eligible ? attack : null;
+        ThreatAttack = hasThreat ? threat : null;
         IsReady = eligible;
-        if (eligible)
+        if (hasThreat)
         {
             if (displayedTarget != target)
             {
                 HideImmediately();
                 displayedTarget = target;
-                IsReady = true;
+                IsReady = eligible;
+                ReadyAttack = eligible ? attack : null;
+                ThreatAttack = threat;
             }
             if (phase == Phase.Hidden || phase == Phase.Disappearing) BeginPhase(Phase.Appearing);
         }
@@ -64,7 +76,7 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         Vector3 position = displayedTarget.transform.position + targetOffset;
         Vector3 viewport = viewCamera.WorldToViewportPoint(position);
         if (viewport.z <= viewCamera.nearClipPlane || viewport.x < 0f || viewport.x > 1f || viewport.y < 0f || viewport.y > 1f)
-        { HideImmediately(); return; }
+        { HideImmediately(false); return; }
         if (cue == null)
         {
             cue = Instantiate(cuePrefab).transform;
@@ -79,7 +91,8 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         cue.SetPositionAndRotation(position, viewCamera.transform.rotation);
         cue.localScale = new Vector3(height * viewCamera.aspect * screenWidth * width,
             height * screenHeight * heightScale, 1f);
-        properties.SetFloat(IntensityId, brightness * intensity);
+        readyWeight = Mathf.MoveTowards(readyWeight, eligible ? 1f : unavailableBrightness, Time.unscaledDeltaTime * 8f);
+        properties.SetFloat(IntensityId, brightness * intensity * readyWeight);
         if (cueRenderer != null) cueRenderer.SetPropertyBlock(properties);
     }
 
@@ -114,14 +127,17 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         }
     }
 
-    void HideImmediately()
+    void HideImmediately(bool clearReady = true)
     {
-        IsReady = false;
+        if (clearReady) { IsReady = false; ReadyAttack = null; ThreatAttack = null; }
         phase = Phase.Hidden;
         phaseTime = width = heightScale = intensity = 0f;
         displayedTarget = null;
         if (cue != null) cue.gameObject.SetActive(false);
     }
     void OnDisable() { HideImmediately(); }
-    void OnDestroy() { if (cue != null) Destroy(cue.gameObject); }
+    void OnDestroy()
+    {
+        if (cue != null) Destroy(cue.gameObject);
+    }
 }

@@ -43,6 +43,66 @@ public sealed class InterruptionCommandController : MonoBehaviour
     [SerializeField] private bool logInterruptionFlow;
 
     int _attemptCounter;
+    [Header("Defensive Block")]
+    public bool defensiveBlockEnabled;
+
+    // Shared by the command and ready cue. No camera, aim target, overlap query or reservation.
+    public bool TrySelectDefensiveBlockAttack(out DefensiveBlockAttack selected)
+        => TrySelectDefensiveBlockThreat(out selected, true);
+
+    public bool TrySelectDefensiveBlockThreat(out DefensiveBlockAttack selected, bool requireReady = false)
+    {
+        selected = null;
+        if (!defensiveBlockEnabled || playerContext == null) return false;
+        float bestTime = float.PositiveInfinity, bestDistance = float.PositiveInfinity;
+        int bestId = int.MaxValue;
+        var contexts = CharacterContextRegistry.ActiveContexts;
+        for (int i = 0; i < contexts.Count; i++)
+        {
+            var actor = contexts[i];
+            if (actor == null || !actor.isActiveAndEnabled || actor.TargetIdentity != AITargetIdentity.Enemy) continue;
+            var attack = actor.DefensiveBlockAttack;
+            if (attack == null || !attack.TryGetIncomingThreat(playerContext, out float time, requireReady)) continue;
+            Vector3 delta = actor.transform.position - playerContext.transform.position;
+            delta.y = 0f;
+            float distance = delta.sqrMagnitude;
+            int id = actor.GetInstanceID();
+            if (!DefensiveBlockGeometry.PreferThreat(time, distance, id, bestTime, bestDistance, bestId) ||
+                (requireReady && !TrySelectDefensiveBlockDefender(attack, out _))) continue;
+            selected = attack; bestTime = time; bestDistance = distance; bestId = id;
+        }
+        return selected != null;
+    }
+
+    public bool TrySelectDefensiveBlockDefender(DefensiveBlockAttack attack, out DefensiveBlockController selected)
+    {
+        selected = null;
+        if (!defensiveBlockEnabled || playerContext == null || attack == null || !attack.CanAcceptCommand(playerContext)) return false;
+        if (TrySelectDefensiveBlockAlly(attack, out var companion)) selected = companion.DefensiveBlock;
+        else if (playerContext.DefensiveBlock != null && playerContext.DefensiveBlock.CanBeginSelf(playerContext, attack))
+            selected = playerContext.DefensiveBlock;
+        return selected != null;
+    }
+
+    public bool TrySelectDefensiveBlockAlly(DefensiveBlockAttack attack, out AllyContext selected)
+    {
+        selected = null;
+        if (!defensiveBlockEnabled || playerContext == null || playerContext.fieldAllyManager == null ||
+            attack == null || !attack.CanAcceptCommand(playerContext)) return false;
+        int bestRole = int.MaxValue;
+        foreach (var member in playerContext.fieldAllyManager.RegisteredMembers)
+        {
+            if (member == null || member.ActorRole == ChainActorRole.Player || member.IsBusy || member.IsReserved ||
+                member.IsInKnockback || !(member.ActorContext is AllyContext actor) ||
+                !actor.isActiveAndEnabled || actor.DefensiveBlock == null ||
+                !actor.DefensiveBlock.CanBegin(playerContext, attack)) continue;
+            int role = (int)member.ActorRole;
+            if (role >= bestRole) continue;
+            selected = actor;
+            bestRole = role;
+        }
+        return selected != null;
+    }
 
     public event Action<InterruptionCommandExecution> CommandStarted;
     public event Action<InterruptionCommandResult> CommandFinished;
@@ -63,20 +123,26 @@ public sealed class InterruptionCommandController : MonoBehaviour
     {
         int attemptId = ++_attemptCounter;
 
-        if (playerContext == null || playerContext.Targeting == null)
-            return Finish(attemptId, InterruptionCommandResult.MissingConfiguration, "player targeting controller is missing");
+        if (playerContext == null)
+            return Finish(attemptId, InterruptionCommandResult.MissingConfiguration, "player context is missing");
 
         if (playerInterruptionController != null && playerInterruptionController.IsExecuting)
             return Finish(attemptId, InterruptionCommandResult.SkillRejected, "player interruption already executing");
 
-        LogCommand(attemptId, "started from committed player target");
+        if (TrySelectDefensiveBlockAttack(out var incoming))
+            return Finish(attemptId, incoming.RequestBlock(playerContext), incoming.LastResult);
+
+        if (playerContext.Targeting == null)
+            return Finish(attemptId, InterruptionCommandResult.NoValidTarget, "no incoming defensive attack");
+
+        LogCommand(attemptId, "no ready defensive threat; checking legacy committed target");
 
         if (playerContext.Targeting.TryGetTarget(out CharacteContext defensiveTarget))
         {
             defensiveTarget.ResolveReferences();
             var defensive = defensiveTarget.DefensiveBlockAttack;
             if (defensive != null && defensive.OwnsCurrentSkill)
-                return Finish(attemptId, defensive.RequestBlock(playerContext), defensive.LastResult);
+                return Finish(attemptId, InterruptionCommandResult.NoValidTarget, "no ready defensive receiver; legacy interruption is not used for this cast");
         }
 
         if (!TryFindTarget(out var targetCtx, out bool windowExistButClosed, out string targetDiagnostics))

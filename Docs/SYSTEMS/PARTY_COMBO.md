@@ -203,6 +203,83 @@ intro cutscene, coordinator, Field Ally/Helper steps, warp, facing, and skill re
 change cannot redirect the chain, and a pooled new life cannot inherit the old meter transaction or
 reservation.
 
+## Combo Slow and Camera Presentation
+
+### Visible warp placement
+
+`PlaceNearEventTarget` now evaluates a ring of `placementCandidateCount` poses
+(default 8, limited to 1–16), keeping the authored range and target-local offset.
+Every pose passes through the existing placement resolver; camera scoring uses
+the final NavMesh-snapped position. With `requireUnobstructedPosition` enabled,
+penetrating poses are rejected, including the shared resolver's least-penetrating
+fallback. If no safe pose exists, placement fails before casting.
+
+CharacterController bodies use their authored capsule dimensions for placement
+and visibility samples; planar NavMesh support is checked at the destination's
+ground height rather than the capsule's torso height. When the footprint matches
+the body collider, the shared resolver treats a non-penetrating result from
+its precise physics check as clear; padding touching
+the ground must not fall back to a bounding sphere and reject every grounded
+Combo destination. Actual wall penetration still rejects the pose.
+
+Among valid poses, Combo prefers the most visible body samples (head, chest,
+waist and two shoulders), then the most samples in the viewport, then distance
+from the screen edges. Existing placement scores break remaining ties. Offscreen
+samples count as not visible. If all poses are obscured, the least-obscured safe
+pose wins; being obscured is not itself a placement failure.
+
+Visibility rays use the gameplay camera before this Combo's focus begins and
+`visibilityObstructionLayers` (default all layers). World geometry, the event
+target and other characters' non-trigger body colliders all block sight. Only
+the casting actor's old body/hierarchy is ignored. Sensor/volume triggers do not
+block sight; characters should have non-trigger body colliders in the configured
+mask. Visibility is sampled collider geometry, not a per-pixel renderer test.
+Without a camera, normal placement scoring is used. This adds no actor-discovery
+physics queries and does not alter shared Helper/Chain/Summon placement rules.
+
+`PartyComboExecutionProfile.presentation` configures the accepted cast's short
+presentation. Defaults enable a 0.25 world scale, eased recovery to normal at
+the animation's actual cast point, 0.15-second camera blend-in, 0.25-second
+camera hold after release, 0.25-second blend-out and a four-degree FOV reduction. Disable `presentation.enabled` per
+execution profile to opt out. No additional scene component is required.
+
+Only the casting ally receives a context world-slow exemption, released at the
+cast point or on cancellation/cleanup. The presentation reads the active request's
+animation progress, rather than assuming a fixed wind-up duration. Instant and
+zero-cast-point skills skip presentation. `CastReleased` ends slow/exemption and
+starts `cameraHoldSeconds`; the camera keeps focusing (and may finish blending
+in) before returning. Set hold to zero for immediate return. Pause stops the
+hold clock, a new Combo replaces it, and pre-release cancellation skips it.
+Camera disable, invalid/distant actor and cinematics still end focus early;
+successful reservation commit remains the sole trigger for charge/cooldown and
+`ComboSkillCommitted`. Recovery and placement reservations keep their existing
+lifecycle after the camera starts returning.
+
+The gameplay camera offsets its normal player pivot toward the ally and event
+target, with a bounded displacement (default four metres) and mild zoom. Player
+input and HUD remain available. Actors farther than twelve metres skip camera
+focus; moving outside that limit ends focus. These are framing safeguards, not
+a guarantee that all actors are visible through obstacles. The existing camera
+collision handling stays active. Returning tracks the player's current position,
+not a saved world-space camera pose. A new combo takes over the current blend;
+an old execution cannot release the new camera owner.
+
+Combo slow uses a separate, lower-priority manual channel in `TimeSlowManager`.
+Existing timed dash/cutscene slows take priority and retain their existing
+last-request-wins behavior. Releasing them reveals the current combo progress,
+if one remains. The newest combo owns the presentation channel; superseded
+combos cannot update or release it. Full cutscenes and NPC presentation suppress
+Combo presentation; it does not resume afterward. Cutscene cleanup now stops
+only its own timed slow handle. Global pause stops slow expiry/world-clock
+advancement and Combo camera/curve progress.
+
+Disable, party rebind, and executor cleanup release the scope idempotently.
+Pre-commit executor cleanup cancels only its matching active skill request so a
+disabled executor cannot leave a delayed payload running after its reservation ends.
+Validate pause before cast, cancellation, owner death, immediate payload failure,
+overlapping ally casts, dash/cutscene interference, changed player position on
+return, and close/wall-obstructed/distant camera framing in Play Mode.
+
 ## Validation
 
 Run **Tools > Validation > Validate Party Combo Skills** after editing combo or

@@ -35,7 +35,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   icon: {fileID: 0}
   displayName: Rector_Skill_3
-  skillId: Rector_Skill_3
+  skillId: rector_skill_3
   tags: 10
   description: 
   baseDamage: 90
@@ -44,12 +44,15 @@ MonoBehaviour:
   baseManaCost: 0
   baseCastTime: 0.5
   baseCooldown: 6
+  baseMaxCharges: 1
   baseCritChance: 0
   baseProjectilesCount: 1
   projectileSpeed: 25
   AreaofEffec: 0
   baseRadius: 0
-  maxLevel: 20
+  baseEffectDuration: 0
+  baseHealPower: 0
+  upgradeTree: {fileID: 0}
   payload: {fileID: -7084758134643645102}
   castCue: {fileID: 0}
   skillClip:
@@ -57,15 +60,15 @@ MonoBehaviour:
     _Speed: 1
     _Events:
       _NormalizedTimes:
-      - 0.069919996
       - 0.34854856
       - 0.47016576
+      - 0.71995085
       - NaN
       _Callbacks: []
       _Names:
-      - {fileID: 11400000, guid: fcffb1725faae934bbafd4eeccec9990, type: 2}
       - {fileID: 11400000, guid: 9752b5160a8826b4faa115ca219e42a6, type: 2}
       - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
+      - {fileID: 11400000, guid: fcffb1725faae934bbafd4eeccec9990, type: 2}
     _Clip: {fileID: 7218412512397633768, guid: 5035feff0922f894bb9fdcfe0bbe8b54, type: 3}
     _NormalizedStartTime: NaN
   ignoreCharacterCollisionDuringRootMotion: 1
@@ -119,8 +122,6 @@ MonoBehaviour:
   preCastIndicatorPrefab: {fileID: 0}
   cancelPreCastOnStun: 1
   cancelPreCastOnStagger: 1
-  perLevelData: []
-  previewLevel: 1
   references:
     version: 2
     RefIds: []

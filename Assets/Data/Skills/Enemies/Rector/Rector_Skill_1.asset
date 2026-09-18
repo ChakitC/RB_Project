@@ -12,9 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
   m_Name: Rector_Skill_1
   m_EditorClassIdentifier: 
+  defensiveBlock: {fileID: 11400000, guid: 3c4cdc0d40de3bc4abda39fe39c426d2, type: 2}
   icon: {fileID: 0}
   displayName: Rector_Skill_1
-  skillId: Rector_Skill_1
+  skillId: rector_skill_1
   tags: 20
   description: 'Rector_Chach
 
@@ -25,12 +26,15 @@ MonoBehaviour:
   baseManaCost: 0
   baseCastTime: 0.5
   baseCooldown: 18
+  baseMaxCharges: 1
   baseCritChance: 0
   baseProjectilesCount: 1
   projectileSpeed: 5
   AreaofEffec: 0
   baseRadius: 0
-  maxLevel: 20
+  baseEffectDuration: 0
+  baseHealPower: 0
+  upgradeTree: {fileID: 0}
   payload: {fileID: 4845383700712859180}
   castCue: {fileID: 0}
   skillClip:
@@ -61,6 +65,7 @@ MonoBehaviour:
       - {fileID: 11400000, guid: b2e8d6c4a1b347c98d0e1f2a34567890, type: 2}
     _Clip: {fileID: -4899949704464372382, guid: 6a2e8e24f12e1114080aa52567f1a426, type: 3}
     _NormalizedStartTime: NaN
+  ignoreCharacterCollisionDuringRootMotion: 1
   castPointNormalized: 0.052
   skillVfxEvents:
   - cueIndex: 0
@@ -91,6 +96,14 @@ MonoBehaviour:
     extraLife: 0
     allowParticlesToFinish: 1
     animClip: {fileID: 0}
+  hitLagDuration: 0.06
+  hitLagTimeScale: 0.05
+  hitLagShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   isCutsceneSkill: 0
   cutsceneDef:
     characterCutsceneClip:
@@ -117,8 +130,6 @@ MonoBehaviour:
   preCastIndicatorPrefab: {fileID: 0}
   cancelPreCastOnStun: 1
   cancelPreCastOnStagger: 1
-  perLevelData: []
-  previewLevel: 1
   references:
     version: 2
     RefIds: []

@@ -43,6 +43,7 @@ public abstract class CharacteContext : MonoBehaviour
     public CharacterKnockbackMotor KnockbackMotor;
     public DefensiveBlockAttack DefensiveBlockAttack;
     public DefensiveBlockController DefensiveBlock;
+    public FieldAllyMember FieldAllyMember;
     public CharacterVerticalMotor VerticalMotor;
     public PassiveController PassiveController;
     public CharacterActiveSkillProgress ActiveSkillProgress;
@@ -175,6 +176,7 @@ public abstract class CharacteContext : MonoBehaviour
         KnockbackMotor = ResolveActorComponent(KnockbackMotor);
         DefensiveBlockAttack = ResolveActorComponent(DefensiveBlockAttack);
         DefensiveBlock = ResolveActorComponent(DefensiveBlock);
+        FieldAllyMember = ResolveActorComponent(FieldAllyMember);
         VerticalMotor = ResolveActorComponent(VerticalMotor);
         PassiveController = ResolveActorComponent(PassiveController);
         ActiveSkillProgress = ResolveActorComponent(ActiveSkillProgress);

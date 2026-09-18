@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe6a0ddfc5e5974197e4ba9a79301ff, type: 3}
+  m_Name: GuardSetting
+  m_EditorClassIdentifier: 
+  animation: {fileID: 11400000, guid: 765fa259201499d4bb5c9aaf0f216bab, type: 2}
+  worldLayers:
+    serializedVersion: 2
+    m_Bits: 1200129
+  standAhead: 2.5
+  minimumStandAhead: 0.8
+  approachClearance: 4.2
+  guardCenterHeight: 1.2
+  guardHalfWidth: 0.65
+  guardHalfHeight: 1.2
+  guardHalfDepth: 0.05
+  guardForwardOffset: 1.4
+  timeoutSeconds: 2
+  slideDistance: 1.5
+  slideSeconds: 0.35
+  warpFadeOutSeconds: 0.04
+  warpFadeInSeconds: 0.08
+  impactVfx: {fileID: 7849791404790678207, guid: 42913e44bd86c194f80b76492e6fe2fd, type: 3}
+  impactVfxLifetime: 2
+  hitLagDuration: 0.5
+  hitLagTimeScale: 0.175
+  hitLagShape:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  cameraEnabled: 1
+  cameraLocalPosition: {x: 2.65, y: 1.55, z: -1.91}
+  cameraLocalEulerAngles: {x: -0.35, y: -35.39, z: 10.49}
+  cameraFieldOfView: 60
+  cameraBlendInSeconds: 0.25
+  cameraHoldSeconds: 0.12
+  cameraBlendOutSeconds: 0.4

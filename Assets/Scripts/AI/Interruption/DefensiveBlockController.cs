@@ -5,63 +5,175 @@ using UnityEngine.AI;
 public sealed class DefensiveBlockController : MonoBehaviour
 {
     const float PlacementContactTolerance = 0.005f;
-    public BlockAnimationProfile animationProfile;
+    // Legacy serialized fields remain for prefab/API compatibility and runtime test overrides.
+    // Author settings on CharacterStats.defensiveBlock (DefensiveBlockActorProfile).
+    [HideInInspector] public BlockAnimationProfile animationProfile;
     public FieldAllyMember member;
-    public LayerMask worldLayers = 1;
-    [Min(0.1f)] public float standAhead = 2.5f;
-    [Min(0.1f)] public float minimumStandAhead = 0.8f;
-    [Min(0.1f)] public float approachClearance = 4.2f;
-    [Min(0.1f)] public float guardHalfWidth = 0.65f;
-    [Min(0.1f)] public float guardHalfHeight = 1.2f;
-    [Min(0f)] public float guardForwardOffset = 1.4f;
-    [Min(0.1f)] public float timeoutSeconds = 2f;
-    [Min(0f)] public float slideDistance = 1.5f;
-    [Min(0.01f)] public float slideSeconds = 0.35f;
-    public GameObject impactVfx;
-    [Header("Warp presentation")]
-    [Min(0f)] public float warpFadeOutSeconds = 0.04f;
-    [Min(0f)] public float warpFadeInSeconds = 0.08f;
-    AllyContext ctx;
+    [Tooltip("Used when the current character has no guard profile. Assigned on the Player prefab for self guard.")]
+    public DefensiveBlockActorProfile defaultSettings;
+    [HideInInspector] public LayerMask worldLayers = 1;
+    [HideInInspector] public float standAhead = 2.5f;
+    [HideInInspector] public float minimumStandAhead = 0.8f;
+    [HideInInspector] public float approachClearance = 4.2f;
+    [HideInInspector] public float guardHalfWidth = 0.65f;
+    [HideInInspector] public float guardHalfHeight = 1.2f;
+    [HideInInspector] public float guardHalfDepth = 0.05f;
+    [HideInInspector] public float guardForwardOffset = 1.4f;
+    [HideInInspector] public float timeoutSeconds = 2f;
+    [HideInInspector] public float slideDistance = 1.5f;
+    [HideInInspector] public float slideSeconds = 0.35f;
+    [HideInInspector] public GameObject impactVfx;
+    [HideInInspector] public float warpFadeOutSeconds = 0.04f;
+    [HideInInspector] public float warpFadeInSeconds = 0.08f;
+    float guardCenterHeight = 1.2f;
+    float impactVfxLifetime = 2f;
+    float hitLagDuration = 0.06f, hitLagTimeScale = 0.1f;
+    AnimationCurve hitLagShape;
+    CharacteContext ctx;
     DefensiveBlockAttack attack;
     PlayerContext player;
     int request;
     int life;
     bool active, impact, restoring;
-    bool btEnabled, moveEnabled, agentStopped, agentPosition, agentRotation;
-    bool agentOwned, rbKinematic, rbGravity;
     float elapsed, slideElapsed, slideApplied;
     Vector3 slideDirection;
     CharacterVisibilityController warpVisibility;
     CharacterPlacementRequest pendingPlacement;
+    CharacterPlacementFootprint slideFootprint;
     bool arrived;
-    public Vector3 GuardCenter => transform.position + Vector3.up * 1.2f + transform.forward * guardForwardOffset;
+    DefensiveBlockActorProfile loadedProfile;
+    CharacterStats sessionDefinition;
+    int playerLife;
+    GameplayCameraController shotCamera;
+    int selfControlToken;
+    PlayerMovementCC selfMovement;
+    bool selfMovementWasEnabled;
+    public CharacteContext ActorContext => ctx;
+    public bool IsSelfGuard => active && ctx == player;
+    public int RequestId => request;
+    public PlayerContext ProtectedPlayer => player;
+    public event System.Action<DefensiveBlockController> Accepted;
+    public event System.Action<DefensiveBlockController> Arrived;
+    public event System.Action<DefensiveBlockController> Impacted;
+    public event System.Action<DefensiveBlockController, bool> Finished;
+    public DefensiveBlockActorProfile Settings => ctx != null && ctx.baseStats != null && ctx.baseStats.defensiveBlock != null
+        ? ctx.baseStats.defensiveBlock : defaultSettings;
+    public Vector3 GuardCenter => transform.position + Vector3.up * guardCenterHeight + transform.forward * guardForwardOffset;
     public bool IsExecuting => active;
     public bool HasArrived => active && arrived;
+    float ActorDeltaTime => ctx == null || ctx.UsesWorldSlow
+        ? TimeSlowManager.Instance.WorldDeltaTime
+        : Time.deltaTime;
     public void CancelFor(DefensiveBlockAttack source, int id)
     {
         if (active && attack == source && request == id) Cancel();
     }
 
-    void Awake() { ctx = GetComponentInParent<AllyContext>(); ctx?.ResolveReferences(); }
+    void Awake()
+    {
+        ctx = GetComponentInParent<CharacteContext>();
+        ctx?.ResolveReferences();
+        if (member == null && ctx != null) member = ctx.FieldAllyMember;
+        ResolveProfile();
+    }
     public bool IsReadyFor(DefensiveBlockAttack source, int id) => active && arrived && !impact && attack == source &&
         request == id && ctx != null && ctx.LifeGeneration == life && ctx.HealthSystem != null && ctx.HealthSystem.IsAlive &&
+        ctx.baseStats == sessionDefinition && player != null && player.LifeGeneration == playerLife &&
+        player.isActiveAndEnabled && player.HealthSystem != null && player.HealthSystem.IsAlive &&
         ctx.AnimBrain != null && (ctx.AnimBrain.BlockPhase == BlockAnimationPhase.Begin ||
             ctx.AnimBrain.BlockPhase == BlockAnimationPhase.Loop);
 
     public bool CanBegin(PlayerContext protectedPlayer, DefensiveBlockAttack source) =>
         TryResolveBeginPose(protectedPlayer, source, out _, out _);
 
+    // Player-only entry point. Shared presentation, contact and reactions still belong here.
+    public bool CanBeginSelf(PlayerContext issuer, DefensiveBlockAttack source)
+    {
+        if (ctx != issuer || !CanStartGuard(issuer, source) ||
+            (ctx.stateHub != null && (!ctx.stateHub.CanUseSkill() || !ctx.stateHub.CanMove()))) return false;
+        return TryGetFootprint(out _);
+    }
+
+    bool CanStartGuard(PlayerContext issuer, DefensiveBlockAttack source)
+    {
+        if (!ResolveProfile()) return false;
+        if (member == null && ctx != null) member = ctx.FieldAllyMember;
+        return isActiveAndEnabled && !active && issuer != null && source != null && ctx != null &&
+            ctx.isActiveAndEnabled && ctx.HealthSystem != null && ctx.HealthSystem.IsAlive &&
+            (ctx.stateHub == null || ctx.stateHub.LifeSM.CurrentId == LifeStateId.Alive) &&
+            member != null && !member.IsBusy && !member.IsReserved && !member.IsInKnockback &&
+            ctx.AnimDriver != null && ctx.AnimBrain != null && animationProfile != null &&
+            animationProfile.beginClip != null && animationProfile.impactClip != null &&
+            CharacterAnimationTransitionPolicy.CanStart(ctx.AnimBrain.CurrentAnimationMode, CharacterAnimationMode.Block,
+                CharacterAnimationTransitionReason.NormalCommand, ctx.AnimBrain.IsDowned);
+    }
+
+    bool TryGetFootprint(out CharacterPlacementFootprint footprint)
+    {
+        // Self guard moves the same physical body as Player locomotion. Animated model
+        // capsules may extend below the floor and would falsely block every planar slide.
+        Collider body = ctx != null && ctx.cc != null && ctx.cc.enabled ? ctx.cc :
+            ctx != null && ctx.ColliderRefs != null ? ctx.ColliderRefs.CharacterPositionCollider : null;
+        return CharacterPlacementFootprintUtility.TryGetColliderFootprint(body, ctx.transform, out footprint, out _);
+    }
+
+    public bool TryBeginSelf(PlayerContext issuer, DefensiveBlockAttack source, int id)
+    {
+        ctx?.ResolveReferences();
+        if (!CanBeginSelf(issuer, source) || !source.CanAcceptCommand(issuer)) return false;
+        Vector3 direction = source.transform.position - ctx.transform.position;
+        direction.y = 0f;
+        if (direction.sqrMagnitude < .01f || !TryGetFootprint(out var footprint)) return false;
+        bool movementWasEnabled = issuer.movement != null && issuer.movement.enabled;
+        if (!member.TryBeginTransientExecution(this, protectActor: false, allowCollisionOverride: false)) return false;
+        attack = source; player = issuer; request = id; life = ctx.LifeGeneration;
+        playerLife = player.LifeGeneration; sessionDefinition = ctx.baseStats;
+        active = true; impact = false; elapsed = slideElapsed = slideApplied = 0f;
+        arrived = true; pendingPlacement = null; slideFootprint = footprint;
+        selfControlToken = ctx.stateHub != null ? ctx.stateHub.AcquireExternalControlBlockToken(
+            ControlBlockFlags.Move | ControlBlockFlags.Rotate | ControlBlockFlags.Shoot | ControlBlockFlags.Skill) : 0;
+        // The Player movement module also performs overlap separation, outside CanMove().
+        selfMovement = issuer.movement;
+        selfMovementWasEnabled = movementWasEnabled;
+        if (selfMovement != null) selfMovement.enabled = false;
+        ctx.transform.rotation = Quaternion.LookRotation(direction);
+        ctx.AnimBrain.PlaybackEvent += OnPlayback;
+        if (!ctx.AnimDriver.TryBeginBlock(id, animationProfile)) { Cancel(); return false; }
+        Accepted?.Invoke(this);
+        shotCamera = GameplayCameraController.Instance;
+        shotCamera?.BeginDefensiveBlockShot(this, player, ctx.transform, loadedProfile);
+        Arrived?.Invoke(this);
+        return active;
+    }
+
+    bool ResolveProfile()
+    {
+        var next = Settings;
+        if (next == null || !next.IsConfigured) return false;
+        if (next == loadedProfile) return true;
+        loadedProfile = next;
+        animationProfile = next.animation; worldLayers = next.worldLayers;
+        standAhead = next.standAhead; minimumStandAhead = next.minimumStandAhead;
+        approachClearance = next.approachClearance;
+        guardHalfWidth = next.guardHalfWidth; guardHalfHeight = next.guardHalfHeight;
+        guardHalfDepth = next.guardHalfDepth;
+        guardCenterHeight = next.guardCenterHeight;
+        guardForwardOffset = next.guardForwardOffset; timeoutSeconds = next.timeoutSeconds;
+        slideDistance = next.slideDistance; slideSeconds = next.slideSeconds;
+        warpFadeOutSeconds = next.warpFadeOutSeconds; warpFadeInSeconds = next.warpFadeInSeconds;
+        impactVfx = next.impactVfx;
+        impactVfxLifetime = next.impactVfxLifetime;
+        hitLagDuration = next.hitLagDuration; hitLagTimeScale = next.hitLagTimeScale;
+        hitLagShape = next.hitLagShape != null && next.hitLagShape.length > 0 ? next.hitLagShape : null;
+        return true;
+    }
+
     bool TryResolveBeginPose(PlayerContext protectedPlayer, DefensiveBlockAttack source,
         out CharacterPlacementRequest placement, out CharacterPlacementResult pose)
     {
         placement = null;
         pose = default;
-        if (!isActiveAndEnabled || active || protectedPlayer == null || source == null || ctx == null || ctx.HealthSystem == null || !ctx.HealthSystem.IsAlive ||
-            member == null || member.IsBusy || member.IsReserved || ctx.AnimDriver == null || ctx.AnimBrain == null ||
-            animationProfile == null || animationProfile.beginClip == null || animationProfile.impactClip == null ||
-            !CharacterAnimationTransitionPolicy.CanStart(ctx.AnimBrain.CurrentAnimationMode, CharacterAnimationMode.Block,
-                CharacterAnimationTransitionReason.NormalCommand, ctx.AnimBrain.IsDowned))
-            return false;
+        if (ctx == protectedPlayer || !CanStartGuard(protectedPlayer, source)) return false;
         Vector3 direction = source.transform.position - protectedPlayer.transform.position;
         direction.y = 0f;
         if (direction.sqrMagnitude < 0.01f) return false;
@@ -87,33 +199,21 @@ public sealed class DefensiveBlockController : MonoBehaviour
     {
         ctx?.ResolveReferences();
         if (!TryResolveBeginPose(protectedPlayer, source, out var placement, out var pose)) return false;
-        if (!member.TryReserve(this)) return false;
+        if (!member.TryBeginTransientExecution(this, protectActor: false, allowCollisionOverride: false)) return false;
         if (!CharacterPlacementReservationRegistry.Shared.TryReserve(placement, pose, out _))
         {
-            member.ReleaseReservation(this);
+            member.EndTransientExecution(this);
             return false;
         }
         attack = source; player = protectedPlayer; request = id; life = ctx.LifeGeneration;
+        playerLife = player.LifeGeneration; sessionDefinition = ctx.baseStats;
         active = true; impact = false; elapsed = slideElapsed = slideApplied = 0f;
         arrived = false;
         pendingPlacement = placement;
-        btEnabled = ctx.BehaviorTree != null && ctx.BehaviorTree.enabled;
-        moveEnabled = ctx.AgentMoveDriver != null && ctx.AgentMoveDriver.enabled;
-        if (ctx.BehaviorTree != null) ctx.BehaviorTree.enabled = false;
-        if (ctx.AgentMoveDriver != null) ctx.AgentMoveDriver.enabled = false;
-        agentOwned = ctx.agent != null && ctx.agent.enabled && ctx.agent.isOnNavMesh;
-        if (agentOwned)
-        {
-            agentStopped = ctx.agent.isStopped; agentPosition = ctx.agent.updatePosition; agentRotation = ctx.agent.updateRotation;
-            ctx.agent.isStopped = true; ctx.agent.updatePosition = false; ctx.agent.updateRotation = false;
-        }
-        if (ctx.rb != null)
-        {
-            rbKinematic = ctx.rb.isKinematic; rbGravity = ctx.rb.useGravity;
-            ctx.rb.isKinematic = true; ctx.rb.useGravity = false;
-        }
+        slideFootprint = placement.Footprint;
         ctx.AnimBrain.PlaybackEvent += OnPlayback;
         if (!ctx.AnimDriver.TryBeginBlock(id, animationProfile)) { Cancel(); return false; }
+        Accepted?.Invoke(this);
         // Raise the guard while fading out, so the visual transition does not add another
         // startup delay. No interception is allowed until the actor has actually arrived.
         warpVisibility = ctx.Visibility;
@@ -138,51 +238,69 @@ public sealed class DefensiveBlockController : MonoBehaviour
         { Cancel(); return; }
         // Recheck the originally reserved point; never chase a moving player during fade-out.
         ctx.transform.SetPositionAndRotation(pose.StartPosition, pose.StartRotation);
-        if (agentOwned && ctx.agent != null && ctx.agent.isOnNavMesh) ctx.agent.nextPosition = pose.StartPosition;
+        if (ctx is AllyContext companion && companion.agent != null && companion.agent.enabled && companion.agent.isOnNavMesh)
+            companion.agent.nextPosition = pose.StartPosition;
         Physics.SyncTransforms();
         arrived = true;
         pendingPlacement = null;
         if (warpVisibility != null) warpVisibility.Appear(warpFadeInSeconds);
+        shotCamera = GameplayCameraController.Instance;
+        shotCamera?.BeginDefensiveBlockShot(this, player, transform, loadedProfile);
+        Arrived?.Invoke(this);
     }
 
     public void ConfirmImpact(DefensiveBlockAttack source, int id)
     {
         if (!IsReadyFor(source, id) || !ctx.AnimDriver.TryBlockImpact(id, slideSeconds)) return;
         impact = true;
+        Impacted?.Invoke(this);
         slideDirection = -ctx.transform.forward;
-        GlobalTimeScaleManager.Instance.RequestHitLag(0.06f, 0.1f, null);
+        if (hitLagDuration > 0f)
+            GlobalTimeScaleManager.Instance.RequestHitLag(hitLagDuration, hitLagTimeScale, hitLagShape);
         if (impactVfx != null)
         {
             GameObject effect = Instantiate(impactVfx, GuardCenter, ctx.transform.rotation);
-            Destroy(effect, 2f);
+            Destroy(effect, impactVfxLifetime);
         }
     }
     void Update()
     {
         if (!active) return;
         if (ctx == null || ctx.LifeGeneration != life || ctx.HealthSystem == null || !ctx.HealthSystem.IsAlive ||
+            ctx.baseStats != sessionDefinition || player == null || !player.isActiveAndEnabled ||
+            player.LifeGeneration != playerLife || player.HealthSystem == null || !player.HealthSystem.IsAlive ||
+            player.interruptionCommand == null || !player.interruptionCommand.defensiveBlockEnabled ||
+            CutsceneDirector.IsCinematicPlaying || NpcPresentationController.IsActive ||
             (!impact && (attack == null || !attack.Matches(request)))) { Cancel(); return; }
-        elapsed += Time.deltaTime;
+        elapsed += ActorDeltaTime;
         if (!impact && elapsed >= timeoutSeconds && ctx.AnimBrain.BlockPhase != BlockAnimationPhase.Exit)
             ctx.AnimDriver.EndBlock(request);
     }
     void LateUpdate()
     {
         if (!active || !impact || slideElapsed >= slideSeconds) return;
-        slideElapsed += Time.deltaTime;
+        float dt = ActorDeltaTime;
+        if (dt <= 0f) return;
+        slideElapsed += dt;
         float next = slideDistance * Mathf.Clamp01(slideElapsed / slideSeconds);
         float distance = next - slideApplied;
         slideApplied = next;
-        Collider body = ctx.ColliderRefs != null ? ctx.ColliderRefs.CharacterPositionCollider : null;
-        if (CharacterBodySweepUtility.TryResolveShape(body, out var shape))
-            distance = CharacterBodySweepUtility.ResolveAllowedDistance(shape, slideDirection, distance,
-                0.03f, ~0, QueryTriggerInteraction.Ignore, ctx.transform);
-        else distance = 0f;
+        // Production companion position colliders are animated triggers. Sweep their accepted
+        // placement footprint, rather than requiring a solid collider or following recoil bones.
+        var shape = DefensiveBlockSlideMotor.ResolveShape(slideFootprint, ctx.transform);
+        distance = CharacterBodySweepUtility.ResolveAllowedDistance(shape, slideDirection, distance,
+            0.03f, ~0, QueryTriggerInteraction.Ignore, ctx.transform);
         Vector3 desired = ctx.transform.position + slideDirection * distance;
         if (NavMesh.Raycast(ctx.transform.position, desired, out var edge, NavMesh.AllAreas)) desired = edge.position;
         if (NavMesh.SamplePosition(desired, out var sample, 0.2f, NavMesh.AllAreas) && Mathf.Abs(sample.position.y - desired.y) < 0.2f)
-            ctx.transform.position = sample.position;
-        if (agentOwned && ctx.agent.isOnNavMesh) ctx.agent.nextPosition = ctx.transform.position;
+        {
+            // Keep the controller's physics pose in sync; a raw Transform assignment can
+            // be overwritten by the Player vertical motor's next CharacterController.Move.
+            if (ctx.cc != null && ctx.cc.enabled) ctx.cc.Move(sample.position - ctx.transform.position);
+            else ctx.transform.position = sample.position;
+        }
+        if (ctx is AllyContext companion && companion.agent != null && companion.agent.enabled && companion.agent.isOnNavMesh)
+            companion.agent.nextPosition = ctx.transform.position;
     }
     void OnPlayback(CharacterAnimBrain.PlaybackSignal signal)
     {
@@ -207,17 +325,17 @@ public sealed class DefensiveBlockController : MonoBehaviour
         {
             if (ctx.AnimBrain != null) ctx.AnimBrain.PlaybackEvent -= OnPlayback;
             ctx.AnimDriver?.EndBlock(request, true);
-            if (agentOwned && ctx.agent != null && ctx.agent.enabled && ctx.agent.isOnNavMesh)
-            {
-                ctx.agent.nextPosition = ctx.transform.position;
-                ctx.agent.isStopped = agentStopped; ctx.agent.updatePosition = agentPosition; ctx.agent.updateRotation = agentRotation;
-            }
-            if (ctx.BehaviorTree != null) ctx.BehaviorTree.enabled = btEnabled;
-            if (ctx.AgentMoveDriver != null) ctx.AgentMoveDriver.enabled = moveEnabled;
-            if (ctx.rb != null) { ctx.rb.isKinematic = rbKinematic; ctx.rb.useGravity = rbGravity; }
         }
-        member?.ReleaseReservation(this);
+        member?.EndTransientExecution(this);
+        if (selfControlToken != 0) ctx?.stateHub?.ReleaseExternalControlBlockToken(selfControlToken);
+        selfControlToken = 0;
+        if (selfMovement != null) selfMovement.enabled = selfMovementWasEnabled;
+        selfMovement = null;
         CharacterPlacementReservationRegistry.Shared.ReleaseOwner(this);
+        shotCamera?.EndDefensiveBlockShot(this, impact);
+        shotCamera = null;
+        Finished?.Invoke(this, impact);
+        attack?.ReleaseDefender(this, request);
         attack = null; player = null; request = 0;
         restoring = false;
     }
@@ -226,6 +344,6 @@ public sealed class DefensiveBlockController : MonoBehaviour
     {
         Gizmos.color = Color.cyan;
         Gizmos.matrix = Matrix4x4.TRS(GuardCenter, transform.rotation, Vector3.one);
-        Gizmos.DrawWireCube(Vector3.zero, new Vector3(guardHalfWidth * 2f, guardHalfHeight * 2f, 0.1f));
+        Gizmos.DrawWireCube(Vector3.zero, new Vector3(guardHalfWidth * 2f, guardHalfHeight * 2f, guardHalfDepth * 2f));
     }
 }

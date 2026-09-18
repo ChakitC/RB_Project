@@ -664,6 +664,7 @@ GameObject:
   - component: {fileID: 8400816988707940924}
   - component: {fileID: 7573685306884060457}
   - component: {fileID: 5412795469213032330}
+  - component: {fileID: 8621773744093801160}
   m_Layer: 10
   m_Name: Ally_Helper
   m_TagString: Ally
@@ -1248,6 +1249,9 @@ MonoBehaviour:
   StaminaSystem: {fileID: 5952653430675107378}
   DashSystem: {fileID: 5038378700834558391}
   KnockbackMotor: {fileID: 4947922598450173769}
+  DefensiveBlockAttack: {fileID: 0}
+  DefensiveBlock: {fileID: 8621773744093801160}
+  FieldAllyMember: {fileID: 7430559071053857235}
   VerticalMotor: {fileID: 7573685306884060457}
   PassiveController: {fileID: 7146810742816155018}
   ActiveSkillProgress: {fileID: 723459649131664530}
@@ -1598,6 +1602,36 @@ MonoBehaviour:
     m_RotationOrder: 4
   useUnscaledTime: 1
   disableShadowsWhileHidden: 0
+--- !u!114 &8621773744093801160
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5546123616510741782}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f70f5a6d688a8d40b71c5c52fc5eee7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animationProfile: {fileID: 0}
+  member: {fileID: 0}
+  worldLayers:
+    serializedVersion: 2
+    m_Bits: 1
+  standAhead: 2.5
+  minimumStandAhead: 0.8
+  approachClearance: 4.2
+  guardHalfWidth: 0.65
+  guardHalfHeight: 1.2
+  guardHalfDepth: 0.05
+  guardForwardOffset: 1.4
+  timeoutSeconds: 2
+  slideDistance: 1.5
+  slideSeconds: 0.35
+  impactVfx: {fileID: 0}
+  warpFadeOutSeconds: 0.04
+  warpFadeInSeconds: 0.08
 --- !u!1 &5742793755352266359
 GameObject:
   m_ObjectHideFlags: 0

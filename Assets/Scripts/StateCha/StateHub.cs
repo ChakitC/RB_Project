@@ -12,6 +12,9 @@ public sealed class StateHub : MonoBehaviour
     public StateMachine<LifeStateId, CharacteContext> LifeSM { get; private set; }
     public StateMachine<UIStateId, CharacteContext> UISM { get; private set; }
 
+    // Party UI binds while the actor is inactive, before Awake creates these machines.
+    public bool IsInitialized => MoveSM != null && WeaponSM != null && LifeSM != null && UISM != null;
+
     [Header("Debug")]
     [SerializeField] private bool debugInInspector = true;
     [SerializeField] private bool logTransitions = true;
@@ -364,6 +367,7 @@ public sealed class StateHub : MonoBehaviour
         MoveSM.CurrentId != MoveStateId.Stunned;
 
     public bool CanUseSkill() =>
+        IsInitialized &&
         IsAlive &&
         !Isdown &&
         !IsSkillBlockedByStatusEffects &&

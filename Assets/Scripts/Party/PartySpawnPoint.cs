@@ -14,11 +14,21 @@ public sealed class PartySpawnPoint : MonoBehaviour
 {
     [SerializeField] private PartySpawnConfigSO config;
     [SerializeField] private bool spawnOnAwake = true;
+    [SerializeField, Tooltip("Optional scene roster by party index. Empty entries use the saved party.")]
+    private CharacterStats[] definitionOverrides = Array.Empty<CharacterStats>();
 
     public static event Action<PartyRuntime> Spawned;
 
     public PartySpawnConfigSO Config => config;
     public PartyRuntime CurrentParty { get; private set; }
+
+    public void DespawnParty()
+    {
+        var party = CurrentParty;
+        CurrentParty = null;
+        if (party == null) return;
+        Rollback(party.Root, party.PlayerUIRoot);
+    }
 
     void Awake()
     {
@@ -147,7 +157,7 @@ public sealed class PartySpawnPoint : MonoBehaviour
     }
 #endif
 
-    static void SpawnActor(PartySpawnEntry entry, Transform parent, PartyRuntime party)
+    void SpawnActor(PartySpawnEntry entry, Transform parent, PartyRuntime party)
     {
         GameObject actorRoot = Instantiate(entry.Prefab, parent);
         actorRoot.name = RoleObjectName(entry.Role);
@@ -158,6 +168,8 @@ public sealed class PartySpawnPoint : MonoBehaviour
         CharacterContextPartyLoader loader =
             actorRoot.GetComponentInChildren<CharacterContextPartyLoader>(true);
         FieldAllyMember fieldMember = actorRoot.GetComponentInChildren<FieldAllyMember>(true);
+        if (loader != null && definitionOverrides != null && entry.PartyIndex < definitionOverrides.Length)
+            loader.ConfigureRuntimeDefinitionOverride(definitionOverrides[entry.PartyIndex]);
 
         party.AddActor(new PartyRuntimeActor(
             entry.Role,

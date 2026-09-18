@@ -50,6 +50,13 @@ runtime binding while the roots are inactive:
 9. activate actors, activate UI, then call `PartySpawned` and the static
    `PartySpawnPoint.Spawned` event.
 
+HUD binding may query skill readiness before an inactive actor's `Awake` runs.
+`StateHub.IsInitialized` reports whether its four state machines exist;
+`CanUseSkill()` returns false until then. This keeps the initial charge/readiness
+refresh from throwing and rolling back the entire party. After activation the
+HUD's normal refresh reads the initialized state; no early state-machine setup
+or extra Audio Listener is required.
+
 For allies that share the same prefab, assign `CharacterStats.behaviorSubtree`
 per character. The loader applies that Subtree while the party root is inactive
 and before Behavior Designer's `player` variable is bound. A missing Subtree
@@ -143,3 +150,17 @@ scene, and confirm that every migrated scene has one marker and no legacy
 
 For C# validation, use `Assets/Scripts/CheckAssemblyBuild.ps1` as documented in
 `Docs/VALIDATION.md`.
+
+### Scene roster overrides and repeated spawning
+
+`PartySpawnPoint.definitionOverrides` optionally supplies character definitions by
+party index before `PartyRuntimeBinder` activates the actors. Empty entries follow
+the normal saved-party/fallback path. The loader's nonserialized runtime override
+also applies to later load callbacks for that instance; it does not change the save.
+The Defensive Block regression scene uses this to guarantee its Aires fixture while
+keeping real prefabs, visual loaders, UI and input.
+
+`DespawnParty()` deactivates and destroys only the party/UI owned by that spawn point
+and clears `CurrentParty`. In Play Mode, callers must wait a frame for deferred
+Destroy before calling `TrySpawnNow`, whose existing duplicate-actor checks remain
+active. Production scenes still default to one automatic spawn in Awake.

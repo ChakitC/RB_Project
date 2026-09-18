@@ -14,6 +14,13 @@ public class CharacterContextPartyLoader : MonoBehaviour, IGameSaveAble, ISaveOr
     [SerializeField] private string fallbackId = "";
 
     private CharacteContext ctx;
+    private CharacterStats runtimeDefinitionOverride;
+
+    // Scene fixtures can provide a roster before activation without changing the saved party.
+    public void ConfigureRuntimeDefinitionOverride(CharacterStats definition)
+    {
+        runtimeDefinitionOverride = definition;
+    }
 
     // ให้ทำก่อน PlayerVisual
     public int LoadOrder => -100;
@@ -71,6 +78,11 @@ public class CharacterContextPartyLoader : MonoBehaviour, IGameSaveAble, ISaveOr
 
     bool TryApplySavedOrFallbackDefinition(GameSaveData data)
     {
+        if (runtimeDefinitionOverride != null)
+        {
+            ApplyDefinition(runtimeDefinitionOverride);
+            return true;
+        }
         if (!db)
             return false;
 

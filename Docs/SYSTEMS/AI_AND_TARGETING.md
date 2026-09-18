@@ -994,7 +994,11 @@ production Rector charge to an available Aires in the issuing Player's party, th
 to Player self guard if no companion can begin. Both receivers use the same impact
 rules and settings. The receiver stays fixed once accepted; a missed warp does not
 automatically invoke Player fallback. It supports
-already-released hitbox execution, without using the pre-cast reservation/hold.
+already-released hitbox execution. The defender does not extend or own the enemy's
+pre-cast timing. The optional caster-owned preparation hold is disabled on Rector
+(`RectorCharge.windupSeconds = 0`) so the skill plays continuously. The incoming
+threat/ready cue and guard command remain available from the command window start;
+actual active-hitbox contact still determines impact, including early contacts.
 `SkillHitboxSequenceRuntime.StopExecution(requestId)` deactivates that execution
 synchronously before knockback; interception runs before target damage processing.
 Applied Player damage closes eligibility for that Player/life on the same request.

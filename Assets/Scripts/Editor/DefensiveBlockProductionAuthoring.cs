@@ -21,6 +21,11 @@ public static class DefensiveBlockProductionAuthoring
         // Follow the character binding so renaming the settings asset does not create a replacement.
         var actor = aires.defensiveBlock != null ? aires.defensiveBlock : GetOrCreate<DefensiveBlockActorProfile>("GuardSetting.asset");
         var animation = GetOrCreate<BlockAnimationProfile>("AiresBlockAnimation.asset");
+        if (animation.beginClip == null)
+        {
+            animation.beginStartNormalized = 0.55f;
+            animation.guardPoseNormalized = 0.65f;
+        }
         string recoilPath = "Assets/Animation/Ch_Aires/Aires_Block_Recoil.fbx";
         if (AssetDatabase.LoadMainAssetAtPath(recoilPath) == null &&
             !AssetDatabase.CopyAsset("Assets/Animation/Ch_Aires/Aires_Block_Root.Test.fbx", recoilPath))

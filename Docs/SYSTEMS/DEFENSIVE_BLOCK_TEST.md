@@ -6,6 +6,13 @@ interception, Rector knockback, recoil, HitLag, VFX and camera settings. Other s
 retain their existing interruption flow. Receiver selection happens at input time;
 a failed or late companion warp never automatically switches to Player.
 
+Rector Skill 1 plays continuously from its first frame. `RectorCharge.windupSeconds`
+is zero: the experimental 0.4 s pose hold was disabled because it broke animation
+continuity. The field/optional hold path remains for compatibility, but production
+authoring does not enable it. Interception requires actual swept contact with active
+hitbox steps 0/1 and reacts immediately. The minimum-delay/contact-presentation
+experiment was reverted; there is no forced wait between accepted input and impact.
+
 ## Shared runtime flow
 
 `SkillGemDefinition.defensiveBlock` selects an attack profile. `DefensiveBlockAttack`
@@ -41,6 +48,14 @@ replace those estimates when available; Player collider extents expand the lane.
 This predicts a straight charge, not future steering or a guaranteed collision.
 Swept guard contact remains the only confirmation of success.
 
+Companion placement additionally requires a non-trigger world surface within 0.2 m
+of the resolved NavMesh point, with an upward normal of at least 0.5. Character
+colliders do not count as ground. The same pose validator runs again before the
+fade-out warp commits, so a removed floor cannot leave the defender on stale NavMesh.
+This is a landing support check, not a guarantee for platforms removed after arrival.
+Begin samples only normalized 0.55 to 0.65 of the production Aires clip and Loop
+holds 0.65, avoiding its airborne approach animation.
+
 Both receivers use `FieldAllyMember.TryBeginTransientExecution(owner, false, false)`.
 The shared scope owns suspension/restoration of AI, agent, movement and Rigidbody.
 It grants neither invincibility nor collision exclusion. Chain, Helper and Combo
@@ -64,7 +79,7 @@ actors without a controller retain the existing NavMesh-constrained transform pa
 - Fade out 0.04 s, warp, fade in 0.08 s through `ctx.Visibility`. Begin runs during
   departure, but contact cannot succeed until arrival.
 - One Block animation request owns Begin → held-pose Loop → Impact → Exit. Frontal
-  contact during Begin jumps directly to Impact. Aires skill payloads never execute.
+  contact during Begin after arrival jumps directly to Impact. Aires skill payloads never execute.
 - Swept contact tests the active charge volume before target damage iteration.
   Rector's 2.166667 s clip charges through normalized 0–0.62; only hitbox steps 0/1
   intercept. The following strike is excluded. Rear/lateral misses do not succeed.

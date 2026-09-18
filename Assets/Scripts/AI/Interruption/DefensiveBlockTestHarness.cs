@@ -135,6 +135,7 @@ public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
         yield return ValidateContactOrder(report);
         yield return ValidateProductionIntegration(report);
         yield return ValidatePlayerFallback(report);
+        yield return ValidateChargeWindup(report);
         ResetTrial();
         autoBlock = false;
         ValidationReport = report.ToString();

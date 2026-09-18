@@ -2,6 +2,136 @@
 
 Use this document for local C# validation. These rules are project policy.
 
+## Defensive Block immediate-contact restoration (2026-09-18)
+
+- Removed the rejected minimum-impact-delay experiment and restored synchronous
+  contact → stop hitboxes/playback → knockback/Impact/HitLag/VFX. Begin can skip
+  Loop on contact again. No attacker Contact animation or extra movement scope
+  remains, and GuardSetting no longer exposes the experiment's delay field.
+- Preserved grounded guard clips, landing support validation, camera/fades, Player
+  fallback and the rule rejecting guard after Player has already been hit.
+  Rector preparation remains disabled (`windupSeconds = 0`).
+- Editor smoke/contact-order/grounding checks passed **24/24**.
+- Rollback Play Mode regression passed Player fallback **11/11**, contact ordering
+  **3/3**, and continuous motion/normal damage without Block. The first 4 m Begin
+  trial missed; a focused rerun passed all three Begin/arrival checks and early
+  commands at 4/6/8 m (impact 0.283–0.293 real seconds, one success, no HP loss).
+  Preserve the initial failure as evidence rather than treating it as a passing run.
+  Reports: `../BuildArtifacts/DefensiveBlockRevertDelayValidation.txt` and
+  `DefensiveBlockRevertDelayContactRecheck.txt`.
+- Final `CheckAssemblyBuild.ps1`: **0 errors, 80 warnings** in
+  `../BuildArtifacts/DefensiveBlockRevertDelayBuild.log`. Returned to Edit Mode in
+  the original clean regression scene; no scene save was needed.
+
+## Defensive Block minimum impact interval experiment — reverted (2026-09-18)
+
+The user rejected the feel of this experiment. Runtime now resolves actual guard
+contact immediately again. The minimum-delay setting, attacker Contact phase,
+movement scope and experiment-only tests were removed. Rector windup stays zero.
+The results below describe the reverted experiment, not current behavior.
+
+- `GuardSetting.minimumImpactDelaySeconds = 0.5` measures accepted input to reaction
+  in the defender's actor clock. Early real contact stops the matching hitboxes and
+  skill motion, then reuses the charge clip as moving Block Contact presentation.
+  `RectorCharge.windupSeconds` remains zero. No new animation asset was introduced.
+- Initial Play Mode checks passed **18/18**: 0.5/1 s settings at 4/6/8 m, stationary
+  root with advancing clip pose, no premature reaction/HP loss, nine contact cleanup
+  cases, owner-token preservation, pause/World Slow, unrelated damage, miss and
+  15 fps. Measured reactions were 0.534–0.537 s and 1.014–1.028 s after acceptance.
+  Evidence: `../BuildArtifacts/DefensiveBlockContactDelayValidation.txt`.
+- Final focused checks passed **23/23**: 19 contact-delay checks (adding immediate
+  reaction when contact arrives after the minimum), three Begin/arrival checks and
+  continuous charge/normal damage without Block. Begin checks extend only a cloned
+  guard clip timing so reaction still occurs during Begin despite the minimum delay.
+  Evidence: `DefensiveBlockContactDelayFinalValidation.txt` in the same folder.
+- Player fallback and contact-order regression passed **14/14**, including 1.501 m
+  Player recoil and rejection when Player was damaged before guard contact.
+  Evidence: `DefensiveBlockContactDelayRegression.txt` in the same folder.
+- Editor smoke/contact-order/grounding checks passed **24/24**.
+  `CheckAssemblyBuild.ps1`: **0 errors, 80 warnings**;
+  `DefensiveBlockContactDelayFinalBuild.log` records the final source validation.
+- Two Play Mode frames 0.15 s apart show different Rector charge poses against the
+  same guard position, with no knockback or HP loss while Contact is pending:
+  `Temp/DefensiveBlockValidation/ContactDelayA.png` and `ContactDelayB.png`.
+  The preview used a temporary 1 s delay; it was restored to 0.5 s afterwards.
+  Returned to Edit Mode in `RectorDefensiveBlock.unity` without saving the scene.
+- Tests use the regression scene's paused automatic AI. Existing Opsive Burst
+  BC1055 errors remain; this is not a new GameSetup → Basement → BossRush validation.
+
+## Defensive Block charge timing investigation (2026-09-18)
+
+- Follow-up: the user rejected holding the skill animation because it breaks
+  continuity. Production `RectorCharge.windupSeconds` is now **0**, and the authoring
+  tool no longer initializes new profiles to 0.4. The hold implementation remains
+  optional; the 0.4 s results below are historical and do not describe current behavior.
+  That revision restored continuous skill playback and the original contact timing;
+  the subsequent minimum-impact experiment was also reverted as recorded above.
+  Follow-up Play Mode checks **2/2 passed**: zero-windup movement/normal damage,
+  and one successful Block without Player/Ally HP loss. C# validation passed with
+  **0 errors, 80 warnings**. Evidence: `DefensiveBlockContinuousValidation.txt`
+  and `DefensiveBlockContinuousBuild.log` in `../BuildArtifacts`. Returned to Edit Mode.
+- Early 8 m input intercepted step 0 at about 0.27 real seconds. The recorded
+  hitbox swept into the guard at that point; it was not an artificial success timer.
+  `Rector_Skill_1` root translation starts at the beginning of the clip, so the
+  earlier hypothesis that step 0 was only a harmless preparation phase was incorrect.
+- A temporary runtime copy of `RectorCharge` allowing only step 1 failed at both
+  4 m and 8 m: zero successful blocks, Player HP loss 99.18, Ally HP loss 148.77.
+  Step 0 still dealt damage before the newly restricted interception opportunity.
+  The original skill profile and steps 0/1 were restored; the experimental copy
+  was destroyed. No timing change was saved to production assets.
+- Adding actual Rector windup would change the skill even without Block; delaying
+  only the impact presentation would instead require stopping the confirmed charge
+  at contact. The user selected a 0.4 s preparation before Rector actually charges.
+  `RectorCharge.windupSeconds` now controls this caster-owned preparation through
+  the existing AnimDriver hold API; interception still uses both charge steps.
+- Evidence: `../BuildArtifacts/BlockChargeTimingBefore.txt` and
+  `BlockSecondStepTrial.txt` record the initial experiment.
+- Final implementation: **12/12** windup Play Mode checks passed. Early and late
+  commands at 4/6/8 m kept Rector stationary and payload unreleased during preparation,
+  then intercepted once with no HP loss. Measured impact times were 0.59–0.71 s
+  after skill start at the test frame rate. Without Block, the delayed charge still
+  dealt normal damage. Global pause, World Slow and actor exemption behaved correctly;
+  reset/disable/death during preparation cleared the hold and defender reservation.
+- Player fallback regression **11/11**, editor smoke/grounding checks **24/24**.
+  `CheckAssemblyBuild.ps1`: **0 errors, 80 warnings**. Reports:
+  `DefensiveBlockWindupValidation.txt`, `DefensiveBlockWindupFallback.txt`,
+  `DefensiveBlockWindupBuild.log` and the intermediate `BlockChargeWindupAfter.txt`.
+  Initial first-cast probe failures during scene startup were not counted as passing;
+  the durable suite waits for initial party presentation before beginning trials.
+- Visually checked the ready flare while `IsPreparingCharge` and `IsReady` were true
+  and Rector remained at its starting position: `Temp/DefensiveBlockValidation/RectorWindupCue.png`.
+  Cleared preview pause and returned to Edit Mode in the original test scene without saving it.
+
+## Defensive Block airborne guard pose (2026-09-18)
+
+- Reproduced in `RectorDefensiveBlock`: actor root stayed at Y 0.083 while Begin
+  raised both feet and Loop held the lower toe near Y 0.51. Sampling `Aires_Block`
+  confirmed its old 0.00-to-0.35 interval includes the jump, not a grounded guard.
+- Added `beginStartNormalized` and authored only `AiresBlockAnimation.asset` through
+  the Editor API: Begin now samples 0.55-to-0.65, Loop holds 0.65. No source FBX,
+  impact clip, GuardSetting values or scene were saved/changed.
+- Also reproduced acceptance over a disabled physical floor with stale NavMesh.
+  The Block placement validator now requires nearby solid world support before
+  acceptance and before committing the warp. Real-scene probes passed both missing
+  floor rejection and cancellation/reservation cleanup when the floor disappeared
+  during fade-out. Temporary floor collider changes were restored.
+- Play Mode 4/6/8 m companion trials passed: lower toe stayed at or below Y 0.132
+  during arrived Begin/Loop, one successful impact, no Player/Ally HP loss, cleanup.
+- Player fallback regression passed **11/11** with the shared clip interval, including
+  1.501 m recoil and wall/cleanup cases. Visually inspected the grounded Loop in
+  `Temp/DefensiveBlockValidation/GroundedBlockLoop.png`. Returned the Editor to the
+  original Play Mode test scene, unpaused with a fresh 8 m trial; no scene save.
+- `DefensiveBlockGroundingTests.Run()` passed its two regression tests (sampled
+  clip interval and nearby-solid-floor requirements); existing smoke checks 22/22
+  passed. `CheckAssemblyBuild.ps1`: **0 errors, 104 warnings**.
+- Console still reports Burst BC1055 from Opsive Behavior Designer's
+  `BeforeTraversalCore.Reevaluate`; no package files were changed. The paused-AI
+  Block harness passed, but this does not validate automatic AI traversal or the
+  full production scene route.
+- Evidence: `../BuildArtifacts/BlockFeetBefore.txt`, `BlockClipSamples.txt`,
+  `BlockUnsupportedBefore.txt`, `BlockGroundAfter.txt`, `BlockGroundInvalidation.txt`
+  `BlockGroundFallbackRegression.txt` and `DefensiveBlockGroundingBuild.log`.
+
 ## Player Defensive Block fallback and telegraph (2026-09-17)
 
 - Follow-up: removed the Space key label and its runtime overlay Canvas. Readiness

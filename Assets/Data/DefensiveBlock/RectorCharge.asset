@@ -16,6 +16,7 @@ MonoBehaviour:
   worldLayers:
     serializedVersion: 2
     m_Bits: 1200129
+  windupSeconds: 0
   windowStartNormalized: 0
   windowEndNormalized: 0.62
   hitboxSteps: 0000000001000000

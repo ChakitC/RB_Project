@@ -20,6 +20,9 @@ public sealed class DefensiveBlockAttack : MonoBehaviour
     int requestId;
     int life;
     bool resolved;
+    SkillPreCastHoldHandle windupHold;
+    float windupRemaining;
+    int windupStartFrame;
     Vector3 previousRoot;
     float observedChargeSpeed;
     readonly Dictionary<CharacteContext, int> passedTargets = new Dictionary<CharacteContext, int>();
@@ -32,6 +35,7 @@ public sealed class DefensiveBlockAttack : MonoBehaviour
     public string LastResult { get; private set; } = "Idle";
     public string LastProbe { get; private set; } = "No probe";
     public int SuccessCount { get; private set; }
+    public bool IsPreparingCharge => windupHold.IsValid;
     public bool WindowOpen => OwnsCurrentSkill && profile.IsConfigured && ctx.AnimBrain != null &&
         ctx.AnimBrain.TryGetActiveSkillNormalizedTime(requestId, out float time) &&
         time >= windowStartNormalized && time <= windowEndNormalized && !resolved;
@@ -52,7 +56,23 @@ public sealed class DefensiveBlockAttack : MonoBehaviour
         subscribedManager = next;
         if (subscribedManager != null) subscribedManager.CastStarted += OnCastStarted;
     }
-    void Update() { if (ctx != null && ctx.SkillManager != subscribedManager) RefreshSubscription(); }
+    void Update()
+    {
+        if (ctx != null && ctx.SkillManager != subscribedManager) RefreshSubscription();
+        if (!windupHold.IsValid) return;
+        if (!OwnsCurrentSkill || ctx.HealthSystem == null || !ctx.HealthSystem.IsAlive)
+        { ReleaseWindup(); return; }
+        if (Time.frameCount == windupStartFrame) return;
+        windupRemaining -= ctx.UsesWorldSlow ? TimeSlowManager.Instance.WorldDeltaTime : Time.deltaTime;
+        if (windupRemaining <= 0f) ReleaseWindup();
+    }
+
+    void ReleaseWindup()
+    {
+        if (windupHold.IsValid) ctx?.AnimDriver?.ReleasePreCastHold(windupHold);
+        windupHold = default;
+        windupRemaining = 0f;
+    }
     void OnCastStarted(ActiveSkillCastInfo cast)
     {
         ResetExecution();
@@ -65,6 +85,15 @@ public sealed class DefensiveBlockAttack : MonoBehaviour
         requestId = cast.RequestId; life = ctx.LifeGeneration; resolved = false;
         previousRoot = ctx.transform.position;
         observedChargeSpeed = 0f;
+        // CastStarted is raised after playback accepts the request, before its first advance.
+        // Holding at the initial pose delays the actual attack, including payload and hitboxes,
+        // while its command/telegraph window remains open. This also applies without a defender.
+        if (profile.windupSeconds > 0f && ctx.AnimDriver != null &&
+            ctx.AnimDriver.TryAcquirePreCastHold(requestId, 0f, 0.005f, out windupHold))
+        {
+            windupRemaining = profile.windupSeconds;
+            windupStartFrame = Time.frameCount;
+        }
     }
     public void Bind(SkillHitboxSequenceRuntime runtime, SkillCastContext cast)
     {
@@ -270,6 +299,7 @@ public sealed class DefensiveBlockAttack : MonoBehaviour
         request == requestId && ctx != null && ctx.LifeGeneration == life && ctx.HealthSystem != null && ctx.HealthSystem.IsAlive;
     public void ResetExecution()
     {
+        ReleaseWindup();
         if (ctx != null && ctx.LifeGeneration == life)
         {
             execution?.StopExecution(requestId);

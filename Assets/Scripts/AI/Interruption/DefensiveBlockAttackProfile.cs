@@ -5,6 +5,8 @@ public sealed class DefensiveBlockAttackProfile : ScriptableObject
 {
     [Min(0f)] public float commandRange = 8f;
     public LayerMask worldLayers = 1;
+    [Tooltip("Preparation before the skill clip advances or releases payload. Uses the caster's time domain; zero disables it.")]
+    [Min(0f)] public float windupSeconds;
     [Range(0f, 1f)] public float windowStartNormalized;
     [Range(0f, 1f)] public float windowEndNormalized = 0.62f;
     public int[] hitboxSteps = { 0, 1 };
@@ -15,7 +17,7 @@ public sealed class DefensiveBlockAttackProfile : ScriptableObject
     [Min(0f)] public float knockbackDistance = 2f;
     [Min(0.01f)] public float knockbackSeconds = 0.4f;
     public bool AllowsStep(int step) => step >= 0 && hitboxSteps != null && System.Array.IndexOf(hitboxSteps, step) >= 0;
-    public bool IsConfigured => commandRange > 0f && windowStartNormalized >= 0f &&
+    public bool IsConfigured => commandRange > 0f && windupSeconds >= 0f && windowStartNormalized >= 0f &&
         windowEndNormalized <= 1f && windowEndNormalized >= windowStartNormalized &&
         hitboxSteps != null && hitboxSteps.Length > 0 && System.Array.TrueForAll(hitboxSteps, step => step >= 0) &&
         knockbackDistance >= 0f && knockbackSeconds > 0f &&

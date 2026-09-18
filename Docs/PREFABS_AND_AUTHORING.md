@@ -3047,6 +3047,19 @@ attacks retain a dim flare; actionable commands show the bright flare. There is 
 key prompt or overlay Canvas/TMP label. The flare prefab/material/shader are in the same
 production data folder. Warp fade defaults are 0.04 s out / 0.08 s in on GuardSetting.
 Begin may transition directly to Impact after arrival; fade-in is not immunity.
+Rector preparation is authored separately on
+`Assets/Data/DefensiveBlock/RectorCharge.asset > Windup Seconds` (**0: disabled**).
+The experimental 0.4 s value held the skill pose and was rejected for breaking
+animation continuity. Keep it zero for continuous playback. If explicitly enabled,
+it delays every cast in the caster's time domain. Keep the command window start at zero to allow
+the ready flare and early guard input during preparation. The two charge hitbox
+steps remain enabled; removing the first would leave real early damage unblocked.
+The linked `AiresBlockAnimation` uses `Begin Start Normalized = 0.55` and
+`Guard Pose Normalized = 0.65`; earlier frames in `Aires_Block` contain a jump.
+For replacement clips, choose a grounded interval rather than changing actor Y to
+compensate for animated bones. Landing surfaces must have solid colliders included
+in GuardSetting's world layers within 0.2 m of the NavMesh landing point; character
+colliders and triggers are excluded as support. This is checked again after fade-out.
 
 Defender settings are authored only on `GuardSetting.asset`
 (`DefensiveBlockActorProfile`), referenced by `ChaDef.Aires > Defensive Block` and

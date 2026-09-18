@@ -339,12 +339,26 @@ See `Docs/SYSTEMS/SPECIAL_SHOOT_POINTS.md` for the round and stagger contract.
 one request. AnimDriver owns `TryBeginBlock`, `TryBlockImpact` and `EndBlock`;
 Brain exposes `BlockPhase` and terminal `PlaybackKind.Block` events. Gameplay
 contact decisions belong to the interruption controller, not the animation.
+The optional charge preparation path in `DefensiveBlockAttack` acquires a zero-speed
+`SkillPreCastHoldHandle` through AnimDriver at CastStarted, before the first clip
+advance. It releases that handle after `DefensiveBlockAttackProfile.windupSeconds`
+in the caster's time domain, or on reset/invalidated playback. The normalized-zero
+command window stays available while payload and charge motion wait. The defender's
+Block request is separate and continues raising its guard during this preparation.
+Production Rector sets this duration to zero to preserve continuous skill playback;
+the experimental 0.4 s held pose is no longer enabled.
 After companion warp arrival (or immediately on accepted Player self guard), a frontal contact may transition Begin directly to Impact,
 skipping Loop. `TryBlockImpact` accepts Begin or Loop for the matching request;
 it rejects other phases and repeated impacts. Arrival and hit geometry remain
 controller-owned gates; this does not grant general damage immunity.
 Block excludes ordinary commands and yields to life/cinematic/control-loss
 transitions. Its recoil motor owns displacement, with animation root motion off.
+`BlockAnimationProfile.beginStartNormalized` selects the first Begin frame; playback
+interpolates from there to `guardPoseNormalized`, then holds that pose for Loop.
+The production Aires profile uses 0.55 to 0.65 of `Aires_Block`: the earlier portion
+contains a jump, and holding the old 0.35 frame left the model's feet airborne even
+while the actor root was correctly grounded. Keep both endpoints within a grounded
+guard segment when replacing the clip; disabling root motion does not remove bone animation.
 Player fallback shares this Block request and profile; it does not run the legacy
 Player interruption skill or execute an Aires payload. The Player prefab's default
 GuardSetting supplies the existing generic Block clips when its character has no

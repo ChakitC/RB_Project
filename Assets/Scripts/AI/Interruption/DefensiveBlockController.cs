@@ -40,6 +40,7 @@ public sealed class DefensiveBlockController : MonoBehaviour
     CharacterVisibilityController warpVisibility;
     CharacterPlacementRequest pendingPlacement;
     CharacterPlacementFootprint slideFootprint;
+    readonly RaycastHit[] landingGroundHits = new RaycastHit[16];
     bool arrived;
     DefensiveBlockActorProfile loadedProfile;
     CharacterStats sessionDefinition;
@@ -190,9 +191,27 @@ public sealed class DefensiveBlockController : MonoBehaviour
             // A static warp uses the exact body shape; inflated padding can touch the floor
             // and score a false world obstruction while the guard pose is being raised.
             runtimePolicy: CharacterPlacementRuntimePolicy.CreateDefault(true, 0.75f,
-                QueryTriggerInteraction.Ignore, collisionPadding: 0f));
+                QueryTriggerInteraction.Ignore, collisionPadding: 0f),
+            poseValidator: HasLandingGround);
         return CharacterPlacementResolver.TryResolve(placement, CharacterPlacementReservationRegistry.Shared, out pose) &&
             pose.Score.MaxWorldPenetration <= PlacementContactTolerance;
+    }
+
+    bool HasLandingGround(Vector3 position, Quaternion rotation)
+    {
+        // A baked NavMesh can remain above a removed/moved floor. Require nearby physical
+        // support as well, both when accepting the command and when fade-out completes.
+        const float tolerance = 0.2f;
+        int count = Physics.RaycastNonAlloc(position + Vector3.up * tolerance, Vector3.down,
+            landingGroundHits, tolerance * 2f, worldLayers, QueryTriggerInteraction.Ignore);
+        if (count == landingGroundHits.Length) return false;
+        for (int i = 0; i < count; i++)
+        {
+            var hit = landingGroundHits[i];
+            if (hit.normal.y < 0.5f || hit.collider.GetComponentInParent<CharacteContext>() != null) continue;
+            return true;
+        }
+        return false;
     }
 
     public bool TryBegin(PlayerContext protectedPlayer, DefensiveBlockAttack source, int id)

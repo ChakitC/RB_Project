@@ -56,7 +56,7 @@ public sealed partial class CharacterAnimBrain
             Phase = BlockAnimationPhase.Begin;
             elapsed = 0f;
             clip = owner.LocoLayer.Play(owner.blockProfile.beginClip, owner.blockProfile.fadeSeconds);
-            clip.Time = 0f;
+            clip.NormalizedTime = owner.blockProfile.beginStartNormalized;
             clip.Speed = 0f;
             clip.SharedEvents = null;
             owner.EmitPlaybackSignal(PlaybackKind.Block, PlaybackPhase.Started, owner.blockRequestId);
@@ -67,7 +67,8 @@ public sealed partial class CharacterAnimBrain
             var profile = owner.blockProfile;
             if (Phase == BlockAnimationPhase.Begin)
             {
-                clip.NormalizedTime = Mathf.Clamp01(elapsed / profile.beginSeconds) * profile.guardPoseNormalized;
+                clip.NormalizedTime = Mathf.Lerp(profile.beginStartNormalized, profile.guardPoseNormalized,
+                    Mathf.Clamp01(elapsed / profile.beginSeconds));
                 if (elapsed >= profile.beginSeconds) Phase = BlockAnimationPhase.Loop;
             }
             else if (Phase == BlockAnimationPhase.Impact)

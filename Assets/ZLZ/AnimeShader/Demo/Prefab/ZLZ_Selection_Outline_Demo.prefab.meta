@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: b9de7c566258a484385f179a901bff8b
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Prefab/ZLZ_Selection_Outline_Demo.prefab
+  uploadId: 993078

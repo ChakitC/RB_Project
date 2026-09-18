@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 8b762e2b649c3ef4abdaf67be74d41f3
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Prefab/ZLZ_Demo_Dissolve.prefab
+  uploadId: 993078

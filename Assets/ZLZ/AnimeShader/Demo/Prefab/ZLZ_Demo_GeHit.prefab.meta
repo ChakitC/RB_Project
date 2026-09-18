@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e92bdd39e9858a545abc5f893c288e30
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Prefab/ZLZ_Demo_GeHit.prefab
+  uploadId: 993078

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 64dd644fae4140c49a9fb42957b31553
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Prefab/ZLZ_Enemy_01.prefab
+  uploadId: 993078

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 2d217162ebd68cd488129faddcd63ca1
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Prefab/ZLZ_Demo_Upgrade.prefab
+  uploadId: 993078

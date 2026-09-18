@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: d5578d2a34b33c840aecb23fef7c42b7
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Character/Materials/Standard_Setup/ZLZ_Std_Char_Body_07.mat
+  uploadId: 993078

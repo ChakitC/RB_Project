@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 8b268e4fdc8c69849a252029e264fe49
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Scene/ZLZ_Demo_Darken.unity
+  uploadId: 993078

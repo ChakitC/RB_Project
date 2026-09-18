@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: c81fb778c3d0ba94abed74326b71e986
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Prefab/ZLZ_Demo_Dither_Camera.prefab
+  uploadId: 993078

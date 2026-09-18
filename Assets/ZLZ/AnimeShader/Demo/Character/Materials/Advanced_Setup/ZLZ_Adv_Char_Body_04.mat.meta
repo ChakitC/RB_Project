@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 3d6dd6635393e054f9a0299ff38558f1
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Character/Materials/Advanced_Setup/ZLZ_Adv_Char_Body_04.mat
+  uploadId: 993078

@@ -1,0 +1,88 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: ZLZ_Adv_Char_Hair_Main_Shadow
+  m_Shader: {fileID: 4800000, guid: 45d8e17adb01bbb4bbc14e5857c9be4a, type: 3}
+  m_Parent: {fileID: 2100000, guid: 3d917842ad4705641a862e73609b345a, type: 2}
+  m_ModifiedSerializedProperties: 16
+  m_ValidKeywords:
+  - _ALPHACLIPPING_ON
+  - _CASTSHADOW_ON
+  - _DISSOLVE_ON
+  - _EMISSIVEGLOW_OFF
+  - _EYE_BACKFACE_CLIP_ON
+  - _GETHIT_OFF
+  - _HAIR_BACKFACE_FADE_ON
+  - _HAIR_HIGHLIGHT_ON
+  - _HEAD_BACK_HIDE_ON
+  - _INDICATOR_OFF
+  - _LIGHTSWEEP_OFF
+  - _OUTLINEMASK_OFF
+  - _OUTLINESMOOTHNORMAL_ON
+  - _OUTLINE_ZMODE_LEGACY
+  - _RECEIVESHADOW_OFF
+  - _RIMCOLORMODE_CUSTOM
+  - _RIMLIGHT_ON
+  - _SOFTLIGHT_ON
+  - _SPECULAR_OFF
+  - _SWITCH_TO_FACE_MODE_OFF
+  - _TARGETDARKEN_OFF
+  - _UPGRADE_OFF
+  - _USEMETALLIC_OFF
+  - _USENORMAL_OFF
+  - _USE_MASKTEX1_ON
+  - _USE_MASKTEX2_OFF
+  m_InvalidKeywords:
+  - _HAIRSHADOW_ON
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 3000
+  stringTagMap:
+    RenderType: Transparent
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _RGBA_Masking:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _AlphaValue: 0.5
+    - _DstBlend: 10
+    - _EYE_BACKFACE_CLIP: 1
+    - _HAIR_BACKFACE_FADE: 1
+    - _HEAD_BACK_HIDE: 1
+    - _HairFadeRange: 0.2
+    - _HairShadow: 1
+    - _HairShadowFadePos: 0.06
+    - _HairShadowFadeSoft: 0.001
+    - _HairShadowOffsetY: 0.2
+    - _HairShadowOffsetZ: 0.003
+    - _HairShadowScaleOS: 0.857
+    - _HeadBackCutoff: 0
+    - _HeadTopCutoff: 0
+    - _RenderQueueSelector: 3000
+    - _SrcBlend: 5
+    - _StencilComp: 3
+    - _StencilRef: 2
+    - _ZWrite: 0
+    m_Colors:
+    - _BaseColor: {r: 1, g: 0.5340068, b: 0, a: 1}
+    - _HeadCenterWS: {r: 0, g: 0, b: 0, a: 0}
+    - _HeadForwardWS: {r: 0, g: 0, b: 0, a: 0}
+    - _Shadow_Color: {r: 1, g: 0.6553152, b: 0.495283, a: 1}
+  m_BuildTextureStacks: []

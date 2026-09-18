@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0b7d50a42fa1f424fa420a22ac796b84
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Character/Materials/Advanced_Setup/ZLZ_Adv_Char_Face_Reveal_01.mat
+  uploadId: 993078

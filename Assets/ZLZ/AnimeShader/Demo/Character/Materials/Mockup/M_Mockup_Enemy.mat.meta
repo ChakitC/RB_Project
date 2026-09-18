@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 608cfd20076b04f44b8bc9508e3c5435
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Character/Materials/Mockup/M_Mockup_Enemy.mat
+  uploadId: 993078

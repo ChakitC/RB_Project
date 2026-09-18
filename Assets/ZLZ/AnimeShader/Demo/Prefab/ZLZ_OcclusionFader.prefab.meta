@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: ed32b8c83de634c4abc5b709309dbb2e
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Prefab/ZLZ_OcclusionFader.prefab
+  uploadId: 993078

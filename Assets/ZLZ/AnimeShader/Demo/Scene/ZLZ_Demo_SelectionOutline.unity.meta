@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 47acfc055b1858c4e9d24a09d34b8311
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Scene/ZLZ_Demo_SelectionOutline.unity
+  uploadId: 993078

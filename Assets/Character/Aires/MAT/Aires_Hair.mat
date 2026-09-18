@@ -140,6 +140,7 @@ Material:
     - _AlphaClipping: 1
     - _AlphaToMask: 0
     - _AlphaValue: 1
+    - _AmbientFallback: 1
     - _BlackValue: 0.1
     - _Blend: 0
     - _BlendDst: 0
@@ -297,6 +298,7 @@ Material:
     - _UPGRADE: 0
     - _USE_MASKTEX1: 0
     - _USE_MASKTEX2: 0
+    - _UVSet: 0
     - _UpgradeActive: 0
     - _UpgradeIntensity: 5
     - _UpgradeMinBrightness: 0.5
@@ -331,9 +333,9 @@ Material:
     - _Emissive_Color_01: {r: 0, g: 0.93945026, b: 1, a: 1}
     - _GetHitColor: {r: 4, g: 2.893609, b: 1.4150944, a: 0}
     - _HLColor: {r: 1, g: 1, b: 1, a: 0}
-    - _HeadCenterWS: {r: 0, g: 0, b: 0, a: 0}
-    - _HeadForwardWS: {r: 0, g: 0, b: 0, a: 0}
-    - _HeadRightWS: {r: 0, g: 0, b: 0, a: 0}
+    - _HeadCenterWS: {r: -0.7128252, g: 1.4720744, b: -3.4416938, a: 1}
+    - _HeadForwardWS: {r: 0.90486443, g: 0.042060725, b: -0.42361733, a: 0}
+    - _HeadRightWS: {r: -0.4239926, g: 0.0000010151416, b: -0.9056659, a: 0}
     - _HeadUpWS: {r: 0, g: 0, b: 0, a: 0}
     - _IndicatorColor: {r: 0, g: 1.8323576, b: 2.9960783, a: 0}
     - _Indicator_Color: {r: 1, g: 1, b: 1, a: 0}

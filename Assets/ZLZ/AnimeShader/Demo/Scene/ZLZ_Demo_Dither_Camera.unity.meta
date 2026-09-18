@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: cf6328cf8a801c44a910b173f4bf6f87
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Scene/ZLZ_Demo_Dither_Camera.unity
+  uploadId: 993078

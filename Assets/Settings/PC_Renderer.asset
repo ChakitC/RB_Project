@@ -265,7 +265,7 @@ MonoBehaviour:
     failOperation: 0
     zFailOperation: 0
   m_ShadowTransparentReceive: 1
-  m_RenderingMode: 0
+  m_RenderingMode: 2
   m_DepthPrimingMode: 0
   m_CopyDepthMode: 2
   m_DepthAttachmentFormat: 0
@@ -297,7 +297,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc77d9a615dab4046a4dc034886f821d, type: 3}
   m_Name: ZLZ Screen Space Outline
   m_EditorClassIdentifier: 
-  m_Active: 1
+  m_Active: 0
   characterLayers:
     serializedVersion: 2
     m_Bits: 1601

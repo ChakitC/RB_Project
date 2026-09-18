@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: c6f55a73d196bcd448f09f00447260ce
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Prefab/ZLZ_Demo_Darken.prefab
+  uploadId: 993078

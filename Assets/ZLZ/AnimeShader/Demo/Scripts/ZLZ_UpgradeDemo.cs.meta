@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 06f8ac4428d00d54ea78b5048864aa08
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Scripts/ZLZ_UpgradeDemo.cs
+  uploadId: 993078

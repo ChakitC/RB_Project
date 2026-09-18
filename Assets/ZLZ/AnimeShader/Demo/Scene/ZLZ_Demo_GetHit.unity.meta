@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 243650fb1b8ee1545b81ab59e2a55f81
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Scene/ZLZ_Demo_GetHit.unity
+  uploadId: 993078

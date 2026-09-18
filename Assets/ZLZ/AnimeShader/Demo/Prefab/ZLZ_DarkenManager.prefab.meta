@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 3441a8c7955b4ff41b8ab96dafe586c2
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Prefab/ZLZ_DarkenManager.prefab
+  uploadId: 993078

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 5a56150d67685a8469c809ac6b6313bb
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Scene/ZLZ_Demo_Dissolve.unity
+  uploadId: 993078

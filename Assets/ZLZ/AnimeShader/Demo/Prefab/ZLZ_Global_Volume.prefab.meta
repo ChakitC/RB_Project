@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 4eaef9edd5450364b83f471ae7f11178
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Prefab/ZLZ_Global_Volume.prefab
+  uploadId: 993078

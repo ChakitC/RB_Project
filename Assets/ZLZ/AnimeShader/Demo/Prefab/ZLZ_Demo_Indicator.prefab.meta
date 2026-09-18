@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 9dcbc129e9de66840aae0e7b1efed04e
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ/AnimeShader/Demo/Prefab/ZLZ_Demo_Indicator.prefab
+  uploadId: 993078

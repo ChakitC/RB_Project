@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: d3565e3675cfe0b428643de93ad08acf
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 354900
+  packageName: ZLZ Anime Shader
+  packageVersion: 1.9.0
+  assetPath: Assets/ZLZ_AnimeShader/Editor/ZLZ_AnimeHubProduct.cs
+  uploadId: 993078

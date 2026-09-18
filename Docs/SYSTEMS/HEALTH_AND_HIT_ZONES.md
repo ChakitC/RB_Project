@@ -189,3 +189,10 @@ resync now use the context actor root, rather than moving the motor's child
 transform separately from the swept body. The CharacterController path continues
 to move its own controller transform. The Rector Defensive Block wall trial and
 `NestedKnockbackMotorMovesContextRoot` regression test cover this layout.
+
+Knockback displacement and reaction recovery tick in the actor's time domain:
+`TimeSlowManager.WorldDeltaTime` when `ctx.UsesWorldSlow`, otherwise `Time.deltaTime`.
+This keeps motion and recovery aligned with animation under World Slow, including
+temporary actor exemptions. Player remains exempt from World Slow; global HitLag
+and pause still affect both paths. Collision, distance and replacement rules are
+unchanged.

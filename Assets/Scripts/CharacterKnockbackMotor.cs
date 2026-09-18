@@ -95,8 +95,12 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
     void LateUpdate()
     {
-        Tick(Time.deltaTime);
-        TickReaction(Time.deltaTime);
+        // Match animation/vertical movement, including temporary world-slow exemptions.
+        float dt = ctx == null || ctx.UsesWorldSlow
+            ? TimeSlowManager.Instance.WorldDeltaTime
+            : Time.deltaTime;
+        Tick(dt);
+        TickReaction(dt);
     }
 
     public bool ApplyKnockback(KnockbackData knockback)

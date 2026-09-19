@@ -73,6 +73,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals
     /// <summary>
     /// The DOTS data structure for the RandomProbability class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct RandomProbabilityComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

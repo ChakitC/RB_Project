@@ -396,6 +396,7 @@ MonoBehaviour:
   healthSystem: {fileID: 4372935134327282892}
   characterController: {fileID: 0}
   navMeshAgent: {fileID: 3160894530039119532}
+  colliderRefs: {fileID: 0}
   capsuleCollider: {fileID: 0}
   animBrain: {fileID: 2022206065969024217}
   fieldAllyMember: {fileID: 0}
@@ -476,6 +477,11 @@ MonoBehaviour:
   pushLayers:
     serializedVersion: 2
     m_Bits: 0
+  environmentCollisionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  environmentCollisionPadding: 0.05
+  navMeshRecoverySearchRadius: 2.5
 --- !u!114 &7180067156307174043
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -495,6 +501,7 @@ MonoBehaviour:
   damageTakenMultiplierWhileStaggered: 1.25
   postStaggerImmunity: 1
   chainReadyDuration: 3
+  chainExecutionTimeoutSeconds: 15
   decayDelay: 1.5
   decayPerSecond: 20
   resetMeterOnStagger: 1
@@ -513,6 +520,7 @@ MonoBehaviour:
   isChainReady: 0
   isChainExecutionActive: 0
   chainReadyTimeRemaining: 0
+  chainExecutionTimeRemaining: 0
 --- !u!114 &3620542892003728669
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -611,6 +619,7 @@ GameObject:
   - component: {fileID: 2596423232265115448}
   - component: {fileID: 2132836193328615073}
   - component: {fileID: 2943662880510770687}
+  - component: {fileID: 4421645767642055772}
   m_Layer: 9
   m_Name: AI_System
   m_TagString: Untagged
@@ -756,50 +765,76 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0b02b4aaf7aa44843b836f6e31da7d39, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_SharedVariableData:
-  - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
-      UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
-    m_ValueHashes: 
-    m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278927dafeacd28e0b00
-    m_ValuePositions: 00000000040000000400000005000000
-    m_Values: 73616c660300000000
-    m_UnityObjects:
-    - {fileID: 7649753103391906527}
-    m_Version: 3.4
-  - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Single,
-      mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
-    m_ValueHashes: 
-    m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278938358727f48d1b29
-    m_ValuePositions: 000000000a0000000a0000000b000000
-    m_Values: 666f6c6c6f77204d61780300002041
-    m_UnityObjects: []
-    m_Version: 3.4
-  - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
-      UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
-    m_ValueHashes: 
-    m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278927dafeacd28e0b00
-    m_ValuePositions: 000000000c0000000c0000000d000000
-    m_Values: 63757272656e74456e656d7903ffffffff
-    m_UnityObjects: []
-    m_Version: 3.4
-  - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
-      UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
-    m_ValueHashes: 
-    m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278927dafeacd28e0b00
-    m_ValuePositions: 000000000f0000000f00000010000000
-    m_Values: 4d656c6565204d6f64756c5465737403ffffffff
-    m_UnityObjects: []
-    m_Version: 3.4
-  - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Boolean,
-      mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
-    m_ValueHashes: 
-    m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427894886ea0b921c56fa
-    m_ValuePositions: 00000000080000000800000009000000
-    m_Values: 496e436f6d6261740300
-    m_UnityObjects: []
-    m_Version: 3.4
+  m_SharedVariableData: []
   m_SharedVariableGroupsData: []
-  m_UniqueID: -1247540919
+  m_AuthoringLayer: {fileID: 4421645767642055772}
+  m_UniqueID: 0
+--- !u!114 &4421645767642055772
+MonoBehaviour:
+  m_ObjectHideFlags: 2
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4066815104232824939}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 919298f322f448d6a54f4cf1d79e27e5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Owner: {fileID: 2943662880510770687}
+  m_ParentLayer: {fileID: 0}
+  m_LayerID:
+    m_Low: 5321450921439972965
+    m_High: 17404627373020899221
+  m_SchemaVersion: 1
+  m_Overrides: []
+  m_SourceFingerprint: 0
+  m_EffectiveFingerprint: 400467389884309362
+  m_Data:
+    m_SharedVariableData:
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
+        UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d27dafeacd28e0b00
+      m_ValuePositions: 00000000040000000400000005000000050000000d0000001500000016000000
+      m_Values: 73616c6603c378a70172ad8a4280fbc67477032b850000000000
+      m_UnityObjects:
+      - {fileID: 7649753103391906527}
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Single,
+        mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d38358727f48d1b29
+      m_ValuePositions: 000000000a0000000a0000000b0000000b000000130000001b0000001c000000
+      m_Values: 666f6c6c6f77204d617803cd9c8cbe7bc8d1459fbba45f1fc3aa200000002041
+      m_UnityObjects: []
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
+        UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d27dafeacd28e0b00
+      m_ValuePositions: 000000000c0000000c0000000d0000000d000000150000001d0000001e000000
+      m_Values: 63757272656e74456e656d7903c4af83cf7a9fa64e89cdf4a1e54b668000ffffffff
+      m_UnityObjects: []
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
+        UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d27dafeacd28e0b00
+      m_ValuePositions: 000000000f0000000f0000001000000010000000180000002000000021000000
+      m_Values: 4d656c6565204d6f64756c546573740320b70667b6ee76458e9edf41107af68b00ffffffff
+      m_UnityObjects: []
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Boolean,
+        mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d4886ea0b921c56fa
+      m_ValuePositions: 000000000800000008000000090000000900000011000000190000001a000000
+      m_Values: 496e436f6d62617403a2a024b2ac804f4181c000c01e56fc4e0000
+      m_UnityObjects: []
+      m_Version: 3.4
+    m_SharedVariableGroupsData: []
+    m_UniqueID: 1829955293
 --- !u!1 &4467390547590674431
 GameObject:
   m_ObjectHideFlags: 0
@@ -1158,6 +1193,7 @@ MonoBehaviour:
   AimRig: {fileID: 0}
   CharacterLoad: {fileID: 0}
   Visual: {fileID: 1879165679072882653}
+  Visibility: {fileID: 0}
   UIManager: {fileID: 0}
   ColliderRefs: {fileID: 0}
   StatusEffects: {fileID: 8475986916130434765}
@@ -1166,6 +1202,9 @@ MonoBehaviour:
   StaminaSystem: {fileID: 3620542892003728669}
   DashSystem: {fileID: 2821387260181010644}
   KnockbackMotor: {fileID: 772699195717107350}
+  DefensiveBlockAttack: {fileID: 0}
+  DefensiveBlock: {fileID: 0}
+  FieldAllyMember: {fileID: 0}
   VerticalMotor: {fileID: 3025199990531463313}
   PassiveController: {fileID: 4454710438963013852}
   ActiveSkillProgress: {fileID: 0}
@@ -1177,6 +1216,7 @@ MonoBehaviour:
   AgentMoveDriver: {fileID: 860930448790366792}
   StaggerMeter: {fileID: 7180067156307174043}
   EnemyLevelSystem: {fileID: 0}
+  SpecialShootPoints: {fileID: 0}
   Agent: {fileID: 3160894530039119532}
   dropper: {fileID: 848695909115927668}
   animator: {fileID: 1608284013549844060}
@@ -1454,6 +1494,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ctx: {fileID: 4463375380434640548}
   characterController: {fileID: 0}
+  colliderRefs: {fileID: 0}
   capsuleCollider: {fileID: 0}
   navMeshAgent: {fileID: 3160894530039119532}
   agentMoveDriver: {fileID: 860930448790366792}

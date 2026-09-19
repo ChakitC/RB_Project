@@ -62,11 +62,9 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.TransformTasks
             var newScale = Vector3.Lerp(m_InitialScale, m_TargetScale.Value, easedT);
             transform.localScale = newScale;
 
-            // Check if arrived. Only snap when remaining distance is negligible to avoid visible snap with easing.
+            // Check if arrived.
             var distance = Vector3.Distance(transform.localScale, m_TargetScale.Value);
-            var snapThreshold = Mathf.Min(0.001f, m_ArrivedDistance.Value);
-            if (distance < snapThreshold) {
-                transform.localScale = m_TargetScale.Value;
+            if (distance <= m_ArrivedDistance.Value) {
                 return TaskStatus.Success;
             }
 

@@ -99,6 +99,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Utility
         {
             behaviorTreeSystemGroup.AddSystemToUpdateList(world.GetOrCreateSystem<EvaluationCleanupSystem>());
             behaviorTreeSystemGroup.AddSystemToUpdateList(world.GetOrCreateSystem<InterruptedCleanupSystem>());
+            behaviorTreeSystemGroup.AddSystemToUpdateList(world.GetOrCreateSystem<LifecycleTransitionSystem>());
         }
 
         /// <summary>

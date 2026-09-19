@@ -15,13 +15,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     using UnityEngine;
 
     /// <summary>
-    /// A node representation of the parallel selector task.
+    /// Represents a selector composite that runs all child tasks concurrently and succeeds when any child succeeds.
     /// </summary>
     [NodeIcon("d47aff1a00bcc6d4da8ca0df32ed8415", "108591b5d7a6bd94383d16a62cb3b4a7")]
-    [Opsive.Shared.Utility.Description("Similar to the selector task, the parallel selector task will return success as soon as a child task returns success. " +
-                     "The parallel task will run all of its children tasks simultaneously versus running each task one at a time. " +
-                     "If one tasks returns success the parallel selector task will end all of the child tasks and return success. " +
-                     "If every child task returns failure then the parallel selector task will return failure.")]
+    [Opsive.Shared.Utility.Description("The Parallel Selector task starts all child tasks and runs them concurrently. It returns success as soon as any child succeeds " +
+                     "and stops the remaining children. It returns failure only after every child fails.")]
     public class ParallelSelector : ECSCompositeTask<ParallelSelectorTaskSystem, ParallelSelectorComponent, ParallelSelectorFlag>, IParentNode, IParallelNode
     {
         /// <summary>
@@ -54,6 +52,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// The DOTS data structure for the ParallelSelector class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct ParallelSelectorComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

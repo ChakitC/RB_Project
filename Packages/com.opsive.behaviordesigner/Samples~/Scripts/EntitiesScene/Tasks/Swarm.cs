@@ -43,6 +43,7 @@ namespace Opsive.BehaviorDesigner.Samples
     /// <summary>
     /// The DOTS data structure for the Swarm struct.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct SwarmComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

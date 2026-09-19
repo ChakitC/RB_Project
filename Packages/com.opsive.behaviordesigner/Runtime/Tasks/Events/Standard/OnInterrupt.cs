@@ -76,6 +76,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Events
     /// <summary>
     /// The DOTS data structure for the OnInterrupt class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct OnInterruptEventComponent : IBufferElementData
     {
         [Tooltip("The index of the ILogicNode that the IEventNode is connected to.")]

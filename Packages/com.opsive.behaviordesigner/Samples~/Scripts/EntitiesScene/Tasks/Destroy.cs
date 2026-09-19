@@ -33,6 +33,7 @@ namespace Opsive.BehaviorDesigner.Samples
     /// <summary>
     /// The DOTS data structure for the Destroy struct.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct DestroyComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

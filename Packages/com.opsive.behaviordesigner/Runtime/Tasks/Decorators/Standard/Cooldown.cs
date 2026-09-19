@@ -119,6 +119,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     /// <summary>
     /// The DOTS data structure for the Cooldown class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct CooldownComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

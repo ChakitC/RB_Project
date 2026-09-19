@@ -486,6 +486,7 @@ MonoBehaviour:
       m_Version: 3.4
     m_GroupPropertiesData: []
     m_SharedVariableGroupsData: []
+  m_AuthoringLayer: {fileID: 0}
   m_StartWhenEnabled: 1
   m_PauseWhenDisabled: 0
   m_UpdateMode: 0

@@ -108,6 +108,26 @@ namespace Opsive.BehaviorDesigner.Runtime
                     AddComponent(entity, runtimeComponentTypes[i]);
                 }
 
+#if UNITY_6000_6_OR_NEWER
+                AddComponent(entity, new BehaviorTreeBakingData
+                {
+                    SnapshotId = BehaviorTreeBakingSnapshotRegistry.Register(snapshot),
+                });
+
+                var bakedData = CreateBakedBehaviorTreeBlob(
+                    GetTaskSystems<ReevaluateTaskSystemGroup>(scratchWorld),
+                    GetTaskSystems<InterruptTaskSystemGroup>(scratchWorld),
+                    GetTaskSystems<TraversalTaskSystemGroup>(scratchWorld),
+                    tagStableTypeHashes,
+                    reevaluateFlagStableTypeHashes);
+                AddComponent(entity, new BakedBehaviorTree
+                {
+                    StartEventConnectedIndex = connectedIndex,
+                    StartWhenEnabled = behaviorTree.StartWhenEnabled,
+                    StartEvaluation = behaviorTree.UpdateMode == UpdateMode.EveryFrame,
+                    Data = bakedData,
+                });
+#else
                 AddComponentObject(entity, new BehaviorTreeBakingData(snapshot));
                 AddComponentObject(entity, new BakedBehaviorTree
                 {
@@ -120,14 +140,24 @@ namespace Opsive.BehaviorDesigner.Runtime
                     TagStableTypeHashes = tagStableTypeHashes,
                     ReevaluateFlagStableTypeHashes = reevaluateFlagStableTypeHashes,
                 });
+#endif
 #if UNITY_EDITOR
                 // Stored in a separate component so StripEditorBehaviorTreeReferenceSystem can remove it during the entity scene optimization pass, keeping it out of the build.
+#if UNITY_6000_6_OR_NEWER
+                var editorData = CreateBakedEditorReferenceBlob(GlobalObjectId.GetGlobalObjectIdSlow(behaviorTree).ToString(), logicNodeRuntimeIndices);
+                AddComponent(entity, new BakedEditorReference
+                {
+                    DesignGraphUniqueID = behaviorTree.UniqueID,
+                    Data = editorData,
+                });
+#else
                 AddComponentObject(entity, new BakedEditorReference
                 {
                     AuthoringBehaviorTreeGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(behaviorTree).ToString(),
                     DesignGraphUniqueID = behaviorTree.UniqueID,
                     LogicNodeRuntimeIndices = logicNodeRuntimeIndices,
                 });
+#endif
 #endif
             } finally {
                 behaviorTree.ReleaseBakingState(scratchWorld, scratchEntity, data);
@@ -271,6 +301,87 @@ namespace Opsive.BehaviorDesigner.Runtime
             systems.Dispose();
             return systemTypes;
         }
+
+#if UNITY_6000_6_OR_NEWER
+        /// <summary>
+        /// Creates the unmanaged variable-length metadata for a baked behavior tree.
+        /// </summary>
+        /// <param name="reevaluateTaskSystems">The reevaluate task system indices.</param>
+        /// <param name="interruptTaskSystems">The interrupt task system indices.</param>
+        /// <param name="traversalTaskSystems">The traversal task system indices.</param>
+        /// <param name="tagStableTypeHashes">The task component stable type hashes.</param>
+        /// <param name="reevaluateFlagStableTypeHashes">The reevaluate flag component stable type hashes.</param>
+        /// <returns>The baked behavior tree blob asset.</returns>
+        private BlobAssetReference<BakedBehaviorTreeBlob> CreateBakedBehaviorTreeBlob(
+            string[] reevaluateTaskSystems, string[] interruptTaskSystems, string[] traversalTaskSystems,
+            ulong[] tagStableTypeHashes, ulong[] reevaluateFlagStableTypeHashes)
+        {
+            var builder = new BlobBuilder(Allocator.Temp);
+            try {
+                ref var root = ref builder.ConstructRoot<BakedBehaviorTreeBlob>();
+                AllocateStrings(builder, ref root.ReevaluateTaskSystems, reevaluateTaskSystems);
+                AllocateStrings(builder, ref root.InterruptTaskSystems, interruptTaskSystems);
+                AllocateStrings(builder, ref root.TraversalTaskSystems, traversalTaskSystems);
+
+                var tagHashes = builder.Allocate(ref root.TagStableTypeHashes, tagStableTypeHashes?.Length ?? 0);
+                for (int i = 0; i < tagHashes.Length; ++i) {
+                    tagHashes[i] = tagStableTypeHashes[i];
+                }
+
+                var reevaluateHashes = builder.Allocate(ref root.ReevaluateFlagStableTypeHashes, reevaluateFlagStableTypeHashes?.Length ?? 0);
+                for (int i = 0; i < reevaluateHashes.Length; ++i) {
+                    reevaluateHashes[i] = reevaluateFlagStableTypeHashes[i];
+                }
+
+                var blob = builder.CreateBlobAssetReference<BakedBehaviorTreeBlob>(Allocator.Persistent);
+                AddBlobAsset(ref blob, out _);
+                return blob;
+            } finally {
+                builder.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Allocates an array of strings within a blob asset.
+        /// </summary>
+        /// <param name="builder">The blob builder.</param>
+        /// <param name="destination">The destination blob array.</param>
+        /// <param name="values">The strings to allocate.</param>
+        private static void AllocateStrings(BlobBuilder builder, ref BlobArray<BlobString> destination, string[] values)
+        {
+            var array = builder.Allocate(ref destination, values?.Length ?? 0);
+            for (int i = 0; i < array.Length; ++i) {
+                builder.AllocateString(ref array[i], values[i]);
+            }
+        }
+#endif
+
+#if UNITY_EDITOR && UNITY_6000_6_OR_NEWER
+        /// <summary>
+        /// Creates the unmanaged editor lookup data for a baked behavior tree.
+        /// </summary>
+        /// <param name="globalObjectId">The GlobalObjectId string for the authoring BehaviorTree component.</param>
+        /// <param name="logicNodeRuntimeIndices">The design-time logic node to runtime task index mappings.</param>
+        /// <returns>The baked editor reference blob asset.</returns>
+        private BlobAssetReference<BakedBehaviorTreeEditorReferenceBlob> CreateBakedEditorReferenceBlob(string globalObjectId, ushort[] logicNodeRuntimeIndices)
+        {
+            var builder = new BlobBuilder(Allocator.Temp);
+            try {
+                ref var root = ref builder.ConstructRoot<BakedBehaviorTreeEditorReferenceBlob>();
+                builder.AllocateString(ref root.AuthoringBehaviorTreeGlobalObjectId, globalObjectId);
+                var runtimeIndices = builder.Allocate(ref root.LogicNodeRuntimeIndices, logicNodeRuntimeIndices?.Length ?? 0);
+                for (int i = 0; i < runtimeIndices.Length; ++i) {
+                    runtimeIndices[i] = logicNodeRuntimeIndices[i];
+                }
+
+                var blob = builder.CreateBlobAssetReference<BakedBehaviorTreeEditorReferenceBlob>(Allocator.Persistent);
+                AddBlobAsset(ref blob, out _);
+                return blob;
+            } finally {
+                builder.Dispose();
+            }
+        }
+#endif
     }
 
     /// <summary>
@@ -353,7 +464,11 @@ namespace Opsive.BehaviorDesigner.Runtime
                 if (isBuffer) {
                     value = s_CaptureBufferMethod.MakeGenericMethod(managedType).Invoke(null, new object[] { entityManager, sourceEntity });
                 } else if (typeInfo.Category == TypeManager.TypeCategory.ComponentData) {
+#if UNITY_6000_6_OR_NEWER
+                    if (!managedType.IsValueType) {
+#else
                     if (componentType.TypeIndex.IsManagedComponent) {
+#endif
                         throw new InvalidOperationException($"Behavior Designer scratch baking cannot snapshot the managed component {managedType.FullName}.");
                     }
                     if (!typeInfo.IsZeroSized) {
@@ -455,6 +570,53 @@ namespace Opsive.BehaviorDesigner.Runtime
     /// Contains the captured behavior-tree data needed during the baking-system pass.
     /// </summary>
     [TemporaryBakingType]
+#if UNITY_6000_6_OR_NEWER
+    internal struct BehaviorTreeBakingData : IComponentData
+    {
+        public long SnapshotId;
+    }
+
+    /// <summary>
+    /// Keeps managed scratch snapshots outside ECS while the baking system transfers them to unmanaged components.
+    /// </summary>
+    internal static class BehaviorTreeBakingSnapshotRegistry
+    {
+        private static readonly object s_Lock = new object();
+        private static readonly Dictionary<long, BehaviorTreeBakingSnapshot> s_Snapshots = new Dictionary<long, BehaviorTreeBakingSnapshot>();
+        private static long s_NextSnapshotId;
+
+        /// <summary>
+        /// Registers a captured behavior-tree snapshot.
+        /// </summary>
+        /// <param name="snapshot">The snapshot to register.</param>
+        /// <returns>The registered snapshot identifier.</returns>
+        internal static long Register(BehaviorTreeBakingSnapshot snapshot)
+        {
+            var snapshotId = System.Threading.Interlocked.Increment(ref s_NextSnapshotId);
+            lock (s_Lock) {
+                s_Snapshots.Add(snapshotId, snapshot);
+            }
+            return snapshotId;
+        }
+
+        /// <summary>
+        /// Removes and returns the snapshot with the specified identifier.
+        /// </summary>
+        /// <param name="snapshotId">The registered snapshot identifier.</param>
+        /// <param name="snapshot">The registered snapshot.</param>
+        /// <returns>True if the snapshot was found and removed.</returns>
+        internal static bool TryTake(long snapshotId, out BehaviorTreeBakingSnapshot snapshot)
+        {
+            lock (s_Lock) {
+                if (!s_Snapshots.TryGetValue(snapshotId, out snapshot)) {
+                    return false;
+                }
+                s_Snapshots.Remove(snapshotId);
+                return true;
+            }
+        }
+    }
+#else
     internal sealed class BehaviorTreeBakingData : IComponentData
     {
         internal readonly BehaviorTreeBakingSnapshot Snapshot;
@@ -475,6 +637,7 @@ namespace Opsive.BehaviorDesigner.Runtime
             Snapshot = snapshot;
         }
     }
+#endif
 
     /// <summary>
     /// Populates the behavior-tree components declared by <see cref="BehaviorTreeBaker"/>.
@@ -492,11 +655,19 @@ namespace Opsive.BehaviorDesigner.Runtime
                 .WithOptions(EntityQueryOptions.IncludePrefab | EntityQueryOptions.IncludeDisabledEntities).Build();
             using var entities = query.ToEntityArray(Allocator.Temp);
             for (int i = 0; i < entities.Length; ++i) {
+#if UNITY_6000_6_OR_NEWER
+                var bakingData = EntityManager.GetComponentData<BehaviorTreeBakingData>(entities[i]);
+                if (!BehaviorTreeBakingSnapshotRegistry.TryTake(bakingData.SnapshotId, out var snapshot)) {
+                    continue;
+                }
+                BehaviorTreeBakingSnapshotUtility.Apply(EntityManager, snapshot);
+#else
                 var bakingData = EntityManager.GetComponentObject<BehaviorTreeBakingData>(entities[i]);
                 if (bakingData?.Snapshot == null) {
                     continue;
                 }
                 BehaviorTreeBakingSnapshotUtility.Apply(EntityManager, bakingData.Snapshot);
+#endif
             }
         }
     }

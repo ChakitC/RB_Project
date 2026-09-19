@@ -125,6 +125,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     /// <summary>
     /// The DOTS data structure for the Repeater class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct RepeaterComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

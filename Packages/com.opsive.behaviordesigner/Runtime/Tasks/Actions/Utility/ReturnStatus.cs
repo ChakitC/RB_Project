@@ -54,6 +54,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
     /// <summary>
     /// The DOTS data structure for the ReturnStatus class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct ReturnStatusComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

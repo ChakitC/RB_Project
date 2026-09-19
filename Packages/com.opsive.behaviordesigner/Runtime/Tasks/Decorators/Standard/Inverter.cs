@@ -36,6 +36,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     /// <summary>
     /// The DOTS data structure for the Inverter class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct InverterComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

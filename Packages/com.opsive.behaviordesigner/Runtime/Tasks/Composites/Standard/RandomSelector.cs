@@ -17,14 +17,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     using System;
 
     /// <summary>
-    /// A node representation of the random selector task.
+    /// Represents a selector composite that evaluates its child tasks in a randomized order.
     /// </summary>
     [NodeIcon("d7c1e0f5830316e449df8a35561df859", "7638e4bc5a1f4cd488801902387ec5ea")]
-    [Opsive.Shared.Utility.Description("Similar to the selector task, the random selector task will return success as soon as a child task returns success.  " +
-                     "The difference is that the random selector class will run its children in a random order. The selector task is deterministic " +
-                     "in that it will always run the tasks from left to right within the tree. The random selector task shuffles the child tasks up and then begins " +
-                     "execution in a random order. Other than that the random selector class is the same as the selector class. It will continue running tasks " +
-                     "until a task completes successfully. If no child tasks return success then it will return failure.")]
+    [Opsive.Shared.Utility.Description("The Random Selector task shuffles its children when execution begins, then evaluates them one at a time in that randomized order. " +
+                     "It returns success as soon as a child succeeds, continues to the next child when one fails, and returns failure if every child fails.")]
     public class RandomSelector : ECSCompositeTask<RandomSelectorTaskSystem, RandomSelectorComponent, RandomSelectorFlag>, IParentNode, IConditionalAbortParent, IInterruptResponder, ISavableTask, ICloneable
     {
         [Tooltip("Specifies how the child conditional tasks should be reevaluated.")]
@@ -167,6 +164,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// The DOTS data structure for the RandomSelector class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct RandomSelectorComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]
@@ -186,6 +184,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// Stores the mutable child execution order for RandomSelector components.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct RandomSelectorTaskOrderComponent : IBufferElementData
     {
         [Tooltip("The index of the child task.")]

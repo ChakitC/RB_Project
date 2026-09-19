@@ -6,7 +6,6 @@
 /// ---------------------------------------------
 namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.UnityObjects
 {
-    using Opsive.GraphDesigner.Runtime;
     using Opsive.GraphDesigner.Runtime.Variables;
     using Opsive.Shared.Utility;
     using UnityEngine;
@@ -37,6 +36,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.UnityObjects
                 System.Array.Resize(ref array, array.Length + 1);
             }
 
+            array[array.Length - 1] = m_ResolvedGameObject;
             m_StoreResult.Value = array;
             return TaskStatus.Success;
         }

@@ -69,12 +69,27 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
             m_ExecutionStatusIcon.RegisterCallback<AttachToPanelEvent>(c =>
             {
                 GraphEventHandler.RegisterEvent(GraphEventType.WindowUpdate, UpdateNode);
+                if (m_BehaviorTree != null && Application.isPlaying) {
+                    m_BehaviorTree.OnBehaviorTreeStopped += OnBehaviorTreeStopped;
+                }
                 UpdateNode();
             });
             m_ExecutionStatusIcon.RegisterCallback<DetachFromPanelEvent>(c =>
             {
                 GraphEventHandler.UnregisterEvent(GraphEventType.WindowUpdate, UpdateNode);
+                if (m_BehaviorTree != null) {
+                    m_BehaviorTree.OnBehaviorTreeStopped -= OnBehaviorTreeStopped;
+                }
             });
+        }
+
+        /// <summary>
+        /// Refreshes the event node after the behavior tree has finished updating its stop statuses.
+        /// </summary>
+        /// <param name="paused">Was the behavior tree paused?</param>
+        private void OnBehaviorTreeStopped(bool paused)
+        {
+            m_ExecutionStatusIcon.schedule.Execute(UpdateNode);
         }
 
         /// <summary>
@@ -82,7 +97,7 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
         /// </summary>
         private void UpdateNode()
         {
-            if (m_BehaviorTree == null || m_BehaviorTree.Entity == Entity.Null || m_Node.ConnectedIndex == ushort.MaxValue || !m_BehaviorTree.World.EntityManager.Exists(m_BehaviorTree.Entity)) {
+            if (m_BehaviorTree == null || m_BehaviorTree.Entity == Entity.Null || m_Node.ConnectedIndex == ushort.MaxValue || m_BehaviorTree.World == null || !m_BehaviorTree.World.IsCreated || !m_BehaviorTree.World.EntityManager.Exists(m_BehaviorTree.Entity)) {
                 return;
             }
 

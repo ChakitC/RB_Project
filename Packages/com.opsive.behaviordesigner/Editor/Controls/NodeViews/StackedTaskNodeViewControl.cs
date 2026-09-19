@@ -1,4 +1,4 @@
-﻿#if GRAPH_DESIGNER
+#if GRAPH_DESIGNER
 /// ---------------------------------------------
 /// Behavior Designer
 /// Copyright (c) Opsive. All Rights Reserved.
@@ -29,9 +29,16 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
         {
             private const string c_DarkActiveIconGUID = "1230b934cbd748345b13125468a34720";
             private const string c_LightActiveIconGUID = "e57f179ee476f274dbe537179e67bf04";
+            private const string c_DarkSuccessIconGUID = "240eed9b6e6dc004f94216f1e9fcc390";
+            private const string c_LightSuccessIconGUID = "cf3f27e8ca1f20f4680890e078c7613a";
+            private const string c_DarkFailureIconGUID = "8d159db7a8da43e41a50a77e43cfd6ba";
+            private const string c_LightFailureIconGUID = "c3622912d9f7bcd41a54a95add672423";
 
             private int m_Index;
-            private Image m_ActiveImage;
+            private Image m_StatusImage;
+            private Texture m_ActiveIcon;
+            private Texture m_SuccessIcon;
+            private Texture m_FailureIcon;
             private float m_CurrentRotation;
 
             /// <summary>
@@ -50,12 +57,14 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
                 var label = new Label(ContainedNodeNameUtility.GetDisplayName(customName, task.ToString()));
                 label.style.flexGrow = 1;
                 horizontalLayout.Add(label);
-                m_ActiveImage = new Image();
-                m_ActiveImage.image = Shared.Editor.Utility.EditorUtility.LoadAsset<Texture>(EditorGUIUtility.isProSkin ? c_DarkActiveIconGUID : c_LightActiveIconGUID);
-                m_ActiveImage.style.width = 16;
-                m_ActiveImage.style.height = 16;
-                m_ActiveImage.style.display = DisplayStyle.None;
-                horizontalLayout.Add(m_ActiveImage);
+                m_ActiveIcon = Shared.Editor.Utility.EditorUtility.LoadAsset<Texture>(EditorGUIUtility.isProSkin ? c_DarkActiveIconGUID : c_LightActiveIconGUID);
+                m_SuccessIcon = Shared.Editor.Utility.EditorUtility.LoadAsset<Texture>(EditorGUIUtility.isProSkin ? c_DarkSuccessIconGUID : c_LightSuccessIconGUID);
+                m_FailureIcon = Shared.Editor.Utility.EditorUtility.LoadAsset<Texture>(EditorGUIUtility.isProSkin ? c_DarkFailureIconGUID : c_LightFailureIconGUID);
+                m_StatusImage = new Image();
+                m_StatusImage.style.width = 16;
+                m_StatusImage.style.height = 16;
+                m_StatusImage.style.display = DisplayStyle.None;
+                horizontalLayout.Add(m_StatusImage);
 
                 Add(horizontalLayout);
             }
@@ -63,18 +72,29 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
             /// <summary>
             /// Updates the status of the task.
             /// </summary>
-            /// <param name="activeIndex">The index that is active.</param>
-            public void UpdateStatus(int activeIndex)
+            /// <param name="status">The latest execution status of the task.</param>
+            /// <param name="activeIndex">The index of the active task.</param>
+            public void UpdateStatus(TaskStatus status, int activeIndex)
             {
-                m_ActiveImage.style.display = (m_Index == activeIndex ? DisplayStyle.Flex : DisplayStyle.None);
-                if (m_Index == activeIndex) {
+                Texture statusIcon = null;
+                if (status == TaskStatus.Success) {
+                    statusIcon = m_SuccessIcon;
+                } else if (status == TaskStatus.Failure) {
+                    statusIcon = m_FailureIcon;
+                } else if (m_Index == activeIndex) {
+                    statusIcon = m_ActiveIcon;
+                }
+
+                m_StatusImage.image = statusIcon;
+                m_StatusImage.style.display = statusIcon != null ? DisplayStyle.Flex : DisplayStyle.None;
+                if (statusIcon == m_ActiveIcon) {
                     if (Application.isPlaying) {
                         m_CurrentRotation += c_ActiveIconRotationSpeed;
-                        m_ActiveImage.style.rotate = new Rotate(Angle.Degrees(m_CurrentRotation));
+                        m_StatusImage.style.rotate = new Rotate(Angle.Degrees(m_CurrentRotation));
                     }
                 } else {
                     m_CurrentRotation = 0f;
-                    m_ActiveImage.style.rotate = new Rotate(Angle.Degrees(0f));
+                    m_StatusImage.style.rotate = new Rotate(Angle.Degrees(0f));
                 }
             }
         }
@@ -139,16 +159,12 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
         protected override TaskStatus UpdateNodeInternal()
         {
             var activeIndex = -1;
-            TaskStatus status;
-            if ((status = base.UpdateNodeInternal()) == TaskStatus.Running && m_StackedTask.Tasks.Length > 1) {
+            var status = base.UpdateNodeInternal();
+            if (status == TaskStatus.Running) {
                 activeIndex = m_StackedTask.ActiveIndex;
-                for (int i = 0; i < m_TaskViews.Length; ++i) {
-                    m_TaskViews[i].UpdateStatus(activeIndex);
-                }
-            } else {
-                for (int i = 0; i < m_TaskViews.Length; ++i) {
-                    m_TaskViews[i].UpdateStatus(activeIndex);
-                }
+            }
+            for (int i = 0; i < m_TaskViews.Length; ++i) {
+                m_TaskViews[i].UpdateStatus(m_StackedTask.Tasks[i].Status, activeIndex);
             }
             return status;
         }

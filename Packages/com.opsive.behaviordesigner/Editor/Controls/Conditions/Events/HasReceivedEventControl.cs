@@ -27,10 +27,13 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.Conditions.Events
         {
             var verticalLayout = ConditionalFieldControlUtility.CreateVerticalLayout();
             var targetContainer = ConditionalFieldControlUtility.CreateContainer();
+            var queueSettingsContainer = ConditionalFieldControlUtility.CreateContainer();
 
             void UpdateVisibility()
             {
                 ConditionalFieldControlUtility.SetDisplay(targetContainer, !ConditionalFieldControlUtility.GetValue(target, "m_GlobalEvent", false));
+                ConditionalFieldControlUtility.SetDisplay(queueSettingsContainer,
+                    ConditionalFieldControlUtility.GetValue(target, "m_ReceiveMode", HasReceivedEventCondition.ReceiveMode.Latest) == HasReceivedEventCondition.ReceiveMode.Queued);
             }
 
             ConditionalFieldControlUtility.AddWatchedField(input, target, "m_EventName", verticalLayout);
@@ -39,6 +42,10 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.Conditions.Events
                 refreshGlobalEvent?.Invoke();
                 UpdateVisibility();
             });
+            ConditionalFieldControlUtility.AddWatchedField(input, target, "m_ReceiveMode", verticalLayout, (object obj) => UpdateVisibility());
+            ConditionalFieldControlUtility.AddWatchedField(input, target, "m_MaxQueueSize", queueSettingsContainer);
+            ConditionalFieldControlUtility.AddWatchedField(input, target, "m_QueueOverflowPolicy", queueSettingsContainer);
+            verticalLayout.Add(queueSettingsContainer);
             ConditionalConditionControlBuilder.AddFields(input, target, targetContainer, "m_TargetGameObject", "m_TreeIndex");
             verticalLayout.Add(targetContainer);
             ConditionalConditionControlBuilder.AddFields(input, target, verticalLayout, "m_StoredValue1", "m_StoredValue2", "m_StoredValue3");

@@ -55,6 +55,7 @@ namespace Opsive.BehaviorDesigner.Samples
     /// <summary>
     /// The DOTS data structure for the HasTarget struct.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct HasTargetComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

@@ -15,13 +15,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     using UnityEngine;
 
     /// <summary>
-    /// A node representation of the parallel task.
+    /// Represents a composite task that runs all child tasks concurrently and succeeds only when every child succeeds.
     /// </summary>
     [NodeIcon("f612c025389b22640b1b6df88f4502e7", "8a4a401bcfb527a48a08351efaf92e14")]
-    [Opsive.Shared.Utility.Description("Similar to the sequence task, the parallel task will run each child task until a child task returns failure. " +
-                     "The parallel task will run all of its children tasks simultaneously versus running each task one at a time. " +
-                     "Like the sequence class, the parallel task will return success once all of its children tasks have return success. " +
-                     "If one tasks returns failure the parallel task will end all of the child tasks and return failure.")]
+    [Opsive.Shared.Utility.Description("The Parallel task starts all child tasks and runs them concurrently. It returns failure as soon as any child fails " +
+                     "and stops the remaining children. It returns success after every child succeeds.")]
     public class Parallel : ECSCompositeTask<ParallelTaskSystem, ParallelComponent, ParallelFlag>, IParentNode, IParallelNode
     {
         /// <summary>
@@ -55,6 +53,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// The DOTS data structure for the Parallel class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct ParallelComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

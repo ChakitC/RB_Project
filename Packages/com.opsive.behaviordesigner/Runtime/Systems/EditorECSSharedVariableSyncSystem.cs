@@ -99,8 +99,15 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
                 return registry;
             }
 
+#if UNITY_6000_6_OR_NEWER
+            var graphReference = EntityManager.GetComponentData<EditorBehaviorTreeGraphReference>(entity);
+#else
             var graphReference = EntityManager.GetComponentObject<EditorBehaviorTreeGraphReference>(entity);
-            if (graphReference == null || string.IsNullOrEmpty(graphReference.AuthoringBehaviorTreeGlobalObjectId)) {
+            if (graphReference == null) {
+                return null;
+            }
+#endif
+            if (!graphReference.IsValid) {
                 return null;
             }
 

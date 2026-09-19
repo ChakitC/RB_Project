@@ -9,6 +9,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
     using Opsive.BehaviorDesigner.Runtime;
     using Opsive.BehaviorDesigner.Runtime.Components;
     using Opsive.BehaviorDesigner.Runtime.Groups;
+    using Opsive.BehaviorDesigner.Runtime.Tasks;
     using Unity.Burst;
     using Unity.Burst.Intrinsics;
     using Unity.Collections;
@@ -19,9 +20,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
     /// </summary>
     [DisableAutoCreation]
     [UpdateInGroup(typeof(BehaviorTreeSystemGroup), OrderLast = true)]
-    #if !UNITY_EDITOR
     [BurstCompile]
-    #endif
     public partial struct EvaluationCleanupSystem : ISystem
     {
         private EntityQuery m_EvaluateCleanupQuery;
@@ -33,9 +32,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Creates the required objects for use within the job system.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         private void OnCreate(ref SystemState state)
         {
             m_EvaluateCleanupQuery = new EntityQueryBuilder(Allocator.Temp)
@@ -52,9 +49,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Updates the data object values for use within the job system.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         private void OnUpdate(ref SystemState state)
         {
             // Reset the evaluation status.
@@ -73,9 +68,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <summary>
         /// Job that resets the EvaluationComponent component value.
         /// </summary>
-        #if !UNITY_EDITOR
         [BurstCompile(CompileSynchronously = true)]
-        #endif
         public struct EvaluationCleanupJob : IJobChunk
         {
             [UnityEngine.Tooltip("A reference to the Enabled Component Handle.")]
@@ -92,9 +85,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// <param name="unfilteredChunkIndex">The index of the chunk.</param>
             /// <param name="useEnabledMask">Should the enabled mask be used?</param>
             /// <param name="chunkEnabledMask">The bitwise enabled mask.</param>
-            #if !UNITY_EDITOR
             [BurstCompile]
-            #endif
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
                 var branchAccessor = chunk.GetBufferAccessor(ref BranchComponentHandle);
@@ -116,9 +107,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
     /// </summary>
     [DisableAutoCreation]
     [UpdateInGroup(typeof(BehaviorTreeSystemGroup), OrderLast = true)]
-    #if !UNITY_EDITOR
     [BurstCompile]
-    #endif
     public partial struct InterruptedCleanupSystem : ISystem
     {
         private EntityQuery m_InterruptedCleanupQuery;
@@ -128,9 +117,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Creates the required objects for use within the job system.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         private void OnCreate(ref SystemState state)
         {
             m_InterruptedCleanupQuery = new EntityQueryBuilder(Allocator.Temp)
@@ -143,9 +130,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Updates the data object values for use within the job system.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         private void OnUpdate(ref SystemState state)
         {
             // Clean up the interrupted tag.
@@ -160,9 +145,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <summary>
         /// Job that resets the InterruptedFlag value.
         /// </summary>
-        #if !UNITY_EDITOR
         [BurstCompile(CompileSynchronously = true)]
-        #endif
         public partial struct InterruptedCleanupJob : IJobChunk
         {
             [UnityEngine.Tooltip("A reference to the Interrupted Component Handle.")]
@@ -173,14 +156,63 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// </summary>
             /// <param name="entity">The entity that is being acted upon.</param>
             /// <param name="entityIndex">The index of the entity.</param>
-            #if !UNITY_EDITOR
             [BurstCompile]
-            #endif
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
                 for (int i = 0; i < chunk.Count; i++) {
                     // Only chunks with the tag enabled will be returned so there's no need to check if the tag is enabled.
                     chunk.SetComponentEnabled<InterruptedFlag>(ref InterruptedComponentHandle, i, false);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Completes behavior tree lifecycle transitions after their graph branches have ended.
+    /// </summary>
+    [DisableAutoCreation]
+    [UpdateInGroup(typeof(BehaviorTreeSystemGroup), OrderLast = true)]
+    [UpdateAfter(typeof(EvaluationCleanupSystem))]
+    public partial struct LifecycleTransitionSystem : ISystem
+    {
+        private EntityQuery m_TransitionQuery;
+
+        /// <summary>
+        /// Creates the lifecycle transition query.
+        /// </summary>
+        /// <param name="state">The current system state.</param>
+        private void OnCreate(ref SystemState state)
+        {
+            m_TransitionQuery = SystemAPI.QueryBuilder()
+                .WithAll<BehaviorTreeLifecycleTransitionComponent, TaskComponent>()
+                .Build();
+        }
+
+        /// <summary>
+        /// Completes any transition whose lifecycle branch has returned a terminal status.
+        /// </summary>
+        /// <param name="state">The current system state.</param>
+        private void OnUpdate(ref SystemState state)
+        {
+            // Lifecycle transitions are rare. Avoid the dependency sync and temporary allocation while none are active.
+            if (m_TransitionQuery.IsEmpty) {
+                return;
+            }
+
+            state.CompleteDependency();
+            using var entities = m_TransitionQuery.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < entities.Length; ++i) {
+                var entity = entities[i];
+                var transitionComponent = state.EntityManager.GetComponentData<BehaviorTreeLifecycleTransitionComponent>(entity);
+                var taskComponents = state.EntityManager.GetBuffer<TaskComponent>(entity);
+                if (transitionComponent.ConnectedIndex >= taskComponents.Length) {
+                    BehaviorTree.CompleteLifecycleTransition(state.World, entity, transitionComponent.Transition);
+                    continue;
+                }
+
+                var status = taskComponents[transitionComponent.ConnectedIndex].Status;
+                if (status == TaskStatus.Success || status == TaskStatus.Failure) {
+                    BehaviorTree.CompleteLifecycleTransition(state.World, entity, transitionComponent.Transition);
                 }
             }
         }

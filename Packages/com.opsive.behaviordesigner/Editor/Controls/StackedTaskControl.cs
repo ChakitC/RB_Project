@@ -190,7 +190,8 @@ namespace Opsive.BehaviorDesigner.Editor.Controls
                     var isAction = stackedTask is IAction;
                     FilterWindow.ShowFilterWindow(graphWindow, new SearchWindowContext(graphWindow.position.position + m_ReorderableList.AddButton.worldBound.position), 
                                                 new Type[] { isAction ? typeof(IAction) : typeof(IConditional) }, FilterWindow.FilterType.Class, isAction ? "Action" : "Condition", 
-                                                false, null, (obj, type, pos) => OnActionAdd(obj, type, pos), (Type type) => { return typeof(Task).IsAssignableFrom(type); });
+                                                false, null, (obj, type, pos) => OnActionAdd(obj, type, pos), (Type type) => { return typeof(Task).IsAssignableFrom(type); },
+                                                recentCapacity: graphWindow.GraphEditor.Settings.FilterWindowRecentEntryCount);
                 }, (int index) => // Remove.
                 {
                     RemoveTask(index);
@@ -414,7 +415,8 @@ namespace Opsive.BehaviorDesigner.Editor.Controls
                                             isAction ? "Action" : "Condition", false, null, (object selectedObject, Type baseType, Vector2 windowPosition) =>
                                             {
                                                 ReplaceTask(index, selectedObject);
-                                            }, (Type type) => { return typeof(Task).IsAssignableFrom(type); });
+                                            }, (Type type) => { return typeof(Task).IsAssignableFrom(type); },
+                                            recentCapacity: graphWindow.GraphEditor.Settings.FilterWindowRecentEntryCount);
             }
 
             /// <summary>

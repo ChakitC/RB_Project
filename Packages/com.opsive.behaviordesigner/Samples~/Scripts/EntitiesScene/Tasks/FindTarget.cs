@@ -54,6 +54,7 @@ namespace Opsive.BehaviorDesigner.Samples
     /// <summary>
     /// The DOTS data structure for the FindTarget struct.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct FindTargetComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

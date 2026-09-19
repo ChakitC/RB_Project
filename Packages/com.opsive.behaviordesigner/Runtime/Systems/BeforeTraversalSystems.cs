@@ -31,26 +31,53 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <param name="state">THe current SystemState.</param>
         private void OnCreate(ref SystemState state)
         {
-            m_Query = SystemAPI.QueryBuilder().WithAllRW<TaskComponent>().WithAllRW<ReevaluateTaskComponent>().WithAll<BranchComponent>().WithAbsent<BakedBehaviorTree>().Build();
+            m_Query = SystemAPI.QueryBuilder().WithAllRW<BranchComponent>().WithAllRW<TaskComponent>().WithAllRW<ReevaluateTaskComponent>().WithAbsent<BakedBehaviorTree>().Build();
         }
 
         /// <summary>
         /// Marks tasks that should be reevaluated with conditional aborts.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
+        [BurstCompile]
         private void OnUpdate(ref SystemState state)
         {
             if (m_Query.IsEmptyIgnoreFilter) {
                 return;
             }
 
-            foreach (var (branchComponents, taskComponents, reevaluateTaskComponents, entity) in
-                SystemAPI.Query<DynamicBuffer<BranchComponent>, DynamicBuffer<TaskComponent>, DynamicBuffer<ReevaluateTaskComponent>>().WithAbsent<BakedBehaviorTree>().WithEntityAccess()) {
+            var ecb = new EntityCommandBuffer(Allocator.TempJob);
+            state.Dependency = new ReevaluateJob()
+            {
+                EntityCommandBuffer = ecb.AsParallelWriter()
+            }.ScheduleParallel(m_Query, state.Dependency);
 
-                var branchComponentsBuffer = branchComponents;
-                var taskComponentsBuffer = taskComponents;
-                var reevaluateTaskComponentsBuffer = reevaluateTaskComponents;
-                BeforeTraversalCore.Reevaluate(state.EntityManager, entity, ref branchComponentsBuffer, ref taskComponentsBuffer, ref reevaluateTaskComponentsBuffer);
+            // The jobs must be run immediately for the reevaluation task systems.
+            state.Dependency.Complete();
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
+        }
+
+        /// <summary>
+        /// Job which marks tasks that should be reevaluated with conditional aborts.
+        /// </summary>
+        [BurstCompile]
+        private partial struct ReevaluateJob : IJobEntity
+        {
+            [Tooltip("CommandBuffer which sets the component data.")]
+            public EntityCommandBuffer.ParallelWriter EntityCommandBuffer;
+
+            /// <summary>
+            /// Executes the job.
+            /// </summary>
+            /// <param name="entity">The entity that is being acted upon.</param>
+            /// <param name="entityIndex">The index of the entity.</param>
+            /// <param name="branchComponents">An array of branch components.</param>
+            /// <param name="taskComponents">An array of task components.</param>
+            /// <param name="reevaluateTaskComponents">An array of reevaluate task components.</param>
+            [BurstCompile]
+            public void Execute(Entity entity, [EntityIndexInQuery] int entityIndex, ref DynamicBuffer<BranchComponent> branchComponents, ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<ReevaluateTaskComponent> reevaluateTaskComponents)
+            {
+                BeforeTraversalCore.Reevaluate(entity, entityIndex, ref branchComponents, ref taskComponents, ref reevaluateTaskComponents, EntityCommandBuffer);
             }
         }
     }
@@ -77,9 +104,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Creates the jobs necessary for conditional aborts.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         private void OnUpdate(ref SystemState state)
         {
             if (m_Query.IsEmptyIgnoreFilter) {
@@ -102,9 +127,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Job which checks for any tasks that should be reevaluated with conditional aborts. This job only flags the tasks, it does not do
         /// the actual reevaluation or interruption.
         /// </summary>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         private partial struct ConditionalAbortsJob : IJobEntity
         {
             [Tooltip("CommandBuffer which sets the component data.")]
@@ -118,9 +141,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// <param name="branchComponents">An array of branch components.</param>
             /// <param name="taskComponents">An array of task components.</param>
             /// <param name="reevaluateTaskComponents">An array of reevaluate task components.</param>
-            #if !UNITY_EDITOR
             [BurstCompile]
-            #endif
             public void Execute(Entity entity, [EntityIndexInQuery] int entityIndex, ref DynamicBuffer<BranchComponent> branchComponents, ref DynamicBuffer<TaskComponent> taskComponents, ref DynamicBuffer<ReevaluateTaskComponent> reevaluateTaskComponents)
             {
                 BeforeTraversalCore.InvokeConditionalAborts(entity, entityIndex, ref branchComponents, ref taskComponents, ref reevaluateTaskComponents, EntityCommandBuffer);
@@ -151,9 +172,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Creates the InterruptJob.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         private void OnUpdate(ref SystemState state)
         {
             // IsEmpty instead of IsEmptyIgnoreFilter so the enableable InterruptFlag is respected. Interrupts are rare
@@ -177,9 +196,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <summary>
         /// Triggers the interrupts.
         /// </summary>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         private partial struct InterruptJob : IJobEntity
         {
             [Tooltip("CommandBuffer which sets the component data.")]
@@ -192,9 +209,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// <param name="entityIndex">The index of the entity.</param>
             /// <param name="branchComponents">An array of branch components.</param>
             /// <param name="taskComponents">An array of task components.</param>
-            #if !UNITY_EDITOR
             [BurstCompile]
-            #endif
             public void Execute(Entity entity, [EntityIndexInQuery] int entityIndex, DynamicBuffer<BranchComponent> branchComponents, DynamicBuffer<TaskComponent> taskComponents)
             {
                 BeforeTraversalCore.Interrupt(entity, entityIndex, branchComponents, taskComponents, EntityCommandBuffer);
@@ -212,9 +227,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Executes the system.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         private void OnUpdate(ref SystemState state)
         {
             foreach (var (branchComponents, entity) in

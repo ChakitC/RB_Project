@@ -80,3 +80,9 @@ NodeGroup
     right: 0;
     left: 0;
 }
+
+.graph-readability-medium #description,
+.graph-readability-overview #description
+{
+    display: none;
+}

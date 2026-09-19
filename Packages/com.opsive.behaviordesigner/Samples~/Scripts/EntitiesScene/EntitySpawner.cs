@@ -41,7 +41,11 @@ namespace Opsive.BehaviorDesigner.Samples
                 {
                     Prefab = entityPrefab,
                 });
+#if UNITY_6000_6_OR_NEWER
+                AddComponent(entity, new SpawnData
+#else
                 AddComponentObject(entity, new SpawnData
+#endif
                 {
                     Prefab = entityPrefab,
                     SpawnCount = authoring.m_SpawnData.InitialSpawnCount,
@@ -65,7 +69,11 @@ namespace Opsive.BehaviorDesigner.Samples
     /// <summary>
     /// Contains the information needed to spawn the entities.
     /// </summary>
+#if UNITY_6000_6_OR_NEWER
+    public struct SpawnData : IComponentData
+#else
     public class SpawnData : IComponentData
+#endif
     {
         [Tooltip("The entity prefab that should be spawned.")]
         public Entity Prefab;
@@ -90,7 +98,7 @@ namespace Opsive.BehaviorDesigner.Samples
         /// Sets the system requirements.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
-        private void OnCreate(ref SystemState state)
+        public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<SpawnData>();
         }
@@ -99,11 +107,15 @@ namespace Opsive.BehaviorDesigner.Samples
         /// Spawns the entities.
         /// </summary>
         /// <param name="state">The current SystemState.</param>
-        private void OnUpdate(ref SystemState state)
+        public void OnUpdate(ref SystemState state)
         {
             state.Enabled = false;
 
+#if UNITY_6000_6_OR_NEWER
+            var spawner = SystemAPI.GetSingleton<SpawnData>();
+#else
             var spawner = SystemAPI.ManagedAPI.GetSingleton<SpawnData>();
+#endif
             var entities = state.EntityManager.Instantiate(spawner.Prefab, spawner.SpawnCount, Allocator.Temp);
             var random = Unity.Mathematics.Random.CreateFromIndex((uint)DateTime.Now.Ticks);
 

@@ -40,6 +40,7 @@ namespace Opsive.BehaviorDesigner.Samples
     /// <summary>
     /// The DOTS data structure for the Damage struct.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct DamageComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

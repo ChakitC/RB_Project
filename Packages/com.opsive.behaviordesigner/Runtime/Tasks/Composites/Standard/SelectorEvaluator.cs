@@ -17,13 +17,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     using UnityEngine;
 
     /// <summary>
-    /// A node representation of the selector evaluator task.
+    /// Represents a selector composite that reevaluates its children every tick and can interrupt a lower-priority child.
     /// </summary>
     [NodeIcon("3a531955b1343524db597a112895cd7a", "35126a690fb2fba4ba6f9d1af773992f")]
-    [Opsive.Shared.Utility.Description("The selector evaluator is a selector task which reevaluates its children every tick. It will run the highest priority child which returns a task status of running. " +
-                     "This is done each tick. If a lower priority child is running and the next frame a higher priority child wants to run it will interrupt the lower priority child. " +
-                     "The selector evaluator will return success as soon as the first child returns success otherwise it will keep trying higher priority children. This task mimics " +
-                     "the conditional abort functionality except the child tasks don't always have to be conditional tasks.")]
+    [Opsive.Shared.Utility.Description("The Selector Evaluator task reevaluates its children every tick and runs the highest-priority child that can remain running. " +
+                     "If a higher-priority child becomes eligible, it interrupts the currently running lower-priority child. It returns success when a child succeeds. " +
+                     "This behavior is similar to a conditional abort, but the children do not need to be conditional tasks.")]
     public class SelectorEvaluator : ECSCompositeTask<SelectorEvaluatorTaskSystem, SelectorEvaluatorComponent, SelectorEvaluatorFlag>, IParentNode, IParallelNode, ISavableTask, ICloneable
     {
         private ushort m_ComponentIndex;
@@ -161,6 +160,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// The DOTS data structure for the SelectorEvaluator class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct SelectorEvaluatorComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: f424ccd23f014129ab04fad55838600a
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 368344
+  packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
+  packageVersion: 3.3.3
+  assetPath: Packages/com.opsive.behaviordesigner/Runtime/Tasks/Actions/Math/Vector3IntOperator.cs
+  uploadId: 994080

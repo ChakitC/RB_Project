@@ -35,6 +35,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     /// <summary>
     /// The DOTS data structure for the ReturnFailure class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct ReturnFailureComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

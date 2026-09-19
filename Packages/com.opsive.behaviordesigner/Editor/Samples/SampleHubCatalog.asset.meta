@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: a6b30cc9219f4a2e958515060af404bf
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 368344
+  packageName: Behavior Designer Pro 3 - DOTS Powered Behavior Trees
+  packageVersion: 3.3.3
+  assetPath: Packages/com.opsive.behaviordesigner/Editor/Samples/SampleHubCatalog.asset
+  uploadId: 994080

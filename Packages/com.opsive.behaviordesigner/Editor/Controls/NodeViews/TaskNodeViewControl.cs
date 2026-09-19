@@ -118,10 +118,14 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
             if (!TryRegisterUpdateNode() && m_BehaviorTree != null && Application.isPlaying) {
                 m_BehaviorTree.OnBehaviorTreeStarted += OnBehaviorTreeStarted;
             }
+            if (m_BehaviorTree != null && Application.isPlaying) {
+                m_BehaviorTree.OnBehaviorTreeStopped += OnBehaviorTreeStopped;
+            }
             m_ExecutionStatusIcon.RegisterCallback<DetachFromPanelEvent>(c => {
                 GraphEventHandler.UnregisterEvent(GraphEventType.WindowUpdate, UpdateNode);
                 if (m_BehaviorTree != null) {
                     m_BehaviorTree.OnBehaviorTreeStarted -= OnBehaviorTreeStarted;
+                    m_BehaviorTree.OnBehaviorTreeStopped -= OnBehaviorTreeStopped;
                 }
                 if (m_TraversalTaskSystemGroup != null) {
                     m_TraversalTaskSystemGroup.OnPreUpdate -= UpdateNode;
@@ -136,6 +140,15 @@ namespace Opsive.BehaviorDesigner.Editor.Controls.NodeViews
         private void OnBehaviorTreeStarted()
         {
             TryRegisterUpdateNode();
+        }
+
+        /// <summary>
+        /// Refreshes the node after the behavior tree has finished updating its stop statuses.
+        /// </summary>
+        /// <param name="paused">Was the behavior tree paused?</param>
+        private void OnBehaviorTreeStopped(bool paused)
+        {
+            m_ExecutionStatusIcon.schedule.Execute(UpdateNode);
         }
 
         /// <summary>

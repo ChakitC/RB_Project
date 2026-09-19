@@ -9,7 +9,9 @@
 [assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.BakedBehaviorTree))]
 [assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.BakedEditorReference))]
 [assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.DeferredBakedBehaviorTreeStart))]
+#if UNITY_EDITOR
 [assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.EditorBehaviorTreeGraphReference))]
+#endif
 [assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.TaskObjectComponent))]
 [assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.TaskObjectFlag))]
 [assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.TaskObjectReevaluateFlag))]
@@ -20,6 +22,7 @@
 [assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.EvaluationComponent512))]
 [assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.EvaluationComponent4096))]
 [assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.BranchComponent))]
+[assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.BehaviorTreeLifecycleTransitionComponent))]
 [assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.EvaluateFlag))]
 [assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.EnabledFlag))]
 [assembly: Unity.Entities.RegisterGenericComponentType(typeof(Opsive.BehaviorDesigner.Runtime.Components.InterruptFlag))]

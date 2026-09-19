@@ -1,0 +1,318 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1033564482, guid: 84bf46673498d8d4698d465c26c572a2, type: 3}
+  m_Name: SampleHubCatalog
+  m_EditorClassIdentifier: 
+  m_Entries:
+  - m_Id: animation-sync
+    m_Title: Animation Sync
+    m_Description: 'The AnimationSynchronizer component will set the Forward float
+      parameter to the NavMeshAgent''s direction. This will then synchronize the
+      animation with the behavior tree.
+
+
+      This implementation is specific to
+      the sample Animator Controller. For your own implementation you will need to
+      create a new script which applies the parameters based on your Animator Controller
+      structure. It does not directly interact with the behavior tree.'
+    m_Difficulty: 1
+    m_Tags:
+    - Animation
+    m_SceneGUID: a089b50b98ce00f449737bc9b119e261
+    m_PreviewGUID: 4bf2d407be5d84b4ea42b8a1934eee6b
+    m_DocumentationUrl: https://docs.unity3d.com/Packages/com.unity.ai.navigation@2.0/manual/CouplingAnimationAndNavigation.html
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+    - m_PackageName: com.unity.ai.navigation
+      m_DisplayName: AI Navigation
+  - m_Id: conditional-aborts
+    m_Title: Conditional Aborts
+    m_Description: Conditional aborts are a key feature in order to reevaluate the
+      behavior tree. The Agent behavior tree uses a Lower Priority Conditional Abort
+      to continuously check if the enemy is within sight. As soon as the enemy is
+      in sight the abort will trigger and the agent will start to seek towards the
+      enemy.
+    m_Difficulty: 1
+    m_Tags:
+    - Conditional Aborts
+    m_SceneGUID: fc93009833555af49b47a2ae1d96c4eb
+    m_PreviewGUID: 21cea2b1bdb2d1e42843e2b4ba7d592a
+    m_DocumentationUrl: https://opsive.com/support/documentation/behavior-designer-pro/conditional-aborts/
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+    - m_PackageName: com.unity.ai.navigation
+      m_DisplayName: AI Navigation
+  - m_Id: entities
+    m_Title: Entities
+    m_Description: 'These scene demonstrates using behavior trees exclusively within
+      ECS. The behavior trees which controls each agent within the swarm as well
+      as the turret''s behavior tree only contains entity tasks allowing for an large
+      number of spawnable agents.
+
+
+      The turret uses Unity''s baking system
+      in order to spawn within the ECS system. The swarm agents are spawned at runtime
+      using a prefab. See the EntitySpawner component for an example of spawning
+      entity agents at runtime.'
+    m_Difficulty: 2
+    m_Tags:
+    - DOTS
+    m_SceneGUID: cc58573cb28911642bac3e057bd71caa
+    m_PreviewGUID: 920b7c9b64a91fc49879c49511ca9f53
+    m_DocumentationUrl: 
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+    - m_PackageName: com.unity.entities.graphics
+      m_DisplayName: Entities Graphics
+  - m_Id: event-branches
+    m_Title: Event Branches
+    m_Description: 'This scene demonstrates using event branches to react to various
+      events. Event branches can trigger when an interrupt such as a conditional
+      abort occurs, when a physics callback occurs, when an event occurs, and in
+      other situations. The behavior tree Start branch must be active in order for
+      other event branches to be triggered.
+
+
+      In this scene event branches
+      are used to cause the character to jump, crouch, add the coin amount, and reach
+      the end point.'
+    m_Difficulty: 0
+    m_Tags:
+    - Events
+    m_SceneGUID: 6734ce68954fc46478cf439b751fbb51
+    m_PreviewGUID: acc525a90e0b4094d87843ee7a4a4546
+    m_DocumentationUrl: https://opsive.com/support/documentation/behavior-designer-pro/new-tasks/event-node/
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+  - m_Id: events
+    m_Title: Events
+    m_Description: This scene gives an example of sending events within the behavior
+      tree. A global event is sent when the turret projectile hits the agent in order
+      to summon the medic for aid. A local event is then sent from the medic to the
+      agent after aid has been given.
+    m_Difficulty: 1
+    m_Tags:
+    - Events
+    m_SceneGUID: 62a229d2b640c5548ae866d2205e462a
+    m_PreviewGUID: a79e1b4f249d4ce41926877cc5b84e3b
+    m_DocumentationUrl: https://opsive.com/support/documentation/behavior-designer-pro/events
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+    - m_PackageName: com.unity.ai.navigation
+      m_DisplayName: AI Navigation
+  - m_Id: hide-and-seek
+    m_Title: Hide And Seek
+    m_Description: 'This scene gives a practical example of how you could structure
+      your behavior tree to search for a player and then seek the player if they
+      are seen.
+
+
+      The Can See Object task is being reevaluated with the conditional
+      aborts system in order for the agent to determine if the player is within sight.
+      If the player is within sight the AI agent will start to chase after the player
+      as long as the player is within a specified distance. This distance check is
+      also reevaluated with the conditional aborts system.'
+    m_Difficulty: 1
+    m_Tags:
+    - Conditional Aborts
+    m_SceneGUID: f3eb9475a38ea674d9b9bcbc4b052082
+    m_PreviewGUID: ff023dc2bd417b4409ae439084d95b1b
+    m_DocumentationUrl: 
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+    - m_PackageName: com.unity.ai.navigation
+      m_DisplayName: AI Navigation
+    - m_PackageName: com.unity.inputsystem
+      m_DisplayName: Input System
+  - m_Id: melee-combat
+    m_Title: Melee Combat
+    m_Description: 'This scene uses a common behavior tree design pattern. It demonstrates
+      using an alternating Selector and Sequence structure, making it easy to add
+      or remove behavior without needing to restructure the behavior tree.
+
+
+      The
+      behavior tree agents also use a Subtree reference assigned on the BehaviorTree
+      component, which allows the use of the same tree for both agents.'
+    m_Difficulty: 0
+    m_Tags:
+    - Subtrees
+    m_SceneGUID: 8cf15a2f3c5afa344843fb764936e5a0
+    m_PreviewGUID: c34eaa78db39153478e7dfa1996b0612
+    m_DocumentationUrl: 
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+  - m_Id: persistent-scenes-a
+    m_Title: Persistent Scenes A
+    m_Description: 'Marks the agent''s GameObject as DontDestroyOnLoad, allowing
+      the behavior tree to stay active throughout scene changes. See PersistentScenesManager.Awake
+      for the implementation.
+
+
+      Ensure the PersistentScenesA and PersistentScenesB
+      scenes have been added to your build settings.'
+    m_Difficulty: 1
+    m_Tags:
+    - Scene Management
+    m_SceneGUID: ab691bb08e1509a48a13742462ca06bd
+    m_PreviewGUID: 7abcd87e6bc6468468c9e8fb04574309
+    m_DocumentationUrl: 
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+    - m_PackageName: com.unity.ai.navigation
+      m_DisplayName: AI Navigation
+  - m_Id: persistent-scenes-b
+    m_Title: Persistent Scenes B
+    m_Description: 'Marks the agent''s GameObject as DontDestroyOnLoad, allowing
+      the behavior tree to stay active throughout scene changes. See PersistentScenesManager.Awake
+      for the implementation.
+
+
+      Ensure the PersistentScenesA and PersistentScenesB
+      scenes have been added to your build settings.'
+    m_Difficulty: 1
+    m_Tags:
+    - Scene Management
+    m_SceneGUID: 2b56fe8f357736d4aa4df29e4cc73029
+    m_PreviewGUID: d90b721126c650348ad2d8982c6439dc
+    m_DocumentationUrl: 
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+    - m_PackageName: com.unity.ai.navigation
+      m_DisplayName: AI Navigation
+  - m_Id: property-binding
+    m_Title: Property Binding
+    m_Description: 'Property bindings allow you to map a variable value to a C# property.
+      This allows you to easily use that value outside of the behavior tree and you
+      do not need to worry about syncing the variable value. Properties must have
+      both a getter and a setter in order for a variable to be able to bind to it.
+
+
+      In
+      this example the character has a Health variable that maps to the Health.Value
+      property.'
+    m_Difficulty: 1
+    m_Tags:
+    - Variables
+    m_SceneGUID: 36264f19e5a586d4a988ffeb608ac423
+    m_PreviewGUID: 3dda1b910cf332c4e87c4409735f01b0
+    m_DocumentationUrl: https://opsive.com/support/documentation/behavior-designer-pro/variables/property-bindings/
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+  - m_Id: runtime-behavior
+    m_Title: Runtime Behavior
+    m_Description: Subtrees can be changed at runtime, allowing for dynamic behavior
+      based on the game state. When the subtree should be swapped out the BehaviorTree.ReevaluateSubtreeReference
+      method can be called. This will call IGraphReferenceNode.EvaluateSubgraphs,
+      allowing you to return a new subtree within your reference task.
+    m_Difficulty: 2
+    m_Tags:
+    - Subtrees
+    m_SceneGUID: 4a6320d00cd529f439f27aa27d205924
+    m_PreviewGUID: 0a30e3e610031fa4d894abb53667b8c5
+    m_DocumentationUrl: https://opsive.com/support/documentation/behavior-designer-pro/subtrees/
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+  - m_Id: save-load
+    m_Title: Save Load
+    m_Description: 'The behavior tree state can be saved, allowing it to be restored
+      at a later point in time. You have the option of saving to a file or getting
+      the save data, allowing you to save and restore the data using your own saving
+      methods.
+
+
+      In this example the behavior tree data is saved along with
+      other data such as the Transform position and Animator state. This data is
+      then saved to a JSON file, allowing it to be restored later on.'
+    m_Difficulty: 1
+    m_Tags:
+    - Save Load
+    m_SceneGUID: 0421619cb9d792248b87adb7225c638d
+    m_PreviewGUID: ce550ac6ef4bd34478f7e65f930607fc
+    m_DocumentationUrl: https://opsive.com/support/documentation/behavior-designer-pro/save-load/
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+    - m_PackageName: com.unity.ai.navigation
+      m_DisplayName: AI Navigation
+  - m_Id: subtrees
+    m_Title: Subtrees
+    m_Description: 'Subtrees are Scriptable Objects that can be used to reuse existing
+      behavior trees. The Subtree Reference task can be used to select a subtree
+      at runtime, and also allows for variables to be overridden for each subtree.
+
+
+      In
+      this scene the same subtree is reused for both the left and right sides. A
+      unique reference is passed into each subtree, allowing the agent to collect
+      and craft different items using the same subtree.'
+    m_Difficulty: 1
+    m_Tags:
+    - Subtrees
+    m_SceneGUID: e70d406c17522d54381acdef13c26c33
+    m_PreviewGUID: 69504920adb490740b238207b536fe20
+    m_DocumentationUrl: https://opsive.com/support/documentation/behavior-designer-pro/subtrees
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+    - m_PackageName: com.unity.ai.navigation
+      m_DisplayName: AI Navigation
+  - m_Id: turn-based
+    m_Title: Turn Based
+    m_Description: Behavior Designer can be used with any perspective and almost
+      any game type. This example shows a 2D turn based game. The behavior tree will
+      only be ticked when it is the AI's turn. The behavior tree will stop executing
+      after one of the agents has fired at the player. It will then wait for the
+      player to make their decision before ticking again.
+    m_Difficulty: 2
+    m_Tags:
+    - 2D
+    m_SceneGUID: c00135207bac66a40941f245164d67ab
+    m_PreviewGUID: 7d7a8b60d8ccaf94b99ac952ab205471
+    m_DocumentationUrl: https://opsive.com/support/documentation/behavior-designer-pro/api/
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+    - m_PackageName: com.unity.2d.sprite
+      m_DisplayName: 2D Sprite
+  - m_Id: utility-theory
+    m_Title: Utility Theory
+    m_Description: 'Utility theory is an AI technique that evaluates which action
+      to perform based on a curve value. Behavior Designer Pro brings utility theory
+      to behavior trees with the Utility Selector task.
+
+
+      The Utility Selector
+      task will evaluate the curves every tick to determine which action should be
+      performed based on the highest utility value.'
+    m_Difficulty: 1
+    m_Tags:
+    - Utility
+    m_SceneGUID: fd0826ca3a40e5840b71fa33c8e4dfda
+    m_PreviewGUID: a9cfaa42c16da5149833a202ad67582f
+    m_DocumentationUrl: https://opsive.com/support/documentation/behavior-designer-pro/concepts/tasks/composite/utility-selector
+    m_Dependencies:
+    - m_PackageName: com.unity.render-pipelines.universal
+      m_DisplayName: Universal RP
+    - m_PackageName: com.unity.ai.navigation
+      m_DisplayName: AI Navigation

@@ -165,3 +165,24 @@ CommentElement
     height: 20px;
     margin: 0px 1px 0px 1px;
 }
+
+.graph-readability-medium CommentElement
+{
+    display: none;
+}
+
+.graph-readability-overview #node-contents,
+.graph-readability-overview #icon,
+.graph-readability-overview #small-tree-icon,
+.graph-readability-overview #small-graph-icon,
+.graph-readability-overview CommentElement,
+.graph-readability-overview #node-error-indicator,
+.graph-readability-overview #node-hover-toolbar-hit-area
+{
+    display: none;
+}
+
+.graph-readability-overview #title-container
+{
+    min-height: 26px;
+}

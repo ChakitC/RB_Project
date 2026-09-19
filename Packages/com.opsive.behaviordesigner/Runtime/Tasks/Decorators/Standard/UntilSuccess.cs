@@ -35,6 +35,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Decorators
     /// <summary>
     /// The DOTS data structure for the UntilSuccess class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct UntilSuccessComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

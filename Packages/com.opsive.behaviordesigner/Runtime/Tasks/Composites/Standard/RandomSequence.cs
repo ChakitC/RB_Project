@@ -17,15 +17,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     using System;
 
     /// <summary>
-    /// A node representation of the random sequence task.
+    /// Represents a sequence composite that evaluates its child tasks in a randomized order.
     /// </summary>
     [NodeIcon("edb30349221143a408c76da55a6aa809", "cfb9039832ed52748b617bde070898dc")]
-    [Opsive.Shared.Utility.Description("Similar to the sequence task, the random sequence task will return success as soon as every child task returns success.  " +
-                     "The difference is that the random sequence class will run its children in a random order. The sequence task is deterministic " +
-                     "in that it will always run the tasks from left to right within the tree. The random sequence task shuffles the child tasks up and then begins " +
-                     "execution in a random order. Other than that the random sequence class is the same as the sequence class. It will stop running tasks " +
-                     "as soon as a single task ends in failure. On a task failure it will stop executing all of the child tasks and return failure. " +
-                     "If no child returns failure then it will return success.")]
+    [Opsive.Shared.Utility.Description("The Random Sequence task shuffles its children when execution begins, then evaluates them one at a time in that randomized order. " +
+                     "It continues after each child succeeds, returns failure as soon as any child fails, and returns success after every child succeeds.")]
     public class RandomSequence : ECSCompositeTask<RandomSequenceTaskSystem, RandomSequenceComponent, RandomSequenceFlag>, IParentNode, IConditionalAbortParent, IInterruptResponder, ISavableTask, ICloneable
     {
         [Tooltip("Specifies how the child conditional tasks should be reevaluated.")]
@@ -168,6 +164,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// The DOTS data structure for the RandomSequence class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct RandomSequenceComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]
@@ -187,6 +184,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// Stores the mutable child execution order for RandomSequence components.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct RandomSequenceTaskOrderComponent : IBufferElementData
     {
         [Tooltip("The index of the child task.")]

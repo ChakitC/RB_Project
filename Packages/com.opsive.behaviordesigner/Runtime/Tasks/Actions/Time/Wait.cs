@@ -182,6 +182,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.Time
     /// <summary>
     /// The DOTS data structure for the Wait struct.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct WaitComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

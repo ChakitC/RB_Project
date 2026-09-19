@@ -65,6 +65,7 @@ namespace Opsive.BehaviorDesigner.Samples
     /// <summary>
     /// The DOTS data structure for the RotateTowardsEntity struct.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct RotateTowardsEntityComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

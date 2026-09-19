@@ -51,6 +51,7 @@ namespace Opsive.BehaviorDesigner.Samples
     /// <summary>
     /// The DOTS data structure for the Fire struct.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct FireComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

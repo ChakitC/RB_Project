@@ -61,9 +61,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// </summary>
         /// <param name="entityManager">The running EntityManager.</param>
         /// <param name="stopRunning">Has the system been stopped?</param>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         public void Complete(EntityManager entityManager, bool stopRunning = false)
         {
             if (!m_JobScheduled) {
@@ -82,9 +80,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <summary>
         /// Job which traverses the tree.
         /// </summary>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         public partial struct EvaluationJob : IJobEntity
         {
             [Tooltip("CommandBuffer which sets the component data.")]
@@ -97,9 +93,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// <param name="entityIndex">The index of the entity.</param
             /// <param name="branchComponents">An array of branch components.</param>
             /// <param name="taskComponents">An array of task components.</param>
-            #if !UNITY_EDITOR
             [BurstCompile]
-            #endif
             public void Execute(Entity entity, [EntityIndexInQuery] int entityIndex, ref DynamicBuffer<BranchComponent> branchComponents, ref DynamicBuffer<TaskComponent> taskComponents)
             {
                 BehaviorTraversalCore.Evaluate(entity, entityIndex, ref branchComponents, ref taskComponents, EntityCommandBuffer);
@@ -152,9 +146,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Executes the job to determine if the system should stay active and evaluating.
         /// </summary>
         /// <param name="state">The current state of the system.</param>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         private void OnUpdate(ref SystemState state)
         {
             Active = Evaluate = true;
@@ -221,9 +213,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// Completes the job and releases any memory.
         /// </summary>
         /// <param name="entityManager">The running EntityManager.</param>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         public void Complete(EntityManager entityManager)
         {
             if (!m_JobScheduled) {
@@ -268,9 +258,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <summary>
         /// Job which determine if the system should stay active. If any behavior tree should stay active then the entire system must remain active.
         /// </summary>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         public partial struct DetermineEvaluationJob32 : IJobEntity
         {
             [Tooltip("CommandBuffer which sets the component data.")]
@@ -286,9 +274,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// <param name="branchComponents">An array of branch components.</param>
             /// <param name="taskComponents">An array of task components.</param>
             /// <param name="evaluationComponent">The EvaluationComponent that belongs to the entity.</param>
-            #if !UNITY_EDITOR
             [BurstCompile]
-            #endif
             private void Execute(Entity entity, [EntityIndexInQuery] int entityIndex, ref DynamicBuffer<BranchComponent> branchComponents, in DynamicBuffer<TaskComponent> taskComponents, ref EvaluationComponent32 evaluationComponent)
             {
                 var evaluatedTasks = evaluationComponent.EvaluatedTasks;
@@ -300,9 +286,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <summary>
         /// Job which determine if the system should stay active. If any behavior tree should stay active then the entire system must remain active.
         /// </summary>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         public partial struct DetermineEvaluationJob64 : IJobEntity
         {
             [Tooltip("CommandBuffer which sets the component data.")]
@@ -318,9 +302,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// <param name="branchComponents">An array of branch components.</param>
             /// <param name="taskComponents">An array of task components.</param>
             /// <param name="evaluationComponent">The EvaluationComponent that belongs to the entity.</param>
-            #if !UNITY_EDITOR
             [BurstCompile]
-            #endif
             private void Execute(Entity entity, [EntityIndexInQuery] int entityIndex, ref DynamicBuffer<BranchComponent> branchComponents, in DynamicBuffer<TaskComponent> taskComponents, ref EvaluationComponent64 evaluationComponent)
             {
                 var evaluatedTasks = evaluationComponent.EvaluatedTasks;
@@ -332,9 +314,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <summary>
         /// Job which determine if the system should stay active. If any behavior tree should stay active then the entire system must remain active.
         /// </summary>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         public partial struct DetermineEvaluationJob128 : IJobEntity
         {
             [Tooltip("CommandBuffer which sets the component data.")]
@@ -350,9 +330,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// <param name="branchComponents">An array of branch components.</param>
             /// <param name="taskComponents">An array of task components.</param>
             /// <param name="evaluationComponent">The EvaluationComponent that belongs to the entity.</param>
-            #if !UNITY_EDITOR
             [BurstCompile]
-            #endif
             private void Execute(Entity entity, [EntityIndexInQuery] int entityIndex, ref DynamicBuffer<BranchComponent> branchComponents, in DynamicBuffer<TaskComponent> taskComponents, ref EvaluationComponent128 evaluationComponent)
             {
                 var evaluatedTasks = evaluationComponent.EvaluatedTasks;
@@ -364,9 +342,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <summary>
         /// Job which determine if the system should stay active. If any behavior tree should stay active then the entire system must remain active.
         /// </summary>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         public partial struct DetermineEvaluationJob512 : IJobEntity
         {
             [Tooltip("CommandBuffer which sets the component data.")]
@@ -382,9 +358,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// <param name="branchComponents">An array of branch components.</param>
             /// <param name="taskComponents">An array of task components.</param>
             /// <param name="evaluationComponent">The EvaluationComponent that belongs to the entity.</param>
-            #if !UNITY_EDITOR
             [BurstCompile]
-            #endif
             private void Execute(Entity entity, [EntityIndexInQuery] int entityIndex, ref DynamicBuffer<BranchComponent> branchComponents, in DynamicBuffer<TaskComponent> taskComponents, ref EvaluationComponent512 evaluationComponent)
             {
                 var evaluatedTasks = evaluationComponent.EvaluatedTasks;
@@ -396,9 +370,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
         /// <summary>
         /// Job which determine if the system should stay active. If any behavior tree should stay active then the entire system must remain active.
         /// </summary>
-        #if !UNITY_EDITOR
         [BurstCompile]
-        #endif
         public partial struct DetermineEvaluationJob4096 : IJobEntity
         {
             [Tooltip("CommandBuffer which sets the component data.")]
@@ -414,9 +386,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Systems
             /// <param name="branchComponents">An array of branch components.</param>
             /// <param name="taskComponents">An array of task components.</param>
             /// <param name="evaluationComponent">The EvaluationComponent that belongs to the entity.</param>
-            #if !UNITY_EDITOR
             [BurstCompile]
-            #endif
             private void Execute(Entity entity, [EntityIndexInQuery] int entityIndex, ref DynamicBuffer<BranchComponent> branchComponents, in DynamicBuffer<TaskComponent> taskComponents, ref EvaluationComponent4096 evaluationComponent)
             {
                 var evaluatedTasks = evaluationComponent.EvaluatedTasks;

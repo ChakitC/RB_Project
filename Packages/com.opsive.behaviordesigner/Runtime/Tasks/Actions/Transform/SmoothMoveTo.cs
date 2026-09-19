@@ -86,13 +86,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions.TransformTasks
             }
 
             var remainingDistance = Vector3.Distance(newPosition, targetPosition);
-            var snapThreshold = Mathf.Min(0.001f, m_ArrivedDistance.Value);
-            if (remainingDistance < snapThreshold) {
-                if (m_UseLocalSpace.Value) {
-                    transform.localPosition = targetPosition;
-                } else {
-                    transform.position = targetPosition;
-                }
+            if (remainingDistance <= m_ArrivedDistance.Value) {
                 return TaskStatus.Success;
             }
             return TaskStatus.Running;

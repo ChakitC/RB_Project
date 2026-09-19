@@ -18,12 +18,12 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     using System;
 
     /// <summary>
-    /// A node representation of the utility selector task.
+    /// Represents a selector composite that continually chooses the child with the highest utility value.
     /// </summary>
     [NodeIcon("9d36cd363c3e08246a6e9eaf5ad99d69", "db3d0b77c7f9e0b4f9157aa03178836a")]
-    [Opsive.Shared.Utility.Description("The utility selector task evaluates the child tasks using Utility Theory AI. The child task can return the utility value " +
-                     "at that particular time. The task with the highest utility value will be selected and the existing running task will be aborted. The utility selector " +
-                     "task reevaluates its children every tick.")]
+    [Opsive.Shared.Utility.Description("The Utility Selector task reevaluates each available child's utility value every tick and runs the child with the highest value. " +
+                     "If another child's utility becomes higher, it interrupts the currently running child and switches to the new selection. Failed children are excluded " +
+                     "until no eligible children remain, at which point the Utility Selector task returns failure.")]
     public class UtilitySelector : ECSCompositeTask<UtilitySelectorTaskSystem, UtilitySelectorComponent, UtilitySelectorFlag>, IParentNode, ISavableTask, ICloneable
     {
         private ushort m_ComponentIndex;
@@ -146,6 +146,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// The DOTS data structure for the UtilitySelector class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct UtilitySelectorComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]
@@ -164,6 +165,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// DOTS structure that contains the most recently utility of the task.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct UtilityValueComponent : IBufferElementData
     {
         [Tooltip("The index of the task.")]

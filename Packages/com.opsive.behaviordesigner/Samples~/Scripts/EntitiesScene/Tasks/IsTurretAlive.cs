@@ -35,6 +35,7 @@ namespace Opsive.BehaviorDesigner.Samples
     /// <summary>
     /// The DOTS data structure for the IsTurretAlive struct.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct IsTurretAliveComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

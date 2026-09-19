@@ -866,6 +866,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animationProfile: {fileID: 0}
   member: {fileID: 0}
+  defaultSettings: {fileID: 0}
   worldLayers:
     serializedVersion: 2
     m_Bits: 1
@@ -896,6 +897,7 @@ GameObject:
   - component: {fileID: 4940790970151266537}
   - component: {fileID: 1875986171285139132}
   - component: {fileID: 5606255429377701377}
+  - component: {fileID: 3024963774756460838}
   m_Layer: 10
   m_Name: AI System
   m_TagString: Untagged
@@ -1041,66 +1043,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0b02b4aaf7aa44843b836f6e31da7d39, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_SharedVariableData:
-  - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
-      UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
-    m_ValueHashes: 
-    m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278927dafeacd28e0b00
-    m_ValuePositions: 00000000040000000400000005000000
-    m_Values: 73656c660300000000
-    m_UnityObjects:
-    - {fileID: 2275044329717223576}
-    m_Version: 3.4
-  - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
-      UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
-    m_ValueHashes: 
-    m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278927dafeacd28e0b00
-    m_ValuePositions: 00000000060000000600000007000000
-    m_Values: 706c6179657203ffffffff
-    m_UnityObjects: []
-    m_Version: 3.4
-  - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Single,
-      mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
-    m_ValueHashes: 
-    m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278938358727f48d1b29
-    m_ValuePositions: 000000000f0000000f00000010000000
-    m_Values: 666f6c6c6f77204d617800000000000000000000
-    m_UnityObjects: []
-    m_Version: 3.4
-  - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Boolean,
-      mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
-    m_ValueHashes: 
-    m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427894886ea0b921c56fa
-    m_ValuePositions: 00000000080000000800000009000000
-    m_Values: 496e436f6d6261740300
-    m_UnityObjects: []
-    m_Version: 3.4
-  - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
-      UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
-    m_ValueHashes: 
-    m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278927dafeacd28e0b00
-    m_ValuePositions: 000000000c0000000c0000000d000000
-    m_Values: 63757272656e74456e656d7903ffffffff
-    m_UnityObjects: []
-    m_Version: 3.4
-  - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Single,
-      mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
-    m_ValueHashes: 
-    m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278938358727f48d1b29
-    m_ValuePositions: 000000000b0000000b0000000c000000
-    m_Values: 53686f6f742052616e67650300000041
-    m_UnityObjects: []
-    m_Version: 3.4
-  - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Single,
-      mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
-    m_ValueHashes: 
-    m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278938358727f48d1b29
-    m_ValuePositions: 00000000150000001500000016000000
-    m_Values: 4368616e676520706f736974696f6e2052616e67650000000000
-    m_UnityObjects: []
-    m_Version: 3.4
+  m_SharedVariableData: []
   m_SharedVariableGroupsData: []
-  m_UniqueID: -1900332833
+  m_AuthoringLayer: {fileID: 3024963774756460838}
+  m_UniqueID: 0
 --- !u!114 &5606255429377701377
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1158,12 +1104,95 @@ MonoBehaviour:
     m_EventNodePropertiesData: []
     m_GroupPropertiesData: []
     m_SharedVariableGroupsData: []
+  m_AuthoringLayer: {fileID: 0}
   m_StartWhenEnabled: 1
   m_PauseWhenDisabled: 0
   m_UpdateMode: 0
   m_EvaluationType: 0
   m_MaxEvaluationCount: 1
   m_Subtree: {fileID: 11400000, guid: 20d97805b04b36542b00ff18b8250283, type: 2}
+--- !u!114 &3024963774756460838
+MonoBehaviour:
+  m_ObjectHideFlags: 2
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2357043900880950871}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 919298f322f448d6a54f4cf1d79e27e5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Owner: {fileID: 1875986171285139132}
+  m_ParentLayer: {fileID: 0}
+  m_LayerID:
+    m_Low: 5744175578149274317
+    m_High: 3711952298840119440
+  m_SchemaVersion: 1
+  m_Overrides: []
+  m_SourceFingerprint: 0
+  m_EffectiveFingerprint: 3051904287971065538
+  m_Data:
+    m_SharedVariableData:
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
+        UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d27dafeacd28e0b00
+      m_ValuePositions: 00000000040000000400000005000000050000000d0000001500000016000000
+      m_Values: 73656c66035943f6a97b21f545a5845d11d72df3fe0000000000
+      m_UnityObjects:
+      - {fileID: 2275044329717223576}
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
+        UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d27dafeacd28e0b00
+      m_ValuePositions: 00000000060000000600000007000000070000000f0000001700000018000000
+      m_Values: 706c61796572031ce4db1f32d22744a25ba6163931198500ffffffff
+      m_UnityObjects: []
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Single,
+        mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d38358727f48d1b29
+      m_ValuePositions: 000000000f0000000f0000001000000010000000180000002000000021000000
+      m_Values: 666f6c6c6f77204d61780000000000002ca40204ed41fa4785cb311525ca43c90000000000
+      m_UnityObjects: []
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Boolean,
+        mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d4886ea0b921c56fa
+      m_ValuePositions: 000000000800000008000000090000000900000011000000190000001a000000
+      m_Values: 496e436f6d62617403d7246f21fc393a4c8a6162ddfd6f61d90000
+      m_UnityObjects: []
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
+        UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d27dafeacd28e0b00
+      m_ValuePositions: 000000000c0000000c0000000d0000000d000000150000001d0000001e000000
+      m_Values: 63757272656e74456e656d79030054b5088c53ef4f95ae61139336d6ba00ffffffff
+      m_UnityObjects: []
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Single,
+        mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d38358727f48d1b29
+      m_ValuePositions: 000000000b0000000b0000000c0000000c000000140000001c0000001d000000
+      m_Values: 53686f6f742052616e6765031537cba45fda3d47b75d5075893e2b4b0000000041
+      m_UnityObjects: []
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Single,
+        mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d38358727f48d1b29
+      m_ValuePositions: 00000000150000001500000016000000160000001e0000002600000027000000
+      m_Values: 4368616e676520706f736974696f6e2052616e67650027ccecb9d517cb41b526f5ea1692b1700000000000
+      m_UnityObjects: []
+      m_Version: 3.4
+    m_SharedVariableGroupsData: []
+    m_UniqueID: -29433515
 --- !u!1 &2837304008164890900
 GameObject:
   m_ObjectHideFlags: 0

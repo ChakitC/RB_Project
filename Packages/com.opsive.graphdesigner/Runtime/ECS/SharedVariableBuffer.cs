@@ -15,6 +15,7 @@ namespace Opsive.GraphDesigner.Runtime.Variables
     /// Unmanaged buffer element storing shared variable values as raw bytes.
     /// Supports any unmanaged type up to 16 bytes (float, int, bool, float2, float3, float4, etc.).
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct SharedVariableElement : IBufferElementData
     {
         [Tooltip("16-byte storage that covers float, int, bool, double, float3, float4, and similar values.")]

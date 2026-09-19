@@ -16,11 +16,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     using System;
 
     /// <summary>
-    /// A node representation of the selector task.
+    /// Represents a selector composite that evaluates child tasks until one succeeds.
     /// </summary>
     [NodeIcon("4c3d0559a9ebc604e88b16e9a3fdfa05", "de3acf0e386a26246b8bc999b1ef8e32")]
-    [Opsive.Shared.Utility.Description("The selector task is similar to an \"or\" operation. It will return success as soon as one of its child tasks return success. " +
-                     "If a child task returns failure then it will sequentially run the next task. If no child task returns success then it will return failure.")]
+    [Opsive.Shared.Utility.Description("The Selector task evaluates its children from left to right, similar to a logical OR operation. It returns success as soon as a child succeeds, " +
+                     "continues to the next child when one fails, and returns failure if every child fails. A running child keeps the Selector task running.")]
     public class Selector : ECSCompositeTask<SelectorTaskSystem, SelectorComponent, SelectorFlag>, IParentNode, IConditionalAbortParent, IInterruptResponder, ISavableTask, ICloneable
     {
         [Tooltip("Specifies how the child conditional tasks should be reevaluated.")]
@@ -112,6 +112,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// The DOTS data structure for the Selector class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct SelectorComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

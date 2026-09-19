@@ -139,7 +139,7 @@ namespace Opsive.GraphDesigner.Runtime.Variables
             }
 
             var buffer = world.EntityManager.GetBuffer<SharedVariableElement>(entity);
-            m_Core.SuppressManagedValueTracking(() => {
+            using (m_Core.SuppressManagedValueTracking()) {
                 for (int i = 0; i < m_SyncToManagedActions.Count; ++i) {
                     var bufferValue = buffer[i].Value;
                     if (!m_Core.ShouldSyncToManaged(i, bufferValue)) {
@@ -149,7 +149,7 @@ namespace Opsive.GraphDesigner.Runtime.Variables
                     m_SyncToManagedActions[i](buffer);
                     m_Core.MarkSyncedToManaged(i, bufferValue);
                 }
-            });
+            }
         }
 
         /// <summary>

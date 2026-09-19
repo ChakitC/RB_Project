@@ -18,12 +18,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     using UnityEngine;
 
     /// <summary>
-    /// A node representation of the priority selector task.
+    /// Represents a selector composite that evaluates its child tasks in descending priority order.
     /// </summary>
     [NodeIcon("cea0f2b6cee06a742bb35dcc40202e8e", "744afc2640950e045961296f1d5800d7")]
-    [Opsive.Shared.Utility.Description("Similar to the selector task, the priority selector task will return success as soon as a child task returns success. " +
-                     "Instead of running the tasks sequentially from left to right within the tree, the priority selector will ask the task what its priority is to determine the order. " +
-                     "The higher priority tasks have a higher chance at being run first.")]
+    [Opsive.Shared.Utility.Description("The Priority Selector task orders its children by their reported priority values and evaluates the highest-priority child first. " +
+                     "It returns success as soon as a child succeeds, continues to the next child when one fails, and returns failure if every child fails.")]
     public class PrioritySelector : ECSCompositeTask<PrioritySelectorTaskSystem, PrioritySelectorComponent, PrioritySelectorFlag>, IParentNode, ISavableTask, ICloneable
     {
         private ushort m_ComponentIndex;
@@ -147,6 +146,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// The DOTS data structure for the PrioritySelector class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct PrioritySelectorComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]
@@ -167,6 +167,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// Stores the mutable sorted child order for PrioritySelector components.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct PrioritySelectorSortedOrderComponent : IBufferElementData
     {
         [Tooltip("The sorted order entry.")]
@@ -176,6 +177,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// DOTS structure that contains the most recently priority of the task.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct PriorityValueComponent : IBufferElementData
     {
         [Tooltip("The index of the task.")]

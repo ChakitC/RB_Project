@@ -16,11 +16,11 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     using System;
 
     /// <summary>
-    /// A node representation of the sequence task.
+    /// Represents a sequence composite that evaluates child tasks until one fails.
     /// </summary>
     [NodeIcon("8981cc246f900b24da46ae10eb49b68b", "4a7b39d8e0d056a4a9d8eb390b4bc9b8")]
-    [Opsive.Shared.Utility.Description("The sequence task is similar to an \"and\" operation. It will return failure as soon as one of its child tasks return failure. " +
-                     "If a child task returns success then it will sequentially run the next task. If all child tasks return success then it will return success.")]
+    [Opsive.Shared.Utility.Description("The Sequence task evaluates its children from left to right, similar to a logical AND operation. It continues to the next child after each success, " +
+                     "returns failure as soon as any child fails, and returns success after every child succeeds. A running child keeps the Sequence task running.")]
     public class Sequence : ECSCompositeTask<SequenceTaskSystem, SequenceComponent, SequenceFlag>, IParentNode, IConditionalAbortParent, IInterruptResponder, ISavableTask, ICloneable
     {
         [Tooltip("Specifies how the child conditional tasks should be reevaluated.")]
@@ -112,6 +112,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Composites
     /// <summary>
     /// The DOTS data structure for the Sequence class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct SequenceComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

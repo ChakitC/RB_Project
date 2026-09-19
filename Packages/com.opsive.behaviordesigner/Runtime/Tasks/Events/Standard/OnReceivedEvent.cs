@@ -17,6 +17,8 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Events
     {
         [Tooltip("The name of the event that starts the branch.")]
         [SerializeField] protected SharedVariable<string> m_EventName;
+        [Tooltip("Is the event a global event?")]
+        [SerializeField] protected SharedVariable<bool> m_GlobalEvent = false;
         [Tooltip("Optionally store the first sent argument.")]
         [RequireShared] [SerializeField] protected SharedVariable m_StoredValue1;
         [Tooltip("Optionally store the second sent argument.")]
@@ -43,6 +45,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Events
             m_BehaviorTree.OnBehaviorTreeDestroyed += Destroy;
 
             m_EventName.OnValueChange += UpdateEvents;
+            m_GlobalEvent.OnValueChange += UpdateEvents;
             if (m_StoredValue1 != null) { m_StoredValue1.OnValueChange += UpdateEvents; }
             if (m_StoredValue2 != null) { m_StoredValue2.OnValueChange += UpdateEvents; }
             if (m_StoredValue3 != null) { m_StoredValue3.OnValueChange += UpdateEvents; }
@@ -56,7 +59,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Events
         private void RegisterEvents()
         {
             m_SharedVariableEventHandler = SharedVariableEventHandler.Create(m_StoredValue1, m_StoredValue2, m_StoredValue3, afterEvent: ReceivedEvent);
-            m_SharedVariableEventHandler.Register(m_BehaviorTree, m_EventName.Value, false);
+            m_SharedVariableEventHandler.Register(m_BehaviorTree, m_EventName.Value, m_GlobalEvent.Value);
         }
 
         /// <summary>
@@ -97,6 +100,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Events
             m_BehaviorTree.OnBehaviorTreeDestroyed -= Destroy;
 
             m_EventName.OnValueChange -= UpdateEvents;
+            m_GlobalEvent.OnValueChange -= UpdateEvents;
             if (m_StoredValue1 != null) { m_StoredValue1.OnValueChange -= UpdateEvents; }
             if (m_StoredValue2 != null) { m_StoredValue2.OnValueChange -= UpdateEvents; }
             if (m_StoredValue3 != null) { m_StoredValue3.OnValueChange -= UpdateEvents; }

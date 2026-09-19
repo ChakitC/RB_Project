@@ -99,6 +99,7 @@ namespace Opsive.BehaviorDesigner.Runtime.Tasks.Actions
     /// <summary>
     /// The DOTS data structure for the PerformInterruption class.
     /// </summary>
+    [InternalBufferCapacity(1)]
     public struct PerformInterruptionComponent : IBufferElementData
     {
         [Tooltip("The index of the node.")]

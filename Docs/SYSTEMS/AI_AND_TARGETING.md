@@ -15,6 +15,23 @@ memory. Common identity should come from `CharacteContext.TargetIdentity`.
 - `Assets\Scripts\AI\ChainAttack`
 - `Assets\Scripts\AI\Helper Proc`
 
+## Skill Readiness Condition
+
+`SkillReady` is a Behavior Designer conditional node. Set its `Slot Index`
+to the same value as the associated `TryCastSkillFromSlot` node. It resolves
+the owning `CharacteContext` and checks `ctx.SkillManager.CanStartCastSlot`.
+It returns `Success` when that slot can start a cast, otherwise `Failure`,
+including when the context or skill manager is missing. It does not start
+a cast or spend skill resources.
+
+Place it after the range condition and before the casting `ParallelSelector`
+in a `Sequence`. If the cast is wrapped in `ReturnSuccess` to stop a parallel
+rotation task, keep `SkillReady` outside that decorator so an unavailable
+skill fails the sequence and lets the parent selector try its next branch.
+Readiness is a pre-cast check, not a guarantee that the cast will succeed.
+Avoid a Self conditional abort on this readiness gate during casting: casting
+can itself make the slot unavailable and cause the branch to abort.
+
 ## Target Identity
 
 `AITargetIdentity` values:

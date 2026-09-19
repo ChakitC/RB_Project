@@ -37,6 +37,9 @@ public sealed class DashSetting : ScriptableObject
              "เปิดเฉพาะผู้เล่น AI ที่ dash ได้ควรปิด ไม่งั้นจอผู้เล่นจะมืดตอน AI หลบ")]
     public bool playsPerfectDodgeFeedback = true;
 
+    [Tooltip("Played once per successful perfect dodge when Perfect Dodge Feedback is enabled.")]
+    public AudioCue perfectDashCue;
+
     [Tooltip("หน้าตาของจอตอนสโลว์ ปล่อยว่าง = สโลว์อย่างเดียวไม่มีเอฟเฟคจอ")]
     public WorldSlowPostFxSetting worldSlowVisual;
 

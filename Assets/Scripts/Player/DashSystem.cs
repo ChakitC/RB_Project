@@ -412,6 +412,9 @@ public class DashSystem : MonoBehaviour
         if (!dashSetting.playsPerfectDodgeFeedback)
             return;
 
+        if (dashSetting.perfectDashCue != null)
+            AudioService.Instance.PlayAtPosition(dashSetting.perfectDashCue, ActorRoot.position);
+
         float slowScale = dashSetting.perfectDashSlowScale;
         float slowDuration = dashSetting.perfectDashSlowDuration;
 

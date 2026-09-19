@@ -3088,3 +3088,14 @@ pause-automatic-combat are test controls; disabling the latter resets into live 
 and updates bindings in place. `Configure Production Assets` sets up the production
 profiles/prefabs. Historical copied test assets are no longer runtime dependencies.
 See [Defensive Block](SYSTEMS/DEFENSIVE_BLOCK_TEST.md) for lifecycle and validation.
+
+## Perfect Dash success sound
+
+`Assets/Data/Combat/DashSetting_Player.asset > Perfect Dodge > Perfect Dash Cue`
+references `Assets/Data/Combat/PerfectDash.asset` (AudioCue), using
+`Assets/AudioResult/Sfx/BattleSystem/RB_Project_PrefectDash_SFX.mp3`.
+`DashSystem` plays it once per confirmed perfect dodge, alongside its existing
+feedback, including when a custom PerfectDodgeHandler handles the screen effect.
+Ordinary dash does not play it. `playsPerfectDodgeFeedback = false` suppresses it
+for actors configured without player feedback; a null cue disables only this sound.
+The cue is a global 2D Sfx one-shot. Tune Base Volume on the cue or the Sfx mix.

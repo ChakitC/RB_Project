@@ -60,6 +60,7 @@ MonoBehaviour:
     m_RotationOrder: 4
   perfectDashFreeAmmoDuration: 2
   playsPerfectDodgeFeedback: 1
+  perfectDashCue: {fileID: 11400000, guid: 3e29d3c780603a44cbff937ad0e5fcb3, type: 2}
   worldSlowVisual: {fileID: 11400000, guid: da550000000000000000000000000005, type: 2}
   perfectDodgeThreatLayers:
     serializedVersion: 2

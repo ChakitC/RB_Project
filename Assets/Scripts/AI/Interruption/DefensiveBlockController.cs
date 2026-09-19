@@ -87,6 +87,23 @@ public sealed class DefensiveBlockController : MonoBehaviour
     public bool CanBegin(PlayerContext protectedPlayer, DefensiveBlockAttack source) =>
         TryResolveBeginPose(protectedPlayer, source, out _, out _);
 
+    internal bool TryPreviewGuardPose(PlayerContext issuer, DefensiveBlockAttack source, out Vector3 position, out Quaternion rotation)
+    {
+        position = default; rotation = Quaternion.identity;
+        if (ctx == issuer)
+        {
+            if (!CanBeginSelf(issuer, source)) return false;
+            Vector3 direction = source.transform.position - ctx.transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude < .01f) return false;
+            position = ctx.transform.position; rotation = Quaternion.LookRotation(direction);
+            return true;
+        }
+        if (!TryResolveBeginPose(issuer, source, out _, out var pose)) return false;
+        position = pose.StartPosition; rotation = pose.StartRotation;
+        return true;
+    }
+
     // Player-only entry point. Shared presentation, contact and reactions still belong here.
     public bool CanBeginSelf(PlayerContext issuer, DefensiveBlockAttack source)
     {
@@ -272,6 +289,8 @@ public sealed class DefensiveBlockController : MonoBehaviour
     {
         if (!IsReadyFor(source, id) || !ctx.AnimDriver.TryBlockImpact(id, slideSeconds)) return;
         impact = true;
+        if (loadedProfile != null && loadedProfile.impactCue != null)
+            AudioService.Instance.PlayAtPosition(loadedProfile.impactCue, GuardCenter);
         Impacted?.Invoke(this);
         slideDirection = -ctx.transform.forward;
         if (hitLagDuration > 0f)
@@ -292,7 +311,7 @@ public sealed class DefensiveBlockController : MonoBehaviour
             CutsceneDirector.IsCinematicPlaying || NpcPresentationController.IsActive ||
             (!impact && (attack == null || !attack.Matches(request)))) { Cancel(); return; }
         elapsed += ActorDeltaTime;
-        if (!impact && elapsed >= timeoutSeconds && ctx.AnimBrain.BlockPhase != BlockAnimationPhase.Exit)
+        if (!impact && !attack.IsTimedApproach && elapsed >= timeoutSeconds && ctx.AnimBrain.BlockPhase != BlockAnimationPhase.Exit)
             ctx.AnimDriver.EndBlock(request);
     }
     void LateUpdate()

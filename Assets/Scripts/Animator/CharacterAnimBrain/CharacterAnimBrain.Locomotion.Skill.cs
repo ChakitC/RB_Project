@@ -21,6 +21,8 @@ public sealed partial class CharacterAnimBrain
         private float _holdCeilingNormalized;
         private float _holdSpeedMultiplier;
         private float _originalStateSpeed = 1f;
+        private bool _approachActive;
+        private float _approachOriginalSpeed;
         private static int _nextHoldId = 1;
 
         public Locomotion_Skill(CharacterAnimBrain owner)
@@ -151,10 +153,13 @@ public sealed partial class CharacterAnimBrain
 
             if (_state != null)
             {
+                if (_approachActive) _state.Speed = _approachOriginalSpeed;
                 _state.SharedEvents = null;
                 _state = null;
                 _events = null;
             }
+
+            _approachActive = false;
 
             _inCutscenePhase = false;
             owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
@@ -178,6 +183,19 @@ public sealed partial class CharacterAnimBrain
 
             normalizedTime = 0f;
             return false;
+        }
+
+        internal bool TryBeginApproach(float endNormalized, float duration)
+        {
+            if (_approachActive || _holdActive || _inCutscenePhase || _state == null ||
+                _state.Length <= 0f || endNormalized <= _state.NormalizedTime + .01f) return false;
+            _approachOriginalSpeed = _state.Speed;
+            // Keep normal motion when possible; a late command stretches the remaining charge
+            // segment instead of playing the following strike or freezing on a single pose.
+            float end = Mathf.Min(endNormalized, _state.NormalizedTime + duration / _state.Length);
+            _state.Speed = (end - _state.NormalizedTime) * _state.Length / duration;
+            _approachActive = true;
+            return true;
         }
 
         internal bool TryGetPlaybackTiming(out float remainingDuration, out float totalDuration)

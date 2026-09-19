@@ -3040,6 +3040,30 @@ references the same GuardSetting as a fallback when Player's character definitio
 does not supply one. Player and Aires have identical impact results for this prototype.
 Player guards in place; only companions use landing placement and warp fades.
 
+**GuardSetting > Impact presentation > Timed Approach Seconds** defaults to **0.5**;
+1 gives a longer approach, and 0 restores physical interception. The timer begins
+on accepted input and uses the attacker's actor clock. **RectorCharge > Approach
+Stand Off** defaults to **1.6 m**, measured from the guard root along its forward
+direction to Rector's final root position. Tune it against the visible models.
+Both the landing and the enemy approach path must be safe. Short approaches that
+would require moving Rector backwards are unavailable. Keep Windup Seconds at zero.
+No new clip is required: the skill keeps playing with translation owned by the motor.
+
+**GuardSetting > Impact presentation > Impact Cue** references
+`Assets/Data/DefensiveBlock/BlockImpact.asset` (AudioCue), using
+`Assets/AudioResult/Sfx/BattleSystem/RB_Project_Block_SFX.mp3`.
+It plays once on confirmed Block success for either receiver, not when input is
+accepted. Tune the cue's Base Volume for this effect; it also follows the Sfx mix.
+The authored cue is a global 2D one-shot so the Block camera does not attenuate it.
+Clear Impact Cue to disable the sound without changing guard behavior.
+
+**GuardSetting > Ready signal > Ready Cue** references
+`Assets/Data/DefensiveBlock/BlockOpen.asset`, a global 2D Sfx one-shot using
+`RB_Project_BlockOpen_SFX.mp3`. It sounds when an actionable flare appears on
+screen, not for dim unavailable threats. Adjust Base Volume on that AudioCue or
+clear Ready Cue to disable it. The Player's guard settings supply this cue even
+when a companion will receive the Block.
+
 `Player.prefab > InterruptionCommandController.defensiveBlockEnabled` gates the
 feature. `DefensiveBlockReadyCue` on that prefab controls light entry/exit (0.18/0.12 s),
 size, offset, brightness and `unavailableBrightness` (0.25). Unavailable incoming

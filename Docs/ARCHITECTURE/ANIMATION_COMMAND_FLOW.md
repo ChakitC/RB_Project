@@ -335,6 +335,16 @@ See `Docs/SYSTEMS/SPECIAL_SHOOT_POINTS.md` for the round and stagger contract.
 
 ## Defensive Block
 
+Production timed approach keeps the original attacker's Skill request playing.
+`AnimDriver.TryBeginSkillApproach(requestId, endNormalized, duration)` validates that
+request, hands root motion to the gameplay motor, and fits the remaining moving
+charge segment into the duration with positive playback speed. Ordinary cast-point
+and timeline events remain active so costs settle normally; the attack adapter
+suppresses the bound damage execution separately. The state restores its previous
+playback speed on exit. No held pose or additional attacker animation state is used.
+Movement/outcome/cancellation belong to `DefensiveBlockAttack` and its approach
+motor; Brain only owns playback. Global pause and actor time still affect both.
+
 `CharacterAnimationMode.Block` runs Begin, held-pose Loop, Impact and Exit under
 one request. AnimDriver owns `TryBeginBlock`, `TryBlockImpact` and `EndBlock`;
 Brain exposes `BlockPhase` and terminal `PlaybackKind.Block` events. Gameplay

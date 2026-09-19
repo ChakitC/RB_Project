@@ -6530,7 +6530,7 @@ MonoBehaviour:
   KnockbackMotor: {fileID: 4712651075002478625}
   DefensiveBlockAttack: {fileID: 0}
   DefensiveBlock: {fileID: 0}
-  FieldAllyMember: {fileID: 0}
+  FieldAllyMember: {fileID: 9179609916294418117}
   VerticalMotor: {fileID: 265991289163836672}
   PassiveController: {fileID: 7652747380643676885}
   ActiveSkillProgress: {fileID: 5910928853809233979}
@@ -7363,7 +7363,7 @@ MonoBehaviour:
   switchDelay: 0.1
   obstacleMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 4194303
   obstacleTriggers: 1
   fallbackAimHeight: 0.9
   indicatorClearance: 0.25
@@ -7384,6 +7384,7 @@ MonoBehaviour:
   screenWidth: 1.2
   screenHeight: 0.85
   brightness: 1.3
+  unavailableBrightness: 0.25
   appearSeconds: 0.18
   disappearSeconds: 0.12
 --- !u!1 &5757821378103527558

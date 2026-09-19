@@ -45,6 +45,14 @@ public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
     IEnumerator ValidateTrials()
     {
         var report = new StringBuilder();
+        if (Ally != null && Ally.DefensiveBlock.Settings.timedApproachSeconds > 0f)
+        {
+            yield return ValidateTimedApproach(report);
+            ValidationReport = report.ToString();
+            Debug.Log("DefensiveBlock timed approach validation\n" + ValidationReport);
+            validation = null;
+            yield break;
+        }
         for (int trial = 0; trial < 6; trial++)
         {
             startDistance = trial == 0 ? 4 : trial == 1 ? 6 : trial == 3 ? 10 : 8;

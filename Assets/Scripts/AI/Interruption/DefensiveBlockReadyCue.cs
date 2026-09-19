@@ -19,6 +19,8 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
     Renderer cueRenderer;
     MaterialPropertyBlock properties;
     float readyWeight;
+    DefensiveBlockAttack announcedAttack;
+    int announcedRequest, announcedLife;
     enum Phase { Hidden, Appearing, Holding, Disappearing }
     Phase phase;
     CharacteContext displayedTarget;
@@ -86,6 +88,7 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         cue.gameObject.SetActive(true);
         AdvanceAnimation(Time.unscaledDeltaTime);
         if (phase == Phase.Hidden) return;
+        TryPlayReadySound(eligible ? attack : null, position);
         float height = viewCamera.orthographic ? 2f * viewCamera.orthographicSize :
             2f * viewport.z * Mathf.Tan(viewCamera.fieldOfView * Mathf.Deg2Rad * 0.5f);
         cue.SetPositionAndRotation(position, viewCamera.transform.rotation);
@@ -94,6 +97,20 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         readyWeight = Mathf.MoveTowards(readyWeight, eligible ? 1f : unavailableBrightness, Time.unscaledDeltaTime * 8f);
         properties.SetFloat(IntensityId, brightness * intensity * readyWeight);
         if (cueRenderer != null) cueRenderer.SetPropertyBlock(properties);
+    }
+
+    void TryPlayReadySound(DefensiveBlockAttack attack, Vector3 position)
+    {
+        if (attack == null || attack.CasterContext == null) return;
+        int life = attack.CasterContext.LifeGeneration;
+        if (announcedAttack == attack && announcedRequest == attack.RequestId && announcedLife == life) return;
+        var settings = ctx.DefensiveBlock != null ? ctx.DefensiveBlock.Settings : null;
+        if (settings == null || settings.readyCue == null) return;
+        // Keep this stamp when the flare hides, so camera/range flicker cannot replay it.
+        announcedAttack = attack;
+        announcedRequest = attack.RequestId;
+        announcedLife = life;
+        AudioService.Instance.PlayAtPosition(settings.readyCue, position);
     }
 
     void BeginPhase(Phase next)

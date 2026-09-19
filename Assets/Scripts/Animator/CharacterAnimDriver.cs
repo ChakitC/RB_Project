@@ -401,6 +401,9 @@ public sealed class CharacterAnimDriver : MonoBehaviour
             brain.CancelSkillCastRequest(requestId);
     }
 
+    public bool TryBeginSkillApproach(int requestId, float endNormalized, float duration) =>
+        CanIssueCommand(nameof(TryBeginSkillApproach)) && brain.TryBeginSkillApproach(requestId, endNormalized, duration);
+
     public void CancelUtilityCastRequest(int requestId)
     {
         if (CanIssueCommand(nameof(CancelUtilityCastRequest)))

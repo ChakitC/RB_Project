@@ -2,6 +2,58 @@
 
 Use this document for local C# validation. These rules are project policy.
 
+## Defensive Block ready sound (2026-09-19)
+
+- Added optional `GuardSetting.readyCue`; `DefensiveBlockReadyCue` plays it when
+  the actionable on-screen flare appears and stamps caster/request/life to avoid
+  repeated playback while the same selected attack remains active. Dim and
+  offscreen signals do not announce readiness.
+- Created `BlockOpen.asset` through the Editor API using
+  `RB_Project_BlockOpen_SFX.mp3`, global 2D, Sfx category, non-looping. Confirmed
+  the saved reference and preserved the current 0.22 s approach and impact cue.
+- `CheckAssemblyBuild.ps1`: **0 errors, 80 warnings** in
+  `../BuildArtifacts/DefensiveBlockReadyAudioBuild.log`; scoped diff check passed.
+- No runtime audio result is claimed: the regression scene switch was skipped
+  because GameSetup was dirty. Brief Play Mode entry was stopped; returned to
+  GameSetup in Edit Mode without saving or replacing the dirty scene.
+
+## Defensive Block timed approach prototype (2026-09-18)
+
+- Before implementation, committed the existing immediate-contact Block work as
+  `5bc78176` (`Checkpoint immediate defensive block before timed approach`).
+  Unrelated material, package, prefab and save changes were excluded.
+- Added the timed approach implementation and `ValidateTimedApproach` in the test
+  harness. The authored C# defaults are 0.5 s and a 1.6 m attacker stand-off. A zero
+  duration selects the previous physical flow and its existing validation suite.
+- `CheckAssemblyBuild.ps1` passed with **0 errors, 80 warnings** on the final source:
+  `../BuildArtifacts/DefensiveBlockTimedApproachBuild.log`. `git diff --check` passed.
+- Unity recovered from its earlier ILPP stall without restarting the Editor. The
+  new assembly loaded, and GuardSetting/RectorCharge were explicitly saved through
+  the Editor API with 0.5/1.6. No scene or third-party package was changed for this.
+- Editor smoke/contact-order/grounding checks passed **24/24**.
+- The initial Play Mode run reported 12 endpoint failures while all impacts,
+  animation progression, single cost/release, HP and other 25 cases passed. A
+  focused probe confirmed zero endpoint error inside the Impact callback: the
+  test had sampled on the next coroutine tick, after knockback displacement.
+  Corrected the test to sample in that callback and retained the initial report as
+  `../BuildArtifacts/DefensiveBlockTimedApproachValidation.Initial.txt`.
+- The corrected Play Mode suite passed **37/37**, recorded in
+  `../BuildArtifacts/DefensiveBlockTimedApproachValidation.txt`. At 4/6/8 m, early
+  and late inputs produced one impact after 0.494–0.543 real seconds for the 0.5 s
+  setting and 1.022–1.079 seconds for 1 s. Animation advanced without root motion,
+  endpoint checks passed, costs/releases occurred once, and both actors kept HP.
+  Player fallback, no-Block damage, late rejection, ten interruption/reset cases,
+  a new obstacle, pause/world slow, unrelated damage and 15 FPS also passed.
+- Inspected Game View at mid-approach and Impact: Aires is ahead of Player in
+  Loop, then Impact/VFX and Rector knockback activate once with HP 1250/1250.
+  Captures: `../Temp/DefensiveBlockValidation/TimedApproachMid.png` and
+  `../Temp/DefensiveBlockValidation/TimedApproachImpact.png`.
+- After the visual trial, verified reaction, reservation and camera all released;
+  returned to Edit Mode in the original clean regression scene without saving it.
+- Existing Opsive/Burst BC1055 errors remain in the Editor; this scene pauses automatic AI,
+  so its results do not establish that the full GameSetup/Basement/BossRush route
+  or unrestricted enemy AI is validated.
+
 ## Defensive Block immediate-contact restoration (2026-09-18)
 
 - Removed the rejected minimum-impact-delay experiment and restored synchronous

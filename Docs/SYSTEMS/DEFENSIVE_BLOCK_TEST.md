@@ -9,9 +9,51 @@ a failed or late companion warp never automatically switches to Player.
 Rector Skill 1 plays continuously from its first frame. `RectorCharge.windupSeconds`
 is zero: the experimental 0.4 s pose hold was disabled because it broke animation
 continuity. The field/optional hold path remains for compatibility, but production
-authoring does not enable it. Interception requires actual swept contact with active
-hitbox steps 0/1 and reacts immediately. The minimum-delay/contact-presentation
-experiment was reverted; there is no forced wait between accepted input and impact.
+authoring does not enable it. Production now uses a timed approach: accepted Block
+suppresses the selected attack's hitboxes immediately and moves Rector to a reserved
+point in front of the guard over `GuardSetting.timedApproachSeconds` (0.5 by default).
+Impact occurs at the end of that movement, without waiting for a hitbox contact.
+This replaces the rejected experiment which waited in place after physical contact.
+Set the duration to zero to use the previous swept-contact behavior described below.
+
+## Timed approach
+
+`GuardSetting.impactCue` plays through `AudioService` once on confirmed Impact,
+for both Aires and Player self guard. It does not play on command acceptance or
+cancelled guards. The default `BlockImpact` AudioCue uses `RB_Project_Block_SFX`
+as a global 2D one-shot in the Sfx category; volume follows the existing Sfx mix.
+
+The command and bright cue both require a valid receiver, a supported landing and
+a clear straight NavMesh/body-sweep path to the impact endpoint. Rector's profile
+authors `approachStandOff` (1.6 m root-to-root in front of the guard). An endpoint
+requiring backwards movement is rejected; another ready receiver may be selected.
+The attack must still be incoming, inside its command window, and must not have
+already damaged Player. Acceptance reserves this outcome, subject to interruption
+and path validity, rather than requiring Player to catch an actual collider later.
+
+The original Skill animation keeps running through AnimDriver's request-scoped
+`TryBeginSkillApproach`. It gives up root motion and adjusts positive playback speed
+only when the remaining charge segment would otherwise end too early. It retains
+the cast-point/timeline so ordinary payload/cost/cooldown settlement happens once.
+An already released hitbox execution stops immediately; a matching later execution
+is stopped during `Bind`, before it can damage anything. No other request receives
+this suppression, and neither Player nor Ally gains general invincibility.
+
+The approach motor interpolates the attacker from its accepted position to the
+fixed endpoint. Its duration and the charge animation use the caster's actor clock
+(World Slow unless exempt, plus global HitLag/pause). Guard animation/recoil still
+use the defender's clock. Camera blends retain their unscaled clock. The motor
+checks world collision, NavMesh and floor support each step; external displacement,
+guard movement, death/down, control loss, cinematic, disable or reset cancels it.
+An accepted attack stays suppressed after cancellation; it never resumes damage or
+awards a later timed success. A pending unreleased cast uses the existing Blocked
+cancellation cost policy; already committed costs are not refunded or repeated.
+
+At the deadline, the guard must have arrived and still own Begin/Loop. The attack
+releases its movement scope, stops the original skill request, then invokes the
+existing knockback/Impact/HitLag/VFX once. It never parks a charging actor at the
+endpoint to wait for a late warp. Failed arrival cancels. The ordinary no-contact
+guard timeout is suspended only while the timed approach owns the session.
 
 ## Shared runtime flow
 
@@ -42,11 +84,17 @@ are excluded. Each candidate still needs an available defender and safe placemen
 The ready cue calls this same selector; an offscreen threat remains blockable although
 its world-space flare is hidden. Legacy interruption targeting is unchanged.
 
+`GuardSetting.readyCue` plays `RB_Project_BlockOpen_SFX` through the Sfx mix when
+the actionable flare becomes visible. Dim unavailable threats and offscreen flares
+are silent. The local cue remembers the last announced caster/request/life so it
+does not repeat every frame or when the same selected attack flickers with range
+or camera visibility; a new request or newly selected attack can announce again.
+
 Before a hitbox is active, `RectorCharge` estimates the lane with half-width 1.5 m,
 forward reach 2.3 m and speed 8 m/s. Active hitbox bounds and measured forward speed
 replace those estimates when available; Player collider extents expand the lane.
 This predicts a straight charge, not future steering or a guaranteed collision.
-Swept guard contact remains the only confirmation of success.
+These estimates select a threat; they do not decide the timed impact moment.
 
 Companion placement additionally requires a non-trigger world surface within 0.2 m
 of the resolved NavMesh point, with an upward normal of at least 0.5. Character
@@ -72,7 +120,7 @@ The final displacement goes through `CharacterController.Move`, so the vertical
 motor cannot overwrite a raw Transform movement on the following frame. Companion
 actors without a controller retain the existing NavMesh-constrained transform path.
 
-## Contact, animation and reactions
+## Physical contact fallback, animation and reactions
 
 - Snapshot a landing point 0.8–2.5 m ahead of Player, preserving up to 4.2 m approach
   clearance. Do not chase Player after acceptance. Recheck the point when hidden.
@@ -130,9 +178,9 @@ Use `Tools > RB > Defensive Block > Configure Production Assets` for initial set
 It binds original Rector Skill 1 and Aires definitions without changing the skill ID,
 payload or costs. Assets live in `Assets/Data/DefensiveBlock`:
 
-- `RectorCharge.asset`: command range, normalized window, allowed hitbox steps,
+- `RectorCharge.asset`: command range, normalized window, allowed hitbox steps, timed approach stand-off,
   knockback distance/time, world mask and threat-prediction width/reach/speed.
-- `GuardSetting.asset`: animation profile, placement/guard dimensions, timeout,
+- `GuardSetting.asset`: animation profile, placement/guard dimensions, timeout, timed approach duration,
   slide distance/time, warp fade, impact prefab/lifetime and global HitLag.
 - `AiresBlockAnimation.asset`: Begin/Impact clips, guard pose and phase/fade timing.
 - `BlockReadyFlare.prefab`, material and shader: reusable gold prompt presentation.

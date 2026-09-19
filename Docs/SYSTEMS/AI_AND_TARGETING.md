@@ -1015,7 +1015,17 @@ already-released hitbox execution. The defender does not extend or own the enemy
 pre-cast timing. The optional caster-owned preparation hold is disabled on Rector
 (`RectorCharge.windupSeconds = 0`) so the skill plays continuously. The incoming
 threat/ready cue and guard command remain available from the command window start;
-actual active-hitbox contact still determines impact, including early contacts.
+the production profile uses a 0.5 s timed approach after acceptance. Receiver
+selection also validates the straight approach path and endpoint before showing
+the bright cue. The attacker keeps Skill playback but hands displacement to
+`DefensiveBlockApproachMotor`, which owns agent/movement/Rigidbody settings and a
+Move/Rotate/Shoot token. It deliberately does not block Skill use internally before
+release, because the original pending cast must still settle its reservation; the
+exclusive Skill animation already rejects new ordinary skills. Matching hitbox
+execution is suppressed on acceptance or later Bind. Other attacks remain active.
+At the deadline a ready guard receives Impact once; interruption or a blocked path
+cancels instead. The motor restores its owned state before knockback takes over.
+A zero approach duration retains the physical-contact path.
 `SkillHitboxSequenceRuntime.StopExecution(requestId)` deactivates that execution
 synchronously before knockback; interception runs before target damage processing.
 Applied Player damage closes eligibility for that Player/life on the same request.

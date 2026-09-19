@@ -24,8 +24,15 @@ public sealed class DefensiveBlockActorProfile : ScriptableObject
     [Min(0f)] public float warpFadeOutSeconds = 0.04f;
     [Min(0f)] public float warpFadeInSeconds = 0.08f;
     [Header("Impact presentation")]
+    [Tooltip("Time from accepted Block to impact, using the attacker's actor clock. Zero uses physical interception.")]
+    [Min(0f)] public float timedApproachSeconds = 0.5f;
     public GameObject impactVfx;
     [Min(0.01f)] public float impactVfxLifetime = 2f;
+    [Tooltip("Played once when Block succeeds, for both companion and self guard.")]
+    public AudioCue impactCue;
+    [Header("Ready signal")]
+    [Tooltip("Played when the actionable Block flare first becomes visible for the selected attack.")]
+    public AudioCue readyCue;
     [Header("Global HitLag")]
     [Tooltip("Zero disables Block HitLag. Duration is measured in real seconds.")]
     [Min(0f)] public float hitLagDuration = 0.06f;
@@ -43,5 +50,5 @@ public sealed class DefensiveBlockActorProfile : ScriptableObject
     public bool IsConfigured => animation != null && animation.beginClip != null && animation.impactClip != null &&
         minimumStandAhead > 0f && standAhead >= minimumStandAhead && guardHalfWidth > 0f && guardHalfHeight > 0f &&
         timeoutSeconds > 0f && slideDistance >= 0f && slideSeconds > 0f && guardCenterHeight >= 0f &&
-        impactVfxLifetime > 0f && hitLagDuration >= 0f && hitLagTimeScale >= 0.01f && hitLagTimeScale <= 1f;
+        timedApproachSeconds >= 0f && impactVfxLifetime > 0f && hitLagDuration >= 0f && hitLagTimeScale >= 0.01f && hitLagTimeScale <= 1f;
 }

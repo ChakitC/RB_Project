@@ -3,7 +3,7 @@ using UnityEngine;
 
 // Skill-authored opt-in. The issuing Player selects the defender from its own party.
 [DisallowMultipleComponent]
-public sealed class DefensiveBlockAttack : MonoBehaviour
+public sealed partial class DefensiveBlockAttack : MonoBehaviour
 {
     public SkillGemDefinition skill;
     public AllyContext ally;
@@ -32,13 +32,14 @@ public sealed class DefensiveBlockAttack : MonoBehaviour
     public DefensiveBlockController Defender => defender;
     Vector3 previousPlayerRoot;
     public CharacteContext CasterContext => ctx;
+    public int RequestId => requestId;
     public string LastResult { get; private set; } = "Idle";
     public string LastProbe { get; private set; } = "No probe";
     public int SuccessCount { get; private set; }
     public bool IsPreparingCharge => windupHold.IsValid;
     public bool WindowOpen => OwnsCurrentSkill && profile.IsConfigured && ctx.AnimBrain != null &&
         ctx.AnimBrain.TryGetActiveSkillNormalizedTime(requestId, out float time) &&
-        time >= windowStartNormalized && time <= windowEndNormalized && !resolved;
+        time >= windowStartNormalized && time <= windowEndNormalized && !resolved && !IsTimedApproach;
     public bool OwnsCurrentSkill => isActiveAndEnabled && profile != null && ctx != null && ctx.LifeGeneration == life &&
         requestId > 0 && ctx.AnimBrain != null && ctx.AnimBrain.TryGetActiveSkillNormalizedTime(requestId, out _);
 
@@ -99,6 +100,7 @@ public sealed class DefensiveBlockAttack : MonoBehaviour
     {
         if (!isActiveAndEnabled || profile == null || cast.SkillDef != skill || cast.CasterContext != ctx ||
             cast.RequestId != requestId || ctx.LifeGeneration != life) return;
+        if (suppressExecution) { runtime.StopExecution(requestId); return; }
         execution = runtime;
         requestId = cast.RequestId;
         life = ctx.LifeGeneration;
@@ -111,6 +113,12 @@ public sealed class DefensiveBlockAttack : MonoBehaviour
         if (player.interruptionCommand == null ||
             !player.interruptionCommand.TrySelectDefensiveBlockDefender(this, out var selected))
             return Result(InterruptionCommandResult.NoAvailableAlly, "No available party defender");
+        float duration = selected.Settings.timedApproachSeconds;
+        Vector3 guardPosition = default, destination = default;
+        Quaternion guardRotation = Quaternion.identity;
+        CharacterPlacementFootprint footprint = default;
+        if (duration > 0f && !TryPlanApproach(player, selected, out guardPosition, out guardRotation, out destination, out footprint))
+            return Result(InterruptionCommandResult.TeleportFailed, "No safe timed approach");
         protectedPlayer = player;
         previousPlayerRoot = player.transform.position;
         player.GetComponentsInChildren(true, playerColliders);
@@ -124,6 +132,11 @@ public sealed class DefensiveBlockAttack : MonoBehaviour
             return Result(InterruptionCommandResult.NoAvailableAlly, "Ally unavailable or unsafe placement");
         }
         previousRoot = ctx.transform.position;
+        if (duration > 0f && !StartApproach(duration, guardPosition, guardRotation, destination, footprint))
+        {
+            selected.CancelFor(this, requestId);
+            return Result(InterruptionCommandResult.SkillRejected, "Approach playback unavailable");
+        }
         return Result(InterruptionCommandResult.Success, selected.ActorContext == player ? "Player guard requested" : "Guard requested");
     }
 
@@ -274,17 +287,23 @@ public sealed class DefensiveBlockAttack : MonoBehaviour
         // Must happen synchronously before any collider contact can damage another actor.
         runtime.StopExecution(requestId);
         ctx.AnimDriver?.CancelSkillCastRequest(requestId);
+        ApplyImpact(guard);
+        return true;
+    }
+
+    void ApplyImpact(DefensiveBlockController guard)
+    {
         var kb = KnockbackData.FromOrigin(guard.ActorContext.transform.position, ctx.transform.position,
             knockbackDistance, knockbackSeconds, ImpactReactionKind.MiniStun, true, null);
         bool pushed = ctx.KnockbackMotor != null && ctx.KnockbackMotor.ApplyKnockback(kb, forceReplace: true);
         guard.ConfirmImpact(this, requestId);
         SuccessCount++;
         LastResult = pushed ? "Blocked: Rector knocked back" : "Blocked: knockback rejected";
-        return true;
     }
     void LateUpdate()
     {
         if (ctx == null) return;
+        if (approach != null) TickApproach();
         if (Time.deltaTime > 0f)
         {
             Vector3 movement = ctx.transform.position - previousRoot;
@@ -300,6 +319,7 @@ public sealed class DefensiveBlockAttack : MonoBehaviour
     public void ResetExecution()
     {
         ReleaseWindup();
+        if (approach != null) { ReleaseApproach(); StopOwnedSkill(); }
         if (ctx != null && ctx.LifeGeneration == life)
         {
             execution?.StopExecution(requestId);
@@ -311,13 +331,18 @@ public sealed class DefensiveBlockAttack : MonoBehaviour
         ally = null; defender = null;
         requestId = 0;
         profile = null;
+        suppressExecution = false;
         passedTargets.Clear();
         playerColliders.Clear();
         protectedPlayer = null;
     }
     public void ReleaseDefender(DefensiveBlockController released, int id)
     {
-        if (requestId == id && defender == released) { ally = null; defender = null; }
+        if (requestId == id && defender == released)
+        {
+            if (approach != null) { ReleaseApproach(); StopOwnedSkill(); resolved = true; }
+            ally = null; defender = null;
+        }
     }
     void OnDisable()
     {

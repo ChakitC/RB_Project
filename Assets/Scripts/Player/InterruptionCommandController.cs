@@ -79,7 +79,8 @@ public sealed class InterruptionCommandController : MonoBehaviour
         selected = null;
         if (!defensiveBlockEnabled || playerContext == null || attack == null || !attack.CanAcceptCommand(playerContext)) return false;
         if (TrySelectDefensiveBlockAlly(attack, out var companion)) selected = companion.DefensiveBlock;
-        else if (playerContext.DefensiveBlock != null && playerContext.DefensiveBlock.CanBeginSelf(playerContext, attack))
+        else if (playerContext.DefensiveBlock != null && playerContext.DefensiveBlock.CanBeginSelf(playerContext, attack) &&
+            attack.CanApproachGuard(playerContext, playerContext.DefensiveBlock))
             selected = playerContext.DefensiveBlock;
         return selected != null;
     }
@@ -95,7 +96,8 @@ public sealed class InterruptionCommandController : MonoBehaviour
             if (member == null || member.ActorRole == ChainActorRole.Player || member.IsBusy || member.IsReserved ||
                 member.IsInKnockback || !(member.ActorContext is AllyContext actor) ||
                 !actor.isActiveAndEnabled || actor.DefensiveBlock == null ||
-                !actor.DefensiveBlock.CanBegin(playerContext, attack)) continue;
+                !actor.DefensiveBlock.CanBegin(playerContext, attack) ||
+                !attack.CanApproachGuard(playerContext, actor.DefensiveBlock)) continue;
             int role = (int)member.ActorRole;
             if (role >= bestRole) continue;
             selected = actor;

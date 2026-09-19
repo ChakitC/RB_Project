@@ -29,8 +29,11 @@ MonoBehaviour:
   slideSeconds: 0.35
   warpFadeOutSeconds: 0.04
   warpFadeInSeconds: 0.08
+  timedApproachSeconds: 0.22
   impactVfx: {fileID: 7849791404790678207, guid: 42913e44bd86c194f80b76492e6fe2fd, type: 3}
   impactVfxLifetime: 2
+  impactCue: {fileID: 11400000, guid: ed89751e18a43814d98f689c2e8423f5, type: 2}
+  readyCue: {fileID: 11400000, guid: 42887738ae257fe4a992b41267951f4d, type: 2}
   hitLagDuration: 0.5
   hitLagTimeScale: 0.175
   hitLagShape:

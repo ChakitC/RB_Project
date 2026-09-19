@@ -126,6 +126,7 @@ Material:
     - _AlphaClipping: 1
     - _AlphaToMask: 0
     - _AlphaValue: 1
+    - _AmbientFallback: 1
     - _BlackValue: 0.1
     - _Blend: 0
     - _BlendDst: 0
@@ -283,6 +284,7 @@ Material:
     - _UPGRADE: 0
     - _USE_MASKTEX1: 0
     - _USE_MASKTEX2: 0
+    - _UVSet: 0
     - _UpgradeActive: 0
     - _UpgradeIntensity: 5
     - _UpgradeMinBrightness: 0.5

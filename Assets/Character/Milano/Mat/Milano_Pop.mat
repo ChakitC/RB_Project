@@ -93,8 +93,8 @@ Material:
     - _ToonRampSmoothness: 0.392
     - _UseContactShadow: 1
     m_Colors:
-    - _HeadCenterWS: {r: -0.21038899, g: 1.465842, b: -4.1758747, a: 1}
-    - _HeadForwardWS: {r: 0.92385113, g: 0.008097881, b: -0.38266715, a: 0}
-    - _HeadRightWS: {r: -0.38267973, g: 0.0000009580981, b: -0.9238814, a: 0}
+    - _HeadCenterWS: {r: 0, g: 0, b: 0, a: 0}
+    - _HeadForwardWS: {r: 0, g: 0, b: 0, a: 0}
+    - _HeadRightWS: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

@@ -378,7 +378,9 @@ public sealed class CharacterAnimDriver : MonoBehaviour
         SkillGemDefinition skillDef,
         float castPointNormalized,
         IReadOnlyList<CombatTimelineEventName> timelineEventNames,
-        bool usePlanarRootMotion)
+        bool usePlanarRootMotion,
+        SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
+        Vector2 meleeChainWindow = default)
     {
         return CanIssueCommand(nameof(TryPlaySkill)) &&
                brain.TryPlaySkill(
@@ -386,7 +388,7 @@ public sealed class CharacterAnimDriver : MonoBehaviour
                    skillDef,
                    castPointNormalized,
                    timelineEventNames,
-                   usePlanarRootMotion);
+                   usePlanarRootMotion, executionKind, meleeChainWindow);
     }
 
     public bool TryPlayUtilityWarpOut(int requestId)
@@ -401,8 +403,16 @@ public sealed class CharacterAnimDriver : MonoBehaviour
             brain.CancelSkillCastRequest(requestId);
     }
 
+    internal void ReleaseBasicMeleeCast(int requestId)
+    {
+        if (CanIssueCommand(nameof(ReleaseBasicMeleeCast)))
+            brain.ReleaseBasicMeleeCast(requestId);
+    }
+
     public bool TryBeginSkillApproach(int requestId, float endNormalized, float duration) =>
         CanIssueCommand(nameof(TryBeginSkillApproach)) && brain.TryBeginSkillApproach(requestId, endNormalized, duration);
+    public bool TryEndSkillApproach(int requestId) =>
+        CanIssueCommand(nameof(TryEndSkillApproach)) && brain.TryEndSkillApproach(requestId);
 
     public void CancelUtilityCastRequest(int requestId)
     {

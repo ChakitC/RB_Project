@@ -13,11 +13,30 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
     const string CreateTemplateUndoLabel = "Create Skill HitBox Template";
 
     [SerializeField] private Transform sourceHitboxRoot;
+    // Bone-attached groups live outside Source Hitbox Root; retain explicit authoring ownership.
+    [SerializeField] private List<SkillHitboxGroup> attachedGroups = new List<SkillHitboxGroup>();
+
+    SkillHitboxGroup[] GetSourceGroups(Transform root)
+    {
+        var result = new List<SkillHitboxGroup>(root.GetComponentsInChildren<SkillHitboxGroup>(includeInactiveObjects));
+        foreach (var group in attachedGroups)
+            if (group != null && !result.Contains(group)) result.Add(group);
+        return result.ToArray();
+    }
     [SerializeField] private SkillGemDefinition skill;
     [SerializeField] private bool includeInactiveObjects = true;
     [SerializeField, MinValue(1), LabelText("Template Group Count")]
     [PropertyTooltip("Number of SkillHitboxGroup templates to create when pressing Create Source Template.")]
     private int templateGroupCount = 1;
+
+    [Button("Open Hitbox Timeline")]
+    private void OpenHitboxTimeline()
+    {
+#if UNITY_EDITOR
+        Selection.activeGameObject = gameObject;
+        EditorApplication.ExecuteMenuItem("Tools/RB/Animation VFX/Edit Hitboxes");
+#endif
+    }
 
     [Button("Create Source Template")]
     [PropertyTooltip("Create editable SkillHitboxGroup templates with default capsule colliders under Source Hitbox Root.")]
@@ -133,15 +152,35 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
             return;
         }
 
+        var caster = CharacterContextModuleLookup.ResolveContext(root.gameObject);
+        caster?.ResolveReferences();
+        var anchors = new Transform[sourceGroups.Count];
+        for (int i = 0; i < sourceGroups.Count; i++)
+        {
+            var group = sourceGroups[i];
+            if (group == null || !SkillHitboxGroup.TryResolveAnchor(group.Anchor, group.AnchorPath, root, caster, out anchors[i]))
+            {
+                Debug.LogWarning($"Cannot load hitbox group {i}: its anchor is missing. Existing source groups were kept.", this);
+                return;
+            }
+        }
         Undo.IncrementCurrentGroup();
         int undoGroup = Undo.GetCurrentGroup();
         Undo.SetCurrentGroupName(LoadLayoutUndoLabel);
+        Undo.RecordObject(this, LoadLayoutUndoLabel);
 
         List<GameObject> createdObjects = new List<GameObject>();
 
         try
         {
-            int removedGroupCount = RemoveExistingSourceGroups(root);
+            int removedGroupCount = 0;
+            foreach (var oldGroup in GetSourceGroups(root))
+            {
+                if (oldGroup == null || oldGroup.transform == root) continue;
+                Undo.DestroyObjectImmediate(oldGroup.gameObject);
+                removedGroupCount++;
+            }
+            attachedGroups.Clear();
             int createdGroupCount = 0;
             int createdColliderCount = 0;
             int layer = root.gameObject.layer;
@@ -176,8 +215,10 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
                     continue;
                 }
 
-                GameObject groupObject = CreateChildObject(root, groupKey, layer, createdObjects);
+                GameObject groupObject = CreateChildObject(anchors[groupIndex], groupKey, layer, createdObjects);
                 SkillHitboxGroup loadedGroup = groupObject.AddComponent<SkillHitboxGroup>();
+                loadedGroup.ConfigureAnchor(sourceGroup.Anchor, sourceGroup.AnchorPath);
+                attachedGroups.Add(loadedGroup);
                 List<Collider> groupColliders = new List<Collider>(sourceShapes.Count);
 
                 for (int shapeIndex = 0; shapeIndex < sourceShapes.Count; shapeIndex++)
@@ -273,7 +314,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
             return;
 
         Transform root = GetSourceRoot();
-        SkillHitboxGroup[] sourceGroups = root.GetComponentsInChildren<SkillHitboxGroup>(includeInactiveObjects);
+        SkillHitboxGroup[] sourceGroups = GetSourceGroups(root);
         if (sourceGroups == null || sourceGroups.Length == 0)
         {
             Debug.LogWarning($"No SkillHitboxGroup found under '{root.name}'.", this);
@@ -292,14 +333,23 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
 
             SkillHitboxLayoutData.HitBoxGroupData groupData = new SkillHitboxLayoutData.HitBoxGroupData
             {
-                GroupKey = sourceGroup.GroupKey
+                GroupKey = sourceGroup.GroupKey,
+                Anchor = sourceGroup.Anchor,
+                AnchorPath = sourceGroup.AnchorPath
             };
 
+            var caster = CharacterContextModuleLookup.ResolveContext(root.gameObject);
+            caster?.ResolveReferences();
+            if (!SkillHitboxGroup.TryResolveAnchor(sourceGroup.Anchor, sourceGroup.AnchorPath, root, caster, out Transform basis))
+            {
+                Debug.LogWarning($"Cannot save group '{sourceGroup.GroupKey}': its anchor is missing. The skill was not changed.", this);
+                return;
+            }
             IReadOnlyList<Collider> colliders = sourceGroup.Colliders;
             for (int colliderIndex = 0; colliderIndex < colliders.Count; colliderIndex++)
             {
                 Collider collider = colliders[colliderIndex];
-                if (!TryCreateShapeData(root, collider, out SkillHitboxLayoutData.HitBoxShapeData shapeData))
+                if (!TryCreateShapeData(basis, collider, out SkillHitboxLayoutData.HitBoxShapeData shapeData))
                     continue;
 
                 groupData.Shapes.Add(shapeData);
@@ -323,6 +373,9 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
             return;
         }
 
+#if UNITY_EDITOR
+        Undo.RecordObject(payload, "Save Skill HitBox Layout");
+#endif
         payload.ReplaceHitboxLayoutGroups(rebuiltGroups);
 
         List<string> validationIssues = new List<string>();
@@ -365,7 +418,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
             skill);
     }
 
-    static bool TryCreateShapeData(
+    public static bool TryCreateShapeData(
         Transform root,
         Collider collider,
         out SkillHitboxLayoutData.HitBoxShapeData shapeData)
@@ -663,7 +716,7 @@ public sealed class SetSkillHitBoxData : MonoBehaviour
             return;
 
         EditorUtility.SetDirty(data);
-        AssetDatabase.SaveAssets();
+        AssetDatabase.SaveAssetIfDirty(data);
 #endif
     }
 }

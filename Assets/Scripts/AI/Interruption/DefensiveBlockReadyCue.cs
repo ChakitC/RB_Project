@@ -20,7 +20,9 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
     MaterialPropertyBlock properties;
     float readyWeight;
     DefensiveBlockAttack announcedAttack;
-    int announcedRequest, announcedLife;
+    int announcedRequest, announcedLife, announcedWindow;
+    DefensiveBlockAttack displayedAttack;
+    int displayedRequest, displayedLife, displayedWindow;
     enum Phase { Hidden, Appearing, Holding, Disappearing }
     Phase phase;
     CharacteContext displayedTarget;
@@ -58,10 +60,13 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         IsReady = eligible;
         if (hasThreat)
         {
-            if (displayedTarget != target)
+            if (displayedTarget != target || displayedAttack != threat || displayedRequest != threat.RequestId ||
+                displayedLife != target.LifeGeneration || displayedWindow != threat.WindowIndex)
             {
                 HideImmediately();
                 displayedTarget = target;
+                displayedAttack = threat; displayedRequest = threat.RequestId;
+                displayedLife = target.LifeGeneration; displayedWindow = threat.WindowIndex;
                 IsReady = eligible;
                 ReadyAttack = eligible ? attack : null;
                 ThreatAttack = threat;
@@ -103,13 +108,15 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
     {
         if (attack == null || attack.CasterContext == null) return;
         int life = attack.CasterContext.LifeGeneration;
-        if (announcedAttack == attack && announcedRequest == attack.RequestId && announcedLife == life) return;
+        if (announcedAttack == attack && announcedRequest == attack.RequestId && announcedLife == life &&
+            announcedWindow == attack.WindowIndex) return;
         var settings = ctx.DefensiveBlock != null ? ctx.DefensiveBlock.Settings : null;
         if (settings == null || settings.readyCue == null) return;
         // Keep this stamp when the flare hides, so camera/range flicker cannot replay it.
         announcedAttack = attack;
         announcedRequest = attack.RequestId;
         announcedLife = life;
+        announcedWindow = attack.WindowIndex;
         AudioService.Instance.PlayAtPosition(settings.readyCue, position);
     }
 

@@ -60,9 +60,9 @@ public sealed partial class CharacterAnimBrain
 
             _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
                 usesRootMotion: true,
-                preserveFireHoldIntent: true);
-            owner.ApplyActiveSkillRootMotionPolicy();
-            owner.EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.Started, owner._skillChannel.Request.RequestId);
+                preserveFireHoldIntent: !owner.IsBasicMeleeExecution);
+            if (!owner.IsBasicMeleeExecution) owner.ApplyActiveSkillRootMotionPolicy();
+            owner.EmitPlaybackSignal(owner.ActiveSkillPlaybackKind, PlaybackPhase.Started, owner._skillChannel.Request.RequestId);
 
             var skillDef = owner._skillChannel.Request.Definition;
             if (skillDef != null && skillDef.IsCutsceneSkill)
@@ -132,17 +132,38 @@ public sealed partial class CharacterAnimBrain
 
             if (owner.HasPendingSkillReleaseRequest)
             {
-                owner.onSkillCastMomentCache ??= owner.NotifySkillCastMoment;
-                _events.Add(owner.ActiveSkillCastPointNormalized, owner.onSkillCastMomentCache);
+                int releaseRequestId = owner._skillChannel.Request.RequestId;
+                _events.Add(owner.ActiveSkillCastPointNormalized, () =>
+                {
+                    if (owner._skillChannel.Request.RequestId == releaseRequestId) owner.NotifySkillCastMoment();
+                });
             }
 
             owner.BindActiveSkillTimelineEvents(_events);
 
             var origOnEnd = _events.OnEnd;
-            _events.OnEnd = origOnEnd == null
-                ? _onSkillEndCache
-                : () => { origOnEnd(); _onSkillEndCache(); };
+            int endingRequestId = owner._skillChannel.Request.RequestId;
+            _events.OnEnd = () =>
+            {
+                if (owner._skillChannel.Request.RequestId != endingRequestId) return;
+                origOnEnd?.Invoke();
+                if (owner._skillChannel.Request.RequestId == endingRequestId) _onSkillEndCache();
+            };
 
+            if (owner.IsBasicMeleeExecution)
+            {
+                float duration = owner._skillChannel.Request.Definition.baseCastTime;
+                _state.Speed = duration > 0.01f ? Mathf.Max(0.01f, _state.Length) / duration : 1f;
+                int requestId = owner._skillChannel.Request.RequestId;
+                Vector2 window = owner._skillChannel.Request.MeleeChainWindow;
+                float start = Mathf.Clamp01(Mathf.Min(window.x, window.y));
+                float end = Mathf.Clamp01(Mathf.Max(window.x, window.y));
+                if (end > 0.0001f)
+                {
+                    _events.Add(start, () => owner.RaiseMeleeChainWindow(requestId, true));
+                    _events.Add(end, () => owner.RaiseMeleeChainWindow(requestId, false));
+                }
+            }
             _state.SharedEvents = _events;
         }
 
@@ -195,6 +216,14 @@ public sealed partial class CharacterAnimBrain
             float end = Mathf.Min(endNormalized, _state.NormalizedTime + duration / _state.Length);
             _state.Speed = (end - _state.NormalizedTime) * _state.Length / duration;
             _approachActive = true;
+            return true;
+        }
+
+        internal bool TryEndApproach()
+        {
+            if (!_approachActive || _state == null) return false;
+            _state.Speed = _approachOriginalSpeed;
+            _approachActive = false;
             return true;
         }
 

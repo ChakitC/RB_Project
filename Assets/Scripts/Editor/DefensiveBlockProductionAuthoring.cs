@@ -16,7 +16,8 @@ public static class DefensiveBlockProductionAuthoring
     {
         if (EditorApplication.isPlaying) throw new InvalidOperationException("Exit Play Mode first.");
         if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder("Assets/Data", "DefensiveBlock");
-        var attack = GetOrCreate<DefensiveBlockAttackProfile>("RectorCharge.asset");
+        var skill = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>(SkillPath);
+        var attack = DefensiveBlockSkillAuthoring.EnsureOwned(skill);
         var aires = AssetDatabase.LoadAssetAtPath<CharacterStats>(AiresPath);
         // Follow the character binding so renaming the settings asset does not create a replacement.
         var actor = aires.defensiveBlock != null ? aires.defensiveBlock : GetOrCreate<DefensiveBlockActorProfile>("GuardSetting.asset");
@@ -36,7 +37,6 @@ public static class DefensiveBlockProductionAuthoring
         actor.impactVfx = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/VFX/JMO Assets/Cartoon FX Remaster/CFXR Prefabs/Electric/CFXR Lightning Impact.prefab");
         int world = LayerMask.GetMask("Default", "Ground", "Ground Y", "Terrain", "Barrier");
         attack.worldLayers = world; actor.worldLayers = world;
-        var skill = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>(SkillPath);
         skill.defensiveBlock = attack; aires.defensiveBlock = actor;
         foreach (var asset in new UnityEngine.Object[] { attack, actor, animation, skill, aires }) EditorUtility.SetDirty(asset);
         // Move the authored presentation assets, preserving their GUIDs and existing references.

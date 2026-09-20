@@ -167,6 +167,7 @@ public class CharacterAudioEmitter : MonoBehaviour
 
     void OnSkillCastReleased(ActiveSkillCastInfo castInfo)
     {
+        if (castInfo.ExecutionKind == SkillExecutionKind.BasicMelee) return;
         TryPlaySkillVoice(castInfo.SkillDef);
     }
 

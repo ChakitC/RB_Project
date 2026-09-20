@@ -13,7 +13,10 @@ MonoBehaviour:
   m_Name: GR_04_MeleeLight
   m_EditorClassIdentifier: 
   steps:
-  - entryId: 44f0ac84abb640bfbfb76b051614cc18
+  - executionSkill: {fileID: 11400000, guid: 1bb4ee2658287284989d5b843702e3e3, type: 2}
+    entryId: 44f0ac84abb640bfbfb76b051614cc18
+    animationVfxTrack:
+      cues: []
     clip:
       _FadeDuration: 0.25
       _Speed: 1
@@ -29,7 +32,7 @@ MonoBehaviour:
       _Clip: {fileID: 7649108697934873049, guid: 9d1d332e4eeea974f84a3af32c2880e3, type: 3}
       _NormalizedStartTime: NaN
     duration: 0
-    chainWindowN: {x: 0, y: 0}
+    chainWindowN: {x: 0, y: 0.28268808}
     dropBufferOnWindowExpire: 0
     applyKnockback: 1
     knockbackDistance: 1

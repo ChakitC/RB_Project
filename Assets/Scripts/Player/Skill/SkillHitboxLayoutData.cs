@@ -10,6 +10,8 @@ public sealed class SkillHitboxLayoutData
     public IReadOnlyList<HitBoxGroupData> Groups => groups != null ? groups : Array.Empty<HitBoxGroupData>();
     public bool HasGroups => groups != null && groups.Count > 0;
 
+    public enum AnchorSpace { Payload = 0, CasterRoot = 1, AnimatorRoot = 2 }
+
     public enum HitBoxType
     {
         Box,
@@ -21,6 +23,10 @@ public sealed class SkillHitboxLayoutData
     public sealed class HitBoxGroupData
     {
         [SerializeField] private string groupKey = "Group01";
+        [SerializeField] private AnchorSpace anchorSpace;
+        [SerializeField] private string anchorPath;
+        public AnchorSpace Anchor { get => anchorSpace; set => anchorSpace = value; }
+        public string AnchorPath { get => anchorPath ?? string.Empty; set => anchorPath = value; }
         [SerializeField] private List<HitBoxShapeData> shapes = new List<HitBoxShapeData>();
 
         public string GroupKey
@@ -157,6 +163,8 @@ public sealed class SkillHitboxLayoutData
 
             group.EnsureDefaults();
             string groupKey = group.GroupKey;
+            if (!Enum.IsDefined(typeof(AnchorSpace), group.Anchor))
+                AddIssue(issues, $"Hitbox group '{groupKey}' has an invalid anchor space.", ref issueCount);
             if (string.IsNullOrWhiteSpace(groupKey))
             {
                 AddIssue(issues, $"Hitbox group at index {i} has an empty group key.", ref issueCount);
@@ -283,7 +291,9 @@ public sealed class SkillHitboxLayoutData
 
             var clonedGroup = new HitBoxGroupData
             {
-                GroupKey = sourceGroup.GroupKey
+                GroupKey = sourceGroup.GroupKey,
+                Anchor = sourceGroup.Anchor,
+                AnchorPath = sourceGroup.AnchorPath
             };
 
             List<HitBoxShapeData> sourceShapes = sourceGroup.Shapes;

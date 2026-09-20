@@ -8,6 +8,45 @@ public sealed class SkillHitboxGroup : MonoBehaviour
     [SerializeField] private string groupKey = "Group01";
     [SerializeField] private Collider[] colliders = Array.Empty<Collider>();
 
+    [SerializeField] private SkillHitboxLayoutData.AnchorSpace anchorSpace;
+    [SerializeField] private string anchorPath;
+    public SkillHitboxLayoutData.AnchorSpace Anchor => anchorSpace;
+    public string AnchorPath => anchorPath ?? string.Empty;
+
+    public void ConfigureAnchor(SkillHitboxLayoutData.AnchorSpace space, string path)
+    {
+        anchorSpace = space;
+        anchorPath = path;
+    }
+
+    public static bool TryResolveAnchor(SkillHitboxLayoutData.AnchorSpace space, string path,
+        Transform payloadRoot, CharacteContext caster, out Transform anchor)
+    {
+        switch (space)
+        {
+            case SkillHitboxLayoutData.AnchorSpace.Payload: anchor = payloadRoot; break;
+            case SkillHitboxLayoutData.AnchorSpace.CasterRoot: anchor = caster != null ? caster.transform : null; break;
+            case SkillHitboxLayoutData.AnchorSpace.AnimatorRoot:
+                // Authored actors may still have a placeholder Animator on the context root
+                // before Visual binds its actual model. Use the model owner first.
+                var animator = caster != null && caster.Visual != null ? caster.Visual.ModelAnimator : null;
+                if (animator == null && caster != null && caster.AnimBrain != null)
+                    animator = caster.AnimBrain.BoundAnimator;
+                anchor = animator != null ? animator.transform : null;
+                break;
+            default: anchor = null; break;
+        }
+        if (anchor != null && !string.IsNullOrWhiteSpace(path)) anchor = anchor.Find(path.Trim());
+        return anchor != null;
+    }
+
+    public bool Contains(Collider collider)
+    {
+        if (colliders == null) return false;
+        for (int i = 0; i < colliders.Length; i++) if (colliders[i] == collider) return true;
+        return false;
+    }
+
     public string GroupKey
     {
         get

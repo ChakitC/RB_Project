@@ -23,7 +23,7 @@ public sealed partial class DefensiveBlockAttack
     {
         guardPosition = destination = default; guardRotation = Quaternion.identity; footprint = default;
         return profile != null && ctx != null && ctx.AnimBrain != null &&
-            ctx.AnimBrain.TryGetActiveSkillNormalizedTime(requestId, out float time) && time + .02f < windowEndNormalized &&
+            WindowOpen && ctx.AnimBrain.TryGetActiveSkillNormalizedTime(requestId, out float time) && time + .02f < CurrentWindowEnd &&
             guard.TryPreviewGuardPose(issuer, this, out guardPosition, out guardRotation) &&
             DefensiveBlockApproachMotor.TryPlan(ctx, guardPosition, guardRotation, profile.approachStandOff,
                 worldLayers, out destination, out footprint);
@@ -33,10 +33,14 @@ public sealed partial class DefensiveBlockAttack
         Vector3 destination, CharacterPlacementFootprint footprint)
     {
         ReleaseWindup();
-        if (ctx.AnimDriver == null || !ctx.AnimDriver.TryBeginSkillApproach(requestId, windowEndNormalized - .005f, duration)) return false;
-        suppressExecution = true;
-        execution?.StopExecution(requestId);
-        execution = null;
+        if (ctx.AnimDriver == null || !ctx.AnimDriver.TryBeginSkillApproach(requestId, acceptedWindowEnd - .005f, duration)) return false;
+        if (ContinueAfterBlock) SuppressAcceptedWindow();
+        else
+        {
+            suppressExecution = true;
+            execution?.StopExecution(requestId);
+            execution = null;
+        }
         // Root motion has relinquished the agent before this scope captures its original state.
         approach = new DefensiveBlockApproachMotor(ctx, footprint, destination, duration, worldLayers);
         approachGuardPosition = guardPosition; approachGuardRotation = guardRotation;
@@ -64,10 +68,8 @@ public sealed partial class DefensiveBlockAttack
         if (approach.Progress < 1f) return;
         if (!defender.IsReadyFor(this, requestId)) { AbortApproach("Guard was not ready at timed impact"); return; }
         var guard = defender;
-        resolved = true;
         ReleaseApproach();
-        StopOwnedSkill();
-        ApplyImpact(guard);
+        CompleteBlock(guard);
     }
 
     void OnApproachPlayback(CharacterAnimBrain.PlaybackSignal signal)
@@ -95,10 +97,15 @@ public sealed partial class DefensiveBlockAttack
 
     void AbortApproach(string reason)
     {
-        ReleaseApproach();
-        StopOwnedSkill();
-        resolved = true;
+        CancelApproachPlayback();
         defender?.CancelFor(this, requestId);
         LastResult = reason;
+    }
+
+    void CancelApproachPlayback()
+    {
+        ReleaseApproach();
+        if (ContinueAfterBlock) ctx.AnimDriver?.TryEndSkillApproach(requestId);
+        else { StopOwnedSkill(); resolved = true; }
     }
 }

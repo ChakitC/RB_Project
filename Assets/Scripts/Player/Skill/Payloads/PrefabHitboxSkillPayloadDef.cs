@@ -185,7 +185,7 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
                 validationError);
         }
 
-        if (context.FacingSnapshot.TryResolveDirection(
+        if (!context.IsBasicMelee && context.FacingSnapshot.TryResolveDirection(
                 context.CasterRoot != null ? context.CasterRoot.position : context.CastPosition,
                 out Vector3 facingDirection))
         {
@@ -196,39 +196,26 @@ public sealed class PrefabHitboxSkillPayloadDef : SkillPayloadDef
         }
 
         ResolveSpawnPose(context, out _, out Vector3 spawnPosition, out Quaternion spawnRotation);
-
-        GameObject runtimeObject = new GameObject($"{name}_HitboxRuntime");
-        runtimeObject.layer = context.CasterObject != null ? context.CasterObject.layer : 0;
-        if (context.CasterRoot != null)
-            runtimeObject.transform.SetParent(context.CasterRoot, false);
-        runtimeObject.transform.SetPositionAndRotation(spawnPosition, spawnRotation);
-
-        SkillHitboxSequenceRuntime runtime = runtimeObject.AddComponent<SkillHitboxSequenceRuntime>();
-
-        if (runtime == null)
+        var controller = context.IsBasicMelee ? context.CasterContext?.MeleeController : null;
+        SkillHitboxSequenceRuntime runtime;
+        if (controller != null) runtime = controller.GetHitboxRuntime(this);
+        else
         {
-            Debug.LogError($"Failed to create a runtime hitbox host for skill payload '{name}'.", this);
-            UnityEngine.Object.Destroy(runtimeObject);
-            return SkillExecutionResult.Failed(
-                SkillExecutionFailureReason.MissingRuntimeContext,
-                "Could not create the runtime hitbox host.");
+            var host = new GameObject($"{name}_HitboxRuntime");
+            if (context.CasterRoot != null) host.transform.SetParent(context.CasterRoot, false);
+            runtime = host.AddComponent<SkillHitboxSequenceRuntime>();
         }
-
-        if (!SkillHitboxRuntimeBuilder.TryBuild(
-                runtime.transform,
-                HitboxLayout,
-                runtimeObject.layer,
-                out SkillHitboxGroup[] runtimeGroups,
-                out string buildError))
+        runtime.gameObject.layer = context.CasterObject != null ? context.CasterObject.layer : 0;
+        runtime.transform.SetPositionAndRotation(spawnPosition, spawnRotation);
+        if (!runtime.TryPrepare(context, this, out string buildError))
         {
-            Debug.LogError(buildError, this);
-            UnityEngine.Object.Destroy(runtimeObject);
-            return SkillExecutionResult.Failed(
-                SkillExecutionFailureReason.MissingAuthoringData,
-                buildError);
+            if (controller == null)
+            {
+                if (Application.isPlaying) Destroy(runtime.gameObject);
+                else DestroyImmediate(runtime.gameObject);
+            }
+            return SkillExecutionResult.Failed(SkillExecutionFailureReason.MissingAuthoringData, buildError);
         }
-
-        runtime.AssignGroups(runtimeGroups);
         runtime.Initialize(context, this);
         return SkillExecutionResult.Succeeded;
     }

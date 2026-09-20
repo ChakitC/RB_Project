@@ -5,7 +5,7 @@ using Animancer;
 using UnityEditor;
 using UnityEngine;
 
-public sealed class SkillAnimationVfxEditorWindow : EditorWindow
+public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
 {
     const string WindowTitle = "Animation Event VFX Timeline";
     const string MenuPath = "Tools/RB/Animation VFX/Animation Event VFX Timeline";
@@ -22,7 +22,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     readonly List<float> vfxMarkerTimes = new List<float>();
     readonly List<Track> tracks = new List<Track>();
 
-    SetAnimationVfxData authoringTarget;
+    [SerializeField] SetAnimationVfxData authoringTarget;
     bool isPlaying;
     bool loopPlayback;
     float playbackSpeed = 1f;
@@ -68,6 +68,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
 
     void OnEnable()
     {
+        InitializeHitboxAuthoring();
         EditorApplication.update -= OnEditorUpdate;
         editorUpdateSubscribed = false;
         EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
@@ -77,12 +78,16 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         SkillVfxAuthoringEntry.PreviewActivityChanged -= OnPreviewActivityChanged;
         SkillVfxAuthoringEntry.PreviewActivityChanged += OnPreviewActivityChanged;
         SkillVfxAuthoringEntry.CleanupOrphanedVisualPreviews();
-        TryUseCurrentSelection();
+        UpdateAuthoringDirtyState();
+        if (!hasUnsavedChanges) TryUseCurrentSelection();
         UpdateEditorUpdateSubscription();
     }
 
     void OnDisable()
     {
+        StopHitboxAuthoring();
+        EndBlockDrag();
+        if (blockSession != null && !blockSession.IsDirty) ReleaseBlockSession();
         EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
         Selection.selectionChanged -= OnSelectionChanged;
         SkillVfxAuthoringEntry.PreviewActivityChanged -= OnPreviewActivityChanged;
@@ -93,12 +98,23 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     void OnGUI()
     {
         ClearDestroyedAuthoringTarget();
-        DrawAuthoringTarget();
+        GuardExternalHitboxSourceChange();
+        GuardExternalBlockSourceChange();
+        DrawHitboxModeSelector();
+        if (hitboxMode) DrawHitboxSetup();
+        else DrawAuthoringTarget();
+        if (hitboxMode)
+        {
+            try { DrawHitboxMode(); }
+            finally { UpdateAuthoringDirtyState(); }
+            return;
+        }
 
         IAnimationVfxTimelineSource source = GetSource();
         AnimationClip clip = GetClip(source);
-        Animator animator = authoringTarget != null ? authoringTarget.PreviewAnimator : null;
+        Animator animator = GetPreviewAnimator();
 
+        EnsureBlockSession(source);
         BuildTracks(source);
         DrawMultiModeToggle(source);
 
@@ -110,6 +126,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         Rect timelineArea = GUILayoutUtility.GetRect(
             300f, 10000f, height, 10000f, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
         DrawTimeline(timelineArea, source, clip);
+        UpdateAuthoringDirtyState();
     }
 
     void DrawAuthoringTarget()
@@ -138,15 +155,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         if (authoringTarget == null)
             return;
 
-        ScriptableObject currentAsset = authoringTarget.TimelineSourceAsset;
-        EditorGUI.BeginChangeCheck();
-        ScriptableObject nextAsset = (ScriptableObject)EditorGUILayout.ObjectField(
-            "Source Asset", currentAsset, typeof(ScriptableObject), false);
-        if (EditorGUI.EndChangeCheck())
-        {
-            List<AnimationVfxTimelineEntry> entries = AnimationVfxTimelineSourceFactory.GetEntries(nextAsset);
-            SetSourceSelection(nextAsset, entries.Count > 0 ? entries[0].Id : "main");
-        }
+        DrawSourceAssetPicker(false);
 
         List<AnimationVfxTimelineEntry> sourceEntries =
             AnimationVfxTimelineSourceFactory.GetEntries(authoringTarget.TimelineSourceAsset);
@@ -280,14 +289,43 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             float total   = refLen + mainLen;
             _cutsceneSkillFraction = total > 0f ? refLen / total : 0f;
         }
+        BuildTimelineEvents(source);
         tracks.Add(new Track("Animation", TrackKind.Animation, null));
         if (source != null)
         {
             for (int i = 0; i < source.Lanes.Count; i++)
-                tracks.Add(new Track(source.Lanes[i].Label, ToTrackKind(source.Lanes[i].Kind), source.Lanes[i]));
+            {
+                var lane = source.Lanes[i];
+                // Migrated combos may execute skills without a hitbox payload.
+                bool unusedMeleeHitbox = source is MeleeComboVfxTimelineSource &&
+                    lane.Kind == AnimationVfxTimelineLaneKind.Events &&
+                    source.SourceAsset is SkillGemDefinition skill &&
+                    !skill.TryFindPayload(out PrefabHitboxSkillPayloadDef _);
+                if (!unusedMeleeHitbox || LaneHasEvents(lane))
+                    tracks.Add(new Track(lane.Label, ToTrackKind(lane.Kind), lane));
+            }
         }
-        tracks.Add(new Track("VFX", TrackKind.Vfx, null));
-        tracks.Add(new Track("Other Events", TrackKind.Other, null));
+        bool hasVfx = source != null && source.CueCount > 0;
+        if (source is IAnimationVfxTimelineMultiMode multi && _cutsceneSkillFraction > 0f)
+            hasVfx |= multi.ReferenceCueSource != null && multi.ReferenceCueSource.CueCount > 0;
+        hasVfx |= timelineEvents.Exists(e => e.EventName == CombatTimelineEventName.Vfx) ||
+            _cutsceneTimelineEvents.Exists(e => e.EventName == CombatTimelineEventName.Vfx);
+        if (hasVfx) tracks.Add(new Track("VFX", TrackKind.Vfx, null));
+        if (ShowBlockTrack(source)) tracks.Add(new Track(blockSession.IsDirty ? "Block Window *" : "Block Window", TrackKind.Block, null));
+        if (timelineEvents.Exists(e => GetTrackIndex(e.EventName) < 0) ||
+            _cutsceneTimelineEvents.Exists(e => GetTrackIndex(e.EventName) < 0))
+            tracks.Add(new Track("Other Events", TrackKind.Other, null));
+    }
+
+    bool LaneHasEvents(AnimationVfxTimelineLane lane)
+    {
+        for (int i = 0; i < lane.EventNames.Count; i++)
+        {
+            var name = lane.EventNames[i];
+            if (timelineEvents.Exists(e => e.EventName == name) ||
+                _cutsceneTimelineEvents.Exists(e => e.EventName == name)) return true;
+        }
+        return false;
     }
 
     void DrawTimeline(Rect area, IAnimationVfxTimelineSource source, AnimationClip clip)
@@ -300,12 +338,12 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         if (source == null || clip == null)
             return;
 
-        BuildTimelineEvents(source);
         AnimationClip refClip = source is IAnimationVfxTimelineMultiMode rm && rm.ReferenceTransition is { IsValid: true } rt
             ? rt.Clip : null;
         DrawAnimationTrack(GetTrackContentRect(area, FindTrack(TrackKind.Animation)), clip, _cutsceneSkillFraction, refClip);
         DrawAdapterLanes(area, source);
         DrawEventMarkers(area, source);
+        DrawBlockRange(area, source);
         DrawPlayhead(contentArea);
         HandleTimelineContextMenu(contentArea, source);
         HandleTimelineScrub(contentArea, clip);
@@ -407,11 +445,17 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
                 SelectAndPreviewEntry(timelineEvent);
                 current.Use();
             }
-            if (!readOnly && current.type == EventType.ContextClick && marker.Contains(current.mousePosition))
+            if (!readOnly && !Application.isPlaying && current.type == EventType.ContextClick && marker.Contains(current.mousePosition))
             {
                 int capturedIndex = timelineEvent.SerializedIndex;
                 string capturedName = timelineEvent.DisplayName;
                 var menu = new GenericMenu();
+                menu.AddItem(new GUIContent($"Select '{capturedName}'"), false, () =>
+                {
+                    selectedEventIndex = capturedIndex;
+                    SelectAndPreviewEntry(FindTimelineEvent(capturedIndex));
+                    Repaint();
+                });
                 menu.AddItem(new GUIContent($"Remove '{capturedName}'"), false, () =>
                 {
                     selectedEventIndex = capturedIndex;
@@ -453,7 +497,8 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
                     isPlaying = false;
                     current.Use();
                 }
-                if (current.type == EventType.ContextClick && marker.Contains(current.mousePosition))
+                if (!Application.isPlaying && tracks[trackIndex].Lane?.ReadOnly != true &&
+                    current.type == EventType.ContextClick && marker.Contains(current.mousePosition))
                 {
                     int capturedIndex = ev.SerializedIndex;
                     string capturedName = ev.DisplayName;
@@ -563,35 +608,100 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         Event current = Event.current;
         if (current.type != EventType.ContextClick || !contentArea.Contains(current.mousePosition))
             return;
+        int trackIndex = Mathf.FloorToInt((current.mousePosition.y - contentArea.y - RulerHeight) / TrackHeight);
+        // Animation and empty timeline space remain entry points for hidden rows.
+        bool background = trackIndex < 0 || trackIndex >= tracks.Count;
         float rawNorm = Mathf.InverseLerp(contentArea.xMin, contentArea.xMax, current.mousePosition.x);
         bool clickInCutscene = _cutsceneSkillFraction > 0f && rawNorm < _cutsceneSkillFraction;
         float capturedCutsceneTime = clickInCutscene ? Mathf.Clamp01(rawNorm / _cutsceneSkillFraction) : 0f;
         float time = clickInCutscene ? 0f : MouseToNormalized(contentArea, current.mousePosition.x);
+        if (!background && tracks[trackIndex].Kind == TrackKind.Block && !clickInCutscene && blockSession != null)
+        {
+            Rect row = GetTrackRect(contentArea, trackIndex);
+            for (int i = 0; i < blockSession.WindowCount; i++)
+            {
+                if (GetMarkerRect(row, blockSession.StartAt(i)).Contains(current.mousePosition))
+                { time = blockSession.StartAt(i); break; }
+                if (GetMarkerRect(row, blockSession.EndAt(i)).Contains(current.mousePosition))
+                { time = blockSession.EndAt(i); break; }
+            }
+        }
         var menu = new GenericMenu();
+        if (background || tracks[trackIndex].Kind == TrackKind.Animation)
+            AddTimelineBackgroundContextItems(menu, source, time, clickInCutscene, capturedCutsceneTime);
+        else AddTimelineRowContextItems(menu, source, trackIndex, time, clickInCutscene, capturedCutsceneTime);
+        if (menu.GetItemCount() > 0) menu.ShowAsContext();
+        current.Use();
+    }
+
+    void AddTimelineBackgroundContextItems(GenericMenu menu, IAnimationVfxTimelineSource source,
+        float time, bool clickInCutscene, float capturedCutsceneTime)
+    {
+        if (source == null) return;
+        if (Application.isPlaying)
+        {
+            menu.AddDisabledItem(new GUIContent("Exit Play Mode to edit"));
+            return;
+        }
         foreach (CombatTimelineEventName eventName in Enum.GetValues(typeof(CombatTimelineEventName)))
         {
-            if (eventName == CombatTimelineEventName.None)
-                continue;
-            CombatTimelineEventName captured = eventName;
-            menu.AddItem(new GUIContent(GetEventMenuPath(captured)), false, () =>
-            {
-                if (clickInCutscene)
-                {
-                    _playheadInCutscene = true;
-                    _cutsceneNormalizedTime = capturedCutsceneTime;
-                    normalizedTime = 0f;
-                }
-                else
-                {
-                    _playheadInCutscene = false;
-                    normalizedTime = time;
-                }
-                AddEventAtPlayhead(source, captured);
-                if (!clickInCutscene) ScrubTo(time);
-            });
+            if (eventName == CombatTimelineEventName.None) continue;
+            AddTimelineEventContextItem(menu, source, eventName, time, clickInCutscene, capturedCutsceneTime);
         }
-        menu.ShowAsContext();
-        current.Use();
+        if (IsBlockMainSource(source) && !clickInCutscene)
+            AddBlockContextItems(menu, source, time, false);
+    }
+
+    void AddTimelineRowContextItems(GenericMenu menu, IAnimationVfxTimelineSource source, int trackIndex,
+        float time, bool clickInCutscene, float capturedCutsceneTime)
+    {
+        Track track = tracks[trackIndex];
+        if (track.Kind == TrackKind.Block)
+        {
+            AddBlockContextItems(menu, source, time, clickInCutscene);
+            return;
+        }
+        if (track.Kind == TrackKind.Animation) return;
+        if (track.Lane?.ReadOnly == true || Application.isPlaying)
+        {
+            menu.AddDisabledItem(new GUIContent(Application.isPlaying ? "Exit Play Mode to edit" : track.Label + " (read only)"));
+            return;
+        }
+        if (track.Kind == TrackKind.Point || track.Kind == TrackKind.Range)
+        {
+            if (clickInCutscene) { menu.AddDisabledItem(new GUIContent("Main animation only")); return; }
+            if (track.Kind == TrackKind.Point)
+                menu.AddItem(new GUIContent("Set " + track.Label + " Here"), false, () =>
+                { source.SetPointValue(time); source.Save(); Repaint(); });
+            else
+            {
+                menu.AddItem(new GUIContent("Set Open Here"), false, () =>
+                { source.SetRangeValue(new Vector2(Mathf.Min(time, source.RangeValue.y), source.RangeValue.y)); source.Save(); Repaint(); });
+                menu.AddItem(new GUIContent("Set Close Here"), false, () =>
+                { source.SetRangeValue(new Vector2(source.RangeValue.x, Mathf.Max(time, source.RangeValue.x))); source.Save(); Repaint(); });
+            }
+            return;
+        }
+        foreach (CombatTimelineEventName eventName in Enum.GetValues(typeof(CombatTimelineEventName)))
+        {
+            if (eventName == CombatTimelineEventName.None || GetTrackIndex(eventName) != trackIndex)
+                continue;
+            AddTimelineEventContextItem(menu, source, eventName, time, clickInCutscene, capturedCutsceneTime);
+        }
+    }
+
+    void AddTimelineEventContextItem(GenericMenu menu, IAnimationVfxTimelineSource source,
+        CombatTimelineEventName eventName, float time, bool clickInCutscene, float capturedCutsceneTime)
+    {
+        menu.AddItem(new GUIContent(GetEventMenuPath(eventName)), false, () =>
+        {
+            _playheadInCutscene = clickInCutscene;
+            if (clickInCutscene) _cutsceneNormalizedTime = capturedCutsceneTime;
+            normalizedTime = clickInCutscene ? 0f : time;
+            AddEventAtPlayhead(source, eventName);
+            if (!clickInCutscene) ScrubTo(time);
+            Repaint();
+        });
     }
 
     void AddEventAtPlayhead(IAnimationVfxTimelineSource source, CombatTimelineEventName eventName, bool useActiveEntry = false)
@@ -892,7 +1002,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         {
             normalizedTime = 0f;
             _cutsceneNormalizedTime = 0f;
-            _playheadInCutscene = _cutsceneSkillFraction > 0f;
+            _playheadInCutscene = !hitboxMode && _cutsceneSkillFraction > 0f;
         }
         else
         {
@@ -944,7 +1054,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     {
         IAnimationVfxTimelineSource source = GetSource();
         AnimationClip clip = GetClip(source);
-        Animator animator = authoringTarget != null ? authoringTarget.PreviewAnimator : null;
+        Animator animator = GetPreviewAnimator();
         if (clip != null && animator != null && !Application.isPlaying)
         {
             ConfigureMainPreview(source, animator, clip);
@@ -1016,6 +1126,8 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
 
     void OnEditorUpdate()
     {
+        if (HitboxSourceChanged || (hitboxMode && !ReferenceEquals(hitboxPreviewAnimator, null) && hitboxPreviewAnimator != GetPreviewAnimator()))
+        { StopPreview(true); hitboxPreviewAnimator = GetPreviewAnimator(); return; }
         double now = EditorApplication.timeSinceStartup;
         if (now < nextPreviewUpdateTime)
             return;
@@ -1046,7 +1158,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
                     _playheadInCutscene = false;
                     normalizedTime = 0f;
                     AnimationClip skillClip = GetClip(source);
-                    Animator skillAnimator = authoringTarget != null ? authoringTarget.PreviewAnimator : null;
+                    Animator skillAnimator = GetPreviewAnimator();
                     if (skillClip != null && skillAnimator != null)
                     {
                         ConfigureMainPreview(source, skillAnimator, skillClip);
@@ -1076,7 +1188,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             {
                 IAnimationVfxTimelineSource mainSource = GetSource();
                 AnimationClip clip = GetClip(mainSource);
-                Animator animator = authoringTarget != null ? authoringTarget.PreviewAnimator : null;
+                Animator animator = GetPreviewAnimator();
                 if (clip == null || animator == null)
                 {
                     StopPreview(false);
@@ -1153,6 +1265,8 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
 
     void SetSourceSelection(ScriptableObject asset, string entryId)
     {
+        if (!ConfirmHitboxDraft()) return;
+        ReleaseHitboxSession();
         StopPreview(true);
         authoringTarget.SetTimelineSource(asset, entryId);
         ResetSelection();
@@ -1163,6 +1277,8 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
     {
         if (authoringTarget == target)
             return;
+        if (!ConfirmHitboxDraft()) return;
+        ReleaseHitboxSession();
         StopPreview(true);
         authoringTarget = target;
         ResetSelection();
@@ -1225,6 +1341,13 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
 
     void TryUseCurrentSelection(bool clearWhenMissing = false)
     {
+        // Hitbox setup is an explicit gesture; clicking unrelated hierarchy objects must not
+        // add authoring components or discard a pinned draft.
+        if (hitboxMode)
+        {
+            if (clearWhenMissing && !hitboxSetupInProgress) SetupHitboxCharacter(Selection.activeGameObject);
+            return;
+        }
         GameObject selected = Selection.activeGameObject;
         SetAnimationVfxData target = selected != null ? selected.GetComponentInParent<SetAnimationVfxData>() : null;
         if (target == null && selected != null)
@@ -1299,7 +1422,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             if (tracks[i].Kind == kind)
                 return i;
         }
-        return Mathf.Max(0, tracks.Count - 1);
+        return -1;
     }
 
     static bool AllowsDuplicateEvent(IAnimationVfxTimelineSource source, CombatTimelineEventName eventName)
@@ -1355,8 +1478,9 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         ClipTransition transition = source?.Transition;
         return transition != null && transition.IsValid ? transition.Clip : null;
     }
-    static AnimationClip GetCutsceneClip(IAnimationVfxTimelineSource source)
+    AnimationClip GetCutsceneClip(IAnimationVfxTimelineSource source)
     {
+        if (hitboxMode) return null;
         if (source is not IAnimationVfxTimelineMultiMode mm) return null;
         ClipTransition refT = mm.ReferenceTransition;
         return refT != null && refT.IsValid ? refT.Clip : null;
@@ -1493,7 +1617,7 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
         return new Color(0.35f, 0.75f, 0.95f);
     }
 
-    enum TrackKind { Animation, Point, Events, Range, Vfx, Other }
+    enum TrackKind { Animation, Point, Events, Range, Vfx, Other, Block }
 
     readonly struct Track
     {
@@ -1600,8 +1724,10 @@ public sealed class SkillAnimationVfxEditorWindow : EditorWindow
             }
             finally { AnimationMode.EndSampling(); }
 
-            // Re-root: displace from placed position by the clip's motion delta.
-            Vector3 displacement = animator.transform.position - clipOriginPos;
+            // Express authored motion in the clip origin's frame, then rotate it into
+            // the placed actor's frame. World-space addition sends rotated actors backwards.
+            Vector3 displacement = placedRot * (Quaternion.Inverse(clipOriginRot) *
+                (animator.transform.position - clipOriginPos));
             Quaternion rotDelta = Quaternion.Inverse(clipOriginRot) * animator.transform.rotation;
             animator.transform.SetPositionAndRotation(placedPos + displacement, placedRot * rotDelta);
         }

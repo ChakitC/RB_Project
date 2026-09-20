@@ -325,7 +325,7 @@ public sealed class PreCastBlockController : MonoBehaviour
     void OnCastStarted(ActiveSkillCastInfo castInfo)
     {
         SkillGemDefinition skillDef = castInfo.SkillDef;
-        if (!castInfo.IsValid || skillDef == null || !skillDef.BlockablePreCast)
+        if (castInfo.ExecutionKind == SkillExecutionKind.BasicMelee || !castInfo.IsValid || skillDef == null || !skillDef.BlockablePreCast)
         {
             ClearActiveCast("NonBlockableCast");
             return;

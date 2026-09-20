@@ -1,5 +1,14 @@
 # AI And Targeting
 
+Defensive Block can expose several authored windows per skill request. Incoming
+threat selection still uses the current attack direction/range and safe placement;
+only the active, unconsumed window is actionable. Damage rejection is scoped to
+that window's hitbox steps and victim life, so a previous hit does not disable all
+later guard opportunities. Physical guards expire with their accepted window.
+Continue Skill outcomes release approach control back to the original skill and
+suppress only the selected steps; Interrupt Skill outcomes retain the full cancel
+and enemy knockback. Defender recovery must finish before another reservation.
+
 AI targeting is based on target identity, target state, target scoring, and
 memory. Common identity should come from `CharacteContext.TargetIdentity`.
 

@@ -1,549 +1,159 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 [DefaultExecutionOrder(-109)]
 [DisallowMultipleComponent]
 public sealed class MeleeController : MonoBehaviour
 {
-    [Header("Refs")]
     [SerializeField] private CharacteContext ctx;
-    [SerializeField] private StateHub stateHub;
-    [SerializeField] private CharacterAnimBrain brain;
-    private CharacterAnimDriver animDriver;
-    [SerializeField] private WeaponSystem weaponSystem;
-    [SerializeField] private StatusEffectController statusEffectController;
-    [SerializeField] private CombatEventBus combatEventBus;
-    [SerializeField] private MeleeHitboxTrigger hitboxTrigger;
-    CombatAttributionSnapshot _attribution;
-
-    readonly HashSet<int> _hitTargetIds = new();
-    IDamageable _selfDamageable;
+    // Retain prefab bindings; the context is authoritative at runtime.
+    [SerializeField, HideInInspector] private StateHub stateHub;
+    [SerializeField, HideInInspector] private CharacterAnimBrain brain;
+    [SerializeField, HideInInspector] private WeaponSystem weaponSystem;
+    [SerializeField, HideInInspector] private StatusEffectController statusEffectController;
+    [SerializeField, HideInInspector] private CombatEventBus combatEventBus;
+    [SerializeField] private LayerMask targetMask = ~0;
+    public LayerMask TargetMask => targetMask;
+    readonly System.Collections.Generic.Dictionary<PrefabHitboxSkillPayloadDef, SkillHitboxSequenceRuntime> _hitboxRuntimes = new();
     readonly MeleeComboSession _session = new();
-    MeleeType _currentMeleeType;
+    int _requestId;
+    bool _changingStep;
+    SkillHitboxSequenceRuntime _hitboxRuntime;
+    public MeleeType CurrentMeleeType { get; private set; }
+    public bool IsComboActive => _session.IsActive;
 
-    bool _attackWindowActive;
-    string _activeDamageSourceId;
-    string _activeAttackId;
-    ulong _activeChainId;
-
-    void Awake()
-    {
-        ResolveRefs();
-    }
-
+    void Awake() => ResolveRefs();
     void OnEnable()
     {
         ResolveRefs();
-
-        if (brain != null)
-        {
-            brain.MeleeHitStart += OnHitStart;
-            brain.MeleeHitEnd += OnHitEnd;
-            brain.MeleeComboEnded += OnComboEnded;
-            brain.MeleeChainWindowOpened += OnChainWindowOpened;
-            brain.MeleeChainWindowClosed += OnChainWindowClosed;
-            brain.MeleeStepCompleted += OnStepCompleted;
-        }
-
-        if (hitboxTrigger != null)
-            hitboxTrigger.ContactDetected += OnHitboxContact;
+        if (brain == null) return;
+        brain.MeleeChainWindowOpened += OnChainWindowOpened;
+        brain.MeleeChainWindowClosed += OnChainWindowClosed;
+        brain.PlaybackEvent += OnPlaybackEvent;
     }
-
     void OnDisable()
     {
-        if (brain != null)
-        {
-            brain.MeleeHitStart -= OnHitStart;
-            brain.MeleeHitEnd -= OnHitEnd;
-            brain.MeleeComboEnded -= OnComboEnded;
-            brain.MeleeChainWindowOpened -= OnChainWindowOpened;
-            brain.MeleeChainWindowClosed -= OnChainWindowClosed;
-            brain.MeleeStepCompleted -= OnStepCompleted;
-        }
-
-        if (hitboxTrigger != null)
-            hitboxTrigger.ContactDetected -= OnHitboxContact;
-
-        CloseAttackWindow();
+        InterruptMelee();
+        if (brain == null) return;
+        brain.MeleeChainWindowOpened -= OnChainWindowOpened;
+        brain.MeleeChainWindowClosed -= OnChainWindowClosed;
+        brain.PlaybackEvent -= OnPlaybackEvent;
     }
-
     public void PressMelee(MeleeType meleeType)
     {
         ResolveRefs();
-        if (brain == null) return;
-
-        if (brain.IsMeleePlaybackActive)
+        if (_session.IsActive)
         {
-            if (meleeType != _currentMeleeType)
-                return;
-
-            var action = _session.QueuePress();
-            if (action == MeleeSessionAction.Advance)
-                brain.AdvanceMeleeStep(_session.CurrentStep, _session.CurrentStepIndex);
+            if (meleeType == CurrentMeleeType && _session.QueuePress() == MeleeSessionAction.Advance)
+                PlayCurrentStep();
             return;
         }
-
         TryStartMelee(meleeType);
     }
-
     public bool TryStartMelee(MeleeType meleeType)
     {
         ResolveRefs();
-
-        if (ctx == null || stateHub == null || brain == null)
+        if (_session.IsActive || !isActiveAndEnabled || ctx == null || stateHub == null || brain == null ||
+            ctx.SkillManager == null || !stateHub.CanStartMelee()) return false;
+        var profile = ctx.baseStats != null ? ctx.baseStats.animProfile : null;
+        var combo = profile != null ? (meleeType == MeleeType.Light ? profile.lightCombo : profile.heavyCombo) : null;
+        if (combo == null && profile != null) combo = profile.meleeCombo;
+        if (combo == null || !combo.IsValid(out _)) return false;
+        if (weaponSystem != null && weaponSystem.IsReloading && profile != null && !profile.meleeCanInterruptReload)
             return false;
-        if (!stateHub.CanStartMelee())
-            return false;
-        if (brain.IsSkillPlaybackActive)
-            return false;
-
-        var combo = ResolveRequestedCombo(meleeType);
-        if (combo == null || !combo.IsValid(out _))
-            return false;
-
-        if (weaponSystem != null)
-        {
-            if (weaponSystem.IsReloading)
-            {
-                if (!CanInterruptReload())
-                    return false;
-
-                weaponSystem.CancelReload();
-            }
-
-            weaponSystem.SetFiring(false);
-        }
-
+        CurrentMeleeType = meleeType;
+        _session.Start(combo);
+        if (!PlayCurrentStep()) return false;
+        weaponSystem?.CancelReload();
+        weaponSystem?.SetFiring(false);
         stateHub.SetFireHeld(false);
         stateHub.WeaponSM.TryChange(WeaponStateId.Melee);
-
-        _currentMeleeType = meleeType;
-        _session.Start(combo);
-
-        if (!brain.TryStartMeleePlayback(combo, _session.CurrentStep, _session.CurrentStepIndex))
-        {
-            _session.Clear();
-            return false;
-        }
-
         stateHub.ReportMeleeStarted(meleeType);
         return true;
     }
-
+    internal bool PlayCurrentStep()
+    {
+        if (!_session.IsActive || _changingStep) return false;
+        _changingStep = true;
+        try
+        {
+            StopCurrentStep();
+            brain.CurrentMeleeStep = _session.CurrentStep;
+            brain.CurrentMeleeStepIndex = _session.CurrentStepIndex;
+            SkillCastStartResult result = ctx.SkillManager.TryStartMeleeStep(_session.CurrentStep, CurrentMeleeType);
+            if (!result.Started) { FinishCombo(); return false; }
+            _requestId = result.RequestId;
+            return true;
+        }
+        finally { _changingStep = false; }
+    }
     public void InterruptMelee()
     {
-        ResolveRefs();
-
+        if (_changingStep) return;
+        _changingStep = true;
+        try { StopCurrentStep(); FinishCombo(); }
+        finally { _changingStep = false; }
+    }
+    void StopCurrentStep()
+    {
+        int oldRequest = _requestId;
+        _requestId = 0;
+        if (oldRequest <= 0) return;
+        _hitboxRuntime?.StopExecution(oldRequest);
+        ctx?.AnimDriver?.CancelSkillCastRequest(oldRequest);
+    }
+    void FinishCombo()
+    {
+        bool wasActive = _session.IsActive;
+        _requestId = 0;
         _session.Clear();
-        CloseAttackWindow();
-        animDriver?.CancelMeleeNow();
-
         if (stateHub != null && stateHub.WeaponSM.CurrentId == WeaponStateId.Melee)
             stateHub.WeaponSM.TryChange(WeaponStateId.Ready);
+        if (wasActive) brain?.ReportMeleeComboEnded();
     }
-
-    public static bool IsCombatOnlyHitbox(Collider other)
-    {
-        if (!other || !other.isTrigger)
-            return false;
-
-        var controller = other.GetComponentInParent<MeleeController>();
-        return controller != null && controller.OwnsHitboxCollider(other);
-    }
-
-    void OnHitStart()
-    {
-        _attackWindowActive = true;
-        _hitTargetIds.Clear();
-
-        _activeDamageSourceId = GetMeleeDamageSourceId();
-        _activeAttackId = combatEventBus != null
-            ? combatEventBus.CreateAttackId($"{_activeDamageSourceId}:melee")
-            : null;
-        _activeChainId = combatEventBus != null ? CombatEventBus.NextChainId() : 0;
-
-        hitboxTrigger?.Activate(_currentMeleeType);
-    }
-
-    void OnHitEnd()
-    {
-        CloseAttackWindow();
-    }
-
-    void OnComboEnded()
-    {
-        _session.Clear();
-        CloseAttackWindow();
-
-        if (stateHub != null)
-            stateHub.WeaponSM.TryChange(WeaponStateId.Ready);
-    }
-
     void OnChainWindowOpened()
     {
-        if (!_session.IsActive) return;
-        var action = _session.NotifyChainWindowOpened();
-        if (action == MeleeSessionAction.Advance && brain != null)
-            brain.AdvanceMeleeStep(_session.CurrentStep, _session.CurrentStepIndex);
+        if (_session.IsActive && _session.NotifyChainWindowOpened() == MeleeSessionAction.Advance) PlayCurrentStep();
     }
-
-    void OnChainWindowClosed()
+    void OnChainWindowClosed() => _session.NotifyChainWindowClosed();
+    void OnPlaybackEvent(CharacterAnimBrain.PlaybackSignal signal)
     {
-        _session.NotifyChainWindowClosed();
+        if (_changingStep || signal.Kind != CharacterAnimBrain.PlaybackKind.Melee || signal.RequestId != _requestId) return;
+        if (signal.Phase == CharacterAnimBrain.PlaybackPhase.Interrupted) InterruptMelee();
+        else if (signal.Phase == CharacterAnimBrain.PlaybackPhase.Completed)
+        {
+            _hitboxRuntime?.StopExecution(_requestId);
+            _requestId = 0;
+            brain.ReportMeleeStepCompleted();
+            if (_session.NotifyStepCompleted() == MeleeSessionAction.Advance) PlayCurrentStep();
+            else FinishCombo();
+        }
     }
-
-    void OnStepCompleted()
+    internal SkillHitboxSequenceRuntime GetHitboxRuntime(PrefabHitboxSkillPayloadDef payload)
     {
-        if (!_session.IsActive) return;
-        var action = _session.NotifyStepCompleted();
-        if (action == MeleeSessionAction.Advance && brain != null)
-            brain.AdvanceMeleeStep(_session.CurrentStep, _session.CurrentStepIndex);
-        else if (action == MeleeSessionAction.Complete && brain != null)
-            brain.CompleteMeleePlayback();
+        if (!_hitboxRuntimes.TryGetValue(payload, out _hitboxRuntime) || _hitboxRuntime == null)
+        {
+            var host = new GameObject("MeleeSkillHitboxRuntime");
+            host.transform.SetParent(transform, false);
+            _hitboxRuntime = host.AddComponent<SkillHitboxSequenceRuntime>();
+            _hitboxRuntime.KeepForReuse();
+            _hitboxRuntimes[payload] = _hitboxRuntime;
+        }
+        return _hitboxRuntime;
     }
-
-    void OnHitboxContact(Collider other)
-    {
-        if (!_attackWindowActive || other == null)
-            return;
-
-        var target = DamageableResolver.ResolveFrom(other);
-        if (target == null || !target.IsAlive)
-            return;
-        if (IsSelfTarget(target))
-            return;
-
-        int targetKey = GetTargetKey(target);
-        if (!_hitTargetIds.Add(targetKey))
-            return;
-
-        float finalDamage = CalculateDamage(target, other, out bool wasCritical);
-        if (finalDamage <= 0f)
-            return;
-
-        DamageResult result = ApplyDamageToTarget(target, finalDamage, BuildKnockback(other));
-        if (!result.Applied)
-            return;
-
-        NotifyOwnerCombatTriggers(target, result, wasCritical);
-        SpawnDamageNumber(other, target, result.AppliedDamage);
-    }
-
     void ResolveRefs()
     {
-        if (!ctx)
-        {
-            TryGetComponent(out ctx);
-            if (!ctx)
-                ctx = GetComponentInParent<CharacteContext>();
-        }
-
+        if (ctx == null) ctx = CharacterContextModuleLookup.ResolveContext(gameObject);
         ctx?.ResolveReferences();
-
-        if (!stateHub && ctx != null)
-            stateHub = ctx.stateHub;
-        if (!stateHub)
-            TryGetComponent(out stateHub);
-        if (!stateHub && ctx != null)
-            stateHub = ctx.GetComponentInChildren<StateHub>(true);
-
-        if (!brain && ctx != null)
-            brain = ctx.AnimBrain;
-        if (!brain)
-            TryGetComponent(out brain);
-        if (!brain && ctx != null)
-            brain = ctx.GetComponentInChildren<CharacterAnimBrain>(true);
-
-        if (!animDriver && ctx != null)
-            animDriver = ctx.AnimDriver;
-        if (!animDriver)
-            TryGetComponent(out animDriver);
-        if (!animDriver && ctx != null)
-            animDriver = ctx.GetComponentInChildren<CharacterAnimDriver>(true);
-
-        if (!weaponSystem && ctx != null)
-            weaponSystem = ctx.WeaponSystem;
-        if (!weaponSystem)
-            TryGetComponent(out weaponSystem);
-        if (!weaponSystem && ctx != null)
-            weaponSystem = ctx.GetComponentInChildren<WeaponSystem>(true);
-
-        if (!statusEffectController && ctx != null)
-            statusEffectController = ctx.GetComponentInChildren<StatusEffectController>(true);
-        if (!statusEffectController)
-            TryGetComponent(out statusEffectController);
-
-        if (!combatEventBus && ctx != null)
-            combatEventBus = ctx.CombatEventBus;
-        if (!combatEventBus)
-            TryGetComponent(out combatEventBus);
-        if (!combatEventBus && ctx != null)
-            combatEventBus = ctx.GetComponentInChildren<CombatEventBus>(true);
-
-        _attribution = CombatAttributionSnapshot.FromPhysicalActor(ctx != null ? ctx.gameObject : null);
-        if (_attribution.HasCredit)
-        {
-            combatEventBus = _attribution.CreditedEventBus;
-            statusEffectController = _attribution.CreditedStatusOwner;
-        }
-
-        if (!hitboxTrigger)
-            hitboxTrigger = GetComponentInChildren<MeleeHitboxTrigger>(true);
-
-        if (ctx != null)
-        {
-            ctx.MeleeController = this;
-            if (ctx.HealthSystem != null)
-                _selfDamageable = ctx.HealthSystem;
-        }
-
-        if (_selfDamageable == null)
-            _selfDamageable = GetComponent<IDamageable>();
-        if (_selfDamageable == null)
-            _selfDamageable = DamageableResolver.ResolveFrom(transform);
+        if (ctx == null) return;
+        ctx.MeleeController = this;
+        stateHub = ctx.stateHub;
+        brain = ctx.AnimBrain;
+        weaponSystem = ctx.WeaponSystem;
     }
-
-    bool OwnsHitboxCollider(Collider other)
+    public static bool IsCombatOnlyHitbox(Collider other)
     {
-        if (!other)
-            return false;
-
-        ResolveRefs();
-        return hitboxTrigger != null && hitboxTrigger.IsHitboxCollider(other);
-    }
-
-    bool HasValidCombo(MeleeType meleeType)
-    {
-        var combo = ResolveRequestedCombo(meleeType);
-        return combo != null && combo.IsValid(out _);
-    }
-
-    MeleeComboSO ResolveRequestedCombo(MeleeType meleeType)
-    {
-        var profile = ctx != null && ctx.baseStats != null ? ctx.baseStats.animProfile : null;
-        if (profile == null)
-            return null;
-
-        var combo = meleeType == MeleeType.Light
-            ? profile.lightCombo
-            : profile.heavyCombo;
-
-        return combo != null ? combo : profile.meleeCombo;
-    }
-
-    bool CanInterruptReload()
-    {
-        var profile = ctx != null && ctx.baseStats != null ? ctx.baseStats.animProfile : null;
-        return profile == null || profile.meleeCanInterruptReload;
-    }
-
-    float CalculateDamage(IDamageable target, Collider other, out bool wasCritical)
-    {
-        var activeWeapon = weaponSystem != null ? weaponSystem.CurrentWeapon : (ctx != null ? ctx.currentWeapon : null);
-
-        float baseDamage = ctx != null && ctx.StatsHub != null ? ctx.StatsHub.GetSkillBaseDamage() : 0f;
-        float critRate = ctx != null && ctx.StatsHub != null ? ctx.StatsHub.GetCritRatePercent(activeWeapon) : 0f;
-        float critMult = ctx != null && ctx.StatsHub != null ? ctx.StatsHub.GetCritMultiplier(activeWeapon) : 1f;
-        float armor = target is IHasArmor armorTarget ? armorTarget.Armor : 0f;
-
-        float distance = 0f;
-        if (other != null)
-        {
-            Vector3 hitPoint = other.ClosestPoint(transform.position);
-            distance = Vector3.Distance(transform.position, hitPoint);
-        }
-
-        DamageCalculationResult calculation = DamageCalculator.CalculateDamage(
-            WeaponType.Melee,
-            distance,
-            baseDamage,
-            critRate,
-            critMult,
-            armor);
-        wasCritical = calculation.WasCritical;
-        return calculation.Damage;
-    }
-
-    DamageResult ApplyDamageToTarget(IDamageable target, float finalDamage, KnockbackData knockback)
-    {
-        var attacker = ctx != null ? ctx.gameObject : gameObject;
-        var damageContext = new DamageContext(
-            finalDamage,
-            attacker,
-            _activeDamageSourceId,
-            _activeAttackId,
-            _activeChainId == 0 ? CombatEventBus.NextChainId() : _activeChainId,
-            0,
-            PassiveEventOrigin.External,
-            knockback: knockback,
-            stagger: BuildStaggerPayload(),
-            attribution: _attribution);
-
-        return target.TakeDamage(in damageContext);
-    }
-
-    StaggerPayload BuildStaggerPayload()
-    {
-        var activeStep = _session.IsActive ? _session.CurrentStep : default(MeleeComboSO.Step);
-        float staggerPower = activeStep.staggerPower;
-        if (staggerPower <= 0f && ctx != null && ctx.StatsHub != null)
-            staggerPower = ctx.StatsHub.GetSkillBaseDamage() * 0.5f;
-
-        return new StaggerPayload(staggerPower, 1f, _activeDamageSourceId);
-    }
-
-    KnockbackData BuildKnockback(Collider other)
-    {
-        var activeStep = _session.IsActive ? _session.CurrentStep : default(MeleeComboSO.Step);
-        if (!activeStep.applyKnockback)
-            return default(KnockbackData);
-
-        Vector3 hitPoint = other != null ? other.ClosestPoint(transform.position) : transform.position;
-        KnockbackSettings settings = activeStep.ToKnockbackSettings();
-        KnockbackBuildContext context = new KnockbackBuildContext(
-            transform.position,
-            hitPoint,
-            transform.forward);
-
-        return KnockbackFactory.TryBuild(in settings, in context, out KnockbackData knockback)
-            ? knockback
-            : default;
-    }
-
-    void NotifyOwnerCombatTriggers(IDamageable target, in DamageResult result, bool wasCritical)
-    {
-        if (target == null)
-            return;
-
-        Component targetComponent = target as Component;
-        GameObject targetObject = targetComponent != null ? targetComponent.gameObject : null;
-
-        statusEffectController?.NotifyTrigger(EffectTriggerType.OnHit, targetObject);
-
-        if (combatEventBus != null)
-        {
-            var hitContext = CreateOwnerEventContext(PassiveEventType.Hit, targetObject, result.AppliedDamage, result, wasCritical);
-            combatEventBus.Publish(hitContext);
-        }
-
-        if (result.Killed)
-        {
-            statusEffectController?.NotifyTrigger(EffectTriggerType.OnKill, targetObject);
-
-            if (combatEventBus != null)
-            {
-                var killContext = CreateOwnerEventContext(PassiveEventType.Kill, targetObject, result.AppliedDamage, result, wasCritical);
-                combatEventBus.Publish(killContext);
-            }
-        }
-    }
-
-    PassiveEventContext CreateOwnerEventContext(PassiveEventType type, GameObject targetObject, float value, in DamageResult result, bool wasCritical)
-    {
-        GameObject sourceObject = ctx != null ? ctx.gameObject : gameObject;
-        var metadata = new CombatEventMetadata(
-            result.RequestedDamage, result.ResolvedDamage, result.AppliedDamage,
-            result.HealthBeforeHit, result.MaxHealth, wasCritical,
-            staggerApplied: result.StaggerApplied, enteredChainReady: result.EnteredChainReady,
-            sourceKind: CombatSourceKind.Melee);
-
-        if (_activeChainId != 0)
-        {
-            var parent = new PassiveEventContext(
-                PassiveEventType.None,
-                sourceObject,
-                sourceObject,
-                targetObject,
-                _activeDamageSourceId,
-                _activeAttackId,
-                value,
-                Time.timeAsDouble,
-                _activeChainId,
-                0,
-                PassiveEventOrigin.External,
-                null,
-                null,
-                metadata);
-
-            return combatEventBus.CreateChildContext(
-                parent,
-                type,
-                sourceObject,
-                targetObject,
-                _activeDamageSourceId,
-                _activeAttackId,
-                value,
-                PassiveEventOrigin.External,
-                metadata: metadata,
-                actor: _attribution.CreditedActor);
-        }
-
-        return combatEventBus.CreateExternalContext(
-            type,
-            sourceObject,
-            targetObject,
-            _activeDamageSourceId,
-            _activeAttackId,
-            value,
-            PassiveEventOrigin.External,
-            metadata: metadata,
-            actor: _attribution.CreditedActor);
-    }
-
-    void SpawnDamageNumber(Collider other, IDamageable target, float finalDamage)
-    {
-        if (other == null || VfxSpawner.Instance == null)
-            return;
-
-        Vector3 hitPoint = other.ClosestPoint(transform.position);
-        if (hitPoint == Vector3.zero)
-            hitPoint = other.bounds.center;
-
-        VfxSpawner.Instance.SpawnDamageNumber(hitPoint, finalDamage, target);
-    }
-
-    void CloseAttackWindow()
-    {
-        _attackWindowActive = false;
-        _hitTargetIds.Clear();
-        hitboxTrigger?.Deactivate();
-    }
-
-    int GetTargetKey(IDamageable target)
-    {
-        if (target is Component component)
-            return component.GetInstanceID();
-
-        return target.GetHashCode();
-    }
-
-    bool IsSelfTarget(IDamageable target)
-    {
-        if (target == null)
-            return false;
-
-        return ReferenceEquals(target, ResolveSelfDamageable());
-    }
-
-    IDamageable ResolveSelfDamageable()
-    {
-        if (_selfDamageable != null)
-            return _selfDamageable;
-
-        ResolveRefs();
-        return _selfDamageable;
-    }
-
-    string GetMeleeDamageSourceId()
-    {
-        if (weaponSystem != null && weaponSystem.CurrentWeaponInstance != null &&
-            !string.IsNullOrWhiteSpace(weaponSystem.CurrentWeaponInstance.instanceId))
-        {
-            return $"weapon:{weaponSystem.CurrentWeaponInstance.instanceId}:melee";
-        }
-
-        var activeWeapon = weaponSystem != null ? weaponSystem.CurrentWeapon : (ctx != null ? ctx.currentWeapon : null);
-        string weaponName = activeWeapon ? activeWeapon.name : "unarmed";
-        return $"melee:{weaponName}";
+        if (other == null || !other.isTrigger) return false;
+        var group = other.GetComponentInParent<SkillHitboxGroup>();
+        return group != null && group.Contains(other);
     }
 }

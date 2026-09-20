@@ -244,7 +244,8 @@ public class SkillInstance
         ISkillUser user,
         SkillCastCostPolicy costPolicy,
         bool stampCooldown,
-        out SkillCastReservation reservation)
+        out SkillCastReservation reservation,
+        SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill)
     {
         reservation = null;
 
@@ -252,6 +253,13 @@ public class SkillInstance
             return false;
 
         FinalSkillStats stats = GetFinalStats(user);
+        if (executionKind == SkillExecutionKind.BasicMelee)
+        {
+            // Do not even refresh/reserve the shared charge pool for an ordinary attack.
+            reservation = new SkillCastReservation(SkillCastReservation.NextToken(), stats,
+                null, false, user, null, 0f, false, false);
+            return true;
+        }
         float now = Time.time;
         Charges.Refresh(stats.maxCharges, now);
 
@@ -317,7 +325,9 @@ public class SkillInstance
         ulong combatChainId = 0,
         int combatDepth = 0,
         ComboExecutionProvenance comboProvenance = default,
-        SkillFacingSnapshot facingSnapshot = default)
+        SkillFacingSnapshot facingSnapshot = default,
+        SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
+        MeleeType meleeType = MeleeType.Light)
     {
         if (reservation == null || def == null || def.payload == null || reservation.User == null)
         {
@@ -338,7 +348,9 @@ public class SkillInstance
             combatChainId,
             combatDepth,
             comboProvenance,
-            facingSnapshot);
+            facingSnapshot,
+            executionKind,
+            meleeType);
 
         result = def.payload.ExecuteWithResult(castContext);
         return result.Success;

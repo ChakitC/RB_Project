@@ -13,18 +13,19 @@ public sealed class MeleeComboSO : ScriptableObject
     [Serializable]
     public struct Step
     {
+        public SkillGemDefinition executionSkill;
         [SerializeField, HideInInspector]
         private string entryId;
 
-        [SerializeField]
+        [SerializeField, HideInInspector]
         private AnimationVfxTrack animationVfxTrack;
 
         [Tooltip("Animancer ClipTransition ของท่านี้")]
         [EventNames(typeof(MeleeComboSO), nameof(HitEventNames))]
-        public ClipTransition clip;
+        [HideInInspector] public ClipTransition clip;
 
         [Tooltip("0 = ใช้ความยาวคลิปจริง, >0 จะ speed-match ให้จบตามเวลานี้ (วินาที)")]
-        [Min(0f)] public float duration;
+        [HideInInspector, Min(0f)] public float duration;
 
         [Header("Windows (Normalized 0..1)")]
         [Tooltip("ช่วงที่อนุญาตให้ chain (buffer input) เช่น (0.35, 0.80). ถ้าเป็นท่าสุดท้ายตั้ง (0,0) ได้")]
@@ -34,16 +35,16 @@ public sealed class MeleeComboSO : ScriptableObject
         public bool dropBufferOnWindowExpire;
 
         [Header("Impact")]
-        public bool applyKnockback;
-        [Min(0f)] public float knockbackDistance;
-        [Min(0f)] public float knockbackDuration;
+        [HideInInspector] public bool applyKnockback;
+        [HideInInspector, Min(0f)] public float knockbackDistance;
+        [HideInInspector, Min(0f)] public float knockbackDuration;
         [Tooltip("Normalized knockback travel over time. X = time, Y = travel progress. Leave null for linear.")]
-        public AnimationCurve knockbackProgressCurve;
-        public ImpactReactionKind knockbackReaction;
-        public bool knockbackInterruptsActions;
+        [HideInInspector] public AnimationCurve knockbackProgressCurve;
+        [HideInInspector] public ImpactReactionKind knockbackReaction;
+        [HideInInspector] public bool knockbackInterruptsActions;
 
         [Header("Stagger")]
-        [Min(0f)] public float staggerPower;
+        [HideInInspector, Min(0f)] public float staggerPower;
 
         public string EntryId => entryId;
         public AnimationVfxTrack AnimationVfxTrack => animationVfxTrack;
@@ -157,23 +158,23 @@ public sealed class MeleeComboSO : ScriptableObject
             return false;
         }
 
-        if (steps[0].clip == null)
+        if (steps[0].executionSkill == null)
         {
-            reason = "Step 0 clip is null.";
+            reason = "Step 0 execution skill is missing; migrate or assign a skill.";
             return false;
         }
 
         for (int i = 0; i < steps.Count; i++)
         {
             var step = steps[i];
-            if (step.clip == null)
+            if (step.executionSkill == null || step.executionSkill.skillClip == null || !step.executionSkill.skillClip.IsValid)
             {
-                reason = $"Step {i} clip is null.";
+                reason = $"Step {i} execution skill or animation clip is missing.";
                 return false;
             }
 
-            int hitStartCount = CountNamedEvents(step.clip, HitStartEventName);
-            int hitEndCount = CountNamedEvents(step.clip, HitEndEventName);
+            int hitStartCount = CountNamedEvents(step.executionSkill.skillClip, HitStartEventName);
+            int hitEndCount = CountNamedEvents(step.executionSkill.skillClip, HitEndEventName);
 
             if (hitStartCount == 0 || hitEndCount == 0)
             {

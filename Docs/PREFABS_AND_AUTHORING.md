@@ -3028,7 +3028,7 @@ For the separate reference-layout combat HUD, see [Separate Party HUD](SYSTEMS/P
 ## Defensive Block production and test scene
 
 Production bindings use the original Rector Skill 1 and Aires character definition.
-Tune `Assets/Data/DefensiveBlock/RectorCharge.asset` for range, window, hitbox steps
+Tune `Assets/Data/Skills/Enemies/Rector/Rector_Skill_1.asset > Block Profile` for range, window, hitbox steps
 and Rector knockback. Its **Threat prediction** fields configure pre-hitbox lane
 half-width (1.5 m), forward reach (2.3 m) and estimated charge speed (8 m/s).
 Defensive Block selects incoming attacks automatically without aiming; actual
@@ -3042,7 +3042,7 @@ Player guards in place; only companions use landing placement and warp fades.
 
 **GuardSetting > Impact presentation > Timed Approach Seconds** defaults to **0.5**;
 1 gives a longer approach, and 0 restores physical interception. The timer begins
-on accepted input and uses the attacker's actor clock. **RectorCharge > Approach
+on accepted input and uses the attacker's actor clock. **Rector Skill 1 > Block Profile > Approach
 Stand Off** defaults to **1.6 m**, measured from the guard root along its forward
 direction to Rector's final root position. Tune it against the visible models.
 Both the landing and the enemy approach path must be safe. Short approaches that
@@ -3072,7 +3072,7 @@ key prompt or overlay Canvas/TMP label. The flare prefab/material/shader are in 
 production data folder. Warp fade defaults are 0.04 s out / 0.08 s in on GuardSetting.
 Begin may transition directly to Impact after arrival; fade-in is not immunity.
 Rector preparation is authored separately on
-`Assets/Data/DefensiveBlock/RectorCharge.asset > Windup Seconds` (**0: disabled**).
+`Rector_Skill_1.asset > Block Profile > Windup Seconds` (**0: disabled**).
 The experimental 0.4 s value held the skill pose and was rejected for breaking
 animation continuity. Keep it zero for continuous playback. If explicitly enabled,
 it delays every cast in the caster's time domain. Keep the command window start at zero to allow
@@ -3123,3 +3123,218 @@ feedback, including when a custom PerfectDodgeHandler handles the screen effect.
 Ordinary dash does not play it. `playsPerfectDodgeFeedback = false` suppresses it
 for actors configured without player feedback; a null cue disables only this sound.
 The cue is a global 2D Sfx one-shot. Tune Base Volume on the cue or the Sfx mix.
+## Shared Melee Skill Authoring
+
+- Each combo step references an execution `SkillGemDefinition`. Edit animation,
+  impact, VFX and Hitbox Layout on that skill; ordering, chain windows and input
+  buffering remain on the combo. A Melee tag alone does not make a skill free.
+- Both Basic Melee and Skills use `SetSkillHitBoxData`. Create a source template
+  or load the selected skill's layout, adjust its Collider shapes, then Save
+  Layout From Source. Box, Capsule and Sphere use the same path.
+- Each `SkillHitboxGroup` stores Anchor Space and Anchor Path. Payload preserves
+  the existing skill anchor/offset behavior. CasterRoot uses actor-local space.
+  AnimatorRoot resolves from the actual model Animator, with paths such as
+  `root/c_traj/Weapon.L`; omit actor-wrapper names and `(Clone)` model names.
+- Load Layout validates all anchors before replacing the preview. Bone groups
+  are parented directly to the bone and retained in the tool's Attached Groups
+  list, even outside Source Hitbox Root. Keep the tool on the same character.
+  Save converts collider poses back into each group's anchor space and preserves
+  anchor metadata. Missing anchors abort without overwriting the skill.
+- `CharacterVisualController.ModelAnimator` identifies the live visual model,
+  including prefabs with a second placeholder Animator on the actor root.
+  Runtime rebinds cached groups at each execution after character/model changes.
+- Keep the Basic Melee target mask on `MeleeController`; normal Skills use their
+  payload mask. Migration preserves existing actor masks. Remove obsolete
+  `MeleeHitboxTrigger` components with the migration menu; do not add them again.
+- Roma/Milano's generic combos now have starter front-facing Box layouts. Their
+  current dimensions are placeholders for tuning through the same authoring tool.
+
+
+## Hitbox mode in Animation/VFX Timeline (2026-09-19)
+
+In the **Animation / VFX** tab, timeline rows follow the selected source's
+capabilities and saved data. Required source lanes remain visible even before
+their markers are authored. **VFX** appears when cues or VFX markers exist;
+**Block Window** appears when the skill has a profile or an enabled editor draft.
+**Other Events** appears only for existing events without a dedicated lane,
+including legacy/unknown names so they can still be inspected and removed.
+Combined cutscene playback includes its reference animation's events and cues
+when deciding which rows to show. Migrated melee steps without hitbox payloads
+hide the Hitbox row unless it already contains events; Chain Window remains.
+Right-click **Animation** or empty timeline space to add events or enable Block
+for a supported main skill. The relevant optional row appears automatically;
+row-specific menus and marker dragging continue to work as before.
+
+Open `Tools > RB > Animation VFX > Edit Hitboxes`, or press **Open Hitbox
+Timeline** on `SetSkillHitBoxData`. Both open the existing Animation Event VFX
+Timeline with **Hitbox** selected. Keep the old Load/Save Layout buttons for
+collider-based import/export workflows.
+
+1. Right-click a character (or one of its bones) in the Hierarchy and choose
+   **Edit Hitboxes**. You can also right-click a character prefab in the Project,
+   or drag a scene character/prefab into the window's **Character** field and press
+   **Use Selection** to use the currently selected character. Prefab assets open
+   in Prefab Mode automatically. Setup reuses an existing `SetAnimationVfxData`
+   belonging to that character, or adds one with Undo; it never saves the scene.
+   Choose **Light / Heavy / Skills**, then an **Attack**. A fresh setup selects the
+   first available attack; an existing source selection is preserved. Combo steps
+   show their step number and animation name instead of execution-skill filenames.
+   Skill choices include configured loadout variants, helper/chain/party attacks
+   and serialized enemy skills; selecting one does not equip or cast it.
+   Use **Refresh** after changing setup, or open **Setup...** to assign a source
+   asset/entry manually and inspect the resolved Animator. **Source Asset** opens
+   a searchable picker grouped by supported type: Skill and Melee Combo in Hitbox
+   mode; Animation/VFX also includes Animation Profile and Cutscene. Search by name
+   or asset path. Skills referenced by a selectable combo step are hidden from this
+   list: choose the combo, then choose its step in **Entry**. Standalone skills
+   remain visible; this does not delete or change any skill asset. A skill with no
+   selectable owning step remains visible. Drag a supported asset onto the field,
+   use **Ping** to locate it, or choose **None (clear source)** to clear it.
+   Unsupported drops are rejected; source changes keep the existing draft prompt.
+   Skill/Combo filtering is by type, so an unconfigured source may still need a
+   hitbox payload in the Skill Designer. The normal view keeps
+   character and attack selection in two compact rows. A container with several characters
+   is rejected rather than selecting an arbitrary member.
+2. Select the embedded payload in the left **HITBOXES** browser, then a group and
+   one of its shapes. Use **+ Group / + Shape**; the group's **...** menu duplicates
+   or deletes it. The selected shape's inspector has Duplicate/Delete actions.
+   Composite payloads have separate layouts. Payload composition remains owned by
+   the Skill Designer; this mode adds, duplicates, removes and renames groups
+   and shapes within each existing hitbox payload.
+3. Choose Box, Capsule or Sphere. Edit transform, collider center, size, radius,
+   height and direction in the right **SHAPE** inspector. **Scale & collider center**
+   holds the less frequently changed fields. Use **Move / Rotate / Size / Scale** handles
+   in Scene View. New shapes use the existing layout defaults (Capsule, radius
+   0.5, height 1, Y axis, unit scale).
+4. Under **ATTACHMENT > Follow**, choose Payload, CasterRoot or AnimatorRoot.
+   Click **Bone** to open **Bone Picker**. Its body diagram uses balanced display
+   proportions while every node still selects the original transform. Fingers
+   (including their descendants) are hidden from both diagram and list. Weapon
+   attachments are detached buttons at the sides and never affect body framing.
+   Their anchors belong to the diagram: panning, zooming and orbiting move them
+   with the body. They are clipped to the canvas instead of pinned to window edges.
+   **Model pose** shows actual body coordinates; rigs with unrecognized body names
+   fall back to model coordinates. The schematic supports common spine/limb names.
+   Click a joint, segment or weapon button, or search/select a name in the left list.
+   Twist bones are drawn in detached parallel lanes beside their limb, with both
+   endpoints offset by 30 screen points per lane. Rendering and picking use the
+   same separated geometry at every zoom; extra twist branches get their own lane.
+   If several joints/segments overlap under the pointer, clicking opens a chooser
+   with each bone's name and hierarchy path. This never automatically applies the
+   first candidate, even on double-click; choose the bone, then Select Bone.
+   The selected bone draws on top, and name labels avoid covering each other.
+   Confirm with **Select Bone** or double-click; Cancel/Escape leaves the draft alone.
+   Right-drag orbits, middle-drag pans and the wheel zooms. Front/Side/Top and Frame
+   reset the view; Names toggles labels. **All transforms** includes sockets and
+   unweighted transforms; the default shows skin bones, their ancestors and the
+   current attachment. Models without skin bones show their full hierarchy.
+   The picker closes when its source/model becomes invalid, on assembly reload or
+   when entering Play Mode. It creates no preview model or animation player.
+   You can also drag one GameObject or Transform from the character's Hierarchy
+   directly onto **Bone**. It must be under the current Follow root; foreign
+   characters, prefab assets, multiple objects and paths resolving to a different
+   same-named bone are rejected. Dropping preserves the shapes' world pose and
+   supports Undo/Redo; only the relative path is saved when you press Save Hitboxes.
+   AnimatorRoot follows `CharacteContext.Visual.ModelAnimator` and the shared
+   runtime fallback, including prefabs with a placeholder Animator on the actor.
+   Changing anchors preserves the shape's world pose using Unity TRS conversion;
+   rotated non-uniform scale can imply shear, which a Unity Transform cannot
+   represent exactly. Inspect the result before saving in that case.
+5. Scrub or use the shared Play/Pause, Loop and Speed controls. Active groups are
+   green, the selected group yellow, other groups assigned to the selected Hit cyan,
+   and inactive groups gray. Clicking a Hit selects its first assigned group. **Solo** and **Frame**
+   help isolate geometry. Hitbox mode previews the main attack
+   clip; its VFX use the same existing preview player and playhead.
+6. The timing section stays below the independently scrolling browser/inspector.
+   Drag the ruler or empty timeline to scrub continuously. Drag cyan/orange edges
+   to resize, or drag the body of a hit bar to move both endpoints while preserving
+   duration. Clip boundaries clamp the movement. Click a hit to show only its
+   **Start (s) / End (s)**, duration and **Groups** selector. Each bar labels its Hit
+   and groups; an orange underline warns about missing group assignments.
+   Right-click empty space for **Add Hit Here** at the clicked time. Right-click a
+   bar for **Duplicate Hit / Delete Hit / Assign Groups**. Duplicate preserves the
+   groups, damage, knockback and remaining step settings separately for every
+   affected payload, then selects the copy. It finds the next free gap (wrapping
+   to earlier space if needed); invalid timing or insufficient space disables it.
+   Delete/Backspace removes the selected Hit only while the timeline has keyboard
+   focus and no text field is being edited. Shared timing edits/deletion affect
+   all connected payloads; the affected names appear below the selected Hit.
+   **Damage × / Override Knockback / Distance / Duration** edit only the selected
+   payload's Hit. **More settings** shows hit policy, cache reset and knockback
+   curve/reaction/interruption at the top of the right inspector. With Override
+   Knockback off, this Hit emits no knockback data (matching the existing runtime).
+   **+ Hit at Playhead** adds a window and assigns the currently selected group for
+   this payload. **Shared timing affects** lists payloads sharing the edited event.
+   New shared windows require group
+   assignments in every affected payload; switch payloads to complete them. Switching
+   payloads retains the corresponding selected Hit when they share an endpoint.
+   Stable window IDs keep damage, knockback and other step settings attached when
+   windows move past one another. **Repair markers** reveals a repair list in the
+   right inspector for incomplete/overlapping imported timelines (normalized values).
+7. Press **Save Hitboxes** to commit, **Revert** to reload saved data, or Undo/Redo to change
+   the draft. Geometry and hit events remain in an Editor-only draft until Save.
+   Navigation and window closing offer Save/Discard/Cancel when the draft is dirty.
+   Source changes made elsewhere block Save; use Revert to reload before editing.
+
+Save validates duplicate/empty groups, missing bones, invalid shape dimensions or
+scale, missing step references and incomplete/overlapping windows. It writes only
+layout/step fields and the owned hit events in the selected Skill asset, preserving
+other events and their callbacks. It uses `SaveAssetIfDirty`, never project-wide
+`SaveAssets`. The skill and its hitbox payloads must already be saved together;
+missing event-name assets must be created through the existing event authoring tool.
+As Unity saves an entire asset file, other pending edits already in that same Skill
+file are included; separate dirty assets are not flushed.
+
+Scene geometry uses editor Handles only: it creates no attack collider or damage
+runtime. Backward scrubbing and loops reconstruct active groups from the playhead
+(start inclusive, end exclusive). Stop, changing characters/models, assembly reload
+and entering Play Mode release the existing animation/VFX preview and restore the
+sampled pose. Editing is disabled in Play Mode. Dirty drafts survive assembly reload.
+No mesh fitting, damage simulation or automatic balance changes are performed.
+
+
+Standalone animation models are also supported by **Edit Hitboxes**, including the
+Rector model in GameSetup without a gameplay context. Setup resolves the model's
+Animator and finds Character Stats through exact prefab references, falling back
+to the same Avatar. Attacks from matching configurations are combined and duplicate
+source/entry pairs are removed. Use **Setup... > Character Stats** to select one configuration
+or supply stats for a model with no match. This adds only the authoring component,
+not a gameplay context. The Hierarchy menu uses Unity's priority-10 registration
+so the command is included in the right-click menu as well as GameObject.
+
+### Defensive Block timing in the Animation / VFX view
+
+Animation/VFX preview applies clip root displacement relative to the actor's
+placed position and orientation. Rotating a character in the scene rotates its
+preview movement too; scrubbing remains relative to the same starting pose.
+The secondary camera clip retains its authored motion.
+
+In Main Skill, right-click **Block > Add Block Window Here** for a Skill without a
+profile, then edit its timeline row below VFX. Drag **Block Open / Block Close** or
+set either endpoint from the right-click menu. Use **Block > Save Block** or
+**Block > Revert Block** in that same menu. There is no Block panel above the
+timeline. Right-click within a window to target it and use **Block > Hitbox Steps**,
+**On Success**, or **Remove Window**. Step numbers are zero-based; checked steps
+belong to the clicked window. A gap offers Add instead of editing a different
+window. Context menus in other rows contain only that row's actions: VFX, Hitbox,
+Cast Point, range endpoints, or Other Events. Add another
+window at a playhead in a gap, or use the context menu; Remove keeps at least one.
+Choose **Continue Skill** to suppress only that window's hitboxes and continue the
+enemy animation without enemy knockback, or **Interrupt Skill** for the original
+skill cancel/knockback. Defender Impact/recoil and success feedback apply to both.
+Windows must be ordered, non-overlapping and use distinct zero-based Hitbox Steps.
+The suggested step on Add must be checked against the payload's actual timeline.
+An empty `Block Profile.windows` list retains the legacy single-window behavior;
+existing Skills are not automatically retimed. Leave time for guard recovery and
+safe placement between windows. Multiple payload executions sharing local step
+indices still require separate authoring/integration; this adapter owns one bound
+hitbox sequence per cast, as before.
+The row shows an asterisk for unsaved changes. The draft supports Undo/Redo, and changing source or
+closing the window prompts for pending edits. Each enabled Skill owns a **Block
+Profile** sub-asset; Add creates it only on Save. External/foreign bindings are
+copied into the Skill on Save, so timing edits never change another Skill's profile.
+The Inspector binding is read-only; edit non-timing attack settings on the sub-asset
+itself. Duplicating the Skill asset duplicates its profile. Defender profiles remain
+on Character Stats and are not embedded in Skills.
+See [Defensive Block authoring](SYSTEMS/DEFENSIVE_BLOCK_TEST.md#editing-block-timing-in-animationvfx-timeline)
+for timing semantics, conflict handling, and the distinction from Pre-Cast events.

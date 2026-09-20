@@ -76,6 +76,10 @@ PrefabInstance:
       propertyPath: m_LocalRotation.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3848525355350381702, guid: 434edbdceb281fd479f1e3e0709340da, type: 3}
+      propertyPath: targetMask.m_Bits
+      value: 65535
+      objectReference: {fileID: 0}
     - target: {fileID: 4358868359549360660, guid: 434edbdceb281fd479f1e3e0709340da, type: 3}
       propertyPath: m_Enabled
       value: 1
@@ -511,7 +515,8 @@ PrefabInstance:
       propertyPath: m_IsTrigger
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 3908733115573669127, guid: 434edbdceb281fd479f1e3e0709340da, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 7107260667182768185, guid: 434edbdceb281fd479f1e3e0709340da, type: 3}

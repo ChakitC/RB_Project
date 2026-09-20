@@ -1111,6 +1111,28 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         actorRoot.rotation = Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
     }
 
+    internal SkillCastStartResult TryStartMeleeStep(MeleeComboSO.Step step, MeleeType meleeType)
+    {
+        CacheReferences();
+        if (step.executionSkill == null || skillUser == null || animDriver == null ||
+            ctx == null || ctx.stateHub == null || !ctx.stateHub.CanStartMelee() ||
+            CutsceneDirector.IsCinematicPlaying)
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+
+        CharacterSkillEntry entry = GetOrCreateExternalEntry(step.executionSkill);
+        EnsureRuntimeSkill(entry);
+        if (entry == null || entry.runtimeSkill == null)
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+        EnsureCastOrchestrator();
+        return castOrchestrator.TryStartCast(new SkillCastRequest(
+            entry.runtimeSkill, skillUser, animDriver,
+            canProceed: () => isActiveAndEnabled && ctx != null && ctx.stateHub != null && ctx.stateHub.CanStartMelee(),
+            allowImmediateFallback: false, stampCooldown: false,
+            costPolicy: SkillCastCostPolicy.IgnoreEnergyAndCharge,
+            executionKind: SkillExecutionKind.BasicMelee, meleeType: meleeType,
+            meleeChainWindow: step.chainWindowN, debugSource: "BasicMelee"));
+    }
+
     private SkillCastStartResult TryBeginEntryCast(
         CharacterSkillEntry entry,
         string debugSource,
@@ -1223,7 +1245,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     /// <summary>
     /// Every runtime skill for the same definition shares one charge pool, so two loadout slots
-    /// holding the same skill draw from — and display — the same charges.
+    /// holding the same skill draw from â€” and display â€” the same charges.
     /// </summary>
     private void BindSharedCharges(SkillInstance instance)
     {
@@ -2296,6 +2318,9 @@ public readonly struct SkillCastStartResult
 
 public readonly struct SkillCastRequest
 {
+    public readonly SkillExecutionKind ExecutionKind;
+    public readonly MeleeType MeleeType;
+    public readonly Vector2 MeleeChainWindow;
     public readonly SkillInstance RuntimeSkill;
     public readonly ISkillUser SkillUser;
     public readonly CharacterAnimDriver AnimationDriver;
@@ -2348,8 +2373,14 @@ public readonly struct SkillCastRequest
         ulong combatChainId = 0,
         int combatDepth = 0,
         ComboExecutionProvenance comboProvenance = default,
-        SkillFacingSnapshot facingSnapshot = default)
+        SkillFacingSnapshot facingSnapshot = default,
+        SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
+        MeleeType meleeType = MeleeType.Light,
+        Vector2 meleeChainWindow = default)
     {
+        ExecutionKind = executionKind;
+        MeleeType = meleeType;
+        MeleeChainWindow = meleeChainWindow;
         RuntimeSkill = runtimeSkill;
         SkillUser = skillUser;
         AnimationDriver = animationDriver;
@@ -2395,6 +2426,7 @@ public enum SkillCastCancelReason
 
 public readonly struct ActiveSkillCastInfo
 {
+    public readonly SkillExecutionKind ExecutionKind;
     public readonly int RequestId;
     public readonly SkillInstance RuntimeSkill;
     public readonly SkillGemDefinition SkillDef;
@@ -2416,8 +2448,10 @@ public readonly struct ActiveSkillCastInfo
         float castPointNormalized,
         bool released,
         bool requiresTimelineEvents,
-        string debugSource)
+        string debugSource,
+        SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill)
     {
+        ExecutionKind = executionKind;
         RequestId = requestId;
         RuntimeSkill = runtimeSkill;
         SkillDef = skillDef;
@@ -2464,7 +2498,7 @@ public sealed class SkillCastOrchestrator
                 CastPointNormalized,
                 Released,
                 RequiresTimelineEvents,
-                Request.DebugSource);
+                Request.DebugSource, Request.ExecutionKind);
         }
     }
 
@@ -2577,7 +2611,7 @@ public sealed class SkillCastOrchestrator
                 skillUser,
                 request.CostPolicy,
                 request.StampCooldown,
-                out SkillCastReservation reservation))
+                out SkillCastReservation reservation, request.ExecutionKind))
         {
             return Rejected();
         }
@@ -2593,7 +2627,7 @@ public sealed class SkillCastOrchestrator
                 SkillUser = skillUser,
                 AnimationDriver = executionAnimDriver,
                 RequestId = requestId,
-                CastPointNormalized = skillDef.GetCastPointNormalized(),
+                CastPointNormalized = request.ExecutionKind == SkillExecutionKind.BasicMelee ? 0f : skillDef.GetCastPointNormalized(),
                 RequiresTimelineEvents = requiresTimelineEvents,
             };
 
@@ -2607,7 +2641,7 @@ public sealed class SkillCastOrchestrator
                 context.SkillDef,
                 context.CastPointNormalized,
                 context.TimelineEventNames,
-                request.UsePlanarRootMotion);
+                request.UsePlanarRootMotion, request.ExecutionKind, request.MeleeChainWindow);
 
             if (started)
             {
@@ -2618,6 +2652,16 @@ public sealed class SkillCastOrchestrator
                 // runs once the animation driver has actually accepted the cast.
                 request.OnStarted?.Invoke();
                 CastStarted?.Invoke(context.ToInfo());
+                // Arm the payload synchronously, before a frame-zero HitStart can run.
+                if (request.ExecutionKind == SkillExecutionKind.BasicMelee)
+                {
+                    if (!ReleasePendingCast(context.RequestId))
+                    {
+                        executionAnimDriver.CancelSkillCastRequest(context.RequestId);
+                        return Rejected();
+                    }
+                    executionAnimDriver.ReleaseBasicMeleeCast(context.RequestId);
+                }
                 return new SkillCastStartResult(SkillCastStartKind.WaitingForAnimation, context.RequestId);
             }
         }
@@ -2655,7 +2699,7 @@ public sealed class SkillCastOrchestrator
             skillDef.GetCastPointNormalized(),
             released: false,
             requiresTimelineEvents: false,
-            request.DebugSource);
+            request.DebugSource, request.ExecutionKind);
         CastStarted?.Invoke(immediateInfo);
 
         // No wind-up on this path, so the cast point is now. CastReleased always means "reached the
@@ -2701,7 +2745,8 @@ public sealed class SkillCastOrchestrator
         if (!CanProceed(request))
             return false;
 
-        return runtimeSkill.CanCast(skillUser, request.CostPolicy, out _);
+        return request.ExecutionKind == SkillExecutionKind.BasicMelee ||
+               runtimeSkill.CanCast(skillUser, request.CostPolicy, out _);
     }
 
     /// <summary>
@@ -2732,7 +2777,7 @@ public sealed class SkillCastOrchestrator
                 request.CombatChainId,
                 request.CombatDepth,
                 request.ComboProvenance,
-                request.FacingSnapshot))
+                request.FacingSnapshot, request.ExecutionKind, request.MeleeType))
         {
             reservation.Release();
             RaiseExecutionFailed(request, requestId, runtimeSkill, skillUser, executionAnimDriver, result);
@@ -2749,10 +2794,11 @@ public sealed class SkillCastOrchestrator
             runtimeSkill.def != null ? runtimeSkill.def.GetCastPointNormalized() : 0f,
             released: true,
             requiresTimelineEvents: false,
-            request.DebugSource);
+            request.DebugSource, request.ExecutionKind);
         request.OnCommitted?.Invoke(committedInfo);
         CastCommitted?.Invoke(committedInfo);
-        PlayCastCue(runtimeSkill, skillUser);
+        if (request.ExecutionKind != SkillExecutionKind.BasicMelee)
+            PlayCastCue(runtimeSkill, skillUser);
         return true;
     }
 
@@ -2785,7 +2831,7 @@ public sealed class SkillCastOrchestrator
                 skillDef != null ? skillDef.GetCastPointNormalized() : 0f,
                 released: true,
                 requiresTimelineEvents: false,
-                request.DebugSource),
+                request.DebugSource, request.ExecutionKind),
             result);
         request.OnExecutionFailed?.Invoke(
             new ActiveSkillCastInfo(
@@ -2797,7 +2843,7 @@ public sealed class SkillCastOrchestrator
                 skillDef != null ? skillDef.GetCastPointNormalized() : 0f,
                 released: true,
                 requiresTimelineEvents: false,
-                request.DebugSource),
+                request.DebugSource, request.ExecutionKind),
             result);
     }
 

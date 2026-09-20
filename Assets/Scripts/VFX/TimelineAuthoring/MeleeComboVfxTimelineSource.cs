@@ -21,34 +21,38 @@ public sealed class MeleeComboVfxTimelineSource : IAnimationVfxTimelineSource
     MeleeComboSO.Step step;
     int stepIndex;
     AnimationVfxTrack track;
+    SkillVfxTimelineSource skillSource;
 
     public MeleeComboVfxTimelineSource(MeleeComboSO combo, string entryId)
     {
         this.combo = combo;
         this.entryId = entryId;
         if (combo != null && combo.TryGetStep(entryId, out step, out stepIndex))
+        {
             track = step.AnimationVfxTrack ?? new AnimationVfxTrack();
+            if (step.executionSkill != null) skillSource = new SkillVfxTimelineSource(step.executionSkill);
+        }
         else
             stepIndex = -1;
     }
 
-    public ScriptableObject SourceAsset => combo;
+    public ScriptableObject SourceAsset => skillSource != null ? skillSource.SourceAsset : combo;
     public string EntryId => entryId;
     public string DisplayName
     {
         get
         {
-            string clipName = step.clip != null && step.clip.Clip != null ? step.clip.Clip.name : "No Clip";
+            string clipName = Transition != null && Transition.Clip != null ? Transition.Clip.name : "No Clip";
             return stepIndex >= 0 ? $"{combo.name} / Step {stepIndex + 1}: {clipName}" : combo != null ? combo.name : "Melee Combo";
         }
     }
-    public ClipTransition Transition => step.clip;
-    public int MarkerCount => AnimationVfxTimelineSourceFactory.CountMarkers(step.clip);
+    public ClipTransition Transition => skillSource != null ? skillSource.Transition : step.clip;
+    public int MarkerCount => AnimationVfxTimelineSourceFactory.CountMarkers(Transition);
     public IReadOnlyList<AnimationVfxTimelineLane> Lanes => MeleeLanes;
     public float PointValue => 0f;
     public Vector2 RangeValue => step.chainWindowN;
-    public int CueCount => track?.CueCount ?? 0;
-    public IAnimationVfxCue GetCue(int index) => track?.GetCue(index);
+    public int CueCount => skillSource != null ? skillSource.CueCount : track?.CueCount ?? 0;
+    public IAnimationVfxCue GetCue(int index) => skillSource != null ? skillSource.GetCue(index) : track?.GetCue(index);
 
     public void SetPointValue(float value) { }
 
@@ -64,6 +68,7 @@ public sealed class MeleeComboVfxTimelineSource : IAnimationVfxTimelineSource
 
     public void ReplaceCues(IReadOnlyList<AnimationVfxCue> cues)
     {
+        if (skillSource != null) { skillSource.ReplaceCues(cues); return; }
         if (combo == null || stepIndex < 0)
             return;
         Undo.RecordObject(combo, "Save Melee Animation VFX");
@@ -77,6 +82,7 @@ public sealed class MeleeComboVfxTimelineSource : IAnimationVfxTimelineSource
 
     public void MoveCueIndex(int oldCueIndex, int newCueIndex)
     {
+        if (skillSource != null) { skillSource.MoveCueIndex(oldCueIndex, newCueIndex); return; }
         if (track == null)
             return;
         Undo.RecordObject(combo, "Move Melee VFX Cue");
@@ -87,6 +93,7 @@ public sealed class MeleeComboVfxTimelineSource : IAnimationVfxTimelineSource
 
     public void RemoveCueIndex(int cueIndex)
     {
+        if (skillSource != null) { skillSource.RemoveCueIndex(cueIndex); return; }
         if (track == null)
             return;
         Undo.RecordObject(combo, "Remove Melee VFX Cue");
@@ -106,7 +113,8 @@ public sealed class MeleeComboVfxTimelineSource : IAnimationVfxTimelineSource
         if (combo == null)
             return;
         EditorUtility.SetDirty(combo);
-        AssetDatabase.SaveAssets();
+        AssetDatabase.SaveAssetIfDirty(combo);
+        if (step.executionSkill != null) AssetDatabase.SaveAssetIfDirty(step.executionSkill);
     }
 }
 #endif

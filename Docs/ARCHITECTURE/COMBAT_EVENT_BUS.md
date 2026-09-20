@@ -60,6 +60,12 @@ components. Optional sources are only for monitoring or polling style events.
 
 ## Damage Application
 
+Basic Melee uses `SkillHitboxSequenceRuntime` to publish applied Hit/Kill facts,
+with `CombatSourceKind.Melee`, live character/weapon critical stats, and a fresh
+attack/chain identity at each HitStart. `MeleeController` only sequences the
+combo; it no longer applies damage or publishes duplicate hit facts. A regular
+active skill with `SkillTag.Melee` still publishes `CombatSourceKind.Skill`.
+
 `IDamageable.TakeDamage` returns a `DamageResult`. Hit publishers must use that
 result instead of the precomputed final damage when deciding whether to show
 damage numbers or publish `Hit` and `Kill`.

@@ -6,7 +6,7 @@ internal sealed class PrefabHitboxPayloadDesignerDescriptor : PayloadDesignerDes
 {
     public override string DisplayName => "Melee Hitbox Sequence";
     public override string Description =>
-        "Drives a sequence of inline hitbox groups from Hit Start/Hit End timeline events.";
+        "Drives inline hitboxes with optional bone anchors from Hit Start/Hit End timeline events.";
     public override string Category => "Damage";
 
     protected override void ApplySafeDefaults(PrefabHitboxSkillPayloadDef payload, PayloadDesignerContext context)

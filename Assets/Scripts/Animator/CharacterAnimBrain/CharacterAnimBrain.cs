@@ -23,6 +23,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     [Header("Core")]
     [SerializeField] private AnimancerComponent animancer;
+    public Animator BoundAnimator => animancer != null ? animancer.Animator : null;
     [SerializeField] private CharacteContext ctx;
     [Tooltip("ใช้แทน baseStats.animProfile สำหรับตัวละครที่ไม่มี CharacterStats เช่น summon/turret")]
     [SerializeField] private CharacterAnimProfileSO inspectorAnimProfile;
@@ -129,7 +130,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public MeleeComboSO.Step CurrentMeleeStep { get; internal set; }
     public int CurrentMeleeStepIndex { get; internal set; }
-    public bool IsMeleePlaybackActive => _initialized && locomotionSM.CurrentState == meleeCombo;
+    public bool IsMeleePlaybackActive => IsBasicMeleeExecution &&
+        (_skillChannel.IsActive || (_initialized && locomotionSM.CurrentState == skill));
+    internal bool IsBasicMeleeExecution => _skillChannel.Request.ExecutionKind == SkillExecutionKind.BasicMelee;
+    internal PlaybackKind ActiveSkillPlaybackKind => IsBasicMeleeExecution ? PlaybackKind.Melee : PlaybackKind.Skill;
     public event Action MeleeHitStart;
     public event Action MeleeHitEnd;
     public event Action MeleeComboEnded;
@@ -139,7 +143,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private Action onMeleeHitStartCache;
     private Action onMeleeHitEndCache;
-    private Action onSkillCastMomentCache;
     
 
     // ----- Runtime inputs -----
@@ -157,7 +160,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private Action_Reload reloadState;
     private Locomotion_Reload fullBodyReloadState;
     private LocomotionState_Live locomotion;
-    private Locomotion_MeleeCombo meleeCombo;
     private Action_Empty empty;
     private Action_ShootPulse shootOnce;
     private Action_ShootHold shootHold;
@@ -225,15 +227,15 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     internal bool HasPendingSkillReleaseRequest => _skillChannel.Request.ReleaseRequested;
     internal float ActiveUtilityCastPointNormalized => _utilityChannel.Request.CastPointNormalized;
     internal bool HasPendingUtilityReleaseRequest => _utilityChannel.Request.ReleaseRequested;
-    public bool IsSkillPlaybackActive =>
-        _skillChannel.IsActive ||
-        (_initialized && locomotionSM.CurrentState == skill);
+    public bool IsSkillPlaybackActive => !IsBasicMeleeExecution &&
+        (_skillChannel.IsActive || (_initialized && locomotionSM.CurrentState == skill));
     private bool IsUtilityPlaybackActive =>
         _utilityChannel.IsActive ||
         (_initialized && locomotionSM.CurrentState == utility);
     /// <summary>True when any skill, utility, or chain playback blocks shooting.</summary>
     public bool IsShootBlockingPlaybackActive =>
         IsSkillPlaybackActive ||
+        IsMeleePlaybackActive ||
         IsUtilityPlaybackActive ||
         IsChainPlaybackActive;
     /// <summary>True when a utility warp or chain-utility is active.</summary>
@@ -244,7 +246,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         (locomotionSM.CurrentState == skill ||
          locomotionSM.CurrentState == utility ||
          locomotionSM.CurrentState == chain ||
-         locomotionSM.CurrentState == meleeCombo ||
+         IsMeleePlaybackActive ||
          locomotionSM.CurrentState == fullBodyReloadState ||
          locomotionSM.CurrentState == knockbackState ||
          locomotionSM.CurrentState == deadState ||
@@ -271,6 +273,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             if (IsChainPlaybackActive) return CharacterAnimationMode.Chain;
             if (IsUtilityPlaybackActive) return CharacterAnimationMode.Utility;
             if (IsSkillPlaybackActive) return CharacterAnimationMode.Skill;
+            if (IsMeleePlaybackActive) return CharacterAnimationMode.Melee;
 
             // Above knockback and status: the Special Point reaction outranks every other combat
             // reaction once it owns locomotion.
@@ -285,7 +288,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
                     : CharacterAnimationMode.SoftStatus;
             }
 
-            if (locomotionSM.CurrentState == meleeCombo) return CharacterAnimationMode.Melee;
             if (locomotionSM.CurrentState == fullBodyReloadState) return CharacterAnimationMode.FullBodyReload;
             if (locomotionSM.CurrentState == dashState) return CharacterAnimationMode.Dash;
             if (locomotionSM.CurrentState == crawlState) return CharacterAnimationMode.Crawl;
@@ -494,8 +496,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             dashState?.EndVfxSession();
             reloadState?.EndVfxSession();
             fullBodyReloadState?.EndVfxSession();
-            meleeCombo?.EndVfxSession();
-        }
+            }
 
         // ถ้า Animator หรือ profile เปลี่ยน (เช่น rebuild model / switch character) ต้อง init ใหม่
         if (_initialized && animancer.Animator == _boundAnimator && animProfile == _boundAnimProfile)
@@ -522,7 +523,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         dashState = new Locomotion_Dash(this);
         knockbackState = new Locomotion_Knockback(this);
         deadState = new Locomotion_Dead(this);
-        meleeCombo = new Locomotion_MeleeCombo(this);
         crawlState = new LocomotionState_Crawl(this);
         skill = new Locomotion_Skill(this);
         utility = new Locomotion_Utility(this);
@@ -568,7 +568,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
             case PendingAction.Melee:
                 actionSM.TrySetState(empty);
-                TrySetLocomotionState(meleeCombo);
+                ctx?.MeleeController?.PressMelee(MeleeType.Heavy);
                 break;
         }
 
@@ -905,36 +905,18 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     internal bool TryStartMeleePlayback(MeleeComboSO combo, MeleeComboSO.Step firstStep, int stepIndex)
     {
-        if (!CanStartAnimation(CharacterAnimationMode.Melee, CharacterAnimationTransitionReason.NormalCommand))
-            return false;
-        if (!TryInitialize())
-            return false;
-
-        StopReloadAction();
-        meleeCombo.PrepareForStart(combo, firstStep, stepIndex);
-        return TrySetLocomotionState(meleeCombo);
+        CurrentMeleeStep = firstStep;
+        CurrentMeleeStepIndex = stepIndex;
+        return ctx != null && ctx.SkillManager != null &&
+            ctx.SkillManager.TryStartMeleeStep(firstStep, ctx.MeleeController != null ? ctx.MeleeController.CurrentMeleeType : MeleeType.Light).Started;
     }
 
     internal void AdvanceMeleeStep(MeleeComboSO.Step step, int stepIndex)
     {
-        if (locomotionSM.CurrentState != meleeCombo)
-            return;
-        meleeCombo.PlayStepExternal(step, stepIndex);
+        ctx?.MeleeController?.PlayCurrentStep();
     }
 
-    internal void CompleteMeleePlayback()
-    {
-        if (locomotionSM.CurrentState != meleeCombo)
-            return;
-
-        meleeCombo.EndVfxSession();
-        MeleeComboEnded?.Invoke();
-        EmitPlaybackSignal(PlaybackKind.Melee, PlaybackPhase.Completed, 0);
-
-        bool exited = TrySetLocomotionState(IsDowned ? crawlState : locomotion);
-        if (!exited)
-            ExitExclusiveLocomotion(false);
-    }
+    internal void CompleteMeleePlayback() => ctx?.MeleeController?.InterruptMelee();
 
     /// <summary>True while the MapRun stage intro pose owns locomotion.</summary>
     public bool IsStageIntroPlaybackActive =>
@@ -1087,7 +1069,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         SkillGemDefinition skillDef,
         float castPointNormalized,
         IReadOnlyList<CombatTimelineEventName> timelineEventNames,
-        bool usePlanarRootMotion)
+        bool usePlanarRootMotion,
+        SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
+        Vector2 meleeChainWindow = default)
     {
         if (requestId <= 0)
             return false;
@@ -1095,7 +1079,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!TryInitialize() || !HasValidSkillClip(skillDef))
             return false;
 
-        if (!CanStartAnimation(CharacterAnimationMode.Skill, CharacterAnimationTransitionReason.NormalCommand))
+        if (!CanStartAnimation(executionKind == SkillExecutionKind.BasicMelee ? CharacterAnimationMode.Melee : CharacterAnimationMode.Skill, CharacterAnimationTransitionReason.NormalCommand))
             return false;
 
         StopReloadAction();
@@ -1106,6 +1090,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             timelineEventNames,
             usePlanarRootMotion);
 
+        _skillChannel.Request.ExecutionKind = executionKind;
+        _skillChannel.Request.MeleeChainWindow = meleeChainWindow;
+        _skillChannel.Kind = ActiveSkillPlaybackKind;
         try
         {
             if (TryResetLocomotionState(skill))
@@ -1156,7 +1143,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (requestId <= 0 || requestId != _skillChannel.Request.RequestId)
             return;
 
-        ClearActiveSkillRequest();
+        InterruptActiveSkillRequest();
 
         if (!TryInitialize())
             return;
@@ -1184,15 +1171,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void CancelMeleeNow()
     {
-        if (ExternalCommandBlockedByChain())
-            return;
-
-        if (!TryInitialize())
-            return;
-        if (locomotionSM.CurrentState != meleeCombo)
-            return;
-
-        TrySetLocomotionState(IsDowned ? crawlState : locomotion);
+        if (IsMeleePlaybackActive)
+            CancelSkillCastRequest(_skillChannel.Request.RequestId);
     }
 
     public void InterruptActivePlaybackForExternalControlLoss()
@@ -1208,7 +1188,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         if (locomotionSM.CurrentState == skill ||
             locomotionSM.CurrentState == utility ||
-            locomotionSM.CurrentState == meleeCombo ||
+            IsMeleePlaybackActive ||
             locomotionSM.CurrentState == dashState ||
             locomotionSM.CurrentState == blockState)
         {
@@ -1610,7 +1590,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (IsSkillPlaybackActive)
             return PlaybackKind.Skill;
 
-        if (_initialized && locomotionSM.CurrentState == meleeCombo)
+        if (_initialized && IsMeleePlaybackActive)
             return PlaybackKind.Melee;
 
         if (_initialized && locomotionSM.CurrentState == deadState)
@@ -1645,8 +1625,24 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!_skillChannel.Request.TryReleaseCast())
             return;
 
-        EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.CastMoment, _skillChannel.Request.RequestId);
+        EmitPlaybackSignal(ActiveSkillPlaybackKind, PlaybackPhase.CastMoment, _skillChannel.Request.RequestId);
     }
+
+    internal void ReleaseBasicMeleeCast(int requestId)
+    {
+        if (IsBasicMeleeExecution && _skillChannel.Request.RequestId == requestId)
+            NotifySkillCastMoment();
+    }
+
+    internal void RaiseMeleeChainWindow(int requestId, bool open)
+    {
+        if (!IsMeleePlaybackActive || _skillChannel.Request.RequestId != requestId) return;
+        if (open) MeleeChainWindowOpened?.Invoke();
+        else MeleeChainWindowClosed?.Invoke();
+    }
+
+    internal void ReportMeleeComboEnded() => MeleeComboEnded?.Invoke();
+    internal void ReportMeleeStepCompleted() => MeleeStepCompleted?.Invoke();
 
     internal void NotifyUtilityCastMoment()
     {
@@ -1658,19 +1654,20 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     internal void NotifySkillStateExited(bool completedNormally)
     {
+        PlaybackKind kind = ActiveSkillPlaybackKind;
         PlaybackSessionClose close = _skillChannel.Request.Close(completedNormally);
 
         if (close.OwesCastMoment)
-            EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.CastMoment, close.RequestId);
+            EmitPlaybackSignal(kind, PlaybackPhase.CastMoment, close.RequestId);
 
         ClearActiveSkillRequest();
 
         // A request-less PlaySkill() still reports completion, with request id 0.
         if (completedNormally)
-            EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.Completed, close.RequestId);
+            EmitPlaybackSignal(kind, PlaybackPhase.Completed, close.RequestId);
 
         if (close.OwesInterrupted)
-            EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.Interrupted, close.RequestId);
+            EmitPlaybackSignal(kind, PlaybackPhase.Interrupted, close.RequestId);
     }
 
     internal void NotifyUtilityStateExited(bool completedNormally)
@@ -1691,19 +1688,20 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     internal void BindActiveSkillTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
     {
+        int requestId = _skillChannel.Request.RequestId;
         ClipTransition clip = ResolveSkillClip(_skillChannel.Request.Definition);
         BindTimelineEventCallbacks(
             runtimeEvents,
             _skillChannel.Request.TimelineEventNames,
             clip,
-            RaiseSkillTimelineEvent,
+            eventName => { if (_skillChannel.Request.RequestId == requestId) RaiseSkillTimelineEvent(eventName); },
             warnMissing: true);
 
         BindVfxTimelineEventCallbacks(
             runtimeEvents,
             _skillChannel.Request.Definition,
             clip,
-            RaiseSkillVfxTimelineEvent);
+            cueIndex => { if (_skillChannel.Request.RequestId == requestId) RaiseSkillVfxTimelineEvent(cueIndex); });
 
         BindActiveSkillPreCastTimelineEvents(runtimeEvents);
     }
@@ -1923,7 +1921,13 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             return;
         }
 
-        SkillTimelineEventRaised?.Invoke(_skillChannel.Request.RequestId, eventName);
+        int requestId = _skillChannel.Request.RequestId;
+        SkillTimelineEventRaised?.Invoke(requestId, eventName);
+        if (IsBasicMeleeExecution && _skillChannel.Request.RequestId == requestId)
+        {
+            if (eventName == CombatTimelineEventName.HitStart) MeleeHitStart?.Invoke();
+            else if (eventName == CombatTimelineEventName.HitEnd) MeleeHitEnd?.Invoke();
+        }
     }
 
     private void RaiseChainSkillTimelineEvent(CombatTimelineEventName eventName)
@@ -2060,12 +2064,13 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void InterruptActiveSkillRequest()
     {
+        PlaybackKind kind = ActiveSkillPlaybackKind;
         PlaybackSessionClose close = _skillChannel.Request.Close(completedNormally: false);
 
         ClearActiveSkillRequest();
 
         if (close.OwesInterrupted)
-            EmitPlaybackSignal(PlaybackKind.Skill, PlaybackPhase.Interrupted, close.RequestId);
+            EmitPlaybackSignal(kind, PlaybackPhase.Interrupted, close.RequestId);
     }
 
     private void InterruptActiveUtilityRequest()
@@ -2083,7 +2088,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         dashState?.EndVfxSession();
         reloadState?.EndVfxSession();
         fullBodyReloadState?.EndVfxSession();
-        meleeCombo?.EndVfxSession();
         RestoreWorldAnimationSpeed();
         ClearRootMotionPolicy();
         InterruptActiveSkillRequest();
@@ -2124,7 +2128,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         dashState?.EndVfxSession();
         reloadState?.EndVfxSession();
         fullBodyReloadState?.EndVfxSession();
-        meleeCombo?.EndVfxSession();
         RestoreWorldAnimationSpeed();
         ClearRootMotionPolicy();
         InterruptActiveSkillRequest();

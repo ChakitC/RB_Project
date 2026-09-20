@@ -5326,7 +5326,9 @@ MonoBehaviour:
   weaponSystem: {fileID: 6230920573825478580}
   statusEffectController: {fileID: 5037510039682522691}
   combatEventBus: {fileID: 5228067887070747632}
-  hitboxTrigger: {fileID: 0}
+  targetMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!1 &4924118660643396299
 GameObject:
   m_ObjectHideFlags: 0

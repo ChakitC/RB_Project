@@ -30,6 +30,61 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     readonly HashSet<int> _sweepColliderIds = new HashSet<int>();
     readonly Collider[] _overlapBuffer = new Collider[64];
 
+    bool _keepForReuse;
+    LayerMask TargetMask => IsBasicMelee && _context.CasterContext?.MeleeController != null
+        ? _context.CasterContext.MeleeController.TargetMask : _payload.TargetMask;
+    PrefabHitboxSkillPayloadDef _builtPayload;
+
+    public bool TryPrepare(SkillCastContext context, PrefabHitboxSkillPayloadDef payload, out string error)
+    {
+        error = null;
+        // Resolve every bone before mutating an existing cached layout.
+        var anchors = new Transform[payload.HitboxLayout.Groups.Count];
+        for (int i = 0; i < anchors.Length; i++)
+        {
+            var data = payload.HitboxLayout.Groups[i];
+            if (!SkillHitboxGroup.TryResolveAnchor(data.Anchor, data.AnchorPath, transform,
+                    context.CasterContext, out anchors[i]))
+            {
+                error = $"Hitbox group '{data.GroupKey}' cannot resolve {data.Anchor} path '{data.AnchorPath}'.";
+                return false;
+            }
+        }
+        bool rebuild = _builtPayload != payload || groups.Length != anchors.Length;
+        for (int i = 0; i < groups.Length; i++) if (groups[i] == null) rebuild = true;
+        if (rebuild)
+        {
+            DestroyOwnedGroups();
+            if (!SkillHitboxRuntimeBuilder.TryBuild(transform, payload.HitboxLayout,
+                    gameObject.layer, out groups, out error)) return false;
+            _builtPayload = payload;
+        }
+        for (int i = 0; i < groups.Length; i++)
+        {
+            groups[i].SetActive(false);
+            groups[i].transform.SetParent(anchors[i], false);
+            groups[i].transform.localPosition = Vector3.zero;
+            groups[i].transform.localRotation = Quaternion.identity;
+            groups[i].transform.localScale = Vector3.one;
+        }
+        return true;
+    }
+
+    void DestroyOwnedGroups()
+    {
+        foreach (var group in groups)
+        {
+            if (group == null) continue;
+            group.SetActive(false);
+            if (Application.isPlaying) Destroy(group.gameObject);
+            else DestroyImmediate(group.gameObject);
+        }
+        groups = Array.Empty<SkillHitboxGroup>();
+    }
+
+    bool IsBasicMelee => _context != null && _context.IsBasicMelee;
+    public void KeepForReuse() => _keepForReuse = true;
+
     Rigidbody _rigidbody;
     SkillCastContext _context;
     PrefabHitboxSkillPayloadDef _payload;
@@ -53,6 +108,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     bool _initialized;
     bool _isShuttingDown;
     DefensiveBlockAttack _defensiveBlock;
+    readonly HashSet<int> _suppressedBlockSteps = new();
     public int ActiveStepIndex => _activeSequentialStep != null && _activeSequentialStep.IsActive ? _activeSequentialStep.StepIndex : -1;
 
     public bool TryGetActiveBounds(out Bounds bounds)
@@ -60,7 +116,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         bounds = default;
         bool found = false;
         if (_activeSequentialStep == null || !_activeSequentialStep.IsActive) return false;
-        UpdatePoseFromAnchor();
+        if (_payload.FollowAnchor) UpdatePoseFromAnchor();
         foreach (var group in _activeSequentialStep.Groups)
             foreach (var collider in group.Colliders)
             {
@@ -77,6 +133,18 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         ShutdownAndDestroy();
         return true;
     }
+    public bool SuppressSteps(int requestId, int casterLife, int[] steps)
+    {
+        if (!_initialized || _isShuttingDown || requestId != _requestId || casterLife != _casterLife || steps == null) return false;
+        foreach (int index in steps)
+        {
+            if (index < 0) continue;
+            _suppressedBlockSteps.Add(index);
+            foreach (var step in _steps)
+                if (step.StepIndex == index && step.IsActive) DeactivateStep(step);
+        }
+        return true;
+    }
     StepRuntimeState _activeSequentialStep;
 
     void Awake()
@@ -91,6 +159,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
     void OnDisable()
     {
+        _initialized = false;
         Unsubscribe();
         DeactivateAllGroupsImmediate();
     }
@@ -99,6 +168,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     {
         Unsubscribe();
         DeactivateAllGroupsImmediate();
+        DestroyOwnedGroups();
     }
 
     void Update()
@@ -109,7 +179,8 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         if (_payload != null && _payload.FollowAnchor)
             UpdatePoseFromAnchor();
 
-        if (Time.time >= _expireAt)
+        if ((_context?.CasterContext != null && _context.CasterContext.LifeGeneration != _casterLife) ||
+            Time.time >= _expireAt)
         {
             ShutdownAndDestroy();
             return;
@@ -125,6 +196,17 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         {
             ShutdownAndDestroy();
         }
+    }
+
+    void LateUpdate()
+    {
+        if (!_initialized || _isShuttingDown) return;
+        foreach (var group in groups)
+            if (group == null) { ShutdownAndDestroy(); return; }
+        if (_payload.FollowAnchor) UpdatePoseFromAnchor();
+        _sweepColliderIds.Clear();
+        for (int i = 0; i < groups.Length && _initialized; i++)
+            groups[i].SampleContacts(_overlapBuffer, _sweepColliderIds, TargetMask, _payload.QueryTriggers, ProcessContact);
     }
 
     void OnTriggerEnter(Collider other)
@@ -144,12 +226,17 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
     public void Initialize(SkillCastContext context, PrefabHitboxSkillPayloadDef payload)
     {
+        _initialized = false;
+        Unsubscribe();
+        DeactivateAllGroupsImmediate();
+        _isShuttingDown = false;
+        _suppressedBlockSteps.Clear();
         _context = context;
         _payload = payload;
         _animBrain = context != null ? context.AnimBrain : null;
         _requestId = context != null ? context.RequestId : 0;
         _casterLife = context?.CasterContext != null ? context.CasterContext.LifeGeneration : 0;
-        _expireAt = Time.time + (payload != null ? payload.MaxSequenceLifetime : 1f);
+        _expireAt = IsBasicMelee ? float.PositiveInfinity : Time.time + (payload != null ? payload.MaxSequenceLifetime : 1f);
 
         CacheGroups();
         BuildStepLookup();
@@ -165,7 +252,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         UpdatePoseFromAnchor(forceResolve: true);
         Subscribe();
         _initialized = true;
-        _defensiveBlock = context?.CasterContext != null ? context.CasterContext.DefensiveBlockAttack : null;
+        _defensiveBlock = !IsBasicMelee && context?.CasterContext != null ? context.CasterContext.DefensiveBlockAttack : null;
         _defensiveBlock?.Bind(this, context);
     }
 
@@ -175,6 +262,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             return;
 
         _animBrain.SkillTimelineEventRaised += OnSkillTimelineEventRaised;
+        _animBrain.PlaybackEvent += OnPlaybackEvent;
         _animBrain.SkillCastInterrupted += OnSkillCastInterrupted;
     }
 
@@ -184,12 +272,14 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             return;
 
         _animBrain.SkillTimelineEventRaised -= OnSkillTimelineEventRaised;
+        _animBrain.PlaybackEvent -= OnPlaybackEvent;
         _animBrain.SkillCastInterrupted -= OnSkillCastInterrupted;
     }
 
     void ResolveContextState()
     {
-        _sourceObject = _context != null ? _context.CasterObject : null;
+        _sourceObject = IsBasicMelee && _context.CasterContext != null
+            ? _context.CasterContext.gameObject : (_context != null ? _context.CasterObject : null);
         _attribution = CombatAttributionSnapshot.FromPhysicalActor(_sourceObject);
         _casterRoot = _context != null ? _context.CasterRoot : null;
         _anchor = _payload != null ? _payload.ResolveAnchor(_context) : null;
@@ -401,6 +491,14 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             DeactivateStep(step);
     }
 
+    void OnPlaybackEvent(CharacterAnimBrain.PlaybackSignal signal)
+    {
+        if (signal.RequestId == _requestId &&
+            (signal.Phase == CharacterAnimBrain.PlaybackPhase.Completed ||
+             signal.Phase == CharacterAnimBrain.PlaybackPhase.Interrupted))
+            ShutdownAndDestroy();
+    }
+
     void OnSkillCastInterrupted(int requestId)
     {
         if (requestId != _requestId)
@@ -411,9 +509,20 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
     void ActivateStep(StepRuntimeState step)
     {
-        if (step == null)
+        if (step == null || _suppressedBlockSteps.Contains(step.StepIndex))
             return;
 
+        if (IsBasicMelee)
+        {
+            var actor = _context.CasterContext;
+            var weapons = actor != null ? actor.WeaponSystem : null;
+            string instanceId = weapons?.CurrentWeaponInstance?.instanceId;
+            var weapon = weapons != null ? weapons.CurrentWeapon : actor != null ? actor.currentWeapon : null;
+            _damageSourceId = !string.IsNullOrWhiteSpace(instanceId)
+                ? $"weapon:{instanceId}:melee" : $"melee:{(weapon != null ? weapon.name : "unarmed")}";
+            _attackId = _combatEventBus != null ? _combatEventBus.CreateAttackId($"{_damageSourceId}:melee") : null;
+            _chainId = _combatEventBus != null ? CombatEventBus.NextChainId() : 0;
+        }
         bool wasInactive = !step.IsActive;
         if (wasInactive)
         {
@@ -437,7 +546,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             if (group == null)
                 continue;
 
-            group.SampleContacts(_overlapBuffer, _sweepColliderIds, _payload.TargetMask, _payload.QueryTriggers, ProcessContact);
+            group.SampleContacts(_overlapBuffer, _sweepColliderIds, TargetMask, _payload.QueryTriggers, ProcessContact);
         }
     }
 
@@ -484,7 +593,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             return;
 
         IDamageable target = DamageableResolver.ResolveFrom(other);
-        if (target == null || !target.IsAlive)
+        if (target == null || !target.IsAlive || (IsBasicMelee && ReferenceEquals(target, _context.CasterContext?.HealthSystem)))
             return;
 
         int targetKey = GetTargetKey(target);
@@ -499,10 +608,10 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             if (!TryRegisterHit(step, targetKey))
                 continue;
 
-            float finalDamage = CalculateFinalDamage(step, target, out bool wasCritical);
+            float finalDamage = CalculateFinalDamage(step, target, other, out bool wasCritical);
             if (finalDamage <= 0f)
             {
-                UnregisterHit(step, targetKey);
+                if (!IsBasicMelee) UnregisterHit(step, targetKey);
                 continue;
             }
 
@@ -510,7 +619,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             DamageResult result = ApplyResolvedDamage(step, target, finalDamage, hitPoint, knockback, wasCritical);
             if (!result.Applied)
             {
-                if (!result.WasPrevented)
+                if (!IsBasicMelee && !result.WasPrevented)
                     UnregisterHit(step, targetKey);
 
                 continue;
@@ -625,7 +734,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         }
     }
 
-    float CalculateFinalDamage(StepRuntimeState step, IDamageable target, out bool wasCritical)
+    float CalculateFinalDamage(StepRuntimeState step, IDamageable target, Collider other, out bool wasCritical)
     {
         FinalSkillStats skillStats = _context != null ? _context.SkillStats : null;
         float baseDamage = skillStats != null ? skillStats.damage : 0f;
@@ -634,9 +743,21 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         float critMultiplier = skillStats != null ? skillStats.critMultiplier : 1f;
         float armor = target is IHasArmor armorHolder ? armorHolder.Armor : 0f;
 
+        float distance = 0f;
+        if (IsBasicMelee)
+        {
+            var actor = _context.CasterContext;
+            var weapons = actor != null ? actor.WeaponSystem : null;
+            var weapon = weapons != null ? weapons.CurrentWeapon : actor != null ? actor.currentWeapon : null;
+            var stats = actor != null ? actor.StatsHub : null;
+            scaledDamage = (stats != null ? stats.GetSkillBaseDamage() : 0f) * step.Definition.DamageMultiplier;
+            critChance = stats != null ? stats.GetCritRatePercent(weapon) : 0f;
+            critMultiplier = stats != null ? stats.GetCritMultiplier(weapon) : 1f;
+            distance = other != null ? Vector3.Distance(transform.position, other.ClosestPoint(transform.position)) : 0f;
+        }
         DamageCalculationResult calculation = DamageCalculator.CalculateDamage(
             WeaponType.Melee,
-            0f,
+            distance,
             scaledDamage,
             critChance,
             critMultiplier,
@@ -675,7 +796,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             _damageSourceId,
             _attackId,
             _chainId == 0 ? CombatEventBus.NextChainId() : _chainId,
-            _depth + 1,
+            IsBasicMelee ? 0 : _depth + 1,
             PassiveEventOrigin.External,
             knockback: knockback,
             stagger: BuildStaggerPayload(step),
@@ -687,7 +808,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
         var victim = target is HealthSystem health ? health.CTX :
             (target as Component)?.GetComponentInParent<CharacteContext>();
-        _defensiveBlock?.NotifyDamageApplied(this, _requestId, _casterLife, victim);
+        _defensiveBlock?.NotifyDamageApplied(this, _requestId, _casterLife, victim, step.StepIndex);
 
         if (_payload != null && _payload.ShowDamageNumbers && VfxSpawner.Instance != null)
             VfxSpawner.Instance.SpawnDamageNumber(hitPoint, result.AppliedDamage, target);
@@ -704,6 +825,12 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             staggerPower = _context.SkillStats.staggerPower * Mathf.Max(0f, step.Definition.DamageMultiplier);
         }
 
+        if (IsBasicMelee)
+        {
+            staggerPower = _context.SkillDef != null ? _context.SkillDef.baseStaggerPower : 0f;
+            if (staggerPower <= 0f && _context.CasterContext?.StatsHub != null)
+                staggerPower = _context.CasterContext.StatsHub.GetSkillBaseDamage() * 0.5f;
+        }
         return new StaggerPayload(staggerPower, 1f, _damageSourceId);
     }
 
@@ -742,7 +869,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             result.RequestedDamage, result.ResolvedDamage, result.AppliedDamage,
             result.HealthBeforeHit, result.MaxHealth, wasCritical,
             staggerApplied: result.StaggerApplied, enteredChainReady: result.EnteredChainReady,
-            sourceKind: CombatSourceKind.Skill);
+            sourceKind: IsBasicMelee ? CombatSourceKind.Melee : CombatSourceKind.Skill);
 
         if (_chainId != 0)
         {
@@ -793,7 +920,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     {
         return other != null &&
                _payload != null &&
-               ((1 << other.gameObject.layer) & _payload.TargetMask.value) != 0;
+               ((1 << other.gameObject.layer) & TargetMask.value) != 0;
     }
 
     int GetTargetKey(IDamageable target)
@@ -815,6 +942,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
     Vector3 ResolveSequenceForward()
     {
+        if (IsBasicMelee) return transform.forward;
         if (_context != null && _context.AimDirection.sqrMagnitude > 0.0001f)
         {
             Vector3 planarAim = Vector3.ProjectOnPlane(_context.AimDirection, Vector3.up);
@@ -860,7 +988,12 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         _initialized = false;
         Unsubscribe();
         DeactivateAllGroupsImmediate();
-        Destroy(gameObject);
+        _defensiveBlock = null;
+        if (!_keepForReuse)
+        {
+            if (Application.isPlaying) Destroy(gameObject);
+            else DestroyImmediate(gameObject);
+        }
     }
 
     void DeactivateAllGroupsImmediate()
@@ -993,6 +1126,7 @@ static class SkillHitboxRuntimeBuilder
                 }
 
                 runtimeGroup.Configure(groupKey, groupColliders);
+                runtimeGroup.ConfigureAnchor(sourceGroup.Anchor, sourceGroup.AnchorPath);
                 createdGroups.Add(runtimeGroup);
             }
 
@@ -1064,7 +1198,8 @@ static class SkillHitboxRuntimeBuilder
             if (createdObject == null)
                 continue;
 
-            UnityEngine.Object.Destroy(createdObject);
+            if (Application.isPlaying) UnityEngine.Object.Destroy(createdObject);
+            else UnityEngine.Object.DestroyImmediate(createdObject);
         }
     }
 }

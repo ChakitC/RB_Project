@@ -1,12 +1,77 @@
 # Defensive Block — production and regression scene
 
+## Editing Block timing in Animation/VFX Timeline
+
+In **Animation / VFX**, select Rector's `Rector_Skill_1` and its **Main Skill** entry.
+The **Block Window** timeline row sits below VFX. Drag **Block Open / Block Close**
+or right-click and use **Block > Set Block Open Here / Set Block Close Here**.
+All Block controls live in the timeline. Right-click within a window to target it,
+then use **Block > On Success**, **Hitbox Steps** (zero-based checkboxes), or
+**Remove Window**. Right-click a gap to add a window; gap menus do not edit another
+window. Drag the endpoints to extend or shorten a window. There is no settings panel above
+the timeline. An asterisk on the row marks unsaved changes.
+Context menus are filtered by the clicked row: Block, VFX, Hitbox, Cast Point,
+and Other Events expose only their own actions. Existing event markers have their
+own selection/removal menu. The ruler and animation strip do not add combat events.
+The Block row remains available on eligible Main Skills without a profile so a
+first window can be added from that row.
+Seconds are relative to the main animation clip, including when a preceding cutscene
+is shown on the same ruler. Both endpoints are inclusive, matching runtime. Green
+means the playhead is within the configured timing window; it does not simulate
+guard availability, approach movement, collision, or successful interception.
+
+Edits remain in an Editor draft until **Block > Save Block** in the right-click
+menu. **Block > Revert Block** reloads the current
+profile and Ctrl+Z / Ctrl+Y undo or redo draft changes. Changing source, character,
+or mode offers Save / Cancel / Discard; closing the window uses the same unsaved
+changes flow. Dirty drafts survive assembly reload and preview never invokes the
+Defensive Block runtime. Save writes window timing, step bindings and outcomes to
+the Skill-owned profile, saving the containing Skill asset.
+Other Skill fields and attack-profile settings are preserved. An external
+profile edit or changed skill binding requires Revert before saving over it.
+
+Each opted-in Skill owns one `DefensiveBlockAttackProfile` sub-asset. For a Skill
+without Block, right-click **Block > Add Block Window Here** in the Main Skill view,
+set timing, then choose **Block > Save Block**. Add is an undoable draft operation:
+no profile is created or bound until Save. New windows start at the clicked time,
+using the default 0.62 normalized duration clipped to the clip end. Basic Melee combo
+entries and Cutscene VFX do not expose this as their own defensive window.
+
+External or foreign-Skill profile bindings are legacy data: Save copies their
+settings into this Skill rather than editing the referenced profile. **Block > Embed
+Profile on Save** in the right-click menu stages that conversion even when timing is unchanged. The Skill Inspector
+shows the binding read-only to prevent authoring shared references. Expand the Skill
+asset in Project and inspect its `Block Profile` to tune allowed `hitboxSteps`,
+windup, threat geometry and knockback. Duplicating the complete Skill asset copies
+its profile as well; the two Skills can then be tuned independently.
+
+Right-click the main animation timeline for **Block > Add Block Window Here**.
+For an enabled Skill, choose a gap to add another window (initial length 0.1
+normalized, clipped before the next window/end). The new window suggests the next
+unused Hitbox Step index; verify it against the actual payload. **Select Window**
+chooses which endpoints the context commands edit; dragging a marker also selects
+its window. The controls provide Remove, Save and Revert. These operations support Undo/Revert,
+and are unavailable in the cutscene segment or Play Mode.
+
+`Tools > RB > Defensive Block > Embed Existing Skill Profiles` migrates existing
+bindings without enabling other Skills. It is idempotent, preserves external source
+assets, and keeps open timing drafts unsaved while updating their profile reference.
+Rector's embedded profile retains the former `RectorCharge` values. The old external
+file is retained for legacy references; production now reads the embedded profile.
+`Configure Production Assets` also uses the Skill-owned profile.
+
+`DefensiveBlockActorProfile` remains character-owned through Character Stats (or
+the controller's existing fallback). Guard animations, dimensions and presentation
+are separate from the attack-owned window. The timeline edits Defensive Block timing,
+separately from Pre-Cast events and HitStart/HitEnd.
+
 Only Rector Skill 1 opts in to Defensive Block. An available Aires companion has
 priority; otherwise a ready Player can guard in place. Both use the same zero-damage
 interception, Rector knockback, recoil, HitLag, VFX and camera settings. Other skills
 retain their existing interruption flow. Receiver selection happens at input time;
 a failed or late companion warp never automatically switches to Player.
 
-Rector Skill 1 plays continuously from its first frame. `RectorCharge.windupSeconds`
+Rector Skill 1 plays continuously from its first frame. Its `Block Profile.windupSeconds`
 is zero: the experimental 0.4 s pose hold was disabled because it broke animation
 continuity. The field/optional hold path remains for compatibility, but production
 authoring does not enable it. Production now uses a timed approach: accepted Block
@@ -16,7 +81,45 @@ Impact occurs at the end of that movement, without waiting for a hitbox contact.
 This replaces the rejected experiment which waited in place after physical contact.
 Set the duration to zero to use the previous swept-contact behavior described below.
 
-## Timed approach
+## Multiple Block Windows and outcomes
+
+`DefensiveBlockAttackProfile.windows` is an ordered list with inclusive start/end
+times. Leave a gap between windows and bind each zero-based Hitbox Step to only
+one window. Invalid ranges, overlap, shared steps and invalid outcomes fail closed.
+Empty lists preserve the legacy single range/steps and Interrupt Skill result;
+existing authored Skills are not automatically split or retimed.
+
+- **Interrupt Skill** stops the request, cancels all its hitboxes and knocks the
+  attacker back, as before.
+- **Continue Skill** suppresses only the window's bound hitbox steps. The defender
+  still plays Impact/recoil, sound, VFX and HitLag, but the enemy is not knocked
+  back and its skill continues. A timed approach restores its previous playback
+  speed and root-motion policy before the next attack.
+
+Success/consumption and applied-damage rejection are tracked per window, while
+request ID and life generation still isolate casts. A hit from an earlier window
+does not prevent guarding a later one, and no damage is rolled back. Matching
+steps remain suppressed for the rest of this execution, including payloads bound
+after command acceptance; later steps stay enabled in Continue mode. Costs and
+cooldowns are still settled by the original skill once.
+
+Each new window restarts the flare and may play the ready sound once. A physical
+guard cannot carry over into a different window; it releases when its window
+closes. A timed command remains bound to its accepted window until it resolves.
+Cancelled Continue approaches release the guard and resume the surviving skill,
+without restoring the consumed hitboxes or awarding success. Death/playback loss
+still cleans up the owned motion scope.
+
+Leave enough animation time for defender recoil/Exit and the next safe placement.
+The current range, incoming-direction and supported-approach checks still apply;
+adding windows does not turn a departing attack into an incoming one. In particular,
+Rector's existing one-way charge is not automatically redesigned as a multi-hit
+combo. Author window timing/steps and movement for the intended skill.
+
+### Timed approach presentation
+
+The full-request interruption details below describe Interrupt Skill (including
+legacy profiles); Continue Skill uses the selective suppression/resume rules above.
 
 `GuardSetting.impactCue` plays through `AudioService` once on confirmed Impact,
 for both Aires and Player self guard. It does not play on command acceptance or
@@ -90,7 +193,7 @@ are silent. The local cue remembers the last announced caster/request/life so it
 does not repeat every frame or when the same selected attack flickers with range
 or camera visibility; a new request or newly selected attack can announce again.
 
-Before a hitbox is active, `RectorCharge` estimates the lane with half-width 1.5 m,
+Before a hitbox is active, Rector's `Block Profile` estimates the lane with half-width 1.5 m,
 forward reach 2.3 m and speed 8 m/s. Active hitbox bounds and measured forward speed
 replace those estimates when available; Player collider extents expand the lane.
 This predicts a straight charge, not future steering or a guaranteed collision.
@@ -176,9 +279,10 @@ accepted. Consumers must not interpret it as blocked damage.
 
 Use `Tools > RB > Defensive Block > Configure Production Assets` for initial setup.
 It binds original Rector Skill 1 and Aires definitions without changing the skill ID,
-payload or costs. Assets live in `Assets/Data/DefensiveBlock`:
+payload or costs. Attack settings live inside the Skill asset; presentation assets
+live in `Assets/Data/DefensiveBlock`:
 
-- `RectorCharge.asset`: command range, normalized window, allowed hitbox steps, timed approach stand-off,
+- `Rector_Skill_1.asset > Block Profile`: command range, normalized window, allowed hitbox steps, timed approach stand-off,
   knockback distance/time, world mask and threat-prediction width/reach/speed.
 - `GuardSetting.asset`: animation profile, placement/guard dimensions, timeout, timed approach duration,
   slide distance/time, warp fade, impact prefab/lifetime and global HitLag.

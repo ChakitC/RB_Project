@@ -13,6 +13,8 @@ internal sealed class PlaybackRequestState
 {
     /// <summary>Set independently of the session: <c>PlaySkill()</c> arms a clip with no request.</summary>
     public SkillGemDefinition Definition;
+    public SkillExecutionKind ExecutionKind;
+    public Vector2 MeleeChainWindow;
 
     public bool UsesPlanarRootMotion;
     public bool IgnoresCharacterCollisionDuringRootMotion;
@@ -108,6 +110,8 @@ internal sealed class PlaybackRequestState
     public void Clear()
     {
         Definition = null;
+        ExecutionKind = SkillExecutionKind.StandardSkill;
+        MeleeChainWindow = default;
         RequestId = 0;
         CastPointNormalized = 0.35f;
         Status = PlaybackSessionStatus.Idle;

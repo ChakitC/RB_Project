@@ -42,7 +42,8 @@ public static class AnimationVfxTimelineSourceFactory
                 if (string.IsNullOrWhiteSpace(step.EntryId))
                     continue;
 
-                string clipName = step.clip != null && step.clip.Clip != null ? step.clip.Clip.name : "No Clip";
+                var transition = step.executionSkill != null ? step.executionSkill.skillClip : step.clip;
+                string clipName = transition != null && transition.Clip != null ? transition.Clip.name : "No Clip";
                 entries.Add(new AnimationVfxTimelineEntry(step.EntryId, $"Step {i + 1}: {clipName}"));
             }
         }

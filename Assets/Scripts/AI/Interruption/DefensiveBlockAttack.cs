@@ -25,7 +25,12 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
     int windupStartFrame;
     Vector3 previousRoot;
     float observedChargeSpeed;
-    readonly Dictionary<CharacteContext, int> passedTargets = new Dictionary<CharacteContext, int>();
+    readonly Dictionary<(CharacteContext target, int window), int> passedTargets = new();
+    int acceptedWindow = -1;
+    float acceptedWindowEnd;
+    readonly HashSet<int> consumedWindows = new();
+    readonly HashSet<int> suppressedWindows = new();
+    bool ContinueAfterBlock => profile != null && profile.Outcome(acceptedWindow) == DefensiveBlockOutcome.ContinueSkill;
     readonly List<Collider> playerColliders = new List<Collider>();
     PlayerContext protectedPlayer;
     DefensiveBlockController defender;
@@ -33,13 +38,17 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
     Vector3 previousPlayerRoot;
     public CharacteContext CasterContext => ctx;
     public int RequestId => requestId;
+    public int WindowIndex => OwnsCurrentSkill &&
+        ctx.AnimBrain.TryGetActiveSkillNormalizedTime(requestId, out float time)
+        ? (profile.HasMultipleWindowData ? profile.FindWindow(time) :
+            time >= windowStartNormalized && time <= windowEndNormalized ? 0 : -1) : -1;
+    float CurrentWindowEnd => profile.HasMultipleWindowData ? profile.WindowEnd(WindowIndex) : windowEndNormalized;
     public string LastResult { get; private set; } = "Idle";
     public string LastProbe { get; private set; } = "No probe";
     public int SuccessCount { get; private set; }
     public bool IsPreparingCharge => windupHold.IsValid;
-    public bool WindowOpen => OwnsCurrentSkill && profile.IsConfigured && ctx.AnimBrain != null &&
-        ctx.AnimBrain.TryGetActiveSkillNormalizedTime(requestId, out float time) &&
-        time >= windowStartNormalized && time <= windowEndNormalized && !resolved && !IsTimedApproach;
+    public bool WindowOpen => OwnsCurrentSkill && profile.IsConfigured && WindowIndex >= 0 &&
+        !consumedWindows.Contains(WindowIndex) && !resolved && !IsTimedApproach;
     public bool OwnsCurrentSkill => isActiveAndEnabled && profile != null && ctx != null && ctx.LifeGeneration == life &&
         requestId > 0 && ctx.AnimBrain != null && ctx.AnimBrain.TryGetActiveSkillNormalizedTime(requestId, out _);
 
@@ -77,6 +86,7 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
     void OnCastStarted(ActiveSkillCastInfo cast)
     {
         ResetExecution();
+        if (cast.ExecutionKind == SkillExecutionKind.BasicMelee) return;
         profile = cast.SkillDef != null ? cast.SkillDef.defensiveBlock : null;
         if (profile == null) return;
         skill = cast.SkillDef;
@@ -102,6 +112,7 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
             cast.RequestId != requestId || ctx.LifeGeneration != life) return;
         if (suppressExecution) { runtime.StopExecution(requestId); return; }
         execution = runtime;
+        foreach (int window in suppressedWindows) runtime.SuppressSteps(requestId, life, profile.Steps(window));
         requestId = cast.RequestId;
         life = ctx.LifeGeneration;
         previousRoot = ctx.transform.position;
@@ -123,12 +134,14 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
         previousPlayerRoot = player.transform.position;
         player.GetComponentsInChildren(true, playerColliders);
         defender = selected;
+        acceptedWindow = WindowIndex;
+        acceptedWindowEnd = CurrentWindowEnd;
         ally = selected.ActorContext as AllyContext; // Legacy/debug binding; selection is controller-owned.
         bool began = selected.ActorContext == player
             ? selected.TryBeginSelf(player, this, requestId) : selected.TryBegin(player, this, requestId);
         if (!began)
         {
-            ally = null; defender = null;
+            ally = null; defender = null; acceptedWindow = -1;
             return Result(InterruptionCommandResult.NoAvailableAlly, "Ally unavailable or unsafe placement");
         }
         previousRoot = ctx.transform.position;
@@ -160,7 +173,7 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
         Vector3 side = Vector3.Cross(Vector3.up, forward);
         float halfWidth = profile.threatHalfWidth;
         float reach = profile.threatForwardReach;
-        if (execution != null && profile.AllowsStep(execution.ActiveStepIndex) &&
+        if (execution != null && profile.AllowsStep(WindowIndex, execution.ActiveStepIndex) &&
             execution.TryGetActiveBounds(out Bounds bounds))
         {
             halfWidth = Mathf.Abs(side.x) * bounds.extents.x + Mathf.Abs(side.z) * bounds.extents.z;
@@ -213,21 +226,25 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
     InterruptionCommandResult Result(InterruptionCommandResult result, string message)
     { LastResult = message; return result; }
 
-    bool HasPassedTarget(CharacteContext target) => target != null &&
-        passedTargets.TryGetValue(target, out int generation) && generation == target.LifeGeneration;
+    int DamageWindow => profile != null && profile.HasMultipleWindowData ? WindowIndex : 0;
+    bool HasPassedTarget(CharacteContext target) => HasPassedWindow(target, DamageWindow);
+    bool HasPassedWindow(CharacteContext target, int window) => target != null &&
+        passedTargets.TryGetValue((target, window), out int generation) && generation == target.LifeGeneration;
 
     // Called only after this execution actually applies damage. Never listens to unrelated damage.
-    public void NotifyDamageApplied(SkillHitboxSequenceRuntime runtime, int id, int casterLife, CharacteContext target)
+    public void NotifyDamageApplied(SkillHitboxSequenceRuntime runtime, int id, int casterLife, CharacteContext target, int stepIndex = -1)
     {
         if (runtime == null || runtime != execution || id != requestId || ctx == null ||
             casterLife != life || ctx.LifeGeneration != life || resolved || target == null) return;
-        passedTargets[target] = target.LifeGeneration;
-        if (target == protectedPlayer) RejectLateGuard();
+        int window = profile != null ? profile.FindStepWindow(stepIndex >= 0 ? stepIndex : runtime.ActiveStepIndex) : 0;
+        if (window < 0) return;
+        passedTargets[(target, window)] = target.LifeGeneration;
+        if (target == protectedPlayer && window == acceptedWindow) RejectLateGuard();
     }
 
     void RejectLateGuard()
     {
-        if (protectedPlayer != null) passedTargets[protectedPlayer] = protectedPlayer.LifeGeneration;
+        if (protectedPlayer != null) passedTargets[(protectedPlayer, DamageWindow)] = protectedPlayer.LifeGeneration;
         LastResult = "Missed: Player contacted before guard";
         // Release only the defender. The enemy's cast, remaining hitboxes and paid costs continue.
         defender?.CancelFor(this, requestId);
@@ -261,7 +278,8 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
     {
         if (!isActiveAndEnabled || resolved || runtime != execution || ctx == null || !WindowOpen ||
             ctx.HealthSystem == null || !ctx.HealthSystem.IsAlive ||
-            ctx.LifeGeneration != life || !profile.AllowsStep(runtime.ActiveStepIndex) || defender == null ||
+            ctx.LifeGeneration != life || !profile.AllowsStep(WindowIndex, runtime.ActiveStepIndex) ||
+            acceptedWindow != WindowIndex || defender == null ||
             !defender.IsReadyFor(this, requestId)) return false;
         if (!runtime.TryGetActiveBounds(out Bounds bounds)) return false;
         var guard = defender;
@@ -283,22 +301,43 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
             RejectLateGuard();
             return false;
         }
-        resolved = true;
-        // Must happen synchronously before any collider contact can damage another actor.
-        runtime.StopExecution(requestId);
-        ctx.AnimDriver?.CancelSkillCastRequest(requestId);
-        ApplyImpact(guard);
+        CompleteBlock(guard);
         return true;
     }
 
-    void ApplyImpact(DefensiveBlockController guard)
+    void SuppressAcceptedWindow()
+    {
+        suppressedWindows.Add(acceptedWindow);
+        consumedWindows.Add(acceptedWindow);
+        execution?.SuppressSteps(requestId, life, profile.Steps(acceptedWindow));
+    }
+
+    void CompleteBlock(DefensiveBlockController guard)
+    {
+        bool continues = ContinueAfterBlock;
+        consumedWindows.Add(acceptedWindow);
+        if (continues)
+        {
+            SuppressAcceptedWindow();
+            ctx.AnimDriver?.TryEndSkillApproach(requestId);
+        }
+        else
+        {
+            resolved = true;
+            execution?.StopExecution(requestId);
+            StopOwnedSkill();
+        }
+        ApplyImpact(guard, !continues);
+    }
+
+    void ApplyImpact(DefensiveBlockController guard, bool knockback)
     {
         var kb = KnockbackData.FromOrigin(guard.ActorContext.transform.position, ctx.transform.position,
             knockbackDistance, knockbackSeconds, ImpactReactionKind.MiniStun, true, null);
-        bool pushed = ctx.KnockbackMotor != null && ctx.KnockbackMotor.ApplyKnockback(kb, forceReplace: true);
+        bool pushed = knockback && ctx.KnockbackMotor != null && ctx.KnockbackMotor.ApplyKnockback(kb, forceReplace: true);
         guard.ConfirmImpact(this, requestId);
         SuccessCount++;
-        LastResult = pushed ? "Blocked: Rector knocked back" : "Blocked: knockback rejected";
+        LastResult = !knockback ? "Blocked: combo continues" : pushed ? "Blocked: Rector knocked back" : "Blocked: knockback rejected";
     }
     void LateUpdate()
     {
@@ -315,7 +354,8 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
         if (protectedPlayer != null) previousPlayerRoot = protectedPlayer.transform.position;
     }
     public bool Matches(int request) => isActiveAndEnabled && !resolved && OwnsCurrentSkill &&
-        request == requestId && ctx != null && ctx.LifeGeneration == life && ctx.HealthSystem != null && ctx.HealthSystem.IsAlive;
+        request == requestId && ctx != null && ctx.LifeGeneration == life && ctx.HealthSystem != null && ctx.HealthSystem.IsAlive &&
+        (acceptedWindow < 0 || approach != null || acceptedWindow == WindowIndex);
     public void ResetExecution()
     {
         ReleaseWindup();
@@ -330,9 +370,11 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
         defender?.CancelFor(this, requestId);
         ally = null; defender = null;
         requestId = 0;
+        acceptedWindow = -1;
         profile = null;
         suppressExecution = false;
         passedTargets.Clear();
+        consumedWindows.Clear(); suppressedWindows.Clear();
         playerColliders.Clear();
         protectedPlayer = null;
     }
@@ -340,8 +382,8 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
     {
         if (requestId == id && defender == released)
         {
-            if (approach != null) { ReleaseApproach(); StopOwnedSkill(); resolved = true; }
-            ally = null; defender = null;
+            if (approach != null) CancelApproachPlayback();
+            ally = null; defender = null; acceptedWindow = -1;
         }
     }
     void OnDisable()

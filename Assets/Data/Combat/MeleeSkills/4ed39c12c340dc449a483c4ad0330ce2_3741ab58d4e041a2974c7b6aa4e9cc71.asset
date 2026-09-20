@@ -1,0 +1,216 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-544646417080251537
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f4e6f7ebbd443f8b1550f5c5d6b1e72, type: 3}
+  m_Name: Melee Hitboxes
+  m_EditorClassIdentifier: 
+  helperFacingMode: 0
+  chainContinueMode: 0
+  chainContinueNormalizedTime: 1
+  hitboxLayout:
+    groups:
+    - groupKey: Strike01
+      anchorSpace: 2
+      anchorPath: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r
+      shapes:
+      - shapeName: Hitbox
+        type: 1
+        localPosition: {x: -0.00000030261714, y: -0.00000022581557, z: -0.00000021926643}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        localScale: {x: 1, y: 1, z: 1}
+        center: {x: 0, y: 0.64, z: 0}
+        size: {x: 0, y: 0, z: 0}
+        radius: 0.71
+        height: 2.03
+        direction: 1
+  anchorMode: 1
+  anchorChildPath: 
+  followAnchor: 1
+  localPositionOffset: {x: 0, y: 0, z: 0}
+  localEulerOffset: {x: 0, y: 0, z: 0}
+  maxSequenceLifetime: 4
+  hitboxStartEventName: 10
+  hitboxEndEventName: 11
+  targetMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  queryTriggers: 2
+  showDamageNumbers: 1
+  steps:
+  - groupKeys:
+    - Strike01
+    damageMultiplier: 1
+    hitPolicy: 1
+    clearHitCacheOnEnter: 1
+    overrideKnockback: 1
+    knockbackDistance: 4
+    knockbackDuration: 1
+    knockbackProgressCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0.0006807344
+        value: 0
+        inSlope: 8.134563
+        outSlope: 8.134563
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0.3934832
+      - serializedVersion: 3
+        time: 0.13354091
+        value: 0.69711787
+        inSlope: 1.407638
+        outSlope: 1.407638
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.1745055
+        outWeight: 0.03321558
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0.033295266
+        outSlope: 0.033295266
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.44064263
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    knockbackReaction: 0
+    knockbackInterruptsActions: 1
+    stepStartVfx:
+      prefab: {fileID: 0}
+      scale: 0
+    impactVfx:
+      prefab: {fileID: 0}
+      scale: 0
+      spawnPolicy: 0
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
+  m_Name: 4ed39c12c340dc449a483c4ad0330ce2_3741ab58d4e041a2974c7b6aa4e9cc71
+  m_EditorClassIdentifier: 
+  defensiveBlock: {fileID: 0}
+  icon: {fileID: 0}
+  displayName: Rector Melee light / Step 1
+  skillId: melee.4ed39c12c340dc449a483c4ad0330ce2.3741ab58d4e041a2974c7b6aa4e9cc71
+  tags: 1
+  description: 
+  baseDamage: 0
+  damageCoefficient: 1
+  baseStaggerPower: 0
+  baseManaCost: 0
+  baseCastTime: 0
+  baseCooldown: 0
+  baseMaxCharges: 1
+  baseCritChance: 0
+  baseProjectilesCount: 1
+  projectileSpeed: 5
+  AreaofEffec: 0
+  baseRadius: 0
+  baseEffectDuration: 0
+  baseHealPower: 0
+  upgradeTree: {fileID: 0}
+  payload: {fileID: -544646417080251537}
+  castCue: {fileID: 0}
+  skillClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes:
+      - 0.20110193
+      - 0.28486055
+      - 0.67
+      - NaN
+      _Callbacks: []
+      _Names:
+      - {fileID: 11400000, guid: a1d9c7b1f0f54a2b8c1d6e7f90123456, type: 2}
+      - {fileID: 11400000, guid: 2cad3fd5894dfa94abdb12699d19be91, type: 2}
+      - {fileID: 11400000, guid: b2e8d6c4a1b347c98d0e1f2a34567890, type: 2}
+    _Clip: {fileID: 4071596695020390534, guid: ee996ceef47c7f946863e887517453d2, type: 3}
+    _NormalizedStartTime: NaN
+  ignoreCharacterCollisionDuringRootMotion: 1
+  castPointNormalized: 0
+  skillVfxEvents:
+  - cueIndex: 0
+    action: 0
+    prefab: {fileID: 3440437423129685215, guid: f73ef999ae2ab8a4aaaa6008b3173df4, type: 3}
+    anchor: 0
+    customAnchorPath: root/c_traj/root.x/spine_01.x/spine_02.x/shoulder.r/arm_stretch.r/forearm_stretch.r
+    humanoidBone: 18
+    localPosition: {x: 1.6799998, y: 1.96, z: 2.24}
+    localEulerAngles: {x: 13.898131, y: 152.0659, z: 305.9455}
+    localScale: {x: 1.5940006, y: 1.594, z: 1.5940006}
+    parentToAnchor: 1
+    loopKey: 
+    extraLife: 0
+    allowParticlesToFinish: 1
+    animClip: {fileID: 0}
+  - cueIndex: 0
+    action: 0
+    prefab: {fileID: 3440437423129685215, guid: f73ef999ae2ab8a4aaaa6008b3173df4, type: 3}
+    anchor: 0
+    customAnchorPath: 
+    humanoidBone: 18
+    localPosition: {x: 1.2799997, y: 1.86, z: 1.97}
+    localEulerAngles: {x: 10.058472, y: 154.80257, z: 294.3968}
+    localScale: {x: 1.5939997, y: 1.5939999, z: 1.5939994}
+    parentToAnchor: 1
+    loopKey: 
+    extraLife: 0
+    allowParticlesToFinish: 1
+    animClip: {fileID: 0}
+  hitLagDuration: 0.06
+  hitLagTimeScale: 0.05
+  hitLagShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  isCutsceneSkill: 0
+  cutsceneDef:
+    characterCutsceneClip:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    cameraCutsceneClip: {fileID: 0}
+    worldSlowScale: 0.05
+    fadeInDuration: 0.08
+    fadeOutDuration: 0.12
+    barThickness: 0.08
+    cutsceneVfxEvents: []
+  blockablePreCast: 0
+  preCastOpenTimelineEvent: 200
+  preCastCloseTimelineEvent: 201
+  useFallbackPreCastWindow: 1
+  fallbackPreCastOpenNormalized: 0
+  fallbackPreCastCloseNormalized: 0.35
+  preCastIndicatorPrefab: {fileID: 0}
+  cancelPreCastOnStun: 1
+  cancelPreCastOnStagger: 1
+  references:
+    version: 2
+    RefIds: []

@@ -2,6 +2,36 @@
 
 Use this document for local C# validation. These rules are project policy.
 
+## Multiple Block Windows (2026-09-20)
+
+- Added optional ordered windows, step bindings and per-window Interrupt Skill /
+  Continue Skill outcomes. Legacy profiles keep their original single window.
+- Editor checks passed **42/42**: 4 new window/damage/step-suppression checks,
+  14 timeline draft/save/Undo/ownership checks, and 24 existing Block checks.
+  Report: `../BuildArtifacts/BlockWindowsEditorTests.txt`.
+- `CheckAssemblyBuild.ps1`: **0 errors, 80 warnings**, in
+  `../BuildArtifacts/BlockWindowsBuild.log`.
+- Play Mode probes use a cloned Rector Skill/profile, restore guard settings in
+  finally, and reposition Rector on NavMesh between attack opportunities to model
+  a second incoming attack. They do not redesign or persist Rector's original
+  one-way charge. Initial fixture failures included movement below NavMesh and
+  waiting real time without allowing enough gameplay frames; the initial report
+  is retained as `BlockWindowsPlayProbe.Initial.txt`.
+- Final instrumented Play Mode probes passed twice consecutively: first-window
+  Continue keeps the same request and restores root motion without enemy knockback;
+  second-window Interrupt produces the second success and one knockback. Commit
+  and release occur once. Missing the first window preserves the damage already
+  taken and still permits a successful second-window block without later HP loss.
+  Report: `../BuildArtifacts/BlockWindowsPlayProbe.txt`; reproducible probe code:
+  `../BuildArtifacts/BlockWindowsPlayProbe.cs.txt` (run only in the test scene).
+- An earlier run under severe Editor stalls aborted an accepted approach on skill
+  playback termination. The diagnostic reruns passed with 0.333 s frame deltas;
+  this is not a guarantee that an approach survives external interruption or clip
+  completion. No success is awarded on abort. Broader frame-rate soak testing and
+  the full GameSetup -> Basement -> BossRush route remain unverified this round.
+- Exited Play Mode and confirmed the original `GameSetup` scene was restored with
+  18 roots and its pre-existing unsaved state. No scene save was performed.
+
 ## Defensive Block ready sound (2026-09-19)
 
 - Added optional `GuardSetting.readyCue`; `DefensiveBlockReadyCue` plays it when
@@ -1167,10 +1197,10 @@ Reports: `../BuildArtifacts/DefensiveBlockProductionBuild.log`,
 reject dependencies under `Assets/Tests/DefensiveBlock`; old copied assets are retained
 for compatibility but are not used by the upgraded scene.
 
-Existing production warnings/errors must be distinguished from Block results:
-`MeleeHitboxTrigger` logs missing Light/Heavy assignments while the ranged party
-prefabs spawn, and the project reports a missing AutodeskInteractive ShaderGraph.
-The harness preserves these real components instead of stripping them to hide logs.
+At the time of this historical run, production logged missing Light/Heavy
+assignments from `MeleeHitboxTrigger` and a missing AutodeskInteractive ShaderGraph.
+The unified hitbox migration on 2026-09-19 subsequently removed the legacy
+hitbox components; that specific missing-assignment log no longer applies.
 A player build/full campaign regression is separate from C# and Editor Play Mode
 validation of this integration.
 
@@ -1334,3 +1364,390 @@ Evidence: `../BuildArtifacts/BossRushLiveBlock.txt`,
 `../BuildArtifacts/BossRushLiveState.png`. All save-file hashes matched the pre-run
 snapshot. Play Mode was stopped; GameSetup is active and clean. No gameplay code or
 scene changes were made in this testing pass; no C# rebuild was needed.
+
+## Melee / Skill Consolidation Checks
+
+Run `MeleeSkillIntegrationTests` in Edit Mode alongside
+`CharacterAnimationTransitionPolicyTests`, `SkillCastTransactionSmokeTests`, and
+`SkillChargeAndBarrierSmokeTests`. Validate migrated assets with
+`MeleeSkillMigrationTool.ValidateAll()` and rerun migration to verify idempotency.
+Inspect representative concrete prefabs with root and nested modules. Verify
+frame-zero hits, buffered advances, repeated last steps, cancellation, multiple
+hit windows, resource isolation, live damage stats, and Melee combat metadata.
+Use the existing `CheckAssemblyBuild.ps1` workflow for C# compilation; do not
+build Unity-generated projects directly.
+
+Validation on 2026-09-19:
+
+- `CheckAssemblyBuild.ps1`: 0 errors, 80 warnings. Unity also compiled the
+  Editor assembly without errors.
+- 14 Melee integration assertions passed through
+  `MeleeSkillIntegrationTests.RunSmokeChecks()`, including evaluated frame-zero
+  animation markers, completion, death/down/disable cleanup, buffered chaining,
+  reusable runtime hosts, and root/child damage-event routing.
+- 25 existing Skill transaction tests and 6 animation policy tests passed via
+  direct in-Editor fixture invocation with setup/cleanup. The latter includes
+  the existing observed transition matrix.
+- All 7 combo assets / 8 execution skills passed migration validation. Clip
+  transitions, markers, durations, stagger, and VFX counts were compared with
+  retained source data. A repeated migration reported all assets unchanged.
+- GRS_02's missing clip was replaced with `Rector_HavyAttack` as authorized.
+  Its original asset is backed up outside Assets.
+- The regular Test Runner requested saving the dirty GameSetup scene. That
+  run was cancelled; assertions were then run in the existing Editor without
+  saving or replacing the scene. These results do not claim Play Mode physics,
+  visual/audio acceptance, or profiling.
+
+Evidence: `../BuildArtifacts/melee-skill-build.log`,
+`../BuildArtifacts/melee-skill-smoke.txt`,
+`../BuildArtifacts/melee-skill-transactions.txt`,
+`../BuildArtifacts/melee-skill-animation-policy.txt`, and
+`../BuildArtifacts/melee-skill-migration.txt`.
+
+## Unified Hitbox Validation (2026-09-19)
+
+Basic Melee and ordinary Skills now build `SkillHitboxLayoutData` through the
+same runtime. The old contact sampler and `Use Caster Melee Hitboxes` switch
+were removed. The legacy MonoBehaviour type only retains its serialized import
+schema for the editor migration; no scene/prefab references remain.
+
+- `CheckAssemblyBuild.ps1`: 0 errors / 80 warnings. Unity compiled runtime and
+  Editor scripts successfully.
+- 21 `MeleeSkillIntegrationTests` cases passed in the Editor, including immediate
+  hit windows, bone-motion overlap sampling, hit deduplication, self/attack-shape
+  filtering, cached layouts, actor masks, model replacement, destroyed/missing
+  anchors, and bone-local Load/Save round trips with nonuniform scale.
+- 57 existing Skill transaction/charge/barrier and animation policy checks passed;
+  another 10 defensive-block/contact-order checks passed.
+- All 8 execution skills validate. Initial migration removed 10 legacy components
+  from 10 concrete/inherited prefabs and created 3 approved starter layouts.
+  A repeated migration changed zero assets.
+- Compared all 5 original capsule shapes against the pre-migration inventory:
+  radius, height, direction, center, local pose, scale and bone anchors match.
+  The original target masks match on all 10 affected prefabs.
+- Model-local anchor paths resolve across 13 character-definition/combo bindings,
+  including the shared Rector player/enemy model. A regression fixture covers
+  the separate placeholder Animator on the actor root.
+
+The tests invoke fixtures and lifecycle methods directly in the current Editor,
+without saving/replacing the user's dirty scene or entering Play Mode. Physics
+queries are exercised with explicitly synchronized test transforms. This is not
+full Play Mode, visual timing, animation-balance or performance acceptance.
+Tune Roma/Milano's starter boxes in the actual animations next.
+
+Evidence (workspace `BuildArtifacts`): `unified-hitbox-build.log`,
+`melee-skill-smoke.txt`, `unified-hitbox-regressions.txt`,
+`unified-hitbox-block.txt`, `unified-hitbox-geometry.txt`, and
+`unified-hitbox-model-anchors.txt`. Migration output is also written under the
+Unity project's `BuildArtifacts/unified-hitbox-migration.txt`.
+
+
+## Hitbox Timeline Authoring Validation (2026-09-19)
+
+- `SkillHitboxAuthoringTests.RunSmokeChecks()` runs 14 Editor checks and writes
+  `../BuildArtifacts/hitbox-authoring-tests.txt`. It uses temporary assets with
+  unique names and removes only those assets in teardown. Stop other animation
+  previews before running; do not invoke this fixture during Play Mode.
+- Coverage: isolated drafts; group rename references and Undo/Redo; shared Composite
+  window creation/removal; stable damage/knockback mapping after reordering;
+  stateless forward/backward/loop scrub; malformed windows and geometry; missing
+  anchors; external source conflicts; anchor/shape and window Undo/Redo; Revert;
+  all three shapes with rotated/scaled local transforms saved and reimported;
+  VFX marker preservation; unrelated dirty asset remains unsaved; real animation
+  preview restores pose and leaves materials unchanged without attack runtimes.
+- Real-layout validation instantiates Rector, GR04 and the generic enemy prefab
+  using the Roma/Milano default combos, resolves both light/heavy layouts against
+  the actual model hierarchy, and destroys the instances without saving a scene.
+- Runtime validation: required `CheckAssemblyBuild.ps1` succeeded with **0 errors,
+  80 existing warnings**. Editor scripts compiled successfully inside Unity.
+  Runtime build report: `../BuildArtifacts/hitbox-authoring-build.txt`.
+- Live Editor reload check passed: a disposable Rector preview retained its dirty
+  group rename across script reload, while AnimationMode stopped. Discard/close
+  then removed the test actor and left AnimationMode off. Report:
+  `../BuildArtifacts/hitbox-domain-reload.txt`.
+- Manual acceptance: open Hitbox mode on a scene instance, drag each shape handle
+  and both interval edges; confirm Undo/Redo; switch a dirty source with each
+  Save/Discard/Cancel choice; close a dirty window; reload scripts while a draft
+  is dirty; change the live model; enter Play Mode and confirm no preview remains.
+  Repeat on Rector and GR04, and inspect the Roma/Milano starter reach.
+  These interaction checks complement the automated checks and are not a full
+  combat Play Mode regression test.
+
+
+## Hitbox Quick Setup Validation (2026-09-19)
+
+`SkillHitboxSetupTests.RunSmokeChecks()` passes 6 Editor checks, with its report at
+`../BuildArtifacts/hitbox-setup-tests.txt`. Checks cover selecting bones and sibling
+modules, rejecting multi-character containers, reusing nested authoring components,
+Undo/Redo of automatic component creation, resolving the real model Animator when
+an authoring component is above the context, collecting all configured skill
+variants and enemy slots without runtime loadout changes, and setup on Rector,
+GR04 and the generic actor using the Roma/Milano combo data. Original prefab files
+remain unchanged by the scene-instance checks.
+
+The existing 14 Hitbox authoring checks also pass (20 automated checks total).
+A separate live Editor check used a disposable copy of the Rector prefab: assigning
+it to Setup opened Prefab Mode, resolved the character, prepared authoring inside
+that stage and selected an attack. The original prefab stayed unchanged; the test
+stage and copy were removed afterwards. See `../BuildArtifacts/hitbox-setup-prefab.txt`.
+
+Unity Editor compilation passed. The required `CheckAssemblyBuild.ps1` passed
+with 0 errors and 80 existing warnings (`../BuildArtifacts/hitbox-setup-build.txt`).
+This change is Editor-only; no combat Play Mode regression run was performed.
+
+
+Hierarchy menu / standalone model follow-up: corrected the GameObject menu
+priority to 10 so Unity propagates Edit Hitboxes to the Hierarchy context menu.
+The actual Rector selection in GameSetup has an Animator and model components,
+without CharacteContext. Setup now supports that rig directly, discovers matching
+Character Stats by prefab/Avatar references, and deduplicates their attack entries.
+The setup fixture now passes 7 checks, including a standalone Rector prefab with
+no gameplay context added. Editor compilation and the required runtime build both
+passed (0 errors, 80 existing warnings); see
+`../BuildArtifacts/hitbox-model-setup-build.txt`.
+
+### Defensive Block timeline timing (2026-09-19)
+
+`DefensiveBlockTimelineTests.RunSmokeChecks()` exercises draft Undo/Redo/Revert,
+isolated asset-specific save and round trip, unchanged Skill data and non-timing
+profile fields, external profile/binding conflicts, invalid ranges, inclusive
+runtime endpoints, main-clip coordinate mapping with a cutscene offset, and the
+Rector profile binding. The report is `../BuildArtifacts/block-timeline-tests.txt`.
+Six checks passed; Unity Editor compilation and `CheckAssemblyBuild.ps1` passed
+(0 errors, 80 existing warnings). This change is Editor-only; no new combat
+Play Mode regression run was performed.
+
+The combined regression run passed all 27 checks (6 Block timing, 14 Hitbox
+authoring, 7 setup). The open Rector timeline reported `Rector_Skill_1`,
+`RectorCharge`, range `0-0.62`, Block track visible, and no unsaved draft. Production
+Rector profile and Skill files remained unchanged. Console inspection found no
+Block timeline errors; existing Odin `VFX Source` group errors in the untouched
+`SetAnimationVfxData` Inspector and a URP shadergraph load error remain separate.
+
+Manual authoring check: open Rector Skill 1 in Animation / VFX, drag both edges of
+Block Window, scrub forward/backward and loop, Undo/Redo, then Revert. Confirm that
+the window turns green only inside the configured range and the profile remains
+unchanged before Save Block. Check Save/Discard/Cancel on source changes and window
+close, and use a copied profile to test shared-profile saves without changing
+production timing. Cutscene VFX and Basic Melee combo entries must not expose this
+as their own defensive window. Preview uses only the existing animation/VFX session.
+
+### Skill-owned Block Profile sub-assets (2026-09-19)
+
+The current Block authoring contract supersedes shared attack profiles: each enabled
+Skill owns its `DefensiveBlockAttackProfile` sub-asset. Add Block remains a draft
+until Save, foreign profiles are copied, and the Inspector binding is read-only.
+Defender profiles remain character-owned. Run
+`DefensiveBlockTimelineTests.RunSmokeChecks()` for 12 checks, including Add draft
+Undo/Redo/Revert, creation only on Save, one sub-asset per Skill, independent Skill
+duplication, legacy/foreign-profile copies, idempotent migration, conflict detection,
+and preserving open unsaved timing drafts during ownership migration.
+
+All 33 combined checks passed (12 Block, 14 Hitbox authoring, 7 setup). Unity Editor
+compilation and `CheckAssemblyBuild.ps1` passed: 0 errors, 80 existing warnings.
+Reports: `../BuildArtifacts/block-timeline-tests.txt`,
+`../BuildArtifacts/block-subasset-build.txt`, and
+`../BuildArtifacts/block-subasset-migration.txt`.
+
+Rector Skill 1 now binds its embedded `Block Profile`. Migration preserved every
+attack setting, left the external RectorCharge and defender GuardSetting files
+unchanged, and retained the open timing draft without saving it. The stored window
+remains 0–0.62. Unity also serialized the already-default Hitbox anchor fields in
+the containing Skill file; no Hitbox placement values were changed. The production
+configuration command uses the owned profile so it cannot reintroduce the legacy
+external binding. No new combat Play Mode regression run was performed because
+runtime execution was unchanged.
+
+Block context-menu follow-up: right-click authoring now exposes Block commands in
+the same menu as Hitbox/VFX. Unity Editor compilation passed. Menu inspection in
+the live Rector window confirmed the existing-window Open/Close commands and
+preserved its unsaved draft; a transient Skill without a profile exposes Add Block
+Window Here. No runtime build was repeated for this Editor-only menu wiring.
+
+The upper Block panel was subsequently removed. Save Block, Revert Block, legacy
+Embed Profile on Save, and conflict/validation notices now live in the Block
+context menu. The timeline row marks pending changes with an asterisk. Unity
+Editor compilation passed; this UI-only change does not alter runtime or asset data.
+
+### Hitbox workspace and timeline dragging (2026-09-20)
+
+Hitbox mode now uses a compact character/attack header, a payload/group/shape browser,
+and a separate selected-shape inspector. Its browser and inspector scroll independently
+while transport and timing stay at the bottom. Setup metadata is under Setup...;
+VFX authoring controls and duplicate source summaries are no longer shown in Hitbox
+mode. The Animation / VFX window source was compared byte-for-byte with the pre-change
+baseline and is unchanged.
+
+All 23 Hitbox checks passed (16 authoring, 7 setup). Added coverage verifies atomic
+whole-window movement, unchanged duration, clipping at 0/1, stable damage/knockback
+association across shared payloads, Undo/Redo, and timeline coordinate mapping.
+Unity Editor compilation and CheckAssemblyBuild.ps1 passed (0 errors, 80 existing
+warnings); the build report is `../BuildArtifacts/hitbox-ui-build.txt`.
+
+Actual MouseDown/MouseDrag/MouseUp events were sent to a temporary editor window
+at 850x670. Continuous scrubbing reached both intermediate and final times, body
+drag moved both endpoints, edge drag resized the interval, and mouse capture was
+released. The source Skill JSON remained unchanged; the test draft was discarded,
+preview stopped, and the temporary window closed. Results are in
+`../BuildArtifacts/hitbox-ui-input.txt`. The final wide workspace capture is
+`../BuildArtifacts/hitbox-ui-redesign.png`. No scene or combat asset was saved by
+the UI check, and no combat Play Mode behavior was changed.
+
+### Hit management in the Hitbox timeline (2026-09-20)
+
+Right-click an empty position to add a Hit; right-click its bar to duplicate,
+delete or assign groups. The selected Hit exposes timing, damage and knockback;
+More settings opens policy/curve/reaction fields in the right inspector.
+Only a focused timeline accepts Delete/Backspace, and never during text editing.
+Composite duplication clones each affected payload's own complete step by stable
+marker ID and selects a non-overlapping free interval. No available gap or invalid
+timing disables duplication. Shared timing changes still require valid groups in
+every affected payload before Save.
+
+All 27 checks passed (20 authoring, 7 setup), including per-payload duplicate data,
+Undo/Redo, no-space rejection, incomplete timing rejection, add/group assignment as
+one undo action, safe Delete focus, and save/reload of duplicated step settings.
+Reports: `../BuildArtifacts/hitbox-authoring-tests.txt` and
+`../BuildArtifacts/hitbox-setup-tests.txt`. Unity Editor compilation passed;
+CheckAssemblyBuild.ps1 passed with 0 errors and 80 existing warnings
+(`../BuildArtifacts/hit-management-build.txt`).
+
+A temporary 1000x760 window received real MouseDown/MouseDrag/MouseUp and Delete
+events: duplicate selection, duration-preserving drag, focused removal and scrubbing
+passed. Source payload/clip JSON remained unchanged. The draft was discarded,
+preview stopped and window closed. See `../BuildArtifacts/hit-management-ui-input.txt`
+and `../BuildArtifacts/hit-management-ui.png`. The main Animation / VFX source file
+still matches its pre-change SHA256. No production asset or scene was saved, and
+runtime combat behavior was not changed.
+
+### Dragging bones into Hitbox attachment (2026-09-20)
+
+The Bone dropdown also accepts one Hierarchy GameObject or Transform. Drops must
+resolve beneath the current Follow root to the exact supplied transform; foreign
+actors, persistent prefab assets, multiple objects and ambiguous paths are rejected.
+Assignment reuses the existing world-pose-preserving anchor change and draft Undo.
+All 22 authoring checks passed, including two new bone-drop checks for hierarchy
+resolution, rejection, unchanged source data, pose preservation and Undo/Redo/Revert.
+Unity Editor compilation passed. CheckAssemblyBuild.ps1 passed with 0 errors and
+80 existing warnings (`../BuildArtifacts/hitbox-bone-drop-build.txt`). Authoring
+results are in `../BuildArtifacts/hitbox-authoring-tests.txt`.
+
+### Visual Bone Picker (2026-09-20)
+
+The Hitbox Bone control now opens a picker with a projected skeleton from the
+existing model pose, searchable names/paths, optional unweighted transforms,
+orbit/pan/zoom, named views and explicit confirmation. Browsing or cancelling
+does not edit the draft. Confirming uses the same validated anchor assignment
+as Hierarchy drops, including pose preservation and Undo. The picker owns no
+preview GameObjects, colliders, materials or animation playback. Source/model
+invalidation, assembly reload and entering Play Mode close it.
+
+All 24 authoring checks passed, including skeleton ancestor/socket filtering,
+foreign-bone exclusion, root-relative projection, confirmation versus cancellation
+and stale-draft rejection. Unity Editor compilation passed. CheckAssemblyBuild.ps1
+passed with 0 errors and 80 existing warnings (`../BuildArtifacts/hitbox-bone-picker-build.txt`).
+A live GR04 picker received mouse input: selecting head.x from the diagram, wheel
+zoom and right-button orbit passed, while the Hitbox draft JSON remained unchanged.
+Results: `../BuildArtifacts/hitbox-bone-picker-input.txt`; screenshot:
+`../BuildArtifacts/hitbox-bone-picker.png`. No production asset or scene was saved.
+
+### Simplified Bone Picker layout (2026-09-20)
+
+Fingers and their children are excluded from both the picker list and diagram.
+Weapon attachment roots are separate side buttons; meshes nested beneath them
+do not become extra weapon buttons. Weapon coordinates no longer affect framing.
+The default body diagram uses balanced display proportions for common body-bone
+names, with twist nodes positioned along the limbs. Model pose restores actual
+body coordinates, and unrecognized rigs fall back to actual coordinates.
+All selections retain their original Transform/path; no rig pose or asset changes.
+
+All 25 authoring checks passed. The two layout/collection checks passed again after
+the final twist-position and weapon-root refinement. Editor compilation and
+CheckAssemblyBuild.ps1 passed (0 errors, 80 existing warnings;
+`../BuildArtifacts/hitbox-bone-layout-build.txt`). The live GR04 diagram was visually
+checked and its detached Weapon.L button selected the original transform without
+changing the draft. Input report: `../BuildArtifacts/hitbox-bone-layout-input.txt`;
+screenshot: `../BuildArtifacts/hitbox-bone-picker-clean.png`.
+
+### Bone overlap selection guard (2026-09-20)
+
+The picker retains every joint/segment candidate under the pointer. Ambiguous
+clicks (including double-clicks) open a bone-name/path chooser rather than applying
+the first Transform. The selected branch draws last and labels avoid overlapping.
+Targeted checks passed for coincident joints/overlapping branches, deterministic
+hit candidates, preserved diagram identities, confirmation/cancellation and stale
+draft rejection (`../BuildArtifacts/hitbox-bone-overlap-tests.txt`). Unity Editor
+compilation and CheckAssemblyBuild.ps1 passed (0 errors, 80 existing warnings;
+`../BuildArtifacts/hitbox-bone-overlap-build.txt`).
+
+### Separate twist geometry (2026-09-20)
+
+Twist branches now use detached parallel display segments beside the limb, with
+both ends offset by 30 screen points per lane. Additional twist branches receive
+separate lanes. Rendered segments and pointer hit testing share the exact same
+start/end data. This changes display geometry only, preserving original transforms
+and attachment paths.
+
+Three focused checks passed: separate main/twist/extra-twist hit targets at zoom
+0.25, 1, 4 and 12; existing ambiguous-hit detection; and diagram/source preservation
+(`../BuildArtifacts/hitbox-twist-lanes-tests.txt`). Unity Editor compilation and
+CheckAssemblyBuild.ps1 passed (0 errors, 80 existing warnings;
+`../BuildArtifacts/hitbox-twist-lanes-build.txt`). The GR04 picker was visually
+inspected, then actual mouse clicks selected arm_twist.r and forearm_stretch.r
+directly without an overlap chooser or draft change. See
+`../BuildArtifacts/hitbox-twist-lanes-input.txt` and
+`../BuildArtifacts/hitbox-twist-lanes.png`.
+
+### Weapon anchors follow the picker view (2026-09-20)
+
+Weapon buttons now project from diagram-space side anchors through the same
+orbit, scale and pan as the body. They clip at the canvas boundary and do not
+stick to window edges. Projected weapon buttons that overlap use the existing
+name/path chooser. No attachment paths or transforms change during navigation.
+
+Three focused checks passed for weapon pan/zoom/orbit, separate twist picking,
+and draft confirmation/cancellation (`../BuildArtifacts/hitbox-weapon-anchor-tests.txt`).
+Actual GR04 mouse clicks selected Weapon.L after panning at zoom 0.8 and 1.2,
+with unchanged draft data (`../BuildArtifacts/hitbox-weapon-anchor-input.txt`).
+Unity Editor compilation and CheckAssemblyBuild.ps1 passed with 0 errors and
+80 existing warnings (`../BuildArtifacts/hitbox-weapon-anchor-build.txt`).
+### Filtered timeline source picker (2026-09-20)
+
+Source Asset uses a searchable picker instead of Unity's unrestricted
+ScriptableObject selector. Animation/VFX lists Skill, Melee Combo, Animation
+Profile and Cutscene; Hitbox lists Skill and Melee Combo. Skills referenced by a
+combo step with an Entry ID are hidden from the picker in both modes; select the
+combo and use Entry instead. Filtering uses asset references, not names or paths.
+Standalone skills and skills without a selectable owning step remain visible.
+The same type filter rejects unsupported drag-and-drop assignments.
+Selection still passes through the existing source-change draft guard.
+
+Unity Editor compilation passed. A live asset inventory check found 46 supported
+Animation/VFX sources and 38 Hitbox sources, including Rector_Skill_1, and rejected
+an unrelated CharacterStats asset (`../BuildArtifacts/source-picker-checks.txt`).
+CheckAssemblyBuild.ps1 passed with 0 errors and 80 existing warnings
+(`../BuildArtifacts/source-picker-build.txt`).
+
+After hiding combo execution skills, the live inventory contains 38 Animation/VFX
+and 30 Hitbox sources (8 referenced skills hidden). Both modes retain all combos
+and the standalone Rector_Skill_1; every hidden step is reachable through Entry.
+Combo JSON is unchanged by discovery (`../BuildArtifacts/source-picker-combo-checks.txt`).
+Unity Editor compilation and CheckAssemblyBuild.ps1 passed with 0 errors and 80
+existing runtime warnings (`../BuildArtifacts/source-picker-combo-build.txt`).
+
+### Timeline row visibility (2026-09-20)
+
+Animation/VFX keeps required source lanes and hides unused optional rows. VFX
+considers both cues and markers, including a combined cutscene reference;
+Block follows its enabled draft/profile; unmapped and unknown events keep Other
+Events visible. Animation and empty-space context menus can add hidden content.
+Missing track lookup returns -1 instead of misrouting to the last visible row.
+
+Focused checks pass for adding/removing VFX and unknown markers, an empty skill,
+required Hitbox visibility, Block draft Add/Revert, background menu availability,
+and Rector Heavy's Animation/Hitbox/Chain Window/VFX rows with unchanged combo
+data (`../BuildArtifacts/timeline-visible-rows-tests.txt`). Unity Editor compilation
+and CheckAssemblyBuild.ps1 pass (0 errors, 80 existing runtime warnings;
+`../BuildArtifacts/timeline-visible-rows-build.txt`).
+An inventory check also confirms that every existing marker maps to a visible
+row across 57 source entries, including 4 combined cutscene entries.

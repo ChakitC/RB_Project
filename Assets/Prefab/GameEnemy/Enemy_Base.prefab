@@ -81,7 +81,6 @@ GameObject:
   m_Component:
   - component: {fileID: 6204547375293454887}
   - component: {fileID: 6396605468909271155}
-  - component: {fileID: 532813554804964915}
   m_Layer: 9
   m_Name: Melee_System
   m_TagString: Untagged
@@ -122,25 +121,6 @@ MonoBehaviour:
   weaponSystem: {fileID: 7060247235419904634}
   statusEffectController: {fileID: 8475986916130434765}
   combatEventBus: {fileID: 905179928187237650}
-  hitboxTrigger: {fileID: 532813554804964915}
---- !u!114 &532813554804964915
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 266966361522234925}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 33324f34cfcf7274dbafdc4f0b8b10ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  lightHitboxes:
-    colliders: []
-  heavyHitboxes:
-    colliders: []
-  legacyHitboxR: {fileID: 0}
-  legacyHitboxL: {fileID: 0}
   targetMask:
     serializedVersion: 2
     m_Bits: 64

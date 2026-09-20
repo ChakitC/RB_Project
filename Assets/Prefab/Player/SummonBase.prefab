@@ -434,7 +434,7 @@ MonoBehaviour:
   Visual: {fileID: 5135303409400166651}
   Visibility: {fileID: 5751350405767216527}
   UIManager: {fileID: 0}
-  ColliderRefs: {fileID: 0}
+  ColliderRefs: {fileID: 3000000000000000012}
   StatusEffects: {fileID: 1083789899064408605}
   levelSystem: {fileID: 0}
   HealthSystem: {fileID: 6287199331293476412}
@@ -1289,7 +1289,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4079543810205348012}
   - component: {fileID: 3848525355350381702}
-  - component: {fileID: 3908733115573669127}
   m_Layer: 10
   m_Name: Melee_System
   m_TagString: Untagged
@@ -1330,25 +1329,6 @@ MonoBehaviour:
   weaponSystem: {fileID: 6987636084120509540}
   statusEffectController: {fileID: 1083789899064408605}
   combatEventBus: {fileID: 2948696378916355059}
-  hitboxTrigger: {fileID: 3908733115573669127}
---- !u!114 &3908733115573669127
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5586345065486718549}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 33324f34cfcf7274dbafdc4f0b8b10ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  lightHitboxes:
-    colliders: []
-  heavyHitboxes:
-    colliders: []
-  legacyHitboxR: {fileID: 0}
-  legacyHitboxL: {fileID: 0}
   targetMask:
     serializedVersion: 2
     m_Bits: 65535

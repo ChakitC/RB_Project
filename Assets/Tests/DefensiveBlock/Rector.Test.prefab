@@ -541,7 +541,7 @@ MonoBehaviour:
   m_Subtree: {fileID: 0}
 --- !u!114 &5958471666278291152
 MonoBehaviour:
-  m_ObjectHideFlags: 0
+  m_ObjectHideFlags: 2
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
@@ -607,7 +607,7 @@ MonoBehaviour:
     m_UniqueID: 369219869
 --- !u!114 &4957296828953523952
 MonoBehaviour:
-  m_ObjectHideFlags: 0
+  m_ObjectHideFlags: 2
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
@@ -3713,7 +3713,9 @@ MonoBehaviour:
   weaponSystem: {fileID: 6582638231958283938}
   statusEffectController: {fileID: 3772492716986634946}
   combatEventBus: {fileID: 7598644777895207050}
-  hitboxTrigger: {fileID: 0}
+  targetMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!1 &4485129075821109328
 GameObject:
   m_ObjectHideFlags: 0

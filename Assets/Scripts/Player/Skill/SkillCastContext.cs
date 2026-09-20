@@ -2,6 +2,9 @@ using UnityEngine;
 
 public sealed class SkillCastContext
 {
+    public SkillExecutionKind ExecutionKind { get; }
+    public MeleeType MeleeType { get; }
+    public bool IsBasicMelee => ExecutionKind == SkillExecutionKind.BasicMelee;
     public ISkillUser User { get; }
     public SkillGemDefinition SkillDef { get; }
     public SkillPayloadDef Execution { get; }
@@ -74,8 +77,12 @@ public sealed class SkillCastContext
         ulong combatChainId = 0,
         int combatDepth = 0,
         ComboExecutionProvenance comboProvenance = default,
-        SkillFacingSnapshot facingSnapshot = default)
+        SkillFacingSnapshot facingSnapshot = default,
+        SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
+        MeleeType meleeType = MeleeType.Light)
     {
+        ExecutionKind = executionKind;
+        MeleeType = meleeType;
         User = user;
         PrimaryTarget = primaryTarget ?? SkillTargetHandle.None;
         SkillDef = skillDef;

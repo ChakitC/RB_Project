@@ -65,6 +65,21 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
 
     public int LoadOrder => 100;
     public Transform ModelRoot => modelRoot;
+    public Animator ModelAnimator
+    {
+        get
+        {
+            if (modelRoot != null)
+            {
+                // During a rebuild the old model can survive until end-of-frame.
+                // Prefer the freshly assigned instance over a hierarchy-wide search.
+                if (_currentModel != null && _currentModel.transform.IsChildOf(modelRoot))
+                    return _currentModel.GetComponentInChildren<Animator>(true);
+                return modelRoot.GetComponentInChildren<Animator>(true);
+            }
+            return animator;
+        }
+    }
 
     private void Awake()
     {

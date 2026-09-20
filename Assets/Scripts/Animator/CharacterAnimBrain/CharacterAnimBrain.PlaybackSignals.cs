@@ -140,7 +140,7 @@ public sealed partial class CharacterAnimBrain
             case PlaybackPhase.CastMoment:
                 if (isChain)
                     ChainCastMomentReached?.Invoke(requestId);
-                else if (isSkillOrUtility)
+                else if (isSkillOrUtility || kind == PlaybackKind.Melee)
                     SkillCastMomentReached?.Invoke(requestId);
                 break;
 
@@ -165,7 +165,7 @@ public sealed partial class CharacterAnimBrain
                     if (kind == PlaybackKind.ChainSkill)
                         SkillCastInterrupted?.Invoke(requestId);
                 }
-                else if (isSkillOrUtility)
+                else if (isSkillOrUtility || kind == PlaybackKind.Melee)
                 {
                     SkillCastInterrupted?.Invoke(requestId);
                 }

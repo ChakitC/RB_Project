@@ -1,5 +1,28 @@
 # Skill System
 
+## Shared Basic Melee Execution
+
+`SkillCastRequest.ExecutionKind` defaults to `StandardSkill`; `BasicMelee` is
+used only by the combo controller's dedicated manager entry point. It is passed
+through `ActiveSkillCastInfo`, playback request state, and `SkillCastContext`.
+Skill tags do not select the cost or admission policy. Existing callers retain
+their previous defaults.
+
+A basic melee cast arms its hitbox payload synchronously before frame-zero
+timeline events and never touches the shared charge pool or energy. It uses the
+shared skill animator and hitbox damage runtime while retaining Melee state,
+live character/weapon stats, source metadata, and interruption rules.
+Every hitbox payload uses `SkillHitboxLayoutData` and the same runtime builder.
+Each group can attach to the payload, caster root, or current model Animator
+using a relative path. Bones resolve before execution succeeds; a missing anchor
+returns an authoring failure rather than silently falling back to the body.
+Active shapes are sampled when a hit window opens and after animation updates.
+Basic attacks cache one host/layout per payload on the controller and keep their
+actor-specific target mask; ordinary skills retain the payload mask.
+Their VFX sessions close on Melee terminal
+playback signals, and skill voice/pre-cast/defensive-block listeners exclude the
+basic execution kind. See `MELEE_COMBO.md` for authoring and migration.
+
 ## Asset Ownership
 
 Each active skill is authored through one visible `SkillGemDefinition` asset.

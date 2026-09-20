@@ -72,7 +72,7 @@ public class PlayerInputHandler : MonoBehaviour
         ThirdPersonTargetingUtility.FacePlayerTowardSoftTarget(
             ctx,
             actionRange: meleeSearchDistance);
-        ctx?.stateHub?.RequestOnMelee();
+        ctx?.stateHub?.RequestMeleePress();
     }
 
     public void OnFire(InputAction.CallbackContext c)

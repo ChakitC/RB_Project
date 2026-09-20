@@ -93,7 +93,8 @@ public sealed class SkillVfxPresenter : MonoBehaviour
     void HandlePlaybackEvent(CharacterAnimBrain.PlaybackSignal signal)
     {
         if (signal.Kind != CharacterAnimBrain.PlaybackKind.Skill &&
-            signal.Kind != CharacterAnimBrain.PlaybackKind.ChainSkill)
+            signal.Kind != CharacterAnimBrain.PlaybackKind.ChainSkill &&
+            signal.Kind != CharacterAnimBrain.PlaybackKind.Melee)
             return;
 
         if (signal.Phase == CharacterAnimBrain.PlaybackPhase.Completed ||

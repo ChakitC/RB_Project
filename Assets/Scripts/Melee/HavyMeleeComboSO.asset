@@ -13,7 +13,10 @@ MonoBehaviour:
   m_Name: HavyMeleeComboSO
   m_EditorClassIdentifier: 
   steps:
-  - entryId: f7d8e0d202cd43f59623d6f6277da98c
+  - executionSkill: {fileID: 11400000, guid: cfd6a048557d40b49b129758537bbad5, type: 2}
+    entryId: f7d8e0d202cd43f59623d6f6277da98c
+    animationVfxTrack:
+      cues: []
     clip:
       _FadeDuration: 0.18666667
       _Speed: 1

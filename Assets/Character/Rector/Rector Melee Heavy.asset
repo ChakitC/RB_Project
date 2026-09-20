@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Rector Melee Heavy
   m_EditorClassIdentifier: 
   steps:
-  - entryId: 72a785bedb9b40cc8be7e7e656340dbf
+  - executionSkill: {fileID: 11400000, guid: 359b77b6a29831c459a9bfb4b8d12c3b, type: 2}
+    entryId: 72a785bedb9b40cc8be7e7e656340dbf
     animationVfxTrack:
       cues:
       - cueIndex: 0
@@ -29,6 +30,7 @@ MonoBehaviour:
         loopKey: 
         extraLife: 0
         allowParticlesToFinish: 1
+        animClip: {fileID: 0}
       - cueIndex: 0
         action: 0
         prefab: {fileID: 5065936571968506168, guid: 47bd8c1439339424690d425f7149144e, type: 3}
@@ -42,6 +44,7 @@ MonoBehaviour:
         loopKey: 
         extraLife: 0
         allowParticlesToFinish: 1
+        animClip: {fileID: 0}
     clip:
       _FadeDuration: 0.25
       _Speed: 1
@@ -59,7 +62,7 @@ MonoBehaviour:
       _Clip: {fileID: 5145724591987174810, guid: d0dae8f4604301e4ebf5a18e12ee9fb2, type: 3}
       _NormalizedStartTime: NaN
     duration: 0
-    chainWindowN: {x: 0.8007968, y: 0.85790175}
+    chainWindowN: {x: 0.7077778, y: 0.85790175}
     dropBufferOnWindowExpire: 0
     applyKnockback: 1
     knockbackDistance: 7

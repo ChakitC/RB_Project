@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Rector Melee light
   m_EditorClassIdentifier: 
   steps:
-  - entryId: 3741ab58d4e041a2974c7b6aa4e9cc71
+  - executionSkill: {fileID: 11400000, guid: adb3e38f40e9a3344818f82c7d0f4505, type: 2}
+    entryId: 3741ab58d4e041a2974c7b6aa4e9cc71
     animationVfxTrack:
       cues:
       - cueIndex: 0
@@ -29,6 +30,7 @@ MonoBehaviour:
         loopKey: 
         extraLife: 0
         allowParticlesToFinish: 1
+        animClip: {fileID: 0}
       - cueIndex: 0
         action: 0
         prefab: {fileID: 3440437423129685215, guid: f73ef999ae2ab8a4aaaa6008b3173df4, type: 3}
@@ -42,6 +44,7 @@ MonoBehaviour:
         loopKey: 
         extraLife: 0
         allowParticlesToFinish: 1
+        animClip: {fileID: 0}
     clip:
       _FadeDuration: 0.25
       _Speed: 1

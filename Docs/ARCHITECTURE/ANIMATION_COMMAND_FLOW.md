@@ -35,12 +35,14 @@ unchanged signatures.
 class) that tracks the active combo, step index, input buffer, chain window, and
 repeat logic. `MeleeType` is a top-level enum (no longer nested in Brain).
 
-Flow: `MeleeController.PressMelee(type)` → session decides step →
-`Brain.TryStartMeleePlayback` / `Brain.AdvanceMeleeStep`. Brain plays the clip
-and emits `MeleeChainWindowOpened`, `MeleeChainWindowClosed`,
-`MeleeStepCompleted`. MeleeController receives these events, asks the session,
-and calls Brain to advance or complete. All callbacks are synchronous
-(same-frame, no re-entrancy).
+Flow: `StateHub.RequestMeleePress(type)` → `MeleeController` selects a step →
+`CharacterSkillManager.TryStartMeleeStep` → Driver → the shared Skill playback
+channel. `SkillExecutionKind.BasicMelee` keeps the observable animation mode and
+playback kind as Melee. `Locomotion_Skill` binds the skill's hit/VFX timeline and
+the combo's chain-window callbacks; there is no separate Melee playback state.
+The controller handles chain windows and terminal playback signals, closes the
+previous execution, and requests the next skill. Callbacks capture request IDs
+so a previous step cannot release, advance, or terminate the next step.
 
 `CharacterAnimDriver.Brain` exposes the resolved Brain for read and event access.
 The Driver command facade mirrors the Brain command signatures so request ids,
@@ -342,6 +344,10 @@ charge segment into the duration with positive playback speed. Ordinary cast-poi
 and timeline events remain active so costs settle normally; the attack adapter
 suppresses the bound damage execution separately. The state restores its previous
 playback speed on exit. No held pose or additional attacker animation state is used.
+For a Continue Skill Block window, `TryEndSkillApproach(requestId)` restores the
+saved playback speed and root-motion policy without ending the Skill or replaying
+its timeline. The gameplay motor releases its navigation/control scope first.
+An interrupted/expired request cannot restore root motion onto a different skill.
 Movement/outcome/cancellation belong to `DefensiveBlockAttack` and its approach
 motor; Brain only owns playback. Global pause and actor time still affect both.
 

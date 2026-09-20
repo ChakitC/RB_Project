@@ -13,7 +13,10 @@ MonoBehaviour:
   m_Name: GR_04_MeleeHavary
   m_EditorClassIdentifier: 
   steps:
-  - entryId: 3782687ac52245e09f1380f4e50e0165
+  - executionSkill: {fileID: 11400000, guid: 19fd62cc00b59e44a8133f65c95c1037, type: 2}
+    entryId: 3782687ac52245e09f1380f4e50e0165
+    animationVfxTrack:
+      cues: []
     clip:
       _FadeDuration: 0.25
       _Speed: 1

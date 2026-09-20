@@ -615,6 +615,15 @@ public sealed class StateHub : MonoBehaviour
         return meleeController != null && meleeController.TryStartMelee(meleeType);
     }
 
+    public void RequestMeleePress(MeleeType meleeType = MeleeType.Heavy)
+    {
+        if (ctx == null) return;
+        if (ctx.MeleeController != null && ctx.MeleeController.IsComboActive)
+            ctx.MeleeController.PressMelee(meleeType);
+        else
+            RequestOnMelee(meleeType);
+    }
+
     public void RequestOnDash()
     {
         if (ctx == null || ctx.stateHub == null || ctx.WeaponSystem == null || ctx.DashSystem == null)

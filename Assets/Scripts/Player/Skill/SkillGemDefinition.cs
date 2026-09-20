@@ -11,7 +11,8 @@ using UnityEditor;
 [HideMonoScript]
 public class SkillGemDefinition : SkillDefinitionBase
 {
-    [FoldoutGroup("Defensive Block"), AssetsOnly]
+    [FoldoutGroup("Defensive Block"), ReadOnly]
+    [Tooltip("Owned Block Profile sub-asset. Add and save it from Animation / VFX Timeline; do not share profiles between Skills.")]
     public DefensiveBlockAttackProfile defensiveBlock;
     public override SkillUpgradeTreeDefinition UpgradeTree => upgradeTree;
     public override string SkillDefinitionId => NormalizeSkillId(skillId);

@@ -13,6 +13,7 @@ public sealed class ThirdPersonAimController : MonoBehaviour
     readonly RaycastHit[] raycastHits = new RaycastHit[64];
 
     const string HurtboxLayerName = "Hit";
+    const float ReverseAimFallbackDepth = 1f;
     const int UnresolvedLayer = -2;
     static int hurtboxLayer = UnresolvedLayer;
     static bool warnedMissingHurtboxLayer;
@@ -46,7 +47,7 @@ public sealed class ThirdPersonAimController : MonoBehaviour
     public Vector3 ResolveShotDirection(Transform muzzle, float spreadDegrees)
     {
         Vector3 origin = muzzle != null ? muzzle.position : transform.position;
-        Vector3 direction = AimPoint - origin;
+        Vector3 direction = ResolveShotAimPoint(origin) - origin;
         if (direction.sqrMagnitude <= 0.0001f)
             direction = CameraRayDirection;
 
@@ -57,6 +58,18 @@ public sealed class ThirdPersonAimController : MonoBehaviour
         Quaternion basis = Quaternion.LookRotation(direction, Vector3.up);
         Vector2 random = UnityEngine.Random.insideUnitCircle * spreadDegrees;
         return basis * Quaternion.Euler(random.y, random.x, 0f) * Vector3.forward;
+    }
+
+    Vector3 ResolveShotAimPoint(Vector3 origin)
+    {
+        float depth = Vector3.Dot(AimPoint - origin, CameraRayDirection);
+        // Near targets in front of the muzzle must keep their exact camera hit point.
+        // Extending them past a small hurtbox makes the shot miss the reticle.
+        if (depth > 0f)
+            return AimPoint;
+
+        // Only reject convergence back toward a point beside or behind the muzzle.
+        return AimPoint + CameraRayDirection * (ReverseAimFallbackDepth - depth);
     }
 
     public Vector3 GetPlanarCameraForward()
@@ -106,7 +119,9 @@ public sealed class ThirdPersonAimController : MonoBehaviour
         if (muzzle == null)
             return;
 
-        Vector3 toAim = AimPoint - muzzle.position;
+        Vector3 shotAimPoint = ResolveShotAimPoint(muzzle.position);
+        MuzzleHitPoint = shotAimPoint;
+        Vector3 toAim = shotAimPoint - muzzle.position;
         float distance = toAim.magnitude;
         if (distance <= 0.001f)
             return;
@@ -203,13 +218,27 @@ public sealed class ThirdPersonAimController : MonoBehaviour
         if (playerContext != null && candidate.transform.IsChildOf(playerContext.transform))
             return true;
 
-        CharacteContext other = candidate.GetComponentInParent<CharacteContext>();
+        CharacteContext other = CharacterContextModuleLookup.ResolveContext(candidate);
         if (other == null)
             return false;
 
-        return other == playerContext ||
-               other.TargetIdentity == AITargetIdentity.Player ||
-               other.TargetIdentity == AITargetIdentity.Companion;
+        if (other == playerContext ||
+            other.TargetIdentity == AITargetIdentity.Player ||
+            other.TargetIdentity == AITargetIdentity.Companion)
+        {
+            return true;
+        }
+
+        // Match weapon-projectile hit eligibility. The movement capsule can sit
+        // in front of a limb, but projectiles ignore it when this actor has hit zones.
+        // Aiming at that capsule makes the muzzle ray diverge before reaching the limb.
+        if (other.ColliderRefs == null)
+            other.ResolveReferences();
+
+        CharacterColliderRefs colliderRefs = other.ColliderRefs;
+        return colliderRefs != null && colliderRefs.HasHitZones &&
+               !colliderRefs.TryResolveHitZone(candidate, out _) &&
+               !SpecialShootPointRegistry.TryResolve(candidate, out _);
     }
 
     void ResolveReferences()

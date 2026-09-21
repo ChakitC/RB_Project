@@ -69,6 +69,10 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
     Rigidbody _rb;
     Collider _col;
     readonly List<Collider> _ignoredCols = new List<Collider>();
+    readonly RaycastHit[] _hitZoneSweepHits = new RaycastHit[32];
+    readonly HashSet<IDamageable> _sweptDamageablesThisStep = new();
+    static readonly IComparer<RaycastHit> HitDistanceComparer =
+        Comparer<RaycastHit>.Create((left, right) => left.distance.CompareTo(right.distance));
     Transform _shooterRoot;
 
     // spawn distance
@@ -161,6 +165,7 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         }
 
         _ignoredRootIds.Clear();
+        _sweptDamageablesThisStep.Clear();
         _lastDamageWasCritical = false;
         _requestedDespawnThisHit = false;
         _requestedExpire = false;
@@ -364,6 +369,7 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         if (_isDespawning)
             return;
 
+        _sweptDamageablesThisStep.Clear();
         _overrideVelThisFrame = false;
         _overridePosThisFrame = false;
 
@@ -412,6 +418,9 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
                 // Barrier before wall: a fast projectile must not tunnel past the barrier trigger
                 // and only get caught by the geometry behind it.
                 if (ProjectileBarrierGate.TrySweepBlock(this, _rb.position, GetSweepRadius(), sweepDir, sweepDist))
+                    return;
+
+                if (TrySweepHitZones(sweepDir, sweepDist))
                     return;
 
                 if (TrySweepWallHit(sweepDir, sweepDist))
@@ -482,6 +491,10 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         if (_shooterRoot && other.transform.root == _shooterRoot) return;
 
         var target = DamageableResolver.ResolveFrom(other);
+        // A sweep may already have applied this impact before PhysX reports its trigger.
+        if (target != null && _sweptDamageablesThisStep.Contains(target))
+            return;
+
         if (!TryResolveHitZoneImpact(other, target, out CharacterHitZone hitZone))
             return;
         
@@ -925,6 +938,82 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
 #else
         _rb.velocity = v;
 #endif
+    }
+
+    bool TrySweepHitZones(Vector3 sweepDir, float sweepDist)
+    {
+        // Weapon hurtboxes are thin triggers. A fast bullet can cross one entirely
+        // between physics ticks, even when Rigidbody CCD is enabled.
+        if (!_ctx.useHitZones)
+            return false;
+
+        int hitLayer = LayerMask.NameToLayer("Hit");
+        if (hitLayer < 0 || Physics.GetIgnoreLayerCollision(gameObject.layer, hitLayer))
+            return false;
+
+        Vector3 start = _rb.position;
+        float radius = GetSweepRadius();
+        int count = Physics.SphereCastNonAlloc(start, radius, sweepDir, _hitZoneSweepHits,
+            sweepDist, 1 << hitLayer, QueryTriggerInteraction.Collide);
+        if (count == 0)
+            return false;
+
+        RaycastHit[] hits = _hitZoneSweepHits;
+        if (count == hits.Length)
+        {
+            hits = Physics.SphereCastAll(start, radius, sweepDir, sweepDist,
+                1 << hitLayer, QueryTriggerInteraction.Collide);
+            count = hits.Length;
+        }
+        System.Array.Sort(hits, 0, count, HitDistanceComparer);
+
+        // A hurtbox behind solid cover must not receive damage before the wall sweep.
+        float wallDistance = float.PositiveInfinity;
+        if (Physics.SphereCast(start, radius, sweepDir, out RaycastHit wallHit,
+                sweepDist, ProjectileLayerUtility.GetWallMask(), QueryTriggerInteraction.Ignore) &&
+            (!_shooterRoot || wallHit.transform.root != _shooterRoot) &&
+            !_ignoredRootIds.Contains(wallHit.transform.root.GetInstanceID()))
+        {
+            wallDistance = wallHit.distance;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            RaycastHit hit = hits[i];
+            if (hit.distance >= wallDistance)
+                break;
+
+            Collider other = hit.collider;
+            if (other == null || IsFriendlyCollider(other) ||
+                (_shooterRoot && other.transform.root == _shooterRoot) ||
+                _ignoredRootIds.Contains(other.transform.root.GetInstanceID()) ||
+                (_col != null && Physics.GetIgnoreCollision(_col, other)))
+            {
+                continue;
+            }
+
+            IDamageable target = DamageableResolver.ResolveFrom(other);
+            if (target == null || _sweptDamageablesThisStep.Contains(target) ||
+                !TryResolveHitZoneImpact(other, target, out _))
+            {
+                continue;
+            }
+
+            // Reuse the full impact pipeline at contact, including hit zones,
+            // special points, effects, pierce modules and pool despawn.
+            _rb.position = start + sweepDir * hit.distance;
+            transform.position = _rb.position;
+            OnTriggerEnter(other);
+            _sweptDamageablesThisStep.Add(target);
+            if (_isDespawning || _requestedExpire || _requestedDespawnThisHit)
+                return true;
+
+            // Piercing shots still advance exactly once during this physics step.
+            _rb.position = start;
+            transform.position = start;
+        }
+
+        return false;
     }
 
     bool TrySweepWallHit(Vector3 sweepDir, float sweepDist)

@@ -26,6 +26,15 @@ Hit Zone resolution is opt-in through `ProjectileContext.useHitZones`.
 `WeaponProjectileSpawner` enables it for direct weapon projectiles. Child and
 split projectiles inherit the same context.
 
+Weapon projectiles sphere-sweep the `Hit` layer over each velocity-driven physics
+step before moving, so fast bullets cannot skip a thin trigger hurtbox between
+two positions. Candidates are processed in distance order through the ordinary
+impact pipeline, respecting hit-zone mappings, friendly/ignored colliders,
+pierce modules and nearer solid walls. A target already handled by the sweep is
+not damaged again by its trigger callback in that same step. The sweep state is
+cleared on each step and pooled spawn. Position-override modules retain their
+existing movement/collision behavior.
+
 The following damage remains Hit Zone-neutral:
 
 - skill projectiles, **except** a direct hit on a live Special Shoot Point

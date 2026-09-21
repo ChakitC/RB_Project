@@ -54,11 +54,32 @@ the lower precision.
 validated result to `PlayerContext.aimTarget`. Projectile skills use the full
 3D direction from their cast origin to this point.
 
+For actors with authored hit zones, camera aiming accepts only colliders mapped
+by `CharacteContext.ColliderRefs` or registered live Special Shoot Points. It
+ignores the movement/body collider and unmapped model colliders, matching normal
+weapon-projectile hit eligibility. Otherwise the camera could converge on the
+large `CharacterPosition` capsule in front of the visible limb while the bullet
+ignores that capsule and misses the actual hurtbox. The muzzle obstruction probe
+uses the same actor filter. Solid world cover and legacy actors without hit-zone
+mappings retain their existing collision rules.
+
 Weapon projectiles do not spawn with the camera ray direction directly. The
 weapon resolves a direction from `WeaponSystem.FirePoint` to the Aim Point,
 applies the current spread cone, and stores that explicit direction in
 `WeaponShotContext` and `WeaponProjectileSpawnContext`. Nearby walls therefore
 block a shot even when the camera can see around them.
+
+For weapon shots, every Aim Point in front of the muzzle along the camera's
+forward axis is used exactly, including targets less than one world unit away.
+Do not impose a minimum convergence distance on these hits: extending the point
+past a nearby arm or other small hurtbox makes the trajectory miss the reticle.
+Only when the Aim Point is level with or behind the muzzle does the weapon
+extend it along the camera ray to one world unit ahead, preventing backwards
+shots. The muzzle-blocked probe uses the same aim point as the unspread shot.
+Spread and intervening physical cover can still cause a shot to miss the reticle.
+The original `AimPoint` and `PlayerContext.aimTarget` remain the camera hit for
+visual aiming and projectile skills. This does not move the projectile spawn
+origin or prevent a muzzle from physically penetrating geometry.
 
 Player and companion colliders are ignored by friendly projectiles. Wall
 collision remains active through `ProjectileLayerUtility`.

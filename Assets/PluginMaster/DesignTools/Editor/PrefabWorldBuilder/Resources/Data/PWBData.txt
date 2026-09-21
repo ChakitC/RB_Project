@@ -24,8 +24,12 @@
     "_maxPreviewCountInEditMode": 200,
     "_unsavedChangesAction": 0,
     "_prefabCountDict": {
-        "_keys": [],
-        "_values": []
+        "_keys": [
+            "2"
+        ],
+        "_values": [
+            10
+        ]
     },
     "_paletteManager": {
         "_selectedBrushIdx": -1,
@@ -3725,18 +3729,18 @@
             "_sameParentAsSource": true,
             "_mirrorPose": {
                 "position": {
-                    "x": 0.0,
+                    "x": 19.694978713989259,
                     "y": 0.0,
-                    "z": 0.0
+                    "z": -29.352535247802736
                 },
                 "rotation": {
                     "x": 0.0,
-                    "y": 0.7071068286895752,
+                    "y": 0.7071067690849304,
                     "z": 0.0,
-                    "w": 0.7071068286895752
+                    "w": 0.7071067690849304
                 }
             },
-            "_invertScale": false,
+            "_invertScale": true,
             "_paintTool": {
                 "_parentGlobalId": "",
                 "_autoCreateParent": true,

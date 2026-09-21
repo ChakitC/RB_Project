@@ -14,7 +14,9 @@ public sealed partial class SkillAnimationVfxEditorWindow
         var pingRect = new Rect(rect.xMax - 40, rect.y, 40, rect.height);
         rect.xMax = pingRect.xMin - 2;
         var content = current != null
-            ? new GUIContent(current.name, AssetDatabase.GetCachedIcon(AssetDatabase.GetAssetPath(current)), AssetDatabase.GetAssetPath(current))
+            ? new GUIContent(current is SkillGemDefinition skill && !string.IsNullOrWhiteSpace(skill.SkillDefinitionDisplayName)
+                ? skill.SkillDefinitionDisplayName : current.name,
+                AssetDatabase.GetCachedIcon(AssetDatabase.GetAssetPath(current)), AssetDatabase.GetAssetPath(current))
             : new GUIContent("Choose source asset...");
 
         void SelectSource(ScriptableObject asset)

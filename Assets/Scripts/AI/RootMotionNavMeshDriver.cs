@@ -276,6 +276,9 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         if (_policy.EnvironmentSafe)
             delta = ResolveEnvironmentSafeDelta(actorRoot, delta);
 
+        if (ctx != null && ctx.DefensiveBlockAttack != null)
+            delta = ctx.DefensiveBlockAttack.ConstrainContactRootMotion(actorRoot.position, delta);
+
         actorRoot.position += delta;
 
         if (agent && agent.enabled)

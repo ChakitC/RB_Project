@@ -252,7 +252,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         UpdatePoseFromAnchor(forceResolve: true);
         Subscribe();
         _initialized = true;
-        _defensiveBlock = !IsBasicMelee && context?.CasterContext != null ? context.CasterContext.DefensiveBlockAttack : null;
+        _defensiveBlock = context?.CasterContext != null ? context.CasterContext.DefensiveBlockAttack : null;
         _defensiveBlock?.Bind(this, context);
     }
 

@@ -73,7 +73,8 @@ public sealed partial class CharacterAnimBrain
             }
             else if (Phase == BlockAnimationPhase.Impact)
             {
-                clip.NormalizedTime = Mathf.Clamp01(elapsed / impactDuration);
+                clip.NormalizedTime = Mathf.Lerp(profile.impactStartNormalized,
+                    profile.impactEndNormalized, Mathf.Clamp01(elapsed / impactDuration));
                 if (elapsed >= impactDuration) Exit();
             }
             else if (Phase == BlockAnimationPhase.Exit && elapsed >= profile.exitSeconds)
@@ -88,7 +89,7 @@ public sealed partial class CharacterAnimBrain
             elapsed = 0f;
             impactDuration = Mathf.Max(0.01f, owner.blockProfile.impactSeconds, minimumDuration);
             clip = owner.LocoLayer.Play(owner.blockProfile.impactClip, owner.blockProfile.fadeSeconds);
-            clip.Time = 0f;
+            clip.NormalizedTime = owner.blockProfile.impactStartNormalized;
             clip.Speed = 0f;
             clip.SharedEvents = null;
         }

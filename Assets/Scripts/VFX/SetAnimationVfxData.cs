@@ -14,7 +14,7 @@ public class SetAnimationVfxData : MonoBehaviour
     const string LoadUndoLabel = "Load Animation VFX Data";
 
     [BoxGroup("VFX Source/Asset & Entry")]
-    [LabelText("Source Asset  (Skill / Combo / Anim Profile / Cutscene)")]
+    [LabelText("Source Asset  (Skill / Anim Profile / Cutscene)")]
     [OnValueChanged(nameof(OnTimelineSourceAssetChanged))]
     [SerializeField] private ScriptableObject sourceAsset;
 
@@ -194,7 +194,7 @@ public class SetAnimationVfxData : MonoBehaviour
                 return entries[i].DisplayName;
         }
 
-        if (TimelineSourceAsset is MeleeComboSO)
+        if (TimelineSourceAsset is SkillGemDefinition combo && combo.IsCombo)
             return "No valid Melee Step selected. Assign missing Step IDs if required.";
 #endif
         return TimelineSourceAsset != null ? TimelineEntryId : "None";
@@ -1005,10 +1005,30 @@ public class SetAnimationVfxData : MonoBehaviour
         return AnimationVfxTimelineSourceFactory.Create(TimelineSourceAsset, TimelineEntryId);
     }
 
+    // Read-only snapshot for the Timeline's combined save and dirty indicator.
+    // A null cue list means this entry has not been loaded into the hierarchy.
+    public bool TryGetTimelineVfxDraft(IAnimationVfxTimelineSource source,
+        out List<AnimationVfxCue> cues, out List<string> issues)
+    {
+        cues = null;
+        issues = new List<string>();
+        if (source == null) { issues.Add("Choose a timeline source."); return false; }
+        bool bound = UsesModeContainers() ? ResolveScanRoot(source.EntryId) != null :
+            authoringSourceAsset == source.SourceAsset && authoringEntryId == source.EntryId;
+        bool populated = GetSourceEntries(source.EntryId).Length > 0 || GetSourceSlots(source.EntryId).Length > 0;
+        if (!bound && !populated) return true;
+        if (!bound && authoringSourceAsset != null)
+        { issues.Add("VFX hierarchy belongs to another entry. Load / Sync VFX Data first."); return false; }
+        if (!TryBuildSourceData(source, out cues, out issues, true))
+        { issues.Add("Could not read VFX authoring roots."); return false; }
+        return issues.Count == 0;
+    }
+
     bool TryBuildSourceData(
         IAnimationVfxTimelineSource source,
         out List<AnimationVfxCue> cues,
-        out List<string> issues)
+        out List<string> issues,
+        bool allowEmpty = false)
     {
         cues = new List<AnimationVfxCue>();
         issues = new List<string>();
@@ -1018,7 +1038,7 @@ public class SetAnimationVfxData : MonoBehaviour
         root = ResolveScanRoot(source.EntryId);
         SkillVfxAuthoringEntry[] entries = GetSourceEntries(source.EntryId);
         SkillVfxAuthoringSlot[] slots = GetSourceSlots(source.EntryId);
-        if (entries.Length == 0 && slots.Length == 0)
+        if (!allowEmpty && entries.Length == 0 && slots.Length == 0)
         {
             string rootName = root != null ? root.name : GetSourceRoot()?.name ?? name;
             Debug.LogWarning($"No Animation VFX authoring slot was found under '{rootName}'.", this);

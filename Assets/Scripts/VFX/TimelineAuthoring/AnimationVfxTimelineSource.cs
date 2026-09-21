@@ -10,14 +10,13 @@ public static class AnimationVfxTimelineSourceFactory
     {
         if (asset is SkillGemDefinition skill)
         {
+            if (skill.IsCombo) return new SkillComboVfxTimelineSource(skill, entryId);
             if (string.Equals(entryId, "cutscene", System.StringComparison.Ordinal) && skill.IsCutsceneSkill)
                 return new CutsceneSkillVfxTimelineSource(skill);
             return skill.IsCutsceneSkill
                 ? (IAnimationVfxTimelineSource)new CombinedCutsceneSkillVfxTimelineSource(skill)
                 : new SkillVfxTimelineSource(skill);
         }
-        if (asset is MeleeComboSO combo)
-            return new MeleeComboVfxTimelineSource(combo, entryId);
         if (asset is CharacterAnimProfileSO profile)
             return new CharacterAnimProfileVfxTimelineSource(profile, entryId);
         if (asset is CutsceneDefSO cutsceneDef)
@@ -28,24 +27,21 @@ public static class AnimationVfxTimelineSourceFactory
     public static List<AnimationVfxTimelineEntry> GetEntries(ScriptableObject asset)
     {
         var entries = new List<AnimationVfxTimelineEntry>();
-        if (asset is SkillGemDefinition skill)
+        if (asset is SkillGemDefinition comboSkill && comboSkill.IsCombo)
+        {
+            for (int i = 0; i < comboSkill.MeleeStepCount; i++)
+            {
+                var step = comboSkill.GetMeleeStep(i);
+                if (string.IsNullOrWhiteSpace(step.EntryId)) continue;
+                string clip = step.executionSkill?.skillClip?.Clip != null ? step.executionSkill.skillClip.Clip.name : "No Clip";
+                entries.Add(new AnimationVfxTimelineEntry(step.EntryId, $"Step {i + 1}: {clip}"));
+            }
+        }
+        else if (asset is SkillGemDefinition skill)
         {
             entries.Add(new AnimationVfxTimelineEntry("main", "Main Skill"));
             if (skill.IsCutsceneSkill)
                 entries.Add(new AnimationVfxTimelineEntry("cutscene", "Cutscene VFX"));
-        }
-        else if (asset is MeleeComboSO combo)
-        {
-            for (int i = 0; i < combo.Count; i++)
-            {
-                MeleeComboSO.Step step = combo.Steps[i];
-                if (string.IsNullOrWhiteSpace(step.EntryId))
-                    continue;
-
-                var transition = step.executionSkill != null ? step.executionSkill.skillClip : step.clip;
-                string clipName = transition != null && transition.Clip != null ? transition.Clip.name : "No Clip";
-                entries.Add(new AnimationVfxTimelineEntry(step.EntryId, $"Step {i + 1}: {clipName}"));
-            }
         }
         else if (asset is CharacterAnimProfileSO profile)
         {

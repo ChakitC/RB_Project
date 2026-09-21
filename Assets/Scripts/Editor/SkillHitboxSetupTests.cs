@@ -105,7 +105,7 @@ public sealed class SkillHitboxSetupTests
             var choices = SkillHitboxCharacterSetup.CollectAttacks(ctx);
             Assert.That(choices.Any(a => a.Category == "Light" && a.Label.StartsWith("Step 1")), Is.True);
             Assert.That(choices.Any(a => a.Category == "Heavy"), Is.True);
-            Assert.That(AnimationVfxTimelineSourceFactory.Create(tool.TimelineSourceAsset, tool.TimelineEntryId).SourceAsset, Is.SameAs(ctx.baseStats.animProfile.lightCombo.Steps[0].executionSkill));
+            Assert.That(AnimationVfxTimelineSourceFactory.Create(tool.TimelineSourceAsset, tool.TimelineEntryId).SourceAsset, Is.SameAs(ctx.baseStats.animProfile.lightMeleeSkill.ComboSteps[0].executionSkill));
             Assert.That(File.ReadAllText(path), Is.EqualTo(before));
         }
     }
@@ -126,7 +126,7 @@ public sealed class SkillHitboxSetupTests
         var attacks = (List<SkillHitboxCharacterSetup.Attack>)type.GetField("hitboxAttacks", Hidden).GetValue(window);
         Assert.That(attacks.Any(a => a.Category == "Light"), Is.True);
         Assert.That(attacks.Any(a => a.Category == "Heavy"), Is.True);
-        Assert.That(attacks.Count(a => a.Category == "Light"), Is.EqualTo(stats.animProfile.lightCombo.Count));
+        Assert.That(attacks.Count(a => a.Category == "Light"), Is.EqualTo(stats.animProfile.lightMeleeSkill.MeleeStepCount));
         Assert.That(tool.PreviewAnimator, Is.SameAs(model.GetComponent<Animator>()));
         Assert.That(model.GetComponentInChildren<CharacteContext>(true), Is.Null);
     }

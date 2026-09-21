@@ -7,6 +7,41 @@ using UnityEngine;
 public sealed class DefensiveBlockContactOrderTests
 {
     [Test]
+    public void CloseGuardStopsForwardLungeWithoutMovingTheAttackerBackwards()
+    {
+        Vector3 guardRoot = new Vector3(0f, .083f, .8f);
+        Vector3 caster = new Vector3(0f, .083f, 1.16f);
+        float offset = DefensiveBlockGeometry.ContactGuardOffset(guardRoot, Vector3.forward, caster, 1.4f, .05f);
+        Assert.That(offset, Is.EqualTo(.31f).Within(.0001f));
+        Vector3 guard = guardRoot + Vector3.forward * offset + Vector3.up * 1.2f;
+        Vector3 delta = DefensiveBlockGeometry.ConstrainMotionAtGuard(caster, new Vector3(0f, .1f, -1f),
+            guard, Vector3.forward, .65f, .05f);
+        Assert.That(delta.z, Is.EqualTo(0f).Within(.0001f));
+        Assert.That(delta.y, Is.EqualTo(.1f));
+        // The authored Heavy volume now touches the guard when HitStart fires.
+        Vector3 hitCenter = caster + new Vector3(.12f, .45f, -2.11f);
+        Assert.IsTrue(DefensiveBlockGeometry.TrySweepGuard(hitCenter, hitCenter, 2.19f,
+            guard, Vector3.forward, .65f, 1.2f, .05f, out _));
+        Assert.That(DefensiveBlockGeometry.ContactGuardOffset(guardRoot, Vector3.forward,
+            Vector3.forward * 4f, 1.4f, .05f), Is.EqualTo(1.4f));
+    }
+
+    [Test]
+    public void GuardMotionConstraintAllowsMissRetreatAndAlreadyPassedActors()
+    {
+        Vector3 forward = Vector3.forward, guard = Vector3.zero;
+        Vector3 incoming = Vector3.back * 10f;
+        Assert.That(DefensiveBlockGeometry.ConstrainMotionAtGuard(Vector3.forward * 3f, incoming,
+            guard, forward, .65f, .05f).z, Is.EqualTo(-2.95f).Within(.0001f));
+        Assert.That(DefensiveBlockGeometry.ConstrainMotionAtGuard(new Vector3(2, 0, 3), incoming,
+            guard, forward, .65f, .05f), Is.EqualTo(incoming));
+        Assert.That(DefensiveBlockGeometry.ConstrainMotionAtGuard(Vector3.forward, forward,
+            guard, forward, .65f, .05f), Is.EqualTo(forward));
+        Assert.That(DefensiveBlockGeometry.ConstrainMotionAtGuard(Vector3.back, incoming,
+            guard, forward, .65f, .05f), Is.EqualTo(incoming));
+    }
+
+    [Test]
     public void GuardBeforePlayerWinsAcrossOneLongFrame()
     {
         Vector3 previous = new Vector3(0, 1, 8), current = new Vector3(0, 1, -3);
@@ -106,12 +141,14 @@ public sealed class DefensiveBlockContactOrderTests
     public static void Run()
     {
         var tests = new DefensiveBlockContactOrderTests();
+        tests.CloseGuardStopsForwardLungeWithoutMovingTheAttackerBackwards();
+        tests.GuardMotionConstraintAllowsMissRetreatAndAlreadyPassedActors();
         tests.GuardBeforePlayerWinsAcrossOneLongFrame();
         tests.PlayerAheadOfGuardWinsRegardlessOfCallbackOrder();
         tests.InitialOverlapAndTiesCannotRetroactivelyProtectPlayer();
         tests.MovingPlayerUsesRelativeSweepAndMissDoesNotVetoGuard();
         tests.AppliedHitIsScopedToExecutionRequestLifeAndVictim();
-        Debug.Log("DefensiveBlock: 5 contact order tests passed.");
+        Debug.Log("DefensiveBlock: 7 contact order tests passed.");
     }
 }
 #endif

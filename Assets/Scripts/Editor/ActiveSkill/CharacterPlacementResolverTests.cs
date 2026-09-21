@@ -24,6 +24,38 @@ public sealed class CharacterPlacementResolverTests
     }
 
     [Test]
+    public void PlacementTraceNamesObstructionWithoutChangingResult()
+    {
+        Vector3 point = new Vector3(5000f, 5000f, 5000f);
+        CreateBlocker("DiagnosticWall", WorldLayer, point, Vector3.one);
+        Physics.SyncTransforms();
+        var request = CreateRequest(new[] { Candidate(point, 0f, 0) },
+            worldCollisionLayers: 1 << WorldLayer);
+        var trace = new System.Text.StringBuilder();
+        bool plain = CharacterPlacementResolver.TryResolve(request, null, out var expected);
+        bool traced = CharacterPlacementResolver.TryResolve(request, null, out var actual, trace);
+        Assert.That(traced, Is.EqualTo(plain));
+        Assert.That(actual.StartPosition, Is.EqualTo(expected.StartPosition));
+        Assert.That(actual.Score.CompareTo(expected.Score), Is.Zero);
+        Assert.That(actual.Score.MaxWorldPenetration, Is.GreaterThan(0f));
+        StringAssert.Contains("collider='DiagnosticWall'", trace.ToString());
+        StringAssert.Contains("world=True", trace.ToString());
+        StringAssert.Contains("penetration=", trace.ToString());
+    }
+
+    [Test]
+    public void PlacementTraceIdentifiesMissingNavMeshWithoutChangingResult()
+    {
+        var request = CreateRequest(new[] { Candidate(new Vector3(5000f, 5000f, 5000f), 0f, 0) },
+            mobileActor: true);
+        var trace = new System.Text.StringBuilder();
+        Assert.That(CharacterPlacementResolver.TryResolve(request, null, out var expected), Is.False);
+        Assert.That(CharacterPlacementResolver.TryResolve(request, null, out var actual, trace), Is.False);
+        Assert.That(actual.FailureReason, Is.EqualTo(expected.FailureReason));
+        StringAssert.Contains("NavMesh snap failed", trace.ToString());
+    }
+
+    [Test]
     public void WallPenetrationHasPriorityOverActorPenetration()
     {
         GameObject wall = CreateBlocker("PlacementWall", WorldLayer, Vector3.zero, Vector3.one);

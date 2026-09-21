@@ -173,10 +173,10 @@ MonoBehaviour:
   reloadVfxTrack:
     cues: []
   reloadBodyMode: 0
-  meleeCombo: {fileID: 0}
+  meleeSkill: {fileID: 0}
+  lightMeleeSkill: {fileID: 0}
+  heavyMeleeSkill: {fileID: 0}
   meleeCanInterruptReload: 1
-  lightCombo: {fileID: 0}
-  heavyCombo: {fileID: 0}
   crawling:
     _FadeDuration: 0.25
     _Speed: 1

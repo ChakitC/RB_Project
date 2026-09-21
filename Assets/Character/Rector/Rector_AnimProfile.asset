@@ -173,10 +173,10 @@ MonoBehaviour:
   reloadVfxTrack:
     cues: []
   reloadBodyMode: 0
-  meleeCombo: {fileID: 11400000, guid: 1857e836be2e4d44db88dd8a7c85fb3f, type: 2}
+  meleeSkill: {fileID: 11400000, guid: 67f7d802986506541bdb3e3b2fb285d1, type: 2}
+  lightMeleeSkill: {fileID: 11400000, guid: 354a0c5f041d94f478e3fd5169f596e0, type: 2}
+  heavyMeleeSkill: {fileID: 11400000, guid: b760b8d20676295438f0b4d53a6d8076, type: 2}
   meleeCanInterruptReload: 1
-  lightCombo: {fileID: 11400000, guid: 4ed39c12c340dc449a483c4ad0330ce2, type: 2}
-  heavyCombo: {fileID: 11400000, guid: ef78d3c80f0621e49a6b64aeab7f4a83, type: 2}
   crawling:
     _FadeDuration: 0.25
     _Speed: 1

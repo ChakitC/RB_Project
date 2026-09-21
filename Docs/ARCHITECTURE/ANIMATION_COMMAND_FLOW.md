@@ -357,7 +357,7 @@ Brain exposes `BlockPhase` and terminal `PlaybackKind.Block` events. Gameplay
 contact decisions belong to the interruption controller, not the animation.
 The optional charge preparation path in `DefensiveBlockAttack` acquires a zero-speed
 `SkillPreCastHoldHandle` through AnimDriver at CastStarted, before the first clip
-advance. It releases that handle after `DefensiveBlockAttackProfile.windupSeconds`
+advance. It releases that handle after `SkillDefensiveBlockSettings.windupSeconds`
 in the caster's time domain, or on reset/invalidated playback. The normalized-zero
 command window stays available while payload and charge motion wait. The defender's
 Block request is separate and continues raising its guard during this preparation.

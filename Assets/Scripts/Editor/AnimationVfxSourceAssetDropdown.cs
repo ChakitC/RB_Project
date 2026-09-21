@@ -23,13 +23,13 @@ public sealed class AnimationVfxSourceAssetDropdown : AdvancedDropdown
 
     public static bool Supports(UnityEngine.Object asset, bool hitboxesOnly)
     {
-        return asset is SkillGemDefinition || asset is MeleeComboSO ||
+        return asset is SkillGemDefinition ||
             (!hitboxesOnly && (asset is CharacterAnimProfileSO || asset is CutsceneDefSO));
     }
 
     public static List<ScriptableObject> FindSources(bool hitboxesOnly)
     {
-        string filter = "t:SkillGemDefinition t:MeleeComboSO";
+        string filter = "t:SkillGemDefinition";
         if (!hitboxesOnly) filter += " t:CharacterAnimProfileSO t:CutsceneDefSO";
         // Load subassets as well: execution skills can be embedded in a combo asset.
         var sources = AssetDatabase.FindAssets(filter).Select(AssetDatabase.GUIDToAssetPath).Distinct()
@@ -37,8 +37,8 @@ public sealed class AnimationVfxSourceAssetDropdown : AdvancedDropdown
             .Where(asset => Supports(asset, hitboxesOnly)).Distinct().ToList();
         // Combo steps are reached through Entry. Keep skills with no selectable
         // owning step visible, and compare references rather than names or folders.
-        var comboSkills = new HashSet<SkillGemDefinition>(sources.OfType<MeleeComboSO>()
-            .Where(combo => combo.Steps != null).SelectMany(combo => combo.Steps)
+        var comboSkills = new HashSet<SkillGemDefinition>(sources.OfType<SkillGemDefinition>()
+            .Where(combo => combo.IsCombo && combo.ComboSteps != null).SelectMany(combo => combo.ComboSteps)
             .Where(step => step.executionSkill != null && !string.IsNullOrWhiteSpace(step.EntryId))
             .Select(step => step.executionSkill));
         return sources.Where(asset => !(asset is SkillGemDefinition skill) || !comboSkills.Contains(skill))
@@ -73,8 +73,7 @@ public sealed class AnimationVfxSourceAssetDropdown : AdvancedDropdown
 
     static string Category(ScriptableObject asset)
     {
-        if (asset is SkillGemDefinition) return "Skills";
-        if (asset is MeleeComboSO) return "Melee Combos";
+        if (asset is SkillGemDefinition skill) return skill.IsCombo ? "Combo Skills" : "Skills";
         if (asset is CharacterAnimProfileSO) return "Animation Profiles";
         return "Cutscenes";
     }

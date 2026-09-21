@@ -16,6 +16,8 @@ MonoBehaviour:
   impactClip: {fileID: -6348440289532276459, guid: 39cd4cbc56cd3b14dad9d63ebaf3b60b, type: 3}
   beginStartNormalized: 0.55
   guardPoseNormalized: 0.65
+  impactStartNormalized: 0.55
+  impactEndNormalized: 0.68
   beginSeconds: 0.12
   impactSeconds: 0.35
   exitSeconds: 0.12

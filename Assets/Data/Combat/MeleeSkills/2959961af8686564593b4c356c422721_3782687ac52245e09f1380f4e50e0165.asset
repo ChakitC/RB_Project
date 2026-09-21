@@ -19,13 +19,13 @@ MonoBehaviour:
     groups:
     - groupKey: Strike01
       anchorSpace: 2
-      anchorPath: root
+      anchorPath: 
       shapes:
       - shapeName: root
         type: 1
-        localPosition: {x: 0, y: 0, z: 0}
-        localEulerAngles: {x: -0, y: 0, z: 0}
-        localScale: {x: 1, y: 1, z: 1}
+        localPosition: {x: 0, y: 0.0006974689, z: -2.0199528}
+        localEulerAngles: {x: 270.01978, y: 0, z: 0}
+        localScale: {x: 1.1880457, y: 1.1880457, z: 1.1880457}
         center: {x: 0, y: -2.77, z: 0}
         size: {x: 0, y: 0, z: 0}
         radius: 1.76
@@ -41,7 +41,7 @@ MonoBehaviour:
   hitboxEndEventName: 11
   targetMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 4194303
   queryTriggers: 2
   showDamageNumbers: 1
   steps:
@@ -107,7 +107,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
   m_Name: 2959961af8686564593b4c356c422721_3782687ac52245e09f1380f4e50e0165
   m_EditorClassIdentifier: 
-  defensiveBlock: {fileID: 0}
+  comboEnabled: 0
+  comboSteps: []
+  blockSettings:
+    enabled: 1
+    mode: 0
+    timedApproachSeconds: 0.22
+    commandRange: 8
+    worldLayers:
+      serializedVersion: 2
+      m_Bits: 1
+    windupSeconds: 0
+    windowStartNormalized: 0.068289384
+    windowEndNormalized: 0.30493575
+    hitboxSteps: 0000000001000000
+    windows: []
+    approachStandOff: 1.6
+    threatHalfWidth: 1.5
+    threatForwardReach: 2.3
+    estimatedChargeSpeed: 8
+    knockbackDistance: 2
+    knockbackSeconds: 0.4
   icon: {fileID: 0}
   displayName: GR_04_MeleeHavary / Step 1
   skillId: melee.2959961af8686564593b4c356c422721.3782687ac52245e09f1380f4e50e0165
@@ -135,7 +155,7 @@ MonoBehaviour:
     _Speed: 1
     _Events:
       _NormalizedTimes:
-      - 0.32049605
+      - 0.2638037
       - 0.40535247
       - NaN
       _Callbacks: []

@@ -45,6 +45,148 @@ public sealed class MeleeSkillIntegrationTests
     }
 
     [Test]
+    public void ComboSkillBlockBindsHitboxesAndInterruptClearsTheCombo()
+    {
+        var context = MakeRig(false);
+        var combo = MakeCombo(2);
+        var skill = combo.ComboSteps[0].executionSkill;
+        var profile = new SkillDefensiveBlockSettings();
+        profile.windowStartNormalized = 0f; profile.windowEndNormalized = .95f;
+        skill.defensiveBlock = profile;
+        context.baseStats.animProfile.lightMeleeSkill = combo;
+        var block = context.gameObject.AddComponent<DefensiveBlockAttack>();
+        Call(block, "Awake"); Call(block, "OnEnable"); context.ResolveReferences();
+        Assert.That(context.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
+        context.GetComponent<AnimancerComponent>().Evaluate(.1f);
+        Assert.That(block.skill, Is.SameAs(skill));
+        Assert.That(block.WindowOpen, Is.True);
+        var runtime = context.GetComponentInChildren<SkillHitboxSequenceRuntime>();
+        Assert.That(runtime, Is.Not.Null);
+        Assert.That(typeof(SkillHitboxSequenceRuntime).GetField("_defensiveBlock", Hidden).GetValue(runtime), Is.SameAs(block));
+        context.MeleeController.PressMelee(MeleeType.Light);
+        Call(block, "StopOwnedSkill");
+        Assert.That(context.MeleeController.IsComboActive, Is.False);
+        Assert.That(context.stateHub.WeaponSM.CurrentId, Is.EqualTo(WeaponStateId.Ready));
+        Assert.That(block.WindowOpen, Is.False);
+        // A new request without a profile must not inherit the previous window.
+        skill.defensiveBlock = null;
+        Assert.That(context.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
+        context.GetComponent<AnimancerComponent>().Evaluate(.1f);
+        Assert.That(block.WindowOpen, Is.False);
+    }
+
+    [Test]
+    public void ContactMeleeInterceptsAtCloseRangeWithoutTimedApproach()
+    {
+        var caster = MakeRig(false); var combo = MakeCombo(1);
+        var skill = combo.ComboSteps[0].executionSkill;
+        skill.defensiveBlock = new SkillDefensiveBlockSettings { windowEndNormalized = .95f };
+        var payload = (PrefabHitboxSkillPayloadDef)skill.payload;
+        payload.HitboxLayout.Groups[0].Shapes[0].Size = Vector3.one * 2f;
+        caster.transform.position = new Vector3(0, 0, 2f);
+        caster.transform.rotation = Quaternion.LookRotation(Vector3.back);
+        caster.baseStats.animProfile.lightMeleeSkill = combo;
+        var attack = caster.gameObject.AddComponent<DefensiveBlockAttack>();
+        Call(attack, "Awake"); Call(attack, "OnEnable"); caster.ResolveReferences();
+
+        var receiver = MakeRig(false);
+        var settings = Track(ScriptableObject.CreateInstance<DefensiveBlockActorProfile>());
+        settings.animation = Track(ScriptableObject.CreateInstance<BlockAnimationProfile>());
+        settings.animation.beginClip = MakeClip(); settings.animation.impactClip = MakeClip();
+        settings.hitLagDuration = 0; settings.cameraEnabled = false;
+        receiver.baseStats.defensiveBlock = settings;
+        var guard = receiver.gameObject.AddComponent<DefensiveBlockController>(); Call(guard, "Awake");
+        var player = Track(new GameObject("Protected Player")).AddComponent<PlayerContext>();
+        player.HealthSystem = player.gameObject.AddComponent<HealthSystem>();
+        player.HealthSystem.CTX = player;
+        player.HealthSystem.maximumHealth = player.HealthSystem.currentHealth = 100;
+        player.transform.position = Vector3.back * 2;
+
+        Assert.That(caster.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
+        caster.GetComponent<AnimancerComponent>().Evaluate(.1f);
+        caster.GetComponent<AnimancerComponent>().Evaluate(.01f); // Dispatch the evaluated HitStart event.
+        Assert.That(attack.CanApproachGuard(player, guard), Is.True);
+        Assert.That(attack.IsTimedApproach, Is.False);
+        // The same close attack must not bypass timed movement planning when opted in.
+        skill.defensiveBlock.mode = DefensiveBlockMode.TimedApproach;
+        Assert.That(attack.CanApproachGuard(player, guard), Is.False);
+        skill.defensiveBlock.mode = DefensiveBlockMode.Contact;
+
+        // Stage an accepted guard reservation, then exercise actual runtime interception.
+        int request = attack.RequestId;
+        Set(attack, "acceptedWindow", 0); Set(attack, "defender", guard); Set(attack, "protectedPlayer", player);
+        Set(guard, "attack", attack); Set(guard, "player", player); Set(guard, "request", request);
+        Set(guard, "life", receiver.LifeGeneration); Set(guard, "playerLife", player.LifeGeneration);
+        Set(guard, "sessionDefinition", receiver.baseStats); Set(guard, "active", true); Set(guard, "arrived", true);
+        Assert.That(receiver.AnimDriver.TryBeginBlock(request, settings.animation), Is.True);
+        Assert.That(guard.IsReadyFor(attack, request), Is.True);
+        Vector3 lunge = Vector3.back * 3f;
+        Assert.That(attack.ConstrainContactRootMotion(caster.transform.position, lunge).z,
+            Is.EqualTo(-.55f).Within(.001f), "Ready Contact guard must stop the root before it passes the guard.");
+        Set(guard, "arrived", false);
+        Assert.That(attack.ConstrainContactRootMotion(caster.transform.position, lunge), Is.EqualTo(lunge),
+            "A pending warp cannot hold the attacker.");
+        Set(guard, "arrived", true);
+        skill.defensiveBlock.mode = DefensiveBlockMode.TimedApproach;
+        Assert.That(attack.ConstrainContactRootMotion(caster.transform.position, lunge), Is.EqualTo(lunge));
+        skill.defensiveBlock.mode = DefensiveBlockMode.Contact;
+        Physics.SyncTransforms();
+        var runtime = caster.GetComponentInChildren<SkillHitboxSequenceRuntime>();
+        Assert.That(attack.WindowOpen, Is.True, "Contact window remains open before interception.");
+        Assert.That(runtime.ActiveStepIndex, Is.EqualTo(0));
+        Assert.That(runtime.TryGetActiveBounds(out _), Is.True);
+        Assert.That(Vector3.Dot(caster.transform.forward, guard.transform.forward), Is.LessThan(-.25f));
+        Assert.That(attack.TryIntercept(runtime), Is.True, attack.LastProbe);
+        Assert.That(attack.SuccessCount, Is.EqualTo(1));
+        Assert.That(caster.MeleeController.IsComboActive, Is.False);
+        Assert.That(player.HealthSystem.currentHealth, Is.EqualTo(100));
+        Assert.That(attack.TryIntercept(runtime), Is.False, "A consumed contact cannot resolve twice.");
+        Assert.That(attack.ConstrainContactRootMotion(caster.transform.position, lunge), Is.EqualTo(lunge),
+            "Resolving the guard must release its root motion constraint.");
+    }
+
+    [Test]
+    public void ComboSkillUsesStableIdsAndRejectsNestedCombos()
+    {
+        var combo = MakeCombo(2);
+        Assert.That(combo.ValidateMelee(out _), Is.True);
+        var first = combo.ComboSteps[0]; var second = combo.ComboSteps[1];
+        Set(combo, "comboSteps", new List<SkillComboStep> { second, first });
+        Assert.That(combo.TryGetComboStep(first.EntryId, out var selected, out int index), Is.True);
+        Assert.That(index, Is.EqualTo(1)); Assert.That(selected.executionSkill, Is.SameAs(first.executionSkill));
+        combo.SetComboChainWindow(first.EntryId, new Vector2(.2f, .4f));
+        Assert.That(combo.ComboSteps[0].chainWindowN, Is.EqualTo(second.chainWindowN));
+        Assert.That(combo.ComboSteps[1].chainWindowN, Is.EqualTo(new Vector2(.2f, .4f)));
+        Set(combo, "comboSteps", new List<SkillComboStep> { new SkillComboStep(combo, "nested", Vector2.zero, false) });
+        Assert.That(combo.ValidateMelee(out _), Is.False);
+    }
+
+    [Test]
+    public void ContinuingBlockSuppressesOnlyTheOwnedStepAndComboCanAdvance()
+    {
+        var context = MakeRig(false); var combo = MakeCombo(2);
+        var first = combo.ComboSteps[0].executionSkill;
+        var profile = new SkillDefensiveBlockSettings();
+        profile.windows = new[] { new DefensiveBlockWindow { startNormalized = 0f, endNormalized = .95f,
+            hitboxSteps = new[] { 0 }, onSuccess = DefensiveBlockOutcome.ContinueSkill } };
+        first.defensiveBlock = profile; context.baseStats.animProfile.lightMeleeSkill = combo;
+        var block = context.gameObject.AddComponent<DefensiveBlockAttack>();
+        Call(block, "Awake"); Call(block, "OnEnable"); context.ResolveReferences();
+        Assert.That(context.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
+        var animancer = context.GetComponent<AnimancerComponent>(); animancer.Evaluate(.1f);
+        int request = block.RequestId;
+        Set(block, "acceptedWindow", 0); Call(block, "SuppressAcceptedWindow");
+        Assert.That(context.MeleeController.IsComboActive, Is.True);
+        Assert.That(block.OwnsCurrentSkill, Is.True);
+        Assert.That(block.WindowOpen, Is.False);
+        context.MeleeController.PressMelee(MeleeType.Light);
+        animancer.Evaluate(.4f); animancer.Evaluate(.01f);
+        Assert.That(context.AnimBrain.CurrentMeleeStepIndex, Is.EqualTo(1));
+        Assert.That(context.MeleeController.IsComboActive, Is.True);
+        Assert.That(block.Matches(request), Is.False, "Old Block requests must not affect the new combo step.");
+    }
+
+    [Test]
     public void BasicMeleeNeverTouchesEnergyOrSharedCharges()
     {
         var skill = MakeSkill();
@@ -84,7 +226,7 @@ public sealed class MeleeSkillIntegrationTests
         var context = MakeRig(nestedModules);
         var melee = context.MeleeController;
         var combo = MakeCombo(2);
-        context.baseStats.animProfile.lightCombo = combo;
+        context.baseStats.animProfile.lightMeleeSkill = combo;
         context.stateHub.RequestMeleePress(MeleeType.Light);
         Assert.That(melee.IsComboActive, Is.True);
         Assert.That(context.AnimBrain.IsMeleePlaybackActive, Is.True);
@@ -116,7 +258,7 @@ public sealed class MeleeSkillIntegrationTests
     public void FrameZeroHitboxAndNormalCompletionUseTheSharedAnimationTimeline()
     {
         var context = MakeRig(false);
-        context.baseStats.animProfile.lightCombo = MakeCombo(1);
+        context.baseStats.animProfile.lightMeleeSkill = MakeCombo(1);
         Assert.That(context.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
         var runtime = context.MeleeController.GetComponentInChildren<SkillHitboxSequenceRuntime>();
         var animancer = context.GetComponent<AnimancerComponent>();
@@ -138,9 +280,9 @@ public sealed class MeleeSkillIntegrationTests
     public void MissingExecutionSkillFailsWithoutEnteringMeleeState()
     {
         var context = MakeRig(false);
-        var combo = Track(ScriptableObject.CreateInstance<MeleeComboSO>());
-        Set(combo, "steps", new List<MeleeComboSO.Step> { new MeleeComboSO.Step() });
-        context.baseStats.animProfile.heavyCombo = combo;
+        var combo = Track(ScriptableObject.CreateInstance<SkillGemDefinition>());
+        combo.comboEnabled = true; Set(combo, "comboSteps", new List<SkillComboStep> { new SkillComboStep() });
+        context.baseStats.animProfile.heavyMeleeSkill = combo;
         Assert.That(context.MeleeController.TryStartMelee(MeleeType.Heavy), Is.False);
         Assert.That(context.stateHub.WeaponSM.CurrentId, Is.EqualTo(WeaponStateId.Ready));
     }
@@ -151,7 +293,7 @@ public sealed class MeleeSkillIntegrationTests
     public void InterruptedActorsCloseTheHitWindowImmediately(string reason)
     {
         var context = MakeRig(false);
-        context.baseStats.animProfile.lightCombo = MakeCombo(1);
+        context.baseStats.animProfile.lightMeleeSkill = MakeCombo(1);
         Assert.That(context.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
         var runtime = context.MeleeController.GetComponentInChildren<SkillHitboxSequenceRuntime>();
         int request = RequestId(context.AnimBrain);
@@ -180,7 +322,7 @@ public sealed class MeleeSkillIntegrationTests
         target.HealthSystem.maximumHealth = target.HealthSystem.currentHealth = 1000;
         var collider = target.gameObject.AddComponent<BoxCollider>();
         var combo = MakeCombo(1, twoWindows: true);
-        caster.baseStats.animProfile.lightCombo = combo;
+        caster.baseStats.animProfile.lightMeleeSkill = combo;
         var facts = new List<PassiveEventContext>();
         caster.CombatEventBus.EventPublished += facts.Add;
         Assert.That(caster.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
@@ -213,37 +355,10 @@ public sealed class MeleeSkillIntegrationTests
     public void SkillOnlyBlockDoesNotBlockBasicMelee()
     {
         var context = MakeRig(false);
-        context.baseStats.animProfile.lightCombo = MakeCombo(1);
+        context.baseStats.animProfile.lightMeleeSkill = MakeCombo(1);
         Set(context.stateHub, "statusEffectControlBlocks", ControlBlockFlags.Skill);
         Assert.That(context.stateHub.CanUseSkill(), Is.False);
         Assert.That(context.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
-    }
-
-    [Test]
-    public void MigrationPreservesClipWindowsDurationAndKnockback()
-    {
-        var step = LegacyStep(twoWindows: true);
-        step.duration = .6f;
-        step.staggerPower = 23;
-        step.applyKnockback = true;
-        step.knockbackDistance = 2;
-        step.knockbackDuration = .2f;
-        step.knockbackInterruptsActions = true;
-        var skill = Track(MeleeSkillMigrationTool.CreateSkill(step, "test.melee", "test melee"));
-        Track(skill.payload);
-        ConfigureTestLayout(skill);
-        Assert.That(skill.skillClip.Clip, Is.SameAs(step.clip.Clip));
-        Assert.That(skill.skillClip.Events.Count, Is.EqualTo(step.clip.Events.Count));
-        Assert.That(skill.baseCastTime, Is.EqualTo(.6f));
-        Assert.That(skill.baseStaggerPower, Is.EqualTo(23));
-        var payload = (PrefabHitboxSkillPayloadDef)skill.payload;
-        Assert.That(payload.HasInlineHitboxLayout, Is.True);
-        Assert.That(payload.Steps.Count, Is.EqualTo(2));
-        Assert.That(payload.Steps[0].KnockbackDistance, Is.EqualTo(2));
-        Assert.That(payload.Steps[0].KnockbackInterruptsActions, Is.True);
-        var issues = new List<string>();
-        payload.CollectValidationIssues(issues);
-        Assert.That(issues, Is.Empty);
     }
 
     [Test]
@@ -271,7 +386,7 @@ public sealed class MeleeSkillIntegrationTests
         var target = MakeRig(false);
         target.transform.position = new Vector3(100, 0, 0);
         var hurtbox = target.gameObject.AddComponent<BoxCollider>();
-        caster.baseStats.animProfile.lightCombo = MakeCombo(1);
+        caster.baseStats.animProfile.lightMeleeSkill = MakeCombo(1);
         Assert.That(caster.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
         var runtime = caster.GetComponentInChildren<SkillHitboxSequenceRuntime>();
         var group = caster.GetComponentInChildren<SkillHitboxGroup>();
@@ -309,7 +424,7 @@ public sealed class MeleeSkillIntegrationTests
         caster.Visual = caster.gameObject.AddComponent<CharacterVisualController>();
         Set(caster.Visual, "modelRoot", container.transform);
         caster.Visual.animator = caster.GetComponent<Animator>();
-        caster.baseStats.animProfile.lightCombo = MakeCombo(1);
+        caster.baseStats.animProfile.lightMeleeSkill = MakeCombo(1);
         Assert.That(caster.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
         var group = caster.GetComponentInChildren<SkillHitboxGroup>();
         Assert.That(group.transform.parent, Is.SameAs(hand.transform));
@@ -319,7 +434,7 @@ public sealed class MeleeSkillIntegrationTests
     public void CachedLayoutRebindsAfterAnimatorReplacementAndCleansDetachedGroups()
     {
         var caster = MakeRig(false);
-        caster.baseStats.animProfile.lightCombo = MakeCombo(1);
+        caster.baseStats.animProfile.lightMeleeSkill = MakeCombo(1);
         Assert.That(caster.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
         var runtime = caster.GetComponentInChildren<SkillHitboxSequenceRuntime>();
         var group = caster.GetComponentInChildren<SkillHitboxGroup>();
@@ -342,7 +457,7 @@ public sealed class MeleeSkillIntegrationTests
     public void DestroyedBoneClosesWindowAndCachedLayoutCanBeRebuilt()
     {
         var caster = MakeRig(false);
-        caster.baseStats.animProfile.lightCombo = MakeCombo(1);
+        caster.baseStats.animProfile.lightMeleeSkill = MakeCombo(1);
         Assert.That(caster.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
         var runtime = caster.GetComponentInChildren<SkillHitboxSequenceRuntime>();
         Call(runtime, "OnSkillTimelineEventRaised", RequestId(caster.AnimBrain), CombatTimelineEventName.HitStart);
@@ -450,28 +565,60 @@ public sealed class MeleeSkillIntegrationTests
         return context;
     }
 
-    SkillGemDefinition MakeSkill()
+    SkillGemDefinition MakeSkill(bool twoWindows = false)
     {
-        var skill = Track(MeleeSkillMigrationTool.CreateSkill(LegacyStep(), "test.melee", "Test Melee"));
-        Track(skill.payload);
+        var skill = Track(ScriptableObject.CreateInstance<SkillGemDefinition>());
+        skill.name = skill.displayName = "Test Melee";
+        skill.skillId = "test.melee";
+        skill.tags = SkillTag.Melee;
+        skill.baseDamage = skill.baseStaggerPower = skill.baseCritChance = 0f;
+        skill.damageCoefficient = 1f;
+        skill.baseManaCost = skill.baseCooldown = skill.baseCastTime = skill.castPointNormalized = 0f;
+        skill.skillClip = new ClipTransition { Clip = MakeClip() };
+        AddEvent(skill.skillClip, 0f, CombatTimelineEventName.HitStart);
+        AddEvent(skill.skillClip, .25f, CombatTimelineEventName.HitEnd);
+        if (twoWindows)
+        {
+            AddEvent(skill.skillClip, .4f, CombatTimelineEventName.HitStart);
+            AddEvent(skill.skillClip, .6f, CombatTimelineEventName.HitEnd);
+        }
+        var payload = Track(ScriptableObject.CreateInstance<PrefabHitboxSkillPayloadDef>());
+        payload.name = "Melee Hitboxes";
+        skill.payload = payload;
+        var data = new SerializedObject(payload);
+        data.FindProperty("anchorMode").enumValueIndex = (int)PrefabHitboxSkillPayloadDef.HitboxAnchorMode.CasterRoot;
+        var steps = data.FindProperty("steps"); steps.arraySize = twoWindows ? 2 : 1;
+        for (int i = 0; i < steps.arraySize; i++)
+        {
+            var hit = steps.GetArrayElementAtIndex(i);
+            var keys = hit.FindPropertyRelative("groupKeys"); keys.arraySize = 1;
+            keys.GetArrayElementAtIndex(0).stringValue = "Strike";
+            hit.FindPropertyRelative("damageMultiplier").floatValue = 1f;
+            hit.FindPropertyRelative("hitPolicy").enumValueIndex = (int)PrefabHitboxSkillPayloadDef.HitPolicy.OncePerStep;
+            hit.FindPropertyRelative("clearHitCacheOnEnter").boolValue = true;
+            hit.FindPropertyRelative("overrideKnockback").boolValue = false;
+            hit.FindPropertyRelative("knockbackDistance").floatValue = 0f;
+            hit.FindPropertyRelative("knockbackDuration").floatValue = 0f;
+            hit.FindPropertyRelative("knockbackInterruptsActions").boolValue = false;
+        }
+        data.ApplyModifiedPropertiesWithoutUndo();
         ConfigureTestLayout(skill);
         return skill;
     }
-    MeleeComboSO MakeCombo(int count, bool twoWindows = false)
+    SkillGemDefinition MakeCombo(int count, bool twoWindows = false)
     {
-        var combo = Track(ScriptableObject.CreateInstance<MeleeComboSO>());
-        var steps = new List<MeleeComboSO.Step>();
+        var combo = Track(ScriptableObject.CreateInstance<SkillGemDefinition>());
+        var steps = new List<SkillComboStep>();
         for (int i = 0; i < count; i++)
         {
-            var step = LegacyStep(twoWindows);
-            step.executionSkill = Track(MeleeSkillMigrationTool.CreateSkill(step, "test.melee." + i, "Step " + i));
-            Track(step.executionSkill.payload);
-            ConfigureTestLayout(step.executionSkill);
+            var skill = MakeSkill(twoWindows);
+            skill.skillId = "test.melee." + i;
+            skill.name = skill.displayName = "Step " + i;
             // Damage-number pooling is Play Mode presentation, outside these combat assertions.
-            Set(step.executionSkill.payload, "showDamageNumbers", false);
-            steps.Add(step);
+            Set(skill.payload, "showDamageNumbers", false);
+            steps.Add(new SkillComboStep(skill, "step-" + i, new Vector2(.35f, .85f), true));
         }
-        Set(combo, "steps", steps);
+        combo.comboEnabled = true; Set(combo, "comboSteps", steps);
         return combo;
     }
     static void ConfigureTestLayout(SkillGemDefinition skill)
@@ -482,14 +629,6 @@ public sealed class MeleeSkillIntegrationTests
         ((PrefabHitboxSkillPayloadDef)skill.payload).ReplaceHitboxLayoutGroups(new List<SkillHitboxLayoutData.HitBoxGroupData> { group });
     }
 
-    MeleeComboSO.Step LegacyStep(bool twoWindows = false)
-    {
-        var clip = new ClipTransition { Clip = MakeClip() };
-        AddEvent(clip, 0f, CombatTimelineEventName.HitStart);
-        AddEvent(clip, .25f, CombatTimelineEventName.HitEnd);
-        if (twoWindows) { AddEvent(clip, .4f, CombatTimelineEventName.HitStart); AddEvent(clip, .6f, CombatTimelineEventName.HitEnd); }
-        return new MeleeComboSO.Step { clip = clip, chainWindowN = new Vector2(.35f,.85f), dropBufferOnWindowExpire = true };
-    }
     AnimationClip MakeClip()
     {
         var clip = Track(new AnimationClip());

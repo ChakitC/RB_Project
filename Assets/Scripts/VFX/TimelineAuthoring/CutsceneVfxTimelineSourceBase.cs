@@ -65,7 +65,7 @@ public abstract class CutsceneVfxTimelineSourceBase : IAnimationVfxTimelineSourc
         if (Owner == null)
             return;
         EditorUtility.SetDirty(Owner);
-        AssetDatabase.SaveAssets();
+        AssetDatabase.SaveAssetIfDirty(Owner);
     }
 
     void ReloadCues(IReadOnlyList<AnimationVfxCue> values)

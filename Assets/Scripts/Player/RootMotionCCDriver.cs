@@ -173,6 +173,9 @@ public class RootMotionCCDriver : MonoBehaviour
             animator,
             zeroY || _policy.PlanarOnly);
 
+        if (ctx != null && ctx.DefensiveBlockAttack != null)
+            delta = ctx.DefensiveBlockAttack.ConstrainContactRootMotion(cc.transform.position, delta);
+
         cc.Move(delta);
 
         if (applyRootRotation || _policy.ApplyYaw)

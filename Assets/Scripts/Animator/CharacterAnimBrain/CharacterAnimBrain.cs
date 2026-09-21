@@ -128,7 +128,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private bool _pendingDownedValue;
     private bool _pendingCrawlIntro;
 
-    public MeleeComboSO.Step CurrentMeleeStep { get; internal set; }
+    public SkillComboStep CurrentMeleeStep { get; internal set; }
     public int CurrentMeleeStepIndex { get; internal set; }
     public bool IsMeleePlaybackActive => IsBasicMeleeExecution &&
         (_skillChannel.IsActive || (_initialized && locomotionSM.CurrentState == skill));
@@ -200,9 +200,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private AnimationVfxTrack ReloadVfxTrack =>
         AnimProfile.GetAnimationVfxTrack(CharacterAnimProfileSO.ReloadVfxEntryId);
     private CharacterAnimProfileSO.ReloadBodyMode ReloadMode => AnimProfile.reloadBodyMode;
-    private MeleeComboSO DefaultMeleeCombo => AnimProfile.meleeCombo;
-    private MeleeComboSO LightCombo => AnimProfile.lightCombo;
-    private MeleeComboSO HeavyCombo => AnimProfile.heavyCombo;
+    private SkillGemDefinition DefaultMeleeCombo => AnimProfile.meleeSkill;
+    private SkillGemDefinition LightCombo => AnimProfile.lightMeleeSkill;
+    private SkillGemDefinition HeavyCombo => AnimProfile.heavyMeleeSkill;
     private ClipTransition CrawlingClip => AnimProfile.crawling;
     private MixerTransition2D CrawlMixer => AnimProfile.crawlMixer;
     private float CrawlParamLerp => AnimProfile.crawlParamLerp;
@@ -903,7 +903,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         TrySetLocomotionState(IsDowned ? crawlState : locomotion);
     }
 
-    internal bool TryStartMeleePlayback(MeleeComboSO combo, MeleeComboSO.Step firstStep, int stepIndex)
+    internal bool TryStartMeleePlayback(SkillGemDefinition combo, SkillComboStep firstStep, int stepIndex)
     {
         CurrentMeleeStep = firstStep;
         CurrentMeleeStepIndex = stepIndex;
@@ -911,7 +911,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             ctx.SkillManager.TryStartMeleeStep(firstStep, ctx.MeleeController != null ? ctx.MeleeController.CurrentMeleeType : MeleeType.Light).Started;
     }
 
-    internal void AdvanceMeleeStep(MeleeComboSO.Step step, int stepIndex)
+    internal void AdvanceMeleeStep(SkillComboStep step, int stepIndex)
     {
         ctx?.MeleeController?.PlayCurrentStep();
     }

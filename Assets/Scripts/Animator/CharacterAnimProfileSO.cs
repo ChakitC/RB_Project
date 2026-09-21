@@ -228,11 +228,11 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     [Tooltip("UpperBody blends reload over locomotion using the action mask. FullBody plays reload on the locomotion layer and temporarily owns the whole character.")]
     public ReloadBodyMode reloadBodyMode = ReloadBodyMode.UpperBody;
 
-    [Header("Melee Combo")]
-    public MeleeComboSO meleeCombo;
+    [Header("Basic Attack Skills")]
+    public SkillGemDefinition meleeSkill;
+    public SkillGemDefinition lightMeleeSkill;
+    public SkillGemDefinition heavyMeleeSkill;
     public bool meleeCanInterruptReload = true;
-    public MeleeComboSO lightCombo;
-    public MeleeComboSO heavyCombo;
 
     [Header("Downed (Layer 0)")] 
     public ClipTransition crawling;

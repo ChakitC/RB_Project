@@ -1,5 +1,7 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -15,7 +17,6 @@ public static class DefensiveBlockTestSceneBuilder
     public static void Build()
     {
         if (EditorApplication.isPlaying) throw new InvalidOperationException("Exit Play Mode before authoring.");
-        DefensiveBlockProductionAuthoring.Configure();
         var scene = SceneManager.GetSceneByPath(ScenePath);
         bool opened = scene.IsValid();
         var original = SceneManager.GetActiveScene();
@@ -34,12 +35,15 @@ public static class DefensiveBlockTestSceneBuilder
             spawn.FindProperty("spawnOnAwake").boolValue = false;
             var roster = spawn.FindProperty("definitionOverrides"); roster.arraySize = 4;
             var aires = AssetDatabase.LoadAssetAtPath<CharacterStats>(DefensiveBlockProductionAuthoring.AiresPath);
-            for (int i = 0; i < 4; i++) roster.GetArrayElementAtIndex(i).objectReferenceValue = aires;
+            var roma = AssetDatabase.LoadAssetAtPath<CharacterStats>("Assets/Scripts/CharacterStats/Asosiation/ChaDef.Roma.asset");
+            if (aires == null || roma == null) throw new InvalidOperationException("Roma and Aires Character Stats are required.");
+            for (int i = 0; i < 4; i++) roster.GetArrayElementAtIndex(i).objectReferenceValue = i == 0 ? roma : aires;
             spawn.ApplyModifiedPropertiesWithoutUndo();
             harness.partySpawn = point;
             harness.playerPrefab = null; harness.allyPrefab = null;
-            harness.rectorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(DefensiveBlockProductionAuthoring.RectorPath);
-            harness.chargeSkill = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>(DefensiveBlockProductionAuthoring.SkillPath);
+            if (harness.rectorPrefab == null) harness.rectorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(DefensiveBlockProductionAuthoring.RectorPath);
+            if (harness.chargeSkill == null) harness.chargeSkill = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>(DefensiveBlockProductionAuthoring.SkillPath);
+            harness.testEnemies = CollectEnemyChoices(harness.testEnemies);
             harness.pauseAutomaticCombat = true;
             var camera = Find<Camera>(scene);
             if (camera == null)
@@ -67,7 +71,6 @@ public static class DefensiveBlockTestSceneBuilder
                 RenderSettings.ambientLight = Color.gray;
             }
             EditorUtility.SetDirty(harness);
-            AssetDatabase.SaveAssets();
             EditorSceneManager.MarkSceneDirty(scene);
             if (!EditorSceneManager.SaveScene(scene, ScenePath)) throw new InvalidOperationException("Could not save test scene.");
         }
@@ -76,7 +79,36 @@ public static class DefensiveBlockTestSceneBuilder
             if (!opened) EditorSceneManager.CloseScene(scene, true);
             if (original.IsValid() && original.isLoaded) SceneManager.SetActiveScene(original);
         }
-        Debug.Log("Defensive Block test scene now uses production party, skills, input and camera.");
+        Debug.Log("Defensive Block test scene: Roma Player, Aires party, and selectable Enemy / Skill trials.");
+    }
+
+    public static DefensiveBlockTestEnemy[] CollectEnemyChoices(DefensiveBlockTestEnemy[] existing = null)
+    {
+        var choices = new List<DefensiveBlockTestEnemy>();
+        foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/Prefab/GameEnemy" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            if (path == "Assets/Prefab/GameEnemy/Enemy_Base.prefab") continue;
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            var ctx = prefab != null ? prefab.GetComponentInChildren<EnemyContext>(true) : null;
+            if (ctx == null) continue;
+            var skills = SkillHitboxCharacterSetup.CollectAttacks(ctx).Select(attack => attack.Skill)
+                .Where(skill => skill != null && !skill.IsCombo).Distinct().ToArray();
+            if (skills.Length == 0) continue;
+            string model = ctx.baseStats?.CharacterPrefab != null ? ctx.baseStats.CharacterPrefab.name : ctx.baseStats?.characterName;
+            choices.Add(new DefensiveBlockTestEnemy { label = $"{model} — {prefab.name}", prefab = prefab, skills = skills });
+        }
+        // Keep scene-authored custom enemies and explicitly added test skills on refresh.
+        foreach (var old in existing ?? Array.Empty<DefensiveBlockTestEnemy>())
+        {
+            if (old?.prefab == null) continue;
+            var current = choices.Find(choice => choice.prefab == old.prefab);
+            if (current == null) choices.Add(old);
+            else current.skills = current.skills.Concat(old.skills ?? Array.Empty<SkillGemDefinition>())
+                .Where(skill => skill != null && !skill.IsCombo).Distinct().ToArray();
+        }
+        return choices.OrderBy(choice => choice.prefab == AssetDatabase.LoadAssetAtPath<GameObject>(DefensiveBlockProductionAuthoring.RectorPath) ? 0 : 1)
+            .ThenBy(choice => choice.DisplayName, StringComparer.OrdinalIgnoreCase).ToArray();
     }
     static T Find<T>(Scene scene) where T : Component
     {

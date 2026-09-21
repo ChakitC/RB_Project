@@ -26,6 +26,7 @@ public sealed class DefensiveBlockController : MonoBehaviour
     [HideInInspector] public float warpFadeOutSeconds = 0.04f;
     [HideInInspector] public float warpFadeInSeconds = 0.08f;
     float guardCenterHeight = 1.2f;
+    float activeGuardForwardOffset;
     float impactVfxLifetime = 2f;
     float hitLagDuration = 0.06f, hitLagTimeScale = 0.1f;
     AnimationCurve hitLagShape;
@@ -59,7 +60,8 @@ public sealed class DefensiveBlockController : MonoBehaviour
     public event System.Action<DefensiveBlockController, bool> Finished;
     public DefensiveBlockActorProfile Settings => ctx != null && ctx.baseStats != null && ctx.baseStats.defensiveBlock != null
         ? ctx.baseStats.defensiveBlock : defaultSettings;
-    public Vector3 GuardCenter => transform.position + Vector3.up * guardCenterHeight + transform.forward * guardForwardOffset;
+    public Vector3 GuardCenter => transform.position + Vector3.up * guardCenterHeight +
+        transform.forward * (active && arrived ? activeGuardForwardOffset : guardForwardOffset);
     public bool IsExecuting => active;
     public bool HasArrived => active && arrived;
     float ActorDeltaTime => ctx == null || ctx.UsesWorldSlow
@@ -86,6 +88,35 @@ public sealed class DefensiveBlockController : MonoBehaviour
 
     public bool CanBegin(PlayerContext protectedPlayer, DefensiveBlockAttack source) =>
         TryResolveBeginPose(protectedPlayer, source, out _, out _);
+
+    public string DescribeBlockReadiness(PlayerContext issuer, DefensiveBlockAttack source)
+    {
+        if (!ResolveProfile()) return "Missing/invalid actor profile or Block animation";
+        if (!CanStartGuard(issuer, source))
+            return $"Actor not ready: enabled={isActiveAndEnabled} activeGuard={active} " +
+                $"alive={ctx?.HealthSystem?.IsAlive} life={ctx?.stateHub?.LifeSM.CurrentId} " +
+                $"animation={ctx?.AnimBrain?.CurrentAnimationMode} downed={ctx?.AnimBrain?.IsDowned} " +
+                $"driver={ctx?.AnimDriver != null} member={member != null}";
+        if (!source.CanAcceptCommand(issuer)) return "Attack currently rejects the command (see enemy reason above)";
+        var placementDetails = new System.Text.StringBuilder();
+        if (ctx == issuer)
+        {
+            if (!CanBeginSelf(issuer, source))
+                return "Self guard blocked by movement/skill state or missing body footprint";
+        }
+        else if (!TryResolveBeginPose(issuer, source, out _, out _, placementDetails))
+            return "No safe guard placement:\n" + placementDetails;
+        return (source.CanApproachGuard(issuer, this) ? "Ready" :
+            "Timed approach rejected: window nearly closed, facing/passed guard, unsafe path/ground or missing footprint") +
+            (placementDetails.Length > 0 ? "\n" + placementDetails : "");
+    }
+
+    void TraceGuard(string message)
+    {
+        if (player != null && player.interruptionCommand != null && player.interruptionCommand.logDefensiveBlock)
+            player.interruptionCommand.LogDefensiveBlock($"guard='{ctx?.name}' attack={attack?.GetInstanceID()} " +
+                $"request={request} phase={ctx?.AnimBrain?.BlockPhase} position={ctx?.transform.position} {message}");
+    }
 
     internal bool TryPreviewGuardPose(PlayerContext issuer, DefensiveBlockAttack source, out Vector3 position, out Quaternion rotation)
     {
@@ -126,13 +157,18 @@ public sealed class DefensiveBlockController : MonoBehaviour
                 CharacterAnimationTransitionReason.NormalCommand, ctx.AnimBrain.IsDowned);
     }
 
+    Collider ResolvePlacementBody()
+    {
+        // Guard placement and recoil use the locomotion body, including companions.
+        // The model's Position collider can move below the floor with root.x animation.
+        return ctx != null && ctx.cc != null && ctx.cc.enabled ? ctx.cc :
+            ctx != null && ctx.ColliderRefs != null ? ctx.ColliderRefs.CharacterPositionCollider : null;
+    }
+
     bool TryGetFootprint(out CharacterPlacementFootprint footprint)
     {
-        // Self guard moves the same physical body as Player locomotion. Animated model
-        // capsules may extend below the floor and would falsely block every planar slide.
-        Collider body = ctx != null && ctx.cc != null && ctx.cc.enabled ? ctx.cc :
-            ctx != null && ctx.ColliderRefs != null ? ctx.ColliderRefs.CharacterPositionCollider : null;
-        return CharacterPlacementFootprintUtility.TryGetColliderFootprint(body, ctx.transform, out footprint, out _);
+        return CharacterPlacementFootprintUtility.TryGetColliderFootprint(ResolvePlacementBody(),
+            ctx != null ? ctx.transform : transform, out footprint, out _);
     }
 
     public bool TryBeginSelf(PlayerContext issuer, DefensiveBlockAttack source, int id)
@@ -155,10 +191,12 @@ public sealed class DefensiveBlockController : MonoBehaviour
         selfMovementWasEnabled = movementWasEnabled;
         if (selfMovement != null) selfMovement.enabled = false;
         ctx.transform.rotation = Quaternion.LookRotation(direction);
+        ResolveActiveGuardOffset();
         ctx.AnimBrain.PlaybackEvent += OnPlayback;
         if (!ctx.AnimDriver.TryBeginBlock(id, animationProfile)) { Cancel(); return false; }
         Accepted?.Invoke(this);
         shotCamera = GameplayCameraController.Instance;
+        TraceGuard("Accepted self guard");
         shotCamera?.BeginDefensiveBlockShot(this, player, ctx.transform, loadedProfile);
         Arrived?.Invoke(this);
         return active;
@@ -177,6 +215,7 @@ public sealed class DefensiveBlockController : MonoBehaviour
         guardHalfDepth = next.guardHalfDepth;
         guardCenterHeight = next.guardCenterHeight;
         guardForwardOffset = next.guardForwardOffset; timeoutSeconds = next.timeoutSeconds;
+        activeGuardForwardOffset = guardForwardOffset;
         slideDistance = next.slideDistance; slideSeconds = next.slideSeconds;
         warpFadeOutSeconds = next.warpFadeOutSeconds; warpFadeInSeconds = next.warpFadeInSeconds;
         impactVfx = next.impactVfx;
@@ -187,20 +226,26 @@ public sealed class DefensiveBlockController : MonoBehaviour
     }
 
     bool TryResolveBeginPose(PlayerContext protectedPlayer, DefensiveBlockAttack source,
-        out CharacterPlacementRequest placement, out CharacterPlacementResult pose)
+        out CharacterPlacementRequest placement, out CharacterPlacementResult pose,
+        System.Text.StringBuilder diagnostics = null)
     {
         placement = null;
         pose = default;
-        if (ctx == protectedPlayer || !CanStartGuard(protectedPlayer, source)) return false;
+        if (ctx == protectedPlayer || !CanStartGuard(protectedPlayer, source))
+        { diagnostics?.AppendLine("  Rejected: companion guard state is not ready."); return false; }
         Vector3 direction = source.transform.position - protectedPlayer.transform.position;
         direction.y = 0f;
-        if (direction.sqrMagnitude < 0.01f) return false;
+        if (direction.sqrMagnitude < 0.01f)
+        { diagnostics?.AppendLine("  Rejected: Player/caster planar separation is below 0.1 m."); return false; }
         float sourceDistance = direction.magnitude;
         direction.Normalize();
-        Collider body = ctx.ColliderRefs != null ? ctx.ColliderRefs.CharacterPositionCollider : null;
-        if (!CharacterPlacementFootprintUtility.TryGetColliderFootprint(body, ctx.transform, out var footprint, out _)) return false;
+        Collider body = ResolvePlacementBody();
+        if (!CharacterPlacementFootprintUtility.TryGetColliderFootprint(body, ctx.transform, out var footprint, out var footprintError))
+        { diagnostics?.AppendLine("  Rejected: " + footprintError); return false; }
         float ahead = Mathf.Clamp(sourceDistance - approachClearance, minimumStandAhead, standAhead);
         Vector3 desired = protectedPlayer.transform.position + direction * ahead;
+        diagnostics?.AppendLine($"  Guard profile='{Settings?.name}' actor={ctx.transform.position:F3} player={protectedPlayer.transform.position:F3} caster={source.transform.position:F3} distance={sourceDistance:F3} ahead={ahead:F3} min={minimumStandAhead:F3} max={standAhead:F3} clearance={approachClearance:F3} worldMask={worldLayers.value}");
+        diagnostics?.AppendLine($"  Body='{body.name}' id={body.GetInstanceID()} enabled={body.enabled} shape={footprint.Shape} center={footprint.CenterOffset:F3} radius={footprint.Radius:F3} height={footprint.Height:F3} extents={footprint.HalfExtents:F3} scale={body.transform.lossyScale:F3}");
         placement = new CharacterPlacementRequest(ctx.transform, body, footprint, ctx.TargetIdentity,
             source.transform, CharacterPlacementRequest.AnchorSnapshot.Capture(source.transform),
             new[] { new CharacterPlacementRequest.Candidate(desired, Quaternion.LookRotation(direction), 0, 0) },
@@ -209,25 +254,41 @@ public sealed class DefensiveBlockController : MonoBehaviour
             // and score a false world obstruction while the guard pose is being raised.
             runtimePolicy: CharacterPlacementRuntimePolicy.CreateDefault(true, 0.75f,
                 QueryTriggerInteraction.Ignore, collisionPadding: 0f),
-            poseValidator: HasLandingGround);
-        return CharacterPlacementResolver.TryResolve(placement, CharacterPlacementReservationRegistry.Shared, out pose) &&
-            pose.Score.MaxWorldPenetration <= PlacementContactTolerance;
+            poseValidator: diagnostics == null ? HasLandingGround :
+                (position, rotation) => HasLandingGround(position, rotation, diagnostics));
+        return TryResolveGuardPlacement(placement, out pose, diagnostics);
     }
 
-    bool HasLandingGround(Vector3 position, Quaternion rotation)
+    bool TryResolveGuardPlacement(CharacterPlacementRequest placement, out CharacterPlacementResult pose,
+        System.Text.StringBuilder diagnostics = null)
+    {
+        if (!CharacterPlacementResolver.TryResolve(placement, CharacterPlacementReservationRegistry.Shared, out pose, diagnostics))
+        { diagnostics?.AppendLine("  Resolver failed: " + pose.FailureReason); return false; }
+        bool accepted = pose.Score.MaxWorldPenetration <= PlacementContactTolerance;
+        diagnostics?.AppendLine($"  {(accepted ? "Accepted" : "Rejected: world penetration exceeds tolerance")}: resolved={pose.StartPosition:F3} worldPenetration={pose.Score.MaxWorldPenetration:F5} tolerance={PlacementContactTolerance:F5} actorPenetration={pose.Score.MaxActorPenetration:F5} (actor/reservation overlap is scored, not a Block rejection gate)");
+        return accepted;
+    }
+
+    bool HasLandingGround(Vector3 position, Quaternion rotation) => HasLandingGround(position, rotation, null);
+
+    bool HasLandingGround(Vector3 position, Quaternion rotation, System.Text.StringBuilder diagnostics)
     {
         // A baked NavMesh can remain above a removed/moved floor. Require nearby physical
         // support as well, both when accepting the command and when fade-out completes.
         const float tolerance = 0.2f;
         int count = Physics.RaycastNonAlloc(position + Vector3.up * tolerance, Vector3.down,
             landingGroundHits, tolerance * 2f, worldLayers, QueryTriggerInteraction.Ignore);
-        if (count == landingGroundHits.Length) return false;
+        diagnostics?.AppendLine($"  Landing ground: position={position:F3} tolerance={tolerance:F3} mask={worldLayers.value} hits={count}/{landingGroundHits.Length}");
+        if (count == landingGroundHits.Length)
+        { diagnostics?.AppendLine("  Rejected: landing ground query buffer full."); return false; }
         for (int i = 0; i < count; i++)
         {
             var hit = landingGroundHits[i];
+            diagnostics?.AppendLine($"   Ground collider='{hit.collider.name}' id={hit.collider.GetInstanceID()} layer={hit.collider.gameObject.layer} point={hit.point:F3} normalY={hit.normal.y:F3} character={hit.collider.GetComponentInParent<CharacteContext>() != null}");
             if (hit.normal.y < 0.5f || hit.collider.GetComponentInParent<CharacteContext>() != null) continue;
             return true;
         }
+        diagnostics?.AppendLine("  Rejected: no nearby physical floor with normalY >= 0.5 (character colliders excluded).");
         return false;
     }
 
@@ -250,6 +311,7 @@ public sealed class DefensiveBlockController : MonoBehaviour
         ctx.AnimBrain.PlaybackEvent += OnPlayback;
         if (!ctx.AnimDriver.TryBeginBlock(id, animationProfile)) { Cancel(); return false; }
         Accepted?.Invoke(this);
+        TraceGuard("Accepted companion; waiting for warp arrival");
         // Raise the guard while fading out, so the visual transition does not add another
         // startup delay. No interception is allowed until the actor has actually arrived.
         warpVisibility = ctx.Visibility;
@@ -271,18 +333,29 @@ public sealed class DefensiveBlockController : MonoBehaviour
             pendingPlacement == null ||
             !CharacterPlacementResolver.TryResolve(pendingPlacement, CharacterPlacementReservationRegistry.Shared, out var pose) ||
             pose.Score.MaxWorldPenetration > PlacementContactTolerance)
-        { Cancel(); return; }
+        { TraceGuard("Warp arrival rejected: actor/request changed or reserved landing no longer safe"); Cancel(); return; }
         // Recheck the originally reserved point; never chase a moving player during fade-out.
         ctx.transform.SetPositionAndRotation(pose.StartPosition, pose.StartRotation);
         if (ctx is AllyContext companion && companion.agent != null && companion.agent.enabled && companion.agent.isOnNavMesh)
             companion.agent.nextPosition = pose.StartPosition;
         Physics.SyncTransforms();
         arrived = true;
+        ResolveActiveGuardOffset();
         pendingPlacement = null;
         if (warpVisibility != null) warpVisibility.Appear(warpFadeInSeconds);
         shotCamera = GameplayCameraController.Instance;
         shotCamera?.BeginDefensiveBlockShot(this, player, transform, loadedProfile);
         Arrived?.Invoke(this);
+        TraceGuard("Arrived at reserved guard position");
+    }
+
+    void ResolveActiveGuardOffset()
+    {
+        activeGuardForwardOffset = attack != null && attack.skill != null &&
+            attack.skill.defensiveBlock?.mode == DefensiveBlockMode.Contact
+            ? DefensiveBlockGeometry.ContactGuardOffset(transform.position, transform.forward,
+                attack.CasterContext.transform.position, guardForwardOffset, guardHalfDepth)
+            : guardForwardOffset;
     }
 
     public void ConfirmImpact(DefensiveBlockAttack source, int id)
@@ -309,10 +382,14 @@ public sealed class DefensiveBlockController : MonoBehaviour
             player.LifeGeneration != playerLife || player.HealthSystem == null || !player.HealthSystem.IsAlive ||
             player.interruptionCommand == null || !player.interruptionCommand.defensiveBlockEnabled ||
             CutsceneDirector.IsCinematicPlaying || NpcPresentationController.IsActive ||
-            (!impact && (attack == null || !attack.Matches(request)))) { Cancel(); return; }
+            (!impact && (attack == null || !attack.Matches(request))))
+        { TraceGuard("Cancelled: actor/player/request invalid, profile changed or cinematic active"); Cancel(); return; }
         elapsed += ActorDeltaTime;
         if (!impact && !attack.IsTimedApproach && elapsed >= timeoutSeconds && ctx.AnimBrain.BlockPhase != BlockAnimationPhase.Exit)
+        {
+            TraceGuard("Timed out without hitbox interception");
             ctx.AnimDriver.EndBlock(request);
+        }
     }
     void LateUpdate()
     {
@@ -332,9 +409,10 @@ public sealed class DefensiveBlockController : MonoBehaviour
         if (NavMesh.Raycast(ctx.transform.position, desired, out var edge, NavMesh.AllAreas)) desired = edge.position;
         if (NavMesh.SamplePosition(desired, out var sample, 0.2f, NavMesh.AllAreas) && Mathf.Abs(sample.position.y - desired.y) < 0.2f)
         {
-            // Keep the controller's physics pose in sync; a raw Transform assignment can
-            // be overwritten by the Player vertical motor's next CharacterController.Move.
-            if (ctx.cc != null && ctx.cc.enabled) ctx.cc.Move(sample.position - ctx.transform.position);
+            // Self guard shares the Player vertical motor's controller. Companions are
+            // positioned by the reserved footprint sweep while autonomy is suspended;
+            // a second CC.Move can depenetrate an adjacent actor upward after the warp.
+            if (ctx == player && ctx.cc != null && ctx.cc.enabled) ctx.cc.Move(sample.position - ctx.transform.position);
             else ctx.transform.position = sample.position;
         }
         if (ctx is AllyContext companion && companion.agent != null && companion.agent.enabled && companion.agent.isOnNavMesh)
@@ -344,11 +422,15 @@ public sealed class DefensiveBlockController : MonoBehaviour
     {
         if (signal.Kind == CharacterAnimBrain.PlaybackKind.Block && signal.RequestId == request &&
             (signal.Phase == CharacterAnimBrain.PlaybackPhase.Completed || signal.Phase == CharacterAnimBrain.PlaybackPhase.Interrupted))
+        {
+            TraceGuard("Block animation " + signal.Phase);
             Cancel();
+        }
     }
     public void Cancel()
     {
         if (!active || restoring) return;
+        TraceGuard($"Finished impact={impact} arrived={arrived} attackResult='{attack?.LastResult}' probe='{attack?.LastProbe}'");
         restoring = true;
         active = false;
         if (warpVisibility != null)

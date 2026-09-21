@@ -61,7 +61,14 @@ public sealed class SkillHitboxAuthoringTests
     PrefabHitboxSkillPayloadDef Payload(string name)
     {
         var payload = Track(ScriptableObject.CreateInstance<PrefabHitboxSkillPayloadDef>()); payload.name = name;
-        payload.ReplaceHitboxLayoutGroups(MeleeSkillMigrationTool.CreateStarterLayout());
+        var group = new SkillHitboxLayoutData.HitBoxGroupData {
+            GroupKey = "Strike", Anchor = SkillHitboxLayoutData.AnchorSpace.CasterRoot
+        };
+        group.Shapes.Add(new SkillHitboxLayoutData.HitBoxShapeData {
+            ShapeName = "FrontStrike", Type = SkillHitboxLayoutData.HitBoxType.Box,
+            LocalPosition = new Vector3(0f, 1f, 1f), Size = new Vector3(1.2f, 1.6f, 1.5f)
+        });
+        payload.ReplaceHitboxLayoutGroups(new List<SkillHitboxLayoutData.HitBoxGroupData> { group });
         var so = new SerializedObject(payload); var steps = so.FindProperty("steps"); steps.arraySize = 2;
         for (int i = 0; i < 2; i++)
         {
@@ -131,11 +138,153 @@ public sealed class SkillHitboxAuthoringTests
             Assert.That(TimelineRows(window, new SkillVfxTimelineSource(skill)).Any(r => r.StartsWith("Block Window")), Is.False);
         }
         finally { field.SetValue(window, null); }
-        var combo = AssetDatabase.LoadAssetAtPath<MeleeComboSO>("Assets/Character/Rector/Rector Melee Heavy.asset");
+        var combo = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>("Assets/Data/Combat/ComboSkills/ef78d3c80f0621e49a6b64aeab7f4a83.asset");
         string before = EditorJsonUtility.ToJson(combo);
-        var rows = TimelineRows(window, new MeleeComboVfxTimelineSource(combo, combo.Steps[0].EntryId));
+        var rows = TimelineRows(window, new SkillComboVfxTimelineSource(combo, combo.ComboSteps[0].EntryId));
         CollectionAssert.AreEqual(new[] { "Animation", "Hitbox", "Chain Window", "VFX" }, rows);
         Assert.That(EditorJsonUtility.ToJson(combo), Is.EqualTo(before));
+    }
+
+    [Test] public void ComboTimelineSavesTheCorrectOwnerAndBlocksStaleTimingEdits()
+    {
+        var leaf = Skill();
+        string leafPath = "Assets/__ComboLeaf_" + Guid.NewGuid().ToString("N") + ".asset";
+        assets.Add(leafPath); AssetDatabase.CreateAsset(leaf, leafPath);
+        AssetDatabase.AddObjectToAsset(leaf.payload, leaf); AssetDatabase.AddObjectToAsset(leaf.skillClip.Clip, leaf);
+        EditorUtility.SetDirty(leaf); AssetDatabase.SaveAssetIfDirty(leaf);
+        var combo = Track(ScriptableObject.CreateInstance<SkillGemDefinition>()); combo.comboEnabled = true;
+        typeof(SkillGemDefinition).GetField("comboSteps", Hidden).SetValue(combo,
+            new List<SkillComboStep> { new SkillComboStep(leaf, "stable-step", new Vector2(.3f, .7f), false) });
+        string comboPath = "Assets/__ComboRoot_" + Guid.NewGuid().ToString("N") + ".asset";
+        assets.Add(comboPath); AssetDatabase.CreateAsset(combo, comboPath); AssetDatabase.SaveAssetIfDirty(combo);
+        var source = AnimationVfxTimelineSourceFactory.Create(combo, "stable-step");
+        Assert.That(source, Is.TypeOf<SkillComboVfxTimelineSource>());
+        Assert.That(source.SourceAsset, Is.SameAs(leaf));
+        string leafBytes = File.ReadAllText(leafPath);
+        leaf.baseDamage = 123f; EditorUtility.SetDirty(leaf);
+        Undo.IncrementCurrentGroup(); source.SetRangeValue(new Vector2(.4f, .8f)); source.Save(); Undo.FlushUndoRecordObjects();
+        Assert.That(File.ReadAllText(leafPath), Is.EqualTo(leafBytes), "Chain edits must not save unrelated leaf changes.");
+        Assert.That(EditorUtility.IsDirty(leaf), Is.True);
+        Undo.PerformUndo(); Assert.That(combo.ComboSteps[0].chainWindowN, Is.EqualTo(new Vector2(.3f, .7f)));
+        Undo.PerformRedo(); Assert.That(combo.ComboSteps[0].chainWindowN, Is.EqualTo(new Vector2(.4f, .8f)));
+        var stale = new SkillComboVfxTimelineSource(combo, "stable-step");
+        combo.SetComboChainWindow("stable-step", new Vector2(.1f, .2f));
+        stale.SetRangeValue(new Vector2(.6f, .9f));
+        Assert.That(combo.ComboSteps[0].chainWindowN, Is.EqualTo(new Vector2(.1f, .2f)));
+        string comboBytes = File.ReadAllText(comboPath);
+        var draft = Track(DefensiveBlockTimelineSession.Create((SkillGemDefinition)source.SourceAsset));
+        draft.AddBlock(); Assert.That(draft.Save(out var error), Is.True, error);
+        Assert.That(leaf.defensiveBlock, Is.Not.Null);
+        Assert.That(combo.defensiveBlock, Is.Null);
+        Assert.That(File.ReadAllText(comboPath), Is.EqualTo(comboBytes), "Block Save belongs only to the selected execution Skill.");
+        var window = Track(ScriptableObject.CreateInstance<SkillAnimationVfxEditorWindow>());
+        var field = typeof(SkillAnimationVfxEditorWindow).GetField("blockSession", Hidden); field.SetValue(window, draft);
+        try { CollectionAssert.Contains(TimelineRows(window, new SkillComboVfxTimelineSource(combo, "stable-step")), "Block Window"); }
+        finally { field.SetValue(window, null); }
+    }
+
+    [Test] public void SaveAllCommitsSelectedComboStepAndLeavesOtherAssetsUnsaved()
+    {
+        var skill = Skill();
+        string path = "Assets/__SaveAll_" + Guid.NewGuid().ToString("N") + ".asset"; assets.Add(path);
+        AssetDatabase.CreateAsset(skill, path); AssetDatabase.AddObjectToAsset(skill.payload, skill);
+        AssetDatabase.AddObjectToAsset(skill.skillClip.Clip, skill); EditorUtility.SetDirty(skill); AssetDatabase.SaveAssetIfDirty(skill);
+        var other = Skill();
+        string otherPath = "Assets/__SaveAllOther_" + Guid.NewGuid().ToString("N") + ".asset"; assets.Add(otherPath);
+        AssetDatabase.CreateAsset(other, otherPath); AssetDatabase.AddObjectToAsset(other.payload, other);
+        AssetDatabase.AddObjectToAsset(other.skillClip.Clip, other); AssetDatabase.SaveAssetIfDirty(other);
+        string otherBytes = File.ReadAllText(otherPath); other.baseDamage = 987; EditorUtility.SetDirty(other);
+        var combo = Track(ScriptableObject.CreateInstance<SkillGemDefinition>()); combo.comboEnabled = true;
+        typeof(SkillGemDefinition).GetField("comboSteps", Hidden).SetValue(combo, new List<SkillComboStep> {
+            new SkillComboStep(skill, "first", new Vector2(.3f, .7f), false),
+            new SkillComboStep(other, "second", new Vector2(.3f, .7f), false) });
+        string comboPath = "Assets/__SaveAllCombo_" + Guid.NewGuid().ToString("N") + ".asset"; assets.Add(comboPath);
+        AssetDatabase.CreateAsset(combo, comboPath); AssetDatabase.SaveAssetIfDirty(combo);
+        string comboBytes = File.ReadAllText(comboPath);
+        var root = Track(new GameObject("Save All Actor")); var tool = root.AddComponent<SetAnimationVfxData>();
+        tool.SetTimelineSource(combo, "first");
+        var prefabRoot = Track(new GameObject("Save All VFX"));
+        string prefabPath = "Assets/__SaveAllVfx_" + Guid.NewGuid().ToString("N") + ".prefab"; assets.Add(prefabPath);
+        var prefab = PrefabUtility.SaveAsPrefabAsset(prefabRoot, prefabPath);
+        var entryObject = new GameObject("Effect"); entryObject.transform.SetParent(root.transform, false);
+        var entry = entryObject.AddComponent<SkillVfxAuthoringEntry>(); entry.Configure(new AnimationVfxCue { prefab = prefab });
+        var hitbox = Session(skill); hitbox.payloads[0].hitboxLayout.Groups[0].Shapes[0].Radius = .81f;
+        var block = Track(DefensiveBlockTimelineSession.Create(skill)); block.AddBlock(); block.start = .12f; block.end = .32f;
+        block.SetMode(DefensiveBlockMode.TimedApproach); block.timedApproachSeconds = .33f; block.approachStandOff = 1.1f;
+        var window = Track(ScriptableObject.CreateInstance<SkillAnimationVfxEditorWindow>());
+        var type = typeof(SkillAnimationVfxEditorWindow);
+        type.GetField("authoringTarget", Hidden).SetValue(window, tool);
+        type.GetField("hitboxSession", Hidden).SetValue(window, hitbox);
+        type.GetField("blockSession", Hidden).SetValue(window, block);
+        try
+        {
+            Assert.That(window.TrySaveAllChanges(out var error), Is.True, error);
+            Assert.That(hitbox.IsDirty || block.IsDirty || window.hasUnsavedChanges, Is.False);
+            Assert.That(skill.SkillVfxEvents.Count, Is.EqualTo(1));
+            Assert.That(skill.defensiveBlock.windowStartNormalized, Is.EqualTo(.12f));
+            Assert.That(skill.defensiveBlock.mode, Is.EqualTo(DefensiveBlockMode.TimedApproach));
+            Assert.That(skill.defensiveBlock.ApproachDuration, Is.EqualTo(.33f));
+            Assert.That(skill.defensiveBlock.approachStandOff, Is.EqualTo(1.1f));
+            Assert.That(File.ReadAllText(otherPath), Is.EqualTo(otherBytes));
+            Assert.That(EditorUtility.IsDirty(other), Is.True);
+            Assert.That(File.ReadAllText(comboPath), Is.EqualTo(comboBytes));
+            string saved = File.ReadAllText(path);
+            Assert.That(window.TrySaveAllChanges(out error), Is.True, error);
+            Assert.That(File.ReadAllText(path), Is.EqualTo(saved));
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            hitbox.Reload(); Assert.That(hitbox.payloads[0].hitboxLayout.Groups[0].Shapes[0].Radius, Is.EqualTo(.81f));
+            entry.transform.localPosition = new Vector3(1, 2, 3);
+            type.GetMethod("UpdateAuthoringDirtyState", Hidden).Invoke(window, null);
+            Assert.That(window.hasUnsavedChanges, Is.True, "Hierarchy VFX edits must show Unsaved changes.");
+        }
+        finally
+        {
+            type.GetField("hitboxSession", Hidden).SetValue(window, null);
+            type.GetField("blockSession", Hidden).SetValue(window, null);
+            type.GetField("authoringTarget", Hidden).SetValue(window, null);
+            type.GetMethod("UpdateAuthoringDirtyState", Hidden).Invoke(window, null);
+        }
+    }
+
+    [Test] public void SaveAllPreflightsEveryDraftBeforeWriting()
+    {
+        var skill = Skill();
+        string path = "Assets/__SaveAllValidation_" + Guid.NewGuid().ToString("N") + ".asset"; assets.Add(path);
+        AssetDatabase.CreateAsset(skill, path); AssetDatabase.AddObjectToAsset(skill.payload, skill);
+        AssetDatabase.AddObjectToAsset(skill.skillClip.Clip, skill); EditorUtility.SetDirty(skill); AssetDatabase.SaveAssetIfDirty(skill);
+        var root = Track(new GameObject("Save All Actor")); var tool = root.AddComponent<SetAnimationVfxData>(); tool.SetTimelineSource(skill, "main");
+        var hitbox = Session(skill); hitbox.payloads[0].hitboxLayout.Groups[0].Shapes[0].Radius = .81f;
+        var block = Track(DefensiveBlockTimelineSession.Create(skill)); block.AddBlock(); block.start = .7f; block.end = .2f;
+        var window = Track(ScriptableObject.CreateInstance<SkillAnimationVfxEditorWindow>());
+        var type = typeof(SkillAnimationVfxEditorWindow);
+        type.GetField("authoringTarget", Hidden).SetValue(window, tool);
+        type.GetField("hitboxSession", Hidden).SetValue(window, hitbox);
+        type.GetField("blockSession", Hidden).SetValue(window, block);
+        string before = File.ReadAllText(path), payload = JsonUtility.ToJson(skill.payload);
+        try
+        {
+            Assert.That(window.TrySaveAllChanges(out var error), Is.False); StringAssert.Contains("Block:", error);
+            Assert.That(File.ReadAllText(path), Is.EqualTo(before)); Assert.That(JsonUtility.ToJson(skill.payload), Is.EqualTo(payload));
+            block.start = .1f; block.end = .2f;
+            var badEntry = new GameObject("Missing prefab"); badEntry.transform.SetParent(root.transform, false);
+            badEntry.AddComponent<SkillVfxAuthoringEntry>();
+            Assert.That(window.TrySaveAllChanges(out error), Is.False); StringAssert.Contains("VFX:", error);
+            Assert.That(File.ReadAllText(path), Is.EqualTo(before)); Assert.That(skill.defensiveBlock, Is.Null);
+            Object.DestroyImmediate(badEntry);
+            // An external payload edit makes the Hitbox draft stale; Block must remain untouched.
+            var external = new SerializedObject(skill.payload);
+            external.FindProperty("steps").GetArrayElementAtIndex(0).FindPropertyRelative("damageMultiplier").floatValue = 777f;
+            external.ApplyModifiedPropertiesWithoutUndo();
+            Assert.That(window.TrySaveAllChanges(out error), Is.False); StringAssert.Contains("Hitbox:", error);
+            Assert.That(File.ReadAllText(path), Is.EqualTo(before)); Assert.That(skill.defensiveBlock, Is.Null);
+        }
+        finally
+        {
+            type.GetField("hitboxSession", Hidden).SetValue(window, null);
+            type.GetField("blockSession", Hidden).SetValue(window, null);
+            type.GetField("authoringTarget", Hidden).SetValue(window, null);
+            type.GetMethod("UpdateAuthoringDirtyState", Hidden).Invoke(window, null);
+        }
     }
 
     [Test] public void DraftEditsNeverMutateSourceBeforeSave()
@@ -612,7 +761,7 @@ public sealed class SkillHitboxAuthoringTests
         Assert.That(AnimationMode.InAnimationMode(), Is.False, "Stop an existing animation preview before this check.");
         var root = Track(Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefab/GameEnemy/Enemy_B_GR_01 Variant.prefab")));
         var context = root.GetComponentInChildren<CharacteContext>(true); context.ResolveReferences();
-        var target = root.AddComponent<SetAnimationVfxData>(); var skill = context.baseStats.animProfile.lightCombo.Steps[0].executionSkill;
+        var target = root.AddComponent<SetAnimationVfxData>(); var skill = context.baseStats.animProfile.lightMeleeSkill.ComboSteps[0].executionSkill;
         target.SetTimelineSource(skill, "main");
         var transforms = root.GetComponentsInChildren<Transform>(true);
         var poses = transforms.Select(t => (t.localPosition, t.localRotation, t.localScale)).ToArray();
@@ -651,8 +800,8 @@ public sealed class SkillHitboxAuthoringTests
             var root = Track(Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(path)));
             var context = root.GetComponentInChildren<CharacteContext>(true); context.ResolveReferences();
             var target = root.AddComponent<SetAnimationVfxData>();
-            foreach (var combo in new[] { context.baseStats.animProfile.lightCombo, context.baseStats.animProfile.heavyCombo })
-                foreach (var step in combo.Steps)
+            foreach (var combo in new[] { context.baseStats.animProfile.lightMeleeSkill, context.baseStats.animProfile.heavyMeleeSkill })
+                foreach (var step in combo.ComboSteps)
                 {
                     var session = Session(step.executionSkill);
                     Assert.That(session.Validate((p, g) => SkillHitboxSceneHandles.TryBasis(target, p, g, out _)), Is.Empty, path);

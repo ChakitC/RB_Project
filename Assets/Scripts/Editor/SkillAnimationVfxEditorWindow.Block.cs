@@ -11,8 +11,7 @@ public sealed partial class SkillAnimationVfxEditorWindow
     int blockUndoGroup;
     bool blockDragEnd;
 
-    void UpdateAuthoringDirtyState() => hasUnsavedChanges =
-        (hitboxSession != null && hitboxSession.IsDirty) || (blockSession != null && blockSession.IsDirty);
+    void UpdateAuthoringDirtyState() => hasUnsavedChanges = HasPendingAuthoringChanges();
 
     void ReleaseBlockSession()
     {
@@ -49,8 +48,7 @@ public sealed partial class SkillAnimationVfxEditorWindow
     void EnsureBlockSession(IAnimationVfxTimelineSource source)
     {
         if (source == null && blockSession != null) return;
-        // Melee combos explicitly bypass DefensiveBlockAttack at runtime.
-        var skill = source is MeleeComboVfxTimelineSource ? null : source?.SourceAsset as SkillGemDefinition;
+        var skill = source?.SourceAsset as SkillGemDefinition;
         if (blockSession != null && blockSession.skill != skill && !ConfirmBlockDraft()) return;
         if (blockSession == null && skill != null)
         {
@@ -61,7 +59,7 @@ public sealed partial class SkillAnimationVfxEditorWindow
     }
 
     bool IsBlockMainSource(IAnimationVfxTimelineSource source) => blockSession != null &&
-        source?.SourceAsset == blockSession.skill && source is not MeleeComboVfxTimelineSource && source is not CutsceneSkillVfxTimelineSource &&
+        source?.SourceAsset == blockSession.skill && source is not CutsceneSkillVfxTimelineSource &&
         !(source is IAnimationVfxTimelineMultiMode mode && mode.IsSecondaryMode);
 
     bool ShowBlockTrack(IAnimationVfxTimelineSource source) => IsBlockMainSource(source) && blockSession.IsEnabled;
@@ -84,12 +82,24 @@ public sealed partial class SkillAnimationVfxEditorWindow
         {
             menu.AddSeparator("Block/");
             if (draft.HasConflict)
-                menu.AddDisabledItem(new GUIContent("Block/Profile changed - Revert to reload"));
+                menu.AddDisabledItem(new GUIContent("Block/Settings changed - Revert to reload"));
             if (draft.ValidationError != null)
                 menu.AddDisabledItem(new GUIContent("Block/" + draft.ValidationError));
-            if (draft.profile != null && !DefensiveBlockSkillAuthoring.IsOwned(draft.skill))
-                menu.AddItem(new GUIContent("Block/Embed Profile on Save"), false, () =>
-                { if (CanEdit()) { draft.RequestOwnership(); UpdateAuthoringDirtyState(); Repaint(); } });
+            if (draft.IsEnabled)
+            {
+                foreach (DefensiveBlockMode mode in System.Enum.GetValues(typeof(DefensiveBlockMode)))
+                {
+                    var value = mode;
+                    string label = value == DefensiveBlockMode.Contact ? "Contact" : "Timed Approach";
+                    menu.AddItem(new GUIContent("Block/Mode/" + label), draft.mode == value, () =>
+                    { if (CanEdit()) { EndBlockDrag(); draft.SetMode(value); UpdateAuthoringDirtyState(); Repaint(); } });
+                }
+                if (draft.mode == DefensiveBlockMode.TimedApproach)
+                    menu.AddItem(new GUIContent("Block/Timed Approach Settings..."), false, () =>
+                    { if (CanEdit()) DefensiveBlockApproachPopup.Show(draft, () => { UpdateAuthoringDirtyState(); Repaint(); }); });
+                menu.AddItem(new GUIContent("Block/Disable Block"), false, () =>
+                { if (CanEdit()) { EndBlockDrag(); draft.DisableBlock(); UpdateAuthoringDirtyState(); Repaint(); } });
+            }
             if (draft.IsDirty)
                 menu.AddItem(new GUIContent("Block/Save Block"), false, () => { if (CanEdit()) SaveBlockDraft(); });
             else menu.AddDisabledItem(new GUIContent("Block/Save Block"));

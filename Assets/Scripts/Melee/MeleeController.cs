@@ -55,9 +55,9 @@ public sealed class MeleeController : MonoBehaviour
         if (_session.IsActive || !isActiveAndEnabled || ctx == null || stateHub == null || brain == null ||
             ctx.SkillManager == null || !stateHub.CanStartMelee()) return false;
         var profile = ctx.baseStats != null ? ctx.baseStats.animProfile : null;
-        var combo = profile != null ? (meleeType == MeleeType.Light ? profile.lightCombo : profile.heavyCombo) : null;
-        if (combo == null && profile != null) combo = profile.meleeCombo;
-        if (combo == null || !combo.IsValid(out _)) return false;
+        var combo = profile != null ? (meleeType == MeleeType.Light ? profile.lightMeleeSkill : profile.heavyMeleeSkill) : null;
+        if (combo == null && profile != null) combo = profile.meleeSkill;
+        if (combo == null || !combo.ValidateMelee(out _)) return false;
         if (weaponSystem != null && weaponSystem.IsReloading && profile != null && !profile.meleeCanInterruptReload)
             return false;
         CurrentMeleeType = meleeType;

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
-public sealed class InterruptionCommandController : MonoBehaviour
+public sealed partial class InterruptionCommandController : MonoBehaviour
 {
     readonly struct AllyCandidate
     {
@@ -124,6 +124,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
     public InterruptionCommandResult TryExecuteInterruptionCommand()
     {
         int attemptId = ++_attemptCounter;
+        LogDefensiveBlockAttempt(attemptId);
 
         if (playerContext == null)
             return Finish(attemptId, InterruptionCommandResult.MissingConfiguration, "player context is missing");
@@ -478,6 +479,7 @@ public sealed class InterruptionCommandController : MonoBehaviour
 
     InterruptionCommandResult Finish(int attemptId, InterruptionCommandResult result, string details)
     {
+        LogDefensiveBlock($"Attempt {attemptId} result={result}; {details}");
         CommandFinished?.Invoke(result);
         bool warning = result == InterruptionCommandResult.MissingConfiguration
             || result == InterruptionCommandResult.NoAvailableAlly

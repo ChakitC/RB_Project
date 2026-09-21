@@ -294,6 +294,21 @@ Do not add a second system that writes Y. Anything that needs to move a characte
 vertically should call `Launch` / `AddVerticalVelocity`, or hold a gravity-suspend
 token via `AcquireGravitySuspendToken` for levitate-style effects.
 
+### Dash Must Keep World Collision
+
+`DashSetting_Player.dashIFrameExclude` must leave `Default`, `Ground`, `Ground Y`,
+and `Terrain` out of the excluded layers. `DashSystem` applies this mask to both
+the Rigidbody and CharacterController while dashing, and the vertical motor
+continues applying gravity. Excluding a floor's layer lets the character sink
+through it even when the ground probe still detects it. The defensive-block test
+arena's `Arena Floor`, for example, uses `Default`.
+
+The player asset excludes mask `34814` (previously `34815`, which also excluded
+`Default`). Damage invulnerability still comes from the health invincibility token.
+When checking dash authoring, test a full dash on each supported floor layer and
+confirm that the character stays supported while character pass-through remains
+available.
+
 `KnockbackData.VerticalImpulse` (default `0`) is the authoring hook for launching
 knockbacks: leave it at zero for a purely planar knockback, exactly as before.
 
@@ -1541,7 +1556,7 @@ Use this workflow:
 4. Move, rotate, or scale each prefab child in the Scene view, then configure
    its anchor, anchor mode, action, and loop settings on its entry component.
 5. Preview from the timeline or with `Play All VFX` / `Stop All VFX`.
-6. Press `Save VFX Data` in the timeline window or on `SetAnimationVfxData`
+6. Press `Save All Changes` in the timeline window (or `Save VFX Data` on `SetAnimationVfxData` for VFX only)
    after every authoring change.
 
 Use `Add Empty VFX Entry` on a slot to author `StopLoop` or an entry whose prefab
@@ -1723,10 +1738,10 @@ so the sampled character pose is restored.
 ## Shared Animation VFX Authoring
 
 Use `SetAnimationVfxData` for source-neutral entries such as a
-`MeleeComboSO.Step` or `CharacterAnimProfileSO` Dash/Reload animation. Select
+`SkillGemDefinition` Combo Step or `CharacterAnimProfileSO` Dash/Reload animation. Select
 the source and entry in the shared timeline, create or sync slots, place prefab
 children, then save the VFX data.
-Assigning a `MeleeComboSO` on the component selects the first valid step by
+Assigning a Combo Skill on the component selects the first valid step by
 default. The component inspector exposes a Step dropdown and the resolved
 animation clip, so authoring does not require typing a step GUID manually.
 
@@ -3028,7 +3043,7 @@ For the separate reference-layout combat HUD, see [Separate Party HUD](SYSTEMS/P
 ## Defensive Block production and test scene
 
 Production bindings use the original Rector Skill 1 and Aires character definition.
-Tune `Assets/Data/Skills/Enemies/Rector/Rector_Skill_1.asset > Block Profile` for range, window, hitbox steps
+Tune `Assets/Data/Skills/Enemies/Rector/Rector_Skill_1.asset > Defensive Block` for range, window, hitbox steps
 and Rector knockback. Its **Threat prediction** fields configure pre-hitbox lane
 half-width (1.5 m), forward reach (2.3 m) and estimated charge speed (8 m/s).
 Defensive Block selects incoming attacks automatically without aiming; actual
@@ -3040,11 +3055,13 @@ references the same GuardSetting as a fallback when Player's character definitio
 does not supply one. Player and Aires have identical impact results for this prototype.
 Player guards in place; only companions use landing placement and warp fades.
 
-**GuardSetting > Impact presentation > Timed Approach Seconds** defaults to **0.5**;
-1 gives a longer approach, and 0 restores physical interception. The timer begins
-on accepted input and uses the attacker's actor clock. **Rector Skill 1 > Block Profile > Approach
-Stand Off** defaults to **1.6 m**, measured from the guard root along its forward
-direction to Rector's final root position. Tune it against the visible models.
+**Skill > Defensive Block > Mode** selects **Contact** (physical hitbox interception)
+or **Timed Approach** (safe forward movement to a timed impact). Rector Heavy uses
+Contact; Rector Skill 1 uses Timed Approach with **0.22 seconds** and **1.6 m Stand
+Off**. The latter measures from the guard root along its forward direction to
+Rector's final root. Duration is attack-owned and uses the attacker's actor clock.
+In the Timeline use **Block > Mode** and **Block > Timed Approach Settings...**;
+changes remain draft data until **Save All**. Contact ignores those movement values.
 Both the landing and the enemy approach path must be safe. Short approaches that
 would require moving Rector backwards are unavailable. Keep Windup Seconds at zero.
 No new clip is required: the skill keeps playing with translation owned by the motor.
@@ -3072,7 +3089,7 @@ key prompt or overlay Canvas/TMP label. The flare prefab/material/shader are in 
 production data folder. Warp fade defaults are 0.04 s out / 0.08 s in on GuardSetting.
 Begin may transition directly to Impact after arrival; fade-in is not immunity.
 Rector preparation is authored separately on
-`Rector_Skill_1.asset > Block Profile > Windup Seconds` (**0: disabled**).
+`Rector_Skill_1.asset > Defensive Block > Windup Seconds` (**0: disabled**).
 The experimental 0.4 s value held the skill pose and was rejected for breaking
 animation continuity. Keep it zero for continuous playback. If explicitly enabled,
 it delays every cast in the caster's time domain. Keep the command window start at zero to allow
@@ -3144,8 +3161,11 @@ The cue is a global 2D Sfx one-shot. Tune Base Volume on the cue or the Sfx mix.
   including prefabs with a second placeholder Animator on the actor root.
   Runtime rebinds cached groups at each execution after character/model changes.
 - Keep the Basic Melee target mask on `MeleeController`; normal Skills use their
-  payload mask. Migration preserves existing actor masks. Remove obsolete
-  `MeleeHitboxTrigger` components with the migration menu; do not add them again.
+  payload mask. Migration preserved existing actor masks. The obsolete
+  `MeleeHitboxTrigger` schema and one-time migration menus have been removed.
+  Author new combos as SkillGemDefinition assets and assign the profile's
+  `meleeSkill`, `lightMeleeSkill`, or `heavyMeleeSkill` slot. Legacy combo assets
+  and profile fields were archived outside Assets and removed after reference checks.
 - Roma/Milano's generic combos now have starter front-facing Box layouts. Their
   current dimensions are placeholders for tuning through the same authoring tool.
 
@@ -3183,7 +3203,7 @@ collider-based import/export workflows.
    and serialized enemy skills; selecting one does not equip or cast it.
    Use **Refresh** after changing setup, or open **Setup...** to assign a source
    asset/entry manually and inspect the resolved Animator. **Source Asset** opens
-   a searchable picker grouped by supported type: Skill and Melee Combo in Hitbox
+   a searchable picker grouped by supported type: Skills and Combo Skills in Hitbox
    mode; Animation/VFX also includes Animation Profile and Cutscene. Search by name
    or asset path. Skills referenced by a selectable combo step are hidden from this
    list: choose the combo, then choose its step in **Entry**. Standalone skills
@@ -3191,7 +3211,8 @@ collider-based import/export workflows.
    selectable owning step remains visible. Drag a supported asset onto the field,
    use **Ping** to locate it, or choose **None (clear source)** to clear it.
    Unsupported drops are rejected; source changes keep the existing draft prompt.
-   Skill/Combo filtering is by type, so an unconfigured source may still need a
+   Old MeleeComboSO assets were removed after migration. Skill filtering is by
+   type, so an unconfigured source may still need a
    hitbox payload in the Skill Designer. The normal view keeps
    character and attack selection in two compact rows. A container with several characters
    is rejected rather than selecting an arbitrary member.
@@ -3234,7 +3255,7 @@ collider-based import/export workflows.
    directly onto **Bone**. It must be under the current Follow root; foreign
    characters, prefab assets, multiple objects and paths resolving to a different
    same-named bone are rejected. Dropping preserves the shapes' world pose and
-   supports Undo/Redo; only the relative path is saved when you press Save Hitboxes.
+   supports Undo/Redo; only the relative path is saved when you press Save All Changes.
    AnimatorRoot follows `CharacteContext.Visual.ModelAnimator` and the shared
    runtime fallback, including prefabs with a placeholder Animator on the actor.
    Changing anchors preserves the shape's world pose using Unity TRS conversion;
@@ -3271,7 +3292,7 @@ collider-based import/export workflows.
    Stable window IDs keep damage, knockback and other step settings attached when
    windows move past one another. **Repair markers** reveals a repair list in the
    right inspector for incomplete/overlapping imported timelines (normalized values).
-7. Press **Save Hitboxes** to commit, **Revert** to reload saved data, or Undo/Redo to change
+7. Press **Save All Changes** below the source/attack selector to commit, **Revert** to reload Hitbox data, or Undo/Redo to change
    the draft. Geometry and hit events remain in an Editor-only draft until Save.
    Navigation and window closing offer Save/Discard/Cancel when the draft is dirty.
    Source changes made elsewhere block Save; use Revert to reload before editing.
@@ -3282,6 +3303,18 @@ layout/step fields and the owned hit events in the selected Skill asset, preserv
 other events and their callbacks. It uses `SaveAssetIfDirty`, never project-wide
 `SaveAssets`. The skill and its hitbox payloads must already be saved together;
 missing event-name assets must be created through the existing event authoring tool.
+The shared **Save All Changes** bar appears in both Animation / VFX and Hitbox.
+It replaces the window's Save VFX Data and Save Hitboxes buttons, and saves pending
+VFX hierarchy edits, Hitbox drafts and Block drafts for the selected Skill/Step.
+All pending sections are validated before the first write; errors identify VFX,
+Hitbox or Block, and stale/foreign drafts prevent saving. **Saved / Unsaved changes**
+includes hierarchy VFX edits. An entry whose VFX hierarchy has not been loaded
+keeps its saved cues. **Load / Sync VFX Data** reloads only the selected entry's VFX;
+it does not discard Hitbox or Block drafts. Other timeline edits, including Chain
+Window dragging, continue to save on mouse release. Combo roots/other Steps and
+unrelated dirty assets are not flushed by Save All. The Block context-menu save
+and the component's VFX-only save remain available.
+
 As Unity saves an entire asset file, other pending edits already in that same Skill
 file are included; separate dirty assets are not flushed.
 
@@ -3304,13 +3337,19 @@ so the command is included in the right-click menu as well as GameObject.
 
 ### Defensive Block timing in the Animation / VFX view
 
+`Assets/Prefab/GameEnemy/Enemy_Base.prefab` owns one enabled
+`DefensiveBlockAttack` on its Context root and binds the Context's shared
+`DefensiveBlockAttack` reference. Enemy variants inherit this component, including
+Rector and GR04; do not add another copy on each variant. Rector's former local
+component has been moved to the Base. This supplies attack-side runtime support;
+each Skill still needs its own saved **Can Be Blocked** setting and Block Windows.
+
 Animation/VFX preview applies clip root displacement relative to the actor's
 placed position and orientation. Rotating a character in the scene rotates its
 preview movement too; scrubbing remains relative to the same starting pose.
 The secondary camera clip retains its authored motion.
 
-In Main Skill, right-click **Block > Add Block Window Here** for a Skill without a
-profile, then edit its timeline row below VFX. Drag **Block Open / Block Close** or
+In Main Skill, right-click **Block > Add Block Window Here** for a Skill with Block disabled, then edit its timeline row below VFX. Drag **Block Open / Block Close** or
 set either endpoint from the right-click menu. Use **Block > Save Block** or
 **Block > Revert Block** in that same menu. There is no Block panel above the
 timeline. Right-click within a window to target it and use **Block > Hitbox Steps**,
@@ -3324,17 +3363,33 @@ enemy animation without enemy knockback, or **Interrupt Skill** for the original
 skill cancel/knockback. Defender Impact/recoil and success feedback apply to both.
 Windows must be ordered, non-overlapping and use distinct zero-based Hitbox Steps.
 The suggested step on Add must be checked against the payload's actual timeline.
-An empty `Block Profile.windows` list retains the legacy single-window behavior;
+An empty `SkillDefensiveBlockSettings.windows` list retains the legacy single-window behavior;
 existing Skills are not automatically retimed. Leave time for guard recovery and
 safe placement between windows. Multiple payload executions sharing local step
 indices still require separate authoring/integration; this adapter owns one bound
 hitbox sequence per cast, as before.
 The row shows an asterisk for unsaved changes. The draft supports Undo/Redo, and changing source or
-closing the window prompts for pending edits. Each enabled Skill owns a **Block
-Profile** sub-asset; Add creates it only on Save. External/foreign bindings are
-copied into the Skill on Save, so timing edits never change another Skill's profile.
-The Inspector binding is read-only; edit non-timing attack settings on the sub-asset
-itself. Duplicating the Skill asset duplicates its profile. Defender profiles remain
-on Character Stats and are not embedded in Skills.
+closing the window prompts for pending edits. Each Skill stores its own inline
+**Defensive Block** settings. Add enables **Can Be Blocked** only when saved; no
+sub-asset is created. **Block > Disable Block** retains the authored windows and
+settings. The Skill Inspector edits non-timing parameters directly; changes there
+cause a conflict for any open Timeline draft, which must be reverted before saving.
+Duplicating the Skill copies independent settings. Defender profiles remain on
+Character Stats and continue to own animation, guard geometry, recoil and feedback.
 See [Defensive Block authoring](SYSTEMS/DEFENSIVE_BLOCK_TEST.md#editing-block-timing-in-animationvfx-timeline)
 for timing semantics, conflict handling, and the distinction from Pre-Cast events.
+
+### Timeline preview keyboard and mouse controls
+
+Focus Animation Event VFX Timeline, then tap **Space** to toggle Play/Pause at the
+current playhead. Hold **Space** and move the mouse left to scrub backward or
+right to scrub forward, without clicking. Tiny pointer jitter during a tap is ignored.
+The movement is relative to the
+current playhead (no jump to the clicked marker), clamps at the clip ends, and
+pauses playback. Releasing Space leaves the preview paused. Space repeat
+and release after a drag do not toggle playback. Escape cancels the gesture.
+These controls work in Animation / VFX and Hitbox modes; the combined Animation /
+VFX ruler can scrub backward from the main clip into its preceding cutscene.
+Text/numeric editing, other focused windows and Unity Play Mode do not consume
+these shortcuts. Space-drag takes priority over event/Hitbox/Block marker edits;
+it changes only preview time and never saves authoring data.

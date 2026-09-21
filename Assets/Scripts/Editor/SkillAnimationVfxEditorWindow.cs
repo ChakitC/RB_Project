@@ -68,6 +68,7 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
 
     void OnEnable()
     {
+        wantsMouseMove = true;
         InitializeHitboxAuthoring();
         EditorApplication.update -= OnEditorUpdate;
         editorUpdateSubscribed = false;
@@ -97,12 +98,14 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
 
     void OnGUI()
     {
+        HandlePreviewShortcuts();
         ClearDestroyedAuthoringTarget();
         GuardExternalHitboxSourceChange();
         GuardExternalBlockSourceChange();
         DrawHitboxModeSelector();
         if (hitboxMode) DrawHitboxSetup();
         else DrawAuthoringTarget();
+        DrawSaveAllBar();
         if (hitboxMode)
         {
             try { DrawHitboxMode(); }
@@ -176,21 +179,6 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
                 MessageType.Warning);
         }
 
-        using (new EditorGUILayout.HorizontalScope())
-        {
-            using (new EditorGUI.DisabledScope(GetSource() == null))
-            {
-                if (DrawTintedButton("Save VFX Data", new Color(0.55f, 0.9f, 0.55f)))
-                {
-                    authoringTarget.SaveAllTimelineVfxData();
-                    BuildTimelineEvents(GetSource());
-                }
-                if (DrawTintedButton("Load / Sync VFX Data", new Color(1f, 0.78f, 0.35f)))
-                {
-                    authoringTarget.LoadAllTimelineVfxData();
-                }
-            }
-        }
     }
 
     static bool DrawTintedButton(string label, Color color)
@@ -217,7 +205,7 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
             if (authoringTarget == null)
                 EditorGUILayout.HelpBox("Assign a SetAnimationVfxData component.", MessageType.Info);
             else if (source == null)
-                EditorGUILayout.HelpBox("Select a supported SkillGemDefinition, MeleeComboSO, or CharacterAnimProfileSO entry.", MessageType.Warning);
+                EditorGUILayout.HelpBox("Select a Skill, Combo Skill, Animation Profile, or Cutscene entry.", MessageType.Warning);
             else if (clip == null)
                 EditorGUILayout.HelpBox("The selected entry has no valid ClipTransition.", MessageType.Warning);
 
@@ -237,7 +225,7 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
         {
             using (new EditorGUI.DisabledScope(!canPreview))
             {
-                if (GUILayout.Button(isPlaying ? "Pause" : "Play", EditorStyles.toolbarButton, GUILayout.Width(58f)))
+                if (GUILayout.Button(new GUIContent(isPlaying ? "Pause" : "Play", "Tap Space: Play/Pause. Hold Space and move the mouse left/right to scrub. No click needed."), EditorStyles.toolbarButton, GUILayout.Width(58f)))
                 {
                     if (isPlaying) PausePreview(); else PlayPreview(animator, clip);
                 }
@@ -296,13 +284,7 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
             for (int i = 0; i < source.Lanes.Count; i++)
             {
                 var lane = source.Lanes[i];
-                // Migrated combos may execute skills without a hitbox payload.
-                bool unusedMeleeHitbox = source is MeleeComboVfxTimelineSource &&
-                    lane.Kind == AnimationVfxTimelineLaneKind.Events &&
-                    source.SourceAsset is SkillGemDefinition skill &&
-                    !skill.TryFindPayload(out PrefabHitboxSkillPayloadDef _);
-                if (!unusedMeleeHitbox || LaneHasEvents(lane))
-                    tracks.Add(new Track(lane.Label, ToTrackKind(lane.Kind), lane));
+                tracks.Add(new Track(lane.Label, ToTrackKind(lane.Kind), lane));
             }
         }
         bool hasVfx = source != null && source.CueCount > 0;
@@ -317,17 +299,6 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
             tracks.Add(new Track("Other Events", TrackKind.Other, null));
     }
 
-    bool LaneHasEvents(AnimationVfxTimelineLane lane)
-    {
-        for (int i = 0; i < lane.EventNames.Count; i++)
-        {
-            var name = lane.EventNames[i];
-            if (timelineEvents.Exists(e => e.EventName == name) ||
-                _cutsceneTimelineEvents.Exists(e => e.EventName == name)) return true;
-        }
-        return false;
-    }
-
     void DrawTimeline(Rect area, IAnimationVfxTimelineSource source, AnimationClip clip)
     {
         EditorGUI.DrawRect(area, new Color(0.13f, 0.13f, 0.13f));
@@ -338,6 +309,7 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
         if (source == null || clip == null)
             return;
 
+        BeginSpaceScrub(contentArea);
         AnimationClip refClip = source is IAnimationVfxTimelineMultiMode rm && rm.ReferenceTransition is { IsValid: true } rt
             ? rt.Clip : null;
         DrawAnimationTrack(GetTrackContentRect(area, FindTrack(TrackKind.Animation)), clip, _cutsceneSkillFraction, refClip);
@@ -994,6 +966,7 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
 
     void StopPreview(bool rewind)
     {
+        CancelSpaceGesture();
         isPlaying = false;
         _scrubSamplePending = false;
         authoringTarget?.StopAllVfx();

@@ -2,6 +2,29 @@ using UnityEngine;
 
 public static class DefensiveBlockGeometry
 {
+    // A close Contact guard must not extend through the incoming actor. Freeze this
+    // offset on arrival so the guard does not follow an actor that later passes it.
+    public static float ContactGuardOffset(Vector3 guardRoot, Vector3 forward, Vector3 casterRoot,
+        float authoredOffset, float halfDepth) => Mathf.Clamp(
+            Vector3.Dot(casterRoot - guardRoot, forward) - halfDepth, 0f, authoredOffset);
+
+    // Clip forward root motion at a ready guard, without pulling an already-passed
+    // actor backwards. Lateral misses, retreat and vertical motion remain unchanged.
+    public static Vector3 ConstrainMotionAtGuard(Vector3 position, Vector3 delta, Vector3 guard,
+        Vector3 forward, float halfWidth, float halfDepth)
+    {
+        forward.y = 0f;
+        if (forward.sqrMagnitude < .0001f) return delta;
+        forward.Normalize();
+        float before = Vector3.Dot(position - guard, forward) - halfDepth;
+        float advance = Vector3.Dot(delta, forward);
+        if (before < -.0001f || advance >= 0f || before + advance >= 0f) return delta;
+        float fraction = Mathf.Clamp01(Mathf.Max(0f, before) / -advance);
+        Vector3 contact = position + delta * fraction - guard;
+        if (Mathf.Abs(Vector3.Dot(contact, Vector3.Cross(Vector3.up, forward))) > halfWidth) return delta;
+        return new Vector3(delta.x * fraction, delta.y, delta.z * fraction);
+    }
+
     // A planar lane prediction ranks commands only; it never confirms an impact.
     public static bool TryPredictThreat(Vector3 origin, Vector3 forward, Vector3 player,
         float halfWidth, float forwardReach, float speed, out float contactSeconds)

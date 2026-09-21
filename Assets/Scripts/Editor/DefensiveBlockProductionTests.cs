@@ -17,7 +17,8 @@ public sealed class DefensiveBlockProductionTests
             Assert.IsFalse(AssetDatabase.GetDependencies(path).Any(p => p.StartsWith("Assets/Tests/DefensiveBlock/")), path);
         var attack = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>(DefensiveBlockProductionAuthoring.SkillPath).defensiveBlock;
         Assert.IsNotNull(attack); Assert.IsTrue(attack.IsConfigured);
-        Assert.IsTrue(attack.AllowsStep(0)); Assert.IsTrue(attack.AllowsStep(1)); Assert.IsFalse(attack.AllowsStep(2));
+        Assert.IsTrue(attack.AllowsStep(0)); Assert.IsTrue(attack.AllowsStep(1));
+        Assert.IsFalse(attack.AllowsStep(-1)); Assert.IsFalse(attack.AllowsStep(int.MaxValue));
         Assert.IsTrue(AssetDatabase.LoadAssetAtPath<CharacterStats>(DefensiveBlockProductionAuthoring.AiresPath).defensiveBlock.IsConfigured);
     }
 
@@ -64,7 +65,7 @@ public sealed class DefensiveBlockProductionTests
     [Test]
     public void InvalidProfilesCannotOpenAWindow()
     {
-        var attack = ScriptableObject.CreateInstance<DefensiveBlockAttackProfile>();
+        var attack = new SkillDefensiveBlockSettings();
         var actor = ScriptableObject.CreateInstance<DefensiveBlockActorProfile>();
         try
         {
@@ -73,7 +74,7 @@ public sealed class DefensiveBlockProductionTests
             attack.hitboxSteps = new[] {0}; attack.windowStartNormalized = .9f; attack.windowEndNormalized = .1f;
             Assert.IsFalse(attack.IsConfigured); Assert.IsFalse(actor.IsConfigured);
         }
-        finally { Object.DestroyImmediate(attack); Object.DestroyImmediate(actor); }
+        finally {  Object.DestroyImmediate(actor); }
     }
 
     [Test]

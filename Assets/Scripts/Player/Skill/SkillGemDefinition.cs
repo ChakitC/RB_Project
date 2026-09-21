@@ -9,11 +9,17 @@ using UnityEditor;
 #endif
 
 [HideMonoScript]
-public class SkillGemDefinition : SkillDefinitionBase
+public partial class SkillGemDefinition : SkillDefinitionBase
 {
-    [FoldoutGroup("Defensive Block"), ReadOnly]
-    [Tooltip("Owned Block Profile sub-asset. Add and save it from Animation / VFX Timeline; do not share profiles between Skills.")]
-    public DefensiveBlockAttackProfile defensiveBlock;
+    [SerializeField, FoldoutGroup("Defensive Block"), InlineProperty, HideLabel]
+    SkillDefensiveBlockSettings blockSettings = new SkillDefensiveBlockSettings { enabled = false };
+    // Runtime opt-in stays nullable; serialized authoring data belongs to this Skill.
+    public SkillDefensiveBlockSettings defensiveBlock
+    {
+        get => blockSettings != null && blockSettings.enabled ? blockSettings : null;
+        set => blockSettings = value != null ? value.Copy() : new SkillDefensiveBlockSettings { enabled = false };
+    }
+    public SkillDefensiveBlockSettings BlockSettings => blockSettings;
     public override SkillUpgradeTreeDefinition UpgradeTree => upgradeTree;
     public override string SkillDefinitionId => NormalizeSkillId(skillId);
     public override string SkillDefinitionDisplayName => displayName;
@@ -502,7 +508,12 @@ public class SkillGemDefinition : SkillDefinitionBase
             if (!HasSkillId())
                 issues.Add("Skill ID is required.");
 
-            if (payload == null)
+            if (IsCombo)
+            {
+                if (!ValidateMelee(out var comboError)) issues.Add(comboError);
+                if (payload != null) issues.Add("Combo execution belongs to its steps; remove the root payload.");
+            }
+            else if (payload == null)
                 issues.Add("Execution payload is required.");
             else
             {

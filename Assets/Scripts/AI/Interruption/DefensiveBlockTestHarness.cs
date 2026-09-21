@@ -5,6 +5,7 @@ using System.Collections;
 using System.Text;
 
 // Scene-local controls. Recreates actors on reset so cooldowns, life handles and AI locks reset too.
+[DefaultExecutionOrder(100)]
 public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
 {
     public GameObject playerPrefab;
@@ -17,6 +18,7 @@ public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
     public bool pauseAutomaticCombat = true;
     public float startDistance = 8f;
     public bool autoBlock;
+    public bool logDefensiveBlock;
     public PlayerContext Player { get; private set; }
     public AllyContext Ally { get; private set; }
     public EnemyContext Rector { get; private set; }
@@ -45,7 +47,7 @@ public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
     IEnumerator ValidateTrials()
     {
         var report = new StringBuilder();
-        if (Ally != null && Ally.DefensiveBlock.Settings.timedApproachSeconds > 0f)
+        if (Ally != null && chargeSkill.defensiveBlock != null && chargeSkill.defensiveBlock.UsesTimedApproach)
         {
             yield return ValidateTimedApproach(report);
             ValidationReport = report.ToString();
@@ -224,25 +226,33 @@ public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
     void Start() { ResetTrial(); }
     public void ResetTrial()
     {
+        if (!Application.isPlaying) return;
         if (reset != null) StopCoroutine(reset);
         resetting = true;
         reset = StartCoroutine(ResetActors());
     }
     IEnumerator ResetActors()
     {
+        Status = "Resetting trial...";
+        ReleaseTestInput();
         if (Rector != null) Rector.DefensiveBlockAttack?.ResetExecution();
         if (Ally != null) Ally.DefensiveBlock?.Cancel();
         if (actors != null) { actors.gameObject.SetActive(false); Destroy(actors.gameObject); }
-        partySpawn.DespawnParty();
+        if (partySpawn != null) partySpawn.DespawnParty();
         Player = null; Ally = null; Rector = null;
+        if (partySpawn == null || rectorPrefab == null || rectorPrefab.GetComponentInChildren<EnemyContext>(true) == null)
+        { Status = "Assign a PartySpawnPoint and an Enemy prefab with EnemyContext."; resetting = false; reset = null; yield break; }
         yield return null; // Allow deferred destruction before the spawn point validates the scene.
         if (!partySpawn.TrySpawnNow(out string error))
         { Status = error; Debug.LogError(error, this); resetting = false; reset = null; yield break; }
         actors = new GameObject("Trial Actors").transform;
         Player = partySpawn.CurrentParty.Player;
         Ally = partySpawn.CurrentParty.GetActor(ChainActorRole.PartySlot1).Context as AllyContext;
-        Rector = Instantiate(rectorPrefab, new Vector3(0f, 0f, startDistance), Quaternion.Euler(0f, 180f, 0f), actors).GetComponent<EnemyContext>();
-        Player.ResolveReferences(); Ally.ResolveReferences(); Rector.ResolveReferences();
+        Vector3 position = Player.transform.position + partySpawn.transform.forward * startDistance;
+        Rector = Instantiate(rectorPrefab, position, Quaternion.LookRotation(-partySpawn.transform.forward), actors).GetComponentInChildren<EnemyContext>(true);
+        Player.ResolveReferences(); Ally?.ResolveReferences(); Rector.ResolveReferences();
+        if (Rector.SkillManager == null)
+        { Status = "Selected Enemy has no SkillManager."; resetting = false; reset = null; yield break; }
         Rector.SkillManager.CastStarted += _ => autoRequested = false;
         if (pauseAutomaticCombat)
         {
@@ -250,10 +260,11 @@ public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
             foreach (var actor in partySpawn.CurrentParty.Actors) PauseAI(actor.Context);
         }
         LastDamage = "none";
-        Ally.HealthSystem.DamageTaken += RecordAllyDamage;
+        if (Ally != null && Ally.HealthSystem != null) Ally.HealthSystem.DamageTaken += RecordAllyDamage;
         autoRequested = false;
+        autoWindow = -1;
         spawnFrame = Time.frameCount;
-        Status = "Ready: C charge / Space block / Shift dash / R reset (production input)";
+        Status = "Ready: " + SelectedEnemyName + " / " + SkillLabel(chargeSkill);
         resetting = false; reset = null;
     }
     static void PauseAI(CharacteContext actor)
@@ -273,67 +284,55 @@ public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
     }
     void RecordAllyDamage(float amount, GameObject source)
     {
-        LastDamage = $"amount={amount:0.##} phase={Ally.AnimBrain.BlockPhase} {Rector.DefensiveBlockAttack.LastProbe}";
+        LastDamage = $"amount={amount:0.##} phase={Ally.AnimBrain.BlockPhase} {Rector?.DefensiveBlockAttack?.LastProbe}";
     }
     public void StartCharge()
     {
-        if (resetting || Rector == null || Time.frameCount <= spawnFrame + 2) return;
+        if (resetting || Rector == null || Player == null || Rector.SkillManager == null || Time.frameCount <= spawnFrame + 2) return;
+        if (chargeSkill == null || chargeSkill.IsCombo) { Status = "Select an execution Skill (a combo step), not a combo container."; return; }
+        SetTestControlsOpen(false);
         Vector3 direction = Player.transform.position - Rector.transform.position;
         direction.y = 0;
-        Rector.transform.rotation = Quaternion.LookRotation(direction);
+        if (direction.sqrMagnitude > .0001f) Rector.transform.rotation = Quaternion.LookRotation(direction);
         var result = Rector.SkillManager.TryStartExternalSkill(chargeSkill, "DefensiveBlockTest",
             usePlanarRootMotion: true, primaryTarget: SkillTargetHandle.For(Player));
         autoRequested = false;
-        Status = $"Charge: {result.Kind}, request {result.RequestId}";
+        autoWindow = -1;
+        Status = $"{SkillLabel(chargeSkill)}: {result.Kind}, request {result.RequestId}";
     }
     public void RequestBlock()
     {
-        if (Player != null) Status = $"Command: {Player.interruptionCommand.TryExecuteInterruptionCommand()}";
+        if (!resetting && Player != null && Player.interruptionCommand != null)
+            Status = $"Command: {Player.interruptionCommand.TryExecuteInterruptionCommand()}";
     }
     void Update()
     {
+        if (Player != null && Player.interruptionCommand != null)
+            Player.interruptionCommand.logDefensiveBlock = logDefensiveBlock;
+        HandleTestControlsInput();
         Keyboard keyboard = Keyboard.current;
-        if (keyboard != null)
+        if (keyboard != null && picker == Picker.None && validation == null)
         {
             if (keyboard.cKey.wasPressedThisFrame) StartCharge();
             if (keyboard.rKey.wasPressedThisFrame) ResetTrial();
         }
-        if (autoBlock && !autoRequested && Rector != null && Rector.DefensiveBlockAttack.WindowOpen)
+        var attack = Rector != null ? Rector.DefensiveBlockAttack : null;
+        if (!resetting && autoBlock && attack != null && attack.WindowOpen)
         {
-            autoRequested = true;
-            RequestBlock();
+            if (autoWindow != attack.WindowIndex) { autoWindow = attack.WindowIndex; autoRequested = false; }
+            if (!autoRequested && attack.CanRequestBlock(Player))
+            {
+                autoRequested = true;
+                RequestBlock();
+            }
         }
     }
-    void OnGUI()
-    {
-        GUILayout.BeginArea(new Rect(15, 15, 410, 285), GUI.skin.box);
-        GUILayout.Label("RECTOR / DEFENSIVE BLOCK TEST");
-        GUILayout.Label("C: Charge    Space: Block    Shift: Dash    R: Reset");
-        GUILayout.BeginHorizontal();
-        foreach (int distance in new[] { 4, 6, 8, 10 })
-            if (GUILayout.Button($"{distance} m")) { startDistance = distance; ResetTrial(); }
-        GUILayout.EndHorizontal();
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Charge")) StartCharge();
-        if (GUILayout.Button("Block")) RequestBlock();
-        if (GUILayout.Button("Reset")) ResetTrial();
-        GUILayout.EndHorizontal();
-        autoBlock = GUILayout.Toggle(autoBlock, "Auto block (test assistance)");
-        bool paused = GUILayout.Toggle(pauseAutomaticCombat, "Pause automatic combat (reset to apply)");
-        if (paused != pauseAutomaticCombat) { pauseAutomaticCombat = paused; ResetTrial(); }
-        GUILayout.Label(Status);
-        if (Rector != null)
-        {
-            GUILayout.Label(Rector.DefensiveBlockAttack.LastResult);
-            GUILayout.Label($"Window: {Rector.DefensiveBlockAttack.WindowOpen} / Successes: {Rector.DefensiveBlockAttack.SuccessCount}");
-            GUILayout.Label($"Player HP {Player.HealthSystem.currentHealth:0} | Aires HP {Ally.HealthSystem.currentHealth:0}");
-            GUILayout.Label($"Aires: {Ally.AnimBrain.BlockPhase} | Rector knockback: {Rector.KnockbackMotor.IsActive}");
-            GUILayout.Label($"Selected: {Player.Targeting.CurrentTarget?.name ?? "none"}");
-        }
-        GUILayout.EndArea();
-    }
+    void OnGUI() => DrawTrialPanel();
     void OnDisable()
     {
+        ReleaseTestControls();
+        if (reset != null) StopCoroutine(reset);
+        reset = null; resetting = false;
         if (blockCamera != null) blockCamera.Bind(null);
         if (validation != null)
         {

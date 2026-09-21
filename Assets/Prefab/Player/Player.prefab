@@ -2364,6 +2364,7 @@ MonoBehaviour:
   holdSafetyMargin: 0.08
   logInterruptionFlow: 0
   defensiveBlockEnabled: 1
+  logDefensiveBlock: 0
 --- !u!1001 &7062182068417119161
 PrefabInstance:
   m_ObjectHideFlags: 0

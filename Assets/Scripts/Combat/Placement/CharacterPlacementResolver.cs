@@ -20,6 +20,14 @@ public static class CharacterPlacementResolver
         CharacterPlacementRequest request,
         CharacterPlacementReservationService reservations,
         out CharacterPlacementResult result)
+        => TryResolve(request, reservations, out result, null);
+
+    // Optional trace uses the same evaluation as gameplay; callers decide when to record it.
+    public static bool TryResolve(
+        CharacterPlacementRequest request,
+        CharacterPlacementReservationService reservations,
+        out CharacterPlacementResult result,
+        System.Text.StringBuilder diagnostics)
     {
         result = default;
         if (request == null)
@@ -73,7 +81,7 @@ public static class CharacterPlacementResolver
 
         for (int i = 0; i < candidates.Length; i++)
         {
-            EvaluateCandidate(request, reservations, candidates[i], useAnimation, detailed: false, out EvaluationBuffer[i]);
+            EvaluateCandidate(request, reservations, candidates[i], useAnimation, detailed: false, out EvaluationBuffer[i], diagnostics);
         }
 
         bool hasCollisionFreeCandidate = false;
@@ -99,7 +107,7 @@ public static class CharacterPlacementResolver
                     candidates[i],
                     useAnimation,
                     detailed: true,
-                    out EvaluationBuffer[i]);
+                    out EvaluationBuffer[i], diagnostics);
             }
         }
         else
@@ -114,7 +122,7 @@ public static class CharacterPlacementResolver
                     candidates[candidateIndex],
                     useAnimation,
                     detailed: true,
-                    out EvaluationBuffer[candidateIndex]);
+                    out EvaluationBuffer[candidateIndex], diagnostics);
             }
         }
 
@@ -192,7 +200,8 @@ public static class CharacterPlacementResolver
         CharacterPlacementRequest.Candidate candidate,
         bool useAnimation,
         bool detailed,
-        out CandidateEvaluation evaluation)
+        out CandidateEvaluation evaluation,
+        System.Text.StringBuilder diagnostics = null)
     {
         evaluation = new CandidateEvaluation
         {
@@ -205,11 +214,13 @@ public static class CharacterPlacementResolver
         };
 
         Vector3 startPosition = candidate.Position;
+        diagnostics?.AppendLine($"  Candidate {candidate.AuthoredOrder}: desired={startPosition:F3} detailed={detailed} navSample={ResolveNavMeshSampleDistance(request):F3} areaMask={ResolveNavMeshAreaMask(request)}");
         Vector3 snappedStart = startPosition;
         float snapDistance = 0f;
         if (RequiresNavMesh(request) &&
             !TrySnapToNavMesh(request, startPosition, out snappedStart, out snapDistance))
         {
+            diagnostics?.AppendLine("  Rejected: NavMesh snap failed at desired position.");
             evaluation.Valid = false;
             return;
         }
@@ -218,6 +229,7 @@ public static class CharacterPlacementResolver
         {
             startPosition = snappedStart;
             evaluation.NavMeshSnapDistance = snapDistance;
+            diagnostics?.AppendLine($"  NavMesh snapped={snappedStart:F3} distance={snapDistance:F3}");
         }
 
         evaluation.StartPosition = startPosition;
@@ -247,7 +259,7 @@ public static class CharacterPlacementResolver
             candidate.Rotation,
             0f,
             detailed,
-            ref evaluation);
+            ref evaluation, diagnostics);
         if (!evaluation.Valid)
             return;
 
@@ -360,7 +372,8 @@ public static class CharacterPlacementResolver
         Quaternion rotation,
         float normalizedTime,
         bool detailed,
-        ref CandidateEvaluation evaluation)
+        ref CandidateEvaluation evaluation,
+        System.Text.StringBuilder diagnostics = null)
     {
         if (RequiresNavMesh(request) &&
             !NavMesh.SamplePosition(
@@ -369,18 +382,21 @@ public static class CharacterPlacementResolver
                 ResolveNavMeshSampleDistance(request),
                 ResolveNavMeshAreaMask(request)))
         {
+            diagnostics?.AppendLine($"  Rejected: NavMesh sample failed at pose={position:F3}.");
             evaluation.Valid = false;
             return;
         }
 
         if (RequiresNavMesh(request) && !IsFootprintOnNavMesh(request, position, rotation))
         {
+            diagnostics?.AppendLine($"  Rejected: footprint edge is outside NavMesh at pose={position:F3}.");
             evaluation.Valid = false;
             return;
         }
 
         if (RequiresGroundSupport(request) && !HasGroundSupport(request, position))
         {
+            diagnostics?.AppendLine($"  Rejected: placement ground-support ray missed at pose={position:F3}.");
             evaluation.Valid = false;
             return;
         }
@@ -395,6 +411,7 @@ public static class CharacterPlacementResolver
             int hitCount = OverlapFootprint(request.Footprint, position, rotation, queryMask, request);
             if (hitCount >= OverlapBuffer.Length)
             {
+                diagnostics?.AppendLine($"  Rejected: overlap query buffer full ({hitCount}/{OverlapBuffer.Length}).");
                 evaluation.Valid = false;
                 evaluation.BufferFull = true;
                 return;
@@ -417,6 +434,8 @@ public static class CharacterPlacementResolver
                 float penetration = detailed
                     ? ResolvePenetration(request, position, rotation, hit)
                     : 1f;
+                if (detailed)
+                    diagnostics?.AppendLine($"  Overlap: collider='{hit.name}' id={hit.GetInstanceID()} root='{hit.transform.root.name}' layer={hit.gameObject.layer}({LayerMask.LayerToName(hit.gameObject.layer)}) type={hit.GetType().Name} world={isWorld} actor={isActor} penetration={penetration:F5}");
                 poseCollided = true;
                 if (isWorld)
                 {
@@ -462,6 +481,7 @@ public static class CharacterPlacementResolver
                 if (penetration <= 0f)
                     continue;
 
+                diagnostics?.AppendLine($"  Reservation: owner='{reservation.Owner}' position={reservedPosition:F3} penetration={penetration:F5} (actor score)");
                 poseCollided = true;
                 evaluation.MaxActorPenetration = Mathf.Max(
                     evaluation.MaxActorPenetration,
@@ -502,7 +522,10 @@ public static class CharacterPlacementResolver
 
         if (request.PoseValidator != null &&
             !request.PoseValidator(position, rotation))
+        {
+            diagnostics?.AppendLine($"  Rejected: custom pose validator at position={position:F3}.");
             evaluation.Valid = false;
+        }
     }
 
     static bool IsCoveredByTransientReservation(

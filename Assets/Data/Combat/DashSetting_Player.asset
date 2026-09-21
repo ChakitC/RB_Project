@@ -21,7 +21,7 @@ MonoBehaviour:
     m_Bits: 1023
   dashIFrameExclude:
     serializedVersion: 2
-    m_Bits: 34815
+    m_Bits: 34814
   perfectDodgeWindow: 0.15
   perfectDashSlowScale: 0.2
   perfectDashSlowDuration: 1

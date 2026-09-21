@@ -1532,7 +1532,7 @@ close, and use a copied profile to test shared-profile saves without changing
 production timing. Cutscene VFX and Basic Melee combo entries must not expose this
 as their own defensive window. Preview uses only the existing animation/VFX session.
 
-### Skill-owned Block Profile sub-assets (2026-09-19)
+### Skill-owned Block Profile sub-assets (2026-09-19, superseded by inline settings)
 
 The current Block authoring contract supersedes shared attack profiles: each enabled
 Skill owns its `DefensiveBlockAttackProfile` sub-asset. Add Block remains a draft
@@ -1751,3 +1751,410 @@ and CheckAssemblyBuild.ps1 pass (0 errors, 80 existing runtime warnings;
 `../BuildArtifacts/timeline-visible-rows-build.txt`).
 An inventory check also confirms that every existing marker maps to a visible
 row across 57 source entries, including 4 combined cutscene entries.
+
+### Combo Skills migration (2026-09-20)
+
+Seven legacy combos (eight execution steps) now have root SkillGemDefinition
+assets under `Assets/Data/Combat/ComboSkills`. Four Animation Profiles (Rector,
+GR04, Roma, Milano) use the new basic-attack Skill slots. Migration preserves all
+execution references, step IDs, chain windows and buffer rules; rerunning it does
+not rewrite destination combo data. See `../BuildArtifacts/skill-combo-migration-initial.txt`
+and `../BuildArtifacts/skill-combo-migration-checks.txt`. GameSetup's authoring
+source selection was updated in memory; the dirty scene was not saved.
+
+Runtime checks: 24 passed, including Basic Melee's opt-in Block binding to the
+actual hitbox runtime, interruption/buffer cleanup, continuation into a new step,
+stale Block request rejection, stable IDs, nested-combo rejection, costs, damage,
+input buffering and root/nested module layouts (`../BuildArtifacts/melee-skill-smoke.txt`).
+Seven character setup checks passed (`../BuildArtifacts/skill-combo-setup-tests.txt`).
+Three authoring checks passed: correct root versus leaf saves and conflict rejection,
+Rector Heavy timeline lanes, and representative character hitbox anchors/layouts
+(`../BuildArtifacts/skill-combo-authoring-tests.txt`).
+
+Unity Editor compilation and CheckAssemblyBuild.ps1 passed with 0 errors and 80
+existing runtime warnings (`../BuildArtifacts/skill-combo-build.txt`). The new
+combo root is sequenced through Basic Attack slots; paid multi-step Active Skill
+sequencing is not introduced by this migration.
+The live Rector Heavy window resolves through SkillComboVfxTimelineSource and
+exposes Block/Add Block Window Here in its background menu
+(`../BuildArtifacts/skill-combo-ui-check.txt`). The final Timeline view was
+captured and visually checked (`../BuildArtifacts/skill-combo-timeline.png`).
+
+### Legacy melee cleanup (2026-09-20)
+
+Removed seven retired MeleeComboSO assets and their meta files after validating
+all root/step references, stable IDs, chain windows and buffer rules against the
+seven replacement Combo Skills. Removed the old type, import-only hitbox schema,
+legacy timeline adapter and four one-time migration tools. Integration fixtures
+now construct Skills directly; the obsolete migration-only assertion was retired.
+
+The backup at `../.codex-temp/melee-legacy-cleanup-20260920` contains the retired
+assets/scripts and meta files, profile snapshots, modified test/schema sources,
+and SHA-256 manifests. The seven Animation Profiles were reserialized individually
+to remove legacy slots (four previously populated profiles and three with only
+null legacy slots). No scene save or project-wide SaveAssets was invoked.
+The reference scan found no retired asset/script GUID references in serialized
+assets, scenes or prefabs. All 15 retained combo/step asset files are byte-identical
+to the pre-cleanup snapshot, including embedded payloads.
+
+Validation: 23 melee runtime checks, seven character setup checks and 31 Hitbox
+authoring checks passed. The seven Combo Skills/eight execution steps also pass
+payload, required timeline and VFX validation. Unity Editor compilation passed;
+CheckAssemblyBuild.ps1 passed with 0 errors and 80 existing warnings after running
+with SDK access outside the sandbox. Reports:
+`../BuildArtifacts/melee-legacy-cleanup{,-validation,-preserved,-runtime-tests,-setup-tests,-authoring-tests,-build}.txt`.
+
+Separate Editor observations: the Console still reports existing Odin group
+configuration errors for SetAnimationVfxData's VFX Source group and a URP shader
+load error; these are not C# compilation failures. A broad dependency hash scan
+also observed Rector_MAt.mat's head-direction properties changing while the live
+Editor was open. That unrelated material change was left intact; the byte-for-byte
+preservation claim above is specifically for combat Skill assets.
+
+### Timeline Save All Changes (2026-09-20)
+
+Both Timeline tabs now share Save All Changes below their source/attack selector.
+The coordinator preflights pending Hitbox, Block and hierarchy VFX data before
+writing the selected entry. The VFX snapshot is read without rebuilding hierarchy;
+an unloaded entry preserves its stored cues. Dirty status includes VFX hierarchy
+edits. Close/navigation confirmation uses the combined save, while Load / Sync
+and Hitbox Revert remain scoped to their named sections. Timeline marker and
+Chain Window edits retain their existing save-on-release behavior.
+
+Five focused checks passed in `../BuildArtifacts/timeline-save-all-tests.txt`:
+combined persistence and repeated-save stability, VFX dirty indication, unchanged
+other combo Step/root files, invalid Block/VFX and stale Hitbox rejection before
+any writes, existing shape round-trip and conflict guards. Test assets are
+temporary and removed afterward. No live character assets or scenes were saved
+to exercise the button. Profile/Cutscene VFX sources now also save only their
+owner asset instead of invoking project-wide SaveAssets.
+
+Unity Editor compilation passed. CheckAssemblyBuild.ps1 passed with 0 errors and
+80 existing warnings (`../BuildArtifacts/timeline-save-all-build.txt`).
+
+The live Rector Heavy Timeline was captured and visually checked with the new
+save bar and Saved indicator (../BuildArtifacts/timeline-save-all-ui.png).
+
+### Inline Skill Block settings and Contact mode (2026-09-20)
+
+- Attack settings now serialize directly on `SkillGemDefinition.blockSettings` as
+  `SkillDefensiveBlockSettings`. The runtime `defensiveBlock` accessor returns null
+  when Can Be Blocked is disabled. Receiver configuration remains in
+  `DefensiveBlockActorProfile`; approach duration is now attack-owned.
+- Migrated the two opted-in Skills, preserving every old attack field. Rector
+  Heavy uses Contact; Rector Skill 1 uses Timed Approach with the saved 0.22 s
+  duration. Removed both embedded profiles, the orphan `RectorCharge.asset`, the
+  old attack-profile type and the sub-asset ownership helper. Backup and original
+  JSON: `../.codex-temp/block-inline-20260920`.
+- `CheckAssemblyBuild.ps1`: 0 errors, 80 existing warnings. Unity Editor script
+  recompilation completed without errors.
+- Timeline draft tests: 14 passed, covering Undo/Redo, Revert, enable/disable,
+  mode/duration/stand-off, independent copied Skills, source conflicts, invalid
+  windows and invalid Timed Approach values. Multi-window runtime tests: 4 passed.
+- Melee integration: the 23 existing checks passed. The new close-range Contact
+  test stages an accepted guard, dispatches HitStart through Animancer, intercepts
+  the live hitbox once, preserves player HP and interrupts the melee combo. Timed
+  Approach still requires movement planning. This is an Edit Mode runtime rig,
+  not a claim that the complete interactive Play Mode scene was replayed.
+- Production checks: 8 passed plus 9 existing geometry/animation/camera checks.
+  The old production assertion assumed step 2 was always excluded; it now accepts
+  the existing authored multi-window bindings and checks invalid step sentinels.
+- Source comparison confirms unchanged non-Block data on both Skills and unchanged
+  receiver data except removal of the migrated duration. Unity also materialized
+  the previously absent disabled/empty Combo defaults on Rector Skill 1.
+- Reports: `../BuildArtifacts/block-inline-migration.txt`,
+  `block-migration-preservation.txt`, `block-timeline-tests.txt`,
+  `block-inline-validation.txt` and `block-inline-runtime-build.log`.
+- Save All integration: both final Edit Mode checks passed, including saving the
+  mode/duration/stand-off together with Hitbox and VFX, leaving other assets unsaved,
+  and rejecting invalid/conflicting drafts before writes. See
+  `../BuildArtifacts/block-inline-saveall-final.txt`. An intervening run entered
+  Play Mode and rejected Editor-only scene dirty calls; these two checks were
+  rerun after returning to Edit Mode. No scene was saved.
+
+### Timeline Space transport and bidirectional scrubbing (2026-09-20)
+
+Unity Editor compilation passed. Three regression checks passed for signed drag
+motion and endpoint clamping, crossing backward/forward between the main clip
+and cutscene, and cancellation on focus loss/source stop. Live EditorWindow input
+checks passed for Space tap/repeat/Play/Pause, left/right mouse drag, Space-first
+release without absolute-scrub fallthrough, and the text-entry shortcut guard.
+The check restored the original playhead after testing. Report:
+`../BuildArtifacts/timeline-space-controls.txt`.
+Only Editor scripts changed; the runtime-only CheckAssemblyBuild scan was not
+rerun because it excludes these files. Preview uses the existing deferred sample
+path; no new runtime playback or asset-saving operation was introduced.
+
+### Space scrub without a mouse click (2026-09-20)
+
+The Timeline now requests MouseMove events. Hold Space and move the pointer left
+or right; no mouse button is required. A 3-pixel threshold distinguishes pointer
+jitter from intentional scrubbing. Repeated Space keydowns retain the initial
+pointer/playhead origin; release remains paused after movement. Text-entry and
+focus guards remain in place. The earlier click-drag instructions are superseded.
+Unity Editor compilation and all three shortcut regression checks passed. Live
+input checks sent no mouse clicks and passed backward/forward movement, repeat,
+release, tap/jitter Play-Pause and text editing guards. Original playhead restored.
+Report: `../BuildArtifacts/timeline-space-no-click.txt`. Editor-only change; the
+runtime assembly scan does not include the modified scripts.
+
+### Shared Enemy Base Block component (2026-09-20)
+
+Moved Rector's added `DefensiveBlockAttack` to `Enemy_Base.prefab` with
+`PrefabUtility.ApplyAddedComponent` and bound the Base Context reference. Verified
+the Base and all four dependent enemy variants: exactly one enabled component,
+Context bound, and inherited on each variant. Existing Skill settings and windows
+were not changed. No scene was saved; interactive Block behavior was not replayed.
+No C# source changed, so the runtime assembly build was not needed.
+Report: `../BuildArtifacts/enemy-base-block-validation.txt`.
+Original prefabs and metadata: `../.codex-temp/enemy-base-block-20260920`.
+
+### Selectable Block test scene and Roma Player (2026-09-20)
+
+- `RectorDefensiveBlock.unity` now contains four Enemy choices (Rector, GR04 and
+  the two regular enemy variants), with 5/3/3/3 execution Skills respectively.
+  The scene roster overrides Player to Roma and retains Aires in the other slots.
+- Unity loaded the new runtime/Editor scripts. Two focused Editor checks passed:
+  switching Enemy selects its own Skill and rejects foreign/invalid selections;
+  catalog generation includes melee steps and Skills, excludes combo containers,
+  and preserves scene-authored custom choices.
+- Reloaded the saved test scene and verified the Roma reference, catalog and
+  nonempty Skill references. The active GameSetup scene and its dirty state were
+  preserved. The upgrade changed only the requested test scene, not production
+  Skill/prefab/party configuration assets.
+- `CheckAssemblyBuild.ps1`: 0 errors, 80 existing warnings. The initial sandboxed
+  build could not read the Windows SDK; rerunning the same script with access to
+  the installed SDK passed. Report: `../BuildArtifacts/block-test-selector-build.log`.
+- Selection/scene report: `../BuildArtifacts/block-test-selector-validation.txt`.
+  Original test scene: `../.codex-temp/block-test-selector/RectorDefensiveBlock.before.unity`.
+- Interactive Play Mode combat and Game View visual verification were not run:
+  GameSetup had unsaved edits. Open the test scene after preserving those edits,
+  select Rector/GR04 and several Skills, cast, change selection mid-cast, and verify
+  fresh actors/HP and release of old Block/camera state. Test Block-off Skills too.
+  The old full Rector regression suite has fixed trial expectations and is not a
+  general pass/fail suite for arbitrary selected Enemy/Skill pairs.
+
+### Block test panel cursor access (2026-09-20)
+
+The scene-local harness now starts in mouse/menu mode. F1 toggles gameplay control;
+Cast Skill returns to gameplay. The harness runs after the camera, releases the
+cursor while its panel is open, and suspends only the Player action map so panel
+clicks do not also fire, aim, move or turn the camera. It clears held input and
+restores the previously active map on resume/reset/disable without enabling a map
+that was already inactive. No production camera or Player input code changed.
+`CheckAssemblyBuild.ps1` passed with 0 errors and 80 existing warnings; see
+`../BuildArtifacts/block-test-cursor-build.log`. Full interactive Play Mode cursor
+verification remains outstanding while the open GameSetup scene has unsaved edits.
+Unity Editor loaded the change. The action-map suspension/restoration check and
+both existing selection/catalog checks passed. The input fixture explicitly binds
+its action map because Edit Mode does not run PlayerInput.OnEnable. Report:
+`../BuildArtifacts/block-test-cursor-validation.txt`.
+
+### Aires airborne Block recoil (2026-09-20)
+
+Reproduced in the live selectable fixture with Roma, Aires, GR04 Heavy Contact at
+1.5 m. Before the fix, Aires' root jumped from 0.0833 m to 1.3083 m at Impact;
+feet reached approximately 2.57 m. Temporarily disabling only the companion CC
+kept its root at 0.0833 m while the airborne animation remained, isolating two causes.
+The full Generic recoil source clip lifts both feet above one metre. Its import
+settings were restored byte-for-byte after testing an inapplicable Feet-root option.
+
+Companion recoil now uses the already-swept NavMesh position directly; self guard
+retains CharacterController.Move. The animation profile supports an impact range
+with compatible 0–1 defaults. Aires is authored to 0.55–0.68, preserving durations,
+Block windows, damage and HitLag. Existing production settings are preserved by
+Configure; newly created Aires animation profiles receive the grounded range.
+
+Three Editor checks passed: Begin feet, Impact supporting foot across 61 samples,
+and nearby solid landing support. `CheckAssemblyBuild.ps1` passed with 0 errors and
+80 existing warnings (`../BuildArtifacts/block-grounding-build.log`). Source traces:
+`block-aires-height-before.csv` and `block-aires-no-cc.csv` under `../BuildArtifacts`.
+Original profile/import metadata: `../.codex-temp/block-grounding`.
+
+Live replay of Rector Skill 1 Timed Approach at 8 m passed: Block impact occurred,
+root height stayed at 0.0833 m and the highest supporting-foot position was approximately 0.23 m.
+GR04 Contact replay at 1.5 m and 3 m did not reach Impact: it reported
+`Missed: Player contacted before guard`. This is a remaining contact-order/eligibility
+investigation, not a passing end-to-end Contact regression. The recoil movement
+change occurs only after Impact, and the Begin/Loop pose was not changed.
+Reports: `../BuildArtifacts/block-grounding-playmode.txt`,
+`block-grounding-close-contact.txt`, and `block-aires-height-after.csv`.
+The original Enemy/Skill/distance/auto-block selection is restored after replay and
+the test scene is left playing with the mouse released. No scene was saved.
+
+### Rector Heavy close Contact guard (2026-09-20)
+
+Reproduced on the selectable Play Mode fixture: Rector Heavy at 1.5 m and 2 m
+accepted the guard, but its root-motion lunge passed Aires before HitStart.
+The frontal interception check rejected the attack and Player lost 9.43396 HP;
+4 m succeeded. Traces: `../BuildArtifacts/block-close-before.txt` and
+`block-close-before-detail.txt`.
+
+Contact guards now cap their forward offset at the attacker's position on arrival
+and hold that offset for the session. Both root-motion adapters ask the actor's
+context-owned DefensiveBlockAttack to constrain forward movement at a ready guard.
+This applies only to the accepted Contact window and releases on resolution,
+cancellation, or window closure. Pending departure, Timed Approach, already-passed
+actors, retreat, and lateral misses are not clamped. Actual hitbox interception
+and already-applied damage rejection still decide success; no asset timing changed.
+
+Validation passed:
+
+- `CheckAssemblyBuild.ps1`: 0 errors, 80 existing warnings; Unity Editor compiled.
+- Seven contact-order/geometry checks and all 24 Melee Skill integration cases.
+  The integration case checks ready/pending guard, Timed Approach bypass, and release.
+- Live Rector Heavy at 1, 1.5, 2, and 4 m: one Block success and zero Player HP loss.
+- Live Heavy at 1.5 m without Block: zero successes and 9.43396 HP loss.
+- Live Rector Skill 1 Timed Approach at 8 m: one success and zero Player HP loss.
+
+Console also reported two URP AutodeskInteractive shadergraph load errors during
+asset refresh. They are outside the changed Block code; the console is not clean.
+
+Reports: `../BuildArtifacts/block-close-build.log`, `block-close-report.txt`,
+`block-close-detail.txt`, `block-close-controls.txt`, and `melee-skill-smoke.txt`.
+The original Enemy/Skill/distance/auto setting was restored with the mouse released.
+No scene or gameplay asset was saved. GR04 Contact was not replayed in this fix;
+the earlier GR04 limitation is not marked as resolved by the Rector results.
+
+### Close-range Timed Approach (2026-09-21)
+
+Rector Skill 1 at 1.5 m was rejected because the authored 1.6 m stand-off in front
+of a guard placed at least 0.8 m ahead of Player required the attacker to move
+backwards. The planner now retains the current attacker position for a close
+frontal start. The existing motor still owns the full authored duration, animation,
+hitbox suppression, cancellation and grounded endpoint validation. Facing away or
+already being behind the guard remains invalid. No Skill or profile asset changed.
+
+`CheckAssemblyBuild.ps1` passed with 0 errors and 80 existing warnings, and Unity
+Editor compilation completed. Seven Contact geometry/order checks and all 24
+Melee integration checks also passed. The persistent Timed Approach harness now
+includes 1.5/2 m starts and the production 0.22 s duration, comparing displacement
+at Impact before knockback; its full duration/distance matrix was not run here.
+
+Focused production Play Mode replay passed at 1.5, 2, 4 and 8 m: one Impact,
+zero Player/Ally HP loss, exact planned endpoint, and released guard reservation.
+Close starts moved 0 m before Impact; 4/8 m starts moved approximately 1.56/3.88 m.
+Game-clock acceptance-to-Impact times were 0.224–0.230 s for the authored 0.22 s
+duration (completion on the next frame). The initial external observer measured
+wall time between Editor callbacks and under-reported one trial at 0.199 s; the
+replay uses frame game time to match the runtime clock instead.
+
+Planning checks confirmed close acceptance plus rejection for missing ground,
+facing away, and an attacker behind the guard. Reset before Impact produced no
+success and released the reservation; without Block the original attack still
+damaged Player. Reports: `../BuildArtifacts/timed-close-build.log`,
+`timed-close-playmode.txt`, `timed-close-initial-playmode.txt`, and `melee-skill-smoke.txt`.
+The original fixture selection is restored after replay; no scene was saved.
+Console still contains the URP AutodeskInteractive shadergraph load errors noted
+above; these were not changed by this fix.
+
+### Block camera jump while walking backwards (2026-09-21)
+
+Reproduced with Rector Skill 1 at 8 m using the real PlayerMovementCC move input.
+The Block shot's sphere cast treated Player as an obstacle when Player walked into
+the ray from the snapshotted shot origin. At near-full shot weight, the maximum
+observed camera displacement between frames was 2.769 m versus 0.026 m while still.
+A temporary runtime mask experiment excluding Player reduced it to 0.029 m; the
+mask was restored before implementing the fix.
+
+The Block camera now filters its own Player controller and descendant colliders
+from all sphere-cast hits, then chooses the nearest remaining obstacle. It uses
+a reusable buffer and an all-hits fallback if that buffer fills, so ignored Player
+colliders cannot hide a wall. The shared follow/aim collision mask is unchanged.
+
+Validation:
+- `CheckAssemblyBuild.ps1`: 0 errors, 80 existing warnings; Unity Editor compiled.
+- Three new Editor obstacle checks passed: root/nested Player exclusion, nearest
+  solid wall behind Player on the same layer (including trigger filtering), and
+  a wall behind more than 16 Player colliders. Existing shot-owner cleanup passed.
+- Live stationary/backwards movement trials both blocked successfully. After the
+  fix, maximum near-full-weight camera steps were 0.029/0.047 m respectively, with
+  zero Player obstacle hits. The original runtime mask remained -1 throughout.
+
+Reports: `../BuildArtifacts/block-camera-before.txt`, `block-camera-before.csv`,
+`block-camera-exclude-player.txt`, `block-camera-after.txt`, `block-camera-after.csv`,
+and `block-camera-build.log`. Run the focused checks via
+**Tools > RB > Defensive Block > Run Camera Obstacle Tests**.
+The fixture selection was restored, move input cleared and mouse released. No
+scene or gameplay asset was saved. The existing URP AutodeskInteractive shadergraph
+load errors remain unrelated to this camera fix.
+
+### Opt-in real-play Block diagnostics (2026-09-21)
+
+Follow-up fix for the MapRun capture: companion placement resolves the enabled
+context CharacterController instead of Aires' animated `root.x/Position` collider.
+`DefensiveBlockGroundingTests.Run` passes all 4 checks, including animation-independent
+footprint selection, a clear floor, wall rejection, missing-floor/trigger rejection,
+and compatibility fallback. The landing-support reflection test now resolves its
+two-argument overload explicitly after diagnostics added a second overload.
+Play Mode checks with production Roma/Aires/Rector in the regression scene pass
+Rector Skill 1 and Heavy at both 1.5 m and 5.4 m: Aires chosen, one confirmed impact,
+zero Player HP loss, zero change in Ally root Y, and guard cleanup complete in all
+4 trials. Results: `P:/Game_RB_Project/BuildArtifacts/block-stable-body-playmode.txt`.
+Runtime build: 0 errors / 80 existing warnings; Editor compilation passed. The
+dirty GameSetup scene is retained, and no prefab/profile/scene asset is saved.
+The user's next MapRun session should confirm the reported location-specific case.
+
+Placement trace follow-up: command/snapshot logs now report the actual static
+guard candidate checks (NavMesh snap/footprint, landing-floor query, collider
+identity and penetration, reservation scoring, and final world tolerance).
+`CharacterPlacementResolverTests.PlacementTraceNamesObstructionWithoutChangingResult`
+and `PlacementTraceIdentifiesMissingNavMeshWithoutChangingResult` passed in the
+Editor, comparing traced and ordinary resolution. `CheckAssemblyBuild.ps1` passed
+with 0 errors / 80 existing warnings; Unity Editor compilation also passed.
+Real-game reproduction in MapRun is left to the user's next capture. No Block
+eligibility thresholds, profiles, prefabs, or scenes were changed for this trace.
+
+`InterruptionCommandController.logDefensiveBlock` defaults off. Enabled commands
+capture the enemy cast/window and companion readiness before selection; guard and
+attack lifecycle events correlate by attack instance and request ID. A capture-only
+context-menu/panel action does not issue a command. The test harness owns the same
+toggle across Player resets. Console records are also appended to a per-play-session
+file under `Application.persistentDataPath/Diagnostics`; file failures leave Console
+logging active. No gameplay eligibility rule, prefab default or combat setting changed.
+
+`CheckAssemblyBuild.ps1` passed with 0 errors and 80 existing warnings; Unity Editor
+compilation passed. The runtime smoke replay verified disabled capture creates no
+session, closed-window rejection, a deliberately reserved companion snapshot, one
+successful Timed Approach and cancellation before Impact. The resulting file
+contained acceptance, arrival, approach, confirmed Impact, successful/unsuccessful
+cleanup and execution reset records. One hundred readiness polls plus a disabled
+write appended no bytes. Final presentation changes distinguish capture snapshots
+from attempts and identify closed attack gates before describing timed planning.
+
+Reports: `../BuildArtifacts/block-diagnostics-build.log` and
+`../BuildArtifacts/block-diagnostics-smoke.txt` (includes the generated session path).
+The user's dirty `GameSetup` scene was preserved. The test scene was loaded only
+in Play Mode via `LoadSceneInPlayMode`, then Play Mode stopped to restore GameSetup;
+no scene or gameplay asset was saved. The pre-existing URP shadergraph load errors
+were not changed by this work.
+
+## Close-range Weapon Aim and Hurtbox Sweeps (2026-09-21)
+
+`Tools > RB > Third Person > Run Aim Regression Checks` runs 14 Edit Mode
+checks from `ThirdPersonAimRegressionChecks`: camera and muzzle filtering of
+movement capsules/unmapped actor colliders, exact arm convergence, world cover,
+legacy actors without hit zones, and exact forward near targets. Both root and
+nested `CharacterColliderRefs` layouts are covered. Temporary objects/scenes are
+removed without saving the current scene.
+
+For an actual projectile check, enter the Rector defensive-block test scene,
+stand close to the enemy, aim at its arm, and pause Play Mode. Run
+`Tools > RB > Third Person > Run Live Aim Shot Checks`. This spawns ten
+zero-spread weapon projectiles through `WeaponProjectileSpawner`, drives their
+real physics and impact code, and requires damage plus normal bullet despawn at
+both the equipped weapon speed and 200 units/second. Use the normal non-piercing
+weapon and a test enemy with more than 100 HP. The check restores enemy HP and
+physics simulation mode; it does not spend weapon ammo. Physics steps and impact
+callbacks run in Play Mode, not simulated Edit Mode.
+
+The reported pose reproduced two failures before the fix: the camera selected
+`CharacterPosition` instead of a damageable hit zone (zero damage), and a correctly
+aimed 50-unit/second bullet skipped `HitZone_Arm.R` between 0.02-second physics
+steps (0/5 impacts). After the fix all ten arm shots damaged and despawned.
+Additional live checks passed for cover before the target (zero damage), cover
+behind it (target damaged), piercing without duplicate damage in the same step,
+and reuse of the same pooled projectile. `CheckAssemblyBuild.ps1` passed with
+0 errors and 80 warnings; Unity Editor compilation passed. Reports are in
+`../BuildArtifacts/aim-hit-zone-build.log` and
+`../BuildArtifacts/aim-hit-zone-regression-report.md`.

@@ -17,7 +17,7 @@ public static class DefensiveBlockProductionAuthoring
         if (EditorApplication.isPlaying) throw new InvalidOperationException("Exit Play Mode first.");
         if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder("Assets/Data", "DefensiveBlock");
         var skill = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>(SkillPath);
-        var attack = DefensiveBlockSkillAuthoring.EnsureOwned(skill);
+        var attack = skill.defensiveBlock ?? new SkillDefensiveBlockSettings { mode = DefensiveBlockMode.TimedApproach };
         var aires = AssetDatabase.LoadAssetAtPath<CharacterStats>(AiresPath);
         // Follow the character binding so renaming the settings asset does not create a replacement.
         var actor = aires.defensiveBlock != null ? aires.defensiveBlock : GetOrCreate<DefensiveBlockActorProfile>("GuardSetting.asset");
@@ -26,6 +26,11 @@ public static class DefensiveBlockProductionAuthoring
         {
             animation.beginStartNormalized = 0.55f;
             animation.guardPoseNormalized = 0.65f;
+        }
+        if (animation.impactClip == null)
+        {
+            animation.impactStartNormalized = 0.55f;
+            animation.impactEndNormalized = 0.68f;
         }
         string recoilPath = "Assets/Animation/Ch_Aires/Aires_Block_Recoil.fbx";
         if (AssetDatabase.LoadMainAssetAtPath(recoilPath) == null &&
@@ -38,7 +43,7 @@ public static class DefensiveBlockProductionAuthoring
         int world = LayerMask.GetMask("Default", "Ground", "Ground Y", "Terrain", "Barrier");
         attack.worldLayers = world; actor.worldLayers = world;
         skill.defensiveBlock = attack; aires.defensiveBlock = actor;
-        foreach (var asset in new UnityEngine.Object[] { attack, actor, animation, skill, aires }) EditorUtility.SetDirty(asset);
+        foreach (var asset in new UnityEngine.Object[] { actor, animation, skill, aires }) EditorUtility.SetDirty(asset);
         // Move the authored presentation assets, preserving their GUIDs and existing references.
         foreach (string file in new[] { "BlockReadyFlare.shader", "BlockReadyFlare.mat", "BlockReadyFlare.prefab" })
         {
@@ -80,7 +85,7 @@ public static class DefensiveBlockProductionAuthoring
                 motor.ApplyModifiedPropertiesWithoutUndo();
             }
         });
-        AssetDatabase.SaveAssets();
+        foreach (var asset in new UnityEngine.Object[] { actor, animation, skill, aires }) AssetDatabase.SaveAssetIfDirty(asset);
     }
 
     static T GetOrCreate<T>(string name) where T : ScriptableObject

@@ -16,6 +16,7 @@ public partial class GameplayCameraController
     Vector3 blockShotOrigin;
     Quaternion blockShotHeading;
     float blockShotWeight, blockShotHold;
+    readonly RaycastHit[] blockShotObstacleHits = new RaycastHit[16];
     public bool IsDefensiveBlockShotActive => blockShotOwner != null || blockShotWeight > 0f;
 
     public bool BeginDefensiveBlockShot(object owner, PlayerContext player, Transform guard)
@@ -84,8 +85,7 @@ public partial class GameplayCameraController
         Vector3 desired = blockShotOrigin + blockShotHeading * blockLocalPosition;
         Vector3 origin = blockShotOrigin + Vector3.up * 1.2f;
         Vector3 delta = desired - origin;
-        if (delta.sqrMagnitude > 0.001f && Physics.SphereCast(origin, 0.15f, delta.normalized,
-            out var hit, delta.magnitude, ResolveCameraObstacleMask(), QueryTriggerInteraction.Ignore))
+        if (TryGetDefensiveBlockObstacle(origin, delta, out var hit))
             desired = origin + delta.normalized * Mathf.Max(0f, hit.distance - 0.03f);
         state.RawPosition = Vector3.Lerp(state.RawPosition, desired - state.PositionCorrection, weight);
         Quaternion rotation = blockShotHeading * Quaternion.Euler(blockLocalEulerAngles);
@@ -94,5 +94,33 @@ public partial class GameplayCameraController
         var lens = state.Lens;
         lens.FieldOfView = Mathf.Lerp(lens.FieldOfView, blockFieldOfView, weight);
         state.Lens = lens;
+    }
+
+    bool TryGetDefensiveBlockObstacle(Vector3 origin, Vector3 delta, out RaycastHit nearest)
+    {
+        nearest = default;
+        if (delta.sqrMagnitude <= 0.001f) return false;
+        int count = Physics.SphereCastNonAlloc(origin, 0.15f, delta.normalized, blockShotObstacleHits,
+            delta.magnitude, ResolveCameraObstacleMask(), QueryTriggerInteraction.Ignore);
+        var hits = blockShotObstacleHits;
+        // NonAlloc results are unordered and may omit a wall when the buffer is full.
+        // Only dense casts allocate, so ignoring Player can never hide a wall behind it.
+        if (count == hits.Length)
+        {
+            hits = Physics.SphereCastAll(origin, 0.15f, delta.normalized, delta.magnitude,
+                ResolveCameraObstacleMask(), QueryTriggerInteraction.Ignore);
+            count = hits.Length;
+        }
+        float distance = float.PositiveInfinity;
+        for (int i = 0; i < count; i++)
+        {
+            var collider = hits[i].collider;
+            if (collider == null || (playerContext != null && (collider == playerContext.cc ||
+                collider.transform.IsChildOf(playerContext.transform)))) continue;
+            if (hits[i].distance >= distance) continue;
+            nearest = hits[i];
+            distance = nearest.distance;
+        }
+        return distance < float.PositiveInfinity;
     }
 }

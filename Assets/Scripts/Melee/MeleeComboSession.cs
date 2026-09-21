@@ -4,21 +4,21 @@ internal enum MeleeSessionAction { Continue, Advance, Complete }
 
 internal sealed class MeleeComboSession
 {
-    MeleeComboSO _combo;
+    SkillGemDefinition _combo;
     int _step;
     int _bufferedPresses;
     bool _windowExpired;
     bool _chainOpen;
     bool _pressedInWindow;
     bool _hasChain;
-    MeleeComboSO.Step _cfg;
+    SkillComboStep _cfg;
 
     public int CurrentStepIndex => _step;
-    public MeleeComboSO.Step CurrentStep => _cfg;
-    public MeleeComboSO Combo => _combo;
+    public SkillComboStep CurrentStep => _cfg;
+    public SkillGemDefinition Combo => _combo;
     public bool IsActive => _combo != null;
 
-    public void Start(MeleeComboSO combo)
+    public void Start(SkillGemDefinition combo)
     {
         _combo = combo;
         _step = 0;
@@ -27,8 +27,8 @@ internal sealed class MeleeComboSession
         _chainOpen = false;
         _pressedInWindow = false;
 
-        if (combo.Steps.Count > 0)
-            _cfg = combo.Steps[0];
+        if (combo.MeleeStepCount > 0)
+            _cfg = combo.GetMeleeStep(0);
 
         UpdateChainInfo();
     }
@@ -50,7 +50,7 @@ internal sealed class MeleeComboSession
         if (_combo == null)
             return MeleeSessionAction.Continue;
 
-        int last = _combo.Steps.Count - 1;
+        int last = _combo.MeleeStepCount - 1;
         bool canRepeat = CanRepeatLastStep(last);
         int maxRemaining = last - _step;
         if (maxRemaining <= 0 && !canRepeat)
@@ -100,7 +100,7 @@ internal sealed class MeleeComboSession
         if (_combo == null)
             return MeleeSessionAction.Complete;
 
-        int last = _combo.Steps.Count - 1;
+        int last = _combo.MeleeStepCount - 1;
         bool canRepeat = CanRepeatLastStep(last);
 
         if (_bufferedPresses > 0 && (_step < last || canRepeat))
@@ -114,7 +114,7 @@ internal sealed class MeleeComboSession
         if (_combo == null)
             return MeleeSessionAction.Complete;
 
-        int last = _combo.Steps.Count - 1;
+        int last = _combo.MeleeStepCount - 1;
         bool canRepeat = CanRepeatLastStep(last);
 
         if (_step >= last)
@@ -139,8 +139,8 @@ internal sealed class MeleeComboSession
         _chainOpen = false;
         _pressedInWindow = false;
 
-        if (_combo != null && newStep >= 0 && newStep < _combo.Steps.Count)
-            _cfg = _combo.Steps[newStep];
+        if (_combo != null && newStep >= 0 && newStep < _combo.MeleeStepCount)
+            _cfg = _combo.GetMeleeStep(newStep);
 
         UpdateChainInfo();
     }
@@ -153,7 +153,7 @@ internal sealed class MeleeComboSession
             return;
         }
 
-        int last = _combo.Steps.Count - 1;
+        int last = _combo.MeleeStepCount - 1;
         float chainEnd = Mathf.Clamp01(_cfg.chainWindowN.y);
         bool repeatLast = _step == last && chainEnd > 0.0001f;
         _hasChain = (_step < last || repeatLast) && chainEnd > 0.0001f;

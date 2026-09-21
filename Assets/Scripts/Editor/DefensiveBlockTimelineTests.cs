@@ -18,20 +18,14 @@ public sealed class DefensiveBlockTimelineTests
     DefensiveBlockTimelineSession Draft()
     {
         var skill = Own(ScriptableObject.CreateInstance<SkillGemDefinition>());
-        skill.defensiveBlock = Own(ScriptableObject.CreateInstance<DefensiveBlockAttackProfile>());
+        skill.defensiveBlock = new SkillDefensiveBlockSettings();
         return Own(DefensiveBlockTimelineSession.Create(skill));
     }
-    void Persist(DefensiveBlockTimelineSession draft, bool embed = true)
+    void Persist(DefensiveBlockTimelineSession draft)
     {
         folder = "Assets/__BlockTimelineTest_" + Guid.NewGuid().ToString("N");
         AssetDatabase.CreateFolder("Assets", Path.GetFileName(folder));
-        if (draft.profile != null) AssetDatabase.CreateAsset(draft.profile, folder + "/Profile.asset");
         AssetDatabase.CreateAsset(draft.skill, folder + "/Skill.asset");
-        if (embed && draft.skill.defensiveBlock != null)
-        {
-            DefensiveBlockSkillAuthoring.EnsureOwned(draft.skill);
-            AssetDatabase.SaveAssetIfDirty(draft.skill);
-        }
         draft.Reload();
     }
     [TearDown] public void Cleanup()
@@ -68,7 +62,7 @@ public sealed class DefensiveBlockTimelineTests
     {
         var draft = Draft(); Persist(draft);
         string skillBefore = EditorJsonUtility.ToJson(draft.skill);
-        string profileBefore = EditorJsonUtility.ToJson(draft.profile);
+        string profileBefore = JsonUtility.ToJson(draft.profile);
         draft.start = .2f; draft.end = .8f;
         EditorUtility.SetDirty(draft.skill); AssetDatabase.SaveAssetIfDirty(draft.skill);
         Assert.That(draft.profile.windowStartNormalized, Is.Zero);
@@ -78,11 +72,14 @@ public sealed class DefensiveBlockTimelineTests
         var loaded = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>(profilePath).defensiveBlock;
         Assert.That(loaded.windowStartNormalized, Is.EqualTo(.2f));
         Assert.That(loaded.windowEndNormalized, Is.EqualTo(.8f));
-        Assert.That(EditorJsonUtility.ToJson(draft.skill), Is.EqualTo(skillBefore));
-        var expected = Own(ScriptableObject.CreateInstance<DefensiveBlockAttackProfile>());
-        EditorJsonUtility.FromJsonOverwrite(profileBefore, expected);
+        var expectedSkill = Own(Object.Instantiate(draft.skill));
+        expectedSkill.name = draft.skill.name;
+        expectedSkill.defensiveBlock = JsonUtility.FromJson<SkillDefensiveBlockSettings>(profileBefore);
+        Assert.That(EditorJsonUtility.ToJson(expectedSkill), Is.EqualTo(skillBefore));
+        var expected = new SkillDefensiveBlockSettings();
+        JsonUtility.FromJsonOverwrite(profileBefore, expected);
         expected.windowStartNormalized = .2f; expected.windowEndNormalized = .8f;
-        Assert.That(EditorJsonUtility.ToJson(loaded), Is.EqualTo(EditorJsonUtility.ToJson(expected)));
+        Assert.That(JsonUtility.ToJson(loaded), Is.EqualTo(JsonUtility.ToJson(expected)));
     }
 
     [Test] public void ExternalProfileChangesAndRebindingBlockSaveUntilReload()
@@ -91,11 +88,11 @@ public sealed class DefensiveBlockTimelineTests
         draft.profile.knockbackDistance = 9f;
         Assert.That(draft.Save(out _), Is.False);
         draft.Reload(); draft.end = .9f;
-        var other = Own(ScriptableObject.CreateInstance<DefensiveBlockAttackProfile>());
+        var other = new SkillDefensiveBlockSettings();
         draft.skill.defensiveBlock = other;
         Assert.That(draft.HasConflict, Is.True);
         Assert.That(draft.Save(out _), Is.False);
-        draft.Reload(); Assert.That(draft.profile, Is.SameAs(other));
+        draft.Reload(); Assert.That(JsonUtility.ToJson(draft.profile), Is.EqualTo(JsonUtility.ToJson(other)));
         Assert.That(draft.IsDirty, Is.False);
     }
 
@@ -131,7 +128,7 @@ public sealed class DefensiveBlockTimelineTests
         var skill = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>("Assets/Data/Skills/Enemies/Rector/Rector_Skill_1.asset");
         Assert.That(skill, Is.Not.Null);
         var draft = Own(DefensiveBlockTimelineSession.Create(skill));
-        Assert.That(DefensiveBlockSkillAuthoring.IsOwned(skill), Is.True);
+        Assert.That(skill.defensiveBlock, Is.Not.Null);
         Assert.That(draft.start, Is.EqualTo(draft.profile.windowStartNormalized));
         Assert.That(draft.end, Is.EqualTo(draft.profile.windowEndNormalized));
         var window = Own(ScriptableObject.CreateInstance<SkillAnimationVfxEditorWindow>());
@@ -143,7 +140,7 @@ public sealed class DefensiveBlockTimelineTests
         type.GetField("blockSession", Hidden).SetValue(window, null);
     }
 
-    [Test] public void AddBlockIsUndoableDraftAndCreatesOneSubAssetOnlyOnSave()
+    [Test] public void AddBlockIsUndoableAndSavesInlineWithoutCreatingASubAsset()
     {
         var draft = Draft(); draft.skill.defensiveBlock = null; Persist(draft);
         string before = File.ReadAllText(folder + "/Skill.asset");
@@ -157,11 +154,11 @@ public sealed class DefensiveBlockTimelineTests
         draft.Reload(); Assert.That(draft.IsEnabled, Is.False);
         draft.AddBlock(); draft.start = .1f; draft.end = .4f;
         Assert.That(draft.Save(out var error), Is.True, error);
-        Assert.That(DefensiveBlockSkillAuthoring.IsOwned(draft.skill), Is.True);
+        Assert.That(draft.skill.defensiveBlock, Is.Not.Null);
         Assert.That(draft.profile.windowStartNormalized, Is.EqualTo(.1f));
         Assert.That(draft.IsDirty, Is.False);
         Assert.That(draft.Save(out error), Is.True, error);
-        Assert.That(AssetDatabase.LoadAllAssetsAtPath(folder + "/Skill.asset").OfType<DefensiveBlockAttackProfile>().Count(), Is.EqualTo(1));
+        Assert.That(AssetDatabase.LoadAllAssetsAtPath(folder + "/Skill.asset").Length, Is.EqualTo(1));
     }
 
     [Test] public void ForeignProfileIsCopiedWithoutEditingItsOwnerOrNonTimingValues()
@@ -173,10 +170,10 @@ public sealed class DefensiveBlockTimelineTests
         second.defensiveBlock = first.defensiveBlock;
         AssetDatabase.CreateAsset(second, folder + "/Second.asset");
         var secondDraft = Own(DefensiveBlockTimelineSession.Create(second));
-        Assert.That(DefensiveBlockSkillAuthoring.IsOwned(second), Is.False);
+        Assert.That(second.defensiveBlock, Is.Not.SameAs(first.defensiveBlock));
         secondDraft.start = .25f;
         Assert.That(secondDraft.Save(out var error), Is.True, error);
-        Assert.That(DefensiveBlockSkillAuthoring.IsOwned(second), Is.True);
+        Assert.That(second.defensiveBlock, Is.Not.Null);
         Assert.That(second.defensiveBlock, Is.Not.SameAs(first.defensiveBlock));
         Assert.That(second.defensiveBlock.knockbackDistance, Is.EqualTo(first.defensiveBlock.knockbackDistance));
         Assert.That(second.defensiveBlock.hitboxSteps, Is.EqualTo(first.defensiveBlock.hitboxSteps));
@@ -184,28 +181,48 @@ public sealed class DefensiveBlockTimelineTests
         Assert.That(first.defensiveBlock.windowStartNormalized, Is.Zero);
     }
 
-    [Test] public void LegacyMigrationPreservesAllValuesAndIsIdempotent()
+    [Test] public void ModeAndApproachSettingsAreUndoableDraftAndSavedWithWindows()
     {
-        var draft = Draft(); Persist(draft, false);
-        string originalFile = File.ReadAllText(folder + "/Profile.asset");
-        var original = draft.profile;
-        draft.RequestOwnership();
-        Assert.That(draft.IsDirty, Is.True);
+        var draft = Draft(); Persist(draft);
+        draft.SetMode(DefensiveBlockMode.TimedApproach);
+        draft.timedApproachSeconds = .37f; draft.approachStandOff = 1.25f;
+        Undo.FlushUndoRecordObjects();
+        Assert.That(draft.profile.mode, Is.EqualTo(DefensiveBlockMode.Contact));
+        Undo.PerformUndo(); Assert.That(draft.IsDirty, Is.False);
+        Undo.PerformRedo(); Assert.That(draft.IsDirty, Is.True);
         Assert.That(draft.Save(out var error), Is.True, error);
-        Assert.That(draft.profile, Is.Not.SameAs(original));
-        var expected = Own(Object.Instantiate(original)); expected.name = "Block Profile";
-        Assert.That(EditorJsonUtility.ToJson(draft.profile), Is.EqualTo(EditorJsonUtility.ToJson(expected)));
-        var profile = draft.profile;
-        Assert.That(DefensiveBlockSkillAuthoring.EnsureOwned(draft.skill), Is.SameAs(profile));
-        Assert.That(File.ReadAllText(folder + "/Profile.asset"), Is.EqualTo(originalFile));
+        Assert.That(draft.profile.mode, Is.EqualTo(DefensiveBlockMode.TimedApproach));
+        Assert.That(draft.profile.ApproachDuration, Is.EqualTo(.37f));
+        Assert.That(draft.profile.approachStandOff, Is.EqualTo(1.25f));
+        draft.DisableBlock(); Assert.That(draft.profile, Is.Not.Null);
+        Assert.That(draft.Save(out error), Is.True, error);
+        Assert.That(draft.profile, Is.Null);
+        draft.AddBlock(); Assert.That(draft.Save(out error), Is.True, error);
+        Assert.That(draft.profile.ApproachDuration, Is.EqualTo(.37f));
+        Assert.That(draft.profile.approachStandOff, Is.EqualTo(1.25f));
     }
 
+    [Test] public void InvalidTimedApproachCannotSaveAndContactIgnoresUnusedDuration()
+    {
+        var draft = Draft(); Persist(draft); draft.SetMode(DefensiveBlockMode.TimedApproach);
+        foreach (float duration in new[] { 0f, -1f, float.NaN, float.PositiveInfinity })
+        {
+            draft.timedApproachSeconds = duration;
+            Assert.That(draft.Save(out _), Is.False);
+            Assert.That(draft.profile.mode, Is.EqualTo(DefensiveBlockMode.Contact));
+        }
+        draft.SetMode(DefensiveBlockMode.Contact);
+        draft.timedApproachSeconds = 0f;
+        Assert.That(draft.Save(out var error), Is.True, error);
+        Assert.That(draft.profile.IsConfigured, Is.True);
+        Assert.That(draft.profile.ApproachDuration, Is.Zero);
+    }
     [Test] public void DuplicatingSkillCopiesItsOwnProfileAndTimingsStayIndependent()
     {
         var draft = Draft(); Persist(draft);
         Assert.That(AssetDatabase.CopyAsset(folder + "/Skill.asset", folder + "/Copy.asset"), Is.True);
         var copy = AssetDatabase.LoadAssetAtPath<SkillGemDefinition>(folder + "/Copy.asset");
-        Assert.That(DefensiveBlockSkillAuthoring.IsOwned(copy), Is.True);
+        Assert.That(copy.defensiveBlock, Is.Not.Null);
         Assert.That(copy.defensiveBlock, Is.Not.SameAs(draft.profile));
         var copyDraft = Own(DefensiveBlockTimelineSession.Create(copy));
         copyDraft.end = .9f;
@@ -214,28 +231,14 @@ public sealed class DefensiveBlockTimelineTests
         Assert.That(copy.defensiveBlock.windowEndNormalized, Is.EqualTo(.9f));
     }
 
-    [Test] public void MigrationPreservesOpenUnsavedTimingDraftWithoutApplyingIt()
-    {
-        var draft = Draft(); Persist(draft, false);
-        Undo.RecordObject(draft, "User timing edit"); draft.start = .11f; draft.end = .17f;
-        Undo.FlushUndoRecordObjects();
-        Assert.That(DefensiveBlockSkillAuthoring.EmbedExistingProfile(draft.skill), Is.True);
-        Assert.That(draft.IsDirty, Is.True);
-        Assert.That(draft.HasConflict, Is.False);
-        Assert.That(draft.start, Is.EqualTo(.11f)); Assert.That(draft.end, Is.EqualTo(.17f));
-        Assert.That(draft.profile.windowStartNormalized, Is.Zero);
-        Assert.That(draft.profile.windowEndNormalized, Is.EqualTo(.62f));
-        Assert.That(DefensiveBlockSkillAuthoring.EmbedExistingProfile(draft.skill), Is.False);
-    }
-
     [Test] public void AddingBlockDetectsAnotherToolAssigningProfileBeforeSave()
     {
         var draft = Draft(); draft.skill.defensiveBlock = null; Persist(draft);
         draft.AddBlock();
-        draft.skill.defensiveBlock = Own(ScriptableObject.CreateInstance<DefensiveBlockAttackProfile>());
+        draft.skill.defensiveBlock = new SkillDefensiveBlockSettings();
         Assert.That(draft.HasConflict, Is.True);
         Assert.That(draft.Save(out _), Is.False);
-        Assert.That(AssetDatabase.LoadAllAssetsAtPath(folder + "/Skill.asset").OfType<DefensiveBlockAttackProfile>(), Is.Empty);
+        Assert.That(AssetDatabase.LoadAllAssetsAtPath(folder + "/Skill.asset").Length, Is.EqualTo(1));
     }
 
     [Test] public void MultipleWindowsSaveIndependentRangesStepsAndOutcomes()

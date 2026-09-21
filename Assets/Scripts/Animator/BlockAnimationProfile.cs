@@ -8,6 +8,9 @@ public sealed class BlockAnimationProfile : ScriptableObject
     [Tooltip("First sampled frame of Begin. Skip any approach/jump baked into the clip.")]
     [Range(0f, 1f)] public float beginStartNormalized;
     [Range(0f, 1f)] public float guardPoseNormalized = 0.35f;
+    [Tooltip("Recoil segment to sample. Exclude jumps or approach motion elsewhere in the clip.")]
+    [Range(0f, 1f)] public float impactStartNormalized;
+    [Range(0f, 1f)] public float impactEndNormalized = 1f;
     [Min(0.01f)] public float beginSeconds = 0.12f;
     [Min(0.01f)] public float impactSeconds = 0.35f;
     [Min(0.01f)] public float exitSeconds = 0.12f;

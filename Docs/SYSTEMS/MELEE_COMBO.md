@@ -2,17 +2,25 @@
 
 ## Step Data
 
-Each `MeleeComboSO.Step` owns an `executionSkill` reference, its chain window,
+`SkillGemDefinition` owns optional Combo data (`comboEnabled`, `comboSteps`).
+Each `SkillComboStep` owns an `executionSkill` reference, its chain window,
 buffer-expiry rule, and stable editor entry GUID. The referenced
 `SkillGemDefinition` owns the clip, duration (`baseCastTime`, zero means native
 clip duration), impact settings, and timeline VFX. Its embedded
 `PrefabHitboxSkillPayloadDef` owns an inline `SkillHitboxLayoutData`, shared by
 the same runtime used for ordinary Skills.
-Legacy clip/impact/VFX fields remain hidden for migration only; runtime does not
-read them. The GUID distinguishes steps that share the same clip.
+The retired `MeleeComboSO` assets, type, and hidden Animation Profile fields have
+been removed. Runtime reads `meleeSkill`, `lightMeleeSkill`, and `heavyMeleeSkill`. Existing leaf
+Skill assets keep their GUIDs, payloads and shared references. No animation or
+damage data is copied into the combo root. Nested combos are invalid. A basic
+attack slot also accepts a standalone Skill (one step without repeat).
 
-Run `Tools > RB > Animation VFX > Assign Missing Melee Step IDs` after creating,
-duplicating, or merging steps. It changes only empty or duplicate IDs.
+Use **Combo > Assign Missing Step IDs** on the root Skill after adding or
+duplicating steps. Reordering retains existing IDs. The basic-attack sequencer
+owns input buffering; this migration does not introduce paid multi-step active
+casts. Ordinary active-skill entry points reject a combo root before spending
+resources. Assign the root to a Basic Attack slot; standalone active Skills
+keep their existing cost and playback policy.
 
 ## Timeline And VFX
 
@@ -55,24 +63,35 @@ Basic attacks do not reserve, resize, consume, or recharge the shared charge
 pool and do not spend energy. They retain Melee admission/reload/fire-intent
 rules, live character/weapon damage and critical stats at hit time, the legacy
 stagger fallback (half skill-base damage), and `CombatSourceKind.Melee`.
-Each HitStart opens a new hit cache and attack/chain identity. Skill voice,
-blockable pre-cast, and defensive-block windup are not enabled by this reuse.
+Each HitStart opens a new hit cache and attack/chain identity. Skill voice and
+blockable pre-cast remain separate. Defensive Block now opts in through the
+current step's inline Skill Defensive Block settings, including its optional windup. The same
+request-scoped hitbox binding and timed approach accept Basic Melee playback.
+An interrupted request clears the combo buffer; continuation keeps the normal
+combo rules. Steps with Can Be Blocked disabled do not inherit a previous step's window.
 
 ## Migration And Authoring
 
-Use **Tools > RB > Melee > Preview Skill Migration**, then **Migrate All Combos
-To Skills** in Edit Mode. The tool creates one visible skill per combo-step
-GUID under `Assets/Data/Combat/MeleeSkills`, with its own embedded payload.
-Existing execution skills are reused without overwriting designer changes.
-Newly converted steps require the character-hitbox migration below or a layout
-authored with `SetSkillHitBoxData` before they can execute.
-Original combo files are backed up outside Assets in the workspace's
-`.codex-temp/melee-skill-baseline/Assets` folder. `ValidateAll()` checks migrated
-references, embedded payload ownership, required markers, and VFX.
+Migration and legacy cleanup are complete. Seven root Skills live under
+`Assets/Data/Combat/ComboSkills`; their eight execution Skills remain under
+`Assets/Data/Combat/MeleeSkills` with the original GUIDs and embedded payloads.
+Four Animation Profiles use the new Basic Attack slots. Create and edit a
+`SkillGemDefinition` with Combo enabled for new combos; the one-time migration
+menus and old timeline adapter have been removed.
 
-Edit the combo for ordering/buffering/chain windows. Edit the referenced skill
-for animation, duration, impact, and VFX. The Melee timeline source redirects
-clip/VFX edits to that skill while preserving the combo's chain-window lane.
+The cleanup backup is outside Assets at
+`../.codex-temp/melee-legacy-cleanup-20260920`, including retired assets/scripts,
+their meta files, affected profiles, SHA-256 manifests, and the old-to-new map
+in `../BuildArtifacts/melee-legacy-cleanup.txt`. It is an archive, not an asset
+folder to import into the current project. Cleanup verified each step's execution
+reference, ID, chain window and buffer rule before removing the old asset.
+
+Edit the root Skill's Combo list for ordering/buffering, then select a Step in
+the Timeline for animation, Hitbox, VFX and Block. `SkillComboVfxTimelineSource`
+routes edits to the selected leaf Skill and Chain Window edits to the root.
+Chain edits reject stale source snapshots, use Undo, and save only the root;
+VFX and Block saves target only the selected leaf asset. Child Skills are hidden
+from the main picker when reachable through a combo Entry.
 Use `SetSkillHitBoxData` for both Basic Melee and Skills. Groups select Payload,
 CasterRoot, or AnimatorRoot space plus a relative anchor path. AnimatorRoot uses
 the current visual model Animator via `ctx.Visual.ModelAnimator`, falling back
@@ -82,20 +101,19 @@ serializing the actor wrapper path when a prefab also has a placeholder Animator
 ordinary Skills use their payload mask. The `Use Caster Melee Hitboxes` switch
 and context hitbox reference no longer exist.
 
-`Tools > RB > Melee > Migrate Character Hitboxes To Skill Layouts` copies legacy
-shapes/anchors into the execution skills, preserves actor masks, then removes
-old components/colliders from prefabs. Rerunning it keeps existing layouts.
-`MeleeHitboxTrigger` remains only as an import schema for this editor tool, with
-no runtime logic and no remaining scene/prefab instances. Original files are
-backed up outside Assets under `.codex-temp/unified-hitbox-assets`.
+The completed character-hitbox migration copied shapes/anchors into execution
+Skills and preserved actor masks. Its import-only `MeleeHitboxTrigger` schema
+and migration tool are now retired, after checking for remaining serialized
+references. The earlier geometry backup remains outside Assets under
+`../.codex-temp/unified-hitbox-assets`.
 
 The eight existing skills now have layouts: five preserve Rector/GR04 geometry
 (including the Rector heavy fallback), and three generic Roma/Milano steps use
 an approved starter Box centered at `(0, 1, 1)`, size `(1.2, 1.6, 1.5)` in
 CasterRoot space. These starter dimensions need animation/balance tuning.
 
-All seven existing combos (eight steps) were migrated. The missing clip on
-`Assets/Character/GRS_02/Rector_MeleeComboSO.asset` was replaced with Rector's
+All seven existing combos (eight steps) were migrated. The missing clip from the
+retired `Assets/Character/GRS_02/Rector_MeleeComboSO.asset` was replaced with Rector's
 `Rector_HavyAttack` as an explicitly approved placeholder; its original hit
 windows and impact values remain intact. Review that character's animation
 timing when its intended clip becomes available.

@@ -15,7 +15,7 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
     [Range(0f, 1f)] public float windowEndNormalized = 0.62f;
     CharacteContext ctx;
     CharacterSkillManager subscribedManager;
-    DefensiveBlockAttackProfile profile;
+    SkillDefensiveBlockSettings profile;
     SkillHitboxSequenceRuntime execution;
     int requestId;
     int life;
@@ -86,7 +86,6 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
     void OnCastStarted(ActiveSkillCastInfo cast)
     {
         ResetExecution();
-        if (cast.ExecutionKind == SkillExecutionKind.BasicMelee) return;
         profile = cast.SkillDef != null ? cast.SkillDef.defensiveBlock : null;
         if (profile == null) return;
         skill = cast.SkillDef;
@@ -124,7 +123,7 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
         if (player.interruptionCommand == null ||
             !player.interruptionCommand.TrySelectDefensiveBlockDefender(this, out var selected))
             return Result(InterruptionCommandResult.NoAvailableAlly, "No available party defender");
-        float duration = selected.Settings.timedApproachSeconds;
+        float duration = profile.ApproachDuration;
         Vector3 guardPosition = default, destination = default;
         Quaternion guardRotation = Quaternion.identity;
         CharacterPlacementFootprint footprint = default;
@@ -160,6 +159,29 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
 
     public bool CanAcceptCommand(PlayerContext player) =>
         EvaluateBlockCommand(player, out _) == InterruptionCommandResult.Success;
+
+    public string DescribeBlockCommand(PlayerContext player)
+    {
+        var result = EvaluateBlockCommand(player, out string reason);
+        float time = -1f;
+        if (ctx != null && ctx.AnimBrain != null) ctx.AnimBrain.TryGetActiveSkillNormalizedTime(requestId, out time);
+        string current = "none";
+        if (ctx != null && ctx.SkillManager != null && ctx.SkillManager.TryGetActiveCast(out var cast))
+            current = $"{cast.SkillDef?.SkillDefinitionDisplayName} request={cast.RequestId}";
+        return $"attack={GetInstanceID()} request={requestId} skill='{skill?.SkillDefinitionDisplayName}' " +
+            $"currentCast='{current}' profileConfigured={profile != null && profile.IsConfigured} " +
+            $"mode={profile?.mode} ownsCast={OwnsCurrentSkill} window={WindowIndex} open={WindowOpen} timeN={time:F3} " +
+            $"range={commandRange:F2} result={result} reason='{reason}' " +
+            $"incoming={TryGetIncomingThreat(player, out _, false)}";
+    }
+
+    internal void TraceBlock(string message)
+    {
+        if (protectedPlayer != null && protectedPlayer.interruptionCommand != null && protectedPlayer.interruptionCommand.logDefensiveBlock)
+            protectedPlayer.interruptionCommand.LogDefensiveBlock(
+                $"attack={GetInstanceID()} caster='{ctx?.name}' request={requestId} window={acceptedWindow} " +
+                $"skill='{skill?.SkillDefinitionDisplayName}' defender='{defender?.ActorContext?.name}' {message}");
+    }
 
     public bool TryGetIncomingThreat(PlayerContext player, out float contactSeconds, bool requireReady = true)
     {
@@ -244,6 +266,7 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
 
     void RejectLateGuard()
     {
+        TraceBlock("Missed: Player contacted before guard; " + LastProbe);
         if (protectedPlayer != null) passedTargets[(protectedPlayer, DamageWindow)] = protectedPlayer.LifeGeneration;
         LastResult = "Missed: Player contacted before guard";
         // Release only the defender. The enemy's cast, remaining hitboxes and paid costs continue.
@@ -272,6 +295,16 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
             }
         }
         return earliest;
+    }
+
+    public Vector3 ConstrainContactRootMotion(Vector3 position, Vector3 delta)
+    {
+        if (profile == null || profile.mode != DefensiveBlockMode.Contact || !WindowOpen ||
+            acceptedWindow != WindowIndex || defender == null || !defender.IsReadyFor(this, requestId) ||
+            HasPassedTarget(protectedPlayer) || Vector3.Dot(ctx.transform.forward, defender.transform.forward) > -.25f)
+            return delta;
+        return DefensiveBlockGeometry.ConstrainMotionAtGuard(position, delta, defender.GuardCenter,
+            defender.transform.forward, defender.guardHalfWidth, defender.guardHalfDepth);
     }
 
     public bool TryIntercept(SkillHitboxSequenceRuntime runtime)
@@ -338,6 +371,7 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
         guard.ConfirmImpact(this, requestId);
         SuccessCount++;
         LastResult = !knockback ? "Blocked: combo continues" : pushed ? "Blocked: Rector knocked back" : "Blocked: knockback rejected";
+        TraceBlock("Impact confirmed; " + LastResult);
     }
     void LateUpdate()
     {
@@ -358,6 +392,7 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
         (acceptedWindow < 0 || approach != null || acceptedWindow == WindowIndex);
     public void ResetExecution()
     {
+        TraceBlock("Execution reset/ended");
         ReleaseWindup();
         if (approach != null) { ReleaseApproach(); StopOwnedSkill(); }
         if (ctx != null && ctx.LifeGeneration == life)

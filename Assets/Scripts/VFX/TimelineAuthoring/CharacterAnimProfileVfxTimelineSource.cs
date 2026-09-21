@@ -94,7 +94,7 @@ public sealed class CharacterAnimProfileVfxTimelineSource : IAnimationVfxTimelin
             return;
 
         EditorUtility.SetDirty(profile);
-        AssetDatabase.SaveAssets();
+        AssetDatabase.SaveAssetIfDirty(profile);
     }
 
     internal static string GetEntryLabel(string entryId, ClipTransition transition)

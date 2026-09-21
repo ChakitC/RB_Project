@@ -29,9 +29,13 @@ internal sealed class DefensiveBlockApproachMotor
             actor.ColliderRefs != null ? actor.ColliderRefs.CharacterPositionCollider : null, actor.transform, out shape, out _)) return false;
         Vector3 delta = destination - actor.transform.position;
         delta.y = 0f;
-        // Do not pull an attacker backwards or turn a passing/rear attack into a Block.
-        if (Vector3.Dot(delta, actor.transform.forward) < .05f ||
-            Vector3.Dot(actor.transform.forward, guardRotation * Vector3.forward) > -.25f) return false;
+        Vector3 guardForward = guardRotation * Vector3.forward;
+        // Close frontal attacks keep their current position for the full authored
+        // duration. Never pull them back to stand-off or catch an actor past the guard.
+        if (Vector3.Dot(actor.transform.forward, guardForward) > -.25f ||
+            Vector3.Dot(actor.transform.position - guardPosition, guardForward) <= 0f) return false;
+        if (Vector3.Dot(delta, actor.transform.forward) < .05f)
+            destination = actor.transform.position;
         if (!NavMesh.SamplePosition(destination, out var end, .25f, NavMesh.AllAreas) ||
             Mathf.Abs(end.position.y - destination.y) > .2f ||
             NavMesh.Raycast(actor.transform.position, end.position, out _, NavMesh.AllAreas)) return false;

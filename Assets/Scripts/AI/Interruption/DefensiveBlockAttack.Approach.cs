@@ -14,7 +14,8 @@ public sealed partial class DefensiveBlockAttack
     public bool CanApproachGuard(PlayerContext issuer, DefensiveBlockController guard)
     {
         if (guard == null || guard.Settings == null) return false;
-        if (guard.Settings.timedApproachSeconds <= 0f) return true;
+        if (profile == null || !profile.IsConfigured) return false;
+        if (profile.mode == DefensiveBlockMode.Contact) return true;
         return TryPlanApproach(issuer, guard, out _, out _, out _, out _);
     }
 
@@ -47,6 +48,7 @@ public sealed partial class DefensiveBlockAttack
         approachStartFrame = Time.frameCount;
         ctx.AnimBrain.PlaybackEvent += OnApproachPlayback;
         LastResult = "Timed approach: moving to guard";
+        TraceBlock($"Timed approach started: destination={destination} duration={duration:F3}");
         return true;
     }
 
@@ -74,7 +76,7 @@ public sealed partial class DefensiveBlockAttack
 
     void OnApproachPlayback(CharacterAnimBrain.PlaybackSignal signal)
     {
-        if (approach != null && signal.Kind == CharacterAnimBrain.PlaybackKind.Skill && signal.RequestId == requestId &&
+        if (approach != null && (signal.Kind == CharacterAnimBrain.PlaybackKind.Skill || signal.Kind == CharacterAnimBrain.PlaybackKind.Melee) && signal.RequestId == requestId &&
             (signal.Phase == CharacterAnimBrain.PlaybackPhase.Interrupted || signal.Phase == CharacterAnimBrain.PlaybackPhase.Completed))
             AbortApproach("Skill playback interrupted during approach");
     }
@@ -97,6 +99,7 @@ public sealed partial class DefensiveBlockAttack
 
     void AbortApproach(string reason)
     {
+        TraceBlock("Cancelled: " + reason);
         CancelApproachPlayback();
         defender?.CancelFor(this, requestId);
         LastResult = reason;

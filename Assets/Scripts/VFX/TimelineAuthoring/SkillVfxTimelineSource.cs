@@ -137,7 +137,7 @@ public sealed class SkillVfxTimelineSource : IAnimationVfxTimelineSource
         if (skill == null)
             return;
         EditorUtility.SetDirty(skill);
-        AssetDatabase.SaveAssets();
+        AssetDatabase.SaveAssetIfDirty(skill);
     }
 
     void ReloadCues(IReadOnlyList<AnimationVfxCue> values)

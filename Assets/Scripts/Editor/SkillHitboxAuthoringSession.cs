@@ -358,12 +358,21 @@ public sealed class SkillHitboxAuthoringSession : ScriptableObject
 
     static bool Finite(Vector3 value) => float.IsFinite(value.x) && float.IsFinite(value.y) && float.IsFinite(value.z);
 
-    public bool Save(out string error, Func<PayloadDraft, SkillHitboxLayoutData.HitBoxGroupData, bool> anchorExists = null)
+    public List<string> ValidateSave(Func<PayloadDraft, SkillHitboxLayoutData.HitBoxGroupData, bool> anchorExists = null)
     {
         var issues = Validate(anchorExists);
         string path = skill != null ? AssetDatabase.GetAssetPath(skill) : null;
         if (string.IsNullOrEmpty(path) || payloads.Any(p => AssetDatabase.GetAssetPath(p.source) != path))
             issues.Add("Save requires hitbox payloads embedded in the selected skill asset.");
+        foreach (var marker in markers)
+            if (StringAsset.Find(CombatTimelineEventNames.ToStringReference(marker.name), out _) == null)
+                issues.Add($"Missing timeline event asset '{marker.name}'. Create it in the event authoring tool.");
+        return issues;
+    }
+
+    public bool Save(out string error, Func<PayloadDraft, SkillHitboxLayoutData.HitBoxGroupData, bool> anchorExists = null)
+    {
+        var issues = ValidateSave(anchorExists);
         if (issues.Count > 0) { error = string.Join("\n", issues); return false; }
         // Name assets must already exist; opening or validating the tool never creates assets.
         var names = new Dictionary<CombatTimelineEventName, StringAsset>();

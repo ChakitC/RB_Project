@@ -18,7 +18,7 @@ public sealed class DefensiveBlockWindowTests
 
     [Test] public void WindowBoundariesGapsAndLegacyFallback()
     {
-        var profile = ScriptableObject.CreateInstance<DefensiveBlockAttackProfile>();
+        var profile = new SkillDefensiveBlockSettings();
         try
         {
             Assert.IsTrue(profile.IsConfigured); Assert.AreEqual(0, profile.FindWindow(0));
@@ -30,12 +30,12 @@ public sealed class DefensiveBlockWindowTests
             Assert.IsFalse(profile.AllowsStep(1, 0)); Assert.IsTrue(profile.AllowsStep(1, 1));
             Assert.AreEqual(DefensiveBlockOutcome.ContinueSkill, profile.Outcome(0));
         }
-        finally { Object.DestroyImmediate(profile); }
+        finally {  }
     }
 
     [Test] public void InvalidWindowsFailClosed()
     {
-        var profile = ScriptableObject.CreateInstance<DefensiveBlockAttackProfile>();
+        var profile = new SkillDefensiveBlockSettings();
         try
         {
             profile.windows = Pair(); profile.windows[1].startNormalized = .3f; Assert.IsFalse(profile.IsConfigured);
@@ -43,14 +43,14 @@ public sealed class DefensiveBlockWindowTests
             profile.windows = Pair(); profile.windows[0].endNormalized = float.NaN; Assert.IsFalse(profile.IsConfigured);
             profile.windows = Pair(); profile.windows[0].onSuccess = (DefensiveBlockOutcome)99; Assert.IsFalse(profile.IsConfigured);
         }
-        finally { Object.DestroyImmediate(profile); }
+        finally {  }
     }
 
     [Test] public void EarlierDamageDoesNotRejectLaterWindowAndStaleRequestsDoNotMarkIt()
     {
         var casterObject = new GameObject("Window test caster");
         var victimObject = new GameObject("Window test victim");
-        var profile = ScriptableObject.CreateInstance<DefensiveBlockAttackProfile>();
+        var profile = new SkillDefensiveBlockSettings();
         try
         {
             var caster = casterObject.AddComponent<EnemyContext>();
@@ -71,7 +71,7 @@ public sealed class DefensiveBlockWindowTests
             Assert.IsTrue(Hit(1));
             attack.ResetExecution(); Assert.IsFalse(Hit(0)); Assert.IsFalse(Hit(1));
         }
-        finally { Object.DestroyImmediate(casterObject); Object.DestroyImmediate(victimObject); Object.DestroyImmediate(profile); }
+        finally { Object.DestroyImmediate(casterObject); Object.DestroyImmediate(victimObject);  }
     }
 
     [Test] public void StepSuppressionIsRequestScopedAndLeavesFollowingStepPlayable()

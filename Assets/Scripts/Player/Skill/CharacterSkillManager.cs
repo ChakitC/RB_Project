@@ -611,7 +611,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     {
         CacheReferences();
         EnsureRuntimeSkill(entry);
-        if (entry == null || entry.runtimeSkill == null || skillUser == null)
+        if (entry == null || entry.runtimeSkill == null || entry.runtimeSkill.def == null || entry.runtimeSkill.def.IsCombo || skillUser == null)
             return false;
         if (CutsceneDirector.IsCinematicPlaying || IsSkillStartBlockedByAnimation() || IsSkillUseBlocked())
             return false;
@@ -1111,10 +1111,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         actorRoot.rotation = Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
     }
 
-    internal SkillCastStartResult TryStartMeleeStep(MeleeComboSO.Step step, MeleeType meleeType)
+    internal SkillCastStartResult TryStartMeleeStep(SkillComboStep step, MeleeType meleeType)
     {
         CacheReferences();
-        if (step.executionSkill == null || skillUser == null || animDriver == null ||
+        if (step.executionSkill == null || step.executionSkill.IsCombo || skillUser == null || animDriver == null ||
             ctx == null || ctx.stateHub == null || !ctx.stateHub.CanStartMelee() ||
             CutsceneDirector.IsCinematicPlaying)
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
@@ -1156,7 +1156,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (CutsceneDirector.IsCinematicPlaying)
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
-        if (entry == null || entry.runtimeSkill == null || skillUser == null)
+        if (entry == null || entry.runtimeSkill == null || entry.runtimeSkill.def == null || entry.runtimeSkill.def.IsCombo || skillUser == null)
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         // A caller that already drives this skill's animation (the helper summon path) asks to be

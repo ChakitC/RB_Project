@@ -34,7 +34,7 @@ public sealed partial class SkillAnimationVfxEditorWindow
             if (hitboxSession != null) hitboxIssues = hitboxSession.Validate(AnchorExists);
             UpdateAuthoringDirtyState(); Repaint();
         };
-        saveChangesMessage = "Save pending Hitbox and Block Window changes?";
+        saveChangesMessage = "Save all pending VFX, Hitbox and Block changes for this entry?";
     }
 
     void StopHitboxAuthoring()
@@ -71,22 +71,23 @@ public sealed partial class SkillAnimationVfxEditorWindow
 
     bool ConfirmHitboxDraft()
     {
-        if (!ConfirmBlockDraft()) return false;
-        if (hitboxSession == null || !hitboxSession.IsDirty) return true;
-        int choice = EditorUtility.DisplayDialogComplex("Unsaved Hitbox Draft", "Save changes to " + hitboxSession.skill.name + "?", "Save", "Cancel", "Discard");
+        if (!HasPendingAuthoringChanges()) { ReleaseBlockSession(); return true; }
+        int choice = EditorUtility.DisplayDialogComplex("Unsaved Timeline Changes", "Save all changes for the current Skill / Entry?", "Save All", "Cancel", "Discard");
         if (choice == 1) return false;
-        if (choice == 0) return SaveHitboxDraft();
-        hitboxSession.Reload(); UpdateAuthoringDirtyState(); return true;
+        if (choice == 0 && !SaveAllWithDialog()) return false;
+        if (choice == 2) DiscardChanges();
+        ReleaseBlockSession(); return true;
     }
 
     public override void SaveChanges()
     {
         // Unity keeps the window open while hasUnsavedChanges remains true.
-        if (!SaveHitboxDraft() || !SaveBlockDraft()) return;
+        if (!SaveAllWithDialog()) return;
         base.SaveChanges();
     }
     public override void DiscardChanges()
     {
+        if (HasVfxChanges()) authoringTarget.LoadTimelineVfxData(GetSource());
         if (hitboxSession != null) hitboxSession.Reload();
         if (blockSession != null) blockSession.Reload();
         base.DiscardChanges();
@@ -153,7 +154,6 @@ public sealed partial class SkillAnimationVfxEditorWindow
                 GUILayout.FlexibleSpace();
                 GUILayout.Label(hitboxSession.IsDirty ? "Unsaved changes" : "Saved", EditorStyles.miniLabel, GUILayout.Width(105));
                 hitboxShowValidation = GUILayout.Toggle(hitboxShowValidation, hitboxIssues.Count == 0 ? "Checks OK" : $"{hitboxIssues.Count} issues", EditorStyles.toolbarButton, GUILayout.Width(75));
-                if (GUILayout.Button("Save Hitboxes", EditorStyles.toolbarButton, GUILayout.Width(95))) SaveHitboxDraft();
                 if (GUILayout.Button("Revert", EditorStyles.toolbarButton, GUILayout.Width(60)))
                 {
                     if (!hitboxSession.IsDirty || EditorUtility.DisplayDialog("Revert Hitboxes", "Discard this Hitbox draft and reload the skill?", "Revert", "Cancel"))
@@ -183,6 +183,7 @@ public sealed partial class SkillAnimationVfxEditorWindow
             hitboxTimelineScroll = EditorGUILayout.BeginScrollView(hitboxTimelineScroll, GUILayout.Height(timelineHeight));
             float contentHeight = Mathf.Max(timelineHeight - 20, hitboxPanel.TimelineHeight(hitboxSession));
             var rect = GUILayoutUtility.GetRect(300, 10000, contentHeight, contentHeight);
+            BeginSpaceScrub(new Rect(rect.x + 100f, rect.y, Mathf.Max(1f, rect.width - 100f), rect.height));
             hitboxPanel.DrawTimeline(hitboxSession, rect, normalizedTime, ScrubTo);
             if (hitboxPanel.IsDragging && isPlaying) PausePreview();
             EditorGUILayout.EndScrollView();

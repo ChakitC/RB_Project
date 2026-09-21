@@ -98,17 +98,17 @@ public static class SkillHitboxCharacterSetup
             if (string.IsNullOrWhiteSpace(title)) title = skill.name;
             result.Add(new Attack { Category = "Skills", Label = title, Source = skill, EntryId = "main", Skill = skill });
         }
-        void AddCombo(MeleeComboSO combo, string category)
+        void AddCombo(SkillGemDefinition combo, string category)
         {
             if (combo == null) return;
-            for (int i = 0; i < combo.Count; i++)
+            for (int i = 0; i < combo.MeleeStepCount; i++)
             {
-                var step = combo.Steps[i];
+                var step = combo.GetMeleeStep(i);
                 if (step.executionSkill == null) continue;
                 string clip = step.executionSkill.skillClip?.Clip != null ? step.executionSkill.skillClip.Clip.name : "No animation";
                 bool hasId = !string.IsNullOrWhiteSpace(step.EntryId);
                 result.Add(new Attack { Category = category, Label = $"Step {i + 1} — {clip}",
-                    Source = hasId ? (ScriptableObject)combo : step.executionSkill,
+                    Source = combo.IsCombo && hasId ? (ScriptableObject)combo : step.executionSkill,
                     EntryId = hasId ? step.EntryId : "main", Skill = step.executionSkill });
                 seenSkills.Add(step.executionSkill);
             }
@@ -119,8 +119,8 @@ public static class SkillHitboxCharacterSetup
             foreach (var option in slot.options)
                 if (option != null) AddSkill(option.ActiveSkillAsset, option.ResolvedDisplayName);
         }
-        AddCombo(stats != null ? stats.animProfile?.lightCombo : null, "Light");
-        AddCombo(stats != null ? stats.animProfile?.heavyCombo : null, "Heavy");
+        AddCombo(stats != null ? stats.animProfile?.lightMeleeSkill ?? stats.animProfile?.meleeSkill : null, "Light");
+        AddCombo(stats != null ? stats.animProfile?.heavyMeleeSkill ?? stats.animProfile?.meleeSkill : null, "Heavy");
         if (stats != null)
         {
             if (stats.skillSlots != null) foreach (var slot in stats.skillSlots) AddSlot(slot);

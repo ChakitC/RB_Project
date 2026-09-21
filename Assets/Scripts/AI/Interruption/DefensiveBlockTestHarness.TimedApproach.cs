@@ -7,13 +7,15 @@ public sealed partial class DefensiveBlockTestHarness
     IEnumerator ValidateTimedApproach(StringBuilder report)
     {
         yield return new WaitForSecondsRealtime(2f);
-        var settings = Ally.DefensiveBlock.Settings;
+        var settings = chargeSkill.defensiveBlock;
+        var savedMode = settings.mode;
+        settings.mode = DefensiveBlockMode.TimedApproach;
         float savedDuration = settings.timedApproachSeconds;
         int savedRate = Application.targetFrameRate, savedSync = QualitySettings.vSyncCount;
         try
         {
-            foreach (float duration in new[] { .5f, 1f })
-            foreach (float distance in new[] { 4f, 6f, 8f })
+            foreach (float duration in new[] { .22f, .5f, 1f })
+            foreach (float distance in new[] { 1.5f, 2f, 4f, 6f, 8f })
             foreach (bool late in new[] { false, true })
             {
                 settings.timedApproachSeconds = duration;
@@ -32,12 +34,14 @@ public sealed partial class DefensiveBlockTestHarness
                 var guard = attack.Defender;
                 Vector3 endpoint = attack.ApproachDestination;
                 float endpointError = float.PositiveInfinity;
+                float approachTravel = float.PositiveInfinity;
                 if (guard != null) guard.Impacted += _ =>
                 {
                     impacts++;
                     impactAt = Time.realtimeSinceStartup - accepted;
                     // The next coroutine tick runs after knockback has already moved the actor.
                     endpointError = Vector3.Distance(endpoint, Rector.transform.position);
+                    approachTravel = Vector3.Distance(origin, Rector.transform.position);
                 };
                 bool owned = attack.IsTimedApproach, animated = false, noRoot = owned, premature = false;
                 float firstPose = 0f;
@@ -50,14 +54,15 @@ public sealed partial class DefensiveBlockTestHarness
                     if (Rector.AnimBrain.TryGetActiveSkillNormalizedTime(guard.RequestId, out float pose)) animated |= pose > firstPose + .01f;
                     yield return null;
                 }
-                bool moved = Vector3.Distance(origin, Rector.transform.position) > .05f;
+                bool movementMatches = Vector3.Distance(origin, endpoint) <= .05f
+                    ? approachTravel < .1f : approachTravel > .05f;
                 bool reached = endpointError < .1f;
                 yield return new WaitForSecondsRealtime(2f);
-                bool passed = command == InterruptionCommandResult.Success && owned && animated && noRoot && !premature && moved && reached &&
+                bool passed = command == InterruptionCommandResult.Success && owned && animated && noRoot && !premature && movementMatches && reached &&
                     impacts == 1 && impactAt >= duration - .025f && attack.SuccessCount == 1 && commits == 1 && releases == 1 &&
                     Player.HealthSystem.currentHealth == hp && Ally.HealthSystem.currentHealth == ahp &&
                     guard != null && !guard.IsExecuting && !guard.ActorContext.FieldAllyMember.IsReserved && CameraReturned;
-                report.AppendLine($"{(passed ? "PASS" : "FAIL")} timed {duration}s {distance}m late={late}: command={command} owned={owned} animated={animated} noRoot={noRoot} moved/reached={moved}/{reached} impact={impactAt:0.###} count={impacts} costs={commits}/{releases} loss={hp-Player.HealthSystem.currentHealth}/{ahp-Ally.HealthSystem.currentHealth} result={attack.LastResult}");
+                report.AppendLine($"{(passed ? "PASS" : "FAIL")} timed {duration}s {distance}m late={late}: command={command} owned={owned} animated={animated} noRoot={noRoot} movement/reached={movementMatches}/{reached} travel={approachTravel:0.###} impact={impactAt:0.###} count={impacts} costs={commits}/{releases} loss={hp-Player.HealthSystem.currentHealth}/{ahp-Ally.HealthSystem.currentHealth} result={attack.LastResult}");
             }
 
             settings.timedApproachSeconds = .5f;
@@ -154,6 +159,7 @@ public sealed partial class DefensiveBlockTestHarness
         finally
         {
             settings.timedApproachSeconds = savedDuration;
+            settings.mode = savedMode;
             Application.targetFrameRate = savedRate; QualitySettings.vSyncCount = savedSync;
             startDistance = 8; autoBlock = false; ResetTrial();
         }

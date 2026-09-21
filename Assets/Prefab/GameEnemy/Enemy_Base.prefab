@@ -1068,6 +1068,7 @@ GameObject:
   - component: {fileID: 2065103687812396271}
   - component: {fileID: -5386552744308611412}
   - component: {fileID: 3025199990531463313}
+  - component: {fileID: 349580822164122871}
   m_Layer: 9
   m_Name: Enemy_Base
   m_TagString: Enamy
@@ -1182,7 +1183,7 @@ MonoBehaviour:
   StaminaSystem: {fileID: 3620542892003728669}
   DashSystem: {fileID: 2821387260181010644}
   KnockbackMotor: {fileID: 772699195717107350}
-  DefensiveBlockAttack: {fileID: 0}
+  DefensiveBlockAttack: {fileID: 349580822164122871}
   DefensiveBlock: {fileID: 0}
   FieldAllyMember: {fileID: 0}
   VerticalMotor: {fileID: 3025199990531463313}
@@ -1496,6 +1497,28 @@ MonoBehaviour:
   collisionPadding: 0.02
   navMeshLandSampleRadius: 1.5
   navMeshLandRecoveryTimeout: 1
+--- !u!114 &349580822164122871
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7649753103391906527}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 609cece872191274494ade721f9deb13, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skill: {fileID: 0}
+  ally: {fileID: 0}
+  commandRange: 8
+  knockbackDistance: 2
+  knockbackSeconds: 0.4
+  worldLayers:
+    serializedVersion: 2
+    m_Bits: 1
+  windowStartNormalized: 0
+  windowEndNormalized: 0.62
 --- !u!1 &8836043026795576592
 GameObject:
   m_ObjectHideFlags: 0

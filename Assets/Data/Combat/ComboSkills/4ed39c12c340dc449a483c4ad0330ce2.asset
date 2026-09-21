@@ -1,0 +1,92 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
+  m_Name: 4ed39c12c340dc449a483c4ad0330ce2
+  m_EditorClassIdentifier: 
+  comboEnabled: 1
+  comboSteps:
+  - executionSkill: {fileID: 11400000, guid: adb3e38f40e9a3344818f82c7d0f4505, type: 2}
+    entryId: 3741ab58d4e041a2974c7b6aa4e9cc71
+    chainWindowN: {x: 0.42098275, y: 0.53585654}
+    dropBufferOnWindowExpire: 0
+  defensiveBlock: {fileID: 0}
+  icon: {fileID: 0}
+  displayName: Rector Melee light
+  skillId: combo.4ed39c12c340dc449a483c4ad0330ce2
+  tags: 0
+  description: 
+  baseDamage: 10
+  damageCoefficient: 0
+  baseStaggerPower: 10
+  baseManaCost: 10
+  baseCastTime: 0.5
+  baseCooldown: 0
+  baseMaxCharges: 1
+  baseCritChance: 5
+  baseProjectilesCount: 1
+  projectileSpeed: 5
+  AreaofEffec: 0
+  baseRadius: 0
+  baseEffectDuration: 0
+  baseHealPower: 0
+  upgradeTree: {fileID: 0}
+  payload: {fileID: 0}
+  castCue: {fileID: 0}
+  skillClip:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: NaN
+  ignoreCharacterCollisionDuringRootMotion: 1
+  castPointNormalized: 0.35
+  skillVfxEvents: []
+  hitLagDuration: 0.06
+  hitLagTimeScale: 0.05
+  hitLagShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  isCutsceneSkill: 0
+  cutsceneDef:
+    characterCutsceneClip:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    cameraCutsceneClip: {fileID: 0}
+    worldSlowScale: 0.05
+    fadeInDuration: 0.08
+    fadeOutDuration: 0.12
+    barThickness: 0.08
+    cutsceneVfxEvents: []
+  blockablePreCast: 0
+  preCastOpenTimelineEvent: 200
+  preCastCloseTimelineEvent: 201
+  useFallbackPreCastWindow: 1
+  fallbackPreCastOpenNormalized: 0
+  fallbackPreCastCloseNormalized: 0.35
+  preCastIndicatorPrefab: {fileID: 0}
+  cancelPreCastOnStun: 1
+  cancelPreCastOnStagger: 1
+  references:
+    version: 2
+    RefIds: []

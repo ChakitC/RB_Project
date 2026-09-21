@@ -1,44 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-7402013195297696818
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 34d99004dfb8b0242b9d8553a5fef05d, type: 3}
-  m_Name: Block Profile
-  m_EditorClassIdentifier: 
-  commandRange: 8
-  worldLayers:
-    serializedVersion: 2
-    m_Bits: 1200129
-  windupSeconds: 0
-  windowStartNormalized: 0.005996003
-  windowEndNormalized: 0.23451033
-  hitboxSteps: 0000000001000000
-  windows:
-  - startNormalized: 0.005996003
-    endNormalized: 0.23451033
-    hitboxSteps: 0000000001000000
-    onSuccess: 0
-  - startNormalized: 0.27294305
-    endNormalized: 0.497002
-    hitboxSteps: 02000000
-    onSuccess: 0
-  - startNormalized: 0.5363924
-    endNormalized: 0.7613924
-    hitboxSteps: 03000000
-    onSuccess: 0
-  approachStandOff: 1.6
-  threatHalfWidth: 1.5
-  threatForwardReach: 2.3
-  estimatedChargeSpeed: 8
-  knockbackDistance: 2
-  knockbackSeconds: 0.4
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -51,7 +12,39 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
   m_Name: Rector_Skill_1
   m_EditorClassIdentifier: 
-  defensiveBlock: {fileID: -7402013195297696818}
+  comboEnabled: 0
+  comboSteps: []
+  blockSettings:
+    enabled: 1
+    mode: 1
+    timedApproachSeconds: 0.22
+    commandRange: 8
+    worldLayers:
+      serializedVersion: 2
+      m_Bits: 1200129
+    windupSeconds: 0
+    windowStartNormalized: 0.005996003
+    windowEndNormalized: 0.23451033
+    hitboxSteps: 0000000001000000
+    windows:
+    - startNormalized: 0.005996003
+      endNormalized: 0.23451033
+      hitboxSteps: 0000000001000000
+      onSuccess: 0
+    - startNormalized: 0.27294305
+      endNormalized: 0.497002
+      hitboxSteps: 02000000
+      onSuccess: 0
+    - startNormalized: 0.5363924
+      endNormalized: 0.7613924
+      hitboxSteps: 03000000
+      onSuccess: 0
+    approachStandOff: 1.6
+    threatHalfWidth: 1.5
+    threatForwardReach: 2.3
+    estimatedChargeSpeed: 8
+    knockbackDistance: 2
+    knockbackSeconds: 0.4
   icon: {fileID: 0}
   displayName: Rector_Skill_1
   skillId: rector_skill_1
@@ -113,9 +106,9 @@ MonoBehaviour:
     anchor: 0
     customAnchorPath: 
     humanoidBone: 18
-    localPosition: {x: 0, y: 0, z: 1.1199999}
-    localEulerAngles: {x: 270, y: 0, z: 0}
-    localScale: {x: 2.6889744, y: 2.6889741, z: 2.6889741}
+    localPosition: {x: 0.00000019965228, y: 0, z: 1.1200008}
+    localEulerAngles: {x: 270, y: -0.000000014192426, z: 0}
+    localScale: {x: 2.6889765, y: 2.688975, z: 2.6889744}
     parentToAnchor: 0
     loopKey: 
     extraLife: 0
@@ -127,9 +120,9 @@ MonoBehaviour:
     anchor: 0
     customAnchorPath: 
     humanoidBone: 18
-    localPosition: {x: 0, y: 0, z: 0.72000027}
-    localEulerAngles: {x: 270, y: 0, z: 0}
-    localScale: {x: 4.000925, y: 4.000925, z: 4.000925}
+    localPosition: {x: -0.00000007508788, y: 0, z: 0.7200012}
+    localEulerAngles: {x: 270, y: -0.000000014192426, z: 0}
+    localScale: {x: 4.000928, y: 4.0009265, z: 4.0009255}
     parentToAnchor: 0
     loopKey: 
     extraLife: 0

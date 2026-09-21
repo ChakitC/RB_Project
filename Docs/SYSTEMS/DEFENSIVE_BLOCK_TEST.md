@@ -13,77 +13,90 @@ the timeline. An asterisk on the row marks unsaved changes.
 Context menus are filtered by the clicked row: Block, VFX, Hitbox, Cast Point,
 and Other Events expose only their own actions. Existing event markers have their
 own selection/removal menu. The ruler and animation strip do not add combat events.
-The Block row remains available on eligible Main Skills without a profile so a
+The Block row remains available on eligible Main Skills with Block disabled so a
 first window can be added from that row.
 Seconds are relative to the main animation clip, including when a preceding cutscene
 is shown on the same ruler. Both endpoints are inclusive, matching runtime. Green
 means the playhead is within the configured timing window; it does not simulate
 guard availability, approach movement, collision, or successful interception.
 
-Edits remain in an Editor draft until **Block > Save Block** in the right-click
-menu. **Block > Revert Block** reloads the current
-profile and Ctrl+Z / Ctrl+Y undo or redo draft changes. Changing source, character,
-or mode offers Save / Cancel / Discard; closing the window uses the same unsaved
-changes flow. Dirty drafts survive assembly reload and preview never invokes the
-Defensive Block runtime. Save writes window timing, step bindings and outcomes to
-the Skill-owned profile, saving the containing Skill asset.
-Other Skill fields and attack-profile settings are preserved. An external
-profile edit or changed skill binding requires Revert before saving over it.
+Edits remain in an Editor draft until **Save All** or **Block > Save Block**.
+**Block > Revert Block** reloads saved settings; Ctrl+Z / Ctrl+Y undo and redo
+timing, mode, movement settings and enable/disable edits. Changing source or closing
+the window prompts for pending changes. Drafts survive assembly reload. Preview
+never invokes the Block runtime. External changes to the Skill's Block settings
+require Revert before saving; unrelated Skill fields are preserved.
 
-Each opted-in Skill owns one `DefensiveBlockAttackProfile` sub-asset. For a Skill
-without Block, right-click **Block > Add Block Window Here** in the Main Skill view,
-set timing, then choose **Block > Save Block**. Add is an undoable draft operation:
-no profile is created or bound until Save. New windows start at the clicked time,
-using the default 0.62 normalized duration clipped to the clip end. Basic Melee combo
-entries and Cutscene VFX do not expose this as their own defensive window.
+Each Skill stores `SkillDefensiveBlockSettings` inline in its **Defensive Block**
+Inspector section. **Can Be Blocked** is the opt-in; a new Skill defaults to disabled.
+There is no attack-profile asset or sub-asset to create, bind or share. Duplicating
+a Skill also copies its settings. Runtime callers use `skill.defensiveBlock`, which
+returns null while disabled. `skill.BlockSettings` exposes the stored data, including
+disabled settings. Assigning settings copies them so two Skills cannot share mutable
+Block windows through that setter.
 
-External or foreign-Skill profile bindings are legacy data: Save copies their
-settings into this Skill rather than editing the referenced profile. **Block > Embed
-Profile on Save** in the right-click menu stages that conversion even when timing is unchanged. The Skill Inspector
-shows the binding read-only to prevent authoring shared references. Expand the Skill
-asset in Project and inspect its `Block Profile` to tune allowed `hitboxSteps`,
-windup, threat geometry and knockback. Duplicating the complete Skill asset copies
-its profile as well; the two Skills can then be tuned independently.
+For a new blockable attack, right-click its Block row and select **Block > Add Block
+Window Here**, set the endpoints, check **Hitbox Steps** and **On Success**, then save.
+The first window uses the saved/default duration (0.62 normalized for a new Skill),
+clipped at the end. Additional windows in gaps initially span 0.1 normalized and
+suggest the next unused hitbox step; check it against the actual payload.
+**Block > Disable Block** turns off the opt-in on Save and retains all window data
+for later re-enabling. Cutscene entries cannot author Block.
 
-Right-click the main animation timeline for **Block > Add Block Window Here**.
-For an enabled Skill, choose a gap to add another window (initial length 0.1
-normalized, clipped before the next window/end). The new window suggests the next
-unused Hitbox Step index; verify it against the actual payload. **Select Window**
-chooses which endpoints the context commands edit; dragging a marker also selects
-its window. The controls provide Remove, Save and Revert. These operations support Undo/Revert,
-and are unavailable in the cutscene segment or Play Mode.
+Choose **Block > Mode**:
 
-`Tools > RB > Defensive Block > Embed Existing Skill Profiles` migrates existing
-bindings without enabling other Skills. It is idempotent, preserves external source
-assets, and keeps open timing drafts unsaved while updating their profile reference.
-Rector's embedded profile retains the former `RectorCharge` values. The old external
-file is retained for legacy references; production now reads the embedded profile.
-`Configure Production Assets` also uses the Skill-owned profile.
+- **Contact**: the skill keeps its normal playback. A ready guard must
+  physically intercept an allowed active hitbox before it damages the protected
+  player. There is no charge-path requirement or timed movement. This is the default
+  for new settings and the mode used by **Rector Melee Heavy / Step 1**.
+  Once the defender arrives, forward root motion stops at its guard plane until
+  contact resolves or the guard/window ends. This prevents close lunges from
+  passing through the defender before HitStart. The authored guard forward offset
+  is capped at the attacker's position on arrival for close starts; that offset
+  remains fixed for the guard session. No new setting is required. Pending warps,
+  lateral misses, retreat, and attacks without an accepted guard retain their motion.
+  Reaching the guard plane alone does not count as a Block; an allowed hitbox must
+  still touch it before Player takes damage.
+- **Timed Approach**: accepted input reserves a safe forward path, suppresses the
+  selected attack hitboxes and moves the attacker to the guard. Impact resolves at
+  the end of the movement. **Block > Timed Approach Settings...** edits **Duration
+  (seconds)** and **Stand-off distance** in the same draft; both must be finite and
+  greater than zero. Duration uses the attacker's actor clock. If a frontal attacker
+  is already closer than stand-off, it stays at its current position for the same
+  duration before Impact; it does not move backwards to create space. Facing away,
+  being behind the defender, unsafe ground and obstructed approaches remain rejected.
+  **Rector Skill 1** retains **0.22 seconds** and **1.6 m**. Close Block needs no asset change.
 
-`DefensiveBlockActorProfile` remains character-owned through Character Stats (or
-the controller's existing fallback). Guard animations, dimensions and presentation
-are separate from the attack-owned window. The timeline edits Defensive Block timing,
-separately from Pre-Cast events and HitStart/HitEnd.
+Other attack parameters (range, world mask, windup, threat prediction and knockback)
+are editable in the Skill Inspector's **Defensive Block** section. Duration belongs
+to the attack, not the defender. A zero duration does not switch modes: select
+**Contact** explicitly. Contact does not use duration or stand-off distance.
 
-Only Rector Skill 1 opts in to Defensive Block. An available Aires companion has
-priority; otherwise a ready Player can guard in place. Both use the same zero-damage
-interception, Rector knockback, recoil, HitLag, VFX and camera settings. Other skills
-retain their existing interruption flow. Receiver selection happens at input time;
-a failed or late companion warp never automatically switches to Player.
+Combo entries edit the selected execution Skill's settings; the combo root is not
+the active attack. Basic Melee uses the same request-scoped runtime as active Skills.
+Choose the combo Entry first, then select its payload's zero-based Hitbox Steps.
+**Interrupt Skill** cancels the active request and clears its combo buffer;
+**Continue Skill** suppresses the window's hits while retaining normal progression.
 
-Rector Skill 1 plays continuously from its first frame. Its `Block Profile.windupSeconds`
-is zero: the experimental 0.4 s pose hold was disabled because it broke animation
-continuity. The field/optional hold path remains for compatibility, but production
-authoring does not enable it. Production now uses a timed approach: accepted Block
-suppresses the selected attack's hitboxes immediately and moves Rector to a reserved
-point in front of the guard over `GuardSetting.timedApproachSeconds` (0.5 by default).
-Impact occurs at the end of that movement, without waiting for a hitbox contact.
-This replaces the rejected experiment which waited in place after physical contact.
-Set the duration to zero to use the previous swept-contact behavior described below.
+`DefensiveBlockActorProfile` remains character-owned through Character Stats or the
+controller fallback. It owns guard animation, placement, dimensions, recoil and
+feedback. An available Aires companion has priority; otherwise a ready Player can
+guard in place. Receiver selection happens at input time; a failed companion warp
+does not automatically switch to Player. Only Rector Skill 1 and Rector Heavy were
+enabled during this migration; other Skills retain their existing behavior.
+
+The migration preserves both attacks' timing, hit-step bindings, outcomes, threat
+geometry and knockback values. Old embedded Block Profiles, the unused external
+`RectorCharge.asset`, the attack profile type and ownership helper were retired.
+The backup and original JSON values are outside Assets under
+`../.codex-temp/block-inline-20260920`; the migration report is
+`../BuildArtifacts/block-inline-migration.txt`. `Configure Production Assets` now
+uses inline settings. Rector Skill 1's `windupSeconds` remains zero; no new clip or
+automatic timing/balance adjustment is required.
 
 ## Multiple Block Windows and outcomes
 
-`DefensiveBlockAttackProfile.windows` is an ordered list with inclusive start/end
+`SkillDefensiveBlockSettings.windows` is an ordered list with inclusive start/end
 times. Leave a gap between windows and bind each zero-based Hitbox Step to only
 one window. Invalid ranges, overlap, shared steps and invalid outcomes fail closed.
 Empty lists preserve the legacy single range/steps and Interrupt Skill result;
@@ -128,8 +141,9 @@ as a global 2D one-shot in the Sfx category; volume follows the existing Sfx mix
 
 The command and bright cue both require a valid receiver, a supported landing and
 a clear straight NavMesh/body-sweep path to the impact endpoint. Rector's profile
-authors `approachStandOff` (1.6 m root-to-root in front of the guard). An endpoint
-requiring backwards movement is rejected; another ready receiver may be selected.
+authors `approachStandOff` (1.6 m root-to-root in front of the guard). A frontal
+attacker already inside this distance uses its current position as the endpoint
+and waits for the full duration. An attacker already behind the guard is rejected.
 The attack must still be incoming, inside its command window, and must not have
 already damaged Player. Acceptance reserves this outcome, subject to interruption
 and path validity, rather than requiring Player to catch an actual collider later.
@@ -193,7 +207,7 @@ are silent. The local cue remembers the last announced caster/request/life so it
 does not repeat every frame or when the same selected attack flickers with range
 or camera visibility; a new request or newly selected attack can announce again.
 
-Before a hitbox is active, Rector's `Block Profile` estimates the lane with half-width 1.5 m,
+Before a hitbox is active, Rector's `Defensive Block` estimates the lane with half-width 1.5 m,
 forward reach 2.3 m and speed 8 m/s. Active hitbox bounds and measured forward speed
 replace those estimates when available; Player collider extents expand the lane.
 This predicts a straight charge, not future steering or a guaranteed collision.
@@ -282,9 +296,9 @@ It binds original Rector Skill 1 and Aires definitions without changing the skil
 payload or costs. Attack settings live inside the Skill asset; presentation assets
 live in `Assets/Data/DefensiveBlock`:
 
-- `Rector_Skill_1.asset > Block Profile`: command range, normalized window, allowed hitbox steps, timed approach stand-off,
+- `Rector_Skill_1.asset > Defensive Block`: command range, normalized window, allowed hitbox steps, timed approach stand-off,
   knockback distance/time, world mask and threat-prediction width/reach/speed.
-- `GuardSetting.asset`: animation profile, placement/guard dimensions, timeout, timed approach duration,
+- `GuardSetting.asset`: animation profile, placement/guard dimensions, timeout,
   slide distance/time, warp fade, impact prefab/lifetime and global HitLag.
 - `AiresBlockAnimation.asset`: Begin/Impact clips, guard pose and phase/fade timing.
 - `BlockReadyFlare.prefab`, material and shader: reusable gold prompt presentation.
@@ -331,29 +345,124 @@ remain hidden for serialized/API compatibility; production shots use the SO.
 A `DefensiveBlockCameraExtension` blends the existing Cinemachine camera state.
 The normal follow rig continues updating underneath, so exit returns to the live
 Player-follow position even if Player moved. No separate free camera takes control.
-A sphere sweep shortens the shot near walls. Combo focus, cutscenes, NPC presentation
+A sphere sweep shortens the shot near walls, ignoring the protected Player's own
+controller and child colliders. Walking backwards through the shot therefore does
+not push the camera toward the old Player position. The nearest remaining solid
+obstacle still shortens the shot, including walls behind Player on the same layer.
+This filtering belongs only to the Block shot; normal follow and aiming masks are
+unchanged. Combo focus, cutscenes, NPC presentation
 and another active virtual camera take priority; owner-checked cleanup prevents an
 old guard ending a newer shot. The legacy `DefensiveBlockCameraShot` class remains
 for compatibility/tests and is not attached to the upgraded scene.
 
 ## Regression scene
 
-Open `Assets/Tests/DefensiveBlock/RectorDefensiveBlock.unity`. Controls are **C** charge,
-**Space** Block, **Shift** Dash (either Shift key), **R** reset. The UI provides
-4/6/8/10 m starts, optional auto-block, and a toggle to pause automatic combat.
-Changing that toggle resets the trial. Turn it off to exercise normal actor AI.
+### Capturing real-play Block failures
+
+In a normal gameplay scene, select the live **Player**, find
+**InterruptionCommandController > Defensive Block Diagnostics**, and enable
+**Log Defensive Block**. In `RectorDefensiveBlock`, use the **Log Defensive Block**
+toggle in the test panel instead; the harness carries this setting to replacement
+Players after Reset. Logging defaults off and does not change eligibility.
+
+Press the normal Block command when the failure occurs. One attempt snapshot lists
+active enemies, current cast/skill/request/window, admission reason and incoming
+threat status; each registered companion reports role, busy/reserved/knockback,
+animation/life state and readiness or placement/approach rejection. Player fallback
+is included. Companion placement snapshots include desired/snapped positions,
+stand-ahead settings, body collider/footprint dimensions, world layer mask, NavMesh
+snap/footprint-edge failures, physical landing-floor hits and rejected surface normals.
+Detailed overlap records identify colliders by name/ID/root/layer and penetration;
+the final result compares world penetration against the 0.005 m Block tolerance.
+Actor/reservation overlap is labelled as a score, not a Block rejection gate.
+This trace runs only for command snapshots or Capture Block State, including ready
+placements for comparison; normal readiness polling does not allocate log strings.
+The selected guard then logs acceptance, arrival, Impact, timeout,
+playback completion/interruption and cleanup. Attack instance ID plus request ID
+correlate the command with later events. Events record UTC, frame and scene.
+
+Use **Capture Block State** in the test panel (or the component context menu) to
+record a snapshot without issuing a command. This is useful with Auto Block,
+which waits for a ready receiver and therefore does not issue failed commands.
+Ready-cue polling and idle frames do not produce logs.
+
+Filter Console by `[DefensiveBlock]`. Logs are also appended to one session file
+under `Application.persistentDataPath/Diagnostics/DefensiveBlock-<timestamp>-<id>.log`.
+Use **Open Block Log Folder** in the panel or **Open Defensive Block Log Folder**
+in the component context menu. The file survives scene changes and stopping Play;
+a new play session gets a new file on its first logged event. File-write failures
+warn once and leave Console logging active. Turn logging off after capturing the
+case; no automatic retention/deletion is performed. Play Mode checkbox changes
+are temporary unless deliberately authored into the scene/prefab before playing.
+
+### Grounded recoil animation
+
+Companion Block placement now uses the enabled `ctx.cc` locomotion body, as self
+guard already does. The production Aires model's `Position` collider is attached
+below `root.x` and can dip into the floor during animation; it must not decide
+whether a companion can warp onto a clear floor. The accepted locomotion footprint
+is also retained for landing revalidation and recoil. Actors without an enabled
+CharacterController retain the existing model-collider fallback. NavMesh, physical
+floor support, wall checks and the 0.005 m world penetration tolerance still apply;
+the fix does not raise the character or loosen collision thresholds.
+
+`BlockAnimationProfile.impactStartNormalized` and `impactEndNormalized` select the
+part of the impact clip played over the existing `impactSeconds`/slide duration.
+Defaults are 0–1 for compatibility. The production Aires profile uses 0.55–0.68 of
+`Aires_Block_Recoil`; the complete source clip contains airborne movements and must
+not be sampled in full for a grounded Block. Begin continues to use its own range.
+Adjust the profile in the Inspector and check the supporting foot over the entire
+selected interval. The clip import settings are unchanged.
+
+Companion recoil applies its swept, NavMesh-checked position directly while its
+autonomy is suspended. It does not call CharacterController.Move a second time,
+which can push a warped companion upward when another character is close. Player
+self guard still uses its CharacterController to stay in sync with vertical movement.
+
+### Interactive controls
+
+Open `Assets/Tests/DefensiveBlock/RectorDefensiveBlock.unity` and enter Play Mode.
+The scene starts with a visible, unlocked mouse so the panel is immediately usable.
+Press **F1** to switch between test controls and character control. While test
+controls are open, the fixture suspends the Player action map and clears movement,
+look, fire and aim input; clicking the panel cannot also fire or rotate the camera.
+Simulation and the panel's Block/Auto Block controls remain active. **Cast Skill / C**
+returns to character control automatically. Reset/Enemy changes reapply the chosen
+input mode to the new Player; disabling the fixture restores the input it suspended
+and returns cursor ownership to the gameplay camera.
+In the Game View test panel, click **Enemy**, select a prefab, then click **Skill**
+to select one of its attacks. Both lists can be searched. Light/Heavy combo steps
+appear as individual execution Skills; Cast Skill runs that selected Skill through
+the external Skill pipeline, not an entire melee combo/input sequence.
+Changing Enemy or Skill recreates the actors, clearing previous casts and cooldowns.
+**C / Cast Skill** casts the selection, **Space / Block** uses production Block
+input, **Shift** dashes, and **R / Reset** recreates the trial. Start distances are
+1.5/2/4/6/8/10 m. **Auto block when ready** waits for actual command eligibility and
+can request again for each distinct Block Window. **Pause enemy / party AI** resets
+the trial when toggled; turn it off to exercise normal actor AI.
+
+The panel shows the selected Skill's saved Block mode/duration, Window versus Ready,
+last Block/contact results and actor HP. Block-disabled Skills remain selectable
+and are labelled **Block off**; the fixture never enables Block or changes timing
+on Skill assets. Save changes in the authoring Timeline before testing.
 
 `PartySpawnPoint` uses `DefaultPartySpawnConfig` and the production prefabs/UI/binder.
-Scene-local `definitionOverrides` specify a deterministic Aires roster by party index;
+Scene-local `definitionOverrides` set party index 0 (Player) to **Roma**, with Aires
+in the remaining party slots so the companion Block path stays available;
 empty overrides use the saved party normally. They do not rewrite save data.
 `CharacterContextPartyLoader.ConfigureRuntimeDefinitionOverride` is applied before
 activation and remains authoritative during loader callbacks for that fixture.
 Reset calls `DespawnParty`, waits for deferred destruction and spawns through the
-same binder again. Only the harness owns manual charge/reset/auto-block controls.
+same binder again. Only the harness owns manual cast/reset/auto-block controls.
 
 `Tools > RB > Defensive Block > Create or Upgrade Test Scene` updates the existing
-scene in place, preserving arena layout. Production prefabs, skill, input and camera
-are shared; no stripped test actor copies or direct ally binding are used.
+scene in place, preserving arena layout. It refreshes Enemy choices from concrete
+prefabs under `Assets/Prefab/GameEnemy` and their animation/loadout Skills, excluding
+the shared Base and combo containers. Additional prefab/Skill references can be
+added to **Test Enemies** on the scene harness; refresh preserves those additions.
+The upgrade saves only the test scene, sets its Roma roster, and does not invoke
+production asset configuration or save unrelated assets. Production prefabs, Skills,
+input and camera are shared; no stripped test actor copies or direct ally binding are used.
 Run **Run Production Smoke Tests**, **Run Contact Order Tests**, and the harness
 context menu **Run Play Mode Validation**. Contact-order coverage includes damage
 before input, damage during departure, and Player moving in front of an arrived

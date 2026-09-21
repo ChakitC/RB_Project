@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: aa3203c44053a774cb24492a9c278298
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 383598
+  packageName: Second Brain Pro - Hierarchy for Anything
+  packageVersion: 1.1.5
+  assetPath: Assets/SecretZauce/SecondBrain/Resources/Editor/Icons/unity_editor_icons.json
+  uploadId: 998288

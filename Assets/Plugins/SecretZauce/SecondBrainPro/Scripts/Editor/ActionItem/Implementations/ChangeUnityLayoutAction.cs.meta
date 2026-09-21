@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 97379ff26df01433fb1927ace158e196
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 383598
+  packageName: Second Brain Pro - Hierarchy for Anything
+  packageVersion: 1.1.5
+  assetPath: Assets/SecretZauce/SecondBrainPro/Scripts/Editor/ActionItem/Implementations/ChangeUnityLayoutAction.cs
+  uploadId: 998288

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 3ef1d38d8756a8e43b06a0d679d3078d
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 383598
+  packageName: Second Brain Pro - Hierarchy for Anything
+  packageVersion: 1.1.5
+  assetPath: Assets/SecretZauce/SecondBrainPro/Scripts/Editor/QuickPeek/ContainerChildrenInspector.cs
+  uploadId: 998288

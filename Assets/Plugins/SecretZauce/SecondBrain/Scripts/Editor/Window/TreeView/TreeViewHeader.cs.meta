@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: b1d9a000958846b7a1ecd0990f902366
+timeCreated: 1778336029
+AssetOrigin:
+  serializedVersion: 1
+  productId: 383598
+  packageName: Second Brain Pro - Hierarchy for Anything
+  packageVersion: 1.1.5
+  assetPath: Assets/SecretZauce/SecondBrain/Scripts/Editor/Window/TreeView/TreeViewHeader.cs
+  uploadId: 998288

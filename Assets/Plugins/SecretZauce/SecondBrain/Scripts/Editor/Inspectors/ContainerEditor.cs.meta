@@ -1,0 +1,10 @@
+fileFormatVersion: 2
+guid: a4074ec3bb0b42b19b9edf94ec61403e
+timeCreated: 1777208789
+AssetOrigin:
+  serializedVersion: 1
+  productId: 383598
+  packageName: Second Brain Pro - Hierarchy for Anything
+  packageVersion: 1.1.5
+  assetPath: Assets/SecretZauce/SecondBrain/Scripts/Editor/Inspectors/ContainerEditor.cs
+  uploadId: 998288

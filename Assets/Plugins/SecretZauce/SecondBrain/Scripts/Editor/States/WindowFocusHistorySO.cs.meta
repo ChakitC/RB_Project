@@ -1,0 +1,10 @@
+fileFormatVersion: 2
+guid: 5d6113aaa39b4801ac4c237802a7b8dc
+timeCreated: 1775400798
+AssetOrigin:
+  serializedVersion: 1
+  productId: 383598
+  packageName: Second Brain Pro - Hierarchy for Anything
+  packageVersion: 1.1.5
+  assetPath: Assets/SecretZauce/SecondBrain/Scripts/Editor/States/WindowFocusHistorySO.cs
+  uploadId: 998288

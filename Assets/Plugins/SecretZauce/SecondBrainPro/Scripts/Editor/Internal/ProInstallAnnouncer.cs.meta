@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: f05f42380071b46f29a57f46f1f4aa10
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 383598
+  packageName: Second Brain Pro - Hierarchy for Anything
+  packageVersion: 1.1.5
+  assetPath: Assets/SecretZauce/SecondBrainPro/Scripts/Editor/Internal/ProInstallAnnouncer.cs
+  uploadId: 998288

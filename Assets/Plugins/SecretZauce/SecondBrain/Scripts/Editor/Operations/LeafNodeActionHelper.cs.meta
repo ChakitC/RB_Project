@@ -1,0 +1,10 @@
+fileFormatVersion: 2
+guid: b6bfe8b56f984342a24ae04f1a647c6e
+timeCreated: 1775294824
+AssetOrigin:
+  serializedVersion: 1
+  productId: 383598
+  packageName: Second Brain Pro - Hierarchy for Anything
+  packageVersion: 1.1.5
+  assetPath: Assets/SecretZauce/SecondBrain/Scripts/Editor/Operations/LeafNodeActionHelper.cs
+  uploadId: 998288

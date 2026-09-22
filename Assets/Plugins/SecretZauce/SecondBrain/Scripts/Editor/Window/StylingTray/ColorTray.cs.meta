@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: d706198712d97084498ce99465d6dcf8
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 383598
+  packageName: Second Brain Pro - Hierarchy for Anything
+  packageVersion: 1.1.5
+  assetPath: Assets/SecretZauce/SecondBrain/Scripts/Editor/Window/StylingTray/ColorTray.cs
+  uploadId: 998288

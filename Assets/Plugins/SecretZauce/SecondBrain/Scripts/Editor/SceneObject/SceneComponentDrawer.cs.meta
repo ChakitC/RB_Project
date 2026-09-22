@@ -1,0 +1,10 @@
+fileFormatVersion: 2
+guid: d3ff6efaeeaac4069f24d517944decd8
+timeCreated: 1778880998
+AssetOrigin:
+  serializedVersion: 1
+  productId: 383598
+  packageName: Second Brain Pro - Hierarchy for Anything
+  packageVersion: 1.1.5
+  assetPath: Assets/SecretZauce/SecondBrain/Scripts/Editor/SceneObject/SceneComponentDrawer.cs
+  uploadId: 998288

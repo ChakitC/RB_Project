@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: 185e1286990146498130790bb6c1249a
+timeCreated: 1778331505
+AssetOrigin:
+  serializedVersion: 1
+  productId: 383598
+  packageName: Second Brain Pro - Hierarchy for Anything
+  packageVersion: 1.1.5
+  assetPath: Assets/SecretZauce/SecondBrain/Scripts/Runtime/Common/Interfaces/IObjectStructure.cs
+  uploadId: 998288

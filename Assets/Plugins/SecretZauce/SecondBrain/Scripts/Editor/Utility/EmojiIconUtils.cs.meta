@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: e52cebb5700ec4272a6ff98c3a3bba4a
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 383598
+  packageName: Second Brain Pro - Hierarchy for Anything
+  packageVersion: 1.1.5
+  assetPath: Assets/SecretZauce/SecondBrain/Scripts/Editor/Utility/EmojiIconUtils.cs
+  uploadId: 998288

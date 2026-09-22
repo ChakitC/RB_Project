@@ -1,0 +1,10 @@
+fileFormatVersion: 2
+guid: 4553a73f587e4e7d947cfd6590e64b9d
+timeCreated: 1777129961
+AssetOrigin:
+  serializedVersion: 1
+  productId: 383598
+  packageName: Second Brain Pro - Hierarchy for Anything
+  packageVersion: 1.1.5
+  assetPath: Assets/SecretZauce/SecondBrain/Scripts/Editor/Operations/CreateChildAttributeSelector.cs
+  uploadId: 998288

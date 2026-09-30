@@ -30,7 +30,7 @@ public sealed partial class CharacterAnimBrain
                 owner.CrawlingClip != null &&
                 owner.CrawlingClip.IsValid)
             {
-                introState = owner.LocoLayer.Play(owner.CrawlingClip);
+                introState = owner.PlayLocomotionTransition(owner.CrawlingClip);
                 introState.NormalizedTime = 0f;
                 introState.Events(owner).OnEnd = onIntroEndCache;
                 mixerState = null;
@@ -86,7 +86,7 @@ public sealed partial class CharacterAnimBrain
 
         private void StartCrawlMixer()
         {
-            mixerState = owner.LocoLayer.Play(owner.CrawlMixer) as Vector2MixerState;
+            mixerState = owner.PlayLocomotionTransition(owner.CrawlMixer) as Vector2MixerState;
 
             if (mixerState == null)
                 return;

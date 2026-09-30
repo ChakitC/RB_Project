@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -32,10 +32,13 @@ namespace Animancer.Editor.TransitionLibraries
         /************************************************************************************************************************/
     }
 
-    /// https://kybernetik.com.au/animancer/api/Animancer.Editor.TransitionLibraries/TransitionLibraryEditorData
-    public partial class TransitionLibraryEditorData
+    /// https://kybernetik.com.au/animancer/api/Animancer.Editor.TransitionLibraries/TransitionLibraryEditorDataInternal
+    partial class TransitionLibraryEditorDataInternal // TransitionSortMode.cs
     {
         /************************************************************************************************************************/
+
+        /// <summary>The name of the serialized backing field of <see cref="TransitionSortMode"/>.</summary>
+        internal const string TransitionSortModeFieldName = nameof(_TransitionSortMode);
 
         [SerializeField]
         private TransitionSortMode _TransitionSortMode;
@@ -44,16 +47,7 @@ namespace Animancer.Editor.TransitionLibraries
         public TransitionSortMode TransitionSortMode
         {
             get => _TransitionSortMode;
-            set
-            {
-                if (_TransitionSortMode == value)
-                    return;
-
-                _TransitionSortMode = value;
-
-                if (Library != null)
-                    TransitionLibrarySort.Sort(Library);
-            }
+            set => _TransitionSortMode = value;
         }
 
         /************************************************************************************************************************/

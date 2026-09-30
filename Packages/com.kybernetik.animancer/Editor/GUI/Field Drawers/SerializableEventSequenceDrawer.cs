@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR && UNITY_IMGUI
 
@@ -489,7 +489,7 @@ namespace Animancer.Editor
 
                         var propertyLabel = EditorGUI.BeginProperty(timeArea, label, context.Times.Property);
                         if (isEndEvent)
-                            AnimationTimeAttributeDrawer.NextDefaultValue = defaultTime;
+                            AnimationTimeAttributeDrawer.SetNextDefaultValue(defaultTime);
                         normalizedTime = float.NaN;
                         AnimationTimeAttributeDrawer.OnGUI(timeArea, propertyLabel, ref normalizedTime);
 
@@ -514,7 +514,7 @@ namespace Animancer.Editor
                         var propertyLabel = EditorGUI.BeginProperty(timeArea, label, timeProperty);
 
                         if (isEndEvent)
-                            AnimationTimeAttributeDrawer.NextDefaultValue = defaultTime;
+                            AnimationTimeAttributeDrawer.SetNextDefaultValue(defaultTime);
                         normalizedTime = timeProperty.floatValue;
                         AnimationTimeAttributeDrawer.OnGUI(timeArea, propertyLabel, ref normalizedTime);
 
@@ -575,7 +575,7 @@ namespace Animancer.Editor
 
                     EditorGUI.BeginProperty(timeArea, GUIContent.none, context.Times.Property);
 
-                    AnimationTimeAttributeDrawer.NextDefaultValue = defaultTime;
+                    AnimationTimeAttributeDrawer.SetNextDefaultValue(defaultTime);
                     normalizedTime = float.NaN;
                     AnimationTimeAttributeDrawer.OnGUI(timeArea, label, ref normalizedTime);
 

@@ -27,6 +27,7 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour
 
     private readonly List<AppliedBoneRotation> appliedRotations = new List<AppliedBoneRotation>();
     private readonly List<PairOffsetBasePoseWeight> basePoseWeights = new List<PairOffsetBasePoseWeight>(3);
+    private readonly List<PairOffsetActionWeight> actionWeights = new List<PairOffsetActionWeight>(3);
     private readonly Dictionary<string, Transform> boneCache = new Dictionary<string, Transform>();
     private Animator cachedAnimator;
     private PairOffsetProfilesSO cachedProfiles;
@@ -48,11 +49,10 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour
         if (!applyPairOffsets ||
             brain == null ||
             animator == null ||
-            !brain.TryGetActivePairOffsetBlend(
+            !brain.TryGetPairOffsetContributions(
                 basePoseWeights,
-                out PairOffsetProfilesSO profiles,
-                out PairOffsetUpperAction upperAction,
-                out float actionWeight))
+                actionWeights,
+                out PairOffsetProfilesSO profiles))
         {
             RestoreAppliedOffsets();
             SetDebugState("Inactive: missing toggle, brain, animator, or active pair state.");
@@ -68,28 +68,33 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour
         }
 
         RestoreAppliedOffsets();
-        int appliedProfileCount = ApplyProfiles(
-            basePoseWeights,
-            upperAction,
-            actionWeight,
-            out int appliedBoneCount,
-            out int missingBoneCount,
-            out string firstMissingBonePath);
+        int appliedProfileCount = 0;
+        int appliedBoneCount = 0;
+        int missingBoneCount = 0;
+        string firstMissingBonePath = null;
+        foreach (PairOffsetActionWeight action in actionWeights)
+        {
+            appliedProfileCount += ApplyProfiles(basePoseWeights, action.Action, action.Weight,
+                out int applied, out int missing, out string missingPath);
+            appliedBoneCount += applied;
+            missingBoneCount += missing;
+            firstMissingBonePath ??= missingPath;
+        }
 
         if (appliedBoneCount > 0)
         {
             string missingSuffix = missingBoneCount > 0
                 ? $" Missing {missingBoneCount} bone path(s), first: {firstMissingBonePath}."
                 : string.Empty;
-            SetDebugState($"Applying {appliedProfileCount} profile(s), {appliedBoneCount} bone(s) for {upperAction}, action weight {actionWeight:0.###}.{missingSuffix}");
+            SetDebugState($"Applying {appliedProfileCount} profile(s), {appliedBoneCount} bone(s) across {actionWeights.Count} action state(s).{missingSuffix}");
         }
         else if (appliedProfileCount > 0 && missingBoneCount > 0)
         {
-            SetDebugState($"Profile(s) matched for {upperAction}, but no bones resolved. Missing {missingBoneCount} path(s), first: {firstMissingBonePath}");
+            SetDebugState($"Profiles matched, but no bones resolved. Missing {missingBoneCount} path(s), first: {firstMissingBonePath}");
         }
         else
         {
-            SetDebugState($"No profiles for blended {upperAction} poses.");
+            SetDebugState("No profiles for the blended action poses.");
         }
     }
 

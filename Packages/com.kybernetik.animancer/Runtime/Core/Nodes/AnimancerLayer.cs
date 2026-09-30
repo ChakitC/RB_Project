@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Collections;
@@ -31,6 +31,19 @@ namespace Animancer
     {
         /************************************************************************************************************************/
         #region Fields and Properties
+        /************************************************************************************************************************/
+
+#if UNITY_EDITOR
+        /// <summary>[Editor-Only] Resets static fields in case the Play Mode Domain Reload is disabled.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void Initialize()
+        {
+            DefaultCapacity = 8;
+            WeightlessThreshold = 0.1f;
+            MaxCloneCount = 3;
+        }
+#endif
+
         /************************************************************************************************************************/
 
         /// <summary>[Internal] Creates a new <see cref="AnimancerLayer"/>.</summary>
@@ -363,13 +376,13 @@ namespace Animancer
         /// Call <see cref="CopyFrom(AnimancerLayer, CloneContext)"/> (as well)
         /// if you want to copy the details of the layer itself.
         /// </remarks>
-        public void CopyStatesFrom(AnimancerLayer copyFrom, CloneContext context, bool includeInactive = false)
+        public void CopyStatesFrom(
+            AnimancerLayer copyFrom,
+            CloneContext context,
+            bool includeInactive = false)
         {
             if (copyFrom == this)
                 return;
-
-            Debug.Assert(context.TryGetValue(copyFrom.Graph, out var thisGraph));
-            Debug.Assert(thisGraph == Graph);
 
             for (int i = ActiveStatesInternal.Count - 1; i >= 0; i--)
                 ActiveStatesInternal[i].Stop();
@@ -550,24 +563,22 @@ namespace Animancer
         /************************************************************************************************************************/
 
         /// <summary>
-        /// Calls <see cref="AnimancerGraph.GetKey"/> and returns the state registered with that key or
-        /// creates one if it doesn't exist.
+        /// Calls <see cref="AnimancerGraph.GetKey"/> and returns the state registered with that key
+        /// or creates one if it doesn't exist.
         /// <para></para>
         /// If the state already exists but has the wrong <see cref="AnimancerState.Clip"/>, the `allowSetClip`
-        /// parameter determines what will happen. False causes it to throw an <see cref="ArgumentException"/> while
-        /// true allows it to change the <see cref="AnimancerState.Clip"/>. Note that the change is somewhat costly to
-        /// performance to use with caution.
+        /// parameter determines what will happen. False causes it to throw an <see cref="ArgumentException"/>
+        /// while true allows it to change the <see cref="AnimancerState.Clip"/>.
+        /// Note that the change is somewhat costly to performance to use with caution.
         /// </summary>
         /// <exception cref="ArgumentException"/>
         public AnimancerState GetOrCreateState(AnimationClip clip, bool allowSetClip = false)
-        {
-            return GetOrCreateState(Graph.GetKey(clip), clip, allowSetClip);
-        }
+            => GetOrCreateState(Graph.GetKey(clip), clip, allowSetClip);
 
         /// <summary>
-        /// Returns the state registered with the <see cref="IHasKey.Key"/> if there is one. Otherwise
-        /// this method uses <see cref="ITransition.CreateState"/> to create a new one and registers it with
-        /// that key before returning it.
+        /// Returns the state registered with the <see cref="IHasKey.Key"/> if there is one.
+        /// Otherwise this method uses <see cref="ITransition.CreateState"/>
+        /// to create a new one and registers it with that key before returning it.
         /// </summary>
         public AnimancerState GetOrCreateState(ITransition transition)
         {
@@ -747,6 +758,7 @@ namespace Animancer
             while (true)
             {
                 var key = (object)state;
+
                 if (!Graph.States.TryGet(key, out state))
                 {
                     if (cloneCount >= MaxCloneCount && lowestWeightState != null)
@@ -1312,9 +1324,7 @@ namespace Animancer
         // Checking
         /************************************************************************************************************************/
 
-        /// <summary>
-        /// Returns true if the `clip` is currently being played by at least one state.
-        /// </summary>
+        /// <summary>Is the `clip` currently being played by at least one state?</summary>
         public bool IsPlayingClip(AnimationClip clip)
         {
             for (int i = ActiveStatesInternal.Count - 1; i >= 0; i--)
@@ -1327,9 +1337,7 @@ namespace Animancer
             return false;
         }
 
-        /// <summary>
-        /// Returns true if at least one animation is being played.
-        /// </summary>
+        /// <summary>Is at least one animation is being played?</summary>
         public bool IsAnyStatePlaying()
         {
             for (int i = ActiveStatesInternal.Count - 1; i >= 0; i--)
@@ -1339,14 +1347,15 @@ namespace Animancer
             return false;
         }
 
-        /// <summary>
-        /// Returns true if the <see cref="CurrentState"/> is playing and hasn't yet reached its end.
-        /// <para></para>
-        /// This method is called by <see cref="IEnumerator.MoveNext"/> so this object can be used as a custom yield
-        /// instruction to wait until it finishes.
-        /// </summary>
-        public override bool IsPlayingAndNotEnding()
-            => _CurrentState != null && _CurrentState.IsPlayingAndNotEnding();
+        /// <summary>Is the <see cref="CurrentState"/> playing and hasn't yet reached its end?</summary>
+        /// <remarks>
+        /// This property is used by <see cref="IEnumerator.MoveNext"/>
+        /// so this object can be used as a custom yield instruction to wait until it finishes.
+        /// </remarks>
+        public override bool IsApproachingEnd
+            => _CurrentState != null
+            && !_CurrentState.IsInterrupted
+            && _CurrentState.IsApproachingEnd;
 
         /************************************************************************************************************************/
 
@@ -1358,9 +1367,7 @@ namespace Animancer
             float weight = 0;
 
             for (int i = ActiveStatesInternal.Count - 1; i >= 0; i--)
-            {
                 weight += ActiveStatesInternal[i].Weight;
-            }
 
             return weight;
         }

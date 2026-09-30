@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value.
 
@@ -8,10 +8,10 @@ using UnityEngine;
 namespace Animancer
 {
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerEvent
-    partial struct AnimancerEvent
+    partial struct AnimancerEvent // AnimancerEvent.Sequence.Serializable.cs
     {
         /// https://kybernetik.com.au/animancer/api/Animancer/Sequence
-        partial class Sequence
+        partial class Sequence // AnimancerEvent.Sequence.Serializable.cs
         {
             /// <summary>
             /// Serializable data which can be used to construct an <see cref="Sequence"/> using
@@ -191,9 +191,14 @@ namespace Animancer
                 /// <remarks>If the value is not set, the value is determined by <see cref="GetDefaultNormalizedEndTime"/>.</remarks>
                 public float GetNormalizedEndTime(float speed = 1)
                 {
-                    return _NormalizedTimes.IsNullOrEmpty()
-                        ? GetDefaultNormalizedEndTime(speed)
-                        : _NormalizedTimes[^1];
+                    if (_NormalizedTimes.IsNullOrEmpty())
+                        return GetDefaultNormalizedEndTime(speed);
+
+                    var normalizedEndTime = _NormalizedTimes[^1];
+                    if (float.IsNaN(normalizedEndTime))
+                        return GetDefaultNormalizedEndTime(speed);
+
+                    return normalizedEndTime;
                 }
 
                 /************************************************************************************************************************/
@@ -362,8 +367,17 @@ namespace Animancer
                 #endregion
                 /************************************************************************************************************************/
                 #region Serialization
-                /************************************************************************************************************************/
 #if UNITY_EDITOR
+                /************************************************************************************************************************/
+
+                /// <summary>[Editor-Only] Resets static fields in case the Play Mode Domain Reload is disabled.</summary>
+                [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+                private static void Initialize()
+                {
+                    OnBeforeSerialize = default;
+                    DisableCompactArrays = default;
+                }
+
                 /************************************************************************************************************************/
 
                 /// <summary>[Editor-Only] Does nothing.</summary>
@@ -436,7 +450,6 @@ namespace Animancer
 
                 /************************************************************************************************************************/
 #endif
-                /************************************************************************************************************************/
                 #endregion
                 /************************************************************************************************************************/
             }

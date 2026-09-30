@@ -1,11 +1,11 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using UnityEngine;
 
 namespace Animancer.FSM
 {
-    public partial class StateMachine<TState>
+    partial class StateMachine<TState> // StateMachine1.InputBuffer.cs
     {
         /// <summary>
         /// A simple system that can <see cref="InputBuffer{TStateMachine}.Buffer"/> a state then try to enter it every

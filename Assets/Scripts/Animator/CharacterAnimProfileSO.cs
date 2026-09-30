@@ -195,6 +195,10 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     [Tooltip("Guard, recoil and cooperative struggle animation for this character.")]
     public BlockAnimationSettings block = new();
 
+    [Header("CommanBlock (Full Body Action Layer)")]
+    [Tooltip("Optional full-body Player command gesture on a separate action layer. Locks walking and rotation until End Time or interruption, then fades back to the underlying pose.")]
+    public ClipTransition commanBlock;
+
     public bool HasStageIntroClip => stageIntroClip != null && stageIntroClip.IsValid;
 
     [Header("StatusEffec (Layer 0)")]

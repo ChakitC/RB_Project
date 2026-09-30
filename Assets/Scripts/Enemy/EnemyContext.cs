@@ -36,6 +36,7 @@ public class EnemyContext : CharacteContext
     private void Awake()
     {
         ResolveReferences();
+        PrepareRuntimeModules();
         CacheBaseWorldSlowValues();
     }
 

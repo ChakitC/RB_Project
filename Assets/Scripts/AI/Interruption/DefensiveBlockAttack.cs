@@ -151,6 +151,14 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
             selected.CancelFor(this, requestId);
             return Result(InterruptionCommandResult.SkillRejected, "Approach playback unavailable");
         }
+        if (selected.ActorContext != player)
+        {
+            Vector3 facing = ctx.transform.position - player.transform.position;
+            facing.y = 0f;
+            if (facing.sqrMagnitude > .0001f)
+                player.transform.rotation = Quaternion.LookRotation(facing, Vector3.up);
+            player.AnimDriver?.TryPlayCommanBlock();
+        }
         return Result(InterruptionCommandResult.Success, selected.ActorContext == player ? "Player guard requested" : "Guard requested");
     }
 

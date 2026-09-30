@@ -98,6 +98,7 @@ GameObject:
   - component: {fileID: 7001572653248173523}
   - component: {fileID: 3706357875181855325}
   - component: {fileID: 8920660193415900297}
+  - component: {fileID: 2710640053767789665}
   m_Layer: 10
   m_Name: Ally
   m_TagString: Ally
@@ -285,14 +286,18 @@ MonoBehaviour:
   CombatEventBus: {fileID: 0}
   rb: {fileID: 4350538248076557126}
   cc: {fileID: 8852702040775598704}
+  NavigationAgent: {fileID: 0}
+  MovementMotor: {fileID: 0}
   TargetInfo: {fileID: 0}
   Equipment: {fileID: 0}
   AccessoryLoadout: {fileID: 0}
   WeaponSystem: {fileID: 6545127892607564730}
   AnimBrain: {fileID: 6959280806721539224}
   AnimDriver: {fileID: 5253043693578173858}
+  RootMotionDriver: {fileID: 0}
   PairOffsetApplier: {fileID: 0}
   MeleeController: {fileID: 0}
+  AudioEmitter: {fileID: 0}
   AimRig: {fileID: 0}
   CharacterLoad: {fileID: 0}
   Visual: {fileID: 0}
@@ -1293,3 +1298,21 @@ MonoBehaviour:
       m_Version: 3.4
     m_SharedVariableGroupsData: []
     m_UniqueID: -897163424
+--- !u!114 &2710640053767789665
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8623998836521745381}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 270e4bbbc0e46d2479050deba13ab7b5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  debugInInspector: 1
+  logTransitions: 1
+  showOnScreen: 0
+  screenPos: {x: 10, y: 10}
+  snapshot: 
+  legacyDebugSignature: True|True|False|(10, 10)

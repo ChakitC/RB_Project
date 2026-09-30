@@ -146,6 +146,8 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         return true;
     }
 
+    public event Action ActivityChanged;
+
     public void StopKnockback(bool preserveMoveState = true, bool clearReactionState = false)
     {
         _targetDisplacement = Vector3.zero;
@@ -156,8 +158,6 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
         RestoreAgentOverride(preserveMoveState);
 
-        if (preserveMoveState)
-            RestoreMoveState();
 
         RestoreBehaviorTreeOverride(preserveMoveState);
 
@@ -165,6 +165,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
         if (clearReactionState || _clearReactionOnKnockbackEnd)
             ClearReactionState();
+        ActivityChanged?.Invoke();
     }
 
     void ResolveRefs()
@@ -357,7 +358,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     {
         ControlBlockFlags blocks = GetReactionControlBlocks(_activeReaction);
         bool stunned = _activeReaction == ImpactReactionKind.Stun;
-        stateHub?.SetExternalControlState(blocks, stunned);
+        stateHub?.SetReactionControlState(blocks, stunned);
         animDriver?.SetExternalStatusLocomotion(_activeReaction);
     }
 
@@ -378,7 +379,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         _activeReaction = ImpactReactionKind.None;
         _reactionTimeRemaining = 0f;
         _clearReactionOnKnockbackEnd = false;
-        stateHub?.SetExternalControlState(ControlBlockFlags.None, false);
+        stateHub?.SetReactionControlState(ControlBlockFlags.None, false);
         animDriver?.SetExternalStatusLocomotion(ImpactReactionKind.None);
     }
 
@@ -398,8 +399,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         if (knockback.VerticalImpulse > 0f && ctx != null && ctx.VerticalMotor != null)
             ctx.VerticalMotor.Launch(knockback.VerticalImpulse);
 
-        if (stateHub != null && stateHub.MoveSM != null)
-            stateHub.MoveSM.TryChange(MoveStateId.Knockback);
+        ActivityChanged?.Invoke();
 
         KnockbackStarted?.Invoke(knockback);
     }
@@ -637,24 +637,6 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         }
 
         return false;
-    }
-
-    void RestoreMoveState()
-    {
-        if (stateHub == null || stateHub.MoveSM == null)
-            return;
-
-        if (stateHub.MoveSM.CurrentId != MoveStateId.Knockback)
-            return;
-
-        MoveStateId nextState = MoveStateId.Stand;
-
-        if (ctx != null && ctx.DashSystem != null && ctx.DashSystem.IsDashing)
-            nextState = MoveStateId.Dash;
-        else if (ctx != null && ctx.ShouldBeInMoveState())
-            nextState = MoveStateId.Moveing;
-
-        stateHub.MoveSM.TryChange(nextState);
     }
 
     void OnCharacterDown()

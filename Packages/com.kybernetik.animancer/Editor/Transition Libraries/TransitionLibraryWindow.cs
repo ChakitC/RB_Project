@@ -1,6 +1,10 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
+
+#if !UNITY_6000_3_OR_NEWER
+using EntityId = System.Int32;
+#endif
 
 using Animancer.TransitionLibraries;
 using System;
@@ -34,10 +38,11 @@ namespace Animancer.Editor.TransitionLibraries
         /// opens it in the <see cref="TransitionLibraryWindow"/>.
         /// </summary>
         [OnOpenAsset]
-        private static bool OnOpenAsset(int instanceID, int line)
+        private static bool OnOpenAsset(EntityId entityId, int line)
         {
-            var library = EditorUtility.InstanceIDToObject(instanceID) as TransitionLibraryAsset;
-            if (library == null)
+            var asset = Serialization.EntityIdToObject(entityId);
+
+            if (asset is not TransitionLibraryAsset library)
                 return false;
 
             Open(library);
@@ -61,6 +66,41 @@ namespace Animancer.Editor.TransitionLibraries
         {
             get => SourceObject.Definition;
             set => SourceObject.Definition = value;
+        }
+
+        /************************************************************************************************************************/
+
+        /// <summary>The <see cref="TransitionLibraryEditorDataInternal"/> of the source asset.</summary>
+        public TransitionLibraryEditorDataInternal SourceEditorData
+        {
+            get => SourceObject.GetOrCreateEditorData().Data;
+            set => SourceObject.GetOrCreateEditorData().Data = value;
+        }
+
+        [SerializeField]
+        private TransitionLibraryEditorDataInternal _EditorData;
+
+        /// <summary>A copy of the <see cref="SourceEditorData"/> being managed by this window.</summary>
+        public ref TransitionLibraryEditorDataInternal EditorData
+            => ref _EditorData;
+
+        /************************************************************************************************************************/
+
+        /// <inheritdoc/>
+        public override bool HasDataChanged
+        {
+            get
+            {
+                if (base.HasDataChanged)
+                    return true;
+
+                if (SourceObject == null ||
+                    _EditorData == null)
+                    return false;
+
+                var sourceEditorData = SourceEditorData;
+                return sourceEditorData != null && !_EditorData.Equals(sourceEditorData);
+            }
         }
 
         /************************************************************************************************************************/
@@ -90,16 +130,35 @@ namespace Animancer.Editor.TransitionLibraries
             }
         }
 
+        /// <summary>Tries to find a page of the specified type and returns true if successful.</summary>
+        public bool TryGetPage<T>(out T page)
+            where T : TransitionLibraryWindowPage
+        {
+            for (int i = 0; i < _Pages.Count; i++)
+            {
+                page = _Pages[i] as T;
+                if (page != null)
+                    return true;
+            }
+
+            page = null;
+            return false;
+        }
+
         /************************************************************************************************************************/
 
         /// <summary>Object highlight manager.</summary>
         public readonly TransitionLibraryWindowHighlighter
             Highlighter = new();
 
+        /// <summary>Transitions and groups ordered by group.</summary>
+        public readonly TransitionGroupCache
+            Items = new();
+
         /************************************************************************************************************************/
 
         /// <summary>Called when an object is selected.</summary>
-        private void OnSelectionChange()
+        protected virtual void OnSelectionChange()
         {
             if (_Selection != null)
                 _Selection.OnSelectionChange();
@@ -162,6 +221,8 @@ namespace Animancer.Editor.TransitionLibraries
                 return;
             }
 
+            Items.GatherTransitionsAndGroups(Data.Transitions, EditorData);
+
             DoHeaderGUI();
             DoBodyGUI();
         }
@@ -171,7 +232,11 @@ namespace Animancer.Editor.TransitionLibraries
         /// <inheritdoc/>
         protected override void CaptureData()
         {
+            _EditorData = SourceEditorData?.CopyableClone() ?? new();
+            AnimancerReflection.TryInvoke(_EditorData, "OnValidate");
+
             base.CaptureData();
+
             Data.SortAliases();
         }
 
@@ -180,12 +245,21 @@ namespace Animancer.Editor.TransitionLibraries
         /// <inheritdoc/>
         public override void Apply()
         {
+            var editorData = SourceObject.GetOrCreateEditorData();
+            using (new ModifySerializedField(editorData, name, false))
+            {
+                editorData.Data = _EditorData.CopyableClone();
+            }
+
+            TransitionLibrarySort.Sort(Data, editorData.Data);
+
             base.Apply();
 
             for (int i = 0; i < Data.Transitions.Length; i++)
             {
                 var transition = Data.Transitions[i];
-                if (EditorUtility.IsPersistent(transition))
+                if (transition == null ||
+                    EditorUtility.IsPersistent(transition))
                     continue;
 
                 AssetDatabase.AddObjectToAsset(transition, SourceObject);
@@ -270,7 +344,11 @@ namespace Animancer.Editor.TransitionLibraries
                 menu.AddItem(
                     new(page.DisplayName),
                     _CurrentPage == index,
-                    () => _CurrentPage = index);
+                    () =>
+                    {
+                        _CurrentPage = index;
+                        Deselect();
+                    });
             }
 
             menu.AddSeparator("");

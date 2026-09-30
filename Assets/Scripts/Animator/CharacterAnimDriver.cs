@@ -345,6 +345,11 @@ public sealed class CharacterAnimDriver : MonoBehaviour
             brain.PlaySkill();
     }
 
+    public bool TryPlayCommanBlock()
+    {
+        return CanIssueCommand(nameof(TryPlayCommanBlock)) && brain.TryPlayCommanBlock();
+    }
+
     public void PlaySkill(SkillGemDefinition skillDef)
     {
         if (CanIssueCommand(nameof(PlaySkill)))

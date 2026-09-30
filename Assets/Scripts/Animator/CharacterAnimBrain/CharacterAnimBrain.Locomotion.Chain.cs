@@ -52,7 +52,7 @@ public sealed partial class CharacterAnimBrain
                 preserveFireHoldIntent: true);
             owner.EmitPlaybackSignal(owner.ResolveActiveChainPlaybackKind(), PlaybackPhase.Started, owner.ActiveChainRequestId);
 
-            state = owner.LocoLayer.Play(chainClip);
+            state = owner.PlayLocomotionTransition(chainClip);
             state.NormalizedTime = 0f;
             runtimeEvents = new AnimancerEvent.Sequence(chainClip.Events);
             owner.BindActiveChainTimelineEvents(runtimeEvents);

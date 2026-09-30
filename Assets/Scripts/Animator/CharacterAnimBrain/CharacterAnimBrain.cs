@@ -487,6 +487,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
                               (animancer.Animator != _boundAnimator || animProfile != _boundAnimProfile);
         if (bindingChanged)
         {
+            StopCommanBlock();
             if (_skillChannel.IsActive || _utilityChannel.IsActive)
             {
                 InterruptActiveSkillRequest();
@@ -505,14 +506,11 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             return true;
         }
 
+        DisposePresentationLayers();
         _boundAnimator = animancer.Animator;
         _boundAnimProfile = animProfile;
 
-        // Setup action layer
-        ActLayer.Mask = UpperBodyMask;
-
-        ActLayer.SetLayerWeightOnPlay = false;
-        ActLayer.Weight = 0f;
+        InitializePresentationLayers();
 
         locomotion = new LocomotionState_Live(this);
         empty = new Action_Empty(this);
@@ -531,9 +529,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         stageIntroState = new Locomotion_StageIntro(this);
         specialReactionState = new Locomotion_SpecialReaction(this);
 
+        ClearActivePairOffsetState();
         ForceSetLocomotionState(locomotion);
         actionSM.ForceSetState(empty);
-        ClearActivePairOffsetState();
 
         _initialized = true;
         _bindingDirty = false;
@@ -633,6 +631,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         RefreshStatusLocomotion();
         locomotionSM.CurrentState?.Update();
         actionSM.CurrentState?.Update();
+        UpdatePresentationTransitions();
     }
 
     private bool UsesWorldAnimationSlow()
@@ -1325,22 +1324,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private AnimancerState PlayActionTransition(ClipTransition transition, PairOffsetUpperAction upperAction)
     {
-        if (transition == null || !transition.IsValid)
-            return null;
-
-        SetActivePairUpperAction(upperAction);
-
-        if (ActLayer.Weight > ActionLayerActiveWeightThreshold && ActLayer.CurrentState != null)
-        {
-            ActLayer.StartFade(1f, ActionFadeIn);
-            return ActLayer.Play(transition);
-        }
-
-        float layerWeight = ActLayer.Weight;
-        AnimancerState state = ActLayer.Play(transition, 0f, transition.FadeMode);
-        ActLayer.Weight = layerWeight;
-        ActLayer.StartFade(1f, ActionFadeIn);
-        return state;
+        return PlayActionPresentation(transition, upperAction, fullBody: false);
     }
 
     private void SetActivePairBasePose(PairOffsetBasePose pose)
@@ -2085,6 +2069,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void OnDisable()
     {
+        StopCommanBlock();
         dashState?.EndVfxSession();
         reloadState?.EndVfxSession();
         fullBodyReloadState?.EndVfxSession();
@@ -2094,6 +2079,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         InterruptActiveUtilityRequest();
         InterruptActiveChainRequest();
         ReleaseExclusiveLocomotionForDisable();
+        if (_initialized && animancer != null && animancer.Animator != null)
+            actionSM.ForceSetState(empty);
+        StopPresentationTransitions();
     }
 
     /// <summary>
@@ -2125,6 +2113,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void OnDestroy()
     {
+        commanBlockState?.Dispose();
         dashState?.EndVfxSession();
         reloadState?.EndVfxSession();
         fullBodyReloadState?.EndVfxSession();
@@ -2133,5 +2122,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         InterruptActiveSkillRequest();
         InterruptActiveUtilityRequest();
         InterruptActiveChainRequest();
+        DisposePresentationLayers();
     }
 }

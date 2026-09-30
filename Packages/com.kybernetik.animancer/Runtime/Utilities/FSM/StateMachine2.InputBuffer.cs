@@ -1,8 +1,8 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 namespace Animancer.FSM
 {
-    public partial class StateMachine<TKey, TState>
+    partial class StateMachine<TKey, TState> // StateMachine2.InputBuffer.cs
     {
         /// <summary>
         /// A simple system that can <see cref="StateMachine{TState}.InputBuffer{TStateMachine}.State"/> a state then

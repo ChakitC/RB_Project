@@ -105,7 +105,7 @@ internal sealed class StageIntroActorScope
         CancelActiveIntent();
 
         controlBlockToken = ctx.stateHub != null
-            ? ctx.stateHub.AcquireExternalControlBlockToken(StageIntroControlBlocks)
+            ? ctx.stateHub.AcquireExternalControlBlockToken(StageIntroControlBlocks, nameof(StageIntroActorScope))
             : 0;
 
         ctx.AnimDriver?.InterruptActivePlaybackForExternalControlLoss();

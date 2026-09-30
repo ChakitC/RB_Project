@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -13,7 +13,6 @@ namespace Animancer.Editor
     /// Delegate for validating and responding to <see cref="DragAndDrop"/> operations.
     /// </summary>
     /// <remarks>
-    /// 
     /// <strong>Example:</strong>
     /// <code>
     /// private DragAndDropHandler&lt;AnimationClip&gt; _AnimationDropHandler;
@@ -41,7 +40,7 @@ namespace Animancer.Editor
         where T : class;
 
     /// https://kybernetik.com.au/animancer/api/Animancer.Editor/AnimancerGUI
-    public static partial class AnimancerGUI
+    public static partial class AnimancerGUI // DragAndDropHandler.cs
     {
         /************************************************************************************************************************/
 

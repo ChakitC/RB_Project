@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Collections;
@@ -236,15 +236,19 @@ namespace Animancer
         // IEnumerator for yielding in a coroutine to wait until animations have stopped.
         /************************************************************************************************************************/
 
-        /// <summary>Is this node playing and not yet at its end?</summary>
+        /// <summary>Is this node playing towards the <see cref="AnimancerState.NormalizedEndTime"/>?</summary>
         /// <remarks>
-        /// This method is called by <see cref="IEnumerator.MoveNext"/> so this object can be used as a custom yield
-        /// instruction to wait until it finishes.
+        /// Note that this will return true if the <see cref="AnimancerNodeBase.EffectiveSpeed"/> is 0
+        /// or <see cref="AnimancerState.IsPlaying"/> is false even though it isn't technically approaching the end.
+        /// <para></para>
+        /// This property is used by <see cref="IEnumerator.MoveNext"/>
+        /// so this object can be used as a custom yield instruction to wait until it finishes.
         /// </remarks>
-        public abstract bool IsPlayingAndNotEnding();
+        public abstract bool IsApproachingEnd { get; }
 
         bool IEnumerator.MoveNext()
-            => IsPlayingAndNotEnding();
+            => !IsInterrupted
+            && IsApproachingEnd;
 
         object IEnumerator.Current
             => null;
@@ -517,6 +521,13 @@ namespace Animancer
         protected internal virtual void StopWithoutWeight() { }
 
         /************************************************************************************************************************/
+
+        /// <summary>Is the <see cref="TargetWeight"/> 0 or this node destroyed?</summary>
+        public bool IsInterrupted
+            => TargetWeight == 0
+            || !_Playable.IsValid();
+
+        /************************************************************************************************************************/
         #endregion
         /************************************************************************************************************************/
         #region Inverse Kinematics
@@ -535,6 +546,19 @@ namespace Animancer
         /// Default is true.
         /// </summary>
         public static bool ApplyParentFootIK { get; set; } = true;
+
+        /************************************************************************************************************************/
+
+#if UNITY_EDITOR
+        /// <summary>[Editor-Only] Resets static fields in case the Play Mode Domain Reload is disabled.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void Initialize()
+        {
+            TraceConstructor = false;
+            ApplyParentAnimatorIK = true;
+            ApplyParentFootIK = true;
+        }
+#endif
 
         /************************************************************************************************************************/
 

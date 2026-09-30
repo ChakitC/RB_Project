@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Collections;
@@ -123,7 +123,7 @@ namespace Animancer.FSM
     /// 
     [HelpURL(StateExtensions.APIDocumentationURL + nameof(StateMachine<TState>) + "_1")]
     [Serializable]
-    public partial class StateMachine<TState> : IStateMachine
+    public partial class StateMachine<TState> : IStateMachine // StateMachine1.cs
         where TState : class, IState
     {
         /************************************************************************************************************************/

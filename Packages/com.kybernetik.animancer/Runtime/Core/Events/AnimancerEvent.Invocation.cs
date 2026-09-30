@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Runtime.CompilerServices;
@@ -8,7 +8,7 @@ using Object = UnityEngine.Object;
 namespace Animancer
 {
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerEvent
-    partial struct AnimancerEvent
+    partial struct AnimancerEvent // AnimancerEvent.Invocation.cs
     {
         /// <summary>An <see cref="AnimancerEvent"/> and other associated details used to invoke it.</summary>
         /// https://kybernetik.com.au/animancer/api/Animancer/Invocation

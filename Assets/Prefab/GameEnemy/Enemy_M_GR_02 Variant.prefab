@@ -80,6 +80,14 @@ PrefabInstance:
       propertyPath: aimPoint
       value: 
       objectReference: {fileID: 9074634075328698260}
+    - target: {fileID: 3173768737373733820, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: logTransitions
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3173768737373733820, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: legacyDebugSignature
+      value: True|False|False|(10, 10)
+      objectReference: {fileID: 0}
     - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: Equipment
       value: 

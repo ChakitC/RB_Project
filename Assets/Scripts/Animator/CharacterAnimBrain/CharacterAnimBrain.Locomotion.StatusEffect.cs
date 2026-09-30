@@ -47,7 +47,7 @@ public sealed partial class CharacterAnimBrain
                 owner.SetRootMotionActive(false);
             }
 
-            owner.LocoLayer.Play(clip);
+            owner.PlayLocomotionTransition(clip);
         }
 
         public override void OnExitState()

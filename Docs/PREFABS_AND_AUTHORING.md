@@ -1,5 +1,17 @@
 # Prefabs And Authoring
 
+## Animation presentation layers
+
+CharacterAnimBrain retains the serialized locomotion/action indices (normally 0/1)
+and reserves the next index above both for full-body actions (normally 2). Other
+systems must not use that reserved layer. UpperBodyMask stays on the upper-body
+action layer; CommanBlock plays on the separate full-body layer. No extra prefab
+component or per-animation list is required. `actionFadeIn`/`actionFadeOut` apply
+to both action layers, while locomotion transitions retain their own fade settings.
+Set CommanBlock's End Time to the desired completion point: its movement/rotation
+lock ends there and the remaining pose fades out. Pair Offset corrections blend
+per upper-body state and are suppressed by full-body action coverage.
+
 This project relies on prefab-authored context blocks plus runtime reference
 resolution. Use this document when creating or editing character prefabs,
 pickup prefabs, weapon data, or inspector-facing fields.
@@ -3763,3 +3775,23 @@ for source compatibility. Do not author new animation there.
 legacy data into empty character profiles, supports Undo, preserves existing authored
 Block data and rejects conflicting character bindings. It also migrates the four
 existing player profiles from Player.prefab's old fallback. It is safe to rerun.
+
+## StateHub debug migration and pause ownership
+
+Run **Tools > RB > StateHub > Migrate Debug Views** to add StateHubDebugView and
+copy debugInInspector, logTransitions, showOnScreen and screenPos from legacy
+StateHub fields. Source prefabs are processed before variants; scene overrides
+are copied to the corresponding view. Repeating the migration is a no-op when
+legacy values are unchanged, and preserves later edits to the view. Unsaved
+scenes are skipped and listed. Legacy fields remain serialized until migration
+and reference checks are complete. Character context bindings are checked during
+migration. Unity may normalize serialized defaults/order while saving fixtures.
+
+Author debug options on StateHubDebugView after migration. Runtime-generated rigs
+receive a view during context preparation if none exists. The view displays
+states, blocked-action reasons and control/UI token holders.
+
+UI states no longer pause time as an enter/exit side effect. A gameplay screen
+owns both a StateHub UI-state token and a GlobalTimeScaleManager pause token.
+ActiveSkillScreenController releases its tokens on close, disable, destruction
+or rebinding; closing one screen cannot release another screen or Dialogue's hold.

@@ -1906,6 +1906,7 @@ GameObject:
   - component: {fileID: 7494559750927214225}
   - component: {fileID: 8688454618259884939}
   - component: {fileID: 6355327774175005961}
+  - component: {fileID: 8587028837230933255}
   m_Layer: 9
   m_Name: Rector.Test
   m_TagString: Enamy
@@ -2000,14 +2001,18 @@ MonoBehaviour:
   CombatEventBus: {fileID: 7598644777895207050}
   rb: {fileID: 3639572134883782631}
   cc: {fileID: 0}
+  NavigationAgent: {fileID: 0}
+  MovementMotor: {fileID: 0}
   TargetInfo: {fileID: 2614062581032154005}
   Equipment: {fileID: 6149185041057082933}
   AccessoryLoadout: {fileID: 0}
   WeaponSystem: {fileID: 6582638231958283938}
   AnimBrain: {fileID: 5141047713374118960}
   AnimDriver: {fileID: 1873566231782117093}
+  RootMotionDriver: {fileID: 0}
   PairOffsetApplier: {fileID: 3354536547361118962}
   MeleeController: {fileID: 6096227312524330212}
+  AudioEmitter: {fileID: 0}
   AimRig: {fileID: 0}
   CharacterLoad: {fileID: 0}
   Visual: {fileID: 3181447960752734765}
@@ -2394,6 +2399,24 @@ MonoBehaviour:
     m_Bits: 1
   windowStartNormalized: 0
   windowEndNormalized: 0.62
+--- !u!114 &8587028837230933255
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2082359919958687464}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 270e4bbbc0e46d2479050deba13ab7b5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  debugInInspector: 1
+  logTransitions: 0
+  showOnScreen: 0
+  screenPos: {x: 10, y: 10}
+  snapshot: 
+  legacyDebugSignature: True|False|False|(10, 10)
 --- !u!1 &2085972798732263607
 GameObject:
   m_ObjectHideFlags: 0

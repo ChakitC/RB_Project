@@ -4,17 +4,16 @@ using UnityEngine;
 
 public sealed class StateHub : MonoBehaviour
 {
-    [Header("Refs")]
     [SerializeField] private CharacteContext ctx;
-
-    public StateMachine<MoveStateId, CharacteContext> MoveSM { get; private set; }
-    public StateMachine<WeaponStateId, CharacteContext> WeaponSM { get; private set; }
-    public StateMachine<LifeStateId, CharacteContext> LifeSM { get; private set; }
-    public StateMachine<UIStateId, CharacteContext> UISM { get; private set; }
-
-    // Party UI binds while the actor is inactive, before Awake creates these machines.
-    public bool IsInitialized => MoveSM != null && WeaponSM != null && LifeSM != null && UISM != null;
-
+    StateValue<MoveStateId> move;
+    StateValue<WeaponStateId> weapon;
+    StateValue<LifeStateId> life;
+    StateValue<UIStateId> ui;
+    public IReadOnlyState<MoveStateId> MoveSM => move?.ReadOnly;
+    public IReadOnlyState<WeaponStateId> WeaponSM => weapon?.ReadOnly;
+    public IReadOnlyState<LifeStateId> LifeSM => life?.ReadOnly;
+    public IReadOnlyState<UIStateId> UISM => ui?.ReadOnly;
+    public bool IsInitialized { get; private set; }
     [Header("Debug")]
     [SerializeField] private bool debugInInspector = true;
     [SerializeField] private bool logTransitions = true;
@@ -38,12 +37,22 @@ public sealed class StateHub : MonoBehaviour
     [SerializeField] private ControlBlockFlags staggerControlBlocks = ControlBlockFlags.None;
     [SerializeField] private bool staggerStunned;
 
+
+    readonly CharacterControlLocks controlLocks = new();
+    readonly Dictionary<int, (UIStateId state, string owner)> uiHolds = new();
+    int nextUiToken = 1;
+    bool subscribed, refreshing, refreshPending, suspended, ownerReloading;
+    WeaponSystem boundWeapon;
+    HealthSystem boundHealth;
+    MeleeController boundMelee;
+    DashSystem boundDash;
+    CharacterKnockbackMotor boundKnockback;
+
     public float MoveSpeed01 { get; private set; }
     public Vector2 MoveDirLocal { get; private set; }
     public bool DesiredFireHeld { get; private set; }
     public bool FireHeld { get; private set; }
     public Vector3 DashDirWorld { get; private set; } = Vector3.forward;
-
     public event Action<MeleeType> Melee;
     public event Action<float> ReloadStarted;
     public event Action<float, Vector3> DashStarted;
@@ -52,632 +61,278 @@ public sealed class StateHub : MonoBehaviour
     public event Action<bool> FireHeldChanged;
     public event Action ShotFired;
     public event Action<LifeStateId, LifeStateId> LifeStateChanged;
-
-    public bool IsAlive => LifeSM.CurrentId == LifeStateId.Alive;
-    public bool Isdown => LifeSM.CurrentId == LifeStateId.Down;
-
-    // Vertical state is owned by CharacterVerticalMotor. Prefabs without that component report
-    // grounded, which is exactly how they behaved before the motor existed.
+    public bool IsAlive => IsInitialized && (ctx == null || ctx.HealthSystem == null || ctx.HealthSystem.IsAlive);
+    public bool Isdown => IsInitialized && ctx != null && ctx.HealthSystem != null && ctx.HealthSystem.IsDown;
     public bool IsGrounded => ctx == null || ctx.VerticalMotor == null || ctx.VerticalMotor.IsGrounded;
     public bool IsAirborne => ctx != null && ctx.VerticalMotor != null && ctx.VerticalMotor.IsAirborne;
     public float AirTime => ctx != null && ctx.VerticalMotor != null ? ctx.VerticalMotor.AirTime : 0f;
-
-    // Scoped external blocks are owned by a token, so one system releasing its own hold can never
-    // clear the legacy `externalControlBlocks` mask another system is still relying on.
-    readonly Dictionary<int, ControlBlockFlags> scopedExternalControlBlocks = new();
-    ControlBlockFlags scopedExternalControlMask = ControlBlockFlags.None;
-    int nextExternalControlToken = 1;
-
-    ControlBlockFlags ActiveControlBlocks =>
-        statusEffectControlBlocks | externalControlBlocks | scopedExternalControlMask | staggerControlBlocks;
-
-    /// <summary>Every control block currently applied, from status effects, stagger, and external holds.</summary>
-    public ControlBlockFlags ActiveControlBlockFlags => ActiveControlBlocks;
-
-    bool HasStunOverride => statusEffectStunned || externalStunned || staggerStunned;
-
-    bool IsMoveBlockedByStatusEffects =>
-        HasStunOverride || (ActiveControlBlocks & ControlBlockFlags.Move) != 0;
-
-    bool IsShootBlockedByStatusEffects =>
-        HasStunOverride || (ActiveControlBlocks & ControlBlockFlags.Shoot) != 0;
-
-    bool IsSkillBlockedByStatusEffects =>
-        HasStunOverride || (ActiveControlBlocks & ControlBlockFlags.Skill) != 0;
-
-    CharacterAnimBrain ResolveAnimBrain()
+    public ControlBlockFlags ActiveControlBlockFlags => controlLocks.Flags;
+    public string DescribeControlHolders() => controlLocks.Describe();
+    public string DescribeUiHolders()
     {
-        if (ctx == null)
-            return null;
-
-        var animBrain = ctx.AnimBrain;
-        if (!animBrain)
-        {
-            animBrain = ctx.GetComponent<CharacterAnimBrain>();
-            if (!animBrain)
-                animBrain = ctx.GetComponentInChildren<CharacterAnimBrain>(true);
-
-            if (animBrain != null && ctx.AnimBrain == null)
-                ctx.AnimBrain = animBrain;
-        }
-
-        return animBrain;
-    }
-
-    bool IsSkillAnimating()
-    {
-        CharacterAnimBrain animBrain = ResolveAnimBrain();
-        return animBrain != null && animBrain.IsShootBlockingPlaybackActive;
-    }
-
-    bool IsSkillPlaybackActive()
-    {
-        CharacterAnimBrain animBrain = ResolveAnimBrain();
-        return animBrain != null && animBrain.IsSkillPlaybackActive;
-    }
-
-    bool IsFullBodyReloadMovementBlocked()
-    {
-        if (ctx == null || ctx.baseStats == null || ctx.baseStats.animProfile == null)
-            return false;
-
-        WeaponSystem weaponSystem = ResolveWeaponSystem();
-        return weaponSystem != null &&
-               weaponSystem.IsReloading &&
-               ctx.baseStats.animProfile.reloadBodyMode == CharacterAnimProfileSO.ReloadBodyMode.FullBody;
+        var result = new System.Text.StringBuilder();
+        foreach (var entry in uiHolds) result.AppendLine($"{entry.Key}: {entry.Value.owner} ({entry.Value.state})");
+        return result.ToString();
     }
 
     void Awake()
     {
-        ResolveReferences();
-
-        if (GetComponent<CharacterAudioEmitter>() == null)
-            gameObject.AddComponent<CharacterAudioEmitter>();
-
-        MoveSM = new StateMachine<MoveStateId, CharacteContext>(ctx);
-        WeaponSM = new StateMachine<WeaponStateId, CharacteContext>(ctx);
-        LifeSM = new StateMachine<LifeStateId, CharacteContext>(ctx);
-        UISM = new StateMachine<UIStateId, CharacteContext>(ctx);
-
-        MoveSM
-            .Add(MoveStateId.Stand, new Move_Stand())
-            .Add(MoveStateId.Dash, new Move_Dash())
-            .Add(MoveStateId.Moveing, new Move_Moving())
-            .Add(MoveStateId.Knockback, new Move_Knockback())
-            .Add(MoveStateId.Stunned, new Move_Stunned());
-
-        WeaponSM
-            .Add(WeaponStateId.Melee, new Weapon_Melee())
-            .Add(WeaponStateId.Ready, new Weapon_Ready())
-            .Add(WeaponStateId.Firing, new Weapon_Firing())
-            .Add(WeaponStateId.Reloading, new Weapon_Reloading())
-            .Add(WeaponStateId.NoBullet, new Weapon_NoBullet());
-
-        LifeSM
-            .Add(LifeStateId.Alive, new Life_Alive())
-            .Add(LifeStateId.Down, new Life_Down())
-            .Add(LifeStateId.Dead, new Life_Dead());
-
-        UISM
-            .Add(UIStateId.Normal, new UI_Normal())
-            .Add(UIStateId.Inventory, new UI_Inventory())
-            .Add(UIStateId.Pause, new UI_Pause());
-
-        LifeSM.SetInitial(LifeStateId.Alive);
-        MoveSM.SetInitial(MoveStateId.Stand);
-        WeaponSM.SetInitial(WeaponStateId.Ready);
-        UISM.SetInitial(UIStateId.Normal);
-
-        MoveSM.OnChanged += (_, to) =>
-        {
-            if (to == MoveStateId.Stunned)
-                StunStarted?.Invoke();
-
-            CancelHeldFireIfShootBlocked();
-        };
-
-        WeaponSM.OnChanged += (_, to) =>
-        {
-            CancelHeldFireIfShootBlocked();
-
-            if (to == WeaponStateId.Reloading)
-                ReloadStarted?.Invoke(GetReloadAnimationDuration());
-        };
-
-        LifeSM.OnChanged += (from, to) =>
-        {
-            LifeStateChanged?.Invoke(from, to);
-            CancelHeldFireIfShootBlocked();
-
-            if (to == LifeStateId.Dead)
-                Died?.Invoke();
-        };
-
-        UISM.OnChanged += (_, _) => CancelHeldFireIfShootBlocked();
-
-        if (logTransitions)
-        {
-            MoveSM.OnChanged += (from, to) => LogChange("MoveSM", from, to);
-            WeaponSM.OnChanged += (from, to) => LogChange("WeaponSM", from, to);
-            LifeSM.OnChanged += (from, to) => LogChange("LifeSM", from, to);
-            UISM.OnChanged += (from, to) => LogChange("UISM", from, to);
-        }
+        if (IsInitialized) return;
+        if (!ctx) ctx = CharacterContextModuleLookup.ResolveContext(gameObject);
+        ctx?.ResolveReferences();
+        if (ctx != null) ctx.stateHub = this;
+        move = new(MoveStateId.Stand);
+        weapon = new(WeaponStateId.Ready);
+        life = new(ctx != null && ctx.HealthSystem != null ? ctx.HealthSystem.LifeState : LifeStateId.Alive);
+        ui = new(ResolveUiState());
+        controlLocks.Set(CharacterControlSource.StatusEffects, statusEffectControlBlocks, statusEffectStunned);
+        controlLocks.Set(CharacterControlSource.Stagger, staggerControlBlocks, staggerStunned);
+        controlLocks.Set(CharacterControlSource.Legacy, externalControlBlocks, externalStunned);
+        IsInitialized = true;
+        MoveSM.OnChanged += OnMoveChanged;
+        LifeSM.OnChanged += OnLifeChanged;
+        RefreshOwnerBindings();
+        RefreshStates();
     }
 
-    void ResolveReferences()
+    void OnEnable()
     {
-        if (!ctx)
+        suspended = false;
+        RefreshOwnerBindings();
+        RefreshStates();
+    }
+
+    void OnDisable()
+    {
+        suspended = true;
+        UnsubscribeOwners();
+        RequestCanceledFire();
+        MoveSpeed01 = 0f;
+        MoveDirLocal = Vector2.zero;
+        if (ctx != null)
         {
-            TryGetComponent(out ctx);
-            if (!ctx)
-                ctx = GetComponentInParent<CharacteContext>();
+            ctx.moveInput = Vector2.zero;
+            ctx.WeaponSystem?.CancelReload();
+            ctx.MeleeController?.InterruptMelee();
+            ctx.DashSystem?.CancelDash();
+            ctx.KnockbackMotor?.StopKnockback(clearReactionState: true);
         }
+        RefreshStates();
+    }
 
-        ctx?.ResolveReferences();
+    void OnDestroy() => UnsubscribeOwners();
 
-        if (ctx != null && ctx.stateHub != this)
-            ctx.stateHub = this;
+    // Called by context initialization/rebinding, never by admission queries.
+    public void RefreshOwnerBindings()
+    {
+        if (!IsInitialized || suspended || ctx == null) return;
+        if (subscribed && boundWeapon == ctx.WeaponSystem && boundHealth == ctx.HealthSystem &&
+            boundMelee == ctx.MeleeController && boundDash == ctx.DashSystem && boundKnockback == ctx.KnockbackMotor) return;
+        UnsubscribeOwners();
+        boundWeapon = ctx.WeaponSystem;
+        boundHealth = ctx.HealthSystem;
+        boundMelee = ctx.MeleeController;
+        boundDash = ctx.DashSystem;
+        boundKnockback = ctx.KnockbackMotor;
+        ownerReloading = boundWeapon != null && boundWeapon.IsReloading;
+        if (boundWeapon) boundWeapon.RuntimeStateChanged += OnWeaponRuntimeChanged;
+        if (boundHealth) boundHealth.LifeStateChanged += OnOwnerLifeChanged;
+        if (boundMelee) boundMelee.ActivityChanged += RefreshStates;
+        if (boundDash) boundDash.ActivityChanged += RefreshStates;
+        if (boundKnockback) boundKnockback.ActivityChanged += RefreshStates;
+        subscribed = true;
+        RefreshStates();
+    }
+
+    void UnsubscribeOwners()
+    {
+        if (boundWeapon) boundWeapon.RuntimeStateChanged -= OnWeaponRuntimeChanged;
+        if (boundHealth) boundHealth.LifeStateChanged -= OnOwnerLifeChanged;
+        if (boundMelee) boundMelee.ActivityChanged -= RefreshStates;
+        if (boundDash) boundDash.ActivityChanged -= RefreshStates;
+        if (boundKnockback) boundKnockback.ActivityChanged -= RefreshStates;
+        subscribed = false;
+    }
+
+    void OnWeaponRuntimeChanged(WeaponRuntimeState state)
+    {
+        bool started = state.Reloading && !ownerReloading;
+        ownerReloading = state.Reloading;
+        RefreshStates();
+        if (started && boundWeapon != null && boundWeapon.IsReloading)
+            ReloadStarted?.Invoke(boundWeapon.GetReloadAnimDuration());
+    }
+    void OnOwnerLifeChanged(LifeStateId _, LifeStateId __) => RefreshStates();
+    void OnMoveChanged(MoveStateId _, MoveStateId next) { if (next == MoveStateId.Stunned) StunStarted?.Invoke(); }
+    void OnLifeChanged(LifeStateId previous, LifeStateId next)
+    {
+        CharacterStateNotifications.Publish(LifeStateChanged, previous, next);
+        if (next == LifeStateId.Dead) CharacterStateNotifications.Publish(Died);
     }
 
     void Update()
     {
-        SyncStatusDrivenMoveState();
-
-        float dt = Time.deltaTime;
-
-        LifeSM.Tick(dt);
-        UISM.Tick(dt);
-        MoveSM.Tick(dt);
-        WeaponSM.Tick(dt);
-
-        UpdateStand();
-        ResumeDesiredFireIfPossible();
-
-        if (debugInInspector)
-            UpdateDebugSnapshot();
+        RefreshStates(); // Locomotion intent and playback can change each frame.
+        if (DesiredFireHeld && ctx != null && ctx.WeaponSystem != null && !ctx.WeaponSystem.IsFiringHeld)
+            TryStartHeldFire(false);
     }
 
-    void LogChange<TId>(string smName, TId from, TId to)
+    public CharacterActionFacts GetActionFacts()
     {
-        Debug.Log($"[{nameof(StateHub)}] {smName}: {from} -> {to}", this);
-    }
-
-    float GetReloadAnimationDuration()
-    {
-        if (ctx == null)
-            return 0f;
-
-        var weaponSystem = ResolveWeaponSystem();
-
-        if (weaponSystem != null)
-            return weaponSystem.GetReloadAnimDuration();
-
-        return ctx.StatsHub != null ? ctx.StatsHub.ReloadTime : 0f;
-    }
-
-    WeaponSystem ResolveWeaponSystem()
-    {
-        if (ctx == null)
-            return null;
-
-        var weaponSystem = ctx.WeaponSystem;
-        if (!weaponSystem)
+        var ws = ctx != null ? ctx.WeaponSystem : null;
+        var brain = ctx != null ? ctx.AnimBrain : null;
+        return new CharacterActionFacts
         {
-            weaponSystem = ctx.GetComponentInChildren<WeaponSystem>(true);
-            if (ctx.WeaponSystem == null)
-                ctx.WeaponSystem = weaponSystem;
-        }
-
-        return weaponSystem;
+            Initialized = IsInitialized && !suspended,
+            Life = ctx != null && ctx.HealthSystem != null ? ctx.HealthSystem.LifeState : LifeStateId.Alive,
+            UI = ResolveUiState(), Blocks = controlLocks.Flags, Stunned = controlLocks.Stunned,
+            Dashing = ctx != null && ctx.DashSystem != null && ctx.DashSystem.IsDashing,
+            Knockback = ctx != null && ctx.KnockbackMotor != null && ctx.KnockbackMotor.IsActive,
+            Melee = ctx != null && ctx.MeleeController != null && ctx.MeleeController.IsComboActive,
+            Reloading = ws != null && ws.IsReloading, EmptyMagazine = ws != null && ws.IsMagazineEmpty,
+            FullBodyReload = ws != null && ws.IsReloading && ctx.baseStats != null && ctx.baseStats.animProfile != null &&
+                ctx.baseStats.animProfile.reloadBodyMode == CharacterAnimProfileSO.ReloadBodyMode.FullBody,
+            ShootBlockingPlayback = brain != null && brain.IsShootBlockingPlaybackActive,
+            SkillPlayback = brain != null && brain.IsSkillPlaybackActive,
+            CanInterruptReload = ws != null && ws.CanInterruptReloadWithFire,
+            HasWeapon = ws != null, HasDash = ctx != null && ctx.DashSystem != null,
+            HasMelee = ctx != null && ctx.MeleeController != null,
+            HasSkill = ctx != null && ctx.SkillManager != null
+        };
     }
+    public ActionAdmissionResult GetAdmission(CharacterAction action) => CharacterActionPolicy.Evaluate(action, GetActionFacts());
+    public bool CanShoot() => GetAdmission(CharacterAction.Shoot).Allowed;
+    public bool CanMove() => GetAdmission(CharacterAction.Move).Allowed;
+    public bool CanDash() => GetAdmission(CharacterAction.Dash).Allowed;
+    public bool CanUseSkill() => GetAdmission(CharacterAction.Skill).Allowed;
+    public bool CanStartMelee() => GetAdmission(CharacterAction.Melee).Allowed;
+    public bool CanRotate() => GetAdmission(CharacterAction.Rotate).Allowed;
 
-    void CancelHeldFireIfShootBlocked()
+    void RefreshStates()
     {
-        if (ctx == null || CanShoot())
-            return;
-
-        ResolveWeaponSystem()?.SetFiring(false);
-        SetFireHeld(false);
-    }
-
-    void ResumeDesiredFireIfPossible()
-    {
-        if (!DesiredFireHeld || ctx == null)
-            return;
-
-        var weaponSystem = ResolveWeaponSystem();
-        if (weaponSystem == null || (weaponSystem.IsFiringHeld && FireHeld))
-            return;
-
-        TryStartHeldFire();
-    }
-
-    void TryStartHeldFire()
-    {
-        if (ctx == null)
-            return;
-
-        var weaponSystem = ResolveWeaponSystem();
-        if (weaponSystem == null)
-            return;
-
-        if (WeaponSM.CurrentId == WeaponStateId.Melee) return;
-        if (MoveSM.CurrentId == MoveStateId.Dash) return;
-        if (!CanShoot()) return;
-
-        weaponSystem.SetFiring(true);
-        SetFireHeld(true);
-    }
-
-    void UpdateDebugSnapshot()
-    {
-        dbgLife = LifeSM.CurrentId.ToString();
-        dbgUI = UISM.CurrentId.ToString();
-        dbgMove = MoveSM.CurrentId.ToString();
-        dbgWeapon = WeaponSM.CurrentId.ToString();
-
-        dbgSnapshot =
-            $"Life   : {dbgLife}\n" +
-            $"UI     : {dbgUI}\n" +
-            $"Move   : {dbgMove}\n" +
-            $"Weapon : {dbgWeapon}\n";
-    }
-
-    void OnGUI()
-    {
-        if (!showOnScreen)
-            return;
-
-        GUI.Label(new Rect(screenPos.x, screenPos.y, 400, 120), dbgSnapshot);
-    }
-
-    public bool CanShoot() =>
-        IsAlive &&
-        !Isdown &&
-        !IsShootBlockedByStatusEffects &&
-        !IsSkillAnimating() &&
-        MoveSM.CurrentId != MoveStateId.Dash &&
-        MoveSM.CurrentId != MoveStateId.Knockback &&
-        UISM.CurrentId != UIStateId.Inventory &&
-        UISM.CurrentId != UIStateId.Pause &&
-        WeaponSM.CurrentId != WeaponStateId.Reloading &&
-        WeaponSM.CurrentId != WeaponStateId.Melee &&
-        WeaponSM.CurrentId != WeaponStateId.NoBullet;
-
-    public bool CanMove() =>
-        (IsAlive || Isdown) &&
-        !IsMoveBlockedByStatusEffects &&
-        !IsFullBodyReloadMovementBlocked() &&
-        UISM.CurrentId != UIStateId.Inventory &&
-        UISM.CurrentId != UIStateId.Pause &&
-        WeaponSM.CurrentId != WeaponStateId.Melee &&
-        MoveSM.CurrentId != MoveStateId.Dash &&
-        MoveSM.CurrentId != MoveStateId.Knockback &&
-        MoveSM.CurrentId != MoveStateId.Stunned;
-
-    public bool CanDash() =>
-        IsAlive &&
-        !Isdown &&
-        !IsMoveBlockedByStatusEffects &&
-        UISM.CurrentId != UIStateId.Inventory &&
-        UISM.CurrentId != UIStateId.Pause &&
-        WeaponSM.CurrentId != WeaponStateId.Melee &&
-        MoveSM.CurrentId != MoveStateId.Dash &&
-        MoveSM.CurrentId != MoveStateId.Knockback &&
-        MoveSM.CurrentId != MoveStateId.Stunned;
-
-    public bool CanUseSkill() =>
-        IsInitialized &&
-        IsAlive &&
-        !Isdown &&
-        !IsSkillBlockedByStatusEffects &&
-        UISM.CurrentId != UIStateId.Inventory &&
-        UISM.CurrentId != UIStateId.Pause &&
-        MoveSM.CurrentId != MoveStateId.Dash &&
-        MoveSM.CurrentId != MoveStateId.Knockback &&
-        WeaponSM.CurrentId != WeaponStateId.Melee;
-
-    public bool CanStartMelee() =>
-        IsAlive &&
-        !Isdown &&
-        !statusEffectStunned &&
-        !IsSkillPlaybackActive() &&
-        UISM.CurrentId != UIStateId.Inventory &&
-        UISM.CurrentId != UIStateId.Pause &&
-        MoveSM.CurrentId != MoveStateId.Dash &&
-        MoveSM.CurrentId != MoveStateId.Knockback &&
-        MoveSM.CurrentId != MoveStateId.Stunned;
-
-    void UpdateStand()
-    {
-        if (ctx == null)
-            return;
-
-        var ws = ctx.WeaponSystem;
-        if (ws == null)
-            return;
-
-        if (WeaponSM.CurrentId == WeaponStateId.Melee)
-            return;
-
-        if (ws.IsReloading)
+        if (!IsInitialized) return;
+        if (refreshing) { refreshPending = true; return; }
+        refreshing = true;
+        try
         {
-            WeaponSM.TryChange(WeaponStateId.Reloading);
-            return;
+            do
+            {
+                refreshPending = false;
+                var facts = GetActionFacts();
+                life.Set(facts.Life);
+                ui.Set(facts.UI);
+                move.Set(facts.Knockback ? MoveStateId.Knockback : facts.Stunned ? MoveStateId.Stunned :
+                    facts.Dashing ? MoveStateId.Dash : CanMove() && ctx != null && ctx.ShouldBeInMoveState() ? MoveStateId.Moveing : MoveStateId.Stand);
+                var ws = ctx != null ? ctx.WeaponSystem : null;
+                weapon.Set(facts.Melee ? WeaponStateId.Melee : facts.Reloading ? WeaponStateId.Reloading :
+                    facts.EmptyMagazine ? WeaponStateId.NoBullet : ws != null && ws.IsFiringActivity ? WeaponStateId.Firing : WeaponStateId.Ready);
+                if (!CanShoot())
+                {
+                    ws?.SetFiring(false);
+                    SetFireHeld(false);
+                }
+            } while (refreshPending);
         }
-
-        if (ws.IsMagazineEmpty)
-        {
-            WeaponSM.TryChange(WeaponStateId.NoBullet);
-            return;
-        }
-
-        if (ws.IsFiringActivity)
-        {
-            WeaponSM.TryChange(WeaponStateId.Firing);
-            return;
-        }
-
-        WeaponSM.TryChange(WeaponStateId.Ready);
+        finally { refreshing = false; }
     }
 
-    void SyncStatusDrivenMoveState()
+    void SetControlSource(CharacterControlSource source, ControlBlockFlags flags, bool stunned)
     {
-        if (MoveSM == null)
-            return;
-
-        if (MoveSM.CurrentId == MoveStateId.Knockback)
-            return;
-
-        if (HasStunOverride)
-        {
-            if (MoveSM.CurrentId != MoveStateId.Stunned)
-                MoveSM.TryChange(MoveStateId.Stunned);
-
-            return;
-        }
-
-        if (MoveSM.CurrentId != MoveStateId.Stunned)
-            return;
-
-        MoveSM.TryChange(GetMoveStateAfterStatusStun());
+        if (!controlLocks.Set(source, flags, stunned)) return;
+        if (stunned && IsInitialized) ctx?.MeleeController?.InterruptMelee();
+        RefreshStates();
     }
-
-    MoveStateId GetMoveStateAfterStatusStun()
-    {
-        if (ctx != null && ctx.DashSystem != null && ctx.DashSystem.IsDashing)
-            return MoveStateId.Dash;
-
-        if (ctx != null && ctx.ShouldBeInMoveState())
-            return MoveStateId.Moveing;
-
-        return MoveStateId.Stand;
-    }
-
     public void SetStatusEffectControlState(ControlBlockFlags controlBlocks, bool stunned)
     {
-        bool changed = statusEffectControlBlocks != controlBlocks || statusEffectStunned != stunned;
-
-        statusEffectControlBlocks = controlBlocks;
-        statusEffectStunned = stunned;
-
-        if (changed && stunned && ctx != null)
-        {
-            var meleeController = ctx.MeleeController;
-            if (!meleeController)
-                meleeController = ctx.GetComponentInChildren<MeleeController>(true);
-
-            meleeController?.InterruptMelee();
-        }
-
-        if (changed)
-        {
-            SyncStatusDrivenMoveState();
-            CancelHeldFireIfShootBlocked();
-        }
+        statusEffectControlBlocks = controlBlocks; statusEffectStunned = stunned;
+        SetControlSource(CharacterControlSource.StatusEffects, controlBlocks, stunned);
     }
-
-    public void AddExternalControlBlock(ControlBlockFlags flag)
-    {
-        externalControlBlocks |= flag;
-        CancelHeldFireIfShootBlocked();
-    }
-
-    public void RemoveExternalControlBlock(ControlBlockFlags flag)
-    {
-        externalControlBlocks &= ~flag;
-        CancelHeldFireIfShootBlocked();
-    }
-
-    /// <summary>
-    /// Adds an owner-scoped external control block. The returned token is the only way to release it,
-    /// so callers can never clear blocks owned by another system.
-    /// Returns 0 when <paramref name="flags"/> is <see cref="ControlBlockFlags.None"/>.
-    /// </summary>
-    public int AcquireExternalControlBlockToken(ControlBlockFlags flags)
-    {
-        if (flags == ControlBlockFlags.None)
-            return 0;
-
-        int token = nextExternalControlToken++;
-        scopedExternalControlBlocks.Add(token, flags);
-        scopedExternalControlMask |= flags;
-        SyncStatusDrivenMoveState();
-        CancelHeldFireIfShootBlocked();
-        return token;
-    }
-
-    /// <summary>Releases a block previously acquired with <see cref="AcquireExternalControlBlockToken"/>.</summary>
-    public void ReleaseExternalControlBlockToken(int token)
-    {
-        if (token == 0 || !scopedExternalControlBlocks.Remove(token))
-            return;
-
-        scopedExternalControlMask = ControlBlockFlags.None;
-        foreach (ControlBlockFlags flags in scopedExternalControlBlocks.Values)
-            scopedExternalControlMask |= flags;
-
-        SyncStatusDrivenMoveState();
-        CancelHeldFireIfShootBlocked();
-    }
-
-    public bool CanRotate() =>
-        !HasStunOverride && (ActiveControlBlocks & ControlBlockFlags.Rotate) == 0;
-
-    public void SetExternalControlState(ControlBlockFlags controlBlocks, bool stunned)
-    {
-        bool changed = externalControlBlocks != controlBlocks || externalStunned != stunned;
-
-        externalControlBlocks = controlBlocks;
-        externalStunned = stunned;
-
-        if (changed && stunned && ctx != null)
-        {
-            var meleeController = ctx.MeleeController;
-            if (!meleeController)
-                meleeController = ctx.GetComponentInChildren<MeleeController>(true);
-
-            meleeController?.InterruptMelee();
-        }
-
-        if (changed)
-        {
-            SyncStatusDrivenMoveState();
-            CancelHeldFireIfShootBlocked();
-        }
-    }
-
     public void SetStaggerControlState(ControlBlockFlags controlBlocks, bool stunned)
     {
-        bool changed = staggerControlBlocks != controlBlocks || staggerStunned != stunned;
+        staggerControlBlocks = controlBlocks; staggerStunned = stunned;
+        SetControlSource(CharacterControlSource.Stagger, controlBlocks, stunned);
+    }
+    public void SetExternalControlState(ControlBlockFlags controlBlocks, bool stunned)
+    {
+        externalControlBlocks = controlBlocks; externalStunned = stunned;
+        SetControlSource(CharacterControlSource.Legacy, controlBlocks, stunned);
+    }
+    public void SetReactionControlState(ControlBlockFlags flags, bool stunned) => SetControlSource(CharacterControlSource.Reaction, flags, stunned);
+    public void AddExternalControlBlock(ControlBlockFlags flag) => SetExternalControlState(externalControlBlocks | flag, externalStunned);
+    public void RemoveExternalControlBlock(ControlBlockFlags flag) => SetExternalControlState(externalControlBlocks & ~flag, externalStunned);
+    public int AcquireExternalControlBlockToken(ControlBlockFlags flags) => AcquireExternalControlBlockToken(flags, "External");
+    public int AcquireExternalControlBlockToken(ControlBlockFlags flags, string owner)
+    {
+        int token = controlLocks.Acquire(flags, owner);
+        RefreshStates();
+        return token;
+    }
+    public void ReleaseExternalControlBlockToken(int token) { if (controlLocks.Release(token)) RefreshStates(); }
 
-        staggerControlBlocks = controlBlocks;
-        staggerStunned = stunned;
-
-        if (changed && stunned && ctx != null)
+    UIStateId ResolveUiState()
+    {
+        var result = UIStateId.Normal;
+        foreach (var hold in uiHolds.Values)
         {
-            var meleeController = ctx.MeleeController;
-            if (!meleeController)
-                meleeController = ctx.GetComponentInChildren<MeleeController>(true);
-
-            meleeController?.InterruptMelee();
+            if (hold.state == UIStateId.Pause) return UIStateId.Pause;
+            if (hold.state == UIStateId.Inventory) result = UIStateId.Inventory;
         }
-
-        if (changed)
-        {
-            SyncStatusDrivenMoveState();
-            CancelHeldFireIfShootBlocked();
-        }
+        return result;
     }
-
-    public void RequestReload()
+    public int AcquireUIStateToken(UIStateId state, string owner = "UI")
     {
-        if (ctx == null || ctx.WeaponSystem == null)
-            return;
-
-        if (!IsAlive || Isdown || IsSkillAnimating())
-            return;
-
-        ctx.WeaponSystem.TryReload();
+        if (state == UIStateId.Normal) return 0;
+        int token;
+        do { token = nextUiToken; nextUiToken = token == int.MaxValue ? 1 : token + 1; } while (uiHolds.ContainsKey(token));
+        uiHolds.Add(token, (state, owner));
+        RefreshStates();
+        return token;
     }
+    public void ReleaseUIStateToken(int token) { if (uiHolds.Remove(token)) RefreshStates(); }
 
-    public void RequestOnFire()
+    void TryStartHeldFire(bool fresh)
     {
-        SetDesiredFireHeld(true);
-        TryStartHeldFire();
+        if (!GetAdmission(fresh ? CharacterAction.FireRequest : CharacterAction.Shoot).Allowed) return;
+        var ws = ctx.WeaponSystem;
+        if (fresh && ws.IsReloading) ws.CancelReload();
+        if (!CanShoot()) return;
+        ws.SetFiring(true);
+        SetFireHeld(ws.IsFiringHeld && CanShoot());
     }
-
-    public void RequestCanceledFire()
-    {
-        if (ctx == null || ctx.WeaponSystem == null || ctx.stateHub == null)
-            return;
-
-        SetDesiredFireHeld(false);
-        ctx.WeaponSystem.SetFiring(false);
-        ctx.stateHub.SetFireHeld(false);
-    }
-
-    public bool RequestOnMelee(MeleeType meleeType = MeleeType.Heavy)
-    {
-        if (!CanStartMelee())
-            return false;
-
-        if (ctx == null)
-            return false;
-
-        var meleeController = ctx.MeleeController;
-        if (!meleeController)
-            meleeController = ctx.GetComponentInChildren<MeleeController>(true);
-        if (!meleeController)
-            meleeController = ctx.gameObject.AddComponent<MeleeController>();
-
-        ctx.MeleeController = meleeController;
-        return meleeController != null && meleeController.TryStartMelee(meleeType);
-    }
-
+    public void RequestReload() { if (GetAdmission(CharacterAction.Reload).Allowed) ctx.WeaponSystem.TryReload(); }
+    public void RequestOnFire() { DesiredFireHeld = true; TryStartHeldFire(true); }
+    public void RequestCanceledFire() { DesiredFireHeld = false; ctx?.WeaponSystem?.SetFiring(false); SetFireHeld(false); }
+    public bool RequestOnMelee(MeleeType meleeType = MeleeType.Heavy) => CanStartMelee() && ctx.MeleeController.TryStartMelee(meleeType);
     public void RequestMeleePress(MeleeType meleeType = MeleeType.Heavy)
     {
-        if (ctx == null) return;
-        if (ctx.MeleeController != null && ctx.MeleeController.IsComboActive)
-            ctx.MeleeController.PressMelee(meleeType);
-        else
-            RequestOnMelee(meleeType);
+        if (!CanStartMelee()) return;
+        ctx.MeleeController.PressMelee(meleeType);
     }
-
     public void RequestOnDash()
     {
-        if (ctx == null || ctx.stateHub == null || ctx.WeaponSystem == null || ctx.DashSystem == null)
-            return;
-
-        if (!ctx.stateHub.CanDash()) return;
-
-        ctx.WeaponSystem.SetFiring(false);
-        ctx.stateHub.SetFireHeld(false);
-
-        bool cancelFullBodyReload = IsFullBodyReloadMovementBlocked();
-        if (ctx.DashSystem.TryDash() && cancelFullBodyReload)
-            ctx.WeaponSystem.CancelReload();
+        if (!CanDash()) return;
+        bool cancelReload = GetActionFacts().FullBodyReload;
+        ctx.WeaponSystem?.SetFiring(false);
+        SetFireHeld(false);
+        if (ctx.DashSystem.TryDash() && cancelReload) ctx.WeaponSystem?.CancelReload();
     }
-
-    public void SetMoveSpeed01(float v01)
-    {
-        MoveSpeed01 = v01;
-    }
-
-    public void SetMoveDirLocal(Vector2 value)
-    {
-        MoveDirLocal = value;
-    }
-
-    public void SetDesiredFireHeld(bool held)
-    {
-        DesiredFireHeld = held;
-    }
-
+    public void SetMoveSpeed01(float v01) => MoveSpeed01 = v01;
+    public void SetMoveDirLocal(Vector2 value) => MoveDirLocal = value;
+    public void SetDesiredFireHeld(bool held) => DesiredFireHeld = held;
     public void SetFireHeld(bool held)
     {
-        if (FireHeld == held)
-            return;
-
+        if (FireHeld == held) return;
         FireHeld = held;
         FireHeldChanged?.Invoke(held);
     }
-
-    public void ReportShotFired()
-    {
-        ShotFired?.Invoke();
-    }
-
+    public void ReportShotFired() => ShotFired?.Invoke();
     public void ReportDashStarted(float duration, Vector3 dashDirWorld)
     {
-        if (dashDirWorld.sqrMagnitude > 0.0001f)
-            DashDirWorld = dashDirWorld.normalized;
-
+        if (dashDirWorld.sqrMagnitude > 0.0001f) DashDirWorld = dashDirWorld.normalized;
         DashStarted?.Invoke(duration, DashDirWorld);
     }
+    public void ReportMeleeStarted(MeleeType meleeType) => Melee?.Invoke(meleeType);
 
-    public void ReportMeleeStarted(MeleeType meleeType)
-    {
-        Melee?.Invoke(meleeType);
-    }
+    internal void ConfigureLegacyDebugView(StateHubDebugView view) =>
+        view.Configure(debugInInspector, logTransitions, showOnScreen, screenPos);
 }

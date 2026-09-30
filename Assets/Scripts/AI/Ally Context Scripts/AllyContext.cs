@@ -23,6 +23,7 @@ public class AllyContext : CharacteContext
     void Awake()
     {
         ResolveReferences();
+        PrepareRuntimeModules();
     }
 
     public override void ResolveReferences()

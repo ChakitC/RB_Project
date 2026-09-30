@@ -1,0 +1,8 @@
+{
+    "name": "StateHub.PlayMode.Tests",
+    "references": [],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "autoReferenced": false
+}

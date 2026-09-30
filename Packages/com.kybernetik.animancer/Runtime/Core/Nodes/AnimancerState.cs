@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Collections;
@@ -29,7 +29,7 @@ namespace Animancer
     /// </remarks>
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerState
     /// 
-    public abstract partial class AnimancerState : AnimancerNode,
+    public abstract partial class AnimancerState : AnimancerNode, // AnimancerState.cs
         IAnimationClipCollection,
         ICloneable<AnimancerState>,
         ICopyable<AnimancerState>
@@ -57,6 +57,8 @@ namespace Animancer
 
             FadeGroup?.ChangeGraph(graph);
         }
+
+        /************************************************************************************************************************/
 
         private void RemoveFromOldGraph(AnimancerGraph newGraph)
         {
@@ -88,6 +90,8 @@ namespace Animancer
             DestroyPlayable();
         }
 
+        /************************************************************************************************************************/
+
         private void AddToNewGraph()
         {
             if (Graph != null)
@@ -102,6 +106,11 @@ namespace Animancer
 
             if (Parent != null)
                 CopyIKFlags(Parent);
+
+#if UNITY_ASSERTIONS || ANIMANCER_ON_PLAY_EVENTS
+            if (IsPlaying)
+                Graph?.OnPlay?.Invoke(this);
+#endif
         }
 
         /************************************************************************************************************************/
@@ -117,11 +126,8 @@ namespace Animancer
                     Graph?.Component as Object);
 #endif
 
-            if (Parent != null)
-            {
-                Parent.OnRemoveChild(this);
-                Parent = null;
-            }
+            Parent?.OnRemoveChild(this);
+            Parent = null;
 
             if (parent == null)
             {
@@ -286,6 +292,10 @@ namespace Animancer
         /// <summary>Is the <see cref="Time"/> automatically advancing?</summary>
         ///
         /// <remarks>
+        /// This value doesn't automatically become <c>false</c> after an animation passes the end of its
+        /// <see cref="Length"/>. The <see cref="Time"/> continues increasing unless something stops it,
+        /// regardless of whether it <see cref="IsLooping"/> or not.
+        /// <para></para>
         /// <strong>Example:</strong><code>
         /// void IsPlayingExample(AnimancerComponent animancer, AnimationClip clip)
         /// {
@@ -331,11 +341,65 @@ namespace Animancer
             }
 
             OnSetIsPlaying();
+
+#if UNITY_ASSERTIONS || ANIMANCER_ON_PLAY_EVENTS
+            if (isPlaying)
+                Graph?.OnPlay?.Invoke(this);
+#endif
         }
 
         /// <summary>Called when the value of <see cref="IsPlaying"/> is changed.</summary>
         protected virtual void OnSetIsPlaying() { }
 
+        /************************************************************************************************************************/
+        #region Log Playing Messages
+        /************************************************************************************************************************/
+
+        /// <summary>Logs a message indicating that the `state` is now playing.</summary>
+        /// <remarks>This method is intended for use with <see cref="AnimancerGraph.OnPlay"/>.</remarks>
+        public static void LogPlayingMessage(AnimancerState state)
+        {
+            var text = StringBuilderPool.Instance.Acquire();
+
+            AppendPlayingMessage(text, state);
+
+            Debug.Log(
+                text.ReleaseToString(),
+                state.Graph?.Component as Object);
+        }
+
+        /************************************************************************************************************************/
+
+        /// <summary>Logs a message indicating that the `state` is now playing.</summary>
+        /// <remarks>This method is intended for use with <see cref="AnimancerGraph.OnPlay"/>.</remarks>
+        public static void LogPlayingMessageDetailed(AnimancerState state)
+        {
+            var text = StringBuilderPool.Instance.Acquire();
+
+            AppendPlayingMessage(text, state);
+
+            text.Append('\n');
+            state.Graph.AppendDescription(text);
+
+            Debug.Log(
+                text.ReleaseToString(),
+                state.Graph?.Component as Object);
+        }
+
+        /************************************************************************************************************************/
+
+        /// <summary>Appends a message indicating that the `state` is now playing.</summary>
+        public static void AppendPlayingMessage(StringBuilder text, AnimancerState state)
+        {
+            text.Append("Playing ")
+                .Append(state)
+                .Append(" on '")
+                .Append(state.Graph?.Component)
+                .Append("'.");
+        }
+
+        /************************************************************************************************************************/
+        #endregion
         /************************************************************************************************************************/
 
         /// <summary>Creates and assigns the <see cref="Playable"/> managed by this state.</summary>
@@ -552,6 +616,15 @@ namespace Animancer
             /// <summary>The default <see cref="IndexedList{TItem, TIndexer}.Capacity"/> for newly created lists.</summary>
             /// <remarks>Default value is 4.</remarks>
             public static new int DefaultCapacity { get; set; } = 4;
+
+#if UNITY_EDITOR
+            /// <summary>[Editor-Only] Resets static fields in case the Play Mode Domain Reload is disabled.</summary>
+            [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+            private static void Initialize()
+            {
+                DefaultCapacity = 4;
+            }
+#endif
 
             /// <summary>Creates a new <see cref="ActiveList"/> with the <see cref="DefaultCapacity"/>.</summary>
             public ActiveList(Indexer accessor)
@@ -974,11 +1047,8 @@ namespace Animancer
         /// </remarks>
         public virtual void Destroy()
         {
-            if (Parent != null)
-            {
-                Parent.OnRemoveChild(this);
-                Parent = null;
-            }
+            Parent?.OnRemoveChild(this);
+            Parent = null;
 
             FadeGroup = null;
             Index = -1;
@@ -1059,53 +1129,72 @@ namespace Animancer
 
         /************************************************************************************************************************/
 
-        /// <summary>
-        /// Returns true if the animation is playing and has not yet passed the
-        /// <see cref="AnimancerEvent.Sequence.EndEvent"/>.
-        /// </summary>
-        /// <remarks>
-        /// This method is called by <see cref="IEnumerator.MoveNext"/> so this object can be used as a custom yield
-        /// instruction to wait until it finishes.
-        /// </remarks>
-        public override bool IsPlayingAndNotEnding()
+        /// <inheritdoc/>
+        public override bool IsApproachingEnd
         {
-            if (!IsPlaying || !_Playable.IsValid())
-                return false;
+            get
+            {
+                var speed = EffectiveSpeed;
+                if (speed > 0)
+                {
+                    float endTime;
+                    var events = SharedEvents;
+                    if (events != null)
+                    {
+                        endTime = events.NormalizedEndTime;
+                        if (float.IsNaN(endTime))
+                            endTime = Length;
+                        else
+                            endTime *= Length;
+                    }
+                    else endTime = Length;
+
+                    return Time <= endTime;
+                }
+                else if (speed < 0)
+                {
+                    float endTime;
+                    var events = SharedEvents;
+                    if (events != null)
+                    {
+                        endTime = events.NormalizedEndTime;
+                        if (float.IsNaN(endTime))
+                            endTime = 0;
+                        else
+                            endTime *= Length;
+                    }
+                    else endTime = 0;
+
+                    return Time >= endTime;
+                }
+                else return true;
+            }
+        }
+
+        /************************************************************************************************************************/
+
+        /// <summary>Is this state currently playing towards the `normalizedTime`?</summary>
+        /// <remarks>
+        /// <see cref="float.NaN"/> will use <see cref="IsApproachingEnd"/>.
+        /// <para></para>
+        /// Note that this will return true if the <see cref="AnimancerNodeBase.EffectiveSpeed"/> is 0
+        /// or <see cref="IsPlaying"/> is false even though it isn't technically approaching the end.
+        /// <para></para>
+        /// This method is called by <see cref="IEnumerator.MoveNext"/>
+        /// so this object can be used as a custom yield instruction to wait until it finishes.
+        /// </remarks>
+        public bool IsApproachingTime(float normalizedTime)
+        {
+            if (float.IsNaN(normalizedTime))
+                return IsApproachingEnd;
 
             var speed = EffectiveSpeed;
             if (speed > 0)
-            {
-                float endTime;
-                var events = SharedEvents;
-                if (events != null)
-                {
-                    endTime = events.NormalizedEndTime;
-                    if (float.IsNaN(endTime))
-                        endTime = Length;
-                    else
-                        endTime *= Length;
-                }
-                else endTime = Length;
-
-                return Time <= endTime;
-            }
+                return NormalizedTime <= normalizedTime;
             else if (speed < 0)
-            {
-                float endTime;
-                var events = SharedEvents;
-                if (events != null)
-                {
-                    endTime = events.NormalizedEndTime;
-                    if (float.IsNaN(endTime))
-                        endTime = 0;
-                    else
-                        endTime *= Length;
-                }
-                else endTime = 0;
-
-                return Time >= endTime;
-            }
-            else return true;
+                return NormalizedTime >= normalizedTime;
+            else
+                return true;
         }
 
         /************************************************************************************************************************/

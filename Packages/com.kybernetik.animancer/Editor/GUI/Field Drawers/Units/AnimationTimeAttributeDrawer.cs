@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR && UNITY_IMGUI
 
@@ -25,8 +25,36 @@ namespace Animancer.Units.Editor
     {
         /************************************************************************************************************************/
 
+        /// <summary>
+        /// Should the <see cref="NextDefaultValue"/> and <see cref="NextValueIsOptional"/>
+        /// be used for the next field to be drawn?
+        /// </summary>
+        public static bool HasNextDefaultValue { get; private set; }
+
         /// <summary>The default value to be used for the next field drawn by this attribute.</summary>
-        public static float NextDefaultValue { get; set; } = float.NaN;
+        public static float NextDefaultValue { get; private set; } = float.NaN;
+
+        /// <summary>The default value to be used for the next field drawn by this attribute.</summary>
+        public static bool NextValueIsOptional { get; private set; }
+
+        /// <summary>Sets the <see cref="NextDefaultValue"/> and <see cref="NextValueIsOptional"/>.</summary>
+        public static void SetNextDefaultValue(float defaultValue, bool isOptional)
+        {
+            HasNextDefaultValue = true;
+            NextDefaultValue = defaultValue;
+            NextValueIsOptional = isOptional;
+        }
+
+        /// <summary>
+        /// Sets the <see cref="NextDefaultValue"/>
+        /// and the <see cref="NextValueIsOptional"/> is true if the value is not <see cref="float.NaN"/>.
+        /// </summary>
+        public static void SetNextDefaultValue(float defaultValue)
+        {
+            HasNextDefaultValue = true;
+            NextDefaultValue = defaultValue;
+            NextValueIsOptional = !float.IsNaN(defaultValue);
+        }
 
         /************************************************************************************************************************/
 
@@ -62,36 +90,55 @@ namespace Animancer.Units.Editor
         /// <summary>Draws the GUI for this attribute.</summary>
         public void OnGUI(Rect area, GUIContent label, ref float value)
         {
-            Initialize();
-
-            var context = TransitionDrawer.Context;
-            if (context.Property == null)
+            try
             {
-                value = DoSpecialFloatField(area, label, value, DisplayConverters[Attribute.UnitIndex]);
-                goto Return;
+                Initialize();
+
+                var isOptional = Attribute.IsOptional;
+                var defaultValue = Attribute.DefaultValue;
+
+                try
+                {
+                    if (HasNextDefaultValue)
+                    {
+                        Attribute.IsOptional = NextValueIsOptional;
+                        Attribute.DefaultValue = NextDefaultValue;
+                    }
+
+                    var context = TransitionDrawer.Context;
+                    if (context.Transition == null)
+                    {
+                        value = DoSpecialFloatField(area, label, value, DisplayConverters[Attribute.UnitIndex]);
+                        return;
+                    }
+
+                    var length = context.MaximumLength;
+                    if (length <= 0)
+                        length = float.NaN;
+
+                    AnimancerUtilities.TryGetFrameRate(context.Transition, out var frameRate);
+
+                    var multipliers = CalculateMultipliers(length, frameRate);
+                    if (multipliers == null)
+                    {
+                        EditorGUI.LabelField(area, label.text, $"Invalid {nameof(Validate)}.{nameof(Validate.Value)}");
+                        return;
+                    }
+
+                    DoPreviewTimeButton(ref area, ref value, multipliers);
+
+                    DoFieldGUI(area, label, ref value);
+                }
+                finally
+                {
+                    Attribute.IsOptional = isOptional;
+                    Attribute.DefaultValue = defaultValue;
+                }
             }
-
-            var length = context.MaximumLength;
-            if (length <= 0)
-                length = float.NaN;
-
-            AnimancerUtilities.TryGetFrameRate(context.Transition, out var frameRate);
-
-            var multipliers = CalculateMultipliers(length, frameRate);
-            if (multipliers == null)
+            finally
             {
-                EditorGUI.LabelField(area, label.text, $"Invalid {nameof(Validate)}.{nameof(Validate.Value)}");
-                goto Return;
+                HasNextDefaultValue = false;
             }
-
-            DoPreviewTimeButton(ref area, ref value, multipliers);
-
-            Attribute.IsOptional = !float.IsNaN(NextDefaultValue);
-            Attribute.DefaultValue = NextDefaultValue;
-            DoFieldGUI(area, label, ref value);
-
-            Return:
-            NextDefaultValue = float.NaN;
         }
 
         /************************************************************************************************************************/

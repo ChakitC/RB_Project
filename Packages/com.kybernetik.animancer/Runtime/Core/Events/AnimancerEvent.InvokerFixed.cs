@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System.Collections;
 using System.Runtime.CompilerServices;
@@ -7,7 +7,7 @@ using UnityEngine;
 namespace Animancer
 {
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerEvent
-    partial struct AnimancerEvent
+    partial struct AnimancerEvent // AnimancerEvent.InvokerFixed.cs
     {
         /// <summary>Executes <see cref="Invoker.InvokeAllAndClear"/> after animations in the Fixed Update cycle.</summary>
         /// https://kybernetik.com.au/animancer/api/Animancer/InvokerFixed

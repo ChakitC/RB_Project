@@ -100,6 +100,14 @@ PrefabInstance:
       propertyPath: aimPoint
       value: 
       objectReference: {fileID: 6592221851503198351}
+    - target: {fileID: 3173768737373733820, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: logTransitions
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3173768737373733820, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: legacyDebugSignature
+      value: True|False|False|(10, 10)
+      objectReference: {fileID: 0}
     - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: Equipment
       value: 
@@ -187,9 +195,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 7649753103391906527, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4811730398001626973}
-    - targetCorrespondingSourceObject: {fileID: 7649753103391906527, guid: 6e3801d708972a846aa41395176971c7, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 0}
     - targetCorrespondingSourceObject: {fileID: 4066815104232824939, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5268174288600250813}
@@ -252,7 +257,7 @@ MonoBehaviour:
   m_Subtree: {fileID: 0}
 --- !u!114 &1869770181813028692
 MonoBehaviour:
-  m_ObjectHideFlags: 0
+  m_ObjectHideFlags: 2
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}

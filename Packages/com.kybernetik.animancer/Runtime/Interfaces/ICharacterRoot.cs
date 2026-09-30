@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using UnityEngine;
 
@@ -49,7 +49,7 @@ namespace Animancer
     /************************************************************************************************************************/
 
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerUtilities
-    public static partial class AnimancerUtilities
+    partial class AnimancerUtilities // ICharacterRoot.cs
     {
         /************************************************************************************************************************/
 

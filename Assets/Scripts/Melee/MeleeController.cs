@@ -20,6 +20,7 @@ public sealed class MeleeController : MonoBehaviour
     SkillHitboxSequenceRuntime _hitboxRuntime;
     public MeleeType CurrentMeleeType { get; private set; }
     public bool IsComboActive => _session.IsActive;
+    public event System.Action ActivityChanged;
 
     void Awake() => ResolveRefs();
     void OnEnable()
@@ -66,7 +67,7 @@ public sealed class MeleeController : MonoBehaviour
         weaponSystem?.CancelReload();
         weaponSystem?.SetFiring(false);
         stateHub.SetFireHeld(false);
-        stateHub.WeaponSM.TryChange(WeaponStateId.Melee);
+        ActivityChanged?.Invoke();
         stateHub.ReportMeleeStarted(meleeType);
         return true;
     }
@@ -106,8 +107,7 @@ public sealed class MeleeController : MonoBehaviour
         bool wasActive = _session.IsActive;
         _requestId = 0;
         _session.Clear();
-        if (stateHub != null && stateHub.WeaponSM.CurrentId == WeaponStateId.Melee)
-            stateHub.WeaponSM.TryChange(WeaponStateId.Ready);
+        if (wasActive) ActivityChanged?.Invoke();
         if (wasActive) brain?.ReportMeleeComboEnded();
     }
     void OnChainWindowOpened()

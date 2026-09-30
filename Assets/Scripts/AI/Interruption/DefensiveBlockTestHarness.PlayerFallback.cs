@@ -91,7 +91,7 @@ public sealed partial class DefensiveBlockTestHarness
             {
                 case "Timeout": Rector.transform.position += Vector3.right * 12f; break;
                 case "Disable": guard.enabled = false; break;
-                case "Down": player.stateHub.LifeSM.TryChange(LifeStateId.Down); break;
+                case "Down": player.HealthSystem.Down(); break;
                 case "Death": player.HealthSystem.Die(); break;
                 case "ControlLoss": player.AnimDriver.InterruptActivePlaybackForExternalControlLoss(); break;
             }

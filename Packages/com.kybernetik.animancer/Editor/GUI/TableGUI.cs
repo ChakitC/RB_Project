@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -81,8 +81,8 @@ namespace Animancer.Editor
             var indexBounds = new RectInt(
                 (int)(_ScrollPosition.x / cellSize.x),
                 (int)(_ScrollPosition.y / cellSize.y),
-                Mathf.CeilToInt((area.width - labelSize.x) / cellSize.x) + 1,
-                Mathf.CeilToInt((area.height - labelSize.y) / cellSize.y) + 1);
+                Math.Min(columns, Mathf.CeilToInt((area.width - labelSize.x) / cellSize.x) + 1),
+                Math.Min(rows, Mathf.CeilToInt((area.height - labelSize.y) / cellSize.y) + 1));
 
             area.size += scrollBarSize;
 
@@ -309,15 +309,6 @@ namespace Animancer.Editor
 
                         control.Event.Use();
                     }
-                    break;
-
-                case EventType.MouseDown:
-                    if (control.Event.IsMiddleClick())
-                        control.TryUseMouseDown();
-                    break;
-
-                case EventType.MouseUp:
-                    control.TryUseMouseUp();
                     break;
 
                 case EventType.MouseDrag:

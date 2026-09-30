@@ -962,6 +962,7 @@ GameObject:
   - component: {fileID: 8528944922088648180}
   - component: {fileID: 8948294788003740487}
   - component: {fileID: 688218553702748008}
+  - component: {fileID: 3893694785085767866}
   m_Layer: 10
   m_Name: Aires.Test
   m_TagString: Ally
@@ -1080,14 +1081,18 @@ MonoBehaviour:
   CombatEventBus: {fileID: 4806547981487960428}
   rb: {fileID: 4774893553832891546}
   cc: {fileID: 7784735737426131676}
+  NavigationAgent: {fileID: 0}
+  MovementMotor: {fileID: 0}
   TargetInfo: {fileID: 6675584551590450871}
   Equipment: {fileID: 8301216785565048491}
   AccessoryLoadout: {fileID: 3100311685649399696}
   WeaponSystem: {fileID: 3818105886343105431}
   AnimBrain: {fileID: 5597234490858595845}
   AnimDriver: {fileID: 6033105057202224009}
+  RootMotionDriver: {fileID: 0}
   PairOffsetApplier: {fileID: 4570673284333585845}
   MeleeController: {fileID: 4108417410998991395}
+  AudioEmitter: {fileID: 0}
   AimRig: {fileID: 8762032334520669685}
   CharacterLoad: {fileID: 0}
   Visual: {fileID: 985315445147409697}
@@ -1397,6 +1402,24 @@ MonoBehaviour:
   impactVfx: {fileID: 7849791404790678207, guid: 42913e44bd86c194f80b76492e6fe2fd, type: 3}
   warpFadeOutSeconds: 0.04
   warpFadeInSeconds: 0.08
+--- !u!114 &3893694785085767866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2220953503727313511}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 270e4bbbc0e46d2479050deba13ab7b5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  debugInInspector: 1
+  logTransitions: 0
+  showOnScreen: 0
+  screenPos: {x: 10, y: 10}
+  snapshot: 
+  legacyDebugSignature: True|False|False|(10, 10)
 --- !u!1 &2304885850731452008
 GameObject:
   m_ObjectHideFlags: 0
@@ -1926,4 +1949,6 @@ MonoBehaviour:
   weaponSystem: {fileID: 3818105886343105431}
   statusEffectController: {fileID: 4253702121369232342}
   combatEventBus: {fileID: 4806547981487960428}
-  hitboxTrigger: {fileID: 0}
+  targetMask:
+    serializedVersion: 2
+    m_Bits: 4294967295

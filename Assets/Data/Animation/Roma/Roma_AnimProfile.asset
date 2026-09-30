@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Roma_AnimProfile
   m_EditorClassIdentifier: 
   upperBodyMask: {fileID: 31900000, guid: 3ff359338d40c5f40a861f9c3afbd210, type: 2}
-  actionFadeIn: 0.06
-  actionFadeOut: 0.08
+  actionFadeIn: 0.1
+  actionFadeOut: 0.1
   locomotionDirectionalClips:
     idle: {fileID: 5487989288048153974, guid: 0fe0a7dc98bb2fa4a9ff7d5be7eb0ab6, type: 3}
     forward: {fileID: 1606450360269762143, guid: 58a826f5004c5a54893b807d6696dc4e, type: 3}
@@ -40,7 +40,9 @@ MonoBehaviour:
     _NormalizedStartTime: NaN
   block:
     beginClip: {fileID: -2639457781765362822, guid: 1dfe50ae56ca8c54f95a5fce4f6fb19d, type: 3}
+    loopClip: {fileID: 0}
     impactClip: {fileID: -6348440289532276459, guid: 39cd4cbc56cd3b14dad9d63ebaf3b60b, type: 3}
+    exitClip: {fileID: 0}
     cooperativeStruggleClip: {fileID: 0}
     beginStartNormalized: 0.55
     guardPoseNormalized: 0.65
@@ -50,6 +52,16 @@ MonoBehaviour:
     impactSeconds: 0.35
     exitSeconds: 0.12
     fadeSeconds: 0.06
+  commanBlock:
+    _FadeDuration: 0.06
+    _Speed: 1
+    _Events:
+      _NormalizedTimes:
+      - 0.43671644
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -8639649847514424906, guid: b5af178043895c342b963ffc99079b5c, type: 3}
+    _NormalizedStartTime: NaN
   miniStune:
     _FadeDuration: 0.25
     _Speed: 1

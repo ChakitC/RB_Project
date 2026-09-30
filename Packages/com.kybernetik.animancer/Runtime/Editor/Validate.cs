@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Collections.Generic;
@@ -13,7 +13,7 @@ namespace Animancer
     /// </summary>
     /// https://kybernetik.com.au/animancer/api/Animancer/Validate
     /// 
-    public static partial class Validate
+    public static partial class Validate // Validate.cs
     {
         /************************************************************************************************************************/
 

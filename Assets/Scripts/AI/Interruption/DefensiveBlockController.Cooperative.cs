@@ -48,7 +48,7 @@ public sealed partial class DefensiveBlockController
         active = true; arrived = true; impact = false; elapsed = slideElapsed = slideApplied = 0f;
         slideFootprint = placement.Footprint;
         selfControlToken = ctx.stateHub != null ? ctx.stateHub.AcquireExternalControlBlockToken(
-            ControlBlockFlags.Move | ControlBlockFlags.Rotate | ControlBlockFlags.Shoot | ControlBlockFlags.Skill) : 0;
+            ControlBlockFlags.Move | ControlBlockFlags.Rotate | ControlBlockFlags.Shoot | ControlBlockFlags.Skill, nameof(DefensiveBlockController)) : 0;
         if (ctx == issuer)
         {
             selfMovement = issuer.movement;

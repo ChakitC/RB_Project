@@ -649,8 +649,8 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 30,
-                "currentReserveAmmo": 35,
+                "currentMagazine": 2,
+                "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 30,
                 "upgradeTier": 3,
@@ -1243,7 +1243,7 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 100,
+                "currentMagazine": 56,
                 "currentReserveAmmo": 250,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
@@ -1558,7 +1558,7 @@
                 ],
                 "shotCounter": 0,
                 "currentMagazine": 9,
-                "currentReserveAmmo": 116,
+                "currentReserveAmmo": 8,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 2,
                 "upgradeTier": 0,

@@ -1069,6 +1069,8 @@ GameObject:
   - component: {fileID: -5386552744308611412}
   - component: {fileID: 3025199990531463313}
   - component: {fileID: 349580822164122871}
+  - component: {fileID: 3173768737373733820}
+  - component: {fileID: 4092968023583240015}
   m_Layer: 9
   m_Name: Enemy_Base
   m_TagString: Enamy
@@ -1163,14 +1165,18 @@ MonoBehaviour:
   CombatEventBus: {fileID: 905179928187237650}
   rb: {fileID: 991524704810201650}
   cc: {fileID: 0}
+  NavigationAgent: {fileID: 3160894530039119532}
+  MovementMotor: {fileID: 4092968023583240015}
   TargetInfo: {fileID: 2596423232265115448}
   Equipment: {fileID: -5386552744308611412}
   AccessoryLoadout: {fileID: 0}
   WeaponSystem: {fileID: 7060247235419904634}
   AnimBrain: {fileID: 2022206065969024217}
   AnimDriver: {fileID: 2016865547201611848}
+  RootMotionDriver: {fileID: 0}
   PairOffsetApplier: {fileID: 5480232084052243234}
   MeleeController: {fileID: 6396605468909271155}
+  AudioEmitter: {fileID: 0}
   AimRig: {fileID: 0}
   CharacterLoad: {fileID: 0}
   Visual: {fileID: 1879165679072882653}
@@ -1515,6 +1521,36 @@ MonoBehaviour:
     m_Bits: 1
   windowStartNormalized: 0
   windowEndNormalized: 0.62
+--- !u!114 &3173768737373733820
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7649753103391906527}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 270e4bbbc0e46d2479050deba13ab7b5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  debugInInspector: 1
+  logTransitions: 1
+  showOnScreen: 0
+  screenPos: {x: 10, y: 10}
+  snapshot: 
+  legacyDebugSignature: True|True|False|(10, 10)
+--- !u!114 &4092968023583240015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7649753103391906527}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 075d5f6cfec8f664199b898d72f49100, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &8836043026795576592
 GameObject:
   m_ObjectHideFlags: 0

@@ -25,7 +25,7 @@ public sealed partial class CharacterAnimBrain
                 preserveFireHoldIntent: false);
             owner.EmitPlaybackSignal(PlaybackKind.Dead, PlaybackPhase.Started, 0);
 
-            state = owner.LocoLayer.Play(owner.DeadClip);
+            state = owner.PlayLocomotionTransition(owner.DeadClip);
 
             owner.onDeadEndCache ??= () =>
             {

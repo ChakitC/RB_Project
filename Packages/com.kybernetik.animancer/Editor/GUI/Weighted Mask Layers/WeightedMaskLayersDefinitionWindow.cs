@@ -1,9 +1,11 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
 #if UNITY_6000_2_OR_NEWER
-#pragma warning disable CS0618 // Type or member is obsolete - Tree View stuff was made generic in Unity 6.2.
+using TreeView = UnityEditor.IMGUI.Controls.TreeView<int>;
+using TreeViewItem = UnityEditor.IMGUI.Controls.TreeViewItem<int>;
+using TreeViewState = UnityEditor.IMGUI.Controls.TreeViewState<int>;
 #endif
 
 using System;
@@ -20,6 +22,14 @@ namespace Animancer.Editor
     public class WeightedMaskLayersDefinitionWindow :
         TransformTreeWindow<WeightedMaskLayers, WeightedMaskLayersDefinition>
     {
+        /************************************************************************************************************************/
+
+        private const int
+            TransformColumn = 0,
+            IncludedColumn = 1,
+            FirstGroupColumn = 2,
+            RootMotionWeightsID = -2;
+
         /************************************************************************************************************************/
 
         /// <inheritdoc/>
@@ -104,6 +114,20 @@ namespace Animancer.Editor
         /************************************************************************************************************************/
 
         /// <inheritdoc/>
+        public override void AddItems(ref int id, TreeViewItem root)
+        {
+            root.AddChild(new()
+            {
+                id = RootMotionWeightsID,
+                depth = 0,
+            });
+
+            base.AddItems(ref id, root);
+        }
+
+        /************************************************************************************************************************/
+
+        /// <inheritdoc/>
         protected override Color GetRowColor(TreeViewItem item)
         {
             if (!TreeView.Transforms.TryGetObject(item.id, out var transform))
@@ -143,24 +167,69 @@ namespace Animancer.Editor
         public override void DrawCellGUI(Rect area, int column, int row, TreeViewItem item, ref bool isSelectionClick)
         {
             if (!TreeView.Transforms.TryGetObject(item.id, out var transform))
+            {
+                if (item.id == RootMotionWeightsID)
+                    DrawRootMotionWeightsCellGUI(area, column);
                 return;
+            }
 
             var definitionIndex = GetDefinitionIndex(item.id);
 
             switch (column)
             {
-                case 0:// Transform.
+                case TransformColumn:
                     DrawTransformCellGUI(area, transform);
                     break;
 
-                case 1:// Included.
+                case IncludedColumn:
                     DrawIsIncludedCellGUI(area, item.id, definitionIndex, ref isSelectionClick);
                     break;
 
-                default:// Groups.
+                default:
                     DrawWeightGUI(area, item.id, column - 2, definitionIndex);
                     break;
+            }
+        }
 
+        /************************************************************************************************************************/
+
+        private static GUIStyle _RootMotionWeightsLabelStyle;
+
+        private static readonly GUIContent RootMotionWeightsLabel = new(
+            "Root Motion Weights",
+            "When a Group is applied to a Layer, this value will multiply the Root Motion output of that layer");
+
+        private void DrawRootMotionWeightsCellGUI(Rect area, int column)
+        {
+            switch (column)
+            {
+                case TransformColumn:
+                    _RootMotionWeightsLabelStyle ??= new(GUI.skin.label)
+                    {
+                        alignment = TextAnchor.MiddleRight,
+                    };
+
+                    area.yMin--;
+                    GUI.Label(area, RootMotionWeightsLabel, _RootMotionWeightsLabelStyle);
+                    break;
+
+                case IncludedColumn:
+                    break;
+
+                default:
+                    column -= FirstGroupColumn;
+                    if (!Data.RootMotionWeights.TryGet(column, out var weight))
+                        break;
+
+                    if (DoFloatFieldGUI(area, ref weight))
+                    {
+                        weight = Mathf.Clamp01(weight);
+
+                        var data = RecordUndo();
+                        data.Validate();
+                        data.RootMotionWeights[column] = weight;
+                    }
+                    break;
             }
         }
 
@@ -215,16 +284,29 @@ namespace Animancer.Editor
             if (float.IsNaN(weight))
                 return;
 
-            EditorGUI.BeginChangeCheck();
-
-            weight = EditorGUI.FloatField(area, weight);
-
-            if (EditorGUI.EndChangeCheck())
+            if (DoFloatFieldGUI(area, ref weight))
             {
                 weight = Mathf.Clamp01(weight);
 
                 SetValue(treeItemID, i => RecordUndo().SetWeight(groupIndex, i, weight));
             }
+        }
+
+        /************************************************************************************************************************/
+
+        private static bool DoFloatFieldGUI(Rect area, ref float value)
+        {
+            EditorGUI.BeginChangeCheck();
+
+            var style = EditorStyles.numberField;
+            var contentOffset = style.contentOffset;
+            style.contentOffset = new(0, -2);
+
+            value = EditorGUI.FloatField(area, value);
+
+            style.contentOffset = contentOffset;
+
+            return EditorGUI.EndChangeCheck();
         }
 
         /************************************************************************************************************************/

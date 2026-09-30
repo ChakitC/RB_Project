@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -12,68 +12,31 @@ namespace Animancer.Editor.TransitionLibraries
 {
     /// <summary>[Editor-Only] Utility for sorting a <see cref="TransitionLibraryAsset"/>.</summary>
     /// https://kybernetik.com.au/animancer/api/Animancer.Editor.TransitionLibraries/TransitionLibrarySort
-    public class TransitionLibrarySort : AssetModificationProcessor
+    public static class TransitionLibrarySort
     {
-        /************************************************************************************************************************/
-        #region Automation
-        /************************************************************************************************************************/
-
-        /// <summary>Ensures that a <see cref="TransitionLibraryAsset"/> is sorted before being saved.</summary>
-        private static string[] OnWillSaveAssets(string[] paths)
-        {
-            foreach (var path in paths)
-            {
-                if (!path.EndsWith(".asset", StringComparison.Ordinal))
-                    continue;
-
-                var library = AssetDatabase.LoadAssetAtPath<TransitionLibraryAsset>(path);
-                if (library == null)
-                    continue;
-
-                Sort(library);
-            }
-
-            return paths;
-        }
-
-        /************************************************************************************************************************/
-        #endregion
         /************************************************************************************************************************/
         #region Sort Modes
         /************************************************************************************************************************/
 
-        /// <summary>Applies the <see cref="TransitionLibraryEditorData.TransitionSortMode"/>.</summary>
-        public static void Sort(TransitionLibraryAsset library)
+        /// <summary>Applies the <see cref="TransitionLibraryEditorDataInternal.TransitionSortMode"/>.</summary>
+        public static void Sort(
+            TransitionLibraryAsset asset,
+            TransitionLibraryDefinition definition)
         {
+            if (asset == null)
+                return;
+
             // Can't have editor data if not an asset, so the sort mode will be custom anyway.
-            if (!AssetDatabase.Contains(library))
+            if (!AssetDatabase.Contains(asset))
                 return;
 
-            var data = library.GetOrCreateEditorData();
-            if (data.TransitionSortMode == TransitionSortMode.Custom)
-                return;
-
-            NameCache.Clear();
-
-            switch (data.TransitionSortMode)
-            {
-                case TransitionSortMode.Name:
-                    Sort(library.Definition, Static<CompareName>.Instance);
-                    break;
-
-                case TransitionSortMode.Path:
-                    Sort(library.Definition, Static<ComparePath>.Instance);
-                    break;
-
-                case TransitionSortMode.TypeThenName:
-                    Sort(library.Definition, Static<CompareTypeThenName>.Instance);
-                    break;
-
-                case TransitionSortMode.TypeThenPath:
-                    Sort(library.Definition, Static<CompareTypeThenPath>.Instance);
-                    break;
-            }
+            var editorData = asset.GetOrCreateEditorData();
+            Sort(definition, editorData.Data);
         }
+
+        /// <summary>Applies the <see cref="TransitionLibraryEditorDataInternal.TransitionSortMode"/>.</summary>
+        public static void Sort(TransitionLibraryAsset asset)
+            => Sort(asset, asset.Definition);
 
         /************************************************************************************************************************/
 
@@ -227,6 +190,39 @@ namespace Animancer.Editor.TransitionLibraries
         /// <summary>Sorts the <see cref="TransitionLibraryDefinition.Transitions"/>.</summary>
         public static void Sort(
             TransitionLibraryDefinition library,
+            TransitionLibraryEditorDataInternal editorData)
+        {
+            var mode = editorData.TransitionSortMode;
+            if (mode == TransitionSortMode.Custom)
+                return;
+
+            NameCache.Clear();
+
+            switch (mode)
+            {
+                case TransitionSortMode.Name:
+                    Sort(library, Static<CompareName>.Instance);
+                    break;
+
+                case TransitionSortMode.Path:
+                    Sort(library, Static<ComparePath>.Instance);
+                    break;
+
+                case TransitionSortMode.TypeThenName:
+                    Sort(library, Static<CompareTypeThenName>.Instance);
+                    break;
+
+                case TransitionSortMode.TypeThenPath:
+                    Sort(library, Static<CompareTypeThenPath>.Instance);
+                    break;
+            }
+        }
+
+        /************************************************************************************************************************/
+
+        /// <summary>Sorts the <see cref="TransitionLibraryDefinition.Transitions"/>.</summary>
+        public static void Sort(
+            TransitionLibraryDefinition library,
             Comparison<TransitionAssetBase> comparison)
             => Sort(library, new Comparison<TransitionAssetBase>(comparison));
 
@@ -277,15 +273,15 @@ namespace Animancer.Editor.TransitionLibraries
         /// </summary>
         public static void SetTransitions(
             TransitionLibraryDefinition library,
-            TransitionAssetBase[] transitions,
+            TransitionAssetBase[] newTransitions,
             int[] oldIndexToNew,
             int count)
         {
             var libraryTransitions = library.Transitions;
-            if (libraryTransitions != transitions)
+            if (libraryTransitions != newTransitions)
             {
                 AnimancerUtilities.SetLength(ref libraryTransitions, count);
-                Array.Copy(transitions, libraryTransitions, count);
+                Array.Copy(newTransitions, libraryTransitions, count);
                 library.Transitions = libraryTransitions;
             }
 
@@ -368,10 +364,9 @@ namespace Animancer.Editor.TransitionLibraries
             if (from == to)
                 return;
 
-            var editorData = window.SourceObject.GetOrCreateEditorData();
-
             var definition = window.RecordUndo();
 
+            var editorData = window.EditorData;
             editorData.TransitionSortMode = TransitionSortMode.Custom;
 
             var moving = transitions[from];

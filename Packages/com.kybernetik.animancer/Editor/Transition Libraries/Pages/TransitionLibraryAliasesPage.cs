@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -39,12 +39,15 @@ namespace Animancer.Editor.TransitionLibraries
 
         /// <inheritdoc/>
         public override int Index
-            => 1;
+            => 2;
 
         /************************************************************************************************************************/
 
         private static readonly List<Rect>
             TransitionAreas = new();
+
+        private static float ButtonWidth
+            => LineHeight * 4;
 
         /************************************************************************************************************************/
 
@@ -68,14 +71,14 @@ namespace Animancer.Editor.TransitionLibraries
             area.xMin += StandardSpacing;
             area.xMax -= StandardSpacing;
 
-            var transitions = definition.Transitions;
+            var items = Window.Items;
             var aliases = definition.Aliases;
 
             var viewArea = new Rect(
                 0,
                 0,
                 area.width,
-                CalculateHeight(1 + transitions.Length + aliases.Length) + StandardSpacing);
+                CalculateHeight(1 + items.Count + aliases.Length) + StandardSpacing);
 
             if (viewArea.height > area.height)
                 viewArea.width -= GUI.skin.verticalScrollbar.fixedWidth;
@@ -88,51 +91,79 @@ namespace Animancer.Editor.TransitionLibraries
 
             NextVerticalArea(ref viewArea);
 
-            var aliasIndex = 0;
-
-            for (int i = 0; i < transitions.Length; i++)
+            for (int i = 0; i < items.Count; i++)
             {
-                var totalTransitionArea = viewArea;
-
                 if (isRepaint)
                     TransitionAreas.Add(viewArea);
 
-                DoTransitionGUI(viewArea, transitions[i], i);
-
-                NextVerticalArea(ref viewArea);
-
-                while (aliasIndex < aliases.Length)
-                {
-                    var alias = aliases[aliasIndex];
-
-                    if (alias.Index != i)
-                    {
-                        if (alias.Index < i && currentEvent.type != EventType.Used)
-                        {
-                            Debug.LogError("Aliases aren't properly sorted.");
-                            definition.SortAliases();
-                            GUIUtility.ExitGUI();
-                        }
-
-                        break;
-                    }
-
-                    DoAliasGUI(viewArea, alias, aliasIndex++);
-
-                    NextVerticalArea(ref viewArea);
-                }
-
-                // Highlights.
-
-                totalTransitionArea.yMax = viewArea.yMin - StandardSpacing;
-
-                var selected = Window.Selection.FromIndex == i || Window.Selection.ToIndex == i;
-                var hover = totalTransitionArea.Contains(currentEvent.mousePosition);
-
-                Window.Highlighter.DrawHighlightGUI(totalTransitionArea, selected, hover);
+                DoItemGUI(ref viewArea, i, currentEvent);
             }
 
             GUI.EndScrollView();
+        }
+
+        /************************************************************************************************************************/
+
+        private void DoItemGUI(
+            ref Rect area,
+            int itemIndex,
+            Event currentEvent)
+        {
+            var totalTransitionArea = area;
+            var items = Window.Items;
+
+            var item = items.GetItem(itemIndex);
+            if (item is TransitionAssetBase transition)
+            {
+                var hasGroup = items.GetGroup(itemIndex) != null;
+                if (hasGroup)
+                    area.xMin += IndentSize;
+
+                var transitions = Window.Data.Transitions;
+                var transitionIndex = Window.Items.ItemToSourceIndex(itemIndex);
+
+                DoTransitionGUI(area, transition, itemIndex, transitionIndex);
+
+                NextVerticalArea(ref area);
+
+                DoAliasGUI(ref area, transitionIndex);
+
+                if (hasGroup)
+                    area.xMin -= IndentSize;
+            }
+            else if (item is TransitionGroup group)
+            {
+                var groupArea = area;
+                NextVerticalArea(ref area);
+
+                var foldoutArea = StealFromLeft(ref groupArea, LineHeight, StandardSpacing);
+
+                TransitionModifierTableGUI.HandleTransitionLabelInput(
+                    ref groupArea,
+                    Window,
+                    group,
+                    itemIndex,
+                    SelectionType.Group,
+                    CalculateTarget);
+
+                GUI.Label(groupArea, group.Name);
+
+                EditorGUI.BeginChangeCheck();
+
+                group.IsExpanded = EditorGUI.Foldout(foldoutArea, group.IsExpanded, GUIContent.none);
+
+                if (EditorGUI.EndChangeCheck())
+                    Window.Selection.Select(Window, group, group.Index, SelectionType.Group);
+            }
+
+            // Highlights.
+
+            totalTransitionArea.yMax = area.yMin - StandardSpacing;
+
+            var selected = Window.Selection.Selected == item;
+            var hover = totalTransitionArea.Contains(currentEvent.mousePosition);
+
+            Window.Highlighter.DrawHighlightGUI(totalTransitionArea, selected, hover);
         }
 
         /************************************************************************************************************************/
@@ -154,17 +185,17 @@ namespace Animancer.Editor.TransitionLibraries
         /************************************************************************************************************************/
 
         /// <summary>Draws a `transition`.</summary>
-        private void DoTransitionGUI(Rect area, TransitionAssetBase transition, int index)
+        private void DoTransitionGUI(Rect area, TransitionAssetBase transition, int itemIndex, int transitionIndex)
         {
-            var addArea = StealFromLeft(ref area, LineHeight * 5, StandardSpacing);
+            var addArea = StealFromLeft(ref area, ButtonWidth, StandardSpacing);
 
             TransitionModifierTableGUI.HandleTransitionLabelInput(
                 ref area,
                 Window,
                 transition,
-                index,
+                itemIndex,
                 SelectionType.ToTransition,
-                CalculateTargetTransitionIndex);
+                CalculateTarget);
 
             var typeArea = StealFromRight(ref area, area.width * 0.5f, StandardSpacing);
 
@@ -179,34 +210,58 @@ namespace Animancer.Editor.TransitionLibraries
 
             if (GUI.Button(addArea, "Add"))
             {
-                var alias = new NamedIndex(null, index);
+                var alias = new NamedIndex(null, transitionIndex);
                 Window.RecordUndo().AddAlias(alias);
             }
         }
 
         /************************************************************************************************************************/
 
-        /// <summary>Calculates the transition index for a drag and drop operation.</summary>
-        private static int CalculateTargetTransitionIndex(
+        /// <summary>Calculates the target index for a drag and drop operation.</summary>
+        private static ListTargetCalculation CalculateTarget(
             Rect area,
             int index,
             Event currentEvent)
         {
             var y = currentEvent.mousePosition.y;
-
             for (int i = 0; i < TransitionAreas.Count; i++)
-                if (y <= TransitionAreas[i].yMax)
-                    return i;
+            {
+                area = TransitionAreas[i];
+                var yMax = area.yMax;
+                if (y > yMax)
+                    continue;
 
-            return TransitionAreas.Count;
+                return new(
+                    i,
+                    Mathf.InverseLerp(area.y, yMax, y));
+            }
+
+            return new(TransitionAreas.Count, 1);
         }
 
         /************************************************************************************************************************/
 
-        /// <summary>Draws an `alias`.</summary>
-        private void DoAliasGUI(Rect area, NamedIndex alias, int index)
+        /// <summary>Draws all aliases for the specified `transitionIndex`.</summary>
+        private void DoAliasGUI(ref Rect area, int transitionIndex)
         {
-            var removeArea = StealFromLeft(ref area, LineHeight * 5, StandardSpacing);
+            var aliases = Window.Data.Aliases;
+            for (int i = 0; i < aliases.Length; i++)
+            {
+                var alias = aliases[i];
+
+                if (alias.Index != transitionIndex)
+                    continue;
+
+                DoAliasGUI(area, alias, i);
+
+                NextVerticalArea(ref area);
+            }
+        }
+
+        /// <summary>Draws an `alias`.</summary>
+        private void DoAliasGUI(Rect area, NamedIndex alias, int aliasIndex)
+        {
+            var removeArea = StealFromLeft(ref area, ButtonWidth, StandardSpacing);
 
             EditorGUI.BeginChangeCheck();
 
@@ -214,12 +269,12 @@ namespace Animancer.Editor.TransitionLibraries
 
             if (EditorGUI.EndChangeCheck())
             {
-                Window.RecordUndo().Aliases[index] = alias.With(name as StringAsset);
+                Window.RecordUndo().Aliases[aliasIndex] = alias.With(name as StringAsset);
             }
 
             if (GUI.Button(removeArea, "Remove"))
             {
-                Window.RecordUndo().RemoveAlias(index);
+                Window.RecordUndo().RemoveAlias(aliasIndex);
             }
         }
 

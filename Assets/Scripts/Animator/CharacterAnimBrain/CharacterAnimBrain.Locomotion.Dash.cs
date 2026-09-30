@@ -25,7 +25,7 @@ public sealed partial class CharacterAnimBrain
             float dur = Mathf.Max(0.01f, owner._dashDuration);
             float fadeDuration = ResolveFadeDuration(clip, dur);
 
-            state = owner.LocoLayer.Play(clip, fadeDuration);
+            state = owner.PlayLocomotionTransition(clip, fadeDuration);
             if (state == null)
                 return;
 

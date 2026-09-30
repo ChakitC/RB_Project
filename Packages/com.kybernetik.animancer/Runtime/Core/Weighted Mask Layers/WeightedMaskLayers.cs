@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using Unity.Collections;
@@ -94,7 +94,7 @@ namespace Animancer
             var boneWeights = Layers.BoneWeights;
             var definitionWeights = Definition.Weights;
 
-            var layerIndexOffset = (layerIndex - 1) * Indices.Length;
+            var layerIndexOffset = (layerIndex - 1) * Layers.BoneCount;
             var groupDefinitionStart = groupIndex * Indices.Length;
 
             for (int i = 0; i < Indices.Length; i++)
@@ -106,6 +106,9 @@ namespace Animancer
                 var weight = definitionWeights[groupDefinitionStart + i];
                 boneWeights[layerIndexOffset + index] = weight;
             }
+
+            var rootMotionWeights = Layers.RootMotionWeights;
+            rootMotionWeights[layerIndex] = Definition.RootMotionWeights[groupIndex];
         }
 
         /************************************************************************************************************************/
@@ -139,17 +142,21 @@ namespace Animancer
             /************************************************************************************************************************/
 
             private NativeArray<float> _CurrentWeights;
+            private NativeArray<float> _CurrentRootMotionWeights;
             private float[] _OriginalWeights;
             private WeightedMaskLayers _Layers;
+            private int _LayerIndex;
             private int _LayerIndexOffset;
             private int _TargetWeightIndex;
+            private float _OriginalRootMotionWeight;
+            private float _TargetRootMotionWeight;
             private Func<float, float> _Easing;
 
             /// <summary>The amount of time that has passed since the start of this fade (in seconds).</summary>
-            public float ElapsedTime { get; set; }
+            public float ElapsedTime;
 
             /// <summary>The total amount of time this fade will take (in seconds).</summary>
-            public float Duration { get; set; }
+            public float Duration;
 
             /************************************************************************************************************************/
 
@@ -164,8 +171,12 @@ namespace Animancer
                 layers.Definition.AssertGroupIndex(groupIndex);
 
                 _CurrentWeights = layers.Layers.BoneWeights;
+                _CurrentRootMotionWeights = layers.Layers.RootMotionWeights;
+                _OriginalRootMotionWeight = _CurrentRootMotionWeights[layerIndex];
+                _TargetRootMotionWeight = layers.Definition.RootMotionWeights[groupIndex];
                 _Easing = easing;
                 _Layers = layers;
+                _LayerIndex = layerIndex;
                 _TargetWeightIndex = layers.Definition.IndexOf(groupIndex, 0);
                 Duration = duration;
 
@@ -221,6 +232,11 @@ namespace Animancer
                     var to = targetWeights[_TargetWeightIndex + i];
                     boneWeights[index] = Mathf.LerpUnclamped(from, to, t);
                 }
+
+                _CurrentRootMotionWeights[_LayerIndex] = Mathf.LerpUnclamped(
+                    _OriginalRootMotionWeight,
+                    _TargetRootMotionWeight,
+                    t);
             }
 
             /// <summary>Recalculates the target weights.</summary>
@@ -236,6 +252,8 @@ namespace Animancer
                     var to = targetWeights[_TargetWeightIndex + i];
                     boneWeights[index] = to;
                 }
+
+                _CurrentRootMotionWeights[_LayerIndex] = _TargetRootMotionWeight;
             }
 
             /************************************************************************************************************************/

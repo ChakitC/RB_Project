@@ -46,7 +46,7 @@ public sealed partial class CharacterAnimBrain
                 preserveFireHoldIntent: true);
             owner.EmitPlaybackSignal(PlaybackKind.UtilityWarpOut, PlaybackPhase.Started, owner._utilityChannel.RequestId);
 
-            state = owner.LocoLayer.Play(utilityClip);
+            state = owner.PlayLocomotionTransition(utilityClip);
             state.NormalizedTime = 0f;
             runtimeEvents = new AnimancerEvent.Sequence(utilityClip.Events);
 

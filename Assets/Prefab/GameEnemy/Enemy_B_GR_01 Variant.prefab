@@ -112,6 +112,14 @@ PrefabInstance:
       propertyPath: m_Radius
       value: 1.14
       objectReference: {fileID: 0}
+    - target: {fileID: 3173768737373733820, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: logTransitions
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3173768737373733820, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: legacyDebugSignature
+      value: True|False|False|(10, 10)
+      objectReference: {fileID: 0}
     - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: Equipment
       value: 
@@ -891,7 +899,7 @@ MonoBehaviour:
   m_Subtree: {fileID: 0}
 --- !u!114 &4780316844371962174
 MonoBehaviour:
-  m_ObjectHideFlags: 0
+  m_ObjectHideFlags: 2
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
@@ -1615,7 +1623,7 @@ MonoBehaviour:
     m_SharedVariableGroupsData: []
 --- !u!114 &286513822275338959
 MonoBehaviour:
-  m_ObjectHideFlags: 0
+  m_ObjectHideFlags: 2
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}

@@ -505,6 +505,7 @@ GameObject:
   - component: {fileID: 5643808450919508121}
   - component: {fileID: 5314967593416652901}
   - component: {fileID: -1536537307905668593}
+  - component: {fileID: 4882540446049484576}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -640,6 +641,7 @@ MonoBehaviour:
   RootMotionDriver: {fileID: 0}
   PairOffsetApplier: {fileID: 3853088793137968342}
   MeleeController: {fileID: 4440949455955109371}
+  AudioEmitter: {fileID: 0}
   AimRig: {fileID: 3900802803091656922}
   CharacterLoad: {fileID: 7935780743584248329}
   Visual: {fileID: 1956943878282865192}
@@ -1568,6 +1570,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075d5f6cfec8f664199b898d72f49100, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &4882540446049484576
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2311559804654788738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 270e4bbbc0e46d2479050deba13ab7b5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  debugInInspector: 1
+  logTransitions: 0
+  showOnScreen: 1
+  screenPos: {x: 1777.6, y: 991.67}
+  snapshot: 
+  legacyDebugSignature: True|False|True|(1777.6, 991.67)
 --- !u!1 &2390375286862288330
 GameObject:
   m_ObjectHideFlags: 0

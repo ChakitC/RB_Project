@@ -24,7 +24,7 @@ public sealed partial class CharacterAnimBrain
             ClearStateEvents();
             EndVfxSession();
 
-            owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
+            owner.FadeActionLayer(owner.ActLayer);
         }
 
         public override void OnExitState()
@@ -131,7 +131,7 @@ public sealed partial class CharacterAnimBrain
                 usesRootMotion: false,
                 preserveFireHoldIntent: true);
 
-            state = owner.LocoLayer.Play(owner.ReloadClip);
+            state = owner.PlayLocomotionTransition(owner.ReloadClip);
             state.NormalizedTime = 0f;
 
             float len = Mathf.Max(0.01f, state.Length);

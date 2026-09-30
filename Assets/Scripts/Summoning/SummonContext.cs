@@ -34,6 +34,7 @@ public sealed class SummonContext : CharacteContext
     void Awake()
     {
         ResolveReferences();
+        PrepareRuntimeModules();
     }
 
     public override void ResolveReferences()

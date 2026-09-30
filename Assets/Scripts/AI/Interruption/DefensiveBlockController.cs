@@ -185,7 +185,7 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
         active = true; impact = false; elapsed = slideElapsed = slideApplied = 0f;
         arrived = true; pendingPlacement = null; slideFootprint = footprint;
         selfControlToken = ctx.stateHub != null ? ctx.stateHub.AcquireExternalControlBlockToken(
-            ControlBlockFlags.Move | ControlBlockFlags.Rotate | ControlBlockFlags.Shoot | ControlBlockFlags.Skill) : 0;
+            ControlBlockFlags.Move | ControlBlockFlags.Rotate | ControlBlockFlags.Shoot | ControlBlockFlags.Skill, nameof(DefensiveBlockController)) : 0;
         // The Player movement module also performs overlap separation, outside CanMove().
         selfMovement = issuer.movement;
         selfMovementWasEnabled = movementWasEnabled;
@@ -375,6 +375,7 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
         if (feedback) PlayImpactCue(GuardCenter);
         Impacted?.Invoke(this);
         slideDirection = -ctx.transform.forward;
+        BeginPlayerRecoil();
         if (feedback && hitLagDuration > 0f)
             GlobalTimeScaleManager.Instance.RequestHitLag(hitLagDuration, hitLagTimeScale, hitLagShape);
         if (feedback) SpawnImpactVfx(GuardCenter);
@@ -427,6 +428,7 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
         slideApplied = next;
         // Production companion position colliders are animated triggers. Sweep their accepted
         // placement footprint, rather than requiring a solid collider or following recoil bones.
+        Vector3 before = ctx.transform.position;
         var shape = DefensiveBlockSlideMotor.ResolveShape(slideFootprint, ctx.transform);
         distance = CharacterBodySweepUtility.ResolveAllowedDistance(shape, slideDirection, distance,
             0.03f, ~0, QueryTriggerInteraction.Ignore, ctx.transform);
@@ -442,6 +444,8 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
         }
         if (ctx is AllyContext companion && companion.agent != null && companion.agent.enabled && companion.agent.isOnNavMesh)
             companion.agent.nextPosition = ctx.transform.position;
+        MovePlayerRecoil(ctx.transform.position - before);
+        if (slideElapsed >= slideSeconds) EndPlayerRecoil();
     }
     void OnPlayback(CharacterAnimBrain.PlaybackSignal signal)
     {
@@ -458,6 +462,7 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
         TraceGuard($"Finished impact={impact} arrived={arrived} attackResult='{attack?.LastResult}' probe='{attack?.LastProbe}'");
         restoring = true;
         active = false;
+        EndPlayerRecoil();
         if (warpVisibility != null)
         {
             warpVisibility.Disappeared -= OnWarpHidden;

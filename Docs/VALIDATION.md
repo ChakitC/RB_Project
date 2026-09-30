@@ -1,5 +1,95 @@
 # Validation
 
+## Shared animation fades and fixed masks (2026-09-30)
+
+`CharacterAnimBrain.Transitions.cs` owns presentation playback, layer fades and
+temporary pose cleanup. CommanBlock now uses a separate full-body action layer,
+respects its authored End Time and keeps its mask throughout fade-out. Block
+keeps its sampled pose frozen on exit; temporary enemy struggle poses survive
+until their outgoing blend reaches zero. Pair offsets follow each contributing
+action state and the coverage of the full-body layer.
+
+### Compilation
+
+- Required `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**. Log:
+  `P:/Game_RB_Project/BuildArtifacts/AnimationTransitions/Build.log`.
+- Unity compiled the runtime, Editor and test changes;
+  `EditorUtility.scriptCompilationFailed` was false.
+
+### Automated tests
+
+- `CommanBlockRunnerTests`: **16/16 passed**. Coverage includes authored End Time,
+  actual interpolation of a leg excluded by the upper-body mask, action overlap,
+  replay during fade, weighted pair offsets, delayed temporary-state destruction,
+  reclaiming a state, disable/rebind cleanup, control lock ownership and Block pose
+  preservation.
+- `AnimationTransitionRegressionRunnerTests`: **45/46 passed** across the existing
+  `CharacterAnimBrainSmokeTests` and `CharacterAnimationTransitionPolicyTests`.
+  The priority matrix, root-motion ownership and playback lifecycle checks passed.
+  `CancelSkillCastRequestClearsStateWithoutATerminalEvent` failed because it expects
+  no signal but receives `Skill:Interrupted:101`. The before snapshot already calls
+  `InterruptActiveSkillRequest()` in `CancelSkillCastRequest`; this method was not
+  changed by the fade work. The test and the cancellation paragraph in Animation
+  Command Flow disagree with the existing implementation and need a separate
+  contract decision.
+- Results: `P:/Game_RB_Project/BuildArtifacts/AnimationTransitions/TestResults.json`.
+
+### Runtime and prefab checks
+
+- Inspected all 11 production prefab Brain layer indices: locomotion/action are
+  0/1, so the new runtime full-body layer uses 2 without a serialized migration.
+- In `Assets/Tests/DefensiveBlock/RectorDefensiveBlock.unity`, invoked the live
+  Roma Driver's CommanBlock command. The real clip reached authored normalized
+  End Time `0.436716437`; full-body weight then fell through intermediate values
+  to zero over the configured `0.1` second fade. Both masks stayed unchanged,
+  locomotion remained active and `applyRootMotion` remained false.
+- Repeated with world slow `0.2`: Roma retained graph speed `1`, the Aires allies
+  and enemy used `0.2`, and Roma's outgoing layer still faded to zero. The temporary
+  slow handle was released and world scale returned to `1`.
+- Captures: `RuntimeRoma.json` and `RuntimeWorldSlow.json` in the artifact folder
+  above. The original scene remains clean and in Play Mode as it was before this
+  task. No production clips, profiles or prefabs were modified by this change.
+- These checks measure live graph behavior and synthetic bone interpolation.
+  Full visual review of every character/clip, including Feno, and end-to-end
+  combat input sequences remain unverified. Console retains PrefabPalette and
+  URP asset/tool errors; it is not globally error-free.
+
+## Animancer 8.4.0 import (2026-09-30)
+
+Imported `Packages/com.kybernetik.animancer` from `origin/v-asset` commit
+`d7510a2bc13649a9a6352e744109e1573ac74683`. Three obsolete 8.2.3 files and
+their metadata were removed; see [Animation Command Flow](ARCHITECTURE/ANIMATION_COMMAND_FLOW.md#animancer-package).
+Backups and SHA-256 hashes of the 17 pre-existing changed files are under
+`P:/Game_RB_Project/BuildArtifacts/Animancer840Import`. All 17 hashes were
+unchanged after import. Project gameplay sources were not edited by this import.
+
+### Compilation
+
+- Unity 6000.0.58f2 loaded package version `8.4.0` and assembly version
+  `8.4.0.39`; `isCompiling` and `EditorUtility.scriptCompilationFailed` were both
+  false after refresh. Runtime and Editor assemblies compiled.
+- The default-assembly check was not run because this import changed only
+  package sources and documentation, not default `Assembly-CSharp` sources.
+- Console also reported FBX import errors, missing dictionary keys
+  `Noemi_Body`, `Feno_Body`, and `Milano_Binoculars`, and URP
+  `AutodeskInteractive.shadergraph` load errors. The URP errors were present
+  before import. The FBX errors require separate investigation; they are not
+  evidence of successful runtime validation.
+
+### Automated tests
+
+Requested Edit Mode suites: `SkillManagerRefactorTests`,
+`CommanBlockRunnerTests`, `SkillCastArchitectureTests`, and
+`SkillPlacementTimingTests`. The first job timed out before starting tests.
+A retry with a 120-second initialization timeout encountered MCP command
+timeouts and a disconnected Unity session. No completed results were obtained.
+These suites still need to be run successfully in Unity Test Runner.
+
+### Runtime checks
+
+Full Play Mode gameplay and visual animation playback were not verified.
+The Editor successfully loaded `AnimancerComponent` from the new assembly.
+
 ## CharacterSkillManager responsibility split (2026-09-30)
 
 `CharacterSkillManager` now delegates loadout resolution and runtime-entry caches
@@ -726,6 +816,23 @@ Evidence in `../BuildArtifacts/`: `DefensiveBlockContactOrderBuild.log`,
 `DefensiveBlockContactOrderPlayMode.txt` (first run),
 `DefensiveBlockContactOrderPlayModeFinal.txt`, `DefensiveBlockContactClockProbe.txt`,
 and `DefensiveBlockContactReactionProbe.txt`.
+
+## StateHub control and reload regression tests
+
+Run `StateHubControlTests` in the `StateHub.Tests` Edit Mode assembly after
+changing StateHub shooting admission, reload interruption, or control tokens.
+The fixture checks token acquisition/release before Awake, retained locks after
+initialization, explicit fire interrupting a configured reload, rejection without
+loaded ammo or interruption permission, other shooting restrictions, held-fire
+resumption after autoload, and a reload whose StateHub snapshot has not caught up.
+It uses isolated actors and controlled reload state; live reload animation, audio,
+projectile delivery, and input timing still need a Play Mode check.
+
+Validation on 2026-09-30: the canonical assembly check passed with 0 errors and
+93 warnings. Unity compiled the gameplay and test assembly without C# errors.
+The Test Runner job `563c165e92fb4d6bae5252b2e53c83b9` timed out before starting;
+all 14 fixture cases then passed by direct Editor invocation with setup/teardown.
+Those are assertion results, not a successful Test Runner or Play Mode run.
 
 ## Canonical Command
 
@@ -2787,3 +2894,66 @@ or overrides in the nine prefabs and five inheriting actor prefabs (four enemy
 variants and `MinigunTerret_Summon`). The project asset text scan also found no
 overrides for these field names or serialized calls to the removed binding API.
 Movement integration tests were rerun against the migrated assets.
+
+## StateHub owner and read-only API migration (2026-09-30)
+
+Run the StateHub.Tests assembly in Edit Mode and StateHub.PlayMode.Tests in Play
+Mode. The discoverable asmdef fixtures delegate to typed Editor fixtures because
+gameplay remains in Assembly-CSharp. StateHubTestResults.Arm() optionally captures
+Unity Test Runner callbacks across domain reload and writes official runner XML
+to ../BuildArtifacts/StateHub-Runner.xml; this is not direct assertion execution.
+
+Coverage includes the action policy and reasons, downed movement, Skill-only
+locks with basic melee, tokens before Awake and independent source channels,
+read-only views, query purity, explicit root/child references, idempotent life
+commands, and faulting presentation subscribers. Runtime fixtures exercise
+Auto/Semi/Burst reload interruption, immediate Semi fire, empty/config/stun/menu
+restrictions, held-fire resumption, cancellation from a reload callback, actor
+disable/enable, successful/failed FullBody dash interruption, UpperBody reload,
+two UI screens plus a dialogue-style pause token, and destroyed target cleanup.
+
+Compilation: CheckAssemblyBuild.ps1 passed with 0 errors and 93 warnings; log:
+../BuildArtifacts/StateHub-Final-build.log. Unity also compiled Editor and test
+assemblies. Hot Reload briefly reported the newly added notification type missing
+before the full Unity asset refresh; full compilation resolved it.
+
+Edit Mode: 18/18 passed (job e96c495439df4a69af4931499a543474).
+Play Mode: 2/2 passed (job 66e19408611c45369774d52b9fb76b17), with official
+runner XML exported to ../BuildArtifacts/StateHub-Runner.xml.
+
+Static migration checks found no state-view TryChange/SetInitial/Tick callers or
+external CurrentId assignments under Assets. Only StateMachine's private setter
+is assigned inside StateMachine. Source/doc diff whitespace checks pass; Unity
+prefab serialization retains its normal empty-field trailing spaces.
+
+Debug migration changed 16 prefab assets. A second run reported Changed 0 assets,
+Skipped 0. Serialized object/reference comparison found no original nonzero
+references missing or changed; report:
+../BuildArtifacts/StateHub-serialized-references.json. Legacy fields are retained.
+
+In the RectorDefensiveBlock scene, Player, Ally and Enemy owner snapshots, fresh
+fire reload cancellation, stopped reload audio handles, and stun blocking were
+checked using temporary runtime gun copies. Original gun assets retain their
+shootInterruptsReload=false values. Player and Enemy basic melee started/stopped.
+Helper hide/show retained HP, life and an external control token. No scene was
+saved by these probes.
+
+Authoring limitations: Aires_AnimProfile has no Light melee skill or fallback
+combo, so that action is rejected by its owner. MinigunTerret_Summon has no death
+clip; its animation callback logs an error. Notification isolation prevents that
+error from aborting life commit. These profiles were not assigned new animations.
+Visual transitions and perceived audio quality still need human playtesting.
+
+Earlier MCP Test Runner attempts intermittently timed out during domain reload.
+Those attempts are not counted as passes, and direct assertion calls are not
+substituted for Play Mode acceptance.
+
+Final live probes: Player Dash start/cancel and Player/Ally Down, crawl admission
+and Revive passed. Ally 1 has no DashSetting and correctly rejects Dash in its
+owner; that authored Dash path remains unverified. A properly initialized turret
+summon reached Dead/Despawning with one Died, CharacterDead and DespawnRequested
+event despite the missing death clip, then disappeared after its despawn delay.
+Enemy Die called twice yielded one Died event, 1,000 XP and three pickup objects
+with no increase on the second call. This scene lacks XP/drop managers, so the
+probe supplied temporary managers and an unpersisted attacker LevelSystem.
+Report: ../BuildArtifacts/StateHub-runtime-acceptance.json. Exited Play Mode.

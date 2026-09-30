@@ -1,19 +1,44 @@
-// Serialization // Copyright 2018-2025 Kybernetik //
+// Serialization // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
+
+#if !UNITY_6000_3_OR_NEWER
+using EntityId = System.Int32;
+#endif
 
 using System;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-// Shared File Last Modified: 2023-08-12.
+// Shared File Last Modified: 2026-06-10.
 namespace Animancer.Editor
 // namespace InspectorGadgets.Editor
 {
     /// <summary>[Editor-Only] Various serialization utilities.</summary>
     public partial class Serialization
     {
+        /// <summary>[Editor-Only]
+        /// <list type="bullet">
+        /// <item>In Unity 6.3+: returns the entity ID of the object.</item>
+        /// <item>In older versions: returns the instance ID of the object.</item>
+        /// </list>
+        /// </summary>
+        public static EntityId GetEntityId(Object obj)
+#if UNITY_6000_3_OR_NEWER
+            => obj.GetEntityId();
+#else
+            => obj.GetInstanceID();
+#endif
+
+        /// <summary>[Editor-Only] Returns the object with the specified `entityId`.</summary>
+        public static Object EntityIdToObject(EntityId entityId)
+#if UNITY_6000_3_OR_NEWER
+            => EditorUtility.EntityIdToObject(entityId);
+#else
+            => EditorUtility.InstanceIDToObject(entityId);
+#endif
+
         /// <summary>[Editor-Only]
         /// Directly serializing an <see cref="UnityEngine.Object"/> reference doesn't always work (such as with scene
         /// objects when entering Play Mode), so this class also serializes their instance ID and uses that if the
@@ -25,7 +50,7 @@ namespace Animancer.Editor
             /************************************************************************************************************************/
 
             [SerializeField] private Object _Object;
-            [SerializeField] private int _InstanceID;
+            [SerializeField] private EntityId _EntityID;
 
             /************************************************************************************************************************/
 
@@ -39,8 +64,8 @@ namespace Animancer.Editor
                 }
             }
 
-            /// <summary>The <see cref="Object.GetInstanceID"/>.</summary>
-            public int InstanceID => _InstanceID;
+            /// <summary>The <see cref="GetEntityId"/>.</summary>
+            public EntityId EntityID => _EntityID;
 
             /************************************************************************************************************************/
 
@@ -52,7 +77,7 @@ namespace Animancer.Editor
             {
                 _Object = obj;
                 if (obj != null)
-                    _InstanceID = obj.GetInstanceID();
+                    _EntityID = GetEntityId(obj);
             }
 
             /************************************************************************************************************************/
@@ -60,9 +85,9 @@ namespace Animancer.Editor
             private void Initialize()
             {
                 if (_Object == null)
-                    _Object = EditorUtility.InstanceIDToObject(_InstanceID);
+                    _Object = EntityIdToObject(_EntityID);
                 else
-                    _InstanceID = _Object.GetInstanceID();
+                    _EntityID = GetEntityId(_Object);
             }
 
             /************************************************************************************************************************/
@@ -128,7 +153,7 @@ namespace Animancer.Editor
 
             /// <summary>Returns a string describing this object.</summary>
             public override string ToString()
-                => $"Serialization.ObjectReference [{_InstanceID}] {_Object}";
+                => $"Serialization.ObjectReference [{_EntityID}] {_Object}";
 
             /************************************************************************************************************************/
         }

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using Animancer.Units;
 using UnityEngine;
@@ -138,9 +138,9 @@ namespace Animancer
 
             public const string UpdateModes = Docs + "bugs/update-modes";
 
-            public const string VersionName = "v8.2.3";
+            public const string VersionName = "v8.4.0";
 
-            public const string ChangeLogURL = Docs + "changes/animancer-v8-2";
+            public const string ChangeLogURL = Docs + "changes/animancer-v8-4";
 
             public const string UpgradeGuideURL = ChangeLogURL + "/upgrade-guide";
 

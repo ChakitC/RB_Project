@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR && UNITY_IMGUI
 
@@ -101,6 +101,7 @@ namespace Animancer.Editor.TransitionLibraries
             _PreviewPlayer.Graph = _PreviewRenderer.PreviewObject.Graph;
 
             _PreviewPlayer.FadeDuration = _Target.FadeDuration;
+            _PreviewPlayer.NormalizedStartTime = _Target.NormalizedStartTime;
             _PreviewPlayer.Speed = Speed.Speed;
             _PreviewPlayer.RecalculateTimeBounds();
         }

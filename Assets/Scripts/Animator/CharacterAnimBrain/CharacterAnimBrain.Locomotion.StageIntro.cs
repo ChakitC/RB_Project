@@ -28,7 +28,7 @@ public sealed partial class CharacterAnimBrain
                 // aim/fire/root motion cannot leak into the intro.
                 state = null;
                 if (owner.LocomotionMixer != null)
-                    owner.LocoLayer.Play(owner.LocomotionMixer);
+                    owner.PlayLocomotionTransition(owner.LocomotionMixer);
                 return;
             }
 
@@ -37,7 +37,7 @@ public sealed partial class CharacterAnimBrain
             // the intro pose. The intro always begins under a fully black overlay, so a hard cut is
             // invisible — and the transition's own fade (0.25s) outlasts the 0.2s fade-in, which is
             // exactly why the tail of that swing was showing on screen.
-            state = owner.LocoLayer.Play(clip, 0f, FadeMode.FromStart);
+            state = owner.PlayLocomotionTransition(clip, 0f, FadeMode.FromStart);
 
             owner.onStageIntroEndCache ??= () =>
             {

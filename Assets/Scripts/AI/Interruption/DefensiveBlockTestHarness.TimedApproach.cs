@@ -91,8 +91,8 @@ public sealed partial class DefensiveBlockTestHarness
                     case "DisableGuard": guard.enabled = false; break;
                     case "EnemyDeath": enemy.HealthSystem.Die(); break;
                     case "GuardDeath": Ally.HealthSystem.Die(); break;
-                    case "EnemyDown": enemy.stateHub.LifeSM.TryChange(LifeStateId.Down); break;
-                    case "GuardDown": Ally.stateHub.LifeSM.TryChange(LifeStateId.Down); break;
+                    case "EnemyDown": enemy.HealthSystem.Down(); break;
+                    case "GuardDown": Ally.HealthSystem.Down(); break;
                     case "EnemyControlLoss": enemy.AnimDriver.InterruptActivePlaybackForExternalControlLoss(); break;
                     case "GuardControlLoss": Ally.AnimDriver.InterruptActivePlaybackForExternalControlLoss(); break;
                     case "Knockback": enemy.KnockbackMotor.ApplyKnockback(KnockbackData.FromOrigin(Ally.transform.position, enemy.transform.position, .5f, .2f, ImpactReactionKind.MiniStun, true, null), forceReplace: true); break;

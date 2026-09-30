@@ -48,6 +48,8 @@ public class WeaponSystem : MonoBehaviour
     public bool isAiming = false;
 
     public bool IsReloading => isReloading;
+    public bool CanInterruptReloadWithFire =>
+        isReloading && currentWeapon != null && shootInterruptsReload && magazine > 0;
     public bool IsFiringHeld => _isFiringHeld;
     public FiringMode CurrentFiringMode => firingMode;
     public bool CanFire => !isReloading && magazine > 0 && GetWeaponTime() >= nextFireTime;
@@ -70,15 +72,63 @@ public class WeaponSystem : MonoBehaviour
     public float CurrentSpreadDegrees => ResolveCurrentSpreadDegrees();
 
     public event Action<int, int, int, bool> AmmoChanged;
+    public event Action<WeaponRuntimeState> RuntimeStateChanged;
+    public WeaponRuntimeState RuntimeState => new(currentWeapon, isReloading, _isFiringHeld, IsFiringActivity, magazine, reserveAmmo, CanInterruptReloadWithFire, firingMode);
+    WeaponRuntimeState publishedRuntimeState;
+    int stateChangeDepth;
+    bool publishingRuntimeState;
+
+    readonly struct StateChangeScope : IDisposable
+    {
+        readonly WeaponSystem owner;
+        public StateChangeScope(WeaponSystem owner) { this.owner = owner; owner.stateChangeDepth++; }
+        public void Dispose() { owner.stateChangeDepth--; owner.PublishRuntimeState(); }
+    }
+
+    StateChangeScope BeginStateChange() => new(this);
+
+    void PublishRuntimeState()
+    {
+        if (stateChangeDepth != 0 || publishingRuntimeState) return;
+        publishingRuntimeState = true;
+        try
+        {
+            // A subscriber may stop firing. Publish its committed result after the current notification.
+            while (!publishedRuntimeState.Equals(RuntimeState))
+            {
+                publishedRuntimeState = RuntimeState;
+                CharacterStateNotifications.Publish(RuntimeStateChanged, publishedRuntimeState);
+            }
+        }
+        finally { publishingRuntimeState = false; }
+    }
+
+    IEnumerator RunStatefulRoutine(IEnumerator routine)
+    {
+        try
+        {
+            while (true)
+            {
+                bool more;
+                using (BeginStateChange()) more = routine.MoveNext();
+                if (!more) yield break;
+                yield return routine.Current;
+            }
+        }
+        finally { (routine as IDisposable)?.Dispose(); }
+    }
 
     public bool RestoreMagazineFromAffix(int amount)
     {
-        SyncAmmoStateFromMirrors();
-        if (!ammoState.RestoreMagazine(Mathf.Max(0, amount), false)) return false;
-        SyncAmmoMirrorsFromState();
-        SyncWeaponInstanceState();
-        UpdateAmmoUI();
-        return true;
+        using (BeginStateChange())
+        {
+            SyncAmmoStateFromMirrors();
+            if (!ammoState.RestoreMagazine(Mathf.Max(0, amount), false)) return false;
+            SyncAmmoMirrorsFromState();
+            SyncWeaponInstanceState();
+            UpdateAmmoUI();
+            return true;
+        }
     }
 
     bool _isFiringHeld;
@@ -271,62 +321,65 @@ public class WeaponSystem : MonoBehaviour
 
     public void Equip(GunConfig weapon, WeaponInstanceData instance)
     {
-        var previousWeapon = currentWeapon;
-
-        if (weapon != null && instance == null && TryGetEquipmentInstanceForWeapon(weapon, out WeaponInstanceData equipmentInstance))
-            instance = equipmentInstance;
-
-        SyncWeaponInstanceState();
-        StopWeaponActivity(clearHeld: true, stopReloadAnim: true, syncInstance: false);
-
-        currentWeapon = weapon;
-        currentWeaponInstance = instance;
-        MarkDerivedStatsDirty();
-
-        if (ctx != null)
-            ctx.currentWeapon = currentWeapon;
-
-        if (!currentWeapon)
+        using (BeginStateChange())
         {
-            ClearWeaponState();
-            return;
+            var previousWeapon = currentWeapon;
+
+            if (weapon != null && instance == null && TryGetEquipmentInstanceForWeapon(weapon, out WeaponInstanceData equipmentInstance))
+                instance = equipmentInstance;
+
+            SyncWeaponInstanceState();
+            StopWeaponActivity(clearHeld: true, stopReloadAnim: true, syncInstance: false);
+
+            currentWeapon = weapon;
+            currentWeaponInstance = instance;
+            MarkDerivedStatsDirty();
+
+            if (ctx != null)
+                ctx.currentWeapon = currentWeapon;
+
+            if (!currentWeapon)
+            {
+                ClearWeaponState();
+                return;
+            }
+
+            gunType = currentWeapon.WeaponType;
+            firingMode = currentWeapon.firingModes;
+
+            reloadTime = currentWeapon.reloadTime;
+            magazineRelode = currentWeapon.magazineReload;
+            autoloader = currentWeapon.autoloader;
+
+            reloadPerBullet = currentWeapon.reloadPerBullet;
+            startInsertDelay = currentWeapon.startInsertDelay;
+            perBulletInsertTime = currentWeapon.perBulletInsertTime;
+            endInsertDelay = currentWeapon.endInsertDelay;
+            shootInterruptsReload = currentWeapon.shootInterruptsReload;
+
+            baseSwaySpeed = currentWeapon.baseSwaySpeed;
+            baseMaxSwayAngle = currentWeapon.baseMaxSwayAngle;
+            baseReturnSpeed = currentWeapon.baseReturnSpeed;
+
+            burstCount = currentWeapon.burstCount;
+            burstInterval = currentWeapon.burstInterval;
+
+            projectilePrefab = currentWeapon.BulletPrefab;
+            TryResolveProjectilePrefab(projectilePrefab, out _);
+
+            NotifyRuntimeEffectHandlersWeaponEquipped();
+            statsHub?.MarkDirty();
+            RefreshDerivedStats();
+            ammoState.Equip(currentWeapon, currentWeaponInstance, MaxMagazine, MaxReserveAmmo, HasInfiniteReserveAmmo);
+            SyncAmmoMirrorsFromState();
+            SyncWeaponInstanceState();
+            UpdateAmmoUI();
+
+            RefreshWeaponVisual();
+
+            if (currentWeapon != null && currentWeapon != previousWeapon)
+                PlayWeaponCue(currentWeapon.equipCue, true);
         }
-
-        gunType = currentWeapon.WeaponType;
-        firingMode = currentWeapon.firingModes;
-
-        reloadTime = currentWeapon.reloadTime;
-        magazineRelode = currentWeapon.magazineReload;
-        autoloader = currentWeapon.autoloader;
-
-        reloadPerBullet = currentWeapon.reloadPerBullet;
-        startInsertDelay = currentWeapon.startInsertDelay;
-        perBulletInsertTime = currentWeapon.perBulletInsertTime;
-        endInsertDelay = currentWeapon.endInsertDelay;
-        shootInterruptsReload = currentWeapon.shootInterruptsReload;
-
-        baseSwaySpeed = currentWeapon.baseSwaySpeed;
-        baseMaxSwayAngle = currentWeapon.baseMaxSwayAngle;
-        baseReturnSpeed = currentWeapon.baseReturnSpeed;
-
-        burstCount = currentWeapon.burstCount;
-        burstInterval = currentWeapon.burstInterval;
-
-        projectilePrefab = currentWeapon.BulletPrefab;
-        TryResolveProjectilePrefab(projectilePrefab, out _);
-
-        NotifyRuntimeEffectHandlersWeaponEquipped();
-        statsHub?.MarkDirty();
-        RefreshDerivedStats();
-        ammoState.Equip(currentWeapon, currentWeaponInstance, MaxMagazine, MaxReserveAmmo, HasInfiniteReserveAmmo);
-        SyncAmmoMirrorsFromState();
-        SyncWeaponInstanceState();
-        UpdateAmmoUI();
-
-        RefreshWeaponVisual();
-
-        if (currentWeapon != null && currentWeapon != previousWeapon)
-            PlayWeaponCue(currentWeapon.equipCue, true);
     }
 
     bool TryGetEquipmentInstanceForWeapon(GunConfig weapon, out WeaponInstanceData instance)
@@ -390,16 +443,19 @@ public class WeaponSystem : MonoBehaviour
 
     void OnDisable()
     {
-        StopAllCoroutines();
-        isFiring = false;
-        isBursting = false;
-        isReloading = false;
-        _isFiringHeld = false;
-        burstCo = null;
-        reloadRoutine = null;
-        StopReloadCue();
-        SyncWeaponInstanceState();
-        UnsubscribeFromStatsHub();
+        using (BeginStateChange())
+        {
+            StopAllCoroutines();
+            isFiring = false;
+            isBursting = false;
+            isReloading = false;
+            _isFiringHeld = false;
+            burstCo = null;
+            reloadRoutine = null;
+            StopReloadCue();
+            SyncWeaponInstanceState();
+            UnsubscribeFromStatsHub();
+        }
     }
 
     void OnDestroy()
@@ -597,100 +653,109 @@ public class WeaponSystem : MonoBehaviour
 
     public void SetFiring(bool value)
     {
-        _isFiringHeld = value;
-
-        if (!value)
+        using (BeginStateChange())
         {
-            StopFiringState(clearHeld: false);
-            return;
-        }
+            _isFiringHeld = value;
 
-        bool hasWeapon = currentWeapon != null;
-        if (!fireController.CanStartFiring(hasWeapon, hasWeapon && CanShootNow()))
-            return;
+            if (!value)
+            {
+                StopFiringState(clearHeld: false);
+                return;
+            }
 
-        if (fireController.ShouldCancelReload(isReloading, shootInterruptsReload))
-            CancelReload();
+            bool hasWeapon = currentWeapon != null;
+            if (!fireController.CanStartFiring(hasWeapon, hasWeapon && CanShootNow()))
+                return;
 
-        switch (fireController.ResolveStartAction(firingMode, isReloading, isBursting, burstCo != null))
-        {
-            case WeaponFireStartAction.Burst:
-                isBursting = true;
-                isFiring = true;
-                burstCo = StartCoroutine(FireBurst());
-                break;
+            if (fireController.ShouldCancelReload(isReloading, shootInterruptsReload))
+                CancelReload();
 
-            case WeaponFireStartAction.Semi:
-                TryShoot();
-                isFiring = false;
-                break;
+            switch (fireController.ResolveStartAction(firingMode, isReloading, isBursting, burstCo != null))
+            {
+                case WeaponFireStartAction.Burst:
+                    isBursting = true;
+                    isFiring = true;
+                    burstCo = StartCoroutine(RunStatefulRoutine(FireBurst()));
+                    break;
 
-            case WeaponFireStartAction.Auto:
-                isFiring = true;
-                break;
+                case WeaponFireStartAction.Semi:
+                    TryShoot();
+                    isFiring = false;
+                    break;
+
+                case WeaponFireStartAction.Auto:
+                    isFiring = true;
+                    break;
+            }
         }
     }
 
     void Update()
     {
-        RefreshDerivedStatsIfDirty();
-
-        if (currentWeapon != null)
+        using (BeginStateChange())
         {
-            spreadBloom = Mathf.MoveTowards(
-                spreadBloom,
-                0f,
-                currentWeapon.spreadRecoveryDegreesPerSecond * GetWeaponDeltaTime());
+            RefreshDerivedStatsIfDirty();
+
+            if (currentWeapon != null)
+            {
+                spreadBloom = Mathf.MoveTowards(
+                    spreadBloom,
+                    0f,
+                    currentWeapon.spreadRecoveryDegreesPerSecond * GetWeaponDeltaTime());
+            }
+
+            if (firingMode == FiringMode.Auto && isFiring && GetWeaponTime() >= nextFireTime)
+                TryShoot();
+
+            if (!firePoint)
+                return;
+
+            if (isFiring && (firingMode == FiringMode.Auto || firingMode == FiringMode.Burst))
+            {
+                swayTimer += GetWeaponDeltaTime() * swaySpeed;
+                float angle = Mathf.Sin(swayTimer) * maxSwayAngle;
+                firePoint.localRotation = firePointOriginalRot * Quaternion.Euler(0f, angle, 0f);
+                return;
+            }
+
+            swayTimer = Mathf.MoveTowards(swayTimer, 0f, GetWeaponDeltaTime() * swaySpeed);
+            firePoint.localRotation = Quaternion.Lerp(
+                firePoint.localRotation,
+                firePointOriginalRot,
+                GetWeaponDeltaTime() * returnSpeed);
         }
-
-        if (firingMode == FiringMode.Auto && isFiring && GetWeaponTime() >= nextFireTime)
-            TryShoot();
-
-        if (!firePoint)
-            return;
-
-        if (isFiring && (firingMode == FiringMode.Auto || firingMode == FiringMode.Burst))
-        {
-            swayTimer += GetWeaponDeltaTime() * swaySpeed;
-            float angle = Mathf.Sin(swayTimer) * maxSwayAngle;
-            firePoint.localRotation = firePointOriginalRot * Quaternion.Euler(0f, angle, 0f);
-            return;
-        }
-
-        swayTimer = Mathf.MoveTowards(swayTimer, 0f, GetWeaponDeltaTime() * swaySpeed);
-        firePoint.localRotation = Quaternion.Lerp(
-            firePoint.localRotation,
-            firePointOriginalRot,
-            GetWeaponDeltaTime() * returnSpeed);
     }
 
     public bool TryShoot()
     {
-        RefreshDerivedStatsIfDirty(forceStatsHubProbe: true);
+        using (BeginStateChange())
+        {
+            RefreshDerivedStatsIfDirty(forceStatsHubProbe: true);
 
-        if (!CanBeginShotAttempt())
-            return false;
+            if (!CanBeginShotAttempt())
+                return false;
 
-        if (TryHandleEmptyMagazineShot())
-            return false;
+            if (TryHandleEmptyMagazineShot())
+                return false;
 
-        if (!HasProjectileLaunchRefs())
-            return false;
+            if (!HasProjectileLaunchRefs())
+                return false;
 
-        nextFireTime = GetWeaponTime() + fireRate;
-        int ammoBefore = magazine;
-        bool ammoConsumed = !IsFreeAmmoActive;
-        ConsumeAmmoForShotIfNeeded();
+            nextFireTime = GetWeaponTime() + fireRate;
+            int ammoBefore = magazine;
+            bool ammoConsumed = !IsFreeAmmoActive;
+            ConsumeAmmoForShotIfNeeded();
 
-        WeaponShotContext shot = CreateWeaponShotContext(ammoBefore, magazine, ammoConsumed);
-        SpawnProjectile(shot);
-        ApplyThirdPersonShotFeedback();
+            WeaponShotContext shot = CreateWeaponShotContext(ammoBefore, magazine, ammoConsumed);
+            SpawnProjectile(shot);
+            ApplyThirdPersonShotFeedback();
 
-        PlayWeaponCue(currentWeapon != null ? currentWeapon.fireCue : null, false);
-        DispatchShotNotifications(shot);
-        TryStartAutoloadReloadAfterShot();
+            PlayWeaponCue(currentWeapon != null ? currentWeapon.fireCue : null, false);
+            DispatchShotNotifications(shot);
+            TryStartAutoloadReloadAfterShot();
 
-        return true;
+            return true;
+        }
     }
 
     bool CanBeginShotAttempt()
@@ -854,34 +919,21 @@ public class WeaponSystem : MonoBehaviour
 
     public void CancelReload()
     {
-        if (!isReloading && reloadRoutine == null)
-            return;
+        using (BeginStateChange())
+        {
+            if (!isReloading && reloadRoutine == null)
+                return;
 
-        StopReloadState(stopRoutine: true, stopAnim: true, syncInstance: true);
-        StopBurstRoutine();
+            StopReloadState(stopRoutine: true, stopAnim: true, syncInstance: true);
+            StopBurstRoutine();
+        }
     }
 
     bool IsReloadBlockedByActorState()
     {
-        var stateHub = ctx != null ? ctx.stateHub : null;
-        if (stateHub != null)
-        {
-            if (!stateHub.IsAlive || stateHub.Isdown)
-                return true;
-
-            if (stateHub.MoveSM != null && stateHub.MoveSM.CurrentId == MoveStateId.Knockback)
-                return true;
-        }
-
-        var knockbackMotor = ctx != null ? ctx.KnockbackMotor : null;
-        if (!knockbackMotor && ctx != null)
-            knockbackMotor = ctx.GetComponentInChildren<CharacterKnockbackMotor>(true);
-        if (!knockbackMotor)
-            knockbackMotor = GetComponentInParent<CharacterKnockbackMotor>();
-        if (!knockbackMotor)
-            knockbackMotor = GetComponentInChildren<CharacterKnockbackMotor>(true);
-
-        return knockbackMotor != null && knockbackMotor.IsActive;
+        return ctx != null &&
+            ((ctx.HealthSystem != null && !ctx.HealthSystem.IsAlive) ||
+             (ctx.KnockbackMotor != null && ctx.KnockbackMotor.IsActive));
     }
 
     void AbortReloadRoutine()
@@ -893,40 +945,43 @@ public class WeaponSystem : MonoBehaviour
 
     public void TryReload()
     {
-        RefreshDerivedStatsIfDirty(forceStatsHubProbe: true);
-
-        if (IsReloadBlockedByActorState())
-            return;
-
-        StopFiringState(clearHeld: false);
-
-        if (isReloading || magazine >= MaxMagazine)
-            return;
-
-        if (!HasReserveAmmo)
+        using (BeginStateChange())
         {
-            PlayWeaponCue(currentWeapon != null ? currentWeapon.emptyCue : null, false);
-            return;
-        }
+            RefreshDerivedStatsIfDirty(forceStatsHubProbe: true);
 
-        if (reloadRoutine != null)
-            StopCoroutine(reloadRoutine);
+            if (IsReloadBlockedByActorState())
+                return;
 
-        switch (reloadController.ResolveReloadMode(reloadPerBullet, magazineRelode))
-        {
-            case WeaponReloadMode.PerBullet:
-                reloadRoutine = StartCoroutine(ReloadPerBulletRoutine());
-                PlayReloadCue();
-                break;
+            StopFiringState(clearHeld: false);
 
-            case WeaponReloadMode.FullMagazine:
-                reloadRoutine = StartCoroutine(ReloadFullMagRoutine());
-                PlayReloadCue();
-                break;
+            if (isReloading || magazine >= MaxMagazine)
+                return;
 
-            default:
-                Debug.LogWarning("[WeaponSystem] TryReload called but no reload mode is enabled.", this);
-                break;
+            if (!HasReserveAmmo)
+            {
+                PlayWeaponCue(currentWeapon != null ? currentWeapon.emptyCue : null, false);
+                return;
+            }
+
+            if (reloadRoutine != null)
+                StopCoroutine(reloadRoutine);
+
+            switch (reloadController.ResolveReloadMode(reloadPerBullet, magazineRelode))
+            {
+                case WeaponReloadMode.PerBullet:
+                    reloadRoutine = StartCoroutine(RunStatefulRoutine(ReloadPerBulletRoutine()));
+                    PlayReloadCue();
+                    break;
+
+                case WeaponReloadMode.FullMagazine:
+                    reloadRoutine = StartCoroutine(RunStatefulRoutine(ReloadFullMagRoutine()));
+                    PlayReloadCue();
+                    break;
+
+                default:
+                    Debug.LogWarning("[WeaponSystem] TryReload called but no reload mode is enabled.", this);
+                    break;
+            }
         }
     }
 
@@ -954,34 +1009,40 @@ public class WeaponSystem : MonoBehaviour
 
     public bool RestoreReserveAmmo(int amount, bool fillToMax = false)
     {
-        if (!CanRestoreReserveAmmo(amount, fillToMax))
-            return false;
+        using (BeginStateChange())
+        {
+            if (!CanRestoreReserveAmmo(amount, fillToMax))
+                return false;
 
-        if (!ammoState.RestoreReserveAmmo(amount, fillToMax))
-            return false;
+            if (!ammoState.RestoreReserveAmmo(amount, fillToMax))
+                return false;
 
-        SyncAmmoMirrorsFromState();
-        SyncWeaponInstanceState();
-        UpdateAmmoUI();
-        return true;
+            SyncAmmoMirrorsFromState();
+            SyncWeaponInstanceState();
+            UpdateAmmoUI();
+            return true;
+        }
     }
 
     public bool RestoreMagazine(int amount, bool fillToMax = false)
     {
-        if (!CanRestoreMagazine(amount, fillToMax))
-            return false;
+        using (BeginStateChange())
+        {
+            if (!CanRestoreMagazine(amount, fillToMax))
+                return false;
 
-        if (isReloading)
-            CancelReload();
+            if (isReloading)
+                CancelReload();
 
-        SyncAmmoStateFromMirrors();
-        if (!ammoState.RestoreMagazine(amount, fillToMax))
-            return false;
+            SyncAmmoStateFromMirrors();
+            if (!ammoState.RestoreMagazine(amount, fillToMax))
+                return false;
 
-        SyncAmmoMirrorsFromState();
-        SyncWeaponInstanceState();
-        UpdateAmmoUI();
-        return true;
+            SyncAmmoMirrorsFromState();
+            SyncWeaponInstanceState();
+            UpdateAmmoUI();
+            return true;
+        }
     }
 
     public void GrantFreeAmmo(float duration)
@@ -1267,18 +1328,21 @@ public class WeaponSystem : MonoBehaviour
 
     public void NotifyWeaponInstanceChanged()
     {
-        ResolveReferences();
+        using (BeginStateChange())
+        {
+            ResolveReferences();
 
-        NotifyRuntimeEffectHandlersWeaponEquipped();
-        statsHub?.MarkDirty();
-        MarkDerivedStatsDirty();
-        RefreshDerivedStats();
-        SyncAmmoStateFromMirrors();
-        ammoState.RefreshLimits(MaxMagazine, MaxReserveAmmo, HasInfiniteReserveAmmo, clampMagazine: true, resetInfiniteReserve: true);
-        SyncAmmoMirrorsFromState();
-        ClampReserveAmmoToMax();
-        SyncWeaponInstanceState();
-        UpdateAmmoUI();
+            NotifyRuntimeEffectHandlersWeaponEquipped();
+            statsHub?.MarkDirty();
+            MarkDerivedStatsDirty();
+            RefreshDerivedStats();
+            SyncAmmoStateFromMirrors();
+            ammoState.RefreshLimits(MaxMagazine, MaxReserveAmmo, HasInfiniteReserveAmmo, clampMagazine: true, resetInfiniteReserve: true);
+            SyncAmmoMirrorsFromState();
+            ClampReserveAmmoToMax();
+            SyncWeaponInstanceState();
+            UpdateAmmoUI();
+        }
     }
 
     bool CanShootNow()

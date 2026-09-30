@@ -490,6 +490,14 @@ of restarting `ShootPulse` every projectile.
 `CancelReload()` is responsible for stopping the reload state, animation/audio
 side effects, burst routine, and weapon instance sync.
 
+A new `StateHub.RequestOnFire()` may cancel a reload when
+`WeaponSystem.CanInterruptReloadWithFire` is true: the weapon allows
+`shootInterruptsReload` and at least one round is loaded. All other shooting
+restrictions still apply. StateHub synchronizes the weapon state immediately
+after cancellation so a semi-auto shot can start on that same request.
+Automatic held-fire resumption waits for the reload to finish; holding the
+trigger through an autoload does not cancel it after the first inserted round.
+
 Reload movement policy comes from the actor's `CharacterAnimProfileSO`.
 `UpperBody` reload allows movement and remains active while Dash plays on the
 locomotion layer. `FullBody` reload blocks normal movement; Dash is still
@@ -546,3 +554,19 @@ Shots capture ammo-before/after, consumption, last-round state, and weapon
 instance id before spawn. Equipped behavior assets own plain C# runtimes with
 stat, pre-shot, pre-damage, combat-event, and timer hooks. Persistent counters
 live in versioned records on `WeaponInstanceData`.
+
+## Runtime state publication
+
+RuntimeState is an immutable snapshot of the equipped weapon, reload, held fire,
+firing activity, ammunition, reload-interrupt permission and firing mode.
+RuntimeStateChanged is deduplicated and emitted after the outer command commits,
+before it returns. Coroutine steps publish at yield/completion boundaries.
+Nested commands coalesce their notifications; subscriber changes are published
+after the current notification completes. This prevents a reload subscriber from
+cancelling before its coroutine handle has been assigned.
+
+Equip, fire, burst, reload start/completion/cancellation, ammo restoration and
+disable publish through this boundary. StateHub admission reads WeaponSystem
+properties directly; WeaponSM is a read-only presentation projection. Ammo and
+reload mechanics remain owned by WeaponSystem. Held-fire resumption waits for
+reload completion; only a fresh RequestOnFire can interrupt a configured reload.

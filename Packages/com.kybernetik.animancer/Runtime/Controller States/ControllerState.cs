@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ namespace Animancer
     /// </remarks>
     /// https://kybernetik.com.au/animancer/api/Animancer/ControllerState
     /// 
-    public partial class ControllerState : AnimancerState,
+    public partial class ControllerState : AnimancerState, // ControllerState.cs
         ICopyable<ControllerState>,
         IParametizedState,
         IUpdatable

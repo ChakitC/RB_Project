@@ -74,7 +74,7 @@ internal sealed class DefensiveBlockApproachMotor
         // Do not block Skill: a cast accepted before release must still commit its existing
         // reservation. Its exclusive Skill animation already rejects new ordinary skills.
         controlToken = ctx.stateHub != null ? ctx.stateHub.AcquireExternalControlBlockToken(
-            ControlBlockFlags.Move | ControlBlockFlags.Rotate | ControlBlockFlags.Shoot) : 0;
+            ControlBlockFlags.Move | ControlBlockFlags.Rotate | ControlBlockFlags.Shoot, nameof(DefensiveBlockApproachMotor)) : 0;
         if (ctx is EnemyContext enemy) { agent = enemy.Agent; move = enemy.AgentMoveDriver; }
         if (ctx.NavigationAgent) agent = ctx.NavigationAgent;
         movementMotor = ctx.EnsureMovementMotor();

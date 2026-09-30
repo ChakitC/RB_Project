@@ -1,5 +1,51 @@
 # Animation Command Flow
 
+## Animancer package
+
+The project embeds Animancer **8.4.0** at `Packages/com.kybernetik.animancer`.
+It was imported from `origin/v-asset`, commit
+`d7510a2bc13649a9a6352e744109e1573ac74683`, on 2026-09-30, replacing 8.2.3.
+The package includes its Runtime, Editor, Art, and optional `Samples~` files.
+
+That source snapshot retained three obsolete 8.2.3 files. The import removes
+`AnimancerEventParameterTypes.cs` (duplicate event parameter classes),
+`TransitionLibraryEditorData.cs` (replaced by the new editor data classes),
+and `Read Me v8.2.3.asset`, together with their metadata. No project scene or
+asset references their old GUIDs. Other package files retain the source snapshot.
+Project Animancer settings and other package versions remain as configured on
+the current branch.
+
+## Presentation transitions
+
+`CharacterAnimBrain.Transitions.cs` owns layer masks, action fades and deferred
+destruction of temporary animation states. Locomotion playback goes through
+`PlayLocomotionTransition`; upper and full-body actions use `PlayActionPresentation`.
+Gameplay admission remains in `CharacterAnimationTransitionPolicy`.
+
+The configured locomotion/action indices keep their existing meanings. The Brain
+reserves `max(locomotionLayerIndex, actionLayerIndex) + 1` for full-body actions,
+above the upper-body layer. Do not use that layer for other systems. Masks stay
+fixed for a binding: the profile's upper-body mask and a Brain-owned full-body
+mask. CommanBlock uses the latter. Completion/interruption fades its layer without
+changing either mask; shooting/reloading can start underneath during the fade.
+
+Existing profile/transition durations remain in use, including explicit Dash/Block
+durations and Stage Intro's intentional cut. CommanBlock uses its authored End Time.
+Gameplay events, locks and root-motion ownership end at the state transition;
+visual fading does not extend them. Block's sampled pose stays frozen on exit.
+Temporary enemy struggle states remain frozen and event-free until both weight and
+target weight are zero, then are destroyed. Replaying a state through the central
+entry point cancels its old cleanup. Disable clears pending cleanup and action
+weights; rebind/destruction also release the owned mask.
+
+`TryGetPairOffsetContributions` reports each upper-body state's action and weight,
+multiplied by its layer weight and attenuated by full-body action coverage. The
+outgoing locomotion pose description remains available during exclusive takeover
+so corrections fade with the old action. Single-action query APIs remain available
+for compatibility; the runtime offset applier uses the per-state contributions.
+
+## Playback flow
+
 Character animation playback uses one command path:
 
 ```text
@@ -414,3 +460,15 @@ Production skill and character profiles opt in to the same flow used by the test
 scene. The party transient-execution scope owns AI/movement suspension without
 invincibility or collision exclusion. The controller emits Accepted/Arrived/Impacted/
 Finished events; the production Cinemachine extension owns camera presentation.
+
+## StateHub owner notifications
+
+StateHub projections are read-only. WeaponSystem publishes RuntimeStateChanged
+when an operation commits (including coroutine steps); StateHub forwards reload
+start once from the owner transition. MeleeController, DashSystem and
+CharacterKnockbackMotor publish activity changes. HealthSystem publishes its
+explicit LifeStateChanged, which StateHub forwards alongside Died. Existing
+AnimDriver/AnimBrain request and playback flows are retained.
+
+Debug logging and on-screen rendering now live in StateHubDebugView. StateHub
+retains legacy serialized debug fields for migration, without rendering them.

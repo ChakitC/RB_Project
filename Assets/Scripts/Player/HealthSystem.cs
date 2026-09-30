@@ -49,23 +49,47 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
     public event Action<float, float, float> Healed;
     public event Action<float, float> HealthChanged;
 
-    public bool IsAlive => currentHealth > 0f;
-    public bool IsDown => currentHealth <= 0f && DownTime > 0f;
-    public bool IsDead => currentHealth <= 0f && DownTime <= 0f;
+    public LifeStateId LifeState { get; private set; } = LifeStateId.Alive;
+    public event Action<LifeStateId, LifeStateId> LifeStateChanged;
+    public bool IsAlive => LifeState == LifeStateId.Alive;
+    public bool IsDown => LifeState == LifeStateId.Down;
+    public bool IsDead => LifeState == LifeStateId.Dead;
+
+    void Awake() { downTimeDefault = DownTime; }
+    void ChangeLifeState(LifeStateId next)
+    {
+        if (LifeState == next) return;
+        var previous = LifeState;
+        LifeState = next;
+        CharacterStateNotifications.Publish(LifeStateChanged, previous, next);
+    }
+
+    void OnDisable()
+    {
+        StopAllCoroutines();
+        downRoutine = null;
+        dieRoutine = null;
+    }
+
+    void OnEnable()
+    {
+        if (!Application.isPlaying) return;
+        if (IsDown) downRoutine = StartCoroutine(DownCoroutine());
+        else if (IsDead) dieRoutine = StartCoroutine(DieCoroutine());
+    }
     public bool IsInvincible => invincible || _invincibilityTokens.Count > 0;
 
     void Start()
     {
         ResolveReferences();
 
-        downTimeDefault = DownTime;
         if (!CTX)
         {
             Debug.LogError("HealthSystem: missing CharacteContext", this);
             return;
         }
 
-        InitializeFromHub(resetCurrentToMax: true);
+        InitializeFromHub(resetCurrentToMax: IsAlive);
         RaiseHealthChanged();
     }
 
@@ -122,10 +146,10 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
 
     public bool CanInteract(Interactor i)
     {
-        if (i == null || CTX == null || CTX.stateHub == null || CTX.stateHub.LifeSM == null)
+        if (i == null || CTX == null)
             return false;
 
-        if (CTX.stateHub.LifeSM.CurrentId != LifeStateId.Down)
+        if (!IsDown)
             return false;
 
         return i.OwnerContext != CTX;
@@ -242,10 +266,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         if (!float.IsFinite(amount) || amount <= 0f)
             return false;
 
-        if (CTX == null || CTX.stateHub == null || CTX.stateHub.LifeSM == null)
-            return false;
-
-        if (CTX.stateHub.LifeSM.CurrentId != LifeStateId.Alive)
+        if (!IsAlive)
             return false;
 
         return currentHealth < maximumHealth;
@@ -306,11 +327,10 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         if (damage <= 0f)
             return BuildDamageResult(attacker, damage, 0f, false, wasAliveBefore);
 
-        if (CTX == null || CTX.stateHub == null || CTX.stateHub.LifeSM == null)
+        if (CTX == null)
             return BuildDamageResult(attacker, damage, 0f, false, wasAliveBefore);
 
-        if (CTX.stateHub.LifeSM.CurrentId == LifeStateId.Down ||
-            CTX.stateHub.LifeSM.CurrentId == LifeStateId.Dead)
+        if (!IsAlive)
             return BuildDamageResult(attacker, damage, 0f, false, wasAliveBefore);
 
         if (IsInvincible)
@@ -464,7 +484,7 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
 
     public void Revive()
     {
-        if (!CTX.stateHub.Isdown)
+        if (!IsDown)
             return;
 
         if (downRoutine != null)
@@ -482,46 +502,41 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         DownTime = downTimeDefault;
         currentHealth = Mathf.Clamp(maximumHealth * 0.25f, 1f, maximumHealth);
 
-        if (CTX.cc)
+        if (CTX != null && CTX.cc)
             CTX.cc.enabled = true;
 
         RaiseHealthChanged();
 
-        CTX.stateHub.LifeSM.TryChange(LifeStateId.Alive);
-        CharacterRevive?.Invoke();
+        ChangeLifeState(LifeStateId.Alive);
+        CharacterStateNotifications.Publish(CharacterRevive);
     }
 
-    void Down()
+    public void Down()
     {
-        DownTime = downTimeDefault;
-
-        var weaponSystem = CTX != null ? CTX.WeaponSystem : null;
-        if (!weaponSystem && CTX)
-            weaponSystem = CTX.GetComponentInChildren<WeaponSystem>(true);
-        if (weaponSystem != null && weaponSystem.IsReloading)
-            weaponSystem.CancelReload();
-
-        CTX.stateHub.LifeSM.TryChange(LifeStateId.Down);
-        CharacterDown?.Invoke();
-
-        if (downRoutine != null)
-            StopCoroutine(downRoutine);
-
-        downRoutine = StartCoroutine(DownCoroutine());
+        if (!IsAlive) return;
+        currentHealth = 0f;
+        DownTime = downTimeDefault > 0f ? downTimeDefault : DownTime;
+        CTX?.WeaponSystem?.CancelReload();
+        ChangeLifeState(LifeStateId.Down);
+        RaiseHealthChanged();
+        CharacterStateNotifications.Publish(CharacterDown);
+        if (Application.isPlaying && isActiveAndEnabled && IsDown)
+            downRoutine = StartCoroutine(DownCoroutine());
     }
 
     public virtual void Die()
     {
-        if (dieRoutine != null)
-            return;
-
-        CTX.stateHub.LifeSM.TryChange(LifeStateId.Dead);
-        CharacterDead?.Invoke();
-
-        if (CTX.cc)
-            CTX.cc.enabled = false;
-
-        dieRoutine = StartCoroutine(DieCoroutine());
+        if (IsDead) return;
+        if (downRoutine != null) { StopCoroutine(downRoutine); downRoutine = null; }
+        currentHealth = 0f;
+        DownTime = 0f;
+        CTX?.WeaponSystem?.CancelReload();
+        if (CTX != null && CTX.cc) CTX.cc.enabled = false;
+        ChangeLifeState(LifeStateId.Dead);
+        RaiseHealthChanged();
+        CharacterStateNotifications.Publish(CharacterDead);
+        if (Application.isPlaying && isActiveAndEnabled)
+            dieRoutine = StartCoroutine(DieCoroutine());
     }
 
     protected virtual void HandleHealthDepleted()

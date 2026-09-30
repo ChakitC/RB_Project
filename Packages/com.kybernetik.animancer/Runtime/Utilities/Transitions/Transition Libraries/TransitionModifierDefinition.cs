@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using UnityEngine;
@@ -43,9 +43,18 @@ namespace Animancer.TransitionLibraries
         [SerializeField]
         private float _Fade;
 
-        /// <summary>The fade duration for this override to use.</summary>
+        /// <summary>The fade duration for this modifier to use instead of the transition's default value.</summary>
         public readonly float FadeDuration
             => _Fade;
+
+        /************************************************************************************************************************/
+
+        [SerializeField]
+        private float _NormalizedStartTime;
+
+        /// <summary>The normalized start time for this modifier to use instead of the transition's default value.</summary>
+        public readonly float NormalizedStartTime
+            => _NormalizedStartTime;
 
         /************************************************************************************************************************/
 
@@ -53,28 +62,63 @@ namespace Animancer.TransitionLibraries
         public TransitionModifierDefinition(
             int fromIndex,
             int toIndex,
-            float fadeDuration)
+            float fadeDuration,
+            float normalizedStartTime)
         {
             _From = fromIndex;
             _To = toIndex;
             _Fade = fadeDuration;
+            _NormalizedStartTime = normalizedStartTime;
         }
 
         /************************************************************************************************************************/
 
-        /// <summary>Creates a copy of this override with the specified <see cref="FadeDuration"/>.</summary>
-        public readonly TransitionModifierDefinition WithFadeDuration(float fadeDuration)
-            => new(_From, _To, fadeDuration);
+        /// <summary>Does this modifier contain valid values?</summary>
+        public bool Validate()
+        {
+            var noFade = float.IsNaN(_Fade);
+            var noStart = float.IsNaN(_NormalizedStartTime);
+            if (noFade && noStart)
+                return false;
 
-        /// <summary>Creates a copy of this override with the specified <see cref="FromIndex"/> and <see cref="ToIndex"/>.</summary>
-        public readonly TransitionModifierDefinition WithIndices(int fromIndex, int toIndex)
-            => new(fromIndex, toIndex, _Fade);
+            if (!noFade)
+            {
+                if (_Fade < 0)
+                    _Fade = 0;
+            }
+
+            return true;
+        }
 
         /************************************************************************************************************************/
 
-        /// <summary>Creates a new string describing this override.</summary>
+        /// <summary>Creates a copy of this modifier with the specified <see cref="FadeDuration"/>.</summary>
+        public readonly TransitionModifierDefinition WithFadeDuration(float fadeDuration)
+            => new(_From, _To, fadeDuration, _NormalizedStartTime);
+
+        /// <summary>Creates a copy of this modifier with the specified <see cref="NormalizedStartTime"/>.</summary>
+        public readonly TransitionModifierDefinition WithNormalizedStartTime(float normalizedStartTime)
+            => new(_From, _To, _Fade, normalizedStartTime);
+
+        /// <summary>Creates a copy of this modifier with the specified <see cref="FadeDuration"/> and <see cref="NormalizedStartTime"/>.</summary>
+        public readonly TransitionModifierDefinition WithDetails(float fadeDuration, float normalizedStartTime)
+            => new(_From, _To, fadeDuration, normalizedStartTime);
+
+        /// <summary>Creates a copy of this modifier with the specified <see cref="FromIndex"/> and <see cref="ToIndex"/>.</summary>
+        public readonly TransitionModifierDefinition WithIndices(int fromIndex, int toIndex)
+            => new(fromIndex, toIndex, _Fade, _NormalizedStartTime);
+
+        /************************************************************************************************************************/
+
+        /// <summary>Creates a new <see cref="TransitionDetails"/> from this modifier.</summary>
+        public readonly TransitionDetails ToTransitionDetails()
+            => new(_Fade, _NormalizedStartTime);
+
+        /************************************************************************************************************************/
+
+        /// <summary>Creates a new string describing this modifier.</summary>
         public override readonly string ToString()
-            => $"{nameof(TransitionModifierDefinition)}({_From}->{_To}={_Fade})";
+            => $"{nameof(TransitionModifierDefinition)}({_From}->{_To}, F={_Fade}, S={_NormalizedStartTime})";
 
         /************************************************************************************************************************/
         #region Equality
@@ -89,7 +133,8 @@ namespace Animancer.TransitionLibraries
         public readonly bool Equals(TransitionModifierDefinition other)
             => _From == other._From
             && _To == other._To
-            && _Fade.IsEqualOrBothNaN(other._Fade);
+            && _Fade.IsEqualOrBothNaN(other._Fade)
+            && _NormalizedStartTime.IsEqualOrBothNaN(other._NormalizedStartTime);
 
         /// <summary>Are all fields in `a` equal to the equivalent fields in `b`?</summary>
         public static bool operator ==(TransitionModifierDefinition a, TransitionModifierDefinition b)
@@ -104,9 +149,10 @@ namespace Animancer.TransitionLibraries
         /// <summary>Returns a hash code based on the values of this object's fields.</summary>
         public override readonly int GetHashCode()
             => AnimancerUtilities.Hash(-871379578,
-                _From.SafeGetHashCode(),
-                _To.SafeGetHashCode(),
-                _Fade.SafeGetHashCode());
+                _From.GetHashCode(),
+                _To.GetHashCode(),
+                _Fade.GetHashCode(),
+                _NormalizedStartTime.GetHashCode());
 
         /************************************************************************************************************************/
         #endregion

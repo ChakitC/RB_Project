@@ -70,7 +70,7 @@ public sealed partial class CharacterAnimBrain
                 return;
             }
 
-            _state = owner.LocoLayer.Play(clip);
+            _state = owner.PlayLocomotionTransition(clip);
             _state.NormalizedTime = 0f;
             _state.Events(owner).OnEnd = OnClipEnd;
 

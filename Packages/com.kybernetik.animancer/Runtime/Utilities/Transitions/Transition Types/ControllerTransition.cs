@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Collections.Generic;
@@ -151,7 +151,7 @@ namespace Animancer
         {
             base.CopyFrom(copyFrom, context);
 
-            _Controller = copyFrom._Controller;
+            _Controller = context.GetCloneOrOriginal(copyFrom._Controller);
             _ActionsOnStop = copyFrom._ActionsOnStop;
             _ParameterBindings = context.GetOrCreateClone(copyFrom._ParameterBindings);
         }
@@ -204,7 +204,11 @@ namespace Animancer
 
         /// <inheritdoc/>
         public override Transition<ControllerState> Clone(CloneContext context)
-            => new ControllerTransition();
+        {
+            var clone = new ControllerTransition();
+            clone.CopyFrom(this, context);
+            return clone;
+        }
 
         /// <inheritdoc/>
         public sealed override void CopyFrom(ControllerTransition<ControllerState> copyFrom, CloneContext context)

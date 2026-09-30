@@ -4,8 +4,12 @@ public sealed class SummonHealthSystem : HealthSystem
 {
     [SerializeField] private SummonedEntityRuntime summonedRuntime;
 
-    protected override void HandleHealthDepleted()
+    protected override void HandleHealthDepleted() => Die();
+
+    public override void Die()
     {
+        if (IsDead) return;
+        base.Die();
         if (summonedRuntime == null)
         {
             SummonContext context = GetComponentInParent<SummonContext>();

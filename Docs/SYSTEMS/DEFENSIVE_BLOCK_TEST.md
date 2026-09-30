@@ -389,6 +389,71 @@ loaded `CharacterStats.defensiveBlock` profile. If none can reserve a safe landi
 reference required in a scene. `defensiveBlockEnabled` is the Player feature switch.
 Rejected opted-in casts never fall through to the legacy Player interruption.
 
+### Player CommanBlock gesture
+
+Normal Ally Block impact also slides the protected Player with the Ally. Each frame
+uses the Ally's actual planar displacement after its recoil sweep/NavMesh limits;
+the Player's CharacterMovementMotor applies its own collisions and NavMesh boundary
+checks. A wall can stop the Player earlier. No movement is added if the Ally is
+blocked. Self guard and Cooperative Block keep their existing recoil without this
+extra follow movement. During the recoil, separate Move/Rotate and movement-suspension
+tokens prevent input/overlap separation from fighting the slide. They are released
+at recoil completion or cancellation; Player death, recycling, knockback or a new
+Player guard also ends the follow movement.
+
+Validation (2026-09-30): required build passed with 0 errors / 93 warnings
+(`../BuildArtifacts/PlayerBlockRecoilBuild.log`); Unity compiled runtime and Editor
+sources successfully. `DefensiveBlockPlayerRecoilRunnerTests` passed 5/5, covering
+open-ground displacement, a blocking wall, NavMesh edge, missing NavMesh and token
+cleanup/self-guard exclusion. Live RectorDefensiveBlock testing accepted a normal
+Ally Block and observed Impact: both Player and Ally moved -1.500 m along Z; Player
+settled +0.065 m vertically on the sampled surface. After recovery CanMove/CanRotate
+were true and control flags were None. The live probe used the real request API,
+not keyboard input; Cooperative Block and every terrain layout were not replayed.
+
+`CharacterAnimProfileSO.commanBlock` is an optional full-body action-layer ClipTransition.
+After a normal Ally Block request is accepted (including approach setup), the same
+call starts `Player.AnimDriver.TryPlayCommanBlock()`. Before starting the gesture
+and its rotation lock, the Player root
+faces the accepted attack's caster on the XZ plane. Rejected requests do not turn
+the Player; a coincident planar target preserves the current facing. Player and
+Ally start in the same frame; neither waits for the other's animation. The gesture
+uses the Brain's separate full-body action layer with a fixed mask. Completion at
+the transition's End Time, or interruption, fades that layer while preserving its
+full-body pose. The upper-body mask stays fixed for shooting/reloading. It plays once and fades
+back to locomotion/held fire. During playback it acquires a StateHub token blocking
+walking and rotation. Completion, interruption, disable or destruction releases only
+its own token, preserving locks from other systems. It does not reserve a skill.
+Missing clips or locked animation states do not
+cancel the accepted Ally Block. Self guard and Cooperative Block keep the Player's
+guard animation and do not play this command gesture. Exclusive animations clear
+the action layer as usual. Roma's production animation profile uses
+`Assets/Animation/Ch_Roma_Anim/Roma_CommanBlock.fbx` for testing.
+
+Validation (2026-09-30): assembly build passed with 0 errors / 93 warnings
+(`../BuildArtifacts/CommanBlockBuild.log`), and Unity compiled successfully.
+Unity Test Runner Edit Mode: `CommanBlockRunnerTests` passed 6/6 (0.76 s), covering
+immediate start/completion, full-body mask and restoration, missing clips,
+self-guard priority, Roma assignment, and lock cleanup on completion/disable while
+preserving another owner's lock. Live RectorDefensiveBlock probing confirmed an
+accepted request with Ally in Begin, Player playing Roma_CommanBlock at normalized
+time 0, and CanMove/CanRotate both false in the same frame. After natural completion
+both returned true and ActiveControlBlockFlags was None. The probe called the real
+request API; physical keyboard input and every character combination were not tested.
+
+Facing validation (2026-09-30): required assembly build passed with 0 errors /
+93 warnings (`../BuildArtifacts/CommanBlockFacingBuild.log`); Unity compilation
+completed without source errors. `CommanBlockRunnerTests` passed 6/6 after the
+Edit Mode fixture explicitly initialized StateHub before admission queries.
+In the live RectorDefensiveBlock scene, a Player starting at yaw 90 degrees faced
+the caster with 0-degree error on an accepted request, stayed upright, played
+Roma_CommanBlock and had CanMove/CanRotate false. A rejected TargetWindowClosed
+request changed rotation by 0 degrees. These checks used the real request API;
+physical keyboard input and other character combinations were not retested.
+Console still reported the existing URP AutodeskInteractive shadergraph load
+error and a TimeSlowManager cleanup error on leaving Play Mode; these remain
+outside the facing change.
+
 The bright ready flare and input use the same eligibility query. Range is 8 m in XZ,
 height difference at most 1 m, with world LOS, NavMesh, placement and reservation
 checks. Selection does not spend resources or reserve the ally; acceptance repeats

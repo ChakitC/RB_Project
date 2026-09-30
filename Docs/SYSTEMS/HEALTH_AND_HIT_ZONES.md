@@ -205,3 +205,22 @@ This keeps motion and recovery aligned with animation under World Slow, includin
 temporary actor exemptions. Player remains exempt from World Slow; global HitLag
 and pause still affect both paths. Collision, distance and replacement rules are
 unchanged.
+
+## Life ownership
+
+HealthSystem owns explicit LifeState (Alive, Down, Dead) and LifeStateChanged.
+Use damage/depletion or Down(), Die() and Revive(); external callers cannot write
+StateHub.LifeSM. Down and death are idempotent. Die sets health to zero and Dead
+even when called with positive HP. Revive only accepts Down and retains the
+existing 25% health restoration. Damage, healing and interaction checks use the
+health owner's life state, independently of StateHub initialization.
+
+Disabling an actor stops health coroutines. Enabling preserves life and HP and
+resumes the down/death cleanup timer as applicable; it never revives. EnemyHealth
+keeps its existing one-time XP/drop path. SummonHealthSystem enters Dead before
+requesting the existing killed-despawn lifecycle.
+
+Life and state-view notifications isolate subscriber exceptions: each failure is
+logged and remaining listeners still run. A missing animation clip therefore
+cannot abort the committed death, its cleanup, or the summon despawn request.
+The missing clip remains an authoring error to fix on the animation profile.

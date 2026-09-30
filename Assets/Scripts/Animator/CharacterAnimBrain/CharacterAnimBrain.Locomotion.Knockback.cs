@@ -45,7 +45,7 @@ public sealed partial class CharacterAnimBrain
                 usesRootMotion: false,
                 preserveFireHoldIntent: false);
 
-            state = owner.LocoLayer.Play(clip);
+            state = owner.PlayLocomotionTransition(clip);
             state.NormalizedTime = 0f;
 
             float clipLength = Mathf.Max(0.01f, state.Length);

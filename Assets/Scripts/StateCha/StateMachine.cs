@@ -14,7 +14,7 @@ public sealed class StateMachine<TId, TCtx> where TId : notnull
     private readonly Dictionary<TId, IState<TCtx>> _states = new();
     private readonly TCtx _ctx;
 
-    public TId CurrentId { get; set; }
+    public TId CurrentId { get; private set; }
     public IState<TCtx> Current { get; private set; }
 
     public event Action<TId, TId> OnChanged; // (from, to)

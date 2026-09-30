@@ -506,7 +506,7 @@ public sealed class MeleeSkillIntegrationTests
     {
         var context = MakeRig(false);
         context.baseStats.animProfile.lightMeleeSkill = MakeCombo(1);
-        Set(context.stateHub, "statusEffectControlBlocks", ControlBlockFlags.Skill);
+        context.stateHub.SetStatusEffectControlState(ControlBlockFlags.Skill, false);
         Assert.That(context.stateHub.CanUseSkill(), Is.False);
         Assert.That(context.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
     }

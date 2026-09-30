@@ -27,6 +27,8 @@ public abstract class CharacteContext : MonoBehaviour
     public RootMotionCCDriver RootMotionDriver;
     public CharacterPairOffsetApplier PairOffsetApplier;
     public MeleeController MeleeController;
+    public CharacterAudioEmitter AudioEmitter;
+    bool runtimeModulesPrepared;
     public ThirdPersonAimRigController AimRig;
     
     [Header("Visual")] 
@@ -126,7 +128,7 @@ public abstract class CharacteContext : MonoBehaviour
 
     public virtual void ResolveReferences()
     {
-        stateHub = ResolveActorComponent(stateHub);
+        stateHub = ResolveStatePeer(stateHub);
         StatsHub = ResolveActorComponent(StatsHub);
         CombatEventBus = ResolveActorComponent(CombatEventBus);
         rb = ResolveActorComponent(rb);
@@ -148,11 +150,11 @@ public abstract class CharacteContext : MonoBehaviour
         {
             AccessoryLoadout = gameObject.AddComponent<AccessoryLoadout>();
         }
-        WeaponSystem = ResolveActorComponent(WeaponSystem);
+        WeaponSystem = ResolveStatePeer(WeaponSystem);
         if (Equipment == null && Application.isPlaying && AutoCreatesRuntimeEquipment &&
             (currentWeapon != null || WeaponSystem != null))
             Equipment = gameObject.AddComponent<CharacterEquipment>();
-        AnimBrain = ResolveActorComponent(AnimBrain);
+        AnimBrain = ResolveStatePeer(AnimBrain);
         AnimDriver = ResolveActorComponent(AnimDriver);
         RootMotionDriver = ResolveActorComponent(RootMotionDriver);
         PairOffsetApplier = ResolveActorComponent(PairOffsetApplier);
@@ -164,7 +166,8 @@ public abstract class CharacteContext : MonoBehaviour
         {
             PairOffsetApplier = gameObject.AddComponent<CharacterPairOffsetApplier>();
         }
-        MeleeController = ResolveActorComponent(MeleeController);
+        MeleeController = ResolveStatePeer(MeleeController);
+        AudioEmitter = ResolveStatePeer(AudioEmitter);
         AimRig = ResolveActorComponent(AimRig);
         if (AimRig == null &&
             Application.isPlaying &&
@@ -181,10 +184,10 @@ public abstract class CharacteContext : MonoBehaviour
 
         StatusEffects = ResolveActorComponent(StatusEffects);
         levelSystem = ResolveActorComponent(levelSystem);
-        HealthSystem = ResolveActorComponent(HealthSystem);
+        HealthSystem = ResolveStatePeer(HealthSystem);
         StaminaSystem = ResolveActorComponent(StaminaSystem);
-        DashSystem = ResolveActorComponent(DashSystem);
-        KnockbackMotor = ResolveActorComponent(KnockbackMotor);
+        DashSystem = ResolveStatePeer(DashSystem);
+        KnockbackMotor = ResolveStatePeer(KnockbackMotor);
         DefensiveBlockAttack = ResolveActorComponent(DefensiveBlockAttack);
         DefensiveBlock = ResolveActorComponent(DefensiveBlock);
         FieldAllyMember = ResolveActorComponent(FieldAllyMember);
@@ -200,6 +203,22 @@ public abstract class CharacteContext : MonoBehaviour
         EnegySystem = ResolveActorComponent(EnegySystem);
         Interactor = ResolveActorComponent(Interactor);
         SkillManager = ResolveActorComponent(SkillManager);
+        stateHub?.RefreshOwnerBindings();
+    }
+
+    public void PrepareRuntimeModules()
+    {
+        if (!Application.isPlaying || runtimeModulesPrepared) return;
+        runtimeModulesPrepared = true;
+        ResolveReferences();
+        if (!AudioEmitter) AudioEmitter = gameObject.AddComponent<CharacterAudioEmitter>();
+        if (!MeleeController) MeleeController = gameObject.AddComponent<MeleeController>();
+        if (stateHub != null && !stateHub.TryGetComponent<StateHubDebugView>(out _))
+        {
+            var view = stateHub.gameObject.AddComponent<StateHubDebugView>();
+            stateHub.ConfigureLegacyDebugView(view);
+        }
+        ResolveReferences();
     }
 
     /// <summary>Explicit actor initialization; ordinary reference inspection does not create a motor.</summary>
@@ -209,6 +228,27 @@ public abstract class CharacteContext : MonoBehaviour
         if (!MovementMotor) MovementMotor = gameObject.AddComponent<CharacterMovementMotor>();
         MovementMotor.Bind(this);
         return MovementMotor;
+    }
+
+    readonly System.Collections.Generic.HashSet<System.Type> ambiguousPeers = new();
+    T ResolveStatePeer<T>(T current) where T : Component
+    {
+        // Explicit bindings describe intentional layouts, including peers above the context.
+        if (current != null) return current;
+        var candidates = new System.Collections.Generic.HashSet<T>();
+        foreach (var candidate in GetComponentsInChildren<T>(true))
+            if (CharacterContextModuleLookup.ResolveContext(candidate) == this) candidates.Add(candidate);
+        for (var parent = transform.parent; parent != null; parent = parent.parent)
+        {
+            var contexts = parent.GetComponentsInChildren<CharacteContext>(true);
+            if (contexts.Length != 1 || contexts[0] != this) break;
+            foreach (var candidate in parent.GetComponents<T>()) candidates.Add(candidate);
+        }
+        if (candidates.Count == 1)
+            foreach (var candidate in candidates) return candidate;
+        if (candidates.Count > 1 && ambiguousPeers.Add(typeof(T)))
+            Debug.LogError($"[{name}] Multiple {typeof(T).Name} peers need an explicit context binding.", this);
+        return null;
     }
 
     protected T ResolveActorComponent<T>(T current, bool includeChildren = true) where T : Component

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR && UNITY_IMGUI
 
@@ -15,7 +15,7 @@ using Object = UnityEngine.Object;
 namespace Animancer.Editor.Previews
 {
     /// https://kybernetik.com.au/animancer/api/Animancer.Editor.Previews/TransitionPreviewWindow
-    partial class TransitionPreviewWindow
+    partial class TransitionPreviewWindow // TransitionPreviewWindow.Scene.cs
     {
         /************************************************************************************************************************/
 
@@ -126,7 +126,7 @@ namespace Animancer.Editor.Previews
             /// <inheritdoc/>
             void AnimancerPreviewObject.IEventHandler.OnInstantiateObject()
             {
-                FocusCamera();
+                InitializeCamera();
                 _Instance._Animations.GatherAnimations();
             }
 
@@ -160,48 +160,6 @@ namespace Animancer.Editor.Previews
                 _Instance._Animations.NormalizedTime = 0;
 
                 _Instance.in2DMode = previewObject.SelectedInstanceType == AnimationType.Sprite;
-            }
-
-            /************************************************************************************************************************/
-
-            private void FocusCamera()
-            {
-                var instance = _PreviewObject.InstanceObject;
-                if (instance == null)
-                    return;
-
-                var bounds = CalculateBounds(instance);
-
-                var rotation = _Instance.in2DMode ?
-                    Quaternion.identity :
-                    Quaternion.Euler(15, 225, 0);
-
-                var size = bounds.extents.magnitude * 1.2f;
-                if (size == float.PositiveInfinity)
-                    return;
-                else if (size == 0)
-                    size = 10;
-
-                _Instance.LookAt(bounds.center, rotation, size, _Instance.in2DMode, true);
-            }
-
-            /************************************************************************************************************************/
-
-            private static Bounds CalculateBounds(Transform transform)
-            {
-                if (transform == null)
-                    return default;
-
-                var renderers = transform.GetComponentsInChildren<Renderer>();
-                if (renderers.Length == 0)
-                    return default;
-
-                var bounds = renderers[0].bounds;
-                for (int i = 1; i < renderers.Length; i++)
-                {
-                    bounds.Encapsulate(renderers[i].bounds);
-                }
-                return bounds;
             }
 
             /************************************************************************************************************************/
@@ -287,12 +245,95 @@ namespace Animancer.Editor.Previews
             /************************************************************************************************************************/
             #endregion
             /************************************************************************************************************************/
+            #region Camera
+            /************************************************************************************************************************/
+
+            private const string
+                CameraSettingsPref = nameof(TransitionPreviewWindow) + "." + nameof(Scene) + "." + nameof(CameraSettings);
+
+            /************************************************************************************************************************/
+
+            private void InitializeCamera()
+            {
+                if (TransitionPreviewSettings.AutoFocusCamera)
+                {
+                    FocusCamera();
+                    return;
+                }
+
+                var json = EditorPrefs.GetString(CameraSettingsPref);
+                var cameraSettings = string.IsNullOrEmpty(json)
+                    ? default
+                    : JsonUtility.FromJson<SceneViewCameraSettings>(json);
+
+                if (cameraSettings.IsInitialized)
+                    cameraSettings.Apply(_Instance);
+                else
+                    FocusCamera();
+            }
+
+            /************************************************************************************************************************/
+
+            private void FocusCamera()
+            {
+                var instance = _PreviewObject.InstanceObject;
+                if (instance == null)
+                    return;
+
+                var bounds = CalculateBounds(instance);
+
+                var rotation = _Instance.in2DMode ?
+                    Quaternion.identity :
+                    Quaternion.Euler(15, 225, 0);
+
+                var size = bounds.extents.magnitude * 1.2f;
+                if (size == float.PositiveInfinity)
+                    return;
+                else if (size == 0)
+                    size = 10;
+
+                _Instance.LookAt(bounds.center, rotation, size, _Instance.in2DMode, true);
+            }
+
+            /************************************************************************************************************************/
+
+            private static Bounds CalculateBounds(Transform transform)
+            {
+                if (transform == null)
+                    return default;
+
+                var renderers = transform.GetComponentsInChildren<Renderer>();
+                if (renderers.Length == 0)
+                    return default;
+
+                var bounds = renderers[0].bounds;
+                for (int i = 1; i < renderers.Length; i++)
+                {
+                    bounds.Encapsulate(renderers[i].bounds);
+                }
+                return bounds;
+            }
+
+            /************************************************************************************************************************/
+
+            private void SaveCameraSettings()
+            {
+                var cameraSettings = new SceneViewCameraSettings(_Instance);
+                var json = JsonUtility.ToJson(cameraSettings);
+                EditorPrefs.SetString(CameraSettingsPref, json);
+            }
+
+            /************************************************************************************************************************/
+            #endregion
+            /************************************************************************************************************************/
             #region Cleanup
             /************************************************************************************************************************/
 
             /// <summary>Called by <see cref="TransitionPreviewWindow.OnDisable"/>.</summary>
             public void OnDisable()
             {
+                SaveCameraSettings();
+
                 duringSceneGui -= DoCustomGUI;
 
                 _PreviewObject?.Dispose();

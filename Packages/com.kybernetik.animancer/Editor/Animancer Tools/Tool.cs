@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -12,7 +12,7 @@ using Object = UnityEngine.Object;
 
 namespace Animancer.Editor.Tools
 {
-    partial class AnimancerToolsWindow
+    public partial class AnimancerToolsWindow // Tool.cs
     {
         /// <summary>[Editor-Only] [Pro-Only] Base class for tools in the <see cref="AnimancerToolsWindow"/>.</summary>
         /// <remarks>

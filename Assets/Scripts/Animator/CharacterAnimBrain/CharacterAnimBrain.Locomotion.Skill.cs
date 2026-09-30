@@ -89,7 +89,7 @@ public sealed partial class CharacterAnimBrain
             _inCutscenePhase = true;
             owner.RaiseSkillTimelineEvent(CombatTimelineEventName.CutsceneSkillStart);
 
-            _state = owner.LocoLayer.Play(def.characterCutsceneClip);
+            _state = owner.PlayLocomotionTransition(def.characterCutsceneClip);
             _state.NormalizedTime = 0f;
             _events = new AnimancerEvent.Sequence(def.characterCutsceneClip.Events);
 
@@ -132,7 +132,7 @@ public sealed partial class CharacterAnimBrain
                 return;
             }
 
-            _state = owner.LocoLayer.Play(skillClip);
+            _state = owner.PlayLocomotionTransition(skillClip);
             _state.NormalizedTime = 0f;
             _events = new AnimancerEvent.Sequence(skillClip.Events);
 
@@ -296,7 +296,7 @@ public sealed partial class CharacterAnimBrain
             // Use a distinct state even if the author chose the attack clip itself. The
             // original state remains frozen for request timing; no skill events are rebound.
             _enemyStruggleAttackTime = _state.NormalizedTime;
-            _enemyStruggleState = owner.LocoLayer.Play(new ClipState(clip), fadeSeconds);
+            _enemyStruggleState = owner.PlayLocomotionTransition(new ClipState(clip), fadeSeconds);
             _enemyStruggleState.SharedEvents = null;
             _enemyStruggleState.Speed = 0f;
             _enemyStruggleState.NormalizedTime = 0f;
@@ -309,7 +309,7 @@ public sealed partial class CharacterAnimBrain
             var state = _enemyStruggleState;
             _enemyStruggleState = null;
             _enemyStruggleElapsed = 0f;
-            state?.Destroy();
+            owner.RetireTemporaryState(state);
         }
 
         internal bool TryGetPlaybackTiming(out float remainingDuration, out float totalDuration)

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Collections;
@@ -15,8 +15,7 @@ namespace Animancer
 {
     /// <summary>Various extension methods and utilities.</summary>
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerUtilities
-    /// 
-    public static partial class AnimancerUtilities
+    public static partial class AnimancerUtilities // AnimancerUtilities.cs
     {
         /************************************************************************************************************************/
         #region General
@@ -1124,13 +1123,20 @@ namespace Animancer
         public static T InitializeSingleton<T>(ref T singleton)
             where T : Behaviour
         {
-            if (singleton != null)
-                return singleton;
-
 #if UNITY_EDITOR
+
             // In Edit Mode or if we enter Play Mode without a Domain Reload
             // there might already be an existing instance.
             // Object.FindObjectOfType won't find it for whatever reason.
+
+            if (singleton != null)
+            {
+                // If we're now in Play Mode but the instance was created in Edit Mode,
+                // keep going to make a new instance.
+                if (!UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode ||
+                    singleton.hideFlags == HideFlags.None)
+                    return singleton;
+            }
 
             var instances = Resources.FindObjectsOfTypeAll<T>();
             for (int i = 0; i < instances.Length; i++)
@@ -1154,6 +1160,12 @@ namespace Animancer
                 singleton = gameObject.AddComponent<T>();
                 return singleton;
             }
+
+#else
+
+            if (singleton != null)
+                return singleton;
+
 #endif
 
             // Otherwise, just create a regular instance.
@@ -1192,6 +1204,27 @@ namespace Animancer
             try
             {
                 return transition.FadeDuration;
+            }
+            catch
+            {
+                return float.NaN;
+            }
+        }
+
+        /************************************************************************************************************************/
+
+        /// <summary>
+        /// Returns the <see cref="ITransition.NormalizedStartTime"/>
+        /// or <see cref="float.NaN"/> if it's <c>null</c> or throws an exception.
+        /// </summary>
+        public static float TryGetNormalizedStartTime(this ITransition transition)
+        {
+            if (transition == null)
+                return float.NaN;
+
+            try
+            {
+                return transition.NormalizedStartTime;
             }
             catch
             {
@@ -1285,7 +1318,8 @@ namespace Animancer
         /************************************************************************************************************************/
 
         /// <summary>[Assert-Conditional]
-        /// Throws an <see cref="UnityEngine.Assertions.AssertionException"/> if the `condition` is false.
+        /// Throws an <see cref="UnityEngine.Assertions.AssertionException"/>
+        /// if the `condition` is false.
         /// </summary>
         /// <remarks>
         /// This method is similar to <see cref="Debug.Assert(bool, object)"/>,
@@ -1298,6 +1332,23 @@ namespace Animancer
             if (!condition)
                 throw new UnityEngine.Assertions.AssertionException(
                     message?.ToString() ?? "Assertion failed.",
+                    null);
+#endif
+        }
+
+        /************************************************************************************************************************/
+
+        /// <summary>[Editor-Conditional]
+        /// Throws an <see cref="UnityEngine.Assertions.AssertionException"/>
+        /// if the <see cref="System.Threading.Thread.CurrentThread"/> is not Unity's main thread.
+        /// </summary>
+        [System.Diagnostics.Conditional(Strings.UnityEditor)]
+        public static void AssertMainThread(string operationName)
+        {
+#if UNITY_EDITOR
+            if (!UnityEditorInternal.InternalEditorUtility.CurrentThreadIsMainThread())
+                throw new UnityEngine.Assertions.AssertionException(
+                    operationName + " is only allowed on Unity's main thread.",
                     null);
 #endif
         }

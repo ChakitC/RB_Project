@@ -9,7 +9,7 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnEnterState()
         {
-            owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
+            owner.FadeOutActions();
         }
     }
 }

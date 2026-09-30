@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System.Runtime.CompilerServices;
 using UnityEngine;
@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Animancer
 {
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerState
-    partial class AnimancerState
+    partial class AnimancerState // AnimancerState.Events.cs
     {
         /************************************************************************************************************************/
 
@@ -309,6 +309,19 @@ namespace Animancer
         private bool ShouldRaiseEvents
             => TargetWeight > 0
             || RaiseEventsDuringFadeOut;
+
+        /************************************************************************************************************************/
+
+#if UNITY_EDITOR
+        /// <summary>[Editor-Only] Resets static fields in case the Play Mode Domain Reload is disabled.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void Initialize()
+        {
+            RaiseEventsDuringFadeOut = default;
+
+            InitializeExpectFade();
+        }
+#endif
 
         /************************************************************************************************************************/
 

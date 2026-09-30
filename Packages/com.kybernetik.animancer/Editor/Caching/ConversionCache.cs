@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 // Inspector Gadgets // https://kybernetik.com.au/inspector-gadgets // Copyright 2017-2024 Kybernetik //
 
 #if UNITY_EDITOR

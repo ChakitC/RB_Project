@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System.Collections.Generic;
 
@@ -44,11 +44,11 @@ namespace Animancer.TransitionLibraries
         /************************************************************************************************************************/
 
         /// <summary>
-        /// Custom <see cref="ITransition.FadeDuration"/>s to use when playing the <see cref="Transition"/>
+        /// Custom modifiers to use when playing a <see cref="Transition"/>
         /// depending on the <see cref="IHasKey.Key"/> of the source state it is coming from.
         /// </summary>
-        /// <remarks>This is <c>null</c> by default until <see cref="SetFadeDuration"/> adds something.</remarks>
-        public Dictionary<object, float> FromKeyToFadeDuration { get; set; }
+        /// <remarks>This is <c>null</c> by default until <see cref="SetModifier"/> adds something.</remarks>
+        public Dictionary<object, TransitionDetails> FromKeyToModifier;
 
         /************************************************************************************************************************/
 
@@ -63,24 +63,81 @@ namespace Animancer.TransitionLibraries
 
         /************************************************************************************************************************/
 
-        /// <summary>Sets the `fadeDuration` to use when transitioning from `from` to the <see cref="Transition"/>.</summary>
-        public void SetFadeDuration(object from, float fadeDuration)
+        /// <summary>Sets the `modifier` to use when transitioning from `from` to the <see cref="Transition"/>.</summary>
+        public void SetModifier(object from, TransitionDetails modifier)
         {
-            FromKeyToFadeDuration ??= new();
-            FromKeyToFadeDuration[from] = fadeDuration;
+            FromKeyToModifier ??= new();
+            FromKeyToModifier[from] = modifier;
         }
 
         /// <summary>Removes the fade duration modifier set for transitioning from `from` to the <see cref="Transition"/>.</summary>
-        public void ResetFadeDuration(object from)
-            => FromKeyToFadeDuration?.Remove(from);
+        public void ResetModifier(object from)
+            => FromKeyToModifier?.Remove(from);
+
+        /************************************************************************************************************************/
+
+        /// <summary>
+        /// Sets the <see cref="TransitionDetails.FadeDuration"/>
+        /// to use when transitioning from `from` to the <see cref="Transition"/>.
+        /// </summary>
+        public void SetFadeDuration(object from, float fadeDuration)
+        {
+            FromKeyToModifier ??= new();
+
+            if (!FromKeyToModifier.TryGetValue(from, out var modifier))
+                modifier = TransitionDetails.NaN;
+
+            modifier.FadeDuration = fadeDuration;
+
+            FromKeyToModifier[from] = modifier;
+        }
+
+        /// <summary>
+        /// Sets the <see cref="TransitionDetails.NormalizedStartTime"/>
+        /// to use when transitioning from `from` to the <see cref="Transition"/>.
+        /// </summary>
+        public void SetNormalizedStartTime(object from, float normalizedStartTime)
+        {
+            FromKeyToModifier ??= new();
+
+            if (!FromKeyToModifier.TryGetValue(from, out var modifier))
+                modifier = TransitionDetails.NaN;
+
+            modifier.NormalizedStartTime = normalizedStartTime;
+
+            FromKeyToModifier[from] = modifier;
+        }
+
+        /************************************************************************************************************************/
+
+        /// <summary>Returns the fade duration to use when transitioning from `from` to the <see cref="Transition"/>.</summary>
+        public TransitionDetails GetDetails(object from)
+        {
+            if (FromKeyToModifier != null && from != null)
+            {
+                from = AnimancerUtilities.GetRootKey(from);
+                if (FromKeyToModifier.TryGetValue(from, out var details))
+                {
+                    if (float.IsNaN(details.FadeDuration))
+                        details.FadeDuration = Transition.FadeDuration;
+
+                    if (float.IsNaN(details.NormalizedStartTime))
+                        details.NormalizedStartTime = Transition.NormalizedStartTime;
+
+                    return details;
+                }
+            }
+
+            return new(Transition);
+        }
 
         /************************************************************************************************************************/
 
         /// <summary>Returns the fade duration to use when transitioning from `from` to the <see cref="Transition"/>.</summary>
         public float GetFadeDuration(object from)
-            => FromKeyToFadeDuration != null
-            && FromKeyToFadeDuration.TryGetValue(AnimancerUtilities.GetRootKey(from), out var fadeDuration)
-            ? fadeDuration
+            => FromKeyToModifier != null
+            && FromKeyToModifier.TryGetValue(AnimancerUtilities.GetRootKey(from), out var modifier)
+            ? modifier.FadeDuration
             : Transition.FadeDuration;
 
         /************************************************************************************************************************/
@@ -100,15 +157,15 @@ namespace Animancer.TransitionLibraries
         {
             Transition = copyFrom.Transition;
 
-            if (copyFrom.FromKeyToFadeDuration == null)
+            if (copyFrom.FromKeyToModifier == null)
             {
-                FromKeyToFadeDuration?.Clear();
+                FromKeyToModifier?.Clear();
             }
             else
             {
-                FromKeyToFadeDuration ??= new();
-                foreach (var item in copyFrom.FromKeyToFadeDuration)
-                    FromKeyToFadeDuration[item.Key] = item.Value;
+                FromKeyToModifier ??= new();
+                foreach (var item in copyFrom.FromKeyToModifier)
+                    FromKeyToModifier[item.Key] = item.Value;
             }
         }
 

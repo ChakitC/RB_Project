@@ -37,7 +37,7 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnExitState()
         {
-            owner.ActLayer.StartFade(0f, owner.ActionFadeOut);
+            owner.FadeActionLayer(owner.ActLayer);
         }
     }
 

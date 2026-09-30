@@ -188,7 +188,9 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
         }
 
         _worldSlowHandle = TimeSlowManager.Instance.StartSlow(def.worldSlowScale, float.MaxValue);
-        _ctx?.stateHub?.AddExternalControlBlock(CutsceneControlBlocks);
+        ReleaseControlHold();
+        _controlHub = _ctx != null ? _ctx.stateHub : null;
+        if (_controlHub != null) _controlToken = _controlHub.AcquireExternalControlBlockToken(CutsceneControlBlocks, nameof(CutsceneSkillPresenter));
         EnterCutsceneVisibility();
 
         if (_mainFollowCamera != null)
@@ -202,6 +204,15 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
             StopCoroutine(_overlayRoutine);
         _overlayRoutine = StartCoroutine(FadeOverlay(0f, 1f, def.fadeInDuration));
         return true;
+    }
+
+    StateHub _controlHub;
+    int _controlToken;
+    void ReleaseControlHold()
+    {
+        if (_controlHub != null) _controlHub.ReleaseExternalControlBlockToken(_controlToken);
+        _controlToken = 0;
+        _controlHub = null;
     }
 
     void EndStage(float fadeOutDuration)
@@ -221,7 +232,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
         TimeSlowManager.Instance.StopSlow(_worldSlowHandle);
         _worldSlowHandle = 0;
-        _ctx?.stateHub?.RemoveExternalControlBlock(CutsceneControlBlocks);
+        ReleaseControlHold();
         ExitCutsceneVisibility();
 
         if (_mainFollowCamera != null)
@@ -254,7 +265,7 @@ public sealed class CutsceneSkillPresenter : MonoBehaviour
 
         TimeSlowManager.Instance.StopSlow(_worldSlowHandle);
         _worldSlowHandle = 0;
-        _ctx?.stateHub?.RemoveExternalControlBlock(CutsceneControlBlocks);
+        ReleaseControlHold();
         ExitCutsceneVisibility();
 
         if (_mainFollowCamera != null)

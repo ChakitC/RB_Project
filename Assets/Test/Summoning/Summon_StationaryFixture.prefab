@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: 11400005}
   - component: {fileID: 11400006}
   - component: {fileID: 11400007}
+  - component: {fileID: 7566716432586583070}
   m_Layer: 0
   m_Name: Summon_StationaryFixture
   m_TagString: Untagged
@@ -53,12 +54,55 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a90341c7b794bac8477ef907fb25717, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  baseStats: {fileID: 0}
+  currentWeapon: {fileID: 0}
+  stateHub: {fileID: 0}
+  StatsHub: {fileID: 0}
+  CombatEventBus: {fileID: 0}
+  rb: {fileID: 0}
+  cc: {fileID: 0}
+  NavigationAgent: {fileID: 0}
+  MovementMotor: {fileID: 0}
+  TargetInfo: {fileID: 0}
+  Equipment: {fileID: 0}
+  AccessoryLoadout: {fileID: 0}
+  WeaponSystem: {fileID: 0}
+  AnimBrain: {fileID: 0}
+  AnimDriver: {fileID: 0}
+  RootMotionDriver: {fileID: 0}
+  PairOffsetApplier: {fileID: 0}
+  MeleeController: {fileID: 0}
+  AudioEmitter: {fileID: 0}
+  AimRig: {fileID: 0}
+  CharacterLoad: {fileID: 0}
+  Visual: {fileID: 0}
+  Visibility: {fileID: 0}
+  UIManager: {fileID: 0}
+  ColliderRefs: {fileID: 0}
+  StatusEffects: {fileID: 0}
+  levelSystem: {fileID: 0}
+  HealthSystem: {fileID: 0}
+  StaminaSystem: {fileID: 0}
+  DashSystem: {fileID: 0}
+  KnockbackMotor: {fileID: 0}
+  DefensiveBlockAttack: {fileID: 0}
+  DefensiveBlock: {fileID: 0}
+  FieldAllyMember: {fileID: 0}
+  VerticalMotor: {fileID: 0}
+  PassiveController: {fileID: 0}
+  ActiveSkillProgress: {fileID: 0}
+  EnegySystem: {fileID: 0}
+  Interactor: {fileID: 0}
+  SkillManager: {fileID: 0}
+  moveInput: {x: 0, y: 0}
+  lookInput: {x: 0, y: 0}
   mobility: 1
   summonedRuntime: {fileID: 11400001}
   AITargetSensor: {fileID: 0}
   Agent: {fileID: 0}
   AgentMoveDriver: {fileID: 0}
   BehaviorTree: {fileID: 0}
+  forceInfiniteReserveAmmo: 0
 --- !u!114 &11400001
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -74,6 +118,18 @@ MonoBehaviour:
   gameplayRoot: {fileID: 2000}
   presentationRoot: {fileID: 3001}
   summonContext: {fileID: 11400000}
+  owner: {fileID: 0}
+  skillId: 
+  mobility: 0
+  remainingLifetime: 0
+  remainingDespawnDelay: 0
+  spawnSequence: 0
+  inheritedDamage: 0
+  healPower: 0
+  areaRadius: 0
+  effectDuration: 0
+  maxHealth: 0
+  upgradeIds: []
 --- !u!114 &11400002
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -87,6 +143,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CTX: {fileID: 11400000}
+  statsHub: {fileID: 0}
+  statusEffectController: {fileID: 0}
+  combatEventBus: {fileID: 0}
+  hitZoneDamageProfile: {fileID: 0}
+  reviveTime: 2
+  maximumHealth: 0
+  currentHealth: 0
+  DownTime: 15
+  cachedArmor: 0
+  autoRefreshFromHub: 1
+  keepHealthPercentWhenMaxChanges: 1
+  refreshIntervalSeconds: 0.2
+  summonedRuntime: {fileID: 0}
 --- !u!114 &11400003
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -100,6 +169,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ctx: {fileID: 11400000}
+  debugInInspector: 1
+  logTransitions: 1
+  showOnScreen: 0
+  dbgLife: 
+  dbgUI: 
+  dbgMove: 
+  dbgWeapon: 
+  dbgSnapshot: 
+  screenPos: {x: 10, y: 10}
+  statusEffectControlBlocks: 0
+  statusEffectStunned: 0
+  externalControlBlocks: 0
+  externalStunned: 0
+  staggerControlBlocks: 0
+  staggerStunned: 0
 --- !u!114 &11400004
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -113,6 +197,42 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ctx: {fileID: 11400000}
+  weapon: {fileID: 0}
+  statusEffectController: {fileID: 0}
+  debugInInspector: 1
+  useUnscaledTime: 0
+  debugRefreshInterval: 0
+  dbgWeaponName: 
+  dbgWeaponType: 0
+  dbgFiringMode: 0
+  dbgBaseCharDamage: 0
+  dbgBaseCharCritRatePercent: 0
+  dbgBaseCharCritMult: 0
+  dbgWeaponDamage: 0
+  dbgWeaponCritRatePercent: 0
+  dbgWeaponCritMult: 0
+  dbgWeaponFireInterval: 0
+  dbgWeaponReloadTime: 0
+  dbgWeaponStability: 0
+  dbgWeaponBulletSpeed: 0
+  dbgWeaponMaxMagazine: 0
+  dbgWeaponMaxReserveAmmo: 0
+  dbgFinalDamage: 0
+  dbgFinalArmor: 0
+  dbgFinalMoveSpeed: 0
+  dbgFinalCritRatePercent: 0
+  dbgFinalCritRate01: 0
+  dbgFinalCritMult: 0
+  dbgFinalFireInterval: 0
+  dbgFinalReloadTime: 0
+  dbgFinalStability: 0
+  dbgFinalBulletSpeed: 0
+  dbgFinalMaxMagazine: 0
+  dbgFinalMaxReserveAmmo: 0
+  dbgFinalMaxHP: 0
+  dbgFinalMaxStamina: 0
+  dbgFinalStaminaRegen: 0
+  dbgFinalMaxEnergy: 0
 --- !u!114 &11400005
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -125,6 +245,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3c4ffd33e382b0247b1c60f1669ea8e0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  aimPoint: {fileID: 0}
+  chainAttackPoint: {fileID: 0}
   teamId: 0
   targetRole: 0
   targetIdentity: 0
@@ -161,6 +283,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   CharacterPositionCollider: {fileID: 2002}
   hitZones: []
+--- !u!114 &7566716432586583070
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 270e4bbbc0e46d2479050deba13ab7b5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  debugInInspector: 1
+  logTransitions: 1
+  showOnScreen: 0
+  screenPos: {x: 10, y: 10}
+  snapshot: 
+  legacyDebugSignature: True|True|False|(10, 10)
 --- !u!1 &2000
 GameObject:
   m_ObjectHideFlags: 0

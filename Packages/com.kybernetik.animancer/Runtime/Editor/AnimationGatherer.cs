@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -7,7 +7,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace Animancer.Editor
 {
@@ -18,36 +17,6 @@ namespace Animancer.Editor
     /// 
     public class AnimationGatherer : IAnimationClipCollection
     {
-        /************************************************************************************************************************/
-        #region Recursion Guard
-        /************************************************************************************************************************/
-
-        private const int MaxFieldDepth = 7;
-
-        /************************************************************************************************************************/
-
-        private static readonly HashSet<object>
-            RecursionGuard = new();
-
-        private static int _CallCount;
-
-        private static bool BeginRecursionGuard(object obj)
-        {
-            if (RecursionGuard.Contains(obj))
-                return false;
-
-            RecursionGuard.Add(obj);
-            return true;
-        }
-
-        private static void EndCall()
-        {
-            if (_CallCount == 0)
-                RecursionGuard.Clear();
-        }
-
-        /************************************************************************************************************************/
-        #endregion
         /************************************************************************************************************************/
         #region Fields and Accessors
         /************************************************************************************************************************/
@@ -90,43 +59,50 @@ namespace Animancer.Editor
 
         static AnimationGatherer()
         {
-            UnityEditor.EditorApplication.hierarchyChanged += ClearCache;
             UnityEditor.Selection.selectionChanged += ClearCache;
         }
 
         /************************************************************************************************************************/
 
         /// <summary>Clears all cached gatherers.</summary>
-        public static void ClearCache() => ObjectToGatherer.Clear();
+        public static void ClearCache()
+            => ObjectToGatherer.Clear();
 
         /************************************************************************************************************************/
         #endregion
         /************************************************************************************************************************/
 
-        /// <summary>Should exceptions thrown while gathering animations be logged? Default is false to ignore them.</summary>
-        public static bool logExceptions;
+        /// <summary>
+        /// Should exceptions thrown while gathering animations be logged?
+        /// Default is false to ignore them.
+        /// </summary>
+        public static bool LogExceptions { get; set; }
 
-        /// <summary>Logs the `exception` if <see cref="logExceptions"/> is true. Otherwise does nothing.</summary>
+        /// <summary>
+        /// Logs the `exception` if <see cref="LogExceptions"/> is true.
+        /// Otherwise does nothing.
+        /// </summary>
         private static void HandleException(Exception exception)
         {
-            if (logExceptions)
+            if (LogExceptions)
                 Debug.LogException(exception);
         }
 
         /************************************************************************************************************************/
 
         /// <summary>
-        /// Returns a cached <see cref="AnimationGatherer"/> containing any <see cref="AnimationClip"/>s referenced by
-        /// components in the same hierarchy as the `gameObject`. See <see cref="ICharacterRoot"/> for details.
+        /// Returns a cached <see cref="AnimationGatherer"/> containing any <see cref="AnimationClip"/>s
+        /// referenced by components in the same hierarchy as the `gameObject`.
+        /// See <see cref="ICharacterRoot"/> for details.
         /// </summary>
         public static AnimationGatherer GatherFromGameObject(GameObject gameObject)
         {
-            if (!BeginRecursionGuard(gameObject))
+            using var _ = AnimationGathererRecursionGuard.Begin();
+            if (AnimationGathererRecursionGuard.HasCheckedObject(gameObject))
                 return null;
 
             try
             {
-                _CallCount++;
                 if (!ObjectToGatherer.TryGetValue(gameObject, out var gatherer))
                 {
                     gatherer = new();
@@ -141,16 +117,12 @@ namespace Animancer.Editor
                 HandleException(exception);
                 return null;
             }
-            finally
-            {
-                _CallCount--;
-                EndCall();
-            }
         }
 
         /// <summary>
-        /// Fills the `clips` with any <see cref="AnimationClip"/>s referenced by components in the same hierarchy as
-        /// the `gameObject`. See <see cref="ICharacterRoot"/> for details.
+        /// Fills the `clips` with any <see cref="AnimationClip"/>s
+        /// referenced by components in the same hierarchy as the `gameObject`.
+        /// See <see cref="ICharacterRoot"/> for details.
         /// </summary>
         public static void GatherFromGameObject(GameObject gameObject, ICollection<AnimationClip> clips)
         {
@@ -159,8 +131,9 @@ namespace Animancer.Editor
         }
 
         /// <summary>
-        /// Fills the `clips` with any <see cref="AnimationClip"/>s referenced by components in the same hierarchy as
-        /// the `gameObject`. See <see cref="ICharacterRoot"/> for details.
+        /// Fills the `clips` with any <see cref="AnimationClip"/>s
+        /// referenced by components in the same hierarchy as the `gameObject`.
+        /// See <see cref="ICharacterRoot"/> for details.
         /// </summary>
         public static void GatherFromGameObject(GameObject gameObject, ref AnimationClip[] clips, bool sort)
         {
@@ -217,7 +190,10 @@ namespace Animancer.Editor
         /// <summary>Gathers all animations from the `source`s fields.</summary>
         private void GatherFromObject(object source, int depth)
         {
-            if (source == null)
+            if (source.IsNullOrDestroyed())
+                return;
+
+            if (AnimationGathererRecursionGuard.HasCheckedObject(source))
                 return;
 
             if (source is AnimationClip clip)
@@ -229,9 +205,6 @@ namespace Animancer.Editor
             if (!MightContainAnimations(source.GetType()))
                 return;
 
-            if (!BeginRecursionGuard(source))
-                return;
-
             try
             {
                 if (Clips.GatherFromSource(source))
@@ -240,10 +213,6 @@ namespace Animancer.Editor
             catch (Exception exception)
             {
                 HandleException(exception);
-            }
-            finally
-            {
-                RecursionGuard.Remove(source);
             }
 
             GatherFromFields(source, depth);
@@ -260,17 +229,17 @@ namespace Animancer.Editor
         /// </summary>
         private void GatherFromFields(object source, int depth)
         {
-            if (depth >= MaxFieldDepth ||
-                source == null ||
-                !BeginRecursionGuard(source))
+            if (depth >= AnimationGathererRecursionGuard.MaxFieldDepth ||
+                source.IsNullOrDestroyed())
                 return;
 
             var type = source.GetType();
-
             if (!TypeToGathererDelegate.TryGetValue(type, out var gatherClips))
             {
                 gatherClips = BuildClipGathererDelegate(type, depth);
                 TypeToGathererDelegate.Add(type, gatherClips);
+                if (gatherClips == null)
+                    AnimationGathererRecursionGuard.DontGatherFrom.Add(type);
             }
 
             gatherClips?.Invoke(source, this);
@@ -279,7 +248,8 @@ namespace Animancer.Editor
         /************************************************************************************************************************/
 
         /// <summary>
-        /// Creates a delegate to gather <see cref="AnimationClip"/>s from all relevant fields in a given `type`.
+        /// Creates a delegate to gather <see cref="AnimationClip"/>s
+        /// from all relevant fields in a given `type`.
         /// </summary>
         private static Action<object, AnimationGatherer> BuildClipGathererDelegate(Type type, int depth)
         {
@@ -303,7 +273,8 @@ namespace Animancer.Editor
                         gathererDelegate += (obj, gatherer) =>
                         {
                             var clip = (AnimationClip)field.GetValue(obj);
-                            gatherer.Clips.Gather(clip);
+                            if (clip != null)
+                                gatherer.Clips.Add(clip);
                         };
                     }
                     else if (typeof(IAnimationClipSource).IsAssignableFrom(fieldType) ||
@@ -334,8 +305,7 @@ namespace Animancer.Editor
                         gathererDelegate += (obj, gatherer) =>
                         {
                             var source = field.GetValue(obj);
-                            if (source == null ||
-                                (source is Object sourceObject && sourceObject == null))
+                            if (source.IsNullOrDestroyed())
                                 return;
 
                             gatherer.GatherFromObject(source, depth + 1);
@@ -355,7 +325,8 @@ namespace Animancer.Editor
             => !type.IsPrimitive
             && !type.IsEnum
             && !type.IsAutoClass
-            && !type.IsPointer;
+            && !type.IsPointer
+            && !AnimationGathererRecursionGuard.DontGatherFrom.Contains(type);
 
         /************************************************************************************************************************/
     }

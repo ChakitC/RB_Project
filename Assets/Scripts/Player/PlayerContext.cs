@@ -45,6 +45,7 @@ public class PlayerContext : CharacteContext
     {
         Instance = this;
         ResolveReferences();
+        PrepareRuntimeModules();
         TryMigrateLegacyPartyCommandConfiguration();
     }
 

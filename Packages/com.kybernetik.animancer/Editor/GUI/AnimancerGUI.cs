@@ -1,9 +1,10 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -12,7 +13,7 @@ namespace Animancer.Editor
 {
     /// <summary>[Editor-Only] Various GUI utilities used throughout Animancer.</summary>
     /// https://kybernetik.com.au/animancer/api/Animancer.Editor/AnimancerGUI
-    public static partial class AnimancerGUI
+    public static partial class AnimancerGUI // AnimancerGUI.cs
     {
         /************************************************************************************************************************/
         #region Standard Values
@@ -734,6 +735,37 @@ namespace Animancer.Editor
         }
 
         /************************************************************************************************************************/
+
+        private static TextEditor _EditorGuiTextEditor;
+
+        /// <summary>
+        /// Returns the current text string from the internal <see cref="EditorGUI"/> text editor
+        /// used by things like <see cref="EditorGUI.FloatField(Rect, float)"/>.
+        /// </summary>
+        public static string CurrentFieldText
+        {
+            get
+            {
+                if (_EditorGuiTextEditor == null)
+                {
+                    const string MemberName = "s_RecycledEditor";
+                    var field = typeof(EditorGUI).GetField(MemberName, AnimancerReflection.StaticBindings);
+                    _EditorGuiTextEditor = field?.GetValue(null) as TextEditor;
+
+                    if (_EditorGuiTextEditor == null)
+                    {
+                        var property = typeof(EditorGUI).GetProperty(MemberName, AnimancerReflection.StaticBindings);
+                        _EditorGuiTextEditor = property?.GetValue(null) as TextEditor;
+                    }
+
+                    _EditorGuiTextEditor ??= new();
+                }
+
+                return _EditorGuiTextEditor.text;
+            }
+        }
+
+        /************************************************************************************************************************/
         #endregion
         /************************************************************************************************************************/
         #region Events
@@ -851,7 +883,7 @@ namespace Animancer.Editor
             if (button >= 0 && currentEvent.button != button)
                 return false;
 
-            switch (currentEvent.type)
+            switch (currentEvent.GetTypeForControl(controlID))
             {
                 case EventType.MouseDown:
                     TryUseMouseDown(area, currentEvent, controlID);
@@ -887,6 +919,7 @@ namespace Animancer.Editor
         {
             GUIUtility.hotControl = 0;
             GUIUtility.keyboardControl = 0;
+            EditorGUIUtility.editingTextField = false;
         }
 
         /************************************************************************************************************************/

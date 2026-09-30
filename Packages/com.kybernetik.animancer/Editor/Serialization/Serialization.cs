@@ -34,7 +34,7 @@ namespace Animancer.Editor
     }
 
     /// <summary>[Editor-Only] Various serialization utilities.</summary>
-    public static partial class Serialization
+    public static partial class Serialization // Serialization.cs
     {
         /************************************************************************************************************************/
         #region Public Static API

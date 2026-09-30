@@ -302,3 +302,66 @@ pickup collection, aim-rig creation, and runtime equipment creation to false.
 Shared modules should continue to consume the resolved `CharacteContext` seams;
 summon-specific ownership and lifetime belong to `SummonedEntityRuntime` and
 `SummonController`.
+
+## StateHub ownership and initialization
+
+StateHub exposes MoveSM, WeaponSM, LifeSM and UISM as IReadOnlyState<TId>.
+Each view is a separate object with CurrentId and OnChanged only. It cannot be
+cast back to the writable StateValue or StateMachine. StateMachine.CurrentId
+also has a private setter. Consumers change state through owner commands.
+
+| State | Owner and commands | Projection order |
+| --- | --- | --- |
+| Weapon | WeaponSystem: Equip, SetFiring, TryShoot, TryReload, CancelReload, ammo restoration | Melee, Reloading, NoBullet, Firing, Ready |
+| Life | HealthSystem: damage depletion, Down, Die, Revive | Explicit owner LifeState |
+| Movement | DashSystem and CharacterKnockbackMotor activity, status locks, movement intent | Knockback, Stunned, Dash, Moving/Stand |
+| UI | Each screen holds its own AcquireUIStateToken/ReleaseUIStateToken | Pause, Inventory, Normal |
+
+MeleeController owns combo activity. Its ActivityChanged event and the weapon,
+health, dash and knockback owner events update the projections synchronously.
+Admission reads owners directly, including reload state before the next Update.
+StateHub.Update only reconciles frame-dependent movement/playback and resumes
+held-fire intent. No gameplay admission decision reads the four projections.
+
+PlayerContext, AllyContext, EnemyContext and SummonContext call
+PrepareRuntimeModules once during Awake. It resolves peers, supplies the legacy
+AudioEmitter/MeleeController defaults, and supplies StateHubDebugView when an
+unmigrated runtime rig needs it. Admission queries never create components or
+resolve references. ResolveReferences in Edit Mode does not add components.
+Optional modules block only actions that require them.
+
+Explicit peer bindings remain authoritative. Missing StateHub-related peers are
+resolved from the actor hierarchy only when a single candidate belongs to the
+actor. Ambiguous candidates produce a configuration error requiring a binding;
+parent peers require an unambiguous actor subtree. Deliberate relationships to
+another context must be explicitly bound.
+
+Control flags are composed by CharacterControlLocks. StatusEffects, Stagger,
+Reaction and Legacy have independent channels. External owners acquire tokens
+with a debug owner name and release only their own token. Token 0 is inert and
+unknown/duplicate releases are no-ops. CutsceneSkillPresenter uses its own token.
+Tokens survive StateHub disable/enable; input intents and transient actions do
+not. Enable subscribes once and reconciles owner snapshots without reviving or
+restarting input. Before Awake, tokens and fire intent may be recorded, while
+all Can* queries reject actions. Owners releasing holds tolerate destroyed hubs.
+
+### Admission rules retained from the previous implementation
+
+CharacterActionPolicy evaluates a CharacterActionFacts value without side effects.
+ActionAdmissionResult reports the first rejection reason. Module-specific stamina,
+fire cadence, combo windows and ammo transactions remain in their owners.
+
+| Action | Shared restrictions and exceptions |
+| --- | --- |
+| Move | Alive or Down; normal UI; no Move lock, stun, melee, dash or knockback; FullBody reload blocks, UpperBody does not |
+| Dash | Alive; normal UI; no Move lock, stun, melee, dash or knockback; reload is allowed; only a successful dash cancels FullBody reload |
+| Fire request | Alive; normal UI; no Shoot lock, stun, melee, dash, knockback or blocking playback; fresh requests may cancel configured reload with loaded ammo |
+| Shoot | Same restrictions, always rejects live reload and empty magazine; WeaponSystem additionally checks weapon, cadence and launch references |
+| Reload | Alive; no blocking playback or knockback; historical menu/root/stun behavior remains; owner checks reserve/capacity |
+| Skill | Alive; normal UI; no Skill lock, stun, melee, dash or knockback |
+| Melee | Alive; normal UI; no stun, dash, knockback or skill playback; Skill-only lock does not block basic melee; owner checks reload interrupt configuration |
+| Rotate | No stun or Rotate lock; historical life/UI freedom remains |
+
+Initialized, enabled admission and required module availability are prerequisites.
+A held-fire resumption cannot cancel reload. A new request may cancel it and
+fire a Semi round in that same command.

@@ -35,6 +35,13 @@ public class DashSystem : MonoBehaviour
     int _nextExternalCollisionIgnoreToken = 1;
 
     public bool IsDashing => isDashing;
+    public event Action ActivityChanged;
+    void SetDashing(bool value)
+    {
+        if (isDashing == value) return;
+        isDashing = value;
+        ActivityChanged?.Invoke();
+    }
     public bool IsPerfectDodgeWindowActive =>
         isDashing && _dashInvincibilityToken != 0 && _perfectDodgeWindowRemaining > 0f;
     public Func<Vector3, float, float, bool> PerfectDodgeHandler;
@@ -103,7 +110,7 @@ public class DashSystem : MonoBehaviour
 
         ReleaseDashInvincibility();
 
-        isDashing = false;
+        SetDashing(false);
     }
 
     public void StartDashIframe()
@@ -163,7 +170,7 @@ public class DashSystem : MonoBehaviour
         ResetPerfectDodgeWindow();
         ReleaseDashInvincibility();
 
-        isDashing = false;
+        SetDashing(false);
     }
 
     public bool TryDash()
@@ -235,10 +242,12 @@ public class DashSystem : MonoBehaviour
         _perfectDodgeTriggeredThisDash = false;
         _perfectDodgeWindowRemaining = ResolvePerfectDodgeWindow();
 
+        isDashing = true;
+        _dashRoutine = StartCoroutine(DashRoutine(dashDir, maxDist));
+        ActivityChanged?.Invoke();
         ctx.stateHub?.ReportDashStarted(dashSetting.dashDuration, dashDir);
         PublishDashEvent(PassiveEventType.DashStarted, dashSetting.dashDuration);
 
-        _dashRoutine = StartCoroutine(DashRoutine(dashDir, maxDist));
         return true;
     }
 
@@ -277,8 +286,6 @@ public class DashSystem : MonoBehaviour
 
     IEnumerator DashRoutine(Vector3 dir, float dist)
     {
-        isDashing = true;
-
         float dashDuration = Mathf.Max(0.01f, dashSetting.dashDuration);
         float speed = dist <= 0f ? 0f : dist / dashDuration;
         _invincibleRoutine = StartCoroutine(InvincibleTimer(dashSetting.dashInvincibleTime));
@@ -299,8 +306,8 @@ public class DashSystem : MonoBehaviour
 
         EndDashIframe();
         ResetPerfectDodgeWindow();
-        isDashing = false;
         _dashRoutine = null;
+        SetDashing(false);
         PublishDashEvent(PassiveEventType.DashEnded, 0f);
     }
 

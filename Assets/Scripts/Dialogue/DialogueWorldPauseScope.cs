@@ -49,7 +49,7 @@ internal sealed class DialogueWorldPauseScope
             if (stateHub == null || controlTokens.ContainsKey(stateHub))
                 continue;
 
-            controlTokens[stateHub] = stateHub.AcquireExternalControlBlockToken(DialogueControlBlocks);
+            controlTokens[stateHub] = stateHub.AcquireExternalControlBlockToken(DialogueControlBlocks, nameof(DialogueWorldPauseScope));
         }
 
         UIManager.Instance?.SetHudVisible(false);

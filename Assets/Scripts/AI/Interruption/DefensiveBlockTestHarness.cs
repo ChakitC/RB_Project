@@ -133,7 +133,7 @@ public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
             {
                 case "Disable": Ally.gameObject.SetActive(false); break;
                 case "Death": Ally.HealthSystem.Die(); break;
-                case "Down": Ally.stateHub.LifeSM.TryChange(LifeStateId.Down); break;
+                case "Down": Ally.HealthSystem.Down(); break;
                 case "ControlLoss": Ally.AnimDriver.InterruptActivePlaybackForExternalControlLoss(); break;
                 case "Reset": ResetTrial(); break;
             }

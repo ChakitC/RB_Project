@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR && UNITY_IMGUI
 
@@ -147,7 +147,7 @@ namespace Animancer.Units.Editor
             var beforeControlID = GUIUtility.GetControlID(TextFieldHash, FocusType.Passive, area);
 
             if (float.IsNaN(value) &&
-                Attribute.DisabledText is not null &&
+                Attribute.DisabledText != null &&
                 currentEvent.type == EventType.Repaint &&
                 !area.Contains(currentEvent.mousePosition) &&
                 !HasKeyboardControl(beforeControlID, beforeControlID + count))

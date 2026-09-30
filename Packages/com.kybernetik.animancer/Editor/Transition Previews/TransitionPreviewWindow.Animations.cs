@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR && UNITY_IMGUI
 
@@ -10,7 +10,7 @@ using static Animancer.Editor.AnimancerGUI;
 namespace Animancer.Editor.Previews
 {
     /// https://kybernetik.com.au/animancer/api/Animancer.Editor.Previews/TransitionPreviewWindow
-    partial class TransitionPreviewWindow
+    partial class TransitionPreviewWindow // TransitionPreviewWindow.Animations.cs
     {
         /// <summary>Animation details for the <see cref="TransitionPreviewWindow"/>.</summary>
         /// <remarks>

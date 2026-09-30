@@ -44,9 +44,9 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
     int _selectedSlotIndex;
     int _selectedOptionIndex = -1;
     string _selectedNodeId;
-    UIStateId _previousUiState;
-    bool _changedUiState;
-    bool _fallbackPaused;
+    StateHub _pausedHub;
+    GlobalTimeScaleManager _pauseManager;
+    int _uiToken, _pauseToken;
     bool _isOpen;
     bool _lastCanChangeLoadout;
     float _nextAccessCheck;
@@ -66,6 +66,12 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
         SetVisible(false);
     }
 
+    void OnDisable()
+    {
+        Close();
+        RestoreRuntimeState();
+    }
+
     void OnDestroy()
     {
         if (backButton != null)
@@ -75,6 +81,7 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
         if (fitTreeButton != null)
             fitTreeButton.onClick.RemoveListener(ResetTreeView);
         detailPanel?.SetCloseRequested(null);
+        RestoreRuntimeState();
         ReleaseSession();
     }
 
@@ -119,6 +126,7 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
 
     void BindSession(ActiveSkillLoadoutSession session)
     {
+        RestoreRuntimeState();
         ReleaseSession();
         _session = session;
         if (_session != null)
@@ -131,7 +139,10 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
         _selectedOptionIndex = -1;
         _selectedNodeId = null;
         if (_isOpen)
+        {
+            PauseRuntimeIfNeeded();
             RebuildScreen();
+        }
     }
 
     void ReleaseSession()
@@ -430,32 +441,22 @@ public sealed class ActiveSkillScreenController : MonoBehaviour
 
     void PauseRuntimeIfNeeded()
     {
-        CharacteContext runtime = _session.RuntimeContext;
-        if (runtime == null)
-            return;
-
+        if (_pauseToken != 0 || _session == null || _session.RuntimeContext == null) return;
+        var runtime = _session.RuntimeContext;
         runtime.ResolveReferences();
-        if (runtime.stateHub != null && runtime.stateHub.UISM != null)
-        {
-            _previousUiState = runtime.stateHub.UISM.CurrentId;
-            _changedUiState = _previousUiState != UIStateId.Pause && runtime.stateHub.UISM.TryChange(UIStateId.Pause);
-            return;
-        }
-
-        GlobalTimeScaleManager.Instance.SetPaused(true);
-        _fallbackPaused = true;
+        _pausedHub = runtime.stateHub;
+        if (_pausedHub != null) _uiToken = _pausedHub.AcquireUIStateToken(UIStateId.Pause, nameof(ActiveSkillScreenController));
+        _pauseManager = GlobalTimeScaleManager.Instance;
+        _pauseToken = _pauseManager.AcquirePauseToken();
     }
 
     void RestoreRuntimeState()
     {
-        CharacteContext runtime = _session != null ? _session.RuntimeContext : null;
-        if (_changedUiState && runtime != null && runtime.stateHub != null && runtime.stateHub.UISM != null)
-            runtime.stateHub.UISM.TryChange(_previousUiState);
-        if (_fallbackPaused)
-            GlobalTimeScaleManager.Instance.SetPaused(false);
-
-        _changedUiState = false;
-        _fallbackPaused = false;
+        if (_pausedHub != null) _pausedHub.ReleaseUIStateToken(_uiToken);
+        if (_pauseManager != null) _pauseManager.ReleasePauseToken(_pauseToken);
+        _uiToken = _pauseToken = 0;
+        _pausedHub = null;
+        _pauseManager = null;
     }
 
     bool TryGetSelectedNode(string nodeId, out SkillUpgradeNodeData node)

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using Animancer.Units;
 using System;
@@ -116,7 +116,11 @@ namespace Animancer
 
         /// <inheritdoc/>
         public override Transition<PlayableAssetState> Clone(CloneContext context)
-            => new PlayableAssetTransition();
+        {
+            var clone = new PlayableAssetTransition();
+            clone.CopyFrom(this, context);
+            return clone;
+        }
 
         /// <inheritdoc/>
         public sealed override void CopyFrom(Transition<PlayableAssetState> copyFrom, CloneContext context)
@@ -127,9 +131,9 @@ namespace Animancer
         {
             base.CopyFrom(copyFrom, context);
 
-            _Asset = copyFrom._Asset;
+            _Asset = context.GetCloneOrOriginal(copyFrom._Asset);
             _NormalizedStartTime = copyFrom._NormalizedStartTime;
-            AnimancerUtilities.CopyExactArray(copyFrom._Bindings, ref _Bindings);
+            context.CloneArray(copyFrom._Bindings, ref _Bindings);
         }
 
         /************************************************************************************************************************/

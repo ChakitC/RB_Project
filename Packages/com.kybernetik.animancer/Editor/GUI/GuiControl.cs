@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -72,7 +72,7 @@ namespace Animancer.Editor
             ID = GUIUtility.GetControlID(idHint, focusType, area);
         }
 
-        /// <summary>Creaates a new <see cref="GUIControl"/> with the <see cref="Event.current"/>.</summary>
+        /// <summary>Creates a new <see cref="GUIControl"/> with the <see cref="Event.current"/>.</summary>
         public GUIControl(Rect area, int idHint, FocusType focusType = FocusType.Passive)
             : this(area, Event.current, idHint, focusType)
         {

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -70,6 +70,20 @@ namespace Animancer.Editor.Previews
                 ? ToTransition.FadeDuration
                 : _FadeDuration;
             set => _FadeDuration = value;
+        }
+
+        /************************************************************************************************************************/
+
+        private float _NormalizedStartTime = float.NaN;
+
+        /// <summary>The <see cref="ITransition.NormalizedStartTime"/>.</summary>
+        /// <remarks><see cref="float.NaN"/> uses the value from the <see cref="ToTransition"/>.</remarks>
+        public float NormalizedStartTime
+        {
+            get => float.IsNaN(_NormalizedStartTime) && ToTransition.IsValid()
+                ? ToTransition.NormalizedStartTime
+                : _NormalizedStartTime;
+            set => _NormalizedStartTime = value;
         }
 
         /************************************************************************************************************************/
@@ -224,13 +238,13 @@ namespace Animancer.Editor.Previews
                 else
                 {
                     var minTime = MinTime;
-                    Apply(CurrentTime - minTime, -minTime, _FromTransition);
+                    Apply(CurrentTime - minTime, -minTime, _FromTransition, false);
                 }
             }
             else
             {
                 if (_ToTransition.IsValid())
-                    Apply(CurrentTime, MaxTime, _ToTransition);
+                    Apply(CurrentTime, MaxTime, _ToTransition, true);
                 else
                     return;
             }
@@ -241,7 +255,10 @@ namespace Animancer.Editor.Previews
         /************************************************************************************************************************/
 
         /// <summary>Applies the animations at the `currentTime`.</summary>
-        private void Apply(float currentTime, ITransition from, ITransition to)
+        private void Apply(
+            float currentTime,
+            ITransition from,
+            ITransition to)
         {
             var layer = Graph.Layers[0];
 
@@ -262,6 +279,11 @@ namespace Animancer.Editor.Previews
                 state.Time += state.NormalizedEndTime * state.Length + currentTime;
 
                 state = layer.Play(to, FadeDuration, to.FadeMode);
+
+                var normalizedStartTime = NormalizedStartTime;
+                if (!float.IsNaN(normalizedStartTime))
+                    state.NormalizedTime = normalizedStartTime;
+
                 state.Time += currentTime;
 
                 var fade = state.FadeGroup;
@@ -275,6 +297,11 @@ namespace Animancer.Editor.Previews
             else
             {
                 var state = layer.Play(to);
+
+                var normalizedStartTime = NormalizedStartTime;
+                if (!float.IsNaN(normalizedStartTime))
+                    state.NormalizedTime = normalizedStartTime;
+
                 state.Time += currentTime;
 
                 // Finished.
@@ -289,13 +316,24 @@ namespace Animancer.Editor.Previews
         /************************************************************************************************************************/
 
         /// <summary>Applies the animation at the `currentTime`.</summary>
-        private void Apply(float currentTime, float endTime, ITransition transition)
+        private void Apply(
+            float currentTime,
+            float endTime,
+            ITransition transition,
+            bool applyNormalizedStartTime)
         {
             var state = Graph.Layers[0].Play(transition);
 
             if (currentTime < endTime)// Playing.
             {
                 state.Time = currentTime;
+
+                if (applyNormalizedStartTime)
+                {
+                    var normalizedStartTime = NormalizedStartTime;
+                    if (!float.IsNaN(normalizedStartTime))
+                        state.NormalizedTime += normalizedStartTime;
+                }
             }
             else// Finished.
             {

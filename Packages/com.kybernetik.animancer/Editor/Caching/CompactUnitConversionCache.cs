@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 // Inspector Gadgets // https://kybernetik.com.au/animancer // Copyright 2017-2024 Kybernetik //
 
 #if UNITY_EDITOR && UNITY_IMGUI
@@ -46,19 +46,22 @@ namespace Animancer.Units.Editor
         /************************************************************************************************************************/
 
         /// <summary>The suffix added to the end of each value.</summary>
-        public readonly string Suffix;
+        public string Suffix;
 
         /// <summary>The <see cref="Suffix"/> with a <c>~</c> before it to indicate an approximation.</summary>
-        public readonly string ApproximateSuffix;
+        public string ApproximateSuffix;
 
         /// <summary>The value <c>0</c> with the <see cref="Suffix"/>.</summary>
-        public readonly string ConvertedZero;
+        public string ConvertedZero;
 
         /// <summary>The value <c>0</c> with the <see cref="ApproximateSuffix"/>.</summary>
-        public readonly string ConvertedSmallPositive;
+        public string ConvertedSmallPositive;
 
         /// <summary>The value <c>-0</c> with the <see cref="ApproximateSuffix"/>.</summary>
-        public readonly string ConvertedSmallNegative;
+        public string ConvertedSmallNegative;
+
+        /// <summary>The string to return when converting <see cref="float.NaN"/>.</summary>
+        public string ConvertedNaN;
 
         /// <summary>The pixel width of the <see cref="Suffix"/> when drawn by <see cref="EditorStyles.numberField"/>.</summary>
         public float _SuffixWidth;
@@ -98,6 +101,7 @@ namespace Animancer.Units.Editor
             Suffix = suffix;
             ApproximateSuffix = "~" + Suffix;
             ConvertedZero = "0" + Suffix;
+            ConvertedNaN = "NaN" + Suffix;
             ConvertedSmallPositive = "0" + ApproximateSuffix;
             ConvertedSmallNegative = "-0" + ApproximateSuffix;
         }
@@ -105,13 +109,15 @@ namespace Animancer.Units.Editor
         /************************************************************************************************************************/
 
         /// <summary>
-        /// Returns a cached string representing the `value` trimmed to fit within the `width` (if necessary) and with
-        /// the <see cref="Suffix"/> added on the end.
+        /// Returns a cached string representing the `value` trimmed to fit within the `width` (if necessary)
+        /// and with the <see cref="Suffix"/> added on the end.
         /// </summary>
         public string Convert(float value, float width)
         {
             if (value == 0)
                 return ConvertedZero;
+            else if (float.IsNaN(value))
+                return ConvertedNaN;
 
             if (!ShowApproximations)
                 return GetCache(0).Convert(value);

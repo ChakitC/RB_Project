@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -60,6 +60,7 @@ namespace Animancer.Editor.TransitionLibraries
                 return;
 
             DoMainButtonsGUI(library);
+            DoDescriptionGUI(library);
             DoSettingsGUI(library);
             DoEditorDataGUI(library);
             DoSubAssetWarningGUI(library);
@@ -83,6 +84,17 @@ namespace Animancer.Editor.TransitionLibraries
 
         /************************************************************************************************************************/
 
+        /// <summary>Draws several labels describing the contents of the `library`.</summary>
+        private void DoDescriptionGUI(TransitionLibraryAsset library)
+        {
+            var definition = library.Definition;
+            EditorGUILayout.LabelField("Transitions", definition.Transitions.Length.ToString());
+            EditorGUILayout.LabelField("Modifiers", definition.Modifiers.Length.ToString());
+            EditorGUILayout.LabelField("Aliases", definition.Aliases.Length.ToString());
+        }
+
+        /************************************************************************************************************************/
+
         /// <summary>Draws the `library`'s main settings.</summary>
         private void DoSettingsGUI(TransitionLibraryAsset library)
         {
@@ -96,7 +108,7 @@ namespace Animancer.Editor.TransitionLibraries
 
         [NonSerialized] private readonly CachedEditor NestedEditor = new();
 
-        /// <summary>Draws the `library`'s <see cref="TransitionLibraryEditorData"/>.</summary>
+        /// <summary>Draws the `library`'s <see cref="TransitionLibraryEditorDataAsset"/>.</summary>
         private void DoEditorDataGUI(TransitionLibraryAsset library)
         {
             GUILayout.Space(AnimancerGUI.LineHeight);

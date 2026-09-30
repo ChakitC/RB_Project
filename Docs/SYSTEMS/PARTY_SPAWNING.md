@@ -57,6 +57,12 @@ refresh from throwing and rolling back the entire party. After activation the
 HUD's normal refresh reads the initialized state; no early state-machine setup
 or extra Audio Listener is required.
 
+Scoped control tokens can also be acquired and released before `Awake`, with
+the actor context already bound. StateHub stores their masks immediately and
+defers shooting synchronization until its state machines are initialized.
+`CanShoot()` returns false before initialization; a retained token still blocks
+shooting after initialization until its owner releases it.
+
 For allies that share the same prefab, assign `CharacterStats.behaviorSubtree`
 per character. The loader applies that Subtree while the party root is inactive
 and before Behavior Designer's `player` variable is bound. A missing Subtree
@@ -164,3 +170,12 @@ keeping real prefabs, visual loaders, UI and input.
 and clears `CurrentParty`. In Play Mode, callers must wait a frame for deferred
 Destroy before calling `TrySpawnNow`, whose existing duplicate-actor checks remain
 active. Production scenes still default to one automatic spawn in Awake.
+
+## StateHub lifetime
+
+All four actor context subtypes prepare runtime modules once in Awake. Hidden
+Helper actors preserve HP/life and externally owned control tokens across
+activation. StateHub drops move/fire intent, cancels reload/melee/dash/knockback
+work and detaches owner events on disable. On enable it reads fresh snapshots and
+subscribes once. Token holders must release their own holds even when the actor
+has been hidden; destroyed targets can be skipped safely using Unity null checks.

@@ -16,7 +16,7 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnEnterState()
         {
-            mixerState = owner.LocoLayer.Play(owner.LocomotionMixer) as Vector2MixerState;
+            mixerState = owner.PlayLocomotionTransition(owner.LocomotionMixer) as Vector2MixerState;
             current = Vector2.zero;
             owner.SetActivePairBasePoseBlend(current);
         }

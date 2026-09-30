@@ -504,6 +504,7 @@ GameObject:
   - component: {fileID: 8145632287748851207}
   - component: {fileID: 5643808450919508121}
   - component: {fileID: 5314967593416652901}
+  - component: {fileID: -1536537307905668593}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -628,12 +629,15 @@ MonoBehaviour:
   CombatEventBus: {fileID: 1666845100770680886}
   rb: {fileID: 2207675358697019086}
   cc: {fileID: 7373962052237540882}
+  NavigationAgent: {fileID: 0}
+  MovementMotor: {fileID: -1536537307905668593}
   TargetInfo: {fileID: 3675228139914604767}
   Equipment: {fileID: 4800197423176489028}
   AccessoryLoadout: {fileID: 2723905703233099677}
   WeaponSystem: {fileID: 4048141596046314092}
   AnimBrain: {fileID: 7895287034516787951}
   AnimDriver: {fileID: 3933203452649057500}
+  RootMotionDriver: {fileID: 0}
   PairOffsetApplier: {fileID: 3853088793137968342}
   MeleeController: {fileID: 4440949455955109371}
   AimRig: {fileID: 3900802803091656922}
@@ -1370,10 +1374,6 @@ MonoBehaviour:
   colliderRefs: {fileID: 0}
   capsuleCollider: {fileID: 5466108279682062405}
   navMeshAgent: {fileID: 0}
-  agentMoveDriver: {fileID: 0}
-  animBrain: {fileID: 7895287034516787951}
-  rootMotionCCDriver: {fileID: 0}
-  rootMotionNavMeshDriver: {fileID: 0}
   mode: 0
   gravity: -25
   terminalVelocity: -50
@@ -1524,6 +1524,7 @@ MonoBehaviour:
   unavailableBrightness: 0.25
   appearSeconds: 0.18
   disappearSeconds: 0.12
+  logPresentation: 0
 --- !u!114 &5314967593416652901
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1555,6 +1556,18 @@ MonoBehaviour:
   impactVfx: {fileID: 0}
   warpFadeOutSeconds: 0.04
   warpFadeInSeconds: 0.08
+--- !u!114 &-1536537307905668593
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2311559804654788738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 075d5f6cfec8f664199b898d72f49100, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2390375286862288330
 GameObject:
   m_ObjectHideFlags: 0
@@ -2364,6 +2377,7 @@ MonoBehaviour:
   holdSafetyMargin: 0.08
   logInterruptionFlow: 0
   defensiveBlockEnabled: 1
+  allyBlockMinimumDistance: 0.5
   logDefensiveBlock: 0
 --- !u!1001 &7062182068417119161
 PrefabInstance:

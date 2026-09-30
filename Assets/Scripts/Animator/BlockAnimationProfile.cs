@@ -1,10 +1,14 @@
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Game/Characters/Block Animation Profile")]
+// Legacy serialized asset retained for migration and existing references.
+// Author new Block animation in CharacterAnimProfileSO.block.
 public sealed class BlockAnimationProfile : ScriptableObject
 {
+    [Header("Legacy — edit Character Animation Profile / Block instead")]
     public AnimationClip beginClip;
     public AnimationClip impactClip;
+    [Tooltip("Optional Cooperative Block struggle loop. Empty keeps the existing held guard pose.")]
+    public AnimationClip cooperativeStruggleClip;
     [Tooltip("First sampled frame of Begin. Skip any approach/jump baked into the clip.")]
     [Range(0f, 1f)] public float beginStartNormalized;
     [Range(0f, 1f)] public float guardPoseNormalized = 0.35f;

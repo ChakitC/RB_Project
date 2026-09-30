@@ -7,10 +7,20 @@ public static class PartyComboPlacementResolver
         CharacterPlacementFootprint footprint, Transform target, AITargetIdentity targetIdentity,
         PartyComboExecutionProfile profile, Camera camera,
         CharacterPlacementReservationService reservations,
-        out CharacterPlacementRequest selectedRequest, out CharacterPlacementResult selectedResult)
+        out CharacterPlacementRequest selectedRequest, out CharacterPlacementResult selectedResult,
+        CharacterPlacementAnimationInput animation = null, float placementNormalized = 0f,
+        LayerMask rootMotionIgnoredLayers = default)
     {
         selectedRequest = null;
         selectedResult = default;
+        bool alignPlacement = profile.placementPolicy == PartyComboPlacementPolicy.AlignPlacementPointToEventTarget;
+        CharacterPlacementAnimationInput.Sample impact = default;
+        if (alignPlacement && (animation == null || !animation.PlanarRootMotionEnabled ||
+            !animation.TrySample(placementNormalized, out impact)))
+        {
+            selectedResult = CharacterPlacementResult.Failed("Combo placement requires a sampled root-motion trajectory.");
+            return false;
+        }
         Vector3 away = actor.transform.position - target.position;
         away.y = 0f;
         if (away.sqrMagnitude < 0.0001f)
@@ -29,14 +39,28 @@ public static class PartyComboPlacementResolver
             Vector3 facing = Vector3.ProjectOnPlane(target.position - position, Vector3.up);
             Quaternion rotation = facing.sqrMagnitude > 0.0001f
                 ? Quaternion.LookRotation(facing.normalized, Vector3.up) : actor.transform.rotation;
+            Vector3? desiredImpact = null;
+            if (alignPlacement)
+            {
+                desiredImpact = position;
+                // The ring anchors the jump's ground plane. Keep S on that plane;
+                // the authored Y curve determines root height at A.
+                if (animation.PreserveVerticalMotion)
+                    desiredImpact += Vector3.up * impact.LocalPosition.y;
+                rotation *= Quaternion.Inverse(Quaternion.Euler(0f, impact.LocalYaw, 0f));
+                Vector3 displacement = impact.LocalPosition;
+                if (animation.PreserveVerticalMotion) displacement.y = 0f;
+                position -= rotation * displacement;
+            }
             var candidate = new CharacterPlacementRequest.Candidate(position, rotation,
-                Mathf.Abs(Mathf.DeltaAngle(0f, angle)), i);
+                Mathf.Abs(Mathf.DeltaAngle(0f, angle)), i, desiredImpact);
             var request = new CharacterPlacementRequest(actor.transform, actorCollider, footprint,
                 targetIdentity, target, CharacterPlacementRequest.AnchorSnapshot.Capture(target, targetIdentity),
-                new[] { candidate }, null, 0f, null,
-                profile.requireUnobstructedPosition ? Physics.DefaultRaycastLayers : 0,
-                0, actor.transform, actor, effectivePlanarRootMotion: false,
-                animationRequired: false, mobileActor: true,
+                new[] { candidate }, alignPlacement ? animation : null, alignPlacement ? placementNormalized : 0f, null,
+                profile.requireUnobstructedPosition
+                    ? Physics.DefaultRaycastLayers & ~(alignPlacement ? rootMotionIgnoredLayers.value : 0) : 0,
+                0, actor.transform, actor, effectivePlanarRootMotion: alignPlacement,
+                animationRequired: alignPlacement, mobileActor: true,
                 runtimePolicy: CharacterPlacementRuntimePolicy.CreateDefault(profile.requireNavMesh,
                     profile.navMeshSampleDistance, QueryTriggerInteraction.Ignore));
             if (!CharacterPlacementResolver.TryResolve(request, reservations, out CharacterPlacementResult result))

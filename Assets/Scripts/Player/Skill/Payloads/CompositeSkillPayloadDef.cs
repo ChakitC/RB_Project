@@ -11,6 +11,11 @@ public sealed class CompositeSkillPayloadDef : SkillPayloadDef
 
     public IReadOnlyList<SkillEffectStep> Steps => steps;
 
+    [SerializeField, BoxGroup("Placement")]
+    private bool overrideTargetPlacement;
+    [SerializeField, BoxGroup("Placement"), ShowIf(nameof(overrideTargetPlacement)), MinValue(0f)]
+    private float targetStandOffDistanceAtCastPoint = 1f;
+
     // Authoring-only mutators. Normal designer flows must go through NodeAbilityAuthoringService,
     // which wraps these in an Undo group alongside the embedded child payload and binding id.
     public void AddStep(SkillEffectStep step)
@@ -70,15 +75,32 @@ public sealed class CompositeSkillPayloadDef : SkillPayloadDef
 
     public override bool TryGetTargetPlacement(out SkillTargetPlacementSpec placement)
     {
+        placement = default;
+        if (overrideTargetPlacement)
+        {
+            if (!float.IsFinite(targetStandOffDistanceAtCastPoint) || targetStandOffDistanceAtCastPoint <= 0f)
+                return false;
+            placement = new SkillTargetPlacementSpec(targetStandOffDistanceAtCastPoint);
+            return true;
+        }
+
+        bool found = false;
         for (int i = 0; i < steps.Count; i++)
         {
             SkillPayloadDef payload = GetStepPayload(steps[i]);
-            if (payload != null && payload.TryGetTargetPlacement(out placement))
-                return true;
+            if (payload == null || !payload.TryGetTargetPlacement(out var candidate))
+                continue;
+            // Legacy inference is only valid for one unconditional provider. Placement is
+            // decided before execution and must not depend on a locked upgrade or list order.
+            if (found || !string.IsNullOrWhiteSpace(steps[i].RequiredUpgradeId))
+            {
+                placement = default;
+                return false;
+            }
+            placement = candidate;
+            found = true;
         }
-
-        placement = default;
-        return false;
+        return found;
     }
 
     public override void CollectTimelineEventNames(List<CombatTimelineEventName> eventNames)
@@ -97,14 +119,39 @@ public sealed class CompositeSkillPayloadDef : SkillPayloadDef
         }
     }
 
+    public override bool RequiresTimelineEventAfterCastPoint(CombatTimelineEventName eventName)
+    {
+        for (int i = 0; i < steps.Count; i++)
+        {
+            SkillPayloadDef child = GetStepPayload(steps[i]);
+            // Nested composites are invalid authoring data; do not follow a possible cycle.
+            if (child != null && child is not CompositeSkillPayloadDef &&
+                child.RequiresTimelineEventAfterCastPoint(eventName))
+                return true;
+        }
+
+        return false;
+    }
+
     public override void CollectValidationIssues(List<string> issues)
+        => CollectCompositeValidationIssues(issues, includeChildren: true);
+
+    internal void CollectStructureValidationIssues(List<string> issues)
+        => CollectCompositeValidationIssues(issues, includeChildren: false);
+
+    private void CollectCompositeValidationIssues(List<string> issues, bool includeChildren)
     {
         if (issues == null)
             return;
 
         bool sawProjectileOrHitboxPayload = false;
         bool sawAnimationOwningPayload = false;
+        int placementProviders = 0;
         var ownedPayloads = new HashSet<SkillPayloadDef>();
+
+        if (overrideTargetPlacement &&
+            (!float.IsFinite(targetStandOffDistanceAtCastPoint) || targetStandOffDistanceAtCastPoint <= 0f))
+            issues.Add("Composite root target placement distance must be finite and greater than 0.");
 
         for (int i = 0; i < steps.Count; i++)
         {
@@ -144,6 +191,13 @@ public sealed class CompositeSkillPayloadDef : SkillPayloadDef
                 sawProjectileOrHitboxPayload = true;
             }
 
+            if (!overrideTargetPlacement && wrapped.TryGetTargetPlacement(out _))
+            {
+                placementProviders++;
+                if (!string.IsNullOrWhiteSpace(step.RequiredUpgradeId))
+                    issues.Add($"Composite step {i} gates target placement behind an upgrade. Configure Target Placement on the composite root.");
+            }
+
             if (wrapped is MorphSkillPayloadDef)
             {
                 if (sawAnimationOwningPayload)
@@ -160,8 +214,10 @@ public sealed class CompositeSkillPayloadDef : SkillPayloadDef
                 issues.Add($"Composite step {i} wraps a payload with non-default helperFacingMode/chainContinue* values. Copy those values up to the composite root — the composite is the unique owner.");
             }
 
-            wrapped.CollectValidationIssues(issues);
+            if (includeChildren) wrapped.CollectValidationIssues(issues);
         }
+        if (placementProviders > 1)
+            issues.Add("Multiple composite payloads provide target placement. Configure Target Placement on the composite root; child order cannot select placement.");
     }
 
     /// <summary>
@@ -231,6 +287,8 @@ public sealed class CompositeSkillPayloadDef : SkillPayloadDef
 
     static SkillPayloadDef GetStepPayload(SkillEffectStep step)
     {
-        return step is PayloadStep payloadStep ? payloadStep.Payload : null;
+        // Validation reports nested composites. Aggregation must not follow a malformed cycle.
+        return step is PayloadStep payloadStep && payloadStep.Payload is not CompositeSkillPayloadDef
+            ? payloadStep.Payload : null;
     }
 }

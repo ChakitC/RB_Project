@@ -48,6 +48,14 @@ PrefabInstance:
       propertyPath: buildModelAutomatically
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2132836193328615073, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: sensor
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2132836193328615073, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: skillUserSystem
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 2482698924855760932, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: m_LocalPosition.x
       value: -0.30640697
@@ -104,6 +112,14 @@ PrefabInstance:
       propertyPath: ColliderRefs
       value: 
       objectReference: {fileID: 7156593614441404361}
+    - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: MovementMotor
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: NavigationAgent
+      value: 
+      objectReference: {fileID: 352167979957856912}
     - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: EnemyLevelSystem
       value: 
@@ -171,6 +187,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 7649753103391906527, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4811730398001626973}
+    - targetCorrespondingSourceObject: {fileID: 7649753103391906527, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 0}
     - targetCorrespondingSourceObject: {fileID: 4066815104232824939, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5268174288600250813}
@@ -178,6 +197,11 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1869770181813028692}
   m_SourcePrefab: {fileID: 100100000, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+--- !u!195 &352167979957856912 stripped
+NavMeshAgent:
+  m_CorrespondingSourceObject: {fileID: 3160894530039119532, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+  m_PrefabInstance: {fileID: 3404411507299275836}
+  m_PrefabAsset: {fileID: 0}
 --- !u!114 &1409960314190186736 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 4372935134327282892, guid: 6e3801d708972a846aa41395176971c7, type: 3}

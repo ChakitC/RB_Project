@@ -42,6 +42,9 @@ public class MapRunController : MonoBehaviour
     [Tooltip("UI map แบบเบื้องต้นที่จะ refresh เมื่อ graph หรือห้องปัจจุบันเปลี่ยน")]
     [SerializeField] private MapView mapView;
 
+    [Tooltip("ไฟหลักของ scene ถ้าไม่ใส่จะหา Directional Light ใน scene นี้ หรือสร้างเมื่อไม่มี")]
+    [SerializeField] private Light directionalLight;
+
     [Header("Runtime NavMesh")]
     [SerializeField, Min(0f)] private float partyWarpNavMeshSampleRadius = 3f;
 
@@ -64,6 +67,17 @@ public class MapRunController : MonoBehaviour
     private Transform summonWorldRoot;
     private Transform summonStagingRoot;
     private bool stageIntroAttempted;
+    private Material sceneSkyboxMaterial;
+    private bool sceneSkyboxCaptured;
+    private Light capturedDirectionalLight;
+    private bool sceneDirectionalLightEnabled;
+    private Color sceneDirectionalLightColor;
+    private float sceneDirectionalLightIntensity;
+    private Quaternion sceneDirectionalLightRotation;
+    private LightShadows sceneDirectionalLightShadows;
+    private float sceneDirectionalLightShadowStrength;
+    private bool sceneDirectionalLightUseColorTemperature;
+    private float sceneDirectionalLightColorTemperature;
     private readonly List<Transform> cleanupRoomRoots = new();
 
     public event Action<MapGraph, MapNode> MapChanged;
@@ -216,6 +230,8 @@ public class MapRunController : MonoBehaviour
             return;
         }
 
+        ApplyRunDirectionalLight();
+        ApplyRunSkybox();
         Session.SetGraph(graph);
         CaptureDeployedLoadouts();
         StageProgression.BeginRun(runConfig, graph);
@@ -249,7 +265,123 @@ public class MapRunController : MonoBehaviour
     {
         ResetRoomCache();
         Session.ClearRun();
+        RestoreSceneDirectionalLight();
+        RestoreSceneSkybox();
         NotifyMapChanged();
+    }
+
+    void ApplyRunDirectionalLight()
+    {
+        if (runConfig == null || !runConfig.OverrideDirectionalLight)
+        {
+            RestoreSceneDirectionalLight();
+            return;
+        }
+
+        if (capturedDirectionalLight == null)
+        {
+            Light light = ResolveDirectionalLight();
+            capturedDirectionalLight = light;
+            sceneDirectionalLightEnabled = light.enabled;
+            sceneDirectionalLightColor = light.color;
+            sceneDirectionalLightIntensity = light.intensity;
+            sceneDirectionalLightRotation = light.transform.rotation;
+            sceneDirectionalLightShadows = light.shadows;
+            sceneDirectionalLightShadowStrength = light.shadowStrength;
+            sceneDirectionalLightUseColorTemperature = light.useColorTemperature;
+            sceneDirectionalLightColorTemperature = light.colorTemperature;
+        }
+
+        capturedDirectionalLight.enabled = true;
+        capturedDirectionalLight.color = runConfig.DirectionalLightColor;
+        capturedDirectionalLight.intensity = runConfig.DirectionalLightIntensity;
+        capturedDirectionalLight.transform.rotation = Quaternion.Euler(runConfig.DirectionalLightEulerAngles);
+        capturedDirectionalLight.shadows = runConfig.DirectionalLightShadows;
+        capturedDirectionalLight.shadowStrength = runConfig.DirectionalLightShadowStrength;
+        capturedDirectionalLight.useColorTemperature = runConfig.DirectionalLightUseColorTemperature;
+        capturedDirectionalLight.colorTemperature = runConfig.DirectionalLightColorTemperature;
+    }
+
+    Light ResolveDirectionalLight()
+    {
+        if (directionalLight != null && directionalLight.type == LightType.Directional &&
+            directionalLight.gameObject.scene == gameObject.scene)
+            return directionalLight;
+
+        Light sun = RenderSettings.sun;
+        if (sun != null && sun.type == LightType.Directional && sun.gameObject.scene == gameObject.scene)
+            return directionalLight = sun;
+
+        directionalLight = null;
+        foreach (GameObject root in gameObject.scene.GetRootGameObjects())
+        {
+            foreach (Light candidate in root.GetComponentsInChildren<Light>())
+            {
+                if (candidate.type != LightType.Directional || !candidate.enabled)
+                    continue;
+                if (roomParent != null && candidate.transform.IsChildOf(roomParent))
+                    continue;
+                if (directionalLight == null || candidate.intensity > directionalLight.intensity)
+                    directionalLight = candidate;
+            }
+        }
+
+        if (directionalLight != null)
+            return directionalLight;
+
+        var lightObject = new GameObject("Run Directional Light");
+        lightObject.transform.SetParent(transform, false);
+        directionalLight = lightObject.AddComponent<Light>();
+        directionalLight.type = LightType.Directional;
+        // Its scene default is off, so aborting or switching to an unconfigured stage restores it.
+        directionalLight.enabled = false;
+        return directionalLight;
+    }
+
+    void RestoreSceneDirectionalLight()
+    {
+        if (capturedDirectionalLight == null)
+            return;
+
+        capturedDirectionalLight.enabled = sceneDirectionalLightEnabled;
+        capturedDirectionalLight.color = sceneDirectionalLightColor;
+        capturedDirectionalLight.intensity = sceneDirectionalLightIntensity;
+        capturedDirectionalLight.transform.rotation = sceneDirectionalLightRotation;
+        capturedDirectionalLight.shadows = sceneDirectionalLightShadows;
+        capturedDirectionalLight.shadowStrength = sceneDirectionalLightShadowStrength;
+        capturedDirectionalLight.useColorTemperature = sceneDirectionalLightUseColorTemperature;
+        capturedDirectionalLight.colorTemperature = sceneDirectionalLightColorTemperature;
+    }
+
+    void ApplyRunSkybox()
+    {
+        if (!sceneSkyboxCaptured)
+        {
+            sceneSkyboxMaterial = RenderSettings.skybox;
+            sceneSkyboxCaptured = true;
+        }
+
+        SetSkybox(runConfig != null && runConfig.SkyboxMaterial != null
+            ? runConfig.SkyboxMaterial
+            : sceneSkyboxMaterial);
+    }
+
+    void RestoreSceneSkybox()
+    {
+        // RenderSettings belongs to the active scene; unloading MapRun must not overwrite
+        // the newly active Basement scene's skybox.
+        if (sceneSkyboxCaptured && gameObject.scene == UnityEngine.SceneManagement.SceneManager.GetActiveScene())
+            SetSkybox(sceneSkyboxMaterial);
+    }
+
+    static void SetSkybox(Material material)
+    {
+        if (RenderSettings.skybox == material)
+            return;
+
+        RenderSettings.skybox = material;
+        if (Application.isPlaying)
+            DynamicGI.UpdateEnvironment();
     }
 
     void CaptureDeployedLoadouts()
@@ -554,6 +686,9 @@ public class MapRunController : MonoBehaviour
     {
         if (Application.isPlaying)
             ResetRoomCache();
+
+        RestoreSceneDirectionalLight();
+        RestoreSceneSkybox();
     }
 
     void BindItemDropParent(Transform parent)

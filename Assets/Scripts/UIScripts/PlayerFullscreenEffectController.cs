@@ -108,10 +108,30 @@ public class PlayerFullscreenEffectController : MonoBehaviour, IPlayerFullscreen
 
     public bool PlayPerfectDodge(Vector3 worldDashDirection, float slowDuration, float slowScale)
     {
+        return PlayScreenWind(worldDashDirection, slowDuration);
+    }
+
+    public bool PlayScreenWind(Vector3 worldWindDirection, float duration)
+    {
         GameObject prefab = ResolveScreenEffectPrefab(perfectDodgeScreenEffectPrefab, DefaultPerfectDodgeScreenEffectPath);
-        float lifetime = Mathf.Max(minimumScreenEffectLifetime, slowDuration);
-        float rotationZ = ResolveScreenDirectionAngle(worldDashDirection);
+        float lifetime = Mathf.Max(minimumScreenEffectLifetime, duration);
+        float rotationZ = ResolveScreenDirectionAngle(worldWindDirection);
         return PlayScreenEffect(prefab, lifetime, rotationZ);
+    }
+
+    public PlayerScreenEffectHandle BeginScreenWind(Vector3 worldWindDirection, float duration)
+    {
+        if (!float.IsFinite(duration) || duration <= 0f) return null;
+        GameObject prefab = ResolveScreenEffectPrefab(perfectDodgeScreenEffectPrefab, DefaultPerfectDodgeScreenEffectPath);
+        Camera effectCamera = ResolveEffectCamera();
+        if (prefab == null || effectCamera == null) return null;
+        GameObject instance = Instantiate(prefab);
+        instance.name = $"{prefab.name} (Owned Runtime)";
+        ConfigureScreenEffectInstance(instance, effectCamera, ResolveScreenDirectionAngle(worldWindDirection));
+        var fadeState = new ScreenEffectFadeState(instance);
+        return new PlayerScreenEffectHandle(instance, duration, Mathf.Max(0f, screenEffectOpacityMultiplier),
+            useScreenEffectFade ? Mathf.Max(0f, fadeInDuration) : 0f,
+            useScreenEffectFade ? Mathf.Max(0f, fadeOutDuration) : 0f, fadeState.Apply);
     }
 
     bool PlayScreenEffect(GameObject prefab, float minimumLifetime, float localRotationZ)

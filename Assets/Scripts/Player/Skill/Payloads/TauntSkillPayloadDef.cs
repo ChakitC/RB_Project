@@ -54,6 +54,9 @@ public sealed class TauntSkillPayloadDef : SkillPayloadDef
 
     public override bool RequiresSkillTimelineEvents => true;
 
+    public override bool RequiresTimelineEventAfterCastPoint(CombatTimelineEventName eventName) =>
+        eventName == CombatTimelineEventName.TauntApply;
+
     public override void CollectTimelineEventNames(List<CombatTimelineEventName> eventNames)
     {
         CombatTimelineEventNames.AddUnique(eventNames, CombatTimelineEventName.TauntApply);

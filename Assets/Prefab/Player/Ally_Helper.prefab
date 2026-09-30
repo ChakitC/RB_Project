@@ -666,6 +666,7 @@ GameObject:
   - component: {fileID: 5412795469213032330}
   - component: {fileID: 8621773744093801160}
   - component: {fileID: 3310355652327212511}
+  - component: {fileID: 9091080699569804960}
   m_Layer: 10
   m_Name: Ally_Helper
   m_TagString: Ally
@@ -1231,12 +1232,15 @@ MonoBehaviour:
   CombatEventBus: {fileID: 1499039619125665064}
   rb: {fileID: 6421898623282018613}
   cc: {fileID: 3471594666334970129}
+  NavigationAgent: {fileID: 5087575678296884270}
+  MovementMotor: {fileID: 9091080699569804960}
   TargetInfo: {fileID: 7030153476449209181}
   Equipment: {fileID: 5779990549465913024}
   AccessoryLoadout: {fileID: 2362201806535484381}
   WeaponSystem: {fileID: 2207919931193287054}
   AnimBrain: {fileID: 5728039111650578654}
   AnimDriver: {fileID: 5681820240419234125}
+  RootMotionDriver: {fileID: 0}
   PairOffsetApplier: {fileID: 6757207689294103157}
   MeleeController: {fileID: 9124542019871945994}
   AimRig: {fileID: 8400816988707940924}
@@ -1470,10 +1474,6 @@ MonoBehaviour:
   colliderRefs: {fileID: 0}
   capsuleCollider: {fileID: 0}
   navMeshAgent: {fileID: 5087575678296884270}
-  agentMoveDriver: {fileID: 6817894532092306520}
-  animBrain: {fileID: 5728039111650578654}
-  rootMotionCCDriver: {fileID: 0}
-  rootMotionNavMeshDriver: {fileID: 60278018290152249}
   mode: 1
   gravity: -25
   terminalVelocity: -50
@@ -1587,7 +1587,7 @@ MonoBehaviour:
   warpFadeInSeconds: 0.08
 --- !u!114 &3310355652327212511
 MonoBehaviour:
-  m_ObjectHideFlags: 2
+  m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
@@ -1660,6 +1660,18 @@ MonoBehaviour:
       m_Version: 3.4
     m_SharedVariableGroupsData: []
     m_UniqueID: 863454151
+--- !u!114 &9091080699569804960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5546123616510741782}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 075d5f6cfec8f664199b898d72f49100, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &5742793755352266359
 GameObject:
   m_ObjectHideFlags: 0

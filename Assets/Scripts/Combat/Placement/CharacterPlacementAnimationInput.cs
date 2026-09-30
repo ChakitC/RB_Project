@@ -42,18 +42,22 @@ public sealed class CharacterPlacementAnimationInput
         Avatar avatar,
         bool planarRootMotionEnabled,
         Sample[] samples,
-        Segment[] segments = null)
+        Segment[] segments = null,
+        bool preserveVerticalMotion = false)
     {
         Clip = clip;
         Avatar = avatar;
         PlanarRootMotionEnabled = planarRootMotionEnabled;
         Samples = samples ?? Array.Empty<Sample>();
         Segments = segments ?? Array.Empty<Segment>();
+        PreserveVerticalMotion = preserveVerticalMotion;
     }
 
     public AnimationClip Clip { get; }
     public Avatar Avatar { get; }
     public bool PlanarRootMotionEnabled { get; }
+    // PlanarRootMotionEnabled is the legacy trajectory-enable gate, not a Y filter.
+    public bool PreserveVerticalMotion { get; }
     public Sample[] Samples { get; }
     public Segment[] Segments { get; }
     public bool HasSamples => Samples.Length > 0;

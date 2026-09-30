@@ -12,7 +12,9 @@ internal sealed class DefensiveBlockApproachMotor
     readonly LayerMask worldLayers;
     readonly NavMeshAgent agent;
     readonly AgentMoveDriver move;
-    readonly bool moveEnabled, updatePosition, updateRotation, stopped, kinematic, ownsAgent;
+    readonly bool moveEnabled, kinematic, ownsAgent;
+    readonly CharacterMovementMotor movementMotor;
+    readonly int agentSuspendToken;
     readonly int controlToken;
     Vector3 previous;
     float elapsed;
@@ -74,13 +76,14 @@ internal sealed class DefensiveBlockApproachMotor
         controlToken = ctx.stateHub != null ? ctx.stateHub.AcquireExternalControlBlockToken(
             ControlBlockFlags.Move | ControlBlockFlags.Rotate | ControlBlockFlags.Shoot) : 0;
         if (ctx is EnemyContext enemy) { agent = enemy.Agent; move = enemy.AgentMoveDriver; }
+        if (ctx.NavigationAgent) agent = ctx.NavigationAgent;
+        movementMotor = ctx.EnsureMovementMotor();
         if (move != null) { moveEnabled = move.enabled; move.enabled = false; }
         ownsAgent = agent != null && agent.enabled && agent.isOnNavMesh;
         if (ownsAgent)
         {
-            updatePosition = agent.updatePosition; updateRotation = agent.updateRotation; stopped = agent.isStopped;
-            agent.isStopped = true; agent.updatePosition = false; agent.updateRotation = false;
-            agent.nextPosition = origin;
+            agentSuspendToken = movementMotor.AcquireAgentSuspension(agent);
+            CharacterMovementMotor.SyncAgent(agent, ctx.transform);
         }
         if (ctx.rb != null) { kinematic = ctx.rb.isKinematic; ctx.rb.isKinematic = true; }
     }
@@ -97,7 +100,12 @@ internal sealed class DefensiveBlockApproachMotor
             Mathf.Abs(floor.position.y - desired.y) > .2f) return false;
         // A stale NavMesh alone does not prove that a floor still exists.
         if (!HasGround(floor.position, worldLayers)) return false;
-        ctx.transform.position = previous = floor.position;
+        var settings = CharacterMovementSettings.Default;
+        settings.CollisionMask = worldLayers;
+        settings.Slide = true;
+        movementMotor.Move(floor.position - ctx.transform.position, settings);
+        previous = ctx.transform.position;
+        if (Vector3.Distance(previous, floor.position) > .005f) return false;
         if (ownsAgent && agent != null && agent.enabled && agent.isOnNavMesh) agent.nextPosition = previous;
         return true;
     }
@@ -106,12 +114,8 @@ internal sealed class DefensiveBlockApproachMotor
     {
         if (released) return;
         released = true;
+        if (movementMotor) movementMotor.ReleaseAgentSuspension(agentSuspendToken);
         if (ctx == null) return;
-        if (ownsAgent && agent != null && agent.enabled)
-        {
-            if (agent.isOnNavMesh) { agent.nextPosition = ctx.transform.position; agent.isStopped = stopped; }
-            agent.updatePosition = updatePosition; agent.updateRotation = updateRotation;
-        }
         if (move != null) move.enabled = moveEnabled;
         if (ctx.rb != null) ctx.rb.isKinematic = kinematic;
         if (controlToken != 0) ctx.stateHub?.ReleaseExternalControlBlockToken(controlToken);

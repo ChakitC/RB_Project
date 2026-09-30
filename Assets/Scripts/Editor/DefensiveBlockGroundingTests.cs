@@ -10,8 +10,7 @@ public sealed class DefensiveBlockGroundingTests
     [Test]
     public void AuthoredImpactSegmentKeepsASupportingFootNearGround()
     {
-        var profile = AssetDatabase.LoadAssetAtPath<BlockAnimationProfile>(
-            "Assets/Data/DefensiveBlock/AiresBlockAnimation.asset");
+        var profile = AssetDatabase.LoadAssetAtPath<CharacterStats>(DefensiveBlockProductionAuthoring.AiresPath).animProfile.block;
         Assert.That(profile.impactStartNormalized, Is.LessThan(profile.impactEndNormalized));
         var model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GetAssetPath(profile.impactClip)));
         try
@@ -36,8 +35,7 @@ public sealed class DefensiveBlockGroundingTests
     [Test]
     public void AuthoredBeginSegmentKeepsFeetNearGround()
     {
-        var profile = AssetDatabase.LoadAssetAtPath<BlockAnimationProfile>(
-            "Assets/Data/DefensiveBlock/AiresBlockAnimation.asset");
+        var profile = AssetDatabase.LoadAssetAtPath<CharacterStats>(DefensiveBlockProductionAuthoring.AiresPath).animProfile.block;
         Assert.That(profile.beginStartNormalized, Is.LessThanOrEqualTo(profile.guardPoseNormalized));
         var model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(
             AssetDatabase.GetAssetPath(profile.beginClip)));

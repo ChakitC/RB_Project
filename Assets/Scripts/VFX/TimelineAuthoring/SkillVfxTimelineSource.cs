@@ -30,6 +30,11 @@ public sealed class SkillVfxTimelineSource : IAnimationVfxTimelineSource
         }
 
         lanes.AddRange(BaseLanes);
+        lanes.Add(new AnimationVfxTimelineLane(
+            "Placement Point", AnimationVfxTimelineLaneKind.Point,
+            pointValue: () => skill != null ? skill.GetPlacementPointNormalized() : 0f,
+            setPointValue: SetPlacementPointValue,
+            pointLabel: GetPlacementPointLabel));
         if (skill != null && skill.BlockablePreCast)
         {
             lanes.Add(new AnimationVfxTimelineLane(
@@ -78,6 +83,29 @@ public sealed class SkillVfxTimelineSource : IAnimationVfxTimelineSource
     }
 
     public void SetRangeValue(Vector2 value) { }
+
+    void SetPlacementPointValue(float value)
+    {
+        if (skill == null || !float.IsFinite(value)) return;
+        Undo.RecordObject(skill, "Move Skill Placement Point");
+        skill.placementTimingSource = SkillPlacementTimingSource.Custom;
+        skill.placementPointNormalized = Mathf.Clamp(value, 0f, 0.999f);
+        EditorUtility.SetDirty(skill);
+    }
+
+    string GetPlacementPointLabel()
+    {
+        if (skill == null) return "Placement Point";
+        switch (skill.placementTimingSource)
+        {
+            case SkillPlacementTimingSource.HitStart:
+                return skill.TryGetPlacementHitStart(out _) ? "Placement: HitStart" : "Placement: HitStart Fallback";
+            case SkillPlacementTimingSource.Custom:
+                return "Placement: Custom";
+            default:
+                return "Placement: Legacy (Cast Point)";
+        }
+    }
 
     public void ReplaceCues(IReadOnlyList<AnimationVfxCue> values)
     {

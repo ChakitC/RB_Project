@@ -21,7 +21,9 @@ public static class DefensiveBlockProductionAuthoring
         var aires = AssetDatabase.LoadAssetAtPath<CharacterStats>(AiresPath);
         // Follow the character binding so renaming the settings asset does not create a replacement.
         var actor = aires.defensiveBlock != null ? aires.defensiveBlock : GetOrCreate<DefensiveBlockActorProfile>("GuardSetting.asset");
-        var animation = GetOrCreate<BlockAnimationProfile>("AiresBlockAnimation.asset");
+        if (aires.animProfile == null) throw new InvalidOperationException("Aires needs an Animation Profile.");
+        BlockAnimationProfileMigration.TryMigrate(aires.animProfile, actor.animation);
+        var animation = aires.animProfile.block ??= new BlockAnimationSettings();
         if (animation.beginClip == null)
         {
             animation.beginStartNormalized = 0.55f;
@@ -38,12 +40,11 @@ public static class DefensiveBlockProductionAuthoring
             throw new InvalidOperationException("Cannot copy Aires recoil clip.");
         animation.beginClip = Clip("Assets/Animation/Ch_Aires/Aires_Block.fbx");
         animation.impactClip = Clip(recoilPath);
-        actor.animation = animation;
         actor.impactVfx = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/VFX/JMO Assets/Cartoon FX Remaster/CFXR Prefabs/Electric/CFXR Lightning Impact.prefab");
         int world = LayerMask.GetMask("Default", "Ground", "Ground Y", "Terrain", "Barrier");
         attack.worldLayers = world; actor.worldLayers = world;
         skill.defensiveBlock = attack; aires.defensiveBlock = actor;
-        foreach (var asset in new UnityEngine.Object[] { actor, animation, skill, aires }) EditorUtility.SetDirty(asset);
+        foreach (var asset in new UnityEngine.Object[] { actor, aires.animProfile, skill, aires }) EditorUtility.SetDirty(asset);
         // Move the authored presentation assets, preserving their GUIDs and existing references.
         foreach (string file in new[] { "BlockReadyFlare.shader", "BlockReadyFlare.mat", "BlockReadyFlare.prefab" })
         {
@@ -85,7 +86,7 @@ public static class DefensiveBlockProductionAuthoring
                 motor.ApplyModifiedPropertiesWithoutUndo();
             }
         });
-        foreach (var asset in new UnityEngine.Object[] { actor, animation, skill, aires }) AssetDatabase.SaveAssetIfDirty(asset);
+        foreach (var asset in new UnityEngine.Object[] { actor, aires.animProfile, skill, aires }) AssetDatabase.SaveAssetIfDirty(asset);
     }
 
     static T GetOrCreate<T>(string name) where T : ScriptableObject

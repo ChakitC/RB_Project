@@ -180,6 +180,12 @@ Aim, and animated camera states.
 
 ## Cinematic Handoff
 
+`Billboard` resolves the camera from `GameplayCameraController.GameplayCamera`
+first, falling back to `Camera.main` when the gameplay camera is unavailable or
+disabled. This prevents a bootstrap scene's other `MainCamera` from steering
+Special Shoot Point markers and overhead bars. Billboards copy the camera's
+full world rotation, including roll, after the camera synchronization step.
+
 `CutsceneSkillPresenter` disables `GameplayCameraController` as before. The
 controller disables its Cinemachine camera and brain, allowing the existing
 camera-holder Animancer clip to drive the real camera. On re-enable, Cinemachine

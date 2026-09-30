@@ -117,6 +117,35 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
   m_Name: Feno.Skill_MinigunTerret
   m_EditorClassIdentifier: 
+  comboEnabled: 0
+  comboSteps: []
+  blockSettings:
+    enabled: 0
+    mode: 0
+    timedApproachSeconds: 0.22
+    cooperative:
+      duration: 3
+      initialMeter: 0.5
+      gainPerPress: 0.1
+      drainPerSecond: 0.2
+      worldScale: 0.15
+      enemyStruggleClip: {fileID: 0}
+      enemyStruggleFadeSeconds: 0.06
+    commandRange: 8
+    worldLayers:
+      serializedVersion: 2
+      m_Bits: 1
+    windupSeconds: 0
+    windowStartNormalized: 0
+    windowEndNormalized: 0.62
+    hitboxSteps: 0000000001000000
+    windows: []
+    approachStandOff: 1.6
+    threatHalfWidth: 1.5
+    threatForwardReach: 2.3
+    estimatedChargeSpeed: 8
+    knockbackDistance: 2
+    knockbackSeconds: 0.4
   icon: {fileID: 21300000, guid: 1aaa0728882cff44ea3e2767302f110f, type: 3}
   displayName: Minigun Terret
   skillId: feno.skill.minigunterret
@@ -134,6 +163,10 @@ MonoBehaviour:
   projectileSpeed: 0
   AreaofEffec: 0
   baseRadius: 3
+  partyCommandPlacementMode: 1
+  partyCommandNoTargetPlacement: 0
+  partyCommandTargetDistance: 1.5
+  partyCommandPlayerDistance: 3
   baseEffectDuration: 10
   baseHealPower: 0
   upgradeTree: {fileID: 11400000, guid: ed5ab1776eb2450458c0127dd1ddb5d2, type: 2}
@@ -185,6 +218,8 @@ MonoBehaviour:
   preCastIndicatorPrefab: {fileID: 0}
   cancelPreCastOnStun: 1
   cancelPreCastOnStagger: 1
+  placementTimingSource: 0
+  placementPointNormalized: 0.35
   references:
     version: 2
     RefIds: []

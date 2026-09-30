@@ -18,11 +18,15 @@ public static class SkillPayloadValidationTool
     {
         int issueCount = 0;
         var report = new StringBuilder();
+        SkillExecutionUsageIndex.Rebuild();
 
         foreach (SkillGemDefinition skill in FindAllSkills())
         {
             var issues = new List<string>();
-            ValidateSkill(skill, issues);
+            var diagnostics = new List<SkillValidationIssue>();
+            SkillExecutionUsageIndex.CollectIssues(skill, diagnostics);
+            foreach (var diagnostic in diagnostics)
+                if (diagnostic.Severity == SkillValidationSeverity.Error) issues.Add(diagnostic.ToString());
             if (issues.Count == 0)
                 continue;
 
@@ -44,50 +48,21 @@ public static class SkillPayloadValidationTool
     }
 
     internal static void ValidateSkill(SkillGemDefinition skill, List<string> issues)
+        => ValidateSkillForExecution(skill, SkillExecutionKind.StandardSkill, issues);
+
+    internal static void ValidateSkillForExecution(SkillGemDefinition skill, SkillExecutionKind kind, List<string> issues)
     {
         if (skill == null)
         {
             issues.Add("Skill asset could not be loaded.");
             return;
         }
-
-        if (skill.payload == null)
-        {
-            issues.Add("Execution payload is missing.");
-            return;
-        }
-
-        if (!SkillPayloadAssetUtility.IsEmbedded(skill, skill.payload))
-            issues.Add("Execution payload is not embedded in the skill asset.");
-
-        List<SkillPayloadDef> embeddedPayloads = SkillPayloadAssetUtility.GetEmbeddedPayloads(skill);
-        if (embeddedPayloads.Count == 0)
-            issues.Add("The skill asset contains no embedded payload object.");
-
-        HashSet<SkillPayloadDef> reachable =
-            SkillPayloadAssetUtility.GetReachablePayloads(skill.payload);
-
-        foreach (SkillPayloadDef referenced in reachable)
-        {
-            if (referenced != null && !SkillPayloadAssetUtility.IsEmbedded(skill, referenced))
-            {
-                issues.Add(
-                    $"Referenced payload '{referenced.name}' is not embedded in the same asset as this skill.");
-            }
-        }
-
-        for (int i = 0; i < embeddedPayloads.Count; i++)
-        {
-            SkillPayloadDef embedded = embeddedPayloads[i];
-            if (embedded != null && !reachable.Contains(embedded))
-                issues.Add($"Embedded payload '{embedded.name}' is not referenced by the root payload or any composite step.");
-        }
-
-        skill.payload.CollectValidationIssues(issues);
-        skill.CollectRequiredTimelineValidationIssues(issues);
-        skill.CollectSkillVfxValidationIssues(issues);
+        var diagnostics = new List<SkillValidationIssue>();
+        skill.CollectValidationIssues(diagnostics, kind, includeAuthoring: true);
+        foreach (var diagnostic in diagnostics)
+            if (diagnostic.Severity == SkillValidationSeverity.Error)
+                issues.Add(diagnostic.ToString());
     }
-
     private static List<SkillGemDefinition> FindAllSkills()
     {
         string[] guids = AssetDatabase.FindAssets("t:SkillGemDefinition");

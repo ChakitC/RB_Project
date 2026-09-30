@@ -9,13 +9,15 @@ public sealed class CharacterPlacementRequest
             Quaternion rotation,
             float preferredAngleError,
             int authoredOrder,
-            Vector3? desiredImpactPosition = null)
+            Vector3? desiredImpactPosition = null,
+            bool preservePosition = false)
         {
             Position = position;
             Rotation = rotation == default ? Quaternion.identity : rotation;
             PreferredAngleError = Mathf.Max(0f, preferredAngleError);
             AuthoredOrder = authoredOrder;
             DesiredImpactPosition = desiredImpactPosition;
+            PreservePosition = preservePosition;
         }
 
         public Vector3 Position { get; }
@@ -23,6 +25,8 @@ public sealed class CharacterPlacementRequest
         public float PreferredAngleError { get; }
         public int AuthoredOrder { get; }
         public Vector3? DesiredImpactPosition { get; }
+        // Validate NavMesh support without relocating an actor already standing here.
+        public bool PreservePosition { get; }
     }
 
     public readonly struct AnchorSnapshot

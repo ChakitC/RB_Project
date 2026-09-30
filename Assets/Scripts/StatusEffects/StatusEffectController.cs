@@ -5,6 +5,10 @@ using UnityEngine;
 [DefaultExecutionOrder(-115)]
 public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvider
 {
+    readonly HashSet<int> applicationBlocks = new();
+    int nextApplicationBlock;
+    public int AcquireApplicationBlockToken() { int token = ++nextApplicationBlock; applicationBlocks.Add(token); return token; }
+    public void ReleaseApplicationBlockToken(int token) => applicationBlocks.Remove(token);
     [Header("Refs")]
     [SerializeField] private CharacteContext ctx;
     [SerializeField] private StatsHub statsHub;
@@ -293,7 +297,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         float fallbackDuration,
         ComboExecutionProvenance comboProvenance)
     {
-        if (definition == null)
+        if (definition == null || applicationBlocks.Count > 0)
             return null;
 
         // ใช้ owner-local status clock ตัวเดียวกับที่ Tick ใช้ — constructor/ScheduleFirstTick/AdoptMagnitude

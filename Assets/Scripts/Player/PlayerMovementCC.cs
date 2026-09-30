@@ -2,6 +2,10 @@ using UnityEngine;
 
 public class PlayerMovementCC : MonoBehaviour
 {
+    readonly System.Collections.Generic.HashSet<int> suspensionTokens = new();
+    int nextSuspensionToken;
+    public int AcquireSuspensionToken() { int token = ++nextSuspensionToken; suspensionTokens.Add(token); return token; }
+    public void ReleaseSuspensionToken(int token) => suspensionTokens.Remove(token);
     [Header("Ref")]
     [SerializeField] Transform actorRoot;
     [SerializeField] StateHub stateHub;
@@ -30,6 +34,12 @@ public class PlayerMovementCC : MonoBehaviour
 
     float currentSpeed;
 
+    void ApplyMovement(Vector3 delta)
+    {
+        if (_characteContext && _characteContext.MovementMotor)
+            _characteContext.MovementMotor.Move(delta, CharacterMovementSettings.Default);
+    }
+
     void Awake()
     {
         ResolveReferences();
@@ -49,6 +59,7 @@ public class PlayerMovementCC : MonoBehaviour
             _characteContext = GetComponentInParent<PlayerContext>();
 
         _characteContext?.ResolveReferences();
+        _characteContext?.EnsureMovementMotor();
 
         statsHub = _characteContext != null ? _characteContext.StatsHub : null;
         if (!statsHub)
@@ -93,6 +104,7 @@ public class PlayerMovementCC : MonoBehaviour
 
     void Update()
     {
+        if (suspensionTokens.Count > 0) return;
         Move();
         ResolveCharacterOverlaps();
     }
@@ -131,7 +143,7 @@ public class PlayerMovementCC : MonoBehaviour
 
             Vector3 planarDirection = ResolvePlanarSeparationDirection(playerCol, hit, dir);
             if (planarDirection.sqrMagnitude > 0.0001f)
-                _characterController.Move(planarDirection * dist);
+                ApplyMovement(planarDirection * dist);
         }
     }
 
@@ -255,7 +267,7 @@ public class PlayerMovementCC : MonoBehaviour
         // Planar only. Vertical motion is owned by CharacterVerticalMotor, so this must not use
         // SimpleMove: SimpleMove applies its own gravity, and this call sits behind early-returns
         // that would silently disable gravity while stunned, dashing, or dead.
-        _characterController.Move(moveWorld * (currentSpeed * Time.deltaTime));
+        ApplyMovement(moveWorld * (currentSpeed * Time.deltaTime));
 
         float input01 = Mathf.Clamp01(moveInput.magnitude);
         float target01 = input01;

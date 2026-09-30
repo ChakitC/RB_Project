@@ -4,6 +4,7 @@ using UnityEngine;
 [System.Serializable]
 public class FinalSkillStats
 {
+    public FinalSkillStats Copy() => (FinalSkillStats)MemberwiseClone();
     public float damage;
     public float areaRadius;
     public int projectileCount;
@@ -54,6 +55,9 @@ public class SkillInstance
     public bool HasBoundCharges => _charges != null;
 
     public FinalSkillStats GetFinalStats(ISkillUser user)
+        => GetFinalStatsForUpgrades(user, upgradeSnapshot);
+
+    private FinalSkillStats GetFinalStatsForUpgrades(ISkillUser user, SkillUpgradeStatSnapshot upgrades)
     {
         if (def == null)
         {
@@ -93,7 +97,7 @@ public class SkillInstance
         if (user?.StatsHub != null && def.damageCoefficient > 0f)
             stats.damage += Mathf.Max(0f, user.StatsHub.GetSkillBaseDamage()) * def.damageCoefficient;
 
-        upgradeSnapshot?.Apply(stats);
+        upgrades?.Apply(stats);
 
         ApplyCasterStats(user, stats);
 
@@ -128,7 +132,7 @@ public class SkillInstance
     public bool CanCast(ISkillUser user, out FinalSkillStats stats)
     {
         stats = null;
-        if (def == null || def.payload == null || user == null)
+        if (def == null || !def.TryGetExecution(out _) || user == null)
             return false;
 
         stats = GetFinalStats(user);
@@ -154,7 +158,7 @@ public class SkillInstance
     public bool CanCast(ISkillUser user, SkillCastCostPolicy costPolicy, out FinalSkillStats stats)
     {
         stats = null;
-        if (def == null || def.payload == null || user == null)
+        if (def == null || !def.TryGetExecution(out _) || user == null)
             return false;
 
         if (costPolicy.IgnoresCharge())
@@ -249,15 +253,16 @@ public class SkillInstance
     {
         reservation = null;
 
-        if (def == null || def.payload == null || user == null)
+        if (def == null || !def.TryGetExecution(out _) || user == null)
             return false;
 
-        FinalSkillStats stats = GetFinalStats(user);
+        var castUpgrades = upgradeSnapshot?.CreateReadOnlyCopy();
+        FinalSkillStats stats = GetFinalStatsForUpgrades(user, castUpgrades);
         if (executionKind == SkillExecutionKind.BasicMelee)
         {
             // Do not even refresh/reserve the shared charge pool for an ordinary attack.
             reservation = new SkillCastReservation(SkillCastReservation.NextToken(), stats,
-                null, false, user, null, 0f, false, false);
+                null, false, user, null, 0f, false, false, castUpgrades);
             return true;
         }
         float now = Time.time;
@@ -308,7 +313,7 @@ public class SkillInstance
             energyOwner,
             energyAmount,
             energyReserved,
-            stampCooldown);
+            stampCooldown, castUpgrades);
         return true;
     }
 
@@ -329,7 +334,7 @@ public class SkillInstance
         SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
         MeleeType meleeType = MeleeType.Light)
     {
-        if (reservation == null || def == null || def.payload == null || reservation.User == null)
+        if (reservation == null || def == null || !def.TryGetExecution(out var execution) || reservation.User == null)
         {
             result = SkillExecutionResult.Failed(
                 SkillExecutionFailureReason.MissingAuthoringData,
@@ -343,7 +348,7 @@ public class SkillInstance
             reservation.Stats,
             animBrain,
             requestId,
-            upgradeSnapshot,
+            reservation.Upgrades,
             primaryTarget,
             combatChainId,
             combatDepth,
@@ -352,7 +357,7 @@ public class SkillInstance
             executionKind,
             meleeType);
 
-        result = def.payload.ExecuteWithResult(castContext);
+        result = execution.ExecuteWithResult(castContext);
         return result.Success;
     }
 
@@ -363,14 +368,18 @@ public class SkillInstance
         out SkillExecutionResult result,
         SkillTargetHandle primaryTarget = null)
     {
-        if (!ExecuteReserved(reservation, animBrain, requestId, out result, primaryTarget))
+        try
         {
-            reservation.Release();
-            return false;
-        }
+            if (!ExecuteReserved(reservation, animBrain, requestId, out result, primaryTarget))
+            {
+                reservation.Release();
+                return false;
+            }
 
-        reservation.Commit();
-        return true;
+            reservation.Commit();
+            return true;
+        }
+        finally { reservation.Release(); }
     }
 
     /// <summary>

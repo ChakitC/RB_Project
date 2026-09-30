@@ -10,6 +10,7 @@ public sealed partial class SkillAnimationVfxEditorWindow
     int blockDragControl;
     int blockUndoGroup;
     bool blockDragEnd;
+    bool blockDragImpact;
 
     void UpdateAuthoringDirtyState() => hasUnsavedChanges = HasPendingAuthoringChanges();
 
@@ -90,11 +91,11 @@ public sealed partial class SkillAnimationVfxEditorWindow
                 foreach (DefensiveBlockMode mode in System.Enum.GetValues(typeof(DefensiveBlockMode)))
                 {
                     var value = mode;
-                    string label = value == DefensiveBlockMode.Contact ? "Contact" : "Timed Approach";
+                    string label = value == DefensiveBlockMode.Contact ? "Contact" : value == DefensiveBlockMode.Cooperative ? "Cooperative" : "Timed Approach";
                     menu.AddItem(new GUIContent("Block/Mode/" + label), draft.mode == value, () =>
                     { if (CanEdit()) { EndBlockDrag(); draft.SetMode(value); UpdateAuthoringDirtyState(); Repaint(); } });
                 }
-                if (draft.mode == DefensiveBlockMode.TimedApproach)
+                if (draft.mode != DefensiveBlockMode.Contact)
                     menu.AddItem(new GUIContent("Block/Timed Approach Settings..."), false, () =>
                     { if (CanEdit()) DefensiveBlockApproachPopup.Show(draft, () => { UpdateAuthoringDirtyState(); Repaint(); }); });
                 menu.AddItem(new GUIContent("Block/Disable Block"), false, () =>
@@ -120,6 +121,7 @@ public sealed partial class SkillAnimationVfxEditorWindow
         }
         if (!draft.Contains(time))
         {
+            AddBlockImpactContextItems(menu, draft, time, CanEdit);
             menu.AddItem(new GUIContent("Block/Add Block Window Here"), false, () =>
             { if (CanEdit()) { EndBlockDrag(); draft.AddWindow(time); UpdateAuthoringDirtyState(); Repaint(); } });
             AddSaveCommands();
@@ -130,6 +132,7 @@ public sealed partial class SkillAnimationVfxEditorWindow
             if (time >= draft.StartAt(i) && time <= draft.EndAt(i)) { draft.selectedWindow = i; break; }
         int selected = Mathf.Clamp(draft.selectedWindow, 0, draft.WindowCount - 1);
         var window = draft.windows[selected];
+        AddBlockImpactContextItems(menu, draft, time, CanEdit);
         if (time <= draft.EndAt(selected))
             menu.AddItem(new GUIContent("Block/Set Block Open Here"), false, () =>
             { if (CanEdit() && time <= draft.EndAt(selected)) SetBlockWindow(time, draft.EndAt(selected)); });
@@ -143,6 +146,8 @@ public sealed partial class SkillAnimationVfxEditorWindow
         {
             var value = outcome;
             string label = value == DefensiveBlockOutcome.ContinueSkill ? "Continue Skill" : "Interrupt Skill";
+            if (draft.mode == DefensiveBlockMode.Cooperative && value == DefensiveBlockOutcome.ContinueSkill)
+            { menu.AddDisabledItem(new GUIContent("Block/On Success/Continue Skill (unavailable for Cooperative)")); continue; }
             menu.AddItem(new GUIContent("Block/On Success/" + label), window.onSuccess == value, () =>
             {
                 if (!CanEdit() || !draft.windows.Contains(window)) return;
@@ -179,6 +184,31 @@ public sealed partial class SkillAnimationVfxEditorWindow
             });
         else menu.AddDisabledItem(new GUIContent("Block/Remove Window (keep at least one)"));
         AddSaveCommands();
+    }
+
+    void AddBlockImpactContextItems(GenericMenu menu, DefensiveBlockTimelineSession draft, float time, System.Func<bool> canEdit)
+    {
+        for (int i = 0; i < draft.WindowCount; i++)
+        {
+            int index = i;
+            string path = $"Block/Impact/Window {i + 1}/";
+            if (draft.mode != DefensiveBlockMode.Contact && time >= draft.EndAt(i) && time <= draft.ImpactLimit(i))
+                menu.AddItem(new GUIContent(path + "Set Impact Here"), false, () =>
+                {
+                    if (!canEdit() || index >= draft.WindowCount) return;
+                    EndBlockDrag(); draft.SetImpact(index, true, time);
+                    UpdateAuthoringDirtyState(); Repaint();
+                });
+            else menu.AddDisabledItem(new GUIContent(path + "Set Impact Here",
+                "Requires Timed Approach or Cooperative. Place at/after Close, before the next window and clip end."));
+            if (draft.windows[i].useImpactMarker)
+                menu.AddItem(new GUIContent(path + "Remove Impact (use default timing)"), false, () =>
+                {
+                    if (!canEdit() || index >= draft.WindowCount) return;
+                    EndBlockDrag(); draft.SetImpact(index, false, draft.windows[index].impactNormalized);
+                    UpdateAuthoringDirtyState(); Repaint();
+                });
+        }
     }
 
     bool SaveBlockDraft()
@@ -218,18 +248,36 @@ public sealed partial class SkillAnimationVfxEditorWindow
         {
             Rect start = GetMarkerRect(row, blockSession.StartAt(i));
             Rect end = GetMarkerRect(row, blockSession.EndAt(i));
+            var window = blockSession.windows[i];
+            Rect impact = GetMarkerRect(row, window.impactNormalized);
+            // Separate vertical hit areas so Impact == Close remains editable.
+            if (window.useImpactMarker)
+            {
+                impact.height = 10f;
+                start.yMin += 11f; end.yMin += 11f;
+            }
             bool active = !_playheadInCutscene && normalizedTime >= blockSession.StartAt(i) && normalizedTime <= blockSession.EndAt(i);
             EditorGUI.DrawRect(Rect.MinMaxRect(start.center.x, row.y + 8, end.center.x, row.yMax - 8),
                 active ? new Color(.15f, .55f, .35f) : new Color(.17f, .32f, .42f));
             DrawMarker(start, new Color(.3f, .85f, 1f), $"Block {i + 1} Open");
             DrawMarker(end, new Color(1f, .7f, .25f), $"Block {i + 1} Close");
+            if (window.useImpactMarker)
+            {
+                Color impactColor = new Color(1f, .35f, .65f);
+                EditorGUI.DrawRect(impact, impactColor);
+                GUI.Label(new Rect(impact.xMax + 3f, impact.y - 3f, 110f, 16f),
+                    new GUIContent($"Block {i + 1} Impact", $"Impact: {window.impactNormalized:P1}"), EditorStyles.miniLabel);
+                EditorGUIUtility.AddCursorRect(impact, MouseCursor.ResizeHorizontal);
+            }
             EditorGUIUtility.AddCursorRect(start, MouseCursor.ResizeHorizontal);
             EditorGUIUtility.AddCursorRect(end, MouseCursor.ResizeHorizontal);
             int control = GUIUtility.GetControlID("Block Window".GetHashCode(), FocusType.Passive);
             var evt = Event.current;
             if (Application.isPlaying) { EndBlockDrag(); return; }
-            if (evt.type == EventType.MouseDown && evt.button == 0 && (start.Contains(evt.mousePosition) || end.Contains(evt.mousePosition)))
+            bool overImpact = window.useImpactMarker && impact.Contains(evt.mousePosition);
+            if (evt.type == EventType.MouseDown && evt.button == 0 && (overImpact || start.Contains(evt.mousePosition) || end.Contains(evt.mousePosition)))
             {
+                blockDragImpact = overImpact;
                 blockDragEnd = end.Contains(evt.mousePosition) && (!start.Contains(evt.mousePosition) || evt.mousePosition.x >= start.center.x);
                 blockSession.selectedWindow = i;
                 blockDragControl = control; GUIUtility.hotControl = control;
@@ -241,8 +289,17 @@ public sealed partial class SkillAnimationVfxEditorWindow
                 if (evt.type == EventType.MouseDrag)
                 {
                     float time = MouseToNormalized(row, evt.mousePosition.x);
-                    SetBlockWindow(blockDragEnd ? blockSession.StartAt(i) : Mathf.Min(time, blockSession.EndAt(i)),
-                        blockDragEnd ? Mathf.Max(time, blockSession.StartAt(i)) : blockSession.EndAt(i));
+                    if (blockDragImpact)
+                    {
+                        blockSession.SetImpact(i, true, Mathf.Clamp(time, blockSession.EndAt(i), blockSession.ImpactLimit(i)));
+                        UpdateAuthoringDirtyState(); Repaint();
+                    }
+                    else
+                    {
+                        if (blockDragEnd && window.useImpactMarker) time = Mathf.Min(time, window.impactNormalized);
+                        SetBlockWindow(blockDragEnd ? blockSession.StartAt(i) : Mathf.Min(time, blockSession.EndAt(i)),
+                            blockDragEnd ? Mathf.Max(time, blockSession.StartAt(i)) : blockSession.EndAt(i));
+                    }
                     evt.Use();
                 }
                 if (evt.type == EventType.MouseUp) { EndBlockDrag(); evt.Use(); }

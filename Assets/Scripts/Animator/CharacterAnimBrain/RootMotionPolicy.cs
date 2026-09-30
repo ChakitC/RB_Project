@@ -25,12 +25,8 @@ public readonly struct RootMotionPolicy : IEquatable<RootMotionPolicy>
     public readonly bool IgnoreCharacterCollision;
 
     /// <summary>
-    /// The adapter must constrain the animation delta against environment geometry and recover the
-    /// actor to a safe NavMesh position when the playback ends.
-    ///
-    /// Opt-in per playback on purpose. Ordinary skill and chain clips have always applied their
-    /// delta unconstrained, and silently sweeping every one of them would change authored motion
-    /// across the whole game.
+    /// Requests NavMesh recovery when playback ends. Environment collision is always enforced by
+    /// the movement adapter, including skills and chains that leave this flag false.
     /// </summary>
     public readonly bool EnvironmentSafe;
 

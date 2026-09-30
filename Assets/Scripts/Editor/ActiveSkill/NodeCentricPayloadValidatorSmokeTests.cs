@@ -135,17 +135,23 @@ public static class NodeCentricPayloadValidatorSmokeTests
 
     static void TestAlwaysActiveStepIsNeverAttributedToANode(Fixture fixture)
     {
-        // The fixture's root Taunt payload (converted to the always-active step by the very first
-        // CreateNodeAbility call) has a blank RequiredUpgradeId and, being unconfigured, is itself
-        // invalid -- but it must never be reported as belonging to any node, since no node owns it.
+        // Common definition checks now report an invalid ungated payload at skill level.
+        // It must never be attributed to a node that does not own it.
         SkillUpgradeNodeData node = fixture.AddNode("validator_always_active_probe_node");
         fixture.CreateApplyStatusAbility(node, fixture.SomeStatus);
+        var invalid = ScriptableObject.CreateInstance<TauntSkillPayloadDef>();
+        AssetDatabase.AddObjectToAsset(invalid, fixture.Skill);
+        var step = new PayloadStep();
+        step.SetPayload(invalid);
+        ((CompositeSkillPayloadDef)fixture.Skill.payload).AddStep(step);
 
         List<SkillUpgradeValidationIssue> issues = NodeCentricPayloadValidator.Validate(
             fixture.Tree, new List<SkillDefinitionBase> { fixture.Skill });
 
         for (int i = 0; i < issues.Count; i++)
-            Expect(!issues[i].BelongsTo(null), "NodeCentricPayloadValidator must never emit a null-node issue for a step -- only registry diagnostics use null.");
+            Expect(!issues[i].BelongsTo(node.RuntimeNodeId), "An ungated payload issue must not be attributed to an unrelated node.");
+        Expect(issues.Exists(issue => issue.NodeId == null && issue.Message.Contains("Taunt payload")),
+            "Common validation must expose an invalid ungated payload at skill level.");
     }
 
     // Deliberately does not reuse fixture.Skill/fixture.Tree: the earlier tests in this run
@@ -165,7 +171,7 @@ public static class NodeCentricPayloadValidatorSmokeTests
         isolatedSkill.skillId = "smoke.validator.save_gate.skill";
         isolatedSkill.upgradeTree = isolatedTree;
         AssetDatabase.CreateAsset(isolatedSkill, $"{TempFolder}/SaveGateSkill.asset");
-        SkillPayloadAssetUtility.ReplaceWithEmbedded(isolatedSkill, typeof(TauntSkillPayloadDef), recordUndo: false);
+        SkillPayloadAssetUtility.ReplaceWithEmbedded(isolatedSkill, typeof(HealAreaSkillPayloadDef), recordUndo: false);
         EditorUtility.SetDirty(isolatedSkill);
         AssetDatabase.SaveAssetIfDirty(isolatedSkill);
 
@@ -253,7 +259,7 @@ public static class NodeCentricPayloadValidatorSmokeTests
             fixture.Skill.skillId = "smoke.validator.skill";
             fixture.Skill.upgradeTree = fixture.Tree;
             AssetDatabase.CreateAsset(fixture.Skill, $"{TempFolder}/SmokeSkill.asset");
-            SkillPayloadAssetUtility.ReplaceWithEmbedded(fixture.Skill, typeof(TauntSkillPayloadDef), recordUndo: false);
+            SkillPayloadAssetUtility.ReplaceWithEmbedded(fixture.Skill, typeof(HealAreaSkillPayloadDef), recordUndo: false);
             EditorUtility.SetDirty(fixture.Skill);
             AssetDatabase.SaveAssetIfDirty(fixture.Skill);
 

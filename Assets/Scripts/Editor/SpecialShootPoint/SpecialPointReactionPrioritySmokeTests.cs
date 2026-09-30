@@ -153,7 +153,7 @@ public sealed class SpecialPointReactionPrioritySmokeTests
 
         RootMotionPolicy planar = active.WithShape(planarOnly: true, ignoreCharacterCollision: false);
         Assert.That(planar.ApplyYaw, Is.True);
-        Assert.That(planar.EnvironmentSafe, Is.False, "Existing playbacks must not silently become swept.");
+        Assert.That(planar.EnvironmentSafe, Is.False, "Ordinary playback does not request exit NavMesh recovery.");
 
         RootMotionPolicy full = active.WithShape(planarOnly: false, ignoreCharacterCollision: false);
         Assert.That(full.ApplyYaw, Is.False);

@@ -1,5 +1,448 @@
 # Validation
 
+## CharacterSkillManager responsibility split (2026-09-30)
+
+`CharacterSkillManager` now delegates loadout resolution and runtime-entry caches
+to `CharacterSkillLoadoutRuntime`. `SkillChargeRegistry` owns shared pools;
+`SkillCastAnimationBinding` owns pending playback subscriptions. Cast orchestration
+and its public request/result types live in their own files. Existing component
+APIs and serialized fields retain their names.
+
+### Compilation
+
+- Required `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**. Windows SDK access
+  needed the same approved escalation as earlier checks. Final log:
+  `P:/Game_RB_Project/BuildArtifacts/SkillManagerRefactorBuild.log`.
+- Unity compile, including Editor helpers and dedicated tests: **0 errors**.
+
+### Automated tests
+
+| Suite | Result |
+| --- | --- |
+| `SkillManagerRefactorTests` | **12/12** |
+| `SkillCastArchitectureTests` | **17/17** |
+| `SkillCastTransactionSmokeTests` | **25/25** |
+| `SkillGemDefinitionTests` | **40/40** |
+| `MeleeSkillIntegrationTests` | **23/24** |
+| `SkillPlacementTimingTests` | **13/13** |
+| `TargetedDeliverySmokeTests` | **21/21** |
+| `CompositeSkillPayloadEditorTests` | **9/9** |
+| `SkillChargeAndBarrierSmokeTests` | **26/26** |
+| `HelperSkillLoadoutSmokeTests` | **14/14** |
+| `HelperRuntimeExecutionSmokeTests` | **2/2** |
+| `HelperBaseStatsLoadoutSmokeTests` | **14/14** |
+| `CombatLoadoutRunLockTests` | **2/2** |
+| `SkillLoadoutUiTests` | **8/9** |
+| `PartyComboCoreSmokeTests` | **11/11** |
+
+Total: **237/239**. Full results:
+`P:/Game_RB_Project/BuildArtifacts/SkillManagerRefactorTests.json`.
+Final suite summaries, including the rerun after fixture cleanup:
+`P:/Game_RB_Project/BuildArtifacts/SkillManagerRefactorSummary.json`.
+
+The two failures are outside the extracted code:
+
+- The previously recorded Defensive Block Contact test still expects Z `-0.55`
+  and receives `-1.95`.
+- `SkillLoadoutUiTests.UnmappedCharactersDoNotInventCombatOptions("Aires")`
+  expects zero Active/Ultimate options; the current Aires asset supplies two.
+  This test reads the asset directly through `SkillLoadoutDescriptorFactory`,
+  without the manager/loadout runtime. Its fixture, factory and asset were not
+  changed by this refactor.
+
+The new suite verifies shared charges after slot reassignment and save reload,
+Helper variant cancellation and cooldown preservation (same/different execution
+definitions), stale request signals after slot/disable/death cancellation,
+root/nested modules, and external playback retaining its request and owner.
+
+### Play Mode and prefab checks
+
+- **6/6 Play Mode smoke checks passed** in an empty temporary scene: StandardSkill
+  shared charges, nested modules, Helper variant switching during wind-up, external
+  playback used by Helper/Chain callers, stale-signal cancellation, and BasicMelee
+  combo advance/interruption. These checks evaluate real Animancer graphs explicitly.
+  They do not cover a full level, input/HUD interaction, or an end-to-end Chain sequence.
+- The opt-in Editor harness schedules checks across domain reload through
+  `SkillManagerRefactorTestHarness.SchedulePlayModeSmoke()`, captures logged errors
+  as failures, writes `P:/Game_RB_Project/BuildArtifacts/SkillManagerRefactorPlayMode.txt`,
+  and exits Play Mode. Use an empty scene when running this harness.
+- The initial smoke run exposed fixture teardown destroying the animation profile
+  before disabling its actor. The fixture now disables the actor first; the final
+  smoke run has no test exceptions. Console retains the existing URP
+  AutodeskInteractive shadergraph load errors.
+- Unity asset inspection confirms `CharacterSkillManager` script references and
+  `autonomousSlots` / `chainAttackSkill` serialized fields on Player, Ally Stryker,
+  Ally Helper and Enemy Base prefabs. Root/nested resolution is also covered by
+  the fixtures. No production prefab or skill asset migration was performed.
+- The original `Assets/Tests/DefensiveBlock/RectorDefensiveBlock.unity` scene was
+  restored, clean, with the Editor stopped after the smoke run.
+
+## Skill cast architecture repairs (2026-09-30)
+
+This verification supersedes the test counts and Inspector labels in the earlier
+architecture follow-up below. See [SKILL_SYSTEM.md](SYSTEMS/SKILL_SYSTEM.md) for
+the current reservation and validation contracts.
+
+- Failed cast startup, release callbacks, and payload exceptions settle reserved
+  charge and energy. Observer exceptions are logged individually so later
+  observers and resource accounting still run. A committed cast remains committed.
+- Reservations capture one read-only upgrade snapshot and defensive stats copies;
+  changing selected upgrades during wind-up affects the next cast.
+- `DeliveryRelease`, including inside Composite payloads, must occur strictly after
+  StandardSkill Cast Point. BasicMelee may use marker time zero.
+- Batch validation, Skill Tree validation, and the Inspector resolve execution
+  modes from asset bindings. Assets used in both modes are checked in both.
+  The Inspector header now labels its selected mode **Preview As / Preview Status**.
+
+### Compilation
+
+- Required `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**. The check passed
+  with approved Windows SDK access; output is in
+  `P:/Game_RB_Project/BuildArtifacts/SkillCastArchitectureBuild.log`.
+- Unity recompile, including Editor helpers and the dedicated test assembly:
+  **0 compiler errors**.
+
+### Automated tests
+
+| Suite | Result |
+| --- | --- |
+| `SkillCastArchitectureTests` | **17/17** |
+| `SkillGemDefinitionTests` | **40/40** |
+| `SkillCastTransactionSmokeTests` | **25/25** |
+| `TargetedDeliverySmokeTests` | **21/21** |
+| `CompositeSkillPayloadEditorTests` | **9/9** |
+| `SkillPlacementTimingTests` | **13/13** |
+| `MeleeSkillIntegrationTests` | **23/24** |
+
+Total: **148/149**. The remaining failure is the same existing
+`ContactMeleeInterceptsAtCloseRangeWithoutTimedApproach` case described below
+(expected Z `-0.55`, actual `-1.95`). Defensive Block production code and its
+assertion were not changed.
+
+New coverage includes exceptions before and after commit, real energy-pool
+observers, immediate and animated casts, direct Cast cleanup, upgrade changes
+during wind-up, stats mutation, direct/Composite Delivery timing, and assets bound
+through Combo or animation profiles with optional StandardSkill usage.
+
+### Runtime and asset checks
+
+- Integration tests exercise actual Animancer graphs in Edit Mode. Full scene
+  gameplay in Play Mode and manual Inspector interaction remain unverified.
+- A fresh usage-aware Unity AssetDatabase audit of `Assets/Data` passes **31/37**
+  definitions, including all **7 Combo roots**, both production Composites, and
+  `Milano.Skill_3` under the Delivery timing rule. The same six incomplete assets
+  listed in the earlier section remain invalid; no new asset failures appeared.
+- The active `RectorDefensiveBlock` test scene is stopped and clean. Temporary
+  test assets were removed by fixtures; production assets were not migrated.
+
+## SkillGemDefinition architecture follow-up (2026-09-30)
+
+This follow-up supersedes the timing and validation entry-point details in the
+earlier review below. The current contract is documented in
+[SKILL_SYSTEM.md](SYSTEMS/SKILL_SYSTEM.md#validation-contract).
+
+- Shared `SkillValidationIssue` diagnostics carry severity, code, owning skill,
+  Combo step, payload location, and upgrade gate. Inspector, asset validation,
+  Skill Tree authoring, melee validation, and cast startup use the common rules.
+- StandardSkill requires Taunt markers strictly after Cast Point. BasicMelee
+  executes before playback and accepts marker time 0. Standalone Inspector
+  **Validate As** previews either execution kind without serializing a runtime mode.
+- Explicit execution/Combo accessors prevent casting stale Combo root payloads.
+  Facing, placement and continuation consumers resolve through the skill's root.
+  Composite placement rejects competing or gated providers unless explicitly
+  configured on the root. Existing serialized policy fields remain intact.
+- Cast startup validates before animation/resource reservation. Resource reservation
+  remains an independent accounting operation. Invalid definitions that previously
+  produced only partial effects now fail startup; the asset findings below matter
+  for gameplay and should be corrected with intentional authoring values.
+
+### Compilation
+
+- Required `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**. The sandbox could
+  not read the Windows SDK directory; the same check passed with approved access.
+- Unity recompile, including Editor and the dedicated test assembly: **0 compiler
+  errors**. Console still reports the existing URP AutodeskInteractive shadergraph
+  load error; no package/shader changes were made in this work.
+
+### Automated tests
+
+| Suite | Result |
+| --- | --- |
+| `SkillGemDefinitionTests` | **34/34** |
+| `CompositeSkillPayloadEditorTests` | **9/9** |
+| `TargetedDeliverySmokeTests` | **21/21** |
+| `SkillCastTransactionSmokeTests` | **25/25** |
+| `SkillPlacementTimingTests` | **13/13** |
+| `MeleeSkillIntegrationTests` | **23/24** |
+
+The definition suite includes the existing node-authoring and unified-validation
+smoke suites, covering preservation of root policies during conversion and
+distinct attribution of identical errors on gated and ungated payloads. It also
+checks real asset ownership, repeated markers, cyclic malformed composites,
+placement order independence, and rejection before resource reservation.
+
+The remaining legacy failure is unchanged from the earlier review:
+`ContactMeleeInterceptsAtCloseRangeWithoutTimedApproach` expects root-motion Z
+`-0.55`, receives `-1.95`; its guard fixture does not initialize the guard forward
+offset. No production Defensive Block implementation or assertion was changed.
+
+### Runtime and asset checks
+
+- Edit Mode integration tests evaluate actual Animancer graphs. BasicMelee starts
+  through `MeleeController` and the cast orchestrator, arms a Taunt listener, and
+  applies the status at marker **0** and **0.2**, before authored Cast Point **0.4**.
+  StandardSkill also delivers a marker after Cast Point when both are crossed
+  within one evaluated frame.
+- Unity AssetDatabase audit under `Assets/Data`: **31/37** definitions have no
+  blocking issues. Both production Composites (Aires Skill 3 and Feno Minigun
+  Terret) and all **7 Combo roots** pass, including referenced child ownership.
+- Six existing definitions have incomplete authoring; their data was not guessed
+  or rewritten. With the new cast-start validation, these are rejected until fixed:
+
+| Asset (under `Assets/Data`) | Blocking configuration |
+| --- | --- |
+| `PartyCombo/Test/Test.Feno.ComboTauntExecution.asset` | Missing `TauntApply` |
+| `Skills/Aires/Aires_Active.asset` | Missing `TauntApply` |
+| `Skills/Aires/Aires_Skill_2.asset` | Morph status entry 0 has no Status Effect |
+| `Skills/Enemies/Mons.GR004/Skill_1_M_GR04.asset` | Missing `HitStart` and `HitEnd` |
+| `Skills/Feno/Feno.Skill_Ulatimate.asset` | Missing `TauntApply` |
+| `Skills/Roma/Skill.Def.Roma_Ultimate.asset` | Missing `HitStart` and `HitEnd` |
+
+Full gameplay in the open scene and manual Inspector interaction remain unverified;
+the animation checks above run in Edit Mode. Temporary test assets are removed by
+their fixtures. No production asset migration is required or performed.
+
+## SkillGemDefinition validation and Combo authoring (2026-09-30)
+
+- `CollectExecutionValidationIssues` now checks payload configuration and required
+  timeline markers for both normal skills and `ValidateMelee` steps. Invalid
+  steps are rejected before melee playback, with the step number/ID in the error.
+- Taunt requires each `TauntApply` marker strictly after Cast Point. Composites
+  propagate the requirement; hitbox events keep their existing timing rules.
+  Combo Inspector summaries and the embedded-payload validator support roots
+  with no payload and validate the referenced execution skills.
+- Compilation: required `CheckAssemblyBuild.ps1` passed with **0 errors,
+  93 warnings**. Unity compiled the runtime, Editor, and dedicated test assembly
+  without compiler errors. The first sandboxed build could not read the Windows
+  SDK directory; the approved retry completed successfully. Console also contained
+  unrelated URP `AutodeskInteractive.shadergraph` load errors.
+- Automated tests through Unity MCP: `SkillGemDefinitionTests` **16/16 passed**
+  in `SkillGemDefinition.Tests`; `SkillPlacementTimingTests` **13/13 passed**;
+  `CompositeSkillPayloadEditorTests` **9/9 passed**. New runtime assertions reuse
+  the existing typed rig helpers in `MeleeSkillIntegrationTests` through reflection
+  because asmdef tests cannot reference default-assembly gameplay types directly.
+- Existing melee regression cases: **23/24 passed**. The remaining failure is
+  `ContactMeleeInterceptsAtCloseRangeWithoutTimedApproach` at the guard motion
+  assertion: expected Z `-0.55`, actual `-1.95`. This check reaches guard movement
+  after the combo starts; its fixture manually sets the guard active/arrived but
+  does not initialize `activeGuardForwardOffset`. No guard implementation or
+  expectation was changed as part of this task.
+- Runtime checks used evaluated Animancer graphs in Edit Mode: invalid combo
+  steps cannot enter playback; a real Taunt payload applies its status to an enemy
+  both across separate evaluated frames and when one frame crosses Cast Point
+  `0.4` and TauntApply `0.4001`. The graph must be evaluated once at zero delta
+  after creating the state so its initial time is applied before measuring frames.
+  Full gameplay in Play Mode and a visual Inspector interaction pass remain
+  unverified; the checks above exercise isolated fixtures and Inspector state data.
+- Asset checks: all seven existing `Assets/Data/Combat/ComboSkills` roots passed
+  `ValidateMelee`. Aires Skill 3 and a representative Combo root also passed the
+  Editor validator, including their embedded ownership graphs. No skill assets
+  were migrated or edited.
+
+## Per-skill party command placement modes (2026-09-30)
+
+- `SkillGemDefinition` exposes Placement Mode, No Target Placement, Target
+  Distance and Player Distance under Gameplay > Party Command Placement.
+  Existing assets retain Player Target / In Front Of Player / 3 m defaults.
+  Player-relative modes ignore selected enemy handles, capture Player pose and
+  forward, prefer a valid current pose, and otherwise use the existing fade/cast path.
+- `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**;
+  `../BuildArtifacts/PartyPlacementModesBuild.log`. Unity compiled successfully.
+  Serialized fields and defaults were inspected on the production Aires skill asset.
+- Unity Test Runner Edit Mode: **37/37 passed**, job
+  `84faf6f847034eb0ac37021e13ff19f9`. Added mode cases with/without selected enemies,
+  both fallbacks, per-skill distance/facing, frozen aim after Player movement,
+  in-region casts without fade, blocked ring alternatives and complete rejection.
+  HUD Active/Ultimate and Helper-style explicit execution retain their existing
+  cost/cleanup coverage with the new modes.
+- Boss Rush Play Mode, using temporary skill copies and held AI/target selection:
+  Aires Around Player warped to a 3 m radius, committed and jumped 3.348 m;
+  Feno In Front Of Player warped 3 m forward and committed. Both released aim.
+  The real Helper manager accepted an Around Player command at 2 m, committed,
+  reported success and hid the Helper. Player had a selected enemy throughout;
+  player-relative plans carried no enemy handle. Helper used a temporary copy of
+  Feno's turret skill to validate summon placement independently of Milano's
+  healing-recipient requirement. Evidence: `../BuildArtifacts/PartyPlacementModesLive.txt`.
+- Runtime probes call execution APIs, not physical keys. They do not verify every
+  payload/character combination. No production skill asset was reassigned to a new
+  mode. Console retains existing AutodeskInteractive shadergraph load errors.
+
+## Fade around player-commanded ally warps (2026-09-30)
+
+- Field ally commands now wait for the existing visibility controller to fade out,
+  warp while hidden, and fade in before starting the skill. In-range commands skip
+  the transition; Helper summon appearance is unchanged. Pending commands reserve
+  the member/placement, reject repeated requests, and restore visibility/ownership
+  when the actor or target becomes invalid.
+- `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**;
+  `../BuildArtifacts/PartyCommandFadeBuild.log`. Unity compiled successfully.
+- Unity Test Runner Edit Mode: **25/25 passed**, job
+  `cfadceea4ad44c02b53d1fb014a84ec4`. Both HUD columns and both skill kinds verify
+  departure/arrival ordering, no skill charge before arrival, and repeat rejection.
+  Coverage also includes target loss during either fade, disable cleanup, in-range
+  casts without fades, and preserving the Helper's ongoing summon appearance.
+- Live `RectorDefensiveBlock` Play Mode used the real HUD column 2 method with Aires
+  and a captured enemy target. Frame samples showed dither increasing to 1 at the
+  original pose, relocation while hidden, then dither decreasing to 0. The actual
+  cast started at **0.362 s**, after arrival completed; the skill committed, jumped
+  **3.314 m**, and released its aim override. Existing scene controls held AI still;
+  target selection was temporarily held and restored. Play Mode was stopped after
+  the probe, returning to the initial Editor mode without saving scene changes.
+  Evidence: `../BuildArtifacts/PartyCommandFadeLive.txt` and `PartyFade-*.png` in
+  the same directory. The before/fade-out/hidden-arrival/fade-in captures were
+  visually inspected. Physical keyboard presses and every character model were
+  not exercised by this probe.
+- Console retains existing AutodeskInteractive shadergraph/import warnings and
+  fixture warnings from models without VFX; the live Aires model has Dither enabled.
+
+## Keep an in-range ally at its current position (2026-09-29)
+
+- Active player-directed casters first validate their current pose. They keep
+  exact XYZ and only turn when the sampled placement point reaches the target
+  without overshoot, the target line is clear, and body/trajectory/NavMesh/
+  reservation checks pass. Otherwise the existing warp search runs. No-target
+  commands and inactive helper summons retain their existing placement behavior.
+- `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**;
+  `../BuildArtifacts/PartyCommandInRangeBuild.log`. Unity compiled successfully.
+- Unity Test Runner Edit Mode: **21/21 passed**, job
+  `64edc2d0c0354e00b28aefd6742a335b`. New cases cover exact position retention
+  including Y and cast facing, out-of-range warp, a wall blocking the target,
+  and an inactive helper near the target still using summon placement.
+- Shared placement and Combo regression fixtures: **28/28 passed** through
+  direct Editor fixture invocation. The first invocation encountered the loaded
+  Rector test scene's floor in two origin-based cases. Temporarily disabling
+  pre-existing scene colliders during the fixtures removed that interference;
+  every collider was restored in `finally`. Report:
+  `../BuildArtifacts/InRangePlacementRegression.txt`.
+- Live `RectorDefensiveBlock` probe: Aires used the real HUD column 3 route from
+  a pose within its sampled skill reach. Immediate position displacement was
+  **0 m**, the skill committed, root Y rose **3.316 m**, and aim cleanup completed.
+  AI and target selection were held stable for the probe and restored afterward.
+  Evidence: `../BuildArtifacts/PartyCommandInRangeLive.txt`. This exercises the
+  HUD method directly; physical keyboard input and every skill are not covered.
+
+## Aires jump on player-directed commands (2026-09-29)
+
+- Directed slot and explicit-skill requests incorrectly forced planar root motion,
+  which zeroed the animation's Y delta. Both paths now preserve authored vertical
+  movement. Placement uses the full sampled trajectory and aligns only XZ at the
+  contact point, leaving the starting pose grounded.
+- `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**;
+  `../BuildArtifacts/PartyCommandJumpBuild.log`. Unity compiled successfully;
+  Console retains the existing AutodeskInteractive shadergraph load errors.
+- Unity Test Runner Edit Mode: **17/17 passed**, job
+  `a79e1c50d1f246d1a5517d451bf81ebf`. Two new real Animancer graph checks verify
+  directed battle-slot and explicit-skill requests start with active root motion
+  and `PlanarOnly == false`. First run timed out before initialization; retry passed.
+- Live Boss Rush probe called the column 2 HUD path with production Aires skill
+  and a committed boss target. Sampled jump peak was 3.129 m. Runtime actor Y
+  rose from 0.063 to 3.398 m (3.336 m rise), then landed at Y 0.048. The cast
+  committed and its aim override cleared. Evidence:
+  `../BuildArtifacts/PartyCommandJumpY.txt`. Probe froze AI for repeatability;
+  temporary state was discarded on leaving Play Mode. Other clips and physical
+  keyboard input were not exercised by this jump probe.
+
+## Party HUD keys 2/3 use directed placement (2026-09-29)
+
+- Root cause of the remaining live report: keyboard tap/hold calls
+  `PartyHudPresenter.Cast`, which still called `TryStartCastSlot` directly.
+  The earlier PartyCommandController probes did not cover this HUD route.
+  Both HUD ally columns now use directed placement and retain the selected
+  Active/Ultimate slot, charges and costs (`useCommandSkill: false`).
+- The same scene exposed stationary Feno placement inside the boss's larger
+  body at the default 1.5 m stand-off. Placement now includes target/caster body
+  clearance. The targeted HUD command subsequently warped Feno from
+  (-28.25, 0.03, -0.62) to (-3.49, -0.21, 0.75) and committed its cast.
+- `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**;
+  `../BuildArtifacts/PartyHudWarpBuild.log`. Unity compiled without C# errors.
+- Unity Test Runner: **15/15 passed**, job
+  `da561e0fc3ea4350a8c6cfcde3a44ccd`. Four new tests call the actual HUD
+  `Cast` entry point for both columns and both skill kinds, with/without a target,
+  and assert movement, selected-slot cooldown and aim cleanup. Another new
+  test verifies clearance around a large target for a stationary skill.
+- In the user's paused Boss Rush scene, the HUD column 3 call warped Feno
+  9.77 m and started its turret skill. Aires initially had 1.58 seconds of
+  cooldown remaining. After resuming, column 2 warped Aires and committed
+  its skill. Both managers reported commit events. This was a direct HUD call,
+  not a physical keyboard press. Evidence: `../BuildArtifacts/PartyHudKeysLive.txt`.
+- Existing `PartyHudTests` direct invocation: **8/9 passed**. The unchanged
+  prefab-structure assertion expects the authored combo root to be inactive,
+  but the current prefab stores it active. Runtime binding still hides absent
+  offers and that test passes. No prefab was modified for this fix.
+  Report: `../BuildArtifacts/PartyHudRegression.txt`.
+
+## Party command live placement correction (2026-09-29)
+
+- Reproduced failed placement in Play Mode using the production Boss Rush room
+  and Aires. The 5 cm NavMesh search rejected valid starts at actor-root height;
+  the animated position capsule also penetrated the floor by roughly 1–2 cm.
+  Commands now ground their starts within 1 m and use the locomotion controller
+  footprint when available. Untargeted lunges start ahead of the Player instead
+  of subtracting the clip's travel and appearing behind the Player.
+- Final `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**; log:
+  `../BuildArtifacts/PartyCommandGroundingBuild.log`. Unity compiled successfully.
+  Console still contains the existing URP AutodeskInteractive shadergraph load errors.
+- Unity Test Runner Edit Mode: **10/10 passed**, job
+  `2836d2f207bc420fb75c54de5802aa6d`. Includes below-surface actor roots and a
+  nested animated collider extending below the floor, with and without a target.
+  The first request timed out before initialization; the retry ran all tests.
+- Live Play Mode exercised `PartyCommandController.TryExecutePartyCommand`
+  with production actors, animations and payloads. AI was held still, party
+  actors protected, and the Player's target captured explicitly for repeatability.
+  Command definitions were changed only in memory for these probes.
+  Aires warped and committed `Aires_Skill_1` against the boss, reducing HP from
+  100,000 to 99,667.19. Without a target, Aires started 2.999995 m ahead of the
+  Player and committed its skill. Blocked or unsupported poses were rejected.
+- Helper explicit commands warped with a target and without one. A runtime-only
+  Feno turret skill assignment also exercised the Helper Command Slot path.
+  The untargeted turret command committed successfully, hid the helper and
+  cleared its aim override. Evidence: `../BuildArtifacts/PartyCommandLiveRuntime.txt`.
+- Configuration limitation: the current `ChaDef.Milano` helper has no configured
+  manual command entry. `Milano.Skill_3` is targeted healing delivery: it committed
+  with a recipient but rejected release without one. The point-target warp does
+  not change payload recipient rules. Production skill/character assets were not
+  changed to fill this slot. Keyboard/UI input and every character/skill combination
+  were not covered by these runtime probes.
+
+## Player-directed party skill placement (2026-09-29)
+
+- `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**. Log:
+  `../BuildArtifacts/PartyCommandSkillBuild.log`. Unity also compiled the new
+  runtime and dedicated test assembly successfully. Console reported unrelated
+  URP AutodeskInteractive shadergraph load messages during refresh.
+- Unity Test Runner, Edit Mode: `PartyCommands.Tests` **8/8 passed**. Covers a
+  solid floor, Player-forward fallback, captured target and authored stand-off,
+  changed selection, recycled target, blocked/off-NavMesh placement, competing
+  aim ownership, one immediate payload execution and cooldown rejection.
+  The same final fixture also passed direct invocation; report:
+  `../BuildArtifacts/PartyCommandSkillTests.txt`.
+- Existing `HelperBaseStatsLoadoutSmokeTests`, `SkillCastTransactionSmokeTests`
+  and `PartyComboPlacementTests`: **52/52 passed** through direct Editor fixture
+  invocation with setup/teardown. Their Test Runner requests timed out before
+  starting; these 52 results are not Test Runner results. Report:
+  `../BuildArtifacts/PartyCommandRegression.txt`.
+- Inspected Stryker/Helper prefab reference layouts through Unity: the field
+  member lives under `ChianSystem`, so the command passes that resolved member
+  explicitly. An additional immediate-cast check with a nested field member
+  verified placement, successful execution, released reservation and cleared aim.
+- Initial targeting-fixture failures were missing Edit Mode lifecycle setup.
+  Adding a real floor also exposed conservative fallback-footprint ground
+  overlap; the command now uses an above-ground fallback body without extra
+  broad-phase padding. The final grounded fixture passes all eight checks.
+- Live Play Mode animation, root-motion contact, Helper appear/disappear and
+  production damage remain unverified: the checks above run in Edit Mode and
+  use an immediate probe payload for execution, not a production animated cast.
+
 Use this document for local C# validation. These rules are project policy.
 
 ## Multiple Block Windows (2026-09-20)
@@ -286,11 +729,25 @@ and `DefensiveBlockContactReactionProbe.txt`.
 
 ## Canonical Command
 
-Run C# validation only through:
+Validate default `Assembly-CSharp` sources through:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File 'P:\Game_RB_Project\RB_Project\Assets\Scripts\CheckAssemblyBuild.ps1'
 ```
+
+`BuildAssembly.ps1` in the Unity project root is an allowed wrapper that calls
+the same script and forwards the optional `-ArtifactRoot` parameter. Run it
+from that directory, for example:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\BuildAssembly.ps1
+```
+
+The script checks default-assembly sources only. For changed Editor, asmdef,
+or first-pass sources, also let Unity compile and inspect the Console. Report
+compilation, automated tests, and runtime checks separately, including checks
+that could not run and why. Compilation alone does not validate runtime behavior
+or prefab references.
 
 Do not run `dotnet build` directly against Unity `.csproj` files for gameplay
 validation.
@@ -306,6 +763,8 @@ Build artifacts must stay outside `Assets` so Unity does not import generated
 assemblies back into the project.
 
 ## What The Script Does
+
+Preserve the following requirements when modifying the validation script.
 
 `CheckAssemblyBuild.ps1` uses Unity-generated `Assembly-CSharp.csproj` for:
 
@@ -2158,3 +2617,173 @@ and reuse of the same pooled projectile. `CheckAssemblyBuild.ps1` passed with
 0 errors and 80 warnings; Unity Editor compilation passed. Reports are in
 `../BuildArtifacts/aim-hit-zone-build.log` and
 `../BuildArtifacts/aim-hit-zone-regression-report.md`.
+
+## Independent skill placement timing (2026-09-24)
+
+`SkillPlacementTimingTests` covers Legacy Chain/Interruption compatibility,
+Custom timing independence from Cast Point, shared HitStart selection, independent
+missing-marker fallback, invalid normalized times, and diagnostic pose evaluation
+when a rendered frame crosses the placement beat after a rotated Utility lead-in.
+Run this fixture in EditMode when the Editor test runner is responsive.
+
+Validation for this change: `CheckAssemblyBuild.ps1` passed with 0 errors and
+93 warnings; full output is `../BuildArtifacts/placement-timing-build.log`.
+Unity Editor compilation succeeded and the Editor assembly contains the new test
+fixture. The Pipeline async test runner stalled for `SkillPlacementTimingTests`;
+its cancel command also timed out, so no test-pass result is claimed. No Play Mode
+combat validation was performed. The task's pending test replay request was
+removed after verifying its filter, to avoid replaying it on a later domain reload.
+
+Before adopting explicit timing on production skills, verify a slash with Cast
+Point before Placement Point, a placement point before Cast Point, a multi-hit
+clip selecting its first HitStart, and an interrupted cast. Check that the
+payload/damage window/Chain continuation timing stays unchanged while S changes.
+
+### Placement Point timeline authoring (2026-09-24)
+
+The main-skill Animation / VFX timeline now exposes Placement Point separately
+from Cast Point, including set-at-playhead, marker drag, and row context actions.
+The placement tests also cover lane binding independence, one-step Undo/Redo of
+mode and time, fallback labels, and combined main/cutscene source isolation.
+The existing optional-row test includes the new row.
+
+Validation: Unity Editor compilation passed. Invoking the fixture methods
+directly in the live Editor (including all parameterized cases), plus
+`TimelineHidesEmptyOptionalRowsAndKeepsUnmatchedEvents`, passed **14 cases** with
+**0 failures**. This bypassed the previously stalled async Test Runner; report:
+`../BuildArtifacts/placement-timeline-tests.txt`. `CheckAssemblyBuild.ps1` passed
+with **0 errors, 93 warnings**; log: `../BuildArtifacts/placement-timeline-build.log`.
+The open Aires_Skill_1 timeline was confirmed to expose Cast Point, Placement
+Point, and Hitbox lanes. No Play Mode combat validation was performed for this
+editor change.
+
+### Party Combo root-motion placement (2026-09-24)
+
+`PartyComboPlacementTests` has 10 passing Edit Mode cases, invoked directly in
+the live Editor. Coverage includes existing camera/static-warp behavior, moving
+Placement Point while preserving A (including yaw), rejecting a wall between S
+and A, missing trajectory data, and overlapping trajectory reservations until
+release. Report: `../BuildArtifacts/party-combo-placement-tests.txt`.
+
+`AiresAuthoredClipAlignsAtSavedPlacementPoint` is an explicit Play Mode smoke
+check on the same fixture (call SetUp/TearDown around it). It samples the real
+Aires prefab rig and `Aires_Skill_1` through the runtime sampler, then verifies
+the resolved start plus sampled displacement reaches the requested A at the
+saved normalized time 0.523154. It passed; report:
+`../BuildArtifacts/aires-placement-playmode.txt`. This validates sampling and
+placement geometry, not a full HUD-triggered combat execution. The Editor was
+returned to Edit Mode without saving the open scene.
+
+Unity Editor compilation passed. `CheckAssemblyBuild.ps1` passed with 0 errors
+and 93 warnings; log: `../BuildArtifacts/party-combo-placement-build.log`.
+Aires references its dedicated AlignPlacementPointToEventTarget profile; Feno
+still references its existing PlaceNearEventTarget profile. During gameplay
+playtesting, check the LateUpdate placement-drift diagnostic and confirm damage,
+moving-target behavior, and cancellation after commit with the authored rig.
+
+### Party Combo jump height (2026-09-24)
+
+Placement-aligned Party Combos now sample and play full XYZ root motion. The
+legacy `TryGet` sampler stays planar; `TryGetWithVerticalMotion` caches separate
+samples. `PreserveVerticalMotion` keeps the authored jump relative to a grounded
+takeoff: contact alignment constrains XZ, airborne poses skip ground/NavMesh
+support checks, and body/ceiling sweeps and reservations remain three-dimensional.
+Takeoff and landing still require support. Playback passes the Y-suppression flag
+as false, and the placement diagnostic includes vertical error.
+
+Validation: 12 `PartyComboPlacementTests` cases passed, including a jump higher
+than the NavMesh sampling radius, a ceiling collision, and an unsupported landing.
+Five focused shared-resolver regressions passed. The static-trajectory regression
+initially collided with the open GameSetup scene's Plane at the test origin; it
+passed when the existing origin colliders were temporarily disabled inside a
+try/finally and immediately restored. Reports:
+`../BuildArtifacts/party-combo-vertical-tests.txt` and
+`../BuildArtifacts/party-combo-vertical-regression.txt`.
+
+The explicit Aires Play Mode smoke check passed using the real rig/clip: peak
+root Y was 3.128841m and Y at Placement Point 0.523154 was 0.4960847m. It also
+verified that a subsequent planar sample keeps Y zero in a separate cache entry.
+Report: `../BuildArtifacts/aires-vertical-playmode.txt`. This checks sampling and
+placement geometry; full HUD-triggered combat playback still needs playtesting.
+The Editor was returned to Edit Mode without saving the scene.
+
+Unity Editor compilation and `CheckAssemblyBuild.ps1` passed (0 errors,
+93 warnings); log: `../BuildArtifacts/party-combo-vertical-build.log`.
+
+### Aires Combo rejected in Boss Rush
+
+Reproduced through GameSetup -> Basement's Boss Rush 01 stage placard -> MapRun
+boss room. A controlled break-entry combat event offered Aires, then the real
+`PartyHudPresenter.TryUseFirstCombo()` path rejected it with `PlacementFailed`.
+The boss's CharacterPosition capsule intersected the sampled trajectory after
+the short Placement Point contact window (maximum penetration 0.5488744m).
+Report: `../BuildArtifacts/aires-bossrush-penetrations.txt`.
+
+Placement now honors the execution skill's character-collision bypass across
+the whole root-motion trajectory, using the CC adapter mask or the standard
+Player/Enemy/Ally mask for NavMesh actors. World obstruction, support and Combo
+reservations remain checked. All 13 placement cases passed, including a body
+crossing after contact, the identical path blocked by a world collider, and
+an overlapping reservation. Report: `../BuildArtifacts/aires-bossrush-combo-tests.txt`.
+
+Repeated the same stage/HUD path with the real loaded Aires and boss, positioning
+the boss on valid central arena NavMesh and injecting only the break-entry event.
+The game was running normally before invoking HUD input: Offered -> Starting ->
+Executing -> Committed, root motion active with planar suppression false, observed
+root rise 3.2429m, and execution released afterward. Report:
+`../BuildArtifacts/aires-bossrush-hud-final.txt`. This validates the HUD execution
+route, not physical keyboard input or earning break by dealing damage. Attempts
+launched while the Editor was paused hit the unscaled start timeout on resume;
+the final check waited for normal frame timing before input. The placement pose
+diagnostic reported 0.1243m position drift and zero yaw drift at normalized 0.525.
+
+Unity compilation and `CheckAssemblyBuild.ps1` passed (0 errors, 93 warnings).
+Build log: `../BuildArtifacts/aires-bossrush-combo-build.log`. Exited Play Mode,
+restored the original play-start scene setting, and left the editing scene unsaved.
+## Shared character movement validation (2026-09-29)
+
+The movement refactor is covered by these Unity Test Runner fixtures:
+
+- `RootMotionCollisionTests`: 16 cases covering controller and body sweeps, nested
+  bodies, walls, floor contact, corners, character exclusions, mask restoration,
+  actual displacement and repeated motor resolution.
+- `CharacterMovementIntegrationTests`: 17 cases covering walk/controller
+  equivalence at walk and dash step sizes, knockback distance and mask retention,
+  gravity/floor collision, missing-body authoring, and temporary instances of
+  Player, Ally Helper, Ally Stryker and Enemy E GR 01 Variant prefabs. The cleanup
+  adds checks for lookup/status reads without component creation, live replacement
+  bodies, and preservation of an explicit actor root across context refreshes.
+- `CharacterMovementOwnershipTests.NavigationAndAdapterLifecycleMatrix`: one
+  Editor coroutine test that enters Play Mode in a temporary empty scene. It runs
+  18 scenarios with fresh NavMesh data and actors: all six release orders for three
+  owners, original stopped/axis settings, stop-only pauses, deferred autonomy,
+  disabled/off-mesh restoration, initially disabled agents, pooling/stale tokens,
+  adapter rebind, actual root-motion/knockback/airborne overlap, runtime component
+  creation, and planar/full-Y/suppressed-Y adapter lifetime behaviour.
+- `DefensiveBlockTests.NestedKnockbackMotorMovesContextRoot`: existing regression,
+  now with an authored collision body instead of relying on unchecked movement.
+
+Run each fixture by name from the Editor Test Runner. The navigation matrix must
+enter Play Mode; a NavMeshAgent does not join navigation simulation in Edit Mode.
+Preserve unsaved scenes before starting and handle any Save dialog that blocks
+the runner. Tests create temporary objects and do not save prefab changes.
+
+All 35 reported tests passed, including the 18-scenario lifecycle matrix. The
+required `Assets/Scripts/CheckAssemblyBuild.ps1` passed with 93 existing warnings
+and 0 errors. This verifies collision/movement and navigation lifecycle behaviour;
+it does not replace visual playtesting of every authored animation and map.
+
+Legacy removal was validated with the same 35 tests and required build (93
+warnings, 0 errors; `../BuildArtifacts/movement-legacy-build.log`). Collision
+fixtures now call the two-argument `Move`; navigation fixtures bind their agent
+once and call `PlaceOnNavMesh(position)`. The visual controller no longer binds
+drivers to the vertical motor.
+
+The nine prefabs containing `CharacterVerticalMotor` were saved through Unity to
+remove its four unused driver/brain fields. Unrelated serialization changes were
+restored from pre-migration backups; each prefab differs from that backup by only
+the four removed entries. After reimport, Unity inspection found no stale fields
+or overrides in the nine prefabs and five inheriting actor prefabs (four enemy
+variants and `MinigunTerret_Summon`). The project asset text scan also found no
+overrides for these field names or serialized calls to the removed binding API.
+Movement integration tests were rerun against the migrated assets.

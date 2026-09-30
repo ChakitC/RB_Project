@@ -10,6 +10,7 @@ public class PlayerInputHandler : MonoBehaviour
     [SerializeField] float meleeSearchDistance = 4f;
 
     bool _chainConsumedInteractPress;
+    bool _blockPressed;
 
     /// <summary>
     /// The chain the ChainReady [F] press would run. Exposed so the on-enemy prompt can ask whether
@@ -25,6 +26,7 @@ public class PlayerInputHandler : MonoBehaviour
     void OnDisable()
     {
         _chainConsumedInteractPress = false;
+        _blockPressed = false;
     }
 
     void ResolveReferences()
@@ -224,9 +226,14 @@ public class PlayerInputHandler : MonoBehaviour
 
     public void OnInterruptionCommand(InputAction.CallbackContext c)
     {
-        if (!c.performed) return;
+        if (c.canceled) { _blockPressed = false; return; }
+        if (!c.performed || _blockPressed || !c.ReadValueAsButton()) return;
+        _blockPressed = true;
         ResolveReferences();
-        ctx?.interruptionCommand?.TryExecuteInterruptionCommand();
+        if (ctx?.interruptionCommand != null)
+            ctx.interruptionCommand.BlockBindingLabel = c.action.GetBindingDisplayString();
+        if (GlobalTimeScaleManager.Instance.IsPaused) return;
+        ctx?.interruptionCommand?.TryExecuteBlockInput(c.time);
     }
 
     public void OnReload(InputAction.CallbackContext c)

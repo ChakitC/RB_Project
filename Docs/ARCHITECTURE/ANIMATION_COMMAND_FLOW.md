@@ -308,16 +308,44 @@ The reaction is the first playback to need full animation translation — Y
 included — *and* animation yaw. `RootMotionPolicy.WithShape` previously coupled
 yaw to `planarOnly`, so a four-argument overload now authors `planarOnly`,
 `applyYaw`, `ignoreCharacterCollision`, and `environmentSafe` independently. The
-two-argument overload is unchanged and still couples them, so no existing skill or
-chain playback moved.
+two-argument overload still couples yaw to planar motion for existing skill and
+chain playback.
 
-`RootMotionPolicy.EnvironmentSafe` is opt-in per playback. While it is set,
-`RootMotionNavMeshDriver` constrains each frame's delta with
-`CharacterBodySweepUtility` against the actor's authored
-`CharacterPositionCollider`, and recovers the actor to a nearby valid NavMesh
-position at the end of playback — `ResyncAgent` alone cannot, because it only
-syncs an agent that is *already* on the mesh. Sweeping every clip would have
-changed authored motion across the whole game, which is why the flag exists.
+Both root-motion adapters submit translation to `ctx.MovementMotor`.
+`RootMotionNavMeshDriver` requests collision sliding on every playback, including Skill
+and Chain Attack. When `ctx.cc` exists the motor uses `CharacterController.Move`.
+The NavMesh adapter holds a motor-owned suspension token. This also covers allies
+whose animated model body is a trigger. An enabled controller can live on the
+context root or below it; resolved movement is applied to the whole actor.
+
+Without a controller, the motor sweeps the solid `CharacterPositionCollider`
+against `environmentCollisionMask`. It slides the remaining translation along
+blocking surfaces and sweeps each segment again, so downward animation can move
+along the floor without crossing walls. Missing/disabled/trigger-only bodies
+stop translation with a warning instead of applying unchecked movement. A
+disabled controller also stops translation. Trigger volumes do not block sweeps.
+
+`IgnoreCharacterCollision` excludes the Player, Enemy, and Ally layers only.
+Controller exclusions already owned by other systems are preserved and restored
+after the move. Put blocking world geometry on world layers with solid colliders;
+controller movement uses the controller's collision settings, while body sweeps
+use the driver's mask. Model rebuilds copy that mask, padding, and recovery radius.
+
+`RootMotionPolicy.EnvironmentSafe` now only opts into recovery to a nearby valid
+NavMesh position at the end of playback. Collision safety does not depend on this
+flag. `ResyncAgent` alone cannot recover an actor that is no longer on the mesh.
+Exit recovery waits when another movement owner still holds the transform; that
+owner retains responsibility for its landing/recovery.
+
+Adapters report full-Y ownership to the motor whenever their policy changes.
+`CharacterVerticalMotor` reads this shared state: planar clips permit gravity,
+while full-Y clips suppress it. Disable, destruction and model rebind release the
+adapter's ownership and navigation token. The motor restores the original agent
+flags only after the relevant remaining owners have released their tokens.
+
+`RootMotionCollisionTests` covers ordinary playback against thin walls, controller
+bodies on the root and children, trigger model bodies, floor and corner sliding,
+character exclusions, dense hit-zone colliders, and settings copied on rebind.
 
 The flag is latched on every *active* policy publish rather than read once at
 entry: the Brain publishes `Active` from `EnterExclusiveLocomotion` and the shape

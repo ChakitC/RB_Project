@@ -121,7 +121,7 @@ internal sealed class TargetedDeliveryPayloadDesignerDescriptor
             $"Flight time is clamped to {payload.MinFlightDuration:0.##}s - {payload.MaxFlightDuration:0.##}s " +
             $"at {payload.Speed:0.#} units/sec.");
         summary.AddDetail(
-            $"Caster stands {payload.TargetStandOffDistanceAtCastPoint:0.##}m from the target at the cast point.");
+            $"Caster stands {payload.TargetStandOffDistanceAtCastPoint:0.##}m from the target at the placement point.");
 
         if (payload.DeliveryPrefab == null)
             summary.AddWarning("No delivery prefab assigned yet -- nothing will be thrown.");

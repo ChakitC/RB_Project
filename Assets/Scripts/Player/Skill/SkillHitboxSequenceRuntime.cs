@@ -133,6 +133,42 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         ShutdownAndDestroy();
         return true;
     }
+    public bool CanCaptureCooperativeDamage(int requestId, int casterLife, int stepIndex) =>
+        TryFindCooperativeStep(requestId, casterLife, stepIndex, out _);
+
+    bool TryFindCooperativeStep(int requestId, int casterLife, int stepIndex, out StepRuntimeState found)
+    {
+        found = null;
+        if (!_initialized || _isShuttingDown || _requestId != requestId || _casterLife != casterLife || _context?.CasterContext == null) return false;
+        foreach (var step in _steps) if (step.StepIndex == stepIndex) { found = step; return true; }
+        return false;
+    }
+
+    public bool TryCaptureCooperativeDamage(int requestId, int casterLife, int stepIndex, out CooperativeBlockDamageSnapshot snapshot)
+    {
+        snapshot = null;
+        if (!TryFindCooperativeStep(requestId, casterLife, stepIndex, out var step)) return false;
+        var actor = _context.CasterContext;
+        float baseDamage = _context.SkillStats != null ? _context.SkillStats.damage : 0f;
+        float chance = _context.SkillStats != null ? _context.SkillStats.critChance : 0f;
+        float multiplier = _context.SkillStats != null ? _context.SkillStats.critMultiplier : 1f;
+        if (IsBasicMelee && actor.StatsHub != null)
+        {
+            var weapon = actor.WeaponSystem != null ? actor.WeaponSystem.CurrentWeapon : actor.currentWeapon;
+            baseDamage = actor.StatsHub.GetSkillBaseDamage();
+            chance = actor.StatsHub.GetCritRatePercent(weapon); multiplier = actor.StatsHub.GetCritMultiplier(weapon);
+        }
+        var kb = step.Definition.OverrideKnockback ? step.Definition.ToKnockbackSettings() :
+            new KnockbackSettings(2f, .4f, null, ImpactReactionKind.MiniStun, true);
+        if (!(kb.distance > .001f) || float.IsInfinity(kb.distance) || !(kb.duration > .001f) || float.IsInfinity(kb.duration))
+            kb = new KnockbackSettings(2f, .4f, null, ImpactReactionKind.MiniStun, true);
+        if (kb.progressCurve != null)
+            kb.progressCurve = new AnimationCurve(kb.progressCurve.keys) { preWrapMode = kb.progressCurve.preWrapMode, postWrapMode = kb.progressCurve.postWrapMode };
+        snapshot = new CooperativeBlockDamageSnapshot(actor, Mathf.Max(0f, baseDamage * step.Definition.DamageMultiplier),
+            chance, multiplier, BuildStaggerPayload(step).ResolvedAmount, kb, _damageSourceId, _attackId,
+            _chainId, IsBasicMelee ? 0 : _depth + 1, _attribution, IsBasicMelee ? CombatSourceKind.Melee : CombatSourceKind.Skill, _comboProvenance);
+        return true;
+    }
     public bool SuppressSteps(int requestId, int casterLife, int[] steps)
     {
         if (!_initialized || _isShuttingDown || requestId != _requestId || casterLife != _casterLife || steps == null) return false;

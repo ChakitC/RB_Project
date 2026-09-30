@@ -40,7 +40,6 @@ MonoBehaviour:
         _SceneEnvironment: {fileID: 0}
         _Models:
         - {fileID: 2216855701626034192, guid: 4928a12a67c6e254ea0ce3e6b3046b60, type: 3}
-        - {fileID: 919132149155446097, guid: 8c07bddf482d93c428b8a708190e780b, type: 3}
         - {fileID: 919132149155446097, guid: 354c4cd25f667e643a03cfca68c41b7d, type: 3}
         - {fileID: 919132149155446097, guid: d5e40c1ab3a70c34e9bcd15fd6dff70b, type: 3}
         - {fileID: 919132149155446097, guid: 025519c24d8f7fe408474e6793cb25a8, type: 3}

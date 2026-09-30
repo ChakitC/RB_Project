@@ -47,6 +47,11 @@ public partial class SkillGemDefinition : SkillDefinitionBase
     private bool HasWarning => !HasBlockingError && !string.IsNullOrEmpty(WarningSummary);
     private bool HasInfo => !string.IsNullOrEmpty(InfoSummary);
 
+    [PropertyOrder(-131), ShowInInspector, HideIf(nameof(IsCombo))]
+    [FoldoutGroup("Authoring Summary", Expanded = true), LabelText("Preview As")]
+    [Tooltip("Inspector preview only. The caller chooses the execution kind at runtime; Combo steps always use Basic Melee.")]
+    public SkillExecutionKind ValidationExecutionKind { get; set; }
+
     [PropertyOrder(-130)]
     [ShowInInspector, ReadOnly, FoldoutGroup("Authoring Summary", Expanded = true), LabelText("Skill")]
     private string SummarySkillName => string.IsNullOrWhiteSpace(displayName) ? name : displayName;
@@ -64,7 +69,7 @@ public partial class SkillGemDefinition : SkillDefinitionBase
 
     [PropertyOrder(-127)]
     [ShowInInspector, ReadOnly, FoldoutGroup("Authoring Summary", Expanded = true), HorizontalGroup("Authoring Summary/StatusStrip")]
-    [LabelText("Config Status")]
+    [LabelText("Preview Status")]
     private string ConfigStatusLabel => GetConfigStatus().ToString();
 
     [PropertyOrder(-126)]
@@ -147,6 +152,23 @@ public partial class SkillGemDefinition : SkillDefinitionBase
     [FoldoutGroup("Gameplay", Expanded = true), LabelText("Radius"), MinValue(0f), SuffixLabel("m")]
     public float baseRadius = 0f;
 
+    [FoldoutGroup("Gameplay/Party Command Placement"), LabelText("Placement Mode")]
+    [Tooltip("Where a player-commanded Ally or Helper uses this skill. Player-relative modes ignore the player's selected enemy.")]
+    public PartyCommandPlacementMode partyCommandPlacementMode = PartyCommandPlacementMode.PlayerTarget;
+
+    [FoldoutGroup("Gameplay/Party Command Placement"), LabelText("No Target Placement")]
+    [ShowIf("@partyCommandPlacementMode == PartyCommandPlacementMode.PlayerTarget")]
+    public PartyCommandNoTargetPlacement partyCommandNoTargetPlacement = PartyCommandNoTargetPlacement.InFrontOfPlayer;
+
+    [FoldoutGroup("Gameplay/Party Command Placement"), LabelText("Target Distance"), MinValue(0.1f), SuffixLabel("m")]
+    [ShowIf("@partyCommandPlacementMode == PartyCommandPlacementMode.PlayerTarget")]
+    [Tooltip("Caster distance from the player's target at the Placement Point of a party command. Payload-specific placement takes priority.")]
+    public float partyCommandTargetDistance = 1.5f;
+
+    [FoldoutGroup("Gameplay/Party Command Placement"), LabelText("Player Distance"), MinValue(0.1f), SuffixLabel("m")]
+    [Tooltip("Maximum radius around the player, or forward distance from the player. Also used by No Target Placement.")]
+    public float partyCommandPlayerDistance = 3f;
+
     [PropertyOrder(-70)]
     [FoldoutGroup("Gameplay", Expanded = true), LabelText("Effect Duration"), MinValue(0f), SuffixLabel("s")]
     public float baseEffectDuration = 0f;
@@ -162,7 +184,7 @@ public partial class SkillGemDefinition : SkillDefinitionBase
 
     [PropertyOrder(-60)]
     [ShowInInspector, ReadOnly, FoldoutGroup("Execution", Expanded = true), LabelText("Primary Source")]
-    private string PrimaryExecutionSourceLabel => payload != null
+    private string PrimaryExecutionSourceLabel => IsCombo ? $"Combo ({MeleeStepCount} steps)" : payload != null
         ? $"Payload ({payload.name})"
         : "None";
 
@@ -180,10 +202,12 @@ public partial class SkillGemDefinition : SkillDefinitionBase
 
     [PropertyOrder(-37)]
     [FoldoutGroup("Presentation", Expanded = true), AssetsOnly, LabelText("Cast Cue")]
+    [HideIf(nameof(IsCombo))]
     public AudioCue castCue;
 
     [PropertyOrder(-36)]
     [FoldoutGroup("Presentation", Expanded = true), LabelText("Skill Clip")]
+    [HideIf(nameof(IsCombo))]
     [Tooltip("Per-skill Animancer transition. Set the clip plus Fade, Speed, Start Time, and optional transition events here.")]
     public ClipTransition skillClip;
 
@@ -194,6 +218,7 @@ public partial class SkillGemDefinition : SkillDefinitionBase
 
     [PropertyOrder(-35)]
     [FoldoutGroup("Presentation", Expanded = true), LabelText("Cast Point"), Range(0f, 1f), SuffixLabel("normalized")]
+    [HideIf(nameof(IsCombo))]
     public float castPointNormalized = DefaultCastPointNormalized;
 
     [SerializeField, HideInInspector]
@@ -349,12 +374,15 @@ public partial class SkillGemDefinition : SkillDefinitionBase
     }
 
     public void CollectRequiredTimelineValidationIssues(List<string> issues)
+        => CollectTimelineValidationIssues(SkillExecutionKind.StandardSkill, issues);
+
+    public void CollectTimelineValidationIssues(SkillExecutionKind kind, List<string> issues)
     {
-        if (issues == null || payload == null)
+        if (issues == null || !TryGetExecution(out var execution))
             return;
 
         var requiredEventNames = new List<CombatTimelineEventName>();
-        payload.CollectTimelineEventNames(requiredEventNames);
+        execution.CollectTimelineEventNames(requiredEventNames);
         if (requiredEventNames.Count == 0)
             return;
 
@@ -378,12 +406,32 @@ public partial class SkillGemDefinition : SkillDefinitionBase
                     continue;
 
                 found = true;
-                break;
+                if (execution.RequiresTimelineEventAfterCastPoint(requiredEventName))
+                {
+                    float time = events[eventIndex].normalizedTime;
+                    float castPoint = GetExecutionCastPointNormalized(kind);
+                    if (!IsTimelineListenerReadyAt(kind, time))
+                        issues.Add(kind == SkillExecutionKind.BasicMelee
+                            ? $"Skill Clip event '{requiredEventName}' ({time:0.###}) must have a finite time at or after 0; Basic Melee arms its listener before playback."
+                            : $"Skill Clip event '{requiredEventName}' ({time:0.###}) must occur after Cast Point ({castPoint:0.###}); its listener is armed when the payload executes.");
+                }
             }
 
             if (!found)
                 issues.Add($"Skill Clip is missing required timeline event '{requiredEventName}'.");
         }
+    }
+
+    // Compatibility entry point for callers expecting standard-skill errors as strings.
+    public void CollectExecutionValidationIssues(List<string> issues)
+    {
+        if (issues == null)
+            return;
+
+        var diagnostics = new List<SkillValidationIssue>();
+        CollectValidationIssues(diagnostics);
+        foreach (var diagnostic in diagnostics)
+            if (diagnostic.Severity == SkillValidationSeverity.Error) issues.Add(diagnostic.ToString());
     }
 
 #if UNITY_EDITOR
@@ -499,62 +547,19 @@ public partial class SkillGemDefinition : SkillDefinitionBase
             : value.Trim().ToLowerInvariant();
     }
 
-    private string BlockingErrorSummary
+    private string BlockingErrorSummary => GetValidationSummary(SkillValidationSeverity.Error);
+    private string WarningSummary => GetValidationSummary(SkillValidationSeverity.Warning);
+
+    private void CollectAuthoringWarnings(List<string> warnings)
     {
-        get
-        {
-            var issues = new List<string>();
+        if (AreaofEffec && !HasAnyRadiusConfigured)
+            warnings.Add("Area Of Effect is enabled, but base radius currently resolves to 0.");
 
-            if (!HasSkillId())
-                issues.Add("Skill ID is required.");
+        if (skillClip != null && (castPointNormalized < WarningCastPointMin || castPointNormalized > WarningCastPointMax))
+            warnings.Add("Cast Point is technically valid, but sits in an extreme range that is easy to mistime in animation-driven skills.");
 
-            if (IsCombo)
-            {
-                if (!ValidateMelee(out var comboError)) issues.Add(comboError);
-                if (payload != null) issues.Add("Combo execution belongs to its steps; remove the root payload.");
-            }
-            else if (payload == null)
-                issues.Add("Execution payload is required.");
-            else
-            {
-                payload.CollectValidationIssues(issues);
-                CollectRequiredTimelineValidationIssues(issues);
-            }
-
-            CollectSkillVfxValidationIssues(issues);
-
-#if UNITY_EDITOR
-            if (payload != null && !IsPayloadEmbedded())
-                issues.Add("Execution payload must be embedded in the same asset as this skill.");
-            else if (payload != null)
-            {
-                int orphanedPayloadCount = GetOrphanedEmbeddedPayloadCount();
-                if (orphanedPayloadCount > 0)
-                    issues.Add($"Skill asset has {orphanedPayloadCount} embedded payload(s) not referenced by the root payload or any composite step.");
-            }
-#endif
-
-            return string.Join("\n", issues);
-        }
-    }
-
-    private string WarningSummary
-    {
-        get
-        {
-            var warnings = new List<string>();
-
-            if (AreaofEffec && !HasAnyRadiusConfigured)
-                warnings.Add("Area Of Effect is enabled, but base radius currently resolves to 0.");
-
-            if (skillClip != null && (castPointNormalized < WarningCastPointMin || castPointNormalized > WarningCastPointMax))
-                warnings.Add("Cast Point is technically valid, but sits in an extreme range that is easy to mistime in animation-driven skills.");
-
-            if (ProjectilePayload != null && ProjectilePayload.HasHitVfxScaleWithoutHitVfx)
-                warnings.Add("Hit VFX Scale is set, but there is no projectile hit VFX assigned.");
-
-            return string.Join("\n", warnings);
-        }
+        if (ProjectilePayload != null && ProjectilePayload.HasHitVfxScaleWithoutHitVfx)
+            warnings.Add("Hit VFX Scale is set, but there is no projectile hit VFX assigned.");
     }
 
     private string InfoSummary
@@ -583,6 +588,9 @@ public partial class SkillGemDefinition : SkillDefinitionBase
 
     private string BuildRuntimeSummaryLine()
     {
+        if (IsCombo)
+            return GetResolvedRuntimeModeLabel();
+
         string projectileLabel = HasProjectileExecutionIntent ? "Projectile" : "Non-Projectile";
         string aoeLabel = AreaofEffec && HasAnyRadiusConfigured ? "AoE" : "Single Target";
         string execLabel = GetResolvedRuntimeModeLabel();
@@ -593,6 +601,9 @@ public partial class SkillGemDefinition : SkillDefinitionBase
 
     private string GetResolvedRuntimeModeLabel()
     {
+        if (IsCombo)
+            return $"Combo ({MeleeStepCount} steps)";
+
         if (payload == null)
             return "Invalid";
 
@@ -688,26 +699,6 @@ public partial class SkillGemDefinition : SkillDefinitionBase
                string.Equals(skillPath, AssetDatabase.GetAssetPath(payload), StringComparison.OrdinalIgnoreCase);
     }
 
-    private int GetOrphanedEmbeddedPayloadCount()
-    {
-        string skillPath = AssetDatabase.GetAssetPath(this);
-        if (string.IsNullOrEmpty(skillPath))
-            return 0;
-
-        var referenced = new HashSet<SkillPayloadDef>();
-        CollectReferencedPayloads(payload, referenced);
-
-        int orphanCount = 0;
-        UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(skillPath);
-        for (int i = 0; i < assets.Length; i++)
-        {
-            if (assets[i] is SkillPayloadDef embedded && !referenced.Contains(embedded))
-                orphanCount++;
-        }
-
-        return orphanCount;
-    }
-
     static void CollectReferencedPayloads(SkillPayloadDef candidate, HashSet<SkillPayloadDef> referenced)
     {
         if (candidate == null || !referenced.Add(candidate))
@@ -797,21 +788,21 @@ public partial class SkillGemDefinition : SkillDefinitionBase
 
     public ChainStepContinueMode GetChainContinueMode()
     {
-        return payload != null
-            ? payload.GetChainContinueMode()
+        return TryGetExecution(out var execution)
+            ? execution.GetChainContinueMode()
             : ChainStepContinueMode.OnStepComplete;
     }
 
     public float GetChainContinueNormalizedTime()
     {
-        return payload != null
-            ? payload.GetChainContinueNormalizedTime()
+        return TryGetExecution(out var execution)
+            ? execution.GetChainContinueNormalizedTime()
             : 1f;
     }
 
     public bool TryFindPayload<T>(out T found) where T : SkillPayloadDef
     {
-        found = FindPayloadRecursive<T>(payload);
+        found = TryGetExecution(out var execution) ? FindPayloadRecursive<T>(execution) : null;
         return found != null;
     }
 
@@ -828,7 +819,7 @@ public partial class SkillGemDefinition : SkillDefinitionBase
             IReadOnlyList<SkillEffectStep> steps = composite.Steps;
             for (int i = 0; i < steps.Count; i++)
             {
-                if (steps[i] is PayloadStep payloadStep)
+                if (steps[i] is PayloadStep payloadStep && payloadStep.Payload is not CompositeSkillPayloadDef)
                 {
                     T nested = FindPayloadRecursive<T>(payloadStep.Payload);
                     if (nested != null)

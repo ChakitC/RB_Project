@@ -1,5 +1,7 @@
 # Map System
 
+For a step-by-step Thai prefab setup guide, see [วิธี setup Map Room Prefab](MAP_PREFAB_SETUP.md).
+
 The runtime map is generated as a `MapGraph`. Each `MapNode` owns one lazily
 created room instance for the lifetime of the current run. A room is created
 the first time its node is entered, cached by `MapNode.Id`, and disabled when
@@ -19,8 +21,9 @@ at runtime.
 
 ## Stage Data Layout
 
-A `MapRunConfigSO` owns stage identity and nothing else. All of its tuning lives on profile
-assets it points at:
+A `MapRunConfigSO` owns stage identity, an optional `Skybox Material`, and optional
+Directional Light settings.
+Generation, content, and progression tuning live on profile assets it points at:
 
 | Asset | Serves |
 | --- | --- |
@@ -29,6 +32,32 @@ assets it points at:
 | `StageProgressionProfileSO` | level band, runs to clear, enemy level tiers, XP split, Stage Exit prefab |
 | `StageDefinitionSO` | one stage as the player meets it: id, display name, run config, board order |
 | `StageCatalogSO` | the ordered list of stages the Basement board offers |
+
+`Skybox Material` is assigned directly on the run config; it does not need a separate
+environment profile. `MapRunController` applies it after resolving and validating the selected
+stage and graph, before entering the first room. An empty field uses the scene skybox captured
+before the controller's first override, including when restarting with a different config.
+Abort or controller teardown restores that skybox while its scene is active; teardown does not
+overwrite a newly active scene such as Basement. Runtime changes request an ambient-probe update
+through `DynamicGI.UpdateEnvironment()`; fog and Volume settings are unchanged.
+
+Enable `Override Directional Light` on the config to set the main light's color, intensity,
+world Euler angles, shadows/strength, and optional color temperature before entering the first
+room. These values stay directly on `MapRunConfigSO`. The controller uses its `Directional Light`
+reference, otherwise the scene's Sun, otherwise the brightest enabled Directional Light in its
+own scene outside `roomParent`. If none exists, it creates a light under the controller.
+The original values are restored on abort, teardown, or starting a config with the override off;
+a runtime-created light returns to disabled. Room rotation does not rotate this light, and
+room-authored point/spot lights are unchanged. Assign the controller reference explicitly when
+a scene contains several directional lights and automatic selection is unsuitable.
+
+Boss Rush 01 uses `Assets/Materials/Sewer_Toon/SewerDungeon_Skybox_Toon_MAT.mat`, whose
+panoramic texture is `Assets/Skyboxes/Sewer_Toon/sewer_dungeon_toon_skybox.png`.
+Its Directional Light settings are copied from the light in `Assets/Scenes/MossyMaterialPreview.unity`,
+which uses that skybox: world angles `(48, 325, 0)`, intensity `1`, pale green color,
+shadows `None`, and color temperature disabled. The skybox image/material itself does not store
+Directional Light settings. Boss Rush applies the same main light throughout its run, including
+the Sewer Boss room, without adding another Directional Light to the room prefab.
 
 Profiles are **required**, not optional. A config needs a generation profile and a content pool,
 and a Test Stage additionally needs a progression profile; `MapRunConfigValidator` rejects a config

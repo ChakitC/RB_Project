@@ -58,6 +58,7 @@ public class DashSystem : MonoBehaviour
             ctx = GetComponentInParent<CharacteContext>();
 
         ctx?.ResolveReferences();
+        ctx?.EnsureMovementMotor();
 
         if (!combatEventBus)
             combatEventBus = ctx != null ? ctx.CombatEventBus : null;
@@ -291,7 +292,7 @@ public class DashSystem : MonoBehaviour
             if (_perfectDodgeWindowRemaining > 0f)
                 _perfectDodgeWindowRemaining = Mathf.Max(0f, _perfectDodgeWindowRemaining - dt);
 
-            ctx.cc.Move(dir * speed * dt);
+            ctx.MovementMotor.Move(dir * speed * dt, CharacterMovementSettings.Default);
             t += dt;
             yield return null;
         }

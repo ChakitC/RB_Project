@@ -4,6 +4,150 @@ This project relies on prefab-authored context blocks plus runtime reference
 resolution. Use this document when creating or editing character prefabs,
 pickup prefabs, weapon data, or inspector-facing fields.
 
+## Spacebar Block HUD
+
+`Assets/Spain/UI/Block HUD/SpacebarBlockHUD.prefab` combines the seven source
+sprites in that folder as centered uGUI Image children. Place the prefab under
+an existing Canvas and resize or scale the root RectTransform as a single unit.
+The source images share a 1769 x 1075 canvas and must keep their full image size
+and center alignment. Their hierarchy order controls the artwork: both `Base`
+layers sit behind the three `Power Gauge` layers, then `Text`, with `Text_2`
+on top. All images have Raycast Target disabled because this is display art.
+
+## Ammo HUD
+
+`Assets/Spain/UI/Ammo HUD/AmmoHUD.prefab` combines the seven transparent source
+sprites on their shared 976 x 598 canvas. Place it under an existing Canvas.
+`CurrentAmmoText` and `ReserveAmmoText` are TextMeshPro placeholders set to
+`999`; bind these two fields to the current and reserve ammo counts in the HUD
+controller when wiring gameplay. Keep the image children center-aligned at
+their native size so the orange frame, black panels, and bullet layers match.
+All visual elements have Raycast Target disabled.
+
+## HP and Stamina Bar
+
+`Assets/Spain/UI/HpStamina HUD/HpStaminaBar.prefab` combines seven source
+sprites on their shared 745 x 1002 canvas. Place it under an existing Canvas
+and scale the root RectTransform as one unit. The stamina artwork sits behind
+the HP artwork; the HP frame overlays its orange fill. `CurrentHPText` and
+`MaxHPText` are TextMeshPro placeholders set to `999` and should be bound to
+the character's live HP values when gameplay is connected. The HP and stamina
+fill sprites currently show the reference image at full fill; they do not
+change with gameplay until a HUD controller drives them. All visual elements
+have Raycast Target disabled.
+
+## Ally Status HUD
+
+`Assets/Spain/UI/AllyStatus HUD/AllyStatusHUD.prefab` combines eight source
+sprites on their shared 1196 x 755 canvas. Place it under an existing Canvas.
+`PortraitMask/PortraitIcon` is the replaceable character icon slot. It uses
+`Assets/Spain/Charactor_Icon/Aires_Icon.png` as the initial sprite; assign
+another character sprite to `PortraitIcon` when showing a different ally.
+Keep `PortraitIcon` inside `PortraitMask` so the image stays within the angled
+black portrait area. The HP and stamina bars show the reference artwork at
+full fill until gameplay code drives their progress. All images have Raycast
+Target disabled.
+
+## Combo HUD
+
+`Assets/Spain/UI/Combo_Hud/ComboHUD.prefab` layers `Combo_Color` behind
+`Combo_BG` on their shared 1920 x 1080 canvas. Place it under an existing
+Canvas. The large `E` input prompt is part of the background sprite.
+`Assets/Spain/UI/Combo_Hud/ComboAllyIconCombo.prefab` is the separate ally icon
+panel: `Combo_AllyIconCombo_Color` sits behind `Combo_AllyIconCombo_Base` on
+their shared 585 x 668 canvas. `PortraitMask/PortraitIcon` clips the character
+image inside the angled black panel, with `Aires_Icon` assigned initially.
+Change the sprite on `PortraitIcon` for another ally, and keep it under
+`PortraitMask` so the panel border remains visible.
+All images in both prefabs have Raycast Target disabled.
+
+`Assets/Spain/UI/Combo_Hud/ComboHUDCombined.prefab` is the composed layout
+shown in the reference image. It nests one `ComboHUD` and three
+`ComboAllyIconCombo` instances named `AllyIconSmall`, `AllyIconMedium`, and
+`AllyIconLarge`. Each instance overrides its `PortraitMask/PortraitIcon`
+sprite to `Roma_Icon` and can be changed independently. The source prefabs
+remain reusable on their own; edit the combined prefab when authoring the
+three-icon composition. Each ally card includes a `Remaining` TMP label for
+the live opportunity countdown.
+
+## Skill HUD
+
+`Assets/Spain/UI/SkillHud/SkillHUD.prefab` combines the six source sprites on
+their shared 953 x 480 canvas. Place the single prefab under an existing
+Canvas. `BG_Skill` is the common base image. `UnavailableState` is active by
+default and overlays the dark progress artwork and gray `SKILL` text.
+`ReadyState` contains the orange progress artwork and white text with orange
+accents. Activate exactly one of these state groups to show whether the skill
+is ready. The prefab contains visuals only; the HUD controller must toggle
+the groups when the skill state changes. Keep the images center-aligned at
+their native size. All images have Raycast Target disabled.
+
+## Gameplay HUD
+
+`Assets/Spain/UI/GameplayHUD.prefab` is the full-screen composition from the
+HUD layout reference. Place it under a Canvas that uses a 1920 x 1080
+reference resolution with `Scale With Screen Size`. Its root stretches to
+the Canvas; the child elements use screen-edge anchors so their positions
+follow the corresponding corners when the viewport changes.
+
+The left side contains three `AllyStatusHUD` instances (`AllyTop`,
+`AllyMiddle`, `AllyBottom`) and `PlayerHpStamina`. The top and bottom ally
+portraits initially use Aires, and the middle uses Dorothy. The right side
+contains `ComboDisplay`, `AmmoDisplay`, and a circular
+`MinimapPlaceholder`. The lower right follows the reference stack: three
+dark cards (`SkillCardBack`, `SkillCardMiddle`, `SkillCardFront`) sit behind
+one orange `SkillReady` instance of `SkillHUD`. The cards use
+`SkillCardFrame.png` and `MilanoSkillSilhouette.png`, a monochrome derivative
+of the existing `MilanoSkill_2_Icon` artwork. `ReadySkillIllustration` uses
+the same silhouette in white and is clipped by the ready HUD base. Replace
+these image sprites when showing other character skills. Four small images
+form the center crosshair. All new images have Raycast Target disabled.
+
+`PlayerUI.prefab` and the active `PlayerUI_PartyHud.prefab` assign this prefab
+to `PlayerUIRuntimeBinder`. When the party spawns, the binder adds `GameplayHUD` under the existing `UI_Manager`
+Canvas and binds `GameplayHudPresenter` to the spawned player. The presenter
+shows player and party HP, stamina, portraits, magazine and reserve ammo,
+slot 0 skill readiness, and the combo display while an offer is available.
+The player's diagonal HP and stamina artwork uses `SlantedBarFillEffect` at
+runtime so depletion follows the angle of each painted bar. Keep those two
+fill images as `Simple` images and preserve their original sprite alignment.
+The three ally panels use PartySlot1, PartySlot2, and the active Helper in that
+order. Missing actors hide their panels. The legacy player vital, ammo, HP,
+stamina, and charge visuals, along with the older PartyHUD status and skill
+panels, are hidden to avoid duplicate readouts. On `PlayerUI_PartyHud`, the
+binder redirects `PartyHudPresenter` to the new `ComboDisplay` and hides both
+the old `PartyHUD/ComboOffers` and legacy `PlayerHUD/PartyComboHud` views.
+The existing `PartyHudInputRouter` remains active: E consumes the first valid
+offer, ordered by earliest expiry then offer ID, matching the displayed cards
+from `AllyIconSmall` (beside E) through Medium to Large. Portraits use the
+offer owner's current character icon; `Remaining` uses the controller's
+pause-aware clock. Only eligible offers with charges show a card; empty cards
+and an empty display are hidden. Do not independently toggle `ComboDisplay`
+from another presenter. Keep each card's `PortraitMask/PortraitIcon` Image
+and `Remaining` TMP label intact. An incomplete replacement retains the old
+view. UI prefabs without `PartyHudPresenter` retain their legacy Combo UI.
+Command, energy, cast feedback, and fullscreen effects retain their existing
+controllers.
+The circular minimap remains placeholder art until a map source is authored.
+The runtime instance inherits the current `UI_Manager` CanvasScaler, which
+uses Constant Pixel Size, so check this composition at each target resolution.
+
+`GameplayHudAimLayout` reads the bound player's `WeaponSystem.IsAiming` and active
+Cooperative Block session each frame. While aiming or in Block Struggling/Success,
+only Player Status (`PlayerHpStamina`) moves, to
+bottom-left Canvas coordinates (380, 240), beside the ally column and left
+of the character. It keeps its authored size and rotation. The ally panels,
+skill cards, ammo, Combo, and reticle retain their authored transforms.
+Transitions take 0.18 seconds using unscaled time, including when reversing
+Aim mid-transition. It restores the captured authored position and anchors when
+neither Aim nor Block Struggling/Success is active, or when the layout is disabled,
+without accumulating offsets on rebind. Ending Block while still aiming keeps the Aim position.
+The component's inspector fields tune the Aim layout; positions are in Canvas
+units. `GameplayHudPresenter.Bind` adds the component if it is missing. Keep
+`PlayerHpStamina` directly under `GameplayHUD`, and author its normal pose
+outside Play mode. Validate the Player Status position and unchanged surrounding
+panels at 1280 x 720 and 1920 x 1080 after changing these settings.
+
 ## Character Prefab Context
 
 Player, ally, and enemy prefabs should have a context component as the main
@@ -264,7 +408,7 @@ matches how the actor is moved:
 
 Fields to bind:
 
-- `ctx`, `characterController`, `colliderRefs`, `animBrain`. `characterController`
+- `ctx`, `characterController`, `colliderRefs`. `characterController`
   is optional and stays empty on actors that have none (all Enemy prefabs).
   `colliderRefs` is normally resolved from `ctx` and rebound whenever
   `CharacterVisualController` swaps the model.
@@ -273,15 +417,14 @@ Fields to bind:
   `CharacterColliderRefs.CharacterPositionCollider`. It is never auto-filled by a
   hierarchy search any more, because that returned a hit-zone capsule on several
   characters.
-- `navMeshAgent` and `agentMoveDriver` on `AgentDriven` actors. If a prefab has an
-  agent but no `AgentMoveDriver`, the motor suspends the agent directly instead;
-  binding the driver is still preferred because its token API reference-counts
-  against other systems that suspend the same agent.
-- `rootMotionCCDriver` / `rootMotionNavMeshDriver`, so the motor can stand down on
-  frames where a root motion clip is writing its own Y. When `CharacterVisualController`
-  creates or replaces a model's runtime driver, it explicitly rebinds the active driver to
-  `CharacterVerticalMotor` immediately after configuration; the inactive driver reference is
-  cleared, so model rebuilds do not depend on a later hierarchy lookup.
+- `navMeshAgent` on `AgentDriven` actors resolves through `ctx.NavigationAgent`.
+  Suspension uses `ctx.MovementMotor` with or without an `AgentMoveDriver`.
+- Gravity reads root-motion Y ownership from `ctx.MovementMotor`. The vertical
+  motor's old `animBrain`, `agentMoveDriver`, `rootMotionCCDriver` and
+  `rootMotionNavMeshDriver` fields and `BindRuntimeRootMotionDriver` methods have
+  been removed. Root-motion adapters register Y ownership directly with the
+  shared motor. The nine prefabs containing these fields were migrated through
+  Unity; there are no remaining overrides for these field names in project assets.
 - `groundMask` and `collisionMask` — production prefabs use
   `Default | Ground | Ground Y | Terrain`, because scene ground geometry is not
   consistently on the `Ground` layer.
@@ -314,12 +457,13 @@ knockbacks: leave it at zero for a purely planar knockback, exactly as before.
 
 ### Displacement Without A CharacterController
 
-`CharacterKnockbackMotor` and `CharacterVerticalMotor` both branch on the same
-rule:
+`CharacterMovementMotor` applies the shared displacement rule for walking, dash,
+root motion, knockback, gravity, companion separation and defensive approach:
 
 ```text
 enabled CharacterController -> CharacterController.Move()
 no CharacterController      -> position-collider sweep + actor Transform move
+disabled CharacterController -> no displacement
 ```
 
 The no-controller path is used by every Enemy. It resolves the actor body from
@@ -330,9 +474,21 @@ colliders owned by the actor context (not siblings under a shared room root), an
 allocates nothing per frame. The motor then moves
 only by the safe displacement and syncs `NavMeshAgent.nextPosition`.
 
-If no usable body is found the knockback motor falls back to the `NavMeshAgent`
-cylinder, and the vertical motor falls back to an unswept move. Both are last
-resorts: author the position collider.
+Knockback retains its existing NavMesh-agent-cylinder fallback. Other missing-body
+movement stops and warns once; gravity no longer falls back to an unswept move.
+Root motion slides at collisions; knockback and gravity stop at the hit distance.
+Keep each behaviour's existing mask, padding and trigger settings. Controller
+movement continues to use the controller's collision settings.
+
+The context creates one `CharacterMovementMotor` through `EnsureMovementMotor()`
+at runtime on its own object.
+Existing prefabs need no mass migration. It may also be authored on the context
+object; do not put it on a replaceable model. Ordinary context inspection in Edit
+Mode and `CharacterMovementMotor.Resolve` do not create components. Standalone
+setups without a context must author their motor explicitly and bind it during
+initialization. `Move(delta, settings)` and `PlaceOnNavMesh(position)` use that
+binding; per-call body/root overloads were removed. Placement is reserved for positions already
+validated by landing/recovery logic, not ordinary walking or animation motion.
 
 ## Runtime Party Spawn Authoring
 
@@ -455,6 +611,9 @@ only the transition, camera, temporary layout, control lock, and restoration.
 
 ## Map Room Spawn And Party Warp
 
+คู่มือภาษาไทยสำหรับสร้างห้องใหม่ตั้งแต่เลือก base prefab จนลง Content Pool:
+[วิธี setup Map Room Prefab](SYSTEMS/MAP_PREFAB_SETUP.md).
+
 `MapRunController` places the player at the entrance selected by
 `RoomController.GetPlayerSpawnPoint`. Active companions are then placed
 individually in a small formation in front of the player and must successfully
@@ -482,8 +641,8 @@ chosen.
 
 The Start role uses `Base_Map/Start/RoomPrefab.Base.Start.Up.prefab`. It is a
 Prefab Variant of `Base_Map/DeadEnd/RoomPrefab.Base.DeadEnd.Up.prefab`, rather
-than a copied sixteenth topology, so it inherits the one exit, all runtime
-references, and the same baked NavMeshData. Create the styled Start room as a
+than a copied sixteenth topology, so it inherits the one exit and all runtime
+references. It has no baked NavMeshData; bake the finished room Variant. Create the styled Start room as a
 Variant of this Start base. Runtime rotation supplies the other three Start
 orientations; do not add extra exits to this base.
 
@@ -871,6 +1030,28 @@ reference can only be saved as a scene override, and the captured
 `sourceRest`/`targetRest` become per-instance overrides as well.
 
 ## Character Skill Loadout Authoring
+
+### Player-commanded Ally/Helper placement
+
+On each `SkillGemDefinition`, open **Gameplay > Party Command Placement**:
+
+- **Placement Mode**: `Player Target`, `Around Player`, or `In Front Of Player`.
+- **No Target Placement** appears for `Player Target`: choose the per-skill
+  fallback `Around Player` or `In Front Of Player`.
+- **Target Distance** retains the existing stand-off setting for targeted casts;
+  a payload's authored placement distance takes priority.
+- **Player Distance** sets the maximum radius around the Player or the forward
+  distance, including fallback placement. Default is 3 m.
+
+Existing assets default to `Player Target` with `In Front Of Player` fallback.
+Choose `Around Player` for support skills that should stay near the Player and
+`In Front Of Player` for skills that should always use the Player's facing. Those
+two modes ignore selected enemies. Placement does not assign a healing recipient
+or change damage/buff targeting: configure the payload's recipient rules separately.
+See [Skill System](SYSTEMS/SKILL_SYSTEM.md#player-directed-ally-and-helper-skills)
+for in-range checks, fade timing, collision validation and helper lifecycle.
+
+### Loadout slots
 
 Author character-default active skills, and any character-owned passive with
 its own upgrade tree, on the `CharacterStats` asset under `Skill Loadout`. A
@@ -2004,7 +2185,7 @@ own `StatusEffectController` the same way.
 
 ## Root Motion Trajectory Authoring
 
-No additional prefab, skill asset, or FBX importer fields are required for
+No additional prefab or FBX importer setup is required for
 player and party chain-attack root motion placement or Guaranteed Interruption
 ally placement. The attack `AnimationClip` remains the source of truth: Unity
 must already extract the clip's root motion so `Animator.deltaPosition` and
@@ -2012,13 +2193,61 @@ must already extract the clip's root motion so `Animator.deltaPosition` and
 
 Targeted Helper delivery skills are the exception because their payload owns a
 gameplay stand-off. Author **Targeted Delivery > Caster Placement > Target
-Stand-Off At Cast Point** on `TargetedDeliverySkillPayloadDef`; this is the
-horizontal Helper-to-target distance at the skill cast point. The runtime
+Stand-Off At Placement Point** on `TargetedDeliverySkillPayloadDef`; this is the
+horizontal Helper-to-target distance at the skill placement point. The existing
+serialized field/API keeps the `AtCastPoint` suffix for compatibility. The runtime
 derives the Animation start pose from the sampled root motion and never scales
 the clip to fit this value. `AllyHelperManager.minSummonRadius` on the Player
 prefab is only for the generic fallback ring around the Player and must not be
 used to tune a targeted skill. Milano Skill 3 currently authors this payload
 value as `1.2m`.
+
+In **SkillGemDefinition > Presentation > Target Placement**, select **Placement
+Timing** to align a root-motion attack independently of when its payload starts:
+
+- **Legacy** (default): preserves Cast Point alignment for Field Ally Chain and
+  targeted Helper; Interruption keeps HitStart with Cast Point fallback.
+- **HitStart**: align with the first HitStart marker. If absent, the inspector's
+  **Placement Point / HitStart Fallback** value is used independently of Cast Point.
+- **Custom**: align at **Placement Point / HitStart Fallback** (normalized clip time).
+
+The **Animation Event VFX Timeline > Animation / VFX** view also has a separate
+**Placement Point** row for the main skill. Scrub to the contact pose (A), then
+press **Set At Playhead > Placement Point**, drag its marker, or right-click the
+row and choose **Set Placement Point Here**. Each action selects **Custom** timing
+and saves the skill asset; Undo/Redo restores the mode and time together. Cast
+Point and HitStart are unchanged. The marker label shows Custom, HitStart,
+HitStart Fallback, or Legacy. Legacy displays the Cast Point used by Field Ally
+Chain/targeted Helper; Interruption still follows HitStart when available.
+Use the Inspector's **Placement Timing** to switch back to HitStart or Legacy.
+Point editing is disabled in Play Mode and the cutscene portion of the preview;
+cutscene-only and basic-melee Combo entries do not expose Placement Point.
+
+For **Party Combo**, choose **Align Placement Point To Event Target** in the
+execution profile's Placement Policy to use this marker when finding the warp
+start S. In this mode **Desired Range** means the actor-root distance from the
+target at A, and **Local Offset** offsets A. The existing Place Near Event Target
+mode still measures the initial warp distance and does not use the marker.
+`Test.Aires.ComboFollowUp` uses the dedicated `AiresComboExecution` profile with
+this mode enabled and Desired Range 2m. Adjust that range for the skill's reach;
+Placement Point supplies timing, not the blade/contact offset. Missing trajectory
+data or a blocked trajectory prevents the Combo from starting.
+
+This Party Combo mode preserves the clip's vertical root motion for jumps.
+Desired Range aligns the horizontal contact pose; the root height at that beat
+comes from the authored Y curve relative to the grounded takeoff. It does not
+force an airborne contact beat down to the target's ground height. The body must
+clear ceilings and have supported takeoff/landing positions. Existing planar
+Chain/Helper sampling remains unchanged.
+
+For a slash that starts its payload at 0.20 and reaches the target at 0.45, keep
+Cast Point at 0.20 and choose Custom placement 0.45 (or HitStart if that marker is
+the desired pose). Keep HitStart/HitEnd authored for the actual damage window.
+The placement offset describes the actor root at that time, not the blade tip.
+Payload listeners must still exist before their required timeline markers fire;
+moving Placement Point does not create or move those markers. No existing skill
+assets are migrated automatically. The separate static Helper Chain teleport does
+not use trajectory alignment.
 
 `SkillGemDefinition > Presentation > Ignore Character Collision During Root
 Motion` defaults to enabled. Keep it enabled for jumping, lunging, and other
@@ -3042,6 +3271,101 @@ For the separate reference-layout combat HUD, see [Separate Party HUD](SYSTEMS/P
 
 ## Defensive Block production and test scene
 
+For Player + Ally defense choose `Skill > Defensive Block > Mode = Cooperative` and enable
+`cooperativeEnabled` on **both** actor profiles. This opt-in is false by default. Use a melee/dash
+hitbox payload and bind at least one step to the Block window; the first bound step supplies the
+failure hit. The command cannot become ready until that payload execution exists. Cooperative
+ends the entire request; `Continue Skill` is invalid. Configure the approach and `cooperative`
+meter fields in the Inspector or the Timeline's draft settings popup, then Save.
+
+Both actors need the existing context, `FieldAllyMember`, `DefensiveBlockController`, animation,
+placement body, health and movement setup. Cooperating actors must have a safe NavMesh-backed
+position beside the Player. Optional `CharacterAnimProfileSO.block.cooperativeStruggleClip` supplies
+a Player/Ally struggle loop; leave it empty to use the held guard pose. No new animation asset is required.
+
+For the enemy, assign **Skill > Defensive Block > Cooperative > Enemy Struggle Clip**
+and **Enemy Struggle Fade Seconds** (default 0.06). The Timeline's **Block > Timed
+Approach Settings...** popup exposes the same fields through draft/Save/Revert/Undo.
+Use an in-place, non-Legacy clip with positive length and a finite, nonnegative fade.
+An empty clip holds the attack impact pose. A configured clip loops only during the
+struggle, pauses with gameplay, and stops when the session resolves or cancels.
+The loop does not execute skill payload/events or advance the original attack timeline.
+This is per-skill enemy presentation; defender clips remain in `CharacterAnimProfileSO.block`.
+
+The production `GameplayHUD` nests `Assets/Spain/UI/Block HUD/SpacebarBlockHUD.prefab`
+on the right (right-center anchor, offset `(-550, -140)`, scale `0.52`). Its
+`CooperativeBlockHud` is bound by `GameplayHudPresenter`; `Ensure` first searches the
+Player's `playerUIContext` so it reuses this view without creating the fallback overlay.
+It appears only while Struggling. `Power Gauge_2` uses `SlantedBarFillEffect` to clip the
+authored gold bar to the session meter without stretching the artwork. Accepted presses
+swap `Base_1` for `Base_animation` and enable `Text_animation` (sprite `Text_2`) for
+0.12 seconds, then restart the idle blink cycle. Keep `Text` active underneath the
+text overlay so its exclamation mark remains visible; exclude `Text` from `restingArtwork`.
+While Struggling, the base swap and text overlay also blink automatically every
+`blinkInterval` (default 0.3 seconds). Blinking uses unscaled time, freezes during pause,
+and resets when the session ends or the view is unbound. Images do not
+intercept clicks, and the Block HUD is excluded from the right-panel fade.
+
+For a custom or fallback HUD, add `CooperativeBlockHud` below the Player and bind `group` (CanvasGroup), `meterFill`
+(uGUI Image), and `prompt`, `timeLabel`, `helperLabel` (TMP). The fill must be left-pivoted because
+the component scales its local X. Bind the HUD to the Player's interruption controller through
+`Bind`; the runtime discovers an existing child HUD or creates its default overlay on first use.
+Keep Block wired to `PlayerInputHandler.OnInterruptionCommand`, including canceled callbacks, so
+held input cannot repeatedly add meter. The prompt reads the action's actual binding display string.
+The session owns one camera shot; do not start a second guard camera from its Accepted events.
+Cooperative uses the Player guard profile's normal Block camera during approach. At contact,
+**Cooperative Struggle Camera** blends to a closer oblique rear shot with the actors on the
+left: local position `(1.9, 2.2, -3.4)`, Euler `(10, -12, 8)`, FOV `55`, blend `0.2` seconds.
+These settings are snapshotted at entry and held through the success reaction before returning.
+It centers on Player/Ally and backs away from the authored camera offset only enough to fit
+both defenders, with screen-edge padding and the output camera's aspect ratio. Enemy distance
+does not affect framing. The existing wall avoidance can shorten this distance in tight spaces.
+
+`GameplayHudBlockVisibility`, installed by `GameplayHudPresenter`, fades `AmmoDisplay`,
+`ComboDisplay`, the four `SkillReady Ally` roots and optional `MinimapPlaceholder` over
+0.18 unscaled seconds during struggle/success. It restores their original CanvasGroup alpha
+and input flags on exit, cancel or unbind. Keep these as direct GameplayHUD children.
+Left-side status/party panels and the separate Block prompt remain visible; hidden presenters
+stay active so cooldowns and combo expiration continue updating.
+
+Tune **Cooperative Camera Shake** on the Player's `DefensiveBlockActorProfile`:
+`cooperativeImpactShakeDegrees` (1.8), `cooperativeImpactShakeSeconds` (0.22), and
+`cooperativeImpactShakeFrequency` (22 Hz) control the one-time contact kick;
+`cooperativeStruggleShakeDegrees` (0.12) and `cooperativeStruggleShakeFrequency` (9 Hz)
+control the gentle continuous shake. Set either Degrees value to zero to disable that
+effect. Values are copied when the shot begins; edits apply to the next Block.
+The contact kick starts when the pair and enemy reach Struggling, not on the initiating
+button press. Both effects pause with gameplay and stop on resolution/cancellation.
+Tune **Cooperative Success Camera Shake** on the same Player guard profile for the
+separate kick when the pair wins: `cooperativeSuccessShakeDegrees` (1.8 degrees),
+`cooperativeSuccessShakeSeconds` (0.2 real seconds), and
+`cooperativeSuccessShakeFrequency` (20 Hz). Zero degrees disables it. The kick pauses
+with gameplay and clears on shot cleanup; failure/cancellation does not trigger it.
+The same initial contact also plays **Impact Presentation > Impact Vfx** from the Player
+guard profile, once at the midpoint of Player/Ally guard contact centers. **Impact Vfx Lifetime**
+controls its normal lifetime; session cleanup removes it earlier if necessary. Use the existing
+effect slot (or leave it empty to omit VFX). Success feedback still plays when the pair wins.
+**Impact Cue** now also plays once at initial Cooperative contact, alongside the VFX and
+camera kick. It uses the same `AudioCue` as success feedback (the fixture uses `BlockImpact`).
+Edit that cue for the clip, volume and pitch; an empty cue disables this sound.
+Cooperative screen wind reuses the HUD's existing `perfectDodgeScreenEffectPrefab` reference;
+no prefab changes are needed. Its owned `BeginScreenWind` API returns a `PlayerScreenEffectHandle`
+which the caller must advance and dispose. Cooperative Block does this with its own pause-aware
+clock and ends the wind immediately on resolution/cancellation. Unlike the autonomous screen
+effect APIs, it works with an inactive HUD and does not extend the requested duration to match
+the prefab's particle lifetime. Other callers' effects are independent.
+Keep **Screen Effect Size Multiplier** near `1.15` (115% of the camera frustum size,
+not a percentage input). `PlayerUI` and `PlayerUI_PartyHud` use this value. Their old
+`110.8` override expanded the quad beyond the screen so the wind's edge pattern was
+outside the viewport even though its particle existed directly in front of the camera.
+Both Player UI prefabs use **Screen Effect Opacity Multiplier** `0.8` (previously `0.4`)
+to make the wind more visible. This shared setting also applies to other screen effects
+created by the controller.
+
+The test fixture generator **Tools/RB/Defensive Block/Add Cooperative Test Skill** adds the
+Rector copy and opt-in Player/Aires profiles under `Assets/Tests/DefensiveBlock/Cooperative`.
+The existing test-scene skill picker selects this mode without modifying production assets.
+
 Production bindings use the original Rector Skill 1 and Aires character definition.
 Tune `Assets/Data/Skills/Enemies/Rector/Rector_Skill_1.asset > Defensive Block` for range, window, hitbox steps
 and Rector knockback. Its **Threat prediction** fields configure pre-hitbox lane
@@ -3049,7 +3373,7 @@ half-width (1.5 m), forward reach (2.3 m) and estimated charge speed (8 m/s).
 Defensive Block selects incoming attacks automatically without aiming; actual
 hitbox geometry and observed speed replace the estimates when available. Tune
 `GuardSetting.asset` for placement, guard, recoil and warp fade;
-`AiresBlockAnimation.asset` for clips and phases. Companions need an opted-in
+`CharacterStats.animProfile > Block` for clips and phases. Companions need an opted-in
 character definition. `Player.prefab > DefensiveBlockController.defaultSettings`
 references the same GuardSetting as a fallback when Player's character definition
 does not supply one. Player and Aires have identical impact results for this prototype.
@@ -3095,7 +3419,7 @@ animation continuity. Keep it zero for continuous playback. If explicitly enable
 it delays every cast in the caster's time domain. Keep the command window start at zero to allow
 the ready flare and early guard input during preparation. The two charge hitbox
 steps remain enabled; removing the first would leave real early damage unblocked.
-The linked `AiresBlockAnimation` uses `Begin Start Normalized = 0.55` and
+The Block section in `Aires_AnimProfile` uses `Begin Start Normalized = 0.55` and
 `Guard Pose Normalized = 0.65`; earlier frames in `Aires_Block` contain a jump.
 For replacement clips, choose a grounded interval rather than changing actor Y to
 compensate for animated bones. Landing surfaces must have solid colliders included
@@ -3116,6 +3440,11 @@ entry 0.16 s, hold 0.12 s and exit 0.4 s. Each shot snapshots the SO at entry;
 these fields can be tuned for the next shot without respawning. The production
 Cinemachine extension still handles collision, priority and return to live follow.
 The camera controller's old settings are hidden compatibility fields.
+For Contact and Timed Approach, tune **Normal Block Camera Shake** on that same
+actor profile: `normalImpactShakeDegrees` = 1.2, `normalImpactShakeSeconds` = 0.15,
+and `normalImpactShakeFrequency` = 20 Hz. Set degrees to zero to disable the kick.
+It fires once at successful contact, pauses with the game, and is removed when
+the shot ends. Camera must be enabled. Cooperative shake settings stay separate.
 `Configure Production Assets` reuses the profile bound to Aires even if renamed;
 only an unbound character gets a new `GuardSetting.asset`.
 
@@ -3393,3 +3722,44 @@ VFX ruler can scrub backward from the main clip into its preceding cutscene.
 Text/numeric editing, other focused windows and Unity Play Mode do not consume
 these shortcuts. Space-drag takes priority over event/Hitbox/Block marker edits;
 it changes only preview time and never saves authoring data.
+
+### Optional Block Impact authoring
+
+For Timed Approach or Cooperative, each `SkillDefensiveBlockSettings.windows` entry
+has an optional **Use Impact Marker** toggle and **Impact Normalized** time. Leave
+it off for existing approach timing. When on, use `Close <= Impact < 1`, before the
+next window and the animation's authored end. Contact does not use this marker.
+The Timeline can create the single-window data automatically when saving a marker.
+
+In Animation/VFX Timeline use **Block > Impact > Window N > Set Impact Here**, drag
+the pink upper handle, or edit the selected window in **Timed Approach Settings**.
+Save Block/Save All persists the draft; Revert discards it; edits support Undo/Redo.
+Removing the marker returns that window to default timing. No prefab, new animation
+clip, or HUD binding is needed. See `SYSTEMS/DEFENSIVE_BLOCK_TEST.md` for runtime
+semantics and the test harness validation command.
+
+### Block animation ownership
+
+Block animation is inline in `CharacterAnimProfileSO.block` (`BlockAnimationSettings`).
+Open the character's `CharacterStats.animProfile` and expand **Block** to edit Begin,
+Impact, optional Cooperative Struggle, sampled normalized ranges, phase durations
+and blend time. `CharacterAnimBrain` resolves its normal character/override profile;
+the controller reads this same source for readiness and starts playback through
+`CharacterAnimDriver.TryBeginBlock(requestId)`. Each playback snapshots the settings.
+
+`DefensiveBlockActorProfile` owns gameplay, placement, recoil movement and presentation
+settings. Its `IsConfigured` checks those settings; guard readiness separately needs
+valid clips in the character Animation Profile. Player's default guard settings do
+not supply animation. Give new playable characters their own Block data as well.
+
+Existing Aires, Roma, Feno and Milano animation profiles were migrated with the
+previous clips and timing. Their inline settings can now be edited independently.
+The hidden legacy `DefensiveBlockActorProfile.animation`, controller field and old
+`BlockAnimationProfile` assets are retained for serialization/migration compatibility;
+normal Block gameplay does not read them. The old explicit driver overload remains
+for source compatibility. Do not author new animation there.
+
+**Tools > RB > Defensive Block > Migrate Animation To Character Profiles** copies
+legacy data into empty character profiles, supports Undo, preserves existing authored
+Block data and rejects conflicting character bindings. It also migrates the four
+existing player profiles from Player.prefab's old fallback. It is safe to rerun.

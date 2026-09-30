@@ -249,6 +249,15 @@ public class UIManager : MonoBehaviour
         return effectController != null && effectController.PlayPerfectDodge(worldDashDirection, slowDuration, slowScale);
     }
 
+    public bool PlayScreenWindFullscreenEffect(Vector3 worldWindDirection, float duration)
+    {
+        IPlayerFullscreenEffectController effectController = FullscreenEffects;
+        return effectController != null && effectController.PlayScreenWind(worldWindDirection, duration);
+    }
+
+    public PlayerScreenEffectHandle BeginScreenWindFullscreenEffect(Vector3 worldWindDirection, float duration) =>
+        FullscreenEffects?.BeginScreenWind(worldWindDirection, duration);
+
     public void SetHudVisible(bool visible)
     {
         if (!ResolveHudCanvas())

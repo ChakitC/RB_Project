@@ -1,39 +1,30 @@
 using System;
 using System.Collections.Generic;
-using Animancer;
 using UnityEngine;
 using UnityEngine.Serialization;
 
 public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 {
-    static readonly SkillSlot[] EmptyAutonomousSlots = Array.Empty<SkillSlot>();
-    static readonly CharacterSkillLoadoutOption[] EmptySkillOptions = Array.Empty<CharacterSkillLoadoutOption>();
+    readonly SkillChargeRegistry chargeRegistry = new();
+    CharacterSkillLoadoutRuntime loadout;
 
-    sealed class ResolvedCommandSlotState
+    CharacterSkillLoadoutRuntime Loadout
     {
-        public SkillSlot slot;
-        public CharacterSkillLoadoutSlot statsSlot;
-        public CharacterSkillLoadoutOption selectedOption;
-        public int selectedOptionIndex = -1;
-        public string slotId;
-        public CharacterSkillSlotKind slotKind;
-        public bool usesPrefabOverride;
-        public SkillUpgradeStatSnapshot upgradeSnapshot;
-        public bool IsPassive;
-    }
-
-    /// <summary>
-    /// One resolved Helper proc slot: the variant this character currently has equipped, and the
-    /// upgrade snapshot its execution skill must run with.
-    /// </summary>
-    sealed class ResolvedHelperProcState
-    {
-        public HelperProcLoadoutSlot statsSlot;
-        public HelperProcLoadoutOption selectedOption;
-        public int selectedOptionIndex = -1;
-        public string slotId;
-        public SkillUpgradeStatSnapshot upgradeSnapshot;
-        public CharacterSkillEntry runtimeEntry;
+        get
+        {
+            if (loadout == null)
+            {
+                loadout = new CharacterSkillLoadoutRuntime(chargeRegistry,
+                    LoadSavedSkillSelections, PersistSkillSelection, CharacterSkillLoadoutAccess.CanChange);
+                loadout.SlotInvalidating += CancelPendingSlotIfNeeded;
+                loadout.RuntimeSkillInvalidating += CancelActiveCastFor;
+                loadout.PassiveLoadoutChanged += () => PassiveLoadoutChanged?.Invoke();
+                loadout.HelperProcLoadoutChanged += () => HelperProcLoadoutChanged?.Invoke();
+            }
+            loadout.SetInputs(ctx != null ? ctx.baseStats : null,
+                ctx != null ? ctx.TargetIdentity : default, autonomousSlots, activeSkillProgress);
+            return loadout;
+        }
     }
 
     private CharacteContext ctx;
@@ -43,40 +34,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     private WeaponSystem weaponSystem;
     private SkillSlot pendingSlot;
     private SkillCastOrchestrator castOrchestrator;
-    private CharacterStats observedBaseStats;
-    private int observedAutonomousSlotCount = -1;
-    private bool commandSlotsBuilt;
-
-    /// <summary>
-    /// The manual command assist, rebuilt from <see cref="CharacterStats.helperCommandSlot"/>.
-    ///
-    /// Runtime-only on purpose: the helper actor is a shared rig, so a prefab-authored entry would
-    /// belong to whoever is currently loaded into it instead of to the character that owns the
-    /// skill.
-    /// </summary>
-    private readonly CharacterSkillEntry helperCommandSkillEntry = new();
-    private readonly ResolvedCommandSlotState helperCommandState = new();
-    private CharacterStats observedHelperLoadoutStats;
-    private bool helperLoadoutResolved;
-
-    readonly List<SkillSlot> resolvedCommandSlots = new();
-    readonly List<ResolvedCommandSlotState> resolvedCommandSlotStates = new();
-    readonly List<ResolvedHelperProcState> resolvedHelperProcStates = new();
-
-    /// <summary>
-    /// Legacy external-entry snapshots keyed by execution definition. The dedicated Helper proc
-    /// path below keeps the selected variant snapshot on a proc-keyed runtime entry; this map is
-    /// retained for other external skill callers and compatibility with the older entry builder.
-    /// </summary>
-    readonly Dictionary<SkillGemDefinition, SkillUpgradeStatSnapshot> helperExecutionSnapshots = new();
-
-    /// <summary>
-    /// Runtime entries are keyed by proc variant, not only by execution skill. Variants can then
-    /// keep their own slot/option snapshot while still sharing the charge pool bound by the
-    /// execution skill definition.
-    /// </summary>
-    readonly Dictionary<SkillHelperDef, CharacterSkillEntry> helperProcRuntimeEntries = new();
-    readonly Dictionary<PartyComboSkillDef, CharacterSkillEntry> partyComboRuntimeEntries = new();
 
     public event Action<ActiveSkillCastInfo> CastStarted;
     public event Action<ActiveSkillCastInfo> CastReleased;
@@ -101,21 +58,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     [Header("Chain Attack")]
     [SerializeField] private CharacterSkillEntry chainAttackSkill;
 
-    /// <summary>
-    /// Entries for skills driven from outside the serialized loadout (helper assists, scripted
-    /// casts). Kept for the component's lifetime so each definition keeps one runtime instance.
-    /// </summary>
-    private readonly Dictionary<SkillGemDefinition, CharacterSkillEntry> externalSkillEntries =
-        new Dictionary<SkillGemDefinition, CharacterSkillEntry>();
-
     public int LoadOrder => -90;
     public IReadOnlyList<SkillSlot> AutonomousSlots
     {
-        get
-        {
-            RefreshResolvedCommandSlotsIfNeeded();
-            return commandSlotsBuilt ? resolvedCommandSlots : EmptyAutonomousSlots;
-        }
+        get { RefreshResolvedCommandSlotsIfNeeded(); return Loadout.CommandSlots; }
     }
     public IReadOnlyList<SkillSlot> CommandSlots => AutonomousSlots;
     /// <summary>
@@ -129,7 +75,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         get
         {
             CacheReferences();
-            return IsSkillEntryConfigured(helperCommandSkillEntry) ? helperCommandSkillEntry : null;
+            return IsSkillEntryConfigured(Loadout.HelperCommandSkillEntry) ? Loadout.HelperCommandSkillEntry : null;
         }
     }
 
@@ -140,7 +86,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         get
         {
             CacheReferences();
-            return IsSkillEntryConfigured(helperCommandSkillEntry);
+            return IsSkillEntryConfigured(Loadout.HelperCommandSkillEntry);
         }
     }
 
@@ -148,19 +94,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     public bool HasConfiguredPassiveSlots
     {
-        get
-        {
-            CacheReferences();
-            RefreshResolvedCommandSlotsIfNeeded();
-
-            for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
-            {
-                if (resolvedCommandSlotStates[i]?.IsPassive == true)
-                    return true;
-            }
-
-            return false;
-        }
+        get { CacheReferences(); return Loadout.HasConfiguredPassiveSlots; }
     }
 
     private void Awake()
@@ -260,45 +194,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
                slot.skillAsset != null;
     }
 
-    /// <summary>
-    /// Skill currently assigned to a command slot, for HUD icons and tooltips. This is a plain
-    /// read of the resolved loadout: it does not build a runtime skill or touch the charge pool,
-    /// so a HUD can poll it alongside <see cref="TryGetSlotChargeStatus"/> without paying twice.
-    /// </summary>
-    public bool TryGetSlotSkillDefinition(int slotIndex, out SkillGemDefinition skillDef)
-    {
-        skillDef = null;
-
-        if (!TryResolveCastSlotIndex(slotIndex, out slotIndex))
-            return false;
-
-        if (!TryGetCommandSlot(slotIndex, out SkillSlot slot))
-            return false;
-
-        skillDef = slot.skillAsset;
-        return skillDef != null;
-    }
-
-    /// <summary>
-    /// Passive assigned to a command slot, for HUD icons. Returns false for an active slot, so a
-    /// HUD can ask this first and fall back to the charge readout only when it comes back empty.
-    /// A passive slot has no runtime skill and no charge pool, which is why it can never answer
-    /// <see cref="TryGetSlotChargeStatus"/>.
-    /// </summary>
-    public bool TryGetSlotPassiveDefinition(int slotIndex, out PassiveDefinition passiveDef)
-    {
-        passiveDef = null;
-
-        if (!TryResolveCastSlotIndex(slotIndex, out slotIndex))
-            return false;
-
-        if (!TryGetCommandSlotState(slotIndex, out ResolvedCommandSlotState state) || !state.IsPassive)
-            return false;
-
-        passiveDef = state.selectedOption != null ? state.selectedOption.PassiveAsset : null;
-        return passiveDef != null;
-    }
-
     public bool CanStartCastSlot(int slotIndex)
     {
         CacheReferences();
@@ -339,251 +234,15 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
                slot.runtimeSkill.TryGetChargeStatus(skillUser, out status);
     }
 
-    public bool TrySelectSkillOption(int slotIndex, int optionIndex, bool persist = true)
-    {
-        CacheReferences();
-
-        if (!TryGetCommandSlotState(slotIndex, out ResolvedCommandSlotState state))
-            return false;
-
-        if (IsRunLoadoutLocked(state))
-            return false;
-
-        if (state.usesPrefabOverride || state.statsSlot == null)
-            return false;
-
-        if (!state.statsSlot.TryGetOption(optionIndex, out CharacterSkillLoadoutOption option))
-            return false;
-
-        if (!IsCurrentSelectedSkillOption(state, optionIndex, option))
-            ApplySelectedSkillOption(state, optionIndex, option);
-
-        if (persist)
-            PersistSkillSelection(state.slotId, ResolveOptionId(option, optionIndex));
-
-        return true;
-    }
-
-    public bool TrySelectSkillOption(string slotId, string optionId, bool persist = true)
-    {
-        CacheReferences();
-
-        if (!TryGetCommandSlotState(slotId, out ResolvedCommandSlotState state))
-            return false;
-
-        if (IsRunLoadoutLocked(state))
-            return false;
-
-        if (state.usesPrefabOverride || state.statsSlot == null)
-            return false;
-
-        if (!state.statsSlot.TryGetOptionById(optionId, out int optionIndex, out CharacterSkillLoadoutOption option))
-            return false;
-
-        if (!IsCurrentSelectedSkillOption(state, optionIndex, option))
-            ApplySelectedSkillOption(state, optionIndex, option);
-
-        if (persist)
-            PersistSkillSelection(state.slotId, ResolveOptionId(option, optionIndex));
-
-        return true;
-    }
-
-    public bool TryGetSkillOptions(int slotIndex, out IReadOnlyList<CharacterSkillLoadoutOption> options)
-    {
-        CacheReferences();
-        options = EmptySkillOptions;
-
-        if (!TryGetCommandSlotState(slotIndex, out ResolvedCommandSlotState state))
-            return false;
-
-        if (state.usesPrefabOverride || state.statsSlot == null)
-            return false;
-
-        options = state.statsSlot.Options;
-        return options.Count > 0;
-    }
-
-    public bool TryGetSkillOptions(string slotId, out IReadOnlyList<CharacterSkillLoadoutOption> options)
-    {
-        CacheReferences();
-        options = EmptySkillOptions;
-
-        if (!TryGetCommandSlotState(slotId, out ResolvedCommandSlotState state))
-            return false;
-
-        if (state.usesPrefabOverride || state.statsSlot == null)
-            return false;
-
-        options = state.statsSlot.Options;
-        return options.Count > 0;
-    }
-
-    public bool TryGetSelectedSkillOption(int slotIndex, out CharacterSkillLoadoutOption option)
-    {
-        CacheReferences();
-        option = null;
-
-        if (!TryGetCommandSlotState(slotIndex, out ResolvedCommandSlotState state))
-            return false;
-
-        option = state.selectedOption;
-        return option != null;
-    }
-
-    public bool TryGetSelectedSkillOption(string slotId, out CharacterSkillLoadoutOption option)
-    {
-        CacheReferences();
-        option = null;
-
-        if (!TryGetCommandSlotState(slotId, out ResolvedCommandSlotState state))
-            return false;
-
-        option = state.selectedOption;
-        return option != null;
-    }
-
-    /// <summary>
-    /// Selects a variant in any slot this character owns, Stryker or Helper.
-    ///
-    /// Slot ids are namespaced by <see cref="CharacterSkillLoadoutKeys"/>, so one call resolves
-    /// the right half of the loadout without the caller knowing which role it is looking at.
-    /// </summary>
-    public bool TrySelectLoadoutOption(string slotId, string optionId, bool persist = true)
-    {
-        CacheReferences();
-
-        if (TryGetCommandSlotState(slotId, out _))
-            return TrySelectSkillOption(slotId, optionId, persist);
-
-        return TrySelectHelperOption(slotId, optionId, persist);
-    }
-
-    /// <summary>Option id currently equipped in <paramref name="slotId"/>, across both roles.</summary>
-    public bool TryGetSelectedLoadoutOptionId(string slotId, out string optionId)
-    {
-        CacheReferences();
-        optionId = null;
-
-        if (string.IsNullOrWhiteSpace(slotId))
-            return false;
-
-        if (TryGetCommandSlotState(slotId, out ResolvedCommandSlotState commandState) &&
-            commandState.selectedOption != null)
-        {
-            optionId = ResolveOptionId(commandState.selectedOption, commandState.selectedOptionIndex);
-            return true;
-        }
-
-        RefreshResolvedCommandSlotsIfNeeded();
-        string resolvedSlotId = slotId.Trim();
-
-        if (helperCommandState.statsSlot != null &&
-            string.Equals(helperCommandState.slotId, resolvedSlotId, StringComparison.Ordinal) &&
-            helperCommandState.selectedOption != null)
-        {
-            optionId = ResolveOptionId(helperCommandState.selectedOption, helperCommandState.selectedOptionIndex);
-            return true;
-        }
-
-        if (!TryGetHelperProcState(resolvedSlotId, out ResolvedHelperProcState procState) ||
-            procState.selectedOption == null)
-        {
-            return false;
-        }
-
-        optionId = CharacterSkillLoadoutKeys.OptionKey(procState.selectedOption, procState.selectedOptionIndex);
-        return true;
-    }
-
-    bool TrySelectHelperOption(string slotId, string optionId, bool persist)
-    {
-        RefreshResolvedCommandSlotsIfNeeded();
-
-        if (string.IsNullOrWhiteSpace(slotId) || string.IsNullOrWhiteSpace(optionId))
-            return false;
-
-        string resolvedSlotId = slotId.Trim();
-
-        if (helperCommandState.statsSlot != null &&
-            string.Equals(helperCommandState.slotId, resolvedSlotId, StringComparison.Ordinal))
-        {
-            if (!helperCommandState.statsSlot.TryGetOptionById(
-                    optionId,
-                    out int commandOptionIndex,
-                    out CharacterSkillLoadoutOption commandOption))
-            {
-                return false;
-            }
-
-            if (commandOptionIndex != helperCommandState.selectedOptionIndex)
-                ApplyHelperCommandOption(commandOption, commandOptionIndex);
-
-            if (persist)
-                PersistSkillSelection(resolvedSlotId, ResolveOptionId(commandOption, commandOptionIndex));
-
-            HelperProcLoadoutChanged?.Invoke();
-            return true;
-        }
-
-        if (!TryGetHelperProcState(resolvedSlotId, out ResolvedHelperProcState state))
-            return false;
-
-        if (!state.statsSlot.TryGetOptionById(optionId, out int optionIndex, out HelperProcLoadoutOption option))
-            return false;
-
-        if (optionIndex != state.selectedOptionIndex)
-        {
-            // The variant being unequipped may be mid-cast. Its charge pool is keyed by definition
-            // and deliberately left alone, so switching back does not hand the player a free reset.
-            SkillHelperDef previousProc = state.selectedOption?.helperProc;
-            if (previousProc != null &&
-                helperProcRuntimeEntries.TryGetValue(previousProc, out CharacterSkillEntry previousEntry))
-            {
-                CancelActiveCastFor(previousEntry?.runtimeSkill);
-            }
-
-            ApplyHelperProcOption(state, option, optionIndex);
-        }
-
-        if (persist)
-            PersistSkillSelection(resolvedSlotId, CharacterSkillLoadoutKeys.OptionKey(option, optionIndex));
-
-        HelperProcLoadoutChanged?.Invoke();
-        return true;
-    }
-
-    bool TryGetHelperProcState(string slotId, out ResolvedHelperProcState state)
-    {
-        state = null;
-        if (string.IsNullOrWhiteSpace(slotId))
-            return false;
-
-        for (int i = 0; i < resolvedHelperProcStates.Count; i++)
-        {
-            ResolvedHelperProcState candidate = resolvedHelperProcStates[i];
-            if (candidate?.statsSlot == null || candidate.slotId == null)
-                continue;
-
-            if (!string.Equals(candidate.slotId, slotId, StringComparison.Ordinal))
-                continue;
-
-            state = candidate;
-            return true;
-        }
-
-        return false;
-    }
-
     public bool CanStartPlayerCommandSkill()
     {
         CacheReferences();
-        return helperCommandSkillEntry.runtimeSkill != null &&
+        return Loadout.HelperCommandSkillEntry.runtimeSkill != null &&
                skillUser != null &&
                !CutsceneDirector.IsCinematicPlaying &&
                !IsSkillStartBlockedByAnimation() &&
                !IsSkillUseBlocked() &&
-               helperCommandSkillEntry.runtimeSkill.CanCast(skillUser);
+               Loadout.HelperCommandSkillEntry.runtimeSkill.CanCast(skillUser);
     }
 
     public bool TryGetActiveCast(out ActiveSkillCastInfo castInfo)
@@ -602,9 +261,30 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     {
         CacheReferences();
         return TryBeginEntryCast(
-            helperCommandSkillEntry,
+            Loadout.HelperCommandSkillEntry,
             "player-command",
             usePlanarRootMotion: true);
+    }
+
+    public SkillCastStartResult TryStartDirectedPartyCommand(
+        int slotIndex, SkillTargetHandle target, Func<bool> canContinue,
+        SkillGemDefinition explicitSkill = null, bool useCommandSkill = true)
+    {
+        CacheReferences();
+        if (explicitSkill != null || (useCommandSkill && HasConfiguredPlayerCommandSkill))
+        {
+            CharacterSkillEntry entry = explicitSkill != null
+                ? GetOrCreateExternalEntry(explicitSkill) : Loadout.HelperCommandSkillEntry;
+            return TryBeginEntryCast(entry, "player-directed-command",
+                usePlanarRootMotion: false, primaryTarget: target,
+                additionalCanProceed: canContinue);
+        }
+
+        if (!TryResolveCastSlotIndex(slotIndex, out slotIndex) ||
+            !TryGetCommandSlot(slotIndex, out SkillSlot slot))
+            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+
+        return TryBeginCast(slot, target, canContinue);
     }
 
     public bool CanStartExternalSkill(CharacterSkillEntry entry, bool ignoreResourceCosts = false)
@@ -707,37 +387,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             comboProvenance: comboProvenance);
     }
 
-    public bool TryGetPartyComboRuntimeEntry(
-        PartyComboSkillDef combo,
-        out CharacterSkillEntry entry)
-    {
-        entry = null;
-        if (combo == null || combo.executionSkill == null)
-            return false;
-
-        CacheReferences();
-        if (!partyComboRuntimeEntries.TryGetValue(combo, out entry) || entry == null)
-        {
-            entry = new CharacterSkillEntry { skillAsset = combo.executionSkill };
-            entry.runtimeSkill = CreateRuntimeSkill(combo.executionSkill, null);
-            partyComboRuntimeEntries[combo] = entry;
-        }
-        else if (entry.skillAsset != combo.executionSkill ||
-                 entry.runtimeSkill == null ||
-                 entry.runtimeSkill.def != combo.executionSkill)
-        {
-            entry.skillAsset = combo.executionSkill;
-            entry.runtimeSkill = CreateRuntimeSkill(combo.executionSkill, null);
-        }
-
-        if (entry.runtimeSkill != null)
-            entry.runtimeSkill.upgradeSnapshot = activeSkillProgress != null && combo.upgradeTree != null
-                ? activeSkillProgress.BuildSnapshot(PartyComboSkillDef.ProgressSlotId, combo.RuntimeId, combo.upgradeTree)
-                : null;
-
-        return entry.runtimeSkill != null;
-    }
-
     public bool TryGetPartyComboChargeStatus(
         PartyComboSkillDef combo,
         out SkillChargeStatus status)
@@ -757,7 +406,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         Action<ActiveSkillCastInfo, SkillCastCancelReason> onCancelled,
         ulong combatChainId,
         int combatDepth,
-        ComboExecutionProvenance comboProvenance)
+        ComboExecutionProvenance comboProvenance,
+        bool usePlanarRootMotion = false)
     {
         if (!TryGetPartyComboRuntimeEntry(combo, out CharacterSkillEntry entry))
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
@@ -765,6 +415,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return TryStartExternalSkill(
             entry,
             debugSource,
+            usePlanarRootMotion: usePlanarRootMotion,
             stampCooldown: true,
             primaryTarget: primaryTarget,
             costPolicy: SkillCastCostPolicy.IgnoreEnergyRespectCharge,
@@ -794,11 +445,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         CacheReferences();
         RefreshResolvedCommandSlotsIfNeeded();
 
-        if (!TryGetSelectedHelperProcState(helperProc, out ResolvedHelperProcState state))
-            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
-
-        CharacterSkillEntry entry = state.runtimeEntry ?? GetOrCreateHelperProcEntry(helperProc);
-        if (entry == null)
+        if (!Loadout.TryGetSelectedHelperProcEntry(helperProc, out CharacterSkillEntry entry))
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         return TryStartExternalSkill(
@@ -811,27 +458,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             primaryTarget: primaryTarget,
             costPolicy: costPolicy,
             externalAnimationRequestId: externalAnimationRequestId);
-    }
-
-    /// <summary>Returns the live runtime entry for the currently selected proc variant.</summary>
-    public bool TryGetHelperProcRuntimeSkill(SkillHelperDef helperProc, out SkillInstance runtimeSkill)
-    {
-        runtimeSkill = null;
-        if (helperProc == null)
-            return false;
-
-        CacheReferences();
-        RefreshResolvedCommandSlotsIfNeeded();
-
-        if (!TryGetSelectedHelperProcState(helperProc, out ResolvedHelperProcState state) ||
-            state.runtimeEntry == null)
-        {
-            return false;
-        }
-
-        EnsureRuntimeSkill(state.runtimeEntry);
-        runtimeSkill = state.runtimeEntry.runtimeSkill;
-        return runtimeSkill != null && runtimeSkill.def == helperProc.executionSkill;
     }
 
     /// <summary>Charge readout for a selected Helper proc, using its variant snapshot.</summary>
@@ -883,56 +509,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
                entry.runtimeSkill.TryGetChargeStatus(skillUser, out status);
     }
 
-    /// <summary>
-    /// One entry per definition, kept for the lifetime of this component. The charge pool itself
-    /// lives in the orchestrator and is keyed by definition, so it would survive a rebuilt entry
-    /// anyway - caching keeps allocation and cast diagnostics stable.
-    /// </summary>
-    private CharacterSkillEntry GetOrCreateExternalEntry(SkillGemDefinition skillDef)
-    {
-        if (skillDef == null)
-            return null;
-
-        if (externalSkillEntries.TryGetValue(skillDef, out CharacterSkillEntry entry) && entry != null)
-            return entry;
-
-        entry = new CharacterSkillEntry { skillAsset = skillDef };
-        externalSkillEntries[skillDef] = entry;
-        return entry;
-    }
-
-    private CharacterSkillEntry GetOrCreateHelperProcEntry(SkillHelperDef helperProc)
-    {
-        if (helperProc == null || helperProc.executionSkill == null)
-            return null;
-
-        if (helperProcRuntimeEntries.TryGetValue(helperProc, out CharacterSkillEntry entry) && entry != null)
-            return entry;
-
-        entry = new CharacterSkillEntry { skillAsset = helperProc.executionSkill };
-        helperProcRuntimeEntries[helperProc] = entry;
-        return entry;
-    }
-
-    bool TryGetSelectedHelperProcState(SkillHelperDef helperProc, out ResolvedHelperProcState state)
-    {
-        state = null;
-        if (helperProc == null)
-            return false;
-
-        for (int i = 0; i < resolvedHelperProcStates.Count; i++)
-        {
-            ResolvedHelperProcState candidate = resolvedHelperProcStates[i];
-            if (candidate?.selectedOption?.helperProc != helperProc)
-                continue;
-
-            state = candidate;
-            return true;
-        }
-
-        return false;
-    }
-
     public bool TryGetChainAttackRuntimeSkill(out SkillInstance runtimeSkill)
     {
         CacheReferences();
@@ -953,102 +529,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return true;
     }
 
-    /// <summary>
-    /// Helper procs this actor contributes: one selected variant per slot, and nothing else.
-    ///
-    /// Every party-slot rig and the helper actor itself are shared prefabs, so a prefab-authored
-    /// proc would belong to whoever is currently loaded into that rig. Reading from
-    /// <c>ctx.baseStats</c> - the same place command slots come from - keeps the proc tied to the
-    /// character and drops it the moment that character leaves the party. Unselected variants are
-    /// authored but not equipped, so they never reach the proc controller.
-    /// </summary>
-    public void AppendConfiguredHelperChainDefinitions(List<SkillHelperDef> buffer, HashSet<SkillHelperDef> dedupe = null)
-    {
-        if (buffer == null)
-            return;
-
-        CacheReferences();
-        RefreshResolvedCommandSlotsIfNeeded();
-
-        // Only a character authored as a Helper contributes assists. A Stryker fights in the field
-        // and casts from command slots; RefreshHelperLoadout leaves the proc list empty for it.
-        for (int i = 0; i < resolvedHelperProcStates.Count; i++)
-        {
-            SkillHelperDef definition = resolvedHelperProcStates[i]?.selectedOption?.helperProc;
-            if (definition == null)
-                continue;
-
-            if (dedupe != null && !dedupe.Add(definition))
-                continue;
-
-            buffer.Add(definition);
-        }
-    }
-
-    public void AppendConfiguredPassiveDefinitions(List<EquippedPassive> buffer)
-    {
-        if (buffer == null)
-            return;
-
-        CacheReferences();
-        RefreshResolvedCommandSlotsIfNeeded();
-
-        for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
-        {
-            ResolvedCommandSlotState state = resolvedCommandSlotStates[i];
-            if (state == null || !state.IsPassive)
-                continue;
-
-            PassiveDefinition definition = state.selectedOption != null ? state.selectedOption.PassiveAsset : null;
-            if (definition != null)
-                buffer.Add(new EquippedPassive(definition, state.upgradeSnapshot));
-        }
-    }
-
-    public void ClearSlot(int index)
-    {
-        if (!TryResolveCastSlotIndex(index, out index) ||
-            (TryGetCommandSlotState(index, out ResolvedCommandSlotState state) && IsRunLoadoutLocked(state)))
-        {
-            return;
-        }
-
-        if (!TryGetCommandSlot(index, out SkillSlot slot))
-            return;
-
-        CancelPendingSlotIfNeeded(slot);
-
-        ClearRuntimeSlot(slot);
-        if (TryGetCommandSlotState(index, out ResolvedCommandSlotState updatedState))
-        {
-            updatedState.selectedOption = null;
-            updatedState.selectedOptionIndex = -1;
-        }
-    }
-
-    public void AssignSkillToSlot(int index, SkillGemDefinition asset)
-    {
-        if (!TryResolveCastSlotIndex(index, out index) ||
-            (TryGetCommandSlotState(index, out ResolvedCommandSlotState state) && IsRunLoadoutLocked(state)))
-        {
-            return;
-        }
-
-        if (!TryGetCommandSlot(index, out SkillSlot slot))
-            return;
-
-        CancelPendingSlotIfNeeded(slot);
-
-        slot.skillAsset = asset;
-        slot.runtimeSkill = BuildRuntimeSkill(slot, asset);
-        if (TryGetCommandSlotState(index, out ResolvedCommandSlotState updatedState))
-        {
-            updatedState.selectedOption = null;
-            updatedState.selectedOptionIndex = -1;
-        }
-    }
-
-    private SkillCastStartResult TryBeginCast(SkillSlot slot)
+    private SkillCastStartResult TryBeginCast(SkillSlot slot,
+        SkillTargetHandle primaryTarget = null, Func<bool> additionalCanProceed = null)
     {
         CacheReferences();
 
@@ -1072,11 +554,20 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             runtimeSkill,
             skillUser,
             animationDriver: animDriver,
-            canProceed: () => IsSlotCastStillValid(slot, runtimeSkill),
-            onStarted: () => OnCommandSkillCastStarted(runtimeSkill),
+            canProceed: () => IsSlotCastStillValid(slot, runtimeSkill) &&
+                (additionalCanProceed == null || additionalCanProceed()),
+            onStarted: () =>
+            {
+                if (additionalCanProceed != null)
+                    StopWeaponActivityForSkillCast();
+                else
+                    OnCommandSkillCastStarted(runtimeSkill);
+            },
             useAnimationDriver: true,
             allowImmediateFallback: true,
             debugSource: BuildSlotDebugSource(slot),
+            primaryTarget: primaryTarget,
+            usePlanarRootMotion: false,
             facingSnapshot: CapturePlayerFacingSnapshot(runtimeSkill)));
 
         pendingSlot = result.Kind == SkillCastStartKind.WaitingForAnimation
@@ -1090,11 +581,9 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     {
         StopWeaponActivityForSkillCast();
 
-        SkillPayloadDef payload = runtimeSkill != null && runtimeSkill.def != null
-            ? runtimeSkill.def.payload
-            : null;
-        if (payload == null ||
-            payload.HelperFacingMode != SkillHelperFacingMode.FaceDetectedTargetOnCast ||
+        SkillGemDefinition skill = runtimeSkill?.def;
+        if (skill == null ||
+            skill.HelperFacingMode != SkillHelperFacingMode.FaceDetectedTargetOnCast ||
             skillUser == null)
         {
             return;
@@ -1148,7 +637,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         Action<ActiveSkillCastInfo, SkillCastCancelReason> onCancelled = null,
         ulong combatChainId = 0,
         int combatDepth = 0,
-        ComboExecutionProvenance comboProvenance = default)
+        ComboExecutionProvenance comboProvenance = default,
+        Func<bool> additionalCanProceed = null)
     {
         CacheReferences();
         EnsureRuntimeSkill(entry);
@@ -1174,7 +664,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             runtimeSkill,
             skillUser,
             animationDriver: animDriver,
-            canProceed: () => IsSkillEntryCastStillValid(entry, runtimeSkill),
+            canProceed: () => IsSkillEntryCastStillValid(entry, runtimeSkill) &&
+                (additionalCanProceed == null || additionalCanProceed()),
             onStarted: StopWeaponActivityForSkillCast,
             requestedId: externalAnimationRequestId,
             useAnimationDriver: !attachToExternalAnimation,
@@ -1210,211 +701,11 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return SkillFacingSnapshot.Capture(player, 6f, preferredTarget);
     }
 
-    private SkillInstance BuildRuntimeSkill(SkillSlot slot, SkillGemDefinition asset)
-    {
-        if (slot == null || asset == null)
-            return null;
-
-        return CreateRuntimeSkill(asset);
-    }
-
-    private SkillInstance BuildRuntimeSkill(CharacterSkillEntry entry, SkillGemDefinition asset)
-    {
-        if (entry == null || asset == null)
-            return null;
-
-        // A Helper proc's execution skill is cast as an external skill, so this is where the
-        // selected variant's Skill Tree has to be attached; anything else casts unmodified.
-        helperExecutionSnapshots.TryGetValue(asset, out SkillUpgradeStatSnapshot snapshot);
-        return CreateRuntimeSkill(asset, snapshot);
-    }
-
-    private SkillInstance CreateRuntimeSkill(
-        SkillGemDefinition asset,
-        SkillUpgradeStatSnapshot upgradeSnapshot = null)
-    {
-        var instance = new SkillInstance
-        {
-            def = asset,
-            upgradeSnapshot = upgradeSnapshot,
-        };
-
-        BindSharedCharges(instance);
-        return instance;
-    }
-
-    /// <summary>
-    /// Every runtime skill for the same definition shares one charge pool, so two loadout slots
-    /// holding the same skill draw from â€” and display â€” the same charges.
-    /// </summary>
-    private void BindSharedCharges(SkillInstance instance)
-    {
-        if (instance == null || instance.def == null)
-            return;
-
-        EnsureCastOrchestrator();
-        instance.BindCharges(castOrchestrator.GetOrCreateCharges(instance.def));
-    }
-
-    private bool TryGetCommandSlot(int slotIndex, out SkillSlot slot)
-    {
-        slot = null;
-        RefreshResolvedCommandSlotsIfNeeded();
-
-        if (slotIndex < 0 || slotIndex >= resolvedCommandSlots.Count)
-            return false;
-
-        slot = resolvedCommandSlots[slotIndex];
-        return slot != null;
-    }
-
-    /// <summary>
-    /// Player, AI, party-command, and HUD callers retain their 0/1 input contract while migrated
-    /// character assets resolve those inputs by slot meaning. A third cast input is unavailable.
-    /// Legacy and non-character loadouts retain their authored indices.
-    /// </summary>
-    private bool TryResolveCastSlotIndex(int requestedIndex, out int resolvedIndex)
-    {
-        resolvedIndex = requestedIndex;
-        RefreshResolvedCommandSlotsIfNeeded();
-
-        bool hasActive = false;
-        bool hasUltimate = false;
-        int activeIndex = -1;
-        int ultimateIndex = -1;
-
-        for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
-        {
-            CharacterSkillSlotKind kind = resolvedCommandSlotStates[i]?.slotKind ?? CharacterSkillSlotKind.Legacy;
-            if (kind == CharacterSkillSlotKind.Active)
-            {
-                hasActive = true;
-                activeIndex = i;
-            }
-            else if (kind == CharacterSkillSlotKind.Ultimate)
-            {
-                hasUltimate = true;
-                ultimateIndex = i;
-            }
-        }
-
-        bool playerOrAlly = ctx != null && ctx.baseStats != null && !ctx.baseStats.IsHelperRole &&
-            (ctx.TargetIdentity == AITargetIdentity.Player || ctx.TargetIdentity == AITargetIdentity.Companion);
-        if ((!hasActive || !hasUltimate) && !playerOrAlly)
-            return requestedIndex >= 0 && requestedIndex < resolvedCommandSlots.Count;
-
-        if (requestedIndex == 0)
-        {
-            resolvedIndex = activeIndex;
-            return hasActive;
-        }
-
-        if (requestedIndex == 1)
-        {
-            resolvedIndex = ultimateIndex;
-            return hasUltimate;
-        }
-
-        return false;
-    }
-
-    private bool IsRunLoadoutLocked(ResolvedCommandSlotState state)
-    {
-        if (state?.statsSlot == null || ctx?.baseStats == null || ctx.baseStats.IsHelperRole)
-            return false;
-
-        if (ctx.TargetIdentity != AITargetIdentity.Player && ctx.TargetIdentity != AITargetIdentity.Companion)
-            return false;
-
-        return !CharacterSkillLoadoutAccess.CanChange(ctx.baseStats);
-    }
-
-    private bool TryGetCommandSlotState(int slotIndex, out ResolvedCommandSlotState state)
-    {
-        state = null;
-        RefreshResolvedCommandSlotsIfNeeded();
-
-        if (slotIndex < 0 || slotIndex >= resolvedCommandSlotStates.Count)
-            return false;
-
-        state = resolvedCommandSlotStates[slotIndex];
-        return state != null && state.slot != null;
-    }
-
-    private bool TryGetCommandSlotState(string slotId, out ResolvedCommandSlotState state)
-    {
-        state = null;
-        RefreshResolvedCommandSlotsIfNeeded();
-
-        if (string.IsNullOrWhiteSpace(slotId))
-            return false;
-
-        string resolvedSlotId = slotId.Trim();
-        for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
-        {
-            ResolvedCommandSlotState candidate = resolvedCommandSlotStates[i];
-            if (candidate == null || string.IsNullOrWhiteSpace(candidate.slotId))
-                continue;
-
-            if (!string.Equals(candidate.slotId, resolvedSlotId, StringComparison.Ordinal))
-                continue;
-
-            state = candidate;
-            return true;
-        }
-
-        return false;
-    }
-
     private void RebuildAllRuntimeSkills()
     {
         RebuildResolvedCommandSlots();
         RefreshHelperLoadout(force: true);
         EnsureRuntimeSkill(chainAttackSkill);
-    }
-
-    private void EnsureCommandRuntimeSkill(SkillSlot slot)
-    {
-        if (slot == null)
-            return;
-
-        if (slot.skillAsset == null)
-        {
-            slot.runtimeSkill = null;
-            return;
-        }
-
-        if (slot.runtimeSkill != null && slot.runtimeSkill.def == slot.skillAsset)
-        {
-            // SkillSlot.runtimeSkill is Unity-serialized, so a prefab can hand us an instance that
-            // never went through CreateRuntimeSkill and therefore has no shared pool yet.
-            if (!slot.runtimeSkill.HasBoundCharges)
-                BindSharedCharges(slot.runtimeSkill);
-            return;
-        }
-
-        slot.runtimeSkill = BuildRuntimeSkill(slot, slot.skillAsset);
-    }
-
-    private void EnsureRuntimeSkill(CharacterSkillEntry entry)
-    {
-        if (entry == null)
-            return;
-
-        if (entry.skillAsset == null)
-        {
-            entry.runtimeSkill = null;
-            return;
-        }
-
-        if (entry.runtimeSkill != null && entry.runtimeSkill.def == entry.skillAsset)
-        {
-            if (!entry.runtimeSkill.HasBoundCharges)
-                BindSharedCharges(entry.runtimeSkill);
-            return;
-        }
-
-        entry.runtimeSkill = BuildRuntimeSkill(entry, entry.skillAsset);
     }
 
     private void CacheReferences()
@@ -1499,209 +790,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         RefreshResolvedCommandSlotsIfNeeded();
     }
 
-    private void RefreshResolvedCommandSlotsIfNeeded()
-    {
-        RefreshHelperLoadout(force: false);
-
-        CharacterStats currentBaseStats = ctx != null ? ctx.baseStats : null;
-        int currentAutonomousSlotCount = autonomousSlots != null ? autonomousSlots.Length : 0;
-
-        if (commandSlotsBuilt &&
-            observedBaseStats == currentBaseStats &&
-            observedAutonomousSlotCount == currentAutonomousSlotCount)
-        {
-            return;
-        }
-
-        RebuildResolvedCommandSlots();
-    }
-
-    /// <summary>
-    /// Rebuilds the Helper half of the loadout from the character currently loaded into this actor.
-    ///
-    /// A Stryker never owns one, and a Helper whose command slot has no configured option
-    /// deliberately owns none - neither case falls back to anything. Each proc slot resolves the
-    /// variant the player selected, so nothing that is merely authored but unequipped can fire.
-    /// </summary>
-    private void RefreshHelperLoadout(bool force)
-    {
-        CharacterStats stats = ctx != null ? ctx.baseStats : null;
-
-        if (!force && helperLoadoutResolved && observedHelperLoadoutStats == stats)
-            return;
-
-        observedHelperLoadoutStats = stats;
-        helperLoadoutResolved = true;
-
-        List<CharacterSkillSelectionSaveData> savedSelections = LoadSavedSkillSelections();
-        helperExecutionSnapshots.Clear();
-
-        RebuildHelperCommandSlot(stats, savedSelections);
-        RebuildHelperProcSlots(stats, savedSelections);
-
-        HelperProcLoadoutChanged?.Invoke();
-    }
-
-    private void RebuildHelperCommandSlot(
-        CharacterStats stats,
-        List<CharacterSkillSelectionSaveData> savedSelections)
-    {
-        CharacterSkillLoadoutSlot statsSlot = stats != null && stats.IsHelperRole
-            ? stats.helperCommandSlot
-            : null;
-
-        helperCommandState.statsSlot = statsSlot;
-        helperCommandState.slotId = statsSlot != null
-            ? CharacterSkillLoadoutKeys.HelperCommandSlotKey(statsSlot)
-            : null;
-        helperCommandState.selectedOption = null;
-        helperCommandState.selectedOptionIndex = -1;
-        helperCommandState.upgradeSnapshot = null;
-
-        CharacterSkillLoadoutOption option = null;
-        int optionIndex = -1;
-        if (statsSlot != null)
-        {
-            string savedOptionId = FindSavedOptionId(savedSelections, helperCommandState.slotId);
-            if (string.IsNullOrWhiteSpace(savedOptionId) ||
-                !statsSlot.TryGetOptionById(savedOptionId, out optionIndex, out option))
-            {
-                statsSlot.TryGetDefaultOption(out optionIndex, out option);
-            }
-        }
-
-        ApplyHelperCommandOption(option, optionIndex);
-    }
-
-    private void ApplyHelperCommandOption(CharacterSkillLoadoutOption option, int optionIndex)
-    {
-        helperCommandState.selectedOption = option;
-        helperCommandState.selectedOptionIndex = optionIndex;
-
-        // A passive can be authored into a loadout slot, but a manual command has to be castable;
-        // treating a passive as "the command" would leave the party command button doing nothing.
-        SkillGemDefinition definition = option != null ? option.ActiveSkillAsset : null;
-
-        SkillUpgradeStatSnapshot snapshot = null;
-        if (definition != null)
-        {
-            SkillUpgradeTreeDefinition tree = option.ResolvedUpgradeTree;
-            snapshot = activeSkillProgress != null && tree != null
-                ? activeSkillProgress.BuildSnapshot(
-                    helperCommandState.slotId,
-                    CharacterSkillLoadoutKeys.OptionKey(option, optionIndex),
-                    tree)
-                : null;
-        }
-
-        helperCommandState.upgradeSnapshot = snapshot;
-
-        SkillInstance previousRuntimeSkill = helperCommandSkillEntry.runtimeSkill;
-        if (previousRuntimeSkill != null && previousRuntimeSkill.def != definition)
-            CancelActiveCastFor(previousRuntimeSkill);
-
-        helperCommandSkillEntry.skillAsset = definition;
-        helperCommandSkillEntry.runtimeSkill = definition != null
-            ? CreateRuntimeSkill(definition, snapshot)
-            : null;
-    }
-
-    private void RebuildHelperProcSlots(
-        CharacterStats stats,
-        List<CharacterSkillSelectionSaveData> savedSelections)
-    {
-        resolvedHelperProcStates.Clear();
-
-        List<HelperProcLoadoutSlot> statsSlots = stats != null && stats.IsHelperRole
-            ? stats.helperProcSlots
-            : null;
-        if (statsSlots == null)
-            return;
-
-        for (int i = 0; i < statsSlots.Count; i++)
-        {
-            HelperProcLoadoutSlot statsSlot = statsSlots[i];
-            if (statsSlot == null)
-                continue;
-
-            var state = new ResolvedHelperProcState
-            {
-                statsSlot = statsSlot,
-                slotId = CharacterSkillLoadoutKeys.HelperProcSlotKey(statsSlot, i),
-            };
-
-            string savedOptionId = FindSavedOptionId(savedSelections, state.slotId);
-            if (string.IsNullOrWhiteSpace(savedOptionId) ||
-                !statsSlot.TryGetOptionById(savedOptionId, out int optionIndex, out HelperProcLoadoutOption option))
-            {
-                statsSlot.TryGetDefaultOption(out optionIndex, out option);
-            }
-
-            ApplyHelperProcOption(state, option, optionIndex);
-            resolvedHelperProcStates.Add(state);
-        }
-    }
-
-    private void ApplyHelperProcOption(
-        ResolvedHelperProcState state,
-        HelperProcLoadoutOption option,
-        int optionIndex)
-    {
-        if (state == null)
-            return;
-
-        state.selectedOption = option;
-        state.selectedOptionIndex = optionIndex;
-        state.upgradeSnapshot = null;
-        state.runtimeEntry = null;
-
-        SkillHelperDef helperProc = option != null ? option.helperProc : null;
-        SkillGemDefinition execution = helperProc != null ? helperProc.executionSkill : null;
-        if (execution == null)
-            return;
-
-        SkillUpgradeTreeDefinition tree = option.ResolvedUpgradeTree;
-        if (activeSkillProgress != null && tree != null)
-        {
-            state.upgradeSnapshot = activeSkillProgress.BuildSnapshot(
-                state.slotId,
-                CharacterSkillLoadoutKeys.OptionKey(option, optionIndex),
-                tree);
-        }
-
-        helperExecutionSnapshots[execution] = state.upgradeSnapshot;
-
-        CharacterSkillEntry entry = GetOrCreateHelperProcEntry(helperProc);
-        entry.skillAsset = execution;
-        if (entry.runtimeSkill == null || entry.runtimeSkill.def != execution)
-            entry.runtimeSkill = CreateRuntimeSkill(execution, state.upgradeSnapshot);
-        else
-            entry.runtimeSkill.upgradeSnapshot = state.upgradeSnapshot;
-
-        state.runtimeEntry = entry;
-        ApplyHelperExecutionSnapshot(execution, state.upgradeSnapshot);
-    }
-
-    /// <summary>
-    /// Pushes a proc variant's snapshot onto the cached external entry for its execution skill.
-    ///
-    /// The entry is kept for the component's lifetime so the skill keeps one shared charge pool;
-    /// re-creating it on a variant switch would hand the player a free reset of that cooldown.
-    /// </summary>
-    private void ApplyHelperExecutionSnapshot(
-        SkillGemDefinition execution,
-        SkillUpgradeStatSnapshot snapshot)
-    {
-        if (execution == null)
-            return;
-
-        if (externalSkillEntries.TryGetValue(execution, out CharacterSkillEntry entry) &&
-            entry?.runtimeSkill != null)
-        {
-            entry.runtimeSkill.upgradeSnapshot = snapshot;
-        }
-    }
-
     /// <summary>Cancels an in-flight cast, but only when it is the one running <paramref name="runtimeSkill"/>.</summary>
     private void CancelActiveCastFor(SkillInstance runtimeSkill)
     {
@@ -1713,211 +801,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         {
             castOrchestrator.TryCancelActiveCast(SkillCastCancelReason.InvalidState);
         }
-    }
-
-    private void RebuildResolvedCommandSlots()
-    {
-        observedBaseStats = ctx != null ? ctx.baseStats : null;
-        observedAutonomousSlotCount = autonomousSlots != null ? autonomousSlots.Length : 0;
-        commandSlotsBuilt = true;
-
-        resolvedCommandSlots.Clear();
-        resolvedCommandSlotStates.Clear();
-
-        List<CharacterSkillSelectionSaveData> savedSelections = LoadSavedSkillSelections();
-        List<CharacterSkillLoadoutSlot> statsSlots = observedBaseStats != null ? observedBaseStats.skillSlots : null;
-        int statsSlotCount = statsSlots != null ? statsSlots.Count : 0;
-        int serializedSlotCount = autonomousSlots != null ? autonomousSlots.Length : 0;
-        int slotCount = Mathf.Max(statsSlotCount, serializedSlotCount);
-
-        for (int i = 0; i < slotCount; i++)
-        {
-            SkillSlot serializedSlot = GetSerializedAutonomousSlot(i);
-            CharacterSkillLoadoutSlot statsSlot = i < statsSlotCount ? statsSlots[i] : null;
-
-            if (statsSlot != null)
-            {
-                AddStatsLoadoutSlot(i, statsSlot, savedSelections);
-                continue;
-            }
-
-            if (IsPrefabOverrideSlot(serializedSlot))
-            {
-                AddPrefabOverrideSlot(i, serializedSlot);
-                continue;
-            }
-
-            AddPassthroughSerializedSlot(i, serializedSlot);
-        }
-
-        PassiveLoadoutChanged?.Invoke();
-    }
-
-    private void AddPrefabOverrideSlot(int slotIndex, SkillSlot slot)
-    {
-        SkillSlot resolvedSlot = slot ?? new SkillSlot();
-        EnsureCommandRuntimeSkill(resolvedSlot);
-        AddResolvedSlot(resolvedSlot, new ResolvedCommandSlotState
-        {
-            slot = resolvedSlot,
-            slotId = $"prefab:{slotIndex}",
-            usesPrefabOverride = true
-        });
-    }
-
-    private void AddStatsLoadoutSlot(
-        int slotIndex,
-        CharacterSkillLoadoutSlot statsSlot,
-        List<CharacterSkillSelectionSaveData> savedSelections)
-    {
-        var runtimeSlot = new SkillSlot
-        {
-            hotkey = statsSlot.hotkey
-        };
-
-        var state = new ResolvedCommandSlotState
-        {
-            slot = runtimeSlot,
-            statsSlot = statsSlot,
-            slotId = ResolveSlotId(statsSlot, slotIndex),
-            slotKind = statsSlot.ResolvedSlotKind,
-        };
-
-        ApplySavedOrDefaultSelection(state, savedSelections);
-        AddResolvedSlot(runtimeSlot, state);
-    }
-
-    private void AddPassthroughSerializedSlot(int slotIndex, SkillSlot slot)
-    {
-        SkillSlot resolvedSlot = slot ?? new SkillSlot();
-        EnsureCommandRuntimeSkill(resolvedSlot);
-        AddResolvedSlot(resolvedSlot, new ResolvedCommandSlotState
-        {
-            slot = resolvedSlot,
-            slotId = $"slot:{slotIndex}"
-        });
-    }
-
-    private void AddResolvedSlot(SkillSlot slot, ResolvedCommandSlotState state)
-    {
-        resolvedCommandSlots.Add(slot);
-        resolvedCommandSlotStates.Add(state);
-    }
-
-    private SkillSlot GetSerializedAutonomousSlot(int slotIndex)
-    {
-        if (autonomousSlots == null || slotIndex < 0 || slotIndex >= autonomousSlots.Length)
-            return null;
-
-        return autonomousSlots[slotIndex];
-    }
-
-    private static bool IsPrefabOverrideSlot(SkillSlot slot)
-    {
-        return slot != null && slot.skillAsset != null;
-    }
-
-    private void ApplySavedOrDefaultSelection(
-        ResolvedCommandSlotState state,
-        List<CharacterSkillSelectionSaveData> savedSelections)
-    {
-        if (state == null || state.statsSlot == null || state.slot == null)
-            return;
-
-        string savedOptionId = FindSavedOptionId(savedSelections, state.slotId);
-        if (!string.IsNullOrWhiteSpace(savedOptionId) &&
-            state.statsSlot.TryGetOptionById(savedOptionId, out int savedOptionIndex, out CharacterSkillLoadoutOption savedOption))
-        {
-            ApplySelectedSkillOption(state, savedOptionIndex, savedOption, cancelPending: false);
-            return;
-        }
-
-        if (state.statsSlot.TryGetDefaultOption(out int defaultOptionIndex, out CharacterSkillLoadoutOption defaultOption))
-        {
-            ApplySelectedSkillOption(state, defaultOptionIndex, defaultOption, cancelPending: false);
-            return;
-        }
-
-        ClearRuntimeSlot(state.slot);
-    }
-
-    private void ApplySelectedSkillOption(
-        ResolvedCommandSlotState state,
-        int optionIndex,
-        CharacterSkillLoadoutOption option,
-        bool cancelPending = true)
-    {
-        if (state == null || state.slot == null)
-            return;
-
-        if (cancelPending)
-            CancelPendingSlotIfNeeded(state.slot);
-
-        state.selectedOption = option;
-        state.selectedOptionIndex = optionIndex;
-        ApplySkillOptionToSlot(state, option, ResolveOptionId(option, optionIndex));
-
-        if (state.IsPassive)
-            PassiveLoadoutChanged?.Invoke();
-    }
-
-    private static bool IsCurrentSelectedSkillOption(
-        ResolvedCommandSlotState state,
-        int optionIndex,
-        CharacterSkillLoadoutOption option)
-    {
-        if (state == null || state.slot == null || option == null)
-            return false;
-
-        if (state.selectedOptionIndex != optionIndex || !ReferenceEquals(state.selectedOption, option))
-            return false;
-
-        if (option.IsPassive)
-            return state.IsPassive;
-
-        SkillGemDefinition activeAsset = option.ActiveSkillAsset;
-        return activeAsset != null &&
-               state.slot.skillAsset == activeAsset &&
-               state.slot.runtimeSkill != null &&
-               state.slot.runtimeSkill.def == activeAsset;
-    }
-
-    private void ApplySkillOptionToSlot(
-        ResolvedCommandSlotState state,
-        CharacterSkillLoadoutOption option,
-        string optionId)
-    {
-        SkillSlot slot = state != null ? state.slot : null;
-        if (slot == null)
-            return;
-
-        CharacterSkillLoadoutSlot statsSlot = state.statsSlot;
-        slot.hotkey = statsSlot != null ? statsSlot.hotkey : slot.hotkey;
-
-        if (option == null || option.skillAsset == null)
-        {
-            ClearRuntimeSlot(slot);
-            state.upgradeSnapshot = null;
-            state.IsPassive = false;
-            return;
-        }
-
-        SkillUpgradeTreeDefinition upgradeTree = option.ResolvedUpgradeTree;
-        SkillUpgradeStatSnapshot upgradeSnapshot = activeSkillProgress != null && upgradeTree != null
-            ? activeSkillProgress.BuildSnapshot(state.slotId, optionId, upgradeTree)
-            : null;
-        state.upgradeSnapshot = upgradeSnapshot;
-
-        if (option.IsPassive)
-        {
-            ClearRuntimeSlot(slot);
-            state.IsPassive = true;
-            return;
-        }
-
-        state.IsPassive = false;
-        slot.skillAsset = option.ActiveSkillAsset;
-        slot.runtimeSkill = CreateRuntimeSkill(slot.skillAsset, upgradeSnapshot);
     }
 
     private void SubscribeToActiveSkillProgress()
@@ -1937,86 +820,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     private void HandleActiveSkillTreeChanged(string slotId, string optionId)
     {
-        if (string.IsNullOrWhiteSpace(slotId) || string.IsNullOrWhiteSpace(optionId))
-        {
-            RefreshHelperLoadout(force: true);
-            RebuildResolvedCommandSlots();
-            return;
-        }
-
-        if (HandleHelperTreeChanged(slotId, optionId))
-            return;
-
-        if (!TryGetCommandSlotState(slotId, out ResolvedCommandSlotState state) ||
-            state.selectedOption == null ||
-            !string.Equals(
-                ResolveOptionId(state.selectedOption, state.selectedOptionIndex),
-                optionId,
-                StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        ApplySkillOptionToSlot(state, state.selectedOption, optionId);
-
-        if (state.IsPassive)
-            PassiveLoadoutChanged?.Invoke();
-    }
-
-    /// <summary>
-    /// Re-applies a Helper variant after its Skill Tree changed, so a node unlocked in the lobby
-    /// reaches the next cast. Returns true when the key belonged to the Helper half.
-    /// </summary>
-    private bool HandleHelperTreeChanged(string slotId, string optionId)
-    {
-        if (!slotId.StartsWith(CharacterSkillLoadoutKeys.HelperCommandPrefix, StringComparison.Ordinal) &&
-            !slotId.StartsWith(CharacterSkillLoadoutKeys.HelperProcPrefix, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        RefreshResolvedCommandSlotsIfNeeded();
-        string resolvedSlotId = slotId.Trim();
-
-        if (helperCommandState.statsSlot != null &&
-            string.Equals(helperCommandState.slotId, resolvedSlotId, StringComparison.Ordinal))
-        {
-            if (helperCommandState.selectedOption != null &&
-                string.Equals(
-                    ResolveOptionId(helperCommandState.selectedOption, helperCommandState.selectedOptionIndex),
-                    optionId,
-                    StringComparison.Ordinal))
-            {
-                ApplyHelperCommandOption(
-                    helperCommandState.selectedOption,
-                    helperCommandState.selectedOptionIndex);
-            }
-
-            return true;
-        }
-
-        if (!TryGetHelperProcState(resolvedSlotId, out ResolvedHelperProcState state))
-            return true;
-
-        if (state.selectedOption != null &&
-            string.Equals(
-                CharacterSkillLoadoutKeys.OptionKey(state.selectedOption, state.selectedOptionIndex),
-                optionId,
-                StringComparison.Ordinal))
-        {
-            ApplyHelperProcOption(state, state.selectedOption, state.selectedOptionIndex);
-        }
-
-        return true;
-    }
-
-    private static void ClearRuntimeSlot(SkillSlot slot)
-    {
-        if (slot == null)
-            return;
-
-        slot.skillAsset = null;
-        slot.runtimeSkill = null;
+        Loadout.HandleActiveSkillTreeChanged(slotId, optionId);
     }
 
     private void CancelPendingSlotIfNeeded(SkillSlot slot)
@@ -2095,68 +899,12 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             : null;
     }
 
-    private static string FindSavedOptionId(List<CharacterSkillSelectionSaveData> savedSelections, string slotId)
-    {
-        if (savedSelections == null || string.IsNullOrWhiteSpace(slotId))
-            return null;
-
-        for (int i = 0; i < savedSelections.Count; i++)
-        {
-            CharacterSkillSelectionSaveData entry = savedSelections[i];
-            if (entry == null)
-                continue;
-
-            if (string.Equals(entry.slotId, slotId, StringComparison.Ordinal))
-                return entry.optionId;
-        }
-
-        return null;
-    }
-
-    private static string ResolveSlotId(CharacterSkillLoadoutSlot slot, int slotIndex)
-    {
-        return CharacterSkillLoadoutKeys.StrykerSlotKey(slot, slotIndex);
-    }
-
-    private static string ResolveOptionId(CharacterSkillLoadoutOption option, int optionIndex)
-    {
-        return CharacterSkillLoadoutKeys.OptionKey(option, optionIndex);
-    }
-
-    private bool IsPassiveSlot(SkillSlot slot)
-    {
-        for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
-        {
-            ResolvedCommandSlotState state = resolvedCommandSlotStates[i];
-            if (state != null && ReferenceEquals(state.slot, slot))
-                return state.IsPassive;
-        }
-
-        return false;
-    }
-
-    private string BuildSlotDebugSource(SkillSlot slot)
-    {
-        for (int i = 0; i < resolvedCommandSlotStates.Count; i++)
-        {
-            ResolvedCommandSlotState state = resolvedCommandSlotStates[i];
-            if (state == null || !ReferenceEquals(state.slot, slot))
-                continue;
-
-            return !string.IsNullOrWhiteSpace(state.slotId)
-                ? $"slot:{state.slotId}"
-                : $"slot:{i}";
-        }
-
-        return slot != null ? $"slot:{slot.hotkey}" : "slot:<null>";
-    }
-
     private void EnsureCastOrchestrator()
     {
         if (castOrchestrator != null)
             return;
 
-        castOrchestrator = new SkillCastOrchestrator(this);
+        castOrchestrator = new SkillCastOrchestrator(this, chargeRegistry);
         castOrchestrator.CastStarted += OnCastStarted;
         castOrchestrator.CastReleased += OnCastReleased;
         castOrchestrator.CastCommitted += OnCastCommitted;
@@ -2293,749 +1041,193 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         pendingSlot = null;
         castOrchestrator?.CancelPendingCast(SkillCastCancelReason.CharacterDead);
     }
-}
-
-public enum SkillCastStartKind
-{
-    Rejected,
-    ImmediateSuccess,
-    WaitingForAnimation,
-}
-
-public readonly struct SkillCastStartResult
-{
-    public readonly SkillCastStartKind Kind;
-    public readonly int RequestId;
-
-    public bool Started => Kind != SkillCastStartKind.Rejected;
-
-    public SkillCastStartResult(SkillCastStartKind kind, int requestId)
-    {
-        Kind = kind;
-        RequestId = requestId;
-    }
-}
-
-public readonly struct SkillCastRequest
-{
-    public readonly SkillExecutionKind ExecutionKind;
-    public readonly MeleeType MeleeType;
-    public readonly Vector2 MeleeChainWindow;
-    public readonly SkillInstance RuntimeSkill;
-    public readonly ISkillUser SkillUser;
-    public readonly CharacterAnimDriver AnimationDriver;
-    public readonly Func<bool> CanProceed;
-    public readonly Action OnStarted;
-    public readonly Action<ActiveSkillCastInfo> OnCommitted;
-    public readonly Action<ActiveSkillCastInfo, SkillExecutionResult> OnExecutionFailed;
-    public readonly Action<ActiveSkillCastInfo, SkillCastCancelReason> OnCancelled;
-    public readonly int RequestedId;
-    public readonly SkillCastCostPolicy CostPolicy;
-    public readonly bool StampCooldown;
 
     /// <summary>
-    /// Character this cast is aimed at, locked before the animation starts. Never null: a cast
-    /// with no target carries <see cref="SkillTargetHandle.None"/>.
+    /// Skill currently assigned to a command slot, for HUD icons and tooltips. This is a plain
+    /// read of the resolved loadout: it does not build a runtime skill or touch the charge pool,
+    /// so a HUD can poll it alongside <see cref="TryGetSlotChargeStatus"/> without paying twice.
     /// </summary>
-    public readonly SkillTargetHandle PrimaryTarget;
-
-    /// <summary>Legacy read of <see cref="CostPolicy"/>. True only for the "free of everything" policy.</summary>
-    public bool IgnoreResourceCosts => CostPolicy.IgnoresCharge();
-    public readonly bool UseAnimationDriver;
-    public readonly bool AllowImmediateFallback;
-    public readonly CombatTimelineEventName RequiredTimelineEvent;
-    public readonly bool UsePlanarRootMotion;
-    public readonly string DebugSource;
-    public readonly ulong CombatChainId;
-    public readonly int CombatDepth;
-    public readonly ComboExecutionProvenance ComboProvenance;
-    public readonly SkillFacingSnapshot FacingSnapshot;
-
-    public SkillCastRequest(
-        SkillInstance runtimeSkill,
-        ISkillUser skillUser,
-        CharacterAnimDriver animationDriver = null,
-        Func<bool> canProceed = null,
-        Action onStarted = null,
-        int requestedId = 0,
-        bool ignoreResourceCosts = false,
-        bool stampCooldown = true,
-        bool useAnimationDriver = true,
-        bool allowImmediateFallback = true,
-        CombatTimelineEventName requiredTimelineEvent = CombatTimelineEventName.None,
-        bool usePlanarRootMotion = false,
-        string debugSource = null,
-        SkillTargetHandle primaryTarget = null,
-        SkillCastCostPolicy costPolicy = SkillCastCostPolicy.Normal,
-        Action<ActiveSkillCastInfo> onCommitted = null,
-        Action<ActiveSkillCastInfo, SkillExecutionResult> onExecutionFailed = null,
-        Action<ActiveSkillCastInfo, SkillCastCancelReason> onCancelled = null,
-        ulong combatChainId = 0,
-        int combatDepth = 0,
-        ComboExecutionProvenance comboProvenance = default,
-        SkillFacingSnapshot facingSnapshot = default,
-        SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
-        MeleeType meleeType = MeleeType.Light,
-        Vector2 meleeChainWindow = default)
+    public bool TryGetSlotSkillDefinition(int slotIndex, out SkillGemDefinition skillDef)
     {
-        ExecutionKind = executionKind;
-        MeleeType = meleeType;
-        MeleeChainWindow = meleeChainWindow;
-        RuntimeSkill = runtimeSkill;
-        SkillUser = skillUser;
-        AnimationDriver = animationDriver;
-        CanProceed = canProceed;
-        OnStarted = onStarted;
-        OnCommitted = onCommitted;
-        OnExecutionFailed = onExecutionFailed;
-        OnCancelled = onCancelled;
-        RequestedId = requestedId;
-
-        // Two ways in, one field. The bool is the original API and stays authoritative for every
-        // caller that never heard of the enum; an explicitly non-Normal policy wins because the
-        // only way to ask for it is to pass it.
-        CostPolicy = costPolicy != SkillCastCostPolicy.Normal
-            ? costPolicy
-            : SkillCastCostPolicies.FromLegacyFlag(ignoreResourceCosts);
-
-        StampCooldown = stampCooldown;
-        PrimaryTarget = primaryTarget ?? SkillTargetHandle.None;
-        UseAnimationDriver = useAnimationDriver;
-        AllowImmediateFallback = allowImmediateFallback;
-        RequiredTimelineEvent = requiredTimelineEvent;
-        UsePlanarRootMotion = usePlanarRootMotion;
-        DebugSource = debugSource;
-        CombatChainId = combatChainId;
-        CombatDepth = Mathf.Max(0, combatDepth);
-        ComboProvenance = comboProvenance;
-        FacingSnapshot = facingSnapshot;
+        return Loadout.TryGetSlotSkillDefinition(slotIndex, out skillDef);
     }
-}
-
-public enum SkillCastCancelReason
-{
-    InvalidState,
-    AnimationInterrupted,
-    Disabled,
-    Blocked,
-    Stunned,
-    Staggered,
-    CharacterDown,
-    CharacterDead,
-}
-
-public readonly struct ActiveSkillCastInfo
-{
-    public readonly SkillExecutionKind ExecutionKind;
-    public readonly int RequestId;
-    public readonly SkillInstance RuntimeSkill;
-    public readonly SkillGemDefinition SkillDef;
-    public readonly ISkillUser SkillUser;
-    public readonly CharacterAnimDriver AnimationDriver;
-    public readonly float CastPointNormalized;
-    public readonly bool Released;
-    public readonly bool RequiresTimelineEvents;
-    public readonly string DebugSource;
-
-    public bool IsValid => RequestId > 0 && RuntimeSkill != null && SkillDef != null && SkillUser != null;
-
-    public ActiveSkillCastInfo(
-        int requestId,
-        SkillInstance runtimeSkill,
-        SkillGemDefinition skillDef,
-        ISkillUser skillUser,
-        CharacterAnimDriver animationDriver,
-        float castPointNormalized,
-        bool released,
-        bool requiresTimelineEvents,
-        string debugSource,
-        SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill)
-    {
-        ExecutionKind = executionKind;
-        RequestId = requestId;
-        RuntimeSkill = runtimeSkill;
-        SkillDef = skillDef;
-        SkillUser = skillUser;
-        AnimationDriver = animationDriver;
-        CastPointNormalized = castPointNormalized;
-        Released = released;
-        RequiresTimelineEvents = requiresTimelineEvents;
-        DebugSource = debugSource;
-    }
-}
-
-public sealed class SkillCastOrchestrator
-{
-    private sealed class PendingCastContext
-    {
-        public SkillCastRequest Request;
-        public SkillInstance RuntimeSkill;
-
-        /// <summary>
-        /// Charge, energy, and the stats snapshot this cast was priced with, taken out of the
-        /// pools the moment the cast started. Settled exactly once: committed at the cast point,
-        /// rolled back on cancellation.
-        /// </summary>
-        public SkillCastReservation Reservation;
-        public SkillGemDefinition SkillDef;
-        public ISkillUser SkillUser;
-        public CharacterAnimDriver AnimationDriver;
-        public int RequestId;
-        public bool Released;
-        public bool Cancelled;
-        public float CastPointNormalized;
-        public bool RequiresTimelineEvents;
-        public readonly List<CombatTimelineEventName> TimelineEventNames = new List<CombatTimelineEventName>();
-
-        public ActiveSkillCastInfo ToInfo()
-        {
-            return new ActiveSkillCastInfo(
-                RequestId,
-                RuntimeSkill,
-                SkillDef,
-                SkillUser,
-                AnimationDriver,
-                CastPointNormalized,
-                Released,
-                RequiresTimelineEvents,
-                Request.DebugSource, Request.ExecutionKind);
-        }
-    }
-
-    private readonly Component owner;
-
-    // Charge pool shared by every slot that points at the same skill definition. A skill with
-    // baseMaxCharges = 1 behaves exactly like the single shared cooldown this replaced.
-    private readonly Dictionary<SkillGemDefinition, SkillChargeState> sharedCharges =
-        new Dictionary<SkillGemDefinition, SkillChargeState>();
-
-    private PendingCastContext pendingCast;
-    private int nextCastRequestId = 1;
-
-    public SkillCastOrchestrator(Component owner)
-    {
-        this.owner = owner;
-    }
-
-    public bool HasPendingCast => pendingCast != null;
-    public int ActiveRequestId => pendingCast != null ? pendingCast.RequestId : 0;
-
-    public event Action<ActiveSkillCastInfo> CastStarted;
-    public event Action<ActiveSkillCastInfo> CastReleased;
-    public event Action<ActiveSkillCastInfo> CastCommitted;
-    public event Action<ActiveSkillCastInfo, SkillCastCancelReason> CastCancelled;
 
     /// <summary>
-    /// The payload ran but produced no gameplay effect, so nothing was committed: no energy,
-    /// no charge, no cooldown. Presenters use this to explain the refusal to the player.
+    /// Passive assigned to a command slot, for HUD icons. Returns false for an active slot, so a
+    /// HUD can ask this first and fall back to the charge readout only when it comes back empty.
+    /// A passive slot has no runtime skill and no charge pool, which is why it can never answer
+    /// <see cref="TryGetSlotChargeStatus"/>.
     /// </summary>
-    public event Action<ActiveSkillCastInfo, SkillExecutionResult> CastExecutionFailed;
-
-    public void Tick()
+    public bool TryGetSlotPassiveDefinition(int slotIndex, out PassiveDefinition passiveDef)
     {
-        if (pendingCast == null)
-            return;
-
-        if (!CanProceed(pendingCast.Request))
-            CancelPendingCast(SkillCastCancelReason.InvalidState);
+        return Loadout.TryGetSlotPassiveDefinition(slotIndex, out passiveDef);
     }
 
-    public void CancelPendingCast()
+    public bool TrySelectSkillOption(int slotIndex, int optionIndex, bool persist = true)
     {
-        CancelPendingCast(SkillCastCancelReason.Disabled);
+        CacheReferences();
+        return Loadout.TrySelectSkillOption(slotIndex, optionIndex, persist);
     }
 
-    public void CancelPendingCast(SkillCastCancelReason reason)
+    public bool TrySelectSkillOption(string slotId, string optionId, bool persist = true)
     {
-        if (pendingCast == null)
-            return;
-
-        PendingCastContext context = pendingCast;
-        pendingCast = null;
-        Unsubscribe(context.AnimationDriver);
-        CancelPendingCastRequest(context, stopAnimation: reason != SkillCastCancelReason.AnimationInterrupted);
-        SettleCancelledCast(context, reason);
-        context.Request.OnCancelled?.Invoke(context.ToInfo(), reason);
-        CastCancelled?.Invoke(context.ToInfo(), reason);
+        CacheReferences();
+        return Loadout.TrySelectSkillOption(slotId, optionId, persist);
     }
 
-    public bool TryGetActiveCast(out ActiveSkillCastInfo castInfo)
+    public bool TryGetSkillOptions(int slotIndex, out IReadOnlyList<CharacterSkillLoadoutOption> options)
     {
-        if (pendingCast == null)
-        {
-            castInfo = default;
-            return false;
-        }
-
-        castInfo = pendingCast.ToInfo();
-        return true;
+        CacheReferences();
+        return Loadout.TryGetSkillOptions(slotIndex, out options);
     }
 
-    public bool TryCancelActiveCast(SkillCastCancelReason reason)
+    public bool TryGetSkillOptions(string slotId, out IReadOnlyList<CharacterSkillLoadoutOption> options)
     {
-        if (pendingCast == null || pendingCast.Released)
-            return false;
-
-        CancelPendingCast(reason);
-        return true;
+        CacheReferences();
+        return Loadout.TryGetSkillOptions(slotId, out options);
     }
 
-    public SkillCastStartResult TryStartCast(in SkillCastRequest request)
+    public bool TryGetSelectedSkillOption(int slotIndex, out CharacterSkillLoadoutOption option)
     {
-        if (pendingCast != null)
-            return Rejected();
-
-        if (!TryResolveStartState(request, out SkillInstance runtimeSkill, out ISkillUser skillUser, out SkillGemDefinition skillDef))
-            return Rejected();
-
-        int requestId = ResolveRequestId(request.RequestedId);
-        CharacterAnimDriver executionAnimDriver = request.AnimationDriver;
-        bool hasExternalSkillExecutionContext = HasActiveSkillExecutionContext(executionAnimDriver, requestId);
-        bool requiresTimelineEvents =
-            skillDef.RequiresSkillTimelineEvents ||
-            CombatTimelineEventNames.IsValid(request.RequiredTimelineEvent);
-
-        if (!request.UseAnimationDriver &&
-            requiresTimelineEvents &&
-            !hasExternalSkillExecutionContext)
-        {
-            WarnMissingTimelineDriver(skillDef, request.DebugSource);
-            return Rejected();
-        }
-
-        // Resources leave the pools here, before a single animation frame plays. Holding them for
-        // the whole wind-up is what stops a second press from spending the same charge, and the
-        // stats snapshot taken with them is what this cast keeps being priced by even if a buff
-        // lands halfway through.
-        if (!runtimeSkill.TryReserveCast(
-                skillUser,
-                request.CostPolicy,
-                request.StampCooldown,
-                out SkillCastReservation reservation, request.ExecutionKind))
-        {
-            return Rejected();
-        }
-
-        if (request.UseAnimationDriver && executionAnimDriver != null)
-        {
-            var context = new PendingCastContext
-            {
-                Request = request,
-                Reservation = reservation,
-                RuntimeSkill = runtimeSkill,
-                SkillDef = skillDef,
-                SkillUser = skillUser,
-                AnimationDriver = executionAnimDriver,
-                RequestId = requestId,
-                CastPointNormalized = request.ExecutionKind == SkillExecutionKind.BasicMelee ? 0f : skillDef.GetCastPointNormalized(),
-                RequiresTimelineEvents = requiresTimelineEvents,
-            };
-
-            skillDef.CollectTimelineEventNames(context.TimelineEventNames);
-            CombatTimelineEventNames.AddUnique(
-                context.TimelineEventNames,
-                request.RequiredTimelineEvent);
-
-            bool started = executionAnimDriver.TryPlaySkill(
-                context.RequestId,
-                context.SkillDef,
-                context.CastPointNormalized,
-                context.TimelineEventNames,
-                request.UsePlanarRootMotion, request.ExecutionKind, request.MeleeChainWindow);
-
-            if (started)
-            {
-                Subscribe(context.AnimationDriver);
-                pendingCast = context;
-
-                // OnStarted has side effects on the caster (weapon stow, facing snap), so it only
-                // runs once the animation driver has actually accepted the cast.
-                request.OnStarted?.Invoke();
-                CastStarted?.Invoke(context.ToInfo());
-                // Arm the payload synchronously, before a frame-zero HitStart can run.
-                if (request.ExecutionKind == SkillExecutionKind.BasicMelee)
-                {
-                    if (!ReleasePendingCast(context.RequestId))
-                    {
-                        executionAnimDriver.CancelSkillCastRequest(context.RequestId);
-                        return Rejected();
-                    }
-                    executionAnimDriver.ReleaseBasicMeleeCast(context.RequestId);
-                }
-                return new SkillCastStartResult(SkillCastStartKind.WaitingForAnimation, context.RequestId);
-            }
-        }
-
-        // Reaching here means no animation of our own will raise the timeline events - fatal for a
-        // payload that needs them, unless someone else is already playing this exact request and
-        // will raise them for us. That is the whole point of the external-execution-context path.
-        if (requiresTimelineEvents && !hasExternalSkillExecutionContext)
-        {
-            reservation.Release();
-            WarnMissingTimelineDriver(skillDef, request.DebugSource);
-            return Rejected();
-        }
-
-        if (request.UseAnimationDriver && !request.AllowImmediateFallback)
-        {
-            reservation.Release();
-            return Rejected();
-        }
-
-        if (!CanProceed(request))
-        {
-            reservation.Release();
-            return Rejected();
-        }
-
-        request.OnStarted?.Invoke();
-
-        ActiveSkillCastInfo immediateInfo = new ActiveSkillCastInfo(
-            requestId,
-            runtimeSkill,
-            skillDef,
-            skillUser,
-            executionAnimDriver,
-            skillDef.GetCastPointNormalized(),
-            released: false,
-            requiresTimelineEvents: false,
-            request.DebugSource, request.ExecutionKind);
-        CastStarted?.Invoke(immediateInfo);
-
-        // No wind-up on this path, so the cast point is now. CastReleased always means "reached the
-        // cast point"; whether the payload then produced anything is reported separately.
-        CastReleased?.Invoke(new ActiveSkillCastInfo(
-            requestId,
-            runtimeSkill,
-            skillDef,
-            skillUser,
-            executionAnimDriver,
-            skillDef.GetCastPointNormalized(),
-            released: true,
-            requiresTimelineEvents: false,
-            request.DebugSource));
-
-        if (!ExecuteReservedCast(
-                request,
-                requestId,
-                runtimeSkill,
-                reservation,
-                skillUser,
-                executionAnimDriver))
-        {
-            return Rejected();
-        }
-
-        return new SkillCastStartResult(SkillCastStartKind.ImmediateSuccess, requestId);
+        CacheReferences();
+        return Loadout.TryGetSelectedSkillOption(slotIndex, out option);
     }
 
-    private bool TryResolveStartState(
-        in SkillCastRequest request,
-        out SkillInstance runtimeSkill,
-        out ISkillUser skillUser,
-        out SkillGemDefinition skillDef)
+    public bool TryGetSelectedSkillOption(string slotId, out CharacterSkillLoadoutOption option)
     {
-        runtimeSkill = request.RuntimeSkill;
-        skillUser = request.SkillUser;
-        skillDef = runtimeSkill != null ? runtimeSkill.def : null;
-
-        if (runtimeSkill == null || skillUser == null || skillDef == null || skillDef.payload == null)
-            return false;
-
-        if (!CanProceed(request))
-            return false;
-
-        return request.ExecutionKind == SkillExecutionKind.BasicMelee ||
-               runtimeSkill.CanCast(skillUser, request.CostPolicy, out _);
+        CacheReferences();
+        return Loadout.TryGetSelectedSkillOption(slotId, out option);
     }
 
     /// <summary>
-    /// Runs the payload for a cast that has reached its cast point, then settles its reservation:
-    /// commit when the payload produced a gameplay effect, roll everything back when it did not.
-    /// </summary>
-    private bool ExecuteReservedCast(
-        in SkillCastRequest request,
-        int requestId,
-        SkillInstance runtimeSkill,
-        SkillCastReservation reservation,
-        ISkillUser skillUser,
-        CharacterAnimDriver executionAnimDriver)
-    {
-        if (runtimeSkill == null || reservation == null || reservation.IsSettled)
-            return false;
-
-        CharacterAnimBrain executionAnimBrain = executionAnimDriver != null
-            ? executionAnimDriver.Brain
-            : null;
-
-        if (!runtimeSkill.ExecuteReserved(
-                reservation,
-                executionAnimBrain,
-                requestId,
-                out SkillExecutionResult result,
-                request.PrimaryTarget,
-                request.CombatChainId,
-                request.CombatDepth,
-                request.ComboProvenance,
-                request.FacingSnapshot, request.ExecutionKind, request.MeleeType))
-        {
-            reservation.Release();
-            RaiseExecutionFailed(request, requestId, runtimeSkill, skillUser, executionAnimDriver, result);
-            return false;
-        }
-
-        reservation.Commit();
-        var committedInfo = new ActiveSkillCastInfo(
-            requestId,
-            runtimeSkill,
-            runtimeSkill.def,
-            skillUser,
-            executionAnimDriver,
-            runtimeSkill.def != null ? runtimeSkill.def.GetCastPointNormalized() : 0f,
-            released: true,
-            requiresTimelineEvents: false,
-            request.DebugSource, request.ExecutionKind);
-        request.OnCommitted?.Invoke(committedInfo);
-        CastCommitted?.Invoke(committedInfo);
-        if (request.ExecutionKind != SkillExecutionKind.BasicMelee)
-            PlayCastCue(runtimeSkill, skillUser);
-        return true;
-    }
-
-    private void RaiseExecutionFailed(
-        in SkillCastRequest request,
-        int requestId,
-        SkillInstance runtimeSkill,
-        ISkillUser skillUser,
-        CharacterAnimDriver animationDriver,
-        SkillExecutionResult result)
-    {
-        if (result.Success)
-            return;
-
-        SkillGemDefinition skillDef = runtimeSkill != null ? runtimeSkill.def : null;
-        if (!string.IsNullOrEmpty(result.DebugMessage))
-        {
-            Debug.Log(
-                $"[SkillCast] '{(skillDef != null ? skillDef.name : "<unknown>")}' produced no effect ({result.Reason}): {result.DebugMessage}",
-                owner);
-        }
-
-        CastExecutionFailed?.Invoke(
-            new ActiveSkillCastInfo(
-                requestId,
-                runtimeSkill,
-                skillDef,
-                skillUser,
-                animationDriver,
-                skillDef != null ? skillDef.GetCastPointNormalized() : 0f,
-                released: true,
-                requiresTimelineEvents: false,
-                request.DebugSource, request.ExecutionKind),
-            result);
-        request.OnExecutionFailed?.Invoke(
-            new ActiveSkillCastInfo(
-                requestId,
-                runtimeSkill,
-                skillDef,
-                skillUser,
-                animationDriver,
-                skillDef != null ? skillDef.GetCastPointNormalized() : 0f,
-                released: true,
-                requiresTimelineEvents: false,
-                request.DebugSource, request.ExecutionKind),
-            result);
-    }
-
-    private bool ReleasePendingCast(int requestId)
-    {
-        if (pendingCast == null ||
-            pendingCast.RequestId != requestId ||
-            pendingCast.Cancelled ||
-            pendingCast.Released)
-        {
-            return false;
-        }
-
-        PendingCastContext context = pendingCast;
-        pendingCast = null;
-        Unsubscribe(context.AnimationDriver);
-
-        if (!CanProceed(context.Request))
-        {
-            CancelPendingCastRequest(context, stopAnimation: false);
-            SettleCancelledCast(context, SkillCastCancelReason.InvalidState);
-            context.Request.OnCancelled?.Invoke(context.ToInfo(), SkillCastCancelReason.InvalidState);
-            CastCancelled?.Invoke(context.ToInfo(), SkillCastCancelReason.InvalidState);
-            return false;
-        }
-
-        context.Released = true;
-        CastReleased?.Invoke(context.ToInfo());
-        return ExecuteReservedCast(
-            context.Request,
-            context.RequestId,
-            context.RuntimeSkill,
-            context.Reservation,
-            context.SkillUser,
-            context.AnimationDriver);
-    }
-
-    private void CancelPendingCastRequest(PendingCastContext context, bool stopAnimation)
-    {
-        if (context == null)
-            return;
-
-        context.Cancelled = true;
-        if (stopAnimation)
-            context.AnimationDriver?.CancelSkillCastRequest(context.RequestId);
-    }
-
-    private void OnSkillCastMomentReached(int requestId)
-    {
-        ReleasePendingCast(requestId);
-    }
-
-    private void OnSkillCastInterrupted(int requestId)
-    {
-        if (pendingCast == null || pendingCast.RequestId != requestId)
-            return;
-
-        CancelPendingCast(SkillCastCancelReason.AnimationInterrupted);
-    }
-
-    private void Subscribe(CharacterAnimDriver animationDriver)
-    {
-        CharacterAnimBrain animationBrain = animationDriver != null ? animationDriver.Brain : null;
-        if (animationBrain == null)
-            return;
-
-        animationBrain.SkillCastMomentReached += OnSkillCastMomentReached;
-        animationBrain.SkillCastInterrupted += OnSkillCastInterrupted;
-    }
-
-    private void Unsubscribe(CharacterAnimDriver animationDriver)
-    {
-        CharacterAnimBrain animationBrain = animationDriver != null ? animationDriver.Brain : null;
-        if (animationBrain == null)
-            return;
-
-        animationBrain.SkillCastMomentReached -= OnSkillCastMomentReached;
-        animationBrain.SkillCastInterrupted -= OnSkillCastInterrupted;
-    }
-
-    private bool CanProceed(in SkillCastRequest request)
-    {
-        return request.CanProceed == null || request.CanProceed();
-    }
-
-    /// <summary>
-    /// The one charge pool for this definition on this character. Created on demand and always
-    /// non-null for a real definition, so a skill that has never been cast reads as full rather
-    /// than as "unknown".
-    /// </summary>
-    public SkillChargeState GetOrCreateCharges(SkillGemDefinition skillDef)
-    {
-        if (skillDef == null)
-            return null;
-
-        if (!sharedCharges.TryGetValue(skillDef, out SkillChargeState charges))
-        {
-            charges = new SkillChargeState();
-            sharedCharges[skillDef] = charges;
-        }
-
-        return charges;
-    }
-
-    /// <summary>Refills every pool. Used on load, where charges are deliberately not persisted.</summary>
-    public void ResetAllChargesToFull()
-    {
-        foreach (KeyValuePair<SkillGemDefinition, SkillChargeState> pair in sharedCharges)
-            pair.Value?.ResetToFull();
-    }
-
-    /// <summary>
-    /// Rolls back a cast that never reached its cast point.
+    /// Selects a variant in any slot this character owns, Stryker or Helper.
     ///
-    /// Interrupted, stunned, and invalid-state casts cost nothing at all. A Blocked cast still
-    /// burns its cooldown but keeps its energy - except for summon-style skills, which deploy
-    /// something into the world: being blocked before the cast point means nothing was deployed,
-    /// so that cast must be free.
+    /// Slot ids are namespaced by <see cref="CharacterSkillLoadoutKeys"/>, so one call resolves
+    /// the right half of the loadout without the caller knowing which role it is looking at.
     /// </summary>
-    private void SettleCancelledCast(PendingCastContext context, SkillCastCancelReason reason)
+    public bool TrySelectLoadoutOption(string slotId, string optionId, bool persist = true)
     {
-        SkillCastReservation reservation = context != null ? context.Reservation : null;
-        if (reservation == null || reservation.IsSettled)
-            return;
-
-        // Defensive: past the cast point the execution path owns the settle.
-        if (context.Released)
-            return;
-
-        bool burnsCooldown =
-            reason == SkillCastCancelReason.Blocked &&
-            context.Request.StampCooldown &&
-            !IsSummonSkill(context.SkillDef);
-
-        if (burnsCooldown)
-            reservation.CommitChargeOnly();
-        else
-            reservation.Release();
+        CacheReferences();
+        return Loadout.TrySelectLoadoutOption(slotId, optionId, persist);
     }
 
-    private static bool IsSummonSkill(SkillGemDefinition skillDef)
+    /// <summary>Option id currently equipped in <paramref name="slotId"/>, across both roles.</summary>
+    public bool TryGetSelectedLoadoutOptionId(string slotId, out string optionId)
     {
-        return skillDef != null && (skillDef.tags & SkillTag.Minion) != 0;
+        CacheReferences();
+        return Loadout.TryGetSelectedLoadoutOptionId(slotId, out optionId);
     }
 
-    private int ResolveRequestId(int requestedId)
+    public bool TryGetPartyComboRuntimeEntry(
+        PartyComboSkillDef combo,
+        out CharacterSkillEntry entry)
     {
-        if (requestedId > 0)
-            return requestedId;
-
-        if (nextCastRequestId == int.MaxValue)
-            nextCastRequestId = 1;
-
-        return nextCastRequestId++;
+        CacheReferences();
+        return Loadout.TryGetPartyComboRuntimeEntry(combo, out entry);
     }
 
-    private bool HasActiveSkillExecutionContext(CharacterAnimDriver animationDriver, int requestId)
+    /// <summary>Returns the live runtime entry for the currently selected proc variant.</summary>
+    public bool TryGetHelperProcRuntimeSkill(SkillHelperDef helperProc, out SkillInstance runtimeSkill)
     {
-        CharacterAnimBrain animationBrain = animationDriver != null ? animationDriver.Brain : null;
-        return animationBrain != null &&
-               requestId > 0 &&
-               animationBrain.TryGetActiveSkillNormalizedTime(requestId, out _);
+        CacheReferences();
+        return Loadout.TryGetHelperProcRuntimeSkill(helperProc, out runtimeSkill);
     }
 
-    private void PlayCastCue(SkillInstance skill, ISkillUser skillUser)
+    /// <summary>
+    /// One entry per definition, kept for the lifetime of this component. The charge pool itself
+    /// lives in the shared registry keyed by definition, so it would survive a rebuilt entry
+    /// anyway - caching keeps allocation and cast diagnostics stable.
+    /// </summary>
+    private CharacterSkillEntry GetOrCreateExternalEntry(SkillGemDefinition skillDef)
     {
-        if (skill == null || skill.def == null || skill.def.castCue == null)
-            return;
-
-        Transform castOrigin = skillUser != null && skillUser.CastOrigin != null
-            ? skillUser.CastOrigin
-            : owner != null
-                ? owner.transform
-                : null;
-
-        if (castOrigin == null)
-            return;
-
-        AudioService.Instance.PlayAttached(skill.def.castCue, castOrigin, Vector3.zero);
+        return Loadout.GetOrCreateExternalEntry(skillDef);
     }
 
-    private void WarnMissingTimelineDriver(SkillGemDefinition skillDef, string debugSource)
+    /// <summary>
+    /// Helper procs this actor contributes: one selected variant per slot, and nothing else.
+    ///
+    /// Every party-slot rig and the helper actor itself are shared prefabs, so a prefab-authored
+    /// proc would belong to whoever is currently loaded into that rig. Reading from
+    /// <c>ctx.baseStats</c> - the same place command slots come from - keeps the proc tied to the
+    /// character and drops it the moment that character leaves the party. Unselected variants are
+    /// authored but not equipped, so they never reach the proc controller.
+    /// </summary>
+    public void AppendConfiguredHelperChainDefinitions(List<SkillHelperDef> buffer, HashSet<SkillHelperDef> dedupe = null)
     {
-        string skillLabel = skillDef != null ? skillDef.name : "<unknown>";
-        string sourceLabel = string.IsNullOrWhiteSpace(debugSource) ? string.Empty : $" ({debugSource})";
-        Debug.LogWarning(
-            $"Skill '{skillLabel}' requires Animancer skill timeline events, but no active skill animation driver was available{sourceLabel}.",
-            owner);
+        CacheReferences();
+        Loadout.AppendConfiguredHelperChainDefinitions(buffer, dedupe);
     }
 
-    private static SkillCastStartResult Rejected()
+    public void AppendConfiguredPassiveDefinitions(List<EquippedPassive> buffer)
     {
-        return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+        CacheReferences();
+        Loadout.AppendConfiguredPassiveDefinitions(buffer);
+    }
+
+    public void ClearSlot(int index)
+    {
+        Loadout.ClearSlot(index);
+    }
+
+    public void AssignSkillToSlot(int index, SkillGemDefinition asset)
+    {
+        Loadout.AssignSkillToSlot(index, asset);
+    }
+
+    private bool TryGetCommandSlot(int slotIndex, out SkillSlot slot)
+    {
+        return Loadout.TryGetCommandSlot(slotIndex, out slot);
+    }
+
+    /// <summary>
+    /// Player, AI, party-command, and HUD callers retain their 0/1 input contract while migrated
+    /// character assets resolve those inputs by slot meaning. A third cast input is unavailable.
+    /// Legacy and non-character loadouts retain their authored indices.
+    /// </summary>
+    private bool TryResolveCastSlotIndex(int requestedIndex, out int resolvedIndex)
+    {
+        return Loadout.TryResolveCastSlotIndex(requestedIndex, out resolvedIndex);
+    }
+
+    private void EnsureCommandRuntimeSkill(SkillSlot slot)
+    {
+        Loadout.EnsureCommandRuntimeSkill(slot);
+    }
+
+    private void EnsureRuntimeSkill(CharacterSkillEntry entry)
+    {
+        Loadout.EnsureRuntimeSkill(entry);
+    }
+
+    private void RefreshResolvedCommandSlotsIfNeeded()
+    {
+        Loadout.RefreshResolvedCommandSlotsIfNeeded();
+    }
+
+    /// <summary>
+    /// Rebuilds the Helper half of the loadout from the character currently loaded into this actor.
+    ///
+    /// A Stryker never owns one, and a Helper whose command slot has no configured option
+    /// deliberately owns none - neither case falls back to anything. Each proc slot resolves the
+    /// variant the player selected, so nothing that is merely authored but unequipped can fire.
+    /// </summary>
+    private void RefreshHelperLoadout(bool force)
+    {
+        Loadout.RefreshHelperLoadout(force);
+    }
+
+    private void RebuildResolvedCommandSlots()
+    {
+        Loadout.RebuildResolvedCommandSlots();
+    }
+
+    private bool IsPassiveSlot(SkillSlot slot)
+    {
+        return Loadout.IsPassiveSlot(slot);
+    }
+
+    private string BuildSlotDebugSource(SkillSlot slot)
+    {
+        return Loadout.BuildSlotDebugSource(slot);
     }
 }

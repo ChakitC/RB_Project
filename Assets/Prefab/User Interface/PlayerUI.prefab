@@ -1131,6 +1131,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uiContext: {fileID: 1184350765941798018}
+  gameplayHudPrefab: {fileID: 7606013280080177689, guid: 1a1fd53687ddbda40bb9318f74d649ba, type: 3}
 --- !u!114 &1276195794196653983
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5465,11 +5466,11 @@ PrefabInstance:
       objectReference: {fileID: 1184350765941798018}
     - target: {fileID: 8824302912045973712, guid: c67beebf74488d149949433498f67557, type: 3}
       propertyPath: screenEffectSizeMultiplier
-      value: 110.8
+      value: 1.15
       objectReference: {fileID: 0}
     - target: {fileID: 8824302912045973712, guid: c67beebf74488d149949433498f67557, type: 3}
       propertyPath: screenEffectOpacityMultiplier
-      value: 0.4
+      value: 0.8
       objectReference: {fileID: 0}
     - target: {fileID: 8824302912045973712, guid: c67beebf74488d149949433498f67557, type: 3}
       propertyPath: perfectDodgeScreenEffectPrefab

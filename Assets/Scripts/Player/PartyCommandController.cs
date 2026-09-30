@@ -593,7 +593,7 @@ public sealed class PartyCommandController : MonoBehaviour
         bool started = command.executionKind switch
         {
             PartyCommandExecutionKind.HelperSkill => helperManager != null &&
-                                                     helperManager.TrySummonAllyHelper(
+                                                     helperManager.TryExecutePlayerDirectedSkill(
                                                          command.helperSkill,
                                                          command.helperHideOnComplete),
             PartyCommandExecutionKind.HelperCommandSlot => helperManager != null &&
@@ -922,12 +922,18 @@ public sealed class PartyCommandController : MonoBehaviour
         if (command == null)
             return false;
 
-        if (!TryResolveAllyCommandTarget(command.allyCommandActorRole, out _, out CharacterSkillManager skillManager))
+        if (!TryResolveAllyCommandTarget(command.allyCommandActorRole, out FieldAllyMember member, out CharacterSkillManager skillManager))
             return false;
 
-        SkillCastStartResult result = skillManager.HasConfiguredPlayerCommandSkill
-            ? skillManager.TryStartPlayerCommandSkill()
-            : skillManager.TryStartCastSlot(command.ClampedAllyCommandSlotIndex);
+        SkillGemDefinition skill = skillManager.PlayerCommandSkill?.skillAsset;
+        if (!skillManager.HasConfiguredPlayerCommandSkill &&
+            !skillManager.TryGetSlotSkillDefinition(command.ClampedAllyCommandSlotIndex, out skill))
+            return false;
+        if (!PartyCommandSkillExecution.TryCreatePlan(playerContext, member.ActorContext as AllyContext,
+                skill, out PartyCommandSkillExecution.Plan plan))
+            return false;
+        SkillCastStartResult result = PartyCommandSkillExecution.TryStart(
+            plan, command.ClampedAllyCommandSlotIndex, fieldMember: member);
         return result.Started;
     }
 

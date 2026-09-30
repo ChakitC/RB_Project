@@ -34,21 +34,9 @@ public partial class SkillGemDefinition
 
     public bool ValidateMelee(out string reason)
     {
-        if (MeleeStepCount == 0) { reason = "Combo has no steps."; return false; }
-        var ids = new HashSet<string>(StringComparer.Ordinal);
-        for (int i = 0; i < MeleeStepCount; i++)
-        {
-            var step = GetMeleeStep(i);
-            var skill = step.executionSkill;
-            if (skill == null || skill.IsCombo || skill.skillClip == null || !skill.skillClip.IsValid || skill.payload == null)
-            { reason = $"Step {i + 1} needs a non-combo Skill with animation and payload."; return false; }
-            if (string.IsNullOrWhiteSpace(step.EntryId) || !ids.Add(step.EntryId))
-            { reason = $"Step {i + 1} has a missing or duplicate ID."; return false; }
-            if (!float.IsFinite(step.chainWindowN.x) || !float.IsFinite(step.chainWindowN.y) ||
-                step.chainWindowN.x < 0 || step.chainWindowN.y > 1 || step.chainWindowN.x > step.chainWindowN.y)
-            { reason = $"Step {i + 1} has an invalid Chain Window."; return false; }
-        }
-        reason = null; return true;
+        var issues = new List<SkillValidationIssue>();
+        CollectValidationIssues(issues, SkillExecutionKind.BasicMelee);
+        return TryGetValidationError(issues, out reason);
     }
 
 #if UNITY_EDITOR

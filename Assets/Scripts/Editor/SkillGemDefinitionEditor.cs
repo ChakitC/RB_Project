@@ -22,6 +22,12 @@ public sealed class SkillGemDefinitionEditor : OdinEditor
 
     public override void OnInspectorGUI()
     {
+        if (targets.Length == 1 && target is SkillGemDefinition definition && !definition.IsCombo)
+        {
+            var kinds = SkillExecutionUsageIndex.GetKinds(definition);
+            if (kinds.Count == 1 && SkillExecutionUsageIndex.HasKnownUsage(definition))
+                definition.ValidationExecutionKind = kinds[0];
+        }
         base.OnInspectorGUI();
 
         if (targets.Length != 1 || target is not SkillGemDefinition skill)
@@ -37,6 +43,14 @@ public sealed class SkillGemDefinitionEditor : OdinEditor
     {
         EditorGUILayout.Space(8f);
         EditorGUILayout.LabelField("Execution Authoring", EditorStyles.boldLabel);
+
+        if (skill.IsCombo)
+        {
+            DestroyPayloadEditor();
+            DestroyStepPayloadEditors();
+            DrawComboExecutionAuthoring(skill);
+            return;
+        }
 
         IReadOnlyList<Type> payloadTypes = SkillPayloadAssetUtility.GetPayloadTypes();
         if (payloadTypes.Count == 0)
@@ -98,36 +112,57 @@ public sealed class SkillGemDefinitionEditor : OdinEditor
                     GUIUtility.ExitGUI();
                 }
             }
-            using (new EditorGUI.DisabledScope(skill.payload == null))
-            {
-                if (GUILayout.Button("Remove Execution"))
-                {
-                    if (EditorUtility.DisplayDialog(
-                            "Remove Skill Execution",
-                            $"Remove the execution payload from '{skill.name}'? Embedded execution data will be deleted.",
-                            "Remove",
-                            "Cancel"))
-                    {
-                        SkillPayloadAssetUtility.RemoveExecution(skill);
-                        RefreshPayloadEditor(null);
-                        GUIUtility.ExitGUI();
-                    }
-                }
-            }
+            DrawRemoveExecutionButton(skill);
         }
 
-        DrawPayloadValidation(skill.payload);
+        DrawPayloadValidation(skill);
         DrawEmbeddedPayloadInspector(skill);
         DrawCompositeStepAuthoring(skill);
     }
 
-    private void DrawPayloadValidation(SkillPayloadDef payload)
+    private void DrawComboExecutionAuthoring(SkillGemDefinition skill)
     {
-        if (payload == null)
-            return;
+        EditorGUILayout.HelpBox($"Combo ({skill.MeleeStepCount} steps). Execution is owned by each step's skill.", MessageType.Info);
+        DrawPayloadValidation(skill);
 
+        for (int i = 0; i < skill.MeleeStepCount; i++)
+        {
+            SkillComboStep step = skill.GetMeleeStep(i);
+            using (new EditorGUI.DisabledScope(true))
+                EditorGUILayout.ObjectField($"Step {i + 1} ({step.EntryId})", step.executionSkill, typeof(SkillGemDefinition), false);
+
+        }
+
+        if (skill.payload != null)
+        {
+            DrawRemoveExecutionButton(skill);
+        }
+    }
+
+    private void DrawRemoveExecutionButton(SkillGemDefinition skill)
+    {
+        using (new EditorGUI.DisabledScope(skill.payload == null))
+        {
+            if (GUILayout.Button("Remove Execution") && EditorUtility.DisplayDialog(
+                    "Remove Skill Execution",
+                    $"Remove the execution payload from '{skill.name}'? Embedded execution data will be deleted.",
+                    "Remove", "Cancel"))
+            {
+                SkillPayloadAssetUtility.RemoveExecution(skill);
+                RefreshPayloadEditor(null);
+                GUIUtility.ExitGUI();
+            }
+        }
+    }
+
+    private void DrawPayloadValidation(SkillGemDefinition skill)
+    {
         var issues = new List<string>();
-        payload.CollectValidationIssues(issues);
+        var diagnostics = new List<SkillValidationIssue>();
+        if (SkillExecutionUsageIndex.HasKnownUsage(skill)) SkillExecutionUsageIndex.CollectIssues(skill, diagnostics);
+        else skill.CollectValidationIssues(diagnostics, skill.ValidationExecutionKind, includeAuthoring: true);
+        foreach (var diagnostic in diagnostics)
+            if (diagnostic.Severity == SkillValidationSeverity.Error) issues.Add(diagnostic.ToString());
         if (issues.Count == 0)
             return;
 

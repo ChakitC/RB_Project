@@ -7,6 +7,7 @@ public sealed partial class DefensiveBlockAttack
     Quaternion approachGuardRotation;
     bool suppressExecution;
     int approachStartFrame;
+    bool approachUsesImpact;
     public bool IsTimedApproach => approach != null;
     public float ApproachProgress => approach != null ? approach.Progress : 0f;
     public Vector3 ApproachDestination => approach != null ? approach.Destination : transform.position;
@@ -24,17 +25,40 @@ public sealed partial class DefensiveBlockAttack
     {
         guardPosition = destination = default; guardRotation = Quaternion.identity; footprint = default;
         return profile != null && ctx != null && ctx.AnimBrain != null &&
-            WindowOpen && ctx.AnimBrain.TryGetActiveSkillNormalizedTime(requestId, out float time) && time + .02f < CurrentWindowEnd &&
+            WindowOpen && CanPlanApproachPlayback() &&
             guard.TryPreviewGuardPose(issuer, this, out guardPosition, out guardRotation) &&
             DefensiveBlockApproachMotor.TryPlan(ctx, guardPosition, guardRotation, profile.approachStandOff,
                 worldLayers, out destination, out footprint);
     }
 
+    bool CanPlanApproachPlayback()
+    {
+        if (!ctx.AnimBrain.TryGetActiveSkillNormalizedTime(requestId, out float time)) return false;
+        if (!profile.TryGetImpact(WindowIndex, out float impact)) return time + .02f < CurrentWindowEnd;
+        // Windup is released immediately before playback takes ownership.
+        return time + .001f < impact && ctx.AnimDriver != null &&
+            ctx.AnimDriver.CanBeginSkillImpactApproach(requestId, impact);
+    }
+
+    bool BeginApproachPlayback(float duration)
+    {
+        ReleaseWindup();
+        if (ctx.AnimDriver == null) return false;
+        approachUsesImpact = profile.TryGetImpact(acceptedWindow, out float impact);
+        return approachUsesImpact ? ctx.AnimDriver.TryBeginSkillImpactApproach(requestId, impact) :
+            ctx.AnimDriver.TryBeginSkillApproach(requestId, acceptedWindowEnd - .005f, duration);
+    }
+
+    internal bool AdvanceApproachPlayback(float progress, out bool ready)
+    {
+        ready = true;
+        return !approachUsesImpact || ctx.AnimDriver.TryAdvanceSkillImpactApproach(requestId, progress, out ready);
+    }
+
     bool StartApproach(float duration, Vector3 guardPosition, Quaternion guardRotation,
         Vector3 destination, CharacterPlacementFootprint footprint)
     {
-        ReleaseWindup();
-        if (ctx.AnimDriver == null || !ctx.AnimDriver.TryBeginSkillApproach(requestId, acceptedWindowEnd - .005f, duration)) return false;
+        if (!BeginApproachPlayback(duration)) return false;
         if (ContinueAfterBlock) SuppressAcceptedWindow();
         else
         {
@@ -66,7 +90,11 @@ public sealed partial class DefensiveBlockAttack
         { AbortApproach("Guard moved away from the reserved impact point"); return; }
         if (Time.frameCount == approachStartFrame) return;
         float dt = ctx.UsesWorldSlow ? TimeSlowManager.Instance.WorldDeltaTime : Time.deltaTime;
+        if (approachUsesImpact && dt <= 0f) return;
         if (!approach.Advance(dt)) { AbortApproach("Timed approach path became obstructed"); return; }
+        if (!AdvanceApproachPlayback(approach.Progress, out bool impactReady))
+        { AbortApproach("Impact playback interrupted"); return; }
+        if (!impactReady) return;
         if (approach.Progress < 1f) return;
         if (!defender.IsReadyFor(this, requestId)) { AbortApproach("Guard was not ready at timed impact"); return; }
         var guard = defender;

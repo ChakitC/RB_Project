@@ -1,0 +1,7 @@
+{
+    "name": "SkillGemDefinition.Tests",
+    "references": ["Kybernetik.Animancer"],
+    "includePlatforms": ["Editor"],
+    "optionalUnityReferences": ["TestAssemblies"],
+    "autoReferenced": false
+}

@@ -168,8 +168,8 @@ in `PartyComboHud` synchronized if these bindings change; do not edit the
 
 ## Vertical-Slice Content
 
-The default-off test fixture uses the shared
-`Assets/Data/PartyCombo/FieldAllyComboExecution.asset` profile:
+The test fixtures use `Assets/Data/PartyCombo/FieldAllyComboExecution.asset` for
+Feno and `Assets/Data/PartyCombo/AiresComboExecution.asset` for Aires:
 
 - Feno owns `Test.Feno.EnteredBreakCombo.asset`; an Entered Break fact from any
   active party member offers `Suppressive Break`. This prevents allied AI from
@@ -177,10 +177,9 @@ The default-off test fixture uses the shared
 - Aires owns `Test.Aires.ComboFollowUp.asset`; Feno's committed combo fact
   offers `Shielded Follow-Up`.
 
-Both definitions are under `Assets/Data/PartyCombo/Test/` and use dedicated
-execution skills that are not present in those characters' Battle or Helper
-loadouts. They are validation/playtest content, not a signal to enable the
-runtime flag for production rollout.
+Both definitions are under `Assets/Data/PartyCombo/Test/`. Aires uses
+`Assets/Data/Skills/Aires/Aires_Skill_1.asset`, including its authored Placement
+Point. These remain validation/playtest content.
 
 ## Execution and Cleanup
 
@@ -206,6 +205,45 @@ reservation.
 ## Combo Slow and Camera Presentation
 
 ### Visible warp placement
+
+`AlignPlacementPointToEventTarget` is an opt-in root-motion placement mode.
+The executor samples the execution skill's resolved clip on the actor's rig and
+reads `GetPlacementPointNormalized()`. Ring positions represent A on the jump's
+ground plane; `desiredRange` is its horizontal distance from the target and
+`localOffset` offsets that plane in target space. The resolver subtracts sampled
+XZ displacement and yaw to calculate the grounded start pose S. The authored Y
+curve is retained: A's root height is the grounded start height plus the sampled
+Y displacement. It submits the entire 3D trajectory, desired A and placement
+time to the shared resolver. Takeoff and landing require NavMesh/ground support;
+airborne samples do not require support, but still undergo full 3D obstruction
+and reservation checks. Camera ranking still uses
+the accepted start pose. Missing sampling data or no safe path fails placement;
+this mode does not fall back to a static warp.
+
+When the execution skill enables `IgnoreCharacterCollisionDuringRootMotion`,
+placement excludes character layers from body overlap/sweep queries for the
+whole trajectory. CC actors use `RootMotionCCDriver.CharacterCollisionLayers`;
+NavMesh actors such as Aires use the project's Player/Enemy/Ally layers.
+The driver is resolved through `CharacteContext.RootMotionDriver`; no new prefab
+binding is required. World geometry outside those layers and Combo trajectory
+reservations remain blocking. Static warp placement keeps its existing collision
+rules. This allows Aires to continue through the boss after the Placement Point
+instead of failing with `PlacementFailed` outside the short target-contact window.
+
+This mode uses `TryGetWithVerticalMotion`, with separate cache entries from
+legacy planar sampling. Playback receives `usePlanarRootMotion: false` so the
+driver retains Y (the flag means suppress Y, not enable root motion). The skill
+state already enables root motion. Cast Point, payload release, HitStart and
+presentation timing are unchanged. A pose diagnostic checks the placement beat
+including Y in LateUpdate. Cleanup
+stops the matching root-motion request before releasing the reservation and
+returning the actor, including cancellation after commit.
+
+Aires opts into this mode through its own `AiresComboExecution.asset`, copied
+from the shared profile with the same camera/execution settings. Its initial
+`desiredRange` remains 2m, now measured at A. Feno's shared profile retains
+`PlaceNearEventTarget`. Jump height comes from the animation; this does not scale
+the jump to a different target elevation or continuously chase a moving target.
 
 `PlaceNearEventTarget` now evaluates a ring of `placementCandidateCount` poses
 (default 8, limited to 1–16), keeping the authored range and target-local offset.

@@ -12,12 +12,26 @@ public sealed class SkillUpgradeStatSnapshot
 
     readonly Dictionary<StatType, Aggregate> _modifiers = new();
     readonly HashSet<string> _upgradeIds = new(StringComparer.Ordinal);
+    bool isReadOnly;
+    IReadOnlyCollection<string> frozenUpgradeIds;
 
     public bool IsEmpty => _modifiers.Count == 0 && _upgradeIds.Count == 0;
-    public IReadOnlyCollection<string> UpgradeIds => _upgradeIds;
+    public IReadOnlyCollection<string> UpgradeIds => frozenUpgradeIds ?? _upgradeIds;
+
+    public SkillUpgradeStatSnapshot CreateReadOnlyCopy()
+    {
+        var copy = new SkillUpgradeStatSnapshot();
+        foreach (var pair in _modifiers) copy._modifiers.Add(pair.Key, pair.Value);
+        copy._upgradeIds.UnionWith(_upgradeIds);
+        copy.frozenUpgradeIds = new List<string>(copy._upgradeIds).AsReadOnly();
+        copy.isReadOnly = true;
+        return copy;
+    }
 
     public void AddNode(SkillUpgradeNodeData node)
     {
+        if (isReadOnly)
+            throw new InvalidOperationException("A cast's upgrade snapshot cannot be modified.");
         if (node == null)
             return;
 

@@ -18,8 +18,11 @@ public class RootMotionCCDriver : MonoBehaviour
     private System.Action<RootMotionPolicy> _onPolicyChanged;
     private CharacterAnimBrain _subscribedBrain;
     private RootMotionPolicy _policy;
+    private CharacterMovementMotor _movementMotor;
 
     public bool ZeroY => zeroY;
+    public LayerMask CharacterCollisionLayers => characterCollisionLayers != 0
+        ? characterCollisionLayers : LayerMask.GetMask("Player", "Enemy", "Ally");
 
     void Awake()
     {
@@ -83,6 +86,7 @@ public class RootMotionCCDriver : MonoBehaviour
             animator.applyRootMotion = policy.Active;
 
         SyncCharacterCollisionPolicy();
+        SyncVerticalOwnership();
     }
 
     public void Configure(CharacterAnimBrain animBrain, CharacterController characterController, Animator sourceAnimator, bool suppressY = false)
@@ -91,8 +95,13 @@ public class RootMotionCCDriver : MonoBehaviour
         // overridden forever and the cached mask gets written back to the new one instead.
         RestoreCharacterCollision();
 
+        if (_movementMotor) _movementMotor.SetRootMotionVerticalOwner(this, false);
+        _movementMotor = null;
+
         brain = animBrain;
         cc = characterController;
+        if (characterController)
+            ctx = characterController.GetComponentInParent<CharacteContext>();
         animator = sourceAnimator;
         zeroY = suppressY;
         ResolveReferences();
@@ -110,6 +119,13 @@ public class RootMotionCCDriver : MonoBehaviour
 
     void ResolveReferences()
     {
+        if (!ctx) ctx = GetComponentInParent<CharacteContext>();
+        if (ctx)
+        {
+            ctx.ResolveReferences();
+            if (!cc) cc = ctx.cc;
+            if (!brain) brain = ctx.AnimBrain;
+        }
         if (!cc)
             cc = GetComponent<CharacterController>();
         if (!cc)
@@ -137,6 +153,10 @@ public class RootMotionCCDriver : MonoBehaviour
             ctx = GetComponentInParent<CharacteContext>();
         if (!ctx)
             ctx = GetComponentInChildren<CharacteContext>(true);
+
+        Transform root = ctx ? ctx.transform : cc ? cc.transform : transform;
+        _movementMotor = ctx ? ctx.EnsureMovementMotor() : CharacterMovementMotor.Resolve(null, root);
+        if (_movementMotor) _movementMotor.Configure(ctx, root, cc);
     }
 
     void ResolveCharacterCollisionLayers()
@@ -148,16 +168,26 @@ public class RootMotionCCDriver : MonoBehaviour
     void Update()
     {
         SyncCharacterCollisionPolicy();
+        SyncVerticalOwnership();
+    }
+
+    void SyncVerticalOwnership()
+    {
+        if (!_movementMotor) return;
+        _movementMotor.SetRootMotionVerticalOwner(this,
+            isActiveAndEnabled && _policy.Active && !zeroY && !_policy.PlanarOnly);
     }
 
     void OnDisable()
     {
+        if (_movementMotor) _movementMotor.SetRootMotionVerticalOwner(this, false);
         UnsubscribeFromBrain();
         RestoreCharacterCollision();
     }
 
     void OnDestroy()
     {
+        if (_movementMotor) _movementMotor.SetRootMotionVerticalOwner(this, false);
         UnsubscribeFromBrain();
         RestoreCharacterCollision();
     }
@@ -176,12 +206,13 @@ public class RootMotionCCDriver : MonoBehaviour
         if (ctx != null && ctx.DefensiveBlockAttack != null)
             delta = ctx.DefensiveBlockAttack.ConstrainContactRootMotion(cc.transform.position, delta);
 
-        cc.Move(delta);
+        Transform movementRoot = ctx ? ctx.transform : cc.transform;
+        if (_movementMotor) _movementMotor.Move(delta, CharacterMovementSettings.Default);
 
         if (applyRootRotation || _policy.ApplyYaw)
         {
             float yawDelta = RootMotionDeltaUtility.GetYawDelta(animator);
-            Transform actorRoot = cc.transform;
+            Transform actorRoot = movementRoot;
             actorRoot.rotation *= Quaternion.AngleAxis(yawDelta, Vector3.up);
         }
     }

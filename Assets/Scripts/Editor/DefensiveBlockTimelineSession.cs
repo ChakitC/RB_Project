@@ -12,6 +12,8 @@ public sealed class DefensiveBlockTimelineSession : ScriptableObject
     public DefensiveBlockMode mode;
     public float timedApproachSeconds;
     public float approachStandOff;
+    public CooperativeBlockSettings cooperative = new();
+    [SerializeField] string savedCooperative;
     public bool blockEnabled;
     [SerializeField] bool savedEnabled;
     [SerializeField] DefensiveBlockMode savedMode;
@@ -39,6 +41,7 @@ public sealed class DefensiveBlockTimelineSession : ScriptableObject
 
     public bool IsEnabled => blockEnabled;
     public bool IsDirty => blockEnabled != savedEnabled || mode != savedMode ||
+        JsonUtility.ToJson(cooperative) != savedCooperative ||
         !timedApproachSeconds.Equals(savedDuration) || !approachStandOff.Equals(savedStandOff) ||
         !start.Equals(savedStart) || !end.Equals(savedEnd) || WindowsSnapshot != savedWindows;
     string SourceSnapshot => skill != null && skill.BlockSettings != null ? JsonUtility.ToJson(skill.BlockSettings) : null;
@@ -60,6 +63,8 @@ public sealed class DefensiveBlockTimelineSession : ScriptableObject
         mode = savedMode = settings != null ? settings.mode : DefensiveBlockMode.Contact;
         timedApproachSeconds = savedDuration = settings != null ? settings.timedApproachSeconds : .22f;
         approachStandOff = savedStandOff = settings != null ? settings.approachStandOff : 1.6f;
+        cooperative = settings?.cooperative?.Copy() ?? new CooperativeBlockSettings();
+        savedCooperative = JsonUtility.ToJson(cooperative);
         start = savedStart = settings != null ? settings.windowStartNormalized : 0f;
         end = savedEnd = settings != null ? settings.windowEndNormalized : 0.62f;
         windows = settings != null && settings.HasMultipleWindowData
@@ -93,6 +98,13 @@ public sealed class DefensiveBlockTimelineSession : ScriptableObject
     }
     public float StartAt(int index) => index == 0 ? start : windows[index].startNormalized;
     public float EndAt(int index) => index == 0 ? end : windows[index].endNormalized;
+    public float ImpactLimit(int index) => index + 1 < windows.Count ? StartAt(index + 1) - .001f : .999f;
+    public void SetImpact(int index, bool enabled, float time)
+    {
+        Undo.RecordObject(this, "Edit Block Impact");
+        windows[index].useImpactMarker = enabled;
+        windows[index].impactNormalized = time;
+    }
     public void SetRange(int index, float from, float to)
     {
         Undo.RecordObject(this, "Edit Block Window");
@@ -128,14 +140,25 @@ public sealed class DefensiveBlockTimelineSession : ScriptableObject
         {
             if (!IsEnabled) return null;
             if (!System.Enum.IsDefined(typeof(DefensiveBlockMode), mode)) return "Choose a valid Block Mode.";
-            if (mode == DefensiveBlockMode.TimedApproach && (!(timedApproachSeconds > 0f) || float.IsInfinity(timedApproachSeconds) ||
+            if (mode != DefensiveBlockMode.Contact && (!(timedApproachSeconds > 0f) || float.IsInfinity(timedApproachSeconds) ||
                 !(approachStandOff > 0f) || float.IsInfinity(approachStandOff)))
                 return "Timed Approach needs a finite duration and stand-off distance greater than zero.";
             if (windows == null || windows.Count == 0) return "Block needs at least one window.";
+            if (mode == DefensiveBlockMode.Cooperative && (cooperative == null || !cooperative.IsValid))
+                return "Cooperative Block needs valid meter/time/scale, a finite non-negative struggle fade, and a non-Legacy struggle clip with positive length (or None).";
+            if (mode == DefensiveBlockMode.Cooperative && windows.Any(w => w.onSuccess != DefensiveBlockOutcome.InterruptSkill))
+                return "Cooperative Block ends the entire request. Continue Skill is not supported.";
             var steps = new HashSet<int>();
             for (int i = 0; i < windows.Count; i++)
             {
                 var window = windows[i].Copy(); window.startNormalized = StartAt(i); window.endNormalized = EndAt(i);
+                if (window.useImpactMarker && (mode == DefensiveBlockMode.Contact ||
+                    !(window.impactNormalized >= EndAt(i) && window.impactNormalized < 1f) ||
+                    (i + 1 < windows.Count && window.impactNormalized >= StartAt(i + 1))))
+                    return "Block Impact needs Timed Approach or Cooperative, Close <= Impact < clip end, and Impact before the next window.";
+                float clipEnd = skill?.skillClip?.Events?.NormalizedEndTime ?? float.NaN;
+                if (window.useImpactMarker && !float.IsNaN(clipEnd) && window.impactNormalized >= clipEnd)
+                    return "Block Impact must be before the animation's authored End event.";
                 if (!window.IsValid) return "Block windows need valid 0 <= Start <= End <= 1 and non-negative Hitbox Steps.";
                 if (i > 0 && StartAt(i) <= EndAt(i - 1)) return "Block windows must be ordered with a gap between them.";
                 foreach (int step in window.hitboxSteps.Distinct())
@@ -168,9 +191,10 @@ public sealed class DefensiveBlockTimelineSession : ScriptableObject
         target.mode = mode;
         target.timedApproachSeconds = timedApproachSeconds;
         target.approachStandOff = approachStandOff;
+        target.cooperative = cooperative?.Copy() ?? new CooperativeBlockSettings();
         target.windowStartNormalized = start;
         target.windowEndNormalized = end;
-        if (windows.Count > 1 || target.HasMultipleWindowData || windows[0].onSuccess != DefensiveBlockOutcome.InterruptSkill)
+        if (windows.Count > 1 || target.HasMultipleWindowData || windows[0].useImpactMarker || windows[0].onSuccess != DefensiveBlockOutcome.InterruptSkill)
         {
             target.windows = windows.Select(w => w.Copy()).ToArray();
             target.windows[0].startNormalized = start; target.windows[0].endNormalized = end;

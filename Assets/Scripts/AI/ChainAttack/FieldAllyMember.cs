@@ -205,6 +205,11 @@ public sealed class FieldAllyMember : MonoBehaviour
         _sequenceRunner?.Tick();
     }
 
+    void LateUpdate()
+    {
+        _sequenceRunner?.LateTick();
+    }
+
     void OnEnable()
     {
         EnsureModules();

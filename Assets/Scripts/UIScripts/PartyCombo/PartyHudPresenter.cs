@@ -35,6 +35,25 @@ public sealed class PartyHudPresenter : MonoBehaviour
         Player?.ResolveReferences();
         Refresh();
     }
+
+    public bool BindComboView(GameObject root, RectTransform[] cards, Image[] faces, TMP_Text[] times)
+    {
+        if (root == null || cards == null || faces == null || times == null || cards.Length == 0 ||
+            faces.Length != cards.Length || times.Length != cards.Length)
+            return false;
+        for (int i = 0; i < cards.Length; i++)
+            if (cards[i] == null || faces[i] == null || times[i] == null)
+                return false;
+
+        if (comboRoot != null && comboRoot != root)
+            comboRoot.SetActive(false);
+        comboRoot = root;
+        comboCards = cards;
+        comboPortraits = faces;
+        comboTimes = times;
+        Refresh();
+        return true;
+    }
     void Update()
     {
         if (Player != PlayerContext.Instance) Bind(PlayerContext.Instance);
@@ -129,7 +148,17 @@ public sealed class PartyHudPresenter : MonoBehaviour
         if (actor == null || actor.baseStats == null || actor.baseStats.IsHelperRole || !actor.gameObject.activeInHierarchy ||
             actor.HealthSystem == null || !actor.HealthSystem.IsAlive || actor.SkillManager == null ||
             !actor.SkillManager.CanStartCastSlot(kind)) { ShowBlocked(); return; }
-        if (!actor.SkillManager.TryStartCastSlot(kind).Started) ShowBlocked();
+        if (slot == 1 || slot == 2)
+        {
+            if (Player?.fieldAllyManager == null ||
+                !Player.fieldAllyManager.TryGetMember(Roles[slot], out var member) ||
+                !actor.SkillManager.TryGetSlotSkillDefinition(kind, out var skill) ||
+                !PartyCommandSkillExecution.TryCreatePlan(Player, actor as AllyContext, skill, out var plan) ||
+                !PartyCommandSkillExecution.TryStart(plan, kind, fieldMember: member,
+                    useCommandSkill: false).Started)
+                ShowBlocked();
+        }
+        else if (!actor.SkillManager.TryStartCastSlot(kind).Started) ShowBlocked();
     }
     void ShowBlocked() { if (feedback != null) feedback.text = "Skill unavailable"; feedbackUntil = Time.unscaledTime + 1.2f; }
     static void SetIcon(Image image, Sprite sprite) { image.sprite = sprite; image.enabled = sprite != null; }

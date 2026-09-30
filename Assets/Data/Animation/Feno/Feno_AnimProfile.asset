@@ -38,6 +38,18 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 8197042391774933274, guid: 10c86a37c279c6f48b0b8e26b3947f16, type: 3}
     _NormalizedStartTime: NaN
+  block:
+    beginClip: {fileID: -2639457781765362822, guid: 1dfe50ae56ca8c54f95a5fce4f6fb19d, type: 3}
+    impactClip: {fileID: -6348440289532276459, guid: 39cd4cbc56cd3b14dad9d63ebaf3b60b, type: 3}
+    cooperativeStruggleClip: {fileID: 0}
+    beginStartNormalized: 0.55
+    guardPoseNormalized: 0.65
+    impactStartNormalized: 0.55
+    impactEndNormalized: 0.68
+    beginSeconds: 0.12
+    impactSeconds: 0.35
+    exitSeconds: 0.12
+    fadeSeconds: 0.06
   miniStune:
     _FadeDuration: 0.25
     _Speed: 1

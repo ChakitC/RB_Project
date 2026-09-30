@@ -3,8 +3,7 @@ using UnityEngine;
 
 internal sealed class FieldAllySequenceRunner
 {
-    const float RootMotionImpactPositionTolerance = 0.05f;
-    const float RootMotionImpactYawTolerance = 2f;
+    TargetedSkillPlacementPoseCheck placementPoseCheck;
 
     readonly FieldAllyMember owner;
     readonly FieldAllyAutonomyScope autonomyScope;
@@ -58,11 +57,17 @@ internal sealed class FieldAllySequenceRunner
 
     public void ResetOnDisable()
     {
+        placementPoseCheck = null;
         CancelDeferredSequenceCleanup();
         CleanupActiveExecution(success: false);
         owner.PlacementReservations.ReleaseOwner(owner.TransformRef);
         _reservationOwner = null;
         transitionController.ClearVisualState();
+    }
+
+    public void LateTick()
+    {
+        placementPoseCheck?.Tick();
     }
 
     public bool TryReserve(object ownerToken)
@@ -499,6 +504,10 @@ internal sealed class FieldAllySequenceRunner
 
         if (started)
         {
+            placementPoseCheck = TargetedSkillPlacementPoseCheck.Create(
+                owner.AnimBrainRef, owner.TransformRef, execution.attackRequestId,
+                execution.attackSkillDef, execution.attackSkillDef.GetPlacementPointNormalized(),
+                execution.placementResult);
             transitionController.StartChainVisualLifecycle(
                 execution.attackRequestId,
                 FieldAllyTransitionController.ShouldAutoHideNearAttackEnd(execution.step.exitMode));
@@ -567,8 +576,6 @@ internal sealed class FieldAllySequenceRunner
             transitionController.FaceTarget(_pendingExecution);
         }
 
-        ValidateRootMotionImpactPose(_pendingExecution);
-
         if (!skillCastBridge.TryReleaseAttackPayload(_pendingExecution, owner.AnimDriverRef, requestId))
         {
             if (_pendingExecution.attackSkillUser == null)
@@ -596,37 +603,6 @@ internal sealed class FieldAllySequenceRunner
 
         if (ResolveAttackContinueMode(_pendingExecution) == ChainStepContinueMode.OnAttackCastMoment)
             ReleaseContinueSignalIfNeeded(_pendingExecution, "attack cast moment");
-    }
-
-    void ValidateRootMotionImpactPose(PendingSequenceExecution execution)
-    {
-        if (execution == null || !execution.placementResult.UsesRootMotion || owner.TransformRef == null)
-            return;
-
-        Vector3 actualPosition = owner.TransformRef.position;
-        Vector3 expectedPosition = execution.placementResult.ImpactPosition;
-        actualPosition.y = 0f;
-        expectedPosition.y = 0f;
-
-        float positionError = Vector3.Distance(actualPosition, expectedPosition);
-        float yawError = Mathf.Abs(Mathf.DeltaAngle(
-            owner.TransformRef.rotation.eulerAngles.y,
-            execution.placementResult.ImpactRotation.eulerAngles.y));
-
-        if (positionError <= RootMotionImpactPositionTolerance &&
-            yawError <= RootMotionImpactYawTolerance)
-        {
-            owner.LogExecution(
-                $"Root-motion impact matched sampled trajectory for step '{execution.step.RuntimeId}' " +
-                $"(positionError={positionError:0.####}m, yawError={yawError:0.###}deg).");
-            return;
-        }
-
-        Debug.LogWarning(
-            $"[FieldAllySequenceRunner] Root-motion impact drifted from the sampled trajectory for " +
-            $"'{owner.ActorName}' step '{execution.step.RuntimeId}' " +
-            $"(positionError={positionError:0.####}m, yawError={yawError:0.###}deg).",
-            owner.GameObjectRef);
     }
 
     void HandleExitCastMoment(int requestId)
@@ -982,6 +958,7 @@ internal sealed class FieldAllySequenceRunner
 
     void CleanupActiveExecution(bool success)
     {
+        placementPoseCheck = null;
         bool shouldReleaseReservation =
             _pendingExecution != null &&
             _pendingExecution.releaseReservationOnComplete &&
@@ -1065,8 +1042,8 @@ internal sealed class FieldAllySequenceRunner
         if (execution.step != null && execution.step.UsesStepContinueOverride)
             return execution.step.continueMode;
 
-        return execution.attackSkillDef != null && execution.attackSkillDef.payload != null
-            ? execution.attackSkillDef.payload.GetChainContinueMode()
+        return execution.attackSkillDef != null
+            ? execution.attackSkillDef.GetChainContinueMode()
             : ChainStepContinueMode.OnStepComplete;
     }
 
@@ -1078,8 +1055,8 @@ internal sealed class FieldAllySequenceRunner
         if (execution.step != null && execution.step.UsesStepContinueOverride)
             return execution.step.ClampedContinueNormalizedTime;
 
-        return execution.attackSkillDef != null && execution.attackSkillDef.payload != null
-            ? execution.attackSkillDef.payload.GetChainContinueNormalizedTime()
+        return execution.attackSkillDef != null
+            ? execution.attackSkillDef.GetChainContinueNormalizedTime()
             : 1f;
     }
 

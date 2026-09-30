@@ -413,6 +413,22 @@ public sealed class CharacterAnimDriver : MonoBehaviour
         CanIssueCommand(nameof(TryBeginSkillApproach)) && brain.TryBeginSkillApproach(requestId, endNormalized, duration);
     public bool TryEndSkillApproach(int requestId) =>
         CanIssueCommand(nameof(TryEndSkillApproach)) && brain.TryEndSkillApproach(requestId);
+    public bool TryHoldSkillApproach(int requestId) =>
+        CanIssueCommand(nameof(TryHoldSkillApproach)) && brain.TryHoldSkillApproach(requestId);
+
+    public bool TryBeginEnemyCooperativeStruggle(int requestId, AnimationClip clip, float fadeSeconds = .06f) =>
+        CanIssueCommand(nameof(TryBeginEnemyCooperativeStruggle)) && brain.TryBeginEnemyCooperativeStruggle(requestId, clip, fadeSeconds);
+
+    public bool CanBeginSkillImpactApproach(int requestId, float impactNormalized) =>
+        brain != null && brain.CanBeginSkillImpactApproach(requestId, impactNormalized);
+    public bool TryBeginSkillImpactApproach(int requestId, float impactNormalized) =>
+        CanIssueCommand(nameof(TryBeginSkillImpactApproach)) && brain.TryBeginSkillImpactApproach(requestId, impactNormalized);
+    public bool TryAdvanceSkillImpactApproach(int requestId, float progress, out bool ready)
+    {
+        ready = false;
+        return CanIssueCommand(nameof(TryAdvanceSkillImpactApproach)) &&
+            brain.TryAdvanceSkillImpactApproach(requestId, progress, out ready);
+    }
 
     public void CancelUtilityCastRequest(int requestId)
     {
@@ -505,11 +521,20 @@ public sealed class CharacterAnimDriver : MonoBehaviour
             brain.CancelChainPlaybackRequest(requestId);
     }
 
+    // Compatibility for explicit legacy callers. Normal gameplay uses the character-owned overload below.
     public bool TryBeginBlock(int requestId, BlockAnimationProfile profile) =>
         CanIssueCommand(nameof(TryBeginBlock)) && brain.TryBeginBlock(requestId, profile);
 
+    public bool TryBeginBlock(int requestId) =>
+        CanIssueCommand(nameof(TryBeginBlock)) && brain.TryBeginBlock(requestId);
+
     public bool TryBlockImpact(int requestId, float minimumDuration = 0f) =>
         CanIssueCommand(nameof(TryBlockImpact)) && brain.TryBlockImpact(requestId, minimumDuration);
+
+    public void BeginCooperativeStruggle(int requestId)
+    {
+        if (CanIssueCommand(nameof(BeginCooperativeStruggle))) brain.BeginCooperativeStruggle(requestId);
+    }
 
     public void EndBlock(int requestId, bool immediate = false)
     {

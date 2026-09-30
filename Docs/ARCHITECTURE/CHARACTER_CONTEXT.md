@@ -22,7 +22,8 @@ until there is a dedicated rename task.
 types, including:
 
 - core state and stat systems: `StateHub`, `StatsHub`, `CombatEventBus`
-- movement bodies: `Rigidbody`, `CharacterController` (`cc`)
+- movement bodies: `Rigidbody`, `CharacterController` (`cc`), `NavigationAgent`
+- shared displacement and navigation ownership: `MovementMotor` (`CharacterMovementMotor`)
 - common modules: `TargetInfo`, `CharacterEquipment`, `AccessoryLoadout`,
   `WeaponSystem`, `CharacterAnimBrain`, `CharacterAnimDriver`,
   `CharacterPairOffsetApplier`, `MeleeController`
@@ -124,6 +125,37 @@ Do not use `ctx is PlayerContext` in common code just to branch identity or
 world-slow behavior.
 
 ## Reference Resolution Contract
+
+### Shared movement motor
+
+`ResolveReferences()` resolves `NavigationAgent` through the normal actor lookup.
+At runtime it calls `EnsureMovementMotor()`, the single character-owned creation
+point. Explicit initialization and tests can also call that method. Edit Mode
+reference inspection and `CharacterMovementMotor.Resolve` only look up existing
+components; reading suspension state never creates one. Binding the motor does
+not call back into `ResolveReferences()`.
+
+Character movement calls `ctx.MovementMotor.Move(delta, settings)`. The motor
+reads the live controller, body collider and agent from its context, so replacing
+the model/body does not require passing peer references on each move. Root-motion
+adapters call `Configure` during initialization/rebind for explicit actor roots
+and standalone authoring. A later context refresh preserves that root binding.
+Context-free standalone setups must provide a motor component explicitly.
+`Move(delta, settings)` and `PlaceOnNavMesh(position)` use only the bound actor
+and body; callers configure those references once before submitting movement.
+
+Walking, dash, both root-motion adapters, knockback, gravity, companion separation
+and defensive approach submit displacement to this motor. It returns actual
+movement after collisions and synchronizes the agent. Behaviour modules retain
+their timing, admission rules, collision settings and animation/combat decisions.
+An enabled child controller moves the whole actor while keeping its local offset.
+
+The motor belongs to the context, so replacing a visual model does not replace its
+navigation baseline. The existing subtype agent fields remain supported.
+Ordinary NavMesh path following still uses NavMeshAgent.
+
+Internally the motor separates controller movement, body-shape resolution and
+body sweeps. Navigation suspension remains in `CharacterNavigationSuspension`.
 
 `ResolveReferences()` is the main binding point.
 

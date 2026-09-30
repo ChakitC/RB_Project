@@ -49,6 +49,20 @@ reference. Each Combo card owns its trailing link so hidden cards leave no stray
 - E consumes the earliest-expiring Combo. If none exists, E requests the existing
   soft-targeted melee. A rejected Combo attempt does not also perform melee.
 - Requests retain skill costs. Ultimate adds no Command Point charge.
+- Columns 2/3 route both Active and Ultimate through `PartyCommandSkillExecution`:
+  use the selected skill's Placement Mode: Player Target, Around Player, or
+  In Front Of Player. Player Target has a per-skill No Target Placement fallback.
+  Player-relative modes ignore selected enemies and use the captured Player forward;
+  Player Distance configures their radius/forward distance (default 3 m).
+  The field ally's autonomy is suspended
+  through the cast. The selected battle slot owns the cast, charges and cooldown;
+  a separately configured manual command skill cannot replace it.
+  Authored vertical root motion is retained, so jumping skills still rise and land.
+  Allies already able to reach the selected target at the skill's Placement Point
+  turn and cast from their current position when the path is clear; otherwise they warp.
+  Warping field allies fade out, move while hidden, then fade in before the skill starts.
+  In-range casts skip the fade. Repeated commands during the transition are rejected;
+  skill charges are consumed after arrival. Helper summon fades remain owned by its manager.
 - Losing focus, pause, cinematic UI or rebinding cancels held presses.
 
 While active, the router overrides only conflicting keyboard bindings on the

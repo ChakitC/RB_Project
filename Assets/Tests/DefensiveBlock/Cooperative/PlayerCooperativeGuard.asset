@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe6a0ddfc5e5974197e4ba9a79301ff, type: 3}
+  m_Name: PlayerCooperativeGuard
+  m_EditorClassIdentifier: 
+  animation: {fileID: 11400000, guid: 765fa259201499d4bb5c9aaf0f216bab, type: 2}
+  cooperativeEnabled: 1
+  worldLayers:
+    serializedVersion: 2
+    m_Bits: 1200129
+  standAhead: 2.5
+  minimumStandAhead: 0.8
+  approachClearance: 4.2
+  guardCenterHeight: 1.2
+  guardHalfWidth: 0.65
+  guardHalfHeight: 1.2
+  guardHalfDepth: 0.05
+  guardForwardOffset: 1.4
+  timeoutSeconds: 2
+  slideDistance: 1.5
+  slideSeconds: 0.35
+  warpFadeOutSeconds: 0.04
+  warpFadeInSeconds: 0.08
+  impactVfx: {fileID: 1746675453279186, guid: 01638115f50284b4fb616d584a6fabff, type: 3}
+  impactVfxLifetime: 2
+  impactCue: {fileID: 11400000, guid: ed89751e18a43814d98f689c2e8423f5, type: 2}
+  readyCue: {fileID: 11400000, guid: 42887738ae257fe4a992b41267951f4d, type: 2}
+  hitLagDuration: 0.5
+  hitLagTimeScale: 0.175
+  hitLagShape:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  cameraEnabled: 1
+  cameraLocalPosition: {x: 2.65, y: 1.55, z: -1.91}
+  cameraLocalEulerAngles: {x: -0.35, y: -35.39, z: 10.49}
+  cameraFieldOfView: 60
+  cameraBlendInSeconds: 0.25
+  cameraHoldSeconds: 0.12
+  cameraBlendOutSeconds: 0.4
+  normalImpactShakeDegrees: 3
+  normalImpactShakeSeconds: 1
+  normalImpactShakeFrequency: 20
+  cooperativeImpactShakeDegrees: 3
+  cooperativeImpactShakeSeconds: 1
+  cooperativeImpactShakeFrequency: 22
+  cooperativeStruggleShakeDegrees: 0.12
+  cooperativeStruggleShakeFrequency: 9

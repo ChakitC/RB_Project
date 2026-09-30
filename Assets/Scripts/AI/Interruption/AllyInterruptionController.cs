@@ -1,5 +1,4 @@
 using System;
-using Animancer;
 using Opsive.BehaviorDesigner.Runtime;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -14,8 +13,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
     const float MotionPoseStablePositionEpsilon = 0.0025f;
     const float MotionPoseStableYawEpsilon = 0.25f;
     const float RequiredMotionPoseStableSeconds = 0.08f;
-    const float RootMotionImpactPositionTolerance = 0.05f;
-    const float RootMotionImpactYawTolerance = 2f;
+    TargetedSkillPlacementPoseCheck placementPoseCheck;
 
     [Header("Refs")]
     [SerializeField] private FieldAllyMember fieldAllyMember;
@@ -131,6 +129,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     void LateUpdate()
     {
+        placementPoseCheck?.Tick();
         if (_state != State.RebaseSettling)
             return;
 
@@ -235,19 +234,9 @@ public sealed class AllyInterruptionController : MonoBehaviour
 
     static float ResolveInterruptionImpactNormalized(SkillGemDefinition skillDef)
     {
-        if (skillDef == null)
-            return 0.35f;
-
-        AnimancerEvent.Sequence events = skillDef.skillClip != null ? skillDef.skillClip.Events : null;
-        StringReference hitStartName = CombatTimelineEventNames.ToStringReference(CombatTimelineEventName.HitStart);
-        if (events != null && hitStartName != null)
-        {
-            int index = events.IndexOf(hitStartName);
-            if (index >= 0)
-                return Mathf.Clamp(events[index].normalizedTime, 0f, 0.999f);
-        }
-
-        return skillDef.GetCastPointNormalized();
+        return skillDef != null
+            ? skillDef.GetPlacementPointNormalized(preferHitStartForLegacy: true)
+            : 0.35f;
     }
 
     public bool BeginInterruption(
@@ -321,6 +310,10 @@ public sealed class AllyInterruptionController : MonoBehaviour
         }
 
         _activeRequestId = result.RequestId;
+        SkillGemDefinition placementSkill = interruptionSkill.skillAsset;
+        placementPoseCheck = TargetedSkillPlacementPoseCheck.Create(
+            _animBrain, _actorTransform, _activeRequestId, placementSkill,
+            ResolveInterruptionImpactNormalized(placementSkill), placementResult);
         _guaranteeCommitted = true;
         _state = State.Casting;
         _timeoutTimer = impactTimeoutSeconds;
@@ -351,7 +344,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
         {
             LogFlow(
                 $"timeline event={eventName} allyRequestId={requestId} targetRequestId={_blockReservation.RequestId} reservationId={_blockReservation.ReservationId}");
-            ValidateRootMotionImpactPose();
+
             OnImpact();
             return;
         }
@@ -363,35 +356,6 @@ public sealed class AllyInterruptionController : MonoBehaviour
             else if (!_hitLagFired)
                 _hitLagPending = true;
         }
-    }
-
-    void ValidateRootMotionImpactPose()
-    {
-        if (!_placementResult.UsesRootMotion || _actorTransform == null)
-            return;
-
-        Vector3 actualPosition = _actorTransform.position;
-        Vector3 expectedPosition = _placementResult.ImpactPosition;
-        actualPosition.y = 0f;
-        expectedPosition.y = 0f;
-
-        float positionError = Vector3.Distance(actualPosition, expectedPosition);
-        float yawError = Mathf.Abs(Mathf.DeltaAngle(
-            _actorTransform.rotation.eulerAngles.y,
-            _placementResult.ImpactRotation.eulerAngles.y));
-
-        if (positionError <= RootMotionImpactPositionTolerance &&
-            yawError <= RootMotionImpactYawTolerance)
-        {
-            LogFlow(
-                $"root-motion impact matched sampled trajectory positionError={positionError:0.####}m yawError={yawError:0.###}deg");
-            return;
-        }
-
-        Debug.LogWarning(
-            $"[PreCast.Ally] Root-motion impact drifted from the sampled trajectory for '{name}' " +
-            $"(positionError={positionError:0.####}m, yawError={yawError:0.###}deg).",
-            this);
     }
 
     void OnImpact()
@@ -594,6 +558,7 @@ public sealed class AllyInterruptionController : MonoBehaviour
         _hitLagFired = false;
         _hitLagPending = false;
         _placementResult = default;
+        placementPoseCheck = null;
         _hasOriginalActorPose = false;
         ClearVisibleRootRebaseState();
         _state = State.Idle;

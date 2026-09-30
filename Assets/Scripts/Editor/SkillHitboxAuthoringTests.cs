@@ -104,7 +104,7 @@ public sealed class SkillHitboxAuthoringTests
         var skill = Skill();
         skill.skillClip.SerializedEvents = new AnimancerEvent.Sequence.Serializable();
         var window = Track(ScriptableObject.CreateInstance<SkillAnimationVfxEditorWindow>());
-        CollectionAssert.AreEqual(new[] { "Animation", "Cast Point", "Hitbox" }, TimelineRows(window, new SkillVfxTimelineSource(skill)));
+        CollectionAssert.AreEqual(new[] { "Animation", "Cast Point", "Placement Point", "Hitbox" }, TimelineRows(window, new SkillVfxTimelineSource(skill)));
         AddEvent(skill, .3f, CombatTimelineEventName.Vfx);
         CollectionAssert.Contains(TimelineRows(window, new SkillVfxTimelineSource(skill)), "VFX");
         var unknown = Track(ScriptableObject.CreateInstance<StringAsset>()); unknown.name = "LegacyCustomEvent";
@@ -113,9 +113,9 @@ public sealed class SkillHitboxAuthoringTests
         var rows = TimelineRows(window, new SkillVfxTimelineSource(skill));
         CollectionAssert.Contains(rows, "Other Events");
         skill.skillClip.SerializedEvents = new AnimancerEvent.Sequence.Serializable();
-        CollectionAssert.AreEqual(new[] { "Animation", "Cast Point", "Hitbox" }, TimelineRows(window, new SkillVfxTimelineSource(skill)));
+        CollectionAssert.AreEqual(new[] { "Animation", "Cast Point", "Placement Point", "Hitbox" }, TimelineRows(window, new SkillVfxTimelineSource(skill)));
         skill.payload = null;
-        CollectionAssert.AreEqual(new[] { "Animation", "Cast Point" }, TimelineRows(window, new SkillVfxTimelineSource(skill)));
+        CollectionAssert.AreEqual(new[] { "Animation", "Cast Point", "Placement Point" }, TimelineRows(window, new SkillVfxTimelineSource(skill)));
         var menu = new GenericMenu();
         typeof(SkillAnimationVfxEditorWindow).GetMethod("AddTimelineBackgroundContextItems", Hidden)
             .Invoke(window, new object[] { menu, new SkillVfxTimelineSource(skill), .2f, false, 0f });

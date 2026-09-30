@@ -83,6 +83,7 @@ public sealed class DefensiveBlockCameraShot : MonoBehaviour
             BeginShot();
         }
         if (!hasSnapshot) return;
+        if (!returning && protectedPlayer != null) anchorPosition = protectedPlayer.position;
         if (!arrived && !returning)
         {
             returning = true;
@@ -114,7 +115,7 @@ public sealed class DefensiveBlockCameraShot : MonoBehaviour
         }
         CaptureBlendStart();
         // Frame Player in the foreground with Aires ahead between Player and Rector.
-        // Snapshot once: movement during the reaction must not drag this shot around.
+        // Keep the guard heading; the position follows Player during the shot.
         anchorPosition = protectedPlayer != null ? protectedPlayer.position : defender.transform.position;
         anchorRotation = Quaternion.Euler(0f, defender.transform.eulerAngles.y, 0f);
         returning = false;

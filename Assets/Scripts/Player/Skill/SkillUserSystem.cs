@@ -290,7 +290,14 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
 
     void NotifyEnergyChanged()
     {
-        EnergyChanged?.Invoke(SpendableEnergy, maximumEnergy);
+        var observers = EnergyChanged;
+        if (observers == null) return;
+        float spendable = SpendableEnergy;
+        foreach (Action<float, float> observer in observers.GetInvocationList())
+        {
+            try { observer(spendable, maximumEnergy); }
+            catch (Exception exception) { Debug.LogException(exception, this); }
+        }
     }
 
     void EnsureInitialized()

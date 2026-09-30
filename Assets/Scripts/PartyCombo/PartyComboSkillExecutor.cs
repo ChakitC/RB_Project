@@ -38,6 +38,11 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
         public Coroutine StartRoutine;
         public Coroutine RecoveryRoutine;
         public PartyComboPresentationScope Presentation;
+        public bool UsesRootMotion;
+        public bool PreserveVerticalMotion;
+        public float PlacementTime;
+        public CharacterPlacementResult Placement;
+        public TargetedSkillPlacementPoseCheck PlacementPoseCheck;
     }
 
     readonly Dictionary<ChainActorRole, ActiveExecution> activeByRole =
@@ -114,7 +119,7 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
             return PartyComboStartKind.Busy;
 
         activeByRole.Add(execution.Role, execution);
-        if (!TryApplyPlacement(execution, targetTransform, targetIdentity))
+        if (!TryApplyPlacement(execution, targetTransform, targetIdentity, offer.Definition.executionSkill))
         {
             Cleanup(execution, restoreOrigin: true);
             return PartyComboStartKind.PlacementFailed;
@@ -122,6 +127,7 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
 
         CharacterSkillManager manager = ownerContext.SkillManager;
         execution.SkillManager = manager;
+        // Skill playback already enables root motion; usePlanarRootMotion only suppresses Y.
         SkillCastStartResult startResult = manager.TryStartPartyComboSkill(
             offer.Definition,
             $"party-combo:{offer.Definition.RuntimeId}",
@@ -131,7 +137,8 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
             (info, reason) => HandleFailed(execution, PartyComboRejectReason.CastRejected),
             offer.ChainId,
             offer.Depth + 1,
-            provenance);
+            provenance,
+            usePlanarRootMotion: execution.UsesRootMotion && !execution.PreserveVerticalMotion);
 
         if (!startResult.Started)
         {
@@ -141,6 +148,16 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
         }
 
         execution.RequestId = startResult.RequestId;
+        if (IsCurrent(execution) && execution.UsesRootMotion)
+        {
+            var placement = execution.Placement;
+            execution.PlacementPoseCheck = TargetedSkillPlacementPoseCheck.Create(
+                ownerContext.AnimBrain, ownerContext.transform, execution.RequestId,
+                offer.Definition.executionSkill, execution.PlacementTime,
+                TargetedSkillPlacementResult.RootMotion(placement.StartPosition, placement.StartRotation,
+                    placement.ImpactPosition, placement.ImpactRotation, 0f),
+                preserveVerticalMotion: execution.PreserveVerticalMotion);
+        }
         if (IsCurrent(execution) && !execution.Committed)
         {
             PartyComboPresentationProfile presentation = execution.Profile?.presentation;
@@ -172,6 +189,12 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
     void OnDisable()
     {
         CancelAll();
+    }
+
+    void LateUpdate()
+    {
+        foreach (var execution in activeByRole.Values)
+            execution.PlacementPoseCheck?.Tick();
     }
 
     void HandleCommitted(ActiveExecution execution, ActiveSkillCastInfo info)
@@ -259,11 +282,25 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
     bool TryApplyPlacement(
         ActiveExecution execution,
         Transform targetTransform,
-        AITargetIdentity targetIdentity)
+        AITargetIdentity targetIdentity,
+        SkillGemDefinition skill)
     {
         PartyComboExecutionProfile profile = execution.Profile;
         if (profile == null || profile.placementPolicy == PartyComboPlacementPolicy.KeepCurrentPosition)
             return true;
+
+        CharacterPlacementAnimationInput animation = null;
+        if (profile.placementPolicy == PartyComboPlacementPolicy.AlignPlacementPointToEventTarget)
+        {
+            CharacterAnimBrain brain = execution.Actor.Context.AnimBrain;
+            if (skill == null || brain == null ||
+                !brain.TryResolveSkillAnimationClip(skill, out AnimationClip clip) ||
+                !brain.TryGetRootMotionSamplingAnimator(out Animator animator) ||
+                !TargetedSkillRootMotionTrajectoryCache.TryGetWithVerticalMotion(clip, animator, out var trajectory, out _))
+                return false;
+            animation = trajectory.PlacementInput;
+            execution.PlacementTime = skill.GetPlacementPointNormalized();
+        }
 
         Transform actorTransform = execution.Actor.Context.transform;
         Collider actorCollider = actorTransform.GetComponentInChildren<Collider>(true);
@@ -282,14 +319,29 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
         Camera camera = GameplayCameraController.Instance != null
             ? GameplayCameraController.Instance.GameplayCamera : Camera.main;
         CharacterPlacementReservationService reservations = CharacterPlacementReservationRegistry.Shared;
+        // Match the playback driver's collision policy for the entire trajectory,
+        // including movement through the target after the Placement Point.
+        RootMotionCCDriver rootMotionDriver = execution.Actor.Context.RootMotionDriver;
+        LayerMask ignoredLayers = 0;
+        if (skill != null && skill.IgnoreCharacterCollisionDuringRootMotion)
+        {
+            // NavMesh actors (including Aires) apply authored motion directly and
+            // have no CC adapter. Use the project's character layers for those rigs.
+            ignoredLayers = rootMotionDriver != null ? rootMotionDriver.CharacterCollisionLayers
+                : LayerMask.GetMask("Player", "Enemy", "Ally");
+        }
         if (!PartyComboPlacementResolver.TryResolve(execution.Actor.Context, actorCollider, footprint,
                 targetTransform, targetIdentity, profile, camera, reservations,
-                out CharacterPlacementRequest request, out CharacterPlacementResult result) ||
+                out CharacterPlacementRequest request, out CharacterPlacementResult result,
+                animation, execution.PlacementTime, ignoredLayers) ||
             !reservations.TryReserve(request, result, out execution.PlacementReservation))
         {
             return false;
         }
         execution.HasPlacementReservation = true;
+        execution.UsesRootMotion = request.EffectivePlanarRootMotion;
+        execution.PreserveVerticalMotion = animation != null && animation.PreserveVerticalMotion;
+        execution.Placement = result;
         actorTransform.SetPositionAndRotation(result.StartPosition, result.StartRotation);
         return true;
     }
@@ -327,10 +379,13 @@ public sealed class PartyComboSkillExecutor : MonoBehaviour
             activeByRole.Remove(execution.Role);
         }
 
+        CharacteContext context = execution.Actor?.Context;
+        // A committed cast can still be moving during cancellation/timeout. Stop that
+        // request before returning the actor or releasing its reserved trajectory.
+        if (execution.UsesRootMotion && context != null)
+            context.AnimBrain?.CancelSkillCastRequest(execution.RequestId);
         if (execution.HasPlacementReservation)
             CharacterPlacementReservationRegistry.Shared.Release(execution.PlacementReservation);
-
-        CharacteContext context = execution.Actor?.Context;
         if (restoreOrigin &&
             context != null &&
             execution.Profile != null &&

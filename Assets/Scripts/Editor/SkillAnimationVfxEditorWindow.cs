@@ -249,6 +249,31 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
 
     void DrawEventAuthoring(IAnimationVfxTimelineSource source)
     {
+        bool hasPoint = false;
+        if (source != null)
+            foreach (var lane in source.Lanes)
+                hasPoint |= lane.Kind == AnimationVfxTimelineLaneKind.Point;
+        if (hasPoint)
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.Label("Set At Playhead", GUILayout.Width(EditorGUIUtility.labelWidth));
+                foreach (var lane in source.Lanes)
+                {
+                    if (lane.Kind != AnimationVfxTimelineLaneKind.Point) continue;
+                    using (new EditorGUI.DisabledScope(Application.isPlaying || lane.ReadOnly || _playheadInCutscene || GetClip(source) == null))
+                    {
+                        if (GUILayout.Button(lane.Label, GUILayout.Width(130f)))
+                        {
+                            lane.SetPointValue(source, normalizedTime);
+                            source.Save();
+                            Repaint();
+                        }
+                    }
+                }
+                GUILayout.FlexibleSpace();
+            }
+        }
         using (new EditorGUILayout.HorizontalScope())
         {
             eventToAdd = (CombatTimelineEventName)EditorGUILayout.EnumPopup("Event At Playhead", eventToAdd);
@@ -330,10 +355,10 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
             Rect row = GetTrackContentRect(area, i);
             if (track.Kind == TrackKind.Point)
             {
-                float time = draggingPointTrack == i ? draggedNormalizedTime : source.PointValue;
+                float time = draggingPointTrack == i ? draggedNormalizedTime : track.Lane.GetPointValue(source);
                 Rect marker = GetMarkerRect(row, time);
-                DrawMarker(marker, new Color(1f, 0.72f, 0.18f), track.Label);
-                if (current.type == EventType.MouseDown && current.button == 0 && marker.Contains(current.mousePosition))
+                DrawMarker(marker, new Color(1f, 0.72f, 0.18f), track.Lane.GetPointLabel(), 220f);
+                if (!Application.isPlaying && !track.Lane.ReadOnly && current.type == EventType.MouseDown && current.button == 0 && marker.Contains(current.mousePosition))
                 {
                     draggingPointTrack = i;
                     draggedNormalizedTime = time;
@@ -377,7 +402,7 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
         else if ((draggingPointTrack >= 0 || draggingRangeTrack >= 0) && current.rawType == EventType.MouseUp)
         {
             if (draggingPointTrack >= 0)
-                source.SetPointValue(draggedNormalizedTime);
+                tracks[draggingPointTrack].Lane.SetPointValue(source, draggedNormalizedTime);
             else
             {
                 Vector2 range = source.RangeValue;
@@ -644,7 +669,7 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
             if (clickInCutscene) { menu.AddDisabledItem(new GUIContent("Main animation only")); return; }
             if (track.Kind == TrackKind.Point)
                 menu.AddItem(new GUIContent("Set " + track.Label + " Here"), false, () =>
-                { source.SetPointValue(time); source.Save(); Repaint(); });
+                { track.Lane.SetPointValue(source, time); source.Save(); Repaint(); });
             else
             {
                 menu.AddItem(new GUIContent("Set Open Here"), false, () =>
@@ -1569,10 +1594,10 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
         float x = Mathf.Lerp(row.xMin, row.xMax, combined);
         return new Rect(x - MarkerWidth * 0.5f, row.y + 3f, MarkerWidth, row.height - 6f);
     }
-    static void DrawMarker(Rect marker, Color color, string label)
+    static void DrawMarker(Rect marker, Color color, string label, float labelWidth = 100f)
     {
         EditorGUI.DrawRect(marker, color);
-        GUI.Label(new Rect(marker.xMax + 3f, marker.y + 7f, 100f, 18f), label, EditorStyles.miniLabel);
+        GUI.Label(new Rect(marker.xMax + 3f, marker.y + 7f, labelWidth, 18f), label, EditorStyles.miniLabel);
     }
     float MouseToNormalized(Rect row, float mouseX)
     {

@@ -243,12 +243,19 @@ directly — root motion, knockback, or an airborne launch — must take the age
 transform duty first, or its motion is silently erased on the next frame. Syncing
 `agent.nextPosition` alone is not sufficient.
 
-`AgentMoveDriver.AcquireAgentTransformSuspendToken()` /
-`ReleaseAgentTransformSuspendToken(token)` provide the reference-counted way to do
-this. The agent is restored only when the last token is released, which is what
-prevents two overlapping owners from restoring each other's cached state and
-leaving the agent permanently suspended. `IsAgentTransformSuspended` reports the
-current state, and companion separation skips itself while suspended.
+`CharacterMovementMotor.AcquireAgentSuspension(agent, position, rotation)` /
+`ReleaseAgentSuspension(token, resumeAutonomy)` own the shared agent baseline.
+Root motion, knockback, airborne movement and defensive approach each hold a
+token. Position and rotation are restored when their last owner releases; navigation
+remains stopped until all tokens end. Separation's timed pause takes a stop-only
+token. Knockback's request to resume normal autonomy waits until all owners finish.
+
+`AgentMoveDriver.AcquireAgentTransformSuspendToken()` and its release method remain
+public forwarding APIs. `IsAgentTransformSuspended` reads the shared motor, and
+companion separation skips itself while another system holds the transform.
+Each token retains the agent it captured, so a model rebind restores the previous
+agent. Off-mesh/disabled stop restoration remains pending until the agent becomes
+available; actor disable releases tokens, and stale releases cannot cancel new ones.
 
 `CharacterVerticalMotor` uses these tokens for its airborne window and re-`Warp`s
 the agent on landing, since an actor launched over a ledge can come down somewhere
@@ -398,16 +405,22 @@ predicting motion that playback will not apply.
 Targeted Helper casts receive their target stand-off distance from the
 execution payload through `SkillPayloadDef.TryGetTargetPlacement`. For
 `TargetedDeliverySkillPayloadDef`, the authored distance describes the Helper
-pose at the skill cast point. `AllyHelperManager` subtracts the sampled
+pose at the skill placement point. `AllyHelperManager` subtracts the sampled
 root-motion transform at that point to derive each animation start candidate,
 then sends the full trajectory to the central resolver. The Player prefab's
 `minSummonRadius` remains only part of the generic fallback ring around the
 Player and does not define targeted-skill spacing.
 
 The existing teleport profile `anchorPositionOffset` defines the actor pose at
-the impact point. Chain attacks use the skill cast point. Guaranteed
-Interruption uses the skill's `HitStart` Animancer marker when present and
-falls back to the skill cast point. The system derives the required animation
+the placement point (the actor root pose, not the weapon contact point).
+`SkillGemDefinition.placementTimingSource` selects the alignment time independently
+of payload release: `Custom` uses `placementPointNormalized`; `HitStart` uses the
+first named marker, with `placementPointNormalized` as its independent fallback.
+The default `Legacy` preserves existing assets: Field Ally Chain and targeted Helper
+use Cast Point; Guaranteed Interruption uses `HitStart`, falling back to Cast Point.
+Explicit placement timing does not move Cast Point, HitStart/HitEnd, Chain
+continuation, resource commit, pre-cast holds, audio, or Combo presentation.
+The system derives the required animation
 start pose from the sampled impact transform, then tests target-relative yaw
 candidates using one shared "direct-first ±15° sweep" algorithm
 (`TargetedSkillSnapSidePriority`), used identically by legacy teleport,
@@ -451,12 +464,20 @@ Sampling or trajectory-validation errors fail placement explicitly. Legacy
 teleport is used only when sampling succeeds and the clip has no meaningful
 planar movement or yaw; errors never silently fall back to teleport.
 
-At the cast callback, the runtime compares the actor pose with the sampled
-impact pose. A planar error above `0.05m` or yaw error above 2 degrees emits a
-warning for clip/Avatar validation.
+Field Ally Chain and Interruption pose diagnostics run in LateUpdate when playback
+first reaches the placement time, independently of Cast/HitStart callbacks. They
+compare the sampled pose at the observed playhead time, including motion after
+the placement beat when a frame crosses it. A planar error above `0.05m` or yaw
+error above 2 degrees emits a warning. Interrupted/completed requests stop
+observation; this diagnostic never triggers a payload or changes the actor pose.
+
+The separate legacy Helper Chain teleport still uses `HelperChainAttackSequenceDef`
+offset placement through `ChainAttackTeleportUtility`; it does not derive S from
+the attack trajectory. Explicit placement timing applies to targeted Helper casts
+and Field Ally Chain, not that static teleport path.
 
 This flow does not read a motion bone, alter an FBX importer, bake a trajectory
-asset, or require new Inspector fields. Field Ally and Ally Interruption
+asset. Placement timing is optional per-skill authoring. Field Ally and Ally Interruption
 placements pass the shared `CharacterPlacementReservationService` when their
 central path is active. The reservation is committed only after no-warp or
 in-place fallback chooses the final returned pose, so the registry describes
@@ -665,7 +686,7 @@ resolver, so it keeps the defaults (`0`) and its behavior is unchanged.
 4. Ally suspends its BehaviorTree and NavMeshAgent, hides through the optional
    `ASPHelperDitherFader`, then applies the selected placement start pose once.
    Root-motion placement uses
-   `HitStart` as the sampled impact point and does not call `FaceTarget` after
+   the skill's placement point (`HitStart` in Legacy mode) and does not call `FaceTarget` after
    the snap; legacy teleport placement still faces the target. The ally then
    locks aim on the target and starts fading in with its interruption skill via
    `CharacterSkillManager.TryStartExternalSkill`, explicitly requiring the

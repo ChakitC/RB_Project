@@ -1,0 +1,7 @@
+{
+    "name": "PartyCommands.Tests",
+    "references": [],
+    "includePlatforms": ["Editor"],
+    "optionalUnityReferences": ["TestAssemblies"],
+    "autoReferenced": false
+}

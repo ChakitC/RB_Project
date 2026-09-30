@@ -48,8 +48,8 @@ public sealed class TargetedDeliverySkillPayloadDef : SkillPayloadDef
     }
 
     [SerializeField, BoxGroup("Caster Placement")]
-    [LabelText("Target Stand-Off At Cast Point"), MinValue(0.01f), SuffixLabel("m")]
-    [Tooltip("Horizontal distance between the caster and locked target at the skill cast point. " +
+    [LabelText("Target Stand-Off At Placement Point"), MinValue(0.01f), SuffixLabel("m")]
+    [Tooltip("Horizontal distance between the caster and locked target at the skill placement point. " +
              "Root motion is preserved; placement derives the animation start pose from this distance.")]
     private float targetStandOffDistanceAtCastPoint = 1.2f;
 
@@ -174,6 +174,9 @@ public sealed class TargetedDeliverySkillPayloadDef : SkillPayloadDef
     // clip without the release marker would strand it there.
     public override bool RequiresSkillTimelineEvents => true;
 
+    public override bool RequiresTimelineEventAfterCastPoint(CombatTimelineEventName eventName) =>
+        eventName == CombatTimelineEventName.DeliveryRelease;
+
     public override bool TryGetTargetPlacement(out SkillTargetPlacementSpec placement)
     {
         placement = new SkillTargetPlacementSpec(targetStandOffDistanceAtCastPoint);
@@ -211,7 +214,7 @@ public sealed class TargetedDeliverySkillPayloadDef : SkillPayloadDef
         }
 
         if (targetStandOffDistanceAtCastPoint <= 0f)
-            issues.Add("Targeted Delivery target stand-off distance at cast point must be greater than zero.");
+            issues.Add("Targeted Delivery target stand-off distance at placement point must be greater than zero.");
 
         if (speed <= 0f)
             issues.Add("Targeted Delivery speed must be greater than zero.");

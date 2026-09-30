@@ -1,5 +1,40 @@
 # Skill System
 
+## Runtime Responsibilities
+
+`CharacterSkillManager` is the component-facing API for player, AI, Helper and
+party commands. It resolves character references through `CharacteContext`,
+builds cast requests, forwards cast events, handles disable/death, and bridges
+loadout selection to the existing save and run-lock systems.
+
+Its runtime collaborators are ordinary C# objects, with no additional prefab
+components or serialized configuration:
+
+| Owner | Responsibility |
+| --- | --- |
+| `CharacterSkillLoadoutRuntime` | Resolved command/Helper slots, selected upgrades, and cached external/proc/party-combo runtime entries |
+| `SkillChargeRegistry` | Shared charge pools, keyed by skill definition for the component lifetime |
+| `SkillCastOrchestrator` | Cast admission, pending wind-up, payload execution and reservation settlement |
+| `SkillCastAnimationBinding` | Playback commands, request-filtered cast-point/interruption signals and subscription cleanup |
+| `SkillInstance` / `SkillCastReservation` | Cast stats, payload invocation and resource reservation/commit/refund |
+
+The manager passes stats, target identity, authored fallback slots and skill
+progress into the loadout runtime. Before replacing a selected slot/entry, the
+loadout raises an invalidation notification; the manager cancels the matching
+pending cast. Loadout code does not own the orchestrator or resolve character
+components. Selection persistence and permission checks are supplied as delegates.
+
+The manager shares one charge registry with its loadout and orchestrator. A
+loadout rebuild or variant switch cannot replace that registry. Standalone
+orchestrators used by Helper/Chain Attack retain their existing constructor and
+own a registry for their lifetime. Existing charge APIs forward to that registry.
+
+Animation binding unsubscribes from the exact brain it originally observed,
+even when the driver's current brain changes. Pending subscriptions end at cast
+release/cancellation; animation and payload timeline listeners may continue past
+that point. External playback retains its existing owner. BasicMelee still arms
+the payload synchronously before the first animation frame.
+
 ## Shared Basic Melee Execution
 
 `SkillCastRequest.ExecutionKind` defaults to `StandardSkill`; `BasicMelee` is
@@ -60,16 +95,17 @@ selectable `CharacterSkillLoadoutOption` entries. Each option points at a
 override. Active and Ultimate options must resolve to `SkillGemDefinition`;
 Passive options must resolve to `PassiveDefinition`.
 
-`CharacterSkillManager` resolves command slots at runtime from
-`ctx.baseStats.skillSlots`. `CharacterStats` is authoritative for every slot it
+`CharacterSkillManager` supplies `ctx.baseStats.skillSlots` to
+`CharacterSkillLoadoutRuntime`. `CharacterStats` is authoritative for every slot it
 defines, even when the prefab has a `CharacterSkillManager.autonomousSlots` entry
 with `skillAsset` assigned at the same index. Prefab-authored
 `autonomousSlots` entries are used only as legacy fallback slots when
 `CharacterStats` does not define that index.
 
 Runtime skill switching uses `CharacterSkillManager.TrySelectSkillOption(...)`.
-The manager rebuilds the affected `SkillInstance`, cancels any pending cast from
-that slot, and persists `{ slotId, optionId }` to the owning character progress
+The loadout runtime rebuilds the affected `SkillInstance` after notifying the
+manager to cancel a pending cast from that slot. The manager persists
+`{ slotId, optionId }` to the owning character progress
 when requested. It never writes the selected option back into the
 `CharacterStats` asset.
 
@@ -154,6 +190,19 @@ root payload — it uniquely owns `helperFacingMode`, `chainContinueMode`, and
 `chainContinueNormalizedTime`, since those fields describe the skill, not any
 one effect.
 
+Gameplay callers read facing, continuation, and placement through
+`SkillGemDefinition.HelperFacingMode`, `GetChainContinueMode()`,
+`GetChainContinueNormalizedTime()`, and `TryGetTargetPlacement()`. Existing root
+payload fields remain the serialized backing store, so existing assets need no
+field migration. Combo containers do not expose a leftover root payload's policies.
+
+Composite placement can be explicitly configured on the root with
+`overrideTargetPlacement` and a positive, finite `targetStandOffDistanceAtCastPoint`.
+Without that override, legacy placement inference supports exactly one ungated
+child provider. Multiple providers or an upgrade-gated provider are validation
+errors and return no placement; reordering children cannot select a winner.
+An explicit root override is independent of which child upgrades are unlocked.
+
 `SkillEffectStep` is a plain `[Serializable]` class (not a `ScriptableObject`),
 gated by an optional `requiredUpgradeId` read from `SkillCastContext.HasUpgrade`.
 `PayloadStep` is the only orchestration step type: it wraps any existing
@@ -170,15 +219,30 @@ to `AITargetIdentity.Player` / `Companion`, and checks distance from the caster
 without querying physics colliders. Healing and status references are resolved
 through each target's context and scaled by `FinalSkillStats.healPower`.
 
-Every payload runs at the skill's configured cast point unless it explicitly
-defers itself. An effect that must act at another animation moment spawns a
+Standard skill payloads run at the configured cast point unless they explicitly
+defer themselves. Basic Melee executes its payload before playback. An effect
+that must act at another animation moment spawns a
 request-scoped runtime listener such as `TauntSkillRuntime`. Payloads declare
 their required timeline event names; the skill Inspector treats a missing
 marker on `skillClip` as a blocking error, while the runtime warning remains as
 a final safeguard.
 
+Payloads whose listener starts at payload execution can override
+`RequiresTimelineEventAfterCastPoint(eventName)`. `TauntSkillPayloadDef` and
+`TargetedDeliverySkillPayloadDef` require every `TauntApply` / `DeliveryRelease`
+marker to be strictly after Cast Point for StandardSkill;
+equal times are rejected because callback ordering at the same time is not a
+safe authoring contract. BasicMelee arms the listener before playback, so finite
+marker times at or after zero are valid, including markers before the authored
+Cast Point. `GetExecutionCastPointNormalized(kind)` and
+`IsTimelineListenerReadyAt(kind, time)` express this shared runtime contract.
+Composites propagate this requirement from their children. Hitbox markers retain
+their existing timing rules. Validation reports the authored times without moving
+markers or changing Cast Point.
+
 `SkillGemDefinition.TryFindPayload<T>` walks the composite's steps
-(`PayloadStep.Payload`, recursively) to find a wrapped payload of a given type;
+(`PayloadStep.Payload`) to find a wrapped payload of a given type; malformed
+nested composites are not followed, so cycles cannot hang Inspector validation;
 use it instead of `payload as T` when a system needs to know whether a skill
 has, for example, a `ProjectileSkillPayloadDef` anywhere in its execution.
 
@@ -738,11 +802,31 @@ for `TauntApply`), author the cast point before the required event. A timeline
 event placed before or at the cast point may fire before the runtime listener
 exists and must not be used to trigger that payload.
 
+Target placement has its own optional timing under **Presentation > Target
+Placement**. `placementTimingSource` is `Legacy` by default for compatibility;
+`HitStart` resolves the first HitStart marker and `Custom` uses
+`placementPointNormalized`. Missing HitStart in explicit HitStart mode uses that
+authored placement value, not Cast Point. Field Ally Chain, targeted Helper, and
+Interruption use this time to derive their animation start pose. Cast Point remains
+the payload release beat, including its transaction, Chain continuation, pre-cast,
+sound, and Combo presentation consumers. Placement does not start a hitbox or
+synthesize a timeline event. Basic melee's immediate payload arming is unchanged.
+
 Use the same Animancer event name, `Vfx`, at every VFX time in the clip. Runtime
 maps occurrences to cue indices in chronological order: the first `Vfx` event is
 cue 0, the second is cue 1, and so on. Multiple entries may share one cue index
 when several actions should run at the same occurrence. There is no numbered VFX
 event-name compatibility path.
+
+The main-skill timeline exposes independent Cast Point and Placement Point rows.
+Dragging Placement Point, setting it at the playhead, or setting it through the
+row context menu selects Custom placement and saves with Undo support, without
+moving release or hitbox markers. Point lanes can supply their own read/write
+bindings; existing single-point adapters keep using `PointValue`/`SetPointValue`.
+The Placement marker displays the resolved timing source, including a missing
+HitStart fallback; Legacy displays Cast Point (Interruption retains its HitStart
+preference). Placement is not an Animancer event and is absent from cutscene and
+basic-melee Combo timelines.
 
 The editor timeline at
 `Tools > RB > Animation VFX > Animation Event VFX Timeline` uses a scene or
@@ -861,7 +945,7 @@ Validation reports errors without modifying assets.
 
 ## Validation Contract
 
-A valid skill must satisfy all of the following:
+A valid non-combo execution skill must satisfy all of the following:
 
 - `payload` is assigned
 - the payload is a sub-asset of the same `SkillGemDefinition` asset
@@ -875,6 +959,57 @@ A valid skill must satisfy all of the following:
 - no direct-gameplay `SkillEffectStep` remains in a composite — `PayloadStep`
   is the only supported step type (see **Node-Centric Ability Authoring**
   above)
+
+Combo roots instead own a non-empty list of non-combo execution skills and must
+have no root payload. `ValidateMelee` checks each step's animation, stable ID,
+chain window, payload configuration, and required timeline markers through
+`CollectValidationIssues` using BasicMelee timing. Errors include the step number and ID;
+runtime melee startup rejects invalid steps before starting the combo. Editor
+validation additionally checks each referenced skill's embedded ownership graph.
+
+`TryGetExecution(out payload)` and `TryGetCombo(out steps)` expose the two shapes
+explicitly. `TryGetExecution` refuses Combo roots even when an old root payload
+is still assigned. Existing serialized fields and melee convenience APIs remain
+compatible. Cast startup and `SkillInstance` use the execution API to prevent
+accidental execution of a Combo container.
+
+`CollectValidationIssues(issues, kind, includeAuthoring)` produces structured
+`SkillValidationIssue` values with a code, severity, owning skill, location,
+Combo step ID, payload, and optional required upgrade ID. Runtime checks validate
+execution configuration; authoring adds skill IDs, warnings, and Editor asset
+ownership. Transient in-memory definitions have no persisted ownership to check.
+Inspector status, the embedded-payload validation tool, and Skill Tree authoring
+consume these common results. Node descriptors retain their node-specific checks;
+matching diagnostics are deduplicated by message and owning node, so a separate
+ungated payload's identical error stays visible at skill level.
+
+`SkillCastOrchestrator` calls `ValidateExecution(kind, out reason)` before reserving
+resources or starting animation. Invalid authored definitions are rejected even
+if a payload previously could have produced a partial effect. `TryReserveCast`
+continues to handle accounting separately; direct payload execution is a lower-level
+API and does not run the orchestrator's definition checks. The old string collectors
+remain compatibility adapters; the required-timeline adapter defaults to StandardSkill.
+`SkillExecutionUsageIndex` resolves authoring modes from Combo steps, animation
+profiles, character loadout/chain slots, helper/chain/party-combo definitions, and
+direct references in saved prefabs/scenes. Batch validation and Skill Tree authoring
+use this index. A skill used in both modes is checked in both, with mode labels on
+the diagnostics. Unreferenced skills default to StandardSkill. Dynamic bindings
+created only at runtime must supply their execution kind to the common collector.
+The index is rebuilt by batch validation and invalidated on project, saved-scene,
+and Undo changes; tools that change bindings programmatically can call `Invalidate`.
+
+The Inspector follows a single known usage automatically and shows all known
+usage errors in Execution Authoring. **Preview As** / **Preview Status** describe
+the selected mode only; an unreferenced skill can be previewed manually. Preview
+settings are nonserialized and never choose runtime execution. Combo validation
+always supplies BasicMelee for its children. `ValidateSkillForExecution` remains
+available for tools that already know the execution context.
+
+The Inspector reports `Combo (N steps)` and displays step skills and their errors.
+Root execution creation/replacement is hidden in Combo mode. A leftover root
+payload can still be removed with the existing confirmation and Undo workflow.
+Root Cast Cue, Skill Clip, and Cast Point are hidden in Combo mode. Switching
+Combo off restores normal execution authoring.
 
 `NodeCentricPayloadValidator` folds descriptor registry health and per-payload
 authoring issues into the same `SkillUpgradeValidationIssue` list
@@ -1501,6 +1636,94 @@ temporary folder without calling global `AssetDatabase.SaveAssets()`.
 
 ## Command Skill Cast Facing
 
+### Player-directed Ally and Helper skills
+
+`PartyCommandController` routes Ally command slots, Helper command slots and explicit
+Helper skill commands through `PartyCommandSkillExecution`. Each skill configures
+`Gameplay > Party Command Placement` in its Inspector:
+
+| Setting | Behavior |
+| --- | --- |
+| Placement Mode: Player Target | Capture the Player's committed target and enter skill range. |
+| Placement Mode: Around Player | Find a clear pose within Player Distance of the captured Player position, preferring the nearest pose to the caster. |
+| Placement Mode: In Front Of Player | Start Player Distance ahead of the captured Player position and forward, with lateral alternatives. |
+| No Target Placement | For Player Target only: Around Player or In Front Of Player when no target is selected. This is a per-skill setting, not alternation between casts. |
+| Player Distance | Radius for Around Player or forward distance for In Front Of Player, including fallback placement. Default 3 m. |
+| Target Distance | Existing target stand-off at the Placement Point; payload placement can override it. |
+
+Defaults preserve Player Target with In Front Of Player fallback. Around Player
+and In Front Of Player ignore a selected enemy, carry no character target handle,
+and face the captured Player forward. They do not change a payload's recipient rules.
+Around Player searches three rings at full, two-thirds and one-third radius;
+blocked candidates are rejected and a completely blocked region rejects the command.
+
+In Player Target mode, the caster carries the same `SkillTargetHandle` into the cast. AI target selection cannot
+replace it during the animation. Losing the target's enabled lifetime before release
+cancels the pending cast rather than acquiring another enemy.
+
+An active caster already in range keeps its exact current position (including Y)
+and turns toward the captured target. Range is evaluated at the sampled Placement
+Point using the configured stand-off/body clearance; a lunge that would overshoot
+the target is repositioned. The current pose is preferred only when target line of
+sight, body clearance, full trajectory, NavMesh support and reservations pass.
+For player-relative modes, an active caster keeps its pose when already inside
+the Around Player radius, or within 0.35 m horizontally of the front point, with
+at most 1 m height difference and the same body/trajectory/NavMesh checks.
+Warp candidates are tried when the current pose cannot be used. Inactive helpers
+still use summon placement. `CharacterPlacementRequest.Candidate.PreservePosition` validates the
+original pose without snapping its start onto NavMesh; other candidates still snap.
+
+The separate `PartyHudPresenter` also uses this execution path for columns 2/3
+(tap Active, hold Ultimate). It explicitly keeps the selected battle slot instead
+of substituting the character's manual command entry; its charge pool and costs
+remain owned by `CharacterSkillManager`.
+
+Field allies that need to warp use their context's `CharacterVisibilityController`:
+fade out at the original pose, move while hidden, fade in, then start the skill.
+The controller's authored durations apply (default 0.18 s each). In-range casts skip
+both fades. Helpers retain their existing summon appearance without a second fade.
+Actors without a visibility controller retain the immediate placement fallback.
+During the fades, the member and placement remain reserved and repeated commands
+are rejected. Target/actor validity and skill availability are checked throughout;
+cancellation restores the original pose and visibility and releases the reservation.
+Skill charges are consumed by the cast after arrival. Party command points and the
+command cooldown still apply on acceptance, as for other pending commands.
+`WaitingForPlacement` means the warp was accepted, with RequestId 0 until the actual
+cast starts; it is not an active `CharacterSkillManager` cast yet.
+
+Without a character target, aim is a fixed world point 6 m ahead of the chosen
+caster pose in the captured Player forward direction. Player movement/rotation or
+new AI targets during the fade/wind-up do not move that captured placement or aim.
+
+`SkillGemDefinition.partyCommandTargetDistance` is the caster stand-off at the skill's
+Placement Point (default 1.5 m). A payload's `TryGetTargetPlacement` contract takes priority.
+Placement increases that minimum when necessary to clear the target's authored body
+and the caster footprint, so stationary casts do not start inside large enemies.
+Targeted animated skills use the sampled trajectory to derive their starting pose;
+player-relative skills start at the configured pose and then apply their natural root motion. Root motion
+is not stretched. Starts are snapped to NavMesh within 1 m to accommodate differences
+between actor root height and baked surfaces. Initial warps use the locomotion
+CharacterController footprint when available, falling back to the authored position
+collider; animated position colliders can otherwise dip below the floor. The trajectory
+uses the skill's character-collision policy and still checks world geometry and other
+placement reservations. No valid pose means no cast or command-point spend.
+
+Player-directed casts preserve authored vertical root motion (including Aires' jump).
+Placement samples the full trajectory and aligns the contact point horizontally from
+a grounded start; it does not subtract jump height from the starting position. An
+explicit `RootMotionCCDriver.ZeroY` setting still selects planar sampling. Airborne
+poses use the shared resolver's vertical-trajectory checks, including landing support.
+
+Field allies reserve their `FieldAllyMember` and suspend autonomous movement until the
+cast animation finishes. Helper commands retain the Helper manager's activation,
+protection and hide lifecycle. Aim overrides and placement reservations are released
+on completion, rejection, interruption and disable. Autonomous AI skills, Helper procs,
+Chain Attack and Party Combo retain their own entry points and targeting rules.
+
+This supplies placement, aim and an optional character target; each payload retains its
+own recipient rules. A payload that requires a friendly character (for example a targeted
+healing delivery) still needs a valid recipient and cannot become an untargeted attack.
+
 Player command-slot and entry casts whose payload uses `FaceDetectedTargetOnCast` capture a
 `SkillFacingSnapshot` when the request is accepted, before any animation wait. The snapshot holds
 either the explicit target already supplied by the command, the committed
@@ -1656,9 +1879,14 @@ ends, whichever way it ends.
 ### Reservation lifecycle
 
 `SkillInstance.TryReserveCast` takes the cast's charge out of the pool and its
-energy out of the caster up front, and freezes the `FinalSkillStats` snapshot it
-was priced with. It returns a `SkillCastReservation`, which the caller must
-settle exactly once:
+energy out of the caster up front, and freezes the stats and upgrade selection it
+was priced with. `SkillUpgradeStatSnapshot.CreateReadOnlyCopy()` copies both stat
+modifiers and upgrade IDs; adding nodes to that copy is rejected. The reservation
+keeps its own stats copy and exposes defensive copies through `Stats`, so a payload
+cannot change the cooldown eventually committed by mutating a returned stats object.
+`ExecuteReserved` uses the reservation's upgrades even if the instance's selection
+is replaced or mutated during wind-up. `TryReserveCast` returns a
+`SkillCastReservation`, which the caller must settle exactly once:
 
 | Settle | Charge | Energy | Used by |
 | --- | --- | --- | --- |
@@ -1668,6 +1896,19 @@ settle exactly once:
 
 Every settle operation — and every reserve — is **idempotent**, so a cast that is
 cancelled and then torn down again never refunds twice.
+
+The orchestrator releases unsettled reservations in `finally` blocks at startup
+and release, including exceptions in `OnStarted`, release callbacks and payloads.
+A failed released cast stops its animation and reports execution failure. Pending
+cancellation settles resources even if stopping animation throws. Direct
+`SkillInstance.Cast` also releases its hold if payload execution throws.
+
+After commit, exceptions in committed observers or the cast cue are logged and
+do not refund resources or turn the result into rejection. Committed/failure
+observers are invoked individually so one failing observer does not suppress the
+others. `SkillUserSystem.EnergyChanged` follows the same observer rule during
+reservation, commit, and refund. Resource cleanup does not undo world effects a
+faulty payload already produced before throwing.
 
 Two consequences are deliberate:
 
@@ -1796,8 +2037,9 @@ spending two charges at `t=0` with a 12s cooldown returns them at `t=12` and
 ### One pool per skill
 
 There is exactly **one** `SkillChargeState` per `SkillGemDefinition` per character.
-`SkillCastOrchestrator` owns the dictionary; `CharacterSkillManager` binds every
-`SkillInstance` it builds to the matching pool via `SkillInstance.BindCharges`.
+`SkillChargeRegistry` owns the dictionary. `CharacterSkillLoadoutRuntime` binds
+every `SkillInstance` it builds to the matching pool via `SkillInstance.BindCharges`.
+The registry is shared with the manager's orchestrator.
 
 Two loadout slots holding the same skill therefore draw from — and display — the
 same charges: casting from slot A immediately makes slot B unavailable.
@@ -1849,7 +2091,7 @@ shape.
 `CharacterStats.helperProcSlots` is a list of `HelperProcLoadoutSlot`. Each slot holds
 `HelperProcLoadoutOption` variants, and exactly one variant per slot is equipped at a time —
 selected by the player on the Skill screen, persisted through `CharacterSkillSelectionStore`, and
-resolved by `CharacterSkillManager.RefreshHelperLoadout`.
+resolved by `CharacterSkillLoadoutRuntime.RefreshHelperLoadout` through the manager.
 
 - `AppendConfiguredHelperChainDefinitions` returns only the selected variant of each slot. An
   authored-but-unselected variant never reaches `AllyHelperProcController`.
@@ -1864,7 +2106,7 @@ resolved by `CharacterSkillManager.RefreshHelperLoadout`.
 - `CharacterActiveSkillProgress.TreeChanged` for a `helper:` key re-applies the affected variant, so
   a node unlocked in the lobby reaches the next assist without a rebuild of the whole loadout.
 
-**Switching a variant never resets a cooldown.** Charges live in the orchestrator keyed by
+**Switching a variant never resets a cooldown.** Charges live in the shared registry keyed by
 `SkillGemDefinition`, and the external entry for that definition is cached for the component's
 lifetime; a switch swaps the snapshot on the existing `SkillInstance` rather than replacing it.
 `AllyHelperProcController._nextReadyTimeByDef` (the proc's internal cooldown) is likewise keyed by

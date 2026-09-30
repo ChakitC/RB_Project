@@ -9,7 +9,15 @@ public sealed class SkillDefensiveBlockSettings
     [Sirenix.OdinInspector.ShowIf(nameof(UsesTimedApproach))]
     [Tooltip("Time from accepted Block to impact, using the attacker's actor clock.")]
     [Min(0.01f)] public float timedApproachSeconds = 0.22f;
-    public bool UsesTimedApproach => mode == DefensiveBlockMode.TimedApproach;
+    public bool UsesTimedApproach => mode == DefensiveBlockMode.TimedApproach || mode == DefensiveBlockMode.Cooperative;
+    [Sirenix.OdinInspector.ShowIf(nameof(UsesCooperative))]
+    [Sirenix.OdinInspector.InfoBox("Cooperative Block always ends the entire request. Continue Skill windows are invalid.",
+        Sirenix.OdinInspector.InfoMessageType.Info, VisibleIf = nameof(UsesCooperative))]
+    [Sirenix.OdinInspector.ValidateInput(nameof(CooperativeConfigurationValid), "Invalid Cooperative settings or Continue Skill window.")]
+    public CooperativeBlockSettings cooperative = new CooperativeBlockSettings();
+    bool CooperativeConfigurationValid => !UsesCooperative || (cooperative != null && cooperative.IsValid &&
+        (!HasMultipleWindowData || System.Array.TrueForAll(windows, w => w != null && w.onSuccess == DefensiveBlockOutcome.InterruptSkill)));
+    public bool UsesCooperative => mode == DefensiveBlockMode.Cooperative;
     public float ApproachDuration => UsesTimedApproach ? timedApproachSeconds : 0f;
     public SkillDefensiveBlockSettings Copy() => JsonUtility.FromJson<SkillDefensiveBlockSettings>(JsonUtility.ToJson(this));
     [Min(0f)] public float commandRange = 8f;
@@ -49,6 +57,14 @@ public sealed class SkillDefensiveBlockSettings
         ? window < windows.Length && windows[window] != null && windows[window].AllowsStep(step) : AllowsStep(step));
     public float WindowEnd(int window) => HasMultipleWindowData && window >= 0 && window < windows.Length
         ? windows[window].endNormalized : windowEndNormalized;
+    public bool TryGetImpact(int window, out float normalizedTime)
+    {
+        normalizedTime = 0f;
+        if (!UsesTimedApproach || !HasMultipleWindowData || window < 0 || window >= windows.Length ||
+            windows[window] == null || !windows[window].useImpactMarker) return false;
+        normalizedTime = windows[window].impactNormalized;
+        return true;
+    }
     public DefensiveBlockOutcome Outcome(int window) => HasMultipleWindowData && window >= 0 && window < windows.Length
         ? windows[window].onSuccess : DefensiveBlockOutcome.InterruptSkill;
     public int[] Steps(int window) => HasMultipleWindowData && window >= 0 && window < windows.Length
@@ -64,6 +80,8 @@ public sealed class SkillDefensiveBlockSettings
             {
                 var window = windows[i];
                 if (window == null || !window.IsValid || (i > 0 && window.startNormalized <= windows[i - 1].endNormalized)) return false;
+                if (window.useImpactMarker && (!UsesTimedApproach ||
+                    (i + 1 < windows.Length && (windows[i + 1] == null || window.impactNormalized >= windows[i + 1].startNormalized)))) return false;
                 foreach (int step in window.hitboxSteps)
                     for (int j = 0; j < i; j++) if (windows[j].AllowsStep(step)) return false;
             }
@@ -71,6 +89,8 @@ public sealed class SkillDefensiveBlockSettings
         }
     }
     public bool IsConfigured => enabled && System.Enum.IsDefined(typeof(DefensiveBlockMode), mode) &&
+        (!UsesCooperative || (cooperative != null && cooperative.IsValid &&
+            (!HasMultipleWindowData || System.Array.TrueForAll(windows, w => w != null && w.onSuccess == DefensiveBlockOutcome.InterruptSkill)))) &&
         (!UsesTimedApproach || (timedApproachSeconds > 0f && !float.IsInfinity(timedApproachSeconds) &&
             approachStandOff > 0f && !float.IsInfinity(approachStandOff))) &&
         commandRange > 0f && windupSeconds >= 0f && WindowsAreValid &&

@@ -34,6 +34,8 @@ public sealed partial class InterruptionCommandController
             if (attack == null) { text.Append("Missing DefensiveBlockAttack"); continue; }
             text.Append(attack.DescribeBlockCommand(playerContext));
             if (playerContext == null) continue;
+            if (IsTooCloseForAllyBlock(attack))
+                text.Append($"\n  Ally Block excluded: body gap={GetBlockBodyGap(playerContext, attack.CasterContext):F2} m, threshold={allyBlockMinimumDistance:F2} m.");
             var party = playerContext.fieldAllyManager;
             int allies = 0;
             if (party != null) foreach (var member in party.RegisteredMembers)

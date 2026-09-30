@@ -287,6 +287,156 @@ public sealed class MeleeSkillIntegrationTests
         Assert.That(context.stateHub.WeaponSM.CurrentId, Is.EqualTo(WeaponStateId.Ready));
     }
 
+    // Invoked by the dedicated SkillGemDefinition.Tests assembly, reusing this fixture's rig.
+    public void AssertInvalidComboStepRejectedBeforePlayback(bool missingMarker)
+    {
+        var context = MakeRig(false);
+        var combo = MakeCombo(1);
+        var stepSkill = combo.ComboSteps[0].executionSkill;
+        if (missingMarker)
+            stepSkill.skillClip = new ClipTransition { Clip = MakeClip() };
+        else
+            stepSkill.payload = Track(ScriptableObject.CreateInstance<ProjectileSkillPayloadDef>());
+        context.baseStats.animProfile.lightMeleeSkill = combo;
+
+        Assert.That(context.MeleeController.TryStartMelee(MeleeType.Light), Is.False);
+        Assert.That(context.MeleeController.IsComboActive, Is.False);
+        Assert.That(context.AnimBrain.IsMeleePlaybackActive, Is.False);
+        Assert.That(context.stateHub.WeaponSM.CurrentId, Is.EqualTo(WeaponStateId.Ready));
+        Assert.That(context.GetComponentsInChildren<SkillHitboxSequenceRuntime>(true), Is.Empty);
+    }
+
+    public void AssertTauntAfterCastPointReceivesTimelineEvent(bool crossBothInOneFrame)
+        => AssertTauntTimeline(crossBothInOneFrame, SkillExecutionKind.StandardSkill, .4001f);
+
+    public void AssertBasicMeleeTauntReceivesTimelineEvent(float eventTime)
+        => AssertTauntTimeline(true, SkillExecutionKind.BasicMelee, eventTime);
+
+    public void AssertInvalidDefinitionRejectedBeforeReservation(bool unused)
+    {
+        var caster = MakeRig(false);
+        var user = caster.GetComponentInChildren<ProbeSkillUserBehaviour>();
+        var skill = Track(ScriptableObject.CreateInstance<SkillGemDefinition>());
+        skill.payload = Track(ScriptableObject.CreateInstance<ProjectileSkillPayloadDef>());
+        skill.baseManaCost = 25f;
+        var instance = new SkillInstance { def = skill };
+        float energy = user.currentEnagy;
+        var orchestrator = new SkillCastOrchestrator(caster);
+        var result = orchestrator.TryStartCast(new SkillCastRequest(instance, user, caster.AnimDriver));
+        Assert.That(result.Kind, Is.EqualTo(SkillCastStartKind.Rejected));
+        Assert.That(orchestrator.HasPendingCast, Is.False);
+        Assert.That(user.currentEnagy, Is.EqualTo(energy));
+        Assert.That(instance.TryGetChargeStatus(user, out var charges), Is.True);
+        Assert.That(charges.Available, Is.EqualTo(charges.Max));
+        skill.comboEnabled = true;
+        Assert.That(instance.CanCast(user), Is.False, "A Combo cannot cast its stale root payload.");
+    }
+
+    private void AssertTauntTimeline(bool crossBothInOneFrame, SkillExecutionKind kind, float eventTime)
+    {
+        var caster = MakeRig(false);
+        var target = MakeRig(false);
+        caster.SetIdentity(AITargetIdentity.Player);
+        target.SetIdentity(AITargetIdentity.Enemy);
+        caster.transform.position = new Vector3(0f, 0f, 20000f);
+        target.transform.position = caster.transform.position + Vector3.forward;
+        caster.TargetInfo = caster.gameObject.AddComponent<AITargetInfo>();
+        target.StatusEffects = target.gameObject.AddComponent<StatusEffectController>();
+        Call(target.StatusEffects, "Awake");
+        var sensor = target.gameObject.AddComponent<AITargetSensor>();
+        Call(sensor, "Awake");
+        target.ResolveReferences();
+        Assert.That(sensor.CanAcceptTaunt(caster.transform), Is.True);
+
+        var skill = Track(ScriptableObject.CreateInstance<SkillGemDefinition>());
+        skill.skillClip = new ClipTransition { Clip = MakeClip() };
+        skill.castPointNormalized = .4f;
+        AddEvent(skill.skillClip, eventTime, CombatTimelineEventName.TauntApply);
+        var payload = Track(ScriptableObject.CreateInstance<TauntSkillPayloadDef>());
+        skill.payload = payload;
+        var status = Track(ScriptableObject.CreateInstance<StatusEffectDef>());
+        status.effectId = "test.timeline.taunt";
+        status.tags.Add(StatusEffectTags.Taunt);
+        status.separatePerSource = true;
+        Set(payload, "tauntStatus", new StatusApplicationSpec { effect = status });
+        var issues = new List<SkillValidationIssue>();
+        skill.CollectValidationIssues(issues, kind);
+        Assert.That(issues, Is.Empty, string.Join("\n", issues));
+
+        int requestId = 9401;
+        int releases = 0;
+        int markers = 0;
+        GameObject tauntHost = null;
+        caster.AnimBrain.SkillTimelineEventRaised += (id, marker) =>
+        {
+            if (id == requestId && marker == CombatTimelineEventName.TauntApply) markers++;
+        };
+        caster.AnimBrain.SkillCastMomentReached += id =>
+        {
+            releases++;
+            if (kind == SkillExecutionKind.BasicMelee) return; // The real orchestrator executes it.
+            var cast = new SkillCastContext(caster.GetComponent<ProbeSkillUserBehaviour>(), skill,
+                new FinalSkillStats(), caster.AnimBrain, id);
+            Assert.That(payload.ExecuteWithResult(cast).Success, Is.True);
+            foreach (var runtime in Object.FindObjectsByType<TauntSkillRuntime>(FindObjectsSortMode.None))
+                if (((SkillCastContext)typeof(TauntSkillRuntime).GetField("context", Hidden).GetValue(runtime)).CasterObject == caster.gameObject)
+                    tauntHost = Track(runtime.gameObject);
+        };
+        try
+        {
+            if (kind == SkillExecutionKind.BasicMelee)
+            {
+                var combo = MakeCombo(1);
+                Set(combo, "comboSteps", new List<SkillComboStep> { new SkillComboStep(skill, "taunt", Vector2.zero, false) });
+                caster.baseStats.animProfile.lightMeleeSkill = combo;
+                Assert.That(combo.ValidateMelee(out var reason), Is.True, reason);
+                Assert.That(caster.MeleeController.TryStartMelee(MeleeType.Light), Is.True);
+                requestId = RequestId(caster.AnimBrain);
+                foreach (var runtime in Object.FindObjectsByType<TauntSkillRuntime>(FindObjectsSortMode.None))
+                    if (((SkillCastContext)typeof(TauntSkillRuntime).GetField("context", Hidden).GetValue(runtime)).CasterObject == caster.gameObject)
+                        tauntHost = Track(runtime.gameObject);
+            }
+            else
+                Assert.That(caster.AnimBrain.TryPlaySkill(requestId, skill, skill.GetCastPointNormalized()), Is.True);
+            var animancer = caster.GetComponent<AnimancerComponent>();
+            // Apply the newly created state's initial time before measuring evaluated frame steps.
+            animancer.Evaluate(0f);
+            if (crossBothInOneFrame)
+            {
+                animancer.Evaluate(.6f);
+                animancer.Evaluate(.01f);
+            }
+            else
+            {
+                animancer.Evaluate(.2f);
+                animancer.Evaluate(.01f);
+                Assert.That(target.StatusEffects.HasEffect(status), Is.False);
+                animancer.Evaluate(.19005f);
+                animancer.Evaluate(.00001f);
+                Assert.That(target.StatusEffects.HasEffect(status), Is.False);
+                animancer.Evaluate(.1f);
+                animancer.Evaluate(.01f);
+            }
+            Assert.That(releases, Is.EqualTo(1), "Cast Point must execute the payload once.");
+            Assert.That(markers, Is.EqualTo(1), "The animation must dispatch TauntApply once.");
+            Assert.That(target.StatusEffects.HasEffect(status), Is.True,
+                "A listener armed at Cast Point must receive the later marker, even in the same evaluated frame.");
+        }
+        finally
+        {
+            // Close the request while its animation assets still exist; queued callbacks must
+            // not return to locomotion after the fixture has destroyed its temporary clips.
+            // Remove the listener first: its production interruption path uses deferred Destroy.
+            if (tauntHost != null)
+            {
+                // Ordinary MonoBehaviour lifecycle messages are not dispatched in Edit Mode.
+                Call(tauntHost.GetComponent<TauntSkillRuntime>(), "OnDisable");
+                Object.DestroyImmediate(tauntHost);
+            }
+            caster.AnimDriver.CancelSkillCastRequest(requestId);
+        }
+    }
+
     [TestCase("death")]
     [TestCase("downed")]
     [TestCase("disable")]

@@ -34,17 +34,13 @@ public class AgentMoveDriver : MonoBehaviour
     CharacteContext _playerContext;
     float _nextPlayerResolveTime;
     bool _separationPauseActive;
-    bool _restoreAgentStopped;
+    int _separationPauseToken;
     float _separationPauseUntil;
     readonly Dictionary<int, float> _moveSpeedOverrides = new();
     int _nextMoveSpeedOverrideToken;
+    CharacterMovementMotor _movementMotor;
     int _activeMoveSpeedOverrideToken;
     float _activeMoveSpeedOverride;
-    readonly HashSet<int> _agentTransformSuspendTokens = new();
-    int _nextAgentTransformSuspendToken;
-    bool _hasCachedAgentTransformState;
-    bool _cachedAgentIsStopped;
-    bool _cachedAgentUpdatePosition;
     Transform ActorTransform => ctx != null ? ctx.transform : transform;
 
     public bool agentismoving;
@@ -73,6 +69,8 @@ public class AgentMoveDriver : MonoBehaviour
         }
 
         ctx?.ResolveReferences();
+        ctx?.EnsureMovementMotor();
+        if (ctx && ctx.NavigationAgent) agent = ctx.NavigationAgent;
 
         if (!characterController)
             characterController = ctx != null ? ctx.cc : null;
@@ -80,6 +78,9 @@ public class AgentMoveDriver : MonoBehaviour
             characterController = GetComponent<CharacterController>();
         if (!characterController)
             characterController = GetComponentInParent<CharacterController>();
+        _movementMotor = ctx ? ctx.MovementMotor : CharacterMovementMotor.Resolve(null, ActorTransform);
+        if (!ctx && _movementMotor)
+            _movementMotor.Configure(null, ActorTransform, characterController, agent);
     }
 
     void Update()
@@ -116,77 +117,17 @@ public class AgentMoveDriver : MonoBehaviour
     /// <summary>
     /// True while some owner has taken the transform away from the NavMeshAgent.
     /// </summary>
-    public bool IsAgentTransformSuspended => _agentTransformSuspendTokens.Count > 0;
+    CharacterMovementMotor MovementMotor => ctx ? ctx.MovementMotor : _movementMotor;
+    public bool IsAgentTransformSuspended => MovementMotor && MovementMotor.IsAgentTransformSuspended;
 
-    /// <summary>
-    /// Takes the transform away from the NavMeshAgent so another system can drive it directly.
-    /// Reference counted: the agent is only restored once every token has been released, which is
-    /// what keeps overlapping owners (airborne + knockback) from restoring each other's state.
-    /// </summary>
     public int AcquireAgentTransformSuspendToken()
     {
-        int token = NextAgentTransformSuspendToken();
-        _agentTransformSuspendTokens.Add(token);
-
-        if (_agentTransformSuspendTokens.Count == 1)
-            SuspendAgentTransform();
-
-        return token;
+        return MovementMotor ? MovementMotor.AcquireAgentSuspension(agent, rotation: false) : 0;
     }
 
     public void ReleaseAgentTransformSuspendToken(int token)
     {
-        if (token == 0 || !_agentTransformSuspendTokens.Remove(token))
-            return;
-
-        if (_agentTransformSuspendTokens.Count == 0)
-            RestoreAgentTransform();
-    }
-
-    void SuspendAgentTransform()
-    {
-        if (agent == null || !agent.enabled)
-            return;
-
-        _cachedAgentIsStopped = agent.isStopped;
-        _cachedAgentUpdatePosition = agent.updatePosition;
-        _hasCachedAgentTransformState = true;
-
-        agent.isStopped = true;
-        agent.updatePosition = false;
-        agent.nextPosition = ActorTransform.position;
-    }
-
-    void RestoreAgentTransform()
-    {
-        if (agent == null || !agent.enabled)
-        {
-            _hasCachedAgentTransformState = false;
-            return;
-        }
-
-        SyncAgentToTransform();
-
-        if (_hasCachedAgentTransformState)
-        {
-            agent.updatePosition = _cachedAgentUpdatePosition;
-            agent.isStopped = _cachedAgentIsStopped;
-        }
-
-        _hasCachedAgentTransformState = false;
-    }
-
-    int NextAgentTransformSuspendToken()
-    {
-        do
-        {
-            _nextAgentTransformSuspendToken++;
-            if (_nextAgentTransformSuspendToken <= 0)
-                _nextAgentTransformSuspendToken = 1;
-        }
-        while (_agentTransformSuspendTokens.Contains(_nextAgentTransformSuspendToken));
-
-        return _nextAgentTransformSuspendToken;
+        if (MovementMotor) MovementMotor.ReleaseAgentSuspension(token);
     }
 
     void UpdateAIMoveAnimFromNavMesh(NavMeshAgent agent)
@@ -377,10 +318,7 @@ public class AgentMoveDriver : MonoBehaviour
 
         BeginSeparationPause();
 
-        if (characterController != null && characterController.enabled)
-            characterController.Move(delta);
-        else
-            actorTransform.position += delta;
+        if (MovementMotor) MovementMotor.Move(delta, CharacterMovementSettings.Default);
 
         Physics.SyncTransforms();
         SyncAgentToTransform();
@@ -448,29 +386,29 @@ public class AgentMoveDriver : MonoBehaviour
 
     void BeginSeparationPause()
     {
-        if (agent == null || !agent.enabled || separationPauseDuration <= 0f)
-            return;
-
+        if (agent == null || !agent.enabled || !MovementMotor || separationPauseDuration <= 0f) return;
         if (!_separationPauseActive)
         {
-            _restoreAgentStopped = agent.isStopped;
+            _separationPauseToken = MovementMotor.AcquireAgentSuspension(agent, position: false, rotation: false);
             _separationPauseActive = true;
         }
-
         _separationPauseUntil = Time.time + separationPauseDuration;
-        agent.isStopped = true;
     }
 
     void TickSeparationPause()
     {
-        if (!_separationPauseActive || Time.time < _separationPauseUntil)
-            return;
+        if (!_separationPauseActive || Time.time < _separationPauseUntil) return;
+        ReleaseSeparationPause();
+    }
 
-        if (agent != null && agent.enabled)
-            agent.isStopped = _restoreAgentStopped;
-
+    void ReleaseSeparationPause()
+    {
+        if (_separationPauseToken != 0 && MovementMotor) MovementMotor.ReleaseAgentSuspension(_separationPauseToken);
+        _separationPauseToken = 0;
         _separationPauseActive = false;
     }
+
+    void OnDisable() => ReleaseSeparationPause();
 
     void SyncAgentToTransform()
     {
@@ -485,8 +423,7 @@ public class AgentMoveDriver : MonoBehaviour
 
         if (NavMesh.SamplePosition(ActorTransform.position, out NavMeshHit hit, separationNavMeshSampleRadius, NavMesh.AllAreas))
         {
-            agent.Warp(hit.position);
-            agent.nextPosition = hit.position;
+            if (MovementMotor) MovementMotor.PlaceOnNavMesh(hit.position);
         }
     }
 }

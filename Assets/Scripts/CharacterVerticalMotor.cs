@@ -23,10 +23,6 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
              "CharacterColliderRefs.CharacterPositionCollider.")]
     [SerializeField] private CapsuleCollider capsuleCollider;
     [SerializeField] private NavMeshAgent navMeshAgent;
-    [SerializeField] private AgentMoveDriver agentMoveDriver;
-    [SerializeField] private CharacterAnimBrain animBrain;
-    [SerializeField] private RootMotionCCDriver rootMotionCCDriver;
-    [SerializeField] private RootMotionNavMeshDriver rootMotionNavMeshDriver;
 
     [Header("Mode")]
     [SerializeField] private CharacterVerticalMode mode = CharacterVerticalMode.Always;
@@ -60,9 +56,7 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
     private bool _airborne;
     private int _nextGravitySuspendToken;
     private int _agentSuspendToken;
-    private bool _directAgentSuspendActive;
-    private bool _cachedAgentIsStopped;
-    private bool _cachedAgentUpdatePosition;
+    private CharacterMovementMotor _movementMotor;
     private float _landRecoveryElapsed;
 
     Transform ActorTransform => ctx != null ? ctx.transform : transform;
@@ -125,45 +119,17 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
         if (ctx != null && ctx.ColliderRefs != null)
             colliderRefs = ctx.ColliderRefs;
 
-        if (!animBrain)
-            animBrain = ctx != null ? ctx.AnimBrain : null;
-        if (!animBrain)
-            animBrain = ResolveActorComponent(animBrain);
-
-        // NavMeshAgent and AgentMoveDriver live on the ally/enemy subtypes, not on CharacteContext,
-        // so they are resolved by hierarchy search rather than through the shared context.
+        if (!navMeshAgent)
+            navMeshAgent = ctx != null ? ctx.NavigationAgent : null;
         if (!navMeshAgent)
             navMeshAgent = ResolveActorComponent(navMeshAgent);
-        if (!agentMoveDriver)
-            agentMoveDriver = ResolveActorComponent(agentMoveDriver);
 
-        if (!rootMotionCCDriver)
-            rootMotionCCDriver = ResolveActorComponent(rootMotionCCDriver);
-        if (!rootMotionNavMeshDriver)
-            rootMotionNavMeshDriver = ResolveActorComponent(rootMotionNavMeshDriver);
+        _movementMotor = ctx ? ctx.EnsureMovementMotor() : CharacterMovementMotor.Resolve(null, ActorTransform);
+        if (!ctx && _movementMotor)
+            _movementMotor.Configure(null, ActorTransform, characterController, navMeshAgent);
 
         if (ctx != null && ctx.VerticalMotor == null)
             ctx.VerticalMotor = this;
-    }
-
-    /// <summary>
-    /// Binds the runtime root-motion driver created for the active character model. The visual
-    /// controller owns model rebuilds, so it can update this reference without a hierarchy lookup.
-    /// </summary>
-    public void BindRuntimeRootMotionDriver(RootMotionCCDriver driver)
-    {
-        rootMotionCCDriver = driver;
-        rootMotionNavMeshDriver = null;
-    }
-
-    /// <summary>
-    /// Binds the runtime root-motion driver created for the active character model. The visual
-    /// controller owns model rebuilds, so it can update this reference without a hierarchy lookup.
-    /// </summary>
-    public void BindRuntimeRootMotionDriver(RootMotionNavMeshDriver driver)
-    {
-        rootMotionNavMeshDriver = driver;
-        rootMotionCCDriver = null;
     }
 
     T ResolveActorComponent<T>(T current) where T : Component
@@ -238,25 +204,7 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
     /// True while a root motion driver is writing the clip's own Y this frame. Gravity and root
     /// motion must not both write Y, so the motor stands down and lets the clip win.
     /// </summary>
-    bool RootMotionOwnsY
-    {
-        get
-        {
-            if (animBrain == null || !animBrain.RootMotionActive)
-                return false;
-
-            if (animBrain.RootMotionPlanarOnly)
-                return false;
-
-            if (rootMotionCCDriver != null && rootMotionCCDriver.isActiveAndEnabled && !rootMotionCCDriver.ZeroY)
-                return true;
-
-            if (rootMotionNavMeshDriver != null && rootMotionNavMeshDriver.isActiveAndEnabled && !rootMotionNavMeshDriver.ZeroY)
-                return true;
-
-            return false;
-        }
-    }
+    bool RootMotionOwnsY => ctx != null && ctx.MovementMotor != null && ctx.MovementMotor.RootMotionOwnsY;
 
     // ---------------------------------------------------------------- launch / suspend API
 
@@ -334,29 +282,9 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
     /// </summary>
     void SuspendAgent()
     {
-        if (_agentSuspendToken != 0 || _directAgentSuspendActive)
-            return;
-
-        // Reference-counted path, so overlapping owners (airborne + knockback) cannot restore each
-        // other's cached state.
-        if (agentMoveDriver != null)
-        {
-            _agentSuspendToken = agentMoveDriver.AcquireAgentTransformSuspendToken();
-            if (_agentSuspendToken != 0)
-                return;
-        }
-
-        // Some actor prefabs carry a NavMeshAgent without an AgentMoveDriver, so fall back to
-        // suspending the agent directly.
-        if (navMeshAgent == null || !navMeshAgent.enabled)
-            return;
-
-        _cachedAgentIsStopped = navMeshAgent.isStopped;
-        _cachedAgentUpdatePosition = navMeshAgent.updatePosition;
-        navMeshAgent.isStopped = true;
-        navMeshAgent.updatePosition = false;
-        navMeshAgent.nextPosition = ActorTransform.position;
-        _directAgentSuspendActive = true;
+        if (_agentSuspendToken != 0) return;
+        _movementMotor = ctx ? ctx.MovementMotor : _movementMotor;
+        if (_movementMotor) _agentSuspendToken = _movementMotor.AcquireAgentSuspension(navMeshAgent, rotation: false);
     }
 
     void TryLand(float dt)
@@ -373,7 +301,7 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
         // agent has no valid mesh position for, and nextPosition would leave it desynced forever.
         if (NavMesh.SamplePosition(position, out NavMeshHit hit, navMeshLandSampleRadius, navMeshAgent.areaMask))
         {
-            navMeshAgent.Warp(hit.position);
+            if (_movementMotor) _movementMotor.PlaceOnNavMesh(hit.position);
             FinishLanding();
             return;
         }
@@ -386,7 +314,7 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
         // metres is a far better outcome than one left with a permanently suspended agent.
         if (NavMesh.SamplePosition(position, out hit, navMeshLandSampleRadius * 4f, navMeshAgent.areaMask))
         {
-            navMeshAgent.Warp(hit.position);
+            if (_movementMotor) _movementMotor.PlaceOnNavMesh(hit.position);
         }
         else
         {
@@ -410,78 +338,22 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
 
     void ReleaseAgentSuspend()
     {
-        if (_agentSuspendToken != 0)
-        {
-            if (agentMoveDriver != null)
-                agentMoveDriver.ReleaseAgentTransformSuspendToken(_agentSuspendToken);
-
-            _agentSuspendToken = 0;
-        }
-
-        if (!_directAgentSuspendActive)
-            return;
-
-        if (navMeshAgent != null && navMeshAgent.enabled)
-        {
-            navMeshAgent.nextPosition = ActorTransform.position;
-            navMeshAgent.updatePosition = _cachedAgentUpdatePosition;
-            navMeshAgent.isStopped = _cachedAgentIsStopped;
-        }
-
-        _directAgentSuspendActive = false;
+        if (_movementMotor) _movementMotor.ReleaseAgentSuspension(_agentSuspendToken);
+        _agentSuspendToken = 0;
     }
 
     // ---------------------------------------------------------------- movement / probing
 
     void ApplyVerticalDelta(float delta)
     {
-        if (Mathf.Abs(delta) <= 0.000001f)
-            return;
-
-        Vector3 motion = new Vector3(0f, delta, 0f);
-
-        if (characterController != null && characterController.enabled)
-        {
-            characterController.Move(motion);
-        }
-        else
-        {
-            Vector3 resolved = ResolveManualDelta(motion);
-            if (resolved.sqrMagnitude <= 0.000001f)
-                return;
-
-            ActorTransform.position += resolved;
-        }
-
-        if (navMeshAgent != null && navMeshAgent.enabled)
-            navMeshAgent.nextPosition = ActorTransform.position;
-    }
-
-    /// <summary>
-    /// Swept fallback for actors with no CharacterController, mirroring
-    /// CharacterKnockbackMotor.ResolveManualDelta.
-    /// </summary>
-    Vector3 ResolveManualDelta(Vector3 desiredDelta)
-    {
-        float desiredDistance = desiredDelta.magnitude;
-        if (desiredDistance <= 0.0001f)
-            return Vector3.zero;
-
-        Vector3 direction = desiredDelta / desiredDistance;
-
-        if (!TryResolveBodyShape(out CharacterBodySweepShape shape))
-            return desiredDelta;
-
-        float allowedDistance = CharacterBodySweepUtility.ResolveAllowedDistance(
-            shape,
-            direction,
-            desiredDistance,
-            collisionPadding,
-            collisionMask,
-            queryTriggers,
-            ActorTransform);
-
-        return direction * allowedDistance;
+        if (Mathf.Abs(delta) <= 0.000001f) return;
+        var settings = CharacterMovementSettings.Default;
+        settings.CollisionMask = collisionMask;
+        settings.Padding = collisionPadding;
+        settings.Triggers = queryTriggers;
+        settings.FallbackBody = ResolveBodyCollider();
+        var motor = ctx ? ctx.MovementMotor : _movementMotor;
+        if (motor) motor.Move(Vector3.up * delta, settings);
     }
 
     bool ProbeGround()
@@ -565,12 +437,6 @@ public sealed class CharacterVerticalMotor : MonoBehaviour
 
         return CharacterBodySweepUtility.IsUsableBody(capsuleCollider) ? capsuleCollider : null;
     }
-
-    bool TryResolveBodyShape(out CharacterBodySweepShape shape)
-    {
-        return CharacterBodySweepUtility.TryResolveShape(ResolveBodyCollider(), out shape);
-    }
-
     bool TryResolveBounds(out Bounds bounds)
     {
         if (characterController != null && characterController.enabled)

@@ -13,6 +13,10 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
     [Range(0.05f, 1f)] public float unavailableBrightness = 0.25f;
     [Min(0.01f)] public float appearSeconds = 0.18f;
     [Min(0.01f)] public float disappearSeconds = 0.12f;
+    [Tooltip("Log readiness/presentation changes, including why a ready cue is hidden.")]
+    public bool logPresentation;
+    public string PresentationStatus { get; private set; }
+    bool reportedReady;
     PlayerContext ctx;
     Camera viewCamera;
     Transform cue;
@@ -37,19 +41,23 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
     // Retained for callers; readiness is presented only through the flare.
     public bool IsPromptVisible => false;
 
-    void Awake()
+    void OnEnable()
     {
         ctx = GetComponentInParent<PlayerContext>();
         ctx?.ResolveReferences();
         properties = new MaterialPropertyBlock();
+        viewCamera = null;
+        readyWeight = 0f;
+        HideImmediately();
+        ReportPresentation("Enabled");
     }
 
     void LateUpdate()
     {
-        if (viewCamera == null || !viewCamera.isActiveAndEnabled) viewCamera = Camera.main;
-        if (ctx == null || ctx.interruptionCommand == null || viewCamera == null || cuePrefab == null ||
+        ResolveViewCamera();
+        if (ctx == null || ctx.interruptionCommand == null ||
             ctx.HealthSystem == null || !ctx.HealthSystem.IsAlive)
-        { HideImmediately(); return; }
+        { HideImmediately(); ReportPresentation("ActorUnavailable"); return; }
 
         bool eligible = ctx.interruptionCommand.TrySelectDefensiveBlockAttack(out var attack);
         var threat = attack;
@@ -58,6 +66,8 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         ReadyAttack = eligible ? attack : null;
         ThreatAttack = hasThreat ? threat : null;
         IsReady = eligible;
+        if (viewCamera == null || cuePrefab == null)
+        { HideImmediately(false); ReportPresentation(viewCamera == null ? "MissingCamera" : "MissingPrefab"); return; }
         if (hasThreat)
         {
             if (displayedTarget != target || displayedAttack != threat || displayedRequest != threat.RequestId ||
@@ -75,24 +85,20 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         }
         else if (phase == Phase.Appearing || phase == Phase.Holding) BeginPhase(Phase.Disappearing);
 
-        if (phase == Phase.Hidden) return;
+        if (phase == Phase.Hidden) { ReportPresentation("NoThreat"); return; }
         if (displayedTarget == null || !displayedTarget.isActiveAndEnabled ||
             displayedTarget.HealthSystem == null || !displayedTarget.HealthSystem.IsAlive)
-        { HideImmediately(); return; }
+        { HideImmediately(); ReportPresentation("TargetUnavailable"); return; }
 
         Vector3 position = displayedTarget.transform.position + targetOffset;
         Vector3 viewport = viewCamera.WorldToViewportPoint(position);
         if (viewport.z <= viewCamera.nearClipPlane || viewport.x < 0f || viewport.x > 1f || viewport.y < 0f || viewport.y > 1f)
-        { HideImmediately(false); return; }
-        if (cue == null)
-        {
-            cue = Instantiate(cuePrefab).transform;
-            cue.name = "Defensive Block Ready (local cue)";
-            cueRenderer = cue.GetComponent<Renderer>();
-        }
-        cue.gameObject.SetActive(true);
+        { HideImmediately(false); ReportPresentation("Offscreen"); return; }
+        if (!PrepareCue()) { HideImmediately(false); ReportPresentation("MissingRendererOrMaterial"); return; }
+        if ((viewCamera.cullingMask & (1 << cueRenderer.gameObject.layer)) == 0)
+        { HideImmediately(false); ReportPresentation("CameraExcludesLayer"); return; }
         AdvanceAnimation(Time.unscaledDeltaTime);
-        if (phase == Phase.Hidden) return;
+        if (phase == Phase.Hidden) { ReportPresentation("NoThreat"); return; }
         TryPlayReadySound(eligible ? attack : null, position);
         float height = viewCamera.orthographic ? 2f * viewCamera.orthographicSize :
             2f * viewport.z * Mathf.Tan(viewCamera.fieldOfView * Mathf.Deg2Rad * 0.5f);
@@ -102,6 +108,46 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         readyWeight = Mathf.MoveTowards(readyWeight, eligible ? 1f : unavailableBrightness, Time.unscaledDeltaTime * 8f);
         properties.SetFloat(IntensityId, brightness * intensity * readyWeight);
         if (cueRenderer != null) cueRenderer.SetPropertyBlock(properties);
+        ReportPresentation(brightness <= 0f ? "ZeroBrightness" : "Visible");
+    }
+
+    void ResolveViewCamera()
+    {
+        // Re-evaluate even while the previously selected camera is still enabled.
+        viewCamera = Camera.main;
+        if (viewCamera == null && GameplayCameraController.Instance != null)
+            viewCamera = GameplayCameraController.Instance.GameplayCamera;
+        if (viewCamera != null && !viewCamera.isActiveAndEnabled) viewCamera = null;
+    }
+
+    bool PrepareCue()
+    {
+        if (cue == null)
+        {
+            cue = Instantiate(cuePrefab).transform;
+            cue.name = "Defensive Block Ready (local cue)";
+        }
+        if (cueRenderer == null) cueRenderer = cue.GetComponent<Renderer>();
+        if (cueRenderer == null) return false;
+        if (cueRenderer.sharedMaterial == null)
+        {
+            var sourceRenderer = cuePrefab.GetComponent<Renderer>();
+            if (sourceRenderer != null) cueRenderer.sharedMaterial = sourceRenderer.sharedMaterial;
+        }
+        if (cueRenderer.sharedMaterial == null) return false;
+        cueRenderer.enabled = true;
+        cueRenderer.forceRenderingOff = false;
+        cue.gameObject.SetActive(true);
+        return true;
+    }
+
+    void ReportPresentation(string status)
+    {
+        if (PresentationStatus == status && reportedReady == IsReady) return;
+        PresentationStatus = status;
+        reportedReady = IsReady;
+        if (logPresentation)
+            Debug.Log($"[Block.ReadyCue] ready={IsReady} status={status} camera='{viewCamera?.name}' target='{ThreatAttack?.name}'", this);
     }
 
     void TryPlayReadySound(DefensiveBlockAttack attack, Vector3 position)
@@ -159,7 +205,7 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         displayedTarget = null;
         if (cue != null) cue.gameObject.SetActive(false);
     }
-    void OnDisable() { HideImmediately(); }
+    void OnDisable() { HideImmediately(); viewCamera = null; ReportPresentation("Disabled"); }
     void OnDestroy()
     {
         if (cue != null) Destroy(cue.gameObject);

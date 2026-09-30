@@ -486,7 +486,6 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
                 _ctx,
                 _ctx.transform,
                 settingsSource);
-            _ctx?.VerticalMotor?.BindRuntimeRootMotionDriver(navDriver);
             return;
         }
 
@@ -522,7 +521,6 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
 
         driver.enabled = true;
         driver.Configure(animBrain, characterController, animator);
-        _ctx?.VerticalMotor?.BindRuntimeRootMotionDriver(driver);
     }
 
     public void BuildModelFromWeaponDef()

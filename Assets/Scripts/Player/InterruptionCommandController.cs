@@ -45,6 +45,43 @@ public sealed partial class InterruptionCommandController : MonoBehaviour
     int _attemptCounter;
     [Header("Defensive Block")]
     public bool defensiveBlockEnabled;
+    [Tooltip("Normal Ally Block is unavailable at or inside this planar gap between the Player and attacker body colliders and falls back to the Player. Cooperative Block is exempt. Zero disables the distance restriction.")]
+    [SerializeField, Min(0f)] private float allyBlockMinimumDistance = 1.5f;
+
+    bool IsTooCloseForAllyBlock(DefensiveBlockAttack attack)
+    {
+        if (playerContext == null || attack == null || attack.IsCooperative || allyBlockMinimumDistance <= 0f) return false;
+        return GetBlockBodyGap(playerContext, attack.CasterContext) <= allyBlockMinimumDistance;
+    }
+
+    internal static float GetBlockBodyGap(CharacteContext player, CharacteContext attacker)
+    {
+        if (player == null || attacker == null) return float.PositiveInfinity;
+        Collider playerBody = player.cc != null && player.cc.enabled ? player.cc : player.ColliderRefs?.CharacterPositionCollider;
+        Collider attackerBody = attacker.cc != null && attacker.cc.enabled ? attacker.cc : attacker.ColliderRefs?.CharacterPositionCollider;
+        Vector3 playerCenter = playerBody != null && playerBody.enabled ? playerBody.bounds.center : player.transform.position;
+        Vector3 attackerCenter = attackerBody != null && attackerBody.enabled ? attackerBody.bounds.center : attacker.transform.position;
+        Vector3 delta = attackerCenter - playerCenter;
+        delta.y = 0f;
+        if (delta.sqrMagnitude < .000001f) return 0f;
+        Vector3 direction = delta.normalized;
+        return Mathf.Max(0f, delta.magnitude - BlockBodyExtent(player, playerBody, direction) -
+            BlockBodyExtent(attacker, attackerBody, direction));
+    }
+
+    static float BlockBodyExtent(CharacteContext actor, Collider body, Vector3 direction)
+    {
+        if (body == null || !body.enabled || !CharacterPlacementFootprintUtility.TryGetColliderFootprint(
+            body, actor.transform, out var shape, out _)) return 0f;
+        // Use authored dimensions: CharacterController.ClosestPoint uses a shrunken query shape.
+        if (shape.Shape == CharacterPlacementShape.Circle)
+            return shape.Radius + Mathf.Abs(Vector3.Dot(actor.transform.rotation * shape.Axis, direction)) *
+                Mathf.Max(0f, shape.Height * .5f - shape.Radius);
+        Quaternion rotation = actor.transform.rotation * shape.Rotation;
+        return Mathf.Abs(Vector3.Dot(rotation * Vector3.right, direction)) * shape.HalfExtents.x +
+            Mathf.Abs(Vector3.Dot(rotation * Vector3.up, direction)) * shape.HalfExtents.y +
+            Mathf.Abs(Vector3.Dot(rotation * Vector3.forward, direction)) * shape.HalfExtents.z;
+    }
 
     // Shared by the command and ready cue. No camera, aim target, overlap query or reservation.
     public bool TrySelectDefensiveBlockAttack(out DefensiveBlockAttack selected)
@@ -78,6 +115,7 @@ public sealed partial class InterruptionCommandController : MonoBehaviour
     {
         selected = null;
         if (!defensiveBlockEnabled || playerContext == null || attack == null || !attack.CanAcceptCommand(playerContext)) return false;
+        if (attack.IsCooperative) return TrySelectCooperativeAlly(attack, out selected);
         if (TrySelectDefensiveBlockAlly(attack, out var companion)) selected = companion.DefensiveBlock;
         else if (playerContext.DefensiveBlock != null && playerContext.DefensiveBlock.CanBeginSelf(playerContext, attack) &&
             attack.CanApproachGuard(playerContext, playerContext.DefensiveBlock))
@@ -88,6 +126,7 @@ public sealed partial class InterruptionCommandController : MonoBehaviour
     public bool TrySelectDefensiveBlockAlly(DefensiveBlockAttack attack, out AllyContext selected)
     {
         selected = null;
+        if (IsTooCloseForAllyBlock(attack)) return false;
         if (!defensiveBlockEnabled || playerContext == null || playerContext.fieldAllyManager == null ||
             attack == null || !attack.CanAcceptCommand(playerContext)) return false;
         int bestRole = int.MaxValue;
@@ -123,6 +162,10 @@ public sealed partial class InterruptionCommandController : MonoBehaviour
 
     public InterruptionCommandResult TryExecuteInterruptionCommand()
     {
+        if (ActiveCooperativeBlock != null)
+        {
+            return ActiveCooperativeBlock.Press() ? InterruptionCommandResult.Success : InterruptionCommandResult.SkillRejected;
+        }
         int attemptId = ++_attemptCounter;
         LogDefensiveBlockAttempt(attemptId);
 

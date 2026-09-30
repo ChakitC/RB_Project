@@ -677,10 +677,6 @@ MonoBehaviour:
   colliderRefs: {fileID: 0}
   capsuleCollider: {fileID: 0}
   navMeshAgent: {fileID: 1585247101988985248}
-  agentMoveDriver: {fileID: 4358868359549360660}
-  animBrain: {fileID: 6756038978356485017}
-  rootMotionCCDriver: {fileID: 0}
-  rootMotionNavMeshDriver: {fileID: 6648510169112720681}
   mode: 1
   gravity: -25
   terminalVelocity: -50

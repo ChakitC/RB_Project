@@ -133,7 +133,7 @@ public static class PartySpawnFeatureSmokeTests
             $"'{prefabPath}' still carries the legacy prefab-authored helper proc definitions.");
     }
 
-    static void TestRuntimeComposition(PartySpawnConfigSO config)
+    internal static void TestRuntimeComposition(PartySpawnConfigSO config)
     {
         SceneSetup[] previousSetup = EditorSceneManager.GetSceneManagerSetup();
         GameObject markerObject = null;
@@ -156,6 +156,8 @@ public static class PartySpawnFeatureSmokeTests
                 "Runtime party must use PartyRuntimeRoot instead of PlayerSquad.");
             Expect(party.PlayerUIRoot != null && party.PlayerUIContext != null,
                 "Runtime party must create and bind Player UI.");
+            Expect(party.PlayerUIRoot.GetComponentInChildren<GameplayHudPresenter>(true) != null,
+                "Runtime Player UI must instantiate GameplayHUD.");
 
             var roles = new HashSet<ChainActorRole>();
             for (int i = 0; i < party.Actors.Count; i++)
@@ -260,6 +262,15 @@ public static class PartySpawnFeatureSmokeTests
 public sealed class PartySpawnUnityTests
 {
     [Test]
+    public void RuntimePartySpawnIncludesGameplayHud()
+    {
+        PartySpawnConfigSO config = AssetDatabase.LoadAssetAtPath<PartySpawnConfigSO>(
+            PartySpawnMigrationTool.ConfigPath);
+        Assert.That(config, Is.Not.Null);
+        PartySpawnFeatureSmokeTests.TestRuntimeComposition(config);
+    }
+
+    [Test]
     public void PartyAuthoringAndEditModeCompositionAreValid()
     {
         PartySpawnFeatureSmokeTests.RunFromCommandLine();
@@ -285,6 +296,8 @@ public sealed class PartySpawnUnityTests
         Assert.That(marker.CurrentParty, Is.Not.Null);
         Assert.That(marker.CurrentParty.Actors.Count, Is.EqualTo(4));
         Assert.That(marker.CurrentParty.Root.name, Is.EqualTo("PartyRuntimeRoot"));
+        Assert.That(marker.CurrentParty.PlayerUIRoot.GetComponentInChildren<GameplayHudPresenter>(true),
+            Is.Not.Null);
 
         UnityEngine.Object.Destroy(marker.CurrentParty.PlayerUIRoot);
         UnityEngine.Object.Destroy(marker.CurrentParty.Root);

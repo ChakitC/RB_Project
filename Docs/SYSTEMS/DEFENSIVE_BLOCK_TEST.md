@@ -1,5 +1,208 @@
 # Defensive Block — production and regression scene
 
+## Cooperative Block
+
+`Cooperative` is mode 2; Contact (0) and Timed Approach (1) retain their serialized values.
+It requires a ready Player plus the first ready, opted-in Companion in party-slot order.
+Both actor profiles must enable `cooperativeEnabled`; the default is false. No solo fallback
+is offered. The Player stays in place, and the helper uses the first safe left/right position
+computed from both body footprints. Ground, NavMesh, actor/world overlap, reservations and
+the attacker's approach path are checked before readiness and again before movement.
+
+The first bound payload step in the accepted window supplies an immutable damage snapshot.
+Until that runtime is bound, the command is unavailable. Accepting suppresses the entire
+request, including later-bound runtimes. The default approach lasts 0.22 seconds with 1.6 m
+stand-off from the pair's midpoint. The request's animation/root motion is held at impact.
+
+`CooperativeBlockSession` owns Preparing → Struggling → Success/Failure → Finished, with
+Cancelled available before resolution. `State`, `Outcome`, `Meter`, `Remaining`, `Changed`,
+`PressAccepted` and `Ended` are the HUD contract. `Ended` reports the outcome exactly once;
+`Outcome` remains readable after Finished. The command controller exposes `ActiveCooperativeBlock`
+and `CooperativeBlockStarted`. The initiating press contributes no meter. Only fresh Block
+presses count; holding, preparing, paused and terminal input do not contribute.
+
+When the session enters `Struggling`, the Player HUD plays its assigned `Screen wind` full-screen
+effect once, oriented from the Player toward the incoming caster and using the cooperative
+duration. This is presentation feedback only; it does not change meter, timing, or outcome rules.
+The session keeps a `PlayerScreenEffectHandle` returned by `BeginScreenWindFullscreenEffect`.
+It manually advances particles and fade with the meter's pause-aware real clock, including input
+timestamp advances. The handle needs no HUD coroutine, so an inactive PlayerHUD can still supply
+its existing prefab reference. The requested duration is exact, without a prefab/minimum-lifetime
+extension. Success/failure disposes the wind immediately; cancellation and cleanup also dispose
+it idempotently. Each handle owns only its instance, leaving other screen effects untouched.
+The existing autonomous Heal/Perfect Dodge/`PlayScreenWind` APIs retain their previous behavior.
+Owned-wind validation on 2026-09-22 passed the required build (0 errors, 93 existing warnings),
+four Editor lifecycle tests and all 11 Play Mode impact trials. The fixture kept PlayerHUD
+inactive; checks confirmed manual particle advance, pause, exact short duration, independent
+handles, camera destruction and cleanup on success/failure/cancel/disable, with no coroutine
+startup errors. Reports are under the workspace's `BuildArtifacts/cooperative-wind-*`.
+Visibility follow-up: both Player UI prefabs had a `screenEffectSizeMultiplier` override of
+110.8, placing the wind pattern outside the view despite successful particle playback. This
+was corrected to 1.15 in `PlayerUI` and `PlayerUI_PartyHud`; a fresh Play Mode spawn was visually
+verified, with the screen quad directly in front of the camera. See
+`BuildArtifacts/cooperative-wind-visible.png` and `cooperative-wind-visibility.txt`.
+
+Defaults: meter 50%, +10% per press, −20% per real second, 3 seconds, presentation world scale
+0.15. The session's real clock excludes pause, including pause transitions. It advances before
+input so a late press cannot undo timeout/depletion. All values belong to the skill's
+`cooperative` settings and participate in Timeline draft, Save, Revert, conflict detection and
+Undo. Choose **Block > Mode > Cooperative**, then **Block > Timed Approach Settings...**.
+Cooperative always interrupts the whole request; Continue Skill is disabled and rejected on Save.
+
+All three participants receive owned invincibility, status-application and knockback-application
+tokens plus World Slow exemptions. Existing status effects continue ticking; they are not removed.
+Protection tokens do not clear another owner's immunity. Success stops the request, pushes the
+enemy and plays guard recoil without an automatic counterattack. Failure stops the request and
+applies one captured hit to each defender through normal armor, damage and combat-event handling.
+Authored hit knockback is used, otherwise 2 m / 0.4 s. Request/life/definition changes, death,
+disable and forced cinematics cancel without a failure penalty. Cleanup is idempotent.
+
+On success, each defender releases its protection and World Slow exemption when its own
+Block animation ends and its control/movement scope is restored. A fast Player recovery
+does not retain immunity while waiting for a slower Ally. The session finishes after both
+guards end. The recovery watchdog uses the longer accepted Impact + Exit duration, including
+the recoil minimum, plus 1 second of grace. It advances with scaled gameplay time, matching
+the protected guards' animation clock through HitLag/global slow motion and pause; the old
+fixed 2-second real-time cutoff no longer truncates long authored recovery. Active playback
+and the watchdog retain their accepted settings if an author edits a profile mid-session.
+
+Command diagnostics distinguish an existing guard, missing/disabled Block controller and
+locked gameplay input from a physical line-of-sight obstruction. Cooperative planning reports
+Player/Ally readiness, Player placement, Ally placement, attacker approach and damage snapshot
+failures separately. Companion selection still uses party order and remains exempt from the
+normal Ally Block minimum body-gap distance.
+
+Recovery validation (2026-09-28): the required build passed with 0 errors / 93 existing
+warnings; all 6 Cooperative Editor tests passed. Play Mode passed all 12 outcome/cleanup
+trials, Input System edges, and the added asymmetric recovery case (Player 1.12 s,
+Ally 3.9 s), checking camera release at 80%, independent protection release, pause and
+snapshot stability. Selection/placement was rerun successfully after isolating other eligible
+party members in the unavailable-helper fixture; normal slot fallback is still tested with
+them restored. Disabled-command and locked-input reason checks also passed. Reports:
+`P:/Game_RB_Project/BuildArtifacts/cooperative-recovery-build.log`,
+`cooperative-recovery-playmode.txt`, and `cooperative-recovery-selection.txt`.
+
+Player input remains enabled during the session. A `PlayerMovementCC` suspension token stops
+both movement and overlap separation; releasing it cannot re-enable a component disabled by
+another owner. Input System event timestamps feed `PressAt` before the render update advances
+the meter. Out-of-order, pre-start and post-deadline events never rewind the clock. Active-scene
+changes also cancel sessions when actors survive the scene transition.
+
+One session-owned camera frames Player and Ally using the normal Block profile during
+approach, then blends at contact to the profile's **Cooperative Struggle Camera** settings.
+The default oblique rear shot puts the defenders on the left with space for the Block prompt
+on the right. The transition pauses with the session. On success, return blending starts at
+80% of the Player's actual Impact playback, with no extra camera hold. Player Exit/completion
+also releases the shot if an update skips the threshold. The Ally can finish its own animation
+afterward; cleanup never restarts the camera hold. The session's presentation World Slow
+ends at the same 80% threshold, so the boss resumes normal speed during the camera return
+instead of waiting for Ally Exit. This release also runs without a camera and preserves slow
+effects owned by other systems. Failure/cancel releases both the shot and its World Slow immediately.
+The 2026-09-29 follow-up passed the required build (0 errors, 93 existing warnings) and
+the asymmetric recovery Play Mode test: slow remains before the threshold, ends with the
+camera at 80%, and stays released while Ally finishes. No-camera release, repeated cleanup,
+and preservation of another owner's slow also passed. Reports are in the workspace's
+`BuildArtifacts/cooperative-slow-release-build.log` and `cooperative-slow-release-playmode.txt`.
+The right-side gameplay HUD fades out during struggle/success and returns when the session
+ends; left status/party panels and the Block prompt stay visible.
+The camera follows the live Player position and starts at the authored offset,
+moving backwards only as far as needed to fit padded body bounds inside the central 85%
+of the output camera's aspect ratio. The approaching enemy does not widen the shot.
+Existing obstruction checks take priority over framing, and blend return is unchanged.
+The 2026-09-24 presentation check passed 27 Editor HUD/camera cases and the live
+cooperative harness (selection/placement, 12 outcome/cleanup trials, Input System edges).
+The live struggle capture confirmed right-panel alpha `0`; cancel/finish restored alpha `1`
+and released the camera. Evidence: `BuildArtifacts/block-presentation-playmode.txt` and
+`RB_Project/Captures/cooperative-struggle-presentation.png` in the workspace.
+Cooperative camera shake uses the Player guard profile's **Cooperative Camera Shake**
+fields. Contact starts one decaying rotational kick (1.8 degrees / 0.22 seconds / 22 Hz)
+and blends in gentle struggle motion (0.12 degrees / 9 Hz). Each strength can be zero
+to disable it. `CooperativeBlockSession` advances the owned shake with the same real,
+pause-aware clock as the meter, including timestamped input advances; world slow does
+not reduce the shake frequency. Sampling adds rotation to the clean camera pose, with
+no positional drift. Resolution stops both effects immediately. A win starts a separate
+one-time kick from **Cooperative Success Camera Shake** on the Player guard profile:
+`cooperativeSuccessShakeDegrees` (1.8), `cooperativeSuccessShakeSeconds` (0.2), and
+`cooperativeSuccessShakeFrequency` (20 Hz). Zero degrees disables it. The success kick
+uses real time excluding Pause while the defenders recoil; failure/cancellation never
+starts it. Settings are snapshotted with the shot. Cleanup, camera disable
+and cinematic takeover clear them without clearing other systems' impulses.
+On that same Preparing-to-Struggling transition, the session spawns the Player guard's
+`impactVfx` once at the midpoint of the two guard contact centers. This uses the existing
+`impactVfxLifetime` and does not resolve the Block or start guard recoil. No VFX is emitted
+for a rejected command or cancellation before contact. Cleanup removes a surviving contact
+effect; the existing success feedback remains separate. An empty VFX field is allowed.
+The Player guard's `impactCue` also plays once at that initial contact point through
+`AudioService`, alongside the VFX and camera kick. Struggle updates and mash presses do
+not replay it. Empty cues are silent; cue volume, variation and playback limits apply
+normally. The existing success sound still plays separately when the pair wins.
+Initial-audio validation on 2026-09-22 passed the required build (0 errors, 93 existing
+warnings). Play Mode confirmed one playing `BlockImpact` source before the outcome,
+no repeat during struggle/mash, retained success sound and complete guard/camera cleanup.
+Reports are under the workspace's `BuildArtifacts/cooperative-contact-audio-*`.
+Contact-VFX validation on 2026-09-22 passed the required build (0 errors, 93 existing
+warnings) and all 11 Play Mode impact trials, including initial position, no respawn
+during struggle and cleanup. The initial flash was also visually checked in the Rector
+fixture. Reports and screenshot are under the workspace's `BuildArtifacts/cooperative-contact-vfx*`.
+Shake validation on 2026-09-22 passed the required build (0 errors, 93 existing warnings),
+19 Editor cases and all 11 Play Mode impact trials. Checks include no shake before contact,
+one-time impact, changing struggle motion, pause, zero-strength disable, owner isolation,
+and cleanup after success, failure, cancellation and disable. Reports are under the
+workspace's `BuildArtifacts/cooperative-shake-*`.
+Close-camera validation on 2026-09-22 passed 11 Editor camera/framing/obstruction cases,
+11 Play Mode impact/cleanup trials and the required build (0 errors, 93 existing warnings).
+The live Rector fixture was visually checked with both defenders visible; reports and
+the screenshot are under the workspace's `BuildArtifacts/cooperative-camera-*` and
+`BuildArtifacts/cooperative-close-camera.png`.
+`CooperativeBlockHud` uses uGUI/TMP and can bind authored fields; a default overlay
+is created on the Player on first use. It shows meter, remaining time, partner, the actual Input
+System binding label and accepted-press feedback. `CharacterAnimProfileSO.block.cooperativeStruggleClip`
+is optional for Player/Ally; absent clips retain the held guard pose.
+
+The enemy uses a separate per-skill `defensiveBlock.cooperative.enemyStruggleClip`,
+with `enemyStruggleFadeSeconds` (default 0.06 seconds). Leave the clip empty to hold
+the attack's impact pose. Assign an in-place, non-Legacy clip with positive length
+to loop it after the attacker and both guards reach Struggling. The fade must be
+finite and nonnegative. These fields are available in the Inspector and Timeline's
+Timed Approach Settings popup and use the existing draft/Save/Revert/Undo workflow.
+`CharacterAnimDriver.TryBeginEnemyCooperativeStruggle` checks the active request;
+`CharacterAnimBrain` owns a separate presentation state, even when the same clip is
+also the attack clip. Request time stays at impact, root motion stays disabled, and
+sampling the loop does not replay attack timeline events. Pause freezes the loop.
+Leaving the skill on success, failure or cancellation destroys the temporary state.
+
+Enemy-loop validation on 2026-09-22: `CheckAssemblyBuild.ps1` passed with 0 errors
+and 93 existing warnings. All 33 focused Editor cases and 11 impact/approach Play
+Mode trials passed, including the four enemy-loop outcomes. Reports are stored in
+`BuildArtifacts/enemy-struggle-build.log`, `enemy-struggle-editmode.txt` and
+`enemy-struggle-playmode.txt` at the repository's parent workspace. The sample
+keeps its optional clip empty; the loop trials assign the attack clip to a temporary
+skill copy to test isolation without changing production or sample animation assets.
+
+Use **Tools > RB > Defensive Block > Add Cooperative Test Skill** to create/update the fixture.
+The existing test scene's Rector skill picker includes **Rector Skill 1 — Cooperative Block**.
+Its asset and embedded payload are under `Assets/Tests/DefensiveBlock/Cooperative`; Player/Aires
+test profiles also live there. The harness overrides only spawned actor definition copies when
+this sample is selected. Production skill modes, damage values and profiles are unchanged.
+Run **Run Cooperative Validation** on the harness in Play Mode for selection/placement, success,
+failure, pause, overlapping protection, preparing/struggling cancellation, disable, reset,
+death, definition swap, control loss and Input System press/hold/release handling. The fixture
+waits for bounded recoil/knockback and camera recovery before checking cleanup. Death animation
+can legitimately keep a member busy; its reservation and sequence ownership must still release.
+`CooperativeBlockTests` covers
+meter deadlines, frame-rate-independent timestamped inputs, settings snapshots and authoring rules.
+
+Validation on 2026-09-22: the required `CheckAssemblyBuild.ps1` completed with 0 errors
+(93 existing warnings). 67 Editor test cases passed across cooperative meter/authoring and
+Block geometry, timing, selection, windows, camera, grounding and production integration.
+The cooperative Play Mode fixture passed 14 groups, plus an active-scene change test that
+preserved an independently owned movement token. Live Contact and Timed Approach trials also
+passed with one successful Block, no Player HP loss and complete camera/control return.
+Failure delivered one hit to each defender (57.08 / 49.59 HP with the fixture's different armor)
+and committed/released the enemy cast once. Synthetic Keyboard state changes exercised actual
+InputAction press/cancel callbacks, including the held initiating button. No new animation clips
+were needed. Full run logs are in the workspace's `BuildArtifacts` directory.
+
 ## Editing Block timing in Animation/VFX Timeline
 
 In **Animation / VFX**, select Rector's `Rector_Skill_1` and its **Main Skill** entry.
@@ -150,7 +353,10 @@ and path validity, rather than requiring Player to catch an actual collider late
 
 The original Skill animation keeps running through AnimDriver's request-scoped
 `TryBeginSkillApproach`. It gives up root motion and adjusts positive playback speed
-only when the remaining charge segment would otherwise end too early. It retains
+only when the remaining charge segment would otherwise end too early. It keeps
+the authored playback speed (including speeds below or above 1x) when the remaining
+window fits the approach duration; it only slows playback to fit a shorter window.
+Continue Skill restores that original speed after the approach. It retains
 the cast-point/timeline so ordinary payload/cost/cooldown settlement happens once.
 An already released hitbox execution stops immediately; a matching later execution
 is stopped during `Bind`, before it can damage anything. No other request receives
@@ -201,6 +407,24 @@ are excluded. Each candidate still needs an available defender and safe placemen
 The ready cue calls this same selector; an offscreen threat remains blockable although
 its world-space flare is hidden. Legacy interruption targeting is unchanged.
 
+Ready cue recovery (2026-09-30): the cue resolves the current `Camera.main` each
+frame, falling back to the active GameplayCameraController camera if no main camera
+exists. Re-enabling the component rebinds its Player context and resets presentation.
+Missing instances are recreated; a disabled renderer or missing instance material
+is restored from the authored root renderer. The cue does not enable its own disabled
+component or change camera masks. Offscreen behavior is unchanged.
+`PresentationStatus` exposes the current presentation result. Enable `logPresentation`
+on DefensiveBlockReadyCue to log status/readiness transitions, including MissingCamera,
+MissingPrefab, Offscreen, CameraExcludesLayer and MissingRendererOrMaterial. Logging
+is off by default. `Visible` describes the submitted cue, not a pixel visibility test.
+The `BlockReadyCue.Tests` Edit Mode assembly covers camera replacement, re-enable,
+renderer/material recovery, destroyed instances, invalid prefabs and log deduplication.
+Validation for this change: the required assembly build passed with 0 errors and
+93 warnings; Unity recompile reported no errors. After the initial Editor timeout,
+Unity Test Runner Edit Mode was rerun on 2026-09-30: all six BlockReadyCueTests
+passed (0 failed, 0 skipped; 0.30 seconds). Post-change gameplay/rendering remains
+unverified; these tests validate presentation state and recovery, not rendered pixels.
+
 `GuardSetting.readyCue` plays `RB_Project_BlockOpen_SFX` through the Sfx mix when
 the actionable flare becomes visible. Dim unavailable threats and offscreen flares
 are silent. The local cue remembers the last announced caster/request/life so it
@@ -246,6 +470,9 @@ actors without a controller retain the existing NavMesh-constrained transform pa
 - One Block animation request owns Begin → held-pose Loop → Impact → Exit. Frontal
   contact during Begin after arrival jumps directly to Impact. Aires skill payloads never execute.
 - Swept contact tests the active charge volume before target damage iteration.
+  World-space hitbox bounds are projected separately onto the guard's forward,
+  lateral and vertical axes. A long hitbox does not expand lateral/vertical reach
+  using its forward depth; wide or tall shallow hitboxes retain their own reach.
   Rector's 2.166667 s clip charges through normalized 0–0.62; only hitbox steps 0/1
   intercept. The following strike is excluded. Rear/lateral misses do not succeed.
 - The ready guard must contact the charge before Player. The guard sweep returns a
@@ -298,9 +525,9 @@ live in `Assets/Data/DefensiveBlock`:
 
 - `Rector_Skill_1.asset > Defensive Block`: command range, normalized window, allowed hitbox steps, timed approach stand-off,
   knockback distance/time, world mask and threat-prediction width/reach/speed.
-- `GuardSetting.asset`: animation profile, placement/guard dimensions, timeout,
+- `GuardSetting.asset`: placement/guard dimensions, timeout,
   slide distance/time, warp fade, impact prefab/lifetime and global HitLag.
-- `AiresBlockAnimation.asset`: Begin/Impact clips, guard pose and phase/fade timing.
+- `CharacterStats.animProfile > Block`: Begin/Impact/Struggle clips, guard pose and phase/fade timing.
 - `BlockReadyFlare.prefab`, material and shader: reusable gold prompt presentation.
 
 The shared `Ally_Stryker` and `Ally_Helper` prefabs carry a controller; capability
@@ -330,10 +557,28 @@ an empty curve uses the global default. It fires once on confirmed impact.
 
 ## Production camera
 
+Normal Contact and Timed Approach Block trigger one decaying camera kick on
+successful impact, alongside the existing impact sound, VFX and HitLag. Tune
+**Normal Block Camera Shake** on the defender's `DefensiveBlockActorProfile`:
+`normalImpactShakeDegrees` (1.2 degrees), `normalImpactShakeSeconds` (0.15 real
+seconds), and `normalImpactShakeFrequency` (20 Hz). Zero strength disables it.
+The shot snapshots these settings, freezes shake during Pause, and clears it on
+end/cancellation or camera takeover. Repeated contact cannot restart it.
+Cooperative uses its separate shake settings and does not receive this kick.
+
 Tune **Camera** on `GuardSetting.asset`: enable/disable the shot, position
 (2.65, 1.55, -1.91), Euler (-0.35, -35.39, 10.49), FOV 60,
-entry 0.16 s, post-impact hold 0.12 s, exit 0.4 s. The origin snapshots Player on
-arrival, with Aires ahead along the incoming attack direction.
+entry 0.16 s, post-impact hold 0.12 s, exit 0.4 s. Normal and Cooperative Block
+shots follow the live Player position through movement/recoil and the return blend.
+The heading stays fixed to the accepted guard direction, so Player turning does not
+swing the shot. Cooperative framing still retreats enough to fit both defenders;
+Ally movement does not replace Player as the camera's anchor. The prototype free-camera
+shot also follows Player while blocking and retains its original-pose return behavior.
+The 2026-09-29 follow check passed the required build (0 errors, 93 existing warnings)
+and 18 Editor camera cases, including live Player translation, fixed heading, return blend,
+Cooperative framing and wall filtering. Obstacle tests passed after removing leaked test
+fixtures and rerunning with per-test teardown. Reports: workspace
+`BuildArtifacts/block-camera-follow-build.log` and `block-camera-follow-tests.txt`.
 
 `DefensiveBlockController` supplies its loaded actor profile on arrival. The camera
 copies all settings at shot entry and keeps them through hold/return, so changes
@@ -406,7 +651,7 @@ CharacterController retain the existing model-collider fallback. NavMesh, physic
 floor support, wall checks and the 0.005 m world penetration tolerance still apply;
 the fix does not raise the character or loosen collision thresholds.
 
-`BlockAnimationProfile.impactStartNormalized` and `impactEndNormalized` select the
+`CharacterAnimProfileSO.block.impactStartNormalized` and `impactEndNormalized` select the
 part of the impact clip played over the existing `impactSeconds`/slide duration.
 Defaults are 0–1 for compatibility. The production Aires profile uses 0.55–0.68 of
 `Aires_Block_Recoil`; the complete source clip contains airborne movements and must
@@ -472,3 +717,117 @@ The guard has a configurable half-depth of 0.05 m. This matches its displayed
 0.1 m Gizmo thickness and catches the measured physical-contact edge where damage
 could arrive a fraction before the old zero-thickness plane. A focused test checks
 both contact inside this margin and a genuine remaining gap outside it.
+
+## Optional Block Impact marker
+
+Each `DefensiveBlockWindow` can opt into `useImpactMarker` and an `impactNormalized`
+main-clip time. The default is off, including for existing assets. Open/Close still
+control command eligibility. Impact controls the attacker's animation pose when the
+approach reaches its destination; it does not move the command window.
+
+Impact is supported by Timed Approach and Cooperative. It must be at or after
+Close, before normalized time 1, before the next Block window, and before the
+clip's authored animation end. An unreachable/past marker rejects readiness.
+Contact uses physical contact and does not accept an enabled Impact marker.
+
+With a marker, the approach motor drives animation time from the accepted pose to
+Impact using Animancer `MoveTime`, preserving intervening release/timeline events.
+The actor's original playback speed is restored on continuation or cancellation.
+The final pose waits for the animation/event update before resolving (up to two
+render frames); it cannot overshoot into later hits on a long frame. Cooperative
+holds this exact pose while struggling. Without a marker, approach playback and
+its timing remain unchanged.
+
+In Animation/VFX Timeline, right-click at the desired main-clip time and choose
+**Block > Impact > Window N > Set Impact Here**. The pink Impact handle is draggable;
+its hit area sits above Open/Close so coincident Close/Impact handles can be edited.
+**Remove Impact (use default timing)** restores the default behavior. The selected
+window's numeric value is also available in **Timed Approach Settings**. All edits
+use the Block draft, Save/Revert and Undo/Redo, including single-window skills.
+
+`DefensiveBlockImpactTests` checks exact poses and event preservation at simulated
+30/60/144 FPS and a frame longer than the approach. `DefensiveBlockTimelineTests`
+covers marker persistence, removal, Undo/Redo and validation. In Play Mode select
+the Cooperative Rector sample, then invoke **Run Impact Marker Validation
+(Cooperative sample)** on the harness. It uses a temporary skill clone to cover
+Cooperative success/failure, Timed Interrupt/Continue, default playback, and cancel.
+Four additional enemy-loop trials cover success, failure, cancellation and disable,
+including pause, fixed request time, no repeated timeline events, no root movement,
+wrong-request rejection and temporary animation-state cleanup. Timeline tests also
+cover clip Save/Undo/Reload and invalid clip/fade values.
+
+Validation on 2026-09-22: 49 focused Editor cases passed, including impact playback,
+Timeline drafts and existing Block/meter regressions. All 7 Impact Marker Play Mode
+trials passed with exact marked poses, one commit/release per cast and cleanup.
+`CheckAssemblyBuild.ps1` passed with 0 errors and 93 existing warnings. Logs are in
+`P:/Game_RB_Project/BuildArtifacts/block-impact-{editmode,playmode}.txt` and
+`block-impact-build.log`. The original unsaved scene was restored after testing.
+
+## Character-owned Block animation (2026-09-22)
+
+### Aires separate Block clips (2026-09-28)
+
+Incoming-threat selection keeps the authored threat lane when a hitbox becomes
+active and additionally checks that hitbox's actual lateral center and width.
+A narrow or offset animation hitbox no longer replaces/shrinks the authored lane.
+Player body size/center is resolved through context, preferring its enabled
+CharacterController. This only selects a Block candidate; command windows,
+defender readiness, approach validation and actual hit interception still apply.
+
+`InterruptionCommandController.allyBlockMinimumDistance` defaults to 1.5 m.
+Distance is the horizontal gap between the Player and attacker's body colliders,
+resolved through their contexts (CharacterController first, then CharacterPositionCollider).
+Missing/disabled bodies fall back to the corresponding actor position. Overlapping
+bodies count as zero gap. This allows close-range self guard against large bosses
+whose collider radii already exceed the old root-distance threshold.
+At or inside that body gap, companion selection is
+disabled and normal Block uses the Player if self-guard eligibility passes.
+Cooperative Block is exempt from this distance restriction and retains its
+existing Player + Ally eligibility checks. The ready cue and command use the same
+selection rule. Distance is checked when selecting a defender, not after the
+enemy has begun its approach, so accepted Blocks continue normally. Set the
+Inspector's Ally Block Minimum Distance to zero to disable this restriction.
+
+Companion guard placement supports `DefensiveBlockActorProfile.standSideways`.
+The production GuardSetting uses 0.8 m to either side of the Player-to-attacker
+heading, preferring the right candidate when otherwise equally safe. Forward
+distance is unchanged, and recoil remains parallel to that heading so it passes
+beside the player's original position. Both candidates use the existing world,
+ground and reservation checks; zero restores centered placement. This applies
+to ordinary companion guard placement, not self guard or cooperative pair placement.
+Guard hit detection remains based on its actual position and authored width;
+check narrow Contact attacks when tuning the offset.
+
+`Aires_AnimProfile.block` uses `Aires_Block_Begin`, `Aires_Block_Loop`,
+`Aires_Block_Impack` (the supplied filename), and `Aires_Block_Exit`.
+Begin and Impact sample the full clip range; their durations and Exit duration
+match the authored clips. Loop repeats at its authored speed until impact or exit.
+The optional `loopClip` falls back to the held Begin pose when empty; optional
+`exitClip` falls back to the existing exit delay. Other character profiles retain
+their previous behavior. Cooperative Struggle remains optional and unchanged.
+Configure these fields in the character Animation Profile's Block section.
+The gameplay Block camera starts blending out at 80% of the defender's actual
+Impact playback duration, without an additional camera hold. This follows the
+animation clock, including slow motion and any minimum impact duration. Exit
+also releases the camera if Impact was skipped or the threshold was crossed
+between updates. The defender finishes its animations and releases gameplay
+reservations normally; final cleanup does not restart the shot.
+
+Block clip/pose/timing data now lives inline at `CharacterStats.animProfile.block`.
+`CharacterAnimBrain.BlockAnimation` uses the character's normal animation binding,
+including overrides; `DefensiveBlockController.AnimationSettings` reads that source.
+The normal driver entry is `TryBeginBlock(requestId)`. Active playback snapshots
+its settings, so authoring changes cannot alter an in-progress Block.
+
+`DefensiveBlockActorProfile.IsConfigured` validates gameplay settings only; readiness
+also checks the character's Begin/Impact clips. Player fallback guard settings no
+longer own clips. Legacy serialized animation references and the explicit legacy
+API overload are retained for compatibility, but normal gameplay uses the character
+profile. See PREFABS_AND_AUTHORING.md, Block animation ownership, for migration.
+
+Aires/Roma/Feno/Milano profiles were migrated and all old animation fields compared
+equal after the copy. Ownership, overrides, migration Undo/idempotency, grounding and
+Block regressions passed 67 Editor cases. All 7 Impact Marker Play Mode cases passed
+with the migrated data. CheckAssemblyBuild.ps1 passed with 0 errors / 93 existing
+warnings. Logs: P:/Game_RB_Project/BuildArtifacts/block-animation-profile-build.log,
+block-animation-profile-editmode.txt and block-animation-profile-playmode.txt.

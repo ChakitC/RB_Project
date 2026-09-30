@@ -9,8 +9,8 @@ using System.Collections.Generic;
 //
 // Ability-binding invariants already enforced by SkillUpgradeTreeValidator.Validate (duplicate
 // grants, an id nothing declares, a declared id no node grants, blank granted ids) are not
-// repeated here. This file only adds what that validator cannot see: per-payload authoring
-// issues (a Taunt payload with no Taunt Status assigned, etc.) and descriptor registry health.
+// repeated here. This also adapts common definition diagnostics (timeline, ownership, root
+// policies and payload configuration) and preserves node attribution from descriptors.
 //
 // PayloadAuthoringSeverity has three levels (Info guides without blocking) but
 // SkillUpgradeValidationSeverity has two -- Warning and Info both map to Warning here, which is
@@ -27,9 +27,36 @@ internal static class NodeCentricPayloadValidator
 
         AddRegistryDiagnostics(issues);
         AddPayloadAuthoringIssues(tree, owners, issues);
+        AddDefinitionIssues(tree, owners, issues);
         AddNonNormalizedIdWarnings(tree, issues);
 
         return issues;
+    }
+
+    static void AddDefinitionIssues(SkillUpgradeTreeDefinition tree, IReadOnlyList<SkillDefinitionBase> owners,
+        List<SkillUpgradeValidationIssue> issues)
+    {
+        if (owners == null) return;
+        foreach (var owner in owners)
+        {
+            if (owner is not SkillGemDefinition skill) continue;
+            var diagnostics = new List<SkillValidationIssue>();
+            SkillExecutionUsageIndex.CollectIssues(skill, diagnostics);
+            foreach (var diagnostic in diagnostics)
+            {
+                string nodeId = string.IsNullOrWhiteSpace(diagnostic.RequiredUpgradeId)
+                    ? null : FindGrantingNodeId(tree, diagnostic.RequiredUpgradeId.Trim());
+                // Match both message and owner. Identical errors on an ungated payload and
+                // a node-owned payload must remain distinct.
+                bool alreadyAttributed = nodeId != null && issues.Exists(issue =>
+                    issue.Message == diagnostic.Message && issue.NodeId == nodeId);
+                if (alreadyAttributed) continue;
+                issues.Add(new SkillUpgradeValidationIssue(
+                    diagnostic.Severity == SkillValidationSeverity.Error
+                        ? SkillUpgradeValidationSeverity.Error : SkillUpgradeValidationSeverity.Warning,
+                    diagnostic.ToString(), nodeId));
+            }
+        }
     }
 
     static void AddRegistryDiagnostics(List<SkillUpgradeValidationIssue> issues)

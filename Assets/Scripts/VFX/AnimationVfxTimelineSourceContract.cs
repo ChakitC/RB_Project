@@ -29,19 +29,38 @@ public sealed class AnimationVfxTimelineLane
     public IReadOnlyList<CombatTimelineEventName> EventNames { get; }
     public bool AllowDuplicateEvents { get; }
     public bool ReadOnly { get; }
+    readonly Func<float> pointValue;
+    readonly Action<float> setPointValue;
+    readonly Func<string> pointLabel;
 
     public AnimationVfxTimelineLane(
         string label,
         AnimationVfxTimelineLaneKind kind,
         IReadOnlyList<CombatTimelineEventName> eventNames = null,
         bool allowDuplicateEvents = false,
-        bool readOnly = false)
+        bool readOnly = false,
+        Func<float> pointValue = null,
+        Action<float> setPointValue = null,
+        Func<string> pointLabel = null)
     {
         Label = label;
         Kind = kind;
         EventNames = eventNames ?? Array.Empty<CombatTimelineEventName>();
         AllowDuplicateEvents = allowDuplicateEvents;
         ReadOnly = readOnly;
+        this.pointValue = pointValue;
+        this.setPointValue = setPointValue;
+        this.pointLabel = pointLabel;
+    }
+
+    // Existing single-point sources keep their original binding; extra points own theirs.
+    public float GetPointValue(IAnimationVfxTimelineSource source) => pointValue != null ? pointValue() : source.PointValue;
+    public string GetPointLabel() => pointLabel != null ? pointLabel() : Label;
+    public void SetPointValue(IAnimationVfxTimelineSource source, float value)
+    {
+        if (ReadOnly) return;
+        if (setPointValue != null) setPointValue(value);
+        else source.SetPointValue(value);
     }
 }
 

@@ -478,7 +478,7 @@ internal sealed class FieldAllyTransitionController
                 owner.TransformRef.rotation,
                 attackClip,
                 samplingAnimator,
-                execution.attackSkillDef.GetCastPointNormalized(),
+                execution.attackSkillDef.GetPlacementPointNormalized(),
                 faceTarget,
                 execution.step.requireNavMeshAtWarpPoint,
                 execution.step.warpNavMeshSampleDistance,

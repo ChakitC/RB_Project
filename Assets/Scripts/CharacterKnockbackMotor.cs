@@ -44,8 +44,8 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     private float _reactionTimeRemaining;
     private bool _agentOverrideActive;
     private bool _resumeAgentStopped;
-    private bool _resumeAgentUpdatePosition;
-    private bool _resumeAgentUpdateRotation;
+    private CharacterMovementMotor _movementMotor;
+    private int _agentSuspendToken;
     private bool _resumeAgentHadPath;
     private Vector3 _resumeAgentDestination;
     private bool _behaviorTreeWasEnabled;
@@ -54,7 +54,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
     private bool _clearReactionOnKnockbackEnd;
 
     Vector3 RemainingDisplacement => _targetDisplacement - _appliedDisplacement;
-    Transform MovementRoot => characterController != null && characterController.enabled
+    Transform MovementRoot => ctx != null ? ctx.transform : characterController != null && characterController.enabled
         ? characterController.transform
         : ctx != null ? ctx.transform : navMeshAgent != null ? navMeshAgent.transform : transform;
 
@@ -65,6 +65,10 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
     public KnockbackData ActiveKnockback => _activeKnockback;
     public event Action<KnockbackData> KnockbackStarted;
+    readonly System.Collections.Generic.HashSet<int> applicationBlocks = new();
+    int nextApplicationBlock;
+    public int AcquireApplicationBlockToken() { int token = ++nextApplicationBlock; applicationBlocks.Add(token); return token; }
+    public void ReleaseApplicationBlockToken(int token) => applicationBlocks.Remove(token);
 
     void Awake()
     {
@@ -189,7 +193,12 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         if (!characterController)
             characterController = ResolveActorComponent<CharacterController>(actorRoot);
         if (!navMeshAgent)
+            navMeshAgent = ctx != null ? ctx.NavigationAgent : null;
+        if (!navMeshAgent)
             navMeshAgent = ResolveActorComponent<NavMeshAgent>(actorRoot);
+        _movementMotor = ctx ? ctx.EnsureMovementMotor() : CharacterMovementMotor.Resolve(null, MovementRoot);
+        if (!ctx && _movementMotor)
+            _movementMotor.Configure(null, MovementRoot, characterController, navMeshAgent);
         // The body shape is never discovered by hierarchy search: on several characters the first
         // CapsuleCollider under the actor is a hit zone, not the body.
         if (ctx != null && ctx.ColliderRefs != null)
@@ -241,6 +250,7 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
     bool CanApply(KnockbackData knockback)
     {
+        if (applicationBlocks.Count > 0) return false;
         if (!knockback.IsValid)
             return false;
 
@@ -461,90 +471,16 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
     Vector3 ApplyDelta(Vector3 desiredDelta)
     {
-        if (desiredDelta.sqrMagnitude <= 0.0000001f)
-            return Vector3.zero;
-
-        // Motors may live on Movement_System below the context. The swept body and the
-        // displaced actor must share a root, or each frame probes an unmoving collider and
-        // the eventual agent resync can jump the actor through a wall.
-        Transform movementRoot = MovementRoot;
-        Vector3 before = movementRoot.position;
-
-        if (characterController != null && characterController.enabled)
-        {
-            characterController.Move(desiredDelta);
-        }
-        else
-        {
-            Vector3 resolvedDelta = ResolveManualDelta(desiredDelta);
-            movementRoot.position += resolvedDelta;
-        }
-
-        if (navMeshAgent != null && navMeshAgent.enabled)
-            navMeshAgent.nextPosition = movementRoot.position;
-
-        return movementRoot.position - before;
-    }
-
-    Vector3 ResolveManualDelta(Vector3 desiredDelta)
-    {
-        float desiredDistance = desiredDelta.magnitude;
-        if (desiredDistance <= 0.0001f)
-            return Vector3.zero;
-
-        Vector3 direction = desiredDelta / desiredDistance;
-
-        if (!TryResolveBodyShape(out CharacterBodySweepShape shape))
-            return desiredDelta;
-
-        float allowedDistance = CharacterBodySweepUtility.ResolveAllowedDistance(
-            shape,
-            direction,
-            desiredDistance,
-            collisionPadding,
-            collisionMask,
-            queryTriggers,
-            ctx != null ? ctx.transform : transform);
-
-        return direction * allowedDistance;
-    }
-
-    /// <summary>
-    /// Resolves the authored body shape for actors with no CharacterController. The position
-    /// collider is read live because the visual controller rebinds ColliderRefs on model rebuilds.
-    /// </summary>
-    bool TryResolveBodyShape(out CharacterBodySweepShape shape)
-    {
-        Collider positionCollider = ctx != null && ctx.ColliderRefs != null
-            ? ctx.ColliderRefs.CharacterPositionCollider
-            : (colliderRefs != null ? colliderRefs.CharacterPositionCollider : null);
-
-        if (CharacterBodySweepUtility.TryResolveShape(positionCollider, out shape))
-            return true;
-
-        if (CharacterBodySweepUtility.TryResolveShape(capsuleCollider, out shape))
-            return true;
-
-        // Last resort for actors that navigate but have no authored body: the agent cylinder.
-        if (navMeshAgent != null && navMeshAgent.enabled)
-        {
-            float radius = Mathf.Max(0.001f, navMeshAgent.radius);
-            float height = Mathf.Max(navMeshAgent.height, radius * 2f + 0.001f);
-            Vector3 center = MovementRoot.position + Vector3.up * (height * 0.5f);
-            float half = Mathf.Max(0f, height * 0.5f - radius);
-
-            shape = new CharacterBodySweepShape(
-                CharacterBodySweepKind.Capsule,
-                center + Vector3.up * half,
-                center - Vector3.up * half,
-                radius,
-                Vector3.zero,
-                Quaternion.identity);
-            return true;
-        }
-
-        shape = default;
-        return false;
+        if (desiredDelta.sqrMagnitude <= 0.0000001f) return Vector3.zero;
+        var settings = CharacterMovementSettings.Default;
+        settings.CollisionMask = collisionMask;
+        settings.Padding = collisionPadding;
+        settings.Triggers = queryTriggers;
+        settings.FallbackBody = colliderRefs && CharacterBodySweepUtility.IsUsableBody(colliderRefs.CharacterPositionCollider)
+            ? colliderRefs.CharacterPositionCollider : capsuleCollider;
+        settings.AllowAgentShape = true;
+        var motor = ctx ? ctx.MovementMotor : _movementMotor;
+        return motor ? motor.Move(desiredDelta, settings) : Vector3.zero;
     }
 
     void InterruptGameplayActions()
@@ -595,24 +531,22 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
     void EnableAgentOverride()
     {
-        if (navMeshAgent == null || !navMeshAgent.enabled)
+        if (navMeshAgent == null)
             return;
 
         if (_agentOverrideActive)
         {
-            navMeshAgent.nextPosition = MovementRoot.position;
+            CharacterMovementMotor.SyncAgent(navMeshAgent, MovementRoot);
             return;
         }
 
-        _resumeAgentStopped = navMeshAgent.isStopped;
-        _resumeAgentUpdatePosition = navMeshAgent.updatePosition;
-        _resumeAgentUpdateRotation = navMeshAgent.updateRotation;
-        _resumeAgentHadPath = navMeshAgent.hasPath || navMeshAgent.pathPending;
+        _resumeAgentStopped = navMeshAgent.isOnNavMesh && navMeshAgent.isStopped;
+        _resumeAgentHadPath = navMeshAgent.isOnNavMesh && (navMeshAgent.hasPath || navMeshAgent.pathPending);
         _resumeAgentDestination = navMeshAgent.isOnNavMesh ? navMeshAgent.destination : MovementRoot.position;
-        navMeshAgent.isStopped = true;
-        navMeshAgent.updatePosition = false;
-        navMeshAgent.updateRotation = false;
-        navMeshAgent.nextPosition = MovementRoot.position;
+        _movementMotor = ctx ? ctx.MovementMotor : _movementMotor;
+        if (!_movementMotor) return;
+        _agentSuspendToken = _movementMotor.AcquireAgentSuspension(navMeshAgent);
+        CharacterMovementMotor.SyncAgent(navMeshAgent, MovementRoot);
         _agentOverrideActive = true;
     }
 
@@ -623,7 +557,13 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
 
         _agentOverrideActive = false;
 
-        if (navMeshAgent == null || !navMeshAgent.enabled)
+        bool restoreDefaults = resumeAutonomy && _restoreAgentToDefaultAutonomy;
+        if (_movementMotor) _movementMotor.ReleaseAgentSuspension(_agentSuspendToken, restoreDefaults);
+        _agentSuspendToken = 0;
+        _restoreAgentToDefaultAutonomy = false;
+
+        if (navMeshAgent == null || !navMeshAgent.enabled ||
+            (_movementMotor && _movementMotor.IsAgentTransformSuspended))
             return;
 
         Vector3 restorePosition = MovementRoot.position;
@@ -637,16 +577,8 @@ public sealed class CharacterKnockbackMotor : MonoBehaviour
         {
             sampledRestorePosition = true;
             restorePosition = sampledPosition;
-            MovementRoot.position = sampledPosition;
-            navMeshAgent.Warp(sampledPosition);
-            navMeshAgent.nextPosition = sampledPosition;
+            if (_movementMotor) _movementMotor.PlaceOnNavMesh(sampledPosition);
         }
-
-        bool restoreDefaults = resumeAutonomy && _restoreAgentToDefaultAutonomy;
-
-        navMeshAgent.updatePosition = restoreDefaults ? true : _resumeAgentUpdatePosition;
-        navMeshAgent.updateRotation = restoreDefaults ? true : _resumeAgentUpdateRotation;
-        navMeshAgent.isStopped = restoreDefaults ? false : _resumeAgentStopped;
 
         bool behaviorTreeOwnsNavigation =
             _behaviorTreeSuspended ||

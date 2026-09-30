@@ -38,6 +38,9 @@ public abstract class SkillPayloadDef : ScriptableObject
     {
     }
 
+    // Opt in only when the event listener is armed by ExecuteWithResult at the cast point.
+    public virtual bool RequiresTimelineEventAfterCastPoint(CombatTimelineEventName eventName) => false;
+
     public virtual void CollectUpgradeIds(List<string> ids)
     {
     }

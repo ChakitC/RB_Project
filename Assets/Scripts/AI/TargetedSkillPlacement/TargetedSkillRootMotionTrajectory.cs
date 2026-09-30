@@ -30,7 +30,8 @@ public sealed class TargetedSkillRootMotionTrajectory
         AnimationClip clip,
         TargetedSkillRootMotionSample[] samples,
         Avatar avatar = null,
-        CharacterPlacementAnimationInput.Segment[] segments = null)
+        CharacterPlacementAnimationInput.Segment[] segments = null,
+        bool preserveVerticalMotion = false)
     {
         Clip = clip;
         Avatar = avatar;
@@ -52,7 +53,8 @@ public sealed class TargetedSkillRootMotionTrajectory
             avatar,
             planarRootMotionEnabled: true,
             placementSamples,
-            segments);
+            segments,
+            preserveVerticalMotion);
     }
 
     public AnimationClip Clip { get; }
@@ -263,6 +265,14 @@ internal static class TargetedSkillRootMotionTrajectoryCache
         Animator sourceAnimator,
         out TargetedSkillRootMotionTrajectory trajectory,
         out string failureReason)
+        => TryGetInternal(clip, sourceAnimator, false, out trajectory, out failureReason);
+
+    public static bool TryGetWithVerticalMotion(AnimationClip clip, Animator sourceAnimator,
+        out TargetedSkillRootMotionTrajectory trajectory, out string failureReason)
+        => TryGetInternal(clip, sourceAnimator, true, out trajectory, out failureReason);
+
+    static bool TryGetInternal(AnimationClip clip, Animator sourceAnimator, bool preserveVerticalMotion,
+        out TargetedSkillRootMotionTrajectory trajectory, out string failureReason)
     {
         trajectory = null;
         failureReason = null;
@@ -281,7 +291,8 @@ internal static class TargetedSkillRootMotionTrajectoryCache
 
         CacheKey key = new(
             clip.GetInstanceID(),
-            sourceAnimator.avatar != null ? sourceAnimator.avatar.GetInstanceID() : sourceAnimator.gameObject.GetInstanceID());
+            sourceAnimator.avatar != null ? sourceAnimator.avatar.GetInstanceID() : sourceAnimator.gameObject.GetInstanceID(),
+            preserveVerticalMotion);
 
         if (Trajectories.TryGetValue(key, out trajectory) && trajectory != null)
             return true;
@@ -290,7 +301,7 @@ internal static class TargetedSkillRootMotionTrajectoryCache
         if (sampler == null)
             return false;
 
-        if (!sampler.TrySample(clip, SampleRate, MaxSampleCount, out trajectory, out failureReason))
+        if (!sampler.TrySample(clip, SampleRate, MaxSampleCount, out trajectory, out failureReason, preserveVerticalMotion))
             return false;
 
         Trajectories[key] = trajectory;
@@ -337,16 +348,19 @@ internal static class TargetedSkillRootMotionTrajectoryCache
     {
         public readonly int clipId;
         public readonly int rigId;
+        readonly bool preserveVerticalMotion;
 
-        public CacheKey(int clipId, int rigId)
+        public CacheKey(int clipId, int rigId, bool preserveVerticalMotion)
         {
             this.clipId = clipId;
             this.rigId = rigId;
+            this.preserveVerticalMotion = preserveVerticalMotion;
         }
 
         public bool Equals(CacheKey other)
         {
-            return clipId == other.clipId && rigId == other.rigId;
+            return clipId == other.clipId && rigId == other.rigId &&
+                   preserveVerticalMotion == other.preserveVerticalMotion;
         }
 
         public override bool Equals(object obj)
@@ -356,7 +370,7 @@ internal static class TargetedSkillRootMotionTrajectoryCache
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(clipId, rigId);
+            return HashCode.Combine(clipId, rigId, preserveVerticalMotion);
         }
     }
 
@@ -423,7 +437,8 @@ internal static class TargetedSkillRootMotionTrajectoryCache
             float sampleRate,
             int maxSampleCount,
             out TargetedSkillRootMotionTrajectory trajectory,
-            out string failureReason)
+            out string failureReason,
+            bool preserveVerticalMotion = false)
         {
             trajectory = null;
             failureReason = null;
@@ -435,6 +450,7 @@ internal static class TargetedSkillRootMotionTrajectoryCache
             }
 
             RestorePose();
+            collector.Configure(animator, suppressY: !preserveVerticalMotion);
             collector.ResetMotion();
             animator.Rebind();
             animator.Update(0f);
@@ -479,7 +495,8 @@ internal static class TargetedSkillRootMotionTrajectoryCache
                     return false;
                 }
 
-                trajectory = new TargetedSkillRootMotionTrajectory(clip, samples, animator.avatar);
+                trajectory = new TargetedSkillRootMotionTrajectory(clip, samples, animator.avatar,
+                    preserveVerticalMotion: preserveVerticalMotion);
                 return true;
             }
             catch (Exception ex)
@@ -568,14 +585,16 @@ internal static class TargetedSkillRootMotionTrajectoryCache
 internal sealed class TargetedSkillRootMotionCollector : MonoBehaviour
 {
     Animator animator;
+    bool suppressY = true;
 
     public Vector3 AccumulatedPosition { get; private set; }
     public float AccumulatedYaw { get; private set; }
     public int CallbackCount { get; private set; }
 
-    public void Configure(Animator sourceAnimator)
+    public void Configure(Animator sourceAnimator, bool suppressY = true)
     {
         animator = sourceAnimator;
+        this.suppressY = suppressY;
     }
 
     public void ResetMotion()
@@ -593,7 +612,7 @@ internal sealed class TargetedSkillRootMotionCollector : MonoBehaviour
 
         Vector3 deltaPosition = RootMotionDeltaUtility.GetPositionDelta(
             animator,
-            suppressY: true);
+            suppressY);
 
         AccumulatedPosition += deltaPosition;
         AccumulatedYaw += RootMotionDeltaUtility.GetYawDelta(animator);

@@ -23,6 +23,12 @@ public sealed partial class CharacterAnimBrain
         private float _originalStateSpeed = 1f;
         private bool _approachActive;
         private float _approachOriginalSpeed;
+        private bool _impactApproachActive;
+        private float _impactApproachStart, _impactApproachTarget, _impactApproachProgress;
+        private int _impactArrivalFrame;
+        private AnimancerState _enemyStruggleState;
+        private float _enemyStruggleElapsed;
+        private float _enemyStruggleAttackTime;
         private static int _nextHoldId = 1;
 
         public Locomotion_Skill(CharacterAnimBrain owner)
@@ -169,6 +175,7 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnExitState()
         {
+            ReleaseEnemyStruggle();
             _holdActive = false;
             _holdId = 0;
 
@@ -181,6 +188,7 @@ public sealed partial class CharacterAnimBrain
             }
 
             _approachActive = false;
+            _impactApproachActive = false;
 
             _inCutscenePhase = false;
             owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
@@ -190,6 +198,13 @@ public sealed partial class CharacterAnimBrain
 
         internal bool TryGetNormalizedTime(out float normalizedTime)
         {
+            if (_enemyStruggleState != null)
+            {
+                // Fading the original state out may stop/reset its cached clip. Request
+                // time remains the accepted impact time, never the looping presentation.
+                normalizedTime = _enemyStruggleAttackTime;
+                return true;
+            }
             if (_inCutscenePhase)
             {
                 normalizedTime = 0f;
@@ -213,7 +228,7 @@ public sealed partial class CharacterAnimBrain
             _approachOriginalSpeed = _state.Speed;
             // Keep normal motion when possible; a late command stretches the remaining charge
             // segment instead of playing the following strike or freezing on a single pose.
-            float end = Mathf.Min(endNormalized, _state.NormalizedTime + duration / _state.Length);
+            float end = Mathf.Min(endNormalized, _state.NormalizedTime + duration * _approachOriginalSpeed / _state.Length);
             _state.Speed = (end - _state.NormalizedTime) * _state.Length / duration;
             _approachActive = true;
             return true;
@@ -221,10 +236,80 @@ public sealed partial class CharacterAnimBrain
 
         internal bool TryEndApproach()
         {
-            if (!_approachActive || _state == null) return false;
+            if (!_approachActive || _state == null || _enemyStruggleState != null) return false;
             _state.Speed = _approachOriginalSpeed;
             _approachActive = false;
+            _impactApproachActive = false;
             return true;
+        }
+
+        internal bool CanBeginImpactApproach(float impactNormalized) =>
+            !_approachActive && !_inCutscenePhase && _state != null && _state.Length > 0f &&
+            float.IsFinite(impactNormalized) && impactNormalized > _state.NormalizedTime + .001f &&
+            impactNormalized < _state.NormalizedEndTime;
+
+        internal bool TryBeginImpactApproach(float impactNormalized)
+        {
+            if (_holdActive || !CanBeginImpactApproach(impactNormalized)) return false;
+            _approachOriginalSpeed = _state.Speed;
+            _impactApproachStart = _state.NormalizedTime;
+            _impactApproachTarget = impactNormalized;
+            _impactApproachProgress = 0f;
+            _impactArrivalFrame = -1;
+            _approachActive = _impactApproachActive = true;
+            // The approach motor supplies the clock. MoveTime preserves intervening timeline
+            // events and prevents low-frame-rate overshoot into the strike or clip end.
+            _state.Speed = 0f;
+            return true;
+        }
+
+        internal bool TryAdvanceImpactApproach(float progress, out bool ready)
+        {
+            ready = false;
+            if (!_impactApproachActive || !_approachActive || _state == null || !float.IsFinite(progress)) return false;
+            progress = Mathf.Clamp01(progress);
+            if (progress > _impactApproachProgress)
+            {
+                _impactApproachProgress = progress;
+                _state.MoveTime(Mathf.Lerp(_impactApproachStart, _impactApproachTarget, progress), true);
+                if (progress >= 1f) _impactArrivalFrame = Time.frameCount;
+            }
+            // Allow the graph and its event invoker to observe the final advance before
+            // resolving/stopping the request, including when called from LateUpdate.
+            ready = _impactArrivalFrame >= 0 && Time.frameCount > _impactArrivalFrame + 1;
+            return true;
+        }
+
+        internal bool TryHoldApproach()
+        {
+            if (!_approachActive || _state == null) return false;
+            _state.Speed = 0f;
+            return true;
+        }
+
+        internal bool TryBeginEnemyStruggle(AnimationClip clip, float fadeSeconds)
+        {
+            if (!_approachActive || _state == null || _state.Speed != 0f) return false;
+            if (_enemyStruggleState != null) return _enemyStruggleState.Clip == clip;
+            if (clip == null) return true;
+            if (clip.legacy || clip.length <= 0f || !float.IsFinite(fadeSeconds) || fadeSeconds < 0f) return false;
+            // Use a distinct state even if the author chose the attack clip itself. The
+            // original state remains frozen for request timing; no skill events are rebound.
+            _enemyStruggleAttackTime = _state.NormalizedTime;
+            _enemyStruggleState = owner.LocoLayer.Play(new ClipState(clip), fadeSeconds);
+            _enemyStruggleState.SharedEvents = null;
+            _enemyStruggleState.Speed = 0f;
+            _enemyStruggleState.NormalizedTime = 0f;
+            _enemyStruggleElapsed = 0f;
+            return true;
+        }
+
+        void ReleaseEnemyStruggle()
+        {
+            var state = _enemyStruggleState;
+            _enemyStruggleState = null;
+            _enemyStruggleElapsed = 0f;
+            state?.Destroy();
         }
 
         internal bool TryGetPlaybackTiming(out float remainingDuration, out float totalDuration)
@@ -260,6 +345,12 @@ public sealed partial class CharacterAnimBrain
 
         public override void Update()
         {
+            if (_enemyStruggleState != null)
+            {
+                _enemyStruggleElapsed = Mathf.Repeat(_enemyStruggleElapsed + owner.AnimationDeltaTime, _enemyStruggleState.Length);
+                // Sampling skips both authored events and root displacement in the loop.
+                _enemyStruggleState.NormalizedTime = _enemyStruggleElapsed / _enemyStruggleState.Length;
+            }
             if (_holdActive && _state != null)
                 EnforceHold(_state.NormalizedTime);
         }

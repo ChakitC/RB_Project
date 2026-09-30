@@ -298,14 +298,34 @@ public class AllyHelperManager : MonoBehaviour
         }
     }
 
-    bool TryExecuteCommandSlotCore(int slotIndex, bool hideOnSkillComplete)
+    public bool TryExecutePlayerDirectedSkill(SkillGemDefinition skill, bool hideOnSkillComplete = true)
+    {
+        if (skill == null || !TryBeginHelperExecutionStart())
+            return false;
+        try
+        {
+            return TryExecuteCommandSlotCore(0, hideOnSkillComplete, skill);
+        }
+        finally
+        {
+            EndHelperExecutionStart();
+        }
+    }
+
+    bool TryExecuteCommandSlotCore(int slotIndex, bool hideOnSkillComplete,
+        SkillGemDefinition explicitSkill = null)
     {
         CharacterSkillManager skillManager = HelperSkillManager;
-        SkillGemDefinition placementSkill = skillManager != null
-            ? skillManager.PlayerCommandSkill?.skillAsset
-            : null;
+        SkillGemDefinition placementSkill = explicitSkill != null ? explicitSkill :
+            skillManager != null ? skillManager.PlayerCommandSkill?.skillAsset : null;
+        CacheHelperReferences();
+        if (!PartyCommandSkillExecution.TryCreatePlan(playerContext, allyContext, placementSkill,
+                out PartyCommandSkillExecution.Plan commandPlan))
+            return false;
         if (!TryPrepareHelperForSummon(
                 out bool activatedNow,
+                preferredPlacement: new HelperPlacementPose(
+                    commandPlan.Placement.StartPosition, commandPlan.Placement.StartRotation),
                 placementSkill: placementSkill))
             return false;
 
@@ -331,7 +351,9 @@ public class AllyHelperManager : MonoBehaviour
         ApplyTemporaryHelperSkillAutonomy();
         allyHelperVisibility?.Appear();
 
-        SkillCastStartResult result = skillManager.TryStartPlayerCommandSkill();
+        SkillCastStartResult result = PartyCommandSkillExecution.TryStart(
+            commandPlan, slotIndex, controlFieldAlly: false, explicitSkill: explicitSkill,
+            onInterrupted: OnDirectedHelperCommandInterrupted);
         if (!result.Started)
         {
             RestoreHelperSkillAutonomy();
@@ -362,6 +384,18 @@ public class AllyHelperManager : MonoBehaviour
         }
 
         return true;
+    }
+
+    void OnDirectedHelperCommandInterrupted()
+    {
+        RestoreHelperSkillAutonomy();
+        LastExecutionSucceeded = false;
+        ReleaseHelperPlacementReservation();
+        if (hideHelperOnSkillComplete)
+        {
+            hideHelperOnSkillComplete = false;
+            AllyHelperOut();
+        }
     }
 
     void Awake()
@@ -1894,8 +1928,7 @@ public class AllyHelperManager : MonoBehaviour
     void ApplyHelperSkillFacing(SkillGemDefinition skillDef)
     {
         if (skillDef == null ||
-            skillDef.payload == null ||
-            skillDef.payload.HelperFacingMode != SkillHelperFacingMode.FaceDetectedTargetOnCast ||
+            skillDef.HelperFacingMode != SkillHelperFacingMode.FaceDetectedTargetOnCast ||
             allyHelper == null)
         {
             return;
@@ -2103,9 +2136,8 @@ public class AllyHelperManager : MonoBehaviour
         if (targetContext == null || allyHelper == null)
             return null;
 
-        SkillPayloadDef payload = placementSkill != null ? placementSkill.payload : null;
-        if (payload == null ||
-            !payload.TryGetTargetPlacement(out SkillTargetPlacementSpec targetPlacement) ||
+        if (placementSkill == null ||
+            !placementSkill.TryGetTargetPlacement(out SkillTargetPlacementSpec targetPlacement) ||
             targetPlacement.TargetStandOffDistanceAtCastPoint <= 0f)
         {
             return null;
@@ -2184,7 +2216,7 @@ public class AllyHelperManager : MonoBehaviour
 
             placementAnimation = placementTrajectory.PlacementInput;
             animationRequired = true;
-            impactNormalized = placementSkill.GetCastPointNormalized();
+            impactNormalized = placementSkill.GetPlacementPointNormalized();
         }
 
         CharacterPlacementAnimationInput.Sample impactSample = default;

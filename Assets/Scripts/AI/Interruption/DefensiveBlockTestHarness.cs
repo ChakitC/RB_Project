@@ -29,7 +29,7 @@ public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
     public string LastDamage { get; private set; }
     public string ValidationReport { get; private set; } = "Not run";
     Coroutine validation;
-    BlockAnimationProfile validationBlockProfile;
+    CharacterAnimProfileSO validationBlockProfile;
     int savedFrameRate, savedVSync;
     Coroutine reset;
     bool resetting;
@@ -47,6 +47,11 @@ public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
     IEnumerator ValidateTrials()
     {
         var report = new StringBuilder();
+        if (chargeSkill?.defensiveBlock?.mode == DefensiveBlockMode.Cooperative)
+        {
+            yield return ValidateCooperative();
+            yield break;
+        }
         if (Ally != null && chargeSkill.defensiveBlock != null && chargeSkill.defensiveBlock.UsesTimedApproach)
         {
             yield return ValidateTimedApproach(report);
@@ -165,9 +170,9 @@ public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
             // Keep contact inside Begin despite variable Editor frame timing. Never edit
             // the shared profile asset: ordinary trials above use its authored duration.
             Ally.DefensiveBlock.CanBegin(Player, Rector.DefensiveBlockAttack);
-            validationBlockProfile = Instantiate(Ally.DefensiveBlock.animationProfile);
-            validationBlockProfile.beginSeconds = 0.4f;
-            Ally.DefensiveBlock.animationProfile = validationBlockProfile;
+            validationBlockProfile = Instantiate(Ally.baseStats.animProfile);
+            validationBlockProfile.block.beginSeconds = 0.4f;
+            Ally.AnimBrain.SetAnimProfileOverride(validationBlockProfile);
             bool arrivedAtContact = false, allyKnockedBack = false, impactSeen = false;
             int castRequest = 0;
             bool wrongRequestRejected = false, repeatedImpactRejected = false;
@@ -204,6 +209,7 @@ public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
                 !Ally.DefensiveBlock.IsExecuting && CameraReturned;
             report.AppendLine($"{(passed ? "PASS" : "FAIL")} Begin contact {distance} m skips Loop; contactPhase={contactPhase} arrived={arrivedAtContact} impact={impactSeen} allyKnockback={allyKnockedBack} successes={Rector.DefensiveBlockAttack.SuccessCount} wrongRequestRejected={wrongRequestRejected} repeatedImpactRejected={repeatedImpactRejected}");
             Ally.DefensiveBlock.Cancel();
+            Ally.AnimBrain.ClearAnimProfileOverride();
             Destroy(validationBlockProfile);
             validationBlockProfile = null;
         }
@@ -251,6 +257,7 @@ public sealed partial class DefensiveBlockTestHarness : MonoBehaviour
         Vector3 position = Player.transform.position + partySpawn.transform.forward * startDistance;
         Rector = Instantiate(rectorPrefab, position, Quaternion.LookRotation(-partySpawn.transform.forward), actors).GetComponentInChildren<EnemyContext>(true);
         Player.ResolveReferences(); Ally?.ResolveReferences(); Rector.ResolveReferences();
+        ConfigureCooperativeTrial();
         if (Rector.SkillManager == null)
         { Status = "Selected Enemy has no SkillManager."; resetting = false; reset = null; yield break; }
         Rector.SkillManager.CastStarted += _ => autoRequested = false;

@@ -14,6 +14,8 @@ public abstract class CharacteContext : MonoBehaviour
     public CombatEventBus CombatEventBus;
     public Rigidbody rb;
     public CharacterController cc;
+    public UnityEngine.AI.NavMeshAgent NavigationAgent;
+    public CharacterMovementMotor MovementMotor;
 
     [Header("Common Modules")]
     public AITargetInfo TargetInfo;
@@ -22,6 +24,7 @@ public abstract class CharacteContext : MonoBehaviour
     public WeaponSystem WeaponSystem;
     public CharacterAnimBrain AnimBrain;
     public CharacterAnimDriver AnimDriver;
+    public RootMotionCCDriver RootMotionDriver;
     public CharacterPairOffsetApplier PairOffsetApplier;
     public MeleeController MeleeController;
     public ThirdPersonAimRigController AimRig;
@@ -128,6 +131,13 @@ public abstract class CharacteContext : MonoBehaviour
         CombatEventBus = ResolveActorComponent(CombatEventBus);
         rb = ResolveActorComponent(rb);
         cc = ResolveActorComponent(cc);
+        NavigationAgent = ResolveActorComponent(NavigationAgent);
+        if (Application.isPlaying) EnsureMovementMotor();
+        else
+        {
+            if (!MovementMotor) MovementMotor = GetComponent<CharacterMovementMotor>();
+            if (MovementMotor) MovementMotor.Bind(this);
+        }
 
         TargetInfo = ResolveActorComponent(TargetInfo);
         Equipment = ResolveActorComponent(Equipment);
@@ -144,6 +154,7 @@ public abstract class CharacteContext : MonoBehaviour
             Equipment = gameObject.AddComponent<CharacterEquipment>();
         AnimBrain = ResolveActorComponent(AnimBrain);
         AnimDriver = ResolveActorComponent(AnimDriver);
+        RootMotionDriver = ResolveActorComponent(RootMotionDriver);
         PairOffsetApplier = ResolveActorComponent(PairOffsetApplier);
         if (PairOffsetApplier == null &&
             Application.isPlaying &&
@@ -189,6 +200,15 @@ public abstract class CharacteContext : MonoBehaviour
         EnegySystem = ResolveActorComponent(EnegySystem);
         Interactor = ResolveActorComponent(Interactor);
         SkillManager = ResolveActorComponent(SkillManager);
+    }
+
+    /// <summary>Explicit actor initialization; ordinary reference inspection does not create a motor.</summary>
+    public CharacterMovementMotor EnsureMovementMotor()
+    {
+        if (!MovementMotor) MovementMotor = GetComponent<CharacterMovementMotor>();
+        if (!MovementMotor) MovementMotor = gameObject.AddComponent<CharacterMovementMotor>();
+        MovementMotor.Bind(this);
+        return MovementMotor;
     }
 
     protected T ResolveActorComponent<T>(T current, bool includeChildren = true) where T : Component

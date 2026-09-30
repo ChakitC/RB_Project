@@ -191,6 +191,10 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
              "intentionally share the same intro pose.")]
     public ClipTransition stageIntroClip;
 
+    [Header("Block (Layer 0)")]
+    [Tooltip("Guard, recoil and cooperative struggle animation for this character.")]
+    public BlockAnimationSettings block = new();
+
     public bool HasStageIntroClip => stageIntroClip != null && stageIntroClip.IsValid;
 
     [Header("StatusEffec (Layer 0)")]

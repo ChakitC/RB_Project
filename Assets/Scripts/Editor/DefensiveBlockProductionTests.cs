@@ -72,7 +72,9 @@ public sealed class DefensiveBlockProductionTests
             Assert.IsTrue(attack.IsConfigured);
             attack.hitboxSteps = new[] {-1}; Assert.IsFalse(attack.IsConfigured);
             attack.hitboxSteps = new[] {0}; attack.windowStartNormalized = .9f; attack.windowEndNormalized = .1f;
-            Assert.IsFalse(attack.IsConfigured); Assert.IsFalse(actor.IsConfigured);
+            Assert.IsFalse(attack.IsConfigured);
+            Assert.IsTrue(actor.IsConfigured, "Actor settings validate gameplay; animation readiness belongs to the character profile.");
+            actor.minimumStandAhead = 0f; Assert.IsFalse(actor.IsConfigured);
         }
         finally {  Object.DestroyImmediate(actor); }
     }
@@ -114,6 +116,26 @@ public sealed class DefensiveBlockProductionTests
         Assert.IsTrue(DefensiveBlockGeometry.PreferThreat(.2f, 16, 2, .2f, 64, 1));
         Assert.IsTrue(DefensiveBlockGeometry.PreferThreat(.2f, 16, 1, .2f, 16, 2));
         Assert.IsFalse(DefensiveBlockGeometry.PreferThreat(.2f, 16, 2, .2f, 16, 1));
+    }
+
+    [Test]
+    public void ActiveHitboxDoesNotShrinkAuthoredThreatLane()
+    {
+        Assert.IsTrue(DefensiveBlockGeometry.TryPredictThreat(Vector3.zero, Vector3.forward,
+            new Vector3(1.4f, 0f, 4f), 1.5f, 2f, 8f,
+            new Bounds(Vector3.forward, Vector3.one * .2f), Vector3.zero, out _));
+    }
+
+    [Test]
+    public void OffsetHitboxThreatUsesItsOwnLateralCenter()
+    {
+        var bounds = new Bounds(new Vector3(3f, 0f, 1f), Vector3.one);
+        Assert.IsTrue(DefensiveBlockGeometry.TryPredictThreat(Vector3.zero, Vector3.forward,
+            new Vector3(3.8f, 0f, 4f), 1f, 2f, 8f, bounds, Vector3.one * .45f, out _));
+        Assert.IsFalse(DefensiveBlockGeometry.TryPredictThreat(Vector3.zero, Vector3.forward,
+            new Vector3(-3f, 0f, 4f), 1f, 2f, 8f, bounds, Vector3.one * .45f, out _));
+        Assert.IsFalse(DefensiveBlockGeometry.TryPredictThreat(Vector3.zero, Vector3.forward,
+            new Vector3(3f, 0f, -1f), 1f, 2f, 8f, bounds, Vector3.one * .45f, out _));
     }
 
     [MenuItem("Tools/RB/Defensive Block/Run Production Smoke Tests")]

@@ -48,7 +48,7 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
     public int SuccessCount { get; private set; }
     public bool IsPreparingCharge => windupHold.IsValid;
     public bool WindowOpen => OwnsCurrentSkill && profile.IsConfigured && WindowIndex >= 0 &&
-        !consumedWindows.Contains(WindowIndex) && !resolved && !IsTimedApproach;
+        !consumedWindows.Contains(WindowIndex) && !resolved && !IsTimedApproach && !HasCooperativeSession;
     public bool OwnsCurrentSkill => isActiveAndEnabled && profile != null && ctx != null && ctx.LifeGeneration == life &&
         requestId > 0 && ctx.AnimBrain != null && ctx.AnimBrain.TryGetActiveSkillNormalizedTime(requestId, out _);
 
@@ -68,6 +68,7 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
     }
     void Update()
     {
+        CooperativeSession?.Tick();
         if (ctx != null && ctx.SkillManager != subscribedManager) RefreshSubscription();
         if (!windupHold.IsValid) return;
         if (!OwnsCurrentSkill || ctx.HealthSystem == null || !ctx.HealthSystem.IsAlive)
@@ -120,6 +121,7 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
     {
         var eligibility = EvaluateBlockCommand(player, out string reason);
         if (eligibility != InterruptionCommandResult.Success) return Result(eligibility, reason);
+        if (IsCooperative) return RequestCooperativeBlock(player);
         if (player.interruptionCommand == null ||
             !player.interruptionCommand.TrySelectDefensiveBlockDefender(this, out var selected))
             return Result(InterruptionCommandResult.NoAvailableAlly, "No available party defender");
@@ -192,26 +194,19 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
         forward.y = 0f;
         if (forward.sqrMagnitude < 0.0001f) return false;
         forward.Normalize();
-        Vector3 side = Vector3.Cross(Vector3.up, forward);
-        float halfWidth = profile.threatHalfWidth;
-        float reach = profile.threatForwardReach;
+        Bounds? activeBounds = null;
         if (execution != null && profile.AllowsStep(WindowIndex, execution.ActiveStepIndex) &&
             execution.TryGetActiveBounds(out Bounds bounds))
         {
-            halfWidth = Mathf.Abs(side.x) * bounds.extents.x + Mathf.Abs(side.z) * bounds.extents.z;
-            reach = Vector3.Dot(bounds.center - ctx.transform.position, forward) +
-                Mathf.Abs(forward.x) * bounds.extents.x + Mathf.Abs(forward.z) * bounds.extents.z;
+            activeBounds = bounds;
         }
-        var body = player.ColliderRefs != null ? player.ColliderRefs.CharacterPositionCollider : null;
-        if (body != null)
-        {
-            Vector3 extents = body.bounds.extents;
-            halfWidth += Mathf.Abs(side.x) * extents.x + Mathf.Abs(side.z) * extents.z;
-            reach += Mathf.Abs(forward.x) * extents.x + Mathf.Abs(forward.z) * extents.z;
-        }
+        Collider body = player.cc != null && player.cc.enabled ? player.cc : player.ColliderRefs?.CharacterPositionCollider;
+        bool hasBody = body != null && body.enabled;
         float speed = observedChargeSpeed > 0.1f ? observedChargeSpeed : profile.estimatedChargeSpeed;
-        return DefensiveBlockGeometry.TryPredictThreat(ctx.transform.position, forward, player.transform.position,
-            halfWidth, reach, speed, out contactSeconds);
+        return DefensiveBlockGeometry.TryPredictThreat(ctx.transform.position, forward,
+            hasBody ? body.bounds.center : player.transform.position,
+            profile.threatHalfWidth, profile.threatForwardReach, speed, activeBounds,
+            hasBody ? body.bounds.extents : Vector3.zero, out contactSeconds);
     }
 
     InterruptionCommandResult EvaluateBlockCommand(PlayerContext player, out string reason)
@@ -220,7 +215,9 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
         if (!WindowOpen || ctx.LifeGeneration != life)
             return InterruptionCommandResult.TargetWindowClosed;
         if (defender != null && defender.IsExecuting)
-            return InterruptionCommandResult.SkillRejected;
+        { reason = "Defender already blocking this attack"; return InterruptionCommandResult.SkillRejected; }
+        if (IsCooperative && !TryCaptureCooperativeDamage(out _, previewOnly: true))
+        { reason = "Waiting for bound hitbox damage snapshot"; return InterruptionCommandResult.SkillRejected; }
         reason = "Actor unavailable";
         if (player == null || !player.isActiveAndEnabled || player.HealthSystem == null || !player.HealthSystem.IsAlive ||
             (player.stateHub != null && player.stateHub.LifeSM.CurrentId != LifeStateId.Alive) ||
@@ -229,7 +226,7 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
         reason = "Player contacted before guard";
         if (HasPassedTarget(player)) return InterruptionCommandResult.TargetWindowClosed;
         if (player.DefensiveBlock != null && player.DefensiveBlock.IsExecuting)
-            return InterruptionCommandResult.SkillRejected;
+        { reason = "Player already blocking"; return InterruptionCommandResult.SkillRejected; }
         Vector3 delta = ctx.transform.position - player.transform.position;
         reason = "Different floor";
         if (Mathf.Abs(delta.y) > 1f) return InterruptionCommandResult.NoValidTarget;
@@ -239,9 +236,12 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
         reason = "Obstructed";
         if (Physics.Linecast(player.transform.position + Vector3.up, ctx.transform.position + Vector3.up,
             worldLayers, QueryTriggerInteraction.Ignore)) return InterruptionCommandResult.TeleportFailed;
-        if (player.interruptionCommand == null || !player.interruptionCommand.defensiveBlockEnabled ||
-            (GameplayCameraController.Instance != null && !GameplayCameraController.Instance.GameplayInputEnabled))
-            return InterruptionCommandResult.SkillRejected;
+        if (player.interruptionCommand == null)
+        { reason = "Player Block command controller missing"; return InterruptionCommandResult.SkillRejected; }
+        if (!player.interruptionCommand.isActiveAndEnabled || !player.interruptionCommand.defensiveBlockEnabled)
+        { reason = "Player Block command disabled"; return InterruptionCommandResult.SkillRejected; }
+        if (GameplayCameraController.Instance != null && !GameplayCameraController.Instance.GameplayInputEnabled)
+        { reason = "Gameplay input locked"; return InterruptionCommandResult.SkillRejected; }
         reason = "Ready";
         return InterruptionCommandResult.Success;
     }
@@ -320,10 +320,9 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
         Vector3 forward = guard.transform.forward;
         if (Vector3.Dot(previousRoot - guard.ActorContext.transform.position, forward) < 0f) return false;
         if (Vector3.Dot(ctx.transform.forward, forward) > -0.25f) return false;
-        float radius = Mathf.Abs(forward.x) * bounds.extents.x + Mathf.Abs(forward.z) * bounds.extents.z;
         Vector3 previous = bounds.center + previousRoot - ctx.transform.position;
-        LastProbe = $"step={runtime.ActiveStepIndex} previous={previous:F2} current={bounds.center:F2} radius={radius:F2} guard={guard.GuardCenter:F2} forward={forward:F2}";
-        if (!DefensiveBlockGeometry.TrySweepGuard(previous, bounds.center, radius,
+        LastProbe = $"step={runtime.ActiveStepIndex} previous={previous:F2} current={bounds.center:F2} extents={bounds.extents:F2} guard={guard.GuardCenter:F2} forward={forward:F2}";
+        if (!DefensiveBlockGeometry.TrySweepGuard(previous, bounds.center, bounds.extents,
             guard.GuardCenter, forward, guard.guardHalfWidth, guard.guardHalfHeight, guard.guardHalfDepth,
             out float guardFraction)) return false;
         float playerFraction = PlayerContactFraction(runtime, previous, bounds, forward, out float playerFront);
@@ -392,6 +391,8 @@ public sealed partial class DefensiveBlockAttack : MonoBehaviour
         (acceptedWindow < 0 || approach != null || acceptedWindow == WindowIndex);
     public void ResetExecution()
     {
+        CooperativeSession?.Cancel();
+        CooperativeSession = null;
         TraceBlock("Execution reset/ended");
         ReleaseWindup();
         if (approach != null) { ReleaseApproach(); StopOwnedSkill(); }

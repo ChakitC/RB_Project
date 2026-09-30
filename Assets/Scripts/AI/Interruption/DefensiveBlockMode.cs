@@ -1,5 +1,6 @@
 public enum DefensiveBlockMode
 {
     Contact,
-    TimedApproach
+    TimedApproach,
+    Cooperative
 }

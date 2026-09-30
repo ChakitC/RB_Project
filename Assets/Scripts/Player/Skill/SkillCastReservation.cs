@@ -20,7 +20,9 @@ public sealed class SkillCastReservation
     public int Token { get; }
 
     /// <summary>Stats this cast was priced with. Frozen for the whole cast.</summary>
-    public FinalSkillStats Stats { get; }
+    public FinalSkillStats Stats => stats?.Copy();
+    public SkillUpgradeStatSnapshot Upgrades { get; }
+    readonly FinalSkillStats stats;
 
     /// <summary>False for interruption-style casts that must not burn a cooldown.</summary>
     public bool StampCooldown { get; }
@@ -60,10 +62,12 @@ public sealed class SkillCastReservation
         SkillUserSystem energyOwner,
         float energyAmount,
         bool energyReserved,
-        bool stampCooldown)
+        bool stampCooldown,
+        SkillUpgradeStatSnapshot upgrades = null)
     {
         Token = token;
-        Stats = stats;
+        this.stats = stats?.Copy();
+        Upgrades = upgrades;
         StampCooldown = stampCooldown;
 
         this.charges = charges;
@@ -121,7 +125,7 @@ public sealed class SkillCastReservation
             return;
         }
 
-        float cooldown = Stats != null ? Stats.cooldown : 0f;
+        float cooldown = stats != null ? stats.cooldown : 0f;
         charges.CommitReservation(Token, Time.time, cooldown);
     }
 

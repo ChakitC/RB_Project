@@ -44,6 +44,35 @@ public static class DefensiveBlockGeometry
         return true;
     }
 
+    // Active hitboxes supplement the authored lane; animation must not shrink it.
+    public static bool TryPredictThreat(Vector3 origin, Vector3 forward, Vector3 player,
+        float halfWidth, float forwardReach, float speed, Bounds? hitbox, Vector3 playerExtents,
+        out float contactSeconds)
+    {
+        forward.y = 0f;
+        forward.Normalize();
+        Vector3 side = Vector3.Cross(Vector3.up, forward);
+        float bodyWidth = Mathf.Abs(side.x) * playerExtents.x + Mathf.Abs(side.z) * playerExtents.z;
+        float bodyReach = Mathf.Abs(forward.x) * playerExtents.x + Mathf.Abs(forward.z) * playerExtents.z;
+        bool incoming = TryPredictThreat(origin, forward, player, halfWidth + bodyWidth,
+            forwardReach + bodyReach, speed, out contactSeconds);
+        if (!hitbox.HasValue) return incoming;
+        Bounds bounds = hitbox.Value;
+        Vector3 offset = bounds.center - origin;
+        // Shift only sideways so the passed-attacker test still uses the actor root.
+        Vector3 hitboxOrigin = origin + side * Vector3.Dot(offset, side);
+        float hitboxWidth = Mathf.Abs(side.x) * bounds.extents.x + Mathf.Abs(side.z) * bounds.extents.z;
+        float hitboxReach = Vector3.Dot(offset, forward) +
+            Mathf.Abs(forward.x) * bounds.extents.x + Mathf.Abs(forward.z) * bounds.extents.z;
+        if (TryPredictThreat(hitboxOrigin, forward, player, hitboxWidth + bodyWidth,
+            hitboxReach + bodyReach, speed, out float hitboxSeconds))
+        {
+            contactSeconds = Mathf.Min(contactSeconds, hitboxSeconds);
+            incoming = true;
+        }
+        return incoming;
+    }
+
     public static bool PreferThreat(float time, float distanceSquared, int id,
         float bestTime, float bestDistanceSquared, int bestId)
     {
@@ -59,6 +88,24 @@ public static class DefensiveBlockGeometry
 
     public static bool TrySweepGuard(Vector3 previous, Vector3 current, float radius,
         Vector3 guard, Vector3 forward, float halfWidth, float halfHeight, float halfDepth, out float fraction)
+        => TrySweepGuard(previous, current, radius, radius, radius,
+            guard, forward, halfWidth, halfHeight, halfDepth, out fraction);
+
+    // Project world-space hitbox bounds onto each guard axis independently.
+    public static bool TrySweepGuard(Vector3 previous, Vector3 current, Vector3 extents,
+        Vector3 guard, Vector3 forward, float halfWidth, float halfHeight, float halfDepth, out float fraction)
+    {
+        forward.y = 0f;
+        forward.Normalize();
+        Vector3 side = Vector3.Cross(Vector3.up, forward);
+        float depthRadius = Mathf.Abs(forward.x) * extents.x + Mathf.Abs(forward.z) * extents.z;
+        float widthRadius = Mathf.Abs(side.x) * extents.x + Mathf.Abs(side.z) * extents.z;
+        return TrySweepGuard(previous, current, depthRadius, widthRadius, extents.y,
+            guard, forward, halfWidth, halfHeight, halfDepth, out fraction);
+    }
+
+    static bool TrySweepGuard(Vector3 previous, Vector3 current, float radius, float widthRadius, float heightRadius,
+        Vector3 guard, Vector3 forward, float halfWidth, float halfHeight, float halfDepth, out float fraction)
     {
         fraction = float.PositiveInfinity;
         forward.y = 0f;
@@ -70,8 +117,8 @@ public static class DefensiveBlockGeometry
         if (before + (radius + halfDepth) * 2f < 0f || after > 0f || after > before + 0.0001f) return false;
         float t = before <= 0f ? 0f : Mathf.Clamp01(before / Mathf.Max(0.0001f, before - after));
         Vector3 contact = Vector3.Lerp(previous, current, t) - guard;
-        if (Mathf.Abs(Vector3.Dot(contact, Vector3.Cross(Vector3.up, forward))) > halfWidth + radius ||
-            Mathf.Abs(contact.y) > halfHeight + radius) return false;
+        if (Mathf.Abs(Vector3.Dot(contact, Vector3.Cross(Vector3.up, forward))) > halfWidth + widthRadius ||
+            Mathf.Abs(contact.y) > halfHeight + heightRadius) return false;
         fraction = t;
         return true;
     }

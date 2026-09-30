@@ -15,13 +15,18 @@ public class Billboard : MonoBehaviour
         ResolveMainCamera();
         if (mainCameraTransform == null) return;
 
-        transform.LookAt(transform.position + mainCameraTransform.forward);
+        transform.rotation = mainCameraTransform.rotation;
     }
 
     void ResolveMainCamera()
     {
-        Camera mainCamera = Camera.main;
-        if (mainCamera != null && mainCameraTransform != mainCamera.transform)
-            mainCameraTransform = mainCamera.transform;
+        // Bootstrap scenes can keep another MainCamera alive alongside the gameplay rig.
+        Camera mainCamera = GameplayCameraController.Instance != null
+            ? GameplayCameraController.Instance.GameplayCamera
+            : null;
+        if (mainCamera == null || !mainCamera.isActiveAndEnabled)
+            mainCamera = Camera.main;
+
+        mainCameraTransform = mainCamera != null ? mainCamera.transform : null;
     }
 }

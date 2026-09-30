@@ -427,6 +427,7 @@ GameObject:
   - component: {fileID: 2785288318504072516}
   - component: {fileID: 811612530271570391}
   - component: {fileID: 3397687693481732196}
+  - component: {fileID: 1338707178817859999}
   m_Layer: 10
   m_Name: Ally_Stryker
   m_TagString: Ally
@@ -545,12 +546,15 @@ MonoBehaviour:
   CombatEventBus: {fileID: 2948696378916355059}
   rb: {fileID: 755043487724053691}
   cc: {fileID: 7154190368743996575}
+  NavigationAgent: {fileID: 1585247101988985248}
+  MovementMotor: {fileID: 1338707178817859999}
   TargetInfo: {fileID: 4934957585661581971}
   Equipment: {fileID: 5646034634250052821}
   AccessoryLoadout: {fileID: 2694061841624252001}
   WeaponSystem: {fileID: 6987636084120509540}
   AnimBrain: {fileID: 6756038978356485017}
   AnimDriver: {fileID: 2705162881607156007}
+  RootMotionDriver: {fileID: 0}
   PairOffsetApplier: {fileID: 6927647070226357498}
   MeleeController: {fileID: 3848525355350381702}
   AimRig: {fileID: 3831703666553802021}
@@ -768,10 +772,6 @@ MonoBehaviour:
   colliderRefs: {fileID: 0}
   capsuleCollider: {fileID: 0}
   navMeshAgent: {fileID: 1585247101988985248}
-  agentMoveDriver: {fileID: 4358868359549360660}
-  animBrain: {fileID: 6756038978356485017}
-  rootMotionCCDriver: {fileID: 0}
-  rootMotionNavMeshDriver: {fileID: 6648510169112720681}
   mode: 1
   gravity: -25
   terminalVelocity: -50
@@ -883,6 +883,18 @@ MonoBehaviour:
   impactVfx: {fileID: 0}
   warpFadeOutSeconds: 0.04
   warpFadeInSeconds: 0.08
+--- !u!114 &1338707178817859999
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2275044329717223576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 075d5f6cfec8f664199b898d72f49100, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2357043900880950871
 GameObject:
   m_ObjectHideFlags: 0
@@ -1113,7 +1125,7 @@ MonoBehaviour:
   m_Subtree: {fileID: 11400000, guid: 20d97805b04b36542b00ff18b8250283, type: 2}
 --- !u!114 &3024963774756460838
 MonoBehaviour:
-  m_ObjectHideFlags: 2
+  m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}

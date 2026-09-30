@@ -1,54 +1,36 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+These rules supplement [the parent AGENTS.md](../AGENTS.md). Read it if it is
+not already in context; it owns build/test policy, MCP usage, character rules,
+and documentation requirements.
 
-This is a Unity 6 project (editor `6000.0.58f2`). Gameplay C# lives in
-`Assets/Scripts/`, grouped by feature, such as `AI/`, `Inventory/`, `Passives/`,
-`Weapons/`, and `UIScripts/`. Scenes, prefabs, data, and art belong in their
-matching `Assets/Scenes`, `Assets/Prefab`, `Assets/Data`, and content folders.
-Project-wide Unity settings are under `ProjectSettings/`; package declarations
-are under `Packages/`. Read `Docs/PROJECT_OVERVIEW.md` and the relevant
-`Docs/SYSTEMS/` or `Docs/ARCHITECTURE/` page before changing a core system.
+## Project Structure
 
-Do not hand-edit generated `.csproj` or `.sln` files. Keep Unity `.meta` files
-with their assets, and avoid committing generated `Library/`, `Temp/`, `Logs/`,
-or build-output directories.
+- Use the Unity version in `ProjectSettings/ProjectVersion.txt`.
+- Gameplay code is under `Assets/Scripts/`, organized by feature. Scenes,
+  prefabs, and data belong in `Assets/Scenes`, `Assets/Prefab`, and `Assets/Data`;
+  settings and package declarations are in `ProjectSettings/` and `Packages/`.
+- Before changing a core system, read `Docs/PROJECT_OVERVIEW.md` and the relevant
+  `Docs/SYSTEMS/` or `Docs/ARCHITECTURE/` page.
+- Keep `.meta` files with their assets. Do not commit generated `Library/`,
+  `Temp/`, `Logs/`, build outputs, or unrelated Unity-generated changes.
 
-## Build, Test, and Development Commands
+## Coding Style
 
-- `powershell -ExecutionPolicy Bypass -File .\BuildAssembly.ps1` — canonical
-  compile validation for the default `Assembly-CSharp` sources.
-- `powershell -ExecutionPolicy Bypass -File .\BuildAssembly.ps1 -ArtifactRoot D:\RB_Build`
-  — runs the same check with artifacts outside the repository.
-- Open the project with Unity `6000.0.58f2` — run scenes and validate serialized
-  references, prefabs, animation, and gameplay behavior.
+Use four-space indentation and braces on new lines, following nearby conventions.
+Use `PascalCase` for types, methods, properties, and public APIs; `camelCase` for
+parameters, locals, and serialized private fields. Prefer `[SerializeField] private`
+to mutable public fields. Match each primary Unity type's filename to its type.
+Preserve serialized field names unless a migration is included.
 
-Never use `dotnet build` directly on Unity-generated project files. Build
-artifacts must remain outside `Assets/`; see `Docs/VALIDATION.md`.
+## Adding Tests
 
-## Coding Style & Naming Conventions
+Place new Unity Test Framework coverage in a dedicated `Tests` assembly and
+name fixtures `FeatureNameTests`. Follow the parent build and validation rules.
 
-Use C# with four-space indentation and braces on new lines. Follow nearby code
-when a subsystem has an established pattern. Use `PascalCase` for types,
-methods, properties, and public APIs; use `camelCase` for parameters, locals,
-and serialized private fields. Prefer `[SerializeField] private` over exposing
-mutable fields. Keep one primary Unity type per file and match the filename to
-the type (for example, `WeaponController.cs`). Preserve stable serialized field
-names unless a migration is included.
+## Commits And Pull Requests
 
-## Testing Guidelines
-
-No repository-wide automated test suite is currently established. For every C#
-change, run `BuildAssembly.ps1`; then exercise the affected flow in Unity.
-Check the relevant scenes and prefabs for missing references and review the
-Console for errors. If adding Unity Test Framework coverage, place tests in a
-dedicated `Tests` assembly and name fixtures `FeatureNameTests`.
-
-## Commit & Pull Request Guidelines
-
-Recent history uses short, imperative update summaries such as
-`Update_SkillTree`; prefer clearer scoped messages, for example
-`Fix weapon stat refresh after equipment change`. Keep commits focused and do
-not include unrelated Unity-generated churn. Pull requests should describe the
-behavioral change, list validation performed, link the relevant issue, and add
-screenshots or a short capture for visible scene, UI, animation, or VFX changes.
+Use short, imperative, scoped commit messages and keep commits focused.
+PRs should describe behavior changes, list validation, link the relevant issue
+when one exists, and include screenshots or captures for visible scene, UI,
+animation, or VFX changes.

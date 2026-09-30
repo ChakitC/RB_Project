@@ -15,13 +15,52 @@ MonoBehaviour:
   icon: {fileID: 0}
   characterId: NB_GR_02
   characterName: SerpentPersonnel_Male
+  CharacterWeaponType: 6
   CharacterPrefab: {fileID: 2455486968630159720, guid: 6d10d8f609388e14fa46a8a7f1fc1202, type: 3}
   CharacterPrefabBasement: {fileID: 2455486968630159720, guid: 6d10d8f609388e14fa46a8a7f1fc1202, type: 3}
   characterAvatar: {fileID: 9000000, guid: 923ac931b03d81b4aae7d5a66ec1d199, type: 3}
   controller: {fileID: 9100000, guid: eeaacc3b3d4f906488e731bd1082adb8, type: 2}
   animProfile: {fileID: 11400000, guid: 041856afdf417ac4e99bbff0ee27d157, type: 2}
+  behaviorSubtree: {fileID: 0}
+  thirdPersonProfile:
+    pivotOffset: {x: 0, y: 1.55, z: 0}
+    shoulderOffset: {x: 0.48, y: -0.2, z: 0}
+    verticalArmLength: 0.25
+    cameraDistance: 3.2
+    aimCameraDistance: 2.7
+    cameraSide: 1
+    followDamping: {x: 0.08, y: 0.12, z: 0.08}
+    minimumPitch: -55
+    maximumPitch: 72
+    freeLookFov: 60
+    shoulderAimFov: 48
+    yawSensitivityMultiplier: 1
+    pitchSensitivityMultiplier: 1
+    chestAimWeight: 0.55
+    upperChestAimWeight: 0.7
+    spineAimWeight: 0.35
+    maximumUpperBodyPitch: 55
+    maximumUpperBodyYaw: 65
+    collisionRadius: 0.22
+    fadeStartDistance: 1.05
+    fadeFullyHiddenDistance: 0.5
   weaponHandMode: 0
+  combatRole: 0
   chainAttackSkill: {fileID: 0}
+  partyComboSkill: {fileID: 0}
+  defensiveBlock: {fileID: 0}
+  introChainCutscene: {fileID: 0}
+  partyRole: 0
+  skillSlots: []
+  skillPointsPerLevel: 1
+  helperProcSlots: []
+  helperCommandSlot:
+    slotId: 
+    displayName: 
+    slotKind: 0
+    hotkey: 0
+    defaultOptionIndex: 0
+    options: []
   maxHP: 100000
   maxStamina: 80
   Damage: 10
@@ -39,8 +78,34 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
-  passives: []
   dashCue: {fileID: 0}
+  voiceProfile:
+    defaultSkillVoiceCue: {fileID: 0}
+    defaultSkillVoiceChance: 1
+    defaultSkillVoiceCooldown: 0
+    globalSkillVoiceCooldown: 0.25
+    skillCastLines: []
+    dashVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    knockbackVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    selectCharacterVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    pickupCharacterVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    lowHpVoice:
+      cue: {fileID: 0}
+      chance: 1
+      cooldown: 0
+    lowHpThreshold: 0.3
   meleeLightCue: {fileID: 0}
   meleeHeavyCue: {fileID: 0}
   damagedCue: {fileID: 0}

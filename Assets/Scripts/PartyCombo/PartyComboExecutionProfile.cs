@@ -4,6 +4,7 @@ public enum PartyComboPlacementPolicy
 {
     KeepCurrentPosition = 0,
     PlaceNearEventTarget = 1,
+    AlignPlacementPointToEventTarget = 2,
 }
 
 public enum PartyComboExitPolicy
@@ -16,11 +17,11 @@ public enum PartyComboExitPolicy
 public sealed class PartyComboExecutionProfile : ScriptableObject
 {
     [Header("Placement")]
-    [Tooltip("วิธีวางตำแหน่งก่อนเล่น Combo: KeepCurrentPosition = อยู่ที่เดิม, PlaceNearEventTarget = หาจุดวาร์ปรอบเป้าหมาย โดยเลือกจุดที่เห็น Ally ชัดก่อน")]
+    [Tooltip("KeepCurrentPosition = อยู่ที่เดิม; PlaceNearEventTarget = วาร์ปตามระยะ; AlignPlacementPointToEventTarget = คำนวณจุดเริ่มจาก Root Motion เพื่อถึงระยะที่กำหนดตอน Placement Point")]
     public PartyComboPlacementPolicy placementPolicy = PartyComboPlacementPolicy.KeepCurrentPosition;
-    [Tooltip("รัศมีของจุดวาร์ปรอบเป้าหมาย หน่วยระยะโลก ใช้เมื่อเลือก PlaceNearEventTarget ตำแหน่งสุดท้ายอาจขยับตาม Local Offset และ NavMesh")]
+    [Tooltip("ระยะจากเป้าหมาย หน่วยโลก: PlaceNearEventTarget ใช้ที่จุดเริ่ม S; AlignPlacementPointToEventTarget ใช้ที่ Placement Point A แล้วคำนวณย้อนหาจุดเริ่ม S")]
     [Min(0f)] public float desiredRange = 2f;
-    [Tooltip("ระยะเยื้องเพิ่มเติมจากจุดวาร์ป อิงแกนและสเกลของเป้าหมาย: X = ด้านข้าง, Y = ขึ้นลง, Z = หน้าหลัง")]
+    [Tooltip("ระยะเยื้องอิงแกนและสเกลของเป้าหมาย ใช้ที่จุดเริ่ม S ในโหมดวาร์ป หรือจุด A ในโหมด Placement Point")]
     public Vector3 localOffset;
     [Tooltip("กำหนดให้หาจุดบน NavMesh ทั้งนี้ Combo ของตัวละครที่เคลื่อนที่ได้ยังบังคับใช้ NavMesh ตามกติกา placement กลาง แม้ปิดค่านี้")]
     public bool requireNavMesh = true;

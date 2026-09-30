@@ -108,6 +108,99 @@ public sealed class DefensiveBlockTimelineTests
         draft.end = draft.start; Assert.That(draft.ValidationError, Is.Null);
     }
 
+    [Test] public void OptionalImpactDraftSavesReloadsRevertsAndSupportsUndo()
+    {
+        var draft = Draft(); Persist(draft);
+        draft.SetMode(DefensiveBlockMode.TimedApproach);
+        Assert.That(draft.Save(out var error), Is.True, error);
+        draft.SetImpact(0, true, .75f); Undo.FlushUndoRecordObjects();
+        Assert.That(draft.IsDirty, Is.True);
+        Assert.That(draft.profile.TryGetImpact(0, out _), Is.False, "Draft must not change the asset.");
+        Undo.PerformUndo(); Assert.That(draft.windows[0].useImpactMarker, Is.False);
+        Undo.PerformRedo(); Assert.That(draft.windows[0].useImpactMarker, Is.True);
+        Assert.That(draft.Save(out error), Is.True, error);
+        Assert.That(draft.profile.TryGetImpact(0, out float impact), Is.True);
+        Assert.That(impact, Is.EqualTo(.75f));
+        draft.SetImpact(0, true, .9f); draft.Reload();
+        Assert.That(draft.windows[0].impactNormalized, Is.EqualTo(.75f));
+        draft.SetImpact(0, false, .75f);
+        Assert.That(draft.Save(out error), Is.True, error);
+        Assert.That(draft.profile.TryGetImpact(0, out _), Is.False);
+        Assert.That(draft.IsDirty, Is.False);
+    }
+
+    [Test] public void EnemyStruggleClipDraftRoundTripsWithoutChangingAttackClip()
+    {
+        var draft = Draft(); Persist(draft);
+        var clip = Own(new AnimationClip());
+        clip.SetCurve("", typeof(Transform), "localPosition.x", AnimationCurve.Linear(0f, 0f, 1f, 0f));
+        AssetDatabase.CreateAsset(clip, folder + "/EnemyStruggle.anim");
+        draft.SetMode(DefensiveBlockMode.Cooperative);
+        Assert.That(draft.Save(out var error), Is.True, error);
+        var attackClip = draft.skill.skillClip;
+        Undo.RecordObject(draft, "Set enemy struggle clip");
+        draft.cooperative.enemyStruggleClip = clip;
+        draft.cooperative.enemyStruggleFadeSeconds = .15f;
+        Undo.FlushUndoRecordObjects();
+        Assert.That(draft.profile.cooperative.enemyStruggleClip, Is.Null);
+        Undo.PerformUndo(); Assert.That(draft.cooperative.enemyStruggleClip, Is.Null);
+        Undo.PerformRedo(); Assert.That(draft.cooperative.enemyStruggleClip, Is.SameAs(clip));
+        Assert.That(draft.Save(out error), Is.True, error);
+        Assert.That(draft.profile.cooperative.enemyStruggleClip, Is.SameAs(clip));
+        Assert.That(draft.profile.cooperative.enemyStruggleFadeSeconds, Is.EqualTo(.15f));
+        draft.cooperative.enemyStruggleClip = null; draft.Reload();
+        Assert.That(draft.cooperative.enemyStruggleClip, Is.SameAs(clip));
+        draft.cooperative.enemyStruggleClip = null;
+        Assert.That(draft.Save(out error), Is.True, error);
+        Assert.That(draft.profile.cooperative.enemyStruggleClip, Is.Null);
+        Assert.That(draft.skill.skillClip, Is.SameAs(attackClip));
+    }
+
+    [Test] public void EnemyStruggleRejectsInvalidClipAndFadeButAllowsHeldPose()
+    {
+        var settings = new CooperativeBlockSettings();
+        Assert.That(settings.IsValid, Is.True);
+        var clip = Own(new AnimationClip());
+        // A new Unity clip defaults to one second; author a zero-length curve explicitly.
+        clip.SetCurve("", typeof(Transform), "localPosition.x", new AnimationCurve(new Keyframe(0f, 0f)));
+        settings.enemyStruggleClip = clip;
+        Assert.That(settings.IsValid, Is.False);
+        clip.SetCurve("", typeof(Transform), "localPosition.x", AnimationCurve.Linear(0f, 0f, 1f, 0f));
+        Assert.That(settings.IsValid, Is.True);
+        clip.legacy = true; Assert.That(settings.IsValid, Is.False);
+        settings.enemyStruggleClip = null;
+        foreach (float fade in new[] { -1f, float.NaN, float.PositiveInfinity })
+        { settings.enemyStruggleFadeSeconds = fade; Assert.That(settings.IsValid, Is.False); }
+        settings.enemyStruggleFadeSeconds = 0f;
+        Assert.That(settings.IsValid, Is.True);
+    }
+
+    [Test] public void ImpactValidationMatchesRuntimeAndStaysBeforeNextWindow()
+    {
+        var draft = Draft();
+        draft.SetMode(DefensiveBlockMode.Cooperative);
+        draft.SetRange(0, .1f, .4f);
+        draft.AddWindow(.8f);
+        foreach (float time in new[] { .39f, .8f, 1f, float.NaN, float.PositiveInfinity })
+        {
+            draft.SetImpact(0, true, time);
+            Assert.That(draft.ValidationError, Is.Not.Null);
+            var settings = new SkillDefensiveBlockSettings { mode = draft.mode, windows = draft.windows.Select(w => w.Copy()).ToArray() };
+            Assert.That(settings.IsConfigured, Is.False);
+        }
+        foreach (float time in new[] { .4f, .6f, .799f })
+        {
+            draft.SetImpact(0, true, time);
+            Assert.That(draft.ValidationError, Is.Null);
+            var settings = new SkillDefensiveBlockSettings { mode = draft.mode, windows = draft.windows.Select(w => w.Copy()).ToArray() };
+            Assert.That(settings.IsConfigured, Is.True);
+        }
+        draft.SetMode(DefensiveBlockMode.Contact);
+        Assert.That(draft.ValidationError, Is.Not.Null);
+        draft.SetImpact(0, false, float.NaN);
+        Assert.That(draft.ValidationError, Is.Null, "Unused marker values must not invalidate legacy playback.");
+    }
+
     [Test] public void MainClipCoordinatesIncludeCutsceneOffsetAndRoundTrip()
     {
         var window = Own(ScriptableObject.CreateInstance<SkillAnimationVfxEditorWindow>());

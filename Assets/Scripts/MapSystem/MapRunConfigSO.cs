@@ -35,8 +35,24 @@ public class MapRunConfigSO : ScriptableObject
     [Tooltip("ชื่อด่านที่แสดงบนบอร์ด")]
     [SerializeField] private string stageDisplayName;
 
-    // Identity is the only tuning this asset owns. Everything else lives on a profile, so two
-    // stages set in the same place can share one, and a value has exactly one home.
+    [Header("Environment")]
+    [Tooltip("Skybox ของด่านนี้ ถ้าไม่ใส่จะใช้ค่าเริ่มต้นของ scene")]
+    [SerializeField] private Material skyboxMaterial;
+
+    [Header("Directional Light")]
+    [Tooltip("ใช้ค่าแสงหลักของด่านนี้ ถ้าปิดจะใช้ค่าเดิมของ scene")]
+    [SerializeField] private bool overrideDirectionalLight;
+    [SerializeField] private Color directionalLightColor = Color.white;
+    [SerializeField, Min(0f)] private float directionalLightIntensity = 1f;
+    [Tooltip("มุมแสงใน world space ไม่หมุนตาม prefab ห้อง")]
+    [SerializeField] private Vector3 directionalLightEulerAngles = new(50f, -30f, 0f);
+    [SerializeField] private LightShadows directionalLightShadows = LightShadows.Soft;
+    [SerializeField, Range(0f, 1f)] private float directionalLightShadowStrength = 1f;
+    [SerializeField] private bool directionalLightUseColorTemperature;
+    [SerializeField, Range(1000f, 20000f)] private float directionalLightColorTemperature = 6570f;
+
+    // Identity and the optional environment overrides belong to this stage. Generation, content, and
+    // progression tuning live on shared profiles, so each value has exactly one home.
     //
     // A missing profile is a content error, not a runtime fallback: MapRunConfigValidator refuses
     // the config and StartRun bails before generating. The defaults below only keep the properties
@@ -45,6 +61,15 @@ public class MapRunConfigSO : ScriptableObject
     public MapGenerationProfileSO GenerationProfile => generationProfile;
     public MapContentPoolSO ContentPool => contentPool;
     public StageProgressionProfileSO ProgressionProfile => progressionProfile;
+    public Material SkyboxMaterial => skyboxMaterial;
+    public bool OverrideDirectionalLight => overrideDirectionalLight;
+    public Color DirectionalLightColor => directionalLightColor;
+    public float DirectionalLightIntensity => Mathf.Max(0f, directionalLightIntensity);
+    public Vector3 DirectionalLightEulerAngles => directionalLightEulerAngles;
+    public LightShadows DirectionalLightShadows => directionalLightShadows;
+    public float DirectionalLightShadowStrength => Mathf.Clamp01(directionalLightShadowStrength);
+    public bool DirectionalLightUseColorTemperature => directionalLightUseColorTemperature;
+    public float DirectionalLightColorTemperature => directionalLightColorTemperature;
 
     // --- Shape ---------------------------------------------------------------------------
 

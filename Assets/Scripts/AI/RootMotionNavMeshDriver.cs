@@ -15,8 +15,8 @@ public class RootMotionNavMeshDriver : MonoBehaviour
     [SerializeField] private LayerMask pushLayers;
 
     [Header("Environment-Safe Root Motion")]
-    [Tooltip("Geometry an environment-safe playback may not pass through. Only consulted while " +
-             "RootMotionPolicy.EnvironmentSafe is set, so ordinary skill and chain clips are untouched.")]
+    [Tooltip("Blocking geometry for every root-motion playback without a CharacterController. " +
+             "CharacterController actors use their controller's collision layers.")]
     [SerializeField] private LayerMask environmentCollisionMask = ~0;
 
     [Tooltip("Skin width kept between the actor body and blocking geometry.")]
@@ -30,12 +30,11 @@ public class RootMotionNavMeshDriver : MonoBehaviour
     private RootMotionPolicy _policy;
 
     private bool _prevRM;
-    private bool _cachedAgentIsStopped;
-    private bool _cachedAgentUpdatePosition;
-    private bool _cachedAgentUpdateRotation;
-    private bool _hasCachedAgentState;
+    private CharacterMovementMotor _movementMotor;
+    private int _agentSuspendToken;
     private bool _environmentSafeRun;
     private Transform _actorRoot;
+    private int _characterLayers;
 
     public bool ZeroY => zeroY;
 
@@ -47,12 +46,14 @@ public class RootMotionNavMeshDriver : MonoBehaviour
 
     void Awake()
     {
+        _characterLayers = LayerMask.GetMask("Player", "Enemy", "Ally");
         if (!brain) brain = GetComponent<CharacterAnimBrain>();
         if (!agent) agent = GetComponent<NavMeshAgent>();
         if (!animator) animator = GetComponent<Animator>();
         if (!ctx) ctx = GetComponent<CharacteContext>();
         if (!ctx) ctx = GetComponentInParent<CharacteContext>();
         _actorRoot = ctx != null ? ctx.transform : transform;
+        BindMovementMotor();
 
         if (animator)
             animator.applyRootMotion = false;
@@ -126,6 +127,7 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         _policy = policy;
         LatchEnvironmentSafeRun(policy);
         ApplyRootMotionTransition(policy.Active);
+        SyncVerticalOwnership();
     }
 
     /// <summary>
@@ -150,11 +152,15 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         Transform actorRoot,
         RootMotionNavMeshDriver settingsSource = null)
     {
+        _characterLayers = LayerMask.GetMask("Player", "Enemy", "Ally");
         if (settingsSource != null && settingsSource != this)
         {
             zeroY = settingsSource.zeroY;
             applyRootRotation = settingsSource.applyRootRotation;
             pushLayers = settingsSource.pushLayers;
+            environmentCollisionMask = settingsSource.environmentCollisionMask;
+            environmentCollisionPadding = settingsSource.environmentCollisionPadding;
+            navMeshRecoverySearchRadius = settingsSource.navMeshRecoverySearchRadius;
         }
 
         // Hand the previous agent back BEFORE rebinding. Re-entering root motion without an
@@ -164,6 +170,8 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         // would also strand the old agent with no one left to restore it.
         ApplyRootMotionTransition(false);
 
+        if (_movementMotor) _movementMotor.SetRootMotionVerticalOwner(this, false);
+        _movementMotor = null;
         brain = animBrain;
         agent = navMeshAgent;
         animator = sourceAnimator;
@@ -173,6 +181,7 @@ public class RootMotionNavMeshDriver : MonoBehaviour
             : context != null
                 ? context.transform
                 : transform;
+        BindMovementMotor();
 
         if (animator)
             animator.applyRootMotion = false;
@@ -181,6 +190,7 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         // rebuilt model keeps the flag we just cleared while root motion is still running.
         SubscribeToBrain();
         ApplyRootMotionTransition(_policy.Active);
+        SyncVerticalOwnership();
     }
 
     void Update()
@@ -190,9 +200,22 @@ public class RootMotionNavMeshDriver : MonoBehaviour
         bool rm = _policy.Active;
         LatchEnvironmentSafeRun(_policy);
         ApplyRootMotionTransition(rm);
+        SyncVerticalOwnership();
 
-        if (rm && agent && agent.enabled)
-            agent.nextPosition = ActorRoot.position;
+        if (rm) CharacterMovementMotor.SyncAgent(agent, ActorRoot);
+    }
+
+    void SyncVerticalOwnership()
+    {
+        if (!_movementMotor) return;
+        _movementMotor.SetRootMotionVerticalOwner(this,
+            isActiveAndEnabled && _policy.Active && !zeroY && !_policy.PlanarOnly);
+    }
+
+    void BindMovementMotor()
+    {
+        _movementMotor = ctx ? ctx.EnsureMovementMotor() : CharacterMovementMotor.Resolve(null, ActorRoot);
+        if (_movementMotor) _movementMotor.Configure(ctx, ActorRoot, agent: agent);
     }
 
     private void ApplyRootMotionTransition(bool rootMotionActive)
@@ -208,55 +231,27 @@ public class RootMotionNavMeshDriver : MonoBehaviour
 
     private void EnterRootMotion()
     {
-        if (animator)
-            animator.applyRootMotion = true;
-
-        if (!agent || !agent.enabled)
-        {
-            _hasCachedAgentState = false;
-            return;
-        }
-
-        // Only ever cache the agent's own settings. Entering twice without an intervening exit
-        // would otherwise capture this driver's own overrides as the state to restore, which turns
-        // the restore into a no-op and leaves the actor frozen.
-        if (!_hasCachedAgentState)
-        {
-            _cachedAgentIsStopped = agent.isStopped;
-            _cachedAgentUpdatePosition = agent.updatePosition;
-            _cachedAgentUpdateRotation = agent.updateRotation;
-            _hasCachedAgentState = true;
-        }
-
-        agent.isStopped = true;
-        agent.updatePosition = false;
-        agent.updateRotation = false;
-        agent.nextPosition = ActorRoot.position;
+        if (animator) animator.applyRootMotion = true;
+        if (_movementMotor) _agentSuspendToken = _movementMotor.AcquireAgentSuspension(agent);
+        CharacterMovementMotor.SyncAgent(agent, ActorRoot);
     }
 
     private void ExitRootMotion()
     {
-        if (animator)
-            animator.applyRootMotion = false;
-
-        if (agent && agent.enabled)
-            agent.nextPosition = ActorRoot.position;
-
-        if (_hasCachedAgentState && agent && agent.enabled)
+        if (animator) animator.applyRootMotion = false;
+        CharacterMovementMotor.SyncAgent(agent, ActorRoot);
+        if (_movementMotor)
         {
-            agent.updatePosition = _cachedAgentUpdatePosition;
-            agent.updateRotation = _cachedAgentUpdateRotation;
-            agent.isStopped = _cachedAgentIsStopped;
+            _movementMotor.SetRootMotionVerticalOwner(this, false);
+            _movementMotor.ReleaseAgentSuspension(_agentSuspendToken);
         }
-
-        _hasCachedAgentState = false;
-
-        // Recovery runs after the agent flags are restored, so the warp lands on an agent that is
-        // already driving itself again.
+        _agentSuspendToken = 0;
         if (_environmentSafeRun)
         {
             _environmentSafeRun = false;
-            RecoverAgentToNavMesh();
+            // Another owner may still hold the actor in the air. It owns its eventual landing.
+            if (!_movementMotor || !_movementMotor.IsAgentTransformSuspended)
+                RecoverAgentToNavMesh();
         }
     }
 
@@ -271,18 +266,12 @@ public class RootMotionNavMeshDriver : MonoBehaviour
 
         Transform actorRoot = ActorRoot;
 
-        // Only an environment-safe playback pays for the sweep. Constraining every clip would change
-        // authored motion across every existing skill and chain attack.
-        if (_policy.EnvironmentSafe)
-            delta = ResolveEnvironmentSafeDelta(actorRoot, delta);
-
         if (ctx != null && ctx.DefensiveBlockAttack != null)
             delta = ctx.DefensiveBlockAttack.ConstrainContactRootMotion(actorRoot.position, delta);
 
-        actorRoot.position += delta;
+        ApplyTranslation(delta);
 
-        if (agent && agent.enabled)
-            agent.nextPosition = actorRoot.position;
+        CharacterMovementMotor.SyncAgent(agent, actorRoot);
 
         if (applyRootRotation || _policy.ApplyYaw)
         {
@@ -290,39 +279,19 @@ public class RootMotionNavMeshDriver : MonoBehaviour
             actorRoot.rotation *= Quaternion.AngleAxis(yawDelta, Vector3.up);
         }
 
-        if (pushLayers != 0)
+        if (pushLayers != 0 && !_policy.IgnoreCharacterCollision)
             PushOverlappingCharacters();
     }
 
-    /// <summary>
-    /// Clamps one frame's animation delta to the distance the actor body may actually travel.
-    ///
-    /// The actor has no <see cref="CharacterController"/> to resolve this for it, so the authored
-    /// body capsule is swept the same way knockback and the vertical motor sweep it. Falling back to
-    /// the raw delta when no usable body is authored is deliberate: a missing collider must not
-    /// silently freeze a reaction in place.
-    /// </summary>
-    private Vector3 ResolveEnvironmentSafeDelta(Transform actorRoot, Vector3 desiredDelta)
+    private void ApplyTranslation(Vector3 delta)
     {
-        if (desiredDelta.sqrMagnitude <= 0.0000001f)
-            return desiredDelta;
-
-        Collider body = ctx != null && ctx.ColliderRefs != null
-            ? ctx.ColliderRefs.CharacterPositionCollider
-            : null;
-
-        if (!CharacterBodySweepUtility.TryResolveShape(body, out CharacterBodySweepShape shape))
-            return desiredDelta;
-
-        return CharacterBodySweepUtility.ResolveSafeDelta(
-            shape,
-            desiredDelta,
-            environmentCollisionPadding,
-            environmentCollisionMask,
-            QueryTriggerInteraction.Ignore,
-            actorRoot);
+        var settings = CharacterMovementSettings.Default;
+        settings.CollisionMask = environmentCollisionMask;
+        settings.Padding = environmentCollisionPadding;
+        settings.Slide = true;
+        settings.IgnoreLayers = _policy.IgnoreCharacterCollision ? _characterLayers : 0;
+        if (_movementMotor) _movementMotor.Move(delta, settings);
     }
-
     /// <summary>
     /// Puts the actor back on the NavMesh after an environment-safe playback.
     ///
@@ -345,8 +314,7 @@ public class RootMotionNavMeshDriver : MonoBehaviour
 
         if (NavMesh.SamplePosition(position, out NavMeshHit hit, navMeshRecoverySearchRadius, NavMesh.AllAreas))
         {
-            agent.Warp(hit.position);
-            ActorRoot.position = hit.position;
+            if (_movementMotor) _movementMotor.PlaceOnNavMesh(hit.position);
             return;
         }
 
@@ -382,7 +350,12 @@ public class RootMotionNavMeshDriver : MonoBehaviour
 
             Vector3 planarDirection = ResolvePlanarPushDirection(aiCol, hit, -dir, cc.transform);
             if (planarDirection.sqrMagnitude > 0.0001f)
-                cc.Move(planarDirection * dist);
+            {
+                var target = cc.GetComponentInParent<CharacteContext>();
+                Transform root = target ? target.transform : cc.transform;
+                var motor = CharacterMovementMotor.Resolve(target, root);
+                if (motor) motor.Move(planarDirection * dist, CharacterMovementSettings.Default);
+            }
         }
     }
 

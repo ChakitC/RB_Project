@@ -105,9 +105,11 @@ public sealed class GlobalTimeScaleManager : MonoBehaviour
     /// </summary>
     public int AcquirePauseToken()
     {
+        bool wasPaused = IsPaused;
         int token = _nextPauseToken++;
         _pauseTokens.Add(token);
         ApplyComposedScale();
+        if (!wasPaused) PauseChanged?.Invoke(true);
         return token;
     }
 
@@ -118,9 +120,11 @@ public sealed class GlobalTimeScaleManager : MonoBehaviour
             return;
 
         ApplyComposedScale();
+        if (!IsPaused) PauseChanged?.Invoke(false);
     }
 
     public bool IsPaused => _pauseTokens.Count > 0;
+    public event System.Action<bool> PauseChanged;
 
     /// <summary>
     /// Legacy single-slot pause. Backed by its own token, so it composes with
@@ -145,10 +149,12 @@ public sealed class GlobalTimeScaleManager : MonoBehaviour
 
     public void ForceReset()
     {
+        bool wasPaused = IsPaused;
         _requests.Clear();
         _pauseTokens.Clear();
         _legacyPauseToken = 0;
         Time.timeScale = 1f;
+        if (wasPaused) PauseChanged?.Invoke(false);
     }
 
     void ApplyComposedScale()

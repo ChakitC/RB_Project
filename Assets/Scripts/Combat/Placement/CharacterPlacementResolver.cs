@@ -227,7 +227,8 @@ public static class CharacterPlacementResolver
 
         if (RequiresNavMesh(request))
         {
-            startPosition = snappedStart;
+            if (!candidate.PreservePosition)
+                startPosition = snappedStart;
             evaluation.NavMeshSnapDistance = snapDistance;
             diagnostics?.AppendLine($"  NavMesh snapped={snappedStart:F3} distance={snapDistance:F3}");
         }
@@ -244,8 +245,11 @@ public static class CharacterPlacementResolver
         {
             Vector3 predictedImpactPosition =
                 startPosition + candidate.Rotation * desiredImpactSample.LocalPosition;
-            if (Vector3.Distance(predictedImpactPosition, candidate.DesiredImpactPosition.Value) >
-                ImpactTargetTolerance)
+            Vector3 impactError = predictedImpactPosition - candidate.DesiredImpactPosition.Value;
+            // Vertical arcs are relative to the grounded takeoff height after NavMesh snap.
+            // Their contact constraint aligns XZ; Y remains authored animation displacement.
+            if (request.Animation.PreserveVerticalMotion) impactError.y = 0f;
+            if (impactError.magnitude > ImpactTargetTolerance)
             {
                 evaluation.Valid = false;
                 return;
@@ -375,7 +379,12 @@ public static class CharacterPlacementResolver
         ref CandidateEvaluation evaluation,
         System.Text.StringBuilder diagnostics = null)
     {
-        if (RequiresNavMesh(request) &&
+        bool airborne = request.EffectivePlanarRootMotion && request.Animation != null &&
+            request.Animation.PreserveVerticalMotion && normalizedTime > 0f && normalizedTime < 1f &&
+            request.Animation.TrySample(normalizedTime, out var motionSample) && motionSample.LocalPosition.y > 0.05f;
+        // Authored jumps need support at takeoff/landing, not at their airborne body pose.
+        // Geometry and reservation checks below still use the full 3D pose and sweep.
+        if (!airborne && RequiresNavMesh(request) &&
             !NavMesh.SamplePosition(
                 position,
                 out _,
@@ -387,14 +396,14 @@ public static class CharacterPlacementResolver
             return;
         }
 
-        if (RequiresNavMesh(request) && !IsFootprintOnNavMesh(request, position, rotation))
+        if (!airborne && RequiresNavMesh(request) && !IsFootprintOnNavMesh(request, position, rotation))
         {
             diagnostics?.AppendLine($"  Rejected: footprint edge is outside NavMesh at pose={position:F3}.");
             evaluation.Valid = false;
             return;
         }
 
-        if (RequiresGroundSupport(request) && !HasGroundSupport(request, position))
+        if (!airborne && RequiresGroundSupport(request) && !HasGroundSupport(request, position))
         {
             diagnostics?.AppendLine($"  Rejected: placement ground-support ray missed at pose={position:F3}.");
             evaluation.Valid = false;

@@ -269,6 +269,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 095254aab55d5754887d96aabf09343d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  cooperativePlayerProfile: {fileID: 11400000, guid: c21fdb25fd3738e44950c1b33af2e692, type: 2}
+  cooperativeAllyProfile: {fileID: 11400000, guid: a797f8e73d10d00489f228650bb37980, type: 2}
   playerPrefab: {fileID: 0}
   allyPrefab: {fileID: 0}
   rectorPrefab: {fileID: 8743962433968012939, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
@@ -279,6 +281,7 @@ MonoBehaviour:
   pauseAutomaticCombat: 1
   startDistance: 8
   autoBlock: 0
+  logDefensiveBlock: 0
   testEnemies:
   - label: "Rector \u2014 Enemy_B_GR_01 Variant"
     prefab: {fileID: 8743962433968012939, guid: 7a0ad648431827746ac68b3044f3ec23, type: 3}
@@ -288,6 +291,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: c080a6d79d3cab54f8bd7663ce09fc33, type: 2}
     - {fileID: 11400000, guid: 71aa342e35078514cba7ad9786dfaf74, type: 2}
     - {fileID: 11400000, guid: 0b4fcf0f29c9dc744aa29505c7d1147b, type: 2}
+    - {fileID: 11400000, guid: a7268c8068d27ad44bac5fedc466d99b, type: 2}
   - label: "Enemy_M_GR_01 Variant \u2014 Enemy_M_GR_01 Variant"
     prefab: {fileID: 2674987616401726930, guid: 56706bf9c93bf494e9e39755db49cdf6, type: 3}
     skills:

@@ -12,22 +12,55 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bf1e9671b0aa4244b9b18308a3dc403, type: 3}
   m_Name: Aires_Block.RootMotion
   m_EditorClassIdentifier: 
+  comboEnabled: 0
+  comboSteps: []
+  blockSettings:
+    enabled: 0
+    mode: 0
+    timedApproachSeconds: 0.22
+    cooperative:
+      duration: 3
+      initialMeter: 0.5
+      gainPerPress: 0.1
+      drainPerSecond: 0.2
+      worldScale: 0.15
+      enemyStruggleClip: {fileID: 0}
+      enemyStruggleFadeSeconds: 0.06
+    commandRange: 8
+    worldLayers:
+      serializedVersion: 2
+      m_Bits: 1
+    windupSeconds: 0
+    windowStartNormalized: 0
+    windowEndNormalized: 0.62
+    hitboxSteps: 0000000001000000
+    windows: []
+    approachStandOff: 1.6
+    threatHalfWidth: 1.5
+    threatForwardReach: 2.3
+    estimatedChargeSpeed: 8
+    knockbackDistance: 2
+    knockbackSeconds: 0.4
   icon: {fileID: 0}
   displayName: Aires.Skill.1.Rootmotion
-  skillId: Aires.Skill.1.Rootmotion
+  skillId: aires.skill.1.rootmotion
   tags: 17
   description: 
   baseDamage: 10
+  damageCoefficient: 0
   baseStaggerPower: 10
   baseManaCost: 10
   baseCastTime: 0.5
   baseCooldown: 0
+  baseMaxCharges: 1
   baseCritChance: 5
   baseProjectilesCount: 1
   projectileSpeed: 5
   AreaofEffec: 0
   baseRadius: 0
-  maxLevel: 20
+  baseEffectDuration: 0
+  baseHealPower: 0
+  upgradeTree: {fileID: 0}
   payload: {fileID: 3727679946570247180}
   castCue: {fileID: 0}
   skillClip:
@@ -46,6 +79,7 @@ MonoBehaviour:
       - {fileID: 11400000, guid: b2e8d6c4a1b347c98d0e1f2a34567890, type: 2}
     _Clip: {fileID: -6348440289532276459, guid: 70d665413b9ae1e4bbb03661da9516db, type: 3}
     _NormalizedStartTime: NaN
+  ignoreCharacterCollisionDuringRootMotion: 1
   castPointNormalized: 0.128
   skillVfxEvents:
   - cueIndex: 0
@@ -54,14 +88,22 @@ MonoBehaviour:
     anchor: 0
     customAnchorPath: 
     humanoidBone: 18
-    localPosition: {x: -0.17000008, y: 0, z: -0.431}
-    localEulerAngles: {x: -0, y: 0, z: 0}
-    localScale: {x: 1.2758, y: 1.2758, z: 1.2758}
+    localPosition: {x: -0.17000005, y: 0, z: -0.4309997}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    localScale: {x: 1.2757998, y: 1.2758, z: 1.2757998}
     parentToAnchor: 0
     loopKey: 
     extraLife: 0
     allowParticlesToFinish: 1
     animClip: {fileID: 0}
+  hitLagDuration: 0.06
+  hitLagTimeScale: 0.05
+  hitLagShape:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   isCutsceneSkill: 0
   cutsceneDef:
     characterCutsceneClip:
@@ -88,8 +130,6 @@ MonoBehaviour:
   preCastIndicatorPrefab: {fileID: 0}
   cancelPreCastOnStun: 1
   cancelPreCastOnStagger: 1
-  perLevelData: []
-  previewLevel: 1
   references:
     version: 2
     RefIds: []
@@ -111,6 +151,8 @@ MonoBehaviour:
   hitboxLayout:
     groups:
     - groupKey: Group01
+      anchorSpace: 0
+      anchorPath: 
       shapes:
       - shapeName: HitBox01
         type: 1

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using UnityEngine;
@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Animancer.FSM
 {
     /// https://kybernetik.com.au/animancer/api/Animancer.FSM/StateMachine_2
-    partial class StateMachine<TKey, TState>
+    partial class StateMachine<TKey, TState> // StateMachine2.WithDefault.cs
     {
         /// <summary>A <see cref="StateMachine{TKey, TState}"/> with a <see cref="DefaultKey"/>.</summary>
         /// <remarks>

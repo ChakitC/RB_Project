@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Collections.Generic;
@@ -12,9 +12,9 @@ namespace Animancer
     [Serializable]
     [Obsolete("ClipTransitionSequence has been replaced by TransitionSequence" +
         " which is much more powerful and works properly with Animancer Events." +
-        " This class still works the same as it always has so if you want to" +
+        " This script still works the same as it always has so if you want to" +
         " keep using it you can simply remove this [Obsolete] attribute." +
-        " This class will be removed in a future version of Animancer.")]
+        " This script will be removed in a future version of Animancer.")]
     public class ClipTransitionSequence : ClipTransition,
         ICopyable<ClipTransitionSequence>
     {
@@ -226,7 +226,11 @@ namespace Animancer
 
         /// <inheritdoc/>
         public override Transition<ClipState> Clone(CloneContext context)
-            => new ClipTransitionSequence();
+        {
+            var clone = new ClipTransitionSequence();
+            clone.CopyFrom(this, context);
+            return clone;
+        }
 
         /// <inheritdoc/>
         public sealed override void CopyFrom(ClipTransition copyFrom, CloneContext context)
@@ -237,7 +241,7 @@ namespace Animancer
         {
             base.CopyFrom(copyFrom, context);
 
-            AnimancerUtilities.CopyExactArray(copyFrom._Others, ref _Others);
+            context.CloneArray(copyFrom._Others, ref _Others);
         }
 
         /************************************************************************************************************************/

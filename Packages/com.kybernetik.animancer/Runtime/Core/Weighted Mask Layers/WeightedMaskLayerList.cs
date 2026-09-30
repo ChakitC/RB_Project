@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using Unity.Collections;
@@ -22,6 +22,12 @@ namespace Animancer
 
         /// <summary>The job data.</summary>
         private readonly WeightedMaskMixerJob _Job;
+
+        /************************************************************************************************************************/
+
+        /// <summary>The root motion weight of each layer.</summary>
+        public NativeArray<float> RootMotionWeights
+            => _Job.rootMotionWeights;
 
         /************************************************************************************************************************/
 
@@ -76,9 +82,13 @@ namespace Animancer
                 boneTransforms = new(boneCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory),
                 boneWeights = new(boneCount * (layerCount - 1), Allocator.Persistent, NativeArrayOptions.ClearMemory),
                 layerCount = layerCount,
+                rootMotionWeights = new(layerCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory),
             };
 
             graph.Disposables.Add(this);
+
+            for (var i = 0; i < layerCount; i++)
+                _Job.rootMotionWeights[i] = 1;
 
             for (var i = 0; i < boneCount; i++)
             {
@@ -96,6 +106,7 @@ namespace Animancer
         /// <inheritdoc/>
         void IDisposable.Dispose()
         {
+            _Job.rootMotionWeights.Dispose();
             _Job.boneTransforms.Dispose();
             _Job.boneWeights.Dispose();
         }
@@ -115,4 +126,3 @@ namespace Animancer
         /************************************************************************************************************************/
     }
 }
-

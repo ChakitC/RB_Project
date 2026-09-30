@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Collections.Generic;
@@ -36,7 +36,7 @@ namespace Animancer.TransitionLibraries
         /************************************************************************************************************************/
 
         /// <summary>[Pro-Only] The number of transitions in this library.</summary>
-        public int Count
+        public int TransitionCount
             => TransitionModifiers.Count;
 
         /// <summary>[Pro-Only] The number of transitions in this library plus any additional aliases.</summary>
@@ -192,7 +192,8 @@ namespace Animancer.TransitionLibraries
             if (definition == null)
                 return;
 
-            var count = definition.Transitions.Length;
+            var transitions = definition.Transitions;
+            var count = transitions.Length;
 
             if (TransitionModifiers.Capacity < count)
             {
@@ -201,23 +202,50 @@ namespace Animancer.TransitionLibraries
                 KeyedTransitionModifiers.EnsureCapacity(capacity);
             }
 
+            var transitionIndexRemap = ListPool<int>.Instance.Acquire();
+
             for (int i = 0; i < count; i++)
             {
-                var transition = definition.Transitions[i];
+                var transition = transitions[i];
                 if (transition != null)
+                {
+                    transitionIndexRemap.Add(KeyedTransitionModifiers.Count);
                     SetTransition(transition);
+                }
+                else
+                {
+                    transitionIndexRemap.Add(-1);
+                }
             }
 
             for (int i = 0; i < definition.Modifiers.Length; i++)
-                SetFadeDuration(definition.Modifiers[i]);
+            {
+                var modifier = definition.Modifiers[i];
+
+                if (transitionIndexRemap.TryGet(modifier.FromIndex, out var fromIndex) &&
+                    transitionIndexRemap.TryGet(modifier.ToIndex, out var toIndex) &&
+                    fromIndex != -1 &&
+                    toIndex != -1)
+                {
+                    modifier = modifier.WithIndices(fromIndex, toIndex);
+                    SetModifier(modifier);
+                }
+            }
+
+            ListPool<int>.Instance.Release(transitionIndexRemap);
 
             if (definition.AliasAllTransitions)
             {
+                var modifierIndex = 0;
                 for (int i = 0; i < count; i++)
                 {
                     var transition = definition.Transitions[i];
-                    var modifier = TransitionModifiers[i];
-                    KeyedTransitionModifiers[StringReference.Get(transition.name)] = modifier;
+                    if (transition == null)
+                        continue;
+
+                    var alias = StringReference.Get(transition.name);
+                    var modifier = TransitionModifiers[modifierIndex++];
+                    KeyedTransitionModifiers[alias] = modifier;
                 }
             }
 
@@ -295,7 +323,8 @@ namespace Animancer.TransitionLibraries
         /************************************************************************************************************************/
 
         /// <summary>[Pro-Only]
-        /// Sets the <see cref="ITransition.FadeDuration"/> to use when transitioning from `from` to `to`.
+        /// Sets the <see cref="ITransition.FadeDuration"/>
+        /// to use when transitioning from `from` to `to`.
         /// </summary>
         public void SetFadeDuration(
             object from,
@@ -303,13 +332,12 @@ namespace Animancer.TransitionLibraries
             float fadeDuration)
         {
             var group = SetTransition(to.Key, to);
-            group.SetFadeDuration(
-                from,
-                fadeDuration);
+            group.SetFadeDuration(from, fadeDuration);
         }
 
         /// <summary>[Pro-Only]
-        /// Sets the <see cref="ITransition.FadeDuration"/> to use when transitioning from `from` to `to`.
+        /// Sets the <see cref="ITransition.FadeDuration"/>
+        /// to use when transitioning from `from` to `to`.
         /// </summary>
         public void SetFadeDuration(
             IHasKey from,
@@ -317,20 +345,73 @@ namespace Animancer.TransitionLibraries
             float fadeDuration)
             => SetFadeDuration(from.Key, to, fadeDuration);
 
+        /************************************************************************************************************************/
+
         /// <summary>[Pro-Only]
-        /// Sets the <see cref="ITransition.FadeDuration"/> to use when transitioning from
-        /// <see cref="TransitionModifierDefinition.FromIndex"/> to <see cref="TransitionModifierDefinition.ToIndex"/>.
+        /// Sets the <see cref="ITransition.NormalizedStartTime"/>
+        /// to use when transitioning from `from` to `to`.
         /// </summary>
-        public bool SetFadeDuration(
+        public void SetNormalizedStartTime(
+            object from,
+            ITransition to,
+            float normalizedStartTime)
+        {
+            var group = SetTransition(to.Key, to);
+            group.SetNormalizedStartTime(from, normalizedStartTime);
+        }
+
+        /// <summary>[Pro-Only]
+        /// Sets the <see cref="ITransition.NormalizedStartTime"/>
+        /// to use when transitioning from `from` to `to`.
+        /// </summary>
+        public void SetNormalizedStartTime(
+            IHasKey from,
+            ITransition to,
+            float normalizedStartTime)
+            => SetNormalizedStartTime(from.Key, to, normalizedStartTime);
+
+        /************************************************************************************************************************/
+
+        /// <summary>[Pro-Only]
+        /// Sets the <see cref="ITransition.FadeDuration"/> and <see cref="ITransition.NormalizedStartTime"/>
+        /// to use when transitioning from `from` to `to`.
+        /// </summary>
+        public void SetModifier(
+            object from,
+            ITransition to,
+            TransitionDetails modifier)
+        {
+            var group = SetTransition(to.Key, to);
+            group.SetModifier(from, modifier);
+        }
+
+        /// <summary>[Pro-Only]
+        /// Sets the <see cref="ITransition.FadeDuration"/> and <see cref="ITransition.NormalizedStartTime"/>
+        /// to use when transitioning from `from` to `to`.
+        /// </summary>
+        public void SetModifier(
+            IHasKey from,
+            ITransition to,
+            TransitionDetails modifier)
+            => SetModifier(from.Key, to, modifier);
+
+        /************************************************************************************************************************/
+
+        /// <summary>[Pro-Only]
+        /// Sets the <see cref="ITransition.FadeDuration"/> and <see cref="ITransition.NormalizedStartTime"/>
+        /// to use when transitioning from <see cref="TransitionModifierDefinition.FromIndex"/>
+        /// to <see cref="TransitionModifierDefinition.ToIndex"/>.
+        /// </summary>
+        public bool SetModifier(
             TransitionModifierDefinition modifier)
         {
             if (!TransitionModifiers.TryGet(modifier.FromIndex, out var from) ||
                 !TransitionModifiers.TryGet(modifier.ToIndex, out var to))
                 return false;
 
-            to.SetFadeDuration(
+            to.SetModifier(
                 from.Transition.Key,
-                modifier.FadeDuration);
+                modifier.ToTransitionDetails());
             return true;
         }
 
@@ -449,8 +530,8 @@ namespace Animancer.TransitionLibraries
         /// <summary>[Pro-Only] Removes a modified fade duration for transitioning from `from` to `to`.</summary>
         public bool RemoveFadeDuration(object from, object to)
             => TryGetTransition(to, out var group)
-            && group.FromKeyToFadeDuration != null
-            && group.FromKeyToFadeDuration.Remove(from);
+            && group.FromKeyToModifier != null
+            && group.FromKeyToModifier.Remove(from);
 
         /// <summary>[Pro-Only] Removes a modified fade duration for transitioning from `from` to `to`.</summary>
         public bool RemoveFadeDuration(IHasKey from, IHasKey to)
@@ -473,35 +554,46 @@ namespace Animancer.TransitionLibraries
 
         /// <summary>
         /// Calls <see cref="AnimancerLayer.Play(ITransition, float, FadeMode)"/>
-        /// with the fade duration potentially modified by this library.
+        /// with the details potentially modified by this library.
         /// </summary>
         public AnimancerState Play(
             AnimancerLayer layer,
             ITransition transition)
-            => layer.Play(
-                transition,
-                GetFadeDuration(layer, transition),
-                transition.FadeMode);
+            => TryGetTransition(transition, out var modifier)
+            ? Play(layer, modifier)
+            : layer.Play(transition, transition.FadeDuration, transition.FadeMode);
 
         /// <summary>
         /// Calls <see cref="AnimancerLayer.Play(ITransition, float, FadeMode)"/>
-        /// with the fade duration potentially modified by this library.
+        /// with the details potentially modified by this library.
         /// </summary>
         public AnimancerState Play(
             AnimancerLayer layer,
-            TransitionModifierGroup transition)
+            TransitionModifierGroup modifier)
         {
-            var from = layer.CurrentState?.Key;
-            var to = transition.Transition;
+            var to = modifier.Transition;
 
-            var fadeDuration = from != null
-                ? transition.GetFadeDuration(from)
-                : to.FadeDuration;
+            var currentState = layer.CurrentState;
+            if (currentState == null)
+                return layer.Play(to, to.FadeDuration, to.FadeMode);
 
-            return layer.Play(
+            var details = modifier.GetDetails(currentState.Key);
+
+            if (float.IsNaN(details.FadeDuration))
+                details.FadeDuration = to.FadeDuration;
+
+            if (float.IsNaN(details.NormalizedStartTime))
+                return layer.Play(
+                    to,
+                    details.FadeDuration,
+                    to.FadeMode);
+
+            var state = layer.Play(
                 to,
-                fadeDuration,
-                to.FadeMode);
+                details.FadeDuration,
+                FadeMode.FromStart);
+            state.NormalizedTime = details.NormalizedStartTime;
+            return state;
         }
 
         /************************************************************************************************************************/

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Runtime.CompilerServices;
@@ -8,7 +8,7 @@ using UnityEngine;
 namespace Animancer
 {
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerEvent
-    partial struct AnimancerEvent
+    partial struct AnimancerEvent // AnimancerEvent.Dispatcher.cs
     {
         /// <summary>Details about a state which determine how it triggers events.</summary>
         /// https://kybernetik.com.au/animancer/api/Animancer/DispatchInfo
@@ -396,6 +396,15 @@ namespace Animancer
             /************************************************************************************************************************/
 
             private static int _MaximumFullLoopCount = 3;
+
+#if UNITY_EDITOR
+            /// <summary>[Editor-Only] Resets static fields in case the Play Mode Domain Reload is disabled.</summary>
+            [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+            private static void Initialize()
+            {
+                _MaximumFullLoopCount = 3;
+            }
+#endif
 
             /// <summary>
             /// The maximum number of times a looping animation can trigger all of its events in a single frame.

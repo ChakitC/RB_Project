@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Collections.Generic;
@@ -20,7 +20,7 @@ namespace Animancer
 
     /// <summary>Utility methods for <see cref="IConvertable{T}"/>.</summary>
     /// https://kybernetik.com.au/animancer/api/Animancer/ConvertableUtilities
-    public static partial class ConvertableUtilities
+    public static class ConvertableUtilities
     {
         /************************************************************************************************************************/
 

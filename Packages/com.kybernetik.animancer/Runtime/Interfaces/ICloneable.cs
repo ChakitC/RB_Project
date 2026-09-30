@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 //#define ASSERT_CLONE_TYPES
 
@@ -57,7 +57,7 @@ namespace Animancer
 
     /// <summary>Extension methods for <see cref="ICloneable{T}"/>.</summary>
     /// https://kybernetik.com.au/animancer/api/Animancer/CloneableExtensions
-    public static partial class CloneableExtensions
+    public static class CloneableExtensions
     {
         /************************************************************************************************************************/
 
@@ -282,6 +282,31 @@ namespace Animancer
         {
             clone = original;
             return TryGetClone(ref clone);
+        }
+
+        /************************************************************************************************************************/
+
+        /// <summary>
+        /// Ensures the `destination` has the same size as `source`
+        /// then clones all its items to the `destination`.
+        /// </summary>
+        public void CloneArray<T>(T[] source, ref T[] destination)
+            where T : class
+        {
+            if (source == null)
+            {
+                destination = null;
+                return;
+            }
+
+            if (destination == null || destination.Length != source.Length)
+                destination = new T[source.Length];
+
+            for (int i = 0; i < source.Length; i++)
+            {
+                var item = source[i];
+                destination[i] = item != null ? GetCloneOrOriginal(item) : null;
+            }
         }
 
         /************************************************************************************************************************/

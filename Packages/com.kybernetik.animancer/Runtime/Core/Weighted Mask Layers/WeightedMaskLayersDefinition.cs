@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Runtime.CompilerServices;
@@ -48,6 +48,15 @@ namespace Animancer
 
         /************************************************************************************************************************/
 
+        [SerializeField]
+        private float[] _RootMotionWeights;
+
+        /// <summary>Each group has a multiplier for the Root Motion output of any layer the group is applied to.</summary>
+        public ref float[] RootMotionWeights
+            => ref _RootMotionWeights;
+
+        /************************************************************************************************************************/
+
         /// <summary>The number of weight groups in this definition.</summary>
         public int GroupCount
         {
@@ -57,9 +66,15 @@ namespace Animancer
             set
             {
                 if (_Transforms != null && value > 0)
+                {
                     Array.Resize(ref _Weights, _Transforms.Length * value);
+                    Array.Resize(ref _RootMotionWeights, value);
+                }
                 else
+                {
                     _Weights = Array.Empty<float>();
+                    _RootMotionWeights = Array.Empty<float>();
+                }
             }
         }
 
@@ -185,11 +200,42 @@ namespace Animancer
 
         /************************************************************************************************************************/
 
+        /// <summary>Gets the specified RootMotion weight.</summary>
+        /// <remarks>Returns <see cref="float.NaN"/> if the indices are outside the <see cref="RootMotionWeights"/>.</remarks>
+        public float GetRmWeight(int groupIndex)
+        {
+            if (RootMotionWeights == null)
+                return float.NaN;
+
+            return (uint)groupIndex < (uint)RootMotionWeights.Length
+                ? RootMotionWeights[groupIndex]
+                : float.NaN;
+        }
+
+        /// <summary>Sets the specified RootMotion weight.</summary>
+        /// <remarks>Returns false if the indices are outside the <see cref="RootMotionWeights"/>.</remarks>
+        public bool SetRmWeight(int groupIndex, float value)
+        {
+            if (RootMotionWeights == null)
+                return false;
+
+            if ((uint)groupIndex < (uint)RootMotionWeights.Length)
+            {
+                RootMotionWeights[groupIndex] = value;
+                return true;
+            }
+
+            return false;
+        }
+
+        /************************************************************************************************************************/
+
         /// <inheritdoc/>
         public void CopyFrom(WeightedMaskLayersDefinition copyFrom, CloneContext context)
         {
             AnimancerUtilities.CopyExactArray(copyFrom._Transforms, ref _Transforms);
             AnimancerUtilities.CopyExactArray(copyFrom._Weights, ref _Weights);
+            AnimancerUtilities.CopyExactArray(copyFrom._RootMotionWeights, ref _RootMotionWeights);
         }
 
         /************************************************************************************************************************/
@@ -197,35 +243,50 @@ namespace Animancer
         /// <summary>Does this definition contain valid data?</summary>
         public bool IsValid
             => !_Transforms.IsNullOrEmpty()
-            && _Weights != null && _Weights.Length >= _Transforms.Length;
+            && _Weights != null && _Weights.Length >= _Transforms.Length
+            && _RootMotionWeights != null && _RootMotionWeights.Length == GroupCount;
 
         /************************************************************************************************************************/
 
-        /// <inheritdoc/>
-        public bool OnValidate()
-            => ValidateArraySizes()
-            || RemoveMissingAndDuplicate();
+        /// <summary>Ensures that the data in this definition is value.</summary>
+        public void Validate()
+        {
+            ValidateArraySizes();
+            RemoveMissingAndDuplicate();
+        }
 
         /// <summary>Ensures that all the arrays have valid sizes.</summary>
-        public bool ValidateArraySizes()
+        public void ValidateArraySizes()
         {
             if (_Transforms.IsNullOrEmpty())
             {
                 _Transforms = Array.Empty<Transform>();
                 _Weights = Array.Empty<float>();
-                return true;
+                _RootMotionWeights = Array.Empty<float>();
             }
 
             if (_Weights == null ||
                 _Weights.Length < _Transforms.Length)
             {
                 AnimancerUtilities.SetLength(ref _Weights, _Transforms.Length);
-                return true;
+            }
+            else
+            {
+                var expectedWeightCount = (int)Math.Ceiling(_Weights.Length / (double)_Transforms.Length);
+                expectedWeightCount *= _Transforms.Length;
+                AnimancerUtilities.SetLength(ref _Weights, expectedWeightCount);
             }
 
-            var expectedWeightCount = (int)Math.Ceiling(_Weights.Length / (double)_Transforms.Length);
-            expectedWeightCount *= _Transforms.Length;
-            return AnimancerUtilities.SetLength(ref _Weights, expectedWeightCount);
+            var rootMotionWeightCount = _RootMotionWeights == null
+                ? 0
+                : _RootMotionWeights.Length;
+            var groupCount = GroupCount;
+            if (rootMotionWeightCount != groupCount)
+            {
+                AnimancerUtilities.SetLength(ref _RootMotionWeights, groupCount);
+                for (int i = rootMotionWeightCount; i < groupCount; i++)
+                    _RootMotionWeights[i] = 1;
+            }
         }
 
         /// <summary>Removes any missing or identical <see cref="_Transforms"/>.</summary>
@@ -266,11 +327,11 @@ namespace Animancer
 
         /// <inheritdoc/>
         void ISerializationCallbackReceiver.OnBeforeSerialize()
-            => OnValidate();
+            => Validate();
 
         /// <inheritdoc/>
         void ISerializationCallbackReceiver.OnAfterDeserialize()
-            => OnValidate();
+            => Validate();
 
         /************************************************************************************************************************/
 #endif
@@ -280,7 +341,8 @@ namespace Animancer
         public override string ToString()
             => $"{nameof(WeightedMaskLayersDefinition)}(" +
             $"{nameof(Transforms)}={(Transforms != null ? Transforms.Length : 0)}, " +
-            $"{nameof(Weights)}={(Weights != null ? Weights.Length : 0)})";
+            $"{nameof(Weights)}={(Weights != null ? Weights.Length : 0)}, " +
+            $"{nameof(RootMotionWeights)}={(RootMotionWeights != null ? RootMotionWeights.Length : 0)})";
 
         /************************************************************************************************************************/
         #region Equality
@@ -294,7 +356,8 @@ namespace Animancer
         public bool Equals(WeightedMaskLayersDefinition other)
             => other != null
             && AnimancerUtilities.ContentsAreEqual(_Transforms, other._Transforms)
-            && AnimancerUtilities.ContentsAreEqual(_Weights, other._Weights);
+            && AnimancerUtilities.ContentsAreEqual(_Weights, other._Weights)
+            && AnimancerUtilities.ContentsAreEqual(_RootMotionWeights, other._RootMotionWeights);
 
         /// <summary>Are all fields in `a` equal to the equivalent fields in `b`?</summary>
         public static bool operator ==(WeightedMaskLayersDefinition a, WeightedMaskLayersDefinition b)
@@ -312,7 +375,8 @@ namespace Animancer
         public override int GetHashCode()
             => AnimancerUtilities.Hash(-871379578,
                 _Transforms.SafeGetHashCode(),
-                _Weights.SafeGetHashCode());
+                _Weights.SafeGetHashCode(),
+                _RootMotionWeights.SafeGetHashCode());
 
         /************************************************************************************************************************/
         #endregion

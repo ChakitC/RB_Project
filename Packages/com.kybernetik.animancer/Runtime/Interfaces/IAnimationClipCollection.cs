@@ -1,22 +1,21 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
-using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
 using UnityEngine.Playables;
 
 namespace Animancer
 {
     /// <summary>
-    /// A variant of <see cref="IAnimationClipSource"/> which uses a <see cref="ICollection{T}"/> instead of a
-    /// <see cref="List{T}"/> so that it can take a <see cref="HashSet{T}"/> to efficiently avoid adding duplicates.
-    /// <see cref="AnimancerUtilities"/> contains various extension methods for this purpose.
+    /// A variant of <see cref="IAnimationClipSource"/> which uses a <see cref="ICollection{T}"/>
+    /// instead of a <see cref="List{T}"/> so that it can take a <see cref="HashSet{T}"/>
+    /// to efficiently avoid adding duplicates. <see cref="AnimancerUtilities"/> contains
+    /// various extension methods for this purpose.
     /// </summary>
     /// <remarks>
-    /// <see cref="IAnimationClipSource"/> still needs to be the main point of entry for the Animation Window, so this
-    /// interface is only used internally.
+    /// <see cref="IAnimationClipSource"/> still needs to be the main point of entry
+    /// for the Animation Window, so this interface is only used internally.
     /// </remarks>
     /// https://kybernetik.com.au/animancer/api/Animancer/IAnimationClipCollection
     /// 
@@ -33,7 +32,7 @@ namespace Animancer
     /************************************************************************************************************************/
 
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerUtilities
-    public static partial class AnimancerUtilities
+    static partial class AnimancerUtilities // IAnimationClipCollection.cs
     {
         /************************************************************************************************************************/
 
@@ -102,12 +101,12 @@ namespace Animancer
         /// <summary>Gathers all the animations in the `tracks`.</summary>
         private static void GatherFromTracks(ICollection<AnimationClip> clips, IEnumerable tracks)
         {
-            if (tracks == null)
+            if (tracks.IsNullOrDestroyed())
                 return;
 
             foreach (var track in tracks)
             {
-                if (track == null)
+                if (track.IsNullOrDestroyed())
                     continue;
 
                 var trackType = track.GetType();
@@ -146,12 +145,12 @@ namespace Animancer
         /************************************************************************************************************************/
 
         /// <summary>[Animancer Extension]
-        /// Calls <see cref="Gather(ICollection{AnimationClip}, AnimationClip)"/> for each clip gathered by
-        /// <see cref="IAnimationClipSource.GetAnimationClips"/>.
+        /// Calls <see cref="Gather(ICollection{AnimationClip}, AnimationClip)"/>
+        /// for each clip gathered by <see cref="IAnimationClipSource.GetAnimationClips"/>.
         /// </summary>
         public static void GatherFromSource(this ICollection<AnimationClip> clips, IAnimationClipSource source)
         {
-            if (source == null)
+            if (source.IsNullOrDestroyed())
                 return;
 
             var list = ListPool.Acquire<AnimationClip>();
@@ -167,19 +166,35 @@ namespace Animancer
         /// </summary>
         public static void GatherFromSource(this ICollection<AnimationClip> clips, IEnumerable source)
         {
-            if (source != null)
-                foreach (var item in source)
-                    clips.GatherFromSource(item);
+            if (source.IsNullOrDestroyed() ||
+                AnimationGathererRecursionGuard.DontGatherFrom.Contains(source.GetType()))
+                return;
+
+            using var _ = AnimationGathererRecursionGuard.Begin();
+            if (AnimationGathererRecursionGuard.HasCheckedObject(source))
+                return;
+
+            foreach (var item in source)
+                clips.GatherFromSource(item);
         }
 
         /************************************************************************************************************************/
 
         /// <summary>[Animancer Extension]
-        /// Calls <see cref="Gather(ICollection{AnimationClip}, AnimationClip)"/> for each clip in the `source`,
-        /// supporting both <see cref="IAnimationClipSource"/> and <see cref="IAnimationClipCollection"/>.
+        /// Calls <see cref="Gather(ICollection{AnimationClip}, AnimationClip)"/>
+        /// for each clip in the `source`, supporting both
+        /// <see cref="IAnimationClipSource"/> and <see cref="IAnimationClipCollection"/>.
         /// </summary>
         public static bool GatherFromSource(this ICollection<AnimationClip> clips, object source)
         {
+            if (source.IsNullOrDestroyed() ||
+                AnimationGathererRecursionGuard.DontGatherFrom.Contains(source.GetType()))
+                return false;
+
+            using var _ = AnimationGathererRecursionGuard.Begin();
+            if (AnimationGathererRecursionGuard.HasCheckedObject(source))
+                return false;
+
             if (TryGetWrappedObject(source, out AnimationClip clip))
             {
                 clips.Gather(clip);
@@ -210,8 +225,9 @@ namespace Animancer
         /************************************************************************************************************************/
 
         /// <summary>
-        /// Attempts to get the <see cref="AnimationClip.frameRate"/> from the `clipSource` and returns true if
-        /// successful. If it has multiple animations with different rates, this method returns false.
+        /// Attempts to get the <see cref="AnimationClip.frameRate"/> from the `clipSource`
+        /// and returns true if successful. If it has multiple animations with different rates,
+        /// this method returns false.
         /// </summary>
         public static bool TryGetFrameRate(object clipSource, out float frameRate)
         {

@@ -1,9 +1,12 @@
-// Animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
+#if !UNITY_6000_3_OR_NEWER
+using EntityId = System.Int32;
+#endif
+
 using System;
-using UnityEditor;
 using UnityEngine;
 
 namespace Animancer.Editor
@@ -20,7 +23,7 @@ namespace Animancer.Editor
         /************************************************************************************************************************/
 
         [SerializeField] private GameObject _SourceGameObject;
-        [SerializeField] private int _SourceComponentInstanceID;
+        [SerializeField] private EntityId _SourceComponentEntityId;
 
         /************************************************************************************************************************/
 
@@ -41,7 +44,10 @@ namespace Animancer.Editor
                 var source = base.SourceObject;
 
                 if (source == null && _SourceGameObject != null)
-                    source = base.SourceObject = EditorUtility.InstanceIDToObject(_SourceComponentInstanceID) as TObject;
+                {
+                    var component = Serialization.EntityIdToObject(_SourceComponentEntityId);
+                    source = base.SourceObject = component as TObject;
+                }
 
                 return source;
             }
@@ -63,7 +69,7 @@ namespace Animancer.Editor
             if (SourceObject != null)
             {
                 _SourceGameObject = SourceObject.gameObject;
-                _SourceComponentInstanceID = SourceObject.GetInstanceID();
+                _SourceComponentEntityId = Serialization.GetEntityId(SourceObject);
             }
         }
 

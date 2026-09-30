@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -99,6 +99,30 @@ namespace Animancer.Editor.TransitionLibraries
 
         /************************************************************************************************************************/
 
+        /// <summary>Creates a new group in the <see cref="TransitionLibraryEditorDataInternal.TransitionGroups"/>.</summary>
+        public static TransitionGroup CreateGroup(
+            TransitionLibraryWindow window,
+            TransitionLibraryEditorDataInternal data)
+        {
+            window.Repaint();
+
+            var groups = data.TransitionGroups;
+
+            var group = new TransitionGroup
+            {
+                Name = $"Transition Group {groups.Count}",
+                Index = window.Data.Transitions.Length,
+            };
+
+            groups.Add(group);
+
+            window.Selection.Select(window, group, groups.Count - 1, SelectionType.Group);
+
+            return group;
+        }
+
+        /************************************************************************************************************************/
+
         /// <summary>Creates a new transition as a sub-asset of the `window`'s library.</summary>
         public static TransitionAssetBase CreateTransition(
             TransitionLibraryWindow window)
@@ -135,14 +159,23 @@ namespace Animancer.Editor.TransitionLibraries
             Event currentEvent,
             TransitionLibraryWindow window)
         {
+            if (currentEvent.type == EventType.ExecuteCommand)
+                HandleDelete(window);
+
+            currentEvent.Use();
+        }
+
+        /// <summary>Handles a delete event.</summary>
+        public static void HandleDelete(
+            TransitionLibraryWindow window)
+        {
             if (!window.Selection.Validate())
                 return;
 
             switch (window.Selection.Type)
             {
                 case SelectionType.FromTransition:
-                    if (currentEvent.type == EventType.ExecuteCommand &&
-                        window.Selection.Selected is TransitionAssetBase fromTransition)
+                    if (window.Selection.Selected is TransitionAssetBase fromTransition)
                         AskHowToDeleteTransition(
                             fromTransition,
                             window.Selection.FromIndex,
@@ -150,8 +183,7 @@ namespace Animancer.Editor.TransitionLibraries
                     break;
 
                 case SelectionType.ToTransition:
-                    if (currentEvent.type == EventType.ExecuteCommand &&
-                        window.Selection.Selected is TransitionAssetBase toTransition)
+                    if (window.Selection.Selected is TransitionAssetBase toTransition)
                         AskHowToDeleteTransition(
                             toTransition,
                             window.Selection.ToIndex,
@@ -159,16 +191,22 @@ namespace Animancer.Editor.TransitionLibraries
                     break;
 
                 case SelectionType.Modifier:
-                    if (currentEvent.type == EventType.ExecuteCommand &&
-                        window.Selection.Selected is TransitionModifierDefinition modifier)
+                    if (window.Selection.Selected is TransitionModifierDefinition modifier)
+                    {
+                        window.Selection.Deselect();
                         window.RecordUndo().RemoveModifier(modifier);
+                    }
                     break;
 
-                default:
-                    return;
+                case SelectionType.Group:
+                    if (window.Selection.Selected is TransitionGroup group)
+                    {
+                        window.Selection.Deselect();
+                        window.RecordUndo();
+                        window.EditorData.TransitionGroups.Remove(group);
+                    }
+                    break;
             }
-
-            currentEvent.Use();
         }
 
         /************************************************************************************************************************/
@@ -226,10 +264,12 @@ namespace Animancer.Editor.TransitionLibraries
             switch (choice)
             {
                 case 0:// Remove.
+                    window.Selection.Deselect();
                     window.RecordUndo().RemoveTransition(index);
                     break;
 
                 case 2:// Delete.
+                    window.Selection.Deselect();
                     if (isMainAsset)
                     {
                         AssetDatabase.DeleteAsset(assetPath);

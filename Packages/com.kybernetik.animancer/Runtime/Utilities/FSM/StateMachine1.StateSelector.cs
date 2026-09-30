@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System.Collections.Generic;
 
@@ -19,7 +19,8 @@ namespace Animancer.FSM
 
     /************************************************************************************************************************/
 
-    public partial class StateMachine<TState>
+    /// https://kybernetik.com.au/animancer/api/Animancer.FSM/StateMachine
+    partial class StateMachine<TState> // StateMachine1.StateSelector.cs
     {
         /// <summary>A prioritised list of potential states for a <see cref="StateMachine{TState}"/> to enter.</summary>
         /// 

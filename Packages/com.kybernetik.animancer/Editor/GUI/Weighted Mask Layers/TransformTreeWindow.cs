@@ -1,10 +1,12 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 // FlexiMotion // https://kybernetik.com.au/flexi-motion // Copyright 2023 Kybernetik //
 
 #if UNITY_EDITOR
 
 #if UNITY_6000_2_OR_NEWER
-#pragma warning disable CS0618 // Type or member is obsolete - Tree View stuff was made generic in Unity 6.2.
+using TreeView = UnityEditor.IMGUI.Controls.TreeView<int>;
+using TreeViewItem = UnityEditor.IMGUI.Controls.TreeViewItem<int>;
+using TreeViewState = UnityEditor.IMGUI.Controls.TreeViewState<int>;
 #endif
 
 using System;
@@ -257,8 +259,13 @@ namespace Animancer.Editor
             if (Event.current.type != EventType.Repaint)
                 GUI.enabled = false;
 
+            var style = EditorStyles.objectField;
+            var contentOffset = style.contentOffset;
+            style.contentOffset = new(0, -1);
+
             DoObjectFieldGUI(area, GUIContent.none, transform.gameObject, true);
 
+            style.contentOffset = contentOffset;
             GUI.enabled = enabled;
         }
 

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -12,7 +12,7 @@ namespace Animancer.Editor
 {
     /// <summary>[Editor-Only] Various utilities used throughout Animancer.</summary>
     /// https://kybernetik.com.au/animancer/api/Animancer.Editor/AnimancerEditorUtilities
-    public static partial class AnimancerEditorUtilities
+    public static partial class AnimancerEditorUtilities // AnimancerEditorUtilities.cs
     {
         /************************************************************************************************************************/
         #region Misc

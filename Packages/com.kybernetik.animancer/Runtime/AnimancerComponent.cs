@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using Animancer.TransitionLibraries;
 using System;
@@ -207,8 +207,8 @@ namespace Animancer
             Continue,
 
             /// <summary>
-            /// Stop all animations, rewind them, and force the object back into its original state (often called the
-            /// bind pose).
+            /// Stop all animations, rewind them, and force the object back into its original state
+            /// (often called the bind pose).
             /// </summary>
             /// <remarks>
             /// The <see cref="AnimancerComponent"/> must be either above the <see cref="UnityEngine.Animator"/> in
@@ -228,14 +228,31 @@ namespace Animancer
         }
 
         /************************************************************************************************************************/
+
+#if UNITY_ASSERTIONS || ANIMANCER_ON_PLAY_EVENTS
+        /// <summary>[Assert-Only] An event which is triggered whenever a state is played.</summary>
+        /// <remarks>
+        /// Some useful methods for this event are <see cref="AnimancerState.LogPlayingMessage"/>
+        /// and <see cref="AnimancerState.LogPlayingMessageDetailed"/>.
+        /// <para></para>
+        /// By default, this event only exists in the Unity Editor and in Development Builds.
+        /// To enable it in regular Release Builds, go to
+        /// <c>Edit -> Project Settings -> Player -> Other Settings -> Scripting Define Symbols</c>
+        /// and add <c>ANIMANCER_ON_PLAY_EVENTS</c> to the list.
+        /// </remarks>
+        public ref Action<AnimancerState> OnPlay
+            => ref Graph.OnPlay;
+#endif
+
+        /************************************************************************************************************************/
         #region Update Mode
         /************************************************************************************************************************/
 
-        /// <summary>
-        /// Determines when animations are updated and which time source is used. This property is mainly a wrapper
-        /// around the <see cref="Animator.updateMode"/>.
-        /// </summary>
-        /// <remarks>Note that changing to or from <see cref="AnimatorUpdateMode.AnimatePhysics"/> at runtime has no effect.</remarks>
+        /// <summary>Determines when animations are updated and which time source is used.</summary>
+        /// <remarks>
+        /// Note that changing to or from <see cref="AnimatorUpdateMode.AnimatePhysics"/>
+        /// at runtime has no effect due to limitations in the Playables API.
+        /// </remarks>
         /// <exception cref="NullReferenceException">No <see cref="Animator"/> is assigned.</exception>
         public AnimatorUpdateMode UpdateMode
         {
@@ -643,8 +660,7 @@ namespace Animancer
         /// <para></para>
         /// This method is safe to call repeatedly without checking whether the animation was already playing.
         /// </remarks>
-        public AnimancerState TryPlay(
-            IHasKey hasKey)
+        public AnimancerState TryPlay(IHasKey hasKey)
             => TryPlay(hasKey.Key);
 
         /// <summary>

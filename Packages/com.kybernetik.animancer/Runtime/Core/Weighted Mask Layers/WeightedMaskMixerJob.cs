@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using Unity.Collections;
 using UnityEngine;
@@ -24,6 +24,12 @@ namespace Animancer
     {
         /************************************************************************************************************************/
 
+        /// <summary>The number of layers being mixed.</summary>
+        public int layerCount;
+
+        /// <summary>The root motion weight of each layer.</summary>
+        public NativeArray<float> rootMotionWeights;
+
         /// <summary>The handles for each bone being mixed.</summary>
         /// <remarks>
         /// All animated bones must be included,
@@ -40,9 +46,6 @@ namespace Animancer
         /// </remarks>
         public NativeArray<float> boneWeights;
 
-        /// <summary>The number of layers being mixed.</summary>
-        public int layerCount;
-
         /************************************************************************************************************************/
 
         /// <inheritdoc/>
@@ -53,6 +56,14 @@ namespace Animancer
             var velocity = input.velocity;
             var angularVelocity = input.angularVelocity;
 
+            var hasRootMotionWeights = rootMotionWeights.IsCreated;
+            if (hasRootMotionWeights)
+            {
+                var baseLayerWeight = rootMotionWeights[0];
+                velocity *= baseLayerWeight;
+                angularVelocity *= baseLayerWeight;
+            }
+
             for (int i = 1; i < layerCount; i++)// Start at 1.
             {
                 input = output.GetInputStream(i);
@@ -60,6 +71,8 @@ namespace Animancer
                     continue;
 
                 var layerWeight = output.GetInputWeight(i);
+                if (hasRootMotionWeights)
+                    layerWeight *= rootMotionWeights[i];
                 velocity = Vector3.LerpUnclamped(
                     velocity,
                     input.velocity,

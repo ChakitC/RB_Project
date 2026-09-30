@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Collections.Generic;
@@ -181,7 +181,7 @@ namespace Animancer.TransitionLibraries
 
         /// <summary>Tries to find an item in the <see cref="Modifiers"/> with the specified indices.</summary>
         /// <remarks>
-        /// If unsuccessful, the `modifier` is given the <see cref="ITransition.FadeDuration"/>
+        /// If unsuccessful, the `modifier` is given the details
         /// from the <see cref="Transitions"/> at the `toIndex`. and this method returns false.
         /// </remarks>
         public bool TryGetModifier(
@@ -196,10 +196,19 @@ namespace Animancer.TransitionLibraries
                 return true;
             }
 
-            var fadeDuration = TryGetTransition(toIndex, out var transition)
-                ? transition.TryGetFadeDuration()
-                : float.NaN;
-            modifier = new(fromIndex, toIndex, fadeDuration);
+            float fadeDuration, normalizedStartTime;
+            if (TryGetTransition(toIndex, out var transition))
+            {
+                fadeDuration = transition.TryGetFadeDuration();
+                normalizedStartTime = transition.TryGetNormalizedStartTime();
+            }
+            else
+            {
+                fadeDuration = float.NaN;
+                normalizedStartTime = float.NaN;
+            }
+
+            modifier = new(fromIndex, toIndex, fadeDuration, normalizedStartTime);
             return false;
         }
 
@@ -225,18 +234,15 @@ namespace Animancer.TransitionLibraries
 
         /************************************************************************************************************************/
 
-        /// <summary>Adds or replaces an item in the <see cref="Modifiers"/>.</summary>
+        /// <summary>Adds, replaces, or removes an item in the <see cref="Modifiers"/>.</summary>
         public void SetModifier(
             TransitionModifierDefinition modifier)
         {
-            if (float.IsNaN(modifier.FadeDuration))
+            if (!modifier.Validate())
             {
                 RemoveModifier(modifier);
                 return;
             }
-
-            if (modifier.FadeDuration < 0)
-                modifier = modifier.WithFadeDuration(0);
 
             var index = IndexOfModifier(modifier.FromIndex, modifier.ToIndex);
             if (index >= 0)
@@ -307,7 +313,7 @@ namespace Animancer.TransitionLibraries
         /// <summary>Ensures that the <see cref="Aliases"/> are sorted.</summary>
         /// <remarks>This method shouldn't need to be called manually since aliases are always added in order.</remarks>
         public void SortAliases()
-            => Array.Sort(_Aliases, (a, b) => a.CompareTo(b));
+            => Array.Sort(_Aliases, static (a, b) => a.CompareTo(b));
 
         /************************************************************************************************************************/
         #endregion
@@ -330,8 +336,8 @@ namespace Animancer.TransitionLibraries
         /// <summary>Are all fields in `a` equal to the equivalent fields in `b`?</summary>
         public static bool operator ==(TransitionLibraryDefinition a, TransitionLibraryDefinition b)
             => a is null
-                ? b is null
-                : a.Equals(b);
+            ? b is null
+            : a.Equals(b);
 
         /// <summary>Are any fields in `a` not equal to the equivalent fields in `b`?</summary>
         public static bool operator !=(TransitionLibraryDefinition a, TransitionLibraryDefinition b)

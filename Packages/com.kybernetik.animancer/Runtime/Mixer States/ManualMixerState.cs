@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value.
 
@@ -26,7 +26,7 @@ namespace Animancer
     /// </remarks>
     /// https://kybernetik.com.au/animancer/api/Animancer/ManualMixerState
     /// 
-    public partial class ManualMixerState : ParentState,
+    public class ManualMixerState : ParentState,
         ICopyable<ManualMixerState>,
         IParametizedState,
         IUpdatable
@@ -491,7 +491,7 @@ namespace Animancer
         /************************************************************************************************************************/
 
         /// <inheritdoc/>
-        public int UpdatableIndex { get; set; } = IUpdatable.List.NotInList;
+        int IUpdatable.UpdatableIndex { get; set; } = IUpdatable.List.NotInList;
 
         /// <summary>Recalculates the weights of child states and synchronizes their times if necessary.</summary>
         public virtual void Update()
@@ -527,6 +527,16 @@ namespace Animancer
 
         /// <summary>The minimum total weight of all children for their times to be synchronized. Default 0.01.</summary>
         public static float MinimumSynchronizeChildrenWeight { get; set; } = 0.01f;
+
+#if UNITY_EDITOR
+        /// <summary>[Editor-Only] Resets static fields in case the Play Mode Domain Reload is disabled.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void Initialize()
+        {
+            SynchronizeNewChildren = true;
+            MinimumSynchronizeChildrenWeight = 0.01f;
+        }
+#endif
 
         /************************************************************************************************************************/
 

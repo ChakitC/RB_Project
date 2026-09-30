@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR && UNITY_IMGUI
 
@@ -22,7 +22,7 @@ namespace Animancer.Editor.Previews
     /// 
     [HelpURL(Strings.DocsURLs.TransitionPreviews)]
     [EditorWindowTitle]// Prevent the base SceneView from trying to use this type name to find the icon.
-    public partial class TransitionPreviewWindow : SceneView
+    public partial class TransitionPreviewWindow : SceneView // TransitionPreviewWindow.cs
     {
         /************************************************************************************************************************/
         #region Public API
@@ -264,11 +264,13 @@ namespace Animancer.Editor.Previews
 
         /// <summary>Returns false.</summary>
         /// <remarks>Returning true makes it draw the main scene instead of the custom scene in Unity 2020.</remarks>
-        protected override bool SupportsStageHandling() => false;
+        protected override bool SupportsStageHandling()
+            => false;
 
         /************************************************************************************************************************/
-
-        private void OnSelectionChanged()
+        
+        /// <summary>If nothing is selected, this method selects this window to show the preview Inspector.</summary>
+        protected virtual void OnSelectionChanged()
         {
             if (Selection.activeObject == null)
                 EditorApplication.delayCall += () => Selection.activeObject = this;

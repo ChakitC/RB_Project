@@ -12,7 +12,7 @@ namespace Animancer.Editor
 // namespace InspectorGadgets.Editor
 {
     /// <summary>[Editor-Only] Various serialization utilities.</summary>
-    public partial class Serialization
+    public partial class Serialization // Serialization.PropertyReference.cs
     {
         /// <summary>[Editor-Only] A serializable reference to a <see cref="SerializedProperty"/>.</summary>
         [Serializable]

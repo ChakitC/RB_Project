@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR && UNITY_IMGUI
 
@@ -532,8 +532,8 @@ namespace Animancer.Editor
 
             // Start Time.
             label.text = "Start Time";
-            AnimationTimeAttributeDrawer.NextDefaultValue =
-                AnimancerEvent.Sequence.GetDefaultNormalizedStartTime(Context.Transition.Speed);
+            AnimationTimeAttributeDrawer.SetNextDefaultValue(
+                AnimancerEvent.Sequence.GetDefaultNormalizedStartTime(Context.Transition.Speed));
             EditorGUI.PropertyField(area, property, label, false);
 
             AnimancerGUI.NextVerticalArea(ref area);
@@ -585,12 +585,28 @@ namespace Animancer.Editor
             /// <remarks>Be sure to <see cref="Dispose"/> it when done.</remarks>
             public DrawerContext(
                 SerializedProperty transitionProperty)
+                : this(transitionProperty, transitionProperty.GetValue<ITransition>())
+            { }
+
+            /// <summary>Creates a new <see cref="DrawerContext"/>.</summary>
+            /// <remarks>Be sure to <see cref="Dispose"/> it when done.</remarks>
+            public DrawerContext(
+                ITransition transition)
+                : this(null, transition)
+            { }
+
+            /// <summary>Creates a new <see cref="DrawerContext"/>.</summary>
+            /// <remarks>Be sure to <see cref="Dispose"/> it when done.</remarks>
+            public DrawerContext(
+                SerializedProperty transitionProperty,
+                ITransition transition)
             {
                 Property = transitionProperty;
-                Transition = transitionProperty.GetValue<ITransition>();
+                Transition = transition;
                 AnimancerUtilities.TryGetLength(Transition, out MaximumLength);
 
-                EditorGUI.BeginChangeCheck();
+                if (Property != null)
+                    EditorGUI.BeginChangeCheck();
 
                 Stack.Add(this);
                 Context = this;
@@ -607,7 +623,7 @@ namespace Animancer.Editor
                     $" must be called in the reverse order in which instances were created." +
                     $" Recommended: using (new DrawerContext(property)) to ensure correct disposal.");
 
-                if (EditorGUI.EndChangeCheck())
+                if (Property != null && EditorGUI.EndChangeCheck())
                     Property.serializedObject.ApplyModifiedProperties();
 
                 Stack.RemoveAt(Stack.Count - 1);

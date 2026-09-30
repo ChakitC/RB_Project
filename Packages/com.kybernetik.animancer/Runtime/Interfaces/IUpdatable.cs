@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Runtime.CompilerServices;
@@ -60,8 +60,12 @@ namespace Animancer
         /************************************************************************************************************************/
 
         /// <summary>The index of this object in its <see cref="IndexedList{TItem, TIndexer}"/>.</summary>
-        /// <remarks>Must be initialized to -1 to indicate that this object is not yet in a list.</remarks>
-        int UpdatableIndex { get; set; }
+        /// <remarks>
+        /// Must be initialized to -1 to indicate that this object is not yet in a list.
+        /// <para></para>
+        /// Do not modify this value directly. It is managed internally by the list.
+        /// </remarks>
+        int UpdatableIndex { get; [Obsolete(Indexer.UpdatableIndexObsolete)] set; }
 
         /// <summary>Updates this object.</summary>
         void Update();
@@ -73,6 +77,13 @@ namespace Animancer
         {
             /************************************************************************************************************************/
 
+            /// <summary>A warning to not modify <see cref="UpdatableIndex"/> directly.</summary>
+            public const string UpdatableIndexObsolete =
+                nameof(IUpdatable) + "." + nameof(UpdatableIndex) +
+                " is managed internally by IndexedLists and should not be modified directly.";
+
+            /************************************************************************************************************************/
+
             /// <inheritdoc/>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public readonly int GetIndex(IUpdatable item)
@@ -80,11 +91,13 @@ namespace Animancer
 
             /// <inheritdoc/>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [Obsolete(UpdatableIndexObsolete)]
             public readonly void SetIndex(IUpdatable item, int index)
                 => item.UpdatableIndex = index;
 
             /// <inheritdoc/>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [Obsolete(UpdatableIndexObsolete)]
             public readonly void ClearIndex(IUpdatable item)
                 => item.UpdatableIndex = -1;
 
@@ -101,6 +114,15 @@ namespace Animancer
             /// <summary>The default <see cref="IndexedList{TItem, TIndexer}.Capacity"/> for newly created lists.</summary>
             /// <remarks>Default value is 4.</remarks>
             public static new int DefaultCapacity { get; set; } = 4;
+
+#if UNITY_EDITOR
+            /// <summary>[Editor-Only] Resets static fields in case the Play Mode Domain Reload is disabled.</summary>
+            [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+            private static void Initialize()
+            {
+                DefaultCapacity = 4;
+            }
+#endif
 
             /************************************************************************************************************************/
 
@@ -155,7 +177,7 @@ namespace Animancer
     }
 
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerUtilities
-    public static partial class AnimancerUtilities
+    static partial class AnimancerUtilities // IUpdatable.cs
     {
         /************************************************************************************************************************/
 

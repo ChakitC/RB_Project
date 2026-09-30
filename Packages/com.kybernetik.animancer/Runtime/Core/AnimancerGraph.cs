@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using Animancer.TransitionLibraries;
 using System;
@@ -26,7 +26,7 @@ namespace Animancer
     /// 
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerGraph
     /// 
-    public partial class AnimancerGraph : AnimancerNodeBase,
+    public partial class AnimancerGraph : AnimancerNodeBase, // AnimancerGraph.cs
         IAnimationClipCollection,
         ICopyable<AnimancerGraph>,
         IEnumerator,
@@ -35,12 +35,9 @@ namespace Animancer
         /************************************************************************************************************************/
         #region Fields and Properties
         /************************************************************************************************************************/
-
-        private static float _DefaultFadeDuration = 0.25f;
-
+#if UNITY_EDITOR
         /************************************************************************************************************************/
 
-#if UNITY_EDITOR
         /// <summary>[Editor-Only]
         /// The namespace that should be used for a class which sets the <see cref="DefaultFadeDuration"/>.
         /// </summary>
@@ -87,9 +84,25 @@ namespace Animancer
                 }
             }
         }
-#endif
 
         /************************************************************************************************************************/
+
+        /// <summary>[Editor-Only] Resets static fields in case the Play Mode Domain Reload is disabled.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void Initialize()
+        {
+            _DefaultFadeDuration = 0.25f;
+
+            _NextGraphName = default;
+            Current = default;
+            DeltaTime = default;
+        }
+
+        /************************************************************************************************************************/
+#endif
+        /************************************************************************************************************************/
+
+        private static float _DefaultFadeDuration = 0.25f;
 
         /// <summary>The fade duration to use if not specified. Default is 0.25.</summary>
         /// 
@@ -376,6 +389,22 @@ namespace Animancer
                 }
             }
         }
+
+        /************************************************************************************************************************/
+
+#if UNITY_ASSERTIONS || ANIMANCER_ON_PLAY_EVENTS
+        /// <summary>[Assert-Only] An event which is triggered whenever a state is played.</summary>
+        /// <remarks>
+        /// Some useful methods for this event are <see cref="AnimancerState.LogPlayingMessage"/>
+        /// and <see cref="AnimancerState.LogPlayingMessageDetailed"/>.
+        /// <para></para>
+        /// By default, this event only exists in the Unity Editor and in Development Builds.
+        /// To enable it in regular Release Builds, go to
+        /// <c>Edit -> Project Settings -> Player -> Other Settings -> Scripting Define Symbols</c>
+        /// and add <c>ANIMANCER_ON_PLAY_EVENTS</c> to the list.
+        /// </remarks>
+        public Action<AnimancerState> OnPlay;
+#endif
 
         /************************************************************************************************************************/
         #endregion
@@ -852,10 +881,10 @@ namespace Animancer
 
         /// <summary>Is a state registered with the `key` and currently playing?</summary>
         public bool IsPlaying(object key)
-            => States.TryGet(key, out var state)
+            => States.TryGetAlias(key, out var state)
             && state.IsPlaying;
 
-        /// <summary>Is least one animation being played?</summary>
+        /// <summary>Is any animation being played on any layer?</summary>
         public bool IsPlaying()
         {
             if (!IsGraphPlaying)
@@ -915,8 +944,12 @@ namespace Animancer
         bool IEnumerator.MoveNext()
         {
             for (int i = _Layers.Count - 1; i >= 0; i--)
-                if (_Layers.GetLayer(i).IsPlayingAndNotEnding())
+            {
+                var layer = _Layers.GetLayer(i);
+                if (!layer.IsInterrupted &&
+                    layer.IsApproachingEnd)
                     return true;
+            }
 
             return false;
         }

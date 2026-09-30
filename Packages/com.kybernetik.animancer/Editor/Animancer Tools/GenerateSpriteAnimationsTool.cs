@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -371,7 +371,32 @@ namespace Animancer.Editor.Tools
         {
             var frameRate = GenerateSpriteAnimationsSettings.FrameRate;
             var hierarchyPath = GenerateSpriteAnimationsSettings.HierarchyPath;
-            var type = GenerateSpriteAnimationsSettings.TargetType.Type ?? typeof(SpriteRenderer);
+            var targetType = GenerateSpriteAnimationsSettings.TargetType;
+
+            var type = targetType.Type;
+            if (type == null)
+            {
+                if (!string.IsNullOrEmpty(targetType.QualifiedName))
+                {
+                    Debug.LogError(
+                        $"Component type {targetType.QualifiedName} doesn't exist." +
+                        $" Go to Edit -> Project Settings -> Animancer -> Generate Sprite Animations Tool" +
+                        $" and set the Target Type to the type of component you want to animate" +
+                        $" or leave it empty to use {nameof(SpriteRenderer)}.");
+                    return;
+                }
+
+                type = typeof(SpriteRenderer);
+            }
+            else if (!typeof(Component).IsAssignableFrom(type))
+            {
+                Debug.LogError(
+                    $"Component type {targetType.QualifiedName} doesn't inherit from {typeof(Component)}." +
+                    $" Go to Edit -> Project Settings -> Animancer -> Generate Sprite Animations Tool" +
+                    $" and set the Target Type to the type of component you want to animate" +
+                    $" or leave it empty to use {nameof(SpriteRenderer)}.");
+                return;
+            }
 
             var property = GenerateSpriteAnimationsSettings.PropertyName;
             if (string.IsNullOrWhiteSpace(property))

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value.
 
@@ -16,7 +16,7 @@ namespace Animancer
     /// </summary>
     /// https://kybernetik.com.au/animancer/api/Animancer/ParentState
     /// 
-    public abstract partial class ParentState : AnimancerState,
+    public abstract class ParentState : AnimancerState, // ParentState.cs
         ICopyable<ParentState>
     {
         /************************************************************************************************************************/
@@ -94,6 +94,15 @@ namespace Animancer
         /// <summary><see cref="ChildCapacity"/> starts at 0 then expands to this value when the first child is added.</summary>
         /// <remarks>Default 8.</remarks>
         public static int DefaultChildCapacity { get; set; } = 8;
+
+#if UNITY_EDITOR
+        /// <summary>[Editor-Only] Resets static fields in case the Play Mode Domain Reload is disabled.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void Initialize()
+        {
+            DefaultChildCapacity = 8;
+        }
+#endif
 
         /// <summary>
         /// Ensures that the remaining unused <see cref="ChildCapacity"/>

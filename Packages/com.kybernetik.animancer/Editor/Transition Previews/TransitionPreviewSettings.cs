@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR && UNITY_IMGUI
 
@@ -63,6 +63,7 @@ namespace Animancer.Editor.Previews
         private static void DoMiscGUI()
         {
             Instance.DoPropertyField(nameof(_AutoClose));
+            Instance.DoPropertyField(nameof(_AutoFocusCamera));
         }
 
         /************************************************************************************************************************/
@@ -74,6 +75,32 @@ namespace Animancer.Editor.Previews
         /// <summary>Should this window automatically close if the target object is destroyed?</summary>
         public static bool AutoClose
             => Instance._AutoClose;
+
+        /************************************************************************************************************************/
+
+        [SerializeField]
+        [Tooltip("Should the camera automatically focus on the preview object when the window is opened?" +
+            " Otherwise, it will remember its last location." +
+            "\n\nPress F to Focus manually.")]
+        private bool _AutoFocusCamera = false;
+
+        /// <summary>
+        /// Should the camera automatically focus on the preview object when the window is opened?
+        /// Otherwise, it will remember its last location.
+        /// </summary>
+        public static bool AutoFocusCamera
+        {
+            get => Instance._AutoFocusCamera;
+            set
+            {
+                if (AutoFocusCamera == value)
+                    return;
+
+                var property = Instance.GetSerializedProperty(nameof(_AutoFocusCamera));
+                property.boolValue = value;
+                property.serializedObject.ApplyModifiedProperties();
+            }
+        }
 
         /************************************************************************************************************************/
 

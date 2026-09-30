@@ -1,9 +1,9 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 namespace Animancer
 {
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerState
-    public abstract partial class AnimancerState
+    abstract partial class AnimancerState // AnimancerState.ExpectFade.cs
     {
         /************************************************************************************************************************/
 
@@ -11,6 +11,16 @@ namespace Animancer
         private static bool _SkipNextExpectFade;
 
         private bool _ExpectFade;
+#endif
+
+        /************************************************************************************************************************/
+
+#if UNITY_EDITOR
+        /// <summary>[Editor-Only] Resets static fields in case the Play Mode Domain Reload is disabled.</summary>
+        private static void InitializeExpectFade()
+        {
+            _SkipNextExpectFade = default;
+        }
 #endif
 
         /************************************************************************************************************************/

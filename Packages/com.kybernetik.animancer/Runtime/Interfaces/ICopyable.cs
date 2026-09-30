@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 
@@ -18,7 +18,7 @@ namespace Animancer
 
     /// <summary>Extension methods for <see cref="ICopyable{T}"/>.</summary>
     /// https://kybernetik.com.au/animancer/api/Animancer/CopyableExtensions
-    public static partial class CopyableExtensions
+    public static class CopyableExtensions
     {
         /************************************************************************************************************************/
 

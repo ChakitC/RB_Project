@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System;
 using System.Collections;
@@ -197,19 +197,11 @@ namespace Animancer
         /// and returns the result.
         /// </summary>
         public bool TryGet(IHasKey hasKey, out AnimancerState state)
-        {
-            if (hasKey == null)
-            {
-                state = null;
-                return false;
-            }
-
-            return TryGet(hasKey.Key, out state);
-        }
+            => TryGet(hasKey?.Key, out state);
 
         /// <summary>
-        /// If a `state` is registered with the `key`, this method outputs it and returns true. Otherwise the
-        /// `state` is set to null and this method returns false.
+        /// If a `state` is registered with the `key`, this method outputs it and returns true.
+        /// Otherwise the `state` is set to null and this method returns false.
         /// </summary>
         public bool TryGet(object key, out AnimancerState state)
         {
@@ -218,6 +210,35 @@ namespace Animancer
                 state = null;
                 return false;
             }
+
+            return States.TryGetValue(key, out state);
+        }
+
+        /************************************************************************************************************************/
+
+        /// <summary>
+        /// Passes the <see cref="IHasKey.Key"/> into <see cref="TryGetAlias(object, out AnimancerState)"/>
+        /// and returns the result.
+        /// </summary>
+        public bool TryGetAlias(IHasKey hasKey, out AnimancerState state)
+            => TryGetAlias(hasKey?.Key, out state);
+
+        /// <summary>
+        /// If a `state` is registered with the `key` or the <see cref="TransitionLibraries.TransitionLibrary"/>,
+        /// is using it as an alias, this method outputs it and returns true.
+        /// Otherwise the `state` is set to null and this method returns false.
+        /// </summary>
+        public bool TryGetAlias(object key, out AnimancerState state)
+        {
+            if (key == null)
+            {
+                state = null;
+                return false;
+            }
+
+            if (Graph.Transitions != null &&
+                Graph.Transitions.TryGetTransition(key, out var group))
+                key = group.Transition.Key;
 
             return States.TryGetValue(key, out state);
         }

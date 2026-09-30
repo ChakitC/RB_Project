@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -21,7 +21,7 @@ namespace Animancer.Editor.Tools
     /// </remarks>
     /// https://kybernetik.com.au/animancer/api/Animancer.Editor.Tools/AnimancerToolsWindow
     /// 
-    public sealed partial class AnimancerToolsWindow : EditorWindow
+    public partial class AnimancerToolsWindow : EditorWindow // AnimancerToolsWindow.cs
     {
         /************************************************************************************************************************/
 
@@ -53,8 +53,9 @@ namespace Animancer.Editor.Tools
         }
 
         /************************************************************************************************************************/
-
-        private void OnEnable()
+        
+        /// <summary>Initializes this window.</summary>
+        protected virtual void OnEnable()
         {
             titleContent = new(Name);
             Instance = this;
@@ -88,8 +89,9 @@ namespace Animancer.Editor.Tools
         }
 
         /************************************************************************************************************************/
-
-        private void OnDisable()
+        
+        /// <summary>Cleans up this window.</summary>
+        protected virtual void OnDisable()
         {
             Undo.undoRedoPerformed -= Repaint;
 
@@ -104,8 +106,9 @@ namespace Animancer.Editor.Tools
         }
 
         /************************************************************************************************************************/
-
-        private void OnSelectionChange()
+        
+        /// <summary>Handles Unity Editor selection changes.</summary>
+        protected virtual void OnSelectionChange()
         {
             for (int i = 0; i < _Tools.Count; i++)
                 _Tools[i].OnSelectionChanged();
@@ -114,8 +117,9 @@ namespace Animancer.Editor.Tools
         }
 
         /************************************************************************************************************************/
-
-        private void OnGUI()
+        
+        /// <summary>Draws the GUI for this window.</summary>
+        protected virtual void OnGUI()
         {
             EditorGUIUtility.labelWidth = Mathf.Min(EditorGUIUtility.labelWidth, position.width * 0.5f);
             EditorGUIUtility.wideMode = true;

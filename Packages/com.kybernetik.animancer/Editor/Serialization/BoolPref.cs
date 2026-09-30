@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -6,14 +6,12 @@ using UnityEditor;
 
 namespace Animancer.Editor
 {
-    /// <summary>[Editor-Only]
-    /// A simple wrapper around <see cref="EditorPrefs"/> to get and set a bool.
-    /// <para></para>
+    /// <summary>[Editor-Only] A simple wrapper around <see cref="EditorPrefs"/> to get and set a bool.</summary>
+    /// <remarks>
     /// If you're interested in a more comprehensive pref wrapper that supports more types, you should check out
     /// <see href="https://kybernetik.com.au/inspector-gadgets/docs/other/auto-prefs">Inspector Gadgets - Auto Prefs</see>.
-    /// </summary>
+    /// </remarks>
     /// https://kybernetik.com.au/animancer/api/Animancer.Editor/BoolPref
-    /// 
     public class BoolPref
     {
         /************************************************************************************************************************/

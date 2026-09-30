@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using UnityEngine;
 
@@ -17,6 +17,9 @@ namespace Animancer
         IHasEvents,
         IHasKey,
         IPolymorphic
+    // Most transition types return themselves as the IHasKey.Key, but some wrapper types like
+    // TransitionAsset and TransitionAssetReference contain another transition which they want to
+    // use as the key instead so all transitions must implement it so systems can support any type.
     {
         /************************************************************************************************************************/
         // Core Members - The main features required for a transition to be usable.

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -7,7 +7,7 @@ using UnityEngine;
 namespace Animancer
 {
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerEvent
-    partial struct AnimancerEvent
+    partial struct AnimancerEvent // AnimancerEvent.Invoker.cs
     {
         /************************************************************************************************************************/
 
@@ -77,6 +77,15 @@ namespace Animancer
             /// </summary>
             private static int _CurrentInvocation;
 
+#if UNITY_EDITOR
+            /// <summary>[Editor-Only] Resets static fields in case the Play Mode Domain Reload is disabled.</summary>
+            [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+            private static void Initialize()
+            {
+                _CurrentInvocation = 0;
+            }
+#endif
+
             /// <summary>Invokes all queued events and clears the queue.</summary>
             public static void InvokeAllAndClear()
             {
@@ -93,6 +102,23 @@ namespace Animancer
             public static List<Invocation>.Enumerator EnumerateInvocationQueue()
                 => InvocationQueue.GetEnumerator();
 
+            /************************************************************************************************************************/
+#if UNITY_EDITOR
+            /************************************************************************************************************************/
+
+            /// <summary>Ensures that the invocation queue is cleared when entering Play Mode.</summary>
+            [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+            private static void Clear()
+            {
+                InvocationQueue.Clear();
+                _CurrentInvocation = 0;
+#if UNITY_ASSERTIONS
+                Instances.Clear();
+#endif
+            }
+
+            /************************************************************************************************************************/
+#endif
             /************************************************************************************************************************/
 #if UNITY_ASSERTIONS
             /************************************************************************************************************************/

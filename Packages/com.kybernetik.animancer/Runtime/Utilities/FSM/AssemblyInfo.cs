@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
@@ -7,8 +7,8 @@ using System.Reflection;
 [assembly: AssemblyDescription("A Finite State Machine system for Unity.")]
 [assembly: AssemblyProduct("Animancer")]
 [assembly: AssemblyCompany("Kybernetik")]
-[assembly: AssemblyCopyright("Copyright © Kybernetik 2018-2025")]
-[assembly: AssemblyVersion("8.2.3.35")]
+[assembly: AssemblyCopyright("Copyright © Kybernetik 2018-2026")]
+[assembly: AssemblyVersion("8.4.0.39")]
 
 #if UNITY_EDITOR
 

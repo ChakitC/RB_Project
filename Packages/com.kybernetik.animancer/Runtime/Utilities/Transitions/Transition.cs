@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
 using Animancer.Units;
 using System;
@@ -22,8 +22,8 @@ namespace Animancer
         IPolymorphic,
         ITransition<TState>,
         ITransition,
-        ICopyable<Transition<TState>>,
-        ICloneable<Transition<TState>>
+        ICloneable<Transition<TState>>,
+        ICopyable<Transition<TState>>
         where TState : AnimancerState
     {
         /************************************************************************************************************************/

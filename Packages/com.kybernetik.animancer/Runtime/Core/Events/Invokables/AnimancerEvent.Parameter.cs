@@ -1,11 +1,12 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2025 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2026 Kybernetik //
 
+using System;
 using UnityEngine;
 
 namespace Animancer
 {
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerEvent
-    partial struct AnimancerEvent
+    partial struct AnimancerEvent // AnimancerEvent.Parameter.cs
     {
         /// <summary>A non-generic interface for <see cref="Parameter{T}"/>.</summary>
         /// https://kybernetik.com.au/animancer/api/Animancer/IParameter
@@ -27,6 +28,7 @@ namespace Animancer
         /// instead of this if <typeparamref name="T"/> is a value type to avoid repeated boxing costs.
         /// </remarks>
         /// https://kybernetik.com.au/animancer/api/Animancer/Parameter_1
+        [Serializable]
         public abstract class Parameter<T> :
             IParameter,
             IInvokable

@@ -32,7 +32,7 @@ public sealed class GameplayHudPresenter : MonoBehaviour
     TMP_Text currentAmmo;
     TMP_Text reserveAmmo;
     UnityEngine.UI.Image ammoFill;
-    GameObject comboDisplay;
+    GameObject followUpDisplay;
     PlayerContext player;
     float nextRefresh;
 
@@ -78,9 +78,9 @@ public sealed class GameplayHudPresenter : MonoBehaviour
         currentAmmo = FindChild(ammo, "CurrentAmmoText")?.GetComponent<TMP_Text>();
         reserveAmmo = FindChild(ammo, "ReserveAmmoText")?.GetComponent<TMP_Text>();
         ammoFill = FindChild(ammo, "Ammo_Progress Bar")?.GetComponent<UnityEngine.UI.Image>();
-        comboDisplay = transform.Find("ComboDisplay")?.gameObject;
-        if (comboDisplay != null)
-            comboDisplay.SetActive(false);
+        followUpDisplay = transform.Find("FollowUpDisplay")?.gameObject;
+        if (followUpDisplay != null)
+            followUpDisplay.SetActive(false);
 
         nextRefresh = 0f;
         Refresh();
@@ -138,9 +138,9 @@ public sealed class GameplayHudPresenter : MonoBehaviour
         return manager.HelperObject.GetComponentInChildren<AllyContext>(true);
     }
 
-    public bool TryBindComboDisplay(PartyHudPresenter presenter)
+    public bool TryBindFollowUpDisplay(PartyHudPresenter presenter)
     {
-        if (presenter == null || comboDisplay == null)
+        if (presenter == null || followUpDisplay == null)
             return false;
 
         // The first card, beside E, must use the same offer ordering as input.
@@ -150,12 +150,12 @@ public sealed class GameplayHudPresenter : MonoBehaviour
         var times = new TMP_Text[names.Length];
         for (int i = 0; i < names.Length; i++)
         {
-            cards[i] = comboDisplay.transform.Find(names[i]) as RectTransform;
+            cards[i] = followUpDisplay.transform.Find(names[i]) as RectTransform;
             portraits[i] = FindChild(cards[i], "PortraitIcon")?.GetComponent<UnityEngine.UI.Image>();
             times[i] = FindChild(cards[i], "Remaining")?.GetComponent<TMP_Text>();
         }
 
-        return presenter.BindComboView(comboDisplay, cards, portraits, times);
+        return presenter.BindFollowUpView(followUpDisplay, cards, portraits, times);
     }
 
     static ActorView CreateActorView(Transform root, bool ally)

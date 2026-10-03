@@ -1616,6 +1616,38 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 4981152052903367121}
     m_Modifications:
+    - target: {fileID: 503697771436032081, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
+      propertyPath: m_Name
+      value: FollowUp_AllyIconFollowUp_Base
+      objectReference: {fileID: 0}
+    - target: {fileID: 969811994894163629, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
+      propertyPath: m_Name
+      value: FollowUp_AllyIconFollowUp_Color
+      objectReference: {fileID: 0}
+    - target: {fileID: 1064433953066315995, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
+      propertyPath: m_Name
+      value: FollowUp_Color
+      objectReference: {fileID: 0}
+    - target: {fileID: 1706374580569618746, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
+      propertyPath: m_Name
+      value: FollowUp_BG
+      objectReference: {fileID: 0}
+    - target: {fileID: 3671680939718731979, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
+      propertyPath: m_Name
+      value: FollowUp_AllyIconFollowUp_Base
+      objectReference: {fileID: 0}
+    - target: {fileID: 5010343526797305213, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
+      propertyPath: m_Name
+      value: FollowUp_AllyIconFollowUp_Color
+      objectReference: {fileID: 0}
+    - target: {fileID: 5620589431005379457, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
+      propertyPath: m_Name
+      value: FollowUp_AllyIconFollowUp_Base
+      objectReference: {fileID: 0}
+    - target: {fileID: 5654061870429318699, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
+      propertyPath: m_Name
+      value: FollowUpBackground
+      objectReference: {fileID: 0}
     - target: {fileID: 5810161547842301750, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -1708,9 +1740,13 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8178889645035507175, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
+      propertyPath: m_Name
+      value: FollowUp_AllyIconFollowUp_Color
+      objectReference: {fileID: 0}
     - target: {fileID: 8189178368542179066, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
       propertyPath: m_Name
-      value: ComboDisplay
+      value: FollowUpDisplay
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

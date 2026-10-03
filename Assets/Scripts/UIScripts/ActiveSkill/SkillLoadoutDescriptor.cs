@@ -12,7 +12,7 @@ public enum SkillLoadoutKind
 
     /// <summary>A Helper proc slot, fired by a trigger rather than by input.</summary>
     HelperProc = 2,
-    PartyCombo = 3,
+    PartyFollowUp = 3,
 }
 
 /// <summary>

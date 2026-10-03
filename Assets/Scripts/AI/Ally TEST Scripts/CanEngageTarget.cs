@@ -53,7 +53,7 @@ public class CanEngageTarget : Conditional
         if (sensor == null)
             return true;
 
-        Transform sensorTarget = sensor.CurrentTarget;
+        Transform sensorTarget = sensor.Snapshot.CurrentTarget;
         return sensorTarget != null && IsSameTarget(sensorTarget, target.Value.transform);
     }
 
@@ -73,17 +73,7 @@ public class CanEngageTarget : Conditional
 
         if (sensor == null && ctx != null)
         {
-            AllyContext allyContext = ctx as AllyContext;
-            if (allyContext != null && allyContext.AITargetSensor != null)
-            {
-                sensor = allyContext.AITargetSensor;
-            }
-            else
-            {
-                sensor = ctx.GetComponent<AITargetSensor>();
-                if (sensor == null)
-                    sensor = ctx.GetComponentInChildren<AITargetSensor>(true);
-            }
+            sensor = AITargetSensor.ResolveFor(ctx);
         }
     }
 

@@ -10,13 +10,14 @@ public sealed partial class CharacterAnimBrain
     {
         private readonly CharacterAnimBrain owner;
         private readonly Action onIntroEndCache;
-        private AnimancerState introState;
+        private readonly AnimationPlayback introPlayback;
         private Vector2MixerState mixerState;
         private Vector2 current;
 
         public LocomotionState_Crawl(CharacterAnimBrain owner)
         {
             this.owner = owner;
+            introPlayback = owner.CreatePlayback();
             onIntroEndCache = OnIntroEnd;
         }
 
@@ -30,9 +31,10 @@ public sealed partial class CharacterAnimBrain
                 owner.CrawlingClip != null &&
                 owner.CrawlingClip.IsValid)
             {
-                introState = owner.PlayLocomotionTransition(owner.CrawlingClip);
-                introState.NormalizedTime = 0f;
-                introState.Events(owner).OnEnd = onIntroEndCache;
+                introPlayback.Play(new AnimationPlaybackOptions
+                {
+                    Transition = owner.CrawlingClip, NormalizedStart = 0f,
+                }, onEnd: onIntroEndCache);
                 mixerState = null;
                 return;
             }
@@ -42,11 +44,7 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnExitState()
         {
-            if (introState != null)
-            {
-                introState.Events(owner).OnEnd = null;
-                introState = null;
-            }
+            introPlayback.Stop();
 
             mixerState = null;
         }
@@ -55,16 +53,8 @@ public sealed partial class CharacterAnimBrain
         {
             if (mixerState == null) return;
 
-            Vector2 dir = owner.MoveDirLocal;
-
-            if (owner.SnapTo8Directions)
-                dir = Snap8(dir);
-
-            float speed01 = Mathf.Clamp01(owner.MoveSpeed01 * owner.CrawlSpeedMultiplier01);
-            Vector2 target = dir * speed01;
-
-            float t = 1f - Mathf.Exp(-owner.CrawlParamLerp * owner.AnimationDeltaTime);
-            current = Vector2.Lerp(current, target, t);
+            current = AnimationMixerInput.Smooth(current, owner.MoveDirLocal, owner.MoveSpeed01 * owner.CrawlSpeedMultiplier01,
+                owner.SnapTo8Directions, owner.CrawlParamLerp, owner.AnimationDeltaTime);
 
             mixerState.ParameterX = current.x;
             mixerState.ParameterY = current.y;
@@ -75,18 +65,14 @@ public sealed partial class CharacterAnimBrain
             if (owner.locomotionSM.CurrentState != this)
                 return;
 
-            if (introState != null)
-            {
-                introState.Events(owner).OnEnd = null;
-                introState = null;
-            }
+            introPlayback.Stop();
 
             StartCrawlMixer();
         }
 
         private void StartCrawlMixer()
         {
-            mixerState = owner.PlayLocomotionTransition(owner.CrawlMixer) as Vector2MixerState;
+            mixerState = owner.presentation.PlayLocomotionTransition(owner.CrawlMixer) as Vector2MixerState;
 
             if (mixerState == null)
                 return;
@@ -96,17 +82,7 @@ public sealed partial class CharacterAnimBrain
             mixerState.ParameterY = current.y;
         }
 
-        private static Vector2 Snap8(Vector2 v)
-        {
-            if (v.sqrMagnitude < 0.0001f) return Vector2.zero;
 
-            v.Normalize();
-            float angle = Mathf.Atan2(v.y, v.x);
-            float step  = Mathf.PI * 0.25f;
-            angle = Mathf.Round(angle / step) * step;
-
-            return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-        }
     }
 
 }

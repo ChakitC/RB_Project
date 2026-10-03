@@ -19,7 +19,7 @@ public sealed class SkillCastContext
     public Transform CasterRoot { get; }
     public ulong CombatChainId { get; }
     public int CombatDepth { get; }
-    public ComboExecutionProvenance ComboProvenance { get; }
+    public FollowUpExecutionProvenance FollowUpProvenance { get; }
     public SkillFacingSnapshot FacingSnapshot { get; }
 
     /// <summary>
@@ -76,7 +76,7 @@ public sealed class SkillCastContext
         SkillTargetHandle primaryTarget = null,
         ulong combatChainId = 0,
         int combatDepth = 0,
-        ComboExecutionProvenance comboProvenance = default,
+        FollowUpExecutionProvenance followUpProvenance = default,
         SkillFacingSnapshot facingSnapshot = default,
         SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
         MeleeType meleeType = MeleeType.Light)
@@ -93,7 +93,7 @@ public sealed class SkillCastContext
         RequestId = requestId;
         CombatChainId = combatChainId;
         CombatDepth = Mathf.Max(0, combatDepth);
-        ComboProvenance = comboProvenance;
+        FollowUpProvenance = followUpProvenance;
         FacingSnapshot = facingSnapshot;
         CastOrigin = user != null ? user.CastOrigin : null;
         AimTransform = user != null ? user.AimTransform : null;

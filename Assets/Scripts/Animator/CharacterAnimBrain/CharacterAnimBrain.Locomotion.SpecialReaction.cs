@@ -13,10 +13,8 @@ public sealed partial class CharacterAnimBrain
     /// and a watchdog. Widening the status state to cover both would have changed every generic Mini
     /// Stun in the game.
     /// </summary>
-    private sealed class Locomotion_SpecialReaction : LocomotionState
+    private sealed class Locomotion_SpecialReaction : SingleClipLocomotionState
     {
-        private readonly CharacterAnimBrain owner;
-        private AnimancerState _state;
         private bool _prevApplyRootMotion;
         private bool _completedNormally;
 
@@ -26,10 +24,7 @@ public sealed partial class CharacterAnimBrain
 
         private float _watchdogRemaining;
 
-        public Locomotion_SpecialReaction(CharacterAnimBrain owner)
-        {
-            this.owner = owner;
-        }
+        public Locomotion_SpecialReaction(CharacterAnimBrain owner) : base(owner) { }
 
         /// <summary>
         /// Always true. A missing clip is not a reason to refuse the reaction: the locked design
@@ -39,15 +34,12 @@ public sealed partial class CharacterAnimBrain
         public override bool CanEnterState =>
             !owner.IsDowned && owner.locomotionSM.CurrentState != owner.deadState;
 
-        public override void OnEnterState()
+        protected override void EnterPlayback()
         {
             _completedNormally = false;
             _clipFallbackActive = false;
-            _state = null;
 
-            _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
-                usesRootMotion: true,
-                preserveFireHoldIntent: false);
+
 
             // Full animation translation (Y included) and animation yaw, constrained against
             // environment geometry. Planar-only would flatten an authored recoil arc, and the
@@ -57,6 +49,9 @@ public sealed partial class CharacterAnimBrain
                 applyYaw: true,
                 ignoreCharacterCollision: false,
                 environmentSafe: true);
+            _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
+                usesRootMotion: true,
+                preserveFireHoldIntent: false);
 
             owner.EmitPlaybackSignal(
                 PlaybackKind.SpecialReaction,
@@ -70,12 +65,13 @@ public sealed partial class CharacterAnimBrain
                 return;
             }
 
-            _state = owner.PlayLocomotionTransition(clip);
-            _state.NormalizedTime = 0f;
-            _state.Events(owner).OnEnd = OnClipEnd;
+            playback.Play(new AnimationPlaybackOptions
+            {
+                Transition = clip, NormalizedStart = 0f, Channel = owner._specialReactionChannel,
+            }, onEnd: endCallback);
 
-            float speed = Mathf.Abs(_state.Speed) > 0.001f ? Mathf.Abs(_state.Speed) : 1f;
-            _watchdogRemaining = Mathf.Max(0.05f, _state.Length / speed) + SpecialReactionWatchdogGrace;
+            float speed = Mathf.Abs(state.Speed) > 0.001f ? Mathf.Abs(state.Speed) : 1f;
+            _watchdogRemaining = Mathf.Max(0.05f, state.Length / speed) + SpecialReactionWatchdogGrace;
         }
 
         private void BeginMissingClipFallback()
@@ -116,14 +112,8 @@ public sealed partial class CharacterAnimBrain
                 CompleteNow();
         }
 
-        public override void OnExitState()
+        protected override void ExitPlayback()
         {
-            if (_state != null)
-            {
-                _state.Events(owner).OnEnd = null;
-                _state = null;
-            }
-
             _clipFallbackActive = false;
             _watchdogRemaining = 0f;
 
@@ -135,7 +125,7 @@ public sealed partial class CharacterAnimBrain
             owner.CloseSpecialReactionSession(_completedNormally);
         }
 
-        private void OnClipEnd()
+        protected override void OnPlaybackEnd()
         {
             if (owner.locomotionSM.CurrentState != this)
                 return;

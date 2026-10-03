@@ -17,10 +17,12 @@ the current branch.
 
 ## Presentation transitions
 
-`CharacterAnimBrain.Transitions.cs` owns layer masks, action fades and deferred
-destruction of temporary animation states. Locomotion playback goes through
-`PlayLocomotionTransition`; upper and full-body actions use `PlayActionPresentation`.
-Gameplay admission remains in `CharacterAnimationTransitionPolicy`.
+`CharacterAnimationPresentation` owns layer masks, action fades and deferred
+destruction of temporary animation states. `CharacterAnimBrain.Transitions.cs` is
+the public facade and playback factory. Clip states use `AnimationPlayback`;
+continuous mixers and sampled Block/struggle poses use Presentation directly.
+`CharacterAnimationTransitionPolicy` separates locomotion admission from
+`AllowsAction` for Shoot, Reload and CommanBlock. Each state retains clip and lock checks.
 
 The configured locomotion/action indices keep their existing meanings. The Brain
 reserves `max(locomotionLayerIndex, actionLayerIndex) + 1` for full-body actions,
@@ -31,6 +33,9 @@ changing either mask; shooting/reloading can start underneath during the fade.
 
 Existing profile/transition durations remain in use, including explicit Dash/Block
 durations and Stage Intro's intentional cut. CommanBlock uses its authored End Time.
+Presentation restores authored transition events on every replay before Timeline
+attaches the new callbacks. This preserves End Time after cleanup has detached the
+previous event sequence; Animancer only initializes that sequence when creating a state.
 Gameplay events, locks and root-motion ownership end at the state transition;
 visual fading does not extend them. Block's sampled pose stays frozen on exit.
 Temporary enemy struggle states remain frozen and event-free until both weight and
@@ -51,6 +56,84 @@ Character animation playback uses one command path:
 ```text
 Gameplay system -> StateHub or controller -> CharacterAnimDriver -> CharacterAnimBrain
 ```
+
+## Internal modules (2026-09-30)
+
+Brain owns these ordinary C# objects; no additional prefab components are needed.
+
+| Module | Responsibility |
+| --- | --- |
+| `CharacterAnimationBinding` | Resolve context/Animancer, cache Animator/profile/graph and publish a generation-stamped reference snapshot. |
+| `CharacterAnimationPresentation` | Clip playback, fixed masks, layer fades, actual offset contributions and temporary pose retirement. |
+| `PlaybackSessionCoordinator` | Own Skill, Utility, Chain and SpecialReaction channels, terminal-once close and the CommanBlock control lease. |
+| `AnimationTimelineBinding` | Attach/release event sequences, guard callbacks with playback identity, create presenters and clean up animation VFX sessions. |
+| `PlaybackSignalDispatcher` | Defer immutable notifications until a command/transition has settled; preserve order during reentrant dispatch. |
+| `AnimationPlayback` | One clip slot: authored events, timing overrides, callback identity and clip VFX cleanup. |
+| `SingleClipActionState` / `SingleClipLocomotionState` | Shared entry/exit lifecycle for simple states, with hooks for action rules. |
+| `AnimationMixerInput` | Shared directional snapping and exponential smoothing; each mixer retains its own tuning. |
+
+Brain retains its public API/events, FSM selection and state-specific orchestration.
+Block phases, Skill cutscene/approach/struggle and Chain cast/advance/watchdog rules
+remain in their states. Root-motion adapters still own actor movement and restore
+their movement/navigation resources.
+
+`GetDiagnosticSnapshot()` is internal and available through the existing reflection
+test/tool pattern. It returns state/mode, binding and session generations, layer
+weights, pending signals/temporary cleanup, callback leases and animation VFX leases.
+
+## Adding a simple clip state
+
+Use the matching single-clip base and provide the existing profile transition.
+The slot clones the authored sequence on every play, applies optional timing
+settings, binds VFX/OnEnd and rejects stale callbacks. For example, a new
+locomotion state can use this pattern (the transition is supplied by its caller):
+
+```csharp
+private sealed class Locomotion_Example : SingleClipLocomotionState
+{
+    private readonly ClipTransition clip;
+    public Locomotion_Example(CharacterAnimBrain owner, ClipTransition clip) : base(owner)
+        => this.clip = clip;
+    public override bool CanEnterState => clip != null && clip.IsValid;
+    protected override void EnterPlayback()
+        => playback.Play(new AnimationPlaybackOptions { Transition = clip }, onEnd: endCallback);
+    protected override void OnPlaybackEnd()
+        => owner.TrySetLocomotionState(owner.IsDowned ? owner.crawlState : owner.locomotion);
+}
+```
+
+Override `ExitPlayback` for gameplay/root-motion cleanup and request closure.
+The base stops clip callbacks/VFX first. SessionCoordinator closes the request;
+SignalDispatcher publishes its terminal after the transition scope ends. The
+slot itself never emits a terminal or destroys an outgoing pose.
+
+Options are runtime data, not serialized authoring. Omitted timing overrides
+preserve transition settings and existing action-layer fades. `Duration` converts
+clip length to speed; `NormalizedStart`, `Speed` and `FadeDuration` are explicit
+overrides. `HoldLastFrame` serves Dead, StageIntro and Knockback. Set
+`InvokeAuthoredEnd` when the state previously invoked authored end callbacks
+(Skill, Utility and Chain); simple states retain their previous replacement behavior.
+Use `configureEvents` for cast/advance/timeline rules rather than constructing a
+second sequence or assigning `OnEnd`. Authored multicast callbacks check identity
+between subscribers, and exceptions do not drop the remaining valid subscribers.
+
+Each slot owns a generation and a Timeline lease in addition to binding/session
+identity. An old slot's `Stop` cannot detach a newer slot's callbacks when Animancer
+reuses the same state. `Stop` and `EndVfx` are repeatable. `EndVfx` lets Reload stop
+its effects before the state exits. Shared transition assets never hold actor callbacks.
+
+Utility, SpecialReaction, Reload, CommanBlock, ShootPulse, Dead, StageIntro, Dash
+and Knockback use the shared bases. Skill and Chain retain their custom state
+lifecycle and use slots only for clip playback. Skill cutscene/main are sequential
+phases of one slot; request VFX remain owned by Timeline across the phase change.
+Its concurrent temporary struggle pose stays with Presentation retirement. Crawl
+uses a slot for its intro and keeps its continuous mixer. Block, Live and ShootHold
+keep their existing continuous or manually sampled lifecycle.
+
+No Transition Library, new prefab component or asset migration is required.
+`ReloadAnimationPlayback` was removed; command movement/rotation tokens now live
+directly in SessionCoordinator. Private forwarding wrappers were removed while
+public APIs and the wrapper that records pair-offset metadata remain.
 
 ## Ownership
 
@@ -96,14 +179,26 @@ timing, root-motion flags, and return values remain unchanged.
 
 ## StateHub Intent
 
-The Driver pushes continuous intent to Brain during `LateUpdate`:
+The Driver pushes continuous intent in `Update` at execution order **1000**,
+after normal movement writers. Brain runs its FSM/mixers once in `Update` at
+**1100**. Both attributes and script `.meta` overrides use those values:
 
 - `MoveSpeed01`
 - `MoveDirLocal`
 - fire-hold context
 
 Movement systems write speed and local direction to `StateHub`; they do not
-write locomotion properties on Brain directly.
+write locomotion properties on Brain directly. A movement writer added later must
+run before order 1000 to meet the same-frame contract. Mixers keep their previous
+smoothing and use `ctx.UsesWorldSlow` through the Brain's animation clock.
+
+`CharacterPairOffsetApplier` restores the preceding offset in one Animancer
+pre-update hook, before new animation poses are evaluated. It records an evaluation
+generation and applies offsets once in `LateUpdate` at order 10000, before Aim/Axis
+drivers. Render frames with no evaluation retain the last corrected pose; manual
+evaluations, including a paused graph, advance the generation. Rebinding and disable
+detach the hook and clear cached bones. An internal binding notification also
+reconnects the hook before callers manually evaluate a newly bound graph.
 
 `StateHub.LifeStateChanged` is the primary animation source for down, revive,
 and dead transitions. Driver subscribes to `HealthSystem` life events only when
@@ -112,9 +207,15 @@ Other audio and gameplay subscribers continue to use `HealthSystem` events.
 
 ## Internal Playback Channels
 
-`CharacterAnimBrain` uses an internal `PlaybackChannel` to manage request state
-for skill, utility, and chain playback subsystems. Each channel wraps a
+`PlaybackSessionCoordinator` owns the internal `PlaybackChannel` instances for
+skill, utility, chain and special reaction playback. Each channel wraps a
 `PlaybackRequestState` with a `PlaybackKind` tag and shared lifecycle helpers.
+Callback tokens contain channel identity, request ID, playback generation and
+binding generation. Reusing an ID or rebinding the same Animator cannot revive a
+previous callback. Timeline end handlers check again after authored callbacks,
+which may cancel or start another playback. Accepted replacement of the same
+channel exits the old state before arming the new request.
+
 The public event surface (`SkillCastMomentReached`, `SkillCompleted`,
 `SkillCastInterrupted`, `ChainCastMomentReached`, `ChainPlaybackCompleted`,
 `ChainPlaybackInterrupted`, `PlaybackEvent`) is unchanged.
@@ -224,7 +325,8 @@ Guarantees:
 
 - A handler for `ChainPlaybackCompleted` / `SkillCompleted` /
   `SkillCastInterrupted` may start the next playback immediately, in the same
-  frame and the same call stack. No caller needs to defer itself by a frame.
+  frame and the same call stack when the new current state permits it. Death and
+  cinematic takeovers are already in place when interruption callbacks run.
 - Queue order is preserved, so the observable event order is unchanged.
 - Each request produces at most one terminal (`Completed` or `Interrupted`).
   This is enforced by `PlaybackRequestState`'s status machine
@@ -234,12 +336,19 @@ Guarantees:
 - A completed request has always seen its cast moment, and a completed chain has
   always seen its advance moment: any beat the clip did not reach is delivered,
   in clip order, before the terminal.
-- A request cancelled through `CancelSkillCastRequest` /
-  `CancelUtilityCastRequest` produces no terminal event: the caller asked for
-  the cancel and is not notified of an interruption it caused itself.
-  `CancelChainPlaybackRequest` does raise `Interrupted`, because the chain
-  sequence runner is a different owner from the caller.
+- Explicit `CancelSkillCastRequest`, `CancelUtilityCastRequest` and
+  `CancelChainPlaybackRequest` each send one `Interrupted` for the matching open
+  request, after the old state exits and its resources are released. Repeated or
+  mismatched cancellation does nothing. Requestless legacy playback keeps its
+  separate completion behavior.
+- Canonical, legacy, timeline/VFX, special-reaction and root-motion notifications
+  invoke subscribers separately. Exceptions are logged; later subscribers and
+  queued notifications still run. Notification payloads retain the original
+  request identity even when a subscriber starts another playback.
+- Disable/destruction reject reentrant playback while draining cleanup. Re-enable
+  invalidates the binding and permits initialization again.
 
+Command scopes include session close, resource release and state entry.
 All locomotion transitions go through `TrySetLocomotionState`,
 `TryResetLocomotionState`, and `ForceSetLocomotionState`, which own that
 transition scope. Do not call `locomotionSM.TrySetState` and friends directly.
@@ -253,7 +362,8 @@ status poses take exclusive ownership of locomotion through
 with an `ExitExclusiveLocomotion(previous)` in the state's `OnExitState`**, or
 root motion stays disabled for the rest of the run — a NavMesh root-motion
 driver never gets it back. `Locomotion_Dead` is the one exception: its
-`CanExitState` is `false`, so it never exits.
+`CanExitState` is `false` during gameplay; binding teardown can force it out
+and release its callback lease.
 
 Soft status poses do not take exclusive ownership and therefore have nothing to
 restore. Disabling the Brain releases exclusive locomotion as part of teardown,
@@ -262,9 +372,9 @@ has already been cleared.
 
 Teardown must first release every state that can *refuse* to exit — the chain
 before `AllowChainStateExit`, and either reload state inside its `_lockExit`
-window — or the transition silently fails and the state stays parked. Re-enabling
-does not rebuild the states when the binding is unchanged, so a state left stuck
-that way stays stuck for the rest of the run.
+window — or the transition silently fails and the state stays parked. Binding
+teardown uses an internal unbound state which does not evaluate a destroyed model.
+Re-enable rebuilds the binding, even if its Animator/profile references are unchanged.
 
 ## Context Resolution
 
@@ -275,8 +385,9 @@ from `ctx.AnimDriver` and read/event access from `ctx.AnimBrain` or
 
 ## Animation Binding
 
-`CharacterAnimBrain` binds once to an `Animator` + `CharacterAnimProfileSO` pair
-and then caches that binding. Its per-frame initialization check is reference
+`CharacterAnimationBinding` caches context, Animancer, its graph, Animator and
+profile, and supplies a `CharacterAnimationBindingSnapshot` to presentation and
+timeline modules. Its per-frame initialization check is reference
 comparisons only — no `GetComponent` walk and no `ctx.ResolveReferences()` — so
 the steady-state cost does not scale with how many context references a prefab
 leaves unassigned. (An unassigned reference makes `ResolveActorComponent` run a
@@ -299,8 +410,13 @@ The full resolve runs only when:
 would notice a changed `Animator` instance on its own; the explicit call also
 covers the same `Animator` coming back with a new controller or avatar.
 
-A rebind interrupts any active skill/utility request exactly once before it
-rebuilds the states, so a Morph mid-cast cannot leave a request stranded.
+Rebind exits the old states and releases callback/VFX/presentation resources before
+building replacements. Open requests close once; their terminal notifications drain
+after the new binding is ready. Explicit invalidation increments the generation even
+if references are unchanged. Destroying a model releases the old session while
+waiting for its replacement. If fallback finds multiple Animancer components, bind
+the intended one explicitly on Brain; it reports the ambiguity instead of choosing
+the first child.
 
 The Driver emits one warning in Editor or Development builds when a facade
 command is called without a resolved Brain.

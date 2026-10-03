@@ -6,15 +6,13 @@ public sealed partial class CharacterAnimBrain
     // Exclusive, always root-motion-free pose used by the MapRun stage intro.
     // The camera clip owns the intro duration, so a shorter character clip holds its last frame.
 
-    private sealed class Locomotion_StageIntro : LocomotionState
+    private sealed class Locomotion_StageIntro : SingleClipLocomotionState
     {
-        private readonly CharacterAnimBrain owner;
-        private AnimancerState state;
         private bool _prevApplyRootMotion;
 
-        public Locomotion_StageIntro(CharacterAnimBrain owner) => this.owner = owner;
+        public Locomotion_StageIntro(CharacterAnimBrain owner) : base(owner) { }
 
-        public override void OnEnterState()
+        protected override void EnterPlayback()
         {
             _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
                 usesRootMotion: false,
@@ -26,9 +24,8 @@ public sealed partial class CharacterAnimBrain
             {
                 // No authored pose: fall back to the locomotion idle blend, but stay exclusive so
                 // aim/fire/root motion cannot leak into the intro.
-                state = null;
                 if (owner.LocomotionMixer != null)
-                    owner.PlayLocomotionTransition(owner.LocomotionMixer);
+                    owner.presentation.PlayLocomotionTransition(owner.LocomotionMixer);
                 return;
             }
 
@@ -37,22 +34,14 @@ public sealed partial class CharacterAnimBrain
             // the intro pose. The intro always begins under a fully black overlay, so a hard cut is
             // invisible — and the transition's own fade (0.25s) outlasts the 0.2s fade-in, which is
             // exactly why the tail of that swing was showing on screen.
-            state = owner.PlayLocomotionTransition(clip, 0f, FadeMode.FromStart);
-
-            owner.onStageIntroEndCache ??= () =>
+            playback.Play(new AnimationPlaybackOptions
             {
-                if (state == null) return;
-                state.Time = state.Length;
-                state.Speed = 0f;
-            };
-
-            state.Events(owner).OnEnd = owner.onStageIntroEndCache;
+                Transition = clip, FadeDuration = 0f, FadeMode = FadeMode.FromStart, HoldLastFrame = true,
+            });
         }
 
-        public override void OnExitState()
+        protected override void ExitPlayback()
         {
-            state = null;
-
             // The intro forces root motion off while it owns locomotion; hand it back to whoever
             // had it (NavMesh root-motion drivers, an interrupted skill) instead of leaking off.
             owner.ExitExclusiveLocomotion(_prevApplyRootMotion);

@@ -9,8 +9,7 @@ public sealed partial class CharacterAnimBrain
     {
         if (!TryInitialize() || !TryGetAnimProfile(out var profile) ||
             profile.commanBlock == null || !profile.commanBlock.IsValid ||
-            (CurrentAnimationMode != CharacterAnimationMode.Locomotion &&
-             CurrentAnimationMode != CharacterAnimationMode.SoftStatus)) return false;
+            !CharacterAnimationTransitionPolicy.AllowsAction(CurrentAnimationMode, PairOffsetUpperAction.None, true)) return false;
 
         commanBlockState ??= new Action_CommanBlock(this);
         return actionSM.TryResetState(commanBlockState);
@@ -18,63 +17,52 @@ public sealed partial class CharacterAnimBrain
 
     void StopCommanBlock()
     {
-        commanBlockState?.ReleaseControlLock();
         if (_initialized && animancer != null && animancer.Animator != null &&
             actionSM.CurrentState == commanBlockState)
             actionSM.ForceSetState(empty);
+        else
+            commanBlockState?.Dispose();
     }
 
     // The defender owns Block gameplay; this state owns the Player's temporary control lock.
-    private sealed class Action_CommanBlock : ActionState
+    private sealed class Action_CommanBlock : SingleClipActionState
     {
-        readonly CharacterAnimBrain owner;
-        AnimancerState state;
-        StateHub lockedHub;
-        int controlToken;
 
-        public Action_CommanBlock(CharacterAnimBrain owner) => this.owner = owner;
+        public Action_CommanBlock(CharacterAnimBrain owner) : base(owner) { }
 
-        public override void OnEnterState()
+        protected override void EnterPlayback()
         {
-            ReleaseControlLock();
-            lockedHub = owner.ctx != null ? owner.ctx.stateHub : null;
-            if (lockedHub != null)
-                controlToken = lockedHub.AcquireExternalControlBlockToken(ControlBlockFlags.Move | ControlBlockFlags.Rotate, nameof(CharacterAnimBrain));
-            state = owner.PlayActionPresentation(owner.AnimProfile.commanBlock,
-                PairOffsetUpperAction.None, fullBody: true);
-            if (state != null)
+            owner.sessions.AcquireCommandControl(owner.ctx != null ? owner.ctx.stateHub : null);
+            playback.Play(new AnimationPlaybackOptions
             {
-                state.NormalizedTime = 0f;
-                state.Events(owner).OnEnd = OnEnd;
-            }
-            else OnEnd();
+                Transition = owner.AnimProfile.commanBlock,
+                TargetLayer = AnimationPlaybackOptions.Layer.FullBodyAction,
+                NormalizedStart = 0f,
+            }, onEnd: endCallback);
+            if (state == null) OnPlaybackEnd();
         }
 
-        private void OnEnd()
+        protected override void OnPlaybackEnd()
         {
             if (owner.actionSM.CurrentState != this) return;
             owner.actionSM.TrySetState(owner.empty);
             owner.TryResumeHoldAction();
         }
 
-        public override void OnExitState()
+        protected override void ExitPlayback()
         {
             ReleaseControlLock();
-            if (state != null) state.Events(owner).OnEnd = null;
-            state = null;
-            owner.FadeActionLayer(owner.fullBodyActionLayer);
+            owner.presentation.FadeActionLayer(owner.fullBodyActionLayer);
         }
 
         public void ReleaseControlLock()
         {
-            if (lockedHub != null && controlToken != 0)
-                lockedHub.ReleaseExternalControlBlockToken(controlToken);
-            controlToken = 0;
-            lockedHub = null;
+            owner.sessions.ReleaseCommandControl();
         }
 
         public void Dispose()
         {
+            playback.Stop();
             ReleaseControlLock();
         }
     }

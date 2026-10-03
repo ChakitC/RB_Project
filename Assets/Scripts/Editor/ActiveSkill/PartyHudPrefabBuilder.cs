@@ -17,7 +17,7 @@ public static class PartyHudPrefabBuilder
             throw new InvalidOperationException("Separate HUD already exists; edit it directly to preserve authored changes.");
         var ready = CopySprite("Active_Ualtimad_Skill_Open_Hud");
         var closed = CopySprite("Active_Ualtimad_Skill_Close_Hud");
-        var combo = CopySprite("Combo_Hud");
+        var combo = CopySprite("FollowUp_Hud");
         if (!AssetDatabase.CopyAsset("Assets/Prefab/User Interface/PlayerUI.prefab", Output))
             throw new InvalidOperationException("Could not copy PlayerUI prefab.");
         var root = PrefabUtility.LoadPrefabContents(Output);
@@ -68,7 +68,7 @@ public static class PartyHudPrefabBuilder
             SetArray(presenter,"skillFrames",frames);SetArray(presenter,"skillIcons",icons);SetArray(presenter,"skillLabels",labels);
             Set(presenter,"readyFrame",ready);Set(presenter,"unavailableFrame",closed);
             Set(presenter,"feedback",Label(skillPanel,"Feedback",new Vector2(0,117),new Vector2(460,28),"",18));
-            var combos=Rect(hud,"ComboOffers",new Vector2(.56f,.53f),Vector2.zero,new Vector2(480,150));
+            var combos=Rect(hud,"FollowUpOffers",new Vector2(.56f,.53f),Vector2.zero,new Vector2(480,150));
             combos.pivot=new Vector2(0,.5f);
             Label(combos,"KeyE",new Vector2(-225,45),new Vector2(35,35),"E",26);
             var cards=new List<UnityEngine.Object>();var faces=new List<UnityEngine.Object>();var timers=new List<UnityEngine.Object>();
@@ -80,7 +80,7 @@ public static class PartyHudPrefabBuilder
                 timers.Add(Label(card,"Remaining",new Vector2(26,-39),new Vector2(28,28),"",19));
                 cards.Add(card);
             }
-            Set(presenter,"comboRoot",combos.gameObject);SetArray(presenter,"comboCards",cards);SetArray(presenter,"comboPortraits",faces);SetArray(presenter,"comboTimes",timers);
+            Set(presenter,"followUpRoot",combos.gameObject);SetArray(presenter,"followUpCards",cards);SetArray(presenter,"followUpPortraits",faces);SetArray(presenter,"followUpTimes",timers);
             combos.gameObject.SetActive(false);
             PrefabUtility.SaveAsPrefabAsset(root,Output);
         }

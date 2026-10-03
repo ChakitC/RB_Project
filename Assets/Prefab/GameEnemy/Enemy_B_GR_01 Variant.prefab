@@ -100,6 +100,10 @@ PrefabInstance:
       propertyPath: aimPoint
       value: 
       objectReference: {fileID: 2475965347519447567}
+    - target: {fileID: 2815637779987703253, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+      propertyPath: obstacleLayers.m_Bits
+      value: 151553
+      objectReference: {fileID: 0}
     - target: {fileID: 2821387260181010644, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: obstacleMask.m_Bits
       value: 63487

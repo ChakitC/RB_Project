@@ -64,24 +64,7 @@ public class HasEnemyFromSensor : Conditional
         if (sensor != null)
             return;
 
-        AllyContext allyContext = gameObject.GetComponent<AllyContext>();
-        if (allyContext == null)
-            allyContext = gameObject.GetComponentInParent<AllyContext>();
-
-        if (allyContext != null && allyContext.AITargetSensor != null)
-        {
-            sensor = allyContext.AITargetSensor;
-            return;
-        }
-
-        sensor = gameObject.GetComponent<AITargetSensor>();
-        if (sensor == null)
-            sensor = gameObject.GetComponentInParent<AITargetSensor>();
-        if (sensor == null)
-            sensor = gameObject.GetComponentInChildren<AITargetSensor>(true);
-
-        if (allyContext != null && allyContext.AITargetSensor == null)
-            allyContext.AITargetSensor = sensor;
+        sensor = AITargetSensor.ResolveFor(transform);
     }
 
     private void SubscribeToSensor()
@@ -120,7 +103,7 @@ public class HasEnemyFromSensor : Conditional
             return false;
         }
 
-        return SyncOutputsFromTarget(sensor.CurrentTarget);
+        return SyncOutputsFromTarget(sensor.Snapshot.CurrentTarget);
     }
 
     private bool SyncOutputsFromTarget(Transform target)

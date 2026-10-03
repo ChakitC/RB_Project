@@ -171,7 +171,7 @@ public sealed class TauntSkillRuntime : MonoBehaviour
 
             // AITargetSensor commonly lives under a child branch (e.g. "AI_System") of the character
             // root rather than on the root itself, so search the whole CharacteContext subtree.
-            AITargetSensor sensor = targetContext.GetComponentInChildren<AITargetSensor>(true);
+            AITargetSensor sensor = AITargetSensor.ResolveFor(targetContext);
             if (sensor == null)
                 continue;
 

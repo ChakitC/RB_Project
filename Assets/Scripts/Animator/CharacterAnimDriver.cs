@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[DefaultExecutionOrder(-110)]
+[DefaultExecutionOrder(1000)]
 [DisallowMultipleComponent]
 public sealed class CharacterAnimDriver : MonoBehaviour
 {
@@ -140,7 +140,7 @@ public sealed class CharacterAnimDriver : MonoBehaviour
             _statusEffects = CTX.GetComponentInChildren<StatusEffectController>(true);
     }
 
-    void LateUpdate()
+    void Update()
     {
         if (hub == null || brain == null) return;
 

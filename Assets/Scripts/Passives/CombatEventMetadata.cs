@@ -33,8 +33,8 @@ public readonly struct CombatEventMetadata
         string statusEffectId = null,
         int statusStacks = 0,
         string reactionId = null,
-        string comboSkillId = null,
-        ChainActorRole comboOwnerRole = ChainActorRole.None)
+        string followUpSkillId = null,
+        ChainActorRole followUpOwnerRole = ChainActorRole.None)
     {
         RequestedDamage = Mathf.Max(0f, requestedDamage);
         ResolvedDamage = Mathf.Max(0f, resolvedDamage);
@@ -56,8 +56,8 @@ public readonly struct CombatEventMetadata
         StatusEffectId = statusEffectId;
         StatusStacks = Mathf.Max(0, statusStacks);
         ReactionId = reactionId;
-        ComboSkillId = comboSkillId;
-        ComboOwnerRole = comboOwnerRole;
+        FollowUpSkillId = followUpSkillId;
+        FollowUpOwnerRole = followUpOwnerRole;
     }
 
     public float RequestedDamage { get; }
@@ -81,7 +81,7 @@ public readonly struct CombatEventMetadata
     public string StatusEffectId { get; }
     public int StatusStacks { get; }
     public string ReactionId { get; }
-    public string ComboSkillId { get; }
-    public ChainActorRole ComboOwnerRole { get; }
+    public string FollowUpSkillId { get; }
+    public ChainActorRole FollowUpOwnerRole { get; }
     public bool IsWeaponAffixGenerated => !string.IsNullOrWhiteSpace(WeaponAffixId);
 }

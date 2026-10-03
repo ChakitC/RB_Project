@@ -80,7 +80,7 @@ public sealed class UpgradeGatedStatusOnHitModule : ProjectileModule
             ctx.origin,
             ctx.originPassiveId,
             ctx.originRuleId,
-            comboProvenance: ctx.comboProvenance);
+            followUpProvenance: ctx.followUpProvenance);
     }
 
     static bool TryResolveSummon(ProjectileContext ctx, out SummonedEntityRuntime summon)

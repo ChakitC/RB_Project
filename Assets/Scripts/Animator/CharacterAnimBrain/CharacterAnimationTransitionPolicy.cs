@@ -11,6 +11,15 @@
 /// </summary>
 public static class CharacterAnimationTransitionPolicy
 {
+    // Action admission is separate from locomotion replacement. Clip/exit checks stay in the FSM.
+    internal static bool AllowsAction(CharacterAnimationMode locomotion, PairOffsetUpperAction action, bool fullBodyGesture = false)
+    {
+        if (fullBodyGesture)
+            return locomotion == CharacterAnimationMode.Locomotion || locomotion == CharacterAnimationMode.SoftStatus;
+        if (action == PairOffsetUpperAction.ShootHold) return true;
+        return AllowsExternalCommand(locomotion, CharacterAnimationTransitionReason.NormalCommand);
+    }
+
     /// <summary>
     /// Chain playback owns the character outright while it runs. Only authority above ordinary
     /// gameplay gets through: death/down, a cinematic taking over, or the character losing control.

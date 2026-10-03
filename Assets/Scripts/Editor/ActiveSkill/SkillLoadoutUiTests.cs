@@ -80,8 +80,8 @@ public sealed class SkillLoadoutUiTests
     {
         var stats = Asset<CharacterStats>();
         stats.characterId = string.Empty;
-        var combo = Asset<PartyComboSkillDef>();
-        combo.comboId = "test.combo";
+        var combo = Asset<PartyFollowUpSkillDef>();
+        combo.followUpId = "test.combo";
         combo.executionSkill = Asset<SkillGemDefinition>();
         combo.upgradeTree = Asset<SkillUpgradeTreeDefinition>();
         combo.upgradeTree.treeId = "combo.tree";
@@ -90,10 +90,10 @@ public sealed class SkillLoadoutUiTests
             nodeId = "power", cost = 1,
             statModifiers = new List<StatModifier> { new() { stat = StatType.Damage, add = 7f, mul = 1f } }
         });
-        stats.partyComboSkill = combo;
+        stats.partyFollowUpSkill = combo;
         var data = new CharacterProgressData { level = 10, skillPoints = 3, skillProgressInitialized = true };
         var model = new ActiveSkillProgressModel(stats, data, 10);
-        Assert.That(model.TryUnlock(PartyComboSkillDef.ProgressSlotId, combo.RuntimeId, combo.upgradeTree, "power", out _, out _), Is.True);
+        Assert.That(model.TryUnlock(PartyFollowUpSkillDef.ProgressSlotId, combo.RuntimeId, combo.upgradeTree, "power", out _, out _), Is.True);
         var loaded = JsonUtility.FromJson<CharacterProgressData>(JsonUtility.ToJson(data));
         model = new ActiveSkillProgressModel(stats, loaded, 10);
         Assert.That(model.AvailablePoints, Is.EqualTo(2));
@@ -109,18 +109,18 @@ public sealed class SkillLoadoutUiTests
         ctx.ActiveSkillProgress = progress;
         typeof(CharacterActiveSkillProgress).GetField("_model", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(progress, model);
         var manager = actor.AddComponent<CharacterSkillManager>();
-        Assert.That(manager.TryGetPartyComboRuntimeEntry(combo, out var entry), Is.True);
+        Assert.That(manager.TryGetPartyFollowUpRuntimeEntry(combo, out var entry), Is.True);
         Assert.That(entry.runtimeSkill.upgradeSnapshot.TryGetAggregate(StatType.Damage, out float add, out _), Is.True);
         Assert.That(add, Is.EqualTo(7f));
         Assert.That(entry.runtimeSkill.GetFinalStats(null).damage, Is.EqualTo(combo.executionSkill.baseDamage + 7f));
         using var session = ActiveSkillLoadoutSession.CreateRuntime(ctx);
         int index = session.Slots.Count - 1;
-        Assert.That(session.Slots[index].Kind, Is.EqualTo(SkillLoadoutKind.PartyCombo));
+        Assert.That(session.Slots[index].Kind, Is.EqualTo(SkillLoadoutKind.PartyFollowUp));
         Assert.That(session.GetSelectedOptionIndex(index), Is.EqualTo(0));
         Assert.That(session.SelectOption(index, 0), Is.False);
         Assert.That(session.ResetTree(index, 0, out int refunded), Is.True);
         Assert.That(refunded, Is.EqualTo(1));
-        Assert.That(manager.TryGetPartyComboRuntimeEntry(combo, out var reset), Is.True);
+        Assert.That(manager.TryGetPartyFollowUpRuntimeEntry(combo, out var reset), Is.True);
         Assert.That(reset, Is.SameAs(entry));
         Assert.That(reset.runtimeSkill.upgradeSnapshot.IsEmpty, Is.True);
         Assert.That(reset.runtimeSkill.GetFinalStats(null).damage, Is.EqualTo(combo.executionSkill.baseDamage));

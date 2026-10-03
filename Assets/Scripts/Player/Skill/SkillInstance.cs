@@ -329,7 +329,7 @@ public class SkillInstance
         SkillTargetHandle primaryTarget = null,
         ulong combatChainId = 0,
         int combatDepth = 0,
-        ComboExecutionProvenance comboProvenance = default,
+        FollowUpExecutionProvenance followUpProvenance = default,
         SkillFacingSnapshot facingSnapshot = default,
         SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
         MeleeType meleeType = MeleeType.Light)
@@ -352,7 +352,7 @@ public class SkillInstance
             primaryTarget,
             combatChainId,
             combatDepth,
-            comboProvenance,
+            followUpProvenance,
             facingSnapshot,
             executionKind,
             meleeType);

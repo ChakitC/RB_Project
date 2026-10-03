@@ -97,11 +97,11 @@ public sealed class CombatEventBus : MonoBehaviour
         string originRuleId = null,
         CombatEventMetadata metadata = default,
         GameObject actor = null,
-        ComboExecutionProvenance comboProvenance = default)
+        FollowUpExecutionProvenance followUpProvenance = default)
     {
-        ComboExecutionProvenance resolvedProvenance = comboProvenance.IsValid
-            ? comboProvenance
-            : parent.ComboProvenance;
+        FollowUpExecutionProvenance resolvedProvenance = followUpProvenance.IsValid
+            ? followUpProvenance
+            : parent.FollowUpProvenance;
 
         return new PassiveEventContext(
             type,

@@ -40,7 +40,7 @@ public class Castinrange : Conditional
     {
         if (sensor == null)
         {
-            sensor = GetComponent<AITargetSensor>();
+            sensor = AITargetSensor.ResolveFor(transform);
         }
         
     }
@@ -54,9 +54,10 @@ public class Castinrange : Conditional
             
         }
 
+        AITargetSnapshot state = sensor.Snapshot;
         if (requireLiveTarget.Value)
         {
-            if (!sensor.HasLiveTarget || sensor.CurrentTarget == null)
+            if (!state.HasLiveTarget)
             {
                
                 ClearOutputs();
@@ -65,7 +66,7 @@ public class Castinrange : Conditional
         }
         else
         {
-            if (!sensor.HasAnyTarget)
+            if (!state.HasAnyTarget)
             {
                
                 ClearOutputs();
@@ -73,20 +74,20 @@ public class Castinrange : Conditional
             }
         }
 
-        if (requireLineOfSight.Value && !sensor.HasLineOfSight)
+        if (requireLineOfSight.Value && !state.HasLineOfSight)
         {
             
             ClearOutputs();
             return TaskStatus.Failure;
         }
 
-        float dist = sensor.TargetDistance;
+        float dist = state.TargetDistance;
 
         if (currentDistance != null)
             currentDistance.Value = dist;
 
-        if (sensor.CurrentTarget != null && currentEnemy != null)
-            currentEnemy.Value = sensor.CurrentTarget.gameObject;
+        if (currentEnemy != null)
+            currentEnemy.Value = state.CurrentTarget != null ? state.CurrentTarget.gameObject : null;
 
         float lowerSetting = Mathf.Min(minCastRange.Value, maxCastRange.Value);
         float upperSetting = Mathf.Max(minCastRange.Value, maxCastRange.Value);

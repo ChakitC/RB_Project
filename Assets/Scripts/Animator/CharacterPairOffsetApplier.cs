@@ -4,7 +4,7 @@ using UnityEngine;
 
 [DefaultExecutionOrder(10000)]
 [DisallowMultipleComponent]
-public sealed class CharacterPairOffsetApplier : MonoBehaviour
+public sealed class CharacterPairOffsetApplier : MonoBehaviour, IUpdatable
 {
     private readonly struct AppliedBoneRotation
     {
@@ -29,6 +29,37 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour
     private readonly List<PairOffsetBasePoseWeight> basePoseWeights = new List<PairOffsetBasePoseWeight>(3);
     private readonly List<PairOffsetActionWeight> actionWeights = new List<PairOffsetActionWeight>(3);
     private readonly Dictionary<string, Transform> boneCache = new Dictionary<string, Transform>();
+    int IUpdatable.UpdatableIndex { get; set; } = -1;
+    private AnimancerGraph hookedGraph;
+    private CharacterAnimBrain subscribedBrain;
+    private int bindingGeneration = -1;
+    private ulong evaluationGeneration, appliedGeneration;
+    private void BindGraph()
+    {
+        var component = brain != null ? brain.BoundAnimancer : null;
+        var graph = component != null && component.IsGraphInitialized ? component.Graph : null;
+        int generation = brain != null ? brain.BindingGeneration : -1;
+        if (ReferenceEquals(graph, hookedGraph) && bindingGeneration == generation) return;
+        UnbindGraph();
+        bindingGeneration = generation;
+        hookedGraph = graph;
+        hookedGraph?.RequirePreUpdate(this);
+    }
+    private void UnbindGraph()
+    {
+        hookedGraph?.CancelPreUpdate(this);
+        hookedGraph = null;
+        bindingGeneration = -1;
+        RestoreAppliedOffsets();
+        boneCache.Clear();
+        evaluationGeneration = appliedGeneration = 0;
+    }
+    void IUpdatable.Update()
+    {
+        RestoreAppliedOffsets();
+        evaluationGeneration++;
+    }
+    private void Update() => BindGraph();
     private Animator cachedAnimator;
     private PairOffsetProfilesSO cachedProfiles;
 
@@ -40,11 +71,36 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour
     private void OnEnable()
     {
         ResolveReferences();
+        SubscribeBinding();
+        BindGraph();
+    }
+
+    private void SubscribeBinding()
+    {
+        if (subscribedBrain == brain) return;
+        if (subscribedBrain != null) subscribedBrain.AnimationBindingChanged -= OnBindingChanged;
+        subscribedBrain = brain;
+        if (subscribedBrain != null) subscribedBrain.AnimationBindingChanged += OnBindingChanged;
+    }
+
+    private void OnBindingChanged()
+    {
+        ResolveReferences();
+        BindGraph();
     }
 
     private void LateUpdate()
     {
         ResolveReferences();
+        SubscribeBinding();
+        BindGraph();
+        if (!applyPairOffsets || brain == null || !brain.isActiveAndEnabled)
+        {
+            RestoreAppliedOffsets();
+            return;
+        }
+        if (evaluationGeneration == appliedGeneration) return;
+        appliedGeneration = evaluationGeneration;
 
         if (!applyPairOffsets ||
             brain == null ||
@@ -100,12 +156,14 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour
 
     private void OnDisable()
     {
-        RestoreAppliedOffsets();
+        if (subscribedBrain != null) subscribedBrain.AnimationBindingChanged -= OnBindingChanged;
+        subscribedBrain = null;
+        UnbindGraph();
     }
 
     private void OnDestroy()
     {
-        RestoreAppliedOffsets();
+        OnDisable();
     }
 
     private void ResolveReferences()
@@ -117,7 +175,7 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour
                 ctx = GetComponentInParent<CharacteContext>();
         }
 
-        ctx?.ResolveReferences();
+        if (brain == null || (ctx != null && ctx.PairOffsetApplier != this)) ctx?.ResolveReferences();
 
         if (ctx != null && ctx.PairOffsetApplier != this)
             ctx.PairOffsetApplier = this;
@@ -145,18 +203,7 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour
 
     private Animator ResolveAnimancerAnimator()
     {
-        if (brain == null)
-            return null;
-
-        AnimancerComponent animancer = brain.GetComponent<AnimancerComponent>();
-        if (animancer != null && animancer.Animator != null)
-            return animancer.Animator;
-
-        animancer = brain.GetComponentInChildren<AnimancerComponent>(true);
-        if (animancer != null && animancer.Animator != null)
-            return animancer.Animator;
-
-        return null;
+        return brain != null ? brain.BoundAnimator : null;
     }
 
     private int ApplyProfiles(

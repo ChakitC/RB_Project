@@ -131,7 +131,7 @@ public static class SkillHitboxCharacterSetup
                         foreach (var option in slot.options)
                             if (option != null) AddSkill(option.ExecutionSkill, option.ResolvedDisplayName);
             AddSkill(stats.chainAttackSkill, "Chain Attack");
-            AddSkill(stats.partyComboSkill != null ? stats.partyComboSkill.executionSkill : null, "Party Combo");
+            AddSkill(stats.partyFollowUpSkill != null ? stats.partyFollowUpSkill.executionSkill : null, "Party Follow-Up");
         }
         // Inspect serialized enemy/legacy slots without calling runtime loadout-building getters.
         var manager = ctx != null ? ctx.SkillManager : null;

@@ -7,8 +7,8 @@ public sealed partial class CharacterAnimBrain
     private sealed class Locomotion_Chain : LocomotionState
     {
         private readonly CharacterAnimBrain owner;
-        private AnimancerState state;
-        private AnimancerEvent.Sequence runtimeEvents;
+        private readonly AnimationPlayback playback;
+        private AnimancerState state => playback.State;
         private bool _prevApplyRootMotion;
         private bool _completedNormally;
         private float _watchdogDeadline;
@@ -17,6 +17,7 @@ public sealed partial class CharacterAnimBrain
         public Locomotion_Chain(CharacterAnimBrain owner)
         {
             this.owner = owner;
+            playback = owner.CreatePlayback();
             _onEndCache = OnChainEnd;
         }
 
@@ -52,21 +53,11 @@ public sealed partial class CharacterAnimBrain
                 preserveFireHoldIntent: true);
             owner.EmitPlaybackSignal(owner.ResolveActiveChainPlaybackKind(), PlaybackPhase.Started, owner.ActiveChainRequestId);
 
-            state = owner.PlayLocomotionTransition(chainClip);
-            state.NormalizedTime = 0f;
-            runtimeEvents = new AnimancerEvent.Sequence(chainClip.Events);
-            owner.BindActiveChainTimelineEvents(runtimeEvents);
-
-            var transitionOnEnd = runtimeEvents.OnEnd;
-            runtimeEvents.OnEnd = transitionOnEnd == null
-                ? _onEndCache
-                : () =>
-                {
-                    transitionOnEnd();
-                    _onEndCache();
-                };
-
-            state.SharedEvents = runtimeEvents;
+            playback.Play(new AnimationPlaybackOptions
+            {
+                Transition = chainClip, NormalizedStart = 0f,
+                Channel = owner._chainChannel, InvokeAuthoredEnd = true,
+            }, owner.BindActiveChainTimelineEvents, _onEndCache);
             _watchdogDeadline = owner.AnimationTime + ResolveWatchdogDuration(state) + owner.ChainPlaybackWatchdogGraceSeconds;
         }
 
@@ -75,7 +66,9 @@ public sealed partial class CharacterAnimBrain
             if (state == null)
                 return;
 
+            var token = owner.sessions.Capture(owner._chainChannel);
             owner.PollActiveChainPlayback(state);
+            if (!owner.sessions.IsCurrent(token)) return;
 
             if (owner.AnimationTime >= _watchdogDeadline)
                 ForceExitFromWatchdog();
@@ -85,12 +78,7 @@ public sealed partial class CharacterAnimBrain
         {
             _watchdogDeadline = float.PositiveInfinity;
 
-            if (state != null)
-            {
-                state.SharedEvents = null;
-                runtimeEvents = null;
-                state = null;
-            }
+            playback.Stop();
 
             owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
             owner.ClearActiveChainRootMotionPolicy();

@@ -263,7 +263,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         string originPassiveId = null,
         string originRuleId = null,
         float fallbackDuration = 0f,
-        ComboExecutionProvenance comboProvenance = default)
+        FollowUpExecutionProvenance followUpProvenance = default)
     {
         if (spec == null || spec.effect == null)
             return null;
@@ -280,7 +280,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             originPassiveId,
             originRuleId,
             fallbackDuration,
-            comboProvenance);
+            followUpProvenance);
     }
 
     StatusEffectInstance ApplyEffectCore(
@@ -295,7 +295,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         string originPassiveId,
         string originRuleId,
         float fallbackDuration,
-        ComboExecutionProvenance comboProvenance)
+        FollowUpExecutionProvenance followUpProvenance)
     {
         if (definition == null || applicationBlocks.Count > 0)
             return null;
@@ -308,7 +308,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
 
         if (definition.stackMode == StackMode.IndependentInstances)
         {
-            var instance = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, fallbackDuration, comboProvenance);
+            var instance = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, fallbackDuration, followUpProvenance);
             _activeEffects.Add(instance);
 
             List<StatusEffectEvent> newLifecycleEvents = null;
@@ -321,7 +321,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         var existing = FindActiveEffect(definition, sourceKey);
         if (existing == null)
         {
-            existing = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, fallbackDuration, comboProvenance);
+            existing = CreateInstance(definition, spec, source, clampedStacks, now, appliedById, chainId, depth, origin, originPassiveId, originRuleId, fallbackDuration, followUpProvenance);
             _activeEffects.Add(existing);
 
             List<StatusEffectEvent> newLifecycleEvents = null;
@@ -332,7 +332,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         }
 
         existing.UpdateSource(source);
-        existing.UpdateContext(appliedById, chainId, depth, origin, originPassiveId, originRuleId, comboProvenance);
+        existing.UpdateContext(appliedById, chainId, depth, origin, originPassiveId, originRuleId, followUpProvenance);
         // instance เดิมที่ถูก apply ซ้ำนับเป็น application ล่าสุด — ระบบที่ใช้ latest-wins (เช่น multi-Taunt)
         // ต้องเห็นว่ามันใหม่กว่า instance ที่ไม่ได้ถูกแตะ
         existing.MarkReapplied();
@@ -747,7 +747,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         string originPassiveId,
         string originRuleId,
         float fallbackDuration,
-        ComboExecutionProvenance comboProvenance)
+        FollowUpExecutionProvenance followUpProvenance)
     {
         int startingStacks = definition.stackMode == StackMode.RefreshDuration ||
                              definition.stackMode == StackMode.StrongestOnly
@@ -767,7 +767,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             originRuleId,
             spec,
             fallbackDuration,
-            comboProvenance);
+            followUpProvenance);
     }
 
     /// <summary>ถอด instance ทุกตัวของ effect ที่ติด tag นี้ (เช่น ล้าง taunt ตอน sensor reset).</summary>
@@ -896,7 +896,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             return;
 
         EffectLifecycleChanged?.Invoke(CreateStatusEffectEvent(eventType, instance, oldStacks, newStacks));
-        PublishPartyComboStatusFact(eventType, instance, newStacks);
+        PublishPartyFollowUpStatusFact(eventType, instance, newStacks);
     }
 
     void PublishStatusEffectEvents(List<StatusEffectEvent> lifecycleEvents)
@@ -907,19 +907,19 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         for (int i = 0; i < lifecycleEvents.Count; i++)
         {
             EffectLifecycleChanged?.Invoke(lifecycleEvents[i]);
-            PublishPartyComboStatusFact(
+            PublishPartyFollowUpStatusFact(
                 lifecycleEvents[i].EventType,
                 lifecycleEvents[i].Instance,
                 lifecycleEvents[i].NewStacks);
         }
     }
 
-    void PublishPartyComboStatusFact(
+    void PublishPartyFollowUpStatusFact(
         StatusEffectEventType eventType,
         StatusEffectInstance instance,
         int newStacks)
     {
-        if (!PartyComboFeatureGate.PublishersEnabled || instance == null || instance.Definition == null)
+        if (!PartyFollowUpFeatureGate.PublishersEnabled || instance == null || instance.Definition == null)
             return;
 
         PassiveEventType factType;
@@ -971,7 +971,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             instance.OriginRuleId,
             metadata,
             CombatEventBus.NextFactId(),
-            instance.ComboProvenance);
+            instance.FollowUpProvenance);
 
         PassiveEventContext fact = bus.CreateChildContext(
             parent,

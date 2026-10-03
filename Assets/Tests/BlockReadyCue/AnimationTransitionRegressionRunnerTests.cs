@@ -13,6 +13,10 @@ public sealed class AnimationTransitionRegressionRunnerTests
         {
             "CharacterAnimBrainSmokeTests",
             "CharacterAnimationTransitionPolicyTests",
+            "RootMotionCollisionTests",
+            "MeleeSkillIntegrationTests",
+            "BlockAnimationOwnershipTests",
+            "DefensiveBlockTests",
         })
         {
             Type type = Type.GetType(fixtureName + ", Assembly-CSharp-Editor", true);
@@ -36,7 +40,7 @@ public sealed class AnimationTransitionRegressionRunnerTests
         object fixture = Activator.CreateInstance(type);
         try
         {
-            type.GetMethod("SetUp").Invoke(fixture, null);
+            InvokeLifecycle<SetUpAttribute>(type, fixture);
             type.GetMethod(methodName).Invoke(fixture, arguments);
         }
         catch (TargetInvocationException error) when (error.InnerException != null)
@@ -44,6 +48,12 @@ public sealed class AnimationTransitionRegressionRunnerTests
             ExceptionDispatchInfo.Capture(error.InnerException).Throw();
             throw;
         }
-        finally { type.GetMethod("TearDown").Invoke(fixture, null); }
+        finally { InvokeLifecycle<TearDownAttribute>(type, fixture); }
+    }
+
+    private static void InvokeLifecycle<T>(Type type, object fixture) where T : Attribute
+    {
+        foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+            if (method.IsDefined(typeof(T), true)) method.Invoke(fixture, null);
     }
 }

@@ -12,19 +12,19 @@ public sealed class CooperativeBlockDamageSnapshot
     readonly int depth;
     readonly CombatAttributionSnapshot attribution;
     readonly CombatSourceKind sourceKind;
-    readonly ComboExecutionProvenance comboProvenance;
+    readonly FollowUpExecutionProvenance followUpProvenance;
     readonly System.Collections.Generic.HashSet<int> applied = new();
 
     public CooperativeBlockDamageSnapshot(CharacteContext caster, float damage, float critChance, float critMultiplier,
         float stagger, KnockbackSettings knockback, string sourceId, string attackId, ulong chainId, int depth,
-        CombatAttributionSnapshot attribution, CombatSourceKind sourceKind, ComboExecutionProvenance comboProvenance)
+        CombatAttributionSnapshot attribution, CombatSourceKind sourceKind, FollowUpExecutionProvenance followUpProvenance)
     {
         this.caster = caster; life = caster.LifeGeneration; this.damage = damage;
         this.critChance = critChance; this.critMultiplier = critMultiplier; this.stagger = stagger;
         this.knockback = knockback; this.sourceId = sourceId; this.attackId = attackId;
         this.chainId = chainId != 0 ? chainId : CombatEventBus.NextChainId(); this.depth = depth;
         this.attribution = attribution; this.sourceKind = sourceKind;
-        this.comboProvenance = comboProvenance;
+        this.followUpProvenance = followUpProvenance;
     }
 
     public DamageResult Apply(CharacteContext target)
@@ -60,7 +60,7 @@ public sealed class CooperativeBlockDamageSnapshot
             enteredChainReady: result.EnteredChainReady, sourceKind: sourceKind);
         var parent = new PassiveEventContext(PassiveEventType.None, caster.gameObject, caster.gameObject, target.gameObject,
             sourceId, attackId, result.AppliedDamage, Time.timeAsDouble, chainId, depth, PassiveEventOrigin.External,
-            null, null, metadata, CombatEventBus.NextFactId(), comboProvenance);
+            null, null, metadata, CombatEventBus.NextFactId(), followUpProvenance);
         bus.Publish(bus.CreateChildContext(parent, type, caster.gameObject, target.gameObject, sourceId, attackId,
             result.AppliedDamage, PassiveEventOrigin.External, metadata: metadata, actor: attribution.CreditedActor));
     }

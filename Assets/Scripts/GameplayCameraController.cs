@@ -51,14 +51,14 @@ public partial class GameplayCameraController : MonoBehaviour, IPartySpawnedRece
     bool cursorWasLocked;
     bool runtimeRigReady;
 
-    object comboFocusOwner;
-    Transform comboActor;
-    Transform comboTarget;
-    PartyComboPresentationProfile comboProfile;
-    Vector3 comboFocusOffset;
-    Vector3 comboFocusVelocity;
-    float comboFocusBlend;
-    float comboHoldRemaining = -1f;
+    object followUpFocusOwner;
+    Transform followUpActor;
+    Transform followUpTarget;
+    PartyFollowUpPresentationProfile followUpProfile;
+    Vector3 followUpFocusOffset;
+    Vector3 followUpFocusVelocity;
+    float followUpFocusBlend;
+    float followUpHoldRemaining = -1f;
 
     readonly List<CharacterAnimBrain> subscribedBrains = new();
     FieldAllyManager fieldAllyManager;
@@ -102,7 +102,7 @@ public partial class GameplayCameraController : MonoBehaviour, IPartySpawnedRece
     void OnDisable()
     {
         ClearDefensiveBlockShot();
-        ClearComboFocus();
+        ClearFollowUpFocus();
         UnsubscribeAll();
         SetRigEnabled(false);
         SetCursorLocked(false);
@@ -123,14 +123,14 @@ public partial class GameplayCameraController : MonoBehaviour, IPartySpawnedRece
         if (taget == null || cameraTarget == null || virtualCamera == null)
             return;
 
-        if ((comboProfile != null || IsDefensiveBlockShotActive) && GlobalTimeScaleManager.Instance.IsPaused)
+        if ((followUpProfile != null || IsDefensiveBlockShotActive) && GlobalTimeScaleManager.Instance.IsPaused)
             return;
 
         bool inputEnabled = GameplayInputEnabled;
         SetCursorLocked(inputEnabled);
         TickLookInput(inputEnabled && !IsDefensiveBlockShotActive);
         TickRecoil();
-        TickComboFocus();
+        TickFollowUpFocus();
         TickCameraTarget();
         TickCameraProperties();
         TickDefensiveBlockShot();
@@ -182,8 +182,8 @@ public partial class GameplayCameraController : MonoBehaviour, IPartySpawnedRece
         ThirdPersonCameraSettings.FieldOfView = value;
     }
 
-    public bool BeginComboFocus(object owner, Transform actor, Transform target,
-        PartyComboPresentationProfile presentation)
+    public bool BeginFollowUpFocus(object owner, Transform actor, Transform target,
+        PartyFollowUpPresentationProfile presentation)
     {
         if (owner == null || actor == null || presentation == null ||
             !isActiveAndEnabled || taget == null ||
@@ -193,91 +193,91 @@ public partial class GameplayCameraController : MonoBehaviour, IPartySpawnedRece
 
         // Keep the current blend/offset when another ally takes over this shot.
         ClearDefensiveBlockShot();
-        comboFocusOwner = owner;
-        comboActor = actor;
-        comboTarget = target;
-        comboProfile = presentation;
-        comboHoldRemaining = -1f;
+        followUpFocusOwner = owner;
+        followUpActor = actor;
+        followUpTarget = target;
+        followUpProfile = presentation;
+        followUpHoldRemaining = -1f;
         return true;
     }
 
-    public void EndComboFocus(object owner)
+    public void EndFollowUpFocus(object owner)
     {
-        EndComboFocus(owner, false);
+        EndFollowUpFocus(owner, false);
     }
 
-    public void EndComboFocus(object owner, bool holdBeforeReturn)
+    public void EndFollowUpFocus(object owner, bool holdBeforeReturn)
     {
-        if (!ReferenceEquals(comboFocusOwner, owner))
+        if (!ReferenceEquals(followUpFocusOwner, owner))
             return;
-        if (holdBeforeReturn && comboProfile != null && comboProfile.cameraHoldSeconds > 0f)
+        if (holdBeforeReturn && followUpProfile != null && followUpProfile.cameraHoldSeconds > 0f)
         {
             // Repeated release notifications must not restart the hold timer.
-            if (comboHoldRemaining < 0f)
-                comboHoldRemaining = comboProfile.cameraHoldSeconds;
+            if (followUpHoldRemaining < 0f)
+                followUpHoldRemaining = followUpProfile.cameraHoldSeconds;
             return;
         }
-        comboHoldRemaining = -1f;
-        comboFocusOwner = null;
-        comboActor = null;
-        comboTarget = null;
+        followUpHoldRemaining = -1f;
+        followUpFocusOwner = null;
+        followUpActor = null;
+        followUpTarget = null;
     }
 
-    void ClearComboFocus()
+    void ClearFollowUpFocus()
     {
-        comboHoldRemaining = -1f;
-        comboFocusOwner = null;
-        comboActor = null;
-        comboTarget = null;
-        comboProfile = null;
-        comboFocusOffset = Vector3.zero;
-        comboFocusVelocity = Vector3.zero;
-        comboFocusBlend = 0f;
+        followUpHoldRemaining = -1f;
+        followUpFocusOwner = null;
+        followUpActor = null;
+        followUpTarget = null;
+        followUpProfile = null;
+        followUpFocusOffset = Vector3.zero;
+        followUpFocusVelocity = Vector3.zero;
+        followUpFocusBlend = 0f;
     }
 
-    void TickComboFocus()
+    void TickFollowUpFocus()
     {
-        if (comboProfile == null)
+        if (followUpProfile == null)
             return;
         if (CutsceneDirector.IsCinematicPlaying || NpcPresentationController.IsActive)
         {
-            ClearComboFocus();
+            ClearFollowUpFocus();
             return;
         }
 
         if (GlobalTimeScaleManager.Instance.IsPaused)
             return;
-        if (comboFocusOwner != null && comboHoldRemaining >= 0f)
+        if (followUpFocusOwner != null && followUpHoldRemaining >= 0f)
         {
-            comboHoldRemaining = Mathf.Max(0f, comboHoldRemaining - Time.unscaledDeltaTime);
-            if (comboHoldRemaining <= 0f)
-                EndComboFocus(comboFocusOwner);
+            followUpHoldRemaining = Mathf.Max(0f, followUpHoldRemaining - Time.unscaledDeltaTime);
+            if (followUpHoldRemaining <= 0f)
+                EndFollowUpFocus(followUpFocusOwner);
         }
 
-        if (comboFocusOwner != null &&
-            (comboActor == null || !comboActor.gameObject.activeInHierarchy ||
-             Vector3.Distance(taget.position, comboActor.position) > comboProfile.maximumActorDistance))
-            EndComboFocus(comboFocusOwner);
+        if (followUpFocusOwner != null &&
+            (followUpActor == null || !followUpActor.gameObject.activeInHierarchy ||
+             Vector3.Distance(taget.position, followUpActor.position) > followUpProfile.maximumActorDistance))
+            EndFollowUpFocus(followUpFocusOwner);
 
-        bool focusing = comboFocusOwner != null;
+        bool focusing = followUpFocusOwner != null;
         float duration = Mathf.Max(0.01f, focusing
-            ? comboProfile.cameraBlendInSeconds : comboProfile.cameraBlendOutSeconds);
-        comboFocusBlend = Mathf.MoveTowards(comboFocusBlend, focusing ? 1f : 0f,
+            ? followUpProfile.cameraBlendInSeconds : followUpProfile.cameraBlendOutSeconds);
+        followUpFocusBlend = Mathf.MoveTowards(followUpFocusBlend, focusing ? 1f : 0f,
             Time.unscaledDeltaTime / duration);
         if (focusing)
         {
-            Vector3 focus = comboActor.position;
-            if (comboTarget != null)
-                focus = Vector3.Lerp(focus, comboTarget.position, comboProfile.targetFocusWeight);
+            Vector3 focus = followUpActor.position;
+            if (followUpTarget != null)
+                focus = Vector3.Lerp(focus, followUpTarget.position, followUpProfile.targetFocusWeight);
             Vector3 desiredOffset = Vector3.ClampMagnitude(
-                (focus - taget.position) * comboProfile.allyFocusWeight,
-                comboProfile.maximumFocusOffset);
-            comboFocusOffset = Vector3.SmoothDamp(comboFocusOffset, desiredOffset,
-                ref comboFocusVelocity, duration, Mathf.Infinity, Time.unscaledDeltaTime);
+                (focus - taget.position) * followUpProfile.allyFocusWeight,
+                followUpProfile.maximumFocusOffset);
+            followUpFocusOffset = Vector3.SmoothDamp(followUpFocusOffset, desiredOffset,
+                ref followUpFocusVelocity, duration, Mathf.Infinity, Time.unscaledDeltaTime);
         }
-        else if (comboFocusBlend <= 0f)
+        else if (followUpFocusBlend <= 0f)
         {
-            ClearComboFocus();
+            ClearFollowUpFocus();
         }
     }
 
@@ -411,7 +411,7 @@ public partial class GameplayCameraController : MonoBehaviour, IPartySpawnedRece
 
         if (changedPlayer)
         {
-            ClearComboFocus();
+            ClearFollowUpFocus();
             yaw = playerContext.transform.eulerAngles.y;
             pitch = initialPitch;
             SubscribeAll();
@@ -470,7 +470,7 @@ public partial class GameplayCameraController : MonoBehaviour, IPartySpawnedRece
     void TickCameraTarget()
     {
         Vector3 pivotPosition = taget.TransformPoint(profile.pivotOffset);
-        pivotPosition += comboFocusOffset * Mathf.SmoothStep(0f, 1f, comboFocusBlend);
+        pivotPosition += followUpFocusOffset * Mathf.SmoothStep(0f, 1f, followUpFocusBlend);
         cameraTarget.SetPositionAndRotation(
             pivotPosition,
             Quaternion.Euler(-(pitch + recoilPitch), yaw + recoilYaw, 0f));
@@ -514,9 +514,9 @@ public partial class GameplayCameraController : MonoBehaviour, IPartySpawnedRece
             baseFov);
         LensSettings lens = virtualCamera.Lens;
         lens.FieldOfView = Mathf.Lerp(baseFov, aimFov, aimBlend);
-        if (comboProfile != null)
+        if (followUpProfile != null)
             lens.FieldOfView = Mathf.Max(20f, lens.FieldOfView -
-                comboProfile.fieldOfViewReduction * Mathf.SmoothStep(0f, 1f, comboFocusBlend));
+                followUpProfile.fieldOfViewReduction * Mathf.SmoothStep(0f, 1f, followUpFocusBlend));
         virtualCamera.Lens = lens;
 
         thirdPersonAim.AimCollisionFilter = cameraCollisionMask;

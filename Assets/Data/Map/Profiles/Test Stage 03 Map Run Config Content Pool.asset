@@ -14,16 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   displayName: TEST STAGE 03
   roomDefinitions:
-  - {fileID: 11400000, guid: 358a9da960b94735a284e3ff5df2b9b6, type: 2}
-  - {fileID: 11400000, guid: d24a8b4637d940189f73b57e3bba39ef, type: 2}
-  - {fileID: 11400000, guid: fd29d88aa3596c74bb0c4457c9675a16, type: 2}
-  - {fileID: 11400000, guid: 77033f30cb434e8dbeb4954514680a9d, type: 2}
-  - {fileID: 11400000, guid: 141e12a3e6bf4307b4681a7f74c1090b, type: 2}
-  - {fileID: 11400000, guid: 6cecae8ac1664951b80318e4a10d1636, type: 2}
-  - {fileID: 11400000, guid: 06b6c3ee1a594ed3b83a6a6fcb8f7034, type: 2}
-  - {fileID: 11400000, guid: 098c7f6845e04eaaa05bd5cb487d29bd, type: 2}
-  - {fileID: 11400000, guid: 6f6b54f2b6ee4b5f8880661b2ea47294, type: 2}
-  - {fileID: 11400000, guid: 1a5d86a2c1b84cfd91ea7564379d5a46, type: 2}
+  - {fileID: 11400000, guid: 5d6a604d2f475cf4484e5e0b363c589d, type: 2}
+  - {fileID: 11400000, guid: 623e56b03fb53f54d88eafbbd2cb1677, type: 2}
+  - {fileID: 11400000, guid: 8eb49c64f2f38f1438af044ea09b7b1c, type: 2}
+  - {fileID: 11400000, guid: 399498ffc57811e49a4e9bf3b2ddebcf, type: 2}
+  - {fileID: 11400000, guid: cbdf29f61f024404197f906945ced9f1, type: 2}
+  - {fileID: 11400000, guid: c4645d95de28fdb40844d9954ff3b0ca, type: 2}
+  - {fileID: 11400000, guid: b1a81dba9de14414badaffd6f5c50591, type: 2}
+  - {fileID: 11400000, guid: 3048295f458f01e4cb18160ccad9787b, type: 2}
+  - {fileID: 11400000, guid: ba4c4e058d58232488b7498f5e9a69da, type: 2}
   encounterDefinitions:
   - {fileID: 11400000, guid: c3ce8bd136537214597780ff909f08c5, type: 2}
   - {fileID: 11400000, guid: ab7647ccc6f2f6e45adf2c7e82e01b7a, type: 2}

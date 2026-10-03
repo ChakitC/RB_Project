@@ -24,6 +24,7 @@ public sealed class AIAimTargetDriver : MonoBehaviour
     Vector3 _overridePoint;
     bool _hasOverridePoint;
     bool _preferChainAttackPoint;
+    CharacteContext _context;
 
     public Transform AimTarget => aimTarget;
     public bool HasOverride => _overrideTarget != null || _hasOverridePoint;
@@ -90,8 +91,12 @@ public sealed class AIAimTargetDriver : MonoBehaviour
 
     void CacheReferences()
     {
+        if (_context == null) _context = CharacterContextModuleLookup.ResolveContext(this);
         if (sensor == null)
-            sensor = GetComponent<AITargetSensor>();
+            sensor = AITargetSensor.ResolveFor(this);
+
+        if (skillUserSystem == null && _context != null)
+            skillUserSystem = _context.EnegySystem;
 
         if (skillUserSystem == null)
             skillUserSystem = GetComponent<SkillUserSystem>();
@@ -168,23 +173,11 @@ public sealed class AIAimTargetDriver : MonoBehaviour
 
         if (sensor != null)
         {
-            Transform currentTarget = sensor.CurrentTarget;
-            if (currentTarget != null &&
-                sensor.HasLineOfSight &&
-                TryResolveTargetPoint(currentTarget, preferChainAttackPoint: false, out position))
+            AITargetSnapshot state = sensor.Snapshot;
+            if (state.HasLiveTarget)
             {
-                return true;
-            }
-
-            if (followLastSeenPosition && sensor.HasAnyTarget)
-            {
-                position = sensor.LastSeenPosition;
-                return true;
-            }
-
-            if (currentTarget != null &&
-                TryResolveTargetPoint(currentTarget, preferChainAttackPoint: false, out position))
-            {
+                position = followLastSeenPosition && state.Reason == AITargetSelectionReason.Memory
+                    ? state.LastSeenPosition : state.AimPosition;
                 return true;
             }
         }

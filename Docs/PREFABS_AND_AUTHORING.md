@@ -12,6 +12,17 @@ Set CommanBlock's End Time to the desired completion point: its movement/rotatio
 lock ends there and the remaining pose fades out. Pair Offset corrections blend
 per upper-body state and are suppressed by full-body action coverage.
 
+Keep Driver/Brain execution orders at **1000/1100**; movement writers must run
+before Driver.Update. Pair offsets restore before Animancer evaluates and apply
+once afterward, including manual evaluation. New internal animation modules do
+not require Inspector bindings. Keep `CharacteContext.AnimDriver`/`AnimBrain` and
+the Brain's explicit Animancer reference correct for root and nested model layouts.
+After rebuilding a rig, invalidate the animation binding through Driver. Explicit
+invalidation also covers a changed avatar/controller on the same Animator.
+Multiple fallback Animancer candidates produce a warning and require an explicit
+reference. Existing clips, profiles, fade values and authored End Times remain in use;
+no Transition Library or asset migration is required.
+
 This project relies on prefab-authored context blocks plus runtime reference
 resolution. Use this document when creating or editing character prefabs,
 pickup prefabs, weapon data, or inspector-facing fields.
@@ -62,10 +73,10 @@ Target disabled.
 
 ## Combo HUD
 
-`Assets/Spain/UI/Combo_Hud/ComboHUD.prefab` layers `Combo_Color` behind
+`Assets/Spain/UI/FollowUp_Hud/ComboHUD.prefab` layers `Combo_Color` behind
 `Combo_BG` on their shared 1920 x 1080 canvas. Place it under an existing
 Canvas. The large `E` input prompt is part of the background sprite.
-`Assets/Spain/UI/Combo_Hud/ComboAllyIconCombo.prefab` is the separate ally icon
+`Assets/Spain/UI/FollowUp_Hud/ComboAllyIconCombo.prefab` is the separate ally icon
 panel: `Combo_AllyIconCombo_Color` sits behind `Combo_AllyIconCombo_Base` on
 their shared 585 x 668 canvas. `PortraitMask/PortraitIcon` clips the character
 image inside the angled black panel, with `Aires_Icon` assigned initially.
@@ -73,7 +84,7 @@ Change the sprite on `PortraitIcon` for another ally, and keep it under
 `PortraitMask` so the panel border remains visible.
 All images in both prefabs have Raycast Target disabled.
 
-`Assets/Spain/UI/Combo_Hud/ComboHUDCombined.prefab` is the composed layout
+`Assets/Spain/UI/FollowUp_Hud/ComboHUDCombined.prefab` is the composed layout
 shown in the reference image. It nests one `ComboHUD` and three
 `ComboAllyIconCombo` instances named `AllyIconSmall`, `AllyIconMedium`, and
 `AllyIconLarge`. Each instance overrides its `PortraitMask/PortraitIcon`
@@ -105,7 +116,7 @@ follow the corresponding corners when the viewport changes.
 The left side contains three `AllyStatusHUD` instances (`AllyTop`,
 `AllyMiddle`, `AllyBottom`) and `PlayerHpStamina`. The top and bottom ally
 portraits initially use Aires, and the middle uses Dorothy. The right side
-contains `ComboDisplay`, `AmmoDisplay`, and a circular
+contains `FollowUpDisplay`, `AmmoDisplay`, and a circular
 `MinimapPlaceholder`. The lower right follows the reference stack: three
 dark cards (`SkillCardBack`, `SkillCardMiddle`, `SkillCardFront`) sit behind
 one orange `SkillReady` instance of `SkillHUD`. The cards use
@@ -127,14 +138,14 @@ The three ally panels use PartySlot1, PartySlot2, and the active Helper in that
 order. Missing actors hide their panels. The legacy player vital, ammo, HP,
 stamina, and charge visuals, along with the older PartyHUD status and skill
 panels, are hidden to avoid duplicate readouts. On `PlayerUI_PartyHud`, the
-binder redirects `PartyHudPresenter` to the new `ComboDisplay` and hides both
-the old `PartyHUD/ComboOffers` and legacy `PlayerHUD/PartyComboHud` views.
+binder redirects `PartyHudPresenter` to the new `FollowUpDisplay` and hides both
+the old `PartyHUD/FollowUpOffers` and legacy `PlayerHUD/PartyFollowUpHud` views.
 The existing `PartyHudInputRouter` remains active: E consumes the first valid
 offer, ordered by earliest expiry then offer ID, matching the displayed cards
 from `AllyIconSmall` (beside E) through Medium to Large. Portraits use the
 offer owner's current character icon; `Remaining` uses the controller's
 pause-aware clock. Only eligible offers with charges show a card; empty cards
-and an empty display are hidden. Do not independently toggle `ComboDisplay`
+and an empty display are hidden. Do not independently toggle `FollowUpDisplay`
 from another presenter. Keep each card's `PortraitMask/PortraitIcon` Image
 and `Remaining` TMP label intact. An incomplete replacement retains the old
 view. UI prefabs without `PartyHudPresenter` retain their legacy Combo UI.
@@ -190,6 +201,29 @@ Common references should be assigned on the context when possible:
 
 Runtime code can resolve missing references, but important prefab context fields
 should still be bound when authoring stable production prefabs.
+
+### AI target sensor authoring
+
+Each sensor must be on or below its owning `CharacteContext`. Use one sensor per
+actor, or an explicit Ally/Summon context binding; an ambiguous lookup returns no
+sensor. Bind health, state, TargetInfo and StatusEffects on the context. Keep local
+sensor-origin, forward-reference and aim-point Transform bindings.
+
+Target masks now apply to the **context GameObject layer**, not hitbox/body layers.
+Enemy sensors normally include Player and Ally; Ally/Summon sensors include Enemy.
+The shared faction rule also requires opposing identities, so broad masks do not
+make props or friendly actors eligible. Colliderless actors remain discoverable.
+
+The ten existing sensor prefabs use obstruction mask
+`Default | Ground | Ground Y | Terrain` (151553) and ignore triggers. A mask of zero
+with LOS enabled is an authoring issue. The sight query ignores the owning actor
+and accepts the target's own colliders. Check authored aim height against actual
+cover geometry; an assigned aim point remains authoritative.
+
+Run **Tools > RB > AI > Validate Target Sensors** to inspect prefabs and loaded
+scenes for missing ownership, empty sight masks and target masks excluding opposing
+actor layers. `maxHits` and `tauntScoreBonus` remain serialized for compatibility,
+but no longer limit discovery or override Taunt precedence respectively.
 
 ### Shared Helper rig contract
 
@@ -844,6 +878,21 @@ longer runs as a separate step before the timeline starts.
 Remaining presentation defaults: 0.2s fade out, 8% letterbox per side, 0.75s
 hold-to-skip. The screen-space overlay (black fade, letterbox bars, skip label,
 hold progress) is built at runtime; nothing has to be assembled by hand.
+
+
+The Sewer stage Start room is
+`Assets/Prefab/MAP/Sewer/PrefabMapaGame/Sewer_Start.prefab`. It includes the
+configured rig copied from `ProtoTypeMap/Start/Start.DeadEnd.Up.prefab`, with the
+original `Intro_Camera_ProtoType.fbx` camera clip and all four role markers. The
+rig is offset upward by 0.08 units to match the Sewer floor. Keep the
+`CinemachineCamera` component enabled, and its GameObject inactive in the saved
+prefab. The rig activates the GameObject during the intro; it does not enable a
+disabled camera component. Replacing a Start room requires preserving this
+rig; without it, `MapRunController` deliberately skips the intro. Intro playback
+is attempted once per fresh run, not when revisiting Start. Saved marker paths
+and physical clearance were checked at all four room rotations; the actual rig camera methods and Animancer evaluation were also checked at
+0, 1, 2, and 3.5 seconds, confirming camera motion and deactivation on cleanup.
+Full cinematic playback in a fresh run still requires Play Mode verification.
 
 ### Character Intro Poses
 
@@ -1655,7 +1704,7 @@ Active/Ultimate slots.
 Do not author a third Player/Ally cast fallback on
 `CharacterSkillManager.autonomousSlots`. Migrated two-slot characters reject
 cast input 2 even if a stale prefab entry exists. Enemy, Summon, Chain Attack,
-Party Combo, and Helper data are separate systems and must not be moved into an
+Party Follow-Up, and Helper data are separate systems and must not be moved into an
 Ultimate slot by inference.
 
 A party slot is a shared rig that any character can be loaded into, so the role belongs to the
@@ -2235,17 +2284,17 @@ Use the Inspector's **Placement Timing** to switch back to HitStart or Legacy.
 Point editing is disabled in Play Mode and the cutscene portion of the preview;
 cutscene-only and basic-melee Combo entries do not expose Placement Point.
 
-For **Party Combo**, choose **Align Placement Point To Event Target** in the
+For **Party Follow-Up**, choose **Align Placement Point To Event Target** in the
 execution profile's Placement Policy to use this marker when finding the warp
 start S. In this mode **Desired Range** means the actor-root distance from the
 target at A, and **Local Offset** offsets A. The existing Place Near Event Target
 mode still measures the initial warp distance and does not use the marker.
-`Test.Aires.ComboFollowUp` uses the dedicated `AiresComboExecution` profile with
+`Test.Aires.FollowUp` uses the dedicated `AiresFollowUpExecution` profile with
 this mode enabled and Desired Range 2m. Adjust that range for the skill's reach;
 Placement Point supplies timing, not the blade/contact offset. Missing trajectory
 data or a blocked trajectory prevents the Combo from starting.
 
-This Party Combo mode preserves the clip's vertical root motion for jumps.
+This Party Follow-Up mode preserves the clip's vertical root motion for jumps.
 Desired Range aligns the horizontal contact pose; the root height at that beat
 comes from the authored Y curve relative to the grounded takeoff. It does not
 force an airborne contact beat down to the target's ground height. The body must
@@ -2598,11 +2647,11 @@ the starter shop prefabs. Keep the `CharacterDatabase` reference on
 `CharacterShopPageUI` and the `characterShopPage` reference on `ShopPanelUI`
 when creating prefab variants.
 
-## Party Combo — Prefab / Input / HUD Wiring
+## Party Follow-Up — Prefab / Input / HUD Wiring
 
-Add `PartyComboSkillExecutor` and `PartyComboOpportunityController` to the
+Add `PartyFollowUpSkillExecutor` and `PartyFollowUpOpportunityController` to the
 player/context hierarchy. Assign the controller's Executor and
-`PartyComboFeatureFlags` fields, then bind both components on `PlayerContext` or
+`PartyFollowUpFeatureFlags` fields, then bind both components on `PlayerContext` or
 leave them discoverable within the same actor hierarchy. `PartyRuntimeBinder`
 binds the controller after the party and Helper are ready and before
 `PlayerUIRuntimeBinder` runs.
@@ -2610,58 +2659,58 @@ binds the controller after the party and Helper are ready and before
 The current authoring is complete on `Assets/Prefab/Player/Player.prefab`: both
 components are on the Player root, both `PlayerContext` references are bound,
 and the controller references
-`Assets/Data/PartyCombo/PartyComboFeatureFlags.asset`. Keep `runtimeEnabled`
+`Assets/Data/PartyFollowUp/PartyFollowUpFeatureFlags.asset`. Keep `runtimeEnabled`
 and `phase4aPublishersEnabled` off until the focused Play Mode rollout checks
 pass.
 
-Each participating field ally's `CharacterStats > Party Combo Skill` must point
-to a dedicated `PartyComboSkillDef`. Its execution skill must not also appear in
+Each participating field ally's `CharacterStats > Party Follow-Up Skill` must point
+to a dedicated `PartyFollowUpSkillDef`. Its execution skill must not also appear in
 normal battle slots, Helper slots, or the legacy Chain Attack field. Validate
-the assets with **Tools > Validation > Validate Party Combo Skills**.
+the assets with **Tools > Validation > Validate Party Follow-Up Skills**.
 
-For the combat HUD, add `PartyComboHudPresenter` and assign a
-`PartyComboSlotView` for `PartySlot1` and `PartySlot2`. Bind the slot's root,
+For the combat HUD, add `PartyFollowUpHudPresenter` and assign a
+`PartyFollowUpSlotView` for `PartySlot1` and `PartySlot2`. Bind the slot's root,
 icon, radial expiry fill, fallback label, and optional disabled-state label.
 The existing `PlayerUIRuntimeBinder` finds and binds presenters beneath the UI
 root.
 
 The concrete HUD subtree is
-`PlayerUI/UI_Manager/PlayerHUD/PartyComboHud` in
+`PlayerUI/UI_Manager/PlayerHUD/PartyFollowUpHud` in
 `Assets/Prefab/User Interface/PlayerUI.prefab`. Its two slot components stay
 active for binding while their `View` children begin inactive and are toggled
-by `PartyComboSlotView`. The two views are stacked at the right-center edge and
-contain the opportunity icon, radial expiry overlay, combo name, `COMBO READY`
+by `PartyFollowUpSlotView`. The two views are stacked at the right-center edge and
+contain the opportunity icon, radial expiry overlay, combo name, `FOLLOW-UP READY`
 tag, and input glyph. Keep decorative Images non-raycastable because the popup
 is an input prompt, not a mouse button.
 
-`PlayerVitalHud/Ally1VitalHud/ComboCooldown` and
-`PlayerVitalHud/Ally2VitalHud/ComboCooldown` are also bound by the corresponding
+`PlayerVitalHud/Ally1VitalHud/FollowUpCooldown` and
+`PlayerVitalHud/Ally2VitalHud/FollowUpCooldown` are also bound by the corresponding
 slot views. Each indicator sits above the ally HP bar and contains the combo
 icon, a horizontal charge-recovery fill, and a `READY`/seconds label. Do not
-drive this fill from a local timer: `PartyComboSlotView` reads
-`CharacterSkillManager.TryGetPartyComboChargeStatus` through the bound combo
+drive this fill from a local timer: `PartyFollowUpSlotView` reads
+`CharacterSkillManager.TryGetPartyFollowUpChargeStatus` through the bound combo
 controller so the HUD and execution use the same charge pool.
 
 `Assets/Input/Inputmaneger.inputactions` map `Player` contains:
 
 | Action | Keyboard | Gamepad | PlayerInput callback |
 |---|---|---|---|
-| `PartyComboSlot1` | `4` | D-pad Left | `OnPartyComboSlot1` |
-| `PartyComboSlot2` | `5` | D-pad Right | `OnPartyComboSlot2` |
+| `PartyFollowUpSlot1` | `4` | D-pad Left | `OnPartyFollowUpSlot1` |
+| `PartyFollowUpSlot2` | `5` | D-pad Right | `OnPartyFollowUpSlot2` |
 
 The `PlayerInput` Unity Events on `Player.prefab` are already wired to those
-callbacks. A reserved `OnPartyComboHelper` callback exists for later Helper
+callbacks. A reserved `OnPartyFollowUpHelper` callback exists for later Helper
 support. Keep the input bindings and HUD glyphs synchronized, and edit the
 asset through Unity's Input Actions editor rather than hand-editing JSON.
 
 Default-off vertical-slice content is stored under
-`Assets/Data/PartyCombo/Test/`: Feno's Entered Break offer chains into Aires's
-`ComboSkillCommitted` follow-up through the shared
-`FieldAllyComboExecution.asset` profile. Run the Party Combo validator after
+`Assets/Data/PartyFollowUp/Test/`: Feno's Entered Break offer chains into Aires's
+`FollowUpSkillCommitted` follow-up through the shared
+`FieldAllyFollowUpExecution.asset` profile. Run the Party Follow-Up validator after
 changing either definition or its owning `CharacterStats` asset.
 
 Full data, runtime, and cleanup contracts are documented in
-[`Docs/SYSTEMS/PARTY_COMBO.md`](SYSTEMS/PARTY_COMBO.md).
+[`Docs/SYSTEMS/PARTY_FOLLOW_UP.md`](SYSTEMS/PARTY_FOLLOW_UP.md).
 
 ## Player Skill Input — Prefab / Input Asset Wiring
 
@@ -3254,8 +3303,8 @@ For the separate reference-layout combat HUD, see [Separate Party HUD](SYSTEMS/P
   chosen type; the right panel shows that variant's upgrade tree.
   `PassiveSlots` stays inactive for serialized compatibility; do not add an
   Upgrades category. Keep `loadoutLockText` bound on the controller.
-- Assign `CharacterStats.partyComboSkill` for the Combo card and its dedicated
-  `PartyComboSkillDef.upgradeTree` for upgrade nodes. Combo is a fixed authored
+- Assign `CharacterStats.partyFollowUpSkill` for the Combo card and its dedicated
+  `PartyFollowUpSkillDef.upgradeTree` for upgrade nodes. Combo is a fixed authored
   skill, not a selectable cast slot. Its tree uses shared Skill Points with
   progress isolated by `party-combo` / `comboId`; no additional HUD cast slot is needed.
 - The existing `ActiveSkillSlotTab.prefab` retains its Button, Label and Selected
@@ -3334,7 +3383,7 @@ both defenders, with screen-edge padding and the output camera's aspect ratio. E
 does not affect framing. The existing wall avoidance can shorten this distance in tight spaces.
 
 `GameplayHudBlockVisibility`, installed by `GameplayHudPresenter`, fades `AmmoDisplay`,
-`ComboDisplay`, the four `SkillReady Ally` roots and optional `MinimapPlaceholder` over
+`FollowUpDisplay`, the four `SkillReady Ally` roots and optional `MinimapPlaceholder` over
 0.18 unscaled seconds during struggle/success. It restores their original CanvasGroup alpha
 and input flags on exit, cancel or unbind. Keep these as direct GameplayHUD children.
 Left-side status/party panels and the separate Block prompt remain visible; hidden presenters

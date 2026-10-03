@@ -111,22 +111,22 @@ needs once-per-attack behavior.
 
 Use only the scoped identity property that matches the owning system.
 
-## Fact Identity And Party Combo Provenance
+## Fact Identity And Party Follow-Up Provenance
 
 Every new event created through `CombatEventBus` receives a nonzero `FactId`.
 Child events receive a new fact identity while retaining their chain identity
 and increasing `Depth`. `PartyCombatEventRouter` is the compatibility boundary
 for older publishers: it assigns missing fact and root-chain IDs once before a
-fact enters Party Combo evaluation.
+fact enters Party Follow-Up evaluation.
 
-Party Combo child facts additionally carry `ComboExecutionProvenance`:
-`SessionId`, `ComboWindowId`, `ExecutionId`, `ComboSkillId`, and the finite chain
+Party Follow-Up child facts additionally carry `FollowUpExecutionProvenance`:
+`SessionId`, `FollowUpWindowId`, `ExecutionId`, `FollowUpSkillId`, and the finite chain
 deadline. These values identify an accepted execution rather than merely a
 source skill. The opportunity controller validates them before allowing a fact
 to extend a combo window, which prevents stale-session, uncommitted, expired,
 or overly deep chains from producing offers.
 
-`StatusApplied`, `StatusStackChanged`, and `ComboSkillCommitted` are appended
+`StatusApplied`, `StatusStackChanged`, and `FollowUpSkillCommitted` are appended
 `PassiveEventType` values. Existing enum numbers are explicit and stable for
 serialized assets.
 

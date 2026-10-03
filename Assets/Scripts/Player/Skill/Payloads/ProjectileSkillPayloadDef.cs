@@ -149,7 +149,7 @@ public class ProjectileSkillPayloadDef : SkillPayloadDef
                 prefab,
                 context.CombatChainId,
                 context.CombatDepth,
-                context.ComboProvenance);
+                context.FollowUpProvenance);
 
             pool.ActivateForSpawn(projectileInstance);
             spawned++;

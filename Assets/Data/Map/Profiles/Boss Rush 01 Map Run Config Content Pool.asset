@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   displayName: BOSS RUSH 01
   roomDefinitions:
-  - {fileID: 11400000, guid: 358a9da960b94735a284e3ff5df2b9b6, type: 2}
+  - {fileID: 11400000, guid: 5d6a604d2f475cf4484e5e0b363c589d, type: 2}
   - {fileID: 11400000, guid: cca22a95f59b9014593f3d0d0c67d2c5, type: 2}
-  - {fileID: 11400000, guid: 1a5d86a2c1b84cfd91ea7564379d5a46, type: 2}
+  - {fileID: 11400000, guid: 3048295f458f01e4cb18160ccad9787b, type: 2}
   encounterDefinitions:
   - {fileID: 11400000, guid: e5da0f35c0244b74aec77e42325e741c, type: 2}

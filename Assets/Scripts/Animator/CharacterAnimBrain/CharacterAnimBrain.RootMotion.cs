@@ -46,7 +46,7 @@ public sealed partial class CharacterAnimBrain
 
         _rootMotionAdapterCount++;
         RootMotionPolicyChanged += onPolicyChanged;
-        onPolicyChanged(_rootMotion);
+        SafeAnimationEvents.Invoke(onPolicyChanged, _rootMotion);
     }
 
     public void UnregisterRootMotionAdapter(Action<RootMotionPolicy> onPolicyChanged)
@@ -78,7 +78,7 @@ public sealed partial class CharacterAnimBrain
         WriteAnimatorRootMotionIfUnowned(policy.Active);
 
         if (changed)
-            RootMotionPolicyChanged?.Invoke(policy);
+            signals.Enqueue(() => SafeAnimationEvents.Invoke(RootMotionPolicyChanged, policy));
     }
 
     private void SetRootMotionActive(bool active) =>

@@ -12,6 +12,7 @@ using UnityEngine;
 internal sealed class PlaybackRequestState
 {
     /// <summary>Set independently of the session: <c>PlaySkill()</c> arms a clip with no request.</summary>
+    internal ulong Generation { get; private set; }
     public SkillGemDefinition Definition;
     public SkillExecutionKind ExecutionKind;
     public Vector2 MeleeChainWindow;
@@ -42,6 +43,7 @@ internal sealed class PlaybackRequestState
 
     public void Begin(int requestId, float castPointNormalized)
     {
+        Generation++;
         RequestId = requestId;
         CastPointNormalized = Mathf.Clamp(castPointNormalized, 0f, 0.999f);
         Status = PlaybackSessionStatus.Started;
@@ -109,6 +111,7 @@ internal sealed class PlaybackRequestState
 
     public void Clear()
     {
+        Generation++;
         Definition = null;
         ExecutionKind = SkillExecutionKind.StandardSkill;
         MeleeChainWindow = default;

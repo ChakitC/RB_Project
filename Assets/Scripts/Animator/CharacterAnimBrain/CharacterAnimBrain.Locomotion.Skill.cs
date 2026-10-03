@@ -8,7 +8,7 @@ public sealed partial class CharacterAnimBrain
     {
         private readonly CharacterAnimBrain owner;
         private AnimancerState _state;
-        private AnimancerEvent.Sequence _events;
+        private readonly AnimationPlayback playback;
         private bool _prevApplyRootMotion;
         private bool _completedNormally;
         private bool _inCutscenePhase;
@@ -34,6 +34,7 @@ public sealed partial class CharacterAnimBrain
         public Locomotion_Skill(CharacterAnimBrain owner)
         {
             this.owner = owner;
+            playback = owner.CreatePlayback();
             _onCutsceneEndCache = OnCutscenePhaseEnd;
             _onSkillEndCache = OnSkillEnd;
             _raiseCutsceneVfxCueCache = owner.RaiseCutsceneVfxCueInternal;
@@ -54,8 +55,8 @@ public sealed partial class CharacterAnimBrain
         {
             _completedNormally = false;
             _inCutscenePhase = false;
+            playback.Stop();
             _state = null;
-            _events = null;
 
             var skillClip = owner.SkillClip;
             if (skillClip == null || !skillClip.IsValid)
@@ -64,10 +65,10 @@ public sealed partial class CharacterAnimBrain
                 return;
             }
 
+            if (!owner.IsBasicMeleeExecution) owner.ApplyActiveSkillRootMotionPolicy();
             _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
                 usesRootMotion: true,
                 preserveFireHoldIntent: !owner.IsBasicMeleeExecution);
-            if (!owner.IsBasicMeleeExecution) owner.ApplyActiveSkillRootMotionPolicy();
             owner.EmitPlaybackSignal(owner.ActiveSkillPlaybackKind, PlaybackPhase.Started, owner._skillChannel.Request.RequestId);
 
             var skillDef = owner._skillChannel.Request.Definition;
@@ -87,27 +88,24 @@ public sealed partial class CharacterAnimBrain
         private void StartCutscenePhase(CutsceneDef def)
         {
             _inCutscenePhase = true;
+            var token = owner.sessions.Capture(owner._skillChannel);
             owner.RaiseSkillTimelineEvent(CombatTimelineEventName.CutsceneSkillStart);
+            if (!owner.sessions.IsCurrent(token)) return;
 
-            _state = owner.PlayLocomotionTransition(def.characterCutsceneClip);
-            _state.NormalizedTime = 0f;
-            _events = new AnimancerEvent.Sequence(def.characterCutsceneClip.Events);
-
-            if (def.cutsceneVfxEvents != null && def.cutsceneVfxEvents.Count > 0)
+            _state = playback.Play(new AnimationPlaybackOptions
             {
-                int boundCount = AnimationVfxEventBinder.Bind(_events, _raiseCutsceneVfxCueCache);
-                if (boundCount == 0)
-                    Debug.LogWarning(
-                        $"[CharacterAnimBrain] Cutscene clip '{def.characterCutsceneClip.Clip?.name}' has VFX data but no 'Vfx' timeline event.",
-                        owner);
-            }
+                Transition = def.characterCutsceneClip, NormalizedStart = 0f,
+                Channel = owner._skillChannel, InvokeAuthoredEnd = true,
+            }, events => ConfigureCutsceneEvents(events, def), _onCutsceneEndCache);
+        }
 
-            var origOnEnd = _events.OnEnd;
-            _events.OnEnd = origOnEnd == null
-                ? _onCutsceneEndCache
-                : () => { origOnEnd(); _onCutsceneEndCache(); };
-
-            _state.SharedEvents = _events;
+        private void ConfigureCutsceneEvents(AnimancerEvent.Sequence events, CutsceneDef def)
+        {
+            if (def.cutsceneVfxEvents == null || def.cutsceneVfxEvents.Count == 0) return;
+            if (AnimationVfxEventBinder.Bind(events, _raiseCutsceneVfxCueCache) == 0)
+                Debug.LogWarning(
+                    $"[CharacterAnimBrain] Cutscene clip '{def.characterCutsceneClip.Clip?.name}' has VFX data but no 'Vfx' timeline event.",
+                    owner);
         }
 
         private void OnCutscenePhaseEnd()
@@ -115,11 +113,12 @@ public sealed partial class CharacterAnimBrain
             if (owner.locomotionSM.CurrentState != this) return;
 
             _inCutscenePhase = false;
+            playback.Stop();
             _state = null;
-            _events = null;
 
+            var token = owner.sessions.Capture(owner._skillChannel);
             owner.RaiseSkillTimelineEvent(CombatTimelineEventName.CutsceneSkillEnd);
-            StartMainSkillPhase();
+            if (owner.sessions.IsCurrent(token)) StartMainSkillPhase();
         }
 
         private void StartMainSkillPhase()
@@ -132,45 +131,36 @@ public sealed partial class CharacterAnimBrain
                 return;
             }
 
-            _state = owner.PlayLocomotionTransition(skillClip);
-            _state.NormalizedTime = 0f;
-            _events = new AnimancerEvent.Sequence(skillClip.Events);
-
-            if (owner.HasPendingSkillReleaseRequest)
+            var options = new AnimationPlaybackOptions
             {
-                int releaseRequestId = owner._skillChannel.Request.RequestId;
-                _events.Add(owner.ActiveSkillCastPointNormalized, () =>
-                {
-                    if (owner._skillChannel.Request.RequestId == releaseRequestId) owner.NotifySkillCastMoment();
-                });
-            }
-
-            owner.BindActiveSkillTimelineEvents(_events);
-
-            var origOnEnd = _events.OnEnd;
-            int endingRequestId = owner._skillChannel.Request.RequestId;
-            _events.OnEnd = () =>
-            {
-                if (owner._skillChannel.Request.RequestId != endingRequestId) return;
-                origOnEnd?.Invoke();
-                if (owner._skillChannel.Request.RequestId == endingRequestId) _onSkillEndCache();
+                Transition = skillClip, NormalizedStart = 0f,
+                Channel = owner._skillChannel, InvokeAuthoredEnd = true,
             };
-
             if (owner.IsBasicMeleeExecution)
             {
                 float duration = owner._skillChannel.Request.Definition.baseCastTime;
-                _state.Speed = duration > 0.01f ? Mathf.Max(0.01f, _state.Length) / duration : 1f;
-                int requestId = owner._skillChannel.Request.RequestId;
-                Vector2 window = owner._skillChannel.Request.MeleeChainWindow;
-                float start = Mathf.Clamp01(Mathf.Min(window.x, window.y));
-                float end = Mathf.Clamp01(Mathf.Max(window.x, window.y));
-                if (end > 0.0001f)
-                {
-                    _events.Add(start, () => owner.RaiseMeleeChainWindow(requestId, true));
-                    _events.Add(end, () => owner.RaiseMeleeChainWindow(requestId, false));
-                }
+                if (duration > 0.01f) options.Duration = duration;
+                else options.Speed = 1f;
             }
-            _state.SharedEvents = _events;
+            _state = playback.Play(options, ConfigureMainEvents, _onSkillEndCache);
+        }
+
+        private void ConfigureMainEvents(AnimancerEvent.Sequence events)
+        {
+            if (owner.HasPendingSkillReleaseRequest)
+                events.Add(owner.ActiveSkillCastPointNormalized, owner.NotifySkillCastMoment);
+            owner.BindActiveSkillTimelineEvents(events);
+            if (!owner.IsBasicMeleeExecution) return;
+
+            int requestId = owner._skillChannel.Request.RequestId;
+            Vector2 window = owner._skillChannel.Request.MeleeChainWindow;
+            float start = Mathf.Clamp01(Mathf.Min(window.x, window.y));
+            float end = Mathf.Clamp01(Mathf.Max(window.x, window.y));
+            if (end > 0.0001f)
+            {
+                events.Add(start, () => owner.RaiseMeleeChainWindow(requestId, true));
+                events.Add(end, () => owner.RaiseMeleeChainWindow(requestId, false));
+            }
         }
 
         public override void OnExitState()
@@ -181,11 +171,10 @@ public sealed partial class CharacterAnimBrain
 
             if (_state != null)
             {
-                if (_approachActive) _state.Speed = _approachOriginalSpeed;
-                _state.SharedEvents = null;
-                _state = null;
-                _events = null;
+                if (_approachActive && UnityEngine.Playables.PlayableExtensions.IsValid(_state.Playable)) _state.Speed = _approachOriginalSpeed;
             }
+            playback.Stop();
+            _state = null;
 
             _approachActive = false;
             _impactApproachActive = false;
@@ -296,7 +285,7 @@ public sealed partial class CharacterAnimBrain
             // Use a distinct state even if the author chose the attack clip itself. The
             // original state remains frozen for request timing; no skill events are rebound.
             _enemyStruggleAttackTime = _state.NormalizedTime;
-            _enemyStruggleState = owner.PlayLocomotionTransition(new ClipState(clip), fadeSeconds);
+            _enemyStruggleState = owner.presentation.PlayLocomotionTransition(new ClipState(clip), fadeSeconds);
             _enemyStruggleState.SharedEvents = null;
             _enemyStruggleState.Speed = 0f;
             _enemyStruggleState.NormalizedTime = 0f;
@@ -309,7 +298,7 @@ public sealed partial class CharacterAnimBrain
             var state = _enemyStruggleState;
             _enemyStruggleState = null;
             _enemyStruggleElapsed = 0f;
-            owner.RetireTemporaryState(state);
+            owner.presentation.RetireTemporaryState(state);
         }
 
         internal bool TryGetPlaybackTiming(out float remainingDuration, out float totalDuration)

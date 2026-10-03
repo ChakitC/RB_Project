@@ -1718,7 +1718,7 @@ Field allies reserve their `FieldAllyMember` and suspend autonomous movement unt
 cast animation finishes. Helper commands retain the Helper manager's activation,
 protection and hide lifecycle. Aim overrides and placement reservations are released
 on completion, rejection, interruption and disable. Autonomous AI skills, Helper procs,
-Chain Attack and Party Combo retain their own entry points and targeting rules.
+Chain Attack and Party Follow-Up retain their own entry points and targeting rules.
 
 This supplies placement, aim and an optional character target; each payload retains its
 own recipient rules. A payload that requires a friendly character (for example a targeted
@@ -2193,15 +2193,15 @@ the bound actor's Input System actions where present, with the authored action
 asset as fallback. Labels use effective physical binding paths (including rebind
 overrides), so keyboard layout changes do not introduce unsupported HUD glyphs.
 Ally Party Command names/icons resolve the same skill as
-its existing readiness and execution path. Helper and Party Combo UI are separate.
+its existing readiness and execution path. Helper and Party Follow-Up UI are separate.
 `UIManager` requests a fresh command label on player binding and ally registration/
 unregistration, so the previous actor's label is not retained after a party change.
 
-## Party Combo Skill Entry
+## Party Follow-Up Skill Entry
 
-Party Combo execution uses `CharacterSkillManager.TryStartPartyComboSkill` and
-a dedicated runtime entry keyed by `PartyComboSkillDef`. The entry deliberately
+Party Follow-Up execution uses `CharacterSkillManager.TryStartPartyFollowUpSkill` and
+a dedicated runtime entry keyed by `PartyFollowUpSkillDef`. The entry deliberately
 uses its Combo-owned upgrade snapshot (`party-combo` / `comboId`), shares the skill's normal charge
 pool, ignores Energy, and still stamps cooldown on commit. Callers receive
 request-scoped commit, failure, and cancellation callbacks; `CastReleased` is
-not a commit signal. See [Party Combo Skill System](PARTY_COMBO.md).
+not a commit signal. See [Party Follow-Up Skill System](PARTY_FOLLOW_UP.md).

@@ -183,29 +183,29 @@ public class PlayerInputHandler : MonoBehaviour
             ctx.partyCommand.TrySelectPartyCommandSlot(3);
     }
 
-    public void OnPartyComboSlot1(InputAction.CallbackContext c)
+    public void OnPartyFollowUpSlot1(InputAction.CallbackContext c)
     {
-        TryConsumePartyCombo(c, ChainActorRole.PartySlot1);
+        TryConsumePartyFollowUp(c, ChainActorRole.PartySlot1);
     }
 
-    public void OnPartyComboSlot2(InputAction.CallbackContext c)
+    public void OnPartyFollowUpSlot2(InputAction.CallbackContext c)
     {
-        TryConsumePartyCombo(c, ChainActorRole.PartySlot2);
+        TryConsumePartyFollowUp(c, ChainActorRole.PartySlot2);
     }
 
-    public void OnPartyComboHelper(InputAction.CallbackContext c)
+    public void OnPartyFollowUpHelper(InputAction.CallbackContext c)
     {
-        TryConsumePartyCombo(c, ChainActorRole.Helper);
+        TryConsumePartyFollowUp(c, ChainActorRole.Helper);
     }
 
-    void TryConsumePartyCombo(InputAction.CallbackContext context, ChainActorRole role)
+    void TryConsumePartyFollowUp(InputAction.CallbackContext context, ChainActorRole role)
     {
         if (!context.performed)
             return;
 
         ResolveReferences();
-        PartyComboOpportunityController controller = ctx?.partyComboController;
-        if (controller == null || !controller.TryGetOffer(role, out PartyComboOfferViewData offer))
+        PartyFollowUpOpportunityController controller = ctx?.partyFollowUpController;
+        if (controller == null || !controller.TryGetOffer(role, out PartyFollowUpOfferViewData offer))
             return;
 
         controller.TryConsumeOffer(role, offer.OfferId, out _);

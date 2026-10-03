@@ -96,12 +96,12 @@ public static class PartyRuntimeBinder
 
         helperManager.BindHelper(helper);
 
-        PartyComboOpportunityController comboController = player.partyComboController;
-        if (comboController != null &&
-            comboController.RuntimeFeatureEnabled &&
-            !comboController.BindParty(party))
+        PartyFollowUpOpportunityController followUpController = player.partyFollowUpController;
+        if (followUpController != null &&
+            followUpController.RuntimeFeatureEnabled &&
+            !followUpController.BindParty(party))
         {
-            error = "Party Combo runtime is enabled but controller/executor binding failed.";
+            error = "Party Follow-Up runtime is enabled but controller/executor binding failed.";
             return false;
         }
 

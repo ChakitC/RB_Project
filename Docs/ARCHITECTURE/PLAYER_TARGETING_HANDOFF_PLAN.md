@@ -2,7 +2,7 @@
 
 สถานะ: Implemented 2026-09-11 — เอกสารนี้คงไว้เป็น acceptance/migration record; runtime contract
 ปัจจุบันอยู่ใน `Docs/SYSTEMS/AI_AND_TARGETING.md`, `CAMERA.md`, `SKILL_SYSTEM.md`,
-`PARTY_COMBO.md`, `Docs/ARCHITECTURE/CHARACTER_CONTEXT.md` และ
+`PARTY_FOLLOW_UP.md`, `Docs/ARCHITECTURE/CHARACTER_CONTEXT.md` และ
 `Docs/PREFABS_AND_AUTHORING.md`
 
 ## คำสั่งสำหรับเซสชันผู้รับ
@@ -192,7 +192,7 @@ powershell -ExecutionPolicy Bypass -File 'P:\Game_RB_Project\RB_Project\Assets\S
 
 ## 7. เอกสารและผลส่งมอบ
 
-อัปเดต Docs/SYSTEMS/AI_AND_TARGETING.md เป็นหลัก พร้อม Docs/SYSTEMS/CAMERA.md, Docs/SYSTEMS/SKILL_SYSTEM.md, Docs/SYSTEMS/PARTY_COMBO.md และ Docs/ARCHITECTURE/CHARACTER_CONTEXT.md เฉพาะส่วนที่พฤติกรรม/API เปลี่ยน อัปเดต Docs/PREFABS_AND_AUTHORING.md สำหรับ controller, marker และ migration settings
+อัปเดต Docs/SYSTEMS/AI_AND_TARGETING.md เป็นหลัก พร้อม Docs/SYSTEMS/CAMERA.md, Docs/SYSTEMS/SKILL_SYSTEM.md, Docs/SYSTEMS/PARTY_FOLLOW_UP.md และ Docs/ARCHITECTURE/CHARACTER_CONTEXT.md เฉพาะส่วนที่พฤติกรรม/API เปลี่ยน อัปเดต Docs/PREFABS_AND_AUTHORING.md สำหรับ controller, marker และ migration settings
 
 สรุปไฟล์ที่แก้ selector เดิมที่ถูกเอาออก กติกา ChainReady/Interruption ใหม่ prefab ที่ตั้งค่าแล้ว ผล build/tests/playtest และข้อจำกัดที่ยังตรวจไม่ได้ งานเสร็จเมื่อทุก manual/Aim consumer ใช้ target กลางและลูกศรใช้งานได้จริง ไม่จบที่สร้าง API อย่างเดียว
 
@@ -215,7 +215,7 @@ powershell -ExecutionPolicy Bypass -File 'P:\Game_RB_Project\RB_Project\Assets\S
 
 - Interactable/Interractor.cs.FindBestFocus: เลือก IInteractable จาก Aim ray และระยะเอื้อม ไม่ใช่ combat target; อย่าลบเพียงเพราะมันเลือก focus จาก Aim เช่นกัน
 - AI/Helper Proc/AllyHelperProcController.cs.TrySelectLowestHealthTarget: เลือกสมาชิกทีมตามสัดส่วน HP และระยะ ไม่ใช่ enemy Aim selector ต่างจาก helper chain proc ที่ต้องย้าย
-- PartyCombo/PartyComboOpportunityController.cs.ResolveTarget และ Passives/PassiveController.cs.ResolveTargetObject: เลือก Self/EventActor/EventTarget ที่มากับ event ไม่ scan หา enemy ใกล้ Aim
+- PartyFollowUp/PartyFollowUpOpportunityController.cs.ResolveTarget และ Passives/PassiveController.cs.ResolveTargetObject: เลือก Self/EventActor/EventTarget ที่มากับ event ไม่ scan หา enemy ใกล้ Aim
 - AI/Ai Taget And Sensor/AITargetSensor.cs และ AIAimTargetDriver: autonomous AI sensing/aim override; คง helper skill sensor path ใน AllyHelperManager.TryResolveHelperSkillAimPoint
 - ThirdPersonAimController และ Projectile/Modules/LobToAimTargetModule: คำนวณจุดเล็ง/วิถีกระสุน module หลังอ่าน AimTransform หรือชื่อ Aim Target และรองรับ lockTargetOnSpawn; ไม่จัดอันดับ actor ห้าม redirect ไป CurrentTarget หรือเปลี่ยน trajectory ในงานนี้
 - ThirdPersonTargetingUtility.TryGetReticleScore/HasLineOfSight เป็น helper ไม่ใช่ selector เพิ่ม; ChainAttackTargetingUtility.TryResolveExplicitTarget/TryResolveTargetAnchor และ ChainSkillCastBridge เป็น resolve/handoff ของ actor ที่ระบุแล้ว

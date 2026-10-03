@@ -839,7 +839,7 @@ MonoBehaviour:
     m_Bits: 512
   obstacleLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 151553
   triggerInteraction: 1
   maxHits: 64
   useFieldOfView: 0

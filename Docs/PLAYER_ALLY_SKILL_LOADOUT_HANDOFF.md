@@ -163,7 +163,7 @@ powershell -ExecutionPolicy Bypass -File 'P:\Game_RB_Project\RB_Project\Assets\S
 | `Assets/Scripts/AI/Ally TEST Scripts/TryCastSkillFromSlot.cs:7` | มี serialized SlotIndex และเรียก manager จริง ชื่อโฟลเดอร์ TEST ไม่ใช่เหตุผลให้ข้าม ต้องตาม Behavior Designer assets ที่ใช้ task นี้ด้วย |
 | `Assets/Scripts/Player/PartyCommandController.cs:880` และ `:919` | ตรวจทั้ง block reason และ execute; เลือก PlayerCommandSkill ก่อน slot fallback; PlayerCommandSkill ใน manager หมายถึง Helper manual command ไม่ใช่ Ultimate |
 | `Assets/Scripts/UIScripts/ActiveSkill/ActiveSkillChargePresenter.cs:26` | HUD อิง index ของ CommandSlots ต้องให้ชื่อ/icon/charge/readiness ตรง slot mapping เดียวกัน |
-| `Assets/Scripts/Player/Skill/CharacterSkillManager.cs` | มี external skill, chain attack, helper และ party combo paths แยกอยู่ ห้ามใส่ global cast whitelist สอง asset แล้วทำ scripted/combo/helper ใช้ไม่ได้ คุมเฉพาะเส้นทาง loadout ที่อยู่ในขอบเขต |
+| `Assets/Scripts/Player/Skill/CharacterSkillManager.cs` | มี external skill, chain attack, helper และ party follow-up paths แยกอยู่ ห้ามใส่ global cast whitelist สอง asset แล้วทำ scripted/combo/helper ใช้ไม่ได้ คุมเฉพาะเส้นทาง loadout ที่อยู่ในขอบเขต |
 
 เรื่อง cooldown: `CreateRuntimeSkill():1172` ผูก shared charge ผ่าน manager และ `SkillInstance` ใช้ pool เดียวกันสำหรับ definition เดียวใน actor เดียวอยู่แล้ว การสร้าง SkillInstance ใหม่จึงไม่ได้แปลว่า reset cooldown เสมอ แผนต้องรักษาการแชร์นี้ และทดสอบว่าเปลี่ยน selection ที่ถูกปฏิเสธ/refresh ไม่ reset pool; ไม่เพิ่มข้อกำหนดให้ cooldown ต่อเนื่องข้าม actor ที่ถูกทำลายแล้วสร้างใหม่โดยไม่ได้ตรวจพฤติกรรมเดิม
 

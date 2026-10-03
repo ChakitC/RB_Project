@@ -68,7 +68,7 @@ public sealed class ConditionalStatusRoute
                 context.CombatDepth + 1,
                 PassiveEventOrigin.External,
                 fallbackDuration: fallbackDuration,
-                comboProvenance: context.ComboProvenance);
+                followUpProvenance: context.FollowUpProvenance);
             appliedAny = true;
         }
 

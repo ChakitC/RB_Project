@@ -5,52 +5,26 @@ using UnityEngine;
 
 public sealed partial class CharacterAnimBrain
 {
-    private sealed class Locomotion_Dash : LocomotionState
+    private sealed class Locomotion_Dash : SingleClipLocomotionState
     {
-        private readonly CharacterAnimBrain owner;
-        private AnimancerState state;
-        private AnimancerEvent.Sequence runtimeEvents;
-        private AnimationVfxSessionToken vfxSession;
 
-        public Locomotion_Dash(CharacterAnimBrain owner) => this.owner = owner;
+        public Locomotion_Dash(CharacterAnimBrain owner) : base(owner) { }
 
         public override bool CanEnterState => owner.DashForward != null && owner.DashForward.IsValid;
 
-        public override void OnEnterState()
+        protected override void EnterPlayback()
         {
-            EndVfxSession();
-            ClearStateEvents();
-
             ClipTransition clip = PickClip(out AnimationVfxTrack vfxTrack);
-            float dur = Mathf.Max(0.01f, owner._dashDuration);
-            float fadeDuration = ResolveFadeDuration(clip, dur);
-
-            state = owner.PlayLocomotionTransition(clip, fadeDuration);
-            if (state == null)
-                return;
-
-            state.Time = 0f;
-
-            float len = Mathf.Max(0.01f, state.Length);
-            state.Speed = len / dur;
-
-            owner.onDashEndCache ??= owner.HandleDashEnd;
-            runtimeEvents = state.Events(owner);
-            BindVfx(vfxTrack);
-            runtimeEvents.OnEnd = owner.onDashEndCache;
+            float duration = Mathf.Max(0.01f, owner._dashDuration);
+            playback.Play(new AnimationPlaybackOptions
+            {
+                Transition = clip, NormalizedStart = 0f, Duration = duration,
+                FadeDuration = ResolveFadeDuration(clip, duration), Vfx = vfxTrack,
+            }, onEnd: endCallback);
         }
 
-        public override void OnExitState()
-        {
-            EndVfxSession();
-            ClearStateEvents();
-        }
-
-        internal void EndVfxSession()
-        {
-            owner.EndAnimationVfxSession(vfxSession);
-            vfxSession = default;
-        }
+        protected override void OnPlaybackEnd() => owner.HandleDashEnd();
+        internal void EndVfxSession() => playback.EndVfx();
 
         private ClipTransition PickClip(out AnimationVfxTrack vfxTrack)
         {
@@ -64,27 +38,6 @@ public sealed partial class CharacterAnimBrain
 
             vfxTrack = owner.DashForwardVfxTrack;
             return owner.DashForward;
-        }
-
-        private void BindVfx(AnimationVfxTrack vfxTrack)
-        {
-            if (runtimeEvents == null || vfxTrack == null || vfxTrack.CueCount == 0)
-                return;
-
-            AnimationVfxSessionToken token = owner.BeginAnimationVfxSession(vfxTrack);
-            vfxSession = token;
-            AnimationVfxEventBinder.Bind(
-                runtimeEvents,
-                cueIndex => owner.HandleAnimationVfxCue(token, cueIndex));
-        }
-
-        private void ClearStateEvents()
-        {
-            if (runtimeEvents != null)
-                runtimeEvents.OnEnd = null;
-
-            runtimeEvents = null;
-            state = null;
         }
 
         private static float ResolveFadeDuration(ClipTransition clip, float dashDuration)

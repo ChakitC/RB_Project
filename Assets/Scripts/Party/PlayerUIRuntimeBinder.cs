@@ -50,7 +50,7 @@ public sealed class PlayerUIRuntimeBinder : MonoBehaviour
         for (int i = 0; i < uiManagers.Length; i++)
             uiManagers[i].BindContext(player);
 
-        bool hasGameplayComboView = false;
+        bool hasGameplayFollowUpView = false;
         if (gameplayHudPrefab != null && uiManagers.Length > 0)
         {
             if (gameplayHud == null)
@@ -86,7 +86,7 @@ public sealed class PlayerUIRuntimeBinder : MonoBehaviour
             if (partyPresenter != null)
             {
                 partyPresenter.Bind(player);
-                hasGameplayComboView = gameplayHud.TryBindComboDisplay(partyPresenter);
+                hasGameplayFollowUpView = gameplayHud.TryBindFollowUpDisplay(partyPresenter);
             }
         }
 
@@ -110,13 +110,13 @@ public sealed class PlayerUIRuntimeBinder : MonoBehaviour
         for (int i = 0; i < castFeedbackPresenters.Length; i++)
             castFeedbackPresenters[i].Bind(player);
 
-        PartyComboHudPresenter[] comboPresenters =
-            GetComponentsInChildren<PartyComboHudPresenter>(true);
-        for (int i = 0; i < comboPresenters.Length; i++)
+        PartyFollowUpHudPresenter[] followUpPresenters =
+            GetComponentsInChildren<PartyFollowUpHudPresenter>(true);
+        for (int i = 0; i < followUpPresenters.Length; i++)
         {
-            comboPresenters[i].Bind(hasGameplayComboView ? null : player.partyComboController);
-            if (hasGameplayComboView)
-                comboPresenters[i].gameObject.SetActive(false);
+            followUpPresenters[i].Bind(hasGameplayFollowUpView ? null : player.partyFollowUpController);
+            if (hasGameplayFollowUpView)
+                followUpPresenters[i].gameObject.SetActive(false);
         }
 
         if (uiContext.activeSkillScreen != null)

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Opsive.BehaviorDesigner.Runtime;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -210,8 +210,9 @@ public class CharacterStats : ScriptableObject
     public SkillGemDefinition chainAttackSkill;
 
     [PropertyOrder(-138)]
-    [FoldoutGroup("Party Combo Skill", Expanded = false), LabelText("Party Combo Skill"), AssetsOnly]
-    public PartyComboSkillDef partyComboSkill;
+    [FoldoutGroup("Party Follow-Up Skill", Expanded = false), LabelText("Party Follow-Up Skill"), AssetsOnly]
+    [UnityEngine.Serialization.FormerlySerializedAs("partyComboSkill")]
+    public PartyFollowUpSkillDef partyFollowUpSkill;
 
     [FoldoutGroup("Defensive Block"), AssetsOnly]
     public DefensiveBlockActorProfile defensiveBlock;

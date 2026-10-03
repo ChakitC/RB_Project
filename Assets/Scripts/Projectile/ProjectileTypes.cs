@@ -72,7 +72,7 @@ public struct ProjectileContext
     public PassiveEventOrigin origin;
     public string originPassiveId;
     public string originRuleId;
-    public ComboExecutionProvenance comboProvenance;
+    public FollowUpExecutionProvenance followUpProvenance;
     public Projectile projectilePrefab;
     public bool useHitZones;
     public CombatEventMetadata combatMetadata;

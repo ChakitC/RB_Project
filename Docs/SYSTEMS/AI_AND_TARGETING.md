@@ -110,26 +110,54 @@ not choose a second enemy.
 
 ## Target Sensor
 
-`AITargetSensor` scans for target colliders, filters them, scores candidates,
-and maintains current/visible/last-seen target state.
+`AITargetSensor` coordinates actor bindings, scan timing and committed snapshots.
+Its plain C# collaborators are `AITargetPerception` (registry discovery and LOS),
+`AITargetSelector` (scores and selection policy), and `AITargetMemory` (retained
+selection, last-seen observations and decaying threat).
 
-Important sensor concepts:
+Discovery reads `CharacterContextRegistry.ActiveContexts`, measures radius from
+context positions, and checks `CharacterFactionUtility.AreHostile` before the
+actor root layer mask. Optional team-ID filtering is an additional restriction.
+Colliders are only used for sight obstruction: colliderless actors are discoverable,
+there is no 64-actor limit, and props/standalone `IAITargetable` objects are excluded.
+`maxHits` remains serialized for compatibility and no longer caps discovery.
 
-- scan interval
-- target layers and obstacle layers — target layers are the only coarse membership
-  filter. There is no tag filter: the sensor resolves a candidate's root through
-  `CharacteContext`/`AITargetInfo`, and that root is often a child object (the
-  `AI System` node) whose tag does not match the character's own tag, so tag
-  matching was unreliable by construction.
-- field of view
-- line of sight
-- team filtering
-- alive filtering
-- grace period and last seen target
-- current target stickiness
-- retarget interval and lock duration
-- threat memory
-- taunt target — see **Taunt resolution** below.
+`AITargetHandle` captures the context and its `LifeGeneration`. Inactive, disabled,
+dead, downed, untargetable and recycled actors cannot retain selection or threat.
+Context unregister immediately invalidates the old life. Disabling the sensor clears
+its targeting and threat memory; reenabling schedules a fresh scan. Actor ownership
+is determined by context identity, not a shared scene/container Transform root.
+
+`Snapshot` is one immutable `AITargetSnapshot`. It includes current, best-visible
+and last-seen handles, the aim position, real LOS, current visibility, distances,
+last-seen position/time and selection reason (`None`, `Score`, `Memory`, `Taunt`).
+Consumers read one snapshot per evaluation. `CurrentTargetContext` exposes the
+actor; legacy Transform properties/events still return `TargetInfo.transform`
+when assigned. All snapshot/debug fields are committed before either change event.
+Reentrant scan requests get one deferred pass, then continue on the next Update.
+
+Normal acquisition requires range, authored FOV and LOS. A lost target is retained
+for the profile grace period at its last observed position. Only actual visible
+observations update last-seen data. `VisibleTarget` is the highest-scoring visible
+candidate, which can differ from the retained target during the lock period.
+`HasLineOfSight` is real geometric LOS to the selected target, including Taunt;
+turning off acquisition's LOS requirement does not fabricate a clear firing path.
+
+Taunt takes precedence over scores and retarget locks, including outside the
+ordinary radius/FOV. It never fabricates LOS. The aim driver follows the taunter's
+known aim position separately from last-seen memory; firing/cast guards that require
+LOS still reject an occluded taunter. `tauntScoreBonus` remains serialized for
+compatibility, but a valid Taunt no longer competes numerically with other scores.
+
+The scan clock accumulates unscaled elapsed time multiplied by world slow only
+when `ctx.UsesWorldSlow` is true. Pause stops this clock; hit-lag does not. Status
+lifetimes remain on the existing owner-local status clock. Scoring values,
+hysteresis and ordinary retarget timing retain their existing profile settings.
+
+`AITargetSensor.ResolveFor` resolves within the owning context, honors explicit
+Ally/Summon bindings and rejects ambiguous unbound sensors. Authoring validation
+is available at **Tools > RB > AI > Validate Target Sensors**. See the sensor
+section of `PREFABS_AND_AUTHORING.md` for masks and prefab requirements.
 
 ## Taunt resolution
 
@@ -161,7 +189,7 @@ off, or does not use `StackMode.RefreshDuration`.
 
 Taunt duration comes from the skill (`fallbackDuration`) unless the application overrides it, so it
 ticks in the taunted actor's own **owner-local status clock** (`StatusEffectController.Tick`) rather
-than the HitLag-immune `TimeSlowManager.WorldTime` domain the rest of the sensor uses. That clock
+than the sensor's HitLag-immune owner-aware scan clock. The status clock
 follows `WorldDeltaTime` for actors under world slow and `Time.deltaTime` for actors holding a
 world-slow exemption, so a taunt on a slowed enemy drains slowly while HitLag and pause freeze it
 either way. See **Status duration and tick time semantics** in `SKILL_SYSTEM.md`.
@@ -1010,22 +1038,22 @@ A trigger is rejected outright while a Chain Attack is active, and an active
 chain is never interrupted by the Special Point Mini Stun. Death, down, a
 cinematic, or an unrelated stagger that fills the meter first cancels the round
 with no reward. See `Docs/SYSTEMS/SPECIAL_SHOOT_POINTS.md` for the full matrix.
-## Party Combo Ownership And Targeting
+## Party Follow-Up Ownership And Targeting
 
-Field allies continue choosing only their normal AI combat actions. Party Combo
+Field allies continue choosing only their normal AI combat actions. Party Follow-Up
 triggers create player-facing opportunities; AI never accepts those offers or
-auto-casts Combo Skills. On player acceptance, `PartyComboSkillExecutor`
+auto-casts Combo Skills. On player acceptance, `PartyFollowUpSkillExecutor`
 acquires the ally's shared hard reservation and applies a transient autonomy
 scope, then restores Behavior Tree/NavMesh/component state and releases the
 same reservation on every exit path.
 
 Each offer stores a `SkillTargetHandle` resolved from the triggering combat
-fact according to `PartyComboTargetPolicy`. Input does not re-read aim or
+fact according to `PartyFollowUpTargetPolicy`. Input does not re-read aim or
 lock-on, so a valid accepted offer executes against that snapshot. Actor
 discovery and status checks resolve `CharacteContext`; physics is used only by
 the placement/collision rules where geometry is part of the gameplay rule.
 
-See [Party Combo Skill System](PARTY_COMBO.md) for the full flow and authoring
+See [Party Follow-Up Skill System](PARTY_FOLLOW_UP.md) for the full flow and authoring
 contract.
 
 ## Defensive charge interception

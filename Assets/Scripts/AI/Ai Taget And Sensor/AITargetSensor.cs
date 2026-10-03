@@ -84,990 +84,355 @@ public class AITargetSensor : MonoBehaviour
     [SerializeField] private float currentTargetAcquiredTime = float.NegativeInfinity;
     [SerializeField] private float nextRetargetEvaluationTime;
 
-    readonly Dictionary<int, ThreatEntry> threatEntries = new Dictionary<int, ThreatEntry>();
-    readonly HashSet<int> candidateInstanceIds = new HashSet<int>();
-
-    Collider[] overlapBuffer;
+    readonly AITargetPerception perception = new AITargetPerception();
+    readonly AITargetSelector selector = new AITargetSelector();
+    readonly AITargetMemory memory = new AITargetMemory();
+    AITargetSnapshot snapshot = AITargetSnapshot.Empty;
     CharacteContext ownerContext;
     HealthSystem healthSystem;
     StatusEffectController statusEffects;
     AIAimTargetDriver aimTargetDriver;
-    Transform cachedTauntSource;      // derived cache only — source of truth is statusEffects
+    float clock;
+    float lastClockSample;
     float nextScanTime;
+    bool scanning;
+    bool pendingScan;
+    bool pendingClear;
+    int publicationVersion;
 
     public AITargetingProfileDef TargetingProfile => targetingProfile;
-    public Transform CurrentTarget => IsCurrentTargetRetained() ? currentTarget : null;
-    public Transform VisibleTarget => IsTrackedTargetStillValid(visibleTarget) ? visibleTarget : null;
-    public Transform LastSeenTarget => IsTrackedTargetStillValid(lastSeenTarget) ? lastSeenTarget : null;
-    public Vector3 LastSeenPosition => lastSeenPosition;
-    public bool HasLineOfSight => hasLineOfSight;
+    public AITargetSnapshot Snapshot
+    {
+        get
+        {
+            if (!scanning && isActiveAndEnabled &&
+                ((snapshot.Target.InstanceId != 0 && !IsEligible(snapshot.Target)) ||
+                 (snapshot.Visible.InstanceId != 0 && !IsEligible(snapshot.Visible)) ||
+                 (snapshot.LastSeen.InstanceId != 0 && !IsEligible(snapshot.LastSeen))))
+                RequestScan(false);
+            return snapshot;
+        }
+    }
+    public CharacteContext CurrentTargetContext => Snapshot.CurrentTargetContext;
+    public Transform CurrentTarget => Snapshot.CurrentTarget;
+    public Transform VisibleTarget => Snapshot.VisibleTarget;
+    public Transform LastSeenTarget => Snapshot.LastSeenTarget;
+    public Vector3 LastSeenPosition => Snapshot.LastSeenPosition;
+    public bool HasLineOfSight => Snapshot.HasLineOfSight;
     public float GracePeriod => GetGracePeriodValue();
-    public float TargetDistance => targetDistance;
-    public float VisibleTargetDistance => visibleTargetDistance;
-    public float LastSeenTime => lastSeenTime;
-    public float TimeSinceLastSeen => WorldNow - lastSeenTime;
-    float WorldNow => TimeSlowManager.Instance.WorldTime;
-
-    public bool HasLiveTarget => CurrentTarget != null;
-    public bool HasVisibleTarget => VisibleTarget != null;
-    public bool HasAnyTarget => HasLiveTarget || IsWithinGracePeriod();
-
+    public float TargetDistance => Snapshot.TargetDistance;
+    public float VisibleTargetDistance => Snapshot.VisibleTargetDistance;
+    public float LastSeenTime => Snapshot.LastSeenTime;
+    public float TimeSinceLastSeen => clock - Snapshot.LastSeenTime;
+    public bool HasLiveTarget => Snapshot.HasLiveTarget;
+    public bool HasVisibleTarget => Snapshot.VisibleTarget != null;
+    public bool HasAnyTarget => Snapshot.HasAnyTarget;
     public event Action<Transform, Transform> OnTargetChanged;
     public event Action<Transform, Transform> OnVisibleTargetChanged;
+
+    public static AITargetSensor ResolveFor(Component module)
+    {
+        CharacteContext ctx = CharacterContextModuleLookup.ResolveContext(module);
+        if (ctx == null) return null;
+        if (ctx is AllyContext ally && ally.AITargetSensor != null)
+            return CharacterContextModuleLookup.ResolveContext(ally.AITargetSensor) == ctx ? ally.AITargetSensor : null;
+        if (ctx is SummonContext summon && summon.AITargetSensor != null)
+            return CharacterContextModuleLookup.ResolveContext(summon.AITargetSensor) == ctx ? summon.AITargetSensor : null;
+        AITargetSensor found = null;
+        foreach (AITargetSensor candidate in ctx.GetComponentsInChildren<AITargetSensor>(true))
+        {
+            if (CharacterContextModuleLookup.ResolveContext(candidate) != ctx) continue;
+            if (found != null) return null; // Ambiguous authoring must not pick the first actor module.
+            found = candidate;
+        }
+        return found;
+    }
 
     void Awake()
     {
         ResolveReferences();
-
-        if (sensorOrigin == null)
-            sensorOrigin = transform;
-
-        if (forwardReference == null)
-            forwardReference = transform;
-
-        maxHits = Mathf.Max(1, maxHits);
-        overlapBuffer = new Collider[maxHits];
-        ScheduleNextRetargetEvaluation();
+        if (sensorOrigin == null) sensorOrigin = transform;
+        if (forwardReference == null) forwardReference = transform;
     }
 
     void OnEnable()
     {
         ResolveReferences();
         AITargetInfo.GlobalTargetStateChanged += HandleGlobalTargetStateChanged;
-
-        if (healthSystem != null)
-            healthSystem.DamageTaken += OnDamageTaken;
+        CharacterContextRegistry.ContextUnregistered += HandleContextUnregistered;
+        if (healthSystem != null) healthSystem.DamageTaken += OnDamageTaken;
+        lastClockSample = Time.unscaledTime;
+        nextScanTime = clock;
+        pendingScan = true;
     }
 
     void OnDisable()
     {
         AITargetInfo.GlobalTargetStateChanged -= HandleGlobalTargetStateChanged;
-
-        if (healthSystem != null)
-            healthSystem.DamageTaken -= OnDamageTaken;
-
-        SetVisibleTarget(null, 0f);
+        CharacterContextRegistry.ContextUnregistered -= HandleContextUnregistered;
+        if (healthSystem != null) healthSystem.DamageTaken -= OnDamageTaken;
+        memory.ClearTargets();
+        memory.ClearThreat();
+        pendingScan = false;
+        Publish(AITargetSnapshot.Empty);
     }
 
     void ResolveReferences()
     {
-        if (!ownerContext)
-        {
-            TryGetComponent(out ownerContext);
-            if (!ownerContext)
-                ownerContext = GetComponentInParent<CharacteContext>();
-        }
-
+        ownerContext = CharacterContextModuleLookup.ResolveContext(this);
         ownerContext?.ResolveReferences();
-
-        if (ownerContext is AllyContext allyContext && allyContext.AITargetSensor != this)
-            allyContext.AITargetSensor = this;
-
-        if (!healthSystem && ownerContext != null)
-            healthSystem = ownerContext.HealthSystem;
-        if (!healthSystem)
-            TryGetComponent(out healthSystem);
-        if (!healthSystem && ownerContext != null)
-            healthSystem = ownerContext.GetComponentInChildren<HealthSystem>(true);
-
-        if (!statusEffects && ownerContext != null)
-            statusEffects = ownerContext.StatusEffects;
-        if (!statusEffects)
-            statusEffects = GetComponentInParent<StatusEffectController>();
-        if (!statusEffects && ownerContext != null)
-            statusEffects = ownerContext.GetComponentInChildren<StatusEffectController>(true);
+        healthSystem = ownerContext != null ? ownerContext.HealthSystem : null;
+        statusEffects = ownerContext != null ? ownerContext.StatusEffects : null;
     }
 
-    StatusEffectController ResolveStatusEffects()
+    void UpdateClock()
     {
-        if (statusEffects)
-            return statusEffects;
-
-        if (ownerContext != null)
-        {
-            statusEffects = ownerContext.StatusEffects;
-            if (!statusEffects)
-                statusEffects = ownerContext.GetComponentInChildren<StatusEffectController>(true);
-        }
-
-        if (!statusEffects)
-            statusEffects = GetComponentInParent<StatusEffectController>();
-
-        // Assets/Prefab/AI Ally/Ally.prefab has an AITargetSensor but no StatusEffectController.
-        // Same auto-provision pattern CharacteContext.ResolveReferences() already uses.
-        if (!statusEffects && Application.isPlaying && ownerContext != null)
-        {
-            statusEffects = ownerContext.gameObject.AddComponent<StatusEffectController>();
-            ownerContext.StatusEffects = statusEffects;
-        }
-
-        return statusEffects;
+        float sample = Time.unscaledTime;
+        float elapsed = Mathf.Max(0f, sample - lastClockSample);
+        lastClockSample = sample;
+        if (!Application.isPlaying || GlobalTimeScaleManager.Instance.IsPaused) return;
+        clock += elapsed * (ownerContext != null && ownerContext.UsesWorldSlow
+            ? TimeSlowManager.Instance.WorldTimeScale : 1f);
     }
 
     void Update()
     {
-        if (RefreshTrackedTargetValidity())
-            nextScanTime = WorldNow;
-
-        if (WorldNow < nextScanTime)
-            return;
-
-        nextScanTime = WorldNow + Mathf.Max(0.01f, scanInterval);
-        Scan(false);
+        UpdateClock();
+        bool invalid = (memory.Current.InstanceId != 0 && !IsEligible(memory.Current)) ||
+            (memory.LastSeen.InstanceId != 0 && !IsEligible(memory.LastSeen));
+        // Taunt expiry/replacement must not wait for the normal perception interval.
+        AITargetHandle taunt = ResolveTaunt();
+        bool tauntChanged = taunt.InstanceId != 0
+            ? snapshot.Reason != AITargetSelectionReason.Taunt || taunt != snapshot.Target
+            : snapshot.Reason == AITargetSelectionReason.Taunt;
+        if (invalid || pendingScan || tauntChanged || clock >= nextScanTime) RequestScan(false);
     }
 
     public void ForceScan()
     {
-        RefreshTrackedTargetValidity();
-        Scan(true);
-        nextScanTime = WorldNow + Mathf.Max(0.01f, scanInterval);
+        UpdateClock();
+        RequestScan(true);
+    }
+
+    void RequestScan(bool force)
+    {
+        if (!isActiveAndEnabled) return;
+        if (scanning) { pendingScan = true; return; }
+        scanning = true;
+        try
+        {
+            // One deferred pass handles event callbacks; persistent requests continue next Update.
+            for (int pass = 0; pass < 2; pass++)
+            {
+                pendingScan = false;
+                if (pendingClear) { pendingClear = false; ClearMemoryCore(); break; }
+                Scan(force || pass > 0);
+                if (!pendingScan || !isActiveAndEnabled) break;
+            }
+            nextScanTime = clock + Mathf.Max(0.01f, scanInterval);
+        }
+        finally { scanning = false; }
     }
 
     public void ClearTargetMemory()
     {
-        SetVisibleTarget(null, 0f);
-        SetCurrentTarget(null);
-        if (!ShouldKeepLastSeenTarget())
-            lastSeenTarget = null;
-
-        lastSeenPosition = Vector3.zero;
-        hasLineOfSight = false;
-        targetDistance = 0f;
-        lastSeenTime = float.NegativeInfinity;
-        currentTargetScore = float.NegativeInfinity;
-        visibleBestScore = float.NegativeInfinity;
-        currentTargetAcquiredTime = float.NegativeInfinity;
-        cachedTauntSource = null;
-        ResolveStatusEffects()?.RemoveEffectsWithTag(StatusEffectTags.Taunt);
-        ScheduleNextRetargetEvaluation();
+        if (scanning) { pendingClear = true; pendingScan = true; return; }
+        scanning = true;
+        try { ClearMemoryCore(); }
+        finally { scanning = false; }
     }
 
-    public void ClearThreatMemory()
+    void ClearMemoryCore()
     {
-        threatEntries.Clear();
+        memory.ClearTargets();
+        statusEffects = ownerContext != null ? ownerContext.StatusEffects : null;
+        statusEffects?.RemoveEffectsWithTag(StatusEffectTags.Taunt);
+        Publish(AITargetSnapshot.Empty);
+        nextScanTime = clock;
     }
 
+    public void ClearThreatMemory() => memory.ClearThreat();
     public void SetTargetingProfile(AITargetingProfileDef profile, bool forceImmediateScan = true)
     {
         targetingProfile = profile;
-        if (!forceImmediateScan)
-            return;
-
-        nextScanTime = WorldNow;
-        ScheduleNextRetargetEvaluation();
+        if (forceImmediateScan) ForceScan();
     }
 
-    void HandleGlobalTargetStateChanged(AITargetInfo targetInfo)
+    void HandleGlobalTargetStateChanged(AITargetInfo info)
     {
-        if (targetInfo == null || !ReferencesTrackedTarget(targetInfo.transform))
-            return;
-
-        ForceScan();
+        if (info != null) RequestScan(false);
     }
 
-    bool ReferencesTrackedTarget(Transform changedTarget)
+    void HandleContextUnregistered(CharacteContext ctx)
     {
-        if (changedTarget == null)
-            return false;
-
-        return currentTarget == changedTarget || lastSeenTarget == changedTarget;
+        memory.Forget(ctx);
+        RequestScan(false);
     }
+
+    int OwnerTeam => ownerContext != null && ownerContext.TargetInfo != null
+        ? ownerContext.TargetInfo.TeamId : ownerTeamId;
+    bool IsEligible(AITargetHandle target) => AITargetPerception.IsEligible(ownerContext, target,
+        requireAliveIfAvailable, useTeamFilter, OwnerTeam);
 
     public void RegisterThreat(GameObject source, float amount)
     {
-        if (source == null || amount <= 0f)
-            return;
-
-        RegisterThreat(source.transform, amount);
+        if (source != null) RegisterThreat(source.transform, amount);
     }
-
     public void RegisterThreat(Transform source, float amount)
     {
-        if (source == null || amount <= 0f)
-            return;
-
-        if (!TryResolveTrackedTarget(source, out Transform targetRoot, out IAITargetable targetable))
-            return;
-
-        RegisterThreatInternal(targetRoot, targetable, amount);
+        UpdateClock();
+        AITargetHandle handle = new AITargetHandle(CharacterContextModuleLookup.ResolveContext(source));
+        if (!UseThreatMemoryEnabled() || amount <= 0f || !IsEligible(handle)) return;
+        AITargetInfo info = handle.Context.TargetInfo;
+        memory.AddThreat(handle, amount * (info != null ? info.ThreatMultiplier : 1f), clock,
+            GetThreatDecayPerSecondValue(), GetMaxThreatPerTargetValue());
     }
-
-    /// <summary>
-    /// เรียกโดยระบบที่ลง Taunt status ให้ตัวนี้แล้ว (เช่น TauntSkillRuntime) เพื่อให้ sensor re-resolve
-    /// taunt state ทันทีและตัดสิ่งที่กำลังเล็ง/โจมตีอยู่ทิ้ง. sensor ไม่ได้เป็นคนลง status เอง — source of truth
-    /// คือ StatusEffectInstance ที่ติด tag <see cref="StatusEffectTags.Taunt"/> บน StatusEffectController ของตัวนี้.
-    /// </summary>
-    /// <summary>
-    /// Would <see cref="OnTauntApplied"/> accept this source? Asked before the taunt status is
-    /// applied, so a source this sensor can never track does not leave a taunt status sitting on an
-    /// enemy that will keep ignoring it. Changes nothing.
-    /// </summary>
-    public bool CanAcceptTaunt(Transform tauntSource)
+    void OnDamageTaken(float amount, GameObject attacker) => RegisterThreat(attacker, amount * GetDamageThreatMultiplierValue());
+    public bool CanAcceptTaunt(Transform source) => IsEligible(new AITargetHandle(CharacterContextModuleLookup.ResolveContext(source)));
+    public bool OnTauntApplied(Transform source)
     {
-        if (tauntSource == null)
-            return false;
-
-        if (!TryResolveTrackedTarget(tauntSource, out Transform targetRoot, out _))
-            return false;
-
-        return IsTrackedTargetStillValid(targetRoot);
-    }
-
-    public bool OnTauntApplied(Transform tauntSource)
-    {
-        if (tauntSource == null)
-            return false;
-
-        if (!TryResolveTrackedTarget(tauntSource, out Transform targetRoot, out IAITargetable targetable))
-            return false;
-
-        if (!IsTrackedTargetStillValid(targetRoot))
-            return false;
-
-        UpdateTauntState();
-        RegisterThreatInternal(targetRoot, targetable, GetMaxThreatPerTargetValue());
+        if (!CanAcceptTaunt(source)) return false;
+        RegisterThreat(source, GetMaxThreatPerTargetValue());
         ForceScan();
-
-        // A taunt should interrupt whatever the behavior tree is currently aiming/attacking —
-        // otherwise the enemy keeps facing its old target until that action finishes on its own,
-        // even though CurrentTarget already switched to the taunter.
-        ResolveAimTargetDriver()?.ClearOverride();
-        return true;
-    }
-
-    AIAimTargetDriver ResolveAimTargetDriver()
-    {
-        if (aimTargetDriver)
-            return aimTargetDriver;
-
-        aimTargetDriver = GetComponent<AIAimTargetDriver>();
-        if (!aimTargetDriver)
-            aimTargetDriver = GetComponentInParent<AIAimTargetDriver>();
-        if (!aimTargetDriver && ownerContext != null)
+        if (aimTargetDriver == null && ownerContext != null)
             aimTargetDriver = ownerContext.GetComponentInChildren<AIAimTargetDriver>(true);
-
-        return aimTargetDriver;
+        aimTargetDriver?.ClearOverride();
+        return true;
     }
 
-    void Scan(bool ignoreRetargetTimers)
+    AITargetHandle ResolveTaunt()
     {
+        statusEffects = ownerContext != null ? ownerContext.StatusEffects : null;
+        if (statusEffects == null) return default;
+        AITargetHandle best = default;
+        ulong sequence = 0;
+        var effects = statusEffects.ActiveEffects;
+        for (int i = 0; i < effects.Count; i++)
+        {
+            StatusEffectInstance effect = effects[i];
+            if (effect == null || effect.CurrentStacks <= 0 || effect.IsExpired() ||
+                !StatusEffectTags.Has(effect.Definition, StatusEffectTags.Taunt) || effect.ApplicationSequence <= sequence)
+                continue;
+            AITargetHandle source = new AITargetHandle(effect.SourceContext, effect.SourceLifeGeneration);
+            if (!IsEligible(source)) continue;
+            best = source;
+            sequence = effect.ApplicationSequence;
+        }
+        return best;
+    }
+
+    void Scan(bool force)
+    {
+        if (ownerContext == null || !ownerContext.isActiveAndEnabled)
+        {
+            memory.ClearTargets();
+            memory.ClearThreat();
+            Publish(AITargetSnapshot.Empty);
+            return;
+        }
+        if (!IsEligible(memory.Current)) memory.Current = default;
+        if (!IsEligible(memory.LastSeen)) memory.ClearLastSeen();
+        memory.Prune(ownerContext, clock, GetThreatDecayPerSecondValue(), requireAliveIfAvailable, useTeamFilter, OwnerTeam);
         Vector3 origin = GetOriginPosition();
-        int count = Physics.OverlapSphereNonAlloc(
-            origin,
-            radius,
-            overlapBuffer,
-            targetLayers,
-            triggerInteraction);
-
-        candidateInstanceIds.Clear();
-        UpdateTauntState();
-
-        Candidate bestVisible = default(Candidate);
-        Candidate currentVisible = default(Candidate);
-        bool hasBestVisible = false;
-        bool hasCurrentVisible = false;
-
-        for (int i = 0; i < count; i++)
+        var scanPolicy = new AITargetScanPolicy
         {
-            Collider hit = overlapBuffer[i];
-            if (hit == null)
-                continue;
-
-            if (!TryResolveTarget(hit, out Transform targetRoot, out IAITargetable targetable))
-                continue;
-
-            if (targetRoot == null || !candidateInstanceIds.Add(targetRoot.GetInstanceID()))
-                continue;
-
-            if (!TryBuildCandidate(hit, targetRoot, targetable, origin, out Candidate candidate))
-                continue;
-
-            if (currentTarget != null && candidate.TargetRoot == currentTarget)
-            {
-                currentVisible = candidate;
-                hasCurrentVisible = true;
-            }
-
-            if (!hasBestVisible || candidate.Score > bestVisible.Score)
-            {
-                bestVisible = candidate;
-                hasBestVisible = true;
-            }
-        }
-
-        // A taunted character unconditionally knows where the taunter is — otherwise a
-        // wide-radius taunt skill silently does nothing against anything outside this
-        // sensor's own (usually much smaller) radius/FOV/line-of-sight range.
-        if (cachedTauntSource != null &&
-            candidateInstanceIds.Add(cachedTauntSource.GetInstanceID()) &&
-            TryBuildTauntCandidate(origin, out Candidate tauntCandidate))
-        {
-            if (currentTarget != null && tauntCandidate.TargetRoot == currentTarget)
-            {
-                currentVisible = tauntCandidate;
-                hasCurrentVisible = true;
-            }
-
-            if (!hasBestVisible || tauntCandidate.Score > bestVisible.Score)
-            {
-                bestVisible = tauntCandidate;
-                hasBestVisible = true;
-            }
-        }
-
-        visibleBestScore = hasBestVisible ? bestVisible.Score : float.NegativeInfinity;
-        if (hasBestVisible)
-            SetVisibleTarget(bestVisible.TargetRoot, bestVisible.Distance);
-        else
-            SetVisibleTarget(null, 0f);
-
-        if (hasBestVisible)
-        {
-            if (currentTarget == null)
-            {
-                ApplyVisibleTarget(bestVisible);
-                return;
-            }
-
-            if (currentTarget == bestVisible.TargetRoot)
-            {
-                ApplyVisibleTarget(bestVisible);
-                if (ignoreRetargetTimers || WorldNow >= nextRetargetEvaluationTime)
-                    ScheduleNextRetargetEvaluation();
-
-                return;
-            }
-
-            if (hasCurrentVisible)
-            {
-                ApplyVisibleTarget(currentVisible);
-                if (ShouldSwitchVisibleTarget(currentVisible, bestVisible, ignoreRetargetTimers))
-                    ApplyVisibleTarget(bestVisible);
-
-                return;
-            }
-
-            hasLineOfSight = false;
-            currentTargetScore = float.NegativeInfinity;
-            targetDistance = Vector3.Distance(origin, lastSeenPosition);
-
-            if (ShouldSwitchFromLostTarget(ignoreRetargetTimers))
-                ApplyVisibleTarget(bestVisible);
-
-            return;
-        }
-
-        hasLineOfSight = false;
-        currentTargetScore = float.NegativeInfinity;
-
-        if (IsCurrentTargetRetained())
-        {
-            targetDistance = Vector3.Distance(origin, lastSeenPosition);
-            return;
-        }
-
-        SetCurrentTarget(null);
-
-        if (IsWithinGracePeriod())
-        {
-            targetDistance = Vector3.Distance(origin, lastSeenPosition);
-        }
-        else
-        {
-            if (!ShouldKeepLastSeenTarget())
-                lastSeenTarget = null;
-
-            targetDistance = 0f;
-        }
-    }
-
-    void ApplyVisibleTarget(Candidate candidate)
-    {
-        SetCurrentTarget(candidate.TargetRoot);
-        lastSeenTarget = candidate.TargetRoot;
-        lastSeenPosition = candidate.TargetPoint;
-        hasLineOfSight = candidate.HasLineOfSight;
-        targetDistance = candidate.Distance;
-        lastSeenTime = WorldNow;
-        currentTargetScore = candidate.Score;
-    }
-
-    bool TryBuildCandidate(
-        Collider hit,
-        Transform targetRoot,
-        IAITargetable targetable,
-        Vector3 origin,
-        out Candidate candidate)
-    {
-        candidate = default(Candidate);
-
-        if (!IsValidTarget(targetRoot, targetable))
-            return false;
-
-        Vector3 targetPoint = GetTargetPoint(hit, targetRoot, targetable);
-        Vector3 toTarget = targetPoint - origin;
-        float distance = toTarget.magnitude;
-
-        if (useFieldOfView && fieldOfView < 360f && !IsInsideFOVXZ(toTarget))
-            return false;
-
-        bool lineOfSight = !requireLineOfSight || CheckLineOfSight(origin, targetPoint);
-        if (requireLineOfSight && !lineOfSight)
-            return false;
-
-        candidate = new Candidate
-        {
-            TargetRoot = targetRoot,
-            TargetPoint = targetPoint,
-            Distance = distance,
-            HasLineOfSight = lineOfSight,
-            Score = EvaluateCandidateScore(targetRoot, targetable, distance, lineOfSight)
+            Origin = origin, Forward = forwardReference != null ? forwardReference.forward : transform.forward,
+            Radius = Mathf.Max(0f, radius), UseFov = useFieldOfView, Fov = fieldOfView, RequireLos = requireLineOfSight,
+            RequireAlive = requireAliveIfAvailable, TeamFilter = useTeamFilter, OwnerTeam = OwnerTeam,
+            TargetLayers = targetLayers, Obstacles = obstacleLayers, Triggers = triggerInteraction, FallbackHeight = fallbackTargetHeightOffset,
+            DistanceWeight = GetDistanceScoreWeightValue(), Stickiness = GetCurrentTargetStickinessValue(), LosPenalty = GetLineOfSightPenaltyValue(),
+            UseThreat = UseThreatMemoryEnabled(), ThreatDecay = GetThreatDecayPerSecondValue(), ThreatWeight = GetThreatScoreWeightValue(),
+            PlayerBonus = targetingProfile != null ? targetingProfile.GetIdentityPriorityBonus(AITargetIdentity.Player) : playerPriorityBonus,
+            CompanionBonus = targetingProfile != null ? targetingProfile.GetIdentityPriorityBonus(AITargetIdentity.Companion) : companionPriorityBonus,
+            TankBonus = RoleBonus(CharacterCombatRole.Tank, tankPriorityBonus), HealerBonus = RoleBonus(CharacterCombatRole.Healer, healerPriorityBonus),
+            SupportBonus = RoleBonus(CharacterCombatRole.Support, supportPriorityBonus), SniperBonus = RoleBonus(CharacterCombatRole.Sniper, sniperPriorityBonus),
+            AssaultBonus = RoleBonus(CharacterCombatRole.Assault, assaultPriorityBonus)
         };
-        return true;
-    }
-
-    bool TryBuildTauntCandidate(Vector3 origin, out Candidate candidate)
-    {
-        candidate = default(Candidate);
-        if (cachedTauntSource == null)
-            return false;
-
-        TryResolveTrackedTarget(cachedTauntSource, out Transform targetRoot, out IAITargetable targetable);
-        if (targetRoot == null)
-            targetRoot = cachedTauntSource;
-
-        Vector3 targetPoint = GetTargetPoint(null, targetRoot, targetable);
-        float distance = Vector3.Distance(origin, targetPoint);
-
-        candidate = new Candidate
+        perception.Collect(ownerContext, memory, selector, ResolveTaunt(), scanPolicy, clock,
+            out AITargetCandidate best, out AITargetCandidate current, out AITargetCandidate taunted);
+        Vector2 interval = GetRetargetIntervalRangeValue();
+        float minimum = Mathf.Max(0.05f, interval.x);
+        var policy = new AITargetSelectionPolicy
         {
-            TargetRoot = targetRoot,
-            TargetPoint = targetPoint,
-            Distance = distance,
-            HasLineOfSight = true,
-            Score = EvaluateCandidateScore(targetRoot, targetable, distance, true)
+            GracePeriod = GetGracePeriodValue(), MinLockDuration = GetMinTargetLockDurationValue(),
+            SwitchThreshold = GetSwitchScoreThresholdValue(), SwitchRatio = GetSwitchScoreThresholdRatioValue(),
+            LostHoldDuration = GetLostTargetHoldDurationValue(), KeepLastSeen = ShouldKeepLastSeenTarget(),
+            EvaluationDelay = UnityEngine.Random.Range(minimum, Mathf.Max(minimum, interval.y))
         };
-        return true;
+        AITargetCandidate selected = selector.Select(memory, best, current, taunted, policy, clock, force, out var reason);
+        bool hasTarget = selected.Handle.InstanceId != 0;
+        float distance = hasTarget ? Vector3.Distance(origin, selected.Point) : 0f;
+        currentTargetScore = hasTarget ? selected.Score : float.NegativeInfinity;
+        visibleBestScore = best.Handle.InstanceId != 0 ? best.Score : float.NegativeInfinity;
+        Publish(new AITargetSnapshot(selected.Handle, best.Handle, memory.LastSeen, selected.Point,
+            memory.LastSeenPosition, memory.LastSeenTime, distance, best.Distance,
+            hasTarget && selected.HasLineOfSight, selected.IsVisible, reason));
     }
 
-    float EvaluateCandidateScore(
-        Transform targetRoot,
-        IAITargetable targetable,
-        float distance,
-        bool lineOfSight)
+    float RoleBonus(CharacterCombatRole role, float fallback) => targetingProfile != null ? targetingProfile.GetCombatRolePriorityBonus(role) : fallback;
+
+    void Publish(AITargetSnapshot next)
     {
-        float score = 0f;
-
-        if (targetable != null)
-            score += targetable.BaseTargetPriority;
-
-        score += GetIdentityPriorityBonus(targetable);
-        score += GetCombatRolePriorityBonus(targetable);
-        score += GetDistanceScore(distance);
-        score += GetThreatScore(targetRoot);
-
-        if (currentTarget != null && currentTarget == targetRoot)
-            score += GetCurrentTargetStickinessValue();
-
-        if (!lineOfSight)
-            score -= GetLineOfSightPenaltyValue();
-
-        if (IsTauntedTarget(targetRoot))
-            score += GetTauntScoreBonusValue();
-
-        return score;
+        int version = ++publicationVersion;
+        AITargetSnapshot old = snapshot;
+        Transform oldTarget = currentTarget;
+        Transform oldVisible = visibleTarget;
+        snapshot = next;
+        currentTarget = next.CurrentTarget;
+        visibleTarget = next.VisibleTarget;
+        lastSeenTarget = next.LastSeenTarget;
+        lastSeenPosition = next.LastSeenPosition;
+        lastSeenTime = next.LastSeenTime;
+        hasLineOfSight = next.HasLineOfSight;
+        targetDistance = next.TargetDistance;
+        visibleTargetDistance = next.VisibleTargetDistance;
+        currentTargetAcquiredTime = memory.AcquiredTime;
+        nextRetargetEvaluationTime = memory.NextEvaluation;
+        if (old.Target != next.Target) OnTargetChanged?.Invoke(oldTarget, currentTarget);
+        if (version != publicationVersion) return; // A callback disabled this sensor and published an empty state.
+        if (old.Visible != next.Visible) OnVisibleTargetChanged?.Invoke(oldVisible, visibleTarget);
     }
 
-    float GetIdentityPriorityBonus(IAITargetable targetable)
+    Vector3 GetOriginPosition() => (sensorOrigin != null ? sensorOrigin.position : transform.position) + Vector3.up * originHeightOffset;
+
+    public void CollectAuthoringIssues(List<string> issues)
     {
-        if (targetable == null)
-            return 0f;
-
-        if (targetingProfile != null)
-            return targetingProfile.GetIdentityPriorityBonus(targetable.TargetIdentity);
-
-        switch (targetable.TargetIdentity)
+        CharacteContext ctx = CharacterContextModuleLookup.ResolveContext(this);
+        if (ctx == null) issues.Add("AITargetSensor requires an owning CharacteContext.");
+        if (requireLineOfSight && obstacleLayers.value == 0) issues.Add("Line of sight is enabled but obstacleLayers is empty.");
+        if (targetLayers.value == 0) issues.Add("targetLayers is empty; no ordinary character targets can be discovered.");
+        if (ctx != null)
         {
-            case AITargetIdentity.Player:
-                return playerPriorityBonus;
-            case AITargetIdentity.Companion:
-                return companionPriorityBonus;
-            default:
-                return 0f;
+            if (ResolveFor(ctx) == null) issues.Add("Owning context has an ambiguous or foreign sensor binding.");
+            int hostileLayers = ctx.TargetIdentity == AITargetIdentity.Enemy
+                ? LayerMask.GetMask("Player", "Ally") : LayerMask.GetMask("Enemy");
+            if ((targetLayers.value & hostileLayers) == 0)
+                issues.Add("targetLayers excludes all authored opposing actor root layers.");
+            string expectedLayer = ctx.TargetIdentity == AITargetIdentity.Enemy ? "Enemy" :
+                ctx.TargetIdentity == AITargetIdentity.Player ? "Player" : "Ally";
+            if (ctx.gameObject.layer != LayerMask.NameToLayer(expectedLayer))
+                issues.Add("Actor root layer differs from the authored " + expectedLayer + " targeting layer.");
         }
     }
 
-    float GetCombatRolePriorityBonus(IAITargetable targetable)
+#if UNITY_EDITOR
+    void OnValidate()
     {
-        if (targetable == null)
-            return 0f;
+        maxHits = Mathf.Max(1, maxHits); // Retained serialized compatibility; discovery has no hit cap.
+        radius = Mathf.Max(0f, radius);
+    }
 
-        if (targetingProfile != null)
-            return targetingProfile.GetCombatRolePriorityBonus(targetable.CombatRole);
-
-        switch (targetable.CombatRole)
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(GetOriginPosition(), radius);
+        if (currentTarget != null)
         {
-            case CharacterCombatRole.Tank:
-                return tankPriorityBonus;
-            case CharacterCombatRole.Healer:
-                return healerPriorityBonus;
-            case CharacterCombatRole.Support:
-                return supportPriorityBonus;
-            case CharacterCombatRole.Sniper:
-                return sniperPriorityBonus;
-            case CharacterCombatRole.Assault:
-                return assaultPriorityBonus;
-            default:
-                return 0f;
+            Gizmos.color = Color.red;
+            Gizmos.DrawLine(GetOriginPosition(), snapshot.AimPosition);
         }
     }
-
-    float GetDistanceScore(float distance)
-    {
-        if (radius <= 0.01f)
-            return 0f;
-
-        float normalized = 1f - Mathf.Clamp01(distance / radius);
-        return normalized * GetDistanceScoreWeightValue();
-    }
-
-    float GetThreatScore(Transform targetRoot)
-    {
-        if (!UseThreatMemoryEnabled() || targetRoot == null)
-            return 0f;
-
-        int instanceId = targetRoot.GetInstanceID();
-        if (!threatEntries.TryGetValue(instanceId, out ThreatEntry entry))
-            return 0f;
-
-        UpdateThreatEntry(entry);
-        if (entry.Threat <= 0.001f)
-        {
-            threatEntries.Remove(instanceId);
-            return 0f;
-        }
-
-        return entry.Threat * GetThreatScoreWeightValue();
-    }
-
-    bool ShouldSwitchVisibleTarget(Candidate currentVisible, Candidate bestVisible, bool ignoreRetargetTimers)
-    {
-        if (!DoesCandidateBeatCurrent(currentVisible.Score, bestVisible.Score))
-        {
-            if (WorldNow >= nextRetargetEvaluationTime)
-                ScheduleNextRetargetEvaluation();
-
-            return false;
-        }
-
-        if (ignoreRetargetTimers)
-            return true;
-
-        if (WorldNow - currentTargetAcquiredTime < GetMinTargetLockDurationValue())
-            return false;
-
-        if (WorldNow < nextRetargetEvaluationTime)
-            return false;
-
-        ScheduleNextRetargetEvaluation();
-        return true;
-    }
-
-    bool ShouldSwitchFromLostTarget(bool ignoreRetargetTimers)
-    {
-        if (ignoreRetargetTimers)
-            return true;
-
-        if (WorldNow - lastSeenTime < GetLostTargetHoldDurationValue())
-            return false;
-
-        ScheduleNextRetargetEvaluation();
-        return true;
-    }
-
-    bool DoesCandidateBeatCurrent(float currentScoreValue, float challengerScore)
-    {
-        float ratioThreshold = Mathf.Abs(currentScoreValue) * GetSwitchScoreThresholdRatioValue();
-        float threshold = Mathf.Max(GetSwitchScoreThresholdValue(), ratioThreshold);
-        return challengerScore > currentScoreValue + threshold;
-    }
-
-    void ScheduleNextRetargetEvaluation()
-    {
-        Vector2 intervalRange = GetRetargetIntervalRangeValue();
-        float minInterval = Mathf.Max(0.05f, intervalRange.x);
-        float maxInterval = Mathf.Max(minInterval, intervalRange.y);
-        nextRetargetEvaluationTime = WorldNow + UnityEngine.Random.Range(minInterval, maxInterval);
-    }
-
-    void SetCurrentTarget(Transform newTarget)
-    {
-        if (currentTarget == newTarget)
-            return;
-
-        Transform old = currentTarget;
-        currentTarget = newTarget;
-
-        if (newTarget != null)
-        {
-            currentTargetAcquiredTime = WorldNow;
-            ScheduleNextRetargetEvaluation();
-        }
-        else
-        {
-            currentTargetAcquiredTime = float.NegativeInfinity;
-            nextRetargetEvaluationTime = WorldNow;
-        }
-
-        OnTargetChanged?.Invoke(old, newTarget);
-    }
-
-    void SetVisibleTarget(Transform newTarget, float distance)
-    {
-        if (visibleTarget == newTarget)
-        {
-            visibleTargetDistance = newTarget != null ? distance : 0f;
-            return;
-        }
-
-        Transform old = visibleTarget;
-        visibleTarget = newTarget;
-        visibleTargetDistance = newTarget != null ? distance : 0f;
-        OnVisibleTargetChanged?.Invoke(old, newTarget);
-    }
-
-    bool TryResolveTarget(Collider hit, out Transform targetRoot, out IAITargetable targetable)
-    {
-        targetRoot = null;
-        targetable = null;
-
-        if (hit == null)
-            return false;
-
-        if (TryResolveCharacterTarget(hit.transform, out targetRoot, out targetable))
-            return true;
-
-        targetable = FindTargetable(hit.transform);
-        if (targetable is Component targetComponent)
-        {
-            targetRoot = targetComponent.transform;
-            return true;
-        }
-
-        if (hit.attachedRigidbody != null)
-        {
-            Transform rigidbodyRoot = hit.attachedRigidbody.transform;
-            if (TryResolveCharacterTarget(rigidbodyRoot, out targetRoot, out targetable))
-                return true;
-
-            targetRoot = rigidbodyRoot;
-            return true;
-        }
-
-        targetRoot = hit.transform.root != null ? hit.transform.root : hit.transform;
-        return targetRoot != null;
-    }
-
-    bool IsValidTarget(Transform targetRoot, IAITargetable targetable)
-    {
-        if (targetRoot == null)
-            return false;
-
-        if (targetRoot == transform || targetRoot.root == transform.root)
-            return false;
-
-        if (targetable != null && !IsTargetAllowedByTargetable(targetable))
-            return false;
-
-        return IsTargetAllowedByLifeState(targetRoot);
-    }
-
-    bool RefreshTrackedTargetValidity()
-    {
-        bool invalidated = false;
-        UpdateTauntState();
-
-        if (currentTarget != null && !IsTrackedTargetStillValid(currentTarget))
-        {
-            SetCurrentTarget(null);
-            hasLineOfSight = false;
-            targetDistance = 0f;
-            currentTargetScore = float.NegativeInfinity;
-            invalidated = true;
-        }
-
-        if (visibleTarget != null && !IsTrackedTargetStillValid(visibleTarget))
-        {
-            SetVisibleTarget(null, 0f);
-            invalidated = true;
-        }
-
-        if (lastSeenTarget != null && !IsTrackedTargetStillValid(lastSeenTarget))
-        {
-            lastSeenTarget = null;
-            lastSeenPosition = Vector3.zero;
-            lastSeenTime = float.NegativeInfinity;
-            hasLineOfSight = false;
-            targetDistance = 0f;
-            currentTargetScore = float.NegativeInfinity;
-            invalidated = true;
-        }
-
-        PruneThreatEntries();
-        return invalidated;
-    }
-
-    bool IsTrackedTargetStillValid(Transform target)
-    {
-        if (!TryResolveTrackedTarget(target, out Transform targetRoot, out IAITargetable targetable))
-            return false;
-
-        if (targetRoot == transform || targetRoot.root == transform.root)
-            return false;
-
-        if (targetable != null && !IsTargetAllowedByTargetable(targetable))
-            return false;
-
-        return IsTargetAllowedByLifeState(targetRoot);
-    }
-
-    bool TryResolveTrackedTarget(Transform target, out Transform targetRoot, out IAITargetable targetable)
-    {
-        targetRoot = null;
-        targetable = null;
-
-        if (target == null)
-            return false;
-
-        if (TryResolveCharacterTarget(target, out targetRoot, out targetable))
-            return true;
-
-        targetable = FindTargetable(target);
-        if (targetable is Component targetComponent)
-        {
-            targetRoot = targetComponent.transform;
-            return true;
-        }
-
-        Rigidbody targetRigidbody = target.GetComponentInParent<Rigidbody>();
-        if (targetRigidbody != null)
-        {
-            Transform rigidbodyRoot = targetRigidbody.transform;
-            if (TryResolveCharacterTarget(rigidbodyRoot, out targetRoot, out targetable))
-                return true;
-
-            targetRoot = rigidbodyRoot;
-            return true;
-        }
-
-        targetRoot = target.root != null ? target.root : target;
-        return targetRoot != null;
-    }
-
-    bool TryResolveCharacterTarget(Transform start, out Transform targetRoot, out IAITargetable targetable)
-    {
-        targetRoot = null;
-        targetable = null;
-
-        if (start == null)
-            return false;
-
-        CharacteContext targetContext = start.GetComponentInParent<CharacteContext>();
-        if (targetContext == null)
-            return false;
-
-        if (targetContext.transform == transform || targetContext.transform.root == transform.root)
-            return false;
-
-        AITargetInfo targetInfo = GetCachedTargetInfo(targetContext);
-        if (targetInfo != null)
-        {
-            targetRoot = targetInfo.transform;
-            targetable = targetInfo;
-            return true;
-        }
-
-        targetRoot = targetContext.transform;
-        return true;
-    }
-
-    AITargetInfo GetCachedTargetInfo(CharacteContext targetContext)
-    {
-        if (targetContext == null)
-            return null;
-
-        if (targetContext.TargetInfo != null)
-            return targetContext.TargetInfo;
-
-        targetContext.TargetInfo = targetContext.GetComponent<AITargetInfo>();
-        if (targetContext.TargetInfo == null)
-            targetContext.TargetInfo = targetContext.GetComponentInChildren<AITargetInfo>(true);
-
-        return targetContext.TargetInfo;
-    }
-
-    bool IsTargetAllowedByTargetable(IAITargetable targetable)
-    {
-        if (targetable == null)
-            return true;
-
-        if (requireAliveIfAvailable && !targetable.IsAlive)
-            return false;
-
-        if (!targetable.IsTargetable)
-            return false;
-
-        if (useTeamFilter && targetable.TeamId == ResolveOwnerTeamId())
-            return false;
-
-        return true;
-    }
-
-    int ResolveOwnerTeamId()
-    {
-        if (ownerContext != null && ownerContext.TargetInfo != null)
-            return ownerContext.TargetInfo.TeamId;
-
-        return ownerTeamId;
-    }
-
-    bool IsTargetAllowedByLifeState(Transform targetRoot)
-    {
-        if (targetRoot == null)
-            return false;
-
-        CharacteContext targetContext = targetRoot.GetComponentInParent<CharacteContext>();
-        if (targetContext == null || targetContext.stateHub == null)
-            return true;
-
-        return targetContext.stateHub.IsAlive && !targetContext.stateHub.Isdown;
-    }
-
-    IAITargetable FindTargetable(Transform start)
-    {
-        if (start == null)
-            return null;
-
-        MonoBehaviour[] all = start.GetComponentsInParent<MonoBehaviour>(true);
-        for (int i = 0; i < all.Length; i++)
-        {
-            if (all[i] is IAITargetable targetable)
-                return targetable;
-        }
-
-        return null;
-    }
-
-    Vector3 GetTargetPoint(Collider hit, Transform targetRoot, IAITargetable targetable)
-    {
-        if (targetable != null && targetable.AimPoint != null)
-            return targetable.AimPoint.position;
-
-        if (hit != null)
-            return hit.bounds.center;
-
-        return targetRoot.position + Vector3.up * fallbackTargetHeightOffset;
-    }
-
-    Vector3 GetOriginPosition()
-    {
-        Transform origin = sensorOrigin != null ? sensorOrigin : transform;
-        return origin.position + Vector3.up * originHeightOffset;
-    }
-
-    bool IsInsideFOVXZ(Vector3 toTarget)
-    {
-        Vector3 forward = forwardReference != null ? forwardReference.forward : transform.forward;
-        Vector3 flatForward = Vector3.ProjectOnPlane(forward, Vector3.up);
-        Vector3 flatToTarget = Vector3.ProjectOnPlane(toTarget, Vector3.up);
-
-        if (flatForward.sqrMagnitude < 0.0001f || flatToTarget.sqrMagnitude < 0.0001f)
-            return true;
-
-        return Vector3.Angle(flatForward, flatToTarget) <= fieldOfView * 0.5f;
-    }
-
-    bool CheckLineOfSight(Vector3 origin, Vector3 targetPoint)
-    {
-        Vector3 direction = targetPoint - origin;
-        float distance = direction.magnitude;
-        if (distance <= 0.001f)
-            return true;
-
-        return !Physics.Raycast(
-            origin,
-            direction / distance,
-            distance,
-            obstacleLayers,
-            triggerInteraction);
-    }
-
-    bool IsWithinGracePeriod()
-    {
-        if (lastSeenTarget != null && !IsTrackedTargetStillValid(lastSeenTarget))
-            return false;
-
-        return WorldNow - lastSeenTime <= GetGracePeriodValue();
-    }
-
-    bool IsCurrentTargetRetained()
-    {
-        if (currentTarget == null)
-            return false;
-
-        if (!IsTrackedTargetStillValid(currentTarget))
-            return false;
-
-        if (hasLineOfSight)
-            return true;
-
-        return WorldNow - lastSeenTime <= GetGracePeriodValue();
-    }
-
-    void OnDamageTaken(float amount, GameObject attacker)
-    {
-        if (attacker == null || amount <= 0f)
-            return;
-
-        RegisterThreat(attacker, amount * GetDamageThreatMultiplierValue());
-    }
-
-    void RegisterThreatInternal(Transform targetRoot, IAITargetable targetable, float amount)
-    {
-        if (!UseThreatMemoryEnabled() || targetRoot == null || amount <= 0f)
-            return;
-
-        int instanceId = targetRoot.GetInstanceID();
-        if (!threatEntries.TryGetValue(instanceId, out ThreatEntry entry))
-        {
-            entry = new ThreatEntry();
-            entry.Target = targetRoot;
-            entry.Threat = 0f;
-            entry.LastUpdateTime = WorldNow;
-            threatEntries.Add(instanceId, entry);
-        }
-
-        UpdateThreatEntry(entry);
-
-        float multiplier = targetable != null ? Mathf.Max(0f, targetable.ThreatMultiplier) : 1f;
-        entry.Target = targetRoot;
-        entry.Threat = Mathf.Clamp(entry.Threat + amount * multiplier, 0f, GetMaxThreatPerTargetValue());
-        entry.LastUpdateTime = WorldNow;
-    }
-
-    void UpdateThreatEntry(ThreatEntry entry)
-    {
-        if (entry == null)
-            return;
-
-        float elapsed = Mathf.Max(0f, WorldNow - entry.LastUpdateTime);
-        if (elapsed <= 0f)
-            return;
-
-        entry.Threat = Mathf.Max(0f, entry.Threat - GetThreatDecayPerSecondValue() * elapsed);
-        entry.LastUpdateTime = WorldNow;
-    }
-
+#endif
     bool ShouldKeepLastSeenTarget()
     {
         return targetingProfile != null ? targetingProfile.KeepLastSeenTarget : keepLastSeenTarget;
@@ -1148,124 +513,4 @@ public class AITargetSensor : MonoBehaviour
         return targetingProfile != null ? targetingProfile.TauntScoreBonus : Mathf.Max(0f, tauntScoreBonus);
     }
 
-    void PruneThreatEntries()
-    {
-        if (threatEntries.Count == 0)
-            return;
-
-        List<int> removeKeys = null;
-        foreach (KeyValuePair<int, ThreatEntry> pair in threatEntries)
-        {
-            ThreatEntry entry = pair.Value;
-            if (entry == null)
-            {
-                if (removeKeys == null)
-                    removeKeys = new List<int>();
-
-                removeKeys.Add(pair.Key);
-                continue;
-            }
-
-            UpdateThreatEntry(entry);
-            if (entry.Target == null || entry.Threat <= 0.001f || !IsTrackedTargetStillValid(entry.Target))
-            {
-                if (removeKeys == null)
-                    removeKeys = new List<int>();
-
-                removeKeys.Add(pair.Key);
-            }
-        }
-
-        if (removeKeys == null)
-            return;
-
-        for (int i = 0; i < removeKeys.Count; i++)
-            threatEntries.Remove(removeKeys[i]);
-    }
-
-    bool IsTauntedTarget(Transform target)
-    {
-        return cachedTauntSource != null && target != null && cachedTauntSource == target;
-    }
-
-    /// <summary>
-    /// Taunt state ถูก derive ใหม่ทุกครั้งที่ resolve/cache invalidate — ไม่มีการเก็บ Taunt Def เฉพาะตัวไว้ที่
-    /// sensor. กติกา: instance ที่ติด tag Taunt และ ApplicationSequence สูงสุด (apply/refresh ล่าสุด) ชนะ;
-    /// ถ้าตัวล่าสุดหมดอายุหรือ source ถูก destroy/resolve ไม่ได้ ก็ไล่ลงไปหา instance ถัดไปที่ยัง active อยู่.
-    /// </summary>
-    void UpdateTauntState()
-    {
-        cachedTauntSource = null;
-
-        StatusEffectController controller = ResolveStatusEffects();
-        if (controller == null)
-            return;
-
-        IReadOnlyList<StatusEffectInstance> activeEffects = controller.ActiveEffects;
-        Transform bestSource = null;
-        ulong bestSequence = 0;
-
-        for (int i = 0; i < activeEffects.Count; i++)
-        {
-            StatusEffectInstance instance = activeEffects[i];
-            if (instance == null || instance.CurrentStacks <= 0 || instance.Source == null)
-                continue;
-
-            if (!StatusEffectTags.Has(instance.Definition, StatusEffectTags.Taunt))
-                continue;
-
-            if (bestSource != null && instance.ApplicationSequence <= bestSequence)
-                continue;
-
-            if (!TryResolveTrackedTarget(instance.Source.transform, out Transform sourceRoot, out _))
-                continue;
-
-            if (!IsTrackedTargetStillValid(sourceRoot))
-                continue;
-
-            bestSource = sourceRoot;
-            bestSequence = instance.ApplicationSequence;
-        }
-
-        cachedTauntSource = bestSource;
-    }
-
-    struct Candidate
-    {
-        public Transform TargetRoot;
-        public Vector3 TargetPoint;
-        public float Distance;
-        public bool HasLineOfSight;
-        public float Score;
-    }
-
-    sealed class ThreatEntry
-    {
-        public Transform Target;
-        public float Threat;
-        public float LastUpdateTime;
-    }
-
-#if UNITY_EDITOR
-    void OnDrawGizmosSelected()
-    {
-        Vector3 origin = (sensorOrigin != null ? sensorOrigin.position : transform.position) + Vector3.up * originHeightOffset;
-
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(origin, radius);
-
-        Transform trackedTarget = CurrentTarget;
-        if (trackedTarget != null)
-        {
-            Gizmos.color = Color.red;
-            Gizmos.DrawLine(origin, trackedTarget.position);
-        }
-        else if (IsWithinGracePeriod())
-        {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawSphere(lastSeenPosition, 0.15f);
-            Gizmos.DrawLine(origin, lastSeenPosition);
-        }
-    }
-#endif
 }

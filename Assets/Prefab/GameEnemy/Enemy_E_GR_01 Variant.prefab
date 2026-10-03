@@ -123,7 +123,7 @@ PrefabInstance:
     - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: MovementMotor
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1725936945334680435}
     - target: {fileID: 4463375380434640548, guid: 6e3801d708972a846aa41395176971c7, type: 3}
       propertyPath: NavigationAgent
       value: 
@@ -680,6 +680,17 @@ MonoBehaviour:
       m_Version: 3.4
     m_GroupPropertiesData: []
     m_SharedVariableGroupsData: []
+--- !u!114 &1725936945334680435 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4092968023583240015, guid: 6e3801d708972a846aa41395176971c7, type: 3}
+  m_PrefabInstance: {fileID: 3404411507299275836}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4978597242027806435}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 075d5f6cfec8f664199b898d72f49100, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &1874052612295701136 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: -5386552744308611412, guid: 6e3801d708972a846aa41395176971c7, type: 3}

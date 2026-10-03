@@ -1,5 +1,231 @@
 # Validation
 
+## Party Follow-Up rename (2026-10-01)
+
+Renamed the event-driven Party Combo system to Party Follow-Up, including types,
+input actions/callbacks, authoring menus, HUD labels, asset folders and documentation.
+Basic Melee Combo Skills and the legacy Chain Attack keep their existing contracts.
+
+### Compilation
+
+- Required `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings** after updating the
+  camera partial's renamed field. Log: `../BuildArtifacts/FollowUpRename/AssemblyBuild.log`.
+- Unity recompile reported completion without source errors after the rename and
+  Test Runner bridge were added. Subsequent Editor requests timed out.
+
+### Automated tests
+
+`PartyFollowUpRunnerTests` exposes the existing core, placement, presentation,
+camera, HUD and saved-upgrade fixtures to Test Runner. The requested Edit Mode
+run timed out after 300 seconds without returning results. Cancel/status requests
+also timed out; no passing test count is claimed for this migration.
+
+### Assets and runtime checks
+
+- All **39** tracked script/folder asset GUIDs from the pre-rename snapshot still
+  resolve on disk. The two Input Action IDs and both authored definition/upgrade
+  IDs remain stable; Player and test-prefab UnityEvents name the new callbacks.
+- Compared serialized reference lists against the captured originals: 18 of 19
+  inspected files were identical. GameplayHUD adds nine GameObject name overrides
+  on its nested display prefab; its existing references were retained.
+- `FormerlySerializedAs` maps renamed authoring fields; `MovedFrom` records renamed
+  Unity types. The upgrade save slot remains `party-combo`.
+- A live reference audit and Play Mode check could not complete because Unity's
+  main-thread MCP calls timed out. Rerun `PartyFollowUpRunnerTests` and
+  **Tools > Validation > Validate Party Follow-Up Skills** once the Editor responds.
+- Audit evidence and the original touched files are under
+  `../BuildArtifacts/FollowUpRename/`; `ValidateFollowUpRename.cs` in the parent
+  BuildArtifacts directory contains the prepared Unity reference audit.
+
+## Shared animation playback and simple state lifecycle (2026-10-01)
+
+`AnimationPlayback` now owns per-clip events, callback/VFX cleanup and timing
+options. Named simple states share action/locomotion bases; Skill/Chain retain
+phase/request rules. Reload's helper, the separate action admission class and
+CommanBlock lease wrapper were removed. Public/serialized authoring, priority,
+End Time, Cancel and update order remain as before. The command-flow document
+includes a minimal state example.
+
+### Compilation
+
+- Required `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings** after the final
+  runtime edits. Evidence: `../BuildArtifacts/AnimationSimplification/FinalBuild.log`.
+- Unity runtime, Editor and test assemblies compiled; `scriptCompilationFailed`
+  and `isCompiling` were false. No generated project/tooling changes were needed.
+- Existing URP `AutodeskInteractive.shadergraph` import errors remain; the
+  inconsistent Screen healing prefab import and TimeSlowManager shutdown issue
+  are tracked separately. This refactor does not claim to fix them.
+
+### Automated tests
+
+- **Edit Mode: 169/169 passed, zero skipped**. The previous 159 cases plus ten
+  new cases ran through `AnimationTransitionRegressionRunnerTests`,
+  `CommanBlockRunnerTests` and `SkillCastArchitectureTests`.
+  Evidence: `EditMode.xml`, `FinalEditResults.json` (job
+  `e8b9e93384134d8788d90c560cf21d4b`).
+- **Play Mode: 3/3 passed, zero skipped**: same-frame Live/Crawl intent and
+  smoothing, StateHub actor/reload lifecycle and UI/Dash ownership. Evidence:
+  native TestRunner `PlayMode.xml`. A temporary Editor result observer exported
+  XML across domain reload and was removed afterwards.
+- New tests cover slot replay/End Time, repeated Stop, stale Stop when another
+  slot reuses the same Animancer state, authored-end reentry, timeline subscriber
+  reentry, exception isolation, shared transitions and VFX across actors,
+  Skill cutscene-to-main, Dead/StageIntro pose holding, and Dash/Knockback timing.
+  Existing pose, binding, priority, cancellation, Reload and temporary-state
+  checks remained enabled. Fixtures now call the owning Presentation module or
+  actual bound OnEnd instead of removed private forwarding methods.
+- Intermediate compile/fixture failures were corrected and rerun. One accidental
+  unfiltered run used previously loaded assemblies while source compilation was
+  failing and reported failures across unrelated suites; it is not counted as
+  validation. The final results above are the scoped, freshly compiled runs.
+
+### Runtime and visual checks
+
+Fresh Unity MCP probes in `RectorDefensiveBlock.unity` after the final runtime edit:
+
+- **Roma:** CommanBlock, replay during fade, shooting and world slow 0.2.
+  Across 234 samples, all 114 outgoing fade samples had movement/rotation
+  released; final full-body weight was zero. Actor graph speeds reflected their
+  world-slow policy. Evidence: `RuntimeRoma.json`.
+- **Aires/Feno:** upper/full-body Reload, repeated SpecialReaction Cancel and
+  invalidation during a new reaction. Each interruption was delivered once.
+  Final callbacks, VFX and pending cleanup were zero; movement/rotation and both
+  navigation update flags were restored. Feno was loaded via the actual runtime
+  definition/model replacement path. Evidence: `RuntimeAlliesSamples.json`.
+- **Rector:** Skill approach/hold and temporary struggle using its MiniStun clip
+  because the scene has no authored struggle clip. Cancel retained 19 visible
+  outgoing fade samples, then destroyed the temporary playable and cleared
+  pending cleanup. Evidence: `RuntimeEnemyStruggle.json`.
+- **Fallback/watchdog:** missing SpecialReaction clip completed via its fallback;
+  a frozen graph then completed via its watchdog. A frozen Chain cutscene also
+  completed once with root motion released. Evidence:
+  `RuntimeSpecialFallbackWatchdog.json`, `RuntimeChainWatchdog.json`.
+- **Fixed/manual pose:** 107 rendered frames included 51 distinct evaluation
+  generations; each applied generation matched. A paused normal graph remained
+  at generation 76, manual Evaluate advanced to 77, and resume continued at 78.
+  Evidence: `RuntimeAutomaticFixed.json`, `RuntimeFixedEvaluation.json`.
+- **Defensive Block:** one successful command/impact, Player/Ally HP 900/1250,
+  guard ended, Rector root motion off and navigation position ownership restored.
+  Evidence: `RuntimeDefensiveBlockResult.json`.
+- **Visual:** inspected automatic Roma command pose, intermediate fade weight
+  0.5499, and Idle at weight zero. Evidence: `Captures/RomaLive0.png` through
+  `RomaLive2.png`, `RuntimeLiveCaptures.json`. This is representative visual
+  sampling, not a review of every authored clip/camera angle.
+
+All evidence in this section is under
+`P:/Game_RB_Project/BuildArtifacts/AnimationSimplification/`. The Editor was
+returned to stopped Edit Mode, the prior time scale 0.1 restored, and temporary
+runtime models/profile substitutions and the result observer removed. No scene,
+profile or prefab migration was made for this change. The full long-running
+DefensiveBlock matrix and every authored Skill/Chain/cutscene visual remain
+outside these representative checks.
+
+## Animation module separation and lifecycle fixes (2026-09-30, validated 2026-10-01)
+
+Binding, presentation, session coordination, timeline/VFX and signal dispatch have
+separate internal owners. Driver/Brain run at Update orders 1000/1100. Pair offsets
+restore before graph evaluation and apply once per evaluated pose. Explicit
+Skill/Utility/Chain cancellation reports one interruption after cleanup.
+
+### Fix found during validation
+
+On the real Roma rig, a second CommanBlock used End Time `1` instead of the
+profile's `0.436716437`. Animancer 8.4 assigns transition events when creating a
+state; it does not restore them on every replay. Our cleanup correctly detached
+callbacks but replay then created an empty event sequence. Presentation now
+restores the transition's authored sequence before each action/locomotion binding.
+A regression test failed on playback 2 before the fix and passes after it. Separate
+coverage checks a repeated locomotion SpecialReaction after cancellation.
+
+Two fixture issues were also corrected without weakening assertions: the moving
+bone test now uses distinct clips for its two Pair Offset profiles (null clip keys
+previously overwrote one profile); the staged melee guard calls the same
+`ResolveActiveGuardOffset` initialization as actual arrival. The latter resolves
+the previously documented `-0.55` versus `-1.95` fixture failure.
+
+### Compilation
+
+- Required `CheckAssemblyBuild.ps1` after the replay fix: **0 errors, 93 warnings**.
+  Log: `P:/Game_RB_Project/BuildArtifacts/AnimationArchitecture/ReplayFixBuild.log`.
+- Unity compiled runtime, Editor and test assemblies. `scriptCompilationFailed`
+  was false. Generated projects and the build validation script were not edited.
+- Console is **not clean**: the existing URP `AutodeskInteractive.shadergraph`
+  import errors remain. A Play Mode shutdown also reported a leftover
+  `TimeSlowManager`; this wider shutdown issue was observed but not attributed to
+  this animation change or fixed here. No animation source compilation error was
+  found. See `FinalRuntimeConsole.json` in the artifact directory.
+
+### Automated tests
+
+- **Edit Mode: 159/159 passed**, zero skipped, after the final runtime change.
+  Suites: `AnimationTransitionRegressionRunnerTests`, `CommanBlockRunnerTests`,
+  and `SkillCastArchitectureTests`. The regression bridge includes Brain smoke,
+  transition priority, root-motion collision, Melee, Block animation ownership,
+  and DefensiveBlock fixtures. Evidence: `EditFinal.xml`, `EditResults5.json`.
+- **Play Mode: 3/3 passed**, zero skipped, after the final runtime change:
+  Live/Crawl same-frame movement and smoothing; StateHub reload/actor lifecycle;
+  UI/Dash ownership. Evidence: `PlayFinal.xml`.
+- MCP lost its Play Mode job callbacks during domain reload and reported a false
+  initialization timeout. A temporary Editor TestRunner callback exported the
+  actual native results to XML across reloads. That observer was removed after
+  validation; no test assertions were skipped or suppressed.
+
+Coverage includes reentrant cancel, repeated cancel, same-ID replay, stale/authored
+callbacks, binding invalidation, destroyed model cleanup, throwing subscribers,
+terminal ordering, VFX lifetime, root-motion policy publication, Reload modes,
+action overlap, weighted bone rotations, full-body coverage, manual/paused
+animation evaluation, temporary-state retirement and importer execution orders.
+
+### Runtime and visual checks
+
+Checked through Unity MCP in `RectorDefensiveBlock.unity` after the replay fix:
+
+- **Roma:** real CommanBlock, replay during fade, shooting after completion and
+  world slow `0.2`. Across 152 samples, movement/rotation were already released
+  in 23 outgoing fade frames; final full-body weight was zero and root motion
+  stayed off. Player graph speed was `1`; Aires, Feno and enemy graphs were `0.2`.
+  Evidence: `RuntimeRomaAfterFix.json`.
+- **Aires/Feno:** upper/full-body Reload respectively, repeated SpecialReaction
+  cancel, then invalidation during a new reaction. Each cancellation was delivered
+  once; final callback/VFX/cleanup counts were zero, movement/rotation allowed,
+  root motion off and navigation updatePosition/updateRotation restored.
+  Feno was loaded through the runtime definition/model path on Ally 2, also
+  exercising actual model replacement. Evidence: `RuntimeAlliesSamples.json`.
+  These profiles have no CommanBlock clip; their authoring was not changed.
+- **Enemy:** actual Rector skill/approach/hold followed by a temporary struggle
+  using its existing MiniStun clip (this scene has no authored struggle clip).
+  Cancel preserved the frozen outgoing pose as its weight decreased, then
+  destroyed the playable and reduced pending cleanup to zero.
+  Evidence: `RuntimeEnemyStruggle.json`.
+- **Fixed/paused evaluation:** a separate Roma model rig configured Fixed before
+  graph creation produced 50 evaluations across 115 rendered frames; applied
+  generations always matched, without extra application on unevaluated frames.
+  A paused graph kept its generation constant, one manual evaluation advanced it,
+  and resume restarted evaluation. Evidence: `RuntimeAutomaticFixed.json` and
+  `RuntimeFixedEvaluation.json`. Changing a running graph from Normal to Fixed
+  does not test this: Animancer documents that runtime switch as unsupported.
+- **Defensive Block integration:** the real skill/command sequence succeeded once;
+  Player/Ally HP remained 900/1250, guard ended, enemy root motion ended and
+  navigation position ownership returned. Evidence: `RuntimeDefensiveBlockResult.json`.
+- **Visual sampling:** inspected Roma from command pose through an intermediate
+  fade weight `0.5487` to Idle at weight zero during automatic playback. Images
+  `Captures/RomaLive0.png` through `RomaLive2.png` and timing
+  `RuntimeLiveCaptures.json` are in the artifact directory. Also inspected the
+  scene with Roma/Aires/Feno/enemy visible. These are representative captures,
+  not an exhaustive visual review of every authored animation and camera angle.
+
+Root/nested peers were exercised by the Player/Ally model layout and root-level
+Rector, plus the automated binding/cleanup cases. No production prefab or profile
+migration was made. The scene was returned to stopped Edit Mode; temporary runtime
+rigs/model substitutions and the result observer were removed. The pre-existing
+runtime time scale `0.1` was restored after checks run at scale `1`.
+
+Remaining scope: the complete long-running DefensiveBlock harness matrix and a
+visual review of every Skill/Chain/Melee/cutscene clip were not run. Automated
+priority/lifecycle coverage and the specific runtime checks above must not be
+reported as an exhaustive gameplay or visual pass. The shutdown Console issue
+listed above also remains open.
+
 ## Shared animation fades and fixed masks (2026-09-30)
 
 `CharacterAnimBrain.Transitions.cs` owns presentation playback, layer fades and
@@ -123,7 +349,7 @@ APIs and serialized fields retain their names.
 | `HelperBaseStatsLoadoutSmokeTests` | **14/14** |
 | `CombatLoadoutRunLockTests` | **2/2** |
 | `SkillLoadoutUiTests` | **8/9** |
-| `PartyComboCoreSmokeTests` | **11/11** |
+| `PartyFollowUpCoreSmokeTests` | **11/11** |
 
 Total: **237/239**. Full results:
 `P:/Game_RB_Project/BuildArtifacts/SkillManagerRefactorTests.json`.
@@ -291,7 +517,7 @@ offset. No production Defensive Block implementation or assertion was changed.
 
 | Asset (under `Assets/Data`) | Blocking configuration |
 | --- | --- |
-| `PartyCombo/Test/Test.Feno.ComboTauntExecution.asset` | Missing `TauntApply` |
+| `PartyFollowUp/Test/Test.Feno.FollowUpTauntExecution.asset` | Missing `TauntApply` at this audit; repaired in the 2026-10-01 Ally Combo camera investigation below |
 | `Skills/Aires/Aires_Active.asset` | Missing `TauntApply` |
 | `Skills/Aires/Aires_Skill_2.asset` | Morph status entry 0 has no Status Effect |
 | `Skills/Enemies/Mons.GR004/Skill_1_M_GR04.asset` | Missing `HitStart` and `HitEnd` |
@@ -517,7 +743,7 @@ their fixtures. No production asset migration is required or performed.
   The same final fixture also passed direct invocation; report:
   `../BuildArtifacts/PartyCommandSkillTests.txt`.
 - Existing `HelperBaseStatsLoadoutSmokeTests`, `SkillCastTransactionSmokeTests`
-  and `PartyComboPlacementTests`: **52/52 passed** through direct Editor fixture
+  and `PartyFollowUpPlacementTests`: **52/52 passed** through direct Editor fixture
   invocation with setup/teardown. Their Test Runner requests timed out before
   starting; these 52 results are not Test Runner results. Report:
   `../BuildArtifacts/PartyCommandRegression.txt`.
@@ -1590,13 +1816,13 @@ Not reachable from Edit Mode; run these in Unity:
   takes the Headshot path. Death on the final-point shot produces no Special
   reaction and no ChainReady.
 
-# Party Combo validation
+# Party Follow-Up validation
 
-`PartyComboCameraHoldTests` verifies post-release hold, zero-duration return,
+`PartyFollowUpCameraHoldTests` verifies post-release hold, zero-duration return,
 repeated/stale release ownership, cancellation, pause and hold expiry. Skill
 release timing and world slow remain independent of the camera hold.
 
-`PartyComboPlacementTests` exercises actual camera projection and physics sight
+`PartyFollowUpPlacementTests` exercises actual camera projection and physics sight
 queries: a target blocking the rear pose, partial-occlusion fallback, offscreen
 poses, ignoring the caster and sensor triggers, and selecting a visible ring
 pose on a temporary NavMesh. It also covers a CharacterController above an
@@ -1608,23 +1834,23 @@ authoring custom layers. Inspect both the chosen warp pose and the following
 animation, since the static placement visibility score does not predict each
 animation frame.
 
-`PartyComboPresentationTests` covers slow ownership during overlapping combos,
+`PartyFollowUpPresentationTests` covers slow ownership during overlapping combos,
 priority and cleanup against timed dash/cutscene slows, pause freezing the
 world clock and expiry, and curve recovery at the cast point. Run it with
-`PartyComboCoreSmokeTests` in Edit Mode. The camera framing/return and actual
+`PartyFollowUpCoreSmokeTests` in Edit Mode. The camera framing/return and actual
 animation release still need the Play Mode matrix in the system document.
 
-Run **Tools > Validation > Validate Party Combo Skills** after editing
-`PartyComboSkillDef`, `PartyComboExecutionProfile`, or character loadouts. The
+Run **Tools > Validation > Validate Party Follow-Up Skills** after editing
+`PartyFollowUpSkillDef`, `PartyFollowUpExecutionProfile`, or character loadouts. The
 validator reports empty/duplicate combo IDs, missing execution assets,
 unsupported MVP triggers, invalid offer durations, and reuse of battle, Helper,
 or legacy Chain Attack skills.
 
-`PartyComboCoreSmokeTests` covers the serialized `PassiveEventType` number
+`PartyFollowUpCoreSmokeTests` covers the serialized `PassiveEventType` number
 contract, fact/chain/provenance propagation, supported trigger values, and the
 dedicated null-snapshot combo runtime entry. The broader runtime matrix and
 prefab wiring checklist live in
-[`Docs/SYSTEMS/PARTY_COMBO.md`](SYSTEMS/PARTY_COMBO.md).
+[`Docs/SYSTEMS/PARTY_FOLLOW_UP.md`](SYSTEMS/PARTY_FOLLOW_UP.md).
 
 ## Defensive Block validation
 
@@ -2764,9 +2990,9 @@ The open Aires_Skill_1 timeline was confirmed to expose Cast Point, Placement
 Point, and Hitbox lanes. No Play Mode combat validation was performed for this
 editor change.
 
-### Party Combo root-motion placement (2026-09-24)
+### Party Follow-Up root-motion placement (2026-09-24)
 
-`PartyComboPlacementTests` has 10 passing Edit Mode cases, invoked directly in
+`PartyFollowUpPlacementTests` has 10 passing Edit Mode cases, invoked directly in
 the live Editor. Coverage includes existing camera/static-warp behavior, moving
 Placement Point while preserving A (including yaw), rejecting a wall between S
 and A, missing trajectory data, and overlapping trajectory reservations until
@@ -2788,9 +3014,9 @@ still references its existing PlaceNearEventTarget profile. During gameplay
 playtesting, check the LateUpdate placement-drift diagnostic and confirm damage,
 moving-target behavior, and cancellation after commit with the authored rig.
 
-### Party Combo jump height (2026-09-24)
+### Party Follow-Up jump height (2026-09-24)
 
-Placement-aligned Party Combos now sample and play full XYZ root motion. The
+Placement-aligned Party Follow-Ups now sample and play full XYZ root motion. The
 legacy `TryGet` sampler stays planar; `TryGetWithVerticalMotion` caches separate
 samples. `PreserveVerticalMotion` keeps the authored jump relative to a grounded
 takeoff: contact alignment constrains XZ, airborne poses skip ground/NavMesh
@@ -2798,7 +3024,7 @@ support checks, and body/ceiling sweeps and reservations remain three-dimensiona
 Takeoff and landing still require support. Playback passes the Y-suppression flag
 as false, and the placement diagnostic includes vertical error.
 
-Validation: 12 `PartyComboPlacementTests` cases passed, including a jump higher
+Validation: 12 `PartyFollowUpPlacementTests` cases passed, including a jump higher
 than the NavMesh sampling radius, a ceiling collision, and an unsupported landing.
 Five focused shared-resolver regressions passed. The static-trajectory regression
 initially collided with the open GameSetup scene's Plane at the test origin; it
@@ -2821,7 +3047,7 @@ Unity Editor compilation and `CheckAssemblyBuild.ps1` passed (0 errors,
 
 Reproduced through GameSetup -> Basement's Boss Rush 01 stage placard -> MapRun
 boss room. A controlled break-entry combat event offered Aires, then the real
-`PartyHudPresenter.TryUseFirstCombo()` path rejected it with `PlacementFailed`.
+`PartyHudPresenter.TryUseFirstFollowUp()` path rejected it with `PlacementFailed`.
 The boss's CharacterPosition capsule intersected the sampled trajectory after
 the short Placement Point contact window (maximum penetration 0.5488744m).
 Report: `../BuildArtifacts/aires-bossrush-penetrations.txt`.
@@ -2957,3 +3183,119 @@ Enemy Die called twice yielded one Died event, 1,000 XP and three pickup objects
 with no increase on the second call. This scene lacks XP/drop managers, so the
 probe supplied temporary managers and an unpersisted attacker LevelSystem.
 Report: ../BuildArtifacts/StateHub-runtime-acceptance.json. Exited Play Mode.
+
+## Ally Combo camera investigation (2026-10-01)
+
+### Repair
+
+Feno's `Test.Feno.FollowUpTauntExecution` was rejected before presentation because
+its Taunt payload requires `TauntApply` and its Skill Clip had no events. Added
+that marker at normalized 0.40, after the existing Cast Point 0.35. Other clip,
+cast, camera and slow settings are unchanged. Unity also serialized current
+field defaults while saving this asset. Added two asset regression cases to
+`PartyFollowUpCoreSmokeTests` for the Feno and Aires execution definitions.
+
+### Compilation
+
+Unity compiled the Editor test change; `EditorUtility.scriptCompilationFailed`
+was false. No default Assembly-CSharp source changed, so the assembly build
+script was not required. Console still contains the pre-existing URP
+`AutodeskInteractive.shadergraph` import errors; this repair does not address them.
+
+### Automated tests
+
+Unity Edit Mode: **26 passed, 0 failed**, covering `PartyFollowUpCoreSmokeTests`,
+`PartyFollowUpCameraHoldTests` and `PartyFollowUpPresentationTests`, including both new
+asset cases. Result: `BuildArtifacts/ComboCamera/TestResult.json` in the workspace
+parent directory. No new Play Mode Test Runner fixture was added or run.
+
+### Runtime checks and limits
+
+- In the RectorDefensiveBlock Play Mode harness, the real executor accepted and
+  committed Feno's Combo after repair. `TauntApply` dispatched once on replay.
+  FOV moved between 90 and 86; world scale moved between 0.11 and 1.
+- Aires also accepted and committed through the real executor, with FOV 90 to 86
+  and world scale 0.11 to 1. Its reported missing zoom was not reproduced here.
+- A runtime instance of the production CameraHolder prefab accepted direct Combo
+  focus. Both the camera FOV and its rendered projection matrix changed and
+  returned, so its physical-camera setting did not prevent zoom.
+- Both profiles currently reduce FOV by only four degrees and skip camera focus
+  beyond a player-to-ally distance of twelve metres. These are existing settings,
+  not a confirmed explanation for the user's Aires report; they were not changed.
+- This was measured runtime behavior in a harness, not a visual confirmation in
+  the user's combat scenario or a full HUD-triggered Combo test. Those checks
+  remain open. A cold first Aires probe stalled and cancelled; the warmed probes
+  committed successfully. Do not use the cold probe as proof of a production bug.
+- Runtime party overrides and probe objects were discarded on leaving Play Mode.
+  Restored the original clean `Assets/Scenes/GameSetup.unity` scene.
+
+Probe results are under `BuildArtifacts/ComboCamera`: `ActualFenoAfter.json`,
+`ActualFenoTimeline.json`, `ActualAiresAfter.json` and `ProductionCamera.json`.
+
+## AI target sensor architecture (2026-10-03)
+
+### Compilation
+
+`CheckAssemblyBuild.ps1` passed after the final runtime source changes with
+**0 errors and 93 warnings**. Log: `../BuildArtifacts/AISensor-Build.log`.
+Unity compiled the new Editor and test assemblies. The Console still reports
+the existing URP `AutodeskInteractive.shadergraph` asset-loading error; no C#
+compilation errors were reported after the final import.
+
+### Automated tests
+
+- `AITargetSensor.Tests`: **26 passed, 0 failed** on the final runtime sources.
+  Covers registry discovery without colliders and above 64 actors, context
+  ownership, shared parents, invalidation, pooled lives, memory, threat,
+  selection locks and thresholds, deterministic ties, real LOS under Taunt,
+  source refresh/fallback, and snapshot/event reentrancy.
+- `SkillGemDefinition.Tests`: **69 passed, 0 failed** after the final changes,
+  including the existing Taunt timeline and skill/cast regression cases.
+- `AITargetSensor.PlayMode.Tests`: final revision passed **3/3**, 0 failed,
+  0 skipped through Unity Test Runner on 2026-10-03 at 01:50 UTC. These tests exercised
+  Enemy/Ally/Summon perception, wall/grace behavior, the production firing guard,
+  source hide/re-enable, pause/hit-lag/world slow/exemption, authored prefab
+  references and scan allocations. The added Behavior Tree blackboard, Down
+  and additive-room unload assertions also passed with the final scoring and
+  ownership changes. Results and Console evidence:
+  `../BuildArtifacts/AISensor-PlayMode-Final.json`.
+- An earlier attempt (job `dd41243c4ec645468d395f1480c7e06e`) timed out after
+  domain reload. Once the Editor responded, the final run used Unity Pipeline
+  MCP and completed successfully; the timed-out attempt is not counted.
+
+### Prefabs and runtime measurements
+
+Unity MCP inspected all **10 sensor prefabs** for owning context, actor root
+layer and aim references. Their obstacle mask is now
+`Default | Ground | Ground Y | Terrain` (151553), with triggers ignored.
+Seven prefab assets required writes; three inherit the migrated settings.
+All **11 scenes** were inspected through preview scenes: the **7 sensor
+instances** inherit the corrected mask and needed no scene overrides.
+The menu `Tools/RB/AI/Validate Target Sensors` checks missing/ambiguous owners,
+empty LOS masks and incompatible actor/target layers. The final execution
+reported **0 issues**.
+
+Final passing Play Mode run, after warm-up, ten scans per sensor:
+
+| Sensors | Total scans | Total CPU time | Managed allocation |
+| --- | --- | --- | --- |
+| 10 | 100 | 0.452 ms | 0 bytes |
+| 50 | 500 | 5.482 ms | 0 bytes |
+| 100 | 1,000 | 19.198 ms | 0 bytes |
+
+These are synchronous Editor measurements from the instrumented fixture, not
+a production frame-time budget. The
+authored-prefab fixture uses real Enemy, Ally and turret prefab references
+with autonomous behaviors suspended. Full unrestricted combat, visual aiming
+and helper/room transitions in the actual gameplay scene still require
+manual playtesting. The fixture validates the production firing guard and
+blackboard event path, rather than an unrestricted Behavior Tree combat loop.
+
+Console limitations: the turret reports a missing `ThirdPersonAimBoneMap`
+(visual upper-body aim disabled), and the prefab probe reports missing
+`ZLZ_CharacterVFX` for rendered visibility. A missing-script warning also comes
+from the vFolders asset scan. These authoring/presentation warnings and the
+existing URP import error did not fail the sensor tests; they were not repaired
+by this validation run. No source code changed in the final rerun, so the
+previous assembly-build result remains applicable. Unity reports no compilation
+failure and has exited Play Mode; `RectorDefensiveBlock.unity` is clean.

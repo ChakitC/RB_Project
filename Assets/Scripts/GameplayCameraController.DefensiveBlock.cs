@@ -47,7 +47,7 @@ public partial class GameplayCameraController
     {
         if (settings != null && !settings.cameraEnabled) return false;
         if (owner == null || player == null || guard == null || !GameplayInputEnabled ||
-            player != playerContext || comboProfile != null || virtualCamera == null ||
+            player != playerContext || followUpProfile != null || virtualCamera == null ||
             (brain != null && brain.ActiveVirtualCamera != null && !ReferenceEquals(brain.ActiveVirtualCamera, virtualCamera))) return false;
         // Snapshot all shot settings, including the return blend, so editing/replacing a
         // shared profile cannot change an in-flight shot or another guard's cleanup.
@@ -94,7 +94,7 @@ public partial class GameplayCameraController
     void TickDefensiveBlockShot()
     {
         if (!IsDefensiveBlockShotActive) return;
-        if (!GameplayInputEnabled || comboProfile != null || playerContext == null ||
+        if (!GameplayInputEnabled || followUpProfile != null || playerContext == null ||
             playerContext.HealthSystem == null || !playerContext.HealthSystem.IsAlive ||
             (brain != null && brain.ActiveVirtualCamera != null && !ReferenceEquals(brain.ActiveVirtualCamera, virtualCamera)))
         { ClearDefensiveBlockShot(); return; }

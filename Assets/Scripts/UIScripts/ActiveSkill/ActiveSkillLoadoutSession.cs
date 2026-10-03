@@ -70,7 +70,7 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
     public bool CanSelectSlot(int slotIndex)
     {
         return CanChangeLoadout && TryGetSlot(slotIndex, out SkillLoadoutSlotDescriptor slot) &&
-               slot.Kind != SkillLoadoutKind.PartyCombo &&
+               slot.Kind != SkillLoadoutKind.PartyFollowUp &&
                !string.IsNullOrWhiteSpace(slot.SlotId) &&
                (IsHelperLoadout || slot.SlotKind != CharacterSkillSlotKind.Legacy);
     }
@@ -122,8 +122,8 @@ public sealed class ActiveSkillLoadoutSession : IDisposable
         if (!TryGetSlot(slotIndex, out SkillLoadoutSlotDescriptor slot) || slot.Options.Count == 0)
             return -1;
 
-        // Combo is fixed authoring, not a selected battle slot or run-loadout entry.
-        if (slot.Kind == SkillLoadoutKind.PartyCombo)
+        // Follow-Up is fixed authoring, not a selected battle slot or run-loadout entry.
+        if (slot.Kind == SkillLoadoutKind.PartyFollowUp)
             return 0;
 
         if (_skillManager != null)

@@ -4,20 +4,11 @@ using UnityEngine;
 
 public sealed partial class CharacterAnimBrain
 {
-    private sealed class Locomotion_Utility : LocomotionState
+    private sealed class Locomotion_Utility : SingleClipLocomotionState
     {
-        private readonly CharacterAnimBrain owner;
-        private AnimancerState state;
-        private AnimancerEvent.Sequence runtimeEvents;
         private bool _prevApplyRootMotion;
         private bool _completedNormally;
-        private readonly Action _onEndCache;
-
-        public Locomotion_Utility(CharacterAnimBrain owner)
-        {
-            this.owner = owner;
-            _onEndCache = OnUtilityEnd;
-        }
+        public Locomotion_Utility(CharacterAnimBrain owner) : base(owner) { }
 
         public override bool CanEnterState
         {
@@ -30,7 +21,7 @@ public sealed partial class CharacterAnimBrain
             }
         }
 
-        public override void OnEnterState()
+        protected override void EnterPlayback()
         {
             _completedNormally = false;
             var utilityClip = owner.UtilityWarpOutClip;
@@ -46,42 +37,29 @@ public sealed partial class CharacterAnimBrain
                 preserveFireHoldIntent: true);
             owner.EmitPlaybackSignal(PlaybackKind.UtilityWarpOut, PlaybackPhase.Started, owner._utilityChannel.RequestId);
 
-            state = owner.PlayLocomotionTransition(utilityClip);
-            state.NormalizedTime = 0f;
-            runtimeEvents = new AnimancerEvent.Sequence(utilityClip.Events);
+            playback.Play(new AnimationPlaybackOptions
+            {
+                Transition = utilityClip, NormalizedStart = 0f,
+                Channel = owner._utilityChannel, InvokeAuthoredEnd = true,
+            }, ConfigureEvents, endCallback);
+        }
 
+        private void ConfigureEvents(AnimancerEvent.Sequence events)
+        {
             if (owner.HasPendingUtilityReleaseRequest)
             {
                 owner.onUtilityCastMomentCache ??= owner.NotifyUtilityCastMoment;
-                runtimeEvents.Add(owner.ActiveUtilityCastPointNormalized, owner.onUtilityCastMomentCache);
+                events.Add(owner.ActiveUtilityCastPointNormalized, owner.onUtilityCastMomentCache);
             }
-
-            var transitionOnEnd = runtimeEvents.OnEnd;
-            runtimeEvents.OnEnd = transitionOnEnd == null
-                ? _onEndCache
-                : () =>
-                {
-                    transitionOnEnd();
-                    _onEndCache();
-                };
-
-            state.SharedEvents = runtimeEvents;
         }
 
-        public override void OnExitState()
+        protected override void ExitPlayback()
         {
-            if (state != null)
-            {
-                state.SharedEvents = null;
-                runtimeEvents = null;
-                state = null;
-            }
-
             owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
             owner.NotifyUtilityStateExited(_completedNormally);
         }
 
-        private void OnUtilityEnd()
+        protected override void OnPlaybackEnd()
         {
             if (owner.locomotionSM.CurrentState != this) return;
 

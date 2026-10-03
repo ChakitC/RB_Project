@@ -57,7 +57,7 @@ public readonly struct PassiveEventContext
         string originRuleId,
         in CombatEventMetadata metadata,
         ulong factId,
-        in ComboExecutionProvenance comboProvenance)
+        in FollowUpExecutionProvenance followUpProvenance)
     {
         Type = type;
         Actor = actor;
@@ -74,7 +74,7 @@ public readonly struct PassiveEventContext
         OriginRuleId = originRuleId;
         Metadata = metadata;
         FactId = factId;
-        ComboProvenance = comboProvenance;
+        FollowUpProvenance = followUpProvenance;
     }
 
     public PassiveEventType Type { get; }
@@ -92,7 +92,7 @@ public readonly struct PassiveEventContext
     public string OriginRuleId { get; }
     public CombatEventMetadata Metadata { get; }
     public ulong FactId { get; }
-    public ComboExecutionProvenance ComboProvenance { get; }
+    public FollowUpExecutionProvenance FollowUpProvenance { get; }
 
     public int TargetInstanceId => Target != null ? Target.GetInstanceID() : 0;
 
@@ -101,6 +101,6 @@ public readonly struct PassiveEventContext
         return new PassiveEventContext(
             Type, Actor, Source, Target, EventSourceId, AttackId, Value, Time,
             chainId, Depth, Origin, OriginPassiveId, OriginRuleId, Metadata,
-            factId, ComboProvenance);
+            factId, FollowUpProvenance);
     }
 }

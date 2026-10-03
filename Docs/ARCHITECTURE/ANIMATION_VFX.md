@@ -203,8 +203,14 @@ spawn pose.
 
 Skill assets continue to serialize `SkillVfxEvent` in `SkillGemDefinition`.
 `SkillVfxCueSource` exposes that existing list through the shared runtime
-contract without duplicating or migrating asset data. `SkillVfxPresenter`
-remains as the request-id compatibility facade used by `CharacterAnimBrain`.
+contract without duplicating or migrating asset data. `AnimationTimelineBinding`
+owns Skill/Chain/Melee VFX leases keyed by playback channel and generation. It
+ends those leases during session cleanup, before public terminal observers run.
+`SkillVfxPresenter` retains its component identity for existing prefabs and forwards
+cast cancellation/disable cleanup to Brain's internal facade. It no longer owns a
+second session dictionary or subscribes to the public playback/VFX event stream.
+Disabling it still suppresses main-skill VFX and ends its leases. Cutscene stage
+VFX and camera ownership remain with `CutsceneSkillPresenter`.
 
 Skill continues to serialize only `SkillVfxEvent`; its adapter does not create a
 second VFX list.

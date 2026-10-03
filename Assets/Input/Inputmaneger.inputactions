@@ -142,7 +142,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "PartyComboSlot1",
+                    "name": "PartyFollowUpSlot1",
                     "type": "Button",
                     "id": "b36760db-efe8-4bc4-948e-345db8d8021c",
                     "expectedControlType": "Button",
@@ -151,7 +151,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "PartyComboSlot2",
+                    "name": "PartyFollowUpSlot2",
                     "type": "Button",
                     "id": "a4569b4e-d485-40bb-9621-2fc3577e0a7e",
                     "expectedControlType": "Button",
@@ -388,7 +388,7 @@
                     "interactions": "Press",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
-                    "action": "PartyComboSlot1",
+                    "action": "PartyFollowUpSlot1",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -399,7 +399,7 @@
                     "interactions": "Press",
                     "processors": "",
                     "groups": "Gamepad",
-                    "action": "PartyComboSlot1",
+                    "action": "PartyFollowUpSlot1",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -410,7 +410,7 @@
                     "interactions": "Press",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
-                    "action": "PartyComboSlot2",
+                    "action": "PartyFollowUpSlot2",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -421,7 +421,7 @@
                     "interactions": "Press",
                     "processors": "",
                     "groups": "Gamepad",
-                    "action": "PartyComboSlot2",
+                    "action": "PartyFollowUpSlot2",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

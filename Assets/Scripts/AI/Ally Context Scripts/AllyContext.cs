@@ -31,7 +31,7 @@ public class AllyContext : CharacteContext
         base.ResolveReferences();
 
         if (AITargetSensor == null)
-            AITargetSensor = ResolveActorComponent(AITargetSensor);
+            AITargetSensor = global::AITargetSensor.ResolveFor(this);
 
         if (agent == null)
             agent = ResolveActorComponent(agent);

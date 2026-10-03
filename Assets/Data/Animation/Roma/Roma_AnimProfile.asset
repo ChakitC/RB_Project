@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   upperBodyMask: {fileID: 31900000, guid: 3ff359338d40c5f40a861f9c3afbd210, type: 2}
   actionFadeIn: 0.1
-  actionFadeOut: 0.1
+  actionFadeOut: 0.5
   locomotionDirectionalClips:
     idle: {fileID: 5487989288048153974, guid: 0fe0a7dc98bb2fa4a9ff7d5be7eb0ab6, type: 3}
     forward: {fileID: 1606450360269762143, guid: 58a826f5004c5a54893b807d6696dc4e, type: 3}

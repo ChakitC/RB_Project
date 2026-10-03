@@ -4,6 +4,21 @@
 class name is intentionally spelled `CharacteContext`; keep using that name
 until there is a dedicated rename task.
 
+## Animation binding
+
+`CharacterAnimationBinding` reads the existing `CharacteContext` hub and supplies
+cached reference snapshots to the Brain's presentation/timeline modules. Common
+modules still resolve through `ctx`; no new Player/Ally/Enemy-specific lookup or
+prefab component is required. The normal frame path compares references rather
+than resolving the hierarchy again.
+
+After rebuilding/replacing a model, call
+`ctx.AnimDriver.InvalidateAnimationBinding()`. Explicit invalidation rebuilds even
+when the Animator/profile references are unchanged. A missing/destroyed model
+releases its old sessions; a later valid model can initialize again. Existing
+root/nested context layouts retain their fallbacks. If several Animancer components
+are candidates, assign the actor's component explicitly on Brain.
+
 ## Main Types
 
 - `CharacteContext`: shared base for player, ally, and enemy characters.
@@ -103,6 +118,19 @@ visual has no `ZLZ_CharacterVFX` or has Dither switched off.
 Animation commands resolve through `ctx.AnimDriver`. Direct `ctx.AnimBrain`
 access is reserved for state queries, sampling, and event subscriptions. See
 `Docs/ARCHITECTURE/ANIMATION_COMMAND_FLOW.md`.
+
+## AI target identity and lifetime
+
+AI perception reads the shared active-context registry. `AITargetHandle` captures
+context identity plus `LifeGeneration`; a common hierarchy root is not an actor
+identity. Health, state and target metadata are read through the target context.
+`AITargetSnapshot` separates the selected actor, aim position, real sight and last
+observation. Target selection never requires the actor to have a collider.
+
+`StatusEffectInstance.SourceContext` and `SourceLifeGeneration` capture the source
+life at application/refresh. The AI sensor uses these values for Taunt so an old
+status cannot track a recycled source. The status system does not depend on AI
+handle types. Existing shared and subtype reference ownership stays unchanged.
 
 ## Identity And Time
 

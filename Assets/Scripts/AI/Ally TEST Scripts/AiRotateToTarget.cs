@@ -48,9 +48,7 @@ public class AiRotateToTarget : Action
     public override void OnStart()
     {
         _ctx = gameObject.GetComponentInParent<CharacteContext>();
-        _sensor = _ctx != null ? _ctx.GetComponent<AITargetSensor>() : null;
-        if (_sensor == null && _ctx != null)
-            _sensor = _ctx.GetComponentInChildren<AITargetSensor>(true);
+        _sensor = AITargetSensor.ResolveFor(transform);
 
         _rotateTransform =
             (rotateRoot != null && rotateRoot.Value != null)
@@ -81,9 +79,9 @@ public class AiRotateToTarget : Action
         // with the fresh target instead of continuing to face a stale one indefinitely.
         if (_sensor != null)
         {
-            Transform sensorTarget = _sensor.CurrentTarget;
-            if (sensorTarget != null && sensorTarget.gameObject != target.Value &&
-                !sensorTarget.IsChildOf(target.Value.transform) && !target.Value.transform.IsChildOf(sensorTarget))
+            Transform sensorTarget = _sensor.Snapshot.CurrentTarget;
+            if (sensorTarget == null || (sensorTarget.gameObject != target.Value &&
+                !sensorTarget.IsChildOf(target.Value.transform) && !target.Value.transform.IsChildOf(sensorTarget)))
             {
                 return TaskStatus.Failure;
             }

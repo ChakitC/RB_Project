@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Aires_AnimProfile
   m_EditorClassIdentifier: 
   upperBodyMask: {fileID: 31900000, guid: 73001e22a4e482544a659d202ef4cde8, type: 2}
-  actionFadeIn: 0.06
-  actionFadeOut: 0.08
+  actionFadeIn: 0.1
+  actionFadeOut: 0.1
   locomotionDirectionalClips:
     idle: {fileID: 7104115770596092634, guid: 1dd795bd2ddf805438036ac0d4e72884, type: 3}
     forward: {fileID: 5456017156087166052, guid: aabf368a96be2704788b05122752661a, type: 3}
@@ -52,6 +52,15 @@ MonoBehaviour:
     impactSeconds: 0.6
     exitSeconds: 0.9
     fadeSeconds: 0.06
+  commanBlock:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: NaN
   miniStune:
     _FadeDuration: 0.25
     _Speed: 1

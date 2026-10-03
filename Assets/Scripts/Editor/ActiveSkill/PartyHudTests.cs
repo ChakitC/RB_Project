@@ -41,8 +41,8 @@ public sealed class PartyHudTests
         var so=new SerializedObject(hud);
         Assert.That(so.FindProperty("skillFrames").arraySize,Is.EqualTo(8));
         Assert.That(so.FindProperty("healthFills").arraySize,Is.EqualTo(3));
-        Assert.That(so.FindProperty("comboRoot").objectReferenceValue,Is.Not.Null);
-        Assert.That(((GameObject)so.FindProperty("comboRoot").objectReferenceValue).activeSelf,Is.False);
+        Assert.That(so.FindProperty("followUpRoot").objectReferenceValue,Is.Not.Null);
+        Assert.That(((GameObject)so.FindProperty("followUpRoot").objectReferenceValue).activeSelf,Is.False);
         foreach(var image in hud.GetComponentsInChildren<UnityEngine.UI.Image>(true)) Assert.That(image.raycastTarget,Is.False);
     }
     [Test]
@@ -69,7 +69,7 @@ public sealed class PartyHudTests
     }
 
     [Test]
-    public void BindingAnotherPlayerRefreshesHpAndHidesAbsentCombo()
+    public void BindingAnotherPlayerRefreshesHpAndHidesAbsentFollowUp()
     {
         var hud=Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(PartyHudPrefabBuilder.Output));
         var first=new GameObject("FirstPlayer");var second=new GameObject("SecondPlayer");
@@ -84,7 +84,7 @@ public sealed class PartyHudTests
             var fill=(UnityEngine.UI.Image)so.FindProperty("playerHealth").objectReferenceValue;
             presenter.Bind(a);Assert.That(fill.fillAmount,Is.EqualTo(.5f));
             presenter.Bind(b);Assert.That(fill.fillAmount,Is.EqualTo(.25f));
-            Assert.That(((GameObject)so.FindProperty("comboRoot").objectReferenceValue).activeSelf,Is.False);
+            Assert.That(((GameObject)so.FindProperty("followUpRoot").objectReferenceValue).activeSelf,Is.False);
             presenter.Bind(null);Assert.That(fill.fillAmount,Is.Zero);
         }
         finally {Object.DestroyImmediate(hud);Object.DestroyImmediate(first);Object.DestroyImmediate(second);}

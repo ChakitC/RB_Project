@@ -24,7 +24,7 @@ public enum PassiveEventType
     MovementDistanceReached = 10,
     StatusApplied = 11,
     StatusStackChanged = 12,
-    ComboSkillCommitted = 13,
+    FollowUpSkillCommitted = 13,
 }
 
 public enum PassiveEventOrigin

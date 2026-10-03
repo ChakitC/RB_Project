@@ -75,7 +75,7 @@ public sealed partial class CharacterAnimBrain
             owner.ClearRootMotionPolicy();
             Phase = BlockAnimationPhase.Begin;
             elapsed = 0f;
-            clip = owner.PlayLocomotionTransition(owner.blockProfile.beginClip, owner.blockProfile.fadeSeconds);
+            clip = owner.presentation.PlayLocomotionTransition(owner.blockProfile.beginClip, owner.blockProfile.fadeSeconds);
             clip.NormalizedTime = owner.blockProfile.beginStartNormalized;
             clip.Speed = 0f;
             clip.SharedEvents = null;
@@ -127,7 +127,7 @@ public sealed partial class CharacterAnimBrain
         }
         void PlayLoop(AnimationClip animation)
         {
-            clip = owner.PlayLocomotionTransition(animation, owner.blockProfile.fadeSeconds);
+            clip = owner.presentation.PlayLocomotionTransition(animation, owner.blockProfile.fadeSeconds);
             clip.NormalizedTime = 0f; clip.Speed = 0f; clip.SharedEvents = null;
         }
         public void Impact(float minimumDuration)
@@ -135,7 +135,7 @@ public sealed partial class CharacterAnimBrain
             Phase = BlockAnimationPhase.Impact;
             elapsed = 0f;
             impactDuration = Mathf.Max(0.01f, owner.blockProfile.impactSeconds, minimumDuration);
-            clip = owner.PlayLocomotionTransition(owner.blockProfile.impactClip, owner.blockProfile.fadeSeconds);
+            clip = owner.presentation.PlayLocomotionTransition(owner.blockProfile.impactClip, owner.blockProfile.fadeSeconds);
             clip.NormalizedTime = owner.blockProfile.impactStartNormalized;
             clip.Speed = 0f;
             clip.SharedEvents = null;
@@ -150,7 +150,7 @@ public sealed partial class CharacterAnimBrain
         public override void OnExitState()
         {
             // Keep the sampled guard/recoil pose while the next state fades in.
-            if (clip != null) { clip.Speed = 0f; clip.SharedEvents = null; }
+            if (clip != null && UnityEngine.Playables.PlayableExtensions.IsValid(clip.Playable)) { clip.Speed = 0f; clip.SharedEvents = null; }
             owner.ExitExclusiveLocomotion(previousRootMotion);
             owner.ClearRootMotionPolicy();
             int request = owner.blockRequestId;

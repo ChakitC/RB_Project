@@ -15,7 +15,7 @@ public sealed partial class CharacterAnimBrain
     }
 
     private Locomotion_Chain chain;
-    private readonly PlaybackChannel _chainChannel = new();
+    private PlaybackChannel _chainChannel => sessions.Chain;
     private bool _activeChainUsesRootMotion;
     private ChainPlaybackKind _activeChainKind;
     private bool _chainStateCanExit = true;
@@ -187,6 +187,7 @@ public sealed partial class CharacterAnimBrain
 
     public void CancelChainPlaybackRequest(int requestId)
     {
+        using var commandScope = signals.Begin();
         if (requestId <= 0 || requestId != _chainChannel.Request.RequestId)
             return;
 
@@ -214,10 +215,11 @@ public sealed partial class CharacterAnimBrain
         if (state.NormalizedTime >= _chainChannel.Request.CastPointNormalized &&
             _chainChannel.Request.TryReleaseCast())
         {
-            int requestId = _chainChannel.Request.RequestId;
+            var token = sessions.Capture(_chainChannel);
+            int requestId = token.RequestId;
             EmitPlaybackSignal(ResolveActiveChainPlaybackKind(), PlaybackPhase.CastMoment, requestId);
 
-            if (requestId != _chainChannel.Request.RequestId)
+            if (!sessions.IsCurrent(token))
                 return;
         }
 
@@ -233,30 +235,8 @@ public sealed partial class CharacterAnimBrain
 
     internal void NotifyChainPlaybackStateExited(bool completedNormally)
     {
-        PlaybackKind playbackKind = ResolveActiveChainPlaybackKind();
-
-        // Order matters and is part of the contract: any beat the clip did not reach is delivered
-        // before the terminal, so a completed request has always seen its cast and advance moments.
-        bool advanceOnComplete =
-            completedNormally &&
-            _chainChannel.Request.RequestId > 0 &&
-            _chainChannel.Request.TryReleaseAdvance();
-
-        PlaybackSessionClose close = _chainChannel.Request.Close(completedNormally);
-
-        if (close.OwesCastMoment)
-            EmitPlaybackSignal(playbackKind, PlaybackPhase.CastMoment, close.RequestId);
-
-        if (advanceOnComplete)
-            EmitPlaybackSignal(playbackKind, PlaybackPhase.AdvanceMoment, close.RequestId);
-
-        ClearActiveChainRequest();
-
-        if (completedNormally && close.RequestId > 0)
-            EmitPlaybackSignal(playbackKind, PlaybackPhase.Completed, close.RequestId);
-
-        if (close.OwesInterrupted)
-            EmitPlaybackSignal(playbackKind, PlaybackPhase.Interrupted, close.RequestId);
+        sessions.Close(_chainChannel, ResolveActiveChainPlaybackKind(), completedNormally, true, true, false,
+            ClearActiveChainRequest, EmitPlaybackSignal);
     }
 
     internal void CompleteActiveChainPlayback()
@@ -290,6 +270,7 @@ public sealed partial class CharacterAnimBrain
         bool usesRootMotion,
         bool usesPlanarRootMotion)
     {
+        using var commandScope = signals.Begin();
         if (requestId <= 0)
             return false;
 
@@ -350,11 +331,12 @@ public sealed partial class CharacterAnimBrain
         _chainStateCanExit = false;
         SetActiveChainTimelineEventNames(kind == ChainPlaybackKind.Skill ? skillDef : null);
         if (kind == ChainPlaybackKind.Skill)
-            EnsureSkillVfxPresenter(skillDef);
+            Timeline.EnsureSkillVfxPresenter(skillDef);
     }
 
     private void ClearActiveChainRequest()
     {
+        timeline?.EndSkillVfxSession(_chainChannel);
         _chainChannel.Clear();
         _activeChainKind = ChainPlaybackKind.None;
         _activeChainCutsceneClip = null;
@@ -365,13 +347,8 @@ public sealed partial class CharacterAnimBrain
 
     private void InterruptActiveChainRequest()
     {
-        PlaybackKind playbackKind = ResolveActiveChainPlaybackKind();
-        PlaybackSessionClose close = _chainChannel.Request.Close(completedNormally: false);
-
-        ClearActiveChainRequest();
-
-        if (close.OwesInterrupted)
-            EmitPlaybackSignal(playbackKind, PlaybackPhase.Interrupted, close.RequestId);
+        sessions.Close(_chainChannel, ResolveActiveChainPlaybackKind(), false, false, false, false,
+            ClearActiveChainRequest, EmitPlaybackSignal);
     }
 
     internal bool TryGetAnimationSamplingRoot(out GameObject sampleRoot)

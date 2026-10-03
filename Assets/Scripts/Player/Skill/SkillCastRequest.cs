@@ -34,7 +34,7 @@ public readonly struct SkillCastRequest
     public readonly string DebugSource;
     public readonly ulong CombatChainId;
     public readonly int CombatDepth;
-    public readonly ComboExecutionProvenance ComboProvenance;
+    public readonly FollowUpExecutionProvenance FollowUpProvenance;
     public readonly SkillFacingSnapshot FacingSnapshot;
 
     public SkillCastRequest(
@@ -58,7 +58,7 @@ public readonly struct SkillCastRequest
         Action<ActiveSkillCastInfo, SkillCastCancelReason> onCancelled = null,
         ulong combatChainId = 0,
         int combatDepth = 0,
-        ComboExecutionProvenance comboProvenance = default,
+        FollowUpExecutionProvenance followUpProvenance = default,
         SkillFacingSnapshot facingSnapshot = default,
         SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
         MeleeType meleeType = MeleeType.Light,
@@ -93,7 +93,7 @@ public readonly struct SkillCastRequest
         DebugSource = debugSource;
         CombatChainId = combatChainId;
         CombatDepth = Mathf.Max(0, combatDepth);
-        ComboProvenance = comboProvenance;
+        FollowUpProvenance = followUpProvenance;
         FacingSnapshot = facingSnapshot;
     }
 }

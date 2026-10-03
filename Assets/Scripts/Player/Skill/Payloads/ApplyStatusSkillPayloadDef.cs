@@ -82,7 +82,7 @@ public sealed class ApplyStatusSkillPayloadDef : SkillPayloadDef
                     context.CombatDepth + 1,
                     PassiveEventOrigin.External,
                     fallbackDuration: skillFallbackDuration,
-                    comboProvenance: context.ComboProvenance);
+                    followUpProvenance: context.FollowUpProvenance);
                 appliedAny = true;
             }
         }

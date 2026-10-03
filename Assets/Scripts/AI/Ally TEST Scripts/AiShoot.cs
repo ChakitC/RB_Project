@@ -132,17 +132,18 @@ public class AiShoot : Action
             return TargetLostStatus();
         }
 
+        AITargetSnapshot sensorState = targetSensor != null ? targetSensor.Snapshot : AITargetSnapshot.Empty;
         CacheTarget(currentTarget.transform);
-        if (!IsTaskTargetStillValid(currentTarget.transform))
+        if (!IsTaskTargetStillValid(currentTarget.transform, sensorState))
         {
             StopFire(CTX);
             return TargetLostStatus();
         }
 
-        Vector3 aimPoint = ResolveAimPoint(currentTarget.transform);
+        Vector3 aimPoint = targetSensor != null ? sensorState.AimPosition : ResolveAimPoint(currentTarget.transform);
         RotateTowardTarget(aimPoint);
 
-        if (!HasValidFiringPosition(aimPoint))
+        if (!HasValidFiringPosition(aimPoint, sensorState))
             return WaitForFiringSolutionOrFail();
 
         // กระสุนหมด / รีโหลดอยู่
@@ -228,21 +229,7 @@ public class AiShoot : Action
         fireSolutionLossTimeout = 0.5f;
     }
 
-    private AITargetSensor ResolveTargetSensor()
-    {
-        AllyContext allyContext = CTX as AllyContext;
-        if (allyContext != null && allyContext.AITargetSensor != null)
-            return allyContext.AITargetSensor;
-
-        if (CTX == null)
-            return null;
-
-        AITargetSensor sensor = CTX.GetComponent<AITargetSensor>();
-        if (sensor == null)
-            sensor = CTX.GetComponentInChildren<AITargetSensor>(true);
-
-        return sensor;
-    }
+    private AITargetSensor ResolveTargetSensor() => AITargetSensor.ResolveFor(CTX);
 
     private void CacheTarget(Transform currentTarget)
     {
@@ -285,7 +272,7 @@ public class AiShoot : Action
         return null;
     }
 
-    private bool IsTaskTargetStillValid(Transform currentTarget)
+    private bool IsTaskTargetStillValid(Transform currentTarget, AITargetSnapshot sensorState)
     {
         if (cachedTargetable != null &&
             (!cachedTargetable.IsAlive || !cachedTargetable.IsTargetable))
@@ -296,7 +283,7 @@ public class AiShoot : Action
         if (targetSensor == null)
             return true;
 
-        Transform sensorTarget = targetSensor.CurrentTarget;
+        Transform sensorTarget = sensorState.CurrentTarget;
         return sensorTarget != null && IsSameTarget(sensorTarget, currentTarget);
     }
 
@@ -315,9 +302,9 @@ public class AiShoot : Action
         return currentTarget != null ? currentTarget.position : actorTransform.position;
     }
 
-    private bool HasValidFiringPosition(Vector3 aimPoint)
+    private bool HasValidFiringPosition(Vector3 aimPoint, AITargetSnapshot sensorState)
     {
-        if (targetSensor != null && requireLineOfSight && !targetSensor.HasLineOfSight)
+        if (targetSensor != null && requireLineOfSight && !sensorState.HasLineOfSight)
             return false;
 
         Vector3 offset = aimPoint - actorTransform.position;

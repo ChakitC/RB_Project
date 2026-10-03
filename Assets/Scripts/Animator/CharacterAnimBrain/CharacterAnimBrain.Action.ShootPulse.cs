@@ -3,13 +3,11 @@ using System;
 using Animancer;
 using Animancer.FSM;
 public sealed partial class CharacterAnimBrain
-{private sealed class Action_ShootPulse : ActionState
+{private sealed class Action_ShootPulse : SingleClipActionState
 {
-    private readonly CharacterAnimBrain owner;
-    private AnimancerState state;
     private float lastPlayTime;
 
-    public Action_ShootPulse(CharacterAnimBrain owner) => this.owner = owner;
+    public Action_ShootPulse(CharacterAnimBrain owner) : base(owner) { }
 
     public override bool CanEnterState
     {
@@ -28,19 +26,16 @@ public sealed partial class CharacterAnimBrain
         }
     }
 
-    public override void OnEnterState()
+    protected override void EnterPlayback()
     {
         lastPlayTime = owner.AnimationTime;
 
-        state = owner.PlayActionTransition(owner.ShootPulseClip, PairOffsetUpperAction.ShootPulse);
-
-        owner.onShootEndCache ??= owner.HandleShootPulseEnd;
-        if (state != null)
-            state.Events(owner).OnEnd = owner.onShootEndCache;
+        playback.Play(new AnimationPlaybackOptions
+        {
+            Transition = owner.ShootPulseClip, TargetLayer = AnimationPlaybackOptions.Layer.UpperAction,
+            PairAction = PairOffsetUpperAction.ShootPulse,
+        }, onEnd: endCallback);
     }
 
-    public override void OnExitState()
-    {
-        // ไม่ต้อง fade out ที่นี่ เพราะตอนกลับ empty จะ fade out ให้
-    }
+    protected override void OnPlaybackEnd() => owner.HandleShootPulseEnd();
 }}

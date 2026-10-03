@@ -1183,7 +1183,7 @@ public class AllyHelperManager : MonoBehaviour
         SubscribeToHelperPartyLoader(ResolveHelperPartyLoader());
 
         if (allyContext != null && allyContext.AITargetSensor == null)
-            allyContext.AITargetSensor = allyHelper.GetComponent<AITargetSensor>();
+            allyContext.AITargetSensor = AITargetSensor.ResolveFor(allyContext);
 
         allyAgent = allyContext != null ? allyContext.agent : null;
         if (allyAgent == null)
@@ -2425,16 +2425,10 @@ public class AllyHelperManager : MonoBehaviour
         {
             allyContext.AITargetSensor.ForceScan();
 
-            Transform currentTarget = allyContext.AITargetSensor.CurrentTarget;
-            if (currentTarget != null)
+            AITargetSnapshot state = allyContext.AITargetSensor.Snapshot;
+            if (state.HasLiveTarget)
             {
-                aimPoint = currentTarget.position;
-                return true;
-            }
-
-            if (allyContext.AITargetSensor.HasAnyTarget)
-            {
-                aimPoint = allyContext.AITargetSensor.LastSeenPosition;
+                aimPoint = state.AimPosition;
                 return true;
             }
         }

@@ -22,7 +22,7 @@ public sealed partial class CharacterAnimBrain
         
         public override void OnEnterState()
         {
-            state = owner.PlayActionTransition(owner.ShootHoldLoopClip, PairOffsetUpperAction.ShootHold);
+            state = owner.PlayActionPresentation(owner.ShootHoldLoopClip, PairOffsetUpperAction.ShootHold, false);
         }
 
         public override void Update()
@@ -37,7 +37,7 @@ public sealed partial class CharacterAnimBrain
 
         public override void OnExitState()
         {
-            owner.FadeActionLayer(owner.ActLayer);
+            owner.presentation.FadeActionLayer(owner.ActLayer);
         }
     }
 

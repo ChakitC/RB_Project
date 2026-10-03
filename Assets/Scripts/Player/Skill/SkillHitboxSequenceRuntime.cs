@@ -100,7 +100,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
     string _attackId;
     ulong _chainId;
     int _depth;
-    ComboExecutionProvenance _comboProvenance;
+    FollowUpExecutionProvenance _followUpProvenance;
     int _requestId;
     int _casterLife;
     int _nextSequentialStepIndex;
@@ -166,7 +166,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             kb.progressCurve = new AnimationCurve(kb.progressCurve.keys) { preWrapMode = kb.progressCurve.preWrapMode, postWrapMode = kb.progressCurve.postWrapMode };
         snapshot = new CooperativeBlockDamageSnapshot(actor, Mathf.Max(0f, baseDamage * step.Definition.DamageMultiplier),
             chance, multiplier, BuildStaggerPayload(step).ResolvedAmount, kb, _damageSourceId, _attackId,
-            _chainId, IsBasicMelee ? 0 : _depth + 1, _attribution, IsBasicMelee ? CombatSourceKind.Melee : CombatSourceKind.Skill, _comboProvenance);
+            _chainId, IsBasicMelee ? 0 : _depth + 1, _attribution, IsBasicMelee ? CombatSourceKind.Melee : CombatSourceKind.Skill, _followUpProvenance);
         return true;
     }
     public bool SuppressSteps(int requestId, int casterLife, int[] steps)
@@ -357,7 +357,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             ? _context.CombatChainId
             : CombatEventBus.NextChainId();
         _depth = _context != null ? _context.CombatDepth : 0;
-        _comboProvenance = _context != null ? _context.ComboProvenance : default;
+        _followUpProvenance = _context != null ? _context.FollowUpProvenance : default;
     }
 
     void BuildStepLookup()
@@ -925,7 +925,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
                 null,
                 metadata,
                 CombatEventBus.NextFactId(),
-                _comboProvenance);
+                _followUpProvenance);
 
             return _combatEventBus.CreateChildContext(
                 parent,

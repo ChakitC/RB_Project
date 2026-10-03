@@ -3,18 +3,13 @@ using UnityEngine;
 
 public sealed partial class CharacterAnimBrain
 {
-    private sealed class Locomotion_Knockback : LocomotionState
+    private sealed class Locomotion_Knockback : SingleClipLocomotionState
     {
-        private readonly CharacterAnimBrain owner;
-        private AnimancerState state;
         private bool _prevApplyRootMotion;
         private KnockbackData pendingKnockback;
         private KnockbackData activeKnockback;
 
-        public Locomotion_Knockback(CharacterAnimBrain owner)
-        {
-            this.owner = owner;
-        }
+        public Locomotion_Knockback(CharacterAnimBrain owner) : base(owner) { }
 
         public void SetKnockback(KnockbackData value)
         {
@@ -28,7 +23,7 @@ public sealed partial class CharacterAnimBrain
             !owner.IsDowned &&
             owner.locomotionSM.CurrentState != owner.deadState;
 
-        public override void OnEnterState()
+        protected override void EnterPlayback()
         {
             activeKnockback = pendingKnockback;
             pendingKnockback = default(KnockbackData);
@@ -45,34 +40,17 @@ public sealed partial class CharacterAnimBrain
                 usesRootMotion: false,
                 preserveFireHoldIntent: false);
 
-            state = owner.PlayLocomotionTransition(clip);
-            state.NormalizedTime = 0f;
-
-            float clipLength = Mathf.Max(0.01f, state.Length);
-            float knockbackDuration = Mathf.Max(0.01f, activeKnockback.Duration);
-            state.Speed = clipLength / knockbackDuration;
-            state.Events(owner).OnEnd = OnClipEnd;
+            playback.Play(new AnimationPlaybackOptions
+            {
+                Transition = clip, NormalizedStart = 0f, Duration = activeKnockback.Duration,
+                HoldLastFrame = true,
+            });
         }
 
-        public override void OnExitState()
+        protected override void ExitPlayback()
         {
-            if (state != null)
-            {
-                state.Events(owner).OnEnd = null;
-                state = null;
-            }
-
             owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
             activeKnockback = default(KnockbackData);
-        }
-
-        void OnClipEnd()
-        {
-            if (owner.locomotionSM.CurrentState != this || state == null)
-                return;
-
-            state.Time = state.Length;
-            state.Speed = 0f;
         }
     }
 }

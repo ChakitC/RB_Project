@@ -343,7 +343,7 @@ public sealed class SkillCastOrchestrator
                     request.PrimaryTarget,
                     request.CombatChainId,
                     request.CombatDepth,
-                    request.ComboProvenance,
+                    request.FollowUpProvenance,
                     request.FacingSnapshot, request.ExecutionKind, request.MeleeType);
         }
         catch (Exception exception)

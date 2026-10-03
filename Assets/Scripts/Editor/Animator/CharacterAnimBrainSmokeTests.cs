@@ -51,6 +51,434 @@ public sealed class CharacterAnimBrainSmokeTests
         preExistingTimeSlowManager = null;
     }
 
+    [Test]
+    public void CutscenePhaseKeepsRequestAndRejectsOldCallbacks()
+    {
+        Rig rig = CreateRig(); var definition = CreateSkillDefinition(rig);
+        typeof(SkillGemDefinition).GetField("isCutsceneSkill", Hidden).SetValue(definition, true);
+        definition.CutsceneDef.characterCutsceneClip = rig.CutsceneA;
+        rig.CutsceneA.Events.NormalizedEndTime = .4f;
+        Assert.That(rig.Brain.TryPlaySkill(301, definition, .5f), Is.True);
+        var graph = rig.Brain.GetComponent<AnimancerComponent>();
+        var cutscene = graph.Layers[0].CurrentState;
+        var oldEnd = cutscene.SharedEvents.OnEnd;
+        oldEnd();
+        var main = graph.Layers[0].CurrentState;
+        Assert.That(main, Is.Not.SameAs(cutscene));
+        Assert.That(rig.Signals, Does.Contain("Skill:Started:301"));
+        Assert.That(rig.SkillCompletedCount, Is.Zero);
+        oldEnd(); Assert.That(graph.Layers[0].CurrentState, Is.SameAs(main));
+        main.SharedEvents.OnEnd();
+        Assert.That(rig.SkillCompletedCount, Is.EqualTo(1));
+        Assert.That(rig.Brain.RootMotionActive, Is.False);
+    }
+
+    [Test]
+    public void DeadAndStageIntroHoldTheLastFrameWithTheirOwnExitRules()
+    {
+        Rig rig = CreateRig(); var graph = rig.Brain.GetComponent<AnimancerComponent>();
+        Assert.That(rig.Brain.TryPlayStageIntro(), Is.True);
+        var intro = graph.Layers[0].CurrentState;
+        Assert.That(intro.Weight, Is.EqualTo(1f));
+        intro.SharedEvents.OnEnd();
+        Assert.That(intro.Speed, Is.Zero); Assert.That(intro.Time, Is.EqualTo(intro.Length));
+        rig.Brain.StopStageIntro();
+        Assert.That(rig.Brain.IsExclusiveLocomotionActive, Is.False);
+        rig.Brain.PlayDead();
+        var dead = graph.Layers[0].CurrentState;
+        dead.SharedEvents.OnEnd();
+        Assert.That(dead.Speed, Is.Zero); Assert.That(dead.Time, Is.EqualTo(dead.Length));
+        Assert.That(rig.Brain.TryPlayStageIntro(), Is.False);
+        Assert.That(rig.Brain.CurrentAnimationMode, Is.EqualTo(CharacterAnimationMode.Dead));
+    }
+
+    [Test]
+    public void DashAndKnockbackKeepDurationDirectionAndGameplayCompletion()
+    {
+        Rig rig = CreateRig(profile =>
+        {
+            profile.dashF = MakeClipTransition(createdObjects, "forwardDash");
+            profile.dashB = MakeClipTransition(createdObjects, "backwardDash");
+            profile.knockback = MakeClipTransition(createdObjects, "knockback");
+        });
+        var graph = rig.Brain.GetComponent<AnimancerComponent>();
+        rig.Brain.PlayDash(.2f, Vector2.down);
+        var dash = graph.Layers[0].CurrentState;
+        Assert.That(dash.Clip.name, Is.EqualTo("backwardDash"));
+        Assert.That(dash.Speed, Is.EqualTo(dash.Length / .2f).Within(.001));
+        graph.Evaluate(.05f);
+        Assert.That(dash.Weight, Is.EqualTo(1f).Within(.001));
+        dash.SharedEvents.OnEnd();
+        Assert.That(rig.Brain.CurrentAnimationMode, Is.EqualTo(CharacterAnimationMode.Locomotion));
+        Assert.That(rig.Brain.PlayKnockback(new KnockbackData(Vector3.forward, 1f, .4f, Vector3.zero)), Is.True);
+        var knockback = graph.Layers[0].CurrentState;
+        Assert.That(knockback.Speed, Is.EqualTo(knockback.Length / .4f).Within(.001));
+        knockback.SharedEvents.OnEnd();
+        Assert.That(knockback.Speed, Is.Zero);
+        Assert.That(rig.Brain.CurrentAnimationMode, Is.EqualTo(CharacterAnimationMode.Knockback));
+        rig.Brain.StopKnockbackPlayback();
+        Assert.That(rig.Brain.IsExclusiveLocomotionActive, Is.False);
+    }
+
+    [Test]
+    public void ExplicitCancelCallbackCanStartTheNextSkill()
+    {
+        Rig rig = CreateRig();
+        rig.Brain.TryPlaySkill(101, null, 0f);
+        bool accepted = false;
+        rig.Brain.SkillCastInterrupted += id =>
+        {
+            if (id == 101) accepted = rig.Brain.TryPlaySkill(102, null, 0f);
+        };
+        rig.Brain.CancelSkillCastRequest(101);
+        rig.Brain.CancelSkillCastRequest(101);
+        Assert.That(accepted, Is.True);
+        Assert.That(rig.Brain.IsSkillPlaybackActive, Is.True);
+        Assert.That(rig.SkillInterruptedIds, Is.EqualTo(new[] { 101 }));
+    }
+
+    [Test]
+    public void ThrowingPlaybackObserverDoesNotDropLegacyTerminal()
+    {
+        Rig rig = CreateRig();
+        rig.Brain.TryPlaySkill(101, null, 0f);
+        System.Action<CharacterAnimBrain.PlaybackSignal> broken = signal =>
+        {
+            if (signal.Phase == CharacterAnimBrain.PlaybackPhase.Interrupted)
+                throw new System.InvalidOperationException("animation observer probe");
+        };
+        rig.Brain.PlaybackEvent += broken;
+        UnityEngine.TestTools.LogAssert.Expect(LogType.Exception,
+            new System.Text.RegularExpressions.Regex("InvalidOperationException: animation observer probe"));
+        try { Assert.DoesNotThrow(() => rig.Brain.CancelSkillCastRequest(101)); }
+        finally { rig.Brain.PlaybackEvent -= broken; }
+        Assert.That(rig.SkillInterruptedIds, Is.EqualTo(new[] { 101 }));
+        Assert.That(rig.Brain.RootMotionActive, Is.False);
+    }
+
+    [Test]
+    public void OldEndCallbackCannotFinishReusedRequestId()
+    {
+        Rig rig = CreateRig();
+        rig.Brain.TryPlaySkill(101, null, 0f);
+        var graph = rig.Brain.GetComponent<AnimancerComponent>();
+        var oldEnd = graph.Layers[0].CurrentState.SharedEvents.OnEnd;
+        rig.Brain.CancelSkillCastRequest(101);
+        Assert.That(rig.Brain.TryPlaySkill(101, null, 0f), Is.True);
+        oldEnd();
+        Assert.That(rig.Brain.IsSkillPlaybackActive, Is.True);
+    }
+
+    [Test]
+    public void UtilityCancelCallbackCanStartNextRequest()
+    {
+        Rig rig = CreateRig();
+        Assert.That(rig.Brain.TryPlayUtilityWarpOut(41), Is.True);
+        bool accepted = false;
+        rig.Brain.SkillCastInterrupted += id => { if (id == 41) accepted = rig.Brain.TryPlayUtilityWarpOut(42); };
+        rig.Brain.CancelUtilityCastRequest(40);
+        Assert.That(rig.SkillInterruptedIds, Is.Empty);
+        rig.Brain.CancelUtilityCastRequest(41);
+        rig.Brain.CancelUtilityCastRequest(41);
+        Assert.That(accepted, Is.True);
+        Assert.That(rig.SkillInterruptedIds, Is.EqualTo(new[] { 41 }));
+        Assert.That(rig.CurrentStateName, Is.EqualTo("Locomotion_Utility"));
+    }
+
+    [Test]
+    public void ChainCancelCallbackCanStartNextRequest()
+    {
+        Rig rig = CreateRig();
+        Assert.That(rig.Brain.TryPlayChainCutscene(41, rig.CutsceneA), Is.True);
+        bool accepted = false;
+        rig.Brain.ChainPlaybackInterrupted += id => { if (id == 41) accepted = rig.Brain.TryPlayChainCutscene(42, rig.CutsceneB); };
+        rig.Brain.CancelChainPlaybackRequest(41);
+        rig.Brain.CancelChainPlaybackRequest(41);
+        Assert.That(accepted, Is.True);
+        Assert.That(rig.ChainInterruptedIds, Is.EqualTo(new[] { 41 }));
+        Assert.That(rig.Signals, Does.Contain("ChainCutscene:Started:42"));
+    }
+
+    [Test]
+    public void ReentrantCancellationDrainsTerminalSignalsInOrder()
+    {
+        Rig rig = CreateRig();
+        rig.Brain.TryPlaySkill(41, null, 0f);
+        rig.ClearSignals();
+        rig.Brain.PlaybackEvent += signal =>
+        {
+            if (signal.RequestId == 41 && signal.Phase == CharacterAnimBrain.PlaybackPhase.Interrupted)
+            {
+                rig.Brain.TryPlaySkill(42, null, 0f);
+                rig.Brain.CancelSkillCastRequest(42);
+            }
+        };
+        rig.Brain.CancelSkillCastRequest(41);
+        Assert.That(rig.Signals, Is.EqualTo(new[] { "Skill:Interrupted:41", "Skill:Started:42", "Skill:Interrupted:42" }));
+        Assert.That(rig.SkillInterruptedIds, Is.EqualTo(new[] { 41, 42 }));
+        Assert.That(rig.Brain.IsSkillPlaybackActive, Is.False);
+    }
+
+    [Test]
+    public void AuthoredEndCannotCompletePlaybackStartedByItsCallback()
+    {
+        CharacterAnimBrain target = null;
+        Rig rig = CreateRig(profile => profile.skillClip.Events.OnEnd = () =>
+        {
+            target.CancelSkillCastRequest(41);
+            target.TryPlaySkill(41, null, 0f);
+        });
+        target = rig.Brain;
+        Assert.That(target.TryPlaySkill(41, null, 0f), Is.True);
+        var oldEnd = target.GetComponent<AnimancerComponent>().Layers[0].CurrentState.SharedEvents.OnEnd;
+        oldEnd();
+        Assert.That(target.IsSkillPlaybackActive, Is.True);
+        Assert.That(rig.SkillInterruptedIds, Is.EqualTo(new[] { 41 }));
+        Assert.That(rig.SkillCompletedCount, Is.Zero);
+    }
+
+    [Test]
+    public void SameReferenceInvalidationAdvancesBindingAndInvalidatesCallbacks()
+    {
+        Rig rig = CreateRig();
+        rig.Brain.TryPlaySkill(41, null, 0f);
+        var oldEnd = rig.Brain.GetComponent<AnimancerComponent>().Layers[0].CurrentState.SharedEvents.OnEnd;
+        int generation = Diagnostic<int>(rig.Brain, "BindingGeneration");
+        rig.Brain.InvalidateAnimationBinding();
+        rig.Tick();
+        Assert.That(Diagnostic<int>(rig.Brain, "BindingGeneration"), Is.GreaterThan(generation));
+        Assert.That(rig.Brain.TryPlaySkill(41, null, 0f), Is.True);
+        oldEnd();
+        Assert.That(rig.Brain.IsSkillPlaybackActive, Is.True);
+        Assert.That(rig.SkillInterruptedIds, Is.EqualTo(new[] { 41 }));
+    }
+
+    [Test]
+    public void DisableRejectsReentrantPlaybackAndDrainsCleanup()
+    {
+        Rig rig = CreateRig();
+        rig.Brain.TryPlaySkill(41, null, 0f);
+        bool accepted = true;
+        rig.Brain.SkillCastInterrupted += id => { if (id == 41) accepted = rig.Brain.TryPlaySkill(42, null, 0f); };
+        rig.Disable();
+        Assert.That(accepted, Is.False);
+        Assert.That(rig.Brain.IsSkillPlaybackActive, Is.False);
+        Assert.That(rig.Brain.RootMotionActive, Is.False);
+        Assert.That(Diagnostic<int>(rig.Brain, "PendingCleanup"), Is.Zero);
+        Assert.That(Diagnostic<int>(rig.Brain, "PendingSignals"), Is.Zero);
+        Assert.That(Diagnostic<int>(rig.Brain, "CallbackCount"), Is.Zero);
+        Assert.That(Diagnostic<int>(rig.Brain, "VfxSessions"), Is.Zero);
+    }
+
+    [Test]
+    public void DeathTerminalObserversSeeTheNewPriority()
+    {
+        Rig rig = CreateRig();
+        rig.Brain.TryPlaySkill(41, null, 0f);
+        bool accepted = true;
+        CharacterAnimationMode observed = default;
+        rig.Brain.SkillCastInterrupted += id =>
+        {
+            observed = rig.Brain.CurrentAnimationMode;
+            accepted = rig.Brain.TryPlaySkill(42, null, 0f);
+        };
+        rig.Brain.PlayDead();
+        Assert.That(observed, Is.EqualTo(CharacterAnimationMode.Dead));
+        Assert.That(accepted, Is.False);
+    }
+
+    [Test]
+    public void ThrowingRootMotionObserverDoesNotDropTheCompletePolicy()
+    {
+        Rig rig = CreateRig();
+        var seen = new List<RootMotionPolicy>();
+        rig.Brain.RootMotionPolicyChanged += policy => { if (policy.Active) throw new System.InvalidOperationException("root policy probe"); };
+        rig.Brain.RootMotionPolicyChanged += seen.Add;
+        UnityEngine.TestTools.LogAssert.Expect(LogType.Exception,
+            new System.Text.RegularExpressions.Regex("InvalidOperationException: root policy probe"));
+        rig.Brain.TryPlaySkill(41, null, 0f, null, true);
+        Assert.That(seen.Exists(policy => policy.Active && policy.PlanarOnly && policy.ApplyYaw), Is.True);
+        Assert.That(seen.Exists(policy => policy.Active && !policy.PlanarOnly), Is.False);
+    }
+
+    [Test]
+    public void VfxSignalRetainsOldIdentityWhenObserverStartsAnotherSkill()
+    {
+        Rig rig = CreateRig();
+        rig.Brain.TryPlaySkill(41, null, 0f);
+        var seen = new List<int>();
+        rig.Brain.SkillAnimationVfxCueRaised += cue =>
+        {
+            rig.Brain.CancelSkillCastRequest(41);
+            rig.Brain.TryPlaySkill(42, null, 0f);
+        };
+        rig.Brain.SkillTimelineEventRaised += (id, name) => seen.Add(id);
+        typeof(CharacterAnimBrain).GetMethod("RaiseSkillVfxTimelineEvent", Hidden).Invoke(rig.Brain, new object[] { 0 });
+        Assert.That(seen, Is.EqualTo(new[] { 41 }));
+        Assert.That(rig.Brain.IsSkillPlaybackActive, Is.True);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ReloadSharesSpeedAndRejectsOldCompletionAfterReplay(bool fullBody)
+    {
+        Rig rig = CreateRig(profile =>
+        {
+            profile.reload = MakeClipTransition(createdObjects, "reload");
+            profile.reloadBodyMode = fullBody ? CharacterAnimProfileSO.ReloadBodyMode.FullBody : CharacterAnimProfileSO.ReloadBodyMode.UpperBody;
+        });
+        rig.Brain.PlayReload(0.5f);
+        var state = rig.Brain.GetComponent<AnimancerComponent>().Layers[fullBody ? 0 : 1].CurrentState;
+        var oldEnd = state.SharedEvents.OnEnd;
+        Assert.That(state.Speed, Is.EqualTo(state.Length / 0.5f).Within(0.001));
+        rig.Brain.StopReloadAction();
+        rig.Brain.PlayReload(0.25f);
+        oldEnd();
+        Assert.That(state.Speed, Is.EqualTo(state.Length / 0.25f).Within(0.001));
+        Assert.That(Diagnostic<int>(rig.Brain, "CallbackCount"), Is.GreaterThan(0));
+        state.SharedEvents.OnEnd();
+        Assert.That(Diagnostic<int>(rig.Brain, "CallbackCount"), Is.Zero);
+        Assert.That(rig.Brain.IsExclusiveLocomotionActive, Is.False);
+    }
+
+    [Test]
+    public void DestroyedModelReleasesSessionBeforeReplacementArrives()
+    {
+        Rig rig = CreateRig();
+        rig.Brain.TryPlaySkill(41, null, 0f);
+        var model = new GameObject("Replaceable model");
+        model.transform.SetParent(rig.Brain.transform, false);
+        rig.Brain.GetComponent<AnimancerComponent>().Animator = model.AddComponent<Animator>();
+        rig.Brain.InvalidateAnimationBinding();
+        rig.Tick();
+        rig.ClearSignals();
+        rig.Brain.TryPlaySkill(41, null, 0f);
+        Object.DestroyImmediate(model);
+        UnityEngine.TestTools.LogAssert.Expect(LogType.Warning,
+            new System.Text.RegularExpressions.Regex("Initialization failed"));
+        rig.Tick();
+        Assert.That(rig.SkillInterruptedIds, Is.EqualTo(new[] { 41 }));
+        Assert.That(rig.Brain.RootMotionActive, Is.False);
+        Assert.That(Diagnostic<int>(rig.Brain, "CallbackCount"), Is.Zero);
+        Assert.That(Diagnostic<int>(rig.Brain, "VfxSessions"), Is.Zero);
+    }
+
+    [Test]
+    public void SerializedExecutionOrderMatchesMovementContract()
+    {
+        Rig rig = CreateRig();
+        var driver = rig.Brain.gameObject.AddComponent<CharacterAnimDriver>();
+        Assert.That(UnityEditor.MonoImporter.GetExecutionOrder(UnityEditor.MonoScript.FromMonoBehaviour(driver)), Is.EqualTo(1000));
+        Assert.That(UnityEditor.MonoImporter.GetExecutionOrder(UnityEditor.MonoScript.FromMonoBehaviour(rig.Brain)), Is.EqualTo(1100));
+    }
+
+    // Driven by the Play Mode test assembly: an actual Update writer runs before Driver/Brain.
+    public System.Collections.IEnumerator RuntimeMovementIntentOrder()
+    {
+        Rig rig = CreateRig(profile =>
+        {
+            profile.crawlMixer = profile.ResolveLocomotionMixer();
+            profile.crawling = null;
+        });
+        rig.Tick();
+        var hub = rig.Brain.gameObject.AddComponent<StateHub>();
+        var driver = rig.Brain.gameObject.AddComponent<CharacterAnimDriver>();
+        typeof(CharacterAnimDriver).GetField("hub", Hidden).SetValue(driver, hub);
+        typeof(CharacterAnimDriver).GetField("brain", Hidden).SetValue(driver, rig.Brain);
+        var type = System.Type.GetType("AnimationFrameTestDriver, StateHub.PlayMode.Tests", true);
+        var probe = rig.Brain.gameObject.AddComponent(type);
+        int samples = 0;
+        Vector2 expected = default, actual = default, previous = default, sampledExpected = default, sampledPrevious = default;
+        bool crawl = false;
+        var graph = rig.Brain.GetComponent<AnimancerComponent>();
+        type.GetField("BeforeUpdate").SetValue(probe, (System.Action)(() =>
+        {
+            previous = ((Vector2MixerState)graph.Layers[0].CurrentState).Parameter;
+            Vector2 direction = (Time.frameCount & 1) == 0 ? Vector2.right : Vector2.up;
+            hub.SetMoveSpeed01(0.8f);
+            hub.SetMoveDirLocal(direction);
+            float scale = crawl ? 0.35f : 1f;
+            float sharpness = crawl ? 10f : 14f;
+            float dt = (float)typeof(CharacterAnimBrain).GetProperty("AnimationDeltaTime", Hidden).GetValue(rig.Brain);
+            expected = Vector2.Lerp(previous, direction * 0.8f * scale, 1f - Mathf.Exp(-sharpness * dt));
+        }));
+        type.GetField("AfterLateUpdate").SetValue(probe, (System.Action)(() =>
+        {
+            actual = ((Vector2MixerState)graph.Layers[0].CurrentState).Parameter;
+            sampledExpected = expected;
+            sampledPrevious = previous;
+            samples++;
+        }));
+        for (int phase = 0; phase < 2; phase++)
+        {
+            int start = samples;
+            while (samples < start + 3) yield return null;
+            Assert.That(Vector2.Distance(sampledExpected, actual), Is.LessThan(0.0001f),
+                crawl ? "Crawl did not consume this frame's movement exactly once." : "Live did not consume this frame's movement exactly once.");
+            Assert.That(Vector2.Distance(actual, sampledPrevious), Is.GreaterThan(0.00001f));
+            if (phase == 0) { crawl = true; rig.Brain.SetDowned(true); }
+        }
+        type.GetField("BeforeUpdate").SetValue(probe, null);
+        type.GetField("AfterLateUpdate").SetValue(probe, null);
+    }
+
+    [Test]
+    public void UtilityReplacementClosesOldSessionBeforeArmingNewOne()
+    {
+        Rig rig = CreateRig();
+        rig.Brain.TryPlayUtilityWarpOut(41);
+        var oldEnd = rig.Brain.GetComponent<AnimancerComponent>().Layers[0].CurrentState.SharedEvents.OnEnd;
+        rig.ClearSignals();
+        Assert.That(rig.Brain.TryPlayUtilityWarpOut(42), Is.True);
+        oldEnd();
+        Assert.That(rig.Signals, Is.EqualTo(new[] { "UtilityWarpOut:Interrupted:41", "UtilityWarpOut:Started:42" }));
+        rig.EndUtilityClip();
+        Assert.That(rig.Signals, Does.Contain("UtilityWarpOut:Completed:42"));
+    }
+
+    [Test]
+    public void SpecialReactionCancelReportsItsReasonAfterRelease()
+    {
+        Rig rig = CreateRig(profile => profile.miniStune = MakeClipTransition(createdObjects, "mini stun"));
+        var reasons = new List<CharacterAnimBrain.SpecialReactionInterruptReason>();
+        rig.Brain.SpecialReactionInterrupted += (id, reason) => reasons.Add(reason);
+        Assert.That(rig.Brain.TryPlaySpecialReaction(41, 0.2f), Is.True);
+        rig.Brain.CancelSpecialReaction(41);
+        rig.Brain.CancelSpecialReaction(41);
+        Assert.That(reasons, Is.EqualTo(new[] { CharacterAnimBrain.SpecialReactionInterruptReason.Cancelled }));
+        Assert.That(rig.Brain.RootMotionActive, Is.False);
+        Assert.That(rig.Brain.IsSpecialReactionPlaybackActive, Is.False);
+    }
+
+    [Test]
+    public void SkillVfxLeaseEndsBeforePublicTerminalObserversRun()
+    {
+        Rig rig = CreateRig();
+        var definition = CreateSkillDefinition(rig);
+        definition.ReplaceSkillVfxEvents(new List<SkillVfxEvent>
+        {
+            new SkillVfxEvent { cueIndex = 0, action = SkillVfxAction.StopLoop, loopKey = "probe" },
+        });
+        Assert.That(rig.Brain.TryPlaySkill(41, definition, 0f), Is.True);
+        typeof(CharacterAnimBrain).GetMethod("RaiseSkillVfxTimelineEvent", Hidden).Invoke(rig.Brain, new object[] { 0 });
+        Assert.That(Diagnostic<int>(rig.Brain, "VfxSessions"), Is.EqualTo(1));
+        int remaining = -1;
+        rig.Brain.PlaybackEvent += signal =>
+        {
+            if (signal.RequestId == 41 && signal.Phase == CharacterAnimBrain.PlaybackPhase.Interrupted)
+                remaining = Diagnostic<int>(rig.Brain, "VfxSessions");
+        };
+        rig.Brain.CancelSkillCastRequest(41);
+        Assert.That(remaining, Is.Zero);
+        Assert.That(Diagnostic<int>(rig.Brain, "VfxSessions"), Is.Zero);
+    }
+
+    static T Diagnostic<T>(CharacterAnimBrain brain, string field)
+    {
+        object snapshot = typeof(CharacterAnimBrain).GetMethod("GetDiagnosticSnapshot", Hidden).Invoke(brain, null);
+        return (T)snapshot.GetType().GetField(field, Hidden).GetValue(snapshot);
+    }
+
     // ---- Skill playback -----------------------------------------------------------------------
 
     [Test]
@@ -93,15 +521,14 @@ public sealed class CharacterAnimBrainSmokeTests
     [Test]
     public void CancelSkillCastRequestClearsStateWithoutATerminalEvent()
     {
-        // Characterises the existing contract: the caller asked for the cancel, so it is not told
-        // about an interruption it caused itself.
+        // Keep the historic test entry point; explicit cancellation now publishes one terminal.
         Rig rig = CreateRig();
         rig.Brain.TryPlaySkill(101, null, 0f);
         rig.ClearSignals();
 
         rig.Brain.CancelSkillCastRequest(101);
 
-        Assert.That(rig.Signals, Is.Empty);
+        Assert.That(rig.Signals, Is.EqualTo(new[] { "Skill:Interrupted:101" }));
         Assert.That(rig.Brain.IsSkillPlaybackActive, Is.False);
         Assert.That(rig.Brain.RootMotionActive, Is.False);
     }
@@ -855,20 +1282,15 @@ public sealed class CharacterAnimBrainSmokeTests
                 .Invoke(Brain, new object[] { pose });
 
         /// <summary>Fires the end-of-clip callback the way the Animancer event sequence would.</summary>
-        public void EndChainClip() => InvokeStateCallback("chain", "OnChainEnd");
+        public void EndChainClip() => EndCurrentClip();
 
-        public void EndSkillClip() => InvokeStateCallback("skill", "OnSkillEnd");
+        public void EndSkillClip() => EndCurrentClip();
 
-        public void EndUtilityClip() => InvokeStateCallback("utility", "OnUtilityEnd");
+        public void EndUtilityClip() => EndCurrentClip();
 
         public CharacterAnimProfileSO CreateSecondProfile() => BuildProfile();
 
-        void InvokeStateCallback(string stateField, string callback)
-        {
-            object state = typeof(CharacterAnimBrain).GetField(stateField, Hidden).GetValue(Brain);
-            Assert.That(state, Is.Not.Null, $"Brain state '{stateField}' was never created.");
-            Invoke(state, callback);
-        }
+        void EndCurrentClip() => Brain.GetComponent<AnimancerComponent>().Layers[0].CurrentState.SharedEvents.OnEnd();
 
         static void Invoke(object target, string method)
         {

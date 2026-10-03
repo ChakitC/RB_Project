@@ -14,8 +14,10 @@ public class PlayerContext : CharacteContext
     public FieldAllyManager fieldAllyManager;
     public PartyFormationController partyFormation;
     public ChainAttackCoordinator chainAttackCoordinator;
-    public PartyComboOpportunityController partyComboController;
-    public PartyComboSkillExecutor partyComboExecutor;
+    [UnityEngine.Serialization.FormerlySerializedAs("partyComboController")]
+    public PartyFollowUpOpportunityController partyFollowUpController;
+    [UnityEngine.Serialization.FormerlySerializedAs("partyComboExecutor")]
+    public PartyFollowUpSkillExecutor partyFollowUpExecutor;
     public PartyCommandController partyCommand;
     public InterruptionCommandController interruptionCommand;
     public ThirdPersonAimController thirdPersonAim;
@@ -80,11 +82,11 @@ public class PlayerContext : CharacteContext
         if (chainAttackCoordinator == null)
             chainAttackCoordinator = ResolveActorComponent(chainAttackCoordinator);
 
-        if (partyComboController == null)
-            partyComboController = ResolveActorComponent(partyComboController);
+        if (partyFollowUpController == null)
+            partyFollowUpController = ResolveActorComponent(partyFollowUpController);
 
-        if (partyComboExecutor == null)
-            partyComboExecutor = ResolveActorComponent(partyComboExecutor);
+        if (partyFollowUpExecutor == null)
+            partyFollowUpExecutor = ResolveActorComponent(partyFollowUpExecutor);
 
         if (partyCommand == null)
             partyCommand = ResolveActorComponent(partyCommand);

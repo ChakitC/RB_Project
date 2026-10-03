@@ -11,8 +11,9 @@ public sealed partial class CharacterAnimBrain
     /// Special Shoot Point round hands ChainReady off from. Sharing the skill channel would have
     /// made an ordinary skill interruption look like a reaction interruption.
     /// </summary>
-    private readonly PlaybackChannel _specialReactionChannel = new() { Kind = PlaybackKind.SpecialReaction };
+    private PlaybackChannel _specialReactionChannel => sessions.SpecialReaction;
 
+    private SpecialReactionInterruptReason specialInterruptReason = SpecialReactionInterruptReason.OwnershipLost;
     private float _specialReactionFallbackSeconds = 0.6f;
 
     /// <summary>Reason a Special Point reaction ended without reaching the end of its clip.</summary>
@@ -56,6 +57,7 @@ public sealed partial class CharacterAnimBrain
     /// </returns>
     public bool TryPlaySpecialReaction(int requestId, float missingClipFallbackSeconds)
     {
+        using var commandScope = signals.Begin();
         if (requestId <= 0)
             return false;
 
@@ -81,6 +83,8 @@ public sealed partial class CharacterAnimBrain
         if (locomotionSM.CurrentState == fullBodyReloadState)
             fullBodyReloadState.CancelNow();
 
+        if (locomotionSM.CurrentState == specialReactionState) ForceSetLocomotionState(locomotion);
+        specialInterruptReason = SpecialReactionInterruptReason.OwnershipLost;
         _specialReactionChannel.Kind = PlaybackKind.SpecialReaction;
         _specialReactionChannel.Request.Begin(requestId, 0f);
         _specialReactionFallbackSeconds = missingClipFallbackSeconds > 0f
@@ -103,12 +107,14 @@ public sealed partial class CharacterAnimBrain
     /// </summary>
     public void CancelSpecialReaction(int requestId)
     {
+        using var commandScope = signals.Begin();
         if (!_initialized || requestId <= 0)
             return;
 
         if (_specialReactionChannel.RequestId != requestId || !_specialReactionChannel.IsActive)
             return;
 
+        specialInterruptReason = SpecialReactionInterruptReason.Cancelled;
         if (locomotionSM.CurrentState == specialReactionState)
         {
             bool exited = TrySetLocomotionState(IsDowned ? crawlState : locomotion);
@@ -128,24 +134,22 @@ public sealed partial class CharacterAnimBrain
     /// </summary>
     private void CloseSpecialReactionSession(bool completedNormally)
     {
-        PlaybackSessionClose close = _specialReactionChannel.Request.Close(completedNormally);
-        _specialReactionChannel.Request.Clear();
-        _specialReactionChannel.Kind = PlaybackKind.SpecialReaction;
-
-        if (close.RequestId <= 0)
-            return;
-
-        if (completedNormally)
-        {
-            EmitPlaybackSignal(PlaybackKind.SpecialReaction, PlaybackPhase.Completed, close.RequestId);
-            SpecialReactionCompleted?.Invoke(close.RequestId);
-            return;
-        }
-
-        if (!close.OwesInterrupted)
-            return;
-
-        EmitPlaybackSignal(PlaybackKind.SpecialReaction, PlaybackPhase.Interrupted, close.RequestId);
-        SpecialReactionInterrupted?.Invoke(close.RequestId, SpecialReactionInterruptReason.OwnershipLost);
+        var reason = specialInterruptReason;
+        sessions.Close(_specialReactionChannel, PlaybackKind.SpecialReaction, completedNormally,
+            false, false, false, () =>
+            {
+                _specialReactionChannel.Clear();
+                _specialReactionChannel.Kind = PlaybackKind.SpecialReaction;
+            }, (kind, phase, requestId) =>
+            {
+                signals.Enqueue(() =>
+                {
+                    RaisePlaybackSignal(kind, phase, requestId);
+                    if (phase == PlaybackPhase.Completed)
+                        SafeAnimationEvents.Invoke(SpecialReactionCompleted, requestId);
+                    else if (phase == PlaybackPhase.Interrupted)
+                        SafeAnimationEvents.Invoke(SpecialReactionInterrupted, requestId, reason);
+                });
+            });
     }
 }

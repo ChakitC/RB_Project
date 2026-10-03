@@ -137,7 +137,7 @@ MonoBehaviour:
       m_Interactions: 
       m_SingletonActionBindings: []
       m_Flags: 0
-    - m_Name: PartyComboSlot1
+    - m_Name: PartyFollowUpSlot1
       m_Type: 1
       m_ExpectedControlType: Button
       m_Id: b36760db-efe8-4bc4-948e-345db8d8021c
@@ -145,7 +145,7 @@ MonoBehaviour:
       m_Interactions: 
       m_SingletonActionBindings: []
       m_Flags: 0
-    - m_Name: PartyComboSlot2
+    - m_Name: PartyFollowUpSlot2
       m_Type: 1
       m_ExpectedControlType: Button
       m_Id: a4569b4e-d485-40bb-9621-2fc3577e0a7e
@@ -320,7 +320,7 @@ MonoBehaviour:
       m_Interactions: Press
       m_Processors: 
       m_Groups: Keyboard&Mouse
-      m_Action: PartyComboSlot1
+      m_Action: PartyFollowUpSlot1
       m_Flags: 0
     - m_Name: 
       m_Id: 4795560d-3432-4ec3-9030-0db1ef75d740
@@ -328,7 +328,7 @@ MonoBehaviour:
       m_Interactions: Press
       m_Processors: 
       m_Groups: Gamepad
-      m_Action: PartyComboSlot1
+      m_Action: PartyFollowUpSlot1
       m_Flags: 0
     - m_Name: 
       m_Id: 1f95f5a7-6103-466b-94dd-e02bf177145a
@@ -336,7 +336,7 @@ MonoBehaviour:
       m_Interactions: Press
       m_Processors: 
       m_Groups: Keyboard&Mouse
-      m_Action: PartyComboSlot2
+      m_Action: PartyFollowUpSlot2
       m_Flags: 0
     - m_Name: 
       m_Id: 76d53ee1-b5c0-4684-a229-5440eb9e8473
@@ -344,7 +344,7 @@ MonoBehaviour:
       m_Interactions: Press
       m_Processors: 
       m_Groups: Gamepad
-      m_Action: PartyComboSlot2
+      m_Action: PartyFollowUpSlot2
       m_Flags: 0
   - m_Name: UI
     m_Id: ea003468-82c1-4ef6-bb15-fb54e80c90c1

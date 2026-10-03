@@ -124,7 +124,7 @@ internal sealed class CharacterSkillLoadoutRuntime
     /// execution skill definition.
     /// </summary>
     readonly Dictionary<SkillHelperDef, CharacterSkillEntry> helperProcRuntimeEntries = new();
-    readonly Dictionary<PartyComboSkillDef, CharacterSkillEntry> partyComboRuntimeEntries = new();
+    readonly Dictionary<PartyFollowUpSkillDef, CharacterSkillEntry> partyFollowUpRuntimeEntries = new();
 
     /// <summary>
     /// Entries for skills driven from outside the serialized loadout (helper assists, scripted
@@ -401,19 +401,19 @@ internal sealed class CharacterSkillLoadoutRuntime
         return false;
     }
 
-    public bool TryGetPartyComboRuntimeEntry(
-        PartyComboSkillDef combo,
+    public bool TryGetPartyFollowUpRuntimeEntry(
+        PartyFollowUpSkillDef combo,
         out CharacterSkillEntry entry)
     {
         entry = null;
         if (combo == null || combo.executionSkill == null)
             return false;
 
-        if (!partyComboRuntimeEntries.TryGetValue(combo, out entry) || entry == null)
+        if (!partyFollowUpRuntimeEntries.TryGetValue(combo, out entry) || entry == null)
         {
             entry = new CharacterSkillEntry { skillAsset = combo.executionSkill };
             entry.runtimeSkill = CreateRuntimeSkill(combo.executionSkill, null);
-            partyComboRuntimeEntries[combo] = entry;
+            partyFollowUpRuntimeEntries[combo] = entry;
         }
         else if (entry.skillAsset != combo.executionSkill ||
                  entry.runtimeSkill == null ||
@@ -425,7 +425,7 @@ internal sealed class CharacterSkillLoadoutRuntime
 
         if (entry.runtimeSkill != null)
             entry.runtimeSkill.upgradeSnapshot = activeSkillProgress != null && combo.upgradeTree != null
-                ? activeSkillProgress.BuildSnapshot(PartyComboSkillDef.ProgressSlotId, combo.RuntimeId, combo.upgradeTree)
+                ? activeSkillProgress.BuildSnapshot(PartyFollowUpSkillDef.ProgressSlotId, combo.RuntimeId, combo.upgradeTree)
                 : null;
 
         return entry.runtimeSkill != null;

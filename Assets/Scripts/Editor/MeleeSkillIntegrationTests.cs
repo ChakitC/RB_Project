@@ -118,6 +118,8 @@ public sealed class MeleeSkillIntegrationTests
         Set(guard, "attack", attack); Set(guard, "player", player); Set(guard, "request", request);
         Set(guard, "life", receiver.LifeGeneration); Set(guard, "playerLife", player.LifeGeneration);
         Set(guard, "sessionDefinition", receiver.baseStats); Set(guard, "active", true); Set(guard, "arrived", true);
+        // Arrival initializes the contact plane in production; reproduce it for this staged reservation.
+        Call(guard, "ResolveActiveGuardOffset");
         Assert.That(receiver.AnimDriver.TryBeginBlock(request, settings.animation), Is.True);
         Assert.That(guard.IsReadyFor(attack, request), Is.True);
         Vector3 lunge = Vector3.back * 3f;
@@ -794,7 +796,7 @@ public sealed class MeleeSkillIntegrationTests
     }
     static int RequestId(CharacterAnimBrain brain)
     {
-        object channel = typeof(CharacterAnimBrain).GetField("_skillChannel", Hidden).GetValue(brain);
+        object channel = typeof(CharacterAnimBrain).GetProperty("_skillChannel", Hidden).GetValue(brain);
         return (int)channel.GetType().GetProperty("RequestId").GetValue(channel);
     }
     static object Call(object target, string name, params object[] args) => target.GetType().GetMethod(name, Hidden).Invoke(target, args);

@@ -206,7 +206,7 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         Projectile prefabProjectileForChildren = null,
         ulong combatChainId = 0,
         int combatDepth = 0,
-        ComboExecutionProvenance comboProvenance = default
+        FollowUpExecutionProvenance followUpProvenance = default
     )
     {
         // mark source
@@ -290,7 +290,7 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
             chainId = combatChainId != 0 ? combatChainId : CombatEventBus.NextChainId(),
             depth = Mathf.Max(0, combatDepth),
             origin = PassiveEventOrigin.External,
-            comboProvenance = comboProvenance,
+            followUpProvenance = followUpProvenance,
             projectilePrefab = prefabProjectileForChildren != null ? prefabProjectileForChildren : this,
             attribution = _attribution
         };
@@ -1566,7 +1566,7 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
                 _ctx.originRuleId,
                 metadata,
                 CombatEventBus.NextFactId(),
-                _ctx.comboProvenance);
+                _ctx.followUpProvenance);
 
             return ownerEventBus.CreateChildContext(
                 parent,

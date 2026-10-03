@@ -35,19 +35,19 @@ public static class SkillLoadoutDescriptorFactory
             slot.DisplayName = "PASSIVE";
             slots.Add(slot);
         }
-        AppendComboSlot(stats, slots);
+        AppendFollowUpSlot(stats, slots);
         return slots;
     }
 
-    static void AppendComboSlot(CharacterStats stats, List<SkillLoadoutSlotDescriptor> slots)
+    static void AppendFollowUpSlot(CharacterStats stats, List<SkillLoadoutSlotDescriptor> slots)
     {
         var slot = new SkillLoadoutSlotDescriptor
         {
-            SlotId = PartyComboSkillDef.ProgressSlotId,
-            DisplayName = "COMBO",
-            Kind = SkillLoadoutKind.PartyCombo,
+            SlotId = PartyFollowUpSkillDef.ProgressSlotId,
+            DisplayName = "FOLLOW-UP",
+            Kind = SkillLoadoutKind.PartyFollowUp,
         };
-        PartyComboSkillDef combo = stats.partyComboSkill;
+        PartyFollowUpSkillDef combo = stats.partyFollowUpSkill;
         if (combo != null && combo.executionSkill != null)
         {
             slot.Options.Add(new SkillLoadoutOptionDescriptor

@@ -6888,7 +6888,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 342902737459526216}
         m_TargetAssemblyTypeName: PlayerInputHandler, Assembly-CSharp
-        m_MethodName: OnPartyComboSlot1
+        m_MethodName: OnPartyFollowUpSlot1
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -6899,12 +6899,12 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
     m_ActionId: b36760db-efe8-4bc4-948e-345db8d8021c
-    m_ActionName: Player/PartyComboSlot1
+    m_ActionName: Player/PartyFollowUpSlot1
   - m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 342902737459526216}
         m_TargetAssemblyTypeName: PlayerInputHandler, Assembly-CSharp
-        m_MethodName: OnPartyComboSlot2
+        m_MethodName: OnPartyFollowUpSlot2
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -6915,7 +6915,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
     m_ActionId: a4569b4e-d485-40bb-9621-2fc3577e0a7e
-    m_ActionName: Player/PartyComboSlot2
+    m_ActionName: Player/PartyFollowUpSlot2
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player

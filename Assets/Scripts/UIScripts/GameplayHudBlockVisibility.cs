@@ -25,7 +25,7 @@ public sealed class GameplayHudBlockVisibility : MonoBehaviour
         if (!captured)
         {
             Capture("AmmoDisplay");
-            Capture("ComboDisplay");
+            Capture("FollowUpDisplay");
             Capture("MinimapPlaceholder");
             for (int i = 1; i <= 4; i++)
                 Capture($"SkillReady Ally {i}");

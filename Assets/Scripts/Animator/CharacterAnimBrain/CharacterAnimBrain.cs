@@ -4,11 +4,21 @@ using Animancer;
 using Animancer.FSM;
 using UnityEngine;
 
-[DefaultExecutionOrder(-120)]
+[DefaultExecutionOrder(1100)]
 public sealed partial class CharacterAnimBrain : MonoBehaviour
 {
     private const float ActionLayerActiveWeightThreshold = 0.001f;
 
+    private readonly CharacterAnimationBinding binding = new();
+    internal AnimancerComponent BoundAnimancer => tearingDown || !_initialized ? null : animancer;
+    internal event Action AnimationBindingChanged;
+    internal int BindingGeneration => binding.Generation;
+    internal CharacterAnimationDiagnosticSnapshot GetDiagnosticSnapshot() => new(
+        locomotionSM.CurrentState?.GetType().Name, CurrentAnimationMode, sessions,
+        presentation.PendingCleanupCount, signals.PendingCount, timeline?.CallbackCount ?? 0,
+        timeline?.VfxSessionCount ?? 0, presentation.LocomotionWeight, presentation.UpperWeight, presentation.FullBodyWeight);
+    private readonly CharacterAnimationUnboundState unboundState = new();
+    private bool suspendingBinding;
     private bool _initialized;
     private bool _bindingDirty = true;
     private Animator _boundAnimator;
@@ -39,13 +49,10 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private float _dashDuration = 0.12f;
     private Locomotion_Dash dashState;
     private Locomotion_Knockback knockbackState;
-    private Action onDashEndCache;
 
     private Locomotion_Dead deadState;
-    private Action onDeadEndCache;
 
     private Locomotion_StageIntro stageIntroState;
-    private Action onStageIntroEndCache;
 
     private Locomotion_SpecialReaction specialReactionState;
 
@@ -165,11 +172,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     private Action_ShootHold shootHold;
 
     // cache delegates ลด alloc
-    private Action onShootEndCache;
     private Action onUtilityCastMomentCache;
-    private readonly PlaybackChannel _skillChannel = new() { Kind = PlaybackKind.Skill };
-    private AnimationVfxPresenter _animationVfxPresenter;
-    private readonly PlaybackChannel _utilityChannel = new() { Kind = PlaybackKind.UtilityWarpOut };
+    private readonly PlaybackSessionCoordinator sessions = new();
+    private PlaybackChannel _skillChannel => sessions.Skill;
+    private AnimationTimelineBinding timeline;
+    private AnimationTimelineBinding Timeline => timeline ??= new AnimationTimelineBinding(this, sessions);
+    private PlaybackChannel _utilityChannel => sessions.Utility;
 
     private AnimancerLayer LocoLayer => animancer.Layers[locomotionLayerIndex];
     private AnimancerLayer ActLayer => animancer.Layers[actionLayerIndex];
@@ -384,19 +392,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private bool TryGetAnimProfile(out CharacterAnimProfileSO animProfile)
     {
-        animProfile = null;
-
-        if (_animProfileOverride != null)
-        {
-            animProfile = _animProfileOverride;
-            return true;
-        }
-
-        ResolveReferences();
-        if (ctx == null || ctx.baseStats == null)
-            return false;
-
-        animProfile = ctx.baseStats.animProfile;
+        if (_animProfileOverride == null && ctx == null) ResolveReferences();
+        animProfile = binding.ResolveProfile(_animProfileOverride, ctx);
         return animProfile != null;
     }
 
@@ -453,8 +450,11 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         return animProfile != null;
     }
 
+    private bool tearingDown;
+
     private bool TryInitialize()
     {
+        if (tearingDown) return false;
         // Steady state. This runs once per frame per character, so it stays to reference
         // comparisons only: no GetComponent walk, no ctx.ResolveReferences(), no allocation.
         // Any binding change - a rebuilt model, a Morph profile override, a destroyed rig - shows
@@ -465,6 +465,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             _boundAnimator != null &&
             _boundAnimProfile != null &&
             animancer.Animator == _boundAnimator &&
+            ReferenceEquals(animancer, binding.Animancer) &&
+            animancer.IsGraphInitialized && ReferenceEquals(animancer.Graph, binding.Graph) &&
             TryPeekAnimProfile(out CharacterAnimProfileSO boundProfile) &&
             boundProfile == _boundAnimProfile)
         {
@@ -476,41 +478,35 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private bool TryRebind()
     {
+        using var commandScope = signals.Begin();
         ResolveReferences();
-        if (!animancer || animancer.Animator == null)
-            return false;
-
-        if (!TryGetAnimProfile(out var animProfile))
-            return false;
-
-        bool bindingChanged = _initialized &&
-                              (animancer.Animator != _boundAnimator || animProfile != _boundAnimProfile);
-        if (bindingChanged)
+        if (!animancer || animancer.Animator == null || !TryGetAnimProfile(out var animProfile))
         {
-            StopCommanBlock();
-            if (_skillChannel.IsActive || _utilityChannel.IsActive)
+            if (_initialized)
             {
-                InterruptActiveSkillRequest();
-                InterruptActiveUtilityRequest();
+                SuspendBinding();
+                timeline?.Clear();
+                presentation.DisposePresentationLayers();
+                _initialized = false;
+                _bindingDirty = true;
+                SafeAnimationEvents.Invoke(AnimationBindingChanged);
             }
-
-            dashState?.EndVfxSession();
-            reloadState?.EndVfxSession();
-            fullBodyReloadState?.EndVfxSession();
-            }
-
-        // ถ้า Animator หรือ profile เปลี่ยน (เช่น rebuild model / switch character) ต้อง init ใหม่
-        if (_initialized && animancer.Animator == _boundAnimator && animProfile == _boundAnimProfile)
-        {
-            _bindingDirty = false;
-            return true;
+            return false;
         }
 
-        DisposePresentationLayers();
-        _boundAnimator = animancer.Animator;
+        // Exit old states while their binding and presentation still exist. Explicit invalidation
+        // also rebuilds a model that kept the same Animator and profile references.
+        if (_initialized) SuspendBinding();
+
+        timeline?.Clear();
+        presentation.DisposePresentationLayers();
+        binding.Commit(animancer, animProfile);
+        sessions.BindingGeneration = binding.Generation;
+        Timeline.Bind(binding.Snapshot);
+        _boundAnimator = binding.Animator;
         _boundAnimProfile = animProfile;
 
-        InitializePresentationLayers();
+        presentation.Bind(binding.Snapshot, locomotionLayerIndex, actionLayerIndex);
 
         locomotion = new LocomotionState_Live(this);
         empty = new Action_Empty(this);
@@ -535,6 +531,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         _initialized = true;
         _bindingDirty = false;
+        SafeAnimationEvents.Invoke(AnimationBindingChanged);
 
         if (_pendingDownedSet)
         {
@@ -544,6 +541,25 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         ApplyPending();
         return true;
+    }
+
+    private void SuspendBinding()
+    {
+        suspendingBinding = true;
+        try
+        {
+            StopCommanBlock();
+            AllowChainStateExit();
+            ForceSetLocomotionState(unboundState);
+            actionSM.ForceSetState(empty);
+            InterruptActiveSkillRequest();
+            InterruptActiveUtilityRequest();
+            InterruptActiveChainRequest();
+            CloseSpecialReactionSession(false);
+            sessions.ReleaseCommandControl();
+            ClearRootMotionPolicy();
+        }
+        finally { suspendingBinding = false; }
     }
 
     private void ApplyPending()
@@ -589,26 +605,14 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void OnEnable()
     {
+        tearingDown = false;
         InvalidateAnimationBinding();
     }
 
     private void ResolveReferences()
     {
-        if (!ctx)
-        {  
-            if (!ctx)
-                ctx = GetComponentInParent<CharacteContext>();
-        }
-
-        ctx?.ResolveReferences();
-
-        if (ctx != null && ctx.AnimBrain != this)
-            ctx.AnimBrain = this;
-
-        if (!animancer)
-            animancer = GetComponent<AnimancerComponent>();
-        if (!animancer && ctx != null)
-            animancer = ctx.GetComponentInChildren<AnimancerComponent>(true);
+        binding.Resolve(this, ref ctx, ref animancer);
+        if (ctx != null && ctx.AnimBrain != this) ctx.AnimBrain = this;
     }
 
     private bool _initWarned;
@@ -631,7 +635,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         RefreshStatusLocomotion();
         locomotionSM.CurrentState?.Update();
         actionSM.CurrentState?.Update();
-        UpdatePresentationTransitions();
+        presentation.UpdatePresentationTransitions();
     }
 
     private bool UsesWorldAnimationSlow()
@@ -713,7 +717,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void NotifyShotFired()
     {
-        if (ExternalCommandBlockedByChain())
+        if (!CharacterAnimationTransitionPolicy.AllowsAction(CurrentAnimationMode, PairOffsetUpperAction.ShootPulse))
             return;
 
         if (!TryInitialize())
@@ -817,7 +821,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PlayReload(float reloadDuration)
     {
-        if (ExternalCommandBlockedByChain())
+        if (!CharacterAnimationTransitionPolicy.AllowsAction(CurrentAnimationMode, PairOffsetUpperAction.Reload))
             return;
 
         _reloadDuration = Mathf.Max(0.01f, reloadDuration);
@@ -929,6 +933,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     /// </summary>
     public bool TryPlayStageIntro()
     {
+        using var commandScope = signals.Begin();
         if (_initialized &&
             !CanStartAnimation(CharacterAnimationMode.StageIntro, CharacterAnimationTransitionReason.CinematicOverride))
         {
@@ -966,6 +971,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PlayDead()
     {
+        using var commandScope = signals.Begin();
         if (_initialized &&
             !CanStartAnimation(CharacterAnimationMode.Dead, CharacterAnimationTransitionReason.LifeStateOverride))
         {
@@ -983,6 +989,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void SetDowned(bool downed)
     {
+        using var commandScope = signals.Begin();
         AbortActiveChainPlaybackForExternalState();
 
         if (!TryInitialize())
@@ -1027,6 +1034,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void PlaySkill(SkillGemDefinition skillDef)
     {
+        using var commandScope = signals.Begin();
         if (!TryInitialize() || !HasValidSkillClip(skillDef))
             return;
 
@@ -1034,6 +1042,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             return;
 
         StopReloadAction();
+        if (locomotionSM.CurrentState == skill) ForceSetLocomotionState(locomotion);
         ClearActiveSkillRequest();
         _skillChannel.Request.Definition = skillDef;
         TryResetLocomotionState(skill);
@@ -1072,6 +1081,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
         Vector2 meleeChainWindow = default)
     {
+        using var commandScope = signals.Begin();
         if (requestId <= 0)
             return false;
 
@@ -1082,6 +1092,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             return false;
 
         StopReloadAction();
+        if (locomotionSM.CurrentState == skill) ForceSetLocomotionState(locomotion);
         ArmSkillRequest(
             requestId,
             skillDef,
@@ -1108,6 +1119,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public bool TryPlayUtilityWarpOut(int requestId)
     {
+        using var commandScope = signals.Begin();
         if (requestId <= 0)
             return false;
 
@@ -1118,6 +1130,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             return false;
 
         StopReloadAction();
+        if (locomotionSM.CurrentState == utility) ForceSetLocomotionState(locomotion);
         ArmUtilityRequest(requestId, UtilityWarpOutCastPointNormalized);
 
         try
@@ -1136,6 +1149,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void CancelSkillCastRequest(int requestId)
     {
+        using var commandScope = signals.Begin();
         if (ExternalCommandBlockedByChain())
             return;
 
@@ -1153,13 +1167,14 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void CancelUtilityCastRequest(int requestId)
     {
+        using var commandScope = signals.Begin();
         if (ExternalCommandBlockedByChain())
             return;
 
         if (requestId <= 0 || requestId != _utilityChannel.RequestId)
             return;
 
-        ClearActiveUtilityRequest();
+        InterruptActiveUtilityRequest();
 
         if (!TryInitialize())
             return;
@@ -1176,6 +1191,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     public void InterruptActivePlaybackForExternalControlLoss()
     {
+        using var commandScope = signals.Begin();
         AbortActiveChainPlaybackForExternalState();
         InterruptActiveSkillRequest();
         InterruptActiveUtilityRequest();
@@ -1287,6 +1303,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void ApplyFireHoldContext()
     {
+        if (tearingDown || suspendingBinding) { IsHoldingFire = false; return; }
         if (!_initialized)
         {
             IsHoldingFire = false;
@@ -1318,13 +1335,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!IsHoldingFire || ShootHoldLoopClip == null)
             return;
 
-        if (actionSM.CurrentState == empty)
+        if (actionSM.CurrentState == empty && CharacterAnimationTransitionPolicy.AllowsAction(CurrentAnimationMode, PairOffsetUpperAction.ShootHold))
             actionSM.TrySetState(shootHold);
-    }
-
-    private AnimancerState PlayActionTransition(ClipTransition transition, PairOffsetUpperAction upperAction)
-    {
-        return PlayActionPresentation(transition, upperAction, fullBody: false);
     }
 
     private void SetActivePairBasePose(PairOffsetBasePose pose)
@@ -1621,12 +1633,11 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     internal void RaiseMeleeChainWindow(int requestId, bool open)
     {
         if (!IsMeleePlaybackActive || _skillChannel.Request.RequestId != requestId) return;
-        if (open) MeleeChainWindowOpened?.Invoke();
-        else MeleeChainWindowClosed?.Invoke();
+        signals.Enqueue(() => SafeAnimationEvents.Invoke(open ? MeleeChainWindowOpened : MeleeChainWindowClosed));
     }
 
-    internal void ReportMeleeComboEnded() => MeleeComboEnded?.Invoke();
-    internal void ReportMeleeStepCompleted() => MeleeStepCompleted?.Invoke();
+    internal void ReportMeleeComboEnded() => signals.Enqueue(() => SafeAnimationEvents.Invoke(MeleeComboEnded));
+    internal void ReportMeleeStepCompleted() => signals.Enqueue(() => SafeAnimationEvents.Invoke(MeleeStepCompleted));
 
     internal void NotifyUtilityCastMoment()
     {
@@ -1638,36 +1649,14 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     internal void NotifySkillStateExited(bool completedNormally)
     {
-        PlaybackKind kind = ActiveSkillPlaybackKind;
-        PlaybackSessionClose close = _skillChannel.Request.Close(completedNormally);
-
-        if (close.OwesCastMoment)
-            EmitPlaybackSignal(kind, PlaybackPhase.CastMoment, close.RequestId);
-
-        ClearActiveSkillRequest();
-
-        // A request-less PlaySkill() still reports completion, with request id 0.
-        if (completedNormally)
-            EmitPlaybackSignal(kind, PlaybackPhase.Completed, close.RequestId);
-
-        if (close.OwesInterrupted)
-            EmitPlaybackSignal(kind, PlaybackPhase.Interrupted, close.RequestId);
+        sessions.Close(_skillChannel, ActiveSkillPlaybackKind, completedNormally, true, false,
+            _skillChannel.RequestId == 0, ClearActiveSkillRequest, EmitPlaybackSignal);
     }
 
     internal void NotifyUtilityStateExited(bool completedNormally)
     {
-        PlaybackSessionClose close = _utilityChannel.Request.Close(completedNormally);
-
-        if (close.OwesCastMoment)
-            EmitPlaybackSignal(PlaybackKind.UtilityWarpOut, PlaybackPhase.CastMoment, close.RequestId);
-
-        ClearActiveUtilityRequest();
-
-        if (completedNormally)
-            EmitPlaybackSignal(PlaybackKind.UtilityWarpOut, PlaybackPhase.Completed, close.RequestId);
-
-        if (close.OwesInterrupted)
-            EmitPlaybackSignal(PlaybackKind.UtilityWarpOut, PlaybackPhase.Interrupted, close.RequestId);
+        sessions.Close(_utilityChannel, PlaybackKind.UtilityWarpOut, completedNormally, true, false,
+            _utilityChannel.RequestId == 0, ClearActiveUtilityRequest, EmitPlaybackSignal);
     }
 
     internal void BindActiveSkillTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
@@ -1678,48 +1667,16 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             runtimeEvents,
             _skillChannel.Request.TimelineEventNames,
             clip,
-            eventName => { if (_skillChannel.Request.RequestId == requestId) RaiseSkillTimelineEvent(eventName); },
+            Timeline.Guard<CombatTimelineEventName>(_skillChannel, RaiseSkillTimelineEvent),
             warnMissing: true);
 
         BindVfxTimelineEventCallbacks(
             runtimeEvents,
             _skillChannel.Request.Definition,
             clip,
-            cueIndex => { if (_skillChannel.Request.RequestId == requestId) RaiseSkillVfxTimelineEvent(cueIndex); });
+            Timeline.Guard<int>(_skillChannel, RaiseSkillVfxTimelineEvent));
 
         BindActiveSkillPreCastTimelineEvents(runtimeEvents);
-    }
-
-    internal AnimationVfxSessionToken BeginAnimationVfxSession(IAnimationVfxCueSource source)
-    {
-        if (source == null)
-            return default;
-
-        if (_animationVfxPresenter == null)
-            _animationVfxPresenter = GetComponent<AnimationVfxPresenter>();
-        if (_animationVfxPresenter == null)
-            _animationVfxPresenter = gameObject.AddComponent<AnimationVfxPresenter>();
-
-        Transform root = ctx != null ? ctx.transform : transform;
-        SkillUserSystem skillUser = ctx != null ? ctx.EnegySystem : null;
-        Animator animator = animancer != null ? animancer.Animator : null;
-        return _animationVfxPresenter.BeginSession(
-            source,
-            new AnimationVfxAnchorContext(
-                root,
-                skillUser != null ? skillUser.CastOrigin : root,
-                skillUser != null ? skillUser.AimTransform : root,
-                animator));
-    }
-
-    internal void HandleAnimationVfxCue(AnimationVfxSessionToken token, int cueIndex)
-    {
-        _animationVfxPresenter?.HandleCue(token, cueIndex);
-    }
-
-    internal void EndAnimationVfxSession(AnimationVfxSessionToken token)
-    {
-        _animationVfxPresenter?.EndSession(token);
     }
 
     internal void BindActiveChainTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
@@ -1738,14 +1695,14 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             runtimeEvents,
             _chainChannel.Request.TimelineEventNames,
             clip,
-            RaiseChainSkillTimelineEvent,
+            Timeline.Guard<CombatTimelineEventName>(_chainChannel, RaiseChainSkillTimelineEvent),
             warnMissing: true);
 
         BindVfxTimelineEventCallbacks(
             runtimeEvents,
             _chainChannel.Request.Definition,
             clip,
-            RaiseChainSkillVfxTimelineEvent);
+            Timeline.Guard<int>(_chainChannel, RaiseChainSkillVfxTimelineEvent));
     }
 
     private void BindActiveChainCutsceneVfxTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
@@ -1760,7 +1717,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         int boundCueCount = AnimationVfxEventBinder.Bind(
             runtimeEvents,
-            RaiseChainCutsceneVfxTimelineEvent,
+            Timeline.Guard<int>(_chainChannel, RaiseChainCutsceneVfxTimelineEvent),
             invokeStartEventsImmediately: true);
         if (boundCueCount == 0)
         {
@@ -1780,19 +1737,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         Action<CombatTimelineEventName> raiseTimelineEvent,
         bool warnMissing)
     {
-        if (runtimeEvents == null || eventNames == null || eventNames.Count == 0 || raiseTimelineEvent == null)
-            return;
-
-        string clipName = clip != null && clip.Clip != null ? clip.Clip.name : "<none>";
-
-        for (int i = 0; i < eventNames.Count; i++)
-        {
-            CombatTimelineEventName eventName = eventNames[i];
-            if (!CombatTimelineEventNames.IsValid(eventName) || eventName == CombatTimelineEventName.Vfx)
-                continue;
-
-            BindTimelineEventCallback(runtimeEvents, eventName, clipName, raiseTimelineEvent, warnMissing);
-        }
+        Timeline.BindTimelineEventCallbacks(runtimeEvents, eventNames, clip, raiseTimelineEvent, warnMissing);
     }
 
     private void BindVfxTimelineEventCallbacks(
@@ -1801,17 +1746,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         ClipTransition clip,
         Action<int> raiseVfxCue)
     {
-        if (runtimeEvents == null || skillDef == null || !skillDef.HasSkillVfxEvents || raiseVfxCue == null)
-            return;
-
-        int boundCueCount = AnimationVfxEventBinder.Bind(runtimeEvents, raiseVfxCue);
-        if (boundCueCount == 0)
-        {
-            string clipName = clip != null && clip.Clip != null ? clip.Clip.name : "<none>";
-            Debug.LogWarning(
-                $"[CharacterAnimBrain] Skill clip '{clipName}' has VFX data but no 'Vfx' timeline event.",
-                this);
-        }
+        Timeline.BindVfxTimelineEventCallbacks(runtimeEvents, skillDef, clip, raiseVfxCue);
     }
 
     private void BindTimelineEventCallback(
@@ -1821,28 +1756,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         Action<CombatTimelineEventName> raiseTimelineEvent,
         bool warnMissing)
     {
-        if (runtimeEvents == null ||
-            !CombatTimelineEventNames.IsValid(eventName) ||
-            raiseTimelineEvent == null)
-        {
-            return;
-        }
-
-        CombatTimelineEventName capturedEventName = eventName;
-        StringReference animancerEventName = CombatTimelineEventNames.ToStringReference(capturedEventName);
-        if (animancerEventName == null || string.IsNullOrWhiteSpace(animancerEventName.String))
-            return;
-
-        int count = runtimeEvents.SetCallbacks(
-            animancerEventName,
-            () => raiseTimelineEvent(capturedEventName));
-
-        if (count == 0 && warnMissing)
-        {
-            Debug.LogWarning(
-                $"[CharacterAnimBrain] Skill clip '{clipName}' is missing timeline event '{capturedEventName}' ({animancerEventName}).",
-                this);
-        }
+        Timeline.BindTimelineEventCallback(runtimeEvents, eventName, clipName, raiseTimelineEvent, warnMissing);
     }
 
     private void BindActiveSkillPreCastTimelineEvents(AnimancerEvent.Sequence runtimeEvents)
@@ -1859,14 +1773,14 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             runtimeEvents,
             skillDef.PreCastOpenEventName,
             clipName,
-            RaiseSkillTimelineEvent,
+            Timeline.Guard<CombatTimelineEventName>(_skillChannel, RaiseSkillTimelineEvent),
             warnMissing: false);
 
         BindTimelineEventCallback(
             runtimeEvents,
             skillDef.PreCastCloseEventName,
             clipName,
-            RaiseSkillTimelineEvent,
+            Timeline.Guard<CombatTimelineEventName>(_skillChannel, RaiseSkillTimelineEvent),
             warnMissing: false);
 
         if (!skillDef.UseFallbackPreCastWindow)
@@ -1893,7 +1807,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         float clampedTime = Mathf.Clamp(normalizedTime, 0f, 0.999f);
         CombatTimelineEventName capturedEventName = eventName;
-        runtimeEvents.Add(clampedTime, () => RaiseSkillTimelineEvent(capturedEventName));
+        runtimeEvents.Add(clampedTime, Timeline.Guard(_skillChannel, () => RaiseSkillTimelineEvent(capturedEventName)));
     }
 
     private void RaiseSkillTimelineEvent(CombatTimelineEventName eventName)
@@ -1906,50 +1820,50 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         }
 
         int requestId = _skillChannel.Request.RequestId;
-        SkillTimelineEventRaised?.Invoke(requestId, eventName);
-        if (IsBasicMeleeExecution && _skillChannel.Request.RequestId == requestId)
+        bool melee = IsBasicMeleeExecution;
+        signals.Enqueue(() =>
         {
-            if (eventName == CombatTimelineEventName.HitStart) MeleeHitStart?.Invoke();
-            else if (eventName == CombatTimelineEventName.HitEnd) MeleeHitEnd?.Invoke();
-        }
+            SafeAnimationEvents.Invoke(SkillTimelineEventRaised, requestId, eventName);
+            if (melee)
+            {
+                if (eventName == CombatTimelineEventName.HitStart) SafeAnimationEvents.Invoke(MeleeHitStart);
+                else if (eventName == CombatTimelineEventName.HitEnd) SafeAnimationEvents.Invoke(MeleeHitEnd);
+            }
+        });
     }
 
     private void RaiseChainSkillTimelineEvent(CombatTimelineEventName eventName)
     {
-        if (_activeChainKind != ChainPlaybackKind.Skill ||
-            !_chainChannel.Request.ReleaseRequested ||
-            _chainChannel.Request.RequestId <= 0 ||
-            !CombatTimelineEventNames.IsValid(eventName))
-        {
-            return;
-        }
-
-        SkillTimelineEventRaised?.Invoke(_chainChannel.Request.RequestId, eventName);
+        if (_activeChainKind != ChainPlaybackKind.Skill || !_chainChannel.Request.ReleaseRequested ||
+            _chainChannel.RequestId <= 0 || !CombatTimelineEventNames.IsValid(eventName)) return;
+        int requestId = _chainChannel.RequestId;
+        signals.Enqueue(() => SafeAnimationEvents.Invoke(SkillTimelineEventRaised, requestId, eventName));
     }
 
     private void RaiseSkillVfxTimelineEvent(int cueIndex)
     {
-        if (!_skillChannel.Request.ReleaseRequested || _skillChannel.Request.RequestId <= 0 || cueIndex < 0)
-            return;
-
-        SkillAnimationVfxCueRaised?.Invoke(new SkillAnimationVfxCueSignal(
-            _skillChannel.Request.RequestId, _skillChannel.Request.Definition, SkillAnimationVfxPhase.MainSkill, cueIndex));
-        SkillTimelineEventRaised?.Invoke(_skillChannel.Request.RequestId, CombatTimelineEventName.Vfx);
+        if (!_skillChannel.Request.ReleaseRequested || _skillChannel.RequestId <= 0 || cueIndex < 0) return;
+        DispatchSkillVfx(_skillChannel, cueIndex);
     }
 
     private void RaiseChainSkillVfxTimelineEvent(int cueIndex)
     {
-        if (_activeChainKind != ChainPlaybackKind.Skill ||
-            !_chainChannel.Request.ReleaseRequested ||
-            _chainChannel.Request.RequestId <= 0 ||
-            cueIndex < 0)
-        {
-            return;
-        }
+        if (_activeChainKind != ChainPlaybackKind.Skill || !_chainChannel.Request.ReleaseRequested ||
+            _chainChannel.RequestId <= 0 || cueIndex < 0) return;
+        DispatchSkillVfx(_chainChannel, cueIndex);
+    }
 
-        SkillAnimationVfxCueRaised?.Invoke(new SkillAnimationVfxCueSignal(
-            _chainChannel.Request.RequestId, _chainChannel.Request.Definition, SkillAnimationVfxPhase.MainSkill, cueIndex));
-        SkillTimelineEventRaised?.Invoke(_chainChannel.Request.RequestId, CombatTimelineEventName.Vfx);
+    private void DispatchSkillVfx(PlaybackChannel channel, int cueIndex)
+    {
+        int requestId = channel.RequestId;
+        var cue = new SkillAnimationVfxCueSignal(requestId, channel.Request.Definition,
+            SkillAnimationVfxPhase.MainSkill, cueIndex);
+        Timeline.HandleSkillVfxCue(channel, cueIndex);
+        signals.Enqueue(() =>
+        {
+            SafeAnimationEvents.Invoke(SkillAnimationVfxCueRaised, cue);
+            SafeAnimationEvents.Invoke(SkillTimelineEventRaised, requestId, CombatTimelineEventName.Vfx);
+        });
     }
 
     private void RaiseChainCutsceneVfxTimelineEvent(int cueIndex)
@@ -1962,8 +1876,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             return;
         }
 
-        SkillAnimationVfxCueRaised?.Invoke(new SkillAnimationVfxCueSignal(
-            _chainChannel.Request.RequestId, null, SkillAnimationVfxPhase.Cutscene, cueIndex));
+        var cue = new SkillAnimationVfxCueSignal(_chainChannel.RequestId, null, SkillAnimationVfxPhase.Cutscene, cueIndex);
+        signals.Enqueue(() => SafeAnimationEvents.Invoke(SkillAnimationVfxCueRaised, cue));
     }
 
     private void RaiseCutsceneVfxCueInternal(int cueIndex)
@@ -1971,8 +1885,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!_skillChannel.Request.ReleaseRequested || _skillChannel.Request.RequestId <= 0 || cueIndex < 0)
             return;
 
-        SkillAnimationVfxCueRaised?.Invoke(new SkillAnimationVfxCueSignal(
-            _skillChannel.Request.RequestId, _skillChannel.Request.Definition, SkillAnimationVfxPhase.Cutscene, cueIndex));
+        var cue = new SkillAnimationVfxCueSignal(_skillChannel.RequestId, _skillChannel.Request.Definition, SkillAnimationVfxPhase.Cutscene, cueIndex);
+        signals.Enqueue(() => SafeAnimationEvents.Invoke(SkillAnimationVfxCueRaised, cue));
     }
 
     private void ArmSkillRequest(
@@ -1988,21 +1902,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         _skillChannel.Request.IgnoresCharacterCollisionDuringRootMotion =
             skillDef == null || skillDef.IgnoreCharacterCollisionDuringRootMotion;
         SetActiveSkillTimelineEventNames(skillDef, timelineEventNames);
-        EnsureSkillVfxPresenter(skillDef);
+        Timeline.EnsureSkillVfxPresenter(skillDef);
     }
 
     internal void ApplyActiveSkillRootMotionPolicy() => SetRootMotionShape(
         _skillChannel.Request.UsesPlanarRootMotion,
         _skillChannel.Request.IgnoresCharacterCollisionDuringRootMotion);
-
-    private void EnsureSkillVfxPresenter(SkillGemDefinition skillDef)
-    {
-        if (skillDef == null || !skillDef.HasSkillVfxEvents)
-            return;
-        if (GetComponent<SkillVfxPresenter>() != null)
-            return;
-        gameObject.AddComponent<SkillVfxPresenter>();
-    }
 
     private void ArmUtilityRequest(int requestId, float castPointNormalized)
     {
@@ -2012,9 +1917,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void ClearActiveSkillRequest()
     {
+        timeline?.EndSkillVfxSession(_skillChannel);
         _skillChannel.Clear();
         _skillChannel.Kind = PlaybackKind.Skill;
     }
+
+    internal void EndManagedSkillVfxSessions(int requestId = 0) => timeline?.EndSkillVfxSessions(requestId);
 
     private void SetActiveSkillTimelineEventNames(
         SkillGemDefinition skillDef,
@@ -2048,27 +1956,21 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void InterruptActiveSkillRequest()
     {
-        PlaybackKind kind = ActiveSkillPlaybackKind;
-        PlaybackSessionClose close = _skillChannel.Request.Close(completedNormally: false);
-
-        ClearActiveSkillRequest();
-
-        if (close.OwesInterrupted)
-            EmitPlaybackSignal(kind, PlaybackPhase.Interrupted, close.RequestId);
+        sessions.Close(_skillChannel, ActiveSkillPlaybackKind, false, false, false, false,
+            ClearActiveSkillRequest, EmitPlaybackSignal);
     }
 
     private void InterruptActiveUtilityRequest()
     {
-        PlaybackSessionClose close = _utilityChannel.Request.Close(completedNormally: false);
-
-        ClearActiveUtilityRequest();
-
-        if (close.OwesInterrupted)
-            EmitPlaybackSignal(PlaybackKind.UtilityWarpOut, PlaybackPhase.Interrupted, close.RequestId);
+        sessions.Close(_utilityChannel, PlaybackKind.UtilityWarpOut, false, false, false, false,
+            ClearActiveUtilityRequest, EmitPlaybackSignal);
     }
 
     private void OnDisable()
     {
+        tearingDown = true;
+        SafeAnimationEvents.Invoke(AnimationBindingChanged);
+        using var commandScope = signals.Begin();
         StopCommanBlock();
         dashState?.EndVfxSession();
         reloadState?.EndVfxSession();
@@ -2081,7 +1983,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         ReleaseExclusiveLocomotionForDisable();
         if (_initialized && animancer != null && animancer.Animator != null)
             actionSM.ForceSetState(empty);
-        StopPresentationTransitions();
+        timeline?.Clear();
+        presentation.StopPresentationTransitions();
     }
 
     /// <summary>
@@ -2091,8 +1994,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
     /// </summary>
     private void ReleaseExclusiveLocomotionForDisable()
     {
-        if (!_initialized || !animancer || animancer.Animator == null)
+        if (!_initialized) return;
+        if (!animancer || animancer.Animator == null)
+        {
+            SuspendBinding();
             return;
+        }
 
         // Every state that can refuse to exit has to be released first, or the transition below
         // silently fails and the FSM stays parked. Re-enabling does not rebuild the states when
@@ -2113,6 +2020,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     private void OnDestroy()
     {
+        tearingDown = true;
+        using var commandScope = signals.Begin();
+        if (_initialized) SuspendBinding();
         commanBlockState?.Dispose();
         dashState?.EndVfxSession();
         reloadState?.EndVfxSession();
@@ -2122,6 +2032,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         InterruptActiveSkillRequest();
         InterruptActiveUtilityRequest();
         InterruptActiveChainRequest();
-        DisposePresentationLayers();
+        CloseSpecialReactionSession(false);
+        sessions.ReleaseCommandControl();
+        timeline?.Clear();
+        presentation.DisposePresentationLayers();
     }
 }

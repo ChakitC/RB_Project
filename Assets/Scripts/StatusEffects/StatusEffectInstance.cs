@@ -25,17 +25,18 @@ public sealed class StatusEffectInstance
         string originRuleId,
         StatusApplicationSpec spec = null,
         float fallbackDuration = 0f,
-        ComboExecutionProvenance comboProvenance = default)
+        FollowUpExecutionProvenance followUpProvenance = default)
     {
         Definition = definition;
         Source = source;
+        CaptureSourceLife();
         AppliedById = appliedById;
         ChainId = chainId;
         Depth = Mathf.Max(0, depth);
         Origin = origin;
         OriginPassiveId = originPassiveId;
         OriginRuleId = originRuleId;
-        ComboProvenance = comboProvenance;
+        FollowUpProvenance = followUpProvenance;
         CurrentStacks = Mathf.Max(0, initialStacks);
         ApplicationSequence = _nextApplicationSequence++;
         EffectiveDuration = ResolveDuration(spec, definition, fallbackDuration);
@@ -55,13 +56,15 @@ public sealed class StatusEffectInstance
 
     public StatusEffectDef Definition { get; }
     public GameObject Source { get; private set; }
+    public CharacteContext SourceContext { get; private set; }
+    public int SourceLifeGeneration { get; private set; }
     public string AppliedById { get; private set; }
     public ulong ChainId { get; private set; }
     public int Depth { get; private set; }
     public PassiveEventOrigin Origin { get; private set; }
     public string OriginPassiveId { get; private set; }
     public string OriginRuleId { get; private set; }
-    public ComboExecutionProvenance ComboProvenance { get; private set; }
+    public FollowUpExecutionProvenance FollowUpProvenance { get; private set; }
     public int CurrentStacks { get; private set; }
     public float TimeLeft { get; private set; }
 
@@ -87,6 +90,7 @@ public sealed class StatusEffectInstance
     public void MarkReapplied()
     {
         ApplicationSequence = _nextApplicationSequence++;
+        CaptureSourceLife();
     }
 
     public void UpdateSource(GameObject source)
@@ -94,10 +98,17 @@ public sealed class StatusEffectInstance
         if (source != null)
         {
             Source = source;
+            CaptureSourceLife();
             CombatAttributionSnapshot snapshot = CombatAttributionSnapshot.FromPhysicalActor(source);
             if (snapshot.HasPhysicalActor || snapshot.HasCredit)
                 Attribution = snapshot;
         }
+    }
+
+    void CaptureSourceLife()
+    {
+        SourceContext = CharacterContextModuleLookup.ResolveContext(Source);
+        SourceLifeGeneration = SourceContext != null ? SourceContext.LifeGeneration : 0;
     }
 
     public void UpdateContext(
@@ -107,7 +118,7 @@ public sealed class StatusEffectInstance
         PassiveEventOrigin origin,
         string originPassiveId,
         string originRuleId,
-        ComboExecutionProvenance comboProvenance = default)
+        FollowUpExecutionProvenance followUpProvenance = default)
     {
         if (!string.IsNullOrWhiteSpace(appliedById))
             AppliedById = appliedById;
@@ -117,7 +128,7 @@ public sealed class StatusEffectInstance
 
         Depth = Mathf.Max(0, depth);
         Origin = origin;
-        ComboProvenance = comboProvenance;
+        FollowUpProvenance = followUpProvenance;
 
         if (!string.IsNullOrWhiteSpace(originPassiveId))
             OriginPassiveId = originPassiveId;

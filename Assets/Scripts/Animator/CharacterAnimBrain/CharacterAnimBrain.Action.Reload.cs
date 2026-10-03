@@ -1,192 +1,70 @@
-using UnityEngine;
-using System;
 using Animancer;
-using Animancer.FSM;
+
 public sealed partial class CharacterAnimBrain
 {
-    // ===================== Action: Reload  =====================
-    private sealed class Action_Reload : ActionState
+    private sealed class Action_Reload : SingleClipActionState
     {
-        private readonly CharacterAnimBrain owner;
-        private AnimancerState state;
-        private AnimancerEvent.Sequence runtimeEvents;
-        private AnimationVfxSessionToken vfxSession;
         private bool _lockExit;
-
-        public Action_Reload(CharacterAnimBrain owner) => this.owner = owner;
-
+        public Action_Reload(CharacterAnimBrain owner) : base(owner) { }
         public override bool CanEnterState => owner.ReloadClip != null;
         public override bool CanExitState => !_lockExit;
-
         public void CancelNow()
         {
             _lockExit = false;
-            ClearStateEvents();
-            EndVfxSession();
-
-            owner.FadeActionLayer(owner.ActLayer);
+            playback.Stop();
+            owner.presentation.FadeActionLayer(owner.ActLayer);
         }
-
-        public override void OnExitState()
+        protected override void EnterPlayback()
         {
-            _lockExit = false;
-            ClearStateEvents();
-            EndVfxSession();
-        }
-
-        public override void OnEnterState()
-        {
-            ClearStateEvents();
-            EndVfxSession();
             _lockExit = true;
-
-            state = owner.PlayActionTransition(owner.ReloadClip, PairOffsetUpperAction.Reload);
-            if (state == null)
+            playback.Play(new AnimationPlaybackOptions
             {
-                _lockExit = false;
-                return;
-            }
-
-            float len = Mathf.Max(0.01f, state.Length);
-            float dur = Mathf.Max(0.01f, owner._reloadDuration);
-            state.Speed = len / dur;
-
-            runtimeEvents = state.Events(owner);
-            BindVfx();
-            runtimeEvents.OnEnd = OnReloadEnd;
+                Transition = owner.ReloadClip, TargetLayer = AnimationPlaybackOptions.Layer.UpperAction,
+                PairAction = PairOffsetUpperAction.Reload, Duration = owner._reloadDuration, Vfx = owner.ReloadVfxTrack,
+            }, onEnd: endCallback);
+            if (state == null) _lockExit = false;
         }
-
-        internal void EndVfxSession()
+        protected override void ExitPlayback() { _lockExit = false; }
+        internal void EndVfxSession() => playback.EndVfx();
+        protected override void OnPlaybackEnd()
         {
-            owner.EndAnimationVfxSession(vfxSession);
-            vfxSession = default;
-        }
-
-        private void BindVfx()
-        {
-            AnimationVfxTrack track = owner.ReloadVfxTrack;
-            if (runtimeEvents == null || track == null || track.CueCount == 0)
-                return;
-
-            AnimationVfxSessionToken token = owner.BeginAnimationVfxSession(track);
-            vfxSession = token;
-            AnimationVfxEventBinder.Bind(
-                runtimeEvents,
-                cueIndex => owner.HandleAnimationVfxCue(token, cueIndex));
-        }
-
-        private void OnReloadEnd()
-        {
-            if (owner.actionSM.CurrentState != this)
-                return;
-
+            if (owner.actionSM.CurrentState != this) return;
             _lockExit = false;
-            EndVfxSession();
+            playback.EndVfx();
             owner.actionSM.TrySetState(owner.empty);
-        }
-
-        private void ClearStateEvents()
-        {
-            if (runtimeEvents != null)
-                runtimeEvents.OnEnd = null;
-
-            runtimeEvents = null;
-            state = null;
         }
     }
 
-    private sealed class Locomotion_Reload : LocomotionState
+    private sealed class Locomotion_Reload : SingleClipLocomotionState
     {
-        private readonly CharacterAnimBrain owner;
-        private AnimancerState state;
-        private AnimancerEvent.Sequence runtimeEvents;
-        private AnimationVfxSessionToken vfxSession;
         private bool _lockExit;
         private bool _prevApplyRootMotion;
-
-        public Locomotion_Reload(CharacterAnimBrain owner) => this.owner = owner;
-
-        public override bool CanEnterState =>
-            owner.ReloadClip != null &&
-            owner.ReloadClip.IsValid &&
-            !owner.IsDowned &&
-            owner.locomotionSM.CurrentState != owner.deadState;
-
+        public Locomotion_Reload(CharacterAnimBrain owner) : base(owner) { }
+        public override bool CanEnterState => owner.ReloadClip != null && owner.ReloadClip.IsValid &&
+            !owner.IsDowned && owner.locomotionSM.CurrentState != owner.deadState;
         public override bool CanExitState => !_lockExit;
-
-        public void CancelNow()
+        public void CancelNow() { _lockExit = false; playback.Stop(); }
+        protected override void EnterPlayback()
         {
-            _lockExit = false;
-            ClearStateEvents();
-            EndVfxSession();
-        }
-
-        public override void OnEnterState()
-        {
-            ClearStateEvents();
-            EndVfxSession();
             _lockExit = true;
-
-            _prevApplyRootMotion = owner.EnterExclusiveLocomotion(
-                usesRootMotion: false,
-                preserveFireHoldIntent: true);
-
-            state = owner.PlayLocomotionTransition(owner.ReloadClip);
-            state.NormalizedTime = 0f;
-
-            float len = Mathf.Max(0.01f, state.Length);
-            float dur = Mathf.Max(0.01f, owner._reloadDuration);
-            state.Speed = len / dur;
-
-            runtimeEvents = state.Events(owner);
-            BindVfx();
-            runtimeEvents.OnEnd = OnReloadEnd;
+            _prevApplyRootMotion = owner.EnterExclusiveLocomotion(false, true);
+            playback.Play(new AnimationPlaybackOptions
+            {
+                Transition = owner.ReloadClip, NormalizedStart = 0f,
+                Duration = owner._reloadDuration, Vfx = owner.ReloadVfxTrack,
+            }, onEnd: endCallback);
         }
-
-        public override void OnExitState()
+        protected override void ExitPlayback()
         {
-            ClearStateEvents();
-            EndVfxSession();
             _lockExit = false;
             owner.ExitExclusiveLocomotion(_prevApplyRootMotion);
         }
-
-        internal void EndVfxSession()
+        internal void EndVfxSession() => playback.EndVfx();
+        protected override void OnPlaybackEnd()
         {
-            owner.EndAnimationVfxSession(vfxSession);
-            vfxSession = default;
-        }
-
-        private void BindVfx()
-        {
-            AnimationVfxTrack track = owner.ReloadVfxTrack;
-            if (runtimeEvents == null || track == null || track.CueCount == 0)
-                return;
-
-            AnimationVfxSessionToken token = owner.BeginAnimationVfxSession(track);
-            vfxSession = token;
-            AnimationVfxEventBinder.Bind(
-                runtimeEvents,
-                cueIndex => owner.HandleAnimationVfxCue(token, cueIndex));
-        }
-
-        private void OnReloadEnd()
-        {
-            if (owner.locomotionSM.CurrentState != this)
-                return;
-
+            if (owner.locomotionSM.CurrentState != this) return;
             _lockExit = false;
             owner.TrySetLocomotionState(owner.IsDowned ? owner.crawlState : owner.locomotion);
         }
-
-        private void ClearStateEvents()
-        {
-            if (runtimeEvents != null)
-                runtimeEvents.OnEnd = null;
-
-            runtimeEvents = null;
-            state = null;
-        }
     }
-
 }

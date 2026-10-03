@@ -236,3 +236,65 @@ Root อยู่ที่ origin, rotation identity และ scale หนึ�
 | กลับห้องเก่าแล้วเนื้อหาซ้ำ | Component ที่สร้างเนื้อหาใหม่ทุก OnEnable แทนการเคารพ lifecycle ของห้องที่ cache ไว้ |
 
 รายละเอียดเพิ่มเติม: [Map System](MAP_SYSTEM.md) และ [Prefab authoring / Party warp](../PREFABS_AND_AUTHORING.md#map-room-spawn-and-party-warp)
+
+## ห้อง Sewer ที่ author ไว้ (1 ตุลาคม 2026)
+
+เก็บ prefab สำหรับเล่น, Room Definition และ baked NavMeshData ไว้คู่กันใน `Assets/Prefab/MAP/Sewer/PrefabMapaGame/` โมเดลต้นฉบับใน `PrefabMapaOrigin/` ยังคงเดิม ห้องใหม่เป็น Variant ของ Base_Map และเก็บ art เป็น nested prefab ใต้ `Visual`.
+
+| Prefab | Node Type | Exit Mask | สถานะการลงทะเบียน |
+| --- | --- | --- | --- |
+| `Sewer_Boss.prefab` | Boss | Up | Boss Rush 01 / Test Stage 01–03 / config ทดสอบหลัก |
+| `Sewer_Start.prefab` | Start | Up | Boss Rush 01 / Test Stage 01–03 / config ทดสอบหลัก |
+| `Sewer_Deadend.prefab` | Shop | Left | Test Stage 01–03 / config ทดสอบหลัก |
+| `Sewer_Stright.prefab` | Combat | Up, Down | Test Stage 01–03 / config ทดสอบหลัก |
+| `Sewer_Straight_Short.prefab` | Heal | Up, Down | Boss Rush 01 / Test Stage 01–03 / config ทดสอบหลัก |
+| `Sewer_Turn.prefab` | Combat | Down, Left | Test Stage 01–03 / config ทดสอบหลัก |
+| `Sewer_TJunction.prefab` | Combat | Up, Right, Left | Test Stage 01–03 / config ทดสอบหลัก |
+| `Sewer_Cross.prefab` | Combat | Up, Right, Down, Left | Test Stage 01–03 / config ทดสอบหลัก |
+
+Room Definition ใหม่ใช้ชื่อ `RoomDefinition.Sewer.<ชื่อแบบ>.asset` และปิด `Allow Superset Exit Mask` จุดเกิดศัตรูมี 4 จุดใน Combat; Start ไม่เริ่ม encounter และคงร้านค้าจาก art เดิมไว้. Start หมุน art 180 องศาให้ทางออกอยู่ Up; Turn ใช้ origin ที่มุมเลี้ยว และ TJunction ใช้ origin ที่จุดแยก จึงไม่อิงกึ่งกลาง mesh bounds ในการวางประตู.
+
+เพิ่ม collider เฉพาะ geometry ที่มีหน้าที่ชน เช่นพื้น ผนัง ราว รั้ว ตู้ ถัง และประตู โดยคง collider/water เดิมไว้. `Sewer_DeadEnd_2` ที่อยู่ห่างประมาณ 5.5 กม. ถูกปิดเฉพาะ override ใน Variant. จุดเกิดสำรองของ Deadend หัน +X เข้าไปตามทางเดิน. Stright วาง spawn sockets ที่ local Y = 0.35 ให้ตรงระดับ floor/NavMesh จริง และวางจุดเกิด East ที่ X = 2 ให้ศัตรูใหญ่ไม่ทับราว.
+
+NavMesh ใหม่อยู่บน root, Agent Type 0, Collect Objects = Current Object Hierarchy, Use Geometry = Physics Colliders, voxel 0.1 และไม่รวม Interactable layer. การวาง entrance spawn ห่างประตูเข้ามา 5 หน่วยให้มีพื้นที่ formation; trigger ถูกขยายและวางเข้าด้านในให้โต้ตอบจากตำแหน่งเดินได้. Boss เดิมไม่ได้แก้ asset.
+
+ตรวจ asset ที่บันทึกแล้วทั้ง 8 ห้องโดยตรงด้วย `MapContentValidator.ValidateRoomDefinition` และตรวจแยกจาก NavMesh ของ scene อื่นที่มุม 0/90/180/270: complete paths 776 คู่, จุดวาง player/party formation 480 จุด, collider clearance, จุดเกิดศัตรูขนาด radius 1.14 / height 3.72, ray ไปยัง exit trigger, layer/link/reference และ missing scripts. การตรวจเหล่านี้เป็น Edit Mode authoring/navigation checks; ยังไม่ยืนยันการเล่น run จริง, waves, revisits หรือ Boss progression ใน Play Mode. ลงทะเบียนกับด่านเดิมแล้วตามรายละเอียดด้านล่าง; ต้องทดสอบ fresh run ตามหัวข้อ validation ด้านบน.
+
+
+### การสลับด่านเดิมมาใช้ Sewer
+
+Content Pool ของ Test Stage 01–03 และ Test_Map Run Config SO ใช้ Sewer แทน Start, Combat และ Boss เดิมทั้งหมด โดย Combat มี Stright, Turn, TJunction และ Cross; Deadend ใช้เป็น Shop และ Straight Short ใช้เป็น Heal. Boss Rush 01 เปลี่ยน Start เป็น Sewer และคง Sewer Boss เดิม. Shop ใช้ Sewer_Deadend และ Heal ใช้ Sewer_Straight_Short โดยย้ายบริการจาก prefab เดิมตามหัวข้อด้านล่าง.
+
+คง encounter definitions, generation/progression profiles, Stage Id, XP และ portal ของแต่ละด่านไว้. Room Definitions ของ Sewer คง weight/reward/risk/map metadata ของห้องที่แทน; `RoomDefinition.Sewer.Boss.TestStages.asset` แยก metadata ของ Boss ใน Test Stages จาก Boss Rush โดยใช้ Sewer_Boss prefab เดียวกัน.
+
+หลังสลับ pool ตรวจ Validate Map Content ไม่มี error (ยังมี warning Stage Id ว่างของ Test_Map เดิม) และสุ่มแผนที่ 256 seeds ต่อ config รวม 1,280 แผนที่: path/structure validation ผ่านทั้งหมด และ Start/Combat/Boss ที่ generator เลือกอ้างถึง prefab Sewer ทุกครั้ง. การเปลี่ยนนี้มีผลเมื่อเริ่ม run ใหม่; cached rooms ของ run เดิมไม่ถูกแทนระหว่างเล่น. ยังไม่ยืนยัน enemy waves, travel/revisit และ progression ใน Play Mode.
+
+`Apply Test Stage Content` เป็นเครื่องมือสร้าง asset เดิมและอาจเขียนทับรายการห้องใน pool; หาก regenerate ให้ตรวจการเชื่อม Sewer อีกครั้ง.
+
+### Sewer Shop และ Heal
+
+`Sewer_Deadend.prefab` และ `RoomDefinition.Sewer.Deadend.asset` เป็น Shop, Exit Mask Left, Max Exit Count 1, exact mask. ย้าย ShopSpawner จาก Shop.DeadEnd.Up เดิม พร้อมรายการร้าน 3 tiers และ weight เดิม; spawnChance = 0.9 ตามร้านเดิม เพื่อสุ่มว่ามีร้านหรือไม่, spawnPoint อ้างถึง spawner, ไม่ใช้ saved transform/preview และเปิด preventDuplicateSpawn. Spawner อยู่ local (6, 0.08, 0), หัน Y = 270. คง binding ของ NPC/catalog/shop panel ภายใน prefab ร้านแต่ละ tier. จุดเกิดศัตรูถูกถอด และ flow encounter ทั้งสามช่องปิด.
+
+`Sewer_Straight_Short.prefab` และ `RoomDefinition.Sewer.Straight.Short.asset` เป็น Heal, Exit Mask Up/Down, Max Exit Count 2 และเปิด Allow Superset Exit Mask เช่น Heal เดิม. ย้าย HealStation และ AmmoStation เดิมไว้ local (-3, 0.08, 0) และ (3, 0.08, 0), หันเข้าทางเดินกลาง; คง visual/Animator และผูก InteractableLink/layer ให้ตรงกับ station. เพิ่ม TestStageRecoveryStations บน root, กำหนด party heal 50% และ reserve ammo refill แบบใช้ครั้งเดียว, ถอดจุดเกิดศัตรูและปิด encounter flow.
+
+Content Pools ของ Test Stage 01–03 และ config ทดสอบหลักใช้ Shop/Heal ชุดนี้แทนห้องเดิมและถอดทั้งสองห้องจาก Combat. Boss Rush 01 ใช้ Heal ใหม่เป็นตัวเลือกเดิม โดยยังคงกราฟสอง node Start/Boss จึงไม่เพิ่มห้อง Heal/Shop ให้ run นั้น. Test_Map generation profile เปลี่ยน blueWeights จาก Shop เป็น Heal เพราะเส้นหลักต้องมีทางเข้า/ออกสองด้าน; branchDeadEndWeights ยังคง Shop. ไม่เพิ่มประตูที่ไม่มีในโมเดล Deadend.
+
+หลังเพิ่มบริการ re-bake NavMesh ทั้งสองห้องโดยรักษา GUID/NavMeshData reference. ตรวจห้องที่บันทึกแล้วครบ 4 rotations ผ่าน: party formation, collider clearance, exit focus และ complete paths รวม 696 คู่. ตรวจ Shop ทั้ง 3 tiers x 4 rotations ว่า spawn ได้, catalog/panel ผูกภายในร้าน, เรียก spawn ซ้ำและเปิดห้องซ้ำไม่สร้างร้านเพิ่ม, และเข้าถึงจุดยืนใช้บริการได้. ตรวจ Heal ครบ 4 rotations ว่า lifecycle configure party heal/reserve ammo ถูกต้อง, station ไม่ซ้ำ และเดินจากทั้งสอง entrance ถึงจุดใช้งานได้.
+
+สุ่ม 256 seeds ต่อ config รวม 1,280 แผนที่ผ่าน path/structure validation. Test Stage 01–03 และ Test_Map แต่ละ config เลือก Sewer Shop 506 ครั้ง และ Sewer Heal 256 ครั้งใน sweep นี้; Validate Map Content ไม่มี error และมี warning Stage Id ว่างของ Test_Map เดิมหนึ่งรายการ. การตรวจบริการข้างต้นทำใน Edit Mode ด้วย instance ชั่วคราวและ API จริง; ยังไม่ยืนยันการซื้อของ/รับฮีล/รับกระสุนผ่าน UI และปาร์ตี้จริงใน Play Mode. เริ่ม fresh run หลังแก้ content.
+### Shop ทางตรงแยกจาก Heal
+
+สร้าง `Sewer_Straight_Short.Shop.prefab` เป็น Variant ของ `Sewer_Straight_Short.prefab` และใช้ `RoomDefinition.Sewer.Shop.Straight.Short.asset` ที่ Node Type = Shop, Exit Mask Up/Down, Max Exit Count 2 และ exact mask. Shop Variant มี ShopSpawner ของตัวเองที่ local (3, 0.08, 8), rotation Y = 270, spawnChance = 0.9 และร้าน 3 tiers พร้อม weight เดิม. ไม่มี HealStation, AmmoStation หรือ TestStageRecoveryStations และมี NavMeshData ที่ bake แยกเป็น `Sewer_Straight_Short.Shop.NavMesh.asset`.
+
+ห้อง `Sewer_Straight_Short.prefab` เดิมยังเป็น Heal และเอาร้านที่เคยเพิ่มออกแล้ว; คงฮีลและเติมกระสุนเดิม. `Sewer_Deadend` ยังคงเป็น Shop แบบประตูเดียว. Pool ของ Test Stage 01–03 และ Test_Map มี Shop ทั้งทางตันและทางตรง. Blue Weights ของ Test Stage 01–03 มี Heal:1 และ Shop:1 เพื่อให้ Shop ทางตรงปรากฏบนเส้นหลัก; Test_Map ใช้ Shop ในช่อง blue ตามเดิม. Boss Rush ยังเป็น Start/Boss ตามเดิม.
+
+ตรวจ saved Shop Variant พร้อมร้าน 3 tiers ที่ 0/90/180/270 ผ่าน path, party spawn/formation, collider clearance, จุดยืน/ray ใช้ร้าน, reference และ duplicate/revisit checks. ตรวจ MapContentValidator และ sweep 256 seeds ต่อ config รวม 1,280 แผนที่ผ่าน. ยังไม่ยืนยันการซื้อของผ่าน UI จริงใน Play Mode; เริ่ม fresh run เพื่อเห็นห้องใหม่.
+
+ShopSpawner ของ Sewer_Deadend และ Sewer_Straight_Short.Shop คงระบบสุ่มเดิม: โอกาสเกิดร้าน 90%; เมื่อเกิดร้านเลือก Tier 1/2/3 ด้วย weight 35/40/25 ตามลำดับ. ค่า 100% ที่เคยตั้งไว้ระหว่าง authoring ถูกคืนเป็นค่าเดิมแล้ว. preventDuplicateSpawn ยังคงเปิดเพื่อไม่สุ่มสร้างร้านเพิ่มหลังร้านเกิดแล้วเมื่อกลับเข้าห้องเดิม.
+
+### ขนาดร้านเมื่อย้ายจากห้องต้นแบบ
+
+ShopSpawner ใน Shop.DeadEnd.Up เดิมมี local scale ประมาณ 0.57 แต่ room root มี scale 1.74 จึงได้ world scale ประมาณ 1. เมื่อย้าย spawner มาใต้ Sewer root scale 1 ต้องชดเชยสเกล parent เดิม. ShopSpawner ของ Sewer_Deadend และ Sewer_Straight_Short.Shop ใช้ local scale เท่ากับ world scale ของ spawner ต้นแบบ (ประมาณ 1) เพื่อให้ NPC, van, interaction collider และ geometry มีขนาดจริงเดิม. ไม่แก้ station prefab ที่แชร์กับห้องอื่นหรือสเกล player.
+
+ตรวจหลังปรับขนาดกับร้านครบ 3 tiers และ 4 rotations ทั้งสองห้อง: เส้นทาง, formation, physical clearance และจุดโต้ตอบผ่าน. อัปเดต instance ร้านที่กำลังเล่นให้มีขนาดเดียวกันโดยไม่สุ่มร้านใหม่. spawnChance และ tier weights คงการสุ่มเดิม.
+หลังคืนขนาดร้าน ย้าย LootSpawnPoint ของ Sewer_Deadend เป็น local (-3, 0.08, 0) ให้พ้นรถของร้าน tier 3 และตรวจเส้นทาง/collider clearance ผ่านทั้ง 3 tiers และ 4 rotations.

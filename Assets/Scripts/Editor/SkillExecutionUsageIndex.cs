@@ -71,7 +71,7 @@ public static class SkillExecutionUsageIndex
                     foreach (var option in slot.options) Add(option?.ActiveSkillAsset, SkillExecutionKind.StandardSkill);
         }
 
-        string[] ownerTypes = { "SkillHelperDef", "SkillChainDef", "PartyComboSkillDef",
+        string[] ownerTypes = { "SkillHelperDef", "SkillChainDef", "PartyFollowUpSkillDef",
             "ChainAttackSequenceDef", "HelperChainAttackSequenceDef" };
         foreach (string ownerType in ownerTypes)
             foreach (string guid in AssetDatabase.FindAssets("t:" + ownerType, new[] { "Assets" }))

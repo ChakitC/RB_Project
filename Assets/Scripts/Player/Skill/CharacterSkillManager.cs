@@ -315,7 +315,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         Action<ActiveSkillCastInfo, SkillCastCancelReason> onCancelled = null,
         ulong combatChainId = 0,
         int combatDepth = 0,
-        ComboExecutionProvenance comboProvenance = default)
+        FollowUpExecutionProvenance followUpProvenance = default)
     {
         CacheReferences();
         return TryBeginEntryCast(
@@ -333,7 +333,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             onCancelled,
             combatChainId,
             combatDepth,
-            comboProvenance);
+            followUpProvenance);
     }
 
     /// <summary>
@@ -363,7 +363,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         Action<ActiveSkillCastInfo, SkillCastCancelReason> onCancelled = null,
         ulong combatChainId = 0,
         int combatDepth = 0,
-        ComboExecutionProvenance comboProvenance = default)
+        FollowUpExecutionProvenance followUpProvenance = default)
     {
         CharacterSkillEntry entry = GetOrCreateExternalEntry(skillDef);
         if (entry == null)
@@ -384,21 +384,21 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             onCancelled: onCancelled,
             combatChainId: combatChainId,
             combatDepth: combatDepth,
-            comboProvenance: comboProvenance);
+            followUpProvenance: followUpProvenance);
     }
 
-    public bool TryGetPartyComboChargeStatus(
-        PartyComboSkillDef combo,
+    public bool TryGetPartyFollowUpChargeStatus(
+        PartyFollowUpSkillDef combo,
         out SkillChargeStatus status)
     {
         status = default;
-        return TryGetPartyComboRuntimeEntry(combo, out CharacterSkillEntry entry) &&
+        return TryGetPartyFollowUpRuntimeEntry(combo, out CharacterSkillEntry entry) &&
                skillUser != null &&
                entry.runtimeSkill.TryGetChargeStatus(skillUser, out status);
     }
 
-    public SkillCastStartResult TryStartPartyComboSkill(
-        PartyComboSkillDef combo,
+    public SkillCastStartResult TryStartPartyFollowUpSkill(
+        PartyFollowUpSkillDef combo,
         string debugSource,
         SkillTargetHandle primaryTarget,
         Action<ActiveSkillCastInfo> onCommitted,
@@ -406,10 +406,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         Action<ActiveSkillCastInfo, SkillCastCancelReason> onCancelled,
         ulong combatChainId,
         int combatDepth,
-        ComboExecutionProvenance comboProvenance,
+        FollowUpExecutionProvenance followUpProvenance,
         bool usePlanarRootMotion = false)
     {
-        if (!TryGetPartyComboRuntimeEntry(combo, out CharacterSkillEntry entry))
+        if (!TryGetPartyFollowUpRuntimeEntry(combo, out CharacterSkillEntry entry))
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         return TryStartExternalSkill(
@@ -424,7 +424,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             onCancelled: onCancelled,
             combatChainId: combatChainId,
             combatDepth: combatDepth,
-            comboProvenance: comboProvenance);
+            followUpProvenance: followUpProvenance);
     }
 
     /// <summary>
@@ -637,7 +637,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         Action<ActiveSkillCastInfo, SkillCastCancelReason> onCancelled = null,
         ulong combatChainId = 0,
         int combatDepth = 0,
-        ComboExecutionProvenance comboProvenance = default,
+        FollowUpExecutionProvenance followUpProvenance = default,
         Func<bool> additionalCanProceed = null)
     {
         CacheReferences();
@@ -682,7 +682,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             onCancelled: onCancelled,
             combatChainId: combatChainId,
             combatDepth: combatDepth,
-            comboProvenance: comboProvenance,
+            followUpProvenance: followUpProvenance,
             facingSnapshot: CapturePlayerFacingSnapshot(runtimeSkill, primaryTarget)));
     }
 
@@ -1118,12 +1118,12 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return Loadout.TryGetSelectedLoadoutOptionId(slotId, out optionId);
     }
 
-    public bool TryGetPartyComboRuntimeEntry(
-        PartyComboSkillDef combo,
+    public bool TryGetPartyFollowUpRuntimeEntry(
+        PartyFollowUpSkillDef combo,
         out CharacterSkillEntry entry)
     {
         CacheReferences();
-        return Loadout.TryGetPartyComboRuntimeEntry(combo, out entry);
+        return Loadout.TryGetPartyFollowUpRuntimeEntry(combo, out entry);
     }
 
     /// <summary>Returns the live runtime entry for the currently selected proc variant.</summary>

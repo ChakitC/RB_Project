@@ -21,7 +21,7 @@ MonoBehaviour:
   forceBlueBeforeBoss: 1
   pitySystem:
     maxRedStreakBeforeBlue: 3
-    forcedBlueType: 6
+    forcedBlueType: 7
   mainPathWeights:
   - type: 1
     weight: 1
